@@ -39,3 +39,19 @@ Run the manual test scripts on Windows 11 (and the Windows 10 part of S4). Slint
 - **S4**: no gate. Mica failing just means solid chrome.
 
 Suggested order: S1 (30 min) → S2 → S4. S3 needs no Windows run.
+
+## Automation
+
+The Windows test wizard ([`tools/windows-test`](../../tools/windows-test/README.md#automation-optional)) can run
+part of each script by itself when the owner opts in. It records `pass`/`fail` only from observed evidence and
+hands everything else to the manual screen. Nothing in it has run on Windows yet (see the README's list of
+Windows-only assumptions).
+
+| Spike | Automated steps | Manual steps |
+|---|---|---|
+| S1 | 1 (focus kept; taskbar / Alt+Tab confirmed with one y/n), 2, 2a, 2b, 2c, 2d, 5 (owner accepts UAC) | 2e, 2f, 3, 4, 4a, 4b, 5b, 6, 7, 8, 9, 10 |
+| S2 | 16a, 16b, 16c (fallback chain from the app's start-up report; glyphs confirmed with one y/n) | 1-15, 17, 18 (IME composition cannot be driven reliably with synthetic input) |
+| S4 | 1, 2, 6, 7, 10, 17; Windows 10: W1, W1b, W3, W4, W7 (corners / shadow confirmed with one y/n) | 3, 4, 5a, 5b, 8, 9, 11a-11f, 12-16, W2, W5, W6 |
+
+S4 steps 6, 7, 10 and W3, W4 switch the setting through the registry plus `WM_SETTINGCHANGE`, not through the
+Settings app, so they do not record which signal the Settings app itself sends.

@@ -101,21 +101,21 @@
       "expect": "The heartbeat in the top line keeps counting and input appears. If the heartbeat STOPS, note the renderer and OS build and retry test 17's software renderer."
     },
     {
-      "id": "16a",
+      "id": "16a", "auto": "Invoke-S2FontRows",
       "title": "CJK font order: --cjk ja",
       "launch": { "args": ["--cjk", "ja"] },
       "do": "Compare row 'default stack' with the 'Yu Gothic UI' and 'Microsoft YaHei UI' rows. Look at the characters for straight, bone, corner, now, sea.",
       "expect": "Han glyphs in the default row match the Yu Gothic row. Kana always Yu Gothic, Hangul always Malgun. The 'no glyph' row is blank or a box, no crash."
     },
     {
-      "id": "16b",
+      "id": "16b", "auto": "Invoke-S2FontRows",
       "title": "CJK font order: --cjk zh",
       "launch": { "args": ["--cjk", "zh"] },
       "do": "Same comparison as before.",
       "expect": "Han glyphs in the default row match the YaHei row."
     },
     {
-      "id": "16c",
+      "id": "16c", "auto": "Invoke-S2FontRows",
       "title": "CJK font order: --cjk system (baseline)",
       "launch": { "args": ["--cjk", "system"] },
       "do": "Same comparison as before.",

@@ -12,36 +12,36 @@
   ],
   "tests": [
     {
-      "id": "1", "gate": true,
+      "id": "1", "auto": "Invoke-S1NoActivate", "gate": true,
       "title": "Panel opens without stealing focus",
       "do": "Click this terminal window, then click an EMPTY area of the Snipdeck panel (not an item yet: this terminal is the paste target, so clicking an item would type into the wizard). The panel footer should read 'Pastes into WindowsTerminal.exe'.",
       "expect": "The panel appears WITHOUT taking focus from the terminal. No 'entry point not found' error. No taskbar button (note any brief flash at start-up). Not listed in Alt+Tab. Stays above other windows. Clicking the panel leaves the terminal's title bar active."
     },
     {
-      "id": "2", "gate": true, "clipboard": "BEFORE",
+      "id": "2", "auto": "Invoke-S1Paste", "gate": true, "clipboard": "BEFORE",
       "title": "Notepad: click an item to paste",
       "do": "The wizard has already put the word BEFORE on your clipboard. In Notepad type abc. Click 'Hello from Snipdeck' in the panel. Then press Ctrl+V in Notepad. Open Win+V history.",
       "expect": "Footer before click: 'Pastes into Notepad.exe ...' with NO '(no caret seen)'. Text inserted at the caret, Notepad stays active with the caret blinking, status shows 'Pasted into ...'. Ctrl+V then pastes BEFORE (restore worked). Win+V history does NOT contain the item."
     },
     {
-      "id": "2a", "title": "Unicode and multi-line items",
+      "id": "2a", "auto": "Invoke-S1UnicodePaste", "title": "Unicode and multi-line items",
       "do": "Click the 'unicode' item (with the check mark, Japanese and emoji) and the two-line item.",
       "expect": "Exact text, with line breaks intact."
     },
     {
-      "id": "2b", "gate": true,
+      "id": "2b", "auto": "Invoke-S1ShiftCopy", "gate": true,
       "title": "Shift+click copies only",
       "do": "Hold Shift and click an item. Then press Ctrl+V in Notepad.",
       "expect": "Nothing inserted on the click. Status says 'Copied (Shift+click)'. Ctrl+V then pastes the item."
     },
     {
-      "id": "2c", "gate": true,
+      "id": "2c", "auto": "Invoke-S1AltWinPaste", "gate": true,
       "title": "Alt and Win held while clicking",
       "do": "Hold Alt and click an item. Then hold the Windows key and click an item. Release, then type normally.",
       "expect": "Both paste. Notepad's menu bar is NOT activated (no underlined access keys) and the Start menu does NOT open. No stuck modifier keys afterwards."
     },
     {
-      "id": "2d", "gate": true,
+      "id": "2d", "auto": "Invoke-S1CtrlPaste", "gate": true,
       "title": "Ctrl held while clicking",
       "do": "Hold Ctrl and click an item.",
       "expect": "Pasted once. Ctrl is not stuck afterwards."
@@ -83,7 +83,7 @@
       "expect": "Esc: Chrome returns to the front with the caret where it was. Item click: pasted into Chrome. Notepad: Notepad stays in front (no bounce back to Chrome)."
     },
     {
-      "id": "5", "gate": true,
+      "id": "5", "auto": "Invoke-S1ElevatedCopy", "autoTimeout": 150, "gate": true,
       "title": "Elevated Notepad (admin) falls back to copy",
       "do": "Start Notepad with 'Run as administrator', click into it, then click an item. Press Ctrl+V manually.",
       "expect": "Footer: 'Copies to clipboard (Notepad.exe runs as admin; Snipdeck does not)'. Status 'Copied: ...'. Nothing injected. Ctrl+V pastes the item manually."

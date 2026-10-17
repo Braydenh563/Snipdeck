@@ -10,6 +10,7 @@
 .EXAMPLE
   .\run-tests.ps1                      # interactive menus
   .\run-tests.ps1 -Spike S1 -Mode quick
+  .\run-tests.ps1 -Auto                # run the automatable steps without asking (-NoAuto: never)
   .\run-tests.ps1 -SelfTest            # validate the test files, no Windows needed
 #>
 [CmdletBinding()]
@@ -19,7 +20,9 @@ param(
     [string]$Mode,
     [switch]$SkipPrereqs,
     [switch]$SelfTest,
-    [switch]$DryRun   # developer use: fakes Windows, build and launch so the flow can be tested anywhere
+    [switch]$DryRun,  # developer use: fakes Windows, build and launch so the flow can be tested anywhere
+    [switch]$Auto,    # run the steps that have an "auto" field without asking first
+    [switch]$NoAuto   # never offer the automation (the manual wizard, exactly as before)
 )
 
 $ErrorActionPreference = 'Stop'
@@ -152,6 +155,7 @@ function Test-Definitions($Spikes) {
             if ($seen.ContainsKey($t.id)) { $problems += "$($s.id): duplicate test id '$($t.id)'" }
             $seen[$t.id] = $true
             if ($t.os -and @('any', 'win10', 'win11') -notcontains $t.os) { $problems += "$($s.id):$($t.id): bad os '$($t.os)'" }
+            if ($t.auto -and ($t.auto -isnot [string] -or $t.auto -notmatch '^[A-Za-z][A-Za-z0-9-]*$')) { $problems += "$($s.id):$($t.id): bad auto '$($t.auto)'" }
         }
         if (-not (Test-Path (Join-Path $RepoRoot $s.dir))) { $problems += "$($s.id): folder '$($s.dir)' not found" }
     }
@@ -487,6 +491,7 @@ function Load-State {
     foreach ($p in $raw.results.PSObject.Properties) {
         $v = $p.Value
         $res[$p.Name] = @{ status = $v.status; note = $v.note; shots = @($v.shots); at = $v.at }
+        if ($v.auto) { $res[$p.Name].auto = $true }
     }
     $diag = [ordered]@{}
     if ($raw.diag) { foreach ($p in $raw.diag.PSObject.Properties) { $diag[$p.Name] = @($p.Value) } }
@@ -500,6 +505,7 @@ function Load-State {
 
 function Build-Report($Spikes, $State, [bool]$ForPaste) {
     $sb = New-Object System.Text.StringBuilder
+    $anyAuto = $false
     $e = $State.env
     [void]$sb.AppendLine('# Snipdeck M0 spikes: Windows test results')
     [void]$sb.AppendLine('')
@@ -524,7 +530,13 @@ function Build-Report($Spikes, $State, [bool]$ForPaste) {
             $st = if ($r) { $r.status } else { 'not run' }
             if ($ForPaste -and $st -eq 'pass' -and -not ($r -and $r.note)) { continue }
             $note = if ($r -and $r.note) { ($r.note -replace '\|', '/' -replace "`r?`n", ' ') } else { '' }
+            if ($r -and $r.auto) { $st = "$st (auto)"; $anyAuto = $true }
             [void]$sb.AppendLine("| $($t.id) | $st | $($t.title) | $note |")
+        }
+        if ($anyAuto) {
+            [void]$sb.AppendLine('')
+            [void]$sb.AppendLine('(auto) = decided by the automation from what it observed (the evidence is in Notes).')
+            $anyAuto = $false
         }
         [void]$sb.AppendLine('')
         foreach ($k in $State.diag.Keys) {
@@ -540,9 +552,104 @@ function Build-Report($Spikes, $State, [bool]$ForPaste) {
     return $sb.ToString()
 }
 
+# ---------------------------------------------------------------- automation (opt-in; see auto\ and README.md)
+
+$AutoDir = Join-Path $Here 'auto'
+$script:AutoOn = $false
+
+# auto\*.ps1 (helpers, Windows primitives, per-spike steps); with -DryRun the mock primitives load last and replace the real ones.
+function Get-AutoModuleFiles([bool]$Mock) {
+    $files = @(Get-ChildItem -Path $AutoDir -Filter '*.ps1' | Sort-Object Name | ForEach-Object { $_.FullName })
+    if ($Mock) { $files += (Join-Path (Join-Path $AutoDir 'mock') 'primitives.mock.ps1') }
+    return $files
+}
+
+function Test-HasAutoSteps($Spikes, $State) {
+    foreach ($s in $Spikes) {
+        if ($State.spikes -notcontains $s.id) { continue }
+        foreach ($t in (Get-Applicable $s $State.osClass $State.mode)) {
+            if (-not $t.auto) { continue }
+            $k = "$($s.id):$($t.id)"
+            if (-not ($State.results.Contains($k) -and @('pass', 'fail', 'skip') -contains $State.results[$k].status)) { return $true }
+        }
+    }
+    return $false
+}
+
+function Ask-AutoOptIn {
+    Write-Banner 'Optional: let the wizard do some steps for you'
+    Say ''
+    Say-Wrapped 'Some steps can be performed and checked automatically: the wizard moves the mouse, types into a scratch Notepad document, switches Windows settings for a few seconds (always switched back), and reads what happened. A 5-second countdown comes first. To stop at any time: hold Esc, or move the mouse. Anything it cannot judge falls back to the normal manual screen. S1 step 5 needs you to accept a UAC prompt.' 2
+    Say ''
+    return (Ask-YesNo "Let me run the automatable steps for you? Your mouse and keyboard will move; don't touch them." $false)
+}
+
+function Start-Automation {
+    $init = Initialize-AutoPrimitives $OutRoot
+    if (-not $init.Ok) {
+        Say "  Automation is not available: $($init.Reason). Continuing with the manual steps." Yellow
+        Pause-Enter
+        return $false
+    }
+    try { $script:AutoState.WizardHwnd = [long](Get-AutoForeground).Hwnd } catch { }
+    return $true
+}
+
+function New-AutoCtx($SpikeDef, $T) {
+    return [pscustomobject]@{
+        SpikeId = $SpikeDef.id; TestId = $T.id; Spike = $SpikeDef; Test = $T; App = $script:App
+        RunDir = $RunDir; RepoRoot = $RepoRoot; OsBuild = [int]$script:State.env.build; OsClass = $script:State.osClass
+    }
+}
+
+# Runs the step's automation, asks the owner's one-key confirmation if it has one, and shows the outcome.
+function Invoke-EngineAuto($SpikeDef, $T, [int]$Index, [int]$Total) {
+    Write-Banner "$($SpikeDef.id): $($SpikeDef.title)" "Step $Index of $Total  [automated]"
+    Say ''
+    Say "  $($T.id)  $($T.title)" White
+    Say ''
+    $timeout = 60
+    if ($T.autoTimeout) { $timeout = [int]$T.autoTimeout }
+    $ctx = New-AutoCtx $SpikeDef $T
+    try {
+        Register-AutoApp $ctx
+        $ar = Invoke-AutoStep $ctx $T.auto $timeout
+    } catch {
+        $ar = @{ status = 'unsure'; evidence = "automation error: $($_.Exception.Message)"; screenshots = @(); manualCheck = '' }
+    }
+    if ($script:AutoState.Aborted) {
+        $script:AutoOn = $false
+        Say '  Automation stopped. Every remaining step is manual.' Yellow
+    }
+    if (-not $script:AutoState.FocusReturned) { Say '  Click this window to continue.' Yellow }
+    Say ''
+    if ($ar.status -eq 'pass' -and $ar.manualCheck) {
+        Say '  The automated checks passed. One thing only you can judge:' Cyan
+        Say-Wrapped $ar.manualCheck 4 Gray
+        if (Ask-YesNo 'Is that right?' $true) { $ar.evidence = "$($ar.evidence); you confirmed: $($ar.manualCheck)" }
+        else { $ar.status = 'unsure'; $ar.evidence = "$($ar.evidence); you said NO to: $($ar.manualCheck)" }
+    }
+    $color = @{ pass = 'Green'; fail = 'Red'; unsure = 'Yellow' }[$ar.status]
+    Say "  Automation result: $($ar.status.ToUpper())" $color
+    Say-Wrapped $ar.evidence 4 DarkGray
+    if ($ar.status -eq 'fail') { Pause-Enter '  Recorded as FAIL. Press Enter to continue (press b on the next screen to come back and override it)...' }
+    elseif ($ar.status -eq 'pass' -and -not $DryRun) { Start-Sleep -Milliseconds 1500 }
+    return $ar
+}
+
+function Save-AutoResult([string]$Key, $Ar, $Existing) {
+    $shots = @()
+    if ($Existing) { $shots = @($Existing.shots) }
+    $shots = @(@($shots) + @($Ar.screenshots) | Where-Object { $_ })
+    $note = "auto: $($Ar.evidence)"
+    if ($note.Length -gt 900) { $note = $note.Substring(0, 900) + '...' }
+    $script:State.results[$Key] = @{ status = $Ar.status; note = $note; shots = $shots; at = (Get-Date).ToString('s'); auto = $true }
+    Save-State
+}
+
 # ---------------------------------------------------------------- one test screen
 
-function Show-Test($SpikeDef, $T, [int]$Index, [int]$Total, $Existing) {
+function Show-Test($SpikeDef, $T, [int]$Index, [int]$Total, $Existing, $AutoInfo = $null) {
     $gate = if ($T.gate -eq $true -or $T.anyGroup) { '  [GO/NO-GO STEP]' } else { '' }
     Write-Banner "$($SpikeDef.id): $($SpikeDef.title)" "Step $Index of $Total$gate"
     Say ''
@@ -558,8 +665,13 @@ function Show-Test($SpikeDef, $T, [int]$Index, [int]$Total, $Existing) {
     if (Test-AppRunning) { Say "  App: running (PID $($script:App.proc.Id)), $($script:App.label)" DarkGreen }
     else { Say '  App: NOT running (press r to launch it)' Yellow }
     if ($Existing) { Say "  Previous answer for this step: $($Existing.status)  $($Existing.note)" DarkYellow }
+    if ($AutoInfo) {
+        Say "  The automation could not decide this step ($($AutoInfo.status)). What it saw:" Yellow
+        Say-Wrapped $AutoInfo.evidence 4 DarkYellow
+    }
     Say ''
     Say '  [p] pass   [f] fail   [s] skip   [n] add note   [c] screenshot   [l] app log   [r] relaunch   [k] re-copy clipboard text   [b] back   [q] finish now' DarkGray
+    if ($script:AutoOn -and $T.auto) { Say '  [a] run the automation for this step again' DarkGray }
     Say '  Tip: Ctrl+C is turned off here (it would close the wizard). Copying from this window: select text, then right-click or Ctrl+Shift+C. Pasted text is ignored.' DarkGray
 }
 
@@ -574,6 +686,7 @@ function Run-Spike($SpikeDef, $Tests, $State) {
 
     $i = 0
     $pendingNote = ''
+    $autoTried = @{}
     if ($script:Resumed) {
         # Skip steps already answered in the previous session (press b to revisit one).
         while ($i -lt $Tests.Count) {
@@ -599,13 +712,27 @@ function Run-Spike($SpikeDef, $Tests, $State) {
         }
 
         if ($t.clipboard) { try { Set-Clipboard -Value $t.clipboard } catch { } }
-        Show-Test $SpikeDef $t ($i + 1) $Tests.Count $existing
+        $autoInfo = $null
+        if ($script:AutoOn -and $t.auto -and -not $autoTried.ContainsKey($key) -and -not ($existing -and @('pass', 'fail', 'skip') -contains $existing.status)) {
+            $autoTried[$key] = $true
+            $ar = Invoke-EngineAuto $SpikeDef $t ($i + 1) $Tests.Count
+            if ($ar.status -eq 'pass' -or $ar.status -eq 'fail') { Save-AutoResult $key $ar $existing; $i++; continue }
+            $autoInfo = $ar
+        }
+        Show-Test $SpikeDef $t ($i + 1) $Tests.Count $existing $autoInfo
         $advance = $false
+        $keys = 'pfsnclrbqk'
+        if ($script:AutoOn -and $t.auto) { $keys += 'a' }
         while (-not $advance) {
-            $k = Read-Choice '  > ' 'pfsnclrbqk'
+            $k = Read-Choice '  > ' $keys
             if ($k -eq 'p' -or $k -eq 'f' -or $k -eq 's') {
                 $status = @{ p = 'pass'; f = 'fail'; s = 'skip' }[$k]
                 $note = $pendingNote; $pendingNote = ''
+                if ($autoInfo) {
+                    $ev = [string]$autoInfo.evidence
+                    if ($ev.Length -gt 300) { $ev = $ev.Substring(0, 300) + '...' }
+                    $note = ("[automation unsure: $ev] " + $note).Trim()
+                }
                 if ($k -eq 'f') {
                     $typed = Read-Host '  What went wrong? (Enter to leave blank)'
                     if ($typed) { $note = (($note + ' ' + $typed)).Trim() }
@@ -639,6 +766,14 @@ function Run-Spike($SpikeDef, $Tests, $State) {
                 if ($t.clipboard) {
                     try { Set-Clipboard -Value $t.clipboard; Say "  '$($t.clipboard)' is on your clipboard." Green } catch { Say '  Could not set the clipboard.' Yellow }
                 } else { Say '  This step has no clipboard text.' Yellow }
+            } elseif ($k -eq 'a') {
+                $ar = Invoke-EngineAuto $SpikeDef $t ($i + 1) $Tests.Count
+                if ($ar.status -eq 'pass' -or $ar.status -eq 'fail') { Save-AutoResult $key $ar $existing; $i++; $advance = $true }
+                else {
+                    $autoInfo = $ar
+                    if (-not $script:AutoOn) { $keys = 'pfsnclrbqk' }
+                    Show-Test $SpikeDef $t ($i + 1) $Tests.Count $existing $autoInfo
+                }
             } elseif ($k -eq 'b') {
                 if ($i -gt 0) { $i-- }; $advance = $true
             } elseif ($k -eq 'q') {
@@ -670,6 +805,7 @@ function Finish-Run($Spikes, $State) {
     try { Set-Clipboard -Value $paste; Say '  A short summary is on your clipboard: paste it into the chat with Claude.' Green }
     catch { Say "  Summary saved in $RunDir\paste-back.md (open it and copy it)." Yellow }
     Say "  Full report: $RunDir\results.md" Gray
+    if ($script:AutoState -and $script:AutoState.Notepad) { Say '  The scratch Notepad document (snipdeck-auto-*.txt) can be closed without saving.' Gray }
 
     if ((Test-Path (Join-Path $RunDir 'screens')) -and (Ask-YesNo 'Zip the screenshots and results into one file?' $true)) {
         $zip = Join-Path $OutRoot ("snipdeck-m0-results-{0}.zip" -f (Get-Date -Format 'yyyyMMdd-HHmm'))
@@ -678,7 +814,8 @@ function Finish-Run($Spikes, $State) {
     }
     if (-not $DryRun -and (Ask-YesNo 'Open the results folder?' $true)) { Invoke-Item $RunDir }
 
-    if ((Get-Command git -ErrorAction SilentlyContinue) -and (Test-Path (Join-Path $RepoRoot '.git'))) {
+    # A dry run must never touch the repository (its results are fake).
+    if (-not $DryRun -and (Get-Command git -ErrorAction SilentlyContinue) -and (Test-Path (Join-Path $RepoRoot '.git'))) {
         $branch = (& git -C $RepoRoot rev-parse --abbrev-ref HEAD)
         if (Ask-YesNo "Commit results.md to the repo and push branch '$branch'? (text only, no screenshots)" $false) {
             $dest = Join-Path $RepoRoot 'docs\spikes\results'
@@ -724,6 +861,30 @@ if ($SelfTest) {
         if ($allPass.label -ne 'GATE PASSED') { $problems += "$($s.id): all-pass should be GATE PASSED, got $($allPass.label)" }
         if ($oneFail.label -ne 'GATE FAILED') { $problems += "$($s.id): a failed gate step should be GATE FAILED, got $($oneFail.label)" }
     }
+    $problems = @($problems)
+    # Every script must parse, and stay ASCII (Windows PowerShell 5.1 reads BOM-less scripts as ANSI).
+    $scripts = @(Get-ChildItem -Path $Here -Filter '*.ps1' -Recurse)
+    foreach ($f in $scripts) {
+        $tokens = $null; $errs = $null
+        [void][System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$tokens, [ref]$errs)
+        foreach ($e in @($errs)) { $problems += "parse error: $($f.Name):$($e.Extent.StartLineNumber): $($e.Message)" }
+        if ([IO.File]::ReadAllText($f.FullName) -match '[^\x00-\x7F]') { $problems += "$($f.Name): non-ASCII characters" }
+    }
+    Say "Parsed $($scripts.Count) PowerShell file(s)." Gray
+    # Automation layer: load it with the mock primitives, check every "auto" name, run its unit and end-to-end tests.
+    foreach ($f in (Get-AutoModuleFiles $true)) { . $f }
+    . (Join-Path (Join-Path $AutoDir 'tests') 'selftest.ps1')
+    $autoSteps = 0
+    foreach ($s in $spikes) {
+        foreach ($t in $s.tests) {
+            if (-not $t.auto) { continue }
+            $autoSteps++
+            if (-not (Get-Command $t.auto -CommandType Function -ErrorAction SilentlyContinue)) { $problems += "$($s.id):$($t.id): no automation function '$($t.auto)'" }
+        }
+    }
+    $autoProblems = @(Invoke-AutoSelfTest)
+    Say "Automation: $autoSteps step(s) have an 'auto' field; unit and mock end-to-end tests: $(if ($autoProblems.Count) { "$($autoProblems.Count) problem(s)" } else { 'OK' })." Gray
+    $problems += $autoProblems
     if ($problems.Count -gt 0) { $problems | ForEach-Object { Say "PROBLEM: $_" Red }; exit 1 }
     Say 'Self test OK.' Green
     exit 0
@@ -743,6 +904,14 @@ try {
     if (-not $IsWin) {
         Say '  Not running on Windows: use -SelfTest to validate the test files only.' Yellow
         exit 1
+    }
+
+    # An automation run that died while a Windows setting was switched left auto-restore.json: put the setting back.
+    if (-not $DryRun -and (Test-Path (Join-Path $OutRoot 'auto-restore.json'))) {
+        try {
+            . (Join-Path $AutoDir 'lib.ps1'); . (Join-Path $AutoDir 'primitives.ps1')
+            if (Restore-AutoRegistryFromFile $OutRoot) { Say '  Put back the Windows settings an interrupted automation run had switched (theme / transparency / text size).' Yellow }
+        } catch { Say "  Could not restore settings listed in $(Join-Path $OutRoot 'auto-restore.json'): $($_.Exception.Message)" Red }
     }
 
     $spikes = Load-Spikes
@@ -803,6 +972,18 @@ try {
         Save-State
     }
 
+    # Opt-in automation: asked once (unless -Auto / -NoAuto), only when a selected step has an "auto" field.
+    if (-not $NoAuto -and (Test-HasAutoSteps $spikes $script:State)) {
+        if ($Auto -or (Ask-AutoOptIn)) {
+            $loadError = $null
+            foreach ($f in (Get-AutoModuleFiles ([bool]$DryRun))) {
+                try { . $f } catch { $loadError = "$([IO.Path]::GetFileName($f)): $($_.Exception.Message)"; break }
+            }
+            if ($loadError) { Say "  The automation could not be loaded ($loadError). Continuing with the manual steps." Red; Pause-Enter }
+            else { $script:AutoOn = Start-Automation }
+        }
+    }
+
     $quit = $false
     foreach ($s in $spikes) {
         if ($quit) { break }
@@ -816,5 +997,6 @@ try {
 }
 finally {
     Stop-App
+    if (Get-Command Exit-AutoSession -CommandType Function -ErrorAction SilentlyContinue) { try { Exit-AutoSession } catch { } }
     try { if ($null -ne $script:CtrlCWas) { [Console]::TreatControlCAsInput = $script:CtrlCWas } } catch { }
 }
