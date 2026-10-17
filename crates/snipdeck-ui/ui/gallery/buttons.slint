@@ -1,0 +1,26 @@
+import { Button, ButtonVariant, ButtonSize } from "../components/button.slint";
+import { Theme, Space, Palette } from "../theme.slint";
+import { Icons } from "../icons.slint";
+
+export component ButtonGallery inherits Window {
+    in property <bool> dark: false;
+    in-out property <int> clicks: 0;
+    width: 420px;
+    height: 220px;
+    background: Theme.bg-app;
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    VerticalLayout {
+        padding: Space.s4;
+        spacing: Space.s3;
+        for variant in [ButtonVariant.primary, ButtonVariant.secondary, ButtonVariant.ghost, ButtonVariant.danger]: HorizontalLayout {
+            spacing: Space.s2;
+            alignment: start;
+            Button { text: "Paste"; variant: variant; size: ButtonSize.sm; }
+            Button { text: "Paste"; variant: variant; size: ButtonSize.md; icon: Icons.copy; }
+            Button { text: "Paste"; variant: variant; size: ButtonSize.lg; clicked => { root.clicks += 1; } }
+            Button { text: "Paste"; variant: variant; enabled: false; clicked => { root.clicks += 100; } }
+        }
+    }
+}

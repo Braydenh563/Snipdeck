@@ -1,0 +1,7 @@
+// Entry point compiled by `build.rs`: what Rust sees. Components are imported through
+// `components.slint` so no unused-export warnings fire; only globals the Rust side sets and the
+// gallery windows (rendered by the screenshot tests) are exported.
+import { Button } from "components.slint";
+export { SystemLook, Palette } from "theme.slint";
+
+export { ButtonGallery } from "gallery/buttons.slint";

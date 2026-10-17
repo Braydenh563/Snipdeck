@@ -1,0 +1,126 @@
+// Resolved design tokens (DESIGN.md §2, §3, §5, §6, §8). Components read `Theme`, `Type`, `Space`,
+// `Radius` and `Motion` only: never `Palette` or `Primitives` directly, and never a literal colour.
+import { Palette, Primitives } from "tokens.slint";
+export { Palette, Primitives }
+
+import "../fonts/IBMPlexSans-Regular.ttf";
+import "../fonts/IBMPlexSans-Medium.ttf";
+import "../fonts/IBMPlexSans-SemiBold.ttf";
+import "../fonts/IBMPlexMono-Regular.ttf";
+import "../fonts/IBMPlexMono-Medium.ttf";
+
+// Everything the platform layer decides. Set from Rust on start-up and on every system change.
+export global SystemLook {
+    in property <bool> high-contrast: false;
+    in property <bool> reduced-motion: false;
+    // Windows "Text size" (Settings > Accessibility), 1.0 ..= 2.25. DPI is handled by Slint's scale factor.
+    in property <float> text-scale: 1.0;
+    // System colours (GetSysColor), used only while `high-contrast` is on.
+    in property <color> hc-window: #000000;
+    in property <color> hc-window-text: #ffffff;
+    in property <color> hc-highlight: #1aebff;
+    in property <color> hc-highlight-text: #000000;
+    in property <color> hc-gray-text: #3ff23f;
+}
+
+export global Fonts {
+    out property <string> sans: "IBM Plex Sans";
+    out property <string> mono: "IBM Plex Mono";
+}
+
+// DESIGN.md §3, multiplied by the Windows text-scale factor.
+export global Type {
+    out property <length> xs: 11px * SystemLook.text-scale;
+    out property <length> sm: 12px * SystemLook.text-scale;
+    out property <length> base: 13px * SystemLook.text-scale;
+    out property <length> md: 14px * SystemLook.text-scale;
+    out property <length> lg: 16px * SystemLook.text-scale;
+    out property <length> xl: 20px * SystemLook.text-scale;
+    out property <length> xxl: 24px * SystemLook.text-scale;
+    out property <length> line-xs: 16px * SystemLook.text-scale;
+    out property <length> line-sm: 16px * SystemLook.text-scale;
+    out property <length> line-base: 20px * SystemLook.text-scale;
+    out property <length> line-lg: 24px * SystemLook.text-scale;
+    out property <length> line-xl: 28px * SystemLook.text-scale;
+    out property <int> regular: 400;
+    out property <int> medium: 500;
+    out property <int> semibold: 600;
+}
+
+// DESIGN.md §5: 4px base unit.
+export global Space {
+    out property <length> s0-5: 2px;
+    out property <length> s1: 4px;
+    out property <length> s2: 8px;
+    out property <length> s3: 12px;
+    out property <length> s4: 16px;
+    out property <length> s5: 20px;
+    out property <length> s6: 24px;
+    out property <length> s8: 32px;
+    out property <length> s12: 48px;
+    // Minimum hit target (WCAG 2.2 target size); the default is 28.
+    out property <length> hit-min: 24px;
+    out property <length> hit: 28px;
+}
+
+// DESIGN.md §5: locked, no other radii.
+export global Radius {
+    out property <length> sm: 4px;
+    out property <length> md: 6px;
+    out property <length> lg: 8px;
+}
+
+// DESIGN.md §8. Reduced motion: all durations 0, except fades of at most 90ms.
+export global Motion {
+    out property <duration> instant: SystemLook.reduced-motion ? 0ms : 90ms;
+    out property <duration> quick: SystemLook.reduced-motion ? 0ms : 140ms;
+    out property <duration> settle: SystemLook.reduced-motion ? 0ms : 200ms;
+    out property <duration> panel: SystemLook.reduced-motion ? 0ms : 200ms;
+    // Opacity fades keep 90ms under reduced motion.
+    out property <duration> fade: 90ms;
+    out property <easing> out: cubic-bezier(0.2, 0, 0, 1);
+    out property <easing> in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// Semantic tokens, swapped for system colours in high-contrast mode (DESIGN.md §8).
+export global Theme {
+    property <bool> hc: SystemLook.high-contrast;
+    out property <bool> dark: Palette.dark;
+
+    out property <color> bg-app: hc ? SystemLook.hc-window : Palette.bg-app;
+    out property <color> bg-surface: hc ? SystemLook.hc-window : Palette.bg-surface;
+    out property <color> bg-sunken: hc ? SystemLook.hc-window : Palette.bg-sunken;
+    out property <color> bg-hover: hc ? SystemLook.hc-window : Palette.bg-hover;
+    out property <color> bg-selected: hc ? SystemLook.hc-highlight : Palette.bg-selected;
+    out property <color> bg-overlay: hc ? SystemLook.hc-window : Palette.bg-overlay;
+    out property <color> border-subtle: hc ? SystemLook.hc-window-text : Palette.border-subtle;
+    out property <color> border-default: hc ? SystemLook.hc-window-text : Palette.border-default;
+    out property <color> border-strong: hc ? SystemLook.hc-window-text : Palette.border-strong;
+    out property <color> text-primary: hc ? SystemLook.hc-window-text : Palette.text-primary;
+    out property <color> text-secondary: hc ? SystemLook.hc-window-text : Palette.text-secondary;
+    out property <color> text-tertiary: hc ? SystemLook.hc-gray-text : Palette.text-tertiary;
+    // Text drawn on a `bg-selected` row.
+    out property <color> text-on-selected: hc ? SystemLook.hc-highlight-text : Palette.text-primary;
+    out property <color> text-on-accent: hc ? SystemLook.hc-highlight-text : Palette.text-on-accent;
+    out property <color> ink: hc ? SystemLook.hc-window-text : Palette.ink-default;
+    out property <color> ink-hover: hc ? SystemLook.hc-highlight : Palette.ink-hover;
+    out property <color> ink-pressed: hc ? SystemLook.hc-highlight : Palette.ink-pressed;
+    out property <color> text-on-ink: hc ? SystemLook.hc-window : Palette.text-on-ink;
+    out property <color> accent: hc ? SystemLook.hc-highlight : Palette.accent-default;
+    out property <color> accent-hover: hc ? SystemLook.hc-highlight : Palette.accent-hover;
+    out property <color> accent-pressed: hc ? SystemLook.hc-highlight : Palette.accent-pressed;
+    out property <color> accent-text: hc ? SystemLook.hc-highlight : Palette.accent-text;
+    out property <color> accent-subtle: hc ? SystemLook.hc-window : Palette.accent-subtle;
+    out property <color> focus-ring: hc ? SystemLook.hc-highlight : Palette.focus-ring;
+    out property <color> success-fg: hc ? SystemLook.hc-window-text : Palette.success-fg;
+    out property <color> success-bg: hc ? SystemLook.hc-window : Palette.success-bg;
+    out property <color> warning-fg: hc ? SystemLook.hc-window-text : Palette.warning-fg;
+    out property <color> warning-bg: hc ? SystemLook.hc-window : Palette.warning-bg;
+    out property <color> danger-fg: hc ? SystemLook.hc-window-text : Palette.danger-fg;
+    out property <color> danger-bg: hc ? SystemLook.hc-window : Palette.danger-bg;
+    out property <color> danger-solid: hc ? SystemLook.hc-window-text : Palette.danger-solid;
+    out property <color> info-fg: hc ? SystemLook.hc-window-text : Palette.info-fg;
+    out property <color> info-bg: hc ? SystemLook.hc-window : Palette.info-bg;
+    // 1px border drawn on everything in high-contrast mode, transparent otherwise.
+    out property <color> hc-border: hc ? SystemLook.hc-window-text : transparent;
+}

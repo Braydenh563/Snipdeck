@@ -1929,6 +1929,39 @@ impl Store | crates/snipdeck-store/src/trash.rs:140
 restore_with | crates/snipdeck-store/src/trash.rs:153
 list_and_board | crates/snipdeck-store/src/trash.rs:223
 
+### crates/snipdeck-ui/build.rs
+
+ident | crates/snipdeck-ui/build.rs:15
+object | crates/snipdeck-ui/build.rs:20
+render | crates/snipdeck-ui/build.rs:26
+main | crates/snipdeck-ui/build.rs:71
+
+### crates/snipdeck-ui/src/lib.rs
+
+generated | crates/snipdeck-ui/src/lib.rs:15
+testing | crates/snipdeck-ui/src/lib.rs:20
+
+### crates/snipdeck-ui/src/testing.rs
+
+HeadlessPlatform | crates/snipdeck-ui/src/testing.rs:34
+impl Platform for HeadlessPlatform | crates/snipdeck-ui/src/testing.rs:36
+create_window_adapter | crates/snipdeck-ui/src/testing.rs:37
+duration_since_start | crates/snipdeck-ui/src/testing.rs:43
+init | crates/snipdeck-ui/src/testing.rs:48
+Frame | crates/snipdeck-ui/src/testing.rs:58
+impl Frame | crates/snipdeck-ui/src/testing.rs:67
+pixel | crates/snipdeck-ui/src/testing.rs:73
+Harness | crates/snipdeck-ui/src/testing.rs:87
+impl Harness<C> | crates/snipdeck-ui/src/testing.rs:93
+new | crates/snipdeck-ui/src/testing.rs:98
+advance | crates/snipdeck-ui/src/testing.rs:111
+render | crates/snipdeck-ui/src/testing.rs:121
+golden_dir | crates/snipdeck-ui/src/testing.rs:142
+diff_dir | crates/snipdeck-ui/src/testing.rs:148
+write_png | crates/snipdeck-ui/src/testing.rs:152
+read_png | crates/snipdeck-ui/src/testing.rs:165
+assert_golden | crates/snipdeck-ui/src/testing.rs:187
+
 ### design/tools/palette.py
 
 oklch_to_srgb | design/tools/palette.py:7
@@ -2391,5 +2424,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-store/tests/search.rs` | 13 |
 | `crates/snipdeck-store/tests/tags.rs` | 8 |
 | `crates/snipdeck-store/tests/trash.rs` | 18 |
+| `crates/snipdeck-ui/tests/button_logic.rs` | 1 |
+| `crates/snipdeck-ui/tests/buttons.rs` | 2 |
 | `spikes/s3-longtext/src/viewer.rs` (inline) | 1 |
 | `spikes/s4-mica/src/appearance.rs` (inline) | 8 |

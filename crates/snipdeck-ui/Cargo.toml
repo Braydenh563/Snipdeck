@@ -1,0 +1,25 @@
+[package]
+name = "snipdeck-ui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Snipdeck UI: design tokens, Slint component library and headless screenshot testing"
+
+[dependencies]
+png.workspace = true
+# `image-decoders` + `svg`: Phosphor icons are SVG; the winit backend enables the same features.
+i-slint-core = { version = "=1.18.1", default-features = false, features = ["image-decoders", "svg"] }
+slint.workspace = true
+
+[build-dependencies]
+serde_json.workspace = true
+slint-build.workspace = true
+
+[dev-dependencies]
+# Accessibility-tree queries and synthetic clicks (`ElementHandle`) for logic tests.
+i-slint-backend-testing = "=1.18.1"
+
+[lints]
+workspace = true
