@@ -11,6 +11,8 @@ description = "Snipdeck UI: design tokens, Slint component library and headless 
 png.workspace = true
 # `image-decoders` + `svg`: Phosphor icons are SVG; the winit backend enables the same features.
 i-slint-core = { version = "=1.18.1", default-features = false, features = ["image-decoders", "svg"] }
+# Load fontconfig at run time: no libfontconfig-dev needed to build (CI, Windows cross-checks).
+i-slint-common = { version = "=1.18.1", default-features = false, features = ["fontconfig-dlopen"] }
 slint.workspace = true
 
 [build-dependencies]
