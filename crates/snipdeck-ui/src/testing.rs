@@ -201,8 +201,10 @@ pub fn assert_golden(name: &str, frame: &Frame) {
     let differing = if same_size {
         golden
             .rgb
-            .chunks_exact(3)
-            .zip(frame.rgb.chunks_exact(3))
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .zip(frame.rgb.as_chunks::<3>().0)
             .filter(|(a, b)| a.iter().zip(b.iter()).any(|(x, y)| x.abs_diff(*y) > 2))
             .count()
     } else {

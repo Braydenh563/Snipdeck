@@ -2582,6 +2582,14 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-store/tests/trash.rs` | 18 |
 | `crates/snipdeck-ui/tests/button_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/buttons.rs` | 2 |
+| `crates/snipdeck-ui/tests/deck.rs` | 13 |
+| `crates/snipdeck-ui/tests/deck_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/i18n.rs` | 1 |
+| `crates/snipdeck-ui/tests/inputs.rs` | 17 |
+| `crates/snipdeck-ui/tests/inputs_logic.rs` | 1 |
+| `crates/snipdeck-ui/tests/primitives.rs` | 6 |
+| `crates/snipdeck-ui/tests/primitives_logic.rs` | 22 |
+| `crates/snipdeck-ui/tests/primitives_pixels.rs` | 8 |
+| `crates/snipdeck-ui/tests/support/mod.rs` | 0 |
 | `spikes/s3-longtext/src/viewer.rs` (inline) | 1 |
 | `spikes/s4-mica/src/appearance.rs` (inline) | 8 |
