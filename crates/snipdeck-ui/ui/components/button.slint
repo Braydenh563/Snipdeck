@@ -1,5 +1,6 @@
 import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
 import { Icon } from "icon.slint";
+import { StateColor } from "state-color.slint";
 
 export enum ButtonVariant { primary, secondary, ghost, danger }
 export enum ButtonSize { sm, md, lg }
@@ -28,8 +29,8 @@ export component Button inherits Rectangle {
         : root.variant == ButtonVariant.danger
         ? (root.pressed ? Theme.danger-solid.darker(0.3) : root.hovered ? Theme.danger-solid.darker(0.15) : Theme.danger-solid)
         : root.variant == ButtonVariant.secondary
-        ? (root.pressed ? Theme.bg-sunken : root.hovered ? Theme.bg-hover : Theme.bg-surface)
-        : (root.pressed ? Theme.bg-sunken : root.hovered ? Theme.bg-hover : transparent);
+        ? (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : Theme.bg-surface)
+        : (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : transparent);
     property <color> fg: root.variant == ButtonVariant.primary ? Theme.text-on-ink
         : root.variant == ButtonVariant.danger ? Theme.text-on-accent
         : Theme.text-primary;

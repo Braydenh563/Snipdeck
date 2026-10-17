@@ -1,4 +1,4 @@
-import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Theme, Type, Radius, Space, Motion, Fonts, SystemLook } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 
@@ -37,9 +37,10 @@ export component Tab inherits Rectangle {
     property <bool> hovered: (touch.has-hover && root.enabled) || root.show-hover;
     property <bool> over: root.drag-over || drop.has-drag;
 
-    height: Space.s8;
+    // Grows with the text size so the label and the underline never collide.
+    height: max(Space.s8, Type.line-base + Space.s3);
     min-width: Space.s8;
-    max-width: Space.s12 * 3;
+    max-width: Space.s12 * 3 * SystemLook.text-scale;
     background: root.over ? Theme.accent-subtle : root.hovered && !root.selected ? Theme.bg-hover : transparent;
     border-top-left-radius: Radius.sm;
     border-top-right-radius: Radius.sm;
@@ -140,7 +141,7 @@ export component ListTabBar inherits Rectangle {
     // Scroll offset of the tabs (<= 0).
     out property <length> scroll-x: flick.content-x;
 
-    height: Space.s8;
+    height: max(Space.s8, Type.line-base + Space.s3);
     background: transparent;
     forward-focus: scope;
     accessible-role: tab-list;

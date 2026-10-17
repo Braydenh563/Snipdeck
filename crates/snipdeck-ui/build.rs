@@ -90,6 +90,8 @@ fn main() {
     let config = slint_build::CompilerConfiguration::new()
         .with_include_paths(vec![out_dir])
         .with_debug_info(debug_info)
+        // The Panel's list is std-widgets' `ListView` (scrollbars off); pin its style so the build never depends on Qt.
+        .with_style("fluent".into())
         .with_bundled_translations("lang")
         // Strings are keyed by text; add an explicit `@tr("context" => ...)` to disambiguate.
         .with_default_translation_context(slint_build::DefaultTranslationContext::None);

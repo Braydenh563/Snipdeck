@@ -129,6 +129,9 @@ export component ItemCard inherits Rectangle {
     in property <bool> revealed: false;
     // Holds the card in its pulled (used) state; the card also pulls itself on use.
     in property <bool> pulling: false;
+    // False in a list that keeps keyboard focus elsewhere (the Panel's search field drives the
+    // selection): the card is then not a Tab stop. It stays operable through assistive technology.
+    in property <bool> keyboard-focusable: true;
 
     callback use();
     callback copy();
@@ -318,7 +321,7 @@ export component ItemCard inherits Rectangle {
         y: root.lift-visual ? -CardDepth.lift : 0px;
         width: parent.width;
         height: parent.height;
-        shadow: root.lift-visual ? CardDepth.shadow-2 : root.compact ? transparent : CardDepth.shadow-1;
+        shadow: root.lift-visual ? Theme.shadow-2 : root.compact ? transparent : Theme.shadow-1;
         offset-y: root.lift-visual ? CardDepth.offset-2 : CardDepth.offset-1;
         blur: root.lift-visual ? CardDepth.blur-2 : CardDepth.blur-1;
         corner: Radius.lg;
@@ -545,6 +548,7 @@ export component ItemCard inherits Rectangle {
     }
 
     scope := FocusScope {
+        enabled: root.keyboard-focusable;
         focus-on-click: false;
         key-pressed(event) => {
             if (event.text == Key.Return) {
