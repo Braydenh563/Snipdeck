@@ -503,6 +503,32 @@ function Load-State {
     }
 }
 
+function Build-OneLine($Spikes, $State) {
+    # One line, no line breaks: chat boxes often keep only the first line of a multi-line paste.
+    $e = $State.env
+    $parts = @("M0 results ($($State.mode), $($State.osClass))", "$($e.os) build $($e.build)", "GPU $($e.gpu)")
+    $verdicts = @(); $others = @()
+    foreach ($s in $Spikes) {
+        if ($State.spikes -notcontains $s.id) { continue }
+        $tests = Get-Applicable $s $State.osClass $State.mode
+        $v = Get-Verdict $s $tests $State.results
+        $verdicts += "$($s.id) $($v.label) ($($v.detail))"
+        foreach ($t in $tests) {
+            $key = "$($s.id):$($t.id)"
+            if (-not $State.results.Contains($key)) { continue }
+            $r = $State.results[$key]
+            if ($r.status -eq 'pass' -and -not $r.note) { continue }
+            $note = if ($r.note) { " '" + (($r.note -replace "`r?`n", ' ') -replace '\|', '/') + "'" } else { '' }
+            $others += "$key $($r.status.ToUpper())$note"
+        }
+    }
+    $line = ($parts -join ' | ') + ' | ' + ($verdicts -join '; ')
+    if ($others.Count -gt 0) { $line += ' | steps: ' + ($others -join '; ') }
+    $line = ($line -replace '\s+', ' ').Trim()
+    if ($line.Length -gt 3000) { $line = $line.Substring(0, 2990) + ' ...(cut)' }
+    return $line
+}
+
 function Build-Report($Spikes, $State, [bool]$ForPaste) {
     $sb = New-Object System.Text.StringBuilder
     $anyAuto = $false
@@ -802,8 +828,10 @@ function Finish-Run($Spikes, $State) {
     Write-Utf8 (Join-Path $RunDir 'paste-back.md') $paste
     Save-State
 
-    try { Set-Clipboard -Value $paste; Say '  A short summary is on your clipboard: paste it into the chat with Claude.' Green }
-    catch { Say "  Summary saved in $RunDir\paste-back.md (open it and copy it)." Yellow }
+    $oneLine = Build-OneLine $Spikes $State
+    Write-Utf8 (Join-Path $RunDir 'paste-back-oneline.txt') $oneLine
+    try { Set-Clipboard -Value $oneLine; Say '  A one-line summary is on your clipboard: paste it into the chat with Claude (or answer y below and Claude reads the results from GitHub).' Green }
+    catch { Say "  Summary saved in $RunDir\paste-back-oneline.txt (open it and copy it)." Yellow }
     Say "  Full report: $RunDir\results.md" Gray
     if ($script:AutoState -and $script:AutoState.Notepad) { Say '  The scratch Notepad document (snipdeck-auto-*.txt) can be closed without saving.' Gray }
 
@@ -817,7 +845,7 @@ function Finish-Run($Spikes, $State) {
     # A dry run must never touch the repository (its results are fake).
     if (-not $DryRun -and (Get-Command git -ErrorAction SilentlyContinue) -and (Test-Path (Join-Path $RepoRoot '.git'))) {
         $branch = (& git -C $RepoRoot rev-parse --abbrev-ref HEAD)
-        if (Ask-YesNo "Commit results.md to the repo and push branch '$branch'? (text only, no screenshots)" $false) {
+        if (Ask-YesNo "Push the results to GitHub on branch '$branch' so Claude can read them (no pasting needed; text only, no screenshots)?" $true) {
             $dest = Join-Path $RepoRoot 'docs\spikes\results'
             if (-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest | Out-Null }
             $name = "windows-{0}.md" -f (Get-Date -Format 'yyyyMMdd-HHmm')
@@ -885,6 +913,14 @@ if ($SelfTest) {
     $autoProblems = @(Invoke-AutoSelfTest)
     Say "Automation: $autoSteps step(s) have an 'auto' field; unit and mock end-to-end tests: $(if ($autoProblems.Count) { "$($autoProblems.Count) problem(s)" } else { 'OK' })." Gray
     $problems += $autoProblems
+    # the clipboard summary must be a single line
+    $fake = [ordered]@{ mode = 'quick'; osClass = 'win11'; env = [ordered]@{ os = 'Test OS'; build = 1; gpu = 'GPU' }
+        spikes = @($spikes[0].id); results = [ordered]@{}; diag = [ordered]@{} }
+    $first = Get-Applicable $spikes[0] 'win11' 'quick'
+    $fake.results["$($spikes[0].id):$($first[0].id)"] = @{ status = 'fail'; note = "two`nlines | with a pipe"; shots = @(); at = '' }
+    $one = Build-OneLine $spikes $fake
+    if ($one -match "[`r`n]") { $problems += 'Build-OneLine returned more than one line' }
+    if ($one -notmatch 'FAIL') { $problems += 'Build-OneLine lost the failed step' }
     if ($problems.Count -gt 0) { $problems | ForEach-Object { Say "PROBLEM: $_" Red }; exit 1 }
     Say 'Self test OK.' Green
     exit 0
