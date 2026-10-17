@@ -8,9 +8,10 @@ use rusqlite::{Connection, OptionalExtension, params};
 use snipdeck_core::{Name, Tag, TagId};
 use unicode_normalization::UnicodeNormalization as _;
 
+use crate::Error;
+use crate::Result;
+use crate::batch::Ctx;
 use crate::codec::{id_bytes, id_from, not_found, require_new, stored_name};
-use crate::store::begin;
-use crate::{Error, Result, Store, TagRepo};
 
 /// The key two tag names clash on.
 ///
@@ -62,56 +63,53 @@ fn hex(bytes: &[u8]) -> String {
     })
 }
 
-impl TagRepo for Store {
-    fn tags(&self) -> Result<Vec<Tag>> {
-        let mut stmt = self
-            .conn
-            .prepare_cached("SELECT id, name FROM tags ORDER BY name_key, id")?;
-        let rows = stmt.query_map([], |r| {
-            Ok((r.get::<_, Vec<u8>>(0)?, r.get::<_, String>(1)?))
-        })?;
-        rows.map(|row| {
-            let (id, name) = row?;
-            Ok(Tag {
-                id: id_from(&id)?,
-                name: stored_name(&name)?,
-            })
+pub(crate) fn tags(conn: &Connection) -> Result<Vec<Tag>> {
+    let mut stmt = conn.prepare_cached("SELECT id, name FROM tags ORDER BY name_key, id")?;
+    let rows = stmt.query_map([], |r| {
+        Ok((r.get::<_, Vec<u8>>(0)?, r.get::<_, String>(1)?))
+    })?;
+    rows.map(|row| {
+        let (id, name) = row?;
+        Ok(Tag {
+            id: id_from(&id)?,
+            name: stored_name(&name)?,
         })
-        .collect()
-    }
+    })
+    .collect()
+}
 
-    fn insert_tag(&mut self, tag: &Tag) -> Result<()> {
-        let tx = begin(&mut self.conn)?;
-        require_new(&tx, "tags", tag.id)?;
-        clash_check(&tx, tag)?;
-        tx.execute(
-            "INSERT INTO tags (id, name, name_key) VALUES (?1, ?2, ?3)",
-            params![id_bytes(tag.id), tag.name.as_str(), key(&tag.name)],
-        )?;
-        Ok(tx.commit()?)
-    }
+pub(crate) fn insert_tag(cx: &mut Ctx<'_>, tag: &Tag) -> Result<()> {
+    let conn = cx.conn;
+    require_new(conn, "tags", tag.id)?;
+    clash_check(conn, tag)?;
+    conn.execute(
+        "INSERT INTO tags (id, name, name_key) VALUES (?1, ?2, ?3)",
+        params![id_bytes(tag.id), tag.name.as_str(), key(&tag.name)],
+    )?;
+    Ok(())
+}
 
-    fn update_tag(&mut self, tag: &Tag) -> Result<()> {
-        let tx = begin(&mut self.conn)?;
-        if !crate::codec::exists(&tx, "tags", id_bytes(tag.id))? {
-            return Err(not_found(tag.id));
-        }
-        clash_check(&tx, tag)?;
-        tx.execute(
-            "UPDATE tags SET name = ?2, name_key = ?3 WHERE id = ?1",
-            params![id_bytes(tag.id), tag.name.as_str(), key(&tag.name)],
-        )?;
-        Ok(tx.commit()?)
+pub(crate) fn update_tag(cx: &mut Ctx<'_>, tag: &Tag) -> Result<()> {
+    let conn = cx.conn;
+    if !crate::codec::exists(conn, "tags", id_bytes(tag.id))? {
+        return Err(not_found(tag.id));
     }
+    clash_check(conn, tag)?;
+    conn.execute(
+        "UPDATE tags SET name = ?2, name_key = ?3 WHERE id = ?1",
+        params![id_bytes(tag.id), tag.name.as_str(), key(&tag.name)],
+    )?;
+    Ok(())
+}
 
-    fn delete_tag(&mut self, id: TagId) -> Result<()> {
-        let tx = begin(&mut self.conn)?;
-        let deleted = tx.execute("DELETE FROM tags WHERE id = ?1", [id_bytes(id)])?;
-        if deleted == 0 {
-            return Err(not_found(id));
-        }
-        Ok(tx.commit()?)
+pub(crate) fn delete_tag(cx: &mut Ctx<'_>, id: TagId) -> Result<()> {
+    let deleted = cx
+        .conn
+        .execute("DELETE FROM tags WHERE id = ?1", [id_bytes(id)])?;
+    if deleted == 0 {
+        return Err(not_found(id));
     }
+    Ok(())
 }
 
 /// Fails with [`Error::TagExists`] if another tag has the same name ignoring case.

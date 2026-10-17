@@ -16,8 +16,8 @@
 //! Archives, databases and folders are **untrusted input**. Nothing is extracted to disk; every
 //! zip entry is checked against [`Limits`] before it is decompressed and again while it is;
 //! hostile names, links, encrypted entries and overlapping data are refused; and an import
-//! validates the whole file before it writes the first record, then writes atomically (it undoes
-//! itself on failure; see `plan`). Sensitive items are never written in plain text: they are
+//! validates the whole file before it writes the first record, then writes it all in one
+//! store transaction (nothing is saved if any part fails; see `plan`). Sensitive items are never written in plain text: they are
 //! left out of an export, or encrypted under the library's data key.
 //!
 //! # Errors versus warnings

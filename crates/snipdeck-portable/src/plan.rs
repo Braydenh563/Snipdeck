@@ -3,27 +3,25 @@
 //! Each source (archive, folder, Ditto, `CopyQ`) first turns its input into a `Plan`, doing all
 //! validation on the way. [`apply`] then writes it. Everything that can be checked without
 //! touching the library is checked before `apply` starts, so failures after that point are
-//! I/O or database errors, and those are undone by [`rollback`].
+//! I/O or database errors.
 //!
 //! # Atomicity
 //!
-//! The store API cannot hold one transaction across calls, so `apply` is atomic by
-//! compensation: it records every board and tag it creates and, on any error, removes them
-//! again. Everything an import adds lives inside boards it created, so deleting those boards
-//! removes it all, and tags are removed individually. Existing records are never modified. The
-//! boards are removed through the trash and purge with a marker timestamp (the oldest instant
-//! storage can hold) so that purging cannot touch anything the user trashed. Blobs written but
-//! not yet attached are left for `Store::gc_blobs`. A crash (not an error) in the middle leaves
-//! a partial board of new items, never a modified existing one.
+//! `apply` writes the whole plan inside one store transaction
+//! ([`Library::atomically`], [`snipdeck_store::Store::transaction`]): the boards, lists, items,
+//! tags and blob files it adds all commit together or not at all. On any error, or a panic,
+//! the database is as it was and the blob files the import created are deleted; existing
+//! records are never modified. A crash in the middle leaves no partial board, only
+//! unreferenced blob files that `Store::gc_blobs` removes.
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use snipdeck_core::{
-    BlobRef, Board, BoardId, Content, FileEntry, Format, FormatKind, Formats, Item, ItemId,
-    ItemKind, List, ListAccent, ListSort, ListView, Name, Placement, Tag, TagId, Timestamp,
+    BlobRef, Board, Content, FileEntry, Format, FormatKind, Formats, Item, ItemId, ItemKind, List,
+    ListAccent, ListSort, ListView, Name, Placement, Tag, TagId, Timestamp,
 };
 use snipdeck_store::crypto::{DataKey, Slot};
-use snipdeck_store::{BlobStore, BoardRepo, ItemRepo, ListRepo, TagRepo, TrashRepo, Trashable};
+use snipdeck_store::{Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, TagRepo, TrashRepo};
 
 use crate::error::{Error, Result};
 use crate::report::ImportReport;
@@ -33,11 +31,24 @@ pub trait Library: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + BlobS
     /// The library's data key while it is unlocked, for [`KeySource::Library`](crate::KeySource)
     /// and for callers that pass it to an export. `None` if the library has no key or is locked.
     fn data_key(&self) -> Option<&DataKey>;
+
+    /// Runs `f` as one atomic unit: everything it writes through the [`Batch`] commits
+    /// together when `f` returns `Ok`, and none of it (blob files included) remains if it
+    /// returns `Err` or panics. See [`snipdeck_store::Batch`].
+    ///
+    /// # Errors
+    ///
+    /// What `f` returns, or a storage error if the transaction cannot start or commit.
+    fn atomically<T>(&mut self, f: impl FnOnce(&mut Batch<'_>) -> Result<T>) -> Result<T>;
 }
 
 impl Library for snipdeck_store::Store {
     fn data_key(&self) -> Option<&DataKey> {
         snipdeck_store::Store::data_key(self)
+    }
+
+    fn atomically<T>(&mut self, f: impl FnOnce(&mut Batch<'_>) -> Result<T>) -> Result<T> {
+        self.transaction(f)
     }
 }
 
@@ -275,44 +286,22 @@ fn preview_text(bytes: &[u8]) -> &str {
     }
 }
 
-/// What `apply` has created so far, for [`rollback`].
-#[derive(Default)]
-struct Created {
-    boards: Vec<(BoardId, String)>,
-    tags: Vec<TagId>,
-}
-
-/// Writes `plan` into `lib`. On any error everything it added is removed again (see the module
-/// docs) and the error is returned; on success the report counts what was added.
+/// Writes `plan` into `lib` in one transaction (see the module docs). On any error nothing is
+/// added and the error is returned; on success the report counts what was added.
 pub(crate) fn apply<L: Library>(
     lib: &mut L,
     plan: &Plan,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
     mut report: ImportReport,
 ) -> Result<ImportReport> {
-    let mut created = Created::default();
-    match write(lib, plan, fetch, &mut created, &mut report) {
-        Ok(()) => Ok(report),
-        Err(cause) => match rollback(lib, &created) {
-            Ok(()) => Err(cause),
-            Err(cleanup) => Err(Error::RollbackFailed {
-                cause: Box::new(cause),
-                cleanup: Box::new(cleanup),
-                board: created
-                    .boards
-                    .first()
-                    .map(|(_, name)| name.clone())
-                    .unwrap_or_default(),
-            }),
-        },
-    }
+    lib.atomically(|batch| write(batch, plan, fetch, &mut report))?;
+    Ok(report)
 }
 
-fn write<L: Library>(
-    lib: &mut L,
+fn write(
+    lib: &mut Batch<'_>,
     plan: &Plan,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
-    created: &mut Created,
     report: &mut ImportReport,
 ) -> Result<()> {
     // Only tags that a kept item uses are created; existing tags are reused by name.
@@ -341,7 +330,6 @@ fn write<L: Library>(
         } else {
             let tag = Tag::new(name.clone());
             lib.insert_tag(&tag)?;
-            created.tags.push(tag.id);
             by_key.insert(key, tag.id);
             report.tags_added += 1;
             tag.id
@@ -353,7 +341,6 @@ fn write<L: Library>(
         let mut board = Board::new(plan_board.name.clone(), plan_board.created_at);
         board.updated_at = plan_board.updated_at;
         lib.insert_board(&board, Placement::Last)?;
-        created.boards.push((board.id, board.name.to_string()));
         report.boards_added += 1;
         report.boards.push(board.id);
 
@@ -376,8 +363,8 @@ fn write<L: Library>(
     Ok(())
 }
 
-fn build_item<L: Library>(
-    lib: &mut L,
+fn build_item(
+    lib: &mut Batch<'_>,
     plan: &PlanItem,
     list: snipdeck_core::ListId,
     tag_ids: &HashMap<usize, TagId>,
@@ -445,44 +432,12 @@ fn resolve(
     }
 }
 
-/// The oldest instant storage can hold; nothing else is ever trashed at it.
-fn marker() -> Timestamp {
-    Timestamp::from_nanosecond(i128::from(i64::MIN) + 1).unwrap_or(Timestamp::MIN)
-}
-
-/// Removes what [`apply`] created: the boards (with their lists and items) through trash and
-/// purge at the marker instant, then the tags.
-fn rollback<L: Library>(
-    lib: &mut L,
-    created: &Created,
-) -> core::result::Result<(), snipdeck_store::Error> {
-    use snipdeck_store::Error as StoreError;
-
-    let ignore_missing = |result: core::result::Result<(), StoreError>| match result {
-        Err(StoreError::NotFound { .. }) => Ok(()),
-        other => other,
-    };
-    let at = marker();
-    for (board, _) in &created.boards {
-        ignore_missing(lib.trash(Trashable::Board(*board), at))?;
-    }
-    if !created.boards.is_empty() {
-        // Purges records trashed strictly before the cutoff: exactly those at the marker.
-        let cutoff = Timestamp::from_nanosecond(at.as_nanosecond() + 1).unwrap_or(at);
-        lib.purge(cutoff)?;
-    }
-    for tag in &created.tags {
-        ignore_missing(lib.delete_tag(*tag))?;
-    }
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
 
     use snipdeck_core::Inline;
-    use snipdeck_store::Store;
+    use snipdeck_store::{Store, Trashable};
 
     use super::*;
 
@@ -618,8 +573,8 @@ mod tests {
             assert!(matches!(err, Error::Malformed { .. }), "{err}");
             assert_eq!(state(&s), before, "failing at fetch {fail_at}");
             assert_eq!(s.check_integrity().unwrap(), Vec::<String>::new());
-            // Blobs written before the failure are unreferenced; the sweep removes them.
-            s.gc_blobs(Duration::ZERO).unwrap();
+            // The transaction removed the blob files it had written: nothing for a sweep.
+            assert_eq!(s.gc_blobs(Duration::ZERO).unwrap().blobs, 0);
         }
     }
 

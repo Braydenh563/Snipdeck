@@ -45,7 +45,6 @@ the Windows job compiles the workspace, and the SPEC's M1-relevant behaviours ea
 
 | Gap | Why it matters | Plan |
 |---|---|---|
-| Import is atomic only by compensation (trash at a marker, purge, delete new tags); a crash mid-import leaves a partial new board | The store API cannot hold one transaction across calls | Add a store transaction/batch API before the import UI ships (M4); until then the import report tells the user to delete the partial board |
 | CopyQ: the binary `.cpq` export is not parsed; JSON from `copyq eval` is, and is untested against a live CopyQ | Importer may not match real CopyQ output | Test with a real CopyQ install (Windows wizard step) or drop CopyQ from v1 |
 | Windows clipboard history importer not done | Listed in SPEC §5.9 | Needs the Windows platform layer (M2) |
 | `DataKey` is not `Clone`; portable uses `Library::data_key` / `KeySource::Library` | Awkward borrow | Revisit when the app crate owns the key lifecycle (M2/M5) |

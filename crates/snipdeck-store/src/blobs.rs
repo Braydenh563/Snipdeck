@@ -66,6 +66,16 @@ pub(crate) struct Blobs {
     backing: Backing,
     pending: HashMap<BlobRef, usize>,
     plain: RefCell<HashMap<BlobRef, Zeroizing<Vec<u8>>>>,
+    /// While a transaction is open: the blob files it created (they did not exist before), so
+    /// a rollback can delete them again. `None` outside a transaction.
+    created: Option<Vec<BlobRef>>,
+}
+
+/// Where a transaction (or a savepoint inside one) stood when it began; see
+/// [`Blobs::mark`] and [`Blobs::rewind`].
+pub(crate) struct BlobMark {
+    created: usize,
+    pending: HashMap<BlobRef, usize>,
 }
 
 enum Backing {
@@ -87,7 +97,7 @@ impl fmt::Debug for Blobs {
         };
         out.field("pending", &self.pending.len())
             .field("transient", &self.plain.borrow().len())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -114,7 +124,37 @@ impl Blobs {
             backing,
             pending: HashMap::new(),
             plain: RefCell::new(HashMap::new()),
+            created: None,
         }
+    }
+
+    /// Starts (or joins) recording which blob files get created, and notes the pending counts.
+    pub(crate) fn mark(&mut self) -> BlobMark {
+        let created = self.created.get_or_insert_with(Vec::new).len();
+        BlobMark {
+            created,
+            pending: self.pending.clone(),
+        }
+    }
+
+    /// Undoes the blob side of a rolled-back transaction: deletes the files created since
+    /// `mark` (no committed row can use a file that did not exist before) and restores the
+    /// pending counts. A file that cannot be deleted now is left for `Store::gc_blobs`.
+    pub(crate) fn rewind(&mut self, mark: BlobMark) {
+        self.pending = mark.pending;
+        let doomed = self
+            .created
+            .as_mut()
+            .map(|log| log.split_off(mark.created.min(log.len())))
+            .unwrap_or_default();
+        for blob in doomed {
+            let _ = self.remove(&blob, false);
+        }
+    }
+
+    /// Stops recording created files (the outermost transaction ended).
+    pub(crate) fn end_log(&mut self) {
+        self.created = None;
     }
 
     /// Inline or blob, by [`INLINE_LIMIT`]: the single place the threshold is applied. A new
@@ -137,7 +177,10 @@ impl Blobs {
         let len = bytes.len() as u64;
         match &mut self.backing {
             Backing::Memory(map) => {
-                map.insert(blob, bytes);
+                let new = map.insert(blob, bytes).is_none();
+                if new {
+                    self.note_created(blob);
+                }
             }
             Backing::Disk { .. } => {
                 if self.holds_exactly(&blob, &bytes) {
@@ -146,11 +189,21 @@ impl Blobs {
                     self.touch(&blob);
                 } else {
                     // Missing, truncated, or damaged with the right length (review L4).
+                    let existed = self.file_path(&blob).exists();
                     self.write_atomically(&blob, &bytes)?;
+                    if !existed {
+                        self.note_created(blob);
+                    }
                 }
             }
         }
         Ok(Content::Blob { blob, len })
+    }
+
+    fn note_created(&mut self, blob: BlobRef) {
+        if let Some(log) = &mut self.created {
+            log.push(blob);
+        }
     }
 
     /// Keeps `bytes` in memory only and returns content that refers to them; see the type's

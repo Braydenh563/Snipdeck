@@ -15,8 +15,7 @@ Read this first in a new session, then `docs/PLAN.md`, `docs/SPEC.md`, `DESIGN.m
   but OS caption buttons overlap the app's own close button. S3 measured on Linux. Constraints: `docs/spikes/README.md`.
 - **M1 (core, store, licence, crypto, portability): done and merged into the PR branch.** 488 tests, fmt/clippy/doc/deny
   clean on Rust 1.97 and 1.99.1, Windows target check passes. Opus review in `docs/reviews/M1-review.md`; all
-  29 core/store findings fixed. Known gaps: `docs/PLAN.md` "M1 known gaps" (import atomic only by
-  compensation, CopyQ `.cpq` not parsed, Windows clipboard-history importer, `DataKey` not `Clone`).
+  29 core/store findings fixed. Known gaps: `docs/PLAN.md` "M1 known gaps" (CopyQ `.cpq` not parsed, Windows clipboard-history importer, `DataKey` not `Clone`).
 - **Windows test wizard:** `run-windows-tests.bat` -> `tools/windows-test/` (manual steps in `tests/*.json`,
   opt-in automation in `auto/`). The automation has **never run on Windows**; its unverified assumptions are
   listed at the end of `tools/windows-test/README.md`.
@@ -36,7 +35,7 @@ Goal: advance M2 -> M3 -> M4 logic as far as Linux can verify; branch `claude/co
 3. Pin Slint, add `snipdeck-ui`: `tokens.slint` generated from `design/tokens/palette.json`, component library (DESIGN.md), software renderer, screenshot tests under the Slint testing backend (our "end-to-end" on Linux).
 4. Panel UI (ListView, number gutter, tabs scroll at large text) wired to `snipdeck-platform` traits with fakes; `snipdeck-app` skeleton (single instance, hotkeys, tray crate decision).
 5. i18n scaffolding (`@tr`, 7 locales extracted), CJK font order, accessibility properties on every control.
-6. Picker, Main window, editors, template fill form (logic + screenshot tests); store transaction/batch API before import UI.
+6. Picker, Main window, editors, template fill form (logic + screenshot tests).
 7. Security/tests pass: fuzz/proptest on parsers, cargo deny, review of crypto/DPAPI wiring.
 
 Not verifiable here (stays unverified until the owner runs the wizard on Windows): every Win32 behaviour, IME, Mica, DPI, Narrator, real-app paste. Playwright is for browsers; Slint apps are tested with the Slint testing backend plus software-renderer screenshots.
@@ -64,8 +63,7 @@ Not verifiable here (stays unverified until the owner runs the wizard on Windows
 1. **Start M2** (Windows platform layer, `docs/PLAN.md`); S1 gate is passed. Include the Alt/Win modifier masking and
    decide the caption-button question (custom frame vs OS caption) in ADR-0003 / DESIGN.md.
 2. Re-run S2 with IMEs installed before building text-entry UI (M3+); if composition is unusable, see the S2 NO-GO plan.
-3. Build the store transaction/batch API before the import UI (M4).
-4. Set the real `SNIPDECK_LICENCE_PUBLIC_KEY` in the M6 release pipeline (see `docs/licensing.md`).
+3. Set the real `SNIPDECK_LICENCE_PUBLIC_KEY` in the M6 release pipeline (see `docs/licensing.md`).
 
 ## Working notes that cost time this session
 

@@ -16,6 +16,7 @@
     reason = "every storage call can fail with I/O or SQLite errors; `repo` states the shared rules"
 )]
 
+mod batch;
 mod blobs;
 mod boards;
 mod codec;
@@ -32,6 +33,7 @@ mod store;
 mod tags;
 mod trash;
 
+pub use batch::Batch;
 pub use blobs::BlobStore;
 pub use error::{Error, Result};
 pub use repo::{BoardRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable};

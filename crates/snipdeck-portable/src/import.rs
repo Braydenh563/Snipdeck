@@ -9,7 +9,7 @@
 //!    into a [`Plan`];
 //! 4. verify every asset: size, BLAKE3 hash against its name, UTF-8 and size limits for text,
 //!    and decryption of encrypted payloads;
-//! 5. decide duplicates, then write the plan (`plan::apply`), which undoes itself on failure.
+//! 5. decide duplicates, then write the plan (`plan::apply`) in one store transaction.
 //!
 //! Steps 1 to 4 are read-only, so an archive that fails them changes nothing.
 
@@ -173,7 +173,7 @@ pub fn import_archive_path<L: Library>(
 ///
 /// Validation covers the zip (limits, names, links), the manifest (format, version, counts),
 /// `items.json` (ids, names, keys, timestamps, references, duplicates) and every asset (size and
-/// hash). Only then is the library written, atomically (see `plan`).
+/// hash). Only then is the library written, in one store transaction (see `plan`).
 ///
 /// # Errors
 ///

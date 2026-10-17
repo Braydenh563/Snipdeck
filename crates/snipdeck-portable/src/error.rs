@@ -117,20 +117,6 @@ pub enum Error {
         /// What was missing.
         reason: String,
     },
-    /// The import failed after writing had begun and the cleanup failed too, so part of the
-    /// import may remain in the library.
-    #[error(
-        "the import failed ({cause}) and removing what it had added failed too ({cleanup}); \
-         check the board named `{board}`"
-    )]
-    RollbackFailed {
-        /// Why the import failed.
-        cause: Box<Error>,
-        /// Why the cleanup failed.
-        cleanup: Box<snipdeck_store::Error>,
-        /// A board the import created and may not have removed.
-        board: String,
-    },
 }
 
 /// Escapes and truncates an untrusted name for use in a message.
