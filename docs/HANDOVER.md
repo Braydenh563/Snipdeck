@@ -28,6 +28,19 @@ Read this first in a new session, then `docs/PLAN.md`, `docs/SPEC.md`, `DESIGN.m
 - Optional re-run on Windows: S2 after adding Japanese / Chinese / Korean keyboards (`run-windows-tests.bat`, S2 only),
   S1 step 2c after the modifier fix, and the untested S4 steps (W4-W7, Windows 10). None of these gate M2 start.
 
+## M2 in progress (branch claude/compassionate-pascal-pod8ux, PR #4)
+
+- Done and committed (2f21a35): `crates/snipdeck-platform` portable layer: `keys` (paste-key table, Alt/Win mask-before-release
+  sequence), `route`, `payload`, `pipeline` (delayed-render paste with injected clock; 28 tests); `windows/` scaffold.
+- In flight (3 agents, uncommitted, files under `crates/snipdeck-platform/src/windows/`): clipboard (Opus), keyboard +
+  target + window_style (Sonnet), hotkey/autostart/single_instance/dpapi + portable `chord.rs` (Sonnet). Their
+  progress files: `.claude/remaining/{clipboard,target,hotkeys}.md`. Each must pass fmt, clippy (Linux and
+  `--target x86_64-pc-windows-msvc`), tests, doc before commit.
+- Still to do: M2 test harness (`crates/snipdeck-platform/examples/`) + wizard steps `tools/windows-test/tests/m2-*.json`,
+  Opus review of the unsafe code, tray (needs the app's event loop: M3), `scripts/gate.sh --full`, update PLAN/ADR-0003, PR.
+- Windows check from Linux: `rustup target add x86_64-pc-windows-msvc`, then `cargo clippy -p snipdeck-platform --target x86_64-pc-windows-msvc --locked`
+  (first build about 4-5 minutes).
+
 ## Next steps
 
 1. **Start M2** (Windows platform layer, `docs/PLAN.md`); S1 gate is passed. Include the Alt/Win modifier masking and
