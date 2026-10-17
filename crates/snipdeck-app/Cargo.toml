@@ -12,6 +12,8 @@ publish.workspace = true
 snipdeck-core.workspace = true
 snipdeck-platform = { path = "../snipdeck-platform" }
 snipdeck-store = { path = "../snipdeck-store" }
+serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]

@@ -4271,6 +4271,8 @@ dependencies = [
 name = "snipdeck-app"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
  "snipdeck-core",
  "snipdeck-platform",
  "snipdeck-store",
