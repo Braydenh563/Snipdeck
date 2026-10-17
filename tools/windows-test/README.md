@@ -16,7 +16,7 @@ The wizard then:
 | Stage | What it does |
 |---|---|
 | Prerequisites | Checks for Rust and the Visual Studio C++ Build Tools; offers to install them with `winget` (y/n). |
-| What to test | You pick which prototypes (S1, S2, S4) and how thorough: quick (go/no-go steps only, about 20 min), standard, or full. |
+| What to test | You pick which prototypes (S1, S2, S4, M2) and how thorough: quick (go/no-go steps only, about 20 min), standard, or full. |
 | Per prototype | Shows the setup checklist, builds it (`cargo build --release`), launches it with the right arguments and environment for each step, and relaunches automatically when a step needs different settings. |
 | Per step | Shows what to do and what you should see. Keys: `p` pass, `f` fail (asks what went wrong), `s` skip, `n` add a note, `c` screenshot (minimises the wizard, waits 5 s so you can bring the app forward), `l` view the app's console output, `r` relaunch, `b` back, `q` finish now. Optional: some steps run by themselves (see [Automation](#automation-optional)). |
 | Results | Prints a go/no-go verdict per prototype, copies a short summary to your clipboard, and saves everything to `spikes-results\current\`. Optionally zips it and commits the text report. |
@@ -25,7 +25,7 @@ The wizard then:
 
 If you quit half-way, run it again and answer **y** to "Resume": steps you already answered are skipped.
 
-Recommended order: **S1** (it decides the most), then **S2**, then **S4**.
+Recommended order: **S1** (it decides the most), then **S2**, then **S4**; **M2** is independent of the spikes.
 
 ## Automation (optional)
 
@@ -68,6 +68,29 @@ Safety:
 
 **First run on a new PC:** watch the first automated step. Things that were designed but could not be tried
 without Windows are listed at the end of this file.
+
+## M2: the Windows platform backend
+
+`tests\m2-platform.json` checks `crates/snipdeck-platform` (clipboard with delayed rendering, `SendInput`,
+Target tracking, global hotkeys, single instance, autostart, DPAPI) on a real PC. It is not a spike: the wizard
+builds `tools\windows-test\m2-harness` (a console app, no window) and the steps drive it with global hotkeys.
+Quick mode runs steps 1-6 (start-up report, Notepad paste and restore, Alt/Win held, HTML, plain paste, Copy).
+
+| Chord | Does |
+|---|---|
+| Ctrl+Alt+1 / 2 / 3 | paste text / HTML item / plain-text paste of the HTML item |
+| Ctrl+Alt+4 | Copy mode: the text item stays on the clipboard |
+| Ctrl+Alt+5 / 6 / 8 | paste a 64x64 PNG with a transparent corner / two text files / long unicode text |
+| Ctrl+Alt+7 | print Target info only (exe, title *length*, elevated, focus) |
+| Ctrl+Alt+Q | quit (hotkeys are released) |
+
+Every use prints one `[m2] use=... target=... focus=... route=... outcome=... ms=...` line; the wizard saves the
+`[m2]` lines of each launch into the report. Clipboard content and window titles are never printed. Flags the steps
+use: `--clobber` (another clipboard owner writes during the paste), `--probe <chord>` (also register this chord, to
+see `InUse`), `--autostart-test [--hold <s>]` (writes then removes the real `Snipdeck` Run value: only run it
+where no real Snipdeck is installed). Step 19 is `cargo test -p snipdeck-platform -- --ignored clipboard` run by
+hand at the repo root. No step is automated yet. Nothing here has run on Windows when it was written: the first
+run may find bugs in either the harness or the backend.
 
 ## Where things are saved
 
