@@ -10,7 +10,7 @@ use std::{
     rc::Rc,
 };
 
-use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
+use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use snipdeck_core::{ItemKind, UseMode};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_ui as ui;
@@ -393,6 +393,7 @@ fn extension_of(name: &str) -> String {
 mod tests {
     use super::*;
     use crate::panel::ListLabel;
+    use slint::Model;
     use snipdeck_core::{ItemId, ListAccent};
 
     fn row(kind: ItemKind, sensitive: bool, preview: &str) -> Row {
