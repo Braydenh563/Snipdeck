@@ -35,7 +35,10 @@ fn filter(q: &str, hay: &[Utf32String], m: &mut Matcher) -> Vec<usize> {
         return (0..hay.len()).collect();
     }
     let p = Pattern::parse(q, CaseMatching::Smart, Normalization::Smart);
-    rank(&p, hay, m).into_iter().map(|(i, _)| i as usize).collect()
+    rank(&p, hay, m)
+        .into_iter()
+        .map(|(i, _)| i as usize)
+        .collect()
 }
 
 trait ListUi {
@@ -46,7 +49,11 @@ trait ListUi {
 struct LvUi(ListWindow);
 impl ListUi for LvUi {
     fn set_cards(&self, idx: &[usize], items: &[gen::Item]) {
-        let v: Vec<CardData> = idx.iter().enumerate().map(|(p, i)| card(&items[*i], p)).collect();
+        let v: Vec<CardData> = idx
+            .iter()
+            .enumerate()
+            .map(|(p, i)| card(&items[*i], p))
+            .collect();
         self.0.set_items(ModelRc::from(Rc::new(VecModel::from(v))));
     }
     fn scroll_to(&self, y: f32) {
@@ -57,7 +64,11 @@ impl ListUi for LvUi {
 struct AllUi(FlickAllWindow);
 impl ListUi for AllUi {
     fn set_cards(&self, idx: &[usize], items: &[gen::Item]) {
-        let v: Vec<CardData> = idx.iter().enumerate().map(|(p, i)| card(&items[*i], p)).collect();
+        let v: Vec<CardData> = idx
+            .iter()
+            .enumerate()
+            .map(|(p, i)| card(&items[*i], p))
+            .collect();
         self.0.set_items(ModelRc::from(Rc::new(VecModel::from(v))));
     }
     fn scroll_to(&self, y: f32) {

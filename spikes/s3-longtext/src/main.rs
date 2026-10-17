@@ -93,6 +93,7 @@ fn columns(group: &str) -> &'static [&'static str] {
             "rss_ui",
             "rss_loaded",
             "hwm",
+            "render_panics",
         ],
         "list" => &[
             "set_model",
@@ -157,12 +158,22 @@ fn print_tables(results: &[(String, Row)]) {
         println!("\n### {group}\n");
         println!("| scenario | {} |", cols.join(" | "));
         println!("|---|{}", "---:|".repeat(cols.len()));
-        for (label, m) in rows {
+        for (label, m) in &rows {
             let vals: Vec<String> = cols
                 .iter()
                 .map(|c| m.get(*c).cloned().unwrap_or_else(|| "-".into()))
                 .collect();
             println!("| {label} | {} |", vals.join(" | "));
+        }
+        let notes: Vec<String> = rows
+            .iter()
+            .filter_map(|(l, m)| {
+                m.get("panic_after")
+                    .map(|p| format!("- {l}: PANIC after `{p}`"))
+            })
+            .collect();
+        if !notes.is_empty() {
+            println!("\n{}", notes.join("\n"));
         }
     }
 }
@@ -170,6 +181,7 @@ fn print_tables(results: &[(String, Row)]) {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if let Some(i) = args.iter().position(|a| a == "--scenario") {
+        harness::install_panic_report();
         run_scenario(&args[i + 1]);
         return;
     }
@@ -202,6 +214,7 @@ fn main() {
             .args(["--scenario", &id])
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
+            .env("RUST_BACKTRACE", "0")
             .spawn()
             .unwrap();
         let stdout = child.stdout.take().unwrap();
@@ -243,12 +256,12 @@ fn main() {
             None => {
                 eprintln!("  {id}: TIMEOUT after {secs:.0}s");
                 let group = id.split(':').next().unwrap().to_string();
-                let label = id.splitn(2, ':').nth(1).unwrap_or("").replace(':', " ");
+                let label = id.split_once(':').map_or("", |x| x.1).replace(':', " ");
                 let mut m = BTreeMap::new();
                 m.insert("set".into(), format!("TIMEOUT >{timeout}s"));
                 results.push((group, (label, m)));
             }
-            Some(s) if !s.success() || !got => eprintln!("  {id}: FAILED ({s})"),
+            Some(s) if !s.success() || !got => eprintln!("  {id}: FAILED ({s}) after {secs:.1}s"),
             Some(_) => eprintln!("  {id}: done in {secs:.1}s"),
         }
     }

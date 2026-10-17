@@ -19,11 +19,7 @@ pub fn rank(pattern: &Pattern, hay: &[Utf32String], matcher: &mut Matcher) -> Ve
     let mut out: Vec<(u32, u32)> = hay
         .iter()
         .enumerate()
-        .filter_map(|(i, h)| {
-            pattern
-                .score(h.slice(..), matcher)
-                .map(|s| (i as u32, s))
-        })
+        .filter_map(|(i, h)| pattern.score(h.slice(..), matcher).map(|s| (i as u32, s)))
         .collect();
     out.sort_unstable_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
     out
@@ -92,7 +88,10 @@ pub fn run(n: usize) {
     let iters = 40;
 
     for q in QUERIES {
-        let mut r = Report::new("search", format!("{n} items, avg {avg:.0} chars, q=\"{q}\""));
+        let mut r = Report::new(
+            "search",
+            format!("{n} items, avg {avg:.0} chars, q=\"{q}\""),
+        );
         // (a) cached Utf32String haystacks, single thread, score + full sort
         let mut a = Vec::new();
         let mut hits = 0;
@@ -123,7 +122,7 @@ pub fn run(n: usize) {
                             .map(|sc| (i, sc))
                     })
                     .collect();
-                out.sort_unstable_by(|x, y| y.1.cmp(&x.1));
+                out.sort_unstable_by_key(|y| std::cmp::Reverse(y.1));
                 std::hint::black_box(out);
             });
             b.push(d);
@@ -179,11 +178,19 @@ pub fn run(n: usize) {
         per_key.push(t.elapsed());
     }
     let s = stats(&per_key);
-    let mut r = Report::new("search", format!("{n} items, nucleo::Nucleo pool, typing \"deploy\""));
+    let mut r = Report::new(
+        "search",
+        format!("{n} items, nucleo::Nucleo pool, typing \"deploy\""),
+    );
     r.d("inject_10k", t_inject);
     r.f("per_key_med", s.median);
     r.f("per_key_max", s.max);
-    r.f("threads", std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1) as f64);
+    r.f(
+        "threads",
+        std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1) as f64,
+    );
     r.emit();
 
     let mut r = Report::new("search", format!("{n} items: index cost"));

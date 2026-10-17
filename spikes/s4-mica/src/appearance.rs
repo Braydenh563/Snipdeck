@@ -204,7 +204,6 @@ pub fn text_scale_from_percent(percent: u32) -> f32 {
 }
 
 /// `UISettings.TextScaleFactor` (documented range 1.0..=2.25) to a sanitised factor.
-#[cfg_attr(not(windows), allow(dead_code))]
 pub fn text_scale_from_factor(factor: f64) -> f32 {
     if factor.is_finite() {
         factor.clamp(1.0, 2.25) as f32

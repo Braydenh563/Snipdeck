@@ -6,6 +6,7 @@
 //!   cargo run --features skia       # then SLINT_BACKEND=winit-skia (MSVC toolchain)
 //!   cargo run -- --cjk zh           # Han fallback order for Simplified Chinese
 //!   cargo run -- --cjk system       # leave fallback to DirectWrite (baseline)
+//!   cargo run -- --ja-font "Meiryo UI"   # try another Japanese fallback family
 //!
 //! The manual test script with expected results lives in docs/spikes/S2-ime.md.
 
@@ -31,30 +32,48 @@ enum CjkMode {
     System,
 }
 
+fn arg_value(name: &str) -> Option<String> {
+    let args: Vec<String> = std::env::args().collect();
+    args.iter()
+        .position(|a| a == name)
+        .and_then(|i| args.get(i + 1))
+        .cloned()
+}
+
 impl CjkMode {
     fn from_args() -> Self {
-        let args: Vec<String> = std::env::args().collect();
-        let value = args
-            .iter()
-            .position(|a| a == "--cjk")
-            .and_then(|i| args.get(i + 1))
-            .map(String::as_str)
-            .unwrap_or("ja");
-        match value {
-            "zh" | "zh-Hans" => Self::Zh,
-            "ko" => Self::Ko,
-            "system" => Self::System,
+        match arg_value("--cjk").as_deref() {
+            Some("zh" | "zh-Hans") => Self::Zh,
+            Some("ko") => Self::Ko,
+            Some("system") => Self::System,
             _ => Self::Ja,
         }
     }
 }
 
-const JA: &str = "Yu Gothic UI";
-const ZH: &str = "Microsoft YaHei UI";
-const KO: &str = "Malgun Gothic";
-/// Older/alternative system fonts, used only if the primary ones are missing.
-const JA_ALT: &str = "Meiryo UI";
-const ZH_ALT: &str = "SimSun";
+/// CJK fallback families. Defaults are the Windows 10/11 system UI fonts named in
+/// DESIGN.md section 3; `--ja-font/--zh-font/--ko-font` override them (e.g. to try
+/// "Meiryo UI" or "BIZ UDPGothic").
+struct CjkFonts {
+    ja: String,
+    zh: String,
+    ko: String,
+    ja_alt: &'static str,
+    zh_alt: &'static str,
+}
+
+impl CjkFonts {
+    fn from_args() -> Self {
+        Self {
+            ja: arg_value("--ja-font").unwrap_or_else(|| "Yu Gothic UI".into()),
+            zh: arg_value("--zh-font").unwrap_or_else(|| "Microsoft YaHei UI".into()),
+            ko: arg_value("--ko-font").unwrap_or_else(|| "Malgun Gothic".into()),
+            // Older/alternative system fonts, used only if the primary ones are missing.
+            ja_alt: "Meiryo UI",
+            zh_alt: "SimSun",
+        }
+    }
+}
 
 /// ISO 15924 tag, e.g. "Hani".
 fn script(tag: &str) -> fontique::Script {
@@ -80,7 +99,7 @@ fn family_names(coll: &mut fontique::Collection, ids: &[fontique::FamilyId]) -> 
 /// (IBM Plex Sans, Arial, Segoe UI on Windows). None of these has CJK glyphs, so parley
 /// asks fontique for `FallbackKey(script, locale=None)`; without this function, that is
 /// answered by DirectWrite's system fallback for a sample character with an empty locale.
-fn configure_cjk_fallback(mode: CjkMode) -> Vec<String> {
+fn configure_cjk_fallback(mode: CjkMode, fonts: &CjkFonts) -> Vec<String> {
     let mut coll = slint::fontique_011::shared_collection();
     let mut report = Vec::new();
 
@@ -94,12 +113,20 @@ fn configure_cjk_fallback(mode: CjkMode) -> Vec<String> {
         ));
     }
 
-    for name in [JA, ZH, KO, JA_ALT, ZH_ALT, "IBM Plex Sans"] {
+    let (ja, zh, ko) = (fonts.ja.as_str(), fonts.zh.as_str(), fonts.ko.as_str());
+    let (ja_alt, zh_alt) = (fonts.ja_alt, fonts.zh_alt);
+    for name in [ja, zh, ko, ja_alt, zh_alt, "IBM Plex Sans"] {
         report.push(format!(
             "family {name:<20} installed/registered: {}",
             coll.family_id(name).is_some()
         ));
     }
+
+    // Note: fontique yields an app-set generic family list *followed by* the system one.
+    // On Windows the system lists are just Arial (sans-serif) and Segoe UI (system-ui),
+    // neither with CJK glyphs, so Han/Kana/Hangul always reach the script fallback below.
+    // On Linux, fontconfig's sans-serif list usually contains a CJK font, so the script
+    // fallback is never consulted there and this override has no visible effect.
 
     if mode == CjkMode::System {
         report.push("--cjk system: fallback left to DirectWrite".into());
@@ -107,17 +134,17 @@ fn configure_cjk_fallback(mode: CjkMode) -> Vec<String> {
     }
 
     let han: &[&str] = match mode {
-        CjkMode::Ja => &[JA, JA_ALT, ZH, KO],
-        CjkMode::Zh => &[ZH, ZH_ALT, JA, KO],
-        CjkMode::Ko => &[KO, JA, ZH],
+        CjkMode::Ja => &[ja, ja_alt, zh, ko],
+        CjkMode::Zh => &[zh, zh_alt, ja, ko],
+        CjkMode::Ko => &[ko, ja, zh],
         CjkMode::System => unreachable!(),
     };
     let chains: [(&str, &[&str]); 5] = [
         ("Hani", han),
-        ("Hira", &[JA, JA_ALT]),
-        ("Kana", &[JA, JA_ALT]),
-        ("Hang", &[KO]),
-        ("Bopo", &[ZH, ZH_ALT]),
+        ("Hira", &[ja, ja_alt]),
+        ("Kana", &[ja, ja_alt]),
+        ("Hang", &[ko]),
+        ("Bopo", &[zh, zh_alt]),
     ];
     for (tag, names) in chains {
         let ids: Vec<_> = names.iter().filter_map(|n| coll.family_id(n)).collect();
@@ -184,7 +211,7 @@ const CHECKLIST: &[&str] = &[
 
 fn main() -> Result<(), slint::PlatformError> {
     let mode = CjkMode::from_args();
-    let fallback_report = configure_cjk_fallback(mode);
+    let fallback_report = configure_cjk_fallback(mode, &CjkFonts::from_args());
 
     let ui = AppWindow::new()?;
 
@@ -203,6 +230,15 @@ fn main() -> Result<(), slint::PlatformError> {
         "  IBM Plex Sans registered after window creation: {}",
         coll.family_id("IBM Plex Sans").is_some()
     );
+    for tag in ["Hani", "Hira", "Hang"] {
+        let ids: Vec<_> = coll
+            .fallback_families(fontique::FallbackKey::new(script(tag), None))
+            .collect();
+        println!(
+            "  effective fallback after window creation {tag}: {}",
+            family_names(&mut coll, &ids)
+        );
+    }
     println!("\nChecklist:");
     for line in CHECKLIST {
         println!("  {line}");

@@ -180,6 +180,7 @@ export component ViewerWindow inherits Window {
     in property <[SelRect]> sel;
     in property <length> caret-x;
     in property <length> caret-y;
+    in property <length> scroll-y;
     in property <bool> caret-visible: true;
     in property <length> line-height: 18px;
     in property <length> gutter: 56px;
@@ -207,41 +208,47 @@ export component ViewerWindow inherits Window {
             width: root.gutter - 6px;
             background: #f6f6f8;
         }
-        for s in root.sel: Rectangle {
-            x: root.gutter + s.x;
-            y: s.y;
-            width: s.w;
-            height: root.line-height;
-            background: #c7d7fe;
-        }
-        for r in root.rows: Rectangle {
-            y: r.y;
-            height: root.line-height;
-            Text {
-                x: 0px;
-                width: root.gutter - 12px;
-                text: r.line-no;
-                font-family: "DejaVu Sans Mono";
-                font-size: 11px;
-                color: #9a9aa4;
-                horizontal-alignment: right;
-                vertical-alignment: center;
-            }
-            Text {
-                x: root.gutter;
-                text: r.text;
-                font-family: "DejaVu Sans Mono";
-                font-size: 13px;
-                vertical-alignment: center;
-            }
-        }
+        // Rows, selection and caret use absolute document y; only this offset moves on scroll,
+        // so rows that stay on screen are not touched (ring-buffer pool in Rust).
         Rectangle {
-            x: root.gutter + root.caret-x;
-            y: root.caret-y;
-            width: 1px;
-            height: root.line-height;
-            background: #111111;
-            visible: root.caret-visible;
+            y: -root.scroll-y;
+            height: 0px;
+            for s in root.sel: Rectangle {
+                x: root.gutter + s.x;
+                y: s.y;
+                width: s.w;
+                height: root.line-height;
+                background: #c7d7fe;
+            }
+            for r in root.rows: Rectangle {
+                y: r.y;
+                height: root.line-height;
+                Text {
+                    x: 0px;
+                    width: root.gutter - 12px;
+                    text: r.line-no;
+                    font-family: "DejaVu Sans Mono";
+                    font-size: 11px;
+                    color: #9a9aa4;
+                    horizontal-alignment: right;
+                    vertical-alignment: center;
+                }
+                Text {
+                    x: root.gutter;
+                    text: r.text;
+                    font-family: "DejaVu Sans Mono";
+                    font-size: 13px;
+                    vertical-alignment: center;
+                }
+            }
+            Rectangle {
+                x: root.gutter + root.caret-x;
+                y: root.caret-y;
+                width: 1px;
+                height: root.line-height;
+                background: #111111;
+                visible: root.caret-visible;
+            }
         }
         Rectangle {
             x: parent.width - 8px;

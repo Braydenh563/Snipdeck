@@ -22,6 +22,7 @@ impl Rng {
     }
 }
 
+#[rustfmt::skip]
 const WORDS: &[&str] = &[
     "the", "snippet", "clipboard", "paste", "deck", "panel", "lorem", "ipsum", "dolor", "sit",
     "amet", "consectetur", "adipiscing", "elit", "sed", "do", "eiusmod", "tempor", "incididunt",

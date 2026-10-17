@@ -6,7 +6,12 @@ use slint::platform::software_renderer::{
 use slint::platform::{Platform, WindowAdapter};
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
+
+static IN_FRAME: AtomicBool = AtomicBool::new(false);
+/// Number of frames whose rendering panicked (caught in `Harness::frame`).
+pub static RENDER_PANICS: AtomicUsize = AtomicUsize::new(0);
 
 struct BenchPlatform {
     window: Rc<MinimalSoftwareWindow>,
@@ -55,13 +60,23 @@ impl Harness {
 
     /// Renders one frame if anything is dirty. Returns the time spent in the renderer
     /// (this includes any lazy property/layout evaluation the frame triggers).
+    ///
+    /// A panic inside the renderer is caught and counted (see `RENDER_PANICS`); every metric
+    /// reported after it is suffixed with `!` (not valid).
     pub fn frame(&self) -> Duration {
         slint::platform::update_timers_and_animations();
         let t = Instant::now();
-        self.window.draw_if_needed(|r| {
-            let mut buf = self.buf.borrow_mut();
-            r.render(&mut buf, self.w as usize);
-        });
+        IN_FRAME.store(true, Ordering::SeqCst);
+        let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            self.window.draw_if_needed(|r| {
+                let mut buf = self.buf.borrow_mut();
+                r.render(&mut buf, self.w as usize);
+            });
+        }));
+        IN_FRAME.store(false, Ordering::SeqCst);
+        if res.is_err() {
+            RENDER_PANICS.fetch_add(1, Ordering::SeqCst);
+        }
         t.elapsed()
     }
 
@@ -155,19 +170,82 @@ pub fn stats(samples: &[Duration]) -> Stats {
 }
 
 /// Result line emitted by a child scenario process: `RESULT\t<group>\t<label>\tk=v\tk=v...`
-pub struct Report {
+///
+/// Fields live in a process-global so that a panic hook can still emit what was measured
+/// before the crash (Slint's software renderer panics on some inputs, see the report).
+pub struct Report;
+
+struct ReportData {
     group: &'static str,
     label: String,
     fields: Vec<(String, String)>,
 }
 
+static CURRENT: std::sync::Mutex<Option<ReportData>> = std::sync::Mutex::new(None);
+
+fn push_field(k: &str, mut v: String) {
+    if let Some(d) = CURRENT.lock().unwrap().as_mut() {
+        // Sticky: once the renderer has panicked, later frames are not trustworthy
+        // (draw_if_needed stops drawing), so every later value is flagged.
+        let p = RENDER_PANICS.load(Ordering::SeqCst);
+        if p > 0 && k != "render_panics" {
+            v.push('!');
+        }
+        d.fields.push((k.to_string(), v));
+    }
+}
+
+fn emit_current(extra: Option<(&str, String)>) {
+    if let Some(d) = CURRENT.lock().unwrap().take() {
+        let mut line = format!("RESULT\t{}\t{}", d.group, d.label);
+        for (k, v) in d
+            .fields
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.clone()))
+            .chain(extra)
+        {
+            line.push('\t');
+            line.push_str(k);
+            line.push('=');
+            line.push_str(&v);
+        }
+        println!("{line}");
+    }
+}
+
+/// On panic: emit the fields measured so far plus `panic_after=<last field>`.
+pub fn install_panic_report() {
+    let prev = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        if IN_FRAME.load(Ordering::SeqCst) {
+            if RENDER_PANICS.load(Ordering::SeqCst) == 0 {
+                eprintln!("    (render panic, caught; further ones silenced): {info}");
+            }
+            return;
+        }
+        let last = CURRENT
+            .lock()
+            .ok()
+            .and_then(|g| g.as_ref().map(|d| d.fields.last().map(|f| f.0.clone())))
+            .flatten()
+            .unwrap_or_else(|| "start".into());
+        let msg = info
+            .location()
+            .map(|l| format!("{}:{}", l.file().rsplit('/').next().unwrap_or(""), l.line()))
+            .unwrap_or_default();
+        emit_current(Some(("panic_after", format!("{last} ({msg})"))));
+        prev(info);
+    }));
+}
+
 impl Report {
     pub fn new(group: &'static str, label: impl Into<String>) -> Self {
-        Report {
+        *CURRENT.lock().unwrap() = Some(ReportData {
             group,
             label: label.into(),
             fields: Vec::new(),
-        }
+        });
+        Report
     }
     pub fn f(&mut self, k: &str, v: f64) {
         let s = if v.is_nan() {
@@ -179,19 +257,16 @@ impl Report {
         } else {
             format!("{v:.2}")
         };
-        self.fields.push((k.to_string(), s));
+        push_field(k, s);
     }
     pub fn d(&mut self, k: &str, d: Duration) {
         self.f(k, ms(d));
     }
     pub fn emit(&self) {
-        let mut line = format!("RESULT\t{}\t{}", self.group, self.label);
-        for (k, v) in &self.fields {
-            line.push('\t');
-            line.push_str(k);
-            line.push('=');
-            line.push_str(v);
+        let p = RENDER_PANICS.load(Ordering::SeqCst);
+        if p > 0 {
+            push_field("render_panics", p.to_string());
         }
-        println!("{line}");
+        emit_current(None);
     }
 }

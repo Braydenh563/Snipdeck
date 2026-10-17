@@ -156,9 +156,11 @@ impl Viewer {
         let total = self.total_rows();
         let (s0, s1) = (self.anchor.min(self.head), self.anchor.max(self.head));
         let mut rects = Vec::new();
-        for k in 0..self.rows.row_count() {
-            let vr = first + k as u32;
-            let y = vr as f32 * LINE_H - self.scroll_y;
+        let pool = self.rows.row_count();
+        for vr in first..first + pool as u32 {
+            // ring buffer: a visual row always lives in the same slot while it stays visible
+            let k = vr as usize % pool;
+            let y = vr as f32 * LINE_H;
             let row = if vr >= total {
                 VisualRow::default()
             } else {
@@ -202,7 +204,8 @@ impl Viewer {
         };
         if let Some(ui) = self.ui.upgrade() {
             ui.set_caret_x(cx * self.char_w);
-            ui.set_caret_y(cvr as f32 * LINE_H - self.scroll_y);
+            ui.set_caret_y(cvr as f32 * LINE_H);
+            ui.set_scroll_y(self.scroll_y);
             let content = (total as f32 * LINE_H).max(1.0);
             ui.set_thumb_size((self.view_h / content).min(1.0));
             ui.set_thumb_pos(if self.max_scroll() > 0.0 {
@@ -298,7 +301,11 @@ impl Viewer {
             self.move_vertical(false, shift);
         } else if ctrl && text == "a" {
             self.select_all();
-        } else if !ctrl && text.chars().all(|c| !c.is_control() && !('\u{f700}'..='\u{f8ff}').contains(&c)) {
+        } else if !ctrl
+            && text
+                .chars()
+                .all(|c| !c.is_control() && !('\u{f700}'..='\u{f8ff}').contains(&c))
+        {
             self.insert(text);
         }
     }
