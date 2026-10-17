@@ -52,6 +52,13 @@ pub enum ToastMessage {
     TemplateBroken,
     /// "Unlock your library to use this item."
     Locked,
+    /// "Fill in this template first." (The fill form arrives with M4.)
+    NeedsAnswers,
+    /// "{chord} is used by another app. Choose another in Settings."
+    HotkeyInUse {
+        /// The chord as typed in Settings, for example `Ctrl+Alt+Space`.
+        chord: String,
+    },
     /// "Couldn't use this item."
     Failed,
 }
@@ -87,9 +94,10 @@ pub fn after_use(outcome: UseOutcome, route: &Route, pasted_into: Option<&str>) 
                 app: pasted_into.map(friendly_app_name).unwrap_or_default(),
             },
         },
-        (UseOutcome::Copied, Route::Copy(reason @ CopyReason::Excluded { .. })) => {
-            neutral(ToastMessage::CopiedExcluded { app: app(reason) })
-        }
+        (
+            UseOutcome::Copied | UseOutcome::CopiedInstead(_),
+            Route::Copy(reason @ CopyReason::Excluded { .. }),
+        ) => neutral(ToastMessage::CopiedExcluded { app: app(reason) }),
         (UseOutcome::Copied, _) => Toast {
             kind: ToastKind::Success,
             message: ToastMessage::Copied,
@@ -110,6 +118,12 @@ pub fn after_use(outcome: UseOutcome, route: &Route, pasted_into: Option<&str>) 
 #[must_use]
 pub fn after_error(error: &UseError) -> Toast {
     use snipdeck_store::Error as Store;
+    if matches!(error, UseError::NeedsAnswers(_)) {
+        return Toast {
+            kind: ToastKind::Neutral,
+            message: ToastMessage::NeedsAnswers,
+        };
+    }
     let message = match error {
         UseError::Platform(_) => ToastMessage::ClipboardBusy,
         UseError::Render(snipdeck_core::template::RenderError::ProRequired(feature)) => {
@@ -175,6 +189,24 @@ mod tests {
     }
 
     #[test]
+    fn a_paste_into_an_excluded_app_says_pasting_is_off_too() {
+        let route = Route::Copy(CopyReason::Excluded {
+            app: "keepass.exe".into(),
+        });
+        let toast = after_use(
+            UseOutcome::CopiedInstead(PasteFailure::TargetUnavailable),
+            &route,
+            None,
+        );
+        assert_eq!(
+            toast.message,
+            ToastMessage::CopiedExcluded {
+                app: "Keepass".into()
+            }
+        );
+    }
+
+    #[test]
     fn an_elevated_target_explains_why_it_was_only_copied() {
         let route = Route::Copy(CopyReason::Elevated {
             app: "regedit.exe".into(),
@@ -230,6 +262,15 @@ mod tests {
         assert_eq!(
             after_error(&UseError::NotText).message,
             ToastMessage::TemplateBroken
+        );
+    }
+
+    #[test]
+    fn a_template_that_needs_answers_is_information_not_an_error() {
+        let toast = after_error(&UseError::NeedsAnswers(Vec::new()));
+        assert_eq!(
+            (toast.kind, toast.message),
+            (ToastKind::Neutral, ToastMessage::NeedsAnswers)
         );
     }
 }
