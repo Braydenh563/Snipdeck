@@ -5,6 +5,7 @@
   "dir": "spikes/s1-noactivate",
   "exe": "s1-noactivate",
   "setup": [
+    "Snap THIS wizard window to the left half of the screen (Win+Left). The test panel opens near the right edge, stays on top, and has no minimise button. If it ever covers something, drag it by its title bar.",
     "Turn on clipboard history: press Win+V, then 'Turn on' (needed to check the item never shows up in history).",
     "Open a normal (non-admin) Notepad and a Windows Terminal / PowerShell window.",
     "Have Chrome, Word and Paint available. Optional: Excel, KeePass, Remote Desktop."

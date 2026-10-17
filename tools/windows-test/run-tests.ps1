@@ -60,9 +60,13 @@ function Read-Choice([string]$Prompt, [string]$Keys, [string]$EnterKey = '') {
     $oldCtrlC = $null
     try { $oldCtrlC = [Console]::TreatControlCAsInput; [Console]::TreatControlCAsInput = $true } catch { }
     try {
+        $showPrompt = $true
         while ($true) {
-            try { $Host.UI.RawUI.FlushInputBuffer() } catch { }
-            Write-Host $Prompt -NoNewline -ForegroundColor Cyan
+            if ($showPrompt) {
+                try { $Host.UI.RawUI.FlushInputBuffer() } catch { }
+                Write-Host $Prompt -NoNewline -ForegroundColor Cyan
+                $showPrompt = $false
+            }
             $ch = ''
             $key = $null
             try { $key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown') } catch { $key = $null }
@@ -70,8 +74,11 @@ function Read-Choice([string]$Prompt, [string]$Keys, [string]$EnterKey = '') {
                 if ([int]$key.Character -eq 3) {
                     Write-Host ''
                     Say '  Ctrl+C is turned off here (it would close the test app). Press q to finish. To copy text, select it and press Ctrl+Shift+C.' Yellow
+                    $showPrompt = $true
                     continue
                 }
+                # Shift, Ctrl, Alt, Win and arrow keys on their own have no character: skip them silently.
+                if ([int]$key.Character -eq 0) { continue }
                 # Pasted text arrives as a burst of keys. Ignore it so the test apps cannot trigger wizard commands.
                 Start-Sleep -Milliseconds 50
                 $burst = $false
@@ -80,6 +87,7 @@ function Read-Choice([string]$Prompt, [string]$Keys, [string]$EnterKey = '') {
                     try { $Host.UI.RawUI.FlushInputBuffer() } catch { }
                     Write-Host ''
                     Say '  (ignored: that looked like pasted text, not a key press)' Yellow
+                    $showPrompt = $true
                     continue
                 }
                 $ch = ([string]$key.Character).ToLower()
@@ -90,6 +98,7 @@ function Read-Choice([string]$Prompt, [string]$Keys, [string]$EnterKey = '') {
             }
             if ($ch -and $Keys.Contains($ch)) { Write-Host $ch; return $ch }
             Write-Host ''
+            $showPrompt = $true
         }
     } finally {
         try { if ($null -ne $oldCtrlC) { [Console]::TreatControlCAsInput = $oldCtrlC } } catch { }
