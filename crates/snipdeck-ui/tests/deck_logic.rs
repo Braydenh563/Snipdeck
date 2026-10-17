@@ -453,10 +453,19 @@ fn cjk_cards_keep_their_height_and_stay_inside_the_column() {
         .match_descendants()
         .match_accessible_role(AccessibleRole::ListItem)
         .find_all();
-    assert!(found.len() >= 6, "three samples x two variants, got {}", found.len());
+    assert!(
+        found.len() >= 6,
+        "three samples x two variants, got {}",
+        found.len()
+    );
     for card in &found {
         let (p, s) = (card.absolute_position(), card.size());
-        assert!(s.height >= 24.0, "{:?} is {} tall", card.accessible_label(), s.height);
+        assert!(
+            s.height >= 24.0,
+            "{:?} is {} tall",
+            card.accessible_label(),
+            s.height
+        );
         assert!(
             p.x >= 0.0 && p.x + s.width <= 200.5,
             "{:?} x {} w {}",

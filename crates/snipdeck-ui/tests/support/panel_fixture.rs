@@ -110,7 +110,11 @@ pub fn cjk_rows() -> Vec<PanelRow> {
         PanelRow {
             list_name: "仕事とプロジェクト".into(),
             list_color: VIOLET_600,
-            ..row(ItemKind::Text, "会議のフォローアップ", "本日の会議の件でご連絡します。")
+            ..row(
+                ItemKind::Text,
+                "会議のフォローアップ",
+                "本日の会議の件でご連絡します。",
+            )
         },
     ]
 }
