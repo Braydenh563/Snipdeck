@@ -1,0 +1,41 @@
+import { Theme, Space, Palette } from "../theme.slint";
+import { Tag } from "../components/tag.slint";
+import { SidebarItem, SidebarItemKind } from "../components/sidebar-item.slint";
+import { ItemCard, ItemCardVariant, ItemKind } from "../components/item-card.slint";
+import { TemplateField, TemplateFieldKind } from "../components/template_field.slint";
+
+// Selected states with absolute positions, for the high-contrast pixel tests (tests/review_fixes_pixels.rs).
+// In high contrast the selection fill is the system highlight colour, so anything drawn in the accent
+// (also the highlight colour) on a selected row is invisible. Every element sits at a fixed x / y so
+// the tests can measure the glyph box without a layout in the way.
+export component ReviewProbe inherits Window {
+    in property <bool> dark: false;
+    width: 360px;
+    height: 300px;
+    background: Theme.bg-app;
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    Tag { x: 16px; y: 16px; text: "email"; selected: true; }
+    SidebarItem { x: 16px; y: 56px; width: 200px; kind: SidebarItemKind.board; label: "Work"; selected: true; }
+    // A compact row that is selected and pulled (used): the gutter shows a check on the selected fill.
+    ItemCard {
+        x: 16px;
+        y: 96px;
+        width: 320px;
+        variant: ItemCardVariant.compact;
+        kind: ItemKind.template;
+        title: "Invoice";
+        selected: true;
+        pulling: true;
+    }
+    TemplateField {
+        x: 16px;
+        y: 136px;
+        width: 240px;
+        label: "Length";
+        kind: TemplateFieldKind.choice;
+        choices: ["Short", "Medium", "Long"];
+        choice-index: 1;
+    }
+}

@@ -33,11 +33,12 @@ component SampleCard inherits ItemCard {
     title: root.s.title;
     preview: root.s.preview;
     masked-preview: root.s.masked;
+    masked-hint: "Hidden. Hold Space to reveal.";
     extension: root.s.ext;
     number: root.s.number;
     selected: root.s.selected;
     show-use-label: root.s.show-label;
-    use-label: "Paste ↵";
+    use-label: "Paste";
     revealed: root.s.revealed;
     pulling: root.s.pulling;
     list-name: root.s.list-name;
@@ -65,8 +66,14 @@ global DeckSamples {
         { kind: ItemKind.text, title: "Meeting follow-up", preview: "Following up on today's call: the action items and owners are listed below.", masked: "", ext: "", number: 0, selected: false, show-label: true, revealed: false, pulling: false, list-hue: 0, list-name: "" },
         { kind: ItemKind.text, title: "Home address", preview: "12 Quay Street, Wellington 6011", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 1, list-name: "Addresses" },
         { kind: ItemKind.code, title: "A very long snippet title that keeps going well past the width of the panel", preview: "SELECT id, name FROM customers WHERE created_at > now() - interval '7 days' ORDER BY created_at DESC", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 2, list-name: "Work and projects" },
-        { kind: ItemKind.text, title: "請求書のお願い", preview: "お世話になっております。先月分の請求書をお送りいただけますでしょうか。支付发票提醒", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.text, title: "Please send the invoice", preview: "Thank you for your help so far. Could you send last month's invoice when you have a moment? Payment reminder attached.", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
         { kind: ItemKind.text, title: "Pulled card", preview: "Used just now: lifted, with a check in the gutter.", masked: "", ext: "", number: 3, selected: false, show-label: false, revealed: false, pulling: true, list-hue: 0, list-name: "" },
+    ];
+    // Japanese/Chinese samples for `DeckCjkProbe` (measured, never rendered into a golden).
+    out property <[DeckSample]> cjk: [
+        { kind: ItemKind.text, title: "請求書のお願い", preview: "お世話になっております。先月分の請求書をお送りいただけますでしょうか。支付发票提醒", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.text, title: "短い", preview: "短い本文", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 2, list-name: "仕事とプロジェクト" },
+        { kind: ItemKind.text, title: "請求書のお願いと支払い期限についての確認事項です", preview: "本日中にご返信をお願いいたします。", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 2, list-name: "仕事とプロジェクト" },
     ];
     // Subsets for the 225% gallery.
     out property <[DeckSample]> scale-compact: [all[0], all[1], all[5], all[10], all[11]];
@@ -320,6 +327,26 @@ export component DeckPartsGallery inherits Window {
             SidebarItem { kind: SidebarItemKind.board; label: "Personal"; count: 9; }
             SidebarItem { kind: SidebarItemKind.tag; label: "invoice"; count: 3; }
             SidebarItem { kind: SidebarItemKind.system; label: "Trash"; icon: Icons.trash; }
+        }
+    }
+}
+
+// CJK titles and previews for measurement only (tests/deck_logic.rs). Never screenshotted: IBM Plex has
+// no CJK glyphs, so the pixels would depend on the system fallback font.
+export component DeckCjkProbe inherits Window {
+    width: 200px;
+    height: 600px;
+    background: Theme.bg-app;
+
+    VerticalLayout {
+        alignment: start;
+        for s in DeckSamples.cjk: SampleCard {
+            variant: ItemCardVariant.compact;
+            s: s;
+        }
+        for s in DeckSamples.cjk: SampleCard {
+            variant: ItemCardVariant.comfortable;
+            s: s;
         }
     }
 }

@@ -1,9 +1,9 @@
 //! Screenshot tests for the Panel window in the states the design calls out (light, dark, 225% text,
-//! empty, no results, long titles and CJK, 20+ rows scrolled, toast), plus pixel measurements of the
+//! empty, no results, long titles, 20+ rows scrolled, toast), plus pixel measurements of the
 //! layout claims in DESIGN.md §5 and §6.
 //!
 //! Goldens: `UPDATE_GOLDEN=1 cargo test -p snipdeck-ui --test panel`, then look at every PNG.
-//! Text (and the CJK sample, which falls back to a system font) can differ per machine; the pixel
+//! Goldens use only glyphs IBM Plex has (no CJK, no U+21B5: system fallback fonts differ per machine); the pixel
 //! assertions below do not depend on glyph shapes.
 
 use slint::{ComponentHandle, ModelRc, VecModel};
@@ -85,7 +85,7 @@ fn panel_empty_list_and_no_results_and_no_lists() {
 }
 
 #[test]
-fn panel_long_titles_and_cjk_in_both_views() {
+fn panel_long_titles_in_both_views() {
     for (view, name) in [
         (PanelView::Compact, "panel-awkward-compact-light"),
         (PanelView::Comfortable, "panel-awkward-comfortable-light"),

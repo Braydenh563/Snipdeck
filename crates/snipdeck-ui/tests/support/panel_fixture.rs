@@ -70,7 +70,9 @@ pub fn numbered_rows(n: usize) -> Vec<PanelRow> {
         .collect()
 }
 
-/// Long English titles, CJK, and a mixed-view list label.
+/// Long English titles, a long unbroken word, short text and a mixed-view list label. Latin only:
+/// goldens must not contain glyphs outside the bundled IBM Plex fonts (system fallback fonts differ
+/// per machine). CJK coverage is `cjk_rows`, used by logic tests that measure sizes, not pixels.
 pub fn awkward_rows() -> Vec<PanelRow> {
     vec![
         row(
@@ -80,8 +82,8 @@ pub fn awkward_rows() -> Vec<PanelRow> {
         ),
         row(
             ItemKind::Text,
-            "請求書のお願い",
-            "お世話になっております。先月分の請求書をお送りいただけますでしょうか。支付发票提醒",
+            "Please send the invoice",
+            "Thank you for your help so far. Could you send last month's invoice when you have a moment? Payment reminder attached.",
         ),
         PanelRow {
             list_name: "Work and projects".into(),
@@ -92,7 +94,24 @@ pub fn awkward_rows() -> Vec<PanelRow> {
                 "Following up on today's call.",
             )
         },
+        row(ItemKind::Text, "Short", "Short body"),
+    ]
+}
+
+/// Japanese and Chinese rows (long and short). Never rendered into a golden; logic tests measure them.
+pub fn cjk_rows() -> Vec<PanelRow> {
+    vec![
+        row(
+            ItemKind::Text,
+            "請求書のお願い",
+            "お世話になっております。先月分の請求書をお送りいただけますでしょうか。支付发票提醒",
+        ),
         row(ItemKind::Text, "短い", "短い本文"),
+        PanelRow {
+            list_name: "仕事とプロジェクト".into(),
+            list_color: VIOLET_600,
+            ..row(ItemKind::Text, "会議のフォローアップ", "本日の会議の件でご連絡します。")
+        },
     ]
 }
 
