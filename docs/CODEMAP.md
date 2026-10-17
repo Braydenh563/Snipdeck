@@ -466,6 +466,131 @@ UseMode | crates/snipdeck-core/src/usage.rs:5
 UseOutcome | crates/snipdeck-core/src/usage.rs:17
 PasteFailure | crates/snipdeck-core/src/usage.rs:28
 
+### crates/snipdeck-platform/src/keys.rs
+
+Modifier | crates/snipdeck-platform/src/keys.rs:11
+Modifiers | crates/snipdeck-platform/src/keys.rs:28
+impl Modifiers | crates/snipdeck-platform/src/keys.rs:39
+has | crates/snipdeck-platform/src/keys.rs:41
+Key | crates/snipdeck-platform/src/keys.rs:53
+KeyEvent | crates/snipdeck-platform/src/keys.rs:67
+PasteKey | crates/snipdeck-platform/src/keys.rs:76
+impl PasteKey | crates/snipdeck-platform/src/keys.rs:85
+modifiers | crates/snipdeck-platform/src/keys.rs:87
+main_key | crates/snipdeck-platform/src/keys.rs:96
+PASTE_KEY_TABLE | crates/snipdeck-platform/src/keys.rs:107
+paste_key_for | crates/snipdeck-platform/src/keys.rs:116
+event | crates/snipdeck-platform/src/keys.rs:123
+paste_sequence | crates/snipdeck-platform/src/keys.rs:132
+tests | crates/snipdeck-platform/src/keys.rs:171
+m | crates/snipdeck-platform/src/keys.rs:177
+plain_ctrl_v_with_nothing_held | crates/snipdeck-platform/src/keys.rs:182
+held_ctrl_is_reused_and_not_released | crates/snipdeck-platform/src/keys.rs:195
+held_alt_is_masked_before_release | crates/snipdeck-platform/src/keys.rs:207
+held_win_is_masked_before_release | crates/snipdeck-platform/src/keys.rs:227
+held_shift_alone_needs_no_mask | crates/snipdeck-platform/src/keys.rs:245
+ctrl_shift_v_keeps_held_shift | crates/snipdeck-platform/src/keys.rs:256
+shift_insert_releases_a_held_ctrl | crates/snipdeck-platform/src/keys.rs:273
+every_modifier_pressed_is_released_and_nothing_extra_is_left_down | crates/snipdeck-platform/src/keys.rs:291
+paste_key_table_is_case_insensitive_and_defaults_to_ctrl_v | crates/snipdeck-platform/src/keys.rs:331
+
+### crates/snipdeck-platform/src/lib.rs
+
+keys | crates/snipdeck-platform/src/lib.rs:16
+payload | crates/snipdeck-platform/src/lib.rs:17
+pipeline | crates/snipdeck-platform/src/lib.rs:18
+route | crates/snipdeck-platform/src/lib.rs:19
+windows | crates/snipdeck-platform/src/lib.rs:26
+
+### crates/snipdeck-platform/src/payload.rs
+
+FilePayload | crates/snipdeck-platform/src/payload.rs:9
+Data | crates/snipdeck-platform/src/payload.rs:18
+impl std::fmt::Debug for Data | crates/snipdeck-platform/src/payload.rs:32
+fmt | crates/snipdeck-platform/src/payload.rs:33
+Payload | crates/snipdeck-platform/src/payload.rs:47
+impl Payload | crates/snipdeck-platform/src/payload.rs:49
+new | crates/snipdeck-platform/src/payload.rs:51
+data | crates/snipdeck-platform/src/payload.rs:56
+plain_text | crates/snipdeck-platform/src/payload.rs:62
+tests | crates/snipdeck-platform/src/payload.rs:71
+empty_payload_is_rejected | crates/snipdeck-platform/src/payload.rs:75
+plain_text_keeps_only_the_text | crates/snipdeck-platform/src/payload.rs:80
+plain_text_of_an_image_is_the_image | crates/snipdeck-platform/src/payload.rs:87
+debug_never_prints_content | crates/snipdeck-platform/src/payload.rs:93
+
+### crates/snipdeck-platform/src/pipeline.rs
+
+RENDER_WAIT_CAP | crates/snipdeck-platform/src/pipeline.rs:18
+POLL_INTERVAL | crates/snipdeck-platform/src/pipeline.rs:20
+SETTLE | crates/snipdeck-platform/src/pipeline.rs:22
+Clipboard | crates/snipdeck-platform/src/pipeline.rs:25
+snapshot | crates/snipdeck-platform/src/pipeline.rs:37
+write_transient | crates/snipdeck-platform/src/pipeline.rs:44
+write_persistent | crates/snipdeck-platform/src/pipeline.rs:50
+render_requested | crates/snipdeck-platform/src/pipeline.rs:52
+restore | crates/snipdeck-platform/src/pipeline.rs:58
+Keyboard | crates/snipdeck-platform/src/pipeline.rs:62
+held_modifiers | crates/snipdeck-platform/src/pipeline.rs:64
+send | crates/snipdeck-platform/src/pipeline.rs:70
+Timing | crates/snipdeck-platform/src/pipeline.rs:74
+now | crates/snipdeck-platform/src/pipeline.rs:76
+sleep | crates/snipdeck-platform/src/pipeline.rs:78
+SystemTiming | crates/snipdeck-platform/src/pipeline.rs:83
+impl SystemTiming | crates/snipdeck-platform/src/pipeline.rs:85
+new | crates/snipdeck-platform/src/pipeline.rs:88
+impl Default for SystemTiming | crates/snipdeck-platform/src/pipeline.rs:93
+default | crates/snipdeck-platform/src/pipeline.rs:94
+impl Timing for SystemTiming | crates/snipdeck-platform/src/pipeline.rs:99
+now | crates/snipdeck-platform/src/pipeline.rs:100
+sleep | crates/snipdeck-platform/src/pipeline.rs:103
+Error | crates/snipdeck-platform/src/pipeline.rs:110
+Env | crates/snipdeck-platform/src/pipeline.rs:120
+use_item | crates/snipdeck-platform/src/pipeline.rs:136
+copy_outcome | crates/snipdeck-platform/src/pipeline.rs:160
+paste | crates/snipdeck-platform/src/pipeline.rs:166
+tests | crates/snipdeck-platform/src/pipeline.rs:204
+text_and_html | crates/snipdeck-platform/src/pipeline.rs:293
+paste_snapshots_writes_sends_waits_and_restores_in_order | crates/snipdeck-platform/src/pipeline.rs:333
+restore_waits_for_the_target_not_for_a_fixed_delay | crates/snipdeck-platform/src/pipeline.rs:342
+a_target_that_never_asks_gets_the_item_kept_and_a_failure | crates/snipdeck-platform/src/pipeline.rs:353
+a_failed_snapshot_still_pastes_but_does_not_restore | crates/snipdeck-platform/src/pipeline.rs:365
+blocked_input_copies_instead | crates/snipdeck-platform/src/pipeline.rs:373
+copy_mode_never_injects_keys | crates/snipdeck-platform/src/pipeline.rs:387
+copy_routes_report_why | crates/snipdeck-platform/src/pipeline.rs:395
+plain_paste_writes_only_the_text_format | crates/snipdeck-platform/src/pipeline.rs:410
+held_alt_is_masked_in_the_injected_sequence | crates/snipdeck-platform/src/pipeline.rs:417
+an_unwritable_clipboard_is_an_error | crates/snipdeck-platform/src/pipeline.rs:436
+
+### crates/snipdeck-platform/src/route.rs
+
+Focus | crates/snipdeck-platform/src/route.rs:9
+Target | crates/snipdeck-platform/src/route.rs:24
+Policy | crates/snipdeck-platform/src/route.rs:37
+CopyReason | crates/snipdeck-platform/src/route.rs:44
+Route | crates/snipdeck-platform/src/route.rs:66
+impl CopyReason | crates/snipdeck-platform/src/route.rs:76
+failure | crates/snipdeck-platform/src/route.rs:79
+decide | crates/snipdeck-platform/src/route.rs:91
+tests | crates/snipdeck-platform/src/route.rs:115
+target | crates/snipdeck-platform/src/route.rs:118
+no_target_copies_and_is_not_a_failure | crates/snipdeck-platform/src/route.rs:128
+elevated_target_falls_back_to_copy_with_uipi_failure | crates/snipdeck-platform/src/route.rs:138
+focus_none_copies_but_a_control_or_automation_focus_pastes | crates/snipdeck-platform/src/route.rs:153
+exclusion_is_case_insensitive_and_beats_everything_else | crates/snipdeck-platform/src/route.rs:168
+terminals_get_their_own_paste_key | crates/snipdeck-platform/src/route.rs:182
+
+### crates/snipdeck-platform/src/windows/mod.rs
+
+autostart | crates/snipdeck-platform/src/windows/mod.rs:17
+clipboard | crates/snipdeck-platform/src/windows/mod.rs:18
+dpapi | crates/snipdeck-platform/src/windows/mod.rs:19
+hotkey | crates/snipdeck-platform/src/windows/mod.rs:20
+keyboard | crates/snipdeck-platform/src/windows/mod.rs:21
+single_instance | crates/snipdeck-platform/src/windows/mod.rs:22
+target | crates/snipdeck-platform/src/windows/mod.rs:23
+window_style | crates/snipdeck-platform/src/windows/mod.rs:24
+
 ### crates/snipdeck-portable/src/archive.rs
 
 MANIFEST | crates/snipdeck-portable/src/archive.rs:25
@@ -1643,6 +1768,10 @@ on_window_created | spikes/s4-mica/src/platform/windows.rs:367
 | `crates/snipdeck-core/src/tag.rs` (inline) | 1 |
 | `crates/snipdeck-core/src/template/tests.rs` (inline) | 52 |
 | `crates/snipdeck-core/tests/licence.rs` | 17 |
+| `crates/snipdeck-platform/src/keys.rs` (inline) | 9 |
+| `crates/snipdeck-platform/src/payload.rs` (inline) | 4 |
+| `crates/snipdeck-platform/src/pipeline.rs` (inline) | 10 |
+| `crates/snipdeck-platform/src/route.rs` (inline) | 5 |
 | `crates/snipdeck-portable/src/importers.rs` (inline) | 3 |
 | `crates/snipdeck-portable/src/plan.rs` (inline) | 6 |
 | `crates/snipdeck-portable/tests/archive_roundtrip.rs` | 15 |
