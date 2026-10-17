@@ -8,88 +8,88 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgid "A list keeps related snippets together, like replies or addresses."
-msgstr ""
+msgstr "Une liste regroupe des extraits liés, comme des réponses ou des adresses."
 
 msgid "Add list"
-msgstr ""
+msgstr "Ajouter une liste"
 
 msgid "Board: {}"
-msgstr ""
+msgstr "Tableau : {}"
 
 msgid "Boards"
-msgstr ""
+msgstr "Tableaux"
 
 msgid "Clear search"
-msgstr ""
+msgstr "Effacer la recherche"
 
 msgid "Close panel"
-msgstr ""
+msgstr "Fermer le panneau"
 
 msgid "Copies to clipboard"
-msgstr ""
+msgstr "Copie dans le presse-papiers"
 
 msgid "Copy"
-msgstr ""
+msgstr "Copier"
 
 msgid "Copy something, then save it here from the clipboard."
-msgstr ""
+msgstr "Copiez quelque chose, puis enregistrez-le ici depuis le presse-papiers."
 
 msgid "Copy ↵"
-msgstr ""
+msgstr "Copier ↵"
 
 msgid "Enter"
-msgstr ""
+msgstr "Enter"
 
 msgid "Keep on top"
-msgstr ""
+msgstr "Toujours au premier plan"
 
 msgid "Lists"
-msgstr ""
+msgstr "Listes"
 
 msgid "Loading"
-msgstr ""
+msgstr "Chargement"
 
 msgid "New list"
-msgstr ""
+msgstr "Nouvelle liste"
 
 msgid "No lists yet"
-msgstr ""
+msgstr "Aucune liste pour le moment"
 
 msgid "No matches"
-msgstr ""
+msgstr "Aucun résultat"
 
 msgid "Nothing on this board matches “{}”."
-msgstr ""
+msgstr "Aucun élément de ce tableau ne correspond à « {} »."
 
 msgid "Paste"
 msgstr "Coller"
 
 msgid "Paste ↵"
-msgstr ""
+msgstr "Coller ↵"
 
 msgid "Pastes into {}"
-msgstr ""
+msgstr "Colle dans {}"
 
 msgid "Pastes into {} · {}"
-msgstr ""
+msgstr "Colle dans {} · {}"
 
 msgid "Pinned snippets"
-msgstr ""
+msgstr "Extraits épinglés"
 
 msgid "Save from clipboard"
-msgstr ""
+msgstr "Enregistrer depuis le presse-papiers"
 
 msgid "Search snippets"
-msgstr ""
+msgstr "Rechercher des extraits"
 
 msgid "Shift Enter"
-msgstr ""
+msgstr "Shift Enter"
 
 msgid "Snipdeck"
-msgstr ""
+msgstr "Snipdeck"
 
 msgid "Snippets"
-msgstr ""
+msgstr "Extraits"
 
 msgid "This list is empty"
-msgstr ""
+msgstr "Cette liste est vide"

@@ -8,88 +8,88 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgid "A list keeps related snippets together, like replies or addresses."
-msgstr ""
+msgstr "Uma lista reúne trechos relacionados, como respostas ou endereços."
 
 msgid "Add list"
-msgstr ""
+msgstr "Adicionar lista"
 
 msgid "Board: {}"
-msgstr ""
+msgstr "Quadro: {}"
 
 msgid "Boards"
-msgstr ""
+msgstr "Quadros"
 
 msgid "Clear search"
-msgstr ""
+msgstr "Limpar pesquisa"
 
 msgid "Close panel"
-msgstr ""
+msgstr "Fechar painel"
 
 msgid "Copies to clipboard"
-msgstr ""
+msgstr "Copia para a área de transferência"
 
 msgid "Copy"
-msgstr ""
+msgstr "Copiar"
 
 msgid "Copy something, then save it here from the clipboard."
-msgstr ""
+msgstr "Copie algo e depois salve aqui a partir da área de transferência."
 
 msgid "Copy ↵"
-msgstr ""
+msgstr "Copiar ↵"
 
 msgid "Enter"
-msgstr ""
+msgstr "Enter"
 
 msgid "Keep on top"
-msgstr ""
+msgstr "Sempre no topo"
 
 msgid "Lists"
-msgstr ""
+msgstr "Listas"
 
 msgid "Loading"
-msgstr ""
+msgstr "Carregando"
 
 msgid "New list"
-msgstr ""
+msgstr "Nova lista"
 
 msgid "No lists yet"
-msgstr ""
+msgstr "Nenhuma lista ainda"
 
 msgid "No matches"
-msgstr ""
+msgstr "Nenhum resultado"
 
 msgid "Nothing on this board matches “{}”."
-msgstr ""
+msgstr "Nada neste quadro corresponde a “{}”."
 
 msgid "Paste"
 msgstr "Colar"
 
 msgid "Paste ↵"
-msgstr ""
+msgstr "Colar ↵"
 
 msgid "Pastes into {}"
-msgstr ""
+msgstr "Cola em {}"
 
 msgid "Pastes into {} · {}"
-msgstr ""
+msgstr "Cola em {} · {}"
 
 msgid "Pinned snippets"
-msgstr ""
+msgstr "Trechos fixados"
 
 msgid "Save from clipboard"
-msgstr ""
+msgstr "Salvar da área de transferência"
 
 msgid "Search snippets"
-msgstr ""
+msgstr "Pesquisar trechos"
 
 msgid "Shift Enter"
-msgstr ""
+msgstr "Shift Enter"
 
 msgid "Snipdeck"
-msgstr ""
+msgstr "Snipdeck"
 
 msgid "Snippets"
-msgstr ""
+msgstr "Trechos"
 
 msgid "This list is empty"
-msgstr ""
+msgstr "Esta lista está vazia"

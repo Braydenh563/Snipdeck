@@ -8,88 +8,88 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgid "A list keeps related snippets together, like replies or addresses."
-msgstr ""
+msgstr "Una lista agrupa fragmentos relacionados, como respuestas o direcciones."
 
 msgid "Add list"
-msgstr ""
+msgstr "Añadir lista"
 
 msgid "Board: {}"
-msgstr ""
+msgstr "Tablero: {}"
 
 msgid "Boards"
-msgstr ""
+msgstr "Tableros"
 
 msgid "Clear search"
-msgstr ""
+msgstr "Borrar búsqueda"
 
 msgid "Close panel"
-msgstr ""
+msgstr "Cerrar panel"
 
 msgid "Copies to clipboard"
-msgstr ""
+msgstr "Se copia al portapapeles"
 
 msgid "Copy"
-msgstr ""
+msgstr "Copiar"
 
 msgid "Copy something, then save it here from the clipboard."
-msgstr ""
+msgstr "Copia algo y luego guárdalo aquí desde el portapapeles."
 
 msgid "Copy ↵"
-msgstr ""
+msgstr "Copiar ↵"
 
 msgid "Enter"
-msgstr ""
+msgstr "Enter"
 
 msgid "Keep on top"
-msgstr ""
+msgstr "Siempre encima"
 
 msgid "Lists"
-msgstr ""
+msgstr "Listas"
 
 msgid "Loading"
-msgstr ""
+msgstr "Cargando"
 
 msgid "New list"
-msgstr ""
+msgstr "Nueva lista"
 
 msgid "No lists yet"
-msgstr ""
+msgstr "Aún no hay listas"
 
 msgid "No matches"
-msgstr ""
+msgstr "Sin coincidencias"
 
 msgid "Nothing on this board matches “{}”."
-msgstr ""
+msgstr "Nada en este tablero coincide con “{}”."
 
 msgid "Paste"
 msgstr "Pegar"
 
 msgid "Paste ↵"
-msgstr ""
+msgstr "Pegar ↵"
 
 msgid "Pastes into {}"
-msgstr ""
+msgstr "Pega en {}"
 
 msgid "Pastes into {} · {}"
-msgstr ""
+msgstr "Pega en {} · {}"
 
 msgid "Pinned snippets"
-msgstr ""
+msgstr "Fragmentos fijados"
 
 msgid "Save from clipboard"
-msgstr ""
+msgstr "Guardar desde el portapapeles"
 
 msgid "Search snippets"
-msgstr ""
+msgstr "Buscar fragmentos"
 
 msgid "Shift Enter"
-msgstr ""
+msgstr "Shift Enter"
 
 msgid "Snipdeck"
-msgstr ""
+msgstr "Snipdeck"
 
 msgid "Snippets"
-msgstr ""
+msgstr "Fragmentos"
 
 msgid "This list is empty"
-msgstr ""
+msgstr "Esta lista está vacía"

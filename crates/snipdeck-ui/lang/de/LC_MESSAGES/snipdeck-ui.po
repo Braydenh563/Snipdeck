@@ -8,88 +8,88 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgid "A list keeps related snippets together, like replies or addresses."
-msgstr ""
+msgstr "Eine Liste hält zusammengehörige Textbausteine beisammen, etwa Antworten oder Adressen."
 
 msgid "Add list"
-msgstr ""
+msgstr "Liste hinzufügen"
 
 msgid "Board: {}"
-msgstr ""
+msgstr "Board: {}"
 
 msgid "Boards"
-msgstr ""
+msgstr "Boards"
 
 msgid "Clear search"
-msgstr ""
+msgstr "Suche löschen"
 
 msgid "Close panel"
-msgstr ""
+msgstr "Panel schließen"
 
 msgid "Copies to clipboard"
-msgstr ""
+msgstr "Wird in die Zwischenablage kopiert"
 
 msgid "Copy"
-msgstr ""
+msgstr "Kopieren"
 
 msgid "Copy something, then save it here from the clipboard."
-msgstr ""
+msgstr "Kopiere etwas und speichere es dann hier aus der Zwischenablage."
 
 msgid "Copy ↵"
-msgstr ""
+msgstr "Kopieren ↵"
 
 msgid "Enter"
-msgstr ""
+msgstr "Enter"
 
 msgid "Keep on top"
-msgstr ""
+msgstr "Immer im Vordergrund"
 
 msgid "Lists"
-msgstr ""
+msgstr "Listen"
 
 msgid "Loading"
-msgstr ""
+msgstr "Wird geladen"
 
 msgid "New list"
-msgstr ""
+msgstr "Neue Liste"
 
 msgid "No lists yet"
-msgstr ""
+msgstr "Noch keine Listen"
 
 msgid "No matches"
-msgstr ""
+msgstr "Keine Treffer"
 
 msgid "Nothing on this board matches “{}”."
-msgstr ""
+msgstr "Auf diesem Board passt nichts zu „{}“."
 
 msgid "Paste"
 msgstr "Einfügen"
 
 msgid "Paste ↵"
-msgstr ""
+msgstr "Einfügen ↵"
 
 msgid "Pastes into {}"
-msgstr ""
+msgstr "Einfügen in {}"
 
 msgid "Pastes into {} · {}"
-msgstr ""
+msgstr "Einfügen in {} · {}"
 
 msgid "Pinned snippets"
-msgstr ""
+msgstr "Angeheftete Textbausteine"
 
 msgid "Save from clipboard"
-msgstr ""
+msgstr "Aus der Zwischenablage speichern"
 
 msgid "Search snippets"
-msgstr ""
+msgstr "Textbausteine suchen"
 
 msgid "Shift Enter"
-msgstr ""
+msgstr "Shift Enter"
 
 msgid "Snipdeck"
-msgstr ""
+msgstr "Snipdeck"
 
 msgid "Snippets"
-msgstr ""
+msgstr "Textbausteine"
 
 msgid "This list is empty"
-msgstr ""
+msgstr "Diese Liste ist leer"

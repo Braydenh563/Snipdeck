@@ -8,88 +8,88 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 msgid "A list keeps related snippets together, like replies or addresses."
-msgstr ""
+msgstr "リストには、返信文や住所など関連するスニペットをまとめておけます。"
 
 msgid "Add list"
-msgstr ""
+msgstr "リストを追加"
 
 msgid "Board: {}"
-msgstr ""
+msgstr "ボード: {}"
 
 msgid "Boards"
-msgstr ""
+msgstr "ボード"
 
 msgid "Clear search"
-msgstr ""
+msgstr "検索をクリア"
 
 msgid "Close panel"
-msgstr ""
+msgstr "パネルを閉じる"
 
 msgid "Copies to clipboard"
-msgstr ""
+msgstr "クリップボードにコピーされます"
 
 msgid "Copy"
-msgstr ""
+msgstr "コピー"
 
 msgid "Copy something, then save it here from the clipboard."
-msgstr ""
+msgstr "何かをコピーしてから、クリップボードからここに保存できます。"
 
 msgid "Copy ↵"
-msgstr ""
+msgstr "コピー ↵"
 
 msgid "Enter"
-msgstr ""
+msgstr "Enter"
 
 msgid "Keep on top"
-msgstr ""
+msgstr "常に前面に表示"
 
 msgid "Lists"
-msgstr ""
+msgstr "リスト"
 
 msgid "Loading"
-msgstr ""
+msgstr "読み込み中"
 
 msgid "New list"
-msgstr ""
+msgstr "新しいリスト"
 
 msgid "No lists yet"
-msgstr ""
+msgstr "リストはまだありません"
 
 msgid "No matches"
-msgstr ""
+msgstr "一致する項目がありません"
 
 msgid "Nothing on this board matches “{}”."
-msgstr ""
+msgstr "このボードに「{}」に一致するものはありません。"
 
 msgid "Paste"
 msgstr "貼り付け"
 
 msgid "Paste ↵"
-msgstr ""
+msgstr "貼り付け ↵"
 
 msgid "Pastes into {}"
-msgstr ""
+msgstr "{} に貼り付け"
 
 msgid "Pastes into {} · {}"
-msgstr ""
+msgstr "{} · {} に貼り付け"
 
 msgid "Pinned snippets"
-msgstr ""
+msgstr "ピン留めしたスニペット"
 
 msgid "Save from clipboard"
-msgstr ""
+msgstr "クリップボードから保存"
 
 msgid "Search snippets"
-msgstr ""
+msgstr "スニペットを検索"
 
 msgid "Shift Enter"
-msgstr ""
+msgstr "Shift Enter"
 
 msgid "Snipdeck"
-msgstr ""
+msgstr "Snipdeck"
 
 msgid "Snippets"
-msgstr ""
+msgstr "スニペット"
 
 msgid "This list is empty"
-msgstr ""
+msgstr "このリストは空です"
