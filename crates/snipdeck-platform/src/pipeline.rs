@@ -387,7 +387,7 @@ mod tests {
     fn copy_mode_never_injects_keys() {
         let mut w = World::new();
         assert_eq!(w.run(UseMode::Copy, &PASTE), Ok(UseOutcome::Copied));
-        assert!(w.keyboard.sent.is_empty());
+        assert_eq!(w.keyboard.sent, Vec::<Vec<KeyEvent>>::new());
         assert_eq!(w.clipboard.log, ["persistent:2"]);
     }
 
@@ -403,7 +403,7 @@ mod tests {
         );
         let none = Route::Copy(CopyReason::NoTarget);
         assert_eq!(w.run(UseMode::Paste, &none), Ok(UseOutcome::Copied));
-        assert!(w.keyboard.sent.is_empty());
+        assert_eq!(w.keyboard.sent, Vec::<Vec<KeyEvent>>::new());
     }
 
     #[test]
