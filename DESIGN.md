@@ -18,7 +18,7 @@ precise and tabular. It should feel like a well-made physical tool, not a dashbo
 2. **Ink, not blue, for commitment.** Primary buttons are near-black ink. Blue only ever means *selected, focused, a link, or a template field*.
 3. **The deck edge.** When more cards sit below the fold, two offset card edges peek out at the bottom of the list instead of a fade.
 4. **Card pull.** Using an item lifts its card slightly, as if you'd pulled it from the deck.
-5. **System material.** Window chrome sits on Windows 11 Mica, so the panel belongs to the desktop. Cards stay opaque card stock on top.
+5. **System material (enhancement, not baseline).** On Windows 11 build 22621+ the window chrome may sit on Mica so the panel belongs to the desktop; cards stay opaque card stock on top. The **baseline is solid `bg.app` chrome**, which is what the panel ships if Mica proves unreliable: Mica goes flat grey when its window is inactive, and the panel is never the active window (M0 S4, unverified on Windows).
 
 - **Design read:** Windows-first desktop utility for people who paste a lot · restrained/professional · own brand, Linear/Raycast family.
 - **Dials:** Creativity = Balanced · Density = Packed-balanced · Variance = Uniform · Motion = Low.
@@ -201,7 +201,7 @@ Icons: **Phosphor (Regular)**, MIT licence, 16px in rows and 20px in toolbars. T
 - Header: 40px. Tab bar: 32px. Padding: 8px.
 - **Target footer** (32px): "Pastes into **Outlook** · New message". It always shows where a click will go, and reads "Copies to clipboard" when no target is known.
 - Docked to an edge it auto-hides to a **6px tab** in the board's accent colour, and reveals on hover after 150ms or by hotkey.
-- **Chrome on Mica** (header, tab bar, footer): `DWMWA_SYSTEMBACKDROP_TYPE = DWMSBT_MAINWINDOW`. The card area sits on `bg.app`. Falls back to solid `bg.app` on Windows 10, when "Transparency effects" is off, or in high-contrast mode.
+- **Chrome** (header, tab bar, footer): solid `bg.app` baseline. Optional **Mica** enhancement on Windows 11 22621+ (`DWMWA_SYSTEMBACKDROP_TYPE = DWMSBT_MAINWINDOW`, software renderer, chrome transparent, cards opaque); it is switched off on Windows 10, with "Transparency effects" off, in high-contrast mode, and for the never-active panel unless the S4 workaround proves reliable. The main window (which is activated normally) is where Mica is expected to look right.
 - **DeckEdge:** when the list overflows, the bottom 10px shows two card edges, each 4px tall and inset 6px / 12px per side, in `bg.surface` with a `border.subtle` outline. The top edge shows the same once scrolled. No gradient fades.
 
 ### Picker
@@ -265,6 +265,11 @@ Layering: window → cards → lifted (drag) → popovers/menus → toasts → c
 | `motion.quick` | 140ms | out | card pull (lift), tab underline slide, menu open |
 | `motion.settle` | 200ms | in-out `(0.4,0,0.2,1)` | card pull settle, after a 700ms hold |
 | `motion.panel` | 200ms | out / in `(0.4,0,1,1)` | panel reveal from edge / hide |
+
+### Text entry and IME (from M0 S2)
+- Composition text is drawn inline as a selection highlight; there is no underline or active-clause marker in Slint 1.18. Accepted for v1.
+- Search fields keep the end of a long composition visible (custom field, small `.slint` change).
+- Latin text uses IBM Plex Sans; Han/Kana/Hangul fall back in the per-locale order set in code, never left to the system pick.
 
 ## 9. Agent Prompt Guide
 
