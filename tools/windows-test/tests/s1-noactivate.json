@@ -13,7 +13,7 @@
     {
       "id": "1", "gate": true,
       "title": "Panel opens without stealing focus",
-      "do": "Click the terminal, then click an empty area of the Snipdeck panel.",
+      "do": "Click this terminal window, then click an EMPTY area of the Snipdeck panel (not an item yet: this terminal is the paste target, so clicking an item would type into the wizard). The panel footer should read 'Pastes into WindowsTerminal.exe'.",
       "expect": "The panel appears WITHOUT taking focus from the terminal. No 'entry point not found' error. No taskbar button (note any brief flash at start-up). Not listed in Alt+Tab. Stays above other windows. Clicking the panel leaves the terminal's title bar active."
     },
     {

@@ -56,19 +56,43 @@ function Say-Wrapped([string]$Text, [int]$Indent = 2, [string]$Color = 'Gray') {
 }
 
 function Read-Choice([string]$Prompt, [string]$Keys, [string]$EnterKey = '') {
-    while ($true) {
-        Write-Host $Prompt -NoNewline -ForegroundColor Cyan
-        $ch = ''
-        try {
-            $k = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
-            $ch = ([string]$k.Character).ToLower()
-            if (($ch -eq "`r" -or $ch -eq "`n") -and $EnterKey) { $ch = $EnterKey }
-        } catch {
-            $line = (Read-Host).Trim().ToLower()
-            $ch = if ($line.Length -gt 0) { $line.Substring(0, 1) } elseif ($EnterKey) { $EnterKey } else { '' }
+    # Ctrl+C would also close the test app and lose the session, so it is turned into a normal key here.
+    $oldCtrlC = $null
+    try { $oldCtrlC = [Console]::TreatControlCAsInput; [Console]::TreatControlCAsInput = $true } catch { }
+    try {
+        while ($true) {
+            try { $Host.UI.RawUI.FlushInputBuffer() } catch { }
+            Write-Host $Prompt -NoNewline -ForegroundColor Cyan
+            $ch = ''
+            $key = $null
+            try { $key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown') } catch { $key = $null }
+            if ($key) {
+                if ([int]$key.Character -eq 3) {
+                    Write-Host ''
+                    Say '  Ctrl+C is turned off here (it would close the test app). Press q to finish. To copy text, select it and press Ctrl+Shift+C.' Yellow
+                    continue
+                }
+                # Pasted text arrives as a burst of keys. Ignore it so the test apps cannot trigger wizard commands.
+                Start-Sleep -Milliseconds 50
+                $burst = $false
+                try { $burst = $Host.UI.RawUI.KeyAvailable } catch { }
+                if ($burst) {
+                    try { $Host.UI.RawUI.FlushInputBuffer() } catch { }
+                    Write-Host ''
+                    Say '  (ignored: that looked like pasted text, not a key press)' Yellow
+                    continue
+                }
+                $ch = ([string]$key.Character).ToLower()
+                if (($ch -eq "`r" -or $ch -eq "`n") -and $EnterKey) { $ch = $EnterKey }
+            } else {
+                $line = (Read-Host).Trim().ToLower()
+                $ch = if ($line.Length -gt 0) { $line.Substring(0, 1) } elseif ($EnterKey) { $EnterKey } else { '' }
+            }
+            if ($ch -and $Keys.Contains($ch)) { Write-Host $ch; return $ch }
+            Write-Host ''
         }
-        if ($ch -and $Keys.Contains($ch)) { Write-Host $ch; return $ch }
-        Write-Host ''
+    } finally {
+        try { if ($null -ne $oldCtrlC) { [Console]::TreatControlCAsInput = $oldCtrlC } } catch { }
     }
 }
 
@@ -79,9 +103,7 @@ function Ask-YesNo([string]$Question, [bool]$Default = $true) {
 }
 
 function Pause-Enter([string]$Text = '  Press Enter to continue...') {
-    Write-Host $Text -NoNewline -ForegroundColor Cyan
-    try { [void]$Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown') } catch { [void](Read-Host) }
-    Write-Host ''
+    [void](Read-Choice $Text 'x' 'x')
 }
 
 function Write-Banner([string]$Title, [string]$Sub = '') {
@@ -528,6 +550,7 @@ function Show-Test($SpikeDef, $T, [int]$Index, [int]$Total, $Existing) {
     if ($Existing) { Say "  Previous answer for this step: $($Existing.status)  $($Existing.note)" DarkYellow }
     Say ''
     Say '  [p] pass   [f] fail   [s] skip   [n] add note   [c] screenshot   [l] app log   [r] relaunch   [b] back   [q] finish now' DarkGray
+    Say '  Tip: Ctrl+C is turned off here. Copy text with Ctrl+Shift+C. Pasted text is ignored.' DarkGray
 }
 
 function Run-Spike($SpikeDef, $Tests, $State) {
