@@ -1,0 +1,25 @@
+[package]
+name = "s2-ime"
+version = "0.0.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-only"
+description = "Snipdeck spike S2: IME / CJK input in Slint TextInput, LineEdit and TextEdit"
+
+# Standalone crate: deliberately not part of any parent workspace.
+[workspace]
+
+[features]
+default = []
+# Opt-in Skia renderer (needs the MSVC toolchain on Windows; skia-bindings has no
+# prebuilt binaries for windows-gnu). Run with: cargo run --features skia
+skia = ["slint/renderer-skia"]
+
+[dependencies]
+# Pinned to the exact version that was source-reviewed for docs/spikes/S2-ime.md.
+# `unstable-fontique-011` exposes the shared font collection so we can pin the CJK
+# fallback order (Yu Gothic UI / Microsoft YaHei UI / Malgun Gothic) per locale.
+slint = { version = "=1.18.1", features = ["unstable-fontique-011"] }
+
+[build-dependencies]
+slint-build = "=1.18.1"

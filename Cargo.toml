@@ -1,0 +1,63 @@
+[workspace]
+resolver = "3"
+# The M0 spikes under `spikes/` declare their own empty `[workspace]` and stay outside.
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+# The toolchain this workspace is built and verified with (see rust-toolchain.toml).
+rust-version = "1.97"
+license = "GPL-3.0-only"
+repository = "https://github.com/Braydenh563/Backpack"
+publish = false
+
+[workspace.dependencies]
+snipdeck-core = { path = "crates/snipdeck-core" }
+
+argon2 = { version = "0.6.0", default-features = false, features = ["alloc", "zeroize"] }
+base64 = { version = "0.23.1", default-features = false, features = ["std"] }
+blake3 = "1.8.7"
+chacha20poly1305 = { version = "0.11.0", default-features = false, features = ["alloc", "zeroize"] }
+ed25519-dalek = { version = "3.0.0", default-features = false }
+getrandom = "0.4.3"
+jiff = { version = "0.2.38", default-features = false, features = ["std"] }
+nucleo-matcher = "0.3.1"
+proptest = "1.12.0"
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+tempfile = "3.27.0"
+thiserror = "2.0.21"
+unicode-normalization = "0.1.25"
+unicode-segmentation = "1.13.3"
+uuid = { version = "1.28.0", default-features = false, features = ["std", "v7"] }
+zeroize = "1.9.1"
+# Pure-Rust deflate only: `.snipdeck` archives never need the other codecs, encryption or timestamps.
+zip = { version = "9.0.4", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+
+[workspace.lints.rust]
+# `deny` rather than `forbid` so that `snipdeck-platform` can allow it per module;
+# crates without any unsafe code add `#![forbid(unsafe_code)]` to their root.
+unsafe_code = "deny"
+missing_docs = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+# Pedantic lints that cost more than they catch in this codebase:
+# `BoardId` in `ids`, `ListAccent` in `list` read better than stuttering-free names.
+module_name_repetitions = "allow"
+# Every getter would need `#[must_use]`; the compiler already warns on unused `Result`s.
+must_use_candidate = "allow"
+
+# Restriction lints we opt into. Tests may unwrap (see clippy.toml).
+unwrap_used = "warn"
+expect_used = "warn"
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+allow_attributes_without_reason = "warn"
+undocumented_unsafe_blocks = "warn"

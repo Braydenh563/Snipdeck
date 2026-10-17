@@ -1,0 +1,274 @@
+// S3 long-text spike: benchmark windows. Not product UI; literal sizes are fine here.
+import { TextEdit, ListView } from "std-widgets.slint";
+
+// ---------------------------------------------------------------------------
+// 1. Stock TextEdit
+// ---------------------------------------------------------------------------
+export component EditorWindow inherits Window {
+    in property <bool> wrap: true;
+    in-out property <string> text <=> te.text;
+    in-out property <length> scroll-y <=> te.content-y;
+    out property <length> content-h: te.content-height;
+    out property <length> content-w: te.content-width;
+    out property <length> visible-h: te.visible-height;
+    callback edited(string);
+
+    public function focus-editor() {
+        te.focus();
+    }
+    public function select-range(anchor: int, focus: int) {
+        te.set-selection-offsets(anchor, focus);
+    }
+    public function select-all() {
+        te.select-all();
+    }
+
+    te := TextEdit {
+        width: 100%;
+        height: 100%;
+        wrap: root.wrap ? TextWrap.word-wrap : TextWrap.no-wrap;
+        font-size: 14px;
+        edited(t) => { root.edited(t); }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 2. ItemCard-like row (comfortable variant, fixed 64px)
+// ---------------------------------------------------------------------------
+export struct CardData {
+    number: string,
+    title: string,
+    preview: string,
+    list: string,
+}
+
+component ItemCard inherits Rectangle {
+    in property <CardData> data;
+    in property <bool> selected;
+    height: 64px;
+    background: transparent;
+    Rectangle {
+        x: 6px;
+        y: 3px;
+        width: parent.width - 12px;
+        height: parent.height - 6px;
+        border-radius: 8px;
+        border-width: 1px;
+        border-color: #e3e3e8;
+        background: root.selected ? #eef2ff : #ffffff;
+        Text {
+            x: 0px;
+            y: 6px;
+            width: 24px;
+            text: root.data.number;
+            font-size: 11px;
+            horizontal-alignment: center;
+            color: #8a8a94;
+        }
+        Rectangle {
+            x: 24px;
+            y: 6px;
+            width: 1px;
+            height: parent.height - 12px;
+            background: #e3e3e8;
+        }
+        Text {
+            x: 32px;
+            y: 5px;
+            width: parent.width - 40px - 60px;
+            text: root.data.title;
+            font-size: 13px;
+            font-weight: 600;
+            overflow: elide;
+        }
+        Text {
+            x: parent.width - 60px;
+            y: 6px;
+            width: 52px;
+            text: root.data.list;
+            font-size: 11px;
+            horizontal-alignment: right;
+            overflow: elide;
+            color: #8a8a94;
+        }
+        Text {
+            x: 32px;
+            y: 24px;
+            width: parent.width - 40px;
+            height: 30px;
+            text: root.data.preview;
+            font-size: 12px;
+            wrap: word-wrap;
+            overflow: elide;
+            color: #5a5a66;
+        }
+    }
+}
+
+export component ListWindow inherits Window {
+    in property <[CardData]> items;
+    in property <int> selected: -1;
+    in-out property <length> scroll-y <=> lv.content-y;
+    out property <length> content-h: lv.content-height;
+    lv := ListView {
+        width: 100%;
+        height: 100%;
+        for item[i] in root.items: ItemCard {
+            data: item;
+            selected: i == root.selected;
+        }
+    }
+}
+
+// No culling: every row is instantiated inside a plain Flickable.
+export component FlickAllWindow inherits Window {
+    in property <[CardData]> items;
+    in-out property <length> scroll-y <=> f.content-y;
+    f := Flickable {
+        width: 100%;
+        height: 100%;
+        content-height: root.items.length * 64px;
+        for item[i] in root.items: ItemCard {
+            y: i * 64px;
+            width: parent.width;
+            data: item;
+        }
+    }
+}
+
+// Manual culling: Rust keeps a small pool of rows positioned at absolute y.
+export struct PooledCard {
+    y: length,
+    data: CardData,
+}
+
+export component FlickCulledWindow inherits Window {
+    in property <int> total-rows;
+    in property <[PooledCard]> pool;
+    in-out property <length> scroll-y <=> f.content-y;
+    f := Flickable {
+        width: 100%;
+        height: 100%;
+        content-height: root.total-rows * 64px;
+        for row in root.pool: ItemCard {
+            y: row.y;
+            width: parent.width;
+            data: row.data;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 3. Fallback: virtualized rope-backed text viewer/editor (monospace)
+//    Rust owns the text (ropey), wrap, caret and selection. Slint only draws
+//    the visible visual rows, selection rectangles and caret.
+// ---------------------------------------------------------------------------
+export struct VisualRow {
+    y: length,
+    text: string,
+    line-no: string,
+}
+
+export struct SelRect {
+    x: length,
+    y: length,
+    w: length,
+}
+
+export component ViewerWindow inherits Window {
+    in property <[VisualRow]> rows;
+    in property <[SelRect]> sel;
+    in property <length> caret-x;
+    in property <length> caret-y;
+    in property <length> scroll-y;
+    in property <bool> caret-visible: true;
+    in property <length> line-height: 18px;
+    in property <length> gutter: 56px;
+    // scrollbar thumb, computed by Rust (0..1)
+    in property <float> thumb-pos;
+    in property <float> thumb-size: 1;
+    // probe for monospace advance
+    out property <length> char-w: probe.preferred-width / 10;
+    callback scrolled(length, length);
+    callback key(string, bool, bool);
+    forward-focus: fs;
+
+    probe := Text {
+        visible: false;
+        text: "0000000000";
+        font-family: "DejaVu Sans Mono";
+        font-size: 13px;
+    }
+
+    Rectangle {
+        background: #ffffff;
+        clip: true;
+        Rectangle {
+            x: 0px;
+            width: root.gutter - 6px;
+            background: #f6f6f8;
+        }
+        // Rows, selection and caret use absolute document y; only this offset moves on scroll,
+        // so rows that stay on screen are not touched (ring-buffer pool in Rust).
+        Rectangle {
+            y: -root.scroll-y;
+            height: 0px;
+            for s in root.sel: Rectangle {
+                x: root.gutter + s.x;
+                y: s.y;
+                width: s.w;
+                height: root.line-height;
+                background: #c7d7fe;
+            }
+            for r in root.rows: Rectangle {
+                y: r.y;
+                height: root.line-height;
+                Text {
+                    x: 0px;
+                    width: root.gutter - 12px;
+                    text: r.line-no;
+                    font-family: "DejaVu Sans Mono";
+                    font-size: 11px;
+                    color: #9a9aa4;
+                    horizontal-alignment: right;
+                    vertical-alignment: center;
+                }
+                Text {
+                    x: root.gutter;
+                    text: r.text;
+                    font-family: "DejaVu Sans Mono";
+                    font-size: 13px;
+                    vertical-alignment: center;
+                }
+            }
+            Rectangle {
+                x: root.gutter + root.caret-x;
+                y: root.caret-y;
+                width: 1px;
+                height: root.line-height;
+                background: #111111;
+                visible: root.caret-visible;
+            }
+        }
+        Rectangle {
+            x: parent.width - 8px;
+            y: root.thumb-pos * (parent.height - self.height);
+            width: 6px;
+            height: max(24px, root.thumb-size * parent.height);
+            border-radius: 3px;
+            background: #c0c0c8;
+        }
+        TouchArea {
+            scroll-event(e) => {
+                root.scrolled(e.delta-x, e.delta-y);
+                accept
+            }
+        }
+        fs := FocusScope {
+            key-pressed(e) => {
+                root.key(e.text, e.modifiers.shift, e.modifiers.control);
+                accept
+            }
+        }
+    }
+}

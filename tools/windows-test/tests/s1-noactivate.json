@@ -1,0 +1,130 @@
+{
+  "id": "S1",
+  "title": "Non-activating panel + paste into the target app",
+  "note": "docs/spikes/S1-noactivate.md",
+  "dir": "spikes/s1-noactivate",
+  "exe": "s1-noactivate",
+  "setup": [
+    "Snap THIS wizard window to the left half of the screen (Win+Left). The test panel opens near the right edge, stays on top, and has no minimise button. If it ever covers something, drag it by its title bar.",
+    "Turn on clipboard history: press Win+V, then 'Turn on' (needed to check the item never shows up in history).",
+    "Open a normal (non-admin) Notepad and a Windows Terminal / PowerShell window.",
+    "Have Chrome, Word and Paint available. Optional: Excel, KeePass, Remote Desktop."
+  ],
+  "tests": [
+    {
+      "id": "1", "auto": "Invoke-S1NoActivate", "gate": true,
+      "title": "Panel opens without stealing focus",
+      "do": "Click this terminal window, then click an EMPTY area of the Snipdeck panel (not an item yet: this terminal is the paste target, so clicking an item would type into the wizard). The panel footer should read 'Pastes into WindowsTerminal.exe'.",
+      "expect": "The panel appears WITHOUT taking focus from the terminal. No 'entry point not found' error. No taskbar button (note any brief flash at start-up). Not listed in Alt+Tab. Stays above other windows. Clicking the panel leaves the terminal's title bar active."
+    },
+    {
+      "id": "2", "auto": "Invoke-S1Paste", "gate": true, "clipboard": "BEFORE",
+      "title": "Notepad: click an item to paste",
+      "do": "The wizard has already put the word BEFORE on your clipboard. In Notepad type abc. Click 'Hello from Snipdeck' in the panel. Then press Ctrl+V in Notepad. Open Win+V history.",
+      "expect": "Footer before click: 'Pastes into Notepad.exe ...' with NO '(no caret seen)'. Text inserted at the caret, Notepad stays active with the caret blinking, status shows 'Pasted into ...'. Ctrl+V then pastes BEFORE (restore worked). Win+V history does NOT contain the item."
+    },
+    {
+      "id": "2a", "auto": "Invoke-S1UnicodePaste", "title": "Unicode and multi-line items",
+      "do": "Click the 'unicode' item (with the check mark, Japanese and emoji) and the two-line item.",
+      "expect": "Exact text, with line breaks intact."
+    },
+    {
+      "id": "2b", "auto": "Invoke-S1ShiftCopy", "gate": true,
+      "title": "Shift+click copies only",
+      "do": "Hold Shift and click an item. Then press Ctrl+V in Notepad.",
+      "expect": "Nothing inserted on the click. Status says 'Copied (Shift+click)'. Ctrl+V then pastes the item."
+    },
+    {
+      "id": "2c", "auto": "Invoke-S1AltWinPaste", "gate": true,
+      "title": "Alt and Win held while clicking",
+      "do": "Hold Alt and click an item. Then hold the Windows key and click an item. Release, then type normally.",
+      "expect": "Both paste. Notepad's menu bar is NOT activated (no underlined access keys) and the Start menu does NOT open. No stuck modifier keys afterwards."
+    },
+    {
+      "id": "2d", "auto": "Invoke-S1CtrlPaste", "gate": true,
+      "title": "Ctrl held while clicking",
+      "do": "Hold Ctrl and click an item.",
+      "expect": "Pasted once. Ctrl is not stuck afterwards."
+    },
+    {
+      "id": "2e",
+      "title": "Clipboard restore of images and files",
+      "do": "Copy an image in Paint, paste an item into Notepad, then Ctrl+V in Paint. Repeat with a file copied in Explorer, pasting back into a folder.",
+      "expect": "The image / file is back on the clipboard and pastes correctly."
+    },
+    {
+      "id": "2f", "optional": true,
+      "title": "Dragging the panel (informational)",
+      "do": "Drag the panel by its title bar while Notepad is active.",
+      "expect": "Just record whether Notepad loses activation (the real product will be frameless)."
+    },
+    {
+      "id": "3",
+      "title": "Word: paste and formatted restore",
+      "do": "Click into a Word document and repeat tests 2 to 2b. Then copy formatted text (bold plus a picture) in Word, paste an item into Notepad, and Ctrl+V back in Word.",
+      "expect": "Footer reports a caret and paste works. Formatting comes back after the restore. Record whether the picture is missing (EMF is not preserved). Optional: same with an Excel cell range."
+    },
+    {
+      "id": "4", "gate": true,
+      "title": "Chrome text field",
+      "do": "In Chrome click into a textarea (for example a GitHub comment box), then click an item. Repeat in the address bar.",
+      "expect": "Record the footer (caret seen, or '(no caret seen)'). The item is pasted at the caret."
+    },
+    {
+      "id": "4a", "gate": true,
+      "title": "Typing in the panel's search box, then Enter",
+      "do": "Put the caret in the MIDDLE of the Chrome textarea text. Click the panel's Search field, type kind, press Enter. Repeat starting from the address bar.",
+      "expect": "Typing goes to the panel (Chrome's title bar is inactive while typing). The list filters to 'Kind regards'. Enter re-activates Chrome and inserts the text AT the old caret position without replacing the text. Record any select-all. Record whether the address bar contents get replaced."
+    },
+    {
+      "id": "4b",
+      "title": "Search then Esc / click item / click Notepad",
+      "do": "Search, then press Esc. Search, then click an item. Search, then click into Notepad.",
+      "expect": "Esc: Chrome returns to the front with the caret where it was. Item click: pasted into Chrome. Notepad: Notepad stays in front (no bounce back to Chrome)."
+    },
+    {
+      "id": "5", "auto": "Invoke-S1ElevatedCopy", "autoTimeout": 150, "gate": true,
+      "title": "Elevated Notepad (admin) falls back to copy",
+      "do": "Start Notepad with 'Run as administrator', click into it, then click an item. Press Ctrl+V manually.",
+      "expect": "Footer: 'Copies to clipboard (Notepad.exe runs as admin; Snipdeck does not)'. Status 'Copied: ...'. Nothing injected. Ctrl+V pastes the item manually."
+    },
+    {
+      "id": "5b", "optional": true,
+      "title": "Same, but Snipdeck itself runs as admin",
+      "launch": { "elevated": true },
+      "do": "Snipdeck was relaunched as administrator (accept the UAC prompt). Click into the admin Notepad and click an item.",
+      "expect": "Footer becomes 'Pastes into ...' and pasting works."
+    },
+    {
+      "id": "6", "gate": true,
+      "title": "Password fields",
+      "launch": { "args": [] },
+      "do": "Use a password input on a web login page in Chrome, and (if available) a Win32 password box such as the KeePass master-password dialog. Click an item.",
+      "expect": "Paste works and shows as masked characters. The item is NOT in Win+V history. After about 0.5 s, Ctrl+V elsewhere gives the previous clipboard. Record the footer caret state."
+    },
+    {
+      "id": "7",
+      "title": "Fullscreen apps",
+      "do": "With the panel visible, open a fullscreen video (YouTube, press f), a PowerPoint slideshow, or a fullscreen game by Alt+Tab or click. Then Alt+Tab away.",
+      "expect": "The panel hides while the fullscreen app is in front and reappears afterwards WITHOUT taking focus. Known gap: F11 inside an already-focused window does not hide the panel until the next foreground change. Record it."
+    },
+    {
+      "id": "8",
+      "title": "No text target",
+      "do": "Click the desktop, then an item. Also try Calculator.",
+      "expect": "Record the footer and what happens. Ideally nothing bad happens."
+    },
+    {
+      "id": "9",
+      "title": "Terminals",
+      "do": "Windows Terminal (PowerShell), then vim inside it. Click an item each time.",
+      "expect": "Record whether the paste works. Vim is expected to treat Ctrl+V as visual-block, which confirms the need for per-app paste keys."
+    },
+    {
+      "id": "10", "optional": true,
+      "title": "Slow target: Remote Desktop",
+      "do": "Paste into a Remote Desktop session.",
+      "expect": "Record whether the remote side receives the item or the OLD clipboard (restore-timing risk)."
+    }
+  ]
+}

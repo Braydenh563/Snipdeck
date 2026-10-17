@@ -1,0 +1,28 @@
+[package]
+name = "snipdeck-portable"
+description = "Snipdeck data portability: .snipdeck export/import, importers (folder, Ditto, CopyQ) and the daily backup."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+snipdeck-core.workspace = true
+snipdeck-store = { path = "../snipdeck-store" }
+blake3.workspace = true
+jiff.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+zip.workspace = true
+
+[dev-dependencies]
+# `testing` exposes `MemoryKeyProvider`, for tests that use a real key ring.
+snipdeck-store = { path = "../snipdeck-store", features = ["testing"] }
+tempfile.workspace = true
+
+[lints]
+workspace = true

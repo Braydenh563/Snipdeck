@@ -1,0 +1,31 @@
+[package]
+name = "snipdeck-core"
+description = "Snipdeck domain types and pure logic: no I/O, no OS-specific code."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+base64.workspace = true
+ed25519-dalek.workspace = true
+jiff.workspace = true
+nucleo-matcher.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+unicode-segmentation.workspace = true
+uuid.workspace = true
+
+[build-dependencies]
+# `build.rs` validates the licence public key with the same code the tests use.
+base64.workspace = true
+ed25519-dalek.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

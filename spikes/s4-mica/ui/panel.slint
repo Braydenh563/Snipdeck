@@ -1,0 +1,412 @@
+// Spike S4: the Snipdeck panel layout from DESIGN.md §5 "Panel".
+// Chrome (header, tab bar, footer) is transparent so the DWM Mica backdrop shows through;
+// the card zone is opaque `bg.app`. Every colour comes from the generated tokens.slint
+// (design/tokens/palette.json) or, in high-contrast mode, from the system colours Rust passes in.
+
+import { Palette, Primitives } from "tokens.slint";
+
+export { Palette, Primitives }
+
+// DESIGN.md §5 Layout: 4px base unit, locked radii, panel metrics.
+export global Layout {
+    out property <length> space-0-5: 2px;
+    out property <length> space-1: 4px;
+    out property <length> space-2: 8px;
+    out property <length> space-3: 12px;
+    out property <length> space-4: 16px;
+    out property <length> radius-sm: 4px;
+    out property <length> radius-md: 6px;
+    out property <length> radius-lg: 8px;
+    out property <length> header-h: 40px;
+    out property <length> tab-h: 32px;
+    out property <length> footer-h: 32px;
+    out property <length> panel-w: 320px;
+    out property <length> gutter-w: 24px;
+    out property <length> hit-target: 28px;
+}
+
+// Everything the platform layer decides. Set from Rust on start-up and on every system change.
+export global SystemLook {
+    // true: chrome is painted fully transparent over the DWM backdrop.
+    in property <bool> mica-active: false;
+    in property <bool> high-contrast: false;
+    // Win10 / high contrast: DWM draws no coloured border, so Slint draws the 1px `border.default`.
+    in property <bool> draw-own-border: true;
+    // Windows "Text size" (Settings > Accessibility), 1.0 ..= 2.25. DPI is handled by Slint's scale factor.
+    in property <float> text-scale: 1.0;
+    // System colours (GetSysColor) used only while high-contrast is on.
+    in property <color> hc-window;
+    in property <color> hc-window-text;
+    in property <color> hc-highlight;
+    in property <color> hc-highlight-text;
+    in property <color> hc-gray-text;
+    in property <string> diagnostics: "";
+}
+
+// DESIGN.md §3 type scale, multiplied by the Windows text-scale factor.
+global Type {
+    out property <length> xs: 11px * SystemLook.text-scale;
+    out property <length> sm: 12px * SystemLook.text-scale;
+    out property <length> base: 13px * SystemLook.text-scale;
+    out property <length> md: 14px * SystemLook.text-scale;
+    out property <length> line-sm: 16px * SystemLook.text-scale;
+    out property <length> line-base: 20px * SystemLook.text-scale;
+}
+
+// Resolved colours: semantic tokens, swapped for system colours in high-contrast mode.
+global C {
+    property <bool> hc: SystemLook.high-contrast;
+    out property <color> chrome-bg: hc ? SystemLook.hc-window : SystemLook.mica-active ? transparent : Palette.bg-app;
+    out property <color> app-bg: hc ? SystemLook.hc-window : Palette.bg-app;
+    out property <color> surface: hc ? SystemLook.hc-window : Palette.bg-surface;
+    out property <color> hover: hc ? SystemLook.hc-window : Palette.bg-hover;
+    out property <color> border-subtle: hc ? SystemLook.hc-window-text : Palette.border-subtle;
+    out property <color> border-default: hc ? SystemLook.hc-window-text : Palette.border-default;
+    out property <color> text-primary: hc ? SystemLook.hc-window-text : Palette.text-primary;
+    out property <color> text-secondary: hc ? SystemLook.hc-window-text : Palette.text-secondary;
+    out property <color> text-tertiary: hc ? SystemLook.hc-window-text : Palette.text-tertiary;
+    out property <color> accent: hc ? SystemLook.hc-highlight : Palette.accent-default;
+    out property <color> focus: hc ? SystemLook.hc-highlight : Palette.focus-ring;
+    // Depth level 1 (DESIGN.md §6): tinted shadow in light, tone-only in dark.
+    out property <color> card-shadow: hc || Palette.dark ? transparent : Primitives.neutral-850.with-alpha(0.06);
+}
+
+struct ListTab {
+    name: string,
+    mark-light: color,
+    mark-dark: color,
+}
+
+struct Snip {
+    title: string,
+    preview: string,
+}
+
+component Tab inherits Rectangle {
+    in property <ListTab> tab;
+    in property <bool> active;
+    callback clicked;
+    min-height: Layout.hit-target;
+    horizontal-stretch: 0;
+    preferred-width: label.preferred-width + 2 * Layout.space-2;
+    border-radius: Layout.radius-md;
+    background: touch.has-hover && !active ? C.hover : transparent;
+
+    label := Text {
+        text: tab.name;
+        font-size: Type.sm;
+        font-weight: active ? 500 : 400;
+        color: active ? C.text-primary : C.text-secondary;
+        vertical-alignment: center;
+    }
+
+    // Active list: 2px underline in the list colour (600 light / 400 dark).
+    if active: Rectangle {
+        y: parent.height - 2px;
+        height: 2px;
+        width: label.preferred-width;
+        background: SystemLook.high-contrast ? C.accent : Palette.dark ? tab.mark-dark : tab.mark-light;
+    }
+
+    touch := TouchArea {
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+component ItemCard inherits Rectangle {
+    in property <int> index;
+    in property <Snip> snip;
+    border-radius: Layout.radius-lg;
+    border-width: 1px;
+    border-color: C.border-subtle;
+    background: touch.has-hover ? C.hover : C.surface;
+    drop-shadow-offset-y: 1px;
+    drop-shadow-blur: 2px;
+    drop-shadow-color: C.card-shadow;
+    min-height: body.preferred-height;
+
+    HorizontalLayout {
+        // Number gutter: the "index-card margin".
+        Rectangle {
+            width: Layout.gutter-w;
+            Text {
+                y: Layout.space-2;
+                text: index <= 9 ? index : "";
+                font-size: Type.xs;
+                color: C.text-tertiary;
+                horizontal-alignment: center;
+            }
+        }
+
+        Rectangle {
+            width: 1px;
+            background: C.border-subtle;
+        }
+
+        body := VerticalLayout {
+            padding: Layout.space-2;
+            spacing: Layout.space-1;
+            Text {
+                text: snip.title;
+                font-size: Type.base;
+                font-weight: 500;
+                color: C.text-primary;
+                overflow: elide;
+            }
+
+            Text {
+                text: snip.preview;
+                font-size: Type.sm;
+                color: C.text-secondary;
+                wrap: word-wrap;
+            }
+        }
+    }
+
+    touch := TouchArea { }
+}
+
+// Thin TouchArea along an edge that starts a native resize (frameless windows have no resize border).
+component ResizeEdge inherits TouchArea {
+    in property <int> direction;
+    callback start-resize(int);
+    pointer-event(e) => {
+        if e.kind == PointerEventKind.down && e.button == PointerEventButton.left {
+            root.start-resize(direction);
+        }
+    }
+}
+
+export component PanelWindow inherits Window {
+    title: "Snipdeck S4 spike";
+    no-frame: true;
+    // Required so the window's per-pixel alpha reaches DWM; the opaque parts are painted below.
+    background: transparent;
+    preferred-width: Layout.panel-w;
+    min-width: 260px;
+    max-width: 480px;
+    preferred-height: 600px;
+    min-height: 240px;
+
+    callback start-drag();
+    // Directions: 0 = east, 1 = west, 2 = south, 3 = south-east.
+    callback start-resize(int);
+    callback close-panel();
+
+    in-out property <int> active-tab: 0;
+    in property <string> footer-target: "Outlook";
+    in property <string> footer-detail: "New message";
+
+    property <[ListTab]> tabs: [
+        { name: "Email replies", mark-light: Primitives.teal-600, mark-dark: Primitives.teal-400 },
+        { name: "Addresses", mark-light: Primitives.amber-600, mark-dark: Primitives.amber-400 },
+        { name: "Code", mark-light: Primitives.violet-600, mark-dark: Primitives.violet-400 },
+    ];
+    property <[Snip]> snips: [
+        { title: "Thanks, received", preview: "Thanks for sending this over. I'll review it today and get back to you by end of day." },
+        { title: "Out of office", preview: "I'm out until Monday with limited access to email. For anything urgent, contact the team inbox." },
+        { title: "Meeting follow-up", preview: "Following up on today's call: the action items and owners are listed below." },
+        { title: "Invoice reminder", preview: "A gentle reminder that invoice {field:Number} is due on {date}." },
+    ];
+
+    VerticalLayout {
+        // ---------- Header (chrome on Mica) ----------
+        header := Rectangle {
+            min-height: max(Layout.header-h, Type.line-base + 2 * Layout.space-2);
+            background: C.chrome-bg;
+
+            TouchArea {
+                pointer-event(e) => {
+                    if e.kind == PointerEventKind.down && e.button == PointerEventButton.left {
+                        root.start-drag();
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                padding-left: Layout.space-3;
+                padding-right: Layout.space-2;
+                spacing: Layout.space-2;
+                Text {
+                    text: "Work";
+                    font-size: Type.md;
+                    font-weight: 500;
+                    color: C.text-primary;
+                    vertical-alignment: center;
+                }
+
+                Rectangle { }
+
+                close-btn := Rectangle {
+                    y: (parent.height - self.height) / 2;
+                    width: Layout.hit-target;
+                    height: Layout.hit-target;
+                    border-radius: Layout.radius-md;
+                    background: close-touch.has-hover ? C.hover : transparent;
+                    Text {
+                        text: "×";
+                        font-size: Type.md;
+                        color: C.text-secondary;
+                    }
+
+                    close-touch := TouchArea {
+                        clicked => {
+                            root.close-panel();
+                        }
+                    }
+                }
+            }
+        }
+
+        // ---------- Tab bar (chrome on Mica) ----------
+        Rectangle {
+            min-height: max(Layout.tab-h, Type.line-base + Layout.space-2);
+            background: C.chrome-bg;
+            HorizontalLayout {
+                padding-left: Layout.space-2;
+                padding-right: Layout.space-2;
+                padding-bottom: Layout.space-0-5;
+                spacing: Layout.space-1;
+                alignment: start;
+                for tab[i] in root.tabs: Tab {
+                    tab: tab;
+                    active: i == root.active-tab;
+                    clicked => {
+                        root.active-tab = i;
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            height: 1px;
+            background: C.border-subtle;
+        }
+
+        // ---------- Card zone (opaque bg.app) ----------
+        Rectangle {
+            vertical-stretch: 1;
+            background: C.app-bg;
+            Flickable {
+                VerticalLayout {
+                    padding: Layout.space-2;
+                    spacing: 6px;
+                    alignment: start;
+                    for snip[i] in root.snips: ItemCard {
+                        index: i + 1;
+                        snip: snip;
+                    }
+                    // Spike-only: what the platform layer decided, so the tester can read it off the window.
+                    Rectangle {
+                        border-radius: Layout.radius-lg;
+                        border-width: 1px;
+                        border-color: C.border-default;
+                        background: C.surface;
+                        min-height: diag.preferred-height + 2 * Layout.space-2;
+                        diag := Text {
+                            x: Layout.space-2;
+                            width: parent.width - 2 * Layout.space-2;
+                            text: SystemLook.diagnostics;
+                            font-size: Type.xs;
+                            color: C.text-secondary;
+                            wrap: word-wrap;
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            height: 1px;
+            background: C.border-subtle;
+        }
+
+        // ---------- Target footer (chrome on Mica) ----------
+        Rectangle {
+            min-height: max(Layout.footer-h, Type.line-sm + 2 * Layout.space-2);
+            background: C.chrome-bg;
+            HorizontalLayout {
+                padding-left: Layout.space-3;
+                padding-right: Layout.space-3;
+                spacing: Layout.space-1;
+                alignment: start;
+                Text {
+                    text: "Pastes into";
+                    font-size: Type.sm;
+                    color: C.text-secondary;
+                    vertical-alignment: center;
+                }
+
+                Text {
+                    text: root.footer-target;
+                    font-size: Type.sm;
+                    font-weight: 600;
+                    color: C.text-primary;
+                    vertical-alignment: center;
+                }
+
+                Text {
+                    text: "· " + root.footer-detail;
+                    font-size: Type.sm;
+                    color: C.text-secondary;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+        }
+    }
+
+    // Win10 / high contrast: no DWM border colour, so draw the depth-3 1px border ourselves.
+    if SystemLook.draw-own-border: Rectangle {
+        border-width: 1px;
+        border-color: C.border-default;
+        background: transparent;
+    }
+
+    // Native resize handles for the frameless window (panel width 260..480 per DESIGN.md).
+    ResizeEdge {
+        x: parent.width - 4px;
+        width: 4px;
+        direction: 0;
+        mouse-cursor: ew-resize;
+        start-resize(d) => {
+            root.start-resize(d);
+        }
+    }
+
+    ResizeEdge {
+        x: 0;
+        width: 4px;
+        direction: 1;
+        mouse-cursor: ew-resize;
+        start-resize(d) => {
+            root.start-resize(d);
+        }
+    }
+
+    ResizeEdge {
+        y: parent.height - 4px;
+        height: 4px;
+        width: parent.width - 12px;
+        x: 0;
+        direction: 2;
+        mouse-cursor: ns-resize;
+        start-resize(d) => {
+            root.start-resize(d);
+        }
+    }
+
+    ResizeEdge {
+        x: parent.width - 12px;
+        y: parent.height - 12px;
+        width: 12px;
+        height: 12px;
+        direction: 3;
+        mouse-cursor: nwse-resize;
+        start-resize(d) => {
+            root.start-resize(d);
+        }
+    }
+}

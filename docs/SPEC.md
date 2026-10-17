@@ -1,6 +1,6 @@
 # Snipdeck — Product Specification (v1)
 
-> Status: **Agreed** (grill rounds 1–2, 2026-10-17). Design language: [`DESIGN.md`](../DESIGN.md).
+> Status: **Agreed** (grill rounds 1–2, 2026-10-17), amended with M0 spike outcomes (see [`docs/spikes/README.md`](spikes/README.md)). Anything marked **(unverified)** depends on a Windows test that has not been run yet. Design language: [`DESIGN.md`](../DESIGN.md).
 > Working name: **Snipdeck** — kept in one constant (`APP_NAME`); trademark/domain check before release.
 
 ## 1. Problem
@@ -62,16 +62,17 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - Add: **+ From clipboard**, `Ctrl+V` / drag-drop onto panel, **quick new note** (inline), global
   **save-selection** hotkey (copies selection under the hood, restores clipboard).
 - Reorder by drag (also `Alt+↑/↓`); per-list sort: Manual (default) / Most used / Recently used.
-- **Search:** typing while the panel is focused filters across the current board (the tab row becomes the search field; `Esc` restores). `Ctrl+F` and the search icon also work.
+- **Search:** typing while the panel is focused filters across the current board (panel and picker match **title, tags and the first 64 characters of content** in memory with `nucleo`, multi-threaded: measured 4–8 ms for 10k items against the 16 ms budget; full-content matching was 22–57 ms and is not used there. The main window's search uses SQLite FTS5 for full content) (the tab row becomes the search field; `Esc` restores). `Ctrl+F` and the search icon also work.
 - **Recent tab:** when history is on, a clock tab sits at the far left of the tab row. Promote an entry by dragging it to a tab or with "Save to…".
 - **Target footer:** always shows where a click will go ("Pastes into Outlook · New message" / "Copies to clipboard").
+- **Target detection (M0 S1 + a first manual run):** `GetGUIThreadInfo` finds the focused control in classic apps (Notepad verified: paste and clipboard restore worked, item absent from Win+V history) but reports nothing for OneNote and sometimes for Windows Terminal. v1 therefore adds a **UI Automation fallback** (focused element supports text input / value pattern) and a per-app **paste-key table** (Ctrl+V, Ctrl+Shift+V for terminals, Shift+Insert). When neither method finds a target the footer says "Copies to clipboard" and a click copies only. **(unverified for UIA)**
 - **First-run position:** docked to the right edge, full height minus taskbar, always-on-top, auto-hide off (changeable in onboarding).
 - **Fullscreen apps:** the panel auto-hides while a fullscreen app is in front and returns afterwards; hotkeys keep working.
 - Inline quick-edit for short text and titles; everything else opens the Editor.
 - Detach a list tab → **Floating list** (Pro).
 
 ### 5.1a Use semantics (paste & clipboard)
-- **Paste** = write item to clipboard → `Ctrl+V` into Target → **restore the previous clipboard** (after ~300 ms, once the target has read it).
+- **Paste** = write item to clipboard → paste key into Target → **restore the previous clipboard**. A fixed 300 ms wait is only the fallback: the primary signal is **delayed rendering** (the item's formats are rendered on demand and the previous clipboard is restored once the target has asked for them, with a 2 s cap), because slow targets such as Remote Desktop may otherwise receive the old content (M0 S1). **(unverified)**
 - **Copy** (`Shift+click`, `Shift+Enter`, or no Target) = item stays on the clipboard.
 - **Paste as plain text:** `Alt+click` / `Alt+Enter`; per-item "always paste as plain text" option.
 - **Paste stack (Pro):** multi-select items → "Start stack". The panel shows the queue; the global **Paste next** hotkey (default `Ctrl+Alt+V`) pastes the head and advances. `Ctrl+V` is never hooked. `Esc` in the panel or finishing the queue ends the stack.
@@ -89,6 +90,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - Settings, onboarding, import/export, licence entry live here.
 
 ### 5.4 Editors
+- **Size limits (M0 S3, measured on a Linux VM with the software renderer):** Slint's `TextEdit` re-lays-out all text on every keystroke (about 1 ms per KB). Inline editing is therefore capped at **16 KB**. From 16 KB to **5 MB** an item opens in a **read-only virtualised viewer** (rope-based; find, copy, whole-text transforms; measured ≤ 12 ms per interaction). Text over 5 MB is rejected on capture with an explanatory toast (limit to be revisited after Windows measurements).
 - **Text**: plain editor (wrap, monospace toggle, line numbers for long text), find/replace,
   transforms (UPPER/lower/Title, trim, strip formatting, dedupe lines, sort lines),
   **template field inserter** with live preview. Rich-text items: formatting preserved on paste;
@@ -173,7 +175,7 @@ Licence key: offline Ed25519-signed token, no phone-home (ADR-0005).
 | Cold start → panel visible | < 400 ms |
 | Panel show (from hidden) | < 100 ms |
 | Hotkey → picker interactive | < 80 ms |
-| Search over 10k items | < 16 ms |
+| Search over 10k items (title + 64 chars, 4 threads) | < 16 ms (measured 4–8 ms on a Linux VM) |
 | Installer (excl. OCR pack) | < 15 MB |
 
 ## 10. Architecture (summary — see ADRs)
@@ -200,11 +202,19 @@ Dependency rule: `app → ui, platform, store, core`; `store → core`; `platfor
 clipboard format round-trips), Slint UI tests (testing backend), screenshot regression,
 `cargo deny` (licences/advisories), perf smoke benchmarks against §9.
 
-## 13. De-risking spikes (before feature work)
+## 13. De-risking spikes (M0 outcomes in [`docs/spikes/`](spikes/README.md))
 1. **Non-activating Slint window** (WS_EX_NOACTIVATE via raw HWND) + Target tracking + `SendInput` paste;
    handle panel text input (search/inline edit) by temporarily activating, then restoring Target.
 2. **IME / CJK input** in Slint `TextInput`.
 3. **Long-text editor performance** in Slint (multi-MB text).
+
+### 13a. Engineering constraints from M0
+- **Slint is pinned exactly** (`=1.18.x`); all winit/Win32 calls stay inside `snipdeck-platform` because `unstable-winit-030` and `unstable-fontique-011` can change in a minor release.
+- **Renderer: software renderer by default** on Windows. Skia renders transparent areas black (Slint #4120, #13572) and FemtoVG/OpenGL reportedly does on NVIDIA. Re-evaluate only with a Windows test.
+- **Lists use Slint `ListView`** (virtualised); a plain scroll area with every row built costs 69 ms per step at 10k items.
+- **CJK fonts:** bundle IBM Plex Sans, and set the Han/Kana/Hangul fallback order per UI locale (Yu Gothic UI / Microsoft YaHei UI / Malgun Gothic). Composition is drawn as a selection highlight (no underline); force-commit the composition before the panel deactivates (slint#10861); act on key-press only. **(unverified)**
+- **Windows "Text size"** is read explicitly; the tab bar scrolls instead of overflowing at 175%+.
+- Report upstream: software renderer panics selecting text on a no-wrap line wider than 32,767 px.
 
 ## 14. Delivery process
 1. **M0 spikes** (Opus): non-activating window + paste, IME, long-text editor, Mica in Slint. Each ends in a short findings note in `docs/spikes/`.

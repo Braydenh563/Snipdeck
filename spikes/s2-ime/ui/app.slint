@@ -1,0 +1,271 @@
+// Snipdeck spike S2 — IME / CJK input test bench.
+// See docs/spikes/S2-ime.md for the manual test script that goes with this window.
+
+import { LineEdit, TextEdit, Button, ListView } from "std-widgets.slint";
+
+// Bundled primary UI font (SIL OFL), per DESIGN.md §3. Imported fonts are embedded
+// in the binary and registered with Slint's shared font collection at start-up.
+import "../fonts/IBMPlexSans-Regular.ttf";
+import "../fonts/IBMPlexSans-Medium.ttf";
+
+component SectionTitle inherits Text {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d1b16;
+}
+
+component Hint inherits Text {
+    font-size: 12px;
+    color: #5f5b52;
+    wrap: word-wrap;
+}
+
+// A bare TextInput styled like a Snipdeck inline editor: IBM Plex Sans, 13/20,
+// multi-line, word-wrapped. This is the path Snipdeck's own components will take.
+component PlexInput inherits Rectangle {
+    in-out property <string> text <=> ti.text;
+    in property <bool> single-line: false;
+    out property <string> preedit: ti.preedit-text;
+    out property <bool> focused: ti.has-focus;
+    callback event(kind: string, text: string);
+
+    background: #ffffff;
+    border-width: ti.has-focus ? 2px : 1px;
+    border-color: ti.has-focus ? #3355cc : #c9c4b9;
+    border-radius: 4px;
+    min-height: root.single-line ? 32px : 84px;
+
+    ti := TextInput {
+        x: 8px;
+        y: 6px;
+        width: parent.width - 16px;
+        height: parent.height - 12px;
+        font-family: "IBM Plex Sans";
+        font-size: 13px;
+        single-line: root.single-line;
+        wrap: root.single-line ? no-wrap : word-wrap;
+        vertical-alignment: root.single-line ? center : top;
+        color: #1d1b16;
+        selection-background-color: #c7d3ff;
+        selection-foreground-color: #1d1b16;
+        edited => {
+            root.event("edited", self.text);
+        }
+        accepted => {
+            root.event("accepted", self.text);
+        }
+        cursor-position-changed(p) => {
+            root.event("cursor", "x=" + round(p.x / 1px) + " y=" + round(p.y / 1px));
+        }
+        key-pressed(e) => {
+            root.event("key-pressed", e.text);
+            reject
+        }
+    }
+}
+
+export component AppWindow inherits Window {
+    title: "Snipdeck S2 — IME / CJK spike";
+    preferred-width: 1100px;
+    preferred-height: 800px;
+    default-font-family: "IBM Plex Sans";
+    default-font-size: 13px;
+    background: #f7f5f0;
+
+    in property <string> info;
+    // Updated 4x/s by a Rust timer: if this stops changing, the event loop is frozen
+    // (see slint#5206 / #8716: freeze after switching to Microsoft Pinyin on Windows 10).
+    in property <string> heartbeat;
+    in property <[string]> checklist;
+    in property <[string]> log;
+    callback event(source: string, kind: string, text: string);
+    callback clear-log();
+
+    HorizontalLayout {
+        padding: 14px;
+        spacing: 16px;
+
+        // ---------------------------------------------------------------- inputs
+        VerticalLayout {
+            horizontal-stretch: 3;
+            spacing: 6px;
+            alignment: start;
+
+            Hint {
+                text: root.info + "   ·   heartbeat " + root.heartbeat;
+                color: #3355cc;
+            }
+
+            SectionTitle {
+                text: "1 · LineEdit (std-widgets, Fluent) — search box stand-in";
+            }
+
+            le-wide := LineEdit {
+                placeholder-text: "Type with the IME, e.g. nihongo → 日本語";
+                edited(t) => {
+                    root.event("LineEdit", "edited", t);
+                }
+                accepted(t) => {
+                    root.event("LineEdit", "accepted", t);
+                }
+                key-pressed(e) => {
+                    root.event("LineEdit", "key-pressed", e.text);
+                    reject
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                le-narrow := LineEdit {
+                    width: 160px;
+                    placeholder-text: "narrow (160px)";
+                    edited(t) => {
+                        root.event("LineEdit-narrow", "edited", t);
+                    }
+                    accepted(t) => {
+                        root.event("LineEdit-narrow", "accepted", t);
+                    }
+                }
+
+                Hint {
+                    vertical-alignment: center;
+                    text: "← long composition: does the field scroll to keep it visible?";
+                }
+            }
+
+            SectionTitle {
+                text: "2 · TextEdit (std-widgets, multi-line, word-wrap, 300px wide)";
+            }
+
+            TextEdit {
+                width: 300px;
+                height: 110px;
+                wrap: word-wrap;
+                text: "Snipdeck 0123456789 abcdefghijklmn wraps here →";
+                edited(t) => {
+                    root.event("TextEdit", "edited", t);
+                }
+                key-pressed(e) => {
+                    root.event("TextEdit", "key-pressed", e.text);
+                    reject
+                }
+            }
+
+            SectionTitle {
+                text: "3 · Custom TextInput (IBM Plex Sans 13px, multi-line)";
+            }
+
+            plex := PlexInput {
+                width: 300px;
+                height: 96px;
+                text: "Plex: The quick brown fox — then type CJK here:";
+                event(kind, text) => {
+                    root.event("PlexInput", kind, text);
+                }
+            }
+
+            Hint {
+                text: "PlexInput preedit-text (raw, from Slint): «" + plex.preedit + "»  len=" + plex.preedit.character-count;
+                color: plex.preedit == "" ? #5f5b52 : #b3261e;
+            }
+
+            SectionTitle {
+                text: "4 · Font fallback samples (static Text, 16px)";
+            }
+
+            // Characters chosen because their glyphs differ between Japanese and Simplified
+            // Chinese fonts (Han unification): 直 骨 角 今 海 次 化 写 刃 説.
+            VerticalLayout {
+                spacing: 2px;
+                Text {
+                    font-size: 16px;
+                    text: "default stack:      Aa 直骨角今海次化写刃説  かなカナ  简体中文  한국어";
+                }
+
+                Text {
+                    font-size: 16px;
+                    font-family: "Yu Gothic UI";
+                    text: "Yu Gothic UI:       Aa 直骨角今海次化写刃説  かなカナ";
+                }
+
+                Text {
+                    font-size: 16px;
+                    font-family: "Microsoft YaHei UI";
+                    text: "Microsoft YaHei UI: Aa 直骨角今海次化写刃説  简体中文";
+                }
+
+                Text {
+                    font-size: 16px;
+                    font-family: "Malgun Gothic";
+                    text: "Malgun Gothic:      Aa 한국어 입력";
+                }
+
+                Text {
+                    font-size: 16px;
+                    text: "no glyph anywhere:  [\u{10FFFD}] [\u{F0000}]  ← expect tofu boxes";
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                Button {
+                    text: "Focus LineEdit";
+                    clicked => {
+                        le-wide.focus();
+                    }
+                }
+
+                Button {
+                    text: "Clear fields";
+                    clicked => {
+                        le-wide.text = "";
+                        le-narrow.text = "";
+                        plex.text = "";
+                    }
+                }
+            }
+        }
+
+        // ------------------------------------------------------- checklist + log
+        VerticalLayout {
+            horizontal-stretch: 2;
+            spacing: 6px;
+
+            SectionTitle {
+                text: "Checklist (full script with expected results: docs/spikes/S2-ime.md)";
+            }
+
+            ListView {
+                vertical-stretch: 3;
+                for line in root.checklist: Hint {
+                    text: line;
+                }
+            }
+
+            HorizontalLayout {
+                SectionTitle {
+                    text: "Event log (newest first; also printed to the console)";
+                    vertical-alignment: center;
+                }
+
+                Button {
+                    text: "Clear";
+                    clicked => {
+                        root.clear-log();
+                    }
+                }
+            }
+
+            ListView {
+                vertical-stretch: 2;
+                for line in root.log: Text {
+                    font-family: "Consolas";
+                    font-size: 12px;
+                    text: line;
+                }
+            }
+        }
+    }
+}
