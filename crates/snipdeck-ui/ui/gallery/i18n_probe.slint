@@ -1,0 +1,12 @@
+import { Theme } from "../theme.slint";
+
+// Proves `@tr` extraction and bundled translations work with the headless harness.
+export component I18nProbe inherits Window {
+    width: 200px;
+    height: 40px;
+    background: Theme.bg-app;
+    Text {
+        text: @tr("Paste");
+        color: Theme.text-primary;
+    }
+}

@@ -75,6 +75,7 @@ fn main() {
     println!("cargo:rerun-if-changed=ui");
     println!("cargo:rerun-if-changed=fonts");
     println!("cargo:rerun-if-changed=icons");
+    println!("cargo:rerun-if-changed=lang");
 
     let text = fs::read_to_string(&palette_path)
         .unwrap_or_else(|e| panic!("reading {}: {e}", palette_path.display()));
@@ -88,6 +89,9 @@ fn main() {
     let debug_info = env::var("PROFILE").is_ok_and(|p| p != "release");
     let config = slint_build::CompilerConfiguration::new()
         .with_include_paths(vec![out_dir])
-        .with_debug_info(debug_info);
+        .with_debug_info(debug_info)
+        .with_bundled_translations("lang")
+        // Strings are keyed by text; add an explicit `@tr("context" => ...)` to disambiguate.
+        .with_default_translation_context(slint_build::DefaultTranslationContext::None);
     slint_build::compile_with_config("ui/lib.slint", config).expect("Slint compilation failed");
 }
