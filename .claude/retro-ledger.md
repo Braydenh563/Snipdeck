@@ -1,0 +1,3 @@
+# Retro ledger
+date | branch | tier | orchestrator | turns | ctx/turn | cost r/w/o | agents | delivered | waste signal | rule changed
+2026-10-17 | claude/clipboard-assistant-design-o1eool | big | opus-5-5 then sonnet-5-5 | 203 (+847 in subagents) | 396k main, 186k agents | 71/16/13 % main, 71/28/0 % agents | 14 | spec+ADRs+design, 4 M0 spikes, Windows test wizard + automation, M1 (core, store, licence, crypto, portable) with Opus review and fixes | context per turn far too high (one very long session, large tool outputs, many images); rework: 4 fake dry-run results files committed by my own test runs, CI red once from a newer Rust than the local one | none (first ledger line; a rule needs the same signal in 2+ lines)
