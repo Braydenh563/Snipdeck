@@ -56,7 +56,7 @@ the Windows job compiles the workspace, and the SPEC's M1-relevant behaviours ea
 
 | After | Owner action | Decides |
 |---|---|---|
-| M0 (pending) | Run S1, S2, S4 in the wizard (S1 first) | Slint stays, or the S1/S2 fallbacks in `docs/spikes/` |
+| M0 (S1 done: GO; S2 re-run pending, needs IMEs installed) | Re-run S2 with Japanese, Chinese, Korean keyboards; S4 W4-W7 | Slint stays, or the S2 fallback in `docs/spikes/` |
 | M2 | Run the platform steps | Paste, target detection, restore, hotkeys work on real apps |
 | M3 | Run the panel steps | Focus, IME in the real panel, DPI, Mica-or-solid choice |
 | M5 | Run capture/OCR steps | Snip overlay, OCR quality, history exclusion |

@@ -1,15 +1,15 @@
 # M0 spikes: summary
 
 Four throwaway prototypes (`spikes/`) to de-risk the choice of Slint before milestone work starts.
-Everything compiled, linted and cross-linked for Windows from Linux. **Nothing has run on Windows.**
-Only S3 produced measurements; S1, S2 and S4 are source-level analysis plus a test script.
+Everything compiled, linted and cross-linked for Windows from Linux. **First Windows run: 2026-10-17 (Windows 11 only), see [windows-results-20261017.md](windows-results-20261017.md).**
+S3 is measured on Linux; S1 and S4 are partly measured on Windows; S2 is still unverified (no IME was installed).
 
 | Spike | Question | Verdict | Verified | Unverified (needs Windows) |
 |---|---|---|---|---|
-| [S1](S1-noactivate.md) | Click the panel without stealing focus, then paste into the target | GO WITH CHANGES (provisional) | Compiles, lints, links | Whether focus is really preserved; paste into real apps |
-| [S2](S2-ime.md) | Japanese / Chinese input in Slint text fields | GO WITH CHANGES (provisional), risk MEDIUM | Compiles, lints, links, renders under Xvfb | All IME behaviour |
+| [S1](S1-noactivate.md) | Click the panel without stealing focus, then paste into the target | **GO** (with changes) | Windows 11: focus kept, paste into Notepad/Chrome, Shift copy-only, elevated fallback, password fields | Alt/Win modifier leak (fix needed); Word, terminals, fullscreen, Remote Desktop |
+| [S2](S2-ime.md) | Japanese / Chinese input in Slint text fields | GO WITH CHANGES (provisional), risk MEDIUM | Font fallback chain on Windows 11 | All IME behaviour (re-run with IMEs installed) |
 | [S3](S3-longtext.md) | Long text and 10k-row list performance | GO WITH CHANGES | Measured (Linux VM, software renderer) | Windows GPU numbers |
-| [S4](S4-mica.md) | Mica backdrop, corners, theme, DPI | GO WITH CHANGES (provisional) | Compiles, lints, links, solid-chrome render | Mica, corners, shadow, theme, DPI |
+| [S4](S4-mica.md) | Mica backdrop, corners, theme, DPI | GO WITH CHANGES (provisional) | Windows 11: DWM calls ok, theme switching, drag/resize | Mica visibility, text size, high contrast, multi-monitor, Windows 10; duplicate caption buttons to fix |
 
 ## Changes these results require
 
@@ -24,6 +24,8 @@ Only S3 produced measurements; S1, S2 and S4 are source-level analysis plus a te
 - **IME composition shows as a selection highlight** (no underline, no active-clause marker), and the candidate window is anchored at the start of the composition. Acceptable, but different from native fields. (S2)
 
 **Engineering**
+- **Modifier hygiene (S1 step 2c, measured):** Alt+click activates the target's menu bar and releasing Win opens Start. Mask Alt/Win (neutral key injection) or ignore clicks while they are held.
+- **Duplicate caption buttons (S4 W2, measured):** OS min/max/close draw over the app's own close button. Pick one.
 - Create the panel with `with_active(false)`; re-apply the panel's extended style in a window subclass because winit rewrites it; read Shift with `GetAsyncKeyState`. (S1)
 - Use the **software renderer** for transparent windows; Skia and FemtoVG have open transparency bugs on Windows (Slint #4120, #13572). (S4)
 - **Pin Slint exactly**; set the CJK font fallback order per UI locale; force-commit IME composition before the panel deactivates. (S2)

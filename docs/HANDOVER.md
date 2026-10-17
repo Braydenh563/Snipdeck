@@ -4,16 +4,15 @@ Read this first in a new session, then `docs/PLAN.md`, `docs/SPEC.md`, `DESIGN.m
 
 ## Where things stand
 
-- **Repo:** `Braydenh563/Snipdeck` (renamed from Backpack; the local folder is still `/home/user/Backpack`).
-  Branch `claude/clipboard-assistant-design-o1eool`, open **PR #2** (not merged). `main` holds only PR #1
-  (spec, ADRs, DESIGN.md, palette tokens, GPL-3.0).
+- **Repo:** `Braydenh563/Snipdeck`, local folder `/home/user/Snipdeck`. PR #1, #2 (M0/M1) and #3 (lean workflow) are merged into `main`.
 - **Product:** Snipdeck, a Windows-first sticky-note-style snippet deck in Rust + Slint. Decisions are in
   `docs/SPEC.md` (grill rounds 1-2), `docs/adr/0001-0007`, `DESIGN.md` ("calm, tactile deck": warm neutrals,
   Index Blue for selection only, ink primary buttons, IBM Plex, number gutter).
-- **M0 spikes (S1 focus-safe paste, S2 IME, S3 long text, S4 Mica):** all GO WITH CHANGES. Only S3 is
-  measured (Linux). S1/S2/S4 are **unverified on Windows** except one informal S1 check in Notepad (paste,
-  clipboard restore and Win+V exclusion worked; OneNote and Windows Terminal showed no focused control, so a UI
-  Automation fallback is planned). Results and constraints: `docs/spikes/README.md`.
+- **M0 spikes:** first real Windows run 2026-10-17 (Windows 11 only, quick mode): `docs/spikes/windows-results-20261017.md`.
+  **S1 = GO** (focus kept; paste into Notepad/Chrome; Shift copy-only; elevated fallback; password fields).
+  S1 fix needed: Alt+click opens the target's menu hints and releasing Win opens Start (step 2c).
+  S2 is **inconclusive** (no IME was installed, so nothing could be composed). S4: DWM calls ok, theme switching ok,
+  but OS caption buttons overlap the app's own close button. S3 measured on Linux. Constraints: `docs/spikes/README.md`.
 - **M1 (core, store, licence, crypto, portability): done and merged into the PR branch.** 488 tests, fmt/clippy/doc/deny
   clean on Rust 1.97 and 1.99.1, Windows target check passes. Opus review in `docs/reviews/M1-review.md`; all
   29 core/store findings fixed. Known gaps: `docs/PLAN.md` "M1 known gaps" (import atomic only by
@@ -26,15 +25,14 @@ Read this first in a new session, then `docs/PLAN.md`, `docs/SPEC.md`, `DESIGN.m
 
 ## What is blocked on the owner
 
-Run the S1 test script on a real Windows PC (`run-windows-tests.bat`, quick mode, S1 first, about 10 minutes)
-and paste the clipboard summary into the chat. **M2 (Windows platform layer) should not start until S1 passes.**
-The owner is short on time; the opt-in automation may cover S1 steps 1-2d and 5.
+- Optional re-run on Windows: S2 after adding Japanese / Chinese / Korean keyboards (`run-windows-tests.bat`, S2 only),
+  S1 step 2c after the modifier fix, and the untested S4 steps (W4-W7, Windows 10). None of these gate M2 start.
 
 ## Next steps
 
-1. When S1 results arrive: GO -> start M2 (`docs/PLAN.md`); NO-GO -> use the fallback in `docs/spikes/S1-noactivate.md`
-   (custom window adapter, or "re-focus last window" paste mode) and amend ADR-0003.
-2. Merge PR #2 once CI is green and the owner agrees (ask first; never merge unasked).
+1. **Start M2** (Windows platform layer, `docs/PLAN.md`); S1 gate is passed. Include the Alt/Win modifier masking and
+   decide the caption-button question (custom frame vs OS caption) in ADR-0003 / DESIGN.md.
+2. Re-run S2 with IMEs installed before building text-entry UI (M3+); if composition is unusable, see the S2 NO-GO plan.
 3. Build the store transaction/batch API before the import UI (M4).
 4. Set the real `SNIPDECK_LICENCE_PUBLIC_KEY` in the M6 release pipeline (see `docs/licensing.md`).
 
