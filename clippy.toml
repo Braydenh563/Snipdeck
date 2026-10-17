@@ -1,0 +1,4 @@
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+# `..` keeps Clippy's defaults (GitHub, JavaScript, …).
+doc-valid-idents = ["..", "SQLite", "UUIDv7", "BLAKE3", "FTS5", "XChaCha20-Poly1305", "Ed25519"]

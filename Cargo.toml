@@ -1,0 +1,46 @@
+[workspace]
+resolver = "3"
+# The M0 spikes under `spikes/` declare their own empty `[workspace]` and stay outside.
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+# The toolchain this workspace is built and verified with (see rust-toolchain.toml).
+rust-version = "1.97"
+license = "GPL-3.0-only"
+repository = "https://github.com/Braydenh563/Backpack"
+publish = false
+
+[workspace.dependencies]
+snipdeck-core = { path = "crates/snipdeck-core" }
+
+jiff = { version = "0.2.38", default-features = false, features = ["std"] }
+thiserror = "2.0.21"
+uuid = { version = "1.28.0", default-features = false, features = ["std", "v7"] }
+
+[workspace.lints.rust]
+# `deny` rather than `forbid` so that `snipdeck-platform` can allow it per module;
+# crates without any unsafe code add `#![forbid(unsafe_code)]` to their root.
+unsafe_code = "deny"
+missing_docs = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+# Pedantic lints that cost more than they catch in this codebase:
+# `BoardId` in `ids`, `ListAccent` in `list` read better than stuttering-free names.
+module_name_repetitions = "allow"
+# Every getter would need `#[must_use]`; the compiler already warns on unused `Result`s.
+must_use_candidate = "allow"
+
+# Restriction lints we opt into. Tests may unwrap (see clippy.toml).
+unwrap_used = "warn"
+expect_used = "warn"
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+allow_attributes_without_reason = "warn"
+undocumented_unsafe_blocks = "warn"

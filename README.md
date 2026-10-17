@@ -4,6 +4,8 @@ A sticky-note-style snippet deck for your desktop: keep the things you paste all
 
 - Spec: [`docs/SPEC.md`](docs/SPEC.md)
 - Decisions: [`docs/adr/`](docs/adr/)
+- Architecture: [`docs/architecture.md`](docs/architecture.md)
+- Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
 Status: design phase. Licensed GPL-3.0.
 
