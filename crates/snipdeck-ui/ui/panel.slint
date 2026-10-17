@@ -139,20 +139,41 @@ export component PanelWindow inherits Window {
     property <length> avg-row-h: root.rows.length == 0 ? Space.hit : max(Space.hit, list.content-height / root.rows.length);
     property <int> page-rows: max(1, floor(list.height / root.avg-row-h) - 1);
 
-    // Below 300px the footer drops its route hints. Set from `changed width`, not bound to `root.width`:
-    // a window's width follows its layout, so reading it inside the layout would be a binding loop.
+    // The footer drops its route hints below 300px (more at larger text sizes). Set from `changed`
+    // handlers, not bound to `root.width`: a window's width follows its layout, so reading it inside
+    // the layout would be a binding loop.
     property <bool> narrow: false;
+    property <float> text-scale: SystemLook.text-scale;
+    function update-narrow() {
+        root.narrow = root.width < 300px * root.text-scale;
+    }
 
     init => {
         Palette.dark = root.dark;
-        root.narrow = root.width < 300px;
+        root.update-narrow();
         search.focus();
     }
     changed dark => {
         Palette.dark = root.dark;
     }
     changed width => {
-        root.narrow = root.width < 300px;
+        root.update-narrow();
+    }
+    changed text-scale => {
+        root.update-narrow();
+    }
+    // A jump of more than a page lands on a row the ListView has not instantiated yet, so its position
+    // is unknown: estimate it from the average row height. Once the row exists, `reveal` places it exactly.
+    property <int> last-sel: 0;
+    changed sel => {
+        let jump = abs(root.sel - root.last-sel) > root.page-rows;
+        root.last-sel = root.sel;
+        if (root.sel == 0) {
+            list.content-y = 0px;
+        } else if (root.sel > 0 && jump) {
+            let centred = root.sel * root.avg-row-h - (list.height - root.avg-row-h) / 2;
+            list.content-y = min(0px, max(list.height - list.content-height, -centred));
+        }
     }
 
     used-timer := Timer {
@@ -361,6 +382,7 @@ export component PanelWindow inherits Window {
                     padding-bottom: Space.s1;
                     spacing: Space.s1;
                     switcher := BoardSwitcher {
+                        horizontal-stretch: 0;
                         board-name: root.board-name;
                         menu-open: root.board-menu-open;
                         a11y-label: @tr("Board: {}", root.board-name);
@@ -549,6 +571,7 @@ export component PanelWindow inherits Window {
                     phase: root.toast-phase;
                     undo-label: root.toast-undo-label;
                     width: min(self.preferred-width, parent.width - 2 * Space.s2);
+                    height: self.preferred-height;
                     x: (parent.width - self.width) / 2;
                     y: parent.height - self.height - Space.s2;
                     undo => { root.toast-undo(); }
@@ -584,7 +607,7 @@ export component PanelWindow inherits Window {
                         overflow: elide;
                         accessible-role: AccessibleRole.none;
                     }
-                    // Route hints: what Shift+Enter does differently, hidden when the Panel is narrow.
+                    // Route hints: Enter uses, and Shift+Enter always copies. Hidden when the Panel is narrow.
                     if !root.narrow: HorizontalLayout {
                         spacing: Space.s1;
                         Rectangle {
@@ -596,7 +619,7 @@ export component PanelWindow inherits Window {
                             }
                         }
                         Text {
-                            text: root.pastes ? @tr("Copy only") : @tr("Copy");
+                            text: @tr("Copy");
                             font-family: Fonts.sans;
                             font-size: Type.sm;
                             color: Theme.text-secondary;

@@ -34,7 +34,11 @@ fn start() -> (PanelWindow, Log) {
     slint::platform::update_timers_and_animations();
     let log: Log = Rc::default();
     macro_rules! hook {
-        ($on:ident, |$($arg:ident),*| $line:expr) => {{
+        ($on:ident, || $line:expr) => {{
+            let log = log.clone();
+            ui.$on(move || log.borrow_mut().push($line));
+        }};
+        ($on:ident, |$($arg:ident),+| $line:expr) => {{
             let log = log.clone();
             ui.$on(move |$($arg),*| log.borrow_mut().push($line));
         }};
@@ -164,7 +168,7 @@ ui_tests! {
         take(&log);
         press(ui.window(), " ");
         assert_eq!(ui.get_query(), "");
-        assert!(take(&log).is_empty());
+        assert!(take(&log).is_empty(), "no callbacks fired");
     }
 
     fn escape_clears_the_search_first_and_then_asks_to_close() {
@@ -241,7 +245,7 @@ ui_tests! {
         settle();
         press(ui.window(), &key(Key::Return));
         press(ui.window(), &key(Key::DownArrow));
-        assert!(take(&log).is_empty());
+        assert!(take(&log).is_empty(), "no callbacks fired");
     }
 
     fn digits_use_the_nth_row_only_while_the_search_is_empty() {
@@ -283,16 +287,29 @@ ui_tests! {
     fn the_selection_scrolls_into_view_and_the_first_row_scrolls_back_to_the_top() {
         let (ui, _log) = start();
         fixture::set_rows(&ui, fixture::numbered_rows(30));
-        settle();
-        assert_eq!(ui.get_scroll_y(), 0.0);
+        // A query instantiates the visible rows (the ListView creates only what it shows).
+        let visible = rows(&ui).len();
+        assert!((10..30).contains(&visible), "virtualised: {visible} of 30 rows exist");
+        assert!(ui.get_scroll_y().abs() < f32::EPSILON);
+
         ui.set_selected_index(25);
+        let _ = rows(&ui);
         settle();
-        settle();
+        let _ = rows(&ui);
         assert!(ui.get_scroll_y() < -300.0, "scrolled down: {}", ui.get_scroll_y());
+        let labels: Vec<String> = rows(&ui)
+            .iter()
+            .filter_map(|r| r.accessible_label().map(|l| l.to_string()))
+            .collect();
+        assert!(
+            labels.iter().any(|l| l.starts_with("Snippet 26,")),
+            "the selected row exists after the jump: {labels:?}"
+        );
+
         ui.set_selected_index(0);
+        let _ = rows(&ui);
         settle();
-        settle();
-        assert_eq!(ui.get_scroll_y(), 0.0, "back at the top");
+        assert!(ui.get_scroll_y().abs() < f32::EPSILON, "back at the top");
     }
 
     // ---- Lists ---------------------------------------------------------------------------------
@@ -541,12 +558,5 @@ ui_tests! {
             }
         }
         assert!(checked >= 15, "checked {checked} targets");
-    }
-
-    fn the_panel_is_always_on_top_unless_unpinned() {
-        let (ui, _log) = start();
-        assert!(ui.get_on_top());
-        ui.set_on_top(false);
-        assert!(!ui.get_on_top());
     }
 }

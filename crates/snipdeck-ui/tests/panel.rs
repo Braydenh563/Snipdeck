@@ -35,9 +35,8 @@ fn panel(size: (u32, u32), dark: bool) -> Harness<PanelWindow> {
 }
 
 fn render(h: &Harness<PanelWindow>) -> Frame {
-    // `changed` handlers (scroll-into-view) run on the first frame; the second shows their effect.
-    let _ = h.render();
-    h.render()
+    // `changed` handlers (scroll-into-view) run during a frame; settle until nothing more changes.
+    h.render_settled()
 }
 
 #[test]
@@ -103,8 +102,16 @@ fn panel_long_titles_and_cjk_in_both_views() {
 fn panel_with_many_rows_scrolled_shows_both_deck_edges() {
     let h = panel(SIZE, false);
     fixture::set_rows(&h.component, fixture::numbered_rows(24));
-    h.component.set_selected_index(12);
-    assert_golden("panel-scrolled-light", &render(&h));
+    // Navigate after the first frame, as a person does: the jump lands on a row the list has not built.
+    let _ = render(&h);
+    h.component.set_selected_index(15);
+    let frame = render(&h);
+    assert!(
+        h.component.get_scroll_y() < -100.0 && h.component.get_scroll_y() > -280.0,
+        "scrolled mid-list, both edges showing: {}",
+        h.component.get_scroll_y()
+    );
+    assert_golden("panel-scrolled-light", &frame);
 }
 
 #[test]
@@ -175,6 +182,44 @@ fn the_footer_is_32px_with_a_subtle_hairline_on_top() {
             f.pixel(x, top - 1),
             hairline,
             "and not above it (dark={dark})"
+        );
+    }
+}
+
+#[test]
+fn rows_are_28px_with_a_gutter_rule_and_the_selected_row_has_an_accent_border() {
+    let h = panel(SIZE, false);
+    h.component.set_selected_index(1);
+    let f = render(&h);
+    let (top, bottom) = (LIST_TOP + ROW_H, LIST_TOP + 2 * ROW_H - 1);
+    // Selected row: a 1px accent outline exactly one row tall, inset 8px from the window.
+    for (x, y, what) in [
+        (100, top, "top edge"),
+        (100, bottom, "bottom edge"),
+        (LIST_X, top + ROW_H / 2, "left edge"),
+    ] {
+        assert_eq!(f.pixel(x, y), ACCENT, "selected row {what}");
+    }
+    assert_ne!(f.pixel(100, top - 1), ACCENT, "nothing above the outline");
+    assert_ne!(
+        f.pixel(100, bottom + 1),
+        ACCENT,
+        "nothing below the outline"
+    );
+    // Unselected rows are plain surface with no outline.
+    assert_eq!(f.pixel(200, LIST_TOP + 4), SURFACE_LIGHT, "first row fill");
+    assert_ne!(
+        f.pixel(LIST_X, LIST_TOP + 14),
+        ACCENT,
+        "first row has no outline"
+    );
+    // The gutter rule: a subtle 1px line 24px in, on selected and unselected rows alike.
+    let rule = LIST_X + 24;
+    for y in [LIST_TOP + 14, top + 14] {
+        assert_eq!(
+            f.pixel(rule, y),
+            BORDER_SUBTLE_LIGHT,
+            "gutter rule at y={y}"
         );
     }
 }

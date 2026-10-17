@@ -7,5 +7,89 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "A list keeps related snippets together, like replies or addresses."
+msgstr ""
+
+msgid "Add list"
+msgstr ""
+
+msgid "Board: {}"
+msgstr ""
+
+msgid "Boards"
+msgstr ""
+
+msgid "Clear search"
+msgstr ""
+
+msgid "Close panel"
+msgstr ""
+
+msgid "Copies to clipboard"
+msgstr ""
+
+msgid "Copy"
+msgstr ""
+
+msgid "Copy something, then save it here from the clipboard."
+msgstr ""
+
+msgid "Copy ↵"
+msgstr ""
+
+msgid "Enter"
+msgstr ""
+
+msgid "Keep on top"
+msgstr ""
+
+msgid "Lists"
+msgstr ""
+
+msgid "Loading"
+msgstr ""
+
+msgid "New list"
+msgstr ""
+
+msgid "No lists yet"
+msgstr ""
+
+msgid "No matches"
+msgstr ""
+
+msgid "Nothing on this board matches “{}”."
+msgstr ""
+
 msgid "Paste"
 msgstr "Coller"
+
+msgid "Paste ↵"
+msgstr ""
+
+msgid "Pastes into {}"
+msgstr ""
+
+msgid "Pastes into {} · {}"
+msgstr ""
+
+msgid "Pinned snippets"
+msgstr ""
+
+msgid "Save from clipboard"
+msgstr ""
+
+msgid "Search snippets"
+msgstr ""
+
+msgid "Shift Enter"
+msgstr ""
+
+msgid "Snipdeck"
+msgstr ""
+
+msgid "Snippets"
+msgstr ""
+
+msgid "This list is empty"
+msgstr ""

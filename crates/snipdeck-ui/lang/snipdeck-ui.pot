@@ -6,6 +6,118 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#: ui/panel.slint:555
+msgid "A list keeps related snippets together, like replies or addresses."
+msgstr ""
+
+#: ui/panel.slint:439
+msgid "Add list"
+msgstr ""
+
+#: ui/panel.slint:388
+msgid "Board: {}"
+msgstr ""
+
+#: ui/panel.slint:644
+msgid "Boards"
+msgstr ""
+
+#: ui/panel.slint:422
+msgid "Clear search"
+msgstr ""
+
+#: ui/panel.slint:407
+msgid "Close panel"
+msgstr ""
+
+#: ui/panel.slint:587 ui/panel.slint:602
+msgid "Copies to clipboard"
+msgstr ""
+
+#: ui/panel.slint:622
+msgid "Copy"
+msgstr ""
+
+#: ui/panel.slint:557
+msgid "Copy something, then save it here from the clipboard."
+msgstr ""
+
+#: ui/panel.slint:131
+msgid "Copy ↵"
+msgstr ""
+
+#: ui/panel.slint:617
+msgid "Enter"
+msgstr ""
+
+#: ui/panel.slint:395
+msgid "Keep on top"
+msgstr ""
+
+#: ui/panel.slint:438
+msgid "Lists"
+msgstr ""
+
+#: ui/panel.slint:544
+msgid "Loading"
+msgstr ""
+
+#: ui/panel.slint:558
+msgid "New list"
+msgstr ""
+
+#: ui/panel.slint:553
+msgid "No lists yet"
+msgstr ""
+
+#: ui/panel.slint:554
+msgid "No matches"
+msgstr ""
+
+#: ui/panel.slint:556
+msgid "Nothing on this board matches “{}”."
+msgstr ""
+
 #: ui/gallery/i18n_probe.slint:9
 msgid "Paste"
+msgstr ""
+
+#: ui/panel.slint:131
+msgid "Paste ↵"
+msgstr ""
+
+#: ui/panel.slint:586 ui/panel.slint:601
+msgid "Pastes into {}"
+msgstr ""
+
+#: ui/panel.slint:586 ui/panel.slint:601
+msgid "Pastes into {} · {}"
+msgstr ""
+
+#: ui/panel.slint:451
+msgid "Pinned snippets"
+msgstr ""
+
+#: ui/panel.slint:558
+msgid "Save from clipboard"
+msgstr ""
+
+#: ui/panel.slint:420 ui/panel.slint:421
+msgid "Search snippets"
+msgstr ""
+
+#: ui/panel.slint:617
+msgid "Shift Enter"
+msgstr ""
+
+#: ui/panel.slint:48
+msgid "Snipdeck"
+msgstr ""
+
+#: ui/panel.slint:471
+msgid "Snippets"
+msgstr ""
+
+#: ui/panel.slint:554
+msgid "This list is empty"
 msgstr ""

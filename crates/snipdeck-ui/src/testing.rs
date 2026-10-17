@@ -120,22 +120,45 @@ impl<C: ComponentHandle> Harness<C> {
     #[must_use]
     pub fn render(&self) -> Frame {
         slint::platform::update_timers_and_animations();
+        self.try_render().expect("window had nothing to draw")
+    }
+
+    /// Renders, then keeps rendering while handlers that run during a frame (`changed` callbacks such
+    /// as scroll-into-view, repeater instantiation) leave the window dirty; returns the last frame.
+    ///
+    /// # Panics
+    /// If the renderer produced no frame at all.
+    #[must_use]
+    pub fn render_settled(&self) -> Frame {
+        let mut frame = self.render();
+        for _ in 0..8 {
+            slint::platform::update_timers_and_animations();
+            match self.try_render() {
+                Some(next) => frame = next,
+                None => break,
+            }
+        }
+        frame
+    }
+
+    fn try_render(&self) -> Option<Frame> {
         let size = self.window.size();
         let mut buffer = SharedPixelBuffer::<Rgb8Pixel>::new(size.width, size.height);
         let drawn = self.window.draw_if_needed(|renderer| {
             renderer.render(buffer.make_mut_slice(), size.width as usize);
         });
-        assert!(drawn, "window had nothing to draw");
-        let rgb = buffer
-            .as_slice()
-            .iter()
-            .flat_map(|p| [p.r, p.g, p.b])
-            .collect();
-        Frame {
-            width: size.width,
-            height: size.height,
-            rgb,
-        }
+        drawn.then(|| {
+            let rgb = buffer
+                .as_slice()
+                .iter()
+                .flat_map(|p| [p.r, p.g, p.b])
+                .collect();
+            Frame {
+                width: size.width,
+                height: size.height,
+                rgb,
+            }
+        })
     }
 }
 
