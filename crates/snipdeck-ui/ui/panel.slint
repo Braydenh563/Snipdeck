@@ -1,0 +1,634 @@
+// The Panel window (DESIGN.md §5 Panel, ADR-0003, ADR-0008): the compact always-on-top deck the user
+// pastes from. It never takes the OS caption: it draws its own header with a drag region, a pin
+// (keep on top) and a close button, and its keyboard focus lives in the search field so typing
+// always filters. Data comes in as plain structs and models that mirror `snipdeck-app`'s `PanelModel`
+// (rows, tabs, footer, use label); every gesture leaves as a callback. Nothing here talks to the OS.
+//
+// Keyboard (all handled in `capture-key-pressed` on the window's FocusScope, so they work whichever
+// control has focus):
+//   type            filters; a printable key typed while another control has focus moves into the search
+//   Up / Down       move the selection (PageUp / PageDown a page); Enter uses it, Shift+Enter copies
+//   1-9             use the Nth row while the search is empty (digits are text once a query exists)
+//   Ctrl+Tab        next list, Ctrl+Shift+Tab previous; Ctrl+F focuses and selects the search
+//   Menu, Shift+F10 context menu of the selected row
+//   Esc             clears the search; with nothing to clear, asks the host to hide the Panel
+import { ListView } from "std-widgets.slint";
+import { Theme, Type, Space, Radius, Fonts, SystemLook, Palette } from "theme.slint";
+import { Icons } from "icons.slint";
+import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
+import { DeckEdge, DeckEdgePosition } from "components/deck-edge.slint";
+import { PinnedStrip, PinnedItem } from "components/pinned-strip.slint";
+import { BoardSwitcher } from "components/board-switcher.slint";
+import { ListTabBar, TabItem } from "components/tab.slint";
+import { SearchField } from "components/text_field.slint";
+import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
+import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind } from "components/feedback.slint";
+import { Menu, MenuEntry } from "components/menu.slint";
+import { IconButton } from "components/icon-button.slint";
+import { Keycap, KeyCombo } from "components/keycap.slint";
+
+// One row of the list, as `snipdeck-app`'s `Row`. The quick-use number is the row's position
+// (1-9 for the first nine); `masked-preview` stands in for a sensitive item's preview.
+export struct PanelRow {
+    kind: ItemKind,
+    title: string,
+    preview: string,
+    masked-preview: string,
+    extension: string,
+    // Mixed views (search): the list the row lives in, with its colour.
+    list-name: string,
+    list-color: color,
+    image: image,
+}
+
+// Per-list view choice (SPEC 5.1): one-line rows or cards with a two-line preview.
+export enum PanelView { compact, comfortable }
+
+export component PanelWindow inherits Window {
+    title: @tr("Snipdeck");
+    no-frame: true;
+    always-on-top: root.on-top;
+    background: Theme.bg-app;
+    min-width: 260px;
+    max-width: 480px;
+    min-height: 240px;
+    preferred-width: 320px;
+    preferred-height: 480px;
+
+    // ---- State in -----------------------------------------------------------------------------
+    in property <bool> dark: false;
+    in property <string> board-name;
+    in property <[TabItem]> tabs;
+    in property <[PinnedItem]> pinned;
+    in property <[PanelRow]> rows;
+    in property <PanelView> view: PanelView.compact;
+    // True while the app is loading: skeleton rows replace the empty state.
+    in property <bool> loading: false;
+    // The sensitive row held revealed by the app (-1 = none).
+    in property <int> revealed-index: -1;
+    // The window that will receive a paste: empty means a click copies. `target-title` is its caption.
+    in property <string> target-name;
+    in property <string> target-title;
+    // The board menu, drawn inside the Panel; the app fills it and reports its choice.
+    in property <bool> board-menu-open: false;
+    in property <[MenuEntry]> board-menu-entries;
+    // Toast: empty text hides it. The app owns its timing (Toast documents the phases).
+    in property <string> toast-text;
+    in property <ToastKind> toast-kind: ToastKind.neutral;
+    in property <ToastPhase> toast-phase: ToastPhase.hold;
+    in property <string> toast-undo-label;
+
+    // ---- State both ways ----------------------------------------------------------------------
+    in-out property <int> current-tab: 0;
+    in-out property <string> query <=> search.text;
+    // The keyboard-selected row. The panel moves it itself and reports `selection-moved`; the app
+    // writes it back (it resets to 0 when the query changes).
+    in-out property <int> selected-index: 0;
+    // Keep on top (the pin button). Drives the window's `always-on-top`.
+    in-out property <bool> on-top: true;
+
+    // ---- Gestures out -------------------------------------------------------------------------
+    callback query-changed(string);
+    // Enter, a click, or a quick-use key used row `index`.
+    callback row-activated(int);
+    // Shift+Enter or Shift+click: copy only.
+    callback row-copied(int);
+    // Digit 1-9 pressed on an empty search (the app resolves it with `PanelModel::quick_use`).
+    callback quick-use(int);
+    callback selection-moved(int);
+    callback context-menu-requested(int, length, length);
+    callback reveal-requested(int, bool);
+    callback tab-selected(int);
+    callback add-list-requested();
+    callback add-from-clipboard();
+    callback pinned-used(int);
+    callback pinned-copied(int);
+    callback pinned-context-menu-requested(int, length, length);
+    callback board-menu-requested();
+    callback board-menu-activated(int);
+    callback board-menu-dismissed();
+    callback pin-toggled(bool);
+    callback toast-undo();
+    callback close-requested();
+    // Pointer down on the header: the host starts the OS window drag.
+    callback drag-requested();
+
+    // ---- Public -------------------------------------------------------------------------------
+    // Holds row `index` in its pulled (used) state for the card's 700ms (keyboard use; a click pulls itself).
+    public function mark-used(index: int) {
+        root.used-index = index;
+        used-timer.running = true;
+    }
+    public function focus-search() {
+        search.focus();
+    }
+    // Scroll offset of the list (<= 0), for tests and for the app to persist.
+    out property <length> scroll-y: list.content-y;
+    out property <bool> search-focused: search.has-focus;
+
+    // ---- Internals ----------------------------------------------------------------------------
+    property <bool> pastes: root.target-name != "";
+    property <string> use-label: root.pastes ? @tr("Paste ↵") : @tr("Copy ↵");
+    property <bool> searching: root.query != "";
+    property <bool> no-lists: root.tabs.length == 0;
+    property <int> sel: root.rows.length == 0 ? -1 : min(max(root.selected-index, 0), root.rows.length - 1);
+    property <int> used-index: -1;
+    property <length> header-h: max(Space.s8 + Space.s2, max(Space.hit, Type.line-base + Space.s2) + Space.s2);
+    property <length> edge-h: 10px;
+    property <length> row-gap: root.view == PanelView.comfortable ? Space.s1 + Space.s0-5 : 0px;
+    property <length> avg-row-h: root.rows.length == 0 ? Space.hit : max(Space.hit, list.content-height / root.rows.length);
+    property <int> page-rows: max(1, floor(list.height / root.avg-row-h) - 1);
+
+    // Below 300px the footer drops its route hints. Set from `changed width`, not bound to `root.width`:
+    // a window's width follows its layout, so reading it inside the layout would be a binding loop.
+    property <bool> narrow: false;
+
+    init => {
+        Palette.dark = root.dark;
+        root.narrow = root.width < 300px;
+        search.focus();
+    }
+    changed dark => {
+        Palette.dark = root.dark;
+    }
+    changed width => {
+        root.narrow = root.width < 300px;
+    }
+
+    used-timer := Timer {
+        interval: 700ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.used-index = -1;
+        }
+    }
+
+    // 1-9 -> n, anything else -> 0.
+    pure function digit(text: string) -> int {
+        return text == "1" ? 1 : text == "2" ? 2 : text == "3" ? 3 : text == "4" ? 4 : text == "5" ? 5
+            : text == "6" ? 6 : text == "7" ? 7 : text == "8" ? 8 : text == "9" ? 9 : 0;
+    }
+
+    // A key that produces a character: not a control, not one of Slint's private-use special keys.
+    pure function printable(text: string) -> bool {
+        if (text.character-count != 1) {
+            return false;
+        }
+        return text >= " " && !(text >= "\u{7f}" && text <= "\u{9f}") && !(text >= "\u{e000}" && text <= "\u{f8ff}");
+    }
+
+    // Scrolls so that the row [y, y + h) is fully visible, clear of the 10px deck edges.
+    function reveal(y: length, h: length) {
+        let top = root.sel == 0 ? 0px : root.edge-h;
+        let bottom = root.sel == root.rows.length - 1 ? 0px : root.edge-h;
+        if (root.sel == 0) {
+            list.content-y = 0px;
+        } else if (y + list.content-y < top) {
+            list.content-y = top - y;
+        } else if (y + h + list.content-y > list.height - bottom) {
+            list.content-y = list.height - bottom - y - h;
+        }
+    }
+
+    function move-selection(delta: int) {
+        if (root.rows.length == 0) {
+            return;
+        }
+        let next = min(max(root.sel + delta, 0), root.rows.length - 1);
+        if (next != root.sel) {
+            let actual = next - root.sel;
+            root.selected-index = next;
+            root.selection-moved(actual);
+        }
+    }
+
+    function use-selected(copy-only: bool) {
+        if (root.sel < 0) {
+            return;
+        }
+        root.mark-used(root.sel);
+        if (copy-only) {
+            root.row-copied(root.sel);
+        } else {
+            root.row-activated(root.sel);
+        }
+    }
+
+    function quick(n: int) {
+        if (n < 1 || n > root.rows.length) {
+            return;
+        }
+        root.selected-index = n - 1;
+        root.mark-used(n - 1);
+        root.quick-use(n);
+    }
+
+    function pick-tab(index: int) {
+        root.current-tab = index;
+        // A list switch leaves the board-wide search.
+        if (root.query != "") {
+            root.query = "";
+            root.query-changed("");
+        }
+        root.selected-index = 0;
+        list.content-y = 0px;
+        root.tab-selected(index);
+    }
+
+    function cycle-tab(dir: int) {
+        if (root.tabs.length > 1) {
+            root.pick-tab(mod(root.current-tab + dir + root.tabs.length, root.tabs.length));
+        }
+    }
+
+    function clear-query() {
+        root.query = "";
+        root.selected-index = 0;
+        list.content-y = 0px;
+        root.query-changed("");
+    }
+
+    // Moves a typed character into the search field when another control has focus.
+    function type-into-search(text: string) {
+        search.focus();
+        root.query = root.query + text;
+        // Past the end clamps to the end of the text.
+        search.set-cursor(1000000);
+        root.selected-index = 0;
+        list.content-y = 0px;
+        root.query-changed(root.query);
+    }
+
+    scope := FocusScope {
+        forward-focus: search;
+
+        capture-key-pressed(event) => {
+            if (root.board-menu-open) {
+                // The menu owns the keyboard; Esc closes it.
+                if (event.text == Key.Escape) {
+                    root.board-menu-dismissed();
+                    return accept;
+                }
+                return reject;
+            }
+            if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                if (event.text == Key.Tab && !event.modifiers.shift) {
+                    root.cycle-tab(1);
+                    return accept;
+                }
+                if (event.text == Key.Backtab || (event.text == Key.Tab && event.modifiers.shift)) {
+                    root.cycle-tab(-1);
+                    return accept;
+                }
+                if (event.text == "f" || event.text == "F") {
+                    search.focus();
+                    search.select-all();
+                    return accept;
+                }
+                return reject;
+            }
+            if (event.modifiers.alt || event.modifiers.meta || search.composing) {
+                return reject;
+            }
+            if (event.text == Key.Escape) {
+                if (root.searching) {
+                    root.clear-query();
+                } else {
+                    root.close-requested();
+                }
+                return accept;
+            }
+            if (!switcher.has-focus) {
+                if (event.text == Key.DownArrow) {
+                    root.move-selection(1);
+                    return accept;
+                }
+                if (event.text == Key.UpArrow) {
+                    root.move-selection(-1);
+                    return accept;
+                }
+                if (event.text == Key.PageDown) {
+                    root.move-selection(root.page-rows);
+                    return accept;
+                }
+                if (event.text == Key.PageUp) {
+                    root.move-selection(-root.page-rows);
+                    return accept;
+                }
+            }
+            if (search.has-focus) {
+                if (event.text == Key.Return) {
+                    root.use-selected(event.modifiers.shift);
+                    return accept;
+                }
+                if ((event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) && root.sel >= 0) {
+                    root.context-menu-requested(root.sel, Space.s6, Space.s8);
+                    return accept;
+                }
+            }
+            // Digits are quick-use only while there is no query; with one they are search text.
+            if (!root.searching && !event.modifiers.shift && root.digit(event.text) > 0) {
+                root.quick(root.digit(event.text));
+                return accept;
+            }
+            if (!search.has-focus && event.text != " " && root.printable(event.text)) {
+                root.type-into-search(event.text);
+                return accept;
+            }
+            return reject;
+        }
+
+        VerticalLayout {
+            // ---- Header: board switcher, drag region, keep-on-top, close ----------------------
+            Rectangle {
+                height: root.header-h;
+
+                // Behind the controls: pressing anywhere else starts the window drag.
+                TouchArea {
+                    mouse-cursor: MouseCursor.default;
+                    pointer-event(event) => {
+                        if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                            root.drag-requested();
+                        }
+                    }
+                }
+
+                HorizontalLayout {
+                    padding-left: Space.s2;
+                    padding-right: Space.s2;
+                    padding-top: Space.s1;
+                    padding-bottom: Space.s1;
+                    spacing: Space.s1;
+                    switcher := BoardSwitcher {
+                        board-name: root.board-name;
+                        menu-open: root.board-menu-open;
+                        a11y-label: @tr("Board: {}", root.board-name);
+                        y: (parent.height - self.height) / 2;
+                        menu-requested => { root.board-menu-requested(); }
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                    pin := IconButton {
+                        icon: Icons.push-pin;
+                        tooltip: @tr("Keep on top");
+                        active: root.on-top;
+                        accessible-checkable: true;
+                        accessible-checked: root.on-top;
+                        y: (parent.height - self.height) / 2;
+                        clicked => {
+                            root.on-top = !root.on-top;
+                            root.pin-toggled(root.on-top);
+                        }
+                    }
+                    close := IconButton {
+                        icon: Icons.x;
+                        tooltip: @tr("Close panel");
+                        y: (parent.height - self.height) / 2;
+                        clicked => { root.close-requested(); }
+                    }
+                }
+            }
+
+            // ---- Search -------------------------------------------------------------------------
+            HorizontalLayout {
+                padding-left: Space.s2;
+                padding-right: Space.s2;
+                padding-bottom: Space.s2;
+                search := SearchField {
+                    placeholder: @tr("Search snippets");
+                    label: @tr("Search snippets");
+                    clear-label: @tr("Clear search");
+                    edited(text) => {
+                        root.selected-index = 0;
+                        list.content-y = 0px;
+                        root.query-changed(text);
+                    }
+                }
+            }
+
+            // ---- Lists ----------------------------------------------------------------------------
+            HorizontalLayout {
+                padding-left: Space.s2;
+                padding-right: Space.s2;
+                ListTabBar {
+                    tabs: root.tabs;
+                    current <=> root.current-tab;
+                    label: @tr("Lists");
+                    add-label: @tr("Add list");
+                    selected(index) => { root.pick-tab(index); }
+                    add-clicked => { root.add-list-requested(); }
+                }
+            }
+
+            if root.pinned.length > 0 && !root.searching: HorizontalLayout {
+                padding-left: Space.s2;
+                padding-right: Space.s2;
+                PinnedStrip {
+                    items: root.pinned;
+                    accessible-role: AccessibleRole.list;
+                    accessible-label: @tr("Pinned snippets");
+                    use(i) => { root.pinned-used(i); }
+                    copy(i) => { root.pinned-copied(i); }
+                    context-menu-requested(i, x, y) => { root.pinned-context-menu-requested(i, x, y); }
+                }
+            }
+
+            // ---- The deck ---------------------------------------------------------------------------
+            deck := Rectangle {
+                vertical-stretch: 1;
+                min-height: Space.s12;
+                clip: true;
+
+                list := ListView {
+                    x: Space.s2;
+                    y: Space.s1;
+                    width: parent.width - 2 * Space.s2;
+                    height: parent.height - Space.s1;
+                    vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+                    horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+                    accessible-label: @tr("Snippets");
+                    visible: root.rows.length > 0;
+
+                    for row[i] in root.rows: Rectangle {
+                        property <bool> is-selected: i == root.sel;
+                        height: card.preferred-height + root.row-gap;
+
+                        init => {
+                            if (self.is-selected) { root.reveal(self.y, self.height); }
+                        }
+                        changed is-selected => {
+                            if (self.is-selected) { root.reveal(self.y, self.height); }
+                        }
+                        changed y => {
+                            if (self.is-selected) { root.reveal(self.y, self.height); }
+                        }
+
+                        card := ItemCard {
+                            x: 0;
+                            y: 0;
+                            width: parent.width;
+                            height: self.preferred-height;
+                            variant: root.view == PanelView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
+                            kind: row.kind;
+                            number: i < 9 ? i + 1 : 0;
+                            title: row.title;
+                            preview: row.preview;
+                            masked-preview: row.masked-preview;
+                            extension: row.extension;
+                            image: row.image;
+                            list-name: row.list-name;
+                            list-color: row.list-color;
+                            selected: i == root.sel;
+                            use-label: root.use-label;
+                            show-use-label: i == root.sel;
+                            revealed: i == root.revealed-index;
+                            pulling: i == root.used-index;
+                            keyboard-focusable: false;
+                            use => {
+                                root.selected-index = i;
+                                root.row-activated(i);
+                            }
+                            copy => {
+                                root.selected-index = i;
+                                root.row-copied(i);
+                            }
+                            context-menu-requested(x, y) => { root.context-menu-requested(i, x, y); }
+                            reveal-requested(on) => { root.reveal-requested(i, on); }
+                        }
+                    }
+                }
+
+                // More cards below (or above) the fold: two card edges, never a fade.
+                if root.rows.length > 0 && list.content-y < -1px: DeckEdge {
+                    position: DeckEdgePosition.top;
+                    x: Space.s2;
+                    y: Space.s1;
+                    width: parent.width - 2 * Space.s2;
+                }
+                if root.rows.length > 0 && list.content-height + list.content-y > list.height + 1px: DeckEdge {
+                    position: DeckEdgePosition.bottom;
+                    x: Space.s2;
+                    y: parent.height - self.height;
+                    width: parent.width - 2 * Space.s2;
+                }
+
+                if root.loading: VerticalLayout {
+                    x: Space.s2;
+                    y: Space.s1;
+                    width: parent.width - 2 * Space.s2;
+                    alignment: start;
+                    for n in [0, 1, 2, 3, 4, 5]: Skeleton {
+                        kind: SkeletonKind.row;
+                        label: n == 0 ? @tr("Loading") : "";
+                    }
+                }
+
+                if root.rows.length == 0 && !root.loading: EmptyState {
+                    x: Space.s2;
+                    width: parent.width - 2 * Space.s2;
+                    height: parent.height;
+                    kind: root.no-lists ? EmptyStateKind.board : root.searching ? EmptyStateKind.search : EmptyStateKind.list;
+                    heading: root.no-lists ? @tr("No lists yet")
+                        : root.searching ? @tr("No matches") : @tr("This list is empty");
+                    body: root.no-lists ? @tr("A list keeps related snippets together, like replies or addresses.")
+                        : root.searching ? @tr("Nothing on this board matches “{}”.", root.query)
+                        : @tr("Copy something, then save it here from the clipboard.");
+                    action-text: root.no-lists ? @tr("New list") : root.searching ? "" : @tr("Save from clipboard");
+                    action => {
+                        if (root.no-lists) {
+                            root.add-list-requested();
+                        } else {
+                            root.add-from-clipboard();
+                        }
+                    }
+                }
+
+                if root.toast-text != "": Toast {
+                    text: root.toast-text;
+                    kind: root.toast-kind;
+                    phase: root.toast-phase;
+                    undo-label: root.toast-undo-label;
+                    width: min(self.preferred-width, parent.width - 2 * Space.s2);
+                    x: (parent.width - self.width) / 2;
+                    y: parent.height - self.height - Space.s2;
+                    undo => { root.toast-undo(); }
+                }
+            }
+
+            // ---- Target footer (DESIGN.md §5): always shows where a click goes -----------------------
+            Rectangle {
+                height: max(Space.s8, Type.line-sm + Space.s3);
+                accessible-role: AccessibleRole.text;
+                accessible-label: root.pastes
+                    ? (root.target-title != "" ? @tr("Pastes into {} · {}", root.target-name, root.target-title) : @tr("Pastes into {}", root.target-name))
+                    : @tr("Copies to clipboard");
+
+                Rectangle {
+                    y: 0;
+                    height: 1px;
+                    background: Theme.border-subtle;
+                }
+                HorizontalLayout {
+                    padding-left: Space.s3;
+                    padding-right: Space.s3;
+                    spacing: Space.s2;
+                    Text {
+                        horizontal-stretch: 1;
+                        text: root.pastes
+                            ? (root.target-title != "" ? @tr("Pastes into {} · {}", root.target-name, root.target-title) : @tr("Pastes into {}", root.target-name))
+                            : @tr("Copies to clipboard");
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        color: Theme.text-secondary;
+                        vertical-alignment: center;
+                        overflow: elide;
+                        accessible-role: AccessibleRole.none;
+                    }
+                    // Route hints: what Shift+Enter does differently, hidden when the Panel is narrow.
+                    if !root.narrow: HorizontalLayout {
+                        spacing: Space.s1;
+                        Rectangle {
+                            width: hint-keys.min-width;
+                            hint-keys := KeyCombo {
+                                keys: root.pastes ? ["Shift", "↵"] : ["↵"];
+                                label: root.pastes ? @tr("Shift Enter") : @tr("Enter");
+                                y: (parent.height - self.height) / 2;
+                            }
+                        }
+                        Text {
+                            text: root.pastes ? @tr("Copy only") : @tr("Copy");
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            color: Theme.text-secondary;
+                            vertical-alignment: center;
+                            accessible-role: AccessibleRole.none;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ---- The board menu: a scrim that dismisses on click, and the menu under the header ----------
+    if root.board-menu-open: TouchArea {
+        clicked => { root.board-menu-dismissed(); }
+    }
+    if root.board-menu-open: Menu {
+        x: Space.s2;
+        y: root.header-h - Space.s1;
+        width: min(Space.s12 * 5, root.width - 2 * Space.s2);
+        entries: root.board-menu-entries;
+        label: @tr("Boards");
+        icons: false;
+        init => { self.focus-menu(); }
+        activated(i) => { root.board-menu-activated(i); }
+        dismissed => { root.board-menu-dismissed(); }
+    }
+
+    // The window outline: level 3 is the OS shadow plus a 1px `border-default` (DESIGN.md §6).
+    Rectangle {
+        border-width: 1px;
+        border-color: Theme.border-default;
+        background: transparent;
+    }
+}

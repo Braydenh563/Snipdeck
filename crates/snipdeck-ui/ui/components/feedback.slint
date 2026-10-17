@@ -95,6 +95,7 @@ export component Toast inherits Rectangle {
             font-family: Fonts.sans;
             font-size: Type.base;
             vertical-alignment: center;
+            overflow: elide;
         }
         if root.undo-label != "": Button {
             text: root.undo-label;
@@ -120,8 +121,8 @@ export component Skeleton inherits Rectangle {
         ? 1.0
         : 0.825 + 0.175 * sin(animation-tick() / 1600ms * 360deg);
 
-    // Bars: `bg-hover` is too faint on dark surfaces, so dark steps up to `border-default`.
-    property <color> bar: Theme.dark ? Theme.border-default : Theme.border-subtle;
+    // Bars: `bg-hover` is too faint on dark surfaces, so dark uses `bg-overlay-hover`.
+    property <color> bar: Theme.dark ? Theme.bg-overlay-hover : Theme.border-subtle;
 
     min-width: 120px;
     height: root.kind == SkeletonKind.row ? 28px : 104px;

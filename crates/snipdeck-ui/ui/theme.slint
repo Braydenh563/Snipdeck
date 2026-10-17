@@ -93,6 +93,8 @@ export global Theme {
     out property <color> bg-hover: hc ? SystemLook.hc-window : Palette.bg-hover;
     out property <color> bg-selected: hc ? SystemLook.hc-highlight : Palette.bg-selected;
     out property <color> bg-overlay: hc ? SystemLook.hc-window : Palette.bg-overlay;
+    // The highlighted row of a menu or popover (`bg-hover` equals `bg-overlay` in dark).
+    out property <color> bg-overlay-hover: hc ? SystemLook.hc-window : Palette.bg-overlay-hover;
     out property <color> border-subtle: hc ? SystemLook.hc-window-text : Palette.border-subtle;
     out property <color> border-default: hc ? SystemLook.hc-window-text : Palette.border-default;
     out property <color> border-strong: hc ? SystemLook.hc-window-text : Palette.border-strong;
@@ -121,6 +123,11 @@ export global Theme {
     out property <color> danger-solid: hc ? SystemLook.hc-window-text : Palette.danger-solid;
     out property <color> info-fg: hc ? SystemLook.hc-window-text : Palette.info-fg;
     out property <color> info-bg: hc ? SystemLook.hc-window : Palette.info-bg;
+    // DESIGN.md §6 shadows, tinted with the warm neutral and never pure black. Level 1 (card,
+    // `0 1px 2px` neutral-850 @ 6%) is tone only in dark; level 2 (lifted, `0 4px 12px` neutral-850
+    // @ 10% in light, `0 4px 16px` black @ 40% in dark). High contrast draws no shadow at all.
+    out property <color> shadow-1: hc || Palette.dark ? transparent : Primitives.neutral-850.with-alpha(0.06);
+    out property <color> shadow-2: hc ? transparent : Palette.dark ? Primitives.neutral-900.with-alpha(0.4) : Primitives.neutral-850.with-alpha(0.1);
     // 1px border drawn on everything in high-contrast mode, transparent otherwise.
     out property <color> hc-border: hc ? SystemLook.hc-window-text : transparent;
 }

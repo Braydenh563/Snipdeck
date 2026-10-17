@@ -82,7 +82,7 @@ rgbmap = {k: oklch_to_srgb(*v) for k, v in prims.items()}
 THEMES = {
   "light": {
     "bg.app": "neutral-25", "bg.surface": "neutral-0", "bg.sunken": "neutral-50",
-    "bg.hover": "neutral-50", "bg.selected": "blue-100", "bg.overlay": "neutral-0",
+    "bg.hover": "neutral-50", "bg.selected": "blue-100", "bg.overlay": "neutral-0", "bg.overlay-hover": "neutral-50",
     "border.subtle": "neutral-100", "border.default": "neutral-200", "border.strong": "neutral-400",
     "text.primary": "neutral-850", "text.secondary": "neutral-500", "text.tertiary": "neutral-400",
     "text.on-accent": "neutral-0",
@@ -96,7 +96,7 @@ THEMES = {
   },
   "dark": {
     "bg.app": "neutral-900", "bg.surface": "neutral-850", "bg.sunken": "neutral-900",
-    "bg.hover": "neutral-800", "bg.selected": "blue-900", "bg.overlay": "neutral-800",
+    "bg.hover": "neutral-800", "bg.selected": "blue-900", "bg.overlay": "neutral-800", "bg.overlay-hover": "neutral-700",
     "border.subtle": "neutral-800", "border.default": "neutral-700", "border.strong": "neutral-400",
     "text.primary": "neutral-50", "text.secondary": "neutral-300", "text.tertiary": "neutral-400",
     "text.on-accent": "neutral-0",
@@ -116,6 +116,8 @@ CHECKS = [  # (fg, bg, min, label)
   ("text.secondary", "bg.surface", 4.5, "secondary text"),
   ("text.secondary", "bg.hover", 4.5, "secondary on hover row"),
   ("text.primary", "bg.selected", 4.5, "text on selected row"),
+  ("text.primary", "bg.overlay-hover", 4.5, "text on highlighted menu row"),
+  ("text.secondary", "bg.overlay-hover", 4.5, "secondary on highlighted menu row"),
   ("text.tertiary", "bg.surface", 3.0, "tertiary (icons/hints, non-essential)"),
   ("border.strong", "bg.surface", 3.0, "input borders (UI)"),
   ("text.on-ink", "ink.default", 4.5, "primary (ink) button label"),

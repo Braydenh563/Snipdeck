@@ -1,21 +1,15 @@
-import { Palette, Primitives, SystemLook } from "../theme.slint";
+import { Theme } from "../theme.slint";
 
-// DESIGN.md §6 depth levels 1 and 2 for cards. `Theme` has no shadow token yet, so the tinted shadow
-// colours live here (the only place a component file touches `Primitives`); move them into `Theme`
-// when the groups are merged. Shadows are tinted with the warm neutral, never pure black; in dark
-// mode level 1 is tone only (no shadow) and in high contrast there is no shadow at all.
+// DESIGN.md §6 depth levels 1 and 2 for cards: the geometry. The tinted shadow colours are
+// `Theme.shadow-1` and `Theme.shadow-2` (none in dark level 1 or in high contrast).
 export global CardDepth {
-    property <bool> flat: SystemLook.high-contrast;
-
-    // Level 1: `0 1px 2px` neutral-850 @ 6% (light), none (dark).
-    out property <color> shadow-1: flat || Palette.dark ? transparent : Primitives.neutral-850.with-alpha(0.06);
+    // Level 1: `0 1px 2px`.
     out property <length> offset-1: 1px;
     out property <length> blur-1: 2px;
 
-    // Level 2 (lifted): `0 4px 12px` neutral-850 @ 10% (light); `0 4px 16px` black @ 40% (dark).
-    out property <color> shadow-2: flat ? transparent : Palette.dark ? Primitives.neutral-900.with-alpha(0.4) : Primitives.neutral-850.with-alpha(0.1);
+    // Level 2 (lifted): `0 4px 12px` (light), `0 4px 16px` (dark).
     out property <length> offset-2: 4px;
-    out property <length> blur-2: Palette.dark ? 16px : 12px;
+    out property <length> blur-2: Theme.dark ? 16px : 12px;
 
     // How far a pulled card rises (DESIGN.md §4 "Card pull").
     out property <length> lift: 2px;

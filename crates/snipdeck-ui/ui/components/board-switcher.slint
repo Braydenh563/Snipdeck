@@ -10,6 +10,7 @@ export component BoardSwitcher inherits Rectangle {
     in property <bool> menu-open: false;
     // Spoken label; defaults to the board name. The app translates e.g. "Board: Work".
     in property <string> a11y-label;
+    out property <bool> has-focus: scope.has-focus;
     callback menu-requested();
 
     property <bool> hovered: touch.has-hover;

@@ -36,9 +36,7 @@ export component MenuItem inherits Rectangle {
     property <color> fg: root.destructive ? Theme.danger-fg : Theme.text-primary;
 
     height: Space.hit;
-    // Dark `bg-hover` equals dark `bg-overlay`, so on a menu the highlight steps up to `border-default`
-    // there (design-token gap: a `bg.overlay-hover` token would remove this).
-    background: root.current && !root.disabled ? (Theme.dark ? Theme.border-default : Theme.bg-hover) : transparent;
+    background: root.current && !root.disabled ? Theme.bg-overlay-hover : transparent;
     border-radius: Radius.sm;
     border-width: root.current && !root.disabled && Theme.hc-border != transparent ? 1px : 0px;
     border-color: Theme.hc-border;

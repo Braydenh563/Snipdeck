@@ -13,11 +13,13 @@ Design tokens, the Slint component library and the headless test harness. Spec: 
 - `src/testing.rs`: `Harness` (software renderer, frozen clock), `Frame::pixel`, `assert_golden`.
 
 ## Component rules
-- Colours only through `Theme.*`; sizes through `Space`/`Type`/`Radius`; durations through `Motion`. No hex literal,
+- Colours only through `Theme.*` (shadows too: `Theme.shadow-1`, `Theme.shadow-2`); sizes through `Space`/`Type`/`Radius`; durations through `Motion`. No hex literal,
   no radius outside 4/6/8, no font size outside the scale, no `#000`/`#fff`.
 - Every interactive component: hover, pressed, disabled, keyboard focus (2px `Theme.focus-ring`, 2px offset, shown
   on keyboard focus only: `FocusScope { focus-on-click: false }`), and `accessible-role` / `accessible-label`
   (+ `accessible-action-default`). Hit target at least 24x24, default 28.
+- `std-widgets` is not used by components. The one exception is the Panel's `ListView` (virtualised rows) in
+  `ui/panel.slint`, with its scrollbars off; `build.rs` pins the style to `fluent` so the build never depends on Qt.
 - Never convey meaning by colour alone (icon or text too). High contrast works because components use `Theme.*`.
 - Text uses `Fonts.sans` (or `Fonts.mono` for keycaps, code, placeholders). No hard-coded strings in reusable
   components: take `in property <string>` (the app translates with `@tr`).
