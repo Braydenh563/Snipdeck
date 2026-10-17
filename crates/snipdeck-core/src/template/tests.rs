@@ -1,0 +1,560 @@
+use std::collections::BTreeMap;
+
+use proptest::prelude::*;
+
+use super::*;
+use crate::{Entitlements, Error, Feature, Tier};
+
+fn now() -> Timestamp {
+    // Saturday 17 October 2026, day 290 of the year.
+    "2026-10-17T14:05:09Z".parse().unwrap()
+}
+
+fn answers(pairs: &[(&str, &str)]) -> BTreeMap<String, String> {
+    pairs
+        .iter()
+        .map(|&(k, v)| (k.to_owned(), v.to_owned()))
+        .collect()
+}
+
+static NO_ANSWERS: BTreeMap<String, String> = BTreeMap::new();
+
+fn render_with(
+    src: &str,
+    build: impl FnOnce(RenderContext<'static>) -> RenderContext<'static>,
+) -> Rendered {
+    let ctx = build(RenderContext::new(now(), &NO_ANSWERS));
+    Template::parse(src).unwrap().render(&ctx)
+}
+
+fn render(src: &str) -> String {
+    render_with(src, |c| c).text
+}
+
+fn parse_err(src: &str) -> TemplateError {
+    Template::parse(src).unwrap_err()
+}
+
+// ---- static placeholders -------------------------------------------------------------
+
+#[test]
+fn plain_text_renders_unchanged() {
+    assert_eq!(render("Hello, world\nline two"), "Hello, world\nline two");
+    assert_eq!(render(""), "");
+}
+
+#[test]
+fn date_and_time_default_to_iso_in_utc() {
+    assert_eq!(render("{date} {time}"), "2026-10-17 14:05");
+}
+
+#[test]
+fn date_and_time_follow_the_time_zone() {
+    let out = render_with("{date} {time}", |c| {
+        c.with_tz(TimeZone::fixed(jiff::tz::offset(10)))
+    });
+    assert_eq!(out.text, "2026-10-18 00:05");
+}
+
+#[test]
+fn date_and_time_follow_the_locale() {
+    let cases = [
+        ("en", "10/17/2026 2:05 PM"),
+        ("de", "17.10.2026 14:05"),
+        ("fr", "17/10/2026 14:05"),
+        ("es", "17/10/2026 14:05"),
+        ("pt-BR", "17/10/2026 14:05"),
+        ("ja", "2026/10/17 14:05"),
+        ("zh-Hans", "2026/10/17 14:05"),
+        ("xx", "2026-10-17 14:05"),
+    ];
+    for (tag, expected) in cases {
+        let out = render_with("{date} {time}", |c| c.with_locale(Locale::for_tag(tag)));
+        assert_eq!(out.text, expected, "locale {tag}");
+    }
+}
+
+#[test]
+fn locale_tags_are_matched_loosely() {
+    assert_eq!(Locale::for_tag("DE_de"), Locale::for_tag("de"));
+    assert_eq!(Locale::for_tag("en-GB").date, DateStyle::DayMonthYear);
+    assert_eq!(Locale::for_tag("en-GB").clock, ClockStyle::H24);
+    assert_eq!(Locale::for_tag(""), Locale::default());
+}
+
+#[test]
+fn twelve_hour_clock_handles_midnight_and_noon() {
+    let twelve = Locale::for_tag("en");
+    for (stamp, expected) in [
+        ("2026-10-17T00:07:00Z", "12:07 AM"),
+        ("2026-10-17T12:07:00Z", "12:07 PM"),
+        ("2026-10-17T23:59:00Z", "11:59 PM"),
+    ] {
+        let empty = BTreeMap::new();
+        let ctx = RenderContext::new(stamp.parse().unwrap(), &empty).with_locale(twelve);
+        assert_eq!(
+            Template::parse("{time}").unwrap().render(&ctx).text,
+            expected
+        );
+    }
+}
+
+#[test]
+fn datetime_formats_each_supported_specifier() {
+    let cases = [
+        ("%Y", "2026"),
+        ("%y", "26"),
+        ("%m", "10"),
+        ("%d", "17"),
+        ("%e", "17"),
+        ("%H", "14"),
+        ("%I", "02"),
+        ("%M", "05"),
+        ("%S", "09"),
+        ("%p", "PM"),
+        ("%A", "Saturday"),
+        ("%a", "Sat"),
+        ("%B", "October"),
+        ("%b", "Oct"),
+        ("%j", "290"),
+        ("%z", "+0000"),
+        ("%F", "2026-10-17"),
+        ("%T", "14:05:09"),
+        ("%%", "%"),
+        ("%d/%m/%Y at %H:%M", "17/10/2026 at 14:05"),
+        ("no specifiers", "no specifiers"),
+        ("année %Y", "année 2026"),
+    ];
+    for (format, expected) in cases {
+        assert_eq!(
+            render(&format!("{{datetime:{format}}}")),
+            expected,
+            "{format}"
+        );
+    }
+}
+
+#[test]
+fn datetime_space_pads_the_day_for_percent_e() {
+    let empty = BTreeMap::new();
+    let ctx = RenderContext::new("2026-10-05T01:00:00Z".parse().unwrap(), &empty);
+    assert_eq!(
+        Template::parse("[{datetime:%e}]")
+            .unwrap()
+            .render(&ctx)
+            .text,
+        "[ 5]"
+    );
+}
+
+#[test]
+fn datetime_offset_shows_the_zone_offset() {
+    let out = render_with("{datetime:%z}", |c| {
+        c.with_tz(TimeZone::fixed(jiff::tz::offset(-5)))
+    });
+    assert_eq!(out.text, "-0500");
+}
+
+#[test]
+fn clipboard_is_inserted_or_empty() {
+    assert_eq!(render("[{clipboard}]"), "[]");
+    let out = render_with("[{clipboard}]", |c| c.with_clipboard("{date}"));
+    assert_eq!(out.text, "[{date}]", "clipboard text is never re-parsed");
+}
+
+// ---- cursor --------------------------------------------------------------------------
+
+#[test]
+fn cursor_reports_characters_after_it() {
+    let out = render_with("Dear {cursor},\nThanks", |c| c);
+    assert_eq!(out.text, "Dear ,\nThanks");
+    assert_eq!(out.cursor_from_end, Some(",\nThanks".chars().count()));
+}
+
+#[test]
+fn cursor_counts_scalars_and_crlf_as_one() {
+    let out = render_with("a{cursor}é😀\r\nb", |c| c);
+    assert_eq!(out.cursor_from_end, Some(4));
+}
+
+#[test]
+fn cursor_at_the_end_is_zero_and_absent_is_none() {
+    assert_eq!(render_with("x{cursor}", |c| c).cursor_from_end, Some(0));
+    assert_eq!(render_with("x", |c| c).cursor_from_end, None);
+}
+
+#[test]
+fn cursor_accounts_for_text_inserted_after_it() {
+    let out = render_with("{cursor}{clipboard}!", |c| c.with_clipboard("abc"));
+    assert_eq!(out.cursor_from_end, Some(4));
+}
+
+#[test]
+fn a_second_cursor_is_an_error() {
+    let err = parse_err("a{cursor}b{cursor}");
+    assert_eq!(err.kind, TemplateErrorKind::DuplicateCursor);
+    assert_eq!(err.span, 10..18);
+}
+
+// ---- prompted ------------------------------------------------------------------------
+
+#[test]
+fn fields_and_choices_render_their_answers() {
+    let t = Template::parse("Hi {field:Name}, {choice:Tone|warm|formal}").unwrap();
+    let a = answers(&[("Name", "Ada"), ("Tone", "formal")]);
+    let ctx = RenderContext::new(now(), &a);
+    assert_eq!(t.render(&ctx).text, "Hi Ada, formal");
+}
+
+#[test]
+fn missing_answers_fall_back_to_defaults() {
+    let t = Template::parse("{field:A}|{field:B|dflt}|{choice:C|x|y}").unwrap();
+    let a = BTreeMap::new();
+    assert_eq!(t.render(&RenderContext::new(now(), &a)).text, "|dflt|x");
+}
+
+#[test]
+fn an_empty_answer_is_respected_over_the_default() {
+    let t = Template::parse("{field:B|dflt}").unwrap();
+    let a = answers(&[("B", "")]);
+    assert_eq!(t.render(&RenderContext::new(now(), &a)).text, "");
+}
+
+#[test]
+fn answers_are_not_re_parsed() {
+    let t = Template::parse("{field:A}").unwrap();
+    let a = answers(&[("A", "{date}")]);
+    assert_eq!(t.render(&RenderContext::new(now(), &a)).text, "{date}");
+}
+
+#[test]
+fn prompts_are_deduplicated_in_first_use_order() {
+    let t = Template::parse(
+        "{field:Zed} {choice:Tone|a|b} {field:Alpha|hi} {field:Zed} {choice:Tone|a|b} {date}",
+    )
+    .unwrap();
+    assert_eq!(
+        t.prompts(),
+        vec![
+            Prompt {
+                name: "Zed".into(),
+                kind: PromptKind::Field { default: None }
+            },
+            Prompt {
+                name: "Tone".into(),
+                kind: PromptKind::Choice {
+                    options: vec!["a".into(), "b".into()]
+                }
+            },
+            Prompt {
+                name: "Alpha".into(),
+                kind: PromptKind::Field {
+                    default: Some("hi".into())
+                }
+            },
+        ]
+    );
+}
+
+#[test]
+fn the_first_default_of_a_repeated_field_is_the_prompt_default() {
+    let t = Template::parse("{field:N} {field:N|first} {field:N|second}").unwrap();
+    assert_eq!(
+        t.prompts()[0].kind,
+        PromptKind::Field {
+            default: Some("first".into())
+        }
+    );
+    let a = BTreeMap::new();
+    assert_eq!(
+        t.render(&RenderContext::new(now(), &a)).text,
+        "first first first"
+    );
+}
+
+#[test]
+fn names_and_options_are_trimmed() {
+    let t = Template::parse("{field: Name | hi there }{choice: T | a | b }").unwrap();
+    let p = t.prompts();
+    assert_eq!(p[0].name, "Name");
+    assert_eq!(
+        p[0].kind,
+        PromptKind::Field {
+            default: Some("hi there".into())
+        }
+    );
+    assert_eq!(
+        p[1].kind,
+        PromptKind::Choice {
+            options: vec!["a".into(), "b".into()]
+        }
+    );
+}
+
+#[test]
+fn reusing_a_name_for_a_different_prompt_is_an_error() {
+    assert_eq!(
+        parse_err("{field:X} {choice:X|a|b}").kind,
+        TemplateErrorKind::ConflictingPrompt { name: "X".into() }
+    );
+    assert_eq!(
+        parse_err("{choice:X|a|b} {choice:X|a|c}").kind,
+        TemplateErrorKind::ConflictingPrompt { name: "X".into() }
+    );
+}
+
+// ---- entitlements --------------------------------------------------------------------
+
+#[test]
+fn static_templates_need_no_feature() {
+    let t = Template::parse("{date} {time} {datetime:%Y} {clipboard} {cursor}").unwrap();
+    assert!(!t.requires(Feature::PromptedFields));
+    assert!(t.check(&Entitlements::new(Tier::Free)).is_ok());
+    assert_eq!(t.prompts().len(), 0);
+}
+
+#[test]
+fn prompted_templates_need_pro() {
+    for src in ["{field:A}", "x {choice:A|b|c}"] {
+        let t = Template::parse(src).unwrap();
+        assert!(t.requires(Feature::PromptedFields));
+        assert!(!t.requires(Feature::PasteStack));
+        assert_eq!(
+            t.check(&Entitlements::new(Tier::Free)),
+            Err(Error::ProRequired(Feature::PromptedFields))
+        );
+        assert!(t.check(&Entitlements::new(Tier::Pro)).is_ok());
+    }
+}
+
+// ---- escaping ------------------------------------------------------------------------
+
+#[test]
+fn doubled_braces_are_literal() {
+    assert_eq!(render("{{date}} and }}"), "{date} and }");
+    assert_eq!(render("{{{date}}}"), "{2026-10-17}");
+}
+
+#[test]
+fn escape_helper_doubles_braces() {
+    assert_eq!(escape("a{b}c"), "a{{b}}c");
+}
+
+// ---- errors --------------------------------------------------------------------------
+
+#[test]
+fn unknown_placeholders_are_errors_with_a_span_and_a_hint() {
+    let err = parse_err("Hi {nam} there");
+    assert_eq!(err.span, 3..8);
+    assert_eq!(
+        err.kind,
+        TemplateErrorKind::Unknown {
+            found: "nam".into(),
+            suggestion: None
+        }
+    );
+    let msg = err.to_string();
+    assert!(msg.contains("unknown placeholder `{nam}`"), "{msg}");
+    assert!(msg.contains("{{") && msg.contains("{field:Name}"), "{msg}");
+}
+
+#[test]
+fn near_misses_get_a_suggestion() {
+    for (src, want) in [
+        ("{Date}", "date"),
+        ("{dat}", "date"),
+        ("{clipbaord}", "clipboard"),
+        ("{feild:A}", "field"),
+    ] {
+        match parse_err(src).kind {
+            TemplateErrorKind::Unknown { suggestion, .. } => {
+                assert_eq!(suggestion, Some(want), "{src}");
+            }
+            other => panic!("{src}: {other:?}"),
+        }
+    }
+    assert!(
+        parse_err("{dat}")
+            .to_string()
+            .contains("did you mean `{date}`")
+    );
+}
+
+#[test]
+fn argument_rules_are_enforced() {
+    assert_eq!(
+        parse_err("{date:%Y}").kind,
+        TemplateErrorKind::UnexpectedArgument {
+            placeholder: "date"
+        }
+    );
+    assert_eq!(
+        parse_err("{cursor:1}").kind,
+        TemplateErrorKind::UnexpectedArgument {
+            placeholder: "cursor"
+        }
+    );
+    assert_eq!(
+        parse_err("{datetime}").kind,
+        TemplateErrorKind::MissingArgument {
+            placeholder: "datetime"
+        }
+    );
+    assert_eq!(
+        parse_err("{datetime:}").kind,
+        TemplateErrorKind::MissingArgument {
+            placeholder: "datetime"
+        }
+    );
+    assert_eq!(
+        parse_err("{field}").kind,
+        TemplateErrorKind::MissingArgument {
+            placeholder: "field"
+        }
+    );
+    assert_eq!(parse_err("{field: |x}").kind, TemplateErrorKind::EmptyName);
+    assert_eq!(parse_err("{choice:T}").kind, TemplateErrorKind::NoOptions);
+    assert_eq!(
+        parse_err("{choice:T|a||b}").kind,
+        TemplateErrorKind::EmptyOption
+    );
+    assert_eq!(
+        parse_err("{choice:T|}").kind,
+        TemplateErrorKind::EmptyOption
+    );
+    assert_eq!(parse_err("{}").kind, TemplateErrorKind::EmptyPlaceholder);
+}
+
+#[test]
+fn bad_datetime_formats_point_at_the_specifier() {
+    let err = parse_err("at {datetime:%H:%Q}");
+    assert_eq!(
+        err.kind,
+        TemplateErrorKind::UnknownFormatSpecifier { specifier: 'Q' }
+    );
+    assert_eq!(&"at {datetime:%H:%Q}"[err.span.clone()], "%Q");
+    let err = parse_err("{datetime:%Y%}");
+    assert_eq!(err.kind, TemplateErrorKind::TrailingPercent);
+    assert_eq!(&"{datetime:%Y%}"[err.span.clone()], "%");
+    let err = parse_err("{datetime:%é}");
+    assert_eq!(
+        err.kind,
+        TemplateErrorKind::UnknownFormatSpecifier { specifier: 'é' }
+    );
+    assert_eq!(&"{datetime:%é}"[err.span.clone()], "%é");
+}
+
+#[test]
+fn braces_must_balance() {
+    let err = parse_err("a } b");
+    assert_eq!(
+        (err.kind, err.span),
+        (TemplateErrorKind::UnmatchedClose, 2..3)
+    );
+    assert!(parse_err("a } b").to_string().contains("}}"));
+
+    let err = parse_err("ab {date");
+    assert_eq!(
+        (err.kind, err.span),
+        (TemplateErrorKind::Unterminated, 3..8)
+    );
+
+    let err = parse_err("{date {time}");
+    assert_eq!(
+        (err.kind, err.span),
+        (TemplateErrorKind::Unterminated, 0..6)
+    );
+
+    assert_eq!(parse_err("{").kind, TemplateErrorKind::Unterminated);
+}
+
+#[test]
+fn spans_are_byte_offsets_after_multibyte_text() {
+    let src = "é😀 {nope}";
+    let err = parse_err(src);
+    assert_eq!(&src[err.span], "{nope}");
+}
+
+#[test]
+fn the_first_error_wins() {
+    assert_eq!(parse_err("{a} {b}").span, 0..3);
+}
+
+// ---- properties ----------------------------------------------------------------------
+
+fn brace_heavy() -> impl Strategy<Value = String> {
+    proptest::string::string_regex("[{}a-zA-Z0-9:|% \\n\u{e9}\u{1F600}]{0,60}").unwrap()
+}
+
+fn valid_template() -> impl Strategy<Value = String> {
+    let word = "[a-zA-Z][a-zA-Z0-9 ]{0,6}";
+    let piece = prop_oneof![
+        "[a-z \\n\u{e9}]{0,8}".prop_map(|s| escape(&s)),
+        Just("{{".to_owned()),
+        Just("}}".to_owned()),
+        Just("{date}".to_owned()),
+        Just("{time}".to_owned()),
+        Just("{clipboard}".to_owned()),
+        "[%YmdHMSpAaBbjzFT ,:/-]{1,8}".prop_filter_map("bad %", |f| {
+            let ok = Template::parse(&format!("{{datetime:{f}}}")).is_ok();
+            ok.then(|| format!("{{datetime:{f}}}"))
+        }),
+        word.prop_map(|n| format!("{{field:{n}}}")),
+        (word, word).prop_map(|(n, d)| format!("{{field:{n}|{d}}}")),
+        (word, word, word).prop_map(|(n, a, b)| format!("{{choice:{n}|{a}|{b}}}")),
+    ];
+    proptest::collection::vec(piece, 0..8).prop_map(|v| v.concat())
+}
+
+proptest! {
+    #[test]
+    fn parse_and_render_never_panic(src in prop_oneof![brace_heavy(), any::<String>()]) {
+        if let Ok(t) = Template::parse(&src) {
+            let a = BTreeMap::new();
+            let _ = t.render(&RenderContext::new(now(), &a));
+            let _ = t.prompts();
+        }
+    }
+
+    #[test]
+    fn errors_have_valid_spans(src in brace_heavy()) {
+        if let Err(e) = Template::parse(&src) {
+            prop_assert!(e.span.start <= e.span.end && e.span.end <= src.len());
+            prop_assert!(src.is_char_boundary(e.span.start) && src.is_char_boundary(e.span.end));
+            prop_assert_ne!(e.to_string().len(), 0);
+        }
+    }
+
+    #[test]
+    fn escaped_text_round_trips(text in any::<String>()) {
+        let t = Template::parse(&escape(&text)).unwrap();
+        let a = BTreeMap::new();
+        let out = t.render(&RenderContext::new(now(), &a));
+        prop_assert_eq!(out.text, text);
+        prop_assert_eq!(out.cursor_from_end, None);
+        prop_assert_eq!(t.prompts().len(), 0);
+    }
+
+    #[test]
+    fn rendering_is_deterministic(src in valid_template(), clip in any::<Option<String>>()) {
+        let t = Template::parse(&src).unwrap();
+        let a = answers(&[("a", "x")]);
+        let mut ctx = RenderContext::new(now(), &a).with_locale(Locale::for_tag("de"));
+        ctx.clipboard = clip.as_deref();
+        prop_assert_eq!(t.render(&ctx), t.render(&ctx));
+    }
+
+    #[test]
+    fn generated_templates_parse_and_prompts_are_unique(src in valid_template()) {
+        let t = Template::parse(&src);
+        // Reusing a name with a different prompt kind is the only way a valid mix can fail.
+        match t {
+            Ok(t) => {
+                let names: Vec<_> = t.prompts().into_iter().map(|p| p.name).collect();
+                let unique: std::collections::BTreeSet<_> = names.iter().collect();
+                prop_assert_eq!(unique.len(), names.len());
+            }
+            Err(e) => prop_assert!(matches!(e.kind, TemplateErrorKind::ConflictingPrompt { .. }), "{e}"),
+        }
+    }
+}
