@@ -1,6 +1,6 @@
 # Snipdeck — Product Specification (v1)
 
-> Status: **Agreed** (grill round 1, 2026-10-17). Design-system spec follows in `docs/design/`.
+> Status: **Agreed** (grill rounds 1–2, 2026-10-17). Design language: [`DESIGN.md`](../DESIGN.md).
 > Working name: **Snipdeck** — kept in one constant (`APP_NAME`); trademark/domain check before release.
 
 ## 1. Problem
@@ -62,8 +62,20 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - Add: **+ From clipboard**, `Ctrl+V` / drag-drop onto panel, **quick new note** (inline), global
   **save-selection** hotkey (copies selection under the hood, restores clipboard).
 - Reorder by drag (also `Alt+↑/↓`); per-list sort: Manual (default) / Most used / Recently used.
+- **Search:** typing while the panel is focused filters across the current board (the tab row becomes the search field; `Esc` restores). `Ctrl+F` and the search icon also work.
+- **Recent tab:** when history is on, a clock tab sits at the far left of the tab row. Promote an entry by dragging it to a tab or with "Save to…".
+- **Target footer:** always shows where a click will go ("Pastes into Outlook · New message" / "Copies to clipboard").
+- **First-run position:** docked to the right edge, full height minus taskbar, always-on-top, auto-hide off (changeable in onboarding).
+- **Fullscreen apps:** the panel auto-hides while a fullscreen app is in front and returns afterwards; hotkeys keep working.
 - Inline quick-edit for short text and titles; everything else opens the Editor.
 - Detach a list tab → **Floating list** (Pro).
+
+### 5.1a Use semantics (paste & clipboard)
+- **Paste** = write item to clipboard → `Ctrl+V` into Target → **restore the previous clipboard** (after ~300 ms, once the target has read it).
+- **Copy** (`Shift+click`, `Shift+Enter`, or no Target) = item stays on the clipboard.
+- **Paste as plain text:** `Alt+click` / `Alt+Enter`; per-item "always paste as plain text" option.
+- **Paste stack (Pro):** multi-select items → "Start stack". The panel shows the queue; the global **Paste next** hotkey (default `Ctrl+Alt+V`) pastes the head and advances. `Ctrl+V` is never hooked. `Esc` in the panel or finishing the queue ends the stack.
+- Elevated targets (UIPI) and failures fall back to Copy with an explaining toast ("Couldn't paste into Task Manager (runs as admin). Copied instead.").
 
 ### 5.2 Picker
 - Global hotkey (default `Ctrl+Shift+Space`), appears at text caret (fallback mouse) in <80 ms.
@@ -85,7 +97,8 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 
 ### 5.5 Capture & OCR
 - Hotkey (default `Ctrl+Shift+2`) → Snipdeck's own region-select overlay (multi-monitor, DPI-aware).
-- After selection: **Extract text** / **Save image** / **Both** → into chosen list (default: active list).
+- After selection an **action bar** appears at the selection: **Copy text** (one-off OCR, nothing stored) · **Save text** · **Save image** · **Save both**, plus a list picker (default: active list).
+- Text actions open a small **review popover** with the OCR result, editable before copying/saving.
 - OCR engine: **Windows.Media.Ocr** by default (zero bundle cost); optional **RapidOCR pack**
   (ONNX, downloaded on demand) for messy layouts / unsupported languages (ADR-0004).
 
@@ -100,6 +113,16 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - Free: masked `••••` (click-and-hold to reveal), excluded from history, clipboard auto-clear after N s (default 30).
 - Pro: encrypted at rest (XChaCha20-Poly1305); key wrapped by OS (DPAPI) and optionally by a
   **master password** (Argon2id) → unlock prompt per session / idle timeout.
+
+### 5.7a Deletion & recovery
+- Items delete instantly with a 5 s **Undo** toast; lists and boards ask for confirmation (showing the item count).
+- **Trash** keeps everything 30 days; restore from the main window.
+- **Daily local auto-backup** (zipped `.snipdeck` in the data folder, keep 7); restore from Settings.
+- **Crash log** stored locally; "Report a problem" lets the user review the log, then opens a prefilled GitHub issue or email. Nothing is sent automatically.
+
+### 5.7b Onboarding (≤ 60 s, skippable)
+1. Welcome. 2. Hotkeys (with conflict detection). 3. Panel position. 4. Start with Windows + history opt-in.
+Seeds a **Getting started** list whose cards teach by doing ("Click me to paste", "Shift+click to copy", "Try a template").
 
 ### 5.8 System integration
 - Tray icon: show panel, picker, capture, open main, pause history, quit.
@@ -124,8 +147,11 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 | Sensitive masking + auto-clear | ✓ | ✓ |
 | Sensitive encryption + master password | — | ✓ |
 | Floating (detached) lists | — | ✓ |
+| Paste stack | — | ✓ |
 
 Licence key: offline Ed25519-signed token, no phone-home (ADR-0005).
+
+**Upsell:** shown only when the user tries a Pro action (a calm sheet: what it does, price, "Enter key" / "Get Pro"), plus a subtle "Pro" section in Settings listing Pro features. No nags, banners or countdowns.
 
 ## 7. Internationalisation & accessibility
 - Launch locales: **en, es, de, fr, pt-BR, ja, zh-Hans**. All strings via Slint `@tr()` / gettext `.po`.
@@ -180,6 +206,12 @@ clipboard format round-trips), Slint UI tests (testing backend), screenshot regr
 2. **IME / CJK input** in Slint `TextInput`.
 3. **Long-text editor performance** in Slint (multi-MB text).
 
-## 14. Out of scope for v1
+## 14. Delivery process
+1. **M0 spikes** (Opus): non-activating window + paste, IME, long-text editor, Mica in Slint. Each ends in a short findings note in `docs/spikes/`.
+2. **Implementation plan** written from SPEC + DESIGN + spike findings.
+3. **Milestones**, one PR each, built by parallel Sonnet implementers (one per crate/area), Haiku for i18n strings, test scaffolding and docs, and an Opus reviewer per milestone PR.
+4. CI builds Windows artifacts per PR. The owner smoke-tests focus, paste and OCR on real Windows, since cloud CI can't verify these.
+
+## 15. Out of scope for v1
 Cloud sync service, rich-text editing, image annotation (arrows/text), scripting/macros,
 Linux/macOS builds, mobile.
