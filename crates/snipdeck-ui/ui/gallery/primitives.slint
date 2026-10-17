@@ -1,0 +1,197 @@
+import { Theme, Type, Space, Palette, Fonts, ListHue } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { IconButton, IconButtonVariant, IconButtonSize } from "../components/icon-button.slint";
+import { Keycap, KeyCombo } from "../components/keycap.slint";
+import { Tag } from "../components/tag.slint";
+import { Toggle, Checkbox, Radio } from "../components/choice.slint";
+import { Swatch } from "../components/swatch.slint";
+import { Tooltip, Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind } from "../components/feedback.slint";
+import { Menu, MenuEntry } from "../components/menu.slint";
+
+// Gallery scaffolding: a captioned row of examples.
+component GalleryRow inherits HorizontalLayout {
+    in property <string> title;
+    spacing: Space.s3;
+    alignment: start;
+    VerticalLayout {
+        width: 72px;
+        alignment: start;
+        Text {
+            height: Space.hit;
+            text: root.title;
+            color: Theme.text-secondary;
+            font-family: Fonts.sans;
+            font-size: Type.xs;
+            vertical-alignment: center;
+        }
+    }
+    @children
+}
+
+// Interactive primitives: IconButton, Keycap, Tag, Toggle / Checkbox / Radio, Swatch.
+// Row order and left-to-right order are relied on by tests/primitives.rs and primitives_logic.rs.
+export component PrimitivesGallery inherits Window {
+    in property <bool> dark: false;
+    // Activation counters read by the logic tests.
+    in-out property <int> icon-clicks: 0;
+    in-out property <int> tag-clicks: 0;
+    in-out property <int> tag-removals: 0;
+    in-out property <int> swatch-clicks: 0;
+    in-out property <int> radio-activations: 0;
+    in-out property <int> toggles: 0;
+    width: 560px;
+    height: 290px;
+    background: Theme.bg-app;
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    VerticalLayout {
+        padding: Space.s4;
+        spacing: Space.s3;
+        alignment: start;
+        GalleryRow {
+            title: "IconButton";
+            spacing: Space.s2;
+            IconButton { icon: Icons.copy; tooltip: "Copy"; size: IconButtonSize.sm; clicked => { root.icon-clicks += 1; } }
+            IconButton { icon: Icons.pencil-simple; tooltip: "Edit"; size: IconButtonSize.md; }
+            IconButton { icon: Icons.trash; tooltip: "Delete"; variant: IconButtonVariant.subtle; size: IconButtonSize.sm; }
+            IconButton { icon: Icons.gear; tooltip: "Settings"; variant: IconButtonVariant.subtle; size: IconButtonSize.md; }
+            IconButton { icon: Icons.push-pin; tooltip: "Pinned"; active: true; }
+            IconButton { icon: Icons.dots-three; tooltip: "More"; enabled: false; clicked => { root.icon-clicks += 100; } }
+        }
+        GalleryRow {
+            title: "Keycap";
+            spacing: Space.s2;
+            Keycap { text: "1"; y: 4px; }
+            Keycap { text: "Ctrl"; y: 4px; }
+            Keycap { text: "2"; active: true; y: 4px; }
+            KeyCombo { keys: ["Ctrl", "Shift", "V"]; label: "Control Shift V"; y: 4px; }
+            KeyCombo { keys: ["Alt", "Space"]; label: "Alt Space"; active: true; y: 4px; }
+        }
+        GalleryRow {
+            title: "Tag";
+            spacing: Space.s2;
+            Tag { text: "work"; clicked => { root.tag-clicks += 1; } }
+            Tag { text: "email"; selected: true; }
+            Tag { text: "snippets"; removable: true; remove-label: "Remove tag snippets"; clicked => { root.tag-clicks += 10; } removed => { root.tag-removals += 1; } }
+            Tag { text: "urgent"; removable: true; selected: true; remove-label: "Remove tag urgent"; }
+            Tag { text: "locked"; enabled: false; clicked => { root.tag-clicks += 100; } }
+        }
+        GalleryRow {
+            title: "Toggle";
+            spacing: Space.s4;
+            Toggle { a11y-label: "Off"; toggled(on) => { root.toggles += 1; } }
+            Toggle { a11y-label: "On"; checked: true; }
+            Toggle { text: "Start with Windows"; checked: true; }
+            Toggle { a11y-label: "Disabled off"; enabled: false; }
+            Toggle { a11y-label: "Disabled on"; checked: true; enabled: false; }
+        }
+        GalleryRow {
+            title: "Checkbox";
+            spacing: Space.s4;
+            Checkbox { text: "Unchecked"; }
+            Checkbox { text: "Checked"; checked: true; }
+            Checkbox { text: "Mixed"; mixed: true; mixed-label: "Partially checked"; }
+            Checkbox { text: "Disabled"; enabled: false; }
+            Checkbox { text: "Disabled on"; checked: true; enabled: false; }
+        }
+        GalleryRow {
+            title: "Radio";
+            spacing: Space.s4;
+            Radio { text: "One"; activated => { root.radio-activations += 1; } }
+            Radio { text: "Two"; selected: true; }
+            Radio { text: "Disabled"; enabled: false; }
+            Radio { text: "Disabled on"; selected: true; enabled: false; }
+        }
+        GalleryRow {
+            title: "Swatch";
+            spacing: Space.s1;
+            Swatch { hue: ListHue.blue; label: "Blue"; clicked => { root.swatch-clicks += 1; } }
+            Swatch { hue: ListHue.teal; label: "Teal"; selected: true; }
+            Swatch { hue: ListHue.green; label: "Green"; }
+            Swatch { hue: ListHue.amber; label: "Amber"; }
+            Swatch { hue: ListHue.orange; label: "Orange"; }
+            Swatch { hue: ListHue.red; label: "Red"; }
+            Swatch { hue: ListHue.rose; label: "Rose"; }
+            Swatch { hue: ListHue.violet; label: "Violet"; }
+            Swatch { hue: ListHue.slate; label: "Slate"; }
+            Swatch { hue: ListHue.slate; label: "Slate disabled"; enabled: false; clicked => { root.swatch-clicks += 100; } }
+        }
+    }
+}
+
+// Render-only surfaces: Tooltip, Toast, Skeleton, and a static Menu.
+export component SurfacesGallery inherits Window {
+    in property <bool> dark: false;
+    in-out property <int> undos: 0;
+    in-out property <ToastPhase> phase: ToastPhase.hold;
+    width: 560px;
+    height: 380px;
+    background: Theme.bg-app;
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    VerticalLayout {
+        padding: Space.s4;
+        spacing: Space.s3;
+        alignment: start;
+        GalleryRow {
+            title: "Tooltip";
+            spacing: Space.s4;
+            Tooltip { text: "Copy"; open: true; }
+            Tooltip { text: "Paste into Notepad"; open: true; }
+            Tooltip { text: "Closed"; open: false; }
+        }
+        GalleryRow {
+            title: "Toast";
+            VerticalLayout {
+                spacing: Space.s2;
+                Toast { text: "Copied"; kind: ToastKind.neutral; phase: root.phase; }
+                Toast { text: "Pasted into Notepad"; kind: ToastKind.success; phase: root.phase; }
+                Toast { text: "Could not paste"; kind: ToastKind.danger; undo-label: "Undo"; phase: root.phase; undo => { root.undos += 1; } }
+            }
+        }
+        GalleryRow {
+            title: "Skeleton";
+            VerticalLayout {
+                width: 220px;
+                spacing: Space.s2;
+                Skeleton { kind: SkeletonKind.row; label: "Loading row"; }
+                Skeleton { kind: SkeletonKind.row; label: "Loading row"; }
+                Skeleton { kind: SkeletonKind.tile; label: "Loading tile"; }
+            }
+        }
+    }
+}
+
+// A focused Menu for keyboard tests: Up/Down/Enter/Esc, hover and click.
+export component MenuGallery inherits Window {
+    in property <bool> dark: false;
+    in-out property <int> current: 1;
+    in-out property <int> activated-index: -1;
+    in-out property <int> dismissals: 0;
+    width: 260px;
+    height: 200px;
+    background: Theme.bg-app;
+    init => { Palette.dark = root.dark; menu.focus-menu(); }
+    changed dark => { Palette.dark = root.dark; }
+
+    menu := Menu {
+        x: Space.s4;
+        y: Space.s4;
+        width: 228px;
+        label: "Item actions";
+        current <=> root.current;
+        entries: [
+            { text: "Copy", icon: Icons.copy, shortcut: "Ctrl+C" },
+            { text: "Edit", icon: Icons.pencil-simple, shortcut: "Ctrl+E" },
+            { separator: true },
+            { text: "Pin", icon: Icons.push-pin, shortcut: "", destructive: false, disabled: true },
+            { text: "Move to list", icon: Icons.folder, shortcut: "" },
+            { separator: true },
+            { text: "Delete", icon: Icons.trash, shortcut: "Del", destructive: true },
+        ];
+        activated(i) => { root.activated-index = i; }
+        dismissed => { root.dismissals += 1; }
+    }
+}

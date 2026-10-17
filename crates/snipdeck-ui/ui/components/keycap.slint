@@ -1,0 +1,54 @@
+import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+
+// DESIGN.md §4 Keycap (single). One key cap in IBM Plex Mono. `active` is the brief pressed flash:
+// the host sets it for ~140ms when the key is used (quick-paste index, hotkey recorder).
+// Not interactive.
+export component Keycap inherits Rectangle {
+    in property <string> text;
+    in property <bool> active: false;
+
+    min-width: max(20px, label.preferred-width + 2 * Space.s1 + 2px);
+    height: 20px;
+    background: root.active ? Theme.accent-subtle : Theme.bg-sunken;
+    border-radius: Radius.sm;
+    border-width: 1px;
+    border-color: root.active ? Theme.accent : Theme.border-default;
+    animate background, border-color { duration: Motion.instant; easing: Motion.out; }
+
+    HorizontalLayout {
+        padding-left: Space.s1;
+        padding-right: Space.s1;
+        alignment: center;
+        label := Text {
+            text: root.text;
+            color: root.active ? Theme.accent-text : Theme.text-secondary;
+            font-family: Fonts.mono;
+            font-size: Type.xs;
+            font-weight: Type.medium;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+}
+
+// DESIGN.md §4 Keycap (combo). A key combination as a row of caps. `label` is the spoken form
+// ("Control Shift V"); the host translates it.
+export component KeyCombo inherits Rectangle {
+    in property <[string]> keys;
+    in property <bool> active: false;
+    in property <string> label;
+
+    accessible-role: AccessibleRole.text;
+    accessible-label: root.label;
+    height: 20px;
+    min-width: row.min-width;
+
+    row := HorizontalLayout {
+        spacing: Space.s0-5;
+        alignment: start;
+        for key in root.keys: Keycap {
+            text: key;
+            active: root.active;
+        }
+    }
+}

@@ -124,3 +124,23 @@ export global Theme {
     // 1px border drawn on everything in high-contrast mode, transparent otherwise.
     out property <color> hc-border: hc ? SystemLook.hc-window-text : transparent;
 }
+
+// ---------------------------------------------------------------------------------------------
+// List accents (DESIGN.md §2): nine curated hues, step 600 in light and step 400 in dark.
+// Used for tab underlines, sidebar marks, list labels and Swatch. Never as a fill behind text.
+// ---------------------------------------------------------------------------------------------
+export enum ListHue { blue, teal, green, amber, orange, red, rose, violet, slate }
+
+export global ListAccent {
+    pure public function color(hue: ListHue) -> color {
+        if (hue == ListHue.blue) { return Palette.dark ? Primitives.blue-400 : Primitives.blue-600; }
+        if (hue == ListHue.teal) { return Palette.dark ? Primitives.teal-400 : Primitives.teal-600; }
+        if (hue == ListHue.green) { return Palette.dark ? Primitives.green-400 : Primitives.green-600; }
+        if (hue == ListHue.amber) { return Palette.dark ? Primitives.amber-400 : Primitives.amber-600; }
+        if (hue == ListHue.orange) { return Palette.dark ? Primitives.orange-400 : Primitives.orange-600; }
+        if (hue == ListHue.red) { return Palette.dark ? Primitives.red-400 : Primitives.red-600; }
+        if (hue == ListHue.rose) { return Palette.dark ? Primitives.rose-400 : Primitives.rose-600; }
+        if (hue == ListHue.violet) { return Palette.dark ? Primitives.violet-400 : Primitives.violet-600; }
+        return Palette.dark ? Primitives.slate-400 : Primitives.slate-600;
+    }
+}
