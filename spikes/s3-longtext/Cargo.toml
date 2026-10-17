@@ -1,0 +1,20 @@
+[package]
+name = "s3-longtext"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-only"
+
+[workspace]
+
+[dependencies]
+slint = { version = "=1.18.1", default-features = false, features = ["std", "compat-1-2", "renderer-software"] }
+nucleo = "0.5.0"
+nucleo-matcher = "0.3.1"
+ropey = "1.6.1"
+
+[build-dependencies]
+slint-build = "=1.18.1"
+
+[profile.release]
+debug = false

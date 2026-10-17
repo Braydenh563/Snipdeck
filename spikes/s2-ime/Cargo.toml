@@ -1,0 +1,16 @@
+[package]
+name = "s2-ime"
+version = "0.0.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-only"
+description = "Snipdeck spike S2: IME / CJK input in Slint TextInput, LineEdit and TextEdit"
+
+# Standalone: not part of any parent workspace.
+[workspace]
+
+[dependencies]
+slint = "=1.18.1"
+
+[build-dependencies]
+slint-build = "=1.18.1"

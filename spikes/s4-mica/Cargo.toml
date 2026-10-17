@@ -1,0 +1,24 @@
+[package]
+name = "s4-mica"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "GPL-3.0-only"
+description = "Spike S4: Windows 11 Mica backdrop, frameless DWM chrome, theme and DPI handling in Slint"
+
+# Standalone spike: not part of any parent workspace.
+[workspace]
+
+[dependencies]
+slint = { version = "=1.18.1", default-features = false, features = [
+    "std",
+    "compat-1-2",
+    "backend-winit",
+    "renderer-femtovg",
+    "renderer-software",
+    "raw-window-handle-06",
+    "unstable-winit-030",
+] }
+
+[build-dependencies]
+slint-build = "=1.18.1"
