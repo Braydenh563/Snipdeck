@@ -3,4 +3,5 @@
 //! test with the platform fakes.
 
 pub mod panel;
+pub mod toast;
 pub mod usecase;
