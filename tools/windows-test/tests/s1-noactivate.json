@@ -18,9 +18,9 @@
       "expect": "The panel appears WITHOUT taking focus from the terminal. No 'entry point not found' error. No taskbar button (note any brief flash at start-up). Not listed in Alt+Tab. Stays above other windows. Clicking the panel leaves the terminal's title bar active."
     },
     {
-      "id": "2", "gate": true,
+      "id": "2", "gate": true, "clipboard": "BEFORE",
       "title": "Notepad: click an item to paste",
-      "do": "Copy the word BEFORE to the clipboard. In Notepad type abc. Click 'Hello from Snipdeck' in the panel. Then press Ctrl+V in Notepad. Open Win+V history.",
+      "do": "The wizard has already put the word BEFORE on your clipboard. In Notepad type abc. Click 'Hello from Snipdeck' in the panel. Then press Ctrl+V in Notepad. Open Win+V history.",
       "expect": "Footer before click: 'Pastes into Notepad.exe ...' with NO '(no caret seen)'. Text inserted at the caret, Notepad stays active with the caret blinking, status shows 'Pasted into ...'. Ctrl+V then pastes BEFORE (restore worked). Win+V history does NOT contain the item."
     },
     {

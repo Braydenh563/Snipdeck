@@ -554,12 +554,13 @@ function Show-Test($SpikeDef, $T, [int]$Index, [int]$Total, $Existing) {
     Say '  What you should see:' Cyan
     Say-Wrapped $T.expect 4 Gray
     Say ''
+    if ($T.clipboard) { Say "  Clipboard: '$($T.clipboard)' is already on your clipboard (press k to put it back)." Green }
     if (Test-AppRunning) { Say "  App: running (PID $($script:App.proc.Id)), $($script:App.label)" DarkGreen }
     else { Say '  App: NOT running (press r to launch it)' Yellow }
     if ($Existing) { Say "  Previous answer for this step: $($Existing.status)  $($Existing.note)" DarkYellow }
     Say ''
-    Say '  [p] pass   [f] fail   [s] skip   [n] add note   [c] screenshot   [l] app log   [r] relaunch   [b] back   [q] finish now' DarkGray
-    Say '  Tip: Ctrl+C is turned off here. Copy text with Ctrl+Shift+C. Pasted text is ignored.' DarkGray
+    Say '  [p] pass   [f] fail   [s] skip   [n] add note   [c] screenshot   [l] app log   [r] relaunch   [k] re-copy clipboard text   [b] back   [q] finish now' DarkGray
+    Say '  Tip: Ctrl+C is turned off here (it would close the wizard). Copying from this window: select text, then right-click or Ctrl+Shift+C. Pasted text is ignored.' DarkGray
 }
 
 function Run-Spike($SpikeDef, $Tests, $State) {
@@ -597,10 +598,11 @@ function Run-Spike($SpikeDef, $Tests, $State) {
             Start-App $SpikeDef $useNorm
         }
 
+        if ($t.clipboard) { try { Set-Clipboard -Value $t.clipboard } catch { } }
         Show-Test $SpikeDef $t ($i + 1) $Tests.Count $existing
         $advance = $false
         while (-not $advance) {
-            $k = Read-Choice '  > ' 'pfsnclrbq'
+            $k = Read-Choice '  > ' 'pfsnclrbqk'
             if ($k -eq 'p' -or $k -eq 'f' -or $k -eq 's') {
                 $status = @{ p = 'pass'; f = 'fail'; s = 'skip' }[$k]
                 $note = $pendingNote; $pendingNote = ''
@@ -633,6 +635,10 @@ function Run-Spike($SpikeDef, $Tests, $State) {
                 $useNorm = if ($t.launch -or $script:App -eq $null) { $norm } else { $script:App.norm }
                 Start-App $SpikeDef $useNorm
                 Say "  Relaunched ($(Describe-Launch $useNorm))." Green
+            } elseif ($k -eq 'k') {
+                if ($t.clipboard) {
+                    try { Set-Clipboard -Value $t.clipboard; Say "  '$($t.clipboard)' is on your clipboard." Green } catch { Say '  Could not set the clipboard.' Yellow }
+                } else { Say '  This step has no clipboard text.' Yellow }
             } elseif ($k -eq 'b') {
                 if ($i -gt 0) { $i-- }; $advance = $true
             } elseif ($k -eq 'q') {
@@ -727,6 +733,8 @@ if ($SelfTest) {
 
 $script:State = $null
 $script:Resumed = $false
+$script:CtrlCWas = $null
+try { $script:CtrlCWas = [Console]::TreatControlCAsInput; [Console]::TreatControlCAsInput = $true } catch { }
 try {
     Write-Banner 'Snipdeck: Windows test wizard' 'Builds the M0 spike apps and walks you through the manual tests'
     Say ''
@@ -808,4 +816,5 @@ try {
 }
 finally {
     Stop-App
+    try { if ($null -ne $script:CtrlCWas) { [Console]::TreatControlCAsInput = $script:CtrlCWas } } catch { }
 }
