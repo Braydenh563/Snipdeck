@@ -112,3 +112,25 @@ fn a_deleted_tag_name_can_be_reused() {
     s.delete_tag(t.id).unwrap();
     s.insert_tag(&Tag::new(name("Temp"))).unwrap();
 }
+
+/// Review N5: uniqueness folds case fully (ß = SS) and ignores Unicode normalisation.
+#[test]
+fn names_clash_after_full_case_folding_and_normalisation() {
+    let mut s = store();
+    s.insert_tag(&Tag::new(name("Straße"))).unwrap();
+    assert!(matches!(
+        s.insert_tag(&Tag::new(name("STRASSE"))),
+        Err(Error::TagExists(_))
+    ));
+    s.insert_tag(&Tag::new(name("\u{c9}cole"))).unwrap(); // É precomposed
+    assert!(matches!(
+        s.insert_tag(&Tag::new(name("e\u{301}cole"))), // e + combining acute
+        Err(Error::TagExists(_))
+    ));
+    s.insert_tag(&Tag::new(name("\u{3a3}\u{39f}\u{3a3}")))
+        .unwrap(); // ΣΟΣ
+    assert!(matches!(
+        s.insert_tag(&Tag::new(name("\u{3c3}\u{3bf}\u{3c2}"))), // σος
+        Err(Error::TagExists(_))
+    ));
+}

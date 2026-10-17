@@ -7,7 +7,7 @@ pub enum Error {
     /// No live record with this id; it never existed, was purged, or is in the trash.
     #[error("{entity} {id} not found")]
     NotFound {
-        /// `"board"`, `"list"`, `"item"`, `"tag"` or `"blob"`.
+        /// `"board"`, `"list"`, `"item"`, `"tag"`, `"blob"` or `"key ring"`.
         entity: &'static str,
         /// The id or hash that was looked up.
         id: String,
@@ -21,7 +21,7 @@ pub enum Error {
     /// A record with this id already exists (live or in the trash).
     #[error("{entity} {id} already exists")]
     AlreadyExists {
-        /// `"board"`, `"list"`, `"item"` or `"tag"`.
+        /// `"board"`, `"list"`, `"item"`, `"tag"` or `"key ring"`.
         entity: &'static str,
         /// The duplicate id.
         id: String,
@@ -61,6 +61,9 @@ pub enum Error {
         name: &'static str,
         /// What went wrong.
         reason: String,
+        /// The SQLite error behind it, if any.
+        #[source]
+        source: Option<rusqlite::Error>,
     },
     /// A blob file does not match the hash or length recorded for it.
     #[error("blob {blob} is damaged: {reason}")]
@@ -77,6 +80,13 @@ pub enum Error {
     /// The database holds something Snipdeck could not have written.
     #[error("the database is inconsistent: {0}")]
     Corrupt(String),
+    /// Encrypting or decrypting, or the key ring, failed (wrong password, damaged data).
+    #[error(transparent)]
+    Crypto(#[from] crate::crypto::CryptoError),
+    /// The content of a sensitive item is encrypted, or must be, and the key ring is locked:
+    /// unlock it with [`Store::unlock_key_ring`](crate::Store::unlock_key_ring) first.
+    #[error("the encryption key is locked; unlock it to read or change sensitive items")]
+    EncryptionLocked,
     /// SQLite reported an error.
     #[error("database error: {0}")]
     Sqlite(#[from] rusqlite::Error),

@@ -300,11 +300,14 @@ fn record_use_counts_without_touching_updated_at_and_saturates() {
         (2, Some(at(20)), it.updated_at)
     );
 
-    let mut maxed = back;
+    // Usage is set on insert (an import) and only `record_use` changes it afterwards.
+    let mut maxed = Item::new(l.id, "maxed".to_owned(), ItemKind::Text, at(0));
+    maxed.preview = "x".to_owned();
     maxed.use_count = u32::MAX;
-    s.update_item(&maxed, None).unwrap();
-    s.record_use(it.id, at(30)).unwrap();
-    assert_eq!(s.item(it.id).unwrap().use_count, u32::MAX);
+    s.insert_item(&maxed, &text_formats("x"), Placement::Last)
+        .unwrap();
+    s.record_use(maxed.id, at(30)).unwrap();
+    assert_eq!(s.item(maxed.id).unwrap().use_count, u32::MAX);
     assert!(matches!(
         s.record_use(ItemId::generate(), at(1)),
         Err(Error::NotFound { entity: "item", .. })
@@ -366,4 +369,184 @@ fn the_store_is_a_blob_store() {
     ));
     let big = s.put(vec![9; INLINE_LIMIT + 1]).unwrap();
     assert_eq!(s.read(&big).unwrap().len(), INLINE_LIMIT + 1);
+}
+
+fn image(content: Content) -> Formats {
+    Formats::new(vec![Format::Png(content)]).unwrap()
+}
+
+/// Review M3: `put` hands out a blob that is not attached yet; an unrelated write that releases
+/// the same bytes must not delete it.
+#[test]
+fn put_then_unrelated_update_keeps_the_pending_blob() {
+    let (_dir, mut s, l) = on_disk();
+    let big = vec![7; INLINE_LIMIT + 1];
+    let first = s.put(big.clone()).unwrap();
+    let used = Item::new(l.id, "x".to_owned(), ItemKind::Image, at(0));
+    s.insert_item(&used, &image(first.clone()), Placement::Last)
+        .unwrap();
+
+    // A second capture of the same bytes: same blob, not attached yet.
+    let pending = s.put(big.clone()).unwrap();
+    assert_eq!(pending, first);
+    // The user edits X's content, which releases the blob X used.
+    s.update_item(&used, Some(&text_formats("replaced")))
+        .unwrap();
+
+    let later = Item::new(l.id, "y".to_owned(), ItemKind::Image, at(0));
+    s.insert_item(&later, &image(pending.clone()), Placement::Last)
+        .unwrap();
+    assert_eq!(s.read(&pending).unwrap().as_ref(), big.as_slice());
+    assert_healthy(&s);
+}
+
+/// Review M3, the purge path.
+#[test]
+fn put_then_purge_keeps_the_pending_blob() {
+    use snipdeck_store::{TrashRepo, Trashable};
+    let (_dir, mut s, l) = on_disk();
+    let big = vec![8; INLINE_LIMIT + 1];
+    let first = s.put(big.clone()).unwrap();
+    let used = Item::new(l.id, "x".to_owned(), ItemKind::Image, at(0));
+    s.insert_item(&used, &image(first), Placement::Last)
+        .unwrap();
+    let pending = s.put(big.clone()).unwrap();
+    s.trash(Trashable::Item(used.id), at(1)).unwrap();
+    assert_eq!(s.purge(at(2)).unwrap(), 1);
+
+    let later = Item::new(l.id, "y".to_owned(), ItemKind::Image, at(3));
+    s.insert_item(&later, &image(pending.clone()), Placement::Last)
+        .unwrap();
+    assert_eq!(s.read(&pending).unwrap().as_ref(), big.as_slice());
+}
+
+/// Once attached, a released blob is deleted as before (the pending mark is used up).
+#[test]
+fn an_attached_blob_is_still_deleted_when_released() {
+    let (dir, mut s, l) = on_disk();
+    let b = s.put(vec![9; INLINE_LIMIT + 1]).unwrap();
+    let x = Item::new(l.id, "x".to_owned(), ItemKind::Image, at(0));
+    s.insert_item(&x, &image(b), Placement::Last).unwrap();
+    assert_eq!(blob_files(dir.path()), 1);
+    s.update_item(&x, Some(&text_formats("small"))).unwrap();
+    assert_eq!(blob_files(dir.path()), 0);
+}
+
+/// Puts a directory where the blob file was, so deleting it fails (as an antivirus handle
+/// would on Windows).
+fn block_deletion(dir: &std::path::Path, content: &Content) {
+    let Content::Blob { blob, .. } = content else {
+        panic!("expected a blob")
+    };
+    let hex = blob.to_string();
+    let path = dir.join("blobs").join(&hex[..2]).join(&hex[2..]);
+    std::fs::remove_file(&path).unwrap();
+    std::fs::create_dir(&path).unwrap();
+}
+
+/// Review M4: the change is committed, so a failed delete afterwards must not be an error.
+#[test]
+fn a_failed_blob_delete_after_commit_is_not_an_error() {
+    let (dir, mut s, l) = on_disk();
+    let b = s.put(vec![3; INLINE_LIMIT + 1]).unwrap();
+    let x = Item::new(l.id, "x".to_owned(), ItemKind::Image, at(0));
+    s.insert_item(&x, &image(b.clone()), Placement::Last)
+        .unwrap();
+    block_deletion(dir.path(), &b);
+
+    s.update_item(&x, Some(&text_formats("new"))).unwrap();
+    assert_eq!(s.formats(x.id).unwrap(), text_formats("new"));
+}
+
+/// Review M4, the purge path: the count is returned although a delete failed.
+#[test]
+fn a_failed_blob_delete_after_purge_still_reports_the_count() {
+    use snipdeck_store::{TrashRepo, Trashable};
+    let (dir, mut s, l) = on_disk();
+    let b = s.put(vec![4; INLINE_LIMIT + 1]).unwrap();
+    let x = Item::new(l.id, "x".to_owned(), ItemKind::Image, at(0));
+    s.insert_item(&x, &image(b.clone()), Placement::Last)
+        .unwrap();
+    block_deletion(dir.path(), &b);
+    s.trash(Trashable::Item(x.id), at(1)).unwrap();
+    assert_eq!(s.purge(at(2)).unwrap(), 1);
+    assert!(s.trashed().unwrap().is_empty());
+}
+
+/// Review L11: a metadata-only edit neither reads the content nor loses it from the index, even
+/// when the content's blob cannot be read right now.
+#[test]
+fn metadata_edits_do_not_read_the_content() {
+    let (dir, mut s, l) = on_disk();
+    let body = format!("needle {}", "x".repeat(INLINE_LIMIT));
+    let content = s.put(body.into_bytes()).unwrap();
+    let mut it = Item::new(l.id, "title".to_owned(), ItemKind::Text, at(0));
+    it.preview = "needle".to_owned();
+    s.insert_item(
+        &it,
+        &Formats::new(vec![Format::Text(content.clone())]).unwrap(),
+        Placement::Last,
+    )
+    .unwrap();
+    // Damage the blob without changing its length: any read now fails.
+    let Content::Blob { blob, .. } = &content else {
+        panic!()
+    };
+    let hex = blob.to_string();
+    let path = dir.path().join("blobs").join(&hex[..2]).join(&hex[2..]);
+    let mut bytes = std::fs::read(&path).unwrap();
+    bytes[0] ^= 0xFF;
+    std::fs::write(&path, bytes).unwrap();
+
+    it.pinned = true;
+    it.title = "renamed".to_owned();
+    s.update_item(&it, None).unwrap();
+    assert_eq!(
+        s.search("needle", 5).unwrap(),
+        [it.id],
+        "body still indexed"
+    );
+    assert_eq!(s.search("renamed", 5).unwrap(), [it.id], "title updated");
+}
+
+/// Review L12: `record_use` owns the usage columns; saving an item loaded earlier keeps them.
+#[test]
+fn saving_a_stale_item_does_not_roll_back_usage() {
+    let (mut s, l) = setup();
+    let mut it = item(&mut s, l.id, "t", "body");
+    s.record_use(it.id, at(10)).unwrap();
+    s.record_use(it.id, at(20)).unwrap();
+    // `it` was loaded before the uses: count 0, never used.
+    it.title = "edited".to_owned();
+    s.update_item(&it, None).unwrap();
+    let stored = s.item(it.id).unwrap();
+    assert_eq!(stored.title, "edited");
+    assert_eq!(stored.use_count, 2);
+    assert_eq!(stored.last_used_at, Some(at(20)));
+}
+
+/// Review L5: `Debug` shows no content bytes.
+#[test]
+fn debug_output_of_a_store_holds_no_content() {
+    let mut s = store();
+    s.put(vec![0xAB; INLINE_LIMIT + 1]).unwrap();
+    let shown = format!("{s:?}");
+    assert!(shown.len() < 500, "{} characters", shown.len());
+    assert!(!shown.contains("171"), "{shown}");
+}
+
+/// Review L10: listing the children of a parent that is not live is `NotFound`.
+#[test]
+fn listing_items_of_a_missing_or_trashed_list_is_not_found() {
+    use snipdeck_store::{TrashRepo, Trashable};
+    let (mut s, l) = setup();
+    assert!(matches!(
+        s.items(ListId::generate()),
+        Err(Error::NotFound { entity: "list", .. })
+    ));
+    s.trash(Trashable::List(l.id), at(1)).unwrap();
+    assert!(matches!(
+        s.items(l.id),
+        Err(Error::NotFound { entity: "list", .. })
+    ));
 }

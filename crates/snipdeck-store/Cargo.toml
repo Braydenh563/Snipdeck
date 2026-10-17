@@ -16,10 +16,18 @@ chacha20poly1305.workspace = true
 getrandom.workspace = true
 rusqlite.workspace = true
 thiserror.workspace = true
+unicode-normalization.workspace = true
 uuid.workspace = true
 zeroize.workspace = true
 
+[features]
+# Test helpers that must not reach a release build: weak Argon2 settings, the in-memory key
+# provider and `Store::pragma_text` (review L6, N6). The integration tests turn it on through
+# the dev-dependency on this crate below.
+testing = []
+
 [dev-dependencies]
+snipdeck-store = { path = ".", features = ["testing"] }
 proptest.workspace = true
 tempfile.workspace = true
 

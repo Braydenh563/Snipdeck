@@ -29,6 +29,18 @@ impl DataKey {
         random().map(Self)
     }
 
+    /// A key from exactly [`KEY_LEN`] bytes, copied straight into the zeroizing buffer so no
+    /// un-zeroized copy is left on the stack (review L7). `None` for any other length.
+    pub(super) fn from_slice(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != KEY_LEN {
+            return None;
+        }
+        let mut key = Zeroizing::new([0_u8; KEY_LEN]);
+        key.copy_from_slice(bytes);
+        Some(Self(key))
+    }
+
+    #[cfg(test)]
     pub(super) fn from_bytes(bytes: [u8; KEY_LEN]) -> Self {
         Self(Zeroizing::new(bytes))
     }
@@ -54,6 +66,16 @@ mod tests {
         let b = DataKey::generate().unwrap();
         assert_ne!(a.expose(), b.expose());
         assert_ne!(a.expose(), &[0; KEY_LEN]);
+    }
+
+    #[test]
+    fn keys_are_built_from_exactly_32_bytes() {
+        assert_eq!(
+            DataKey::from_slice(&[7; KEY_LEN]).unwrap().expose(),
+            &[7; KEY_LEN]
+        );
+        assert!(DataKey::from_slice(&[7; KEY_LEN - 1]).is_none());
+        assert!(DataKey::from_slice(&[7; KEY_LEN + 1]).is_none());
     }
 
     #[test]

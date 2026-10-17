@@ -304,3 +304,27 @@ fn moving_an_item_repeatedly_into_the_same_gap_keeps_the_order() {
     assert_eq!(titles.last().map(String::as_str), Some("tail"));
     assert_healthy(&s);
 }
+
+/// Review L10: the lists of a board that is missing or trashed are `NotFound`, not empty.
+#[test]
+fn listing_lists_of_a_missing_or_trashed_board_is_not_found() {
+    use snipdeck_store::{TrashRepo, Trashable};
+    let mut s = store();
+    let b = board(&mut s, "b");
+    assert!(s.lists(b.id).unwrap().is_empty(), "a live empty board");
+    assert!(matches!(
+        s.lists(BoardId::generate()),
+        Err(Error::NotFound {
+            entity: "board",
+            ..
+        })
+    ));
+    s.trash(Trashable::Board(b.id), at(1)).unwrap();
+    assert!(matches!(
+        s.lists(b.id),
+        Err(Error::NotFound {
+            entity: "board",
+            ..
+        })
+    ));
+}

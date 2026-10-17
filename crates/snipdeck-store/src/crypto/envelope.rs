@@ -1,51 +1,81 @@
-//! The `SNENC1` per-item envelope.
+//! The `SNENC2` per-payload envelope.
 //!
 //! ```text
-//! "SNENC1" (6) | nonce (24, random per message) | ciphertext | Poly1305 tag (16)
+//! "SNENC2" (6) | nonce (24, random per message) | ciphertext | Poly1305 tag (16)
 //! ```
 //!
-//! Associated data is the 16 raw bytes of the item id followed by the format byte `0x01`, so
-//! a ciphertext copied onto another item, or re-labelled as another format version, fails
-//! authentication.
+//! Associated data binds the envelope to where it is stored (review L8):
+//!
+//! ```text
+//! version 0x02 | item id (16) | slot
+//! slot: 0x00                                   detached (not stored in an item, e.g. an export)
+//!     | 0x01 | key length (1) | format key     a single-payload format ("text", "html", ...)
+//!     | 0x02 | file index (u32 LE)             one file of the `files` format
+//! ```
+//!
+//! So a ciphertext copied onto another item, into another format or file of the same item,
+//! or between a stored slot and a detached use, fails authentication. Version 1 (`SNENC1`,
+//! item id only) never shipped in a release, so there is no reader for it: such bytes are
+//! simply not an envelope.
 
-use snipdeck_core::ItemId;
+use snipdeck_core::{FormatKind, ItemId};
 use zeroize::Zeroizing;
 
 use super::CryptoError;
 use super::aead::{NONCE_LEN, TAG_LEN, open, seal};
 use super::key::DataKey;
 
-const MAGIC: &[u8; 6] = b"SNENC1";
-const FORMAT_BYTE: u8 = 1;
+/// The header every envelope starts with.
+const MAGIC: &[u8; 6] = b"SNENC2";
 
-/// Encrypts `plaintext` for the item `item_id`.
+/// [`MAGIC`], for storage's integrity check.
+pub(crate) const fn magic() -> &'static [u8; 6] {
+    MAGIC
+}
+/// The envelope format version, first byte of the associated data.
+const VERSION: u8 = 2;
+
+/// Which payload of an item an envelope belongs to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Slot {
+    /// The payload of a single-payload format (text, HTML, RTF, PNG).
+    Format(FormatKind),
+    /// The file at this index of the item's `files` format.
+    File(u32),
+    /// Not stored in an item, for example a payload in an export file.
+    Detached,
+}
+
+/// Encrypts `plaintext` for the slot `slot` of the item `item_id`.
 ///
 /// # Errors
 ///
 /// [`CryptoError::Random`] if no nonce could be drawn; [`CryptoError::Primitive`] if the
 /// plaintext is too large for the cipher (never in practice).
-pub fn encrypt_item(
+pub fn encrypt_payload(
     key: &DataKey,
     item_id: &ItemId,
+    slot: Slot,
     plaintext: &[u8],
 ) -> Result<Vec<u8>, CryptoError> {
-    let body = seal(key.expose(), &associated_data(item_id), plaintext)?;
+    let body = seal(key.expose(), &associated_data(item_id, slot), plaintext)?;
     let mut out = Vec::with_capacity(MAGIC.len() + body.len());
     out.extend_from_slice(MAGIC);
     out.extend_from_slice(&body);
     Ok(out)
 }
 
-/// Decrypts an envelope produced by [`encrypt_item`] for the same `item_id` and key.
+/// Decrypts an envelope produced by [`encrypt_payload`] for the same item, slot and key.
 ///
 /// # Errors
 ///
-/// [`CryptoError::NotEncrypted`] if `envelope` does not start with the `SNENC1` header or is
-/// too short; [`CryptoError::AuthenticationFailed`] for a wrong key, a wrong item id or any
+/// [`CryptoError::NotEncrypted`] if `envelope` does not start with the `SNENC2` header or is
+/// too short; [`CryptoError::AuthenticationFailed`] for a wrong key, item or slot, or any
 /// modification.
-pub fn decrypt_item(
+pub fn decrypt_payload(
     key: &DataKey,
     item_id: &ItemId,
+    slot: Slot,
     envelope: &[u8],
 ) -> Result<Zeroizing<Vec<u8>>, CryptoError> {
     if !is_envelope(envelope) {
@@ -53,21 +83,62 @@ pub fn decrypt_item(
     }
     open(
         key.expose(),
-        &associated_data(item_id),
+        &associated_data(item_id, slot),
         &envelope[MAGIC.len()..],
     )
 }
 
-/// Whether `bytes` have the shape of an envelope: the `SNENC1` header and room for a nonce
-/// and tag. Says nothing about whether it will authenticate.
+/// [`encrypt_payload`] for a [`Slot::Detached`] payload of `item_id`.
+///
+/// # Errors
+///
+/// As [`encrypt_payload`].
+pub fn encrypt_item(
+    key: &DataKey,
+    item_id: &ItemId,
+    plaintext: &[u8],
+) -> Result<Vec<u8>, CryptoError> {
+    encrypt_payload(key, item_id, Slot::Detached, plaintext)
+}
+
+/// [`decrypt_payload`] for a [`Slot::Detached`] payload of `item_id`.
+///
+/// # Errors
+///
+/// As [`decrypt_payload`].
+pub fn decrypt_item(
+    key: &DataKey,
+    item_id: &ItemId,
+    envelope: &[u8],
+) -> Result<Zeroizing<Vec<u8>>, CryptoError> {
+    decrypt_payload(key, item_id, Slot::Detached, envelope)
+}
+
+/// Whether `bytes` have the shape of an envelope: the `SNENC2` header and room for a nonce
+/// and tag. Says nothing about whether it will authenticate, and plaintext can have this
+/// shape too: storage records which payloads are encrypted instead of guessing from bytes.
 pub fn is_envelope(bytes: &[u8]) -> bool {
     bytes.len() >= MAGIC.len() + NONCE_LEN + TAG_LEN && bytes.starts_with(MAGIC)
 }
 
-fn associated_data(item_id: &ItemId) -> [u8; 17] {
-    let mut aad = [0_u8; 17];
-    aad[..16].copy_from_slice(item_id.as_uuid().as_bytes());
-    aad[16] = FORMAT_BYTE;
+fn associated_data(item_id: &ItemId, slot: Slot) -> Vec<u8> {
+    let mut aad = Vec::with_capacity(32);
+    aad.push(VERSION);
+    aad.extend_from_slice(item_id.as_uuid().as_bytes());
+    match slot {
+        Slot::Detached => aad.push(0),
+        Slot::Format(kind) => {
+            let key = kind.key().as_bytes();
+            aad.push(1);
+            // Keys are short ASCII words; the length prefix keeps the encoding unambiguous.
+            aad.push(u8::try_from(key.len()).unwrap_or(u8::MAX));
+            aad.extend_from_slice(key);
+        }
+        Slot::File(index) => {
+            aad.push(2);
+            aad.extend_from_slice(&index.to_le_bytes());
+        }
+    }
     aad
 }
 
@@ -105,7 +176,7 @@ mod tests {
     #[test]
     fn envelope_layout_is_header_nonce_ciphertext_tag() {
         let envelope = encrypt_item(&key(), &id(), b"hello").unwrap();
-        assert_eq!(&envelope[..6], b"SNENC1");
+        assert_eq!(&envelope[..6], b"SNENC2");
         assert_eq!(envelope.len(), 6 + 24 + 5 + 16);
         assert!(is_envelope(&envelope));
     }
@@ -145,6 +216,46 @@ mod tests {
         );
     }
 
+    /// Review L8: within one item, an envelope only opens in the slot it was made for.
+    #[test]
+    fn an_envelope_cannot_move_to_another_slot_of_the_same_item() {
+        let id = id();
+        let slots = [
+            Slot::Format(FormatKind::Text),
+            Slot::Format(FormatKind::Html),
+            Slot::Format(FormatKind::Png),
+            Slot::File(0),
+            Slot::File(1),
+            Slot::Detached,
+        ];
+        for made in slots {
+            let envelope = encrypt_payload(&key(), &id, made, b"secret").unwrap();
+            for opened in slots {
+                let result = decrypt_payload(&key(), &id, opened, &envelope);
+                if made == opened {
+                    assert_eq!(*result.unwrap(), b"secret");
+                } else {
+                    assert_eq!(
+                        result.unwrap_err(),
+                        CryptoError::AuthenticationFailed,
+                        "{made:?} opened as {opened:?}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_version_1_envelope_is_not_an_envelope() {
+        let mut old = encrypt_item(&key(), &id(), b"secret").unwrap();
+        old[..6].copy_from_slice(b"SNENC1");
+        assert!(!is_envelope(&old));
+        assert_eq!(
+            decrypt_item(&key(), &id(), &old).unwrap_err(),
+            CryptoError::NotEncrypted
+        );
+    }
+
     #[test]
     fn the_format_byte_is_part_of_the_associated_data() {
         // An envelope sealed with the item id alone (no format byte) must not open.
@@ -159,7 +270,7 @@ mod tests {
                 },
             )
             .unwrap();
-        let mut forged = b"SNENC1".to_vec();
+        let mut forged = b"SNENC2".to_vec();
         forged.extend_from_slice(&nonce);
         forged.extend_from_slice(&ciphertext);
         assert_eq!(
@@ -206,7 +317,7 @@ mod tests {
     fn non_envelopes_are_not_encrypted() {
         for bytes in [
             &b""[..],
-            b"SNENC1",
+            b"SNENC2",
             b"plain text that is long enough to have a tag in it",
         ] {
             assert!(!is_envelope(bytes));

@@ -37,9 +37,11 @@ const PASSWORD_INNER_LEN: usize = HEADER_LEN + NONCE_LEN + KEY_LEN + TAG_LEN;
 
 /// Argon2id cost settings for the master password.
 ///
-/// [`KdfParams::DEFAULT`] is what the app uses. Smaller values exist for tests only: they
-/// make password guessing cheaper for an attacker. The values are stored in the key record,
-/// so records made with older settings keep unlocking after the default changes.
+/// [`KdfParams::DEFAULT`] is what the app uses. Nothing below [`KdfParams::MIN_M_COST_KIB`]
+/// and [`KdfParams::MIN_T_COST`] (OWASP's minimum) can be built or loaded in a production
+/// build (review L6); cheaper settings exist only with the `testing` feature. The values are
+/// stored in the key record, so records made with older settings keep unlocking after the
+/// default changes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct KdfParams {
     m_cost_kib: u32,
@@ -66,19 +68,58 @@ impl KdfParams {
     pub const MAX_T_COST: u32 = 16;
     /// Most lanes a stored record may demand.
     pub const MAX_P_COST: u32 = 16;
+    /// Least memory accepted in a production build: 19 MiB, OWASP's minimum for Argon2id.
+    pub const MIN_M_COST_KIB: u32 = 19 * 1024;
+    /// Fewest passes accepted in a production build (OWASP's minimum).
+    pub const MIN_T_COST: u32 = 2;
 
-    /// Custom costs.
+    /// Custom costs, at least as strong as the production floor.
     ///
     /// # Errors
     ///
-    /// [`CryptoError::InvalidKdfParams`] if a value is below Argon2's minimum (8 KiB per
-    /// lane, 1 pass, 1 lane) or above the `MAX_*` limits.
+    /// [`CryptoError::InvalidKdfParams`] if a value is below [`KdfParams::MIN_M_COST_KIB`],
+    /// [`KdfParams::MIN_T_COST`] or 1 lane, or above the `MAX_*` limits.
     pub const fn new(m_cost_kib: u32, t_cost: u32, p_cost: u32) -> Result<Self, CryptoError> {
+        Self::check(m_cost_kib, t_cost, p_cost, PRODUCTION_FLOOR)
+    }
+
+    /// Costs below the production floor, down to Argon2's own minimum (8 KiB per lane, 1
+    /// pass): only for tests, where the default would make every unlock take seconds.
+    ///
+    /// # Errors
+    ///
+    /// [`CryptoError::InvalidKdfParams`] outside Argon2's range or the `MAX_*` limits.
+    #[cfg(any(test, feature = "testing"))]
+    pub const fn insecure_for_tests(
+        m_cost_kib: u32,
+        t_cost: u32,
+        p_cost: u32,
+    ) -> Result<Self, CryptoError> {
+        Self::check(m_cost_kib, t_cost, p_cost, ARGON2_FLOOR)
+    }
+
+    /// The costs read from a stored record: the production floor applies, except in test
+    /// builds, so a record cannot ask for cheap hashing.
+    const fn stored(m_cost_kib: u32, t_cost: u32, p_cost: u32) -> Result<Self, CryptoError> {
+        #[cfg(any(test, feature = "testing"))]
+        let floor = ARGON2_FLOOR;
+        #[cfg(not(any(test, feature = "testing")))]
+        let floor = PRODUCTION_FLOOR;
+        Self::check(m_cost_kib, t_cost, p_cost, floor)
+    }
+
+    const fn check(
+        m_cost_kib: u32,
+        t_cost: u32,
+        p_cost: u32,
+        (min_m_cost_kib, min_t_cost): (u32, u32),
+    ) -> Result<Self, CryptoError> {
         if p_cost < 1
             || p_cost > Self::MAX_P_COST
-            || t_cost < 1
+            || t_cost < min_t_cost
             || t_cost > Self::MAX_T_COST
             || m_cost_kib < 8 * p_cost
+            || m_cost_kib < min_m_cost_kib
             || m_cost_kib > Self::MAX_M_COST_KIB
         {
             return Err(CryptoError::InvalidKdfParams);
@@ -121,8 +162,14 @@ impl KdfParams {
     }
 }
 
-/// The persisted, wrapped data key: opaque bytes for the app to store (for example in the
-/// settings table). Safe to store and to back up: it is useless without the OS binding and,
+/// Least memory and passes for settings that protect real data.
+const PRODUCTION_FLOOR: (u32, u32) = (KdfParams::MIN_M_COST_KIB, KdfParams::MIN_T_COST);
+/// Argon2's own minimum (the 8 KiB-per-lane rule is checked separately).
+#[cfg(any(test, feature = "testing"))]
+const ARGON2_FLOOR: (u32, u32) = (8, 1);
+
+/// The persisted, wrapped data key: opaque bytes, stored by
+/// [`Store::create_key_ring`](crate::Store::create_key_ring) in the `key_ring` table. Safe to store and to back up: it is useless without the OS binding and,
 /// if set, the master password. Contains no plaintext key.
 #[derive(Clone, PartialEq, Eq)]
 pub struct KeyRecord(Vec<u8>);
@@ -214,10 +261,7 @@ impl<'p> KeyRing<'p> {
         // Shape first, so a damaged record is never mistaken for a password problem.
         match (inner.first().copied(), inner.len(), password) {
             (Some(MODE_OS_ONLY), OS_ONLY_INNER_LEN, None) => {
-                let bytes: [u8; KEY_LEN] = inner[1..]
-                    .try_into()
-                    .map_err(|_| CryptoError::InvalidKeyRecord)?;
-                Ok(DataKey::from_bytes(bytes))
+                DataKey::from_slice(&inner[1..]).ok_or(CryptoError::InvalidKeyRecord)
             }
             (Some(MODE_OS_ONLY), OS_ONLY_INNER_LEN, Some(_)) => Err(CryptoError::NoPasswordSet),
             (Some(MODE_PASSWORD), PASSWORD_INNER_LEN, None) => Err(CryptoError::PasswordRequired),
@@ -301,17 +345,13 @@ fn unseal_with_password(inner: &[u8], password: &str) -> Result<DataKey, CryptoE
     };
     // Bounds first: a hostile record must not pick the work factor.
     let kdf =
-        KdfParams::new(word(1), word(5), word(9)).map_err(|_| CryptoError::InvalidKeyRecord)?;
+        KdfParams::stored(word(1), word(5), word(9)).map_err(|_| CryptoError::InvalidKeyRecord)?;
     let salt: [u8; SALT_LEN] = header[13..]
         .try_into()
         .map_err(|_| CryptoError::InvalidKeyRecord)?;
     let kek = kdf.derive(password, &salt)?;
     let plain = open(&kek, header, sealed).map_err(|_| CryptoError::WrongPassword)?;
-    let bytes: [u8; KEY_LEN] = plain
-        .as_slice()
-        .try_into()
-        .map_err(|_| CryptoError::InvalidKeyRecord)?;
-    Ok(DataKey::from_bytes(bytes))
+    DataKey::from_slice(&plain).ok_or(CryptoError::InvalidKeyRecord)
 }
 
 #[cfg(test)]
@@ -323,7 +363,7 @@ mod tests {
 
     /// Cheap settings so the suite runs in milliseconds; the format is identical.
     fn fast() -> KdfParams {
-        KdfParams::new(64, 1, 1).unwrap()
+        KdfParams::insecure_for_tests(64, 1, 1).unwrap()
     }
 
     fn provider() -> MemoryKeyProvider {
@@ -503,7 +543,7 @@ mod tests {
             .with_kdf_params(fast())
             .create(Some("pw"))
             .unwrap();
-        let stronger = KdfParams::new(128, 2, 1).unwrap();
+        let stronger = KdfParams::insecure_for_tests(128, 2, 1).unwrap();
         let ring = KeyRing::new(&provider).with_kdf_params(stronger);
         assert!(same_key(&key, &ring.unlock(&record, Some("pw")).unwrap()));
         // Re-setting the password adopts the new settings.
@@ -615,16 +655,34 @@ mod tests {
 
     #[test]
     fn kdf_params_are_validated() {
-        assert!(KdfParams::new(64, 1, 1).is_ok());
-        assert!(KdfParams::new(7, 1, 1).is_err());
-        assert!(KdfParams::new(64, 0, 1).is_err());
-        assert!(KdfParams::new(64, 1, 0).is_err());
-        assert!(KdfParams::new(KdfParams::MAX_M_COST_KIB + 1, 1, 1).is_err());
-        assert!(KdfParams::new(64, KdfParams::MAX_T_COST + 1, 1).is_err());
-        assert!(KdfParams::new(1024, 1, KdfParams::MAX_P_COST + 1).is_err());
+        let weak = KdfParams::insecure_for_tests;
+        assert!(weak(64, 1, 1).is_ok());
+        assert!(weak(7, 1, 1).is_err());
+        assert!(weak(64, 0, 1).is_err());
+        assert!(weak(64, 1, 0).is_err());
+        assert!(weak(KdfParams::MAX_M_COST_KIB + 1, 1, 1).is_err());
+        assert!(weak(64, KdfParams::MAX_T_COST + 1, 1).is_err());
+        assert!(weak(1024, 1, KdfParams::MAX_P_COST + 1).is_err());
         assert_eq!(KdfParams::DEFAULT.m_cost_kib(), 65_536);
         assert_eq!(KdfParams::DEFAULT.t_cost(), 3);
         assert_eq!(KdfParams::DEFAULT.p_cost(), 1);
+    }
+
+    /// Review L6: production code cannot build weak settings, and a stored record asking for
+    /// them is refused outside test builds.
+    #[test]
+    fn production_settings_have_a_floor() {
+        assert_eq!(
+            KdfParams::new(8, 1, 1).unwrap_err(),
+            CryptoError::InvalidKdfParams
+        );
+        assert!(KdfParams::new(KdfParams::MIN_M_COST_KIB - 1, 2, 1).is_err());
+        assert!(KdfParams::new(KdfParams::MIN_M_COST_KIB, 1, 1).is_err());
+        assert!(KdfParams::new(KdfParams::MIN_M_COST_KIB, 2, 1).is_ok());
+        assert!(KdfParams::new(65_536, 3, 1).is_ok());
+        // What `unlock` applies to a stored record in a production build.
+        assert!(KdfParams::check(64, 1, 1, PRODUCTION_FLOOR).is_err());
+        assert!(KdfParams::check(19 * 1024, 2, 1, PRODUCTION_FLOOR).is_ok());
     }
 
     #[test]

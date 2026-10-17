@@ -142,6 +142,33 @@ BEGIN
 END;
 "#;
 
+/// Version 2 (reviews H1, M6, N5). **Frozen** once released.
+///
+/// * `items.encrypted`: every payload of the item (each `item_formats` and `item_files` row)
+///   is an `SNENC2` envelope bound to the item, format and file (`docs/crypto.md`). Storage
+///   records this instead of guessing from the bytes, so plaintext that happens to look like
+///   an envelope is never mistaken for one. Only a sensitive item can be encrypted.
+/// * `key_ring`: the one persisted `SNKEY1` key record, if encryption was set up.
+/// * The full-text index deletes for real (`secure-delete`), and is merged once so entries
+///   deleted under version 1 leave its segments.
+/// * Tag keys are recomputed in Rust after this SQL (`tags::rekey`): full case folding and
+///   NFC instead of lower-casing.
+pub(crate) const V2: &str = r"
+ALTER TABLE items ADD COLUMN encrypted INTEGER NOT NULL DEFAULT 0
+    CHECK (encrypted IN (0, 1))
+    CHECK (encrypted = 0 OR sensitive = 1);
+
+-- At most one row. The record is opaque (wrapped by the OS key provider); the check only
+-- keeps anything that is not a key record out.
+CREATE TABLE key_ring (
+    id     INTEGER NOT NULL PRIMARY KEY CHECK (id = 1),
+    record BLOB    NOT NULL CHECK (length(record) > 6 AND substr(record, 1, 6) = CAST('SNKEY1' AS BLOB))
+) STRICT;
+
+INSERT INTO item_fts (item_fts, rank) VALUES ('secure-delete', 1);
+INSERT INTO item_fts (item_fts) VALUES ('optimize');
+";
+
 #[cfg(test)]
 mod tests {
     use rusqlite::{Connection, params};

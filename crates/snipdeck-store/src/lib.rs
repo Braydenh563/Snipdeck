@@ -23,6 +23,7 @@ pub mod crypto;
 mod error;
 mod fts;
 mod items;
+mod keys;
 mod migrations;
 mod rank;
 mod repo;

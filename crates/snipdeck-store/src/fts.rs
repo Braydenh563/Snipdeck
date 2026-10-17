@@ -57,7 +57,7 @@ fn body_of(blobs: &Blobs, formats: &Formats) -> Result<String> {
 }
 
 fn text_of(blobs: &Blobs, content: &Content) -> Result<String> {
-    Ok(String::from_utf8_lossy(&blobs.read(content)?).into_owned())
+    Ok(String::from_utf8_lossy(&blobs.read_any(content)?).into_owned())
 }
 
 /// Writes the item's row in the index, replacing any earlier one. A sensitive item is indexed
@@ -83,6 +83,16 @@ fn write_row(conn: &Connection, seq: i64, title: &str, body: &str) -> Result<()>
     conn.execute(
         "INSERT INTO item_fts (rowid, title, body) VALUES (?1, ?2, ?3)",
         params![seq, title, body],
+    )?;
+    Ok(())
+}
+
+/// Changes only the title of the item's row: the body stays as indexed, and the content is
+/// not read (review L11).
+pub(crate) fn retitle(conn: &Connection, seq: i64, title: &str) -> Result<()> {
+    conn.execute(
+        "UPDATE item_fts SET title = ?2 WHERE rowid = ?1",
+        params![seq, title],
     )?;
     Ok(())
 }

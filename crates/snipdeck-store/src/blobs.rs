@@ -1,14 +1,17 @@
 //! The content-addressed blob folder.
 
 use std::borrow::Cow;
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt;
 use std::fs;
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::SystemTime;
 
 use snipdeck_core::{BlobRef, Content, INLINE_LIMIT, Inline};
+use zeroize::Zeroizing;
 
 use crate::{Error, Result};
 
@@ -16,6 +19,11 @@ use crate::{Error, Result};
 ///
 /// This is the only place that decides between inline and blob storage, using
 /// [`INLINE_LIMIT`](snipdeck_core::INLINE_LIMIT), and the only place that hashes (BLAKE3).
+///
+/// A blob returned by `put` stays protected until an item that uses it is written, even if
+/// other writes release the same bytes meanwhile; one never attached is collected by
+/// [`Store::gc_blobs`](crate::Store::gc_blobs). For sensitive content use
+/// [`Store::put_sensitive`](crate::Store::put_sensitive), which keeps it off the disk.
 pub trait BlobStore {
     /// Stores `bytes`: returns [`Content::Inline`] when they fit within the inline limit,
     /// otherwise writes them once under their hash (identical bytes share one file) and returns
@@ -44,44 +52,100 @@ pub(crate) struct Leftover {
     pub modified: SystemTime,
 }
 
-/// The blob folder, or an in-memory stand-in for [`Store::open_in_memory`](crate::Store).
-#[derive(Debug)]
-pub(crate) enum Blobs {
+/// The blob folder, or an in-memory stand-in for [`Store::open_in_memory`](crate::Store), plus
+/// two pieces of session state:
+///
+/// * `pending`: how many times `put` handed out each blob that no committed row has used
+///   since. Releasing a blob skips pending ones (review M3), so the documented `put`, then
+///   `insert_item` sequence cannot lose its blob to an unrelated write in between.
+/// * `plain`: decrypted payloads of encrypted items that are too large to be inline, and
+///   sensitive captures staged with [`Blobs::put_transient`]. Memory only: never written to
+///   disk unless they end up in an item that is not encrypted. Dropped by `clear_transient`
+///   (when the key ring is locked) and with the store.
+pub(crate) struct Blobs {
+    backing: Backing,
+    pending: HashMap<BlobRef, usize>,
+    plain: RefCell<HashMap<BlobRef, Zeroizing<Vec<u8>>>>,
+}
+
+enum Backing {
     /// Files under `root/ab/cdef...` (hash in lowercase hex).
     Disk { root: PathBuf },
     /// Nothing touches the disk.
     Memory(HashMap<BlobRef, Vec<u8>>),
 }
 
+impl fmt::Debug for Blobs {
+    /// Counts and sizes only: blob bytes are user content (review L5).
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut out = f.debug_struct("Blobs");
+        match &self.backing {
+            Backing::Disk { root } => out.field("root", root),
+            Backing::Memory(map) => out
+                .field("in_memory", &map.len())
+                .field("bytes", &map.values().map(Vec::len).sum::<usize>()),
+        };
+        out.field("pending", &self.pending.len())
+            .field("transient", &self.plain.borrow().len())
+            .finish()
+    }
+}
+
 /// Prefix of in-flight files; a crash can leave them behind and [`Blobs::list`] reports them.
 const TEMP_PREFIX: &str = ".tmp-";
 
+#[cfg(test)]
+thread_local! {
+    /// Test hook: makes every blob deletion on this thread fail.
+    pub(crate) static FAIL_REMOVES: core::cell::Cell<bool> = const { core::cell::Cell::new(false) };
+}
+
 impl Blobs {
     pub(crate) fn on_disk(root: PathBuf) -> Self {
-        Self::Disk { root }
+        Self::with(Backing::Disk { root })
     }
 
     pub(crate) fn in_memory() -> Self {
-        Self::Memory(HashMap::new())
+        Self::with(Backing::Memory(HashMap::new()))
     }
 
-    /// Inline or blob, by [`INLINE_LIMIT`]: the single place the threshold is applied.
+    fn with(backing: Backing) -> Self {
+        Self {
+            backing,
+            pending: HashMap::new(),
+            plain: RefCell::new(HashMap::new()),
+        }
+    }
+
+    /// Inline or blob, by [`INLINE_LIMIT`]: the single place the threshold is applied. A new
+    /// blob is pending until a committed row uses it ([`Blobs::attached`]).
     pub(crate) fn put(&mut self, bytes: Vec<u8>) -> Result<Content> {
+        let content = self.store(bytes)?;
+        if let Content::Blob { blob, .. } = &content {
+            *self.pending.entry(*blob).or_default() += 1;
+        }
+        Ok(content)
+    }
+
+    /// Like [`Blobs::put`] but not pending: for payloads the store writes itself inside a
+    /// transaction (envelopes, materialised plaintext), which the transaction's rows use.
+    pub(crate) fn store(&mut self, bytes: Vec<u8>) -> Result<Content> {
         if bytes.len() <= INLINE_LIMIT {
             return Ok(Content::Inline(Inline::new(bytes)?));
         }
         let blob = BlobRef::from_bytes(*blake3::hash(&bytes).as_bytes());
         let len = bytes.len() as u64;
-        match self {
-            Self::Memory(map) => {
+        match &mut self.backing {
+            Backing::Memory(map) => {
                 map.insert(blob, bytes);
             }
-            Self::Disk { .. } => {
-                if self.has(&blob, len) {
+            Backing::Disk { .. } => {
+                if self.holds_exactly(&blob, &bytes) {
                     // Identical bytes are already stored. Refresh the file's age so a sweep for
                     // orphans cannot take it between this call and the row that will use it.
                     self.touch(&blob);
                 } else {
+                    // Missing, truncated, or damaged with the right length (review L4).
                     self.write_atomically(&blob, &bytes)?;
                 }
             }
@@ -89,14 +153,55 @@ impl Blobs {
         Ok(Content::Blob { blob, len })
     }
 
+    /// Keeps `bytes` in memory only and returns content that refers to them; see the type's
+    /// docs. Small payloads are inline as usual.
+    pub(crate) fn put_transient(&self, bytes: Vec<u8>) -> Result<Content> {
+        if bytes.len() <= INLINE_LIMIT {
+            return Ok(Content::Inline(Inline::new(bytes)?));
+        }
+        let blob = BlobRef::from_bytes(*blake3::hash(&bytes).as_bytes());
+        let len = bytes.len() as u64;
+        self.plain.borrow_mut().insert(blob, Zeroizing::new(bytes));
+        Ok(Content::Blob { blob, len })
+    }
+
+    /// Whether `blob` is held in memory by [`Blobs::put_transient`].
+    pub(crate) fn is_transient(&self, blob: &BlobRef) -> bool {
+        self.plain.borrow().contains_key(blob)
+    }
+
+    /// Forgets every transient payload (they are zeroed on drop).
+    pub(crate) fn clear_transient(&self) {
+        self.plain.borrow_mut().clear();
+    }
+
+    /// Marks blobs as used by a committed row: one `put` each stops being pending.
+    pub(crate) fn attached(&mut self, blobs: impl IntoIterator<Item = BlobRef>) {
+        for blob in blobs {
+            if let Some(count) = self.pending.get_mut(&blob) {
+                *count -= 1;
+                if *count == 0 {
+                    self.pending.remove(&blob);
+                }
+            }
+        }
+    }
+
+    /// Whether a `put` handed out `blob` and no committed row has used it since.
+    pub(crate) fn is_pending(&self, blob: &BlobRef) -> bool {
+        self.pending.contains_key(blob)
+    }
+
+    /// Reads `content`'s bytes from the blob folder (or inline), checking length and hash.
+    /// Transient payloads are not found here; see [`Blobs::read_any`].
     pub(crate) fn read<'a>(&self, content: &'a Content) -> Result<Cow<'a, [u8]>> {
         let (blob, len) = match content {
             Content::Inline(inline) => return Ok(Cow::Borrowed(inline.as_bytes())),
             Content::Blob { blob, len } => (blob, *len),
         };
-        let bytes = match self {
-            Self::Memory(map) => map.get(blob).cloned().ok_or_else(|| not_found(blob))?,
-            Self::Disk { .. } => {
+        let bytes = match &self.backing {
+            Backing::Memory(map) => map.get(blob).cloned().ok_or_else(|| not_found(blob))?,
+            Backing::Disk { .. } => {
                 let path = self.file_path(blob);
                 let found = fs::metadata(&path)
                     .map_err(|e| io_or_missing(e, blob))?
@@ -122,28 +227,76 @@ impl Blobs {
         Ok(Cow::Owned(bytes))
     }
 
+    /// [`Blobs::read`], but a transient payload is served from memory first.
+    pub(crate) fn read_any<'a>(&self, content: &'a Content) -> Result<Cow<'a, [u8]>> {
+        if let Content::Blob { blob, len } = content
+            && let Some(bytes) = self.plain.borrow().get(blob)
+            && bytes.len() as u64 == *len
+        {
+            return Ok(Cow::Owned(bytes.to_vec()));
+        }
+        self.read(content)
+    }
+
     /// Whether a blob of `len` bytes is stored under `blob` (metadata only, no hashing).
+    /// Transient payloads do not count: rows may only refer to stored blobs.
     pub(crate) fn has(&self, blob: &BlobRef, len: u64) -> bool {
-        match self {
-            Self::Memory(map) => map.get(blob).is_some_and(|b| b.len() as u64 == len),
-            Self::Disk { .. } => {
+        match &self.backing {
+            Backing::Memory(map) => map.get(blob).is_some_and(|b| b.len() as u64 == len),
+            Backing::Disk { .. } => {
                 fs::metadata(self.file_path(blob)).is_ok_and(|m| m.is_file() && m.len() == len)
             }
         }
     }
 
-    /// Deletes a blob; a blob that is already gone is fine.
-    pub(crate) fn remove(&mut self, blob: &BlobRef) -> Result<()> {
-        match self {
-            Self::Memory(map) => {
+    /// Whether the stored file holds exactly `bytes` (a stored blob of the right length whose
+    /// content differs is damaged and must be rewritten).
+    fn holds_exactly(&self, blob: &BlobRef, bytes: &[u8]) -> bool {
+        self.has(blob, bytes.len() as u64)
+            && fs::read(self.file_path(blob)).is_ok_and(|stored| stored == bytes)
+    }
+
+    /// Whether the stored blob starts with `prefix` (reads only that many bytes).
+    pub(crate) fn starts_with(&self, blob: &BlobRef, prefix: &[u8]) -> Result<bool> {
+        match &self.backing {
+            Backing::Memory(map) => Ok(map.get(blob).is_some_and(|b| b.starts_with(prefix))),
+            Backing::Disk { .. } => {
+                let mut file =
+                    fs::File::open(self.file_path(blob)).map_err(|e| io_or_missing(e, blob))?;
+                let mut head = vec![0; prefix.len()];
+                match file.read_exact(&mut head) {
+                    Ok(()) => Ok(head == prefix),
+                    Err(e) if e.kind() == io::ErrorKind::UnexpectedEof => Ok(false),
+                    Err(e) => Err(e.into()),
+                }
+            }
+        }
+    }
+
+    /// Deletes a blob; a blob that is already gone is fine. With `scrub`, the file is first
+    /// overwritten with zeros and flushed: best effort against recovery of plaintext, which
+    /// the file system may still defeat (copy-on-write, SSD wear levelling, snapshots).
+    pub(crate) fn remove(&mut self, blob: &BlobRef, scrub: bool) -> Result<()> {
+        #[cfg(test)]
+        if FAIL_REMOVES.with(core::cell::Cell::get) {
+            return Err(io::Error::other("injected failure").into());
+        }
+        match &mut self.backing {
+            Backing::Memory(map) => {
                 map.remove(blob);
                 Ok(())
             }
-            Self::Disk { .. } => match fs::remove_file(self.file_path(blob)) {
-                Ok(()) => Ok(()),
-                Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
-                Err(e) => Err(e.into()),
-            },
+            Backing::Disk { .. } => {
+                let path = self.file_path(blob);
+                if scrub {
+                    overwrite_with_zeros(&path);
+                }
+                match fs::remove_file(path) {
+                    Ok(()) => Ok(()),
+                    Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
+                    Err(e) => Err(e.into()),
+                }
+            }
         }
     }
 
@@ -158,8 +311,8 @@ impl Blobs {
 
     /// Every finished blob and every leftover temp file. Files that are neither are ignored.
     pub(crate) fn list(&self) -> Result<(Vec<StoredBlob>, Vec<Leftover>)> {
-        let root = match self {
-            Self::Memory(map) => {
+        let root = match &self.backing {
+            Backing::Memory(map) => {
                 let blobs = map
                     .iter()
                     .map(|(blob, bytes)| StoredBlob {
@@ -170,7 +323,7 @@ impl Blobs {
                     .collect();
                 return Ok((blobs, Vec::new()));
             }
-            Self::Disk { root } => root,
+            Backing::Disk { root } => root,
         };
         let mut blobs = Vec::new();
         let mut leftovers = Vec::new();
@@ -213,14 +366,14 @@ impl Blobs {
     /// Where `blob` lives on disk; `None` for the in-memory store.
     #[cfg(test)]
     pub(crate) fn path_of(&self, blob: &BlobRef) -> Option<PathBuf> {
-        match self {
-            Self::Memory(_) => None,
-            Self::Disk { .. } => Some(self.file_path(blob)),
+        match self.backing {
+            Backing::Memory(_) => None,
+            Backing::Disk { .. } => Some(self.file_path(blob)),
         }
     }
 
     fn file_path(&self, blob: &BlobRef) -> PathBuf {
-        let Self::Disk { root } = self else {
+        let Backing::Disk { root } = &self.backing else {
             return PathBuf::new();
         };
         let hex = blob.to_string();
@@ -265,6 +418,27 @@ impl Blobs {
         sync_folder(folder);
         Ok(())
     }
+}
+
+/// Overwrites a file in place with zeros and flushes it. Best effort: errors are ignored
+/// because the delete that follows is what the caller relies on.
+fn overwrite_with_zeros(path: &Path) {
+    let Ok(mut file) = fs::OpenOptions::new().write(true).open(path) else {
+        return;
+    };
+    let Ok(len) = file.metadata().map(|m| m.len()) else {
+        return;
+    };
+    let zeros = vec![0_u8; 64 * 1024];
+    let mut left = len;
+    while left > 0 {
+        let n = usize::try_from(left.min(zeros.len() as u64)).unwrap_or(zeros.len());
+        if file.write_all(&zeros[..n]).is_err() {
+            return;
+        }
+        left -= n as u64;
+    }
+    let _ = file.sync_all();
 }
 
 /// Makes the rename durable where the platform allows it (directories cannot be opened for
@@ -402,6 +576,81 @@ mod tests {
         assert_eq!(blobs.read(&content).unwrap().as_ref(), big(5).as_slice());
     }
 
+    /// Review L4: a file of the right length with different bytes is rewritten by a re-put.
+    #[test]
+    fn putting_again_repairs_a_file_damaged_without_changing_length() {
+        let (_dir, mut blobs) = blobs();
+        let content = blobs.put(big(5)).unwrap();
+        let Content::Blob { blob, .. } = &content else {
+            panic!()
+        };
+        let path = blobs.path_of(blob).unwrap();
+        let mut bytes = std::fs::read(&path).unwrap();
+        bytes[0] ^= 0xFF;
+        std::fs::write(&path, bytes).unwrap();
+        assert!(matches!(
+            blobs.read(&content),
+            Err(Error::BlobCorrupt { .. })
+        ));
+        assert_eq!(blobs.put(big(5)).unwrap(), content);
+        assert_eq!(blobs.read(&content).unwrap().as_ref(), big(5).as_slice());
+    }
+
+    #[test]
+    fn debug_shows_counts_not_bytes() {
+        let mut blobs = Blobs::in_memory();
+        blobs.put(big(0xAB)).unwrap();
+        let shown = format!("{blobs:?}");
+        assert!(shown.len() < 200 && !shown.contains("171"), "{shown}");
+    }
+
+    #[test]
+    fn a_blob_is_pending_from_put_until_attached_once_per_put() {
+        let mut blobs = Blobs::in_memory();
+        let Content::Blob { blob, .. } = blobs.put(big(1)).unwrap() else {
+            panic!()
+        };
+        blobs.put(big(1)).unwrap();
+        assert!(blobs.is_pending(&blob));
+        blobs.attached([blob]);
+        assert!(blobs.is_pending(&blob), "the second put is still waiting");
+        blobs.attached([blob, blob]);
+        assert!(!blobs.is_pending(&blob));
+    }
+
+    #[test]
+    fn transient_payloads_stay_in_memory_and_are_not_stored_blobs() {
+        let (dir, blobs) = blobs();
+        let content = blobs.put_transient(big(4)).unwrap();
+        let Content::Blob { blob, len } = &content else {
+            panic!()
+        };
+        assert!(files_under(dir.path()).is_empty());
+        assert!(!blobs.has(blob, *len));
+        assert!(blobs.is_transient(blob));
+        assert_eq!(
+            blobs.read_any(&content).unwrap().as_ref(),
+            big(4).as_slice()
+        );
+        assert!(matches!(blobs.read(&content), Err(Error::NotFound { .. })));
+        blobs.clear_transient();
+        assert!(matches!(
+            blobs.read_any(&content),
+            Err(Error::NotFound { .. })
+        ));
+    }
+
+    #[test]
+    fn a_scrubbed_remove_deletes_the_file() {
+        let (dir, mut blobs) = blobs();
+        let Content::Blob { blob, len } = blobs.put(big(6)).unwrap() else {
+            panic!()
+        };
+        blobs.remove(&blob, true).unwrap();
+        assert!(!blobs.has(&blob, len));
+        assert!(files_under(dir.path()).is_empty());
+    }
+
     #[test]
     fn writes_leave_no_temporary_files() {
         let (dir, mut blobs) = blobs();
@@ -488,9 +737,9 @@ mod tests {
         let Content::Blob { blob, len } = blobs.put(big(1)).unwrap() else {
             panic!()
         };
-        blobs.remove(&blob).unwrap();
+        blobs.remove(&blob, false).unwrap();
         assert!(!blobs.has(&blob, len));
-        blobs.remove(&blob).unwrap();
+        blobs.remove(&blob, false).unwrap();
     }
 
     #[test]
@@ -533,7 +782,7 @@ mod tests {
         assert_eq!(blobs.read(&content).unwrap().as_ref(), big(2).as_slice());
         assert!(blobs.has(blob, *len));
         assert_eq!(blobs.list().unwrap().0.len(), 1);
-        blobs.remove(blob).unwrap();
+        blobs.remove(blob, false).unwrap();
         assert!(matches!(
             blobs.read(&content),
             Err(Error::NotFound { entity: "blob", .. })

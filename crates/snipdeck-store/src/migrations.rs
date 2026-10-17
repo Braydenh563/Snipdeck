@@ -25,14 +25,25 @@ pub(crate) struct Migration {
     pub name: &'static str,
     /// SQL run inside a transaction. Do not put `BEGIN`/`COMMIT` or `PRAGMA user_version` in it.
     pub sql: &'static str,
+    /// Data changes SQL cannot express, run after `sql` in the same transaction.
+    pub post: Option<fn(&Connection) -> Result<()>>,
 }
 
 /// Every migration, oldest first. Append only: a released entry is never edited or removed.
-pub(crate) const MIGRATIONS: &[Migration] = &[Migration {
-    version: 1,
-    name: "initial schema",
-    sql: schema::V1,
-}];
+pub(crate) const MIGRATIONS: &[Migration] = &[
+    Migration {
+        version: 1,
+        name: "initial schema",
+        sql: schema::V1,
+        post: None,
+    },
+    Migration {
+        version: 2,
+        name: "encryption at rest, secure delete, folded tag keys",
+        sql: schema::V2,
+        post: Some(crate::tags::rekey),
+    },
+];
 
 /// The newest schema version this build writes.
 pub(crate) fn latest(migrations: &[Migration]) -> u32 {
@@ -112,16 +123,27 @@ fn foreign(path: &Path) -> Error {
 
 fn run_steps(conn: &mut Connection, migrations: &[Migration], current: u32) -> Result<()> {
     for step in migrations.iter().filter(|m| m.version > current) {
-        let fail = |reason: String| Error::Migration {
+        // The source error is kept (review N7), its text repeated in `reason`.
+        let fail = |source: Option<rusqlite::Error>, reason: String| Error::Migration {
             version: step.version,
             name: step.name,
             reason,
+            source,
+        };
+        let sqlite = |e: rusqlite::Error| {
+            let reason = e.to_string();
+            fail(Some(e), reason)
         };
         let tx = conn
             .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-            .map_err(|e| fail(e.to_string()))?;
-        tx.execute_batch(step.sql)
-            .map_err(|e| fail(e.to_string()))?;
+            .map_err(sqlite)?;
+        tx.execute_batch(step.sql).map_err(sqlite)?;
+        if let Some(post) = step.post {
+            post(&tx).map_err(|e| match e {
+                Error::Sqlite(e) => sqlite(e),
+                other => fail(None, other.to_string()),
+            })?;
+        }
         let dangling: Option<String> = tx
             .query_row(
                 "SELECT \"table\" FROM pragma_foreign_key_check LIMIT 1",
@@ -129,16 +151,17 @@ fn run_steps(conn: &mut Connection, migrations: &[Migration], current: u32) -> R
                 |r| r.get(0),
             )
             .optional()
-            .map_err(|e| fail(e.to_string()))?;
+            .map_err(sqlite)?;
         if let Some(table) = dangling {
-            return Err(fail(format!(
-                "rows in `{table}` refer to rows that do not exist"
-            )));
+            return Err(fail(
+                None,
+                format!("rows in `{table}` refer to rows that do not exist"),
+            ));
         }
         // `PRAGMA` cannot bind a parameter; `version` is a number from our own list.
         tx.execute_batch(&format!("PRAGMA user_version = {};", step.version))
-            .map_err(|e| fail(e.to_string()))?;
-        tx.commit().map_err(|e| fail(e.to_string()))?;
+            .map_err(sqlite)?;
+        tx.commit().map_err(sqlite)?;
     }
     Ok(())
 }
@@ -163,19 +186,21 @@ mod tests {
     use super::*;
     use rusqlite::params;
 
-    const V2_ADD_COLUMN: Migration = Migration {
-        version: 2,
+    const NEXT_ADD_COLUMN: Migration = Migration {
+        version: 3,
         name: "add boards.colour",
         sql: "ALTER TABLE boards ADD COLUMN colour TEXT;",
+        post: None,
     };
 
-    const V2_BROKEN: Migration = Migration {
-        version: 2,
+    const NEXT_BROKEN: Migration = Migration {
+        version: 3,
         name: "broken",
         sql: "ALTER TABLE boards ADD COLUMN colour TEXT; THIS IS NOT SQL;",
+        post: None,
     };
 
-    fn with_v2(step: Migration) -> Vec<Migration> {
+    fn with_next(step: Migration) -> Vec<Migration> {
         let mut all = MIGRATIONS.to_vec();
         all.push(step);
         all
@@ -238,10 +263,10 @@ mod tests {
         migrate(&mut conn, MIGRATIONS, Path::new(":memory:"), false).unwrap();
         insert_board(&conn);
 
-        let all = with_v2(V2_ADD_COLUMN);
+        let all = with_next(NEXT_ADD_COLUMN);
         let outcome = migrate(&mut conn, &all, Path::new(":memory:"), false).unwrap();
-        assert_eq!(outcome, Outcome { from: 1, to: 2 });
-        assert_eq!(version(&conn), 2);
+        assert_eq!(outcome, Outcome { from: 2, to: 3 });
+        assert_eq!(version(&conn), 3);
         let (name, colour): (String, Option<String>) = conn
             .query_row("SELECT name, colour FROM boards", [], |r| {
                 Ok((r.get(0)?, r.get(1)?))
@@ -256,20 +281,30 @@ mod tests {
         migrate(&mut conn, MIGRATIONS, Path::new(":memory:"), false).unwrap();
         insert_board(&conn);
 
-        let err =
-            migrate(&mut conn, &with_v2(V2_BROKEN), Path::new(":memory:"), false).unwrap_err();
+        let err = migrate(
+            &mut conn,
+            &with_next(NEXT_BROKEN),
+            Path::new(":memory:"),
+            false,
+        )
+        .unwrap_err();
         assert!(
             matches!(
                 err,
                 Error::Migration {
-                    version: 2,
+                    version: 3,
                     name: "broken",
+                    source: Some(_),
                     ..
                 }
             ),
             "{err:?}"
         );
-        assert_eq!(version(&conn), 1);
+        assert!(
+            std::error::Error::source(&err).is_some(),
+            "the cause is kept"
+        );
+        assert_eq!(version(&conn), 2);
         // The half-applied ALTER TABLE was undone, and the data is intact.
         assert!(conn.prepare("SELECT colour FROM boards").is_err());
         let boards: i64 = conn
@@ -287,34 +322,41 @@ mod tests {
         let mut conn = fresh();
         migrate(&mut conn, MIGRATIONS, Path::new(":memory:"), false).unwrap();
         let dangling = Migration {
-            version: 2,
+            version: 3,
             name: "orphan a list",
             sql: "INSERT INTO lists (id, board_id, name, list_view, list_sort, rank, created_at, updated_at)
                   VALUES (zeroblob(16), zeroblob(16), 'L', 'compact', 'manual', 1, 0, 0);",
+            post: None,
         };
-        let err = migrate(&mut conn, &with_v2(dangling), Path::new(":memory:"), false).unwrap_err();
+        let err = migrate(
+            &mut conn,
+            &with_next(dangling),
+            Path::new(":memory:"),
+            false,
+        )
+        .unwrap_err();
         assert!(
-            matches!(err, Error::Migration { version: 2, .. }),
+            matches!(err, Error::Migration { version: 3, .. }),
             "{err:?}"
         );
-        assert_eq!(version(&conn), 1);
+        assert_eq!(version(&conn), 2);
     }
 
     #[test]
     fn a_newer_database_is_refused_without_being_touched() {
         let mut conn = fresh();
-        let all = with_v2(V2_ADD_COLUMN);
+        let all = with_next(NEXT_ADD_COLUMN);
         migrate(&mut conn, &all, Path::new(":memory:"), false).unwrap();
         insert_board(&conn);
 
-        // The "old build" only knows version 1.
+        // The "old build" only knows the current version.
         let err = migrate(&mut conn, MIGRATIONS, Path::new(":memory:"), false).unwrap_err();
         assert!(
             matches!(
                 err,
                 Error::SchemaTooNew {
-                    found: 2,
-                    supported: 1
+                    found: 3,
+                    supported: 2
                 }
             ),
             "{err:?}"
@@ -324,7 +366,7 @@ mod tests {
             message.contains("newer Snipdeck") && message.contains("update"),
             "{message}"
         );
-        assert_eq!(version(&conn), 2);
+        assert_eq!(version(&conn), 3);
     }
 
     #[test]
@@ -352,14 +394,14 @@ mod tests {
         let mut conn = Connection::open(&path).unwrap();
         migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
         assert!(
-            !dir.path().join("snipdeck.db.pre-v1.bak").exists(),
+            !dir.path().join("snipdeck.db.pre-v2.bak").exists(),
             "nothing to back up on creation"
         );
         insert_board(&conn);
 
-        migrate(&mut conn, &with_v2(V2_ADD_COLUMN), &path, true).unwrap();
-        let backup = Connection::open(dir.path().join("snipdeck.db.pre-v1.bak")).unwrap();
-        assert_eq!(version(&backup), 1);
+        migrate(&mut conn, &with_next(NEXT_ADD_COLUMN), &path, true).unwrap();
+        let backup = Connection::open(dir.path().join("snipdeck.db.pre-v2.bak")).unwrap();
+        assert_eq!(version(&backup), 2);
         let boards: i64 = backup
             .query_row("SELECT count(*) FROM boards", [], |r| r.get(0))
             .unwrap();
@@ -384,7 +426,7 @@ mod tests {
         // A table rebuild, the migration shape that needs foreign keys off: widen the
         // `list_view` check by copying `lists` into a new table.
         let rebuild = Migration {
-            version: 2,
+            version: 3,
             name: "rebuild lists",
             sql: "CREATE TABLE lists_new (
                       id BLOB NOT NULL PRIMARY KEY CHECK (length(id) = 16),
@@ -397,6 +439,7 @@ mod tests {
                   INSERT INTO lists_new SELECT * FROM lists;
                   DROP TABLE lists;
                   ALTER TABLE lists_new RENAME TO lists;",
+            post: None,
         };
         let counts = |conn: &Connection| -> Vec<i64> {
             [
@@ -416,8 +459,8 @@ mod tests {
         };
         let before = counts(&conn);
         assert_eq!(before, [1, 1, 3, 4, 1, 1]);
-        let outcome = migrate(&mut conn, &with_v2(rebuild), &path, true).unwrap();
-        assert_eq!(outcome, Outcome { from: 1, to: 2 });
+        let outcome = migrate(&mut conn, &with_next(rebuild), &path, true).unwrap();
+        assert_eq!(outcome, Outcome { from: 1, to: 3 });
         assert_eq!(counts(&conn), before);
         let items_still_reference_the_list: i64 = conn
             .query_row(

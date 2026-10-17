@@ -1,17 +1,65 @@
 //! [`TagRepo`] for [`Store`].
 //!
-//! Uniqueness is on `name_key`, the name lower-cased by Rust's full Unicode `to_lowercase`
-//! (SQLite's own `NOCASE` folds ASCII only, so `École` and `école` would be different tags).
+//! Uniqueness is on `name_key` ([`name_key`]): the name with its case folded fully and in
+//! Unicode normalisation form C (review N5). SQLite's own `NOCASE` folds ASCII only, and plain
+//! lower-casing keeps `Straße` and `STRASSE`, or a composed and a decomposed `École`, apart.
 
-use rusqlite::{OptionalExtension, params};
+use rusqlite::{Connection, OptionalExtension, params};
 use snipdeck_core::{Name, Tag, TagId};
+use unicode_normalization::UnicodeNormalization as _;
 
-use crate::codec::{id_bytes, id_from, not_found, require_new};
+use crate::codec::{id_bytes, id_from, not_found, require_new, stored_name};
 use crate::store::begin;
 use crate::{Error, Result, Store, TagRepo};
 
+/// The key two tag names clash on.
+///
+/// Decompose, fold the case, compose: the canonical caseless match of Unicode §3.13, with
+/// the case folded as upper-case then lower-case. That equals full case folding for every
+/// cased letter that matters here (`ß` to `ss`, final `ς` to `σ`, ligatures such as `ﬁ`), and
+/// it is the same mapping whatever the input's case, which is all a uniqueness key needs.
+pub(crate) fn name_key(name: &str) -> String {
+    let decomposed: String = name.nfd().collect();
+    decomposed.to_uppercase().to_lowercase().nfc().collect()
+}
+
 fn key(name: &Name) -> String {
-    name.as_str().to_lowercase()
+    name_key(name.as_str())
+}
+
+/// Migration step to schema version 2: recomputes every `name_key` with [`name_key`].
+///
+/// Tags that were distinct before and clash now (`Straße` and `STRASSE`) both stay: the later
+/// one (by id) gets its key suffixed with its id, and `check_integrity` reports it so the user
+/// can rename one. Keys are first parked on unique placeholders so the unique index never sees
+/// a temporary clash.
+pub(crate) fn rekey(conn: &Connection) -> Result<()> {
+    let tags: Vec<(Vec<u8>, String)> = conn
+        .prepare("SELECT id, name FROM tags ORDER BY id")?
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .collect::<rusqlite::Result<_>>()?;
+    conn.execute("UPDATE tags SET name_key = char(1) || hex(id)", [])?;
+    let mut taken = std::collections::HashSet::new();
+    for (id, name) in tags {
+        let mut key = name_key(&name);
+        if key.is_empty() || !taken.insert(key.clone()) {
+            key = format!("{key}\u{1}{}", hex(&id));
+            taken.insert(key.clone());
+        }
+        conn.execute(
+            "UPDATE tags SET name_key = ?2 WHERE id = ?1",
+            params![id, key],
+        )?;
+    }
+    Ok(())
+}
+
+fn hex(bytes: &[u8]) -> String {
+    use core::fmt::Write as _;
+    bytes.iter().fold(String::new(), |mut out, b| {
+        let _ = write!(out, "{b:02x}");
+        out
+    })
 }
 
 impl TagRepo for Store {
@@ -26,7 +74,7 @@ impl TagRepo for Store {
             let (id, name) = row?;
             Ok(Tag {
                 id: id_from(&id)?,
-                name: Name::new(&name)?,
+                name: stored_name(&name)?,
             })
         })
         .collect()
@@ -79,4 +127,47 @@ fn clash_check(conn: &rusqlite::Connection, tag: &Tag) -> Result<()> {
         return Err(Error::TagExists(tag.name.to_string()));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keys_fold_case_fully_and_normalise() {
+        assert_eq!(name_key("Straße"), name_key("STRASSE"));
+        assert_eq!(name_key("\u{c9}cole"), name_key("e\u{301}cole"));
+        assert_eq!(name_key("\u{c9}COLE"), "\u{e9}cole", "stored composed");
+        assert_eq!(name_key("ΣΟΣ"), name_key("σος"));
+        assert_eq!(name_key("ﬁle"), name_key("FILE"));
+        assert_ne!(name_key("Work"), name_key("Word"));
+    }
+
+    #[test]
+    fn rekeying_keeps_tags_that_now_clash_and_parks_no_duplicate() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(crate::schema::V1).unwrap();
+        for (id, name, old) in [
+            (1_u8, "Straße", "straße"),
+            (2, "STRASSE", "strasse"),
+            (3, "Work", "work"),
+        ] {
+            conn.execute(
+                "INSERT INTO tags (id, name, name_key) VALUES (?1, ?2, ?3)",
+                params![vec![id; 16], name, old],
+            )
+            .unwrap();
+        }
+        rekey(&conn).unwrap();
+        let keys: Vec<String> = conn
+            .prepare("SELECT name_key FROM tags ORDER BY id")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect();
+        assert_eq!(keys[0], "strasse");
+        assert!(keys[1].starts_with("strasse\u{1}"), "{:?}", keys[1]);
+        assert_eq!(keys[2], "work");
+    }
 }

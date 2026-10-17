@@ -3,7 +3,9 @@
 use zeroize::Zeroizing;
 
 use super::KeyProviderError;
+#[cfg(any(test, feature = "testing"))]
 use super::aead::{open, seal};
+#[cfg(any(test, feature = "testing"))]
 use super::key::DataKey;
 
 /// Wraps and unwraps small secrets (keys) so they are only usable by the current OS user.
@@ -49,14 +51,16 @@ pub trait KeyProvider {
 
 /// A provider that keeps its key-encryption key in process memory.
 ///
-/// For tests and for development before the DPAPI provider exists. It is **not** OS-bound:
+/// For tests only (the `testing` feature; review L6), until the DPAPI provider exists. It is **not** OS-bound:
 /// the key dies with the process, so anything wrapped by it is unrecoverable afterwards.
 /// It does use real authenticated encryption, so it honours the rest of the
 /// [`KeyProvider`] contract.
+#[cfg(any(test, feature = "testing"))]
 pub struct MemoryKeyProvider {
     kek: DataKey,
 }
 
+#[cfg(any(test, feature = "testing"))]
 impl MemoryKeyProvider {
     /// A provider with a fresh random key.
     ///
@@ -70,12 +74,14 @@ impl MemoryKeyProvider {
     }
 }
 
+#[cfg(any(test, feature = "testing"))]
 impl core::fmt::Debug for MemoryKeyProvider {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str("MemoryKeyProvider(<redacted>)")
     }
 }
 
+#[cfg(any(test, feature = "testing"))]
 impl KeyProvider for MemoryKeyProvider {
     fn wrap_key(&self, key: &[u8]) -> Result<Vec<u8>, KeyProviderError> {
         seal(self.kek.expose(), AAD, key)
@@ -87,6 +93,7 @@ impl KeyProvider for MemoryKeyProvider {
     }
 }
 
+#[cfg(any(test, feature = "testing"))]
 const AAD: &[u8] = b"snipdeck/MemoryKeyProvider/1";
 
 #[cfg(test)]

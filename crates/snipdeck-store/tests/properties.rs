@@ -509,6 +509,14 @@ fn check(store: &Store, m: &Model) {
     );
     let mut all_items = Vec::new();
     for b in &m.boards {
+        if !live_board(b) {
+            // The children of a parent that is not live are `NotFound` (review L10).
+            assert!(store.lists(b.id).is_err(), "lists of a trashed board");
+            for l in &b.lists {
+                assert!(store.items(l.id).is_err(), "items of a hidden list");
+            }
+            continue;
+        }
         let got: Vec<ListId> = store.lists(b.id).unwrap().iter().map(|l| l.id).collect();
         let want: Vec<ListId> = b
             .lists
@@ -518,6 +526,10 @@ fn check(store: &Store, m: &Model) {
             .collect();
         assert_eq!(got, want, "lists of a board");
         for l in &b.lists {
+            if !live_list(b, l) {
+                assert!(store.items(l.id).is_err(), "items of a trashed list");
+                continue;
+            }
             let got: Vec<ItemId> = store.items(l.id).unwrap().iter().map(|i| i.id).collect();
             let want: Vec<ItemId> = l
                 .items

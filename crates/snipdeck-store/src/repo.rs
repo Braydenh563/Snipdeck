@@ -5,11 +5,21 @@
 //!   board, is invisible until restored (see [`TrashRepo`]).
 //! - **Order belongs to storage.** Collections come back in the user's manual order, and
 //!   [`Placement`] says where an insert or move goes.
-//! - **Whole writes.** `update_*` overwrites every field of the record with what it is given.
-//!   If the parent id changed (an item's `list_id`, a list's `board_id`), the record moves to
-//!   the end of the new parent; use `move_*` to choose the position.
+//! - **Whole writes.** `update_*` overwrites every field of the record with what it is given,
+//!   except an item's usage (`use_count`, `last_used_at`), which only
+//!   [`ItemRepo::record_use`] changes after the insert. If the parent id changed (an item's
+//!   `list_id`, a list's `board_id`), the record moves to the end of the new parent; use
+//!   `move_*` to choose the position.
 //! - **Missing ids** fail with [`Error::NotFound`](crate::Error::NotFound), including a
-//!   [`Placement::After`] sibling that is not in the target container.
+//!   [`Placement::After`] sibling that is not in the target container, and the parent of a
+//!   listing ([`ListRepo::lists`], [`ItemRepo::items`]) that is missing or in the trash.
+//! - **Sensitive items** ([`Item::sensitive`](snipdeck_core::Item::sensitive)) are indexed by
+//!   title only. Once encryption is set up
+//!   ([`Store::create_key_ring`](crate::Store::create_key_ring)), their content is stored
+//!   encrypted and read back decrypted while the key ring is unlocked; while it is locked,
+//!   reading that content, writing new content of a sensitive item, marking an item
+//!   sensitive or clearing the flag fails with
+//!   [`Error::EncryptionLocked`](crate::Error::EncryptionLocked).
 
 use snipdeck_core::{
     Board, BoardId, Formats, Item, ItemId, List, ListId, Placement, Tag, TagId, Timestamp,
@@ -26,7 +36,9 @@ pub trait BoardRepo {
     fn board(&self, id: BoardId) -> Result<Board>;
 
     /// Adds a new board at `at`. The Free board limit is the caller's check
-    /// ([`Entitlements::can_create_board`](snipdeck_core::Entitlements::can_create_board)).
+    /// ([`Entitlements::can_create_board`](snipdeck_core::Entitlements::can_create_board));
+    /// restoring from the trash is limited by
+    /// [`Store::restore_with`](crate::Store::restore_with).
     fn insert_board(&mut self, board: &Board, at: Placement<BoardId>) -> Result<()>;
 
     /// Overwrites a board.
@@ -65,13 +77,18 @@ pub trait ItemRepo {
     /// One live item, without content.
     fn item(&self, id: ItemId) -> Result<Item>;
 
-    /// The item's content, for using, editing or exporting it.
+    /// The item's content, for using, editing or exporting it; decrypted if it is stored
+    /// encrypted. Decrypted payloads too large to be inline are held in memory only and are
+    /// read through [`BlobStore::read`](crate::BlobStore::read) like any blob.
     fn formats(&self, id: ItemId) -> Result<Formats>;
 
     /// Adds a new item with its content to `item.list_id` at `at`.
     fn insert_item(&mut self, item: &Item, formats: &Formats, at: Placement<ItemId>) -> Result<()>;
 
-    /// Overwrites an item, and its content too when `formats` is `Some`, in one transaction.
+    /// Overwrites an item (not its usage), and its content too when `formats` is `Some`, in one
+    /// transaction. Changing `sensitive` with `formats` `None` encrypts or decrypts the stored
+    /// content as needed and updates the search index; other metadata edits do not read the
+    /// content.
     fn update_item(&mut self, item: &Item, formats: Option<&Formats>) -> Result<()>;
 
     /// Moves an item to `at` within `list`, which may be its current list.
@@ -129,6 +146,10 @@ pub trait TrashRepo {
 
     /// Brings a record back to where it was. Restoring something whose parent is trashed
     /// restores the parent too; siblings trashed on their own stay in the trash.
+    ///
+    /// This can bring a board back. On Free, call
+    /// [`Store::restore_with`](crate::Store::restore_with) with the board limit instead, so
+    /// restoring cannot exceed it.
     fn restore(&mut self, target: Trashable) -> Result<()>;
 
     /// Everything in the trash, most recently trashed first. Records trashed together with

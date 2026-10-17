@@ -118,3 +118,29 @@ Core findings only; the store agent appends its own table. Tests are in `crates/
 | N4 | **Fixed** | `placeholder_keys_are_trimmed_like_names_and_options`, `spans_stay_exact_when_the_key_is_padded`. Keys are trimmed, so `{ date }` renders. |
 | N8 | **Fixed** | `docs/PLAN.md` M1 row now says forward-only migrations with a pre-migration backup. |
 | N9 | **Fixed** | `render_checked_enforces_the_entitlement_that_render_does_not`, `render_checked_lets_free_users_render_static_templates`, `render_checked_also_bounds_the_output`. `render` stays, documented as the unchecked primitive; module docs steer callers to `render_checked`. |
+
+## Resolution (store)
+
+Store findings; tests are in `crates/snipdeck-store/`. Schema is now version 2 (forward-only,
+pre-migration backup kept; see `docs/store.md`). Remanence guarantees and limits are in
+`docs/crypto.md`, "What is left on disk".
+
+| ID | Status | Covering test(s) / change |
+|---|---|---|
+| H1 | **Fixed** | `PRAGMA secure_delete = ON` (not `FAST`, which leaves freelist pages) on every connection before migrating; FTS5 `secure-delete` plus one `optimize` in migration v2; `wal_checkpoint(TRUNCATE)` after sensitive transitions and purges; plaintext blobs zeroed before deletion; one `VACUUM` after migrating from v1. `tests/remanence.rs`: `no_plaintext_remains_after_a_clean_close`, `..._after_a_crash` (`mem::forget`), `..._after_a_purge` (0/50/500 filler items; scans `.db`, `-wal`, `-shm`, blobs). Each of the three SQLite measures was switched off once and the test failed. `check_integrity` reports either being off (`the_integrity_check_reports_when_secure_delete_is_off`, `store::tests::the_integrity_check_reports_secure_delete_being_off`). What SQLite cannot guarantee (earlier backups, CoW/SSD, temp files) is documented. |
+| M1 | **Fixed** | New `Store::restore_with(target, max_live_boards) -> Vec<Trashable>`: refuses inside the transaction with `Core(ProRequired(UnlimitedBoards))` and reports revived ancestors; `TrashRepo::restore` documents it. `trash.rs`: `restore_cannot_revive_a_board_past_the_callers_limit` (the reviewer's scenario, via board, list and item), `restore_with_reports_every_record_it_brought_back`. |
+| M3 | **Fixed** | Per-`put` pending count in memory; released blobs that are pending are kept. `items.rs`: `put_then_unrelated_update_keeps_the_pending_blob`, `put_then_purge_keeps_the_pending_blob`, `an_attached_blob_is_still_deleted_when_released`; `blobs::tests::a_blob_is_pending_from_put_until_attached_once_per_put`. |
+| M4 | **Fixed** | Deletes after commit are best effort, left for `gc_blobs`; `gc_blobs` skips and counts (`GcReport::failed`). `items.rs`: `a_failed_blob_delete_after_commit_is_not_an_error`, `a_failed_blob_delete_after_purge_still_reports_the_count`; `store::tests::gc_counts_failed_deletes_and_carries_on`, `released_blobs_that_cannot_be_deleted_are_left_for_gc` (injected failures). |
+| M6 | **Fixed** | Migration v2: `items.encrypted` (`CHECK encrypted = 0 OR sensitive = 1`) and a single-row `key_ring` table. `Store::{create_key_ring, unlock_key_ring, change_master_password, lock_key_ring, key_ring_exists, is_unlocked, data_key, put_sensitive}` over the `KeyRing`/`KeyProvider` trait. Sensitive items are written encrypted and read back decrypted, recognised by the column (not the bytes); clearing `sensitive` decrypts first, and while locked it is refused (`Error::EncryptionLocked`); body never indexed (title only). `tests/crypto.rs` (14 tests); `fixture.rs`: `the_v1_fixture_migrates_to_v2_keeping_every_row_and_leaving_a_backup`. |
+| L4 | **Fixed** | Re-`put` compares the stored file and rewrites it on mismatch. `blobs::tests::putting_again_repairs_a_file_damaged_without_changing_length`. |
+| L5 | **Fixed** | Hand-written `Debug` for `Blobs` and `Store` (counts only). `items.rs`: `debug_output_of_a_store_holds_no_content`; `blobs::tests::debug_shows_counts_not_bytes`, `store::tests::debug_output_names_no_key_or_content`. |
+| L6 | **Fixed** | `KdfParams::new` and loading a record enforce 19 MiB / t = 2; `KdfParams::insecure_for_tests` and `MemoryKeyProvider` only with the `testing` feature. `keyring::tests::production_settings_have_a_floor`. |
+| L7 | **Fixed** | `DataKey::from_slice` copies into the `Zeroizing` buffer in place. `key::tests::keys_are_built_from_exactly_32_bytes`. |
+| L8 | **Fixed** | `SNENC2`: AAD = version, item id, format key or file index (`Slot`); no `SNENC1` reader. `envelope::tests::an_envelope_cannot_move_to_another_slot_of_the_same_item`, `a_version_1_envelope_is_not_an_envelope`. |
+| L9 | **Fixed** | Bad names are shown repaired, not failing the list; `check_integrity` reports them. `blobs.rs`: `one_bad_row_does_not_fail_the_whole_listing`. No new `CHECK` (degrade and report instead). |
+| L10 | **Fixed** | `lists`/`items` of a missing or trashed parent are `NotFound`. `ordering.rs`: `listing_lists_of_a_missing_or_trashed_board_is_not_found`; `items.rs`: `listing_items_of_a_missing_or_trashed_list_is_not_found`; model check in `properties.rs`. |
+| L11 | **Fixed** | Metadata edits update only the FTS title. `items.rs`: `metadata_edits_do_not_read_the_content` (damaged blob, edit still succeeds and stays searchable). |
+| L12 | **Fixed** | `update_item` no longer writes usage columns. `items.rs`: `saving_a_stale_item_does_not_roll_back_usage`. |
+| N5 | **Fixed** | `name_key` = NFD, upper then lower case, NFC (`unicode-normalization`); v2 rekeys existing tags, suffixing clashes and reporting them. `tags.rs`: `names_clash_after_full_case_folding_and_normalisation`; `tags::tests::*`. |
+| N6 | **Fixed** | `pragma_text` behind `cfg(any(test, feature = "testing"))`. |
+| N7 | **Fixed** | `schema_version() -> Result<u32>`; `Error::Migration` keeps `#[source] Option<rusqlite::Error>`. `migrations::tests::a_failing_migration_rolls_back_completely`. |

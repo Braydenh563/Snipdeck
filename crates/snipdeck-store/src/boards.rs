@@ -1,11 +1,11 @@
 //! [`BoardRepo`] and [`ListRepo`] for [`Store`].
 
 use rusqlite::{OptionalExtension, params};
-use snipdeck_core::{Board, BoardId, List, ListId, Name, Placement};
+use snipdeck_core::{Board, BoardId, List, ListId, Placement};
 
 use crate::codec::{
     from_nanos, id_bytes, id_from, nanos, not_found, raw_placement, require_board, require_list,
-    require_new,
+    require_new, stored_name,
 };
 use crate::rank::{self, BOARDS, LISTS};
 use crate::store::begin;
@@ -33,7 +33,7 @@ impl BoardRow {
     fn into_board(self) -> Result<Board> {
         Ok(Board {
             id: id_from(&self.id)?,
-            name: Name::new(&self.name)?,
+            name: stored_name(&self.name)?,
             created_at: from_nanos(self.created_at)?,
             updated_at: from_nanos(self.updated_at)?,
         })
@@ -134,7 +134,7 @@ impl ListRow {
         Ok(List {
             id: id_from(&self.id)?,
             board_id: id_from(&self.board_id)?,
-            name: Name::new(&self.name)?,
+            name: stored_name(&self.name)?,
             accent: self.accent.as_deref().map(str::parse).transpose()?,
             view: self.view.parse()?,
             sort: self.sort.parse()?,
@@ -146,10 +146,10 @@ impl ListRow {
 
 impl ListRepo for Store {
     fn lists(&self, board: BoardId) -> Result<Vec<List>> {
+        // A board that is missing or trashed is `NotFound`, not empty (review L10).
+        require_board(&self.conn, board)?;
         let mut stmt = self.conn.prepare_cached(&format!(
-            "SELECT {} FROM lists WHERE board_id = ?1 AND deleted_at IS NULL
-               AND EXISTS (SELECT 1 FROM boards b WHERE b.id = ?1 AND b.deleted_at IS NULL)
-             ORDER BY rank",
+            "SELECT {} FROM lists WHERE board_id = ?1 AND deleted_at IS NULL ORDER BY rank",
             ListRow::COLUMNS
         ))?;
         let rows = stmt.query_map([id_bytes(board)], ListRow::read)?;

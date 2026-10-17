@@ -2,7 +2,7 @@
 //! ids as 16-byte blobs, timestamps as `i64` nanoseconds, booleans as 0/1.
 
 use rusqlite::{Connection, OptionalExtension, params};
-use snipdeck_core::{BlobRef, BoardId, Content, Inline, ItemId, ListId, TagId, Timestamp};
+use snipdeck_core::{BlobRef, BoardId, Content, Inline, ItemId, ListId, Name, TagId, Timestamp};
 use uuid::Uuid;
 
 use crate::{Error, Result};
@@ -223,4 +223,27 @@ pub(crate) fn raw_placement<I: StoredId>(
         Placement::Last => Placement::Last,
         Placement::After(id) => Placement::After(id.uuid()),
     }
+}
+
+/// A stored board, list or tag name. One row that is not a valid [`Name`] (written by another
+/// tool, or by an older rule) must not fail a whole listing (review L9): it is shown with its
+/// control characters replaced and its length capped, and [`Store::check_integrity`]
+/// reports it. Saving the record writes the repaired name back.
+///
+/// [`Store::check_integrity`]: crate::Store::check_integrity
+pub(crate) fn stored_name(raw: &str) -> Result<Name> {
+    if let Ok(name) = Name::new(raw) {
+        return Ok(name);
+    }
+    let cleaned: String = raw
+        .chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .take(Name::MAX_CHARS)
+        .collect();
+    Ok(Name::new(&cleaned).or_else(|_| Name::new("Unnamed"))?)
+}
+
+/// Whether `raw` is exactly what [`Name::new`] would store.
+pub(crate) fn is_valid_name(raw: &str) -> bool {
+    Name::new(raw).is_ok_and(|name| name.as_str() == raw)
 }

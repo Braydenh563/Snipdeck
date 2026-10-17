@@ -101,7 +101,7 @@ fn open_fixture() -> (tempfile::TempDir, Store) {
 #[test]
 fn a_version_1_database_opens_and_reads_back() {
     let (_dir, s) = open_fixture();
-    assert_eq!(s.schema_version(), 1);
+    assert_eq!(s.schema_version().unwrap(), 2);
     let boards = s.boards().unwrap();
     assert_eq!(boards.len(), 1);
     assert_eq!(
@@ -141,5 +141,64 @@ fn the_fixtures_search_index_and_trash_work() {
     assert_eq!(
         s.search("obsolete", 5).unwrap(),
         [id::<ItemId>(ITEM_TRASHED)]
+    );
+}
+
+/// The v1 to v2 migration (review H1, M6, N5) on the real version-1 file: every row survives,
+/// a backup of version 1 is left next to it, and the new parts are in place.
+#[test]
+fn the_v1_fixture_migrates_to_v2_keeping_every_row_and_leaving_a_backup() {
+    let (dir, s) = open_fixture();
+    assert_eq!(s.schema_version().unwrap(), 2);
+    assert_healthy(&s);
+
+    let backup = rusqlite::Connection::open(dir.path().join("snipdeck.db.pre-v1.bak")).unwrap();
+    let version: u32 = backup
+        .pragma_query_value(None, "user_version", |r| r.get(0))
+        .unwrap();
+    assert_eq!(version, 1);
+    drop(backup);
+    drop(s);
+
+    let raw = rusqlite::Connection::open(dir.path().join("snipdeck.db")).unwrap();
+    let count = |sql: &str| -> i64 { raw.query_row(sql, [], |r| r.get(0)).unwrap() };
+    for (table, rows) in [
+        ("boards", 1),
+        ("lists", 1),
+        ("items", 3),
+        ("item_formats", 4),
+        ("tags", 1),
+        ("item_tags", 1),
+        ("key_ring", 0),
+    ] {
+        assert_eq!(
+            count(&format!("SELECT count(*) FROM {table}")),
+            rows,
+            "{table}"
+        );
+    }
+    assert_eq!(
+        count("SELECT count(*) FROM items WHERE encrypted = 0"),
+        3,
+        "nothing was encrypted without a key ring"
+    );
+    assert_eq!(
+        count("SELECT v FROM item_fts_config WHERE k = 'secure-delete'"),
+        1
+    );
+    let key: String = raw
+        .query_row("SELECT name_key FROM tags", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(key, "email");
+    // The new constraints hold.
+    assert!(
+        raw.execute("UPDATE items SET encrypted = 1 WHERE sensitive = 0", [])
+            .is_err(),
+        "only sensitive items can be encrypted"
+    );
+    assert!(
+        raw.execute("INSERT INTO key_ring (id, record) VALUES (1, x'00')", [])
+            .is_err(),
+        "a key record starts with SNKEY1"
     );
 }

@@ -153,3 +153,57 @@ fn the_integrity_check_reports_what_the_schema_cannot_prevent() {
     let problems = s.check_integrity().unwrap().join("\n");
     assert!(problems.contains("missing or the wrong size"), "{problems}");
 }
+
+/// Review L9: one stored name that is not a valid `Name` neither fails the whole listing nor
+/// passes the integrity check unnoticed.
+#[test]
+fn one_bad_row_does_not_fail_the_whole_listing() {
+    use snipdeck_store::{BoardRepo, ListRepo, TagRepo};
+    let dir = tempfile::tempdir().unwrap();
+    let b;
+    {
+        let mut s = Store::open(dir.path()).unwrap();
+        b = board(&mut s, "good");
+        list(&mut s, b.id, "fine");
+    }
+    let raw = Connection::open(dir.path().join("snipdeck.db")).unwrap();
+    raw.execute(
+        "INSERT INTO boards (id, name, rank, created_at, updated_at)
+         VALUES (randomblob(16), 'a' || char(10) || 'b', 999999999, 0, 0)",
+        [],
+    )
+    .unwrap();
+    raw.execute(
+        "INSERT INTO lists (id, board_id, name, list_view, list_sort, rank, created_at, updated_at)
+         SELECT randomblob(16), id, '   ', 'compact', 'manual', 999999999, 0, 0 FROM boards
+         WHERE name = 'good'",
+        [],
+    )
+    .unwrap();
+    raw.execute(
+        "INSERT INTO tags (id, name, name_key) VALUES (randomblob(16), ?1, 'long')",
+        [&"x".repeat(300)],
+    )
+    .unwrap();
+    drop(raw);
+
+    let s = Store::open(dir.path()).unwrap();
+    let boards = s.boards().unwrap();
+    assert_eq!(boards.len(), 2, "the bad board is still listed");
+    assert_eq!(boards[0].name.as_str(), "good");
+    assert_eq!(s.lists(b.id).unwrap().len(), 2);
+    assert_eq!(s.tags().unwrap().len(), 1);
+    let problems = s.check_integrity().unwrap().join("\n");
+    assert!(
+        problems.contains("1 boards with an invalid name"),
+        "{problems}"
+    );
+    assert!(
+        problems.contains("1 lists with an invalid name"),
+        "{problems}"
+    );
+    assert!(
+        problems.contains("1 tags with an invalid name"),
+        "{problems}"
+    );
+}

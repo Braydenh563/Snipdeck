@@ -6,20 +6,21 @@
 //!   (usually none).
 //! - `restore` clears the record's flag and those of its ancestors, so restoring an item inside
 //!   a trashed list brings the list (and board) back. Records inside that were trashed on
-//!   their own stay in the trash.
+//!   their own stay in the trash. [`Store::restore_with`] also enforces a live-board limit
+//!   and reports what it revived.
 //! - `trashed` lists the records whose parent is not itself trashed: one entry per deletion
 //!   the user made.
 //! - `purge` permanently deletes records trashed before the cutoff; for a list or board that
 //!   includes everything inside it, whatever the inner records' own timestamps.
 
-use rusqlite::params;
-use snipdeck_core::{BlobRef, BoardId, ItemId, ListId, Timestamp};
+use rusqlite::{OptionalExtension, params};
+use snipdeck_core::{BlobRef, BoardId, Feature, ItemId, ListId, Timestamp};
 
 use crate::codec::{
     exists, from_nanos, id_bytes, id_from, nanos, not_found, require_board, require_item,
     require_list,
 };
-use crate::store::begin;
+use crate::store::{begin, checkpoint};
 use crate::{Error, Result, Store, TrashEntry, TrashRepo, Trashable};
 
 /// One row per trash entry: kind (0 board, 1 list, 2 item), id, label, `deleted_at`.
@@ -60,32 +61,7 @@ impl TrashRepo for Store {
     }
 
     fn restore(&mut self, target: Trashable) -> Result<()> {
-        let tx = begin(&mut self.conn)?;
-        match target {
-            Trashable::Item(id) => {
-                let bytes = id_bytes(id);
-                if !exists(&tx, "items", bytes)? {
-                    return Err(not_found(id));
-                }
-                tx.execute("UPDATE items SET deleted_at = NULL WHERE id = ?1", [bytes])?;
-                restore_list_chain(&tx, "SELECT list_id FROM items WHERE id = ?1", bytes)?;
-            }
-            Trashable::List(id) => {
-                let bytes = id_bytes(id);
-                if !exists(&tx, "lists", bytes)? {
-                    return Err(not_found(id));
-                }
-                restore_list_chain(&tx, "SELECT ?1", bytes)?;
-            }
-            Trashable::Board(id) => {
-                let bytes = id_bytes(id);
-                if !exists(&tx, "boards", bytes)? {
-                    return Err(not_found(id));
-                }
-                tx.execute("UPDATE boards SET deleted_at = NULL WHERE id = ?1", [bytes])?;
-            }
-        }
-        Ok(tx.commit()?)
+        self.restore_with(target, None).map(drop)
     }
 
     fn trashed(&self) -> Result<Vec<TrashEntry>> {
@@ -150,23 +126,112 @@ impl TrashRepo for Store {
         tx.execute("DELETE FROM lists WHERE deleted_at < ?1", [cutoff])?;
         tx.execute("DELETE FROM boards WHERE deleted_at < ?1", [cutoff])?;
         tx.commit()?;
-        self.release_blobs(candidates)?;
+        // Purged items may have held plaintext of sensitive items: scrub blobs, then fold the
+        // WAL so their page images do not outlive them (review H1). Both are best effort
+        // after the commit (review M4).
+        self.release_blobs(&candidates, true);
+        if entries > 0 {
+            checkpoint(&self.conn);
+        }
         usize::try_from(entries).map_err(|_| Error::Corrupt("negative count".to_owned()))
     }
 }
 
-/// Clears the trash flag of a list and of its board. `list_sql` yields the list's id.
-fn restore_list_chain(conn: &rusqlite::Connection, list_sql: &str, arg: [u8; 16]) -> Result<()> {
-    conn.execute(
-        &format!(
-            "UPDATE boards SET deleted_at = NULL
-             WHERE id = (SELECT board_id FROM lists WHERE id = ({list_sql}))"
-        ),
-        [arg],
+impl Store {
+    /// [`TrashRepo::restore`] that refuses to bring a board back when `max_live_boards`
+    /// boards are already live, and says what it brought back (review M1).
+    ///
+    /// Restoring a list or item inside a trashed board revives the board too, so the Free
+    /// board limit cannot be bypassed by trashing a board, creating another and restoring the
+    /// first. Storage stays free of entitlements: the app passes the limit
+    /// (`Some(Entitlements::FREE_BOARD_LIMIT)` on Free, `None` on Pro). Over the limit it fails
+    /// with `Error::Core(ProRequired(Feature::UnlimitedBoards))`, the upsell path, and changes
+    /// nothing.
+    ///
+    /// Returns the records whose trash flag was cleared: the target (unless it was live),
+    /// then its list and board if they were trashed. Empty if everything was live already.
+    pub fn restore_with(
+        &mut self,
+        target: Trashable,
+        max_live_boards: Option<usize>,
+    ) -> Result<Vec<Trashable>> {
+        let tx = begin(&mut self.conn)?;
+        let mut revived = Vec::new();
+        let board = match target {
+            Trashable::Item(id) => {
+                let (deleted, list): (Option<i64>, Vec<u8>) = tx
+                    .query_row(
+                        "SELECT deleted_at, list_id FROM items WHERE id = ?1",
+                        [id_bytes(id)],
+                        |r| Ok((r.get(0)?, r.get(1)?)),
+                    )
+                    .optional()?
+                    .ok_or_else(|| not_found(id))?;
+                if deleted.is_some() {
+                    revived.push(target);
+                }
+                list_and_board(&tx, id_from(&list)?, &mut revived)?
+            }
+            Trashable::List(id) => {
+                if !exists(&tx, "lists", id_bytes(id))? {
+                    return Err(not_found(id));
+                }
+                list_and_board(&tx, id, &mut revived)?
+            }
+            Trashable::Board(id) => {
+                if !exists(&tx, "boards", id_bytes(id))? {
+                    return Err(not_found(id));
+                }
+                id
+            }
+        };
+        let board_trashed: bool = tx.query_row(
+            "SELECT deleted_at IS NOT NULL FROM boards WHERE id = ?1",
+            [id_bytes(board)],
+            |r| r.get(0),
+        )?;
+        if board_trashed {
+            if let Some(max) = max_live_boards {
+                let live: i64 = tx.query_row(
+                    "SELECT count(*) FROM boards WHERE deleted_at IS NULL",
+                    [],
+                    |r| r.get(0),
+                )?;
+                if usize::try_from(live).unwrap_or(usize::MAX) >= max {
+                    return Err(snipdeck_core::Error::ProRequired(Feature::UnlimitedBoards).into());
+                }
+            }
+            revived.push(Trashable::Board(board));
+        }
+        for record in &revived {
+            let (table, id) = match *record {
+                Trashable::Board(id) => ("boards", id_bytes(id)),
+                Trashable::List(id) => ("lists", id_bytes(id)),
+                Trashable::Item(id) => ("items", id_bytes(id)),
+            };
+            tx.execute(
+                &format!("UPDATE {table} SET deleted_at = NULL WHERE id = ?1"),
+                [id],
+            )?;
+        }
+        tx.commit()?;
+        Ok(revived)
+    }
+}
+
+/// Notes the list as revived if it is trashed, and returns its board.
+fn list_and_board(
+    conn: &rusqlite::Connection,
+    list: ListId,
+    revived: &mut Vec<Trashable>,
+) -> Result<BoardId> {
+    let (deleted, board): (Option<i64>, Vec<u8>) = conn.query_row(
+        "SELECT deleted_at, board_id FROM lists WHERE id = ?1",
+        [id_bytes(list)],
+        |r| Ok((r.get(0)?, r.get(1)?)),
     )?;
-    conn.execute(
-        &format!("UPDATE lists SET deleted_at = NULL WHERE id = ({list_sql})"),
-        [arg],
-    )?;
-    Ok(())
+    if deleted.is_some() {
+        revived.push(Trashable::List(list));
+    }
+    id_from(&board)
 }

@@ -3,7 +3,7 @@
 //! # Key hierarchy
 //!
 //! ```text
-//! item content ──XChaCha20-Poly1305──▶ SNENC1 envelope        (key: the data key, DEK)
+//! item payload ──XChaCha20-Poly1305──▶ SNENC2 envelope        (key: the data key, DEK)
 //! DEK ──(optional) Argon2id master password──▶ password-sealed DEK
 //!     ──KeyProvider (OS-bound, DPAPI on Windows)──▶ SNKEY1 key record, stored by the app
 //! ```
@@ -15,7 +15,10 @@
 //!   attacker needs both the user's OS session and the password, and cannot brute-force the
 //!   password offline from a stolen copy of the record.
 //! * [`KeyRing`] creates, unlocks and re-wraps the record; [`encrypt_item`] and
-//!   [`decrypt_item`] do the per-item work.
+//!   [`decrypt_item`] (or [`encrypt_payload`] and [`decrypt_payload`], bound to one format or
+//!   file of the item) do the per-item work.
+//! * [`Store`](crate::Store) keeps the record in its `key_ring` table and encrypts and decrypts
+//!   sensitive items itself once unlocked; see `docs/crypto.md`.
 //!
 //! All key material is held in zeroizing buffers and no type here prints it in `Debug`.
 
@@ -26,8 +29,17 @@ mod key;
 mod keyring;
 mod provider;
 
-pub use envelope::{decrypt_item, encrypt_item, is_envelope};
+pub use envelope::{
+    Slot, decrypt_item, decrypt_payload, encrypt_item, encrypt_payload, is_envelope,
+};
 pub use error::{CryptoError, KeyProviderError};
 pub use key::DataKey;
 pub use keyring::{KdfParams, KeyRecord, KeyRing};
-pub use provider::{KeyProvider, MemoryKeyProvider};
+#[cfg(any(test, feature = "testing"))]
+pub use provider::MemoryKeyProvider;
+
+/// The `SNENC2` header, for storage's integrity check.
+pub(crate) const fn envelope_magic() -> &'static [u8; 6] {
+    envelope::magic()
+}
+pub use provider::KeyProvider;
