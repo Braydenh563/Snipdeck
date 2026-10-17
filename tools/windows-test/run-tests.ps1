@@ -194,14 +194,14 @@ function Add-CargoToPath {
     if ((Test-Path $bin) -and ($env:PATH -notlike "*$bin*")) { $env:PATH = "$bin;$env:PATH" }
 }
 
-function Install-WithWinget([string]$Id, [string]$ExtraArgs = '') {
+function Install-WithWinget([string]$Id, [string[]]$Extra = @()) {
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
         Say '  winget is not available on this PC. Install manually (see tools\windows-test\README.md).' Yellow
         return $false
     }
-    $argLine = "install --id $Id -e --accept-source-agreements --accept-package-agreements $ExtraArgs"
-    $p = Start-Process -FilePath 'winget' -ArgumentList $argLine -NoNewWindow -Wait -PassThru
-    return ($p.ExitCode -eq 0)
+    # Direct call: Start-Process -Wait would also wait for any helper processes the installer leaves running.
+    & winget install --id $Id -e --accept-source-agreements --accept-package-agreements @Extra
+    return ($LASTEXITCODE -eq 0)
 }
 
 function Test-MsvcTools {
@@ -252,7 +252,7 @@ function Invoke-Prereqs {
         Say '  [missing] Visual Studio Build Tools with the C++ workload (needed to link Windows programs)' Yellow
         Say '            This is a large download (a few GB) and shows an admin (UAC) prompt.' DarkGray
         if (Ask-YesNo 'Install it now with winget?') {
-            $extra = '--override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"'
+            $extra = @('--override', '--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended')
             [void](Install-WithWinget 'Microsoft.VisualStudio.2022.BuildTools' $extra)
         }
         if (-not (Test-MsvcTools)) { Say '  Still missing. Finish the install, then run the wizard again.' Red; $ok = $false }
@@ -383,9 +383,12 @@ function Build-Spike($SpikeDef) {
     if ($DryRun) { Say "  [dry run] would build $($SpikeDef.id)" DarkGray; return $true }
     while ($true) {
         Say "  Building $($SpikeDef.id) (cargo build --release). The first build can take several minutes..." Cyan
-        $p = Start-Process -FilePath 'cargo' -ArgumentList @('build', '--release') -WorkingDirectory $dir -NoNewWindow -Wait -PassThru
-        if ($p.ExitCode -eq 0) { Say '  Build OK.' Green; return $true }
-        Say "  Build FAILED (exit code $($p.ExitCode)). Scroll up for the error." Red
+        # Direct call, NOT Start-Process -Wait: the MSVC linker leaves mspdbsrv.exe running, and -Wait
+        # waits for the whole process tree, so the wizard would hang after "Finished".
+        Push-Location $dir
+        try { & cargo build --release; $code = $LASTEXITCODE } finally { Pop-Location }
+        if ($code -eq 0) { Say '  Build OK.' Green; return $true }
+        Say "  Build FAILED (exit code $code). Scroll up for the error." Red
         $c = Read-Choice '  [r]etry, [s]kip this spike, or [q]uit? ' 'rsq'
         if ($c -eq 'r') { continue }
         if ($c -eq 'q') { throw 'Quit requested.' }
