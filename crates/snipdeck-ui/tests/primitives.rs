@@ -1,5 +1,12 @@
 //! Screenshot goldens and pixel measurements for the group-A primitives.
 
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::panic,
+    reason = "test helpers: a failure here is a failed test"
+)]
+
 use snipdeck_ui::{
     MenuGallery, PrimitivesGallery, SurfacesGallery,
     testing::{Harness, assert_golden},

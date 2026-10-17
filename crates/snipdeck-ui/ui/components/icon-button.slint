@@ -1,5 +1,6 @@
 import { Theme, Radius, Space, Motion } from "../theme.slint";
 import { Icon } from "icon.slint";
+import { StateColor } from "state-color.slint";
 
 export enum IconButtonVariant { ghost, subtle }
 export enum IconButtonSize { sm, md }
@@ -27,11 +28,9 @@ export component IconButton inherits Rectangle {
 
     width: root.side;
     height: root.side;
-    background: root.pressed ? Theme.bg-sunken
-        : root.hovered ? Theme.bg-hover
-        : root.active ? Theme.bg-selected
-        : root.variant == IconButtonVariant.subtle ? Theme.bg-hover
-        : transparent;
+    background: root.variant == IconButtonVariant.subtle
+        ? (root.pressed ? StateColor.deep() : root.hovered ? StateColor.pressed() : root.active ? Theme.bg-selected : Theme.bg-hover)
+        : (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : root.active ? Theme.bg-selected : transparent);
     border-radius: Radius.md;
     border-width: Theme.hc-border != transparent ? 1px : 0px;
     border-color: Theme.hc-border;

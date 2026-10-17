@@ -129,71 +129,68 @@ export component Skeleton inherits Rectangle {
     border-radius: Radius.lg;
     border-width: root.kind == SkeletonKind.tile ? 1px : 0px;
     border-color: Theme.border-subtle;
+    opacity: root.pulse;
     accessible-role: progress-indicator;
     accessible-label: root.label;
 
-    // The bars, drawn in one group so the pulse fades them together.
-    Rectangle {
-        opacity: root.pulse;
-        if root.kind == SkeletonKind.row: Rectangle {
-            x: Space.s2;
-            y: (parent.height - self.height) / 2;
-            width: 16px;
-            height: 16px;
-            background: root.bar;
-            border-radius: Radius.sm;
-            border-width: Theme.hc-border != transparent ? 1px : 0px;
-            border-color: Theme.hc-border;
-        }
-        if root.kind == SkeletonKind.row: Rectangle {
-            x: Space.s2 + 16px + Space.s2;
-            y: (parent.height - self.height) / 2;
-            width: (parent.width - self.x - Space.s2) * 0.55;
-            height: 10px;
-            background: root.bar;
-            border-radius: Radius.sm;
-            border-width: Theme.hc-border != transparent ? 1px : 0px;
-            border-color: Theme.hc-border;
-        }
-        if root.kind == SkeletonKind.tile: Rectangle {
-            x: Space.s3;
-            y: Space.s3;
-            width: (parent.width - 2 * Space.s3) * 0.6;
-            height: 12px;
-            background: root.bar;
-            border-radius: Radius.sm;
-            border-width: Theme.hc-border != transparent ? 1px : 0px;
-            border-color: Theme.hc-border;
-        }
-        if root.kind == SkeletonKind.tile: Rectangle {
-            x: Space.s3;
-            y: Space.s3 + 12px + Space.s3;
-            width: parent.width - 2 * Space.s3;
-            height: 8px;
-            background: root.bar;
-            border-radius: Radius.sm;
-            border-width: Theme.hc-border != transparent ? 1px : 0px;
-            border-color: Theme.hc-border;
-        }
-        if root.kind == SkeletonKind.tile: Rectangle {
-            x: Space.s3;
-            y: Space.s3 + 12px + Space.s3 + 8px + Space.s2;
-            width: (parent.width - 2 * Space.s3) * 0.85;
-            height: 8px;
-            background: root.bar;
-            border-radius: Radius.sm;
-            border-width: Theme.hc-border != transparent ? 1px : 0px;
-            border-color: Theme.hc-border;
-        }
-        if root.kind == SkeletonKind.tile: Rectangle {
-            x: Space.s3;
-            y: Space.s3 + 12px + Space.s3 + 8px + Space.s2 + 8px + Space.s2;
-            width: (parent.width - 2 * Space.s3) * 0.4;
-            height: 8px;
-            background: root.bar;
-            border-radius: Radius.sm;
-            border-width: Theme.hc-border != transparent ? 1px : 0px;
-            border-color: Theme.hc-border;
-        }
+    if root.kind == SkeletonKind.row: Rectangle {
+        x: Space.s2;
+        y: (parent.height - self.height) / 2;
+        width: 16px;
+        height: 16px;
+        background: root.bar;
+        border-radius: Radius.sm;
+        border-width: Theme.hc-border != transparent ? 1px : 0px;
+        border-color: Theme.hc-border;
+    }
+    if root.kind == SkeletonKind.row: Rectangle {
+        x: Space.s2 + 16px + Space.s2;
+        y: (parent.height - self.height) / 2;
+        width: (parent.width - self.x - Space.s2) * 0.55;
+        height: 10px;
+        background: root.bar;
+        border-radius: Radius.sm;
+        border-width: Theme.hc-border != transparent ? 1px : 0px;
+        border-color: Theme.hc-border;
+    }
+    if root.kind == SkeletonKind.tile: Rectangle {
+        x: Space.s3;
+        y: Space.s3;
+        width: (parent.width - 2 * Space.s3) * 0.6;
+        height: 12px;
+        background: root.bar;
+        border-radius: Radius.sm;
+        border-width: Theme.hc-border != transparent ? 1px : 0px;
+        border-color: Theme.hc-border;
+    }
+    if root.kind == SkeletonKind.tile: Rectangle {
+        x: Space.s3;
+        y: Space.s3 + 12px + Space.s3;
+        width: parent.width - 2 * Space.s3;
+        height: 8px;
+        background: root.bar;
+        border-radius: Radius.sm;
+        border-width: Theme.hc-border != transparent ? 1px : 0px;
+        border-color: Theme.hc-border;
+    }
+    if root.kind == SkeletonKind.tile: Rectangle {
+        x: Space.s3;
+        y: Space.s3 + 12px + Space.s3 + 8px + Space.s2;
+        width: (parent.width - 2 * Space.s3) * 0.85;
+        height: 8px;
+        background: root.bar;
+        border-radius: Radius.sm;
+        border-width: Theme.hc-border != transparent ? 1px : 0px;
+        border-color: Theme.hc-border;
+    }
+    if root.kind == SkeletonKind.tile: Rectangle {
+        x: Space.s3;
+        y: Space.s3 + 12px + Space.s3 + 8px + Space.s2 + 8px + Space.s2;
+        width: (parent.width - 2 * Space.s3) * 0.4;
+        height: 8px;
+        background: root.bar;
+        border-radius: Radius.sm;
+        border-width: Theme.hc-border != transparent ? 1px : 0px;
+        border-color: Theme.hc-border;
     }
 }

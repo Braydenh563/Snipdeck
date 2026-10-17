@@ -1,5 +1,6 @@
 import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
 import { Icon } from "icon.slint";
+import { StateColor } from "state-color.slint";
 import { Icons } from "../icons.slint";
 
 // DESIGN.md §4 Toggle / Checkbox / Radio. Each is a 24px-high row (the hit target) holding a
@@ -50,7 +51,7 @@ export component Toggle inherits Rectangle {
                 border-radius: Radius.lg;
                 background: root.checked
                     ? (root.pressed ? Theme.accent-pressed : root.hovered ? Theme.accent-hover : Theme.accent)
-                    : (root.pressed ? Theme.bg-sunken : root.hovered ? Theme.bg-hover : transparent);
+                    : (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : transparent);
                 border-width: 1px;
                 border-color: root.checked ? Theme.accent : Theme.border-strong;
                 opacity: root.enabled ? 1.0 : 0.45;
@@ -163,7 +164,7 @@ export component Checkbox inherits Rectangle {
                 border-radius: Radius.sm;
                 background: root.filled
                     ? (root.pressed ? Theme.accent-pressed : root.hovered ? Theme.accent-hover : Theme.accent)
-                    : (root.pressed ? Theme.bg-sunken : root.hovered ? Theme.bg-hover : Theme.bg-surface);
+                    : (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : Theme.bg-surface);
                 border-width: 1px;
                 border-color: root.filled ? Theme.accent : Theme.border-strong;
                 opacity: root.enabled ? 1.0 : 0.45;
@@ -255,7 +256,7 @@ export component Radio inherits Rectangle {
                 width: 16px;
                 height: 16px;
                 border-radius: Radius.lg;
-                background: root.pressed ? Theme.bg-sunken : root.hovered ? Theme.bg-hover : Theme.bg-surface;
+                background: root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : Theme.bg-surface;
                 border-width: root.selected ? 2px : 1px;
                 border-color: root.selected ? Theme.accent : Theme.border-strong;
                 opacity: root.enabled ? 1.0 : 0.45;

@@ -1,6 +1,13 @@
 //! Accessibility-tree behaviour of the group-A primitives, driven through Slint's testing backend:
 //! roles and labels, default actions, disabled controls, hit-target size, keyboard navigation.
 
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::panic,
+    reason = "test helpers: a failure here is a failed test"
+)]
+
 use std::{
     panic::{AssertUnwindSafe, catch_unwind, resume_unwind},
     sync::{Mutex, OnceLock, mpsc},
@@ -16,7 +23,7 @@ use slint::{
     ComponentHandle, LogicalPosition, SharedString,
     platform::{Key, PointerEventButton, WindowEvent},
 };
-use snipdeck_ui::{MenuGallery, PrimitivesGallery, SurfacesGallery, ToastPhase};
+use snipdeck_ui::{MenuGallery, PrimitivesGallery, SurfacesGallery, SystemLook, ToastPhase};
 
 type Job = Box<dyn FnOnce() + Send>;
 
@@ -501,5 +508,56 @@ fn tooltips_are_decorative_for_assistive_technology() {
             .filter(|e| e.accessible_role() == Some(AccessibleRole::Button))
             .count();
         assert_eq!(tooltips, 0);
+    });
+}
+
+#[test]
+fn skeleton_pulses_and_stops_under_reduced_motion() {
+    on_ui(|| {
+        let sample = |ui: &SurfacesGallery| -> Vec<f32> {
+            let row = ElementHandle::find_by_accessible_label(ui, "Loading row")
+                .next()
+                .expect("skeleton row");
+            (0..8)
+                .map(|_| {
+                    mock_elapsed_time(Duration::from_millis(200));
+                    row.computed_opacity()
+                })
+                .collect()
+        };
+        let moving = surfaces();
+        let values = sample(&moving);
+        let (lo, hi) = values
+            .iter()
+            .fold((f32::MAX, f32::MIN), |(lo, hi), v| (lo.min(*v), hi.max(*v)));
+        assert!(hi - lo > 0.2, "pulse should vary, saw {values:?}");
+        assert!(
+            lo >= 0.64 && hi <= 1.001,
+            "pulse stays within 0.65..1, saw {values:?}"
+        );
+
+        let calm = surfaces();
+        calm.global::<SystemLook<'_>>().set_reduced_motion(true);
+        let values = sample(&calm);
+        assert!(
+            values.iter().all(|v| (v - 1.0).abs() < f32::EPSILON),
+            "no animation under reduced motion, saw {values:?}"
+        );
+    });
+}
+
+#[test]
+fn tooltip_is_visible_only_while_open() {
+    on_ui(|| {
+        let ui = surfaces();
+        mock_elapsed_time(Duration::from_millis(300));
+        let opacities: Vec<f32> = ElementHandle::find_by_element_type_name(&ui, "Tooltip")
+            .map(|t| t.computed_opacity())
+            .collect();
+        assert_eq!(
+            opacities,
+            vec![1.0, 1.0, 0.0],
+            "two open tooltips and one closed"
+        );
     });
 }
