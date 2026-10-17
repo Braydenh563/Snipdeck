@@ -1,0 +1,265 @@
+import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+// One list in the panel tab bar. `accent` is the list's colour, resolved by the caller from the nine list hues
+// (step 600 in light, 400 in dark; DESIGN.md §2).
+export struct TabItem {
+    text: string,
+    accent: color,
+}
+
+// DESIGN.md §4 Tab (panel variant): an index-card divider tab. The list colour appears only as the 2px
+// underline of the active tab, never as text or fill. 32px tall (the panel tab bar), so well above the
+// 24px minimum hit target.
+//
+// The keyboard focus ring is drawn INSIDE the tab: the bar scrolls and clips, so an outside ring would be cut.
+export component Tab inherits Rectangle {
+    in property <string> text;
+    in property <color> accent;
+    in property <bool> selected: false;
+    in property <bool> enabled: true;
+    // A drag (an item being moved to this list) is hovering over the tab.
+    in property <bool> drag-over: false;
+    // Whether dropping an item on this tab is accepted.
+    in property <bool> accepts-drop: true;
+    // Position among the tabs, for assistive technology (0-based).
+    in property <int> index: 0;
+    in property <int> count: 1;
+    // Keyboard focus is on this tab (the bar owns the focus; see ListTabBar).
+    in property <bool> focus-visible: false;
+    // Forced hover for galleries and screenshots.
+    in property <bool> show-hover: false;
+    callback clicked();
+    // An item was dropped on the tab.
+    callback dropped();
+
+    property <bool> hovered: (touch.has-hover && root.enabled) || root.show-hover;
+    property <bool> over: root.drag-over || drop.has-drag;
+
+    height: Space.s8;
+    min-width: Space.s8;
+    max-width: Space.s12 * 3;
+    background: root.over ? Theme.accent-subtle : root.hovered && !root.selected ? Theme.bg-hover : transparent;
+    border-top-left-radius: Radius.sm;
+    border-top-right-radius: Radius.sm;
+    opacity: root.enabled ? 1.0 : 0.45;
+    accessible-role: tab;
+    accessible-label: root.text;
+    accessible-enabled: root.enabled;
+    accessible-item-index: root.index;
+    accessible-item-count: root.count;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.selected;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    HorizontalLayout {
+        padding-left: Space.s3;
+        padding-right: Space.s3;
+        padding-bottom: Space.s0-5;
+        alignment: center;
+        Text {
+            text: root.text;
+            color: root.selected || root.hovered ? Theme.text-primary : Theme.text-secondary;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            font-weight: Type.medium;
+            vertical-alignment: center;
+            overflow: elide;
+            accessible-role: none;
+        }
+    }
+
+    // Drag-over also draws an outline, so the state is not carried by colour alone.
+    Rectangle {
+        border-width: root.over ? 1px : 0px;
+        border-color: root.accent;
+        border-top-left-radius: Radius.sm;
+        border-top-right-radius: Radius.sm;
+        background: transparent;
+    }
+
+    // The active-tab underline, in the list's colour.
+    Rectangle {
+        x: 0px;
+        y: parent.height - Space.s0-5;
+        width: parent.width;
+        height: Space.s0-5;
+        background: root.selected ? root.accent : transparent;
+        animate background { duration: Motion.quick; easing: Motion.out; }
+    }
+
+    // Keyboard focus: 2px ring inside the tab.
+    Rectangle {
+        border-width: root.focus-visible ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.sm;
+        background: transparent;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+
+    drop := DropArea {
+        enabled: root.enabled && root.accepts-drop;
+        can-drop(event) => { DragAction.move }
+        dropped(event) => {
+            root.dropped();
+            DragAction.move
+        }
+    }
+}
+
+// DESIGN.md §4 ListTabBar: Tab x N, horizontal overflow scroll, and a "+" that adds a list.
+//
+// One tab stop. Left / Right move between tabs, Home / End jump to the first / last, and the selection follows
+// focus (automatic activation), so there is no separate "focused but not selected" state to explain.
+export component ListTabBar inherits Rectangle {
+    in property <[TabItem]> tabs;
+    in-out property <int> current: 0;
+    // Index of the tab an item is being dragged over, or -1.
+    in property <int> drag-over-index: -1;
+    // Accessible names for the bar and the add button (the app translates them).
+    in property <string> label;
+    in property <string> add-label;
+    // Forced states for galleries and screenshots.
+    in property <int> show-hover-index: -1;
+    in property <bool> show-focus: false;
+
+    // The user picked tab `index` (click or keyboard). `current` is already updated.
+    callback selected(index: int);
+    callback add-clicked();
+    // An item was dropped on tab `index`.
+    callback dropped(index: int);
+
+    out property <bool> has-focus: scope.has-focus;
+    // Scroll offset of the tabs (<= 0).
+    out property <length> scroll-x: flick.content-x;
+
+    height: Space.s8;
+    background: transparent;
+    forward-focus: scope;
+    accessible-role: tab-list;
+    accessible-label: root.label;
+    accessible-item-count: root.tabs.length;
+    accessible-orientation: Orientation.horizontal;
+    accessible-delegate-focus: root.current;
+
+    function select(index: int) {
+        if (index < 0 || index >= root.tabs.length || index == root.current) {
+            return;
+        }
+        root.current = index;
+        root.selected(index);
+    }
+
+    // Scrolls so that the tab [x, x + w) is fully visible.
+    function reveal(x: length, w: length) {
+        if (x + flick.content-x < 0px) {
+            flick.content-x = -x;
+        } else if (x + w + flick.content-x > flick.width) {
+            flick.content-x = min(0px, flick.width - x - w);
+        }
+    }
+
+    // Behind the tabs: turns a vertical wheel into horizontal scrolling (a horizontal Flickable ignores it).
+    TouchArea {
+        scroll-event(event) => {
+            flick.content-x = min(0px, max(flick.width - flick.content-width, flick.content-x + event.delta-y + event.delta-x));
+            accept
+        }
+    }
+
+    // Hairline under the whole bar; the active tab's underline is drawn on top of it.
+    Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        background: Theme.border-subtle;
+    }
+
+    HorizontalLayout {
+        spacing: Space.s1;
+        flick := Flickable {
+            horizontal-stretch: 1;
+            interactive: false;
+            content-width: strip.preferred-width;
+            content-height: self.height;
+
+            strip := HorizontalLayout {
+                x: 0px;
+                width: max(self.preferred-width, flick.width);
+                height: flick.height;
+                alignment: start;
+                spacing: Space.s0-5;
+                for item[i] in root.tabs: tab := Tab {
+                    text: item.text;
+                    accent: item.accent;
+                    selected: i == root.current;
+                    drag-over: i == root.drag-over-index;
+                    show-hover: i == root.show-hover-index;
+                    index: i;
+                    count: root.tabs.length;
+                    focus-visible: (scope.has-focus || root.show-focus) && i == root.current;
+                    clicked => { root.select(i); }
+                    dropped => { root.dropped(i); }
+                    // Also on layout: at start-up the selected tab is placed after `selected` is set.
+                    changed selected => {
+                        if (self.selected) { root.reveal(self.x, self.width); }
+                    }
+                    changed x => {
+                        if (self.selected) { root.reveal(self.x, self.width); }
+                    }
+                    changed width => {
+                        if (self.selected) { root.reveal(self.x, self.width); }
+                    }
+                }
+            }
+        }
+
+        // The add button keeps the bar's height as hit area: 28 wide, full 32 high.
+        Rectangle {
+            width: Space.hit;
+            background: add-touch.pressed ? Theme.bg-sunken : add-touch.has-hover ? Theme.bg-hover : transparent;
+            border-top-left-radius: Radius.sm;
+            border-top-right-radius: Radius.sm;
+            accessible-role: button;
+            accessible-label: root.add-label;
+            accessible-action-default => { root.add-clicked(); }
+            animate background { duration: Motion.instant; easing: Motion.out; }
+
+            Icon {
+                source: Icons.plus;
+                tint: Theme.text-secondary;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+            }
+            add-touch := TouchArea {
+                clicked => { root.add-clicked(); }
+            }
+        }
+    }
+
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == Key.LeftArrow) {
+                root.select(root.current - 1);
+                return accept;
+            } else if (event.text == Key.RightArrow) {
+                root.select(root.current + 1);
+                return accept;
+            } else if (event.text == Key.Home) {
+                root.select(0);
+                return accept;
+            } else if (event.text == Key.End) {
+                root.select(root.tabs.length - 1);
+                return accept;
+            }
+            return reject;
+        }
+    }
+}

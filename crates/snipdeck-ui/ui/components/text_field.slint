@@ -1,0 +1,287 @@
+import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+// Inline error under a field: icon plus text, so the state is not carried by colour alone (DESIGN.md §7).
+export component FieldError inherits HorizontalLayout {
+    in property <string> text;
+    spacing: Space.s1;
+    alignment: start;
+    Icon {
+        source: Icons.warning;
+        tint: Theme.danger-fg;
+        y: (Type.line-sm - self.height) / 2;
+    }
+    Text {
+        horizontal-stretch: 1;
+        text: root.text;
+        color: Theme.danger-fg;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        wrap: word-wrap;
+        accessible-role: none;
+    }
+}
+
+// DESIGN.md §4 TextField and §8 "Text entry and IME". Wraps Slint's `TextInput` (never std-widgets).
+//
+// - Single line (default) or multi line (`single-line: false`, `min-lines` ..= `max-lines` tall, then scrolls).
+// - States: default, hover, focus, disabled, error (inline text below the box), IME-composing.
+// - IME: Slint 1.18 draws a composition as a selection highlight (no underline), which we accept. The field
+//   keeps the END of a long composition in view: `cursor-position-changed` does not fire while composing, so
+//   `changed preedit-text` scrolls instead (S2 finding F6).
+// - Focus is the one thing a text field may take from the Target (DESIGN.md §9.2): clicks focus the input.
+export component TextField inherits VerticalLayout {
+    in-out property <string> text <=> input.text;
+    in property <string> placeholder;
+    // Accessible name. A text field has no visible label of its own (TemplateField adds one).
+    in property <string> label;
+    // Non-empty: error state, shown as an icon plus this text under the box.
+    in property <string> error;
+    in property <bool> enabled: true;
+    in property <bool> read-only: false;
+    in property <bool> single-line: true;
+    // Multi line only: the box is at least `min-lines` and at most `max-lines` tall.
+    in property <int> min-lines: 3;
+    in property <int> max-lines: 8;
+    in property <InputType> input-type: InputType.text;
+    in property <image> leading-icon;
+    // Shows a clear button while `text` is not empty; Esc then clears too (SearchField turns this on).
+    in property <bool> clearable: false;
+    // Accessible name of the clear button.
+    in property <string> clear-label;
+    // Forced visual states for galleries and screenshots. Real hover, focus and composition set them by themselves.
+    in property <bool> show-hover: false;
+    in property <bool> show-focus: false;
+    in property <bool> show-composing: false;
+
+    out property <bool> has-focus: input.has-focus;
+    out property <bool> composing: input.preedit-text != "" || root.show-composing;
+    out property <bool> clear-visible: root.clearable && root.enabled && !root.read-only && input.text != "";
+    // Horizontal scroll offset of the text (<= 0) and the visible width: what the IME-scroll tests measure.
+    out property <length> scroll-x: flick.content-x;
+    out property <length> visible-width: flick.width;
+    // Where the end of the composition (or the caret) currently sits inside the visible area.
+    out property <length> composition-end-x: root.cursor-x + (input.preedit-text != "" ? measure.preferred-width : 0px) + flick.content-x;
+    out property <length> box-height: box.height;
+
+    // User edit (typing, paste, IME commit, clear button, accessibility set-value).
+    callback edited(text: string);
+    // Enter pressed (single line).
+    callback accepted(text: string);
+    // The clear button or Esc emptied the field.
+    callback cleared();
+
+    // `focus()` comes from `forward-focus`.
+    public function select-all() { input.select-all(); }
+    // Puts the caret at a UTF-8 byte offset (also scrolls it into view).
+    public function set-cursor(offset: int) { input.set-selection-offsets(offset, offset); }
+
+    property <length> line-h: Type.line-base;
+    property <length> pad-y: Space.s1;
+    property <length> caret-w: Space.s0-5;
+    property <length> cursor-x;
+    property <length> cursor-y;
+    property <bool> hovered: (hover.has-hover && root.enabled) || root.show-hover;
+    property <bool> focused: input.has-focus || root.show-focus;
+    property <bool> invalid: root.error != "";
+
+    spacing: Space.s1;
+    alignment: start;
+    forward-focus: input;
+    accessible-role: text-input;
+    accessible-label: root.label;
+    accessible-value <=> root.text;
+    accessible-placeholder-text: root.placeholder;
+    accessible-description: root.error;
+    accessible-enabled: root.enabled;
+    accessible-read-only: root.read-only;
+    accessible-action-set-value(v) => {
+        root.text = v;
+        root.edited(v);
+    }
+    accessible-action-set-selection-offsets(anchor, focus) => { input.set-selection-offsets(anchor, focus); }
+
+    // Keeps the point (x, y) of the text visible. Offsets are <= 0.
+    function reveal(x: length, y: length) {
+        if (x + flick.content-x < 0px) {
+            flick.content-x = min(0px, max(flick.width - flick.content-width, -x));
+        } else if (x + flick.content-x > flick.width - root.caret-w) {
+            flick.content-x = min(0px, max(flick.width - flick.content-width, flick.width - root.caret-w - x));
+        }
+        if (!root.single-line) {
+            if (y + flick.content-y < 0px) {
+                flick.content-y = min(0px, max(flick.height - flick.content-height, -y));
+            } else if (y + root.line-h + flick.content-y > flick.height) {
+                flick.content-y = min(0px, max(flick.height - flick.content-height, flick.height - root.line-h - y));
+            }
+        }
+    }
+
+    function clear() {
+        input.text = "";
+        root.edited("");
+        root.cleared();
+        input.focus();
+    }
+
+    box := Rectangle {
+        height: root.single-line
+            ? max(Space.hit, root.line-h + 2 * root.pad-y)
+            : min(max(input.preferred-height, root.min-lines * root.line-h), root.max-lines * root.line-h) + 2 * root.pad-y;
+        background: !root.enabled ? Theme.bg-sunken : root.composing ? Theme.accent-subtle : Theme.bg-surface;
+        border-radius: Radius.md;
+        border-width: 1px;
+        border-color: root.invalid ? Theme.danger-fg
+            : (root.focused || root.composing) ? Theme.accent
+            : root.hovered ? Theme.text-secondary
+            : Theme.border-strong;
+        opacity: root.enabled ? 1.0 : 0.45;
+
+        animate border-color { duration: Motion.instant; easing: Motion.out; }
+
+        // The parent of the content, not a sibling behind it: a TouchArea sees every pointer event before its
+        // children, so hover is tracked even though the TextInput consumes pointer moves, while the TextInput
+        // still gets its own clicks and drags.
+        hover := TouchArea {
+            enabled: root.enabled;
+            mouse-cursor: MouseCursor.text;
+
+            HorizontalLayout {
+                padding-left: Space.s2;
+                padding-right: root.clear-visible ? Space.s0-5 : Space.s2;
+                padding-top: root.pad-y;
+                padding-bottom: root.pad-y;
+                spacing: Space.s2;
+                if root.leading-icon.width > 0: Icon {
+                    source: root.leading-icon;
+                    tint: Theme.text-secondary;
+                    y: root.single-line ? (parent.height - self.height) / 2 : (root.line-h - self.height) / 2;
+                }
+                viewport := Rectangle {
+                    horizontal-stretch: 1;
+                    min-width: 0px;
+                    clip: true;
+
+                    flick := Flickable {
+                        width: parent.width;
+                        height: parent.height;
+                        interactive: false;
+                        content-width: root.single-line ? max(self.width, input.preferred-width + root.caret-w) : self.width;
+                        content-height: root.single-line ? self.height : max(self.height, input.preferred-height);
+
+                        input := TextInput {
+                            x: 0px;
+                            y: 0px;
+                            width: flick.content-width;
+                            height: root.single-line ? flick.height : max(flick.height, self.preferred-height);
+                            single-line: root.single-line;
+                            wrap: root.single-line ? TextWrap.no-wrap : TextWrap.word-wrap;
+                            vertical-alignment: root.single-line ? TextVerticalAlignment.center : TextVerticalAlignment.top;
+                            enabled: root.enabled;
+                            read-only: root.read-only;
+                            input-type: root.input-type;
+                            color: Theme.text-primary;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            font-weight: Type.regular;
+                            text-cursor-width: root.caret-w;
+                            selection-background-color: Theme.accent;
+                            selection-foreground-color: Theme.text-on-accent;
+                            page-height: flick.height;
+                            // The wrapper carries the accessibility node; the inner one would duplicate it.
+                            accessible-role: none;
+
+                            cursor-position-changed(pos) => {
+                                root.cursor-x = pos.x;
+                                root.cursor-y = pos.y;
+                                root.reveal(pos.x, pos.y);
+                            }
+                            changed preedit-text => {
+                                // No cursor event while composing: keep the end of the composition visible.
+                                if (self.preedit-text != "" && root.single-line) {
+                                    root.reveal(root.cursor-x + measure.preferred-width, root.cursor-y);
+                                }
+                            }
+                            edited => { root.edited(self.text); }
+                            accepted => { root.accepted(self.text); }
+                            key-pressed(event) => {
+                                // Key press only: the matching release of an IME-consumed key still arrives (S2 F4).
+                                if (event.text == Key.Escape && root.clear-visible && self.preedit-text == "") {
+                                    root.clear();
+                                    return accept;
+                                }
+                                return reject;
+                            }
+                        }
+                    }
+
+                    // Width of the composition as drawn, same font as the input.
+                    measure := Text {
+                        visible: false;
+                        text: input.preedit-text;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        font-weight: Type.regular;
+                        wrap: no-wrap;
+                    }
+
+                    Text {
+                        width: parent.width;
+                        height: parent.height;
+                        text: (input.text == "" && input.preedit-text == "") ? root.placeholder : "";
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        vertical-alignment: root.single-line ? TextVerticalAlignment.center : TextVerticalAlignment.top;
+                        overflow: elide;
+                        // The input already exposes the placeholder.
+                        accessible-role: none;
+                    }
+                }
+                if root.clear-visible: Rectangle {
+                    width: Space.hit-min;
+                    height: Space.hit-min;
+                    y: root.single-line ? (parent.height - self.height) / 2 : (root.line-h - self.height) / 2;
+                    border-radius: Radius.sm;
+                    background: clear-touch.pressed ? Theme.bg-sunken : clear-touch.has-hover ? Theme.bg-hover : transparent;
+                    accessible-role: button;
+                    accessible-label: root.clear-label;
+                    accessible-action-default => { root.clear(); }
+
+                    Icon {
+                        source: Icons.x;
+                        tint: clear-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                    }
+                    clear-touch := TouchArea {
+                        mouse-cursor: MouseCursor.default;
+                        clicked => { root.clear(); }
+                    }
+                }
+            }
+        }
+
+        // 2px ring, 2px offset (DESIGN.md §2).
+        Rectangle {
+            x: -4px;
+            y: -4px;
+            width: parent.width + 8px;
+            height: parent.height + 8px;
+            border-width: root.focused ? 2px : 0px;
+            border-color: Theme.focus-ring;
+            border-radius: Radius.md + 2px;
+            background: transparent;
+        }
+    }
+
+    if root.invalid: FieldError { text: root.error; }
+}
+
+// DESIGN.md §4 SearchField: a TextField with a leading magnifying glass, a clear button while it holds text,
+// and Esc to clear.
+export component SearchField inherits TextField {
+    leading-icon: Icons.magnifying-glass;
+    clearable: true;
+}

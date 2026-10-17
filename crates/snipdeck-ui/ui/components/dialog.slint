@@ -1,0 +1,111 @@
+import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+export enum DialogVariant { default, destructive }
+
+// DESIGN.md §4 Dialog: confirm, licence, import. Modal: a 40% scrim covers its parent and swallows pointer input.
+// Place it as the LAST child of the window (or the panel) so it sits on top, and disable what is behind while
+// `open` (Slint has no focus trap, so Tab could otherwise leave the dialog).
+//
+// The children are the actions row, laid out right-aligned, e.g. a secondary and a primary `Button`.
+// Keyboard: Esc emits `dismissed`; Enter emits `accepted` (default variant only: in a destructive dialog the
+// destructive action is never the Enter default, so Enter on the dialog itself does nothing and focus starts on
+// the dialog, then Tab reaches the buttons in order). Esc and Enter react to key PRESS only.
+//
+// Slint 1.18 has no `dialog` accessibility role; the card is exposed as a labelled group (gap, see README).
+export component Dialog inherits Rectangle {
+    in property <bool> open: false;
+    in property <string> title;
+    in property <string> body;
+    in property <DialogVariant> variant: DialogVariant.default;
+    callback dismissed();
+    callback accepted();
+
+    // 40% scrim (DESIGN.md §6): dark in both themes; system window colour in high contrast.
+    property <color> scrim: ((Theme.dark || Theme.hc-border != transparent) ? Theme.bg-app : Theme.text-primary).with-alpha(0.4);
+
+    // Closed: not drawn, not hit-testable, not in the accessibility tree, and it holds no keyboard focus.
+    visible: root.open;
+    changed open => {
+        if (root.open) {
+            scope.focus();
+        } else {
+            scope.clear-focus();
+        }
+    }
+    init => {
+        if (root.open) { scope.focus(); }
+    }
+
+    scope := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.Escape) {
+                root.dismissed();
+                return accept;
+            }
+            if (event.text == "\n" && root.variant == DialogVariant.default) {
+                root.accepted();
+                return accept;
+            }
+            return reject;
+        }
+
+        Rectangle {
+            background: root.scrim;
+            // Modal: nothing behind the scrim receives the pointer.
+            TouchArea { }
+
+            card := Rectangle {
+                width: min(Space.s12 * 8, parent.width - 2 * Space.s4);
+                height: content.preferred-height;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                background: Theme.bg-overlay;
+                border-radius: Radius.lg;
+                border-width: 1px;
+                border-color: Theme.border-default;
+                accessible-role: groupbox;
+                accessible-label: root.title;
+                accessible-description: root.body;
+
+                content := VerticalLayout {
+                    padding: Space.s4;
+                    spacing: Space.s3;
+                    HorizontalLayout {
+                        spacing: Space.s2;
+                        alignment: start;
+                        if root.variant == DialogVariant.destructive: Icon {
+                            source: Icons.warning;
+                            tint: Theme.danger-fg;
+                            y: (Type.line-lg - self.height) / 2;
+                        }
+                        Text {
+                            horizontal-stretch: 1;
+                            text: root.title;
+                            color: Theme.text-primary;
+                            font-family: Fonts.sans;
+                            font-size: Type.lg;
+                            font-weight: Type.semibold;
+                            wrap: word-wrap;
+                            accessible-role: none;
+                        }
+                    }
+                    if root.body != "": Text {
+                        text: root.body;
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        wrap: word-wrap;
+                        accessible-role: none;
+                    }
+                    HorizontalLayout {
+                        spacing: Space.s2;
+                        alignment: end;
+                        @children
+                    }
+                }
+            }
+        }
+    }
+}
