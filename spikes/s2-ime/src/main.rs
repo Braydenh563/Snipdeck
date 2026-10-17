@@ -117,7 +117,7 @@ fn configure_cjk_fallback(mode: CjkMode, fonts: &CjkFonts) -> Vec<String> {
     let (ja_alt, zh_alt) = (fonts.ja_alt, fonts.zh_alt);
     for name in [ja, zh, ko, ja_alt, zh_alt, "IBM Plex Sans"] {
         report.push(format!(
-            "family {name:<20} installed/registered: {}",
+            "family {name:<20} found (before window creation): {}",
             coll.family_id(name).is_some()
         ));
     }
@@ -190,23 +190,25 @@ fn describe_key(text: &str) -> String {
 }
 
 const CHECKLIST: &[&str] = &[
-    "Setup: Windows 11 → Settings → Time & language → add Japanese (Microsoft IME), Chinese (Simplified, Microsoft Pinyin), Korean (Microsoft IME). Switch with Win+Space.",
-    "1  JA, LineEdit: type nihongo → see にほんご highlighted inline, then Space → 日本語, Enter. Log: one 'edited' with 日本語, NO 'accepted', NO key-pressed <Return>.",
-    "2  JA: candidate window appears directly below the caret of the field you type in (not window corner, not screen 0,0).",
-    "3  ZH Pinyin, LineEdit: type zhongwen → 中文 via Space or 1. Candidate bar under the caret.",
-    "4  KO, LineEdit: type gksrmf (2-set) → 한글; each syllable shows inline while composing.",
-    "5  JA long composition: type watashihanihongonobenkyouwoshiteimasu, Space; use Left/Right to move between clauses, Space to re-convert, Enter.",
-    "6  Arrow keys while composing do NOT move Slint's caret (log shows no key-pressed); after commit they do.",
-    "7  Narrow LineEdit: long composition at the right edge — is the composition visible (field scrolls) before commit?",
-    "8  TextEdit: click at the end of the first wrapped line, compose nihongo → wrap + candidate window follow the composition.",
-    "9  PlexInput: same as 1/3/4; the red preedit line mirrors the composition; Latin in Plex, CJK in Yu Gothic/YaHei.",
-    "10 Esc while composing cancels the composition; field text unchanged; no 'accepted'.",
-    "11 Backspace while composing edits the composition only.",
-    "12 Compose, then click another field: note whether the composition is committed, dropped, or moves to the new field.",
-    "13 Compose, then Alt+Tab away and back: note whether the composition is lost (known upstream bug slint#10861).",
-    "14 Font rows: compare 直骨角今海 across rows; default row should match Yu Gothic (--cjk ja) or YaHei (--cjk zh).",
-    "15 Repeat 1, 3, 4 with SLINT_BACKEND=winit-software and (MSVC) --features skia + winit-skia.",
-    "16 Repeat at 150% display scaling and on a second monitor: candidate window still at the caret.",
+    "Setup: Windows 11 → Settings → Time & language → Language & region: add Japanese, Chinese (Simplified, PRC), Korean. Switch with Win+Space. Full script + expected results: docs/spikes/S2-ime.md.",
+    "1  JA LineEdit: nihongo → にほんご inline (highlighted), Space → 日本語, Enter. Log: 'edited' 日本語; NO 'accepted'; NO key-pressed <Return>.",
+    "2  JA: candidate window sits directly below the composition start in the field you type in.",
+    "3  ZH Pinyin LineEdit: zhongwen → 中文 via Space or 1. Candidate bar under the caret.",
+    "4  KO LineEdit: gksrmf dlqfur (2-set) → 한글 입력; space and order correct.",
+    "5  KO: while a syllable is composing press Left: syllable commits, THEN caret moves left.",
+    "6  JA long: watashihanihongonobenkyouwoshiteimasu, Space, Left/Right between clauses, Space, Enter.",
+    "7  Arrow keys while composing (JA/ZH) do not move Slint's caret; no key-pressed in the log.",
+    "8  Narrow LineEdit: long composition at the right edge: is the tail of the composition visible?",
+    "9  TextEdit: caret at end of first wrapped line, compose nihongo: wraps, candidates follow.",
+    "10 PlexInput: repeat 1/3/4; red line mirrors composition; Latin in Plex, CJK in Yu Gothic/YaHei/Malgun.",
+    "11 Esc while composing cancels; Backspace edits the composition only.",
+    "12 Compose, click another field: committed / dropped / moved to the other field?",
+    "13 Compose, click elsewhere in the SAME field: where does the composition go?",
+    "14 Compose, Alt+Tab away and back: composition lost? (known: slint#10861).",
+    "15 Switch to Microsoft Pinyin with Win+Space while focused: heartbeat keeps ticking (slint#5206).",
+    "16 Font rows: --cjk ja vs --cjk zh change the glyph forms of 直骨角今海 in the default row.",
+    "17 Repeat 1/3/4 with SLINT_BACKEND=winit-software and (MSVC) --features skia + SLINT_BACKEND=winit-skia.",
+    "18 Repeat 1-3 at 150% scaling and on a second monitor: candidate window still at the caret.",
 ];
 
 fn main() -> Result<(), slint::PlatformError> {
@@ -269,6 +271,18 @@ fn main() -> Result<(), slint::PlatformError> {
             log_for_events.remove(log_for_events.row_count() - 1);
         }
     });
+
+    let heartbeat_ui = ui.as_weak();
+    let heartbeat = slint::Timer::default();
+    heartbeat.start(
+        slint::TimerMode::Repeated,
+        std::time::Duration::from_millis(250),
+        move || {
+            if let Some(ui) = heartbeat_ui.upgrade() {
+                ui.set_heartbeat(format!("{:.2}s", start.elapsed().as_secs_f64()).into());
+            }
+        },
+    );
 
     let log_for_clear = log;
     ui.on_clear_log(move || log_for_clear.set_vec(Vec::new()));

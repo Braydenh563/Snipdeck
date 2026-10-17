@@ -73,6 +73,9 @@ export component AppWindow inherits Window {
     background: #f7f5f0;
 
     in property <string> info;
+    // Updated 4x/s by a Rust timer: if this stops changing, the event loop is frozen
+    // (see slint#5206 / #8716: freeze after switching to Microsoft Pinyin on Windows 10).
+    in property <string> heartbeat;
     in property <[string]> checklist;
     in property <[string]> log;
     callback event(source: string, kind: string, text: string);
@@ -89,7 +92,7 @@ export component AppWindow inherits Window {
             alignment: start;
 
             Hint {
-                text: root.info;
+                text: root.info + "   ·   heartbeat " + root.heartbeat;
                 color: #3355cc;
             }
 
