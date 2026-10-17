@@ -22,6 +22,8 @@ pub mod keys;
 pub mod payload;
 pub mod pipeline;
 pub mod route;
+#[cfg(any(test, feature = "testing"))]
+pub mod testing;
 pub mod win_formats;
 pub mod win_logic;
 

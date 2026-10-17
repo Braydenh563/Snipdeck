@@ -4268,6 +4268,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "snipdeck-app"
+version = "0.1.0"
+dependencies = [
+ "snipdeck-core",
+ "snipdeck-platform",
+ "snipdeck-store",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "snipdeck-core"
 version = "0.1.0"
 dependencies = [
