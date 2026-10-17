@@ -2,4 +2,5 @@
 //! store and the platform layer. Nothing here draws or touches Windows; everything runs under
 //! test with the platform fakes.
 
+pub mod panel;
 pub mod usecase;
