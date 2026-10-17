@@ -128,8 +128,8 @@ impl FromStr for BlobRef {
             return Err(invalid());
         }
         let mut hash = [0; 32];
-        for (byte, pair) in hash.iter_mut().zip(digits.chunks_exact(2)) {
-            let (high, low) = nibble(pair[0]).zip(nibble(pair[1])).ok_or_else(invalid)?;
+        for (byte, &[high, low]) in hash.iter_mut().zip(digits.as_chunks::<2>().0) {
+            let (high, low) = nibble(high).zip(nibble(low)).ok_or_else(invalid)?;
             *byte = high << 4 | low;
         }
         Ok(Self(hash))
