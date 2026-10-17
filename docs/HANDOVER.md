@@ -28,6 +28,19 @@ Read this first in a new session, then `docs/PLAN.md`, `docs/SPEC.md`, `DESIGN.m
 - Optional re-run on Windows: S2 after adding Japanese / Chinese / Korean keyboards (`run-windows-tests.bat`, S2 only),
   S1 step 2c after the modifier fix, and the untested S4 steps (W4-W7, Windows 10). None of these gate M2 start.
 
+## Overnight queue (away mode, started 2026-10-17)
+
+Goal: advance M2 -> M3 -> M4 logic as far as Linux can verify; branch `claude/compassionate-pascal-pod8ux`, PR #4 (open one PR per 3-5 items; never merge).
+1. Land the three M2 backend agents' work (verify on Rust stable + 1.99.1 + Windows target, Opus `reviewer` on the unsafe code, commit, push).
+2. M2 test harness example + `tools/windows-test/tests/m2-*.json` wizard steps (incl. S1 2c re-run, UIA OneNote/Terminal, UIPI).
+3. Pin Slint, add `snipdeck-ui`: `tokens.slint` generated from `design/tokens/palette.json`, component library (DESIGN.md), software renderer, screenshot tests under the Slint testing backend (our "end-to-end" on Linux).
+4. Panel UI (ListView, number gutter, tabs scroll at large text) wired to `snipdeck-platform` traits with fakes; `snipdeck-app` skeleton (single instance, hotkeys, tray crate decision).
+5. i18n scaffolding (`@tr`, 7 locales extracted), CJK font order, accessibility properties on every control.
+6. Picker, Main window, editors, template fill form (logic + screenshot tests); store transaction/batch API before import UI.
+7. Security/tests pass: fuzz/proptest on parsers, cargo deny, review of crypto/DPAPI wiring.
+
+Not verifiable here (stays unverified until the owner runs the wizard on Windows): every Win32 behaviour, IME, Mica, DPI, Narrator, real-app paste. Playwright is for browsers; Slint apps are tested with the Slint testing backend plus software-renderer screenshots.
+
 ## M2 in progress (branch claude/compassionate-pascal-pod8ux, PR #4)
 
 - Done and committed (2f21a35): `crates/snipdeck-platform` portable layer: `keys` (paste-key table, Alt/Win mask-before-release
