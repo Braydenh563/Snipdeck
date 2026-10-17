@@ -16,7 +16,13 @@ nucleo-matcher.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+unicode-segmentation.workspace = true
 uuid.workspace = true
+
+[build-dependencies]
+# `build.rs` validates the licence public key with the same code the tests use.
+base64.workspace = true
+ed25519-dalek.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true

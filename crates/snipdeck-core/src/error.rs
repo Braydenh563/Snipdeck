@@ -35,6 +35,10 @@ pub enum Error {
     /// A [`FileEntry`](crate::FileEntry) name was not a single, Windows-valid file name.
     #[error("`{0}` is not a valid file name")]
     InvalidFileName(String),
+    /// A [`Format::Files`](crate::Format::Files) held two files whose names Windows treats as
+    /// the same (they differ at most in letter case).
+    #[error("`{0}` has the same name as another file in this item")]
+    DuplicateFileName(String),
     /// A string could not be parsed as the named kind of value (an id, a key, a blob hash).
     #[error("`{value}` is not a valid {what}")]
     Parse {

@@ -100,3 +100,21 @@ claims "encrypted at rest". M1, M2 and M3 are small and should land with this PR
 land before the `snipdeck-portable` importer merges, since it validates imported names. M6
 needs a decision on the schema slot for the key record before V1 is declared frozen; the
 encryption wiring itself can follow in M5. The Lows and Nits can be tracked as issues.
+
+## Resolution (core)
+
+Core findings only; the store agent appends its own table. Tests are in `crates/snipdeck-core/`.
+
+| ID | Status | Covering test(s) / change |
+|---|---|---|
+| M2 | **Fixed** | `build.rs` + `src/licence/key_selection.rs`: a release build needs `SNIPDECK_LICENCE_PUBLIC_KEY` and fails without it, with the development key, or with a malformed key; debug builds still default to the development key. Unit tests in `key_selection.rs`; `keys.rs` (`release_builds_never_embed_the_development_key`, plus a compile-time `const` assertion when debug assertions are off); `tests/licence.rs` (`the_development_flag_says_whether...`, `vectors_verify_against_the_compiled_in_key_only_in_a_development_build`). The old test asserting the dev key is compiled in is gone. End to end: `tools/check-licence-key-guard.sh`. Procedure in `docs/licensing.md`. Design note: an env var rather than a cargo feature, because an "off by default" feature fails open. |
+| M5 | **Fixed** | `format.rs`: `file_names_are_single_windows_valid_components`, `reserved_windows_device_names_are_rejected_with_or_without_an_extension`, `names_are_limited_to_255_utf16_code_units`, `bidi_and_format_controls_are_rejected`, `files_in_one_format_need_distinct_names_ignoring_case`. New `Error::DuplicateFileName`. |
+| L1 | **Fixed** | `template/tests.rs`: `rendering_stops_at_the_output_limit...`, `output_exactly_at_the_limit_is_allowed`, `the_reviewers_amplification_case_is_bounded`, `truncation_never_splits_a_character...`, `prompt_answers_count_towards_the_limit`. 16 MiB cap (`MAX_RENDERED_BYTES`); `try_render` errors, `render` cuts. |
+| L2 | **Fixed** | `a_field_takes_at_most_a_name_and_a_default` (`TooManyParts`), `a_choice_may_not_repeat_an_option` (`DuplicateOption`). |
+| L3 | **Fixed** | `cursor_counts_grapheme_clusters_like_left_arrow_presses` (`unicode-segmentation`, already in the tree via `nucleo-matcher`; `cargo deny` clean). |
+| N1 | **Fixed** | `version_digits_have_no_leading_zeros`. |
+| N2 | **Fixed** | `pasted_unicode_whitespace_and_a_byte_order_mark_are_ignored`, `only_surrounding_whitespace_is_ignored`. |
+| N3 | **Fixed** | `rendering_is_deterministic` replaced by the model check `rendering_matches_a_model`. The ignored 10k timing test now asserts the 16 ms SPEC budget on the median (release: 0.6 to 3.6 ms medians over several runs, so about 4x headroom). |
+| N4 | **Fixed** | `placeholder_keys_are_trimmed_like_names_and_options`, `spans_stay_exact_when_the_key_is_padded`. Keys are trimmed, so `{ date }` renders. |
+| N8 | **Fixed** | `docs/PLAN.md` M1 row now says forward-only migrations with a pre-migration backup. |
+| N9 | **Fixed** | `render_checked_enforces_the_entitlement_that_render_does_not`, `render_checked_lets_free_users_render_static_templates`, `render_checked_also_bounds_the_output`. `render` stays, documented as the unchecked primitive; module docs steer callers to `render_checked`. |

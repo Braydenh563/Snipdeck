@@ -14,6 +14,8 @@
 //! **before** any JSON is parsed, so unauthenticated input only ever meets the base64 decoder
 //! and the signature check, and every failure after that point is about signed data.
 
+#[cfg(test)]
+mod key_selection;
 mod keys;
 #[cfg(test)]
 mod testing;
@@ -124,7 +126,8 @@ struct VersionOnly {
 /// See [`LicenceError`]. Hostile input of any length or content returns an error; it never
 /// panics.
 pub fn verify_licence(token: &str, key: &VerifyingKey) -> Result<Licence, LicenceError> {
-    let token = token.trim_matches(|c: char| c.is_ascii_whitespace());
+    // Pasting from a browser or chat app brings NBSP and the like; a BOM is not whitespace.
+    let token = token.trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}');
     if token.len() > MAX_TOKEN_BYTES {
         return Err(LicenceError::Malformed("too long"));
     }
@@ -214,7 +217,9 @@ fn check_prefix(prefix: &str) -> Result<(), LicenceError> {
         Some(digits)
             if !digits.is_empty()
                 && digits.len() <= 18
-                && digits.bytes().all(|b| b.is_ascii_digit()) =>
+                && digits.bytes().all(|b| b.is_ascii_digit())
+                // Canonical numbers only: `SNIP01` is not another spelling of `SNIP1`.
+                && (digits == "0" || !digits.starts_with('0')) =>
         {
             digits
                 .parse()
@@ -293,6 +298,51 @@ mod tests {
     fn surrounding_whitespace_from_pasting_is_ignored() {
         let token = format!("  \n{}\r\n\t", valid_token());
         assert!(check(&token).is_ok());
+    }
+
+    #[test]
+    fn pasted_unicode_whitespace_and_a_byte_order_mark_are_ignored() {
+        // Browsers and chat apps put NBSP, ideographic spaces and a BOM around copied text.
+        for (before, after) in [
+            ("\u{a0}", "\u{a0}"),
+            ("\u{feff}", ""),
+            ("\u{3000}\u{feff}", "\u{2003}\u{feff}\n"),
+            ("\u{feff} ", " \u{feff}"),
+        ] {
+            let token = format!("{before}{}{after}", valid_token());
+            assert!(check(&token).is_ok(), "{before:?} {after:?}");
+        }
+    }
+
+    #[test]
+    fn only_surrounding_whitespace_is_ignored() {
+        let good = valid_token();
+        let (head, tail) = good.split_at(10);
+        assert!(matches!(
+            check(&format!("{head}\u{a0}{tail}")),
+            Err(LicenceError::Malformed(_))
+        ));
+    }
+
+    #[test]
+    fn version_digits_have_no_leading_zeros() {
+        let parts = valid_token();
+        let rest = parts.split_once('.').unwrap().1;
+        for prefix in ["SNIP01", "SNIP001", "SNIP00", "SNIP0100"] {
+            assert_eq!(
+                check(&format!("{prefix}.{rest}")),
+                Err(LicenceError::Malformed("not a Snipdeck licence key")),
+                "{prefix}"
+            );
+        }
+        // Real version numbers still report as unsupported, including 0.
+        for (prefix, version) in [("SNIP0", 0), ("SNIP2", 2), ("SNIP10", 10)] {
+            assert_eq!(
+                check(&format!("{prefix}.{rest}")),
+                Err(LicenceError::UnsupportedVersion(version)),
+                "{prefix}"
+            );
+        }
     }
 
     #[test]
@@ -464,15 +514,23 @@ mod tests {
     #[test]
     fn the_development_public_key_matches_the_published_seed() {
         assert_eq!(dev_key().to_bytes(), DEVELOPMENT_PUBLIC_KEY);
-        assert!(VerifyingKey::from_bytes(&LICENCE_PUBLIC_KEY).is_ok());
     }
 
     #[test]
-    fn embedded_key_verifies_development_tokens_only() {
-        assert_eq!(
-            verify_embedded(&valid_token(), NOW).unwrap().tier(),
-            Tier::Pro
-        );
+    fn embedded_key_accepts_development_tokens_only_in_a_development_build() {
+        // A build with a production key (every release) must reject tokens signed with the
+        // public development seed; a development build accepts exactly those.
+        if IS_DEVELOPMENT_KEY {
+            assert_eq!(
+                verify_embedded(&valid_token(), NOW).unwrap().tier(),
+                Tier::Pro
+            );
+        } else {
+            assert_eq!(
+                verify_embedded(&valid_token(), NOW),
+                Err(LicenceError::BadSignature)
+            );
+        }
         let forged = sign(&other_signing_key(), &payload("x"));
         assert_eq!(
             verify_embedded(&forged, NOW),

@@ -9,6 +9,7 @@ is in [`SPEC.md`](SPEC.md); decisions with wider scope are in [`adr/`](adr/).
 |---|---|---|---|
 | `snipdeck-core` | M1 | Domain types, template engine, fuzzy search, use-pipeline logic, entitlements, licence verification | nothing internal |
 | `snipdeck-store` | M1 | SQLite schema and migrations, repositories, blob store, FTS5, trash, backup, export/import, encryption at rest | core |
+| `snipdeck-portable` | M1 | `.snipdeck` export/import ([`format.md`](format.md)), folder/Ditto/CopyQ importers, daily backup | core, store |
 | `snipdeck-platform` | M2 | Clipboard, hotkeys, Target tracking, paste injection, window styles, capture, OS OCR | core |
 | `snipdeck-ocr-rapid` | M5 | Optional RapidOCR backend | core |
 | `snipdeck-ui` | M3 | Slint tokens, components, windows | core |
@@ -59,8 +60,10 @@ lines.
 is primary; the order is kept when writing back to the clipboard). Text and HTML are UTF-8; HTML
 is the bare fragment (the platform adds and strips the Windows `CF_HTML` header); images are PNG.
 `Format::Files` holds **copies** of the files, each a `FileEntry` whose name must be one valid
-Windows path component, so pasting an old item still works and no name can escape the folder it
-is written to.
+Windows path component (no reserved device names such as `CON` or `nul.txt`, at most 255 UTF-16
+units, no trailing dot or space, no bidi controls), and the names within one item are distinct
+ignoring case, so pasting an old item still works, no name can escape the folder it is written
+to and no file overwrites another.
 
 ### Sensitive is a flag, not a kind
 `ItemKind` (text, template, code, link, image, file) describes content; `Item::sensitive` is

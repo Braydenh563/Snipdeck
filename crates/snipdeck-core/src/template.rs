@@ -1,9 +1,18 @@
 //! Templates: item text with placeholders that are resolved when the item is used
 //! (SPEC §4, §5.1a).
 //!
-//! [`Template::parse`] checks the text once and keeps it in parsed form; [`Template::render`]
-//! then resolves it for a [`RenderContext`]. Nothing here reads the clock, the clipboard or
+//! [`Template::parse`] checks the text once and keeps it in parsed form; the render methods
+//! then resolve it for a [`RenderContext`]. Nothing here reads the clock, the clipboard or
 //! the system locale: the caller passes them in, so rendering is a pure function.
+//!
+//! # Which render method to call
+//!
+//! The app should use [`Template::render_checked`]: it enforces the user's [`Entitlements`]
+//! (prompted fields are Pro) and the output size limit, [`MAX_RENDERED_BYTES`], and reports
+//! both as a [`RenderError`]. [`Template::try_render`] does the size check only, for callers
+//! that have verified the entitlement themselves. [`Template::render`] is the unchecked
+//! primitive: it resolves Pro placeholders for anyone and, when the output would be over
+//! the limit, cuts it there instead of failing.
 //!
 //! # Syntax
 //!
@@ -19,8 +28,10 @@
 //!
 //! `{{` and `}}` produce literal braces ([`escape`] does this for arbitrary text). Any other
 //! use of a brace is a [`TemplateError`] with the byte span of the problem: an unknown
-//! placeholder is never silently kept as text. Names, defaults and options are trimmed, and
-//! cannot contain `{`, `}` or `|`. A name used twice is one prompt (see [`Template::prompts`]).
+//! placeholder is never silently kept as text, and neither are surplus parts
+//! (`{field:Name|default|extra}`) or repeated choice options. Keywords, names, defaults and
+//! options are trimmed (`{ date }` is `{date}`), and names, defaults and options cannot
+//! contain `{`, `}` or `|`. A name used twice is one prompt (see [`Template::prompts`]).
 //!
 //! Substituted text (clipboard, answers) is never parsed again.
 //!
@@ -53,11 +64,20 @@ use std::ops::Range;
 
 use jiff::Zoned;
 pub use jiff::tz::TimeZone;
+use unicode_segmentation::UnicodeSegmentation as _;
 
 use crate::{Entitlements, Error, Feature, Timestamp};
 
 #[cfg(test)]
 mod tests;
+
+/// The most bytes a render produces: 16 MiB.
+///
+/// Output grows with (uses of `{clipboard}` or of a prompt) times (the size of what is
+/// substituted), so a small template and a large clipboard could otherwise exhaust memory.
+/// SPEC §5.4 caps inline editing at 16 KB and the viewer at 5 MB; a pasted result larger than
+/// this is a mistake, not a use case.
+pub const MAX_RENDERED_BYTES: usize = 16 * 1024 * 1024;
 
 /// Placeholder keywords, for hints in error messages.
 const KEYWORDS: [&str; 7] = [
@@ -147,9 +167,10 @@ pub enum PromptKind {
 pub struct Rendered {
     /// The resolved text.
     pub text: String,
-    /// Where the caret should end up, if the template had a `{cursor}`: how many characters of
-    /// [`Rendered::text`] come after it, i.e. how many Left-arrow presses move the caret there
-    /// after pasting. Counted in Unicode scalar values, with `\r\n` as one.
+    /// Where the caret should end up, if the template had a `{cursor}`: how many extended
+    /// grapheme clusters of [`Rendered::text`] come after it, i.e. how many Left-arrow presses
+    /// move the caret there after pasting. Editors move by cluster, so `e` plus a combining
+    /// accent, a flag, an emoji family and `\r\n` each count once.
     pub cursor_from_end: Option<usize>,
 }
 
@@ -285,6 +306,13 @@ pub enum TemplateErrorKind {
     NoOptions,
     /// A `choice` option that is empty.
     EmptyOption,
+    /// A `choice` option that appears twice.
+    DuplicateOption {
+        /// The repeated option.
+        option: String,
+    },
+    /// A `field` with more than a name and a default (`{field:Name|default|extra}`).
+    TooManyParts,
     /// A second `{cursor}`.
     DuplicateCursor,
     /// A `%` at the end of a `{datetime:…}` format.
@@ -340,6 +368,12 @@ impl fmt::Display for TemplateErrorKind {
             Self::EmptyName => f.write_str("the prompt needs a name, e.g. `{field:Name}`"),
             Self::NoOptions => f.write_str("a choice needs options, e.g. `{choice:Name|a|b}`"),
             Self::EmptyOption => f.write_str("a choice option is empty"),
+            Self::DuplicateOption { option } => {
+                write!(f, "the choice option `{option}` is listed twice")
+            }
+            Self::TooManyParts => {
+                f.write_str("a field takes a name and an optional default: `{field:Name|default}`")
+            }
             Self::DuplicateCursor => f.write_str("only one `{cursor}` is allowed"),
             Self::TrailingPercent => {
                 f.write_str("a `%` ends the format; write `%%` for a literal `%`")
@@ -377,6 +411,21 @@ impl fmt::Display for TemplateErrorKind {
             ),
         }
     }
+}
+
+/// Why a template could not be rendered. Both cases leave the template and context as they
+/// were; show the user a message (or the Pro upsell) and let them try again.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum RenderError {
+    /// The result would be longer than [`MAX_RENDERED_BYTES`].
+    #[error("the result would be over {limit} bytes; use less clipboard text or shorter answers")]
+    OutputTooLarge {
+        /// The limit, [`MAX_RENDERED_BYTES`].
+        limit: usize,
+    },
+    /// The template needs a Pro feature the entitlements do not include.
+    #[error("`{0}` needs Snipdeck Pro")]
+    ProRequired(Feature),
 }
 
 /// `text` with every brace doubled, so it parses back to exactly `text`.
@@ -487,13 +536,58 @@ impl Template {
         Ok(())
     }
 
-    /// Resolves the template. Missing pieces degrade rather than fail: no clipboard renders
-    /// as nothing, an unanswered field as its default (or nothing), an unanswered choice as
-    /// its first option. An answer is used as given, even if empty or not among a choice's
-    /// options.
+    /// Resolves the template **without** checking entitlements; prefer
+    /// [`Template::render_checked`].
+    ///
+    /// Missing pieces degrade rather than fail: no clipboard renders as nothing, an
+    /// unanswered field as its default (or nothing), an unanswered choice as its first
+    /// option. An answer is used as given, even if empty or not among a choice's options.
+    ///
+    /// This resolves `{field}` and `{choice}` for any tier, so a caller that forgets
+    /// [`Template::check`] gives Free users a Pro feature. If the output would exceed
+    /// [`MAX_RENDERED_BYTES`] it is cut at that length (on a character boundary) rather than
+    /// grown without bound; [`Template::try_render`] reports that instead.
     pub fn render(&self, ctx: &RenderContext<'_>) -> Rendered {
+        self.render_bounded(ctx).0
+    }
+
+    /// Like [`Template::render`], but fails instead of cutting the output.
+    ///
+    /// # Errors
+    ///
+    /// [`RenderError::OutputTooLarge`] if the result would be over [`MAX_RENDERED_BYTES`].
+    pub fn try_render(&self, ctx: &RenderContext<'_>) -> Result<Rendered, RenderError> {
+        match self.render_bounded(ctx) {
+            (rendered, false) => Ok(rendered),
+            (_, true) => Err(RenderError::OutputTooLarge {
+                limit: MAX_RENDERED_BYTES,
+            }),
+        }
+    }
+
+    /// Resolves the template for a user with `entitlements`: the call the app should make.
+    ///
+    /// # Errors
+    ///
+    /// [`RenderError::ProRequired`] naming the first missing feature (see
+    /// [`Template::check`]), or [`RenderError::OutputTooLarge`] (see [`Template::try_render`]).
+    pub fn render_checked(
+        &self,
+        entitlements: &Entitlements,
+        ctx: &RenderContext<'_>,
+    ) -> Result<Rendered, RenderError> {
+        for &feature in Feature::ALL {
+            if self.requires(feature) && !entitlements.allows(feature) {
+                return Err(RenderError::ProRequired(feature));
+            }
+        }
+        self.try_render(ctx)
+    }
+
+    /// Renders, stopping at [`MAX_RENDERED_BYTES`]; the flag says whether output was cut.
+    fn render_bounded(&self, ctx: &RenderContext<'_>) -> (Rendered, bool) {
         let when = ctx.now.to_zoned(ctx.tz.clone());
-        let mut out = String::new();
+        let mut out = BoundedString::default();
         let mut cursor = None;
         for part in &self.parts {
             match part {
@@ -504,60 +598,91 @@ impl Template {
                     for part in parts {
                         match part {
                             DtPart::Lit(text) => out.push_str(text),
-                            DtPart::Spec(spec) => write_spec(&mut out, &when, *spec),
+                            DtPart::Spec(spec) => {
+                                let mut piece = String::new();
+                                write_spec(&mut piece, &when, *spec);
+                                out.push_str(&piece);
+                            }
                         }
                     }
                 }
                 Part::Clipboard => out.push_str(ctx.clipboard.unwrap_or_default()),
-                Part::Cursor => cursor = Some(out.len()),
+                Part::Cursor => cursor = Some(out.text.len()),
                 Part::Prompt(index) => {
                     if let Some(prompt) = self.prompts.get(*index) {
-                        out.push_str(&answer(prompt, ctx.answers));
+                        out.push_str(answer(prompt, ctx.answers));
                     }
                 }
             }
+            if out.cut {
+                break;
+            }
         }
-        let cursor_from_end = cursor.map(|at| chars_after(&out, at));
-        Rendered {
-            text: out,
-            cursor_from_end,
-        }
+        let cursor_from_end = cursor.map(|at| graphemes_after(&out.text, at));
+        let cut = out.cut;
+        (
+            Rendered {
+                text: out.text,
+                cursor_from_end,
+            },
+            cut,
+        )
     }
 }
 
-fn answer(prompt: &Prompt, answers: &BTreeMap<String, String>) -> String {
+/// A string that stops growing at [`MAX_RENDERED_BYTES`].
+#[derive(Default)]
+struct BoundedString {
+    text: String,
+    cut: bool,
+}
+
+impl BoundedString {
+    /// Appends `piece`, or as much of it as fits (never part of a character).
+    fn push_str(&mut self, piece: &str) {
+        if self.cut {
+            return;
+        }
+        let room = MAX_RENDERED_BYTES - self.text.len();
+        if piece.len() <= room {
+            self.text.push_str(piece);
+            return;
+        }
+        let mut end = room;
+        while !piece.is_char_boundary(end) {
+            end -= 1;
+        }
+        self.text.push_str(&piece[..end]);
+        self.cut = true;
+    }
+}
+
+fn answer<'a>(prompt: &'a Prompt, answers: &'a BTreeMap<String, String>) -> &'a str {
     if let Some(given) = answers.get(&prompt.name) {
-        return given.clone();
+        return given;
     }
     match &prompt.kind {
-        PromptKind::Field { default } => default.clone().unwrap_or_default(),
-        PromptKind::Choice { options } => options.first().cloned().unwrap_or_default(),
+        PromptKind::Field { default } => default.as_deref().unwrap_or_default(),
+        PromptKind::Choice { options } => options.first().map_or("", String::as_str),
     }
 }
 
-/// Characters after byte offset `at`, counting `\r\n` once.
-fn chars_after(text: &str, at: usize) -> usize {
-    let mut count = 0;
-    let mut chars = text.get(at..).unwrap_or_default().chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '\r' && chars.peek() == Some(&'\n') {
-            chars.next();
-        }
-        count += 1;
-    }
-    count
+/// Extended grapheme clusters after byte offset `at`: the Left-arrow presses back to it.
+fn graphemes_after(text: &str, at: usize) -> usize {
+    text.get(at..).unwrap_or_default().graphemes(true).count()
 }
 
 impl Parser {
     /// Handles the text between a pair of braces; `span` covers the braces too.
     fn placeholder(&mut self, body: &str, span: Range<usize>) -> Result<(), TemplateError> {
-        if body.is_empty() {
+        if body.trim().is_empty() {
             return err(span, TemplateErrorKind::EmptyPlaceholder);
         }
-        let (key, arg) = match body.split_once(':') {
+        let (raw_key, arg) = match body.split_once(':') {
             Some((key, arg)) => (key, Some(arg)),
             None => (body, None),
         };
+        let key = raw_key.trim();
         let simple = match key {
             "date" => Some(("date", Part::Date)),
             "time" => Some(("time", Part::Time)),
@@ -589,8 +714,8 @@ impl Parser {
                         },
                     );
                 }
-                // `datetime:` is 9 bytes after the opening brace.
-                let parts = parse_format(format, span.start + 1 + "datetime:".len())?;
+                // The format starts after the opening brace, the (padded) key and the colon.
+                let parts = parse_format(format, span.start + 1 + raw_key.len() + 1)?;
                 self.parts.push(Part::DateTime(parts));
                 Ok(())
             }
@@ -606,6 +731,9 @@ impl Parser {
                 }
                 let kind = if key == "field" {
                     let default = pieces.next().filter(|d| !d.is_empty());
+                    if pieces.next().is_some() {
+                        return err(span, TemplateErrorKind::TooManyParts);
+                    }
                     PromptKind::Field {
                         default: default.map(str::to_owned),
                     }
@@ -616,6 +744,14 @@ impl Parser {
                     }
                     if options.iter().any(String::is_empty) {
                         return err(span, TemplateErrorKind::EmptyOption);
+                    }
+                    if let Some(option) = options
+                        .iter()
+                        .enumerate()
+                        .find_map(|(i, option)| options[..i].contains(option).then_some(option))
+                    {
+                        let option = option.clone();
+                        return err(span, TemplateErrorKind::DuplicateOption { option });
                     }
                     PromptKind::Choice { options }
                 };

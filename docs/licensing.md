@@ -30,13 +30,15 @@ SNIP1.<base64url(payload)>.<base64url(signature)>
 * `signature` is the 64-byte Ed25519 signature over the ASCII bytes
   `SNIP1.<base64url(payload)>`, i.e. the first two segments exactly as written, dot
   included. Signing the encoded text binds the prefix and removes any re-encoding step.
-* Whitespace around the whole token (from pasting) is ignored. Tokens over 4096 bytes are
-  rejected without decoding.
+* Whitespace around the whole token (from pasting) is ignored: any Unicode whitespace (NBSP,
+  ideographic space, ...) and a byte order mark (U+FEFF). Tokens over 4096 bytes are rejected
+  without decoding.
 
 ## Verification order and errors
 
 1. Split into three parts; check the prefix. `SNIP<n>` with `n != 1` is
-   `UnsupportedVersion(n)`; anything else is `Malformed`.
+   `UnsupportedVersion(n)`, where `n` is written without leading zeros (`SNIP01` is
+   `Malformed`, not another spelling of `SNIP1`); anything else is `Malformed`.
 2. Decode both base64url segments (`Malformed` on failure, including a signature that is
    not 64 bytes).
 3. Verify the signature with `verify_strict` (also rejects malleable signatures and
@@ -67,15 +69,54 @@ SNIP1.eyJ2IjoxLCJ0aWVyIjoicHJvIiwiaXNzdWVkIjoxNzYwMDAwMDAwLCJvcmRlciI6Ik9SRC0xMD
 
 ## The public key in the build
 
-`crates/snipdeck-core/src/licence/keys.rs` holds `LICENCE_PUBLIC_KEY`, a compile-time
-constant. It is **not** read from the environment, a file or the registry at run time: a key
-the user (or malware) can redirect is no check. Swapping it is a source change reviewed like
-any other.
+The key is a compile-time constant (`LICENCE_PUBLIC_KEY` in `snipdeck_core::licence`). It is
+**not** read from the environment, a file or the registry at run time: a key the user (or
+malware) can redirect is no check. `crates/snipdeck-core/build.rs` chooses it **when the
+crate is built**, by this policy (`src/licence/key_selection.rs`, unit tested):
 
-The repository ships a **DEVELOPMENT** key (`DEVELOPMENT_PUBLIC_KEY`,
-`IS_DEVELOPMENT_KEY = true`). Its seed is public, deliberately: it is in the tests and in
-this file, so anyone can mint a key that a development build accepts. It protects nothing and
-must never be in a release.
+| Build | `SNIPDECK_LICENCE_PUBLIC_KEY` | Result |
+|---|---|---|
+| any | a valid key (base64 of the 32 raw bytes, standard or URL-safe alphabet, padding optional) | that key; `IS_DEVELOPMENT_KEY = false` |
+| debug (`cargo build`, `cargo test`, `clippy`, `doc`) | unset or blank | the **development** key; `IS_DEVELOPMENT_KEY = true` |
+| **release** (`--release`, or a profile inheriting from it) | unset or blank | **the build fails**, with this section's name in the message |
+| any | the development key, not base64, not 32 bytes, or not a point on the curve | the build fails |
+
+The repository's development key (`DEVELOPMENT_PUBLIC_KEY`) belongs to a seed that is
+public, deliberately: it is in the tests and in this file, so anyone can mint a key that a
+development build accepts. It protects nothing and must never ship. A second guard in
+`keys.rs` is independent of the profile detection: a build with debug assertions off that
+still embeds the development key does not compile either. A release-mode `cargo test` checks
+the same rule (`release_builds_never_embed_the_development_key`), and a licence signed with
+the development seed is rejected by any build that embeds another key.
+
+Why an environment variable and not a cargo feature (the design choice): a feature such as
+`development-licence-key` has to be turned *off* for release, and "off by default" fails open
+the moment a CI file or a dependent crate turns it on. Here the only way to get a release is
+to supply a key, and no setting turns the development key on in a release.
+
+## Release procedure
+
+1. The production public key (see the next section) is stored as a CI secret or variable,
+   `SNIPDECK_LICENCE_PUBLIC_KEY`. It is public, so it need not be a secret, but keep it in one
+   place.
+2. The release workflow builds with it set, for example
+   `SNIPDECK_LICENCE_PUBLIC_KEY=<base64> cargo build --release --locked`. If the variable is
+   missing or empty, the build stops with an error naming it. Nothing in source is edited.
+3. Check a token signed by the **production** private key verifies in the built app (the app
+   shows no "development licence key" warning), and that a development-seed token (the vectors
+   below) is rejected.
+4. `tools/check-licence-key-guard.sh [+toolchain]` proves the guard itself (release fails with
+   no key, an empty key, the development key and malformed keys; debug builds still work;
+   a release builds and passes the licence tests with a throwaway key). Run it when touching
+   `build.rs`, `keys.rs` or the release workflow.
+
+Running release-mode tests or timings locally (for example the 10k search timing test) needs
+a key too: use any valid public key, such as the throwaway
+`SNIPDECK_LICENCE_PUBLIC_KEY=Zr5+Myx6RTMyvZ0Kf32wVfXF7xoGraZtmLOftoEMRzo=` (the key of seed
+`[0x0b; 32]`; it is a test value, not a product key).
+
+Until a production key exists, nobody can produce a release build. That is the intended
+state.
 
 ## Production key: generation, storage, rotation
 
@@ -88,8 +129,8 @@ laptop that is not the signing machine.
 2. **Store** the private key in a password manager or hardware token plus an offline,
    encrypted backup held by a second person. The shop's fulfilment service gets a
    **signing capability** (a service that signs on demand), not the key file, where possible.
-3. **Install the public key** into `LICENCE_PUBLIC_KEY` (the 32 bytes) and set
-   `IS_DEVELOPMENT_KEY = false`, in the release commit. Check a production-signed test token
+3. **Install the public key** as `SNIPDECK_LICENCE_PUBLIC_KEY` in the release workflow (see
+   "Release procedure"); no source edit is needed. Check a production-signed test token
    verifies in the release build before publishing.
 4. **Rotate** if the private key is ever suspected exposed, or on a schedule you choose:
    generate a new pair, ship a build that trusts **both** public keys (extend the verifier to
@@ -102,7 +143,8 @@ laptop that is not the signing machine.
 
 ## Notes for the UI
 
-* Show a visible warning while `IS_DEVELOPMENT_KEY` is `true`.
+* Show a visible warning while `IS_DEVELOPMENT_KEY` is `true` (it is always `false` in a
+  release build).
 * Store the token text as the user entered it; re-verify at every start (it is a few
   microseconds of work). Never store "is Pro" as a flag.
 * A token that fails verification means Free: nothing is hidden or deleted (SPEC §6).

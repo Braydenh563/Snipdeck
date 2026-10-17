@@ -9,8 +9,8 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use ed25519_dalek::{Signer as _, SigningKey, VerifyingKey};
 use proptest::prelude::*;
 use snipdeck_core::licence::{
-    DEVELOPMENT_PUBLIC_KEY, LICENCE_PUBLIC_KEY, LicenceError, verify, verify_embedded,
-    verify_licence,
+    DEVELOPMENT_PUBLIC_KEY, IS_DEVELOPMENT_KEY, LICENCE_PUBLIC_KEY, LicenceError, verify,
+    verify_embedded, verify_licence,
 };
 use snipdeck_core::{Feature, Tier, Timestamp};
 
@@ -47,9 +47,29 @@ fn vectors_are_reproducible_from_the_published_seed() {
 }
 
 #[test]
-fn the_compiled_in_key_is_the_published_development_key() {
+fn the_development_constant_is_the_key_of_the_published_seed() {
     assert_eq!(verifying_key().to_bytes(), DEVELOPMENT_PUBLIC_KEY);
-    assert_eq!(LICENCE_PUBLIC_KEY, DEVELOPMENT_PUBLIC_KEY);
+}
+
+#[test]
+fn the_development_flag_says_whether_the_compiled_in_key_is_the_development_key() {
+    // Debug builds default to the development key; a build given SNIPDECK_LICENCE_PUBLIC_KEY
+    // embeds that one instead. The flag must tell the truth either way (the app warns on it).
+    assert_eq!(
+        IS_DEVELOPMENT_KEY,
+        LICENCE_PUBLIC_KEY == DEVELOPMENT_PUBLIC_KEY
+    );
+}
+
+#[test]
+fn release_builds_never_embed_the_development_key() {
+    // `build.rs` refuses to build a release without a production key; this is the same rule
+    // seen from the outside. Runs in `cargo test --release` (with the variable set).
+    if !cfg!(debug_assertions) {
+        // `black_box`: the value is a constant, and that is the point of checking it.
+        assert!(!std::hint::black_box(IS_DEVELOPMENT_KEY));
+        assert_ne!(LICENCE_PUBLIC_KEY, DEVELOPMENT_PUBLIC_KEY);
+    }
 }
 
 #[test]
@@ -79,12 +99,16 @@ fn full_vector_verifies_and_exposes_every_field() {
 }
 
 #[test]
-fn vectors_verify_against_the_compiled_in_key() {
-    assert_eq!(
-        verify_embedded(MINIMAL_TOKEN, NOW).unwrap().tier(),
-        Tier::Pro
-    );
-    assert_eq!(verify_embedded(FULL_TOKEN, NOW).unwrap().tier(), Tier::Pro);
+fn vectors_verify_against_the_compiled_in_key_only_in_a_development_build() {
+    // The vectors are signed with the public development seed. A build that embeds any other
+    // key must reject them: that is what keeps a published seed from minting Pro licences.
+    for token in [MINIMAL_TOKEN, FULL_TOKEN] {
+        if IS_DEVELOPMENT_KEY {
+            assert_eq!(verify_embedded(token, NOW).unwrap().tier(), Tier::Pro);
+        } else {
+            assert_eq!(verify_embedded(token, NOW), Err(LicenceError::BadSignature));
+        }
+    }
 }
 
 #[test]

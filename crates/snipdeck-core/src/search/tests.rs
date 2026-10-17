@@ -315,8 +315,17 @@ proptest! {
     }
 }
 
-/// Timing check for SPEC §9 (10k items, title + 64 chars, < 16 ms). Run with
-/// `cargo test --release -p snipdeck-core search_10k -- --ignored --nocapture`.
+/// SPEC §9: searching 10k items (title + first 64 characters, 4 threads) takes under 16 ms.
+const SPEC_BUDGET: Duration = Duration::from_millis(16);
+
+/// Timing check for SPEC §9 (10k items, title + 64 chars, < 16 ms). The median of 21 runs
+/// must meet the real budget: release builds measured 0.6 to 3.6 ms here (4 cores, medians,
+/// on a machine busy with other builds; worst single run 9 ms), so a regression to the budget
+/// is a regression worth failing on, while ordinary noise keeps a 4x margin.
+///
+/// A release build needs a licence key (see `docs/licensing.md`); any valid public key will
+/// do for timing:
+/// `SNIPDECK_LICENCE_PUBLIC_KEY=Zr5+Myx6RTMyvZ0Kf32wVfXF7xoGraZtmLOftoEMRzo= cargo test --release -p snipdeck-core --lib search_10k -- --ignored --nocapture`.
 #[test]
 #[ignore = "timing test: run with --release -- --ignored"]
 #[allow(
@@ -350,8 +359,8 @@ fn search_10k_items_stays_within_budget() {
             runs[10], runs[0], runs[20]
         );
         assert!(
-            runs[10] < Duration::from_millis(100),
-            "{query}: {:?}",
+            runs[10] < SPEC_BUDGET,
+            "{query}: median {:?} is over the SPEC budget {SPEC_BUDGET:?}",
             runs[10]
         );
     }

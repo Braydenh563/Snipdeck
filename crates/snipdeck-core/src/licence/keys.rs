@@ -1,22 +1,57 @@
 //! The public key Snipdeck builds trust.
 //!
-//! Swapping the key is a source change to this file, made when cutting a release (see
-//! `docs/licensing.md`); it is deliberately never read from the environment or from disk at
-//! run time, because a key an attacker can point at their own file is no check at all.
+//! The key is chosen when the crate is *built* and is a plain constant afterwards; it is
+//! deliberately never read from the environment or from disk at run time, because a key an
+//! attacker can point at their own file is no check at all.
+//!
+//! `build.rs` takes the production key from the `SNIPDECK_LICENCE_PUBLIC_KEY` environment
+//! variable (base64 of the 32 raw bytes) and falls back to the development key in debug
+//! builds only. A release build with no production key does not compile, so the development
+//! key cannot ship by forgetting a step. The release procedure is in `docs/licensing.md`.
 
-/// The Ed25519 public key compiled into this build, as 32 raw bytes.
+// `LICENCE_PUBLIC_KEY` and `IS_DEVELOPMENT_KEY`, written by `build.rs`.
+include!(concat!(env!("OUT_DIR"), "/licence_key.rs"));
+
+/// The development public key: the verifying key of the published development seed
+/// (the ASCII text `snipdeck development licence key`).
 ///
-/// **DEVELOPMENT KEY.** It belongs to a private key whose seed is published in this
-/// repository's tests (the ASCII text `snipdeck development licence key`), so anybody can mint a licence this build
-/// accepts. Release builds must replace it with the production public key.
-pub const LICENCE_PUBLIC_KEY: [u8; 32] = DEVELOPMENT_PUBLIC_KEY;
+/// Anybody can mint a licence for a build that embeds this key. Debug builds embed it by
+/// default; release builds refuse to (see the module docs).
+pub const DEVELOPMENT_PUBLIC_KEY: [u8; 32] = include!("development_key.in");
 
-/// Whether [`LICENCE_PUBLIC_KEY`] is the development key. Flip to `false` together with the
-/// key; the app can show a "development licence key" warning while it is `true`.
-pub const IS_DEVELOPMENT_KEY: bool = true;
+// A second, independent line of defence next to `build.rs`: a build without debug assertions
+// (that is, a release-like build, however it was configured) that still embeds the
+// development key does not compile.
+#[cfg(not(debug_assertions))]
+const _: () = assert!(
+    !IS_DEVELOPMENT_KEY,
+    "a release build must not embed the development licence key; see docs/licensing.md"
+);
 
-/// The development public key: the verifying key of the published development seed.
-pub const DEVELOPMENT_PUBLIC_KEY: [u8; 32] = [
-    0xa7, 0x92, 0xa0, 0x5f, 0x26, 0x31, 0x7c, 0xa9, 0x21, 0xe8, 0xa0, 0xc2, 0x02, 0x6f, 0x53, 0x6e,
-    0xe3, 0xb2, 0xb9, 0xd9, 0x7d, 0x44, 0x8b, 0x24, 0xda, 0x44, 0x74, 0x15, 0x7d, 0x4f, 0xe9, 0x2b,
-];
+#[cfg(test)]
+mod tests {
+    use ed25519_dalek::VerifyingKey;
+
+    use super::*;
+
+    #[test]
+    fn the_flag_matches_the_key() {
+        assert_eq!(
+            IS_DEVELOPMENT_KEY,
+            LICENCE_PUBLIC_KEY == DEVELOPMENT_PUBLIC_KEY
+        );
+    }
+
+    #[test]
+    fn the_compiled_in_key_is_a_valid_curve_point() {
+        assert!(VerifyingKey::from_bytes(&LICENCE_PUBLIC_KEY).is_ok());
+    }
+
+    #[test]
+    fn release_builds_never_embed_the_development_key() {
+        if !cfg!(debug_assertions) {
+            // `black_box`: the value is a constant, and that is the point of checking it.
+            assert!(!std::hint::black_box(IS_DEVELOPMENT_KEY));
+        }
+    }
+}

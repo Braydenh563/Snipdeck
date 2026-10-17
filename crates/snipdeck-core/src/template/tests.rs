@@ -172,7 +172,7 @@ fn cursor_reports_characters_after_it() {
 }
 
 #[test]
-fn cursor_counts_scalars_and_crlf_as_one() {
+fn cursor_counts_crlf_as_one() {
     let out = render_with("a{cursor}é😀\r\nb", |c| c);
     assert_eq!(out.cursor_from_end, Some(4));
 }
@@ -480,6 +480,218 @@ fn the_first_error_wins() {
     assert_eq!(parse_err("{a} {b}").span, 0..3);
 }
 
+// ---- cursor in grapheme clusters -------------------------------------------------------
+
+#[test]
+fn cursor_counts_grapheme_clusters_like_left_arrow_presses() {
+    // An editor's caret moves one extended grapheme cluster per Left press.
+    for (src, left_presses) in [
+        // "e" + combining acute, then a ZWJ family: two clusters.
+        ("{cursor}e\u{301}\u{1F468}\u{200D}\u{1F469}", 2),
+        // Flags are two regional indicators each.
+        ("{cursor}\u{1F1E9}\u{1F1EA}\u{1F1EB}\u{1F1F7}", 2),
+        // A skin-tone modifier and a variation selector stay with their base.
+        ("x{cursor}\u{1F44D}\u{1F3FD}\u{2764}\u{FE0F}", 2),
+        // Hangul syllable built from jamo, and a Devanagari conjunct cluster.
+        (
+            "{cursor}\u{1112}\u{1161}\u{11AB}\u{0915}\u{094D}\u{0937}",
+            2,
+        ),
+        ("{cursor}a\r\nb", 3),
+        ("{cursor}", 0),
+    ] {
+        assert_eq!(
+            render_with(src, |c| c).cursor_from_end,
+            Some(left_presses),
+            "{src:?}"
+        );
+    }
+}
+
+// ---- output bound ----------------------------------------------------------------------
+
+#[test]
+fn rendering_stops_at_the_output_limit_instead_of_exhausting_memory() {
+    let t = Template::parse("{clipboard}{clipboard}").unwrap();
+    let big = "a".repeat(MAX_RENDERED_BYTES / 2 + 1);
+    let a = BTreeMap::new();
+    let ctx = RenderContext::new(now(), &a).with_clipboard(&big);
+    assert_eq!(
+        t.try_render(&ctx),
+        Err(RenderError::OutputTooLarge {
+            limit: MAX_RENDERED_BYTES
+        })
+    );
+    // The plain `render` degrades: the output is cut at the limit, never larger.
+    let cut = t.render(&ctx);
+    assert_eq!(cut.text.len(), MAX_RENDERED_BYTES);
+    assert!(cut.text.bytes().all(|b| b == b'a'));
+}
+
+#[test]
+fn output_exactly_at_the_limit_is_allowed() {
+    let a = BTreeMap::new();
+    let exact = "é".repeat(MAX_RENDERED_BYTES / 2);
+    let ctx = RenderContext::new(now(), &a).with_clipboard(&exact);
+    let out = Template::parse("{clipboard}")
+        .unwrap()
+        .try_render(&ctx)
+        .unwrap();
+    assert_eq!(out.text.len(), MAX_RENDERED_BYTES);
+    let one_more = Template::parse("{clipboard}x").unwrap().try_render(&ctx);
+    assert!(matches!(one_more, Err(RenderError::OutputTooLarge { .. })));
+}
+
+#[test]
+fn the_reviewers_amplification_case_is_bounded() {
+    // 65 527 bytes of `{clipboard}` with a 10 KB clipboard used to render 59.6 MB.
+    let src = "{clipboard}".repeat(5957);
+    let clip = "c".repeat(10_000);
+    let a = BTreeMap::new();
+    let ctx = RenderContext::new(now(), &a).with_clipboard(&clip);
+    let t = Template::parse(&src).unwrap();
+    assert!(matches!(
+        t.try_render(&ctx),
+        Err(RenderError::OutputTooLarge { .. })
+    ));
+    assert!(t.render(&ctx).text.len() <= MAX_RENDERED_BYTES);
+}
+
+#[test]
+fn truncation_never_splits_a_character_and_keeps_a_valid_cursor() {
+    let a = BTreeMap::new();
+    let clip = "😀".repeat(MAX_RENDERED_BYTES / 4 + 1);
+    let ctx = RenderContext::new(now(), &a).with_clipboard(&clip);
+    let out = Template::parse("{cursor}{clipboard}").unwrap().render(&ctx);
+    assert_eq!(out.text.len(), MAX_RENDERED_BYTES);
+    assert_eq!(out.cursor_from_end, Some(MAX_RENDERED_BYTES / 4));
+}
+
+#[test]
+fn prompt_answers_count_towards_the_limit() {
+    let t = Template::parse("{field:A}{field:A}").unwrap();
+    let a = answers(&[("A", &"z".repeat(MAX_RENDERED_BYTES))]);
+    let ctx = RenderContext::new(now(), &a);
+    assert!(matches!(
+        t.try_render(&ctx),
+        Err(RenderError::OutputTooLarge { .. })
+    ));
+}
+
+// ---- checked rendering -----------------------------------------------------------------
+
+#[test]
+fn render_checked_enforces_the_entitlement_that_render_does_not() {
+    let t = Template::parse("Hi {field:Name|there}").unwrap();
+    let a = BTreeMap::new();
+    let ctx = RenderContext::new(now(), &a);
+    // `render` is the unchecked primitive: it resolves Pro prompts for anyone.
+    assert_eq!(t.render(&ctx).text, "Hi there");
+    assert_eq!(
+        t.render_checked(&Entitlements::new(Tier::Free), &ctx),
+        Err(RenderError::ProRequired(Feature::PromptedFields))
+    );
+    assert_eq!(
+        t.render_checked(&Entitlements::new(Tier::Pro), &ctx),
+        Ok(t.render(&ctx))
+    );
+}
+
+#[test]
+fn render_checked_lets_free_users_render_static_templates() {
+    let t = Template::parse("{date} {clipboard}{cursor}").unwrap();
+    let a = BTreeMap::new();
+    let ctx = RenderContext::new(now(), &a).with_clipboard("x");
+    assert_eq!(
+        t.render_checked(&Entitlements::default(), &ctx),
+        Ok(t.render(&ctx))
+    );
+}
+
+#[test]
+fn render_checked_also_bounds_the_output() {
+    let t = Template::parse("{clipboard}{clipboard}").unwrap();
+    let big = "a".repeat(MAX_RENDERED_BYTES);
+    let a = BTreeMap::new();
+    let ctx = RenderContext::new(now(), &a).with_clipboard(&big);
+    assert!(matches!(
+        t.render_checked(&Entitlements::new(Tier::Pro), &ctx),
+        Err(RenderError::OutputTooLarge { .. })
+    ));
+}
+
+// ---- extra parts, duplicate options, padded keys ---------------------------------------
+
+#[test]
+fn a_field_takes_at_most_a_name_and_a_default() {
+    for src in [
+        "{field:Name|default|EXTRA}",
+        "{field:Name|default|EXTRA|MORE}",
+        "{field:Name||x}",
+        "{field:Name|default|}",
+    ] {
+        let err = parse_err(src);
+        assert_eq!(err.kind, TemplateErrorKind::TooManyParts, "{src}");
+        assert_eq!(err.span, 0..src.len(), "{src}");
+        assert!(err.to_string().contains("{field:Name|default}"), "{err}");
+    }
+    assert!(Template::parse("{field:Name|default}").is_ok());
+}
+
+#[test]
+fn a_choice_may_not_repeat_an_option() {
+    for src in ["{choice:x|a|a|a}", "{choice:x|a|b|a}", "{choice:x| a |a}"] {
+        assert_eq!(
+            parse_err(src).kind,
+            TemplateErrorKind::DuplicateOption {
+                option: "a".to_owned()
+            },
+            "{src}"
+        );
+    }
+    // Options that differ only in case are different options.
+    assert!(Template::parse("{choice:x|a|A}").is_ok());
+}
+
+#[test]
+fn placeholder_keys_are_trimmed_like_names_and_options() {
+    assert_eq!(render("{ date }"), "2026-10-17");
+    assert_eq!(render("{\tcursor\n}x"), "x");
+    assert_eq!(render("{ clipboard }"), "");
+    assert_eq!(
+        render("{ datetime : %Y}"),
+        " 2026",
+        "the format itself is not trimmed"
+    );
+    assert_eq!(render("{ datetime:%Y}"), "2026");
+    assert_eq!(render("{datetime :%Y}"), "2026");
+    let t = Template::parse("{ field : A }{ choice : B | x | y }").unwrap();
+    assert_eq!(t.prompts().len(), 2);
+    // Padding does not make a key valid.
+    let err = parse_err("{ dat }");
+    assert_eq!(
+        err.kind,
+        TemplateErrorKind::Unknown {
+            found: "dat".into(),
+            suggestion: Some("date")
+        }
+    );
+    assert_eq!(parse_err("{ }").kind, TemplateErrorKind::EmptyPlaceholder);
+    assert_eq!(
+        parse_err("{ date:%Y}").kind,
+        TemplateErrorKind::UnexpectedArgument {
+            placeholder: "date"
+        }
+    );
+}
+
+#[test]
+fn spans_stay_exact_when_the_key_is_padded() {
+    let src = "x {  datetime : %H:%Q}";
+    let err = parse_err(src);
+    assert_eq!(&src[err.span], "%Q");
+}
+
 // ---- properties ----------------------------------------------------------------------
 
 fn brace_heavy() -> impl Strategy<Value = String> {
@@ -501,9 +713,38 @@ fn valid_template() -> impl Strategy<Value = String> {
         }),
         word.prop_map(|n| format!("{{field:{n}}}")),
         (word, word).prop_map(|(n, d)| format!("{{field:{n}|{d}}}")),
-        (word, word, word).prop_map(|(n, a, b)| format!("{{choice:{n}|{a}|{b}}}")),
+        (word, word, word)
+            .prop_filter("options must differ", |(_, a, b)| a.trim() != b.trim())
+            .prop_map(|(n, a, b)| format!("{{choice:{n}|{a}|{b}}}")),
     ];
     proptest::collection::vec(piece, 0..8).prop_map(|v| v.concat())
+}
+
+/// `(source text, what it renders as)` for rendering at `now()` in UTC with ISO dates, the
+/// answers `a = ANS` and `c = q`, and `<clip>` standing for the clipboard.
+fn model_piece() -> impl Strategy<Value = (String, String)> {
+    prop_oneof![
+        "[a-z \\n\u{e9}]{0,8}".prop_map(|s| (escape(&s), s)),
+        Just(("{{".to_owned(), "{".to_owned())),
+        Just(("}}".to_owned(), "}".to_owned())),
+        Just(("{date}".to_owned(), "2026-10-17".to_owned())),
+        Just(("{ time }".to_owned(), "14:05".to_owned())),
+        Just((
+            "{datetime:%F %T}".to_owned(),
+            "2026-10-17 14:05:09".to_owned()
+        )),
+        Just((
+            "{datetime:%A %e %B %%}".to_owned(),
+            "Saturday 17 October %".to_owned()
+        )),
+        Just(("{clipboard}".to_owned(), "<clip>".to_owned())),
+        Just(("{field:a}".to_owned(), "ANS".to_owned())),
+        Just(("{field: a | unused }".to_owned(), "ANS".to_owned())),
+        Just(("{field:b|dflt}".to_owned(), "dflt".to_owned())),
+        Just(("{field:e}".to_owned(), String::new())),
+        Just(("{choice:c|p|q}".to_owned(), "q".to_owned())),
+        Just(("{choice:d|p|q}".to_owned(), "p".to_owned())),
+    ]
 }
 
 proptest! {
@@ -535,16 +776,39 @@ proptest! {
         prop_assert_eq!(t.prompts().len(), 0);
     }
 
+    /// A model check: the expected output is built piece by piece from what each placeholder
+    /// means, independently of the renderer, and compared with the real thing. Pieces use
+    /// letters that never combine, so the expected cursor is a plain `chars().count()`.
     #[test]
-    fn rendering_is_deterministic(src in valid_template(), clip in any::<Option<String>>()) {
-        // Reusing a prompt name with a different kind is rejected on purpose (see the next test).
-        let parsed = Template::parse(&src);
-        prop_assume!(parsed.is_ok());
-        let t = parsed.unwrap();
-        let a = answers(&[("a", "x")]);
-        let mut ctx = RenderContext::new(now(), &a).with_locale(Locale::for_tag("de"));
-        ctx.clipboard = clip.as_deref();
-        prop_assert_eq!(t.render(&ctx), t.render(&ctx));
+    fn rendering_matches_a_model(
+        pieces in proptest::collection::vec(model_piece(), 0..10),
+        cursor_at in any::<prop::sample::Index>(),
+        with_cursor in any::<bool>(),
+        clip in "[a-z \\n\u{e9}]{0,12}",
+    ) {
+        let a = answers(&[("a", "ANS"), ("c", "q")]);
+        let ctx = RenderContext::new(now(), &a).with_clipboard(&clip);
+        let at = cursor_at.index(pieces.len() + 1);
+        let mut src = String::new();
+        let mut expected = String::new();
+        let mut after = String::new();
+        for (i, (source, shown)) in pieces.iter().enumerate() {
+            if with_cursor && i == at {
+                src.push_str("{cursor}");
+            }
+            src.push_str(source);
+            let shown = shown.replace("<clip>", &clip);
+            expected.push_str(&shown);
+            if with_cursor && i >= at {
+                after.push_str(&shown);
+            }
+        }
+        if with_cursor && at == pieces.len() {
+            src.push_str("{cursor}");
+        }
+        let out = Template::parse(&src).unwrap().render(&ctx);
+        prop_assert_eq!(out.text, expected);
+        prop_assert_eq!(out.cursor_from_end, with_cursor.then(|| after.chars().count()));
     }
 
     #[test]
