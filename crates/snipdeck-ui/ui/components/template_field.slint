@@ -40,8 +40,13 @@ export component TemplateField inherits FocusScope {
     property <image> no-icon;
     property <bool> choice-focused: root.has-focus || root.show-focus;
     property <string> full-label: root.label + (root.required ? ", " + root.required-text : "");
+    // One option row: 28px at 100%, and one text line plus padding when the text is larger.
+    property <length> row-h: max(Space.hit, Type.line-base + Space.s2);
 
     focus-on-click: false;
+    // Only the choice list is keyboard-operated here. For text and date the TextField inside is the Tab stop; this
+    // scope would otherwise be an invisible stop in front of it that takes the typing and does nothing.
+    focus-on-tab-navigation: root.kind == TemplateFieldKind.choice;
 
     function choose(index: int) {
         if (root.enabled && index >= 0 && index < root.choices.length && index != root.choice-index) {
@@ -114,7 +119,7 @@ export component TemplateField inherits FocusScope {
 
         if root.kind == TemplateFieldKind.choice: Rectangle {
             // Options, one per row; padding and border make up the rest of the height.
-            height: root.choices.length * Space.hit + 2 * Space.s0-5 + 2px;
+            height: root.choices.length * root.row-h + 2 * Space.s0-5 + 2px;
             background: !root.enabled ? Theme.bg-sunken : Theme.bg-surface;
             border-radius: Radius.md;
             border-width: 1px;
@@ -132,7 +137,7 @@ export component TemplateField inherits FocusScope {
                 padding: Space.s0-5;
                 alignment: start;
                 for option[i] in root.choices: Rectangle {
-                    height: Space.hit;
+                    height: root.row-h;
                     border-radius: Radius.sm;
                     background: i == root.choice-index ? Theme.bg-selected
                         : (row-touch.has-hover && root.enabled) ? Theme.bg-hover : transparent;
@@ -164,7 +169,7 @@ export component TemplateField inherits FocusScope {
                         // The selected row also carries a check, not only a fill.
                         if i == root.choice-index: Icon {
                             source: Icons.check;
-                            tint: Theme.accent-text;
+                            tint: Theme.accent-on-selected;
                             y: (parent.height - self.height) / 2;
                         }
                     }

@@ -35,7 +35,7 @@ export component MenuItem inherits Rectangle {
 
     property <color> fg: root.destructive ? Theme.danger-fg : Theme.text-primary;
 
-    height: Space.hit;
+    height: max(Space.hit, Type.line-base + Space.s2);
     background: root.current && !root.disabled ? Theme.bg-overlay-hover : transparent;
     border-radius: Radius.sm;
     border-width: root.current && !root.disabled && Theme.hc-border != transparent ? 1px : 0px;
@@ -115,6 +115,20 @@ export component Menu inherits Rectangle {
         scope.focus();
     }
 
+    // Separators before row `i`. Slint has no loop, so this adds up the first 24 entries; a menu is never longer
+    // than that, and an entry past the end reads as "not a separator".
+    pure function separators-before(i: int) -> int {
+        return (i > 0 && root.entries[0].separator ? 1 : 0) + (i > 1 && root.entries[1].separator ? 1 : 0) + (i > 2 && root.entries[2].separator ? 1 : 0) + (i > 3 && root.entries[3].separator ? 1 : 0) + (i > 4 && root.entries[4].separator ? 1 : 0) + (i > 5 && root.entries[5].separator ? 1 : 0) + (i > 6 && root.entries[6].separator ? 1 : 0) + (i > 7 && root.entries[7].separator ? 1 : 0) + (i > 8 && root.entries[8].separator ? 1 : 0) + (i > 9 && root.entries[9].separator ? 1 : 0) + (i > 10 && root.entries[10].separator ? 1 : 0) + (i > 11 && root.entries[11].separator ? 1 : 0) + (i > 12 && root.entries[12].separator ? 1 : 0) + (i > 13 && root.entries[13].separator ? 1 : 0) + (i > 14 && root.entries[14].separator ? 1 : 0) + (i > 15 && root.entries[15].separator ? 1 : 0) + (i > 16 && root.entries[16].separator ? 1 : 0) + (i > 17 && root.entries[17].separator ? 1 : 0) + (i > 18 && root.entries[18].separator ? 1 : 0) + (i > 19 && root.entries[19].separator ? 1 : 0) + (i > 20 && root.entries[20].separator ? 1 : 0) + (i > 21 && root.entries[21].separator ? 1 : 0) + (i > 22 && root.entries[22].separator ? 1 : 0) + (i > 23 && root.entries[23].separator ? 1 : 0);
+    }
+
+    // Position of row `i` among the actions (separators are not items), and the number of actions.
+    pure function action-index(i: int) -> int {
+        return i - root.separators-before(i);
+    }
+    pure function action-count() -> int {
+        return root.entries.length - root.separators-before(root.entries.length);
+    }
+
     pure function selectable(i: int) -> bool {
         return i >= 0 && i < root.entries.length && !root.entries[i].separator && !root.entries[i].disabled;
     }
@@ -191,7 +205,7 @@ export component Menu inherits Rectangle {
         padding: Space.s1;
         alignment: start;
         for entry[i] in root.entries: Rectangle {
-            height: entry.separator ? Space.s2 + 1px : Space.hit;
+            height: entry.separator ? Space.s2 + 1px : max(Space.hit, Type.line-base + Space.s2);
             if entry.separator: Rectangle {
                 y: (parent.height - self.height) / 2;
                 height: 1px;
@@ -205,8 +219,8 @@ export component Menu inherits Rectangle {
                 disabled: entry.disabled;
                 current: root.current == i;
                 reserve-icon: root.icons;
-                index: i;
-                count: root.entries.length;
+                index: root.action-index(i);
+                count: root.action-count();
                 pointer-entered => { root.current = i; }
                 activated => { root.activate(i); }
             }

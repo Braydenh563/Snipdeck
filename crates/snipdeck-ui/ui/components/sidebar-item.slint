@@ -61,7 +61,7 @@ export component SidebarItem inherits Rectangle {
             }
             if root.kind != SidebarItemKind.list && root.glyph.width > 0: Icon {
                 source: root.glyph;
-                tint: root.selected ? Theme.accent-text : Theme.text-secondary;
+                tint: root.selected ? Theme.accent-on-selected : Theme.text-secondary;
                 size: root.glyph-size;
                 y: (parent.height - self.height) / 2;
             }

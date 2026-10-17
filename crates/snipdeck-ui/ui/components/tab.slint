@@ -92,8 +92,11 @@ export component Tab inherits Rectangle {
         animate background { duration: Motion.quick; easing: Motion.out; }
     }
 
-    // Keyboard focus: 2px ring inside the tab.
+    // Keyboard focus: 2px ring inside the tab, above the 2px underline so the active tab's colour stays visible.
     Rectangle {
+        // An explicit height without `y` would centre the ring vertically.
+        y: 0px;
+        height: parent.height - Space.s0-5;
         border-width: root.focus-visible ? 2px : 0px;
         border-color: Theme.focus-ring;
         border-radius: Radius.sm;
@@ -175,6 +178,27 @@ export component ListTabBar inherits Rectangle {
         }
     }
 
+    // First in the tree so it is the first Tab stop; the add button below is the second.
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == Key.LeftArrow) {
+                root.select(root.current - 1);
+                return accept;
+            } else if (event.text == Key.RightArrow) {
+                root.select(root.current + 1);
+                return accept;
+            } else if (event.text == Key.Home) {
+                root.select(0);
+                return accept;
+            } else if (event.text == Key.End) {
+                root.select(root.tabs.length - 1);
+                return accept;
+            }
+            return reject;
+        }
+    }
+
     // Hairline under the whole bar; the active tab's underline is drawn on top of it.
     Rectangle {
         y: parent.height - 1px;
@@ -241,26 +265,23 @@ export component ListTabBar inherits Rectangle {
             add-touch := TouchArea {
                 clicked => { root.add-clicked(); }
             }
-        }
-    }
-
-    scope := FocusScope {
-        focus-on-click: false;
-        key-pressed(event) => {
-            if (event.text == Key.LeftArrow) {
-                root.select(root.current - 1);
-                return accept;
-            } else if (event.text == Key.RightArrow) {
-                root.select(root.current + 1);
-                return accept;
-            } else if (event.text == Key.Home) {
-                root.select(0);
-                return accept;
-            } else if (event.text == Key.End) {
-                root.select(root.tabs.length - 1);
-                return accept;
+            // Keyboard focus: 2px ring inside the button (the bar clips outside its bounds).
+            Rectangle {
+                border-width: add-scope.has-focus ? 2px : 0px;
+                border-color: Theme.focus-ring;
+                border-radius: Radius.sm;
+                background: transparent;
             }
-            return reject;
+            add-scope := FocusScope {
+                focus-on-click: false;
+                key-pressed(event) => {
+                    if (event.text == " " || event.text == "\n") {
+                        root.add-clicked();
+                        return accept;
+                    }
+                    return reject;
+                }
+            }
         }
     }
 }

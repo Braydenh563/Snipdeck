@@ -416,7 +416,11 @@ fn hotkey_combos_name_modifiers_and_special_keys() {
         (vec![Key::Shift, Key::Control], key(Key::F5), "Ctrl+Shift+F5"),
         (vec![Key::Meta], " ".to_string(), "Win+Space"),
         (vec![Key::Alt], key(Key::LeftArrow), "Alt+Left"),
-        (vec![Key::Control, Key::Alt, Key::Shift], "1".to_string(), "Ctrl+Alt+Shift+1"),
+        // A letter: with Shift held a real keyboard delivers "!" for the 1 key (see `Combo.unrecordable`), so a
+        // digit with Shift was only recordable in this synthetic test, never from a keyboard. It used to be
+        // asserted as "Ctrl+Alt+Shift+1"; the corrected expectation is that Shift+digit/symbol is refused
+        // (tests/review_fixes_logic.rs) and Shift+letter still records.
+        (vec![Key::Control, Key::Alt, Key::Shift], "k".to_string(), "Ctrl+Alt+Shift+K"),
     ] {
         hk.invoke_accessible_default_action();
         assert!(ui.get_hk_recording(), "recording before {expected}");

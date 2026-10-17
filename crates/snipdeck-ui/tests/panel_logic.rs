@@ -431,7 +431,7 @@ ui_tests! {
             settle();
             let list = rows(&ui);
             assert_eq!(list.len(), 3, "{view:?}: three CJK rows");
-            let panel_w = ui.window().size().width as f32 / ui.window().scale_factor();
+            let panel_w = ui.window().size().to_logical(ui.window().scale_factor()).width;
             for (row, title) in list.iter().zip(["請求書のお願い", "短い", "会議のフォローアップ"]) {
                 let (p, s) = (row.absolute_position(), row.size());
                 assert!(s.height >= MIN_HIT, "{view:?} {title}: {} tall", s.height);

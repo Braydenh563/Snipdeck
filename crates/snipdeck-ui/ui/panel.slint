@@ -502,6 +502,7 @@ export component PanelWindow inherits Window {
                             list-color: row.list-color;
                             selected: i == root.sel;
                             use-label: root.use-label;
+                            masked-hint: @tr("Hidden. Hold Space to reveal.");
                             show-use-label: i == root.sel;
                             revealed: i == root.revealed-index;
                             pulling: i == root.used-index;

@@ -41,7 +41,7 @@ export component Swatch inherits Rectangle {
         y: (parent.height - self.height) / 2;
         width: root.hovered || root.pressed ? 22px : 20px;
         height: self.width;
-        border-radius: Radius.md;
+        border-radius: Radius.sm;
         background: ListAccent.color(root.hue);
         border-width: Theme.hc-border != transparent ? 1px : 0px;
         border-color: Theme.hc-border;

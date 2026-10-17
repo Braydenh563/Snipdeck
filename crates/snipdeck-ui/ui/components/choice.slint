@@ -24,7 +24,7 @@ export component Toggle inherits Rectangle {
     property <length> track-h: 20px;
     property <length> knob: 14px;
 
-    height: Space.hit-min;
+    height: max(Space.hit-min, Type.line-base + Space.s1);
     min-width: root.track-w;
     forward-focus: scope;
     accessible-role: switch;
@@ -130,7 +130,7 @@ export component Checkbox inherits Rectangle {
     property <bool> hovered: touch.has-hover && root.enabled;
     property <bool> filled: root.checked || root.mixed;
 
-    height: Space.hit-min;
+    height: max(Space.hit-min, Type.line-base + Space.s1);
     min-width: Space.hit-min;
     forward-focus: scope;
     accessible-role: checkbox;
@@ -229,7 +229,7 @@ export component Radio inherits Rectangle {
     property <bool> pressed: touch.pressed && root.enabled;
     property <bool> hovered: touch.has-hover && root.enabled;
 
-    height: Space.hit-min;
+    height: max(Space.hit-min, Type.line-base + Space.s1);
     min-width: Space.hit-min;
     forward-focus: scope;
     accessible-role: radio-button;

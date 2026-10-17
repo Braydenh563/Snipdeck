@@ -15,7 +15,8 @@ export component Keycap inherits Rectangle {
     property <length> content-w: root.is-enter ? Type.xs : label.preferred-width;
 
     min-width: max(20px, root.content-w + 2 * Space.s1 + 2px);
-    height: 20px;
+    // 20px holds one 16px line at 100%; it grows with the text size.
+    height: max(20px, Type.line-xs + Space.s1);
     background: root.active ? Theme.accent-subtle : Theme.bg-sunken;
     border-radius: Radius.sm;
     border-width: 1px;
@@ -54,7 +55,7 @@ export component KeyCombo inherits Rectangle {
 
     accessible-role: AccessibleRole.text;
     accessible-label: root.label;
-    height: 20px;
+    height: max(20px, Type.line-xs + Space.s1);
     min-width: row.min-width;
 
     row := HorizontalLayout {

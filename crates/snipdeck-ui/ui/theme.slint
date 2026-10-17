@@ -103,6 +103,10 @@ export global Theme {
     out property <color> text-tertiary: hc ? SystemLook.hc-gray-text : Palette.text-tertiary;
     // Text drawn on a `bg-selected` row.
     out property <color> text-on-selected: hc ? SystemLook.hc-highlight-text : Palette.text-primary;
+    // Secondary text and accent glyphs drawn on a `bg-selected` row. In high contrast that fill is the system
+    // highlight, which is also `accent-text` and close to `text-secondary` (window text): both would vanish.
+    out property <color> text-secondary-on-selected: hc ? SystemLook.hc-highlight-text : Palette.text-secondary;
+    out property <color> accent-on-selected: hc ? SystemLook.hc-highlight-text : Palette.accent-text;
     out property <color> text-on-accent: hc ? SystemLook.hc-highlight-text : Palette.text-on-accent;
     out property <color> ink: hc ? SystemLook.hc-window-text : Palette.ink-default;
     out property <color> ink-hover: hc ? SystemLook.hc-highlight : Palette.ink-hover;
