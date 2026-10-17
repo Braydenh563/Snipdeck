@@ -2139,11 +2139,13 @@ impl Harness<C> | crates/snipdeck-ui/src/testing.rs:93
 new | crates/snipdeck-ui/src/testing.rs:98
 advance | crates/snipdeck-ui/src/testing.rs:111
 render | crates/snipdeck-ui/src/testing.rs:121
-golden_dir | crates/snipdeck-ui/src/testing.rs:142
-diff_dir | crates/snipdeck-ui/src/testing.rs:148
-write_png | crates/snipdeck-ui/src/testing.rs:152
-read_png | crates/snipdeck-ui/src/testing.rs:165
-assert_golden | crates/snipdeck-ui/src/testing.rs:187
+render_settled | crates/snipdeck-ui/src/testing.rs:132
+try_render | crates/snipdeck-ui/src/testing.rs:144
+golden_dir | crates/snipdeck-ui/src/testing.rs:165
+diff_dir | crates/snipdeck-ui/src/testing.rs:171
+write_png | crates/snipdeck-ui/src/testing.rs:175
+read_png | crates/snipdeck-ui/src/testing.rs:188
+assert_golden | crates/snipdeck-ui/src/testing.rs:210
 
 ### design/tools/palette.py
 
@@ -2622,15 +2624,18 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-store/tests/tags.rs` | 8 |
 | `crates/snipdeck-store/tests/trash.rs` | 18 |
 | `crates/snipdeck-ui/tests/button_logic.rs` | 1 |
-| `crates/snipdeck-ui/tests/buttons.rs` | 2 |
+| `crates/snipdeck-ui/tests/buttons.rs` | 4 |
 | `crates/snipdeck-ui/tests/deck.rs` | 13 |
 | `crates/snipdeck-ui/tests/deck_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/i18n.rs` | 1 |
 | `crates/snipdeck-ui/tests/inputs.rs` | 17 |
 | `crates/snipdeck-ui/tests/inputs_logic.rs` | 1 |
+| `crates/snipdeck-ui/tests/panel.rs` | 10 |
+| `crates/snipdeck-ui/tests/panel_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/primitives.rs` | 6 |
 | `crates/snipdeck-ui/tests/primitives_logic.rs` | 22 |
 | `crates/snipdeck-ui/tests/primitives_pixels.rs` | 8 |
 | `crates/snipdeck-ui/tests/support/mod.rs` | 0 |
+| `crates/snipdeck-ui/tests/support/panel_fixture.rs` | 0 |
 | `spikes/s3-longtext/src/viewer.rs` (inline) | 1 |
 | `spikes/s4-mica/src/appearance.rs` (inline) | 8 |
