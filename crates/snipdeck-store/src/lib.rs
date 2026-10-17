@@ -17,11 +17,21 @@
 )]
 
 mod blobs;
+mod boards;
+mod codec;
+pub mod crypto;
 mod error;
+mod fts;
+mod items;
 mod migrations;
+mod rank;
 mod repo;
 mod schema;
+mod store;
+mod tags;
+mod trash;
 
 pub use blobs::BlobStore;
 pub use error::{Error, Result};
 pub use repo::{BoardRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable};
+pub use store::{GcReport, Store};

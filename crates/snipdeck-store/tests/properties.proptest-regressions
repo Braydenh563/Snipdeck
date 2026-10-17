@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 2e308d67e00edd07b7fc0772de4e3fb1a69e9519d06e4d89d1c285415a876e9d # shrinks to ops = [AddBoard(Pos(0, 0)), AddList(0, Pos(0, 0)), AddItem(0, Pos(0, 0), Spec { sensitive: false, png: None, big_text: false }), Trash(Board, 0), Restore(List, 0)]

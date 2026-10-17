@@ -10,7 +10,18 @@ publish.workspace = true
 
 [dependencies]
 snipdeck-core.workspace = true
+argon2.workspace = true
+blake3.workspace = true
+chacha20poly1305.workspace = true
+getrandom.workspace = true
+rusqlite.workspace = true
 thiserror.workspace = true
+uuid.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true
