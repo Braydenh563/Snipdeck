@@ -1,0 +1,129 @@
+import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+export enum SidebarItemKind { board, list, tag, system }
+
+// DESIGN.md §4 SidebarItem: main-window navigation. board = stack glyph, list = 8px square mark in the
+// list colour, tag = tag glyph, system (Recent, Pinned, Trash...) = the `icon` the app passes.
+// The row is 28px tall (hit target); the count is tabular `type.xs`.
+export component SidebarItem inherits Rectangle {
+    in property <SidebarItemKind> kind: SidebarItemKind.list;
+    in property <string> label;
+    // Hidden when negative.
+    in property <int> count: -1;
+    // System items: the glyph. Ignored by the other kinds.
+    in property <image> icon;
+    // List items: the list colour (the 8px mark).
+    in property <color> mark-color;
+    in property <bool> selected: false;
+    // Nested rows (lists under a board) indent by one step.
+    in property <bool> indented: false;
+    callback clicked();
+    callback context-menu-requested(length, length);
+
+    property <length> mark-size: Space.s2 * SystemLook.text-scale;
+    property <length> glyph-size: Space.s4 * SystemLook.text-scale;
+    property <bool> hovered: touch.has-hover;
+    property <image> glyph: root.kind == SidebarItemKind.board ? Icons.stack
+        : root.kind == SidebarItemKind.tag ? Icons.tag : root.icon;
+
+    height: max(Space.hit, Type.line-base + Space.s2);
+    border-radius: Radius.md;
+    background: touch.pressed ? Theme.bg-sunken : root.selected ? Theme.bg-selected : root.hovered ? Theme.bg-hover : transparent;
+    border-width: Theme.hc-border != transparent ? 1px : 0px;
+    border-color: Theme.hc-border;
+    forward-focus: scope;
+    accessible-role: list-item;
+    accessible-label: root.label;
+    accessible-value: root.count >= 0 ? "\{root.count}" : "";
+    accessible-item-selectable: true;
+    accessible-item-selected: root.selected;
+    accessible-action-default => {
+        root.clicked();
+    }
+
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    HorizontalLayout {
+        padding-left: Space.s2 + (root.indented ? Space.s4 : 0px);
+        padding-right: Space.s2;
+        spacing: Space.s2;
+
+        Rectangle {
+            width: root.glyph-size;
+            if root.kind == SidebarItemKind.list: Rectangle {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                width: root.mark-size;
+                height: root.mark-size;
+                background: root.mark-color;
+            }
+            if root.kind != SidebarItemKind.list && root.glyph.width > 0: Icon {
+                source: root.glyph;
+                tint: root.selected ? Theme.accent-text : Theme.text-secondary;
+                size: root.glyph-size;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+        Text {
+            text: root.label;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            font-weight: root.selected ? Type.medium : Type.regular;
+            color: root.selected ? Theme.text-on-selected : Theme.text-primary;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        if root.count >= 0: Text {
+            horizontal-stretch: 0;
+            text: "\{root.count}";
+            font-family: Fonts.mono;
+            font-size: Type.xs;
+            color: Theme.text-secondary;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+        }
+    }
+
+    // 2px ring, 2px offset (DESIGN.md §2), keyboard focus only.
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.md + 2px;
+        background: transparent;
+    }
+
+    touch := TouchArea {
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.up) {
+                if (event.button == PointerEventButton.left) {
+                    if (touch.mouse-x >= 0 && touch.mouse-x <= touch.width && touch.mouse-y >= 0 && touch.mouse-y <= touch.height) {
+                        root.clicked();
+                    }
+                } else if (event.button == PointerEventButton.right) {
+                    root.context-menu-requested(touch.mouse-x, touch.mouse-y);
+                }
+            }
+        }
+    }
+
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == Key.Return || event.text == " ") {
+                root.clicked();
+                return accept;
+            }
+            if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
+                root.context-menu-requested(0px, root.height);
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
