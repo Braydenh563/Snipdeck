@@ -1,4 +1,6 @@
 import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
 
 // DESIGN.md §4 Keycap (single). One key cap in IBM Plex Mono. `active` is the brief pressed flash:
 // the host sets it for ~140ms when the key is used (quick-paste index, hotkey recorder).
@@ -7,7 +9,12 @@ export component Keycap inherits Rectangle {
     in property <string> text;
     in property <bool> active: false;
 
-    min-width: max(20px, label.preferred-width + 2 * Space.s1 + 2px);
+    // The Enter key (U+21B5) is drawn as an icon: IBM Plex has no glyph for it, so the text character
+    // would come from whichever system font the machine falls back to.
+    property <bool> is-enter: root.text == "↵";
+    property <length> content-w: root.is-enter ? Type.xs : label.preferred-width;
+
+    min-width: max(20px, root.content-w + 2 * Space.s1 + 2px);
     height: 20px;
     background: root.active ? Theme.accent-subtle : Theme.bg-sunken;
     border-radius: Radius.sm;
@@ -19,8 +26,15 @@ export component Keycap inherits Rectangle {
         padding-left: Space.s1;
         padding-right: Space.s1;
         alignment: center;
+        if root.is-enter: Icon {
+            source: Icons.arrow-bend-down-left;
+            tint: root.active ? Theme.accent-text : Theme.text-secondary;
+            size: Type.xs;
+            y: (parent.height - self.height) / 2;
+        }
         label := Text {
-            text: root.text;
+            visible: !root.is-enter;
+            text: root.is-enter ? "" : root.text;
             color: root.active ? Theme.accent-text : Theme.text-secondary;
             font-family: Fonts.mono;
             font-size: Type.xs;

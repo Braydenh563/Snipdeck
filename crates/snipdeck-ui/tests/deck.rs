@@ -2,7 +2,7 @@
 //! `BoardSwitcher`) in light and dark, plus pixel measurements of the claims in DESIGN.md §4/§6.
 //!
 //! Goldens: `UPDATE_GOLDEN=1 cargo test -p snipdeck-ui --test deck`, then look at every PNG. Text
-//! rendering (and the CJK sample, which falls back to a system font) can differ per machine; the
+//! rendering must not depend on the machine: goldens use only glyphs IBM Plex has (no CJK); the
 //! pixel assertions below do not depend on glyph shapes.
 
 use snipdeck_ui::{

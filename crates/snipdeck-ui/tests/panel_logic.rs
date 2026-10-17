@@ -13,7 +13,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery, ElementRoot};
 use slint::{ComponentHandle, ModelRc, VecModel, platform::Key};
-use snipdeck_ui::{PanelWindow, ToastKind};
+use snipdeck_ui::{PanelView, PanelWindow, ToastKind};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -413,12 +413,41 @@ ui_tests! {
                 .filter(|e| e.computed_opacity() > 0.9)
                 .count()
         };
-        assert_eq!(shown("Paste ↵"), 1);
-        assert_eq!(shown("Copy ↵"), 0);
+        assert_eq!(shown("Paste"), 1);
+        assert_eq!(shown("Copy"), 0);
         ui.set_target_name("".into());
         settle();
-        assert_eq!(shown("Copy ↵"), 1);
-        assert_eq!(shown("Paste ↵"), 0);
+        assert_eq!(shown("Copy"), 1);
+        assert_eq!(shown("Paste"), 0);
+    }
+
+    // ---- CJK (measured, never a golden: system fallback fonts differ per machine) -----------------
+
+    fn cjk_rows_stay_hittable_inside_the_panel_in_both_views() {
+        let (ui, _log) = start();
+        fixture::set_rows(&ui, fixture::cjk_rows());
+        for view in [PanelView::Compact, PanelView::Comfortable] {
+            ui.set_view(view);
+            settle();
+            let list = rows(&ui);
+            assert_eq!(list.len(), 3, "{view:?}: three CJK rows");
+            let panel_w = ui.window().size().width as f32 / ui.window().scale_factor();
+            for (row, title) in list.iter().zip(["請求書のお願い", "短い", "会議のフォローアップ"]) {
+                let (p, s) = (row.absolute_position(), row.size());
+                assert!(s.height >= MIN_HIT, "{view:?} {title}: {} tall", s.height);
+                assert!(
+                    p.x >= 0.0 && p.x + s.width <= panel_w + 0.5,
+                    "{view:?} {title}: x {} w {} in a {panel_w} panel",
+                    p.x,
+                    s.width
+                );
+                assert!(
+                    row.accessible_label().is_some_and(|l| l.starts_with(title)),
+                    "{view:?}: label {:?} starts with {title}",
+                    row.accessible_label()
+                );
+            }
+        }
     }
 
     // ---- Empty states ----------------------------------------------------------------------------

@@ -14,7 +14,7 @@ use slint::{
     ComponentHandle, LogicalPosition,
     platform::{Key, PointerEventButton, WindowEvent},
 };
-use snipdeck_ui::{DeckGallery, DeckPartsGallery, SystemLook};
+use snipdeck_ui::{DeckCjkProbe, DeckGallery, DeckPartsGallery, SystemLook};
 
 /// Variant order inside `DeckGallery`: compact column, comfortable column, tile column.
 const COMPACT: usize = 0;
@@ -443,6 +443,38 @@ fn at_225_percent_text_the_rows_grow_and_stay_hittable() {
     }
 }
 
+/// CJK is measured here, never put in a golden: IBM Plex has no CJK glyphs, so the pixels would depend
+/// on the system fallback font. Sizes and labels do not.
+fn cjk_cards_keep_their_height_and_stay_inside_the_column() {
+    init();
+    let ui = DeckCjkProbe::new().expect("probe");
+    ui.show().expect("show");
+    let found: Vec<_> = ElementQuery::from_root(&ui)
+        .match_descendants()
+        .match_accessible_role(AccessibleRole::ListItem)
+        .find_all();
+    assert!(found.len() >= 6, "three samples x two variants, got {}", found.len());
+    for card in &found {
+        let (p, s) = (card.absolute_position(), card.size());
+        assert!(s.height >= 24.0, "{:?} is {} tall", card.accessible_label(), s.height);
+        assert!(
+            p.x >= 0.0 && p.x + s.width <= 200.5,
+            "{:?} x {} w {}",
+            card.accessible_label(),
+            p.x,
+            s.width
+        );
+    }
+    // A compact row is exactly 28px whatever the script.
+    assert_eq!(found[0].size().height, 28.0);
+    assert!(
+        found.iter().any(|c| c
+            .accessible_label()
+            .is_some_and(|l| l.starts_with("請求書のお願い, お世話になっております"))),
+        "title and preview in the label"
+    );
+}
+
 /// One test function: the testing backend can be installed once per process, so every scenario
 /// runs here in turn, each on a fresh gallery.
 #[test]
@@ -460,4 +492,5 @@ fn deck_behaviour() {
     the_use_label_shows_on_hover_and_keyboard_focus_only();
     deck_parts_report_clicks_menus_and_have_accessible_names();
     at_225_percent_text_the_rows_grow_and_stay_hittable();
+    cjk_cards_keep_their_height_and_stay_inside_the_column();
 }

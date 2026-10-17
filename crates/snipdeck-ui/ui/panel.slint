@@ -128,7 +128,7 @@ export component PanelWindow inherits Window {
 
     // ---- Internals ----------------------------------------------------------------------------
     property <bool> pastes: root.target-name != "";
-    property <string> use-label: root.pastes ? @tr("Paste ↵") : @tr("Copy ↵");
+    property <string> use-label: root.pastes ? @tr("Paste") : @tr("Copy");
     property <bool> searching: root.query != "";
     property <bool> no-lists: root.tabs.length == 0;
     property <int> sel: root.rows.length == 0 ? -1 : min(max(root.selected-index, 0), root.rows.length - 1);

@@ -72,13 +72,17 @@ component ListLabel inherits Rectangle {
 }
 
 // "Paste ↵" / "Copy ↵": ghost style `type.sm` 500. The card's own touch area does the work; this is only the label.
+// The Enter glyph is the Phosphor `arrow-bend-down-left` icon, not the character U+21B5: IBM Plex has no
+// glyph for it, so the character would come from whichever system font the machine falls back to.
 component UseLabel inherits Rectangle {
     in property <string> text;
     in property <bool> shown;
     // Colour behind the label so it never mixes with the preview text under it.
     in property <color> backing;
     in property <length> text-w;
-    width: root.text-w + 2 * Space.s2;
+    // The Enter glyph is as tall as the label text.
+    out property <length> glyph-size: Type.sm;
+    width: root.text-w + Space.s1 + root.glyph-size + 2 * Space.s2;
     height: Type.line-sm + Space.s1;
     border-radius: Radius.sm;
     background: root.backing;
@@ -87,13 +91,22 @@ component UseLabel inherits Rectangle {
     animate opacity { duration: Motion.fade; easing: Motion.out; }
 
     Text {
+        x: Space.s2;
+        width: root.text-w;
+        height: parent.height;
         text: root.text;
         font-family: Fonts.sans;
         font-size: Type.sm;
         font-weight: Type.medium;
         color: Theme.text-primary;
-        horizontal-alignment: center;
         vertical-alignment: center;
+    }
+    Icon {
+        source: Icons.arrow-bend-down-left;
+        tint: Theme.text-primary;
+        size: root.glyph-size;
+        x: Space.s2 + root.text-w + Space.s1;
+        y: (parent.height - self.height) / 2;
     }
 }
 
@@ -113,6 +126,8 @@ export component ItemCard inherits Rectangle {
     in property <string> preview;
     // Sensitive items show this (e.g. "•••• •••• 7f3a") until revealed.
     in property <string> masked-preview;
+    // Spoken while a sensitive item is masked, e.g. "Hidden. Hold Space to reveal." (the app translates it).
+    in property <string> masked-hint;
     // File items: the extension next to the file glyph (e.g. "PDF").
     in property <string> extension;
     // Image items: the thumbnail (56x36 in the comfortable card). An empty image shows a placeholder glyph.
@@ -121,7 +136,7 @@ export component ItemCard inherits Rectangle {
     in property <string> list-name;
     in property <color> list-color;
     in property <bool> selected: false;
-    // "Paste ↵" when a target is known, otherwise "Copy ↵". Shown on hover or keyboard focus.
+    // "Paste" when a target is known, otherwise "Copy"; the card adds the Enter glyph. Shown on hover or keyboard focus.
     in property <string> use-label;
     // Forces the use label visible (tests and galleries; hover cannot be forced headlessly).
     in property <bool> show-use-label: false;
@@ -205,7 +220,7 @@ export component ItemCard inherits Rectangle {
         min(max(0px, root.row-w - root.min-title-w - Space.s2),
             max(root.row-w - m-title.preferred-width - Space.s2, Type.xs * 8)));
     property <length> list-reserve: root.list-w > 0px ? root.list-w + Space.s2 : 0px;
-    property <length> use-w: m-use.preferred-width + 2 * Space.s2;
+    property <length> use-w: m-use.preferred-width + Space.s1 + Type.sm + 2 * Space.s2;
     // A compact row has one trailing slot: the use label replaces the list label while it shows.
     property <length> trail-reserve: root.compact && root.label-visible ? root.use-w + Space.s2 : root.list-reserve;
     property <length> title-avail: max(0px, root.row-w - root.trail-reserve);
