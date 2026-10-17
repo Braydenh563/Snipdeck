@@ -8,7 +8,9 @@ name, then read only the line range it points at. `--check` fails when stale.
 ### crates/snipdeck-app/src/lib.rs
 
 panel | crates/snipdeck-app/src/lib.rs:5
-usecase | crates/snipdeck-app/src/lib.rs:6
+settings | crates/snipdeck-app/src/lib.rs:6
+toast | crates/snipdeck-app/src/lib.rs:7
+usecase | crates/snipdeck-app/src/lib.rs:8
 
 ### crates/snipdeck-app/src/panel.rs
 
@@ -55,6 +57,57 @@ pinned_items_of_the_board_are_listed_across_lists | crates/snipdeck-app/src/pane
 the_footer_and_use_label_follow_the_target | crates/snipdeck-app/src/panel.rs:552
 friendly_names_drop_the_extension_and_fix_the_case | crates/snipdeck-app/src/panel.rs:576
 
+### crates/snipdeck-app/src/settings.rs
+
+VERSION | crates/snipdeck-app/src/settings.rs:10
+PANEL_WIDTH | crates/snipdeck-app/src/settings.rs:12
+PANEL_WIDTH_DEFAULT | crates/snipdeck-app/src/settings.rs:14
+HotkeyAction | crates/snipdeck-app/src/settings.rs:18
+impl HotkeyAction | crates/snipdeck-app/src/settings.rs:29
+default_chord | crates/snipdeck-app/src/settings.rs:40
+Theme | crates/snipdeck-app/src/settings.rs:53
+Hotkeys | crates/snipdeck-app/src/settings.rs:66
+impl Default for Hotkeys | crates/snipdeck-app/src/settings.rs:77
+default | crates/snipdeck-app/src/settings.rs:78
+impl Hotkeys | crates/snipdeck-app/src/settings.rs:88
+slot | crates/snipdeck-app/src/settings.rs:89
+chord | crates/snipdeck-app/src/settings.rs:100
+Settings | crates/snipdeck-app/src/settings.rs:114
+impl Default for Settings | crates/snipdeck-app/src/settings.rs:135
+default | crates/snipdeck-app/src/settings.rs:136
+impl Settings | crates/snipdeck-app/src/settings.rs:151
+from_json | crates/snipdeck-app/src/settings.rs:155
+from_fields | crates/snipdeck-app/src/settings.rs:167
+to_json | crates/snipdeck-app/src/settings.rs:200
+sanitize | crates/snipdeck-app/src/settings.rs:207
+hotkey_conflicts | crates/snipdeck-app/src/settings.rs:238
+tests | crates/snipdeck-app/src/settings.rs:248
+defaults_are_valid_and_conflict_free | crates/snipdeck-app/src/settings.rs:252
+it_round_trips_through_json | crates/snipdeck-app/src/settings.rs:264
+garbage_gives_the_defaults | crates/snipdeck-app/src/settings.rs:275
+one_bad_field_keeps_the_rest | crates/snipdeck-app/src/settings.rs:282
+unknown_fields_and_old_versions_are_tolerated | crates/snipdeck-app/src/settings.rs:291
+the_panel_width_is_clamped | crates/snipdeck-app/src/settings.rs:299
+excluded_apps_are_normalised | crates/snipdeck-app/src/settings.rs:311
+an_invalid_chord_falls_back_and_a_blank_one_stays_off | crates/snipdeck-app/src/settings.rs:319
+chords_are_stored_in_canonical_form | crates/snipdeck-app/src/settings.rs:330
+a_shared_chord_is_kept_by_the_first_action_only | crates/snipdeck-app/src/settings.rs:336
+
+### crates/snipdeck-app/src/toast.rs
+
+ToastKind | crates/snipdeck-app/src/toast.rs:11
+ToastMessage | crates/snipdeck-app/src/toast.rs:22
+Toast | crates/snipdeck-app/src/toast.rs:61
+after_use | crates/snipdeck-app/src/toast.rs:71
+after_error | crates/snipdeck-app/src/toast.rs:111
+tests | crates/snipdeck-app/src/toast.rs:131
+a_paste_names_the_app | crates/snipdeck-app/src/toast.rs:141
+a_plain_copy_is_a_success | crates/snipdeck-app/src/toast.rs:153
+an_excluded_app_says_pasting_is_off | crates/snipdeck-app/src/toast.rs:163
+an_elevated_target_explains_why_it_was_only_copied | crates/snipdeck-app/src/toast.rs:178
+nothing_focused_and_a_vanished_target_have_their_own_messages | crates/snipdeck-app/src/toast.rs:197
+errors_are_danger_toasts_with_a_specific_cause | crates/snipdeck-app/src/toast.rs:221
+
 ### crates/snipdeck-app/src/usecase.rs
 
 UseRequest | crates/snipdeck-app/src/usecase.rs:20
@@ -69,12 +122,12 @@ tests | crates/snipdeck-app/src/usecase.rs:210
 at | crates/snipdeck-app/src/usecase.rs:220
 a_paste_goes_through_the_pipeline_and_counts_one_use | crates/snipdeck-app/src/usecase.rs:294
 a_copy_leaves_the_text_on_the_clipboard | crates/snipdeck-app/src/usecase.rs:307
-a_failed_clipboard_is_an_error_and_does_not_count_a_use | crates/snipdeck-app/src/usecase.rs:317
-sensitive_items_are_written_private | crates/snipdeck-app/src/usecase.rs:327
-a_template_is_rendered_with_the_answers | crates/snipdeck-app/src/usecase.rs:336
-a_template_without_its_answers_asks_for_them_and_changes_nothing | crates/snipdeck-app/src/usecase.rs:350
-a_pro_placeholder_on_free_is_refused | crates/snipdeck-app/src/usecase.rs:365
-plain_items_have_no_prompts | crates/snipdeck-app/src/usecase.rs:378
+a_failed_clipboard_is_an_error_and_does_not_count_a_use | crates/snipdeck-app/src/usecase.rs:320
+sensitive_items_are_written_private | crates/snipdeck-app/src/usecase.rs:330
+a_template_is_rendered_with_the_answers | crates/snipdeck-app/src/usecase.rs:339
+a_template_without_its_answers_asks_for_them_and_changes_nothing | crates/snipdeck-app/src/usecase.rs:353
+a_pro_placeholder_on_free_is_refused | crates/snipdeck-app/src/usecase.rs:368
+plain_items_have_no_prompts | crates/snipdeck-app/src/usecase.rs:381
 
 ### crates/snipdeck-core/build.rs
 
@@ -2463,6 +2516,8 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | File | Tests |
 |---|---|
 | `crates/snipdeck-app/src/panel.rs` (inline) | 10 |
+| `crates/snipdeck-app/src/settings.rs` (inline) | 10 |
+| `crates/snipdeck-app/src/toast.rs` (inline) | 6 |
 | `crates/snipdeck-app/src/usecase.rs` (inline) | 8 |
 | `crates/snipdeck-core/src/board.rs` (inline) | 1 |
 | `crates/snipdeck-core/src/content.rs` (inline) | 5 |
