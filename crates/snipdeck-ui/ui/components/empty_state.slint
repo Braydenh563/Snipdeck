@@ -1,0 +1,58 @@
+import { Theme, Type, Space, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+import { Button, ButtonVariant } from "button.slint";
+
+export enum EmptyStateKind { list, board, search, inbox }
+
+// DESIGN.md §4 EmptyState: teaches how to fill an empty surface. A glyph for the kind of surface, a heading,
+// ONE sentence, and one primary action (ink Button). Every empty surface needs one (§7); without
+// `action-text` the button is left out (a search with no results has nothing to add).
+export component EmptyState inherits VerticalLayout {
+    in property <EmptyStateKind> kind: EmptyStateKind.list;
+    in property <string> heading;
+    in property <string> body;
+    in property <string> action-text;
+    callback action();
+
+    padding: Space.s6;
+    spacing: Space.s3;
+    alignment: center;
+
+    HorizontalLayout {
+        alignment: center;
+        Icon {
+            source: root.kind == EmptyStateKind.list ? Icons.stack
+                : root.kind == EmptyStateKind.board ? Icons.squares-four
+                : root.kind == EmptyStateKind.search ? Icons.magnifying-glass
+                : Icons.tray;
+            size: Space.s8;
+            tint: Theme.text-tertiary;
+        }
+    }
+    Text {
+        text: root.heading;
+        color: Theme.text-primary;
+        font-family: Fonts.sans;
+        font-size: Type.xl;
+        font-weight: Type.semibold;
+        horizontal-alignment: center;
+        wrap: word-wrap;
+    }
+    Text {
+        text: root.body;
+        color: Theme.text-secondary;
+        font-family: Fonts.sans;
+        font-size: Type.base;
+        horizontal-alignment: center;
+        wrap: word-wrap;
+    }
+    if root.action-text != "": HorizontalLayout {
+        alignment: center;
+        Button {
+            text: root.action-text;
+            variant: ButtonVariant.primary;
+            clicked => { root.action(); }
+        }
+    }
+}

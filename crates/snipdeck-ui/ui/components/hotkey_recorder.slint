@@ -1,0 +1,262 @@
+import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+import { FieldError } from "text_field.slint";
+
+export enum HotkeyState { idle, recording, conflict }
+
+// A key legend. Private on purpose: the public Keycap is a separate component.
+component HotkeyChip inherits Rectangle {
+    in property <string> text;
+    height: Space.s5;
+    min-width: Space.s5;
+    background: Theme.bg-sunken;
+    border-radius: Radius.sm;
+    border-width: 1px;
+    border-color: Theme.border-default;
+
+    HorizontalLayout {
+        padding-left: Space.s1;
+        padding-right: Space.s1;
+        alignment: center;
+        Text {
+            text: root.text;
+            color: Theme.text-primary;
+            font-family: Fonts.mono;
+            font-size: Type.xs;
+            font-weight: Type.medium;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+}
+
+// Name of a non-modifier key as it appears in a combo string ("Ctrl+Alt+V"). Combo strings are an exchange
+// format for the platform layer, not translated copy.
+global Combo {
+    pure public function key-name(t: string) -> string {
+        if (t == " ") { return "Space"; }
+        if (t == "\n") { return "Enter"; }
+        if (t == Key.Tab) { return "Tab"; }
+        if (t == Key.Backspace) { return "Backspace"; }
+        if (t == Key.Delete) { return "Delete"; }
+        if (t == Key.Insert) { return "Insert"; }
+        if (t == Key.Home) { return "Home"; }
+        if (t == Key.End) { return "End"; }
+        if (t == Key.PageUp) { return "PageUp"; }
+        if (t == Key.PageDown) { return "PageDown"; }
+        if (t == Key.LeftArrow) { return "Left"; }
+        if (t == Key.RightArrow) { return "Right"; }
+        if (t == Key.UpArrow) { return "Up"; }
+        if (t == Key.DownArrow) { return "Down"; }
+        if (t == Key.F1) { return "F1"; }
+        if (t == Key.F2) { return "F2"; }
+        if (t == Key.F3) { return "F3"; }
+        if (t == Key.F4) { return "F4"; }
+        if (t == Key.F5) { return "F5"; }
+        if (t == Key.F6) { return "F6"; }
+        if (t == Key.F7) { return "F7"; }
+        if (t == Key.F8) { return "F8"; }
+        if (t == Key.F9) { return "F9"; }
+        if (t == Key.F10) { return "F10"; }
+        if (t == Key.F11) { return "F11"; }
+        if (t == Key.F12) { return "F12"; }
+        return t.to-uppercase();
+    }
+
+    pure public function is-modifier-key(t: string) -> bool {
+        return t == Key.Control || t == Key.ControlR || t == Key.Shift || t == Key.ShiftR
+            || t == Key.Alt || t == Key.AltGr || t == Key.Meta || t == Key.MetaR;
+    }
+}
+
+// DESIGN.md §4 HotkeyRecorder: shows a shortcut as key chips; click or Enter starts recording, the next
+// combination (at least one modifier plus a key) is reported through `recorded`. Esc cancels, losing focus
+// cancels. Whether the combination is taken is the caller's call: it sets `conflict` to the message.
+//
+// States: idle, recording, conflict (`state`). Conflict is shown with an icon and the message, not by colour alone.
+export component HotkeyRecorder inherits VerticalLayout {
+    // Accessible name (e.g. "Open panel").
+    in property <string> label;
+    // The current shortcut, one entry per chip ("Ctrl", "Alt", "V"). Empty: not set.
+    in property <[string]> keys;
+    // The same shortcut as one string, spoken by assistive technology ("Ctrl+Alt+V").
+    in property <string> value;
+    // Shown when `keys` is empty, e.g. "Not set".
+    in property <string> empty-text;
+    // Shown while recording, e.g. "Press the new shortcut".
+    in property <string> recording-text;
+    // Non-empty: the recorded combination clashes; this is the message. Cleared by the caller.
+    in property <string> conflict;
+    in property <string> clear-label;
+    in property <bool> enabled: true;
+    // Forced visual states for galleries and screenshots.
+    in property <bool> show-hover: false;
+    in property <bool> show-focus: false;
+    in-out property <bool> recording: false;
+
+    out property <HotkeyState> state: root.recording ? HotkeyState.recording
+        : root.conflict != "" ? HotkeyState.conflict : HotkeyState.idle;
+    out property <bool> has-focus: scope.has-focus;
+
+    // A new combination, e.g. "Ctrl+Alt+V". Recording has stopped; the caller validates and stores it.
+    callback recorded(combo: string);
+    // The clear button (or Delete) was used.
+    callback cleared();
+    // Recording was abandoned with Esc or by leaving the control; nothing changed.
+    callback cancelled();
+
+    public function begin-recording() {
+        if (root.enabled && !root.recording) {
+            root.recording = true;
+            scope.focus();
+        }
+    }
+    public function cancel-recording() {
+        if (root.recording) {
+            root.recording = false;
+            root.cancelled();
+        }
+    }
+
+    property <bool> hovered: (touch.has-hover && root.enabled) || root.show-hover;
+    property <bool> has-keys: root.keys.length > 0;
+    property <bool> clear-visible: root.has-keys && !root.recording && root.enabled;
+
+    spacing: Space.s1;
+    alignment: start;
+    forward-focus: scope;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-value: root.value;
+    accessible-description: root.recording ? root.recording-text : root.conflict;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { root.begin-recording(); }
+
+    // Leaving the control abandons a recording in progress.
+    changed has-focus => {
+        if (!root.has-focus) { root.cancel-recording(); }
+    }
+
+    box := Rectangle {
+        height: Space.hit;
+        background: !root.enabled ? Theme.bg-sunken : root.recording ? Theme.accent-subtle : Theme.bg-surface;
+        border-radius: Radius.md;
+        border-width: 1px;
+        border-color: root.recording ? Theme.accent
+            : root.state == HotkeyState.conflict ? Theme.danger-fg
+            : root.hovered ? Theme.text-secondary
+            : Theme.border-strong;
+        opacity: root.enabled ? 1.0 : 0.45;
+        animate border-color { duration: Motion.instant; easing: Motion.out; }
+
+        touch := TouchArea {
+            enabled: root.enabled;
+            clicked => { root.begin-recording(); }
+        }
+
+        HorizontalLayout {
+            padding-left: Space.s2;
+            padding-right: Space.s0-5;
+            spacing: Space.s1;
+            if root.recording: Icon {
+                source: Icons.keyboard;
+                tint: Theme.accent-text;
+                y: (parent.height - self.height) / 2;
+            }
+            if root.recording: Text {
+                horizontal-stretch: 1;
+                text: root.recording-text;
+                color: Theme.accent-text;
+                font-family: Fonts.sans;
+                font-size: Type.base;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+            if !root.recording && root.has-keys: HorizontalLayout {
+                horizontal-stretch: 1;
+                spacing: Space.s1;
+                alignment: start;
+                for key in root.keys: HotkeyChip {
+                    text: key;
+                    y: (parent.height - self.height) / 2;
+                }
+            }
+            if !root.recording && !root.has-keys: Text {
+                horizontal-stretch: 1;
+                text: root.empty-text;
+                color: Theme.text-secondary;
+                font-family: Fonts.sans;
+                font-size: Type.base;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+            if root.clear-visible: Rectangle {
+                width: Space.hit-min;
+                height: Space.hit-min;
+                y: (parent.height - self.height) / 2;
+                border-radius: Radius.sm;
+                background: clear-touch.pressed ? Theme.bg-sunken : clear-touch.has-hover ? Theme.bg-hover : transparent;
+                accessible-role: button;
+                accessible-label: root.clear-label;
+                accessible-action-default => { root.cleared(); }
+
+                Icon {
+                    source: Icons.x;
+                    tint: clear-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                }
+                clear-touch := TouchArea {
+                    clicked => { root.cleared(); }
+                }
+            }
+        }
+
+        // 2px ring, 2px offset (DESIGN.md §2).
+        Rectangle {
+            x: -4px;
+            y: -4px;
+            width: parent.width + 8px;
+            height: parent.height + 8px;
+            border-width: (scope.has-focus || root.show-focus) ? 2px : 0px;
+            border-color: Theme.focus-ring;
+            border-radius: Radius.md + 2px;
+            background: transparent;
+        }
+
+        scope := FocusScope {
+            enabled: root.enabled;
+            key-pressed(event) => {
+                if (!root.recording) {
+                    if (event.text == " " || event.text == "\n") {
+                        root.begin-recording();
+                        return accept;
+                    }
+                    if (event.text == Key.Delete && root.clear-visible) {
+                        root.cleared();
+                        return accept;
+                    }
+                    return reject;
+                }
+                if (event.text == Key.Escape) {
+                    root.cancel-recording();
+                    return accept;
+                }
+                // Holding a modifier alone, or a key without one, keeps listening.
+                if (Combo.is-modifier-key(event.text)
+                    || !(event.modifiers.control || event.modifiers.alt || event.modifiers.shift || event.modifiers.meta)) {
+                    return accept;
+                }
+                root.recording = false;
+                root.recorded((event.modifiers.control ? "Ctrl+" : "") + (event.modifiers.alt ? "Alt+" : "")
+                    + (event.modifiers.shift ? "Shift+" : "") + (event.modifiers.meta ? "Win+" : "") + Combo.key-name(event.text));
+                return accept;
+            }
+        }
+    }
+
+    if root.state == HotkeyState.conflict: FieldError { text: root.conflict; }
+}
