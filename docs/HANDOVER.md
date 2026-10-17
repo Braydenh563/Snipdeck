@@ -50,7 +50,8 @@ Not verifiable here (stays unverified until the owner runs the wizard on Windows
   Phosphor icons (`scripts/ui_icons.py`), IBM Plex bundled, Button, headless harness (`src/testing.rs`: software renderer,
   frozen clock, golden PNGs in `tests/golden/`, `UPDATE_GOLDEN=1`), accessibility-tree tests via `i-slint-backend-testing`,
   bundled translations (7 locales, `scripts/i18n.py extract|check`, wired into the gate). Conventions: `crates/snipdeck-ui/README.md`.
-  More components are being built in three worktree branches (primitives, inputs/navigation, deck) to be merged.
+  Component library merged (primitives, inputs/navigation, deck; ~150 tests). Opus review findings (3 high, 5 medium) to fix: `.claude/reviews/ui-components.md` (gitignored; also summarised in the next commit). Panel window in progress.
+- **Store batch API** landed: `Store::transaction` / `Batch` (savepoints, rollback incl. blobs); import is atomic via `Library::atomically`.
 - **`snipdeck-app`** (logic only, no windows yet): `usecase` (use an item: content -> template -> pipeline -> count use),
   `panel` (view-model), `toast` (messages), `settings` (tolerant load, chord rules).
 - Decisions: ADR-0008 (OS caption buttons on the main window, own chrome on the panel, Win32 tray in the platform crate).
