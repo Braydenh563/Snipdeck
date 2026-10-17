@@ -310,7 +310,10 @@ mod tests {
         let request = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
         assert_eq!(w.run(&request).expect("used").outcome, UseOutcome::Copied);
         assert_eq!(w.clipboard.log, ["persistent:1"]);
-        assert!(w.keyboard.sent.is_empty());
+        assert_eq!(
+            w.keyboard.sent,
+            Vec::<Vec<snipdeck_platform::keys::KeyEvent>>::new()
+        );
     }
 
     #[test]
@@ -356,7 +359,7 @@ mod tests {
         };
         assert_eq!(prompts.len(), 1);
         assert_eq!(prompts[0].name, "Name");
-        assert!(w.clipboard.log.is_empty());
+        assert_eq!(w.clipboard.log, Vec::<String>::new());
         assert_eq!(w.store.item(id).expect("item").use_count, 0);
         assert_eq!(super::prompts(&w.store, id).expect("prompts").len(), 1);
     }
@@ -378,6 +381,6 @@ mod tests {
     fn plain_items_have_no_prompts() {
         let mut w = World::new();
         let id = w.add(ItemKind::Text, false, "{not a placeholder}");
-        assert!(super::prompts(&w.store, id).expect("prompts").is_empty());
+        assert_eq!(super::prompts(&w.store, id).expect("prompts"), Vec::new());
     }
 }

@@ -254,7 +254,7 @@ mod tests {
         for action in HotkeyAction::ALL {
             assert!(settings.hotkeys.chord(action).is_some(), "{action:?}");
         }
-        assert!(settings.hotkey_conflicts().is_empty());
+        assert_eq!(settings.hotkey_conflicts(), Vec::new());
         let mut sanitised = settings.clone();
         sanitised.sanitize();
         assert_eq!(sanitised, settings);
@@ -339,6 +339,6 @@ mod tests {
         );
         assert_eq!(settings.hotkeys.toggle_panel, "Ctrl+Shift+Space");
         assert_eq!(settings.hotkeys.picker, "");
-        assert!(settings.hotkey_conflicts().is_empty());
+        assert_eq!(settings.hotkey_conflicts(), Vec::new());
     }
 }
