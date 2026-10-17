@@ -1,0 +1,139 @@
+{
+  "id": "S2",
+  "title": "IME and CJK input in Slint",
+  "note": "docs/spikes/S2-ime.md",
+  "dir": "spikes/s2-ime",
+  "exe": "s2-ime",
+  "setup": [
+    "Settings > Time & language > Language & region: add Japanese (Microsoft IME), Chinese (Simplified, PRC) (Microsoft Pinyin) and Korean (Microsoft IME). Switch between them with Win+Space.",
+    "Keep the wizard open. It captures the test app's console output automatically (press l during a test to view it)."
+  ],
+  "captureLines": ["system fallback before override", "found (before window creation)"],
+  "tests": [
+    {
+      "id": "1", "gate": true,
+      "title": "Japanese: inline composition in LineEdit",
+      "do": "Switch to JA. Click LineEdit (1). Type nihongo. Press Space. Press Enter.",
+      "expect": "While typing, the kana appears INLINE in the field, highlighted, with no floating IME box. After Space: the kanji. After Enter: committed. Log: exactly one 'edited' event. NO 'accepted', NO 'key-pressed <Return>'. Latin is in Plex, kanji in Yu Gothic UI."
+    },
+    {
+      "id": "2",
+      "title": "Japanese: candidate list position",
+      "do": "JA. Type kanji, press Space (candidate list opens), Space again.",
+      "expect": "The candidate list is directly BELOW THE START of the composition in the LineEdit (not at the window corner, not at screen 0,0). Arrow Down moves within the list."
+    },
+    {
+      "id": "3", "gate": true,
+      "title": "Chinese Pinyin",
+      "do": "Switch to ZH Pinyin. In LineEdit (1) type zhongwen, then press 1 or Space.",
+      "expect": "Inline pinyin (zhong'wen) while typing; candidate bar under the field; the Chinese text is committed; one 'edited' event."
+    },
+    {
+      "id": "4", "gate": true,
+      "title": "Korean Hangul",
+      "do": "Switch to KO (2-set). In LineEdit (1) type: gksrmf dlqfur",
+      "expect": "Hangul input with the space in the right place. Each syllable shows inline while being composed. No doubled or reordered jamo."
+    },
+    {
+      "id": "5",
+      "title": "Korean: caret movement commits first",
+      "do": "KO. Type gks (a syllable is composing), then press Left.",
+      "expect": "The syllable is committed first, THEN the caret moves left of it."
+    },
+    {
+      "id": "6",
+      "title": "Japanese: long sentence and clauses",
+      "do": "JA. Type watashihanihongonobenkyouwoshiteimasu, Space, then Left/Right, Space, Enter.",
+      "expect": "Inline composition grows. After conversion Left/Right switch the active clause (caret jumps between clauses; candidate list re-targets). Note how readable it is: whole composition highlighted, no underline. Enter commits the sentence."
+    },
+    {
+      "id": "7",
+      "title": "Arrow keys during composition",
+      "do": "JA/ZH. While composing, press Left/Right/Home/End.",
+      "expect": "Slint's caret does not move and the log shows NO 'key-pressed'. After commit, arrows move the caret normally and are logged."
+    },
+    {
+      "id": "8",
+      "title": "Narrow field: end of long composition",
+      "do": "In the narrow LineEdit type aaaaaaaa, then a long JA composition (toukyoutokkyokyokakyoku) at the end.",
+      "expect": "Record: is the end of the composition visible before commit? (Expected: it is clipped at the right edge until commit, then the field scrolls.)"
+    },
+    {
+      "id": "9",
+      "title": "Wrapped TextEdit",
+      "do": "In TextEdit (2) click at the end of the first wrapped line, type nihongonihongo, Space.",
+      "expect": "The composition wraps to the next line correctly. Record where the candidate list appears and whether it covers the composition."
+    },
+    {
+      "id": "10", "gate": true,
+      "title": "Custom Plex TextInput",
+      "do": "In PlexInput (3) repeat tests 1, 3 and 4.",
+      "expect": "Same as 1, 3, 4. The red line below shows the raw composition while composing and is empty after commit. Latin in Plex, kana/kanji in Yu Gothic UI, hanzi in YaHei UI, Hangul in Malgun Gothic."
+    },
+    {
+      "id": "11",
+      "title": "Esc and Backspace during composition",
+      "do": "JA: type nihongo, press Esc. Then type nihongo, Backspace twice, Enter.",
+      "expect": "Esc: composition disappears, field unchanged, and an Esc is NOT logged. Backspace edits only the composition; the commit inserts the shortened text."
+    },
+    {
+      "id": "12",
+      "title": "Click elsewhere mid-composition (other field)",
+      "do": "JA: type nihongo (do not commit), click PlexInput.",
+      "expect": "Record one of: committed into LineEdit / committed into PlexInput / dropped. Any is acceptable if consistent; text must not be duplicated."
+    },
+    {
+      "id": "13",
+      "title": "Click elsewhere mid-composition (same field)",
+      "do": "JA: in PlexInput type nihongo, click elsewhere in the same text.",
+      "expect": "Record: the composition moves with the caret (known caveat), commits, or is dropped. Nothing may be duplicated or corrupted."
+    },
+    {
+      "id": "14",
+      "title": "Alt+Tab mid-composition (known bug #10861)",
+      "do": "KO and JA: type gks / nihongo, Alt+Tab to another app and back.",
+      "expect": "Known bug: the composing text is lost. Record the actual behaviour."
+    },
+    {
+      "id": "15", "gate": true,
+      "title": "Switching IME does not freeze the UI (#5206)",
+      "do": "With the app focused and the IME set to English, press Win+Space to Microsoft Pinyin, then type. Repeat on Windows 10 if available.",
+      "expect": "The heartbeat in the top line keeps counting and input appears. If the heartbeat STOPS, note the renderer and OS build and retry test 17's software renderer."
+    },
+    {
+      "id": "16a",
+      "title": "CJK font order: --cjk ja",
+      "launch": { "args": ["--cjk", "ja"] },
+      "do": "Compare row 'default stack' with the 'Yu Gothic UI' and 'Microsoft YaHei UI' rows. Look at the characters for straight, bone, corner, now, sea.",
+      "expect": "Han glyphs in the default row match the Yu Gothic row. Kana always Yu Gothic, Hangul always Malgun. The 'no glyph' row is blank or a box, no crash."
+    },
+    {
+      "id": "16b",
+      "title": "CJK font order: --cjk zh",
+      "launch": { "args": ["--cjk", "zh"] },
+      "do": "Same comparison as before.",
+      "expect": "Han glyphs in the default row match the YaHei row."
+    },
+    {
+      "id": "16c",
+      "title": "CJK font order: --cjk system (baseline)",
+      "launch": { "args": ["--cjk", "system"] },
+      "do": "Same comparison as before.",
+      "expect": "Record which font DirectWrite picked (Yu Gothic-like or YaHei-like)."
+    },
+    {
+      "id": "17",
+      "title": "Software renderer gives identical behaviour",
+      "launch": { "env": { "SLINT_BACKEND": "winit-software" } },
+      "do": "Repeat tests 1, 3 and 4 with the software renderer.",
+      "expect": "Identical behaviour and look to the default renderer."
+    },
+    {
+      "id": "18", "optional": true,
+      "title": "Display scaling 150% (and a second monitor)",
+      "launch": { "args": [] },
+      "do": "Set display scaling to 150% (and use a second monitor with different scaling if available). Repeat tests 1 to 3 with the window on each monitor.",
+      "expect": "Candidate list still directly under the composition; no offset that grows with the scale factor."
+    }
+  ]
+}

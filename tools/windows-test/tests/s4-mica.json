@@ -1,0 +1,218 @@
+{
+  "id": "S4",
+  "title": "Mica chrome, rounded corners, theme / DPI / text size",
+  "note": "docs/spikes/S4-mica.md",
+  "dir": "spikes/s4-mica",
+  "exe": "s4-mica",
+  "setup": [
+    "Use a colourful desktop wallpaper so Mica tint is visible.",
+    "The wizard captures the app's [s4] diagnostics line automatically; press l during a test to view it.",
+    "Note your GPU vendor (the wizard records it)."
+  ],
+  "captureLines": ["[s4]"],
+  "tests": [
+    {
+      "id": "1", "os": "win11", "anyGroup": "mica",
+      "title": "Default launch: Mica on chrome, opaque cards",
+      "launch": { "env": {} },
+      "do": "Keep the window active over the wallpaper. Take a screenshot (press c).",
+      "expect": "Header, tab bar and footer show MICA (subtle wallpaper tint); the card zone is opaque warm off-white. 8px rounded corners, DWM shadow, 1px grey border. Diagnostics show 'chrome: Backdrop(Mica)' and 'DWM: dark=ok corners=ok border=ok extend=Full:ok backdrop=2:ok'. FAILURE MODES to record: black chrome, opaque grey/white chrome, a 1px dark line along the top edge."
+    },
+    {
+      "id": "2", "os": "win11", "anyGroup": "mica",
+      "title": "Same with the software renderer",
+      "launch": { "env": { "SLINT_BACKEND": "winit-software" } },
+      "do": "Look at the chrome again. Take a screenshot (press c).",
+      "expect": "Same as test 1. This decides which renderer we use."
+    },
+    {
+      "id": "3", "os": "win11",
+      "title": "Drag and resize",
+      "do": "Drag the window by the header across the wallpaper. Resize from the left edge, right edge, bottom edge and bottom-right corner.",
+      "expect": "The tint updates with position; dragging and resizing work. Width stays within 260 to 480."
+    },
+    {
+      "id": "4", "os": "win11",
+      "title": "Inactive window turns flat",
+      "do": "Click another app so the panel becomes inactive, then click back on the panel.",
+      "expect": "Inactive: chrome goes FLAT neutral (expected Mica behaviour). Active again: tint returns."
+    },
+    {
+      "id": "5a", "os": "win11",
+      "title": "Never-activating window (the real panel's situation)",
+      "launch": { "env": { "S4_NOACTIVATE": "1" } },
+      "do": "Click inside the panel.",
+      "expect": "Record whether the chrome is ever tinted (expected: flat, since the window never activates)."
+    },
+    {
+      "id": "5b", "os": "win11",
+      "title": "Workaround: keep-active look",
+      "launch": { "env": { "S4_NOACTIVATE": "1", "S4_KEEP_ACTIVE_LOOK": "1" } },
+      "do": "Click inside the panel. Look at the chrome, corners and shadow.",
+      "expect": "Record whether the tint appears, and whether corners and shadow survive with WS_EX_TOOLWINDOW. This decides the panel material."
+    },
+    {
+      "id": "6", "os": "win11", "gate": true,
+      "title": "Live dark / light switching",
+      "launch": { "env": {} },
+      "do": "While running: Settings > Personalization > Colors > Choose your mode > Dark, then back to Light.",
+      "expect": "Within about 1 s the card zone turns near-black, cards dark, text light, and Mica turns dark ('dark=ok'). Diagnostics name the trigger and 'theme dark'. Reverses cleanly."
+    },
+    {
+      "id": "7", "os": "win11", "gate": true,
+      "title": "Transparency effects off / on",
+      "do": "Settings > Personalization > Colors > Transparency effects: off, then on.",
+      "expect": "Off: chrome becomes solid and matches the card zone, 'chrome: Solid(TransparencyOff)', 'backdrop=1:ok', hairlines still separate the zones. On: Mica returns."
+    },
+    {
+      "id": "8", "os": "win11", "gate": true,
+      "title": "High contrast theme",
+      "do": "Turn on a contrast theme (Settings > Accessibility > Contrast themes > for example Night sky), then turn it off.",
+      "expect": "On: every surface uses the theme window colour, text uses its text colour, 1px borders in the text colour on cards and around the window, solid chrome, 'chrome: Solid(HighContrast)'. Off: the normal theme returns."
+    },
+    {
+      "id": "9", "os": "win11", "gate": true,
+      "title": "Per-monitor DPI",
+      "do": "With two monitors at different scales (for example 100% and 150%) drag the window between them. Also change Settings > Display > Scale while it runs. (One monitor only? change the scale and mark pass if it behaves.)",
+      "expect": "The window keeps its logical size (320 px wide by default), text stays sharp, 'DPI scale' updates in the diagnostics, corners and shadow persist."
+    },
+    {
+      "id": "10", "os": "win11", "gate": true,
+      "title": "Windows Text size setting",
+      "do": "Settings > Accessibility > Text size > 150% > Apply. Then 225%, then back to 100%.",
+      "expect": "Text grows and the header, tabs and footer grow with it ('text scale 1.50' / '2.25'). RECORD WHICH SIGNAL triggered the refresh. Known: at 175% and above the tab bar overflows (the real ListTabBar must scroll)."
+    },
+    {
+      "id": "11a", "os": "win11", "optional": true,
+      "title": "Matrix: extend frame 1px",
+      "launch": { "env": { "S4_EXTEND": "1px" } },
+      "do": "Look at the chrome. Record: Mica visible? shadow? rounded corners? a top 1px line?",
+      "expect": "Expected: opaque chrome."
+    },
+    {
+      "id": "11b", "os": "win11", "optional": true,
+      "title": "Matrix: no frame extension",
+      "launch": { "env": { "S4_EXTEND": "none" } },
+      "do": "Same observations.",
+      "expect": "Expected: opaque chrome."
+    },
+    {
+      "id": "11c", "os": "win11", "optional": true,
+      "title": "Matrix: shadow off",
+      "launch": { "env": { "S4_SHADOW": "0" } },
+      "do": "Same observations.",
+      "expect": "Record whether the shadow is gone."
+    },
+    {
+      "id": "11d", "os": "win11", "optional": true,
+      "title": "Matrix: shadow off, full extension",
+      "launch": { "env": { "S4_SHADOW": "0", "S4_EXTEND": "full" } },
+      "do": "Same observations.",
+      "expect": "Shadow comes from either S4_SHADOW=1 or the frame extension."
+    },
+    {
+      "id": "11e", "os": "win11", "optional": true,
+      "title": "Matrix: Mica Alt",
+      "launch": { "env": { "S4_BACKDROP": "mica-alt" } },
+      "do": "Same observations.",
+      "expect": "Record how it differs from plain Mica."
+    },
+    {
+      "id": "11f", "os": "win11", "optional": true,
+      "title": "Matrix: Acrylic",
+      "launch": { "env": { "S4_BACKDROP": "acrylic" } },
+      "do": "Same observations.",
+      "expect": "Record how it differs (we do not plan to use it)."
+    },
+    {
+      "id": "12", "os": "win11", "optional": true,
+      "title": "No white flash in dark mode",
+      "launch": { "env": {} },
+      "do": "Switch Windows to dark mode, then press r (relaunch) five times, watching the first frame each time.",
+      "expect": "No white or light flash before the dark UI appears. Record any flash."
+    },
+    {
+      "id": "13", "os": "win11", "optional": true,
+      "title": "Resize strips",
+      "do": "Resize quickly from the right edge back and forth.",
+      "expect": "Record any black or transparent strips during resize. Compare the two renderers (test 2)."
+    },
+    {
+      "id": "14", "os": "win11", "optional": true,
+      "title": "Readability on strong wallpapers",
+      "do": "Use a saturated dark wallpaper in light mode, then a saturated light wallpaper in dark mode. Zoom the footer with Magnifier (Win and Plus).",
+      "expect": "Footer text is readable, with no coloured fringes or halos around glyphs."
+    },
+    {
+      "id": "15", "os": "win11", "optional": true,
+      "title": "Battery saver",
+      "do": "(Laptop) Turn on Energy saver / Battery saver.",
+      "expect": "Record whether Mica goes flat and whether 'transparency' in the diagnostics changes."
+    },
+    {
+      "id": "16", "os": "win11", "optional": true,
+      "title": "NVIDIA OpenGL compatibility (only if test 1 was black)",
+      "do": "NVIDIA Control Panel > Manage 3D settings > OpenGL GDI compatibility > Prefer compatibility, then repeat test 1.",
+      "expect": "Record whether that fixes the default renderer. Informational only."
+    },
+    {
+      "id": "17", "os": "win11",
+      "title": "Fallback look (forced solid chrome)",
+      "launch": { "env": { "S4_FORCE_SOLID": "1" } },
+      "do": "Look at the window and compare it with DESIGN.md. Take a screenshot (press c).",
+      "expect": "'Solid(ForcedByConfig)', 'backdrop=1:ok'. Corners, shadow and border stay."
+    },
+
+    {
+      "id": "W1", "os": "win10", "gate": true,
+      "title": "Windows 10: solid chrome",
+      "launch": { "env": {} },
+      "do": "Look at the window (default renderer).",
+      "expect": "Solid chrome, 'chrome: Solid(UnsupportedOs)', SQUARE corners, a DWM shadow, a Slint-drawn 1px border. No black areas. The 'dark=' entry may show an error code on older builds (harmless)."
+    },
+    {
+      "id": "W1b", "os": "win10",
+      "title": "Windows 10: software renderer",
+      "launch": { "env": { "SLINT_BACKEND": "winit-software" } },
+      "do": "Look at the window.",
+      "expect": "Same as W1."
+    },
+    {
+      "id": "W2", "os": "win10", "gate": true,
+      "title": "Windows 10: drag and resize",
+      "launch": { "env": {} },
+      "do": "Drag and resize the window.",
+      "expect": "Works."
+    },
+    {
+      "id": "W3", "os": "win10", "gate": true,
+      "title": "Windows 10: dark / light switching",
+      "do": "Settings > Personalization > Colors > default app mode Dark, then Light, while running.",
+      "expect": "Tokens switch within about 1 s and the diagnostics show the trigger."
+    },
+    {
+      "id": "W4", "os": "win10", "gate": true,
+      "title": "Windows 10: Make text bigger",
+      "do": "Settings > Ease of Access > Display > Make text bigger > 150%.",
+      "expect": "Text and chrome grow. Record which signal arrived."
+    },
+    {
+      "id": "W5", "os": "win10", "gate": true,
+      "title": "Windows 10: high contrast",
+      "do": "Toggle high contrast (Left Alt + Left Shift + Print Screen).",
+      "expect": "System colours are used, solid chrome, 1px text-colour borders."
+    },
+    {
+      "id": "W6", "os": "win10", "gate": true,
+      "title": "Windows 10: two monitors / scaling",
+      "do": "Drag between monitors at different scales, or change Display > Scale while running.",
+      "expect": "Logical size kept, text sharp, 'DPI scale' updates."
+    },
+    {
+      "id": "W7", "os": "win10", "gate": true,
+      "title": "Windows 10: no 'entry point not found' dialog",
+      "do": "Relaunch the app (r) and watch start-up.",
+      "expect": "No error dialog about SetWindowSubclass / comctl32."
+    }
+  ]
+}
