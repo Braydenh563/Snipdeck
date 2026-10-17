@@ -5,12 +5,19 @@
 //! into a [`Payload`] and hands that over; the capture path (M5) produces one from the clipboard.
 
 /// A file to place on the clipboard.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct FilePayload {
     /// A single valid Windows path component (core checks this when the item is saved).
     pub name: String,
     /// The file's bytes.
     pub bytes: Vec<u8>,
+}
+
+// Names and bytes may be sensitive: show the size only.
+impl std::fmt::Debug for FilePayload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "FilePayload({} bytes)", self.bytes.len())
+    }
 }
 
 /// One clipboard representation, bytes included.
@@ -44,26 +51,52 @@ impl std::fmt::Debug for Data {
 /// What to write to the clipboard: one or more representations of the same content, the first
 /// being the primary one.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Payload(Vec<Data>);
+pub struct Payload {
+    data: Vec<Data>,
+    private: bool,
+}
 
 impl Payload {
     /// Wraps `data`; `None` if it is empty.
     pub fn new(data: Vec<Data>) -> Option<Self> {
-        (!data.is_empty()).then_some(Self(data))
+        (!data.is_empty()).then_some(Self {
+            data,
+            private: false,
+        })
+    }
+
+    /// Marks the payload private (a sensitive item): every write of it, a kept copy included,
+    /// carries the markers that keep it out of clipboard history, managers and cloud sync
+    /// (SPEC §5.7).
+    #[must_use]
+    pub fn private(mut self) -> Self {
+        self.private = true;
+        self
+    }
+
+    /// Whether the payload must stay out of clipboard history.
+    pub fn is_private(&self) -> bool {
+        self.private
     }
 
     /// The representations, primary first.
     pub fn data(&self) -> &[Data] {
-        &self.0
+        &self.data
     }
 
     #[must_use]
     /// This payload reduced to its text, or unchanged when it has none (an image or a file).
     pub fn plain_text(&self) -> Self {
-        self.0
+        self.data
             .iter()
             .find(|data| matches!(data, Data::Text(_)))
-            .map_or_else(|| self.clone(), |text| Self(vec![text.clone()]))
+            .map_or_else(
+                || self.clone(),
+                |text| Self {
+                    data: vec![text.clone()],
+                    private: self.private,
+                },
+            )
     }
 }
 
@@ -87,6 +120,30 @@ mod tests {
     fn plain_text_of_an_image_is_the_image() {
         let payload = Payload::new(vec![Data::Png(vec![1, 2, 3])]).unwrap();
         assert_eq!(payload.plain_text(), payload);
+    }
+
+    #[test]
+    fn privacy_survives_plain_text_reduction() {
+        let payload = Payload::new(vec![Data::Html("<b>a</b>".into()), Data::Text("a".into())])
+            .unwrap()
+            .private();
+        assert!(payload.is_private());
+        assert!(payload.plain_text().is_private());
+        assert!(
+            !Payload::new(vec![Data::Text("a".into())])
+                .unwrap()
+                .is_private()
+        );
+    }
+
+    #[test]
+    fn file_debug_never_prints_name_or_bytes() {
+        let file = FilePayload {
+            name: "passwords.txt".into(),
+            bytes: b"hunter2".to_vec(),
+        };
+        let shown = format!("{file:?}");
+        assert!(!shown.contains("passwords") && !shown.contains("hunter2"));
     }
 
     #[test]

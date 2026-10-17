@@ -13,10 +13,17 @@
 //! The Windows implementation of those traits lives in a `windows` module (`cfg(windows)`), the
 //! only place `unsafe` is allowed (ADR-0003, `docs/architecture.md`).
 
+pub mod cf_html;
+pub mod chord;
+pub mod command_line;
+pub mod error;
+pub mod instance_names;
 pub mod keys;
 pub mod payload;
 pub mod pipeline;
 pub mod route;
+pub mod win_formats;
+pub mod win_logic;
 
 #[cfg(windows)]
 #[allow(

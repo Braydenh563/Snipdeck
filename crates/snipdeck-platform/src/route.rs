@@ -20,7 +20,7 @@ pub enum Focus {
 }
 
 /// The window that had focus before the user clicked Snipdeck.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Target {
     /// Executable file name, for example `notepad.exe`.
     pub app: String,
@@ -30,6 +30,18 @@ pub struct Target {
     pub elevated: bool,
     /// What focus was found inside the Target.
     pub focus: Focus,
+}
+
+// The title may be private (a document name, a page title): never print it.
+impl std::fmt::Debug for Target {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Target")
+            .field("app", &self.app)
+            .field("title_len", &self.title.len())
+            .field("elevated", &self.elevated)
+            .field("focus", &self.focus)
+            .finish()
+    }
 }
 
 /// User policy that affects routing.
@@ -122,6 +134,13 @@ mod tests {
             elevated,
             focus,
         }
+    }
+
+    #[test]
+    fn target_debug_hides_the_title() {
+        let mut t = target("a.exe", false, Focus::Caret);
+        t.title = "Salary review.docx".into();
+        assert!(!format!("{t:?}").contains("Salary"));
     }
 
     #[test]

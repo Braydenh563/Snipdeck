@@ -174,7 +174,8 @@ fn paste<C: Clipboard, K: Keyboard, T: Timing>(
 
     let events = paste_sequence(env.keyboard.held_modifiers(), key);
     if env.keyboard.send(&events).is_err() {
-        env.clipboard.write_persistent(payload)?;
+        // The item is still on the clipboard from the transient write. Writing it again would
+        // overwrite anything the user copied meanwhile and drop the privacy markers.
         return Ok(UseOutcome::CopiedInstead(PasteFailure::TargetUnavailable));
     }
 
@@ -188,8 +189,8 @@ fn paste<C: Clipboard, K: Keyboard, T: Timing>(
         env.timing.sleep(POLL_INTERVAL);
     }
     if !requested {
-        // The Target never asked: nothing was pasted. Keep the item for the user to paste by hand.
-        env.clipboard.write_persistent(payload)?;
+        // The Target never asked: nothing was pasted. The item stays on the clipboard from the
+        // transient write for the user to paste by hand (see above for why it is not rewritten).
         return Ok(UseOutcome::CopiedInstead(PasteFailure::TargetUnavailable));
     }
     env.timing.sleep(SETTLE);
@@ -215,6 +216,8 @@ mod tests {
         polls: u32,
         fail_snapshot: bool,
         fail_write: bool,
+        /// What `restore` returns.
+        restore_result: Option<Result<bool, Error>>,
     }
 
     impl Clipboard for FakeClipboard {
@@ -249,7 +252,7 @@ mod tests {
         }
         fn restore(&mut self, (): (), (): ()) -> Result<bool, Error> {
             self.log.push("restore".into());
-            Ok(true)
+            self.restore_result.clone().unwrap_or(Ok(true))
         }
     }
 
@@ -357,7 +360,8 @@ mod tests {
             w.run(UseMode::Paste, &PASTE),
             Ok(UseOutcome::CopiedInstead(PasteFailure::TargetUnavailable))
         );
-        assert_eq!(w.clipboard.log, ["snapshot", "transient:2", "persistent:2"]);
+        // The transient write stays: rewriting could clobber newer content and drop the markers.
+        assert_eq!(w.clipboard.log, ["snapshot", "transient:2"]);
         assert!(w.timing.now >= RENDER_WAIT_CAP && w.timing.now < RENDER_WAIT_CAP + SETTLE);
     }
 
@@ -377,10 +381,25 @@ mod tests {
             w.run(UseMode::Paste, &PASTE),
             Ok(UseOutcome::CopiedInstead(PasteFailure::TargetUnavailable))
         );
-        assert_eq!(
-            w.clipboard.log.last().map(String::as_str),
-            Some("persistent:2")
-        );
+        assert_eq!(w.clipboard.log, ["snapshot", "transient:2"]);
+    }
+
+    #[test]
+    fn a_refused_or_failed_restore_does_not_fail_the_paste() {
+        for result in [Ok(false), Err(Error::Clipboard("busy".into()))] {
+            let mut w = World::new();
+            w.clipboard.restore_result = Some(result);
+            assert_eq!(w.run(UseMode::Paste, &PASTE), Ok(UseOutcome::Pasted));
+            assert_eq!(w.clipboard.log, ["snapshot", "transient:2", "restore"]);
+        }
+    }
+
+    #[test]
+    fn a_failed_transient_write_is_an_error_and_sends_no_keys() {
+        let mut w = World::new();
+        w.clipboard.fail_write = true;
+        assert!(w.run(UseMode::Paste, &PASTE).is_err());
+        assert_eq!(w.keyboard.sent, Vec::<Vec<KeyEvent>>::new());
     }
 
     #[test]
