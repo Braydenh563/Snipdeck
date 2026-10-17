@@ -41,6 +41,17 @@ runs on every PR before merge.
 **Done when:** `cargo test --workspace` passes on Linux CI, `cargo clippy -D warnings` and `cargo deny` are clean,
 the Windows job compiles the workspace, and the SPEC's M1-relevant behaviours each have a test.
 
+## M1 known gaps (carry into M2 or later)
+
+| Gap | Why it matters | Plan |
+|---|---|---|
+| Import is atomic only by compensation (trash at a marker, purge, delete new tags); a crash mid-import leaves a partial new board | The store API cannot hold one transaction across calls | Add a store transaction/batch API before the import UI ships (M4); until then the import report tells the user to delete the partial board |
+| CopyQ: the binary `.cpq` export is not parsed; JSON from `copyq eval` is, and is untested against a live CopyQ | Importer may not match real CopyQ output | Test with a real CopyQ install (Windows wizard step) or drop CopyQ from v1 |
+| Windows clipboard history importer not done | Listed in SPEC §5.9 | Needs the Windows platform layer (M2) |
+| `DataKey` is not `Clone`; portable uses `Library::data_key` / `KeySource::Library` | Awkward borrow | Revisit when the app crate owns the key lifecycle (M2/M5) |
+| Release builds need `SNIPDECK_LICENCE_PUBLIC_KEY` (guard, see `docs/licensing.md`); release-mode tests need a throwaway key | Intentional fail-closed behaviour | Set the real key in the M6 release pipeline; keep CI debug-only until then |
+| DPAPI `KeyProvider`, Argon2 timing on Windows | Provider contract is in `docs/crypto.md` | M2 |
+
 ## Windows gates
 
 | After | Owner action | Decides |
