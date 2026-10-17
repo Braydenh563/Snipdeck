@@ -537,7 +537,10 @@ proptest! {
 
     #[test]
     fn rendering_is_deterministic(src in valid_template(), clip in any::<Option<String>>()) {
-        let t = Template::parse(&src).unwrap();
+        // Reusing a prompt name with a different kind is rejected on purpose (see the next test).
+        let parsed = Template::parse(&src);
+        prop_assume!(parsed.is_ok());
+        let t = parsed.unwrap();
         let a = answers(&[("a", "x")]);
         let mut ctx = RenderContext::new(now(), &a).with_locale(Locale::for_tag("de"));
         ctx.clipboard = clip.as_deref();
