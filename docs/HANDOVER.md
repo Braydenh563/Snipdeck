@@ -41,18 +41,23 @@ Goal: advance M2 -> M3 -> M4 logic as far as Linux can verify; branch `claude/co
 
 Not verifiable here (stays unverified until the owner runs the wizard on Windows): every Win32 behaviour, IME, Mica, DPI, Narrator, real-app paste. Playwright is for browsers; Slint apps are tested with the Slint testing backend plus software-renderer screenshots.
 
-## M2 in progress (branch claude/compassionate-pascal-pod8ux, PR #4)
+## State (end of M2, M3 under way; branch claude/compassionate-pascal-pod8ux, PR #4)
 
-- Done and committed (2f21a35): `crates/snipdeck-platform` portable layer: `keys` (paste-key table, Alt/Win mask-before-release
-  sequence), `route`, `payload`, `pipeline` (delayed-render paste with injected clock; 28 tests); `windows/` scaffold.
-- In flight (3 agents, uncommitted, files under `crates/snipdeck-platform/src/windows/`): clipboard (Opus), keyboard +
-  target + window_style (Sonnet), hotkey/autostart/single_instance/dpapi + portable `chord.rs` (Sonnet). Their
-  progress files: `.claude/remaining/{clipboard,target,hotkeys}.md`. Each must pass fmt, clippy (Linux and
-  `--target x86_64-pc-windows-msvc`), tests, doc before commit.
-- Still to do: M2 test harness (`crates/snipdeck-platform/examples/`) + wizard steps `tools/windows-test/tests/m2-*.json`,
-  Opus review of the unsafe code, tray (needs the app's event loop: M3), `scripts/gate.sh --full`, update PLAN/ADR-0003, PR.
-- Windows check from Linux: `rustup target add x86_64-pc-windows-msvc`, then `cargo clippy -p snipdeck-platform --target x86_64-pc-windows-msvc --locked`
-  (first build about 4-5 minutes).
+- **M2 landed** (`snipdeck-platform`): portable logic + Windows backend (clipboard with delayed render, keyboard, Target
+  tracking + UIA, hotkeys, autostart, single instance, DPAPI, panel style) + `tools/windows-test/m2-harness` and 19 wizard
+  steps in `tests/m2-platform.json`. Opus review done, fixes applied. All Win32 behaviour **unverified** until the wizard runs.
+  Windows check from Linux: `cargo clippy -p snipdeck-platform --all-targets --target x86_64-pc-windows-msvc --locked`.
+- **`snipdeck-ui`** (M3): tokens generated from `design/tokens/palette.json` by `build.rs`, `Theme`/`Type`/`Space`/`Radius`/`Motion`,
+  Phosphor icons (`scripts/ui_icons.py`), IBM Plex bundled, Button, headless harness (`src/testing.rs`: software renderer,
+  frozen clock, golden PNGs in `tests/golden/`, `UPDATE_GOLDEN=1`), accessibility-tree tests via `i-slint-backend-testing`,
+  bundled translations (7 locales, `scripts/i18n.py extract|check`, wired into the gate). Conventions: `crates/snipdeck-ui/README.md`.
+  More components are being built in three worktree branches (primitives, inputs/navigation, deck) to be merged.
+- **`snipdeck-app`** (logic only, no windows yet): `usecase` (use an item: content -> template -> pipeline -> count use),
+  `panel` (view-model), `toast` (messages), `settings` (tolerant load, chord rules).
+- Decisions: ADR-0008 (OS caption buttons on the main window, own chrome on the panel, Win32 tray in the platform crate).
+  Default hotkeys: Ctrl+Alt+Space toggles the Panel (new, not in SPEC), Ctrl+Shift+Space Picker, Ctrl+Shift+2 capture, Ctrl+Alt+V paste next.
+- CI note: Slint pulls `fontique` -> `yeslogic-fontconfig-sys`; `snipdeck-ui` enables `i-slint-common/fontconfig-dlopen` so CI needs no
+  `libfontconfig-dev`. Debug `target/` for snipdeck-ui is about 4 GB: keep few copies, `rm -rf` old ones.
 
 ## Next steps
 
