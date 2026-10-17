@@ -1,0 +1,15 @@
+import { Theme } from "../theme.slint";
+
+// Shared fills for neutral controls. `bg-sunken` equals `bg-hover` in light and `bg-app` in dark, so
+// it cannot tell "pressed" from "hovered" or from rest; pressed steps one shade further from the
+// surface instead: darker in light, lighter in dark.
+export global StateColor {
+    pure public function pressed() -> color {
+        return Theme.dark ? Theme.bg-hover.brighter(0.25) : Theme.bg-hover.darker(0.08);
+    }
+
+    // One more step, for pressing a control that already rests on `bg-hover`.
+    pure public function deep() -> color {
+        return Theme.dark ? Theme.bg-hover.brighter(0.5) : Theme.bg-hover.darker(0.16);
+    }
+}

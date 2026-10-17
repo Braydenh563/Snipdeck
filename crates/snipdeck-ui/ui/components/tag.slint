@@ -1,0 +1,126 @@
+import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Icon } from "icon.slint";
+import { StateColor } from "state-color.slint";
+import { Icons } from "../icons.slint";
+
+// DESIGN.md §4 Tag (chip): item tags and filters. 24px high.
+//  - neutral: plain chip; `removable: true` adds an x control (24x24 hit target) and Delete/Backspace
+//    on the focused chip removes it.
+//  - `selected` is shown with a leading check as well as the fill, never by colour alone.
+// Clicking the chip emits `clicked` (toggle a filter, open the tag). `remove-label` is the full
+// spoken name of the x control ("Remove tag work"); the host translates it.
+export component Tag inherits Rectangle {
+    in property <string> text;
+    in property <bool> removable: false;
+    in property <bool> selected: false;
+    in property <bool> enabled: true;
+    in property <string> remove-label;
+    callback clicked();
+    callback removed();
+
+    property <bool> pressed: touch.pressed && root.enabled;
+    property <bool> hovered: touch.has-hover && root.enabled;
+
+    height: Space.hit-min;
+    min-width: Space.hit-min;
+    background: root.selected
+        ? (root.pressed ? Theme.bg-selected.darker(0.1) : Theme.bg-selected)
+        : root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : Theme.bg-surface;
+    border-radius: Radius.md;
+    border-width: 1px;
+    border-color: root.selected ? Theme.accent : Theme.border-default;
+    opacity: root.enabled ? 1.0 : 0.45;
+    forward-focus: scope;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    HorizontalLayout {
+        padding-left: Space.s2;
+        padding-right: root.removable ? 0px : Space.s2;
+        spacing: Space.s1;
+        alignment: start;
+        if root.selected: Rectangle {
+            width: 12px;
+            Icon {
+                source: Icons.check;
+                size: 12px;
+                tint: Theme.accent-text;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+        label := Text {
+            text: root.text;
+            color: root.selected ? Theme.text-on-selected : Theme.text-primary;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            font-weight: Type.medium;
+            vertical-alignment: center;
+        }
+        if root.removable: Rectangle {
+            width: Space.hit-min;
+            accessible-role: button;
+            accessible-label: root.remove-label;
+            accessible-enabled: root.enabled;
+            accessible-action-default => { if (root.enabled) { root.removed(); } }
+
+            Rectangle {
+                width: 20px;
+                height: 20px;
+                background: x-touch.has-hover && root.enabled ? Theme.bg-hover : transparent;
+                border-radius: Radius.sm;
+                animate background { duration: Motion.instant; easing: Motion.out; }
+                Icon {
+                    source: Icons.x;
+                    size: 12px;
+                    tint: Theme.text-secondary;
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                }
+            }
+            x-touch := TouchArea {
+                enabled: root.enabled;
+                clicked => { root.removed(); }
+            }
+        }
+    }
+
+    // 2px ring, 2px offset (DESIGN.md §2).
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.md + 2px;
+        background: transparent;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        width: root.removable ? parent.width - Space.hit-min : parent.width;
+        clicked => { root.clicked(); }
+    }
+
+    scope := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.clicked();
+                return accept;
+            }
+            if (root.removable && (event.text == Key.Delete || event.text == Key.Backspace)) {
+                root.removed();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
