@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo/snipdeck-logo.svg" alt="Snipdeck" height="96"></p>
+
 # Snipdeck
 
 A sticky-note-style snippet deck for your desktop: keep the things you paste all the time one click away, and paste them into whatever you were typing in.
