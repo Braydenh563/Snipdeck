@@ -551,3 +551,32 @@ fn a_refused_import_of_a_big_sensitive_item_leaves_no_plaintext_file_behind() {
     );
     assert_healthy(&s);
 }
+
+// ---- security review 2, finding 4: a locked library can still restore and skip duplicates ----
+
+#[test]
+fn a_locked_library_with_encrypted_items_can_still_skip_duplicates() {
+    let (mut s, _provider) = encrypted_vault();
+    // A backup of the public items, taken while the library is unlocked or locked.
+    s.lock_key_ring();
+    let bytes = export_bytes(&s, &ExportOptions::default());
+    let opts = ImportOptions {
+        merge: snipdeck_portable::MergeStrategy::SkipDuplicates,
+        ..keep()
+    };
+    let before = counts(&s);
+    let report = import_archive(&mut s, Cursor::new(&bytes), "x", at(1), &opts).unwrap();
+    assert_eq!(report.items_added, 0, "{report:?}");
+    assert_eq!(report.items_skipped, 1, "the public item is already there");
+    assert_eq!(counts(&s), before);
+
+    // Something new still arrives, next to the encrypted item it cannot read.
+    let mut other = store();
+    let b = board(&mut other, "Vault");
+    let l = list(&mut other, b.id, "L");
+    text_item(&mut other, l.id, "new", "brand new text");
+    let bytes = export_bytes(&other, &ExportOptions::default());
+    let report = import_archive(&mut s, Cursor::new(&bytes), "x", at(1), &opts).unwrap();
+    assert_eq!(report.items_added, 1, "{report:?}");
+    assert_healthy(&s);
+}

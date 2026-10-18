@@ -247,11 +247,19 @@ fn content_parts(content: &Content) -> ([u8; 32], u64) {
     }
 }
 
-/// The content hashes of every live item in `lib`, for skipping duplicates.
+/// The content hashes of every live item in `lib` that can be read, for skipping duplicates
+/// (encrypted items are left out while the library is locked).
 pub(crate) fn existing_hashes<L: Library>(lib: &L) -> Result<HashSet<[u8; 32]>> {
     let mut known = HashSet::new();
     for item in lib.all_items()? {
-        let formats = lib.formats(item.id)?;
+        let formats = match lib.formats(item.id) {
+            Ok(formats) => formats,
+            // An encrypted item cannot be read while the library is locked. Skipping it only
+            // means a duplicate of it is not recognised; refusing would stop a restore of the
+            // public items into a locked library.
+            Err(snipdeck_store::Error::EncryptionLocked) => continue,
+            Err(e) => return Err(e.into()),
+        };
         let mut hasher = ContentHasher::new();
         for format in &formats {
             match format {
