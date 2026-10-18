@@ -39,3 +39,4 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 13:1x owner: hovering/clicking the meatball (More) button shows the dropdown, but it disappears when moving the pointer to click it (screenshot: tooltip 'More' under the kebab).
 - 13:2x owner: "and I still cant resize the panel." → same cause: resize-requested not bound in the app (step 4).
 - 13:3x owner: make icon use accurate: meatball vs kebab, hamburger, bento etc.
+- 13:4x owner: uninstall/reinstall script? clear or keep data? setup wizard?
