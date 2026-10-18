@@ -1,0 +1,501 @@
+// The Picker window (SPEC 5.2, DESIGN.md §5 Picker, ADR-0003): the hotkey palette that searches ALL boards and
+// lists. Like the Panel it never takes the OS caption and keeps keyboard focus in its search field, so typing
+// always filters. Data comes in as plain structs and a model; every gesture leaves as a callback. Nothing here
+// talks to the OS (the host anchors the window at the caret, sizes it from `content-height`, and restores the
+// target window when it closes).
+//
+// Keyboard (all handled in `capture-key-pressed` on the window's FocusScope, so they work whichever control has
+// focus):
+//   type            filters; a printable key typed while another control has focus moves into the search
+//   Up / Down       move the selection (PageUp / PageDown a page); Enter uses it, Shift+Enter copies only
+//   1-9             use the Nth row while the search is empty (digits are text once a query exists);
+//                   Alt+1-9 always uses the Nth row
+//   Tab             next scope (All, This board, Pinned), Shift+Tab previous
+//   Ctrl+E          asks the host to edit the selected snippet
+//   Esc             asks the host to close the Picker
+//
+// Limitation: matched characters are not highlighted. Slint 1.18 has no stable rich text, and an ItemCard title is
+// one Text; highlighting needs per-span Text elements inside the card.
+import { ListView } from "std-widgets.slint";
+import { Theme, Type, Space, Fonts, SystemLook, Palette } from "theme.slint";
+import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
+import { SearchField } from "components/text_field.slint";
+import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
+import { Tag } from "components/tag.slint";
+import { KeyCombo } from "components/keycap.slint";
+
+// One result, as `snipdeck-app` resolves it across boards. The breadcrumb is `board-name / list-name`; the
+// quick-use number is the row's position (1-9 for the first nine); `masked-preview` stands in for a
+// sensitive item's preview.
+export struct PickerRow {
+    kind: ItemKind,
+    title: string,
+    preview: string,
+    masked-preview: string,
+    extension: string,
+    board-name: string,
+    list-name: string,
+    list-color: color,
+    image: image,
+}
+
+// What the search covers. Tab cycles through these in order.
+export enum PickerScope { all, board, pinned }
+
+// One footer hint: the key caps and what they do. The caps speak their own name; the text is read as it is.
+component Hint inherits HorizontalLayout {
+    in property <[string]> keys;
+    in property <string> key-label;
+    in property <string> text;
+    spacing: Space.s1;
+    alignment: start;
+    Rectangle {
+        width: caps.min-width;
+        caps := KeyCombo {
+            keys: root.keys;
+            label: root.key-label;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+    Text {
+        text: root.text;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        color: Theme.text-secondary;
+        vertical-alignment: center;
+    }
+}
+
+export component PickerWindow inherits Window {
+    title: @tr("Snipdeck");
+    no-frame: true;
+    always-on-top: true;
+    background: Theme.bg-overlay;
+    min-width: 320px;
+    preferred-width: 560px;
+    preferred-height: root.content-height;
+
+    // ---- State in -----------------------------------------------------------------------------
+    in property <bool> dark: false;
+    // Results across all boards, best match first. The host caps the number it sends.
+    in property <[PickerRow]> rows;
+    // The window that will receive a paste: empty means Enter copies. `target-title` is its caption.
+    in property <string> target-name;
+    in property <string> target-title;
+
+    // ---- State both ways ----------------------------------------------------------------------
+    in-out property <string> query <=> search.text;
+    in-out property <PickerScope> scope: PickerScope.all;
+    // The keyboard-selected row. The picker moves it itself and reports `selection-moved`; the app writes it
+    // back (it resets to 0 when the query or the scope changes).
+    in-out property <int> selected-index: 0;
+
+    // ---- Gestures out -------------------------------------------------------------------------
+    callback query-changed(string);
+    callback scope-changed(PickerScope);
+    // Enter or a click used row `index`.
+    callback row-activated(int);
+    // Shift+Enter or Shift+click: copy only.
+    callback row-copied(int);
+    // Digit 1-9 pressed (the app resolves it against the rows it sent).
+    callback quick-use(int);
+    callback selection-moved(int);
+    // Ctrl+E on row `index`.
+    callback edit-requested(int);
+    callback close-requested();
+
+    // ---- Public -------------------------------------------------------------------------------
+    // The window height that fits the current content: search, scopes, up to nine rows (or the empty
+    // state) and the footer. The host sizes the window from this.
+    out property <length> content-height: main.preferred-height;
+    out property <length> scroll-y: list.content-y;
+    out property <bool> search-focused: search.has-focus;
+    // Holds row `index` in its pulled (used) state for the card's 700ms (keyboard use; a click pulls itself).
+    public function mark-used(index: int) {
+        root.used-index = index;
+        used-timer.running = true;
+    }
+    public function focus-search() {
+        search.focus();
+    }
+    // Back to a fresh Picker for the next summon: no query, scope All, first row.
+    public function reset() {
+        root.query = "";
+        root.scope = PickerScope.all;
+        root.selected-index = 0;
+        list.content-y = 0px;
+        search.focus();
+    }
+
+    // ---- Internals ----------------------------------------------------------------------------
+    property <bool> pastes: root.target-name != "";
+    property <string> use-label: root.pastes ? @tr("Paste") : @tr("Copy");
+    property <bool> searching: root.query != "";
+    property <int> sel: root.rows.length == 0 ? -1 : min(max(root.selected-index, 0), root.rows.length - 1);
+    property <int> used-index: -1;
+    // SPEC 5.2 and DESIGN.md §5: up to nine rows are visible; more scroll.
+    property <int> max-rows: 9;
+    // A compact ItemCard's height (28px at 100%, one text line plus padding when the text is larger).
+    property <length> row-h: max(Space.hit, Type.line-base + Space.s1);
+    property <length> list-h: min(root.rows.length, root.max-rows) * root.row-h;
+    property <length> empty-h: Space.s12 * 4 * SystemLook.text-scale;
+    property <length> body-h: root.rows.length == 0 ? root.empty-h : root.list-h + 2 * Space.s1;
+    property <int> page-rows: max(1, min(root.rows.length, root.max-rows) - 1);
+
+    // The footer drops its secondary hints when the window is narrow for the text size. Set from `changed`
+    // handlers, not bound to `root.width`: a window's width follows its layout (see the Panel).
+    property <bool> narrow: false;
+    property <float> text-scale: SystemLook.text-scale;
+    function update-narrow() {
+        root.narrow = root.width < 380px * root.text-scale;
+    }
+
+    init => {
+        Palette.dark = root.dark;
+        root.update-narrow();
+        search.focus();
+    }
+    changed dark => {
+        Palette.dark = root.dark;
+    }
+    changed width => {
+        root.update-narrow();
+    }
+    changed text-scale => {
+        root.update-narrow();
+    }
+    changed sel => {
+        root.reveal();
+    }
+
+    used-timer := Timer {
+        interval: 700ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.used-index = -1;
+        }
+    }
+
+    // 1-9 -> n, anything else -> 0.
+    pure function digit(text: string) -> int {
+        return text == "1" ? 1 : text == "2" ? 2 : text == "3" ? 3 : text == "4" ? 4 : text == "5" ? 5
+            : text == "6" ? 6 : text == "7" ? 7 : text == "8" ? 8 : text == "9" ? 9 : 0;
+    }
+
+    // A key that produces a character: not a control, not one of Slint's private-use special keys.
+    pure function printable(text: string) -> bool {
+        if (text.character-count != 1) {
+            return false;
+        }
+        return text >= " " && !(text >= "\u{7f}" && text <= "\u{9f}") && !(text >= "\u{e000}" && text <= "\u{f8ff}");
+    }
+
+    pure function scope-index(s: PickerScope) -> int {
+        return s == PickerScope.all ? 0 : s == PickerScope.board ? 1 : 2;
+    }
+
+    pure function scope-at(i: int) -> PickerScope {
+        return i == 0 ? PickerScope.all : i == 1 ? PickerScope.board : PickerScope.pinned;
+    }
+
+    // Rows are all `row-h` tall, so the selected row's place is known without the row existing yet.
+    function reveal() {
+        if (root.sel < 0) {
+            return;
+        }
+        let y = root.sel * root.row-h;
+        if (y + list.content-y < 0px) {
+            list.content-y = -y;
+        } else if (y + root.row-h + list.content-y > list.height) {
+            list.content-y = list.height - y - root.row-h;
+        }
+    }
+
+    function reset-results() {
+        root.selected-index = 0;
+        list.content-y = 0px;
+    }
+
+    function move-selection(delta: int) {
+        if (root.rows.length == 0) {
+            return;
+        }
+        let next = min(max(root.sel + delta, 0), root.rows.length - 1);
+        if (next != root.sel) {
+            let actual = next - root.sel;
+            root.selected-index = next;
+            root.selection-moved(actual);
+        }
+    }
+
+    function use-selected(copy-only: bool) {
+        if (root.sel < 0) {
+            return;
+        }
+        root.mark-used(root.sel);
+        if (copy-only) {
+            root.row-copied(root.sel);
+        } else {
+            root.row-activated(root.sel);
+        }
+    }
+
+    function quick(n: int) {
+        if (n < 1 || n > root.rows.length) {
+            return;
+        }
+        root.selected-index = n - 1;
+        root.mark-used(n - 1);
+        root.quick-use(n);
+    }
+
+    function pick-scope(s: PickerScope) {
+        search.focus();
+        if (s != root.scope) {
+            root.scope = s;
+            root.reset-results();
+            root.scope-changed(s);
+        }
+    }
+
+    function cycle-scope(dir: int) {
+        root.pick-scope(root.scope-at(mod(root.scope-index(root.scope) + dir + 3, 3)));
+    }
+
+    // Moves a typed character into the search field when another control has focus.
+    function type-into-search(text: string) {
+        search.focus();
+        root.query = root.query + text;
+        // Past the end clamps to the end of the text.
+        search.set-cursor(1000000);
+        root.reset-results();
+        root.query-changed(root.query);
+    }
+
+    scope-keys := FocusScope {
+        forward-focus: search;
+
+        capture-key-pressed(event) => {
+            if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                if (event.text == "e" || event.text == "E") {
+                    if (root.sel >= 0) {
+                        root.edit-requested(root.sel);
+                    }
+                    return accept;
+                }
+                return reject;
+            }
+            if (event.modifiers.meta || search.composing) {
+                return reject;
+            }
+            // Alt+digit is quick-use whatever the query holds.
+            if (event.modifiers.alt) {
+                if (!event.modifiers.shift && root.digit(event.text) > 0) {
+                    root.quick(root.digit(event.text));
+                    return accept;
+                }
+                return reject;
+            }
+            if (event.text == Key.Escape) {
+                root.close-requested();
+                return accept;
+            }
+            if (event.text == Key.Backtab || (event.text == Key.Tab && event.modifiers.shift)) {
+                root.cycle-scope(-1);
+                return accept;
+            }
+            if (event.text == Key.Tab) {
+                root.cycle-scope(1);
+                return accept;
+            }
+            if (event.text == Key.DownArrow) {
+                root.move-selection(1);
+                return accept;
+            }
+            if (event.text == Key.UpArrow) {
+                root.move-selection(-1);
+                return accept;
+            }
+            if (event.text == Key.PageDown) {
+                root.move-selection(root.page-rows);
+                return accept;
+            }
+            if (event.text == Key.PageUp) {
+                root.move-selection(-root.page-rows);
+                return accept;
+            }
+            if (event.text == Key.Return) {
+                root.use-selected(event.modifiers.shift);
+                return accept;
+            }
+            // Digits are quick-use only while there is no query; with one they are search text.
+            if (!root.searching && !event.modifiers.shift && root.digit(event.text) > 0) {
+                root.quick(root.digit(event.text));
+                return accept;
+            }
+            if (!search.has-focus && event.text != " " && root.printable(event.text)) {
+                root.type-into-search(event.text);
+                return accept;
+            }
+            return reject;
+        }
+
+        main := VerticalLayout {
+            // ---- Search: 44px (SPEC 5.2) --------------------------------------------------------
+            HorizontalLayout {
+                padding: Space.s2;
+                search := SearchField {
+                    placeholder: @tr("Search all snippets");
+                    label: @tr("Search all snippets");
+                    clear-label: @tr("Clear search");
+                    edited(text) => {
+                        root.reset-results();
+                        root.query-changed(text);
+                    }
+                }
+            }
+
+            // ---- Scopes -----------------------------------------------------------------------------
+            Rectangle {
+                height: chips.preferred-height;
+                accessible-role: groupbox;
+                accessible-label: @tr("Search in");
+
+                chips := HorizontalLayout {
+                    padding-left: Space.s2;
+                    padding-right: Space.s2;
+                    padding-bottom: Space.s2;
+                    spacing: Space.s1;
+                    alignment: start;
+                    Tag {
+                        text: @tr("All");
+                        selected: root.scope == PickerScope.all;
+                        clicked => { root.pick-scope(PickerScope.all); }
+                    }
+                    Tag {
+                        text: @tr("This board");
+                        selected: root.scope == PickerScope.board;
+                        clicked => { root.pick-scope(PickerScope.board); }
+                    }
+                    Tag {
+                        text: @tr("Pinned");
+                        selected: root.scope == PickerScope.pinned;
+                        clicked => { root.pick-scope(PickerScope.pinned); }
+                    }
+                }
+            }
+
+            // ---- Results ----------------------------------------------------------------------------
+            deck := Rectangle {
+                height: root.body-h;
+                clip: true;
+
+                Rectangle {
+                    y: 0;
+                    height: 1px;
+                    background: Theme.border-subtle;
+                }
+
+                list := ListView {
+                    x: Space.s2;
+                    y: Space.s1;
+                    width: parent.width - 2 * Space.s2;
+                    height: root.list-h;
+                    vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+                    horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+                    accessible-label: @tr("Results");
+                    visible: root.rows.length > 0;
+
+                    for row[i] in root.rows: ItemCard {
+                        height: root.row-h;
+                        variant: ItemCardVariant.compact;
+                        kind: row.kind;
+                        number: i < 9 ? i + 1 : 0;
+                        title: row.title;
+                        preview: row.preview;
+                        masked-preview: row.masked-preview;
+                        extension: row.extension;
+                        image: row.image;
+                        // The breadcrumb stays on the selected row too: the use label is in the footer.
+                        list-name: row.board-name != "" ? row.board-name + " / " + row.list-name : row.list-name;
+                        list-color: row.list-color;
+                        selected: i == root.sel;
+                        use-label: "";
+                        masked-hint: @tr("Hidden. Open it in the Panel to reveal.");
+                        pulling: i == root.used-index;
+                        keyboard-focusable: false;
+                        use => {
+                            root.selected-index = i;
+                            root.row-activated(i);
+                        }
+                        copy => {
+                            root.selected-index = i;
+                            root.row-copied(i);
+                        }
+                    }
+                }
+
+                if root.rows.length == 0: EmptyState {
+                    x: Space.s2;
+                    width: parent.width - 2 * Space.s2;
+                    height: parent.height;
+                    kind: root.searching ? EmptyStateKind.search : root.scope == PickerScope.pinned ? EmptyStateKind.board : EmptyStateKind.list;
+                    heading: root.searching ? @tr("No matches")
+                        : root.scope == PickerScope.pinned ? @tr("Nothing pinned yet") : @tr("No snippets yet");
+                    body: root.searching
+                        ? (root.scope == PickerScope.all ? @tr("Nothing matches “{}”.", root.query)
+                            : root.scope == PickerScope.board ? @tr("Nothing on this board matches “{}”.", root.query)
+                            : @tr("Nothing pinned matches “{}”.", root.query))
+                        : root.scope == PickerScope.pinned ? @tr("Pin a snippet from the Panel to find it here.")
+                        : @tr("Copy something, then save it from the Panel.");
+                    action-text: "";
+                }
+            }
+
+            // ---- Footer: what each key does -----------------------------------------------------------
+            Rectangle {
+                height: max(Space.s8, Type.line-sm + Space.s3);
+
+                Rectangle {
+                    y: 0;
+                    height: 1px;
+                    background: Theme.border-subtle;
+                }
+                HorizontalLayout {
+                    padding-left: Space.s3;
+                    padding-right: Space.s3;
+                    spacing: Space.s4;
+                    alignment: start;
+                    Hint {
+                        keys: ["↵"];
+                        key-label: @tr("Enter");
+                        text: root.use-label;
+                    }
+                    if root.pastes && !root.narrow: Hint {
+                        keys: ["Shift", "↵"];
+                        key-label: @tr("Shift Enter");
+                        text: @tr("Copy");
+                    }
+                    if !root.narrow: Hint {
+                        keys: ["Tab"];
+                        key-label: @tr("Tab");
+                        text: @tr("Scope");
+                    }
+                    if !root.narrow: Hint {
+                        keys: ["Esc"];
+                        key-label: @tr("Escape");
+                        text: @tr("Close");
+                    }
+                }
+            }
+        }
+    }
+
+    // The window outline: level 3 is the OS shadow plus a 1px `border-default` (DESIGN.md §6).
+    Rectangle {
+        border-width: 1px;
+        border-color: Theme.border-default;
+        background: transparent;
+    }
+}

@@ -19,7 +19,9 @@ export component Button inherits Rectangle {
     callback clicked();
 
     property <bool> active: root.enabled && !root.loading;
-    property <length> height-px: root.size == ButtonSize.sm ? 24px : root.size == ButtonSize.md ? 28px : 32px;
+    // 24 / 28 / 32px, and one text line plus padding when the text size is larger.
+    property <length> height-px: max(root.size == ButtonSize.sm ? 24px : root.size == ButtonSize.md ? 28px : 32px,
+        (root.size == ButtonSize.sm ? Type.line-sm : Type.line-base) + Space.s2);
     property <length> pad: root.size == ButtonSize.sm ? Space.s2 : root.size == ButtonSize.md ? Space.s3 : Space.s4;
     property <bool> pressed: touch.pressed && root.active;
     property <bool> hovered: touch.has-hover && root.active;

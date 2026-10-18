@@ -1,0 +1,322 @@
+// The Template fill form (SPEC 5.4 template field inserter, DESIGN.md §4 TemplateField, §5): the window the Picker and
+// the Panel open when a template has prompted placeholders (`{field:Name}`, `{choice:Name|a|b}`). It builds one
+// `TemplateField` per prompt, shows the rendered result live under them, and reports the answers. Like the other
+// popup windows it draws its own chrome (a header with a drag region and a close button); it takes keyboard
+// focus (it is a text-entry window), and the host restores the target window when it closes. Nothing here
+// talks to the OS or renders templates: the host maps `snipdeck_core::Prompt` to `FormField`, re-renders on
+// `answer-changed` and sets `preview`.
+//
+// Keyboard (handled in `capture-key-pressed` on the window's FocusScope unless noted):
+//   Tab / Shift+Tab   next / previous field, then Cancel and the submit button (natural order, not handled here)
+//   Enter             in a single-line field or on a choice: the next field, and on the last one submits
+//                     (a multi-line field takes Enter as a new line)
+//   Ctrl+Enter        submits from anywhere, including a multi-line field
+//   Esc               cancels
+//
+// Validation: a required field left empty is flagged (text next to the label and under the field, never colour
+// alone) and the form does not submit; the first such field takes focus. After the first failed attempt the flags
+// follow the fields live. Slint has no string trimming, so a value of only spaces counts as filled: the host
+// trims. At most 16 fields are validated (a template with more is not realistic).
+//
+// Limitation: the form does not scroll. Around eight fields the window passes 640px; the host caps its height.
+import { Theme, Type, Space, Radius, Fonts, Palette } from "theme.slint";
+import { Icons } from "icons.slint";
+import { TemplateField, TemplateFieldKind } from "components/template_field.slint";
+import { Button, ButtonVariant } from "components/button.slint";
+import { IconButton } from "components/icon-button.slint";
+import { KeyCombo } from "components/keycap.slint";
+
+// One prompt of the template. `value` is the answer (for a choice, the chosen option, kept in step with
+// `choice-index`); the host fills it with the default. `error` is a message from the host (for example a date it
+// could not parse); the form clears it when the field is edited.
+export struct FormField {
+    label: string,
+    kind: TemplateFieldKind,
+    value: string,
+    // choice: the options, and which is chosen (-1 = none; the core's default is the first).
+    options: [string],
+    choice-index: int,
+    required: bool,
+    // text and multiline: placeholder; date: the format hint ("YYYY-MM-DD").
+    placeholder: string,
+    error: string,
+}
+
+export component TemplateFillWindow inherits Window {
+    title: @tr("Fill in template");
+    no-frame: true;
+    always-on-top: true;
+    background: Theme.bg-overlay;
+    min-width: 320px;
+    preferred-width: 440px;
+    preferred-height: root.content-height;
+
+    // ---- State in -----------------------------------------------------------------------------
+    in property <bool> dark: false;
+    // The template's title, shown in the header.
+    in property <string> template-title;
+    // The rendered result for the current answers (the host re-renders on `answer-changed`).
+    in property <string> preview;
+    // The submit button: "Insert" when the form ends in a paste, "Copy" when it ends in a copy.
+    in property <string> submit-label: @tr("Insert");
+
+    // ---- State both ways ----------------------------------------------------------------------
+    // The prompts and the answers so far; the form writes `value` and `choice-index` as the user fills it.
+    in-out property <[FormField]> fields;
+
+    // ---- Gestures out -------------------------------------------------------------------------
+    // Field `index` now holds `value` (a choice: the option's text).
+    callback answer-changed(index: int, value: string);
+    // Every required field is filled and the user asked to insert: the fields with their answers.
+    callback submitted(fields: [FormField]);
+    callback cancelled();
+    // Pointer down on the header: the host starts the OS window drag.
+    callback drag-requested();
+
+    // ---- Public -------------------------------------------------------------------------------
+    // The window height that fits the current content; the host sizes the window from this.
+    out property <length> content-height: main.preferred-height;
+    // True while required fields left empty are flagged.
+    out property <bool> showing-errors: root.show-errors;
+    // Moves keyboard focus to field `index`.
+    public function focus-field(index: int) {
+        root.focus-target = index;
+        root.focus-seq += 1;
+    }
+    // Validates, and submits when everything required is filled. Also what Ctrl+Enter and the button do.
+    public function submit() {
+        let bad = root.first-invalid();
+        if (bad >= 0) {
+            root.show-errors = true;
+            root.focus-field(bad);
+        } else {
+            root.submitted(root.fields);
+        }
+    }
+
+    // ---- Internals ----------------------------------------------------------------------------
+    property <bool> show-errors: false;
+    property <int> focus-target: 0;
+    // Starts above 0 so the first field takes focus when the form opens.
+    property <int> focus-seq: 1;
+
+    // Slint has no loops in functions, so the first invalid field is found by an unrolled test of the first 16.
+    pure function bad(i: int) -> bool {
+        return i < root.fields.length && root.fields[i].required && root.fields[i].value == "";
+    }
+    pure function first-invalid() -> int {
+        return root.bad(0) ? 0 : root.bad(1) ? 1 : root.bad(2) ? 2 : root.bad(3) ? 3 : root.bad(4) ? 4 : root.bad(5) ? 5
+            : root.bad(6) ? 6 : root.bad(7) ? 7 : root.bad(8) ? 8 : root.bad(9) ? 9 : root.bad(10) ? 10 : root.bad(11) ? 11
+            : root.bad(12) ? 12 : root.bad(13) ? 13 : root.bad(14) ? 14 : root.bad(15) ? 15 : -1;
+    }
+
+    init => {
+        Palette.dark = root.dark;
+    }
+    changed dark => {
+        Palette.dark = root.dark;
+    }
+
+    function edited(i: int, value: string) {
+        root.fields[i].value = value;
+        root.fields[i].error = "";
+        root.answer-changed(i, value);
+    }
+
+    // Enter in field `i`: the next field, or submit from the last.
+    function accepted(i: int) {
+        if (i + 1 < root.fields.length) {
+            root.focus-field(i + 1);
+        } else {
+            root.submit();
+        }
+    }
+
+    scope-keys := FocusScope {
+        capture-key-pressed(event) => {
+            if (event.text == Key.Escape) {
+                root.cancelled();
+                return accept;
+            }
+            if (event.text == Key.Return && event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                root.submit();
+                return accept;
+            }
+            return reject;
+        }
+
+        main := VerticalLayout {
+            // ---- Header: title, drag region, close ----------------------------------------------
+            Rectangle {
+                height: max(Space.s8 + Space.s2, Space.hit + Space.s2);
+
+                TouchArea {
+                    mouse-cursor: MouseCursor.default;
+                    pointer-event(event) => {
+                        if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                            root.drag-requested();
+                        }
+                    }
+                }
+                HorizontalLayout {
+                    padding-left: Space.s4;
+                    padding-right: Space.s2;
+                    spacing: Space.s2;
+                    Text {
+                        text: @tr("Fill in template");
+                        font-family: Fonts.sans;
+                        font-size: Type.md;
+                        font-weight: Type.semibold;
+                        color: Theme.text-primary;
+                        vertical-alignment: center;
+                        accessible-role: AccessibleRole.none;
+                    }
+                    Text {
+                        horizontal-stretch: 1;
+                        text: root.template-title;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        color: Theme.text-secondary;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    IconButton {
+                        icon: Icons.x;
+                        tooltip: @tr("Close");
+                        y: (parent.height - self.height) / 2;
+                        clicked => { root.cancelled(); }
+                    }
+                }
+                Rectangle {
+                    y: parent.height - 1px;
+                    height: 1px;
+                    background: Theme.border-subtle;
+                }
+            }
+
+            // ---- The prompts ------------------------------------------------------------------------
+            VerticalLayout {
+                padding: Space.s4;
+                spacing: Space.s3;
+                alignment: start;
+                accessible-role: AccessibleRole.groupbox;
+                accessible-label: @tr("Fields");
+
+                for field[i] in root.fields: TemplateField {
+                    label: field.label;
+                    kind: field.kind;
+                    required: field.required;
+                    required-text: @tr("Required");
+                    placeholder: field.placeholder;
+                    choices: field.options;
+                    choice-index: field.choice-index;
+                    value: field.value;
+                    error: field.error != "" ? field.error
+                        : root.show-errors && root.bad(i) ? @tr("This field is required") : "";
+                    focus-request: i == root.focus-target ? root.focus-seq : 0;
+                    init => {
+                        // A choice's answer is its chosen option, so the form never has to look it up.
+                        if (field.kind == TemplateFieldKind.choice && field.value == ""
+                            && field.choice-index >= 0 && field.choice-index < field.options.length) {
+                            root.fields[i].value = field.options[field.choice-index];
+                        }
+                    }
+                    edited(v) => { root.edited(i, v); }
+                    chosen(index) => {
+                        root.fields[i].choice-index = index;
+                        root.edited(i, field.options[index]);
+                    }
+                    accepted(v) => { root.accepted(i); }
+                }
+            }
+
+            // ---- Live preview ---------------------------------------------------------------------------
+            VerticalLayout {
+                padding-left: Space.s4;
+                padding-right: Space.s4;
+                padding-bottom: Space.s4;
+                spacing: Space.s1;
+                Text {
+                    text: @tr("Preview");
+                    font-family: Fonts.sans;
+                    font-size: Type.sm;
+                    font-weight: Type.medium;
+                    color: Theme.text-secondary;
+                }
+                Rectangle {
+                    // At most eight lines; the host's preview is plain text and longer ones are clipped.
+                    height: min(preview-text.preferred-height, 8 * Type.line-base) + 2 * Space.s2;
+                    background: Theme.bg-sunken;
+                    border-radius: Radius.md;
+                    border-width: 1px;
+                    border-color: Theme.border-subtle;
+                    clip: true;
+                    accessible-role: AccessibleRole.groupbox;
+                    accessible-label: @tr("Preview");
+
+                    preview-text := Text {
+                        x: Space.s2;
+                        y: Space.s2;
+                        width: parent.width - 2 * Space.s2;
+                        text: root.preview;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        color: Theme.text-primary;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+
+            // ---- Actions ---------------------------------------------------------------------------------
+            Rectangle {
+                height: max(Space.s12, max(Space.hit, Type.line-base + Space.s2) + 2 * Space.s2);
+
+                Rectangle {
+                    y: 0;
+                    height: 1px;
+                    background: Theme.border-subtle;
+                }
+                HorizontalLayout {
+                    padding-left: Space.s4;
+                    padding-right: Space.s4;
+                    padding-top: Space.s2;
+                    padding-bottom: Space.s2;
+                    spacing: Space.s2;
+                    Rectangle {
+                        width: hint-keys.min-width;
+                        hint-keys := KeyCombo {
+                            keys: ["Ctrl", "↵"];
+                            label: @tr("Control Enter");
+                            y: (parent.height - self.height) / 2;
+                        }
+                    }
+                    Text {
+                        text: root.submit-label;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        color: Theme.text-secondary;
+                        vertical-alignment: center;
+                        accessible-role: AccessibleRole.none;
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                    Button {
+                        text: @tr("Cancel");
+                        clicked => { root.cancelled(); }
+                    }
+                    Button {
+                        text: root.submit-label;
+                        variant: ButtonVariant.primary;
+                        clicked => { root.submit(); }
+                    }
+                }
+            }
+        }
+    }
+
+    // The window outline: level 3 is the OS shadow plus a 1px `border-default` (DESIGN.md §6).
+    Rectangle {
+        border-width: 1px;
+        border-color: Theme.border-default;
+        background: transparent;
+    }
+}
