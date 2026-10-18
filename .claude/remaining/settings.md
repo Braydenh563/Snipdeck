@@ -7,7 +7,9 @@
 - Wiring: Effect::OpenSettings, Main window settings-requested, main.rs (licence at start, language at start, SettingsUi).
 
 ## Next
-- (see git log for the latest state)
+- Windows is unverified: Run key autostart (`--hidden`), explorer opening the data folder, file locking during erase.
+- Not built (no file dialog crate): "Restore…" from an arbitrary file; Restore is per listed backup. Export goes to Documents.
+- Merge: Effect::OpenSettings doc line, wording.rs match arms and main.rs effect_handler may conflict with the Panel agent (same variant name).
 
 ## Blocked
 - nothing.
