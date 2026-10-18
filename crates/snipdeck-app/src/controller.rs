@@ -744,7 +744,10 @@ mod tests {
         let mut w = world();
         let result = w.ctl.activate_row(0, UseMode::Copy);
         assert_eq!(result, UseResult::Done(UseOutcome::Copied));
-        assert!(w.ctl.services().keyboard.sent.is_empty());
+        assert_eq!(
+            w.ctl.services().keyboard.sent,
+            Vec::<Vec<snipdeck_platform::keys::KeyEvent>>::new()
+        );
         assert_eq!(w.ctl.services().clipboard.log, ["persistent:1"]);
         assert_eq!(
             w.targets.refocus_count(),
@@ -775,7 +778,10 @@ mod tests {
             w.ctl.activate_row(0, UseMode::Paste),
             UseResult::Done(UseOutcome::Copied)
         );
-        assert!(w.ctl.services().keyboard.sent.is_empty());
+        assert_eq!(
+            w.ctl.services().keyboard.sent,
+            Vec::<Vec<snipdeck_platform::keys::KeyEvent>>::new()
+        );
         assert_eq!(
             w.ctl.view().toast.expect("toast").message,
             ToastMessage::Copied
@@ -791,7 +797,10 @@ mod tests {
         let mut w = world_with(Some(outlook()), settings);
         assert_eq!(w.ctl.view().footer, Footer::Copies);
         w.ctl.activate_row(0, UseMode::Paste);
-        assert!(w.ctl.services().keyboard.sent.is_empty());
+        assert_eq!(
+            w.ctl.services().keyboard.sent,
+            Vec::<Vec<snipdeck_platform::keys::KeyEvent>>::new()
+        );
         assert_eq!(
             w.ctl.view().toast.expect("toast").message,
             ToastMessage::CopiedExcluded {

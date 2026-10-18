@@ -332,7 +332,7 @@ fn a_template_that_needs_answers_toasts_and_changes_nothing() {
         assert_eq!(r.ui.get_toast_text(), "Fill in this template first.");
         assert_eq!(r.uses(1), 0);
         let ctl = r.ctl.borrow();
-        assert!(ctl.services().clipboard.log.is_empty());
+        assert_eq!(ctl.services().clipboard.log, Vec::<String>::new());
         assert_eq!(ctl.pending().map(|p| p.prompts.len()), Some(2));
     });
 }
