@@ -202,7 +202,7 @@ where
     /// rest (`OpenPicker`, `StartCapture`, `PasteNext`, `DragWindow`).
     ///
     /// Not yet wired, because the features behind them are not built: the context menus,
-    /// revealing a sensitive row, "add list" and "add from clipboard" (M4), and toast undo.
+    /// revealing a sensitive row (M4), and toast undo.
     pub fn bind(
         this: &Rc<RefCell<Self>>,
         window: &ui::PanelWindow,
@@ -258,6 +258,8 @@ where
         wire!(on_board_menu_activated, |ctl, i| ctl.choose_board(index(i)));
         wire!(on_board_menu_dismissed, |ctl| ctl.close_board_menu());
         wire!(on_pin_toggled, |ctl, on| ctl.set_on_top(on));
+        wire!(on_add_list_requested, |ctl| ctl.add_list());
+        wire!(on_add_from_clipboard, |ctl| ctl.quick_capture());
         wire_effects!(on_close_requested, |ctl| ctl.close());
         wire_effects!(on_drag_requested, |ctl| ctl.drag());
 

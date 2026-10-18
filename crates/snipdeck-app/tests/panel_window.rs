@@ -67,11 +67,24 @@ fn rig() -> Rig {
 }
 
 fn rig_with_tray(tray: bool) -> Rig {
-    let store = demo::store(now()).expect("demo store");
+    rig_on(demo::store(now()).expect("demo store"), tray, Vec::new())
+}
+
+/// A first run on a real (empty) library, as `main` opens it: the starter board is made first.
+fn first_run_rig() -> Rig {
+    let mut store = Store::open_in_memory().expect("store");
+    assert!(snipdeck_app::starter::ensure_board(&mut store, now()).expect("starter"));
+    let copied = snipdeck_platform::payload::Payload::new(vec![Data::Text("Copied earlier".into())])
+        .expect("payload");
+    rig_on(store, true, vec![copied])
+}
+
+fn rig_on(store: Store, tray: bool, clipboard: Vec<snipdeck_platform::payload::Payload>) -> Rig {
     let targets = FakeTargets::new(Some(demo::target()));
     let services = Services {
         clipboard: FakeClipboard {
             asks_after_polls: Some(1),
+            written: clipboard,
             ..FakeClipboard::default()
         },
         keyboard: FakeKeyboard::default(),
@@ -198,6 +211,39 @@ fn pointer_clicks_on_tabs_pinned_chips_and_rows_reach_the_controller() {
             !r.ctl.borrow().services().clipboard.log.is_empty(),
             "the pinned chip click used the item"
         );
+        assert_eq!(*r.effects.borrow(), []);
+    });
+}
+
+#[test]
+fn a_first_run_on_an_empty_library_has_a_board_and_working_controls() {
+    on_ui_thread(|| {
+        let r = first_run_rig();
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        slint::platform::update_timers_and_animations();
+        assert_eq!(r.ui.get_board_name(), snipdeck_app::starter::STARTER_BOARD);
+
+        let switcher = format!("Board: {}", snipdeck_app::starter::STARTER_BOARD);
+        click(r.window(), &r.button(&switcher));
+        assert_eq!(
+            r.ui.get_board_menu_entries().row_count(),
+            1,
+            "the board menu lists the starter board"
+        );
+        click(
+            r.window(),
+            &element(&r.ui, snipdeck_app::starter::STARTER_BOARD, AccessibleRole::ListItem),
+        );
+        assert!(!r.ui.get_board_menu_open());
+
+        // The empty list's "Save from clipboard" saves what the clipboard holds.
+        click(r.window(), &r.button("Save from clipboard"));
+        assert_eq!(r.titles(), ["Copied earlier"]);
+
+        // The + tab adds a list and shows it.
+        click(r.window(), &r.button("Add list"));
+        assert_eq!(r.ui.get_tabs().row_count(), 2);
+        assert_eq!(r.ui.get_current_tab(), 1);
         assert_eq!(*r.effects.borrow(), []);
     });
 }

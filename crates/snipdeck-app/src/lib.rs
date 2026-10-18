@@ -20,6 +20,7 @@ pub mod platform;
 pub mod screenshot;
 pub mod settings;
 pub mod settings_store;
+pub mod starter;
 pub mod toast;
 pub mod trace;
 pub mod usecase;

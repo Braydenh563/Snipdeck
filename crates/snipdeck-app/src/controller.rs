@@ -646,6 +646,20 @@ where
         self.switch_board(id);
     }
 
+    /// The `+` tab and the "New list" button of an empty board: adds a list to the shown board
+    /// (or, in a library without boards, makes the starter board) and shows it.
+    pub fn add_list(&mut self) {
+        let now = self.clock.now();
+        let added = crate::starter::add_list(&mut self.store, self.model.board(), now);
+        let shown = added.and_then(|(board, list)| {
+            self.model.select_board(&self.store, board)?;
+            self.model.select_list(&self.store, list)
+        });
+        if shown.is_err() {
+            self.show_toast(failed());
+        }
+    }
+
     fn switch_board(&mut self, board: BoardId) {
         if self.model.select_board(&self.store, board).is_err() {
             self.show_toast(failed());
