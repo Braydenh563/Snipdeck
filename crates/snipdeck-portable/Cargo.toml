@@ -13,7 +13,7 @@ snipdeck-core.workspace = true
 snipdeck-store = { path = "../snipdeck-store" }
 blake3.workspace = true
 jiff.workspace = true
-rusqlite.workspace = true
+rusqlite = { workspace = true, features = ["limits"] }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

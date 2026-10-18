@@ -21,7 +21,9 @@ use snipdeck_core::{
     ListAccent, ListSort, ListView, Name, Placement, Tag, TagId, Timestamp,
 };
 use snipdeck_store::crypto::{DataKey, Slot};
-use snipdeck_store::{Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, TagRepo, TrashRepo};
+use snipdeck_store::{
+    Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, TagRepo, TrashRepo, name_key,
+};
 
 use crate::error::{Error, Result};
 use crate::report::ImportReport;
@@ -247,11 +249,19 @@ fn content_parts(content: &Content) -> ([u8; 32], u64) {
     }
 }
 
-/// The content hashes of every live item in `lib`, for skipping duplicates.
+/// The content hashes of every live item in `lib` that can be read, for skipping duplicates
+/// (encrypted items are left out while the library is locked).
 pub(crate) fn existing_hashes<L: Library>(lib: &L) -> Result<HashSet<[u8; 32]>> {
     let mut known = HashSet::new();
     for item in lib.all_items()? {
-        let formats = lib.formats(item.id)?;
+        let formats = match lib.formats(item.id) {
+            Ok(formats) => formats,
+            // An encrypted item cannot be read while the library is locked. Skipping it only
+            // means a duplicate of it is not recognised; refusing would stop a restore of the
+            // public items into a locked library.
+            Err(snipdeck_store::Error::EncryptionLocked) => continue,
+            Err(e) => return Err(e.into()),
+        };
         let mut hasher = ContentHasher::new();
         for format in &formats {
             match format {
@@ -293,8 +303,9 @@ pub(crate) fn apply<L: Library>(
     plan: &Plan,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
     mut report: ImportReport,
+    max_boards: Option<usize>,
 ) -> Result<ImportReport> {
-    lib.atomically(|batch| write(batch, plan, fetch, &mut report))?;
+    lib.atomically(|batch| write(batch, plan, fetch, &mut report, max_boards))?;
     Ok(report)
 }
 
@@ -303,7 +314,17 @@ fn write(
     plan: &Plan,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
     report: &mut ImportReport,
+    max_boards: Option<usize>,
 ) -> Result<()> {
+    // Counted here, inside the transaction, so nothing can slip in between check and write.
+    if let Some(max) = max_boards
+        && !plan.boards.is_empty()
+        && lib.boards()?.len() + plan.boards.len() > max
+    {
+        return Err(
+            snipdeck_core::Error::ProRequired(snipdeck_core::Feature::UnlimitedBoards).into(),
+        );
+    }
     // Only tags that a kept item uses are created; existing tags are reused by name.
     let used: HashSet<usize> = plan
         .boards
@@ -315,7 +336,7 @@ fn write(
     let mut by_key: HashMap<String, TagId> = lib
         .tags()?
         .into_iter()
-        .map(|t| (t.name.as_str().to_lowercase(), t.id))
+        .map(|t| (name_key(t.name.as_str()), t.id))
         .collect();
     let mut tag_ids: HashMap<usize, TagId> = HashMap::new();
     for (index, name) in plan
@@ -324,7 +345,7 @@ fn write(
         .enumerate()
         .filter(|(i, _)| used.contains(i))
     {
-        let key = name.as_str().to_lowercase();
+        let key = name_key(name.as_str());
         let id = if let Some(id) = by_key.get(&key) {
             *id
         } else {
@@ -395,7 +416,7 @@ fn build_item(
                 if *kind == FormatKind::Text && plan.preview.is_none() {
                     item.preview = Item::preview_of(preview_text(&bytes), plan.sensitive);
                 }
-                let content = lib.put(bytes)?;
+                let content = put(lib, bytes, plan.sensitive)?;
                 formats.push(match kind {
                     FormatKind::Text => Format::Text(content),
                     FormatKind::Html => Format::Html(content),
@@ -412,7 +433,7 @@ fn build_item(
             PlanFormat::Files(files) => {
                 let mut entries = Vec::with_capacity(files.len());
                 for file in files {
-                    let content = lib.put(resolve(&file.source, fetch)?)?;
+                    let content = put(lib, resolve(&file.source, fetch)?, plan.sensitive)?;
                     entries.push(FileEntry::new(&file.name, content)?);
                 }
                 formats.push(Format::Files(entries));
@@ -420,6 +441,17 @@ fn build_item(
         }
     }
     Ok((item, Formats::new(formats)?))
+}
+
+/// Stores a payload of an imported item. Sensitive payloads are held in memory until the item
+/// is written (encrypted there when the library has a key): `put` would write the plaintext
+/// to the blob folder first, and a rollback would leave it on the disk.
+fn put(lib: &mut Batch<'_>, bytes: Vec<u8>, sensitive: bool) -> Result<Content> {
+    Ok(if sensitive {
+        lib.put_sensitive(bytes)?
+    } else {
+        lib.put(bytes)?
+    })
 }
 
 fn resolve(
@@ -536,7 +568,14 @@ mod tests {
     fn apply_writes_everything_and_reuses_existing_tags() {
         let mut s = library();
         let mut fetch = |_: &AssetRef| Ok(b"big".to_vec());
-        let report = apply(&mut s, &two_boards(), &mut fetch, ImportReport::default()).unwrap();
+        let report = apply(
+            &mut s,
+            &two_boards(),
+            &mut fetch,
+            ImportReport::default(),
+            None,
+        )
+        .unwrap();
         assert_eq!(
             (
                 report.boards_added,
@@ -568,8 +607,14 @@ mod tests {
                     Ok(vec![u8::try_from(calls).unwrap(); 100_000])
                 }
             };
-            let err =
-                apply(&mut s, &two_boards(), &mut fetch, ImportReport::default()).unwrap_err();
+            let err = apply(
+                &mut s,
+                &two_boards(),
+                &mut fetch,
+                ImportReport::default(),
+                None,
+            )
+            .unwrap_err();
             assert!(matches!(err, Error::Malformed { .. }), "{err}");
             assert_eq!(state(&s), before, "failing at fetch {fail_at}");
             assert_eq!(s.check_integrity().unwrap(), Vec::<String>::new());
@@ -578,13 +623,43 @@ mod tests {
         }
     }
 
+    /// Security review 2, finding 5: names the store treats as one tag are one tag here.
+    #[test]
+    fn tags_clash_by_the_stores_key_not_by_lower_casing() {
+        let mut s = library();
+        s.insert_tag(&Tag::new(name("\u{c9}cole"))).unwrap();
+        let mut list = PlanList::new(name("L"), at(1));
+        list.items = vec![item("t", Source::Bytes(b"t".to_vec()), &[0, 1, 2])];
+        let plan = Plan {
+            tags: vec![name("Straße"), name("STRASSE"), name("e\u{301}cole")],
+            boards: vec![PlanBoard {
+                name: name("B"),
+                created_at: at(1),
+                updated_at: at(1),
+                lists: vec![list],
+            }],
+        };
+        let mut fetch = |_: &AssetRef| Ok(Vec::new());
+        let report = apply(&mut s, &plan, &mut fetch, ImportReport::default(), None).unwrap();
+        assert_eq!(report.tags_added, 1);
+        assert_eq!(s.tags().unwrap().len(), 3);
+        assert_eq!(s.check_integrity().unwrap(), Vec::<String>::new());
+    }
+
     #[test]
     fn rolling_back_never_touches_what_the_user_trashed() {
         let mut s = library();
         let before = state(&s);
         assert_eq!(before.4.len(), 1);
         let mut fetch = |_: &AssetRef| Err(Error::malformed("test", "boom"));
-        apply(&mut s, &two_boards(), &mut fetch, ImportReport::default()).unwrap_err();
+        apply(
+            &mut s,
+            &two_boards(),
+            &mut fetch,
+            ImportReport::default(),
+            None,
+        )
+        .unwrap_err();
         assert_eq!(state(&s).4, before.4);
     }
 

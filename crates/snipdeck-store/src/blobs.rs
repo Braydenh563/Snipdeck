@@ -139,7 +139,8 @@ impl Blobs {
 
     /// Undoes the blob side of a rolled-back transaction: deletes the files created since
     /// `mark` (no committed row can use a file that did not exist before) and restores the
-    /// pending counts. A file that cannot be deleted now is left for `Store::gc_blobs`.
+    /// pending counts. The files are scrubbed first: a payload staged there may be plaintext. A
+    /// file that cannot be deleted now is left for `Store::gc_blobs`.
     pub(crate) fn rewind(&mut self, mark: BlobMark) {
         self.pending = mark.pending;
         let doomed = self
@@ -148,7 +149,7 @@ impl Blobs {
             .map(|log| log.split_off(mark.created.min(log.len())))
             .unwrap_or_default();
         for blob in doomed {
-            let _ = self.remove(&blob, false);
+            let _ = self.remove(&blob, true);
         }
     }
 
@@ -793,6 +794,28 @@ mod tests {
         blobs.remove(&blob, false).unwrap();
         assert!(!blobs.has(&blob, len));
         blobs.remove(&blob, false).unwrap();
+    }
+
+    /// Security review 2, finding 1: a rolled-back transaction must scrub the files it created
+    /// (a payload staged there may be plaintext), not just unlink them. A hard link keeps the
+    /// contents reachable after the unlink, so it shows whether they were overwritten.
+    #[test]
+    fn rewind_scrubs_the_files_it_deletes() {
+        let (dir, mut blobs) = blobs();
+        let secret = vec![0xA5; INLINE_LIMIT + 10];
+        let mark = blobs.mark();
+        let Content::Blob { blob, .. } = blobs.put(secret.clone()).unwrap() else {
+            panic!()
+        };
+        let link = dir.path().join("kept-by-hard-link");
+        std::fs::hard_link(blobs.path_of(&blob).unwrap(), &link).unwrap();
+        blobs.rewind(mark);
+        assert!(!blobs.path_of(&blob).unwrap().exists(), "unlinked");
+        let left = std::fs::read(&link).unwrap();
+        assert!(
+            left.iter().all(|b| *b == 0),
+            "the rolled-back file still held its bytes"
+        );
     }
 
     #[test]

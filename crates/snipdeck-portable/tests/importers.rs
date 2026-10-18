@@ -165,6 +165,37 @@ fn folder_skips_empty_binary_and_oversized_files() {
     assert!(kinds.contains(&"unreadable") && kinds.contains(&"too large"));
 }
 
+/// Security review 2, finding 6: the 5 MB limit is on the text that gets stored, not on the
+/// bytes in the file. Bad bytes become three-byte U+FFFD, and UTF-16 can grow by half.
+#[test]
+fn folder_checks_the_size_of_the_decoded_text() {
+    let dir = tempfile::tempdir().unwrap();
+    // 2 MB of bytes that are not UTF-8 decode to 6 MB of replacement characters.
+    write(dir.path(), "bad-bytes.txt", vec![0x80_u8; 2_000_000]);
+    // 4 MB of UTF-16 (2 M characters of CJK) is 6 MB as UTF-8.
+    let mut wide = vec![0xFF, 0xFE];
+    wide.extend(std::iter::repeat_n([0x2d_u8, 0x4e], 2_000_000).flatten());
+    write(dir.path(), "wide.txt", wide);
+    write(dir.path(), "fine.txt", "just a note");
+
+    let mut s = store();
+    let report = import_folder(&mut s, dir.path(), at(1), &ImportOptions::default()).unwrap();
+    assert_eq!(report.items_added, 1, "{report:?}");
+    let mut too_large: Vec<_> = report
+        .warnings
+        .iter()
+        .filter_map(|w| match w {
+            Warning::TooLarge { name, size } => Some((name.as_str(), *size)),
+            _ => None,
+        })
+        .collect();
+    too_large.sort_unstable();
+    assert_eq!(
+        too_large,
+        [("bad-bytes.txt", 6_000_000), ("wide.txt", 6_000_000)]
+    );
+}
+
 #[test]
 fn folder_titles_are_cleaned_file_names() {
     let dir = tempfile::tempdir().unwrap();
@@ -500,6 +531,108 @@ fn ditto_tolerates_odd_column_types() {
     assert_healthy(&s);
 }
 
+// ---- security review 2, finding 3: a hostile Ditto file cannot make the import huge ----
+
+/// A database whose `Main` and `Data` are views that compute their rows: a few KiB of file
+/// that would expand to hundreds of MiB.
+#[test]
+fn ditto_refuses_views_standing_in_for_its_tables() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("views.db");
+    Connection::open(&path)
+        .unwrap()
+        .execute_batch(
+            "CREATE VIEW Main AS
+               WITH RECURSIVE c(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM c WHERE n < 12)
+               SELECT n AS lID, 0 AS lDate, CAST(zeroblob(5000000) AS TEXT) AS mText,
+                      0 AS lDontAutoDelete, 0 AS bIsGroup, -1 AS lParentID FROM c;
+             CREATE VIEW Data AS
+               SELECT 1 AS lParentID, 'CF_TEXT' AS strClipBoardFormat, zeroblob(10) AS ooData;",
+        )
+        .unwrap();
+    let mut s = store();
+    let e = import_ditto(&mut s, &path, at(1), &ImportOptions::default()).unwrap_err();
+    assert!(
+        matches!(&e, Error::NotDitto { reason, .. } if reason.contains("not a table")),
+        "{e}"
+    );
+    assert_eq!(counts(&s), (0, 0, 0, 0));
+}
+
+#[test]
+fn ditto_refuses_virtual_tables_and_computed_columns() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut s = store();
+
+    let virtual_table = dir.path().join("virtual.db");
+    Connection::open(&virtual_table)
+        .unwrap()
+        .execute_batch(
+            "CREATE VIRTUAL TABLE Main USING fts5(lID, lDate, mText, lDontAutoDelete, bIsGroup, lParentID);
+             CREATE TABLE Data(lID INTEGER PRIMARY KEY, lParentID INTEGER, strClipBoardFormat TEXT, ooData BLOB);",
+        )
+        .unwrap();
+    let e = import_ditto(&mut s, &virtual_table, at(1), &ImportOptions::default()).unwrap_err();
+    assert!(matches!(e, Error::NotDitto { .. }), "{e}");
+
+    // A generated column computes its value for every row on every read.
+    let generated = dir.path().join("generated.db");
+    let conn = Connection::open(&generated).unwrap();
+    conn.execute_batch(
+        "CREATE TABLE Main(lID INTEGER PRIMARY KEY, lDate INTEGER,
+            mText TEXT GENERATED ALWAYS AS (CAST(zeroblob(4000000) AS TEXT)) VIRTUAL,
+            lDontAutoDelete INTEGER, bIsGroup INTEGER, lParentID INTEGER);
+         CREATE TABLE Data(lID INTEGER PRIMARY KEY, lParentID INTEGER, strClipBoardFormat TEXT, ooData BLOB);
+         WITH RECURSIVE c(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM c WHERE n < 12)
+           INSERT INTO Main (lID, lDate, lDontAutoDelete, bIsGroup, lParentID)
+           SELECT n, 0, 0, 0, -1 FROM c;",
+    )
+    .unwrap();
+    drop(conn);
+    let e = import_ditto(&mut s, &generated, at(1), &ImportOptions::default()).unwrap_err();
+    assert!(matches!(e, Error::NotDitto { .. }), "{e}");
+    assert_eq!(counts(&s), (0, 0, 0, 0));
+}
+
+/// Rows over the per-value limit are skipped with their real size; the rest still imports.
+#[test]
+fn ditto_skips_oversized_values_with_their_real_size_and_carries_on() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("Data.db");
+    let d = Ditto::new(&path);
+    let big = 12_000_000_usize;
+    // Oversized CF_UNICODETEXT, then an oversized description with no data rows.
+    d.clip(1, 1_700_000_000, Some("big data row"), false, -1);
+    d.data(1, "CF_UNICODETEXT", &vec![b'a'; big]);
+    d.clip(2, 1_700_000_100, None, false, -1);
+    d.0.execute(
+        "UPDATE Main SET mText = ?1 WHERE lID = 2",
+        rusqlite::params![vec![b'b'; big]],
+    )
+    .unwrap();
+    d.clip(3, 1_700_000_200, Some("fine"), false, -1);
+    drop(d);
+
+    let mut s = store();
+    let report = import_ditto(&mut s, &path, at(9), &ImportOptions::default()).unwrap();
+    assert_eq!(report.items_added, 1, "{report:?}");
+    assert_eq!(report.items_skipped, 2, "{report:?}");
+    let mut sizes: Vec<_> = report
+        .warnings
+        .iter()
+        .filter_map(|w| match w {
+            Warning::TooLarge { name, size } => Some((name.as_str(), *size)),
+            _ => None,
+        })
+        .collect();
+    sizes.sort_unstable();
+    assert_eq!(
+        sizes,
+        [("Ditto clip 1", big as u64), ("Ditto clip 2", big as u64)]
+    );
+    assert_healthy(&s);
+}
+
 #[test]
 fn ditto_group_cycles_and_depth_cannot_loop() {
     let dir = tempfile::tempdir().unwrap();
@@ -633,6 +766,73 @@ fn copyq_reuses_existing_tags() {
     let report = import_copyq_json(&mut s, &path, at(1), &ImportOptions::default()).unwrap();
     assert_eq!(report.tags_added, 0);
     assert_eq!(s.tags().unwrap().len(), 1);
+}
+
+/// Security review 2, finding 5: tags clash the way the store says they do (full case folding
+/// and Unicode normalisation), or the import aborts with `TagExists`.
+#[test]
+fn copyq_tags_match_the_way_the_store_matches_them() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("c.json");
+    fs::write(
+        &path,
+        r#"[{"text":"x","tags":["Straße","STRASSE"]},{"text":"y","tags":["e\u0301cole"]}]"#,
+    )
+    .unwrap();
+    let mut s = store();
+    tag(&mut s, "\u{c9}COLE");
+    let report = import_copyq_json(&mut s, &path, at(1), &ImportOptions::default()).unwrap();
+    assert_eq!(report.items_added, 2);
+    assert_eq!(report.tags_added, 1, "Straße and STRASSE are one tag");
+    assert_eq!(s.tags().unwrap().len(), 2, "the composed École was reused");
+    assert_healthy(&s);
+}
+
+/// Security review 2, finding 7: tags are capped per item and in total, and looked up by key,
+/// so a file with thousands of them neither stalls the import nor floods the library.
+#[test]
+fn copyq_caps_the_tags_per_item_and_in_total() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("c.json");
+
+    // One item with 20 000 distinct tags: only the first few are used.
+    let many: Vec<String> = (0..20_000).map(|n| format!("tag-{n}")).collect();
+    let json = serde_json::json!([{ "text": "x", "tags": many }]);
+    fs::write(&path, json.to_string()).unwrap();
+    let mut s = store();
+    let report = import_copyq_json(&mut s, &path, at(1), &ImportOptions::default()).unwrap();
+    assert_eq!(report.items_added, 1);
+    assert_eq!(report.tags_added, 32, "{report:?}");
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Truncated { reason } if reason.contains("tags"))),
+        "{:?}",
+        report.warnings
+    );
+    assert_healthy(&s);
+
+    // Many items with distinct tags each: the total is capped.
+    let items: Vec<_> = (0..200)
+        .map(|i| {
+            let tags: Vec<String> = (0..32).map(|t| format!("t-{i}-{t}")).collect();
+            serde_json::json!({ "text": format!("item {i}"), "tags": tags })
+        })
+        .collect();
+    fs::write(&path, serde_json::Value::Array(items).to_string()).unwrap();
+    let mut s = store();
+    let report = import_copyq_json(&mut s, &path, at(1), &ImportOptions::default()).unwrap();
+    assert_eq!(report.items_added, 200);
+    assert_eq!(report.tags_added, 5_000, "{report:?}");
+    assert_eq!(s.tags().unwrap().len(), 5_000);
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Truncated { reason } if reason.contains("tags"))),
+    );
+    assert_healthy(&s);
 }
 
 #[test]

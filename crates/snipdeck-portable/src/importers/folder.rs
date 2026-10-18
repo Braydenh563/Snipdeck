@@ -242,7 +242,6 @@ fn read_file(
         });
         return None;
     }
-    state.budget = state.budget.saturating_sub(bytes.len() as u64);
 
     let is_utf16 = bytes.starts_with(&[0xFF, 0xFE]) || bytes.starts_with(&[0xFE, 0xFF]);
     if !is_utf16 && bytes.contains(&0) {
@@ -250,6 +249,17 @@ fn read_file(
         return None;
     }
     let (text, how) = decode_text(&bytes);
+    drop(bytes);
+    // The limit and the budget are about the text that is kept, which decoding can make larger
+    // than the file: bad bytes become three-byte U+FFFD and UTF-16 can grow by half.
+    if text.len() as u64 > TEXT_LIMIT {
+        report.warn(Warning::TooLarge {
+            name,
+            size: text.len() as u64,
+        });
+        return None;
+    }
+    state.budget = state.budget.saturating_sub(text.len() as u64);
     if text.trim().is_empty() {
         report.warn(Warning::Empty { name });
         return None;
