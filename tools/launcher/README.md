@@ -1,7 +1,7 @@
 # Snipdeck launcher
 
 `Snipdeck.bat` (repo root) runs `tools/launcher/snipdeck.ps1` (Windows PowerShell 5.1 or 7). Run `Snipdeck.bat help` for the commands:
-`run` (default), `demo`, `update`, `build`, `selftest`, `doctor`, `backup`, `restore`, `clean`, `uninstall`, `logs`, `help`. Options: `-Yes`, `--whatif`, `--rebuild` (build only).
+`run` (default), `demo`, `update`, `reinstall`, `build`, `selftest`, `doctor`, `backup`, `restore`, `clean`, `uninstall`, `logs`, `help`. Options: `-Yes`, `--whatif`, `--allow-unpinned`, `--data`, `--target`, `--open`, `--rebuild` (build only). `tools/launcher/commands` has one double-click `.bat` per command; each runs `Snipdeck.bat` with that command.
 
 ## Run (users)
 
@@ -18,6 +18,10 @@
 `release-sha256.txt` format, one line per released version: `<sha256>  <asset-name>` (`#` comments allowed). A release with no line is refused unless you answer `y` to the launcher's question or pass `--allow-unpinned` (unattended runs are refused: the `.sha256` file comes from the same release as the zip, so it does not prove who published it). After publishing a release, add its line (the hash is in the release's `.sha256` file) and commit before users update.
 
 Messages: no network ("needs the internet once ... Connect and run Snipdeck.bat again"), no release yet (HTTP 404), GitHub rate limit (403/429), hash mismatch (refuses, deletes the download), unreadable or unsafe zip, folder cannot be replaced.
+
+If no release exists (HTTP 404) and the folder is a source checkout (`Cargo.toml` and `crates\` beside the `.bat`), `Snipdeck.bat` builds from source once instead of stopping.
+
+`Snipdeck.bat reinstall` closes the running app, downloads the release again, verifies it and swaps `app\` in; the old folder stays if the download fails. Library and settings are kept.
 
 ## Uninstall and reinstall
 

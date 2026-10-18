@@ -1,182 +1,195 @@
 # User guide
 
-How Snipdeck is meant to work, and how much of that exists today. Snipdeck is a work in progress
-with no release; read the status tags first.
+How to use Snipdeck 1.0 on Windows. To install it, see the [README](../README.md#install-and-first-run). If
+something goes wrong, see [`troubleshooting.md`](troubleshooting.md).
 
-| Tag | Meaning |
+Windows behaviour (paste, hotkeys, the tray icon) has not been tested by the maintainer on a real PC yet.
+This guide says what the app is built to do.
+
+## The idea in one minute
+
+- A **board** is a workspace, such as "Work" or "Personal". The Free plan has up to 3 boards.
+- A **list** is a group of items in a board, such as "Email replies". Lists show as tabs in the Panel. A new
+  library starts with a board called "My snippets" and a list called "Snippets".
+- An **item** is one thing to paste: text, code, a link, a template, an image or a file.
+- The **Panel** is the small window on your board. The **Picker** searches every board at your caret. The
+  **Main window** is where you organise everything.
+- The **target** is the app you were typing in. When you click an item, Snipdeck pastes into the target. The
+  Panel never takes the focus away from it.
+
+## Add a snippet
+
+Open the Main window and press `Ctrl+N` or the **New item** button. You can also choose **New snippet** in the
+Panel menu (the three dots). Pick a **Kind**, fill in the fields and press `Ctrl+Enter` or **Save**. The item
+goes into the list you were looking at.
+
+| Kind | What to enter |
 |---|---|
-| **Demo** | Works in `snipdeck-app --demo` and is covered by automated tests. Not verified on Windows. |
-| **Code only** | The logic is written and tested as a library, or the window exists in the UI crate, but the app has no screen or hotkey for it yet. |
-| **Planned** | Specified in [`SPEC.md`](SPEC.md), not built. |
+| **Text** | The text. The title is optional: the first line is used. |
+| **Code** | Code, pasted as plain text. |
+| **Link** | The address, such as `https://example.com`. |
+| **Template** | Text with placeholders (see below). |
+| **Image** | A PNG picture. Press **Browse** and choose the file. |
+| **File** | Any file. Press **Browse** and choose it. Snipdeck keeps its own copy. |
 
-## Install (Windows)
+The editor shows a banner if it restored changes you had not saved. Text over 16 KB opens read-only.
 
-Nothing to install and nothing else needed: no Rust, no Visual Studio, no git.
+**Save text from the clipboard.** Copy something, then press `Ctrl+Shift+2` (or **Save from clipboard** in an
+empty Panel). The text becomes a new item at the top of the current list. Text over 5 MB is refused.
 
-1. Download the latest portable zip, `snipdeck-<version>-windows-x64.zip`, from the
-   [Releases page](https://github.com/Braydenh563/Snipdeck/releases/latest) and unzip it anywhere.
-2. Double-click `snipdeck.exe`.
+### Templates
 
-Or use `Snipdeck.bat` from the repository download. With no arguments it starts `app\snipdeck.exe`; if that is
-missing it first downloads the latest release (the internet is needed that once), checks the zip's SHA-256 and
-unpacks it. `Snipdeck.bat update` downloads the newest release again. Your library and settings live in
-`%LOCALAPPDATA%\Snipdeck`, not in the app folder, so updating or deleting the app does not touch them.
-`Snipdeck.bat help` lists the other commands (`demo`, `backup`, `restore`, `doctor`, `uninstall`). If it cannot
-download the app, it says why and what to do; see [`troubleshooting.md`](troubleshooting.md).
-`Snipdeck.bat build` builds from source and is for developers only.
+A template is an item whose text has placeholders. Snipdeck fills them in when you use the item. In the
+editor, the **Placeholders** list inserts one for you.
 
-No release has been published yet, so for now `Snipdeck.bat` reports that and stops.
-
-## Try the demo
-
-Try it with `run-snipdeck-demo.bat` (Windows) or `cargo run -p snipdeck-app -- --demo`. The demo
-runs on a seeded library in memory: two boards (Work, Personal), lists such as "Email replies",
-"Addresses" and "Code", and a sample of each item kind. Nothing is saved. On Linux and macOS the clipboard,
-keyboard and target window are fakes, so a click copies to a pretend clipboard and pastes into a pretend
-Outlook window. On Windows the demo uses the real clipboard, hotkeys and window tracking, so a click may
-really paste into the window you were using (unverified on Windows).
-
-## Concepts
-
-- **Board**: a workspace such as "Work" or "Personal". The Free tier allows 3 boards.
-- **List**: an ordered group of items inside a board, shown as a tab in the Panel. A list can have a colour.
-- **Item**: one thing to paste. It has a title, one or more clipboard formats (text, HTML, RTF, image,
-  files), tags and flags (pinned, sensitive). Kinds: text, template, code, link, image, file.
-- **Target**: the window and text control you were typing in before you used Snipdeck.
-- **Panel**: the small always-on-top window that shows a board. Clicking it does not take focus from the
-  Target.
-- **Picker**: a keyboard-first popup at the text caret with fuzzy search across boards.
-- **Main window**: the full manager (sidebar, item list, detail editor).
-
-## Hotkeys
-
-Defaults; all are meant to be rebindable. They are global, so they work while another app has focus.
-
-| Chord | Action | State |
+| Placeholder | What you get | Plan |
 |---|---|---|
-| `Ctrl+Alt+Space` | Show or hide the Panel | Demo (Windows: unverified) |
-| `Ctrl+Shift+Space` | Open the Picker at the caret | Registered; does nothing yet (Picker window is **Code only**) |
-| `Ctrl+Shift+2` | Capture a screen region (and OCR) | Registered; does nothing yet. **Planned** |
-| `Ctrl+Alt+V` | Paste the next item of the paste stack (Pro) | Registered; does nothing yet. **Planned** |
+| `{date}`, `{time}` | Today's date, or the time | Free |
+| `{datetime:FORMAT}` | Date and time in a format you choose, such as `{datetime:%d %B %Y}` | Free |
+| `{cursor}` | Nothing. It marks where the text cursor ends up after pasting. | Free |
+| `{field:Name}` or `{field:Name\|default}` | Asks you for a value each time | Pro |
+| `{choice:Name\|a\|b}` | Asks you to pick one of the options | Pro |
 
-If another program already owns a chord, that hotkey fails to register and is reported; the others still
-work. If `settings.json` gives two actions the same chord, the later one is turned off. Chords are changed by editing `settings.json` (see
-[Settings](#settings)); there is no screen for it yet.
+Dates and times use UTC for now, not your time zone. `{clipboard}` is accepted but comes out empty in this
+version. Type `{{` and `}}` for literal braces. Any other braces are an error, and the editor says so when
+you save.
 
-## The Panel
+When you use a template with `{field}` or `{choice}`, a **Fill in template** window opens. Fill the fields,
+check the preview and press `Ctrl+Enter` to insert. `Esc` cancels.
 
-**Demo.** The header has the board switcher, a pin (keep on top) and a close button; below it are the
-search field, the list tabs, a strip of pinned items, the item rows with a number gutter, and a footer
-that says where a click will go ("Pastes into Outlook · New message" or "Copies to clipboard").
+### Sensitive items
 
-| Action | Result |
+Turn on **Sensitive item** under **Privacy** in the editor. Only text, code, link and template items can be
+sensitive. A sensitive item:
+
+- Shows as a lock with a hidden preview. In the Main window, hold `Space` on the row to reveal it.
+- Is put on the clipboard marked private, so Windows clipboard history and cloud clipboard skip it.
+- On Pro, is also encrypted on disk with a key protected by Windows. The title, tags and search text are not
+  encrypted. See [`crypto.md`](crypto.md).
+
+## Paste an item
+
+| Do this | Result |
 |---|---|
-| Click an item | Paste into the Target if a text-input Target is known; otherwise copy and show a toast |
-| `Shift`+click, `Shift+Enter` | Copy only |
-| Type | Filters the items of the current board (title, tags, first 64 characters of content) |
-| `Up` / `Down`, `PageUp` / `PageDown` | Move the selection |
-| `Enter` | Use the selected item |
-| `1`-`9` | Use the Nth row, while the search field is empty |
-| `Ctrl+Tab`, `Ctrl+Shift+Tab` | Next / previous list |
-| `Ctrl+F` | Focus the search field |
-| `Esc` | Clear the search; with nothing to clear, hide the Panel |
-| Click a pinned chip | Use that item |
+| Click an item in the Panel | Pastes it into the target |
+| `Shift`+click, or `Shift+Enter` | Copies only, and does not paste |
+| `Enter` on the selected row | Same as a click |
+| Press `1` to `9` (search box empty) | Uses the row with that number |
+| Click a pinned chip | Uses that item |
+| Picker: type, then `Enter` | Pastes the first match |
 
-After a paste the previous clipboard contents are restored. If the Target cannot be pasted into (a
-password field, an elevated window), Snipdeck copies instead and says so. Closing the Panel hides it to the
-tray when there is a tray icon, otherwise it quits.
+After a paste, Snipdeck puts your earlier clipboard back. If it cannot paste into the target (a password
+box, a program running as administrator, a program in your "never paste into" list), it copies instead and
+a message tells you why. The Panel footer always says where a click will go: "Pastes into Outlook" or
+"Copies to clipboard".
 
-**Code only / Planned:** context menus, add-from-clipboard, add list, rename, delete with Undo, drag to
-reorder, docking to screen edges, auto-hide, Compact and Comfortable views, the Recent tab, floating lists
-(Pro), saved position, `Alt+click` for plain text.
+### The Picker
 
-### Tray icon
+Press `Ctrl+Shift+Space`. A small search window opens at your caret. Type to filter. It matches titles, tags
+and the start of the content.
 
-**Demo** on Windows, unverified. A left click toggles the Panel. The menu has Open Panel, Open Snipdeck
-(shows the Panel until the Main window exists), Pause hotkeys, and Quit. The executable has no icon of its
-own yet, and the menu does not follow dark mode.
+- `Up`, `Down`, `PageUp`, `PageDown` move. `Enter` pastes. `Shift+Enter` copies.
+- `Tab` and `Shift+Tab` change where it searches: **All**, **This board** or **Pinned**.
+- `1` to `9` use that row while the box is empty. `Alt+1` to `Alt+9` work at any time.
+- `Ctrl+E` edits the selected item. `Esc` closes the Picker.
 
-## The Picker
+### Paste next (Pro)
 
-**Code only.** The window exists with tests (see the screenshots in the [README](../README.md#screenshots)):
-type to filter across all boards, arrow keys to move, `Enter` to paste, `Shift+Enter` to copy, `1`-`9` to
-use a row, `Esc` to dismiss. The app does not open it when you press the hotkey.
+`Ctrl+Alt+V` pastes the next item of the pinned strip (or, with nothing pinned, of the list you are looking
+at), one per press. After the last one, a message says so and the next press starts again.
 
-## Boards and lists
+## Organise
 
-Boards and lists, their order, colours, trash and search exist in the store and are tested. In the app,
-you can switch board and list (Demo). Creating, renaming, reordering, deleting and restoring from Trash
-(kept 30 days) have no screens yet; the Main window is **Planned** (milestone M4).
+Use the Main window. The sidebar lists **All items**, **Pinned**, your lists, your tags and the **Trash**. The
+toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable and tile views.
 
-## Templates and placeholders
+- **Boards.** Open the board name at the top of the sidebar or the Panel. The menu lists your boards and can
+  create, rename, move up or down, and delete a board. Deleting a board moves its lists and items to the
+  Trash.
+- **Lists.** Add a list with **Add list** in the sidebar, or the **+** tab in the Panel. **Edit list** sets the name, a colour and the sort: manual, most
+  used or recently used. Move a list with `Alt+Up` or `Alt+Down` while it is selected in the sidebar.
+- **Order of items.** Select a row and press `Alt+Up` or `Alt+Down`.
+- **Move.** Choose **Move to list…** from the item menu to move one or more selected items.
+- **Tags.** Choose **Tags…** to tick the tags of the selected items. Delete a tag from the sidebar; its items
+  stay. New tags are made in the item editor.
+- **Pin.** Press `Ctrl+P` on a row, or choose **Pin** from its menu. Pinned items show in a strip under the
+  Panel's tabs, and under **Pinned** in the sidebar.
+- **Rename.** The item's title is in the editor (`Ctrl+E` or `F2`). Lists and boards have their own rename
+  entries.
+- **Select many.** `Ctrl`+click or `Ctrl+Space` adds a row, `Shift`+click or `Shift+Arrow` extends, and
+  `Ctrl+A` selects all. `Esc` clears the selection.
+- **Open the item menu** with a right-click, the `Menu` key or `Shift+F10`.
 
-**Code only.** A template is an item whose text has placeholders, filled in when you use it.
+### Trash and undo
 
-| Placeholder | Result | Tier |
-|---|---|---|
-| `{date}`, `{time}` | Today's date or the time, in your locale format | Free |
-| `{datetime:FORMAT}` | Date and time with a strftime-style format, for example `{datetime:%d %B %Y}` | Free |
-| `{clipboard}` | The text on the clipboard when you use the item | Free; not wired in the app yet |
-| `{cursor}` | Nothing; marks where the caret ends up | Free |
-| `{field:Name}`, `{field:Name\|default}` | Asks you for a value | Pro |
-| `{choice:Name\|a\|b}` | Asks you to pick one | Pro |
-
-`{{` and `}}` give literal braces. Anything else in braces is an error, reported when the template is saved.
-The supported format letters are in the module docs of `snipdeck-core`'s `template.rs`.
-
-The fill form (the window that asks for `{field}` and `{choice}` values) exists with tests but is not wired:
-using a prompted template in the Panel currently shows the toast "Fill in this template first." and
-pastes nothing. The demo's "Invoice reminder" item is one. Time zone is UTC until the platform time zone
-is read.
-
-## Sensitive items
-
-- **Demo:** a sensitive item shows a lock and a masked preview in the list.
-- **Code only:** excluded from history, and in the Pro tier encrypted at rest (XChaCha20-Poly1305, key wrapped by
-  Windows DPAPI, optional master password). See [`crypto.md`](crypto.md). There is no screen to mark an
-  item sensitive or set a master password.
-- **Planned:** reveal on click-and-hold, clipboard auto-clear after N seconds (default 30), unlock prompts.
-
-Titles, tags and search text of sensitive items are not encrypted.
-
-## Import and export
-
-**Code only.** The library code can write and read `.snipdeck` files (a zip with `manifest.json`,
-`items.json` and `assets/`; [`format.md`](format.md)), import a folder of `.txt` / `.md` files, a Ditto
-database, or CopyQ JSON, and make one local backup per day (newest 7 kept, in `backups/` in the data
-folder). There is no screen for any of it, and the daily backup is not scheduled by the app yet.
-Windows clipboard history import and CopyQ's binary export are not supported.
+Deleting an item, list or board moves it to the **Trash**. A message with an **Undo** button stays for about
+5 seconds. Later, open **Trash** to restore items (`Enter` or **Restore**) or delete them for good. Deleted
+things are removed from the Trash after 30 days, and **Empty Trash** removes them at once. A board comes back
+only if the Free plan has room for it.
 
 ## Settings
 
-**Code only.** The app reads `settings.json` from the data folder when it starts without `--demo`. There is no
-Settings window; edit the file in a text editor while Snipdeck is closed. Missing or invalid values fall
-back to their defaults, and an unreadable file is moved to `settings.json.bad`.
+Open Settings from the Panel menu or the Main window. Changes apply at once and are saved.
 
-| Key | Default | Meaning |
+- **Shortcuts.** The four hotkeys. Click a field and press the new combination. The clear button turns one
+  off. Snipdeck refuses a combination another action uses, or one that Windows or another program owns, and
+  says which.
+- **Appearance.** **Theme** is Windows, Light or Dark. **Language** offers English, Español, Deutsch,
+  Français, Português (Brasil), 日本語 and 简体中文, and takes effect the next time Snipdeck starts.
+  **Panel width** is 260 to 480 pixels. You can also drag the Panel's edges.
+- **General.** **Start with Windows** starts Snipdeck hidden in the tray when you sign in. **Keep running in
+  the tray when the window closes** decides whether closing the Panel hides it or quits. **Show website icons
+  on links** is off by default and is the only setting that makes a network request.
+- **Never paste into.** Program file names, such as `notepad.exe`. Snipdeck copies instead of pasting there.
+- **Licence.** Paste your key (it starts with `SNIP1.`) and press **Activate**. See the
+  [README](../README.md#licence).
+- **Backups.** Snipdeck backs up once a day and keeps the newest 7. **Restore** adds back what is missing and
+  never removes anything. **Back up now** makes one on demand, and **Open data folder** opens the folder.
+- **Your data.** **Export library** saves one `.snipdeck` file in your Documents folder, named like
+  `Snipdeck-library-20261018.snipdeck`. **Erase library** deletes every board, list, item and backup after
+  you type `DELETE`. Your settings and licence stay. Tick **Also forget the encryption key** only if you do not
+  need encrypted items in old exports.
+- **Privacy.** A short summary of what is stored and where.
+
+## Import and export
+
+Export is in Settings, as above. The file is a zip with JSON ([`format.md`](format.md)), so other tools can
+read it. To bring a library back, restore one of the backups listed in Settings. Importing text files, Ditto
+or CopyQ data has no screen in this version.
+
+## Keyboard reference
+
+| Where | Keys | Action |
 |---|---|---|
-| `hotkeys.toggle_panel`, `.picker`, `.capture`, `.paste_next` | see [Hotkeys](#hotkeys) | Chord text such as `Ctrl+Shift+Space`; empty turns it off |
-| `theme` | `"system"` | `"system"` (follows Windows), `"light"` or `"dark"` |
-| `language` | `""` | Locale tag such as `de` or `pt-BR`; empty follows Windows |
-| `autostart` | `false` | Start with Windows |
-| `close_to_tray` | `true` | Closing the Panel hides it when a tray icon exists |
-| `panel_width` | `320` | Panel width in pixels, 260 to 480 |
-| `no_paste_apps` | `[]` | Executable names (lower case) that never get an automatic paste; Snipdeck copies instead |
-| `site_icons` | `false` | Fetch icons for links; the only setting that makes a network call |
-
-Data folder: `%LOCALAPPDATA%\Snipdeck` on Windows (`$XDG_DATA_HOME/snipdeck` or `~/.local/share/snipdeck`
-elsewhere), or the folder given with `--data-dir`. It holds `snipdeck.db`, `blobs/`, `backups/` and
-`settings.json` ([`store.md`](store.md)). Only one copy of Snipdeck can use a library at a time.
+| Anywhere | `Ctrl+Alt+Space` | Show or hide the Panel |
+| Anywhere | `Ctrl+Shift+Space` | Open the Picker |
+| Anywhere | `Ctrl+Shift+2` | Save the clipboard text as a new item |
+| Anywhere | `Ctrl+Alt+V` | Paste next (Pro) |
+| Panel | `Up`, `Down`, `PageUp`, `PageDown` | Move the selection |
+| Panel | `Enter`, `Shift+Enter` | Use, or copy only |
+| Panel | `1` to `9` | Use that row (search box empty) |
+| Panel | `Ctrl+Tab`, `Ctrl+Shift+Tab` | Next or previous list |
+| Panel | `Ctrl+F` | Focus the search box |
+| Panel | `Ctrl+E`, `F2` | Edit the selected item |
+| Panel | `Delete` | Move the selected item to the Trash (not while searching) |
+| Panel | `Esc` | Clear the search; with nothing to clear, hide the Panel |
+| Picker | `Tab`, `Shift+Tab` | Change scope |
+| Picker | `Alt+1` to `Alt+9` | Use that row |
+| Picker | `Ctrl+E`, `Esc` | Edit, close |
+| Main window | `Ctrl+N` | New item |
+| Main window | `Ctrl+F`, `/` | Search |
+| Main window | `Enter`, `Shift+Enter` | Use, or copy only |
+| Main window | `Ctrl+E`, `F2` | Edit |
+| Main window | `Ctrl+P` | Pin or unpin |
+| Main window | `Delete` | Move to the Trash (in the Trash: delete for good) |
+| Main window | `Ctrl+A`, `Ctrl+Space` | Select all, toggle a row |
+| Main window | `Alt+Up`, `Alt+Down` | Move an item or list |
+| Main window | `Space` (hold) | Reveal a sensitive item |
+| Item editor | `Ctrl+Enter` | Save |
+| Fill form | `Ctrl+Enter`, `Esc` | Insert, cancel |
 
 ## Command line
 
-```text
-snipdeck-app [--demo] [--screenshot <file>] [--dark] [--hidden] [--data-dir <folder>] [--help]
-```
-
-`--hidden` starts with the Panel hidden (used for Start with Windows). `--screenshot` renders the demo Panel
-to a PNG and exits; it needs no display.
-
-## Privacy
-
-No account, no telemetry, no network port. What is stored where, and how to remove all of it: [`privacy.md`](privacy.md). Design summary: [`../SECURITY.md`](../SECURITY.md).
+`Snipdeck.bat` passes extra options to the app: `--hidden` starts with the Panel hidden, `--dark` forces the
+dark theme for this run, and `--data-dir <folder>` uses another library folder. `Snipdeck.bat demo` opens a
+sample library that is kept in memory and saves nothing.

@@ -14,7 +14,7 @@ setting that can make a network request (site icons for link items) is off by de
 | Daily backups | `%LOCALAPPDATA%\Snipdeck\backups\` | Zipped `.snipdeck` exports, newest 7 kept |
 | Trash | inside `snipdeck.db` | 30 days, then purged |
 | Crash log | `%LOCALAPPDATA%\Snipdeck\logs\` | Only written when the app crashes; never sent anywhere |
-| Launcher logs (`Snipdeck.bat`) | `dist\logs\` next to the launcher | Build output and, with `SNIPDECK_LOG=1`, debug tracing |
+| Launcher logs and doctor reports (`Snipdeck.bat`) | `%LOCALAPPDATA%\Snipdeck\logs\` | Launcher output with your user name hidden; the newest 10 are kept |
 
 The data folder never roams between PCs. Nothing is written outside it except the Windows autostart
 entry (if you turn it on) and the clipboard when you use an item.
@@ -27,7 +27,7 @@ password. Titles, tags and search text are not encrypted ([`crypto.md`](crypto.m
 
 ## Removing everything
 
-1. Optional: export your library first (Main window ▸ kebab ▸ Export).
+1. Optional: export your library first (Settings ▸ Your data ▸ Export library).
 2. Quit Snipdeck from the tray icon.
 3. Delete `%LOCALAPPDATA%\Snipdeck`. That is all of it.
 
