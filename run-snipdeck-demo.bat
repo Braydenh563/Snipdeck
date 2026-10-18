@@ -9,5 +9,5 @@ if errorlevel 1 (
     exit /b 1
 )
 cd /d "%~dp0"
-cargo run --release --locked -p snipdeck-app -- --demo %*
+cargo run --locked -p snipdeck-app -- --demo %*
 endlocal

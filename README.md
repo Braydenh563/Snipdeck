@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/logo/snipdeck-logo.svg" alt="Snipdeck" height="96"></p>
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/logo/snipdeck-logo-dark.svg"><img src="assets/logo/snipdeck-logo-light.svg" alt="Snipdeck" height="96"></picture></p>
 
 # Snipdeck
 

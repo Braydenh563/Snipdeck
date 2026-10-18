@@ -12,8 +12,12 @@ or install them yourself from <https://rustup.rs>, then close the window and run
 new PATH is picked up.
 
 **The first build is slow and `target/` is huge.** Slint and a bundled SQLite are compiled from source,
-and a debug `snipdeck-ui` build is about 4 GB. Use `cargo run --release` for the demo, or set
+and a debug `snipdeck-ui` build is about 4 GB. Set
 `CARGO_TARGET_DIR` to a scratch folder and delete it afterwards. Out-of-disk errors mid-build are this.
+
+**`release builds must embed the production licence public key`.** Release builds refuse to compile without
+`SNIPDECK_LICENCE_PUBLIC_KEY` on purpose (the development key must never ship). Run the demo as a debug build:
+`run-snipdeck-demo.bat` or `cargo run -p snipdeck-app -- --demo` (no `--release`).
 
 **Linker or C compiler errors.** Windows needs the Visual Studio C++ Build Tools; Linux needs a C compiler.
 `rust-toolchain.toml` selects stable; the minimum version is `rust-version` in `Cargo.toml`.
