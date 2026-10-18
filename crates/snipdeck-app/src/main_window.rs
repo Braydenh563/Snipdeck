@@ -371,7 +371,15 @@ impl MainModel {
         };
         let keys: HashSet<Key> = self.keys().into_iter().collect();
         self.selected.retain(|k| keys.contains(k));
-        self.chooser.retain(|k| keys.contains(k));
+        // A chooser outlives its rows leaving the view (untagging in a tag's view), not the
+        // items themselves going.
+        let alive: HashSet<Key> = self
+            .items
+            .iter()
+            .map(|i| Key::Item(i.id))
+            .chain(self.trash.iter().map(|t| Key::from(t.target)))
+            .collect();
+        self.chooser.retain(|k| alive.contains(k));
         if self.anchor.is_some_and(|a| !keys.contains(&a)) {
             self.anchor = None;
         }
