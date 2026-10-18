@@ -394,6 +394,9 @@ function Invoke-Build {
         $st.Attempt++
         $env:CARGO_TARGET_DIR = $st.Target
         $env:CARGO_TERM_COLOR = 'never'
+        # Rebuilds after a git pull: incremental compilation reuses most of the previous codegen of
+        # the workspace crates (the repo's dev profile turns it off for CI and shared build folders).
+        if (-not $env:CARGO_INCREMENTAL) { $env:CARGO_INCREMENTAL = '1' }
         $argv = @('build', '-p', 'snipdeck-app')
         if ($st.Locked) { $argv += '--locked' }
         if ($st.Offline) { $argv += '--offline' }
@@ -571,13 +574,19 @@ function Invoke-RunFlow([bool]$Demo, [string[]]$AppArgs, [bool]$ForceBuild) {
         return 0
     }
 
+    $stale = $false
+    try { $stale = [bool]$script:Opt.Stale } catch { }
     $fromCache = $false
     if ($state -eq 'valid' -and -not $ForceBuild) {
         $exe = Get-CacheExe
         $fromCache = $true
         Say 'Fast start: the source has not changed since the last build.' 'Green'
+    } elseif ($state -eq 'stale' -and $stale -and -not $ForceBuild) {
+        $exe = Get-CacheExe
+        $fromCache = $true
+        Say 'Starting the last build (--stale): the source changed since, so new changes are not in it yet.' 'Yellow'
     } else {
-        if ($state -eq 'stale') { Say 'The source changed since the last build, so it is rebuilt.' 'Gray' }
+        if ($state -eq 'stale') { Say 'The source changed since the last build, so it is rebuilt (start the old build instead with --stale).' 'Gray' }
         if ($state -eq 'corrupt') { Say 'The saved fast-start copy looks damaged; rebuilding.' 'Yellow' }
         if (-not (Invoke-Preflight)) { return 1 }
         $built = Invoke-Build

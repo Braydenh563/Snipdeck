@@ -6,7 +6,7 @@ function Read-Options([string[]]$ArgList) {
     # The launcher has no param() block on purpose: Windows PowerShell would treat "--whatif" and the app's own
     # options ("--dark", "--screenshot x.png") as errors. Returns an object with Command, flags, Pass and Error.
     $o = [ordered]@{
-        Command = ''; Yes = $false; WhatIf = $false; Rebuild = $false; Open = $false
+        Command = ''; Yes = $false; WhatIf = $false; Rebuild = $false; Stale = $false; Open = $false
         RemoveTarget = $false; RemoveData = $false; AllowUnpinned = $false; Pass = @(); Error = ''
     }
     $rest = $false
@@ -24,6 +24,7 @@ function Read-Options([string[]]$ArgList) {
             if ($name -eq 'yes' -or $name -eq 'y') { $o.Yes = $true }
             elseif ($name -eq 'whatif' -or $name -eq 'dry-run' -or $name -eq 'dryrun') { $o.WhatIf = $true }
             elseif ($name -eq 'rebuild' -or $name -eq 'force') { $o.Rebuild = $true }
+            elseif ($name -eq 'stale' -or $name -eq 'no-rebuild') { $o.Stale = $true }
             elseif ($name -eq 'open') { $o.Open = $true }
             elseif ($name -eq 'target') { $o.RemoveTarget = $true }
             elseif ($name -eq 'data') { $o.RemoveData = $true }
@@ -45,6 +46,8 @@ function Read-Options([string[]]$ArgList) {
         $appCommand = ($cmd -eq 'run' -or $cmd -eq 'demo' -or $cmd -eq 'build' -or $cmd -eq 'reinstall')
         if ($o.AllowUnpinned -and @('run', 'demo', 'update', 'reinstall') -notcontains $cmd) { $o.Error = "--allow-unpinned only applies to run, demo, update and reinstall. Try: Snipdeck.bat help" }
         if ($o.Rebuild -and $cmd -ne 'build') { $o.Error = "--rebuild only applies to 'build'. Try: Snipdeck.bat help" }
+        if ($o.Stale -and @('run', 'demo', 'build') -notcontains $cmd) { $o.Error = "--stale only applies to run, demo and build. Try: Snipdeck.bat help" }
+        if ($o.Stale -and $o.Rebuild) { $o.Error = '--stale and --rebuild contradict each other. Try: Snipdeck.bat help' }
         if (-not $appCommand) {
             foreach ($p in @($o.Pass)) {
                 if ($p.StartsWith('-')) { $o.Error = "Unknown option '$p' for '$cmd'. Try: Snipdeck.bat help"; break }
@@ -87,6 +90,8 @@ Options
               unless you also pass --data to uninstall
   --whatif    show what a command would do and change nothing
   --rebuild   build: ignore the fast-start copy and build again
+  --stale     run, demo, build: start the last build even if the source changed
+              since (skips the rebuild after a git pull; build later when you have time)
   --target    uninstall: also delete the build folder without asking
   --allow-unpinned
               run, demo, update, reinstall: accept a release whose hash is not pinned in

@@ -27,7 +27,7 @@ $script:LauncherVersion = '1'
 $script:LauncherDir = $PSScriptRoot
 $script:RepoRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($PSScriptRoot, '..', '..'))
 $script:TargetOverride = $null
-$script:Opt = @{ Yes = $false; WhatIf = $false; Rebuild = $false; Open = $false; RemoveTarget = $false; RemoveData = $false; AllowUnpinned = $false }
+$script:Opt = @{ Yes = $false; WhatIf = $false; Rebuild = $false; Stale = $false; Open = $false; RemoveTarget = $false; RemoveData = $false; AllowUnpinned = $false }
 
 . ([System.IO.Path]::Combine($PSScriptRoot, 'lib.ps1'))
 . ([System.IO.Path]::Combine($PSScriptRoot, 'cli.ps1'))

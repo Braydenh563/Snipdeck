@@ -262,6 +262,13 @@ function Invoke-SelfTest {
                 return ($refused -and $allowed)
             } finally { $script:Opt = $savedOpt }
         }
+        Test-Case 'options: --stale is parsed for run and build, refused for backup and with --rebuild' {
+            $r = Read-Options @('run', '--stale')
+            $b = Read-Options @('build', '--no-rebuild')
+            $x = Read-Options @('backup', '--stale')
+            $c = Read-Options @('build', '--stale', '--rebuild')
+            return ($r.Stale -and -not $r.Error -and $b.Stale -and -not $b.Error -and [bool]$x.Error -and [bool]$c.Error)
+        }
         Test-Case 'unpinned release: --allow-unpinned is parsed for update and refused for backup' {
             $u = Read-Options @('update', '--allow-unpinned')
             $b = Read-Options @('backup', '--allow-unpinned')
