@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fs;
 use std::io::{self, Read, Write};
@@ -69,6 +69,10 @@ pub(crate) struct Blobs {
     /// While a transaction is open: the blob files it created (they did not exist before), so
     /// a rollback can delete them again. `None` outside a transaction.
     created: Option<Vec<BlobRef>>,
+    /// While a transaction is open: the transient payloads a write took into an item. They are
+    /// plaintext in RAM that nothing needs once the write is over, so the transaction's end (commit
+    /// or rollback) drops them; see [`Blobs::take_transient`].
+    taken: Vec<BlobRef>,
 }
 
 /// Where a transaction (or a savepoint inside one) stood when it began; see
@@ -76,6 +80,9 @@ pub(crate) struct Blobs {
 pub(crate) struct BlobMark {
     created: usize,
     pending: HashMap<BlobRef, usize>,
+    /// How many transient payloads had been taken, and which ones existed at all.
+    taken: usize,
+    transient: HashSet<BlobRef>,
 }
 
 enum Backing {
@@ -125,6 +132,7 @@ impl Blobs {
             pending: HashMap::new(),
             plain: RefCell::new(HashMap::new()),
             created: None,
+            taken: Vec::new(),
         }
     }
 
@@ -134,15 +142,25 @@ impl Blobs {
         BlobMark {
             created,
             pending: self.pending.clone(),
+            taken: self.taken.len(),
+            transient: self.plain.borrow().keys().copied().collect(),
         }
     }
 
     /// Undoes the blob side of a rolled-back transaction: deletes the files created since
     /// `mark` (no committed row can use a file that did not exist before) and restores the
-    /// pending counts. The files are scrubbed first: a payload staged there may be plaintext. A
+    /// pending counts. Transient plaintext a rolled-back write took, or that was staged since
+    /// `mark`, is dropped (zeroed) too. The files are scrubbed first: a payload staged there may be plaintext. A
     /// file that cannot be deleted now is left for `Store::gc_blobs`.
     pub(crate) fn rewind(&mut self, mark: BlobMark) {
         self.pending = mark.pending;
+        let taken = self.taken.split_off(mark.taken.min(self.taken.len()));
+        let mut plain = self.plain.borrow_mut();
+        for blob in taken {
+            plain.remove(&blob);
+        }
+        plain.retain(|blob, _| mark.transient.contains(blob));
+        drop(plain);
         let doomed = self
             .created
             .as_mut()
@@ -154,8 +172,25 @@ impl Blobs {
     }
 
     /// Stops recording created files (the outermost transaction ended).
+    /// The transient payloads the transaction's writes took are dropped (zeroed): the rows
+    /// they went into hold the sealed or stored copy now.
     pub(crate) fn end_log(&mut self) {
         self.created = None;
+        let mut plain = self.plain.borrow_mut();
+        for blob in self.taken.drain(..) {
+            plain.remove(&blob);
+        }
+    }
+
+    /// Notes that a write is taking `content` into an item: if it is a transient payload it is
+    /// dropped when the transaction ends (or, if that is rolled back, at the rollback). Not at
+    /// once, because another row of the same transaction may carry the same payload.
+    pub(crate) fn take_transient(&mut self, content: &Content) {
+        if let Content::Blob { blob, .. } = content
+            && self.plain.borrow().contains_key(blob)
+        {
+            self.taken.push(*blob);
+        }
     }
 
     /// Inline or blob, by [`INLINE_LIMIT`]: the single place the threshold is applied. A new

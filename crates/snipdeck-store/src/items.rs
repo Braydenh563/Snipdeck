@@ -217,6 +217,9 @@ pub(crate) fn write_formats(
 ) -> Result<Written> {
     let mut written = Written::default();
     let stored = map_payloads(formats, |content, slot| {
+        // A staged or decrypted payload is plaintext in RAM that nothing needs once this
+        // transaction ends (the row holds the sealed or stored copy): drop it then.
+        blobs.take_transient(content);
         if let Some(key) = key {
             let plain = Zeroizing::new(blobs.read_any(content)?.into_owned());
             let envelope = encrypt_payload(key, &item, slot, &plain)?;

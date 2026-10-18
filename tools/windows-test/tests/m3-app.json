@@ -118,7 +118,7 @@
       "gate": true,
       "title": "A damaged settings file is set aside, not lost",
       "do": "Quit Snipdeck from the tray. Overwrite spikes-results\\m3-data\\settings.json with the text: { \"panel_width\": 400, \"no_paste_apps\": [\"keepass.exe\"  (cut off, no closing brackets). Relaunch with 'r'. Then look in spikes-results\\m3-data.",
-      "expect": "Snipdeck starts normally with default settings (no crash, no error dialog). The folder now has settings.json.bad with exactly the damaged text, and no settings.json (a new one is only written when a setting changes). A file with valid JSON but a wrong value type, such as {\"theme\": 7}, is also moved to .bad; {\"panel_width\": 9999} is not (it is just clamped). Also: a settings.json saved by Notepad as 'UTF-8 with BOM' (or 'Unicode', UTF-16) is read normally and is NOT moved to .bad."
+      "expect": "Snipdeck starts normally using what could be salvaged from the file (only the no-paste list can be recovered from cut-off text, so keepass.exe is still excluded from auto-paste and everything else is at its default; no crash, no error dialog). The folder now has settings.json.bad with exactly the damaged text, and a NEW valid settings.json written at launch that holds those salvaged values. Quit and relaunch: keepass.exe is still excluded from auto-paste and no new .bad appears. A file with valid JSON but a wrong value type, such as {\"theme\": 7}, is also moved to .bad; {\"panel_width\": 9999} is not (it is just clamped). Also: a settings.json saved by Notepad as 'UTF-8 with BOM' (or 'Unicode', UTF-16) is read normally and is NOT moved to .bad."
     },
     {
       "id": "15",
