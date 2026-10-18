@@ -50,3 +50,4 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 14:1x owner: just focus on finishing v1: polish, optimise, refine, from demo to a real usable reliable product.
 - 14:3x owner: launcher says no release yet (404) and stops; cannot run. → by design until the first tag; interim: Actions artifact zip.
 - 14:3x owner: must run offline; wifi only for install (and far-future cloud sync). → already so: network only on first download; the app never calls out.
+- 14:5x owner: more .bat files for uninstall, reinstall and the other tools/commands. → tools/launcher/commands/*.bat wrappers (in the zip under tools\launcher\commands; copying them to the zip root needs a workflow edit: owner).
