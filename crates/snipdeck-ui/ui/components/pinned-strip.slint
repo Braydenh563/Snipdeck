@@ -138,8 +138,11 @@ export component PinnedStrip inherits Rectangle {
     property <length> chip-max-w: Type.base * 12;
     // Room for the focus ring above and below the 24px chips.
     property <length> ring: Space.s1;
-    // The chips do not fit between the strip's edges: the carets appear.
+    // The chips do not fit between the strip's edges.
     out property <bool> overflowing: row.preferred-width + 2 * Space.s1 > root.width;
+    // More chips lie out of view to the left / right: the matching caret button shows.
+    property <bool> can-left: flick.content-x < -1px;
+    property <bool> can-right: flick.content-x > flick.width - flick.content-width + 1px;
 
     // How far the row is scrolled to the left, for tests and for the app to show scroll hints.
     out property <length> scroll-x: -flick.content-x;
@@ -162,68 +165,85 @@ export component PinnedStrip inherits Rectangle {
     }
 
     // Placed by hand, not in a layout: a layout here would make the strip's size constraints depend on
-    // `overflowing`, which depends on its width (a binding loop through the Panel's layout).
-    Rectangle {
-        // The row inside the Flickable has its own 4px margin; the carets sit 4px from the strip's edges.
-        property <length> lead: root.overflowing ? Space.hit-min + 2 * Space.s1 : 0px;
+    // `can-left` / `can-right` (which depend on the width): a binding loop through the Panel's layout.
+    flick := Flickable {
+        width: root.width;
+        height: root.height;
+        content-width: max(self.width, row.preferred-width + 2 * Space.s1);
+        content-height: self.height;
 
-        if root.overflowing: left := IconButton {
-            icon: Icons.caret-left;
-            tooltip: root.scroll-left-label;
-            size: IconButtonSize.sm;
-            enabled: flick.content-x < -1px;
+        row := HorizontalLayout {
             x: Space.s1;
-            y: (parent.height - self.height) / 2;
-            clicked => { root.scroll-by(flick.width * 0.75); }
-            changed has-hover => { root.tip(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
-            changed has-focus => { root.tip(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
-        }
-        flick := Flickable {
-            x: parent.lead;
-            width: parent.width - 2 * parent.lead;
-            height: parent.height;
-            content-width: max(self.width, row.preferred-width + 2 * Space.s1);
-            content-height: self.height;
-
-            row := HorizontalLayout {
-                x: Space.s1;
-                y: root.ring;
-                height: max(Space.hit-min, Type.line-sm + Space.s2);
-                spacing: Space.s1;
-                alignment: start;
-                for item[i] in root.items: PinnedChip {
-                    title: item.title;
-                    max-w: root.chip-max-w;
-                    use => {
-                        root.use(i);
-                    }
-                    copy => {
-                        root.copy(i);
-                    }
-                    context-menu-requested(x, y) => {
-                        root.context-menu-requested(i, x, y);
-                    }
-                    focus-arrived(x, w) => {
-                        // Keep the focused chip fully inside the strip, with the row's 4px margin.
-                        if (x + Space.s1 + flick.content-x < 0) {
-                            flick.content-x = -(x + Space.s1) + Space.s1;
-                        } else if (x + w + 2 * Space.s1 + flick.content-x > flick.width) {
-                            flick.content-x = flick.width - (x + w + 2 * Space.s1);
-                        }
+            y: root.ring;
+            height: max(Space.hit-min, Type.line-sm + Space.s2);
+            spacing: Space.s1;
+            alignment: start;
+            for item[i] in root.items: PinnedChip {
+                title: item.title;
+                max-w: root.chip-max-w;
+                use => {
+                    root.use(i);
+                }
+                copy => {
+                    root.copy(i);
+                }
+                context-menu-requested(x, y) => {
+                    root.context-menu-requested(i, x, y);
+                }
+                focus-arrived(x, w) => {
+                    // Keep the focused chip fully inside the strip, with the row's 4px margin.
+                    if (x + Space.s1 + flick.content-x < 0) {
+                        flick.content-x = -(x + Space.s1) + Space.s1;
+                    } else if (x + w + 2 * Space.s1 + flick.content-x > flick.width) {
+                        flick.content-x = flick.width - (x + w + 2 * Space.s1);
                     }
                 }
             }
         }
-        if root.overflowing: right := IconButton {
-            icon: Icons.caret-right;
-            tooltip: root.scroll-right-label;
-            size: IconButtonSize.sm;
-            enabled: flick.content-x > flick.width - flick.content-width + 1px;
-            x: parent.width - Space.s1 - self.width;
-            y: (parent.height - self.height) / 2;
-            clicked => { root.scroll-by(-flick.width * 0.75); }
-            changed has-hover => { root.tip(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
-            changed has-focus => { root.tip(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+    }
+
+    // The carets float over the ends of the row on a solid patch (never a fade), and only on the side
+    // that has more chips to reveal. No room is reserved for them, so a row that fits shows none.
+    if root.can-left: Rectangle {
+        x: 0px;
+        width: Space.hit-min + 2 * Space.s1;
+        background: Theme.bg-app;
+    }
+    if root.can-left: left := IconButton {
+        icon: Icons.caret-left;
+        tooltip: root.scroll-left-label;
+        size: IconButtonSize.sm;
+        x: Space.s1;
+        y: (parent.height - self.height) / 2;
+        clicked => { root.scroll-by(flick.width * 0.75); }
+        changed has-hover => { root.tip(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+        changed has-focus => { root.tip(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+    }
+    if root.can-right: Rectangle {
+        x: parent.width - self.width;
+        width: Space.hit-min + 2 * Space.s1;
+        background: Theme.bg-app;
+    }
+    if root.can-right: right := IconButton {
+        icon: Icons.caret-right;
+        tooltip: root.scroll-right-label;
+        size: IconButtonSize.sm;
+        x: parent.width - Space.s1 - self.width;
+        y: (parent.height - self.height) / 2;
+        clicked => { root.scroll-by(-flick.width * 0.75); }
+        changed has-hover => { root.tip(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+        changed has-focus => { root.tip(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+    }
+
+    // A caret that disappears under the pointer (the end was reached) can no longer report that it left.
+    changed can-left => {
+        if (!root.can-left) {
+            root.tip(root.scroll-left-label, 0px, 0px, false);
+        }
+    }
+    changed can-right => {
+        if (!root.can-right) {
+            root.tip(root.scroll-right-label, 0px, 0px, false);
         }
     }
 }

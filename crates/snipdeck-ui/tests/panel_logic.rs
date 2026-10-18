@@ -8,6 +8,10 @@
     clippy::panic,
     reason = "test code: a failure is a failed test"
 )]
+#![allow(
+    clippy::cast_precision_loss,
+    reason = "pixel sizes and chip counts are far below f32 precision"
+)]
 
 use std::{cell::RefCell, rc::Rc, time::Duration};
 
@@ -182,9 +186,24 @@ fn set_pinned(ui: &PanelWindow, items: Vec<PinnedItem>) {
     settle();
 }
 
-/// Left edge of the pinned chip titled `title`, in the window.
-fn chip_x(ui: &PanelWindow, title: &str) -> f32 {
-    find(ui, title, AccessibleRole::Button).absolute_position().x
+/// How far the pinned row is scrolled (>= 0), worked out from the first "Pinned NN" chip still in view
+/// (chips that scrolled out of the strip leave the accessibility tree). Chips are equally wide; the first
+/// one sits 12px in (8px panel padding, 4px row margin) with a 4px gap between chips.
+fn pinned_scroll(ui: &PanelWindow) -> f32 {
+    let chip = by_role(ui, AccessibleRole::Button)
+        .into_iter()
+        .filter_map(|e| {
+            let n: usize = e
+                .accessible_label()?
+                .strip_prefix("Pinned ")?
+                .parse()
+                .ok()?;
+            Some((n, e))
+        })
+        .min_by_key(|(n, _)| *n)
+        .expect("a pinned chip in view");
+    let (n, e) = chip;
+    12.0 + (n - 1) as f32 * (e.size().width + 4.0) - e.absolute_position().x
 }
 
 /// Same shape as `inputs_logic`: Slint's testing platform is process-wide and bound to one thread.
@@ -663,7 +682,7 @@ ui_tests! {
         let kebab = find(&ui, "More", AccessibleRole::Button);
         assert!(kebab.size().width >= MIN_HIT && kebab.size().height >= MIN_HIT);
         // Between the pin and the close button.
-        let pin = find(&ui, "Keep on top", AccessibleRole::Button).absolute_position().x;
+        let pin = find(&ui, "Keep panel on top", AccessibleRole::Button).absolute_position().x;
         let close = find(&ui, "Close panel", AccessibleRole::Button).absolute_position().x;
         assert!(pin < kebab.absolute_position().x && kebab.absolute_position().x < close);
 
@@ -715,8 +734,10 @@ ui_tests! {
         let (ui, log) = start();
         ui.set_app_menu_open(true);
         settle();
-        let row = rows(&ui)[0].clone();
-        press_at(&ui, centre(&row));
+        // Right of the menu (it ends at the kebab), over a row.
+        let y = centre(&rows(&ui)[0]).y;
+        let w = ui.window().size().width as f32;
+        press_at(&ui, LogicalPosition::new(w - 12.0, y));
         assert_eq!(take(&log), ["app-dismissed"], "the scrim eats the click: no use");
     }
 
@@ -763,14 +784,14 @@ ui_tests! {
     fn moving_from_one_icon_button_to_another_swaps_the_tooltip_instantly() {
         let (ui, _log) = start();
         let kebab = find(&ui, "More", AccessibleRole::Button);
-        let pin = find(&ui, "Keep on top", AccessibleRole::Button);
+        let pin = find(&ui, "Keep panel on top", AccessibleRole::Button);
         let close = find(&ui, "Close panel", AccessibleRole::Button);
         move_to(&ui, centre(&kebab));
         wait(600);
         assert_eq!(ui.get_tooltip_shown(), "More");
         move_to(&ui, centre(&pin));
         settle();
-        assert_eq!(ui.get_tooltip_shown(), "Keep on top", "no second 500ms wait");
+        assert_eq!(ui.get_tooltip_shown(), "Keep panel on top", "no second 500ms wait");
         move_to(&ui, centre(&close));
         settle();
         assert_eq!(ui.get_tooltip_shown(), "Close panel");
@@ -787,14 +808,21 @@ ui_tests! {
     fn every_icon_only_control_in_the_panel_has_a_tooltip() {
         let (ui, _log) = start();
         set_pinned(&ui, fixture::pinned_n(12));
-        for label in ["More", "Keep on top", "Close panel", "Add list", "Scroll left", "Scroll right"] {
+        let hover = |label: &str| {
             move_to(&ui, away(&ui));
             wait(1000);
             let target = find(&ui, label, AccessibleRole::Button);
             move_to(&ui, centre(&target));
             wait(501);
             assert_eq!(ui.get_tooltip_shown(), label, "tooltip of {label:?}");
+        };
+        for label in ["More", "Keep panel on top", "Close panel", "Add list", "Scroll right"] {
+            hover(label);
         }
+        // The left caret only exists once the row has been scrolled.
+        press_at(&ui, centre(&find(&ui, "Scroll right", AccessibleRole::Button)));
+        settle();
+        hover("Scroll left");
     }
 
     fn a_tooltip_hides_while_a_menu_is_open() {
@@ -937,6 +965,7 @@ ui_tests! {
 
     fn a_pinned_strip_that_fits_shows_no_scroll_buttons() {
         let (ui, _log) = start();
+        set_pinned(&ui, fixture::pinned_n(2));
         assert!(missing(&ui, "Scroll left", AccessibleRole::Button));
         assert!(missing(&ui, "Scroll right", AccessibleRole::Button));
     }
@@ -944,76 +973,85 @@ ui_tests! {
     fn the_mouse_wheel_and_shift_wheel_scroll_an_overflowing_strip_sideways() {
         let (ui, _log) = start();
         set_pinned(&ui, fixture::pinned_n(12));
-        let first = chip_x(&ui, "Pinned 01");
-        let on_chip = centre(&find(&ui, "Pinned 01", AccessibleRole::Button));
+        assert!(pinned_scroll(&ui).abs() < 0.5, "starts at the first chip");
+        let on_chip = centre(&find(&ui, "Pinned 02", AccessibleRole::Button));
 
         // A vertical wheel notch over a chip scrolls the row to the left (later chips come into view).
         scroll_at(&ui, on_chip, 0.0, -60.0);
         settle();
-        let after_wheel = chip_x(&ui, "Pinned 01");
-        assert!(after_wheel < first - 20.0, "wheel moved the row: {first} -> {after_wheel}");
+        let after_wheel = pinned_scroll(&ui);
+        assert!(after_wheel > 20.0, "wheel moved the row: {after_wheel}");
 
         // Shift+wheel does the same; so does a native horizontal delta.
         let shift = char::from(Key::Shift).to_string();
-        ui.window().dispatch_event(WindowEvent::KeyPressed { text: shift.clone().into() });
+        ui.window().dispatch_event(WindowEvent::KeyPressed {
+            text: shift.clone().into(),
+        });
         scroll_at(&ui, on_chip, 0.0, -60.0);
         ui.window().dispatch_event(WindowEvent::KeyReleased { text: shift.into() });
         settle();
-        let after_shift = chip_x(&ui, "Pinned 01");
-        assert!(after_shift < after_wheel - 20.0, "shift+wheel: {after_wheel} -> {after_shift}");
+        let after_shift = pinned_scroll(&ui);
+        assert!(after_shift > after_wheel + 20.0, "shift+wheel: {after_wheel} -> {after_shift}");
         scroll_at(&ui, on_chip, -60.0, 0.0);
         settle();
-        assert!(chip_x(&ui, "Pinned 01") < after_shift - 20.0, "horizontal delta");
+        assert!(pinned_scroll(&ui) > after_shift + 20.0, "horizontal delta");
 
         // Wheel up goes back, and never past the start.
         for _ in 0..20 {
             scroll_at(&ui, on_chip, 0.0, 120.0);
         }
         settle();
-        assert!((chip_x(&ui, "Pinned 01") - first).abs() < 0.5, "clamped at the start");
+        assert!(pinned_scroll(&ui).abs() < 0.5, "clamped at the start");
+        // And a long wheel down stops at the last chip.
+        for _ in 0..40 {
+            scroll_at(&ui, on_chip, 0.0, -120.0);
+        }
+        settle();
+        let last = find(&ui, "Pinned 12", AccessibleRole::Button);
+        let w = ui.window().size().width as f32;
+        assert!(last.absolute_position().x + last.size().width <= w - 8.0 + 0.5, "last chip fully in view");
     }
 
-    fn scroll_buttons_appear_at_the_ends_of_an_overflowing_strip_and_page_through_it() {
+    fn scroll_buttons_float_at_the_ends_that_have_more_chips_and_page_through_the_strip() {
         let (ui, log) = start();
         set_pinned(&ui, fixture::pinned_n(12));
-        let left = find(&ui, "Scroll left", AccessibleRole::Button);
+        // At the start there is nothing to the left.
+        assert!(missing(&ui, "Scroll left", AccessibleRole::Button));
         let right = find(&ui, "Scroll right", AccessibleRole::Button);
-        assert!(left.size().width >= MIN_HIT && left.size().height >= MIN_HIT);
         assert!(right.size().width >= MIN_HIT && right.size().height >= MIN_HIT);
-        assert!(left.absolute_position().x < right.absolute_position().x);
-        assert_eq!(left.accessible_enabled(), Some(false), "already at the start");
-        assert_eq!(right.accessible_enabled(), Some(true));
-        // The chips sit between the buttons, not under them.
-        let chip = find(&ui, "Pinned 01", AccessibleRole::Button);
-        assert!(chip.absolute_position().x >= left.absolute_position().x + left.size().width);
+        assert!(right.absolute_position().x + right.size().width <= ui.window().size().width as f32 - 8.0 + 0.5);
 
-        let start_x = chip_x(&ui, "Pinned 01");
         press_at(&ui, centre(&right));
         settle();
-        let paged = chip_x(&ui, "Pinned 01");
-        assert!(paged < start_x - 40.0, "Scroll right moved the row: {start_x} -> {paged}");
-        assert_eq!(
-            find(&ui, "Scroll left", AccessibleRole::Button).accessible_enabled(),
-            Some(true)
-        );
-        assert_eq!(take(&log), Vec::<String>::new(), "a scroll button is not a chip");
+        let paged = pinned_scroll(&ui);
+        assert!(paged > 100.0, "Scroll right paged the row: {paged}");
+        let left = find(&ui, "Scroll left", AccessibleRole::Button);
+        assert!(left.size().width >= MIN_HIT && left.size().height >= MIN_HIT);
+        assert!(left.absolute_position().x < right.absolute_position().x);
+        assert_eq!(take(&log), Vec::<String>::new(), "a caret button is not a chip");
 
-        // Page right until the end: the right button is spent, the last chip is fully visible.
+        // Page right until the end: the right caret goes, the last chip is fully visible.
         for _ in 0..12 {
+            if missing(&ui, "Scroll right", AccessibleRole::Button) {
+                break;
+            }
             press_at(&ui, centre(&find(&ui, "Scroll right", AccessibleRole::Button)));
             settle();
         }
-        let right_btn = find(&ui, "Scroll right", AccessibleRole::Button);
-        assert_eq!(right_btn.accessible_enabled(), Some(false));
+        assert!(missing(&ui, "Scroll right", AccessibleRole::Button), "at the end");
         let last = find(&ui, "Pinned 12", AccessibleRole::Button);
-        assert!(last.absolute_position().x + last.size().width <= right_btn.absolute_position().x + 0.5);
+        assert!(last.absolute_position().x + last.size().width <= ui.window().size().width as f32 - 8.0 + 0.5);
 
-        press_at(&ui, centre(&find(&ui, "Scroll left", AccessibleRole::Button)));
-        settle();
-        assert_eq!(
-            find(&ui, "Scroll right", AccessibleRole::Button).accessible_enabled(),
-            Some(true)
-        );
+        // And back to the start.
+        for _ in 0..12 {
+            if missing(&ui, "Scroll left", AccessibleRole::Button) {
+                break;
+            }
+            press_at(&ui, centre(&find(&ui, "Scroll left", AccessibleRole::Button)));
+            settle();
+        }
+        assert!(missing(&ui, "Scroll left", AccessibleRole::Button));
+        assert!(pinned_scroll(&ui).abs() < 0.5);
     }
 
     fn a_chip_in_an_overflowing_strip_still_uses_on_click() {

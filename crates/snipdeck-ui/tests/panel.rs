@@ -125,7 +125,10 @@ fn panel_copy_route_with_a_toast_in_dark() {
 
 #[test]
 fn panel_with_the_app_menu_open() {
-    for (dark, name) in [(false, "panel-app-menu-light"), (true, "panel-app-menu-dark")] {
+    for (dark, name) in [
+        (false, "panel-app-menu-light"),
+        (true, "panel-app-menu-dark"),
+    ] {
         let h = panel(SIZE, dark);
         h.component.set_app_menu_open(true);
         assert_golden(name, &render(&h));
@@ -140,24 +143,38 @@ fn panel_with_an_overflowing_pinned_strip_shows_scroll_buttons_not_a_fade() {
     assert_golden("panel-pinned-overflow-light", &render(&h));
 }
 
-#[test]
-fn a_hovered_header_button_shows_an_ink_tooltip_under_it_inside_the_window() {
+/// Hover the close button (the last 28px square in the header, 8px from the right edge) and look under it.
+/// One Harness per test: the frozen clock restarts at zero with each one.
+fn tooltip_under_the_close_button(dark: bool, ink: [u8; 3]) {
     use slint::{LogicalPosition, platform::WindowEvent};
-    for (dark, ink) in [(false, [0x17, 0x16, 0x13]), (true, [0xEB, 0xE9, 0xE7])] {
-        let h = panel(SIZE, dark);
-        let _ = render(&h);
-        // The close button is the last 28px square in the header, 8px from the right edge.
-        let at = LogicalPosition::new(SIZE.0 as f32 - 8.0 - 14.0, 20.0);
-        h.component
-            .window()
-            .dispatch_event(WindowEvent::PointerMoved { position: at });
-        h.advance(std::time::Duration::from_millis(600));
-        h.advance(std::time::Duration::from_millis(200));
-        let f = render(&h);
-        // Below the button (bottom edge 34), 4px gap, then the tooltip body; its right edge is clamped to 8px.
-        assert_eq!(f.pixel(SIZE.0 - 12, 44), ink, "tooltip body (dark={dark})");
-        assert_eq!(f.pixel(SIZE.0 - 2, 44), if dark { APP_DARK } else { APP_LIGHT }, "clear of the window edge");
-    }
+    let h = panel(SIZE, dark);
+    let _ = render(&h);
+    let at = LogicalPosition::new(298.0, 18.0); // 320 - 8 - 14: the close button's centre
+    h.component
+        .window()
+        .dispatch_event(WindowEvent::PointerMoved { position: at });
+    h.advance(std::time::Duration::from_millis(600));
+    h.advance(std::time::Duration::from_millis(200));
+    let f = render(&h);
+    // Below the button (bottom edge 32), a 4px gap, then the tooltip body; its right edge is clamped 8px
+    // from the window.
+    assert_eq!(f.pixel(SIZE.0 - 12, 44), ink, "tooltip body (dark={dark})");
+    let app = if dark { APP_DARK } else { APP_LIGHT };
+    assert_eq!(
+        f.pixel(SIZE.0 - 3, 44),
+        app,
+        "clear of the window edge (dark={dark})"
+    );
+}
+
+#[test]
+fn a_hovered_header_button_shows_an_ink_tooltip_under_it_inside_the_window_light() {
+    tooltip_under_the_close_button(false, [0x17, 0x16, 0x13]);
+}
+
+#[test]
+fn a_hovered_header_button_shows_an_ink_tooltip_under_it_inside_the_window_dark() {
+    tooltip_under_the_close_button(true, [0xEB, 0xE9, 0xE7]);
 }
 
 // ---- Measurements ----------------------------------------------------------------------------

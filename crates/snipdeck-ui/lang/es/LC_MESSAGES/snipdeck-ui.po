@@ -298,8 +298,8 @@ msgstr ""
 msgid "Keep editing"
 msgstr ""
 
-msgid "Keep on top"
-msgstr "Siempre encima"
+msgid "Keep panel on top"
+msgstr ""
 
 msgid "Keep running in the tray when the window closes"
 msgstr ""
@@ -341,6 +341,9 @@ msgid "Manage tags…"
 msgstr ""
 
 msgid "Manual"
+msgstr ""
+
+msgid "More"
 msgstr ""
 
 msgid "Most used"
@@ -445,6 +448,9 @@ msgstr ""
 msgid "Orange"
 msgstr ""
 
+msgid "Panel menu"
+msgstr ""
+
 msgid "Panel width"
 msgstr ""
 
@@ -536,6 +542,12 @@ msgid "Save your first snippet, or copy something and save it from the clipboard
 msgstr ""
 
 msgid "Scope"
+msgstr ""
+
+msgid "Scroll left"
+msgstr ""
+
+msgid "Scroll right"
 msgstr ""
 
 msgid "Search all snippets"
