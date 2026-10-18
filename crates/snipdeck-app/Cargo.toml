@@ -10,7 +10,8 @@ publish.workspace = true
 
 [dependencies]
 snipdeck-core.workspace = true
-snipdeck-platform = { path = "../snipdeck-platform" }
+# `testing`: the fakes are the dev platform behind `--demo` and `--screenshot` off Windows.
+snipdeck-platform = { path = "../snipdeck-platform", features = ["testing"] }
 snipdeck-store = { path = "../snipdeck-store" }
 snipdeck-ui = { path = "../snipdeck-ui" }
 # The winit backend with the software renderer is the real window. `unstable-winit-030` lets the
@@ -21,12 +22,7 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 
-# Off Windows the app runs on the platform fakes (`--demo`, dev runs).
-[target.'cfg(not(windows))'.dependencies]
-snipdeck-platform = { path = "../snipdeck-platform", features = ["testing"] }
-
 [dev-dependencies]
-snipdeck-platform = { path = "../snipdeck-platform", features = ["testing"] }
 # Slint's headless platform for the window tests (one process per test file).
 i-slint-backend-testing = "=1.18.1"
 tempfile.workspace = true

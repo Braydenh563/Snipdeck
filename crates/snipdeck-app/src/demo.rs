@@ -5,8 +5,45 @@ use snipdeck_core::{
     Board, Content, Format, Formats, Inline, Item, ItemId, ItemKind, List, ListAccent, ListId,
     Name, Placement, Timestamp,
 };
-use snipdeck_platform::route::{Focus, Target};
+use snipdeck_core::{Entitlements, Tier};
+use snipdeck_platform::{
+    route::{Focus, Target},
+    testing::{FakeClipboard, FakeKeyboard, FakeTiming},
+};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, Store};
+
+use crate::{
+    controller::{Controller, Services},
+    host::{FakeTargets, FixedClock},
+    settings::Settings,
+};
+
+/// A controller over the demo library and the platform fakes, on a stopped clock: the Panel
+/// the screenshot and the integration tests look at.
+pub type DemoController = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
+
+/// Builds a [`DemoController`] pasting into [`target`].
+///
+/// # Errors
+///
+/// Any store error.
+pub fn controller(settings: Settings, now: Timestamp) -> snipdeck_store::Result<DemoController> {
+    Controller::new(
+        store(now)?,
+        Services {
+            clipboard: FakeClipboard {
+                asks_after_polls: Some(1),
+                ..FakeClipboard::default()
+            },
+            keyboard: FakeKeyboard::default(),
+            timing: FakeTiming::default(),
+        },
+        Box::new(FakeTargets::new(Some(target()))),
+        Box::new(FixedClock::new(now)),
+        settings,
+        Entitlements::new(Tier::Pro),
+    )
+}
 
 /// The window the demo pretends the user came from.
 #[must_use]
@@ -195,6 +232,20 @@ mod tests {
         assert_eq!(model.rows().len(), 6);
         assert_eq!(model.pinned().len(), 3);
         assert!(model.rows().iter().any(|r| r.sensitive));
+    }
+
+    #[test]
+    fn the_demo_controller_pastes_into_outlook() {
+        let ctl = controller(Settings::default(), now()).expect("controller");
+        let view = ctl.view();
+        assert_eq!(view.board_name, "Work");
+        assert_eq!(
+            view.footer,
+            crate::panel::Footer::PastesInto {
+                app: "Outlook".into(),
+                title: "New message".into()
+            }
+        );
     }
 
     #[test]

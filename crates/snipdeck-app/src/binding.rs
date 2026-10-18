@@ -24,6 +24,8 @@ use crate::{
     wording,
 };
 
+type ProblemsFn = dyn Fn(&[HotkeyProblem]);
+
 /// What the host keeps after binding: the entry points for events that do not come from the
 /// window (hotkeys, a second launch, the Target changing). Cheap to clone, not `Send`: hand
 /// events over with `slint::invoke_from_event_loop`.
@@ -32,7 +34,7 @@ pub struct Binding {
     hotkey: Rc<dyn Fn(HotkeyAction)>,
     show: Rc<dyn Fn()>,
     target_changed: Rc<dyn Fn()>,
-    hotkey_problems: Rc<dyn Fn(&[HotkeyProblem])>,
+    hotkey_problems: Rc<ProblemsFn>,
 }
 
 impl std::fmt::Debug for Binding {
@@ -295,8 +297,8 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         window.set_board_menu_open(view.board_menu.is_some());
     }
     if differs(&|p| p.toast == view.toast) {
-        match &view.toast {
-            Some(toast) => {
+        if let Some(toast) = &view.toast {
+            {
                 window.set_toast_kind(match toast.kind {
                     crate::toast::ToastKind::Neutral => ui::ToastKind::Neutral,
                     crate::toast::ToastKind::Success => ui::ToastKind::Success,
@@ -309,10 +311,9 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                 });
                 window.set_toast_text(wording::toast_text(&toast.message).into());
             }
-            None => {
-                window.set_toast_text(SharedString::new());
-                window.set_toast_phase(ui::ToastPhase::Exit);
-            }
+        } else {
+            window.set_toast_text(SharedString::new());
+            window.set_toast_phase(ui::ToastPhase::Exit);
         }
     }
 }

@@ -12,6 +12,8 @@ pub mod host;
 pub mod palette;
 pub mod panel;
 pub mod paths;
+pub mod platform;
+pub mod screenshot;
 pub mod settings;
 pub mod toast;
 pub mod usecase;

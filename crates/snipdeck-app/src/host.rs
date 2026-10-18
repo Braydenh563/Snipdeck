@@ -155,7 +155,7 @@ pub struct HotkeyProblem {
 /// Registers every configured hotkey. A hotkey that is off (empty) is skipped; one that fails
 /// is reported and the rest are still registered.
 pub fn register_all(
-    backend: &mut impl HotkeyBackend,
+    backend: &mut (impl HotkeyBackend + ?Sized),
     hotkeys: &crate::settings::Hotkeys,
 ) -> Vec<HotkeyProblem> {
     let mut problems = Vec::new();

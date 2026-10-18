@@ -3,6 +3,10 @@
 use std::path::PathBuf;
 
 /// What the command line asked for.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "independent command-line flags, not a state machine"
+)]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Args {
     /// Run on a seeded in-memory library instead of the user's data.
