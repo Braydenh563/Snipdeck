@@ -130,6 +130,78 @@ impl Rig {
     }
 }
 
+/// A real left click (pointer move, press, release) at the centre of `element`, the way the
+/// winit backend delivers one, then a timer tick. Unlike `invoke_accessible_default_action` this
+/// goes through Slint's hit testing, so a control covered by something else is not clicked.
+fn click(window: &slint::Window, element: &ElementHandle) {
+    let at = element.absolute_position();
+    let size = element.size();
+    let position = slint::LogicalPosition::new(at.x + size.width / 2.0, at.y + size.height / 2.0);
+    let button = slint::platform::PointerEventButton::Left;
+    window.dispatch_event(slint::platform::WindowEvent::PointerMoved { position });
+    window.dispatch_event(slint::platform::WindowEvent::PointerPressed { position, button });
+    i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(50));
+    window.dispatch_event(slint::platform::WindowEvent::PointerReleased { position, button });
+    // Move away so the next press is not a double click.
+    i_slint_backend_testing::mock_elapsed_time(Duration::from_secs(1));
+    slint::platform::update_timers_and_animations();
+}
+
+fn element(ui: &PanelWindow, label: &str, role: AccessibleRole) -> ElementHandle {
+    ElementHandle::find_by_accessible_label(ui, label)
+        .find(|e| e.accessible_role() == Some(role))
+        .unwrap_or_else(|| panic!("no {role:?} labelled {label:?}"))
+}
+
+#[test]
+fn pointer_clicks_on_every_header_control_reach_the_controller() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        slint::platform::update_timers_and_animations();
+
+        click(r.window(), &r.button("Keep on top"));
+        assert!(!r.ctl.borrow().view().on_top, "the pin click reached the controller");
+
+        click(r.window(), &r.button("Board: Work"));
+        assert!(r.ui.get_board_menu_open(), "the board switcher click opened the menu");
+        click(
+            r.window(),
+            &element(&r.ui, "Personal", AccessibleRole::ListItem),
+        );
+        assert!(!r.ui.get_board_menu_open());
+        assert_eq!(r.ui.get_board_name(), "Personal", "the menu item click switched");
+        assert_eq!(
+            *r.effects.borrow(),
+            [],
+            "no click on a control starts a window drag"
+        );
+
+        click(r.window(), &r.button("Close panel"));
+        assert!(!r.window().is_visible());
+    });
+}
+
+#[test]
+fn pointer_clicks_on_tabs_pinned_chips_and_rows_reach_the_controller() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        slint::platform::update_timers_and_animations();
+
+        click(r.window(), &element(&r.ui, "Addresses", AccessibleRole::Tab));
+        assert_eq!(r.titles(), ["Home address", "Office"], "the tab click switched lists");
+
+        let chip = r.ui.get_pinned().row_data(0).expect("a pinned chip").title;
+        click(r.window(), &r.button(chip.as_str()));
+        assert!(
+            !r.ctl.borrow().services().clipboard.log.is_empty(),
+            "the pinned chip click used the item"
+        );
+        assert_eq!(*r.effects.borrow(), []);
+    });
+}
+
 #[test]
 fn the_panel_shows_the_demo_library() {
     on_ui_thread(|| {

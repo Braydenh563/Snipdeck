@@ -21,5 +21,6 @@ pub mod screenshot;
 pub mod settings;
 pub mod settings_store;
 pub mod toast;
+pub mod trace;
 pub mod usecase;
 pub mod wording;

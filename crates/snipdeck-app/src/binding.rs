@@ -120,6 +120,7 @@ where
             return;
         };
         for effect in effects {
+            crate::trace!("effect {effect:?}");
             match effect {
                 Effect::ShowPanel => {
                     // A failure to show leaves the Panel hidden; the next hotkey tries again.
@@ -222,6 +223,7 @@ where
             ($on:ident, |$ctl:ident $(, $arg:ident)*| $body:expr) => {{
                 let core = Rc::clone(&core);
                 window.$on(move |$($arg),*| {
+                    crate::trace!("callback {}{}", stringify!($on), Shown(&[$(&$arg as &dyn Loggable),*]));
                     core.act(|$ctl| {
                         let _ = $body;
                     });
@@ -231,7 +233,10 @@ where
         macro_rules! wire_effects {
             ($on:ident, |$ctl:ident $(, $arg:ident)*| $body:expr) => {{
                 let core = Rc::clone(&core);
-                window.$on(move |$($arg),*| core.act_effects(|$ctl| $body));
+                window.$on(move |$($arg),*| {
+                    crate::trace!("callback {}{}", stringify!($on), Shown(&[$(&$arg as &dyn Loggable),*]));
+                    core.act_effects(|$ctl| $body);
+                });
             }};
         }
 
@@ -259,18 +264,27 @@ where
         Binding {
             hotkey: {
                 let core = Rc::clone(&core);
-                Rc::new(move |action| core.act_effects(|ctl| ctl.on_hotkey(action)))
+                Rc::new(move |action| {
+                    crate::trace!("hotkey {action:?}");
+                    core.act_effects(|ctl| ctl.on_hotkey(action));
+                })
             },
             show: {
                 let core = Rc::clone(&core);
-                Rc::new(move || core.act_effects(Controller::show))
+                Rc::new(move || {
+                    crate::trace!("show requested");
+                    core.act_effects(Controller::show);
+                })
             },
             target_changed: {
                 let core = Rc::clone(&core);
                 Rc::new(move || {
                     // The tracker can call this from inside a controller call; skip then.
                     if core.controller.try_borrow_mut().is_ok() {
+                        crate::trace!("target changed");
                         core.act(Controller::on_target_changed);
+                    } else {
+                        crate::trace!("target changed during a controller call: skipped");
                     }
                 })
             },
@@ -282,13 +296,59 @@ where
             },
             tray: {
                 let core = Rc::clone(&core);
-                Rc::new(move |event| core.act_effects(|ctl| ctl.on_tray(event)))
+                Rc::new(move |event| {
+                    crate::trace!("tray {event:?}");
+                    core.act_effects(|ctl| ctl.on_tray(event));
+                })
             },
             system_look: {
                 let core = Rc::clone(&core);
                 Rc::new(move |look| core.act(|ctl| ctl.set_system_look(look)))
             },
         }
+    }
+}
+
+/// A callback argument as the diagnostic log shows it: numbers and flags as they are, text only
+/// by its length (it is what the user typed).
+trait Loggable {
+    fn log(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
+}
+
+impl Loggable for i32 {
+    fn log(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self}")
+    }
+}
+
+impl Loggable for bool {
+    fn log(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self}")
+    }
+}
+
+impl Loggable for SharedString {
+    fn log(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<{} chars>", self.chars().count())
+    }
+}
+
+/// A callback's arguments for the log: ` (3, true)`, or nothing without arguments.
+struct Shown<'a>(&'a [&'a dyn Loggable]);
+
+impl std::fmt::Display for Shown<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0.is_empty() {
+            return Ok(());
+        }
+        f.write_str(" (")?;
+        for (i, arg) in self.0.iter().enumerate() {
+            if i > 0 {
+                f.write_str(", ")?;
+            }
+            arg.log(f)?;
+        }
+        f.write_str(")")
     }
 }
 

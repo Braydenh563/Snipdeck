@@ -163,6 +163,7 @@ fn run(args: &Args) -> Result<(), String> {
         effect_handler(Rc::clone(&hotkeys), chords_now, window.as_weak()),
     );
     BINDING.with(|b| *b.borrow_mut() = Some(binding.clone()));
+    trace_window_events(&window);
 
     report_hotkey_problems(&host::register_all(
         &mut **hotkeys.borrow_mut(),
@@ -197,6 +198,7 @@ fn effect_handler(
 ) -> impl Fn(&Effect) + 'static {
     move |effect| match effect {
         Effect::Quit => {
+            snipdeck_app::trace!("host: quitting the event loop");
             let _ = slint::quit_event_loop();
         }
         Effect::SetHotkeysPaused(paused) => {
@@ -225,6 +227,43 @@ fn effect_handler(
         }
         _ => {}
     }
+}
+
+/// With `SNIPDECK_LOG=1`: the pointer presses, focus, scale and size changes the window gets
+/// from winit, so a log shows whether a click reached the window and where Slint placed it.
+fn trace_window_events(window: &PanelWindow) {
+    use slint::winit_030::{EventResult, winit::event::WindowEvent};
+    if !snipdeck_app::trace::enabled() {
+        return;
+    }
+    let mut cursor = (0.0, 0.0);
+    window
+        .window()
+        .on_winit_window_event(move |slint_window, event| {
+            match event {
+                WindowEvent::CursorMoved { position, .. } => cursor = (position.x, position.y),
+                WindowEvent::MouseInput { state, button, .. } => {
+                    let scale = f64::from(slint_window.scale_factor());
+                    snipdeck_app::trace!(
+                        "pointer {state:?} {button:?} at physical ({:.0}, {:.0}) = logical ({:.1}, {:.1}), scale {scale}",
+                        cursor.0,
+                        cursor.1,
+                        cursor.0 / scale,
+                        cursor.1 / scale
+                    );
+                }
+                WindowEvent::Focused(focused) => snipdeck_app::trace!("window focused {focused}"),
+                WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                    snipdeck_app::trace!("window scale factor {scale_factor}");
+                }
+                WindowEvent::Resized(size) => {
+                    snipdeck_app::trace!("window resized to {}x{} physical", size.width, size.height);
+                }
+                WindowEvent::CloseRequested => snipdeck_app::trace!("window close requested"),
+                _ => {}
+            }
+            EventResult::Propagate
+        });
 }
 
 /// Prints the hotkeys that could not be registered and tells the user in the Panel.
@@ -339,12 +378,17 @@ fn with_binding(f: impl FnOnce(&Binding)) {
     BINDING.with(|b| {
         if let Some(binding) = b.borrow().as_ref() {
             f(binding);
+        } else {
+            snipdeck_app::trace!("event before the Panel was bound: dropped");
         }
     });
 }
 
 /// Runs `f` with the binding on the UI thread, whichever thread asks.
 fn on_ui_thread(f: impl FnOnce(&Binding) + Send + 'static) {
-    // Fails only when the event loop has already ended, at shutdown: nothing to deliver to.
-    let _ = slint::invoke_from_event_loop(move || with_binding(f));
+    // Fails when the event loop has already ended (at shutdown: nothing to deliver to) or when
+    // no window backend is selected yet (an event from a service that started early).
+    if let Err(e) = slint::invoke_from_event_loop(move || with_binding(f)) {
+        snipdeck_app::trace!("event for the UI thread dropped: {e}");
+    }
 }
