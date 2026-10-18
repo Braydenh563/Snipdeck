@@ -14,7 +14,7 @@ msgid "Add list"
 msgstr "Añadir lista"
 
 msgid "All"
-msgstr ""
+msgstr "Todos"
 
 msgid "Board: {}"
 msgstr "Tablero: {}"
@@ -23,19 +23,19 @@ msgid "Boards"
 msgstr "Tableros"
 
 msgid "Cancel"
-msgstr ""
+msgstr "Cancelar"
 
 msgid "Clear search"
 msgstr "Borrar búsqueda"
 
 msgid "Close"
-msgstr ""
+msgstr "Cerrar"
 
 msgid "Close panel"
 msgstr "Cerrar panel"
 
 msgid "Control Enter"
-msgstr ""
+msgstr "Ctrl Enter"
 
 msgid "Copies to clipboard"
 msgstr "Se copia al portapapeles"
@@ -44,7 +44,7 @@ msgid "Copy"
 msgstr "Copiar"
 
 msgid "Copy something, then save it from the Panel."
-msgstr ""
+msgstr "Copia algo y luego guárdalo desde el panel."
 
 msgid "Copy something, then save it here from the clipboard."
 msgstr "Copia algo y luego guárdalo aquí desde el portapapeles."
@@ -53,22 +53,22 @@ msgid "Enter"
 msgstr "Enter"
 
 msgid "Escape"
-msgstr ""
+msgstr "Esc"
 
 msgid "Fields"
-msgstr ""
+msgstr "Campos"
 
 msgid "Fill in template"
-msgstr ""
+msgstr "Rellenar plantilla"
 
 msgid "Hidden. Hold Space to reveal."
-msgstr ""
+msgstr "Oculto. Mantén pulsada la barra espaciadora para mostrarlo."
 
 msgid "Hidden. Open it in the Panel to reveal."
-msgstr ""
+msgstr "Oculto. Ábrelo en el panel para mostrarlo."
 
 msgid "Insert"
-msgstr ""
+msgstr "Pegar"
 
 msgid "Keep on top"
 msgstr "Siempre encima"
@@ -89,19 +89,19 @@ msgid "No matches"
 msgstr "Sin coincidencias"
 
 msgid "No snippets yet"
-msgstr ""
+msgstr "Aún no hay fragmentos"
 
 msgid "Nothing matches “{}”."
-msgstr ""
+msgstr "Nada coincide con “{}”."
 
 msgid "Nothing on this board matches “{}”."
 msgstr "Nada en este tablero coincide con “{}”."
 
 msgid "Nothing pinned matches “{}”."
-msgstr ""
+msgstr "Ningún fragmento fijado coincide con “{}”."
 
 msgid "Nothing pinned yet"
-msgstr ""
+msgstr "Aún no hay nada fijado"
 
 msgid "Paste"
 msgstr "Pegar"
@@ -113,34 +113,34 @@ msgid "Pastes into {} · {}"
 msgstr "Pega en {} · {}"
 
 msgid "Pin a snippet from the Panel to find it here."
-msgstr ""
+msgstr "Fija un fragmento desde el panel para encontrarlo aquí."
 
 msgid "Pinned"
-msgstr ""
+msgstr "Fijados"
 
 msgid "Pinned snippets"
 msgstr "Fragmentos fijados"
 
 msgid "Preview"
-msgstr ""
+msgstr "Vista previa"
 
 msgid "Required"
-msgstr ""
+msgstr "Obligatorio"
 
 msgid "Results"
-msgstr ""
+msgstr "Resultados"
 
 msgid "Save from clipboard"
 msgstr "Guardar desde el portapapeles"
 
 msgid "Scope"
-msgstr ""
+msgstr "Ámbito"
 
 msgid "Search all snippets"
-msgstr ""
+msgstr "Buscar en todos los fragmentos"
 
 msgid "Search in"
-msgstr ""
+msgstr "Buscar en"
 
 msgid "Search snippets"
 msgstr "Buscar fragmentos"
@@ -155,13 +155,13 @@ msgid "Snippets"
 msgstr "Fragmentos"
 
 msgid "Tab"
-msgstr ""
+msgstr "Tab"
 
 msgid "This board"
-msgstr ""
+msgstr "Este tablero"
 
 msgid "This field is required"
-msgstr ""
+msgstr "Este campo es obligatorio"
 
 msgid "This list is empty"
 msgstr "Esta lista está vacía"
