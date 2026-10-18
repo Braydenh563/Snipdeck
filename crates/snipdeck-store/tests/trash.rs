@@ -346,6 +346,87 @@ fn purge_deletes_blob_files_that_nothing_else_uses() {
 }
 
 #[test]
+fn purge_entry_deletes_one_trashed_item_and_leaves_the_rest() {
+    let (mut s, _b, l, it) = tree();
+    s.trash(Trashable::Item(it[0].id), at(10)).unwrap();
+    s.trash(Trashable::Item(it[1].id), at(20)).unwrap();
+    s.purge_entry(Trashable::Item(it[0].id)).unwrap();
+    let left: Vec<_> = s.trashed().unwrap().into_iter().map(|e| e.label).collect();
+    assert_eq!(left, ["two"], "the other trash entry stays");
+    assert!(
+        s.search("one", 10).unwrap().is_empty(),
+        "its search row is gone"
+    );
+    assert_eq!(titles(&s, l.id), ["three"]);
+    assert!(matches!(
+        s.restore(Trashable::Item(it[0].id)),
+        Err(Error::NotFound { .. })
+    ));
+    assert_healthy(&s);
+}
+
+#[test]
+fn purge_entry_takes_a_trashed_list_or_board_with_everything_inside() {
+    let (mut s, b, l, _) = tree();
+    let other = list(&mut s, b.id, "Other");
+    item(&mut s, other.id, "survivor", "survivor");
+    s.trash(Trashable::List(l.id), at(10)).unwrap();
+    s.purge_entry(Trashable::List(l.id)).unwrap();
+    assert!(s.trashed().unwrap().is_empty());
+    assert_eq!(s.all_items().unwrap().len(), 1);
+    assert!(s.search("two", 10).unwrap().is_empty());
+
+    s.trash(Trashable::Board(b.id), at(20)).unwrap();
+    s.purge_entry(Trashable::Board(b.id)).unwrap();
+    assert!(s.boards().unwrap().is_empty());
+    assert!(s.trashed().unwrap().is_empty());
+    assert_healthy(&s);
+}
+
+#[test]
+fn purge_entry_refuses_what_the_trash_does_not_list() {
+    let (mut s, _b, l, it) = tree();
+    // A live item.
+    assert!(matches!(
+        s.purge_entry(Trashable::Item(it[0].id)),
+        Err(Error::NotFound { .. })
+    ));
+    // An item inside a trashed list is part of the list's entry, not an entry.
+    s.trash(Trashable::List(l.id), at(10)).unwrap();
+    assert!(matches!(
+        s.purge_entry(Trashable::Item(it[1].id)),
+        Err(Error::NotFound { .. })
+    ));
+    assert_eq!(s.trashed().unwrap().len(), 1);
+    s.restore(Trashable::List(l.id)).unwrap();
+    assert_eq!(titles(&s, l.id).len(), 3, "nothing was deleted");
+}
+
+#[test]
+fn purge_entry_deletes_blob_files_that_nothing_else_uses() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut s = Store::open(dir.path()).unwrap();
+    let b = board(&mut s, "b");
+    let l = list(&mut s, b.id, "l");
+    let own = s.put(vec![2; INLINE_LIMIT + 1]).unwrap();
+    let gone = Item::new(l.id, "gone".to_owned(), ItemKind::Image, at(0));
+    s.insert_item(
+        &gone,
+        &Formats::new(vec![Format::Rtf(own.clone())]).unwrap(),
+        Placement::Last,
+    )
+    .unwrap();
+    s.trash(Trashable::Item(gone.id), at(5)).unwrap();
+    assert!(s.read(&own).is_ok(), "still there for the 30 days");
+    s.purge_entry(Trashable::Item(gone.id)).unwrap();
+    assert!(matches!(
+        s.read(&own),
+        Err(Error::NotFound { entity: "blob", .. })
+    ));
+    assert_healthy(&s);
+}
+
+#[test]
 fn purging_leaves_tags_alone() {
     use snipdeck_core::Tag;
     use snipdeck_store::TagRepo;

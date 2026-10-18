@@ -513,6 +513,10 @@ macro_rules! repo_impls {
             fn purge(&mut self, cutoff: Timestamp) -> Result<usize> {
                 self.writer(|cx| trash::purge(cx, cutoff))
             }
+
+            fn purge_entry(&mut self, target: Trashable) -> Result<()> {
+                self.writer(|cx| trash::purge_entry(cx, target))
+            }
         }
     };
 }
