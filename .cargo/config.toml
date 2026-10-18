@@ -1,0 +1,4 @@
+# The Windows exe must run on a clean PC with nothing installed: link the MSVC C runtime
+# statically so no Visual C++ Redistributable (vcruntime140.dll) is needed.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
