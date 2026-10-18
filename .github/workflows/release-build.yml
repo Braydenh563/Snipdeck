@@ -43,8 +43,13 @@ jobs:
             $exe = "target\debug\snipdeck-app.exe"
             $name = "snipdeck-dev-$('${{ github.sha }}'.Substring(0, 7))-windows-x64"
           }
-          New-Item -ItemType Directory -Force dist\$name | Out-Null
-          Copy-Item $exe dist\$name\snipdeck.exe
+          # Layout = what Snipdeck.bat expects next to it: the exe in app\, the launcher in tools\launcher.
+          # Double-clicking either Snipdeck.bat or app\snipdeck.exe works; the bat adds update, backup,
+          # restore and uninstall.
+          New-Item -ItemType Directory -Force dist\$name\app, dist\$name\tools | Out-Null
+          Copy-Item $exe dist\$name\app\snipdeck.exe
+          Copy-Item Snipdeck.bat dist\$name\
+          Copy-Item tools\launcher dist\$name\tools\launcher -Recurse
           Copy-Item README.md, LICENSE*, docs\user-guide.md dist\$name\ -ErrorAction SilentlyContinue
           Compress-Archive -Path dist\$name\* -DestinationPath dist\$name.zip
           $hash = (Get-FileHash dist\$name.zip -Algorithm SHA256).Hash.ToLower()

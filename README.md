@@ -90,7 +90,7 @@ Not started unless noted. Order follows [`docs/PLAN.md`](docs/PLAN.md).
 
 ## Quick start
 
-**Download, unzip, double-click `Snipdeck.bat` (or `snipdeck.exe`).** Nothing else to install: no Rust, no Visual
+**Download, unzip, double-click `Snipdeck.bat` (or `app\snipdeck.exe`).** Nothing else to install: no Rust, no Visual
 Studio, no git.
 
 1. Download the latest portable zip, `snipdeck-<version>-windows-x64.zip`, from

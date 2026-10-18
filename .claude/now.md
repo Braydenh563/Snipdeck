@@ -40,3 +40,4 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 13:2x owner: "and I still cant resize the panel." → same cause: resize-requested not bound in the app (step 4).
 - 13:3x owner: make icon use accurate: meatball vs kebab, hamburger, bento etc.
 - 13:4x owner: uninstall/reinstall script? clear or keep data? setup wizard?
+- 13:5x owner: Microsoft Store $19? Pages website? make repo public? where to get/store private keys?
