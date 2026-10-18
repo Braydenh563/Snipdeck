@@ -47,3 +47,4 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 13:4x owner: uninstall/reinstall script? clear or keep data? setup wizard?
 - 13:5x owner: Microsoft Store $19? Pages website? make repo public? where to get/store private keys?
 - 14:0x owner: troubleshooting wizard GUI for the launcher tools, reachable from the Panel and the app. → plan step 7b (Help & troubleshooting window; app owns the data tools in Rust, launcher keeps download/update/uninstall).
+- 14:1x owner: just focus on finishing v1: polish, optimise, refine, from demo to a real usable reliable product.
