@@ -194,7 +194,7 @@ mod tests {
             let outcome = cap(&mut store, notes, text, now()).expect("capture");
             assert_eq!(outcome, Captured::Empty, "{text:?}");
         }
-        assert!(store.items(notes).expect("items").is_empty());
+        assert_eq!(store.items(notes).expect("items"), Vec::new());
     }
 
     #[test]
@@ -203,7 +203,7 @@ mod tests {
         let big = "a".repeat(MAX_TEXT_BYTES + 1);
         let outcome = cap(&mut store, notes, Some(&big), now()).expect("capture");
         assert_eq!(outcome, Captured::TooLarge);
-        assert!(store.items(notes).expect("items").is_empty());
+        assert_eq!(store.items(notes).expect("items"), Vec::new());
 
         // Over the inline limit the bytes go to a blob; they read back whole.
         let large = "b".repeat(snipdeck_core::INLINE_LIMIT + 10);

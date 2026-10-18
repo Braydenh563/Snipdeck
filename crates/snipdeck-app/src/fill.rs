@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn a_template_without_prompts_has_no_fields() {
-        assert!(form("Just text {date}").fields().is_empty());
+        assert_eq!(form("Just text {date}").fields(), Vec::new());
     }
 
     #[test]

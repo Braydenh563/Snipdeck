@@ -1378,7 +1378,7 @@ mod tests {
             UseResult::NeedsAnswers
         );
         assert!(w.ctl.view().fill.is_some());
-        assert!(w.ctl.services().clipboard.log.is_empty());
+        assert_eq!(w.ctl.services().clipboard.log, Vec::<String>::new());
         assert_eq!(uses(&w, w.ids[3]), 0);
         // Fixing it works.
         assert_eq!(
@@ -1395,7 +1395,7 @@ mod tests {
             w.ctl.submit_fill(&["Sam".to_owned()]),
             UseResult::Done(UseOutcome::Copied)
         );
-        assert!(w.ctl.services().keyboard.sent.is_empty());
+        assert_eq!(w.ctl.services().keyboard.sent, Vec::<Vec<KeyEvent>>::new());
     }
 
     #[test]
@@ -1616,7 +1616,7 @@ mod tests {
             w.ctl.picker_use(0, UseMode::Copy),
             UseResult::Done(UseOutcome::Copied)
         );
-        assert!(w.ctl.services().keyboard.sent.is_empty());
+        assert_eq!(w.ctl.services().keyboard.sent, Vec::<Vec<KeyEvent>>::new());
         assert_eq!(pasted(&w), ["first"]);
     }
 
@@ -1775,7 +1775,7 @@ mod tests {
                 ToastMessage::NeedsPro(Feature::PasteStack)
             )
         );
-        assert!(pasted(&w).is_empty());
+        assert_eq!(pasted(&w), Vec::<String>::new());
     }
 
     #[test]

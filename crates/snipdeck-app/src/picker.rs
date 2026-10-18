@@ -326,7 +326,7 @@ mod tests {
         assert_eq!(titles(&m), ["Shopping list"]);
         assert_eq!(m.selected(), 0);
         m.set_query("zzzzqq");
-        assert!(m.rows().is_empty());
+        assert_eq!(m.rows(), Vec::new());
         assert_eq!(m.item_at(0), None);
         m.set_query("  ");
         assert_eq!(m.rows().len(), 11);
@@ -359,7 +359,7 @@ mod tests {
         let store = demo::store(now()).expect("demo store");
         let mut m = PickerModel::load(&store, None).expect("model");
         m.set_scope(Scope::Board);
-        assert!(m.rows().is_empty());
+        assert_eq!(m.rows(), Vec::new());
     }
 
     #[test]
