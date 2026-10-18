@@ -153,6 +153,8 @@ export component ItemCard inherits Rectangle {
 
     callback use();
     callback copy();
+    // A second press within the double-click interval (the first one already fired `use`).
+    callback double-clicked();
     // Position inside the card, for the app to anchor the menu.
     callback context-menu-requested(length, length);
     // A sensitive item's press-and-hold began (true) or ended (false).
@@ -541,6 +543,7 @@ export component ItemCard inherits Rectangle {
     }
 
     touch := TouchArea {
+        double-clicked => { root.double-clicked(); }
         pointer-event(event) => {
             if (event.button == PointerEventButton.left) {
                 if (event.kind == PointerEventKind.down) {
