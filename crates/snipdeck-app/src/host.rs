@@ -122,6 +122,13 @@ pub trait HotkeyBackend {
     ///
     /// See [`HotkeyFailure`].
     fn register(&mut self, id: u32, chord: Chord) -> Result<(), HotkeyFailure>;
+
+    /// Removes the chord under `id`. Removing an id that is not registered succeeds.
+    ///
+    /// # Errors
+    ///
+    /// [`HotkeyFailure::Unavailable`] if the service is not running or Windows refuses.
+    fn unregister(&mut self, id: u32) -> Result<(), HotkeyFailure>;
 }
 
 /// The id a hotkey action is registered under.
@@ -175,6 +182,45 @@ pub fn register_all(
     problems
 }
 
+/// Switches every global hotkey off ("Pause hotkeys"); returns how many could not be removed.
+/// The settings are untouched: [`register_all`] switches them back on.
+pub fn unregister_all(backend: &mut (impl HotkeyBackend + ?Sized)) -> usize {
+    HotkeyAction::ALL
+        .into_iter()
+        .filter(|action| backend.unregister(id_of(*action)).is_err())
+        .count()
+}
+
+/// What switching the hotkeys off or on did.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct PauseReport {
+    /// Hotkeys that could not be registered when resuming.
+    pub problems: Vec<HotkeyProblem>,
+    /// Hotkeys that could not be removed when pausing.
+    pub not_removed: usize,
+}
+
+/// "Pause hotkeys" changed: switches every hotkey off, or registers the chords in `current`
+/// again. `current` must be the chords in force *now* (the settings may have changed since
+/// start-up), not the ones read at launch.
+pub fn set_paused(
+    backend: &mut (impl HotkeyBackend + ?Sized),
+    paused: bool,
+    current: &crate::settings::Hotkeys,
+) -> PauseReport {
+    if paused {
+        PauseReport {
+            not_removed: unregister_all(backend),
+            ..PauseReport::default()
+        }
+    } else {
+        PauseReport {
+            problems: register_all(backend, current),
+            ..PauseReport::default()
+        }
+    }
+}
+
 /// A hotkey backend that records registrations and can refuse chosen chords.
 #[derive(Debug, Default)]
 pub struct FakeHotkeys {
@@ -191,6 +237,11 @@ impl HotkeyBackend for FakeHotkeys {
         }
         self.registered.retain(|(existing, _)| *existing != id);
         self.registered.push((id, chord));
+        Ok(())
+    }
+
+    fn unregister(&mut self, id: u32) -> Result<(), HotkeyFailure> {
+        self.registered.retain(|(existing, _)| *existing != id);
         Ok(())
     }
 }
@@ -256,6 +307,60 @@ mod tests {
                 .iter()
                 .all(|(id, _)| *id != id_of(HotkeyAction::Capture))
         );
+    }
+
+    #[test]
+    fn pausing_removes_every_hotkey_and_resuming_registers_them_again() {
+        let mut backend = FakeHotkeys::default();
+        let hotkeys = Hotkeys::default();
+        assert_eq!(register_all(&mut backend, &hotkeys), Vec::new());
+        assert_eq!(unregister_all(&mut backend), 0);
+        assert_eq!(backend.registered, Vec::new());
+        assert_eq!(unregister_all(&mut backend), 0, "pausing twice is fine");
+        assert_eq!(register_all(&mut backend, &hotkeys), Vec::new());
+        assert_eq!(backend.registered.len(), 4);
+    }
+
+    #[test]
+    fn resuming_registers_the_chords_in_force_now_not_the_ones_from_start_up() {
+        let mut backend = FakeHotkeys::default();
+        let at_start = Hotkeys::default();
+        assert_eq!(register_all(&mut backend, &at_start), Vec::new());
+        assert_eq!(
+            set_paused(&mut backend, true, &at_start),
+            PauseReport::default()
+        );
+        assert_eq!(backend.registered, Vec::new());
+
+        // While paused the settings changed: the Picker moved, Capture was switched off.
+        let now = Hotkeys {
+            picker: "Ctrl+Alt+P".into(),
+            capture: String::new(),
+            ..Hotkeys::default()
+        };
+        assert_eq!(
+            set_paused(&mut backend, false, &now),
+            PauseReport::default()
+        );
+        let picker = backend
+            .registered
+            .iter()
+            .find(|(id, _)| *id == id_of(HotkeyAction::Picker))
+            .expect("picker");
+        assert_eq!(picker.1.to_string(), "Ctrl+Alt+P");
+        assert_eq!(backend.registered.len(), 3, "capture stays off");
+    }
+
+    #[test]
+    fn resuming_reports_a_chord_another_app_took_while_paused() {
+        let mut backend = FakeHotkeys::default();
+        let hotkeys = Hotkeys::default();
+        let _ = set_paused(&mut backend, true, &hotkeys);
+        backend.taken.push("Ctrl+Alt+Space".into());
+        let report = set_paused(&mut backend, false, &hotkeys);
+        assert_eq!(report.problems.len(), 1);
+        assert_eq!(report.problems[0].action, HotkeyAction::TogglePanel);
+        assert_eq!(report.not_removed, 0);
     }
 
     #[test]

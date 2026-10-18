@@ -12,7 +12,11 @@ use std::{
 
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use snipdeck_core::{ItemKind, UseMode};
-use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
+use snipdeck_platform::{
+    pipeline::{Clipboard, Keyboard, Timing},
+    system_look::{Rgb, SystemLook},
+    tray::TrayEvent,
+};
 use snipdeck_ui as ui;
 
 use crate::{
@@ -27,7 +31,7 @@ use crate::{
 type ProblemsFn = dyn Fn(&[HotkeyProblem]);
 
 /// What the host keeps after binding: the entry points for events that do not come from the
-/// window (hotkeys, a second launch, the Target changing). Cheap to clone, not `Send`: hand
+/// window (hotkeys, a second launch, the Target changing, the tray icon, Windows' colour mode). Cheap to clone, not `Send`: hand
 /// events over with `slint::invoke_from_event_loop`.
 #[derive(Clone)]
 pub struct Binding {
@@ -35,6 +39,8 @@ pub struct Binding {
     show: Rc<dyn Fn()>,
     target_changed: Rc<dyn Fn()>,
     hotkey_problems: Rc<ProblemsFn>,
+    tray: Rc<dyn Fn(TrayEvent)>,
+    system_look: Rc<dyn Fn(SystemLook)>,
 }
 
 impl std::fmt::Debug for Binding {
@@ -63,6 +69,17 @@ impl Binding {
     pub fn hotkey_problems(&self, problems: &[HotkeyProblem]) {
         (self.hotkey_problems)(problems);
     }
+
+    /// The user clicked the tray icon or chose an entry of its menu.
+    pub fn tray(&self, event: TrayEvent) {
+        (self.tray)(event);
+    }
+
+    /// Windows' light / dark or high-contrast state is `look` (read at start-up, and again on
+    /// every change notification; an unchanged look redraws nothing).
+    pub fn system_look(&self, look: SystemLook) {
+        (self.system_look)(look);
+    }
 }
 
 struct Core<S, C, K, T> {
@@ -74,6 +91,8 @@ struct Core<S, C, K, T> {
     shown: RefCell<Option<View>>,
     /// The toast whose timer chain is running.
     timed_toast: Cell<u64>,
+    /// A timer is waiting to write changed settings.
+    settings_timer: Cell<bool>,
 }
 
 impl<S, C, K, T> Core<S, C, K, T>
@@ -128,6 +147,29 @@ where
             self.arm_toast(toast.seq, crate::controller::TOAST_ENTER);
         }
         *self.shown.borrow_mut() = Some(view);
+        self.arm_settings();
+    }
+
+    /// Keeps one timer running while changed settings wait to be written: when it fires the
+    /// controller writes them if they are due (its clock decides) and the timer is re-armed
+    /// for whatever is still waiting, such as a retry after a failed write.
+    fn arm_settings(self: &Rc<Self>) {
+        if self.settings_timer.get() {
+            return;
+        }
+        let Some(wait) = self.controller.borrow().settings_wait() else {
+            return;
+        };
+        self.settings_timer.set(true);
+        let core = Rc::downgrade(self);
+        slint::Timer::single_shot(wait, move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.settings_timer.set(false);
+            core.controller.borrow_mut().save_settings_if_due();
+            core.sync();
+        });
     }
 
     fn arm_toast(self: &Rc<Self>, seq: u64, delay: std::time::Duration) {
@@ -171,6 +213,7 @@ where
             on_effect: Box::new(on_effect),
             shown: RefCell::new(None),
             timed_toast: Cell::new(0),
+            settings_timer: Cell::new(false),
         });
         core.sync();
 
@@ -237,6 +280,14 @@ where
                     core.act(|ctl| ctl.report_hotkey_problems(problems));
                 })
             },
+            tray: {
+                let core = Rc::clone(&core);
+                Rc::new(move |event| core.act_effects(|ctl| ctl.on_tray(event)))
+            },
+            system_look: {
+                let core = Rc::clone(&core);
+                Rc::new(move |look| core.act(|ctl| ctl.set_system_look(look)))
+            },
         }
     }
 }
@@ -253,6 +304,18 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
 
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
+    }
+    if differs(&|p| p.high_contrast == view.high_contrast) {
+        let look = window.global::<ui::SystemLook<'_>>();
+        look.set_high_contrast(view.high_contrast.is_some());
+        if let Some(hc) = &view.high_contrast {
+            let color = |c: Rgb| slint::Color::from_rgb_u8(c.r, c.g, c.b);
+            look.set_hc_window(color(hc.window));
+            look.set_hc_window_text(color(hc.window_text));
+            look.set_hc_highlight(color(hc.highlight));
+            look.set_hc_highlight_text(color(hc.highlight_text));
+            look.set_hc_gray_text(color(hc.gray_text));
+        }
     }
     if differs(&|p| p.board_name == view.board_name) {
         window.set_board_name(view.board_name.as_str().into());

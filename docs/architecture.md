@@ -7,13 +7,13 @@ is in [`SPEC.md`](SPEC.md); decisions with wider scope are in [`adr/`](adr/).
 
 | Crate | Status | Owns | May depend on |
 |---|---|---|---|
-| `snipdeck-core` | M1 | Domain types, template engine, fuzzy search, use-pipeline logic, entitlements, licence verification | nothing internal |
-| `snipdeck-store` | M1 | SQLite schema and migrations, repositories, blob store, FTS5, trash, backup, export/import, encryption at rest | core |
-| `snipdeck-portable` | M1 | `.snipdeck` export/import ([`format.md`](format.md)), folder/Ditto/CopyQ importers, daily backup | core, store |
-| `snipdeck-platform` | M2 | Clipboard, hotkeys, Target tracking, paste injection, window styles, capture, OS OCR | core |
-| `snipdeck-ocr-rapid` | M5 | Optional RapidOCR backend | core |
-| `snipdeck-ui` | M3 | Slint tokens, components, windows | core |
-| `snipdeck-app` | M3 | The binary: wiring, tray, settings, i18n, updater | all of the above |
+| `snipdeck-core` | M1, done | Domain types, template engine, fuzzy search, use-pipeline logic, entitlements, licence verification | nothing internal |
+| `snipdeck-store` | M1, done | SQLite schema and migrations, repositories, blob store, FTS5, trash, backup, export/import, encryption at rest | core |
+| `snipdeck-portable` | M1, done | `.snipdeck` export/import ([`format.md`](format.md)), folder/Ditto/CopyQ importers, daily backup | core, store |
+| `snipdeck-platform` | M2, written; Windows backend unverified on Windows | Clipboard, hotkeys, Target tracking, paste injection, window styles, capture, OS OCR | core |
+| `snipdeck-ocr-rapid` | M5, planned (crate not created) | Optional RapidOCR backend | core |
+| `snipdeck-ui` | M3, in progress (components, Panel, Picker, fill form) | Slint tokens, components, windows | nothing internal (takes plain structs and models) |
+| `snipdeck-app` | M3, in progress (Panel, tray, settings; no Picker, Main window or editors yet) | The binary: wiring, tray, settings, i18n, updater | all of the above (today it uses core, store, platform and ui) |
 
 **Core is pure.** No file, network, clipboard or OS calls and no OS-specific dependencies, so
 all of it is tested on Linux CI. Whatever needs the outside world takes it as an argument: a

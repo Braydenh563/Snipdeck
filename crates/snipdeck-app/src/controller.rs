@@ -14,6 +14,8 @@ use snipdeck_core::{
 use snipdeck_platform::{
     pipeline::{Clipboard, Env, Keyboard, Timing},
     route::Route,
+    system_look::{HighContrast, SystemLook},
+    tray::TrayEvent,
 };
 use snipdeck_store::{BlobStore, BoardRepo, ItemRepo, ListRepo, TagRepo};
 
@@ -21,6 +23,7 @@ use crate::{
     host::{Clock, TargetSource},
     panel::{Footer, PanelModel, Row, Tab, UseLabel},
     settings::{HotkeyAction, Settings, Theme},
+    settings_store::{Poll, SettingsSaver},
     toast::{self, Toast, ToastKind, ToastMessage},
     usecase::{self, UseError, UseRequest},
 };
@@ -66,6 +69,12 @@ pub enum Effect {
     PasteNext,
     /// Start the OS window drag from the Panel header.
     DragWindow,
+    /// Show the main window (the tray's "Open Snipdeck"; the window itself is M4).
+    OpenMainWindow,
+    /// Switch the global hotkeys off (`true`) or back on (`false`), per the settings.
+    SetHotkeysPaused(bool),
+    /// Exit the app.
+    Quit,
 }
 
 /// How far a toast is through its life (the Slint `ToastPhase`).
@@ -137,8 +146,11 @@ pub struct View {
     pub use_label: UseLabel,
     /// Keep on top.
     pub on_top: bool,
-    /// Dark theme.
+    /// Dark theme: the `theme` setting, or Windows' app mode when it is `system`.
     pub dark: bool,
+    /// The high-contrast colours while a Windows high-contrast theme is on (it overrides the
+    /// theme setting), else `None`.
+    pub high_contrast: Option<HighContrast>,
     /// The toast, if one is showing.
     pub toast: Option<ToastView>,
     /// The board menu's entries while it is open.
@@ -166,6 +178,22 @@ pub struct Controller<S, C, K, T> {
     toast_seq: u64,
     pending: Option<PendingPrompt>,
     board_menu_open: bool,
+    /// What Windows says about light / dark and high contrast.
+    os_look: SystemLook,
+    session: Session,
+    saver: Option<SettingsSaver>,
+}
+
+/// Facts about the running app that are not settings and not on screen.
+#[derive(Debug, Default, Clone, Copy)]
+struct Session {
+    /// A real tray icon is in the notification area now (from `TrayEvent::IconPresent`):
+    /// closing the Panel may hide it.
+    tray_available: bool,
+    /// "Pause hotkeys" is on.
+    hotkeys_paused: bool,
+    /// The last settings save failed and the user was told.
+    save_failed: bool,
 }
 
 impl<S, C, K, T> std::fmt::Debug for Controller<S, C, K, T> {
@@ -214,7 +242,24 @@ where
             toast_seq: 0,
             pending: None,
             board_menu_open: false,
+            os_look: SystemLook::default(),
+            session: Session::default(),
+            saver: None,
         })
+    }
+
+    // ---- The machine around the Panel ----------------------------------------------------------
+
+    /// Windows' light / dark and high-contrast state changed (or was read for the first time).
+    /// The next [`view`](Self::view) follows it, unless the `theme` setting is not `system`.
+    pub fn set_system_look(&mut self, look: SystemLook) {
+        self.os_look = look;
+    }
+
+    /// Writes setting changes to disk through `saver` from now on. Without one (the demo)
+    /// changes stay in memory.
+    pub fn set_settings_saver(&mut self, saver: SettingsSaver) {
+        self.saver = Some(saver);
     }
 
     // ---- Reading -----------------------------------------------------------------------------
@@ -240,7 +285,8 @@ where
             footer: self.model.footer(),
             use_label: self.model.use_label(),
             on_top: self.on_top,
-            dark: self.settings.theme == Theme::Dark,
+            dark: self.look().dark,
+            high_contrast: self.look().high_contrast,
             toast: self.toast.as_ref().map(|t| ToastView {
                 seq: t.seq,
                 kind: t.toast.kind,
@@ -255,6 +301,24 @@ where
                     .collect()
             }),
         }
+    }
+
+    /// The look in force: the `theme` setting over what Windows says; high contrast always wins.
+    fn look(&self) -> SystemLook {
+        SystemLook {
+            dark: match self.settings.theme {
+                Theme::System => self.os_look.dark,
+                Theme::Light => false,
+                Theme::Dark => true,
+            },
+            high_contrast: self.os_look.high_contrast,
+        }
+    }
+
+    /// Whether "Pause hotkeys" is on.
+    #[must_use]
+    pub fn hotkeys_paused(&self) -> bool {
+        self.session.hotkeys_paused
     }
 
     /// Whether the Panel is meant to be on screen.
@@ -297,6 +361,10 @@ where
 
     /// A global hotkey fired.
     pub fn on_hotkey(&mut self, action: HotkeyAction) -> Vec<Effect> {
+        if self.session.hotkeys_paused {
+            // A press that was already queued when the hotkeys were switched off.
+            return Vec::new();
+        }
         match action {
             HotkeyAction::TogglePanel if self.visible => self.hide(),
             HotkeyAction::TogglePanel => self.show(),
@@ -321,9 +389,35 @@ where
         vec![Effect::HidePanel]
     }
 
-    /// The close button or Esc on an empty search.
+    /// The close button or Esc on an empty search. With `close_to_tray` on and a tray icon to
+    /// get it back from, the Panel hides; otherwise closing it quits the app.
     pub fn close(&mut self) -> Vec<Effect> {
-        self.hide()
+        if self.settings.close_to_tray && self.session.tray_available {
+            self.hide()
+        } else {
+            vec![Effect::Quit]
+        }
+    }
+
+    /// The user did something to the tray icon.
+    pub fn on_tray(&mut self, event: TrayEvent) -> Vec<Effect> {
+        match event {
+            TrayEvent::TogglePanel if self.visible => self.hide(),
+            TrayEvent::TogglePanel | TrayEvent::OpenPanel => self.show(),
+            TrayEvent::OpenSnipdeck => vec![Effect::OpenMainWindow],
+            TrayEvent::HotkeysPaused(paused) => {
+                self.session.hotkeys_paused = paused;
+                vec![Effect::SetHotkeysPaused(paused)]
+            }
+            TrayEvent::Quit => vec![Effect::Quit],
+            TrayEvent::IconPresent(present) => {
+                // With an icon in the notification area closing the Panel hides it (when
+                // `close_to_tray` is on); without one nothing could bring it back, so closing
+                // quits. The icon comes and goes (Explorer restarts), so this follows the tray.
+                self.session.tray_available = present;
+                Vec::new()
+            }
+        }
     }
 
     /// The user is dragging the Panel by its header.
@@ -334,6 +428,67 @@ where
     /// The foreground window changed: the footer and the use label follow it.
     pub fn on_target_changed(&mut self) {
         self.model.set_target(self.target.current());
+    }
+
+    // ---- Settings ----------------------------------------------------------------------------
+
+    /// Changes the settings with `change` (then sanitised). A real change is applied now and
+    /// scheduled to be written (see [`settings_wait`](Self::settings_wait)). Hotkey changes are
+    /// not re-registered here: the host does that when a Settings window exists.
+    pub fn update_settings(&mut self, change: impl FnOnce(&mut Settings)) {
+        let mut next = self.settings.clone();
+        change(&mut next);
+        next.sanitize();
+        if next == self.settings {
+            return;
+        }
+        self.settings = next;
+        self.model.set_policy(policy_of(&self.settings));
+        let now = self.clock.now();
+        if let Some(saver) = &mut self.saver {
+            saver.changed(&self.settings, now);
+        }
+    }
+
+    /// The theme setting (`system`, `light`, `dark`).
+    pub fn set_theme(&mut self, theme: Theme) {
+        self.update_settings(|s| s.theme = theme);
+    }
+
+    /// How long until a changed setting is due to be written, if one waits. The host arms a
+    /// timer for this and then calls [`save_settings_if_due`](Self::save_settings_if_due).
+    #[must_use]
+    pub fn settings_wait(&self) -> Option<Duration> {
+        self.saver.as_ref()?.wait(self.clock.now())
+    }
+
+    /// Writes the changed settings if they are due. A failed write shows a toast (once until a
+    /// write succeeds) and is retried by the saver.
+    pub fn save_settings_if_due(&mut self) {
+        let now = self.clock.now();
+        let Some(saver) = &mut self.saver else {
+            return;
+        };
+        match saver.poll(now) {
+            Poll::Saved => self.session.save_failed = false,
+            Poll::Failed(_) if !self.session.save_failed => {
+                self.session.save_failed = true;
+                self.show_toast(Toast {
+                    kind: ToastKind::Danger,
+                    message: ToastMessage::SettingsNotSaved,
+                });
+            }
+            Poll::Idle | Poll::Waiting(_) | Poll::Failed(_) => {}
+        }
+    }
+
+    /// Writes any changed settings now (at exit).
+    ///
+    /// # Errors
+    ///
+    /// The write error; the settings stay in memory only.
+    pub fn flush_settings(&mut self) -> std::io::Result<()> {
+        self.saver.as_mut().map_or(Ok(()), SettingsSaver::flush)
     }
 
     /// The pin button: keep the Panel on top or not.
@@ -957,8 +1112,9 @@ mod tests {
     }
 
     #[test]
-    fn close_hides_and_drag_asks_the_host() {
+    fn close_hides_with_a_tray_icon_and_drag_asks_the_host() {
         let mut w = world();
+        with_tray(&mut w);
         assert_eq!(w.ctl.close(), [Effect::HidePanel]);
         assert!(!w.ctl.visible());
         assert_eq!(w.ctl.drag(), [Effect::DragWindow]);
@@ -1027,5 +1183,365 @@ mod tests {
             ..Settings::default()
         };
         assert!(world_with(None, settings).ctl.view().dark);
+    }
+
+    // ---- The tray ----------------------------------------------------------------------------
+
+    fn with_tray(w: &mut World) {
+        w.ctl.on_tray(TrayEvent::IconPresent(true));
+    }
+
+    #[test]
+    fn the_tray_toggles_the_panel_and_open_panel_always_shows_it() {
+        let mut w = world();
+        assert_eq!(w.ctl.on_tray(TrayEvent::TogglePanel), [Effect::HidePanel]);
+        assert!(!w.ctl.visible());
+        w.targets.set(None);
+        assert_eq!(w.ctl.on_tray(TrayEvent::TogglePanel), [Effect::ShowPanel]);
+        assert_eq!(
+            w.ctl.view().footer,
+            Footer::Copies,
+            "the Target is read when the tray shows the Panel"
+        );
+        assert_eq!(w.ctl.on_tray(TrayEvent::OpenPanel), [Effect::ShowPanel]);
+        assert!(w.ctl.visible());
+    }
+
+    #[test]
+    fn the_tray_menu_opens_snipdeck_and_quits() {
+        let mut w = world();
+        assert_eq!(
+            w.ctl.on_tray(TrayEvent::OpenSnipdeck),
+            [Effect::OpenMainWindow]
+        );
+        assert_eq!(w.ctl.on_tray(TrayEvent::Quit), [Effect::Quit]);
+        assert!(w.ctl.visible(), "quitting does not pretend to hide first");
+    }
+
+    #[test]
+    fn pause_hotkeys_asks_the_host_and_silences_hotkeys_that_were_already_queued() {
+        let mut w = world();
+        assert_eq!(
+            w.ctl.on_tray(TrayEvent::HotkeysPaused(true)),
+            [Effect::SetHotkeysPaused(true)]
+        );
+        assert!(w.ctl.hotkeys_paused());
+        assert_eq!(w.ctl.on_hotkey(HotkeyAction::TogglePanel), Vec::new());
+        assert_eq!(w.ctl.on_hotkey(HotkeyAction::Picker), Vec::new());
+        assert!(w.ctl.visible());
+        assert_eq!(
+            w.ctl.on_tray(TrayEvent::HotkeysPaused(false)),
+            [Effect::SetHotkeysPaused(false)]
+        );
+        assert_eq!(
+            w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+            [Effect::HidePanel]
+        );
+    }
+
+    #[test]
+    fn closing_the_panel_hides_it_when_a_tray_icon_can_bring_it_back() {
+        let mut w = world();
+        with_tray(&mut w);
+        assert_eq!(w.ctl.close(), [Effect::HidePanel]);
+        assert!(!w.ctl.visible());
+        assert_eq!(w.ctl.on_tray(TrayEvent::TogglePanel), [Effect::ShowPanel]);
+    }
+
+    #[test]
+    fn closing_the_panel_quits_without_a_tray_icon_or_with_close_to_tray_off() {
+        let mut w = world();
+        assert_eq!(w.ctl.close(), [Effect::Quit], "no tray icon to return from");
+        assert!(w.ctl.visible());
+
+        let mut w = world_with(
+            None,
+            Settings {
+                close_to_tray: false,
+                ..Settings::default()
+            },
+        );
+        with_tray(&mut w);
+        assert_eq!(w.ctl.close(), [Effect::Quit]);
+    }
+
+    #[test]
+    fn real_tray_clicks_on_the_fake_reach_the_controller() {
+        use snipdeck_platform::{testing::FakeTray, tray::Tray, tray::TrayEntry};
+        let (tx, rx) = std::sync::mpsc::channel();
+        let tx = std::sync::Mutex::new(tx);
+        let mut tray = FakeTray::new("Snipdeck", move |e| {
+            let _ = tx.lock().expect("lock").send(e);
+        });
+        let mut w = world();
+
+        // Drain what the user did to the icon into the controller, as the app's UI thread does.
+        let pump = |w: &mut World| {
+            rx.try_iter()
+                .flat_map(|event| w.ctl.on_tray(event))
+                .collect::<Vec<_>>()
+        };
+        tray.show().expect("show");
+        assert_eq!(pump(&mut w), [], "the icon appearing needs no effect");
+        assert_eq!(w.ctl.close(), [Effect::HidePanel], "but now closing hides");
+        assert_eq!(w.ctl.show(), [Effect::ShowPanel]);
+        tray.left_click();
+        assert_eq!(pump(&mut w), [Effect::HidePanel]);
+        tray.left_click();
+        assert_eq!(pump(&mut w), [Effect::ShowPanel]);
+        assert!(tray.right_click().is_some());
+        tray.pick(TrayEntry::PauseHotkeys);
+        assert_eq!(pump(&mut w), [Effect::SetHotkeysPaused(true)]);
+        assert!(tray.hotkeys_paused(), "the menu check follows");
+        tray.pick(TrayEntry::OpenSnipdeck);
+        tray.pick(TrayEntry::Quit);
+        assert_eq!(pump(&mut w), [Effect::OpenMainWindow, Effect::Quit]);
+    }
+
+    /// A controller wired to a `FakeTray` the way the app wires the real one: every event the
+    /// tray emits is queued and then handed to `on_tray`.
+    struct Wired {
+        w: World,
+        tray: snipdeck_platform::testing::FakeTray,
+        rx: std::sync::mpsc::Receiver<TrayEvent>,
+    }
+
+    impl Wired {
+        fn new() -> Self {
+            let (tx, rx) = std::sync::mpsc::channel();
+            let tx = std::sync::Mutex::new(tx);
+            let tray = snipdeck_platform::testing::FakeTray::new("Snipdeck", move |e| {
+                let _ = tx.lock().expect("lock").send(e);
+            });
+            Self {
+                w: world(),
+                tray,
+                rx,
+            }
+        }
+
+        fn pump(&mut self) {
+            for event in self.rx.try_iter() {
+                self.w.ctl.on_tray(event);
+            }
+        }
+
+        fn close(&mut self) -> Vec<Effect> {
+            self.pump();
+            self.w.ctl.close()
+        }
+    }
+
+    #[test]
+    fn a_failed_first_show_then_explorer_starting_lets_close_hide() {
+        use snipdeck_platform::tray::Tray;
+        let mut t = Wired::new();
+        t.tray.set_fail_show(true);
+        let mut tray = t.tray.clone();
+        assert!(tray.show().is_err());
+        assert_eq!(
+            t.close(),
+            [Effect::Quit],
+            "no icon yet: nothing to return from"
+        );
+
+        t.tray.set_fail_show(false);
+        t.tray.taskbar_created();
+        assert!(t.tray.visible());
+        assert_eq!(t.close(), [Effect::HidePanel], "the icon appeared later");
+    }
+
+    #[test]
+    fn explorer_restarting_without_taking_the_icon_back_makes_close_quit() {
+        use snipdeck_platform::tray::Tray;
+        let mut t = Wired::new();
+        let mut tray = t.tray.clone();
+        tray.show().expect("show");
+        assert_eq!(t.close(), [Effect::HidePanel]);
+
+        // Explorer restarts and the icon cannot be added again: no icon, so Esc must not hide
+        // the Panel into nothing.
+        t.tray.set_fail_show(true);
+        t.tray.taskbar_created();
+        assert!(!t.tray.visible());
+        assert_eq!(t.close(), [Effect::Quit]);
+
+        t.tray.set_fail_show(false);
+        t.tray.taskbar_created();
+        assert_eq!(t.close(), [Effect::HidePanel], "back again");
+    }
+
+    #[test]
+    fn hiding_the_icon_makes_close_quit() {
+        use snipdeck_platform::tray::Tray;
+        let mut t = Wired::new();
+        let mut tray = t.tray.clone();
+        tray.show().expect("show");
+        tray.hide().expect("hide");
+        assert_eq!(t.close(), [Effect::Quit]);
+    }
+
+    // ---- The OS theme ------------------------------------------------------------------------
+
+    fn os(dark: bool) -> SystemLook {
+        SystemLook {
+            dark,
+            high_contrast: None,
+        }
+    }
+
+    #[test]
+    fn the_system_theme_follows_windows_and_light_and_dark_ignore_it() {
+        let mut w = world();
+        assert!(!w.ctl.view().dark, "light until told otherwise");
+        w.ctl.set_system_look(os(true));
+        assert!(w.ctl.view().dark, "theme = system follows Windows");
+        w.ctl.set_system_look(os(false));
+        assert!(!w.ctl.view().dark);
+
+        w.ctl.set_theme(Theme::Light);
+        w.ctl.set_system_look(os(true));
+        assert!(!w.ctl.view().dark, "light stays light");
+        w.ctl.set_theme(Theme::Dark);
+        w.ctl.set_system_look(os(false));
+        assert!(w.ctl.view().dark, "dark stays dark");
+    }
+
+    #[test]
+    fn high_contrast_wins_over_every_theme_setting() {
+        let hc = HighContrast::default();
+        for theme in [Theme::System, Theme::Light, Theme::Dark] {
+            let mut w = world_with(
+                None,
+                Settings {
+                    theme,
+                    ..Settings::default()
+                },
+            );
+            assert_eq!(w.ctl.view().high_contrast, None);
+            w.ctl.set_system_look(SystemLook {
+                dark: false,
+                high_contrast: Some(hc),
+            });
+            assert_eq!(w.ctl.view().high_contrast, Some(hc), "{theme:?}");
+            w.ctl.set_system_look(os(false));
+            assert_eq!(w.ctl.view().high_contrast, None, "{theme:?}: and it ends");
+        }
+    }
+
+    #[test]
+    fn a_fake_source_drives_the_look_through_a_change() {
+        use snipdeck_platform::{system_look::SystemLookSource, testing::FakeSystemLook};
+        let source = FakeSystemLook::default();
+        let mut w = world();
+        w.ctl.set_system_look(source.read());
+        assert!(!w.ctl.view().dark);
+        source.set(os(true));
+        w.ctl.set_system_look(source.read());
+        assert!(w.ctl.view().dark);
+    }
+
+    // ---- Settings are saved ------------------------------------------------------------------
+
+    fn saving_world(dir: &std::path::Path) -> World {
+        let mut w = world();
+        let saver = SettingsSaver::new(
+            Box::new(crate::settings_store::FileSink::new(dir)),
+            Settings::default(),
+        );
+        w.ctl.set_settings_saver(saver);
+        w
+    }
+
+    #[test]
+    fn a_setting_is_written_after_the_quiet_time_by_the_injected_clock() {
+        let temp = tempfile::tempdir().expect("dir");
+        let file = temp.path().join(crate::paths::SETTINGS_FILE);
+        let mut w = saving_world(temp.path());
+        assert_eq!(w.ctl.settings_wait(), None, "nothing changed yet");
+
+        w.ctl.set_theme(Theme::Dark);
+        assert!(w.ctl.view().dark, "applied at once");
+        assert_eq!(w.ctl.settings_wait(), Some(Duration::from_millis(500)));
+        w.ctl.save_settings_if_due();
+        assert!(!file.exists(), "not before the quiet time");
+
+        w.clock.set(at("2026-10-17T10:30:00.4Z"));
+        w.ctl.save_settings_if_due();
+        assert!(!file.exists());
+        assert_eq!(w.ctl.settings_wait(), Some(Duration::from_millis(100)));
+
+        w.clock.set(at("2026-10-17T10:30:00.5Z"));
+        w.ctl.save_settings_if_due();
+        assert_eq!(crate::paths::load_settings(temp.path()).theme, Theme::Dark);
+        assert_eq!(w.ctl.settings_wait(), None);
+    }
+
+    #[test]
+    fn several_quick_changes_make_one_write_and_flush_writes_at_once() {
+        let temp = tempfile::tempdir().expect("dir");
+        let mut w = saving_world(temp.path());
+        w.ctl.update_settings(|s| s.panel_width = 300);
+        w.clock.set(at("2026-10-17T10:30:00.2Z"));
+        w.ctl.update_settings(|s| s.panel_width = 9999);
+        assert_eq!(w.ctl.settings().panel_width, 480, "sanitised");
+        w.ctl.update_settings(|s| s.panel_width = 480);
+        // The last two were the same value: still waiting from the second change.
+        assert_eq!(w.ctl.settings_wait(), Some(Duration::from_millis(500)));
+
+        w.ctl.flush_settings().expect("flush");
+        assert_eq!(crate::paths::load_settings(temp.path()).panel_width, 480);
+        assert_eq!(w.ctl.settings_wait(), None);
+    }
+
+    #[test]
+    fn an_unchanged_setting_schedules_nothing() {
+        let temp = tempfile::tempdir().expect("dir");
+        let mut w = saving_world(temp.path());
+        w.ctl.update_settings(|s| s.close_to_tray = true);
+        w.ctl.set_theme(Theme::System);
+        assert_eq!(w.ctl.settings_wait(), None);
+        w.ctl.flush_settings().expect("flush");
+        assert!(!temp.path().join(crate::paths::SETTINGS_FILE).exists());
+    }
+
+    #[test]
+    fn without_a_saver_changes_stay_in_memory() {
+        let mut w = world();
+        w.ctl.set_theme(Theme::Dark);
+        assert_eq!(w.ctl.settings_wait(), None);
+        assert!(w.ctl.flush_settings().is_ok());
+        assert_eq!(w.ctl.settings().theme, Theme::Dark);
+    }
+
+    #[test]
+    fn a_failed_write_toasts_once_and_succeeds_when_the_disk_does() {
+        let temp = tempfile::tempdir().expect("dir");
+        // The "folder" is a file, so every write fails.
+        let blocked = temp.path().join("blocked");
+        std::fs::write(&blocked, "x").expect("file");
+        let mut w = saving_world(&blocked);
+        w.ctl.set_theme(Theme::Dark);
+
+        w.clock.set(at("2026-10-17T10:30:01Z"));
+        w.ctl.save_settings_if_due();
+        let toast = w.ctl.view().toast.expect("toast");
+        assert_eq!(toast.kind, ToastKind::Danger);
+        assert_eq!(toast.message, ToastMessage::SettingsNotSaved);
+        let first = toast.seq;
+        assert_eq!(
+            w.ctl.settings_wait(),
+            Some(Duration::from_secs(5)),
+            "kept for a retry"
+        );
+
+        w.clock.set(at("2026-10-17T10:30:07Z"));
+        w.ctl.save_settings_if_due();
+        assert_eq!(
+            w.ctl.view().toast.expect("toast").seq,
+            first,
+            "no second toast for the same trouble"
+        );
+        assert!(w.ctl.flush_settings().is_err());
     }
 }

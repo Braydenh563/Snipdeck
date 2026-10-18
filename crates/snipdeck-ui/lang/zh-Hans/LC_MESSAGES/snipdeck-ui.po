@@ -25,6 +25,9 @@ msgstr "添加列表"
 msgid "Add some text, or cancel."
 msgstr ""
 
+msgid "All"
+msgstr ""
+
 msgid "All items"
 msgstr ""
 
@@ -109,11 +112,17 @@ msgstr ""
 msgid "Content"
 msgstr ""
 
+msgid "Control Enter"
+msgstr ""
+
 msgid "Copies to clipboard"
 msgstr "复制到剪贴板"
 
 msgid "Copy"
 msgstr "复制"
+
+msgid "Copy something, then save it from the Panel."
+msgstr ""
 
 msgid "Copy something, then save it here from the clipboard."
 msgstr "先复制一些内容，然后从剪贴板保存到这里。"
@@ -211,13 +220,22 @@ msgstr ""
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Escape"
+msgstr ""
+
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr ""
 
 msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
 msgstr ""
 
+msgid "Fields"
+msgstr ""
+
 msgid "File"
+msgstr ""
+
+msgid "Fill in template"
 msgstr ""
 
 msgid "Follow Windows switches with your system setting."
@@ -247,6 +265,9 @@ msgstr ""
 msgid "Hidden. Hold Space to reveal."
 msgstr ""
 
+msgid "Hidden. Open it in the Panel to reveal."
+msgstr ""
+
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr ""
 
@@ -254,6 +275,9 @@ msgid "Image"
 msgstr ""
 
 msgid "In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe."
+msgstr ""
+
+msgid "Insert"
 msgstr ""
 
 msgid "Insert {}"
@@ -373,6 +397,9 @@ msgstr ""
 msgid "No recent items"
 msgstr ""
 
+msgid "No snippets yet"
+msgstr ""
+
 msgid "No tags"
 msgstr ""
 
@@ -395,6 +422,12 @@ msgid "Nothing on this board matches “{}”."
 msgstr "此看板中没有与“{}”匹配的内容。"
 
 msgid "Nothing pinned"
+msgstr ""
+
+msgid "Nothing pinned matches “{}”."
+msgstr ""
+
+msgid "Nothing pinned yet"
 msgstr ""
 
 msgid "Only text, code, link and template items can be sensitive."
@@ -433,6 +466,9 @@ msgstr ""
 msgid "Pin"
 msgstr ""
 
+msgid "Pin a snippet from the Panel to find it here."
+msgstr ""
+
 msgid "Pin the snippets you use most to keep them one click away."
 msgstr ""
 
@@ -446,6 +482,9 @@ msgid "Placeholders"
 msgstr ""
 
 msgid "Press the new shortcut"
+msgstr ""
+
+msgid "Preview"
 msgstr ""
 
 msgid "Privacy"
@@ -475,7 +514,13 @@ msgstr ""
 msgid "Rename tag {}"
 msgstr ""
 
+msgid "Required"
+msgstr ""
+
 msgid "Restore"
+msgstr ""
+
+msgid "Results"
 msgstr ""
 
 msgid "Rose"
@@ -490,7 +535,16 @@ msgstr "从剪贴板保存"
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr ""
 
+msgid "Scope"
+msgstr ""
+
+msgid "Search all snippets"
+msgstr ""
+
 msgid "Search every board and paste without opening the window."
+msgstr ""
+
+msgid "Search in"
 msgstr ""
 
 msgid "Search results"
@@ -538,6 +592,9 @@ msgstr ""
 msgid "Start with Windows"
 msgstr ""
 
+msgid "Tab"
+msgstr ""
+
 msgid "Tag"
 msgstr ""
 
@@ -581,6 +638,12 @@ msgid "The time now"
 msgstr ""
 
 msgid "Theme"
+msgstr ""
+
+msgid "This board"
+msgstr ""
+
+msgid "This field is required"
 msgstr ""
 
 msgid "This list is empty"

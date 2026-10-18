@@ -202,9 +202,44 @@ pub const fn panel_ex_style(style: u32) -> u32 {
     (style | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) & !WS_EX_APPWINDOW
 }
 
+/// Which Rust type owns each window class name in this process.
+///
+/// A window class is registered once per name and keeps the window procedure of its first
+/// registration. The hidden windows store a pointer to their handler type in the window and the
+/// procedure casts it back, so a second *type* under an already-registered name would be cast
+/// wrongly. [`ClassNames::claim`] refuses that.
+#[derive(Debug, Default)]
+pub struct ClassNames {
+    claimed: Vec<(&'static str, std::any::TypeId)>,
+}
+
+impl ClassNames {
+    /// Records that `owner` uses the class `name`. `true` if the name is new or already owned by
+    /// the same type; `false` if another type owns it.
+    pub fn claim(&mut self, name: &'static str, owner: std::any::TypeId) -> bool {
+        if let Some((_, existing)) = self.claimed.iter().find(|(claimed, _)| *claimed == name) {
+            return *existing == owner;
+        }
+        self.claimed.push((name, owner));
+        true
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_class_name_belongs_to_one_handler_type() {
+        use std::any::TypeId;
+        struct A;
+        struct B;
+        let mut names = ClassNames::default();
+        assert!(names.claim("One", TypeId::of::<A>()));
+        assert!(names.claim("One", TypeId::of::<A>()), "same type again");
+        assert!(!names.claim("One", TypeId::of::<B>()), "another type");
+        assert!(names.claim("Two", TypeId::of::<B>()), "another name");
+    }
 
     fn ev(key: Key, down: bool) -> KeyEvent {
         KeyEvent { key, down }
