@@ -1,0 +1,1488 @@
+// The Main window (DESIGN.md §5 Main window, ADR-0008): the full manager. A sidebar (board switcher, system
+// views, lists, tags), a toolbar that doubles as the title bar, and the item area (comfortable and compact rows,
+// or a tile grid), with multi-select, a bulk-action bar, a context menu and a status line. It keeps the OS
+// caption buttons (ADR-0008): the toolbar leaves `SystemLook.caption-inset` free at the top right and draws no
+// close button; empty parts of it start the window drag.
+//
+// Data comes in as plain structs and models; every gesture leaves as a callback. Nothing here talks to the OS.
+// Selection is the host's: the window reports `select-requested(index, mode)` for a click or a key and the host
+// answers by writing `rows[i].selected` and `selected-count` (`snipdeck_ui::selection` does that in Rust).
+//
+// Keyboard (each region is one tab stop; arrows move inside it):
+//   sidebar   Up / Down / Home / End move, Enter or Space opens the view, Menu or Shift+F10 the context menu
+//   items     Up / Down (Left / Right in tiles) move and select, Shift extends, Ctrl+Space toggles, Ctrl+A all,
+//             Enter uses, Shift+Enter copies, F2 or Ctrl+E edits, Ctrl+P pins, Delete deletes, Esc clears
+//             the selection, Menu or Shift+F10 the context menu, hold Space reveals a sensitive item
+//   anywhere  Ctrl+F or / search, Ctrl+N new item
+import { ListView } from "std-widgets.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette } from "theme.slint";
+import { Icons } from "icons.slint";
+import { Icon } from "components/icon.slint";
+import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
+import { DeckEdge, DeckEdgePosition } from "components/deck-edge.slint";
+import { SidebarItem, SidebarItemKind } from "components/sidebar-item.slint";
+import { BoardSwitcher } from "components/board-switcher.slint";
+import { SearchField } from "components/text_field.slint";
+import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
+import { IconButton, IconButtonSize } from "components/icon-button.slint";
+import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
+import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind, Tooltip } from "components/feedback.slint";
+import { Menu, MenuEntry } from "components/menu.slint";
+import { Dialog, DialogVariant } from "components/dialog.slint";
+import { Chooser, ChoiceEntry } from "components/chooser.slint";
+
+export { ChoiceEntry }
+
+// One item of the item area. `selected` is written by the host (see the file header).
+export struct MainRow {
+    kind: ItemKind,
+    title: string,
+    preview: string,
+    // Stands in for a sensitive item's preview.
+    masked-preview: string,
+    extension: string,
+    // Mixed views (search, All items, Pinned, Recent): the list the item lives in, with its colour.
+    list-name: string,
+    list-color: color,
+    image: image,
+    pinned: bool,
+    selected: bool,
+}
+
+// What the sidebar has open. `list` and `tag` come with an index into `lists` / `tags`.
+export enum MainSection { all, pinned, recent, trash, list, tag }
+export enum MainView { comfortable, compact, tile }
+// How a click or key changes the selection.
+export enum SelectMode { replace, toggle, extend }
+// What the context menu, the bulk bar and the shortcuts ask for. The host applies it to the selection when
+// `selected-count` > 1, else to the row the index names.
+export enum ItemAction { use, copy, edit, pin, move, tag, delete, restore, delete-forever }
+
+// One item card, mapped from a row.
+component MainCard inherits ItemCard {
+    in property <MainRow> data;
+
+    pick-mode: true;
+    keyboard-focusable: false;
+    kind: root.data.kind;
+    title: root.data.title;
+    preview: root.data.preview;
+    masked-preview: root.data.masked-preview;
+    masked-hint: @tr("Hidden. Hold Space to reveal.");
+    extension: root.data.extension;
+    image: root.data.image;
+    list-name: root.data.list-name;
+    list-color: root.data.list-color;
+    selected: root.data.selected;
+}
+
+// A group heading in the sidebar with an optional trailing action.
+component SidebarHeading inherits Rectangle {
+    in property <string> text;
+    in property <image> action-icon;
+    in property <string> action-label;
+    callback action();
+    height: max(Space.hit, Type.line-xs + Space.s2);
+    // The heading names the group of rows below it for assistive technology.
+    accessible-role: AccessibleRole.text;
+    accessible-label: root.text;
+
+    HorizontalLayout {
+        padding-left: Space.s2;
+        padding-right: Space.s0-5;
+        spacing: Space.s1;
+        Text {
+            horizontal-stretch: 1;
+            text: root.text;
+            font-family: Fonts.sans;
+            font-size: Type.xs;
+            font-weight: Type.medium;
+            color: Theme.text-secondary;
+            vertical-alignment: center;
+            overflow: elide;
+            accessible-role: none;
+        }
+        if root.action-label != "": IconButton {
+            size: IconButtonSize.sm;
+            icon: root.action-icon;
+            tooltip: root.action-label;
+            y: (parent.height - self.height) / 2;
+            clicked => { root.action(); }
+        }
+    }
+}
+
+export component MainWindow inherits Window {
+    title: @tr("Snipdeck");
+    background: Theme.bg-app;
+    min-width: 480px;
+    min-height: 360px;
+    preferred-width: 1100px;
+    preferred-height: 720px;
+
+    // ---- State in -----------------------------------------------------------------------------
+    in property <bool> dark: false;
+    in property <string> board-name;
+    in property <bool> board-menu-open: false;
+    in property <[MenuEntry]> board-menu-entries;
+    in property <[ChoiceEntry]> lists;
+    in property <[ChoiceEntry]> tags;
+    // Tags with a tick for those on the selected items (the host refreshes it on `item-action(tag, ...)`).
+    in property <[ChoiceEntry]> tag-choices;
+    in property <int> count-all: -1;
+    in property <int> count-pinned: -1;
+    in property <int> count-recent: -1;
+    in property <int> count-trash: -1;
+    in property <[MainRow]> rows;
+    in property <int> selected-count: 0;
+    // True while the app loads: skeletons replace the empty state.
+    in property <bool> loading: false;
+    // The label of the card's use button and the menu's first entry ("Use"; "Copy" while nothing can be pasted into).
+    in property <string> use-label: @tr("Use");
+    // The sensitive row held revealed by the app (-1 = none).
+    in property <int> revealed-index: -1;
+    in property <int> trash-days: 30;
+    in property <string> toast-text;
+    in property <ToastKind> toast-kind: ToastKind.neutral;
+    in property <ToastPhase> toast-phase: ToastPhase.hold;
+    in property <string> toast-undo-label;
+
+    // ---- State both ways ----------------------------------------------------------------------
+    in-out property <MainSection> section: MainSection.all;
+    // Which list or tag, when `section` is `list` or `tag`.
+    in-out property <int> section-index: 0;
+    in-out property <MainView> view: MainView.comfortable;
+    in-out property <string> query <=> search.text;
+    // The row the keyboard works on. The window moves it; the host resets it when the section changes.
+    in-out property <int> cursor: 0;
+
+    // ---- Gestures out -------------------------------------------------------------------------
+    callback query-changed(string);
+    callback section-selected(MainSection, int);
+    callback view-changed(MainView);
+    callback new-item-requested();
+    callback select-requested(int, SelectMode);
+    callback select-all-requested();
+    callback clear-selection-requested();
+    callback item-action(ItemAction, int);
+    callback move-chosen(int);
+    callback tag-toggled(int, bool);
+    callback reveal-requested(int, bool);
+    callback settings-requested();
+    callback add-list-requested();
+    callback list-edit-requested(int);
+    callback list-delete-confirmed(int);
+    callback manage-tags-requested();
+    callback tag-delete-confirmed(int);
+    callback empty-trash-confirmed();
+    callback board-menu-requested();
+    callback board-menu-activated(int);
+    callback board-menu-dismissed();
+    callback toast-undo();
+    // Pointer down on an empty part of the title bar: the host starts the OS window drag.
+    callback drag-requested();
+    callback title-double-clicked();
+
+    // ---- Public -------------------------------------------------------------------------------
+    // Holds row `index` in its pulled (used) state for the card's 700ms.
+    public function mark-used(index: int) {
+        root.used-index = index;
+        used-timer.running = true;
+    }
+    public function focus-search() {
+        search.focus();
+        search.select-all();
+    }
+    public function focus-items() {
+        items-scope.focus();
+    }
+    out property <bool> items-focused: items-scope.has-focus;
+    out property <bool> sidebar-focused: nav-scope.has-focus;
+    out property <bool> search-focused: search.has-focus;
+    out property <bool> rail: root.narrow;
+    out property <int> columns: root.cols;
+    out property <bool> confirm-open: root.confirm-shown;
+    out property <bool> menu-open: item-menu-open || nav-menu-open || chooser-open;
+
+    // ---- Internals ----------------------------------------------------------------------------
+    property <int> used-index: -1;
+    property <bool> narrow: false;
+    property <float> text-scale: SystemLook.text-scale;
+    property <length> bar-h: max(Space.s8 + Space.s3, Type.line-base + Space.s2 + Space.s3);
+    property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : 232px + (root.text-scale - 1) * 96px;
+    property <length> pad: Space.s4;
+    property <int> n-lists: root.lists.length;
+    property <int> n-tags: root.tags.length;
+    property <int> nav-total: 4 + root.n-lists + root.n-tags;
+    property <int> cur: root.rows.length == 0 ? -1 : min(max(root.cursor, 0), root.rows.length - 1);
+    property <bool> tile: root.view == MainView.tile;
+    property <bool> in-trash: root.section == MainSection.trash;
+    property <bool> searching: root.query != "";
+    property <bool> multi: root.selected-count > 1;
+    property <int> nav-cursor: 0;
+    property <bool> item-menu-open: false;
+    property <length> item-menu-x: 0px;
+    property <length> item-menu-y: 0px;
+    property <int> item-menu-index: 0;
+    property <bool> nav-menu-open: false;
+    property <length> nav-menu-x: 0px;
+    property <length> nav-menu-y: 0px;
+    property <int> nav-menu-flat: 0;
+    property <bool> chooser-open: false;
+    property <bool> chooser-tags: false;
+    property <length> chooser-x: 0px;
+    property <length> chooser-y: 0px;
+    // What the confirmation dialog is asking: 0 none, 1 delete a list, 2 delete a tag, 3 empty the Trash,
+    // 4 delete the selected items for good.
+    property <int> confirm-kind: 0;
+    property <int> confirm-target: 0;
+    property <bool> confirm-shown: false;
+    property <bool> overlay-open: root.item-menu-open || root.nav-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown;
+
+    init => {
+        Palette.dark = root.dark;
+        root.update-narrow();
+    }
+    changed dark => {
+        Palette.dark = root.dark;
+    }
+    // Set from `changed` handlers, not bound to `root.width`: a window's width follows its layout.
+    function update-narrow() {
+        root.narrow = root.width < 720px;
+    }
+    changed width => {
+        root.update-narrow();
+    }
+
+    used-timer := Timer {
+        interval: 700ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.used-index = -1;
+        }
+    }
+
+    // ---- Navigation model: system views, then lists, then tags -------------------------------------
+    pure function nav-section(flat: int) -> MainSection {
+        return flat == 0 ? MainSection.all : flat == 1 ? MainSection.pinned : flat == 2 ? MainSection.recent
+            : flat == 3 ? MainSection.trash : flat < 4 + root.n-lists ? MainSection.list : MainSection.tag;
+    }
+    pure function nav-index(flat: int) -> int {
+        return flat < 4 ? 0 : flat < 4 + root.n-lists ? flat - 4 : flat - 4 - root.n-lists;
+    }
+    pure function flat-of(s: MainSection, index: int) -> int {
+        return s == MainSection.all ? 0 : s == MainSection.pinned ? 1 : s == MainSection.recent ? 2
+            : s == MainSection.trash ? 3 : s == MainSection.list ? 4 + index : 4 + root.n-lists + index;
+    }
+    property <int> nav-selected: root.flat-of(root.section, root.section-index);
+
+    function open-section(flat: int) {
+        root.nav-cursor = flat;
+        root.section = root.nav-section(flat);
+        root.section-index = root.nav-index(flat);
+        root.cursor = 0;
+        if (root.query != "") {
+            root.query = "";
+            root.query-changed("");
+        }
+        root.section-selected(root.section, root.section-index);
+    }
+
+    function open-nav-menu(flat: int, x: length, y: length) {
+        root.nav-menu-flat = flat;
+        root.nav-menu-x = min(x, root.width - 220px);
+        root.nav-menu-y = min(y, root.height - 100px);
+        root.nav-menu-open = true;
+    }
+
+    property <[MenuEntry]> nav-entries: root.nav-section(root.nav-menu-flat) == MainSection.list ? [
+        { text: @tr("Edit list…"), icon: Icons.pencil-simple },
+        { text: @tr("Delete list…"), icon: Icons.trash, destructive: true },
+    ] : root.nav-section(root.nav-menu-flat) == MainSection.tag ? [
+        { text: @tr("Manage tags…"), icon: Icons.tag },
+        { text: @tr("Delete tag…"), icon: Icons.trash, destructive: true },
+    ] : [
+        { text: @tr("Empty Trash…"), icon: Icons.trash, destructive: true },
+    ];
+
+    function nav-menu-activated(i: int) {
+        let s = root.nav-section(root.nav-menu-flat);
+        let index = root.nav-index(root.nav-menu-flat);
+        root.nav-menu-open = false;
+        if (s == MainSection.list) {
+            if (i == 0) {
+                root.list-edit-requested(index);
+            } else {
+                root.ask(1, index);
+            }
+        } else if (s == MainSection.tag) {
+            if (i == 0) {
+                root.manage-tags-requested();
+            } else {
+                root.ask(2, index);
+            }
+        } else {
+            root.ask(3, 0);
+        }
+    }
+
+    // ---- Confirmation ---------------------------------------------------------------------------
+    function ask(kind: int, target: int) {
+        root.confirm-kind = kind;
+        root.confirm-target = target;
+        root.confirm-shown = true;
+    }
+    property <string> confirm-title: root.confirm-kind == 1 ? @tr("Delete list “{}”?", root.lists[root.confirm-target].label)
+        : root.confirm-kind == 2 ? @tr("Delete tag “{}”?", root.tags[root.confirm-target].label)
+        : root.confirm-kind == 3 ? @tr("Empty the Trash?")
+        : @tr("Delete for good?");
+    property <string> confirm-body: root.confirm-kind == 1
+        ? @tr("The list and its {} items move to the Trash. You can restore them for {} days.", root.lists[root.confirm-target].count, root.trash-days)
+        : root.confirm-kind == 2 ? @tr("The tag is removed from its items. The items themselves stay.")
+        : root.confirm-kind == 3 ? @tr("Everything in the Trash is deleted for good. This can't be undone.")
+        : @tr("The selected items are deleted for good. This can't be undone.");
+    property <string> confirm-ok: root.confirm-kind == 1 ? @tr("Delete list")
+        : root.confirm-kind == 2 ? @tr("Delete tag")
+        : root.confirm-kind == 3 ? @tr("Empty Trash") : @tr("Delete for good");
+    function confirmed() {
+        let kind = root.confirm-kind;
+        let target = root.confirm-target;
+        root.confirm-shown = false;
+        if (kind == 1) {
+            root.list-delete-confirmed(target);
+        } else if (kind == 2) {
+            root.tag-delete-confirmed(target);
+        } else if (kind == 3) {
+            root.empty-trash-confirmed();
+        } else if (kind == 4) {
+            root.item-action(ItemAction.delete-forever, target);
+        }
+    }
+
+    // ---- Item actions ---------------------------------------------------------------------------
+    // The pointer or the keyboard picked row `i`.
+    function pick(i: int, shift: bool, control: bool) {
+        root.cursor = i;
+        items-scope.focus();
+        root.select-requested(i, shift ? SelectMode.extend : control ? SelectMode.toggle : SelectMode.replace);
+    }
+
+    function move-cursor(delta: int, extend: bool) {
+        if (root.rows.length > 0) {
+            let next = min(max(root.cur + delta, 0), root.rows.length - 1);
+            root.cursor = next;
+            root.select-requested(next, extend ? SelectMode.extend : SelectMode.replace);
+        }
+    }
+
+    // Runs an action on the selection (or on `index` when it is the only one).
+    function act(action: ItemAction, index: int) {
+        if (action == ItemAction.use || action == ItemAction.copy) {
+            root.mark-used(index);
+        }
+        if (action == ItemAction.delete-forever) {
+            root.ask(4, index);
+        } else {
+            root.item-action(action, index);
+            if (action == ItemAction.move || action == ItemAction.tag) {
+                root.open-chooser(action == ItemAction.tag, index);
+            }
+        }
+    }
+
+    function open-chooser(tags: bool, index: int) {
+        root.chooser-tags = tags;
+        root.chooser-x = min(max(root.item-menu-x, root.sidebar-w), max(root.sidebar-w, root.width - 240px));
+        root.chooser-y = min(root.item-menu-y, max(0px, root.height - 300px));
+        root.chooser-open = true;
+    }
+
+    function open-item-menu(index: int, x: length, y: length) {
+        root.item-menu-index = index;
+        root.item-menu-x = min(max(x, 0px), max(0px, root.width - 220px));
+        root.item-menu-y = min(max(y, 0px), max(0px, root.height - 280px));
+        root.item-menu-open = true;
+    }
+
+    function close-menus() {
+        root.item-menu-open = false;
+        root.nav-menu-open = false;
+        root.chooser-open = false;
+        items-scope.focus();
+    }
+
+    property <[MenuEntry]> item-entries: root.in-trash ? [
+        { text: @tr("Restore"), icon: Icons.arrow-counter-clockwise },
+        { separator: true },
+        { text: @tr("Delete forever…"), icon: Icons.trash, destructive: true, shortcut: "Del" },
+    ] : [
+        { text: root.use-label, icon: Icons.arrow-bend-down-left, shortcut: "Enter", disabled: root.multi },
+        { text: @tr("Copy"), icon: Icons.copy, shortcut: "Shift+Enter", disabled: root.multi },
+        { separator: true },
+        { text: @tr("Edit"), icon: Icons.pencil-simple, shortcut: "Ctrl+E", disabled: root.multi },
+        { text: root.rows[root.item-menu-index].pinned && !root.multi ? @tr("Unpin") : @tr("Pin"), icon: Icons.push-pin, shortcut: "Ctrl+P" },
+        { text: @tr("Move to list…"), icon: Icons.folder },
+        { text: @tr("Tags…"), icon: Icons.tag },
+        { separator: true },
+        { text: @tr("Delete"), icon: Icons.trash, destructive: true, shortcut: "Del" },
+    ];
+
+    function item-menu-activated(i: int) {
+        let index = root.item-menu-index;
+        root.item-menu-open = false;
+        if (root.in-trash) {
+            root.act(i == 0 ? ItemAction.restore : ItemAction.delete-forever, index);
+        } else if (i == 0) {
+            root.act(ItemAction.use, index);
+        } else if (i == 1) {
+            root.act(ItemAction.copy, index);
+        } else if (i == 3) {
+            root.act(ItemAction.edit, index);
+        } else if (i == 4) {
+            root.act(ItemAction.pin, index);
+        } else if (i == 5) {
+            root.act(ItemAction.move, index);
+        } else if (i == 6) {
+            root.act(ItemAction.tag, index);
+        } else if (i == 8) {
+            root.act(ItemAction.delete, index);
+        }
+        if (!root.chooser-open && !root.confirm-shown) {
+            items-scope.focus();
+        }
+    }
+
+    // ---- Scrolling the item area to the cursor ---------------------------------------------------
+    property <length> edge-h: 10px;
+    property <length> row-gap: root.view == MainView.comfortable ? Space.s1 + Space.s0-5 : 0px;
+    property <length> avg-row-h: root.rows.length == 0 ? Space.hit : max(Space.hit, list.content-height / root.rows.length);
+    property <int> page-rows: max(1, floor(list.height / root.avg-row-h) - 1);
+    property <int> last-cur: 0;
+
+    function reveal-list(y: length, h: length) {
+        let top = root.cur == 0 ? 0px : root.edge-h;
+        let bottom = root.cur == root.rows.length - 1 ? 0px : root.edge-h;
+        if (root.cur == 0) {
+            list.content-y = 0px;
+        } else if (y + list.content-y < top) {
+            list.content-y = top - y;
+        } else if (y + h + list.content-y > list.height - bottom) {
+            list.content-y = list.height - bottom - y - h;
+        }
+    }
+    function reveal-grid(y: length, h: length) {
+        let top = root.cur < root.cols ? 0px : root.edge-h;
+        let bottom = root.cur >= root.rows.length - root.cols ? 0px : root.edge-h;
+        if (root.cur < root.cols) {
+            grid.content-y = 0px;
+        } else if (y + grid.content-y < top) {
+            grid.content-y = top - y;
+        } else if (y + h + grid.content-y > grid.height - bottom) {
+            grid.content-y = grid.height - bottom - y - h;
+        }
+    }
+    // A jump of more than a page lands on a row the ListView has not instantiated yet: estimate its position
+    // from the average row height; once the row exists, `reveal-*` places it exactly.
+    changed cur => {
+        let jump = abs(root.cur - root.last-cur) > root.page-rows;
+        root.last-cur = root.cur;
+        if (!root.tile && root.cur == 0) {
+            list.content-y = 0px;
+        } else if (!root.tile && root.cur > 0 && jump) {
+            let centred = root.cur * root.avg-row-h - (list.height - root.avg-row-h) / 2;
+            list.content-y = min(0px, max(list.height - list.content-height, -centred));
+        }
+    }
+
+    // ---- Tile grid geometry -----------------------------------------------------------------------
+    property <length> tile-gap: Space.s2;
+    property <length> tile-min-w: Space.s12 * 4 * root.text-scale;
+    property <int> cols: max(1, min(6, floor((grid.width + root.tile-gap) / (root.tile-min-w + root.tile-gap))));
+    // Only the visible one of the two lists builds rows.
+    property <[MainRow]> list-model: root.tile ? [] : root.rows;
+    property <int> grid-row-count: root.tile ? ceil(root.rows.length / root.cols) : 0;
+    pure function tile-index(r: int, c: int) -> int {
+        return r * root.cols + c;
+    }
+    property <length> tile-w: (grid.width - (root.cols - 1) * root.tile-gap) / root.cols;
+    pure function row-has-image(r: int) -> bool {
+        let n = root.cols;
+        return (r * n < root.rows.length && root.rows[r * n].kind == ItemKind.image)
+            || (n > 1 && r * n + 1 < root.rows.length && root.rows[r * n + 1].kind == ItemKind.image)
+            || (n > 2 && r * n + 2 < root.rows.length && root.rows[r * n + 2].kind == ItemKind.image)
+            || (n > 3 && r * n + 3 < root.rows.length && root.rows[r * n + 3].kind == ItemKind.image)
+            || (n > 4 && r * n + 4 < root.rows.length && root.rows[r * n + 4].kind == ItemKind.image)
+            || (n > 5 && r * n + 5 < root.rows.length && root.rows[r * n + 5].kind == ItemKind.image);
+    }
+    // Hidden probes: the tallest tile of each kind (two title lines, three preview lines) at the tile width.
+    probe-text := MainCard {
+        visible: false;
+        y: -2000px;
+        width: root.tile-w;
+        variant: ItemCardVariant.tile;
+        data: { kind: ItemKind.text, title: "Probe\nProbe", preview: "Probe\nProbe\nProbe" };
+    }
+    probe-image := MainCard {
+        visible: false;
+        y: -2000px;
+        width: root.tile-w;
+        variant: ItemCardVariant.tile;
+        data: { kind: ItemKind.image, title: "Probe\nProbe", preview: "Probe\nProbe\nProbe" };
+    }
+
+    // ---- Keyboard ---------------------------------------------------------------------------------
+    pure function section-name() -> string {
+        return root.searching ? @tr("Search results")
+            : root.section == MainSection.all ? @tr("All items")
+            : root.section == MainSection.pinned ? @tr("Pinned")
+            : root.section == MainSection.recent ? @tr("Recent")
+            : root.section == MainSection.trash ? @tr("Trash")
+            : root.section == MainSection.list ? root.lists[root.section-index].label
+            : root.tags[root.section-index].label;
+    }
+
+    root-scope := FocusScope {
+        capture-key-pressed(event) => {
+            if (root.overlay-open || search.composing) {
+                return reject;
+            }
+            if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                if (event.text == "f" || event.text == "F") {
+                    root.focus-search();
+                    return accept;
+                }
+                if (event.text == "n" || event.text == "N") {
+                    root.new-item-requested();
+                    return accept;
+                }
+            }
+            if (event.text == "/" && !search.has-focus && !event.modifiers.control && !event.modifiers.alt) {
+                root.focus-search();
+                return accept;
+            }
+            return reject;
+        }
+
+        HorizontalLayout {
+            // ======== Sidebar ====================================================================
+            sidebar := Rectangle {
+                width: root.sidebar-w;
+                background: Theme.bg-app;
+                accessible-role: AccessibleRole.list;
+                accessible-label: @tr("Navigation");
+
+                VerticalLayout {
+                    // Board switcher, level with the toolbar.
+                    Rectangle {
+                        height: root.bar-h;
+                        HorizontalLayout {
+                            padding-left: root.narrow ? 0px : Space.s2;
+                            padding-right: root.narrow ? 0px : Space.s2;
+                            alignment: root.narrow ? center : start;
+                            if !root.narrow: switcher := BoardSwitcher {
+                                horizontal-stretch: 0;
+                                board-name: root.board-name;
+                                menu-open: root.board-menu-open;
+                                a11y-label: @tr("Board: {}", root.board-name);
+                                y: (parent.height - self.height) / 2;
+                                menu-requested => { root.board-menu-requested(); }
+                            }
+                            if root.narrow: IconButton {
+                                icon: Icons.stack;
+                                tooltip: @tr("Board: {}", root.board-name);
+                                active: root.board-menu-open;
+                                y: (parent.height - self.height) / 2;
+                                clicked => { root.board-menu-requested(); }
+                            }
+                        }
+                    }
+
+                    nav-flick := Flickable {
+                        vertical-stretch: 1;
+                        interactive: false;
+                        content-height: nav-content.preferred-height;
+
+                        nav-scope := FocusScope {
+                            width: nav-flick.width;
+                            height: max(nav-flick.height, nav-content.preferred-height);
+                            focus-gained(reason) => {
+                                root.nav-cursor = root.nav-selected;
+                            }
+                            key-pressed(event) => {
+                                if (event.text == Key.DownArrow) {
+                                    root.nav-cursor = min(root.nav-cursor + 1, root.nav-total - 1);
+                                    return accept;
+                                }
+                                if (event.text == Key.UpArrow) {
+                                    root.nav-cursor = max(root.nav-cursor - 1, 0);
+                                    return accept;
+                                }
+                                if (event.text == Key.Home) {
+                                    root.nav-cursor = 0;
+                                    return accept;
+                                }
+                                if (event.text == Key.End) {
+                                    root.nav-cursor = root.nav-total - 1;
+                                    return accept;
+                                }
+                                if (event.text == Key.Return || event.text == " ") {
+                                    root.open-section(root.nav-cursor);
+                                    return accept;
+                                }
+                                if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
+                                    if (root.nav-cursor >= 3) {
+                                        root.open-nav-menu(root.nav-cursor, root.sidebar-w, root.bar-h + Space.s8);
+                                    }
+                                    return accept;
+                                }
+                                return reject;
+                            }
+
+                            nav-content := VerticalLayout {
+                                padding: Space.s2;
+                                padding-top: Space.s1;
+                                spacing: Space.s0-5;
+                                alignment: start;
+
+                                SidebarItem {
+                                    kind: SidebarItemKind.system;
+                                    icon: Icons.stack;
+                                    label: @tr("All items");
+                                    count: root.count-all;
+                                    rail: root.narrow;
+                                    selected: root.nav-selected == 0;
+                                    keyboard-focusable: false;
+                                    show-focus: nav-scope.has-focus && root.nav-cursor == 0;
+                                    clicked => { root.open-section(0); }
+                                }
+                                SidebarItem {
+                                    kind: SidebarItemKind.system;
+                                    icon: Icons.push-pin;
+                                    label: @tr("Pinned");
+                                    count: root.count-pinned;
+                                    rail: root.narrow;
+                                    selected: root.nav-selected == 1;
+                                    keyboard-focusable: false;
+                                    show-focus: nav-scope.has-focus && root.nav-cursor == 1;
+                                    clicked => { root.open-section(1); }
+                                }
+                                SidebarItem {
+                                    kind: SidebarItemKind.system;
+                                    icon: Icons.clock;
+                                    label: @tr("Recent");
+                                    count: root.count-recent;
+                                    rail: root.narrow;
+                                    selected: root.nav-selected == 2;
+                                    keyboard-focusable: false;
+                                    show-focus: nav-scope.has-focus && root.nav-cursor == 2;
+                                    clicked => { root.open-section(2); }
+                                }
+                                SidebarItem {
+                                    kind: SidebarItemKind.system;
+                                    icon: Icons.trash;
+                                    label: @tr("Trash");
+                                    count: root.count-trash;
+                                    rail: root.narrow;
+                                    selected: root.nav-selected == 3;
+                                    keyboard-focusable: false;
+                                    show-focus: nav-scope.has-focus && root.nav-cursor == 3;
+                                    clicked => { root.open-section(3); }
+                                    context-menu-requested(x, y) => { root.open-nav-menu(3, root.sidebar-w, self.absolute-position.y + y); }
+                                }
+
+                                if !root.narrow: SidebarHeading {
+                                    text: @tr("Lists");
+                                    action-icon: Icons.plus;
+                                    action-label: @tr("Add list");
+                                    action => { root.add-list-requested(); }
+                                }
+                                if root.narrow: Rectangle {
+                                    height: Space.s2;
+                                    Rectangle {
+                                        y: (parent.height - self.height) / 2;
+                                        height: 1px;
+                                        background: Theme.border-subtle;
+                                    }
+                                }
+                                for entry[i] in root.lists: SidebarItem {
+                                    kind: SidebarItemKind.list;
+                                    label: entry.label;
+                                    count: entry.count;
+                                    mark-color: entry.color;
+                                    rail: root.narrow;
+                                    selected: root.nav-selected == 4 + i;
+                                    keyboard-focusable: false;
+                                    show-focus: nav-scope.has-focus && root.nav-cursor == 4 + i;
+                                    clicked => { root.open-section(4 + i); }
+                                    context-menu-requested(x, y) => { root.open-nav-menu(4 + i, root.sidebar-w, self.absolute-position.y + y); }
+                                    changed show-focus => {
+                                        if (self.show-focus) {
+                                            root.reveal-nav(self.absolute-position.y - nav-content.absolute-position.y, self.height);
+                                        }
+                                    }
+                                }
+
+                                if !root.narrow: SidebarHeading {
+                                    text: @tr("Tags");
+                                    action-icon: Icons.gear;
+                                    action-label: @tr("Manage tags");
+                                    action => { root.manage-tags-requested(); }
+                                }
+                                if root.narrow && root.n-tags > 0: Rectangle {
+                                    height: Space.s2;
+                                    Rectangle {
+                                        y: (parent.height - self.height) / 2;
+                                        height: 1px;
+                                        background: Theme.border-subtle;
+                                    }
+                                }
+                                for entry[i] in root.tags: SidebarItem {
+                                    kind: SidebarItemKind.tag;
+                                    label: entry.label;
+                                    count: entry.count;
+                                    rail: root.narrow;
+                                    selected: root.nav-selected == 4 + root.n-lists + i;
+                                    keyboard-focusable: false;
+                                    show-focus: nav-scope.has-focus && root.nav-cursor == 4 + root.n-lists + i;
+                                    clicked => { root.open-section(4 + root.n-lists + i); }
+                                    context-menu-requested(x, y) => { root.open-nav-menu(4 + root.n-lists + i, root.sidebar-w, self.absolute-position.y + y); }
+                                    changed show-focus => {
+                                        if (self.show-focus) {
+                                            root.reveal-nav(self.absolute-position.y - nav-content.absolute-position.y, self.height);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Settings, pinned to the foot of the sidebar.
+                    Rectangle {
+                        height: root.bar-h;
+                        HorizontalLayout {
+                            padding: Space.s2;
+                            alignment: root.narrow ? center : start;
+                            if !root.narrow: Button {
+                                variant: ButtonVariant.ghost;
+                                icon: Icons.gear;
+                                text: @tr("Settings");
+                                y: (parent.height - self.height) / 2;
+                                clicked => { root.settings-requested(); }
+                            }
+                            if root.narrow: IconButton {
+                                icon: Icons.gear;
+                                tooltip: @tr("Settings");
+                                y: (parent.height - self.height) / 2;
+                                clicked => { root.settings-requested(); }
+                            }
+                        }
+                    }
+                }
+
+                // The rule between the sidebar and the items.
+                Rectangle {
+                    x: parent.width - 1px;
+                    width: 1px;
+                    background: Theme.border-subtle;
+                }
+            }
+
+            // ======== Content ====================================================================
+            VerticalLayout {
+                horizontal-stretch: 1;
+                min-width: 0px;
+
+                // ---- Toolbar, which is also the title bar ------------------------------------
+                Rectangle {
+                    height: root.bar-h;
+
+                    // Behind the controls: pressing anywhere else drags the window; a double click maximises.
+                    TouchArea {
+                        mouse-cursor: MouseCursor.default;
+                        double-clicked => { root.title-double-clicked(); }
+                        pointer-event(event) => {
+                            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                                root.drag-requested();
+                            }
+                        }
+                    }
+
+                    HorizontalLayout {
+                        padding-left: root.pad;
+                        padding-right: SystemLook.caption-inset + Space.s2;
+                        spacing: Space.s2;
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            min-width: 0px;
+                            max-width: 360px;
+                            search := SearchField {
+                                width: parent.width;
+                                y: (parent.height - self.height) / 2;
+                                placeholder: @tr("Search snippets");
+                                label: @tr("Search snippets");
+                                clear-label: @tr("Clear search");
+                                edited(text) => {
+                                    root.cursor = 0;
+                                    root.query-changed(text);
+                                }
+                            }
+                        }
+                        Rectangle { horizontal-stretch: 1; }
+                        HorizontalLayout {
+                            spacing: 0px;
+                            horizontal-stretch: 0;
+                            view-comfortable := IconButton {
+                                icon: Icons.rows;
+                                tooltip: @tr("Comfortable view");
+                                active: root.view == MainView.comfortable;
+                                accessible-checkable: true;
+                                accessible-checked: root.view == MainView.comfortable;
+                                y: (parent.height - self.height) / 2;
+                                clicked => {
+                                    root.view = MainView.comfortable;
+                                    root.view-changed(MainView.comfortable);
+                                }
+                            }
+                            view-compact := IconButton {
+                                icon: Icons.list-bullets;
+                                tooltip: @tr("Compact view");
+                                active: root.view == MainView.compact;
+                                accessible-checkable: true;
+                                accessible-checked: root.view == MainView.compact;
+                                y: (parent.height - self.height) / 2;
+                                clicked => {
+                                    root.view = MainView.compact;
+                                    root.view-changed(MainView.compact);
+                                }
+                            }
+                            view-tile := IconButton {
+                                icon: Icons.squares-four;
+                                tooltip: @tr("Tile view");
+                                active: root.view == MainView.tile;
+                                accessible-checkable: true;
+                                accessible-checked: root.view == MainView.tile;
+                                y: (parent.height - self.height) / 2;
+                                clicked => {
+                                    root.view = MainView.tile;
+                                    root.view-changed(MainView.tile);
+                                }
+                            }
+                        }
+                        Button {
+                            horizontal-stretch: 0;
+                            variant: ButtonVariant.primary;
+                            icon: Icons.plus;
+                            text: @tr("New item");
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.new-item-requested(); }
+                        }
+                    }
+                }
+
+                // ---- Heading: where the user is -----------------------------------------------
+                Rectangle {
+                    height: max(Space.s8, Type.line-lg + Space.s2);
+                    HorizontalLayout {
+                        padding-left: root.pad;
+                        padding-right: root.pad;
+                        spacing: Space.s2;
+                        Text {
+                            horizontal-stretch: 1;
+                            text: root.section-name();
+                            font-family: Fonts.sans;
+                            font-size: Type.lg;
+                            font-weight: Type.semibold;
+                            color: Theme.text-primary;
+                            vertical-alignment: center;
+                            overflow: elide;
+                            accessible-role: AccessibleRole.text;
+                            accessible-label: root.section-name();
+                        }
+                        if root.in-trash && root.rows.length > 0: Button {
+                            horizontal-stretch: 0;
+                            variant: ButtonVariant.secondary;
+                            icon: Icons.trash;
+                            text: @tr("Empty Trash…");
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.ask(3, 0); }
+                        }
+                    }
+                }
+
+                // ---- The items --------------------------------------------------------------------
+                deck := Rectangle {
+                    vertical-stretch: 1;
+                    min-height: Space.s12;
+                    clip: true;
+
+                    items-scope := FocusScope {
+                        width: parent.width;
+                        height: parent.height;
+
+                        key-pressed(event) => {
+                            let shift = event.modifiers.shift;
+                            let ctrl = event.modifiers.control || event.modifiers.meta;
+                            if (event.modifiers.alt || root.rows.length == 0) {
+                                return reject;
+                            }
+                            if (ctrl) {
+                                if (event.text == "a" || event.text == "A") {
+                                    root.select-all-requested();
+                                    return accept;
+                                }
+                                if (event.text == " ") {
+                                    root.select-requested(root.cur, SelectMode.toggle);
+                                    return accept;
+                                }
+                                if (!root.in-trash && (event.text == "e" || event.text == "E")) {
+                                    root.act(ItemAction.edit, root.cur);
+                                    return accept;
+                                }
+                                if (!root.in-trash && (event.text == "p" || event.text == "P")) {
+                                    root.act(ItemAction.pin, root.cur);
+                                    return accept;
+                                }
+                                return reject;
+                            }
+                            if (event.text == Key.DownArrow) {
+                                root.move-cursor(root.tile ? root.cols : 1, shift);
+                                return accept;
+                            }
+                            if (event.text == Key.UpArrow) {
+                                root.move-cursor(root.tile ? -root.cols : -1, shift);
+                                return accept;
+                            }
+                            if (root.tile && event.text == Key.RightArrow) {
+                                root.move-cursor(1, shift);
+                                return accept;
+                            }
+                            if (root.tile && event.text == Key.LeftArrow) {
+                                root.move-cursor(-1, shift);
+                                return accept;
+                            }
+                            if (event.text == Key.PageDown) {
+                                root.move-cursor(root.page-rows * (root.tile ? root.cols : 1), shift);
+                                return accept;
+                            }
+                            if (event.text == Key.PageUp) {
+                                root.move-cursor(-root.page-rows * (root.tile ? root.cols : 1), shift);
+                                return accept;
+                            }
+                            if (event.text == Key.Home) {
+                                root.move-cursor(-root.rows.length, shift);
+                                return accept;
+                            }
+                            if (event.text == Key.End) {
+                                root.move-cursor(root.rows.length, shift);
+                                return accept;
+                            }
+                            if (event.text == Key.Return) {
+                                if (root.in-trash) {
+                                    root.act(ItemAction.restore, root.cur);
+                                } else {
+                                    root.act(shift ? ItemAction.copy : ItemAction.use, root.cur);
+                                }
+                                return accept;
+                            }
+                            if (event.text == Key.F2 && !root.in-trash) {
+                                root.act(ItemAction.edit, root.cur);
+                                return accept;
+                            }
+                            if (event.text == Key.Delete) {
+                                root.act(root.in-trash ? ItemAction.delete-forever : ItemAction.delete, root.cur);
+                                return accept;
+                            }
+                            if (event.text == Key.Escape) {
+                                if (root.selected-count > 0) {
+                                    root.clear-selection-requested();
+                                    return accept;
+                                }
+                                return reject;
+                            }
+                            if (event.text == Key.Menu || (shift && event.text == Key.F10)) {
+                                root.open-item-menu(root.cur, root.sidebar-w + root.pad * 2, root.bar-h * 2 + Space.s8);
+                                return accept;
+                            }
+                            // Keyboard reveal: hold Space (a sensitive item only).
+                            if (event.text == " " && root.rows[root.cur].kind == ItemKind.sensitive) {
+                                root.reveal-requested(root.cur, true);
+                                return accept;
+                            }
+                            return reject;
+                        }
+                        key-released(event) => {
+                            if (event.text == " " && root.cur >= 0 && root.rows[root.cur].kind == ItemKind.sensitive) {
+                                root.reveal-requested(root.cur, false);
+                                return accept;
+                            }
+                            return reject;
+                        }
+                    }
+
+                    // ---- Rows (comfortable and compact) -----------------------------------------
+                    Rectangle {
+                        visible: !root.tile;
+                        list := ListView {
+                            x: root.pad;
+                            y: Space.s1;
+                            width: parent.width - 2 * root.pad;
+                            height: parent.height - Space.s1;
+                            vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+                            horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+                            accessible-label: @tr("Snippets");
+                            visible: root.rows.length > 0;
+
+                            for row[i] in root.list-model: Rectangle {
+                                property <bool> is-cursor: i == root.cur;
+                                height: card.preferred-height + root.row-gap;
+
+                                init => {
+                                    if (self.is-cursor) { root.reveal-list(self.y, self.height); }
+                                }
+                                changed is-cursor => {
+                                    if (self.is-cursor) { root.reveal-list(self.y, self.height); }
+                                }
+                                changed y => {
+                                    if (self.is-cursor) { root.reveal-list(self.y, self.height); }
+                                }
+
+                                card := MainCard {
+                                    x: 0;
+                                    y: 0;
+                                    width: parent.width;
+                                    height: self.preferred-height;
+                                    variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
+                                    data: row;
+                                    use-label: root.use-label;
+                                    show-focus: i == root.cur && items-scope.has-focus;
+                                    revealed: i == root.revealed-index;
+                                    pulling: i == root.used-index;
+                                    use => {
+                                        root.cursor = i;
+                                        root.act(root.in-trash ? ItemAction.restore : ItemAction.use, i);
+                                    }
+                                    copy => { root.act(ItemAction.copy, i); }
+                                    picked(shift, control) => { root.pick(i, shift, control); }
+                                    context-menu-requested(x, y) => {
+                                        if (!row.selected) {
+                                            root.pick(i, false, false);
+                                        }
+                                        root.open-item-menu(i, self.absolute-position.x + x, self.absolute-position.y + y);
+                                    }
+                                    reveal-requested(on) => { root.reveal-requested(i, on); }
+                                }
+                            }
+                        }
+                        if root.rows.length > 0 && list.content-y < -1px: DeckEdge {
+                            position: DeckEdgePosition.top;
+                            x: root.pad;
+                            y: Space.s1;
+                            width: parent.width - 2 * root.pad;
+                        }
+                        if root.rows.length > 0 && list.content-height + list.content-y > list.height + 1px: DeckEdge {
+                            position: DeckEdgePosition.bottom;
+                            x: root.pad;
+                            y: parent.height - self.height;
+                            width: parent.width - 2 * root.pad;
+                        }
+                    }
+
+                    // ---- Tiles ---------------------------------------------------------------------
+                    Rectangle {
+                        visible: root.tile;
+                        grid := ListView {
+                            x: root.pad;
+                            y: Space.s1;
+                            width: parent.width - 2 * root.pad;
+                            height: parent.height - Space.s1;
+                            vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+                            horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+                            accessible-label: @tr("Snippets");
+                            visible: root.rows.length > 0;
+
+                            for r in root.grid-row-count: Rectangle {
+                                property <bool> has-cursor: floor(root.cur / root.cols) == r;
+                                height: (root.row-has-image(r) ? probe-image.preferred-height : probe-text.preferred-height) + root.tile-gap;
+
+                                init => {
+                                    if (self.has-cursor) { root.reveal-grid(self.y, self.height); }
+                                }
+                                changed has-cursor => {
+                                    if (self.has-cursor) { root.reveal-grid(self.y, self.height); }
+                                }
+                                changed y => {
+                                    if (self.has-cursor) { root.reveal-grid(self.y, self.height); }
+                                }
+
+                                for c in root.cols: Rectangle {
+                                    x: c * (root.tile-w + root.tile-gap);
+                                    width: root.tile-w;
+                                    height: parent.height - root.tile-gap;
+                                    if root.tile-index(r, c) < root.rows.length: tile-card := MainCard {
+                                        width: parent.width;
+                                        height: parent.height;
+                                        variant: ItemCardVariant.tile;
+                                        data: root.rows[root.tile-index(r, c)];
+                                        use-label: root.use-label;
+                                        show-focus: root.tile-index(r, c) == root.cur && items-scope.has-focus;
+                                        revealed: root.tile-index(r, c) == root.revealed-index;
+                                        pulling: root.tile-index(r, c) == root.used-index;
+                                        use => {
+                                            root.cursor = root.tile-index(r, c);
+                                            root.act(root.in-trash ? ItemAction.restore : ItemAction.use, root.tile-index(r, c));
+                                        }
+                                        copy => { root.act(ItemAction.copy, root.tile-index(r, c)); }
+                                        picked(shift, control) => { root.pick(root.tile-index(r, c), shift, control); }
+                                        context-menu-requested(x, y) => {
+                                            if (!root.rows[root.tile-index(r, c)].selected) {
+                                                root.pick(root.tile-index(r, c), false, false);
+                                            }
+                                            root.open-item-menu(root.tile-index(r, c), self.absolute-position.x + x, self.absolute-position.y + y);
+                                        }
+                                        reveal-requested(on) => { root.reveal-requested(root.tile-index(r, c), on); }
+                                    }
+                                }
+                            }
+                        }
+                        if root.rows.length > 0 && grid.content-y < -1px: DeckEdge {
+                            position: DeckEdgePosition.top;
+                            x: root.pad;
+                            y: Space.s1;
+                            width: parent.width - 2 * root.pad;
+                        }
+                        if root.rows.length > 0 && grid.content-height + grid.content-y > grid.height + 1px: DeckEdge {
+                            position: DeckEdgePosition.bottom;
+                            x: root.pad;
+                            y: parent.height - self.height;
+                            width: parent.width - 2 * root.pad;
+                        }
+                    }
+
+                    if root.loading && !root.tile: VerticalLayout {
+                        x: root.pad;
+                        y: Space.s1;
+                        width: parent.width - 2 * root.pad;
+                        alignment: start;
+                        for n in [0, 1, 2, 3, 4, 5, 6, 7]: Skeleton {
+                            kind: SkeletonKind.row;
+                            label: n == 0 ? @tr("Loading") : "";
+                        }
+                    }
+                    if root.loading && root.tile: HorizontalLayout {
+                        x: root.pad;
+                        y: Space.s1;
+                        width: parent.width - 2 * root.pad;
+                        height: 120px;
+                        spacing: root.tile-gap;
+                        alignment: start;
+                        for n in [0, 1, 2]: Skeleton {
+                            kind: SkeletonKind.tile;
+                            width: (parent.width - 2 * root.tile-gap) / 3;
+                            label: n == 0 ? @tr("Loading") : "";
+                        }
+                    }
+
+                    if root.rows.length == 0 && !root.loading: EmptyState {
+                        x: root.pad;
+                        width: parent.width - 2 * root.pad;
+                        height: parent.height;
+                        kind: root.searching ? EmptyStateKind.search
+                            : root.section == MainSection.recent || root.in-trash || root.section == MainSection.tag ? EmptyStateKind.inbox
+                            : EmptyStateKind.list;
+                        heading: root.searching ? @tr("No matches")
+                            : root.section == MainSection.all ? @tr("Your deck is empty")
+                            : root.section == MainSection.pinned ? @tr("Nothing pinned")
+                            : root.section == MainSection.recent ? @tr("No recent items")
+                            : root.in-trash ? @tr("The Trash is empty")
+                            : root.section == MainSection.list ? @tr("This list is empty")
+                            : @tr("No items with this tag");
+                        body: root.searching ? @tr("Nothing matches “{}”.", root.query)
+                            : root.section == MainSection.all ? @tr("Save your first snippet, or copy something and save it from the clipboard.")
+                            : root.section == MainSection.pinned ? @tr("Pin the snippets you use most to keep them one click away.")
+                            : root.section == MainSection.recent ? @tr("Turn on clipboard history in Settings to collect what you copy.")
+                            : root.in-trash ? @tr("Deleted items stay here for {} days before they are removed.", root.trash-days)
+                            : root.section == MainSection.list ? @tr("Add a snippet, or move items here from another list.")
+                            : @tr("Tag a snippet to see it here.");
+                        action-text: root.searching ? ""
+                            : root.section == MainSection.all || root.section == MainSection.list ? @tr("New item")
+                            : root.section == MainSection.recent ? @tr("Open Settings") : "";
+                        action => {
+                            if (root.section == MainSection.recent) {
+                                root.settings-requested();
+                            } else {
+                                root.new-item-requested();
+                            }
+                        }
+                    }
+
+                    if root.toast-text != "": Toast {
+                        text: root.toast-text;
+                        kind: root.toast-kind;
+                        phase: root.toast-phase;
+                        undo-label: root.toast-undo-label;
+                        width: min(self.preferred-width, parent.width - 2 * root.pad);
+                        height: self.preferred-height;
+                        x: (parent.width - self.width) / 2;
+                        y: parent.height - self.height - Space.s2;
+                        undo => { root.toast-undo(); }
+                    }
+                }
+
+                // ---- Bulk-action bar: appears with two or more items selected --------------------
+                if root.multi: Rectangle {
+                    height: max(Space.s8 + Space.s2, Type.line-base + Space.s4);
+                    background: Theme.bg-surface;
+                    accessible-role: groupbox;
+                    accessible-label: @tr("{} selected", root.selected-count);
+
+                    Rectangle {
+                        y: 0;
+                        height: 1px;
+                        background: Theme.border-subtle;
+                    }
+                    HorizontalLayout {
+                        padding-left: root.pad;
+                        padding-right: root.pad;
+                        spacing: Space.s2;
+                        Text {
+                            horizontal-stretch: 0;
+                            text: @tr("{} selected", root.selected-count);
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            font-weight: Type.medium;
+                            color: Theme.text-primary;
+                            vertical-alignment: center;
+                            accessible-role: none;
+                        }
+                        Rectangle { horizontal-stretch: 1; }
+                        if !root.in-trash: Button {
+                            horizontal-stretch: 0;
+                            icon: Icons.folder;
+                            text: @tr("Move");
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.act(ItemAction.move, root.cur); }
+                        }
+                        if !root.in-trash: Button {
+                            horizontal-stretch: 0;
+                            icon: Icons.tag;
+                            text: @tr("Tag");
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.act(ItemAction.tag, root.cur); }
+                        }
+                        if !root.in-trash: Button {
+                            horizontal-stretch: 0;
+                            icon: Icons.push-pin;
+                            text: @tr("Pin");
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.act(ItemAction.pin, root.cur); }
+                        }
+                        if !root.in-trash: Button {
+                            horizontal-stretch: 0;
+                            variant: ButtonVariant.danger;
+                            icon: Icons.trash;
+                            text: @tr("Delete");
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.act(ItemAction.delete, root.cur); }
+                        }
+                        if root.in-trash: Button {
+                            horizontal-stretch: 0;
+                            icon: Icons.arrow-counter-clockwise;
+                            text: @tr("Restore");
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.act(ItemAction.restore, root.cur); }
+                        }
+                        if root.in-trash: Button {
+                            horizontal-stretch: 0;
+                            variant: ButtonVariant.danger;
+                            icon: Icons.trash;
+                            text: @tr("Delete for good…");
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.act(ItemAction.delete-forever, root.cur); }
+                        }
+                        IconButton {
+                            horizontal-stretch: 0;
+                            icon: Icons.x;
+                            tooltip: @tr("Clear selection");
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.clear-selection-requested(); }
+                        }
+                    }
+                }
+
+                // ---- Status line -----------------------------------------------------------------
+                Rectangle {
+                    height: max(Space.s8, Type.line-sm + Space.s3);
+                    accessible-role: AccessibleRole.text;
+                    accessible-label: root.status-text;
+
+                    Rectangle {
+                        y: 0;
+                        height: 1px;
+                        background: Theme.border-subtle;
+                    }
+                    HorizontalLayout {
+                        padding-left: root.pad;
+                        padding-right: root.pad;
+                        spacing: Space.s2;
+                        Text {
+                            horizontal-stretch: 1;
+                            text: root.status-text;
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            color: Theme.text-secondary;
+                            vertical-alignment: center;
+                            overflow: elide;
+                            accessible-role: none;
+                        }
+                        if root.in-trash: Text {
+                            horizontal-stretch: 0;
+                            text: @tr("Items are removed after {} days.", root.trash-days);
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            color: Theme.text-secondary;
+                            vertical-alignment: center;
+                            accessible-role: none;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    property <string> status-text: root.selected-count > 0 ? @tr("{} selected", root.selected-count)
+        : @tr("{n} item" | "{n} items" % root.rows.length);
+
+    function reveal-nav(y: length, h: length) {
+        if (y + nav-flick.content-y < 0px) {
+            nav-flick.content-y = -y;
+        } else if (y + h + nav-flick.content-y > nav-flick.height) {
+            nav-flick.content-y = nav-flick.height - y - h;
+        }
+    }
+
+    // ---- Tooltips for the icon-only toolbar buttons (500ms rest, instant between buttons) -----------
+    property <string> tip: view-comfortable.has-hover || view-comfortable.has-focus ? @tr("Comfortable view")
+        : view-compact.has-hover || view-compact.has-focus ? @tr("Compact view")
+        : view-tile.has-hover || view-tile.has-focus ? @tr("Tile view") : "";
+    property <length> tip-x: view-comfortable.has-hover || view-comfortable.has-focus ? view-comfortable.absolute-position.x
+        : view-compact.has-hover || view-compact.has-focus ? view-compact.absolute-position.x : view-tile.absolute-position.x;
+    property <bool> tip-open: false;
+    changed tip => {
+        if (root.tip == "") {
+            root.tip-open = false;
+            tip-timer.running = false;
+        } else if (!root.tip-open) {
+            tip-timer.running = true;
+        }
+    }
+    tip-timer := Timer {
+        interval: 500ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.tip-open = root.tip != "";
+        }
+    }
+    if root.tip != "": Tooltip {
+        text: root.tip;
+        open: root.tip-open;
+        x: min(root.tip-x, root.width - self.preferred-width - Space.s2);
+        y: root.bar-h - Space.s1;
+        width: self.preferred-width;
+        height: self.preferred-height;
+    }
+
+    // ---- Overlays: a scrim that dismisses on click, then the menu --------------------------------
+    if root.board-menu-open: TouchArea {
+        clicked => { root.board-menu-dismissed(); }
+    }
+    if root.board-menu-open: Menu {
+        x: Space.s2;
+        y: root.bar-h - Space.s1;
+        width: min(Space.s12 * 5, root.width - 2 * Space.s2);
+        entries: root.board-menu-entries;
+        label: @tr("Boards");
+        icons: false;
+        init => { self.focus-menu(); }
+        activated(i) => { root.board-menu-activated(i); }
+        dismissed => { root.board-menu-dismissed(); }
+    }
+
+    if root.item-menu-open || root.nav-menu-open || root.chooser-open: TouchArea {
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.down) {
+                root.close-menus();
+            }
+        }
+    }
+    if root.item-menu-open: Menu {
+        x: root.item-menu-x;
+        y: root.item-menu-y;
+        entries: root.item-entries;
+        label: @tr("Item actions");
+        init => {
+            self.current = 0;
+            self.focus-menu();
+        }
+        activated(i) => { root.item-menu-activated(i); }
+        dismissed => { root.close-menus(); }
+    }
+    if root.nav-menu-open: Menu {
+        x: root.nav-menu-x;
+        y: root.nav-menu-y;
+        entries: root.nav-entries;
+        label: @tr("Actions");
+        init => {
+            self.current = 0;
+            self.focus-menu();
+        }
+        activated(i) => { root.nav-menu-activated(i); }
+        dismissed => { root.close-menus(); }
+    }
+    if root.chooser-open: Chooser {
+        x: root.chooser-x;
+        y: root.chooser-y;
+        width: 240px;
+        multi: root.chooser-tags;
+        entries: root.chooser-tags ? root.tag-choices : root.lists;
+        label: root.chooser-tags ? @tr("Tags") : @tr("Move to list");
+        empty-text: root.chooser-tags ? @tr("No tags yet") : @tr("No lists yet");
+        init => {
+            self.current = 0;
+            self.focus-chooser();
+        }
+        chosen(i) => {
+            if (root.chooser-tags) {
+                root.tag-toggled(i, !root.tag-choices[i].checked);
+            } else {
+                root.chooser-open = false;
+                root.move-chosen(i);
+                items-scope.focus();
+            }
+        }
+        dismissed => { root.close-menus(); }
+    }
+
+    // Last, so it sits on top and traps the pointer.
+    confirm := Dialog {
+        title: root.confirm-title;
+        body: root.confirm-body;
+        variant: DialogVariant.destructive;
+        open: root.confirm-shown;
+        dismissed => { root.confirm-shown = false; }
+        closed => {
+            root.confirm-kind = 0;
+            items-scope.focus();
+        }
+        Button {
+            text: @tr("Cancel");
+            clicked => { root.confirm-shown = false; }
+        }
+        Button {
+            variant: ButtonVariant.danger;
+            text: root.confirm-ok;
+            clicked => { root.confirmed(); }
+        }
+    }
+}

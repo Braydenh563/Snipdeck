@@ -21,10 +21,20 @@ export global SystemLook {
     in property <color> hc-highlight: #1aebff;
     in property <color> hc-highlight-text: #000000;
     in property <color> hc-gray-text: #3ff23f;
+    // ADR-0008: the main window keeps the OS caption buttons and reserves their strip at the top right. The
+    // platform layer sets this (logical px, from DWMWA_CAPTION_BUTTON_BOUNDS) on start-up, on DPI and on theme
+    // change; the main window's title bar lays out around it. 138 = 3 x 46 until measured.
+    in property <length> caption-inset: 138px;
 }
 
 export global Fonts {
-    out property <string> sans: "IBM Plex Sans";
+    // The system CJK family for the current UI language, set by the host (`cjk_font_family` in Rust): "Yu Gothic UI"
+    // (ja), "Microsoft YaHei UI" (zh-Hans), "Noto Sans CJK JP/SC" elsewhere. Empty (the default) changes nothing: the
+    // UI uses IBM Plex Sans and the renderer's own fallback finds any Han, Kana or Hangul glyph. Set, all UI text
+    // uses that family, so Latin and CJK share one line height and no machine-dependent fallback decides the
+    // look. `mono` is never replaced: keycaps and code stay IBM Plex Mono.
+    in property <string> cjk-family: "";
+    out property <string> sans: self.cjk-family != "" ? self.cjk-family : "IBM Plex Sans";
     out property <string> mono: "IBM Plex Mono";
 }
 

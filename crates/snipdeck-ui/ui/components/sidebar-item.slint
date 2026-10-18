@@ -7,6 +7,9 @@ export enum SidebarItemKind { board, list, tag, system }
 // DESIGN.md §4 SidebarItem: main-window navigation. board = stack glyph, list = 8px square mark in the
 // list colour, tag = tag glyph, system (Recent, Pinned, Trash...) = the `icon` the app passes.
 // The row is 28px tall (hit target); the count is tabular `type.xs`.
+// `rail` is the 48px icon rail the sidebar collapses to below 720px (DESIGN.md §8): only the glyph or mark is
+// drawn, centred; the label stays the accessible name. A list that owns the keyboard cursor itself (the
+// sidebar's roving focus) sets `keyboard-focusable: false` and draws the ring with `show-focus`.
 export component SidebarItem inherits Rectangle {
     in property <SidebarItemKind> kind: SidebarItemKind.list;
     in property <string> label;
@@ -19,12 +22,16 @@ export component SidebarItem inherits Rectangle {
     in property <bool> selected: false;
     // Nested rows (lists under a board) indent by one step.
     in property <bool> indented: false;
+    in property <bool> rail: false;
+    in property <bool> keyboard-focusable: true;
+    in property <bool> show-focus: false;
     callback clicked();
     callback context-menu-requested(length, length);
 
     property <length> mark-size: Space.s2 * SystemLook.text-scale;
     property <length> glyph-size: Space.s4 * SystemLook.text-scale;
     property <bool> hovered: touch.has-hover;
+    property <bool> focused: scope.has-focus || root.show-focus;
     property <image> glyph: root.kind == SidebarItemKind.board ? Icons.stack
         : root.kind == SidebarItemKind.tag ? Icons.tag : root.icon;
 
@@ -46,12 +53,12 @@ export component SidebarItem inherits Rectangle {
     animate background { duration: Motion.instant; easing: Motion.out; }
 
     HorizontalLayout {
-        padding-left: Space.s2 + (root.indented ? Space.s4 : 0px);
-        padding-right: Space.s2;
+        padding-left: root.rail ? 0px : Space.s2 + (root.indented ? Space.s4 : 0px);
+        padding-right: root.rail ? 0px : Space.s2;
         spacing: Space.s2;
 
         Rectangle {
-            width: root.glyph-size;
+            width: root.rail ? root.width : root.glyph-size;
             if root.kind == SidebarItemKind.list: Rectangle {
                 x: (parent.width - self.width) / 2;
                 y: (parent.height - self.height) / 2;
@@ -63,10 +70,11 @@ export component SidebarItem inherits Rectangle {
                 source: root.glyph;
                 tint: root.selected ? Theme.accent-on-selected : Theme.text-secondary;
                 size: root.glyph-size;
+                x: (parent.width - self.width) / 2;
                 y: (parent.height - self.height) / 2;
             }
         }
-        Text {
+        if !root.rail: Text {
             text: root.label;
             font-family: Fonts.sans;
             font-size: Type.base;
@@ -75,7 +83,7 @@ export component SidebarItem inherits Rectangle {
             vertical-alignment: center;
             overflow: elide;
         }
-        if root.count >= 0: Text {
+        if !root.rail && root.count >= 0: Text {
             horizontal-stretch: 0;
             text: "\{root.count}";
             font-family: Fonts.mono;
@@ -92,7 +100,7 @@ export component SidebarItem inherits Rectangle {
         y: -4px;
         width: parent.width + 8px;
         height: parent.height + 8px;
-        border-width: scope.has-focus ? 2px : 0px;
+        border-width: root.focused ? 2px : 0px;
         border-color: Theme.focus-ring;
         border-radius: Radius.md + 2px;
         background: transparent;
@@ -113,6 +121,7 @@ export component SidebarItem inherits Rectangle {
     }
 
     scope := FocusScope {
+        enabled: root.keyboard-focusable;
         focus-on-click: false;
         key-pressed(event) => {
             if (event.text == Key.Return || event.text == " ") {
