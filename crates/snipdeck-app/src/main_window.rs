@@ -13,9 +13,7 @@ use snipdeck_core::{
     Board, BoardId, Item, ItemId, ItemKind, List, ListAccent, ListId, ListSort, Placement, Tag,
     TagId,
 };
-use snipdeck_store::{
-    BoardRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable,
-};
+use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable};
 
 use crate::panel::ListLabel;
 
@@ -644,10 +642,7 @@ impl MainModel {
     /// and no search is running.
     #[must_use]
     pub fn reorderable(&self) -> bool {
-        !self.searching()
-            && self
-                .open_list()
-                .is_some_and(|l| l.sort == ListSort::Manual)
+        !self.searching() && self.open_list().is_some_and(|l| l.sort == ListSort::Manual)
     }
 
     /// The trash entry for `key`.
@@ -834,7 +829,9 @@ mod tests {
     fn a_fresh_model_is_stale_until_it_loads() {
         let mut model = MainModel::new();
         assert!(model.is_stale());
-        model.reload(&demo::store(now()).expect("store")).expect("reload");
+        model
+            .reload(&demo::store(now()).expect("store"))
+            .expect("reload");
         assert!(!model.is_stale());
         model.mark_stale();
         assert!(model.is_stale());
@@ -871,7 +868,10 @@ mod tests {
         let rows = model.rows();
         assert_eq!(rows.len(), 11);
         assert!(titles(&model).contains(&"Shopping list".to_owned()));
-        let shopping = rows.iter().find(|r| r.title == "Shopping list").expect("row");
+        let shopping = rows
+            .iter()
+            .find(|r| r.title == "Shopping list")
+            .expect("row");
         assert_eq!(shopping.list.as_ref().expect("label").name, "Errands");
     }
 
@@ -906,7 +906,12 @@ mod tests {
     #[test]
     fn a_most_used_list_sorts_by_use_and_is_not_reorderable() {
         let (mut store, mut model) = loaded();
-        let code = model.lists().iter().find(|l| l.name.as_str() == "Code").expect("list").clone();
+        let code = model
+            .lists()
+            .iter()
+            .find(|l| l.name.as_str() == "Code")
+            .expect("list")
+            .clone();
         let mut sorted = code.clone();
         sorted.sort = ListSort::MostUsed;
         store.update_list(&sorted).expect("update");
@@ -1021,7 +1026,11 @@ mod tests {
         let keys = model.keys();
         assert_eq!(model.targets(3), [keys[3]]);
         model.select(1, SelectMode::Replace);
-        assert_eq!(model.targets(3), [keys[3]], "one selected row: the row asked about");
+        assert_eq!(
+            model.targets(3),
+            [keys[3]],
+            "one selected row: the row asked about"
+        );
         model.select(2, SelectMode::Extend);
         assert_eq!(model.targets(5), [keys[1], keys[2]]);
     }

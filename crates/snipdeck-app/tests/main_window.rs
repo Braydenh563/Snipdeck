@@ -1,0 +1,771 @@
+//! The real `MainWindow`, `ListEditor` and `BoardEditor` bound to a `Controller` over the demo
+//! library and the platform fakes, driven by the window's callbacks, key events and pointer
+//! clicks through Slint's testing backend. Time is mocked, never the real clock. One process
+//! for this file (the testing platform is process-wide).
+
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::panic,
+    reason = "test code: a failure is a failed test"
+)]
+
+use std::{cell::RefCell, rc::Rc, time::Duration};
+
+use i_slint_backend_testing::{AccessibleRole, ElementHandle};
+use slint::{ComponentHandle, Model, platform::Key};
+use snipdeck_app::{
+    binding::Binding,
+    controller::{Controller, Effect, Services, TOAST_ENTER, TOAST_EXIT, TOAST_UNDO_HOLD},
+    demo,
+    host::{FakeTargets, FixedClock},
+    main_binding::{MainBinding, MainUi},
+    settings::Settings,
+};
+use snipdeck_core::{Entitlements, Tier, Timestamp};
+use snipdeck_platform::{
+    testing::{FakeClipboard, FakeKeyboard, FakeTiming},
+    tray::TrayEvent,
+};
+use snipdeck_store::{BoardRepo, ItemRepo, Store, TrashRepo};
+use snipdeck_ui::{ItemAction, MainSection, MainWindow, PanelWindow, SelectMode};
+
+#[path = "support/mod.rs"]
+mod support;
+use support::{chord, key, on_ui_thread, press, type_text};
+
+type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
+type Bound = MainBinding<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
+
+struct Rig {
+    ui: MainWindow,
+    ctl: Rc<RefCell<Ctl>>,
+    binding: Bound,
+}
+
+fn now() -> Timestamp {
+    "2026-10-17T10:30:00Z".parse().expect("timestamp")
+}
+
+fn controller(tier: Tier) -> Rc<RefCell<Ctl>> {
+    Rc::new(RefCell::new(
+        Controller::new(
+            demo::store(now()).expect("demo store"),
+            Services {
+                clipboard: FakeClipboard {
+                    asks_after_polls: Some(1),
+                    ..FakeClipboard::default()
+                },
+                keyboard: FakeKeyboard::default(),
+                timing: FakeTiming::default(),
+            },
+            Box::new(FakeTargets::new(Some(demo::target()))),
+            Box::new(FixedClock::new(now())),
+            Settings::default(),
+            Entitlements::new(tier),
+        )
+        .expect("controller"),
+    ))
+}
+
+fn rig() -> Rig {
+    rig_tier(Tier::Pro)
+}
+
+fn rig_tier(tier: Tier) -> Rig {
+    let ctl = controller(tier);
+    let ui = MainWindow::new().expect("main window");
+    ui.window().set_size(slint::LogicalSize::new(1100.0, 720.0));
+    let binding = Controller::bind_main(&ctl, &ui);
+    ui.show().expect("show");
+    slint::platform::update_timers_and_animations();
+    Rig { ui, ctl, binding }
+}
+
+impl Rig {
+    fn window(&self) -> &slint::Window {
+        self.ui.window()
+    }
+
+    fn titles(&self) -> Vec<String> {
+        self.ui
+            .get_rows()
+            .iter()
+            .map(|r| r.title.to_string())
+            .collect()
+    }
+
+    fn list_names(&self) -> Vec<String> {
+        self.ui
+            .get_lists()
+            .iter()
+            .map(|l| l.label.to_string())
+            .collect()
+    }
+
+    /// Opens a list of the sidebar the way the window does: it sets its own section, then asks.
+    fn open_list(&self, index: i32) {
+        self.ui.set_section(MainSection::List);
+        self.ui.set_section_index(index);
+        self.ui.invoke_section_selected(MainSection::List, index);
+    }
+
+    fn open(&self, section: MainSection) {
+        self.ui.set_section(section);
+        self.ui.invoke_section_selected(section, 0);
+    }
+
+    fn row(&self, title: &str) -> i32 {
+        i32::try_from(
+            self.titles()
+                .iter()
+                .position(|t| t == title)
+                .unwrap_or_else(|| panic!("no row {title}")),
+        )
+        .unwrap()
+    }
+
+    fn button(&self, label: &str) -> ElementHandle {
+        element(&self.ui, label, AccessibleRole::Button)
+    }
+
+    fn trashed(&self) -> usize {
+        self.ctl.borrow().store().trashed().unwrap().len()
+    }
+}
+
+/// A real left click at the centre of `element`, through Slint's hit testing, then a timer tick.
+fn click(window: &slint::Window, element: &ElementHandle) {
+    let at = element.absolute_position();
+    let size = element.size();
+    let position = slint::LogicalPosition::new(at.x + size.width / 2.0, at.y + size.height / 2.0);
+    let button = slint::platform::PointerEventButton::Left;
+    window.dispatch_event(slint::platform::WindowEvent::PointerMoved { position });
+    window.dispatch_event(slint::platform::WindowEvent::PointerPressed { position, button });
+    i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(50));
+    window.dispatch_event(slint::platform::WindowEvent::PointerReleased { position, button });
+    i_slint_backend_testing::mock_elapsed_time(Duration::from_secs(1));
+    slint::platform::update_timers_and_animations();
+}
+
+fn element<C: ComponentHandle>(ui: &C, label: &str, role: AccessibleRole) -> ElementHandle {
+    ElementHandle::find_by_accessible_label(ui, label)
+        .find(|e| e.accessible_role() == Some(role))
+        .unwrap_or_else(|| panic!("no {role:?} labelled {label:?}"))
+}
+
+// ---- Opening ---------------------------------------------------------------------------------
+
+#[test]
+fn open_snipdeck_from_the_tray_creates_the_window_once_and_shows_it_again_after_it_is_closed() {
+    on_ui_thread(|| {
+        let ctl = controller(Tier::Pro);
+        let main_ui = MainUi::new(&ctl);
+        assert!(
+            main_ui.window().is_none(),
+            "nothing is created before it is asked for"
+        );
+
+        let effects = ctl.borrow_mut().on_tray(TrayEvent::OpenSnipdeck);
+        assert_eq!(effects, [Effect::OpenMainWindow]);
+        main_ui.open().expect("open");
+        let ui = main_ui.window().expect("created");
+        assert!(ui.window().is_visible());
+        assert_eq!(ui.get_count_all(), 11);
+        assert_eq!(ui.get_board_name(), "Work");
+
+        // A mark on the first window proves the second open reuses it.
+        ui.set_dark(true);
+        ui.window().hide().unwrap();
+        assert!(!ui.window().is_visible());
+        ctl.borrow_mut().on_tray(TrayEvent::OpenSnipdeck);
+        main_ui.open().expect("open again");
+        let again = main_ui.window().expect("same window");
+        assert!(again.window().is_visible());
+        assert!(again.get_dark(), "the same window, not a new one");
+    });
+}
+
+#[test]
+fn the_window_shows_the_demo_library_sections_lists_and_counts() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(r.ui.get_board_name(), "Work");
+        assert_eq!(
+            (
+                r.ui.get_count_all(),
+                r.ui.get_count_pinned(),
+                r.ui.get_count_recent(),
+                r.ui.get_count_trash()
+            ),
+            (11, 3, 0, 0)
+        );
+        assert_eq!(r.list_names(), ["Email replies", "Addresses", "Code"]);
+        assert_eq!(r.ui.get_lists().row_data(0).unwrap().count, 6);
+        assert_eq!(r.ui.get_rows().row_count(), 11);
+        assert_eq!(r.ui.get_section(), MainSection::All);
+        assert!(r.ui.get_rows().row_data(0).unwrap().list_name.len() > 0);
+    });
+}
+
+#[test]
+fn choosing_a_system_view_or_a_list_changes_the_rows() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.open(MainSection::Pinned);
+        assert_eq!(
+            r.titles(),
+            ["Thanks, received", "Home address", "Retry helper"]
+        );
+        r.open_list(1);
+        assert_eq!(r.titles(), ["Home address", "Office"]);
+        assert_eq!(r.ui.get_section_index(), 1);
+        r.open(MainSection::Recent);
+        assert!(r.titles().is_empty());
+    });
+}
+
+#[test]
+fn a_click_on_a_sidebar_list_opens_it() {
+    on_ui_thread(|| {
+        let r = rig();
+        let addresses = element(&r.ui, "Addresses", AccessibleRole::ListItem);
+        click(r.window(), &addresses);
+        assert_eq!(r.ui.get_section(), MainSection::List);
+        assert_eq!(r.titles(), ["Home address", "Office"]);
+    });
+}
+
+#[test]
+fn typing_in_the_search_box_searches_every_board() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_focus_search();
+        type_text(r.window(), "milk");
+        assert_eq!(r.ui.get_query(), "milk");
+        assert_eq!(r.titles(), ["Shopping list"], "found on the other board");
+        assert_eq!(r.ui.get_rows().row_data(0).unwrap().list_name, "Errands");
+        r.open_list(0);
+        assert_eq!(r.ui.get_query(), "");
+        assert_eq!(r.ui.get_rows().row_count(), 6);
+    });
+}
+
+// ---- Selection and item actions --------------------------------------------------------------
+
+#[test]
+fn clicks_and_keys_build_the_selection() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_select_requested(1, SelectMode::Replace);
+        r.ui.invoke_select_requested(3, SelectMode::Extend);
+        assert_eq!(r.ui.get_selected_count(), 3);
+        let selected: Vec<bool> = r.ui.get_rows().iter().map(|row| row.selected).collect();
+        assert_eq!(&selected[..5], [false, true, true, true, false]);
+        r.ui.invoke_clear_selection_requested();
+        assert_eq!(r.ui.get_selected_count(), 0);
+
+        r.ui.invoke_focus_items();
+        chord(r.window(), &[Key::Control], "a");
+        assert_eq!(r.ui.get_selected_count(), 11);
+        press(r.window(), &key(Key::Escape));
+        assert_eq!(r.ui.get_selected_count(), 0);
+        // The cursor stays where the last click left it (row 3); arrows move and select.
+        press(r.window(), &key(Key::DownArrow));
+        press(r.window(), &key(Key::DownArrow));
+        assert_eq!(r.ui.get_cursor(), 5);
+        assert_eq!(r.ui.get_selected_count(), 1);
+    });
+}
+
+#[test]
+fn ctrl_p_pins_the_row_at_the_cursor() {
+    on_ui_thread(|| {
+        let r = rig();
+        let at = r.row("Out of office");
+        r.ui.invoke_select_requested(at, SelectMode::Replace);
+        r.ui.invoke_focus_items();
+        chord(r.window(), &[Key::Control], "p");
+        assert_eq!(r.ui.get_count_pinned(), 4);
+        assert!(r.ui.get_rows().row_data(at as usize).unwrap().pinned);
+        chord(r.window(), &[Key::Control], "p");
+        assert_eq!(r.ui.get_count_pinned(), 3);
+    });
+}
+
+#[test]
+fn use_pastes_the_item_through_the_controller_and_counts_it() {
+    on_ui_thread(|| {
+        let r = rig();
+        let at = r.row("Out of office");
+        r.ui.invoke_item_action(ItemAction::Use, at);
+        let id = match r.ctl.borrow_mut().main_screen().rows[at as usize].key {
+            snipdeck_app::main_window::Key::Item(id) => id,
+            other => panic!("{other:?}"),
+        };
+        assert_eq!(r.ctl.borrow().store().item(id).unwrap().use_count, 1);
+        assert_eq!(r.ui.get_toast_text(), "Pasted into Outlook");
+    });
+}
+
+#[test]
+fn move_asks_for_a_list_and_sends_the_selected_rows_there() {
+    on_ui_thread(|| {
+        let r = rig();
+        let a = r.row("Out of office");
+        r.ui.invoke_select_requested(a, SelectMode::Replace);
+        r.ui.invoke_select_requested(a + 1, SelectMode::Extend);
+        r.ui.invoke_item_action(ItemAction::Move, a);
+        r.ui.invoke_move_chosen(2); // Code
+        assert_eq!(r.ui.get_toast_text(), "Moved 2 items to Code");
+        assert_eq!(r.ui.get_lists().row_data(2).unwrap().count, 4);
+        r.open_list(2);
+        assert_eq!(
+            r.titles(),
+            [
+                "Retry helper",
+                "Recent customers",
+                "Out of office",
+                "Meeting follow-up"
+            ]
+        );
+    });
+}
+
+#[test]
+fn holding_a_sensitive_row_reveals_its_text_and_releasing_hides_it() {
+    on_ui_thread(|| {
+        let r = rig();
+        let at = r.row("Server password");
+        assert_eq!(r.ui.get_rows().row_data(at as usize).unwrap().preview, "");
+        r.ui.invoke_reveal_requested(at, true);
+        assert_eq!(r.ui.get_revealed_index(), at);
+        assert_eq!(
+            r.ui.get_rows().row_data(at as usize).unwrap().preview,
+            "hunter2-correct-horse"
+        );
+        r.ui.invoke_reveal_requested(at, false);
+        assert_eq!(r.ui.get_revealed_index(), -1);
+        assert_eq!(r.ui.get_rows().row_data(at as usize).unwrap().preview, "");
+    });
+}
+
+// ---- Delete, Trash, Undo ---------------------------------------------------------------------
+
+#[test]
+fn delete_trashes_at_once_and_the_toasts_undo_button_brings_the_item_back() {
+    on_ui_thread(|| {
+        let r = rig();
+        let at = r.row("Out of office");
+        r.ui.invoke_select_requested(at, SelectMode::Replace);
+        r.ui.invoke_focus_items();
+        press(r.window(), &key(Key::Delete));
+        assert!(!r.titles().contains(&"Out of office".to_owned()));
+        assert_eq!(r.ui.get_count_all(), 10);
+        assert_eq!(r.ui.get_count_trash(), 1);
+        assert_eq!(r.ui.get_toast_text(), "Moved 1 item to the Trash");
+        assert_eq!(r.ui.get_toast_undo_label(), "Undo");
+
+        // A real pointer click on the toast's Undo button.
+        i_slint_backend_testing::mock_elapsed_time(TOAST_ENTER);
+        click(r.window(), &r.button("Undo"));
+        assert!(r.titles().contains(&"Out of office".to_owned()));
+        assert_eq!(r.ui.get_count_trash(), 0);
+        assert_eq!(r.ui.get_toast_text(), "Restored 1 item");
+        assert_eq!(r.ui.get_toast_undo_label(), "");
+    });
+}
+
+#[test]
+fn the_undo_toast_stays_five_seconds_then_the_item_waits_in_the_trash() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_item_action(ItemAction::Delete, 0);
+        assert_eq!(r.ui.get_toast_phase(), snipdeck_ui::ToastPhase::Enter);
+        i_slint_backend_testing::mock_elapsed_time(TOAST_ENTER);
+        assert_eq!(r.ui.get_toast_phase(), snipdeck_ui::ToastPhase::Hold);
+        // Past the 2.5 s of an ordinary toast, still undoable.
+        i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(3000));
+        assert_eq!(r.ui.get_toast_phase(), snipdeck_ui::ToastPhase::Hold);
+        assert_eq!(r.ui.get_toast_undo_label(), "Undo");
+        i_slint_backend_testing::mock_elapsed_time(TOAST_UNDO_HOLD - Duration::from_millis(3000));
+        assert_eq!(r.ui.get_toast_phase(), snipdeck_ui::ToastPhase::Exit);
+        i_slint_backend_testing::mock_elapsed_time(TOAST_EXIT);
+        assert_eq!(r.ui.get_toast_text(), "");
+        r.ui.invoke_toast_undo();
+        assert_eq!(r.ui.get_count_trash(), 1, "too late for Undo");
+    });
+}
+
+#[test]
+fn the_panel_and_the_main_window_share_one_toast_and_one_timer() {
+    on_ui_thread(|| {
+        let ctl = controller(Tier::Pro);
+        let panel = PanelWindow::new().expect("panel");
+        let _panel_binding: Binding = Controller::bind(&ctl, &panel, |_| {});
+        panel.show().unwrap();
+        let ui = MainWindow::new().expect("main");
+        let _binding = Controller::bind_main(&ctl, &ui);
+        ui.show().unwrap();
+
+        ui.invoke_item_action(ItemAction::Delete, 0);
+        assert_eq!(panel.get_toast_text(), "Moved 1 item to the Trash");
+        assert_eq!(panel.get_rows().row_count(), 5, "the Panel list follows");
+        // One timer chain: after 2.6 s an undo toast is still up in both windows (two chains
+        // would have ticked it into its fade-out at 2.6 s).
+        i_slint_backend_testing::mock_elapsed_time(TOAST_ENTER);
+        i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(2480));
+        assert_eq!(ui.get_toast_undo_label(), "Undo");
+        assert_eq!(ui.get_toast_phase(), snipdeck_ui::ToastPhase::Hold);
+        assert_eq!(panel.get_toast_text(), "Moved 1 item to the Trash");
+        assert_eq!(panel.get_toast_phase(), snipdeck_ui::ToastPhase::Hold);
+        i_slint_backend_testing::mock_elapsed_time(TOAST_UNDO_HOLD - Duration::from_millis(2480));
+        assert_eq!(ui.get_toast_phase(), snipdeck_ui::ToastPhase::Exit);
+        assert_eq!(panel.get_toast_phase(), snipdeck_ui::ToastPhase::Exit);
+
+        // A change made in the Panel shows in the Main window too.
+        panel.invoke_add_list_requested();
+        assert_eq!(ui.get_lists().row_count(), 4);
+    });
+}
+
+#[test]
+fn the_trash_view_restores_deletes_for_good_and_empties() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_select_requested(0, SelectMode::Replace);
+        r.ui.invoke_select_requested(3, SelectMode::Extend);
+        r.ui.invoke_item_action(ItemAction::Delete, 0);
+        assert_eq!(r.ui.get_count_trash(), 4);
+        r.open(MainSection::Trash);
+        assert_eq!(r.ui.get_rows().row_count(), 4);
+
+        r.ui.invoke_item_action(ItemAction::Restore, 0);
+        assert_eq!((r.ui.get_count_all(), r.ui.get_count_trash()), (8, 3));
+        r.ui.invoke_item_action(ItemAction::DeleteForever, 0);
+        assert_eq!(r.ui.get_count_trash(), 2);
+        assert_eq!(r.ui.get_toast_text(), "Deleted for good");
+        assert_eq!(r.trashed(), 2);
+
+        r.ui.invoke_empty_trash_confirmed();
+        assert_eq!(r.ui.get_count_trash(), 0);
+        assert_eq!(r.ui.get_rows().row_count(), 0);
+        assert_eq!(r.trashed(), 0);
+        assert_eq!(r.ui.get_toast_text(), "The Trash is empty");
+    });
+}
+
+// ---- Lists -----------------------------------------------------------------------------------
+
+#[test]
+fn add_list_opens_the_editor_and_saving_adds_the_list() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_add_list_requested();
+        let editor = r.binding.list_editor().expect("list editor");
+        assert!(editor.window().is_visible());
+        assert!(editor.get_is_new());
+        assert!(!editor.get_can_delete());
+
+        // An empty name is refused with the reason, and the editor stays.
+        editor.invoke_save_requested();
+        assert!(editor.window().is_visible());
+        assert_eq!(editor.get_name_error(), "Give it a name.");
+        editor.set_name("Snippets 2".into());
+        editor.set_accent(6);
+        editor.set_sort_index(1);
+        editor.invoke_edited();
+        assert_eq!(editor.get_name_error(), "", "editing clears the refusal");
+        editor.invoke_save_requested();
+
+        assert!(!editor.window().is_visible());
+        assert_eq!(
+            r.list_names(),
+            ["Email replies", "Addresses", "Code", "Snippets 2"]
+        );
+        assert_eq!(r.ui.get_section(), MainSection::List);
+        assert_eq!(r.ui.get_section_index(), 3);
+    });
+}
+
+#[test]
+fn cancel_closes_the_editor_without_changes() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_add_list_requested();
+        let editor = r.binding.list_editor().unwrap();
+        editor.set_name("Nope".into());
+        editor.invoke_cancel_requested();
+        assert!(!editor.window().is_visible());
+        assert_eq!(r.list_names().len(), 3);
+    });
+}
+
+#[test]
+fn edit_list_shows_its_fields_and_saving_renames_it() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_list_edit_requested(1);
+        let editor = r.binding.list_editor().unwrap();
+        assert!(editor.window().is_visible());
+        assert!(!editor.get_is_new());
+        assert_eq!(editor.get_name(), "Addresses");
+        assert_eq!(editor.get_accent(), 3, "amber");
+        assert_eq!(editor.get_sort_index(), 0);
+        assert_eq!(editor.get_item_count(), 2);
+        assert!(editor.get_can_delete());
+        editor.set_name("Places".into());
+        editor.invoke_save_requested();
+        assert_eq!(r.list_names()[1], "Places");
+        assert!(!editor.window().is_visible());
+    });
+}
+
+#[test]
+fn deleting_a_list_names_the_item_count_trashes_it_and_offers_undo() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(r.ui.get_lists().row_data(0).unwrap().count, 6);
+        r.ui.invoke_list_delete_confirmed(0);
+        assert_eq!(r.list_names(), ["Addresses", "Code"]);
+        assert_eq!(r.ui.get_count_all(), 5);
+        assert_eq!(
+            r.ui.get_toast_text(),
+            "Deleted list \u{201c}Email replies\u{201d}"
+        );
+        assert_eq!(r.ui.get_toast_undo_label(), "Undo");
+        r.ui.invoke_toast_undo();
+        assert_eq!(r.list_names(), ["Email replies", "Addresses", "Code"]);
+        assert_eq!(r.ui.get_count_all(), 11);
+    });
+}
+
+#[test]
+fn the_editors_delete_goes_through_its_own_confirmation_with_the_item_count() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_list_edit_requested(2);
+        let editor = r.binding.list_editor().unwrap();
+        assert_eq!(editor.get_item_count(), 2);
+        editor.invoke_delete_confirmed();
+        assert!(!editor.window().is_visible());
+        assert_eq!(r.list_names(), ["Email replies", "Addresses"]);
+        assert_eq!(r.ui.get_toast_undo_label(), "Undo");
+    });
+}
+
+// ---- Boards ----------------------------------------------------------------------------------
+
+#[test]
+fn the_board_menu_lists_boards_and_actions_and_switches_boards() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_board_menu_requested();
+        assert!(r.ui.get_board_menu_open());
+        let entries: Vec<String> =
+            r.ui.get_board_menu_entries()
+                .iter()
+                .map(|e| e.text.to_string())
+                .collect();
+        assert_eq!(
+            entries,
+            [
+                "Work",
+                "Personal",
+                "",
+                "New board\u{2026}",
+                "Rename board\u{2026}",
+                "Move board up",
+                "Move board down",
+                "Delete board\u{2026}"
+            ]
+        );
+        assert!(r.ui.get_board_menu_entries().row_data(2).unwrap().separator);
+        assert!(
+            r.ui.get_board_menu_entries().row_data(5).unwrap().disabled,
+            "first board"
+        );
+        assert!(
+            r.ui.get_board_menu_entries()
+                .row_data(7)
+                .unwrap()
+                .destructive
+        );
+        r.ui.invoke_board_menu_activated(1);
+        assert!(!r.ui.get_board_menu_open());
+        assert_eq!(r.ui.get_board_name(), "Personal");
+        assert_eq!(r.list_names(), ["Errands"]);
+        r.ui.invoke_board_menu_requested();
+        r.ui.invoke_board_menu_dismissed();
+        assert!(!r.ui.get_board_menu_open());
+    });
+}
+
+#[test]
+fn new_board_rename_and_delete_use_the_board_editor() {
+    on_ui_thread(|| {
+        let r = rig();
+        // New board.
+        r.ui.invoke_board_menu_requested();
+        r.ui.invoke_board_menu_activated(3);
+        let editor = r.binding.board_editor().expect("board editor");
+        assert!(editor.window().is_visible());
+        assert!(editor.get_is_new());
+        editor.set_name("Side projects".into());
+        editor.invoke_save_requested();
+        assert!(!editor.window().is_visible());
+        assert_eq!(r.ui.get_board_name(), "Side projects");
+        assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 3);
+
+        // Rename it.
+        r.ui.invoke_board_menu_requested();
+        r.ui.invoke_board_menu_activated(4 + 1);
+        assert!(editor.window().is_visible());
+        assert_eq!(editor.get_name(), "Side projects");
+        editor.set_name("Projects".into());
+        editor.invoke_save_requested();
+        assert_eq!(r.ui.get_board_name(), "Projects");
+
+        // Delete it: the editor opens with its confirmation, which names the item count.
+        r.ui.invoke_board_menu_requested();
+        r.ui.invoke_board_menu_activated(4 + 4);
+        assert!(editor.window().is_visible());
+        assert!(editor.get_delete_open());
+        assert!(editor.get_can_delete());
+        assert_eq!(editor.get_item_count(), 0);
+        editor.invoke_delete_confirmed();
+        assert!(!editor.window().is_visible());
+        assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 2);
+        assert_eq!(
+            r.ui.get_toast_text(),
+            "Deleted board \u{201c}Projects\u{201d}"
+        );
+        r.ui.invoke_toast_undo();
+        assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 3);
+    });
+}
+
+#[test]
+fn the_free_plan_stops_a_fourth_board_with_a_toast() {
+    on_ui_thread(|| {
+        let r = rig_tier(Tier::Free);
+        r.ui.invoke_board_menu_requested();
+        r.ui.invoke_board_menu_activated(3);
+        r.binding.board_editor().unwrap().set_name("Third".into());
+        r.binding.board_editor().unwrap().invoke_save_requested();
+        assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 3);
+
+        r.ui.invoke_board_menu_requested();
+        let new =
+            r.ui.get_board_menu_entries()
+                .iter()
+                .position(|e| e.text.starts_with("New board"))
+                .unwrap();
+        r.ui.invoke_board_menu_activated(i32::try_from(new).unwrap());
+        assert!(!r.binding.board_editor().unwrap().window().is_visible());
+        assert_eq!(
+            r.ui.get_toast_text(),
+            "The Free plan includes 3 boards. Upgrade to Pro for more."
+        );
+        assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 3);
+    });
+}
+
+#[test]
+fn the_last_board_cannot_be_deleted_and_the_editor_says_why() {
+    on_ui_thread(|| {
+        let r = rig();
+        // Leave one board.
+        r.ui.invoke_board_menu_requested();
+        r.ui.invoke_board_menu_activated(3 + 4);
+        r.binding.board_editor().unwrap().invoke_delete_confirmed();
+        assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 1);
+        r.ui.invoke_board_menu_requested();
+        r.ui.invoke_board_menu_activated(1 + 1 + 4);
+        let editor = r.binding.board_editor().unwrap();
+        assert!(editor.window().is_visible());
+        assert!(!editor.get_can_delete());
+        assert!(editor.get_delete_hint().len() > 0);
+        assert!(!editor.get_delete_open());
+    });
+}
+
+// ---- Reordering ------------------------------------------------------------------------------
+
+#[test]
+fn alt_down_and_alt_up_move_the_row_at_the_cursor_within_its_list() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.open_list(0);
+        r.ui.invoke_select_requested(1, SelectMode::Replace);
+        r.ui.invoke_focus_items();
+        chord(r.window(), &[Key::Alt], &key(Key::DownArrow));
+        assert_eq!(
+            &r.titles()[..3],
+            ["Thanks, received", "Out of office", "Invoice reminder"]
+        );
+        assert_eq!(r.ui.get_cursor(), 2);
+        chord(r.window(), &[Key::Alt], &key(Key::UpArrow));
+        chord(r.window(), &[Key::Alt], &key(Key::UpArrow));
+        assert_eq!(r.titles()[0], "Invoice reminder");
+        assert_eq!(r.ui.get_cursor(), 0);
+        chord(r.window(), &[Key::Alt], &key(Key::UpArrow));
+        assert_eq!(
+            r.titles()[0],
+            "Invoice reminder",
+            "off the top does nothing"
+        );
+    });
+}
+
+#[test]
+fn alt_arrows_on_a_sidebar_list_reorder_the_lists() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.set_section(MainSection::List);
+        r.ui.invoke_list_reorder_requested(2, -1);
+        assert_eq!(r.list_names(), ["Email replies", "Code", "Addresses"]);
+
+        // The key itself: the sidebar's cursor on "Addresses" (index 6 of the flat list).
+        let addresses = element(&r.ui, "Addresses", AccessibleRole::ListItem);
+        click(r.window(), &addresses);
+        // Tab lands on the sidebar with its cursor on the open list.
+        for _ in 0..12 {
+            if r.ui.get_sidebar_focused() {
+                break;
+            }
+            press(r.window(), &key(Key::Tab));
+        }
+        assert!(r.ui.get_sidebar_focused());
+        chord(r.window(), &[Key::Alt], &key(Key::UpArrow));
+        assert_eq!(r.list_names(), ["Email replies", "Addresses", "Code"]);
+        assert_eq!(r.ui.get_section_index(), 1, "the open list moved with it");
+    });
+}
+
+#[test]
+fn the_board_menu_moves_the_open_board_down_and_up() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_board_menu_requested();
+        r.ui.invoke_board_menu_activated(3 + 3);
+        let order = |r: &Rig| -> Vec<String> {
+            r.ctl
+                .borrow()
+                .store()
+                .boards()
+                .unwrap()
+                .iter()
+                .map(|b| b.name.as_str().to_owned())
+                .collect()
+        };
+        assert_eq!(order(&r), ["Personal", "Work"]);
+        r.ui.invoke_board_menu_requested();
+        assert!(
+            r.ui.get_board_menu_entries().row_data(6).unwrap().disabled,
+            "now last"
+        );
+        r.ui.invoke_board_menu_activated(3 + 2);
+        assert_eq!(order(&r), ["Work", "Personal"]);
+    });
+}

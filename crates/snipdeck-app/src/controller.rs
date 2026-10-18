@@ -97,7 +97,7 @@ pub enum Effect {
     HidePanel,
     /// Start the OS window drag from the Panel header.
     DragWindow,
-    /// Show the main window (the tray's "Open Snipdeck"; the window itself is M4).
+    /// Show the Main window, creating it the first time (the tray's "Open Snipdeck").
     OpenMainWindow,
     /// Switch the global hotkeys off (`true`) or back on (`false`), per the settings.
     SetHotkeysPaused(bool),

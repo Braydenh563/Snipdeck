@@ -137,7 +137,10 @@ fn opening_a_list_a_system_view_or_a_board_changes_the_rows() {
     );
 
     ctl.main_open(Section::Recent);
-    assert!(ctl.main_screen().rows.is_empty(), "the inbox is not built yet");
+    assert!(
+        ctl.main_screen().rows.is_empty(),
+        "the inbox is not built yet"
+    );
 
     ctl.main_board_menu_open();
     let menu = ctl.main_screen().board_menu.expect("menu open");
@@ -147,7 +150,11 @@ fn opening_a_list_a_system_view_or_a_board_changes_the_rows() {
     assert!(screen.board_menu.is_none());
     assert_eq!(screen.board_name, "Personal");
     assert_eq!(
-        screen.lists.iter().map(|l| l.name.as_str()).collect::<Vec<_>>(),
+        screen
+            .lists
+            .iter()
+            .map(|l| l.name.as_str())
+            .collect::<Vec<_>>(),
         ["Errands"]
     );
 }
@@ -158,7 +165,11 @@ fn search_covers_every_board_and_ends_when_a_section_opens() {
     open_list(&mut ctl, "Code");
     ctl.main_set_query("milk");
     let screen = ctl.main_screen();
-    assert_eq!(titles(&screen), ["Shopping list"], "a hit on the other board");
+    assert_eq!(
+        titles(&screen),
+        ["Shopping list"],
+        "a hit on the other board"
+    );
     assert_eq!(screen.rows[0].list.as_ref().expect("label").name, "Errands");
     ctl.main_open(Section::Pinned);
     let screen = ctl.main_screen();
@@ -247,7 +258,12 @@ fn move_sends_the_chosen_rows_to_the_end_of_a_list_on_the_open_board() {
     let screen = open_list(&mut ctl, "Code");
     assert_eq!(
         titles(&screen),
-        ["Retry helper", "Recent customers", "Out of office", "Meeting follow-up"]
+        [
+            "Retry helper",
+            "Recent customers",
+            "Out of office",
+            "Meeting follow-up"
+        ]
     );
     assert_eq!(screen.lists[list_index(&screen, "Code")].count, 4);
     assert_eq!(screen.lists[list_index(&screen, "Email replies")].count, 4);
@@ -291,7 +307,11 @@ fn a_sensitive_row_shows_its_text_only_while_held_revealed() {
     assert_eq!(screen.revealed, None);
     assert_eq!(screen.rows[at].preview, "");
     ctl.main_reveal(row_of(&screen, "Office"), true);
-    assert_eq!(ctl.main_screen().revealed, None, "only sensitive rows reveal");
+    assert_eq!(
+        ctl.main_screen().revealed,
+        None,
+        "only sensitive rows reveal"
+    );
 }
 
 // ---- Trash and Undo -------------------------------------------------------------------------
@@ -317,7 +337,11 @@ fn delete_trashes_at_once_and_the_undo_toast_brings_it_back() {
     assert!(!screen.toast.unwrap().undo, "the undo is spent");
     let again = ctl.main_screen();
     ctl.main_undo();
-    assert_eq!(ctl.main_screen().counts, again.counts, "a second undo does nothing");
+    assert_eq!(
+        ctl.main_screen().counts,
+        again.counts,
+        "a second undo does nothing"
+    );
 }
 
 #[test]
@@ -348,7 +372,11 @@ fn the_undo_lasts_five_seconds_and_a_newer_toast_takes_it_away() {
     assert_eq!(ctl.toast_tick(seq), None);
     assert!(ctl.main_screen().toast.is_none());
     ctl.main_undo();
-    assert_eq!(ctl.main_screen().counts.trash, 1, "too late: it stays in the Trash");
+    assert_eq!(
+        ctl.main_screen().counts.trash,
+        1,
+        "too late: it stays in the Trash"
+    );
 
     // A second delete, then a copy: the copy's toast replaces the Undo.
     let mut ctl = pro();
@@ -431,7 +459,10 @@ fn a_new_list_opens_the_editor_and_saving_adds_and_opens_it() {
     assert!(screen.editor.is_none());
     assert_eq!(screen.lists.len(), 4);
     let new = &screen.lists[3];
-    assert_eq!((new.name.as_str(), new.accent), ("Snippets 2", Some(ListAccent::Rose)));
+    assert_eq!(
+        (new.name.as_str(), new.accent),
+        ("Snippets 2", Some(ListAccent::Rose))
+    );
     assert_eq!(screen.section, Section::List(new.id));
     assert_eq!(ctl.view().tabs.len(), 4, "the Panel's tab bar shows it");
 }
@@ -469,7 +500,10 @@ fn deleting_a_list_trashes_it_with_its_items_and_undo_restores_it() {
     let mut ctl = pro();
     let screen = ctl.main_screen();
     let index = list_index(&screen, "Email replies");
-    assert_eq!(screen.lists[index].count, 6, "the confirmation names this count");
+    assert_eq!(
+        screen.lists[index].count, 6,
+        "the confirmation names this count"
+    );
     ctl.main_delete_list(index);
     let screen = ctl.main_screen();
     assert_eq!(screen.lists.len(), 2);
@@ -522,7 +556,11 @@ fn a_new_board_is_made_through_the_menu_and_opened() {
     assert_eq!(screen.board_name, "Side projects");
     assert!(screen.lists.is_empty());
     assert_eq!(ctl.store().boards().unwrap().len(), 3);
-    assert_eq!(ctl.view().board_name, "Work", "the Panel keeps its own board");
+    assert_eq!(
+        ctl.view().board_name,
+        "Work",
+        "the Panel keeps its own board"
+    );
 }
 
 fn menu_index(ctl: &mut Ctl, entry: &snipdeck_app::controller::BoardMenuEntry) -> usize {
@@ -558,7 +596,10 @@ fn deleting_a_board_asks_with_the_item_count_trashes_it_and_undo_restores_it() {
     assert_eq!(editor.item_count, 10);
     ctl.main_editor_delete();
     let screen = ctl.main_screen();
-    assert_eq!(screen.board_name, "Personal", "falls back to the next board");
+    assert_eq!(
+        screen.board_name, "Personal",
+        "falls back to the next board"
+    );
     assert_eq!(screen.counts.all, 1);
     assert_eq!(
         message(&screen),
@@ -660,7 +701,11 @@ fn alt_arrows_move_an_item_within_its_list_and_the_cursor_follows() {
     assert_eq!(screen.cursor, 0);
     ctl.main_reorder_items(-1);
     assert_eq!(ctl.main_screen().cursor, 0, "off the top does nothing");
-    assert_eq!(ctl.view().rows[0].title, "Invoice reminder", "the Panel agrees");
+    assert_eq!(
+        ctl.view().rows[0].title,
+        "Invoice reminder",
+        "the Panel agrees"
+    );
 }
 
 #[test]
@@ -684,15 +729,28 @@ fn lists_and_boards_reorder_with_the_same_steps() {
     use snipdeck_app::controller::BoardMenuEntry;
     let mut ctl = pro();
     ctl.main_reorder_list(2, -1);
-    let names: Vec<_> = ctl.main_screen().lists.iter().map(|l| l.name.clone()).collect();
+    let names: Vec<_> = ctl
+        .main_screen()
+        .lists
+        .iter()
+        .map(|l| l.name.clone())
+        .collect();
     assert_eq!(names, ["Email replies", "Code", "Addresses"]);
     assert_eq!(
-        ctl.view().tabs.iter().map(|t| t.name.clone()).collect::<Vec<_>>(),
+        ctl.view()
+            .tabs
+            .iter()
+            .map(|t| t.name.clone())
+            .collect::<Vec<_>>(),
         names,
         "the Panel's tabs follow"
     );
     ctl.main_reorder_list(0, -1);
-    assert_eq!(ctl.main_screen().lists[0].name, "Email replies", "off the top");
+    assert_eq!(
+        ctl.main_screen().lists[0].name,
+        "Email replies",
+        "off the top"
+    );
 
     let down = menu_index(&mut ctl, &BoardMenuEntry::MoveDown { enabled: true });
     ctl.main_board_menu_activate(down);

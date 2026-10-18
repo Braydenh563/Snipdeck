@@ -8,7 +8,9 @@
 //! [`main_screen`](Controller::main_screen)) and refreshes the Panel, which shows the same
 //! library.
 
-use snipdeck_core::{BoardId, Feature, Item, ItemId, ListAccent, ListId, ListSort, Name, Placement};
+use snipdeck_core::{
+    BoardId, Feature, Item, ItemId, ListAccent, ListId, ListSort, Name, Placement,
+};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::HighContrast,
@@ -171,7 +173,9 @@ where
         let mut rows = self.main.rows();
         let mut revealed = None;
         if let Some(id) = self.revealed
-            && let Some(at) = rows.iter().position(|r| r.key == Key::Item(id) && r.sensitive)
+            && let Some(at) = rows
+                .iter()
+                .position(|r| r.key == Key::Item(id) && r.sensitive)
         {
             revealed = Some(at);
             if let Ok(Some(text)) = usecase::item_text(&self.store, id) {
