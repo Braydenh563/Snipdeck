@@ -1,5 +1,5 @@
 mode: continue
-status: paused (owner back 23:12)
+status: active (owner said continue 23:16)
 max-continues: 40
 max-idle-minutes: 60
 started: 2026-10-18 13:45
