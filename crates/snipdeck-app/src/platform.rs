@@ -6,6 +6,13 @@
 //! uses; it contains no Win32 calls and no `unsafe` of its own. Nothing in it has run on
 //! Windows yet (see `docs/HANDOVER.md`).
 
+use std::sync::Arc;
+
+use snipdeck_platform::{
+    system_look::SystemLookSource,
+    tray::{Tray, TrayEvent},
+};
+
 use crate::{
     controller::Services,
     host::{HotkeyBackend, TargetSource},
@@ -24,17 +31,25 @@ mod imp {
             hotkey::{HotkeyError, HotkeyService},
             keyboard::WinKeyboard,
             single_instance::{Acquired, SingleInstance},
+            system_look::{SystemLookWatcher, WinSystemLook},
             target::TargetTracker,
+            tray::WinTray,
             window_style,
         },
     };
+
+    use std::sync::Arc;
 
     use super::{Callbacks, Host, Start};
     use crate::{
         controller::Services,
         host::{HotkeyBackend, HotkeyFailure, TargetSource, action_of},
     };
-    use snipdeck_platform::chord::Chord;
+    use snipdeck_platform::{chord::Chord, system_look::SystemLookSource};
+
+    pub(super) fn system_look() -> Arc<dyn SystemLookSource> {
+        Arc::new(WinSystemLook)
+    }
 
     /// The real clipboard.
     pub type Clipboard = WinClipboard;
@@ -66,6 +81,12 @@ mod imp {
                 HotkeyError::Os(_) | HotkeyError::Stopped => HotkeyFailure::Unavailable,
             })
         }
+
+        fn unregister(&mut self, id: u32) -> Result<(), HotkeyFailure> {
+            self.0
+                .unregister(id)
+                .map_err(|_| HotkeyFailure::Unavailable)
+        }
     }
 
     pub(super) fn connect(callbacks: Callbacks, single_instance: bool) -> Result<Start, String> {
@@ -73,16 +94,17 @@ mod imp {
             on_hotkey,
             on_second,
             on_target_changed,
+            on_tray,
+            on_look_changed,
         } = callbacks;
-        let guard = if single_instance {
+        let mut keep_alive: Vec<Box<dyn std::any::Any>> = Vec::new();
+        if single_instance {
             match SingleInstance::acquire(super::APP_ID, on_second) {
-                Ok(Acquired::First(guard)) => Some(Box::new(guard) as Box<dyn std::any::Any>),
+                Ok(Acquired::First(guard)) => keep_alive.push(Box::new(guard)),
                 Ok(Acquired::Second) => return Ok(Start::AlreadyRunning),
                 Err(e) => return Err(format!("single-instance guard: {e}")),
             }
-        } else {
-            None
-        };
+        }
         let clipboard = WinClipboard::new().map_err(|e| format!("clipboard service: {e}"))?;
         let hotkeys = HotkeyService::start(move |id| {
             if let Some(action) = action_of(id) {
@@ -92,6 +114,22 @@ mod imp {
         .map_err(|e| format!("hotkey service: {e}"))?;
         let tracker = Rc::new(TargetTracker::install(on_target_changed));
         let panel_tracker = Rc::clone(&tracker);
+
+        // The tray and the colour-mode watcher are conveniences: without them the app still
+        // runs (closing the Panel then quits, and the theme is read once), so a failure to
+        // start one is a warning, not an error.
+        let mut warnings = Vec::new();
+        let tray = match WinTray::start("Snipdeck", on_tray) {
+            Ok(tray) => Some(Box::new(tray) as Box<dyn snipdeck_platform::tray::Tray>),
+            Err(e) => {
+                warnings.push(format!("tray icon unavailable: {e}"));
+                None
+            }
+        };
+        match SystemLookWatcher::start(on_look_changed) {
+            Ok(watcher) => keep_alive.push(Box::new(watcher)),
+            Err(e) => warnings.push(format!("not following the Windows colour mode: {e}")),
+        }
         Ok(Start::Run(Box::new(Host {
             services: Services {
                 clipboard,
@@ -105,14 +143,21 @@ mod imp {
                 // False means Windows refused the subclass; the panel then activates on click.
                 let _ = window_style::install_panel_style(hwnd);
             }),
-            guard,
+            tray,
+            warnings,
+            keep_alive,
         })))
     }
 }
 
 #[cfg(not(windows))]
 mod imp {
-    use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
+    use std::sync::Arc;
+
+    use snipdeck_platform::{
+        system_look::SystemLookSource,
+        testing::{FakeClipboard, FakeKeyboard, FakeSystemLook, FakeTiming},
+    };
 
     use super::{Callbacks, Host, Start};
     use crate::{
@@ -127,6 +172,10 @@ mod imp {
     /// A clock that only moves when the paste sequence sleeps.
     pub type Timing = FakeTiming;
 
+    pub(super) fn system_look() -> Arc<dyn SystemLookSource> {
+        Arc::new(FakeSystemLook::default())
+    }
+
     #[allow(
         clippy::unnecessary_wraps,
         reason = "same signature as the Windows backend, whose services can fail to start"
@@ -136,6 +185,8 @@ mod imp {
             callbacks.on_hotkey,
             callbacks.on_second,
             callbacks.on_target_changed,
+            callbacks.on_tray,
+            callbacks.on_look_changed,
         );
         Ok(Start::Run(Box::new(Host {
             services: Services {
@@ -149,12 +200,22 @@ mod imp {
             target: Box::new(FakeTargets::new(Some(crate::demo::target()))),
             hotkeys: Box::new(FakeHotkeys::default()),
             attach_panel: Box::new(|_| {}),
-            guard: None,
+            // No tray off Windows: closing the Panel quits the dev build.
+            tray: None,
+            warnings: Vec::new(),
+            keep_alive: Vec::new(),
         })))
     }
 }
 
 pub use imp::{Clipboard, Keyboard, Timing};
+
+/// Windows' light / dark and high-contrast state (a fake that says "light" off Windows). Safe to
+/// read from any thread; read it on the UI thread when [`Callbacks::on_look_changed`] fires.
+#[must_use]
+pub fn system_look() -> Arc<dyn SystemLookSource> {
+    imp::system_look()
+}
 
 /// The single-instance name (`Local\Snipdeck-<id>`, see `snipdeck_platform::instance_names`).
 pub const APP_ID: &str = "main";
@@ -168,6 +229,11 @@ pub struct Callbacks {
     pub on_second: Box<dyn Fn() + Send>,
     /// The foreground window changed (UI thread).
     pub on_target_changed: Box<dyn Fn()>,
+    /// The user used the tray icon (tray thread).
+    pub on_tray: Box<dyn Fn(TrayEvent) + Send>,
+    /// Windows' light / dark or high-contrast state may have changed (watcher thread); read
+    /// [`system_look`] on the UI thread.
+    pub on_look_changed: Box<dyn Fn() + Send>,
 }
 
 /// The platform services the app runs on.
@@ -181,8 +247,13 @@ pub struct Host {
     /// Call with the Panel's native window handle once the window exists: the Target tracker
     /// then ignores it and it becomes a non-activating tool window.
     pub attach_panel: Box<dyn Fn(isize)>,
-    /// Kept alive for the life of the process (the single-instance claim).
-    pub guard: Option<Box<dyn std::any::Any>>,
+    /// The notification-area icon, if one could be created (never off Windows). Not yet shown.
+    pub tray: Option<Box<dyn Tray>>,
+    /// Services that failed to start but are not essential: print them.
+    pub warnings: Vec<String>,
+    /// Kept alive for the life of the process (the single-instance claim, the colour-mode
+    /// watcher).
+    pub keep_alive: Vec<Box<dyn std::any::Any>>,
 }
 
 impl std::fmt::Debug for Host {
@@ -219,12 +290,17 @@ mod tests {
             on_hotkey: Box::new(|_| {}),
             on_second: Box::new(|| {}),
             on_target_changed: Box::new(|| {}),
+            on_tray: Box::new(|_| {}),
+            on_look_changed: Box::new(|| {}),
         };
         let Ok(Start::Run(host)) = connect(callbacks, true) else {
             panic!("the dev host always starts")
         };
         assert_eq!(host.target.current(), Some(crate::demo::target()));
-        assert!(host.guard.is_none());
+        assert!(host.keep_alive.is_empty());
+        assert!(host.tray.is_none(), "no tray off Windows");
+        assert_eq!(host.warnings, Vec::<String>::new());
+        assert!(!system_look().read().dark);
         (host.attach_panel)(0);
     }
 }

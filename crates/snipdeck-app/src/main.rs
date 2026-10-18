@@ -12,7 +12,7 @@
     reason = "this is the command-line entry point: usage and start-up failures go to the terminal"
 )]
 
-use std::{cell::RefCell, process::ExitCode, rc::Rc};
+use std::{cell::RefCell, path::PathBuf, process::ExitCode, rc::Rc, sync::Arc};
 
 use slint::{
     ComponentHandle,
@@ -26,6 +26,7 @@ use snipdeck_app::{
     platform::{self, Callbacks, Host, Start},
     screenshot,
     settings::{Settings, Theme},
+    settings_store::{FileSink, SettingsSaver},
 };
 use snipdeck_core::{Entitlements, Tier, Timestamp};
 use snipdeck_store::Store;
@@ -69,13 +70,23 @@ fn take_screenshot(path: &std::path::Path, dark: bool) -> Result<(), String> {
 }
 
 fn run(args: &Args) -> Result<(), String> {
-    let (store, settings, entitlements) = open_library(args)?;
+    let (store, settings, entitlements, settings_folder) = open_library(args)?;
 
     // Events from service threads become calls on this thread, through the binding.
+    let look = platform::system_look();
     let callbacks = Callbacks {
         on_hotkey: Box::new(|action| on_ui_thread(move |b| b.hotkey(action))),
         on_second: Box::new(|| on_ui_thread(Binding::show)),
         on_target_changed: Box::new(|| with_binding(Binding::target_changed)),
+        on_tray: Box::new(|event| on_ui_thread(move |b| b.tray(event))),
+        on_look_changed: {
+            let look = Arc::clone(&look);
+            // Read on the UI thread: the value is fresher than the one the watcher saw.
+            Box::new(move || {
+                let look = Arc::clone(&look);
+                on_ui_thread(move |b| b.system_look(look.read()));
+            })
+        },
     };
     let host = match platform::connect(callbacks, !args.demo)? {
         Start::Run(host) => *host,
@@ -84,10 +95,15 @@ fn run(args: &Args) -> Result<(), String> {
     let Host {
         services,
         target,
-        mut hotkeys,
+        hotkeys,
         attach_panel,
-        guard: _guard,
+        tray,
+        warnings,
+        keep_alive: _keep_alive,
     } = host;
+    for warning in &warnings {
+        eprintln!("snipdeck: {warning}");
+    }
 
     select_backend()?;
     let window = PanelWindow::new().map_err(|e| format!("creating the Panel: {e}"))?;
@@ -97,6 +113,8 @@ fn run(args: &Args) -> Result<(), String> {
         .set_size(slint::LogicalSize::new(width, 480.0));
 
     let hotkey_settings = settings.hotkeys.clone();
+    let saver = settings_folder
+        .map(|folder| SettingsSaver::new(Box::new(FileSink::new(folder)), settings.clone()));
     let controller = Controller::new(
         store,
         services,
@@ -107,34 +125,40 @@ fn run(args: &Args) -> Result<(), String> {
     )
     .map_err(|e| format!("loading the library: {e}"))?;
     let controller = Rc::new(RefCell::new(controller));
+    {
+        let mut controller = controller.borrow_mut();
+        controller.set_system_look(look.read());
+        if let Some(saver) = saver {
+            controller.set_settings_saver(saver);
+        }
+    }
 
-    // Without a tray a closed Panel could never be reopened off Windows (no hotkeys there), so
-    // the dev build quits when the Panel is closed.
-    let weak = window.as_weak();
-    let binding = Controller::bind(&controller, &window, move |effect| match effect {
-        Effect::HidePanel if cfg!(not(windows)) => {
-            let _ = slint::quit_event_loop();
+    // The tray makes closing the Panel safe (it hides, and the icon brings it back). Without
+    // one (off Windows, or it failed to start) closing the Panel quits instead.
+    let mut tray = tray;
+    if let Some(tray) = &mut tray {
+        match tray.show() {
+            Ok(()) => controller.borrow_mut().set_tray_available(true),
+            Err(e) => eprintln!("snipdeck: cannot show the tray icon: {e}"),
         }
-        Effect::DragWindow => {
-            if let Some(window) = weak.upgrade() {
-                // The Panel has no OS caption: the header starts the move itself.
-                let _ = window
-                    .window()
-                    .with_winit_window(winit::window::Window::drag_window);
-            }
-        }
-        _ => {}
-    });
+    }
+
+    let hotkeys = Rc::new(RefCell::new(hotkeys));
+    let binding = Controller::bind(
+        &controller,
+        &window,
+        effect_handler(
+            Rc::clone(&hotkeys),
+            hotkey_settings.clone(),
+            window.as_weak(),
+        ),
+    );
     BINDING.with(|b| *b.borrow_mut() = Some(binding.clone()));
 
-    let problems = host::register_all(&mut *hotkeys, &hotkey_settings);
-    for problem in &problems {
-        eprintln!(
-            "snipdeck: cannot register {} for {:?}: {}",
-            problem.chord, problem.action, problem.failure
-        );
-    }
-    binding.hotkey_problems(&problems);
+    report_hotkey_problems(&host::register_all(
+        &mut **hotkeys.borrow_mut(),
+        &hotkey_settings,
+    ));
 
     if args.hidden {
         controller.borrow_mut().hide();
@@ -144,11 +168,68 @@ fn run(args: &Args) -> Result<(), String> {
             .map_err(|e| format!("showing the Panel: {e}"))?;
         attach_when_created(&window, attach_panel);
     }
-    slint::run_event_loop_until_quit().map_err(|e| format!("event loop: {e}"))
+    let ran = slint::run_event_loop_until_quit().map_err(|e| format!("event loop: {e}"));
+    // Settings changed in the last moments are still waiting for their quiet time.
+    if let Err(e) = controller.borrow_mut().flush_settings() {
+        eprintln!("snipdeck: could not save the settings: {e}");
+    }
+    ran
 }
 
+type Hotkeys = Rc<RefCell<Box<dyn host::HotkeyBackend>>>;
+
+/// What the host does with the controller's [`Effect`]s: quit, pause or resume the hotkeys,
+/// start a window drag. (The Picker, capture and paste-next effects have no feature behind them
+/// yet.)
+fn effect_handler(
+    hotkeys: Hotkeys,
+    chords: snipdeck_app::settings::Hotkeys,
+    window: slint::Weak<PanelWindow>,
+) -> impl Fn(&Effect) + 'static {
+    move |effect| match effect {
+        Effect::Quit => {
+            let _ = slint::quit_event_loop();
+        }
+        Effect::SetHotkeysPaused(true) => {
+            let failed = host::unregister_all(&mut **hotkeys.borrow_mut());
+            if failed > 0 {
+                eprintln!("snipdeck: {failed} hotkeys could not be switched off");
+            }
+        }
+        Effect::SetHotkeysPaused(false) => {
+            report_hotkey_problems(&host::register_all(&mut **hotkeys.borrow_mut(), &chords));
+        }
+        // There is no main window yet (M4): the Panel stands in for it.
+        Effect::OpenMainWindow => with_binding(Binding::show),
+        Effect::DragWindow => {
+            if let Some(window) = window.upgrade() {
+                // The Panel has no OS caption: the header starts the move itself.
+                let _ = window
+                    .window()
+                    .with_winit_window(winit::window::Window::drag_window);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Prints the hotkeys that could not be registered and tells the user in the Panel.
+fn report_hotkey_problems(problems: &[host::HotkeyProblem]) {
+    for problem in problems {
+        eprintln!(
+            "snipdeck: cannot register {} for {:?}: {}",
+            problem.chord, problem.action, problem.failure
+        );
+    }
+    with_binding(|b| b.hotkey_problems(problems));
+}
+
+/// What [`open_library`] returns: the library, the settings, what the user may do, and the folder
+/// settings changes are written to (`None` when they must not be: the demo, and `--dark`).
+type Library = (Store, Settings, Entitlements, Option<PathBuf>);
+
 /// The library, the settings and what the user may do.
-fn open_library(args: &Args) -> Result<(Store, Settings, Entitlements), String> {
+fn open_library(args: &Args) -> Result<Library, String> {
     let now = Timestamp::now();
     if args.demo {
         let settings = Settings {
@@ -156,7 +237,7 @@ fn open_library(args: &Args) -> Result<(Store, Settings, Entitlements), String> 
             ..Settings::default()
         };
         let store = demo::store(now).map_err(|e| format!("demo library: {e}"))?;
-        return Ok((store, settings, Entitlements::new(Tier::Pro)));
+        return Ok((store, settings, Entitlements::new(Tier::Pro), None));
     }
     let folder = match &args.data_dir {
         Some(dir) => dir.clone(),
@@ -164,12 +245,19 @@ fn open_library(args: &Args) -> Result<(Store, Settings, Entitlements), String> 
             .ok_or("cannot find a data folder; pass --data-dir <folder>")?,
     };
     let mut settings = snipdeck_app::paths::load_settings(&folder);
+    // `--dark` is a one-run override: do not write it into the user's settings.
+    let persist = !args.dark;
     if args.dark {
         settings.theme = Theme::Dark;
     }
     let store = Store::open(&folder).map_err(|e| format!("{}: {e}", folder.display()))?;
     // The licence is not wired into the app yet: everyone is Free until it is.
-    Ok((store, settings, Entitlements::new(Tier::Free)))
+    Ok((
+        store,
+        settings,
+        Entitlements::new(Tier::Free),
+        persist.then_some(folder),
+    ))
 }
 
 /// Winit with the software renderer; windows are created un-activated so a click on the Panel

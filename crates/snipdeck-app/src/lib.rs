@@ -15,6 +15,7 @@ pub mod paths;
 pub mod platform;
 pub mod screenshot;
 pub mod settings;
+pub mod settings_store;
 pub mod toast;
 pub mod usecase;
 pub mod wording;

@@ -1,11 +1,15 @@
 //! Test doubles for the platform traits, shared with the app crate's tests (`testing` feature).
 
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
 use crate::{
+    error::Error as ServiceError,
     keys::{KeyEvent, Modifiers},
     payload::Payload,
     pipeline::{Clipboard, Error, Keyboard, Timing},
+    system_look::{SystemLook, SystemLookSource},
+    tray::{Gesture, MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayModel},
 };
 
 /// A clipboard that records what the pipeline does to it.
@@ -90,7 +94,6 @@ impl Keyboard for FakeKeyboard {
 }
 
 /// A clock that only moves when the pipeline sleeps.
-/// A clock that only moves when the pipeline sleeps.
 #[derive(Default)]
 pub struct FakeTiming {
     /// Elapsed fake time.
@@ -106,5 +109,269 @@ impl Timing for FakeTiming {
     fn sleep(&mut self, duration: Duration) {
         self.now += duration;
         self.slept.push(duration);
+    }
+}
+
+/// Locks, ignoring poisoning (a panicking test thread must not hide the real failure).
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+struct TrayState {
+    model: TrayModel,
+    /// Whether the icon is in the notification area, as the shell would have it.
+    on_screen: bool,
+    fail_show: bool,
+    menus: Vec<Vec<MenuLine>>,
+    log: Vec<String>,
+}
+
+type EventSink = Box<dyn Fn(TrayEvent) + Send>;
+
+/// A tray icon that runs the real [`TrayModel`] and records what the backend would do. Cloning
+/// shares the icon, so a test keeps a handle after handing the tray to the app.
+#[derive(Clone)]
+pub struct FakeTray {
+    state: Arc<Mutex<TrayState>>,
+    on_event: Arc<Mutex<EventSink>>,
+}
+
+impl std::fmt::Debug for FakeTray {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FakeTray").finish_non_exhaustive()
+    }
+}
+
+impl FakeTray {
+    /// A hidden icon; `on_event` hears what the user does to it.
+    pub fn new(tooltip: &str, on_event: impl Fn(TrayEvent) + Send + 'static) -> Self {
+        Self {
+            state: Arc::new(Mutex::new(TrayState {
+                model: TrayModel::new(tooltip),
+                on_screen: false,
+                fail_show: false,
+                menus: Vec::new(),
+                log: Vec::new(),
+            })),
+            on_event: Arc::new(Mutex::new(Box::new(on_event))),
+        }
+    }
+
+    /// Makes [`Tray::show`] fail, as when Explorer is not running yet. The icon is still
+    /// wanted: [`FakeTray::taskbar_created`] then adds it.
+    pub fn set_fail_show(&self, fail: bool) {
+        lock(&self.state).fail_show = fail;
+    }
+
+    /// Whether the icon is in the notification area now.
+    #[must_use]
+    pub fn visible(&self) -> bool {
+        lock(&self.state).on_screen
+    }
+
+    /// The hover text.
+    #[must_use]
+    pub fn tooltip(&self) -> String {
+        lock(&self.state).model.tooltip().to_owned()
+    }
+
+    /// Whether "Pause hotkeys" is checked.
+    #[must_use]
+    pub fn hotkeys_paused(&self) -> bool {
+        lock(&self.state).model.hotkeys_paused()
+    }
+
+    /// The menus shown so far, oldest first.
+    #[must_use]
+    pub fn menus(&self) -> Vec<Vec<MenuLine>> {
+        lock(&self.state).menus.clone()
+    }
+
+    /// What the backend did, in order (`show`, `hide`, `tooltip:<text>`, `paused:<bool>`,
+    /// `readd`).
+    #[must_use]
+    pub fn log(&self) -> Vec<String> {
+        lock(&self.state).log.clone()
+    }
+
+    fn emit(&self, event: TrayEvent) {
+        (lock(&self.on_event))(event);
+    }
+
+    /// The user left-clicks the icon.
+    pub fn left_click(&self) {
+        let _ = self.gesture(Gesture::Select);
+    }
+
+    /// The user right-clicks the icon and the menu opens; returns it. Nothing is chosen until
+    /// [`FakeTray::pick`].
+    #[must_use]
+    pub fn right_click(&self) -> Option<Vec<MenuLine>> {
+        self.gesture(Gesture::ContextMenu)
+    }
+
+    fn gesture(&self, gesture: Gesture) -> Option<Vec<MenuLine>> {
+        let reaction = {
+            let mut state = lock(&self.state);
+            if !state.on_screen {
+                return None;
+            }
+            let reaction = state.model.gesture(gesture);
+            if let Some(Reaction::PopupMenu(lines)) = &reaction {
+                state.menus.push(lines.clone());
+            }
+            reaction
+        };
+        match reaction {
+            Some(Reaction::Event(event)) => {
+                self.emit(event);
+                None
+            }
+            Some(Reaction::PopupMenu(lines)) => Some(lines),
+            None => None,
+        }
+    }
+
+    /// The user chooses `entry` in the open menu.
+    pub fn pick(&self, entry: TrayEntry) {
+        let event = lock(&self.state).model.pick(entry);
+        self.emit(event);
+    }
+
+    /// Explorer restarted: the shell dropped every icon, and the backend adds this one again if
+    /// it is wanted.
+    pub fn taskbar_created(&self) {
+        let mut state = lock(&self.state);
+        state.on_screen = false;
+        if state.model.on_taskbar_created() {
+            state.on_screen = true;
+            state.log.push("readd".into());
+        }
+    }
+}
+
+impl Tray for FakeTray {
+    fn show(&mut self) -> Result<(), ServiceError> {
+        let mut state = lock(&self.state);
+        state.model.show();
+        state.log.push("show".into());
+        if state.fail_show {
+            return Err(ServiceError::Unavailable("the taskbar is not ready"));
+        }
+        state.on_screen = true;
+        Ok(())
+    }
+
+    fn hide(&mut self) -> Result<(), ServiceError> {
+        let mut state = lock(&self.state);
+        state.model.hide();
+        state.on_screen = false;
+        state.log.push("hide".into());
+        Ok(())
+    }
+
+    fn set_tooltip(&mut self, text: &str) -> Result<(), ServiceError> {
+        let mut state = lock(&self.state);
+        state.model.set_tooltip(text);
+        state.log.push(format!("tooltip:{text}"));
+        Ok(())
+    }
+
+    fn set_hotkeys_paused(&mut self, paused: bool) -> Result<(), ServiceError> {
+        let mut state = lock(&self.state);
+        state.model.set_hotkeys_paused(paused);
+        state.log.push(format!("paused:{paused}"));
+        Ok(())
+    }
+}
+
+/// A [`SystemLookSource`] a test sets. Cloning shares the value.
+#[derive(Debug, Clone, Default)]
+pub struct FakeSystemLook(Arc<Mutex<SystemLook>>);
+
+impl FakeSystemLook {
+    /// A source that reports `look`.
+    #[must_use]
+    pub fn new(look: SystemLook) -> Self {
+        Self(Arc::new(Mutex::new(look)))
+    }
+
+    /// Changes what Windows "says".
+    pub fn set(&self, look: SystemLook) {
+        *lock(&self.0) = look;
+    }
+}
+
+impl SystemLookSource for FakeSystemLook {
+    fn read(&self) -> SystemLook {
+        *lock(&self.0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::mpsc;
+
+    use super::*;
+
+    fn tray() -> (FakeTray, mpsc::Receiver<TrayEvent>) {
+        let (tx, rx) = mpsc::channel();
+        let tx = Mutex::new(tx);
+        let tray = FakeTray::new("Snipdeck", move |e| {
+            let _ = lock(&tx).send(e);
+        });
+        (tray, rx)
+    }
+
+    #[test]
+    fn a_hidden_tray_hears_nothing() {
+        let (tray, rx) = tray();
+        tray.left_click();
+        assert!(tray.right_click().is_none());
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn clicks_and_menu_picks_reach_the_app_as_events() {
+        let (mut tray, rx) = tray();
+        tray.show().unwrap();
+        assert!(tray.visible());
+        tray.left_click();
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::TogglePanel));
+        assert!(tray.right_click().is_some());
+        assert_eq!(tray.menus().len(), 1);
+        tray.pick(TrayEntry::PauseHotkeys);
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::HotkeysPaused(true)));
+        assert!(tray.hotkeys_paused());
+        tray.pick(TrayEntry::Quit);
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::Quit));
+    }
+
+    #[test]
+    fn explorer_restarting_brings_back_a_wanted_icon_even_after_a_failed_show() {
+        let (mut tray, _rx) = tray();
+        tray.set_fail_show(true);
+        assert!(tray.show().is_err());
+        assert!(!tray.visible());
+        tray.set_fail_show(false);
+        tray.taskbar_created();
+        assert!(tray.visible());
+        tray.hide().unwrap();
+        tray.taskbar_created();
+        assert!(!tray.visible(), "a hidden icon stays hidden");
+    }
+
+    #[test]
+    fn the_fake_look_follows_what_the_test_sets() {
+        let look = FakeSystemLook::default();
+        assert!(!look.read().dark);
+        let handle = look.clone();
+        handle.set(SystemLook {
+            dark: true,
+            high_contrast: None,
+        });
+        assert!(look.read().dark);
     }
 }
