@@ -17,6 +17,19 @@ Ranked findings. Status: `[ ]` open, `[~]` ticketed in HANDOVER, `[x]` fixed (co
 ## Medium / Low
 - (to be filled from the pre-Fable facts file)
 
+## UX: instinctive without a guide (design decisions, owner ask 2026-10-18)
+Principle: every control answers "what happens if I click?" before the click, and the first five minutes teach by doing.
+- U1 **First run teaches by doing** (SPEC 5.7b): seed a "Getting started" list whose cards are the lesson: "Click me to paste into the app you were in", "Shift+click copies instead", "Try a template: {date}", "Pin me (right-click > Pin)", "Press Ctrl+Alt+Space to hide and show me". Each card self-deletes when the user has used it twice (or a "Done, remove this list" card). No wizard pages beyond hotkeys + position.
+- U2 **The Target footer is the main teacher**: it always reads "Click pastes into Notepad" / "Click copies (no text field in front)"; when the user hovers a row it switches to the row's concrete verb; Shift held changes it to "Shift+click copies". One line, verb first.
+- U3 **Tooltips on every icon** (500 ms, keyboard-focus too), including rows' hover Copy/Paste/More, tabs' `+`, pin, kebab, close; keyboard shortcut shown in the tooltip ("Keep panel on top", "Search  Ctrl+F").
+- U4 **Empty states explain the next action**, not the absence: empty list = "Nothing here yet. Save from clipboard (Ctrl+V), drag text onto this panel, or press + to write one." Empty search = "No match for 'x' in Work. Search all boards?" with a button.
+- U5 **Discoverable power features**: the row's hover `⋯` opens the same context menu as right-click (Paste, Copy, Paste as plain text, Edit Ctrl+E, Pin, Move to, Delete Del); keyboard users get Shift+F10. Menus show shortcuts so they are learnt in passing.
+- U6 **A visible way out of every state**: close hides to tray with a one-time toast "Snipdeck keeps running in the tray. Ctrl+Alt+Space brings it back."; Esc clears search before it hides; a stack/fill form has Cancel.
+- U7 **Undo instead of confirmation for item actions**, confirmation only for lists/boards (SPEC 5.7a); the toast's Undo button is keyboard reachable (Ctrl+Z while the toast is up).
+- U8 **The Main window kebab/Help**: Help opens `docs/user-guide.md` in the browser; About shows version, licence tier, data folder, "Report a problem".
+- U9 **Names over icons where cheap**: the Panel header gets a small wordmark-less logo at left (owner item 6), the view toggles in the Main window are labelled in their tooltips, and the board switcher shows a caret so it reads as a dropdown.
+- U10 Measure: `ux-auditor` (WCAG 2.2 target size, contrast, focus order) and `blind-tester` (first-run without docs) on the Panel and Main window after wave 2; every failed step becomes a ranked finding here.
+
 ## Missed features in scope (brainstorm)
 - (to be filled)
 
