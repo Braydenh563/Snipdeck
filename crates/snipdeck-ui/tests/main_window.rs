@@ -226,8 +226,11 @@ fn long_rows(cjk: bool) -> Vec<snipdeck_ui::MainRow> {
             "Thank you for your help so far. Could you send last month's invoice when you have a moment? Payment reminder attached, thanks again.",
         )
     };
+    // Three times over, so both scripts need more lines than a row allows: the cap (two preview lines in
+    // comfortable, one in compact) is what is compared. A Japanese sentence has no spaces to break at.
+    let preview = preview.repeat(3);
     (0..4)
-        .map(|_| fixture::row(snipdeck_ui::ItemKind::Text, title, preview))
+        .map(|_| fixture::row(snipdeck_ui::ItemKind::Text, title, &preview))
         .collect()
 }
 

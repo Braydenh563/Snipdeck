@@ -1,4 +1,4 @@
-import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Theme, Type, Radius, Space, Motion, Fonts, SystemLook } from "../theme.slint";
 import { Icon } from "icon.slint";
 import { StateColor } from "state-color.slint";
 
@@ -61,6 +61,7 @@ export component Button inherits Rectangle {
         if root.icon.width > 0: Icon {
             source: root.icon;
             tint: root.fg;
+            size: Space.s4 * SystemLook.text-scale;
             y: (parent.height - self.height) / 2;
         }
         Text {

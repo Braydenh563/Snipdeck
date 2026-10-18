@@ -47,6 +47,14 @@ fn find(root: &impl ElementRoot, label: &str, role: AccessibleRole) -> ElementHa
         .unwrap_or_else(|| panic!("no {role:?} labelled {label:?}"))
 }
 
+/// The last match: an overlay is drawn after (so it comes after) the sidebar entry of the same name.
+fn find_top(root: &impl ElementRoot, label: &str, role: AccessibleRole) -> ElementHandle {
+    all(root, label, role)
+        .into_iter()
+        .last()
+        .unwrap_or_else(|| panic!("no {role:?} labelled {label:?}"))
+}
+
 fn missing(root: &impl ElementRoot, label: &str, role: AccessibleRole) -> bool {
     all(root, label, role).is_empty()
 }
@@ -264,7 +272,7 @@ ui_tests! {
         assert_eq!(take(&log), ["action:Move:1"]);
         assert!(ui.get_menu_open(), "the chooser is open");
         let _ = find(&ui, "Move to list", AccessibleRole::List);
-        find(&ui, "Addresses", AccessibleRole::ListItem).invoke_accessible_default_action();
+        find_top(&ui, "Addresses", AccessibleRole::ListItem).invoke_accessible_default_action();
         settle();
         assert_eq!(take(&log), ["move:1"]);
         assert!(!ui.get_menu_open(), "choosing a list closes it");
@@ -272,14 +280,18 @@ ui_tests! {
 
     fn the_tag_chooser_stays_open_and_ticks_each_tag() {
         let (ui, log) = start();
+        // The host fills the choices (with what the selection already has) before it opens the chooser.
+        ui.set_tag_choices(slint::ModelRc::new(VecModel::from(fixture::tags())));
         press_key(&ui, Key::Menu);
         find(&ui, "Tags…", AccessibleRole::ListItem).invoke_accessible_default_action();
         settle();
         take(&log);
         let chooser = find(&ui, "Tags", AccessibleRole::List);
         assert!(chooser.size().height >= MIN_HIT);
-        let billing = find(&ui, "billing", AccessibleRole::ListItem);
-        assert_eq!(billing.accessible_checkable(), Some(true));
+        let billing = all(&ui, "billing", AccessibleRole::ListItem)
+            .into_iter()
+            .find(|e| e.accessible_checkable() == Some(true))
+            .expect("the chooser lists billing as a checkable entry");
         billing.invoke_accessible_default_action();
         settle();
         assert_eq!(take(&log), ["tag:0:true"]);
@@ -391,6 +403,13 @@ ui_tests! {
         for label in ["Email replies", "Addresses", "Code", "billing", "meeting", "sql"] {
             let _ = find(&ui, label, AccessibleRole::ListItem);
         }
+        // Every entry sits below the board switcher, one under the other, none scrolled out of the pane.
+        let ys: Vec<f32> = ["All items", "Pinned", "Recent", "Trash", "Email replies", "billing"]
+            .iter()
+            .map(|l| find(&ui, l, AccessibleRole::ListItem).absolute_position().y)
+            .collect();
+        assert!(ys[0] >= 44.0, "All items starts at y={:?}", ys);
+        assert!(ys.windows(2).all(|w| w[1] >= w[0] + 28.0), "sidebar rows overlap: {ys:?}");
         assert_eq!(find(&ui, "All items", AccessibleRole::ListItem).accessible_item_selected(), Some(true));
         ui.set_section(MainSection::Trash);
         settle();
@@ -414,6 +433,7 @@ ui_tests! {
         assert!(ui.get_menu_open());
         find(&ui, "Edit list…", AccessibleRole::ListItem).invoke_accessible_default_action();
         assert_eq!(take(&log), ["list-edit:0"]);
+        assert!(ui.get_sidebar_focused(), "the keys return to the sidebar");
 
         press_key(&ui, Key::Menu);
         find(&ui, "Delete list…", AccessibleRole::ListItem).invoke_accessible_default_action();

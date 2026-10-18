@@ -155,10 +155,15 @@ export component TextField inherits VerticalLayout {
                 padding-top: root.pad-y;
                 padding-bottom: root.pad-y;
                 spacing: Space.s2;
-                if root.leading-icon.width > 0: Icon {
-                    source: root.leading-icon;
-                    tint: Theme.text-secondary;
-                    y: root.single-line ? (parent.height - self.height) / 2 : (root.line-h - self.height) / 2;
+                // A slot as wide as the glyph; the glyph centres in it, on the first line (a layout would pin it
+                // to the top at large text sizes).
+                if root.leading-icon.width > 0: Rectangle {
+                    width: lead-icon.width;
+                    lead-icon := Icon {
+                        source: root.leading-icon;
+                        tint: Theme.text-secondary;
+                        y: ((root.single-line ? parent.height : root.line-h) - self.height) / 2;
+                    }
                 }
                 viewport := Rectangle {
                     horizontal-stretch: 1;

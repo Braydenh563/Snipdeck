@@ -103,6 +103,7 @@ component SidebarHeading inherits Rectangle {
             accessible-role: none;
         }
         if root.action-label != "": IconButton {
+            scaled: true;
             size: IconButtonSize.sm;
             icon: root.action-icon;
             tooltip: root.action-label;
@@ -289,7 +290,18 @@ export component MainWindow inherits Window {
         root.section-selected(root.section, root.section-index);
     }
 
+    // Where the keys go back to when a menu, chooser or confirmation closes: the sidebar when it was opened there.
+    property <bool> nav-origin: false;
+    function restore-focus() {
+        if (root.nav-origin) {
+            nav-scope.focus();
+        } else {
+            items-scope.focus();
+        }
+    }
+
     function open-nav-menu(flat: int, x: length, y: length) {
+        root.nav-origin = true;
         root.nav-menu-flat = flat;
         root.nav-menu-x = min(x, root.width - 220px);
         root.nav-menu-y = min(y, root.height - 100px);
@@ -310,6 +322,7 @@ export component MainWindow inherits Window {
         let s = root.nav-section(root.nav-menu-flat);
         let index = root.nav-index(root.nav-menu-flat);
         root.nav-menu-open = false;
+        root.restore-focus();
         if (s == MainSection.list) {
             if (i == 0) {
                 root.list-edit-requested(index);
@@ -399,6 +412,7 @@ export component MainWindow inherits Window {
     }
 
     function open-item-menu(index: int, x: length, y: length) {
+        root.nav-origin = false;
         root.item-menu-index = index;
         root.item-menu-x = min(max(x, 0px), max(0px, root.width - 220px));
         root.item-menu-y = min(max(y, 0px), max(0px, root.height - 280px));
@@ -409,7 +423,7 @@ export component MainWindow inherits Window {
         root.item-menu-open = false;
         root.nav-menu-open = false;
         root.chooser-open = false;
-        items-scope.focus();
+        root.restore-focus();
     }
 
     property <[MenuEntry]> item-entries: root.in-trash ? [
@@ -589,6 +603,7 @@ export component MainWindow inherits Window {
                                 menu-requested => { root.board-menu-requested(); }
                             }
                             if root.narrow: IconButton {
+                                scaled: true;
                                 icon: Icons.stack;
                                 tooltip: @tr("Board: {}", root.board-name);
                                 active: root.board-menu-open;
@@ -601,13 +616,17 @@ export component MainWindow inherits Window {
                     nav-flick := Flickable {
                         vertical-stretch: 1;
                         interactive: false;
-                        content-height: nav-content.preferred-height;
+                        // As tall as the child: a viewport shorter than its child would centre the child in it.
+                        content-height: max(self.height, nav-content.preferred-height);
 
                         nav-scope := FocusScope {
                             width: nav-flick.width;
                             height: max(nav-flick.height, nav-content.preferred-height);
                             focus-gained(reason) => {
-                                root.nav-cursor = root.nav-selected;
+                                // Tab lands on the open view; a focus given back after a menu keeps the cursor.
+                                if (reason == FocusReason.tab-navigation) {
+                                    root.nav-cursor = root.nav-selected;
+                                }
                             }
                             key-pressed(event) => {
                                 if (event.text == Key.DownArrow) {
@@ -761,6 +780,7 @@ export component MainWindow inherits Window {
                                 clicked => { root.settings-requested(); }
                             }
                             if root.narrow: IconButton {
+                                scaled: true;
                                 icon: Icons.gear;
                                 tooltip: @tr("Settings");
                                 y: (parent.height - self.height) / 2;
@@ -824,6 +844,7 @@ export component MainWindow inherits Window {
                             spacing: 0px;
                             horizontal-stretch: 0;
                             view-comfortable := IconButton {
+                                scaled: true;
                                 icon: Icons.rows;
                                 tooltip: @tr("Comfortable view");
                                 active: root.view == MainView.comfortable;
@@ -836,6 +857,7 @@ export component MainWindow inherits Window {
                                 }
                             }
                             view-compact := IconButton {
+                                scaled: true;
                                 icon: Icons.list-bullets;
                                 tooltip: @tr("Compact view");
                                 active: root.view == MainView.compact;
@@ -848,6 +870,7 @@ export component MainWindow inherits Window {
                                 }
                             }
                             view-tile := IconButton {
+                                scaled: true;
                                 icon: Icons.squares-four;
                                 tooltip: @tr("Tile view");
                                 active: root.view == MainView.tile;
@@ -1292,6 +1315,7 @@ export component MainWindow inherits Window {
                             clicked => { root.act(ItemAction.delete-forever, root.cur); }
                         }
                         IconButton {
+                            scaled: true;
                             horizontal-stretch: 0;
                             icon: Icons.x;
                             tooltip: @tr("Clear selection");
@@ -1470,7 +1494,7 @@ export component MainWindow inherits Window {
         dismissed => { root.confirm-shown = false; }
         closed => {
             root.confirm-kind = 0;
-            items-scope.focus();
+            root.restore-focus();
         }
         Button {
             text: @tr("Cancel");

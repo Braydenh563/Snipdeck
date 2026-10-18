@@ -261,7 +261,8 @@ fn settings_page_recording_a_shortcut() {
     let h = Harness::new(SettingsPage::new, SETTINGS.0, SETTINGS.1);
     fixture::settings(&h.component);
     let _ = render(&h);
-    // Tab to the first recorder and start recording with Enter.
+    // Tab to the first recorder (the page itself is the first stop) and start recording with Enter.
+    press(h.component.window(), &key(Key::Tab));
     press(h.component.window(), &key(Key::Tab));
     press(h.component.window(), "\n");
     assert_golden("settings-recording-light", &render(&h));
@@ -271,22 +272,22 @@ fn settings_page_recording_a_shortcut() {
 fn form_controls_in_every_state() {
     use snipdeck_ui::FormControlsGallery;
     let h = Harness::new(FormControlsGallery::new, 520, 760);
-    assert_golden("forms-light", &render(&h));
+    assert_golden("formctl-light", &render(&h));
     h.component.invoke_focus_seg();
-    assert_golden("forms-focus-segmented-light", &render(&h));
+    assert_golden("formctl-focus-segmented-light", &render(&h));
     h.component.invoke_focus_num();
-    assert_golden("forms-focus-stepper-light", &render(&h));
+    assert_golden("formctl-focus-stepper-light", &render(&h));
     h.component.invoke_focus_sel();
     h.component.set_sel_open(true);
-    assert_golden("forms-select-open-light", &render(&h));
+    assert_golden("formctl-select-open-light", &render(&h));
     drop(h);
 
     let h = Harness::new(FormControlsGallery::new, 520, 760);
     h.component.set_dark(true);
     h.component.set_sel(3);
     h.component.set_num(480);
-    assert_golden("forms-dark", &render(&h));
+    assert_golden("formctl-dark", &render(&h));
     h.component.set_sel_open(true);
     h.component.invoke_focus_sel();
-    assert_golden("forms-select-open-dark", &render(&h));
+    assert_golden("formctl-select-open-dark", &render(&h));
 }
