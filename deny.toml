@@ -12,7 +12,15 @@ targets = [
 
 [advisories]
 # Defaults: known vulnerabilities and unmaintained crates fail the check.
-ignore = []
+# Unmaintained (not vulnerable) crates that arrive only through Slint 1.18.1 (text layout; D-Bus
+# accessibility and portals on Linux, which the Windows-first product does not ship). Nothing here can
+# be replaced from this repo; revisit when Slint moves to skrifa / zbus 6.
+ignore = [
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser unmaintained; transitive via Slint's font stack" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names unmaintained; transitive via Slint (Linux accessibility/portals only)" },
+    { id = "RUSTSEC-2026-0370", reason = "zvariant unmaintained; transitive via Slint (Linux accessibility/portals only)" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive unmaintained; transitive via Slint (Linux accessibility/portals only)" },
+]
 
 [licenses]
 # Snipdeck is GPL-3.0-only (ADR-0005). Everything linked into it must be GPL-3.0-compatible:
