@@ -1,7 +1,7 @@
 //! What a library needs before the Panel can do anything: a board with a list. A new library
-//! has neither, and the Panel cannot make a board yet (that is the Main window, M4), so without
-//! these a first run shows an empty board switcher and an empty board menu, and every control
-//! has nothing to act on.
+//! has neither, and the Panel cannot make a board itself (only the Main window's board menu can),
+//! so without these a first run shows an empty board switcher and an empty board menu, and every
+//! control has nothing to act on.
 
 use snipdeck_core::{Board, BoardId, List, ListId, Name, Placement, Timestamp};
 use snipdeck_store::{BoardRepo, ListRepo};

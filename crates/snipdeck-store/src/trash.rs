@@ -128,6 +128,64 @@ pub(crate) fn purge(cx: &mut Ctx<'_>, cutoff: Timestamp) -> Result<usize> {
     usize::try_from(entries).map_err(|_| Error::Corrupt("negative count".to_owned()))
 }
 
+/// [`TrashRepo::purge_entry`](crate::TrashRepo::purge_entry).
+pub(crate) fn purge_entry(cx: &mut Ctx<'_>, target: Trashable) -> Result<()> {
+    let conn = cx.conn;
+    // The table, the id, the entry kind of `ENTRIES`, and the items that go with the record.
+    let (table, id, kind, doomed) = match target {
+        Trashable::Board(id) => (
+            "boards",
+            id_bytes(id),
+            0_i64,
+            "SELECT i.id FROM items i JOIN lists l ON l.id = i.list_id WHERE l.board_id = ?1",
+        ),
+        Trashable::List(id) => (
+            "lists",
+            id_bytes(id),
+            1,
+            "SELECT id FROM items WHERE list_id = ?1",
+        ),
+        Trashable::Item(id) => (
+            "items",
+            id_bytes(id),
+            2,
+            "SELECT id FROM items WHERE id = ?1",
+        ),
+    };
+    // Only what the Trash lists: a live record, or one inside a trashed parent, is not
+    // deletable here.
+    let listed: i64 = conn.query_row(
+        &format!("SELECT count(*) FROM ({ENTRIES}) WHERE kind = ?2 AND id = ?1"),
+        params![id, kind],
+        |r| r.get(0),
+    )?;
+    if listed == 0 {
+        return Err(match target {
+            Trashable::Board(id) => not_found(id),
+            Trashable::List(id) => not_found(id),
+            Trashable::Item(id) => not_found(id),
+        });
+    }
+    let mut candidates = Vec::new();
+    {
+        let mut stmt = conn.prepare(&format!(
+            "SELECT blob_hash FROM item_formats WHERE blob_hash IS NOT NULL AND item_id IN ({doomed})
+             UNION SELECT blob_hash FROM item_files WHERE blob_hash IS NOT NULL AND item_id IN ({doomed})"
+        ))?;
+        for hash in stmt.query_map([&id], |r| r.get::<_, Vec<u8>>(0))? {
+            let hash = <[u8; 32]>::try_from(hash?)
+                .map_err(|_| Error::Corrupt("a blob hash is not 32 bytes".to_owned()))?;
+            candidates.push(BlobRef::from_bytes(hash));
+        }
+    }
+    // Foreign keys cascade down to the content; the `items_fts_delete` trigger drops the
+    // search rows.
+    conn.execute(&format!("DELETE FROM {table} WHERE id = ?1"), [&id])?;
+    cx.post.release_scrubbed(candidates);
+    cx.post.checkpoint();
+    Ok(())
+}
+
 /// [`Store::restore_with`](crate::Store::restore_with).
 pub(crate) fn restore_with(
     cx: &mut Ctx<'_>,

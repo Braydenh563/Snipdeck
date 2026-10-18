@@ -76,6 +76,42 @@ pub enum ToastMessage {
     Failed,
     /// "Couldn't save your settings. Snipdeck will try again."
     SettingsNotSaved,
+    /// "Moved 3 items to the Trash" (with Undo).
+    ItemsTrashed {
+        /// How many.
+        count: usize,
+    },
+    /// "Deleted list “Code”" (with Undo).
+    ListTrashed {
+        /// Its name.
+        name: String,
+    },
+    /// "Deleted board “Work”" (with Undo).
+    BoardTrashed {
+        /// Its name.
+        name: String,
+    },
+    /// "Restored 2 items".
+    Restored {
+        /// How many Trash entries came back.
+        count: usize,
+    },
+    /// "Moved 2 items to Code".
+    ItemsMoved {
+        /// How many.
+        count: usize,
+        /// The list they went to.
+        list: String,
+    },
+    /// "Deleted for good".
+    DeletedForever {
+        /// How many Trash entries went.
+        count: usize,
+    },
+    /// "The Trash is empty".
+    TrashEmptied,
+    /// "The Free plan includes 3 boards. Upgrade to Pro for more."
+    BoardLimit,
 }
 
 /// A toast: a style and a message.

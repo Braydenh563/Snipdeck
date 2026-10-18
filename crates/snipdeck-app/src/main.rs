@@ -23,6 +23,7 @@ use snipdeck_app::{
     cli::{self, Args},
     controller::{Controller, Effect},
     demo, host,
+    main_binding::{self, MainUi},
     platform::{self, Callbacks, Host, Start},
     screenshot,
     settings::{Settings, Theme},
@@ -76,6 +77,10 @@ fn take_screenshot(path: &std::path::Path, dark: bool) -> Result<(), String> {
     Ok(())
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "start-up is one ordered sequence: each step needs the one before"
+)]
 fn run(args: &Args) -> Result<(), String> {
     // Events from service threads become calls on this thread, through the binding.
     let look = platform::system_look();
@@ -135,6 +140,9 @@ fn run(args: &Args) -> Result<(), String> {
     let controller = Rc::new(RefCell::new(controller));
     {
         let mut controller = controller.borrow_mut();
+        // The Trash keeps things 30 days (SPEC 5.7a).
+        let purged = controller.purge_expired_trash();
+        snipdeck_app::trace!("start: {purged} expired Trash entries deleted");
         controller.set_system_look(look.read());
         if let Some(saver) = saver {
             controller.set_settings_saver(saver);
@@ -146,11 +154,7 @@ fn run(args: &Args) -> Result<(), String> {
     // also when Explorer restarts), so the controller needs no flag from here. Without a tray
     // (off Windows, or it failed to start) or while no icon is there, closing the Panel quits.
     let mut tray = tray;
-    if let Some(tray) = &mut tray
-        && let Err(e) = tray.show()
-    {
-        eprintln!("snipdeck: cannot show the tray icon yet: {e}");
-    }
+    show_tray(&mut tray);
 
     let hotkeys = Rc::new(RefCell::new(hotkeys));
     // Resuming after "Pause hotkeys" registers the chords in force then, not the launch ones.
@@ -164,10 +168,16 @@ fn run(args: &Args) -> Result<(), String> {
             )
         }
     };
+    let main_ui = Rc::new(MainUi::new(&controller));
     let binding = Controller::bind(
         &controller,
         &window,
-        effect_handler(Rc::clone(&hotkeys), chords_now, window.as_weak()),
+        effect_handler(
+            Rc::clone(&hotkeys),
+            chords_now,
+            window.as_weak(),
+            Rc::clone(&main_ui),
+        ),
     );
     BINDING.with(|b| *b.borrow_mut() = Some(binding.clone()));
     trace_window_events(&window);
@@ -193,15 +203,24 @@ fn run(args: &Args) -> Result<(), String> {
     ran
 }
 
+/// Puts the icon in the notification area, if there is a tray.
+fn show_tray(tray: &mut Option<Box<dyn snipdeck_platform::tray::Tray>>) {
+    if let Some(tray) = tray
+        && let Err(e) = tray.show()
+    {
+        eprintln!("snipdeck: cannot show the tray icon yet: {e}");
+    }
+}
+
 type Hotkeys = Rc<RefCell<Box<dyn host::HotkeyBackend>>>;
 
 /// What the host does with the controller's [`Effect`]s: quit, pause or resume the hotkeys,
-/// start a window drag. (The Picker, capture and paste-next effects have no feature behind them
-/// yet.)
+/// start a window drag, open the Main window.
 fn effect_handler(
     hotkeys: Hotkeys,
     chords_now: impl Fn() -> snipdeck_app::settings::Hotkeys + 'static,
     window: slint::Weak<PanelWindow>,
+    main_ui: Rc<MainUi>,
 ) -> impl Fn(&Effect) + 'static {
     move |effect| match effect {
         Effect::Quit => {
@@ -222,8 +241,12 @@ fn effect_handler(
                 report_hotkey_problems(&report.problems);
             }
         }
-        // There is no main window yet (M4): the Panel stands in for it.
-        Effect::OpenMainWindow => with_binding(Binding::show),
+        // Created the first time, then shown and raised again; the Panel stays as it is.
+        Effect::OpenMainWindow => {
+            if let Err(e) = main_ui.open() {
+                eprintln!("snipdeck: cannot open the main window: {e}");
+            }
+        }
         Effect::DragWindow => {
             if let Some(window) = window.upgrade() {
                 // The Panel has no OS caption: the header starts the move itself.
@@ -327,8 +350,8 @@ fn open_library(args: &Args) -> Result<Library, String> {
         settings.theme = Theme::Dark;
     }
     let mut store = Store::open(&folder).map_err(|e| format!("{}: {e}", folder.display()))?;
-    // A new library has no board, and the Panel cannot make one yet: without this every control
-    // of a first run has nothing to act on (an empty board menu, no tabs, no rows).
+    // A new library has no board, and the Panel cannot make one: without this every control of a
+    // first run has nothing to act on (an empty board menu, no tabs, no rows).
     match snipdeck_app::starter::ensure_board(&mut store, now) {
         Ok(made) => snipdeck_app::trace!("real library; starter board made: {made}"),
         Err(e) => eprintln!("snipdeck: could not create the first board: {e}"),
@@ -342,13 +365,17 @@ fn open_library(args: &Args) -> Result<Library, String> {
     ))
 }
 
-/// Winit with the software renderer; windows are created un-activated so a click on the Panel
-/// never takes the focus from the app being pasted into (ADR-0003).
+/// Winit with the software renderer; the Panel and the other floating windows are created
+/// un-activated so a click on them never takes the focus from the app being pasted into
+/// (ADR-0003). The Main window and its editors are ordinary windows: activated, in the taskbar.
 fn select_backend() -> Result<(), String> {
     slint::BackendSelector::new()
         .backend_name("winit".into())
         .renderer_name("software".into())
         .with_winit_window_attributes_hook(|attributes| {
+            if main_binding::regular_window_being_shown() {
+                return attributes;
+            }
             #[cfg(windows)]
             let attributes = {
                 use slint::winit_030::winit::platform::windows::WindowAttributesExtWindows;

@@ -159,4 +159,14 @@ pub trait TrashRepo {
     /// Permanently deletes everything trashed before `cutoff`, and blobs no longer referenced.
     /// Returns how many trash entries were deleted.
     fn purge(&mut self, cutoff: Timestamp) -> Result<usize>;
+
+    /// Permanently deletes one trash entry (as [`trashed`](Self::trashed) lists it), with
+    /// everything inside it and the blobs nothing else uses: the Trash view's "Delete
+    /// forever".
+    ///
+    /// # Errors
+    ///
+    /// [`Error::NotFound`](crate::Error::NotFound) if `target` is not a trash entry (it is
+    /// live, inside a trashed parent, or already gone).
+    fn purge_entry(&mut self, target: Trashable) -> Result<()>;
 }

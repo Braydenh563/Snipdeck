@@ -9,10 +9,12 @@
 // answers by writing `rows[i].selected` and `selected-count` (`snipdeck_ui::selection` does that in Rust).
 //
 // Keyboard (each region is one tab stop; arrows move inside it):
-//   sidebar   Up / Down / Home / End move, Enter or Space opens the view, Menu or Shift+F10 the context menu
+//   sidebar   Up / Down / Home / End move, Enter or Space opens the view, Menu or Shift+F10 the context menu,
+//             Alt+Up / Alt+Down move a list (`list-reorder-requested`)
 //   items     Up / Down (Left / Right in tiles) move and select, Shift extends, Ctrl+Space toggles, Ctrl+A all,
 //             Enter uses, Shift+Enter copies, F2 or Ctrl+E edits, Ctrl+P pins, Delete deletes, Esc clears
-//             the selection, Menu or Shift+F10 the context menu, hold Space reveals a sensitive item
+//             the selection, Menu or Shift+F10 the context menu, hold Space reveals a sensitive item,
+//             Alt+Up / Alt+Down move the row within its list (`item-reorder-requested`)
 //   anywhere  Ctrl+F or / search, Ctrl+N new item
 import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette } from "theme.slint";
@@ -183,6 +185,10 @@ export component MainWindow inherits Window {
     // Pointer down on an empty part of the title bar: the host starts the OS window drag.
     callback drag-requested();
     callback title-double-clicked();
+    // Alt+Up / Alt+Down in the item area: move the row at the cursor up (-1) or down (+1) within its list.
+    callback item-reorder-requested(int);
+    // Alt+Up / Alt+Down in the sidebar on a list: its index in `lists`, then -1 or +1.
+    callback list-reorder-requested(int, int);
 
     // ---- Public -------------------------------------------------------------------------------
     // Holds row `index` in its pulled (used) state for the card's 700ms.
@@ -629,6 +635,14 @@ export component MainWindow inherits Window {
                                 }
                             }
                             key-pressed(event) => {
+                                if (event.modifiers.alt && (event.text == Key.UpArrow || event.text == Key.DownArrow)) {
+                                    if (root.nav-cursor >= 4 && root.nav-cursor < 4 + root.n-lists) {
+                                        let delta = event.text == Key.UpArrow ? -1 : 1;
+                                        root.list-reorder-requested(root.nav-cursor - 4, delta);
+                                        root.nav-cursor = min(max(root.nav-cursor + delta, 4), 3 + root.n-lists);
+                                    }
+                                    return accept;
+                                }
                                 if (event.text == Key.DownArrow) {
                                     root.nav-cursor = min(root.nav-cursor + 1, root.nav-total - 1);
                                     return accept;
@@ -939,6 +953,11 @@ export component MainWindow inherits Window {
                         key-pressed(event) => {
                             let shift = event.modifiers.shift;
                             let ctrl = event.modifiers.control || event.modifiers.meta;
+                            if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift
+                                && !root.in-trash && (event.text == Key.UpArrow || event.text == Key.DownArrow)) {
+                                root.item-reorder-requested(event.text == Key.UpArrow ? -1 : 1);
+                                return accept;
+                            }
                             if (event.modifiers.alt || root.rows.length == 0) {
                                 return reject;
                             }

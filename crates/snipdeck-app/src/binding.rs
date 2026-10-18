@@ -7,7 +7,7 @@
 
 use std::{
     cell::{Cell, RefCell},
-    rc::Rc,
+    rc::{Rc, Weak},
 };
 
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
@@ -29,6 +29,55 @@ use crate::{
 };
 
 type ProblemsFn = dyn Fn(&[HotkeyProblem]);
+
+thread_local! {
+    /// Every bound window's redraw, for changes that show in more than one window: the Panel
+    /// and the Main window read the same library and share one toast. Weak: a window that is
+    /// gone drops out.
+    static REDRAW: RefCell<Vec<Weak<dyn Fn()>>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Adds a window's redraw to the set [`redraw_all`] runs.
+pub(crate) fn register_redraw(redraw: &Rc<dyn Fn()>) {
+    REDRAW.with(|all| {
+        let mut all = all.borrow_mut();
+        all.retain(|w| w.strong_count() > 0);
+        all.push(Rc::downgrade(redraw));
+    });
+}
+
+/// Redraws every bound window from its controller (the toast timer, a change made in the
+/// other window). Call without a controller borrow held.
+pub(crate) fn redraw_all() {
+    let all: Vec<Rc<dyn Fn()>> =
+        REDRAW.with(|all| all.borrow().iter().filter_map(Weak::upgrade).collect());
+    for redraw in all {
+        redraw();
+    }
+}
+
+/// Runs the timer chain of toast `seq`: each tick advances the toast and redraws the windows.
+pub(crate) fn arm_toast<S, C, K, T>(
+    controller: Weak<RefCell<Controller<S, C, K, T>>>,
+    seq: u64,
+    delay: std::time::Duration,
+) where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    slint::Timer::single_shot(delay, move || {
+        let Some(strong) = controller.upgrade() else {
+            return;
+        };
+        let next = strong.borrow_mut().toast_tick(seq);
+        redraw_all();
+        if let Some(next) = next {
+            arm_toast(controller, seq, next);
+        }
+    });
+}
 
 /// What the host keeps after binding: the entry points for events that do not come from the
 /// window (hotkeys, a second launch, the Target changing, the tray icon, Windows' colour mode). Cheap to clone, not `Send`: hand
@@ -89,8 +138,8 @@ struct Core<S, C, K, T> {
     /// What the window shows now, so a redraw sets only what changed (re-setting the rows
     /// model would reset the list's scroll position on every toast tick).
     shown: RefCell<Option<View>>,
-    /// The toast whose timer chain is running.
-    timed_toast: Cell<u64>,
+    /// Redraws this window (registered with [`register_redraw`]).
+    redraw: Rc<dyn Fn()>,
     /// A timer is waiting to write changed settings.
     settings_timer: Cell<bool>,
 }
@@ -102,10 +151,35 @@ where
     K: Keyboard + 'static,
     T: Timing + 'static,
 {
+    /// The core for `window`, registered for redraws (see [`register_redraw`]).
+    fn new(
+        controller: &Rc<RefCell<Controller<S, C, K, T>>>,
+        window: &ui::PanelWindow,
+        on_effect: Box<dyn Fn(&Effect)>,
+    ) -> Rc<Self> {
+        let core = Rc::new_cyclic(|weak: &Weak<Self>| {
+            let weak = weak.clone();
+            Self {
+                controller: Rc::clone(controller),
+                window: window.as_weak(),
+                on_effect,
+                shown: RefCell::new(None),
+                redraw: Rc::new(move || {
+                    if let Some(core) = weak.upgrade() {
+                        core.sync();
+                    }
+                }),
+                settings_timer: Cell::new(false),
+            }
+        });
+        register_redraw(&core.redraw);
+        core
+    }
+
     /// Runs `f` on the controller, then redraws.
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<S, C, K, T>) -> R) -> R {
         let result = f(&mut self.controller.borrow_mut());
-        self.sync();
+        redraw_all();
         result
     }
 
@@ -143,9 +217,13 @@ where
         let view = self.controller.borrow().view();
         render(&window, self.shown.borrow().as_ref(), &view);
         if let Some(toast) = &view.toast
-            && self.timed_toast.replace(toast.seq) != toast.seq
+            && self.controller.borrow_mut().claim_toast_timer(toast.seq)
         {
-            self.arm_toast(toast.seq, crate::controller::TOAST_ENTER);
+            arm_toast(
+                Rc::downgrade(&self.controller),
+                toast.seq,
+                crate::controller::TOAST_ENTER,
+            );
         }
         *self.shown.borrow_mut() = Some(view);
         self.arm_settings();
@@ -172,20 +250,6 @@ where
             core.sync();
         });
     }
-
-    fn arm_toast(self: &Rc<Self>, seq: u64, delay: std::time::Duration) {
-        let core = Rc::downgrade(self);
-        slint::Timer::single_shot(delay, move || {
-            let Some(core) = core.upgrade() else {
-                return;
-            };
-            let next = core.controller.borrow_mut().toast_tick(seq);
-            core.sync();
-            if let Some(next) = next {
-                core.arm_toast(seq, next);
-            }
-        });
-    }
 }
 
 impl<S, C, K, T> Controller<S, C, K, T>
@@ -201,21 +265,14 @@ where
     /// `ShowPanel` has shown the window, a `HidePanel` has hidden it); the host handles the
     /// rest (`OpenPicker`, `StartCapture`, `PasteNext`, `DragWindow`).
     ///
-    /// Not yet wired, because the features behind them are not built: the context menus,
-    /// revealing a sensitive row (M4), and toast undo.
+    /// Not yet wired, because the feature behind it is not built: the Panel's context menus.
+    /// (Undo lives on the Main window's toast.)
     pub fn bind(
         this: &Rc<RefCell<Self>>,
         window: &ui::PanelWindow,
         on_effect: impl Fn(&Effect) + 'static,
     ) -> Binding {
-        let core = Rc::new(Core {
-            controller: Rc::clone(this),
-            window: window.as_weak(),
-            on_effect: Box::new(on_effect),
-            shown: RefCell::new(None),
-            timed_toast: Cell::new(0),
-            settings_timer: Cell::new(false),
-        });
+        let core = Core::new(this, window, Box::new(on_effect));
         core.sync();
 
         // Wires `ui.on_<name>(|args| ...)` to a controller call, redrawing afterwards.
@@ -313,7 +370,7 @@ where
 
 /// A callback argument as the diagnostic log shows it: numbers and flags as they are, text only
 /// by its length (it is what the user typed).
-trait Loggable {
+pub(crate) trait Loggable {
     fn log(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
 }
 
@@ -336,7 +393,7 @@ impl Loggable for SharedString {
 }
 
 /// A callback's arguments for the log: ` (3, true)`, or nothing without arguments.
-struct Shown<'a>(&'a [&'a dyn Loggable]);
+pub(crate) struct Shown<'a>(pub(crate) &'a [&'a dyn Loggable]);
 
 impl std::fmt::Display for Shown<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -354,7 +411,7 @@ impl std::fmt::Display for Shown<'_> {
     }
 }
 
-fn index(i: i32) -> usize {
+pub(crate) fn index(i: i32) -> usize {
     usize::try_from(i).unwrap_or(usize::MAX)
 }
 
@@ -443,11 +500,11 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     }
 }
 
-fn model<T: Clone + 'static>(items: impl Iterator<Item = T>) -> ModelRc<T> {
+pub(crate) fn model<T: Clone + 'static>(items: impl Iterator<Item = T>) -> ModelRc<T> {
     ModelRc::new(VecModel::from(items.collect::<Vec<_>>()))
 }
 
-fn to_i32(n: usize) -> i32 {
+pub(crate) fn to_i32(n: usize) -> i32 {
     i32::try_from(n).unwrap_or(i32::MAX)
 }
 
@@ -489,10 +546,15 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
 }
 
 fn item_kind(row: &Row) -> ui::ItemKind {
-    if row.sensitive {
+    item_kind_of(row.kind, row.sensitive)
+}
+
+/// The window's kind for an item: a sensitive item is its own kind whatever it holds.
+pub(crate) fn item_kind_of(kind: ItemKind, sensitive: bool) -> ui::ItemKind {
+    if sensitive {
         return ui::ItemKind::Sensitive;
     }
-    match row.kind {
+    match kind {
         ItemKind::Text => ui::ItemKind::Text,
         ItemKind::Template => ui::ItemKind::Template,
         ItemKind::Code => ui::ItemKind::Code,
@@ -503,7 +565,7 @@ fn item_kind(row: &Row) -> ui::ItemKind {
 }
 
 /// `report-q3.pdf` becomes `PDF`; nothing that does not look like an extension.
-fn extension_of(name: &str) -> String {
+pub(crate) fn extension_of(name: &str) -> String {
     let first = name.lines().next().unwrap_or_default().trim();
     first
         .rsplit_once('.')
