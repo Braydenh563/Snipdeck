@@ -113,7 +113,7 @@ fn run(args: &Args) -> Result<(), String> {
         .window()
         .set_size(slint::LogicalSize::new(width, 480.0));
 
-    let hotkey_settings = settings.hotkeys.clone();
+    let startup_chords = settings.hotkeys.clone();
     let saver = settings_folder
         .map(|folder| SettingsSaver::new(Box::new(FileSink::new(folder)), settings.clone()));
     let controller = Controller::new(
@@ -146,20 +146,27 @@ fn run(args: &Args) -> Result<(), String> {
     }
 
     let hotkeys = Rc::new(RefCell::new(hotkeys));
+    // Resuming after "Pause hotkeys" registers the chords in force then, not the launch ones.
+    let chords_now = {
+        let controller = Rc::downgrade(&controller);
+        let fallback = startup_chords.clone();
+        move || {
+            controller.upgrade().map_or_else(
+                || fallback.clone(),
+                |controller| controller.borrow().settings().hotkeys.clone(),
+            )
+        }
+    };
     let binding = Controller::bind(
         &controller,
         &window,
-        effect_handler(
-            Rc::clone(&hotkeys),
-            hotkey_settings.clone(),
-            window.as_weak(),
-        ),
+        effect_handler(Rc::clone(&hotkeys), chords_now, window.as_weak()),
     );
     BINDING.with(|b| *b.borrow_mut() = Some(binding.clone()));
 
     report_hotkey_problems(&host::register_all(
         &mut **hotkeys.borrow_mut(),
-        &hotkey_settings,
+        &startup_chords,
     ));
 
     if args.hidden {
@@ -185,21 +192,26 @@ type Hotkeys = Rc<RefCell<Box<dyn host::HotkeyBackend>>>;
 /// yet.)
 fn effect_handler(
     hotkeys: Hotkeys,
-    chords: snipdeck_app::settings::Hotkeys,
+    chords_now: impl Fn() -> snipdeck_app::settings::Hotkeys + 'static,
     window: slint::Weak<PanelWindow>,
 ) -> impl Fn(&Effect) + 'static {
     move |effect| match effect {
         Effect::Quit => {
             let _ = slint::quit_event_loop();
         }
-        Effect::SetHotkeysPaused(true) => {
-            let failed = host::unregister_all(&mut **hotkeys.borrow_mut());
-            if failed > 0 {
-                eprintln!("snipdeck: {failed} hotkeys could not be switched off");
+        Effect::SetHotkeysPaused(paused) => {
+            // The chords are read before the backend is borrowed: both are on this thread.
+            let chords = chords_now();
+            let report = host::set_paused(&mut **hotkeys.borrow_mut(), *paused, &chords);
+            if report.not_removed > 0 {
+                eprintln!(
+                    "snipdeck: {} hotkeys could not be switched off",
+                    report.not_removed
+                );
             }
-        }
-        Effect::SetHotkeysPaused(false) => {
-            report_hotkey_problems(&host::register_all(&mut **hotkeys.borrow_mut(), &chords));
+            if !*paused {
+                report_hotkey_problems(&report.problems);
+            }
         }
         // There is no main window yet (M4): the Panel stands in for it.
         Effect::OpenMainWindow => with_binding(Binding::show),
