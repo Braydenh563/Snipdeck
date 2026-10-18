@@ -40,13 +40,15 @@ use windows::Win32::UI::Shell::{
     Shell_NotifyIconW,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    AppendMenuW, CreatePopupMenu, DestroyMenu, GetCursorPos, GetSystemMetrics, HICON, HMENU,
-    IDI_APPLICATION, IMAGE_ICON, LR_SHARED, LoadImageW, MF_CHECKED, MF_SEPARATOR, MF_STRING,
-    PostMessageW, RegisterWindowMessageW, SM_CXSMICON, SM_CYSMICON, SetForegroundWindow,
-    TPM_BOTTOMALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON, TrackPopupMenu, WM_APP, WM_DESTROY, WM_NULL,
+    AppendMenuW, ChangeWindowMessageFilterEx, CreatePopupMenu, DestroyMenu, GetCursorPos, HICON,
+    HMENU, IDI_APPLICATION, IMAGE_ICON, LR_SHARED, LoadImageW, MF_CHECKED, MF_SEPARATOR, MF_STRING,
+    MSGFLT_ALLOW, PostMessageW, RegisterWindowMessageW, SetForegroundWindow, TPM_BOTTOMALIGN,
+    TPM_RETURNCMD, TPM_RIGHTBUTTON, TrackPopupMenu, WM_APP, WM_CLOSE, WM_CREATE, WM_DESTROY,
+    WM_NULL,
 };
 use windows::core::{HSTRING, PCWSTR, w};
 
+use super::dpi;
 use super::hidden_window::{HiddenWindow, WindowHandler};
 use crate::error::Error;
 use crate::tray::{
@@ -166,6 +168,20 @@ impl TrayHandler {
             icon: load_icon(),
             added: Cell::new(false),
         }
+    }
+
+    /// An elevated app only hears `TaskbarCreated` (sent by the non-elevated Explorer) if it lets
+    /// the message through the integrity filter (UIPI). A failure leaves the filter as it was:
+    /// the icon is then not restored after an Explorer restart, which is the situation without
+    /// this call, so the result is ignored.
+    fn allow_taskbar_created(&self, hwnd: HWND) {
+        if self.taskbar_created == 0 {
+            return;
+        }
+        // SAFETY: `hwnd` is our own window, on this thread; the message id was registered in
+        // `new`; the optional out-struct is not asked for.
+        let _ =
+            unsafe { ChangeWindowMessageFilterEx(hwnd, self.taskbar_created, MSGFLT_ALLOW, None) };
     }
 
     fn emit(&self, event: TrayEvent) {
@@ -329,6 +345,15 @@ impl WindowHandler for TrayHandler {
             }
             return Some(LRESULT(0));
         }
+        if msg == WM_CREATE {
+            self.allow_taskbar_created(hwnd);
+        }
+        if msg == WM_CLOSE {
+            // Something outside asked the window to close (`taskkill` without `/f`, the Restart
+            // Manager). The window itself stays (see `hidden_window.rs`); the app is asked to quit.
+            self.emit(TrayEvent::Quit);
+            return Some(LRESULT(0));
+        }
         if msg == WM_DESTROY {
             let _ = self.remove_icon(hwnd);
         }
@@ -338,8 +363,9 @@ impl WindowHandler for TrayHandler {
 
 /// The small icon: the executable's resource 1, else the generic application icon.
 fn load_icon() -> HICON {
-    // SAFETY: plain metric lookups, no preconditions.
-    let (cx, cy) = unsafe { (GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON)) };
+    // The size at the system DPI, whatever the thread's awareness is (a stretched 16-px icon is
+    // blurry at 150 % / 200 %).
+    let (cx, cy) = dpi::small_icon_size();
     // SAFETY: a null module name asks for this process's own module handle.
     let own = unsafe { GetModuleHandleW(None) }.ok().map(Into::into);
     let load = |module, name| -> Option<HICON> {
