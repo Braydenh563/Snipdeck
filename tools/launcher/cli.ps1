@@ -7,7 +7,7 @@ function Read-Options([string[]]$ArgList) {
     # options ("--dark", "--screenshot x.png") as errors. Returns an object with Command, flags, Pass and Error.
     $o = [ordered]@{
         Command = ''; Yes = $false; WhatIf = $false; Rebuild = $false; Open = $false
-        RemoveTarget = $false; RemoveData = $false; Pass = @(); Error = ''
+        RemoveTarget = $false; RemoveData = $false; AllowUnpinned = $false; Pass = @(); Error = ''
     }
     $rest = $false
     foreach ($a in @($ArgList)) {
@@ -27,6 +27,7 @@ function Read-Options([string[]]$ArgList) {
             elseif ($name -eq 'open') { $o.Open = $true }
             elseif ($name -eq 'target') { $o.RemoveTarget = $true }
             elseif ($name -eq 'data') { $o.RemoveData = $true }
+            elseif ($name -eq 'allow-unpinned') { $o.AllowUnpinned = $true }
             elseif (($name -eq 'help' -or $name -eq 'h') -and -not $o.Command) { $o.Command = 'help' }
             else { $o.Pass += $a }
             continue
@@ -42,6 +43,7 @@ function Read-Options([string[]]$ArgList) {
         $cmd = $o.Command
         if (-not $cmd) { $cmd = 'run' }
         $appCommand = ($cmd -eq 'run' -or $cmd -eq 'demo' -or $cmd -eq 'build' -or $cmd -eq 'reinstall')
+        if ($o.AllowUnpinned -and @('run', 'demo', 'update', 'reinstall') -notcontains $cmd) { $o.Error = "--allow-unpinned only applies to run, demo, update and reinstall. Try: Snipdeck.bat help" }
         if ($o.Rebuild -and $cmd -ne 'build') { $o.Error = "--rebuild only applies to 'build'. Try: Snipdeck.bat help" }
         if (-not $appCommand) {
             foreach ($p in @($o.Pass)) {
@@ -86,6 +88,9 @@ Options
   --whatif    show what a command would do and change nothing
   --rebuild   build: ignore the fast-start copy and build again
   --target    uninstall: also delete the build folder without asking
+  --allow-unpinned
+              run, demo, update, reinstall: accept a release whose hash is not pinned in
+              tools\launcher\release-sha256.txt (without it you are asked, or refused when unattended)
   --data      uninstall: also erase your library and settings (asks you to type DELETE;
               with -Yes it erases without asking)
   --          everything after goes to the app

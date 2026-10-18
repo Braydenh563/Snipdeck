@@ -100,8 +100,8 @@ Studio, no git.
 If you have `Snipdeck.bat` instead (the repository download), double-click that: the first time it downloads the
 same zip from the latest release (the internet is needed once), checks its SHA-256, unpacks it to an `app` folder
 next to the `.bat` and starts it. After that it starts straight away, offline. `Snipdeck.bat update` fetches the
-newest release and keeps your library; `Snipdeck.bat reinstall` removes the app folder and sets it up again from
-scratch; `Snipdeck.bat help` lists every command. While no release is published yet, a source checkout (a folder
+newest release and keeps your library; `Snipdeck.bat reinstall` closes the app, downloads it again and swaps it in (the old
+folder stays if the download fails); `Snipdeck.bat help` lists every command. While no release is published yet, a source checkout (a folder
 with `Cargo.toml`) builds the app itself on the first start instead. Your library lives in
 `%LOCALAPPDATA%\Snipdeck`, apart from the app, so replacing the app never touches it.
 

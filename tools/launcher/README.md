@@ -15,7 +15,7 @@
 
 `Snipdeck.bat update` does step 2 and 3 even when `app\` exists (it refuses while the app is running; quit it from the tray first), then starts it. The library and settings are not in `app\`, so they are kept.
 
-`release-sha256.txt` format, one line per released version: `<sha256>  <asset-name>` (`#` comments allowed). A release with no line is checked against its published `.sha256` only, and the launcher says so in one line. After publishing a release, add its line (the hash is in the release's `.sha256` file) and commit.
+`release-sha256.txt` format, one line per released version: `<sha256>  <asset-name>` (`#` comments allowed). A release with no line is refused unless you answer `y` to the launcher's question or pass `--allow-unpinned` (unattended runs are refused: the `.sha256` file comes from the same release as the zip, so it does not prove who published it). After publishing a release, add its line (the hash is in the release's `.sha256` file) and commit before users update.
 
 Messages: no network ("needs the internet once ... Connect and run Snipdeck.bat again"), no release yet (HTTP 404), GitHub rate limit (403/429), hash mismatch (refuses, deletes the download), unreadable or unsafe zip, folder cannot be replaced.
 
