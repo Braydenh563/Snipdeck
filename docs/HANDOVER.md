@@ -52,7 +52,7 @@ Not verifiable here (stays unverified until the owner runs the wizard on Windows
   Phosphor icons (`scripts/ui_icons.py`), IBM Plex bundled, Button, headless harness (`src/testing.rs`: software renderer,
   frozen clock, golden PNGs in `tests/golden/`, `UPDATE_GOLDEN=1`), accessibility-tree tests via `i-slint-backend-testing`,
   bundled translations (7 locales, `scripts/i18n.py extract|check`, wired into the gate). Conventions: `crates/snipdeck-ui/README.md`.
-  Component library merged (primitives, inputs/navigation, deck; ~150 tests). Opus review findings (3 high, 5 medium) to fix: `.claude/reviews/ui-components.md` (gitignored; also summarised in the next commit). Panel window in progress.
+  Component library merged (primitives, inputs/navigation, deck; ~150 tests). Opus review findings fixed (`docs/reviews/M3-ui-components-review.md`).
 - **Store batch API** landed: `Store::transaction` / `Batch` (savepoints, rollback incl. blobs); import is atomic via `Library::atomically`.
 - **`snipdeck-app`** (skeleton runs): `usecase` (use an item: content -> template -> pipeline -> count use),
   `panel` (view-model), `toast` (messages), `settings` (tolerant load, chord rules), `controller` (Slint-free: hotkeys,
@@ -70,31 +70,21 @@ Not verifiable here (stays unverified until the owner runs the wizard on Windows
 - CI note: Slint pulls `fontique` -> `yeslogic-fontconfig-sys`; `snipdeck-ui` enables `i-slint-common/fontconfig-dlopen` so CI needs no
   `libfontconfig-dev`. Debug `target/` for snipdeck-ui is about 4 GB: keep few copies, `rm -rf` old ones.
 
-## Next steps
+## Next steps (queue for the next session, in order)
 
-1. **Start M2** (Windows platform layer, `docs/PLAN.md`); S1 gate is passed. Include the Alt/Win modifier masking and
-   decide the caption-button question (custom frame vs OS caption) in ADR-0003 / DESIGN.md.
-2. Re-run S2 with IMEs installed before building text-entry UI (M3+); if composition is unusable, see the S2 NO-GO plan.
-3. Set the real `SNIPDECK_LICENCE_PUBLIC_KEY` in the M6 release pipeline (see `docs/licensing.md`).
-4. **`snipdeck-app` gaps** (the skeleton does not do these yet):
-   - ~~Tray icon~~ **done in code, unverified** (2026-10-18): `snipdeck_platform::tray` (trait, `TrayModel`, `FakeTray`) +
-     `windows/tray.rs` (hidden top-level window, `Shell_NotifyIconW` v4, `TaskbarCreated`, `TrackPopupMenu`); the controller
-     handles `TrayEvent`s and `close_to_tray` (Panel close hides when a tray icon exists, else quits; tray Quit exits).
-     Gaps: no first-time "hidden to tray" notice (needs a balloon), menu text is English, "Open Snipdeck" shows the Panel
-     until the main window exists, the exe has no icon resource (generic icon), the menu ignores dark mode.
-   - Picker, quick capture and paste-next hotkeys are registered but only produce `Effect`s nobody handles.
-   - Template fill form: `UseError::NeedsAnswers` is held as pending state plus a neutral toast; no form UI yet.
-   - Search focus: the Panel needs a search-focus-changed callback so the controller can activate the window for typing and hand focus back to the Target (`begin_text_entry`).
-   - Toast texts are English in `wording.rs`; move them to a translated Slint global (needs a `snipdeck-ui` change).
-   - ~~Theme follows settings only~~ **done in code, unverified**: `settings.theme` = system | light | dark, `system` follows
-     `AppsUseLightTheme` live (`windows/system_look.rs`), high contrast overrides and reaches the Slint `SystemLook` global
-     (the components only partly use the `hc-*` colours: a `snipdeck-ui` job). Reduced motion and text scale are not read yet.
-   - ~~settings are read, never written~~ **logic done**: `settings_store` writes atomically (temp + fsync + rename) after a
-     debounce on the injected clock; a damaged file is kept as `settings.json.bad`. No UI changes a setting yet, so no real
-     run writes the file; `Controller::update_settings` / `set_theme` are the entry points. No docking / saved position.
-   - `{clipboard}` template text is `None`; time zone is UTC; licence is not wired (everyone is Free outside `--demo`).
-   - Context menus, reveal-in-list, add list, undo.
-   - Windows wiring (HWND attach, non-activating style, hotkeys, single instance, Target tracker) is unverified until the owner runs it; add a wizard step for the app.
+Progress vs `docs/PLAN.md`: M1 done, M2 done in code (Windows unverified), M3 mostly done, M4 about half (UI built, not wired), M5 about 10%, M6 not started. About 55% of a v1 that can be built and tested off Windows.
+
+1. **Merge the in-flight agent work first** (worktrees under `.claude/worktrees/`, branches `worktree-agent-*`; check `git log origin/claude/compassionate-pascal-pod8ux..` in each): Main window + editors + SettingsPage (a5d7314), Picker/fill/capture/paste-next wiring (a89b659), review fixes 1/3/4/6 (ac1ed36). For each: merge, fmt, clippy stable + `+1.99.1`, tests, Windows clippy (recipe above), `python3 scripts/i18n.py extract`, push, check CI. Anything uncommitted in a worktree is unmerged: look before deleting.
+2. **Fix the rest of `docs/reviews/PR4-final-review.md`** (tick each `[ ]`): #2 attach panel on first ShowPanel with `--hidden`, #5 route OS close to `Controller::close`, #7 field cap, #8 hotkey toast by failure kind, #9 `args_os`, #10 select backend before services start, #11 CJK test skips silently (make it `#[ignore]` or bundle a CJK font), #12 blank sensitive preview, #14 hygiene (m2-harness lockfile not covered by `cargo deny`; `tools/windows-test/README.md` has the old `Backpack` URL).
+3. **Wire the Main window** into `snipdeck-app` (add/edit items, lists, boards, tags, Settings page writing `settings.json`, Trash view, import/export UI). Right-align the toolbar buttons (view toggles + New item) was requested by the owner.
+4. **Translations:** `python3 scripts/i18n.py check` lists untranslated entries (156+ and the Main window's); translate with a Haiku pass for es, de, fr, pt-BR, ja, zh-Hans; `check` must report 0. Also move `wording.rs` toasts into a translated Slint global.
+5. **UI gaps from reviews:** split Esc (hide Panel) from the close button; search-focus-changed callback on PanelWindow; full high-contrast use of `SystemLook.hc-*`; 225% icon scaling; ItemCard HC focus ring on a selected compact card; Picker match highlighting and fill-form scrolling; items 12/13 of the component review (duplicated logic, API inconsistencies).
+6. **M4 remainder:** text editor (16 KB cap + rope viewer), image editor (crop/rotate/resize/redact), Trash, template fill polish.
+7. **M5:** capture overlay + OCR, Recent inbox, sensitive items (mask, clipboard auto-clear SPEC 5.7, master password), paste stack, licence UI (set `SNIPDECK_LICENCE_PUBLIC_KEY` at M6), onboarding, daily backups, crash log. `Free` board limit: callers must pass `max_boards: Some(3)` to import and restore.
+8. **M6:** MSIX/MSI, signing, updater, winget, perf CI, accessibility audit (Narrator, contrast), docs site, CLA bot.
+9. **Run the fable pass last** (the owner allowed ONE focused Fable agent at the very end of full development: analyse, poke holes, challenge architecture, fix bugs and security issues, polish and validate).
+10. Known gaps: Windows clipboard-history importer, CopyQ `.cpq`, no first-time "hidden to tray" notice, tray menu is English and ignores dark mode, exe has no icon resource, `{clipboard}` template text is `None`, time zone is UTC, licence not wired outside `--demo`, context menus, reveal-in-list, undo.
+11. **Owner on Windows** (never run, everything Win32 is unverified): `run-windows-tests.bat` (M2 and M3 steps), `run-snipdeck-demo.bat` (builds and opens the demo app), S2 with IMEs, S1 step 2c, S4 on Windows 10.
 
 ## Working notes that cost time this session
 
