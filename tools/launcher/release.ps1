@@ -162,7 +162,7 @@ function Write-ReleaseNetworkFailure($Result, [string]$What, [int64]$Bytes) {
     $status = [int]$Result.Status
     if ($status -eq 404) {
         if ($What -eq 'find the latest release') {
-            Write-FailureReport $What 'there is no published release of Snipdeck yet (GitHub answered 404, not found).' @() @('Wait for the first release to be published, then run Snipdeck.bat again.', 'Developers can build from source instead: Snipdeck.bat build') $detail
+            Write-FailureReport $What 'there is no published release of Snipdeck yet (GitHub answered 404, not found).' @() @('Wait for the first release to be published, then run Snipdeck.bat again.', 'If this folder is a source checkout (it has Cargo.toml), Snipdeck.bat builds from source by itself; developers can also run: Snipdeck.bat build') $detail
         } else {
             Write-FailureReport $What 'the release lists the file, but GitHub could not find it (404, not found).' @() @('Run Snipdeck.bat again in a few minutes.', 'If it keeps happening, report it at https://github.com/Braydenh563/Snipdeck/issues') $detail
         }
@@ -415,12 +415,50 @@ function Invoke-RunPrebuilt([bool]$Demo, [string[]]$AppArgs) {
     if (-not (Test-PrebuiltPlatform)) { return 1 }
     if (-not $have) {
         Say 'First start: the Snipdeck app is not on this PC yet, so it is downloaded once.' 'Gray'
+        if (Test-SourceCheckout) {
+            # No release published yet, but this folder holds the source: build it instead of giving up
+            # (the build offers to install the Rust tools it needs; that is the one-time cost of a dev checkout).
+            $latest = Get-LatestRelease
+            if ((-not $latest.Ok) -and ([int]$latest.Status -eq 404)) {
+                Say 'No release is published yet, and this folder contains the source code,' 'Yellow'
+                Say 'so Snipdeck builds itself from source this once (same as "Snipdeck.bat build").' 'Yellow'
+                return (Invoke-RunFlow $Demo $AppArgs $false)
+            }
+        }
         $rcs = @(Install-PortableApp)
         if ($rcs[$rcs.Count - 1] -ne 0) { return 1 }
     }
     $r = Start-SnipdeckApp $exe $appArgs2
     if ($r.Code -ne 0) { return 1 }
     return 0
+}
+
+function Test-SourceCheckout {
+    # True when Snipdeck.bat sits in a source checkout (Cargo.toml and crates\ beside it), not in a release zip.
+    $root = $script:RepoRoot
+    return ((Test-Path -LiteralPath ([System.IO.Path]::Combine($root, 'Cargo.toml')) -PathType Leaf) -and
+        (Test-Path -LiteralPath ([System.IO.Path]::Combine($root, 'crates')) -PathType Container))
+}
+
+function Invoke-ReinstallPrebuilt([string[]]$AppArgs) {
+    # Snipdeck.bat reinstall: throw away app\ (and the dev build output), fetch or build the app again, start it.
+    # The library and settings are never touched here.
+    Say 'Reinstall: the app folder is removed and Snipdeck is set up again. Your library and settings are kept.' 'Cyan'
+    $appDir = Split-Path -Parent (Get-PortableExe)
+    if ($script:Opt.WhatIf) {
+        Say "  [whatif] would delete $(Hide-UserName $appDir) and then run the normal first start." 'Yellow'
+        return 0
+    }
+    if (Test-Path -LiteralPath $appDir) {
+        try { Remove-Item -LiteralPath $appDir -Recurse -Force -ErrorAction Stop }
+        catch {
+            Write-FailureReport 'reinstall' ('the app folder could not be removed: ' + (Hide-UserName $_.Exception.Message)) @() @('Close Snipdeck if it is running (right-click the tray icon, Quit) and run this again.')
+            return 1
+        }
+        Say "  Removed $(Hide-UserName $appDir)." 'Gray'
+    }
+    if (Test-SourceCheckout) { [void](Invoke-CleanBuild $false) }
+    return (Invoke-RunPrebuilt $false @($AppArgs))
 }
 
 function Invoke-UpdatePrebuilt {

@@ -62,6 +62,7 @@ function Invoke-Main([string[]]$ArgList) {
         'build' { return (Invoke-RunFlow $false @($o.Pass) $o.Rebuild) }
         'doctor' { return (Invoke-Doctor) }
         'update' { return (Invoke-UpdatePrebuilt) }
+        'reinstall' { return (Invoke-ReinstallPrebuilt @($o.Pass)) }
         'backup' { return (Invoke-Backup) }
         'restore' { return (Invoke-Restore @($o.Pass)) }
         'clean' { return (Invoke-Clean) }
@@ -84,7 +85,7 @@ try {
     $exitCode = 1
 }
 if ($exitCode -eq 0 -and $env:SNIPDECK_DBLCLICK -eq '1') {
-    $quiet = @('run', 'demo', 'build', 'update', 'selftest')
+    $quiet = @('run', 'demo', 'build', 'update', 'reinstall', 'selftest')
     $first = ''
     if (@($args).Count -gt 0) { $first = ([string]$args[0]).ToLowerInvariant() }
     if ($first -and ($quiet -notcontains $first)) { Wait-ForEnter }

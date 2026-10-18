@@ -1,6 +1,6 @@
 # cli.ps1 - command-line parsing and help text (pure). Dot-sourced by snipdeck.ps1. ASCII only.
 
-$script:Commands = @('run', 'demo', 'build', 'doctor', 'update', 'backup', 'restore', 'clean', 'uninstall', 'logs', 'help', 'selftest')
+$script:Commands = @('run', 'demo', 'build', 'doctor', 'update', 'reinstall', 'backup', 'restore', 'clean', 'uninstall', 'logs', 'help', 'selftest')
 
 function Read-Options([string[]]$ArgList) {
     # The launcher has no param() block on purpose: Windows PowerShell would treat "--whatif" and the app's own
@@ -41,7 +41,7 @@ function Read-Options([string[]]$ArgList) {
     if (-not $o.Error) {
         $cmd = $o.Command
         if (-not $cmd) { $cmd = 'run' }
-        $appCommand = ($cmd -eq 'run' -or $cmd -eq 'demo' -or $cmd -eq 'build')
+        $appCommand = ($cmd -eq 'run' -or $cmd -eq 'demo' -or $cmd -eq 'build' -or $cmd -eq 'reinstall')
         if ($o.Rebuild -and $cmd -ne 'build') { $o.Error = "--rebuild only applies to 'build'. Try: Snipdeck.bat help" }
         if (-not $appCommand) {
             foreach ($p in @($o.Pass)) {
@@ -68,6 +68,7 @@ Commands
   run         (default) start Snipdeck on your real library (downloads the app first if needed)
   demo        start the demo: a seeded library kept in memory, nothing is saved
   update      download the latest release again (your library and settings are kept) and start it
+  reinstall   remove the app folder and set Snipdeck up again from scratch (library and settings kept)
   build       developers only: build from source (needs Rust, Visual C++ tools, git) and start
   selftest    run the launcher's own checks (no network, changes nothing)
   doctor      check this PC and Snipdeck's data; writes a report you can send
