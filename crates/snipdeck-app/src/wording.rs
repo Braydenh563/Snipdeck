@@ -55,6 +55,43 @@ pub fn toast_text(message: &ToastMessage) -> String {
         ToastMessage::SettingsNotSaved => {
             "Couldn't save your settings. Snipdeck will try again.".into()
         }
+        ToastMessage::ItemsTrashed { count: 1 } => "Moved 1 item to the Trash".into(),
+        ToastMessage::ItemsTrashed { count } => format!("Moved {count} items to the Trash"),
+        ToastMessage::ListTrashed { name } => format!("Deleted list \u{201c}{name}\u{201d}"),
+        ToastMessage::BoardTrashed { name } => format!("Deleted board \u{201c}{name}\u{201d}"),
+        ToastMessage::Restored { count: 1 } => "Restored 1 item".into(),
+        ToastMessage::Restored { count } => format!("Restored {count} items"),
+        ToastMessage::ItemsMoved { count: 1, list } => format!("Moved 1 item to {list}"),
+        ToastMessage::ItemsMoved { count, list } => format!("Moved {count} items to {list}"),
+        ToastMessage::DeletedForever { .. } => "Deleted for good".into(),
+        ToastMessage::TrashEmptied => "The Trash is empty".into(),
+        ToastMessage::BoardLimit => {
+            "The Free plan includes 3 boards. Upgrade to Pro for more.".into()
+        }
+    }
+}
+
+/// The label of a toast's undo button.
+pub const UNDO_LABEL: &str = "Undo";
+
+/// Why an editor refuses a name, in words.
+#[must_use]
+pub fn name_error_text(error: &crate::main_window::NameError) -> String {
+    use crate::main_window::NameError;
+    match error {
+        NameError::Empty => "Give it a name.".into(),
+        NameError::TooLong { max } => format!("Names can have at most {max} characters."),
+        NameError::ControlChar => "Names can't contain line breaks or control characters.".into(),
+    }
+}
+
+/// The reason a board cannot be deleted, in words.
+#[must_use]
+pub fn delete_hint_text(hint: crate::main_window::DeleteHint) -> String {
+    match hint {
+        crate::main_window::DeleteHint::LastBoard => {
+            "This is your only board. Add another before deleting it.".into()
+        }
     }
 }
 
@@ -103,6 +140,22 @@ mod tests {
             },
             ToastMessage::Failed,
             ToastMessage::SettingsNotSaved,
+            ToastMessage::ItemsTrashed { count: 1 },
+            ToastMessage::ItemsTrashed { count: 3 },
+            ToastMessage::ListTrashed {
+                name: "Code".into(),
+            },
+            ToastMessage::BoardTrashed {
+                name: "Work".into(),
+            },
+            ToastMessage::Restored { count: 2 },
+            ToastMessage::ItemsMoved {
+                count: 2,
+                list: "Code".into(),
+            },
+            ToastMessage::DeletedForever { count: 1 },
+            ToastMessage::TrashEmptied,
+            ToastMessage::BoardLimit,
         ];
         for message in all {
             assert!(!toast_text(&message).is_empty(), "{message:?}");

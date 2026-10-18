@@ -132,6 +132,20 @@ pub fn template_source<S: ItemRepo + BlobStore>(
     Ok(Some((title, text)))
 }
 
+/// The text of `item`, or `None` when it holds none (an image, files). For a sensitive item
+/// this reads the real text, so the caller shows it only while the user holds it revealed.
+///
+/// # Errors
+///
+/// A store error (a locked key ring for a sensitive item), or [`UseError::NotText`].
+pub fn item_text<S: ItemRepo + BlobStore>(
+    store: &S,
+    item: ItemId,
+) -> Result<Option<String>, UseError> {
+    let formats = store.formats(item)?;
+    text_of(store, &formats)
+}
+
 fn text_of<S: BlobStore>(store: &S, formats: &Formats) -> Result<Option<String>, UseError> {
     match formats.get(snipdeck_core::FormatKind::Text) {
         Some(Format::Text(content)) => {

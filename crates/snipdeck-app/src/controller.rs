@@ -17,12 +17,19 @@ use snipdeck_platform::{
     system_look::{HighContrast, SystemLook},
     tray::TrayEvent,
 };
-use snipdeck_store::{Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, Store, TagRepo};
+use snipdeck_store::{
+    Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, Store, TagRepo, TrashRepo, Trashable,
+};
+
+mod main_ctl;
+
+pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice};
 
 use crate::{
     capture::{self, Captured},
     fill::{self, FillModel},
     host::{ClipboardText, Clock, TargetSource},
+    main_window::MainModel,
     panel::{Footer, PanelModel, Row, Tab, UseLabel},
     paste_next::{self, PasteQueue},
     picker::{self, PickerModel, Scope},
@@ -39,12 +46,15 @@ pub const REFOCUS_WAIT: Duration = Duration::from_millis(50);
 pub const TOAST_ENTER: Duration = Duration::from_millis(120);
 /// A settled toast stays this long (`Toast.hold-duration`, DESIGN.md §4).
 pub const TOAST_HOLD: Duration = Duration::from_millis(2500);
+/// An undoable toast (a delete) settles for this long, so that it is on screen for 5 s with its
+/// fade-in (SPEC §5.7a).
+pub const TOAST_UNDO_HOLD: Duration = Duration::from_millis(4880);
 /// A toast fades out for this long (`Motion.fade`) before it is gone.
 pub const TOAST_EXIT: Duration = Duration::from_millis(90);
 
 /// What the controller needs from the library: every repository trait in one bound, and a way
 /// to make several writes land together (or not at all).
-pub trait Library: BoardRepo + ListRepo + ItemRepo + TagRepo + BlobStore {
+pub trait Library: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + BlobStore {
     /// Runs `f` in one store transaction: what it does through the [`Batch`] commits together
     /// when `f` returns `Ok`, and none of it happens when it returns `Err`.
     ///
@@ -117,6 +127,8 @@ pub struct ToastView {
     pub message: ToastMessage,
     /// Where it is in its life.
     pub phase: ToastPhase,
+    /// It carries an Undo button ([`Controller::main_undo`]).
+    pub undo: bool,
 }
 
 /// The Picker window's content.
@@ -205,6 +217,13 @@ pub struct View {
     pub fill: Option<FillView>,
 }
 
+/// What pressing Undo on the toast `seq` brings back from the Trash.
+#[derive(Debug, Clone)]
+struct Undo {
+    seq: u64,
+    targets: Vec<Trashable>,
+}
+
 struct ActiveToast {
     toast: Toast,
     phase: ToastPhase,
@@ -232,6 +251,19 @@ pub struct Controller<S, C, K, T> {
     /// Where "paste next" is in its run.
     queue: PasteQueue,
     board_menu_open: bool,
+    /// The Main window's state.
+    main: MainModel,
+    /// The Main window's board menu is open.
+    main_board_menu: bool,
+    /// The list or board editor, while one is open.
+    editor: Option<main_ctl::EditorSlot>,
+    editor_seq: u64,
+    /// What the toast on screen undoes.
+    undo: Option<Undo>,
+    /// The toast whose timer chain a window has started.
+    timer_seq: u64,
+    /// A sensitive item held revealed in the Main window.
+    revealed: Option<snipdeck_core::ItemId>,
     /// What Windows says about light / dark and high contrast.
     os_look: SystemLook,
     session: Session,
@@ -299,6 +331,13 @@ where
             fill_seq: 0,
             queue: PasteQueue::default(),
             board_menu_open: false,
+            main: MainModel::new(),
+            main_board_menu: false,
+            editor: None,
+            editor_seq: 0,
+            undo: None,
+            timer_seq: 0,
+            revealed: None,
             os_look: SystemLook::default(),
             session: Session::default(),
             saver: None,
@@ -344,12 +383,7 @@ where
             on_top: self.on_top,
             dark: self.look().dark,
             high_contrast: self.look().high_contrast,
-            toast: self.toast.as_ref().map(|t| ToastView {
-                seq: t.seq,
-                kind: t.toast.kind,
-                message: t.toast.message.clone(),
-                phase: t.phase,
-            }),
+            toast: self.toast_view(),
             board_menu: self.board_menu_open.then(|| {
                 self.model
                     .boards()
@@ -375,6 +409,17 @@ where
                 ),
             }),
         }
+    }
+
+    /// The toast on screen, if any.
+    fn toast_view(&self) -> Option<ToastView> {
+        self.toast.as_ref().map(|t| ToastView {
+            seq: t.seq,
+            kind: t.toast.kind,
+            message: t.toast.message.clone(),
+            phase: t.phase,
+            undo: self.undo.as_ref().is_some_and(|u| u.seq == t.seq),
+        })
     }
 
     /// The look in force: the `theme` setting over what Windows says; high contrast always wins.
@@ -650,6 +695,7 @@ where
     /// (or, in a library without boards, makes the starter board) and shows it.
     pub fn add_list(&mut self) {
         let now = self.clock.now();
+        self.main.mark_stale();
         let added = crate::starter::add_list(&mut self.store, self.model.board(), now);
         let shown = added.and_then(|(board, list)| {
             self.model.select_board(&self.store, board)?;
@@ -658,6 +704,12 @@ where
         if shown.is_err() {
             self.show_toast(failed());
         }
+    }
+
+    /// Reads the library again into the Panel (and tells the Main window to).
+    fn refresh_panel(&mut self) -> snipdeck_store::Result<()> {
+        self.main.mark_stale();
+        self.model.refresh(&self.store)
     }
 
     fn switch_board(&mut self, board: BoardId) {
@@ -832,7 +884,7 @@ where
                     self.clock.now(),
                 ) {
                     Ok(Captured::Saved { list, .. }) => {
-                        if self.model.refresh(&self.store).is_err() {
+                        if self.refresh_panel().is_err() {
                             self.show_toast(failed());
                         }
                         Toast {
@@ -925,7 +977,7 @@ where
                     &route,
                     pasted_into.as_deref(),
                 ));
-                if self.model.refresh(&self.store).is_err() {
+                if self.refresh_panel().is_err() {
                     self.show_toast(failed());
                 }
                 UseResult::Done(used.outcome)
@@ -950,11 +1002,33 @@ where
     /// [`toast_tick`](Self::toast_tick) after [`TOAST_ENTER`] and follows the delays it returns.
     pub fn show_toast(&mut self, toast: Toast) {
         self.toast_seq += 1;
+        self.undo = None;
         self.toast = Some(ActiveToast {
             toast,
             phase: ToastPhase::Enter,
             seq: self.toast_seq,
         });
+    }
+
+    /// Shows `toast` with an Undo button that brings `targets` back from the Trash
+    /// ([`main_undo`](Self::main_undo)). The toast stays for 5 s; a newer toast takes the
+    /// button away (what was deleted is still in the Trash).
+    pub fn show_undo_toast(&mut self, toast: Toast, targets: Vec<Trashable>) {
+        self.show_toast(toast);
+        self.undo = Some(Undo {
+            seq: self.toast_seq,
+            targets,
+        });
+    }
+
+    /// Whether the caller should start the timer chain for toast `seq`: true once per toast,
+    /// for whichever window sees it first (the Panel and the Main window share one toast).
+    pub fn claim_toast_timer(&mut self, seq: u64) -> bool {
+        if self.timer_seq == seq {
+            return false;
+        }
+        self.timer_seq = seq;
+        true
     }
 
     /// Reports hotkeys that could not be registered (the first one is shown).
@@ -976,7 +1050,11 @@ where
         match active.phase {
             ToastPhase::Enter => {
                 active.phase = ToastPhase::Hold;
-                Some(TOAST_HOLD)
+                if self.undo.as_ref().is_some_and(|u| u.seq == seq) {
+                    Some(TOAST_UNDO_HOLD)
+                } else {
+                    Some(TOAST_HOLD)
+                }
             }
             ToastPhase::Hold => {
                 active.phase = ToastPhase::Exit;
@@ -984,6 +1062,7 @@ where
             }
             ToastPhase::Exit => {
                 self.toast = None;
+                self.undo = None;
                 None
             }
         }
