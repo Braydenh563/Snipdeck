@@ -21,7 +21,7 @@ use snipdeck_ui as ui;
 
 use crate::{
     controller::{Controller, Effect, Library, ToastPhase, View},
-    host::HotkeyProblem,
+    host::{ClipboardText, HotkeyProblem},
     palette::list_color,
     panel::{Footer, Row, Tab},
     settings::HotkeyAction,
@@ -98,7 +98,7 @@ struct Core<S, C, K, T> {
 impl<S, C, K, T> Core<S, C, K, T>
 where
     S: Library + 'static,
-    C: Clipboard + 'static,
+    C: Clipboard + ClipboardText + 'static,
     K: Keyboard + 'static,
     T: Timing + 'static,
 {
@@ -190,7 +190,7 @@ where
 impl<S, C, K, T> Controller<S, C, K, T>
 where
     S: Library + 'static,
-    C: Clipboard + 'static,
+    C: Clipboard + ClipboardText + 'static,
     K: Keyboard + 'static,
     T: Timing + 'static,
 {

@@ -261,19 +261,12 @@ fn the_toggle_hotkey_hides_and_shows_the_panel() {
             "",
             "the Target is read when the Panel shows"
         );
+        // The other hotkeys are handled inside the controller: no effect for the host.
         r.binding.hotkey(HotkeyAction::Picker);
         r.binding.hotkey(HotkeyAction::Capture);
         r.binding.hotkey(HotkeyAction::PasteNext);
-        assert_eq!(
-            *r.effects.borrow(),
-            [
-                Effect::HidePanel,
-                Effect::ShowPanel,
-                Effect::OpenPicker,
-                Effect::StartCapture,
-                Effect::PasteNext
-            ]
-        );
+        assert_eq!(*r.effects.borrow(), [Effect::HidePanel, Effect::ShowPanel]);
+        assert!(r.ctl.borrow().picker().is_some());
     });
 }
 
@@ -337,15 +330,15 @@ fn the_board_menu_lists_boards_and_switches() {
 }
 
 #[test]
-fn a_template_that_needs_answers_toasts_and_changes_nothing() {
+fn a_template_that_needs_answers_opens_the_fill_form_and_changes_nothing() {
     on_ui_thread(|| {
         let r = rig();
         press(r.window(), "2");
-        assert_eq!(r.ui.get_toast_text(), "Fill in this template first.");
+        assert_eq!(r.ui.get_toast_text(), "");
         assert_eq!(r.uses(1), 0);
         let ctl = r.ctl.borrow();
         assert_eq!(ctl.services().clipboard.log, Vec::<String>::new());
-        assert_eq!(ctl.pending().map(|p| p.prompts.len()), Some(2));
+        assert_eq!(ctl.fill().map(|f| f.fields().len()), Some(2));
     });
 }
 

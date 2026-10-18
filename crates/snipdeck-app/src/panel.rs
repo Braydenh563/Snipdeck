@@ -293,15 +293,7 @@ impl PanelModel {
                 .filter_map(|hit| self.all.iter().find(|i| i.id == hit.id))
                 .collect()
         } else {
-            let mut items: Vec<&Item> = self.items.iter().collect();
-            match self.list().map(|l| l.sort) {
-                Some(ListSort::MostUsed) => items.sort_by_key(|i| std::cmp::Reverse(i.use_count)),
-                Some(ListSort::RecentlyUsed) => {
-                    items.sort_by_key(|i| std::cmp::Reverse(i.last_used_at));
-                }
-                _ => {}
-            }
-            items
+            self.list_items()
         };
         let mixed = self.searching();
         items
@@ -309,6 +301,26 @@ impl PanelModel {
             .enumerate()
             .map(|(n, item)| self.row(item, n, mixed))
             .collect()
+    }
+
+    /// The shown list's items in its sort order, whatever the search says.
+    fn list_items(&self) -> Vec<&Item> {
+        let mut items: Vec<&Item> = self.items.iter().collect();
+        match self.list().map(|l| l.sort) {
+            Some(ListSort::MostUsed) => items.sort_by_key(|i| std::cmp::Reverse(i.use_count)),
+            Some(ListSort::RecentlyUsed) => {
+                items.sort_by_key(|i| std::cmp::Reverse(i.last_used_at));
+            }
+            _ => {}
+        }
+        items
+    }
+
+    /// The ids of the shown list's items in its sort order, ignoring any search (the order
+    /// "paste next" walks).
+    #[must_use]
+    pub fn list_item_ids(&self) -> Vec<ItemId> {
+        self.list_items().iter().map(|i| i.id).collect()
     }
 
     fn row(&self, item: &Item, position: usize, mixed: bool) -> Row {
