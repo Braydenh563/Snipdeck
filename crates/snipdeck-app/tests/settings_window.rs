@@ -220,11 +220,6 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
                 |s| !s.close_to_tray,
             ),
             (
-                "site icons",
-                |r| r.ui.invoke_site_icons_toggled(true),
-                |s| s.site_icons,
-            ),
-            (
                 "panel width",
                 |r| r.ui.invoke_panel_width_chosen(400),
                 |s| s.panel_width == 400,
@@ -306,7 +301,7 @@ fn the_theme_applies_at_once_and_the_page_shows_what_is_stored() {
             s.panel_width = 300;
         });
         // Any gesture redraws; the controller's settings are what the page shows.
-        r.ui.invoke_site_icons_toggled(true);
+        r.ui.invoke_close_to_tray_toggled(true);
         assert_eq!(r.ui.get_language_index(), 6);
         assert_eq!(r.ui.get_panel_width(), 300);
         assert_eq!(
@@ -704,7 +699,7 @@ fn library_on_disk(with_key: bool) -> Rig {
     std::fs::write(r.dir.path().join("logs").join("crash-1.txt"), "crash").unwrap();
     r.ui.invoke_backup_now_requested();
     // The settings file exists after a change.
-    r.ui.invoke_site_icons_toggled(true);
+    r.ui.invoke_close_to_tray_toggled(false);
     r.advance(500);
     assert!(r.settings_file().exists());
     assert_eq!(r.ui.get_backups().row_count(), 1);
@@ -749,7 +744,7 @@ fn erasing_the_library_needs_exactly_the_word_delete() {
         assert_eq!(r.ui.get_backups().row_count(), 0);
         assert!(!r.dir.path().join("backups").exists());
         assert!(r.settings_file().exists());
-        assert!(load_settings(r.dir.path()).site_icons, "settings stay");
+        assert!(!load_settings(r.dir.path()).close_to_tray, "settings stay");
         assert_eq!(
             licence_store::read(r.dir.path()).as_deref(),
             Some("SNIP1.kept.kept")

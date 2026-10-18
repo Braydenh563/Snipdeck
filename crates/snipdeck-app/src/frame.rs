@@ -141,6 +141,21 @@ pub fn clamp(frame: Rect, monitor: &Monitor) -> Rect {
     }
 }
 
+/// Puts any window's frame inside `area` (a monitor's work area): a frame larger than the
+/// area is cut to it, one hanging over an edge is moved in. The Main window, Settings and the
+/// editors open at their preferred size, which does not fit a small or scaled screen.
+#[must_use]
+pub fn fit(frame: Rect, area: Rect) -> Rect {
+    let w = frame.w.min(area.w);
+    let h = frame.h.min(area.h);
+    Rect {
+        x: inside(frame.x, w, area.x, area.w),
+        y: inside(frame.y, h, area.y, area.h),
+        w,
+        h,
+    }
+}
+
 /// `start` moved so `[start, start + len)` lies in `[low, low + span)`.
 fn inside(start: i32, len: u32, low: i32, span: u32) -> i32 {
     let high = i64::from(low) + i64::from(span) - i64::from(len);
@@ -220,6 +235,23 @@ mod tests {
         for scale in [0.0, -2.0, f32::NAN, f32::INFINITY] {
             assert_eq!(clamp(at(0, 0, 1000, 500), &monitor(scale)).w, 480);
         }
+    }
+
+    #[test]
+    fn a_window_taller_than_the_work_area_is_cut_and_moved_onto_it() {
+        let area = at(0, 0, 1920, 1040);
+        assert_eq!(fit(at(400, 100, 960, 1140), area), at(400, 0, 960, 1040));
+        assert_eq!(fit(at(1700, 900, 640, 760), area), at(1280, 280, 640, 760));
+        assert_eq!(fit(at(-50, -10, 3000, 3000), area), area);
+    }
+
+    #[test]
+    fn a_window_that_fits_is_left_alone() {
+        let area = at(-1920, 0, 1920, 1040);
+        assert_eq!(
+            fit(at(-1500, 100, 640, 760), area),
+            at(-1500, 100, 640, 760)
+        );
     }
 
     #[test]

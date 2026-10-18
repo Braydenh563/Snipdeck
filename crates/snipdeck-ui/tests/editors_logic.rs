@@ -158,7 +158,6 @@ fn settings() -> (SettingsPage, Log) {
     hook!(on_language_chosen, |i| format!("lang:{i}"));
     hook!(on_autostart_toggled, |on| format!("autostart:{on}"));
     hook!(on_close_to_tray_toggled, |on| format!("tray:{on}"));
-    hook!(on_site_icons_toggled, |on| format!("icons:{on}"));
     hook!(on_panel_width_chosen, |w| format!("width:{w}"));
     hook!(on_no_paste_app_added, |n| format!("app+:{n}"));
     hook!(on_no_paste_app_removed, |i| format!("app-:{i}"));
@@ -733,8 +732,6 @@ ui_tests! {
         autostart.invoke_accessible_default_action();
         assert_eq!(take(&log), ["autostart:false"]);
         assert!(!ui.get_autostart());
-        find(&ui, "Show website icons on links", AccessibleRole::Switch).invoke_accessible_default_action();
-        assert_eq!(take(&log), ["icons:true"]);
         let tray = find(&ui, "Keep running in the tray when the window closes", AccessibleRole::Switch);
         tray.invoke_accessible_default_action();
         assert_eq!(take(&log), ["tray:false"]);

@@ -1,7 +1,7 @@
 # Privacy: what Snipdeck stores, where, and how to remove it
 
-Snipdeck is local-only. It has no account, no server, no telemetry and opens no network port. The one
-setting that can make a network request (site icons for link items) is off by default and says so.
+Snipdeck is local-only. It has no account, no server, no telemetry and opens no network port. No setting
+makes a network request; every icon and font it shows is packaged with it.
 
 ## What is stored
 

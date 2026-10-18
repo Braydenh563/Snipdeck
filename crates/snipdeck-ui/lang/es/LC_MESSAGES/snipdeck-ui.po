@@ -262,9 +262,6 @@ msgstr "Se borra todo lo de tu biblioteca: tableros, listas, fragmentos, imágen
 msgid "Export library"
 msgstr "Exportar la biblioteca"
 
-msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
-msgstr "Obtiene el icono pequeño de cada sitio desde el propio sitio. Desactivado por defecto, así que no se hace ninguna solicitud."
-
 msgid "Fields"
 msgstr "Campos"
 
@@ -667,9 +664,6 @@ msgstr "Atajos"
 msgid "Show or hide the panel"
 msgstr "Mostrar u ocultar el panel"
 
-msgid "Show website icons on links"
-msgstr "Mostrar iconos de sitios web en los enlaces"
-
 msgid "Slate"
 msgstr "Pizarra"
 
@@ -681,6 +675,9 @@ msgstr "Snipdeck Pro"
 
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeck no tiene cuenta, ni servidor, ni telemetría, y no abre ningún puerto de red. Nada de lo que guardas sale de este PC."
+
+msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
+msgstr "Snipdeck nunca se conecta a internet: todos los iconos y fuentes que muestra vienen incluidos."
 
 msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
 msgstr "Snipdeck guarda una copia de tu biblioteca una vez al día y conserva las 7 más recientes. Al restaurar se recupera lo que falta y nunca se quita nada."
@@ -735,9 +732,6 @@ msgstr "La clave abre los elementos cifrados de las exportaciones que guardaste 
 
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "La lista y sus {} fragmentos se mueven a la papelera. Puedes restaurarlos durante {} días."
-
-msgid "The one setting that can make a network request is website icons. It is off unless you turn it on above."
-msgstr "El único ajuste que puede hacer una petición de red son los iconos de sitios web. Está desactivado salvo que lo actives arriba."
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "Los fragmentos seleccionados se eliminarán definitivamente. No se puede deshacer."

@@ -262,9 +262,6 @@ msgstr "ライブラリの中身はすべて削除されます：ボード、リ
 msgid "Export library"
 msgstr "ライブラリをエクスポート"
 
-msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
-msgstr "各サイトの小さなアイコンをサイト自体から取得します。既定では無効のため、リクエストは送信されません。"
-
 msgid "Fields"
 msgstr "入力欄"
 
@@ -667,9 +664,6 @@ msgstr "ショートカット"
 msgid "Show or hide the panel"
 msgstr "パネルを表示または非表示"
 
-msgid "Show website icons on links"
-msgstr "リンクにウェブサイトのアイコンを表示"
-
 msgid "Slate"
 msgstr "スレート"
 
@@ -681,6 +675,9 @@ msgstr "Snipdeck Pro"
 
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeckにはアカウントもサーバーもテレメトリもなく、ネットワークポートも開きません。保存した内容がこのPCの外に出ることはありません。"
+
+msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
+msgstr "Snipdeck はインターネットに接続しません。表示するアイコンとフォントはすべて同梱されています。"
 
 msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
 msgstr "Snipdeckはライブラリのコピーを1日1回保存し、新しい7つを残します。復元では足りないものだけが戻り、何も削除されません。"
@@ -735,9 +732,6 @@ msgstr "このキーは、以前に保存したエクスポート内の暗号化
 
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "リストとその{}件のスニペットはゴミ箱に移動します。{}日間復元できます。"
-
-msgid "The one setting that can make a network request is website icons. It is off unless you turn it on above."
-msgstr "ネットワークに接続する可能性がある設定は、Webサイトのアイコンだけです。上でオンにしない限りオフです。"
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "選択したスニペットは完全に削除されます。この操作は元に戻せません。"

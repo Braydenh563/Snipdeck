@@ -138,8 +138,7 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   Français, Português (Brasil), 日本語 and 简体中文, and takes effect the next time Snipdeck starts.
   **Panel width** is 260 to 480 pixels. You can also drag the Panel's edges.
 - **General.** **Start with Windows** starts Snipdeck hidden in the tray when you sign in. **Keep running in
-  the tray when the window closes** decides whether closing the Panel hides it or quits. **Show website icons
-  on links** is off by default and is the only setting that makes a network request.
+  the tray when the window closes** decides whether closing the Panel hides it or quits.
 - **Never paste into.** Program file names, such as `notepad.exe`. Snipdeck copies instead of pasting there.
 - **Licence.** Paste your key (it starts with `SNIP1.`) and press **Activate**. See the
   [README](../README.md#licence).

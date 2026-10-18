@@ -387,32 +387,13 @@ fn resize_direction(edge: snipdeck_app::frame::Edge) -> winit::window::ResizeDir
     }
 }
 
-/// The monitor `window` is on. Its work area is the monitor's whole area for now: winit does
-/// not give the area without the taskbar.
-fn monitor_of(window: &winit::window::Window) -> Option<snipdeck_app::frame::Monitor> {
-    use snipdeck_app::frame::{Monitor, Rect};
-    let monitor = window.current_monitor()?;
-    let (size, at) = (monitor.size(), monitor.position());
-    #[allow(
-        clippy::cast_possible_truncation,
-        reason = "a display scale such as 1.5 fits an f32"
-    )]
-    let scale = monitor.scale_factor() as f32;
-    Some(Monitor {
-        id: Monitor::id_of(&monitor.name().unwrap_or_default(), size.width, size.height),
-        work_area: Rect {
-            x: at.x,
-            y: at.y,
-            w: size.width,
-            h: size.height,
-        },
-        scale,
-    })
-}
-
 /// Puts the Panel where the user left it on the monitor it is on.
 fn restore_frame(window: &PanelWindow) {
-    if let Some(monitor) = window.window().with_winit_window(monitor_of).flatten() {
+    if let Some(monitor) = window
+        .window()
+        .with_winit_window(snipdeck_app::native_window::monitor_of)
+        .flatten()
+    {
         with_binding(|b| b.restore_frame(&monitor));
     }
 }
@@ -433,7 +414,7 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
                 let frame = slint_window.with_winit_window(|w| {
                     let (at, size) = (w.outer_position().ok()?, w.inner_size());
                     Some((
-                        monitor_of(w)?,
+                        snipdeck_app::native_window::monitor_of(w)?,
                         snipdeck_app::frame::Rect {
                             x: at.x,
                             y: at.y,

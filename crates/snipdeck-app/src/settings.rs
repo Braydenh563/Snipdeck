@@ -184,8 +184,6 @@ pub struct Settings {
     pub panel_geometry: Vec<PanelGeometry>,
     /// Executable names that never receive an auto-paste (lower case).
     pub no_paste_apps: Vec<String>,
-    /// Fetch site icons for links. Off by default: Snipdeck makes no network calls unless asked.
-    pub site_icons: bool,
 }
 
 impl Default for Settings {
@@ -200,7 +198,6 @@ impl Default for Settings {
             panel_width: PANEL_WIDTH_DEFAULT,
             panel_geometry: Vec::new(),
             no_paste_apps: Vec::new(),
-            site_icons: false,
         }
     }
 }
@@ -262,7 +259,6 @@ impl Settings {
             Some(serde_json::Value::String(one)) => settings.no_paste_apps = vec![one.clone()],
             _ => {}
         }
-        field!(site_icons);
         settings
     }
 
@@ -517,7 +513,6 @@ mod tests {
                 "1password.exe".into(),
                 "putty.exe".into(),
             ],
-            site_icons: true,
             ..Settings::default()
         }
         .to_json();

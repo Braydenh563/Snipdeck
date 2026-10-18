@@ -262,9 +262,6 @@ msgstr "Alles in deiner Bibliothek wird gelöscht: Boards, Listen, Textbausteine
 msgid "Export library"
 msgstr "Bibliothek exportieren"
 
-msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
-msgstr "Holt das kleine Symbol jeder Website direkt von der Website. Standardmäßig aus, daher wird keine Anfrage gesendet."
-
 msgid "Fields"
 msgstr "Felder"
 
@@ -667,9 +664,6 @@ msgstr "Tastenkürzel"
 msgid "Show or hide the panel"
 msgstr "Panel anzeigen oder ausblenden"
 
-msgid "Show website icons on links"
-msgstr "Website-Symbole bei Links anzeigen"
-
 msgid "Slate"
 msgstr "Schiefergrau"
 
@@ -681,6 +675,9 @@ msgstr "Snipdeck Pro"
 
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeck hat kein Konto, keinen Server und keine Telemetrie und öffnet keinen Netzwerkport. Nichts, was du speicherst, verlässt diesen PC."
+
+msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
+msgstr "Snipdeck verbindet sich nie mit dem Internet: jedes Symbol und jede Schrift, die es zeigt, ist mitgeliefert."
 
 msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
 msgstr "Snipdeck speichert einmal am Tag eine Kopie deiner Bibliothek und behält die neuesten 7. Beim Wiederherstellen wird Fehlendes zurückgeholt, nichts wird entfernt."
@@ -735,9 +732,6 @@ msgstr "Der Schlüssel öffnet die verschlüsselten Textbausteine in früher ges
 
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "Die Liste und ihre {} Textbausteine werden in den Papierkorb verschoben. Du kannst sie {} Tage lang wiederherstellen."
-
-msgid "The one setting that can make a network request is website icons. It is off unless you turn it on above."
-msgstr "Die einzige Einstellung, die eine Netzwerkanfrage auslösen kann, sind Website-Symbole. Sie ist aus, solange du sie oben nicht einschaltest."
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "Die ausgewählten Textbausteine werden endgültig gelöscht. Dies kann nicht rückgängig gemacht werden."

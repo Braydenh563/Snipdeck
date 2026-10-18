@@ -30,6 +30,7 @@ use crate::{
     controller::{Controller, ToastPhase, ToastView},
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
     main_binding::{RegularWindow, raise, set_look},
+    native_window::fit_to_screen,
     settings::{HotkeyAction, Hotkeys, Settings, Theme},
     toast::{Toast, ToastKind, ToastMessage},
     wording::{self, LANGUAGE_NAMES, LANGUAGE_TAGS},
@@ -322,7 +323,6 @@ struct PageView {
     language_index: i32,
     autostart: bool,
     close_to_tray: bool,
-    site_icons: bool,
     panel_width: i32,
     no_paste_apps: Vec<String>,
     no_paste_error: String,
@@ -392,7 +392,6 @@ where
         language_index: language_index(&settings.language),
         autostart: settings.autostart,
         close_to_tray: settings.close_to_tray,
-        site_icons: settings.site_icons,
         panel_width: i32::try_from(settings.panel_width).unwrap_or(320),
         no_paste_apps: settings.no_paste_apps.clone(),
         no_paste_error: state.no_paste_error.clone(),
@@ -799,8 +798,6 @@ where
         wire!(on_autostart_toggled, |core, on| core.autostart_toggled(on));
         wire!(on_close_to_tray_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.close_to_tray = on)));
-        wire!(on_site_icons_toggled, |core, on| core
-            .act(|ctl| ctl.update_settings(|s| s.site_icons = on)));
         wire!(on_panel_width_chosen, |core, width| core
             .act(|ctl| ctl.update_settings(
                 |s| s.panel_width = u32::try_from(width).unwrap_or(0)
@@ -858,9 +855,6 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.close_to_tray == view.close_to_tray) {
         window.set_close_to_tray(view.close_to_tray);
-    }
-    if differs(&|p| p.site_icons == view.site_icons) {
-        window.set_site_icons(view.site_icons);
     }
     if differs(&|p| p.panel_width == view.panel_width) {
         window.set_panel_width(view.panel_width);
@@ -976,6 +970,7 @@ impl SettingsUi {
                 };
                 let _regular = RegularWindow::begin();
                 window.show()?;
+                fit_to_screen(window.window());
                 // The page was hidden, so it skipped the redraws; draw it now that it is up.
                 binding.redraw();
                 raise(window.window());

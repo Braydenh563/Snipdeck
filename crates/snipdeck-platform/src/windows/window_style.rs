@@ -173,3 +173,37 @@ unsafe extern "system" fn panel_subclass_proc(
     // SAFETY: forwards the message unchanged to the next procedure in the subclass chain.
     unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
 }
+
+/// The work area (the monitor without the taskbar and other app bars) of the monitor that
+/// holds the window `hwnd`, as `(x, y, width, height)` in physical pixels; `None` for a null or
+/// stale handle. winit only reports the whole monitor, which is why windows ended up under the
+/// taskbar.
+#[must_use]
+pub fn work_area_of(hwnd: isize) -> Option<(i32, i32, u32, u32)> {
+    use windows::Win32::Graphics::Gdi::{
+        GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromWindow,
+    };
+    if hwnd == 0 {
+        return None;
+    }
+    let hwnd = HWND(hwnd as *mut c_void);
+    let mut info = MONITORINFO {
+        cbSize: u32::try_from(std::mem::size_of::<MONITORINFO>()).ok()?,
+        ..Default::default()
+    };
+    // SAFETY: `info` is a properly sized MONITORINFO that outlives the call; a stale handle
+    // only makes the call fail.
+    let ok = unsafe {
+        let monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        GetMonitorInfoW(monitor, &raw mut info).as_bool()
+    };
+    if !ok {
+        return None;
+    }
+    let r = info.rcWork;
+    let (w, h) = (
+        u32::try_from(r.right - r.left).ok()?,
+        u32::try_from(r.bottom - r.top).ok()?,
+    );
+    (w > 0 && h > 0).then_some((r.left, r.top, w, h))
+}

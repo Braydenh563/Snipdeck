@@ -255,7 +255,6 @@ fn settings_page_light_dark_and_scaled() {
     h.component.set_dark(true);
     fixture::settings(&h.component);
     h.component.set_theme_index(2);
-    h.component.set_site_icons(true);
     h.component.set_autostart(false);
     assert_golden("settings-dark", &render(&h));
     drop(h);

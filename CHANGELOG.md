@@ -26,7 +26,7 @@ Windows PC.
 - The Panel's keep-on-top button, tooltips on every icon button, and mouse-wheel scrolling of the pinned strip.
 - Delete, `Ctrl+E` and `F2` on a Panel row.
 - A Settings window: hotkeys with conflict messages, theme, language, panel width, start with Windows, keep
-  running in the tray, website icons, never-paste-into programs, licence entry, backups, export and erase.
+  running in the tray, never-paste-into programs, licence entry, backups, export and erase.
 - Daily automatic backups (newest 7 kept), with restore in Settings.
 - A weekly library check, and a one-time notice after a crash with a button that opens the log folder.
 - Crash reports in `%LOCALAPPDATA%\Snipdeck\logs` (newest 10 kept).

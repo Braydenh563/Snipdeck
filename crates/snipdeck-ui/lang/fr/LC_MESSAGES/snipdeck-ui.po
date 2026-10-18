@@ -262,9 +262,6 @@ msgstr "Tout ce qui est dans votre bibliothèque disparaît : tableaux, listes, 
 msgid "Export library"
 msgstr "Exporter la bibliothèque"
 
-msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
-msgstr "Récupère la petite icône de chaque site depuis le site lui-même. Désactivé par défaut, donc aucune requête n'est envoyée."
-
 msgid "Fields"
 msgstr "Champs"
 
@@ -667,9 +664,6 @@ msgstr "Raccourcis"
 msgid "Show or hide the panel"
 msgstr "Afficher ou masquer le panneau"
 
-msgid "Show website icons on links"
-msgstr "Afficher les icônes des sites sur les liens"
-
 msgid "Slate"
 msgstr "Ardoise"
 
@@ -681,6 +675,9 @@ msgstr "Snipdeck Pro"
 
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeck n’a ni compte, ni serveur, ni télémétrie, et n’ouvre aucun port réseau. Rien de ce que vous enregistrez ne quitte ce PC."
+
+msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
+msgstr "Snipdeck ne se connecte jamais à internet : chaque icône et chaque police affichée est fournie avec lui."
 
 msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
 msgstr "Snipdeck enregistre une copie de votre bibliothèque une fois par jour et garde les 7 plus récentes. La restauration remet ce qui manque et ne supprime jamais rien."
@@ -735,9 +732,6 @@ msgstr "La clé ouvre les éléments chiffrés des exports enregistrés plus tô
 
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "La liste et ses {} extraits sont déplacés dans la corbeille. Vous pouvez les restaurer pendant {} jours."
-
-msgid "The one setting that can make a network request is website icons. It is off unless you turn it on above."
-msgstr "Le seul réglage qui peut faire une requête réseau est celui des icônes de sites. Il est désactivé tant que vous ne l’activez pas ci-dessus."
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "Les extraits sélectionnés seront supprimés définitivement. Cette action est irréversible."

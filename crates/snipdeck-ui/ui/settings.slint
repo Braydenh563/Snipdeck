@@ -1,5 +1,5 @@
 // The Settings page of the Main window (SPEC §5, snipdeck-core `Settings`): the four global shortcuts, theme,
-// language, start with Windows, close to tray, panel width, apps the panel never pastes into, and site icons.
+// language, start with Windows, close to tray, panel width and apps the panel never pastes into.
 //
 // Every change applies at once (no Save button): the page reports it as a callback and the host stores it and, if it
 // cannot be applied (a shortcut another program owns), writes the reason back (`hotkeys[i].conflict`) or the old
@@ -52,7 +52,6 @@ export component SettingsPage inherits Window {
     in property <int> language-index: 0;
     in-out property <bool> autostart: false;
     in-out property <bool> close-to-tray: true;
-    in-out property <bool> site-icons: false;
     in property <int> panel-width: 320;
     in property <int> panel-width-min: 260;
     in property <int> panel-width-max: 480;
@@ -89,7 +88,6 @@ export component SettingsPage inherits Window {
     callback language-chosen(index: int);
     callback autostart-toggled(on: bool);
     callback close-to-tray-toggled(on: bool);
-    callback site-icons-toggled(on: bool);
     callback panel-width-chosen(width: int);
     callback no-paste-app-added(name: string);
     callback no-paste-app-removed(index: int);
@@ -267,18 +265,6 @@ export component SettingsPage inherits Window {
                             a11y-label: @tr("Keep running in the tray when the window closes");
                             checked <=> root.close-to-tray;
                             toggled(on) => { root.close-to-tray-toggled(on); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                    }
-                    SettingRow {
-                        title: @tr("Show website icons on links");
-                        description: @tr("Fetches each site's small icon from the site itself. Off by default, so no request is made.");
-                        Toggle {
-                            a11y-label: @tr("Show website icons on links");
-                            checked <=> root.site-icons;
-                            toggled(on) => { root.site-icons-toggled(on); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
@@ -592,7 +578,7 @@ export component SettingsPage inherits Window {
                         @tr("Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."),
                         @tr("Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (the newest 7) and logs."),
                         @tr("Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."),
-                        @tr("The one setting that can make a network request is website icons. It is off unless you turn it on above."),
+                        @tr("Snipdeck never connects to the internet: every icon and font it shows is packaged with it."),
                         @tr("Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."),
                         @tr("To remove everything, use Erase library above and then delete the folder."),
                     ]: Text {

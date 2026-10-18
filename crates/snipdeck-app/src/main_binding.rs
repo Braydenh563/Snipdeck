@@ -33,6 +33,7 @@ use crate::{
     controller::{BoardMenuEntry, Controller, Library, MainAction, MainScreen, ToastPhase},
     host::ClipboardText,
     main_window::{EditorKind, EditorView, Section, SelectMode, ViewMode},
+    native_window::fit_to_screen,
     palette::list_color,
     wording,
 };
@@ -192,6 +193,7 @@ where
                     fill_list_editor(&window, view);
                     let _regular = RegularWindow::begin();
                     let _ = window.show();
+                    fit_to_screen(window.window());
                     window.invoke_focus_name();
                 }
             }
@@ -209,6 +211,7 @@ where
                     fill_board_editor(&window, view);
                     let _regular = RegularWindow::begin();
                     let _ = window.show();
+                    fit_to_screen(window.window());
                     window.invoke_focus_name();
                 }
             }
@@ -469,6 +472,7 @@ impl MainUi {
                 binding.redraw();
                 let _regular = RegularWindow::begin();
                 window.show()?;
+                fit_to_screen(window.window());
                 raise(window.window());
                 Ok(())
             })

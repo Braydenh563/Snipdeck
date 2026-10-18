@@ -262,9 +262,6 @@ msgstr "Tudo na sua biblioteca será apagado: quadros, listas, trechos, imagens,
 msgid "Export library"
 msgstr "Exportar a biblioteca"
 
-msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
-msgstr "Busca o ícone pequeno de cada site no próprio site. Desativado por padrão, então nenhuma solicitação é feita."
-
 msgid "Fields"
 msgstr "Campos"
 
@@ -667,9 +664,6 @@ msgstr "Atalhos"
 msgid "Show or hide the panel"
 msgstr "Mostrar ou ocultar o painel"
 
-msgid "Show website icons on links"
-msgstr "Mostrar ícones de sites nos links"
-
 msgid "Slate"
 msgstr "Ardósia"
 
@@ -681,6 +675,9 @@ msgstr "Snipdeck Pro"
 
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "O Snipdeck não tem conta, servidor nem telemetria e não abre nenhuma porta de rede. Nada do que você salva sai deste PC."
+
+msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
+msgstr "O Snipdeck nunca se conecta à internet: todos os ícones e fontes que ele mostra vêm incluídos."
 
 msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
 msgstr "O Snipdeck salva uma cópia da sua biblioteca uma vez por dia e mantém as 7 mais recentes. Restaurar traz de volta o que falta e nunca remove nada."
@@ -735,9 +732,6 @@ msgstr "A chave abre os itens criptografados em exportações que você salvou a
 
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "A lista e seus {} trechos são movidos para a lixeira. Você pode restaurá-los por {} dias."
-
-msgid "The one setting that can make a network request is website icons. It is off unless you turn it on above."
-msgstr "A única configuração que pode fazer uma solicitação de rede é a dos ícones de sites. Ela fica desligada, a menos que você a ligue acima."
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "Os trechos selecionados serão excluídos definitivamente. Isso não pode ser desfeito."

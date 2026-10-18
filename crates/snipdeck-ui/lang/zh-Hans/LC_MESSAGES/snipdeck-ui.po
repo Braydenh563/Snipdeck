@@ -262,9 +262,6 @@ msgstr "资料库中的所有内容都会被删除：看板、列表、片段、
 msgid "Export library"
 msgstr "导出资料库"
 
-msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
-msgstr "从网站本身获取每个网站的小图标。默认关闭，因此不会发出请求。"
-
 msgid "Fields"
 msgstr "字段"
 
@@ -667,9 +664,6 @@ msgstr "快捷键"
 msgid "Show or hide the panel"
 msgstr "显示或隐藏面板"
 
-msgid "Show website icons on links"
-msgstr "在链接上显示网站图标"
-
 msgid "Slate"
 msgstr "石板灰"
 
@@ -681,6 +675,9 @@ msgstr "Snipdeck Pro"
 
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeck 没有账户、没有服务器、没有遥测，也不开放任何网络端口。你保存的内容不会离开这台电脑。"
+
+msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
+msgstr "Snipdeck 从不连接互联网：它显示的每个图标和字体都已随应用打包。"
 
 msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
 msgstr "Snipdeck 每天保存一份资料库副本，并保留最新的 7 份。还原只会补回缺少的内容，不会删除任何东西。"
@@ -735,9 +732,6 @@ msgstr "该密钥用于打开你之前保存的导出文件中的加密项目。
 
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "该列表及其中的 {} 个片段将移至回收站。你可以在 {} 天内恢复它们。"
-
-msgid "The one setting that can make a network request is website icons. It is off unless you turn it on above."
-msgstr "唯一可能发出网络请求的设置是网站图标。除非你在上方开启，否则它是关闭的。"
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "所选片段将被永久删除，此操作无法撤销。"

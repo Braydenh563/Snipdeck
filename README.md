@@ -117,8 +117,8 @@ to `Snipdeck.bat`, so updating or deleting it never touches your library.
 ## Privacy
 
 Snipdeck has no account, no server and no telemetry, and it opens no network port. The only network use is
-the launcher's one download. One optional setting, website icons on links, can fetch a site's icon. It is
-off unless you turn it on. Licence keys are checked on your PC. See [`docs/privacy.md`](docs/privacy.md).
+the launcher's one download. Every icon and font the app shows is packaged with it; no setting makes a
+network request. Licence keys are checked on your PC. See [`docs/privacy.md`](docs/privacy.md).
 
 ## Licence
 
