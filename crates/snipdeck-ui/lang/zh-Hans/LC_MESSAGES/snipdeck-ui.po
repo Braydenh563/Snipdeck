@@ -11,46 +11,46 @@ msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "列表可以把相关的片段放在一起，例如回复或地址。"
 
 msgid "Actions"
-msgstr ""
+msgstr "操作"
 
 msgid "Add"
-msgstr ""
+msgstr "添加"
 
 msgid "Add a snippet, or move items here from another list."
-msgstr ""
+msgstr "添加片段，或从其他列表移动到这里。"
 
 msgid "Add list"
 msgstr "添加列表"
 
 msgid "Add some text, or cancel."
-msgstr ""
+msgstr "添加一些文本，或取消。"
 
 msgid "All"
 msgstr "全部"
 
 msgid "All items"
-msgstr ""
+msgstr "所有片段"
 
 msgid "Amber"
-msgstr ""
+msgstr "琥珀色"
 
 msgid "Appearance"
-msgstr ""
+msgstr "外观"
 
 msgid "Apply the new name"
-msgstr ""
+msgstr "应用新名称"
 
 msgid "Asks for a value each time"
-msgstr ""
+msgstr "每次都询问值"
 
 msgid "Asks you to pick one of the options"
-msgstr ""
+msgstr "让你从选项中选择一项"
 
 msgid "Blue"
-msgstr ""
+msgstr "蓝色"
 
 msgid "Board name"
-msgstr ""
+msgstr "看板名称"
 
 msgid "Board: {}"
 msgstr "看板：{}"
@@ -59,34 +59,34 @@ msgid "Boards"
 msgstr "看板"
 
 msgid "Brings the panel up beside the app you are working in."
-msgstr ""
+msgstr "在你正在使用的应用旁边显示面板。"
 
 msgid "Cancel"
 msgstr "取消"
 
 msgid "Capture a region"
-msgstr ""
+msgstr "捕获区域"
 
 msgid "Captured items keep their kind."
-msgstr ""
+msgstr "捕获的片段保留其类型。"
 
 msgid "Changes apply at once."
-msgstr ""
+msgstr "更改立即生效。"
 
 msgid "Choose one to add it at the end of the text. It is filled in when you use the item."
-msgstr ""
+msgstr "选择一项将其添加到文本末尾。使用该片段时会填入内容。"
 
 msgid "Choose tags"
-msgstr ""
+msgstr "选择标签"
 
 msgid "Clear search"
 msgstr "清除搜索"
 
 msgid "Clear selection"
-msgstr ""
+msgstr "清除选择"
 
 msgid "Clear the shortcut for {}"
-msgstr ""
+msgstr "清除 {} 的快捷键"
 
 msgid "Close"
 msgstr "关闭"
@@ -95,22 +95,22 @@ msgid "Close panel"
 msgstr "关闭面板"
 
 msgid "Close the tag list"
-msgstr ""
+msgstr "关闭标签列表"
 
 msgid "Code"
-msgstr ""
+msgstr "代码"
 
 msgid "Colour"
-msgstr ""
+msgstr "颜色"
 
 msgid "Comfortable view"
-msgstr ""
+msgstr "舒适视图"
 
 msgid "Compact view"
-msgstr ""
+msgstr "紧凑视图"
 
 msgid "Content"
-msgstr ""
+msgstr "内容"
 
 msgid "Control Enter"
 msgstr "Ctrl Enter"
@@ -128,94 +128,94 @@ msgid "Copy something, then save it here from the clipboard."
 msgstr "先复制一些内容，然后从剪贴板保存到这里。"
 
 msgid "Dark"
-msgstr ""
+msgstr "深色"
 
 msgid "Date and time in a format you choose"
-msgstr ""
+msgstr "以你选择的格式显示日期和时间"
 
 msgid "Delete"
-msgstr ""
+msgstr "删除"
 
 msgid "Delete board"
-msgstr ""
+msgstr "删除看板"
 
 msgid "Delete for good"
-msgstr ""
+msgstr "永久删除"
 
 msgid "Delete for good?"
-msgstr ""
+msgstr "要永久删除吗？"
 
 msgid "Delete for good…"
-msgstr ""
+msgstr "永久删除…"
 
 msgid "Delete forever…"
-msgstr ""
+msgstr "永久删除…"
 
 msgid "Delete list"
-msgstr ""
+msgstr "删除列表"
 
 msgid "Delete list “{}”?"
-msgstr ""
+msgstr "要删除列表“{}”吗？"
 
 msgid "Delete list…"
-msgstr ""
+msgstr "删除列表…"
 
 msgid "Delete tag"
-msgstr ""
+msgstr "删除标签"
 
 msgid "Delete tag {}"
-msgstr ""
+msgstr "删除标签 {}"
 
 msgid "Delete tag “{}”?"
-msgstr ""
+msgstr "要删除标签“{}”吗？"
 
 msgid "Delete tag…"
-msgstr ""
+msgstr "删除标签…"
 
 msgid "Delete this board?"
-msgstr ""
+msgstr "要删除此看板吗？"
 
 msgid "Delete this list?"
-msgstr ""
+msgstr "要删除此列表吗？"
 
 msgid "Delete this tag?"
-msgstr ""
+msgstr "要删除此标签吗？"
 
 msgid "Deleted items stay here for {} days before they are removed."
-msgstr ""
+msgstr "已删除的片段会在这里保留 {} 天，之后才会被移除。"
 
 msgid "Discard"
-msgstr ""
+msgstr "放弃"
 
 msgid "Discard your changes?"
-msgstr ""
+msgstr "要放弃更改吗？"
 
 msgid "Done"
-msgstr ""
+msgstr "完成"
 
 msgid "Edit"
-msgstr ""
+msgstr "编辑"
 
 msgid "Edit board"
-msgstr ""
+msgstr "编辑看板"
 
 msgid "Edit item"
-msgstr ""
+msgstr "编辑片段"
 
 msgid "Edit list"
-msgstr ""
+msgstr "编辑列表"
 
 msgid "Edit list…"
-msgstr ""
+msgstr "编辑列表…"
 
 msgid "Empty Trash"
-msgstr ""
+msgstr "清空回收站"
 
 msgid "Empty Trash…"
-msgstr ""
+msgstr "清空回收站…"
 
 msgid "Empty the Trash?"
-msgstr ""
+msgstr "要清空回收站吗？"
 
 msgid "Enter"
 msgstr "Enter"
@@ -224,43 +224,43 @@ msgid "Escape"
 msgstr "Esc"
 
 msgid "Everything in the Trash is deleted for good. This can't be undone."
-msgstr ""
+msgstr "回收站中的所有内容都将被永久删除，此操作无法撤销。"
 
 msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
-msgstr ""
+msgstr "从网站本身获取每个网站的小图标。默认关闭，因此不会发出请求。"
 
 msgid "Fields"
 msgstr "字段"
 
 msgid "File"
-msgstr ""
+msgstr "文件"
 
 msgid "Fill in template"
 msgstr "填写模板"
 
 msgid "Follow Windows switches with your system setting."
-msgstr ""
+msgstr "跟随系统设置中的 Windows 主题。"
 
 msgid "For example, Email replies"
-msgstr ""
+msgstr "例如：邮件回复"
 
 msgid "For example, Work"
-msgstr ""
+msgstr "例如：工作"
 
 msgid "General"
-msgstr ""
+msgstr "常规"
 
 msgid "Give the board a name."
-msgstr ""
+msgstr "请为看板命名。"
 
 msgid "Give the list a name."
-msgstr ""
+msgstr "请为列表命名。"
 
 msgid "Green"
-msgstr ""
+msgstr "绿色"
 
 msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it."
-msgstr ""
+msgstr "在按住空格键之前在列表中隐藏，不计入剪贴板历史，并在使用后 {} 秒从剪贴板中清除。"
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "已隐藏。按住空格键即可显示。"
@@ -269,58 +269,58 @@ msgid "Hidden. Open it in the Panel to reveal."
 msgstr "已隐藏。在面板中打开即可显示。"
 
 msgid "How wide the panel opens, from {} to {} pixels."
-msgstr ""
+msgstr "面板展开的宽度，范围为 {} 至 {} 像素。"
 
 msgid "Image"
-msgstr ""
+msgstr "图片"
 
 msgid "In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe."
-msgstr ""
+msgstr "在这些程序中，Snipdeck 会复制而不是粘贴。请使用程序的文件名，例如 notepad.exe。"
 
 msgid "Insert"
 msgstr "粘贴"
 
 msgid "Insert {}"
-msgstr ""
+msgstr "插入 {}"
 
 msgid "It is removed from {n} item. The item stays."
-msgstr ""
+msgstr "将从 {n} 个片段中移除。片段本身保留。"
 
 msgid "Item actions"
-msgstr ""
+msgstr "片段操作"
 
 msgid "Items are removed after {} days."
-msgstr ""
+msgstr "片段将在 {} 天后移除。"
 
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
-msgstr ""
+msgstr "其列表及其中的 {n} 个片段将移至回收站。你可以在 30 天内恢复它们。"
 
 msgid "Keep editing"
-msgstr ""
+msgstr "继续编辑"
 
 msgid "Keep panel on top"
-msgstr ""
+msgstr "面板保持在最前"
 
 msgid "Keep running in the tray when the window closes"
-msgstr ""
+msgstr "关闭窗口时继续在通知区域运行"
 
 msgid "Kind"
-msgstr ""
+msgstr "类型"
 
 msgid "Language"
-msgstr ""
+msgstr "语言"
 
 msgid "Light"
-msgstr ""
+msgstr "浅色"
 
 msgid "Link"
-msgstr ""
+msgstr "链接"
 
 msgid "List"
-msgstr ""
+msgstr "列表"
 
 msgid "List name"
-msgstr ""
+msgstr "列表名称"
 
 msgid "Lists"
 msgstr "列表"
@@ -329,64 +329,64 @@ msgid "Loading"
 msgstr "正在加载"
 
 msgid "Make the panel narrower"
-msgstr ""
+msgstr "缩窄面板"
 
 msgid "Make the panel wider"
-msgstr ""
+msgstr "加宽面板"
 
 msgid "Manage tags"
-msgstr ""
+msgstr "管理标签"
 
 msgid "Manage tags…"
-msgstr ""
+msgstr "管理标签…"
 
 msgid "Manual"
-msgstr ""
+msgstr "手动"
 
 msgid "More"
-msgstr ""
+msgstr "更多"
 
 msgid "Most used"
-msgstr ""
+msgstr "最常用"
 
 msgid "Move"
-msgstr ""
+msgstr "移动"
 
 msgid "Move to list"
-msgstr ""
+msgstr "移动到列表"
 
 msgid "Move to list…"
-msgstr ""
+msgstr "移动到列表…"
 
 msgid "Navigation"
-msgstr ""
+msgstr "导航"
 
 msgid "Never paste into"
-msgstr ""
+msgstr "从不粘贴到"
 
 msgid "New board"
-msgstr ""
+msgstr "新建看板"
 
 msgid "New item"
-msgstr ""
+msgstr "新建片段"
 
 msgid "New list"
 msgstr "新建列表"
 
 msgid "New name for {}"
-msgstr ""
+msgstr "{} 的新名称"
 
 msgid "New tag"
-msgstr ""
+msgstr "新建标签"
 
 msgid "New tag, then Enter"
-msgstr ""
+msgstr "新建标签，然后按 Enter"
 
 msgid "No colour"
-msgstr ""
+msgstr "无颜色"
 
 msgid "No items with this tag"
-msgstr ""
+msgstr "没有带此标签的片段"
 
 msgid "No lists yet"
 msgstr "还没有列表"
@@ -395,28 +395,28 @@ msgid "No matches"
 msgstr "没有匹配项"
 
 msgid "No programs yet."
-msgstr ""
+msgstr "还没有程序。"
 
 msgid "No recent items"
-msgstr ""
+msgstr "没有最近的片段"
 
 msgid "No snippets yet"
 msgstr "还没有片段"
 
 msgid "No tags"
-msgstr ""
+msgstr "无标签"
 
 msgid "No tags yet"
-msgstr ""
+msgstr "还没有标签"
 
 msgid "No tags yet. Add one below."
-msgstr ""
+msgstr "还没有标签。请在下方添加。"
 
 msgid "No tags yet. Add tags to an item and they appear here."
-msgstr ""
+msgstr "还没有标签。为片段添加标签后，将显示在这里。"
 
 msgid "Not set"
-msgstr ""
+msgstr "未设置"
 
 msgid "Nothing matches “{}”."
 msgstr "没有与“{}”匹配的内容。"
@@ -425,7 +425,7 @@ msgid "Nothing on this board matches “{}”."
 msgstr "此看板中没有与“{}”匹配的内容。"
 
 msgid "Nothing pinned"
-msgstr ""
+msgstr "没有置顶内容"
 
 msgid "Nothing pinned matches “{}”."
 msgstr "没有与“{}”匹配的置顶片段。"
@@ -434,31 +434,31 @@ msgid "Nothing pinned yet"
 msgstr "还没有置顶内容"
 
 msgid "Only text, code, link and template items can be sensitive."
-msgstr ""
+msgstr "只有文本、代码、链接和模板类型的片段可以设为敏感。"
 
 msgid "Open Settings"
-msgstr ""
+msgstr "打开设置"
 
 msgid "Open the picker"
-msgstr ""
+msgstr "打开选择器"
 
 msgid "Optional: the first line of the text is used"
-msgstr ""
+msgstr "可选：使用文本的第一行"
 
 msgid "Orange"
-msgstr ""
+msgstr "橙色"
 
 msgid "Panel menu"
-msgstr ""
+msgstr "面板菜单"
 
 msgid "Panel width"
-msgstr ""
+msgstr "面板宽度"
 
 msgid "Paste"
 msgstr "粘贴"
 
 msgid "Paste the next item"
-msgstr ""
+msgstr "粘贴下一个片段"
 
 msgid "Pastes into {}"
 msgstr "粘贴到 {}"
@@ -467,16 +467,16 @@ msgid "Pastes into {} · {}"
 msgstr "粘贴到 {} · {}"
 
 msgid "Pastes the next item of the list in order."
-msgstr ""
+msgstr "按顺序粘贴列表中的下一个片段。"
 
 msgid "Pin"
-msgstr ""
+msgstr "置顶"
 
 msgid "Pin a snippet from the Panel to find it here."
 msgstr "在面板中置顶片段后，即可在这里找到。"
 
 msgid "Pin the snippets you use most to keep them one click away."
-msgstr ""
+msgstr "将常用的片段置顶，即可一键直达。"
 
 msgid "Pinned"
 msgstr "置顶"
@@ -485,172 +485,172 @@ msgid "Pinned snippets"
 msgstr "已置顶的片段"
 
 msgid "Placeholders"
-msgstr ""
+msgstr "占位符"
 
 msgid "Press the new shortcut"
-msgstr ""
+msgstr "按下新的快捷键"
 
 msgid "Preview"
 msgstr "预览"
 
 msgid "Privacy"
-msgstr ""
+msgstr "隐私"
 
 msgid "Program to add"
-msgstr ""
+msgstr "要添加的程序"
 
 msgid "Recent"
-msgstr ""
+msgstr "最近"
 
 msgid "Recently used"
-msgstr ""
+msgstr "最近使用"
 
 msgid "Red"
-msgstr ""
+msgstr "红色"
 
 msgid "Remove tag {}"
-msgstr ""
+msgstr "移除标签 {}"
 
 msgid "Remove {} from the list"
-msgstr ""
+msgstr "从列表中移除 {}"
 
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr ""
+msgstr "重命名或删除标签。删除标签会将其从片段中移除，片段本身保留。"
 
 msgid "Rename tag {}"
-msgstr ""
+msgstr "重命名标签 {}"
 
 msgid "Required"
 msgstr "必填"
 
 msgid "Restore"
-msgstr ""
+msgstr "还原"
 
 msgid "Results"
 msgstr "搜索结果"
 
 msgid "Rose"
-msgstr ""
+msgstr "玫瑰色"
 
 msgid "Save"
-msgstr ""
+msgstr "保存"
 
 msgid "Save from clipboard"
 msgstr "从剪贴板保存"
 
 msgid "Save your first snippet, or copy something and save it from the clipboard."
-msgstr ""
+msgstr "保存你的第一个片段，或复制一些内容后从剪贴板保存。"
 
 msgid "Scope"
 msgstr "范围"
 
 msgid "Scroll left"
-msgstr ""
+msgstr "向左滚动"
 
 msgid "Scroll right"
-msgstr ""
+msgstr "向右滚动"
 
 msgid "Search all snippets"
 msgstr "搜索所有片段"
 
 msgid "Search every board and paste without opening the window."
-msgstr ""
+msgstr "搜索所有看板，无需打开窗口即可粘贴。"
 
 msgid "Search in"
 msgstr "搜索范围"
 
 msgid "Search results"
-msgstr ""
+msgstr "搜索结果"
 
 msgid "Search snippets"
 msgstr "搜索片段"
 
 msgid "Selects part of the screen and saves it as an item."
-msgstr ""
+msgstr "选择屏幕的一部分并将其保存为片段。"
 
 msgid "Sensitive item"
-msgstr ""
+msgstr "敏感片段"
 
 msgid "Settings"
-msgstr ""
+msgstr "设置"
 
 msgid "Shift Enter"
 msgstr "Shift Enter"
 
 msgid "Shortcuts"
-msgstr ""
+msgstr "快捷键"
 
 msgid "Show or hide the panel"
-msgstr ""
+msgstr "显示或隐藏面板"
 
 msgid "Show website icons on links"
-msgstr ""
+msgstr "在链接上显示网站图标"
 
 msgid "Slate"
-msgstr ""
+msgstr "石板灰"
 
 msgid "Snipdeck"
 msgstr "Snipdeck"
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
-msgstr ""
+msgstr "Snipdeck 会待在系统托盘中，以便登录后快捷键仍可使用。"
 
 msgid "Snippets"
 msgstr "片段"
 
 msgid "Sort items by"
-msgstr ""
+msgstr "排序方式"
 
 msgid "Start with Windows"
-msgstr ""
+msgstr "随 Windows 启动"
 
 msgid "Tab"
 msgstr "Tab"
 
 msgid "Tag"
-msgstr ""
+msgstr "标签"
 
 msgid "Tag a snippet to see it here."
-msgstr ""
+msgstr "为片段添加标签后，即可在这里看到。"
 
 msgid "Tags"
-msgstr ""
+msgstr "标签"
 
 msgid "Tags…"
-msgstr ""
+msgstr "标签…"
 
 msgid "Takes effect the next time Snipdeck starts."
-msgstr ""
+msgstr "下次启动 Snipdeck 时生效。"
 
 msgid "Teal"
-msgstr ""
+msgstr "青绿色"
 
 msgid "Template"
-msgstr ""
+msgstr "模板"
 
 msgid "Template text"
-msgstr ""
+msgstr "模板文本"
 
 msgid "Text"
-msgstr ""
+msgstr "文本"
 
 msgid "The Trash is empty"
-msgstr ""
+msgstr "回收站为空"
 
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
-msgstr ""
+msgstr "该列表及其中的 {} 个片段将移至回收站。你可以在 {} 天内恢复它们。"
 
 msgid "The selected items are deleted for good. This can't be undone."
-msgstr ""
+msgstr "所选片段将被永久删除，此操作无法撤销。"
 
 msgid "The tag is removed from its items. The items themselves stay."
-msgstr ""
+msgstr "标签将从其片段中移除，片段本身保留。"
 
 msgid "The time now"
-msgstr ""
+msgstr "当前时间"
 
 msgid "Theme"
-msgstr ""
+msgstr "主题"
 
 msgid "This board"
 msgstr "此看板"
@@ -662,70 +662,70 @@ msgid "This list is empty"
 msgstr "此列表为空"
 
 msgid "This text is {}. Anything over 16 KB opens read-only here."
-msgstr ""
+msgstr "此文本为 {}。超过 16 KB 的内容将在此以只读方式打开。"
 
 msgid "Tile view"
-msgstr ""
+msgstr "平铺视图"
 
 msgid "Title"
-msgstr ""
+msgstr "标题"
 
 msgid "Today's date"
-msgstr ""
+msgstr "今天的日期"
 
 msgid "Trash"
-msgstr ""
+msgstr "回收站"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
-msgstr ""
+msgstr "在设置中开启剪贴板历史，以收集你复制的内容。"
 
 msgid "Turn this off and closing the main window quits Snipdeck."
-msgstr ""
+msgstr "关闭此项后，关闭主窗口将退出 Snipdeck。"
 
 msgid "Unpin"
-msgstr ""
+msgstr "取消置顶"
 
 msgid "Use"
-msgstr ""
+msgstr "使用"
 
 msgid "Violet"
-msgstr ""
+msgstr "紫罗兰色"
 
 msgid "What is on the clipboard"
-msgstr ""
+msgstr "剪贴板中的内容"
 
 msgid "What you changed has not been saved."
-msgstr ""
+msgstr "更改尚未保存。"
 
 msgid "What you changed in this item has not been saved."
-msgstr ""
+msgstr "此片段的更改尚未保存。"
 
 msgid "Where the text cursor lands after pasting"
-msgstr ""
+msgstr "粘贴后文本光标的位置"
 
 msgid "Windows"
-msgstr ""
+msgstr "Windows"
 
 msgid "Your deck is empty"
-msgstr ""
+msgstr "你的卡组是空的"
 
 msgid "https://example.com"
-msgstr ""
+msgstr "https://example.com"
 
 msgid "notepad.exe"
-msgstr ""
+msgstr "notepad.exe"
 
 msgid "px"
-msgstr ""
+msgstr "px"
 
 msgid "{n} item"
-msgstr ""
+msgstr "{n} 个片段"
 
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
-msgstr ""
+msgstr "{n} 个片段将一同移至回收站。你可以在 30 天内恢复它们。"
 
 msgid "{} (Pro)"
-msgstr ""
+msgstr "{} (Pro)"
 
 msgid "{} selected"
-msgstr ""
+msgstr "已选择 {} 项"
