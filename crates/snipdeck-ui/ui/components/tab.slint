@@ -141,6 +141,8 @@ export component ListTabBar inherits Rectangle {
     callback dropped(index: int);
 
     out property <bool> has-focus: scope.has-focus;
+    // The "+" button is under the pointer or holds keyboard focus (the host shows its tooltip).
+    out property <bool> add-active: add-touch.has-hover || add-scope.has-focus;
     // Scroll offset of the tabs (<= 0).
     out property <length> scroll-x: flick.content-x;
 

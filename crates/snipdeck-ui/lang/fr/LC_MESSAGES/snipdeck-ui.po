@@ -343,6 +343,9 @@ msgstr ""
 msgid "Manual"
 msgstr ""
 
+msgid "More"
+msgstr ""
+
 msgid "Most used"
 msgstr ""
 
@@ -445,6 +448,9 @@ msgstr ""
 msgid "Orange"
 msgstr ""
 
+msgid "Panel menu"
+msgstr ""
+
 msgid "Panel width"
 msgstr ""
 
@@ -536,6 +542,12 @@ msgid "Save your first snippet, or copy something and save it from the clipboard
 msgstr ""
 
 msgid "Scope"
+msgstr ""
+
+msgid "Scroll left"
+msgstr ""
+
+msgid "Scroll right"
 msgstr ""
 
 msgid "Search all snippets"
