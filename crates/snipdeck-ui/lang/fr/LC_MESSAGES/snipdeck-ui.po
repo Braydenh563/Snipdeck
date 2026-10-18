@@ -14,7 +14,7 @@ msgid "Add list"
 msgstr "Ajouter une liste"
 
 msgid "All"
-msgstr ""
+msgstr "Tous"
 
 msgid "Board: {}"
 msgstr "Tableau : {}"
@@ -23,19 +23,19 @@ msgid "Boards"
 msgstr "Tableaux"
 
 msgid "Cancel"
-msgstr ""
+msgstr "Annuler"
 
 msgid "Clear search"
 msgstr "Effacer la recherche"
 
 msgid "Close"
-msgstr ""
+msgstr "Fermer"
 
 msgid "Close panel"
 msgstr "Fermer le panneau"
 
 msgid "Control Enter"
-msgstr ""
+msgstr "Ctrl Enter"
 
 msgid "Copies to clipboard"
 msgstr "Copie dans le presse-papiers"
@@ -44,7 +44,7 @@ msgid "Copy"
 msgstr "Copier"
 
 msgid "Copy something, then save it from the Panel."
-msgstr ""
+msgstr "Copiez quelque chose, puis enregistrez-le depuis le panneau."
 
 msgid "Copy something, then save it here from the clipboard."
 msgstr "Copiez quelque chose, puis enregistrez-le ici depuis le presse-papiers."
@@ -53,22 +53,22 @@ msgid "Enter"
 msgstr "Enter"
 
 msgid "Escape"
-msgstr ""
+msgstr "Esc"
 
 msgid "Fields"
-msgstr ""
+msgstr "Champs"
 
 msgid "Fill in template"
-msgstr ""
+msgstr "Remplir le modèle"
 
 msgid "Hidden. Hold Space to reveal."
-msgstr ""
+msgstr "Masqué. Maintenez la touche Espace pour afficher."
 
 msgid "Hidden. Open it in the Panel to reveal."
-msgstr ""
+msgstr "Masqué. Ouvrez-le dans le panneau pour l'afficher."
 
 msgid "Insert"
-msgstr ""
+msgstr "Coller"
 
 msgid "Keep on top"
 msgstr "Toujours au premier plan"
@@ -89,19 +89,19 @@ msgid "No matches"
 msgstr "Aucun résultat"
 
 msgid "No snippets yet"
-msgstr ""
+msgstr "Aucun extrait pour le moment"
 
 msgid "Nothing matches “{}”."
-msgstr ""
+msgstr "Aucun résultat pour « {} »."
 
 msgid "Nothing on this board matches “{}”."
 msgstr "Aucun élément de ce tableau ne correspond à « {} »."
 
 msgid "Nothing pinned matches “{}”."
-msgstr ""
+msgstr "Aucun extrait épinglé ne correspond à « {} »."
 
 msgid "Nothing pinned yet"
-msgstr ""
+msgstr "Rien d'épinglé pour le moment"
 
 msgid "Paste"
 msgstr "Coller"
@@ -113,34 +113,34 @@ msgid "Pastes into {} · {}"
 msgstr "Colle dans {} · {}"
 
 msgid "Pin a snippet from the Panel to find it here."
-msgstr ""
+msgstr "Épinglez un extrait depuis le panneau pour le retrouver ici."
 
 msgid "Pinned"
-msgstr ""
+msgstr "Épinglés"
 
 msgid "Pinned snippets"
 msgstr "Extraits épinglés"
 
 msgid "Preview"
-msgstr ""
+msgstr "Aperçu"
 
 msgid "Required"
-msgstr ""
+msgstr "Obligatoire"
 
 msgid "Results"
-msgstr ""
+msgstr "Résultats"
 
 msgid "Save from clipboard"
 msgstr "Enregistrer depuis le presse-papiers"
 
 msgid "Scope"
-msgstr ""
+msgstr "Portée"
 
 msgid "Search all snippets"
-msgstr ""
+msgstr "Rechercher dans tous les extraits"
 
 msgid "Search in"
-msgstr ""
+msgstr "Rechercher dans"
 
 msgid "Search snippets"
 msgstr "Rechercher des extraits"
@@ -155,13 +155,13 @@ msgid "Snippets"
 msgstr "Extraits"
 
 msgid "Tab"
-msgstr ""
+msgstr "Tab"
 
 msgid "This board"
-msgstr ""
+msgstr "Ce tableau"
 
 msgid "This field is required"
-msgstr ""
+msgstr "Ce champ est obligatoire"
 
 msgid "This list is empty"
 msgstr "Cette liste est vide"
