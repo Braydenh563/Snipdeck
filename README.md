@@ -4,192 +4,145 @@
 
 **Your reusable snippets, one click from any app.**
 
-A sticky-note-style snippet deck for Windows: keep what you paste all the time on a small panel at the edge of the screen, click, and it lands in the app you were typing in.
-
 [![CI](https://github.com/Braydenh563/Snipdeck/actions/workflows/ci.yml/badge.svg)](https://github.com/Braydenh563/Snipdeck/actions/workflows/ci.yml)
-![Status: work in progress](https://img.shields.io/badge/status-work%20in%20progress-orange)
-![Platform: Windows first](https://img.shields.io/badge/platform-Windows%20first-2870D4)
-![Rust](https://img.shields.io/badge/rust-2024-b7410e)
+![Platform: Windows](https://img.shields.io/badge/platform-Windows-2870D4)
 [![Licence: GPL-3.0-only](https://img.shields.io/badge/licence-GPL--3.0--only-2ea44f)](LICENSE)
 
-[What works today](#what-works-today) · [Quick start](#quick-start) · [User guide](docs/user-guide.md) · [Roadmap](docs/PLAN.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+[Install](#install-and-first-run) · [The three windows](#the-three-windows) · [Your data](#your-data) · [Licence](#licence) · [User guide](docs/user-guide.md) · [Troubleshooting](docs/troubleshooting.md)
 
 </div>
 
-> [!NOTE]
-> **Work in progress, not released.** There is no installer and no stable build. The library engine
-> (data model, storage, templates, encryption, import/export) is built and tested on Linux CI. The Panel
-> runs as a demo. The Picker, the Main window, the editors and the template fill form are not usable in
-> the app yet. Everything that touches Windows (paste, hotkeys, tray, DPI, IME) is written but **has not
-> been verified on a real Windows machine** beyond what [`docs/spikes/`](docs/spikes/README.md) records.
+Snipdeck is a snippet deck for Windows. You keep the text, links, templates, images and files you paste
+all the time on a small panel at the edge of the screen. Click one and it lands in the app you were typing
+in. The panel never takes focus away from that app.
 
-## What it is
-
-Clipboard-history tools bury the things you reuse in noise, and text expanders need memorised
-abbreviations. Snipdeck is a curated deck: boards, lists and items you arrange yourself, shown in a small
-always-on-top panel at the edge of the screen. Click an item and it is pasted into the app you were
-using, without the panel taking focus away from it. Product behaviour is specified in
-[`docs/SPEC.md`](docs/SPEC.md); the look in [`DESIGN.md`](DESIGN.md).
-
-Windows 10 (1903+) and 11 first. Rust and [Slint](https://slint.dev), software renderer. macOS and
-Linux builds are not planned for v1.
-
-## Screenshots
-
-These are the UI golden images that the test suite renders headlessly with Slint's software
-renderer (`crates/snipdeck-ui/tests/golden/`), with seeded demo data. They are not captured from a
-Windows desktop.
+You arrange the deck yourself: boards hold lists, lists hold items. It is not a clipboard history and it
+does not need abbreviations.
 
 | Panel, light | Panel, dark |
 |---|---|
 | ![The Panel in the light theme](docs/images/panel-light.png) | ![The Panel in the dark theme](docs/images/panel-dark.png) |
 
-| Picker, light | Picker, dark |
+These are images the test suite renders, not screenshots of a Windows desktop.
+
+> [!NOTE]
+> Snipdeck 1.0 is not released yet. The code is tested on Linux. Nobody has run it on a real Windows PC
+> beyond the checks in [`docs/spikes/`](docs/spikes/README.md), so expect rough edges on Windows.
+
+## Requirements
+
+- Windows 10 (version 1903 or newer) or Windows 11, 64-bit.
+- Windows PowerShell 5.1, which Windows already includes. `Snipdeck.bat` uses it.
+- A one-time internet connection to download the app.
+- You do not need Rust, Visual Studio or git.
+
+## Install and first run
+
+1. Get the Snipdeck folder: clone the repository, or download and unzip the release zip,
+   `snipdeck-<version>-windows-x64.zip`, from [Releases](https://github.com/Braydenh563/Snipdeck/releases/latest).
+2. Double-click `Snipdeck.bat`.
+
+On the first start `Snipdeck.bat` downloads the app from the latest release, checks its SHA-256, unpacks it to
+an `app` folder next to the `.bat`, and starts it. This is the only time Snipdeck uses the network. After
+that it starts straight away, offline.
+
+If no release is published yet and the folder holds the source code (it has a `Cargo.toml`), `Snipdeck.bat`
+builds the app from source instead. That needs Rust and the Visual C++ build tools, and it offers to install
+what is missing. It is slow the first time.
+
+More launcher commands, typed as `Snipdeck.bat <command>`:
+
+| Command | What it does |
 |---|---|
-| ![The Picker in the light theme](docs/images/picker-light.png) | ![The Picker in the dark theme](docs/images/picker-dark.png) |
+| `update` | Downloads the newest release again. Your library is kept. |
+| `reinstall` | Closes the app, removes the `app` folder and installs it again. The old folder stays if the download fails. Your library is kept. |
+| `backup`, `restore` | Zip your library to `Documents\Snipdeck-backups`, or put a backup back. |
+| `doctor` | Checks this PC and your data and writes a report you can send. |
+| `logs` | Shows the newest launcher log. `--open` opens the folder. |
+| `uninstall` | Removes the app. Your library is kept. See [Uninstall](#uninstall). |
+| `help` | Lists every command and option. |
 
-The Picker window exists and is tested, but the app does not open it yet.
+Do you prefer clicking to typing? The folder `tools\launcher\commands` has one `.bat` file per command
+(update, reinstall, uninstall, back up, restore, check my setup, open the logs, help). Double-click one.
+Details are in [`tools/launcher/README.md`](tools/launcher/README.md).
 
-## What works today
+## The three windows
 
-"Tested" means automated tests run in CI on Linux. "Unverified" means the code exists and compiles
-for Windows but nobody has run it on Windows.
+| Window | What it is | How to open it |
+|---|---|---|
+| **Panel** | A small always-on-top window with your current board. Click an item to paste it. | `Ctrl+Alt+Space`, or the tray icon |
+| **Picker** | A search box at your text caret. Type, press `Enter`, and the item is pasted. It searches every board. | `Ctrl+Shift+Space` |
+| **Main window** | The full manager: boards, lists, items, tags, Trash. | Panel menu (the three dots), then Open Snipdeck; or the tray menu |
 
-### Working now
+Settings opens from the Panel menu and from the Main window.
 
-| Area | State |
+### Default hotkeys
+
+| Hotkey | Action |
 |---|---|
-| Domain model: boards, lists, items, formats (text, HTML, RTF, PNG, files), tags | Tested |
-| Template engine: `{date}`, `{time}`, `{datetime:FORMAT}`, `{clipboard}`, `{cursor}`; prompted `{field:...}` and `{choice:...}` (Pro) | Tested |
-| In-memory fuzzy search over title, tags and the first 64 characters (`nucleo`) | Tested |
-| SQLite store: migrations, FTS5 search, blob store, ordering, trash, single-writer lock | Tested |
-| Encryption of sensitive items (XChaCha20-Poly1305, optional Argon2id master password) | Tested; no UI yet; the Windows DPAPI key binding is unverified |
-| `.snipdeck` export/import, folder / Ditto / CopyQ-JSON importers, daily backups | Tested at library level; no UI yet |
-| Offline Ed25519 licence verification | Tested; not wired into the app |
-| Windows platform layer: clipboard with delayed rendering, paste, Target tracking, global hotkeys, tray, autostart, single instance | Written; **unverified on Windows** |
-| UI component library, Panel, Picker and template fill windows, light and dark, translation catalogues for 7 locales (incomplete; missing strings show in English) | Golden-image and accessibility-tree tests; looks unverified on Windows |
-| Panel in the app (`--demo`): search, arrow and number keys, use / copy, list tabs, board switcher, pinned strip, toasts | Headless window tests; Windows behaviour unverified |
+| `Ctrl+Alt+Space` | Show or hide the Panel |
+| `Ctrl+Shift+Space` | Open the Picker |
+| `Ctrl+Shift+2` | Save the text on the clipboard as a new item at the top of the current list |
+| `Ctrl+Alt+V` | Paste the next item of the pinned strip or the current list (Pro) |
 
-What the demo does not do: it cannot add, edit or delete items, there is no Settings window, and the
-Picker, quick capture and paste-next hotkeys are registered but do nothing. On Linux the demo uses a
-fake clipboard and a pretend target window, so nothing is really pasted. On Windows it uses the real
-services (unverified).
+You can change each one in Settings. If another program already uses a hotkey, Snipdeck tells you and the
+other hotkeys keep working.
 
-### Planned
+### If the Panel is hidden
 
-Not started unless noted. Order follows [`docs/PLAN.md`](docs/PLAN.md).
+Closing the Panel, or pressing `Esc` with an empty search box, hides it to the tray. Snipdeck keeps running.
+To get it back, do any one of these:
 
-- Picker wired to its hotkey; template fill form wired to the Panel and Picker (windows exist, M4)
-- Main window (sidebar, item list, detail), editors for text and images, Trash and import/export screens (M4)
-- Screen capture with OCR, opt-in Recent (clipboard history) inbox, sensitive-item UI, paste stack,
-  floating lists, licence entry, onboarding, Settings window (M5)
-- Installer (MSIX and MSI), signing, updater, winget manifest, performance and accessibility audits (M6)
-- Windows clipboard history importer; the CopyQ binary `.cpq` export (see
-  [`docs/PLAN.md`](docs/PLAN.md) "M1 known gaps")
-- macOS and Linux are out of scope for v1.
+- Press `Ctrl+Alt+Space`.
+- Left-click the Snipdeck icon in the notification area (it may be under the `^` arrow).
+- Right-click the tray icon and choose **Open Panel**.
 
-## Quick start
+If there is no tray icon, closing the Panel quits Snipdeck instead. You can turn "Keep running in the tray"
+off in Settings. Starting Snipdeck a second time also brings the running copy forward.
 
-**Download, unzip, double-click `Snipdeck.bat` (or `app\snipdeck.exe`).** Nothing else to install: no Rust, no Visual
-Studio, no git.
+## Your data
 
-1. Download the latest portable zip, `snipdeck-<version>-windows-x64.zip`, from
-   [Releases](https://github.com/Braydenh563/Snipdeck/releases/latest) and unzip it.
-2. Double-click `snipdeck.exe`.
+Everything is in `%LOCALAPPDATA%\Snipdeck`: the library (`snipdeck.db`), large content (`blobs`), your
+settings (`settings.json`), your licence key, backups and crash logs. The app lives in the `app` folder next
+to `Snipdeck.bat`, so updating or deleting it never touches your library.
 
-If you have `Snipdeck.bat` instead (the repository download), double-click that: the first time it downloads the
-same zip from the latest release (the internet is needed once), checks its SHA-256, unpacks it to an `app` folder
-next to the `.bat` and starts it. After that it starts straight away, offline. `Snipdeck.bat update` fetches the
-newest release and keeps your library; `Snipdeck.bat reinstall` closes the app, downloads it again and swaps it in (the old
-folder stays if the download fails); `Snipdeck.bat help` lists every command. While no release is published yet, a source checkout (a folder
-with `Cargo.toml`) builds the app itself on the first start instead. Your library lives in
-`%LOCALAPPDATA%\Snipdeck`, apart from the app, so replacing the app never touches it.
+- **Daily backup.** Snipdeck saves a copy of your library once a day to `backups` in the data folder and
+  keeps the newest 7. Settings lists them and can restore one. Restoring adds back what is missing and never
+  removes anything. You can also press **Back up now**.
+- **Export.** Settings, **Your data**, **Export library** saves one `.snipdeck` file (a zip with JSON) in
+  your Documents folder.
+- **Launcher backup.** `Snipdeck.bat backup` zips the whole data folder to `Documents\Snipdeck-backups`.
+- **Trash.** Deleted items stay in the Trash for 30 days.
 
-Prefer clicking to typing? `tools\launcher\commands` has one `.bat` per command: update, reinstall, uninstall (keep or erase data), back up, restore, doctor, logs, help, and the developer build. Double-click one; it runs `Snipdeck.bat` with that command.
+## Privacy
 
-To remove Snipdeck: `Snipdeck.bat uninstall` removes the app and keeps your library; `Snipdeck.bat uninstall --data` also
-erases the library (it asks you to type DELETE first). To install again, just run `Snipdeck.bat` again: it downloads the
-app and finds the library you kept.
-
-Until the first release is published, `Snipdeck.bat` says so and stops; use the developer steps below.
-
-## For developers
-
-Building from source is for developers; users do not need it. You need Rust (the repo pins stable through
-`rust-toolchain.toml`). On Windows, also the Visual Studio C++ Build Tools. The first build compiles SQLite and
-Slint and is slow; `target/` grows to several GB. On Windows, `Snipdeck.bat build` does the same with checks and
-fixes for the usual problems ([`tools/launcher`](tools/launcher/README.md)).
-
-```sh
-git clone https://github.com/Braydenh563/Snipdeck
-cd Snipdeck
-
-# Try the Panel on a seeded in-memory library (nothing is saved).
-cargo run -p snipdeck-app -- --demo          # Windows: double-click run-snipdeck-demo.bat
-cargo run -p snipdeck-app -- --demo --dark   # dark theme
-cargo run -p snipdeck-app -- --screenshot panel.png   # render to a PNG; needs no display
-
-# Tests and checks.
-cargo test --workspace --locked
-scripts/gate.sh            # fmt, clippy, docs, code map and translation checks
-scripts/gate.sh --full     # the same plus the whole test suite
-```
-
-`cargo run` without `--demo` opens the real library in `%LOCALAPPDATA%\Snipdeck` (elsewhere
-`$XDG_DATA_HOME/snipdeck` or `~/.local/share/snipdeck`), but there is nothing in the app to put items
-into it yet. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full developer workflow and
-[`docs/troubleshooting.md`](docs/troubleshooting.md) if something does not build or run.
-
-To make a licence key for a friend, use `tools/snipdeck-keygen` (`cargo run -p snipdeck-keygen -- --help`); see "Keys for friends" in [`docs/licensing.md`](docs/licensing.md).
-
-To test Windows behaviour, run `run-windows-tests.bat`: a wizard that builds the app, walks you through
-the manual steps and writes a summary ([`tools/windows-test`](tools/windows-test/README.md)).
-
-## Project layout
-
-| Path | What |
-|---|---|
-| `crates/snipdeck-core` | Domain types, template engine, fuzzy search, entitlements, licence verification. Pure: no I/O, no OS calls. |
-| `crates/snipdeck-store` | SQLite store, migrations, blob store, FTS5, trash, encryption at rest. |
-| `crates/snipdeck-portable` | `.snipdeck` archives, importers (folder, Ditto, CopyQ JSON), daily backups. |
-| `crates/snipdeck-platform` | Clipboard, keyboard, hotkeys, Target tracking, tray, DPAPI, autostart, single instance. Traits, fakes and the Windows backend. The only crate that writes `unsafe` code (Slint's generated code aside). |
-| `crates/snipdeck-ui` | Slint design tokens, components, Panel / Picker / fill-form windows, translations, headless test harness. |
-| `crates/snipdeck-app` | The binary: controller, use cases, settings, view-models, tray and hotkey wiring. |
-| `design/` | Colour palette source and generator. |
-| `tools/windows-test/` | The Windows test wizard and its manual and automated steps. |
-| `spikes/` | Throwaway M0 prototypes, outside the workspace. |
-| `docs/` | Specification, plan, ADRs, format and storage docs, reviews. Index: [`docs/README.md`](docs/README.md). |
-
-## Privacy and security
-
-- **Local-first.** Your library is a SQLite file and a blob folder on your disk. No account, no server, no
-  network port, no telemetry. The only setting that could make a network call (site icons for links)
-  is off by default.
-- **Open data.** Export is a plain zip with JSON ([`docs/format.md`](docs/format.md)).
-- **Sensitive items** are masked in the UI and excluded from history. In the Pro tier they are also
-  encrypted at rest with a key wrapped by Windows DPAPI and optionally a master password
-  ([`docs/crypto.md`](docs/crypto.md)). Titles, tags and search text are not encrypted. The
-  encryption has not been tested on Windows.
-- **Licence keys** are verified offline; there is no phone-home ([`docs/licensing.md`](docs/licensing.md)).
-
-To report a vulnerability, see [`SECURITY.md`](SECURITY.md).
-
-## Documentation
-
-[`docs/README.md`](docs/README.md) indexes everything. Start with
-[`docs/user-guide.md`](docs/user-guide.md) (what the app does and which parts exist yet),
-[`docs/development.md`](docs/development.md) (code tour and test strategy),
-[`docs/SPEC.md`](docs/SPEC.md) and [`docs/PLAN.md`](docs/PLAN.md).
-Handover notes for the current state are in [`docs/HANDOVER.md`](docs/HANDOVER.md);
-history is in [`CHANGELOG.md`](CHANGELOG.md).
-
-## Contributing
-
-Issues and pull requests are welcome; read [`CONTRIBUTING.md`](CONTRIBUTING.md) first. Everyone taking part
-follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+Snipdeck has no account, no server and no telemetry, and it opens no network port. The only network use is
+the launcher's one download. One optional setting, website icons on links, can fetch a site's icon. It is
+off unless you turn it on. Licence keys are checked on your PC. See [`docs/privacy.md`](docs/privacy.md).
 
 ## Licence
 
-[GPL-3.0-only](LICENSE). A Pro tier is unlocked by an offline licence key
-([ADR-0005](docs/adr/0005-licensing-and-pro.md)); the source of every feature is in this repository.
-Contributors sign a CLA so the project can offer other licences later.
+Snipdeck is free software under [GPL-3.0-only](LICENSE). It has two tiers:
+
+- **Free:** everything needed day to day, with up to 3 boards.
+- **Pro:** more than 3 boards, templates that ask you for values, encryption of sensitive items, and
+  paste next.
+
+To enter a key, open Settings, find **Licence**, paste the key (it starts with `SNIP1.`) and press
+**Activate**. Pro turns on at once. The key is checked on your PC and nothing is sent anywhere. Details:
+[`docs/licensing.md`](docs/licensing.md).
+
+## Uninstall
+
+- `Snipdeck.bat uninstall` removes the app, build files, the start-with-Windows entry and shortcuts. It keeps
+  your library. It offers a backup first.
+- `Snipdeck.bat uninstall --data` also erases the library. It asks you to type `DELETE`.
+- To install again, run `Snipdeck.bat`. It downloads the app and finds the library you kept.
+
+## For developers
+
+Build, test and contribute: [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/development.md`](docs/development.md).
+The product is specified in [`docs/SPEC.md`](docs/SPEC.md) and the look in [`DESIGN.md`](DESIGN.md). The
+current project state is in [`docs/HANDOVER.md`](docs/HANDOVER.md), and history is in
+[`CHANGELOG.md`](CHANGELOG.md). Report a vulnerability as [`SECURITY.md`](SECURITY.md) describes. Everyone
+taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
