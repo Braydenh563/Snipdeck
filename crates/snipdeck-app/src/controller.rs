@@ -187,7 +187,8 @@ pub struct Controller<S, C, K, T> {
 /// Facts about the running app that are not settings and not on screen.
 #[derive(Debug, Default, Clone, Copy)]
 struct Session {
-    /// A real tray icon is in the notification area: closing the Panel may hide it.
+    /// A real tray icon is in the notification area now (from `TrayEvent::IconPresent`):
+    /// closing the Panel may hide it.
     tray_available: bool,
     /// "Pause hotkeys" is on.
     hotkeys_paused: bool,
@@ -253,12 +254,6 @@ where
     /// The next [`view`](Self::view) follows it, unless the `theme` setting is not `system`.
     pub fn set_system_look(&mut self, look: SystemLook) {
         self.os_look = look;
-    }
-
-    /// Whether a real tray icon is showing. With one, closing the Panel hides it (when
-    /// `close_to_tray` is on); without one nothing could bring it back, so closing quits.
-    pub fn set_tray_available(&mut self, available: bool) {
-        self.session.tray_available = available;
     }
 
     /// Writes setting changes to disk through `saver` from now on. Without one (the demo)
@@ -415,6 +410,13 @@ where
                 vec![Effect::SetHotkeysPaused(paused)]
             }
             TrayEvent::Quit => vec![Effect::Quit],
+            TrayEvent::IconPresent(present) => {
+                // With an icon in the notification area closing the Panel hides it (when
+                // `close_to_tray` is on); without one nothing could bring it back, so closing
+                // quits. The icon comes and goes (Explorer restarts), so this follows the tray.
+                self.session.tray_available = present;
+                Vec::new()
+            }
         }
     }
 
@@ -1112,7 +1114,7 @@ mod tests {
     #[test]
     fn close_hides_with_a_tray_icon_and_drag_asks_the_host() {
         let mut w = world();
-        w.ctl.set_tray_available(true);
+        with_tray(&mut w);
         assert_eq!(w.ctl.close(), [Effect::HidePanel]);
         assert!(!w.ctl.visible());
         assert_eq!(w.ctl.drag(), [Effect::DragWindow]);
@@ -1186,7 +1188,7 @@ mod tests {
     // ---- The tray ----------------------------------------------------------------------------
 
     fn with_tray(w: &mut World) {
-        w.ctl.set_tray_available(true);
+        w.ctl.on_tray(TrayEvent::IconPresent(true));
     }
 
     #[test]
@@ -1272,8 +1274,6 @@ mod tests {
             let _ = tx.lock().expect("lock").send(e);
         });
         let mut w = world();
-        tray.show().expect("show");
-        w.ctl.set_tray_available(true);
 
         // Drain what the user did to the icon into the controller, as the app's UI thread does.
         let pump = |w: &mut World| {
@@ -1281,6 +1281,10 @@ mod tests {
                 .flat_map(|event| w.ctl.on_tray(event))
                 .collect::<Vec<_>>()
         };
+        tray.show().expect("show");
+        assert_eq!(pump(&mut w), [], "the icon appearing needs no effect");
+        assert_eq!(w.ctl.close(), [Effect::HidePanel], "but now closing hides");
+        assert_eq!(w.ctl.show(), [Effect::ShowPanel]);
         tray.left_click();
         assert_eq!(pump(&mut w), [Effect::HidePanel]);
         tray.left_click();
@@ -1292,6 +1296,89 @@ mod tests {
         tray.pick(TrayEntry::OpenSnipdeck);
         tray.pick(TrayEntry::Quit);
         assert_eq!(pump(&mut w), [Effect::OpenMainWindow, Effect::Quit]);
+    }
+
+    /// A controller wired to a `FakeTray` the way the app wires the real one: every event the
+    /// tray emits is queued and then handed to `on_tray`.
+    struct Wired {
+        w: World,
+        tray: snipdeck_platform::testing::FakeTray,
+        rx: std::sync::mpsc::Receiver<TrayEvent>,
+    }
+
+    impl Wired {
+        fn new() -> Self {
+            let (tx, rx) = std::sync::mpsc::channel();
+            let tx = std::sync::Mutex::new(tx);
+            let tray = snipdeck_platform::testing::FakeTray::new("Snipdeck", move |e| {
+                let _ = tx.lock().expect("lock").send(e);
+            });
+            Self {
+                w: world(),
+                tray,
+                rx,
+            }
+        }
+
+        fn pump(&mut self) {
+            for event in self.rx.try_iter() {
+                self.w.ctl.on_tray(event);
+            }
+        }
+
+        fn close(&mut self) -> Vec<Effect> {
+            self.pump();
+            self.w.ctl.close()
+        }
+    }
+
+    #[test]
+    fn a_failed_first_show_then_explorer_starting_lets_close_hide() {
+        use snipdeck_platform::tray::Tray;
+        let mut t = Wired::new();
+        t.tray.set_fail_show(true);
+        let mut tray = t.tray.clone();
+        assert!(tray.show().is_err());
+        assert_eq!(
+            t.close(),
+            [Effect::Quit],
+            "no icon yet: nothing to return from"
+        );
+
+        t.tray.set_fail_show(false);
+        t.tray.taskbar_created();
+        assert!(t.tray.visible());
+        assert_eq!(t.close(), [Effect::HidePanel], "the icon appeared later");
+    }
+
+    #[test]
+    fn explorer_restarting_without_taking_the_icon_back_makes_close_quit() {
+        use snipdeck_platform::tray::Tray;
+        let mut t = Wired::new();
+        let mut tray = t.tray.clone();
+        tray.show().expect("show");
+        assert_eq!(t.close(), [Effect::HidePanel]);
+
+        // Explorer restarts and the icon cannot be added again: no icon, so Esc must not hide
+        // the Panel into nothing.
+        t.tray.set_fail_show(true);
+        t.tray.taskbar_created();
+        assert!(!t.tray.visible());
+        assert_eq!(t.close(), [Effect::Quit]);
+
+        t.tray.set_fail_show(false);
+        t.tray.taskbar_created();
+        assert_eq!(t.close(), [Effect::HidePanel], "back again");
+    }
+
+    #[test]
+    fn hiding_the_icon_makes_close_quit() {
+        use snipdeck_platform::tray::Tray;
+        let mut t = Wired::new();
+        let mut tray = t.tray.clone();
+        tray.show().expect("show");
+        tray.hide().expect("hide");
+        assert_eq!(t.close(), [Effect::Quit]);
     }
 
     // ---- The OS theme ------------------------------------------------------------------------

@@ -159,8 +159,9 @@ impl FakeTray {
         }
     }
 
-    /// Makes [`Tray::show`] fail, as when Explorer is not running yet. The icon is still
-    /// wanted: [`FakeTray::taskbar_created`] then adds it.
+    /// Makes adding the icon fail ([`Tray::show`] and the re-add in [`FakeTray::taskbar_created`]),
+    /// as when Explorer is not running yet. The icon is still wanted: a later
+    /// [`FakeTray::taskbar_created`] with this off adds it.
     pub fn set_fail_show(&self, fail: bool) {
         lock(&self.state).fail_show = fail;
     }
@@ -198,6 +199,15 @@ impl FakeTray {
 
     fn emit(&self, event: TrayEvent) {
         (lock(&self.on_event))(event);
+    }
+
+    /// Records whether the icon is on screen and tells the app, once per change. Call without
+    /// holding the state lock.
+    fn set_on_screen(&self, on_screen: bool) {
+        let changed = std::mem::replace(&mut lock(&self.state).on_screen, on_screen) != on_screen;
+        if changed {
+            self.emit(TrayEvent::IconPresent(on_screen));
+        }
     }
 
     /// The user left-clicks the icon.
@@ -242,33 +252,46 @@ impl FakeTray {
 
     /// Explorer restarted: the shell dropped every icon, and the backend adds this one again if
     /// it is wanted.
+    ///
+    /// The app hears `IconPresent(false)` for the dropped icon and `IconPresent(true)` once it is
+    /// back (not when the re-add fails: see [`FakeTray::set_fail_show`]).
     pub fn taskbar_created(&self) {
-        let mut state = lock(&self.state);
-        state.on_screen = false;
-        if state.model.on_taskbar_created() {
-            state.on_screen = true;
-            state.log.push("readd".into());
+        self.set_on_screen(false);
+        let readd = {
+            let mut state = lock(&self.state);
+            let readd = state.model.on_taskbar_created() && !state.fail_show;
+            if readd {
+                state.log.push("readd".into());
+            }
+            readd
+        };
+        if readd {
+            self.set_on_screen(true);
         }
     }
 }
 
 impl Tray for FakeTray {
     fn show(&mut self) -> Result<(), ServiceError> {
-        let mut state = lock(&self.state);
-        state.model.show();
-        state.log.push("show".into());
-        if state.fail_show {
-            return Err(ServiceError::Unavailable("the taskbar is not ready"));
+        {
+            let mut state = lock(&self.state);
+            state.model.show();
+            state.log.push("show".into());
+            if state.fail_show {
+                return Err(ServiceError::Unavailable("the taskbar is not ready"));
+            }
         }
-        state.on_screen = true;
+        self.set_on_screen(true);
         Ok(())
     }
 
     fn hide(&mut self) -> Result<(), ServiceError> {
-        let mut state = lock(&self.state);
-        state.model.hide();
-        state.on_screen = false;
-        state.log.push("hide".into());
+        {
+            let mut state = lock(&self.state);
+            state.model.hide();
+            state.log.push("hide".into());
+        }
+        self.set_on_screen(false);
         Ok(())
     }
 
@@ -338,6 +361,7 @@ mod tests {
         let (mut tray, rx) = tray();
         tray.show().unwrap();
         assert!(tray.visible());
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::IconPresent(true)));
         tray.left_click();
         assert_eq!(rx.try_recv(), Ok(TrayEvent::TogglePanel));
         assert!(tray.right_click().is_some());
@@ -361,6 +385,39 @@ mod tests {
         tray.hide().unwrap();
         tray.taskbar_created();
         assert!(!tray.visible(), "a hidden icon stays hidden");
+    }
+
+    #[test]
+    fn the_app_hears_when_the_icon_appears_and_goes_once_per_change() {
+        let (mut tray, rx) = tray();
+        tray.set_fail_show(true);
+        assert!(tray.show().is_err());
+        assert!(rx.try_recv().is_err(), "a failed add changes nothing");
+        tray.set_fail_show(false);
+        tray.taskbar_created();
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::IconPresent(true)));
+        assert!(rx.try_recv().is_err());
+        tray.show().unwrap();
+        assert!(rx.try_recv().is_err(), "showing a shown icon is silent");
+        tray.taskbar_created();
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::IconPresent(false)));
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::IconPresent(true)));
+        tray.hide().unwrap();
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::IconPresent(false)));
+        tray.hide().unwrap();
+        assert!(rx.try_recv().is_err());
+    }
+
+    #[test]
+    fn a_failed_re_add_leaves_the_icon_gone() {
+        let (mut tray, rx) = tray();
+        tray.show().unwrap();
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::IconPresent(true)));
+        tray.set_fail_show(true);
+        tray.taskbar_created();
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::IconPresent(false)));
+        assert!(rx.try_recv().is_err());
+        assert!(!tray.visible());
     }
 
     #[test]

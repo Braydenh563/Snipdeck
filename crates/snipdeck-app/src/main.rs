@@ -133,14 +133,15 @@ fn run(args: &Args) -> Result<(), String> {
         }
     }
 
-    // The tray makes closing the Panel safe (it hides, and the icon brings it back). Without
-    // one (off Windows, or it failed to start) closing the Panel quits instead.
+    // The tray makes closing the Panel safe (it hides, and the icon brings it back). Whether an
+    // icon is in the notification area is reported by the tray itself (`TrayEvent::IconPresent`,
+    // also when Explorer restarts), so the controller needs no flag from here. Without a tray
+    // (off Windows, or it failed to start) or while no icon is there, closing the Panel quits.
     let mut tray = tray;
-    if let Some(tray) = &mut tray {
-        match tray.show() {
-            Ok(()) => controller.borrow_mut().set_tray_available(true),
-            Err(e) => eprintln!("snipdeck: cannot show the tray icon: {e}"),
-        }
+    if let Some(tray) = &mut tray
+        && let Err(e) = tray.show()
+    {
+        eprintln!("snipdeck: cannot show the tray icon yet: {e}");
     }
 
     let hotkeys = Rc::new(RefCell::new(hotkeys));

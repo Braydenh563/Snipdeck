@@ -16,6 +16,10 @@
 //!   `WM_NULL` is posted afterwards, as the menu documentation requires, otherwise the menu does
 //!   not close when the user clicks elsewhere.
 //!
+//! The app also hears whether the icon is in the notification area ([`TrayEvent::IconPresent`]):
+//! after a successful add, after Explorer dropped it, and after it was added again. Closing the
+//! Panel hides it only while that is `true`.
+//!
 //! Events are delivered by calling `on_event` **on the tray thread**; it must return quickly
 //! (forward to the UI thread with `slint::invoke_from_event_loop`), and a panic in it is caught.
 //!
@@ -168,6 +172,14 @@ impl TrayHandler {
         let _ = catch_unwind(AssertUnwindSafe(|| (self.on_event)(event)));
     }
 
+    /// Records whether the shell has our icon and tells the app, once per change (the app closes
+    /// the Panel to the tray only while there is an icon to bring it back).
+    fn set_added(&self, added: bool) {
+        if self.added.replace(added) != added {
+            self.emit(TrayEvent::IconPresent(added));
+        }
+    }
+
     fn data(&self, hwnd: HWND, flags: NOTIFY_ICON_DATA_FLAGS) -> NOTIFYICONDATAW {
         let mut data = NOTIFYICONDATAW {
             cbSize: u32::try_from(std::mem::size_of::<NOTIFYICONDATAW>()).unwrap_or(0),
@@ -219,14 +231,15 @@ impl TrayHandler {
             let _ = Self::notify("Shell_NotifyIconW(NIM_DELETE)", NIM_DELETE, &data);
             return Err(error);
         }
-        self.added.set(true);
+        self.set_added(true);
         Ok(())
     }
 
     fn remove_icon(&self, hwnd: HWND) -> Result<(), Error> {
-        if !self.added.replace(false) {
+        if !self.added.get() {
             return Ok(());
         }
+        self.set_added(false);
         Self::notify(
             "Shell_NotifyIconW(NIM_DELETE)",
             NIM_DELETE,
@@ -308,7 +321,7 @@ impl WindowHandler for TrayHandler {
         }
         if msg == self.taskbar_created && msg != 0 {
             // Every icon was dropped with the old taskbar.
-            self.added.set(false);
+            self.set_added(false);
             if self.model.borrow().on_taskbar_created() {
                 // One attempt; the shell may not accept icons for a moment yet, and the next
                 // `TaskbarCreated` or `show` tries again.
