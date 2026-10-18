@@ -10,11 +10,11 @@ FONT = ROOT / "crates/snipdeck-ui/fonts/IBMPlexSans-SemiBold.ttf"
 OUT = ROOT / "assets/logo"
 
 ICON = """<defs>
-  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#438AF1"/><stop offset="1" stop-color="#195AB3"/></linearGradient>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2D2B28"/><stop offset="1" stop-color="#171613"/></linearGradient>
 </defs>
-<rect width="256" height="256" rx="58" fill="url(#bg)"/>
-<g transform="rotate(-10 128 132)"><rect x="60" y="40" width="136" height="152" rx="16" fill="#fff" fill-opacity=".32"/></g>
-<g transform="rotate(-4 128 132)"><rect x="60" y="50" width="136" height="152" rx="16" fill="#fff" fill-opacity=".62"/></g>
+<rect x="2" y="2" width="252" height="252" rx="56" fill="url(#bg)" stroke="#5D5A57" stroke-width="3"/>
+<g transform="rotate(-10 128 132)"><rect x="60" y="40" width="136" height="152" rx="16" fill="#A09E9A"/></g>
+<g transform="rotate(-4 128 132)"><rect x="60" y="50" width="136" height="152" rx="16" fill="#DEDCD8"/></g>
 <path d="M76 62h80l40 40v90a16 16 0 0 1-16 16H76a16 16 0 0 1-16-16V78a16 16 0 0 1 16-16z" fill="#FBFAF7"/>
 <path d="M156 62v26a14 14 0 0 0 14 14h26z" fill="#C6C4C0"/>
 <rect x="60" y="62" width="30" height="146" rx="0" fill="#2870D4" clip-path="inset(0)"/>
@@ -25,7 +25,7 @@ ICON = """<defs>
 def icon_svg(inner=ICON):
     # The left index tab: clipped to the card by drawing it as its own rounded path.
     inner = inner.replace('<rect x="60" y="62" width="30" height="146" rx="0" fill="#2870D4" clip-path="inset(0)"/>',
-        '<path d="M76 62h14v146H76a16 16 0 0 1-16-16V78a16 16 0 0 1 16-16z" fill="#2870D4"/>')
+        '<path d="M76 62h14v146H76a16 16 0 0 1-16-16V78a16 16 0 0 1 16-16z" fill="#438AF1"/>')
     return inner
 
 def wordmark(text, fill, size=132):

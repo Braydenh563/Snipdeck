@@ -1,18 +1,27 @@
-<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/logo/snipdeck-logo-dark.svg"><img src="assets/logo/snipdeck-logo-light.svg" alt="Snipdeck" height="96"></picture></p>
+<div align="center">
 
-A sticky-note-style snippet deck for your desktop: keep the things you paste all the time one click away, and paste them into whatever you were typing in.
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/logo/snipdeck-logo-dark.svg"><img src="assets/logo/snipdeck-logo-light.svg" alt="Snipdeck" height="88"></picture>
+
+**Your reusable snippets, one click from any app.**
+
+A sticky-note-style snippet deck for Windows: keep what you paste all the time on a small panel at the edge of the screen, click, and it lands in the app you were typing in.
 
 [![CI](https://github.com/Braydenh563/Snipdeck/actions/workflows/ci.yml/badge.svg)](https://github.com/Braydenh563/Snipdeck/actions/workflows/ci.yml)
 ![Status: work in progress](https://img.shields.io/badge/status-work%20in%20progress-orange)
-![Platform: Windows first](https://img.shields.io/badge/platform-Windows%20first-blue)
-[![Licence: GPL-3.0-only](https://img.shields.io/badge/licence-GPL--3.0--only-green)](LICENSE)
+![Platform: Windows first](https://img.shields.io/badge/platform-Windows%20first-2870D4)
+![Rust](https://img.shields.io/badge/rust-2024-b7410e)
+[![Licence: GPL-3.0-only](https://img.shields.io/badge/licence-GPL--3.0--only-2ea44f)](LICENSE)
 
-> **Status: work in progress, not released.** There is no installer and no stable build. The
-> library engine (data model, storage, templates, encryption, import/export) is built and tested on
-> Linux CI. The Panel runs as a demo. The Picker, the Main window, the editors and the
-> template fill form are not usable in the app yet. Everything that touches Windows (paste, hotkeys,
-> tray, DPI, IME) is written but **has not been verified on a real Windows machine** except what
-> [`docs/spikes/`](docs/spikes/README.md) records. See [What works today](#what-works-today).
+[What works today](#what-works-today) · [Quick start](#quick-start) · [User guide](docs/user-guide.md) · [Roadmap](docs/PLAN.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+
+</div>
+
+> [!NOTE]
+> **Work in progress, not released.** There is no installer and no stable build. The library engine
+> (data model, storage, templates, encryption, import/export) is built and tested on Linux CI. The Panel
+> runs as a demo. The Picker, the Main window, the editors and the template fill form are not usable in
+> the app yet. Everything that touches Windows (paste, hotkeys, tray, DPI, IME) is written but **has not
+> been verified on a real Windows machine** beyond what [`docs/spikes/`](docs/spikes/README.md) records.
 
 ## What it is
 
