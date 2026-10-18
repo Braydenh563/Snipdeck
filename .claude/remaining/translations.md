@@ -7,9 +7,10 @@ Task: fill every empty msgstr in the six lang/<locale>/LC_MESSAGES/snipdeck-ui.p
 - First pass (156 entries, 26 per locale): de, es, fr, pt-BR, ja, zh-Hans (merged into the session branch at 84c8033)
 - Second pass after merging claude/compassionate-pascal-pod8ux (189 entries per locale, 1134 total):
   - de (189 entries)
+  - es (189 entries)
 
 ## Next
-- es, fr, pt-BR, ja, zh-Hans (189 entries each), one commit per locale, `i18n: <locale> translated`
+- fr, pt-BR, ja, zh-Hans (189 entries each), one commit per locale, `i18n: <locale> translated`
 
 ## Blocked / for human review
 - Baseline is 156 untranslated (26 per locale), not 1290 as the brief said. After the merge the count was 1134
