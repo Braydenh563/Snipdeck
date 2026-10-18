@@ -1,0 +1,6 @@
+   Compiling slint v1.18.1
+error: failed to write `C:\Snipdeck\target\debug\deps\libslint-0a1b2c3d.rlib`
+
+Caused by:
+  There is not enough space on the disk. (os error 112)
+error: could not compile `slint` (lib) due to 1 previous error

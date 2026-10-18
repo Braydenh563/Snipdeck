@@ -6,3 +6,4 @@ spikes-results/
 .claude/work-order.last
 .claude/inputs/
 .claude/reviews/
+dist/

@@ -1,0 +1,5 @@
+memory allocation of 268435456 bytes failed
+error: could not compile `snipdeck-ui` (lib)
+
+Caused by:
+  process didn't exit successfully: `rustc --crate-name snipdeck_ui` (exit code: 0xc0000409, STATUS_STACK_BUFFER_OVERRUN)

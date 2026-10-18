@@ -1,0 +1,8 @@
+   Compiling snipdeck-app v0.1.0 (C:\Snipdeck\crates\snipdeck-app)
+error: failed to link or copy `C:\Snipdeck\target\debug\deps\snipdeck_app-0f1e2d3c.exe` to `C:\Snipdeck\target\debug\snipdeck-app.exe`
+
+Caused by:
+  failed to copy `C:\Snipdeck\target\debug\deps\snipdeck_app-0f1e2d3c.exe` to `C:\Snipdeck\target\debug\snipdeck-app.exe`
+
+Caused by:
+  The process cannot access the file because it is being used by another process. (os error 32)

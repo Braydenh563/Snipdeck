@@ -1,0 +1,2 @@
+warning: spurious network error (3 tries remaining): [35] SSL connect error (CRYPT_E_NO_REVOCATION_CHECK (0x80092012) - The revocation function was unable to check revocation for the certificate.)
+error: failed to get `serde` as a dependency of package `snipdeck-core v0.1.0`
