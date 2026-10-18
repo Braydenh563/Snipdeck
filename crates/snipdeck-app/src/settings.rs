@@ -381,15 +381,14 @@ mod tests {
 
     #[test]
     fn a_list_of_the_wrong_shape_is_an_empty_list_and_a_lone_name_is_a_list() {
-        assert!(
-            Settings::from_json(r#"{"no_paste_apps":5}"#)
-                .no_paste_apps
-                .is_empty()
+        let none = Vec::<String>::new();
+        assert_eq!(
+            Settings::from_json(r#"{"no_paste_apps":5}"#).no_paste_apps,
+            none
         );
-        assert!(
-            Settings::from_json(r#"{"no_paste_apps":{"a":"b.exe"}}"#)
-                .no_paste_apps
-                .is_empty()
+        assert_eq!(
+            Settings::from_json(r#"{"no_paste_apps":{"a":"b.exe"}}"#).no_paste_apps,
+            none
         );
         assert_eq!(
             Settings::from_json(r#"{"no_paste_apps":"KeePass.exe"}"#).no_paste_apps,
@@ -433,7 +432,10 @@ mod tests {
             ["keepass.exe", "1password.exe"]
         );
         // Cut before the list starts: nothing to keep.
-        assert!(Settings::from_json(&full[..start]).no_paste_apps.is_empty());
+        assert_eq!(
+            Settings::from_json(&full[..start]).no_paste_apps,
+            Vec::<String>::new()
+        );
     }
 
     #[test]
