@@ -115,19 +115,19 @@ Internal milestones, kept for reference.
   user guide, development guide and troubleshooting pages under `docs/`.
 - `scripts/gate.sh` (fast checks, changed-file tests, full suite), `scripts/codemap.py`, `scripts/i18n.py`.
 
-**Also in this period: changed**
+**Earlier, changed**
 - The GPL licence is GPL-3.0-only (was AGPL in the first draft).
 - Windows paste restores the previous clipboard when the target has asked for the data (delayed rendering)
   instead of after a fixed 300 ms wait.
 - Inline text editing is capped at 16 KB and search matches title, tags and the first 64 characters, from
   the S3 measurements.
 
-**Also in this period: fixed**
+**Earlier, fixed**
 - Findings of the Opus reviews of M1 (29 in core and store), the M3 security review, the M3 component review
   and the Win32 tray review are fixed or tracked; see [`docs/reviews/`](docs/reviews/).
 - `Cargo.toml` `repository` points at `github.com/Braydenh563/Snipdeck` (the project was renamed from Backpack).
 
-**Also in this period: security**
+**Earlier, security**
 - Importers and the archive reader refuse decoy zip records, oversized values and views in Ditto databases,
   count memory while reading, keep imported sensitive payloads out of the blob folder and scrub them on
   rollback (second M3 security review).
