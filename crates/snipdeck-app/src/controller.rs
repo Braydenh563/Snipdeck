@@ -1064,6 +1064,15 @@ where
             }
         }
     }
+
+    /// Logs what a maintenance run did (`SNIPDECK_LOG=1`) and shows its toast when it has one:
+    /// a damaged library, or a crash last time. See [`crate::maintenance`].
+    pub fn report_maintenance(&mut self, outcome: crate::maintenance::MaintenanceOutcome) {
+        crate::trace!("maintenance: {}", outcome.log_line());
+        if let Some(toast) = outcome.into_toast() {
+            self.show_toast(toast);
+        }
+    }
 }
 
 fn neutral(message: ToastMessage) -> Toast {

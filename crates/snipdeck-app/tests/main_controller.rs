@@ -776,3 +776,48 @@ fn an_empty_view_has_nothing_to_act_on() {
     assert!(ctl.main_action(MainAction::Delete, 0).is_none());
     assert_eq!(ctl.main_screen().counts.trash, 0);
 }
+
+// ---- Maintenance ----------------------------------------------------------------------------
+
+#[test]
+fn maintenance_reports_a_damaged_library_and_a_crash_as_toasts() {
+    use snipdeck_app::{maintenance::MaintenanceOutcome, toast::ToastKind};
+    let mut ctl = pro();
+    ctl.report_maintenance(MaintenanceOutcome::IntegrityOk);
+    assert!(ctl.main_screen().toast.is_none(), "a clean check is silent");
+
+    ctl.report_maintenance(MaintenanceOutcome::IntegrityProblems(vec!["x".into()]));
+    let screen = ctl.main_screen();
+    assert_eq!(
+        screen.toast.as_ref().expect("a toast").kind,
+        ToastKind::Danger
+    );
+    assert_eq!(message(&screen), ToastMessage::LibraryProblem);
+
+    ctl.report_maintenance(MaintenanceOutcome::CrashedLastTime);
+    assert_eq!(message(&ctl.main_screen()), ToastMessage::CrashedLastTime);
+}
+
+#[test]
+fn the_real_jobs_back_up_purge_and_check_the_library_on_the_injected_clock() {
+    use snipdeck_app::maintenance::{self, Maintenance};
+    let dir = tempfile::tempdir().unwrap();
+    let (mut ctl, clock) = rig(Tier::Pro);
+    ctl.main_action(MainAction::Delete, 0);
+    assert_eq!(ctl.main_screen().counts.trash, 1);
+
+    // 31 days later, on the first run after a start: the entry is purged and a backup exists.
+    clock.set("2026-11-17T10:31:00Z".parse().unwrap());
+    let mut m = Maintenance::new(dir.path(), Box::new(clock.clone()));
+    assert_eq!(maintenance::run(&mut m, &mut ctl), 3);
+    assert_eq!(ctl.main_screen().counts.trash, 0);
+    let backups = snipdeck_portable::backup::list_backups(dir.path()).unwrap();
+    assert_eq!(backups.len(), 1);
+    assert!(dir.path().join("maintenance.json").exists());
+
+    // An hour later nothing is due; a restart does not change that.
+    clock.set("2026-11-17T11:31:00Z".parse().unwrap());
+    assert_eq!(maintenance::run(&mut m, &mut ctl), 0);
+    let mut restarted = Maintenance::new(dir.path(), Box::new(clock.clone()));
+    assert_eq!(maintenance::run(&mut restarted, &mut ctl), 0);
+}

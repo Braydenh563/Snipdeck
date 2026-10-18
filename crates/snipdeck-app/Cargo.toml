@@ -12,11 +12,13 @@ publish.workspace = true
 snipdeck-core.workspace = true
 # `testing`: the fakes are the dev platform behind `--demo` and `--screenshot` off Windows.
 snipdeck-platform = { path = "../snipdeck-platform", features = ["testing"] }
+snipdeck-portable = { path = "../snipdeck-portable" }
 snipdeck-store = { path = "../snipdeck-store" }
 snipdeck-ui = { path = "../snipdeck-ui" }
 # The winit backend with the software renderer is the real window. `unstable-winit-030` lets the
 # app create the Panel un-activated and reach its HWND (ADR-0003, ADR-0008).
 slint = { workspace = true, features = ["backend-winit", "raw-window-handle-06", "unstable-winit-030"] }
+jiff.workspace = true
 png.workspace = true
 serde.workspace = true
 serde_json.workspace = true
