@@ -11,46 +11,46 @@ msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "リストには、返信文や住所など関連するスニペットをまとめておけます。"
 
 msgid "Actions"
-msgstr ""
+msgstr "操作"
 
 msgid "Add"
-msgstr ""
+msgstr "追加"
 
 msgid "Add a snippet, or move items here from another list."
-msgstr ""
+msgstr "ここにスニペットを追加するか、別のリストから移動します。"
 
 msgid "Add list"
 msgstr "リストを追加"
 
 msgid "Add some text, or cancel."
-msgstr ""
+msgstr "テキストを追加するか、キャンセルしてください。"
 
 msgid "All"
 msgstr "すべて"
 
 msgid "All items"
-msgstr ""
+msgstr "すべてのスニペット"
 
 msgid "Amber"
-msgstr ""
+msgstr "アンバー"
 
 msgid "Appearance"
-msgstr ""
+msgstr "外観"
 
 msgid "Apply the new name"
-msgstr ""
+msgstr "新しい名前を適用"
 
 msgid "Asks for a value each time"
-msgstr ""
+msgstr "毎回値を尋ねる"
 
 msgid "Asks you to pick one of the options"
-msgstr ""
+msgstr "オプションから1つ選択を求めます"
 
 msgid "Blue"
-msgstr ""
+msgstr "青"
 
 msgid "Board name"
-msgstr ""
+msgstr "ボード名"
 
 msgid "Board: {}"
 msgstr "ボード: {}"
@@ -59,34 +59,34 @@ msgid "Boards"
 msgstr "ボード"
 
 msgid "Brings the panel up beside the app you are working in."
-msgstr ""
+msgstr "作業中のアプリの横にパネルを表示します。"
 
 msgid "Cancel"
 msgstr "キャンセル"
 
 msgid "Capture a region"
-msgstr ""
+msgstr "領域をキャプチャ"
 
 msgid "Captured items keep their kind."
-msgstr ""
+msgstr "キャプチャしたスニペットは種類を保持します。"
 
 msgid "Changes apply at once."
-msgstr ""
+msgstr "変更はすぐに適用されます。"
 
 msgid "Choose one to add it at the end of the text. It is filled in when you use the item."
-msgstr ""
+msgstr "選んだものがテキストの末尾に追加されます。スニペットを使うときに値が入力されます。"
 
 msgid "Choose tags"
-msgstr ""
+msgstr "タグを選択"
 
 msgid "Clear search"
 msgstr "検索をクリア"
 
 msgid "Clear selection"
-msgstr ""
+msgstr "選択を解除"
 
 msgid "Clear the shortcut for {}"
-msgstr ""
+msgstr "{} のショートカットを消去"
 
 msgid "Close"
 msgstr "閉じる"
@@ -95,22 +95,22 @@ msgid "Close panel"
 msgstr "パネルを閉じる"
 
 msgid "Close the tag list"
-msgstr ""
+msgstr "タグ一覧を閉じる"
 
 msgid "Code"
-msgstr ""
+msgstr "コード"
 
 msgid "Colour"
-msgstr ""
+msgstr "色"
 
 msgid "Comfortable view"
-msgstr ""
+msgstr "ゆったり表示"
 
 msgid "Compact view"
-msgstr ""
+msgstr "コンパクト表示"
 
 msgid "Content"
-msgstr ""
+msgstr "内容"
 
 msgid "Control Enter"
 msgstr "Ctrl Enter"
@@ -128,94 +128,94 @@ msgid "Copy something, then save it here from the clipboard."
 msgstr "何かをコピーしてから、クリップボードからここに保存できます。"
 
 msgid "Dark"
-msgstr ""
+msgstr "ダーク"
 
 msgid "Date and time in a format you choose"
-msgstr ""
+msgstr "任意の形式の日付と時刻"
 
 msgid "Delete"
-msgstr ""
+msgstr "削除"
 
 msgid "Delete board"
-msgstr ""
+msgstr "ボードを削除"
 
 msgid "Delete for good"
-msgstr ""
+msgstr "完全に削除"
 
 msgid "Delete for good?"
-msgstr ""
+msgstr "完全に削除しますか？"
 
 msgid "Delete for good…"
-msgstr ""
+msgstr "完全に削除…"
 
 msgid "Delete forever…"
-msgstr ""
+msgstr "完全に削除…"
 
 msgid "Delete list"
-msgstr ""
+msgstr "リストを削除"
 
 msgid "Delete list “{}”?"
-msgstr ""
+msgstr "リスト「{}」を削除しますか？"
 
 msgid "Delete list…"
-msgstr ""
+msgstr "リストを削除…"
 
 msgid "Delete tag"
-msgstr ""
+msgstr "タグを削除"
 
 msgid "Delete tag {}"
-msgstr ""
+msgstr "タグ {} を削除"
 
 msgid "Delete tag “{}”?"
-msgstr ""
+msgstr "タグ「{}」を削除しますか？"
 
 msgid "Delete tag…"
-msgstr ""
+msgstr "タグを削除…"
 
 msgid "Delete this board?"
-msgstr ""
+msgstr "このボードを削除しますか？"
 
 msgid "Delete this list?"
-msgstr ""
+msgstr "このリストを削除しますか？"
 
 msgid "Delete this tag?"
-msgstr ""
+msgstr "このタグを削除しますか？"
 
 msgid "Deleted items stay here for {} days before they are removed."
-msgstr ""
+msgstr "削除されたスニペットは、完全に削除されるまで{}日間ここに残ります。"
 
 msgid "Discard"
-msgstr ""
+msgstr "破棄"
 
 msgid "Discard your changes?"
-msgstr ""
+msgstr "変更を破棄しますか？"
 
 msgid "Done"
-msgstr ""
+msgstr "完了"
 
 msgid "Edit"
-msgstr ""
+msgstr "編集"
 
 msgid "Edit board"
-msgstr ""
+msgstr "ボードを編集"
 
 msgid "Edit item"
-msgstr ""
+msgstr "スニペットを編集"
 
 msgid "Edit list"
-msgstr ""
+msgstr "リストを編集"
 
 msgid "Edit list…"
-msgstr ""
+msgstr "リストを編集…"
 
 msgid "Empty Trash"
-msgstr ""
+msgstr "ゴミ箱を空にする"
 
 msgid "Empty Trash…"
-msgstr ""
+msgstr "ゴミ箱を空にする…"
 
 msgid "Empty the Trash?"
-msgstr ""
+msgstr "ゴミ箱を空にしますか？"
 
 msgid "Enter"
 msgstr "Enter"
@@ -224,43 +224,43 @@ msgid "Escape"
 msgstr "Esc"
 
 msgid "Everything in the Trash is deleted for good. This can't be undone."
-msgstr ""
+msgstr "ゴミ箱のすべてが完全に削除されます。この操作は元に戻せません。"
 
 msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
-msgstr ""
+msgstr "各サイトの小さなアイコンをサイト自体から取得します。既定では無効のため、リクエストは送信されません。"
 
 msgid "Fields"
 msgstr "入力欄"
 
 msgid "File"
-msgstr ""
+msgstr "ファイル"
 
 msgid "Fill in template"
 msgstr "テンプレートに入力"
 
 msgid "Follow Windows switches with your system setting."
-msgstr ""
+msgstr "Windowsの設定に従います。"
 
 msgid "For example, Email replies"
-msgstr ""
+msgstr "例: メールの返信"
 
 msgid "For example, Work"
-msgstr ""
+msgstr "例: 仕事"
 
 msgid "General"
-msgstr ""
+msgstr "全般"
 
 msgid "Give the board a name."
-msgstr ""
+msgstr "ボードに名前を付けてください。"
 
 msgid "Give the list a name."
-msgstr ""
+msgstr "リストに名前を付けてください。"
 
 msgid "Green"
-msgstr ""
+msgstr "緑"
 
 msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it."
-msgstr ""
+msgstr "スペースキーを押し続けるまでリストでは非表示になり、クリップボード履歴から除外され、使用後{}秒でクリップボードからクリアされます。"
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "非表示。スペースキーを押し続けると表示されます。"
@@ -269,58 +269,58 @@ msgid "Hidden. Open it in the Panel to reveal."
 msgstr "非表示。パネルで開くと表示されます。"
 
 msgid "How wide the panel opens, from {} to {} pixels."
-msgstr ""
+msgstr "パネルを開く幅（{}〜{}ピクセル）。"
 
 msgid "Image"
-msgstr ""
+msgstr "画像"
 
 msgid "In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe."
-msgstr ""
+msgstr "これらのプログラムでは、貼り付けの代わりにコピーします。プログラムのファイル名（例: notepad.exe）を使用します。"
 
 msgid "Insert"
 msgstr "貼り付け"
 
 msgid "Insert {}"
-msgstr ""
+msgstr "{} を挿入"
 
 msgid "It is removed from {n} item. The item stays."
-msgstr ""
+msgstr "{n} 件のスニペットから削除されます。スニペット自体は残ります。"
 
 msgid "Item actions"
-msgstr ""
+msgstr "スニペットの操作"
 
 msgid "Items are removed after {} days."
-msgstr ""
+msgstr "スニペットは{}日後に削除されます。"
 
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
-msgstr ""
+msgstr "そのリストと{n}件のスニペットはゴミ箱に移動します。30日間復元できます。"
 
 msgid "Keep editing"
-msgstr ""
+msgstr "編集を続ける"
 
 msgid "Keep panel on top"
-msgstr ""
+msgstr "パネルを手前に表示"
 
 msgid "Keep running in the tray when the window closes"
-msgstr ""
+msgstr "ウィンドウを閉じても通知領域で実行を続ける"
 
 msgid "Kind"
-msgstr ""
+msgstr "種類"
 
 msgid "Language"
-msgstr ""
+msgstr "言語"
 
 msgid "Light"
-msgstr ""
+msgstr "ライト"
 
 msgid "Link"
-msgstr ""
+msgstr "リンク"
 
 msgid "List"
-msgstr ""
+msgstr "リスト"
 
 msgid "List name"
-msgstr ""
+msgstr "リスト名"
 
 msgid "Lists"
 msgstr "リスト"
@@ -329,64 +329,64 @@ msgid "Loading"
 msgstr "読み込み中"
 
 msgid "Make the panel narrower"
-msgstr ""
+msgstr "パネルを狭くする"
 
 msgid "Make the panel wider"
-msgstr ""
+msgstr "パネルを広くする"
 
 msgid "Manage tags"
-msgstr ""
+msgstr "タグを管理"
 
 msgid "Manage tags…"
-msgstr ""
+msgstr "タグを管理…"
 
 msgid "Manual"
-msgstr ""
+msgstr "手動"
 
 msgid "More"
-msgstr ""
+msgstr "その他"
 
 msgid "Most used"
-msgstr ""
+msgstr "よく使う順"
 
 msgid "Move"
-msgstr ""
+msgstr "移動"
 
 msgid "Move to list"
-msgstr ""
+msgstr "リストに移動"
 
 msgid "Move to list…"
-msgstr ""
+msgstr "リストに移動…"
 
 msgid "Navigation"
-msgstr ""
+msgstr "ナビゲーション"
 
 msgid "Never paste into"
-msgstr ""
+msgstr "次の場所には貼り付けない"
 
 msgid "New board"
-msgstr ""
+msgstr "新しいボード"
 
 msgid "New item"
-msgstr ""
+msgstr "新しいスニペット"
 
 msgid "New list"
 msgstr "新しいリスト"
 
 msgid "New name for {}"
-msgstr ""
+msgstr "{} の新しい名前"
 
 msgid "New tag"
-msgstr ""
+msgstr "新しいタグ"
 
 msgid "New tag, then Enter"
-msgstr ""
+msgstr "新しいタグ、次に Enter"
 
 msgid "No colour"
-msgstr ""
+msgstr "色なし"
 
 msgid "No items with this tag"
-msgstr ""
+msgstr "このタグのスニペットはありません"
 
 msgid "No lists yet"
 msgstr "リストはまだありません"
@@ -395,28 +395,28 @@ msgid "No matches"
 msgstr "一致する項目がありません"
 
 msgid "No programs yet."
-msgstr ""
+msgstr "まだプログラムがありません。"
 
 msgid "No recent items"
-msgstr ""
+msgstr "最近のスニペットはありません"
 
 msgid "No snippets yet"
 msgstr "スニペットはまだありません"
 
 msgid "No tags"
-msgstr ""
+msgstr "タグなし"
 
 msgid "No tags yet"
-msgstr ""
+msgstr "まだタグがありません"
 
 msgid "No tags yet. Add one below."
-msgstr ""
+msgstr "まだタグがありません。下から追加してください。"
 
 msgid "No tags yet. Add tags to an item and they appear here."
-msgstr ""
+msgstr "まだタグがありません。スニペットにタグを追加すると、ここに表示されます。"
 
 msgid "Not set"
-msgstr ""
+msgstr "未設定"
 
 msgid "Nothing matches “{}”."
 msgstr "「{}」に一致するものはありません。"
@@ -425,7 +425,7 @@ msgid "Nothing on this board matches “{}”."
 msgstr "このボードに「{}」に一致するものはありません。"
 
 msgid "Nothing pinned"
-msgstr ""
+msgstr "ピン留めなし"
 
 msgid "Nothing pinned matches “{}”."
 msgstr "ピン留めしたスニペットに「{}」は一致しません。"
@@ -434,31 +434,31 @@ msgid "Nothing pinned yet"
 msgstr "ピン留めはまだありません"
 
 msgid "Only text, code, link and template items can be sensitive."
-msgstr ""
+msgstr "テキスト、コード、リンク、テンプレートのスニペットのみ機密にできます。"
 
 msgid "Open Settings"
-msgstr ""
+msgstr "設定を開く"
 
 msgid "Open the picker"
-msgstr ""
+msgstr "ピッカーを開く"
 
 msgid "Optional: the first line of the text is used"
-msgstr ""
+msgstr "任意: テキストの1行目が使われます"
 
 msgid "Orange"
-msgstr ""
+msgstr "オレンジ"
 
 msgid "Panel menu"
-msgstr ""
+msgstr "パネルメニュー"
 
 msgid "Panel width"
-msgstr ""
+msgstr "パネルの幅"
 
 msgid "Paste"
 msgstr "貼り付け"
 
 msgid "Paste the next item"
-msgstr ""
+msgstr "次のスニペットを貼り付け"
 
 msgid "Pastes into {}"
 msgstr "{} に貼り付け"
@@ -467,16 +467,16 @@ msgid "Pastes into {} · {}"
 msgstr "{} · {} に貼り付け"
 
 msgid "Pastes the next item of the list in order."
-msgstr ""
+msgstr "リストの次のスニペットを順番に貼り付けます。"
 
 msgid "Pin"
-msgstr ""
+msgstr "ピン留め"
 
 msgid "Pin a snippet from the Panel to find it here."
 msgstr "パネルでスニペットをピン留めすると、ここに表示されます。"
 
 msgid "Pin the snippets you use most to keep them one click away."
-msgstr ""
+msgstr "よく使うスニペットをピン留めすると、ワンクリックですぐに使えます。"
 
 msgid "Pinned"
 msgstr "ピン留め"
@@ -485,172 +485,172 @@ msgid "Pinned snippets"
 msgstr "ピン留めしたスニペット"
 
 msgid "Placeholders"
-msgstr ""
+msgstr "プレースホルダー"
 
 msgid "Press the new shortcut"
-msgstr ""
+msgstr "新しいショートカットを押してください"
 
 msgid "Preview"
 msgstr "プレビュー"
 
 msgid "Privacy"
-msgstr ""
+msgstr "プライバシー"
 
 msgid "Program to add"
-msgstr ""
+msgstr "追加するプログラム"
 
 msgid "Recent"
-msgstr ""
+msgstr "最近"
 
 msgid "Recently used"
-msgstr ""
+msgstr "最近使ったもの"
 
 msgid "Red"
-msgstr ""
+msgstr "赤"
 
 msgid "Remove tag {}"
-msgstr ""
+msgstr "タグ {} を削除"
 
 msgid "Remove {} from the list"
-msgstr ""
+msgstr "リストから {} を削除"
 
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr ""
+msgstr "タグの名前を変更または削除します。タグを削除しても、それが付いたスニペットは残ります。"
 
 msgid "Rename tag {}"
-msgstr ""
+msgstr "タグ {} の名前を変更"
 
 msgid "Required"
 msgstr "必須"
 
 msgid "Restore"
-msgstr ""
+msgstr "復元"
 
 msgid "Results"
 msgstr "検索結果"
 
 msgid "Rose"
-msgstr ""
+msgstr "ローズ"
 
 msgid "Save"
-msgstr ""
+msgstr "保存"
 
 msgid "Save from clipboard"
 msgstr "クリップボードから保存"
 
 msgid "Save your first snippet, or copy something and save it from the clipboard."
-msgstr ""
+msgstr "最初のスニペットを保存するか、何かをコピーしてクリップボードから保存してください。"
 
 msgid "Scope"
 msgstr "範囲"
 
 msgid "Scroll left"
-msgstr ""
+msgstr "左へスクロール"
 
 msgid "Scroll right"
-msgstr ""
+msgstr "右へスクロール"
 
 msgid "Search all snippets"
 msgstr "すべてのスニペットを検索"
 
 msgid "Search every board and paste without opening the window."
-msgstr ""
+msgstr "すべてのボードを検索し、ウィンドウを開かずに貼り付けます。"
 
 msgid "Search in"
 msgstr "検索対象"
 
 msgid "Search results"
-msgstr ""
+msgstr "検索結果"
 
 msgid "Search snippets"
 msgstr "スニペットを検索"
 
 msgid "Selects part of the screen and saves it as an item."
-msgstr ""
+msgstr "画面の一部を選択して、スニペットとして保存します。"
 
 msgid "Sensitive item"
-msgstr ""
+msgstr "機密のスニペット"
 
 msgid "Settings"
-msgstr ""
+msgstr "設定"
 
 msgid "Shift Enter"
 msgstr "Shift Enter"
 
 msgid "Shortcuts"
-msgstr ""
+msgstr "ショートカット"
 
 msgid "Show or hide the panel"
-msgstr ""
+msgstr "パネルを表示または非表示"
 
 msgid "Show website icons on links"
-msgstr ""
+msgstr "リンクにウェブサイトのアイコンを表示"
 
 msgid "Slate"
-msgstr ""
+msgstr "スレート"
 
 msgid "Snipdeck"
 msgstr "Snipdeck"
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
-msgstr ""
+msgstr "Snipdeck はサインイン後にショートカットが使えるよう、通知領域で待機します。"
 
 msgid "Snippets"
 msgstr "スニペット"
 
 msgid "Sort items by"
-msgstr ""
+msgstr "並べ替え"
 
 msgid "Start with Windows"
-msgstr ""
+msgstr "Windows の起動時に開始"
 
 msgid "Tab"
 msgstr "Tab"
 
 msgid "Tag"
-msgstr ""
+msgstr "タグ"
 
 msgid "Tag a snippet to see it here."
-msgstr ""
+msgstr "スニペットにタグを付けると、ここに表示されます。"
 
 msgid "Tags"
-msgstr ""
+msgstr "タグ"
 
 msgid "Tags…"
-msgstr ""
+msgstr "タグ…"
 
 msgid "Takes effect the next time Snipdeck starts."
-msgstr ""
+msgstr "次回 Snipdeck の起動時に有効になります。"
 
 msgid "Teal"
-msgstr ""
+msgstr "ティール"
 
 msgid "Template"
-msgstr ""
+msgstr "テンプレート"
 
 msgid "Template text"
-msgstr ""
+msgstr "テンプレートのテキスト"
 
 msgid "Text"
-msgstr ""
+msgstr "テキスト"
 
 msgid "The Trash is empty"
-msgstr ""
+msgstr "ゴミ箱は空です"
 
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
-msgstr ""
+msgstr "リストとその{}件のスニペットはゴミ箱に移動します。{}日間復元できます。"
 
 msgid "The selected items are deleted for good. This can't be undone."
-msgstr ""
+msgstr "選択したスニペットは完全に削除されます。この操作は元に戻せません。"
 
 msgid "The tag is removed from its items. The items themselves stay."
-msgstr ""
+msgstr "タグはスニペットから外されます。スニペット自体は残ります。"
 
 msgid "The time now"
-msgstr ""
+msgstr "現在時刻"
 
 msgid "Theme"
-msgstr ""
+msgstr "テーマ"
 
 msgid "This board"
 msgstr "このボード"
@@ -662,70 +662,70 @@ msgid "This list is empty"
 msgstr "このリストは空です"
 
 msgid "This text is {}. Anything over 16 KB opens read-only here."
-msgstr ""
+msgstr "このテキストは{}です。16 KBを超えるものはここでは読み取り専用で開きます。"
 
 msgid "Tile view"
-msgstr ""
+msgstr "タイル表示"
 
 msgid "Title"
-msgstr ""
+msgstr "タイトル"
 
 msgid "Today's date"
-msgstr ""
+msgstr "今日の日付"
 
 msgid "Trash"
-msgstr ""
+msgstr "ゴミ箱"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
-msgstr ""
+msgstr "設定でクリップボード履歴をオンにすると、コピーした内容が保存されます。"
 
 msgid "Turn this off and closing the main window quits Snipdeck."
-msgstr ""
+msgstr "これをオフにすると、メインウィンドウを閉じたときにSnipdeckが終了します。"
 
 msgid "Unpin"
-msgstr ""
+msgstr "ピン留めを解除"
 
 msgid "Use"
-msgstr ""
+msgstr "使用"
 
 msgid "Violet"
-msgstr ""
+msgstr "バイオレット"
 
 msgid "What is on the clipboard"
-msgstr ""
+msgstr "クリップボードの内容"
 
 msgid "What you changed has not been saved."
-msgstr ""
+msgstr "変更は保存されていません。"
 
 msgid "What you changed in this item has not been saved."
-msgstr ""
+msgstr "このスニペットの変更は保存されていません。"
 
 msgid "Where the text cursor lands after pasting"
-msgstr ""
+msgstr "貼り付け後のテキストカーソルの位置"
 
 msgid "Windows"
-msgstr ""
+msgstr "Windows"
 
 msgid "Your deck is empty"
-msgstr ""
+msgstr "デッキは空です"
 
 msgid "https://example.com"
-msgstr ""
+msgstr "https://example.com"
 
 msgid "notepad.exe"
-msgstr ""
+msgstr "notepad.exe"
 
 msgid "px"
-msgstr ""
+msgstr "px"
 
 msgid "{n} item"
-msgstr ""
+msgstr "{n}件のスニペット"
 
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
-msgstr ""
+msgstr "{n}件のスニペットも一緒にゴミ箱に移動します。30日間復元できます。"
 
 msgid "{} (Pro)"
-msgstr ""
+msgstr "{} (Pro)"
 
 msgid "{} selected"
-msgstr ""
+msgstr "{} 件選択中"
