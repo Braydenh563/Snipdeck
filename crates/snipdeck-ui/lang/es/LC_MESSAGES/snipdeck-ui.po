@@ -34,11 +34,11 @@ msgstr "Copiar"
 msgid "Copy something, then save it here from the clipboard."
 msgstr "Copia algo y luego guárdalo aquí desde el portapapeles."
 
-msgid "Copy ↵"
-msgstr "Copiar ↵"
-
 msgid "Enter"
 msgstr "Enter"
+
+msgid "Hidden. Hold Space to reveal."
+msgstr ""
 
 msgid "Keep on top"
 msgstr "Siempre encima"
@@ -63,9 +63,6 @@ msgstr "Nada en este tablero coincide con “{}”."
 
 msgid "Paste"
 msgstr "Pegar"
-
-msgid "Paste ↵"
-msgstr "Pegar ↵"
 
 msgid "Pastes into {}"
 msgstr "Pega en {}"

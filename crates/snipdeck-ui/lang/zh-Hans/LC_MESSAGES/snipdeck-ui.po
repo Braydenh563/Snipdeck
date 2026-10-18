@@ -34,11 +34,11 @@ msgstr "复制"
 msgid "Copy something, then save it here from the clipboard."
 msgstr "先复制一些内容，然后从剪贴板保存到这里。"
 
-msgid "Copy ↵"
-msgstr "复制 ↵"
-
 msgid "Enter"
 msgstr "Enter"
+
+msgid "Hidden. Hold Space to reveal."
+msgstr ""
 
 msgid "Keep on top"
 msgstr "保持在最前"
@@ -63,9 +63,6 @@ msgstr "此看板中没有与“{}”匹配的内容。"
 
 msgid "Paste"
 msgstr "粘贴"
-
-msgid "Paste ↵"
-msgstr "粘贴 ↵"
 
 msgid "Pastes into {}"
 msgstr "粘贴到 {}"

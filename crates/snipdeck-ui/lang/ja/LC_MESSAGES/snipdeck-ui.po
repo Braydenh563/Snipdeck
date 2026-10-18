@@ -34,11 +34,11 @@ msgstr "コピー"
 msgid "Copy something, then save it here from the clipboard."
 msgstr "何かをコピーしてから、クリップボードからここに保存できます。"
 
-msgid "Copy ↵"
-msgstr "コピー ↵"
-
 msgid "Enter"
 msgstr "Enter"
+
+msgid "Hidden. Hold Space to reveal."
+msgstr ""
 
 msgid "Keep on top"
 msgstr "常に前面に表示"
@@ -63,9 +63,6 @@ msgstr "このボードに「{}」に一致するものはありません。"
 
 msgid "Paste"
 msgstr "貼り付け"
-
-msgid "Paste ↵"
-msgstr "貼り付け ↵"
 
 msgid "Pastes into {}"
 msgstr "{} に貼り付け"

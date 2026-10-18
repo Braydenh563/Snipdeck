@@ -6,7 +6,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: ui/panel.slint:555
+#: ui/panel.slint:556
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr ""
 
@@ -18,7 +18,7 @@ msgstr ""
 msgid "Board: {}"
 msgstr ""
 
-#: ui/panel.slint:644
+#: ui/panel.slint:645
 msgid "Boards"
 msgstr ""
 
@@ -30,24 +30,24 @@ msgstr ""
 msgid "Close panel"
 msgstr ""
 
-#: ui/panel.slint:587 ui/panel.slint:602
+#: ui/panel.slint:588 ui/panel.slint:603
 msgid "Copies to clipboard"
 msgstr ""
 
-#: ui/panel.slint:622
+#: ui/panel.slint:131 ui/panel.slint:623
 msgid "Copy"
 msgstr ""
 
-#: ui/panel.slint:557
+#: ui/panel.slint:558
 msgid "Copy something, then save it here from the clipboard."
 msgstr ""
 
-#: ui/panel.slint:131
-msgid "Copy ↵"
+#: ui/panel.slint:618
+msgid "Enter"
 msgstr ""
 
-#: ui/panel.slint:617
-msgid "Enter"
+#: ui/panel.slint:505
+msgid "Hidden. Hold Space to reveal."
 msgstr ""
 
 #: ui/panel.slint:395
@@ -58,39 +58,35 @@ msgstr ""
 msgid "Lists"
 msgstr ""
 
-#: ui/panel.slint:544
+#: ui/panel.slint:545
 msgid "Loading"
 msgstr ""
 
-#: ui/panel.slint:558
+#: ui/panel.slint:559
 msgid "New list"
 msgstr ""
 
-#: ui/panel.slint:553
+#: ui/panel.slint:554
 msgid "No lists yet"
 msgstr ""
 
-#: ui/panel.slint:554
+#: ui/panel.slint:555
 msgid "No matches"
 msgstr ""
 
-#: ui/panel.slint:556
+#: ui/panel.slint:557
 msgid "Nothing on this board matches “{}”."
 msgstr ""
 
-#: ui/gallery/i18n_probe.slint:9
+#: ui/gallery/i18n_probe.slint:9 ui/panel.slint:131
 msgid "Paste"
 msgstr ""
 
-#: ui/panel.slint:131
-msgid "Paste ↵"
-msgstr ""
-
-#: ui/panel.slint:586 ui/panel.slint:601
+#: ui/panel.slint:587 ui/panel.slint:602
 msgid "Pastes into {}"
 msgstr ""
 
-#: ui/panel.slint:586 ui/panel.slint:601
+#: ui/panel.slint:587 ui/panel.slint:602
 msgid "Pastes into {} · {}"
 msgstr ""
 
@@ -98,7 +94,7 @@ msgstr ""
 msgid "Pinned snippets"
 msgstr ""
 
-#: ui/panel.slint:558
+#: ui/panel.slint:559
 msgid "Save from clipboard"
 msgstr ""
 
@@ -106,7 +102,7 @@ msgstr ""
 msgid "Search snippets"
 msgstr ""
 
-#: ui/panel.slint:617
+#: ui/panel.slint:618
 msgid "Shift Enter"
 msgstr ""
 
@@ -118,6 +114,6 @@ msgstr ""
 msgid "Snippets"
 msgstr ""
 
-#: ui/panel.slint:554
+#: ui/panel.slint:555
 msgid "This list is empty"
 msgstr ""
