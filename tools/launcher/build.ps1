@@ -134,7 +134,7 @@ function Invoke-Preflight {
             Show-Check $c
         }
         if ($c.Status -eq 'fail') {
-            Write-FailureReport 'build' $c.Detail @('Offered to clear old build files.') @('Free up disk space on that drive (empty the Recycle Bin, run Windows Disk Cleanup).', 'Or move the Snipdeck folder to a drive with more space.', 'Then run Snipdeck.bat again.')
+            Write-FailureReport 'build' $c.Detail @('Offered to clear old build files.') @('Free up disk space on that drive (empty the Recycle Bin, run Windows Disk Cleanup).', 'Or move the Snipdeck folder to a drive with more space.', 'Then run "Snipdeck.bat build" again.')
             return $false
         }
     }
@@ -150,7 +150,7 @@ function Invoke-Preflight {
         $c = Test-RustInstalled
         Show-Check $c
         if ($c.Status -eq 'fail') {
-            Write-FailureReport 'find Rust' $c.Detail @('Tried winget (Rustlang.Rustup) and the official rustup installer where allowed.') @('Install Rust from https://rustup.rs (choose the default options).', 'Close this window, then run Snipdeck.bat again so the new PATH is picked up.')
+            Write-FailureReport 'find Rust' $c.Detail @('Tried winget (Rustlang.Rustup) and the official rustup installer where allowed.') @('Install Rust from https://rustup.rs (choose the default options).', 'Close this window, then run "Snipdeck.bat build" again so the new PATH is picked up.')
             return $false
         }
     }
@@ -173,7 +173,7 @@ function Invoke-Preflight {
             Show-Check $c
         }
         if ($c.Status -eq 'fail') {
-            Write-FailureReport 'find the C++ build tools' 'Visual Studio Build Tools with the C++ workload are not installed.' @('Offered to install them with winget and the Microsoft bootstrapper.') @('Install "Build Tools for Visual Studio 2022" from https://visualstudio.microsoft.com/visual-cpp-build-tools/ and tick "Desktop development with C++".', 'Restart Windows if the installer asks, then run Snipdeck.bat again.')
+            Write-FailureReport 'find the C++ build tools' 'Visual Studio Build Tools with the C++ workload are not installed.' @('Offered to install them with winget and the Microsoft bootstrapper.') @('Install "Build Tools for Visual Studio 2022" from https://visualstudio.microsoft.com/visual-cpp-build-tools/ and tick "Desktop development with C++".', 'Restart Windows if the installer asks, then run "Snipdeck.bat build" again.')
             return $false
         }
     }
@@ -187,19 +187,19 @@ function Invoke-Preflight {
 
 function Get-FailureAdvice([string]$Id) {
     switch ($Id) {
-        'network' { return @('Check that this PC is online (open https://crates.io in a browser; check VPN, proxy or firewall).', 'Run Snipdeck.bat again: packages that already downloaded are kept.') }
-        'net-revoke' { return @('Your network blocks certificate checks (common behind a company proxy). Ask IT, or run Snipdeck.bat again and answer yes when asked to skip the check.') }
-        'file-lock' { return @('Close editors or terminals that are building Snipdeck (rust-analyzer, other cargo windows).', 'Run Snipdeck.bat again.') }
-        'msvc-missing' { return @('Install the C++ Build Tools: https://visualstudio.microsoft.com/visual-cpp-build-tools/ ("Desktop development with C++").', 'Restart Windows if asked, then run Snipdeck.bat again.') }
-        'no-space' { return @('Free disk space, or run "Snipdeck.bat clean" to delete build files, then run Snipdeck.bat again.') }
-        'corrupt-build' { return @('Run "Snipdeck.bat clean", then Snipdeck.bat again (a full rebuild takes several minutes).') }
-        'lock-mismatch' { return @('Cargo.lock is out of date. Run "Snipdeck.bat update", or answer yes when asked to allow cargo to update it.') }
-        'exe-locked' { return @('Quit Snipdeck from its tray icon (or close the window), then run Snipdeck.bat again.') }
-        'toolchain-old' { return @('Run "rustup update stable" in a terminal, then run Snipdeck.bat again.') }
-        'no-toolchain' { return @('Run "rustup toolchain install stable" in a terminal, then run Snipdeck.bat again.') }
-        'long-path' { return @('Move the Snipdeck folder to a short path such as C:\Snipdeck, then run Snipdeck.bat again.') }
-        'out-of-memory' { return @('Close other programs to free memory, then run Snipdeck.bat again.') }
-        'access-denied' { return @('Your antivirus may be scanning or blocking the build folder. Add an exclusion for the Snipdeck folder, then run Snipdeck.bat again.') }
+        'network' { return @('Check that this PC is online (open https://crates.io in a browser; check VPN, proxy or firewall).', 'Run "Snipdeck.bat build" again: packages that already downloaded are kept.') }
+        'net-revoke' { return @('Your network blocks certificate checks (common behind a company proxy). Ask IT, or run "Snipdeck.bat build" again and answer yes when asked to skip the check.') }
+        'file-lock' { return @('Close editors or terminals that are building Snipdeck (rust-analyzer, other cargo windows).', 'Run "Snipdeck.bat build" again.') }
+        'msvc-missing' { return @('Install the C++ Build Tools: https://visualstudio.microsoft.com/visual-cpp-build-tools/ ("Desktop development with C++").', 'Restart Windows if asked, then run "Snipdeck.bat build" again.') }
+        'no-space' { return @('Free disk space, or run "Snipdeck.bat clean" to delete build files, then run "Snipdeck.bat build" again.') }
+        'corrupt-build' { return @('Run "Snipdeck.bat clean", then "Snipdeck.bat build" again (a full rebuild takes several minutes).') }
+        'lock-mismatch' { return @('Cargo.lock is out of date. Run "git pull" to get the matching one, or answer yes when asked to allow cargo to update it.') }
+        'exe-locked' { return @('Quit Snipdeck from its tray icon (or close the window), then run "Snipdeck.bat build" again.') }
+        'toolchain-old' { return @('Run "rustup update stable" in a terminal, then run "Snipdeck.bat build" again.') }
+        'no-toolchain' { return @('Run "rustup toolchain install stable" in a terminal, then run "Snipdeck.bat build" again.') }
+        'long-path' { return @('Move the Snipdeck folder to a short path such as C:\Snipdeck, then run "Snipdeck.bat build" again.') }
+        'out-of-memory' { return @('Close other programs to free memory, then run "Snipdeck.bat build" again.') }
+        'access-denied' { return @('Your antivirus may be scanning or blocking the build folder. Add an exclusion for the Snipdeck folder, then run "Snipdeck.bat build" again.') }
         default { return @('Run "Snipdeck.bat doctor" and send the report file together with the log file named below.') }
     }
 }
@@ -382,7 +382,7 @@ function Invoke-Build {
     $cargo = Find-Cargo
     if ($env:SNIPDECK_FAKE_CARGO) { $cargo = $env:SNIPDECK_FAKE_CARGO }   # test hook: a script that prints sample output
     if (-not $cargo) {
-        Write-FailureReport 'build' 'cargo was not found.' @() @('Run Snipdeck.bat again; it offers to install Rust.')
+        Write-FailureReport 'build' 'cargo was not found.' @() @('Run "Snipdeck.bat build" again; it offers to install Rust.')
         return $null
     }
     $st = @{ Locked = $true; Offline = $false; Target = (Get-TargetDirectory); Tried = @{}; Notes = @(); Attempt = 0 }
@@ -430,7 +430,7 @@ function Invoke-Build {
     }
     $exe = [System.IO.Path]::Combine($st.Target, 'debug', $script:ExeName)
     if (-not (Test-Path -LiteralPath $exe)) {
-        Write-FailureReport 'build' ("cargo reported success but the program file is missing: " + (Hide-UserName $exe)) $st.Notes @('Run "Snipdeck.bat clean" and then Snipdeck.bat again.', 'If it happens again, send the log file named below.')
+        Write-FailureReport 'build' ("cargo reported success but the program file is missing: " + (Hide-UserName $exe)) $st.Notes @('Run "Snipdeck.bat clean" and then "Snipdeck.bat build" again.', 'If it happens again, send the log file named below.')
         return $null
     }
     if ($st.Notes.Count -gt 0) {
@@ -530,7 +530,7 @@ function Start-SnipdeckApp([string]$Exe, [string[]]$AppArgs) {
         }
     } catch {
         $res.Code = 1
-        Write-FailureReport 'start' ('Windows refused to start the program: ' + $_.Exception.Message) @() @('If your antivirus quarantined dist\snipdeck-app.exe, allow it and run Snipdeck.bat again (it rebuilds when the file is missing).', 'Run "Snipdeck.bat doctor" and send the report if it keeps happening.')
+        Write-FailureReport 'start' ('Windows refused to start the program: ' + $_.Exception.Message) @() @('If your antivirus quarantined the Snipdeck program file (app\snipdeck.exe, or dist\snipdeck-app.exe for a developer build), allow it and run Snipdeck.bat again (it downloads or rebuilds when the file is missing).', 'Run "Snipdeck.bat doctor" and send the report if it keeps happening.')
         return $res
     }
     $exited = $false

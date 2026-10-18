@@ -1,6 +1,6 @@
 # cli.ps1 - command-line parsing and help text (pure). Dot-sourced by snipdeck.ps1. ASCII only.
 
-$script:Commands = @('run', 'demo', 'doctor', 'update', 'backup', 'restore', 'clean', 'uninstall', 'logs', 'help', 'selftest')
+$script:Commands = @('run', 'demo', 'build', 'doctor', 'update', 'backup', 'restore', 'clean', 'uninstall', 'logs', 'help', 'selftest')
 
 function Read-Options([string[]]$ArgList) {
     # The launcher has no param() block on purpose: Windows PowerShell would treat "--whatif" and the app's own
@@ -41,7 +41,8 @@ function Read-Options([string[]]$ArgList) {
     if (-not $o.Error) {
         $cmd = $o.Command
         if (-not $cmd) { $cmd = 'run' }
-        $appCommand = ($cmd -eq 'run' -or $cmd -eq 'demo')
+        $appCommand = ($cmd -eq 'run' -or $cmd -eq 'demo' -or $cmd -eq 'build')
+        if ($o.Rebuild -and $cmd -ne 'build') { $o.Error = "--rebuild only applies to 'build'. Try: Snipdeck.bat help" }
         if (-not $appCommand) {
             foreach ($p in @($o.Pass)) {
                 if ($p.StartsWith('-')) { $o.Error = "Unknown option '$p' for '$cmd'. Try: Snipdeck.bat help"; break }
@@ -60,11 +61,16 @@ Snipdeck launcher
 
 Usage:  Snipdeck.bat [command] [options]
 
+Snipdeck.bat needs nothing installed. The first time it downloads the app once
+from the project's GitHub Release, checks it, and keeps it in the app folder next to it.
+
 Commands
-  run         (default) build if needed and start Snipdeck on your real library
+  run         (default) start Snipdeck on your real library (downloads the app first if needed)
   demo        start the demo: a seeded library kept in memory, nothing is saved
+  update      download the latest release again (your library and settings are kept) and start it
+  build       developers only: build from source (needs Rust, Visual C++ tools, git) and start
+  selftest    run the launcher's own checks (no network, changes nothing)
   doctor      check this PC and Snipdeck's data; writes a report you can send
-  update      get the latest version (git pull), rebuild and start
   backup      zip your library and settings to Documents\Snipdeck-backups
   restore     put a backup back (saves your current data first)
   clean       delete build files (target\ and dist\); your data is not touched
@@ -77,18 +83,19 @@ Options
   -Yes        answer yes to questions (unattended); never deletes your data
               unless you also pass --data to uninstall
   --whatif    show what a command would do and change nothing
-  --rebuild   run/demo: ignore the fast-start copy and build again
+  --rebuild   build: ignore the fast-start copy and build again
   --target    uninstall: also delete the build folder without asking
   --data      uninstall with -Yes: also delete your library and settings
   --          everything after goes to the app
 
-Anything else after run or demo goes to the app, for example:
+Anything else after run, demo or build goes to the app, for example:
   Snipdeck.bat demo --dark
   Snipdeck.bat demo --screenshot panel.png
 
 Files
   Logs      %LOCALAPPDATA%\Snipdeck\logs   (newest 10 kept)
   Backups   Documents\Snipdeck-backups     (newest 10 of each kind kept)
+  App       app\snipdeck.exe next to Snipdeck.bat (build: dist\ instead)
   Library   %LOCALAPPDATA%\Snipdeck
 '@
 }

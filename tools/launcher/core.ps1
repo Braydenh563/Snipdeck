@@ -552,7 +552,7 @@ function Test-MsvcInstalled {
 
 function Test-GitInstalled {
     $git = Find-Command 'git'
-    if (-not $git) { return (New-Check 'git' 'info' 'not installed (optional: only needed for "update" and the fastest cache check)') }
+    if (-not $git) { return (New-Check 'git' 'info' 'not installed (optional: only the developer build uses it, for the fastest cache check)') }
     $r = Invoke-Native $git @('--version') '' 30
     return (New-Check 'git' 'pass' ($r.Out.Trim()))
 }
@@ -690,6 +690,6 @@ function Install-MsvcTools {
         }
     }
     Update-PathFromRegistry
-    if ($code -eq 3010) { Say '  The installer asks for a restart. Restart Windows, then run Snipdeck.bat again.' 'Yellow' }
+    if ($code -eq 3010) { Say '  The installer asks for a restart. Restart Windows, then run "Snipdeck.bat build" again.' 'Yellow' }
     return ((Test-MsvcInstalled).Status -eq 'pass')
 }

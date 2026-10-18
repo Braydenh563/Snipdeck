@@ -1,4 +1,4 @@
-# data.ps1 - backup, restore, clean, uninstall, doctor, logs and update.
+# data.ps1 - backup, restore, clean, uninstall, doctor and logs.
 # Dot-sourced by snipdeck.ps1 after lib.ps1, core.ps1 and build.ps1. Windows PowerShell 5.1 compatible; ASCII only.
 
 $script:KeepBackups = 10
@@ -700,53 +700,4 @@ function Invoke-Doctor {
     }
     if ($fails -gt 0) { return 1 }
     return 0
-}
-
-# ---------------------------------------------------------------- update
-
-function Invoke-Update {
-    Say-Step 'Updating Snipdeck'
-    $git = Find-Command 'git'
-    if (-not $git -or -not (Test-Path -LiteralPath ([System.IO.Path]::Combine($script:RepoRoot, '.git')))) {
-        Say '  This copy of Snipdeck was not cloned with git, so it cannot update itself.' 'Yellow'
-        Say '  Download the newest ZIP from the project page, unzip it over this folder (or into a new one), and run Snipdeck.bat.' 'Gray'
-        Say '  Your library and settings are stored separately and are kept.' 'Gray'
-        return 1
-    }
-    $st = Invoke-Native $git @('-C', $script:RepoRoot, 'status', '--porcelain', '--untracked-files=no') '' 60
-    if ($st.ExitCode -eq 0 -and $st.Out.Trim()) {
-        Say '  You have local changes to Snipdeck files, so nothing is pulled (to keep your changes).' 'Yellow'
-        Say '  Commit or stash them and run update again, or just run Snipdeck.bat to build what you have.' 'Gray'
-        return 1
-    }
-    if (@(Get-BackupFiles (Get-DataDir)).Count -gt 0) {
-        Say '  Backing up your data before updating...' 'Gray'
-        [void](New-DataBackup '' '' 'pre-update')
-    }
-    if ($script:Opt.WhatIf) {
-        Say '  [whatif] would run git pull --ff-only, then rebuild and start Snipdeck.' 'Yellow'
-        return 0
-    }
-    $pulled = $false
-    $notes = @()
-    for ($try = 1; $try -le 2 -and -not $pulled; $try++) {
-        Say '  Getting the latest version (git pull --ff-only)...' 'Gray'
-        $r = Invoke-Native $git @('-C', $script:RepoRoot, 'pull', '--ff-only') '' 300 -Stream
-        if ($r.ExitCode -eq 0) { $pulled = $true; break }
-        if ((Get-FailureMatches $r.Text) -contains 'network' -and $try -eq 1) {
-            $notes += 'network problem: waited 5 seconds and tried again'
-            Say '  Network problem. Waiting 5 seconds, then trying once more.' 'Yellow'
-            Start-Sleep -Seconds 5
-            continue
-        }
-        $happened = 'git pull did not succeed.'
-        if ($r.Text -match '(?i)not possible to fast-forward|diverg') { $happened = 'your copy has commits that the online copy does not, so it cannot be fast-forwarded.' }
-        elseif ((Get-FailureMatches $r.Text) -contains 'network') { $happened = 'the project server could not be reached.' }
-        Write-FailureReport 'update' $happened $notes @('Check your internet connection and run "Snipdeck.bat update" again.', 'If you changed Snipdeck files yourself, resolve it with git, or download a fresh copy.') @(Get-LastLines (Hide-UserName $r.Text) 8)
-        return 1
-    }
-    $head = Invoke-Native $git @('-C', $script:RepoRoot, 'log', '--oneline', '-3') '' 30
-    Say '  Now at:' 'Gray'
-    foreach ($l in (Get-LastLines $head.Out 3)) { Say "    $l" 'Gray' }
-    return (Invoke-RunFlow $false @() $true)
 }
