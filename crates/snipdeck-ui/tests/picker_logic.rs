@@ -372,7 +372,7 @@ ui_tests! {
         assert_eq!(find(&ui, "All", AccessibleRole::Button).accessible_checked(), Some(false));
         // Choosing the scope already chosen is not a change.
         find(&ui, "This board", AccessibleRole::Button).invoke_accessible_default_action();
-        assert!(take(&log).is_empty());
+        assert!(take(&log).is_empty(), "no callback fired");
     }
 
     // ---- States --------------------------------------------------------------------------------

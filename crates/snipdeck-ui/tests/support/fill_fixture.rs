@@ -62,7 +62,8 @@ pub fn fields() -> Vec<FormField> {
     ]
 }
 
-pub const PREVIEW: &str = "Hello Ada,\n\nA gentle reminder that the invoice is due.\n\nThanks,\nSnipdeck";
+pub const PREVIEW: &str =
+    "Hello Ada,\n\nA gentle reminder that the invoice is due.\n\nThanks,\nSnipdeck";
 
 pub fn set_fields(ui: &TemplateFillWindow, fields: Vec<FormField>) {
     ui.set_fields(ModelRc::new(VecModel::from(fields)));

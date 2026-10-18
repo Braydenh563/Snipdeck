@@ -38,10 +38,9 @@ fn render(h: &Harness<TemplateFillWindow>) -> Frame {
     h.component.window().request_redraw();
     let _ = h.render_settled();
     let height = h.component.get_content_height();
-    h.component.window().set_size(LogicalSize::new(
-        h.component.window().size().width as f32,
-        height,
-    ));
+    let window = h.component.window();
+    let width = window.size().to_logical(window.scale_factor()).width;
+    window.set_size(LogicalSize::new(width, height));
     h.component.window().request_redraw();
     h.render_settled()
 }
@@ -137,11 +136,23 @@ fn the_window_is_outlined_with_a_1px_default_border_on_the_overlay_surface() {
 fn the_header_is_40px_and_the_footer_48px_each_with_a_subtle_hairline() {
     let f = render(&form(WIDTH, false));
     // Clear of glyphs: the header text is at the left, the close button at the right.
-    assert_eq!(f.pixel(250, HEADER_H - 1), BORDER_SUBTLE_LIGHT, "header hairline");
-    assert_eq!(f.pixel(250, HEADER_H), OVERLAY_LIGHT, "form surface below it");
+    assert_eq!(
+        f.pixel(250, HEADER_H - 1),
+        BORDER_SUBTLE_LIGHT,
+        "header hairline"
+    );
+    assert_eq!(
+        f.pixel(250, HEADER_H),
+        OVERLAY_LIGHT,
+        "form surface below it"
+    );
     let top = f.height - FOOTER_H;
     assert_eq!(f.pixel(250, top), BORDER_SUBTLE_LIGHT, "footer hairline");
-    assert_eq!(f.pixel(250, top + 1), OVERLAY_LIGHT, "footer surface below it");
+    assert_eq!(
+        f.pixel(250, top + 1),
+        OVERLAY_LIGHT,
+        "footer surface below it"
+    );
 }
 
 #[test]
@@ -150,8 +161,16 @@ fn the_preview_sits_in_a_sunken_box_above_the_footer() {
     // The box ends 16px above the footer's hairline; its last row of padding is plain sunken fill.
     let bottom = f.height - FOOTER_H - 16;
     assert_eq!(f.pixel(300, bottom - 3), SUNKEN_LIGHT, "sunken fill");
-    assert_eq!(f.pixel(300, bottom - 1), BORDER_SUBTLE_LIGHT, "subtle bottom border");
-    assert_eq!(f.pixel(300, bottom), OVERLAY_LIGHT, "16px gap to the footer");
+    assert_eq!(
+        f.pixel(300, bottom - 1),
+        BORDER_SUBTLE_LIGHT,
+        "subtle bottom border"
+    );
+    assert_eq!(
+        f.pixel(300, bottom),
+        OVERLAY_LIGHT,
+        "16px gap to the footer"
+    );
 }
 
 #[test]
@@ -173,5 +192,8 @@ fn the_submit_button_is_ink_and_a_required_field_in_error_has_a_danger_border() 
     let edges = (0..f.height)
         .filter(|y| f.pixel(300, *y) == DANGER_LIGHT)
         .count();
-    assert_eq!(edges, 2, "the invalid field's 1px border is danger-coloured");
+    assert_eq!(
+        edges, 2,
+        "the invalid field's 1px border is danger-coloured"
+    );
 }

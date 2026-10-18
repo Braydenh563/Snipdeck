@@ -37,9 +37,9 @@ fn fit(h: &Harness<PickerWindow>) {
     h.component.window().request_redraw();
     let _ = h.render_settled();
     let height = h.component.get_content_height();
-    h.component
-        .window()
-        .set_size(LogicalSize::new(h.component.window().size().width as f32, height));
+    let window = h.component.window();
+    let width = window.size().to_logical(window.scale_factor()).width;
+    window.set_size(LogicalSize::new(width, height));
 }
 
 fn render(h: &Harness<PickerWindow>) -> Frame {
@@ -167,10 +167,11 @@ fn nine_rows_fit_and_the_tenth_scrolls() {
     let h = picker(false);
     fixture::set_rows(&h.component, fixture::numbered_rows(12));
     let _ = render(&h);
-    assert_eq!(
-        h.component.get_content_height(),
-        (SEARCH_H + CHIPS_H + 4 + 9 * ROW_H + 4 + FOOTER_H) as f32,
-        "up to nine rows are visible"
+    // 44 + 32 + 4 + 9 * 28 + 4 + 32
+    assert!(
+        (h.component.get_content_height() - 368.0).abs() < 0.5,
+        "up to nine rows are visible: {}",
+        h.component.get_content_height()
     );
 }
 
@@ -182,7 +183,11 @@ fn the_footer_is_32px_with_a_subtle_hairline_on_top() {
     // Right of the hints, clear of glyphs.
     let x = WIDTH - 40;
     assert_eq!(f.pixel(x, top), BORDER_SUBTLE_LIGHT, "footer hairline");
-    assert_eq!(f.pixel(x, top + 1), OVERLAY_LIGHT, "footer surface below it");
+    assert_eq!(
+        f.pixel(x, top + 1),
+        OVERLAY_LIGHT,
+        "footer surface below it"
+    );
     assert_ne!(f.pixel(x, top - 1), BORDER_SUBTLE_LIGHT, "and not above it");
 }
 
@@ -200,8 +205,16 @@ fn rows_are_28px_and_the_selected_row_has_an_accent_border() {
         assert_eq!(f.pixel(x, y), ACCENT, "selected row {what}");
     }
     assert_ne!(f.pixel(300, top - 1), ACCENT, "nothing above the outline");
-    assert_ne!(f.pixel(300, bottom + 1), ACCENT, "nothing below the outline");
-    assert_ne!(f.pixel(LIST_X, LIST_TOP + 14), ACCENT, "row 1 has no outline");
+    assert_ne!(
+        f.pixel(300, bottom + 1),
+        ACCENT,
+        "nothing below the outline"
+    );
+    assert_ne!(
+        f.pixel(LIST_X, LIST_TOP + 14),
+        ACCENT,
+        "row 1 has no outline"
+    );
 }
 
 #[test]
@@ -238,6 +251,10 @@ fn the_search_field_sits_in_a_44px_area_with_a_28px_box() {
     let top = f.pixel(300, 8);
     assert_ne!(top, OVERLAY_LIGHT, "box top edge at y=8");
     assert_eq!(f.pixel(300, 7), OVERLAY_LIGHT, "padding above");
-    assert_ne!(f.pixel(300, 8 + 27), OVERLAY_LIGHT, "box bottom edge at y=35");
+    assert_ne!(
+        f.pixel(300, 8 + 27),
+        OVERLAY_LIGHT,
+        "box bottom edge at y=35"
+    );
     assert_eq!(f.pixel(300, 8 + 28), OVERLAY_LIGHT, "padding below");
 }

@@ -54,7 +54,8 @@ export component TextField inherits VerticalLayout {
     in property <bool> show-hover: false;
     in property <bool> show-focus: false;
     in property <bool> show-composing: false;
-    // Counts up to ask for keyboard focus: each change to a value above 0 focuses the field (0 means no request).
+    // Counts up to ask for keyboard focus: each change to a value above 0 focuses the field and selects its text,
+    // as Tab does (0 means no request).
     // A host that cannot name the field (one of a repeated set) uses this instead of `focus()`. A field created
     // while it is above 0 takes focus when it appears.
     in property <int> focus-request: 0;
@@ -84,11 +85,13 @@ export component TextField inherits VerticalLayout {
     changed focus-request => {
         if (root.focus-request > 0) {
             input.focus();
+            input.select-all();
         }
     }
     init => {
         if (root.focus-request > 0) {
             input.focus();
+            input.select-all();
         }
     }
 
