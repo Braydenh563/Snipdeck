@@ -9,6 +9,11 @@
     clippy::panic,
     reason = "test code: a failure is a failed test"
 )]
+#![allow(
+    unknown_lints,
+    clippy::assert_is_empty,
+    reason = "`assert!(x.is_empty())` reads fine; the lint is newer than our pinned toolchain"
+)]
 
 use std::{
     cell::{Cell, RefCell},
