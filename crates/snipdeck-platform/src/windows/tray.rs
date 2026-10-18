@@ -40,11 +40,11 @@ use windows::Win32::UI::Shell::{
     Shell_NotifyIconW,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    AppendMenuW, ChangeWindowMessageFilterEx, CreatePopupMenu, DestroyMenu, GetCursorPos, HICON,
-    HMENU, IDI_APPLICATION, IMAGE_ICON, LR_SHARED, LoadImageW, MF_CHECKED, MF_SEPARATOR, MF_STRING,
-    MSGFLT_ALLOW, PostMessageW, RegisterWindowMessageW, SetForegroundWindow, TPM_BOTTOMALIGN,
-    TPM_RETURNCMD, TPM_RIGHTBUTTON, TrackPopupMenu, WM_APP, WM_CLOSE, WM_CREATE, WM_DESTROY,
-    WM_NULL,
+    AppendMenuW, ChangeWindowMessageFilterEx, CreatePopupMenu, DestroyMenu, GetCursorPos,
+    GetForegroundWindow, HICON, HMENU, IDI_APPLICATION, IMAGE_ICON, IsWindow, LR_SHARED,
+    LoadImageW, MF_CHECKED, MF_SEPARATOR, MF_STRING, MSGFLT_ALLOW, PostMessageW,
+    RegisterWindowMessageW, SetForegroundWindow, TPM_BOTTOMALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON,
+    TrackPopupMenu, WM_APP, WM_CLOSE, WM_CREATE, WM_DESTROY, WM_NULL,
 };
 use windows::core::{HSTRING, PCWSTR, w};
 
@@ -393,6 +393,11 @@ fn popup_menu(hwnd: HWND, lines: &[MenuLine], anchor: usize) -> Option<TrayEntry
             (x, y) = (at.x, at.y);
         }
     }
+    // The window that was in front, to give the focus back to it afterwards: the hidden owner
+    // window has to be the foreground window while the menu is open, and left in front it would
+    // swallow the user's next keystrokes (it is invisible).
+    // SAFETY: no preconditions; null if there is no foreground window.
+    let previous = unsafe { GetForegroundWindow() };
     // SAFETY: `hwnd` is our own window, on this thread. The menu only closes on an outside click
     // if the owner is the foreground window (documented requirement of `TrackPopupMenu`).
     let _ = unsafe { SetForegroundWindow(hwnd) };
@@ -413,9 +418,28 @@ fn popup_menu(hwnd: HWND, lines: &[MenuLine], anchor: usize) -> Option<TrayEntry
     let _ = unsafe { PostMessageW(Some(hwnd), WM_NULL, WPARAM(0), LPARAM(0)) };
     // SAFETY: `menu` is ours and no longer in use.
     let _ = unsafe { DestroyMenu(menu) };
+    restore_foreground(hwnd, previous);
     u32::try_from(chosen.0)
         .ok()
         .and_then(TrayEntry::from_command_id)
+}
+
+/// Gives the focus back to `previous` if our hidden window still has it (the menu is closed). If
+/// the user (or a command that was just chosen) already moved the focus elsewhere, it is left
+/// alone.
+fn restore_foreground(hwnd: HWND, previous: HWND) {
+    // SAFETY: no preconditions.
+    let current = unsafe { GetForegroundWindow() };
+    if current != hwnd || previous.0.is_null() || previous == hwnd {
+        return;
+    }
+    // SAFETY: `IsWindow` accepts any handle value and says whether it still names a window.
+    if !unsafe { IsWindow(Some(previous)) }.as_bool() {
+        return;
+    }
+    // SAFETY: a plain request to foreground a window we just took the focus from; it may be
+    // refused, which only means the focus stays where it is.
+    let _ = unsafe { SetForegroundWindow(previous) };
 }
 
 fn build_menu(lines: &[MenuLine]) -> Option<HMENU> {
