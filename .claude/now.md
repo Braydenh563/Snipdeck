@@ -48,3 +48,5 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 13:5x owner: Microsoft Store $19? Pages website? make repo public? where to get/store private keys?
 - 14:0x owner: troubleshooting wizard GUI for the launcher tools, reachable from the Panel and the app. → plan step 7b (Help & troubleshooting window; app owns the data tools in Rust, launcher keeps download/update/uninstall).
 - 14:1x owner: just focus on finishing v1: polish, optimise, refine, from demo to a real usable reliable product.
+- 14:3x owner: launcher says no release yet (404) and stops; cannot run. → by design until the first tag; interim: Actions artifact zip.
+- 14:3x owner: must run offline; wifi only for install (and far-future cloud sync). → already so: network only on first download; the app never calls out.
