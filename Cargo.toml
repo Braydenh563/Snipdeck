@@ -9,7 +9,7 @@ edition = "2024"
 # The toolchain this workspace is built and verified with (see rust-toolchain.toml).
 rust-version = "1.97"
 license = "GPL-3.0-only"
-repository = "https://github.com/Braydenh563/Backpack"
+repository = "https://github.com/Braydenh563/Snipdeck"
 publish = false
 
 [workspace.dependencies]
