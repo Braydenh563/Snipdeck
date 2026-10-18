@@ -20,7 +20,8 @@ use snipdeck_platform::{
 use snipdeck_ui as ui;
 
 use crate::{
-    controller::{Controller, Effect, Library, ToastPhase, View},
+    controller::{AppMenuEntry, Controller, Effect, Library, ToastPhase, View},
+    frame::{Edge, Monitor, Rect},
     host::{ClipboardText, HotkeyProblem},
     palette::list_color,
     panel::{Footer, Row, Tab},
@@ -90,6 +91,8 @@ pub struct Binding {
     hotkey_problems: Rc<ProblemsFn>,
     tray: Rc<dyn Fn(TrayEvent)>,
     system_look: Rc<dyn Fn(SystemLook)>,
+    frame_changed: Rc<dyn Fn(&Monitor, Rect)>,
+    restore_frame: Rc<dyn Fn(&Monitor)>,
 }
 
 impl std::fmt::Debug for Binding {
@@ -128,6 +131,18 @@ impl Binding {
     /// every change notification; an unchanged look redraws nothing).
     pub fn system_look(&self, look: SystemLook) {
         (self.system_look)(look);
+    }
+
+    /// The Panel's frame is now `frame` on `monitor` (physical pixels; after a resize or a
+    /// move). It is clamped and remembered for that monitor, and the window is put back inside
+    /// the limits if it got out of them ([`Effect::PlaceWindow`]).
+    pub fn frame_changed(&self, monitor: &Monitor, frame: Rect) {
+        (self.frame_changed)(monitor, frame);
+    }
+
+    /// The Panel is shown on `monitor`: put it where the user left it there, if they did.
+    pub fn restore_frame(&self, monitor: &Monitor) {
+        (self.restore_frame)(monitor);
     }
 }
 
@@ -203,6 +218,11 @@ where
                 Effect::HidePanel => {
                     let _ = window.hide();
                 }
+                Effect::PlaceWindow(frame) => {
+                    let w = window.window();
+                    w.set_position(slint::PhysicalPosition::new(frame.x, frame.y));
+                    w.set_size(slint::PhysicalSize::new(frame.w, frame.h));
+                }
                 _ => {}
             }
             (self.on_effect)(effect);
@@ -265,8 +285,9 @@ where
     /// `ShowPanel` has shown the window, a `HidePanel` has hidden it); the host handles the
     /// rest (`OpenPicker`, `StartCapture`, `PasteNext`, `DragWindow`).
     ///
-    /// Not yet wired, because the feature behind it is not built: the Panel's context menus.
-    /// (Undo lives on the Main window's toast.)
+    /// Not yet wired, because the feature behind it is not built: the Panel's row context
+    /// menus (`context-menu-requested`, `pinned-context-menu-requested`) and the hold-to-reveal
+    /// of a sensitive row (`reveal-requested`).
     pub fn bind(
         this: &Rc<RefCell<Self>>,
         window: &ui::PanelWindow,
@@ -317,6 +338,15 @@ where
         wire!(on_pin_toggled, |ctl, on| ctl.set_on_top(on));
         wire!(on_add_list_requested, |ctl| ctl.add_list());
         wire!(on_add_from_clipboard, |ctl| ctl.quick_capture());
+        wire!(on_app_menu_requested, |ctl| ctl.open_app_menu());
+        wire_effects!(on_app_menu_activated, |ctl, i| ctl
+            .choose_app_menu(index(i)));
+        wire!(on_app_menu_dismissed, |ctl| ctl.close_app_menu());
+        wire_effects!(on_edit_requested, |ctl, i| ctl.edit_row(index(i)));
+        wire_effects!(on_rename_requested, |ctl, i| ctl.rename_row(index(i)));
+        wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
+        wire!(on_toast_undo, |ctl| ctl.main_undo());
+        wire_effects!(on_resize_requested, |ctl, edge| ctl.resize(edge_of(edge)));
         wire_effects!(on_close_requested, |ctl| ctl.close());
         wire_effects!(on_drag_requested, |ctl| ctl.drag());
 
@@ -364,6 +394,23 @@ where
                 let core = Rc::clone(&core);
                 Rc::new(move |look| core.act(|ctl| ctl.set_system_look(look)))
             },
+            frame_changed: {
+                let core = Rc::clone(&core);
+                Rc::new(move |monitor: &Monitor, frame| {
+                    // Placing the window can report its new frame from inside a controller
+                    // call; that frame is already clamped, so skip it.
+                    if core.controller.try_borrow_mut().is_ok() {
+                        core.act_effects(|ctl| ctl.frame_changed(monitor, frame));
+                    }
+                })
+            },
+            restore_frame: {
+                let core = Rc::clone(&core);
+                Rc::new(move |monitor: &Monitor| {
+                    crate::trace!("restore frame");
+                    core.act_effects(|ctl| ctl.restore_frame(monitor));
+                })
+            },
         }
     }
 }
@@ -383,6 +430,12 @@ impl Loggable for i32 {
 impl Loggable for bool {
     fn log(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
+    }
+}
+
+impl Loggable for ui::ResizeEdge {
+    fn log(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", edge_of(*self).name())
     }
 }
 
@@ -408,6 +461,20 @@ impl std::fmt::Display for Shown<'_> {
             arg.log(f)?;
         }
         f.write_str(")")
+    }
+}
+
+/// The grip the window reported, as the controller names it.
+fn edge_of(edge: ui::ResizeEdge) -> Edge {
+    match edge {
+        ui::ResizeEdge::Left => Edge::Left,
+        ui::ResizeEdge::Right => Edge::Right,
+        ui::ResizeEdge::Top => Edge::Top,
+        ui::ResizeEdge::Bottom => Edge::Bottom,
+        ui::ResizeEdge::TopLeft => Edge::TopLeft,
+        ui::ResizeEdge::TopRight => Edge::TopRight,
+        ui::ResizeEdge::BottomLeft => Edge::BottomLeft,
+        ui::ResizeEdge::BottomRight => Edge::BottomRight,
     }
 }
 
@@ -478,9 +545,31 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         window.set_board_menu_entries(model(entries));
         window.set_board_menu_open(view.board_menu.is_some());
     }
+    if differs(&|p| p.app_menu == view.app_menu && p.hotkeys_paused == view.hotkeys_paused)
+        || window.get_app_menu_open() != view.app_menu.is_some()
+    {
+        let check = window.global::<ui::Icons<'_>>().get_check();
+        let entries = view.app_menu.iter().flatten().map(|&entry| ui::MenuEntry {
+            text: wording::app_menu_text(entry).into(),
+            icon: if entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused {
+                check.clone()
+            } else {
+                slint::Image::default()
+            },
+            separator: entry == AppMenuEntry::Separator,
+            ..Default::default()
+        });
+        window.set_app_menu_entries(model(entries));
+        window.set_app_menu_open(view.app_menu.is_some());
+    }
     if differs(&|p| p.toast == view.toast) {
         if let Some(toast) = &view.toast {
             {
+                window.set_toast_undo_label(if toast.undo {
+                    wording::UNDO_LABEL.into()
+                } else {
+                    SharedString::new()
+                });
                 window.set_toast_kind(match toast.kind {
                     crate::toast::ToastKind::Neutral => ui::ToastKind::Neutral,
                     crate::toast::ToastKind::Success => ui::ToastKind::Success,
@@ -495,6 +584,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             }
         } else {
             window.set_toast_text(SharedString::new());
+            window.set_toast_undo_label(SharedString::new());
             window.set_toast_phase(ui::ToastPhase::Exit);
         }
     }

@@ -10,6 +10,7 @@ pub mod cli;
 pub mod controller;
 pub mod demo;
 pub mod fill;
+pub mod frame;
 pub mod host;
 pub mod main_binding;
 pub mod main_window;

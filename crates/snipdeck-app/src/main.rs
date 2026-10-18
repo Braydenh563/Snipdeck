@@ -12,7 +12,13 @@
     reason = "this is the command-line entry point: usage and start-up failures go to the terminal"
 )]
 
-use std::{cell::RefCell, path::PathBuf, process::ExitCode, rc::Rc, sync::Arc};
+use std::{
+    cell::{Cell, RefCell},
+    path::PathBuf,
+    process::ExitCode,
+    rc::Rc,
+    sync::Arc,
+};
 
 use slint::{
     ComponentHandle,
@@ -153,8 +159,8 @@ fn run(args: &Args) -> Result<(), String> {
     // icon is in the notification area is reported by the tray itself (`TrayEvent::IconPresent`,
     // also when Explorer restarts), so the controller needs no flag from here. Without a tray
     // (off Windows, or it failed to start) or while no icon is there, closing the Panel quits.
-    let mut tray = tray;
-    show_tray(&mut tray);
+    let tray = Rc::new(RefCell::new(tray));
+    show_tray(&mut tray.borrow_mut());
 
     let hotkeys = Rc::new(RefCell::new(hotkeys));
     // Resuming after "Pause hotkeys" registers the chords in force then, not the launch ones.
@@ -177,10 +183,13 @@ fn run(args: &Args) -> Result<(), String> {
             chords_now,
             window.as_weak(),
             Rc::clone(&main_ui),
+            Rc::clone(&tray),
         ),
     );
     BINDING.with(|b| *b.borrow_mut() = Some(binding.clone()));
-    trace_window_events(&window);
+    // Frame changes are remembered only once the stored place has been restored.
+    let frames_armed = Rc::new(Cell::new(false));
+    watch_window_events(&window, binding.clone(), Rc::clone(&frames_armed));
 
     report_hotkey_problems(&host::register_all(
         &mut **hotkeys.borrow_mut(),
@@ -189,10 +198,13 @@ fn run(args: &Args) -> Result<(), String> {
 
     if args.hidden {
         controller.borrow_mut().hide();
+        frames_armed.set(true);
     } else {
         window
             .show()
             .map_err(|e| format!("showing the Panel: {e}"))?;
+        restore_frame(&window);
+        frames_armed.set(true);
         attach_when_created(&window, attach_panel);
     }
     let ran = slint::run_event_loop_until_quit().map_err(|e| format!("event loop: {e}"));
@@ -202,6 +214,8 @@ fn run(args: &Args) -> Result<(), String> {
     }
     ran
 }
+
+type SharedTray = Rc<RefCell<Option<Box<dyn snipdeck_platform::tray::Tray>>>>;
 
 /// Puts the icon in the notification area, if there is a tray.
 fn show_tray(tray: &mut Option<Box<dyn snipdeck_platform::tray::Tray>>) {
@@ -221,6 +235,7 @@ fn effect_handler(
     chords_now: impl Fn() -> snipdeck_app::settings::Hotkeys + 'static,
     window: slint::Weak<PanelWindow>,
     main_ui: Rc<MainUi>,
+    tray: SharedTray,
 ) -> impl Fn(&Effect) + 'static {
     move |effect| match effect {
         Effect::Quit => {
@@ -240,6 +255,12 @@ fn effect_handler(
             if !*paused {
                 report_hotkey_problems(&report.problems);
             }
+            // The Panel's menu can switch this too: the tray's check mark follows.
+            if let Some(tray) = tray.borrow_mut().as_mut()
+                && let Err(e) = tray.set_hotkeys_paused(*paused)
+            {
+                eprintln!("snipdeck: cannot update the tray's check mark: {e}");
+            }
         }
         // Created the first time, then shown and raised again; the Panel stays as it is.
         Effect::OpenMainWindow => {
@@ -255,21 +276,108 @@ fn effect_handler(
                     .with_winit_window(winit::window::Window::drag_window);
             }
         }
-        _ => {}
+        Effect::ResizeWindow(edge) => {
+            if let Some(window) = window.upgrade() {
+                // No OS frame either: a grip starts the OS resize loop. The window's own
+                // minimum and maximum width (260 and 480) hold while it runs; the size it
+                // ends at reaches `Binding::frame_changed` through the window events.
+                let direction = resize_direction(*edge);
+                let _ = window
+                    .window()
+                    .with_winit_window(|w| w.drag_resize_window(direction));
+            }
+        }
+        Effect::ShowPanel => {
+            if let Some(window) = window.upgrade() {
+                restore_frame(&window);
+            }
+        }
+        // Not built yet (V1-PLAN steps 7 and 8): the click is logged and nothing happens.
+        Effect::OpenSettings | Effect::NewItem | Effect::OpenHelp(_) | Effect::EditItem(_) => {
+            snipdeck_app::trace!("host: {effect:?} is not built yet");
+        }
+        // The binding has already placed the window.
+        Effect::HidePanel | Effect::PlaceWindow(_) => {}
     }
 }
 
-/// With `SNIPDECK_LOG=1`: the pointer presses, focus, scale and size changes the window gets
-/// from winit, so a log shows whether a click reached the window and where Slint placed it.
-fn trace_window_events(window: &PanelWindow) {
-    use slint::winit_030::{EventResult, winit::event::WindowEvent};
-    if !snipdeck_app::trace::enabled() {
-        return;
+fn resize_direction(edge: snipdeck_app::frame::Edge) -> winit::window::ResizeDirection {
+    use snipdeck_app::frame::Edge;
+    use winit::window::ResizeDirection;
+    match edge {
+        Edge::Left => ResizeDirection::West,
+        Edge::Right => ResizeDirection::East,
+        Edge::Top => ResizeDirection::North,
+        Edge::Bottom => ResizeDirection::South,
+        Edge::TopLeft => ResizeDirection::NorthWest,
+        Edge::TopRight => ResizeDirection::NorthEast,
+        Edge::BottomLeft => ResizeDirection::SouthWest,
+        Edge::BottomRight => ResizeDirection::SouthEast,
     }
+}
+
+/// The monitor `window` is on. Its work area is the monitor's whole area for now: winit does
+/// not give the area without the taskbar.
+fn monitor_of(window: &winit::window::Window) -> Option<snipdeck_app::frame::Monitor> {
+    use snipdeck_app::frame::{Monitor, Rect};
+    let monitor = window.current_monitor()?;
+    let (size, at) = (monitor.size(), monitor.position());
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "a display scale such as 1.5 fits an f32"
+    )]
+    let scale = monitor.scale_factor() as f32;
+    Some(Monitor {
+        id: Monitor::id_of(&monitor.name().unwrap_or_default(), size.width, size.height),
+        work_area: Rect {
+            x: at.x,
+            y: at.y,
+            w: size.width,
+            h: size.height,
+        },
+        scale,
+    })
+}
+
+/// Puts the Panel where the user left it on the monitor it is on.
+fn restore_frame(window: &PanelWindow) {
+    if let Some(monitor) = window.window().with_winit_window(monitor_of).flatten() {
+        with_binding(|b| b.restore_frame(&monitor));
+    }
+}
+
+/// Watches what winit tells the Panel window: a resize or a move is reported to the binding
+/// (which clamps and remembers the frame per monitor) once `armed`; and with `SNIPDECK_LOG=1`
+/// the pointer presses, focus, scale and size changes are logged, so a log shows whether a click
+/// reached the window and where Slint placed it.
+fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bool>>) {
+    use slint::winit_030::{EventResult, winit::event::WindowEvent};
+    let tracing = snipdeck_app::trace::enabled();
     let mut cursor = (0.0, 0.0);
     window
         .window()
         .on_winit_window_event(move |slint_window, event| {
+            if matches!(event, WindowEvent::Resized(_) | WindowEvent::Moved(_)) && armed.get() {
+                // winit's own numbers: Slint has not seen this event yet.
+                let frame = slint_window.with_winit_window(|w| {
+                    let (at, size) = (w.outer_position().ok()?, w.inner_size());
+                    Some((
+                        monitor_of(w)?,
+                        snipdeck_app::frame::Rect {
+                            x: at.x,
+                            y: at.y,
+                            w: size.width,
+                            h: size.height,
+                        },
+                    ))
+                });
+                if let Some(Some((monitor, rect))) = frame {
+                    binding.frame_changed(&monitor, rect);
+                }
+            }
+            if !tracing {
+                return EventResult::Propagate;
+            }
             match event {
                 WindowEvent::CursorMoved { position, .. } => cursor = (position.x, position.y),
                 WindowEvent::MouseInput { state, button, .. } => {
