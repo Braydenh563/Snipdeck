@@ -21,7 +21,9 @@ use snipdeck_core::{
     ListAccent, ListSort, ListView, Name, Placement, Tag, TagId, Timestamp,
 };
 use snipdeck_store::crypto::{DataKey, Slot};
-use snipdeck_store::{Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, TagRepo, TrashRepo, name_key};
+use snipdeck_store::{
+    Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, TagRepo, TrashRepo, name_key,
+};
 
 use crate::error::{Error, Result};
 use crate::report::ImportReport;
@@ -301,8 +303,9 @@ pub(crate) fn apply<L: Library>(
     plan: &Plan,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
     mut report: ImportReport,
+    max_boards: Option<usize>,
 ) -> Result<ImportReport> {
-    lib.atomically(|batch| write(batch, plan, fetch, &mut report))?;
+    lib.atomically(|batch| write(batch, plan, fetch, &mut report, max_boards))?;
     Ok(report)
 }
 
@@ -311,7 +314,17 @@ fn write(
     plan: &Plan,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
     report: &mut ImportReport,
+    max_boards: Option<usize>,
 ) -> Result<()> {
+    // Counted here, inside the transaction, so nothing can slip in between check and write.
+    if let Some(max) = max_boards
+        && !plan.boards.is_empty()
+        && lib.boards()?.len() + plan.boards.len() > max
+    {
+        return Err(
+            snipdeck_core::Error::ProRequired(snipdeck_core::Feature::UnlimitedBoards).into(),
+        );
+    }
     // Only tags that a kept item uses are created; existing tags are reused by name.
     let used: HashSet<usize> = plan
         .boards
@@ -555,7 +568,14 @@ mod tests {
     fn apply_writes_everything_and_reuses_existing_tags() {
         let mut s = library();
         let mut fetch = |_: &AssetRef| Ok(b"big".to_vec());
-        let report = apply(&mut s, &two_boards(), &mut fetch, ImportReport::default()).unwrap();
+        let report = apply(
+            &mut s,
+            &two_boards(),
+            &mut fetch,
+            ImportReport::default(),
+            None,
+        )
+        .unwrap();
         assert_eq!(
             (
                 report.boards_added,
@@ -587,8 +607,14 @@ mod tests {
                     Ok(vec![u8::try_from(calls).unwrap(); 100_000])
                 }
             };
-            let err =
-                apply(&mut s, &two_boards(), &mut fetch, ImportReport::default()).unwrap_err();
+            let err = apply(
+                &mut s,
+                &two_boards(),
+                &mut fetch,
+                ImportReport::default(),
+                None,
+            )
+            .unwrap_err();
             assert!(matches!(err, Error::Malformed { .. }), "{err}");
             assert_eq!(state(&s), before, "failing at fetch {fail_at}");
             assert_eq!(s.check_integrity().unwrap(), Vec::<String>::new());
@@ -614,7 +640,7 @@ mod tests {
             }],
         };
         let mut fetch = |_: &AssetRef| Ok(Vec::new());
-        let report = apply(&mut s, &plan, &mut fetch, ImportReport::default()).unwrap();
+        let report = apply(&mut s, &plan, &mut fetch, ImportReport::default(), None).unwrap();
         assert_eq!(report.tags_added, 1);
         assert_eq!(s.tags().unwrap().len(), 3);
         assert_eq!(s.check_integrity().unwrap(), Vec::<String>::new());
@@ -626,7 +652,14 @@ mod tests {
         let before = state(&s);
         assert_eq!(before.4.len(), 1);
         let mut fetch = |_: &AssetRef| Err(Error::malformed("test", "boom"));
-        apply(&mut s, &two_boards(), &mut fetch, ImportReport::default()).unwrap_err();
+        apply(
+            &mut s,
+            &two_boards(),
+            &mut fetch,
+            ImportReport::default(),
+            None,
+        )
+        .unwrap_err();
         assert_eq!(state(&s).4, before.4);
     }
 

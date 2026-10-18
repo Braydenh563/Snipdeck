@@ -108,9 +108,8 @@ fn declared_entry_count<R: Read + Seek>(reader: &mut R) -> Result<Option<u64>> {
         .filter_map(|(at, w)| (w == EOCD).then_some(at))
         .collect();
     let ends_the_file = |at: usize| {
-        tail.get(at + 20..at + 22).is_some_and(|c| {
-            at + 22 + usize::from(u16::from_le_bytes([c[0], c[1]])) == tail.len()
-        })
+        tail.get(at + 20..at + 22)
+            .is_some_and(|c| at + 22 + usize::from(u16::from_le_bytes([c[0], c[1]])) == tail.len())
     };
     let mut exact = signatures.iter().copied().filter(|at| ends_the_file(*at));
     let (Some(pos), None) = (exact.next(), exact.next()) else {

@@ -401,7 +401,11 @@ mod tests {
     fn a_truncated_file_keeps_the_excluded_apps_it_still_has() {
         let full = Settings {
             theme: Theme::Dark,
-            no_paste_apps: vec!["keepass.exe".into(), "1password.exe".into(), "putty.exe".into()],
+            no_paste_apps: vec![
+                "keepass.exe".into(),
+                "1password.exe".into(),
+                "putty.exe".into(),
+            ],
             site_icons: true,
             ..Settings::default()
         }

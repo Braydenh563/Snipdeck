@@ -246,7 +246,9 @@ fn check_schema(conn: &Connection, path: &Path) -> Result<()> {
                 .get(..14)
                 .is_some_and(|head| head.eq_ignore_ascii_case("CREATE VIRTUAL"))
         }) {
-            return Err(not_ditto(format!("`{table}` is a virtual table, not a table")));
+            return Err(not_ditto(format!(
+                "`{table}` is a virtual table, not a table"
+            )));
         }
         // Table names are literals above; PRAGMA cannot take a parameter.
         let mut stmt = conn
