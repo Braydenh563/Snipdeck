@@ -16,7 +16,7 @@ machine.
 - Main window, item/list/board editors, tag manager and Settings page (`snipdeck-ui`), merged from the main-window branch.
 - Panel: the always-on-top toggle is a distinct `push-pin-simple` icon with a stable "Keep panel on top" label and tooltips on the header buttons.
 - `snipdeck-keygen` (tools/): `genkey`, `sign`, `verify` for friends' licence keys; the signer moved into `snipdeck-core` behind the `keygen` feature.
-- GitHub: CodeQL (Rust + Actions), dependency review on PRs, RustSec `cargo audit` daily, OpenSSF Scorecard, Dependabot (cargo + actions), and a Windows portable-zip build (dev build on main, release build with SHA-256 on `v*` tags).
+- GitHub: CodeQL (Rust + Actions), RustSec `cargo audit` daily, OpenSSF Scorecard, Dependabot (cargo + actions), and a Windows portable-zip build (dev build on main, release build with SHA-256 on `v*` tags).
 - `docs/reviews/fable-analysis.md`: ranked findings, architecture redesign, UX, security/privacy and feature brainstorm.
 
 ### Added
