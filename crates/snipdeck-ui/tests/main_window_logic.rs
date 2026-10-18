@@ -198,7 +198,7 @@ ui_tests! {
     fn escape_clears_a_selection_and_does_nothing_without_one() {
         let (ui, log) = start();
         press_key(&ui, Key::Escape);
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log).len(), 0);
         ui.set_selected_count(2);
         settle();
         press_key(&ui, Key::Escape);
@@ -239,7 +239,7 @@ ui_tests! {
         assert!(ui.get_confirm_open(), "Enter is not the destructive default");
         press_key(&ui, Key::Escape);
         assert!(!ui.get_confirm_open());
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log).len(), 0);
 
         press_key(&ui, Key::Delete);
         find(&ui, "Delete for good", AccessibleRole::Button).invoke_accessible_default_action();
@@ -248,7 +248,7 @@ ui_tests! {
         // Edit and Pin are not offered in the Trash.
         press_key(&ui, Key::F2);
         chord(ui.window(), &[Key::Control], "p");
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log).len(), 0);
     }
 
     // ---- Context menu, move and tag ------------------------------------------------------------
@@ -446,7 +446,7 @@ ui_tests! {
         );
         press_key(&ui, Key::Escape);
         assert!(!ui.get_confirm_open());
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log).len(), 0);
 
         press_key(&ui, Key::Menu);
         find(&ui, "Delete list…", AccessibleRole::ListItem).invoke_accessible_default_action();
@@ -484,7 +484,7 @@ ui_tests! {
         find(&ui, "Empty Trash…", AccessibleRole::ListItem).invoke_accessible_default_action();
         settle();
         let _ = find(&ui, "Empty the Trash?", AccessibleRole::Groupbox);
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log).len(), 0);
         find(&ui, "Empty Trash", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["empty-trash"]);
     }

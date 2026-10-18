@@ -287,7 +287,7 @@ fn tags_are_ticked_on_the_chosen_rows_and_unticked_again() {
     assert_eq!(titles(&ctl.main_screen()), ["Invoice reminder"]);
     ctl.main_action(MainAction::Tag, 0);
     ctl.main_toggle_tag(0, false);
-    assert!(ctl.main_screen().rows.is_empty());
+    assert_eq!(ctl.main_screen().rows.len(), 0);
 }
 
 #[test]
@@ -415,9 +415,9 @@ fn the_trash_view_restores_deletes_for_good_and_empties() {
     ctl.main_empty_trash();
     let screen = ctl.main_screen();
     assert_eq!(screen.counts.trash, 0);
-    assert!(screen.rows.is_empty());
+    assert_eq!(screen.rows.len(), 0);
     assert_eq!(message(&screen), ToastMessage::TrashEmptied);
-    assert!(ctl.store().trashed().unwrap().is_empty());
+    assert_eq!(ctl.store().trashed().unwrap().len(), 0);
 }
 
 #[test]
@@ -554,7 +554,7 @@ fn a_new_board_is_made_through_the_menu_and_opened() {
     ctl.main_editor_save("Side projects", None, ListSort::Manual);
     let screen = ctl.main_screen();
     assert_eq!(screen.board_name, "Side projects");
-    assert!(screen.lists.is_empty());
+    assert_eq!(screen.lists.len(), 0);
     assert_eq!(ctl.store().boards().unwrap().len(), 3);
     assert_eq!(
         ctl.view().board_name,

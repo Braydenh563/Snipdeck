@@ -221,7 +221,7 @@ ui_tests! {
         ui.set_content_error("A link needs a scheme such as https://".into());
         settle();
         chord(ui.window(), &[Key::Control], "\n");
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log).len(), 0);
         assert_eq!(
             find(&ui, "Link", AccessibleRole::TextInput).accessible_description().as_deref(),
             Some("A link needs a scheme such as https://")
@@ -241,14 +241,14 @@ ui_tests! {
         take(&log);
         press_key(&ui, Key::Escape);
         assert!(ui.get_discard_open(), "unsaved changes: ask first");
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log).len(), 0);
         // The dialog is labelled and its default action is the safe one.
         let dialog = find(&ui, "Discard your changes?", AccessibleRole::Groupbox);
         assert_eq!(dialog.accessible_description().as_deref(), Some("What you changed in this item has not been saved."));
 
         press_key(&ui, Key::Escape);
         assert!(!ui.get_discard_open(), "Esc closes the dialog only");
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log).len(), 0);
 
         press_key(&ui, Key::Escape);
         assert!(ui.get_discard_open());
@@ -329,7 +329,7 @@ ui_tests! {
         press_key(&ui, Key::Escape);
         assert_eq!(combo.accessible_expanded(), Some(false));
         assert!(!ui.get_discard_open());
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log).len(), 0);
 
         combo.invoke_accessible_default_action();
         settle();
@@ -461,7 +461,7 @@ ui_tests! {
         ui.set_name("".into());
         settle();
         chord(ui.window(), &[Key::Control], "\n");
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log).len(), 0);
         assert_eq!(
             find(&ui, "List name", AccessibleRole::TextInput).accessible_description().as_deref(),
             Some("Give the list a name.")
@@ -543,7 +543,7 @@ ui_tests! {
         assert!(ui.get_delete_open());
         press_key(&ui, Key::Escape);
         assert!(!ui.get_delete_open());
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log).len(), 0);
 
         find(&ui, "Delete list", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
@@ -608,7 +608,7 @@ ui_tests! {
         );
         press_key(&ui, Key::Escape);
         assert_eq!(ui.get_editing(), -1, "Esc cancels the rename first");
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log).len(), 0);
         press_key(&ui, Key::Escape);
         assert_eq!(take(&log), ["close"]);
     }
@@ -632,7 +632,7 @@ ui_tests! {
         );
         press_key(&ui, Key::Escape);
         assert_eq!(ui.get_delete_index(), -1);
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log).len(), 0);
 
         find(&ui, "Delete tag sql", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
@@ -779,7 +779,7 @@ ui_tests! {
         assert_eq!(take(&log), ["app+:calc.exe"]);
         // An empty field adds nothing.
         find(&ui, "Add", AccessibleRole::Button).invoke_accessible_default_action();
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log).len(), 0);
     }
 
     fn the_settings_page_has_roles_labels_and_big_enough_targets() {

@@ -226,7 +226,7 @@ fn choosing_a_system_view_or_a_list_changes_the_rows() {
         assert_eq!(r.titles(), ["Home address", "Office"]);
         assert_eq!(r.ui.get_section_index(), 1);
         r.open(MainSection::Recent);
-        assert!(r.titles().is_empty());
+        assert_eq!(r.titles().len(), 0);
     });
 }
 

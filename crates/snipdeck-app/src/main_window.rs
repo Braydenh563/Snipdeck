@@ -871,7 +871,7 @@ mod tests {
                 .collect::<Vec<_>>(),
             [("Email replies", 6), ("Addresses", 2), ("Code", 2)]
         );
-        assert!(model.side_tags().is_empty());
+        assert_eq!(model.side_tags().len(), 0);
         assert_eq!(model.section(), Section::All);
     }
 
@@ -902,7 +902,7 @@ mod tests {
     fn recent_is_empty_until_the_inbox_exists() {
         let (_store, mut model) = loaded();
         model.open(Section::Recent);
-        assert!(model.rows().is_empty());
+        assert_eq!(model.rows().len(), 0);
         assert_eq!(model.counts().recent, 0);
     }
 
