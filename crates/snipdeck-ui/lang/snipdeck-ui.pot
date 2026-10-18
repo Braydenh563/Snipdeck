@@ -98,7 +98,7 @@ msgstr ""
 msgid "Brings the panel up beside the app you are working in."
 msgstr ""
 
-#: ui/editors.slint:525 ui/editors.slint:843 ui/editors.slint:881 ui/editors.slint:1181 ui/main_window.slint:1521 ui/settings.slint:566 ui/template_fill.slint:303
+#: ui/editors.slint:525 ui/editors.slint:843 ui/editors.slint:881 ui/editors.slint:1181 ui/main_window.slint:1521 ui/settings.slint:566 ui/template_fill.slint:304
 msgid "Cancel"
 msgstr ""
 
@@ -134,7 +134,7 @@ msgstr ""
 msgid "Clear the shortcut for {}"
 msgstr ""
 
-#: ui/editors.slint:1165 ui/picker.slint:488 ui/template_fill.slint:185
+#: ui/editors.slint:1165 ui/picker.slint:488 ui/template_fill.slint:186
 msgid "Close"
 msgstr ""
 
@@ -166,7 +166,7 @@ msgstr ""
 msgid "Content"
 msgstr ""
 
-#: ui/template_fill.slint:289
+#: ui/template_fill.slint:290
 msgid "Control Enter"
 msgstr ""
 
@@ -174,7 +174,7 @@ msgstr ""
 msgid "Copies to clipboard"
 msgstr ""
 
-#: ui/main_window.slint:441 ui/panel.slint:175 ui/panel.slint:772 ui/picker.slint:132 ui/picker.slint:478
+#: ui/main_window.slint:441 ui/panel.slint:175 ui/panel.slint:772 ui/picker.slint:132 ui/picker.slint:478 ui/template_fill.slint:62
 msgid "Copy"
 msgstr ""
 
@@ -350,7 +350,7 @@ msgstr ""
 msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
 msgstr ""
 
-#: ui/template_fill.slint:203
+#: ui/template_fill.slint:204
 msgid "Fields"
 msgstr ""
 
@@ -358,7 +358,7 @@ msgstr ""
 msgid "File"
 msgstr ""
 
-#: ui/template_fill.slint:46 ui/template_fill.slint:166
+#: ui/template_fill.slint:46 ui/template_fill.slint:167
 msgid "Fill in template"
 msgstr ""
 
@@ -422,7 +422,7 @@ msgstr ""
 msgid "In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe."
 msgstr ""
 
-#: ui/template_fill.slint:61
+#: ui/template_fill.slint:62
 msgid "Insert"
 msgstr ""
 
@@ -746,7 +746,7 @@ msgstr ""
 msgid "Press the new shortcut"
 msgstr ""
 
-#: ui/template_fill.slint:240 ui/template_fill.slint:255
+#: ui/template_fill.slint:241 ui/template_fill.slint:256
 msgid "Preview"
 msgstr ""
 
@@ -790,7 +790,7 @@ msgstr ""
 msgid "Rename tag {}"
 msgstr ""
 
-#: ui/template_fill.slint:209
+#: ui/template_fill.slint:210
 msgid "Required"
 msgstr ""
 
@@ -894,7 +894,7 @@ msgstr ""
 msgid "Slate"
 msgstr ""
 
-#: ui/main_window.slint:119 ui/panel.slint:76 ui/picker.slint:70
+#: ui/main_window.slint:119 ui/panel.slint:76 ui/picker.slint:70 ui/toast_window.slint:9
 msgid "Snipdeck"
 msgstr ""
 
@@ -1006,7 +1006,7 @@ msgstr ""
 msgid "This demo keeps nothing on disk, so there are no backups."
 msgstr ""
 
-#: ui/template_fill.slint:215
+#: ui/template_fill.slint:216
 msgid "This field is required"
 msgstr ""
 

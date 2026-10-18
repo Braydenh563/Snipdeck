@@ -28,14 +28,18 @@ use snipdeck_app::{
     binding::Binding,
     cli::{self, Args},
     controller::{Controller, Effect},
-    crash, demo, host,
+    crash, demo,
+    fill_binding::FillUi,
+    host,
     main_binding::{self, MainUi},
     maintenance::{self, Maintenance},
+    picker_binding::{AnchorMemory, PickerUi},
     platform::{self, Callbacks, Host, Start},
     screenshot,
     settings::{Settings, Theme},
     settings_binding::{SettingsUi, SystemHost},
     settings_store::{FileSink, SettingsSaver},
+    toast_binding::ToastUi,
 };
 use snipdeck_core::{Entitlements, Tier, Timestamp};
 use snipdeck_store::Store;
@@ -121,6 +125,7 @@ fn run(args: &Args) -> Result<(), String> {
         target,
         hotkeys,
         attach_panel,
+        popups,
         tray,
         warnings,
         keep_alive: _keep_alive,
@@ -187,18 +192,41 @@ fn run(args: &Args) -> Result<(), String> {
         settings_folder.clone(),
         Rc::new(SystemHost::new(Rc::clone(&hotkeys))),
     ));
-    let binding = Controller::bind(
-        &controller,
-        &window,
-        effect_handler(
-            Rc::clone(&hotkeys),
-            chords_now,
-            window.as_weak(),
-            Rc::clone(&main_ui),
-            Rc::clone(&tray),
-            Rc::clone(&settings_ui),
-        ),
-    );
+    let on_effect: Rc<dyn Fn(&Effect)> = Rc::new(effect_handler(
+        Rc::clone(&hotkeys),
+        chords_now,
+        window.as_weak(),
+        Rc::clone(&main_ui),
+        Rc::clone(&tray),
+        Rc::clone(&settings_ui),
+    ));
+    // The Picker, the fill form and the toast window (made when first needed).
+    let _popups = {
+        let anchor = AnchorMemory::default();
+        let others = {
+            let (main_ui, settings_ui) = (Rc::clone(&main_ui), Rc::clone(&settings_ui));
+            Rc::new(move || {
+                main_ui.window().is_some_and(|w| w.window().is_visible())
+                    || settings_ui
+                        .window()
+                        .is_some_and(|w| w.window().is_visible())
+            })
+        };
+        (
+            PickerUi::new(
+                &controller,
+                Rc::clone(&popups),
+                Rc::clone(&anchor),
+                Rc::clone(&on_effect),
+            ),
+            FillUi::new(&controller, Rc::clone(&popups), anchor),
+            ToastUi::new(&controller, popups, others),
+        )
+    };
+    let binding = Controller::bind(&controller, &window, {
+        let on_effect = Rc::clone(&on_effect);
+        move |effect| on_effect(effect)
+    });
     BINDING.with(|b| *b.borrow_mut() = Some(binding.clone()));
     // Frame changes are remembered only once the stored place has been restored.
     let frames_armed = Rc::new(Cell::new(false));

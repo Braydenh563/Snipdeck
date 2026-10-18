@@ -12,12 +12,10 @@ use snipdeck_ui::PanelWindow;
 /// the Panel is first shown; later hides and shows keep the same window).
 #[cfg(windows)]
 #[must_use]
-pub fn handle(window: &PanelWindow) -> Option<isize> {
-    use slint::ComponentHandle;
+pub fn handle_of(window: &slint::Window) -> Option<isize> {
     use slint::winit_030::WinitWindowAccessor;
     use slint::winit_030::winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
     window
-        .window()
         .with_winit_window(|w| match w.window_handle().ok()?.as_raw() {
             RawWindowHandle::Win32(handle) => Some(handle.hwnd.get()),
             _ => None,
@@ -25,22 +23,35 @@ pub fn handle(window: &PanelWindow) -> Option<isize> {
         .flatten()
 }
 
-/// The Win32 window handle of the Panel: none off Windows.
+/// The Win32 window handle of any of our windows: none off Windows.
 #[cfg(not(windows))]
 #[must_use]
-pub fn handle(_window: &PanelWindow) -> Option<isize> {
+pub fn handle_of(_window: &slint::Window) -> Option<isize> {
     None
 }
 
+/// The Win32 window handle of the Panel, once its window exists (none off Windows).
+#[must_use]
+pub fn handle(window: &PanelWindow) -> Option<isize> {
+    use slint::ComponentHandle;
+    handle_of(window.window())
+}
+
 /// Brings the shown Panel in front of the other windows without activating it.
-#[cfg(windows)]
 pub fn raise(window: &PanelWindow) {
-    if let Some(hwnd) = handle(window) {
+    use slint::ComponentHandle;
+    raise_window(window.window());
+}
+
+/// Brings the shown window in front of the other windows without activating it.
+#[cfg(windows)]
+pub fn raise_window(window: &slint::Window) {
+    if let Some(hwnd) = handle_of(window) {
         let raised = snipdeck_platform::windows::window_style::raise_without_activating(hwnd);
-        crate::trace!("raise panel {hwnd:#x}: {raised}");
+        crate::trace!("raise window {hwnd:#x}: {raised}");
     }
 }
 
-/// Brings the shown Panel in front of the other windows: nothing to do off Windows.
+/// Brings the shown window in front of the other windows: nothing to do off Windows.
 #[cfg(not(windows))]
-pub fn raise(_window: &PanelWindow) {}
+pub fn raise_window(_window: &slint::Window) {}

@@ -58,7 +58,8 @@ export component TemplateFillWindow inherits Window {
     // The rendered result for the current answers (the host re-renders on `answer-changed`).
     in property <string> preview;
     // The submit button: "Insert" when the form ends in a paste, "Copy" when it ends in a copy.
-    in property <string> submit-label: @tr("Insert");
+    in property <bool> copies: false;
+    in property <string> submit-label: root.copies ? @tr("Copy") : @tr("Insert");
 
     // ---- State both ways ----------------------------------------------------------------------
     // The prompts and the answers so far; the form writes `value` and `choice-index` as the user fills it.

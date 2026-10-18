@@ -71,6 +71,7 @@ pub fn toast_text(message: &ToastMessage) -> String {
             format!("{chord} is used by another app. Choose another in Settings.")
         }
         ToastMessage::Failed => "Couldn't use this item.".into(),
+        ToastMessage::WindowNotShown => "Couldn't open that window.".into(),
         ToastMessage::SettingsNotSaved => {
             "Couldn't save your settings. Snipdeck will try again.".into()
         }

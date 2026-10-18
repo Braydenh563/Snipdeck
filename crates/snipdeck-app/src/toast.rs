@@ -91,6 +91,8 @@ pub enum ToastMessage {
     },
     /// "Couldn't use this item."
     Failed,
+    /// "Couldn't open that window." (the Picker or the fill form could not be shown)
+    WindowNotShown,
     /// "Couldn't save your settings. Snipdeck will try again."
     SettingsNotSaved,
     /// "Moved 3 items to the Trash" (with Undo).

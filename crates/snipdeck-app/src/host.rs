@@ -6,7 +6,10 @@
 use std::{cell::Cell, cell::RefCell, rc::Rc};
 
 use snipdeck_core::Timestamp;
-use snipdeck_platform::{chord::Chord, route::Target};
+use snipdeck_platform::{
+    chord::Chord,
+    route::{ScreenRect, Target},
+};
 
 use crate::settings::HotkeyAction;
 
@@ -84,6 +87,12 @@ pub trait TargetSource {
     /// Makes the Target the foreground window again so injected keys reach it (the panel may
     /// have activated itself for text entry). `false` if there is no Target or Windows refused.
     fn refocus(&self) -> bool;
+    /// Where the Target's text caret is on the screen, in physical pixels, if it has a system
+    /// caret. Read before a popup takes the foreground. `None` (the default) means "unknown":
+    /// the Picker then opens at the mouse.
+    fn caret(&self) -> Option<ScreenRect> {
+        None
+    }
 }
 
 /// A scripted Target. Cloning shares the state, so a test keeps a handle after handing the
@@ -92,6 +101,7 @@ pub trait TargetSource {
 pub struct FakeTargets {
     current: Rc<RefCell<Option<Target>>>,
     refocused: Rc<Cell<u32>>,
+    caret: Rc<Cell<Option<ScreenRect>>>,
 }
 
 impl FakeTargets {
@@ -101,7 +111,13 @@ impl FakeTargets {
         Self {
             current: Rc::new(RefCell::new(target)),
             refocused: Rc::default(),
+            caret: Rc::default(),
         }
+    }
+
+    /// Sets where the Target's caret is (`None`: it has none).
+    pub fn set_caret(&self, caret: Option<ScreenRect>) {
+        self.caret.set(caret);
     }
 
     /// Changes the Target, as the user switching windows would.
@@ -124,6 +140,10 @@ impl TargetSource for FakeTargets {
     fn refocus(&self) -> bool {
         self.refocused.set(self.refocused.get() + 1);
         self.current.borrow().is_some()
+    }
+
+    fn caret(&self) -> Option<ScreenRect> {
+        self.caret.get()
     }
 }
 

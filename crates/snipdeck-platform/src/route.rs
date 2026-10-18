@@ -19,6 +19,19 @@ pub enum Focus {
     None,
 }
 
+/// A rectangle on the virtual screen, in physical pixels (the text caret of the Target).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScreenRect {
+    /// Left edge.
+    pub x: i32,
+    /// Top edge.
+    pub y: i32,
+    /// Width.
+    pub w: u32,
+    /// Height.
+    pub h: u32,
+}
+
 /// The window that had focus before the user clicked Snipdeck.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Target {
