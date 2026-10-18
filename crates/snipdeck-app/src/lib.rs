@@ -5,13 +5,17 @@
 #![forbid(unsafe_code)]
 
 pub mod binding;
+pub mod capture;
 pub mod cli;
 pub mod controller;
 pub mod demo;
+pub mod fill;
 pub mod host;
 pub mod palette;
 pub mod panel;
+pub mod paste_next;
 pub mod paths;
+pub mod picker;
 pub mod platform;
 pub mod screenshot;
 pub mod settings;

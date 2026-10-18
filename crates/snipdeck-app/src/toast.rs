@@ -52,8 +52,21 @@ pub enum ToastMessage {
     TemplateBroken,
     /// "Unlock your library to use this item."
     Locked,
-    /// "Fill in this template first." (The fill form arrives with M4.)
-    NeedsAnswers,
+    /// "Saved to {list}" (quick capture).
+    Saved {
+        /// The list's name.
+        list: String,
+    },
+    /// "Nothing to save. Copy some text first." (quick capture with no text on the clipboard)
+    NothingToSave,
+    /// "That text is too large to save." (quick capture over 5 MB)
+    TooLargeToSave,
+    /// "There is no list to save into. Add a list first."
+    NoListToSave,
+    /// "Nothing to paste next. Pin a snippet, or add one to this list."
+    NothingToPasteNext,
+    /// "That was the last one. Paste next starts again from the first."
+    PasteNextFinished,
     /// "{chord} is used by another app. Choose another in Settings."
     HotkeyInUse {
         /// The chord as typed in Settings, for example `Ctrl+Alt+Space`.
@@ -120,12 +133,6 @@ pub fn after_use(outcome: UseOutcome, route: &Route, pasted_into: Option<&str>) 
 #[must_use]
 pub fn after_error(error: &UseError) -> Toast {
     use snipdeck_store::Error as Store;
-    if matches!(error, UseError::NeedsAnswers(_)) {
-        return Toast {
-            kind: ToastKind::Neutral,
-            message: ToastMessage::NeedsAnswers,
-        };
-    }
     let message = match error {
         UseError::Platform(_) => ToastMessage::ClipboardBusy,
         UseError::Render(snipdeck_core::template::RenderError::ProRequired(feature)) => {
@@ -135,6 +142,7 @@ pub fn after_error(error: &UseError) -> Toast {
             ToastMessage::TemplateBroken
         }
         UseError::Store(Store::EncryptionLocked) => ToastMessage::Locked,
+        // A template that needs answers opens the fill form instead of reaching a toast.
         UseError::Store(_) | UseError::NeedsAnswers(_) => ToastMessage::Failed,
     };
     Toast {
@@ -264,15 +272,6 @@ mod tests {
         assert_eq!(
             after_error(&UseError::NotText).message,
             ToastMessage::TemplateBroken
-        );
-    }
-
-    #[test]
-    fn a_template_that_needs_answers_is_information_not_an_error() {
-        let toast = after_error(&UseError::NeedsAnswers(Vec::new()));
-        assert_eq!(
-            (toast.kind, toast.message),
-            (ToastKind::Neutral, ToastMessage::NeedsAnswers)
         );
     }
 }

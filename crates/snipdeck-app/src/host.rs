@@ -49,6 +49,33 @@ impl Clock for FixedClock {
     }
 }
 
+/// Reading the text on the clipboard (quick capture). The pipeline's [`Clipboard`] only
+/// writes, snapshots and restores; this is the one read the app needs.
+///
+/// [`Clipboard`]: snipdeck_platform::pipeline::Clipboard
+pub trait ClipboardText {
+    /// The clipboard's text, or `None` when it holds none or stays busy. Writes nothing.
+    fn read_text(&mut self) -> Option<String>;
+}
+
+#[cfg(windows)]
+impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
+    fn read_text(&mut self) -> Option<String> {
+        Self::read_text(self)
+    }
+}
+
+/// The fake clipboard "holds" what was last written to it (as a real one holds what the user
+/// last copied), so a test seeds it by pushing a payload onto `written`.
+impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
+    fn read_text(&mut self) -> Option<String> {
+        self.written.last()?.data().iter().find_map(|d| match d {
+            snipdeck_platform::payload::Data::Text(text) => Some(text.clone()),
+            _ => None,
+        })
+    }
+}
+
 /// Which window a paste would go into, and bringing it back to the front.
 pub trait TargetSource {
     /// The window the user was in before they clicked Snipdeck, if it can still be pasted

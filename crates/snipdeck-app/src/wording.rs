@@ -38,7 +38,16 @@ pub fn toast_text(message: &ToastMessage) -> String {
         ToastMessage::NeedsPro(_) => "This item uses a Pro feature.".into(),
         ToastMessage::TemplateBroken => "This template can't be read. Open it to fix it.".into(),
         ToastMessage::Locked => "Unlock your library to use this item.".into(),
-        ToastMessage::NeedsAnswers => "Fill in this template first.".into(),
+        ToastMessage::Saved { list } => format!("Saved to {list}"),
+        ToastMessage::NothingToSave => "Nothing to save. Copy some text first.".into(),
+        ToastMessage::TooLargeToSave => "That text is too large to save.".into(),
+        ToastMessage::NoListToSave => "There is no list to save into. Add a list first.".into(),
+        ToastMessage::NothingToPasteNext => {
+            "Nothing to paste next. Pin a snippet, or add one to this list.".into()
+        }
+        ToastMessage::PasteNextFinished => {
+            "That was the last one. Paste next starts again from the first.".into()
+        }
         ToastMessage::HotkeyInUse { chord } => {
             format!("{chord} is used by another app. Choose another in Settings.")
         }
@@ -81,7 +90,14 @@ mod tests {
             ToastMessage::NeedsPro(Feature::PromptedFields),
             ToastMessage::TemplateBroken,
             ToastMessage::Locked,
-            ToastMessage::NeedsAnswers,
+            ToastMessage::Saved {
+                list: "Notes".into(),
+            },
+            ToastMessage::NothingToSave,
+            ToastMessage::TooLargeToSave,
+            ToastMessage::NoListToSave,
+            ToastMessage::NothingToPasteNext,
+            ToastMessage::PasteNextFinished,
             ToastMessage::HotkeyInUse {
                 chord: "Ctrl+Alt+Space".into(),
             },

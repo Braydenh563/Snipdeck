@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 
 use snipdeck_core::{
-    Entitlements, Format, Formats, Item, ItemId, ItemKind, Timestamp, UseMode, UseOutcome,
+    Entitlements, Feature, Format, Formats, Item, ItemId, ItemKind, Timestamp, UseMode, UseOutcome,
     template::{
         Locale, Prompt, PromptKind, RenderContext, RenderError, Template, TemplateError, TimeZone,
     },
@@ -108,20 +108,28 @@ where
     })
 }
 
-/// The prompts the user must answer before `item` can be used: empty for anything but a
-/// template.
+/// The source text of template `item`, with the item's title for the form's header (the first
+/// line of the text when it has none), or `None` for an item that is not a template.
 ///
 /// # Errors
 ///
-/// A store error, or [`UseError::Template`] if the template no longer parses.
-pub fn prompts<S: ItemRepo + BlobStore>(store: &S, item: ItemId) -> Result<Vec<Prompt>, UseError> {
+/// A store error, or [`UseError::NotText`] if the template has no text.
+pub fn template_source<S: ItemRepo + BlobStore>(
+    store: &S,
+    item: ItemId,
+) -> Result<Option<(String, String)>, UseError> {
     let item = store.item(item)?;
     if item.kind != ItemKind::Template {
-        return Ok(Vec::new());
+        return Ok(None);
     }
     let formats = store.formats(item.id)?;
     let text = text_of(store, &formats)?.ok_or(UseError::NotText)?;
-    Ok(Template::parse(&text)?.prompts())
+    let title = if item.title.trim().is_empty() {
+        text.lines().next().unwrap_or_default().to_owned()
+    } else {
+        item.title
+    };
+    Ok(Some((title, text)))
 }
 
 fn text_of<S: BlobStore>(store: &S, formats: &Formats) -> Result<Option<String>, UseError> {
@@ -192,6 +200,12 @@ fn build_payload<S: BlobStore>(
 
 fn render_template(text: &str, request: &UseRequest) -> Result<(String, Option<usize>), UseError> {
     let template = Template::parse(text)?;
+    // Before asking anything: a Free user must not fill in a form they cannot use.
+    for &feature in Feature::ALL {
+        if template.requires(feature) && !request.entitlements.allows(feature) {
+            return Err(RenderError::ProRequired(feature).into());
+        }
+    }
     let missing: Vec<Prompt> = template
         .prompts()
         .into_iter()
@@ -457,7 +471,12 @@ mod tests {
         assert_eq!(prompts[0].name, "Name");
         assert_eq!(w.clipboard.log, Vec::<String>::new());
         assert_eq!(w.store.item(id).expect("item").use_count, 0);
-        assert_eq!(super::prompts(&w.store, id).expect("prompts").len(), 1);
+        // The form gets the template's text and a name for its header.
+        let (title, text) = template_source(&w.store, id)
+            .expect("source")
+            .expect("a template");
+        assert_eq!(title, "t");
+        assert_eq!(text, "Hi {field:Name}");
     }
 
     #[test]
@@ -474,9 +493,9 @@ mod tests {
     }
 
     #[test]
-    fn plain_items_have_no_prompts() {
+    fn plain_items_have_no_template_source() {
         let mut w = World::new();
         let id = w.add(ItemKind::Text, false, "{not a placeholder}");
-        assert_eq!(super::prompts(&w.store, id).expect("prompts"), Vec::new());
+        assert_eq!(template_source(&w.store, id).expect("source"), None);
     }
 }
