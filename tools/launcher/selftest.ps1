@@ -185,6 +185,24 @@ function Invoke-SelfTest {
         Test-Case 'release: SHA-256 compare on a temp file' {
             return ((Test-FileSha256 $shaFile $abc) -and (Test-FileSha256 $shaFile $abc.ToUpperInvariant()) -and -not (Test-FileSha256 $shaFile ('0' * 64)) -and -not (Test-FileSha256 $shaFile 'abc') -and -not (Test-FileSha256 $shaFile '') -and -not (Test-FileSha256 ([System.IO.Path]::Combine($tmp, 'missing.bin')) $abc))
         }
+        Test-Case 'uninstall: target list has the app and leftover downloads, data only with --data (no real folders)' {
+            $rr = [System.IO.Path]::Combine($tmp, 'fakeroot')
+            $dd = [System.IO.Path]::Combine($tmp, 'fakedata', 'Snipdeck')
+            $left = @('snipdeck-dl-' + ('a' * 32), 'snipdeck-dl-nothex', 'other-folder')
+            $keep = @(Get-UninstallTargets $rr $dd $tmp $left $false)
+            $all = @(Get-UninstallTargets $rr $dd $tmp $left $true)
+            $kinds = ($keep | ForEach-Object { $_.Kind }) -join ','
+            $paths = @($keep | ForEach-Object { $_.Path })
+            $okApp = ($paths -contains [System.IO.Path]::Combine($rr, 'app')) -and ($paths -contains ([System.IO.Path]::Combine($rr, 'app') + '.new')) -and ($paths -contains [System.IO.Path]::Combine($tmp, 'snipdeck-dl-' + ('a' * 32)))
+            $okSkip = ($paths -notcontains [System.IO.Path]::Combine($tmp, 'snipdeck-dl-nothex')) -and ($paths -notcontains [System.IO.Path]::Combine($tmp, 'other-folder'))
+            $okData = ($paths -notcontains $dd) -and (@($all | Where-Object { $_.Path -eq $dd -and $_.Kind -eq 'data' }).Count -eq 1) -and ($all.Count -eq ($keep.Count + 1))
+            if (-not ($okApp -and $okSkip -and $okData)) { return "kinds=$kinds app=$okApp skip=$okSkip data=$okData" }
+            return (-not (Test-Path -LiteralPath $rr))
+        }
+        Test-Case 'uninstall: options accept --data and -Yes' {
+            $o = Read-Options @('uninstall', '--data', '-Yes')
+            return ($o.RemoveData -and $o.Yes -and -not $o.Error -and ($o.Command -eq 'uninstall'))
+        }
         Test-Case 'release: HTTP status is read from an error record' {
             $fake = [pscustomobject]@{ Exception = [pscustomobject]@{ Response = [pscustomobject]@{ StatusCode = 404 } } }
             $none = [pscustomobject]@{ Exception = [pscustomobject]@{ Response = $null } }

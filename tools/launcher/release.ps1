@@ -348,6 +348,48 @@ function Install-PortableApp {
     return $rc
 }
 
+# ---------------------------------------------------------------- uninstall support
+
+function Get-UninstallTargets([string]$RepoRoot, [string]$DataDir, [string]$TempRoot, [string[]]$TempLeftovers, [bool]$IncludeData) {
+    # Pure: every folder "uninstall" may remove, as objects with Kind (app, app-staging, download, dist, data) and Path.
+    # The data folder is listed only when $IncludeData is true. Nothing here touches the disk.
+    $t = @()
+    $app = [System.IO.Path]::Combine($RepoRoot, 'app')
+    $t += [pscustomobject]@{ Kind = 'app'; Path = $app }
+    $t += [pscustomobject]@{ Kind = 'app-staging'; Path = ($app + '.new') }
+    $t += [pscustomobject]@{ Kind = 'app-staging'; Path = ($app + '.old') }
+    foreach ($n in @($TempLeftovers)) {
+        if ($n -match '^snipdeck-dl-[0-9a-f]{32}$') { $t += [pscustomobject]@{ Kind = 'download'; Path = [System.IO.Path]::Combine($TempRoot, $n) } }
+    }
+    $t += [pscustomobject]@{ Kind = 'dist'; Path = [System.IO.Path]::Combine($RepoRoot, 'dist') }
+    if ($IncludeData) { $t += [pscustomobject]@{ Kind = 'data'; Path = $DataDir } }
+    return $t
+}
+
+function Get-DownloadLeftovers {
+    # Names of download folders an interrupted run left in the Temp folder.
+    $names = @()
+    try {
+        foreach ($d in @(Get-ChildItem -LiteralPath ([System.IO.Path]::GetTempPath()) -Directory -Filter 'snipdeck-dl-*' -ErrorAction SilentlyContinue)) { $names += $d.Name }
+    } catch { }
+    return $names
+}
+
+function Stop-PortableApp {
+    # Closes the app running from app\ (window first, then ends what is left). True when none is left.
+    foreach ($p in (Get-PortableProcesses)) {
+        if ($script:Opt.WhatIf) { Say "  [whatif] would stop snipdeck.exe (process $($p.Id))" 'Yellow'; continue }
+        Say "  Stopping snipdeck.exe (process $($p.Id))" 'Gray'
+        Write-Log 'STOP' "snipdeck pid $($p.Id)"
+        try { [void]$p.CloseMainWindow() } catch { }
+        $gone = $false
+        try { $gone = $p.WaitForExit(3000) } catch { }
+        if (-not $gone) { try { Stop-Process -Id $p.Id -Force -ErrorAction Stop } catch { Write-Log 'WARN' $_.Exception.Message } }
+    }
+    Start-Sleep -Milliseconds 400
+    return (@(Get-PortableProcesses).Count -eq 0)
+}
+
 # ---------------------------------------------------------------- commands
 
 function Test-PrebuiltPlatform {

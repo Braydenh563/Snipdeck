@@ -189,11 +189,11 @@ function Format-DirSize([string]$Path) {
 function Register-OwnedTemp([string]$Path) { $script:OwnedTemp += (Get-NormalPath $Path) }
 
 function Test-KnownDeletable([string]$Path) {
-    # Only these may ever be deleted: the dist cache, the build folder, the data folder, backups inside the
+    # Only these may ever be deleted: the app folder, the dist cache, the build folder, the data folder, backups inside the
     # backup folder, and temp folders this run created itself.
-    $exact = @((Get-DistDir), (Get-DataDir)) + @(Get-CandidateTargets) + @($script:OwnedTemp)
+    $exact = @((Get-DistDir), (Get-DataDir), (Get-AppDir)) + @(Get-CandidateTargets) + @($script:OwnedTemp)
     foreach ($e in $exact) { if ($e -and (Test-PathEquals $Path $e)) { return $true } }
-    $roots = @((Get-DistDir), (Get-DataDir), (Get-BackupDir)) + @(Get-CandidateTargets) + @($script:OwnedTemp)
+    $roots = @((Get-DistDir), (Get-DataDir), (Get-BackupDir), (Get-AppDir)) + @(Get-CandidateTargets) + @($script:OwnedTemp)
     foreach ($r in $roots) { if ($r -and (Test-PathUnder $Path $r)) { return $true } }
     return $false
 }
@@ -218,6 +218,9 @@ function Remove-KnownPath([string]$Path) {
     }
     if (Test-PathEquals $full (Get-DataDir)) {
         if ($leaf.ToLowerInvariant() -ne 'snipdeck') { throw "Refusing to delete '$full': unexpected folder name." }
+    }
+    if (Test-PathEquals $full (Get-AppDir)) {
+        if ($leaf.ToLowerInvariant() -ne 'app') { throw "Refusing to delete '$full': unexpected folder name." }
     }
     if ($script:Opt.WhatIf) {
         Say "  [whatif] would remove $full" 'Yellow'

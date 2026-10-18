@@ -422,7 +422,16 @@ function Invoke-Uninstall {
     foreach ($t in (Get-CandidateTargets)) { if (Test-Path -LiteralPath $t) { $targets += $t } }
     $hasDist = Test-Path -LiteralPath (Get-DistDir)
     $hasData = Test-Path -LiteralPath $data
+    $appTargets = @()
+    foreach ($x in @(Get-UninstallTargets $script:RepoRoot $data ([System.IO.Path]::GetTempPath()) @(Get-DownloadLeftovers) $false)) {
+        if ((@('app', 'app-staging', 'download') -contains $x.Kind) -and (Test-Path -LiteralPath $x.Path)) { $appTargets += $x }
+    }
     Say '  This can remove:' 'Gray'
+    foreach ($x in $appTargets) {
+        $what = 'the app folder'
+        if ($x.Kind -eq 'app-staging') { $what = 'an unfinished app update' } elseif ($x.Kind -eq 'download') { $what = 'a leftover download' }
+        Say ("    - {0} {1}:   {2}" -f $what, $x.Path, (Format-DirSize $x.Path)) 'Gray'
+    }
     Say ("    - the fast-start copy (dist\):   {0}" -f $(if ($hasDist) { Format-DirSize (Get-DistDir) } else { 'not present' })) 'Gray'
     foreach ($t in $targets) { Say ("    - the build folder {0}:   {1}" -f $t, (Format-DirSize $t)) 'Gray' }
     Say ("    - your library and settings ({0}):   {1}" -f $data, $(if ($hasData) { Format-DirSize $data } else { 'not present' })) 'Gray'
@@ -432,14 +441,17 @@ function Invoke-Uninstall {
     if (-not $go) { $go = Ask-YesNo 'Continue?' $false }
     if (-not $go) { Say '  Nothing was changed.' 'Gray'; return 0 }
 
-    if (@(Get-AppProcesses).Count -gt 0) {
+    if ((@(Get-AppProcesses).Count -gt 0) -or (@(Get-PortableProcesses).Count -gt 0)) {
         Say '  Snipdeck is running.' 'Yellow'
-        if (-not (Ask-YesNo 'Stop the running snipdeck-app.exe (only that program) so it can be removed?' $true)) {
+        if (-not (Ask-YesNo 'Stop the running Snipdeck (only that program) so it can be removed?' $true)) {
             Say '  Nothing was changed.' 'Gray'
             return 1
         }
-        if (-not (Stop-AppProcesses) -and -not $script:Opt.WhatIf) {
-            Write-FailureReport 'stop Snipdeck' 'snipdeck-app.exe would not close.' @() @('Quit Snipdeck from its tray icon, then run the uninstall again.')
+        $stopped = $true
+        if (-not (Stop-AppProcesses)) { $stopped = $false }
+        if (-not (Stop-PortableApp)) { $stopped = $false }
+        if (-not $stopped -and -not $script:Opt.WhatIf) {
+            Write-FailureReport 'stop Snipdeck' 'Snipdeck would not close.' @() @('Quit Snipdeck from its tray icon, then run the uninstall again.')
             return 1
         }
     }
@@ -468,7 +480,7 @@ function Invoke-Uninstall {
         } elseif ($script:Opt.WhatIf) {
             $removeData = $script:Opt.RemoveData
         } else {
-            if (Ask-YesNo 'Also DELETE your library and settings? This cannot be undone.' $false) {
+            if ($script:Opt.RemoveData -or (Ask-YesNo 'Also DELETE your library and settings? This cannot be undone.' $false)) {
                 $typed = Read-Typed 'Type DELETE (capitals) to confirm, anything else keeps your data'
                 if ($typed -ceq 'DELETE') { $removeData = $true } else { Say '  Not confirmed: your data is kept.' 'Gray' }
             }
@@ -477,6 +489,11 @@ function Invoke-Uninstall {
 
     Say ''
     $failed = $false
+    foreach ($x in $appTargets) {
+        Register-OwnedTemp $x.Path
+        $res = Remove-KnownPath $x.Path
+        if ($res -eq 'removed') { Say "  Removed $($x.Path)" 'Green' } elseif ($res -eq 'failed') { $failed = $true; Say "  Could not fully remove $($x.Path) (is Snipdeck or an antivirus scan using it?)" 'Yellow' }
+    }
     $res = Remove-KnownPath (Get-DistDir)
     if ($res -eq 'removed') { Say '  Removed dist\' 'Green' } elseif ($res -eq 'failed') { $failed = $true; Say '  Could not fully remove dist\ (is a program using it?)' 'Yellow' }
     if ($removeTarget) {
@@ -512,6 +529,7 @@ function Invoke-Uninstall {
     }
     Say 'Uninstall finished. It is safe to run again.' 'Green'
     Say "The Snipdeck program folder was not touched: $script:RepoRoot (delete it yourself if you want it gone)." 'Gray'
+    Say 'To install again, run Snipdeck.bat: it downloads the app again and finds your library if you kept it.' 'Gray'
     return 0
 }
 

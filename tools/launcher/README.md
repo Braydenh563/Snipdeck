@@ -19,6 +19,10 @@
 
 Messages: no network ("needs the internet once ... Connect and run Snipdeck.bat again"), no release yet (HTTP 404), GitHub rate limit (403/429), hash mismatch (refuses, deletes the download), unreadable or unsafe zip, folder cannot be replaced.
 
+## Uninstall and reinstall
+
+`Snipdeck.bat uninstall` removes the `app\` folder (and an unfinished `app.new\`/`app.old\`, leftover download folders in Temp, `dist\`), the build folder if asked, the start-with-Windows entry and a Start-menu shortcut. It offers a backup first. Your library in `%LOCALAPPDATA%\Snipdeck` is **kept** unless you add `--data` and type `DELETE` (with `-Yes`, `--data` erases without asking). Reinstalling is just running `Snipdeck.bat` again: it downloads the app again and finds the kept library. It is safe to repeat.
+
 ## Build (developers)
 
 `Snipdeck.bat build` is the source build with all its checks (Rust, MSVC target, Visual C++ tools, git, crates.io), the fast-start copy in `dist\` and the known-failure repairs. It prints "Developer build from source. Users do not need this: run Snipdeck.bat without arguments." There is no launcher command for `git pull`: pull yourself, then `Snipdeck.bat build`.

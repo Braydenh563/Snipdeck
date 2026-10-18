@@ -74,8 +74,8 @@ Commands
   backup      zip your library and settings to Documents\Snipdeck-backups
   restore     put a backup back (saves your current data first)
   clean       delete build files (target\ and dist\); your data is not touched
-  uninstall   remove build files, shortcuts and the start-with-Windows entry;
-              your data only if you type DELETE
+  uninstall   remove the app folder (app\), build files, shortcuts and the start-with-Windows
+              entry; your library is KEPT. Add --data to also erase it (you must type DELETE)
   logs        show the newest launcher log (add --open to open the folder)
   help        this text
 
@@ -85,8 +85,13 @@ Options
   --whatif    show what a command would do and change nothing
   --rebuild   build: ignore the fast-start copy and build again
   --target    uninstall: also delete the build folder without asking
-  --data      uninstall with -Yes: also delete your library and settings
+  --data      uninstall: also erase your library and settings (asks you to type DELETE;
+              with -Yes it erases without asking)
   --          everything after goes to the app
+
+To uninstall and install again:  Snipdeck.bat uninstall   (keeps your library)
+                                 Snipdeck.bat uninstall --data   (erases it too)
+                                 Snipdeck.bat   (installs again, finds a kept library)
 
 Anything else after run, demo or build goes to the app, for example:
   Snipdeck.bat demo --dark

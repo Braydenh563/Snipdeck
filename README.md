@@ -103,6 +103,10 @@ next to the `.bat` and starts it. After that it starts straight away, offline. `
 newest release and keeps your library; `Snipdeck.bat help` lists every command. Your library lives in
 `%LOCALAPPDATA%\Snipdeck`, apart from the app, so replacing the app never touches it.
 
+To remove Snipdeck: `Snipdeck.bat uninstall` removes the app and keeps your library; `Snipdeck.bat uninstall --data` also
+erases the library (it asks you to type DELETE first). To install again, just run `Snipdeck.bat` again: it downloads the
+app and finds the library you kept.
+
 Until the first release is published, `Snipdeck.bat` says so and stops; use the developer steps below.
 
 ## For developers

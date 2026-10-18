@@ -5,6 +5,7 @@
 - snipdeck.ps1 / cli.ps1: `run` and `demo` use the prebuilt app; `update` re-downloads; `build` is the source build (banner line); help text.
 - data.ps1: git-pull `Invoke-Update` removed (replaced). build.ps1 / core.ps1 messages point to `Snipdeck.bat build`.
 - selftest.ps1: new no-network checks (resolver on tests/release.json, pin parser, sidecar parser, SHA-256 compare, HTTP status, options). Existing checks kept.
+- Uninstall: removes app\, app.new/old, leftover Temp downloads; data kept unless --data + typed DELETE; selftest covers the target list.
 - Docs: README quick start, docs/user-guide.md install section, docs/troubleshooting.md, tools/launcher/README.md, CHANGELOG Unreleased.
 
 ## Next (owner, on Windows; nothing here could be run on Linux)
