@@ -54,6 +54,10 @@ export component TextField inherits VerticalLayout {
     in property <bool> show-hover: false;
     in property <bool> show-focus: false;
     in property <bool> show-composing: false;
+    // Counts up to ask for keyboard focus: each change to a value above 0 focuses the field (0 means no request).
+    // A host that cannot name the field (one of a repeated set) uses this instead of `focus()`. A field created
+    // while it is above 0 takes focus when it appears.
+    in property <int> focus-request: 0;
 
     out property <bool> has-focus: input.has-focus;
     out property <bool> composing: input.preedit-text != "" || root.show-composing;
@@ -76,6 +80,17 @@ export component TextField inherits VerticalLayout {
     public function select-all() { input.select-all(); }
     // Puts the caret at a UTF-8 byte offset (also scrolls it into view).
     public function set-cursor(offset: int) { input.set-selection-offsets(offset, offset); }
+
+    changed focus-request => {
+        if (root.focus-request > 0) {
+            input.focus();
+        }
+    }
+    init => {
+        if (root.focus-request > 0) {
+            input.focus();
+        }
+    }
 
     property <length> line-h: Type.line-base;
     property <length> pad-y: Space.s1;
