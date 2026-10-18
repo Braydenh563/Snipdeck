@@ -14,7 +14,7 @@ msgid "Add list"
 msgstr "Adicionar lista"
 
 msgid "All"
-msgstr ""
+msgstr "Todos"
 
 msgid "Board: {}"
 msgstr "Quadro: {}"
@@ -23,19 +23,19 @@ msgid "Boards"
 msgstr "Quadros"
 
 msgid "Cancel"
-msgstr ""
+msgstr "Cancelar"
 
 msgid "Clear search"
 msgstr "Limpar pesquisa"
 
 msgid "Close"
-msgstr ""
+msgstr "Fechar"
 
 msgid "Close panel"
 msgstr "Fechar painel"
 
 msgid "Control Enter"
-msgstr ""
+msgstr "Ctrl Enter"
 
 msgid "Copies to clipboard"
 msgstr "Copia para a área de transferência"
@@ -44,7 +44,7 @@ msgid "Copy"
 msgstr "Copiar"
 
 msgid "Copy something, then save it from the Panel."
-msgstr ""
+msgstr "Copie algo e depois salve pelo painel."
 
 msgid "Copy something, then save it here from the clipboard."
 msgstr "Copie algo e depois salve aqui a partir da área de transferência."
@@ -53,22 +53,22 @@ msgid "Enter"
 msgstr "Enter"
 
 msgid "Escape"
-msgstr ""
+msgstr "Esc"
 
 msgid "Fields"
-msgstr ""
+msgstr "Campos"
 
 msgid "Fill in template"
-msgstr ""
+msgstr "Preencher modelo"
 
 msgid "Hidden. Hold Space to reveal."
-msgstr ""
+msgstr "Oculto. Segure a barra de espaço para revelar."
 
 msgid "Hidden. Open it in the Panel to reveal."
-msgstr ""
+msgstr "Oculto. Abra-o no painel para revelar."
 
 msgid "Insert"
-msgstr ""
+msgstr "Colar"
 
 msgid "Keep on top"
 msgstr "Sempre no topo"
@@ -89,19 +89,19 @@ msgid "No matches"
 msgstr "Nenhum resultado"
 
 msgid "No snippets yet"
-msgstr ""
+msgstr "Nenhum trecho ainda"
 
 msgid "Nothing matches “{}”."
-msgstr ""
+msgstr "Nada corresponde a “{}”."
 
 msgid "Nothing on this board matches “{}”."
 msgstr "Nada neste quadro corresponde a “{}”."
 
 msgid "Nothing pinned matches “{}”."
-msgstr ""
+msgstr "Nenhum trecho fixado corresponde a “{}”."
 
 msgid "Nothing pinned yet"
-msgstr ""
+msgstr "Nada fixado ainda"
 
 msgid "Paste"
 msgstr "Colar"
@@ -113,34 +113,34 @@ msgid "Pastes into {} · {}"
 msgstr "Cola em {} · {}"
 
 msgid "Pin a snippet from the Panel to find it here."
-msgstr ""
+msgstr "Fixe um trecho pelo painel para encontrá-lo aqui."
 
 msgid "Pinned"
-msgstr ""
+msgstr "Fixados"
 
 msgid "Pinned snippets"
 msgstr "Trechos fixados"
 
 msgid "Preview"
-msgstr ""
+msgstr "Pré-visualização"
 
 msgid "Required"
-msgstr ""
+msgstr "Obrigatório"
 
 msgid "Results"
-msgstr ""
+msgstr "Resultados"
 
 msgid "Save from clipboard"
 msgstr "Salvar da área de transferência"
 
 msgid "Scope"
-msgstr ""
+msgstr "Escopo"
 
 msgid "Search all snippets"
-msgstr ""
+msgstr "Pesquisar todos os trechos"
 
 msgid "Search in"
-msgstr ""
+msgstr "Pesquisar em"
 
 msgid "Search snippets"
 msgstr "Pesquisar trechos"
@@ -155,13 +155,13 @@ msgid "Snippets"
 msgstr "Trechos"
 
 msgid "Tab"
-msgstr ""
+msgstr "Tab"
 
 msgid "This board"
-msgstr ""
+msgstr "Este quadro"
 
 msgid "This field is required"
-msgstr ""
+msgstr "Este campo é obrigatório"
 
 msgid "This list is empty"
 msgstr "Esta lista está vazia"
