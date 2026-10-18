@@ -8,7 +8,7 @@
 //
 // Keyboard: Tab / Shift+Tab move between settings (the page scrolls to the focused one); each group of choices is
 // one tab stop with arrow keys. A shortcut recorder starts on Enter or Space and ends on Esc. Esc closes the page.
-import { Theme, Type, Space, Radius, Motion, Fonts, Palette } from "theme.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, Palette, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
 import { Button, ButtonSize } from "components/button.slint";
 import { IconButton, IconButtonSize } from "components/icon-button.slint";
@@ -127,7 +127,7 @@ export component SettingsPage inherits Window {
                         title: root.hotkey-names[i];
                         description: root.hotkey-help[i];
                         HotkeyRecorder {
-                            width: 220px;
+                            width: 220px * SystemLook.text-scale;
                             label: root.hotkey-names[i];
                             keys: hk.keys;
                             value: hk.value;
@@ -150,7 +150,7 @@ export component SettingsPage inherits Window {
                         title: @tr("Theme");
                         description: @tr("Follow Windows switches with your system setting.");
                         Segmented {
-                            width: 260px;
+                            width: 260px * SystemLook.text-scale;
                             label: @tr("Theme");
                             options: [@tr("Windows"), @tr("Light"), @tr("Dark")];
                             current: root.theme-index;
@@ -164,7 +164,7 @@ export component SettingsPage inherits Window {
                         title: @tr("Language");
                         description: @tr("Takes effect the next time Snipdeck starts.");
                         SelectField {
-                            width: 200px;
+                            width: 200px * SystemLook.text-scale;
                             label: @tr("Language");
                             options: root.languages;
                             current: root.language-index;

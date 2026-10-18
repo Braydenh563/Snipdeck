@@ -1,4 +1,4 @@
-import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Theme, Type, Radius, Space, Motion, Fonts, SystemLook } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 import { StateColor } from "state-color.slint";
@@ -82,12 +82,13 @@ export component SettingRow inherits Rectangle {
     in property <string> title;
     in property <string> description;
 
-    min-height: Space.hit + 2 * Space.s2;
+    // A Rectangle does not take its height from the layout inside it, so say it: wrapped text makes the row taller.
+    min-height: max(Space.hit * SystemLook.text-scale + 2 * Space.s2, row.preferred-height);
     accessible-role: groupbox;
     accessible-label: root.title;
     accessible-description: root.description;
 
-    HorizontalLayout {
+    row := HorizontalLayout {
         padding-top: Space.s2;
         padding-bottom: Space.s2;
         spacing: Space.s4;
@@ -113,7 +114,9 @@ export component SettingRow inherits Rectangle {
                 accessible-role: none;
             }
         }
+        // Only as wide as the control, so every control ends at the same right edge.
         VerticalLayout {
+            horizontal-stretch: 0;
             alignment: center;
             @children
         }
@@ -302,6 +305,7 @@ export component SelectField inherits VerticalLayout {
             }
             Icon {
                 source: Icons.caret-down;
+                size: Space.s4 * SystemLook.text-scale;
                 transform-rotation: root.open ? 180deg : 0deg;
                 tint: Theme.text-secondary;
                 y: (parent.height - self.height) / 2;
@@ -365,6 +369,7 @@ export component SelectField inherits VerticalLayout {
                     }
                     if i == root.current: Icon {
                         source: Icons.check;
+                        size: Space.s4 * SystemLook.text-scale;
                         tint: Theme.text-primary;
                         y: (parent.height - self.height) / 2;
                     }
@@ -431,8 +436,8 @@ component StepButton inherits Rectangle {
     in property <bool> enabled: true;
     callback clicked();
 
-    width: Space.hit;
-    height: Space.hit;
+    width: Space.hit * SystemLook.text-scale;
+    height: Space.hit * SystemLook.text-scale;
     border-radius: Radius.md;
     background: (touch.pressed && root.enabled) ? StateColor.pressed()
         : (touch.has-hover && root.enabled) ? Theme.bg-hover : transparent;
@@ -446,6 +451,7 @@ component StepButton inherits Rectangle {
     Icon {
         source: root.icon;
         tint: Theme.text-primary;
+        size: Space.s4 * SystemLook.text-scale;
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
     }
@@ -479,8 +485,8 @@ export component NumberStepper inherits Rectangle {
         }
     }
 
-    height: Space.hit;
-    min-width: 3 * Space.hit + Space.s4;
+    height: Space.hit * SystemLook.text-scale;
+    min-width: (3 * Space.hit + Space.s4) * SystemLook.text-scale;
     forward-focus: scope;
     accessible-role: spinbox;
     accessible-label: root.label;

@@ -7,7 +7,10 @@ use snipdeck_ui::{ChoiceEntry, HotkeySetting, ItemEditor, ListEditor, SettingsPa
 
 pub fn strings(items: &[&str]) -> ModelRc<SharedString> {
     ModelRc::new(VecModel::from(
-        items.iter().map(|s| SharedString::from(*s)).collect::<Vec<_>>(),
+        items
+            .iter()
+            .map(|s| SharedString::from(*s))
+            .collect::<Vec<_>>(),
     ))
 }
 
@@ -17,14 +20,18 @@ pub fn list_names() -> ModelRc<SharedString> {
 
 /// Tags with `billing` ticked.
 pub fn tag_entries() -> Vec<ChoiceEntry> {
-    [("billing", 9, true), ("meeting", 4, false), ("sql", 3, false)]
-        .map(|(label, count, checked)| ChoiceEntry {
-            label: label.into(),
-            count,
-            color: Color::default(),
-            checked,
-        })
-        .to_vec()
+    [
+        ("billing", 9, true),
+        ("meeting", 4, false),
+        ("sql", 3, false),
+    ]
+    .map(|(label, count, checked)| ChoiceEntry {
+        label: label.into(),
+        count,
+        color: Color::default(),
+        checked,
+    })
+    .to_vec()
 }
 
 pub fn tag_model(entries: Vec<ChoiceEntry>) -> ModelRc<ChoiceEntry> {
@@ -34,10 +41,10 @@ pub fn tag_model(entries: Vec<ChoiceEntry>) -> ModelRc<ChoiceEntry> {
 /// A 160 x 90 gradient standing in for a captured image (no glyphs, nothing system dependent).
 pub fn gradient() -> Image {
     let mut buffer = SharedPixelBuffer::<Rgba8Pixel>::new(160, 90);
-    let width = buffer.width();
+    let width = buffer.width() as usize;
     for (i, px) in buffer.make_mut_slice().iter_mut().enumerate() {
-        let x = (i as u32 % width) as u8;
-        let y = (i as u32 / width) as u8;
+        let x = u8::try_from(i % width).expect("x is below 160");
+        let y = u8::try_from(i / width).expect("y is below 90");
         *px = Rgba8Pixel {
             r: x.saturating_mul(2),
             g: y.saturating_mul(2),
@@ -81,7 +88,12 @@ pub fn hotkeys() -> Vec<HotkeySetting> {
 
 pub fn settings(ui: &SettingsPage) {
     ui.set_hotkeys(ModelRc::new(VecModel::from(hotkeys())));
-    ui.set_languages(strings(&["Follow Windows", "English", "Deutsch", "Francais"]));
+    ui.set_languages(strings(&[
+        "Follow Windows",
+        "English",
+        "Deutsch",
+        "Francais",
+    ]));
     ui.set_language_index(1);
     ui.set_theme_index(0);
     ui.set_autostart(true);
@@ -97,7 +109,10 @@ pub fn tag_manager(ui: &TagManager) {
             ("billing", 9),
             ("meeting", 4),
             ("sql", 3),
-            ("a-rather-long-tag-name-that-needs-to-be-elided-somewhere", 1),
+            (
+                "a-rather-long-tag-name-that-needs-to-be-elided-somewhere",
+                1,
+            ),
             ("unused", 0),
         ]
         .map(|(label, count)| ChoiceEntry {

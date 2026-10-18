@@ -52,7 +52,7 @@ Each is an `export component ... inherits Window` with `@tr` strings, view struc
   the right, draws no close button, and starts a window drag (`drag-requested`) from its empty parts
   (`title-double-clicked` maximises).
 - **Selection is the host's.** Slint has no loops, so the window only reports `select-requested(index, SelectMode)`,
-  `select-all-requested` and `clear-selection-requested`. `snipdeck_ui::selection::bind(&window, rows)` is the Rust
+  `select-all-requested` and `clear-selection-requested`. `snipdeck_ui::selection::bind(&window, &rows)` is the Rust
   implementation (anchor, Shift range, Ctrl toggle, `rows[i].selected`, `selected-count`); a host with its own
   selection model writes the same two properties.
 - **Roving focus.** Sidebar and item area are one tab stop each (arrows move, `show-focus` draws the ring on the
@@ -60,7 +60,12 @@ Each is an `export component ... inherits Window` with `@tr` strings, view struc
   sidebar, toolbar, item area.
 - **Responsive.** Below 720px wide the sidebar becomes a 48px icon rail (`SidebarItem.rail`); the width rule
   runs from `changed width`, never bound to the width, so it cannot loop. Text size (`SystemLook.text-scale`) grows
-  rows, buttons and the sidebar; the 225% goldens prove nothing clips.
+  rows, buttons, icons in the window (`IconButton.scaled`, Button glyphs), form controls and their widths. The 225%
+  goldens (`main-scale-light`, `item-editor-scale-light`, `settings-scale-light`) were read and show no clipped text;
+  still at 100% size at 225%: the switch track, the small close glyphs in chips, shortcut rows and the program list,
+  and the search glyph (shared with the panel, whose golden pins it).
+- **Hosts call `focus-title()` / `focus-name()`** after they set an editor's values: the field gets the focus with the
+  cursor after the text. (Setting the values first and focusing in `init` would leave the cursor at the start.)
 - **Dropdowns open in place.** `SelectField` grows the form instead of floating, so it needs no popup layer and
   works in a small window. `Segmented`, `ColourPicker` (editors) and the shortcut rows are one tab stop each.
 - **Forms scroll to the focus.** Slint does not scroll a Flickable to the focused item. Controls in an editor call

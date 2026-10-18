@@ -52,7 +52,8 @@ fn item_editor_each_kind() {
     h.component.set_kind_index(1);
     h.component.set_item_title("Retry helper".into());
     h.component.set_content(
-        "async fn retry<T>(f: impl Fn() -> T, n: usize) -> T {\n    for _ in 0..n { /* try */ }\n}".into(),
+        "async fn retry<T>(f: impl Fn() -> T, n: usize) -> T {\n    for _ in 0..n { /* try */ }\n}"
+            .into(),
     );
     assert_golden("item-editor-code-light", &render(&h));
     drop(h);
@@ -60,7 +61,8 @@ fn item_editor_each_kind() {
     let h = item(ITEM, false);
     h.component.set_kind_index(2);
     h.component.set_item_title("Design spec".into());
-    h.component.set_content("figma.com/file/snipdeck-index-deck".into());
+    h.component
+        .set_content("figma.com/file/snipdeck-index-deck".into());
     h.component
         .set_content_error("A link needs a scheme such as https://".into());
     assert_golden("item-editor-link-error-light", &render(&h));
@@ -85,7 +87,8 @@ fn item_editor_each_kind() {
     h.component.set_kind_index(4);
     h.component.set_item_title("Screenshot 14:02".into());
     h.component.set_preview(fixture::gradient());
-    h.component.set_attachment_name("screenshot-1402.png".into());
+    h.component
+        .set_attachment_name("screenshot-1402.png".into());
     h.component
         .set_attachment_detail("1280 x 720 PNG, copied from the browser".into());
     assert_golden("item-editor-image-light", &render(&h));
@@ -94,7 +97,8 @@ fn item_editor_each_kind() {
     let h = item(ITEM, true);
     h.component.set_kind_index(5);
     h.component.set_item_title("Q3 report".into());
-    h.component.set_attachment_name("report-q3-final.pdf".into());
+    h.component
+        .set_attachment_name("report-q3-final.pdf".into());
     h.component
         .set_attachment_detail("PDF, 2.4 MB. Pasting copies the file itself.".into());
     assert_golden("item-editor-file-dark", &render(&h));
@@ -116,14 +120,16 @@ fn item_editor_new_item_shows_what_is_missing() {
 fn item_editor_long_values_and_the_inline_limit() {
     let h = item((420, 760), false);
     h.component.set_item_title(
-        "A very long item title that keeps going well past the width of the field and then some".into(),
+        "A very long item title that keeps going well past the width of the field and then some"
+            .into(),
     );
     h.component.set_content_large(true);
     h.component.set_content_size("2.4 MB".into());
     h.component.set_content(
         "Supercalifragilisticexpialidocious_Supercalifragilisticexpialidocious_Snippet https://example.com/a/very/long/unbroken/path".into(),
     );
-    h.component.set_title_error("Titles can't be longer than 200 characters.".into());
+    h.component
+        .set_title_error("Titles can't be longer than 200 characters.".into());
     assert_golden("item-editor-long-light", &render(&h));
 }
 
@@ -138,13 +144,22 @@ fn item_editor_at_225_percent_text_size() {
 fn item_editor_asks_before_discarding_and_scrolls_to_the_focus() {
     let h = item(ITEM, false);
     let _ = render(&h);
+    h.component.invoke_focus_title();
     type_text(h.component.window(), "!");
     press(h.component.window(), &key(Key::Escape));
-    assert!(h.component.get_discard_open(), "Esc with unsaved changes asks first");
+    assert!(
+        h.component.get_discard_open(),
+        "Esc with unsaved changes asks first"
+    );
     let f = render(&h);
     assert_golden("item-editor-discard-light", &f);
     // The 40% scrim covers the whole window, corners included.
-    for (x, y) in [(2, 2), (ITEM.0 - 3, 2), (2, ITEM.1 - 3), (ITEM.0 - 3, ITEM.1 - 3)] {
+    for (x, y) in [
+        (2, 2),
+        (ITEM.0 - 3, 2),
+        (2, ITEM.1 - 3),
+        (ITEM.0 - 3, ITEM.1 - 3),
+    ] {
         let p = f.pixel(x, y);
         assert!(
             p[0] < APP_LIGHT[0] - 40 && p[1] < APP_LIGHT[1] - 40,
@@ -158,7 +173,11 @@ fn item_editor_footer_is_a_surface_below_the_page() {
     let h = item(ITEM, false);
     let f = render(&h);
     assert_eq!(f.pixel(4, 4), APP_LIGHT, "page background at the top left");
-    assert_eq!(f.pixel(4, ITEM.1 - 4), SURFACE_LIGHT, "footer surface at the bottom left");
+    assert_eq!(
+        f.pixel(4, ITEM.1 - 4),
+        SURFACE_LIGHT,
+        "footer surface at the bottom left"
+    );
 }
 
 #[test]
@@ -173,7 +192,8 @@ fn list_editor_new_existing_error_and_confirmation() {
     let h = Harness::new(ListEditor::new, SMALL.0, SMALL.1);
     h.component.set_dark(true);
     fixture::list_editor_existing(&h.component);
-    h.component.set_name_error("A list named Email replies already exists.".into());
+    h.component
+        .set_name_error("A list named Email replies already exists.".into());
     h.component.set_sort_index(1);
     assert_golden("list-editor-existing-dark", &render(&h));
     drop(h);
@@ -198,7 +218,8 @@ fn board_editor_and_the_last_board() {
     h.component.set_dark(true);
     h.component.set_name("Personal".into());
     h.component.set_can_delete(false);
-    h.component.set_delete_hint("The last board can't be deleted.".into());
+    h.component
+        .set_delete_hint("The last board can't be deleted.".into());
     assert_golden("board-editor-last-dark", &render(&h));
 }
 
@@ -209,7 +230,8 @@ fn tag_manager_rows_renaming_and_deleting() {
     assert_golden("tag-manager-light", &render(&h));
     h.component.set_editing(1);
     h.component.set_rename_text("meetings".into());
-    h.component.set_rename_error("A tag named meetings already exists.".into());
+    h.component
+        .set_rename_error("A tag named meetings already exists.".into());
     assert_golden("tag-manager-rename-light", &render(&h));
     h.component.set_editing(-1);
     h.component.set_delete_index(0);
@@ -250,9 +272,12 @@ fn settings_page_conflict_empty_and_narrow() {
     fixture::settings(&h.component);
     let mut hotkeys = fixture::hotkeys();
     hotkeys[1].conflict = "Another program already uses Ctrl+Shift+Space.".into();
-    h.component.set_hotkeys(ModelRc::new(VecModel::from(hotkeys)));
-    h.component.set_no_paste_apps(ModelRc::new(VecModel::default()));
-    h.component.set_no_paste_error("keepass.exe is already in the list.".into());
+    h.component
+        .set_hotkeys(ModelRc::new(VecModel::from(hotkeys)));
+    h.component
+        .set_no_paste_apps(ModelRc::new(VecModel::default()));
+    h.component
+        .set_no_paste_error("keepass.exe is already in the list.".into());
     assert_golden("settings-conflict-narrow-light", &render(&h));
 }
 

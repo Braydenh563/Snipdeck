@@ -316,7 +316,7 @@ ui_tests! {
         let (ui, _log) = start();
         let rows: Rc<VecModel<_>> = Rc::new(VecModel::from(fixture::sample_rows()));
         ui.set_rows(slint::ModelRc::from(rows.clone()));
-        let sel = selection::bind(&ui, rows.clone());
+        let sel = selection::bind(&ui, &rows);
         settle();
 
         assert!(missing(&ui, "2 selected", AccessibleRole::Groupbox));

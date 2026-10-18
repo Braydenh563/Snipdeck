@@ -825,7 +825,9 @@ export component MainWindow inherits Window {
                         Rectangle {
                             horizontal-stretch: 1;
                             min-width: 0px;
-                            max-width: 360px;
+                            // The same width whatever is typed: the field's own preferred width follows its text.
+                            preferred-width: 360px * SystemLook.text-scale;
+                            max-width: 360px * SystemLook.text-scale;
                             VerticalLayout {
                                 alignment: center;
                                 search := SearchField {

@@ -119,7 +119,7 @@ impl Selection {
 ///
 /// After replacing the rows or changing the section, call [`Selection::clear`] or [`Selection::clamp`], then
 /// [`Selection::apply`] and `set_selected_count` yourself; this only handles the user's own gestures.
-pub fn bind(window: &MainWindow, rows: Rc<VecModel<MainRow>>) -> Rc<RefCell<Selection>> {
+pub fn bind(window: &MainWindow, rows: &Rc<VecModel<MainRow>>) -> Rc<RefCell<Selection>> {
     let selection = Rc::new(RefCell::new(Selection::new()));
     let weak = window.as_weak();
     let refresh = {

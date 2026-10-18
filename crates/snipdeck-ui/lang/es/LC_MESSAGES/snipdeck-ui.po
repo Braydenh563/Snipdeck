@@ -10,8 +10,44 @@ msgstr ""
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "Una lista agrupa fragmentos relacionados, como respuestas o direcciones."
 
+msgid "Actions"
+msgstr ""
+
+msgid "Add"
+msgstr ""
+
+msgid "Add a snippet, or move items here from another list."
+msgstr ""
+
 msgid "Add list"
 msgstr "Añadir lista"
+
+msgid "Add some text, or cancel."
+msgstr ""
+
+msgid "All items"
+msgstr ""
+
+msgid "Amber"
+msgstr ""
+
+msgid "Appearance"
+msgstr ""
+
+msgid "Apply the new name"
+msgstr ""
+
+msgid "Asks for a value each time"
+msgstr ""
+
+msgid "Asks you to pick one of the options"
+msgstr ""
+
+msgid "Blue"
+msgstr ""
+
+msgid "Board name"
+msgstr ""
 
 msgid "Board: {}"
 msgstr "Tablero: {}"
@@ -19,11 +55,59 @@ msgstr "Tablero: {}"
 msgid "Boards"
 msgstr "Tableros"
 
+msgid "Brings the panel up beside the app you are working in."
+msgstr ""
+
+msgid "Cancel"
+msgstr ""
+
+msgid "Capture a region"
+msgstr ""
+
+msgid "Captured items keep their kind."
+msgstr ""
+
+msgid "Changes apply at once."
+msgstr ""
+
+msgid "Choose one to add it at the end of the text. It is filled in when you use the item."
+msgstr ""
+
+msgid "Choose tags"
+msgstr ""
+
 msgid "Clear search"
 msgstr "Borrar búsqueda"
 
+msgid "Clear selection"
+msgstr ""
+
+msgid "Clear the shortcut for {}"
+msgstr ""
+
+msgid "Close"
+msgstr ""
+
 msgid "Close panel"
 msgstr "Cerrar panel"
+
+msgid "Close the tag list"
+msgstr ""
+
+msgid "Code"
+msgstr ""
+
+msgid "Colour"
+msgstr ""
+
+msgid "Comfortable view"
+msgstr ""
+
+msgid "Compact view"
+msgstr ""
+
+msgid "Content"
+msgstr ""
 
 msgid "Copies to clipboard"
 msgstr "Se copia al portapapeles"
@@ -34,14 +118,185 @@ msgstr "Copiar"
 msgid "Copy something, then save it here from the clipboard."
 msgstr "Copia algo y luego guárdalo aquí desde el portapapeles."
 
+msgid "Dark"
+msgstr ""
+
+msgid "Date and time in a format you choose"
+msgstr ""
+
+msgid "Delete"
+msgstr ""
+
+msgid "Delete board"
+msgstr ""
+
+msgid "Delete for good"
+msgstr ""
+
+msgid "Delete for good?"
+msgstr ""
+
+msgid "Delete for good…"
+msgstr ""
+
+msgid "Delete forever…"
+msgstr ""
+
+msgid "Delete list"
+msgstr ""
+
+msgid "Delete list “{}”?"
+msgstr ""
+
+msgid "Delete list…"
+msgstr ""
+
+msgid "Delete tag"
+msgstr ""
+
+msgid "Delete tag {}"
+msgstr ""
+
+msgid "Delete tag “{}”?"
+msgstr ""
+
+msgid "Delete tag…"
+msgstr ""
+
+msgid "Delete this board?"
+msgstr ""
+
+msgid "Delete this list?"
+msgstr ""
+
+msgid "Delete this tag?"
+msgstr ""
+
+msgid "Deleted items stay here for {} days before they are removed."
+msgstr ""
+
+msgid "Discard"
+msgstr ""
+
+msgid "Discard your changes?"
+msgstr ""
+
+msgid "Done"
+msgstr ""
+
+msgid "Edit"
+msgstr ""
+
+msgid "Edit board"
+msgstr ""
+
+msgid "Edit item"
+msgstr ""
+
+msgid "Edit list"
+msgstr ""
+
+msgid "Edit list…"
+msgstr ""
+
+msgid "Empty Trash"
+msgstr ""
+
+msgid "Empty Trash…"
+msgstr ""
+
+msgid "Empty the Trash?"
+msgstr ""
+
 msgid "Enter"
 msgstr "Enter"
+
+msgid "Everything in the Trash is deleted for good. This can't be undone."
+msgstr ""
+
+msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
+msgstr ""
+
+msgid "File"
+msgstr ""
+
+msgid "Follow Windows switches with your system setting."
+msgstr ""
+
+msgid "For example, Email replies"
+msgstr ""
+
+msgid "For example, Work"
+msgstr ""
+
+msgid "General"
+msgstr ""
+
+msgid "Give the board a name."
+msgstr ""
+
+msgid "Give the list a name."
+msgstr ""
+
+msgid "Green"
+msgstr ""
+
+msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it."
+msgstr ""
 
 msgid "Hidden. Hold Space to reveal."
 msgstr ""
 
+msgid "How wide the panel opens, from {} to {} pixels."
+msgstr ""
+
+msgid "Image"
+msgstr ""
+
+msgid "In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe."
+msgstr ""
+
+msgid "Insert {}"
+msgstr ""
+
+msgid "It is removed from {n} item. The item stays."
+msgstr ""
+
+msgid "Item actions"
+msgstr ""
+
+msgid "Items are removed after {} days."
+msgstr ""
+
+msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
+msgstr ""
+
+msgid "Keep editing"
+msgstr ""
+
 msgid "Keep on top"
 msgstr "Siempre encima"
+
+msgid "Keep running in the tray when the window closes"
+msgstr ""
+
+msgid "Kind"
+msgstr ""
+
+msgid "Language"
+msgstr ""
+
+msgid "Light"
+msgstr ""
+
+msgid "Link"
+msgstr ""
+
+msgid "List"
+msgstr ""
+
+msgid "List name"
+msgstr ""
 
 msgid "Lists"
 msgstr "Listas"
@@ -49,8 +304,62 @@ msgstr "Listas"
 msgid "Loading"
 msgstr "Cargando"
 
+msgid "Make the panel narrower"
+msgstr ""
+
+msgid "Make the panel wider"
+msgstr ""
+
+msgid "Manage tags"
+msgstr ""
+
+msgid "Manage tags…"
+msgstr ""
+
+msgid "Manual"
+msgstr ""
+
+msgid "Most used"
+msgstr ""
+
+msgid "Move"
+msgstr ""
+
+msgid "Move to list"
+msgstr ""
+
+msgid "Move to list…"
+msgstr ""
+
+msgid "Navigation"
+msgstr ""
+
+msgid "Never paste into"
+msgstr ""
+
+msgid "New board"
+msgstr ""
+
+msgid "New item"
+msgstr ""
+
 msgid "New list"
 msgstr "Nueva lista"
+
+msgid "New name for {}"
+msgstr ""
+
+msgid "New tag"
+msgstr ""
+
+msgid "New tag, then Enter"
+msgstr ""
+
+msgid "No colour"
+msgstr ""
+
+msgid "No items with this tag"
+msgstr ""
 
 msgid "No lists yet"
 msgstr "Aún no hay listas"
@@ -58,11 +367,59 @@ msgstr "Aún no hay listas"
 msgid "No matches"
 msgstr "Sin coincidencias"
 
+msgid "No programs yet."
+msgstr ""
+
+msgid "No recent items"
+msgstr ""
+
+msgid "No tags"
+msgstr ""
+
+msgid "No tags yet"
+msgstr ""
+
+msgid "No tags yet. Add one below."
+msgstr ""
+
+msgid "No tags yet. Add tags to an item and they appear here."
+msgstr ""
+
+msgid "Not set"
+msgstr ""
+
+msgid "Nothing matches “{}”."
+msgstr ""
+
 msgid "Nothing on this board matches “{}”."
 msgstr "Nada en este tablero coincide con “{}”."
 
+msgid "Nothing pinned"
+msgstr ""
+
+msgid "Only text, code, link and template items can be sensitive."
+msgstr ""
+
+msgid "Open Settings"
+msgstr ""
+
+msgid "Open the picker"
+msgstr ""
+
+msgid "Optional: the first line of the text is used"
+msgstr ""
+
+msgid "Orange"
+msgstr ""
+
+msgid "Panel width"
+msgstr ""
+
 msgid "Paste"
 msgstr "Pegar"
+
+msgid "Paste the next item"
+msgstr ""
 
 msgid "Pastes into {}"
 msgstr "Pega en {}"
@@ -70,23 +427,230 @@ msgstr "Pega en {}"
 msgid "Pastes into {} · {}"
 msgstr "Pega en {} · {}"
 
+msgid "Pastes the next item of the list in order."
+msgstr ""
+
+msgid "Pin"
+msgstr ""
+
+msgid "Pin the snippets you use most to keep them one click away."
+msgstr ""
+
+msgid "Pinned"
+msgstr ""
+
 msgid "Pinned snippets"
 msgstr "Fragmentos fijados"
+
+msgid "Placeholders"
+msgstr ""
+
+msgid "Press the new shortcut"
+msgstr ""
+
+msgid "Privacy"
+msgstr ""
+
+msgid "Program to add"
+msgstr ""
+
+msgid "Recent"
+msgstr ""
+
+msgid "Recently used"
+msgstr ""
+
+msgid "Red"
+msgstr ""
+
+msgid "Remove tag {}"
+msgstr ""
+
+msgid "Remove {} from the list"
+msgstr ""
+
+msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
+msgstr ""
+
+msgid "Rename tag {}"
+msgstr ""
+
+msgid "Restore"
+msgstr ""
+
+msgid "Rose"
+msgstr ""
+
+msgid "Save"
+msgstr ""
 
 msgid "Save from clipboard"
 msgstr "Guardar desde el portapapeles"
 
+msgid "Save your first snippet, or copy something and save it from the clipboard."
+msgstr ""
+
+msgid "Search every board and paste without opening the window."
+msgstr ""
+
+msgid "Search results"
+msgstr ""
+
 msgid "Search snippets"
 msgstr "Buscar fragmentos"
+
+msgid "Selects part of the screen and saves it as an item."
+msgstr ""
+
+msgid "Sensitive item"
+msgstr ""
+
+msgid "Settings"
+msgstr ""
 
 msgid "Shift Enter"
 msgstr "Shift Enter"
 
+msgid "Shortcuts"
+msgstr ""
+
+msgid "Show or hide the panel"
+msgstr ""
+
+msgid "Show website icons on links"
+msgstr ""
+
+msgid "Slate"
+msgstr ""
+
 msgid "Snipdeck"
 msgstr "Snipdeck"
+
+msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
+msgstr ""
 
 msgid "Snippets"
 msgstr "Fragmentos"
 
+msgid "Sort items by"
+msgstr ""
+
+msgid "Start with Windows"
+msgstr ""
+
+msgid "Tag"
+msgstr ""
+
+msgid "Tag a snippet to see it here."
+msgstr ""
+
+msgid "Tags"
+msgstr ""
+
+msgid "Tags…"
+msgstr ""
+
+msgid "Takes effect the next time Snipdeck starts."
+msgstr ""
+
+msgid "Teal"
+msgstr ""
+
+msgid "Template"
+msgstr ""
+
+msgid "Template text"
+msgstr ""
+
+msgid "Text"
+msgstr ""
+
+msgid "The Trash is empty"
+msgstr ""
+
+msgid "The list and its {} items move to the Trash. You can restore them for {} days."
+msgstr ""
+
+msgid "The selected items are deleted for good. This can't be undone."
+msgstr ""
+
+msgid "The tag is removed from its items. The items themselves stay."
+msgstr ""
+
+msgid "The time now"
+msgstr ""
+
+msgid "Theme"
+msgstr ""
+
 msgid "This list is empty"
 msgstr "Esta lista está vacía"
+
+msgid "This text is {}. Anything over 16 KB opens read-only here."
+msgstr ""
+
+msgid "Tile view"
+msgstr ""
+
+msgid "Title"
+msgstr ""
+
+msgid "Today's date"
+msgstr ""
+
+msgid "Trash"
+msgstr ""
+
+msgid "Turn on clipboard history in Settings to collect what you copy."
+msgstr ""
+
+msgid "Turn this off and closing the main window quits Snipdeck."
+msgstr ""
+
+msgid "Unpin"
+msgstr ""
+
+msgid "Use"
+msgstr ""
+
+msgid "Violet"
+msgstr ""
+
+msgid "What is on the clipboard"
+msgstr ""
+
+msgid "What you changed has not been saved."
+msgstr ""
+
+msgid "What you changed in this item has not been saved."
+msgstr ""
+
+msgid "Where the text cursor lands after pasting"
+msgstr ""
+
+msgid "Windows"
+msgstr ""
+
+msgid "Your deck is empty"
+msgstr ""
+
+msgid "https://example.com"
+msgstr ""
+
+msgid "notepad.exe"
+msgstr ""
+
+msgid "px"
+msgstr ""
+
+msgid "{n} item"
+msgstr ""
+
+msgid "{n} item will move to Trash with it. You can restore them for 30 days."
+msgstr ""
+
+msgid "{} (Pro)"
+msgstr ""
+
+msgid "{} selected"
+msgstr ""

@@ -181,10 +181,48 @@ fn the_toolbar_leaves_the_caption_button_strip_free() {
         assert_eq!(f.pixel(x, 22), APP_LIGHT, "caption strip at x={x}");
     }
     // The New item button ends 8px left of the strip.
-    h.component.global::<SystemLook<'_>>().set_caption_inset(200.0);
+    h.component
+        .global::<SystemLook<'_>>()
+        .set_caption_inset(200.0);
     let f = render(&h);
     for x in (SIZE.0 - 200)..SIZE.0 {
         assert_eq!(f.pixel(x, 22), APP_LIGHT, "wider strip at x={x}");
+    }
+    assert_eq!(
+        rightmost_ink(&f, SIZE.0 - 200),
+        SIZE.0 - 200 - 8 - 1,
+        "the toolbar's right edge follows the strip"
+    );
+}
+
+/// The x of the last pixel in the toolbar's middle row that is not the app background, looking left from `from`.
+fn rightmost_ink(f: &Frame, from: u32) -> u32 {
+    (0..from)
+        .rev()
+        .find(|&x| f.pixel(x, 22) != APP_LIGHT)
+        .expect("ink in the toolbar")
+}
+
+#[test]
+fn the_new_item_button_ends_at_the_toolbars_right_padding() {
+    // Right-aligned with the view toggles beside it, not centred: its right edge is the 8px padding left of the
+    // caption strip, at 100% and at 225% text size, and the toggles sit directly left of it.
+    for (scale, size) in [(1.0_f32, SIZE), (2.25, (1400, 900))] {
+        let h = window(size, false);
+        h.component.global::<SystemLook<'_>>().set_text_scale(scale);
+        let f = render(&h);
+        let edge = size.0 - 138 - 8 - 1;
+        assert_eq!(
+            rightmost_ink(&f, size.0 - 138),
+            edge,
+            "button right edge at scale {scale}"
+        );
+        // The button is dark: its fill reaches the edge's neighbours, so this is the button and not a toggle.
+        assert_ne!(
+            f.pixel(edge - 4, 22),
+            APP_LIGHT,
+            "button body at scale {scale}"
+        );
     }
 }
 
@@ -265,9 +303,15 @@ fn cjk_rows_keep_the_card_pitch_and_stay_inside_the_list_pane() {
                     }
                 }
             }
-            assert!(ink > 50, "{view:?} cjk={cjk}: only {ink} ink pixels in the first card");
+            assert!(
+                ink > 50,
+                "{view:?} cjk={cjk}: only {ink} ink pixels in the first card"
+            );
         }
-        assert_eq!(pitches[0], pitches[1], "{view:?}: CJK text changes the row height");
+        assert_eq!(
+            pitches[0], pitches[1],
+            "{view:?}: CJK text changes the row height"
+        );
     }
 }
 
@@ -277,7 +321,9 @@ fn the_cjk_family_setting_reaches_every_text_of_the_window() {
     let h = window(SIZE, false);
     let base = render(&h);
     // Plex Mono is bundled, so the effect is the same on every machine: all UI text changes family.
-    h.component.global::<Fonts<'_>>().set_cjk_family("IBM Plex Mono".into());
+    h.component
+        .global::<Fonts<'_>>()
+        .set_cjk_family("IBM Plex Mono".into());
     let changed = render(&h);
     let mut differing = 0;
     for y in (0..SIZE.1).step_by(2) {
@@ -300,4 +346,3 @@ fn the_cjk_family_setting_reaches_every_text_of_the_window() {
         }
     }
 }
-

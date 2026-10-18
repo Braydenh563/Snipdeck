@@ -20,11 +20,7 @@ pub fn cjk_font_candidates(language: &str) -> &'static [&'static str] {
             "IPAexGothic",
             "IPAGothic",
         ],
-        "zh" if traditional => &[
-            "Microsoft JhengHei UI",
-            "Noto Sans CJK TC",
-            "PingFang TC",
-        ],
+        "zh" if traditional => &["Microsoft JhengHei UI", "Noto Sans CJK TC", "PingFang TC"],
         "zh" => &[
             "Microsoft YaHei UI",
             "Noto Sans CJK SC",
@@ -67,7 +63,10 @@ mod tests {
     #[test]
     fn the_first_installed_family_wins_and_none_means_no_change() {
         let only = |name: &'static str| move |f: &str| f == name;
-        assert_eq!(cjk_font_family("ja", only("Noto Sans CJK JP")), "Noto Sans CJK JP");
+        assert_eq!(
+            cjk_font_family("ja", only("Noto Sans CJK JP")),
+            "Noto Sans CJK JP"
+        );
         assert_eq!(cjk_font_family("ja", |_| true), "Yu Gothic UI");
         assert_eq!(cjk_font_family("ja", |_| false), "");
         assert_eq!(cjk_font_family("de", |_| true), "");
