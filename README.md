@@ -1,7 +1,5 @@
 <p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/logo/snipdeck-logo-dark.svg"><img src="assets/logo/snipdeck-logo-light.svg" alt="Snipdeck" height="96"></picture></p>
 
-# Snipdeck
-
 A sticky-note-style snippet deck for your desktop: keep the things you paste all the time one click away, and paste them into whatever you were typing in.
 
 [![CI](https://github.com/Braydenh563/Snipdeck/actions/workflows/ci.yml/badge.svg)](https://github.com/Braydenh563/Snipdeck/actions/workflows/ci.yml)
