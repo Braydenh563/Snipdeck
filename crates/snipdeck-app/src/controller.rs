@@ -23,6 +23,7 @@ use snipdeck_store::{
 
 mod main_ctl;
 mod panel;
+mod settings_ctl;
 
 pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice};
 pub use panel::{APP_MENU, AppMenuEntry, HelpTopic};
@@ -106,7 +107,7 @@ pub enum Effect {
     SetHotkeysPaused(bool),
     /// Exit the app.
     Quit,
-    /// Open the Settings window (not built yet: the host logs it).
+    /// Open the Settings window, creating it the first time (the Panel menu's "Settings").
     OpenSettings,
     /// Start a new snippet (not built yet: the host logs it).
     NewItem,

@@ -107,7 +107,7 @@ impl Default for Hotkeys {
 }
 
 impl Hotkeys {
-    fn slot(&mut self, action: HotkeyAction) -> &mut String {
+    pub(crate) fn slot(&mut self, action: HotkeyAction) -> &mut String {
         match action {
             HotkeyAction::TogglePanel => &mut self.toggle_panel,
             HotkeyAction::Picker => &mut self.picker,

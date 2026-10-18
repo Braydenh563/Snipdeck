@@ -25,6 +25,10 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+# `keygen`: the signer, so a test can mint a key the development public key accepts.
+snipdeck-core = { workspace = true, features = ["keygen"] }
+# `testing`: the in-memory key provider, to give a library an encryption key.
+snipdeck-store = { path = "../snipdeck-store", features = ["testing"] }
 # Slint's headless platform for the window tests (one process per test file).
 i-slint-backend-testing = "=1.18.1"
 tempfile.workspace = true

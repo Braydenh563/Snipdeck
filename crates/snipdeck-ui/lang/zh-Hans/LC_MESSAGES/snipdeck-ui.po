@@ -13,6 +13,9 @@ msgstr "列表可以把相关的片段放在一起，例如回复或地址。"
 msgid "Actions"
 msgstr "操作"
 
+msgid "Activate"
+msgstr "激活"
+
 msgid "Add"
 msgstr "添加"
 
@@ -31,6 +34,9 @@ msgstr "全部"
 msgid "All items"
 msgstr "所有片段"
 
+msgid "Also forget the encryption key"
+msgstr "同时忘记加密密钥"
+
 msgid "Amber"
 msgstr "琥珀色"
 
@@ -45,6 +51,15 @@ msgstr "每次都询问值"
 
 msgid "Asks you to pick one of the options"
 msgstr "让你从选项中选择一项"
+
+msgid "Back up now"
+msgstr "立即备份"
+
+msgid "Backup of {}, {}"
+msgstr "{} 的备份（{}）"
+
+msgid "Backups"
+msgstr "备份"
 
 msgid "Blue"
 msgstr "蓝色"
@@ -184,6 +199,9 @@ msgstr "要删除此标签吗？"
 msgid "Deleted items stay here for {} days before they are removed."
 msgstr "已删除的片段会在这里保留 {} 天，之后才会被移除。"
 
+msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
+msgstr "删除这台电脑上的所有看板、列表、片段和备份。此操作无法撤销。"
+
 msgid "Discard"
 msgstr "放弃"
 
@@ -220,11 +238,29 @@ msgstr "要清空回收站吗？"
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Erase everything"
+msgstr "全部删除"
+
+msgid "Erase library"
+msgstr "删除资料库"
+
+msgid "Erase library…"
+msgstr "删除资料库…"
+
 msgid "Escape"
 msgstr "Esc"
 
+msgid "Every Pro feature is on. Thank you."
+msgstr "所有 Pro 功能均已开启。谢谢。"
+
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr "回收站中的所有内容都将被永久删除，此操作无法撤销。"
+
+msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
+msgstr "资料库中的所有内容都会被删除：看板、列表、片段、图片、草稿和备份。如果需要副本，请先导出。你的设置和许可证会保留。"
+
+msgid "Export library"
+msgstr "导出资料库"
 
 msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
 msgstr "从网站本身获取每个网站的小图标。默认关闭，因此不会发出请求。"
@@ -238,6 +274,9 @@ msgstr "文件"
 msgid "Fill in template"
 msgstr "填写模板"
 
+msgid "Follow Windows"
+msgstr "跟随 Windows"
+
 msgid "Follow Windows switches with your system setting."
 msgstr "跟随系统设置中的 Windows 主题。"
 
@@ -246,6 +285,9 @@ msgstr "例如：邮件回复"
 
 msgid "For example, Work"
 msgstr "例如：工作"
+
+msgid "Free plan"
+msgstr "免费版"
 
 msgid "General"
 msgstr "常规"
@@ -310,6 +352,12 @@ msgstr "类型"
 msgid "Language"
 msgstr "语言"
 
+msgid "Licence"
+msgstr "许可证"
+
+msgid "Licence key"
+msgstr "许可证密钥"
+
 msgid "Light"
 msgstr "浅色"
 
@@ -327,6 +375,9 @@ msgstr "列表"
 
 msgid "Loading"
 msgstr "正在加载"
+
+msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
+msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会发送到任何地方。"
 
 msgid "Make the panel narrower"
 msgstr "缩窄面板"
@@ -381,6 +432,9 @@ msgstr "新建标签"
 
 msgid "New tag, then Enter"
 msgstr "新建标签，然后按 Enter"
+
+msgid "No backups yet."
+msgstr "还没有备份。"
 
 msgid "No colour"
 msgstr "无颜色"
@@ -445,6 +499,9 @@ msgstr "打开设置"
 msgid "Open Snipdeck"
 msgstr "打开 Snipdeck"
 
+msgid "Open data folder"
+msgstr "打开数据文件夹"
+
 msgid "Open the picker"
 msgstr "打开选择器"
 
@@ -454,6 +511,9 @@ msgstr "可选：使用文本的第一行"
 msgid "Orange"
 msgstr "橙色"
 
+msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
+msgstr "在该文件夹之外，Snipdeck 只会写入 Windows 开机启动项（如果你开启了它），以及在你使用片段时写入剪贴板。"
+
 msgid "Panel menu"
 msgstr "面板菜单"
 
@@ -462,6 +522,9 @@ msgstr "面板宽度"
 
 msgid "Paste"
 msgstr "粘贴"
+
+msgid "Paste a licence key to turn on Pro. The key is checked on this PC and nothing is sent anywhere."
+msgstr "粘贴许可证密钥即可开启 Pro。密钥只在这台电脑上验证，不会发送到任何地方。"
 
 msgid "Paste the next item"
 msgstr "粘贴下一个片段"
@@ -538,11 +601,17 @@ msgstr "必填"
 msgid "Restore"
 msgstr "还原"
 
+msgid "Restore the backup of {}"
+msgstr "还原 {} 的备份"
+
 msgid "Results"
 msgstr "搜索结果"
 
 msgid "Rose"
 msgstr "玫瑰色"
+
+msgid "SNIP1."
+msgstr "SNIP1."
 
 msgid "Save"
 msgstr "保存"
@@ -552,6 +621,9 @@ msgstr "从剪贴板保存"
 
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr "保存你的第一个片段，或复制一些内容后从剪贴板保存。"
+
+msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
+msgstr "把所有看板、列表和片段保存为一个 .snipdeck 文件，放在你的“文档”文件夹中。"
 
 msgid "Scope"
 msgstr "范围"
@@ -604,6 +676,15 @@ msgstr "石板灰"
 msgid "Snipdeck"
 msgstr "Snipdeck"
 
+msgid "Snipdeck Pro"
+msgstr "Snipdeck Pro"
+
+msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
+msgstr "Snipdeck 没有账户、没有服务器、没有遥测，也不开放任何网络端口。你保存的内容不会离开这台电脑。"
+
+msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
+msgstr "Snipdeck 每天保存一份资料库副本，并保留最新的 7 份。还原只会补回缺少的内容，不会删除任何东西。"
+
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck 会待在系统托盘中，以便登录后快捷键仍可使用。"
 
@@ -649,8 +730,14 @@ msgstr "文本"
 msgid "The Trash is empty"
 msgstr "回收站为空"
 
+msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
+msgstr "该密钥用于打开你之前保存的导出文件中的加密项目。如果忘记它，这些项目将永远无法再打开。"
+
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "该列表及其中的 {} 个片段将移至回收站。你可以在 {} 天内恢复它们。"
+
+msgid "The one setting that can make a network request is website icons. It is off unless you turn it on above."
+msgstr "唯一可能发出网络请求的设置是网站图标。除非你在上方开启，否则它是关闭的。"
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "所选片段将被永久删除，此操作无法撤销。"
@@ -667,6 +754,9 @@ msgstr "主题"
 msgid "This board"
 msgstr "此看板"
 
+msgid "This demo keeps nothing on disk, so there are no backups."
+msgstr "此演示不会在磁盘上保存任何内容，因此没有备份。"
+
 msgid "This field is required"
 msgstr "此字段为必填项"
 
@@ -682,6 +772,9 @@ msgstr "平铺视图"
 msgid "Title"
 msgstr "标题"
 
+msgid "To remove everything, use Erase library above and then delete the folder."
+msgstr "要删除所有内容，请使用上方的“删除资料库”，然后删除该文件夹。"
+
 msgid "Today's date"
 msgstr "今天的日期"
 
@@ -693,6 +786,9 @@ msgstr "在设置中开启剪贴板历史，以收集你复制的内容。"
 
 msgid "Turn this off and closing the main window quits Snipdeck."
 msgstr "关闭此项后，关闭主窗口将退出 Snipdeck。"
+
+msgid "Type {} to confirm"
+msgstr "输入 {} 以确认"
 
 msgid "Unpin"
 msgstr "取消置顶"
@@ -718,8 +814,14 @@ msgstr "粘贴后文本光标的位置"
 msgid "Windows"
 msgstr "Windows"
 
+msgid "Your data"
+msgstr "你的数据"
+
 msgid "Your deck is empty"
 msgstr "你的卡组是空的"
+
+msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (the newest 7) and logs."
+msgstr "你的资料库位于同一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：snipdeck.db（看板、列表、片段、标签和回收站）、blobs（图片、文件和长文本）、settings.json、你的许可证密钥、备份（最新的 7 份）和日志。"
 
 msgid "https://example.com"
 msgstr "https://example.com"

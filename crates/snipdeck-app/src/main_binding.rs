@@ -7,7 +7,7 @@
 //! every bound window is redrawn from the controller (see `binding::redraw_all`).
 //!
 //! What is not wired because the feature behind it is not built: the item editor ("New item",
-//! Edit), the tag manager, the Settings page, the Recent inbox.
+//! Edit), the tag manager, the Recent inbox.
 
 use std::{
     cell::{Cell, RefCell},
@@ -388,6 +388,7 @@ where
             .main_board_menu_activate(index(i)));
         wire!(on_board_menu_dismissed, |ctl| ctl.main_board_menu_close());
         wire!(on_toast_undo, |ctl| ctl.main_undo());
+        window.on_settings_requested(crate::settings_binding::request_open);
         wire!(on_item_reorder_requested, |ctl, d| ctl
             .main_reorder_items(isize::try_from(d).unwrap_or(0)));
         wire!(on_list_reorder_requested, |ctl, i, d| ctl
@@ -396,9 +397,6 @@ where
         // The callbacks the window has no feature for yet still leave a line in the log.
         window.on_new_item_requested(|| {
             crate::trace!("callback main new_item_requested: no item editor yet");
-        });
-        window.on_settings_requested(|| {
-            crate::trace!("callback main settings_requested: no settings page yet");
         });
         window.on_manage_tags_requested(|| {
             crate::trace!("callback main manage_tags_requested: no tag manager yet");
@@ -503,7 +501,7 @@ impl MainUi {
 }
 
 /// Un-minimises the window and asks the OS to focus it (it was created un-activated).
-fn raise(window: &slint::Window) {
+pub(crate) fn raise(window: &slint::Window) {
     let _ = window.with_winit_window(|w| {
         w.set_minimized(false);
         w.focus_window();
@@ -616,7 +614,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
 }
 
 /// The Windows high-contrast colours, or off.
-fn set_look<C>(component: &C, hc: Option<&HighContrast>)
+pub(crate) fn set_look<C>(component: &C, hc: Option<&HighContrast>)
 where
     C: ComponentHandle,
     for<'a> ui::SystemLook<'a>: slint::Global<'a, C>,

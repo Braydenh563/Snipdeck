@@ -162,6 +162,14 @@ fn settings() -> (SettingsPage, Log) {
     hook!(on_panel_width_chosen, |w| format!("width:{w}"));
     hook!(on_no_paste_app_added, |n| format!("app+:{n}"));
     hook!(on_no_paste_app_removed, |i| format!("app-:{i}"));
+    hook!(on_licence_submitted, |k| format!("licence:{k}"));
+    hook!(on_backup_restore_requested, |i| format!("restore:{i}"));
+    hook!(on_erase_confirmed, |t, forget| format!(
+        "erase:{t}:{forget}"
+    ));
+    ui.on_backup_now_requested(log_hook(&log, "backup"));
+    ui.on_open_data_folder_requested(log_hook(&log, "folder"));
+    ui.on_export_requested(log_hook(&log, "export"));
     ui.on_close_requested(log_hook(&log, "close"));
     (ui, log)
 }
@@ -780,6 +788,57 @@ ui_tests! {
         // An empty field adds nothing.
         find(&ui, "Add", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), Vec::<String>::new());
+    }
+
+    fn the_licence_backup_and_data_sections_report_their_gestures() {
+        let (ui, log) = settings();
+        // A key is typed, then Activate sends it.
+        find(&ui, "Activate", AccessibleRole::Button).invoke_accessible_default_action();
+        assert!(take(&log).is_empty(), "an empty field sends nothing");
+        find(&ui, "Licence key", AccessibleRole::TextInput).set_accessible_value("SNIP1.abc.def");
+        find(&ui, "Activate", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["licence:SNIP1.abc.def"]);
+        // Pro has nothing to type.
+        ui.set_pro(true);
+        settle();
+        assert!(ElementHandle::find_by_accessible_label(&ui, "Activate").next().is_none());
+        ui.set_pro(false);
+        settle();
+
+        find(&ui, "Restore the backup of 2026-10-17", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Back up now", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Open data folder", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Export library", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["restore:1", "backup", "folder", "export"]);
+
+        // Without a data folder (the demo) the buttons are off.
+        ui.set_has_data_folder(false);
+        settle();
+        for label in ["Back up now", "Open data folder", "Export library", "Erase library\u{2026}"] {
+            assert_eq!(find(&ui, label, AccessibleRole::Button).accessible_enabled(), Some(false), "{label}");
+        }
+    }
+
+    fn erasing_asks_first_and_sends_the_typed_word_and_the_key_choice() {
+        let (ui, log) = settings();
+        find(&ui, "Erase library\u{2026}", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_erase_open());
+        assert!(take(&log).is_empty(), "opening the question erases nothing");
+        let erase = find(&ui, "Erase everything", AccessibleRole::Button);
+        assert_eq!(erase.accessible_enabled(), Some(false));
+        find(&ui, "Type DELETE to confirm", AccessibleRole::TextInput).set_accessible_value("DELET");
+        assert_eq!(find(&ui, "Erase everything", AccessibleRole::Button).accessible_enabled(), Some(false));
+        find(&ui, "Type DELETE to confirm", AccessibleRole::TextInput).set_accessible_value("DELETE");
+        find(&ui, "Also forget the encryption key", AccessibleRole::Switch).invoke_accessible_default_action();
+        find(&ui, "Erase everything", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["erase:DELETE:true"]);
+        assert!(!ui.get_erase_open(), "closed, and ready to ask again from scratch");
+        find(&ui, "Erase library\u{2026}", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(find(&ui, "Erase everything", AccessibleRole::Button).accessible_enabled(), Some(false));
+        assert_eq!(find(&ui, "Also forget the encryption key", AccessibleRole::Switch).accessible_checked(), Some(false));
     }
 
     fn the_settings_page_has_roles_labels_and_big_enough_targets() {

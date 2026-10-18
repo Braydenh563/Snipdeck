@@ -13,6 +13,9 @@ msgstr "リストには、返信文や住所など関連するスニペットを
 msgid "Actions"
 msgstr "操作"
 
+msgid "Activate"
+msgstr "有効にする"
+
 msgid "Add"
 msgstr "追加"
 
@@ -31,6 +34,9 @@ msgstr "すべて"
 msgid "All items"
 msgstr "すべてのスニペット"
 
+msgid "Also forget the encryption key"
+msgstr "暗号化キーも削除する"
+
 msgid "Amber"
 msgstr "アンバー"
 
@@ -45,6 +51,15 @@ msgstr "毎回値を尋ねる"
 
 msgid "Asks you to pick one of the options"
 msgstr "オプションから1つ選択を求めます"
+
+msgid "Back up now"
+msgstr "今すぐバックアップ"
+
+msgid "Backup of {}, {}"
+msgstr "{} のバックアップ（{}）"
+
+msgid "Backups"
+msgstr "バックアップ"
 
 msgid "Blue"
 msgstr "青"
@@ -184,6 +199,9 @@ msgstr "このタグを削除しますか？"
 msgid "Deleted items stay here for {} days before they are removed."
 msgstr "削除されたスニペットは、完全に削除されるまで{}日間ここに残ります。"
 
+msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
+msgstr "このPCにあるすべてのボード、リスト、スニペット、バックアップを削除します。元に戻すことはできません。"
+
 msgid "Discard"
 msgstr "破棄"
 
@@ -220,11 +238,29 @@ msgstr "ゴミ箱を空にしますか？"
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Erase everything"
+msgstr "すべて削除"
+
+msgid "Erase library"
+msgstr "ライブラリを削除"
+
+msgid "Erase library…"
+msgstr "ライブラリを削除…"
+
 msgid "Escape"
 msgstr "Esc"
 
+msgid "Every Pro feature is on. Thank you."
+msgstr "Proの機能がすべて使えます。ありがとうございます。"
+
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr "ゴミ箱のすべてが完全に削除されます。この操作は元に戻せません。"
+
+msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
+msgstr "ライブラリの中身はすべて削除されます：ボード、リスト、スニペット、画像、下書き、バックアップ。コピーが必要な場合は先にエクスポートしてください。設定とライセンスは残ります。"
+
+msgid "Export library"
+msgstr "ライブラリをエクスポート"
 
 msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
 msgstr "各サイトの小さなアイコンをサイト自体から取得します。既定では無効のため、リクエストは送信されません。"
@@ -238,6 +274,9 @@ msgstr "ファイル"
 msgid "Fill in template"
 msgstr "テンプレートに入力"
 
+msgid "Follow Windows"
+msgstr "Windowsに合わせる"
+
 msgid "Follow Windows switches with your system setting."
 msgstr "Windowsの設定に従います。"
 
@@ -246,6 +285,9 @@ msgstr "例: メールの返信"
 
 msgid "For example, Work"
 msgstr "例: 仕事"
+
+msgid "Free plan"
+msgstr "無料プラン"
 
 msgid "General"
 msgstr "全般"
@@ -310,6 +352,12 @@ msgstr "種類"
 msgid "Language"
 msgstr "言語"
 
+msgid "Licence"
+msgstr "ライセンス"
+
+msgid "Licence key"
+msgstr "ライセンスキー"
+
 msgid "Light"
 msgstr "ライト"
 
@@ -327,6 +375,9 @@ msgstr "リスト"
 
 msgid "Loading"
 msgstr "読み込み中"
+
+msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
+msgstr "ログはSnipdeckが異常終了したときだけ書き込まれ、スニペットの内容は含まれず、どこにも送信されません。"
 
 msgid "Make the panel narrower"
 msgstr "パネルを狭くする"
@@ -381,6 +432,9 @@ msgstr "新しいタグ"
 
 msgid "New tag, then Enter"
 msgstr "新しいタグ、次に Enter"
+
+msgid "No backups yet."
+msgstr "バックアップはまだありません。"
 
 msgid "No colour"
 msgstr "色なし"
@@ -445,6 +499,9 @@ msgstr "設定を開く"
 msgid "Open Snipdeck"
 msgstr "Snipdeck を開く"
 
+msgid "Open data folder"
+msgstr "データフォルダーを開く"
+
 msgid "Open the picker"
 msgstr "ピッカーを開く"
 
@@ -454,6 +511,9 @@ msgstr "任意: テキストの1行目が使われます"
 msgid "Orange"
 msgstr "オレンジ"
 
+msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
+msgstr "このフォルダーの外にSnipdeckが書き込むのは、Windowsのスタートアップ項目（オンにした場合）と、スニペットを使うときのクリップボードだけです。"
+
 msgid "Panel menu"
 msgstr "パネルメニュー"
 
@@ -462,6 +522,9 @@ msgstr "パネルの幅"
 
 msgid "Paste"
 msgstr "貼り付け"
+
+msgid "Paste a licence key to turn on Pro. The key is checked on this PC and nothing is sent anywhere."
+msgstr "ライセンスキーを貼り付けるとProが有効になります。キーはこのPCで確認され、何も送信されません。"
 
 msgid "Paste the next item"
 msgstr "次のスニペットを貼り付け"
@@ -538,11 +601,17 @@ msgstr "必須"
 msgid "Restore"
 msgstr "復元"
 
+msgid "Restore the backup of {}"
+msgstr "{} のバックアップを復元"
+
 msgid "Results"
 msgstr "検索結果"
 
 msgid "Rose"
 msgstr "ローズ"
+
+msgid "SNIP1."
+msgstr "SNIP1."
 
 msgid "Save"
 msgstr "保存"
@@ -552,6 +621,9 @@ msgstr "クリップボードから保存"
 
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr "最初のスニペットを保存するか、何かをコピーしてクリップボードから保存してください。"
+
+msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
+msgstr "すべてのボード、リスト、スニペットを1つの .snipdeck ファイルとして［ドキュメント］フォルダーに保存します。"
 
 msgid "Scope"
 msgstr "範囲"
@@ -604,6 +676,15 @@ msgstr "スレート"
 msgid "Snipdeck"
 msgstr "Snipdeck"
 
+msgid "Snipdeck Pro"
+msgstr "Snipdeck Pro"
+
+msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
+msgstr "Snipdeckにはアカウントもサーバーもテレメトリもなく、ネットワークポートも開きません。保存した内容がこのPCの外に出ることはありません。"
+
+msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
+msgstr "Snipdeckはライブラリのコピーを1日1回保存し、新しい7つを残します。復元では足りないものだけが戻り、何も削除されません。"
+
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck はサインイン後にショートカットが使えるよう、通知領域で待機します。"
 
@@ -649,8 +730,14 @@ msgstr "テキスト"
 msgid "The Trash is empty"
 msgstr "ゴミ箱は空です"
 
+msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
+msgstr "このキーは、以前に保存したエクスポート内の暗号化された項目を開くためのものです。削除すると、それらの項目は二度と開けません。"
+
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "リストとその{}件のスニペットはゴミ箱に移動します。{}日間復元できます。"
+
+msgid "The one setting that can make a network request is website icons. It is off unless you turn it on above."
+msgstr "ネットワークに接続する可能性がある設定は、Webサイトのアイコンだけです。上でオンにしない限りオフです。"
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "選択したスニペットは完全に削除されます。この操作は元に戻せません。"
@@ -667,6 +754,9 @@ msgstr "テーマ"
 msgid "This board"
 msgstr "このボード"
 
+msgid "This demo keeps nothing on disk, so there are no backups."
+msgstr "このデモはディスクに何も保存しないため、バックアップはありません。"
+
 msgid "This field is required"
 msgstr "この入力欄は必須です"
 
@@ -682,6 +772,9 @@ msgstr "タイル表示"
 msgid "Title"
 msgstr "タイトル"
 
+msgid "To remove everything, use Erase library above and then delete the folder."
+msgstr "すべてを削除するには、上の「ライブラリを削除」を使い、そのあとフォルダーを削除してください。"
+
 msgid "Today's date"
 msgstr "今日の日付"
 
@@ -693,6 +786,9 @@ msgstr "設定でクリップボード履歴をオンにすると、コピーし
 
 msgid "Turn this off and closing the main window quits Snipdeck."
 msgstr "これをオフにすると、メインウィンドウを閉じたときにSnipdeckが終了します。"
+
+msgid "Type {} to confirm"
+msgstr "確認のため {} と入力"
 
 msgid "Unpin"
 msgstr "ピン留めを解除"
@@ -718,8 +814,14 @@ msgstr "貼り付け後のテキストカーソルの位置"
 msgid "Windows"
 msgstr "Windows"
 
+msgid "Your data"
+msgstr "データ"
+
 msgid "Your deck is empty"
 msgstr "デッキは空です"
+
+msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (the newest 7) and logs."
+msgstr "ライブラリは1つのフォルダー（%LOCALAPPDATA%\\Snipdeck）にあります：snipdeck.db（ボード、リスト、スニペット、タグ、ゴミ箱）、blobs（画像、ファイル、長いテキスト）、settings.json、ライセンスキー、バックアップ（新しい7つ）、ログ。"
 
 msgid "https://example.com"
 msgstr "https://example.com"

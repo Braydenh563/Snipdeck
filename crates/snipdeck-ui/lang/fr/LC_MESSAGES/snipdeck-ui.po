@@ -13,6 +13,9 @@ msgstr "Une liste regroupe des extraits liés, comme des réponses ou des adress
 msgid "Actions"
 msgstr "Actions"
 
+msgid "Activate"
+msgstr "Activer"
+
 msgid "Add"
 msgstr "Ajouter"
 
@@ -31,6 +34,9 @@ msgstr "Tous"
 msgid "All items"
 msgstr "Tous les extraits"
 
+msgid "Also forget the encryption key"
+msgstr "Oublier aussi la clé de chiffrement"
+
 msgid "Amber"
 msgstr "Ambre"
 
@@ -45,6 +51,15 @@ msgstr "Demande une valeur à chaque fois"
 
 msgid "Asks you to pick one of the options"
 msgstr "Vous demande de choisir une option"
+
+msgid "Back up now"
+msgstr "Sauvegarder maintenant"
+
+msgid "Backup of {}, {}"
+msgstr "Sauvegarde du {}, {}"
+
+msgid "Backups"
+msgstr "Sauvegardes"
 
 msgid "Blue"
 msgstr "Bleu"
@@ -184,6 +199,9 @@ msgstr "Supprimer cette étiquette ?"
 msgid "Deleted items stay here for {} days before they are removed."
 msgstr "Les extraits supprimés restent ici {} jours avant d'être retirés."
 
+msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
+msgstr "Supprime tous les tableaux, listes, extraits et sauvegardes de ce PC. Cette action est irréversible."
+
 msgid "Discard"
 msgstr "Abandonner"
 
@@ -220,11 +238,29 @@ msgstr "Vider la corbeille ?"
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Erase everything"
+msgstr "Tout effacer"
+
+msgid "Erase library"
+msgstr "Effacer la bibliothèque"
+
+msgid "Erase library…"
+msgstr "Effacer la bibliothèque…"
+
 msgid "Escape"
 msgstr "Esc"
 
+msgid "Every Pro feature is on. Thank you."
+msgstr "Toutes les fonctions Pro sont activées. Merci."
+
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr "Tout ce qui se trouve dans la corbeille sera supprimé définitivement. Cette action est irréversible."
+
+msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
+msgstr "Tout ce qui est dans votre bibliothèque disparaît : tableaux, listes, extraits, images, brouillons et sauvegardes. Exportez d’abord si vous voulez une copie. Vos réglages et votre licence restent."
+
+msgid "Export library"
+msgstr "Exporter la bibliothèque"
 
 msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
 msgstr "Récupère la petite icône de chaque site depuis le site lui-même. Désactivé par défaut, donc aucune requête n'est envoyée."
@@ -238,6 +274,9 @@ msgstr "Fichier"
 msgid "Fill in template"
 msgstr "Remplir le modèle"
 
+msgid "Follow Windows"
+msgstr "Suivre Windows"
+
 msgid "Follow Windows switches with your system setting."
 msgstr "Suit le thème de Windows selon le réglage du système."
 
@@ -246,6 +285,9 @@ msgstr "Par exemple, Réponses e-mail"
 
 msgid "For example, Work"
 msgstr "Par exemple, Travail"
+
+msgid "Free plan"
+msgstr "Offre gratuite"
 
 msgid "General"
 msgstr "Général"
@@ -310,6 +352,12 @@ msgstr "Type"
 msgid "Language"
 msgstr "Langue"
 
+msgid "Licence"
+msgstr "Licence"
+
+msgid "Licence key"
+msgstr "Clé de licence"
+
 msgid "Light"
 msgstr "Clair"
 
@@ -327,6 +375,9 @@ msgstr "Listes"
 
 msgid "Loading"
 msgstr "Chargement"
+
+msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
+msgstr "Les journaux ne sont écrits que si Snipdeck plante, ne contiennent aucun extrait et ne sont envoyés nulle part."
 
 msgid "Make the panel narrower"
 msgstr "Rendre le panneau plus étroit"
@@ -381,6 +432,9 @@ msgstr "Nouvelle étiquette"
 
 msgid "New tag, then Enter"
 msgstr "Nouvelle étiquette, puis Enter"
+
+msgid "No backups yet."
+msgstr "Pas encore de sauvegarde."
 
 msgid "No colour"
 msgstr "Aucune couleur"
@@ -445,6 +499,9 @@ msgstr "Ouvrir les paramètres"
 msgid "Open Snipdeck"
 msgstr "Ouvrir Snipdeck"
 
+msgid "Open data folder"
+msgstr "Ouvrir le dossier de données"
+
 msgid "Open the picker"
 msgstr "Ouvrir le sélecteur"
 
@@ -454,6 +511,9 @@ msgstr "Facultatif : la première ligne du texte est utilisée"
 msgid "Orange"
 msgstr "Orange"
 
+msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
+msgstr "En dehors de ce dossier, Snipdeck n’écrit que l’entrée de démarrage de Windows (si vous l’activez) et le presse-papiers quand vous utilisez un extrait."
+
 msgid "Panel menu"
 msgstr "Menu du panneau"
 
@@ -462,6 +522,9 @@ msgstr "Largeur du panneau"
 
 msgid "Paste"
 msgstr "Coller"
+
+msgid "Paste a licence key to turn on Pro. The key is checked on this PC and nothing is sent anywhere."
+msgstr "Collez une clé de licence pour activer Pro. La clé est vérifiée sur ce PC et rien n’est envoyé nulle part."
 
 msgid "Paste the next item"
 msgstr "Coller l'extrait suivant"
@@ -538,11 +601,17 @@ msgstr "Obligatoire"
 msgid "Restore"
 msgstr "Restaurer"
 
+msgid "Restore the backup of {}"
+msgstr "Restaurer la sauvegarde du {}"
+
 msgid "Results"
 msgstr "Résultats"
 
 msgid "Rose"
 msgstr "Rose"
+
+msgid "SNIP1."
+msgstr "SNIP1."
 
 msgid "Save"
 msgstr "Enregistrer"
@@ -552,6 +621,9 @@ msgstr "Enregistrer depuis le presse-papiers"
 
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr "Enregistrez votre premier extrait, ou copiez quelque chose et enregistrez-le depuis le presse-papiers."
+
+msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
+msgstr "Enregistre tous les tableaux, listes et extraits dans un seul fichier .snipdeck, dans votre dossier Documents."
 
 msgid "Scope"
 msgstr "Portée"
@@ -604,6 +676,15 @@ msgstr "Ardoise"
 msgid "Snipdeck"
 msgstr "Snipdeck"
 
+msgid "Snipdeck Pro"
+msgstr "Snipdeck Pro"
+
+msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
+msgstr "Snipdeck n’a ni compte, ni serveur, ni télémétrie, et n’ouvre aucun port réseau. Rien de ce que vous enregistrez ne quitte ce PC."
+
+msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
+msgstr "Snipdeck enregistre une copie de votre bibliothèque une fois par jour et garde les 7 plus récentes. La restauration remet ce qui manque et ne supprime jamais rien."
+
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck reste dans la zone de notification pour que les raccourcis fonctionnent après la connexion."
 
@@ -649,8 +730,14 @@ msgstr "Texte"
 msgid "The Trash is empty"
 msgstr "La corbeille est vide"
 
+msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
+msgstr "La clé ouvre les éléments chiffrés des exports enregistrés plus tôt. Si vous l’oubliez, ces éléments ne pourront plus jamais être ouverts."
+
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "La liste et ses {} extraits sont déplacés dans la corbeille. Vous pouvez les restaurer pendant {} jours."
+
+msgid "The one setting that can make a network request is website icons. It is off unless you turn it on above."
+msgstr "Le seul réglage qui peut faire une requête réseau est celui des icônes de sites. Il est désactivé tant que vous ne l’activez pas ci-dessus."
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "Les extraits sélectionnés seront supprimés définitivement. Cette action est irréversible."
@@ -667,6 +754,9 @@ msgstr "Thème"
 msgid "This board"
 msgstr "Ce tableau"
 
+msgid "This demo keeps nothing on disk, so there are no backups."
+msgstr "Cette démo n’enregistre rien sur le disque, il n’y a donc pas de sauvegarde."
+
 msgid "This field is required"
 msgstr "Ce champ est obligatoire"
 
@@ -682,6 +772,9 @@ msgstr "Affichage en mosaïque"
 msgid "Title"
 msgstr "Titre"
 
+msgid "To remove everything, use Erase library above and then delete the folder."
+msgstr "Pour tout supprimer, utilisez « Effacer la bibliothèque » ci-dessus, puis supprimez le dossier."
+
 msgid "Today's date"
 msgstr "Date du jour"
 
@@ -693,6 +786,9 @@ msgstr "Activez l'historique du presse-papiers dans les paramètres pour collect
 
 msgid "Turn this off and closing the main window quits Snipdeck."
 msgstr "Si vous désactivez cette option, la fermeture de la fenêtre principale quitte Snipdeck."
+
+msgid "Type {} to confirm"
+msgstr "Saisissez {} pour confirmer"
 
 msgid "Unpin"
 msgstr "Désépingler"
@@ -718,8 +814,14 @@ msgstr "Où le curseur de texte se place après le collage"
 msgid "Windows"
 msgstr "Windows"
 
+msgid "Your data"
+msgstr "Vos données"
+
 msgid "Your deck is empty"
 msgstr "Votre deck est vide"
+
+msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (the newest 7) and logs."
+msgstr "Votre bibliothèque est dans un seul dossier, %LOCALAPPDATA%\\Snipdeck : snipdeck.db (tableaux, listes, extraits, étiquettes et la Corbeille), blobs (images, fichiers et textes longs), settings.json, votre clé de licence, les sauvegardes (les 7 plus récentes) et les journaux."
 
 msgid "https://example.com"
 msgstr "https://example.com"

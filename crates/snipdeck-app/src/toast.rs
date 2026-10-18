@@ -17,6 +17,23 @@ pub enum ToastKind {
     Danger,
 }
 
+/// Why a licence key was not accepted: one reason per toast, so the user knows what to fix.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LicenceProblem {
+    /// Nothing was pasted.
+    Empty,
+    /// The text is not shaped like a Snipdeck key (wrong prefix or parts).
+    NotAKey,
+    /// The key is well formed but was not signed by Snipdeck (mistyped, cut short or forged).
+    BadSignature,
+    /// The key comes from a newer Snipdeck.
+    NewerFormat,
+    /// The key is genuine but not for Pro.
+    WrongTier,
+    /// The key is good but could not be saved next to the library.
+    NotSaved,
+}
+
 /// The message, before translation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ToastMessage {
@@ -117,6 +134,36 @@ pub enum ToastMessage {
     /// "Snipdeck closed unexpectedly last time. Open the log?" The action opens the log folder
     /// (`crash::open_log_folder`).
     CrashedLastTime,
+    /// "Snipdeck Pro is on. Thank you."
+    LicenceAccepted,
+    /// A licence key that was refused, and why.
+    LicenceRejected(LicenceProblem),
+    /// "Backed up".
+    BackupMade,
+    /// "Couldn't make a backup."
+    BackupFailed,
+    /// "Restored 5 items from the backup" (or: nothing was missing).
+    BackupRestored {
+        /// Items added back.
+        items: usize,
+    },
+    /// "Couldn't restore that backup."
+    RestoreFailed,
+    /// "Saved {file} in {folder}": an export.
+    Exported {
+        /// The file's name.
+        file: String,
+    },
+    /// "Couldn't export your library."
+    ExportFailed,
+    /// "Your library was erased."
+    LibraryErased,
+    /// "Couldn't erase everything. Quit Snipdeck and try again."
+    EraseFailed,
+    /// "Couldn't open the folder."
+    FolderNotOpened,
+    /// "Couldn't change the Windows start-up entry."
+    AutostartFailed,
 }
 
 /// A toast: a style and a message.
