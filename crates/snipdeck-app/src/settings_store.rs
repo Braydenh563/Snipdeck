@@ -4,7 +4,7 @@
 //!   `settings.json.tmp`, is flushed to disk (`fsync`), and only then renamed over the old file
 //!   (on Windows `std::fs::rename` replaces an existing file in one `MoveFileExW` call). A crash
 //!   before the rename leaves the old file untouched and a stale `.tmp`, which the next write
-//!   simply overwrites. Reading is [`crate::paths::load_settings`], which also sets a damaged
+//!   simply overwrites. Reading is [`crate::paths::read_settings`], which also sets a damaged
 //!   file aside as `settings.json.bad`.
 //! - [`SettingsSaver`] decides *when* to write. A change waits for a quiet moment
 //!   ([`Debounce::quiet`]) so that dragging a slider writes once; continuous changes still write

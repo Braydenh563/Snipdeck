@@ -70,8 +70,6 @@ fn take_screenshot(path: &std::path::Path, dark: bool) -> Result<(), String> {
 }
 
 fn run(args: &Args) -> Result<(), String> {
-    let (store, settings, entitlements, settings_folder) = open_library(args)?;
-
     // Events from service threads become calls on this thread, through the binding.
     let look = platform::system_look();
     let callbacks = Callbacks {
@@ -92,6 +90,9 @@ fn run(args: &Args) -> Result<(), String> {
         Start::Run(host) => *host,
         Start::AlreadyRunning => return Ok(()),
     };
+    // Only now: reading the settings may move a damaged file aside, and opening the library may
+    // migrate it. A second launch (which stops just above) must not touch the running copy's files.
+    let (store, settings, entitlements, settings_folder) = open_library(args)?;
     let Host {
         services,
         target,
@@ -226,7 +227,8 @@ fn report_hotkey_problems(problems: &[host::HotkeyProblem]) {
 }
 
 /// What [`open_library`] returns: the library, the settings, what the user may do, and the folder
-/// settings changes are written to (`None` when they must not be: the demo, and `--dark`).
+/// settings changes are written to (`None` when they must not be: the demo, `--dark`, and a
+/// settings file that could not be read or set aside).
 type Library = (Store, Settings, Entitlements, Option<PathBuf>);
 
 /// The library, the settings and what the user may do.
@@ -245,9 +247,18 @@ fn open_library(args: &Args) -> Result<Library, String> {
         None => snipdeck_app::paths::data_dir(&|name| std::env::var(name).ok(), cfg!(windows))
             .ok_or("cannot find a data folder; pass --data-dir <folder>")?,
     };
-    let mut settings = snipdeck_app::paths::load_settings(&folder);
+    let loaded = snipdeck_app::paths::read_settings(&folder);
+    let may_save = loaded.may_save();
+    let mut settings = loaded.settings;
+    if !may_save {
+        eprintln!(
+            "snipdeck: the settings file in {} could not be read or set aside; running with the \
+             defaults and not saving changes, so the file stays as it is",
+            folder.display()
+        );
+    }
     // `--dark` is a one-run override: do not write it into the user's settings.
-    let persist = !args.dark;
+    let persist = !args.dark && may_save;
     if args.dark {
         settings.theme = Theme::Dark;
     }
