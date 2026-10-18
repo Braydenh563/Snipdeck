@@ -10,6 +10,9 @@
 //!   written against the [`pipeline::Clipboard`], [`pipeline::Keyboard`] and
 //!   [`pipeline::Timing`] traits, so it runs under test with fakes and a fixed clock.
 //!
+//! Also portable: [`tray`] (the notification-area icon: trait, event enum and the decisions) and
+//! [`system_look`] (light / dark and high contrast), each with a fake in `testing`.
+//!
 //! The Windows implementation of those traits lives in a `windows` module (`cfg(windows)`), the
 //! only place `unsafe` is allowed (ADR-0003, `docs/architecture.md`).
 
@@ -22,8 +25,10 @@ pub mod keys;
 pub mod payload;
 pub mod pipeline;
 pub mod route;
+pub mod system_look;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
+pub mod tray;
 pub mod win_formats;
 pub mod win_logic;
 
