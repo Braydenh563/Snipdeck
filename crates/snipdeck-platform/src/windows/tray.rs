@@ -16,6 +16,10 @@
 //!   `WM_NULL` is posted afterwards, as the menu documentation requires, otherwise the menu does
 //!   not close when the user clicks elsewhere.
 //!
+//! The app also hears whether the icon is in the notification area ([`TrayEvent::IconPresent`]):
+//! after a successful add, after Explorer dropped it, and after it was added again. Closing the
+//! Panel hides it only while that is `true`.
+//!
 //! Events are delivered by calling `on_event` **on the tray thread**; it must return quickly
 //! (forward to the UI thread with `slint::invoke_from_event_loop`), and a panic in it is caught.
 //!
@@ -36,13 +40,15 @@ use windows::Win32::UI::Shell::{
     Shell_NotifyIconW,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    AppendMenuW, CreatePopupMenu, DestroyMenu, GetCursorPos, GetSystemMetrics, HICON, HMENU,
-    IDI_APPLICATION, IMAGE_ICON, LR_SHARED, LoadImageW, MF_CHECKED, MF_SEPARATOR, MF_STRING,
-    PostMessageW, RegisterWindowMessageW, SM_CXSMICON, SM_CYSMICON, SetForegroundWindow,
-    TPM_BOTTOMALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON, TrackPopupMenu, WM_APP, WM_DESTROY, WM_NULL,
+    AppendMenuW, ChangeWindowMessageFilterEx, CreatePopupMenu, DestroyMenu, GetCursorPos,
+    GetForegroundWindow, HICON, HMENU, IDI_APPLICATION, IMAGE_ICON, IsWindow, LR_SHARED,
+    LoadImageW, MF_CHECKED, MF_SEPARATOR, MF_STRING, MSGFLT_ALLOW, PostMessageW,
+    RegisterWindowMessageW, SetForegroundWindow, TPM_BOTTOMALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON,
+    TrackPopupMenu, WM_APP, WM_CLOSE, WM_CREATE, WM_DESTROY, WM_NULL,
 };
 use windows::core::{HSTRING, PCWSTR, w};
 
+use super::dpi;
 use super::hidden_window::{HiddenWindow, WindowHandler};
 use crate::error::Error;
 use crate::tray::{
@@ -164,8 +170,30 @@ impl TrayHandler {
         }
     }
 
+    /// An elevated app only hears `TaskbarCreated` (sent by the non-elevated Explorer) if it lets
+    /// the message through the integrity filter (UIPI). A failure leaves the filter as it was:
+    /// the icon is then not restored after an Explorer restart, which is the situation without
+    /// this call, so the result is ignored.
+    fn allow_taskbar_created(&self, hwnd: HWND) {
+        if self.taskbar_created == 0 {
+            return;
+        }
+        // SAFETY: `hwnd` is our own window, on this thread; the message id was registered in
+        // `new`; the optional out-struct is not asked for.
+        let _ =
+            unsafe { ChangeWindowMessageFilterEx(hwnd, self.taskbar_created, MSGFLT_ALLOW, None) };
+    }
+
     fn emit(&self, event: TrayEvent) {
         let _ = catch_unwind(AssertUnwindSafe(|| (self.on_event)(event)));
+    }
+
+    /// Records whether the shell has our icon and tells the app, once per change (the app closes
+    /// the Panel to the tray only while there is an icon to bring it back).
+    fn set_added(&self, added: bool) {
+        if self.added.replace(added) != added {
+            self.emit(TrayEvent::IconPresent(added));
+        }
     }
 
     fn data(&self, hwnd: HWND, flags: NOTIFY_ICON_DATA_FLAGS) -> NOTIFYICONDATAW {
@@ -219,14 +247,15 @@ impl TrayHandler {
             let _ = Self::notify("Shell_NotifyIconW(NIM_DELETE)", NIM_DELETE, &data);
             return Err(error);
         }
-        self.added.set(true);
+        self.set_added(true);
         Ok(())
     }
 
     fn remove_icon(&self, hwnd: HWND) -> Result<(), Error> {
-        if !self.added.replace(false) {
+        if !self.added.get() {
             return Ok(());
         }
+        self.set_added(false);
         Self::notify(
             "Shell_NotifyIconW(NIM_DELETE)",
             NIM_DELETE,
@@ -308,12 +337,21 @@ impl WindowHandler for TrayHandler {
         }
         if msg == self.taskbar_created && msg != 0 {
             // Every icon was dropped with the old taskbar.
-            self.added.set(false);
+            self.set_added(false);
             if self.model.borrow().on_taskbar_created() {
                 // One attempt; the shell may not accept icons for a moment yet, and the next
                 // `TaskbarCreated` or `show` tries again.
                 let _ = self.add_icon(hwnd);
             }
+            return Some(LRESULT(0));
+        }
+        if msg == WM_CREATE {
+            self.allow_taskbar_created(hwnd);
+        }
+        if msg == WM_CLOSE {
+            // Something outside asked the window to close (`taskkill` without `/f`, the Restart
+            // Manager). The window itself stays (see `hidden_window.rs`); the app is asked to quit.
+            self.emit(TrayEvent::Quit);
             return Some(LRESULT(0));
         }
         if msg == WM_DESTROY {
@@ -325,8 +363,9 @@ impl WindowHandler for TrayHandler {
 
 /// The small icon: the executable's resource 1, else the generic application icon.
 fn load_icon() -> HICON {
-    // SAFETY: plain metric lookups, no preconditions.
-    let (cx, cy) = unsafe { (GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON)) };
+    // The size at the system DPI, whatever the thread's awareness is (a stretched 16-px icon is
+    // blurry at 150 % / 200 %).
+    let (cx, cy) = dpi::small_icon_size();
     // SAFETY: a null module name asks for this process's own module handle.
     let own = unsafe { GetModuleHandleW(None) }.ok().map(Into::into);
     let load = |module, name| -> Option<HICON> {
@@ -354,6 +393,11 @@ fn popup_menu(hwnd: HWND, lines: &[MenuLine], anchor: usize) -> Option<TrayEntry
             (x, y) = (at.x, at.y);
         }
     }
+    // The window that was in front, to give the focus back to it afterwards: the hidden owner
+    // window has to be the foreground window while the menu is open, and left in front it would
+    // swallow the user's next keystrokes (it is invisible).
+    // SAFETY: no preconditions; null if there is no foreground window.
+    let previous = unsafe { GetForegroundWindow() };
     // SAFETY: `hwnd` is our own window, on this thread. The menu only closes on an outside click
     // if the owner is the foreground window (documented requirement of `TrackPopupMenu`).
     let _ = unsafe { SetForegroundWindow(hwnd) };
@@ -374,9 +418,28 @@ fn popup_menu(hwnd: HWND, lines: &[MenuLine], anchor: usize) -> Option<TrayEntry
     let _ = unsafe { PostMessageW(Some(hwnd), WM_NULL, WPARAM(0), LPARAM(0)) };
     // SAFETY: `menu` is ours and no longer in use.
     let _ = unsafe { DestroyMenu(menu) };
+    restore_foreground(hwnd, previous);
     u32::try_from(chosen.0)
         .ok()
         .and_then(TrayEntry::from_command_id)
+}
+
+/// Gives the focus back to `previous` if our hidden window still has it (the menu is closed). If
+/// the user (or a command that was just chosen) already moved the focus elsewhere, it is left
+/// alone.
+fn restore_foreground(hwnd: HWND, previous: HWND) {
+    // SAFETY: no preconditions.
+    let current = unsafe { GetForegroundWindow() };
+    if current != hwnd || previous.0.is_null() || previous == hwnd {
+        return;
+    }
+    // SAFETY: `IsWindow` accepts any handle value and says whether it still names a window.
+    if !unsafe { IsWindow(Some(previous)) }.as_bool() {
+        return;
+    }
+    // SAFETY: a plain request to foreground a window we just took the focus from; it may be
+    // refused, which only means the focus stays where it is.
+    let _ = unsafe { SetForegroundWindow(previous) };
 }
 
 fn build_menu(lines: &[MenuLine]) -> Option<HMENU> {

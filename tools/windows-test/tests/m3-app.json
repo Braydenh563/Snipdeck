@@ -32,15 +32,15 @@
       "id": "2",
       "gate": true,
       "title": "Left click toggles the Panel without taking focus",
-      "do": "Click into Notepad and type a letter. Left-click the tray icon once: the Panel should hide. Left-click it again: the Panel shows. Then type another letter without clicking anywhere. Click the icon twice quickly.",
-      "expect": "One click = one change (hide, then show): never hide-then-show from one click. After the Panel shows, the next letter still goes into Notepad (focus was not taken). Two quick clicks end where they began. The Panel does not appear in Alt+Tab."
+      "do": "Click into Notepad and type a letter. Left-click the tray icon once: the Panel should hide. Left-click it again: the Panel shows. Look at the Panel's title area and at Notepad's title bar. Click the icon twice quickly.",
+      "expect": "One click = one change (hide, then show): never hide-then-show from one click. The Panel does not become the active window (Notepad's title bar stays the 'active' colour while the Panel shows). Clicking the tray icon itself makes the taskbar the foreground window, so typing needs a click back into Notepad first: that is Windows' behaviour, not a failure; the Panel must only never take the focus from Notepad on its own (hotkey Ctrl+Alt+Space instead of a tray click: the next letter still goes into Notepad). Two quick clicks end where they began. The Panel does not appear in Alt+Tab."
     },
     {
       "id": "3",
       "gate": true,
       "title": "Right click menu",
       "do": "Right-click the tray icon. Look at the menu, then click on the desktop to dismiss it. Open it again and press Esc. Open it a third time and click 'Open Panel'.",
-      "expect": "Menu items in this order: Open Panel, Open Snipdeck, Pause hotkeys, a separator line, Quit. The menu opens at the icon (above the taskbar, not off screen). Clicking elsewhere closes it at once (it must not stay open), and so does Esc. 'Open Panel' shows the Panel if hidden. The menu is light even in dark mode: that is known, record it only if it looks wrong otherwise."
+      "expect": "Menu items in this order: Open Panel, Open Snipdeck, Pause hotkeys, a separator line, Quit. The menu opens at the icon (above the taskbar, not off screen). Clicking elsewhere closes it at once (it must not stay open), and so does Esc. 'Open Panel' shows the Panel if hidden. The menu is light even in dark mode: that is known, record it only if it looks wrong otherwise. After the menu closes by a click elsewhere or Esc, the app restores the window that was in front when the menu opened (the taskbar after a tray click, so keys may still need a click back into Notepad): record if keys go nowhere at all, for instance a letter typed after dismissing the menu does nothing even after clicking Notepad."
     },
     {
       "id": "4",
@@ -59,8 +59,8 @@
       "id": "6",
       "gate": true,
       "title": "Close to tray",
-      "do": "Click the X in the Panel header. Look at Task Manager (Ctrl+Shift+Esc): is snipdeck-app.exe still listed? Left-click the tray icon. Then press Esc in the Panel's empty search box.",
-      "expect": "The X hides the Panel; the tray icon stays and snipdeck-app.exe keeps running. Left click brings the Panel back. Esc on an empty search also hides it (the same close action). The app does NOT quit."
+      "do": "Click the X in the Panel header. Look at Task Manager (Ctrl+Shift+Esc): is snipdeck-app.exe still listed? Left-click the tray icon. (The Esc key on an empty search box is not tested: the Panel is non-activating and takes no keyboard focus yet, see the known gaps in docs/HANDOVER.md.)",
+      "expect": "The X hides the Panel; the tray icon stays and snipdeck-app.exe keeps running. Left click brings the Panel back. The app does NOT quit. Skip anything about Esc: known gap."
     },
     {
       "id": "7",
@@ -86,13 +86,13 @@
       },
       "title": "Explorer restart brings the icon back",
       "do": "The wizard relaunched the app. Open a terminal and run: taskkill /f /im explorer.exe  then, if the taskbar does not return by itself, run: start explorer.exe . When the taskbar is back, look for the Snipdeck icon and left-click it twice.",
-      "expect": "The Snipdeck icon is back in the notification area without restarting Snipdeck (this is the TaskbarCreated message). Left click still toggles the Panel and the right-click menu still works. If the icon does NOT return, record it: that is the bug this step exists to find."
+      "expect": "The Snipdeck icon is back in the notification area without restarting Snipdeck (this is the TaskbarCreated message). Left click still toggles the Panel and the right-click menu still works. If the icon does NOT return, record it: that is the bug this step exists to find. While Explorer is gone the Panel's X must not strand the app: if you press the Panel's X in that window the app quits (no icon to return from) rather than hiding invisibly."
     },
     {
       "id": "10",
       "title": "Icon at other display scales",
       "do": "Settings > System > Display > Scale: set 150%, look at the tray icon, then 200%, then back to 100% (sign out is not needed on Windows 11).",
-      "expect": "The icon stays sharp enough to recognise at each scale and the tooltip still shows. (It is the generic application icon until the exe gets its own.)"
+      "expect": "The icon stays sharp enough to recognise at each scale and the tooltip still shows; the right-click menu text is sharp, not blurry or stretched, at 150% and 200%. (It is the generic application icon until the exe gets its own.)"
     },
     {
       "id": "11",
@@ -118,7 +118,7 @@
       "gate": true,
       "title": "A damaged settings file is set aside, not lost",
       "do": "Quit Snipdeck from the tray. Overwrite spikes-results\\m3-data\\settings.json with the text: { \"panel_width\": 400, \"no_paste_apps\": [\"keepass.exe\"  (cut off, no closing brackets). Relaunch with 'r'. Then look in spikes-results\\m3-data.",
-      "expect": "Snipdeck starts normally with default settings (no crash, no error dialog). The folder now has settings.json.bad with exactly the damaged text, and no settings.json (a new one is only written when a setting changes). A file with valid JSON but a wrong value type, such as {\"theme\": 7}, is also moved to .bad; {\"panel_width\": 9999} is not (it is just clamped)."
+      "expect": "Snipdeck starts normally with default settings (no crash, no error dialog). The folder now has settings.json.bad with exactly the damaged text, and no settings.json (a new one is only written when a setting changes). A file with valid JSON but a wrong value type, such as {\"theme\": 7}, is also moved to .bad; {\"panel_width\": 9999} is not (it is just clamped). Also: a settings.json saved by Notepad as 'UTF-8 with BOM' (or 'Unicode', UTF-16) is read normally and is NOT moved to .bad."
     },
     {
       "id": "15",
@@ -126,6 +126,20 @@
       "title": "Settings are written (needs a Settings window)",
       "do": "Not testable yet: no screen in the app changes a setting, so nothing writes settings.json in a real run. Skip this step. When the Settings window exists (M4) check: change a setting, find settings.json updated about half a second later, kill the process from Task Manager right after a change and confirm settings.json is either the old or the new file, never half-written; no settings.json.tmp is left behind.",
       "expect": "Skip. The writing logic (atomic temp-and-rename, debounce) is covered by tests on Linux with a fixed clock; the Windows rename-over-existing behaviour has not been run."
+    },
+    {
+      "id": "16",
+      "gate": true,
+      "title": "A close request from outside quits the app, tray included",
+      "do": "With Snipdeck running (launch with 'r' if needed), open a terminal and run: taskkill /im snipdeck-app.exe  (no /f). Check Task Manager and the notification area.",
+      "expect": "The app exits within a second and the tray icon disappears with it. It must NOT keep running without a tray icon (that would be the hidden window being closed by the request)."
+    },
+    {
+      "id": "17",
+      "optional": true,
+      "title": "Elevated: the icon returns after an Explorer restart",
+      "do": "Run the wizard (run-windows-tests.bat) as administrator so Snipdeck is elevated, launch step 9 again and restart Explorer as there.",
+      "expect": "The icon comes back although Snipdeck is elevated (TaskbarCreated is let through the integrity filter). If it does not, record it."
     }
   ]
 }

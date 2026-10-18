@@ -88,7 +88,7 @@ fn rig_with_tray(tray: bool) -> Rig {
     )
     .expect("controller");
     let ctl = Rc::new(RefCell::new(ctl));
-    ctl.borrow_mut().set_tray_available(tray);
+    let _ = ctl.borrow_mut().on_tray(TrayEvent::IconPresent(tray));
     let ui = PanelWindow::new().expect("panel");
     let effects: Rc<RefCell<Vec<Effect>>> = Rc::default();
     let log = Rc::clone(&effects);

@@ -127,7 +127,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 Seeds a **Getting started** list whose cards teach by doing ("Click me to paste", "Shift+click to copy", "Try a template").
 
 ### 5.8 System integration
-- Tray icon: show panel, picker, capture, open main, pause history, quit.
+- Tray icon (ADR-0008): a left click toggles the Panel; the menu is Open Panel, Open Snipdeck, Pause hotkeys (check mark), Quit. The Picker and quick capture are hotkeys, not menu entries. "Pause history" joins the menu when clipboard history exists. Closing the Panel hides it to the tray while an icon is in the notification area (`close_to_tray`), otherwise it quits.
 - Start with Windows (opt-in during onboarding). Single instance.
 - Per-app exclusions: no history capture and/or no auto-paste in listed apps.
 - All hotkeys rebindable; conflicts detected and reported.

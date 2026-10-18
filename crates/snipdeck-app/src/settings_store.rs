@@ -4,7 +4,7 @@
 //!   `settings.json.tmp`, is flushed to disk (`fsync`), and only then renamed over the old file
 //!   (on Windows `std::fs::rename` replaces an existing file in one `MoveFileExW` call). A crash
 //!   before the rename leaves the old file untouched and a stale `.tmp`, which the next write
-//!   simply overwrites. Reading is [`crate::paths::load_settings`], which also sets a damaged
+//!   simply overwrites. Reading is [`crate::paths::read_settings`], which also sets a damaged
 //!   file aside as `settings.json.bad`.
 //! - [`SettingsSaver`] decides *when* to write. A change waits for a quiet moment
 //!   ([`Debounce::quiet`]) so that dragging a slider writes once; continuous changes still write
@@ -141,6 +141,9 @@ struct Pending {
     settings: Settings,
     due: Timestamp,
     deadline: Timestamp,
+    /// The latest time the saver was told. A later call with an earlier time means the clock was
+    /// set back: the old `due` and `deadline` are then meaningless.
+    seen: Timestamp,
 }
 
 /// Debounced writing of the settings. See the module documentation.
@@ -190,16 +193,23 @@ impl SettingsSaver {
             return;
         }
         let quiet_until = after(now, self.timing.quiet);
+        let max_wait = after(now, self.timing.max_wait);
         match &mut self.pending {
             Some(pending) => {
                 pending.settings.clone_from(settings);
+                if now < pending.seen {
+                    // The clock was set back: count from now.
+                    pending.deadline = max_wait;
+                }
                 pending.due = quiet_until.min(pending.deadline);
+                pending.seen = now;
             }
             None => {
                 self.pending = Some(Pending {
                     settings: settings.clone(),
                     due: quiet_until,
-                    deadline: after(now, self.timing.max_wait),
+                    deadline: max_wait,
+                    seen: now,
                 });
             }
         }
@@ -215,7 +225,11 @@ impl SettingsSaver {
     /// waits. Use it to arm a timer.
     #[must_use]
     pub fn wait(&self, now: Timestamp) -> Option<Duration> {
-        self.pending.as_ref().map(|p| until(p.due, now))
+        // Never longer than the maximum wait: if the clock was set back, `due` can be hours away,
+        // and the timer should fire so `poll` can notice.
+        self.pending
+            .as_ref()
+            .map(|p| until(p.due, now).min(self.timing.max_wait))
     }
 
     /// Writes the waiting change if it is due at `now`.
@@ -223,6 +237,13 @@ impl SettingsSaver {
         let Some(pending) = &mut self.pending else {
             return Poll::Idle;
         };
+        if now < pending.seen {
+            // The wall clock was set back since the last call: restart the quiet time and the
+            // maximum wait from the new time rather than waiting for the old one to come round.
+            pending.due = after(now, self.timing.quiet);
+            pending.deadline = after(now, self.timing.max_wait);
+        }
+        pending.seen = now;
         if now < pending.due {
             return Poll::Waiting(until(pending.due, now));
         }
@@ -434,6 +455,52 @@ mod tests {
             }
         }
         panic!("never written");
+    }
+
+    #[test]
+    fn a_clock_set_back_re_arms_instead_of_waiting_for_the_old_time() {
+        let rec = Recorder::default();
+        let mut s = saver(&rec);
+        s.changed(&dark(), at("2026-10-17T09:00:00Z"));
+        // The user (or time sync) sets the clock back an hour before the timer fires.
+        let back = at("2026-10-17T08:00:00Z");
+        assert!(matches!(
+            s.poll(back),
+            Poll::Waiting(d) if d == Duration::from_millis(500)
+        ));
+        assert!(rec.writes.borrow().is_empty());
+        assert!(matches!(s.poll(at("2026-10-17T08:00:00.5Z")), Poll::Saved));
+        assert_eq!(*rec.writes.borrow(), [dark()]);
+    }
+
+    #[test]
+    fn a_change_after_the_clock_went_back_is_due_on_the_new_time() {
+        let rec = Recorder::default();
+        let mut s = saver(&rec);
+        let mut width = Settings {
+            panel_width: 300,
+            ..Settings::default()
+        };
+        s.changed(&width, at("2026-10-17T09:00:00Z"));
+        width.panel_width = 310;
+        s.changed(&width, at("2026-10-17T08:00:00Z"));
+        assert!(matches!(
+            s.poll(at("2026-10-17T08:00:00.4Z")),
+            Poll::Waiting(_)
+        ));
+        assert!(matches!(s.poll(at("2026-10-17T08:00:00.5Z")), Poll::Saved));
+        assert_eq!(rec.writes.borrow()[0].panel_width, 310);
+    }
+
+    #[test]
+    fn the_timer_never_waits_longer_than_the_maximum_even_after_a_jump_back() {
+        let rec = Recorder::default();
+        let mut s = saver(&rec);
+        s.changed(&dark(), at("2026-10-17T09:00:00Z"));
+        assert_eq!(
+            s.wait(at("2026-10-17T03:00:00Z")),
+            Some(Duration::from_secs(5))
+        );
     }
 
     #[test]

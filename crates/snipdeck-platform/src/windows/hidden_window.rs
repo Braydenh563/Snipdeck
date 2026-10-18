@@ -7,15 +7,22 @@
 //! window here is an ordinary `WS_POPUP` tool window that is never shown: it has no taskbar
 //! button, no Alt+Tab entry and no visible effect, but it hears the broadcasts.
 //!
-//! The thread creates the window, runs a message loop, and on drop posts `WM_CLOSE` and joins.
+//! The thread creates the window, runs a message loop, and on drop posts a private stop message
+//! ([`WM_STOP`]) and joins. A `WM_CLOSE` from outside (`taskkill` without `/f`, the Restart
+//! Manager, a tool closing every top-level window) is **not** allowed to destroy the window: that
+//! would silently kill the tray icon and the look watcher while the app goes on. It is offered to
+//! the handler as an ordinary message (the tray turns it into "quit") and never reaches
+//! `DefWindowProcW`.
+//!
 //! A [`WindowHandler`] gets every message through `&self`: a modal loop (a popup menu) inside one
 //! message dispatches further messages into the same handler, so handlers keep their mutable
 //! state in `Cell` / `RefCell` and never hold a borrow across a call that can pump messages.
 //!
 //! **Unverified on Windows.**
 
+use std::any::TypeId;
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::sync::mpsc;
+use std::sync::{Mutex, PoisonError, mpsc};
 use std::thread::JoinHandle;
 
 use windows::Win32::Foundation::{
@@ -23,14 +30,20 @@ use windows::Win32::Foundation::{
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::WindowsAndMessaging::{
-    CREATESTRUCTW, CreateWindowExW, DefWindowProcW, DispatchMessageW, GWLP_USERDATA, GetMessageW,
-    GetWindowLongPtrW, MSG, PostMessageW, PostQuitMessage, RegisterClassExW, SetWindowLongPtrW,
-    TranslateMessage, WM_CLOSE, WM_DESTROY, WM_NCCREATE, WM_NCDESTROY, WNDCLASSEXW,
-    WS_EX_TOOLWINDOW, WS_POPUP,
+    CREATESTRUCTW, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GWLP_USERDATA,
+    GetMessageW, GetWindowLongPtrW, IsWindow, MSG, PostMessageW, PostQuitMessage, RegisterClassExW,
+    SetWindowLongPtrW, TranslateMessage, WM_APP, WM_CLOSE, WM_DESTROY, WM_NCCREATE, WM_NCDESTROY,
+    WNDCLASSEXW, WS_EX_TOOLWINDOW, WS_POPUP,
 };
 use windows::core::{HSTRING, PCWSTR, w};
 
+use super::dpi;
 use crate::error::Error;
+use crate::win_logic::ClassNames;
+
+/// The private message that ends a hidden window: its procedure destroys the window, which ends
+/// the thread's loop. The top of the `WM_APP` range; handlers use small offsets from `WM_APP`.
+const WM_STOP: u32 = WM_APP + 0x3FFF;
 
 /// What a hidden window does with its messages. See the module documentation for the rules.
 pub(super) trait WindowHandler: 'static {
@@ -38,8 +51,8 @@ pub(super) trait WindowHandler: 'static {
     fn message(&self, hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> Option<LRESULT>;
 }
 
-/// The window and its thread. Dropping closes the window (the handler sees `WM_DESTROY` first)
-/// and joins the thread.
+/// The window and its thread. Dropping destroys the window (the handler sees `WM_DESTROY`) and
+/// joins the thread.
 pub(super) struct HiddenWindow {
     hwnd: isize,
     thread: Option<JoinHandle<()>>,
@@ -98,7 +111,7 @@ impl Drop for HiddenWindow {
         // Retry briefly in case the queue is full; a thread that has already ended needs nothing.
         let mut posted = false;
         for _ in 0..100 {
-            posted = self.post(WM_CLOSE);
+            posted = self.post(WM_STOP);
             if posted || thread.is_finished() {
                 break;
             }
@@ -107,7 +120,7 @@ impl Drop for HiddenWindow {
         if posted || thread.is_finished() {
             let _ = thread.join();
         }
-        // Otherwise the window could not be told to close; detach rather than hang the app.
+        // Otherwise the window could not be told to stop; detach rather than hang the app.
     }
 }
 
@@ -116,13 +129,16 @@ fn run<H: WindowHandler>(
     make: impl FnOnce() -> H,
     ready: &mpsc::Sender<Result<isize, Error>>,
 ) {
+    // Windows made on this thread (and the popup menu the tray opens) must not be bitmap-stretched
+    // at 150 % / 200 %, even if the process default is not aware yet. A refusal changes nothing.
+    let _ = dpi::aware_thread();
     let handler: *mut H = Box::into_raw(Box::new(make()));
     match create::<H>(class_name, handler) {
         Ok(hwnd) => {
             if ready.send(Ok(hwnd.0 as isize)).is_err() {
-                // Nobody is waiting any more; close the window again.
+                // Nobody is waiting any more; stop the window again.
                 // SAFETY: `hwnd` was just created by this thread.
-                let _ = unsafe { PostMessageW(Some(hwnd), WM_CLOSE, WPARAM(0), LPARAM(0)) };
+                let _ = unsafe { PostMessageW(Some(hwnd), WM_STOP, WPARAM(0), LPARAM(0)) };
             }
             let mut msg = MSG::default();
             loop {
@@ -138,19 +154,37 @@ fn run<H: WindowHandler>(
                     DispatchMessageW(&raw const msg);
                 }
             }
+            // The loop also ends on `WM_QUIT` from elsewhere or a `GetMessageW` error. Then the
+            // window is still alive and could still call into the handler (and the tray icon
+            // would be left behind): destroy it while the handler is valid, so `WM_DESTROY`
+            // removes the icon, then make sure no pointer to the handler is left in the window.
+            // SAFETY: `hwnd` was created by this thread, which is the only one to destroy it;
+            // `IsWindow` is false for a handle that is already gone.
+            if unsafe { IsWindow(Some(hwnd)) }.as_bool() {
+                // SAFETY: as above; the handler is still allocated, `window_proc` only reads it.
+                let _ = unsafe { DestroyWindow(hwnd) };
+                // SAFETY: a no-op on a destroyed window (the call just fails); otherwise it
+                // detaches the handler before it is freed below.
+                unsafe { SetWindowLongPtrW(hwnd, GWLP_USERDATA, 0) };
+            }
         }
         Err(error) => {
             let _ = ready.send(Err(error));
         }
     }
-    // SAFETY: `handler` came from `Box::into_raw` above. The window is destroyed (the loop ended
-    // on `WM_QUIT`, posted by `WM_DESTROY`, or creation failed), `WM_NCDESTROY` cleared the
-    // pointer stored in the window, and this thread owned the window, so nothing can reach the
-    // handler any more.
+    // SAFETY: `handler` came from `Box::into_raw` above and is freed once, here. Either creation
+    // failed (no window ever held the pointer) or the window was destroyed on this thread, which
+    // owned it, and its stored pointer is cleared (by `WM_NCDESTROY`, or by the explicit clear
+    // above), so no later message can reach the handler.
     drop(unsafe { Box::from_raw(handler) });
 }
 
 fn create<H: WindowHandler>(class_name: &'static str, handler: *mut H) -> Result<HWND, Error> {
+    if !claim_class(class_name, TypeId::of::<H>()) {
+        return Err(Error::Unavailable(
+            "a window class name is already used by another handler type",
+        ));
+    }
     let class = HSTRING::from(class_name);
     // SAFETY: a null module name asks for this process's own module handle.
     let hinstance = unsafe { GetModuleHandleW(None) }
@@ -198,6 +232,18 @@ fn create<H: WindowHandler>(class_name: &'static str, handler: *mut H) -> Result
     .map_err(|e| Error::from_windows("CreateWindowExW", &e))
 }
 
+/// Records that `owner` is the handler type of the class `name`: a class keeps the window
+/// procedure of its first registration, so a second handler type under the same name would be
+/// given the wrong pointer type. Checked before the class is touched.
+fn claim_class(name: &'static str, owner: TypeId) -> bool {
+    static CLASSES: Mutex<Option<ClassNames>> = Mutex::new(None);
+    CLASSES
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .get_or_insert_with(ClassNames::default)
+        .claim(name, owner)
+}
+
 /// The window procedure of every hidden window; `H` is the handler stored in the window.
 unsafe extern "system" fn window_proc<H: WindowHandler>(
     hwnd: HWND,
@@ -215,6 +261,12 @@ unsafe extern "system" fn window_proc<H: WindowHandler>(
         }
         // SAFETY: default handling of the same message with the same arguments.
         return unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) };
+    }
+    if msg == WM_STOP {
+        // The owner is dropping the window. `WM_DESTROY` follows and ends the message loop.
+        // SAFETY: `hwnd` is this window, destroyed on its own thread.
+        let _ = unsafe { DestroyWindow(hwnd) };
+        return LRESULT(0);
     }
     // SAFETY: reads the value stored above; 0 before `WM_NCCREATE` and after `WM_NCDESTROY`.
     let raw = unsafe { GetWindowLongPtrW(hwnd, GWLP_USERDATA) } as *const H;
@@ -241,6 +293,10 @@ unsafe extern "system" fn window_proc<H: WindowHandler>(
         // SAFETY: ends this thread's message loop.
         unsafe { PostQuitMessage(0) };
     }
+    if msg == WM_CLOSE {
+        // Not ours to act on: `DefWindowProcW` would destroy the window (see the module docs).
+        return outcome.unwrap_or(LRESULT(0));
+    }
     match outcome {
         Some(result) => result,
         // SAFETY: default handling of the same message with the same arguments.
@@ -257,31 +313,77 @@ mod tests {
 
     use super::*;
 
-    struct Counting(Arc<AtomicU32>);
+    /// Counts `WM_APP` messages and `WM_CLOSE` messages separately.
+    struct Counting {
+        apps: Arc<AtomicU32>,
+        closes: Arc<AtomicU32>,
+    }
 
     impl WindowHandler for Counting {
         fn message(&self, _: HWND, msg: u32, _: WPARAM, _: LPARAM) -> Option<LRESULT> {
             if msg == WM_APP {
-                self.0.fetch_add(1, Ordering::SeqCst);
+                self.apps.fetch_add(1, Ordering::SeqCst);
+                return Some(LRESULT(0));
+            }
+            if msg == WM_CLOSE {
+                self.closes.fetch_add(1, Ordering::SeqCst);
                 return Some(LRESULT(0));
             }
             None
         }
     }
 
+    struct Other;
+
+    impl WindowHandler for Other {
+        fn message(&self, _: HWND, _: u32, _: WPARAM, _: LPARAM) -> Option<LRESULT> {
+            None
+        }
+    }
+
+    fn counting() -> (Arc<AtomicU32>, Arc<AtomicU32>, impl FnOnce() -> Counting) {
+        let apps = Arc::new(AtomicU32::new(0));
+        let closes = Arc::new(AtomicU32::new(0));
+        let make = {
+            let (apps, closes) = (Arc::clone(&apps), Arc::clone(&closes));
+            move || Counting { apps, closes }
+        };
+        (apps, closes, make)
+    }
+
     #[test]
     fn a_posted_message_reaches_the_handler_and_drop_joins() {
-        let count = Arc::new(AtomicU32::new(0));
-        let seen = Arc::clone(&count);
-        let window = HiddenWindow::spawn(
-            "test-hidden-window",
-            "SnipdeckTestHiddenWindow",
-            move || Counting(seen),
-        )
-        .unwrap();
+        let (apps, _closes, make) = counting();
+        let window =
+            HiddenWindow::spawn("test-hidden-window", "SnipdeckTestHiddenWindow", make).unwrap();
         assert!(window.post(WM_APP));
-        // `WM_CLOSE` is queued behind it, so the join below proves the message was handled.
+        // The stop message is queued behind it, so the join below proves it was handled.
         drop(window);
-        assert_eq!(count.load(Ordering::SeqCst), 1);
+        assert_eq!(apps.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn a_close_from_outside_is_offered_to_the_handler_and_does_not_end_the_window() {
+        let (apps, closes, make) = counting();
+        let window =
+            HiddenWindow::spawn("test-hidden-close", "SnipdeckTestHiddenClose", make).unwrap();
+        assert!(window.post(WM_CLOSE));
+        assert!(window.post(WM_APP));
+        // The window must still be alive to take the second message; dropping joins after both.
+        drop(window);
+        assert_eq!(closes.load(Ordering::SeqCst), 1);
+        assert_eq!(apps.load(Ordering::SeqCst), 1, "still alive after WM_CLOSE");
+    }
+
+    #[test]
+    fn two_handler_types_cannot_share_a_class_name() {
+        let (_apps, _closes, make) = counting();
+        let first = HiddenWindow::spawn("test-hidden-a", "SnipdeckTestSharedName", make).unwrap();
+        let second = HiddenWindow::spawn("test-hidden-b", "SnipdeckTestSharedName", || Other);
+        assert!(
+            second.is_err(),
+            "a different handler type under the same class"
+        );
+        drop(first);
     }
 }

@@ -97,6 +97,9 @@ mod imp {
             on_tray,
             on_look_changed,
         } = callbacks;
+        // Before any window exists: the tray's window, menu and icon are made ahead of the UI
+        // toolkit, which would otherwise be too late to make the process DPI aware.
+        let _ = snipdeck_platform::windows::dpi::enable_per_monitor_awareness();
         let mut keep_alive: Vec<Box<dyn std::any::Any>> = Vec::new();
         if single_instance {
             match SingleInstance::acquire(super::APP_ID, on_second) {

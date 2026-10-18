@@ -70,7 +70,7 @@ impl TrayEntry {
     }
 }
 
-/// What the tray tells the app.
+/// What the tray tells the app (events arrive on the backend's thread).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TrayEvent {
     /// Left click on the icon: show the Panel if hidden, hide it if shown.
@@ -83,6 +83,10 @@ pub enum TrayEvent {
     HotkeysPaused(bool),
     /// "Quit".
     Quit,
+    /// The icon is now in the notification area (`true`) or no longer is (`false`): added, taken
+    /// away by Explorer restarting, or added again after it. The app closes the Panel to the
+    /// tray only while this is `true`. Sent once per change, not per attempt.
+    IconPresent(bool),
 }
 
 /// One line of the popup menu.

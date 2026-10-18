@@ -33,8 +33,15 @@ button: two close buttons in one corner (`docs/spikes/windows-results-20261017.m
   be seen (a balloon notification, `NIF_INFO`, is the way, later).
 - The decisions (what a click means, which entry is which event, when to re-add) are the portable `TrayModel`; the
   Windows file only talks to the shell. `testing::FakeTray` runs the same model.
-- Reason: Slint's tray support is new, its event-loop coupling is untested for a never-focused panel, and we
-  already own the message window.
+- The tray reports whether its icon is in the notification area (`TrayEvent::IconPresent`, once per change: added,
+  dropped when Explorer restarts, added again). The controller follows it, so closing the Panel hides it only while an
+  icon can bring it back (amended 2026-10-18; it was a flag set once at start-up).
+- The hidden window ignores an outside `WM_CLOSE` (it maps to Quit for the tray) and is stopped by a private message, so
+  `taskkill` without `/f` or the Restart Manager ends the app instead of silently killing the tray; the process is made
+  per-monitor-v2 DPI aware before the window exists; `TaskbarCreated` is allowed through UIPI for an elevated app.
+- Reason: Slint's tray support is new and its event-loop coupling is untested for a never-focused panel. (An earlier
+  version of this line said "we already own the message window"; there is none: the tray has its own hidden window,
+  see above.)
 
 ## Dark mode and high contrast (2026-10-18)
 - `SystemLook { dark, high_contrast }` comes from `HKCU\...\Themes\Personalize\AppsUseLightTheme` and
