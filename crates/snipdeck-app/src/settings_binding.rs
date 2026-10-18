@@ -1142,7 +1142,7 @@ mod tests {
     fn a_shortcut_splits_into_one_chip_per_key() {
         assert_eq!(key_chips("Ctrl+Alt+V"), ["Ctrl", "Alt", "V"]);
         assert_eq!(key_chips("Ctrl++"), ["Ctrl", "+"]);
-        assert!(key_chips("").is_empty());
+        assert_eq!(key_chips(""), [] as [String; 0]);
     }
 
     #[test]
