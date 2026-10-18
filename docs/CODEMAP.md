@@ -3241,17 +3241,23 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/buttons.rs` | 4 |
 | `crates/snipdeck-ui/tests/deck.rs` | 13 |
 | `crates/snipdeck-ui/tests/deck_logic.rs` | 1 |
+| `crates/snipdeck-ui/tests/fill.rs` | 10 |
+| `crates/snipdeck-ui/tests/fill_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/i18n.rs` | 1 |
 | `crates/snipdeck-ui/tests/inputs.rs` | 17 |
 | `crates/snipdeck-ui/tests/inputs_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/panel.rs` | 10 |
 | `crates/snipdeck-ui/tests/panel_logic.rs` | 1 |
+| `crates/snipdeck-ui/tests/picker.rs` | 13 |
+| `crates/snipdeck-ui/tests/picker_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/primitives.rs` | 6 |
 | `crates/snipdeck-ui/tests/primitives_logic.rs` | 22 |
 | `crates/snipdeck-ui/tests/primitives_pixels.rs` | 8 |
 | `crates/snipdeck-ui/tests/review_fixes_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/review_fixes_pixels.rs` | 5 |
+| `crates/snipdeck-ui/tests/support/fill_fixture.rs` | 0 |
 | `crates/snipdeck-ui/tests/support/mod.rs` | 0 |
 | `crates/snipdeck-ui/tests/support/panel_fixture.rs` | 0 |
+| `crates/snipdeck-ui/tests/support/picker_fixture.rs` | 0 |
 | `spikes/s3-longtext/src/viewer.rs` (inline) | 1 |
 | `spikes/s4-mica/src/appearance.rs` (inline) | 8 |
