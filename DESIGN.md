@@ -131,6 +131,36 @@ never used as a fill behind text.
 
 Icons: **Phosphor (Regular)**, MIT licence, 16px in rows and 20px in toolbars. This is the only icon family. No emoji as icons, and no hand-drawn paths.
 
+**Icon vocabulary.** One meaning per glyph, one glyph per meaning; Windows (Fluent) conventions win over Android ones.
+
+| Meaning | Glyph | Where | Never |
+|---|---|---|---|
+| More actions on this object or region | `dots-three` (horizontal ···) | end of a row or card on hover; end of a toolbar or header; tooltip "More" | `dots-three-vertical` (the Android kebab); a hamburger |
+| Primary navigation drawer | none: Snipdeck has no drawer; the Main window sidebar collapses to an icon rail | | `list` as a hamburger |
+| App launcher / switcher | none | | `dots-nine` (bento) |
+| Choose from a list (Board switcher, Select) | `caret-down` after the label | | a hamburger or ··· |
+| Disclose / collapse | `caret-right` / `caret-down`; strip scroll `caret-left` / `caret-right` | | |
+| Keep the Panel on top | `push-pin-simple`, pressed state when on | Panel header | the item pin glyph |
+| Pinned item | `push-pin` (filled when pinned) | rows, cards, strip | |
+| Create | `plus` | | |
+| Edit / rename | `pencil-simple` | | |
+| Move to Trash | `trash` | menus, editors; always with the word | an ✕ |
+| Restore / undo | `arrow-counter-clockwise` | | |
+| Use (paste or copy per setting) | `arrow-bend-down-left` (the Enter key) | row action, menu, keycaps | |
+| Copy | `copy` | | |
+| Move to list | `folder` | | |
+| Board / list / tag | `stack` / `rows` / `tag` | sidebar, empty states | |
+| List view / card view | `rows` / `squares-four` | Main window toolbar | `squares-four` for anything else |
+| Recent | `clock` | | |
+| Sensitive | `lock` | row trailing, editor toggle | an eye |
+| Settings | `gear` | | |
+| Search | `magnifying-glass` | leading in SearchField | |
+| Close / dismiss | `x` | windows, toasts, chips | for delete |
+| Confirm / selected / mixed | `check` / `check-circle` / `minus` | | |
+| Warning / info | `warning` / `info` | toasts, banners, always with text | |
+
+Every icon-only control has a tooltip and an accessible label with the same words.
+
 ### Primitives
 | Component | Purpose | Variants | States |
 |---|---|---|---|
