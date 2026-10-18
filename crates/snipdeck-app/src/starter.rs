@@ -63,7 +63,8 @@ where
         .iter()
         .map(|l| l.name.as_str().to_owned())
         .collect();
-    let name = (1..)
+    // One more candidate than there are lists, so one of them is always free.
+    let name = (1..=taken.len() + 1)
         .map(|n| {
             if n == 1 {
                 NEW_LIST.to_owned()
@@ -102,7 +103,10 @@ mod tests {
     fn an_empty_library_gets_one_board_with_one_list_once() {
         let mut store = Store::open_in_memory().unwrap();
         assert!(ensure_board(&mut store, now()).unwrap());
-        assert!(!ensure_board(&mut store, now()).unwrap(), "only the first time");
+        assert!(
+            !ensure_board(&mut store, now()).unwrap(),
+            "only the first time"
+        );
         let boards = store.boards().unwrap();
         assert_eq!(boards.len(), 1);
         assert_eq!(boards[0].name.as_str(), STARTER_BOARD);

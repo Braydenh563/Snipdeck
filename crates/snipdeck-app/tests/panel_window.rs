@@ -74,8 +74,9 @@ fn rig_with_tray(tray: bool) -> Rig {
 fn first_run_rig() -> Rig {
     let mut store = Store::open_in_memory().expect("store");
     assert!(snipdeck_app::starter::ensure_board(&mut store, now()).expect("starter"));
-    let copied = snipdeck_platform::payload::Payload::new(vec![Data::Text("Copied earlier".into())])
-        .expect("payload");
+    let copied =
+        snipdeck_platform::payload::Payload::new(vec![Data::Text("Copied earlier".into())])
+            .expect("payload");
     rig_on(store, true, vec![copied])
 }
 
@@ -174,16 +175,26 @@ fn pointer_clicks_on_every_header_control_reach_the_controller() {
         slint::platform::update_timers_and_animations();
 
         click(r.window(), &r.button("Keep on top"));
-        assert!(!r.ctl.borrow().view().on_top, "the pin click reached the controller");
+        assert!(
+            !r.ctl.borrow().view().on_top,
+            "the pin click reached the controller"
+        );
 
         click(r.window(), &r.button("Board: Work"));
-        assert!(r.ui.get_board_menu_open(), "the board switcher click opened the menu");
+        assert!(
+            r.ui.get_board_menu_open(),
+            "the board switcher click opened the menu"
+        );
         click(
             r.window(),
             &element(&r.ui, "Personal", AccessibleRole::ListItem),
         );
         assert!(!r.ui.get_board_menu_open());
-        assert_eq!(r.ui.get_board_name(), "Personal", "the menu item click switched");
+        assert_eq!(
+            r.ui.get_board_name(),
+            "Personal",
+            "the menu item click switched"
+        );
         assert_eq!(
             *r.effects.borrow(),
             [],
@@ -202,8 +213,15 @@ fn pointer_clicks_on_tabs_pinned_chips_and_rows_reach_the_controller() {
         r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
         slint::platform::update_timers_and_animations();
 
-        click(r.window(), &element(&r.ui, "Addresses", AccessibleRole::Tab));
-        assert_eq!(r.titles(), ["Home address", "Office"], "the tab click switched lists");
+        click(
+            r.window(),
+            &element(&r.ui, "Addresses", AccessibleRole::Tab),
+        );
+        assert_eq!(
+            r.titles(),
+            ["Home address", "Office"],
+            "the tab click switched lists"
+        );
 
         let chip = r.ui.get_pinned().row_data(0).expect("a pinned chip").title;
         click(r.window(), &r.button(chip.as_str()));
@@ -232,7 +250,11 @@ fn a_first_run_on_an_empty_library_has_a_board_and_working_controls() {
         );
         click(
             r.window(),
-            &element(&r.ui, snipdeck_app::starter::STARTER_BOARD, AccessibleRole::ListItem),
+            &element(
+                &r.ui,
+                snipdeck_app::starter::STARTER_BOARD,
+                AccessibleRole::ListItem,
+            ),
         );
         assert!(!r.ui.get_board_menu_open());
 
