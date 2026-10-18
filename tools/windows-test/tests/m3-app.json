@@ -5,7 +5,8 @@
   "dir": ".",
   "exe": "snipdeck-app",
   "captureLines": [
-    "snipdeck:"
+    "snipdeck:",
+    "snipdeck-log"
   ],
   "setup": [
     "This runs the real Snipdeck app (cargo build --release at the repo root, then target\\release\\snipdeck-app.exe) on an empty library in spikes-results\\m3-data, so your own data is never touched. The first build takes several minutes.",
@@ -140,6 +141,37 @@
       "title": "Elevated: the icon returns after an Explorer restart",
       "do": "Run the wizard (run-windows-tests.bat) as administrator so Snipdeck is elevated, launch step 9 again and restart Explorer as there.",
       "expect": "The icon comes back although Snipdeck is elevated (TaskbarCreated is let through the integrity filter). If it does not, record it."
+    },
+    {
+      "id": "18",
+      "gate": true,
+      "launch": {
+        "args": [
+          "--demo"
+        ],
+        "env": {
+          "SNIPDECK_LOG": "1"
+        }
+      },
+      "title": "Demo: every Panel control answers a click (with the diagnostic log on)",
+      "do": "Quit any Snipdeck still running (tray menu Quit, or Task Manager). The wizard starts the demo with SNIPDECK_LOG=1. Click, in this order, waiting a second after each: (1) the board name 'Work' top left, (2) 'Personal' in the menu that opens, (3) the board name again and 'Work', (4) the 'Addresses' tab, (5) the 'Email replies' tab, (6) the first pinned chip, (7) the first row, (8) the + after the tabs, (9) the pin button, (10) the X. Then press 'l'.",
+      "expect": "(1) a menu listing Work and Personal opens under the board name; (2) the Panel shows the Personal board (an Errands tab); (3) back on Work; (4)/(5) the rows change with the tab; (6)/(7) a toast says the item was pasted or copied; (8) a new 'New list' tab appears and is selected; (9) the pin button toggles its filled look; (10) the Panel hides to the tray. In the log ('l') every click shows a 'snipdeck-log ... pointer Pressed Left at physical (x, y) = logical (x, y), scale s' line followed by a 'snipdeck-log ... callback on_<name>' line (on_board_menu_requested, on_board_menu_activated (1), on_tab_selected (1), on_pinned_used (0), on_row_activated (0), on_add_list_requested, on_pin_toggled (false), on_close_requested and 'effect HidePanel'). Note the number of every click that did nothing, and copy the log lines around it into the note: a pointer line with no callback line means the click missed the control (scale or position), no pointer line at all means the window never got the click."
+    },
+    {
+      "id": "19",
+      "gate": true,
+      "launch": {
+        "args": [
+          "--data-dir",
+          "spikes-results\\m3-first-run"
+        ],
+        "env": {
+          "SNIPDECK_LOG": "1"
+        }
+      },
+      "title": "First run on an empty real library is usable",
+      "do": "Quit Snipdeck. Delete the folder spikes-results\\m3-first-run if it exists (the wizard then starts on a brand-new library, as Snipdeck.bat with no command does on a new PC). Copy some text in Notepad. Click the board name, then the board in its menu, then 'Save from clipboard', then the + after the tabs. Press 'l'.",
+      "expect": "The board switcher reads 'My snippets' (not blank), its menu lists 'My snippets', the copied text appears as a row in the 'Snippets' list with a 'Saved' toast, and + adds a 'New list' tab. The log has 'real library; starter board made: true' on this first launch (false on the next)."
     }
   ]
 }
