@@ -1,3 +1,8 @@
+## Now (2026-10-18 13:45, away mode)
+Goal: ship v1 by the morning of 2026-10-19. Branch `claude/compassionate-pascal-pod8ux`, PR #5 (open, CI green on 8dc9fd0). Queue = `.claude/work-order.md`. Next: merge steps 4/6/9 as their agents report, then step 8.
+- Decision (away, 2026-10-18): budget line 55% weekly, stop line 60% (owner is at 40% and needs the rest). Dropped from v1: steps 14 (item colour label + list icon), 15 (accent colour + HC), 18 (edge dock): post-v1.
+- Inbox items are all triaged into the plan (steps 4, 7, 7a, 7b, 9, 17; Store/Pages/signing answered in chat and noted for HANDOVER).
+
 # now.md
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
