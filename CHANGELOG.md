@@ -10,6 +10,13 @@ machine.
 
 ## [Unreleased]
 
+### Changed
+- Launcher: `Snipdeck.bat` now starts the prebuilt app (`app\snipdeck.exe`) and, when it is missing, downloads the
+  latest GitHub Release zip and verifies its SHA-256 (the release `.sha256` and `tools/launcher/release-sha256.txt`).
+  It no longer checks for Rust, Visual Studio, git or crates.io; the source build moved to `Snipdeck.bat build`
+  (developers), and `Snipdeck.bat update` re-downloads the release instead of `git pull`. Written on Linux, never run
+  on Windows. README quick start is now "download, unzip, double-click".
+
 ### Added
 
 **v1 push (2026-10-18)**

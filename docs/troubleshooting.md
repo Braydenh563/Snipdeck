@@ -4,6 +4,26 @@ Snipdeck is a work in progress and most Windows behaviour has not been tested on
 these are known limits rather than faults. If your problem is not here, open an issue with the bug report
 template (never post a security problem there: see [`../SECURITY.md`](../SECURITY.md)).
 
+## Starting Snipdeck with Snipdeck.bat
+
+`Snipdeck.bat` (no arguments) starts `app\snipdeck.exe`, and downloads the latest release first when it is missing.
+It does not need Rust, Visual Studio or git. Every failure prints what happened, what to do and the log file path
+(`%LOCALAPPDATA%\Snipdeck\logs`).
+
+**"Snipdeck needs the internet once".** The app is not on this PC yet and GitHub could not be reached. Connect and run
+`Snipdeck.bat` again. Behind a VPN, proxy or firewall, allow `github.com` and `objects.githubusercontent.com`.
+
+**"There is no published release yet" (404).** No release has been published. Nothing to fix on your side; developers
+can use `Snipdeck.bat build`.
+
+**"Its SHA-256 does not match".** The download was damaged or changed. Snipdeck deleted it and did not run it. Run
+`Snipdeck.bat` again; if it happens twice, do not use the file and report it.
+
+**"Only the published .sha256 file was used".** Not an error: `tools\launcher\release-sha256.txt` has no pinned hash for
+that release, so only the checksum file published with the release was compared.
+
+**Update says Snipdeck is running.** Quit it from its tray icon and run `Snipdeck.bat update` again.
+
 ## Building and running
 
 **`cargo` is not found (Windows).** `run-snipdeck-demo.bat` stops with "Rust is not installed". Run

@@ -9,6 +9,26 @@ with no release; read the status tags first.
 | **Code only** | The logic is written and tested as a library, or the window exists in the UI crate, but the app has no screen or hotkey for it yet. |
 | **Planned** | Specified in [`SPEC.md`](SPEC.md), not built. |
 
+## Install (Windows)
+
+Nothing to install and nothing else needed: no Rust, no Visual Studio, no git.
+
+1. Download the latest portable zip, `snipdeck-<version>-windows-x64.zip`, from the
+   [Releases page](https://github.com/Braydenh563/Snipdeck/releases/latest) and unzip it anywhere.
+2. Double-click `snipdeck.exe`.
+
+Or use `Snipdeck.bat` from the repository download. With no arguments it starts `app\snipdeck.exe`; if that is
+missing it first downloads the latest release (the internet is needed that once), checks the zip's SHA-256 and
+unpacks it. `Snipdeck.bat update` downloads the newest release again. Your library and settings live in
+`%LOCALAPPDATA%\Snipdeck`, not in the app folder, so updating or deleting the app does not touch them.
+`Snipdeck.bat help` lists the other commands (`demo`, `backup`, `restore`, `doctor`, `uninstall`). If it cannot
+download the app, it says why and what to do; see [`troubleshooting.md`](troubleshooting.md).
+`Snipdeck.bat build` builds from source and is for developers only.
+
+No release has been published yet, so for now `Snipdeck.bat` reports that and stops.
+
+## Try the demo
+
 Try it with `run-snipdeck-demo.bat` (Windows) or `cargo run -p snipdeck-app -- --demo`. The demo
 runs on a seeded library in memory: two boards (Work, Personal), lists such as "Email replies",
 "Addresses" and "Code", and a sample of each item kind. Nothing is saved. On Linux and macOS the clipboard,
