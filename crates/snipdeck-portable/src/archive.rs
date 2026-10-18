@@ -83,26 +83,57 @@ fn check_name(name: &str) -> core::result::Result<(), &'static str> {
 }
 
 /// The number of central directory entries the end-of-central-directory record declares
-/// (the zip64 record when the plain one says `0xFFFF`), or `None` if no record is found; the
-/// zip library will then reject the file itself.
+/// (the zip64 record when the plain one says `0xFFFF`), or `None` if no record signature is
+/// found; the zip library will then reject the file itself.
+///
+/// The record that counts is the one that ends exactly at the end of the file, its comment
+/// filling the rest. A second signature inside that comment (a decoy that would make the count
+/// disagree with the directory the zip library reads) or a record followed by other bytes is
+/// refused, so the checks below cannot be steered by planted bytes.
 fn declared_entry_count<R: Read + Seek>(reader: &mut R) -> Result<Option<u64>> {
     const EOCD: [u8; 4] = *b"PK\x05\x06";
     const LOCATOR: [u8; 4] = *b"PK\x06\x07";
     const EOCD64: [u8; 4] = *b"PK\x06\x06";
-    // The record is 22 bytes followed by a comment of at most 65 535 bytes.
-    const SEARCH: u64 = 22 + 65_535;
+    // The record is 22 bytes followed by a comment of at most 65 535 bytes, and the zip64
+    // locator (20 bytes) sits just before it.
+    const SEARCH: u64 = 20 + 22 + 65_535;
     let len = reader.seek(SeekFrom::End(0))?;
     let start = len.saturating_sub(SEARCH);
     reader.seek(SeekFrom::Start(start))?;
     let mut tail = Vec::new();
     reader.by_ref().take(SEARCH).read_to_end(&mut tail)?;
-    let Some(pos) = tail.windows(4).rposition(|w| w == EOCD) else {
-        return Ok(None);
+    let signatures: Vec<usize> = tail
+        .windows(4)
+        .enumerate()
+        .filter_map(|(at, w)| (w == EOCD).then_some(at))
+        .collect();
+    let ends_the_file = |at: usize| {
+        tail.get(at + 20..at + 22).is_some_and(|c| {
+            at + 22 + usize::from(u16::from_le_bytes([c[0], c[1]])) == tail.len()
+        })
     };
-    let record = &tail[pos..];
-    if record.len() < 22 {
-        return Ok(None);
+    let mut exact = signatures.iter().copied().filter(|at| ends_the_file(*at));
+    let (Some(pos), None) = (exact.next(), exact.next()) else {
+        return if signatures.is_empty() {
+            Ok(None)
+        } else if signatures.iter().any(|at| ends_the_file(*at)) {
+            Err(Error::unsafe_entry(
+                "(archive)",
+                "has more than one end-of-central-directory record",
+            ))
+        } else {
+            Err(Error::NotAnArchive(
+                "the end-of-central-directory record does not end the file".to_owned(),
+            ))
+        };
+    };
+    if signatures.iter().any(|at| *at > pos) {
+        return Err(Error::unsafe_entry(
+            "(archive)",
+            "has an end-of-central-directory record inside the archive comment",
+        ));
     }
+    let record = &tail[pos..];
     let total = u64::from(u16::from_le_bytes([record[10], record[11]]));
     if total != 0xFFFF {
         return Ok(Some(total));
@@ -486,5 +517,72 @@ impl<W: Write + Seek> ArchiveWriter<W> {
 
     pub(crate) fn finish(self) -> Result<W> {
         self.zip.finish().map_err(zip_error)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Cursor;
+
+    use super::*;
+
+    /// An end-of-central-directory record declaring `total` entries, then `comment`.
+    fn eocd(total: u16, comment_len: u16, comment: &[u8]) -> Vec<u8> {
+        let mut out = b"PK\x05\x06".to_vec();
+        out.extend_from_slice(&[0; 4]); // disk numbers
+        out.extend_from_slice(&total.to_le_bytes()); // entries on this disk
+        out.extend_from_slice(&total.to_le_bytes()); // entries
+        out.extend_from_slice(&[0; 8]); // directory size and offset
+        out.extend_from_slice(&comment_len.to_le_bytes());
+        out.extend_from_slice(comment);
+        out
+    }
+
+    fn declared(bytes: Vec<u8>) -> Result<Option<u64>> {
+        declared_entry_count(&mut Cursor::new(bytes))
+    }
+
+    #[test]
+    fn a_plain_record_is_read() {
+        assert_eq!(declared(eocd(7, 0, b"")).unwrap(), Some(7));
+        let mut with_comment = b"data".to_vec();
+        with_comment.extend(eocd(9, 5, b"hello"));
+        assert_eq!(declared(with_comment).unwrap(), Some(9));
+    }
+
+    #[test]
+    fn no_record_is_left_to_the_zip_library() {
+        assert_eq!(declared(b"not a zip".to_vec()).unwrap(), None);
+    }
+
+    /// Security review 2, finding 2: a record planted in the zip comment must not win.
+    #[test]
+    fn a_decoy_record_in_the_comment_is_refused() {
+        let decoy = eocd(1, 0, b"");
+        let bytes = eocd(5_000, u16::try_from(decoy.len()).unwrap(), &decoy);
+        assert!(declared(bytes).is_err(), "decoy that ends the file");
+        // A decoy whose own comment length is wrong (so it does not end the file) is still a
+        // second record inside the real one's comment.
+        let decoy = eocd(1, 3, b"");
+        let bytes = eocd(5_000, u16::try_from(decoy.len()).unwrap(), &decoy);
+        assert!(declared(bytes).is_err(), "decoy that ends elsewhere");
+    }
+
+    #[test]
+    fn a_record_that_does_not_end_the_file_is_refused() {
+        let mut bytes = eocd(2, 0, b"");
+        bytes.extend_from_slice(b"trailing junk");
+        assert!(declared(bytes).is_err());
+        // Declares a longer comment than the file has.
+        assert!(declared(eocd(2, 10, b"short")).is_err());
+    }
+
+    #[test]
+    fn a_signature_inside_stored_data_is_not_a_record() {
+        let mut bytes = b"stored file holding ".to_vec();
+        bytes.extend(eocd(40_000, 0, b""));
+        bytes.extend_from_slice(b" more file data");
+        bytes.extend(eocd(3, 0, b""));
+        assert_eq!(declared(bytes).unwrap(), Some(3));
     }
 }

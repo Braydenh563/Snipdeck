@@ -153,6 +153,39 @@ fn a_repeated_name_is_rejected() {
     assert!(is_unsafe(&e) || matches!(e, Error::NotAnArchive(_)), "{e}");
 }
 
+/// Security review 2, finding 2: the entry-count and duplicate-name checks read the
+/// end-of-central-directory record, and a decoy planted in the zip comment must not replace it.
+#[test]
+fn a_decoy_end_record_in_the_zip_comment_does_not_hide_a_repeated_name() {
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    let options = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
+    for (n, b) in entries(&valid()) {
+        zip.start_file(n, options).unwrap();
+        zip.write_all(&b).unwrap();
+    }
+    zip.start_file("extra-a.bin", options).unwrap();
+    zip.write_all(b"1").unwrap();
+    zip.start_file("extra-b.bin", options).unwrap();
+    zip.write_all(b"2").unwrap();
+    let mut bytes = zip.finish().unwrap().into_inner();
+    replace_all(&mut bytes, b"extra-b.bin", b"extra-a.bin");
+
+    // The real record is the last 22 bytes. Its copy, claiming one entry fewer (what the
+    // library keeps after dropping the repeated name), goes into its comment.
+    let at_record = bytes.len() - 22;
+    assert_eq!(&bytes[at_record..at_record + 4], b"PK\x05\x06");
+    let mut decoy = bytes[at_record..].to_vec();
+    for field in [8, 10] {
+        let total = u16::from_le_bytes([decoy[field], decoy[field + 1]]) - 1;
+        decoy[field..field + 2].copy_from_slice(&total.to_le_bytes());
+    }
+    bytes[at_record + 20..at_record + 22].copy_from_slice(&22_u16.to_le_bytes());
+    bytes.extend_from_slice(&decoy);
+
+    let e = rejected(&bytes);
+    assert!(is_unsafe(&e) || matches!(e, Error::NotAnArchive(_)), "{e}");
+}
+
 fn replace_all(haystack: &mut [u8], from: &[u8], to: &[u8]) {
     assert_eq!(from.len(), to.len());
     let mut i = 0;
