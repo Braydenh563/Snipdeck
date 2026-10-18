@@ -17,6 +17,25 @@ Ranked findings. Status: `[ ]` open, `[~]` ticketed in HANDOVER, `[x]` fixed (co
 ## Medium / Low
 - (to be filled from the pre-Fable facts file)
 
+## Architecture redesign (Fable, 2026-10-18)
+Measured: `controller.rs` is ~1010 lines of code + ~1280 lines of tests in one file; it owns panel state, picker, fill form, quick capture, paste stack, tray, hotkeys, toasts, settings saving and theme. `binding.rs` (612) mirrors it for one window. Agent A adds Main window logic beside it.
+Target shape of `snipdeck-app` (replace, do not layer; each file < 800 lines, tests in sibling `tests.rs` files like `snipdeck-core`):
+```
+controller/mod.rs      Controller facade: new, view(), on_hotkey, on_tray, on_target_changed, show/hide/close, Effect, Library trait
+controller/panel.rs    impl Controller: query, selection, tabs, board menu, add_list, activate/quick use
+controller/picker.rs   impl Controller: open/close/query/scope/move/take/use
+controller/fill.rs     impl Controller: open/changed/cancel/submit (prompted templates)
+controller/stack.rs    impl Controller: quick_capture, paste_next (paste stack)
+controller/toast.rs    impl Controller: show_toast, toast_tick, report_hotkey_problems, wording
+controller/settings.rs impl Controller: update_settings, set_theme, saver polling, look
+controller/tests/*.rs  the existing tests, split by the same seams
+main_window.rs         MainModel (Slint-free view-model) + MainActions impl (agent A)
+maintenance.rs         startup/daily jobs: trash purge (30 d), backup (24 h, keep 7, encrypted when keyed), integrity check (weekly), crash-log rotation
+binding/{panel,main,editors,settings,picker,fill}.rs  one Slint binding per window; windows.rs owns creation/show/raise and the thread-local registry
+```
+Rules: every store access goes through `Library`; view-models are pure functions of (Library, Settings, query, selection); bindings only diff a view into Slint properties and forward callbacks; `Effect` stays the single channel from logic to the host. Mechanical move, no behaviour change: an Opus-free Sonnet task after agent A merges, verified by the unchanged test list (`cargo test -p snipdeck-app -- --list | sort` before and after must match).
+Maintenance design (C1): run once 2 s after the first window shows (single-shot timer, off the hot path) and then every 6 h on a Slint timer; all decisions on the injected `Clock`; `backup` via `snipdeck_portable::backup` into `<data>/backups/snipdeck-YYYYMMDD.snipdeck`, keep the newest 7, skip when the newest is < 24 h old; purge `TrashRepo::purge(now - 30 d)`; `integrity_check` weekly with a danger toast + "Report a problem" on failure; every step logged under `SNIPDECK_LOG`. Tests with the frozen clock: a backup on day 1, none on day 1 + 1 h, rotation at 8 files, purge boundary at exactly 30 d.
+
 ## Optimisation, backend design, security and privacy (owner ask 2026-10-18)
 What is already right: event-driven (no polling loops in app or platform; the settings saver runs on a quiet timer), no network crate in the app (`tokio` is dev/build only), SQLite WAL + `secure_delete` + atomic blob writes with fsync, zip import behind `SafeArchive` limits and BLAKE3 checks, DPAPI user-scope with UI forbidden, clipboard writes carry the history/monitor/cloud exclusion markers, data in `%LOCALAPPDATA%` (never roams).
 - [ ] P1 No `[profile.release]` in `Cargo.toml`: ship with `lto = "fat"`, `codegen-units = 1`, `opt-level = 3` (or `"s"` for the installer budget < 15 MB, SPEC 9), `panic = "abort"` only after C4's panic hook writes the crash log, `strip = true`, `debug = false` + a separate `[profile.release-debug]` with symbols for the crash log. Measure the exe size and cold start before/after (SPEC 9: < 400 ms to Panel).
