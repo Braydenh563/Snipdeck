@@ -159,4 +159,4 @@ to a PNG and exits; it needs no display.
 
 ## Privacy
 
-No account, no telemetry, no network port. See [`../SECURITY.md`](../SECURITY.md) for the design summary.
+No account, no telemetry, no network port. What is stored where, and how to remove all of it: [`privacy.md`](privacy.md). Design summary: [`../SECURITY.md`](../SECURITY.md).

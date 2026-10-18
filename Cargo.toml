@@ -92,3 +92,18 @@ undocumented_unsafe_blocks = "warn"
 [profile.dev]
 debug = "line-tables-only"
 incremental = false
+
+# Shipping builds (docs/reviews/fable-analysis.md P1): one codegen unit with fat LTO for a small,
+# fast exe; symbols stripped. `panic` stays `unwind` until the crash log (C4) owns panics.
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+debug = false
+
+# A release build that keeps line tables for a readable crash log / profiler run.
+[profile.release-debug]
+inherits = "release"
+strip = false
+debug = "line-tables-only"
