@@ -9,7 +9,7 @@ Findings referenced as `C1`, `H1`, `U3`… are in `docs/reviews/fable-analysis.m
 
 ## Wave 1 (running): foundations
 1. **[done]** Merge `claude/snipdeck-main-window`, gate, pin icon, Rust 1.99 lints, keygen tool, GitHub workflows, release profiles, privacy doc.
-2. **[S, running: agent A]** Main window wiring: `snipdeck-app/src/main_window.rs` (MainModel), `main_binding.rs`, `Effect::OpenMainWindow` creates/raises the window; Trash + 5 s undo (`TrashRepo::purge_entry`), list/board add/rename/delete/reorder via ListEditor/BoardEditor; `tests/main_window.rs`. Accept: every ItemAction has a test; Free cap of 3 boards enforced; undo restores within 5 s on the frozen clock.
+2. **[done, merged e6c4905; not done: ItemEditor (step 8), TagManager, SettingsPage (step 7), Recent inbox; move has no undo]** Main window wiring: `snipdeck-app/src/main_window.rs` (MainModel), `main_binding.rs`, `Effect::OpenMainWindow` creates/raises the window; Trash + 5 s undo (`TrashRepo::purge_entry`), list/board add/rename/delete/reorder via ListEditor/BoardEditor; `tests/main_window.rs`. Accept: every ItemAction has a test; Free cap of 3 boards enforced; undo restores within 5 s on the frozen clock.
 3. **[done, merged 21c0870]** Panel UI: kebab (`app-menu-*`), `resize-requested(ResizeEdge)`, `edit/rename/delete-requested(int)`, pinned-strip wheel + carets, tooltips on every icon. Accept: a11y-tree tests + goldens; `scripts/i18n.py extract` run.
 
 ## Wave 2: bind, windows, maintenance (after wave 1 merges; three agents, separate files)
@@ -30,7 +30,7 @@ Findings referenced as `C1`, `H1`, `U3`… are in `docs/reviews/fable-analysis.m
 14. **[S] Item colour label + list icon** (owner 2026-10-18): `Item.label: Option<Label>` (8 DESIGN swatches), 4 px left bar on rows/cards, filter chip in the Main window; `List.icon: Option<IconName>` from a curated set of 24 Phosphor icons + none, shown in tabs and sidebar; migration v+1 (forward-only with backup), export/import round-trip, editors updated, goldens. No per-row background colour, no emoji.
 15. **[S] Accent colour + high contrast**: Settings accent from DESIGN "User accent choices"; full use of `SystemLook.hc-*`; 225 % icon scaling; contrast measured in a test for every token pair (WCAG 2.2 AA).
 16. **[S] Performance** P2, P3: cached per-board index invalidated by the store change counter; budget tests (search < 16 ms / 10k, Panel load < 50 ms); release exe size and idle RAM printed by the Windows build workflow; `--check-db` CLI (B3).
-17. **[S] Launcher + prebuilt zip** (9c, S7): `Snipdeck.bat` prefers the release zip from the GitHub Release, verifies the pinned SHA-256, falls back to source build only with `Snipdeck.bat build`; `pwsh tools/launcher/snipdeck.ps1 selftest` passes; README says building from source is for developers.
+17. **[done in code, merged 8dc9fd0; unverified on Windows: owner runs the 9-step checklist in .claude/remaining/launcher.md]** Launcher + prebuilt zip (9c, S7): `Snipdeck.bat` prefers the release zip from the GitHub Release, verifies the pinned SHA-256, falls back to source build only with `Snipdeck.bat build`; `pwsh tools/launcher/snipdeck.ps1 selftest` passes; README says building from source is for developers.
 18. **[S] Edge dock with reveal** (SPEC 5.1, 3a): logic + fakes + settings (edge per monitor, trigger hover/click/both, delays) and wizard steps; the Windows hit-test spike S5 is the owner's run.
 19. **[H] Docs**: README quick start = download zip; user guide matches every menu and shortcut; CHANGELOG; `docs/HANDOVER.md` rewritten to the shipped state.
 
