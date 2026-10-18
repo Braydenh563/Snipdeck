@@ -1276,7 +1276,7 @@ mod tests {
         w.ctl.set_tray_available(true);
 
         // Drain what the user did to the icon into the controller, as the app's UI thread does.
-        let mut pump = |w: &mut World| {
+        let pump = |w: &mut World| {
             rx.try_iter()
                 .flat_map(|event| w.ctl.on_tray(event))
                 .collect::<Vec<_>>()

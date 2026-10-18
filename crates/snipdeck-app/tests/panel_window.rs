@@ -9,7 +9,7 @@
     reason = "test code: a failure is a failed test"
 )]
 
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
 use slint::{ComponentHandle, Model, platform::Key};
@@ -18,14 +18,17 @@ use snipdeck_app::{
     controller::{Controller, Effect, Services, TOAST_ENTER, TOAST_EXIT, TOAST_HOLD},
     demo,
     host::{FakeTargets, FixedClock},
-    settings::{HotkeyAction, Settings},
+    settings::{HotkeyAction, Settings, Theme},
+    settings_store::{FileSink, SettingsSaver},
 };
 use snipdeck_core::{Entitlements, ItemId, Tier, Timestamp};
 use snipdeck_platform::{
     keys::{Key as PlatformKey, KeyEvent},
     payload::Data,
     route::{Focus, Target},
+    system_look::{HighContrast, SystemLook},
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
+    tray::TrayEvent,
 };
 use snipdeck_store::{ItemRepo, Store};
 use snipdeck_ui::PanelWindow;
@@ -41,6 +44,7 @@ struct Rig {
     ctl: Rc<RefCell<Ctl>>,
     binding: Binding,
     targets: FakeTargets,
+    clock: FixedClock,
     effects: Rc<RefCell<Vec<Effect>>>,
 }
 
@@ -57,7 +61,12 @@ fn app(exe: &str, title: &str) -> Target {
     }
 }
 
+/// The Panel as it runs on Windows: a tray icon is showing, so closing hides.
 fn rig() -> Rig {
+    rig_with_tray(true)
+}
+
+fn rig_with_tray(tray: bool) -> Rig {
     let store = demo::store(now()).expect("demo store");
     let targets = FakeTargets::new(Some(demo::target()));
     let services = Services {
@@ -68,16 +77,18 @@ fn rig() -> Rig {
         keyboard: FakeKeyboard::default(),
         timing: FakeTiming::default(),
     };
+    let clock = FixedClock::new(now());
     let ctl = Controller::new(
         store,
         services,
         Box::new(targets.clone()),
-        Box::new(FixedClock::new(now())),
+        Box::new(clock.clone()),
         Settings::default(),
         Entitlements::new(Tier::Pro),
     )
     .expect("controller");
     let ctl = Rc::new(RefCell::new(ctl));
+    ctl.borrow_mut().set_tray_available(tray);
     let ui = PanelWindow::new().expect("panel");
     let effects: Rc<RefCell<Vec<Effect>>> = Rc::default();
     let log = Rc::clone(&effects);
@@ -89,6 +100,7 @@ fn rig() -> Rig {
         ctl,
         binding,
         targets,
+        clock,
         effects,
     }
 }
@@ -351,4 +363,123 @@ fn the_toast_walks_through_its_phases_on_mock_time_and_then_goes() {
         i_slint_backend_testing::mock_elapsed_time(TOAST_EXIT);
         assert_eq!(r.ui.get_toast_text(), "");
     });
+}
+
+#[test]
+fn the_tray_icon_toggles_the_panel_opens_the_menu_actions_and_quits() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.binding.tray(TrayEvent::TogglePanel);
+        assert!(!r.window().is_visible());
+        r.binding.tray(TrayEvent::TogglePanel);
+        assert!(r.window().is_visible());
+        r.binding.tray(TrayEvent::HotkeysPaused(true));
+        r.binding.hotkey(HotkeyAction::TogglePanel);
+        assert!(r.window().is_visible(), "paused hotkeys do nothing");
+        r.binding.tray(TrayEvent::OpenSnipdeck);
+        r.binding.tray(TrayEvent::Quit);
+        assert_eq!(
+            *r.effects.borrow(),
+            [
+                Effect::HidePanel,
+                Effect::ShowPanel,
+                Effect::SetHotkeysPaused(true),
+                Effect::OpenMainWindow,
+                Effect::Quit
+            ]
+        );
+    });
+}
+
+#[test]
+fn without_a_tray_icon_the_close_button_quits_instead_of_hiding() {
+    on_ui_thread(|| {
+        let r = rig_with_tray(false);
+        r.button("Close panel").invoke_accessible_default_action();
+        assert!(
+            r.window().is_visible(),
+            "the host quits; the window is not hidden first"
+        );
+        assert_eq!(*r.effects.borrow(), [Effect::Quit]);
+    });
+}
+
+#[test]
+fn windows_dark_mode_and_high_contrast_reach_the_window() {
+    on_ui_thread(|| {
+        let r = rig();
+        let look = r.ui.global::<snipdeck_ui::SystemLook<'_>>();
+        assert!(!r.ui.get_dark());
+        assert!(!look.get_high_contrast());
+
+        r.binding.system_look(SystemLook {
+            dark: true,
+            high_contrast: None,
+        });
+        assert!(r.ui.get_dark(), "theme = system follows Windows");
+
+        let hc = HighContrast::default();
+        r.binding.system_look(SystemLook {
+            dark: false,
+            high_contrast: Some(HighContrast {
+                highlight: snipdeck_platform::system_look::Rgb { r: 1, g: 2, b: 3 },
+                ..hc
+            }),
+        });
+        assert!(look.get_high_contrast());
+        assert_eq!(look.get_hc_highlight(), slint::Color::from_rgb_u8(1, 2, 3));
+        assert_eq!(look.get_hc_window(), slint::Color::from_rgb_u8(0, 0, 0));
+
+        r.binding.system_look(SystemLook::default());
+        assert!(!look.get_high_contrast());
+        assert!(!r.ui.get_dark());
+    });
+}
+
+#[test]
+fn an_explicit_theme_ignores_windows_dark_mode() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ctl.borrow_mut().set_theme(Theme::Light);
+        r.binding.system_look(SystemLook {
+            dark: true,
+            high_contrast: None,
+        });
+        assert!(!r.ui.get_dark());
+    });
+}
+
+#[test]
+fn a_changed_setting_is_written_when_the_quiet_timer_fires_on_the_injected_clock() {
+    on_ui_thread(|| {
+        let r = rig();
+        let temp = tempfile::tempdir().expect("dir");
+        let file = temp.path().join("settings.json");
+        r.ctl.borrow_mut().set_settings_saver(SettingsSaver::new(
+            Box::new(FileSink::new(temp.path())),
+            Settings::default(),
+        ));
+
+        r.ctl.borrow_mut().set_theme(Theme::Dark);
+        // Any redraw arms the timer for what is waiting.
+        r.binding.system_look(SystemLook::default());
+        assert!(r.ui.get_dark());
+
+        i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(400));
+        r.clock.set(at("2026-10-17T10:30:00.4Z"));
+        assert!(!file.exists(), "inside the quiet time");
+
+        // Slint's mock time and the app's clock are both moved to the due moment.
+        r.clock.set(at("2026-10-17T10:30:00.5Z"));
+        i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(100));
+        assert_eq!(
+            snipdeck_app::paths::load_settings(temp.path()).theme,
+            Theme::Dark
+        );
+        assert_eq!(r.ctl.borrow().settings_wait(), None);
+    });
+}
+
+fn at(s: &str) -> Timestamp {
+    s.parse().expect("timestamp")
 }
