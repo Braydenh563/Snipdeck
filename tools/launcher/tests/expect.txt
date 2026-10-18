@@ -1,0 +1,15 @@
+# file = failure ids that must match, in table order ("none" = nothing may match)
+network.log = network
+filelock.log = file-lock
+msvc.log = msvc-missing
+nospace.log = no-space,corrupt-build
+corrupt.log = corrupt-build
+lockmismatch.log = lock-mismatch
+exelocked.log = exe-locked
+accessdenied.log = access-denied
+toolchain-old.log = toolchain-old
+no-toolchain.log = no-toolchain
+longpath.log = long-path
+revoke.log = net-revoke,network
+oom.log = out-of-memory
+ok.log = none

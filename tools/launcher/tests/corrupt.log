@@ -1,0 +1,9 @@
+   Compiling snipdeck-ui v0.1.0 (C:\Snipdeck\crates\snipdeck-ui)
+error: internal compiler error: encountered incremental compilation error with optimized_mir(1234)
+  |
+  = help: This is a known issue with the compiler. Run `cargo clean -p snipdeck-ui` or `cargo clean` to allow your project to compile
+
+thread 'rustc' panicked at compiler/rustc_query_system/src/query/plumbing.rs:728:9:
+Found unstable fingerprints for optimized_mir(1234)
+note: rustc 1.99.1 running on x86_64-pc-windows-msvc
+error: could not compile `snipdeck-ui` (lib)
