@@ -43,8 +43,8 @@ pub fn gradient() -> Image {
     let mut buffer = SharedPixelBuffer::<Rgba8Pixel>::new(160, 90);
     let width = buffer.width() as usize;
     for (i, px) in buffer.make_mut_slice().iter_mut().enumerate() {
-        let x = u8::try_from(i % width).expect("x is below 160");
-        let y = u8::try_from(i / width).expect("y is below 90");
+        let x = u8::try_from(i % width).unwrap_or(u8::MAX);
+        let y = u8::try_from(i / width).unwrap_or(u8::MAX);
         *px = Rgba8Pixel {
             r: x.saturating_mul(2),
             g: y.saturating_mul(2),

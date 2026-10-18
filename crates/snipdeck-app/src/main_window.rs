@@ -230,6 +230,7 @@ pub struct EditorView {
 #[derive(Debug)]
 pub struct MainModel {
     stale: bool,
+    board_menu: bool,
     boards: Vec<Board>,
     board: Option<BoardId>,
     lists: Vec<List>,
@@ -268,6 +269,7 @@ impl MainModel {
     pub fn new() -> Self {
         Self {
             stale: true,
+            board_menu: false,
             boards: Vec::new(),
             board: None,
             lists: Vec::new(),
@@ -297,6 +299,17 @@ impl MainModel {
     /// Says the library changed: the next [`reload`](Self::reload) is due.
     pub fn mark_stale(&mut self) {
         self.stale = true;
+    }
+
+    /// Opens or closes the board menu.
+    pub fn set_board_menu(&mut self, open: bool) {
+        self.board_menu = open;
+    }
+
+    /// Whether the board menu is open.
+    #[must_use]
+    pub fn board_menu_open(&self) -> bool {
+        self.board_menu
     }
 
     /// Gives up on a reload that failed, so it is not tried on every redraw.

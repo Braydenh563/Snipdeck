@@ -43,6 +43,11 @@ struct Rig {
     binding: Bound,
 }
 
+/// A row index the window reported as an `int`.
+fn ix(i: i32) -> usize {
+    usize::try_from(i).expect("a row index")
+}
+
 fn now() -> Timestamp {
     "2026-10-17T10:30:00Z".parse().expect("timestamp")
 }
@@ -204,7 +209,7 @@ fn the_window_shows_the_demo_library_sections_lists_and_counts() {
         assert_eq!(r.ui.get_lists().row_data(0).unwrap().count, 6);
         assert_eq!(r.ui.get_rows().row_count(), 11);
         assert_eq!(r.ui.get_section(), MainSection::All);
-        assert!(r.ui.get_rows().row_data(0).unwrap().list_name.len() > 0);
+        assert!(!r.ui.get_rows().row_data(0).unwrap().list_name.is_empty());
     });
 }
 
@@ -287,7 +292,7 @@ fn ctrl_p_pins_the_row_at_the_cursor() {
         r.ui.invoke_focus_items();
         chord(r.window(), &[Key::Control], "p");
         assert_eq!(r.ui.get_count_pinned(), 4);
-        assert!(r.ui.get_rows().row_data(at as usize).unwrap().pinned);
+        assert!(r.ui.get_rows().row_data(ix(at)).unwrap().pinned);
         chord(r.window(), &[Key::Control], "p");
         assert_eq!(r.ui.get_count_pinned(), 3);
     });
@@ -299,7 +304,7 @@ fn use_pastes_the_item_through_the_controller_and_counts_it() {
         let r = rig();
         let at = r.row("Out of office");
         r.ui.invoke_item_action(ItemAction::Use, at);
-        let id = match r.ctl.borrow_mut().main_screen().rows[at as usize].key {
+        let id = match r.ctl.borrow_mut().main_screen().rows[ix(at)].key {
             snipdeck_app::main_window::Key::Item(id) => id,
             other => panic!("{other:?}"),
         };
@@ -337,16 +342,16 @@ fn holding_a_sensitive_row_reveals_its_text_and_releasing_hides_it() {
     on_ui_thread(|| {
         let r = rig();
         let at = r.row("Server password");
-        assert_eq!(r.ui.get_rows().row_data(at as usize).unwrap().preview, "");
+        assert_eq!(r.ui.get_rows().row_data(ix(at)).unwrap().preview, "");
         r.ui.invoke_reveal_requested(at, true);
         assert_eq!(r.ui.get_revealed_index(), at);
         assert_eq!(
-            r.ui.get_rows().row_data(at as usize).unwrap().preview,
+            r.ui.get_rows().row_data(ix(at)).unwrap().preview,
             "hunter2-correct-horse"
         );
         r.ui.invoke_reveal_requested(at, false);
         assert_eq!(r.ui.get_revealed_index(), -1);
-        assert_eq!(r.ui.get_rows().row_data(at as usize).unwrap().preview, "");
+        assert_eq!(r.ui.get_rows().row_data(ix(at)).unwrap().preview, "");
     });
 }
 
@@ -385,10 +390,12 @@ fn the_undo_toast_stays_five_seconds_then_the_item_waits_in_the_trash() {
         i_slint_backend_testing::mock_elapsed_time(TOAST_ENTER);
         assert_eq!(r.ui.get_toast_phase(), snipdeck_ui::ToastPhase::Hold);
         // Past the 2.5 s of an ordinary toast, still undoable.
-        i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(3000));
+        i_slint_backend_testing::mock_elapsed_time(Duration::from_secs(3));
         assert_eq!(r.ui.get_toast_phase(), snipdeck_ui::ToastPhase::Hold);
         assert_eq!(r.ui.get_toast_undo_label(), "Undo");
-        i_slint_backend_testing::mock_elapsed_time(TOAST_UNDO_HOLD - Duration::from_millis(3000));
+        i_slint_backend_testing::mock_elapsed_time(
+            TOAST_UNDO_HOLD.saturating_sub(Duration::from_secs(3)),
+        );
         assert_eq!(r.ui.get_toast_phase(), snipdeck_ui::ToastPhase::Exit);
         i_slint_backend_testing::mock_elapsed_time(TOAST_EXIT);
         assert_eq!(r.ui.get_toast_text(), "");
@@ -419,7 +426,9 @@ fn the_panel_and_the_main_window_share_one_toast_and_one_timer() {
         assert_eq!(ui.get_toast_phase(), snipdeck_ui::ToastPhase::Hold);
         assert_eq!(panel.get_toast_text(), "Moved 1 item to the Trash");
         assert_eq!(panel.get_toast_phase(), snipdeck_ui::ToastPhase::Hold);
-        i_slint_backend_testing::mock_elapsed_time(TOAST_UNDO_HOLD - Duration::from_millis(2480));
+        i_slint_backend_testing::mock_elapsed_time(
+            TOAST_UNDO_HOLD.saturating_sub(Duration::from_millis(2480)),
+        );
         assert_eq!(ui.get_toast_phase(), snipdeck_ui::ToastPhase::Exit);
         assert_eq!(panel.get_toast_phase(), snipdeck_ui::ToastPhase::Exit);
 
@@ -685,7 +694,7 @@ fn the_last_board_cannot_be_deleted_and_the_editor_says_why() {
         let editor = r.binding.board_editor().unwrap();
         assert!(editor.window().is_visible());
         assert!(!editor.get_can_delete());
-        assert!(editor.get_delete_hint().len() > 0);
+        assert!(!editor.get_delete_hint().is_empty());
         assert!(!editor.get_delete_open());
     });
 }

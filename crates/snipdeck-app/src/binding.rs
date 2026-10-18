@@ -151,6 +151,31 @@ where
     K: Keyboard + 'static,
     T: Timing + 'static,
 {
+    /// The core for `window`, registered for redraws (see [`register_redraw`]).
+    fn new(
+        controller: &Rc<RefCell<Controller<S, C, K, T>>>,
+        window: &ui::PanelWindow,
+        on_effect: Box<dyn Fn(&Effect)>,
+    ) -> Rc<Self> {
+        let core = Rc::new_cyclic(|weak: &Weak<Self>| {
+            let weak = weak.clone();
+            Self {
+                controller: Rc::clone(controller),
+                window: window.as_weak(),
+                on_effect,
+                shown: RefCell::new(None),
+                redraw: Rc::new(move || {
+                    if let Some(core) = weak.upgrade() {
+                        core.sync();
+                    }
+                }),
+                settings_timer: Cell::new(false),
+            }
+        });
+        register_redraw(&core.redraw);
+        core
+    }
+
     /// Runs `f` on the controller, then redraws.
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<S, C, K, T>) -> R) -> R {
         let result = f(&mut self.controller.borrow_mut());
@@ -247,22 +272,7 @@ where
         window: &ui::PanelWindow,
         on_effect: impl Fn(&Effect) + 'static,
     ) -> Binding {
-        let core = Rc::new_cyclic(|weak: &Weak<Core<S, C, K, T>>| {
-            let weak = weak.clone();
-            Core {
-                controller: Rc::clone(this),
-                window: window.as_weak(),
-                on_effect: Box::new(on_effect),
-                shown: RefCell::new(None),
-                redraw: Rc::new(move || {
-                    if let Some(core) = weak.upgrade() {
-                        core.sync();
-                    }
-                }),
-                settings_timer: Cell::new(false),
-            }
-        });
-        register_redraw(&core.redraw);
+        let core = Core::new(this, window, Box::new(on_effect));
         core.sync();
 
         // Wires `ui.on_<name>(|args| ...)` to a controller call, redrawing afterwards.

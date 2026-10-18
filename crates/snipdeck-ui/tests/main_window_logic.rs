@@ -408,7 +408,7 @@ ui_tests! {
             .iter()
             .map(|l| find(&ui, l, AccessibleRole::ListItem).absolute_position().y)
             .collect();
-        assert!(ys[0] >= 44.0, "All items starts at y={:?}", ys);
+        assert!(ys[0] >= 44.0, "All items starts at y={ys:?}");
         assert!(ys.windows(2).all(|w| w[1] >= w[0] + 28.0), "sidebar rows overlap: {ys:?}");
         assert_eq!(find(&ui, "All items", AccessibleRole::ListItem).accessible_item_selected(), Some(true));
         ui.set_section(MainSection::Trash);

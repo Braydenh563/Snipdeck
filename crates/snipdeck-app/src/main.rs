@@ -77,6 +77,10 @@ fn take_screenshot(path: &std::path::Path, dark: bool) -> Result<(), String> {
     Ok(())
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "start-up is one ordered sequence: each step needs the one before"
+)]
 fn run(args: &Args) -> Result<(), String> {
     // Events from service threads become calls on this thread, through the binding.
     let look = platform::system_look();
@@ -150,11 +154,7 @@ fn run(args: &Args) -> Result<(), String> {
     // also when Explorer restarts), so the controller needs no flag from here. Without a tray
     // (off Windows, or it failed to start) or while no icon is there, closing the Panel quits.
     let mut tray = tray;
-    if let Some(tray) = &mut tray
-        && let Err(e) = tray.show()
-    {
-        eprintln!("snipdeck: cannot show the tray icon yet: {e}");
-    }
+    show_tray(&mut tray);
 
     let hotkeys = Rc::new(RefCell::new(hotkeys));
     // Resuming after "Pause hotkeys" registers the chords in force then, not the launch ones.
@@ -201,6 +201,15 @@ fn run(args: &Args) -> Result<(), String> {
         eprintln!("snipdeck: could not save the settings: {e}");
     }
     ran
+}
+
+/// Puts the icon in the notification area, if there is a tray.
+fn show_tray(tray: &mut Option<Box<dyn snipdeck_platform::tray::Tray>>) {
+    if let Some(tray) = tray
+        && let Err(e) = tray.show()
+    {
+        eprintln!("snipdeck: cannot show the tray icon yet: {e}");
+    }
 }
 
 type Hotkeys = Rc<RefCell<Box<dyn host::HotkeyBackend>>>;

@@ -179,7 +179,9 @@ where
         let fresh = self.editors.borrow().seq != view.seq;
         match view.kind {
             EditorKind::List => {
-                let window = self.list_editor_window();
+                let Some(window) = self.list_editor_window() else {
+                    return;
+                };
                 if let Some(w) = self.editors.borrow().board.as_ref() {
                     let _ = w.hide();
                 }
@@ -194,7 +196,9 @@ where
                 }
             }
             EditorKind::Board => {
-                let window = self.board_editor_window();
+                let Some(window) = self.board_editor_window() else {
+                    return;
+                };
                 if let Some(w) = self.editors.borrow().list.as_ref() {
                     let _ = w.hide();
                 }
@@ -212,11 +216,12 @@ where
         self.editors.borrow_mut().seq = view.seq;
     }
 
-    fn list_editor_window(self: &Rc<Self>) -> ui::ListEditor {
+    /// The list editor window, made on first use (`None` if the windowing system cannot).
+    fn list_editor_window(self: &Rc<Self>) -> Option<ui::ListEditor> {
         if let Some(w) = self.editors.borrow().list.as_ref() {
-            return w.clone_strong();
+            return Some(w.clone_strong());
         }
-        let w = ui::ListEditor::new().expect("the list editor builds");
+        let w = ui::ListEditor::new().ok()?;
         let core = Rc::clone(self);
         let weak = w.as_weak();
         w.on_save_requested(move || {
@@ -240,14 +245,15 @@ where
             CloseRequestResponse::HideWindow
         });
         self.editors.borrow_mut().list = Some(w.clone_strong());
-        w
+        Some(w)
     }
 
-    fn board_editor_window(self: &Rc<Self>) -> ui::BoardEditor {
+    /// The board editor window, made on first use (`None` if the windowing system cannot).
+    fn board_editor_window(self: &Rc<Self>) -> Option<ui::BoardEditor> {
         if let Some(w) = self.editors.borrow().board.as_ref() {
-            return w.clone_strong();
+            return Some(w.clone_strong());
         }
-        let w = ui::BoardEditor::new().expect("the board editor builds");
+        let w = ui::BoardEditor::new().ok()?;
         let core = Rc::clone(self);
         let weak = w.as_weak();
         w.on_save_requested(move || {
@@ -267,7 +273,7 @@ where
             CloseRequestResponse::HideWindow
         });
         self.editors.borrow_mut().board = Some(w.clone_strong());
-        w
+        Some(w)
     }
 
     /// The callbacks both editors share: cancel, a confirmed delete, and an edit.
@@ -386,37 +392,40 @@ where
             .main_reorder_items(isize::try_from(d).unwrap_or(0)));
         wire!(on_list_reorder_requested, |ctl, i, d| ctl
             .main_reorder_list(index(i), isize::try_from(d).unwrap_or(0)));
-        {
-            let weak = window.as_weak();
-            window.on_drag_requested(move || {
-                if let Some(w) = weak.upgrade() {
-                    let _ = w
-                        .window()
-                        .with_winit_window(winit::window::Window::drag_window);
-                }
-            });
-            let weak = window.as_weak();
-            window.on_title_double_clicked(move || {
-                if let Some(w) = weak.upgrade() {
-                    let _ = w
-                        .window()
-                        .with_winit_window(|w| w.set_maximized(!w.is_maximized()));
-                }
-            });
-        }
+        wire_title_bar(window);
         // The callbacks the window has no feature for yet still leave a line in the log.
         window.on_new_item_requested(|| {
-            crate::trace!("callback main new_item_requested: no item editor yet")
+            crate::trace!("callback main new_item_requested: no item editor yet");
         });
         window.on_settings_requested(|| {
-            crate::trace!("callback main settings_requested: no settings page yet")
+            crate::trace!("callback main settings_requested: no settings page yet");
         });
         window.on_manage_tags_requested(|| {
-            crate::trace!("callback main manage_tags_requested: no tag manager yet")
+            crate::trace!("callback main manage_tags_requested: no tag manager yet");
         });
 
         MainBinding { core }
     }
+}
+
+/// The toolbar's empty parts start the OS window drag, a double click maximises or restores.
+fn wire_title_bar(window: &ui::MainWindow) {
+    let weak = window.as_weak();
+    window.on_drag_requested(move || {
+        if let Some(w) = weak.upgrade() {
+            let _ = w
+                .window()
+                .with_winit_window(winit::window::Window::drag_window);
+        }
+    });
+    let weak = window.as_weak();
+    window.on_title_double_clicked(move || {
+        if let Some(w) = weak.upgrade() {
+            let _ = w
+                .window()
+                .with_winit_window(|w| w.set_maximized(!w.is_maximized()));
+        }
+    });
 }
 
 // ---- Opening the window on demand --------------------------------------------------------------

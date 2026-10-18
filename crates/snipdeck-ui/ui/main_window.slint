@@ -9,10 +9,12 @@
 // answers by writing `rows[i].selected` and `selected-count` (`snipdeck_ui::selection` does that in Rust).
 //
 // Keyboard (each region is one tab stop; arrows move inside it):
-//   sidebar   Up / Down / Home / End move, Enter or Space opens the view, Menu or Shift+F10 the context menu
+//   sidebar   Up / Down / Home / End move, Enter or Space opens the view, Menu or Shift+F10 the context menu,
+//             Alt+Up / Alt+Down move a list (`list-reorder-requested`)
 //   items     Up / Down (Left / Right in tiles) move and select, Shift extends, Ctrl+Space toggles, Ctrl+A all,
 //             Enter uses, Shift+Enter copies, F2 or Ctrl+E edits, Ctrl+P pins, Delete deletes, Esc clears
-//             the selection, Menu or Shift+F10 the context menu, hold Space reveals a sensitive item
+//             the selection, Menu or Shift+F10 the context menu, hold Space reveals a sensitive item,
+//             Alt+Up / Alt+Down move the row within its list (`item-reorder-requested`)
 //   anywhere  Ctrl+F or / search, Ctrl+N new item
 import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette } from "theme.slint";

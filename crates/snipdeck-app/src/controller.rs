@@ -253,8 +253,6 @@ pub struct Controller<S, C, K, T> {
     board_menu_open: bool,
     /// The Main window's state.
     main: MainModel,
-    /// The Main window's board menu is open.
-    main_board_menu: bool,
     /// The list or board editor, while one is open.
     editor: Option<main_ctl::EditorSlot>,
     editor_seq: u64,
@@ -332,7 +330,6 @@ where
             queue: PasteQueue::default(),
             board_menu_open: false,
             main: MainModel::new(),
-            main_board_menu: false,
             editor: None,
             editor_seq: 0,
             undo: None,

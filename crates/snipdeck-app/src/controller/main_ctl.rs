@@ -186,7 +186,10 @@ where
             dark: look.dark,
             high_contrast: look.high_contrast,
             board_name: self.main.board_name().to_owned(),
-            board_menu: self.main_board_menu.then(|| self.board_menu_entries()),
+            board_menu: self
+                .main
+                .board_menu_open()
+                .then(|| self.board_menu_entries()),
             lists: self.main.side_lists(),
             tags: self.main.side_tags(),
             tag_choices: self.tag_choices(),
@@ -355,7 +358,7 @@ where
             }
             Ok(())
         });
-        self.finish(done);
+        self.finish(&done);
     }
 
     fn trash_items(&mut self, items: &[ItemId]) {
@@ -429,7 +432,7 @@ where
     }
 
     /// Ends an action: a failure is a toast, a success is a changed library.
-    fn finish(&mut self, done: snipdeck_store::Result<()>) {
+    fn finish(&mut self, done: &snipdeck_store::Result<()>) {
         match done {
             Ok(()) => self.library_changed(),
             Err(_) => self.show_toast(failed()),
@@ -505,7 +508,7 @@ where
             }
             Ok(())
         });
-        self.finish(done);
+        self.finish(&done);
     }
 
     /// Deletes tag `index` after the window's confirmation (its items stay).
@@ -515,7 +518,7 @@ where
             return;
         };
         let done = self.store.delete_tag(tag);
-        self.finish(done);
+        self.finish(&done);
     }
 
     // ---- The Trash and Undo --------------------------------------------------------------------
@@ -605,7 +608,7 @@ where
             return;
         };
         let done = self.store.move_list(order[index], board, placement);
-        self.finish(done);
+        self.finish(&done);
     }
 
     /// Alt+Up / Alt+Down in the item area: moves the row at the cursor within its list. Only
@@ -630,7 +633,7 @@ where
         };
         let done = self.store.move_item(id, list, placement);
         let moved = done.is_ok();
-        self.finish(done);
+        self.finish(&done);
         if moved {
             self.main_fresh();
             self.main.set_cursor(to);
@@ -641,12 +644,12 @@ where
 
     /// Opens the board menu.
     pub fn main_board_menu_open(&mut self) {
-        self.main_board_menu = true;
+        self.main.set_board_menu(true);
     }
 
     /// Closes the board menu without a choice.
     pub fn main_board_menu_close(&mut self) {
-        self.main_board_menu = false;
+        self.main.set_board_menu(false);
     }
 
     fn board_menu_entries(&self) -> Vec<BoardMenuEntry> {
@@ -678,16 +681,14 @@ where
     /// The board menu's entry `index` was chosen.
     pub fn main_board_menu_activate(&mut self, index: usize) {
         self.main_fresh();
-        self.main_board_menu = false;
+        self.main.set_board_menu(false);
         let Some(entry) = self.board_menu_entries().into_iter().nth(index) else {
             return;
         };
         match entry {
             BoardMenuEntry::Board { .. } => {
                 if let Some(id) = self.main.boards().get(index).map(|b| b.id) {
-                    if self.main.open_board(&self.store, id).is_err() {
-                        self.show_toast(failed());
-                    }
+                    self.open_board(id);
                     self.revealed = None;
                 }
             }
@@ -708,6 +709,13 @@ where
         }
     }
 
+    /// Opens board `id` in the sidebar.
+    fn open_board(&mut self, id: BoardId) {
+        if self.main.open_board(&self.store, id).is_err() {
+            self.show_toast(failed());
+        }
+    }
+
     /// Moves the open board up (-1) or down (+1) among the boards.
     pub fn main_reorder_board(&mut self, delta: isize) {
         self.main_fresh();
@@ -719,7 +727,7 @@ where
             return;
         };
         let done = self.store.move_board(order[from], placement);
-        self.finish(done);
+        self.finish(&done);
     }
 
     // ---- The list and board editors ------------------------------------------------------------
@@ -865,11 +873,7 @@ where
                 self.main_fresh();
                 match opened {
                     Some(Opened::List(id)) => self.main.open(Section::List(id)),
-                    Some(Opened::Board(id)) => {
-                        if self.main.open_board(&self.store, id).is_err() {
-                            self.show_toast(failed());
-                        }
-                    }
+                    Some(Opened::Board(id)) => self.open_board(id),
                     None => {}
                 }
             }
