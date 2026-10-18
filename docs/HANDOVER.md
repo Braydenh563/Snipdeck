@@ -98,6 +98,12 @@ The demo ran on Windows (first time ever). Owner's report, verbatim in substance
 8a. **The Panel cannot be resized** (owner, 2026-10-18). Add edge/corner resize (OS resize border or own grips), min/max size, remember size per monitor (SPEC: per-monitor position memory); works with the non-activating style and docking.
 9. **Slow build every time the demo launcher runs.** The launcher agent (a375ca0) builds `Snipdeck.bat` with a stamped exe cache in `dist\`; until it is merged each launch runs `cargo run` (an up-to-date cargo run is still seconds-slow and rebuilds when sources change).
 
+## Next PR: drive the app to shipping (owner, 2026-10-18)
+
+The owner confirmed the Panel buttons work now. Missing utility the owner listed: delete and edit lists, open the larger window and its menu, manage snippets and list items, more. Plan for the next PR(s), in order: (1) merge `claude/snipdeck-main-window` and wire it (items 1-3 below), with list/board/snippet CRUD, Trash, undo, Panel kebab menu, resize, quick edit; (2) Windows verification loop with the owner using `Snipdeck.bat` and the wizard; (3) M5/M6 essentials for a first public release (licence UI, onboarding, backups, installer/prebuilt zip, signing later); (4) ONE Fable pass last, brief in `docs/fable-brief.md` (owner named Fable for this task on 2026-10-18).
+
+**The pin icon:** in the Panel header it is the "keep on top" toggle (`pin-toggled` -> window always-on-top), but it has no tooltip or visible state, and the same push-pin icon is used for pinned snippets, so it reads as "pin an item". Fix: tooltip + pressed state, a different icon for always-on-top, and verify always-on-top works on Windows (wizard step).
+
 ## Next steps (queue for the next session, in order)
 
 Progress vs `docs/PLAN.md`: M1 done, M2 done in code (Windows unverified), M3 mostly done, M4 about half (UI built, not wired), M5 about 10%, M6 not started. About 55% of a v1 that can be built and tested off Windows.
