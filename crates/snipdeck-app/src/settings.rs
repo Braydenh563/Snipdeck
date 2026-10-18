@@ -108,6 +108,38 @@ impl Hotkeys {
     }
 }
 
+/// The names in the `no_paste_apps` list of a settings file that is not valid JSON, read up to
+/// the point where the text stops making sense (a file cut short keeps the names before the cut).
+fn salvage_no_paste_apps(text: &str) -> Vec<String> {
+    let Some(key) = text.find("\"no_paste_apps\"") else {
+        return Vec::new();
+    };
+    let rest = text[key + "\"no_paste_apps\"".len()..].trim_start();
+    let Some(rest) = rest.strip_prefix(':') else {
+        return Vec::new();
+    };
+    let Some(mut rest) = rest.trim_start().strip_prefix('[') else {
+        return Vec::new();
+    };
+    let mut apps = Vec::new();
+    loop {
+        rest = rest.trim_start_matches(|c: char| c.is_whitespace() || c == ',');
+        if rest.is_empty() || rest.starts_with(']') {
+            break;
+        }
+        let mut stream = serde_json::Deserializer::from_str(rest).into_iter::<serde_json::Value>();
+        let Some(Ok(value)) = stream.next() else {
+            break;
+        };
+        let used = stream.byte_offset();
+        if let serde_json::Value::String(name) = value {
+            apps.push(name);
+        }
+        rest = &rest[used..];
+    }
+    apps
+}
+
 /// The user's settings.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
@@ -159,7 +191,14 @@ impl Settings {
                 let value: serde_json::Value = serde_json::from_str(text)?;
                 Ok::<_, serde_json::Error>(Self::from_fields(&value))
             })
-            .unwrap_or_default();
+            .unwrap_or_else(|_| {
+                // Not JSON (a truncated write, say). The exclusion list is a safety setting:
+                // keep the names that can still be read rather than pasting into every app.
+                Self {
+                    no_paste_apps: salvage_no_paste_apps(text),
+                    ..Self::default()
+                }
+            });
         settings.sanitize();
         settings
     }
@@ -185,7 +224,18 @@ impl Settings {
         field!(autostart);
         field!(close_to_tray);
         field!(panel_width);
-        field!(no_paste_apps);
+        // Element by element: one bad entry must not drop the whole list, or auto-paste would
+        // go into the apps the user excluded.
+        match map.get("no_paste_apps") {
+            Some(serde_json::Value::Array(items)) => {
+                settings.no_paste_apps = items
+                    .iter()
+                    .filter_map(|v| v.as_str().map(str::to_owned))
+                    .collect();
+            }
+            Some(serde_json::Value::String(one)) => settings.no_paste_apps = vec![one.clone()],
+            _ => {}
+        }
         field!(site_icons);
         settings
     }
@@ -313,6 +363,73 @@ mod tests {
             r#"{"no_paste_apps":[" KeePass.EXE ","keepass.exe","","Putty.exe"]}"#,
         );
         assert_eq!(settings.no_paste_apps, ["keepass.exe", "putty.exe"]);
+    }
+
+    /// Security review 2, finding 9: one bad element must not empty the exclusion list, or
+    /// auto-paste would go into the apps the user excluded.
+    #[test]
+    fn one_bad_excluded_app_keeps_the_others() {
+        let settings = Settings::from_json(
+            r#"{"theme":"dark","no_paste_apps":["KeePass.exe",5,null,["x"],"1Password.exe"]}"#,
+        );
+        assert_eq!(settings.no_paste_apps, ["keepass.exe", "1password.exe"]);
+        assert_eq!(settings.theme, Theme::Dark);
+
+        let settings = Settings::from_json(r#"{"no_paste_apps":["keepass.exe",5]}"#);
+        assert_eq!(settings.no_paste_apps, ["keepass.exe"]);
+    }
+
+    #[test]
+    fn a_list_of_the_wrong_shape_is_an_empty_list_and_a_lone_name_is_a_list() {
+        assert!(
+            Settings::from_json(r#"{"no_paste_apps":5}"#)
+                .no_paste_apps
+                .is_empty()
+        );
+        assert!(
+            Settings::from_json(r#"{"no_paste_apps":{"a":"b.exe"}}"#)
+                .no_paste_apps
+                .is_empty()
+        );
+        assert_eq!(
+            Settings::from_json(r#"{"no_paste_apps":"KeePass.exe"}"#).no_paste_apps,
+            ["keepass.exe"]
+        );
+    }
+
+    #[test]
+    fn a_truncated_file_keeps_the_excluded_apps_it_still_has() {
+        let full = Settings {
+            theme: Theme::Dark,
+            no_paste_apps: vec!["keepass.exe".into(), "1password.exe".into(), "putty.exe".into()],
+            site_icons: true,
+            ..Settings::default()
+        }
+        .to_json();
+        let start = full.find("\"no_paste_apps\"").unwrap();
+        let end = full.find("putty.exe").unwrap();
+        // Cut anywhere inside the list: every whole name before the cut survives, a cut name
+        // does not.
+        let all = ["keepass.exe", "1password.exe", "putty.exe"];
+        for cut in start..=end + 4 {
+            let settings = Settings::from_json(&full[..cut]);
+            let kept: Vec<&str> = settings.no_paste_apps.iter().map(String::as_str).collect();
+            let whole = all
+                .iter()
+                .filter(|name| {
+                    let at = full.find(&format!("\"{name}\"")).unwrap();
+                    at + name.len() + 2 <= cut
+                })
+                .count();
+            assert_eq!(kept, all[..whole], "cut at {cut}");
+        }
+        let cut = &full[..full.find("putty.exe").unwrap() - 1];
+        assert_eq!(
+            Settings::from_json(cut).no_paste_apps,
+            ["keepass.exe", "1password.exe"]
+        );
+        // Cut before the list starts: nothing to keep.
+        assert!(Settings::from_json(&full[..start]).no_paste_apps.is_empty());
     }
 
     #[test]
