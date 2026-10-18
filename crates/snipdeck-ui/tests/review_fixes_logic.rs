@@ -262,7 +262,6 @@ fn a_masked_secret_is_announced_with_how_to_reveal_it() {
 fn a_cjk_title_keeps_twelve_characters_next_to_a_list_label() {
     use snipdeck_ui::DeckCjkProbe;
     if !has_cjk_font() {
-        eprintln!("skipped: no CJK font installed, glyph widths are not meaningful");
         return;
     }
     let ui = start(DeckCjkProbe::new);
