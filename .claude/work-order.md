@@ -6,8 +6,8 @@ started: 2026-10-18 13:45
 budget: owner at 40% weekly; own budget line 55%, stop line 60% (owner needs the rest for other work); one agent at a time from 55%
 
 - [ ] Merge step 4 (Panel binding: kebab, resize, quick edit) when its agent reports; gate; push
-- [ ] Merge step 6 (maintenance + crash log) when its agent reports; gate; push
-- [ ] Merge step 9 (tray icon, .ico, Open Panel fix) when its agent reports; gate; push
+- [x] Merge step 6 (maintenance + crash log) when its agent reports; gate; push
+- [x] Merge step 9 (tray icon, .ico, Open Panel fix) when its agent reports; gate; push
 - [ ] Step 8: ItemEditor binding + New snippet (create/edit text, link, template, image, file; sensitive toggle with silent key provisioning)
 - [ ] Step 7: Settings window (hotkeys, theme, language, autostart, licence entry, Privacy, Backups, Data section)
 - [ ] Step 5: Picker + TemplateFill windows on their hotkeys

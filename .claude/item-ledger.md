@@ -6,3 +6,5 @@ date | item | type | rung | rework | note
 2026-10-18 | M3 Panel window + snipdeck-app controller/bin skeleton | feature | sonnet | 1 | 
 2026-10-18 | Opus security review 2 (9 findings) | security | opus | 0 | 
 2026-10-18 | Win32 tray review: 13 findings fixed | bug | sonnet | 0 | 
+2026-10-18 | Merge step 9 tray | merge | sonnet | 0 | 
+2026-10-18 | Merge step 6 maintenance | merge | sonnet | 1 | 
