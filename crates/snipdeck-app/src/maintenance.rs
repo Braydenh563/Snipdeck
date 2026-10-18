@@ -576,7 +576,7 @@ mod tests {
             MaintenanceOutcome::BackupFailed("x".into()),
             MaintenanceOutcome::TrashPurged { count: 3 },
         ] {
-            assert!(!quiet.log_line().is_empty());
+            assert_ne!(quiet.log_line(), "");
             assert_eq!(quiet.clone().into_toast(), None, "{quiet:?}");
         }
         assert_eq!(
@@ -610,7 +610,7 @@ mod tests {
         // A new process an hour later: nothing is due.
         clock.set(at(t0() + HOUR));
         let mut again = Maintenance::new(dir.path(), Box::new(clock.clone()));
-        assert!(again.tick(&mut jobs).is_empty());
+        assert_eq!(again.tick(&mut jobs), Vec::new());
         assert_eq!(jobs.backups.len(), 1);
         // And at six hours it is.
         clock.set(at(t0() + 6 * HOUR));

@@ -13,6 +13,8 @@ use snipdeck_ui::PanelWindow;
 #[cfg(windows)]
 #[must_use]
 pub fn handle(window: &PanelWindow) -> Option<isize> {
+    use slint::ComponentHandle;
+    use slint::winit_030::WinitWindowAccessor;
     use slint::winit_030::winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
     window
         .window()
