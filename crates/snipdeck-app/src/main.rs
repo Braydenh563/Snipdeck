@@ -261,6 +261,11 @@ fn open_library(args: &Args) -> Result<Library, String> {
     };
     let loaded = snipdeck_app::paths::read_settings(&folder);
     let may_save = loaded.may_save();
+    // A damaged file was moved aside: write the salvaged values back now, or the next launch would
+    // find no file and fall back to the defaults (re-enabling pastes into apps the user excluded).
+    if may_save && let Err(e) = snipdeck_app::paths::write_salvaged(&folder, &loaded) {
+        eprintln!("snipdeck: could not write the recovered settings: {e}");
+    }
     let mut settings = loaded.settings;
     if !may_save {
         eprintln!(
