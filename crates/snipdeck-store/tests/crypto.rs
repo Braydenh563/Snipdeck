@@ -447,3 +447,103 @@ fn sensitive_content_staged_in_memory_never_touches_the_disk() {
     assert_eq!(s.read(&staged).unwrap().as_ref(), secret.as_slice());
     assert_no_plaintext(dir.path(), &[b"ZQ9stagedSECRET"]);
 }
+
+fn staged(s: &mut Store, tag: u8) -> (Vec<u8>, Content) {
+    let secret = vec![tag; INLINE_LIMIT + 10];
+    let content = s.put_sensitive(secret.clone()).unwrap();
+    assert!(matches!(content, Content::Blob { .. }));
+    assert_eq!(s.read(&content).unwrap().as_ref(), secret.as_slice());
+    (secret, content)
+}
+
+/// PR 4 review 3: a staged payload is plaintext in RAM only until the item that uses it is
+/// written; it must not stay in memory (and grow with every import) until the next lock.
+#[test]
+fn staged_plaintext_is_dropped_once_the_item_is_written() {
+    let p = provider();
+    let (_dir, mut s, l) = on_disk();
+    s.create_key_ring(&ring(&p), None).unwrap();
+    let (secret, content) = staged(&mut s, 7);
+    let it = secret_item(l.id, "kept");
+    s.insert_item(
+        &it,
+        &Formats::new(vec![Format::Text(content.clone())]).unwrap(),
+        Placement::Last,
+    )
+    .unwrap();
+    assert!(
+        matches!(s.read(&content), Err(Error::NotFound { .. })),
+        "the staged copy is gone"
+    );
+    // The item itself still reads back (decrypted from the envelope).
+    let back = s.formats(it.id).unwrap();
+    let Format::Text(c) = back.primary() else {
+        panic!("text")
+    };
+    assert_eq!(s.read(c).unwrap().as_ref(), secret.as_slice());
+}
+
+#[test]
+fn staged_plaintext_is_dropped_when_the_write_is_rolled_back() {
+    let p = provider();
+    let (_dir, mut s, l) = on_disk();
+    s.create_key_ring(&ring(&p), None).unwrap();
+    let (_, content) = staged(&mut s, 8);
+    let it = secret_item(l.id, "never");
+    let failed = s.transaction(|b| {
+        b.insert_item(
+            &it,
+            &Formats::new(vec![Format::Text(content.clone())]).unwrap(),
+            Placement::Last,
+        )?;
+        Err::<(), Error>(Error::Corrupt("abandon".to_owned()))
+    });
+    assert!(failed.is_err());
+    assert!(
+        matches!(s.read(&content), Err(Error::NotFound { .. })),
+        "a rolled-back write leaves no plaintext behind"
+    );
+
+    // Staged inside the transaction and never used: also dropped on rollback.
+    let mut inside = None;
+    let failed = s.transaction(|b| {
+        inside = Some(b.put_sensitive(vec![9; INLINE_LIMIT + 10])?);
+        Err::<(), Error>(Error::Corrupt("abandon".to_owned()))
+    });
+    assert!(failed.is_err());
+    assert!(matches!(
+        s.read(&inside.unwrap()),
+        Err(Error::NotFound { .. })
+    ));
+}
+
+/// Two items of one import may carry the same payload: the first write must not take it from
+/// the second.
+#[test]
+fn staged_plaintext_shared_by_two_items_in_one_transaction_survives_until_the_end() {
+    let keys = provider();
+    let (_dir, mut store, lst) = on_disk();
+    store.create_key_ring(&ring(&keys), None).unwrap();
+    let (secret, content) = staged(&mut store, 5);
+    let (first, second) = (secret_item(lst.id, "a"), secret_item(lst.id, "b"));
+    store
+        .transaction(|tx| {
+            for it in [&first, &second] {
+                tx.insert_item(
+                    it,
+                    &Formats::new(vec![Format::Text(content.clone())]).unwrap(),
+                    Placement::Last,
+                )?;
+            }
+            Ok::<_, Error>(())
+        })
+        .unwrap();
+    assert!(matches!(store.read(&content), Err(Error::NotFound { .. })));
+    for it in [&first, &second] {
+        let back = store.formats(it.id).unwrap();
+        let Format::Text(c) = back.primary() else {
+            panic!("text")
+        };
+        assert_eq!(store.read(c).unwrap().as_ref(), secret.as_slice());
+    }
+}

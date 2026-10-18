@@ -8,15 +8,15 @@ Status key: `[ ]` open, `[x]` fixed (commit in the fix log below).
 
 ## High
 
-- [ ] 1. `paths.rs:106-115` + `main.rs:117-118`: a damaged `settings.json` is moved to `.bad`; the salvaged values (e.g. `no_paste_apps`) are used for that run only and the saver's baseline is the salvaged value, so nothing is written. Next launch sees Missing and uses defaults, so Snipdeck auto-pastes into apps the user excluded (KeePass). Fix: on `LoadOutcome::SetAside` write the salvaged settings at once (or start the saver with a `Settings::default()` baseline plus a pending change). Update wizard step 14 in `m3-app.json`.
+- [x] 1. `paths.rs:106-115` + `main.rs:117-118`: a damaged `settings.json` is moved to `.bad`; the salvaged values (e.g. `no_paste_apps`) are used for that run only and the saver's baseline is the salvaged value, so nothing is written. Next launch sees Missing and uses defaults, so Snipdeck auto-pastes into apps the user excluded (KeePass). Fix: on `LoadOutcome::SetAside` write the salvaged settings at once (or start the saver with a `Settings::default()` baseline plus a pending change). Update wizard step 14 in `m3-app.json`.
 
 ## Medium
 
 - [ ] 2. `main.rs:172-179`: with `--hidden`, `attach_when_created` is never called, so after the first ShowPanel the Panel has no `install_panel_style` / `tracker.set_panel`; a click activates it and the Target can become Snipdeck. Fix: attach once on the first ShowPanel.
-- [ ] 3. `store/blobs.rs:212-230`, `items.rs:229-233`, `blobs.rs:144-154`: sensitive payloads from `put_transient` stay in the `plain` map after the write and after a rollback; only `clear_transient` at lock empties it. Plaintext lingers in RAM and grows with each import. Fix: remove the entry after `write_formats` and in `rewind`.
-- [ ] 4. `usecase.rs:93-94`: if `record_use` fails after a successful paste the use returns `Err` and the user sees "Couldn't use this item", then retries and pastes twice. Fix: count is best-effort; keep the success toast.
+- [x] 3. `store/blobs.rs:212-230`, `items.rs:229-233`, `blobs.rs:144-154`: sensitive payloads from `put_transient` stay in the `plain` map after the write and after a rollback; only `clear_transient` at lock empties it. Plaintext lingers in RAM and grows with each import. Fix: remove the entry after `write_formats` and in `rewind`.
+- [x] 4. `usecase.rs:93-94`: if `record_use` fails after a successful paste the use returns `Err` and the user sees "Couldn't use this item", then retries and pastes twice. Fix: count is best-effort; keep the success toast.
 - [ ] 5. `binding.rs:256` / `main.rs`: an OS close of the Panel (Alt+F4, WM_CLOSE) is not routed to `Controller::close`; `visible` stays true and the toggle goes out of sync; without a tray the process lives on invisibly. Fix: `window.window().on_close_requested(.. ctl.close(); KeepWindowShown)`. Needs Windows to verify.
-- [ ] 6. `portable/src/backup.rs:183-189`: `restore` uses `ImportOptions::default()` so `max_boards` is None; a Free user can restore past 3 boards (earlier security finding 8 only half fixed). Fix: give `restore` a `max_boards` parameter.
+- [x] 6. `portable/src/backup.rs:183-189`: `restore` uses `ImportOptions::default()` so `max_boards` is None; a Free user can restore past 3 boards (earlier security finding 8 only half fixed). Fix: give `restore` a `max_boards` parameter.
 
 ## Low
 

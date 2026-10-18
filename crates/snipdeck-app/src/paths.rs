@@ -31,7 +31,8 @@ pub enum LoadOutcome {
     /// The file was read (out-of-range values clamped; nothing to set aside).
     Read,
     /// The file did not parse as it stands and was moved to `settings.json.bad`; what could be
-    /// salvaged is used and the next save writes a fresh file.
+    /// salvaged is used, and the host writes it back at once with [`write_salvaged`] so the
+    /// next launch finds it (not defaults).
     SetAside,
     /// A file exists but could not be read, or could not be set aside: it is the only copy of what
     /// the user had, and the defaults in use are **not** what it holds. It must not be
@@ -113,6 +114,24 @@ pub fn read_settings(folder: &Path) -> Loaded {
         settings: Settings::from_json(&text),
         outcome,
     }
+}
+
+/// Writes the salvaged settings to a fresh `settings.json` when the old file was just set aside
+/// ([`LoadOutcome::SetAside`]), and does nothing for any other outcome.
+///
+/// Without this the salvaged values (the no-paste list above all) would apply to this run only:
+/// the next launch would find no file and use the defaults. The host calls it once, right after
+/// [`read_settings`], when it may save at all.
+///
+/// # Errors
+///
+/// Any I/O error from [`write_atomic`](crate::settings_store::write_atomic); the `.bad` copy is
+/// intact either way.
+pub fn write_salvaged(folder: &Path, loaded: &Loaded) -> std::io::Result<()> {
+    if loaded.outcome == LoadOutcome::SetAside {
+        crate::settings_store::write_atomic(folder, &loaded.settings)?;
+    }
+    Ok(())
 }
 
 /// The settings from `folder`, without the outcome (for callers that never write them back).
@@ -202,6 +221,61 @@ mod tests {
         assert_eq!(
             std::fs::read_to_string(dir.join(BAD_FILE)).expect("bad"),
             "{ nope"
+        );
+    }
+
+    #[test]
+    fn salvaged_settings_are_written_at_once_so_the_next_launch_keeps_them() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let dir = temp.path();
+        let cut = r#"{"panel_width": 400, "no_paste_apps": ["keepass.exe", "bank"#;
+        std::fs::write(dir.join(SETTINGS_FILE), cut).expect("write");
+        let loaded = read_settings(dir);
+        assert_eq!(loaded.outcome, LoadOutcome::SetAside);
+        write_salvaged(dir, &loaded).expect("write salvaged");
+        assert_eq!(
+            std::fs::read_to_string(dir.join(BAD_FILE)).expect("bad"),
+            cut,
+            "the damaged text is still kept"
+        );
+        let next = read_settings(dir);
+        assert_eq!(next.outcome, LoadOutcome::Read, "a fresh, valid file");
+        assert_eq!(next.settings.no_paste_apps, ["keepass.exe"]);
+        assert_eq!(
+            next.settings, loaded.settings,
+            "what was salvaged is what is on disk"
+        );
+    }
+
+    #[test]
+    fn write_salvaged_does_nothing_unless_a_file_was_set_aside() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let dir = temp.path();
+        let missing = read_settings(dir);
+        write_salvaged(dir, &missing).expect("missing");
+        assert!(
+            !dir.join(SETTINGS_FILE).exists(),
+            "first run writes nothing"
+        );
+
+        let good = r#"{"panel_width": 400}"#;
+        std::fs::write(dir.join(SETTINGS_FILE), good).expect("write");
+        let read = read_settings(dir);
+        write_salvaged(dir, &read).expect("read");
+        assert_eq!(
+            std::fs::read_to_string(dir.join(SETTINGS_FILE)).expect("file"),
+            good,
+            "a good file is left byte for byte"
+        );
+
+        let untouchable = Loaded {
+            settings: Settings::default(),
+            outcome: LoadOutcome::Untouchable,
+        };
+        write_salvaged(dir, &untouchable).expect("untouchable");
+        assert_eq!(
+            std::fs::read_to_string(dir.join(SETTINGS_FILE)).expect("file"),
+            good
         );
     }
 

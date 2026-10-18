@@ -46,6 +46,10 @@ pub struct Used {
     /// For a template with `{cursor}`: how many Left-arrow presses move the caret to it.
     /// Not yet applied by the pipeline.
     pub cursor_from_end: Option<usize>,
+    /// Why the use could not be counted, when the paste or copy worked but the store refused the
+    /// usage update. The use is best-effort bookkeeping: failing it must not turn a paste that
+    /// happened into an error (the user would retry and paste twice). The host may log it.
+    pub count_failed: Option<String>,
 }
 
 /// Why a use did not happen.
@@ -71,11 +75,12 @@ pub enum UseError {
     Platform(#[from] pipeline::Error),
 }
 
-/// Uses an item. The use is counted only when it happened (pasted or copied).
+/// Uses an item. The use is counted only when it happened (pasted or copied); if counting it
+/// fails the use still succeeds and [`Used::count_failed`] says why.
 ///
 /// # Errors
 ///
-/// See [`UseError`].
+/// See [`UseError`]. Never for the usage count.
 pub fn use_item<S, C, K, T>(
     store: &mut S,
     env: &mut Env<'_, C, K, T>,
@@ -91,10 +96,15 @@ where
     let formats = store.formats(request.item)?;
     let (payload, cursor_from_end) = build_payload(store, &item, &formats, request)?;
     let outcome = pipeline::use_item(env, &payload, request.mode, &request.route)?;
-    store.record_use(item.id, request.now)?;
+    // The paste or copy has happened: counting it is best-effort and never an error.
+    let count_failed = store
+        .record_use(item.id, request.now)
+        .err()
+        .map(|e| e.to_string());
     Ok(Used {
         outcome,
         cursor_from_end,
+        count_failed,
     })
 }
 
@@ -314,6 +324,92 @@ mod tests {
             w.keyboard.sent,
             Vec::<Vec<snipdeck_platform::keys::KeyEvent>>::new()
         );
+    }
+
+    /// A store whose usage update fails, to see that a use which happened is not reported as
+    /// failed (PR 4 review 4).
+    struct NoCount<'a>(&'a mut Store);
+
+    impl ItemRepo for NoCount<'_> {
+        fn items(&self, list: snipdeck_core::ListId) -> snipdeck_store::Result<Vec<Item>> {
+            self.0.items(list)
+        }
+        fn all_items(&self) -> snipdeck_store::Result<Vec<Item>> {
+            self.0.all_items()
+        }
+        fn item(&self, id: ItemId) -> snipdeck_store::Result<Item> {
+            self.0.item(id)
+        }
+        fn formats(&self, id: ItemId) -> snipdeck_store::Result<Formats> {
+            self.0.formats(id)
+        }
+        fn insert_item(
+            &mut self,
+            item: &Item,
+            formats: &Formats,
+            at: Placement<ItemId>,
+        ) -> snipdeck_store::Result<()> {
+            self.0.insert_item(item, formats, at)
+        }
+        fn update_item(
+            &mut self,
+            item: &Item,
+            formats: Option<&Formats>,
+        ) -> snipdeck_store::Result<()> {
+            self.0.update_item(item, formats)
+        }
+        fn move_item(
+            &mut self,
+            id: ItemId,
+            list: snipdeck_core::ListId,
+            at: Placement<ItemId>,
+        ) -> snipdeck_store::Result<()> {
+            self.0.move_item(id, list, at)
+        }
+        fn record_use(&mut self, _id: ItemId, _at: Timestamp) -> snipdeck_store::Result<()> {
+            Err(snipdeck_store::Error::Corrupt("disk full".to_owned()))
+        }
+        fn search(&self, query: &str, limit: usize) -> snipdeck_store::Result<Vec<ItemId>> {
+            self.0.search(query, limit)
+        }
+    }
+
+    impl BlobStore for NoCount<'_> {
+        fn put(&mut self, bytes: Vec<u8>) -> snipdeck_store::Result<Content> {
+            self.0.put(bytes)
+        }
+        fn read<'a>(
+            &self,
+            content: &'a Content,
+        ) -> snipdeck_store::Result<std::borrow::Cow<'a, [u8]>> {
+            self.0.read(content)
+        }
+    }
+
+    #[test]
+    fn a_paste_that_happened_is_a_success_even_when_the_count_cannot_be_saved() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Text, false, "hello");
+        let request = World::request(id, UseMode::Paste, PASTE);
+        let mut env = Env {
+            clipboard: &mut w.clipboard,
+            keyboard: &mut w.keyboard,
+            timing: &mut w.timing,
+        };
+        let used = use_item(&mut NoCount(&mut w.store), &mut env, &request)
+            .expect("the paste happened: not an error");
+        assert_eq!(used.outcome, UseOutcome::Pasted);
+        assert!(
+            used.count_failed
+                .as_deref()
+                .is_some_and(|m| m.contains("disk full")),
+            "{:?}",
+            used.count_failed
+        );
+        assert_eq!(w.store.item(id).expect("item").use_count, 0, "not counted");
+        // A normal use reports nothing.
+        let ok = w.run(&request).expect("used");
+        assert_eq!(ok.count_failed, None);
     }
 
     #[test]

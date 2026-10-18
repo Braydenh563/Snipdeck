@@ -379,13 +379,13 @@ fn restore_is_an_import_that_recreates_boards_and_skips_what_exists() {
 
     // Into an empty library: everything comes back under its own board name.
     let mut fresh = store();
-    let report = restore(&mut fresh, &path, at(5), KeySource::Given(&key)).unwrap();
+    let report = restore(&mut fresh, &path, at(5), KeySource::Given(&key), None).unwrap();
     assert_eq!(report.items_added, 2);
     assert_same(&snapshot(&fresh), &snapshot(&original));
 
     // Over an intact library: nothing is added, no board is created.
     let mut intact = vault();
-    let report = restore(&mut intact, &path, at(5), KeySource::Given(&key)).unwrap();
+    let report = restore(&mut intact, &path, at(5), KeySource::Given(&key), None).unwrap();
     assert_eq!(
         (
             report.items_added,
@@ -398,10 +398,47 @@ fn restore_is_an_import_that_recreates_boards_and_skips_what_exists() {
 
     // Without the key the sensitive item is skipped with a warning, the rest restored.
     let mut keyless = store();
-    let report = restore(&mut keyless, &path, at(5), KeySource::None).unwrap();
+    let report = restore(&mut keyless, &path, at(5), KeySource::None, None).unwrap();
     assert_eq!((report.items_added, report.items_skipped), (1, 1));
     assert!(report.has_warnings());
     assert_eq!(keyless.all_items().unwrap().len(), 1);
+}
+
+/// PR 4 review 6: a restore obeys the board limit like any other import.
+#[test]
+fn restore_refuses_to_go_past_the_board_limit_and_changes_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    let key = DataKey::generate().unwrap();
+    let out = run_if_due(
+        &vault(),
+        dir.path(),
+        &local(2026, 10, 1, 1, 0, 0),
+        7,
+        Some(&key),
+    )
+    .unwrap();
+    let path = created(&out).to_owned();
+
+    // A library already at its limit of one board: the backup's board would be a second.
+    let mut full = store();
+    board(&mut full, "Mine");
+    let before = counts(&full);
+    let err = restore(&mut full, &path, at(5), KeySource::Given(&key), Some(1)).unwrap_err();
+    assert!(
+        matches!(
+            err,
+            snipdeck_portable::Error::Core(snipdeck_core::Error::ProRequired(
+                snipdeck_core::Feature::UnlimitedBoards
+            ))
+        ),
+        "{err}"
+    );
+    assert_eq!(counts(&full), before, "nothing was written");
+
+    // Within the limit it restores as usual.
+    let mut room = store();
+    let report = restore(&mut room, &path, at(5), KeySource::Given(&key), Some(1)).unwrap();
+    assert_eq!(report.boards_added, 1);
 }
 
 #[test]
