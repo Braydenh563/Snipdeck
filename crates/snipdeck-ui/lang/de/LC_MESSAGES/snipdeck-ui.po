@@ -14,7 +14,7 @@ msgid "Add list"
 msgstr "Liste hinzufügen"
 
 msgid "All"
-msgstr ""
+msgstr "Alle"
 
 msgid "Board: {}"
 msgstr "Board: {}"
@@ -23,19 +23,19 @@ msgid "Boards"
 msgstr "Boards"
 
 msgid "Cancel"
-msgstr ""
+msgstr "Abbrechen"
 
 msgid "Clear search"
 msgstr "Suche löschen"
 
 msgid "Close"
-msgstr ""
+msgstr "Schließen"
 
 msgid "Close panel"
 msgstr "Panel schließen"
 
 msgid "Control Enter"
-msgstr ""
+msgstr "Ctrl Enter"
 
 msgid "Copies to clipboard"
 msgstr "Wird in die Zwischenablage kopiert"
@@ -44,7 +44,7 @@ msgid "Copy"
 msgstr "Kopieren"
 
 msgid "Copy something, then save it from the Panel."
-msgstr ""
+msgstr "Kopiere etwas und speichere es dann im Panel."
 
 msgid "Copy something, then save it here from the clipboard."
 msgstr "Kopiere etwas und speichere es dann hier aus der Zwischenablage."
@@ -53,22 +53,22 @@ msgid "Enter"
 msgstr "Enter"
 
 msgid "Escape"
-msgstr ""
+msgstr "Esc"
 
 msgid "Fields"
-msgstr ""
+msgstr "Felder"
 
 msgid "Fill in template"
-msgstr ""
+msgstr "Vorlage ausfüllen"
 
 msgid "Hidden. Hold Space to reveal."
-msgstr ""
+msgstr "Verborgen. Halte die Leertaste gedrückt, um es anzuzeigen."
 
 msgid "Hidden. Open it in the Panel to reveal."
-msgstr ""
+msgstr "Verborgen. Öffne es im Panel, um es anzuzeigen."
 
 msgid "Insert"
-msgstr ""
+msgstr "Einfügen"
 
 msgid "Keep on top"
 msgstr "Immer im Vordergrund"
@@ -89,19 +89,19 @@ msgid "No matches"
 msgstr "Keine Treffer"
 
 msgid "No snippets yet"
-msgstr ""
+msgstr "Noch keine Textbausteine"
 
 msgid "Nothing matches “{}”."
-msgstr ""
+msgstr "Nichts passt zu „{}“."
 
 msgid "Nothing on this board matches “{}”."
 msgstr "Auf diesem Board passt nichts zu „{}“."
 
 msgid "Nothing pinned matches “{}”."
-msgstr ""
+msgstr "Kein angehefteter Textbaustein passt zu „{}“."
 
 msgid "Nothing pinned yet"
-msgstr ""
+msgstr "Noch nichts angeheftet"
 
 msgid "Paste"
 msgstr "Einfügen"
@@ -113,34 +113,34 @@ msgid "Pastes into {} · {}"
 msgstr "Einfügen in {} · {}"
 
 msgid "Pin a snippet from the Panel to find it here."
-msgstr ""
+msgstr "Hefte einen Textbaustein im Panel an, um ihn hier zu finden."
 
 msgid "Pinned"
-msgstr ""
+msgstr "Angeheftet"
 
 msgid "Pinned snippets"
 msgstr "Angeheftete Textbausteine"
 
 msgid "Preview"
-msgstr ""
+msgstr "Vorschau"
 
 msgid "Required"
-msgstr ""
+msgstr "Pflichtfeld"
 
 msgid "Results"
-msgstr ""
+msgstr "Ergebnisse"
 
 msgid "Save from clipboard"
 msgstr "Aus der Zwischenablage speichern"
 
 msgid "Scope"
-msgstr ""
+msgstr "Bereich"
 
 msgid "Search all snippets"
-msgstr ""
+msgstr "Alle Textbausteine durchsuchen"
 
 msgid "Search in"
-msgstr ""
+msgstr "Suchen in"
 
 msgid "Search snippets"
 msgstr "Textbausteine suchen"
@@ -155,13 +155,13 @@ msgid "Snippets"
 msgstr "Textbausteine"
 
 msgid "Tab"
-msgstr ""
+msgstr "Tab"
 
 msgid "This board"
-msgstr ""
+msgstr "Dieses Board"
 
 msgid "This field is required"
-msgstr ""
+msgstr "Dieses Feld ist erforderlich"
 
 msgid "This list is empty"
 msgstr "Diese Liste ist leer"
