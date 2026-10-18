@@ -13,6 +13,9 @@ msgstr "Eine Liste hält zusammengehörige Textbausteine beisammen, etwa Antwort
 msgid "Actions"
 msgstr "Aktionen"
 
+msgid "Activate"
+msgstr "Aktivieren"
+
 msgid "Add"
 msgstr "Hinzufügen"
 
@@ -31,6 +34,9 @@ msgstr "Alle"
 msgid "All items"
 msgstr "Alle Textbausteine"
 
+msgid "Also forget the encryption key"
+msgstr "Auch den Verschlüsselungsschlüssel vergessen"
+
 msgid "Amber"
 msgstr "Bernstein"
 
@@ -45,6 +51,15 @@ msgstr "Fragt jedes Mal nach einem Wert"
 
 msgid "Asks you to pick one of the options"
 msgstr "Lässt dich eine der Optionen auswählen"
+
+msgid "Back up now"
+msgstr "Jetzt sichern"
+
+msgid "Backup of {}, {}"
+msgstr "Sicherung vom {}, {}"
+
+msgid "Backups"
+msgstr "Sicherungen"
 
 msgid "Blue"
 msgstr "Blau"
@@ -184,6 +199,9 @@ msgstr "Dieses Schlagwort löschen?"
 msgid "Deleted items stay here for {} days before they are removed."
 msgstr "Gelöschte Textbausteine bleiben {} Tage hier, bevor sie entfernt werden."
 
+msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
+msgstr "Löscht alle Boards, Listen, Textbausteine und Sicherungen auf diesem PC. Das lässt sich nicht rückgängig machen."
+
 msgid "Discard"
 msgstr "Verwerfen"
 
@@ -220,11 +238,29 @@ msgstr "Papierkorb leeren?"
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Erase everything"
+msgstr "Alles löschen"
+
+msgid "Erase library"
+msgstr "Bibliothek löschen"
+
+msgid "Erase library…"
+msgstr "Bibliothek löschen…"
+
 msgid "Escape"
 msgstr "Esc"
 
+msgid "Every Pro feature is on. Thank you."
+msgstr "Alle Pro-Funktionen sind aktiv. Vielen Dank."
+
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr "Alles im Papierkorb wird endgültig gelöscht. Dies kann nicht rückgängig gemacht werden."
+
+msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
+msgstr "Alles in deiner Bibliothek wird gelöscht: Boards, Listen, Textbausteine, Bilder, Entwürfe und Sicherungen. Exportiere vorher, wenn du eine Kopie möchtest. Deine Einstellungen und deine Lizenz bleiben."
+
+msgid "Export library"
+msgstr "Bibliothek exportieren"
 
 msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
 msgstr "Holt das kleine Symbol jeder Website direkt von der Website. Standardmäßig aus, daher wird keine Anfrage gesendet."
@@ -238,6 +274,9 @@ msgstr "Datei"
 msgid "Fill in template"
 msgstr "Vorlage ausfüllen"
 
+msgid "Follow Windows"
+msgstr "Windows folgen"
+
 msgid "Follow Windows switches with your system setting."
 msgstr "Folgt dem Windows-Design gemäß deiner Systemeinstellung."
 
@@ -246,6 +285,9 @@ msgstr "Zum Beispiel E-Mail-Antworten"
 
 msgid "For example, Work"
 msgstr "Zum Beispiel Arbeit"
+
+msgid "Free plan"
+msgstr "Kostenloser Tarif"
 
 msgid "General"
 msgstr "Allgemein"
@@ -310,6 +352,12 @@ msgstr "Art"
 msgid "Language"
 msgstr "Sprache"
 
+msgid "Licence"
+msgstr "Lizenz"
+
+msgid "Licence key"
+msgstr "Lizenzschlüssel"
+
 msgid "Light"
 msgstr "Hell"
 
@@ -327,6 +375,9 @@ msgstr "Listen"
 
 msgid "Loading"
 msgstr "Wird geladen"
+
+msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
+msgstr "Protokolle werden nur geschrieben, wenn Snipdeck abstürzt, enthalten keine Inhalte von Textbausteinen und werden nirgendwohin gesendet."
 
 msgid "Make the panel narrower"
 msgstr "Panel schmaler machen"
@@ -381,6 +432,9 @@ msgstr "Neues Schlagwort"
 
 msgid "New tag, then Enter"
 msgstr "Neues Schlagwort, dann Enter"
+
+msgid "No backups yet."
+msgstr "Noch keine Sicherungen."
 
 msgid "No colour"
 msgstr "Keine Farbe"
@@ -445,6 +499,9 @@ msgstr "Einstellungen öffnen"
 msgid "Open Snipdeck"
 msgstr "Snipdeck öffnen"
 
+msgid "Open data folder"
+msgstr "Datenordner öffnen"
+
 msgid "Open the picker"
 msgstr "Auswahl öffnen"
 
@@ -454,6 +511,9 @@ msgstr "Optional: Die erste Zeile des Textes wird verwendet"
 msgid "Orange"
 msgstr "Orange"
 
+msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
+msgstr "Außerhalb dieses Ordners schreibt Snipdeck nur den Windows-Autostart-Eintrag (wenn du ihn einschaltest) und die Zwischenablage, wenn du einen Textbaustein verwendest."
+
 msgid "Panel menu"
 msgstr "Panel-Menü"
 
@@ -462,6 +522,9 @@ msgstr "Panelbreite"
 
 msgid "Paste"
 msgstr "Einfügen"
+
+msgid "Paste a licence key to turn on Pro. The key is checked on this PC and nothing is sent anywhere."
+msgstr "Füge einen Lizenzschlüssel ein, um Pro einzuschalten. Der Schlüssel wird auf diesem PC geprüft und nichts wird irgendwohin gesendet."
 
 msgid "Paste the next item"
 msgstr "Nächsten Textbaustein einfügen"
@@ -538,11 +601,17 @@ msgstr "Pflichtfeld"
 msgid "Restore"
 msgstr "Wiederherstellen"
 
+msgid "Restore the backup of {}"
+msgstr "Sicherung vom {} wiederherstellen"
+
 msgid "Results"
 msgstr "Ergebnisse"
 
 msgid "Rose"
 msgstr "Rosé"
+
+msgid "SNIP1."
+msgstr "SNIP1."
 
 msgid "Save"
 msgstr "Speichern"
@@ -552,6 +621,9 @@ msgstr "Aus der Zwischenablage speichern"
 
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr "Speichere deinen ersten Textbaustein oder kopiere etwas und speichere es aus der Zwischenablage."
+
+msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
+msgstr "Speichert alle Boards, Listen und Textbausteine als eine .snipdeck-Datei in deinem Ordner Dokumente."
 
 msgid "Scope"
 msgstr "Bereich"
@@ -604,6 +676,15 @@ msgstr "Schiefergrau"
 msgid "Snipdeck"
 msgstr "Snipdeck"
 
+msgid "Snipdeck Pro"
+msgstr "Snipdeck Pro"
+
+msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
+msgstr "Snipdeck hat kein Konto, keinen Server und keine Telemetrie und öffnet keinen Netzwerkport. Nichts, was du speicherst, verlässt diesen PC."
+
+msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
+msgstr "Snipdeck speichert einmal am Tag eine Kopie deiner Bibliothek und behält die neuesten 7. Beim Wiederherstellen wird Fehlendes zurückgeholt, nichts wird entfernt."
+
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck wartet im Infobereich, damit die Tastenkürzel nach der Anmeldung funktionieren."
 
@@ -649,8 +730,14 @@ msgstr "Text"
 msgid "The Trash is empty"
 msgstr "Der Papierkorb ist leer"
 
+msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
+msgstr "Der Schlüssel öffnet die verschlüsselten Textbausteine in früher gespeicherten Exporten. Wenn du ihn vergisst, lassen sich diese Textbausteine nie wieder öffnen."
+
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "Die Liste und ihre {} Textbausteine werden in den Papierkorb verschoben. Du kannst sie {} Tage lang wiederherstellen."
+
+msgid "The one setting that can make a network request is website icons. It is off unless you turn it on above."
+msgstr "Die einzige Einstellung, die eine Netzwerkanfrage auslösen kann, sind Website-Symbole. Sie ist aus, solange du sie oben nicht einschaltest."
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "Die ausgewählten Textbausteine werden endgültig gelöscht. Dies kann nicht rückgängig gemacht werden."
@@ -667,6 +754,9 @@ msgstr "Design"
 msgid "This board"
 msgstr "Dieses Board"
 
+msgid "This demo keeps nothing on disk, so there are no backups."
+msgstr "Diese Demo speichert nichts auf dem Datenträger, deshalb gibt es keine Sicherungen."
+
 msgid "This field is required"
 msgstr "Dieses Feld ist erforderlich"
 
@@ -682,6 +772,9 @@ msgstr "Kachelansicht"
 msgid "Title"
 msgstr "Titel"
 
+msgid "To remove everything, use Erase library above and then delete the folder."
+msgstr "Um alles zu entfernen, nutze oben „Bibliothek löschen“ und lösche danach den Ordner."
+
 msgid "Today's date"
 msgstr "Heutiges Datum"
 
@@ -693,6 +786,9 @@ msgstr "Aktiviere den Zwischenablageverlauf in den Einstellungen, um Kopiertes z
 
 msgid "Turn this off and closing the main window quits Snipdeck."
 msgstr "Wenn du das ausschaltest, beendet Snipdeck sich beim Schließen des Hauptfensters."
+
+msgid "Type {} to confirm"
+msgstr "Gib {} zur Bestätigung ein"
 
 msgid "Unpin"
 msgstr "Lösen"
@@ -718,8 +814,14 @@ msgstr "Wo der Textcursor nach dem Einfügen landet"
 msgid "Windows"
 msgstr "Windows"
 
+msgid "Your data"
+msgstr "Deine Daten"
+
 msgid "Your deck is empty"
 msgstr "Dein Deck ist leer"
+
+msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (the newest 7) and logs."
+msgstr "Deine Bibliothek liegt in einem Ordner, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (Boards, Listen, Textbausteine, Schlagwörter und der Papierkorb), blobs (Bilder, Dateien und langer Text), settings.json, dein Lizenzschlüssel, Sicherungen (die neuesten 7) und Protokolle."
 
 msgid "https://example.com"
 msgstr "https://example.com"

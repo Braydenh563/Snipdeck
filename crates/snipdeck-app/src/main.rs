@@ -28,6 +28,7 @@ use snipdeck_app::{
     platform::{self, Callbacks, Host, Start},
     screenshot,
     settings::{Settings, Theme},
+    settings_binding::{SettingsUi, SystemHost},
     settings_store::{FileSink, SettingsSaver},
 };
 use snipdeck_core::{Entitlements, Tier, Timestamp};
@@ -123,6 +124,10 @@ fn run(args: &Args) -> Result<(), String> {
     }
 
     select_backend()?;
+    // The interface language, before any window exists ("" follows the system).
+    if let Err(e) = slint::select_bundled_translation(&settings.language) {
+        eprintln!("snipdeck: no translation for {:?}: {e}", settings.language);
+    }
     let window = PanelWindow::new().map_err(|e| format!("creating the Panel: {e}"))?;
     let width = f32::from(u16::try_from(settings.panel_width).unwrap_or(320));
     window
@@ -171,6 +176,11 @@ fn run(args: &Args) -> Result<(), String> {
         }
     };
     let main_ui = Rc::new(MainUi::new(&controller));
+    let settings_ui = Rc::new(SettingsUi::new(
+        &controller,
+        settings_folder.clone(),
+        Rc::new(SystemHost::new(Rc::clone(&hotkeys))),
+    ));
     let binding = Controller::bind(
         &controller,
         &window,
@@ -179,6 +189,7 @@ fn run(args: &Args) -> Result<(), String> {
             chords_now,
             window.as_weak(),
             Rc::clone(&main_ui),
+            Rc::clone(&settings_ui),
         ),
     );
     BINDING.with(|b| *b.borrow_mut() = Some(binding.clone()));
@@ -275,6 +286,7 @@ fn effect_handler(
     chords_now: impl Fn() -> snipdeck_app::settings::Hotkeys + 'static,
     window: slint::Weak<PanelWindow>,
     main_ui: Rc<MainUi>,
+    settings_ui: Rc<SettingsUi>,
 ) -> impl Fn(&Effect) + 'static {
     move |effect| match effect {
         Effect::Quit => {
@@ -299,6 +311,11 @@ fn effect_handler(
         Effect::OpenMainWindow => {
             if let Err(e) = main_ui.open() {
                 eprintln!("snipdeck: cannot open the main window: {e}");
+            }
+        }
+        Effect::OpenSettings => {
+            if let Err(e) = settings_ui.open() {
+                eprintln!("snipdeck: cannot open the settings: {e}");
             }
         }
         Effect::DragWindow => {
@@ -412,13 +429,9 @@ fn open_library(args: &Args) -> Result<Library, String> {
         Ok(made) => snipdeck_app::trace!("real library; starter board made: {made}"),
         Err(e) => eprintln!("snipdeck: could not create the first board: {e}"),
     }
-    // The licence is not wired into the app yet: everyone is Free until it is.
-    Ok((
-        store,
-        settings,
-        Entitlements::new(Tier::Free),
-        persist.then_some(folder),
-    ))
+    // The saved licence key, checked again on every start; none or a bad one is the Free plan.
+    let entitlements = snipdeck_app::licence_store::entitlements(&folder, now);
+    Ok((store, settings, entitlements, persist.then_some(folder)))
 }
 
 /// Winit with the software renderer; the Panel and the other floating windows are created

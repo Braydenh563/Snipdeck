@@ -22,6 +22,7 @@ use snipdeck_store::{
 };
 
 mod main_ctl;
+mod settings_ctl;
 
 pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice};
 
@@ -103,6 +104,8 @@ pub enum Effect {
     SetHotkeysPaused(bool),
     /// Exit the app.
     Quit,
+    /// Open the Settings window, creating it the first time (the Panel menu's "Settings").
+    OpenSettings,
 }
 
 /// How far a toast is through its life (the Slint `ToastPhase`).

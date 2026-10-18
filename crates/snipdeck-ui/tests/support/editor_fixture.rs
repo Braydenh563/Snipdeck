@@ -3,7 +3,9 @@
 #![allow(dead_code, reason = "each test binary uses a subset of the fixtures")]
 
 use slint::{Color, Image, ModelRc, Rgba8Pixel, SharedPixelBuffer, SharedString, VecModel};
-use snipdeck_ui::{ChoiceEntry, HotkeySetting, ItemEditor, ListEditor, SettingsPage, TagManager};
+use snipdeck_ui::{
+    BackupRow, ChoiceEntry, HotkeySetting, ItemEditor, ListEditor, SettingsPage, TagManager,
+};
 
 pub fn strings(items: &[&str]) -> ModelRc<SharedString> {
     ModelRc::new(VecModel::from(
@@ -101,6 +103,18 @@ pub fn settings(ui: &SettingsPage) {
     ui.set_site_icons(false);
     ui.set_panel_width(320);
     ui.set_no_paste_apps(strings(&["keepass.exe", "1password.exe"]));
+    ui.set_pro(false);
+    ui.set_has_data_folder(true);
+    ui.set_backups(ModelRc::new(VecModel::from(vec![
+        BackupRow {
+            date: "2026-10-18".into(),
+            size: "34 KB".into(),
+        },
+        BackupRow {
+            date: "2026-10-17".into(),
+            size: "33 KB".into(),
+        },
+    ])));
 }
 
 pub fn tag_manager(ui: &TagManager) {

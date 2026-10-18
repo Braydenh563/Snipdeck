@@ -90,6 +90,32 @@ impl Store {
         ring_exists(&self.conn)
     }
 
+    /// The stored key record (the wrapped data key), if encryption was set up. It is safe to copy:
+    /// useless without the OS binding and the master password. Erasing a library uses it to keep
+    /// the key while everything else goes ([`Store::restore_key_record`]).
+    pub fn key_record(&self) -> Result<Option<KeyRecord>> {
+        if !ring_exists(&self.conn)? {
+            return Ok(None);
+        }
+        stored_record(&self.conn).map(Some)
+    }
+
+    /// Stores `record` as this library's key record, locked. Fails with
+    /// [`Error::AlreadyExists`] if a key ring exists; nothing changes on error.
+    pub fn restore_key_record(&mut self, record: &KeyRecord) -> Result<()> {
+        if self.key_ring_exists()? {
+            return Err(Error::AlreadyExists {
+                entity: "key ring",
+                id: "1".to_owned(),
+            });
+        }
+        self.conn.execute(
+            "INSERT INTO key_ring (id, record) VALUES (1, ?1)",
+            [record.as_bytes()],
+        )?;
+        Ok(())
+    }
+
     /// Sets up encryption of sensitive items (Pro): makes a new data key, stores the record
     /// that protects it (OS binding through `ring`'s provider, plus the master password if
     /// given), unlocks, and encrypts every sensitive item that is still in plain text.

@@ -10,7 +10,7 @@ use slint::Global;
 use snipdeck_platform::tray::TrayLabels;
 use snipdeck_ui::{PanelWindow, TrayTexts};
 
-use crate::toast::ToastMessage;
+use crate::toast::{LicenceProblem, ToastMessage};
 
 /// The tray menu's words in the language selected for the UI now (English until a bundled
 /// translation is selected). `window` is any window of the UI: Slint globals are reached
@@ -93,8 +93,58 @@ pub fn toast_text(message: &ToastMessage) -> String {
         ToastMessage::CrashedLastTime => {
             "Snipdeck closed unexpectedly last time. Open the log?".into()
         }
+        ToastMessage::LicenceAccepted => "Snipdeck Pro is on. Thank you.".into(),
+        ToastMessage::LicenceRejected(problem) => licence_problem_text(*problem).into(),
+        ToastMessage::BackupMade => "Backed up".into(),
+        ToastMessage::BackupFailed => "Couldn't make a backup.".into(),
+        ToastMessage::BackupRestored { items: 0 } => {
+            "Nothing to restore: your library already has everything in that backup.".into()
+        }
+        ToastMessage::BackupRestored { items: 1 } => "Restored 1 item from the backup".into(),
+        ToastMessage::BackupRestored { items } => format!("Restored {items} items from the backup"),
+        ToastMessage::RestoreFailed => "Couldn't restore that backup.".into(),
+        ToastMessage::Exported { file } => format!("Saved {file} in your Documents folder"),
+        ToastMessage::ExportFailed => "Couldn't export your library.".into(),
+        ToastMessage::LibraryErased => "Your library was erased.".into(),
+        ToastMessage::EraseFailed => {
+            "Couldn't erase everything. Quit Snipdeck and try again.".into()
+        }
+        ToastMessage::FolderNotOpened => "Couldn't open the folder.".into(),
+        ToastMessage::AutostartFailed => "Couldn't change the Windows start-up entry.".into(),
     }
 }
+
+/// Why a licence key was refused, in words (the toast and the line under the key field).
+#[must_use]
+pub const fn licence_problem_text(problem: LicenceProblem) -> &'static str {
+    match problem {
+        LicenceProblem::Empty => "Paste your licence key first.",
+        LicenceProblem::NotAKey => "That is not a Snipdeck licence key. A key starts with SNIP1.",
+        LicenceProblem::BadSignature => {
+            "That licence key is not valid. Check that you copied all of it."
+        }
+        LicenceProblem::NewerFormat => "That key needs a newer Snipdeck. Update and try again.",
+        LicenceProblem::WrongTier => "That key is not for Snipdeck Pro.",
+        LicenceProblem::NotSaved => {
+            "The key is valid but couldn't be saved, so Pro will be off next time."
+        }
+    }
+}
+
+/// The names of the interface languages Settings offers, each in its own language, after
+/// "Follow Windows". The tags are in [`LANGUAGE_TAGS`], in the same order.
+pub const LANGUAGE_NAMES: [&str; 7] = [
+    "English",
+    "Espa\u{f1}ol",
+    "Deutsch",
+    "Fran\u{e7}ais",
+    "Portugu\u{ea}s (Brasil)",
+    "\u{65e5}\u{672c}\u{8a9e}",
+    "\u{7b80}\u{4f53}\u{4e2d}\u{6587}",
+];
+
+/// The locale tags of [`LANGUAGE_NAMES`] (`settings.language`).
+pub const LANGUAGE_TAGS: [&str; 7] = ["en", "es", "de", "fr", "pt-BR", "ja", "zh-Hans"];
 
 /// The label of a toast's undo button.
 pub const UNDO_LABEL: &str = "Undo";

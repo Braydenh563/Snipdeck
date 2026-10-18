@@ -10,7 +10,8 @@
 // one tab stop with arrow keys. A shortcut recorder starts on Enter or Space and ends on Esc. Esc closes the page.
 import { Theme, Type, Space, Radius, Motion, Fonts, Palette, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
-import { Button, ButtonSize } from "components/button.slint";
+import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
+import { Toast, ToastKind, ToastPhase } from "components/feedback.slint";
 import { IconButton, IconButtonSize } from "components/icon-button.slint";
 import { TextField } from "components/text_field.slint";
 import { Toggle } from "components/choice.slint";
@@ -26,6 +27,12 @@ export struct HotkeySetting {
     value: string,
     // Non-empty when the recorded combination could not be registered; the message says why and who owns it.
     conflict: string,
+}
+
+// One backup file in the list: the day it was made and how big it is, both already in words.
+export struct BackupRow {
+    date: string,
+    size: string,
 }
 
 export component SettingsPage inherits Window {
@@ -53,6 +60,27 @@ export component SettingsPage inherits Window {
     in property <[string]> no-paste-apps;
     // Set by the host when `no-paste-app-added` was refused ("Already in the list").
     in property <string> no-paste-error;
+    // Whether this library is Pro (a valid licence key, or the demo).
+    in property <bool> pro: false;
+    // Set by the host when `licence-submitted` was refused; the same words as the toast.
+    in property <string> licence-error;
+    // False in the demo, which has no data folder: backups and the data tools are off.
+    in property <bool> has-data-folder: true;
+    // The daily backups, newest first.
+    in property <[BackupRow]> backups;
+    // The toast the host is showing (the page is a window of its own, so it shows the shared toast too).
+    in property <string> toast-text;
+    in property <ToastKind> toast-kind: ToastKind.neutral;
+    in property <ToastPhase> toast-phase: ToastPhase.hold;
+    // The "Erase library" confirmation is open.
+    in-out property <bool> erase-open: false;
+    // What is typed in the licence field, in the erase confirmation, and its key switch.
+    in-out property <string> licence-text;
+    in-out property <string> erase-text;
+    in-out property <bool> forget-key: false;
+    property <int> erase-focus: 0;
+    // What the confirmation must be typed as, exactly.
+    out property <string> erase-word: "DELETE";
 
     // `index` is the position in `hotkeys`.
     callback hotkey-recorded(index: int, combo: string);
@@ -65,6 +93,13 @@ export component SettingsPage inherits Window {
     callback panel-width-chosen(width: int);
     callback no-paste-app-added(name: string);
     callback no-paste-app-removed(index: int);
+    callback licence-submitted(key: string);
+    callback backup-now-requested();
+    callback backup-restore-requested(index: int);
+    callback open-data-folder-requested();
+    callback export-requested();
+    // The host checks `typed` again: only the exact word erases.
+    callback erase-confirmed(typed: string, forget-key: bool);
     callback close-requested();
 
     property <[string]> hotkey-names: [
@@ -82,6 +117,23 @@ export component SettingsPage inherits Window {
 
     function reveal-field(y: length, h: length) {
         page.reveal(y - page.absolute-position.y, h);
+    }
+
+    // The first entry of the language list, which the host cannot translate itself.
+    public pure function follow-windows-text() -> string {
+        return @tr("Follow Windows");
+    }
+
+    function close-erase() {
+        root.erase-open = false;
+        root.erase-text = "";
+        root.forget-key = false;
+    }
+
+    function submit-licence() {
+        if (root.licence-text != "") {
+            root.licence-submitted(root.licence-text);
+        }
     }
 
     function add-app() {
@@ -310,7 +362,259 @@ export component SettingsPage inherits Window {
                         }
                     }
                 }
+
+                FormSection {
+                    title: @tr("Licence");
+                    SettingRow {
+                        title: root.pro ? @tr("Snipdeck Pro") : @tr("Free plan");
+                        description: root.pro
+                            ? @tr("Every Pro feature is on. Thank you.")
+                            : @tr("Paste a licence key to turn on Pro. The key is checked on this PC and nothing is sent anywhere.");
+                    }
+                    if !root.pro: HorizontalLayout {
+                        spacing: Space.s2;
+                        licence-key := TextField {
+                            text <=> root.licence-text;
+                            horizontal-stretch: 1;
+                            label: @tr("Licence key");
+                            placeholder: @tr("SNIP1.");
+                            error: root.licence-error;
+                            monospace: true;
+                            accepted(t) => { root.submit-licence(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                        VerticalLayout {
+                            alignment: start;
+                            Button {
+                                text: @tr("Activate");
+                                variant: ButtonVariant.primary;
+                                clicked => { root.submit-licence(); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Backups");
+                    Text {
+                        text: @tr("Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: none;
+                    }
+                    if !root.has-data-folder: Text {
+                        text: @tr("This demo keeps nothing on disk, so there are no backups.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        wrap: word-wrap;
+                        accessible-role: none;
+                    }
+                    if root.has-data-folder && root.backups.length == 0: Text {
+                        text: @tr("No backups yet.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        accessible-role: none;
+                    }
+                    for backup[i] in root.backups: Rectangle {
+                        height: max(Space.hit + Space.s2, Type.line-base + Space.s3);
+                        accessible-role: list-item;
+                        accessible-label: @tr("Backup of {}, {}", backup.date, backup.size);
+                        Rectangle {
+                            y: parent.height - 1px;
+                            height: 1px;
+                            background: Theme.border-subtle;
+                        }
+                        HorizontalLayout {
+                            spacing: Space.s2;
+                            Text {
+                                horizontal-stretch: 1;
+                                min-width: 0px;
+                                text: backup.date;
+                                color: Theme.text-primary;
+                                font-family: Fonts.sans;
+                                font-size: Type.base;
+                                vertical-alignment: center;
+                                overflow: elide;
+                                accessible-role: none;
+                            }
+                            Text {
+                                text: backup.size;
+                                color: Theme.text-secondary;
+                                font-family: Fonts.sans;
+                                font-size: Type.sm;
+                                vertical-alignment: center;
+                                accessible-role: none;
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                Button {
+                                    text: @tr("Restore");
+                                    icon: Icons.arrow-counter-clockwise;
+                                    variant: ButtonVariant.ghost;
+                                    a11y-label: @tr("Restore the backup of {}", backup.date);
+                                    clicked => { root.backup-restore-requested(i); }
+                                    changed has-focus => {
+                                        if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    HorizontalLayout {
+                        spacing: Space.s2;
+                        alignment: start;
+                        Button {
+                            text: @tr("Back up now");
+                            enabled: root.has-data-folder;
+                            clicked => { root.backup-now-requested(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                        Button {
+                            text: @tr("Open data folder");
+                            icon: Icons.folder;
+                            enabled: root.has-data-folder;
+                            clicked => { root.open-data-folder-requested(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Your data");
+                    SettingRow {
+                        title: @tr("Export library");
+                        description: @tr("Saves every board, list and item as one .snipdeck file in your Documents folder.");
+                        Button {
+                            text: @tr("Export library");
+                            enabled: root.has-data-folder;
+                            clicked => { root.export-requested(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Erase library");
+                        description: @tr("Deletes every board, list, item and backup on this PC. This cannot be undone.");
+                        Button {
+                            text: @tr("Erase library…");
+                            icon: Icons.trash;
+                            variant: ButtonVariant.danger;
+                            enabled: root.has-data-folder && !root.erase-open;
+                            clicked => { root.erase-open = true; root.erase-focus += 1; }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if root.erase-open: VerticalLayout {
+                        spacing: Space.s2;
+                        padding-top: Space.s2;
+                        accessible-role: groupbox;
+                        accessible-label: @tr("Erase library");
+                        Text {
+                            text: @tr("Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay.");
+                            color: Theme.text-primary;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            wrap: word-wrap;
+                            accessible-role: none;
+                        }
+                        SettingRow {
+                            title: @tr("Also forget the encryption key");
+                            description: @tr("The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again.");
+                            Toggle {
+                                checked <=> root.forget-key;
+                                a11y-label: @tr("Also forget the encryption key");
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                        erase-typed := TextField {
+                            text <=> root.erase-text;
+                            focus-request: root.erase-focus;
+                            label: @tr("Type {} to confirm", root.erase-word);
+                            placeholder: root.erase-word;
+                            accepted(t) => {
+                                if (t == root.erase-word) {
+                                    root.erase-confirmed(t, root.forget-key);
+                                    root.close-erase();
+                                }
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: Space.s2;
+                            alignment: end;
+                            Button {
+                                text: @tr("Cancel");
+                                clicked => { root.close-erase(); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            Button {
+                                text: @tr("Erase everything");
+                                icon: Icons.trash;
+                                variant: ButtonVariant.danger;
+                                enabled: root.erase-text == root.erase-word;
+                                clicked => {
+                                    root.erase-confirmed(root.erase-text, root.forget-key);
+                                    root.close-erase();
+                                }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Privacy");
+                    for line in [
+                        @tr("Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."),
+                        @tr("Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (the newest 7) and logs."),
+                        @tr("Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."),
+                        @tr("The one setting that can make a network request is website icons. It is off unless you turn it on above."),
+                        @tr("Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."),
+                        @tr("To remove everything, use Erase library above and then delete the folder."),
+                    ]: Text {
+                        text: line;
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: none;
+                    }
+                }
             }
         }
+    }
+
+    if root.toast-text != "": Toast {
+        text: root.toast-text;
+        kind: root.toast-kind;
+        phase: root.toast-phase;
+        width: min(self.preferred-width, root.width - 2 * Space.s4);
+        height: self.preferred-height;
+        x: (root.width - self.width) / 2;
+        y: root.height - self.height - Space.s4;
     }
 }

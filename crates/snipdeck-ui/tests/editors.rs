@@ -267,6 +267,34 @@ fn settings_page_light_dark_and_scaled() {
 }
 
 #[test]
+fn settings_page_licence_backups_data_and_privacy() {
+    // Tall enough for every section.
+    let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
+    fixture::settings(&h.component);
+    assert_golden("settings-full-light", &render(&h));
+    drop(h);
+
+    let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
+    h.component.set_dark(true);
+    fixture::settings(&h.component);
+    h.component.set_pro(true);
+    h.component.set_erase_open(true);
+    h.component.set_toast_text("Backed up".into());
+    h.component.set_toast_kind(snipdeck_ui::ToastKind::Success);
+    assert_golden("settings-full-pro-erase-dark", &render(&h));
+    drop(h);
+
+    let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
+    fixture::settings(&h.component);
+    h.component.set_has_data_folder(false);
+    h.component.set_backups(ModelRc::new(VecModel::default()));
+    h.component.set_licence_error(
+        "That licence key is not valid. Check that you copied all of it.".into(),
+    );
+    assert_golden("settings-demo-light", &render(&h));
+}
+
+#[test]
 fn settings_page_conflict_empty_and_narrow() {
     let h = Harness::new(SettingsPage::new, 420, 900);
     fixture::settings(&h.component);
