@@ -359,13 +359,13 @@ ui_tests! {
 
     fn the_pin_button_toggles_keep_on_top() {
         let (ui, log) = start();
-        let pin = find(&ui, "Keep on top", AccessibleRole::Button);
+        let pin = find(&ui, "Keep panel on top", AccessibleRole::Button);
         assert_eq!(pin.accessible_checkable(), Some(true));
         assert_eq!(pin.accessible_checked(), Some(true), "the Panel is on top by default");
         pin.invoke_accessible_default_action();
         assert!(!ui.get_on_top());
         assert_eq!(take(&log), ["pin:false"]);
-        assert_eq!(find(&ui, "Keep on top", AccessibleRole::Button).accessible_checked(), Some(false));
+        assert_eq!(find(&ui, "Keep panel on top", AccessibleRole::Button).accessible_checked(), Some(false));
     }
 
     fn the_board_menu_opens_activates_and_closes_with_escape_without_closing_the_panel() {
@@ -516,7 +516,7 @@ ui_tests! {
     fn every_control_has_a_role_and_a_label() {
         let (ui, _log) = start();
         let _ = find(&ui, "Close panel", AccessibleRole::Button);
-        let _ = find(&ui, "Keep on top", AccessibleRole::Button);
+        let _ = find(&ui, "Keep panel on top", AccessibleRole::Button);
         let _ = find(&ui, "Board: Work", AccessibleRole::Button);
         let search = find(&ui, "Search snippets", AccessibleRole::TextInput);
         assert_eq!(search.accessible_placeholder_text().as_deref(), Some("Search snippets"));

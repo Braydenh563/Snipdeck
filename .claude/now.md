@@ -6,7 +6,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 - 2026-10-17: Owner allows exactly ONE focused Fable agent, once, at the end of full development before shipping (analyse the app, poke holes, fix bugs/security/architecture/front+back issues, polish and validate). Fable is used for nothing else; only if everything else is finished.
 - 2026-10-17: Overnight run authorised (away mode, work order continue); never merge; "maximum token-efficient, thorough, effective".
-- 2026-10-18: Always-on-top toggle in the Panel header uses Phosphor `push-pin-simple` (diagonal tack) so it differs from the `push-pin` used on pinned snippets; tooltip "Keep panel on top" / "Stop keeping on top", pressed = selected fill + accessible-checked. Reason: owner reported the pin read as "pin an item" and showed no state.
+- 2026-10-18: Always-on-top toggle in the Panel header uses Phosphor `push-pin-simple` (diagonal tack) so it differs from the `push-pin` used on pinned snippets; tooltip "Keep panel on top" (a stable name; the checked state says on/off), pressed = selected fill + accessible-checked. Reason: owner reported the pin read as "pin an item" and showed no state.
 - 2026-10-18: The owner said "you are fable btw": this session runs on Fable, so it IS the one permitted Fable agent. Step 4 (docs/fable-brief.md) is done by this session: Fable does analysis, design calls, security review and judgement; Sonnet/Haiku agents do the mechanical implementation with exact file/line instructions; no second Fable agent is spawned (that would be two). Token rules of the brief still apply to this session (grep CODEMAP, line ranges, no whole build logs).
 
 ## Inbox
