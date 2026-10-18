@@ -15,8 +15,9 @@ use i_slint_backend_testing::{AccessibleRole, ElementHandle};
 use slint::{ComponentHandle, Model, platform::Key};
 use snipdeck_app::{
     binding::Binding,
-    controller::{Controller, Effect, Services, TOAST_ENTER, TOAST_EXIT, TOAST_HOLD},
+    controller::{Controller, Effect, HelpTopic, Services, TOAST_ENTER, TOAST_EXIT, TOAST_HOLD},
     demo,
+    frame::{Edge, Monitor, Rect},
     host::{FakeTargets, FixedClock},
     settings::{HotkeyAction, Settings, Theme},
     settings_store::{FileSink, SettingsSaver},
@@ -646,6 +647,392 @@ fn a_changed_setting_is_written_when_the_quiet_timer_fires_on_the_injected_clock
             Theme::Dark
         );
         assert_eq!(r.ctl.borrow().settings_wait(), None);
+    });
+}
+
+// ---- The Panel menu (kebab), row actions and the window frame -------------------------------
+
+fn centre(element: &ElementHandle) -> slint::LogicalPosition {
+    let at = element.absolute_position();
+    let size = element.size();
+    slint::LogicalPosition::new(at.x + size.width / 2.0, at.y + size.height / 2.0)
+}
+
+/// Moves the pointer to `position` and lets the hover timers (the tooltip's delay) run.
+fn move_to(window: &slint::Window, position: slint::LogicalPosition) {
+    window.dispatch_event(slint::platform::WindowEvent::PointerMoved { position });
+    i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(700));
+    slint::platform::update_timers_and_animations();
+}
+
+/// A left click at `position`, the way the winit backend delivers one.
+fn click_at(window: &slint::Window, position: slint::LogicalPosition) {
+    let button = slint::platform::PointerEventButton::Left;
+    window.dispatch_event(slint::platform::WindowEvent::PointerMoved { position });
+    window.dispatch_event(slint::platform::WindowEvent::PointerPressed { position, button });
+    i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(50));
+    window.dispatch_event(slint::platform::WindowEvent::PointerReleased { position, button });
+    i_slint_backend_testing::mock_elapsed_time(Duration::from_secs(1));
+    slint::platform::update_timers_and_animations();
+}
+
+const MENU_ROWS: [&str; 8] = [
+    "Open Snipdeck",
+    "New snippet",
+    "Settings\u{2026}",
+    "Pause hotkeys",
+    "Troubleshoot\u{2026}",
+    "User guide",
+    "About Snipdeck",
+    "Quit",
+];
+
+fn open_menu(r: &Rig) {
+    r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+    slint::platform::update_timers_and_animations();
+    click(r.window(), &r.button("More"));
+    assert!(r.ui.get_app_menu_open(), "the kebab click opened the menu");
+}
+
+fn menu_row(r: &Rig, label: &str) -> ElementHandle {
+    element(&r.ui, label, AccessibleRole::ListItem)
+}
+
+#[test]
+fn the_kebab_menu_is_a_list_of_the_expected_rows_with_a_name_and_positions() {
+    on_ui_thread(|| {
+        let r = rig();
+        open_menu(&r);
+        let menu = element(&r.ui, "Panel menu", AccessibleRole::List);
+        assert!(menu.size().width > 0.0);
+        for (i, label) in MENU_ROWS.iter().enumerate() {
+            let row = menu_row(&r, label);
+            assert_eq!(row.accessible_item_index(), Some(i), "{label}");
+            assert_eq!(
+                row.accessible_item_count(),
+                Some(MENU_ROWS.len()),
+                "{label}"
+            );
+            assert_eq!(row.accessible_enabled(), Some(true), "{label}");
+        }
+    });
+}
+
+#[test]
+fn the_menu_is_still_open_after_the_pointer_moves_into_it_and_away_from_the_button() {
+    // The owner's report: "I hover over or click the meatball button, the More dropdown
+    // appears, and when I go to click it it disappears". What appeared was the tooltip.
+    on_ui_thread(|| {
+        let r = rig();
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        slint::platform::update_timers_and_animations();
+
+        // Hovering shows the tooltip "More" (and nothing else).
+        let kebab = r.button("More");
+        move_to(r.window(), centre(&kebab));
+        assert_eq!(r.ui.get_tooltip_shown(), "More");
+        assert!(!r.ui.get_app_menu_open(), "hovering does not open the menu");
+
+        click(r.window(), &kebab);
+        assert!(r.ui.get_app_menu_open());
+        assert_eq!(
+            r.ui.get_tooltip_shown(),
+            "",
+            "the tooltip gives way to the menu"
+        );
+
+        // Down into the menu, row by row, then off to the pin button, then over the list.
+        for label in ["Open Snipdeck", "Settings\u{2026}", "Quit"] {
+            move_to(r.window(), centre(&menu_row(&r, label)));
+            assert!(r.ui.get_app_menu_open(), "still open over {label}");
+        }
+        move_to(r.window(), centre(&r.button("Keep panel on top")));
+        assert!(r.ui.get_app_menu_open(), "still open away from the button");
+        assert_eq!(r.ui.get_tooltip_shown(), "", "no tooltip over an open menu");
+        move_to(r.window(), slint::LogicalPosition::new(20.0, 300.0));
+        assert!(r.ui.get_app_menu_open(), "moving never closes it");
+        assert!(r.ctl.borrow().view().app_menu.is_some());
+        assert_eq!(*r.effects.borrow(), []);
+
+        // And it can still be used.
+        click(r.window(), &menu_row(&r, "Settings\u{2026}"));
+        assert!(!r.ui.get_app_menu_open());
+        assert_eq!(*r.effects.borrow(), [Effect::OpenSettings]);
+    });
+}
+
+#[test]
+fn escape_closes_the_menu_without_closing_the_panel() {
+    on_ui_thread(|| {
+        let r = rig();
+        open_menu(&r);
+        press(r.window(), &key(Key::Escape));
+        assert!(!r.ui.get_app_menu_open());
+        assert!(r.ctl.borrow().view().app_menu.is_none());
+        assert!(
+            r.window().is_visible(),
+            "Esc closed the menu, not the Panel"
+        );
+        assert_eq!(*r.effects.borrow(), []);
+        assert!(r.ui.get_search_focused(), "typing goes to the search again");
+    });
+}
+
+#[test]
+fn a_click_outside_the_menu_closes_it_and_reaches_nothing_behind() {
+    on_ui_thread(|| {
+        let r = rig();
+        open_menu(&r);
+        let uses_before = r.ctl.borrow().services().clipboard.log.len();
+        // Over the first row, left of the menu.
+        let row = centre(&r.window_element_for_row());
+        click_at(r.window(), slint::LogicalPosition::new(24.0, row.y));
+        assert!(!r.ui.get_app_menu_open());
+        assert!(r.window().is_visible());
+        assert_eq!(
+            r.ctl.borrow().services().clipboard.log.len(),
+            uses_before,
+            "the click that dismissed the menu did not use the row under it"
+        );
+        assert_eq!(*r.effects.borrow(), []);
+    });
+}
+
+impl Rig {
+    /// Some element of the first row, for a click that lands on the list.
+    fn window_element_for_row(&self) -> ElementHandle {
+        let title = self.titles().remove(0);
+        ElementHandle::find_by_accessible_label(&self.ui, &title)
+            .next()
+            .expect("the first row")
+    }
+}
+
+#[test]
+fn quit_in_the_menu_yields_the_quit_effect() {
+    on_ui_thread(|| {
+        let r = rig();
+        open_menu(&r);
+        click(r.window(), &menu_row(&r, "Quit"));
+        assert_eq!(*r.effects.borrow(), [Effect::Quit]);
+        assert!(!r.ui.get_app_menu_open());
+    });
+}
+
+#[test]
+fn open_snipdeck_help_and_new_snippet_reach_the_host() {
+    on_ui_thread(|| {
+        let r = rig();
+        for label in [
+            "Open Snipdeck",
+            "New snippet",
+            "Troubleshoot\u{2026}",
+            "User guide",
+            "About Snipdeck",
+        ] {
+            open_menu(&r);
+            click(r.window(), &menu_row(&r, label));
+        }
+        assert_eq!(
+            *r.effects.borrow(),
+            [
+                Effect::OpenMainWindow,
+                Effect::NewItem,
+                Effect::OpenHelp(HelpTopic::Troubleshoot),
+                Effect::OpenHelp(HelpTopic::Guide),
+                Effect::OpenHelp(HelpTopic::About),
+            ]
+        );
+    });
+}
+
+#[test]
+fn pause_hotkeys_is_checked_while_paused() {
+    on_ui_thread(|| {
+        let r = rig();
+        open_menu(&r);
+        let checked = |r: &Rig| {
+            r.ui.get_app_menu_entries()
+                .row_data(3)
+                .expect("the Pause row")
+                .icon
+                .size()
+                .width
+                > 0
+        };
+        assert!(!checked(&r), "off: no check mark");
+        click(r.window(), &menu_row(&r, "Pause hotkeys"));
+        assert_eq!(*r.effects.borrow(), [Effect::SetHotkeysPaused(true)]);
+        assert!(r.ctl.borrow().hotkeys_paused());
+
+        click(r.window(), &r.button("More"));
+        assert!(checked(&r), "paused: checked");
+        click(r.window(), &menu_row(&r, "Pause hotkeys"));
+        assert_eq!(r.effects.borrow()[1], Effect::SetHotkeysPaused(false));
+        click(r.window(), &r.button("More"));
+        assert!(!checked(&r), "resumed: unchecked again");
+    });
+}
+
+fn right_grip(r: &Rig) -> slint::LogicalPosition {
+    let size = r.window().size().to_logical(r.window().scale_factor());
+    slint::LogicalPosition::new(size.width - 2.0, size.height / 2.0)
+}
+
+fn display() -> Monitor {
+    Monitor {
+        id: Monitor::id_of("DISPLAY1", 1920, 1080),
+        work_area: Rect {
+            x: 0,
+            y: 0,
+            w: 1920,
+            h: 1040,
+        },
+        scale: 1.0,
+    }
+}
+
+#[test]
+fn a_press_on_the_right_edge_asks_the_host_to_resize_from_that_edge() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        slint::platform::update_timers_and_animations();
+        let position = right_grip(&r);
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerMoved { position });
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerPressed {
+                position,
+                button: slint::platform::PointerEventButton::Left,
+            });
+        assert_eq!(*r.effects.borrow(), [Effect::ResizeWindow(Edge::Right)]);
+    });
+}
+
+#[test]
+fn a_resize_to_1000_wide_is_cut_to_480_placed_and_remembered_for_that_monitor() {
+    on_ui_thread(|| {
+        let r = rig();
+        let temp = tempfile::tempdir().expect("dir");
+        r.ctl.borrow_mut().set_settings_saver(SettingsSaver::new(
+            Box::new(FileSink::new(temp.path())),
+            Settings::default(),
+        ));
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+
+        // The OS resize loop ended with a frame 1000 wide (what a host fake reports).
+        let m = display();
+        r.binding.frame_changed(
+            &m,
+            Rect {
+                x: 200,
+                y: 100,
+                w: 1000,
+                h: 600,
+            },
+        );
+        let cut = Rect {
+            x: 200,
+            y: 100,
+            w: 480,
+            h: 600,
+        };
+        assert_eq!(*r.effects.borrow(), [Effect::PlaceWindow(cut)]);
+        assert_eq!(
+            (r.window().size().width, r.window().size().height),
+            (480, 600),
+            "the window was put at the clamped size"
+        );
+        assert_eq!(r.ctl.borrow().placement(&m), Some(cut));
+
+        // Written after the quiet time.
+        r.clock.set(at("2026-10-17T10:30:00.5Z"));
+        i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(600));
+        slint::platform::update_timers_and_animations();
+        let stored = snipdeck_app::paths::load_settings(temp.path()).panel_geometry;
+        assert_eq!(stored.len(), 1);
+        assert_eq!(stored[0].monitor_id, m.id);
+        assert_eq!(Rect::of(&stored[0]), cut);
+    });
+}
+
+#[test]
+fn showing_the_panel_puts_it_where_the_user_left_it_on_that_monitor() {
+    on_ui_thread(|| {
+        let r = rig();
+        let m = display();
+        let kept = Rect {
+            x: 300,
+            y: 120,
+            w: 410,
+            h: 700,
+        };
+        r.binding.frame_changed(&m, kept);
+        assert_eq!(*r.effects.borrow(), [], "inside the limits: nothing to fix");
+
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        r.binding.restore_frame(&m);
+        assert_eq!(*r.effects.borrow(), [Effect::PlaceWindow(kept)]);
+        assert_eq!(
+            (r.window().size().width, r.window().size().height),
+            (410, 700)
+        );
+        // The testing backend has no desktop, so it keeps no window position: the position
+        // part of `PlaceWindow` is carried by the effect (asserted above) and only the real
+        // window can show it.
+
+        r.effects.borrow_mut().clear();
+        let other = Monitor {
+            id: Monitor::id_of("DISPLAY2", 1280, 1024),
+            ..m
+        };
+        r.binding.restore_frame(&other);
+        assert_eq!(
+            *r.effects.borrow(),
+            [],
+            "nothing stored for another monitor"
+        );
+    });
+}
+
+#[test]
+fn delete_trashes_the_selected_row_and_the_toasts_undo_brings_it_back() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        slint::platform::update_timers_and_animations();
+        let before = r.titles();
+        let gone = before[0].clone();
+
+        press(r.window(), &key(Key::Delete));
+        assert_eq!(r.titles(), before[1..], "{gone:?} is out of the list");
+        assert_eq!(r.ui.get_toast_undo_label(), "Undo");
+        assert_eq!(*r.effects.borrow(), []);
+
+        r.button("Undo").invoke_accessible_default_action();
+        assert_eq!(r.titles(), before, "undo brought it back, in its place");
+        assert_eq!(
+            r.ui.get_toast_undo_label(),
+            "",
+            "a Restored toast has no Undo"
+        );
+    });
+}
+
+#[test]
+fn edit_and_rename_on_the_selected_row_ask_for_the_quick_editor() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        slint::platform::update_timers_and_animations();
+        let id = r.ctl.borrow().model().rows()[0].id;
+        chord(r.window(), &[Key::Control], "e");
+        press(r.window(), &key(Key::F2));
+        assert_eq!(
+            *r.effects.borrow(),
+            [Effect::EditItem(id), Effect::EditItem(id)]
+        );
     });
 }
 

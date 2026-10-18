@@ -108,6 +108,23 @@ pub const fn use_label_text(label: crate::panel::UseLabel) -> &'static str {
     }
 }
 
+/// The words of a row of the Panel's kebab menu.
+#[must_use]
+pub const fn app_menu_text(entry: crate::controller::AppMenuEntry) -> &'static str {
+    use crate::controller::AppMenuEntry;
+    match entry {
+        AppMenuEntry::Open => "Open Snipdeck",
+        AppMenuEntry::NewSnippet => "New snippet",
+        AppMenuEntry::Settings => "Settings\u{2026}",
+        AppMenuEntry::PauseHotkeys => "Pause hotkeys",
+        AppMenuEntry::Separator => "",
+        AppMenuEntry::Troubleshoot => "Troubleshoot\u{2026}",
+        AppMenuEntry::UserGuide => "User guide",
+        AppMenuEntry::About => "About Snipdeck",
+        AppMenuEntry::Quit => "Quit",
+    }
+}
+
 /// The words of a board menu entry.
 #[must_use]
 pub fn board_menu_text(entry: &crate::controller::BoardMenuEntry) -> String {

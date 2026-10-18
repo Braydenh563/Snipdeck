@@ -21,6 +21,7 @@ machine.
 
 **v1 push (2026-10-18)**
 - Main window, item/list/board editors, tag manager and Settings page (`snipdeck-ui`), merged from the main-window branch.
+- Panel: the "More" (kebab) menu now works (Open Snipdeck, New snippet, Settings, Pause hotkeys, Help, Quit), the edge and corner grips resize the window (260 to 480 wide, remembered per monitor in `panel_geometry`), and Delete / Ctrl+E / F2 on a row act (Delete goes to the Trash with a 5 s Undo). Written on Linux; the OS resize and the per-monitor restore are unverified on Windows.
 - Panel: the always-on-top toggle is a distinct `push-pin-simple` icon with a stable "Keep panel on top" label and tooltips on the header buttons.
 - `snipdeck-keygen` (tools/): `genkey`, `sign`, `verify` for friends' licence keys; the signer moved into `snipdeck-core` behind the `keygen` feature.
 - GitHub: RustSec `cargo audit` daily, Dependabot (cargo + actions), and a Windows portable-zip build (dev build on main, release build with SHA-256 on `v*` tags).

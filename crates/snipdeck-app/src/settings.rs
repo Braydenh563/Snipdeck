@@ -13,6 +13,27 @@ pub const PANEL_WIDTH: std::ops::RangeInclusive<u32> = 260..=480;
 /// The Panel's default width.
 pub const PANEL_WIDTH_DEFAULT: u32 = 320;
 
+/// How many monitors' Panel geometry is remembered.
+pub const PANEL_GEOMETRY_LIMIT: usize = 16;
+/// The largest Panel side stored, in physical pixels (a hand-edited file cannot ask for more).
+const PANEL_SIDE_LIMIT: u32 = 16_384;
+
+/// Where the Panel sat on one monitor the last time the user moved or resized it. Physical
+/// pixels in desktop coordinates, as the OS reports them; `monitor_id` names the monitor.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PanelGeometry {
+    /// The monitor this is for (its device name and size, see `frame::Monitor::id`).
+    pub monitor_id: String,
+    /// Left edge.
+    pub x: i32,
+    /// Top edge.
+    pub y: i32,
+    /// Width.
+    pub w: u32,
+    /// Height.
+    pub h: u32,
+}
+
 /// What a global hotkey does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HotkeyAction {
@@ -158,6 +179,9 @@ pub struct Settings {
     pub close_to_tray: bool,
     /// Panel width in logical pixels.
     pub panel_width: u32,
+    /// Where the Panel sat on each monitor it was moved or resized on; wins over `panel_width`
+    /// there. Absent in older files.
+    pub panel_geometry: Vec<PanelGeometry>,
     /// Executable names that never receive an auto-paste (lower case).
     pub no_paste_apps: Vec<String>,
     /// Fetch site icons for links. Off by default: Snipdeck makes no network calls unless asked.
@@ -174,6 +198,7 @@ impl Default for Settings {
             autostart: false,
             close_to_tray: true,
             panel_width: PANEL_WIDTH_DEFAULT,
+            panel_geometry: Vec::new(),
             no_paste_apps: Vec::new(),
             site_icons: false,
         }
@@ -224,6 +249,7 @@ impl Settings {
         field!(autostart);
         field!(close_to_tray);
         field!(panel_width);
+        field!(panel_geometry);
         // Element by element: one bad entry must not drop the whole list, or auto-paste would
         // go into the apps the user excluded.
         match map.get("no_paste_apps") {
@@ -259,6 +285,7 @@ impl Settings {
         self.panel_width = self
             .panel_width
             .clamp(*PANEL_WIDTH.start(), *PANEL_WIDTH.end());
+        self.sanitize_panel_geometry();
         let mut seen = std::collections::BTreeSet::new();
         self.no_paste_apps = self
             .no_paste_apps
@@ -281,6 +308,34 @@ impl Settings {
                 self.hotkeys.slot(action).clear();
             }
         }
+    }
+
+    /// Keeps one usable entry per monitor, the newest last, and at most
+    /// [`PANEL_GEOMETRY_LIMIT`] of them.
+    fn sanitize_panel_geometry(&mut self) {
+        let mut kept: Vec<PanelGeometry> = Vec::new();
+        for mut g in std::mem::take(&mut self.panel_geometry) {
+            let id = g.monitor_id.trim();
+            if id.is_empty() || g.w == 0 || g.h == 0 {
+                continue;
+            }
+            g.monitor_id = id.into();
+            g.w = g.w.min(PANEL_SIDE_LIMIT);
+            g.h = g.h.min(PANEL_SIDE_LIMIT);
+            kept.retain(|k| k.monitor_id != g.monitor_id);
+            kept.push(g);
+        }
+        let extra = kept.len().saturating_sub(PANEL_GEOMETRY_LIMIT);
+        kept.drain(..extra);
+        self.panel_geometry = kept;
+    }
+
+    /// Remembers `geometry` for its monitor as the newest entry (call [`sanitize`](Self::sanitize)
+    /// after, or go through the controller, which does).
+    pub fn remember_panel_geometry(&mut self, geometry: PanelGeometry) {
+        self.panel_geometry
+            .retain(|g| g.monitor_id != geometry.monitor_id);
+        self.panel_geometry.push(geometry);
     }
 
     /// Actions that share a chord.
@@ -354,6 +409,63 @@ mod tests {
         assert_eq!(
             Settings::from_json(r#"{"panel_width":9999}"#).panel_width,
             480
+        );
+    }
+
+    #[test]
+    fn an_old_file_without_panel_geometry_loads_with_none() {
+        let settings = Settings::from_json(r#"{"version":1,"panel_width":300}"#);
+        assert!(settings.panel_geometry.is_empty());
+        assert_eq!(settings.panel_width, 300);
+    }
+
+    #[test]
+    fn panel_geometry_round_trips() {
+        let mut settings = Settings::default();
+        settings.remember_panel_geometry(PanelGeometry {
+            monitor_id: "DISPLAY1".into(),
+            x: -1920,
+            y: 40,
+            w: 400,
+            h: 700,
+        });
+        let back = Settings::from_json(&settings.to_json());
+        assert_eq!(back.panel_geometry, settings.panel_geometry);
+    }
+
+    #[test]
+    fn panel_geometry_keeps_one_usable_entry_per_monitor_and_a_bounded_list() {
+        let entry = |id: &str, w: u32| PanelGeometry {
+            monitor_id: id.into(),
+            x: 0,
+            y: 0,
+            w,
+            h: 500,
+        };
+        let mut settings = Settings {
+            panel_geometry: vec![
+                entry("A", 300),
+                entry(" ", 300),
+                entry("B", 0),
+                entry("A", 350),
+                entry("C", 99_999),
+            ],
+            ..Settings::default()
+        };
+        settings.sanitize();
+        let ids: Vec<_> = settings
+            .panel_geometry
+            .iter()
+            .map(|g| (g.monitor_id.as_str(), g.w))
+            .collect();
+        assert_eq!(ids, [("A", 350), ("C", 16_384)]);
+
+        settings.panel_geometry = (0..40).map(|i| entry(&format!("M{i}"), 300)).collect();
+        settings.sanitize();
+        assert_eq!(settings.panel_geometry.len(), PANEL_GEOMETRY_LIMIT);
+        assert_eq!(
+            settings.panel_geometry.last().expect("last").monitor_id,
+            "M39"
         );
     }
 
