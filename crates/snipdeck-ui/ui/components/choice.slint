@@ -16,6 +16,7 @@ export component Toggle inherits Rectangle {
     // Spoken label when there is no visible text.
     in property <string> a11y-label;
     in property <bool> enabled: true;
+    out property <bool> has-focus: scope.has-focus;
     callback toggled(bool);
 
     property <bool> pressed: touch.pressed && root.enabled;

@@ -1,4 +1,4 @@
-import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Theme, Type, Radius, Space, Motion, Fonts, SystemLook } from "../theme.slint";
 import { Icon } from "icon.slint";
 import { StateColor } from "state-color.slint";
 
@@ -16,12 +16,13 @@ export component Button inherits Rectangle {
     in property <bool> loading: false;
     // Overrides the spoken label (icon-only usage); defaults to `text`.
     in property <string> a11y-label;
+    out property <bool> has-focus: scope.has-focus;
     callback clicked();
 
     property <bool> active: root.enabled && !root.loading;
-    // 24 / 28 / 32px, and one text line plus padding when the text size is larger.
-    property <length> height-px: max(root.size == ButtonSize.sm ? 24px : root.size == ButtonSize.md ? 28px : 32px,
-        (root.size == ButtonSize.sm ? Type.line-sm : Type.line-base) + Space.s2);
+    // 24 / 28 / 32, and taller once the Windows text size makes the label taller (equal at 100%).
+    property <length> height-px: root.size == ButtonSize.sm ? max(24px, Type.line-sm + Space.s2)
+        : root.size == ButtonSize.md ? max(28px, Type.line-base + Space.s2) : max(32px, Type.line-base + Space.s3);
     property <length> pad: root.size == ButtonSize.sm ? Space.s2 : root.size == ButtonSize.md ? Space.s3 : Space.s4;
     property <bool> pressed: touch.pressed && root.active;
     property <bool> hovered: touch.has-hover && root.active;
@@ -60,6 +61,7 @@ export component Button inherits Rectangle {
         if root.icon.width > 0: Icon {
             source: root.icon;
             tint: root.fg;
+            size: Space.s4 * SystemLook.text-scale;
             y: (parent.height - self.height) / 2;
         }
         Text {

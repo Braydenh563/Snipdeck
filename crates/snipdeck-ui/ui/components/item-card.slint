@@ -150,6 +150,11 @@ export component ItemCard inherits Rectangle {
     // False in a list that keeps keyboard focus elsewhere (the Panel's search field drives the
     // selection): the card is then not a Tab stop. It stays operable through assistive technology.
     in property <bool> keyboard-focusable: true;
+    // Selection mode (the main window): a click reports `picked(shift, control)` instead of using the item, and a
+    // double click uses it. The panel leaves this off: one click uses.
+    in property <bool> pick-mode: false;
+    // Draws the keyboard focus ring although the card is not the focus owner (the list's cursor row).
+    in property <bool> show-focus: false;
 
     callback use();
     callback copy();
@@ -159,6 +164,8 @@ export component ItemCard inherits Rectangle {
     callback context-menu-requested(length, length);
     // A sensitive item's press-and-hold began (true) or ended (false).
     callback reveal-requested(bool);
+    // `pick-mode` only: a plain click, with the Shift and Ctrl (Cmd) modifiers held at the click.
+    callback picked(bool, bool);
 
     // The used feedback: lift 2px over `Motion.quick`, number becomes a check, settle back over
     // `Motion.settle` after the hold. Reduced motion: no translation, the check swap only.
@@ -188,7 +195,7 @@ export component ItemCard inherits Rectangle {
     property <bool> reveal-armed: false;
     property <bool> shown: !root.sensitive || root.revealed || root.held-reveal;
     property <bool> hovered: touch.has-hover;
-    property <bool> focused: scope.has-focus;
+    property <bool> focused: scope.has-focus || root.show-focus;
     property <bool> label-visible: root.use-label != "" && (root.hovered || root.focused || root.show-use-label);
     property <bool> mono-preview: root.kind == ItemKind.code || root.kind == ItemKind.link || root.sensitive;
     property <string> shown-preview: root.sensitive && !root.shown ? root.masked-preview : root.preview;
@@ -543,7 +550,14 @@ export component ItemCard inherits Rectangle {
     }
 
     touch := TouchArea {
-        double-clicked => { root.double-clicked(); }
+        double-clicked => {
+            if (root.pick-mode) {
+                root.pull();
+                root.use();
+            } else {
+                root.double-clicked();
+            }
+        }
         pointer-event(event) => {
             if (event.button == PointerEventButton.left) {
                 if (event.kind == PointerEventKind.down) {
@@ -561,11 +575,15 @@ export component ItemCard inherits Rectangle {
                         root.held-reveal = false;
                         root.reveal-requested(false);
                     } else if (touch.mouse-x >= 0 && touch.mouse-x <= touch.width && touch.mouse-y >= 0 && touch.mouse-y <= touch.height) {
-                        root.pull();
-                        if (event.modifiers.shift) {
-                            root.copy();
+                        if (root.pick-mode) {
+                            root.picked(event.modifiers.shift, event.modifiers.control || event.modifiers.meta);
                         } else {
-                            root.use();
+                            root.pull();
+                            if (event.modifiers.shift) {
+                                root.copy();
+                            } else {
+                                root.use();
+                            }
                         }
                     }
                 }

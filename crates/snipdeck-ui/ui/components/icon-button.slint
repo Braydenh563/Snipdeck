@@ -1,4 +1,4 @@
-import { Theme, Radius, Space, Motion } from "../theme.slint";
+import { Theme, Radius, Space, Motion, SystemLook } from "../theme.slint";
 import { Icon } from "icon.slint";
 import { StateColor } from "state-color.slint";
 
@@ -18,11 +18,15 @@ export component IconButton inherits Rectangle {
     in property <bool> enabled: true;
     // Toggle-style buttons (pin, preview) show an "on" state with a selected fill.
     in property <bool> active: false;
+    // Grows with the Windows text size (`SystemLook.text-scale`), like text and Button do. Off by default so
+    // the panel and the galleries keep their sizes.
+    in property <bool> scaled: false;
     out property <bool> has-hover: touch.has-hover && root.enabled;
     out property <bool> has-focus: scope.has-focus;
     callback clicked();
 
-    property <length> side: root.size == IconButtonSize.sm ? Space.hit-min : Space.hit;
+    property <float> k: root.scaled ? SystemLook.text-scale : 1.0;
+    property <length> side: (root.size == IconButtonSize.sm ? Space.hit-min : Space.hit) * root.k;
     property <bool> pressed: touch.pressed && root.enabled;
     property <bool> hovered: touch.has-hover && root.enabled;
 
@@ -45,7 +49,7 @@ export component IconButton inherits Rectangle {
 
     Icon {
         source: root.icon;
-        size: root.size == IconButtonSize.sm ? 16px : 20px;
+        size: (root.size == IconButtonSize.sm ? 16px : 20px) * root.k;
         tint: root.hovered || root.pressed || root.active ? Theme.text-primary : Theme.text-secondary;
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;

@@ -174,7 +174,7 @@ fn pointer_clicks_on_every_header_control_reach_the_controller() {
         r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
         slint::platform::update_timers_and_animations();
 
-        click(r.window(), &r.button("Keep on top"));
+        click(r.window(), &r.button("Keep panel on top"));
         assert!(
             !r.ctl.borrow().view().on_top,
             "the pin click reached the controller"
@@ -379,7 +379,7 @@ fn the_close_button_hides_and_the_pin_button_reaches_the_controller() {
     on_ui_thread(|| {
         let r = rig();
         assert!(r.ctl.borrow().view().on_top);
-        r.button("Keep on top").invoke_accessible_default_action();
+        r.button("Keep panel on top").invoke_accessible_default_action();
         assert!(!r.ctl.borrow().view().on_top);
         assert!(!r.ui.get_on_top());
         r.button("Close panel").invoke_accessible_default_action();

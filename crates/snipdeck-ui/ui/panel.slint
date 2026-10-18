@@ -516,9 +516,11 @@ export component PanelWindow inherits Window {
                         menu-requested => { root.board-menu-requested(); }
                     }
                     Rectangle { horizontal-stretch: 1; }
+                    // Always-on-top toggle. A diagonal tack (`push-pin-simple`), not the `push-pin`
+                    // used on pinned snippets, so it does not read as "pin this item".
                     pin := IconButton {
-                        icon: Icons.push-pin;
-                        tooltip: @tr("Keep on top");
+                        icon: Icons.push-pin-simple;
+                        tooltip: @tr("Keep panel on top");
                         active: root.on-top;
                         accessible-checkable: true;
                         accessible-checked: root.on-top;
@@ -778,6 +780,36 @@ export component PanelWindow inherits Window {
                 }
             }
         }
+    }
+
+    // ---- Tooltips for the header icon buttons (500ms rest, instant between buttons) -------------
+    property <string> tip: pin.has-hover || pin.has-focus ? pin.tooltip
+        : close.has-hover || close.has-focus ? close.tooltip : "";
+    property <length> tip-x: pin.has-hover || pin.has-focus ? pin.absolute-position.x : close.absolute-position.x;
+    property <bool> tip-open: false;
+    changed tip => {
+        if (root.tip == "") {
+            root.tip-open = false;
+            tip-timer.running = false;
+        } else if (!root.tip-open) {
+            tip-timer.running = true;
+        }
+    }
+    tip-timer := Timer {
+        interval: 500ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.tip-open = root.tip != "";
+        }
+    }
+    if root.tip != "": Tooltip {
+        text: root.tip;
+        open: root.tip-open;
+        x: min(root.tip-x, root.width - self.preferred-width - Space.s2);
+        y: root.header-h - Space.s1;
+        width: self.preferred-width;
+        height: self.preferred-height;
     }
 
     // ---- The board menu: a scrim that dismisses on click, and the menu under the header ----------

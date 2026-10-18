@@ -11,6 +11,10 @@ export component Swatch inherits Rectangle {
     in property <string> label;
     in property <bool> selected: false;
     in property <bool> enabled: true;
+    // A group that moves the focus itself (one tab stop, arrow keys) sets `keyboard-focusable: false` and draws
+    // the ring on the focused swatch with `show-focus`.
+    in property <bool> keyboard-focusable: true;
+    in property <bool> show-focus: false;
     callback clicked();
 
     property <bool> pressed: touch.pressed && root.enabled;
@@ -62,7 +66,7 @@ export component Swatch inherits Rectangle {
         y: -4px;
         width: parent.width + 8px;
         height: parent.height + 8px;
-        border-width: scope.has-focus ? 2px : 0px;
+        border-width: scope.has-focus || root.show-focus ? 2px : 0px;
         border-color: Theme.focus-ring;
         border-radius: Radius.lg + 2px;
         background: transparent;
@@ -74,7 +78,7 @@ export component Swatch inherits Rectangle {
     }
 
     scope := FocusScope {
-        enabled: root.enabled;
+        enabled: root.enabled && root.keyboard-focusable;
         focus-on-click: false;
         key-pressed(event) => {
             if (event.text == " " || event.text == "\n") {

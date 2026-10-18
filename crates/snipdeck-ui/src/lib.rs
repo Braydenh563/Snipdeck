@@ -17,4 +17,6 @@ mod generated {
 }
 pub use generated::*;
 
+pub mod fonts;
+pub mod selection;
 pub mod testing;

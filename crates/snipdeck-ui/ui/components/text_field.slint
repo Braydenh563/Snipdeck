@@ -48,6 +48,8 @@ export component TextField inherits VerticalLayout {
     in property <image> leading-icon;
     // Shows a clear button while `text` is not empty; Esc then clears too (SearchField turns this on).
     in property <bool> clearable: false;
+    // Code and other text that must line up: IBM Plex Mono instead of the UI family.
+    in property <bool> monospace: false;
     // Accessible name of the clear button.
     in property <string> clear-label;
     // Forced visual states for galleries and screenshots. Real hover, focus and composition set them by themselves.
@@ -171,10 +173,15 @@ export component TextField inherits VerticalLayout {
                 padding-top: root.pad-y;
                 padding-bottom: root.pad-y;
                 spacing: Space.s2;
-                if root.leading-icon.width > 0: Icon {
-                    source: root.leading-icon;
-                    tint: Theme.text-secondary;
-                    y: root.single-line ? (parent.height - self.height) / 2 : (root.line-h - self.height) / 2;
+                // A slot as wide as the glyph; the glyph centres in it, on the first line (a layout would pin it
+                // to the top at large text sizes).
+                if root.leading-icon.width > 0: Rectangle {
+                    width: lead-icon.width;
+                    lead-icon := Icon {
+                        source: root.leading-icon;
+                        tint: Theme.text-secondary;
+                        y: ((root.single-line ? parent.height : root.line-h) - self.height) / 2;
+                    }
                 }
                 viewport := Rectangle {
                     horizontal-stretch: 1;
@@ -200,7 +207,7 @@ export component TextField inherits VerticalLayout {
                             read-only: root.read-only;
                             input-type: root.input-type;
                             color: Theme.text-primary;
-                            font-family: Fonts.sans;
+                            font-family: root.monospace ? Fonts.mono : Fonts.sans;
                             font-size: Type.base;
                             font-weight: Type.regular;
                             text-cursor-width: root.caret-w;

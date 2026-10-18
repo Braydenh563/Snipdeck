@@ -1,0 +1,316 @@
+// The Settings page of the Main window (SPEC §5, snipdeck-core `Settings`): the four global shortcuts, theme,
+// language, start with Windows, close to tray, panel width, apps the panel never pastes into, and site icons.
+//
+// Every change applies at once (no Save button): the page reports it as a callback and the host stores it and, if it
+// cannot be applied (a shortcut another program owns), writes the reason back (`hotkeys[i].conflict`) or the old
+// value. Switches and the stepper use two-way bindings, so the host can also put a value back by setting the
+// property.
+//
+// Keyboard: Tab / Shift+Tab move between settings (the page scrolls to the focused one); each group of choices is
+// one tab stop with arrow keys. A shortcut recorder starts on Enter or Space and ends on Esc. Esc closes the page.
+import { Theme, Type, Space, Radius, Motion, Fonts, Palette, SystemLook } from "theme.slint";
+import { Icons } from "icons.slint";
+import { Button, ButtonSize } from "components/button.slint";
+import { IconButton, IconButtonSize } from "components/icon-button.slint";
+import { TextField } from "components/text_field.slint";
+import { Toggle } from "components/choice.slint";
+import { HotkeyRecorder } from "components/hotkey_recorder.slint";
+import { FormField, FormScroll, FormSection, SettingRow, Segmented, SelectField, NumberStepper } from "components/form.slint";
+
+// One global shortcut as the page shows it. The order of `SettingsPage.hotkeys` is fixed: show or hide the panel,
+// open the picker, capture, paste next.
+export struct HotkeySetting {
+    // One chip per key ("Ctrl", "Alt", "V"); empty when not set.
+    keys: [string],
+    // The same, as one string for assistive technology ("Ctrl+Alt+V").
+    value: string,
+    // Non-empty when the recorded combination could not be registered; the message says why and who owns it.
+    conflict: string,
+}
+
+export component SettingsPage inherits Window {
+    title: @tr("Settings");
+    background: Theme.bg-app;
+    min-width: 420px;
+    min-height: 360px;
+    preferred-width: 640px;
+    preferred-height: 760px;
+
+    in property <bool> dark: false;
+    in property <[HotkeySetting]> hotkeys;
+    // 0 follow Windows, 1 light, 2 dark.
+    in property <int> theme-index: 0;
+    // Native language names ("English", ...), the first being "Follow Windows" if the host offers it.
+    in property <[string]> languages;
+    in property <int> language-index: 0;
+    in-out property <bool> autostart: false;
+    in-out property <bool> close-to-tray: true;
+    in-out property <bool> site-icons: false;
+    in property <int> panel-width: 320;
+    in property <int> panel-width-min: 260;
+    in property <int> panel-width-max: 480;
+    // Program names the panel never pastes into ("keepass.exe").
+    in property <[string]> no-paste-apps;
+    // Set by the host when `no-paste-app-added` was refused ("Already in the list").
+    in property <string> no-paste-error;
+
+    // `index` is the position in `hotkeys`.
+    callback hotkey-recorded(index: int, combo: string);
+    callback hotkey-cleared(index: int);
+    callback theme-chosen(index: int);
+    callback language-chosen(index: int);
+    callback autostart-toggled(on: bool);
+    callback close-to-tray-toggled(on: bool);
+    callback site-icons-toggled(on: bool);
+    callback panel-width-chosen(width: int);
+    callback no-paste-app-added(name: string);
+    callback no-paste-app-removed(index: int);
+    callback close-requested();
+
+    property <[string]> hotkey-names: [
+        @tr("Show or hide the panel"),
+        @tr("Open the picker"),
+        @tr("Capture a region"),
+        @tr("Paste the next item"),
+    ];
+    property <[string]> hotkey-help: [
+        @tr("Brings the panel up beside the app you are working in."),
+        @tr("Search every board and paste without opening the window."),
+        @tr("Selects part of the screen and saves it as an item."),
+        @tr("Pastes the next item of the list in order."),
+    ];
+
+    function reveal-field(y: length, h: length) {
+        page.reveal(y - page.absolute-position.y, h);
+    }
+
+    function add-app() {
+        if (new-app.text != "") {
+            root.no-paste-app-added(new-app.text);
+            new-app.text = "";
+        }
+    }
+
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    scope := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.Escape) {
+                root.close-requested();
+                return accept;
+            }
+            return reject;
+        }
+
+        page := FormScroll {
+            content-height: body.preferred-height;
+            content-width: self.width;
+
+            body := VerticalLayout {
+                width: page.width;
+                padding: Space.s4;
+                spacing: Space.s6;
+                alignment: start;
+
+                Text {
+                    text: @tr("Changes apply at once.");
+                    color: Theme.text-secondary;
+                    font-family: Fonts.sans;
+                    font-size: Type.sm;
+                    accessible-role: none;
+                }
+
+                FormSection {
+                    title: @tr("Shortcuts");
+                    for hk[i] in root.hotkeys: SettingRow {
+                        title: root.hotkey-names[i];
+                        description: root.hotkey-help[i];
+                        HotkeyRecorder {
+                            width: 220px * SystemLook.text-scale;
+                            label: root.hotkey-names[i];
+                            keys: hk.keys;
+                            value: hk.value;
+                            conflict: hk.conflict;
+                            empty-text: @tr("Not set");
+                            recording-text: @tr("Press the new shortcut");
+                            clear-label: @tr("Clear the shortcut for {}", root.hotkey-names[i]);
+                            recorded(combo) => { root.hotkey-recorded(i, combo); }
+                            cleared => { root.hotkey-cleared(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Appearance");
+                    SettingRow {
+                        title: @tr("Theme");
+                        description: @tr("Follow Windows switches with your system setting.");
+                        Segmented {
+                            width: 260px * SystemLook.text-scale;
+                            label: @tr("Theme");
+                            options: [@tr("Windows"), @tr("Light"), @tr("Dark")];
+                            current: root.theme-index;
+                            chosen(i) => { root.theme-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Language");
+                        description: @tr("Takes effect the next time Snipdeck starts.");
+                        SelectField {
+                            width: 200px * SystemLook.text-scale;
+                            label: @tr("Language");
+                            options: root.languages;
+                            current: root.language-index;
+                            chosen(i) => { root.language-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Panel width");
+                        description: @tr("How wide the panel opens, from {} to {} pixels.", root.panel-width-min, root.panel-width-max);
+                        NumberStepper {
+                            label: @tr("Panel width");
+                            decrease-label: @tr("Make the panel narrower");
+                            increase-label: @tr("Make the panel wider");
+                            unit: @tr("px");
+                            min: root.panel-width-min;
+                            max: root.panel-width-max;
+                            step: 10;
+                            value: root.panel-width;
+                            stepped(v) => { root.panel-width-chosen(v); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("General");
+                    SettingRow {
+                        title: @tr("Start with Windows");
+                        description: @tr("Snipdeck waits in the tray so the shortcuts work after you sign in.");
+                        Toggle {
+                            a11y-label: @tr("Start with Windows");
+                            checked <=> root.autostart;
+                            toggled(on) => { root.autostart-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Keep running in the tray when the window closes");
+                        description: @tr("Turn this off and closing the main window quits Snipdeck.");
+                        Toggle {
+                            a11y-label: @tr("Keep running in the tray when the window closes");
+                            checked <=> root.close-to-tray;
+                            toggled(on) => { root.close-to-tray-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Show website icons on links");
+                        description: @tr("Fetches each site's small icon from the site itself. Off by default, so no request is made.");
+                        Toggle {
+                            a11y-label: @tr("Show website icons on links");
+                            checked <=> root.site-icons;
+                            toggled(on) => { root.site-icons-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Never paste into");
+                    Text {
+                        text: @tr("In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: none;
+                    }
+                    if root.no-paste-apps.length == 0: Text {
+                        text: @tr("No programs yet.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        accessible-role: none;
+                    }
+                    for app[i] in root.no-paste-apps: Rectangle {
+                        height: max(Space.hit + Space.s2, Type.line-base + Space.s3);
+                        accessible-role: list-item;
+                        accessible-label: app;
+                        Rectangle {
+                            y: parent.height - 1px;
+                            height: 1px;
+                            background: Theme.border-subtle;
+                        }
+                        HorizontalLayout {
+                            spacing: Space.s2;
+                            Text {
+                                horizontal-stretch: 1;
+                                min-width: 0px;
+                                text: app;
+                                color: Theme.text-primary;
+                                font-family: Fonts.mono;
+                                font-size: Type.base;
+                                vertical-alignment: center;
+                                overflow: elide;
+                                accessible-role: none;
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                IconButton {
+                                    icon: Icons.x;
+                                    tooltip: @tr("Remove {} from the list", app);
+                                    clicked => { root.no-paste-app-removed(i); }
+                                    changed has-focus => {
+                                        if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    HorizontalLayout {
+                        spacing: Space.s2;
+                        new-app := TextField {
+                            horizontal-stretch: 1;
+                            label: @tr("Program to add");
+                            placeholder: @tr("notepad.exe");
+                            error: root.no-paste-error;
+                            accepted(t) => { root.add-app(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                        VerticalLayout {
+                            alignment: start;
+                            Button {
+                                text: @tr("Add");
+                                clicked => { root.add-app(); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
