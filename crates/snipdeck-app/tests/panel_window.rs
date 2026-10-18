@@ -379,7 +379,8 @@ fn the_close_button_hides_and_the_pin_button_reaches_the_controller() {
     on_ui_thread(|| {
         let r = rig();
         assert!(r.ctl.borrow().view().on_top);
-        r.button("Keep panel on top").invoke_accessible_default_action();
+        r.button("Keep panel on top")
+            .invoke_accessible_default_action();
         assert!(!r.ctl.borrow().view().on_top);
         assert!(!r.ui.get_on_top());
         r.button("Close panel").invoke_accessible_default_action();
