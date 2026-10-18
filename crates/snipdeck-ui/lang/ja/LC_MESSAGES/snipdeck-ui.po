@@ -436,8 +436,14 @@ msgstr ""
 msgid "Only text, code, link and template items can be sensitive."
 msgstr ""
 
+msgid "Open Panel"
+msgstr "パネルを開く"
+
 msgid "Open Settings"
 msgstr ""
+
+msgid "Open Snipdeck"
+msgstr "Snipdeck を開く"
 
 msgid "Open the picker"
 msgstr ""
@@ -469,6 +475,9 @@ msgstr "{} · {} に貼り付け"
 msgid "Pastes the next item of the list in order."
 msgstr ""
 
+msgid "Pause hotkeys"
+msgstr "ホットキーを一時停止"
+
 msgid "Pin"
 msgstr ""
 
@@ -498,6 +507,9 @@ msgstr ""
 
 msgid "Program to add"
 msgstr ""
+
+msgid "Quit"
+msgstr "終了"
 
 msgid "Recent"
 msgstr ""

@@ -124,7 +124,14 @@ where
             match effect {
                 Effect::ShowPanel => {
                     // A failure to show leaves the Panel hidden; the next hotkey tries again.
-                    let _ = window.show();
+                    let shown = window.show();
+                    crate::trace!(
+                        "show panel: {shown:?}, visible now {}",
+                        window.window().is_visible()
+                    );
+                    // A hidden Panel comes back where it was in the stack, behind the app in
+                    // use; and one that is "shown" already (a second Open Panel) may be buried.
+                    crate::native_window::raise(&window);
                 }
                 Effect::HidePanel => {
                     let _ = window.hide();

@@ -9,7 +9,7 @@ use crate::{
     payload::Payload,
     pipeline::{Clipboard, Error, Keyboard, Timing},
     system_look::{SystemLook, SystemLookSource},
-    tray::{Gesture, MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayModel},
+    tray::{Gesture, MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayLabels, TrayModel},
 };
 
 /// A clipboard that records what the pipeline does to it.
@@ -191,7 +191,7 @@ impl FakeTray {
     }
 
     /// What the backend did, in order (`show`, `hide`, `tooltip:<text>`, `paused:<bool>`,
-    /// `readd`).
+    /// `labels:<open panel text>`, `readd`).
     #[must_use]
     pub fn log(&self) -> Vec<String> {
         lock(&self.state).log.clone()
@@ -306,6 +306,13 @@ impl Tray for FakeTray {
         let mut state = lock(&self.state);
         state.model.set_hotkeys_paused(paused);
         state.log.push(format!("paused:{paused}"));
+        Ok(())
+    }
+
+    fn set_labels(&mut self, labels: TrayLabels) -> Result<(), ServiceError> {
+        let mut state = lock(&self.state);
+        state.log.push(format!("labels:{}", labels.open_panel));
+        state.model.set_labels(labels);
         Ok(())
     }
 }

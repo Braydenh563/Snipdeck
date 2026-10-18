@@ -578,8 +578,16 @@ msgstr ""
 msgid "Only text, code, link and template items can be sensitive."
 msgstr ""
 
+#: ui/tray_texts.slint:5
+msgid "Open Panel"
+msgstr ""
+
 #: ui/main_window.slint:1225
 msgid "Open Settings"
+msgstr ""
+
+#: ui/tray_texts.slint:6
+msgid "Open Snipdeck"
 msgstr ""
 
 #: ui/settings.slint:72
@@ -622,6 +630,10 @@ msgstr ""
 msgid "Pastes the next item of the list in order."
 msgstr ""
 
+#: ui/tray_texts.slint:7
+msgid "Pause hotkeys"
+msgstr ""
+
 #: ui/main_window.slint:438 ui/main_window.slint:1292
 msgid "Pin"
 msgstr ""
@@ -660,6 +672,10 @@ msgstr ""
 
 #: ui/settings.slint:293
 msgid "Program to add"
+msgstr ""
+
+#: ui/tray_texts.slint:8
+msgid "Quit"
 msgstr ""
 
 #: ui/main_window.slint:553 ui/main_window.slint:692

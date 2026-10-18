@@ -436,8 +436,14 @@ msgstr ""
 msgid "Only text, code, link and template items can be sensitive."
 msgstr ""
 
+msgid "Open Panel"
+msgstr "打开面板"
+
 msgid "Open Settings"
 msgstr ""
+
+msgid "Open Snipdeck"
+msgstr "打开 Snipdeck"
 
 msgid "Open the picker"
 msgstr ""
@@ -469,6 +475,9 @@ msgstr "粘贴到 {} · {}"
 msgid "Pastes the next item of the list in order."
 msgstr ""
 
+msgid "Pause hotkeys"
+msgstr "暂停热键"
+
 msgid "Pin"
 msgstr ""
 
@@ -498,6 +507,9 @@ msgstr ""
 
 msgid "Program to add"
 msgstr ""
+
+msgid "Quit"
+msgstr "退出"
 
 msgid "Recent"
 msgstr ""

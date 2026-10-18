@@ -21,12 +21,13 @@ use std::ffi::c_void;
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::UI::Shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass};
 use windows::Win32::UI::WindowsAndMessaging::{
-    GWL_EXSTYLE, GetWindowLongPtrW, MA_NOACTIVATE, STYLESTRUCT, SWP_FRAMECHANGED, SWP_NOACTIVATE,
-    SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SetWindowLongPtrW, SetWindowPos, WM_MOUSEACTIVATE,
-    WM_NCDESTROY, WM_STYLECHANGING, WS_EX_APPWINDOW, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+    GWL_EXSTYLE, GetWindowLongPtrW, HWND_NOTOPMOST, HWND_TOPMOST, MA_NOACTIVATE, STYLESTRUCT,
+    SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SetWindowLongPtrW,
+    SetWindowPos, WM_MOUSEACTIVATE, WM_NCDESTROY, WM_STYLECHANGING, WS_EX_APPWINDOW,
+    WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
 };
 
-use crate::win_logic::{self, panel_ex_style};
+use crate::win_logic::{self, ZStep, panel_ex_style};
 
 const _: () = {
     assert!(win_logic::WS_EX_NOACTIVATE == WS_EX_NOACTIVATE.0);
@@ -72,6 +73,39 @@ pub fn install_panel_style(hwnd: isize) -> bool {
             0,
             SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
         );
+    }
+    true
+}
+
+/// Puts the window `hwnd` in front of the other windows without activating it, so the Panel
+/// shown from the tray or a hotkey is not left behind the app the user was in (see
+/// [`win_logic::raise_steps`]). Call it on the thread that owns the window, after showing it.
+/// Returns `false` for a null handle; a refused z-order change is ignored (the window stays
+/// where it is, as before this call).
+pub fn raise_without_activating(hwnd: isize) -> bool {
+    if hwnd == 0 {
+        return false;
+    }
+    let hwnd = HWND(hwnd as *mut c_void);
+    // SAFETY: plain calls on a window handle of this thread; a stale handle makes them fail.
+    unsafe {
+        let was_topmost =
+            ex_style_bits(GetWindowLongPtrW(hwnd, GWL_EXSTYLE)) & WS_EX_TOPMOST.0 != 0;
+        for step in win_logic::raise_steps(was_topmost) {
+            let after = match step {
+                ZStep::Topmost => HWND_TOPMOST,
+                ZStep::NotTopmost => HWND_NOTOPMOST,
+            };
+            let _ = SetWindowPos(
+                hwnd,
+                Some(after),
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+            );
+        }
     }
     true
 }

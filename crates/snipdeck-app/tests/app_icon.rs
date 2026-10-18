@@ -23,7 +23,7 @@ fn u32_at(bytes: &[u8], at: usize) -> usize {
         bytes[at + 2],
         bytes[at + 3],
     ]))
-    .expect("fits")
+    .unwrap_or(usize::MAX)
 }
 
 /// Width and height from a PNG's IHDR (big-endian, unlike the .ico).
@@ -37,7 +37,7 @@ fn png_size(png: &[u8]) -> (usize, usize) {
             png[at + 2],
             png[at + 3],
         ]))
-        .expect("fits")
+        .unwrap_or(usize::MAX)
     };
     (be(16), be(20))
 }

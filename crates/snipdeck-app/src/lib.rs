@@ -11,6 +11,7 @@ pub mod controller;
 pub mod demo;
 pub mod fill;
 pub mod host;
+pub mod native_window;
 pub mod palette;
 pub mod panel;
 pub mod paste_next;

@@ -1,0 +1,9 @@
+// The words of the notification-area menu. The menu is a native Win32 menu, which cannot use
+// `@tr` itself, so the app reads these (they follow the language selected for the UI) and hands
+// them to the tray (`snipdeck_platform::tray::TrayLabels`).
+export global TrayTexts {
+    out property <string> open-panel: @tr("Open Panel");
+    out property <string> open-snipdeck: @tr("Open Snipdeck");
+    out property <string> pause-hotkeys: @tr("Pause hotkeys");
+    out property <string> quit: @tr("Quit");
+}
