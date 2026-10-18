@@ -2532,7 +2532,7 @@ mod tests {
 
         w.ctl.main_undo();
         assert_eq!(row_titles(&w), ["One", "Two", "Three", "Greeting"]);
-        assert!(w.ctl.store().trashed().expect("trash").is_empty());
+        assert_eq!(w.ctl.store().trashed().expect("trash"), Vec::new());
         let toast = w.ctl.view().toast.expect("toast");
         assert_eq!(toast.message, ToastMessage::Restored { count: 1 });
     }
@@ -2603,7 +2603,7 @@ mod tests {
             h: 0,
         };
         assert_eq!(w.ctl.frame_changed(&display(), nothing), Vec::new());
-        assert!(w.ctl.settings().panel_geometry.is_empty());
+        assert_eq!(w.ctl.settings().panel_geometry, Vec::new());
     }
 
     #[test]

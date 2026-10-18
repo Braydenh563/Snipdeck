@@ -415,7 +415,7 @@ mod tests {
     #[test]
     fn an_old_file_without_panel_geometry_loads_with_none() {
         let settings = Settings::from_json(r#"{"version":1,"panel_width":300}"#);
-        assert!(settings.panel_geometry.is_empty());
+        assert_eq!(settings.panel_geometry, Vec::new());
         assert_eq!(settings.panel_width, 300);
     }
 
