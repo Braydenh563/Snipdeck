@@ -52,8 +52,15 @@ Not verifiable here (stays unverified until the owner runs the wizard on Windows
   bundled translations (7 locales, `scripts/i18n.py extract|check`, wired into the gate). Conventions: `crates/snipdeck-ui/README.md`.
   Component library merged (primitives, inputs/navigation, deck; ~150 tests). Opus review findings (3 high, 5 medium) to fix: `.claude/reviews/ui-components.md` (gitignored; also summarised in the next commit). Panel window in progress.
 - **Store batch API** landed: `Store::transaction` / `Batch` (savepoints, rollback incl. blobs); import is atomic via `Library::atomically`.
-- **`snipdeck-app`** (logic only, no windows yet): `usecase` (use an item: content -> template -> pipeline -> count use),
-  `panel` (view-model), `toast` (messages), `settings` (tolerant load, chord rules).
+- **`snipdeck-app`** (skeleton runs): `usecase` (use an item: content -> template -> pipeline -> count use),
+  `panel` (view-model), `toast` (messages), `settings` (tolerant load, chord rules), `controller` (Slint-free: hotkeys,
+  Target changes, use/copy, template prompt state, toast lifecycle, `Effect` list), `binding` (`Controller::bind(this, window, on_effect)`:
+  callbacks in, changed properties out), `host` (Clock / TargetSource / HotkeyBackend traits + fakes), `platform` (Windows services, or fakes
+  off Windows), `demo` (seeded library), `screenshot`, `main.rs` (args, single instance, hotkeys, software renderer, event loop).
+  Tests: 89 unit + 13 headless Panel window tests (`tests/panel_window.rs`) + 2 screenshot tests. Run `cargo run -p snipdeck-app -- --demo`
+  (dev window on fakes) or `-- --screenshot out.png [--dark]` (no display needed). Windows check from Linux needs a stand-in
+  archiver for the C build scripts: `CC_x86_64_pc_windows_msvc=true AR_x86_64_pc_windows_msvc=<script that touches the output .lib>`.
+  The `cfg(windows)` code type-checks and passes clippy for the Windows target; it has **never run** on Windows.
 - Decisions: ADR-0008 (OS caption buttons on the main window, own chrome on the panel, Win32 tray in the platform crate).
   Default hotkeys: Ctrl+Alt+Space toggles the Panel (new, not in SPEC), Ctrl+Shift+Space Picker, Ctrl+Shift+2 capture, Ctrl+Alt+V paste next.
 - CI note: Slint pulls `fontique` -> `yeslogic-fontconfig-sys`; `snipdeck-ui` enables `i-slint-common/fontconfig-dlopen` so CI needs no
@@ -65,6 +72,16 @@ Not verifiable here (stays unverified until the owner runs the wizard on Windows
    decide the caption-button question (custom frame vs OS caption) in ADR-0003 / DESIGN.md.
 2. Re-run S2 with IMEs installed before building text-entry UI (M3+); if composition is unusable, see the S2 NO-GO plan.
 3. Set the real `SNIPDECK_LICENCE_PUBLIC_KEY` in the M6 release pipeline (see `docs/licensing.md`).
+4. **`snipdeck-app` gaps** (the skeleton does not do these yet):
+   - Tray icon (Win32 tray in the platform crate, ADR-0008); without it the dev build quits when the Panel closes.
+   - Picker, quick capture and paste-next hotkeys are registered but only produce `Effect`s nobody handles.
+   - Template fill form: `UseError::NeedsAnswers` is held as pending state plus a neutral toast; no form UI yet.
+   - Search focus: the Panel needs a search-focus-changed callback so the controller can activate the window for typing and hand focus back to the Target (`begin_text_entry`).
+   - Toast texts are English in `wording.rs`; move them to a translated Slint global (needs a `snipdeck-ui` change).
+   - Theme follows settings only (no OS dark-mode detection); no docking / saved position; settings are read, never written.
+   - `{clipboard}` template text is `None`; time zone is UTC; licence is not wired (everyone is Free outside `--demo`).
+   - Context menus, reveal-in-list, add list, undo.
+   - Windows wiring (HWND attach, non-activating style, hotkeys, single instance, Target tracker) is unverified until the owner runs it; add a wizard step for the app.
 
 ## Working notes that cost time this session
 
