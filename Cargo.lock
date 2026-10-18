@@ -4501,12 +4501,14 @@ name = "snipdeck-app"
 version = "0.1.0"
 dependencies = [
  "i-slint-backend-testing",
+ "jiff",
  "png",
  "serde",
  "serde_json",
  "slint",
  "snipdeck-core",
  "snipdeck-platform",
+ "snipdeck-portable",
  "snipdeck-store",
  "snipdeck-ui",
  "tempfile",

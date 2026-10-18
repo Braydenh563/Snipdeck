@@ -112,6 +112,11 @@ pub enum ToastMessage {
     TrashEmptied,
     /// "The Free plan includes 3 boards. Upgrade to Pro for more."
     BoardLimit,
+    /// "Snipdeck found a problem in your library. Export a copy to be safe." (the weekly check)
+    LibraryProblem,
+    /// "Snipdeck closed unexpectedly last time. Open the log?" The action opens the log folder
+    /// (`crash::open_log_folder`).
+    CrashedLastTime,
 }
 
 /// A toast: a style and a message.

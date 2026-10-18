@@ -68,6 +68,12 @@ pub fn toast_text(message: &ToastMessage) -> String {
         ToastMessage::BoardLimit => {
             "The Free plan includes 3 boards. Upgrade to Pro for more.".into()
         }
+        ToastMessage::LibraryProblem => {
+            "Snipdeck found a problem in your library. Export a copy to be safe.".into()
+        }
+        ToastMessage::CrashedLastTime => {
+            "Snipdeck closed unexpectedly last time. Open the log?".into()
+        }
     }
 }
 
@@ -180,6 +186,8 @@ mod tests {
             ToastMessage::DeletedForever { count: 1 },
             ToastMessage::TrashEmptied,
             ToastMessage::BoardLimit,
+            ToastMessage::LibraryProblem,
+            ToastMessage::CrashedLastTime,
         ];
         for message in all {
             assert!(!toast_text(&message).is_empty(), "{message:?}");

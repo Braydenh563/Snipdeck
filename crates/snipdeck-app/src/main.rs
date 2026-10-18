@@ -22,8 +22,9 @@ use snipdeck_app::{
     binding::Binding,
     cli::{self, Args},
     controller::{Controller, Effect},
-    demo, host,
+    crash, demo, host,
     main_binding::{self, MainUi},
+    maintenance::{self, Maintenance},
     platform::{self, Callbacks, Host, Start},
     screenshot,
     settings::{Settings, Theme},
@@ -39,6 +40,9 @@ thread_local! {
 }
 
 fn main() -> ExitCode {
+    // First, so that a panic anywhere after this leaves a report (the data folder is told to the
+    // hook once it is known).
+    crash::install(Timestamp::now);
     let args = match cli::parse(std::env::args().skip(1)) {
         Ok(args) => args,
         Err(e) => {
@@ -127,6 +131,7 @@ fn run(args: &Args) -> Result<(), String> {
 
     let startup_chords = settings.hotkeys.clone();
     let saver = settings_folder
+        .clone()
         .map(|folder| SettingsSaver::new(Box::new(FileSink::new(folder)), settings.clone()));
     let controller = Controller::new(
         store,
@@ -140,9 +145,6 @@ fn run(args: &Args) -> Result<(), String> {
     let controller = Rc::new(RefCell::new(controller));
     {
         let mut controller = controller.borrow_mut();
-        // The Trash keeps things 30 days (SPEC 5.7a).
-        let purged = controller.purge_expired_trash();
-        snipdeck_app::trace!("start: {purged} expired Trash entries deleted");
         controller.set_system_look(look.read());
         if let Some(saver) = saver {
             controller.set_settings_saver(saver);
@@ -195,12 +197,59 @@ fn run(args: &Args) -> Result<(), String> {
             .map_err(|e| format!("showing the Panel: {e}"))?;
         attach_when_created(&window, attach_panel);
     }
+    // The backup, the Trash purge (30 days, SPEC 5.7a) and the weekly check start 2 s after the
+    // first show and repeat every 6 h. Not in the demo, which has no data folder.
+    let _maintenance_timers = settings_folder.map(|folder| {
+        start_maintenance(
+            Maintenance::new(folder, Box::new(host::SystemClock)),
+            &controller,
+        )
+    });
     let ran = slint::run_event_loop_until_quit().map_err(|e| format!("event loop: {e}"));
     // Settings changed in the last moments are still waiting for their quiet time.
     if let Err(e) = controller.borrow_mut().flush_settings() {
         eprintln!("snipdeck: could not save the settings: {e}");
     }
     ran
+}
+
+/// Starts the timers that run `maintenance` on the event loop: once [`maintenance::FIRST_DELAY`]
+/// from now, then every [`maintenance::INTERVAL`]. The timers stop when the returned value drops.
+fn start_maintenance<C, K, T>(
+    maintenance: Maintenance,
+    controller: &Rc<RefCell<Controller<Store, C, K, T>>>,
+) -> (slint::Timer, slint::Timer)
+where
+    C: snipdeck_platform::pipeline::Clipboard + host::ClipboardText + 'static,
+    K: snipdeck_platform::pipeline::Keyboard + 'static,
+    T: snipdeck_platform::pipeline::Timing + 'static,
+{
+    let maintenance = Rc::new(RefCell::new(maintenance));
+    let controller = Rc::downgrade(controller);
+    let run: Rc<dyn Fn()> = Rc::new(move || {
+        let Some(controller) = controller.upgrade() else {
+            return;
+        };
+        let reported =
+            maintenance::run(&mut maintenance.borrow_mut(), &mut controller.borrow_mut());
+        // A toast the run set is drawn (and its timer started) by the next redraw; the borrow is
+        // released, and an empty hotkey report changes nothing but triggers that redraw.
+        if reported > 0 {
+            with_binding(|b| b.hotkey_problems(&[]));
+        }
+    });
+    let first = slint::Timer::default();
+    let every = slint::Timer::default();
+    first.start(slint::TimerMode::SingleShot, maintenance::FIRST_DELAY, {
+        let run = Rc::clone(&run);
+        move || run()
+    });
+    every.start(
+        slint::TimerMode::Repeated,
+        maintenance::INTERVAL,
+        move || run(),
+    );
+    (first, every)
 }
 
 /// Puts the icon in the notification area, if there is a tray.
@@ -329,6 +378,8 @@ fn open_library(args: &Args) -> Result<Library, String> {
         None => snipdeck_app::paths::data_dir(&|name| std::env::var(name).ok(), cfg!(windows))
             .ok_or("cannot find a data folder; pass --data-dir <folder>")?,
     };
+    // Where a crash report goes (set for any real library, also when the settings stay unsaved).
+    crash::set_data_dir(&folder);
     let loaded = snipdeck_app::paths::read_settings(&folder);
     let may_save = loaded.may_save();
     // A damaged file was moved aside: write the salvaged values back now, or the next launch would
