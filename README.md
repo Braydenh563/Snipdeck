@@ -90,8 +90,27 @@ Not started unless noted. Order follows [`docs/PLAN.md`](docs/PLAN.md).
 
 ## Quick start
 
-You need Rust (the repo pins stable through `rust-toolchain.toml`). On Windows, also the Visual Studio
-C++ Build Tools. The first build compiles SQLite and Slint and is slow; `target/` grows to several GB.
+**Download, unzip, double-click `Snipdeck.bat` (or `snipdeck.exe`).** Nothing else to install: no Rust, no Visual
+Studio, no git.
+
+1. Download the latest portable zip, `snipdeck-<version>-windows-x64.zip`, from
+   [Releases](https://github.com/Braydenh563/Snipdeck/releases/latest) and unzip it.
+2. Double-click `snipdeck.exe`.
+
+If you have `Snipdeck.bat` instead (the repository download), double-click that: the first time it downloads the
+same zip from the latest release (the internet is needed once), checks its SHA-256, unpacks it to an `app` folder
+next to the `.bat` and starts it. After that it starts straight away, offline. `Snipdeck.bat update` fetches the
+newest release and keeps your library; `Snipdeck.bat help` lists every command. Your library lives in
+`%LOCALAPPDATA%\Snipdeck`, apart from the app, so replacing the app never touches it.
+
+Until the first release is published, `Snipdeck.bat` says so and stops; use the developer steps below.
+
+## For developers
+
+Building from source is for developers; users do not need it. You need Rust (the repo pins stable through
+`rust-toolchain.toml`). On Windows, also the Visual Studio C++ Build Tools. The first build compiles SQLite and
+Slint and is slow; `target/` grows to several GB. On Windows, `Snipdeck.bat build` does the same with checks and
+fixes for the usual problems ([`tools/launcher`](tools/launcher/README.md)).
 
 ```sh
 git clone https://github.com/Braydenh563/Snipdeck
