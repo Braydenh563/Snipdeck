@@ -107,6 +107,7 @@ macro_rules! ui_tests {
 fn item_editor() -> (ItemEditor, Log) {
     let ui = ItemEditor::new().expect("item editor");
     fixture::text_item(&ui);
+    ui.window().set_size(slint::LogicalSize::new(640.0, 2000.0));
     ui.show().expect("show");
     settle();
     let log: Log = Rc::default();
@@ -140,6 +141,8 @@ fn list_editor() -> (ListEditor, Log) {
 fn settings() -> (SettingsPage, Log) {
     let ui = SettingsPage::new().expect("settings");
     fixture::settings(&ui);
+    // Tall enough that the whole page is on screen: the testing backend only lists what is visible.
+    ui.window().set_size(slint::LogicalSize::new(640.0, 2000.0));
     ui.show().expect("show");
     settle();
     let log: Log = Rc::default();
@@ -176,6 +179,9 @@ ui_tests! {
     fn the_item_editor_starts_in_the_title_and_typing_marks_it_changed() {
         let (ui, log) = item_editor();
         assert!(!ui.get_dirty());
+        // The host sets the values, then asks for the focus: the cursor lands after the text.
+        ui.invoke_focus_title();
+        settle();
         type_text(ui.window(), "!");
         settle();
         assert_eq!(ui.get_item_title(), "Thanks, received!");
@@ -411,7 +417,13 @@ ui_tests! {
             let _ = find(&ui, "Save", AccessibleRole::Button);
             let _ = find(&ui, "Cancel", AccessibleRole::Button);
             let _ = find(&ui, "List", AccessibleRole::Combobox);
-            let _ = find(&ui, "Choose tags", AccessibleRole::Button);
+            if kind == 0 {
+                let _ = find(&ui, "Choose tags", AccessibleRole::Button);
+            }
+            // The tag field lives in the open tag list, and the button then closes it.
+            ui.set_tags_open(true);
+            settle();
+            let _ = find(&ui, "Close the tag list", AccessibleRole::Button);
             let _ = find(&ui, "New tag", AccessibleRole::TextInput);
             let _ = find(&ui, "Sensitive item", AccessibleRole::Switch);
             let mut checked = 0;
@@ -580,8 +592,8 @@ ui_tests! {
         settle();
         assert_eq!(ui.get_editing(), 1);
         assert_eq!(ui.get_rename_text(), "meeting");
-        // The field is focused with the name in it: typing appends.
-        type_text(ui.window(), "s");
+        // The field is focused with the whole name selected, as in a file manager: typing replaces it.
+        type_text(ui.window(), "meetings");
         press(ui.window(), "\n");
         settle();
         assert_eq!(take(&log), ["rename:1:meetings"]);

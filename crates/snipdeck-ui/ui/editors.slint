@@ -167,7 +167,8 @@ export component ItemEditor inherits Window {
     callback edited();
 
     public function mark-clean() { root.dirty = false; }
-    public function focus-title() { title-field.focus(); }
+    // Called by the host after it has set the values: focus with the cursor after the text.
+    public function focus-title() { title-field.focus(); title-field.set-cursor(1000000); }
 
     property <bool> text-kind: root.kind-index <= 3;
     property <string> sensitive-help: root.text-kind
@@ -303,7 +304,7 @@ export component ItemEditor inherits Window {
                             label: root.kind-index == 2 ? @tr("Link") : root.kind-index == 3 ? @tr("Template text") : @tr("Content");
                             visible: root.text-kind;
                             content-field := TextField {
-                                label: root.kind-index == 2 ? @tr("Link") : @tr("Content");
+                                label: root.kind-index == 2 ? @tr("Link") : root.kind-index == 3 ? @tr("Template text") : @tr("Content");
                                 enabled: root.text-kind;
                                 placeholder: root.kind-index == 2 ? @tr("https://example.com") : "";
                                 single-line: root.kind-index == 2;
@@ -672,13 +673,11 @@ component ColourPicker inherits Rectangle {
 }
 
 // The shared body of ListEditor and BoardEditor: a name, a colour, a sort order, and deletion that asks first and
-// says how many items are affected. `ListEditor` and `BoardEditor` only set the wording.
-component EntityEditor inherits Window {
+// says how many items are affected. `ListEditor` and `BoardEditor` windows only set the wording and forward the rest
+// (a window that inherits a component does not get that component's properties in its Rust API, so they are
+// forwarded with two-way bindings).
+component EntityEditorBody inherits Rectangle {
     background: Theme.bg-app;
-    min-width: 380px;
-    min-height: 300px;
-    preferred-width: 460px;
-    preferred-height: 440px;
 
     in property <bool> dark: false;
     in property <bool> is-new: false;
@@ -746,6 +745,8 @@ component EntityEditor inherits Window {
             root.cancel-requested();
         }
     }
+
+    public function focus-name() { name-field.focus(); name-field.set-cursor(1000000); }
 
     init => {
         Palette.dark = root.dark;
@@ -889,26 +890,101 @@ component EntityEditor inherits Window {
     }
 }
 
-export component ListEditor inherits EntityEditor {
+export component ListEditor inherits Window {
     title: root.is-new ? @tr("New list") : @tr("Edit list");
-    name-label: @tr("List name");
-    name-placeholder: @tr("For example, Email replies");
-    missing-name-text: @tr("Give the list a name.");
-    delete-label: @tr("Delete list");
-    delete-title: @tr("Delete this list?");
-    delete-body: @tr("{n} item will move to Trash with it. You can restore them for 30 days." | "{n} items will move to Trash with it. You can restore them for 30 days." % root.item-count);
+    background: Theme.bg-app;
+    min-width: 380px;
+    min-height: 300px;
+    preferred-width: 460px;
+    preferred-height: 440px;
+
+    in property <bool> dark <=> body.dark;
+    in property <bool> is-new <=> body.is-new;
+    in-out property <string> name <=> body.name;
+    in property <string> name-error <=> body.name-error;
+    // -1 no colour, else 0 to 8 in the order of `ListHue` (blue, teal, green, amber, orange, red, rose, violet, slate).
+    in-out property <int> accent <=> body.accent;
+    // 0 manual, 1 most used, 2 recently used.
+    in-out property <int> sort-index <=> body.sort-index;
+    in property <bool> show-colour <=> body.show-colour;
+    in property <bool> show-sort <=> body.show-sort;
+    // How many items deleting the list affects (the confirmation says so).
+    in property <int> item-count <=> body.item-count;
+    in property <bool> can-delete <=> body.can-delete;
+    in property <string> delete-hint <=> body.delete-hint;
+    out property <bool> dirty <=> body.dirty;
+    in-out property <bool> discard-open <=> body.discard-open;
+    in-out property <bool> delete-open <=> body.delete-open;
+
+    callback save-requested();
+    callback cancel-requested();
+    callback delete-confirmed();
+    callback edited();
+
+    public function mark-clean() { body.mark-clean(); }
+    public function focus-name() { body.focus-name(); }
+
+    body := EntityEditorBody {
+        name-label: @tr("List name");
+        name-placeholder: @tr("For example, Email replies");
+        missing-name-text: @tr("Give the list a name.");
+        delete-label: @tr("Delete list");
+        delete-title: @tr("Delete this list?");
+        delete-body: @tr("{n} item will move to Trash with it. You can restore them for 30 days." | "{n} items will move to Trash with it. You can restore them for 30 days." % root.item-count);
+        save-requested => { root.save-requested(); }
+        cancel-requested => { root.cancel-requested(); }
+        delete-confirmed => { root.delete-confirmed(); }
+        edited => { root.edited(); }
+    }
 }
 
 // Boards carry a name only in the data model today (snipdeck-core `Board`); colour and sort are shown because the
 // design gives boards both, and the host can hide either with `show-colour` / `show-sort`.
-export component BoardEditor inherits EntityEditor {
+export component BoardEditor inherits Window {
     title: root.is-new ? @tr("New board") : @tr("Edit board");
-    name-label: @tr("Board name");
-    name-placeholder: @tr("For example, Work");
-    missing-name-text: @tr("Give the board a name.");
-    delete-label: @tr("Delete board");
-    delete-title: @tr("Delete this board?");
-    delete-body: @tr("Its lists and {n} item will move to Trash. You can restore them for 30 days." | "Its lists and {n} items will move to Trash. You can restore them for 30 days." % root.item-count);
+    background: Theme.bg-app;
+    min-width: 380px;
+    min-height: 300px;
+    preferred-width: 460px;
+    preferred-height: 440px;
+
+    in property <bool> dark <=> body.dark;
+    in property <bool> is-new <=> body.is-new;
+    in-out property <string> name <=> body.name;
+    in property <string> name-error <=> body.name-error;
+    in-out property <int> accent <=> body.accent;
+    in-out property <int> sort-index <=> body.sort-index;
+    in property <bool> show-colour <=> body.show-colour;
+    in property <bool> show-sort <=> body.show-sort;
+    // How many items deleting the board affects (the confirmation says so).
+    in property <int> item-count <=> body.item-count;
+    // False for the last board; `delete-hint` says why.
+    in property <bool> can-delete <=> body.can-delete;
+    in property <string> delete-hint <=> body.delete-hint;
+    out property <bool> dirty <=> body.dirty;
+    in-out property <bool> discard-open <=> body.discard-open;
+    in-out property <bool> delete-open <=> body.delete-open;
+
+    callback save-requested();
+    callback cancel-requested();
+    callback delete-confirmed();
+    callback edited();
+
+    public function mark-clean() { body.mark-clean(); }
+    public function focus-name() { body.focus-name(); }
+
+    body := EntityEditorBody {
+        name-label: @tr("Board name");
+        name-placeholder: @tr("For example, Work");
+        missing-name-text: @tr("Give the board a name.");
+        delete-label: @tr("Delete board");
+        delete-title: @tr("Delete this board?");
+        delete-body: @tr("Its lists and {n} item will move to Trash. You can restore them for 30 days." | "Its lists and {n} items will move to Trash. You can restore them for 30 days." % root.item-count);
+        save-requested => { root.save-requested(); }
+        cancel-requested => { root.cancel-requested(); }
+        delete-confirmed => { root.delete-confirmed(); }
+        edited => { root.edited(); }
+    }
 }
 
 // ---- Tag management ------------------------------------------------------------------------------
@@ -960,6 +1036,8 @@ export component TagManager inherits Window {
             if (event.text == Key.Escape && root.delete-index < 0) {
                 if (root.editing >= 0) {
                     root.editing = -1;
+                    // The field is gone: keep the keys (a second Esc closes the page).
+                    scope.focus();
                 } else {
                     root.close-requested();
                 }
