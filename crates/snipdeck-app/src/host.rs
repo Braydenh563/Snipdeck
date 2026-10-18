@@ -122,6 +122,13 @@ pub trait HotkeyBackend {
     ///
     /// See [`HotkeyFailure`].
     fn register(&mut self, id: u32, chord: Chord) -> Result<(), HotkeyFailure>;
+
+    /// Removes the chord under `id`. Removing an id that is not registered succeeds.
+    ///
+    /// # Errors
+    ///
+    /// [`HotkeyFailure::Unavailable`] if the service is not running or Windows refuses.
+    fn unregister(&mut self, id: u32) -> Result<(), HotkeyFailure>;
 }
 
 /// The id a hotkey action is registered under.
@@ -175,6 +182,15 @@ pub fn register_all(
     problems
 }
 
+/// Switches every global hotkey off ("Pause hotkeys"); returns how many could not be removed.
+/// The settings are untouched: [`register_all`] switches them back on.
+pub fn unregister_all(backend: &mut (impl HotkeyBackend + ?Sized)) -> usize {
+    HotkeyAction::ALL
+        .into_iter()
+        .filter(|action| backend.unregister(id_of(*action)).is_err())
+        .count()
+}
+
 /// A hotkey backend that records registrations and can refuse chosen chords.
 #[derive(Debug, Default)]
 pub struct FakeHotkeys {
@@ -191,6 +207,11 @@ impl HotkeyBackend for FakeHotkeys {
         }
         self.registered.retain(|(existing, _)| *existing != id);
         self.registered.push((id, chord));
+        Ok(())
+    }
+
+    fn unregister(&mut self, id: u32) -> Result<(), HotkeyFailure> {
+        self.registered.retain(|(existing, _)| *existing != id);
         Ok(())
     }
 }
@@ -256,6 +277,18 @@ mod tests {
                 .iter()
                 .all(|(id, _)| *id != id_of(HotkeyAction::Capture))
         );
+    }
+
+    #[test]
+    fn pausing_removes_every_hotkey_and_resuming_registers_them_again() {
+        let mut backend = FakeHotkeys::default();
+        let hotkeys = Hotkeys::default();
+        assert_eq!(register_all(&mut backend, &hotkeys), Vec::new());
+        assert_eq!(unregister_all(&mut backend), 0);
+        assert!(backend.registered.is_empty());
+        assert_eq!(unregister_all(&mut backend), 0, "pausing twice is fine");
+        assert_eq!(register_all(&mut backend, &hotkeys), Vec::new());
+        assert_eq!(backend.registered.len(), 4);
     }
 
     #[test]

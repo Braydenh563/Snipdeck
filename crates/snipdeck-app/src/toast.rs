@@ -61,6 +61,8 @@ pub enum ToastMessage {
     },
     /// "Couldn't use this item."
     Failed,
+    /// "Couldn't save your settings. Snipdeck will try again."
+    SettingsNotSaved,
 }
 
 /// A toast: a style and a message.

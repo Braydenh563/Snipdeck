@@ -43,6 +43,9 @@ pub fn toast_text(message: &ToastMessage) -> String {
             format!("{chord} is used by another app. Choose another in Settings.")
         }
         ToastMessage::Failed => "Couldn't use this item.".into(),
+        ToastMessage::SettingsNotSaved => {
+            "Couldn't save your settings. Snipdeck will try again.".into()
+        }
     }
 }
 
@@ -83,6 +86,7 @@ mod tests {
                 chord: "Ctrl+Alt+Space".into(),
             },
             ToastMessage::Failed,
+            ToastMessage::SettingsNotSaved,
         ];
         for message in all {
             assert!(!toast_text(&message).is_empty(), "{message:?}");
