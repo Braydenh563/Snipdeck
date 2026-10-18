@@ -30,6 +30,8 @@ use crate::{
 };
 
 type ProblemsFn = dyn Fn(&[HotkeyProblem]);
+type FrameFn = dyn Fn(&Monitor, Rect);
+type MonitorFn = dyn Fn(&Monitor);
 
 thread_local! {
     /// Every bound window's redraw, for changes that show in more than one window: the Panel
@@ -91,8 +93,8 @@ pub struct Binding {
     hotkey_problems: Rc<ProblemsFn>,
     tray: Rc<dyn Fn(TrayEvent)>,
     system_look: Rc<dyn Fn(SystemLook)>,
-    frame_changed: Rc<dyn Fn(&Monitor, Rect)>,
-    restore_frame: Rc<dyn Fn(&Monitor)>,
+    frame_changed: Rc<FrameFn>,
+    restore_frame: Rc<MonitorFn>,
 }
 
 impl std::fmt::Debug for Binding {
@@ -288,6 +290,10 @@ where
     /// Not yet wired, because the feature behind it is not built: the Panel's row context
     /// menus (`context-menu-requested`, `pinned-context-menu-requested`) and the hold-to-reveal
     /// of a sensitive row (`reveal-requested`).
+    #[allow(
+        clippy::too_many_lines,
+        reason = "one flat list of the window's callbacks, each a single line"
+    )]
     pub fn bind(
         this: &Rc<RefCell<Self>>,
         window: &ui::PanelWindow,
@@ -548,19 +554,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.app_menu == view.app_menu && p.hotkeys_paused == view.hotkeys_paused)
         || window.get_app_menu_open() != view.app_menu.is_some()
     {
-        let check = window.global::<ui::Icons<'_>>().get_check();
-        let entries = view.app_menu.iter().flatten().map(|&entry| ui::MenuEntry {
-            text: wording::app_menu_text(entry).into(),
-            icon: if entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused {
-                check.clone()
-            } else {
-                slint::Image::default()
-            },
-            separator: entry == AppMenuEntry::Separator,
-            ..Default::default()
-        });
-        window.set_app_menu_entries(model(entries));
-        window.set_app_menu_open(view.app_menu.is_some());
+        render_app_menu(window, view);
     }
     if differs(&|p| p.toast == view.toast) {
         if let Some(toast) = &view.toast {
@@ -588,6 +582,24 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             window.set_toast_phase(ui::ToastPhase::Exit);
         }
     }
+}
+
+/// The kebab menu's rows and whether it is open. "Pause hotkeys" carries a check mark while
+/// the hotkeys are paused.
+fn render_app_menu(window: &ui::PanelWindow, view: &View) {
+    let check = window.global::<ui::Icons<'_>>().get_check();
+    let entries = view.app_menu.iter().flatten().map(|&entry| ui::MenuEntry {
+        text: wording::app_menu_text(entry).into(),
+        icon: if entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused {
+            check.clone()
+        } else {
+            slint::Image::default()
+        },
+        separator: entry == AppMenuEntry::Separator,
+        ..Default::default()
+    });
+    window.set_app_menu_entries(model(entries));
+    window.set_app_menu_open(view.app_menu.is_some());
 }
 
 pub(crate) fn model<T: Clone + 'static>(items: impl Iterator<Item = T>) -> ModelRc<T> {

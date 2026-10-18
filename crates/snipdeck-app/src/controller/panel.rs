@@ -6,7 +6,7 @@ use snipdeck_core::ItemId;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::{TrashRepo, Trashable};
 
-use super::{Controller, Effect, Library, failed};
+use super::{Controller, Effect, Library, PanelMenu, failed};
 use crate::{
     frame::{self, Edge, Monitor, Rect},
     host::ClipboardText,
@@ -73,25 +73,26 @@ where
 
     /// The kebab button (or the Menu key on it): opens the Panel menu.
     pub fn open_app_menu(&mut self) {
-        self.board_menu_open = false;
-        self.app_menu_open = true;
+        self.menu = PanelMenu::App;
     }
 
     /// Esc, or a click outside the menu: closes it without a choice.
     pub fn close_app_menu(&mut self) {
-        self.app_menu_open = false;
+        if self.menu == PanelMenu::App {
+            self.menu = PanelMenu::None;
+        }
     }
 
     /// The user chose row `index` of [`APP_MENU`]. The menu closes (a line stays open).
     pub fn choose_app_menu(&mut self, index: usize) -> Vec<Effect> {
         let Some(entry) = APP_MENU.get(index).copied() else {
-            self.app_menu_open = false;
+            self.menu = PanelMenu::None;
             return Vec::new();
         };
         if entry == AppMenuEntry::Separator {
             return Vec::new();
         }
-        self.app_menu_open = false;
+        self.menu = PanelMenu::None;
         match entry {
             AppMenuEntry::Open => vec![Effect::OpenMainWindow],
             AppMenuEntry::NewSnippet => vec![Effect::NewItem],

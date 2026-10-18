@@ -269,9 +269,8 @@ pub struct Controller<S, C, K, T> {
     fill_seq: u64,
     /// Where "paste next" is in its run.
     queue: PasteQueue,
-    board_menu_open: bool,
-    /// The kebab menu is open.
-    app_menu_open: bool,
+    /// Which of the Panel's two menus is open (never both).
+    menu: PanelMenu,
     /// The Main window's state.
     main: MainModel,
     /// The list or board editor, while one is open.
@@ -287,6 +286,16 @@ pub struct Controller<S, C, K, T> {
     os_look: SystemLook,
     session: Session,
     saver: Option<SettingsSaver>,
+}
+
+/// The menu drawn inside the Panel, if any.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PanelMenu {
+    None,
+    /// The board switcher's.
+    Board,
+    /// The kebab's ([`APP_MENU`]).
+    App,
 }
 
 /// Facts about the running app that are not settings and not on screen.
@@ -349,8 +358,7 @@ where
             fill: None,
             fill_seq: 0,
             queue: PasteQueue::default(),
-            board_menu_open: false,
-            app_menu_open: false,
+            menu: PanelMenu::None,
             main: MainModel::new(),
             editor: None,
             editor_seq: 0,
@@ -403,14 +411,14 @@ where
             dark: self.look().dark,
             high_contrast: self.look().high_contrast,
             toast: self.toast_view(),
-            board_menu: self.board_menu_open.then(|| {
+            board_menu: (self.menu == PanelMenu::Board).then(|| {
                 self.model
                     .boards()
                     .iter()
                     .map(|b| b.name.as_str().to_owned())
                     .collect()
             }),
-            app_menu: self.app_menu_open.then(|| APP_MENU.to_vec()),
+            app_menu: (self.menu == PanelMenu::App).then(|| APP_MENU.to_vec()),
             hotkeys_paused: self.session.hotkeys_paused,
             picker: self.picker.as_ref().map(|p| PickerView {
                 rows: p.rows(),
@@ -532,8 +540,7 @@ where
     /// Hides the Panel (Esc with nothing to clear, the close button, the toggle hotkey).
     pub fn hide(&mut self) -> Vec<Effect> {
         self.visible = false;
-        self.board_menu_open = false;
-        self.app_menu_open = false;
+        self.menu = PanelMenu::None;
         vec![Effect::HidePanel]
     }
 
@@ -696,17 +703,19 @@ where
 
     /// Opens the board menu.
     pub fn open_board_menu(&mut self) {
-        self.board_menu_open = true;
+        self.menu = PanelMenu::Board;
     }
 
     /// Closes the board menu without a choice.
     pub fn close_board_menu(&mut self) {
-        self.board_menu_open = false;
+        if self.menu == PanelMenu::Board {
+            self.menu = PanelMenu::None;
+        }
     }
 
     /// The user chose board `index` in the menu.
     pub fn choose_board(&mut self, index: usize) {
-        self.board_menu_open = false;
+        self.menu = PanelMenu::None;
         let Some(id) = self.model.boards().get(index).map(|b| b.id) else {
             return;
         };

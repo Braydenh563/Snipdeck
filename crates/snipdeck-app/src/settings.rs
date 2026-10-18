@@ -315,10 +315,11 @@ impl Settings {
     fn sanitize_panel_geometry(&mut self) {
         let mut kept: Vec<PanelGeometry> = Vec::new();
         for mut g in std::mem::take(&mut self.panel_geometry) {
-            g.monitor_id = g.monitor_id.trim().to_owned();
-            if g.monitor_id.is_empty() || g.w == 0 || g.h == 0 {
+            let id = g.monitor_id.trim();
+            if id.is_empty() || g.w == 0 || g.h == 0 {
                 continue;
             }
+            g.monitor_id = id.into();
             g.w = g.w.min(PANEL_SIDE_LIMIT);
             g.h = g.h.min(PANEL_SIDE_LIMIT);
             kept.retain(|k| k.monitor_id != g.monitor_id);
