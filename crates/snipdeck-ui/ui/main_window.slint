@@ -716,11 +716,6 @@ export component MainWindow inherits Window {
                                     show-focus: nav-scope.has-focus && root.nav-cursor == 4 + i;
                                     clicked => { root.open-section(4 + i); }
                                     context-menu-requested(x, y) => { root.open-nav-menu(4 + i, root.sidebar-w, self.absolute-position.y + y); }
-                                    changed show-focus => {
-                                        if (self.show-focus) {
-                                            root.reveal-nav(self.absolute-position.y - nav-content.absolute-position.y, self.height);
-                                        }
-                                    }
                                 }
 
                                 if !root.narrow: SidebarHeading {
@@ -747,11 +742,6 @@ export component MainWindow inherits Window {
                                     show-focus: nav-scope.has-focus && root.nav-cursor == 4 + root.n-lists + i;
                                     clicked => { root.open-section(4 + root.n-lists + i); }
                                     context-menu-requested(x, y) => { root.open-nav-menu(4 + root.n-lists + i, root.sidebar-w, self.absolute-position.y + y); }
-                                    changed show-focus => {
-                                        if (self.show-focus) {
-                                            root.reveal-nav(self.absolute-position.y - nav-content.absolute-position.y, self.height);
-                                        }
-                                    }
                                 }
                             }
                         }
@@ -816,15 +806,16 @@ export component MainWindow inherits Window {
                             horizontal-stretch: 1;
                             min-width: 0px;
                             max-width: 360px;
-                            search := SearchField {
-                                width: parent.width;
-                                y: (parent.height - self.height) / 2;
-                                placeholder: @tr("Search snippets");
-                                label: @tr("Search snippets");
-                                clear-label: @tr("Clear search");
-                                edited(text) => {
-                                    root.cursor = 0;
-                                    root.query-changed(text);
+                            VerticalLayout {
+                                alignment: center;
+                                search := SearchField {
+                                    placeholder: @tr("Search snippets");
+                                    label: @tr("Search snippets");
+                                    clear-label: @tr("Clear search");
+                                    edited(text) => {
+                                        root.cursor = 0;
+                                        root.query-changed(text);
+                                    }
                                 }
                             }
                         }
@@ -1353,11 +1344,17 @@ export component MainWindow inherits Window {
     property <string> status-text: root.selected-count > 0 ? @tr("{} selected", root.selected-count)
         : @tr("{n} item" | "{n} items" % root.rows.length);
 
-    function reveal-nav(y: length, h: length) {
+    // Keeps the sidebar's cursor row in view. The row's place follows from the row heights, not from measuring
+    // the element (a measurement taken before the first layout would scroll the sidebar away).
+    property <length> nav-row-h: max(Space.hit, Type.line-base + Space.s2) + Space.s0-5;
+    property <length> nav-head-h: (root.narrow ? Space.s2 : max(Space.hit, Type.line-xs + Space.s2)) + Space.s0-5;
+    changed nav-cursor => {
+        let y = Space.s1 + root.nav-cursor * root.nav-row-h + (root.nav-cursor >= 4 ? root.nav-head-h : 0px)
+            + (root.nav-cursor >= 4 + root.n-lists ? root.nav-head-h : 0px);
         if (y + nav-flick.content-y < 0px) {
             nav-flick.content-y = -y;
-        } else if (y + h + nav-flick.content-y > nav-flick.height) {
-            nav-flick.content-y = nav-flick.height - y - h;
+        } else if (y + root.nav-row-h + nav-flick.content-y > nav-flick.height) {
+            nav-flick.content-y = nav-flick.height - y - root.nav-row-h;
         }
     }
 

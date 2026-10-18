@@ -19,7 +19,9 @@ export component Button inherits Rectangle {
     callback clicked();
 
     property <bool> active: root.enabled && !root.loading;
-    property <length> height-px: root.size == ButtonSize.sm ? 24px : root.size == ButtonSize.md ? 28px : 32px;
+    // 24 / 28 / 32, and taller once the Windows text size makes the label taller (equal at 100%).
+    property <length> height-px: root.size == ButtonSize.sm ? max(24px, Type.line-sm + Space.s2)
+        : root.size == ButtonSize.md ? max(28px, Type.line-base + Space.s2) : max(32px, Type.line-base + Space.s3);
     property <length> pad: root.size == ButtonSize.sm ? Space.s2 : root.size == ButtonSize.md ? Space.s3 : Space.s4;
     property <bool> pressed: touch.pressed && root.active;
     property <bool> hovered: touch.has-hover && root.active;
