@@ -25,6 +25,8 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+# `testing`: the in-memory key provider the editor tests wrap the library key with.
+snipdeck-store = { path = "../snipdeck-store", features = ["testing"] }
 # Slint's headless platform for the window tests (one process per test file).
 i-slint-backend-testing = "=1.18.1"
 tempfile.workspace = true

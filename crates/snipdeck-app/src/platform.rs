@@ -220,6 +220,22 @@ pub fn system_look() -> Arc<dyn SystemLookSource> {
     imp::system_look()
 }
 
+/// The file dialog of this machine: the Windows Open dialog; none elsewhere (the item editor then
+/// offers only its path field).
+#[must_use]
+pub fn file_picker() -> Option<Box<dyn snipdeck_platform::file_dialog::FilePicker>> {
+    #[cfg(windows)]
+    {
+        Some(Box::new(
+            snipdeck_platform::windows::file_dialog::WinFilePicker,
+        ))
+    }
+    #[cfg(not(windows))]
+    {
+        None
+    }
+}
+
 /// The single-instance name (`Local\Snipdeck-<id>`, see `snipdeck_platform::instance_names`).
 pub const APP_ID: &str = "main";
 

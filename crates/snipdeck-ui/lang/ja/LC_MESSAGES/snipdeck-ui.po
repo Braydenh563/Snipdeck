@@ -7,6 +7,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+msgid "A PNG picture. Snipdeck keeps its own copy."
+msgstr "PNG画像。Snipdeckが独自のコピーを保存します。"
+
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "リストには、返信文や住所など関連するスニペットをまとめておけます。"
 
@@ -61,6 +64,12 @@ msgstr "ボード"
 msgid "Brings the panel up beside the app you are working in."
 msgstr "作業中のアプリの横にパネルを表示します。"
 
+msgid "Browse for a file"
+msgstr "ファイルを参照"
+
+msgid "Browse…"
+msgstr "参照…"
+
 msgid "Cancel"
 msgstr "キャンセル"
 
@@ -72,6 +81,9 @@ msgstr "キャプチャしたスニペットは種類を保持します。"
 
 msgid "Changes apply at once."
 msgstr "変更はすぐに適用されます。"
+
+msgid "Choose a file, or cancel."
+msgstr "ファイルを選ぶか、キャンセルしてください。"
 
 msgid "Choose one to add it at the end of the text. It is filled in when you use the item."
 msgstr "選んだものがテキストの末尾に追加されます。スニペットを使うときに値が入力されます。"
@@ -216,6 +228,9 @@ msgstr "ゴミ箱を空にする…"
 
 msgid "Empty the Trash?"
 msgstr "ゴミ箱を空にしますか？"
+
+msgid "Encrypting it on disk is a Pro feature."
+msgstr "ディスク上での暗号化はPro機能です。"
 
 msgid "Enter"
 msgstr "Enter"
@@ -475,8 +490,14 @@ msgstr "{} · {} に貼り付け"
 msgid "Pastes the next item of the list in order."
 msgstr "リストの次のスニペットを順番に貼り付けます。"
 
+msgid "Path to the file"
+msgstr "ファイルのパス"
+
 msgid "Pause hotkeys"
 msgstr "ホットキーを一時停止"
+
+msgid "Picture file"
+msgstr "画像ファイル"
 
 msgid "Pin"
 msgstr "ピン留め"
@@ -537,6 +558,9 @@ msgstr "必須"
 
 msgid "Restore"
 msgstr "復元"
+
+msgid "Restored the changes you had not saved."
+msgstr "保存していなかった変更を復元しました。"
 
 msgid "Results"
 msgstr "検索結果"
@@ -603,6 +627,9 @@ msgstr "スレート"
 
 msgid "Snipdeck"
 msgstr "Snipdeck"
+
+msgid "Snipdeck keeps its own copy of the file."
+msgstr "Snipdeckがファイルの独自のコピーを保存します。"
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck はサインイン後にショートカットが使えるよう、通知領域で待機します。"
@@ -673,8 +700,8 @@ msgstr "この入力欄は必須です"
 msgid "This list is empty"
 msgstr "このリストは空です"
 
-msgid "This text is {}. Anything over 16 KB opens read-only here."
-msgstr "このテキストは{}です。16 KBを超えるものはここでは読み取り専用で開きます。"
+msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
+msgstr "このテキストは{}です。16 KBを超えるものはここでは読み取り専用で開き、先頭の16 KBを表示します。"
 
 msgid "Tile view"
 msgstr "タイル表示"

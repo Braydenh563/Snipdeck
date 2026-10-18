@@ -35,7 +35,7 @@ pub enum MainAction {
     Use,
     /// Copy the item.
     Copy,
-    /// Edit the item (the item editor is not built yet: nothing happens).
+    /// Edit the item in the item editor.
     Edit,
     /// Pin, or unpin when every target is pinned.
     Pin,
@@ -208,7 +208,7 @@ where
         }
     }
 
-    fn main_fresh(&mut self) {
+    pub(super) fn main_fresh(&mut self) {
         if self.main.is_stale() && self.main.reload(&self.store).is_err() {
             self.main.mark_fresh();
             self.show_toast(failed());
@@ -243,7 +243,7 @@ where
     }
 
     /// The library changed: the Main window reads it again and the Panel follows.
-    fn library_changed(&mut self) {
+    pub(super) fn library_changed(&mut self) {
         self.main.mark_stale();
         if self.model.refresh(&self.store).is_err() {
             self.show_toast(failed());
@@ -334,7 +334,11 @@ where
                 let id = items.first().copied()?;
                 return Some(self.use_item(id, mode));
             }
-            MainAction::Edit => {}
+            MainAction::Edit => {
+                if let Some(id) = items.first() {
+                    self.open_item_editor(*id);
+                }
+            }
             MainAction::Pin => self.pin(&items),
             MainAction::Move | MainAction::Tag => self.main.set_chooser(targets),
             MainAction::Delete => self.trash_items(&items),
@@ -361,7 +365,7 @@ where
         self.finish(&done);
     }
 
-    fn trash_items(&mut self, items: &[ItemId]) {
+    pub(super) fn trash_items(&mut self, items: &[ItemId]) {
         if items.is_empty() {
             return;
         }

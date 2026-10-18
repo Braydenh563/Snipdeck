@@ -18,7 +18,7 @@ import { Icons } from "icons.slint";
 import { Icon } from "components/icon.slint";
 import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
 import { IconButton, IconButtonSize } from "components/icon-button.slint";
-import { TextField } from "components/text_field.slint";
+import { TextField, FieldError } from "components/text_field.slint";
 import { Toggle, Radio } from "components/choice.slint";
 import { Tag } from "components/tag.slint";
 import { Swatch } from "components/swatch.slint";
@@ -112,8 +112,10 @@ struct PlaceholderHelp {
     prompted: bool,
 }
 
-// Kinds the user may switch between: Text, Code, Link, Template (0 to 3). Image and File (4, 5) come from capture
-// and drop; their editor shows what the item holds and lets title, tags, list and flags change.
+// Kinds the user may switch between: Text, Code, Link, Template (0 to 3). A NEW item may also be an Image or a File
+// (4, 5): it asks for the path of the file (typed or, where the host can, chosen with `browse-requested`). An item
+// that already exists keeps its kind: an Image or File shows what it holds and lets title, tags, list and flags
+// change.
 export component ItemEditor inherits Window {
     title: root.is-new ? @tr("New item") : @tr("Edit item");
     background: Theme.bg-app;
@@ -151,6 +153,18 @@ export component ItemEditor inherits Window {
     in property <string> attachment-detail;
     // False on the free plan: `{field}` and `{choice}` are marked Pro in the placeholder help.
     in property <bool> prompted-available: true;
+    // False on the free plan: a sensitive item is masked but not encrypted on disk (Pro).
+    in property <bool> encryption-available: true;
+    // A new Image or File item: the path of the file to keep a copy of, a problem with it, and whether the host can
+    // open a file dialog (`browse-requested`).
+    in-out property <string> source-path;
+    in property <string> source-error;
+    in property <bool> can-browse: false;
+    // A problem with the Sensitive switch, and a failure of Save that belongs to no field ("The disk is full").
+    in property <string> privacy-error;
+    in property <string> banner;
+    // The fields hold an unsaved draft from an earlier session.
+    in property <bool> restored: false;
     // Anything changed since the window opened (the host clears it after a save with `mark-clean()`).
     out property <bool> dirty: false;
     in-out property <bool> discard-open: false;
@@ -166,19 +180,27 @@ export component ItemEditor inherits Window {
     callback tag-added(name: string);
     // Any edit; the host clears `title-error` and `content-error` here.
     callback edited();
+    // The Browse button next to the path of a new Image or File item.
+    callback browse-requested();
 
     public function mark-clean() { root.dirty = false; }
+    // The host restored a draft: the fields differ from what is saved, so leaving asks first.
+    public function mark-dirty() { root.dirty = true; }
     // Called by the host after it has set the values: focus with the cursor after the text.
     public function focus-title() { title-field.focus(); title-field.set-cursor(1000000); }
 
     property <bool> text-kind: root.kind-index <= 3;
+    property <string> sensitive-base: @tr("Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it.", root.clear-seconds);
     property <string> sensitive-help: root.text-kind
-        ? @tr("Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it.", root.clear-seconds)
+        ? (root.encryption-available ? root.sensitive-base : root.sensitive-base + " " + @tr("Encrypting it on disk is a Pro feature."))
         : @tr("Only text, code, link and template items can be sensitive.");
     property <bool> show-errors: false;
     property <bool> content-missing: root.text-kind && root.content == "";
+    property <bool> source-missing: !root.text-kind && root.is-new && root.source-path == "";
     property <string> content-shown-error: root.content-error != "" ? root.content-error
         : (root.show-errors && root.content-missing) ? @tr("Add some text, or cancel.") : "";
+    property <string> source-shown-error: root.source-error != "" ? root.source-error
+        : (root.show-errors && root.source-missing) ? @tr("Choose a file, or cancel.") : "";
     property <[PlaceholderHelp]> placeholders: [
         { token: "{date}", help: @tr("Today's date") },
         { token: "{time}", help: @tr("The time now") },
@@ -198,7 +220,7 @@ export component ItemEditor inherits Window {
     }
     function try-save() {
         root.show-errors = true;
-        if (root.content-missing || root.content-error != "" || root.title-error != "") {
+        if (root.content-missing || root.source-missing || root.content-error != "" || root.title-error != "" || root.source-error != "") {
             return;
         }
         root.save-requested();
@@ -251,15 +273,23 @@ export component ItemEditor inherits Window {
                     spacing: Space.s4;
                     alignment: start;
 
-                    // Kind: a choice for text items, a fixed label for captured ones.
-                    if root.text-kind: FormField {
+                    if root.restored: Notice {
+                        text: @tr("Restored the changes you had not saved.");
+                    }
+
+                    // Kind: a choice for text items and new items, a fixed label for captured ones.
+                    if root.text-kind || root.is-new: FormField {
                         label: @tr("Kind");
                         kind-choice := Segmented {
                             label: @tr("Kind");
-                            options: [@tr("Text"), @tr("Code"), @tr("Link"), @tr("Template")];
+                            options: root.is-new
+                                ? [@tr("Text"), @tr("Code"), @tr("Link"), @tr("Template"), @tr("Image"), @tr("File")]
+                                : [@tr("Text"), @tr("Code"), @tr("Link"), @tr("Template")];
                             current: root.kind-index;
                             chosen(i) => {
                                 root.kind-index = i;
+                                // Only text kinds can be sensitive: the switch goes off with the kind.
+                                if (i >= 4) { root.sensitive = false; }
                                 root.touch();
                             }
                             changed has-focus => {
@@ -267,7 +297,7 @@ export component ItemEditor inherits Window {
                             }
                         }
                     }
-                    if !root.text-kind: FormField {
+                    if !root.text-kind && !root.is-new: FormField {
                         label: @tr("Kind");
                         helper: @tr("Captured items keep their kind.");
                         Text {
@@ -321,14 +351,44 @@ export component ItemEditor inherits Window {
                                 }
                             }
                             if root.content-large: Notice {
-                                text: @tr("This text is {}. Anything over 16 KB opens read-only here.", root.content-size);
+                                text: @tr("This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown.", root.content-size);
                             }
                         }
                         attachment := VerticalLayout {
                             width: parent.width;
                             spacing: Space.s2;
                             visible: !root.text-kind;
-                            if !root.text-kind && root.kind-index == 4: Rectangle {
+                            if !root.text-kind && root.is-new: FormField {
+                                label: root.kind-index == 4 ? @tr("Picture file") : @tr("File");
+                                helper: root.kind-index == 4
+                                    ? @tr("A PNG picture. Snipdeck keeps its own copy.")
+                                    : @tr("Snipdeck keeps its own copy of the file.");
+                                HorizontalLayout {
+                                    spacing: Space.s2;
+                                    source-field := TextField {
+                                        horizontal-stretch: 1;
+                                        label: root.kind-index == 4 ? @tr("Picture file") : @tr("File");
+                                        placeholder: @tr("Path to the file");
+                                        error: root.source-shown-error;
+                                        text <=> root.source-path;
+                                        edited(t) => { root.touch(); }
+                                        accepted(t) => { root.try-save(); }
+                                        changed has-focus => {
+                                            if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                        }
+                                    }
+                                    if root.can-browse: Button {
+                                        y: 0;
+                                        text: @tr("Browse…");
+                                        a11y-label: @tr("Browse for a file");
+                                        clicked => { root.browse-requested(); }
+                                        changed has-focus => {
+                                            if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                        }
+                                    }
+                                }
+                            }
+                            if !root.text-kind && !root.is-new && root.kind-index == 4: Rectangle {
                                 height: 200px;
                                 background: Theme.bg-sunken;
                                 border-radius: Radius.md;
@@ -346,7 +406,7 @@ export component ItemEditor inherits Window {
                                     image-fit: contain;
                                 }
                             }
-                            if !root.text-kind: Text {
+                            if !root.text-kind && !root.is-new: Text {
                                 text: root.attachment-name;
                                 color: Theme.text-primary;
                                 font-family: Fonts.sans;
@@ -354,7 +414,7 @@ export component ItemEditor inherits Window {
                                 font-weight: Type.medium;
                                 overflow: elide;
                             }
-                            if !root.text-kind: Text {
+                            if !root.text-kind && !root.is-new: Text {
                                 text: root.attachment-detail;
                                 color: Theme.text-secondary;
                                 font-family: Fonts.sans;
@@ -505,6 +565,7 @@ export component ItemEditor inherits Window {
                     FormField {
                         label: @tr("Privacy");
                         helper: root.sensitive-help;
+                        error: root.privacy-error;
                         sensitive-toggle := Toggle {
                             accessible-description: root.sensitive-help;
                             text: @tr("Sensitive item");
@@ -516,6 +577,17 @@ export component ItemEditor inherits Window {
                             }
                         }
                     }
+                }
+            }
+
+            if root.banner != "": Rectangle {
+                background: Theme.bg-surface;
+                height: banner-row.preferred-height;
+                banner-row := HorizontalLayout {
+                    padding: Space.s3;
+                    padding-left: Space.s4;
+                    padding-right: Space.s4;
+                    FieldError { text: root.banner; }
                 }
             }
 

@@ -7,6 +7,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "A PNG picture. Snipdeck keeps its own copy."
+msgstr "Uma imagem PNG. O Snipdeck guarda a própria cópia."
+
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "Uma lista reúne trechos relacionados, como respostas ou endereços."
 
@@ -61,6 +64,12 @@ msgstr "Quadros"
 msgid "Brings the panel up beside the app you are working in."
 msgstr "Traz o painel ao lado do aplicativo em que você está trabalhando."
 
+msgid "Browse for a file"
+msgstr "Procurar um arquivo"
+
+msgid "Browse…"
+msgstr "Procurar…"
+
 msgid "Cancel"
 msgstr "Cancelar"
 
@@ -72,6 +81,9 @@ msgstr "Os trechos capturados mantêm o tipo."
 
 msgid "Changes apply at once."
 msgstr "As alterações são aplicadas de imediato."
+
+msgid "Choose a file, or cancel."
+msgstr "Escolha um arquivo ou cancele."
 
 msgid "Choose one to add it at the end of the text. It is filled in when you use the item."
 msgstr "Escolha um para adicioná-lo ao fim do texto. Ele é preenchido quando você usa o trecho."
@@ -216,6 +228,9 @@ msgstr "Esvaziar lixeira…"
 
 msgid "Empty the Trash?"
 msgstr "Esvaziar a lixeira?"
+
+msgid "Encrypting it on disk is a Pro feature."
+msgstr "A criptografia no disco é um recurso Pro."
 
 msgid "Enter"
 msgstr "Enter"
@@ -475,8 +490,14 @@ msgstr "Cola em {} · {}"
 msgid "Pastes the next item of the list in order."
 msgstr "Cola o próximo trecho da lista, em ordem."
 
+msgid "Path to the file"
+msgstr "Caminho do arquivo"
+
 msgid "Pause hotkeys"
 msgstr "Pausar atalhos"
+
+msgid "Picture file"
+msgstr "Arquivo de imagem"
 
 msgid "Pin"
 msgstr "Fixar"
@@ -537,6 +558,9 @@ msgstr "Obrigatório"
 
 msgid "Restore"
 msgstr "Restaurar"
+
+msgid "Restored the changes you had not saved."
+msgstr "As alterações que você não tinha salvo foram restauradas."
 
 msgid "Results"
 msgstr "Resultados"
@@ -603,6 +627,9 @@ msgstr "Ardósia"
 
 msgid "Snipdeck"
 msgstr "Snipdeck"
+
+msgid "Snipdeck keeps its own copy of the file."
+msgstr "O Snipdeck guarda a própria cópia do arquivo."
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "O Snipdeck aguarda na bandeja para que os atalhos funcionem após o login."
@@ -673,8 +700,8 @@ msgstr "Este campo é obrigatório"
 msgid "This list is empty"
 msgstr "Esta lista está vazia"
 
-msgid "This text is {}. Anything over 16 KB opens read-only here."
-msgstr "Este texto é {}. Qualquer coisa acima de 16 KB abre aqui somente para leitura."
+msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
+msgstr "Este texto é {}. Qualquer coisa acima de 16 KB abre aqui somente para leitura, e os primeiros 16 KB são exibidos."
 
 msgid "Tile view"
 msgstr "Exibição em blocos"

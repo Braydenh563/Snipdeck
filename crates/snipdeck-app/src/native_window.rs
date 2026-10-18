@@ -10,14 +10,19 @@ use snipdeck_ui::PanelWindow;
 
 /// The Win32 window handle of the Panel, once its window exists (the event loop makes it when
 /// the Panel is first shown; later hides and shows keep the same window).
-#[cfg(windows)]
 #[must_use]
 pub fn handle(window: &PanelWindow) -> Option<isize> {
     use slint::ComponentHandle;
+    handle_of(window.window())
+}
+
+/// The Win32 window handle of `window`, once its native window exists.
+#[cfg(windows)]
+#[must_use]
+pub fn handle_of(window: &slint::Window) -> Option<isize> {
     use slint::winit_030::WinitWindowAccessor;
     use slint::winit_030::winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
     window
-        .window()
         .with_winit_window(|w| match w.window_handle().ok()?.as_raw() {
             RawWindowHandle::Win32(handle) => Some(handle.hwnd.get()),
             _ => None,
@@ -25,10 +30,10 @@ pub fn handle(window: &PanelWindow) -> Option<isize> {
         .flatten()
 }
 
-/// The Win32 window handle of the Panel: none off Windows.
+/// The Win32 window handle of `window`: none off Windows.
 #[cfg(not(windows))]
 #[must_use]
-pub fn handle(_window: &PanelWindow) -> Option<isize> {
+pub fn handle_of(_window: &slint::Window) -> Option<isize> {
     None
 }
 

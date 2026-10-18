@@ -23,6 +23,7 @@ use crate::{
     controller::{AppMenuEntry, Controller, Effect, Library, ToastPhase, View},
     frame::{Edge, Monitor, Rect},
     host::{ClipboardText, HotkeyProblem},
+    item_editor::Origin,
     palette::list_color,
     panel::{Footer, Row, Tab},
     settings::HotkeyAction,
@@ -122,6 +123,13 @@ impl Binding {
     /// Some hotkeys could not be registered: tell the user.
     pub fn hotkey_problems(&self, problems: &[HotkeyProblem]) {
         (self.hotkey_problems)(problems);
+    }
+
+    /// Draws every bound window again from the controller. For a change made on the
+    /// controller from outside a gesture (a toast set by the maintenance run) with no
+    /// borrow of it held.
+    pub fn redraw(&self) {
+        redraw_all();
     }
 
     /// The user clicked the tray icon or chose an entry of its menu.
@@ -226,6 +234,16 @@ where
                 }
                 Effect::HidePanel => {
                     let _ = window.hide();
+                }
+                // The item editor is its own window; the controller opens it and every bound
+                // window (the editor's included) is redrawn from it.
+                Effect::NewItem => {
+                    self.controller.borrow_mut().open_new_item(Origin::Panel);
+                    redraw_all();
+                }
+                Effect::EditItem(id) => {
+                    self.controller.borrow_mut().open_item_editor(*id);
+                    redraw_all();
                 }
                 Effect::PlaceWindow(frame) => {
                     let w = window.window();
@@ -358,7 +376,7 @@ where
         wire_effects!(on_edit_requested, |ctl, i| ctl.edit_row(index(i)));
         wire_effects!(on_rename_requested, |ctl, i| ctl.rename_row(index(i)));
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
-        wire!(on_toast_undo, |ctl| ctl.main_undo());
+        wire!(on_toast_undo, |ctl| ctl.toast_action());
         wire_effects!(on_resize_requested, |ctl, edge| ctl.resize(edge_of(edge)));
         wire_effects!(on_close_requested, |ctl| ctl.close());
         wire_effects!(on_drag_requested, |ctl| ctl.drag());
@@ -566,11 +584,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.toast == view.toast) {
         if let Some(toast) = &view.toast {
             {
-                window.set_toast_undo_label(if toast.undo {
-                    wording::UNDO_LABEL.into()
-                } else {
-                    SharedString::new()
-                });
+                window.set_toast_undo_label(wording::toast_button_text(toast).into());
                 window.set_toast_kind(match toast.kind {
                     crate::toast::ToastKind::Neutral => ui::ToastKind::Neutral,
                     crate::toast::ToastKind::Success => ui::ToastKind::Success,

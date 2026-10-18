@@ -22,6 +22,7 @@ pub mod autostart;
 pub mod clipboard;
 pub mod dpapi;
 pub mod dpi;
+pub mod file_dialog;
 mod hidden_window;
 pub mod hotkey;
 pub mod keyboard;

@@ -7,6 +7,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "A PNG picture. Snipdeck keeps its own copy."
+msgstr "Une image PNG. Snipdeck en garde sa propre copie."
+
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "Une liste regroupe des extraits liés, comme des réponses ou des adresses."
 
@@ -61,6 +64,12 @@ msgstr "Tableaux"
 msgid "Brings the panel up beside the app you are working in."
 msgstr "Affiche le panneau à côté de l'application que vous utilisez."
 
+msgid "Browse for a file"
+msgstr "Parcourir pour choisir un fichier"
+
+msgid "Browse…"
+msgstr "Parcourir…"
+
 msgid "Cancel"
 msgstr "Annuler"
 
@@ -72,6 +81,9 @@ msgstr "Les extraits capturés gardent leur type."
 
 msgid "Changes apply at once."
 msgstr "Les modifications s'appliquent immédiatement."
+
+msgid "Choose a file, or cancel."
+msgstr "Choisissez un fichier, ou annulez."
 
 msgid "Choose one to add it at the end of the text. It is filled in when you use the item."
 msgstr "Choisissez-en un pour l'ajouter à la fin du texte. Il est rempli lorsque vous utilisez l'extrait."
@@ -216,6 +228,9 @@ msgstr "Vider la corbeille…"
 
 msgid "Empty the Trash?"
 msgstr "Vider la corbeille ?"
+
+msgid "Encrypting it on disk is a Pro feature."
+msgstr "Le chiffrement sur le disque est une fonction Pro."
 
 msgid "Enter"
 msgstr "Enter"
@@ -475,8 +490,14 @@ msgstr "Colle dans {} · {}"
 msgid "Pastes the next item of the list in order."
 msgstr "Colle l'extrait suivant de la liste, dans l'ordre."
 
+msgid "Path to the file"
+msgstr "Chemin du fichier"
+
 msgid "Pause hotkeys"
 msgstr "Suspendre les raccourcis"
+
+msgid "Picture file"
+msgstr "Fichier image"
 
 msgid "Pin"
 msgstr "Épingler"
@@ -537,6 +558,9 @@ msgstr "Obligatoire"
 
 msgid "Restore"
 msgstr "Restaurer"
+
+msgid "Restored the changes you had not saved."
+msgstr "Les modifications non enregistrées ont été rétablies."
 
 msgid "Results"
 msgstr "Résultats"
@@ -603,6 +627,9 @@ msgstr "Ardoise"
 
 msgid "Snipdeck"
 msgstr "Snipdeck"
+
+msgid "Snipdeck keeps its own copy of the file."
+msgstr "Snipdeck garde sa propre copie du fichier."
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck reste dans la zone de notification pour que les raccourcis fonctionnent après la connexion."
@@ -673,8 +700,8 @@ msgstr "Ce champ est obligatoire"
 msgid "This list is empty"
 msgstr "Cette liste est vide"
 
-msgid "This text is {}. Anything over 16 KB opens read-only here."
-msgstr "Ce texte est {}. Tout contenu de plus de 16 Ko s'ouvre ici en lecture seule."
+msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
+msgstr "Ce texte est {}. Tout contenu de plus de 16 Ko s'ouvre ici en lecture seule, et les 16 premiers Ko sont affichés."
 
 msgid "Tile view"
 msgstr "Affichage en mosaïque"

@@ -11,6 +11,8 @@
 
 use std::sync::{Mutex, OnceLock, mpsc};
 
+use snipdeck_store::crypto::KeyProvider as _;
+
 use slint::{
     Window,
     platform::{Key, WindowEvent},
@@ -76,4 +78,64 @@ pub fn chord(window: &Window, modifiers: &[Key], key: &str) {
 
 pub fn key(k: Key) -> String {
     char::from(k).to_string()
+}
+
+/// One in-memory key provider shared by every controller of a test, so a "restart" (a second
+/// controller on the same data folder) opens the key the first run made.
+#[derive(Clone)]
+pub struct SharedProvider(std::rc::Rc<snipdeck_store::crypto::MemoryKeyProvider>);
+
+impl SharedProvider {
+    pub fn new() -> Self {
+        Self(std::rc::Rc::new(
+            snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
+        ))
+    }
+}
+
+impl snipdeck_store::crypto::KeyProvider for SharedProvider {
+    fn wrap_key(&self, key: &[u8]) -> Result<Vec<u8>, snipdeck_store::crypto::KeyProviderError> {
+        self.0.wrap_key(key)
+    }
+
+    fn unwrap_key(
+        &self,
+        wrapped: &[u8],
+    ) -> Result<snipdeck_store::crypto::Zeroizing<Vec<u8>>, snipdeck_store::crypto::KeyProviderError>
+    {
+        self.0.unwrap_key(wrapped)
+    }
+}
+
+/// Every file under `dir` (database, log, blobs, drafts) is free of each needle.
+pub fn assert_no_plaintext(dir: &std::path::Path, needles: &[&[u8]]) {
+    let mut stack = vec![dir.to_owned()];
+    let mut seen = 0;
+    while let Some(next) = stack.pop() {
+        for entry in std::fs::read_dir(&next).expect("dir").flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            let name = path.file_name().map(|n| n.to_string_lossy().into_owned());
+            if name
+                .as_deref()
+                .is_some_and(|n| n.ends_with("-shm") || n == "snipdeck.lock")
+            {
+                continue;
+            }
+            let bytes = std::fs::read(&path).expect("read");
+            seen += 1;
+            for needle in needles {
+                assert!(
+                    !bytes.windows(needle.len()).any(|w| w == *needle),
+                    "{} holds {:?}",
+                    path.display(),
+                    String::from_utf8_lossy(&needle[..needle.len().min(20)])
+                );
+            }
+        }
+    }
+    assert!(seen > 0, "there was something to scan");
 }

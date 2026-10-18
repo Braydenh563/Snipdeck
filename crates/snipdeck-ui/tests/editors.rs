@@ -117,6 +117,36 @@ fn item_editor_new_item_shows_what_is_missing() {
 }
 
 #[test]
+fn item_editor_new_file_with_a_path_problem_a_banner_and_a_restored_draft() {
+    let h = Harness::new(ItemEditor::new, ITEM.0, ITEM.1);
+    h.component.set_is_new(true);
+    h.component.set_kind_index(5);
+    h.component.set_can_browse(true);
+    h.component.set_item_title("Q3 report".into());
+    h.component
+        .set_source_path("C:\\Reports\\q3-final.pdf".into());
+    h.component
+        .set_source_error("There is no file at that path.".into());
+    h.component.set_restored(true);
+    h.component.set_banner(
+        "Snipdeck couldn't write to your library. Check that the disk has room.".into(),
+    );
+    h.component.set_list_names(fixture::list_names());
+    h.component.set_tags(fixture::tag_model(Vec::new()));
+    assert_golden("item-editor-new-file-light", &render(&h));
+}
+
+#[test]
+fn item_editor_free_plan_says_sensitive_is_not_encrypted() {
+    let h = item((560, 900), false);
+    h.component.set_encryption_available(false);
+    h.component.set_sensitive(true);
+    h.component
+        .set_privacy_error("Unlock your library to save this item.".into());
+    assert_golden("item-editor-free-sensitive-light", &render(&h));
+}
+
+#[test]
 fn item_editor_long_values_and_the_inline_limit() {
     let h = item((420, 760), false);
     h.component.set_item_title(
