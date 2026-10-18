@@ -12,7 +12,8 @@ budget: owner at 40% weekly; own budget line 55%, stop line 60% (owner needs the
 - [x] Step 7: Settings window (hotkeys, theme, language, autostart, licence entry, Privacy, Backups, Data section)
 - [ ] Step 5: Picker + TemplateFill windows on their hotkeys
 - [ ] Step 7a: Onboarding (4 steps, Getting started list)
-- [ ] Step 13: UX learnability U1-U9 + ux-auditor + blind-tester; fix findings
+- [ ] Step 13: UX learnability U1-U9 + ux-auditor + blind-tester; fix findings. Owner (23:14): first-hide toast naming the hotkey and the tray click; Settings toggle "Show Snipdeck in the taskbar" (WS_EX_TOOLWINDOW off + taskbar button, default off)
+- [ ] Step 3a: Edge dock with reveal (owner 23:20 "Do both"): docked Panel collapses to a slim handle strip on its screen edge (vertical on left/right, horizontal on top/bottom), slides out on hover and/or click (Settings: trigger hover/click/both, hover delay, leave delay), collapses when the pointer leaves or after a paste; handle always on top, non-activating, keyboard via the Panel hotkey; edge remembered per monitor; Linux tests on an injected clock; Windows hit-test unverified until the owner runs it
 - [ ] Step 7b: Help & troubleshooting window
 - [x] Step 11a: security review items 1-11,13 (4e73f6d)
 - [ ] Step 11b: security review item 12 (Moved-event clamp, taskbar work area) after step 8
