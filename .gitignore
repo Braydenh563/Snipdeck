@@ -7,3 +7,4 @@ spikes-results/
 .claude/inputs/
 .claude/reviews/
 dist/
+.claude/worktrees/
