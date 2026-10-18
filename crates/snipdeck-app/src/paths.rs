@@ -62,7 +62,7 @@ impl Loaded {
 /// is read as UTF-8 with replacement characters.
 fn decode(bytes: &[u8]) -> String {
     let utf16 = |rest: &[u8], word: fn([u8; 2]) -> u16| {
-        let units: Vec<u16> = rest.chunks_exact(2).map(|c| word([c[0], c[1]])).collect();
+        let units: Vec<u16> = rest.as_chunks::<2>().0.iter().map(|c| word(*c)).collect();
         String::from_utf16_lossy(&units)
     };
     match bytes {
