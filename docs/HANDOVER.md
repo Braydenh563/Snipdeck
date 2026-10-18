@@ -70,6 +70,20 @@ Not verifiable here (stays unverified until the owner runs the wizard on Windows
 - CI note: Slint pulls `fontique` -> `yeslogic-fontconfig-sys`; `snipdeck-ui` enables `i-slint-common/fontconfig-dlopen` so CI needs no
   `libfontconfig-dev`. Debug `target/` for snipdeck-ui is about 4 GB: keep few copies, `rm -rf` old ones.
 
+## Owner's first real Windows run (2026-10-18, `Snipdeck demo` build) - fix these first
+
+The demo ran on Windows (first time ever). Owner's report, verbatim in substance, plus a first guess at the cause:
+
+1. **Cannot minimise the Panel.** Own chrome has only close/hide. Add minimise/hide and a way to reopen (tray, hotkey).
+2. **Pinned-badge row scrolls only with the trackpad**, not mouse wheel or touch. Needs wheel (and Shift+wheel), drag/touch flick, visible scroll affordance (edge fade or chevrons) or a different layout (wrap, or a "more" overflow). Component: `pinned-strip.slint`.
+3. **The `+` button in the tab row does nothing** (add list not wired; no feedback). Wire it to the list editor once the Main window lands, or hide it until then.
+4. **No help or tooltips; unclear how to use it.** Add tooltips on every icon button, a first-run hint/coach marks, an empty-state explaining pin/paste/shift-click, a Help entry (links to docs/user-guide.md).
+5. **Top item is cut off for a moment when clicked** (selection/focus ring clipped by the ListView; owner says low priority).
+6. **No way to open the larger window; no logo in the Panel header; no kebab/meatball menu** for more options and settings. Add header: logo, board switcher, search, kebab menu (Open Snipdeck, Settings, Pause hotkeys, Dock, Help, About, Quit).
+7. **The pin button does nothing.** Define it (keep Panel open/always-on-top vs pin item) and wire it, or remove it.
+8. **Not shown in the taskbar (by design: skip-taskbar), shown in the tray, but none of the tray menu items work** (Open Panel, Open Snipdeck, Pause hotkeys, Quit). The menu itself appears. Suspect the tray-to-controller event path (`TrayEvent` handling in `main.rs` effect handler, `invoke_from_event_loop` before the backend is selected, review finding 10) or the Win32 fixes of 2026-10-18 (IconPresent, WM_CLOSE mapping). Add logging of every tray command and reproduce with `tools/windows-test` m3 wizard steps. Consider showing in the taskbar when the main window is open.
+9. **Slow build every time the demo launcher runs.** The launcher agent (a375ca0) builds `Snipdeck.bat` with a stamped exe cache in `dist\`; until it is merged each launch runs `cargo run` (an up-to-date cargo run is still seconds-slow and rebuilds when sources change).
+
 ## Next steps (queue for the next session, in order)
 
 Progress vs `docs/PLAN.md`: M1 done, M2 done in code (Windows unverified), M3 mostly done, M4 about half (UI built, not wired), M5 about 10%, M6 not started. About 55% of a v1 that can be built and tested off Windows.
