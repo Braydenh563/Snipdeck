@@ -7,6 +7,7 @@ Goal: ship v1 by the morning of 2026-10-19. Branch `claude/compassionate-pascal-
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-10-18 23:24: owner permits five agents. Three cargo builds at once at most (target-main editor, target-b picker, target-c dock with debug=0); docs and audit agents run no cargo.
 - 2026-10-18 23:16: agent worktrees run stable fmt/clippy/doc/tests only; `cargo +1.99.1` is left to CI (a second toolchain doubles the target dir and the build time; CI catches the few 1.99-only lints and I fix them in one commit).
 - 2026-10-17: Lean workflow adopted; ledger at .claude/retro-ledger.md; gate.sh mirrors CI (fmt, clippy, doc, test).
 
@@ -16,6 +17,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-10-18: The owner said "you are fable btw": this session runs on Fable, so it IS the one permitted Fable agent. Step 4 (docs/fable-brief.md) is done by this session: Fable does analysis, design calls, security review and judgement; Sonnet/Haiku agents do the mechanical implementation with exact file/line instructions; no second Fable agent is spawned (that would be two). Token rules of the brief still apply to this session (grep CODEMAP, line ranges, no whole build logs).
 
 ## Inbox
+- 2026-10-18 23:22 owner: "I permit 2 more agents" -> dock (step 3a) and docs (step 19) agents started in worktrees agent-dock and agent-docs.
 - 2026-10-18 23:14 owner: "did you did it as the collapsible toolbar or smth like Microsoft pc manager that can dock to a screen edge as a little line and open on hover or smth?? Do research on that if needed." -> not built (post-v1 per HANDOVER 3a); owner 23:20: "Do both" -> step 3a added to the work order, step 13 carries the toast + taskbar toggle.
 - 2026-10-18 23:14 owner: "if I unpin the panel and click off it, it hides away but because it isn't in my taskbar, or a viewable window, I can't reopen it unless I find it in the system tray, right click and then open it." -> proposed: first-hide toast naming the hotkey and tray click, Settings toggle "Show Snipdeck in the taskbar"; put in step 13 if no answer.
 - 2026-10-18 23:16 owner: "Can you start a couple more agents?? Use lean-workflow max mode and push to finish and polish v1 for shipping. Continue" -> work order active; editor, picker and audit agents restarted.
