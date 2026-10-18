@@ -350,11 +350,14 @@ fn menu_exposes_a_list_of_list_items() {
         assert_eq!(list.accessible_label().as_deref(), Some("Item actions"));
         let copy = by_label(&ui, "Copy", AccessibleRole::ListItem);
         assert_eq!(copy.accessible_item_index(), Some(0));
-        assert_eq!(copy.accessible_item_count(), Some(7));
+        // The gallery menu has 7 entries, two of them separators: assistive technology hears "1 of 5", not
+        // "1 of 7" (a separator is not an item, and the old expectation of 7 locked in that bug).
+        assert_eq!(copy.accessible_item_count(), Some(5));
         assert_eq!(copy.accessible_description().as_deref(), Some("Ctrl+C"));
         assert_eq!(
             by_label(&ui, "Delete", AccessibleRole::ListItem).accessible_item_index(),
-            Some(6)
+            // Fifth action (index 4); it was 6 while the two separators were counted.
+            Some(4)
         );
         assert_eq!(
             by_label(&ui, "Pin", AccessibleRole::ListItem).accessible_enabled(),

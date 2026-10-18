@@ -8,7 +8,8 @@ export enum HotkeyState { idle, recording, conflict }
 // A key legend. Private on purpose: the public Keycap is a separate component.
 component HotkeyChip inherits Rectangle {
     in property <string> text;
-    height: Space.s5;
+    // Grows with the text size (a 20px chip holds one 16px line at 100%).
+    height: max(Space.s5, Type.line-xs + Space.s1);
     min-width: Space.s5;
     background: Theme.bg-sunken;
     border-radius: Radius.sm;
@@ -62,6 +63,16 @@ global Combo {
         if (t == Key.F11) { return "F11"; }
         if (t == Key.F12) { return "F12"; }
         return t.to-uppercase();
+    }
+
+    // A key that cannot be written into a combo string. Keys without a printable name arrive as private-use
+    // characters (F13..F24, Caps Lock, Pause, ...), and with Shift held a keyboard delivers the shifted symbol
+    // ("!" for Shift+1), which names no key, so a digit or symbol under Shift is refused too. Letters are fine.
+    pure public function unrecordable(t: string, shift: bool) -> bool {
+        if (t == Key.CapsLock || t == Key.ScrollLock || t == Key.Pause || t == Key.SysReq || t == Key.Stop || t == Key.Menu) { return true; }
+        if (t == Key.F13 || t == Key.F14 || t == Key.F15 || t == Key.F16 || t == Key.F17 || t == Key.F18) { return true; }
+        if (t == Key.F19 || t == Key.F20 || t == Key.F21 || t == Key.F22 || t == Key.F23 || t == Key.F24) { return true; }
+        return shift && Combo.key-name(t) == t.to-uppercase() && t.to-uppercase() == t.to-lowercase();
     }
 
     pure public function is-modifier-key(t: string) -> bool {
@@ -139,7 +150,7 @@ export component HotkeyRecorder inherits VerticalLayout {
     }
 
     box := Rectangle {
-        height: Space.hit;
+        height: max(Space.hit, Type.line-base + Space.s2);
         background: !root.enabled ? Theme.bg-sunken : root.recording ? Theme.accent-subtle : Theme.bg-surface;
         border-radius: Radius.md;
         border-width: 1px;
@@ -229,6 +240,9 @@ export component HotkeyRecorder inherits VerticalLayout {
 
         scope := FocusScope {
             enabled: root.enabled;
+            // The touch area below starts the recording; a focus-on-click scope above it would take the first
+            // click for itself (and show the keyboard focus ring for a mouse click).
+            focus-on-click: false;
             key-pressed(event) => {
                 if (!root.recording) {
                     if (event.text == " " || event.text == "\n") {
@@ -245,9 +259,20 @@ export component HotkeyRecorder inherits VerticalLayout {
                     root.cancel-recording();
                     return accept;
                 }
-                // Holding a modifier alone, or a key without one, keeps listening.
-                if (Combo.is-modifier-key(event.text)
-                    || !(event.modifiers.control || event.modifiers.alt || event.modifiers.shift || event.modifiers.meta)) {
+                // Holding a modifier alone keeps listening.
+                if (Combo.is-modifier-key(event.text)) {
+                    return accept;
+                }
+                // A shortcut needs Ctrl, Alt or Win: Shift alone only types capitals, and as a global hotkey
+                // it would swallow plain typing system-wide. Without one, Tab and Shift+Tab still move focus
+                // as everywhere else (which cancels the recording); other keys keep listening.
+                if (!(event.modifiers.control || event.modifiers.alt || event.modifiers.meta)) {
+                    if (event.text == Key.Tab || event.text == Key.Backtab) {
+                        return reject;
+                    }
+                    return accept;
+                }
+                if (Combo.unrecordable(event.text, event.modifiers.shift)) {
                     return accept;
                 }
                 root.recording = false;

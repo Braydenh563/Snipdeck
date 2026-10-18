@@ -21,12 +21,12 @@ export component Tag inherits Rectangle {
     property <bool> pressed: touch.pressed && root.enabled;
     property <bool> hovered: touch.has-hover && root.enabled;
 
-    height: Space.hit-min;
+    height: max(Space.hit-min, Type.line-sm + Space.s2);
     min-width: Space.hit-min;
     background: root.selected
         ? (root.pressed ? Theme.bg-selected.darker(0.1) : Theme.bg-selected)
         : root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : Theme.bg-surface;
-    border-radius: Radius.md;
+    border-radius: Radius.sm;
     border-width: 1px;
     border-color: root.selected ? Theme.accent : Theme.border-default;
     opacity: root.enabled ? 1.0 : 0.45;
@@ -50,7 +50,7 @@ export component Tag inherits Rectangle {
             Icon {
                 source: Icons.check;
                 size: 12px;
-                tint: Theme.accent-text;
+                tint: Theme.accent-on-selected;
                 y: (parent.height - self.height) / 2;
             }
         }
@@ -78,7 +78,7 @@ export component Tag inherits Rectangle {
                 Icon {
                     source: Icons.x;
                     size: 12px;
-                    tint: Theme.text-secondary;
+                    tint: root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary;
                     x: (parent.width - self.width) / 2;
                     y: (parent.height - self.height) / 2;
                 }
@@ -98,7 +98,7 @@ export component Tag inherits Rectangle {
         height: parent.height + 8px;
         border-width: scope.has-focus ? 2px : 0px;
         border-color: Theme.focus-ring;
-        border-radius: Radius.md + 2px;
+        border-radius: Radius.sm + 2px;
         background: transparent;
     }
 

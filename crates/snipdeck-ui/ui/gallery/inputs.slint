@@ -329,6 +329,12 @@ export component DialogGallery inherits Window {
     in-out property <int> accepts: 0;
     in-out property <int> confirms: 0;
     in-out property <int> cancels: 0;
+    // Test hook: leave the controls behind the dialog enabled, to prove the dialog traps Tab itself.
+    in property <bool> behind-live: false;
+    in-out property <int> behind-clicks: 0;
+    in-out property <string> behind-text: "Quarterly report";
+    // Times the dialog reported that it closed (the host restores focus there).
+    in-out property <int> closes: 0;
 
     width: 420px;
     height: 300px;
@@ -341,8 +347,8 @@ export component DialogGallery inherits Window {
         spacing: Space.s2;
         alignment: start;
         Caption { text: "Behind the dialog"; }
-        TextField { label: "Behind field"; text: "Quarterly report"; enabled: !root.open; }
-        Button { text: "Behind button"; enabled: !root.open; }
+        TextField { label: "Behind field"; text <=> root.behind-text; enabled: !root.open || root.behind-live; }
+        Button { text: "Behind button"; enabled: !root.open || root.behind-live; clicked => { root.behind-clicks += 1; } }
     }
 
     Dialog {
@@ -354,6 +360,7 @@ export component DialogGallery inherits Window {
             : "42 snippets from backup.snipdeck will be added to your boards.";
         dismissed => { root.dismissals += 1; }
         accepted => { root.accepts += 1; }
+        closed => { root.closes += 1; }
         Button {
             text: "Cancel";
             clicked => { root.cancels += 1; }

@@ -11,6 +11,9 @@ export enum ItemCardVariant { compact, comfortable, tile }
 component ItemGutter inherits Rectangle {
     in property <int> number;
     in property <bool> checked;
+    // The card is selected: the fill is `bg-selected` (the system highlight in high contrast), so the glyphs
+    // switch to the colours meant for that fill.
+    in property <bool> selected;
     // The vertical band the number is centred in (the title row).
     in property <length> row-y;
     in property <length> row-h;
@@ -24,13 +27,13 @@ component ItemGutter inherits Rectangle {
         text: "\{root.number}";
         font-family: Fonts.mono;
         font-size: Type.xs;
-        color: Theme.text-tertiary;
+        color: root.selected ? Theme.text-secondary-on-selected : Theme.text-tertiary;
         horizontal-alignment: center;
         vertical-alignment: center;
     }
     if root.checked: Icon {
         source: Icons.check;
-        tint: Theme.accent-text;
+        tint: root.selected ? Theme.accent-on-selected : Theme.accent-text;
         size: Space.s3 * SystemLook.text-scale;
         x: (parent.width - self.width) / 2;
         y: root.row-y + (root.row-h - self.height) / 2;
@@ -196,7 +199,9 @@ export component ItemCard inherits Rectangle {
         : root.kind == ItemKind.image ? Icons.image
         : root.kind == ItemKind.file ? Icons.file
         : Icons.lock;
-    property <color> glyph-tint: root.kind == ItemKind.template ? Theme.accent-text : Theme.text-secondary;
+    property <color> glyph-tint: root.kind == ItemKind.template
+        ? (root.selected ? Theme.accent-on-selected : Theme.accent-text)
+        : (root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary);
     property <bool> has-ext: root.kind == ItemKind.file && root.extension != "";
     property <length> glyph-size: Space.s4 * SystemLook.text-scale;
     property <length> glyph-group-w: root.has-glyph ? root.glyph-size + (root.has-ext ? Space.s1 + m-ext.preferred-width : 0px) : 0px;
@@ -210,8 +215,11 @@ export component ItemCard inherits Rectangle {
     property <length> content-w: max(0px, root.width - root.content-x - root.pad-x);
     // Space taken left of the title in the compact and comfortable rows.
     property <length> lead-w: root.comfortable && root.is-image ? root.thumb-w + Space.s2 : root.has-glyph && !root.tile ? root.glyph-group-w + Space.s2 : 0px;
-    // DESIGN.md §8: the title never truncates below 12 characters; the preview gives way first.
-    property <length> min-title-w: min(m-title.preferred-width, Type.base * 7);
+    // DESIGN.md §8: the title never truncates below 12 characters; the preview gives way first. Twelve Latin
+    // characters are about 7 em; twelve CJK characters are 12 em, so the floor follows the title's own average
+    // character width when that is larger.
+    property <length> avg-char-w: m-title.preferred-width / max(1, root.title.character-count);
+    property <length> min-title-w: min(m-title.preferred-width, max(Type.base * 7, root.avg-char-w * 12));
     property <length> row-w: root.content-w - root.lead-w;
     property <length> list-mark-w: (Space.s1 + Space.s0-5) * SystemLook.text-scale + Space.s1;
     // The list label takes what the title leaves (never below ~8 characters), and never so much
@@ -259,7 +267,8 @@ export component ItemCard inherits Rectangle {
     accessible-role: list-item;
     accessible-label: root.sensitive && !root.shown ? root.title
         : root.preview != "" ? root.title + ", " + root.preview : root.title;
-    accessible-description: root.list-name;
+    // A masked secret says how to reveal it (`masked-hint`); otherwise the list the item belongs to.
+    accessible-description: root.sensitive && !root.shown && root.masked-hint != "" ? root.masked-hint : root.list-name;
     accessible-item-selectable: true;
     accessible-item-selected: root.selected;
     accessible-action-default => {
@@ -363,6 +372,7 @@ export component ItemCard inherits Rectangle {
             x: 0;
             number: root.number;
             checked: root.lifted;
+            selected: root.selected;
             row-y: root.compact ? (parent.height - root.title-h) / 2 : root.pad-y;
             row-h: root.title-h;
             height: parent.height;
@@ -381,12 +391,12 @@ export component ItemCard inherits Rectangle {
                 text: "\{root.number}";
                 font-family: Fonts.mono;
                 font-size: Type.xs;
-                color: Theme.text-tertiary;
+                color: root.selected ? Theme.text-secondary-on-selected : Theme.text-tertiary;
                 vertical-alignment: center;
             }
             if root.lifted: Icon {
                 source: Icons.check;
-                tint: Theme.accent-text;
+                tint: root.selected ? Theme.accent-on-selected : Theme.accent-text;
                 size: Space.s3 * SystemLook.text-scale;
                 y: (parent.height - self.height) / 2;
             }
@@ -411,7 +421,7 @@ export component ItemCard inherits Rectangle {
             text: root.extension;
             font-family: Fonts.mono;
             font-size: Type.xs;
-            color: Theme.text-secondary;
+            color: root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary;
             vertical-alignment: center;
         }
 
@@ -565,6 +575,14 @@ export component ItemCard inherits Rectangle {
     scope := FocusScope {
         enabled: root.keyboard-focusable;
         focus-on-click: false;
+        // A secret revealed with the held Space key is hidden again when focus leaves (Tab, a click elsewhere,
+        // the window deactivating): the key release would then go to another control and never arrive here.
+        focus-lost(reason) => {
+            if (root.held-reveal) {
+                root.held-reveal = false;
+                root.reveal-requested(false);
+            }
+        }
         key-pressed(event) => {
             if (event.text == Key.Return) {
                 root.pull();
