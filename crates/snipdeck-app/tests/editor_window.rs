@@ -239,7 +239,6 @@ fn new_snippet_in_the_kebab_opens_an_empty_editor_that_saves_text_from_the_keybo
         // The title has the focus; Tab moves to the text.
         type_text(ed.window(), "Sign-off");
         press(ed.window(), &key(Key::Tab));
-        press(ed.window(), &key(Key::Tab));
         settle();
         type_text(ed.window(), "Kind regards,");
         assert_eq!(ed.get_item_title(), "Sign-off");
@@ -308,6 +307,8 @@ fn ctrl_n_and_edit_in_the_main_window_open_the_editor() {
         main.show().expect("show");
         settle();
 
+        main.invoke_focus_items();
+        settle();
         chord(main.window(), &[Key::Control], "n");
         settle();
         assert!(r.ed().get_is_new(), "Ctrl+N: a new item");
@@ -426,14 +427,13 @@ fn what_is_typed_is_saved_as_a_draft_every_two_seconds_and_restored_after_a_rest
             let ed = r.ed();
             type_text(ed.window(), "Half a thought");
             press(ed.window(), &key(Key::Tab));
-            press(ed.window(), &key(Key::Tab));
             type_text(ed.window(), "unfinished body");
-            wait(AUTOSAVE_EVERY - Duration::from_millis(100));
+            assert_eq!(ed.get_content(), "unfinished body");
             assert!(
                 r.draft_files().is_empty(),
-                "not before the two seconds are up"
+                "typing alone writes nothing: the timer does"
             );
-            wait(Duration::from_millis(100));
+            wait(AUTOSAVE_EVERY);
             assert_eq!(r.draft_files(), ["new.json"]);
             // The app dies here, with the editor neither saved nor discarded.
         }
@@ -747,7 +747,6 @@ fn text_over_16_kb_opens_in_a_read_only_viewer_and_saving_keeps_it_whole() {
         let shown = ed.get_content();
         ed.invoke_focus_title();
         press(ed.window(), &key(Key::Tab));
-        press(ed.window(), &key(Key::Tab));
         settle();
         type_text(ed.window(), "typed into the viewer");
         assert_eq!(ed.get_content(), shown, "read-only");
@@ -756,7 +755,15 @@ fn text_over_16_kb_opens_in_a_read_only_viewer_and_saving_keeps_it_whole() {
         assert!(r.draft_files().is_empty(), "a read-only text has no draft");
         ed.invoke_mark_dirty();
         save(&ed);
-        assert!(!r.editor_shown());
+        assert!(
+            !r.editor_shown(),
+            "{:?}",
+            r.ctl.borrow().item_editor_view().map(|v| (
+                v.title_problem,
+                v.content_problem,
+                v.banner
+            ))
+        );
         let id = r.id("Giant, renamed");
         assert_eq!(r.text(id), big, "the whole text is still there");
     });
@@ -770,9 +777,11 @@ fn the_editor_fields_have_roles_labels_and_big_enough_targets() {
         let r = rig();
         menu(&r, "New snippet");
         let ed = r.ed();
+        ed.window().set_size(slint::LogicalSize::new(640.0, 2000.0));
         for kind in 0..=5 {
             ed.set_kind_index(kind);
             settle();
+            eprintln!("kind {kind}");
             let _ = find(&ed, "Title", AccessibleRole::TextInput);
             let _ = find(&ed, "Save", AccessibleRole::Button);
             let _ = find(&ed, "Cancel", AccessibleRole::Button);

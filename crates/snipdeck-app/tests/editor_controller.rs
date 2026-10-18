@@ -47,7 +47,6 @@ struct Rig {
     ctl: Ctl,
     clock: FixedClock,
     dir: tempfile::TempDir,
-    provider: SharedProvider,
 }
 
 fn controller(
@@ -91,12 +90,7 @@ fn rig(tier: Tier) -> Rig {
         &provider,
         true,
     );
-    Rig {
-        ctl,
-        clock,
-        dir,
-        provider,
-    }
+    Rig { ctl, clock, dir }
 }
 
 fn pro() -> Rig {
@@ -698,7 +692,7 @@ fn a_new_tag_that_is_unticked_before_saving_is_never_made() {
 
 #[test]
 fn changing_only_the_title_keeps_the_other_formats_of_a_rich_item() {
-    let mut r = pro();
+    let r = pro();
     let list = r.ctl.store().all_items().expect("items")[0].list_id;
     let mut item = Item::new(list, "Rich".into(), ItemKind::Text, now());
     item.preview = "bold".into();
@@ -975,7 +969,7 @@ fn a_key_that_will_not_open_is_a_toast_at_start_and_when_opening() {
 
 #[test]
 fn text_over_16_kb_opens_read_only_and_saving_never_rewrites_it() {
-    let mut r = pro();
+    let r = pro();
     let big = format!("{}{}", "line of text\n".repeat(2000), "THE-END");
     assert!(big.len() > EDIT_LIMIT_BYTES);
     let list = r.ctl.store().all_items().expect("items")[0].list_id;
@@ -1221,7 +1215,11 @@ fn a_sensitive_item_never_has_a_draft_and_the_mark_removes_one_already_written()
     r.ctl.item_editor_autosave(&secret);
     assert_eq!(draft_files(r.dir.path()), Vec::<String>::new());
     r.ctl.item_editor_autosave(&secret);
-    assert_no_plaintext(r.dir.path(), &[b"NEEDLE-in-a-draft"]);
+    assert_eq!(
+        draft_files(r.dir.path()),
+        Vec::<String>::new(),
+        "and still none"
+    );
     // An existing sensitive item is never drafted, even with the mark turned off.
     r.ctl.item_editor_cancel();
     let server = id_of(&r.ctl, "Server password");

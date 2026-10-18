@@ -11,8 +11,6 @@
 
 use std::sync::{Mutex, OnceLock, mpsc};
 
-use snipdeck_store::crypto::KeyProvider as _;
-
 use slint::{
     Window,
     platform::{Key, WindowEvent},
