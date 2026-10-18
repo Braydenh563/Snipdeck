@@ -52,7 +52,7 @@ use super::dpi;
 use super::hidden_window::{HiddenWindow, WindowHandler};
 use crate::error::Error;
 use crate::tray::{
-    MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayModel, classify, decode_anchor,
+    MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayLabels, TrayModel, classify, decode_anchor,
     decode_callback,
 };
 
@@ -72,6 +72,7 @@ enum Command {
     Hide(Reply),
     Tooltip(String, Reply),
     Paused(bool, Reply),
+    Labels(TrayLabels, Reply),
 }
 
 /// The Windows tray icon. Dropping it removes the icon and stops its thread.
@@ -137,6 +138,10 @@ impl Tray for WinTray {
 
     fn set_hotkeys_paused(&mut self, paused: bool) -> Result<(), Error> {
         self.call(|reply| Command::Paused(paused, reply))
+    }
+
+    fn set_labels(&mut self, labels: TrayLabels) -> Result<(), Error> {
+        self.call(|reply| Command::Labels(labels, reply))
     }
 }
 
@@ -294,6 +299,11 @@ impl TrayHandler {
             }
             Command::Paused(paused, reply) => {
                 self.model.borrow_mut().set_hotkeys_paused(paused);
+                let _ = reply.send(Ok(()));
+            }
+            Command::Labels(labels, reply) => {
+                // The menu is built from the model on every right click: nothing to redraw.
+                self.model.borrow_mut().set_labels(labels);
                 let _ = reply.send(Ok(()));
             }
         }
@@ -456,7 +466,7 @@ fn build_menu(lines: &[MenuLine]) -> Option<HMENU> {
                 label,
                 checked,
             } => {
-                let text = HSTRING::from(*label);
+                let text = HSTRING::from(label.as_str());
                 let flags = if *checked {
                     MF_STRING | MF_CHECKED
                 } else {

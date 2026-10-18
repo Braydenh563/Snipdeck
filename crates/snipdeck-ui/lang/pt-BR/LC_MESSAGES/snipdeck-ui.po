@@ -436,8 +436,14 @@ msgstr "Nada fixado ainda"
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "Somente trechos de texto, código, link e modelo podem ser sensíveis."
 
+msgid "Open Panel"
+msgstr "Abrir painel"
+
 msgid "Open Settings"
 msgstr "Abrir configurações"
+
+msgid "Open Snipdeck"
+msgstr "Abrir o Snipdeck"
 
 msgid "Open the picker"
 msgstr "Abrir o seletor"
@@ -469,6 +475,9 @@ msgstr "Cola em {} · {}"
 msgid "Pastes the next item of the list in order."
 msgstr "Cola o próximo trecho da lista, em ordem."
 
+msgid "Pause hotkeys"
+msgstr "Pausar atalhos"
+
 msgid "Pin"
 msgstr "Fixar"
 
@@ -498,6 +507,9 @@ msgstr "Privacidade"
 
 msgid "Program to add"
 msgstr "Programa a adicionar"
+
+msgid "Quit"
+msgstr "Sair"
 
 msgid "Recent"
 msgstr "Recentes"

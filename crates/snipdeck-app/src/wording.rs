@@ -1,11 +1,30 @@
-//! The English text of the toasts.
+//! The words Rust puts on screen: the English text of the toasts, and the tray menu's labels.
 //!
 //! The Panel's own strings are `@tr` in Slint and translate with the bundled catalogs. Toast
 //! text is built in Rust from [`ToastMessage`] variants, and Rust cannot reach those catalogs,
-//! so this is the one place with literal English until the UI crate exposes a translated
-//! `ToastTexts` global (listed in `docs/HANDOVER.md`).
+//! so it is literal English until the UI crate exposes a translated `ToastTexts` global (listed
+//! in `docs/HANDOVER.md`). The tray menu already does: its words are the UI crate's `TrayTexts`
+//! global, read with [`tray_labels`].
+
+use slint::Global;
+use snipdeck_platform::tray::TrayLabels;
+use snipdeck_ui::{PanelWindow, TrayTexts};
 
 use crate::toast::ToastMessage;
+
+/// The tray menu's words in the language selected for the UI now (English until a bundled
+/// translation is selected). `window` is any window of the UI: Slint globals are reached
+/// through a component.
+#[must_use]
+pub fn tray_labels(window: &PanelWindow) -> TrayLabels {
+    let texts = TrayTexts::get(window);
+    TrayLabels {
+        open_panel: texts.get_open_panel().into(),
+        open_snipdeck: texts.get_open_snipdeck().into(),
+        pause_hotkeys: texts.get_pause_hotkeys().into(),
+        quit: texts.get_quit().into(),
+    }
+}
 
 /// The words for `message`.
 #[must_use]

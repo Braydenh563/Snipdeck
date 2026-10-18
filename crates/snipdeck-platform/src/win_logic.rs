@@ -202,6 +202,31 @@ pub const fn panel_ex_style(style: u32) -> u32 {
     (style | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) & !WS_EX_APPWINDOW
 }
 
+/// One `SetWindowPos` z-order step of [`raise_steps`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ZStep {
+    /// `HWND_TOPMOST`: above every non-topmost window.
+    Topmost,
+    /// `HWND_NOTOPMOST`: leave the topmost band, staying at the top of the normal windows.
+    NotTopmost,
+}
+
+/// The z-order steps that bring a window to the front without activating it.
+///
+/// `ShowWindow` on a hidden non-activating window (the Panel) keeps the place the window had in
+/// the stack when it was hidden, which is behind whatever the user used since, and a process that
+/// is not in the foreground cannot just `SetForegroundWindow` its way to the top. Moving the
+/// window to the topmost band and back needs no activation. A window the user pinned on top
+/// (`was_topmost`) stays there: only the first step runs.
+#[must_use]
+pub const fn raise_steps(was_topmost: bool) -> &'static [ZStep] {
+    if was_topmost {
+        &[ZStep::Topmost]
+    } else {
+        &[ZStep::Topmost, ZStep::NotTopmost]
+    }
+}
+
 /// Which Rust type owns each window class name in this process.
 ///
 /// A window class is registered once per name and keeps the window procedure of its first
@@ -477,6 +502,16 @@ mod tests {
         ] {
             assert!(!is_shell_surface_class(class), "{class}");
         }
+    }
+
+    #[test]
+    fn raising_the_panel_goes_through_the_topmost_band_unless_it_is_pinned_there() {
+        assert_eq!(raise_steps(false), [ZStep::Topmost, ZStep::NotTopmost]);
+        assert_eq!(
+            raise_steps(true),
+            [ZStep::Topmost],
+            "a pinned Panel stays on top"
+        );
     }
 
     #[test]

@@ -436,8 +436,14 @@ msgstr "Rien d'épinglé pour le moment"
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "Seuls les extraits de texte, de code, de lien et de modèle peuvent être sensibles."
 
+msgid "Open Panel"
+msgstr "Ouvrir le panneau"
+
 msgid "Open Settings"
 msgstr "Ouvrir les paramètres"
+
+msgid "Open Snipdeck"
+msgstr "Ouvrir Snipdeck"
 
 msgid "Open the picker"
 msgstr "Ouvrir le sélecteur"
@@ -469,6 +475,9 @@ msgstr "Colle dans {} · {}"
 msgid "Pastes the next item of the list in order."
 msgstr "Colle l'extrait suivant de la liste, dans l'ordre."
 
+msgid "Pause hotkeys"
+msgstr "Suspendre les raccourcis"
+
 msgid "Pin"
 msgstr "Épingler"
 
@@ -498,6 +507,9 @@ msgstr "Confidentialité"
 
 msgid "Program to add"
 msgstr "Programme à ajouter"
+
+msgid "Quit"
+msgstr "Quitter"
 
 msgid "Recent"
 msgstr "Récents"

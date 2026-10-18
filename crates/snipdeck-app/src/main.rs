@@ -154,7 +154,7 @@ fn run(args: &Args) -> Result<(), String> {
     // also when Explorer restarts), so the controller needs no flag from here. Without a tray
     // (off Windows, or it failed to start) or while no icon is there, closing the Panel quits.
     let mut tray = tray;
-    show_tray(&mut tray);
+    show_tray(&mut tray, &window);
 
     let hotkeys = Rc::new(RefCell::new(hotkeys));
     // Resuming after "Pause hotkeys" registers the chords in force then, not the launch ones.
@@ -203,11 +203,16 @@ fn run(args: &Args) -> Result<(), String> {
     ran
 }
 
-/// Puts the icon in the notification area, if there is a tray.
-fn show_tray(tray: &mut Option<Box<dyn snipdeck_platform::tray::Tray>>) {
-    if let Some(tray) = tray
-        && let Err(e) = tray.show()
-    {
+/// Gives the tray its menu words (the language the UI is in) and puts the icon in the
+/// notification area. Neither failure is fatal: the app runs without the icon.
+fn show_tray(tray: &mut Option<Box<dyn snipdeck_platform::tray::Tray>>, window: &PanelWindow) {
+    let Some(tray) = tray.as_mut() else {
+        return;
+    };
+    if let Err(e) = tray.set_labels(snipdeck_app::wording::tray_labels(window)) {
+        eprintln!("snipdeck: cannot set the tray menu texts: {e}");
+    }
+    if let Err(e) = tray.show() {
         eprintln!("snipdeck: cannot show the tray icon yet: {e}");
     }
 }
@@ -391,27 +396,13 @@ fn select_backend() -> Result<(), String> {
 fn attach_when_created(window: &PanelWindow, attach: Box<dyn Fn(isize)>) {
     let weak = window.as_weak();
     slint::Timer::single_shot(std::time::Duration::ZERO, move || {
-        if let Some(handle) = weak.upgrade().and_then(|w| native_handle(&w)) {
+        if let Some(handle) = weak
+            .upgrade()
+            .and_then(|w| snipdeck_app::native_window::handle(&w))
+        {
             attach(handle);
         }
     });
-}
-
-#[cfg(windows)]
-fn native_handle(window: &PanelWindow) -> Option<isize> {
-    use slint::winit_030::winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
-    window
-        .window()
-        .with_winit_window(|w| match w.window_handle().ok()?.as_raw() {
-            RawWindowHandle::Win32(handle) => Some(handle.hwnd.get()),
-            _ => None,
-        })
-        .flatten()
-}
-
-#[cfg(not(windows))]
-fn native_handle(_window: &PanelWindow) -> Option<isize> {
-    None
 }
 
 /// Runs `f` with the binding, if there is one yet. UI thread only.

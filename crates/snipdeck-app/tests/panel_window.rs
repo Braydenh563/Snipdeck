@@ -525,6 +525,41 @@ fn the_tray_icon_toggles_the_panel_opens_the_menu_actions_and_quits() {
     });
 }
 
+/// The owner's report: close the Panel, then "Open Panel" in the tray menu does nothing. The
+/// close button and the tray event go through the same binding the real tray thread feeds.
+#[test]
+fn open_panel_in_the_tray_menu_brings_back_a_panel_closed_with_its_button() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.button("Close panel").invoke_accessible_default_action();
+        assert!(!r.window().is_visible(), "closed to the tray");
+        r.binding.tray(TrayEvent::OpenPanel);
+        assert!(r.window().is_visible(), "Open Panel shows it again");
+        assert!(
+            r.ctl.borrow().view().on_top,
+            "and it is still the same Panel"
+        );
+        // The window host raises the Panel on every ShowPanel, also when it counts as shown
+        // already but is buried under other windows: Open Panel must always say so.
+        r.binding.tray(TrayEvent::OpenPanel);
+        assert!(r.window().is_visible());
+        // The tray's left click brings it back from hidden in the same way.
+        r.button("Close panel").invoke_accessible_default_action();
+        r.binding.tray(TrayEvent::TogglePanel);
+        assert!(r.window().is_visible());
+        assert_eq!(
+            *r.effects.borrow(),
+            [
+                Effect::HidePanel,
+                Effect::ShowPanel,
+                Effect::ShowPanel,
+                Effect::HidePanel,
+                Effect::ShowPanel,
+            ]
+        );
+    });
+}
+
 #[test]
 fn without_a_tray_icon_the_close_button_quits_instead_of_hiding() {
     on_ui_thread(|| {

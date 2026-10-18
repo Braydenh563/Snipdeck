@@ -436,8 +436,14 @@ msgstr "Noch nichts angeheftet"
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "Nur Text-, Code-, Link- und Vorlagen-Textbausteine können vertraulich sein."
 
+msgid "Open Panel"
+msgstr "Panel öffnen"
+
 msgid "Open Settings"
 msgstr "Einstellungen öffnen"
+
+msgid "Open Snipdeck"
+msgstr "Snipdeck öffnen"
 
 msgid "Open the picker"
 msgstr "Auswahl öffnen"
@@ -469,6 +475,9 @@ msgstr "Einfügen in {} · {}"
 msgid "Pastes the next item of the list in order."
 msgstr "Fügt den nächsten Textbaustein der Liste der Reihe nach ein."
 
+msgid "Pause hotkeys"
+msgstr "Tastenkürzel pausieren"
+
 msgid "Pin"
 msgstr "Anheften"
 
@@ -498,6 +507,9 @@ msgstr "Datenschutz"
 
 msgid "Program to add"
 msgstr "Hinzuzufügendes Programm"
+
+msgid "Quit"
+msgstr "Beenden"
 
 msgid "Recent"
 msgstr "Zuletzt verwendet"

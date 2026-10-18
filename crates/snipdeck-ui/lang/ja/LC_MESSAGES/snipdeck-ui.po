@@ -436,8 +436,14 @@ msgstr "ピン留めはまだありません"
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "テキスト、コード、リンク、テンプレートのスニペットのみ機密にできます。"
 
+msgid "Open Panel"
+msgstr "パネルを開く"
+
 msgid "Open Settings"
 msgstr "設定を開く"
+
+msgid "Open Snipdeck"
+msgstr "Snipdeck を開く"
 
 msgid "Open the picker"
 msgstr "ピッカーを開く"
@@ -469,6 +475,9 @@ msgstr "{} · {} に貼り付け"
 msgid "Pastes the next item of the list in order."
 msgstr "リストの次のスニペットを順番に貼り付けます。"
 
+msgid "Pause hotkeys"
+msgstr "ホットキーを一時停止"
+
 msgid "Pin"
 msgstr "ピン留め"
 
@@ -498,6 +507,9 @@ msgstr "プライバシー"
 
 msgid "Program to add"
 msgstr "追加するプログラム"
+
+msgid "Quit"
+msgstr "終了"
 
 msgid "Recent"
 msgstr "最近"

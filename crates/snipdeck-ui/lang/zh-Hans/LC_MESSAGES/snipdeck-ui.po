@@ -436,8 +436,14 @@ msgstr "还没有置顶内容"
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "只有文本、代码、链接和模板类型的片段可以设为敏感。"
 
+msgid "Open Panel"
+msgstr "打开面板"
+
 msgid "Open Settings"
 msgstr "打开设置"
+
+msgid "Open Snipdeck"
+msgstr "打开 Snipdeck"
 
 msgid "Open the picker"
 msgstr "打开选择器"
@@ -469,6 +475,9 @@ msgstr "粘贴到 {} · {}"
 msgid "Pastes the next item of the list in order."
 msgstr "按顺序粘贴列表中的下一个片段。"
 
+msgid "Pause hotkeys"
+msgstr "暂停热键"
+
 msgid "Pin"
 msgstr "置顶"
 
@@ -498,6 +507,9 @@ msgstr "隐私"
 
 msgid "Program to add"
 msgstr "要添加的程序"
+
+msgid "Quit"
+msgstr "退出"
 
 msgid "Recent"
 msgstr "最近"

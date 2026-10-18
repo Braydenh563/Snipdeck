@@ -11,8 +11,8 @@
 //!
 //! The Win32 backend (`windows::tray::WinTray`) feeds raw callbacks into a [`TrayModel`] and
 //! draws the menu it returns; `testing::FakeTray` drives the same model, so a controller test
-//! exercises the real decisions. Menu labels are English for now (a native menu cannot use
-//! Slint's `@tr`; see `docs/HANDOVER.md`).
+//! exercises the real decisions. Menu labels are English until the app sets translated ones with
+//! [`Tray::set_labels`] (a native menu cannot use Slint's `@tr`; the words are the UI crate's `TrayTexts`).
 
 use crate::error::Error;
 
@@ -41,7 +41,7 @@ impl TrayEntry {
         Self::Quit,
     ];
 
-    /// The menu text.
+    /// The English menu text (what [`TrayLabels::default`] holds).
     #[must_use]
     pub const fn label(self) -> &'static str {
         match self {
@@ -70,6 +70,46 @@ impl TrayEntry {
     }
 }
 
+/// The menu texts, in the user's language. [`Default`] is English; the app sets the translated
+/// words with [`Tray::set_labels`] (they come from the UI crate's `TrayTexts`, a native menu
+/// cannot use Slint's `@tr` itself).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TrayLabels {
+    /// [`TrayEntry::OpenPanel`].
+    pub open_panel: String,
+    /// [`TrayEntry::OpenSnipdeck`].
+    pub open_snipdeck: String,
+    /// [`TrayEntry::PauseHotkeys`].
+    pub pause_hotkeys: String,
+    /// [`TrayEntry::Quit`].
+    pub quit: String,
+}
+
+impl Default for TrayLabels {
+    fn default() -> Self {
+        let english = |entry: TrayEntry| entry.label().to_owned();
+        Self {
+            open_panel: english(TrayEntry::OpenPanel),
+            open_snipdeck: english(TrayEntry::OpenSnipdeck),
+            pause_hotkeys: english(TrayEntry::PauseHotkeys),
+            quit: english(TrayEntry::Quit),
+        }
+    }
+}
+
+impl TrayLabels {
+    /// The text of `entry`.
+    #[must_use]
+    pub fn of(&self, entry: TrayEntry) -> &str {
+        match entry {
+            TrayEntry::OpenPanel => &self.open_panel,
+            TrayEntry::OpenSnipdeck => &self.open_snipdeck,
+            TrayEntry::PauseHotkeys => &self.pause_hotkeys,
+            TrayEntry::Quit => &self.quit,
+        }
+    }
+}
+
 /// What the tray tells the app (events arrive on the backend's thread).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TrayEvent {
@@ -90,14 +130,14 @@ pub enum TrayEvent {
 }
 
 /// One line of the popup menu.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MenuLine {
     /// A command.
     Item {
         /// Which command.
         entry: TrayEntry,
         /// Its text.
-        label: &'static str,
+        label: String,
         /// Whether it shows a check mark.
         checked: bool,
     },
@@ -205,6 +245,13 @@ pub trait Tray {
     ///
     /// The backend is not running.
     fn set_hotkeys_paused(&mut self, paused: bool) -> Result<(), Error>;
+
+    /// Sets the menu texts; the next menu shown uses them.
+    ///
+    /// # Errors
+    ///
+    /// The backend is not running.
+    fn set_labels(&mut self, labels: TrayLabels) -> Result<(), Error>;
 }
 
 /// The state behind a tray icon and the decisions about it. Pure; see the module docs.
@@ -213,6 +260,7 @@ pub struct TrayModel {
     wanted: bool,
     tooltip: String,
     hotkeys_paused: bool,
+    labels: TrayLabels,
 }
 
 impl TrayModel {
@@ -223,6 +271,7 @@ impl TrayModel {
             wanted: false,
             tooltip: tooltip.to_owned(),
             hotkeys_paused: false,
+            labels: TrayLabels::default(),
         }
     }
 
@@ -279,6 +328,11 @@ impl TrayModel {
         self.hotkeys_paused = paused;
     }
 
+    /// Replaces the menu texts.
+    pub fn set_labels(&mut self, labels: TrayLabels) {
+        self.labels = labels;
+    }
+
     /// The popup menu as it is now.
     #[must_use]
     pub fn menu(&self) -> Vec<MenuLine> {
@@ -289,7 +343,7 @@ impl TrayModel {
             }
             lines.push(MenuLine::Item {
                 entry,
-                label: entry.label(),
+                label: self.labels.of(entry).to_owned(),
                 checked: entry == TrayEntry::PauseHotkeys && self.hotkeys_paused,
             });
         }
@@ -377,7 +431,7 @@ mod tests {
         let labels: Vec<_> = lines
             .iter()
             .map(|l| match l {
-                MenuLine::Item { label, .. } => *label,
+                MenuLine::Item { label, .. } => label.as_str(),
                 MenuLine::Separator => "-",
             })
             .collect();
@@ -390,6 +444,44 @@ mod tests {
                 .iter()
                 .all(|l| !matches!(l, MenuLine::Item { checked: true, .. }))
         );
+    }
+
+    #[test]
+    fn translated_labels_replace_the_english_ones_in_the_menu() {
+        let mut m = model();
+        m.set_labels(TrayLabels {
+            open_panel: "Panel öffnen".into(),
+            open_snipdeck: "Snipdeck öffnen".into(),
+            pause_hotkeys: "Tastenkürzel pausieren".into(),
+            quit: "Beenden".into(),
+        });
+        let Some(Reaction::PopupMenu(lines)) = m.gesture(Gesture::ContextMenu) else {
+            panic!("a menu")
+        };
+        let labels: Vec<_> = lines
+            .iter()
+            .filter_map(|l| match l {
+                MenuLine::Item { label, .. } => Some(label.as_str()),
+                MenuLine::Separator => None,
+            })
+            .collect();
+        assert_eq!(
+            labels,
+            [
+                "Panel öffnen",
+                "Snipdeck öffnen",
+                "Tastenkürzel pausieren",
+                "Beenden"
+            ]
+        );
+    }
+
+    #[test]
+    fn the_default_labels_are_the_english_entry_names() {
+        let labels = TrayLabels::default();
+        for entry in TrayEntry::ALL {
+            assert_eq!(labels.of(entry), entry.label());
+        }
     }
 
     #[test]
