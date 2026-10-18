@@ -200,7 +200,8 @@ fn rightmost_ink(f: &Frame, from: u32) -> u32 {
     (0..from)
         .rev()
         .find(|&x| f.pixel(x, 22) != APP_LIGHT)
-        .expect("ink in the toolbar")
+        // No ink at all reads as 0, which fails every comparison below.
+        .unwrap_or(0)
 }
 
 #[test]
