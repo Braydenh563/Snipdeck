@@ -250,8 +250,21 @@ fn a_masked_secret_is_announced_with_how_to_reveal_it() {
 
 // ---- 15. The 12-character title floor holds for CJK too ---------------------------------------------------------
 
+/// True when the machine has a font with Japanese glyphs. Without one every CJK character falls back to
+/// a narrow placeholder box, so the width of a CJK title says nothing about the layout rule (CI has none).
+fn has_cjk_font() -> bool {
+    std::process::Command::new("fc-list")
+        .args([":lang=ja", "family"])
+        .output()
+        .is_ok_and(|out| !out.stdout.is_empty())
+}
+
 fn a_cjk_title_keeps_twelve_characters_next_to_a_list_label() {
     use snipdeck_ui::DeckCjkProbe;
+    if !has_cjk_font() {
+        eprintln!("skipped: no CJK font installed, glyph widths are not meaningful");
+        return;
+    }
     let ui = start(DeckCjkProbe::new);
     let title = "請求書のお願いと支払い期限についての確認事項です";
     let titles: Vec<_> = ElementHandle::find_by_accessible_label(&ui, title)
