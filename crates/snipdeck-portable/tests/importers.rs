@@ -165,6 +165,37 @@ fn folder_skips_empty_binary_and_oversized_files() {
     assert!(kinds.contains(&"unreadable") && kinds.contains(&"too large"));
 }
 
+/// Security review 2, finding 6: the 5 MB limit is on the text that gets stored, not on the
+/// bytes in the file. Bad bytes become three-byte U+FFFD, and UTF-16 can grow by half.
+#[test]
+fn folder_checks_the_size_of_the_decoded_text() {
+    let dir = tempfile::tempdir().unwrap();
+    // 2 MB of bytes that are not UTF-8 decode to 6 MB of replacement characters.
+    write(dir.path(), "bad-bytes.txt", vec![0x80_u8; 2_000_000]);
+    // 4 MB of UTF-16 (2 M characters of CJK) is 6 MB as UTF-8.
+    let mut wide = vec![0xFF, 0xFE];
+    wide.extend(std::iter::repeat_n([0x2d_u8, 0x4e], 2_000_000).flatten());
+    write(dir.path(), "wide.txt", wide);
+    write(dir.path(), "fine.txt", "just a note");
+
+    let mut s = store();
+    let report = import_folder(&mut s, dir.path(), at(1), &ImportOptions::default()).unwrap();
+    assert_eq!(report.items_added, 1, "{report:?}");
+    let mut too_large: Vec<_> = report
+        .warnings
+        .iter()
+        .filter_map(|w| match w {
+            Warning::TooLarge { name, size } => Some((name.as_str(), *size)),
+            _ => None,
+        })
+        .collect();
+    too_large.sort_unstable();
+    assert_eq!(
+        too_large,
+        [("bad-bytes.txt", 6_000_000), ("wide.txt", 6_000_000)]
+    );
+}
+
 #[test]
 fn folder_titles_are_cleaned_file_names() {
     let dir = tempfile::tempdir().unwrap();
