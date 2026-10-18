@@ -885,50 +885,51 @@ APP_NAME | crates/snipdeck-core/src/lib.rs:49
 
 key_selection | crates/snipdeck-core/src/licence.rs:18
 keys | crates/snipdeck-core/src/licence.rs:19
-testing | crates/snipdeck-core/src/licence.rs:21
-FORMAT_VERSION | crates/snipdeck-core/src/licence.rs:33
-MAX_TOKEN_BYTES | crates/snipdeck-core/src/licence.rs:35
-MAX_ORDER_BYTES | crates/snipdeck-core/src/licence.rs:37
-LicenceError | crates/snipdeck-core/src/licence.rs:43
-Licence | crates/snipdeck-core/src/licence.rs:60
-impl Licence | crates/snipdeck-core/src/licence.rs:67
-tier | crates/snipdeck-core/src/licence.rs:69
-entitlements | crates/snipdeck-core/src/licence.rs:77
-order | crates/snipdeck-core/src/licence.rs:82
-issued | crates/snipdeck-core/src/licence.rs:87
-email_hash | crates/snipdeck-core/src/licence.rs:92
-features | crates/snipdeck-core/src/licence.rs:98
-Payload | crates/snipdeck-core/src/licence.rs:106
-VersionOnly | crates/snipdeck-core/src/licence.rs:118
-verify_licence | crates/snipdeck-core/src/licence.rs:128
-verify | crates/snipdeck-core/src/licence.rs:190
-verify_embedded | crates/snipdeck-core/src/licence.rs:204
-check_prefix | crates/snipdeck-core/src/licence.rs:212
-decode_signature | crates/snipdeck-core/src/licence.rs:234
-tests | crates/snipdeck-core/src/licence.rs:245
-dev_key | crates/snipdeck-core/src/licence.rs:254
-valid_token | crates/snipdeck-core/src/licence.rs:258
-check | crates/snipdeck-core/src/licence.rs:262
-valid_token_grants_pro_with_every_feature | crates/snipdeck-core/src/licence.rs:267
-licence_exposes_the_signed_fields | crates/snipdeck-core/src/licence.rs:276
-optional_fields_may_be_absent | crates/snipdeck-core/src/licence.rs:291
-surrounding_whitespace_from_pasting_is_ignored | crates/snipdeck-core/src/licence.rs:298
-pasted_unicode_whitespace_and_a_byte_order_mark_are_ignored | crates/snipdeck-core/src/licence.rs:304
-only_surrounding_whitespace_is_ignored | crates/snipdeck-core/src/licence.rs:318
-version_digits_have_no_leading_zeros | crates/snipdeck-core/src/licence.rs:328
-structurally_broken_tokens_are_malformed | crates/snipdeck-core/src/licence.rs:349
-oversized_tokens_are_rejected_without_being_decoded | crates/snipdeck-core/src/licence.rs:382
-signed_payloads_that_are_not_valid_licences_are_malformed | crates/snipdeck-core/src/licence.rs:388
-newer_format_versions_are_reported_as_unsupported | crates/snipdeck-core/src/licence.rs:416
-other_tiers_are_rejected_after_the_signature_checks_out | crates/snipdeck-core/src/licence.rs:433
-a_token_signed_by_another_key_is_a_bad_signature | crates/snipdeck-core/src/licence.rs:452
-unauthenticated_payloads_are_never_parsed | crates/snipdeck-core/src/licence.rs:458
-changing_any_payload_or_signature_byte_invalidates_the_token | crates/snipdeck-core/src/licence.rs:467
-a_signature_does_not_transfer_between_payloads | crates/snipdeck-core/src/licence.rs:488
-the_signature_must_cover_the_prefix_and_the_encoded_payload | crates/snipdeck-core/src/licence.rs:500
-the_development_public_key_matches_the_published_seed | crates/snipdeck-core/src/licence.rs:515
-embedded_key_accepts_development_tokens_only_in_a_development_build | crates/snipdeck-core/src/licence.rs:520
-errors_never_echo_the_token | crates/snipdeck-core/src/licence.rs:542
+signing | crates/snipdeck-core/src/licence.rs:22
+testing | crates/snipdeck-core/src/licence.rs:24
+FORMAT_VERSION | crates/snipdeck-core/src/licence.rs:36
+MAX_TOKEN_BYTES | crates/snipdeck-core/src/licence.rs:38
+MAX_ORDER_BYTES | crates/snipdeck-core/src/licence.rs:40
+LicenceError | crates/snipdeck-core/src/licence.rs:46
+Licence | crates/snipdeck-core/src/licence.rs:63
+impl Licence | crates/snipdeck-core/src/licence.rs:70
+tier | crates/snipdeck-core/src/licence.rs:72
+entitlements | crates/snipdeck-core/src/licence.rs:80
+order | crates/snipdeck-core/src/licence.rs:85
+issued | crates/snipdeck-core/src/licence.rs:90
+email_hash | crates/snipdeck-core/src/licence.rs:95
+features | crates/snipdeck-core/src/licence.rs:101
+Payload | crates/snipdeck-core/src/licence.rs:109
+VersionOnly | crates/snipdeck-core/src/licence.rs:121
+verify_licence | crates/snipdeck-core/src/licence.rs:131
+verify | crates/snipdeck-core/src/licence.rs:193
+verify_embedded | crates/snipdeck-core/src/licence.rs:207
+check_prefix | crates/snipdeck-core/src/licence.rs:215
+decode_signature | crates/snipdeck-core/src/licence.rs:237
+tests | crates/snipdeck-core/src/licence.rs:248
+dev_key | crates/snipdeck-core/src/licence.rs:258
+valid_token | crates/snipdeck-core/src/licence.rs:262
+check | crates/snipdeck-core/src/licence.rs:266
+valid_token_grants_pro_with_every_feature | crates/snipdeck-core/src/licence.rs:271
+licence_exposes_the_signed_fields | crates/snipdeck-core/src/licence.rs:280
+optional_fields_may_be_absent | crates/snipdeck-core/src/licence.rs:295
+surrounding_whitespace_from_pasting_is_ignored | crates/snipdeck-core/src/licence.rs:302
+pasted_unicode_whitespace_and_a_byte_order_mark_are_ignored | crates/snipdeck-core/src/licence.rs:308
+only_surrounding_whitespace_is_ignored | crates/snipdeck-core/src/licence.rs:322
+version_digits_have_no_leading_zeros | crates/snipdeck-core/src/licence.rs:332
+structurally_broken_tokens_are_malformed | crates/snipdeck-core/src/licence.rs:353
+oversized_tokens_are_rejected_without_being_decoded | crates/snipdeck-core/src/licence.rs:386
+signed_payloads_that_are_not_valid_licences_are_malformed | crates/snipdeck-core/src/licence.rs:392
+newer_format_versions_are_reported_as_unsupported | crates/snipdeck-core/src/licence.rs:420
+other_tiers_are_rejected_after_the_signature_checks_out | crates/snipdeck-core/src/licence.rs:437
+a_token_signed_by_another_key_is_a_bad_signature | crates/snipdeck-core/src/licence.rs:456
+unauthenticated_payloads_are_never_parsed | crates/snipdeck-core/src/licence.rs:462
+changing_any_payload_or_signature_byte_invalidates_the_token | crates/snipdeck-core/src/licence.rs:471
+a_signature_does_not_transfer_between_payloads | crates/snipdeck-core/src/licence.rs:492
+the_signature_must_cover_the_prefix_and_the_encoded_payload | crates/snipdeck-core/src/licence.rs:504
+the_development_public_key_matches_the_published_seed | crates/snipdeck-core/src/licence.rs:519
+embedded_key_accepts_development_tokens_only_in_a_development_build | crates/snipdeck-core/src/licence.rs:524
+errors_never_echo_the_token | crates/snipdeck-core/src/licence.rs:546
 
 ### crates/snipdeck-core/src/licence/key_selection.rs
 
@@ -955,13 +956,26 @@ the_flag_matches_the_key | crates/snipdeck-core/src/licence/keys.rs:38
 the_compiled_in_key_is_a_valid_curve_point | crates/snipdeck-core/src/licence/keys.rs:46
 release_builds_never_embed_the_development_key | crates/snipdeck-core/src/licence/keys.rs:51
 
+### crates/snipdeck-core/src/licence/signing.rs
+
+MAX_ORDER_BYTES | crates/snipdeck-core/src/licence/signing.rs:15
+SignError | crates/snipdeck-core/src/licence/signing.rs:19
+PayloadOut | crates/snipdeck-core/src/licence/signing.rs:30
+validate_order_id | crates/snipdeck-core/src/licence/signing.rs:47
+pro_payload | crates/snipdeck-core/src/licence/signing.rs:67
+sign_token | crates/snipdeck-core/src/licence/signing.rs:94
+tests | crates/snipdeck-core/src/licence/signing.rs:101
+minimal_payload_matches_the_documented_vector | crates/snipdeck-core/src/licence/signing.rs:107
+email_hash_is_signed_and_verifies | crates/snipdeck-core/src/licence/signing.rs:120
+order_ids_follow_the_pattern | crates/snipdeck-core/src/licence/signing.rs:129
+bad_email_hashes_are_refused | crates/snipdeck-core/src/licence/signing.rs:151
+
 ### crates/snipdeck-core/src/licence/testing.rs
 
-DEVELOPMENT_SEED | crates/snipdeck-core/src/licence/testing.rs:9
-dev_signing_key | crates/snipdeck-core/src/licence/testing.rs:12
-other_signing_key | crates/snipdeck-core/src/licence/testing.rs:17
-payload | crates/snipdeck-core/src/licence/testing.rs:22
-sign | crates/snipdeck-core/src/licence/testing.rs:27
+DEVELOPMENT_SEED | crates/snipdeck-core/src/licence/testing.rs:7
+dev_signing_key | crates/snipdeck-core/src/licence/testing.rs:10
+other_signing_key | crates/snipdeck-core/src/licence/testing.rs:15
+payload | crates/snipdeck-core/src/licence/testing.rs:20
 
 ### crates/snipdeck-core/src/list.rs
 
@@ -3382,6 +3396,49 @@ apply_window_material | spikes/s4-mica/src/platform/windows.rs:227
 watch_ui_settings | spikes/s4-mica/src/platform/windows.rs:344
 on_window_created | spikes/s4-mica/src/platform/windows.rs:367
 
+### tools/snipdeck-keygen/src/cli.rs
+
+Command | tools/snipdeck-keygen/src/cli.rs:8
+CliError | tools/snipdeck-keygen/src/cli.rs:38
+text | tools/snipdeck-keygen/src/cli.rs:62
+parse | tools/snipdeck-keygen/src/cli.rs:71
+value | tools/snipdeck-keygen/src/cli.rs:135
+tests | tools/snipdeck-keygen/src/cli.rs:143
+parse_str | tools/snipdeck-keygen/src/cli.rs:146
+genkey_takes_out | tools/snipdeck-keygen/src/cli.rs:151
+sign_takes_key_order_and_optional_fields | tools/snipdeck-keygen/src/cli.rs:164
+verify_takes_public_and_the_key_text | tools/snipdeck-keygen/src/cli.rs:189
+unknown_and_missing_commands | tools/snipdeck-keygen/src/cli.rs:208
+
+### tools/snipdeck-keygen/src/lib.rs
+
+cli | tools/snipdeck-keygen/src/lib.rs:9
+USAGE | tools/snipdeck-keygen/src/lib.rs:24
+PRIVATE_FILE | tools/snipdeck-keygen/src/lib.rs:33
+PUBLIC_FILE | tools/snipdeck-keygen/src/lib.rs:34
+ToolError | tools/snipdeck-keygen/src/lib.rs:38
+io_error | tools/snipdeck-keygen/src/lib.rs:64
+run | tools/snipdeck-keygen/src/lib.rs:74
+gen_key | tools/snipdeck-keygen/src/lib.rs:96
+write_new | tools/snipdeck-keygen/src/lib.rs:118
+read_key_file | tools/snipdeck-keygen/src/lib.rs:133
+describe | tools/snipdeck-keygen/src/lib.rs:142
+tests | tools/snipdeck-keygen/src/lib.rs:163
+exec | tools/snipdeck-keygen/src/lib.rs:170
+keys | tools/snipdeck-keygen/src/lib.rs:178
+sign | tools/snipdeck-keygen/src/lib.rs:187
+genkey_sign_verify_round_trip_with_the_core_verifier | tools/snipdeck-keygen/src/lib.rs:192
+genkey_prints_the_build_setting_and_refuses_to_overwrite | tools/snipdeck-keygen/src/lib.rs:210
+the_private_key_is_owner_only | tools/snipdeck-keygen/src/lib.rs:227
+a_tampered_key_is_rejected | tools/snipdeck-keygen/src/lib.rs:238
+bad_order_ids_are_refused | tools/snipdeck-keygen/src/lib.rs:259
+email_hash_and_issued_are_carried | tools/snipdeck-keygen/src/lib.rs:273
+a_missing_or_garbled_key_file_is_an_error_not_a_panic | tools/snipdeck-keygen/src/lib.rs:305
+
+### tools/snipdeck-keygen/src/main.rs
+
+main | tools/snipdeck-keygen/src/main.rs:11
+
 ### tools/windows-test/m2-harness/src/app.rs
 
 APP_ID | tools/windows-test/m2-harness/src/app.rs:28
@@ -3468,6 +3525,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-core/src/licence.rs` (inline) | 20 |
 | `crates/snipdeck-core/src/licence/key_selection.rs` (inline) | 6 |
 | `crates/snipdeck-core/src/licence/keys.rs` (inline) | 3 |
+| `crates/snipdeck-core/src/licence/signing.rs` (inline) | 4 |
 | `crates/snipdeck-core/src/list.rs` (inline) | 3 |
 | `crates/snipdeck-core/src/name.rs` (inline) | 4 |
 | `crates/snipdeck-core/src/search/tests.rs` (inline) | 20 |
@@ -3562,3 +3620,5 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/support/picker_fixture.rs` | 0 |
 | `spikes/s3-longtext/src/viewer.rs` (inline) | 1 |
 | `spikes/s4-mica/src/appearance.rs` (inline) | 8 |
+| `tools/snipdeck-keygen/src/cli.rs` (inline) | 4 |
+| `tools/snipdeck-keygen/src/lib.rs` (inline) | 7 |

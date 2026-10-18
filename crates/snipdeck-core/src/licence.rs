@@ -17,6 +17,9 @@
 #[cfg(test)]
 mod key_selection;
 mod keys;
+// The signer is only compiled for the `snipdeck-keygen` tool and for tests; the app never links it.
+#[cfg(any(test, feature = "keygen"))]
+pub mod signing;
 #[cfg(test)]
 mod testing;
 
@@ -245,7 +248,8 @@ fn decode_signature(text: &str) -> Result<Signature, LicenceError> {
 mod tests {
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 
-    use super::testing::{dev_signing_key, other_signing_key, payload, sign};
+    use super::signing::sign_token as sign;
+    use super::testing::{dev_signing_key, other_signing_key, payload};
     use super::*;
     use crate::Tier;
 

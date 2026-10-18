@@ -8,3 +8,7 @@ spikes-results/
 .claude/reviews/
 dist/
 .claude/worktrees/
+
+# Licence signing keys from `snipdeck-keygen genkey` (docs/licensing.md); never commit them.
+private.key
+licence-keys/

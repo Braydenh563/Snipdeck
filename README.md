@@ -113,6 +113,8 @@ scripts/gate.sh --full     # the same plus the whole test suite
 into it yet. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full developer workflow and
 [`docs/troubleshooting.md`](docs/troubleshooting.md) if something does not build or run.
 
+To make a licence key for a friend, use `tools/snipdeck-keygen` (`cargo run -p snipdeck-keygen -- --help`); see "Keys for friends" in [`docs/licensing.md`](docs/licensing.md).
+
 To test Windows behaviour, run `run-windows-tests.bat`: a wizard that builds the app, walks you through
 the manual steps and writes a summary ([`tools/windows-test`](tools/windows-test/README.md)).
 
