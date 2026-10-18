@@ -13,17 +13,29 @@ msgstr "リストには、返信文や住所など関連するスニペットを
 msgid "Add list"
 msgstr "リストを追加"
 
+msgid "All"
+msgstr ""
+
 msgid "Board: {}"
 msgstr "ボード: {}"
 
 msgid "Boards"
 msgstr "ボード"
 
+msgid "Cancel"
+msgstr ""
+
 msgid "Clear search"
 msgstr "検索をクリア"
 
+msgid "Close"
+msgstr ""
+
 msgid "Close panel"
 msgstr "パネルを閉じる"
+
+msgid "Control Enter"
+msgstr ""
 
 msgid "Copies to clipboard"
 msgstr "クリップボードにコピーされます"
@@ -31,13 +43,31 @@ msgstr "クリップボードにコピーされます"
 msgid "Copy"
 msgstr "コピー"
 
+msgid "Copy something, then save it from the Panel."
+msgstr ""
+
 msgid "Copy something, then save it here from the clipboard."
 msgstr "何かをコピーしてから、クリップボードからここに保存できます。"
 
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Escape"
+msgstr ""
+
+msgid "Fields"
+msgstr ""
+
+msgid "Fill in template"
+msgstr ""
+
 msgid "Hidden. Hold Space to reveal."
+msgstr ""
+
+msgid "Hidden. Open it in the Panel to reveal."
+msgstr ""
+
+msgid "Insert"
 msgstr ""
 
 msgid "Keep on top"
@@ -58,8 +88,20 @@ msgstr "リストはまだありません"
 msgid "No matches"
 msgstr "一致する項目がありません"
 
+msgid "No snippets yet"
+msgstr ""
+
+msgid "Nothing matches “{}”."
+msgstr ""
+
 msgid "Nothing on this board matches “{}”."
 msgstr "このボードに「{}」に一致するものはありません。"
+
+msgid "Nothing pinned matches “{}”."
+msgstr ""
+
+msgid "Nothing pinned yet"
+msgstr ""
 
 msgid "Paste"
 msgstr "貼り付け"
@@ -70,11 +112,35 @@ msgstr "{} に貼り付け"
 msgid "Pastes into {} · {}"
 msgstr "{} · {} に貼り付け"
 
+msgid "Pin a snippet from the Panel to find it here."
+msgstr ""
+
+msgid "Pinned"
+msgstr ""
+
 msgid "Pinned snippets"
 msgstr "ピン留めしたスニペット"
 
+msgid "Preview"
+msgstr ""
+
+msgid "Required"
+msgstr ""
+
+msgid "Results"
+msgstr ""
+
 msgid "Save from clipboard"
 msgstr "クリップボードから保存"
+
+msgid "Scope"
+msgstr ""
+
+msgid "Search all snippets"
+msgstr ""
+
+msgid "Search in"
+msgstr ""
 
 msgid "Search snippets"
 msgstr "スニペットを検索"
@@ -87,6 +153,15 @@ msgstr "Snipdeck"
 
 msgid "Snippets"
 msgstr "スニペット"
+
+msgid "Tab"
+msgstr ""
+
+msgid "This board"
+msgstr ""
+
+msgid "This field is required"
+msgstr ""
 
 msgid "This list is empty"
 msgstr "このリストは空です"

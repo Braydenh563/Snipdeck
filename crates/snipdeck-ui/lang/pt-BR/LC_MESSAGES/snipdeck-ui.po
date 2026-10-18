@@ -13,17 +13,29 @@ msgstr "Uma lista reúne trechos relacionados, como respostas ou endereços."
 msgid "Add list"
 msgstr "Adicionar lista"
 
+msgid "All"
+msgstr ""
+
 msgid "Board: {}"
 msgstr "Quadro: {}"
 
 msgid "Boards"
 msgstr "Quadros"
 
+msgid "Cancel"
+msgstr ""
+
 msgid "Clear search"
 msgstr "Limpar pesquisa"
 
+msgid "Close"
+msgstr ""
+
 msgid "Close panel"
 msgstr "Fechar painel"
+
+msgid "Control Enter"
+msgstr ""
 
 msgid "Copies to clipboard"
 msgstr "Copia para a área de transferência"
@@ -31,13 +43,31 @@ msgstr "Copia para a área de transferência"
 msgid "Copy"
 msgstr "Copiar"
 
+msgid "Copy something, then save it from the Panel."
+msgstr ""
+
 msgid "Copy something, then save it here from the clipboard."
 msgstr "Copie algo e depois salve aqui a partir da área de transferência."
 
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Escape"
+msgstr ""
+
+msgid "Fields"
+msgstr ""
+
+msgid "Fill in template"
+msgstr ""
+
 msgid "Hidden. Hold Space to reveal."
+msgstr ""
+
+msgid "Hidden. Open it in the Panel to reveal."
+msgstr ""
+
+msgid "Insert"
 msgstr ""
 
 msgid "Keep on top"
@@ -58,8 +88,20 @@ msgstr "Nenhuma lista ainda"
 msgid "No matches"
 msgstr "Nenhum resultado"
 
+msgid "No snippets yet"
+msgstr ""
+
+msgid "Nothing matches “{}”."
+msgstr ""
+
 msgid "Nothing on this board matches “{}”."
 msgstr "Nada neste quadro corresponde a “{}”."
+
+msgid "Nothing pinned matches “{}”."
+msgstr ""
+
+msgid "Nothing pinned yet"
+msgstr ""
 
 msgid "Paste"
 msgstr "Colar"
@@ -70,11 +112,35 @@ msgstr "Cola em {}"
 msgid "Pastes into {} · {}"
 msgstr "Cola em {} · {}"
 
+msgid "Pin a snippet from the Panel to find it here."
+msgstr ""
+
+msgid "Pinned"
+msgstr ""
+
 msgid "Pinned snippets"
 msgstr "Trechos fixados"
 
+msgid "Preview"
+msgstr ""
+
+msgid "Required"
+msgstr ""
+
+msgid "Results"
+msgstr ""
+
 msgid "Save from clipboard"
 msgstr "Salvar da área de transferência"
+
+msgid "Scope"
+msgstr ""
+
+msgid "Search all snippets"
+msgstr ""
+
+msgid "Search in"
+msgstr ""
 
 msgid "Search snippets"
 msgstr "Pesquisar trechos"
@@ -87,6 +153,15 @@ msgstr "Snipdeck"
 
 msgid "Snippets"
 msgstr "Trechos"
+
+msgid "Tab"
+msgstr ""
+
+msgid "This board"
+msgstr ""
+
+msgid "This field is required"
+msgstr ""
 
 msgid "This list is empty"
 msgstr "Esta lista está vazia"

@@ -13,17 +13,29 @@ msgstr "Une liste regroupe des extraits liés, comme des réponses ou des adress
 msgid "Add list"
 msgstr "Ajouter une liste"
 
+msgid "All"
+msgstr ""
+
 msgid "Board: {}"
 msgstr "Tableau : {}"
 
 msgid "Boards"
 msgstr "Tableaux"
 
+msgid "Cancel"
+msgstr ""
+
 msgid "Clear search"
 msgstr "Effacer la recherche"
 
+msgid "Close"
+msgstr ""
+
 msgid "Close panel"
 msgstr "Fermer le panneau"
+
+msgid "Control Enter"
+msgstr ""
 
 msgid "Copies to clipboard"
 msgstr "Copie dans le presse-papiers"
@@ -31,13 +43,31 @@ msgstr "Copie dans le presse-papiers"
 msgid "Copy"
 msgstr "Copier"
 
+msgid "Copy something, then save it from the Panel."
+msgstr ""
+
 msgid "Copy something, then save it here from the clipboard."
 msgstr "Copiez quelque chose, puis enregistrez-le ici depuis le presse-papiers."
 
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Escape"
+msgstr ""
+
+msgid "Fields"
+msgstr ""
+
+msgid "Fill in template"
+msgstr ""
+
 msgid "Hidden. Hold Space to reveal."
+msgstr ""
+
+msgid "Hidden. Open it in the Panel to reveal."
+msgstr ""
+
+msgid "Insert"
 msgstr ""
 
 msgid "Keep on top"
@@ -58,8 +88,20 @@ msgstr "Aucune liste pour le moment"
 msgid "No matches"
 msgstr "Aucun résultat"
 
+msgid "No snippets yet"
+msgstr ""
+
+msgid "Nothing matches “{}”."
+msgstr ""
+
 msgid "Nothing on this board matches “{}”."
 msgstr "Aucun élément de ce tableau ne correspond à « {} »."
+
+msgid "Nothing pinned matches “{}”."
+msgstr ""
+
+msgid "Nothing pinned yet"
+msgstr ""
 
 msgid "Paste"
 msgstr "Coller"
@@ -70,11 +112,35 @@ msgstr "Colle dans {}"
 msgid "Pastes into {} · {}"
 msgstr "Colle dans {} · {}"
 
+msgid "Pin a snippet from the Panel to find it here."
+msgstr ""
+
+msgid "Pinned"
+msgstr ""
+
 msgid "Pinned snippets"
 msgstr "Extraits épinglés"
 
+msgid "Preview"
+msgstr ""
+
+msgid "Required"
+msgstr ""
+
+msgid "Results"
+msgstr ""
+
 msgid "Save from clipboard"
 msgstr "Enregistrer depuis le presse-papiers"
+
+msgid "Scope"
+msgstr ""
+
+msgid "Search all snippets"
+msgstr ""
+
+msgid "Search in"
+msgstr ""
 
 msgid "Search snippets"
 msgstr "Rechercher des extraits"
@@ -87,6 +153,15 @@ msgstr "Snipdeck"
 
 msgid "Snippets"
 msgstr "Extraits"
+
+msgid "Tab"
+msgstr ""
+
+msgid "This board"
+msgstr ""
+
+msgid "This field is required"
+msgstr ""
 
 msgid "This list is empty"
 msgstr "Cette liste est vide"
