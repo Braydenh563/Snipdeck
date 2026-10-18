@@ -395,7 +395,7 @@ fn build_item(
                 if *kind == FormatKind::Text && plan.preview.is_none() {
                     item.preview = Item::preview_of(preview_text(&bytes), plan.sensitive);
                 }
-                let content = lib.put(bytes)?;
+                let content = put(lib, bytes, plan.sensitive)?;
                 formats.push(match kind {
                     FormatKind::Text => Format::Text(content),
                     FormatKind::Html => Format::Html(content),
@@ -412,7 +412,7 @@ fn build_item(
             PlanFormat::Files(files) => {
                 let mut entries = Vec::with_capacity(files.len());
                 for file in files {
-                    let content = lib.put(resolve(&file.source, fetch)?)?;
+                    let content = put(lib, resolve(&file.source, fetch)?, plan.sensitive)?;
                     entries.push(FileEntry::new(&file.name, content)?);
                 }
                 formats.push(Format::Files(entries));
@@ -420,6 +420,17 @@ fn build_item(
         }
     }
     Ok((item, Formats::new(formats)?))
+}
+
+/// Stores a payload of an imported item. Sensitive payloads are held in memory until the item
+/// is written (encrypted there when the library has a key): `put` would write the plaintext
+/// to the blob folder first, and a rollback would leave it on the disk.
+fn put(lib: &mut Batch<'_>, bytes: Vec<u8>, sensitive: bool) -> Result<Content> {
+    Ok(if sensitive {
+        lib.put_sensitive(bytes)?
+    } else {
+        lib.put(bytes)?
+    })
 }
 
 fn resolve(

@@ -464,3 +464,90 @@ fn a_locked_store_cannot_be_restored_into_with_a_sensitive_archive() {
     assert_eq!(counts(&s), before, "the failed import was rolled back");
     assert_healthy(&s);
 }
+
+// ---- security review 2, finding 1: imported sensitive payloads never reach the blob folder ----
+
+/// A disk library with encryption at rest, plus an archive holding one sensitive item whose
+/// image and file are too big to be inline. Returns the library's folder, the archive, the key
+/// it is encrypted under, and the plaintext payloads.
+fn big_sensitive_archive() -> (Vec<u8>, DataKey, Vec<Vec<u8>>) {
+    let key = DataKey::generate().unwrap();
+    let mut src = store();
+    let b = board(&mut src, "B");
+    let l = list(&mut src, b.id, "L");
+    let png = noise(80_000, 11);
+    let file = noise(70_000, 13);
+    let mut secret = Item::new(l.id, "Scan".to_owned(), ItemKind::Image, at(1));
+    secret.sensitive = true;
+    let entry = FileEntry::new("scan.bin", src.put(file.clone()).unwrap()).unwrap();
+    let formats = Formats::new(vec![
+        Format::Png(src.put(png.clone()).unwrap()),
+        Format::Files(vec![entry]),
+    ])
+    .unwrap();
+    src.insert_item(&secret, &formats, Placement::Last).unwrap();
+    let bytes = export_bytes(
+        &src,
+        &ExportOptions {
+            sensitive: SensitivePolicy::Encrypt(&key),
+            ..ExportOptions::default()
+        },
+    );
+    (bytes, key, vec![png, file])
+}
+
+/// Makes the blob folder refuse a plaintext payload: a directory sits where its file would be
+/// written, so any attempt to store the plaintext there fails the import.
+fn block_plaintext_files(folder: &std::path::Path, payloads: &[Vec<u8>]) {
+    for payload in payloads {
+        let hex = blake3::hash(payload).to_hex().to_string();
+        let shard = folder.join("blobs").join(&hex[..2]);
+        std::fs::create_dir_all(shard.join(&hex[2..])).unwrap();
+    }
+}
+
+fn open_vault(folder: &std::path::Path) -> Store {
+    let provider = MemoryKeyProvider::new().unwrap();
+    let mut s = Store::open(folder).unwrap();
+    s.create_key_ring(
+        &KeyRing::new(&provider).with_kdf_params(KdfParams::insecure_for_tests(64, 1, 1).unwrap()),
+        None,
+    )
+    .unwrap();
+    s
+}
+
+#[test]
+fn importing_a_big_sensitive_item_never_writes_its_plaintext_to_the_blob_folder() {
+    let (bytes, key, payloads) = big_sensitive_archive();
+    let dir = tempfile::tempdir().unwrap();
+    let mut s = open_vault(dir.path());
+    block_plaintext_files(dir.path(), &payloads);
+    let opts = ImportOptions {
+        key: KeySource::Given(&key),
+        ..keep()
+    };
+    let report = import_archive(&mut s, Cursor::new(&bytes), "x", at(1), &opts).unwrap();
+    assert_eq!(report.items_added, 1);
+    assert!(!report.has_warnings(), "{:?}", report.warnings);
+    assert_healthy(&s);
+}
+
+#[test]
+fn a_refused_import_of_a_big_sensitive_item_leaves_no_plaintext_file_behind() {
+    let (bytes, key, payloads) = big_sensitive_archive();
+    let dir = tempfile::tempdir().unwrap();
+    let mut s = open_vault(dir.path());
+    s.lock_key_ring();
+    block_plaintext_files(dir.path(), &payloads);
+    let opts = ImportOptions {
+        key: KeySource::Given(&key),
+        ..keep()
+    };
+    let err = import_archive(&mut s, Cursor::new(&bytes), "x", at(1), &opts).unwrap_err();
+    assert!(
+        matches!(err, Error::Store(snipdeck_store::Error::EncryptionLocked)),
+        "{err}"
+    );
+    assert_healthy(&s);
+}
