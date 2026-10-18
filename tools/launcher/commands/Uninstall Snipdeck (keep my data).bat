@@ -9,7 +9,15 @@ if not exist "%BAT%" (
   pause
   exit /b 1
 )
+if not exist "%~dp0..\snipdeck.ps1" (
+  echo Snipdeck.bat was not found. Keep this file inside the Snipdeck folder ^(tools\launcher\commands^).
+  pause
+  exit /b 1
+)
 rem Double-clicked? Then Snipdeck.bat keeps the window open after information commands.
-echo %cmdcmdline% | find /i "%~nx0" >nul && set "SNIPDECK_DBLCLICK=1"
+rem The command line can hold special characters from the folder name: keep it inside quotes (quotes dropped) and test by substitution.
+set "CL=%cmdcmdline:"=%"
+call set "R=%%CL:%~nx0=%%"
+if not "%R%"=="%CL%" set "SNIPDECK_DBLCLICK=1"
 call "%BAT%" uninstall %*
 endlocal & exit /b %ERRORLEVEL%

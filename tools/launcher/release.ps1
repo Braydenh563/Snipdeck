@@ -37,7 +37,8 @@ function Get-ReleaseAsset($Release) {
     if ($null -eq $sha) { return $null }
     $zipUrl = [string]$zip.browser_download_url
     $shaUrl = [string]$sha.browser_download_url
-    if (-not $zipUrl.StartsWith('https://') -or -not $shaUrl.StartsWith('https://')) { return $null }
+    $prefix = 'https://github.com/{0}/releases/download/' -f $script:ReleaseRepo
+    if (-not $zipUrl.StartsWith($prefix, [System.StringComparison]::Ordinal) -or -not $shaUrl.StartsWith($prefix, [System.StringComparison]::Ordinal)) { return $null }
     $tag = ''
     if ($Release.PSObject.Properties['tag_name']) { $tag = [string]$Release.tag_name }
     $size = [int64]0
@@ -88,6 +89,42 @@ function Get-PinnedHash($Pins, [string]$Name) {
     if ($null -eq $Pins -or [string]::IsNullOrEmpty($Name)) { return '' }
     if ($Pins.ContainsKey($Name)) { return [string]$Pins[$Name] }
     return ''
+}
+
+function Get-UnpinnedDecision([bool]$AllowUnpinned, [bool]$Interactive, [bool]$Yes) {
+    # Pure. What to do with a release zip that has no pinned hash in release-sha256.txt: 'allow' (the user passed
+    # --allow-unpinned), 'ask' (a person is at the keyboard), or 'refuse'. -Yes never counts as consent here.
+    if ($AllowUnpinned) { return 'allow' }
+    if ($Interactive -and -not $Yes) { return 'ask' }
+    return 'refuse'
+}
+
+function Confirm-UnpinnedRelease($Asset) {
+    # True when the unpinned zip may be installed. The .sha256 file comes from the same release as the zip, so it
+    # proves the download is intact, not that the release is the one the owner published.
+    $allow = $false
+    try { $allow = [bool]$script:Opt.AllowUnpinned } catch { }
+    $yes = $false
+    try { $yes = [bool]$script:Opt.Yes } catch { }
+    $d = Get-UnpinnedDecision $allow (Test-Interactive) $yes
+    Write-Log 'INFO' "unpinned release $($Asset.ZipName): $d"
+    if ($d -eq 'allow') {
+        Say '  No pinned hash for this release; continuing because of --allow-unpinned.' 'Yellow'
+        return $true
+    }
+    Say ''
+    Say ('  This copy of Snipdeck has no pinned hash for {0} (tools\launcher\release-sha256.txt).' -f $Asset.ZipName) 'Yellow'
+    Say '  Without one, the only check is a .sha256 file from the same GitHub release as the download.' 'Yellow'
+    if ($d -eq 'ask') {
+        $ans = Read-Host '  Download and run it anyway? [y/N]'
+        Write-Log 'ASK' "unpinned release -> '$ans'"
+        if (@('y', 'yes') -contains ([string]$ans).Trim().ToLowerInvariant()) { return $true }
+        Say '  Nothing was downloaded.' 'Gray'
+        return $false
+    }
+    Say '  Nothing was downloaded. To accept an unpinned release, run it again with --allow-unpinned,' 'Gray'
+    Say '  for example: Snipdeck.bat update --allow-unpinned' 'Gray'
+    return $false
 }
 
 function Read-ShaSidecar([string]$Text, [string]$Name) {
@@ -246,6 +283,7 @@ function Install-PortableApp {
         } catch { Say ('  Note: could not read release-sha256.txt: ' + $_.Exception.Message) 'Yellow' }
     }
     $pinned = Get-PinnedHash $pins $asset.ZipName
+    if (-not $pinned -and -not (Confirm-UnpinnedRelease $asset)) { return 1 }
 
     $tmp = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'snipdeck-dl-' + [Guid]::NewGuid().ToString('N'))
     Register-OwnedTemp $tmp
@@ -288,8 +326,7 @@ function Install-PortableApp {
             }
             Say '  Checked: SHA-256 matches the .sha256 file and the hash pinned in this copy of Snipdeck.' 'Green'
         } else {
-            Say '  Checked: SHA-256 matches the .sha256 file published with the release.' 'Green'
-            Say '  No pinned hash for this release in tools\launcher\release-sha256.txt, so only the published .sha256 file was used.' 'Yellow'
+            Say '  Checked: SHA-256 matches the .sha256 file published with the release (not pinned: you chose to continue).' 'Yellow'
         }
 
         $bad = ''
@@ -441,24 +478,36 @@ function Test-SourceCheckout {
 }
 
 function Invoke-ReinstallPrebuilt([string[]]$AppArgs) {
-    # Snipdeck.bat reinstall: throw away app\ (and the dev build output), fetch or build the app again, start it.
+    # Snipdeck.bat reinstall: stop the app, download it again and swap it in (the old app\ stays until the new one is in
+    # place, as in update), start it. In a source checkout it first asks whether to delete the build files too.
     # The library and settings are never touched here.
-    Say 'Reinstall: the app folder is removed and Snipdeck is set up again. Your library and settings are kept.' 'Cyan'
-    $appDir = Split-Path -Parent (Get-PortableExe)
+    Say 'Reinstall: the app is downloaded again and replaced. Your library and settings are kept.' 'Cyan'
+    $exe = Get-PortableExe
+    $checkout = Test-SourceCheckout
     if ($script:Opt.WhatIf) {
-        Say "  [whatif] would delete $(Hide-UserName $appDir) and then run the normal first start." 'Yellow'
+        Say '  [whatif] would stop a running Snipdeck, download the latest release, replace app\ and start it.' 'Yellow'
+        if ($checkout) { Say '  [whatif] this is a source checkout: would ask before deleting the build files (target\ and dist\).' 'Yellow' }
         return 0
     }
-    if (Test-Path -LiteralPath $appDir) {
-        try { Remove-Item -LiteralPath $appDir -Recurse -Force -ErrorAction Stop }
-        catch {
-            Write-FailureReport 'reinstall' ('the app folder could not be removed: ' + (Hide-UserName $_.Exception.Message)) @() @('Close Snipdeck if it is running (right-click the tray icon, Quit) and run this again.')
+    if (-not (Test-PrebuiltPlatform)) { return 1 }
+    if (@(Get-PortableProcesses).Count -gt 0) {
+        Say '  Snipdeck is running from app\; closing it so it can be replaced.' 'Gray'
+        if (-not (Stop-PortableApp)) {
+            Write-FailureReport 'reinstall' 'Snipdeck is still running and could not be closed.' @() @('Quit it from its tray icon and run this again.')
             return 1
         }
-        Say "  Removed $(Hide-UserName $appDir)." 'Gray'
     }
-    if (Test-SourceCheckout) { [void](Invoke-CleanBuild $false) }
-    return (Invoke-RunPrebuilt $false @($AppArgs))
+    if ($checkout) {
+        Say '  This folder holds the source code, so there may be build files from "Snipdeck.bat build".' 'Gray'
+        if (Ask-YesNo 'Also delete the build files (target\ and dist\)? The next developer build takes a while.' $false) { [void](Invoke-CleanBuild $false) }
+        else { Say '  The build files were kept.' 'Gray' }
+    }
+    if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { return (Invoke-RunPrebuilt $false @($AppArgs)) }
+    $rcs = @(Install-PortableApp)
+    if ($rcs[$rcs.Count - 1] -ne 0) { return 1 }
+    $r = Start-SnipdeckApp $exe @($AppArgs)
+    if ($r.Code -ne 0) { return 1 }
+    return 0
 }
 
 function Invoke-UpdatePrebuilt {

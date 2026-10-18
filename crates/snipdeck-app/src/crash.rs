@@ -1,9 +1,11 @@
-//! The crash log: a panic hook that writes `logs/crash-<yyyy-mm-dd-hhmmss>.txt` in the data
+//! The crash log: a panic hook that writes `logs/crash-<yyyy-mm-dd-hhmmss>.txt` (UTC) in the data
 //! folder, and the check at the next start that tells the user.
 //!
-//! A report holds the panic message (cut short), where it happened, the thread, a backtrace, the
-//! app version and the operating system. It never holds library content: the hook reads nothing
-//! from the store. Only the newest [`MAX_FILES`] reports are kept.
+//! A report holds the panic message only when it is a string literal (a `String` payload is
+//! formatted at run time and can quote library text, so only its length is written), where it
+//! happened, the thread, a backtrace, the app version and the operating system. It never holds
+//! library content: the hook reads nothing from the store. File names carry UTC, so they sort by
+//! real time across daylight-saving changes and travel; the header line has local time. Only the newest [`MAX_FILES`] reports are kept.
 //!
 //! The hook is installed first thing in `main` with [`install`]; the data folder is not known
 //! then, so [`set_data_dir`] gives it later (a panic before that writes nothing). Everything that
@@ -35,7 +37,8 @@ static DATA_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 /// What a report says about one panic.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Report {
-    /// The panic message, cut to a few hundred characters.
+    /// The panic message when it was a string literal, cut to a few hundred characters; else a
+    /// note with the payload's length.
     pub message: String,
     /// `file:line:column` of the panic, if known.
     pub location: Option<String>,
@@ -77,10 +80,12 @@ pub fn logs_dir(data_dir: &Path) -> PathBuf {
     data_dir.join(LOG_DIR)
 }
 
-/// The file name for a report made at `now`: `crash-2026-10-18-093045.txt`. Names sort by time.
+/// The file name for a report made at `now`: `crash-2026-10-18-093045.txt`, in UTC so that names
+/// sort by real time whatever the local clock does. The header line has the local time.
 #[must_use]
 pub fn file_name(now: &Zoned) -> String {
-    format!("{PREFIX}{}{EXTENSION}", now.strftime("%Y-%m-%d-%H%M%S"))
+    let utc = now.with_time_zone(TimeZone::UTC);
+    format!("{PREFIX}{}{EXTENSION}", utc.strftime("%Y-%m-%d-%H%M%S"))
 }
 
 /// Whether `name` is exactly a report's file name.
@@ -183,16 +188,23 @@ pub fn install(now: fn() -> Timestamp) {
     }));
 }
 
+/// The message to write for a panic payload. A `&'static str` is a literal in the source and
+/// safe; a `String` is built at run time (a slice panic quotes the text it sliced), so only its
+/// size is written.
+fn message_of(payload: &(dyn std::any::Any + Send)) -> String {
+    if let Some(text) = payload.downcast_ref::<&'static str>() {
+        text.chars().take(MAX_MESSAGE).collect()
+    } else if let Some(text) = payload.downcast_ref::<String>() {
+        format!("(message omitted, {} bytes)", text.len())
+    } else {
+        "(no message)".to_owned()
+    }
+}
+
 /// The report for one panic.
 fn report_of(info: &std::panic::PanicHookInfo<'_>) -> Report {
-    let payload = info.payload();
-    let message = payload
-        .downcast_ref::<&str>()
-        .map(|s| (*s).to_owned())
-        .or_else(|| payload.downcast_ref::<String>().cloned())
-        .unwrap_or_else(|| "(no message)".to_owned());
     Report {
-        message: message.chars().take(MAX_MESSAGE).collect(),
+        message: message_of(info.payload()),
         location: info
             .location()
             .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column())),
@@ -254,6 +266,43 @@ mod tests {
         assert!(file_name(&zoned(clock.now())) > a);
         clock.set("2027-01-02T00:00:00Z".parse().unwrap());
         assert!(file_name(&zoned(clock.now())) > a);
+    }
+
+    #[test]
+    fn the_file_name_uses_utc_whatever_the_local_zone() {
+        let at = start();
+        let plus_two = at.to_zoned(TimeZone::fixed(jiff::tz::offset(2)));
+        assert_eq!(file_name(&plus_two), "crash-2026-10-18-093045.txt");
+        assert_eq!(file_name(&plus_two), file_name(&zoned(at)));
+    }
+
+    #[test]
+    fn a_later_crash_stays_newest_when_the_local_clock_goes_back() {
+        // Local time falls back an hour between two crashes (DST end): the later crash has the
+        // earlier local wall time but the later real time.
+        let dir = tempfile::tempdir().unwrap();
+        let first: Timestamp = "2026-10-25T00:30:00Z".parse().unwrap(); // 02:30 local (+02:00)
+        let second: Timestamp = "2026-10-25T01:10:00Z".parse().unwrap(); // 02:10 local (+01:00)
+        let before = first.to_zoned(TimeZone::fixed(jiff::tz::offset(2)));
+        let after = second.to_zoned(TimeZone::fixed(jiff::tz::offset(1)));
+        write_report(dir.path(), &before, &report("a")).unwrap();
+        let seen = newest(dir.path()).unwrap();
+        write_report(dir.path(), &after, &report("b")).unwrap();
+        let latest = newest(dir.path()).unwrap();
+        assert!(latest > seen, "{latest} vs {seen}");
+        assert_eq!(unacknowledged(dir.path(), Some(&seen)), Some(latest));
+    }
+
+    #[test]
+    fn a_runtime_built_panic_message_is_not_written() {
+        let literal: Box<dyn std::any::Any + Send> = Box::new("plain words");
+        assert_eq!(message_of(&*literal), "plain words");
+        let built: Box<dyn std::any::Any + Send> = Box::new(String::from("quotes `héllo`"));
+        let text = message_of(&*built);
+        assert_eq!(text, "(message omitted, 15 bytes)");
+        assert!(!text.contains("llo"));
+        let other: Box<dyn std::any::Any + Send> = Box::new(7_u8);
+        assert_eq!(message_of(&*other), "(no message)");
     }
 
     #[test]

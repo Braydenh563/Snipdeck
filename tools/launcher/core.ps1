@@ -70,14 +70,14 @@ function Stop-Log { $script:LogOn = $false }
 function Write-Log([string]$Level, [string]$Message) {
     if (-not $script:LogOn) { return }
     try {
-        $line = '{0} [{1}] {2}' -f (Get-Date).ToString('yyyy-MM-dd HH:mm:ss'), $Level, $Message
+        $line = '{0} [{1}] {2}' -f (Get-Date).ToString('yyyy-MM-dd HH:mm:ss'), $Level, (Hide-UserName $Message)
         [System.IO.File]::AppendAllText($script:LogPath, $line + "`r`n")
     } catch { }
 }
 
 function Write-LogRaw([string]$Text) {
     if (-not $script:LogOn -or [string]::IsNullOrEmpty($Text)) { return }
-    try { [System.IO.File]::AppendAllText($script:LogPath, $Text) } catch { }
+    try { [System.IO.File]::AppendAllText($script:LogPath, (Hide-UserName $Text)) } catch { }
 }
 
 # ---------------------------------------------------------------- console
@@ -245,8 +245,15 @@ function Remove-KnownPath([string]$Path) {
 
 # ---------------------------------------------------------------- running programs
 
+function Get-AppProcessNames {
+    # The source build runs as snipdeck-app.exe; the release zip's portable app as snipdeck.exe.
+    return @('snipdeck-app', 'snipdeck')
+}
+
 function Get-AppProcesses {
-    return @(Get-Process -Name 'snipdeck-app' -ErrorAction SilentlyContinue)
+    $found = @()
+    foreach ($n in (Get-AppProcessNames)) { $found += @(Get-Process -Name $n -ErrorAction SilentlyContinue) }
+    return $found
 }
 
 function Stop-ProcessTree([int]$ProcessId) {
@@ -257,13 +264,13 @@ function Stop-ProcessTree([int]$ProcessId) {
 }
 
 function Stop-AppProcesses {
-    # Stops only processes named exactly snipdeck-app. Closes the window first, then ends what is left.
+    # Stops only processes named exactly snipdeck-app or snipdeck. Closes the window first, then ends what is left.
     foreach ($p in (Get-AppProcesses)) {
         $where = ''
         try { $where = $p.Path } catch { }
-        if ($script:Opt.WhatIf) { Say "  [whatif] would stop snipdeck-app.exe (process $($p.Id)) $where" 'Yellow'; continue }
-        Say "  Stopping snipdeck-app.exe (process $($p.Id))" 'Gray'
-        Write-Log 'STOP' "snipdeck-app pid $($p.Id) $where"
+        if ($script:Opt.WhatIf) { Say "  [whatif] would stop $($p.ProcessName).exe (process $($p.Id)) $where" 'Yellow'; continue }
+        Say "  Stopping $($p.ProcessName).exe (process $($p.Id))" 'Gray'
+        Write-Log 'STOP' "$($p.ProcessName) pid $($p.Id) $where"
         try { [void]$p.CloseMainWindow() } catch { }
         $gone = $false
         try { $gone = $p.WaitForExit(3000) } catch { }
@@ -606,6 +613,49 @@ function Get-RustupUrls {
     return @("https://win.rustup.rs/$arch", "https://static.rust-lang.org/rustup/dist/$triple/rustup-init.exe")
 }
 
+function New-DownloadFolder {
+    # A new folder with a random name under Temp for one download, so nothing at a fixed path can be swapped in.
+    # Uninstall sweeps leftovers named snipdeck-dl-<32 hex>. Returns $null when it cannot be made.
+    $dir = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'snipdeck-dl-' + [Guid]::NewGuid().ToString('N'))
+    Register-OwnedTemp $dir
+    try { New-Item -ItemType Directory -Path $dir -Force | Out-Null } catch { Write-Log 'WARN' "cannot make $dir : $($_.Exception.Message)"; return $null }
+    return $dir
+}
+
+function Test-SignerAllowed([string]$Subject, [string[]]$Allowed) {
+    # Pure. True when the certificate subject has CN= or O= exactly equal to one allowed name; an empty list allows any.
+    if (@($Allowed | Where-Object { $_ }).Count -eq 0) { return $true }
+    if ([string]::IsNullOrEmpty($Subject)) { return $false }
+    foreach ($a in @($Allowed)) {
+        if (-not $a) { continue }
+        if ($Subject -match ('(?i)(^|,\s*)(CN|O)="?' + [regex]::Escape($a) + '"?(,|$)')) { return $true }
+    }
+    return $false
+}
+
+function Get-SignatureVerdict([string]$Status, [string]$Subject, [string[]]$Allowed, [bool]$RequireSigned) {
+    # Pure. A Valid signature from an allowed signer passes. An unsigned file passes only when signing is not required.
+    # A signature that is invalid, tampered or untrusted never passes.
+    if ($Status -eq 'Valid') { return (Test-SignerAllowed $Subject $Allowed) }
+    if ($Status -eq 'NotSigned' -and -not $RequireSigned) { return $true }
+    return $false
+}
+
+function Test-InstallerSignature([string]$Path, [string[]]$Allowed, [bool]$RequireSigned) {
+    # Checks the Authenticode signature of a downloaded installer before it is run. Logs the status and signer.
+    if (-not $script:OnWindows) { return $false }
+    try {
+        $sig = Get-AuthenticodeSignature -LiteralPath $Path -ErrorAction Stop
+        $subject = ''
+        if ($sig.SignerCertificate) { $subject = [string]$sig.SignerCertificate.Subject }
+        Write-Log 'INFO' ("signature of {0}: {1}; signer {2}" -f $Path, $sig.Status, $subject)
+        return (Get-SignatureVerdict ([string]$sig.Status) $subject $Allowed $RequireSigned)
+    } catch {
+        Write-Log 'WARN' "could not check the signature of $Path : $($_.Exception.Message)"
+        return $false
+    }
+}
+
 function Save-Download([string[]]$Urls, [string]$Dest, [int64]$MinBytes) {
     try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch { }
     foreach ($u in $Urls) {
@@ -657,15 +707,22 @@ function Install-Rust {
     } else {
         Say '  winget is not available on this PC. Using the official rustup installer.' 'Yellow'
     }
-    $exe = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'snipdeck-rustup-init.exe')
-    Register-OwnedTemp $exe
+    $dir = New-DownloadFolder
+    if (-not $dir) { return $false }
+    $exe = [System.IO.Path]::Combine($dir, 'rustup-init.exe')
+    $done = $false
     if (Save-Download (Get-RustupUrls) $exe 1MB) {
-        [void](Invoke-Interactive $exe @('-y', '--default-toolchain', (Get-ToolchainChannel), '--profile', 'minimal'))
-        try { Remove-Item -LiteralPath $exe -Force -ErrorAction SilentlyContinue } catch { }
-        Update-PathFromRegistry
-        if (Find-Cargo) { return $true }
+        # rustup-init.exe runs as the user (no UAC). It may be unsigned; if it carries a signature that signature must be valid.
+        if (Test-InstallerSignature $exe @() $false) {
+            [void](Invoke-Interactive $exe @('-y', '--default-toolchain', (Get-ToolchainChannel), '--profile', 'minimal'))
+            Update-PathFromRegistry
+            if (Find-Cargo) { $done = $true }
+        } else {
+            Say '  The downloaded Rust installer has an invalid signature, so it was not run.' 'Red'
+        }
     }
-    return $false
+    Remove-OwnedFolder $dir
+    return $done
 }
 
 function Install-MsvcTools {
@@ -681,16 +738,22 @@ function Install-MsvcTools {
     }
     if ($code -ne 0 -and $code -ne 3010 -and -not (Test-MsvcInstalled).Status.Equals('pass')) {
         Say '  Trying the Visual Studio Build Tools bootstrapper instead.' 'Yellow'
-        $exe = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'snipdeck-vs_BuildTools.exe')
-        Register-OwnedTemp $exe
-        if (Save-Download @('https://aka.ms/vs/17/release/vs_BuildTools.exe') $exe 1MB) {
-            try {
-                $p = Start-Process -FilePath $exe -ArgumentList '--wait --passive --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended' -Verb RunAs -Wait -PassThru
-                $code = $p.ExitCode
-                Write-Log 'RUN' "vs_BuildTools exit $code"
-            } catch { Write-Log 'WARN' "bootstrapper failed: $($_.Exception.Message)" }
-            try { Remove-Item -LiteralPath $exe -Force -ErrorAction SilentlyContinue } catch { }
+        $dir = New-DownloadFolder
+        $exe = ''
+        if ($dir) { $exe = [System.IO.Path]::Combine($dir, 'vs_BuildTools.exe') }
+        if ($dir -and (Save-Download @('https://aka.ms/vs/17/release/vs_BuildTools.exe') $exe 1MB)) {
+            # Runs elevated (UAC): only a valid Microsoft signature is accepted.
+            if (Test-InstallerSignature $exe @('Microsoft Corporation') $true) {
+                try {
+                    $p = Start-Process -FilePath $exe -ArgumentList '--wait --passive --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended' -Verb RunAs -Wait -PassThru
+                    $code = $p.ExitCode
+                    Write-Log 'RUN' "vs_BuildTools exit $code"
+                } catch { Write-Log 'WARN' "bootstrapper failed: $($_.Exception.Message)" }
+            } else {
+                Say '  The downloaded installer is not validly signed by Microsoft, so it was not run.' 'Red'
+            }
         }
+        if ($dir) { Remove-OwnedFolder $dir }
     }
     Update-PathFromRegistry
     if ($code -eq 3010) { Say '  The installer asks for a restart. Restart Windows, then run "Snipdeck.bat build" again.' 'Yellow' }

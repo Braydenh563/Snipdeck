@@ -320,6 +320,19 @@ fn trash_cutoff(now: Timestamp) -> Timestamp {
     Timestamp::from_second(seconds).unwrap_or(Timestamp::MIN)
 }
 
+/// The message of a deferred backup.
+const LOCKED_MESSAGE: &str = "library locked, backup deferred";
+
+/// `Err` when the library has a key ring that is locked: a backup now would leave out its
+/// sensitive items.
+fn deferred_while_locked(key_ring_exists: bool, unlocked: bool) -> Result<(), String> {
+    if key_ring_exists && !unlocked {
+        Err(LOCKED_MESSAGE.to_owned())
+    } else {
+        Ok(())
+    }
+}
+
 /// The jobs on the app's own library, run through the controller that owns it.
 pub struct ControllerJobs<'a, C, K, T> {
     controller: &'a mut Controller<Store, C, K, T>,
@@ -344,8 +357,16 @@ where
 {
     fn backup(&mut self, now: &Zoned) -> Result<BackupResult, String> {
         let store = self.controller.store();
-        // Encrypted with the library's key when it has one and it is unlocked; with no key the
-        // export leaves sensitive items out, so a backup never holds one in plain text.
+        // A library with a key ring that is locked (idle timeout) would export without its
+        // sensitive items; such a backup would also count as today's and push the last complete
+        // one out of the newest 7. Defer instead: the failure leaves `last_backup` alone, so the
+        // next tick tries again, and the unlock makes it complete.
+        deferred_while_locked(
+            store.key_ring_exists().map_err(|e| e.to_string())?,
+            store.is_unlocked(),
+        )?;
+        // Encrypted with the library's key when it has one; a library with no key ring has no
+        // encrypted items, so a backup never holds a sensitive item in plain text.
         let key = snipdeck_portable::Library::data_key(store);
         match backup::run_if_due(store, self.data_dir, now, backup::DEFAULT_KEEP, key) {
             Ok(BackupOutcome::Created { pruned, .. }) => Ok(BackupResult::Created {
@@ -407,6 +428,33 @@ mod tests {
             .parse::<Timestamp>()
             .unwrap()
             .as_second()
+    }
+
+    #[test]
+    fn a_locked_library_defers_its_backup_and_the_next_tick_retries() {
+        assert!(deferred_while_locked(false, false).is_ok(), "no key ring");
+        assert!(deferred_while_locked(true, true).is_ok(), "unlocked");
+        assert_eq!(
+            deferred_while_locked(true, false),
+            Err(LOCKED_MESSAGE.to_owned())
+        );
+
+        // The scheduler side: a deferred backup keeps `last_backup` unset, so it is due again
+        // at once, and runs when the library is unlocked.
+        let dir = tempfile::tempdir().unwrap();
+        let (mut m, clock) = rig(dir.path());
+        let mut jobs = FakeJobs {
+            backup_result: Some(Err(LOCKED_MESSAGE.to_owned())),
+            ..FakeJobs::default()
+        };
+        let out = m.tick(&mut jobs);
+        assert!(out.contains(&MaintenanceOutcome::BackupFailed(LOCKED_MESSAGE.to_owned())));
+        assert_eq!(m.state().last_backup, None);
+        jobs.backup_result = None;
+        clock.set(at(t0() + 60));
+        m.tick(&mut jobs);
+        assert_eq!(jobs.backups.len(), 2, "tried again on the next tick");
+        assert!(m.state().last_backup.is_some());
     }
 
     #[derive(Default)]

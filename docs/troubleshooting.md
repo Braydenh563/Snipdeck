@@ -19,8 +19,9 @@ can use `Snipdeck.bat build`.
 **"Its SHA-256 does not match".** The download was damaged or changed. Snipdeck deleted it and did not run it. Run
 `Snipdeck.bat` again; if it happens twice, do not use the file and report it.
 
-**"Only the published .sha256 file was used".** Not an error: `tools\launcher\release-sha256.txt` has no pinned hash for
-that release, so only the checksum file published with the release was compared.
+**"No pinned hash for ..."** `tools\launcher\release-sha256.txt` has no pinned hash for that release, so the launcher asks
+before downloading and refuses when nobody is at the keyboard. Answer `y`, or run `Snipdeck.bat update --allow-unpinned`,
+to accept the checksum file published with the release instead.
 
 **Update says Snipdeck is running.** Quit it from its tray icon and run `Snipdeck.bat update` again.
 

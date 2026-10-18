@@ -22,10 +22,11 @@ function Get-BackupFiles([string]$DataDir) {
 }
 
 function Test-BackupZip([string]$Path) {
-    # Reads every entry; refuses unsafe names. Returns Ok, Count, Error.
+    # Reads every entry; refuses unsafe names and a zip without snipdeck-backup.json (not made by Snipdeck). Returns Ok, Count, Error.
     $r = @{ Ok = $false; Count = 0; Error = '' }
     $fs = $null
     $zip = $null
+    $hasManifest = $false
     try {
         Add-Type -AssemblyName System.IO.Compression
         $fs = New-Object System.IO.FileStream($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
@@ -35,9 +36,11 @@ function Test-BackupZip([string]$Path) {
             if (-not (Test-ZipEntryName $e.FullName)) { $r.Error = "unsafe entry name '$($e.FullName)'"; return $r }
             $s = $e.Open()
             try { $s.CopyTo([System.IO.Stream]::Null) } finally { $s.Dispose() }
+            if ($e.FullName -eq 'snipdeck-backup.json') { $hasManifest = $true }
             $r.Count++
         }
         if ($r.Count -eq 0) { $r.Error = 'the backup contains no files'; return $r }
+        if (-not $hasManifest) { $r.Error = 'snipdeck-backup.json is missing, so this zip was not made by Snipdeck'; return $r }
         $r.Ok = $true
     } catch {
         $r.Error = $_.Exception.Message

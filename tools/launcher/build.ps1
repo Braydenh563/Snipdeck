@@ -515,19 +515,12 @@ function Start-SnipdeckApp([string]$Exe, [string[]]$AppArgs) {
     Write-Log 'START' "$Exe $argStr"
     $p = $null
     try {
-        if ($script:OnWindows) {
-            $psi = New-Object System.Diagnostics.ProcessStartInfo
-            $psi.FileName = $env:ComSpec
-            $psi.Arguments = '/d /s /c ""' + $Exe + '" ' + $argStr + ' >"' + $outF + '" 2>"' + $errF + '""'
-            $psi.WorkingDirectory = Split-Path -Parent $Exe
-            $psi.UseShellExecute = $false
-            $psi.CreateNoWindow = $true
-            $p = [System.Diagnostics.Process]::Start($psi)
-        } else {
-            $sp = @{ FilePath = $Exe; PassThru = $true; RedirectStandardOutput = $outF; RedirectStandardError = $errF; NoNewWindow = $true }
-            if ($argStr) { $sp['ArgumentList'] = $argStr }
-            $p = Start-Process @sp
-        }
+        # The program is started directly (no cmd.exe in between), so & | < > ^ % in a pass-through argument are plain text.
+        $sp = @{ FilePath = $Exe; PassThru = $true; RedirectStandardOutput = $outF; RedirectStandardError = $errF; WorkingDirectory = (Split-Path -Parent $Exe) }
+        if ($script:OnWindows) { $sp['WindowStyle'] = 'Hidden' } else { $sp['NoNewWindow'] = $true }
+        if ($argStr) { $sp['ArgumentList'] = $argStr }
+        $p = Start-Process @sp
+        try { $null = $p.Handle } catch { }   # keeps ExitCode readable on Windows PowerShell 5.1
     } catch {
         $res.Code = 1
         Write-FailureReport 'start' ('Windows refused to start the program: ' + $_.Exception.Message) @() @('If your antivirus quarantined the Snipdeck program file (app\snipdeck.exe, or dist\snipdeck-app.exe for a developer build), allow it and run Snipdeck.bat again (it downloads or rebuilds when the file is missing).', 'Run "Snipdeck.bat doctor" and send the report if it keeps happening.')
