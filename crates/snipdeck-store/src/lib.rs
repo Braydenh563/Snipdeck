@@ -38,3 +38,4 @@ pub use blobs::BlobStore;
 pub use error::{Error, Result};
 pub use repo::{BoardRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable};
 pub use store::{GcReport, Store};
+pub use tags::name_key;

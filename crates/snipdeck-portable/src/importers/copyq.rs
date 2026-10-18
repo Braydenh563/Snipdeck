@@ -38,6 +38,7 @@ use std::path::Path;
 
 use serde_json::Value;
 use snipdeck_core::{Name, Timestamp};
+use snipdeck_store::name_key;
 
 use crate::error::{Error, Result};
 use crate::import::{ImportOptions, board_name, finish};
@@ -269,10 +270,10 @@ fn item_from(
         let Ok(name) = Name::new(&clean_label(&tag, Name::MAX_CHARS)) else {
             continue;
         };
-        let key = name.as_str().to_lowercase();
+        let key = name_key(name.as_str());
         let index = tags
             .iter()
-            .position(|t| t.as_str().to_lowercase() == key)
+            .position(|t| name_key(t.as_str()) == key)
             .unwrap_or_else(|| {
                 tags.push(name);
                 tags.len() - 1

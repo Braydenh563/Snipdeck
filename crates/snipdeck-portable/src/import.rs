@@ -25,6 +25,7 @@ use snipdeck_core::{
     ListId, ListSort, ListView, Name, TagId, Timestamp,
 };
 use snipdeck_store::crypto::{DataKey, Slot, decrypt_payload};
+use snipdeck_store::name_key;
 
 use crate::archive::{ITEMS, MANIFEST, SafeArchive};
 use crate::dto::{
@@ -487,7 +488,7 @@ impl<R: Read + Seek> Builder<'_, R> {
             unique(&mut seen, id, "tag")?;
             let name = parse_name(&tag.name, "tag")?;
             let index = *by_key
-                .entry(name.as_str().to_lowercase())
+                .entry(name_key(name.as_str()))
                 .or_insert_with(|| {
                     names.push(name.clone());
                     names.len() - 1

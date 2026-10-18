@@ -13,13 +13,15 @@ use crate::Result;
 use crate::batch::Ctx;
 use crate::codec::{id_bytes, id_from, not_found, require_new, stored_name};
 
-/// The key two tag names clash on.
+/// The key two tag names clash on. Importers use it to decide whether a name is already a tag,
+/// so that they agree with the store and never trip its `TagExists` check.
 ///
 /// Decompose, fold the case, compose: the canonical caseless match of Unicode §3.13, with
 /// the case folded as upper-case then lower-case. That equals full case folding for every
 /// cased letter that matters here (`ß` to `ss`, final `ς` to `σ`, ligatures such as `ﬁ`), and
 /// it is the same mapping whatever the input's case, which is all a uniqueness key needs.
-pub(crate) fn name_key(name: &str) -> String {
+#[must_use]
+pub fn name_key(name: &str) -> String {
     let decomposed: String = name.nfd().collect();
     decomposed.to_uppercase().to_lowercase().nfc().collect()
 }

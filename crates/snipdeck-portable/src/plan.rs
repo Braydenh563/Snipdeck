@@ -21,7 +21,7 @@ use snipdeck_core::{
     ListAccent, ListSort, ListView, Name, Placement, Tag, TagId, Timestamp,
 };
 use snipdeck_store::crypto::{DataKey, Slot};
-use snipdeck_store::{Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, TagRepo, TrashRepo};
+use snipdeck_store::{Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, TagRepo, TrashRepo, name_key};
 
 use crate::error::{Error, Result};
 use crate::report::ImportReport;
@@ -323,7 +323,7 @@ fn write(
     let mut by_key: HashMap<String, TagId> = lib
         .tags()?
         .into_iter()
-        .map(|t| (t.name.as_str().to_lowercase(), t.id))
+        .map(|t| (name_key(t.name.as_str()), t.id))
         .collect();
     let mut tag_ids: HashMap<usize, TagId> = HashMap::new();
     for (index, name) in plan
@@ -332,7 +332,7 @@ fn write(
         .enumerate()
         .filter(|(i, _)| used.contains(i))
     {
-        let key = name.as_str().to_lowercase();
+        let key = name_key(name.as_str());
         let id = if let Some(id) = by_key.get(&key) {
             *id
         } else {
@@ -595,6 +595,29 @@ mod tests {
             // The transaction removed the blob files it had written: nothing for a sweep.
             assert_eq!(s.gc_blobs(Duration::ZERO).unwrap().blobs, 0);
         }
+    }
+
+    /// Security review 2, finding 5: names the store treats as one tag are one tag here.
+    #[test]
+    fn tags_clash_by_the_stores_key_not_by_lower_casing() {
+        let mut s = library();
+        s.insert_tag(&Tag::new(name("\u{c9}cole"))).unwrap();
+        let mut list = PlanList::new(name("L"), at(1));
+        list.items = vec![item("t", Source::Bytes(b"t".to_vec()), &[0, 1, 2])];
+        let plan = Plan {
+            tags: vec![name("Straße"), name("STRASSE"), name("e\u{301}cole")],
+            boards: vec![PlanBoard {
+                name: name("B"),
+                created_at: at(1),
+                updated_at: at(1),
+                lists: vec![list],
+            }],
+        };
+        let mut fetch = |_: &AssetRef| Ok(Vec::new());
+        let report = apply(&mut s, &plan, &mut fetch, ImportReport::default()).unwrap();
+        assert_eq!(report.tags_added, 1);
+        assert_eq!(s.tags().unwrap().len(), 3);
+        assert_eq!(s.check_integrity().unwrap(), Vec::<String>::new());
     }
 
     #[test]

@@ -737,6 +737,26 @@ fn copyq_reuses_existing_tags() {
     assert_eq!(s.tags().unwrap().len(), 1);
 }
 
+/// Security review 2, finding 5: tags clash the way the store says they do (full case folding
+/// and Unicode normalisation), or the import aborts with `TagExists`.
+#[test]
+fn copyq_tags_match_the_way_the_store_matches_them() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("c.json");
+    fs::write(
+        &path,
+        r#"[{"text":"x","tags":["Straße","STRASSE"]},{"text":"y","tags":["e\u0301cole"]}]"#,
+    )
+    .unwrap();
+    let mut s = store();
+    tag(&mut s, "\u{c9}COLE");
+    let report = import_copyq_json(&mut s, &path, at(1), &ImportOptions::default()).unwrap();
+    assert_eq!(report.items_added, 2);
+    assert_eq!(report.tags_added, 1, "Straße and STRASSE are one tag");
+    assert_eq!(s.tags().unwrap().len(), 2, "the composed École was reused");
+    assert_healthy(&s);
+}
+
 #[test]
 fn copyq_accepts_arrays_and_json_lines() {
     let (s, _) = copyq(br#"["one", "two"]"#, &ImportOptions::default());
