@@ -29,9 +29,11 @@
 //! 3. one JSON value per line (JSON Lines), each an item.
 //!
 //! An item is a string, or an object with `text` (required), and optionally `title`, `tags`
-//! (an array of strings) and `pinned` (a boolean). Unknown fields are ignored. Only text is
+//! (an array of strings; at most 32 are read per item and 5000 distinct ones per import) and
+//! `pinned` (a boolean). Unknown fields are ignored. Only text is
 //! imported; `CopyQ`'s other formats (images, HTML) are not part of this path.
 
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -47,6 +49,50 @@ use crate::plan::{Library, Plan, PlanBoard, PlanItem, PlanList};
 use crate::report::{ImportReport, Warning};
 
 use super::{MEMORY_BUDGET, clean_label, decode_text, note_lossy, title_from};
+
+/// The most tags read from one item; the rest are ignored.
+const MAX_TAGS_PER_ITEM: usize = 32;
+
+/// The most distinct tags one import creates; later new names are ignored.
+const MAX_TAGS: usize = 5_000;
+
+/// The tag names met so far, found again by the store's own key (`name_key`), so a lookup does
+/// not walk the list and agrees with what the store will accept.
+#[derive(Default)]
+struct Tags {
+    names: Vec<Name>,
+    by_key: HashMap<String, usize>,
+    /// Whether the user has been told that a cap cut tags off.
+    warned: bool,
+}
+
+impl Tags {
+    /// The index of `name`, adding it unless the total cap is reached.
+    fn index_of(&mut self, name: Name, report: &mut ImportReport) -> Option<usize> {
+        let key = name_key(name.as_str());
+        if let Some(index) = self.by_key.get(&key) {
+            return Some(*index);
+        }
+        if self.names.len() >= MAX_TAGS {
+            self.warn(report);
+            return None;
+        }
+        self.names.push(name);
+        self.by_key.insert(key, self.names.len() - 1);
+        Some(self.names.len() - 1)
+    }
+
+    fn warn(&mut self, report: &mut ImportReport) {
+        if !self.warned {
+            self.warned = true;
+            report.warn(Warning::Truncated {
+                reason: format!(
+                    "only {MAX_TAGS_PER_ITEM} tags per item and {MAX_TAGS} tags in all were read"
+                ),
+            });
+        }
+    }
+}
 
 /// Imports the JSON file written by the `copyq eval` command shown in the module docs into a new
 /// board (named `Imported from CopyQ` unless the options say otherwise) with one list named after
@@ -93,7 +139,7 @@ pub(crate) fn import_copyq_bytes<L: Library>(
     note_lossy(how, "the CopyQ file", &mut report);
     let (tab, values) = parse(&text)?;
 
-    let mut tags: Vec<Name> = Vec::new();
+    let mut tags = Tags::default();
     let mut items = Vec::new();
     let mut budget = MEMORY_BUDGET;
     for (number, value) in values.iter().enumerate() {
@@ -124,7 +170,7 @@ pub(crate) fn import_copyq_bytes<L: Library>(
     }
 
     let mut plan = Plan {
-        tags,
+        tags: tags.names,
         ..Plan::default()
     };
     if !items.is_empty() {
@@ -209,7 +255,7 @@ fn item_from(
     value: &Value,
     label: &str,
     now: Timestamp,
-    tags: &mut Vec<Name>,
+    tags: &mut Tags,
     report: &mut ImportReport,
 ) -> Option<PlanItem> {
     let (text, title, item_tags, pinned) = match value {
@@ -228,8 +274,9 @@ fn item_from(
                 .map(|a| {
                     a.iter()
                         .filter_map(Value::as_str)
+                        .take(MAX_TAGS_PER_ITEM + 1)
                         .map(str::to_owned)
-                        .collect()
+                        .collect::<Vec<_>>()
                 })
                 .unwrap_or_default();
             (
@@ -266,19 +313,16 @@ fn item_from(
         .unwrap_or_else(|| title_from(text));
     let mut item = PlanItem::text(title, text.to_owned(), now);
     item.pinned = pinned;
-    for tag in item_tags {
+    if item_tags.len() > MAX_TAGS_PER_ITEM {
+        tags.warn(report);
+    }
+    for tag in item_tags.into_iter().take(MAX_TAGS_PER_ITEM) {
         let Ok(name) = Name::new(&clean_label(&tag, Name::MAX_CHARS)) else {
             continue;
         };
-        let key = name_key(name.as_str());
-        let index = tags
-            .iter()
-            .position(|t| name_key(t.as_str()) == key)
-            .unwrap_or_else(|| {
-                tags.push(name);
-                tags.len() - 1
-            });
-        item.tags.insert(index);
+        if let Some(index) = tags.index_of(name, report) {
+            item.tags.insert(index);
+        }
     }
     Some(item)
 }

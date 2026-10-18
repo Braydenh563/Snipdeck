@@ -788,6 +788,53 @@ fn copyq_tags_match_the_way_the_store_matches_them() {
     assert_healthy(&s);
 }
 
+/// Security review 2, finding 7: tags are capped per item and in total, and looked up by key,
+/// so a file with thousands of them neither stalls the import nor floods the library.
+#[test]
+fn copyq_caps_the_tags_per_item_and_in_total() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("c.json");
+
+    // One item with 20 000 distinct tags: only the first few are used.
+    let many: Vec<String> = (0..20_000).map(|n| format!("tag-{n}")).collect();
+    let json = serde_json::json!([{ "text": "x", "tags": many }]);
+    fs::write(&path, json.to_string()).unwrap();
+    let mut s = store();
+    let report = import_copyq_json(&mut s, &path, at(1), &ImportOptions::default()).unwrap();
+    assert_eq!(report.items_added, 1);
+    assert_eq!(report.tags_added, 32, "{report:?}");
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Truncated { reason } if reason.contains("tags"))),
+        "{:?}",
+        report.warnings
+    );
+    assert_healthy(&s);
+
+    // Many items with distinct tags each: the total is capped.
+    let items: Vec<_> = (0..200)
+        .map(|i| {
+            let tags: Vec<String> = (0..32).map(|t| format!("t-{i}-{t}")).collect();
+            serde_json::json!({ "text": format!("item {i}"), "tags": tags })
+        })
+        .collect();
+    fs::write(&path, serde_json::Value::Array(items).to_string()).unwrap();
+    let mut s = store();
+    let report = import_copyq_json(&mut s, &path, at(1), &ImportOptions::default()).unwrap();
+    assert_eq!(report.items_added, 200);
+    assert_eq!(report.tags_added, 5_000, "{report:?}");
+    assert_eq!(s.tags().unwrap().len(), 5_000);
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Truncated { reason } if reason.contains("tags"))),
+    );
+    assert_healthy(&s);
+}
+
 #[test]
 fn copyq_accepts_arrays_and_json_lines() {
     let (s, _) = copyq(br#"["one", "two"]"#, &ImportOptions::default());
