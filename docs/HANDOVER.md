@@ -40,6 +40,8 @@ Goal: advance M2 -> M3 -> M4 logic as far as Linux can verify; branch `claude/co
 
 Not verifiable here (stays unverified until the owner runs the wizard on Windows): every Win32 behaviour, IME, Mica, DPI, Narrator, real-app paste. Playwright is for browsers; Slint apps are tested with the Slint testing backend plus software-renderer screenshots.
 
+- **Try the app (Windows):** double-click `run-snipdeck-demo.bat` (needs Rust). It builds and opens `snipdeck-app --demo` on a seeded in-memory library. Unverified on Windows until the owner runs it.
+
 ## State (end of M2, M3 under way; branch claude/compassionate-pascal-pod8ux, PR #4)
 
 - **M2 landed** (`snipdeck-platform`): portable logic + Windows backend (clipboard with delayed render, keyboard, Target
