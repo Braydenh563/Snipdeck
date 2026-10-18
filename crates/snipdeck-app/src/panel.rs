@@ -169,6 +169,65 @@ impl PanelModel {
         })
     }
 
+    /// Loads the library again after it changed (a use counted, an item edited), keeping the
+    /// board, list, search, selection, Target and policy.
+    ///
+    /// # Errors
+    ///
+    /// Any store error; the model is left as it was.
+    pub fn refresh<S>(&mut self, store: &S) -> snipdeck_store::Result<()>
+    where
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+    {
+        self.reload(store, self.board, self.list, true)
+    }
+
+    /// Shows `list` of the current board. The search ends and the selection returns to the
+    /// first row (switching lists leaves the board-wide search, DESIGN.md §5).
+    ///
+    /// # Errors
+    ///
+    /// Any store error; the model is left as it was.
+    pub fn select_list<S>(&mut self, store: &S, list: ListId) -> snipdeck_store::Result<()>
+    where
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+    {
+        self.reload(store, self.board, Some(list), false)
+    }
+
+    /// Shows `board` and its first list, ending the search.
+    ///
+    /// # Errors
+    ///
+    /// Any store error; the model is left as it was.
+    pub fn select_board<S>(&mut self, store: &S, board: BoardId) -> snipdeck_store::Result<()>
+    where
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+    {
+        self.reload(store, Some(board), None, false)
+    }
+
+    fn reload<S>(
+        &mut self,
+        store: &S,
+        board: Option<BoardId>,
+        list: Option<ListId>,
+        keep_search: bool,
+    ) -> snipdeck_store::Result<()>
+    where
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+    {
+        let mut next = Self::load(store, board, list)?;
+        next.target = self.target.take();
+        next.policy = std::mem::take(&mut self.policy);
+        if keep_search {
+            next.query = std::mem::take(&mut self.query);
+            next.selected = self.selected;
+        }
+        *self = next;
+        Ok(())
+    }
+
     /// The boards, in order.
     #[must_use]
     pub fn boards(&self) -> &[Board] {
@@ -283,6 +342,13 @@ impl PanelModel {
             .map(|r| r.id)
     }
 
+    /// The position of the keyboard-selected row in [`rows`](Self::rows).
+    #[must_use]
+    pub fn selected_position(&self) -> Option<usize> {
+        let len = self.rows().len();
+        (len > 0).then(|| self.selected.min(len - 1))
+    }
+
     /// Moves the selection by `delta` rows, stopping at the ends.
     pub fn move_selection(&mut self, delta: isize) {
         let len = self.rows().len();
@@ -305,6 +371,18 @@ impl PanelModel {
     /// Records the window that had focus before the Panel was clicked.
     pub fn set_target(&mut self, target: Option<Target>) {
         self.target = target;
+    }
+
+    /// The search text.
+    #[must_use]
+    pub fn query(&self) -> &str {
+        &self.query
+    }
+
+    /// The window recorded by [`set_target`](Self::set_target).
+    #[must_use]
+    pub fn target(&self) -> Option<&Target> {
+        self.target.as_ref()
     }
 
     /// Sets the apps that never receive an auto-paste.
@@ -570,6 +648,72 @@ mod tests {
             no_paste_apps: vec!["outlook.exe".into()],
         });
         assert_eq!(model.footer(), Footer::Copies);
+    }
+
+    #[test]
+    fn select_list_switches_lists_and_ends_the_search() {
+        let mut f = fixture();
+        add_to(&mut f, Which::Replies, "Thanks", "thanks");
+        let docs = add_to(&mut f, Which::Links, "Docs", "https://example.com");
+        let mut model = PanelModel::load(&f.store, None, None).expect("model");
+        model.set_target(Some(target("OUTLOOK.EXE", Focus::Caret)));
+        model.set_query("thanks");
+        model.select_list(&f.store, f.links).expect("select");
+        assert_eq!(model.list().map(|l| l.id), Some(f.links));
+        assert!(!model.searching());
+        assert_eq!(
+            model.rows().iter().map(|r| r.id).collect::<Vec<_>>(),
+            [docs]
+        );
+        assert_eq!(model.use_label(), UseLabel::Paste, "the Target survives");
+        assert!(model.tabs()[1].active);
+    }
+
+    #[test]
+    fn select_board_shows_that_boards_first_list() {
+        let mut f = fixture();
+        let other = Board::new(Name::new("Home").expect("name"), at());
+        f.store
+            .insert_board(&other, Placement::Last)
+            .expect("board");
+        let list = List::new(other.id, Name::new("Chores").expect("n"), at());
+        f.store.insert_list(&list, Placement::Last).expect("list");
+        let mut model = PanelModel::load(&f.store, None, None).expect("model");
+        model.select_board(&f.store, other.id).expect("select");
+        assert_eq!(model.board(), Some(other.id));
+        assert_eq!(model.list().map(|l| l.id), Some(list.id));
+        assert_eq!(model.tabs().len(), 1);
+    }
+
+    #[test]
+    fn refresh_keeps_the_view_but_sees_new_data() {
+        let mut f = fixture();
+        let a = add_to(&mut f, Which::Replies, "A", "alpha");
+        let b = add_to(&mut f, Which::Replies, "B", "beta");
+        let mut model = PanelModel::load(&f.store, None, None).expect("model");
+        model.set_policy(Policy {
+            no_paste_apps: vec!["x.exe".into()],
+        });
+        model.move_selection(1);
+        assert_eq!(model.selected(), Some(b));
+        let mut list = f.store.list(f.replies).expect("list");
+        list.sort = ListSort::MostUsed;
+        f.store.update_list(&list).expect("update");
+        f.store.record_use(a, at()).expect("use");
+        model.refresh(&f.store).expect("refresh");
+        assert_eq!(
+            model.rows().iter().map(|r| r.id).collect::<Vec<_>>(),
+            [a, b]
+        );
+        assert_eq!(
+            model.selected_position(),
+            Some(1),
+            "the selection stays put"
+        );
+        model.set_query("alp");
+        model.refresh(&f.store).expect("refresh");
+        assert!(model.searching(), "the search survives a refresh");
+        assert_eq!(model.selected_position(), Some(0));
     }
 
     #[test]

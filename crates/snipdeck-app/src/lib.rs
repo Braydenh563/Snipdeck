@@ -1,8 +1,20 @@
 //! Snipdeck application logic: the use cases and view-models that sit between the UI, the
-//! store and the platform layer. Nothing here draws or touches Windows; everything runs under
-//! test with the platform fakes.
+//! store and the platform layer, and the controller that binds them to the Panel window.
+//! Everything here runs under test with the platform fakes: the logic in plain Rust, the window
+//! under Slint's headless testing backend.
+#![forbid(unsafe_code)]
 
+pub mod binding;
+pub mod cli;
+pub mod controller;
+pub mod demo;
+pub mod host;
+pub mod palette;
 pub mod panel;
+pub mod paths;
+pub mod platform;
+pub mod screenshot;
 pub mod settings;
 pub mod toast;
 pub mod usecase;
+pub mod wording;
