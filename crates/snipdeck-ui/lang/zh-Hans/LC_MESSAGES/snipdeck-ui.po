@@ -73,6 +73,9 @@ msgstr "看板：{}"
 msgid "Boards"
 msgstr "看板"
 
+msgid "Bottom edge"
+msgstr "底边"
+
 msgid "Brings the panel up beside the app you are working in."
 msgstr "在你正在使用的应用旁边显示面板。"
 
@@ -102,6 +105,9 @@ msgstr "清除选择"
 
 msgid "Clear the shortcut for {}"
 msgstr "清除 {} 的快捷键"
+
+msgid "Click"
+msgstr "点击"
 
 msgid "Close"
 msgstr "关闭"
@@ -208,6 +214,9 @@ msgstr "放弃"
 msgid "Discard your changes?"
 msgstr "要放弃更改吗？"
 
+msgid "Dock to"
+msgstr "停靠到"
+
 msgid "Done"
 msgstr "完成"
 
@@ -274,6 +283,12 @@ msgstr "文件"
 msgid "Fill in template"
 msgstr "填写模板"
 
+msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
+msgstr "将面板固定在其所在显示器的某条屏幕边缘。选择“浮动”则可放在任意位置。"
+
+msgid "Floating"
+msgstr "浮动"
+
 msgid "Follow Windows"
 msgstr "跟随 Windows"
 
@@ -309,6 +324,21 @@ msgstr "已隐藏。按住空格键即可显示。"
 
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "已隐藏。在面板中打开即可显示。"
+
+msgid "Hover"
+msgstr "悬停"
+
+msgid "Hover and click"
+msgstr "悬停和点击"
+
+msgid "Hover delay"
+msgstr "悬停延迟"
+
+msgid "How long the pointer rests on the strip before the panel opens, from 0 to {} milliseconds."
+msgstr "指针停在细条上多久后面板展开，范围为 0 至 {} 毫秒。"
+
+msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
+msgstr "指针离开已展开的面板多久后面板收起，范围为 0 至 {} 毫秒。"
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "面板展开的宽度，范围为 {} 至 {} 像素。"
@@ -351,6 +381,18 @@ msgstr "类型"
 
 msgid "Language"
 msgstr "语言"
+
+msgid "Leave delay"
+msgstr "离开延迟"
+
+msgid "Left edge"
+msgstr "左边"
+
+msgid "Lengthen the hover delay"
+msgstr "延长悬停延迟"
+
+msgid "Lengthen the leave delay"
+msgstr "延长离开延迟"
 
 msgid "Licence"
 msgstr "许可证"
@@ -487,6 +529,12 @@ msgstr "没有与“{}”匹配的置顶片段。"
 msgid "Nothing pinned yet"
 msgstr "还没有置顶内容"
 
+msgid "Off"
+msgstr "关闭"
+
+msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
+msgstr "选择“关闭”则已停靠的面板保持展开。否则它会收成一条细条，面板快捷键同样可以将其展开。"
+
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "只有文本、代码、链接和模板类型的片段可以设为敏感。"
 
@@ -498,6 +546,9 @@ msgstr "打开设置"
 
 msgid "Open Snipdeck"
 msgstr "打开 Snipdeck"
+
+msgid "Open a docked panel by"
+msgstr "展开已停靠面板的方式"
 
 msgid "Open data folder"
 msgstr "打开数据文件夹"
@@ -513,6 +564,9 @@ msgstr "橙色"
 
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "在该文件夹之外，Snipdeck 只会写入 Windows 开机启动项（如果你开启了它），以及在你使用片段时写入剪贴板。"
+
+msgid "Panel dock"
+msgstr "面板停靠"
 
 msgid "Panel menu"
 msgstr "面板菜单"
@@ -607,6 +661,9 @@ msgstr "还原 {} 的备份"
 msgid "Results"
 msgstr "搜索结果"
 
+msgid "Right edge"
+msgstr "右边"
+
 msgid "Rose"
 msgstr "玫瑰色"
 
@@ -664,6 +721,12 @@ msgstr "Shift Enter"
 msgid "Shortcuts"
 msgstr "快捷键"
 
+msgid "Shorten the hover delay"
+msgstr "缩短悬停延迟"
+
+msgid "Shorten the leave delay"
+msgstr "缩短离开延迟"
+
 msgid "Show or hide the panel"
 msgstr "显示或隐藏面板"
 
@@ -678,6 +741,9 @@ msgstr "Snipdeck"
 
 msgid "Snipdeck Pro"
 msgstr "Snipdeck Pro"
+
+msgid "Snipdeck handle, press the Panel hotkey to open"
+msgstr "Snipdeck 拉手，按面板快捷键即可展开"
 
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeck 没有账户、没有服务器、没有遥测，也不开放任何网络端口。你保存的内容不会离开这台电脑。"
@@ -778,6 +844,9 @@ msgstr "要删除所有内容，请使用上方的“删除资料库”，然后
 msgid "Today's date"
 msgstr "今天的日期"
 
+msgid "Top edge"
+msgstr "顶边"
+
 msgid "Trash"
 msgstr "回收站"
 
@@ -825,6 +894,9 @@ msgstr "你的资料库位于同一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：s
 
 msgid "https://example.com"
 msgstr "https://example.com"
+
+msgid "ms"
+msgstr "毫秒"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"

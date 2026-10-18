@@ -158,6 +158,9 @@ pub const fn use_label_text(label: crate::panel::UseLabel) -> &'static str {
     }
 }
 
+/// The kebab's dock row while the Panel is docked.
+pub const UNDOCK_TEXT: &str = "Undock the panel";
+
 /// The words of a row of the Panel's kebab menu.
 #[must_use]
 pub const fn app_menu_text(entry: crate::controller::AppMenuEntry) -> &'static str {
@@ -166,6 +169,7 @@ pub const fn app_menu_text(entry: crate::controller::AppMenuEntry) -> &'static s
         AppMenuEntry::Open => "Open Snipdeck",
         AppMenuEntry::NewSnippet => "New snippet",
         AppMenuEntry::Settings => "Settings\u{2026}",
+        AppMenuEntry::Dock => "Dock to the nearest edge",
         AppMenuEntry::PauseHotkeys => "Pause hotkeys",
         AppMenuEntry::Separator => "",
         AppMenuEntry::Troubleshoot => "Troubleshoot\u{2026}",

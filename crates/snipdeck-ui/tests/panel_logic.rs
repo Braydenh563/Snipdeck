@@ -76,6 +76,9 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_delete_requested, |i| format!("delete:{i}"));
     hook!(on_resize_requested, |edge| format!("resize:{edge:?}"));
     hook!(on_pinned_copied, |i| format!("pinned-copy:{i}"));
+    hook!(on_handle_hovered, |on| format!("handle-hover:{on}"));
+    hook!(on_handle_clicked, || "handle-click".to_string());
+    hook!(on_panel_hovered, |on| format!("panel-hover:{on}"));
     {
         let log = log.clone();
         ui.on_context_menu_requested(move |i, _, _| log.borrow_mut().push(format!("menu:{i}")));
@@ -870,6 +873,57 @@ ui_tests! {
         // The header body still drags.
         press_at(&ui, LogicalPosition::new(170.0, 20.0));
         assert_eq!(take(&log), ["drag"]);
+    }
+
+    // ---- The edge dock ---------------------------------------------------------------------------
+
+    fn the_open_panel_reports_the_pointer_over_any_part_of_it_once_and_swallows_no_click() {
+        let (ui, log) = start();
+        let row = rows(&ui).into_iter().next().expect("a row");
+        let kebab = find(&ui, "More", AccessibleRole::Button);
+        // A row, the header's kebab button, an edge grip, and the list again: always inside.
+        let grip = LogicalPosition::new(2.0, ui.window().size().height as f32 / 2.0);
+        for at in [centre(&row), centre(&kebab), grip, centre(&row)] {
+            move_to(&ui, at);
+        }
+        assert_eq!(take(&log), ["panel-hover:true"], "reported on entering, not on every move");
+        // Clicks still reach the controls under the hover area.
+        press_at(&ui, centre(&row));
+        assert_eq!(take(&log), ["use:0"]);
+        ui.window().dispatch_event(WindowEvent::PointerExited);
+        assert_eq!(take(&log), ["panel-hover:false"]);
+    }
+
+    fn a_collapsed_panel_is_one_named_handle_that_reports_hover_and_click() {
+        let (ui, log) = start();
+        let row_at = centre(&rows(&ui).into_iter().next().expect("a row"));
+        ui.set_dock_collapsed(true);
+        settle();
+        let name = "Snipdeck handle, press the Panel hotkey to open";
+        let handle = find(&ui, name, AccessibleRole::Button);
+        let (size, at) = (handle.size(), handle.absolute_position());
+        let window = ui.window().size().to_logical(ui.window().scale_factor());
+        assert_eq!((at.x, at.y), (0.0, 0.0));
+        assert_eq!((size.width, size.height), (window.width, window.height), "the whole window");
+
+        move_to(&ui, centre(&handle));
+        assert_eq!(take(&log), ["handle-hover:true"]);
+        ui.window().dispatch_event(WindowEvent::PointerExited);
+        assert_eq!(take(&log), ["handle-hover:false"]);
+
+        press_at(&ui, centre(&handle));
+        assert_eq!(take(&log), ["handle-hover:true", "handle-click"]);
+        // What is under the handle is out of reach, pointer and keyboard.
+        ui.window().dispatch_event(WindowEvent::PointerExited);
+        take(&log);
+        press_at(&ui, row_at);
+        assert_eq!(take(&log), ["handle-hover:true", "handle-click"], "the row was not used");
+        handle.invoke_accessible_default_action();
+        assert_eq!(take(&log), ["handle-click"]);
+
+        ui.set_dock_collapsed(false);
+        settle();
+        assert!(missing(&ui, name, AccessibleRole::Button), "the handle goes when the panel opens");
     }
 
     fn the_grips_are_above_the_header_but_do_not_steal_clicks_just_inside_the_edge() {

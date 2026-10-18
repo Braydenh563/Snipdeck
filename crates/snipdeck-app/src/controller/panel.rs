@@ -34,6 +34,9 @@ pub enum AppMenuEntry {
     NewSnippet,
     /// Open Settings.
     Settings,
+    /// Dock the Panel to the edge nearest to it, or undock it when it is docked (the row's
+    /// words follow [`View::docked`](super::View::docked)).
+    Dock,
     /// Switch the global hotkeys off and on (checked while they are off).
     PauseHotkeys,
     /// A line between groups.
@@ -50,10 +53,11 @@ pub enum AppMenuEntry {
 
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
 /// `Menu` has no sub-menus.
-pub const APP_MENU: [AppMenuEntry; 9] = [
+pub const APP_MENU: [AppMenuEntry; 10] = [
     AppMenuEntry::Open,
     AppMenuEntry::NewSnippet,
     AppMenuEntry::Settings,
+    AppMenuEntry::Dock,
     AppMenuEntry::PauseHotkeys,
     AppMenuEntry::Separator,
     AppMenuEntry::Troubleshoot,
@@ -97,6 +101,10 @@ where
             AppMenuEntry::Open => vec![Effect::OpenMainWindow],
             AppMenuEntry::NewSnippet => vec![Effect::NewItem],
             AppMenuEntry::Settings => vec![Effect::OpenSettings],
+            AppMenuEntry::Dock => {
+                self.dock_toggle();
+                self.take_pending()
+            }
             AppMenuEntry::PauseHotkeys => {
                 self.session.hotkeys_paused = !self.session.hotkeys_paused;
                 vec![Effect::SetHotkeysPaused(self.session.hotkeys_paused)]
@@ -170,8 +178,20 @@ where
             // Minimised or not yet laid out: not a place the user chose.
             return Vec::new();
         }
+        if self.dock_collapsed() {
+            // The dock's handle strip is not a frame the user chose, and clamping it to the
+            // Panel's limits would undo the collapse (resizing is off while it shows).
+            return Vec::new();
+        }
+        self.monitor = Some(monitor.clone());
         let clamped = frame::clamp(frame, monitor);
-        self.update_settings(|s| s.remember_panel_geometry(clamped.geometry(monitor)));
+        let mut edge = self.stored_geometry(monitor).and_then(|g| g.edge);
+        // The first move of a drag that started on a docked Panel takes it off its edge.
+        let dragged = std::mem::take(&mut self.drag_started);
+        if dragged && edge.is_some_and(|e| !frame::is_flush(e, monitor.work_area, clamped)) {
+            edge = None;
+        }
+        self.update_settings(|s| s.remember_panel_geometry(clamped.geometry(monitor, edge)));
         if clamped == frame {
             Vec::new()
         } else {
@@ -179,18 +199,21 @@ where
         }
     }
 
-    /// Where the Panel was last put on `monitor`, fitted to it (it may have changed size).
+    /// Where the Panel was last put on `monitor`, fitted to it (it may have changed size). A
+    /// docked Panel is placed flush with its edge.
     #[must_use]
     pub fn placement(&self, monitor: &Monitor) -> Option<Rect> {
-        self.settings
-            .panel_geometry
-            .iter()
-            .find(|g| g.monitor_id == monitor.id)
-            .map(|g| frame::clamp(Rect::of(g), monitor))
+        let g = self.stored_geometry(monitor)?;
+        Some(match g.edge {
+            Some(edge) => frame::docked_rect(edge, monitor.work_area, (g.w, g.h), monitor.scale),
+            None => frame::clamp(Rect::of(g), monitor),
+        })
     }
 
     /// The Panel is about to be shown on `monitor`: put it where the user left it there.
     pub fn restore_frame(&mut self, monitor: &Monitor) -> Vec<Effect> {
+        self.monitor = Some(monitor.clone());
+        self.dock_resync();
         self.placement(monitor)
             .map(Effect::PlaceWindow)
             .into_iter()

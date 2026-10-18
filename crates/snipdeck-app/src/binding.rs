@@ -21,6 +21,7 @@ use snipdeck_ui as ui;
 
 use crate::{
     controller::{AppMenuEntry, Controller, Effect, Library, ToastPhase, View},
+    dock::DockEvent,
     frame::{Edge, Monitor, Rect},
     host::{ClipboardText, HotkeyProblem},
     palette::list_color,
@@ -80,6 +81,16 @@ pub(crate) fn arm_toast<S, C, K, T>(
             arm_toast(controller, seq, next);
         }
     });
+}
+
+/// How long after a collapse the handle's frame is asked for once more (see `Core::apply`).
+const DOCK_REPLACE_AFTER: std::time::Duration = std::time::Duration::from_millis(50);
+
+/// Moves and sizes the window to `frame`.
+fn place(window: &ui::PanelWindow, frame: Rect) {
+    let w = window.window();
+    w.set_position(slint::PhysicalPosition::new(frame.x, frame.y));
+    w.set_size(slint::PhysicalSize::new(frame.w, frame.h));
 }
 
 /// What the host keeps after binding: the entry points for events that do not come from the
@@ -159,6 +170,8 @@ struct Core<S, C, K, T> {
     redraw: Rc<dyn Fn()>,
     /// A timer is waiting to write changed settings.
     settings_timer: Cell<bool>,
+    /// Sends the dock its ticks while a hover or leave delay runs.
+    dock_timer: slint::Timer,
 }
 
 impl<S, C, K, T> Core<S, C, K, T>
@@ -187,6 +200,7 @@ where
                     }
                 }),
                 settings_timer: Cell::new(false),
+                dock_timer: slint::Timer::default(),
             }
         });
         register_redraw(&core.redraw);
@@ -228,9 +242,20 @@ where
                     let _ = window.hide();
                 }
                 Effect::PlaceWindow(frame) => {
-                    let w = window.window();
-                    w.set_position(slint::PhysicalPosition::new(frame.x, frame.y));
-                    w.set_size(slint::PhysicalSize::new(frame.w, frame.h));
+                    place(&window, *frame);
+                    if window.get_dock_collapsed() {
+                        // The window's minimum size is lifted by the redraw that follows, so
+                        // a size asked for now may still be held up to the old minimum: ask
+                        // again once it is.
+                        let (weak, frame) = (self.window.clone(), *frame);
+                        slint::Timer::single_shot(DOCK_REPLACE_AFTER, move || {
+                            if let Some(window) = weak.upgrade()
+                                && window.get_dock_collapsed()
+                            {
+                                place(&window, frame);
+                            }
+                        });
+                    }
                 }
                 _ => {}
             }
@@ -245,6 +270,13 @@ where
         };
         let view = self.controller.borrow().view();
         render(&window, self.shown.borrow().as_ref(), &view);
+        // Placements decided by another window (Settings docking the Panel, the dock being
+        // switched off) are carried out here, where the Panel's window is.
+        let pending = self.controller.borrow_mut().take_pending();
+        if !pending.is_empty() {
+            self.apply(&pending);
+        }
+        self.arm_dock();
         if let Some(toast) = &view.toast
             && self.controller.borrow_mut().claim_toast_timer(toast.seq)
         {
@@ -256,6 +288,25 @@ where
         }
         *self.shown.borrow_mut() = Some(view);
         self.arm_settings();
+    }
+
+    /// Runs the dock's tick timer while a hover or leave delay is running, and only then.
+    fn arm_dock(self: &Rc<Self>) {
+        let needed = self.controller.borrow().dock_needs_tick();
+        if needed == self.dock_timer.running() {
+            return;
+        }
+        if needed {
+            let core = Rc::downgrade(self);
+            self.dock_timer
+                .start(slint::TimerMode::Repeated, crate::dock::TICK, move || {
+                    if let Some(core) = core.upgrade() {
+                        core.act_effects(|ctl| ctl.dock_event(DockEvent::Tick));
+                    }
+                });
+        } else {
+            self.dock_timer.stop();
+        }
     }
 
     /// Keeps one timer running while changed settings wait to be written: when it fires the
@@ -332,17 +383,23 @@ where
         }
 
         wire!(on_query_changed, |ctl, query| ctl.set_query(query.as_str()));
-        wire!(on_row_activated, |ctl, i| ctl
-            .activate_row(index(i), UseMode::Paste));
+        wire_effects!(on_row_activated, |ctl, i| {
+            let used = ctl.activate_row(index(i), UseMode::Paste);
+            ctl.dock_after_use(&used)
+        });
         wire!(on_row_copied, |ctl, i| ctl
             .activate_row(index(i), UseMode::Copy));
-        wire!(on_quick_use, |ctl, n| ctl
-            .quick_use(u8::try_from(n).unwrap_or(0)));
+        wire_effects!(on_quick_use, |ctl, n| {
+            let used = ctl.quick_use(u8::try_from(n).unwrap_or(0));
+            ctl.dock_after_use(&used)
+        });
         wire!(on_selection_moved, |ctl, delta| ctl
             .move_selection(isize::try_from(delta).unwrap_or(0)));
         wire!(on_tab_selected, |ctl, i| ctl.select_tab(index(i)));
-        wire!(on_pinned_used, |ctl, i| ctl
-            .activate_pinned(index(i), UseMode::Paste));
+        wire_effects!(on_pinned_used, |ctl, i| {
+            let used = ctl.activate_pinned(index(i), UseMode::Paste);
+            ctl.dock_after_use(&used)
+        });
         wire!(on_pinned_copied, |ctl, i| ctl
             .activate_pinned(index(i), UseMode::Copy));
         wire!(on_board_menu_requested, |ctl| ctl.open_board_menu());
@@ -360,6 +417,12 @@ where
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.main_undo());
         wire_effects!(on_resize_requested, |ctl, edge| ctl.resize(edge_of(edge)));
+        wire_effects!(on_handle_hovered, |ctl, on| ctl
+            .dock_event(DockEvent::HandleHover(on)));
+        wire_effects!(on_handle_clicked, |ctl| ctl
+            .dock_event(DockEvent::HandleClick));
+        wire_effects!(on_panel_hovered, |ctl, on| ctl
+            .dock_event(DockEvent::PanelHover(on)));
         wire_effects!(on_close_requested, |ctl| ctl.close());
         wire_effects!(on_drag_requested, |ctl| ctl.drag());
 
@@ -521,6 +584,16 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     }
     if differs(&|p| p.tabs == view.tabs && p.dark == view.dark) {
         window.set_tabs(model(view.tabs.iter().map(|t| tab_item(t, view.dark))));
+        // The dock's handle wears the colour of the list on show.
+        let accent = view.tabs.iter().find(|t| t.active).and_then(|t| t.accent);
+        window.set_dock_has_list_color(accent.is_some());
+        window.set_dock_list_color(list_color(accent, view.dark));
+    }
+    if differs(&|p| p.dock_collapsed == view.dock_collapsed) {
+        window.set_dock_collapsed(view.dock_collapsed);
+    }
+    if differs(&|p| p.dock_vertical == view.dock_vertical) {
+        window.set_dock_vertical(view.dock_vertical);
     }
     if differs(&|p| p.pinned == view.pinned) {
         window.set_pinned(model(view.pinned.iter().map(|r| ui::PinnedItem {
@@ -596,7 +669,11 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
 fn render_app_menu(window: &ui::PanelWindow, view: &View) {
     let check = window.global::<ui::Icons<'_>>().get_check();
     let entries = view.app_menu.iter().flatten().map(|&entry| ui::MenuEntry {
-        text: wording::app_menu_text(entry).into(),
+        text: if entry == AppMenuEntry::Dock && view.docked {
+            wording::UNDOCK_TEXT.into()
+        } else {
+            wording::app_menu_text(entry).into()
+        },
         icon: if entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused {
             check.clone()
         } else {

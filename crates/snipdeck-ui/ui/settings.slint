@@ -56,6 +56,14 @@ export component SettingsPage inherits Window {
     in property <int> panel-width: 320;
     in property <int> panel-width-min: 260;
     in property <int> panel-width-max: 480;
+    // The edge dock: the edge (0 = floating, then left, right, top, bottom), what opens a collapsed panel
+    // (0 off, 1 hover, 2 click, 3 both) and the two delays in milliseconds.
+    in property <int> dock-edge-index: 0;
+    in property <int> dock-trigger-index: 0;
+    in property <int> dock-hover-delay: 150;
+    in property <int> dock-hover-delay-max: 2000;
+    in property <int> dock-leave-delay: 400;
+    in property <int> dock-leave-delay-max: 5000;
     // Program names the panel never pastes into ("keepass.exe").
     in property <[string]> no-paste-apps;
     // Set by the host when `no-paste-app-added` was refused ("Already in the list").
@@ -91,6 +99,10 @@ export component SettingsPage inherits Window {
     callback close-to-tray-toggled(on: bool);
     callback site-icons-toggled(on: bool);
     callback panel-width-chosen(width: int);
+    callback dock-edge-chosen(index: int);
+    callback dock-trigger-chosen(index: int);
+    callback dock-hover-delay-chosen(ms: int);
+    callback dock-leave-delay-chosen(ms: int);
     callback no-paste-app-added(name: string);
     callback no-paste-app-removed(index: int);
     callback licence-submitted(key: string);
@@ -239,6 +251,74 @@ export component SettingsPage inherits Window {
                             step: 10;
                             value: root.panel-width;
                             stepped(v) => { root.panel-width-chosen(v); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Panel dock");
+                    SettingRow {
+                        title: @tr("Dock to");
+                        description: @tr("Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere.");
+                        SelectField {
+                            width: 200px * SystemLook.text-scale;
+                            label: @tr("Dock to");
+                            options: [@tr("Floating"), @tr("Left edge"), @tr("Right edge"), @tr("Top edge"), @tr("Bottom edge")];
+                            current: root.dock-edge-index;
+                            chosen(i) => { root.dock-edge-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Open a docked panel by");
+                        description: @tr("Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too.");
+                        Segmented {
+                            width: 360px * SystemLook.text-scale;
+                            label: @tr("Open a docked panel by");
+                            options: [@tr("Off"), @tr("Hover"), @tr("Click"), @tr("Hover and click")];
+                            current: root.dock-trigger-index;
+                            chosen(i) => { root.dock-trigger-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Hover delay");
+                        description: @tr("How long the pointer rests on the strip before the panel opens, from 0 to {} milliseconds.", root.dock-hover-delay-max);
+                        NumberStepper {
+                            label: @tr("Hover delay");
+                            decrease-label: @tr("Shorten the hover delay");
+                            increase-label: @tr("Lengthen the hover delay");
+                            unit: @tr("ms");
+                            min: 0;
+                            max: root.dock-hover-delay-max;
+                            step: 50;
+                            value: root.dock-hover-delay;
+                            stepped(v) => { root.dock-hover-delay-chosen(v); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Leave delay");
+                        description: @tr("How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds.", root.dock-leave-delay-max);
+                        NumberStepper {
+                            label: @tr("Leave delay");
+                            decrease-label: @tr("Shorten the leave delay");
+                            increase-label: @tr("Lengthen the leave delay");
+                            unit: @tr("ms");
+                            min: 0;
+                            max: root.dock-leave-delay-max;
+                            step: 100;
+                            value: root.dock-leave-delay;
+                            stepped(v) => { root.dock-leave-delay-chosen(v); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

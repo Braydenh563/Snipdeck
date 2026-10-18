@@ -18,8 +18,8 @@ use snipdeck_app::{
     controller::{Controller, Effect, HelpTopic, Services, TOAST_ENTER, TOAST_EXIT, TOAST_HOLD},
     demo,
     frame::{Edge, Monitor, Rect},
-    host::{FakeTargets, FixedClock},
-    settings::{HotkeyAction, Settings, Theme},
+    host::{Clock, FakeTargets, FixedClock},
+    settings::{DockEdge, DockTrigger, HotkeyAction, Settings, Theme},
     settings_store::{FileSink, SettingsSaver},
 };
 use snipdeck_core::{Entitlements, ItemId, Tier, Timestamp};
@@ -676,10 +676,11 @@ fn click_at(window: &slint::Window, position: slint::LogicalPosition) {
     slint::platform::update_timers_and_animations();
 }
 
-const MENU_ROWS: [&str; 8] = [
+const MENU_ROWS: [&str; 9] = [
     "Open Snipdeck",
     "New snippet",
     "Settings\u{2026}",
+    "Dock to the nearest edge",
     "Pause hotkeys",
     "Troubleshoot\u{2026}",
     "User guide",
@@ -1033,6 +1034,247 @@ fn edit_and_rename_on_the_selected_row_ask_for_the_quick_editor() {
             *r.effects.borrow(),
             [Effect::EditItem(id), Effect::EditItem(id)]
         );
+    });
+}
+
+// ---- The edge dock ----------------------------------------------------------------------------
+
+const HANDLE_LABEL: &str = "Snipdeck handle, press the Panel hotkey to open";
+
+/// The Panel on the first monitor, 40 px from its left edge, docked there through the kebab's
+/// "Dock to the nearest edge" row, with the dock trigger set to `trigger`.
+fn docked_rig(trigger: DockTrigger) -> Rig {
+    let r = rig();
+    r.ctl
+        .borrow_mut()
+        .update_settings(|s| s.dock.trigger = trigger);
+    r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+    r.binding.frame_changed(
+        &display(),
+        Rect {
+            x: 40,
+            y: 300,
+            w: 320,
+            h: 480,
+        },
+    );
+    open_menu(&r);
+    click(r.window(), &menu_row(&r, "Dock to the nearest edge"));
+    assert_eq!(r.ctl.borrow().dock_edge(), Some(DockEdge::Left));
+    r
+}
+
+const OPEN: Rect = Rect {
+    x: 0,
+    y: 0,
+    w: 320,
+    h: 1040,
+};
+const STRIP: Rect = Rect {
+    x: 0,
+    y: 0,
+    w: 6,
+    h: 1040,
+};
+
+fn size(r: &Rig) -> (u32, u32) {
+    (r.window().size().width, r.window().size().height)
+}
+
+fn handle(r: &Rig) -> ElementHandle {
+    element(&r.ui, HANDLE_LABEL, AccessibleRole::Button)
+}
+
+/// Lets `ms` pass for the controller's clock and for the window's timers.
+fn pass(r: &Rig, ms: u64) {
+    let then = r.clock.now().as_millisecond();
+    r.clock.set(
+        Timestamp::from_millisecond(then + i64::try_from(ms).expect("small")).expect("moment"),
+    );
+    i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(ms + 60));
+    slint::platform::update_timers_and_animations();
+}
+
+#[test]
+fn the_kebab_docks_the_panel_flush_with_the_nearest_edge_and_offers_to_undock() {
+    on_ui_thread(|| {
+        let r = docked_rig(DockTrigger::Both);
+        assert_eq!(*r.effects.borrow(), [Effect::PlaceWindow(OPEN)]);
+        assert_eq!(size(&r), (OPEN.w, OPEN.h));
+        open_menu(&r);
+        menu_row(&r, "Undock the panel");
+    });
+}
+
+#[test]
+fn a_docked_panel_collapses_to_a_handle_on_the_hotkey_and_the_handle_is_named() {
+    on_ui_thread(|| {
+        let r = docked_rig(DockTrigger::Both);
+        r.effects.borrow_mut().clear();
+        r.binding.hotkey(HotkeyAction::TogglePanel);
+        assert_eq!(*r.effects.borrow(), [Effect::PlaceWindow(STRIP)]);
+        assert_eq!(size(&r), (STRIP.w, STRIP.h));
+        assert!(r.ui.get_dock_collapsed());
+        assert!(r.ui.window().is_visible(), "a handle, not a hidden window");
+        let h = handle(&r);
+        assert_eq!((h.size().width, h.size().height), (6.0, 1040.0));
+        r.binding.hotkey(HotkeyAction::TogglePanel);
+        assert_eq!(size(&r), (OPEN.w, OPEN.h));
+        assert!(
+            ElementHandle::find_by_accessible_label(&r.ui, HANDLE_LABEL)
+                .next()
+                .is_none()
+        );
+    });
+}
+
+#[test]
+fn resting_the_pointer_on_the_handle_opens_the_panel_after_the_hover_delay() {
+    on_ui_thread(|| {
+        let r = docked_rig(DockTrigger::Hover);
+        r.binding.hotkey(HotkeyAction::TogglePanel);
+        r.effects.borrow_mut().clear();
+        let at_handle = centre(&handle(&r));
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerMoved {
+                position: at_handle,
+            });
+        slint::platform::update_timers_and_animations();
+        assert!(r.ctl.borrow().dock_needs_tick(), "the delay is running");
+
+        pass(&r, 100);
+        assert_eq!(size(&r), (STRIP.w, STRIP.h), "not before 150 ms");
+        pass(&r, 50);
+        assert_eq!(*r.effects.borrow(), [Effect::PlaceWindow(OPEN)]);
+        assert_eq!(size(&r), (OPEN.w, OPEN.h));
+        assert!(!r.ui.get_dock_collapsed());
+        assert!(
+            !r.ctl.borrow().dock_needs_tick(),
+            "the timer stops when idle"
+        );
+    });
+}
+
+#[test]
+fn leaving_the_handle_before_the_delay_keeps_it_collapsed() {
+    on_ui_thread(|| {
+        let r = docked_rig(DockTrigger::Hover);
+        r.binding.hotkey(HotkeyAction::TogglePanel);
+        let at_handle = centre(&handle(&r));
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerMoved {
+                position: at_handle,
+            });
+        slint::platform::update_timers_and_animations();
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerExited);
+        slint::platform::update_timers_and_animations();
+        pass(&r, 500);
+        assert_eq!(size(&r), (STRIP.w, STRIP.h));
+        assert!(r.ui.get_dock_collapsed());
+    });
+}
+
+#[test]
+fn a_click_on_the_handle_opens_the_panel_when_the_trigger_has_click() {
+    on_ui_thread(|| {
+        let r = docked_rig(DockTrigger::Click);
+        r.binding.hotkey(HotkeyAction::TogglePanel);
+        // Resting on it does nothing with a click-only trigger.
+        let at_handle = centre(&handle(&r));
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerMoved {
+                position: at_handle,
+            });
+        pass(&r, 600);
+        assert_eq!(size(&r), (STRIP.w, STRIP.h));
+        click(r.window(), &handle(&r));
+        assert_eq!(size(&r), (OPEN.w, OPEN.h));
+    });
+}
+
+#[test]
+fn the_open_panel_collapses_after_the_pointer_has_left_it_for_the_leave_delay() {
+    on_ui_thread(|| {
+        let r = docked_rig(DockTrigger::Both);
+        // The pointer over a row: a child control. The Panel still counts as hovered.
+        let row = ElementHandle::find_by_accessible_label(&r.ui, "Snippets")
+            .next()
+            .expect("the list");
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerMoved {
+                position: centre(&row),
+            });
+        slint::platform::update_timers_and_animations();
+        pass(&r, 1000);
+        assert_eq!(size(&r), (OPEN.w, OPEN.h), "hovered, so it stays open");
+
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerExited);
+        slint::platform::update_timers_and_animations();
+        assert!(
+            r.ctl.borrow().dock_needs_tick(),
+            "the leave delay is running"
+        );
+        pass(&r, 300);
+        assert_eq!(size(&r), (OPEN.w, OPEN.h), "not before 400 ms");
+        pass(&r, 100);
+        assert_eq!(size(&r), (STRIP.w, STRIP.h));
+        assert!(r.ui.get_dock_collapsed());
+    });
+}
+
+#[test]
+fn coming_back_to_the_panel_in_time_keeps_it_open() {
+    on_ui_thread(|| {
+        let r = docked_rig(DockTrigger::Both);
+        let inside = slint::LogicalPosition::new(100.0, 200.0);
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerMoved { position: inside });
+        slint::platform::update_timers_and_animations();
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerExited);
+        pass(&r, 200);
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerMoved { position: inside });
+        pass(&r, 2000);
+        assert_eq!(size(&r), (OPEN.w, OPEN.h));
+    });
+}
+
+#[test]
+fn a_paste_from_a_docked_panel_collapses_it() {
+    on_ui_thread(|| {
+        let r = docked_rig(DockTrigger::Both);
+        r.effects.borrow_mut().clear();
+        press(r.window(), "3");
+        assert_eq!(r.uses(2), 1, "the third item was pasted");
+        assert_eq!(*r.effects.borrow(), [Effect::PlaceWindow(STRIP)]);
+        assert!(r.ui.get_dock_collapsed());
+    });
+}
+
+#[test]
+fn a_floating_panel_keeps_everything_as_before() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ctl
+            .borrow_mut()
+            .update_settings(|s| s.dock.trigger = DockTrigger::Both);
+        r.binding.frame_changed(
+            &display(),
+            Rect {
+                x: 40,
+                y: 300,
+                w: 320,
+                h: 480,
+            },
+        );
+        press(r.window(), "3");
+        assert!(!r.ui.get_dock_collapsed());
+        assert_eq!(*r.effects.borrow(), []);
+        r.binding.hotkey(HotkeyAction::TogglePanel);
+        assert_eq!(*r.effects.borrow(), [Effect::HidePanel]);
     });
 }
 

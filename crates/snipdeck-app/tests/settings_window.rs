@@ -25,13 +25,14 @@ use std::{
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
 use slint::{ComponentHandle, Model};
 use snipdeck_app::{
-    controller::{Controller, Services},
+    controller::{Controller, Effect, Services},
     demo,
+    frame::{Monitor, Rect},
     host::{FakeHotkeys, FakeTargets, FixedClock, HotkeyProblem},
     licence_store,
     main_binding::MainUi,
     paths::load_settings,
-    settings::{HotkeyAction, Hotkeys, Settings, Theme},
+    settings::{DockEdge, DockTrigger, HotkeyAction, Hotkeys, Settings, Theme},
     settings_binding::{self, SettingsBinding, SettingsHost, SettingsUi, request_open},
     settings_store::{FileSink, SettingsSaver},
     wording,
@@ -198,7 +199,7 @@ impl Rig {
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
-        let cases: [Case; 9] = [
+        let cases: [Case; 12] = [
             (
                 "theme",
                 |r| r.ui.invoke_theme_chosen(2),
@@ -243,6 +244,21 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
                 "a shortcut cleared",
                 |r| r.ui.invoke_hotkey_cleared(3),
                 |s| s.hotkeys.paste_next.is_empty(),
+            ),
+            (
+                "the dock trigger",
+                |r| r.ui.invoke_dock_trigger_chosen(3),
+                |s| s.dock.trigger == DockTrigger::Both,
+            ),
+            (
+                "the hover delay",
+                |r| r.ui.invoke_dock_hover_delay_chosen(300),
+                |s| s.dock.hover_delay_ms == 300,
+            ),
+            (
+                "the leave delay",
+                |r| r.ui.invoke_dock_leave_delay_chosen(1000),
+                |s| s.dock.leave_delay_ms == 1000,
             ),
         ];
         for (name, act, check) in cases {
@@ -313,6 +329,81 @@ fn the_theme_applies_at_once_and_the_page_shows_what_is_stored() {
             r.ui.get_languages().row_count(),
             8,
             "Follow Windows and seven languages"
+        );
+    });
+}
+
+#[test]
+fn the_dock_group_shows_what_is_stored_and_holds_the_delays_in_range() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(
+            (
+                r.ui.get_dock_edge_index(),
+                r.ui.get_dock_trigger_index(),
+                r.ui.get_dock_hover_delay(),
+                r.ui.get_dock_leave_delay()
+            ),
+            (0, 0, 150, 400),
+            "floating, off, 150 ms and 400 ms by default"
+        );
+        r.ui.invoke_dock_trigger_chosen(2);
+        r.ui.invoke_dock_hover_delay_chosen(99_999);
+        r.ui.invoke_dock_leave_delay_chosen(-5);
+        assert_eq!(r.ui.get_dock_trigger_index(), 2);
+        assert_eq!(r.ui.get_dock_hover_delay(), 2000, "the cap");
+        assert_eq!(r.ui.get_dock_leave_delay(), 0, "the floor");
+        assert_eq!(r.ctl.borrow().settings().dock.trigger, DockTrigger::Click);
+        // The control the group is found by.
+        element(&r.ui, "Dock to", AccessibleRole::Combobox);
+    });
+}
+
+#[test]
+fn choosing_an_edge_docks_the_panel_there_and_floating_lets_it_go() {
+    on_ui_thread(|| {
+        let r = rig();
+        let monitor = Monitor {
+            id: Monitor::id_of("DISPLAY1", 1920, 1080),
+            work_area: Rect {
+                x: 0,
+                y: 0,
+                w: 1920,
+                h: 1040,
+            },
+            scale: 1.0,
+        };
+        let floating = Rect {
+            x: 600,
+            y: 100,
+            w: 320,
+            h: 480,
+        };
+        r.ctl.borrow_mut().frame_changed(&monitor, floating);
+
+        r.ui.invoke_dock_edge_chosen(2);
+        assert_eq!(r.ui.get_dock_edge_index(), 2, "the page follows");
+        assert_eq!(r.ctl.borrow().dock_edge(), Some(DockEdge::Right));
+        let docked = Rect {
+            x: 1600,
+            y: 0,
+            w: 320,
+            h: 1040,
+        };
+        assert_eq!(
+            r.ctl.borrow_mut().take_pending(),
+            [Effect::PlaceWindow(docked)],
+            "queued for the Panel's window"
+        );
+
+        r.ui.invoke_dock_edge_chosen(0);
+        assert_eq!(r.ui.get_dock_edge_index(), 0);
+        assert_eq!(r.ctl.borrow().dock_edge(), None);
+        r.advance(500);
+        let stored = load_settings(r.dir.path()).panel_geometry;
+        assert_eq!(
+            stored[0].edge, None,
+            "the floating Panel is stored without an edge"
         );
     });
 }

@@ -277,3 +277,82 @@ fn rows_are_28px_with_a_gutter_rule_and_the_selected_row_has_an_accent_border() 
         );
     }
 }
+
+// ---- The collapsed dock handle (DESIGN.md §5 Panel: a 6px tab in the list's accent colour) ----------
+
+const ON_ACCENT_LIGHT: [u8; 3] = [0xFB, 0xFA, 0xF7];
+
+fn handle(size: (u32, u32), vertical: bool) -> Harness<PanelWindow> {
+    let h = panel(size, false);
+    h.component.set_dock_vertical(vertical);
+    h.component.set_dock_collapsed(true);
+    h
+}
+
+#[test]
+fn a_vertical_handle_is_the_accent_colour_with_a_three_dot_grabber_in_the_middle() {
+    let (w, hgt) = (6, 480);
+    let h = handle((w, hgt), true);
+    let f = render(&h);
+    // Edge to edge, no outline and none of the panel behind it.
+    for (x, y) in [(0, 0), (5, 0), (0, 479), (5, 479), (2, 100), (3, 300)] {
+        assert_eq!(f.pixel(x, y), ACCENT, "strip at ({x}, {y})");
+    }
+    // Three 2px dots, 2px apart, centred: the group is 10px tall, so y 235-236, 239-240 and 243-244.
+    for (y, dot) in [
+        (235, true),
+        (236, true),
+        (237, false),
+        (238, false),
+        (240, true),
+        (244, true),
+        (245, false),
+    ] {
+        let wanted = if dot { ON_ACCENT_LIGHT } else { ACCENT };
+        assert_eq!(f.pixel(2, y), wanted, "x=2 y={y}");
+        assert_eq!(f.pixel(3, y), wanted, "x=3 y={y}");
+    }
+    assert_eq!(f.pixel(1, 240), ACCENT, "the dot is 2px wide, centred");
+    assert_eq!(f.pixel(4, 240), ACCENT, "the dot is 2px wide, centred");
+}
+
+#[test]
+fn a_horizontal_handle_runs_its_dots_along_the_strip() {
+    let h = handle((480, 6), false);
+    let f = render(&h);
+    assert_eq!(f.pixel(0, 0), ACCENT);
+    assert_eq!(f.pixel(479, 5), ACCENT);
+    for (x, dot) in [
+        (235, true),
+        (236, true),
+        (238, false),
+        (240, true),
+        (244, true),
+        (245, false),
+    ] {
+        let wanted = if dot { ON_ACCENT_LIGHT } else { ACCENT };
+        assert_eq!(f.pixel(x, 2), wanted, "x={x} y=2");
+        assert_eq!(f.pixel(x, 3), wanted, "x={x} y=3");
+    }
+}
+
+#[test]
+fn the_handle_wears_the_list_colour_unless_high_contrast_is_on() {
+    let teal = slint::Color::from_rgb_u8(0x04, 0x84, 0x84);
+    let h = handle((6, 480), true);
+    h.component.set_dock_list_color(teal);
+    h.component.set_dock_has_list_color(true);
+    assert_eq!(render(&h).pixel(0, 100), [0x04, 0x84, 0x84]);
+
+    h.component.set_dock_has_list_color(false);
+    assert_eq!(render(&h).pixel(0, 100), ACCENT, "no accent: the theme's");
+
+    h.component.set_dock_has_list_color(true);
+    let look = h.component.global::<SystemLook<'_>>();
+    look.set_high_contrast(true);
+    assert_ne!(
+        render(&h).pixel(0, 100),
+        [0x04, 0x84, 0x84],
+        "high contrast keeps the system colours"
+    );
+}

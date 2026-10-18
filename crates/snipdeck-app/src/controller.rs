@@ -21,6 +21,7 @@ use snipdeck_store::{
     Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, Store, TagRepo, TrashRepo, Trashable,
 };
 
+mod dock_ctl;
 mod main_ctl;
 mod panel;
 mod settings_ctl;
@@ -30,14 +31,15 @@ pub use panel::{APP_MENU, AppMenuEntry, HelpTopic};
 
 use crate::{
     capture::{self, Captured},
+    dock::DockState,
     fill::{self, FillModel},
-    frame::{Edge, Rect},
+    frame::{Edge, Monitor, Rect},
     host::{ClipboardText, Clock, TargetSource},
     main_window::MainModel,
     panel::{Footer, PanelModel, Row, Tab, UseLabel},
     paste_next::{self, PasteQueue},
     picker::{self, PickerModel, Scope},
-    settings::{HotkeyAction, Settings, Theme},
+    settings::{DockEdge, HotkeyAction, Settings, Theme},
     settings_store::{Poll, SettingsSaver},
     toast::{self, Toast, ToastKind, ToastMessage},
     usecase::{self, UseError, UseRequest},
@@ -218,6 +220,12 @@ pub struct View {
     pub use_label: UseLabel,
     /// Keep on top.
     pub on_top: bool,
+    /// Only the dock's handle shows (the window is a thin strip, see [`crate::dock`]).
+    pub dock_collapsed: bool,
+    /// The handle runs up and down (the Panel is docked to the left or right edge).
+    pub dock_vertical: bool,
+    /// The Panel is docked to an edge (the kebab offers to undock it).
+    pub docked: bool,
     /// Dark theme: the `theme` setting, or Windows' app mode when it is `system`.
     pub dark: bool,
     /// The high-contrast colours while a Windows high-contrast theme is on (it overrides the
@@ -287,6 +295,14 @@ pub struct Controller<S, C, K, T> {
     os_look: SystemLook,
     session: Session,
     saver: Option<SettingsSaver>,
+    /// Where the edge dock is (see [`crate::dock`]).
+    dock: DockState,
+    /// The monitor the Panel is on, as the host last reported it.
+    monitor: Option<Monitor>,
+    /// A drag from the header is under way on a docked Panel: the first move undocks it.
+    drag_started: bool,
+    /// Placements decided outside a Panel gesture, waiting for the binding.
+    pending: Vec<Effect>,
 }
 
 /// The menu drawn inside the Panel, if any.
@@ -369,6 +385,10 @@ where
             os_look: SystemLook::default(),
             session: Session::default(),
             saver: None,
+            dock: DockState::default(),
+            monitor: None,
+            drag_started: false,
+            pending: Vec::new(),
         })
     }
 
@@ -409,6 +429,9 @@ where
             footer: self.model.footer(),
             use_label: self.model.use_label(),
             on_top: self.on_top,
+            dock_collapsed: self.dock.is_collapsed(),
+            dock_vertical: self.dock_edge().is_none_or(DockEdge::vertical),
+            docked: self.dock_edge().is_some(),
             dark: self.look().dark,
             high_contrast: self.look().high_contrast,
             toast: self.toast_view(),
@@ -509,6 +532,11 @@ where
             return Vec::new();
         }
         match action {
+            // With the dock on, the Panel hotkey opens and closes the handle instead of
+            // hiding the window: the handle is what keeps the Panel reachable.
+            HotkeyAction::TogglePanel if self.visible && self.dock_active() => {
+                self.dock_event(crate::dock::DockEvent::Hotkey)
+            }
             HotkeyAction::TogglePanel if self.visible => self.hide(),
             HotkeyAction::TogglePanel => self.show(),
             HotkeyAction::Picker if self.picker.is_some() => {
@@ -535,6 +563,8 @@ where
     pub fn show(&mut self) -> Vec<Effect> {
         self.on_target_changed();
         self.visible = true;
+        // A Panel shown again is open: the host places it from the stored frame.
+        self.dock = DockState::Expanded;
         vec![Effect::ShowPanel]
     }
 
@@ -578,6 +608,7 @@ where
 
     /// The user is dragging the Panel by its header.
     pub fn drag(&mut self) -> Vec<Effect> {
+        self.drag_started = self.dock_edge().is_some();
         vec![Effect::DragWindow]
     }
 
@@ -608,6 +639,7 @@ where
         if let Some(saver) = &mut self.saver {
             saver.changed(&self.settings, now);
         }
+        self.dock_resync();
     }
 
     /// The theme setting (`system`, `light`, `dark`).
@@ -1145,6 +1177,8 @@ mod tests {
         testing::{FakeClipboard, FakeKeyboard, FakeTiming},
     };
     use snipdeck_store::Store;
+
+    mod dock;
 
     type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 
@@ -2657,6 +2691,7 @@ mod tests {
                 y: 900,
                 w: 480,
                 h: 900,
+                edge: None,
             });
         });
         assert_eq!(
