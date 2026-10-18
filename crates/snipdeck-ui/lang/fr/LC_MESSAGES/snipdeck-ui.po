@@ -298,8 +298,8 @@ msgstr ""
 msgid "Keep editing"
 msgstr ""
 
-msgid "Keep on top"
-msgstr "Toujours au premier plan"
+msgid "Keep panel on top"
+msgstr ""
 
 msgid "Keep running in the tray when the window closes"
 msgstr ""

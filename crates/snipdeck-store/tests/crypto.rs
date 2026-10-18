@@ -184,6 +184,12 @@ fn assert_no_plaintext(dir: &std::path::Path, needles: &[&[u8]]) {
                 stack.push(path);
                 continue;
             }
+            // The WAL index (`*-shm`) holds page numbers, never page content, and SQLite keeps
+            // byte-range locks on it while the connection is open, which makes a plain read
+            // fail on Windows (error 33). Content lives in the database, the WAL and the blobs.
+            if path.to_string_lossy().ends_with("-shm") {
+                continue;
+            }
             let bytes = std::fs::read(&path).unwrap();
             for needle in needles {
                 assert!(

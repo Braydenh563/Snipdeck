@@ -6,7 +6,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: ui/panel.slint:556
+#: ui/panel.slint:558
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr ""
 
@@ -22,7 +22,7 @@ msgstr ""
 msgid "Add a snippet, or move items here from another list."
 msgstr ""
 
-#: ui/main_window.slint:716 ui/panel.slint:439
+#: ui/main_window.slint:716 ui/panel.slint:441
 msgid "Add list"
 msgstr ""
 
@@ -70,7 +70,7 @@ msgstr ""
 msgid "Board: {}"
 msgstr ""
 
-#: ui/main_window.slint:1428 ui/panel.slint:645
+#: ui/main_window.slint:1428 ui/panel.slint:677
 msgid "Boards"
 msgstr ""
 
@@ -102,7 +102,7 @@ msgstr ""
 msgid "Choose tags"
 msgstr ""
 
-#: ui/main_window.slint:836 ui/panel.slint:422 ui/picker.slint:351
+#: ui/main_window.slint:836 ui/panel.slint:424 ui/picker.slint:351
 msgid "Clear search"
 msgstr ""
 
@@ -118,7 +118,7 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
-#: ui/panel.slint:407
+#: ui/panel.slint:409
 msgid "Close panel"
 msgstr ""
 
@@ -150,11 +150,11 @@ msgstr ""
 msgid "Control Enter"
 msgstr ""
 
-#: ui/panel.slint:588 ui/panel.slint:603
+#: ui/panel.slint:590 ui/panel.slint:605
 msgid "Copies to clipboard"
 msgstr ""
 
-#: ui/main_window.slint:435 ui/panel.slint:131 ui/panel.slint:623 ui/picker.slint:132 ui/picker.slint:478
+#: ui/main_window.slint:435 ui/panel.slint:131 ui/panel.slint:625 ui/picker.slint:132 ui/picker.slint:478
 msgid "Copy"
 msgstr ""
 
@@ -162,7 +162,7 @@ msgstr ""
 msgid "Copy something, then save it from the Panel."
 msgstr ""
 
-#: ui/panel.slint:558
+#: ui/panel.slint:560
 msgid "Copy something, then save it here from the clipboard."
 msgstr ""
 
@@ -286,7 +286,7 @@ msgstr ""
 msgid "Empty the Trash?"
 msgstr ""
 
-#: ui/panel.slint:618 ui/picker.slint:472
+#: ui/panel.slint:620 ui/picker.slint:472
 msgid "Enter"
 msgstr ""
 
@@ -346,7 +346,7 @@ msgstr ""
 msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it."
 msgstr ""
 
-#: ui/main_window.slint:71 ui/panel.slint:505
+#: ui/main_window.slint:71 ui/panel.slint:507
 msgid "Hidden. Hold Space to reveal."
 msgstr ""
 
@@ -394,8 +394,8 @@ msgstr ""
 msgid "Keep editing"
 msgstr ""
 
-#: ui/panel.slint:395
-msgid "Keep on top"
+#: ui/panel.slint:397
+msgid "Keep panel on top"
 msgstr ""
 
 #: ui/settings.slint:212 ui/settings.slint:215
@@ -426,11 +426,11 @@ msgstr ""
 msgid "List name"
 msgstr ""
 
-#: ui/main_window.slint:714 ui/panel.slint:438
+#: ui/main_window.slint:714 ui/panel.slint:440
 msgid "Lists"
 msgstr ""
 
-#: ui/main_window.slint:1185 ui/main_window.slint:1198 ui/panel.slint:545
+#: ui/main_window.slint:1185 ui/main_window.slint:1198 ui/panel.slint:547
 msgid "Loading"
 msgstr ""
 
@@ -486,7 +486,7 @@ msgstr ""
 msgid "New item"
 msgstr ""
 
-#: ui/editors.slint:896 ui/panel.slint:559
+#: ui/editors.slint:896 ui/panel.slint:561
 msgid "New list"
 msgstr ""
 
@@ -510,11 +510,11 @@ msgstr ""
 msgid "No items with this tag"
 msgstr ""
 
-#: ui/main_window.slint:1473 ui/panel.slint:554
+#: ui/main_window.slint:1473 ui/panel.slint:556
 msgid "No lists yet"
 msgstr ""
 
-#: ui/main_window.slint:1209 ui/panel.slint:555 ui/picker.slint:444
+#: ui/main_window.slint:1209 ui/panel.slint:557 ui/picker.slint:444
 msgid "No matches"
 msgstr ""
 
@@ -554,7 +554,7 @@ msgstr ""
 msgid "Nothing matches “{}”."
 msgstr ""
 
-#: ui/panel.slint:557 ui/picker.slint:448
+#: ui/panel.slint:559 ui/picker.slint:448
 msgid "Nothing on this board matches “{}”."
 msgstr ""
 
@@ -602,11 +602,11 @@ msgstr ""
 msgid "Paste the next item"
 msgstr ""
 
-#: ui/panel.slint:587 ui/panel.slint:602
+#: ui/panel.slint:589 ui/panel.slint:604
 msgid "Pastes into {}"
 msgstr ""
 
-#: ui/panel.slint:587 ui/panel.slint:602
+#: ui/panel.slint:589 ui/panel.slint:604
 msgid "Pastes into {} · {}"
 msgstr ""
 
@@ -630,7 +630,7 @@ msgstr ""
 msgid "Pinned"
 msgstr ""
 
-#: ui/panel.slint:451
+#: ui/panel.slint:453
 msgid "Pinned snippets"
 msgstr ""
 
@@ -702,7 +702,7 @@ msgstr ""
 msgid "Save"
 msgstr ""
 
-#: ui/panel.slint:559
+#: ui/panel.slint:561
 msgid "Save from clipboard"
 msgstr ""
 
@@ -730,7 +730,7 @@ msgstr ""
 msgid "Search results"
 msgstr ""
 
-#: ui/main_window.slint:834 ui/main_window.slint:835 ui/panel.slint:420 ui/panel.slint:421
+#: ui/main_window.slint:834 ui/main_window.slint:835 ui/panel.slint:422 ui/panel.slint:423
 msgid "Search snippets"
 msgstr ""
 
@@ -746,7 +746,7 @@ msgstr ""
 msgid "Settings"
 msgstr ""
 
-#: ui/panel.slint:618 ui/picker.slint:477
+#: ui/panel.slint:620 ui/picker.slint:477
 msgid "Shift Enter"
 msgstr ""
 
@@ -774,7 +774,7 @@ msgstr ""
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr ""
 
-#: ui/main_window.slint:1049 ui/main_window.slint:1117 ui/panel.slint:471
+#: ui/main_window.slint:1049 ui/main_window.slint:1117 ui/panel.slint:473
 msgid "Snippets"
 msgstr ""
 
@@ -858,7 +858,7 @@ msgstr ""
 msgid "This field is required"
 msgstr ""
 
-#: ui/main_window.slint:1214 ui/panel.slint:555
+#: ui/main_window.slint:1214 ui/panel.slint:557
 msgid "This list is empty"
 msgstr ""
 
