@@ -71,3 +71,11 @@ SSDs do not overwrite (use BitLocker); a program running as you can read what yo
 Status: the crypto and parsers are covered by automated tests and written reviews
 ([`docs/reviews/`](docs/reviews/)). The Windows-specific parts (DPAPI, clipboard handling, paste) have
 not been tested on Windows, and nothing has had an external audit.
+
+## Single instance and the raise signal
+
+One process per Windows logon session: a named mutex `Local\Snipdeck-<app id>` decides which
+launch owns the tray icon and the hotkeys; a second launch sets a named event in the same `Local\`
+namespace and exits, and the first instance shows the Panel. `Local\` objects are per logon
+session, so another user on the same PC can neither see nor signal them. The event carries no data,
+so the worst a same-user process can do is show the Panel.
