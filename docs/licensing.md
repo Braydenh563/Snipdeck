@@ -141,6 +141,44 @@ laptop that is not the signing machine.
    fetched opportunistically and verified against the same key. `verify` already takes `now`
    and every licence carries `issued` and `order` for this.
 
+## Keys for friends
+
+`tools/snipdeck-keygen` (binary `snipdeck-keygen`) makes the key pair and signs keys by hand.
+It is a workspace tool, not part of the app: the signing code lives in
+`snipdeck_core::licence::signing` behind the cargo feature `keygen`, which only this tool
+enables.
+
+```sh
+# Once: make the key pair. Refuses to overwrite an existing key.
+cargo run -p snipdeck-keygen -- genkey --out ~/snipdeck-licence-keys
+#   private.key  (mode 0600; secret)   public.key
+#   SNIPDECK_LICENCE_PUBLIC_KEY=<base64>   <- the exact value the release build takes
+
+# Per friend: print a key to send them.
+cargo run -p snipdeck-keygen -- sign --key ~/snipdeck-licence-keys/private.key --order GIFT-alex
+
+# Check any key against a public key and show what it says.
+cargo run -p snipdeck-keygen -- verify --public ~/snipdeck-licence-keys/public.key SNIP1.…
+```
+
+* `--order` must be 1 to 128 characters of `A-Z a-z 0-9 . _ -`; anything else is refused.
+  Use **`GIFT-<name>`** (`GIFT-alex`, `GIFT-sam-2`) for every key given away, one per
+  person. The order id is signed into the key, so a future revocation list can name one
+  friend's key without touching anyone else's (see "Production key", point 5).
+* `--email-hash HEX` (lower-case hex) is optional and never an address; `--issued UNIX`
+  fixes the issue time (default: now), for reproducible keys.
+* There is no `--expires`: format v1 has no expiry field, so every key is perpetual.
+* The key goes to the friend as the printed `SNIP1.…` text, one line.
+* **Where to keep `private.key`**: the same place as the production key ("Production key:
+  generation, storage, rotation"): a password manager or an offline encrypted volume, never in
+  this repository (`private.key` and `licence-keys/` are git-ignored as a safety net), CI or a
+  shared drive. On Windows the file inherits the folder's permissions, so make the folder
+  private. A key pair made on a developer machine is fine for gifts; for sales, generate the
+  production pair on the signing machine.
+* Install `public.key`'s value as `SNIPDECK_LICENCE_PUBLIC_KEY` for the release build
+  ("Release procedure"). Keys signed by `private.key` verify only in builds that embed the
+  matching public key.
+
 ## Notes for the UI
 
 * Show a visible warning while `IS_DEVELOPMENT_KEY` is `true` (it is always `false` in a

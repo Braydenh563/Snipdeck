@@ -31,7 +31,7 @@ some_tests() {
   # Rust tests are inline (#[cfg(test)]) or in crates/*/tests/*.rs; run the owning crates.
   local crates="" f c
   for f in "$@"; do
-    c="$(echo "$f" | sed -n 's#^crates/\([^/]*\)/.*#\1#p')"
+    c="$(echo "$f" | sed -n 's#^\(crates\|tools\)/\([^/]*\)/.*#\2#p')"
     [ -n "$c" ] && case " $crates " in *" $c "*) ;; *) crates="$crates $c" ;; esac
   done
   local args=""; for c in $crates; do args="$args -p $c"; done

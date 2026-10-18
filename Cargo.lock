@@ -4530,6 +4530,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "snipdeck-keygen"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "getrandom 0.4.3",
+ "snipdeck-core",
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "snipdeck-platform"
 version = "0.1.0"
 dependencies = [
