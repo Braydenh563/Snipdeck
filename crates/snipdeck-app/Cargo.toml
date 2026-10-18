@@ -1,0 +1,31 @@
+[package]
+name = "snipdeck-app"
+description = "Snipdeck application: use cases and view-models between the UI, the store and the platform layer, and the app binary."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+snipdeck-core.workspace = true
+# `testing`: the fakes are the dev platform behind `--demo` and `--screenshot` off Windows.
+snipdeck-platform = { path = "../snipdeck-platform", features = ["testing"] }
+snipdeck-store = { path = "../snipdeck-store" }
+snipdeck-ui = { path = "../snipdeck-ui" }
+# The winit backend with the software renderer is the real window. `unstable-winit-030` lets the
+# app create the Panel un-activated and reach its HWND (ADR-0003, ADR-0008).
+slint = { workspace = true, features = ["backend-winit", "raw-window-handle-06", "unstable-winit-030"] }
+png.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+# Slint's headless platform for the window tests (one process per test file).
+i-slint-backend-testing = "=1.18.1"
+tempfile.workspace = true
+
+[lints]
+workspace = true

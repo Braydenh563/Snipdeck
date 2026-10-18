@@ -171,19 +171,25 @@ pub fn list_backups(data_dir: &Path) -> Result<Vec<BackupFile>> {
 /// library adds nothing). Pass a `key` to restore encrypted sensitive items;
 /// [`KeySource::Library`] uses the library's own unlocked key.
 ///
+/// `max_boards` is the most live boards the library may hold afterwards (the Free tier's 3;
+/// `None` on Pro), as [`ImportOptions::max_boards`]: a restore that would go past it is refused
+/// and changes nothing.
+///
 /// # Errors
 ///
-/// As [`import_archive_path`].
+/// As [`import_archive_path`]; `ProRequired(UnlimitedBoards)` past `max_boards`.
 pub fn restore<L: Library>(
     lib: &mut L,
     backup: &Path,
     now: Timestamp,
     key: KeySource<'_>,
+    max_boards: Option<usize>,
 ) -> Result<ImportReport> {
     let options = ImportOptions {
         layout: BoardLayout::KeepBoards,
         merge: MergeStrategy::SkipDuplicates,
         key,
+        max_boards,
         ..ImportOptions::default()
     };
     import_archive_path(lib, backup, now, &options)

@@ -72,6 +72,7 @@ Components reference **semantic tokens only**.
 | `bg.hover` | `#EBE9E7` | `#201E1B` | row hover |
 | `bg.selected` | `#EBF2FE` | `#05306A` | selected row |
 | `bg.overlay` | `#FBFAF7` | `#201E1B` | menus, picker, popovers |
+| `bg.overlay-hover` | `#EBE9E7` | `#2D2B28` | highlighted row of a menu or popover |
 | `border.subtle` | `#DEDCD8` | `#201E1B` | card edges, dividers (decorative) |
 | `border.default` | `#C6C4C0` | `#2D2B28` | containers |
 | `border.strong` | `#7C7A76` | `#7C7A76` | inputs, controls (≥3:1) |

@@ -1,0 +1,11 @@
+    Updating crates.io index
+warning: spurious network error (3 tries remaining): [6] Could not resolve hostname (Could not resolve host: index.crates.io)
+warning: spurious network error (2 tries remaining): [6] Could not resolve hostname (Could not resolve host: index.crates.io)
+warning: spurious network error (1 tries remaining): [6] Could not resolve hostname (Could not resolve host: index.crates.io)
+error: failed to get `blake3` as a dependency of package `snipdeck-core v0.1.0 (C:\Snipdeck\crates\snipdeck-core)`
+
+Caused by:
+  failed to query replaced source registry `crates-io`
+
+Caused by:
+  download of config.json failed

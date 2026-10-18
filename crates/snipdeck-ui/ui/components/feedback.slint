@@ -1,0 +1,197 @@
+import { Theme, Type, Radius, Space, Motion, SystemLook, Fonts } from "../theme.slint";
+import { Icon } from "icon.slint";
+import { Icons } from "../icons.slint";
+import { Button, ButtonVariant, ButtonSize } from "button.slint";
+
+// Render-only feedback surfaces: Tooltip, Toast, Skeleton (DESIGN.md §4). The host owns timing.
+
+// Names an icon-only action. Render only: the host places it (below the control, 4px gap) and sets
+// `open`. Timing is the host's: show after `show-delay` of hover or keyboard focus, but instantly
+// when the pointer moves from one tooltip-bearing control to another. Fades in 90ms (also under
+// reduced motion, DESIGN.md §8). Never takes pointer or focus.
+export component Tooltip inherits Rectangle {
+    in property <string> text;
+    in property <bool> open: false;
+    // DESIGN.md §4: how long hover must rest before the host sets `open`.
+    out property <duration> show-delay: 500ms;
+
+    background: Theme.ink;
+    border-radius: Radius.sm;
+    border-width: Theme.hc-border != transparent ? 1px : 0px;
+    border-color: Theme.hc-border;
+    opacity: root.open ? 1.0 : 0.0;
+    accessible-role: AccessibleRole.none;
+    animate opacity { duration: Motion.fade; easing: Motion.out; }
+
+    HorizontalLayout {
+        padding-left: Space.s2;
+        padding-right: Space.s2;
+        padding-top: Space.s1;
+        padding-bottom: Space.s1;
+        Text {
+            text: root.text;
+            color: Theme.text-on-ink;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            font-weight: Type.medium;
+            vertical-alignment: center;
+        }
+    }
+}
+
+export enum ToastKind { neutral, success, danger }
+
+// Where the toast is in its life. The host creates it hidden (`exit`), sets `enter` (fades in over
+// `Motion.quick`), then `hold` once settled (stays `hold-duration`), then `exit` (fades out in 90ms).
+export enum ToastPhase { enter, hold, exit }
+
+// DESIGN.md §4 Toast: transient result ("Copied", "Pasted into Notepad"). The kind is carried by an
+// icon as well as colour: info (neutral), check (success), warning (danger). A non-empty
+// `undo-label` adds an Undo button. Announced politely to assistive technology.
+export component Toast inherits Rectangle {
+    in property <string> text;
+    in property <ToastKind> kind: ToastKind.neutral;
+    in property <ToastPhase> phase: ToastPhase.hold;
+    // Label of the Undo button, translated by the host. Empty hides the button.
+    in property <string> undo-label;
+    // DESIGN.md §4: the host keeps a toast in `hold` for this long.
+    out property <duration> hold-duration: 2500ms;
+    callback undo();
+
+    property <color> fg: root.kind == ToastKind.success ? Theme.success-fg
+        : root.kind == ToastKind.danger ? Theme.danger-fg : Theme.text-primary;
+
+    min-width: 160px;
+    background: root.kind == ToastKind.success ? Theme.success-bg
+        : root.kind == ToastKind.danger ? Theme.danger-bg : Theme.bg-overlay;
+    border-radius: Radius.lg;
+    border-width: 1px;
+    border-color: root.kind == ToastKind.neutral ? Theme.border-default : root.fg.with-alpha(0.35);
+    opacity: root.phase == ToastPhase.exit ? 0.0 : 1.0;
+    accessible-role: AccessibleRole.text;
+    accessible-label: root.text;
+    accessible-live-region: polite;
+
+    animate opacity { duration: root.phase == ToastPhase.exit ? Motion.fade : Motion.quick; easing: Motion.out; }
+
+    HorizontalLayout {
+        padding-left: Space.s3;
+        padding-right: root.undo-label != "" ? Space.s1 : Space.s3;
+        padding-top: Space.s2;
+        padding-bottom: Space.s2;
+        spacing: Space.s2;
+        Rectangle {
+            width: 16px;
+            Icon {
+                source: root.kind == ToastKind.success ? Icons.check-circle
+                    : root.kind == ToastKind.danger ? Icons.warning : Icons.info;
+                tint: root.fg;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+        Text {
+            text: root.text;
+            color: root.fg;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        if root.undo-label != "": Button {
+            text: root.undo-label;
+            variant: ButtonVariant.ghost;
+            size: ButtonSize.sm;
+            y: (parent.height - self.height) / 2;
+            clicked => { root.undo(); }
+        }
+    }
+}
+
+export enum SkeletonKind { row, tile }
+
+// DESIGN.md §4 Skeleton: placeholder matching the final shape. `row` is a compact 28px item row;
+// `tile` is a main-window grid card. A gentle opacity pulse, off under reduced motion (the shape
+// alone says "loading"). `label` is the spoken status ("Loading"); the host translates it.
+export component Skeleton inherits Rectangle {
+    in property <SkeletonKind> kind: SkeletonKind.row;
+    in property <string> label;
+
+    // 1.0 under reduced motion; otherwise a slow sine between 0.65 and 1.0 (1.6s period).
+    out property <float> pulse: SystemLook.reduced-motion
+        ? 1.0
+        : 0.825 + 0.175 * sin(animation-tick() / 1600ms * 360deg);
+
+    // Bars: `bg-hover` is too faint on dark surfaces, so dark uses `bg-overlay-hover`.
+    property <color> bar: Theme.dark ? Theme.bg-overlay-hover : Theme.border-subtle;
+
+    min-width: 120px;
+    height: root.kind == SkeletonKind.row ? 28px : 104px;
+    background: root.kind == SkeletonKind.tile ? Theme.bg-surface : transparent;
+    border-radius: Radius.lg;
+    border-width: root.kind == SkeletonKind.tile ? 1px : 0px;
+    border-color: Theme.border-subtle;
+    opacity: root.pulse;
+    accessible-role: progress-indicator;
+    accessible-label: root.label;
+
+    if root.kind == SkeletonKind.row: Rectangle {
+        x: Space.s2;
+        y: (parent.height - self.height) / 2;
+        width: 16px;
+        height: 16px;
+        background: root.bar;
+        border-radius: Radius.sm;
+        border-width: Theme.hc-border != transparent ? 1px : 0px;
+        border-color: Theme.hc-border;
+    }
+    if root.kind == SkeletonKind.row: Rectangle {
+        x: Space.s2 + 16px + Space.s2;
+        y: (parent.height - self.height) / 2;
+        width: (parent.width - self.x - Space.s2) * 0.55;
+        height: 10px;
+        background: root.bar;
+        border-radius: Radius.sm;
+        border-width: Theme.hc-border != transparent ? 1px : 0px;
+        border-color: Theme.hc-border;
+    }
+    if root.kind == SkeletonKind.tile: Rectangle {
+        x: Space.s3;
+        y: Space.s3;
+        width: (parent.width - 2 * Space.s3) * 0.6;
+        height: 12px;
+        background: root.bar;
+        border-radius: Radius.sm;
+        border-width: Theme.hc-border != transparent ? 1px : 0px;
+        border-color: Theme.hc-border;
+    }
+    if root.kind == SkeletonKind.tile: Rectangle {
+        x: Space.s3;
+        y: Space.s3 + 12px + Space.s3;
+        width: parent.width - 2 * Space.s3;
+        height: 8px;
+        background: root.bar;
+        border-radius: Radius.sm;
+        border-width: Theme.hc-border != transparent ? 1px : 0px;
+        border-color: Theme.hc-border;
+    }
+    if root.kind == SkeletonKind.tile: Rectangle {
+        x: Space.s3;
+        y: Space.s3 + 12px + Space.s3 + 8px + Space.s2;
+        width: (parent.width - 2 * Space.s3) * 0.85;
+        height: 8px;
+        background: root.bar;
+        border-radius: Radius.sm;
+        border-width: Theme.hc-border != transparent ? 1px : 0px;
+        border-color: Theme.hc-border;
+    }
+    if root.kind == SkeletonKind.tile: Rectangle {
+        x: Space.s3;
+        y: Space.s3 + 12px + Space.s3 + 8px + Space.s2 + 8px + Space.s2;
+        width: (parent.width - 2 * Space.s3) * 0.4;
+        height: 8px;
+        background: root.bar;
+        border-radius: Radius.sm;
+        border-width: Theme.hc-border != transparent ? 1px : 0px;
+        border-color: Theme.hc-border;
+    }
+}

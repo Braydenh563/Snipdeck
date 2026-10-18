@@ -1,0 +1,173 @@
+{
+  "id": "M2",
+  "title": "Windows platform backend: clipboard, hotkeys, paste pipeline",
+  "note": "docs/PLAN.md (M2), crates/snipdeck-platform/src/windows/",
+  "dir": "tools/windows-test/m2-harness",
+  "exe": "m2-harness",
+  "captureLines": [
+    "[m2]"
+  ],
+  "setup": [
+    "Start this wizard from a normal (non-admin) window and snap it to the left half of the screen (Win+Left).",
+    "Turn on clipboard history: press Win+V, then 'Turn on' (needed to check that pasted items never show up there).",
+    "Open a normal (non-admin) Notepad. Have Word, Chrome (signed in to Gmail), Paint, an Explorer folder and Windows Terminal ready. Optional: OneNote, Remote Desktop, Ditto or CopyQ, PowerToys.",
+    "The harness has no window; it registers global hotkeys: Ctrl+Alt+1 paste text, 2 HTML, 3 plain, 4 copy, 5 PNG, 6 files, 7 print Target info, 8 long unicode, Q quit. Focus the target app BEFORE pressing a chord and hold the keys until the paste happens (that exercises the Alt mask).",
+    "It never prints clipboard content or window titles (title length only). 'l' shows its log."
+  ],
+  "tests": [
+    {
+      "id": "1",
+      "gate": true,
+      "launch": {
+        "args": []
+      },
+      "title": "Start-up report",
+      "do": "Press 'l' to read the harness log.",
+      "expect": "windows= and integrity=not elevated. dpapi=ok (round-trip=True, wrong-entropy-rejected=True). chords line: Ctrl+Alt+1 parses, Shift+A and A are rejected. instance=first. 'hotkeys registered=9 in-use=0 errors=0' plus one 'registered' line per chord. If a chord is InUse, record which."
+    },
+    {
+      "id": "2",
+      "gate": true,
+      "clipboard": "BEFORE",
+      "title": "Notepad: paste, clipboard restored",
+      "do": "In a normal Notepad type abc and leave the caret there (the wizard put BEFORE on the clipboard). Press Ctrl+Alt+1 and keep both keys down until the text appears. Then press Ctrl+V. Open Win+V.",
+      "expect": "'Hello from Snipdeck M2' inserted at the caret. Log: use=Paste target=notepad.exe focus=Caret route=paste(CtrlV) outcome=Pasted. Ctrl+V then pastes BEFORE. Win+V history does NOT contain the item. No stuck Ctrl or Alt."
+    },
+    {
+      "id": "3",
+      "gate": true,
+      "title": "Alt and Win held: no menu hints, no Start menu",
+      "do": "In Notepad: hold Alt, then press Ctrl+1 (the chord) and keep Alt down for a second after the text appears; release. Repeat holding Ctrl+Alt+1 together. S1 2c again: hold the Windows key, press Ctrl+Alt+1 with Win still down, release all.",
+      "expect": "Pasted each time (Win+chord may not match the hotkey: if nothing happens, record it, it is not a failure by itself). Notepad's menu bar is NOT activated (no underlined access keys). Start menu does NOT open on releasing Win. Typing afterwards is normal."
+    },
+    {
+      "id": "4",
+      "gate": true,
+      "title": "HTML into Word and Gmail compose",
+      "do": "Word: click into a blank document, press Ctrl+Alt+2. Chrome: Gmail compose (rich text), click into the body, Ctrl+Alt+2.",
+      "expect": "Both show a red heading 'Snipdeck M2 HTML', bold, italic and a working link. Log: outcome=Pasted. The previous clipboard is back afterwards (Ctrl+V into Notepad)."
+    },
+    {
+      "id": "5",
+      "gate": true,
+      "title": "Plain paste (HTML item as text)",
+      "do": "In Word, then in Gmail compose, press Ctrl+Alt+3.",
+      "expect": "Only 'Plain text of the HTML item': no heading, bold or link. Log: use=PastePlain outcome=Pasted."
+    },
+    {
+      "id": "6",
+      "gate": true,
+      "title": "Copy mode leaves the item on the clipboard",
+      "do": "In Notepad press Ctrl+Alt+4. Then press Ctrl+V.",
+      "expect": "The hotkey inserts nothing. Log: use=Copy outcome=Copied. Ctrl+V pastes 'Hello from Snipdeck M2' (not restored away). Note whether Win+V shows it (Copy is an ordinary copy, so it may)."
+    },
+    {
+      "id": "7",
+      "title": "PNG into Paint, Word and Chrome",
+      "do": "Paint: new canvas, Ctrl+Alt+5. Word: blank document, Ctrl+Alt+5. Chrome: Gmail compose body (or a GitHub comment), Ctrl+Alt+5.",
+      "expect": "A 64x64 picture: four colour quadrants, black frame. The top-left 20x20 corner is WHITE in Paint (not black, not magenta). In Word and Chrome record white or transparent; magenta means alpha is ignored. Log: outcome=Pasted."
+    },
+    {
+      "id": "8",
+      "title": "Files into an Explorer folder",
+      "do": "Open an empty Explorer folder, click an empty spot, press Ctrl+Alt+6.",
+      "expect": "m2-note-1.txt and m2-note-2.txt appear, containing 'M2 file one' / 'two'. Log: target=explorer.exe outcome=Pasted. Pressing it in Notepad should insert no text (record what happens)."
+    },
+    {
+      "id": "9",
+      "title": "Long multi-line unicode text",
+      "do": "In Notepad press Ctrl+Alt+8 and scroll through.",
+      "expect": "Starts BEGIN-M2-TEXT, ends END-M2-TEXT, 40 'Line NN' lines intact: German, CJK, Korean, Arabic, check mark, euro, combining accent, emoji, family emoji; a blank line and a tab-indented line at the end. Log: ms is low."
+    },
+    {
+      "id": "10",
+      "title": "Windows Terminal and OneNote",
+      "do": "Click into Windows Terminal (PowerShell prompt), press Ctrl+Alt+7, then Ctrl+Alt+1. Repeat in OneNote (click into a page).",
+      "expect": "Ctrl+Alt+7 prints 'target app=WindowsTerminal.exe title_len=<n> elevated=False focus=Automation' (or Control: record which) and never the title. The terminal paste logs route=paste(CtrlShiftV) and the text appears. OneNote: app=ONENOTE.EXE, focus Automation or Control, paste works. focus=None would mean a copy fallback: record it."
+    },
+    {
+      "id": "11",
+      "title": "Elevated Notepad: copy fallback",
+      "do": "Run Notepad as administrator, click into it, press Ctrl+Alt+7, Ctrl+Alt+1, then Ctrl+V.",
+      "expect": "Info shows elevated=True. The hotkey types nothing. Log: route=copy(Elevated) outcome=CopiedInstead(TargetElevated). Ctrl+V then pastes 'Hello from Snipdeck M2'. (The user-facing message is the app's job; record the outcome name.)"
+    },
+    {
+      "id": "12",
+      "optional": true,
+      "title": "Remote Desktop: slow target",
+      "do": "Connect Remote Desktop (even to another PC), click into Notepad inside it, press Ctrl+Alt+1.",
+      "expect": "Record whether the remote side gets the item or the OLD clipboard, and ms=. outcome is Pasted or CopiedInstead(TargetUnavailable); no hang, no stuck keys."
+    },
+    {
+      "id": "13",
+      "clipboard": "BEFORE",
+      "launch": {
+        "args": [
+          "--clobber"
+        ]
+      },
+      "title": "Clipboard changed mid-paste is not overwritten",
+      "do": "The wizard relaunched the harness with --clobber (a second clipboard owner writes 'Written by another app mid-paste' right after the Target pastes). BEFORE is on the clipboard. In Notepad press Ctrl+Alt+1, then Ctrl+V.",
+      "expect": "Log: 'clobber: another owner wrote newer content ok=True', outcome=Pasted. Ctrl+V pastes 'Written by another app mid-paste', NOT BEFORE: the restore refused to overwrite newer content."
+    },
+    {
+      "id": "14",
+      "optional": true,
+      "launch": {
+        "args": []
+      },
+      "title": "Clipboard manager records nothing",
+      "do": "Start Ditto or CopyQ and clear its history. In Notepad press Ctrl+Alt+1, 2, 5 and 6 (harness relaunched normally). Look at the manager. Then press Ctrl+Alt+4.",
+      "expect": "The manager records none of the pasted items, nor the restored previous clipboard (privacy markers). Ctrl+Alt+4 is an ordinary copy and may be recorded: note it. If the manager ignores the markers, record it as a limitation."
+    },
+    {
+      "id": "15",
+      "launch": {
+        "args": []
+      },
+      "title": "Single instance: later launches raise the first",
+      "do": "With the harness running, open a terminal and run tools\\windows-test\\m2-harness\\target\\release\\m2-harness.exe three times in a row, quickly. Press 'l'.",
+      "expect": "Each launch prints '[m2] second instance' and exits. The harness log gains three '[m2] raised' lines. Hotkeys still work."
+    },
+    {
+      "id": "16",
+      "launch": {
+        "args": [
+          "--autostart-test",
+          "--hold",
+          "25"
+        ]
+      },
+      "title": "Autostart on and off",
+      "do": "The wizard ran the harness with --autostart-test --hold 25. Within 25 s look in regedit at HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run for the value 'Snipdeck', then refresh after the app exits. It uses the real value name: run it only where no real Snipdeck is installed (it removes that value).",
+      "expect": "Log: 'set on -> is_enabled=Ok(true)', 'set off -> is_enabled=Ok(false)', 'autostart=ok'. In regedit 'Snipdeck' holds the quoted path of m2-harness.exe while held and is gone afterwards."
+    },
+    {
+      "id": "17",
+      "launch": {
+        "args": [
+          "--probe",
+          "Win+L"
+        ]
+      },
+      "title": "Hotkey conflict reports InUse",
+      "do": "The wizard launched the harness with --probe Win+L. Read the log ('l'). With PowerToys installed also relaunch by hand with --probe Win+Shift+C (Color Picker default) while it runs.",
+      "expect": "'hotkey Win+L InUse (another app owns it)' and in-use=1; the nine real hotkeys still register. With PowerToys running Win+Shift+C is InUse too. No crash."
+    },
+    {
+      "id": "18",
+      "launch": {
+        "args": []
+      },
+      "title": "Quit leaves hotkeys free",
+      "do": "Relaunch normally (r). Press Ctrl+Alt+Q. Read the log, press Ctrl+Alt+1 in Notepad, then start the exe again (r).",
+      "expect": "Log ends '[m2] quit: hotkeys released' and the process exits. Ctrl+Alt+1 does nothing now. The next launch reports in-use=0."
+    },
+    {
+      "id": "19",
+      "title": "Windows backend unit tests",
+      "do": "In a terminal at the repo root run: cargo test -p snipdeck-platform -- --ignored clipboard   (it uses and overwrites your real clipboard)",
+      "expect": "6 tests run (the ignored Windows-only clipboard tests) and all pass."
+    }
+  ]
+}

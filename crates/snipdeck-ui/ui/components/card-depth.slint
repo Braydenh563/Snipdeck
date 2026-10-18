@@ -1,0 +1,36 @@
+import { Theme } from "../theme.slint";
+
+// DESIGN.md §6 depth levels 1 and 2 for cards: the geometry. The tinted shadow colours are
+// `Theme.shadow-1` and `Theme.shadow-2` (none in dark level 1 or in high contrast).
+export global CardDepth {
+    // Level 1: `0 1px 2px`.
+    out property <length> offset-1: 1px;
+    out property <length> blur-1: 2px;
+
+    // Level 2 (lifted): `0 4px 12px` (light), `0 4px 16px` (dark).
+    out property <length> offset-2: 4px;
+    out property <length> blur-2: Theme.dark ? 16px : 12px;
+
+    // How far a pulled card rises (DESIGN.md §4 "Card pull").
+    out property <length> lift: 2px;
+}
+
+// A soft shadow made of stacked translucent rounded rectangles. Slint drop-shadow is not drawn by the
+// software renderer (the one the Windows panel ships with for Mica, DESIGN.md §5), so this looks the
+// same on every renderer. Draw it first, under a card of the same size.
+export component CardShadow inherits Rectangle {
+    in property <color> shadow;
+    in property <length> offset-y;
+    in property <length> blur;
+    in property <length> corner;
+    // Four layers, each carrying a share of the colour; the outer ones fall off like a blur.
+    for i in [1, 2, 3, 4]: Rectangle {
+        property <length> grow: root.blur * i / 8;
+        x: -self.grow;
+        y: root.offset-y - self.grow;
+        width: root.width + 2 * self.grow;
+        height: root.height + 2 * self.grow;
+        border-radius: root.corner + self.grow;
+        background: root.shadow.transparentize(0.75);
+    }
+}

@@ -1,0 +1,4 @@
+error: failed to write `C:\Users\someone\Documents\very\deep\folder\Snipdeck\target\debug\build\generated.rs`
+
+Caused by:
+  The filename or extension is too long. (os error 206)

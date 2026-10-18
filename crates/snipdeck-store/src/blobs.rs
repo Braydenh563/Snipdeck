@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fs;
 use std::io::{self, Read, Write};
@@ -66,6 +66,23 @@ pub(crate) struct Blobs {
     backing: Backing,
     pending: HashMap<BlobRef, usize>,
     plain: RefCell<HashMap<BlobRef, Zeroizing<Vec<u8>>>>,
+    /// While a transaction is open: the blob files it created (they did not exist before), so
+    /// a rollback can delete them again. `None` outside a transaction.
+    created: Option<Vec<BlobRef>>,
+    /// While a transaction is open: the transient payloads a write took into an item. They are
+    /// plaintext in RAM that nothing needs once the write is over, so the transaction's end (commit
+    /// or rollback) drops them; see [`Blobs::take_transient`].
+    taken: Vec<BlobRef>,
+}
+
+/// Where a transaction (or a savepoint inside one) stood when it began; see
+/// [`Blobs::mark`] and [`Blobs::rewind`].
+pub(crate) struct BlobMark {
+    created: usize,
+    pending: HashMap<BlobRef, usize>,
+    /// How many transient payloads had been taken, and which ones existed at all.
+    taken: usize,
+    transient: HashSet<BlobRef>,
 }
 
 enum Backing {
@@ -87,7 +104,7 @@ impl fmt::Debug for Blobs {
         };
         out.field("pending", &self.pending.len())
             .field("transient", &self.plain.borrow().len())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -114,6 +131,65 @@ impl Blobs {
             backing,
             pending: HashMap::new(),
             plain: RefCell::new(HashMap::new()),
+            created: None,
+            taken: Vec::new(),
+        }
+    }
+
+    /// Starts (or joins) recording which blob files get created, and notes the pending counts.
+    pub(crate) fn mark(&mut self) -> BlobMark {
+        let created = self.created.get_or_insert_with(Vec::new).len();
+        BlobMark {
+            created,
+            pending: self.pending.clone(),
+            taken: self.taken.len(),
+            transient: self.plain.borrow().keys().copied().collect(),
+        }
+    }
+
+    /// Undoes the blob side of a rolled-back transaction: deletes the files created since
+    /// `mark` (no committed row can use a file that did not exist before) and restores the
+    /// pending counts. Transient plaintext a rolled-back write took, or that was staged since
+    /// `mark`, is dropped (zeroed) too. The files are scrubbed first: a payload staged there may be plaintext. A
+    /// file that cannot be deleted now is left for `Store::gc_blobs`.
+    pub(crate) fn rewind(&mut self, mark: BlobMark) {
+        self.pending = mark.pending;
+        let taken = self.taken.split_off(mark.taken.min(self.taken.len()));
+        let mut plain = self.plain.borrow_mut();
+        for blob in taken {
+            plain.remove(&blob);
+        }
+        plain.retain(|blob, _| mark.transient.contains(blob));
+        drop(plain);
+        let doomed = self
+            .created
+            .as_mut()
+            .map(|log| log.split_off(mark.created.min(log.len())))
+            .unwrap_or_default();
+        for blob in doomed {
+            let _ = self.remove(&blob, true);
+        }
+    }
+
+    /// Stops recording created files (the outermost transaction ended).
+    /// The transient payloads the transaction's writes took are dropped (zeroed): the rows
+    /// they went into hold the sealed or stored copy now.
+    pub(crate) fn end_log(&mut self) {
+        self.created = None;
+        let mut plain = self.plain.borrow_mut();
+        for blob in self.taken.drain(..) {
+            plain.remove(&blob);
+        }
+    }
+
+    /// Notes that a write is taking `content` into an item: if it is a transient payload it is
+    /// dropped when the transaction ends (or, if that is rolled back, at the rollback). Not at
+    /// once, because another row of the same transaction may carry the same payload.
+    pub(crate) fn take_transient(&mut self, content: &Content) {
+        if let Content::Blob { blob, .. } = content
+            && self.plain.borrow().contains_key(blob)
+        {
+            self.taken.push(*blob);
         }
     }
 
@@ -137,7 +213,10 @@ impl Blobs {
         let len = bytes.len() as u64;
         match &mut self.backing {
             Backing::Memory(map) => {
-                map.insert(blob, bytes);
+                let new = map.insert(blob, bytes).is_none();
+                if new {
+                    self.note_created(blob);
+                }
             }
             Backing::Disk { .. } => {
                 if self.holds_exactly(&blob, &bytes) {
@@ -146,11 +225,21 @@ impl Blobs {
                     self.touch(&blob);
                 } else {
                     // Missing, truncated, or damaged with the right length (review L4).
+                    let existed = self.file_path(&blob).exists();
                     self.write_atomically(&blob, &bytes)?;
+                    if !existed {
+                        self.note_created(blob);
+                    }
                 }
             }
         }
         Ok(Content::Blob { blob, len })
+    }
+
+    fn note_created(&mut self, blob: BlobRef) {
+        if let Some(log) = &mut self.created {
+            log.push(blob);
+        }
     }
 
     /// Keeps `bytes` in memory only and returns content that refers to them; see the type's
@@ -740,6 +829,28 @@ mod tests {
         blobs.remove(&blob, false).unwrap();
         assert!(!blobs.has(&blob, len));
         blobs.remove(&blob, false).unwrap();
+    }
+
+    /// Security review 2, finding 1: a rolled-back transaction must scrub the files it created
+    /// (a payload staged there may be plaintext), not just unlink them. A hard link keeps the
+    /// contents reachable after the unlink, so it shows whether they were overwritten.
+    #[test]
+    fn rewind_scrubs_the_files_it_deletes() {
+        let (dir, mut blobs) = blobs();
+        let secret = vec![0xA5; INLINE_LIMIT + 10];
+        let mark = blobs.mark();
+        let Content::Blob { blob, .. } = blobs.put(secret.clone()).unwrap() else {
+            panic!()
+        };
+        let link = dir.path().join("kept-by-hard-link");
+        std::fs::hard_link(blobs.path_of(&blob).unwrap(), &link).unwrap();
+        blobs.rewind(mark);
+        assert!(!blobs.path_of(&blob).unwrap().exists(), "unlinked");
+        let left = std::fs::read(&link).unwrap();
+        assert!(
+            left.iter().all(|b| *b == 0),
+            "the rolled-back file still held its bytes"
+        );
     }
 
     #[test]

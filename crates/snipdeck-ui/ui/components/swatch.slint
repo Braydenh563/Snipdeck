@@ -1,0 +1,87 @@
+import { Theme, Radius, Space, Motion, ListHue, ListAccent } from "../theme.slint";
+import { Icon } from "icon.slint";
+import { Icons } from "../icons.slint";
+
+// DESIGN.md §4 Swatch: picks one of the nine list hues. 28px hit target holding a 20px chip;
+// `selected` adds a 2px ring in primary text colour (2px gap) and a check in the chip, so the
+// choice is not colour alone. `label` is the spoken colour name ("Teal"); the host translates it.
+// The hue colour is `ListAccent.color`: step 600 in light, step 400 in dark.
+export component Swatch inherits Rectangle {
+    in property <ListHue> hue: ListHue.blue;
+    in property <string> label;
+    in property <bool> selected: false;
+    in property <bool> enabled: true;
+    callback clicked();
+
+    property <bool> pressed: touch.pressed && root.enabled;
+    property <bool> hovered: touch.has-hover && root.enabled;
+
+    width: Space.hit;
+    height: Space.hit;
+    forward-focus: scope;
+    accessible-role: radio-button;
+    accessible-label: root.label;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+
+    // Selection ring.
+    Rectangle {
+        width: parent.width;
+        height: parent.height;
+        border-width: root.selected ? 2px : 0px;
+        border-color: Theme.text-primary;
+        border-radius: Radius.lg;
+        background: transparent;
+    }
+
+    chip := Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: root.hovered || root.pressed ? 22px : 20px;
+        height: self.width;
+        border-radius: Radius.sm;
+        background: ListAccent.color(root.hue);
+        border-width: Theme.hc-border != transparent ? 1px : 0px;
+        border-color: Theme.hc-border;
+        opacity: root.enabled ? 1.0 : 0.45;
+        animate width { duration: Motion.instant; easing: Motion.out; }
+        if root.selected: Icon {
+            source: Icons.check;
+            size: 14px;
+            tint: Theme.text-on-ink;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+
+    // 2px ring, 2px offset (DESIGN.md §2), outside the selection ring.
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.lg + 2px;
+        background: transparent;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+
+    scope := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.clicked();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}

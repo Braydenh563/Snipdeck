@@ -1,0 +1,4 @@
+   Compiling libc v0.2.188
+   Compiling snipdeck-core v0.1.0 (C:\Snipdeck\crates\snipdeck-core)
+   Compiling snipdeck-app v0.1.0 (C:\Snipdeck\crates\snipdeck-app)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4m 12s

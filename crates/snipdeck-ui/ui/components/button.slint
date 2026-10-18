@@ -1,0 +1,103 @@
+import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Icon } from "icon.slint";
+import { StateColor } from "state-color.slint";
+
+export enum ButtonVariant { primary, secondary, ghost, danger }
+export enum ButtonSize { sm, md, lg }
+
+// DESIGN.md §4 Button. Primary is ink, never blue. Focus ring appears on keyboard focus only
+// (`focus-on-click` is off: the panel never takes focus from the Target on a click).
+export component Button inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <ButtonVariant> variant: ButtonVariant.secondary;
+    in property <ButtonSize> size: ButtonSize.md;
+    in property <bool> enabled: true;
+    in property <bool> loading: false;
+    // Overrides the spoken label (icon-only usage); defaults to `text`.
+    in property <string> a11y-label;
+    callback clicked();
+
+    property <bool> active: root.enabled && !root.loading;
+    // 24 / 28 / 32px, and one text line plus padding when the text size is larger.
+    property <length> height-px: max(root.size == ButtonSize.sm ? 24px : root.size == ButtonSize.md ? 28px : 32px,
+        (root.size == ButtonSize.sm ? Type.line-sm : Type.line-base) + Space.s2);
+    property <length> pad: root.size == ButtonSize.sm ? Space.s2 : root.size == ButtonSize.md ? Space.s3 : Space.s4;
+    property <bool> pressed: touch.pressed && root.active;
+    property <bool> hovered: touch.has-hover && root.active;
+
+    property <color> fill: root.variant == ButtonVariant.primary
+        ? (root.pressed ? Theme.ink-pressed : root.hovered ? Theme.ink-hover : Theme.ink)
+        : root.variant == ButtonVariant.danger
+        ? (root.pressed ? Theme.danger-solid.darker(0.3) : root.hovered ? Theme.danger-solid.darker(0.15) : Theme.danger-solid)
+        : root.variant == ButtonVariant.secondary
+        ? (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : Theme.bg-surface)
+        : (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : transparent);
+    property <color> fg: root.variant == ButtonVariant.primary ? Theme.text-on-ink
+        : root.variant == ButtonVariant.danger ? Theme.text-on-accent
+        : Theme.text-primary;
+
+    min-width: 28px;
+    height: root.height-px;
+    background: root.fill;
+    border-radius: Radius.md;
+    border-width: root.variant == ButtonVariant.secondary || Theme.hc-border != transparent ? 1px : 0px;
+    border-color: root.variant == ButtonVariant.secondary ? Theme.border-strong : Theme.hc-border;
+    opacity: root.enabled ? 1.0 : 0.45;
+    forward-focus: scope;
+    accessible-role: button;
+    accessible-label: root.a11y-label != "" ? root.a11y-label : root.text;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.active) { root.clicked(); } }
+
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    HorizontalLayout {
+        padding-left: root.pad;
+        padding-right: root.pad;
+        spacing: Space.s2;
+        alignment: center;
+        if root.icon.width > 0: Icon {
+            source: root.icon;
+            tint: root.fg;
+            y: (parent.height - self.height) / 2;
+        }
+        Text {
+            text: root.loading ? "…" : root.text;
+            color: root.fg;
+            font-family: Fonts.sans;
+            font-size: root.size == ButtonSize.sm ? Type.sm : Type.base;
+            font-weight: Type.medium;
+            vertical-alignment: center;
+        }
+    }
+
+    // 2px ring, 2px offset (DESIGN.md §2).
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.md + 2px;
+        background: transparent;
+    }
+
+    touch := TouchArea {
+        enabled: root.active;
+        clicked => { root.clicked(); }
+    }
+
+    scope := FocusScope {
+        enabled: root.active;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.clicked();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}

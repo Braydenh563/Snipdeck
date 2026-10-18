@@ -1,0 +1,69 @@
+import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+// DESIGN.md §4 Keycap (single). One key cap in IBM Plex Mono. `active` is the brief pressed flash:
+// the host sets it for ~140ms when the key is used (quick-paste index, hotkey recorder).
+// Not interactive.
+export component Keycap inherits Rectangle {
+    in property <string> text;
+    in property <bool> active: false;
+
+    // The Enter key (U+21B5) is drawn as an icon: IBM Plex has no glyph for it, so the text character
+    // would come from whichever system font the machine falls back to.
+    property <bool> is-enter: root.text == "↵";
+    property <length> content-w: root.is-enter ? Type.xs : label.preferred-width;
+
+    min-width: max(20px, root.content-w + 2 * Space.s1 + 2px);
+    // 20px holds one 16px line at 100%; it grows with the text size.
+    height: max(20px, Type.line-xs + Space.s1);
+    background: root.active ? Theme.accent-subtle : Theme.bg-sunken;
+    border-radius: Radius.sm;
+    border-width: 1px;
+    border-color: root.active ? Theme.accent : Theme.border-default;
+    animate background, border-color { duration: Motion.instant; easing: Motion.out; }
+
+    HorizontalLayout {
+        padding-left: Space.s1;
+        padding-right: Space.s1;
+        alignment: center;
+        if root.is-enter: Icon {
+            source: Icons.arrow-bend-down-left;
+            tint: root.active ? Theme.accent-text : Theme.text-secondary;
+            size: Type.xs;
+            y: (parent.height - self.height) / 2;
+        }
+        label := Text {
+            visible: !root.is-enter;
+            text: root.is-enter ? "" : root.text;
+            color: root.active ? Theme.accent-text : Theme.text-secondary;
+            font-family: Fonts.mono;
+            font-size: Type.xs;
+            font-weight: Type.medium;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+        }
+    }
+}
+
+// DESIGN.md §4 Keycap (combo). A key combination as a row of caps. `label` is the spoken form
+// ("Control Shift V"); the host translates it.
+export component KeyCombo inherits Rectangle {
+    in property <[string]> keys;
+    in property <bool> active: false;
+    in property <string> label;
+
+    accessible-role: AccessibleRole.text;
+    accessible-label: root.label;
+    height: max(20px, Type.line-xs + Space.s1);
+    min-width: row.min-width;
+
+    row := HorizontalLayout {
+        spacing: Space.s0-5;
+        alignment: start;
+        for key in root.keys: Keycap {
+            text: key;
+            active: root.active;
+        }
+    }
+}

@@ -9,7 +9,7 @@
 //!    into a [`Plan`];
 //! 4. verify every asset: size, BLAKE3 hash against its name, UTF-8 and size limits for text,
 //!    and decryption of encrypted payloads;
-//! 5. decide duplicates, then write the plan (`plan::apply`), which undoes itself on failure.
+//! 5. decide duplicates, then write the plan (`plan::apply`) in one store transaction.
 //!
 //! Steps 1 to 4 are read-only, so an archive that fails them changes nothing.
 
@@ -25,6 +25,7 @@ use snipdeck_core::{
     ListId, ListSort, ListView, Name, TagId, Timestamp,
 };
 use snipdeck_store::crypto::{DataKey, Slot, decrypt_payload};
+use snipdeck_store::name_key;
 
 use crate::archive::{ITEMS, MANIFEST, SafeArchive};
 use crate::dto::{
@@ -93,8 +94,14 @@ pub struct ImportOptions<'k> {
     /// The name of the new board, instead of one derived from the file or folder name.
     pub board_name: Option<String>,
     /// When set, a warning is reported if the import leaves more boards than this (the Free
-    /// tier's limit). Nothing is blocked: the caller decides.
+    /// tier's limit). Nothing is blocked: the caller decides. Use [`ImportOptions::max_boards`]
+    /// to enforce a limit.
     pub free_board_limit: Option<usize>,
+    /// The most live boards the library may hold once the import is done (the Free tier's 3).
+    /// An import that would go past it is refused inside its transaction with
+    /// `ProRequired(UnlimitedBoards)` and changes nothing; the caller passes `None` on Pro. A
+    /// restore of boards the user already has cannot grow past the limit this way.
+    pub max_boards: Option<usize>,
     /// Limits for reading untrusted input.
     pub limits: Limits,
 }
@@ -126,7 +133,7 @@ pub(crate) fn finish<L: Library>(
     let mut no_assets = |_: &AssetRef| -> Result<Vec<u8>> {
         Err(Error::malformed("import", "internal: no assets expected"))
     };
-    apply(lib, &plan, &mut no_assets, report)
+    apply(lib, &plan, &mut no_assets, report, options.max_boards)
 }
 
 fn warn_board_limit<L: Library>(
@@ -173,7 +180,7 @@ pub fn import_archive_path<L: Library>(
 ///
 /// Validation covers the zip (limits, names, links), the manifest (format, version, counts),
 /// `items.json` (ids, names, keys, timestamps, references, duplicates) and every asset (size and
-/// hash). Only then is the library written, atomically (see `plan`).
+/// hash). Only then is the library written, in one store transaction (see `plan`).
 ///
 /// # Errors
 ///
@@ -243,7 +250,7 @@ pub fn import_archive<L: Library, R: Read + Seek>(
         }
         Ok(bytes)
     };
-    apply(lib, &plan, &mut fetch, report)
+    apply(lib, &plan, &mut fetch, report, options.max_boards)
 }
 
 /// Reads `manifest.json`: checks it is a Snipdeck manifest of a readable version before looking
@@ -486,12 +493,10 @@ impl<R: Read + Seek> Builder<'_, R> {
             let id: TagId = parse_id(&tag.id, "tag")?;
             unique(&mut seen, id, "tag")?;
             let name = parse_name(&tag.name, "tag")?;
-            let index = *by_key
-                .entry(name.as_str().to_lowercase())
-                .or_insert_with(|| {
-                    names.push(name.clone());
-                    names.len() - 1
-                });
+            let index = *by_key.entry(name_key(name.as_str())).or_insert_with(|| {
+                names.push(name.clone());
+                names.len() - 1
+            });
             self.tag_index.insert(id, index);
         }
         Ok(names)

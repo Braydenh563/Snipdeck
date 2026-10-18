@@ -1,0 +1,421 @@
+import { TextField, SearchField, TabItem, ListTabBar, HotkeyRecorder, HotkeyState, TemplateField, TemplateFieldKind, Dialog, DialogVariant, EmptyState, EmptyStateKind, Button, ButtonVariant } from "../components.slint";
+import { Theme, Type, Space, Palette, Primitives, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+
+component Caption inherits Text {
+    color: Theme.text-secondary;
+    font-family: Fonts.sans;
+    font-size: Type.xs;
+}
+
+// List accent for a gallery tab: step 600 in light, 400 in dark (DESIGN.md §2). The app resolves these from the
+// nine list hues; the gallery picks four so the tab bars look like the real thing.
+global Hues {
+    pure public function hue(name: string) -> color {
+        if (name == "teal") { return Palette.dark ? Primitives.teal-400 : Primitives.teal-600; }
+        if (name == "amber") { return Palette.dark ? Primitives.amber-400 : Primitives.amber-600; }
+        if (name == "rose") { return Palette.dark ? Primitives.rose-400 : Primitives.rose-600; }
+        if (name == "violet") { return Palette.dark ? Primitives.violet-400 : Primitives.violet-600; }
+        return Palette.dark ? Primitives.blue-400 : Primitives.blue-600;
+    }
+}
+
+// TextField and SearchField in every state.
+export component InputsGallery inherits Window {
+    in property <bool> dark: false;
+    in-out property <string> name-text;
+    in-out property <string> search-text;
+    in-out property <string> narrow-text;
+    in-out property <int> edits: 0;
+    in-out property <int> accepts: 0;
+    in-out property <int> clears: 0;
+    in-out property <int> search-edits: 0;
+    out property <bool> name-has-focus: name.has-focus;
+    out property <bool> search-has-focus: search.has-focus;
+    out property <bool> narrow-composing: narrow.composing;
+    out property <length> narrow-scroll-x: narrow.scroll-x;
+    out property <length> narrow-visible-width: narrow.visible-width;
+    out property <length> narrow-end-x: narrow.composition-end-x;
+    out property <length> name-box-height: name.box-height;
+    in-out property <string> notes-text: "First line\nSecond line, which is long enough to wrap onto a third line of text.";
+    out property <length> notes-box-height: notes.box-height;
+    public function focus-name() { name.focus(); }
+    public function focus-search() { search.focus(); }
+    public function focus-narrow() { narrow.focus(); }
+    public function set-narrow-cursor(offset: int) { narrow.set-cursor(offset); }
+
+    width: 700px;
+    height: 640px;
+    background: Theme.bg-app;
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    HorizontalLayout {
+        padding: Space.s4;
+        spacing: Space.s6;
+        VerticalLayout {
+            spacing: Space.s2;
+            alignment: start;
+            Caption { text: "TextField: default"; }
+            name := TextField {
+                label: "Name";
+                placeholder: "Snippet name";
+                text <=> root.name-text;
+                edited(t) => { root.edits += 1; }
+                accepted(t) => { root.accepts += 1; }
+            }
+            Caption { text: "hover"; }
+            TextField { label: "Hover field"; text: "Quarterly report"; show-hover: true; }
+            Caption { text: "focus"; }
+            TextField { label: "Focus field"; text: "Quarterly report"; show-focus: true; }
+            Caption { text: "disabled"; }
+            TextField { label: "Disabled field"; text: "Quarterly report"; enabled: false; }
+            Caption { text: "error"; }
+            TextField { label: "Error field"; placeholder: "Snippet name"; error: "A name is required"; }
+            Caption { text: "IME composing"; }
+            TextField { label: "Composing field"; text: "Quarterly rep"; show-composing: true; }
+            Caption { text: "multi-line (3 to 5 lines)"; }
+            notes := TextField {
+                label: "Notes";
+                single-line: false;
+                min-lines: 3;
+                max-lines: 5;
+                text <=> root.notes-text;
+            }
+        }
+        VerticalLayout {
+            spacing: Space.s2;
+            alignment: start;
+            Caption { text: "SearchField: default"; }
+            search := SearchField {
+                label: "Search";
+                placeholder: "Search snippets";
+                clear-label: "Clear search";
+                text <=> root.search-text;
+                edited(t) => { root.search-edits += 1; }
+                cleared => { root.clears += 1; }
+            }
+            Caption { text: "with text (clear button)"; }
+            SearchField { label: "Search filled"; clear-label: "Clear filled"; text: "invoice"; }
+            Caption { text: "hover"; }
+            SearchField { label: "Search hover"; placeholder: "Search snippets"; show-hover: true; }
+            Caption { text: "focus"; }
+            SearchField { label: "Search focus"; clear-label: "Clear focus"; text: "invoice"; show-focus: true; }
+            Caption { text: "disabled"; }
+            SearchField { label: "Search disabled"; placeholder: "Search snippets"; enabled: false; }
+            Caption { text: "error"; }
+            SearchField { label: "Search error"; text: "((("; error: "Not a valid pattern"; }
+            Caption { text: "IME composing"; }
+            SearchField { label: "Search composing"; text: "invo"; show-composing: true; }
+            Caption { text: "narrow (160px), long composition keeps its end visible"; }
+            HorizontalLayout {
+                alignment: start;
+                narrow := SearchField {
+                    width: 160px;
+                    label: "Narrow search";
+                    clear-label: "Clear narrow";
+                    text <=> root.narrow-text;
+                }
+            }
+        }
+    }
+}
+
+// Tab bars: normal, hover, drag-over, keyboard focus, overflow.
+export component TabsGallery inherits Window {
+    in property <bool> dark: false;
+    in-out property <int> current: 1;
+    in-out property <int> picked: -1;
+    in-out property <int> adds: 0;
+    in-out property <int> drops: 0;
+    out property <length> overflow-scroll-x: overflow.scroll-x;
+    out property <length> end-scroll-x: overflow-end.scroll-x;
+    out property <bool> bar-has-focus: bar.has-focus;
+    public function focus-bar() { bar.focus(); }
+    public function select-last-overflow() { overflow.current = 9; }
+
+    width: 360px;
+    height: 330px;
+    background: Theme.bg-app;
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    property <[TabItem]> tabs: [
+        { text: "Work", accent: Hues.hue("blue") },
+        { text: "Personal", accent: Hues.hue("teal") },
+        { text: "Code", accent: Hues.hue("violet") },
+        { text: "Mail", accent: Hues.hue("amber") },
+    ];
+    property <[TabItem]> many: [
+        { text: "Work", accent: Hues.hue("blue") },
+        { text: "Personal", accent: Hues.hue("teal") },
+        { text: "Code", accent: Hues.hue("violet") },
+        { text: "Mail", accent: Hues.hue("amber") },
+        { text: "Support replies", accent: Hues.hue("rose") },
+        { text: "Addresses", accent: Hues.hue("blue") },
+        { text: "Signatures", accent: Hues.hue("teal") },
+        { text: "Links", accent: Hues.hue("violet") },
+        { text: "Prompts", accent: Hues.hue("amber") },
+        { text: "Archive", accent: Hues.hue("rose") },
+    ];
+
+    VerticalLayout {
+        padding: Space.s4;
+        spacing: Space.s2;
+        alignment: start;
+        Caption { text: "ListTabBar: Personal active"; }
+        bar := ListTabBar {
+            label: "Lists";
+            add-label: "Add list";
+            tabs: root.tabs;
+            current <=> root.current;
+            selected(i) => { root.picked = i; }
+            add-clicked => { root.adds += 1; }
+            dropped(i) => { root.drops += 1; }
+        }
+        Caption { text: "hover on Code, keyboard focus on active tab"; }
+        ListTabBar {
+            label: "Lists focus";
+            add-label: "Add list focus";
+            tabs: root.tabs;
+            current: 0;
+            show-hover-index: 2;
+            show-focus: true;
+        }
+        Caption { text: "drag over Mail"; }
+        ListTabBar {
+            label: "Lists drag";
+            add-label: "Add list drag";
+            tabs: root.tabs;
+            current: 0;
+            drag-over-index: 3;
+        }
+        Caption { text: "overflow (10 lists): scrolls, last tab revealed"; }
+        overflow := ListTabBar {
+            label: "Lists overflow";
+            add-label: "Add list overflow";
+            tabs: root.many;
+            current: 0;
+        }
+        Caption { text: "overflow scrolled to the end"; }
+        overflow-end := ListTabBar {
+            label: "Lists overflow end";
+            add-label: "Add list overflow end";
+            tabs: root.many;
+            current: 9;
+        }
+    }
+}
+
+// HotkeyRecorder and TemplateField.
+export component FormGallery inherits Window {
+    in property <bool> dark: false;
+    in-out property <[string]> hk-keys: ["Ctrl", "Alt", "V"];
+    in-out property <string> hk-value: "Ctrl+Alt+V";
+    in-out property <string> hk-conflict;
+    in-out property <string> hk-last;
+    in-out property <int> hk-recorded: 0;
+    in-out property <int> hk-cancels: 0;
+    in-out property <int> hk-clears: 0;
+    in-out property <string> tf-name;
+    in-out property <int> tf-choice: 1;
+    in-out property <string> tf-date: "2026-10-17";
+    in-out property <int> tf-chosen: 0;
+    out property <HotkeyState> hk-state: hk.state;
+    out property <bool> hk-recording: hk.recording;
+    out property <bool> hk-has-focus: hk.has-focus;
+    public function focus-hk() { hk.focus(); }
+    public function focus-choice() { choice.focus(); }
+
+    width: 700px;
+    height: 680px;
+    background: Theme.bg-app;
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    HorizontalLayout {
+        padding: Space.s4;
+        spacing: Space.s6;
+        VerticalLayout {
+            spacing: Space.s2;
+            alignment: start;
+            Caption { text: "HotkeyRecorder: idle"; }
+            hk := HotkeyRecorder {
+                label: "Open panel";
+                keys: root.hk-keys;
+                value: root.hk-value;
+                conflict: root.hk-conflict;
+                empty-text: "Not set";
+                recording-text: "Press the new shortcut";
+                clear-label: "Clear shortcut";
+                recorded(combo) => {
+                    root.hk-last = combo;
+                    root.hk-recorded += 1;
+                }
+                cancelled => { root.hk-cancels += 1; }
+                cleared => { root.hk-clears += 1; }
+            }
+            Caption { text: "empty"; }
+            HotkeyRecorder { label: "Paste plain"; empty-text: "Not set"; recording-text: "Press the new shortcut"; }
+            Caption { text: "hover"; }
+            HotkeyRecorder { label: "Hover shortcut"; keys: ["Ctrl", "Shift", "K"]; value: "Ctrl+Shift+K"; clear-label: "Clear hover"; show-hover: true; }
+            Caption { text: "recording (focus ring)"; }
+            HotkeyRecorder { label: "Recording shortcut"; recording: true; show-focus: true; recording-text: "Press the new shortcut"; }
+            Caption { text: "conflict"; }
+            HotkeyRecorder {
+                label: "Conflict shortcut";
+                keys: ["Ctrl", "Alt", "P"];
+                value: "Ctrl+Alt+P";
+                clear-label: "Clear conflict";
+                conflict: "Already used by Windows Snipping Tool";
+            }
+            Caption { text: "disabled"; }
+            HotkeyRecorder { label: "Disabled shortcut"; keys: ["Ctrl", "Alt", "V"]; value: "Ctrl+Alt+V"; enabled: false; }
+        }
+        VerticalLayout {
+            spacing: Space.s3;
+            alignment: start;
+            Caption { text: "TemplateField: text, required"; }
+            TemplateField {
+                label: "Recipient";
+                required: true;
+                required-text: "Required";
+                placeholder: "Full name";
+                value <=> root.tf-name;
+            }
+            TemplateField { label: "Greeting"; placeholder: "Dear…"; value: "Hello"; }
+            TemplateField { label: "Reference"; required: true; required-text: "Required"; error: "Enter a reference number"; }
+            Caption { text: "choice"; }
+            choice := TemplateField {
+                label: "Length";
+                kind: TemplateFieldKind.choice;
+                required: true;
+                required-text: "Required";
+                choices: ["Short", "Medium", "Long"];
+                choice-index <=> root.tf-choice;
+                chosen(i) => { root.tf-chosen += 1; }
+            }
+            TemplateField {
+                label: "Tone";
+                kind: TemplateFieldKind.choice;
+                choices: ["Formal", "Friendly"];
+                choice-index: -1;
+                show-focus: true;
+            }
+            Caption { text: "date"; }
+            TemplateField {
+                label: "Due date";
+                kind: TemplateFieldKind.date;
+                placeholder: "YYYY-MM-DD";
+                value <=> root.tf-date;
+            }
+            TemplateField {
+                label: "Sent on";
+                kind: TemplateFieldKind.date;
+                placeholder: "YYYY-MM-DD";
+                value: "31/02/2026";
+                error: "That date does not exist";
+            }
+        }
+    }
+}
+
+// A dialog over a busy window.
+export component DialogGallery inherits Window {
+    in property <bool> dark: false;
+    in property <bool> open: true;
+    in property <DialogVariant> variant: DialogVariant.default;
+    in-out property <int> dismissals: 0;
+    in-out property <int> accepts: 0;
+    in-out property <int> confirms: 0;
+    in-out property <int> cancels: 0;
+    // Test hook: leave the controls behind the dialog enabled, to prove the dialog traps Tab itself.
+    in property <bool> behind-live: false;
+    in-out property <int> behind-clicks: 0;
+    in-out property <string> behind-text: "Quarterly report";
+    // Times the dialog reported that it closed (the host restores focus there).
+    in-out property <int> closes: 0;
+
+    width: 420px;
+    height: 300px;
+    background: Theme.bg-app;
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    VerticalLayout {
+        padding: Space.s4;
+        spacing: Space.s2;
+        alignment: start;
+        Caption { text: "Behind the dialog"; }
+        TextField { label: "Behind field"; text <=> root.behind-text; enabled: !root.open || root.behind-live; }
+        Button { text: "Behind button"; enabled: !root.open || root.behind-live; clicked => { root.behind-clicks += 1; } }
+    }
+
+    Dialog {
+        open: root.open;
+        variant: root.variant;
+        title: root.variant == DialogVariant.destructive ? "Delete list “Work”?" : "Import snippets?";
+        body: root.variant == DialogVariant.destructive
+            ? "Its 14 snippets move to Trash. You can restore them for 30 days."
+            : "42 snippets from backup.snipdeck will be added to your boards.";
+        dismissed => { root.dismissals += 1; }
+        accepted => { root.accepts += 1; }
+        closed => { root.closes += 1; }
+        Button {
+            text: "Cancel";
+            clicked => { root.cancels += 1; }
+        }
+        Button {
+            text: root.variant == DialogVariant.destructive ? "Delete list" : "Import";
+            variant: root.variant == DialogVariant.destructive ? ButtonVariant.danger : ButtonVariant.primary;
+            clicked => { root.confirms += 1; }
+        }
+    }
+}
+
+// EmptyState: the four kinds.
+export component EmptyStateGallery inherits Window {
+    in property <bool> dark: false;
+    in-out property <int> actions: 0;
+
+    width: 700px;
+    height: 460px;
+    background: Theme.bg-app;
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    VerticalLayout {
+        padding: Space.s4;
+        spacing: Space.s4;
+        HorizontalLayout {
+            spacing: Space.s4;
+            EmptyState {
+                kind: EmptyStateKind.list;
+                heading: "No snippets yet";
+                body: "Copy something, then use Save from clipboard to keep it here.";
+                action-text: "Save from clipboard";
+                action => { root.actions += 1; }
+            }
+            EmptyState {
+                kind: EmptyStateKind.board;
+                heading: "No lists on this board";
+                body: "Lists keep related snippets together, one tab each.";
+                action-text: "Add a list";
+            }
+        }
+        HorizontalLayout {
+            spacing: Space.s4;
+            EmptyState {
+                kind: EmptyStateKind.search;
+                heading: "Nothing found";
+                body: "No snippet matches “invoice”. Try a shorter word.";
+            }
+            EmptyState {
+                kind: EmptyStateKind.inbox;
+                heading: "Inbox is empty";
+                body: "Snippets you capture from other apps land here first.";
+                action-text: "Capture a snippet";
+            }
+        }
+    }
+}

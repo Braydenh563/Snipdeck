@@ -1,0 +1,229 @@
+import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Icon } from "icon.slint";
+import { Keycap } from "keycap.slint";
+
+// One row of a Menu. A separator row has `separator: true` and ignores the rest.
+export struct MenuEntry {
+    text: string,
+    icon: image,
+    // Shortcut shown as a keycap on the right ("Ctrl+C"); the host translates key names.
+    shortcut: string,
+    // Red text for an action that deletes (always with a trash or similar icon from the host).
+    destructive: bool,
+    disabled: bool,
+    separator: bool,
+}
+
+// DESIGN.md §4 MenuItem: 28px row with an optional icon, label and shortcut keycap. `current` is the
+// highlighted row (pointer hover or keyboard position, owned by Menu). Disabled rows are dimmed and
+// ignore the pointer and the keyboard.
+export component MenuItem inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <string> shortcut;
+    in property <bool> destructive: false;
+    in property <bool> disabled: false;
+    in property <bool> current: false;
+    // Keep the 16px icon column even when this row has no icon (so labels line up).
+    in property <bool> reserve-icon: true;
+    // Position in the menu and the menu length, for assistive technology.
+    in property <int> index: 0;
+    in property <int> count: 1;
+    callback activated();
+    // The pointer moved onto an enabled row.
+    callback pointer-entered();
+
+    property <color> fg: root.destructive ? Theme.danger-fg : Theme.text-primary;
+
+    height: max(Space.hit, Type.line-base + Space.s2);
+    background: root.current && !root.disabled ? Theme.bg-overlay-hover : transparent;
+    border-radius: Radius.sm;
+    border-width: root.current && !root.disabled && Theme.hc-border != transparent ? 1px : 0px;
+    border-color: Theme.hc-border;
+    opacity: root.disabled ? 0.45 : 1.0;
+    accessible-role: list-item;
+    accessible-label: root.text;
+    accessible-description: root.shortcut;
+    accessible-enabled: !root.disabled;
+    accessible-item-index: root.index;
+    accessible-item-count: root.count;
+    accessible-item-selectable: !root.disabled;
+    accessible-item-selected: root.current && !root.disabled;
+    accessible-action-default => { if (!root.disabled) { root.activated(); } }
+
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    HorizontalLayout {
+        padding-left: Space.s2;
+        padding-right: Space.s2;
+        spacing: Space.s2;
+        if root.reserve-icon || root.icon.width > 0: Rectangle {
+            width: 16px;
+            if root.icon.width > 0: Icon {
+                source: root.icon;
+                tint: root.fg;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+        Text {
+            text: root.text;
+            color: root.fg;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+        }
+        if root.shortcut != "": Rectangle {
+            width: key.min-width;
+            key := Keycap {
+                text: root.shortcut;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+    }
+
+    touch := TouchArea {
+        enabled: !root.disabled;
+        changed has-hover => {
+            if (self.has-hover) {
+                root.pointer-entered();
+            }
+        }
+        clicked => { root.activated(); }
+    }
+}
+
+// DESIGN.md §4 Menu: context and overflow actions. Floating surface (`bg-overlay`, 1px border,
+// no shadow here: the host window supplies the OS shadow). Keyboard, once the host calls
+// `focus-menu()`: Up/Down move through the enabled rows (wrapping), Home/End jump, Enter or Space
+// activates, Escape asks the host to close (`dismissed`). The pointer highlights the row under it
+// and a click activates it. Separators and disabled rows are skipped (up to 7 in a row).
+// Assistive technology sees a list of list items (Slint 1.18 has no menu roles).
+export component Menu inherits Rectangle {
+    in property <[MenuEntry]> entries;
+    // Spoken name of the menu ("Item actions").
+    in property <string> label;
+    // Reserve the icon column on every row.
+    in property <bool> icons: true;
+    // Highlighted row (-1 = none).
+    in-out property <int> current: -1;
+    callback activated(int);
+    callback dismissed();
+
+    public function focus-menu() {
+        scope.focus();
+    }
+
+    // Separators before row `i`. Slint has no loop, so this adds up the first 24 entries; a menu is never longer
+    // than that, and an entry past the end reads as "not a separator".
+    pure function separators-before(i: int) -> int {
+        return (i > 0 && root.entries[0].separator ? 1 : 0) + (i > 1 && root.entries[1].separator ? 1 : 0) + (i > 2 && root.entries[2].separator ? 1 : 0) + (i > 3 && root.entries[3].separator ? 1 : 0) + (i > 4 && root.entries[4].separator ? 1 : 0) + (i > 5 && root.entries[5].separator ? 1 : 0) + (i > 6 && root.entries[6].separator ? 1 : 0) + (i > 7 && root.entries[7].separator ? 1 : 0) + (i > 8 && root.entries[8].separator ? 1 : 0) + (i > 9 && root.entries[9].separator ? 1 : 0) + (i > 10 && root.entries[10].separator ? 1 : 0) + (i > 11 && root.entries[11].separator ? 1 : 0) + (i > 12 && root.entries[12].separator ? 1 : 0) + (i > 13 && root.entries[13].separator ? 1 : 0) + (i > 14 && root.entries[14].separator ? 1 : 0) + (i > 15 && root.entries[15].separator ? 1 : 0) + (i > 16 && root.entries[16].separator ? 1 : 0) + (i > 17 && root.entries[17].separator ? 1 : 0) + (i > 18 && root.entries[18].separator ? 1 : 0) + (i > 19 && root.entries[19].separator ? 1 : 0) + (i > 20 && root.entries[20].separator ? 1 : 0) + (i > 21 && root.entries[21].separator ? 1 : 0) + (i > 22 && root.entries[22].separator ? 1 : 0) + (i > 23 && root.entries[23].separator ? 1 : 0);
+    }
+
+    // Position of row `i` among the actions (separators are not items), and the number of actions.
+    pure function action-index(i: int) -> int {
+        return i - root.separators-before(i);
+    }
+    pure function action-count() -> int {
+        return root.entries.length - root.separators-before(root.entries.length);
+    }
+
+    pure function selectable(i: int) -> bool {
+        return i >= 0 && i < root.entries.length && !root.entries[i].separator && !root.entries[i].disabled;
+    }
+
+    // First selectable row after `from` in direction `dir` (+1 or -1), or -1.
+    pure function find(from: int, dir: int) -> int {
+        if (root.selectable(from + dir)) { return from + dir; }
+        if (root.selectable(from + 2 * dir)) { return from + 2 * dir; }
+        if (root.selectable(from + 3 * dir)) { return from + 3 * dir; }
+        if (root.selectable(from + 4 * dir)) { return from + 4 * dir; }
+        if (root.selectable(from + 5 * dir)) { return from + 5 * dir; }
+        if (root.selectable(from + 6 * dir)) { return from + 6 * dir; }
+        if (root.selectable(from + 7 * dir)) { return from + 7 * dir; }
+        return -1;
+    }
+
+    function move(dir: int) {
+        let ahead = root.find(root.current, dir);
+        let wrapped = root.find(dir > 0 ? -1 : root.entries.length, dir);
+        let target = ahead >= 0 ? ahead : wrapped;
+        if (target >= 0) {
+            root.current = target;
+        }
+    }
+
+    function activate(i: int) {
+        if (root.selectable(i)) {
+            root.activated(i);
+        }
+    }
+
+    min-width: 200px;
+    height: lay.preferred-height;
+    background: Theme.bg-overlay;
+    border-radius: Radius.lg;
+    border-width: 1px;
+    border-color: Theme.border-default;
+    accessible-role: list;
+    accessible-label: root.label;
+    forward-focus: scope;
+
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == Key.DownArrow) {
+                root.move(1);
+                return accept;
+            }
+            if (event.text == Key.UpArrow) {
+                root.move(-1);
+                return accept;
+            }
+            if (event.text == Key.Home) {
+                root.current = root.find(-1, 1);
+                return accept;
+            }
+            if (event.text == Key.End) {
+                root.current = root.find(root.entries.length, -1);
+                return accept;
+            }
+            if (event.text == Key.Return || event.text == " ") {
+                root.activate(root.current);
+                return accept;
+            }
+            if (event.text == Key.Escape) {
+                root.dismissed();
+                return accept;
+            }
+            return reject;
+        }
+    }
+
+    lay := VerticalLayout {
+        padding: Space.s1;
+        alignment: start;
+        for entry[i] in root.entries: Rectangle {
+            height: entry.separator ? Space.s2 + 1px : max(Space.hit, Type.line-base + Space.s2);
+            if entry.separator: Rectangle {
+                y: (parent.height - self.height) / 2;
+                height: 1px;
+                background: Theme.border-subtle;
+            }
+            if !entry.separator: MenuItem {
+                text: entry.text;
+                icon: entry.icon;
+                shortcut: entry.shortcut;
+                destructive: entry.destructive;
+                disabled: entry.disabled;
+                current: root.current == i;
+                reserve-icon: root.icons;
+                index: root.action-index(i);
+                count: root.action-count();
+                pointer-entered => { root.current = i; }
+                activated => { root.activate(i); }
+            }
+        }
+    }
+}

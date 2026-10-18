@@ -51,6 +51,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 
 ### 5.1 Panel (always-available, Sticky-Notes-like)
 - Dock to any screen edge/corner or float; always-on-top toggle; per-monitor position memory.
+- **Edge dock with reveal (owner request 2026-10-18, modelled on Microsoft PC Manager's side panel):** docked to a screen edge the Panel collapses to a slim handle/grabber strip (as in PC Manager's "toolbar" mode, horizontal on top/bottom edges and vertical on left/right) and slides out on **hover and/or click** (setting: hover, click, or both; hover delay and leave delay configurable), then collapses again when the pointer leaves or after a paste. The handle stays on top, never takes focus, shows nothing sensitive, and is reachable by keyboard (the Panel hotkey toggles it). Multi-monitor: remembers the edge per monitor. Needs a Windows spike for the hover hit-test on a non-activating always-on-top strip (appbar vs plain topmost window) before building.
 - **Auto-hide to edge**: collapses to a thin tab; reveals on hover or hotkey.
 - **Non-activating**: clicking the panel does not take focus from the Target (see ADR-0003).
 - Header: board switcher, list tabs, search, `+` menu, collapse.
@@ -127,7 +128,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 Seeds a **Getting started** list whose cards teach by doing ("Click me to paste", "Shift+click to copy", "Try a template").
 
 ### 5.8 System integration
-- Tray icon: show panel, picker, capture, open main, pause history, quit.
+- Tray icon (ADR-0008): a left click toggles the Panel; the menu is Open Panel, Open Snipdeck, Pause hotkeys (check mark), Quit. The Picker and quick capture are hotkeys, not menu entries. "Pause history" joins the menu when clipboard history exists. Closing the Panel hides it to the tray while an icon is in the notification area (`close_to_tray`), otherwise it quits.
 - Start with Windows (opt-in during onboarding). Single instance.
 - Per-app exclusions: no history capture and/or no auto-paste in listed apps.
 - All hotkeys rebindable; conflicts detected and reported.

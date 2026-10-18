@@ -1,0 +1,82 @@
+import { Theme, Radius, Space, Motion } from "../theme.slint";
+import { Icon } from "icon.slint";
+import { StateColor } from "state-color.slint";
+
+export enum IconButtonVariant { ghost, subtle }
+export enum IconButtonSize { sm, md }
+
+// DESIGN.md §4 IconButton. 24 (sm, 16px glyph) or 28 (md, 20px glyph) square: both meet the 24px
+// hit target. `tooltip` is required: it names the action for sighted users (the host shows a
+// `Tooltip` while `has-hover` or `has-focus` is true) and is the accessible label. Focus ring on
+// keyboard focus only, like Button.
+export component IconButton inherits Rectangle {
+    in property <image> icon;
+    // Required. Short verb phrase naming the action ("Copy", "Delete"). Also the accessible label.
+    in property <string> tooltip;
+    in property <IconButtonVariant> variant: IconButtonVariant.ghost;
+    in property <IconButtonSize> size: IconButtonSize.md;
+    in property <bool> enabled: true;
+    // Toggle-style buttons (pin, preview) show an "on" state with a selected fill.
+    in property <bool> active: false;
+    out property <bool> has-hover: touch.has-hover && root.enabled;
+    out property <bool> has-focus: scope.has-focus;
+    callback clicked();
+
+    property <length> side: root.size == IconButtonSize.sm ? Space.hit-min : Space.hit;
+    property <bool> pressed: touch.pressed && root.enabled;
+    property <bool> hovered: touch.has-hover && root.enabled;
+
+    width: root.side;
+    height: root.side;
+    background: root.variant == IconButtonVariant.subtle
+        ? (root.pressed ? StateColor.deep() : root.hovered ? StateColor.pressed() : root.active ? Theme.bg-selected : Theme.bg-hover)
+        : (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : root.active ? Theme.bg-selected : transparent);
+    border-radius: Radius.md;
+    border-width: Theme.hc-border != transparent ? 1px : 0px;
+    border-color: Theme.hc-border;
+    opacity: root.enabled ? 1.0 : 0.45;
+    forward-focus: scope;
+    accessible-role: button;
+    accessible-label: root.tooltip;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    Icon {
+        source: root.icon;
+        size: root.size == IconButtonSize.sm ? 16px : 20px;
+        tint: root.hovered || root.pressed || root.active ? Theme.text-primary : Theme.text-secondary;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+    }
+
+    // 2px ring, 2px offset (DESIGN.md §2).
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.md + 2px;
+        background: transparent;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+
+    scope := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.clicked();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}

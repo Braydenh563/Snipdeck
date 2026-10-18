@@ -1,0 +1,352 @@
+import { Theme, Type, Space, Radius, Palette, Primitives, SystemLook, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { ItemCard, ItemKind, ItemCardVariant } from "../components/item-card.slint";
+import { DeckEdge, DeckEdgePosition } from "../components/deck-edge.slint";
+import { PinnedStrip, PinnedItem } from "../components/pinned-strip.slint";
+import { SidebarItem, SidebarItemKind } from "../components/sidebar-item.slint";
+import { BoardSwitcher } from "../components/board-switcher.slint";
+
+// One ItemCard sample: every kind, plus the states a screenshot needs to show.
+struct DeckSample {
+    kind: ItemKind,
+    title: string,
+    preview: string,
+    masked: string,
+    ext: string,
+    number: int,
+    selected: bool,
+    show-label: bool,
+    revealed: bool,
+    pulling: bool,
+    // 0 = none, 1 = amber, 2 = violet (list colours are step 600 in light, 400 in dark).
+    list-hue: int,
+    list-name: string,
+}
+
+// A gallery card: a `DeckSample` wired to the gallery's counters.
+component SampleCard inherits ItemCard {
+    in property <DeckSample> s;
+    in property <string> variant-name;
+    callback act(string, string);
+
+    kind: root.s.kind;
+    title: root.s.title;
+    preview: root.s.preview;
+    masked-preview: root.s.masked;
+    masked-hint: "Hidden. Hold Space to reveal.";
+    extension: root.s.ext;
+    number: root.s.number;
+    selected: root.s.selected;
+    show-use-label: root.s.show-label;
+    use-label: "Paste";
+    revealed: root.s.revealed;
+    pulling: root.s.pulling;
+    list-name: root.s.list-name;
+    list-color: root.s.list-hue == 1 ? (Palette.dark ? Primitives.amber-400 : Primitives.amber-600)
+        : root.s.list-hue == 2 ? (Palette.dark ? Primitives.violet-400 : Primitives.violet-600) : transparent;
+    image: @image-url("thumb.png");
+
+    use => { root.act("use", root.s.title); }
+    copy => { root.act("copy", root.s.title); }
+    context-menu-requested(x, y) => { root.act("menu", root.s.title); }
+    reveal-requested(on) => { root.act(on ? "reveal" : "hide", root.s.title); }
+}
+
+global DeckSamples {
+    out property <[DeckSample]> all: [
+        { kind: ItemKind.text, title: "Thanks, received", preview: "Thanks for sending this over. I'll review it today and get back to you by end of day.", masked: "", ext: "", number: 1, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.template, title: "Invoice reminder", preview: "A gentle reminder that invoice {Number} is due on {Date}. Please let me know if anything is unclear.", masked: "", ext: "", number: 2, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.code, title: "Retry helper", preview: "async fn retry<T>(f: impl Fn() -> T, n: usize) -> T { for _ in 0..n { if let Ok(v) = f() { return v; } } }", masked: "", ext: "", number: 3, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.link, title: "Design spec", preview: "figma.com/file/snipdeck-index-deck", masked: "", ext: "", number: 4, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.image, title: "Screenshot 14:02", preview: "1280 × 720 PNG, copied from the browser", masked: "", ext: "", number: 5, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.file, title: "Q3 report", preview: "report-q3-final.pdf", masked: "", ext: "PDF", number: 6, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.sensitive, title: "Server password", preview: "hunter2-correct-horse-7f3a", masked: "•••• •••• 7f3a", ext: "", number: 7, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.sensitive, title: "Revealed secret", preview: "hunter2-correct-horse-7f3a", masked: "•••• •••• 7f3a", ext: "", number: 8, selected: false, show-label: false, revealed: true, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.text, title: "Out of office", preview: "I'm out until Monday with limited access to email. For anything urgent, contact the team inbox.", masked: "", ext: "", number: 9, selected: true, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.text, title: "Meeting follow-up", preview: "Following up on today's call: the action items and owners are listed below.", masked: "", ext: "", number: 0, selected: false, show-label: true, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.text, title: "Home address", preview: "12 Quay Street, Wellington 6011", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 1, list-name: "Addresses" },
+        { kind: ItemKind.code, title: "A very long snippet title that keeps going well past the width of the panel", preview: "SELECT id, name FROM customers WHERE created_at > now() - interval '7 days' ORDER BY created_at DESC", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 2, list-name: "Work and projects" },
+        { kind: ItemKind.text, title: "Please send the invoice", preview: "Thank you for your help so far. Could you send last month's invoice when you have a moment? Payment reminder attached.", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.text, title: "Pulled card", preview: "Used just now: lifted, with a check in the gutter.", masked: "", ext: "", number: 3, selected: false, show-label: false, revealed: false, pulling: true, list-hue: 0, list-name: "" },
+    ];
+    // Japanese/Chinese samples for `DeckCjkProbe` (measured, never rendered into a golden).
+    out property <[DeckSample]> cjk: [
+        { kind: ItemKind.text, title: "請求書のお願い", preview: "お世話になっております。先月分の請求書をお送りいただけますでしょうか。支付发票提醒", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 0, list-name: "" },
+        { kind: ItemKind.text, title: "短い", preview: "短い本文", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 2, list-name: "仕事とプロジェクト" },
+        { kind: ItemKind.text, title: "請求書のお願いと支払い期限についての確認事項です", preview: "本日中にご返信をお願いいたします。", masked: "", ext: "", number: 0, selected: false, show-label: false, revealed: false, pulling: false, list-hue: 2, list-name: "仕事とプロジェクト" },
+    ];
+    // Subsets for the 225% gallery.
+    out property <[DeckSample]> scale-compact: [all[0], all[1], all[5], all[10], all[11]];
+    out property <[DeckSample]> scale-comfortable: [all[1], all[4], all[6], all[10], all[11]];
+}
+
+component Caption inherits Text {
+    font-family: Fonts.sans;
+    font-size: Type.xs;
+    font-weight: Type.medium;
+    color: Theme.text-secondary;
+    height: Type.line-xs + Space.s1;
+    vertical-alignment: center;
+}
+
+// Every ItemCard variant, kind and state, in light and dark (tests/deck.rs, tests/deck_logic.rs).
+// Columns: compact rows, comfortable cards, tiles.
+export component DeckGallery inherits Window {
+    in property <bool> dark: false;
+    // The last gesture a card reported: "use", "copy", "menu", "reveal" or "hide", and which card.
+    in-out property <string> last-action;
+    in-out property <string> last-title;
+    in-out property <int> actions: 0;
+    width: 1064px;
+    height: 1280px;
+    background: Theme.bg-app;
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    HorizontalLayout {
+        padding: Space.s4;
+        spacing: Space.s4;
+        alignment: start;
+
+        VerticalLayout {
+            width: 320px;
+            alignment: start;
+            Caption { text: "Compact"; }
+            for s in DeckSamples.all: SampleCard {
+                variant: ItemCardVariant.compact;
+                s: s;
+                act(action, title) => {
+                    root.last-action = action;
+                    root.last-title = title;
+                    root.actions += 1;
+                }
+            }
+        }
+
+        VerticalLayout {
+            width: 320px;
+            spacing: Space.s1 + Space.s0-5;
+            alignment: start;
+            Caption { text: "Comfortable"; }
+            for s in DeckSamples.all: SampleCard {
+                variant: ItemCardVariant.comfortable;
+                s: s;
+                act(action, title) => {
+                    root.last-action = action;
+                    root.last-title = title;
+                    root.actions += 1;
+                }
+            }
+        }
+
+        VerticalLayout {
+            width: 360px;
+            alignment: start;
+            Caption { text: "Tile"; }
+            GridLayout {
+                spacing: Space.s2;
+                for s[i] in DeckSamples.all: SampleCard {
+                    row: floor(i / 2);
+                    col: mod(i, 2);
+                    width: 176px;
+                    variant: ItemCardVariant.tile;
+                    s: s;
+                    act(action, title) => {
+                        root.last-action = action;
+                        root.last-title = title;
+                        root.actions += 1;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 225% Windows text size (DESIGN.md §8): set `SystemLook.text-scale` before rendering. The layout
+// grows; titles never truncate below 12 characters, previews give way first.
+export component DeckScaleGallery inherits Window {
+    in property <bool> dark: false;
+    width: 760px;
+    height: 1400px;
+    background: Theme.bg-app;
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    VerticalLayout {
+        padding: Space.s4;
+        spacing: Space.s2;
+        alignment: start;
+        Caption { text: "Compact"; }
+        VerticalLayout {
+            alignment: start;
+            for s in DeckSamples.scale-compact: SampleCard {
+                variant: ItemCardVariant.compact;
+                s: s;
+            }
+        }
+        Caption { text: "Comfortable"; }
+        VerticalLayout {
+            spacing: Space.s1 + Space.s0-5;
+            alignment: start;
+            for s in DeckSamples.scale-comfortable: SampleCard {
+                variant: ItemCardVariant.comfortable;
+                s: s;
+            }
+        }
+        Caption { text: "Board switcher, sidebar, pinned strip"; }
+        HorizontalLayout {
+            alignment: start;
+            BoardSwitcher { board-name: "Work"; }
+        }
+        SidebarItem { kind: SidebarItemKind.board; label: "Work"; count: 41; selected: true; }
+        SidebarItem { kind: SidebarItemKind.list; label: "Email replies"; count: 18; indented: true; mark-color: Palette.dark ? Primitives.teal-400 : Primitives.teal-600; }
+        PinnedStrip {
+            items: [{ title: "Thanks, received" }, { title: "Home address" }];
+        }
+    }
+}
+
+// DeckEdge, PinnedStrip, SidebarItem and BoardSwitcher, in light and dark.
+export component DeckPartsGallery inherits Window {
+    in property <bool> dark: false;
+    // What was clicked last, e.g. "pinned:2", "sidebar:Work", "board-menu".
+    in-out property <string> last;
+    in-out property <int> events: 0;
+    // How far the pinned strip has scrolled (keyboard focus scrolls a chip into view).
+    out property <length> strip-scroll: strip.scroll-x;
+    width: 640px;
+    height: 600px;
+    background: Theme.bg-app;
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    property <[PinnedItem]> pinned: [
+        { title: "Thanks, received" },
+        { title: "Home address" },
+        { title: "Retry helper" },
+        { title: "A pinned item with a very long title that elides" },
+        { title: "Server password" },
+        { title: "Invoice reminder" },
+        { title: "Design spec" },
+    ];
+
+    HorizontalLayout {
+        padding: Space.s4;
+        spacing: Space.s6;
+        alignment: start;
+
+        VerticalLayout {
+            width: 320px;
+            spacing: Space.s2;
+            alignment: start;
+            Caption { text: "Board switcher"; }
+            HorizontalLayout {
+                spacing: Space.s2;
+                alignment: start;
+                BoardSwitcher {
+                    board-name: "Work";
+                    menu-requested => {
+                        root.last = "board-menu";
+                        root.events += 1;
+                    }
+                }
+                BoardSwitcher {
+                    board-name: "Personal";
+                    menu-open: true;
+                    a11y-label: "Board: Personal";
+                }
+            }
+            Caption { text: "Pinned strip"; }
+            strip := PinnedStrip {
+                items: root.pinned;
+                use(i) => {
+                    root.last = "pinned:\{i}";
+                    root.events += 1;
+                }
+                copy(i) => {
+                    root.last = "pinned-copy:\{i}";
+                    root.events += 1;
+                }
+                context-menu-requested(i, x, y) => {
+                    root.last = "pinned-menu:\{i}";
+                    root.events += 1;
+                }
+            }
+            Caption { text: "Deck edge, bottom"; }
+            VerticalLayout {
+                alignment: start;
+                SampleCard {
+                    variant: ItemCardVariant.compact;
+                    s: DeckSamples.all[0];
+                }
+                SampleCard {
+                    variant: ItemCardVariant.compact;
+                    s: DeckSamples.all[1];
+                }
+                DeckEdge { position: DeckEdgePosition.bottom; }
+            }
+            Caption { text: "Deck edge, top"; }
+            VerticalLayout {
+                alignment: start;
+                DeckEdge { position: DeckEdgePosition.top; }
+                SampleCard {
+                    variant: ItemCardVariant.compact;
+                    s: DeckSamples.all[2];
+                }
+                SampleCard {
+                    variant: ItemCardVariant.compact;
+                    s: DeckSamples.all[3];
+                }
+            }
+        }
+
+        VerticalLayout {
+            width: 232px;
+            spacing: Space.s1;
+            alignment: start;
+            Caption { text: "Sidebar"; }
+            SidebarItem {
+                kind: SidebarItemKind.system;
+                label: "Recent";
+                icon: Icons.clock;
+                count: 12;
+                clicked => {
+                    root.last = "sidebar:Recent";
+                    root.events += 1;
+                }
+                context-menu-requested(x, y) => {
+                    root.last = "sidebar-menu:Recent";
+                    root.events += 1;
+                }
+            }
+            SidebarItem { kind: SidebarItemKind.system; label: "Pinned"; icon: Icons.push-pin; count: 7; }
+            SidebarItem { kind: SidebarItemKind.board; label: "Work"; count: 41; selected: true; }
+            SidebarItem { kind: SidebarItemKind.list; label: "Email replies"; count: 18; indented: true; mark-color: Palette.dark ? Primitives.teal-400 : Primitives.teal-600; }
+            SidebarItem { kind: SidebarItemKind.list; label: "Addresses"; count: 6; indented: true; selected: true; mark-color: Palette.dark ? Primitives.amber-400 : Primitives.amber-600; }
+            SidebarItem { kind: SidebarItemKind.list; label: "A list with a very long name that elides"; count: 1234; indented: true; mark-color: Palette.dark ? Primitives.violet-400 : Primitives.violet-600; }
+            SidebarItem { kind: SidebarItemKind.board; label: "Personal"; count: 9; }
+            SidebarItem { kind: SidebarItemKind.tag; label: "invoice"; count: 3; }
+            SidebarItem { kind: SidebarItemKind.system; label: "Trash"; icon: Icons.trash; }
+        }
+    }
+}
+
+// CJK titles and previews for measurement only (tests/deck_logic.rs). Never screenshotted: IBM Plex has
+// no CJK glyphs, so the pixels would depend on the system fallback font.
+export component DeckCjkProbe inherits Window {
+    width: 200px;
+    height: 600px;
+    background: Theme.bg-app;
+
+    VerticalLayout {
+        alignment: start;
+        for s in DeckSamples.cjk: SampleCard {
+            variant: ItemCardVariant.compact;
+            s: s;
+        }
+        for s in DeckSamples.cjk: SampleCard {
+            variant: ItemCardVariant.comfortable;
+            s: s;
+        }
+    }
+}

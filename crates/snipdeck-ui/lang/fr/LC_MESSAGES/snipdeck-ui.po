@@ -1,0 +1,167 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: snipdeck-ui\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "A list keeps related snippets together, like replies or addresses."
+msgstr "Une liste regroupe des extraits liés, comme des réponses ou des adresses."
+
+msgid "Add list"
+msgstr "Ajouter une liste"
+
+msgid "All"
+msgstr ""
+
+msgid "Board: {}"
+msgstr "Tableau : {}"
+
+msgid "Boards"
+msgstr "Tableaux"
+
+msgid "Cancel"
+msgstr ""
+
+msgid "Clear search"
+msgstr "Effacer la recherche"
+
+msgid "Close"
+msgstr ""
+
+msgid "Close panel"
+msgstr "Fermer le panneau"
+
+msgid "Control Enter"
+msgstr ""
+
+msgid "Copies to clipboard"
+msgstr "Copie dans le presse-papiers"
+
+msgid "Copy"
+msgstr "Copier"
+
+msgid "Copy something, then save it from the Panel."
+msgstr ""
+
+msgid "Copy something, then save it here from the clipboard."
+msgstr "Copiez quelque chose, puis enregistrez-le ici depuis le presse-papiers."
+
+msgid "Enter"
+msgstr "Enter"
+
+msgid "Escape"
+msgstr ""
+
+msgid "Fields"
+msgstr ""
+
+msgid "Fill in template"
+msgstr ""
+
+msgid "Hidden. Hold Space to reveal."
+msgstr ""
+
+msgid "Hidden. Open it in the Panel to reveal."
+msgstr ""
+
+msgid "Insert"
+msgstr ""
+
+msgid "Keep on top"
+msgstr "Toujours au premier plan"
+
+msgid "Lists"
+msgstr "Listes"
+
+msgid "Loading"
+msgstr "Chargement"
+
+msgid "New list"
+msgstr "Nouvelle liste"
+
+msgid "No lists yet"
+msgstr "Aucune liste pour le moment"
+
+msgid "No matches"
+msgstr "Aucun résultat"
+
+msgid "No snippets yet"
+msgstr ""
+
+msgid "Nothing matches “{}”."
+msgstr ""
+
+msgid "Nothing on this board matches “{}”."
+msgstr "Aucun élément de ce tableau ne correspond à « {} »."
+
+msgid "Nothing pinned matches “{}”."
+msgstr ""
+
+msgid "Nothing pinned yet"
+msgstr ""
+
+msgid "Paste"
+msgstr "Coller"
+
+msgid "Pastes into {}"
+msgstr "Colle dans {}"
+
+msgid "Pastes into {} · {}"
+msgstr "Colle dans {} · {}"
+
+msgid "Pin a snippet from the Panel to find it here."
+msgstr ""
+
+msgid "Pinned"
+msgstr ""
+
+msgid "Pinned snippets"
+msgstr "Extraits épinglés"
+
+msgid "Preview"
+msgstr ""
+
+msgid "Required"
+msgstr ""
+
+msgid "Results"
+msgstr ""
+
+msgid "Save from clipboard"
+msgstr "Enregistrer depuis le presse-papiers"
+
+msgid "Scope"
+msgstr ""
+
+msgid "Search all snippets"
+msgstr ""
+
+msgid "Search in"
+msgstr ""
+
+msgid "Search snippets"
+msgstr "Rechercher des extraits"
+
+msgid "Shift Enter"
+msgstr "Shift Enter"
+
+msgid "Snipdeck"
+msgstr "Snipdeck"
+
+msgid "Snippets"
+msgstr "Extraits"
+
+msgid "Tab"
+msgstr ""
+
+msgid "This board"
+msgstr ""
+
+msgid "This field is required"
+msgstr ""
+
+msgid "This list is empty"
+msgstr "Cette liste est vide"

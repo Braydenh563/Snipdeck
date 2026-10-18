@@ -1,0 +1,167 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: snipdeck-ui\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "A list keeps related snippets together, like replies or addresses."
+msgstr "Eine Liste hält zusammengehörige Textbausteine beisammen, etwa Antworten oder Adressen."
+
+msgid "Add list"
+msgstr "Liste hinzufügen"
+
+msgid "All"
+msgstr ""
+
+msgid "Board: {}"
+msgstr "Board: {}"
+
+msgid "Boards"
+msgstr "Boards"
+
+msgid "Cancel"
+msgstr ""
+
+msgid "Clear search"
+msgstr "Suche löschen"
+
+msgid "Close"
+msgstr ""
+
+msgid "Close panel"
+msgstr "Panel schließen"
+
+msgid "Control Enter"
+msgstr ""
+
+msgid "Copies to clipboard"
+msgstr "Wird in die Zwischenablage kopiert"
+
+msgid "Copy"
+msgstr "Kopieren"
+
+msgid "Copy something, then save it from the Panel."
+msgstr ""
+
+msgid "Copy something, then save it here from the clipboard."
+msgstr "Kopiere etwas und speichere es dann hier aus der Zwischenablage."
+
+msgid "Enter"
+msgstr "Enter"
+
+msgid "Escape"
+msgstr ""
+
+msgid "Fields"
+msgstr ""
+
+msgid "Fill in template"
+msgstr ""
+
+msgid "Hidden. Hold Space to reveal."
+msgstr ""
+
+msgid "Hidden. Open it in the Panel to reveal."
+msgstr ""
+
+msgid "Insert"
+msgstr ""
+
+msgid "Keep on top"
+msgstr "Immer im Vordergrund"
+
+msgid "Lists"
+msgstr "Listen"
+
+msgid "Loading"
+msgstr "Wird geladen"
+
+msgid "New list"
+msgstr "Neue Liste"
+
+msgid "No lists yet"
+msgstr "Noch keine Listen"
+
+msgid "No matches"
+msgstr "Keine Treffer"
+
+msgid "No snippets yet"
+msgstr ""
+
+msgid "Nothing matches “{}”."
+msgstr ""
+
+msgid "Nothing on this board matches “{}”."
+msgstr "Auf diesem Board passt nichts zu „{}“."
+
+msgid "Nothing pinned matches “{}”."
+msgstr ""
+
+msgid "Nothing pinned yet"
+msgstr ""
+
+msgid "Paste"
+msgstr "Einfügen"
+
+msgid "Pastes into {}"
+msgstr "Einfügen in {}"
+
+msgid "Pastes into {} · {}"
+msgstr "Einfügen in {} · {}"
+
+msgid "Pin a snippet from the Panel to find it here."
+msgstr ""
+
+msgid "Pinned"
+msgstr ""
+
+msgid "Pinned snippets"
+msgstr "Angeheftete Textbausteine"
+
+msgid "Preview"
+msgstr ""
+
+msgid "Required"
+msgstr ""
+
+msgid "Results"
+msgstr ""
+
+msgid "Save from clipboard"
+msgstr "Aus der Zwischenablage speichern"
+
+msgid "Scope"
+msgstr ""
+
+msgid "Search all snippets"
+msgstr ""
+
+msgid "Search in"
+msgstr ""
+
+msgid "Search snippets"
+msgstr "Textbausteine suchen"
+
+msgid "Shift Enter"
+msgstr "Shift Enter"
+
+msgid "Snipdeck"
+msgstr "Snipdeck"
+
+msgid "Snippets"
+msgstr "Textbausteine"
+
+msgid "Tab"
+msgstr ""
+
+msgid "This board"
+msgstr ""
+
+msgid "This field is required"
+msgstr ""
+
+msgid "This list is empty"
+msgstr "Diese Liste ist leer"

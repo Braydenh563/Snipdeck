@@ -1,0 +1,2292 @@
+//! The controller: everything the Panel does that is not drawing. It owns the library, the
+//! [`PanelModel`], the settings, the clock and the platform services, and turns gestures
+//! (a row activated, a digit pressed, a hotkey, the Target changing) into model changes, uses
+//! and toasts. It knows nothing about Slint: `binding` copies a [`View`] into the window and
+//! wires the window's callbacks to the methods here, so nearly all behaviour is tested without
+//! a window.
+
+use std::{collections::BTreeMap, time::Duration};
+
+use snipdeck_core::{
+    BoardId, Entitlements, Feature, ItemId, UseMode, UseOutcome,
+    template::{Locale, Template, TimeZone},
+};
+use snipdeck_platform::{
+    pipeline::{Clipboard, Env, Keyboard, Timing},
+    route::Route,
+    system_look::{HighContrast, SystemLook},
+    tray::TrayEvent,
+};
+use snipdeck_store::{Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, Store, TagRepo};
+
+use crate::{
+    capture::{self, Captured},
+    fill::{self, FillModel},
+    host::{ClipboardText, Clock, TargetSource},
+    panel::{Footer, PanelModel, Row, Tab, UseLabel},
+    paste_next::{self, PasteQueue},
+    picker::{self, PickerModel, Scope},
+    settings::{HotkeyAction, Settings, Theme},
+    settings_store::{Poll, SettingsSaver},
+    toast::{self, Toast, ToastKind, ToastMessage},
+    usecase::{self, UseError, UseRequest},
+};
+
+/// How long the Target gets to take the focus back before keys are injected (the M2 spike's
+/// 50 ms; Windows restores the focused control asynchronously).
+pub const REFOCUS_WAIT: Duration = Duration::from_millis(50);
+/// A toast fades in for this long (`Motion.quick`) before it counts as settled.
+pub const TOAST_ENTER: Duration = Duration::from_millis(120);
+/// A settled toast stays this long (`Toast.hold-duration`, DESIGN.md §4).
+pub const TOAST_HOLD: Duration = Duration::from_millis(2500);
+/// A toast fades out for this long (`Motion.fade`) before it is gone.
+pub const TOAST_EXIT: Duration = Duration::from_millis(90);
+
+/// What the controller needs from the library: every repository trait in one bound, and a way
+/// to make several writes land together (or not at all).
+pub trait Library: BoardRepo + ListRepo + ItemRepo + TagRepo + BlobStore {
+    /// Runs `f` in one store transaction: what it does through the [`Batch`] commits together
+    /// when `f` returns `Ok`, and none of it happens when it returns `Err`.
+    ///
+    /// # Errors
+    ///
+    /// What `f` returns, or the store failing to begin or commit.
+    fn atomically<T>(
+        &mut self,
+        f: impl FnOnce(&mut Batch<'_>) -> snipdeck_store::Result<T>,
+    ) -> snipdeck_store::Result<T>;
+}
+
+impl Library for Store {
+    fn atomically<T>(
+        &mut self,
+        f: impl FnOnce(&mut Batch<'_>) -> snipdeck_store::Result<T>,
+    ) -> snipdeck_store::Result<T> {
+        self.transaction(f)
+    }
+}
+
+/// The platform services a use needs (the traits of `snipdeck_platform::pipeline`).
+#[derive(Debug)]
+pub struct Services<C, K, T> {
+    /// The clipboard.
+    pub clipboard: C,
+    /// The keyboard.
+    pub keyboard: K,
+    /// The clock the paste sequence sleeps on.
+    pub timing: T,
+}
+
+/// Something the host (the window and the process) must do. The controller decides, the host
+/// acts: nothing here touches a window.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Effect {
+    /// Show the Panel without taking focus.
+    ShowPanel,
+    /// Hide the Panel.
+    HidePanel,
+    /// Start the OS window drag from the Panel header.
+    DragWindow,
+    /// Show the main window (the tray's "Open Snipdeck"; the window itself is M4).
+    OpenMainWindow,
+    /// Switch the global hotkeys off (`true`) or back on (`false`), per the settings.
+    SetHotkeysPaused(bool),
+    /// Exit the app.
+    Quit,
+}
+
+/// How far a toast is through its life (the Slint `ToastPhase`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToastPhase {
+    /// Fading in.
+    Enter,
+    /// Settled.
+    Hold,
+    /// Fading out.
+    Exit,
+}
+
+/// The toast on screen.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToastView {
+    /// Changes with every new toast, so the host can tell a new one from a redraw.
+    pub seq: u64,
+    /// Style.
+    pub kind: ToastKind,
+    /// What it says, before wording.
+    pub message: ToastMessage,
+    /// Where it is in its life.
+    pub phase: ToastPhase,
+}
+
+/// The Picker window's content.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PickerView {
+    /// The results, best first.
+    pub rows: Vec<picker::Entry>,
+    /// What the search covers.
+    pub scope: Scope,
+    /// The search text.
+    pub query: String,
+    /// The keyboard-selected row.
+    pub selected: usize,
+    /// Where Enter goes ("Paste" or "Copy" in the window's footer).
+    pub footer: Footer,
+}
+
+/// The template fill form's content.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FillView {
+    /// Changes with every form that opens, so the window resets its fields for a new one and
+    /// keeps what the user typed while the same form stays up.
+    pub seq: u64,
+    /// The template item's name.
+    pub title: String,
+    /// One per prompt.
+    pub fields: Vec<fill::Field>,
+    /// The text as it would be pasted now.
+    pub preview: String,
+}
+
+/// A filled-in form, ready to be used: see [`Controller::take_fill`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FillSubmission {
+    item: ItemId,
+    mode: UseMode,
+    answers: BTreeMap<String, String>,
+}
+
+/// How a use ended.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UseResult {
+    /// It happened (pasted or copied) and was counted.
+    Done(UseOutcome),
+    /// The template needs answers first: the fill form is open, see [`Controller::fill`].
+    NeedsAnswers,
+    /// It did not happen; a toast says why.
+    Failed,
+}
+
+/// Everything the Panel window shows, as plain data.
+#[derive(Debug, Clone, PartialEq)]
+pub struct View {
+    /// The board's name.
+    pub board_name: String,
+    /// The list tabs.
+    pub tabs: Vec<Tab>,
+    /// The active tab (0 when the board has no lists).
+    pub current_tab: usize,
+    /// The pinned strip.
+    pub pinned: Vec<Row>,
+    /// The item rows.
+    pub rows: Vec<Row>,
+    /// The search text.
+    pub query: String,
+    /// The keyboard-selected row.
+    pub selected: usize,
+    /// Where a click goes. The window derives its "Paste ↵" / "Copy ↵" label from it.
+    pub footer: Footer,
+    /// What a click does.
+    pub use_label: UseLabel,
+    /// Keep on top.
+    pub on_top: bool,
+    /// Dark theme: the `theme` setting, or Windows' app mode when it is `system`.
+    pub dark: bool,
+    /// The high-contrast colours while a Windows high-contrast theme is on (it overrides the
+    /// theme setting), else `None`.
+    pub high_contrast: Option<HighContrast>,
+    /// The toast, if one is showing.
+    pub toast: Option<ToastView>,
+    /// The board menu's entries while it is open.
+    pub board_menu: Option<Vec<String>>,
+    /// The Picker, while it is open.
+    pub picker: Option<PickerView>,
+    /// The template fill form, while it is open.
+    pub fill: Option<FillView>,
+}
+
+struct ActiveToast {
+    toast: Toast,
+    phase: ToastPhase,
+    seq: u64,
+}
+
+/// The Panel's brain. See the module documentation.
+pub struct Controller<S, C, K, T> {
+    store: S,
+    services: Services<C, K, T>,
+    target: Box<dyn TargetSource>,
+    clock: Box<dyn Clock>,
+    model: PanelModel,
+    settings: Settings,
+    entitlements: Entitlements,
+    visible: bool,
+    on_top: bool,
+    toast: Option<ActiveToast>,
+    toast_seq: u64,
+    /// The Picker, while it is open.
+    picker: Option<PickerModel>,
+    /// The template fill form, while it is open.
+    fill: Option<FillModel>,
+    fill_seq: u64,
+    /// Where "paste next" is in its run.
+    queue: PasteQueue,
+    board_menu_open: bool,
+    /// What Windows says about light / dark and high contrast.
+    os_look: SystemLook,
+    session: Session,
+    saver: Option<SettingsSaver>,
+}
+
+/// Facts about the running app that are not settings and not on screen.
+#[derive(Debug, Default, Clone, Copy)]
+struct Session {
+    /// A real tray icon is in the notification area now (from `TrayEvent::IconPresent`):
+    /// closing the Panel may hide it.
+    tray_available: bool,
+    /// "Pause hotkeys" is on.
+    hotkeys_paused: bool,
+    /// The last settings save failed and the user was told.
+    save_failed: bool,
+}
+
+impl<S, C, K, T> std::fmt::Debug for Controller<S, C, K, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Controller")
+            .field("visible", &self.visible)
+            .finish_non_exhaustive()
+    }
+}
+
+impl<S, C, K, T> Controller<S, C, K, T>
+where
+    S: Library,
+    C: Clipboard + ClipboardText,
+    K: Keyboard,
+    T: Timing,
+{
+    /// Builds the controller over `store`, showing the first board and list. The Panel starts
+    /// visible; the Target is read now.
+    ///
+    /// # Errors
+    ///
+    /// Any store error from loading the Panel.
+    pub fn new(
+        store: S,
+        services: Services<C, K, T>,
+        target: Box<dyn TargetSource>,
+        clock: Box<dyn Clock>,
+        settings: Settings,
+        entitlements: Entitlements,
+    ) -> snipdeck_store::Result<Self> {
+        let mut model = PanelModel::load(&store, None, None)?;
+        model.set_policy(policy_of(&settings));
+        model.set_target(target.current());
+        Ok(Self {
+            store,
+            services,
+            target,
+            clock,
+            model,
+            settings,
+            entitlements,
+            visible: true,
+            on_top: true,
+            toast: None,
+            toast_seq: 0,
+            picker: None,
+            fill: None,
+            fill_seq: 0,
+            queue: PasteQueue::default(),
+            board_menu_open: false,
+            os_look: SystemLook::default(),
+            session: Session::default(),
+            saver: None,
+        })
+    }
+
+    // ---- The machine around the Panel ----------------------------------------------------------
+
+    /// Windows' light / dark and high-contrast state changed (or was read for the first time).
+    /// The next [`view`](Self::view) follows it, unless the `theme` setting is not `system`.
+    pub fn set_system_look(&mut self, look: SystemLook) {
+        self.os_look = look;
+    }
+
+    /// Writes setting changes to disk through `saver` from now on. Without one (the demo)
+    /// changes stay in memory.
+    pub fn set_settings_saver(&mut self, saver: SettingsSaver) {
+        self.saver = Some(saver);
+    }
+
+    // ---- Reading -----------------------------------------------------------------------------
+
+    /// Everything the window shows now.
+    #[must_use]
+    pub fn view(&self) -> View {
+        let tabs = self.model.tabs();
+        let board_name = self
+            .model
+            .board()
+            .and_then(|id| self.model.boards().iter().find(|b| b.id == id))
+            .map(|b| b.name.as_str().to_owned())
+            .unwrap_or_default();
+        View {
+            board_name,
+            current_tab: tabs.iter().position(|t| t.active).unwrap_or(0),
+            tabs,
+            pinned: self.model.pinned(),
+            rows: self.model.rows(),
+            query: self.model.query().to_owned(),
+            selected: self.model.selected_position().unwrap_or(0),
+            footer: self.model.footer(),
+            use_label: self.model.use_label(),
+            on_top: self.on_top,
+            dark: self.look().dark,
+            high_contrast: self.look().high_contrast,
+            toast: self.toast.as_ref().map(|t| ToastView {
+                seq: t.seq,
+                kind: t.toast.kind,
+                message: t.toast.message.clone(),
+                phase: t.phase,
+            }),
+            board_menu: self.board_menu_open.then(|| {
+                self.model
+                    .boards()
+                    .iter()
+                    .map(|b| b.name.as_str().to_owned())
+                    .collect()
+            }),
+            picker: self.picker.as_ref().map(|p| PickerView {
+                rows: p.rows(),
+                scope: p.scope(),
+                query: p.query().to_owned(),
+                selected: p.selected(),
+                footer: self.model.footer(),
+            }),
+            fill: self.fill.as_ref().map(|f| FillView {
+                seq: self.fill_seq,
+                title: f.title().to_owned(),
+                fields: f.fields().to_vec(),
+                preview: f.preview(
+                    self.clock.now(),
+                    &TimeZone::UTC,
+                    Locale::for_tag(&self.settings.language),
+                ),
+            }),
+        }
+    }
+
+    /// The look in force: the `theme` setting over what Windows says; high contrast always wins.
+    fn look(&self) -> SystemLook {
+        SystemLook {
+            dark: match self.settings.theme {
+                Theme::System => self.os_look.dark,
+                Theme::Light => false,
+                Theme::Dark => true,
+            },
+            high_contrast: self.os_look.high_contrast,
+        }
+    }
+
+    /// Whether "Pause hotkeys" is on.
+    #[must_use]
+    pub fn hotkeys_paused(&self) -> bool {
+        self.session.hotkeys_paused
+    }
+
+    /// Whether the Panel is meant to be on screen.
+    #[must_use]
+    pub fn visible(&self) -> bool {
+        self.visible
+    }
+
+    /// The panel's model, for tests and the host.
+    #[must_use]
+    pub fn model(&self) -> &PanelModel {
+        &self.model
+    }
+
+    /// The settings in force.
+    #[must_use]
+    pub fn settings(&self) -> &Settings {
+        &self.settings
+    }
+
+    /// The library, for the host's start-up work and for tests.
+    #[must_use]
+    pub fn store(&self) -> &S {
+        &self.store
+    }
+
+    /// The platform services, for tests that look at what a use did to them.
+    #[must_use]
+    pub fn services(&self) -> &Services<C, K, T> {
+        &self.services
+    }
+
+    // ---- Hotkeys, the Target and the window ---------------------------------------------------
+
+    /// A global hotkey fired.
+    pub fn on_hotkey(&mut self, action: HotkeyAction) -> Vec<Effect> {
+        if self.session.hotkeys_paused {
+            // A press that was already queued when the hotkeys were switched off.
+            return Vec::new();
+        }
+        match action {
+            HotkeyAction::TogglePanel if self.visible => self.hide(),
+            HotkeyAction::TogglePanel => self.show(),
+            HotkeyAction::Picker if self.picker.is_some() => {
+                self.close_picker();
+                Vec::new()
+            }
+            HotkeyAction::Picker => {
+                self.open_picker();
+                Vec::new()
+            }
+            HotkeyAction::Capture => {
+                self.quick_capture();
+                Vec::new()
+            }
+            HotkeyAction::PasteNext => {
+                self.paste_next();
+                Vec::new()
+            }
+        }
+    }
+
+    /// Shows the Panel (a second launch, the tray, the toggle hotkey). The Target is read
+    /// first, while it still has the focus.
+    pub fn show(&mut self) -> Vec<Effect> {
+        self.on_target_changed();
+        self.visible = true;
+        vec![Effect::ShowPanel]
+    }
+
+    /// Hides the Panel (Esc with nothing to clear, the close button, the toggle hotkey).
+    pub fn hide(&mut self) -> Vec<Effect> {
+        self.visible = false;
+        self.board_menu_open = false;
+        vec![Effect::HidePanel]
+    }
+
+    /// The close button or Esc on an empty search. With `close_to_tray` on and a tray icon to
+    /// get it back from, the Panel hides; otherwise closing it quits the app.
+    pub fn close(&mut self) -> Vec<Effect> {
+        if self.settings.close_to_tray && self.session.tray_available {
+            self.hide()
+        } else {
+            vec![Effect::Quit]
+        }
+    }
+
+    /// The user did something to the tray icon.
+    pub fn on_tray(&mut self, event: TrayEvent) -> Vec<Effect> {
+        match event {
+            TrayEvent::TogglePanel if self.visible => self.hide(),
+            TrayEvent::TogglePanel | TrayEvent::OpenPanel => self.show(),
+            TrayEvent::OpenSnipdeck => vec![Effect::OpenMainWindow],
+            TrayEvent::HotkeysPaused(paused) => {
+                self.session.hotkeys_paused = paused;
+                vec![Effect::SetHotkeysPaused(paused)]
+            }
+            TrayEvent::Quit => vec![Effect::Quit],
+            TrayEvent::IconPresent(present) => {
+                // With an icon in the notification area closing the Panel hides it (when
+                // `close_to_tray` is on); without one nothing could bring it back, so closing
+                // quits. The icon comes and goes (Explorer restarts), so this follows the tray.
+                self.session.tray_available = present;
+                Vec::new()
+            }
+        }
+    }
+
+    /// The user is dragging the Panel by its header.
+    pub fn drag(&mut self) -> Vec<Effect> {
+        vec![Effect::DragWindow]
+    }
+
+    /// The foreground window changed: the footer and the use label follow it. While the Picker
+    /// or the fill form is open the Target stays what it was when they opened: they take the
+    /// foreground themselves, and the window they came from is where the result goes.
+    pub fn on_target_changed(&mut self) {
+        if self.picker.is_none() && self.fill.is_none() {
+            self.model.set_target(self.target.current());
+        }
+    }
+
+    // ---- Settings ----------------------------------------------------------------------------
+
+    /// Changes the settings with `change` (then sanitised). A real change is applied now and
+    /// scheduled to be written (see [`settings_wait`](Self::settings_wait)). Hotkey changes are
+    /// not re-registered here: the host does that when a Settings window exists.
+    pub fn update_settings(&mut self, change: impl FnOnce(&mut Settings)) {
+        let mut next = self.settings.clone();
+        change(&mut next);
+        next.sanitize();
+        if next == self.settings {
+            return;
+        }
+        self.settings = next;
+        self.model.set_policy(policy_of(&self.settings));
+        let now = self.clock.now();
+        if let Some(saver) = &mut self.saver {
+            saver.changed(&self.settings, now);
+        }
+    }
+
+    /// The theme setting (`system`, `light`, `dark`).
+    pub fn set_theme(&mut self, theme: Theme) {
+        self.update_settings(|s| s.theme = theme);
+    }
+
+    /// How long until a changed setting is due to be written, if one waits. The host arms a
+    /// timer for this and then calls [`save_settings_if_due`](Self::save_settings_if_due).
+    #[must_use]
+    pub fn settings_wait(&self) -> Option<Duration> {
+        self.saver.as_ref()?.wait(self.clock.now())
+    }
+
+    /// Writes the changed settings if they are due. A failed write shows a toast (once until a
+    /// write succeeds) and is retried by the saver.
+    pub fn save_settings_if_due(&mut self) {
+        let now = self.clock.now();
+        let Some(saver) = &mut self.saver else {
+            return;
+        };
+        match saver.poll(now) {
+            Poll::Saved => self.session.save_failed = false,
+            Poll::Failed(_) if !self.session.save_failed => {
+                self.session.save_failed = true;
+                self.show_toast(Toast {
+                    kind: ToastKind::Danger,
+                    message: ToastMessage::SettingsNotSaved,
+                });
+            }
+            Poll::Idle | Poll::Waiting(_) | Poll::Failed(_) => {}
+        }
+    }
+
+    /// Writes any changed settings now (at exit).
+    ///
+    /// # Errors
+    ///
+    /// The write error; the settings stay in memory only.
+    pub fn flush_settings(&mut self) -> std::io::Result<()> {
+        self.saver.as_mut().map_or(Ok(()), SettingsSaver::flush)
+    }
+
+    /// The pin button: keep the Panel on top or not.
+    pub fn set_on_top(&mut self, on_top: bool) {
+        self.on_top = on_top;
+    }
+
+    // ---- Gestures ----------------------------------------------------------------------------
+
+    /// The search text changed.
+    pub fn set_query(&mut self, query: &str) {
+        self.model.set_query(query);
+    }
+
+    /// The keyboard selection moved by `delta` rows.
+    pub fn move_selection(&mut self, delta: isize) {
+        self.model.move_selection(delta);
+    }
+
+    /// The user picked tab `index`: shows that list and ends the search.
+    pub fn select_tab(&mut self, index: usize) {
+        let Some(tab) = self.model.tabs().into_iter().nth(index) else {
+            return;
+        };
+        if self.model.select_list(&self.store, tab.id).is_err() {
+            self.show_toast(failed());
+        }
+    }
+
+    /// Enter or a click on row `index`: uses it with `mode`.
+    pub fn activate_row(&mut self, index: usize, mode: UseMode) -> UseResult {
+        let Some(id) = self.model.rows().get(index).map(|r| r.id) else {
+            return UseResult::Failed;
+        };
+        self.use_item(id, mode)
+    }
+
+    /// A digit 1 to 9 on an empty search.
+    pub fn quick_use(&mut self, n: u8) -> UseResult {
+        match self.model.quick_use(n) {
+            Some(id) => self.use_item(id, UseMode::Paste),
+            None => UseResult::Failed,
+        }
+    }
+
+    /// A click on pinned chip `index`: uses it with `mode`.
+    pub fn activate_pinned(&mut self, index: usize, mode: UseMode) -> UseResult {
+        let Some(id) = self.model.pinned().get(index).map(|r| r.id) else {
+            return UseResult::Failed;
+        };
+        self.use_item(id, mode)
+    }
+
+    /// Opens the board menu.
+    pub fn open_board_menu(&mut self) {
+        self.board_menu_open = true;
+    }
+
+    /// Closes the board menu without a choice.
+    pub fn close_board_menu(&mut self) {
+        self.board_menu_open = false;
+    }
+
+    /// The user chose board `index` in the menu.
+    pub fn choose_board(&mut self, index: usize) {
+        self.board_menu_open = false;
+        let Some(id) = self.model.boards().get(index).map(|b| b.id) else {
+            return;
+        };
+        self.switch_board(id);
+    }
+
+    /// The `+` tab and the "New list" button of an empty board: adds a list to the shown board
+    /// (or, in a library without boards, makes the starter board) and shows it.
+    pub fn add_list(&mut self) {
+        let now = self.clock.now();
+        let added = crate::starter::add_list(&mut self.store, self.model.board(), now);
+        let shown = added.and_then(|(board, list)| {
+            self.model.select_board(&self.store, board)?;
+            self.model.select_list(&self.store, list)
+        });
+        if shown.is_err() {
+            self.show_toast(failed());
+        }
+    }
+
+    fn switch_board(&mut self, board: BoardId) {
+        if self.model.select_board(&self.store, board).is_err() {
+            self.show_toast(failed());
+        }
+    }
+
+    // ---- Using an item -----------------------------------------------------------------------
+
+    /// Uses `item`: pastes or copies it as `mode` and the Target allow, counts the use and
+    /// raises a toast.
+    pub fn use_item(&mut self, item: ItemId, mode: UseMode) -> UseResult {
+        self.run_use(item, mode, BTreeMap::new())
+    }
+
+    // ---- The Picker --------------------------------------------------------------------------
+
+    /// Opens the Picker over the whole library. The Target is read first, while it still has
+    /// the focus: the Picker takes the foreground to type into, and the paste goes back to
+    /// the window it came from.
+    pub fn open_picker(&mut self) {
+        self.fill = None;
+        self.on_target_changed();
+        match PickerModel::load(&self.store, self.model.board()) {
+            Ok(picker) => self.picker = Some(picker),
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
+    /// Closes the Picker without using anything (Esc, the hotkey again) and hands the focus
+    /// back to the Target.
+    pub fn close_picker(&mut self) {
+        if self.picker.take().is_some() {
+            self.target.refocus();
+        }
+    }
+
+    /// The Picker, while it is open.
+    #[must_use]
+    pub fn picker(&self) -> Option<&PickerModel> {
+        self.picker.as_ref()
+    }
+
+    /// The Picker's search text changed.
+    pub fn picker_query(&mut self, query: &str) {
+        if let Some(picker) = &mut self.picker {
+            picker.set_query(query);
+        }
+    }
+
+    /// The Picker's scope changed.
+    pub fn picker_scope(&mut self, scope: Scope) {
+        if let Some(picker) = &mut self.picker {
+            picker.set_scope(scope);
+        }
+    }
+
+    /// The Picker's keyboard selection moved by `delta` rows.
+    pub fn picker_move(&mut self, delta: isize) {
+        if let Some(picker) = &mut self.picker {
+            picker.move_selection(delta);
+        }
+    }
+
+    /// Closes the Picker on result row `index` and returns its item, to be used with
+    /// [`use_item`](Self::use_item). The host hides the window between the two calls, so the
+    /// paste goes into the Target and not into the Picker.
+    pub fn picker_take(&mut self, index: usize) -> Option<ItemId> {
+        let item = self.picker.as_ref()?.item_at(index);
+        // A row that is not there leaves the Picker open.
+        if item.is_some() {
+            self.picker = None;
+        }
+        item
+    }
+
+    /// [`picker_take`](Self::picker_take) and [`use_item`](Self::use_item) in one: Enter (or a
+    /// click) on row `index` pastes it, Shift+Enter copies it.
+    pub fn picker_use(&mut self, index: usize, mode: UseMode) -> UseResult {
+        match self.picker_take(index) {
+            Some(item) => self.use_item(item, mode),
+            None => UseResult::Failed,
+        }
+    }
+
+    /// [`picker_take`](Self::picker_take) for quick-use number `n`.
+    pub fn picker_take_number(&mut self, n: u8) -> Option<ItemId> {
+        let item = self.picker.as_ref()?.quick_use(n)?;
+        self.picker = None;
+        Some(item)
+    }
+
+    // ---- The template fill form --------------------------------------------------------------
+
+    /// Opens the fill form for template `item`, to be used with `mode` once it is submitted.
+    fn open_fill(&mut self, item: ItemId, mode: UseMode) -> Result<(), UseError> {
+        let (title, source) =
+            usecase::template_source(&self.store, item)?.ok_or(UseError::NotText)?;
+        let template = Template::parse(&source)?;
+        self.fill_seq += 1;
+        self.fill = Some(FillModel::new(item, mode, title, template));
+        Ok(())
+    }
+
+    /// The fill form's model, while it is open.
+    #[must_use]
+    pub fn fill(&self) -> Option<&FillModel> {
+        self.fill.as_ref()
+    }
+
+    /// The user typed or chose `value` in field `index` of the fill form.
+    pub fn fill_changed(&mut self, index: usize, value: &str) {
+        if let Some(fill) = &mut self.fill {
+            fill.set_value(index, value);
+        }
+    }
+
+    /// Closes the fill form without using the template (Esc, the close button) and hands the
+    /// focus back to the Target.
+    pub fn cancel_fill(&mut self) {
+        if self.fill.take().is_some() {
+            self.target.refocus();
+        }
+    }
+
+    /// The form was submitted with `values`, one per field in order. A required field left
+    /// empty keeps the form open and returns `None`; otherwise the form closes and the
+    /// result is to be run with [`run_fill`](Self::run_fill) (the host hides the window
+    /// first).
+    pub fn take_fill(&mut self, values: &[String]) -> Option<FillSubmission> {
+        let fill = self.fill.as_mut()?;
+        fill.set_values(values);
+        if fill.first_missing().is_some() {
+            return None;
+        }
+        let submission = FillSubmission {
+            item: fill.item(),
+            mode: fill.mode(),
+            answers: fill.answers(),
+        };
+        self.fill = None;
+        Some(submission)
+    }
+
+    /// Re-runs the use that stopped for answers, now with them.
+    pub fn run_fill(&mut self, submission: FillSubmission) -> UseResult {
+        self.run_use(submission.item, submission.mode, submission.answers)
+    }
+
+    /// [`take_fill`](Self::take_fill) and [`run_fill`](Self::run_fill) in one.
+    pub fn submit_fill(&mut self, values: &[String]) -> UseResult {
+        match self.take_fill(values) {
+            Some(submission) => self.run_fill(submission),
+            None => UseResult::NeedsAnswers,
+        }
+    }
+
+    // ---- Quick capture and paste next --------------------------------------------------------
+
+    /// The capture hotkey: saves the text on the clipboard as a new item at the top of the
+    /// default list (the list the Panel shows), and says so in a toast.
+    pub fn quick_capture(&mut self) {
+        let text = self.services.clipboard.read_text();
+        let current = self.model.list().map(|l| l.id);
+        let toast = match capture::default_list(&self.store, current) {
+            Ok(Some(list)) => {
+                match capture::capture_text(
+                    &mut self.store,
+                    &list,
+                    text.as_deref(),
+                    self.clock.now(),
+                ) {
+                    Ok(Captured::Saved { list, .. }) => {
+                        if self.model.refresh(&self.store).is_err() {
+                            self.show_toast(failed());
+                        }
+                        Toast {
+                            kind: ToastKind::Success,
+                            message: ToastMessage::Saved { list },
+                        }
+                    }
+                    Ok(Captured::Empty) => neutral(ToastMessage::NothingToSave),
+                    Ok(Captured::TooLarge) => neutral(ToastMessage::TooLargeToSave),
+                    Err(_) => failed(),
+                }
+            }
+            Ok(None) => neutral(ToastMessage::NoListToSave),
+            Err(_) => failed(),
+        };
+        self.show_toast(toast);
+    }
+
+    /// The paste-next hotkey: pastes the next item of the pinned strip (when the board has
+    /// pinned items) or of the list the Panel shows. See [`paste_next`].
+    pub fn paste_next(&mut self) -> Option<UseResult> {
+        if !self.entitlements.allows(Feature::PasteStack) {
+            self.show_toast(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::NeedsPro(Feature::PasteStack),
+            });
+            return None;
+        }
+        self.on_target_changed();
+        let pinned = self.model.pinned();
+        let (source, ids) = match (self.model.board(), self.model.list()) {
+            (Some(board), _) if !pinned.is_empty() => (
+                paste_next::Source::Pinned(board),
+                pinned.iter().map(|r| r.id).collect::<Vec<_>>(),
+            ),
+            (_, Some(list)) => (
+                paste_next::Source::List(list.id),
+                self.model.list_item_ids(),
+            ),
+            _ => {
+                self.show_toast(neutral(ToastMessage::NothingToPasteNext));
+                return None;
+            }
+        };
+        match self.queue.peek(source, || ids) {
+            paste_next::Next::Item(item) => Some(self.use_item(item, UseMode::Paste)),
+            paste_next::Next::Empty => {
+                self.show_toast(neutral(ToastMessage::NothingToPasteNext));
+                None
+            }
+            paste_next::Next::Finished => {
+                self.show_toast(neutral(ToastMessage::PasteNextFinished));
+                None
+            }
+        }
+    }
+
+    fn run_use(
+        &mut self,
+        item: ItemId,
+        mode: UseMode,
+        answers: BTreeMap<String, String>,
+    ) -> UseResult {
+        let route = self.model.route();
+        let pasted_into = self.model.target().map(|t| t.app.clone());
+        if mode != UseMode::Copy && matches!(route, Route::Paste { .. }) && self.target.refocus() {
+            self.services.timing.sleep(REFOCUS_WAIT);
+        }
+        let request = UseRequest {
+            item,
+            mode,
+            route: route.clone(),
+            now: self.clock.now(),
+            entitlements: self.entitlements,
+            answers,
+            clipboard_text: None,
+            tz: TimeZone::UTC,
+            locale: Locale::for_tag(&self.settings.language),
+        };
+        let mut env = Env {
+            clipboard: &mut self.services.clipboard,
+            keyboard: &mut self.services.keyboard,
+            timing: &mut self.services.timing,
+        };
+        match usecase::use_item(&mut self.store, &mut env, &request) {
+            Ok(used) => {
+                self.queue.used(item);
+                self.show_toast(toast::after_use(
+                    used.outcome,
+                    &route,
+                    pasted_into.as_deref(),
+                ));
+                if self.model.refresh(&self.store).is_err() {
+                    self.show_toast(failed());
+                }
+                UseResult::Done(used.outcome)
+            }
+            Err(UseError::NeedsAnswers(_)) => match self.open_fill(item, mode) {
+                Ok(()) => UseResult::NeedsAnswers,
+                Err(error) => {
+                    self.show_toast(toast::after_error(&error));
+                    UseResult::Failed
+                }
+            },
+            Err(error) => {
+                self.show_toast(toast::after_error(&error));
+                UseResult::Failed
+            }
+        }
+    }
+
+    // ---- Toasts ------------------------------------------------------------------------------
+
+    /// Shows `toast`, replacing the one on screen. The host then calls
+    /// [`toast_tick`](Self::toast_tick) after [`TOAST_ENTER`] and follows the delays it returns.
+    pub fn show_toast(&mut self, toast: Toast) {
+        self.toast_seq += 1;
+        self.toast = Some(ActiveToast {
+            toast,
+            phase: ToastPhase::Enter,
+            seq: self.toast_seq,
+        });
+    }
+
+    /// Reports hotkeys that could not be registered (the first one is shown).
+    pub fn report_hotkey_problems(&mut self, problems: &[crate::host::HotkeyProblem]) {
+        if let Some(problem) = problems.first() {
+            self.show_toast(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::HotkeyInUse {
+                    chord: problem.chord.clone(),
+                },
+            });
+        }
+    }
+
+    /// Advances toast `seq` to its next phase. Returns how long to wait before ticking again,
+    /// or `None` when the toast is gone or `seq` is not the toast on screen any more.
+    pub fn toast_tick(&mut self, seq: u64) -> Option<Duration> {
+        let active = self.toast.as_mut().filter(|t| t.seq == seq)?;
+        match active.phase {
+            ToastPhase::Enter => {
+                active.phase = ToastPhase::Hold;
+                Some(TOAST_HOLD)
+            }
+            ToastPhase::Hold => {
+                active.phase = ToastPhase::Exit;
+                Some(TOAST_EXIT)
+            }
+            ToastPhase::Exit => {
+                self.toast = None;
+                None
+            }
+        }
+    }
+}
+
+fn neutral(message: ToastMessage) -> Toast {
+    Toast {
+        kind: ToastKind::Neutral,
+        message,
+    }
+}
+
+fn failed() -> Toast {
+    Toast {
+        kind: ToastKind::Danger,
+        message: ToastMessage::Failed,
+    }
+}
+
+fn policy_of(settings: &Settings) -> snipdeck_platform::route::Policy {
+    snipdeck_platform::route::Policy {
+        no_paste_apps: settings.no_paste_apps.clone(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::host::{FakeTargets, FixedClock};
+    use snipdeck_core::{
+        Board, Content, Format, Formats, Inline, Item, ItemKind, List, Name, Placement, Tier,
+        Timestamp,
+    };
+    use snipdeck_platform::{
+        keys::{Key, KeyEvent},
+        payload::Data,
+        route::{Focus, Target},
+        testing::{FakeClipboard, FakeKeyboard, FakeTiming},
+    };
+    use snipdeck_store::Store;
+
+    type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
+
+    fn at(s: &str) -> Timestamp {
+        s.parse().expect("timestamp")
+    }
+
+    fn outlook() -> Target {
+        Target {
+            app: "OUTLOOK.EXE".into(),
+            title: "New message".into(),
+            elevated: false,
+            focus: Focus::Caret,
+        }
+    }
+
+    struct World {
+        ctl: Ctl,
+        targets: FakeTargets,
+        clock: FixedClock,
+        ids: Vec<ItemId>,
+        links_list: snipdeck_core::ListId,
+    }
+
+    fn add(
+        store: &mut Store,
+        list: snipdeck_core::ListId,
+        kind: ItemKind,
+        title: &str,
+        text: &str,
+    ) -> ItemId {
+        let mut item = Item::new(list, title.into(), kind, at("2026-10-17T09:00:00Z"));
+        item.preview = Item::preview_of(text, false);
+        let content = Content::Inline(Inline::new(text.as_bytes().to_vec()).expect("inline"));
+        let formats = Formats::new(vec![Format::Text(content)]).expect("formats");
+        store
+            .insert_item(&item, &formats, Placement::Last)
+            .expect("insert");
+        item.id
+    }
+
+    /// How a test world differs from the default one.
+    struct Opts {
+        target: Option<Target>,
+        settings: Settings,
+        tier: Tier,
+        /// Indexes into `World::ids` of the items that are pinned.
+        pinned: Vec<usize>,
+        /// What is on the clipboard (as if the user had just copied it).
+        clipboard: Option<&'static str>,
+        /// Writes to the clipboard fail.
+        clipboard_busy: bool,
+    }
+
+    impl Default for Opts {
+        fn default() -> Self {
+            Self {
+                target: Some(outlook()),
+                settings: Settings::default(),
+                tier: Tier::Pro,
+                pinned: Vec::new(),
+                clipboard: None,
+                clipboard_busy: false,
+            }
+        }
+    }
+
+    /// Board "Work" with lists Replies (3 items + a template) and Links (1), pasting into
+    /// Outlook, on a fixed clock.
+    fn world_with(target: Option<Target>, settings: Settings) -> World {
+        build(Opts {
+            target,
+            settings,
+            ..Opts::default()
+        })
+    }
+
+    fn build(opts: Opts) -> World {
+        let Opts {
+            target,
+            settings,
+            tier,
+            pinned,
+            clipboard,
+            clipboard_busy,
+        } = opts;
+        let now = at("2026-10-17T09:00:00Z");
+        let mut store = Store::open_in_memory().expect("store");
+        let board = Board::new(Name::new("Work").expect("n"), now);
+        store.insert_board(&board, Placement::Last).expect("board");
+        let replies = List::new(board.id, Name::new("Replies").expect("n"), now);
+        let links = List::new(board.id, Name::new("Links").expect("n"), now);
+        store.insert_list(&replies, Placement::Last).expect("list");
+        store.insert_list(&links, Placement::Last).expect("list");
+        let mut ids = Vec::new();
+        for (title, text) in [("One", "first"), ("Two", "second"), ("Three", "third")] {
+            ids.push(add(&mut store, replies.id, ItemKind::Text, title, text));
+        }
+        ids.push(add(
+            &mut store,
+            replies.id,
+            ItemKind::Template,
+            "Greeting",
+            "Hi {field:Name}",
+        ));
+        ids.push(add(
+            &mut store,
+            links.id,
+            ItemKind::Link,
+            "Docs",
+            "https://example.com",
+        ));
+        for n in pinned {
+            let mut item = store.item(ids[n]).expect("item");
+            item.pinned = true;
+            store.update_item(&item, None).expect("pin");
+        }
+        let targets = FakeTargets::new(target);
+        let clock = FixedClock::new(at("2026-10-17T10:30:00Z"));
+        let mut clipboard_fake = FakeClipboard {
+            asks_after_polls: Some(1),
+            fail_write: clipboard_busy,
+            ..FakeClipboard::default()
+        };
+        if let Some(text) = clipboard {
+            clipboard_fake.written.push(
+                snipdeck_platform::payload::Payload::new(vec![Data::Text(text.into())])
+                    .expect("payload"),
+            );
+        }
+        let services = Services {
+            clipboard: clipboard_fake,
+            keyboard: FakeKeyboard::default(),
+            timing: FakeTiming::default(),
+        };
+        let ctl = Controller::new(
+            store,
+            services,
+            Box::new(targets.clone()),
+            Box::new(clock.clone()),
+            settings,
+            Entitlements::new(tier),
+        )
+        .expect("controller");
+        World {
+            ctl,
+            targets,
+            clock,
+            ids,
+            links_list: links.id,
+        }
+    }
+
+    fn world() -> World {
+        world_with(Some(outlook()), Settings::default())
+    }
+
+    fn uses(w: &World, id: ItemId) -> u32 {
+        w.ctl.store().item(id).expect("item").use_count
+    }
+
+    #[test]
+    fn the_view_shows_the_board_the_rows_and_where_a_click_goes() {
+        let w = world();
+        let view = w.ctl.view();
+        assert_eq!(view.board_name, "Work");
+        assert_eq!(view.tabs.len(), 2);
+        assert_eq!(view.current_tab, 0);
+        assert_eq!(view.rows.len(), 4);
+        assert_eq!(view.rows[0].number, 1);
+        assert_eq!(
+            view.footer,
+            Footer::PastesInto {
+                app: "Outlook".into(),
+                title: "New message".into()
+            }
+        );
+        assert_eq!(view.use_label, UseLabel::Paste);
+        assert!(view.on_top && !view.dark && view.toast.is_none() && view.board_menu.is_none());
+    }
+
+    #[test]
+    fn the_target_changing_updates_the_footer() {
+        let mut w = world();
+        w.targets.set(None);
+        w.ctl.on_target_changed();
+        let view = w.ctl.view();
+        assert_eq!(view.footer, Footer::Copies);
+        assert_eq!(view.use_label, UseLabel::Copy);
+    }
+
+    #[test]
+    fn activating_a_row_pastes_it_counts_the_use_and_toasts() {
+        let mut w = world();
+        let result = w.ctl.activate_row(1, UseMode::Paste);
+        assert_eq!(result, UseResult::Done(UseOutcome::Pasted));
+        let services = w.ctl.services();
+        assert_eq!(
+            services.clipboard.written[0].data(),
+            [Data::Text("second".into())]
+        );
+        assert_eq!(
+            services.keyboard.sent.len(),
+            1,
+            "one batch of key events: {:?}",
+            services.keyboard.sent
+        );
+        assert!(
+            services.keyboard.sent[0].contains(&KeyEvent {
+                key: Key::V,
+                down: true
+            }),
+            "Ctrl+V was injected"
+        );
+        assert!(services.timing.slept.contains(&REFOCUS_WAIT));
+        assert_eq!(w.targets.refocus_count(), 1);
+        assert_eq!(uses(&w, w.ids[1]), 1);
+        assert_eq!(
+            w.ctl.store().item(w.ids[1]).expect("item").last_used_at,
+            Some(w.clock.now())
+        );
+        let toast = w.ctl.view().toast.expect("toast");
+        assert_eq!(toast.kind, ToastKind::Success);
+        assert_eq!(
+            toast.message,
+            ToastMessage::Pasted {
+                app: "Outlook".into()
+            }
+        );
+    }
+
+    #[test]
+    fn copy_only_leaves_the_item_on_the_clipboard_and_sends_no_keys() {
+        let mut w = world();
+        let result = w.ctl.activate_row(0, UseMode::Copy);
+        assert_eq!(result, UseResult::Done(UseOutcome::Copied));
+        assert_eq!(
+            w.ctl.services().keyboard.sent,
+            Vec::<Vec<snipdeck_platform::keys::KeyEvent>>::new()
+        );
+        assert_eq!(w.ctl.services().clipboard.log, ["persistent:1"]);
+        assert_eq!(
+            w.targets.refocus_count(),
+            0,
+            "a copy never touches the Target"
+        );
+        assert_eq!(uses(&w, w.ids[0]), 1);
+        assert_eq!(
+            w.ctl.view().toast.expect("toast").message,
+            ToastMessage::Copied
+        );
+    }
+
+    #[test]
+    fn quick_use_pastes_the_nth_row() {
+        let mut w = world();
+        assert_eq!(w.ctl.quick_use(3), UseResult::Done(UseOutcome::Pasted));
+        assert_eq!(uses(&w, w.ids[2]), 1);
+        assert_eq!(w.ctl.quick_use(9), UseResult::Failed, "no ninth row");
+        assert_eq!(uses(&w, w.ids[0]), 0);
+    }
+
+    #[test]
+    fn with_no_target_a_click_copies_and_says_so() {
+        let mut w = world_with(None, Settings::default());
+        assert_eq!(w.ctl.view().footer, Footer::Copies);
+        assert_eq!(
+            w.ctl.activate_row(0, UseMode::Paste),
+            UseResult::Done(UseOutcome::Copied)
+        );
+        assert_eq!(
+            w.ctl.services().keyboard.sent,
+            Vec::<Vec<snipdeck_platform::keys::KeyEvent>>::new()
+        );
+        assert_eq!(
+            w.ctl.view().toast.expect("toast").message,
+            ToastMessage::Copied
+        );
+    }
+
+    #[test]
+    fn an_app_the_user_excluded_is_copied_into_not_pasted() {
+        let settings = Settings {
+            no_paste_apps: vec!["outlook.exe".into()],
+            ..Settings::default()
+        };
+        let mut w = world_with(Some(outlook()), settings);
+        assert_eq!(w.ctl.view().footer, Footer::Copies);
+        w.ctl.activate_row(0, UseMode::Paste);
+        assert_eq!(
+            w.ctl.services().keyboard.sent,
+            Vec::<Vec<snipdeck_platform::keys::KeyEvent>>::new()
+        );
+        assert_eq!(
+            w.ctl.view().toast.expect("toast").message,
+            ToastMessage::CopiedExcluded {
+                app: "Outlook".into()
+            }
+        );
+    }
+
+    #[test]
+    fn a_failed_clipboard_is_a_danger_toast_and_not_counted() {
+        let mut w = world();
+        w.ctl.services.clipboard.fail_write = true;
+        assert_eq!(w.ctl.activate_row(0, UseMode::Paste), UseResult::Failed);
+        assert_eq!(uses(&w, w.ids[0]), 0);
+        let toast = w.ctl.view().toast.expect("toast");
+        assert_eq!(
+            (toast.kind, toast.message),
+            (ToastKind::Danger, ToastMessage::ClipboardBusy)
+        );
+    }
+
+    #[test]
+    fn a_row_that_does_not_exist_is_ignored() {
+        let mut w = world();
+        assert_eq!(w.ctl.activate_row(40, UseMode::Paste), UseResult::Failed);
+        assert_eq!(w.ctl.activate_pinned(0, UseMode::Paste), UseResult::Failed);
+        assert!(w.ctl.view().toast.is_none());
+    }
+
+    #[test]
+    fn a_template_with_prompts_opens_the_fill_form_then_pastes_with_the_answers() {
+        let mut w = world();
+        let greeting = w.ids[3];
+        assert_eq!(
+            w.ctl.activate_row(3, UseMode::Paste),
+            UseResult::NeedsAnswers
+        );
+        let view = w.ctl.view();
+        let form = view.fill.expect("the form is open");
+        assert_eq!(form.title, "Greeting");
+        assert_eq!(form.fields.len(), 1);
+        assert_eq!(form.fields[0].label, "Name");
+        assert!(form.fields[0].required);
+        assert_eq!(form.preview, "Hi ");
+        assert_eq!(view.toast, None, "the form is the answer, not a toast");
+        assert_eq!(uses(&w, greeting), 0);
+        assert!(
+            w.ctl.services().clipboard.log.is_empty(),
+            "nothing touched the clipboard"
+        );
+
+        w.ctl.fill_changed(0, "Sam");
+        assert_eq!(w.ctl.view().fill.expect("form").preview, "Hi Sam");
+        assert_eq!(
+            w.ctl.submit_fill(&["Sam".to_owned()]),
+            UseResult::Done(UseOutcome::Pasted)
+        );
+        assert!(w.ctl.fill().is_none() && w.ctl.view().fill.is_none());
+        assert_eq!(
+            w.ctl.services().clipboard.written[0].data(),
+            [Data::Text("Hi Sam".into())]
+        );
+        assert_eq!(uses(&w, greeting), 1);
+    }
+
+    #[test]
+    fn a_required_field_left_empty_keeps_the_form_open_and_pastes_nothing() {
+        let mut w = world();
+        w.ctl.activate_row(3, UseMode::Paste);
+        assert_eq!(
+            w.ctl.submit_fill(&["  ".to_owned()]),
+            UseResult::NeedsAnswers
+        );
+        assert!(w.ctl.view().fill.is_some());
+        assert_eq!(w.ctl.services().clipboard.log, Vec::<String>::new());
+        assert_eq!(uses(&w, w.ids[3]), 0);
+        // Fixing it works.
+        assert_eq!(
+            w.ctl.submit_fill(&["Ada".to_owned()]),
+            UseResult::Done(UseOutcome::Pasted)
+        );
+    }
+
+    #[test]
+    fn copying_a_template_asks_the_same_questions_and_copies() {
+        let mut w = world();
+        w.ctl.activate_row(3, UseMode::Copy);
+        assert_eq!(
+            w.ctl.submit_fill(&["Sam".to_owned()]),
+            UseResult::Done(UseOutcome::Copied)
+        );
+        assert_eq!(w.ctl.services().keyboard.sent, Vec::<Vec<KeyEvent>>::new());
+    }
+
+    #[test]
+    fn cancelling_the_form_forgets_it_and_hands_the_focus_back_once() {
+        let mut w = world();
+        w.ctl.activate_row(3, UseMode::Paste);
+        let refocused = w.targets.refocus_count();
+        w.ctl.cancel_fill();
+        assert!(w.ctl.view().fill.is_none());
+        assert_eq!(w.targets.refocus_count(), refocused + 1);
+        w.ctl.cancel_fill();
+        assert_eq!(w.targets.refocus_count(), refocused + 1, "nothing was open");
+        assert_eq!(
+            w.ctl.submit_fill(&["Sam".to_owned()]),
+            UseResult::NeedsAnswers
+        );
+        assert_eq!(uses(&w, w.ids[3]), 0);
+    }
+
+    #[test]
+    fn every_form_that_opens_is_a_new_one_for_the_window() {
+        let mut w = world();
+        w.ctl.activate_row(3, UseMode::Paste);
+        let first = w.ctl.view().fill.expect("form").seq;
+        w.ctl.fill_changed(0, "typed");
+        assert_eq!(w.ctl.view().fill.expect("form").seq, first, "same form");
+        w.ctl.cancel_fill();
+        w.ctl.activate_row(3, UseMode::Paste);
+        assert_ne!(w.ctl.view().fill.expect("form").seq, first);
+        assert_eq!(w.ctl.view().fill.expect("form").fields[0].value, "");
+    }
+
+    #[test]
+    fn a_free_user_is_told_about_pro_instead_of_being_asked() {
+        let mut w = build(Opts {
+            tier: Tier::Free,
+            ..Opts::default()
+        });
+        assert_eq!(w.ctl.activate_row(3, UseMode::Paste), UseResult::Failed);
+        assert!(w.ctl.view().fill.is_none());
+        let toast = w.ctl.view().toast.expect("toast");
+        assert_eq!(
+            (toast.kind, toast.message),
+            (
+                ToastKind::Danger,
+                ToastMessage::NeedsPro(Feature::PromptedFields)
+            )
+        );
+    }
+
+    #[test]
+    fn searching_filters_rows_across_lists_and_resets_the_selection() {
+        let mut w = world();
+        w.ctl.move_selection(2);
+        assert_eq!(w.ctl.view().selected, 2);
+        w.ctl.set_query("docs");
+        let view = w.ctl.view();
+        assert_eq!(view.query, "docs");
+        assert_eq!(view.rows.len(), 1);
+        assert_eq!(view.rows[0].id, w.ids[4]);
+        assert_eq!(view.selected, 0);
+    }
+
+    #[test]
+    fn picking_a_tab_shows_that_list_and_ends_the_search() {
+        let mut w = world();
+        w.ctl.set_query("one");
+        w.ctl.select_tab(1);
+        let view = w.ctl.view();
+        assert_eq!(view.current_tab, 1);
+        assert_eq!(view.query, "");
+        assert_eq!(view.rows.len(), 1);
+        assert_eq!(view.rows[0].id, w.ids[4]);
+        w.ctl.select_tab(9);
+        assert_eq!(
+            w.ctl.view().current_tab,
+            1,
+            "an unknown tab changes nothing"
+        );
+        assert_eq!(w.ctl.model().list().map(|l| l.id), Some(w.links_list));
+    }
+
+    #[test]
+    fn the_board_menu_lists_boards_and_choosing_one_closes_it() {
+        let mut w = world();
+        w.ctl.open_board_menu();
+        assert_eq!(w.ctl.view().board_menu, Some(vec!["Work".to_owned()]));
+        w.ctl.choose_board(0);
+        assert_eq!(w.ctl.view().board_menu, None);
+        w.ctl.open_board_menu();
+        w.ctl.close_board_menu();
+        assert_eq!(w.ctl.view().board_menu, None);
+    }
+
+    #[test]
+    fn the_toggle_hotkey_hides_and_shows_and_rereads_the_target_on_show() {
+        let mut w = world();
+        assert!(w.ctl.visible());
+        assert_eq!(
+            w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+            [Effect::HidePanel]
+        );
+        assert!(!w.ctl.visible());
+        w.targets.set(None);
+        assert_eq!(
+            w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+            [Effect::ShowPanel]
+        );
+        assert!(w.ctl.visible());
+        assert_eq!(
+            w.ctl.view().footer,
+            Footer::Copies,
+            "the Target was read on show"
+        );
+    }
+
+    fn picker_titles(w: &World) -> Vec<String> {
+        w.ctl
+            .view()
+            .picker
+            .expect("the Picker is open")
+            .rows
+            .into_iter()
+            .map(|r| r.title)
+            .collect()
+    }
+
+    fn pasted(w: &World) -> Vec<String> {
+        w.ctl
+            .services()
+            .clipboard
+            .written
+            .iter()
+            .filter_map(|p| match &p.data()[0] {
+                Data::Text(t) => Some(t.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn the_picker_hotkey_opens_the_picker_over_the_library_and_again_closes_it() {
+        let mut w = world();
+        assert!(w.ctl.view().picker.is_none());
+        assert_eq!(w.ctl.on_hotkey(HotkeyAction::Picker), []);
+        let picker = w.ctl.view().picker.expect("open");
+        assert_eq!(picker.rows.len(), 5, "every item of every list");
+        assert_eq!(
+            (picker.scope, picker.query.as_str(), picker.selected),
+            (Scope::All, "", 0)
+        );
+        assert_eq!(
+            picker.footer,
+            Footer::PastesInto {
+                app: "Outlook".into(),
+                title: "New message".into()
+            }
+        );
+        assert!(w.ctl.visible(), "the Panel is not touched");
+        assert_eq!(w.ctl.on_hotkey(HotkeyAction::Picker), []);
+        assert!(w.ctl.view().picker.is_none());
+    }
+
+    #[test]
+    fn the_picker_searches_by_scope_and_moves_a_selection() {
+        let mut w = build(Opts {
+            pinned: vec![1, 4],
+            ..Opts::default()
+        });
+        w.ctl.on_hotkey(HotkeyAction::Picker);
+        w.ctl.picker_query("docs");
+        assert_eq!(picker_titles(&w), ["Docs"]);
+        w.ctl.picker_query("");
+        w.ctl.picker_scope(Scope::Pinned);
+        assert_eq!(picker_titles(&w), ["Two", "Docs"]);
+        assert_eq!(w.ctl.view().picker.expect("open").scope, Scope::Pinned);
+        w.ctl.picker_scope(Scope::Board);
+        assert_eq!(
+            picker_titles(&w).len(),
+            5,
+            "everything is on the Work board"
+        );
+        w.ctl.picker_move(2);
+        assert_eq!(w.ctl.view().picker.expect("open").selected, 2);
+        w.ctl.picker_query("o");
+        assert_eq!(w.ctl.view().picker.expect("open").selected, 0);
+        // With the Picker shut these are ignored.
+        w.ctl.close_picker();
+        w.ctl.picker_query("x");
+        w.ctl.picker_scope(Scope::All);
+        w.ctl.picker_move(1);
+        assert!(w.ctl.view().picker.is_none());
+    }
+
+    #[test]
+    fn enter_in_the_picker_pastes_counts_the_use_and_closes_it() {
+        let mut w = world();
+        w.ctl.on_hotkey(HotkeyAction::Picker);
+        w.ctl.picker_query("two");
+        let refocused = w.targets.refocus_count();
+        assert_eq!(
+            w.ctl.picker_use(0, UseMode::Paste),
+            UseResult::Done(UseOutcome::Pasted)
+        );
+        assert!(w.ctl.view().picker.is_none());
+        assert_eq!(pasted(&w), ["second"]);
+        assert_eq!(uses(&w, w.ids[1]), 1);
+        assert_eq!(w.ctl.services().keyboard.sent.len(), 1, "Ctrl+V was sent");
+        assert_eq!(w.targets.refocus_count(), refocused + 1);
+        assert!(w.ctl.view().toast.is_some());
+    }
+
+    #[test]
+    fn shift_enter_in_the_picker_only_copies() {
+        let mut w = world();
+        w.ctl.on_hotkey(HotkeyAction::Picker);
+        assert_eq!(
+            w.ctl.picker_use(0, UseMode::Copy),
+            UseResult::Done(UseOutcome::Copied)
+        );
+        assert_eq!(w.ctl.services().keyboard.sent, Vec::<Vec<KeyEvent>>::new());
+        assert_eq!(pasted(&w), ["first"]);
+    }
+
+    #[test]
+    fn a_number_key_takes_the_nth_row_and_a_missing_row_leaves_the_picker_open() {
+        let mut w = world();
+        w.ctl.on_hotkey(HotkeyAction::Picker);
+        assert_eq!(w.ctl.picker_take_number(10), None);
+        assert_eq!(w.ctl.picker_take_number(0), None);
+        assert!(w.ctl.view().picker.is_some());
+        assert_eq!(w.ctl.picker_use(9, UseMode::Paste), UseResult::Failed);
+        assert!(w.ctl.view().picker.is_some(), "no such row: still open");
+        assert_eq!(w.ctl.picker_take_number(2), Some(w.ids[1]));
+        assert!(w.ctl.view().picker.is_none());
+        // The use itself is a separate call, after the host has hidden the window.
+        assert_eq!(
+            w.ctl.use_item(w.ids[1], UseMode::Paste),
+            UseResult::Done(UseOutcome::Pasted)
+        );
+    }
+
+    #[test]
+    fn a_template_chosen_in_the_picker_closes_it_and_opens_the_fill_form() {
+        let mut w = world();
+        w.ctl.on_hotkey(HotkeyAction::Picker);
+        w.ctl.picker_query("greeting");
+        assert_eq!(w.ctl.picker_use(0, UseMode::Paste), UseResult::NeedsAnswers);
+        let view = w.ctl.view();
+        assert!(view.picker.is_none());
+        assert_eq!(view.fill.expect("form").title, "Greeting");
+        // And the other way: summoning the Picker drops a form that was open.
+        w.ctl.on_hotkey(HotkeyAction::Picker);
+        assert!(w.ctl.view().fill.is_none() && w.ctl.view().picker.is_some());
+    }
+
+    #[test]
+    fn escape_closes_the_picker_and_hands_the_focus_back_once() {
+        let mut w = world();
+        w.ctl.on_hotkey(HotkeyAction::Picker);
+        let refocused = w.targets.refocus_count();
+        w.ctl.close_picker();
+        assert!(w.ctl.view().picker.is_none());
+        assert_eq!(w.targets.refocus_count(), refocused + 1);
+        w.ctl.close_picker();
+        assert_eq!(w.targets.refocus_count(), refocused + 1);
+        assert_eq!(uses(&w, w.ids[0]), 0);
+    }
+
+    #[test]
+    fn the_target_is_read_when_the_picker_opens_and_kept_while_it_is_open() {
+        let mut w = world();
+        // The user moved to a window with nothing to paste into; the controller has not heard.
+        w.targets.set(None);
+        assert!(matches!(w.ctl.view().footer, Footer::PastesInto { .. }));
+        w.ctl.on_hotkey(HotkeyAction::Picker);
+        assert_eq!(w.ctl.view().picker.expect("open").footer, Footer::Copies);
+
+        // The Picker itself takes the foreground: that must not become the Target.
+        w.targets.set(Some(outlook()));
+        w.ctl.on_target_changed();
+        assert_eq!(w.ctl.view().picker.expect("open").footer, Footer::Copies);
+        w.ctl.close_picker();
+        w.ctl.on_target_changed();
+        assert!(matches!(w.ctl.view().footer, Footer::PastesInto { .. }));
+    }
+
+    #[test]
+    fn quick_capture_saves_the_clipboard_text_at_the_top_of_the_shown_list() {
+        let mut w = build(Opts {
+            clipboard: Some("remember the milk"),
+            ..Opts::default()
+        });
+        assert_eq!(w.ctl.on_hotkey(HotkeyAction::Capture), []);
+        let view = w.ctl.view();
+        assert_eq!(view.rows.len(), 5);
+        assert_eq!(view.rows[0].preview, "remember the milk");
+        let toast = view.toast.expect("toast");
+        assert_eq!(
+            (toast.kind, toast.message),
+            (
+                ToastKind::Success,
+                ToastMessage::Saved {
+                    list: "Replies".into()
+                }
+            )
+        );
+        // The list the Panel shows is the default: switch tabs and capture again.
+        w.ctl.select_tab(1);
+        w.ctl.on_hotkey(HotkeyAction::Capture);
+        let view = w.ctl.view();
+        assert_eq!(view.rows.len(), 2);
+        assert_eq!(view.rows[0].preview, "remember the milk");
+        assert_eq!(
+            view.toast.expect("toast").message,
+            ToastMessage::Saved {
+                list: "Links".into()
+            }
+        );
+    }
+
+    #[test]
+    fn quick_capture_with_nothing_on_the_clipboard_saves_nothing() {
+        let mut w = world();
+        w.ctl.on_hotkey(HotkeyAction::Capture);
+        assert_eq!(w.ctl.view().rows.len(), 4);
+        let toast = w.ctl.view().toast.expect("toast");
+        assert_eq!(
+            (toast.kind, toast.message),
+            (ToastKind::Neutral, ToastMessage::NothingToSave)
+        );
+    }
+
+    #[test]
+    fn quick_capture_without_any_list_says_so() {
+        let now = at("2026-10-17T09:00:00Z");
+        let mut store = Store::open_in_memory().expect("store");
+        let board = Board::new(Name::new("Empty").expect("n"), now);
+        store.insert_board(&board, Placement::Last).expect("board");
+        let mut clipboard = FakeClipboard::default();
+        clipboard.written.push(
+            snipdeck_platform::payload::Payload::new(vec![Data::Text("x".into())])
+                .expect("payload"),
+        );
+        let mut ctl = Controller::new(
+            store,
+            Services {
+                clipboard,
+                keyboard: FakeKeyboard::default(),
+                timing: FakeTiming::default(),
+            },
+            Box::new(FakeTargets::new(None)),
+            Box::new(FixedClock::new(now)),
+            Settings::default(),
+            Entitlements::new(Tier::Pro),
+        )
+        .expect("controller");
+        ctl.on_hotkey(HotkeyAction::Capture);
+        assert_eq!(
+            ctl.view().toast.expect("toast").message,
+            ToastMessage::NoListToSave
+        );
+    }
+
+    #[test]
+    fn paste_next_is_a_pro_feature() {
+        let mut w = build(Opts {
+            tier: Tier::Free,
+            ..Opts::default()
+        });
+        w.ctl.on_hotkey(HotkeyAction::PasteNext);
+        let toast = w.ctl.view().toast.expect("toast");
+        assert_eq!(
+            (toast.kind, toast.message),
+            (
+                ToastKind::Danger,
+                ToastMessage::NeedsPro(Feature::PasteStack)
+            )
+        );
+        assert_eq!(pasted(&w), Vec::<String>::new());
+    }
+
+    #[test]
+    fn paste_next_walks_the_shown_list_then_says_it_is_done_and_starts_again() {
+        let mut w = world();
+        for _ in 0..3 {
+            assert_eq!(w.ctl.on_hotkey(HotkeyAction::PasteNext), []);
+        }
+        assert_eq!(pasted(&w), ["first", "second", "third"]);
+        assert_eq!(uses(&w, w.ids[2]), 1);
+
+        // The fourth is a template: the form opens, and answering it moves the run on.
+        assert_eq!(w.ctl.paste_next(), Some(UseResult::NeedsAnswers));
+        assert!(w.ctl.view().fill.is_some());
+        assert_eq!(
+            w.ctl.submit_fill(&["Sam".to_owned()]),
+            UseResult::Done(UseOutcome::Pasted)
+        );
+        assert_eq!(pasted(&w).last().map(String::as_str), Some("Hi Sam"));
+
+        assert_eq!(w.ctl.paste_next(), None);
+        assert_eq!(
+            w.ctl.view().toast.expect("toast").message,
+            ToastMessage::PasteNextFinished
+        );
+        assert_eq!(
+            w.ctl.paste_next(),
+            Some(UseResult::Done(UseOutcome::Pasted))
+        );
+        assert_eq!(pasted(&w).last().map(String::as_str), Some("first"));
+    }
+
+    #[test]
+    fn paste_next_prefers_the_pinned_strip_and_reads_the_target_when_pressed() {
+        let mut w = build(Opts {
+            pinned: vec![1, 4],
+            ..Opts::default()
+        });
+        // The window in front now is not the one the controller last heard about.
+        w.targets.set(None);
+        w.ctl.on_hotkey(HotkeyAction::PasteNext);
+        assert!(
+            w.ctl.services().keyboard.sent.is_empty(),
+            "no Target now, so it is copied, not pasted"
+        );
+        w.targets.set(Some(outlook()));
+        w.ctl.on_hotkey(HotkeyAction::PasteNext);
+        assert_eq!(pasted(&w), ["second", "https://example.com"]);
+        assert_eq!(w.ctl.services().keyboard.sent.len(), 1);
+        assert_eq!(w.ctl.paste_next(), None);
+    }
+
+    #[test]
+    fn a_clipboard_that_is_busy_fails_the_paste_and_counts_nothing() {
+        let mut w = build(Opts {
+            clipboard_busy: true,
+            ..Opts::default()
+        });
+        assert_eq!(w.ctl.paste_next(), Some(UseResult::Failed));
+        assert_eq!(
+            w.ctl.view().toast.expect("toast").message,
+            ToastMessage::ClipboardBusy
+        );
+        assert_eq!(uses(&w, w.ids[0]), 0);
+    }
+
+    #[test]
+    fn close_hides_with_a_tray_icon_and_drag_asks_the_host() {
+        let mut w = world();
+        with_tray(&mut w);
+        assert_eq!(w.ctl.close(), [Effect::HidePanel]);
+        assert!(!w.ctl.visible());
+        assert_eq!(w.ctl.drag(), [Effect::DragWindow]);
+        assert_eq!(w.ctl.show(), [Effect::ShowPanel]);
+    }
+
+    #[test]
+    fn a_toast_walks_enter_hold_exit_and_goes() {
+        let mut w = world();
+        w.ctl.show_toast(Toast {
+            kind: ToastKind::Neutral,
+            message: ToastMessage::Copied,
+        });
+        let seq = w.ctl.view().toast.expect("toast").seq;
+        assert_eq!(w.ctl.view().toast.expect("toast").phase, ToastPhase::Enter);
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_HOLD));
+        assert_eq!(w.ctl.view().toast.expect("toast").phase, ToastPhase::Hold);
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_EXIT));
+        assert_eq!(w.ctl.view().toast.expect("toast").phase, ToastPhase::Exit);
+        assert_eq!(w.ctl.toast_tick(seq), None);
+        assert!(w.ctl.view().toast.is_none());
+    }
+
+    #[test]
+    fn a_stale_tick_does_not_touch_a_newer_toast() {
+        let mut w = world();
+        w.ctl.show_toast(Toast {
+            kind: ToastKind::Neutral,
+            message: ToastMessage::Copied,
+        });
+        let old = w.ctl.view().toast.expect("toast").seq;
+        w.ctl.show_toast(Toast {
+            kind: ToastKind::Danger,
+            message: ToastMessage::Failed,
+        });
+        assert_eq!(w.ctl.toast_tick(old), None);
+        let now = w.ctl.view().toast.expect("toast");
+        assert_eq!(now.phase, ToastPhase::Enter);
+        assert_ne!(now.seq, old);
+    }
+
+    #[test]
+    fn hotkey_problems_show_a_toast_naming_the_chord() {
+        let mut w = world();
+        w.ctl.report_hotkey_problems(&[]);
+        assert!(w.ctl.view().toast.is_none());
+        w.ctl.report_hotkey_problems(&[crate::host::HotkeyProblem {
+            action: HotkeyAction::Picker,
+            chord: "Ctrl+Shift+Space".into(),
+            failure: crate::host::HotkeyFailure::InUse,
+        }]);
+        let toast = w.ctl.view().toast.expect("toast");
+        assert_eq!(toast.kind, ToastKind::Danger);
+        assert_eq!(
+            toast.message,
+            ToastMessage::HotkeyInUse {
+                chord: "Ctrl+Shift+Space".into()
+            }
+        );
+    }
+
+    #[test]
+    fn the_dark_theme_setting_reaches_the_view() {
+        let settings = Settings {
+            theme: Theme::Dark,
+            ..Settings::default()
+        };
+        assert!(world_with(None, settings).ctl.view().dark);
+    }
+
+    // ---- The tray ----------------------------------------------------------------------------
+
+    fn with_tray(w: &mut World) {
+        w.ctl.on_tray(TrayEvent::IconPresent(true));
+    }
+
+    #[test]
+    fn the_tray_toggles_the_panel_and_open_panel_always_shows_it() {
+        let mut w = world();
+        assert_eq!(w.ctl.on_tray(TrayEvent::TogglePanel), [Effect::HidePanel]);
+        assert!(!w.ctl.visible());
+        w.targets.set(None);
+        assert_eq!(w.ctl.on_tray(TrayEvent::TogglePanel), [Effect::ShowPanel]);
+        assert_eq!(
+            w.ctl.view().footer,
+            Footer::Copies,
+            "the Target is read when the tray shows the Panel"
+        );
+        assert_eq!(w.ctl.on_tray(TrayEvent::OpenPanel), [Effect::ShowPanel]);
+        assert!(w.ctl.visible());
+    }
+
+    #[test]
+    fn the_tray_menu_opens_snipdeck_and_quits() {
+        let mut w = world();
+        assert_eq!(
+            w.ctl.on_tray(TrayEvent::OpenSnipdeck),
+            [Effect::OpenMainWindow]
+        );
+        assert_eq!(w.ctl.on_tray(TrayEvent::Quit), [Effect::Quit]);
+        assert!(w.ctl.visible(), "quitting does not pretend to hide first");
+    }
+
+    #[test]
+    fn pause_hotkeys_asks_the_host_and_silences_hotkeys_that_were_already_queued() {
+        let mut w = world();
+        assert_eq!(
+            w.ctl.on_tray(TrayEvent::HotkeysPaused(true)),
+            [Effect::SetHotkeysPaused(true)]
+        );
+        assert!(w.ctl.hotkeys_paused());
+        assert_eq!(w.ctl.on_hotkey(HotkeyAction::TogglePanel), Vec::new());
+        assert_eq!(w.ctl.on_hotkey(HotkeyAction::Picker), Vec::new());
+        assert!(w.ctl.visible());
+        assert_eq!(
+            w.ctl.on_tray(TrayEvent::HotkeysPaused(false)),
+            [Effect::SetHotkeysPaused(false)]
+        );
+        assert_eq!(
+            w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+            [Effect::HidePanel]
+        );
+    }
+
+    #[test]
+    fn closing_the_panel_hides_it_when_a_tray_icon_can_bring_it_back() {
+        let mut w = world();
+        with_tray(&mut w);
+        assert_eq!(w.ctl.close(), [Effect::HidePanel]);
+        assert!(!w.ctl.visible());
+        assert_eq!(w.ctl.on_tray(TrayEvent::TogglePanel), [Effect::ShowPanel]);
+    }
+
+    #[test]
+    fn closing_the_panel_quits_without_a_tray_icon_or_with_close_to_tray_off() {
+        let mut w = world();
+        assert_eq!(w.ctl.close(), [Effect::Quit], "no tray icon to return from");
+        assert!(w.ctl.visible());
+
+        let mut w = world_with(
+            None,
+            Settings {
+                close_to_tray: false,
+                ..Settings::default()
+            },
+        );
+        with_tray(&mut w);
+        assert_eq!(w.ctl.close(), [Effect::Quit]);
+    }
+
+    #[test]
+    fn real_tray_clicks_on_the_fake_reach_the_controller() {
+        use snipdeck_platform::{testing::FakeTray, tray::Tray, tray::TrayEntry};
+        let (tx, rx) = std::sync::mpsc::channel();
+        let tx = std::sync::Mutex::new(tx);
+        let mut tray = FakeTray::new("Snipdeck", move |e| {
+            let _ = tx.lock().expect("lock").send(e);
+        });
+        let mut w = world();
+
+        // Drain what the user did to the icon into the controller, as the app's UI thread does.
+        let pump = |w: &mut World| {
+            rx.try_iter()
+                .flat_map(|event| w.ctl.on_tray(event))
+                .collect::<Vec<_>>()
+        };
+        tray.show().expect("show");
+        assert_eq!(pump(&mut w), [], "the icon appearing needs no effect");
+        assert_eq!(w.ctl.close(), [Effect::HidePanel], "but now closing hides");
+        assert_eq!(w.ctl.show(), [Effect::ShowPanel]);
+        tray.left_click();
+        assert_eq!(pump(&mut w), [Effect::HidePanel]);
+        tray.left_click();
+        assert_eq!(pump(&mut w), [Effect::ShowPanel]);
+        assert!(tray.right_click().is_some());
+        tray.pick(TrayEntry::PauseHotkeys);
+        assert_eq!(pump(&mut w), [Effect::SetHotkeysPaused(true)]);
+        assert!(tray.hotkeys_paused(), "the menu check follows");
+        tray.pick(TrayEntry::OpenSnipdeck);
+        tray.pick(TrayEntry::Quit);
+        assert_eq!(pump(&mut w), [Effect::OpenMainWindow, Effect::Quit]);
+    }
+
+    /// A controller wired to a `FakeTray` the way the app wires the real one: every event the
+    /// tray emits is queued and then handed to `on_tray`.
+    struct Wired {
+        w: World,
+        tray: snipdeck_platform::testing::FakeTray,
+        rx: std::sync::mpsc::Receiver<TrayEvent>,
+    }
+
+    impl Wired {
+        fn new() -> Self {
+            let (tx, rx) = std::sync::mpsc::channel();
+            let tx = std::sync::Mutex::new(tx);
+            let tray = snipdeck_platform::testing::FakeTray::new("Snipdeck", move |e| {
+                let _ = tx.lock().expect("lock").send(e);
+            });
+            Self {
+                w: world(),
+                tray,
+                rx,
+            }
+        }
+
+        fn pump(&mut self) {
+            for event in self.rx.try_iter() {
+                self.w.ctl.on_tray(event);
+            }
+        }
+
+        fn close(&mut self) -> Vec<Effect> {
+            self.pump();
+            self.w.ctl.close()
+        }
+    }
+
+    #[test]
+    fn a_failed_first_show_then_explorer_starting_lets_close_hide() {
+        use snipdeck_platform::tray::Tray;
+        let mut t = Wired::new();
+        t.tray.set_fail_show(true);
+        let mut tray = t.tray.clone();
+        assert!(tray.show().is_err());
+        assert_eq!(
+            t.close(),
+            [Effect::Quit],
+            "no icon yet: nothing to return from"
+        );
+
+        t.tray.set_fail_show(false);
+        t.tray.taskbar_created();
+        assert!(t.tray.visible());
+        assert_eq!(t.close(), [Effect::HidePanel], "the icon appeared later");
+    }
+
+    #[test]
+    fn explorer_restarting_without_taking_the_icon_back_makes_close_quit() {
+        use snipdeck_platform::tray::Tray;
+        let mut t = Wired::new();
+        let mut tray = t.tray.clone();
+        tray.show().expect("show");
+        assert_eq!(t.close(), [Effect::HidePanel]);
+
+        // Explorer restarts and the icon cannot be added again: no icon, so Esc must not hide
+        // the Panel into nothing.
+        t.tray.set_fail_show(true);
+        t.tray.taskbar_created();
+        assert!(!t.tray.visible());
+        assert_eq!(t.close(), [Effect::Quit]);
+
+        t.tray.set_fail_show(false);
+        t.tray.taskbar_created();
+        assert_eq!(t.close(), [Effect::HidePanel], "back again");
+    }
+
+    #[test]
+    fn hiding_the_icon_makes_close_quit() {
+        use snipdeck_platform::tray::Tray;
+        let mut t = Wired::new();
+        let mut tray = t.tray.clone();
+        tray.show().expect("show");
+        tray.hide().expect("hide");
+        assert_eq!(t.close(), [Effect::Quit]);
+    }
+
+    // ---- The OS theme ------------------------------------------------------------------------
+
+    fn os(dark: bool) -> SystemLook {
+        SystemLook {
+            dark,
+            high_contrast: None,
+        }
+    }
+
+    #[test]
+    fn the_system_theme_follows_windows_and_light_and_dark_ignore_it() {
+        let mut w = world();
+        assert!(!w.ctl.view().dark, "light until told otherwise");
+        w.ctl.set_system_look(os(true));
+        assert!(w.ctl.view().dark, "theme = system follows Windows");
+        w.ctl.set_system_look(os(false));
+        assert!(!w.ctl.view().dark);
+
+        w.ctl.set_theme(Theme::Light);
+        w.ctl.set_system_look(os(true));
+        assert!(!w.ctl.view().dark, "light stays light");
+        w.ctl.set_theme(Theme::Dark);
+        w.ctl.set_system_look(os(false));
+        assert!(w.ctl.view().dark, "dark stays dark");
+    }
+
+    #[test]
+    fn high_contrast_wins_over_every_theme_setting() {
+        let hc = HighContrast::default();
+        for theme in [Theme::System, Theme::Light, Theme::Dark] {
+            let mut w = world_with(
+                None,
+                Settings {
+                    theme,
+                    ..Settings::default()
+                },
+            );
+            assert_eq!(w.ctl.view().high_contrast, None);
+            w.ctl.set_system_look(SystemLook {
+                dark: false,
+                high_contrast: Some(hc),
+            });
+            assert_eq!(w.ctl.view().high_contrast, Some(hc), "{theme:?}");
+            w.ctl.set_system_look(os(false));
+            assert_eq!(w.ctl.view().high_contrast, None, "{theme:?}: and it ends");
+        }
+    }
+
+    #[test]
+    fn a_fake_source_drives_the_look_through_a_change() {
+        use snipdeck_platform::{system_look::SystemLookSource, testing::FakeSystemLook};
+        let source = FakeSystemLook::default();
+        let mut w = world();
+        w.ctl.set_system_look(source.read());
+        assert!(!w.ctl.view().dark);
+        source.set(os(true));
+        w.ctl.set_system_look(source.read());
+        assert!(w.ctl.view().dark);
+    }
+
+    // ---- Settings are saved ------------------------------------------------------------------
+
+    fn saving_world(dir: &std::path::Path) -> World {
+        let mut w = world();
+        let saver = SettingsSaver::new(
+            Box::new(crate::settings_store::FileSink::new(dir)),
+            Settings::default(),
+        );
+        w.ctl.set_settings_saver(saver);
+        w
+    }
+
+    #[test]
+    fn a_setting_is_written_after_the_quiet_time_by_the_injected_clock() {
+        let temp = tempfile::tempdir().expect("dir");
+        let file = temp.path().join(crate::paths::SETTINGS_FILE);
+        let mut w = saving_world(temp.path());
+        assert_eq!(w.ctl.settings_wait(), None, "nothing changed yet");
+
+        w.ctl.set_theme(Theme::Dark);
+        assert!(w.ctl.view().dark, "applied at once");
+        assert_eq!(w.ctl.settings_wait(), Some(Duration::from_millis(500)));
+        w.ctl.save_settings_if_due();
+        assert!(!file.exists(), "not before the quiet time");
+
+        w.clock.set(at("2026-10-17T10:30:00.4Z"));
+        w.ctl.save_settings_if_due();
+        assert!(!file.exists());
+        assert_eq!(w.ctl.settings_wait(), Some(Duration::from_millis(100)));
+
+        w.clock.set(at("2026-10-17T10:30:00.5Z"));
+        w.ctl.save_settings_if_due();
+        assert_eq!(crate::paths::load_settings(temp.path()).theme, Theme::Dark);
+        assert_eq!(w.ctl.settings_wait(), None);
+    }
+
+    #[test]
+    fn several_quick_changes_make_one_write_and_flush_writes_at_once() {
+        let temp = tempfile::tempdir().expect("dir");
+        let mut w = saving_world(temp.path());
+        w.ctl.update_settings(|s| s.panel_width = 300);
+        w.clock.set(at("2026-10-17T10:30:00.2Z"));
+        w.ctl.update_settings(|s| s.panel_width = 9999);
+        assert_eq!(w.ctl.settings().panel_width, 480, "sanitised");
+        w.ctl.update_settings(|s| s.panel_width = 480);
+        // The last two were the same value: still waiting from the second change.
+        assert_eq!(w.ctl.settings_wait(), Some(Duration::from_millis(500)));
+
+        w.ctl.flush_settings().expect("flush");
+        assert_eq!(crate::paths::load_settings(temp.path()).panel_width, 480);
+        assert_eq!(w.ctl.settings_wait(), None);
+    }
+
+    #[test]
+    fn an_unchanged_setting_schedules_nothing() {
+        let temp = tempfile::tempdir().expect("dir");
+        let mut w = saving_world(temp.path());
+        w.ctl.update_settings(|s| s.close_to_tray = true);
+        w.ctl.set_theme(Theme::System);
+        assert_eq!(w.ctl.settings_wait(), None);
+        w.ctl.flush_settings().expect("flush");
+        assert!(!temp.path().join(crate::paths::SETTINGS_FILE).exists());
+    }
+
+    #[test]
+    fn without_a_saver_changes_stay_in_memory() {
+        let mut w = world();
+        w.ctl.set_theme(Theme::Dark);
+        assert_eq!(w.ctl.settings_wait(), None);
+        assert!(w.ctl.flush_settings().is_ok());
+        assert_eq!(w.ctl.settings().theme, Theme::Dark);
+    }
+
+    #[test]
+    fn a_failed_write_toasts_once_and_succeeds_when_the_disk_does() {
+        let temp = tempfile::tempdir().expect("dir");
+        // The "folder" is a file, so every write fails.
+        let blocked = temp.path().join("blocked");
+        std::fs::write(&blocked, "x").expect("file");
+        let mut w = saving_world(&blocked);
+        w.ctl.set_theme(Theme::Dark);
+
+        w.clock.set(at("2026-10-17T10:30:01Z"));
+        w.ctl.save_settings_if_due();
+        let toast = w.ctl.view().toast.expect("toast");
+        assert_eq!(toast.kind, ToastKind::Danger);
+        assert_eq!(toast.message, ToastMessage::SettingsNotSaved);
+        let first = toast.seq;
+        assert_eq!(
+            w.ctl.settings_wait(),
+            Some(Duration::from_secs(5)),
+            "kept for a retry"
+        );
+
+        w.clock.set(at("2026-10-17T10:30:07Z"));
+        w.ctl.save_settings_if_due();
+        assert_eq!(
+            w.ctl.view().toast.expect("toast").seq,
+            first,
+            "no second toast for the same trouble"
+        );
+        assert!(w.ctl.flush_settings().is_err());
+    }
+}

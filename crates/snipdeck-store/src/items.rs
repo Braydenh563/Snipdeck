@@ -1,6 +1,5 @@
 //! [`ItemRepo`] for [`Store`], and the encoding of an item's formats.
 
-use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap};
 
 use rusqlite::{Connection, ToSql, params};
@@ -10,6 +9,7 @@ use snipdeck_core::{
 };
 use zeroize::Zeroizing;
 
+use crate::batch::Ctx;
 use crate::blobs::Blobs;
 use crate::codec::{
     content_from, flag, from_nanos, from_opt_nanos, id_bytes, id_from, nanos, not_found, payload,
@@ -17,8 +17,7 @@ use crate::codec::{
 };
 use crate::crypto::{DataKey, Slot, decrypt_payload, encrypt_payload};
 use crate::rank::{self, ITEMS};
-use crate::store::{begin, checkpoint};
-use crate::{BlobStore, Error, ItemRepo, Result, Store, fts, keys};
+use crate::{Error, Result, fts, keys};
 
 /// The tables a live item is read through: the item, its list and its board.
 const FROM_LIVE: &str =
@@ -170,28 +169,6 @@ pub(crate) fn is_encrypted(conn: &Connection, id: [u8; 16]) -> Result<bool> {
     )
 }
 
-impl Store {
-    /// After a committed write of content: the blobs it used stop being pending, and the old
-    /// or consumed ones are released. With `cleared_plaintext`, the write removed plaintext of
-    /// a sensitive item: released blobs are scrubbed and the WAL is folded so no page image
-    /// of the plaintext lingers in it (review H1). All best effort (review M4).
-    pub(crate) fn after_write(
-        &mut self,
-        written: Written,
-        old: Vec<BlobRef>,
-        cleared_plaintext: bool,
-    ) {
-        let Written { used, consumed } = written;
-        self.blobs.attached(used.iter().chain(&consumed).copied());
-        let mut release = old;
-        release.extend(consumed);
-        self.release_blobs(&release, cleared_plaintext);
-        if cleared_plaintext {
-            checkpoint(&self.conn);
-        }
-    }
-}
-
 fn check_item(item: &Item) -> Result<()> {
     if item.sensitive && !item.preview.is_empty() {
         return Err(Error::Invalid(
@@ -240,6 +217,9 @@ pub(crate) fn write_formats(
 ) -> Result<Written> {
     let mut written = Written::default();
     let stored = map_payloads(formats, |content, slot| {
+        // A staged or decrypted payload is plaintext in RAM that nothing needs once this
+        // transaction ends (the row holds the sealed or stored copy): drop it then.
+        blobs.take_transient(content);
         if let Some(key) = key {
             let plain = Zeroizing::new(blobs.read_any(content)?.into_owned());
             let envelope = encrypt_payload(key, &item, slot, &plain)?;
@@ -395,251 +375,244 @@ fn load_files(conn: &Connection, id: [u8; 16]) -> Result<Vec<FileEntry>> {
     .collect()
 }
 
-impl ItemRepo for Store {
-    fn items(&self, list: ListId) -> Result<Vec<Item>> {
-        // A list that is missing or not live is `NotFound`, not empty (review L10).
-        require_list(&self.conn, list)?;
-        fetch(
-            &self.conn,
-            "AND i.list_id = ?1",
-            &[&id_bytes(list)],
-            "i.rank",
-        )
-    }
-
-    fn all_items(&self) -> Result<Vec<Item>> {
-        fetch(&self.conn, "", &[], "b.rank, l.rank, i.rank")
-    }
-
-    fn item(&self, id: ItemId) -> Result<Item> {
-        fetch(&self.conn, "AND i.id = ?1", &[&id_bytes(id)], "i.rank")?
-            .pop()
-            .ok_or_else(|| not_found(id))
-    }
-
-    fn formats(&self, id: ItemId) -> Result<Formats> {
-        require_item(&self.conn, id)?;
-        let stored = load_formats(&self.conn, id_bytes(id))?;
-        if !is_encrypted(&self.conn, id_bytes(id))? {
-            return Ok(stored);
-        }
-        let key = self.key.as_ref().ok_or(Error::EncryptionLocked)?;
-        decrypt_formats(&self.blobs, key, id, &stored)
-    }
-
-    fn insert_item(&mut self, item: &Item, formats: &Formats, at: Placement<ItemId>) -> Result<()> {
-        check_item(item)?;
-        let (created, updated) = (nanos(item.created_at)?, nanos(item.updated_at)?);
-        let last_used = item.last_used_at.map(nanos).transpose()?;
-        let tx = begin(&mut self.conn)?;
-        require_new(&tx, "items", item.id)?;
-        require_list(&tx, item.list_id)?;
-        require_tags(&tx, &item.tags)?;
-        let key = self.key.as_ref();
-        if item.sensitive && key.is_none() && keys::ring_exists(&tx)? {
-            // Encryption is set up: never store a new secret in plain text.
-            return Err(Error::EncryptionLocked);
-        }
-        let encrypt = item.sensitive && key.is_some();
-        let (id, list) = (id_bytes(item.id), id_bytes(item.list_id));
-        let rank = rank::place(&tx, ITEMS, Some(list), raw_placement(at), None)?;
-        tx.execute(
-            "INSERT INTO items (id, list_id, title, kind, preview, pinned, sensitive, always_plain,
-                                use_count, last_used_at, source_app, rank, created_at, updated_at,
-                                encrypted)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
-            params![
-                id,
-                list,
-                item.title,
-                item.kind.key(),
-                item.preview,
-                flag(item.pinned),
-                flag(item.sensitive),
-                flag(item.always_plain),
-                item.use_count,
-                last_used,
-                item.source_app,
-                rank,
-                created,
-                updated,
-                flag(encrypt)
-            ],
-        )?;
-        let seq = tx.last_insert_rowid();
-        let written = write_formats(
-            &tx,
-            &mut self.blobs,
-            item.id,
-            formats,
-            key.filter(|_| encrypt),
-        )?;
-        write_tags(&tx, id, &item.tags)?;
-        fts::index(&tx, &self.blobs, seq, &item.title, item.sensitive, formats)?;
-        tx.commit()?;
-        // A plaintext blob `put` for this sensitive item was sealed: scrub it.
-        let consumed_plaintext = item.sensitive && !written.consumed.is_empty();
-        self.after_write(written, Vec::new(), consumed_plaintext);
-        Ok(())
-    }
-
-    fn update_item(&mut self, item: &Item, formats: Option<&Formats>) -> Result<()> {
-        check_item(item)?;
-        let (created, updated) = (nanos(item.created_at)?, nanos(item.updated_at)?);
-        let tx = begin(&mut self.conn)?;
-        require_item(&tx, item.id)?;
-        require_tags(&tx, &item.tags)?;
-        let (id, list) = (id_bytes(item.id), id_bytes(item.list_id));
-        let before: Before = tx.query_row(
-            "SELECT seq, list_id, title, sensitive, encrypted FROM items WHERE id = ?1",
-            [id],
-            |r| {
-                Ok(Before {
-                    seq: r.get(0)?,
-                    list: r.get(1)?,
-                    title: r.get(2)?,
-                    sensitive: r.get(3)?,
-                    encrypted: r.get(4)?,
-                })
-            },
-        )?;
-        let key = self.key.as_ref();
-        if key.is_none() {
-            refuse_while_locked(&tx, item, &before, formats.is_some())?;
-        }
-        // Whether the content is encrypted once this call is done.
-        let encrypted = match formats {
-            Some(_) => item.sensitive && key.is_some(),
-            None => item.sensitive && (before.encrypted || key.is_some()),
-        };
-
-        if before.list != list {
-            // A new parent: the item goes to the end of it.
-            require_list(&tx, item.list_id)?;
-            let rank = rank::place(&tx, ITEMS, Some(list), Placement::Last, Some(id))?;
-            tx.execute(
-                "UPDATE items SET list_id = ?2, rank = ?3 WHERE id = ?1",
-                params![id, list, rank],
-            )?;
-        }
-        // `use_count` and `last_used_at` belong to `record_use`: an editor holding an item
-        // loaded before a use must not roll the count back (review L12).
-        tx.execute(
-            "UPDATE items SET title = ?2, kind = ?3, preview = ?4, pinned = ?5, sensitive = ?6,
-                    always_plain = ?7, source_app = ?8, created_at = ?9, updated_at = ?10,
-                    encrypted = ?11
-             WHERE id = ?1",
-            params![
-                id,
-                item.title,
-                item.kind.key(),
-                item.preview,
-                flag(item.pinned),
-                flag(item.sensitive),
-                flag(item.always_plain),
-                item.source_app,
-                created,
-                updated,
-                flag(encrypted)
-            ],
-        )?;
-        write_tags(&tx, id, &item.tags)?;
-
-        let seal = key.filter(|_| encrypted);
-        let mut old = Vec::new();
-        let mut written = Written::default();
-        if let Some(formats) = formats {
-            old = blob_hashes(&tx, id)?;
-            written = write_formats(&tx, &mut self.blobs, item.id, formats, seal)?;
-            fts::index(
-                &tx,
-                &self.blobs,
-                before.seq,
-                &item.title,
-                item.sensitive,
-                formats,
-            )?;
-        } else if encrypted != before.encrypted {
-            // Marked sensitive (encrypt what is stored) or cleared (decrypt it first).
-            let stored = load_formats(&tx, id)?;
-            let plain = match (before.encrypted, key) {
-                (false, _) => stored,
-                (true, Some(key)) => decrypt_formats(&self.blobs, key, item.id, &stored)?,
-                (true, None) => return Err(Error::EncryptionLocked),
-            };
-            // The blobs this consumes or reuses are the item's own (in `old`), not from a
-            // `put`, so they do not count as attached.
-            old = blob_hashes(&tx, id)?;
-            write_formats(&tx, &mut self.blobs, item.id, &plain, seal)?;
-            fts::index(
-                &tx,
-                &self.blobs,
-                before.seq,
-                &item.title,
-                item.sensitive,
-                &plain,
-            )?;
-        } else if before.sensitive != item.sensitive {
-            fts::reindex(&tx, &self.blobs, id)?;
-        } else if before.title != item.title {
-            // Metadata only: never re-read the content (review L11).
-            fts::retitle(&tx, before.seq, &item.title)?;
-        }
-        tx.commit()?;
-        let cleared_plaintext = item.sensitive
-            && (formats.is_some() || !before.sensitive || encrypted != before.encrypted);
-        self.after_write(written, old, cleared_plaintext);
-        Ok(())
-    }
-
-    fn move_item(&mut self, id: ItemId, list: ListId, at: Placement<ItemId>) -> Result<()> {
-        let tx = begin(&mut self.conn)?;
-        require_item(&tx, id)?;
-        require_list(&tx, list)?;
-        let (bytes, list_bytes) = (id_bytes(id), id_bytes(list));
-        let rank = rank::place(&tx, ITEMS, Some(list_bytes), raw_placement(at), Some(bytes))?;
-        tx.execute(
-            "UPDATE items SET list_id = ?2, rank = ?3 WHERE id = ?1",
-            params![bytes, list_bytes, rank],
-        )?;
-        Ok(tx.commit()?)
-    }
-
-    fn record_use(&mut self, id: ItemId, at: Timestamp) -> Result<()> {
-        let at = nanos(at)?;
-        let tx = begin(&mut self.conn)?;
-        require_item(&tx, id)?;
-        tx.execute(
-            "UPDATE items SET use_count = MIN(use_count + 1, 4294967295), last_used_at = ?2
-             WHERE id = ?1",
-            params![id_bytes(id), at],
-        )?;
-        Ok(tx.commit()?)
-    }
-
-    fn search(&self, query: &str, limit: usize) -> Result<Vec<ItemId>> {
-        let Some(expression) = fts::match_expression(query) else {
-            return Ok(Vec::new());
-        };
-        let limit = i64::try_from(limit).unwrap_or(i64::MAX);
-        let mut stmt = self.conn.prepare_cached(&format!(
-            "SELECT i.id FROM item_fts JOIN items i ON i.seq = item_fts.rowid {JOIN_LIVE}
-             WHERE item_fts MATCH ?1 AND {WHERE_LIVE}
-             ORDER BY bm25(item_fts, 10.0, 1.0), i.seq
-             LIMIT ?2"
-        ))?;
-        let ids = stmt.query_map(params![expression, limit], |r| r.get::<_, Vec<u8>>(0))?;
-        ids.map(|id| id_from(&id?)).collect()
-    }
+pub(crate) fn items(conn: &Connection, list: ListId) -> Result<Vec<Item>> {
+    // A list that is missing or not live is `NotFound`, not empty (review L10).
+    require_list(conn, list)?;
+    fetch(conn, "AND i.list_id = ?1", &[&id_bytes(list)], "i.rank")
 }
 
-impl BlobStore for Store {
-    fn put(&mut self, bytes: Vec<u8>) -> Result<Content> {
-        self.blobs.put(bytes)
-    }
+pub(crate) fn all_items(conn: &Connection) -> Result<Vec<Item>> {
+    fetch(conn, "", &[], "b.rank, l.rank, i.rank")
+}
 
-    fn read<'a>(&self, content: &'a Content) -> Result<Cow<'a, [u8]>> {
-        // Decrypted and staged sensitive payloads are served from memory.
-        self.blobs.read_any(content)
+pub(crate) fn item(conn: &Connection, id: ItemId) -> Result<Item> {
+    fetch(conn, "AND i.id = ?1", &[&id_bytes(id)], "i.rank")?
+        .pop()
+        .ok_or_else(|| not_found(id))
+}
+
+pub(crate) fn formats(
+    conn: &Connection,
+    blobs: &Blobs,
+    key: Option<&DataKey>,
+    id: ItemId,
+) -> Result<Formats> {
+    require_item(conn, id)?;
+    let stored = load_formats(conn, id_bytes(id))?;
+    if !is_encrypted(conn, id_bytes(id))? {
+        return Ok(stored);
     }
+    let key = key.ok_or(Error::EncryptionLocked)?;
+    decrypt_formats(blobs, key, id, &stored)
+}
+
+pub(crate) fn insert_item(
+    cx: &mut Ctx<'_>,
+    item: &Item,
+    formats: &Formats,
+    at: Placement<ItemId>,
+) -> Result<()> {
+    check_item(item)?;
+    let (created, updated) = (nanos(item.created_at)?, nanos(item.updated_at)?);
+    let last_used = item.last_used_at.map(nanos).transpose()?;
+    let (conn, key) = (cx.conn, cx.key);
+    require_new(conn, "items", item.id)?;
+    require_list(conn, item.list_id)?;
+    require_tags(conn, &item.tags)?;
+    if item.sensitive && key.is_none() && keys::ring_exists(conn)? {
+        // Encryption is set up: never store a new secret in plain text.
+        return Err(Error::EncryptionLocked);
+    }
+    let encrypt = item.sensitive && key.is_some();
+    let (id, list) = (id_bytes(item.id), id_bytes(item.list_id));
+    let rank = rank::place(conn, ITEMS, Some(list), raw_placement(at), None)?;
+    conn.execute(
+        "INSERT INTO items (id, list_id, title, kind, preview, pinned, sensitive, always_plain,
+                            use_count, last_used_at, source_app, rank, created_at, updated_at,
+                            encrypted)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+        params![
+            id,
+            list,
+            item.title,
+            item.kind.key(),
+            item.preview,
+            flag(item.pinned),
+            flag(item.sensitive),
+            flag(item.always_plain),
+            item.use_count,
+            last_used,
+            item.source_app,
+            rank,
+            created,
+            updated,
+            flag(encrypt)
+        ],
+    )?;
+    let seq = conn.last_insert_rowid();
+    let written = write_formats(conn, cx.blobs, item.id, formats, key.filter(|_| encrypt))?;
+    write_tags(conn, id, &item.tags)?;
+    fts::index(conn, cx.blobs, seq, &item.title, item.sensitive, formats)?;
+    // A plaintext blob `put` for this sensitive item was sealed: scrub it.
+    let consumed_plaintext = item.sensitive && !written.consumed.is_empty();
+    cx.post.written(written, Vec::new(), consumed_plaintext);
+    Ok(())
+}
+
+pub(crate) fn update_item(cx: &mut Ctx<'_>, item: &Item, formats: Option<&Formats>) -> Result<()> {
+    check_item(item)?;
+    let (created, updated) = (nanos(item.created_at)?, nanos(item.updated_at)?);
+    let (conn, key) = (cx.conn, cx.key);
+    require_item(conn, item.id)?;
+    require_tags(conn, &item.tags)?;
+    let (id, list) = (id_bytes(item.id), id_bytes(item.list_id));
+    let before: Before = conn.query_row(
+        "SELECT seq, list_id, title, sensitive, encrypted FROM items WHERE id = ?1",
+        [id],
+        |r| {
+            Ok(Before {
+                seq: r.get(0)?,
+                list: r.get(1)?,
+                title: r.get(2)?,
+                sensitive: r.get(3)?,
+                encrypted: r.get(4)?,
+            })
+        },
+    )?;
+    if key.is_none() {
+        refuse_while_locked(conn, item, &before, formats.is_some())?;
+    }
+    // Whether the content is encrypted once this call is done.
+    let encrypted = match formats {
+        Some(_) => item.sensitive && key.is_some(),
+        None => item.sensitive && (before.encrypted || key.is_some()),
+    };
+
+    if before.list != list {
+        // A new parent: the item goes to the end of it.
+        require_list(conn, item.list_id)?;
+        let rank = rank::place(conn, ITEMS, Some(list), Placement::Last, Some(id))?;
+        conn.execute(
+            "UPDATE items SET list_id = ?2, rank = ?3 WHERE id = ?1",
+            params![id, list, rank],
+        )?;
+    }
+    // `use_count` and `last_used_at` belong to `record_use`: an editor holding an item
+    // loaded before a use must not roll the count back (review L12).
+    conn.execute(
+        "UPDATE items SET title = ?2, kind = ?3, preview = ?4, pinned = ?5, sensitive = ?6,
+                always_plain = ?7, source_app = ?8, created_at = ?9, updated_at = ?10,
+                encrypted = ?11
+         WHERE id = ?1",
+        params![
+            id,
+            item.title,
+            item.kind.key(),
+            item.preview,
+            flag(item.pinned),
+            flag(item.sensitive),
+            flag(item.always_plain),
+            item.source_app,
+            created,
+            updated,
+            flag(encrypted)
+        ],
+    )?;
+    write_tags(conn, id, &item.tags)?;
+
+    let seal = key.filter(|_| encrypted);
+    let mut old = Vec::new();
+    let mut written = Written::default();
+    if let Some(formats) = formats {
+        old = blob_hashes(conn, id)?;
+        written = write_formats(conn, cx.blobs, item.id, formats, seal)?;
+        fts::index(
+            conn,
+            cx.blobs,
+            before.seq,
+            &item.title,
+            item.sensitive,
+            formats,
+        )?;
+    } else if encrypted != before.encrypted {
+        // Marked sensitive (encrypt what is stored) or cleared (decrypt it first).
+        let stored = load_formats(conn, id)?;
+        let plain = match (before.encrypted, key) {
+            (false, _) => stored,
+            (true, Some(key)) => decrypt_formats(cx.blobs, key, item.id, &stored)?,
+            (true, None) => return Err(Error::EncryptionLocked),
+        };
+        // The blobs this consumes or reuses are the item's own (in `old`), not from a
+        // `put`, so they do not count as attached.
+        old = blob_hashes(conn, id)?;
+        write_formats(conn, cx.blobs, item.id, &plain, seal)?;
+        fts::index(
+            conn,
+            cx.blobs,
+            before.seq,
+            &item.title,
+            item.sensitive,
+            &plain,
+        )?;
+    } else if before.sensitive != item.sensitive {
+        fts::reindex(conn, cx.blobs, id)?;
+    } else if before.title != item.title {
+        // Metadata only: never re-read the content (review L11).
+        fts::retitle(conn, before.seq, &item.title)?;
+    }
+    let cleared_plaintext =
+        item.sensitive && (formats.is_some() || !before.sensitive || encrypted != before.encrypted);
+    cx.post.written(written, old, cleared_plaintext);
+    Ok(())
+}
+
+pub(crate) fn move_item(
+    cx: &mut Ctx<'_>,
+    id: ItemId,
+    list: ListId,
+    at: Placement<ItemId>,
+) -> Result<()> {
+    let conn = cx.conn;
+    require_item(conn, id)?;
+    require_list(conn, list)?;
+    let (bytes, list_bytes) = (id_bytes(id), id_bytes(list));
+    let rank = rank::place(
+        conn,
+        ITEMS,
+        Some(list_bytes),
+        raw_placement(at),
+        Some(bytes),
+    )?;
+    conn.execute(
+        "UPDATE items SET list_id = ?2, rank = ?3 WHERE id = ?1",
+        params![bytes, list_bytes, rank],
+    )?;
+    Ok(())
+}
+
+pub(crate) fn record_use(cx: &mut Ctx<'_>, id: ItemId, at: Timestamp) -> Result<()> {
+    let at = nanos(at)?;
+    let conn = cx.conn;
+    require_item(conn, id)?;
+    conn.execute(
+        "UPDATE items SET use_count = MIN(use_count + 1, 4294967295), last_used_at = ?2
+         WHERE id = ?1",
+        params![id_bytes(id), at],
+    )?;
+    Ok(())
+}
+
+pub(crate) fn search(conn: &Connection, query: &str, limit: usize) -> Result<Vec<ItemId>> {
+    let Some(expression) = fts::match_expression(query) else {
+        return Ok(Vec::new());
+    };
+    let limit = i64::try_from(limit).unwrap_or(i64::MAX);
+    let mut stmt = conn.prepare_cached(&format!(
+        "SELECT i.id FROM item_fts JOIN items i ON i.seq = item_fts.rowid {JOIN_LIVE}
+         WHERE item_fts MATCH ?1 AND {WHERE_LIVE}
+         ORDER BY bm25(item_fts, 10.0, 1.0), i.seq
+         LIMIT ?2"
+    ))?;
+    let ids = stmt.query_map(params![expression, limit], |r| r.get::<_, Vec<u8>>(0))?;
+    ids.map(|id| id_from(&id?)).collect()
 }

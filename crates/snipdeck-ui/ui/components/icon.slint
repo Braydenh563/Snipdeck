@@ -1,0 +1,10 @@
+// A Phosphor glyph tinted with a theme colour. Decorative by default (hidden from accessibility);
+// the control that contains it carries the accessible label.
+export component Icon inherits Image {
+    in property <length> size: 16px;
+    in property <color> tint;
+    width: root.size;
+    height: root.size;
+    colorize: root.tint;
+    image-fit: contain;
+}

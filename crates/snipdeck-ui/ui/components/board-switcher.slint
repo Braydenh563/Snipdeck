@@ -1,0 +1,88 @@
+import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+// DESIGN.md §4 BoardSwitcher: a button-like control showing the board name and a caret. It only
+// asks for the menu (`menu-requested`); the app owns the Menu and positions it under this control.
+export component BoardSwitcher inherits Rectangle {
+    in property <string> board-name;
+    // True while the app's menu is open (pressed look, `accessible-expanded`).
+    in property <bool> menu-open: false;
+    // Spoken label; defaults to the board name. The app translates e.g. "Board: Work".
+    in property <string> a11y-label;
+    out property <bool> has-focus: scope.has-focus;
+    callback menu-requested();
+
+    property <bool> hovered: touch.has-hover;
+
+    min-width: Space.hit;
+    height: max(Space.hit, Type.line-base + Space.s2);
+    background: touch.pressed || root.menu-open ? Theme.bg-sunken : root.hovered ? Theme.bg-hover : transparent;
+    border-radius: Radius.md;
+    border-width: Theme.hc-border != transparent ? 1px : 0px;
+    border-color: Theme.hc-border;
+    forward-focus: scope;
+    accessible-role: button;
+    accessible-label: root.a11y-label != "" ? root.a11y-label : root.board-name;
+    accessible-expandable: true;
+    accessible-expanded: root.menu-open;
+    accessible-action-default => {
+        root.menu-requested();
+    }
+
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    HorizontalLayout {
+        padding-left: Space.s2;
+        padding-right: Space.s2;
+        spacing: Space.s1;
+        Text {
+            text: root.board-name;
+            font-family: Fonts.sans;
+            font-size: Type.md;
+            font-weight: Type.medium;
+            color: Theme.text-primary;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        Rectangle {
+            width: Space.s4 * SystemLook.text-scale;
+            Icon {
+                source: Icons.caret-down;
+                tint: Theme.text-secondary;
+                size: Space.s3 * SystemLook.text-scale;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+    }
+
+    // 2px ring, 2px offset (DESIGN.md §2), keyboard focus only.
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.md + 2px;
+        background: transparent;
+    }
+
+    touch := TouchArea {
+        clicked => {
+            root.menu-requested();
+        }
+    }
+
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == Key.Return || event.text == " " || event.text == Key.DownArrow) {
+                root.menu-requested();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}

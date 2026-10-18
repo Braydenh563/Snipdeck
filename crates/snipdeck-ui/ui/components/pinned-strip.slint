@@ -1,0 +1,173 @@
+import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+export struct PinnedItem {
+    title: string,
+}
+
+// One tag-style chip. 24px tall (the minimum hit target); the title elides at `max-w`.
+component PinnedChip inherits Rectangle {
+    in property <string> title;
+    in property <length> max-w;
+    callback use();
+    callback copy();
+    callback context-menu-requested(length, length);
+    // Keyboard focus arrived: the chip's x and width inside the row, so the strip can scroll it into view.
+    callback focus-arrived(length, length);
+
+    property <bool> focused: scope.has-focus;
+    property <length> icon-size: Space.s3 * SystemLook.text-scale;
+    property <length> natural-w: Space.s2 + root.icon-size + Space.s1 + m-title.preferred-width + Space.s2;
+
+    width: min(root.natural-w, root.max-w);
+    height: max(Space.hit-min, Type.line-sm + Space.s2);
+    background: touch.pressed ? Theme.bg-sunken : touch.has-hover ? Theme.bg-hover : Theme.bg-surface;
+    border-width: 1px;
+    border-color: Theme.border-subtle;
+    border-radius: Radius.sm;
+    forward-focus: scope;
+    accessible-role: button;
+    accessible-label: root.title;
+    accessible-action-default => {
+        root.use();
+    }
+
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    changed focused => {
+        if (root.focused) {
+            root.focus-arrived(root.x, root.width);
+        }
+    }
+
+    m-title := Text {
+        visible: false;
+        text: root.title;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+    }
+
+    Icon {
+        source: Icons.push-pin;
+        tint: Theme.text-tertiary;
+        size: root.icon-size;
+        x: Space.s2;
+        y: (parent.height - self.height) / 2;
+    }
+    Text {
+        x: Space.s2 + root.icon-size + Space.s1;
+        width: max(0px, parent.width - self.x - Space.s2);
+        height: parent.height;
+        text: root.title;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        color: Theme.text-primary;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    // 2px ring, 2px offset (DESIGN.md §2), keyboard focus only.
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.sm + 2px;
+        background: transparent;
+    }
+
+    touch := TouchArea {
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.up) {
+                if (event.button == PointerEventButton.left) {
+                    if (touch.mouse-x >= 0 && touch.mouse-x <= touch.width && touch.mouse-y >= 0 && touch.mouse-y <= touch.height) {
+                        if (event.modifiers.shift) {
+                            root.copy();
+                        } else {
+                            root.use();
+                        }
+                    }
+                } else if (event.button == PointerEventButton.right) {
+                    root.context-menu-requested(touch.mouse-x, touch.mouse-y);
+                }
+            }
+        }
+    }
+
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == Key.Return || event.text == " ") {
+                if (event.modifiers.shift) {
+                    root.copy();
+                } else {
+                    root.use();
+                }
+                return accept;
+            }
+            if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
+                root.context-menu-requested(0px, root.height);
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
+// DESIGN.md §4 PinnedStrip: pinned items as small chips in one horizontally scrolling row.
+// Click uses the item (Shift+click copies). When the chips do not fit, the row scrolls (wheel,
+// drag, or by moving keyboard focus from chip to chip).
+export component PinnedStrip inherits Rectangle {
+    in property <[PinnedItem]> items;
+    callback use(int);
+    callback copy(int);
+    callback context-menu-requested(int, length, length);
+
+    // Chips elide beyond this width.
+    property <length> chip-max-w: Type.base * 12;
+    // Room for the focus ring above and below the 24px chips.
+    property <length> ring: Space.s1;
+
+    // How far the row is scrolled to the left, for tests and for the app to show scroll hints.
+    out property <length> scroll-x: -flick.content-x;
+
+    height: max(Space.hit-min, Type.line-sm + Space.s2) + 2 * root.ring;
+    clip: true;
+
+    flick := Flickable {
+        content-width: max(self.width, row.preferred-width + 2 * Space.s1);
+        content-height: self.height;
+
+        row := HorizontalLayout {
+            x: Space.s1;
+            y: root.ring;
+            height: max(Space.hit-min, Type.line-sm + Space.s2);
+            spacing: Space.s1;
+            alignment: start;
+            for item[i] in root.items: PinnedChip {
+                title: item.title;
+                max-w: root.chip-max-w;
+                use => {
+                    root.use(i);
+                }
+                copy => {
+                    root.copy(i);
+                }
+                context-menu-requested(x, y) => {
+                    root.context-menu-requested(i, x, y);
+                }
+                focus-arrived(x, w) => {
+                    // Keep the focused chip fully inside the strip, with the row's 4px margin.
+                    if (x + Space.s1 + flick.content-x < 0) {
+                        flick.content-x = -(x + Space.s1) + Space.s1;
+                    } else if (x + w + 2 * Space.s1 + flick.content-x > flick.width) {
+                        flick.content-x = flick.width - (x + w + 2 * Space.s1);
+                    }
+                }
+            }
+        }
+    }
+}

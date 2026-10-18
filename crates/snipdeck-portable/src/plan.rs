@@ -3,27 +3,27 @@
 //! Each source (archive, folder, Ditto, `CopyQ`) first turns its input into a `Plan`, doing all
 //! validation on the way. [`apply`] then writes it. Everything that can be checked without
 //! touching the library is checked before `apply` starts, so failures after that point are
-//! I/O or database errors, and those are undone by [`rollback`].
+//! I/O or database errors.
 //!
 //! # Atomicity
 //!
-//! The store API cannot hold one transaction across calls, so `apply` is atomic by
-//! compensation: it records every board and tag it creates and, on any error, removes them
-//! again. Everything an import adds lives inside boards it created, so deleting those boards
-//! removes it all, and tags are removed individually. Existing records are never modified. The
-//! boards are removed through the trash and purge with a marker timestamp (the oldest instant
-//! storage can hold) so that purging cannot touch anything the user trashed. Blobs written but
-//! not yet attached are left for `Store::gc_blobs`. A crash (not an error) in the middle leaves
-//! a partial board of new items, never a modified existing one.
+//! `apply` writes the whole plan inside one store transaction
+//! ([`Library::atomically`], [`snipdeck_store::Store::transaction`]): the boards, lists, items,
+//! tags and blob files it adds all commit together or not at all. On any error, or a panic,
+//! the database is as it was and the blob files the import created are deleted; existing
+//! records are never modified. A crash in the middle leaves no partial board, only
+//! unreferenced blob files that `Store::gc_blobs` removes.
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use snipdeck_core::{
-    BlobRef, Board, BoardId, Content, FileEntry, Format, FormatKind, Formats, Item, ItemId,
-    ItemKind, List, ListAccent, ListSort, ListView, Name, Placement, Tag, TagId, Timestamp,
+    BlobRef, Board, Content, FileEntry, Format, FormatKind, Formats, Item, ItemId, ItemKind, List,
+    ListAccent, ListSort, ListView, Name, Placement, Tag, TagId, Timestamp,
 };
 use snipdeck_store::crypto::{DataKey, Slot};
-use snipdeck_store::{BlobStore, BoardRepo, ItemRepo, ListRepo, TagRepo, TrashRepo, Trashable};
+use snipdeck_store::{
+    Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, TagRepo, TrashRepo, name_key,
+};
 
 use crate::error::{Error, Result};
 use crate::report::ImportReport;
@@ -33,11 +33,24 @@ pub trait Library: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + BlobS
     /// The library's data key while it is unlocked, for [`KeySource::Library`](crate::KeySource)
     /// and for callers that pass it to an export. `None` if the library has no key or is locked.
     fn data_key(&self) -> Option<&DataKey>;
+
+    /// Runs `f` as one atomic unit: everything it writes through the [`Batch`] commits
+    /// together when `f` returns `Ok`, and none of it (blob files included) remains if it
+    /// returns `Err` or panics. See [`snipdeck_store::Batch`].
+    ///
+    /// # Errors
+    ///
+    /// What `f` returns, or a storage error if the transaction cannot start or commit.
+    fn atomically<T>(&mut self, f: impl FnOnce(&mut Batch<'_>) -> Result<T>) -> Result<T>;
 }
 
 impl Library for snipdeck_store::Store {
     fn data_key(&self) -> Option<&DataKey> {
         snipdeck_store::Store::data_key(self)
+    }
+
+    fn atomically<T>(&mut self, f: impl FnOnce(&mut Batch<'_>) -> Result<T>) -> Result<T> {
+        self.transaction(f)
     }
 }
 
@@ -236,11 +249,19 @@ fn content_parts(content: &Content) -> ([u8; 32], u64) {
     }
 }
 
-/// The content hashes of every live item in `lib`, for skipping duplicates.
+/// The content hashes of every live item in `lib` that can be read, for skipping duplicates
+/// (encrypted items are left out while the library is locked).
 pub(crate) fn existing_hashes<L: Library>(lib: &L) -> Result<HashSet<[u8; 32]>> {
     let mut known = HashSet::new();
     for item in lib.all_items()? {
-        let formats = lib.formats(item.id)?;
+        let formats = match lib.formats(item.id) {
+            Ok(formats) => formats,
+            // An encrypted item cannot be read while the library is locked. Skipping it only
+            // means a duplicate of it is not recognised; refusing would stop a restore of the
+            // public items into a locked library.
+            Err(snipdeck_store::Error::EncryptionLocked) => continue,
+            Err(e) => return Err(e.into()),
+        };
         let mut hasher = ContentHasher::new();
         for format in &formats {
             match format {
@@ -275,46 +296,35 @@ fn preview_text(bytes: &[u8]) -> &str {
     }
 }
 
-/// What `apply` has created so far, for [`rollback`].
-#[derive(Default)]
-struct Created {
-    boards: Vec<(BoardId, String)>,
-    tags: Vec<TagId>,
-}
-
-/// Writes `plan` into `lib`. On any error everything it added is removed again (see the module
-/// docs) and the error is returned; on success the report counts what was added.
+/// Writes `plan` into `lib` in one transaction (see the module docs). On any error nothing is
+/// added and the error is returned; on success the report counts what was added.
 pub(crate) fn apply<L: Library>(
     lib: &mut L,
     plan: &Plan,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
     mut report: ImportReport,
+    max_boards: Option<usize>,
 ) -> Result<ImportReport> {
-    let mut created = Created::default();
-    match write(lib, plan, fetch, &mut created, &mut report) {
-        Ok(()) => Ok(report),
-        Err(cause) => match rollback(lib, &created) {
-            Ok(()) => Err(cause),
-            Err(cleanup) => Err(Error::RollbackFailed {
-                cause: Box::new(cause),
-                cleanup: Box::new(cleanup),
-                board: created
-                    .boards
-                    .first()
-                    .map(|(_, name)| name.clone())
-                    .unwrap_or_default(),
-            }),
-        },
-    }
+    lib.atomically(|batch| write(batch, plan, fetch, &mut report, max_boards))?;
+    Ok(report)
 }
 
-fn write<L: Library>(
-    lib: &mut L,
+fn write(
+    lib: &mut Batch<'_>,
     plan: &Plan,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
-    created: &mut Created,
     report: &mut ImportReport,
+    max_boards: Option<usize>,
 ) -> Result<()> {
+    // Counted here, inside the transaction, so nothing can slip in between check and write.
+    if let Some(max) = max_boards
+        && !plan.boards.is_empty()
+        && lib.boards()?.len() + plan.boards.len() > max
+    {
+        return Err(
+            snipdeck_core::Error::ProRequired(snipdeck_core::Feature::UnlimitedBoards).into(),
+        );
+    }
     // Only tags that a kept item uses are created; existing tags are reused by name.
     let used: HashSet<usize> = plan
         .boards
@@ -326,7 +336,7 @@ fn write<L: Library>(
     let mut by_key: HashMap<String, TagId> = lib
         .tags()?
         .into_iter()
-        .map(|t| (t.name.as_str().to_lowercase(), t.id))
+        .map(|t| (name_key(t.name.as_str()), t.id))
         .collect();
     let mut tag_ids: HashMap<usize, TagId> = HashMap::new();
     for (index, name) in plan
@@ -335,13 +345,12 @@ fn write<L: Library>(
         .enumerate()
         .filter(|(i, _)| used.contains(i))
     {
-        let key = name.as_str().to_lowercase();
+        let key = name_key(name.as_str());
         let id = if let Some(id) = by_key.get(&key) {
             *id
         } else {
             let tag = Tag::new(name.clone());
             lib.insert_tag(&tag)?;
-            created.tags.push(tag.id);
             by_key.insert(key, tag.id);
             report.tags_added += 1;
             tag.id
@@ -353,7 +362,6 @@ fn write<L: Library>(
         let mut board = Board::new(plan_board.name.clone(), plan_board.created_at);
         board.updated_at = plan_board.updated_at;
         lib.insert_board(&board, Placement::Last)?;
-        created.boards.push((board.id, board.name.to_string()));
         report.boards_added += 1;
         report.boards.push(board.id);
 
@@ -376,8 +384,8 @@ fn write<L: Library>(
     Ok(())
 }
 
-fn build_item<L: Library>(
-    lib: &mut L,
+fn build_item(
+    lib: &mut Batch<'_>,
     plan: &PlanItem,
     list: snipdeck_core::ListId,
     tag_ids: &HashMap<usize, TagId>,
@@ -408,7 +416,7 @@ fn build_item<L: Library>(
                 if *kind == FormatKind::Text && plan.preview.is_none() {
                     item.preview = Item::preview_of(preview_text(&bytes), plan.sensitive);
                 }
-                let content = lib.put(bytes)?;
+                let content = put(lib, bytes, plan.sensitive)?;
                 formats.push(match kind {
                     FormatKind::Text => Format::Text(content),
                     FormatKind::Html => Format::Html(content),
@@ -425,7 +433,7 @@ fn build_item<L: Library>(
             PlanFormat::Files(files) => {
                 let mut entries = Vec::with_capacity(files.len());
                 for file in files {
-                    let content = lib.put(resolve(&file.source, fetch)?)?;
+                    let content = put(lib, resolve(&file.source, fetch)?, plan.sensitive)?;
                     entries.push(FileEntry::new(&file.name, content)?);
                 }
                 formats.push(Format::Files(entries));
@@ -433,6 +441,17 @@ fn build_item<L: Library>(
         }
     }
     Ok((item, Formats::new(formats)?))
+}
+
+/// Stores a payload of an imported item. Sensitive payloads are held in memory until the item
+/// is written (encrypted there when the library has a key): `put` would write the plaintext
+/// to the blob folder first, and a rollback would leave it on the disk.
+fn put(lib: &mut Batch<'_>, bytes: Vec<u8>, sensitive: bool) -> Result<Content> {
+    Ok(if sensitive {
+        lib.put_sensitive(bytes)?
+    } else {
+        lib.put(bytes)?
+    })
 }
 
 fn resolve(
@@ -445,44 +464,12 @@ fn resolve(
     }
 }
 
-/// The oldest instant storage can hold; nothing else is ever trashed at it.
-fn marker() -> Timestamp {
-    Timestamp::from_nanosecond(i128::from(i64::MIN) + 1).unwrap_or(Timestamp::MIN)
-}
-
-/// Removes what [`apply`] created: the boards (with their lists and items) through trash and
-/// purge at the marker instant, then the tags.
-fn rollback<L: Library>(
-    lib: &mut L,
-    created: &Created,
-) -> core::result::Result<(), snipdeck_store::Error> {
-    use snipdeck_store::Error as StoreError;
-
-    let ignore_missing = |result: core::result::Result<(), StoreError>| match result {
-        Err(StoreError::NotFound { .. }) => Ok(()),
-        other => other,
-    };
-    let at = marker();
-    for (board, _) in &created.boards {
-        ignore_missing(lib.trash(Trashable::Board(*board), at))?;
-    }
-    if !created.boards.is_empty() {
-        // Purges records trashed strictly before the cutoff: exactly those at the marker.
-        let cutoff = Timestamp::from_nanosecond(at.as_nanosecond() + 1).unwrap_or(at);
-        lib.purge(cutoff)?;
-    }
-    for tag in &created.tags {
-        ignore_missing(lib.delete_tag(*tag))?;
-    }
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
 
     use snipdeck_core::Inline;
-    use snipdeck_store::Store;
+    use snipdeck_store::{Store, Trashable};
 
     use super::*;
 
@@ -581,7 +568,14 @@ mod tests {
     fn apply_writes_everything_and_reuses_existing_tags() {
         let mut s = library();
         let mut fetch = |_: &AssetRef| Ok(b"big".to_vec());
-        let report = apply(&mut s, &two_boards(), &mut fetch, ImportReport::default()).unwrap();
+        let report = apply(
+            &mut s,
+            &two_boards(),
+            &mut fetch,
+            ImportReport::default(),
+            None,
+        )
+        .unwrap();
         assert_eq!(
             (
                 report.boards_added,
@@ -613,14 +607,43 @@ mod tests {
                     Ok(vec![u8::try_from(calls).unwrap(); 100_000])
                 }
             };
-            let err =
-                apply(&mut s, &two_boards(), &mut fetch, ImportReport::default()).unwrap_err();
+            let err = apply(
+                &mut s,
+                &two_boards(),
+                &mut fetch,
+                ImportReport::default(),
+                None,
+            )
+            .unwrap_err();
             assert!(matches!(err, Error::Malformed { .. }), "{err}");
             assert_eq!(state(&s), before, "failing at fetch {fail_at}");
             assert_eq!(s.check_integrity().unwrap(), Vec::<String>::new());
-            // Blobs written before the failure are unreferenced; the sweep removes them.
-            s.gc_blobs(Duration::ZERO).unwrap();
+            // The transaction removed the blob files it had written: nothing for a sweep.
+            assert_eq!(s.gc_blobs(Duration::ZERO).unwrap().blobs, 0);
         }
+    }
+
+    /// Security review 2, finding 5: names the store treats as one tag are one tag here.
+    #[test]
+    fn tags_clash_by_the_stores_key_not_by_lower_casing() {
+        let mut s = library();
+        s.insert_tag(&Tag::new(name("\u{c9}cole"))).unwrap();
+        let mut list = PlanList::new(name("L"), at(1));
+        list.items = vec![item("t", Source::Bytes(b"t".to_vec()), &[0, 1, 2])];
+        let plan = Plan {
+            tags: vec![name("Straße"), name("STRASSE"), name("e\u{301}cole")],
+            boards: vec![PlanBoard {
+                name: name("B"),
+                created_at: at(1),
+                updated_at: at(1),
+                lists: vec![list],
+            }],
+        };
+        let mut fetch = |_: &AssetRef| Ok(Vec::new());
+        let report = apply(&mut s, &plan, &mut fetch, ImportReport::default(), None).unwrap();
+        assert_eq!(report.tags_added, 1);
+        assert_eq!(s.tags().unwrap().len(), 3);
+        assert_eq!(s.check_integrity().unwrap(), Vec::<String>::new());
     }
 
     #[test]
@@ -629,7 +652,14 @@ mod tests {
         let before = state(&s);
         assert_eq!(before.4.len(), 1);
         let mut fetch = |_: &AssetRef| Err(Error::malformed("test", "boom"));
-        apply(&mut s, &two_boards(), &mut fetch, ImportReport::default()).unwrap_err();
+        apply(
+            &mut s,
+            &two_boards(),
+            &mut fetch,
+            ImportReport::default(),
+            None,
+        )
+        .unwrap_err();
         assert_eq!(state(&s).4, before.4);
     }
 

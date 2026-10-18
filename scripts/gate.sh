@@ -79,6 +79,7 @@ fi
 [ "$MODE_FULL" = 1 ] && step full-suite bash -c "$(declare -f all_tests); all_tests"
 
 if [ -f scripts/codemap.py ]; then step codemap python3 scripts/codemap.py --check; fi
+if [ -f scripts/i18n.py ]; then step i18n python3 scripts/i18n.py check; fi
 echo "ran: ${ran[*]:-none}"
 echo "failed: ${failed[*]:-none}"
 echo "skipped: ${skipped[*]:-none}"

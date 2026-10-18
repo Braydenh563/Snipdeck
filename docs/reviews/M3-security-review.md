@@ -1,0 +1,11 @@
+# Security review 2 (Opus). Fix in order; tests first (disk-scan / hostile-input tests).
+1 HIGH portable/src/plan.rs:398,415: import writes sensitive item plaintext via lib.put (blob folder) and rollback deletes unscrubbed. Fix: build_item uses lib.put_sensitive(bytes) when plan.sensitive; Blobs::rewind (store/blobs.rs:151) scrubs too. Test: >64KiB sensitive payload, scan disk (hard link trick) on success and rollback.
+2 MED portable/src/archive.rs:93-125 declared_entry_count trusts last PK\5\6 signature (decoy in zip comment bypasses duplicate-name and entry-count checks). Fix: only accept record ending exactly at EOF (pos+22+comment_len==tail.len()), reject multiple signatures, use zip crate's window (65562).
+3 MED portable/src/importers/ditto.rs:166-221,295-376: Ditto file of SQL views can import hundreds of MB / exhaust memory/disk. Fix: require sqlite_master.type='table' for Main and Data; SQLITE_LIMIT_LENGTH ~2*TEXT_LIMIT+4; temp_store=MEMORY + heap limit; enforce memory budget while reading rows; replace the 5MB 'x' marker with a flag.
+4 MED portable backup::restore (backup.rs:183-189) -> existing_hashes (plan.rs:251-254) -> formats() fails EncryptionLocked when library locked and holds any encrypted item. Fix: skip encrypted items while locked (or per-item content hash).
+5 LOW tag matching uses to_lowercase (plan.rs:315-336, import.rs:489-491, copyq.rs:272-276) but store uses folding+normalisation (store/tags.rs:22-25,116-127) -> TagExists aborts import. Fix: export store name_key and use everywhere.
+6 LOW importers/folder.rs:220-252: 5MB limit checked on raw bytes not decoded text (invalid bytes -> U+FFFD 3x; UTF-16 1.5x). Check text.len() after decoding; charge budget accordingly.
+7 LOW importers/copyq.rs:273-276: quadratic tag matching (20k tags 6.5s). Use map keyed by normalised name; cap tags per item and total.
+8 LOW import.rs:132-147: Free user can exceed board limit via keep-boards import. Refuse inside the transaction with ProRequired (test).
+9 LOW app/settings.rs:155-191: one bad element drops whole no_paste_apps list -> auto-paste into excluded apps. Parse element by element keeping valid strings; test with ["keepass.exe",5] and truncated file.
+Known gap (M5): sensitive clipboard auto-clear (SPEC 5.7) not implemented (pipeline.rs:149).

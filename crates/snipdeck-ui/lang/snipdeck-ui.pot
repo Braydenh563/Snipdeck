@@ -1,0 +1,219 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: snipdeck-ui\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: ui/panel.slint:556
+msgid "A list keeps related snippets together, like replies or addresses."
+msgstr ""
+
+#: ui/panel.slint:439
+msgid "Add list"
+msgstr ""
+
+#: ui/picker.slint:372
+msgid "All"
+msgstr ""
+
+#: ui/panel.slint:388
+msgid "Board: {}"
+msgstr ""
+
+#: ui/panel.slint:645
+msgid "Boards"
+msgstr ""
+
+#: ui/template_fill.slint:303
+msgid "Cancel"
+msgstr ""
+
+#: ui/panel.slint:422 ui/picker.slint:351
+msgid "Clear search"
+msgstr ""
+
+#: ui/picker.slint:488 ui/template_fill.slint:185
+msgid "Close"
+msgstr ""
+
+#: ui/panel.slint:407
+msgid "Close panel"
+msgstr ""
+
+#: ui/template_fill.slint:289
+msgid "Control Enter"
+msgstr ""
+
+#: ui/panel.slint:588 ui/panel.slint:603
+msgid "Copies to clipboard"
+msgstr ""
+
+#: ui/panel.slint:131 ui/panel.slint:623 ui/picker.slint:132 ui/picker.slint:478
+msgid "Copy"
+msgstr ""
+
+#: ui/picker.slint:451
+msgid "Copy something, then save it from the Panel."
+msgstr ""
+
+#: ui/panel.slint:558
+msgid "Copy something, then save it here from the clipboard."
+msgstr ""
+
+#: ui/panel.slint:618 ui/picker.slint:472
+msgid "Enter"
+msgstr ""
+
+#: ui/picker.slint:487
+msgid "Escape"
+msgstr ""
+
+#: ui/template_fill.slint:203
+msgid "Fields"
+msgstr ""
+
+#: ui/template_fill.slint:46 ui/template_fill.slint:166
+msgid "Fill in template"
+msgstr ""
+
+#: ui/panel.slint:505
+msgid "Hidden. Hold Space to reveal."
+msgstr ""
+
+#: ui/picker.slint:425
+msgid "Hidden. Open it in the Panel to reveal."
+msgstr ""
+
+#: ui/template_fill.slint:61
+msgid "Insert"
+msgstr ""
+
+#: ui/panel.slint:395
+msgid "Keep on top"
+msgstr ""
+
+#: ui/panel.slint:438
+msgid "Lists"
+msgstr ""
+
+#: ui/panel.slint:545
+msgid "Loading"
+msgstr ""
+
+#: ui/panel.slint:559
+msgid "New list"
+msgstr ""
+
+#: ui/panel.slint:554
+msgid "No lists yet"
+msgstr ""
+
+#: ui/panel.slint:555 ui/picker.slint:444
+msgid "No matches"
+msgstr ""
+
+#: ui/picker.slint:445
+msgid "No snippets yet"
+msgstr ""
+
+#: ui/picker.slint:447
+msgid "Nothing matches “{}”."
+msgstr ""
+
+#: ui/panel.slint:557 ui/picker.slint:448
+msgid "Nothing on this board matches “{}”."
+msgstr ""
+
+#: ui/picker.slint:449
+msgid "Nothing pinned matches “{}”."
+msgstr ""
+
+#: ui/picker.slint:445
+msgid "Nothing pinned yet"
+msgstr ""
+
+#: ui/gallery/i18n_probe.slint:9 ui/panel.slint:131 ui/picker.slint:132
+msgid "Paste"
+msgstr ""
+
+#: ui/panel.slint:587 ui/panel.slint:602
+msgid "Pastes into {}"
+msgstr ""
+
+#: ui/panel.slint:587 ui/panel.slint:602
+msgid "Pastes into {} · {}"
+msgstr ""
+
+#: ui/picker.slint:450
+msgid "Pin a snippet from the Panel to find it here."
+msgstr ""
+
+#: ui/picker.slint:382
+msgid "Pinned"
+msgstr ""
+
+#: ui/panel.slint:451
+msgid "Pinned snippets"
+msgstr ""
+
+#: ui/template_fill.slint:240 ui/template_fill.slint:255
+msgid "Preview"
+msgstr ""
+
+#: ui/template_fill.slint:209
+msgid "Required"
+msgstr ""
+
+#: ui/picker.slint:407
+msgid "Results"
+msgstr ""
+
+#: ui/panel.slint:559
+msgid "Save from clipboard"
+msgstr ""
+
+#: ui/picker.slint:483
+msgid "Scope"
+msgstr ""
+
+#: ui/picker.slint:349 ui/picker.slint:350
+msgid "Search all snippets"
+msgstr ""
+
+#: ui/picker.slint:363
+msgid "Search in"
+msgstr ""
+
+#: ui/panel.slint:420 ui/panel.slint:421
+msgid "Search snippets"
+msgstr ""
+
+#: ui/panel.slint:618 ui/picker.slint:477
+msgid "Shift Enter"
+msgstr ""
+
+#: ui/panel.slint:48 ui/picker.slint:70
+msgid "Snipdeck"
+msgstr ""
+
+#: ui/panel.slint:471
+msgid "Snippets"
+msgstr ""
+
+#: ui/picker.slint:482
+msgid "Tab"
+msgstr ""
+
+#: ui/picker.slint:377
+msgid "This board"
+msgstr ""
+
+#: ui/template_fill.slint:215
+msgid "This field is required"
+msgstr ""
+
+#: ui/panel.slint:555
+msgid "This list is empty"
+msgstr ""

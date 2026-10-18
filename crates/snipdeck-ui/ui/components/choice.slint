@@ -1,0 +1,311 @@
+import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Icon } from "icon.slint";
+import { StateColor } from "state-color.slint";
+import { Icons } from "../icons.slint";
+
+// DESIGN.md §4 Toggle / Checkbox / Radio. Each is a 24px-high row (the hit target) holding a
+// small control and an optional visible label; the whole row is clickable. Focus ring on keyboard
+// focus only. State is never colour alone: Toggle shows a check in the knob when on, Checkbox a
+// check or minus, Radio a centre dot.
+
+// Binary setting. On = accent track with the knob at the right and a check in it.
+export component Toggle inherits Rectangle {
+    in-out property <bool> checked: false;
+    // Visible label (optional); the accessible label falls back to it.
+    in property <string> text;
+    // Spoken label when there is no visible text.
+    in property <string> a11y-label;
+    in property <bool> enabled: true;
+    callback toggled(bool);
+
+    property <bool> pressed: touch.pressed && root.enabled;
+    property <bool> hovered: touch.has-hover && root.enabled;
+    property <length> track-w: 36px;
+    property <length> track-h: 20px;
+    property <length> knob: 14px;
+
+    height: max(Space.hit-min, Type.line-base + Space.s1);
+    min-width: root.track-w;
+    forward-focus: scope;
+    accessible-role: switch;
+    accessible-label: root.a11y-label != "" ? root.a11y-label : root.text;
+    accessible-checkable: true;
+    accessible-checked: root.checked;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.flip(); } }
+
+    function flip() {
+        root.checked = !root.checked;
+        root.toggled(root.checked);
+    }
+
+    HorizontalLayout {
+        spacing: Space.s2;
+        alignment: start;
+        Rectangle {
+            width: root.track-w;
+            Rectangle {
+                y: (parent.height - self.height) / 2;
+                width: parent.width;
+                height: root.track-h;
+                border-radius: Radius.lg;
+                background: root.checked
+                    ? (root.pressed ? Theme.accent-pressed : root.hovered ? Theme.accent-hover : Theme.accent)
+                    : (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : transparent);
+                border-width: 1px;
+                border-color: root.checked ? Theme.accent : Theme.border-strong;
+                opacity: root.enabled ? 1.0 : 0.45;
+                animate background { duration: Motion.instant; easing: Motion.out; }
+
+                Rectangle {
+                    x: root.checked ? parent.width - self.width - 3px : 3px;
+                    y: (parent.height - self.height) / 2;
+                    width: root.knob;
+                    height: root.knob;
+                    border-radius: Radius.lg;
+                    background: root.checked ? Theme.text-on-accent : Theme.border-strong;
+                    animate x { duration: Motion.quick; easing: Motion.out; }
+                    if root.checked: Icon {
+                        source: Icons.check;
+                        size: 10px;
+                        tint: Theme.accent;
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                    }
+                }
+            }
+        }
+        if root.text != "": Text {
+            text: root.text;
+            color: Theme.text-primary;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            vertical-alignment: center;
+            opacity: root.enabled ? 1.0 : 0.45;
+        }
+    }
+
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.md + 2px;
+        background: transparent;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.flip(); }
+    }
+
+    scope := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.flip();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
+// Setting with an optional third state. `mixed` (some children on) shows a minus; activating a
+// mixed box turns it fully on.
+export component Checkbox inherits Rectangle {
+    in-out property <bool> checked: false;
+    in-out property <bool> mixed: false;
+    in property <string> text;
+    in property <string> a11y-label;
+    // Spoken value while `mixed` ("Partially checked"); the host translates it.
+    in property <string> mixed-label;
+    in property <bool> enabled: true;
+    callback toggled(bool);
+
+    property <bool> pressed: touch.pressed && root.enabled;
+    property <bool> hovered: touch.has-hover && root.enabled;
+    property <bool> filled: root.checked || root.mixed;
+
+    height: max(Space.hit-min, Type.line-base + Space.s1);
+    min-width: Space.hit-min;
+    forward-focus: scope;
+    accessible-role: checkbox;
+    accessible-label: root.a11y-label != "" ? root.a11y-label : root.text;
+    accessible-checkable: true;
+    accessible-checked: root.checked && !root.mixed;
+    accessible-value: root.mixed ? root.mixed-label : "";
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.flip(); } }
+
+    function flip() {
+        if (root.mixed) {
+            root.mixed = false;
+            root.checked = true;
+        } else {
+            root.checked = !root.checked;
+        }
+        root.toggled(root.checked);
+    }
+
+    HorizontalLayout {
+        spacing: Space.s1;
+        alignment: start;
+        Rectangle {
+            width: Space.hit-min;
+            Rectangle {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                width: 16px;
+                height: 16px;
+                border-radius: Radius.sm;
+                background: root.filled
+                    ? (root.pressed ? Theme.accent-pressed : root.hovered ? Theme.accent-hover : Theme.accent)
+                    : (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : Theme.bg-surface);
+                border-width: 1px;
+                border-color: root.filled ? Theme.accent : Theme.border-strong;
+                opacity: root.enabled ? 1.0 : 0.45;
+                animate background { duration: Motion.instant; easing: Motion.out; }
+                if root.filled: Icon {
+                    source: root.mixed ? Icons.minus : Icons.check;
+                    size: 12px;
+                    tint: Theme.text-on-accent;
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                }
+            }
+        }
+        if root.text != "": Text {
+            text: root.text;
+            color: Theme.text-primary;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            vertical-alignment: center;
+            opacity: root.enabled ? 1.0 : 0.45;
+        }
+    }
+
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.md + 2px;
+        background: transparent;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.flip(); }
+    }
+
+    scope := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.flip();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
+// One choice of a group. The host owns the group: it sets `selected` on the chosen radio and
+// clears the others in `activated`. Activating an already selected radio does nothing.
+export component Radio inherits Rectangle {
+    in property <bool> selected: false;
+    in property <string> text;
+    in property <string> a11y-label;
+    in property <bool> enabled: true;
+    callback activated();
+
+    property <bool> pressed: touch.pressed && root.enabled;
+    property <bool> hovered: touch.has-hover && root.enabled;
+
+    height: max(Space.hit-min, Type.line-base + Space.s1);
+    min-width: Space.hit-min;
+    forward-focus: scope;
+    accessible-role: radio-button;
+    accessible-label: root.a11y-label != "" ? root.a11y-label : root.text;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.activate(); } }
+
+    function activate() {
+        if (!root.selected) {
+            root.activated();
+        }
+    }
+
+    HorizontalLayout {
+        spacing: Space.s1;
+        alignment: start;
+        Rectangle {
+            width: Space.hit-min;
+            Rectangle {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                width: 16px;
+                height: 16px;
+                border-radius: Radius.lg;
+                background: root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : Theme.bg-surface;
+                border-width: root.selected ? 2px : 1px;
+                border-color: root.selected ? Theme.accent : Theme.border-strong;
+                opacity: root.enabled ? 1.0 : 0.45;
+                animate background { duration: Motion.instant; easing: Motion.out; }
+                if root.selected: Rectangle {
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                    width: 8px;
+                    height: 8px;
+                    border-radius: Radius.sm;
+                    background: Theme.accent;
+                }
+            }
+        }
+        if root.text != "": Text {
+            text: root.text;
+            color: Theme.text-primary;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            vertical-alignment: center;
+            opacity: root.enabled ? 1.0 : 0.45;
+        }
+    }
+
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.md + 2px;
+        background: transparent;
+    }
+
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.activate(); }
+    }
+
+    scope := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.activate();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}

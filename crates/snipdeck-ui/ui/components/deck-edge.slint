@@ -1,0 +1,47 @@
+import { Theme, Space, Radius } from "../theme.slint";
+
+export enum DeckEdgePosition { top, bottom }
+
+// DESIGN.md §4/§5 DeckEdge: two offset card edges that signal more cards below (or above) the fold,
+// instead of a fade. The component is 10px tall; each edge is 4px tall in `bg-surface` with a
+// `border-subtle` outline, inset 6px and 12px per side. The edges round only their outer corners.
+// Decorative: not in the accessibility tree.
+export component DeckEdge inherits Rectangle {
+    in property <DeckEdgePosition> position: DeckEdgePosition.bottom;
+
+    property <bool> at-bottom: root.position == DeckEdgePosition.bottom;
+    property <length> edge-h: Space.s1;
+    property <length> inset-near: Space.s1 + Space.s0-5;
+    property <length> inset-far: Space.s3;
+
+    height: 10px;
+
+    // The edge behind (further out, narrower), drawn first.
+    Rectangle {
+        x: root.inset-far;
+        y: root.at-bottom ? parent.height - root.edge-h : 0px;
+        width: parent.width - 2 * root.inset-far;
+        height: root.edge-h;
+        background: Theme.bg-surface;
+        border-width: 1px;
+        border-color: Theme.border-subtle;
+        border-top-left-radius: root.at-bottom ? 0px : Radius.sm;
+        border-top-right-radius: root.at-bottom ? 0px : Radius.sm;
+        border-bottom-left-radius: root.at-bottom ? Radius.sm : 0px;
+        border-bottom-right-radius: root.at-bottom ? Radius.sm : 0px;
+    }
+    // The edge nearest the list.
+    Rectangle {
+        x: root.inset-near;
+        y: root.at-bottom ? 0px : parent.height - root.edge-h;
+        width: parent.width - 2 * root.inset-near;
+        height: root.edge-h;
+        background: Theme.bg-surface;
+        border-width: 1px;
+        border-color: Theme.border-subtle;
+        border-top-left-radius: root.at-bottom ? 0px : Radius.sm;
+        border-top-right-radius: root.at-bottom ? 0px : Radius.sm;
+        border-bottom-left-radius: root.at-bottom ? Radius.sm : 0px;
+        border-bottom-right-radius: root.at-bottom ? Radius.sm : 0px;
+    }
+}

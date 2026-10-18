@@ -1,0 +1,7 @@
+error: failed to run custom build command for `rusqlite v0.40.2`
+
+Caused by:
+  could not execute process `C:\Snipdeck\target\debug\build\libsqlite3-sys-1a2b3c\build-script-build` (never executed)
+
+Caused by:
+  Access is denied. (os error 5)

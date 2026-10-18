@@ -45,7 +45,6 @@ the Windows job compiles the workspace, and the SPEC's M1-relevant behaviours ea
 
 | Gap | Why it matters | Plan |
 |---|---|---|
-| Import is atomic only by compensation (trash at a marker, purge, delete new tags); a crash mid-import leaves a partial new board | The store API cannot hold one transaction across calls | Add a store transaction/batch API before the import UI ships (M4); until then the import report tells the user to delete the partial board |
 | CopyQ: the binary `.cpq` export is not parsed; JSON from `copyq eval` is, and is untested against a live CopyQ | Importer may not match real CopyQ output | Test with a real CopyQ install (Windows wizard step) or drop CopyQ from v1 |
 | Windows clipboard history importer not done | Listed in SPEC §5.9 | Needs the Windows platform layer (M2) |
 | `DataKey` is not `Clone`; portable uses `Library::data_key` / `KeySource::Library` | Awkward borrow | Revisit when the app crate owns the key lifecycle (M2/M5) |
@@ -56,7 +55,7 @@ the Windows job compiles the workspace, and the SPEC's M1-relevant behaviours ea
 
 | After | Owner action | Decides |
 |---|---|---|
-| M0 (pending) | Run S1, S2, S4 in the wizard (S1 first) | Slint stays, or the S1/S2 fallbacks in `docs/spikes/` |
+| M0 (S1 done: GO; S2 re-run pending, needs IMEs installed) | Re-run S2 with Japanese, Chinese, Korean keyboards; S4 W4-W7 | Slint stays, or the S2 fallback in `docs/spikes/` |
 | M2 | Run the platform steps | Paste, target detection, restore, hotkeys work on real apps |
 | M3 | Run the panel steps | Focus, IME in the real panel, DPI, Mica-or-solid choice |
 | M5 | Run capture/OCR steps | Snip overlay, OCR quality, history exclusion |

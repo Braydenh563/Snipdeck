@@ -1,0 +1,25 @@
+[package]
+name = "snipdeck-platform"
+description = "Snipdeck OS layer: clipboard, hotkeys, Target tracking and paste injection. Pure logic is portable; the Windows backend is gated by cfg(windows)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+snipdeck-core.workspace = true
+png.workspace = true
+thiserror.workspace = true
+zeroize.workspace = true
+
+[features]
+# Exposes `testing`: fakes for the clipboard, keyboard and clock.
+testing = []
+
+[target.'cfg(windows)'.dependencies]
+windows.workspace = true
+
+[lints]
+workspace = true

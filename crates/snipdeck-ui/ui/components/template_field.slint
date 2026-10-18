@@ -1,0 +1,223 @@
+import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+import { TextField, FieldError } from "text_field.slint";
+
+export enum TemplateFieldKind { text, choice, date, multiline }
+
+// DESIGN.md §4 TemplateField: one prompted placeholder of a template ({field:Name}, {choice:Name|a|b}) in the
+// fill-in form. A label row (the template glyph, the name, and the word for "required" when it is: never a
+// colour or an asterisk alone), then the control:
+//   text    a TextField
+//   multiline  a multi-line TextField (Enter adds a line)
+//   choice  a list of options, one selected (Up / Down / Home / End move; one tab stop)
+//   date    a TextField with a calendar glyph; `placeholder` carries the format hint ("YYYY-MM-DD"). Parsing,
+//           locale and validation belong to the caller, which reports problems through `error`.
+//
+// The root is a FocusScope so the choice list can take keyboard focus (`focus()`); `enabled` is its built-in property.
+export component TemplateField inherits FocusScope {
+    in property <string> label;
+    in property <TemplateFieldKind> kind: TemplateFieldKind.text;
+    in property <bool> required: false;
+    // The word shown next to the label when `required` ("Required").
+    in property <string> required-text;
+    // text and date.
+    in-out property <string> value;
+    // text: placeholder; date: format hint.
+    in property <string> placeholder;
+    // choice.
+    in property <[string]> choices;
+    in-out property <int> choice-index: -1;
+    in property <string> error;
+    // Forced visual states for galleries and screenshots.
+    in property <bool> show-focus: false;
+    // Counts up to ask for keyboard focus, as `TextField.focus-request`; the choice list takes it too.
+    in property <int> focus-request: 0;
+
+    // text / date: the user edited the value.
+    callback edited(value: string);
+    // Enter was pressed: in a single-line text or date field, or on the choice list (with the chosen option).
+    callback accepted(value: string);
+    // choice: the user picked option `index`.
+    callback chosen(index: int);
+
+    // Never set: an empty image.
+    property <image> no-icon;
+    property <bool> choice-focused: root.has-focus || root.show-focus;
+    property <string> full-label: root.label + (root.required ? ", " + root.required-text : "");
+    // One option row: 28px at 100%, and one text line plus padding when the text is larger.
+    property <length> row-h: max(Space.hit, Type.line-base + Space.s2);
+
+    focus-on-click: false;
+    changed focus-request => {
+        if (root.kind == TemplateFieldKind.choice && root.focus-request > 0) {
+            root.focus();
+        }
+    }
+    init => {
+        if (root.kind == TemplateFieldKind.choice && root.focus-request > 0) {
+            root.focus();
+        }
+    }
+    // Only the choice list is keyboard-operated here. For text and date the TextField inside is the Tab stop; this
+    // scope would otherwise be an invisible stop in front of it that takes the typing and does nothing.
+    focus-on-tab-navigation: root.kind == TemplateFieldKind.choice;
+
+    function choose(index: int) {
+        if (root.enabled && index >= 0 && index < root.choices.length && index != root.choice-index) {
+            root.choice-index = index;
+            root.chosen(index);
+        }
+    }
+
+    key-pressed(event) => {
+        if (root.kind != TemplateFieldKind.choice) {
+            return reject;
+        }
+        if (event.text == Key.Return && !event.modifiers.control) {
+            root.accepted(root.choice-index >= 0 && root.choice-index < root.choices.length ? root.choices[root.choice-index] : "");
+            return accept;
+        }
+        if (event.text == Key.DownArrow) {
+            root.choose(root.choice-index < 0 ? 0 : root.choice-index + 1);
+            return accept;
+        } else if (event.text == Key.UpArrow) {
+            root.choose(root.choice-index < 0 ? 0 : root.choice-index - 1);
+            return accept;
+        } else if (event.text == Key.Home) {
+            root.choose(0);
+            return accept;
+        } else if (event.text == Key.End) {
+            root.choose(root.choices.length - 1);
+            return accept;
+        }
+        return reject;
+    }
+
+    VerticalLayout {
+        spacing: Space.s1;
+        alignment: start;
+
+        HorizontalLayout {
+            spacing: Space.s1;
+            alignment: start;
+            Icon {
+                source: Icons.brackets-curly;
+                tint: Theme.accent-text;
+                y: (Type.line-sm - self.height) / 2;
+            }
+            Text {
+                text: root.label;
+                color: Theme.text-primary;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                font-weight: Type.medium;
+                vertical-alignment: center;
+                // A long label gives way before the "Required" word does.
+                overflow: elide;
+                min-width: 0px;
+                accessible-role: none;
+            }
+            if root.required: Text {
+                text: root.required-text;
+                color: Theme.text-secondary;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+
+        if root.kind != TemplateFieldKind.choice: TextField {
+            text <=> root.value;
+            label: root.full-label;
+            placeholder: root.placeholder;
+            error: root.error;
+            enabled: root.enabled;
+            leading-icon: root.kind == TemplateFieldKind.date ? Icons.calendar-blank : root.no-icon;
+            show-focus: root.show-focus;
+            single-line: root.kind != TemplateFieldKind.multiline;
+            focus-request: root.focus-request;
+            edited(v) => { root.edited(v); }
+            accepted(v) => { root.accepted(v); }
+        }
+
+        if root.kind == TemplateFieldKind.choice: Rectangle {
+            // Options, one per row; padding and border make up the rest of the height.
+            height: root.choices.length * root.row-h + 2 * Space.s0-5 + 2px;
+            background: !root.enabled ? Theme.bg-sunken : Theme.bg-surface;
+            border-radius: Radius.md;
+            border-width: 1px;
+            border-color: root.error != "" ? Theme.danger-fg
+                : root.choice-focused ? Theme.accent
+                : Theme.border-strong;
+            opacity: root.enabled ? 1.0 : 0.45;
+            accessible-role: radio-group;
+            accessible-label: root.full-label;
+            accessible-description: root.error;
+            accessible-enabled: root.enabled;
+            accessible-item-count: root.choices.length;
+
+            VerticalLayout {
+                padding: Space.s0-5;
+                alignment: start;
+                for option[i] in root.choices: Rectangle {
+                    height: root.row-h;
+                    border-radius: Radius.sm;
+                    background: i == root.choice-index ? Theme.bg-selected
+                        : (row-touch.has-hover && root.enabled) ? Theme.bg-hover : transparent;
+                    accessible-role: radio-button;
+                    accessible-label: option;
+                    accessible-checkable: true;
+                    accessible-checked: i == root.choice-index;
+                    accessible-enabled: root.enabled;
+                    accessible-item-index: i;
+                    accessible-item-count: root.choices.length;
+                    accessible-action-default => { root.choose(i); }
+                    animate background { duration: Motion.instant; easing: Motion.out; }
+
+                    HorizontalLayout {
+                        padding-left: Space.s2;
+                        padding-right: Space.s2;
+                        spacing: Space.s2;
+                        Text {
+                            horizontal-stretch: 1;
+                            text: option;
+                            color: i == root.choice-index ? Theme.text-on-selected : Theme.text-primary;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            font-weight: i == root.choice-index ? Type.medium : Type.regular;
+                            vertical-alignment: center;
+                            overflow: elide;
+                            accessible-role: none;
+                        }
+                        // The selected row also carries a check, not only a fill.
+                        if i == root.choice-index: Icon {
+                            source: Icons.check;
+                            tint: Theme.accent-on-selected;
+                            y: (parent.height - self.height) / 2;
+                        }
+                    }
+                    row-touch := TouchArea {
+                        enabled: root.enabled;
+                        clicked => { root.choose(i); }
+                    }
+                }
+            }
+
+            // 2px ring, 2px offset (DESIGN.md §2).
+            Rectangle {
+                x: -4px;
+                y: -4px;
+                width: parent.width + 8px;
+                height: parent.height + 8px;
+                border-width: root.choice-focused ? 2px : 0px;
+                border-color: Theme.focus-ring;
+                border-radius: Radius.md + 2px;
+                background: transparent;
+            }
+        }
+
+        if root.kind == TemplateFieldKind.choice && root.error != "": FieldError { text: root.error; }
+    }
+}

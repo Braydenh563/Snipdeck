@@ -8,6 +8,7 @@
 use rusqlite::{Connection, OptionalExtension};
 use snipdeck_core::{BlobRef, Content, ItemId};
 
+use crate::batch::Post;
 use crate::codec::{id_bytes, id_from};
 use crate::crypto::{DataKey, KeyRecord, KeyRing};
 use crate::items::{Written, load_formats, write_formats};
@@ -177,7 +178,9 @@ impl Store {
         tx.commit()?;
         self.key = Some(key);
         if encrypted > 0 {
-            self.after_write(Written::default(), old, true);
+            let mut post = Post::default();
+            post.written(Written::default(), old, true);
+            self.finish(post);
         }
         Ok(())
     }
