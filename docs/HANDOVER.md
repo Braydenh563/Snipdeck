@@ -61,6 +61,8 @@ Not verifiable here (stays unverified until the owner runs the wizard on Windows
   (dev window on fakes) or `-- --screenshot out.png [--dark]` (no display needed). Windows check from Linux needs a stand-in
   archiver for the C build scripts: `CC_x86_64_pc_windows_msvc=true AR_x86_64_pc_windows_msvc=<script that touches the output .lib>`.
   The `cfg(windows)` code type-checks and passes clippy for the Windows target; it has **never run** on Windows.
+- App shell (2026-10-18): `Controller::on_tray`, `set_system_look`, `update_settings`, `close`; `Binding::tray` / `system_look`;
+  `Host` has `tray`, `warnings`, `keep_alive` (was `guard`). Wizard: `tools/windows-test/tests/m3-app.json`.
 - Decisions: ADR-0008 (OS caption buttons on the main window, own chrome on the panel, Win32 tray in the platform crate).
   Default hotkeys: Ctrl+Alt+Space toggles the Panel (new, not in SPEC), Ctrl+Shift+Space Picker, Ctrl+Shift+2 capture, Ctrl+Alt+V paste next.
 - CI note: Slint pulls `fontique` -> `yeslogic-fontconfig-sys`; `snipdeck-ui` enables `i-slint-common/fontconfig-dlopen` so CI needs no
@@ -73,12 +75,21 @@ Not verifiable here (stays unverified until the owner runs the wizard on Windows
 2. Re-run S2 with IMEs installed before building text-entry UI (M3+); if composition is unusable, see the S2 NO-GO plan.
 3. Set the real `SNIPDECK_LICENCE_PUBLIC_KEY` in the M6 release pipeline (see `docs/licensing.md`).
 4. **`snipdeck-app` gaps** (the skeleton does not do these yet):
-   - Tray icon (Win32 tray in the platform crate, ADR-0008); without it the dev build quits when the Panel closes.
+   - ~~Tray icon~~ **done in code, unverified** (2026-10-18): `snipdeck_platform::tray` (trait, `TrayModel`, `FakeTray`) +
+     `windows/tray.rs` (hidden top-level window, `Shell_NotifyIconW` v4, `TaskbarCreated`, `TrackPopupMenu`); the controller
+     handles `TrayEvent`s and `close_to_tray` (Panel close hides when a tray icon exists, else quits; tray Quit exits).
+     Gaps: no first-time "hidden to tray" notice (needs a balloon), menu text is English, "Open Snipdeck" shows the Panel
+     until the main window exists, the exe has no icon resource (generic icon), the menu ignores dark mode.
    - Picker, quick capture and paste-next hotkeys are registered but only produce `Effect`s nobody handles.
    - Template fill form: `UseError::NeedsAnswers` is held as pending state plus a neutral toast; no form UI yet.
    - Search focus: the Panel needs a search-focus-changed callback so the controller can activate the window for typing and hand focus back to the Target (`begin_text_entry`).
    - Toast texts are English in `wording.rs`; move them to a translated Slint global (needs a `snipdeck-ui` change).
-   - Theme follows settings only (no OS dark-mode detection); no docking / saved position; settings are read, never written.
+   - ~~Theme follows settings only~~ **done in code, unverified**: `settings.theme` = system | light | dark, `system` follows
+     `AppsUseLightTheme` live (`windows/system_look.rs`), high contrast overrides and reaches the Slint `SystemLook` global
+     (the components only partly use the `hc-*` colours: a `snipdeck-ui` job). Reduced motion and text scale are not read yet.
+   - ~~settings are read, never written~~ **logic done**: `settings_store` writes atomically (temp + fsync + rename) after a
+     debounce on the injected clock; a damaged file is kept as `settings.json.bad`. No UI changes a setting yet, so no real
+     run writes the file; `Controller::update_settings` / `set_theme` are the entry points. No docking / saved position.
    - `{clipboard}` template text is `None`; time zone is UTC; licence is not wired (everyone is Free outside `--demo`).
    - Context menus, reveal-in-list, add list, undo.
    - Windows wiring (HWND attach, non-activating style, hotkeys, single instance, Target tracker) is unverified until the owner runs it; add a wizard step for the app.

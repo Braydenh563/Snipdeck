@@ -1,6 +1,6 @@
 //! The notification-area icon (`Shell_NotifyIconW`, `NOTIFYICON_VERSION_4`).
 //!
-//! [`WinTray`] owns a [`HiddenWindow`](super::hidden_window::HiddenWindow) on its own thread. The
+//! [`WinTray`] owns a hidden window (`hidden_window.rs`) on its own thread. The
 //! shell sends the icon's mouse and keyboard notifications to that window; the decisions about
 //! them (left click toggles the Panel, right click opens the menu, which entry means what) are
 //! in the portable [`TrayModel`], so this file only talks to Windows:

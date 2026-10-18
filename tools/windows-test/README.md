@@ -92,6 +92,15 @@ where no real Snipdeck is installed). Step 19 is `cargo test -p snipdeck-platfor
 hand at the repo root. No step is automated yet. Nothing here has run on Windows when it was written: the first
 run may find bugs in either the harness or the backend.
 
+## M3: the app shell
+
+`tests\m3-app.json` runs the real app (`cargo build --release` at the repo root, then `target\release\snipdeck-app.exe`
+on an empty library in `spikes-results\m3-data`) and checks the tray icon (add, tooltip, left click, right-click menu,
+Pause hotkeys, Quit, icon back after an Explorer restart), close to tray, following Windows dark mode and high contrast,
+the `theme` setting, and that a damaged `settings.json` is kept as `settings.json.bad`. Quick mode runs the nine gate
+steps. Writing settings has no step yet: nothing in the app changes a setting until the Settings window exists (M4).
+Nothing here has run on Windows.
+
 ## Where things are saved
 
 `spikes-results\current\` (git-ignored): `results.md` (full report), `paste-back.md` (what goes on the clipboard),

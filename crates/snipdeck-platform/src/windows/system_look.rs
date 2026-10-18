@@ -6,7 +6,7 @@
 //! - **High contrast:** `SystemParametersInfoW(SPI_GETHIGHCONTRAST)`; when on, the five system
 //!   colours the UI uses come from `GetSysColor`.
 //! - **Changes:** [`SystemLookWatcher`] owns a hidden top-level window (broadcasts do not reach
-//!   message-only windows, see [`hidden_window`](super::hidden_window)) and calls `on_change` on
+//!   message-only windows, see `hidden_window.rs`) and calls `on_change` on
 //!   its thread when a message that can change the look arrives (`WM_SETTINGCHANGE` with
 //!   `ImmersiveColorSet` or `SPI_SETHIGHCONTRAST`, `WM_THEMECHANGED`, `WM_SYSCOLORCHANGE`; the
 //!   filter is the portable [`message_may_change_look`]). The callback only says "read again":

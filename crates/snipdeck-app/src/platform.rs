@@ -299,7 +299,7 @@ mod tests {
         assert_eq!(host.target.current(), Some(crate::demo::target()));
         assert!(host.keep_alive.is_empty());
         assert!(host.tray.is_none(), "no tray off Windows");
-        assert!(host.warnings.is_empty());
+        assert_eq!(host.warnings, Vec::<String>::new());
         assert!(!system_look().read().dark);
         (host.attach_panel)(0);
     }

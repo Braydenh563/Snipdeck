@@ -285,7 +285,7 @@ mod tests {
         let hotkeys = Hotkeys::default();
         assert_eq!(register_all(&mut backend, &hotkeys), Vec::new());
         assert_eq!(unregister_all(&mut backend), 0);
-        assert!(backend.registered.is_empty());
+        assert_eq!(backend.registered, Vec::new());
         assert_eq!(unregister_all(&mut backend), 0, "pausing twice is fine");
         assert_eq!(register_all(&mut backend, &hotkeys), Vec::new());
         assert_eq!(backend.registered.len(), 4);
