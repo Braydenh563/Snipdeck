@@ -26,7 +26,7 @@ msgid "Add some text, or cancel."
 msgstr ""
 
 msgid "All"
-msgstr ""
+msgstr "全部"
 
 msgid "All items"
 msgstr ""
@@ -62,7 +62,7 @@ msgid "Brings the panel up beside the app you are working in."
 msgstr ""
 
 msgid "Cancel"
-msgstr ""
+msgstr "取消"
 
 msgid "Capture a region"
 msgstr ""
@@ -89,7 +89,7 @@ msgid "Clear the shortcut for {}"
 msgstr ""
 
 msgid "Close"
-msgstr ""
+msgstr "关闭"
 
 msgid "Close panel"
 msgstr "关闭面板"
@@ -113,7 +113,7 @@ msgid "Content"
 msgstr ""
 
 msgid "Control Enter"
-msgstr ""
+msgstr "Ctrl Enter"
 
 msgid "Copies to clipboard"
 msgstr "复制到剪贴板"
@@ -122,7 +122,7 @@ msgid "Copy"
 msgstr "复制"
 
 msgid "Copy something, then save it from the Panel."
-msgstr ""
+msgstr "先复制一些内容，然后在面板中保存。"
 
 msgid "Copy something, then save it here from the clipboard."
 msgstr "先复制一些内容，然后从剪贴板保存到这里。"
@@ -221,7 +221,7 @@ msgid "Enter"
 msgstr "Enter"
 
 msgid "Escape"
-msgstr ""
+msgstr "Esc"
 
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr ""
@@ -230,13 +230,13 @@ msgid "Fetches each site's small icon from the site itself. Off by default, so n
 msgstr ""
 
 msgid "Fields"
-msgstr ""
+msgstr "字段"
 
 msgid "File"
 msgstr ""
 
 msgid "Fill in template"
-msgstr ""
+msgstr "填写模板"
 
 msgid "Follow Windows switches with your system setting."
 msgstr ""
@@ -263,10 +263,10 @@ msgid "Hidden in lists until you hold Space, kept out of clipboard history, and 
 msgstr ""
 
 msgid "Hidden. Hold Space to reveal."
-msgstr ""
+msgstr "已隐藏。按住空格键即可显示。"
 
 msgid "Hidden. Open it in the Panel to reveal."
-msgstr ""
+msgstr "已隐藏。在面板中打开即可显示。"
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr ""
@@ -278,7 +278,7 @@ msgid "In these programs Snipdeck copies instead of pasting. Use the program's f
 msgstr ""
 
 msgid "Insert"
-msgstr ""
+msgstr "粘贴"
 
 msgid "Insert {}"
 msgstr ""
@@ -401,7 +401,7 @@ msgid "No recent items"
 msgstr ""
 
 msgid "No snippets yet"
-msgstr ""
+msgstr "还没有片段"
 
 msgid "No tags"
 msgstr ""
@@ -419,7 +419,7 @@ msgid "Not set"
 msgstr ""
 
 msgid "Nothing matches “{}”."
-msgstr ""
+msgstr "没有与“{}”匹配的内容。"
 
 msgid "Nothing on this board matches “{}”."
 msgstr "此看板中没有与“{}”匹配的内容。"
@@ -428,10 +428,10 @@ msgid "Nothing pinned"
 msgstr ""
 
 msgid "Nothing pinned matches “{}”."
-msgstr ""
+msgstr "没有与“{}”匹配的置顶片段。"
 
 msgid "Nothing pinned yet"
-msgstr ""
+msgstr "还没有置顶内容"
 
 msgid "Only text, code, link and template items can be sensitive."
 msgstr ""
@@ -473,13 +473,13 @@ msgid "Pin"
 msgstr ""
 
 msgid "Pin a snippet from the Panel to find it here."
-msgstr ""
+msgstr "在面板中置顶片段后，即可在这里找到。"
 
 msgid "Pin the snippets you use most to keep them one click away."
 msgstr ""
 
 msgid "Pinned"
-msgstr ""
+msgstr "置顶"
 
 msgid "Pinned snippets"
 msgstr "已置顶的片段"
@@ -491,7 +491,7 @@ msgid "Press the new shortcut"
 msgstr ""
 
 msgid "Preview"
-msgstr ""
+msgstr "预览"
 
 msgid "Privacy"
 msgstr ""
@@ -521,13 +521,13 @@ msgid "Rename tag {}"
 msgstr ""
 
 msgid "Required"
-msgstr ""
+msgstr "必填"
 
 msgid "Restore"
 msgstr ""
 
 msgid "Results"
-msgstr ""
+msgstr "搜索结果"
 
 msgid "Rose"
 msgstr ""
@@ -542,7 +542,7 @@ msgid "Save your first snippet, or copy something and save it from the clipboard
 msgstr ""
 
 msgid "Scope"
-msgstr ""
+msgstr "范围"
 
 msgid "Scroll left"
 msgstr ""
@@ -551,13 +551,13 @@ msgid "Scroll right"
 msgstr ""
 
 msgid "Search all snippets"
-msgstr ""
+msgstr "搜索所有片段"
 
 msgid "Search every board and paste without opening the window."
 msgstr ""
 
 msgid "Search in"
-msgstr ""
+msgstr "搜索范围"
 
 msgid "Search results"
 msgstr ""
@@ -605,7 +605,7 @@ msgid "Start with Windows"
 msgstr ""
 
 msgid "Tab"
-msgstr ""
+msgstr "Tab"
 
 msgid "Tag"
 msgstr ""
@@ -653,10 +653,10 @@ msgid "Theme"
 msgstr ""
 
 msgid "This board"
-msgstr ""
+msgstr "此看板"
 
 msgid "This field is required"
-msgstr ""
+msgstr "此字段为必填项"
 
 msgid "This list is empty"
 msgstr "此列表为空"

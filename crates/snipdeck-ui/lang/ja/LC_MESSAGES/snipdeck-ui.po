@@ -26,7 +26,7 @@ msgid "Add some text, or cancel."
 msgstr ""
 
 msgid "All"
-msgstr ""
+msgstr "すべて"
 
 msgid "All items"
 msgstr ""
@@ -62,7 +62,7 @@ msgid "Brings the panel up beside the app you are working in."
 msgstr ""
 
 msgid "Cancel"
-msgstr ""
+msgstr "キャンセル"
 
 msgid "Capture a region"
 msgstr ""
@@ -89,7 +89,7 @@ msgid "Clear the shortcut for {}"
 msgstr ""
 
 msgid "Close"
-msgstr ""
+msgstr "閉じる"
 
 msgid "Close panel"
 msgstr "パネルを閉じる"
@@ -113,7 +113,7 @@ msgid "Content"
 msgstr ""
 
 msgid "Control Enter"
-msgstr ""
+msgstr "Ctrl Enter"
 
 msgid "Copies to clipboard"
 msgstr "クリップボードにコピーされます"
@@ -122,7 +122,7 @@ msgid "Copy"
 msgstr "コピー"
 
 msgid "Copy something, then save it from the Panel."
-msgstr ""
+msgstr "何かをコピーしてから、パネルで保存できます。"
 
 msgid "Copy something, then save it here from the clipboard."
 msgstr "何かをコピーしてから、クリップボードからここに保存できます。"
@@ -221,7 +221,7 @@ msgid "Enter"
 msgstr "Enter"
 
 msgid "Escape"
-msgstr ""
+msgstr "Esc"
 
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr ""
@@ -230,13 +230,13 @@ msgid "Fetches each site's small icon from the site itself. Off by default, so n
 msgstr ""
 
 msgid "Fields"
-msgstr ""
+msgstr "入力欄"
 
 msgid "File"
 msgstr ""
 
 msgid "Fill in template"
-msgstr ""
+msgstr "テンプレートに入力"
 
 msgid "Follow Windows switches with your system setting."
 msgstr ""
@@ -263,10 +263,10 @@ msgid "Hidden in lists until you hold Space, kept out of clipboard history, and 
 msgstr ""
 
 msgid "Hidden. Hold Space to reveal."
-msgstr ""
+msgstr "非表示。スペースキーを押し続けると表示されます。"
 
 msgid "Hidden. Open it in the Panel to reveal."
-msgstr ""
+msgstr "非表示。パネルで開くと表示されます。"
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr ""
@@ -278,7 +278,7 @@ msgid "In these programs Snipdeck copies instead of pasting. Use the program's f
 msgstr ""
 
 msgid "Insert"
-msgstr ""
+msgstr "貼り付け"
 
 msgid "Insert {}"
 msgstr ""
@@ -401,7 +401,7 @@ msgid "No recent items"
 msgstr ""
 
 msgid "No snippets yet"
-msgstr ""
+msgstr "スニペットはまだありません"
 
 msgid "No tags"
 msgstr ""
@@ -419,7 +419,7 @@ msgid "Not set"
 msgstr ""
 
 msgid "Nothing matches “{}”."
-msgstr ""
+msgstr "「{}」に一致するものはありません。"
 
 msgid "Nothing on this board matches “{}”."
 msgstr "このボードに「{}」に一致するものはありません。"
@@ -428,10 +428,10 @@ msgid "Nothing pinned"
 msgstr ""
 
 msgid "Nothing pinned matches “{}”."
-msgstr ""
+msgstr "ピン留めしたスニペットに「{}」は一致しません。"
 
 msgid "Nothing pinned yet"
-msgstr ""
+msgstr "ピン留めはまだありません"
 
 msgid "Only text, code, link and template items can be sensitive."
 msgstr ""
@@ -473,13 +473,13 @@ msgid "Pin"
 msgstr ""
 
 msgid "Pin a snippet from the Panel to find it here."
-msgstr ""
+msgstr "パネルでスニペットをピン留めすると、ここに表示されます。"
 
 msgid "Pin the snippets you use most to keep them one click away."
 msgstr ""
 
 msgid "Pinned"
-msgstr ""
+msgstr "ピン留め"
 
 msgid "Pinned snippets"
 msgstr "ピン留めしたスニペット"
@@ -491,7 +491,7 @@ msgid "Press the new shortcut"
 msgstr ""
 
 msgid "Preview"
-msgstr ""
+msgstr "プレビュー"
 
 msgid "Privacy"
 msgstr ""
@@ -521,13 +521,13 @@ msgid "Rename tag {}"
 msgstr ""
 
 msgid "Required"
-msgstr ""
+msgstr "必須"
 
 msgid "Restore"
 msgstr ""
 
 msgid "Results"
-msgstr ""
+msgstr "検索結果"
 
 msgid "Rose"
 msgstr ""
@@ -542,7 +542,7 @@ msgid "Save your first snippet, or copy something and save it from the clipboard
 msgstr ""
 
 msgid "Scope"
-msgstr ""
+msgstr "範囲"
 
 msgid "Scroll left"
 msgstr ""
@@ -551,13 +551,13 @@ msgid "Scroll right"
 msgstr ""
 
 msgid "Search all snippets"
-msgstr ""
+msgstr "すべてのスニペットを検索"
 
 msgid "Search every board and paste without opening the window."
 msgstr ""
 
 msgid "Search in"
-msgstr ""
+msgstr "検索対象"
 
 msgid "Search results"
 msgstr ""
@@ -605,7 +605,7 @@ msgid "Start with Windows"
 msgstr ""
 
 msgid "Tab"
-msgstr ""
+msgstr "Tab"
 
 msgid "Tag"
 msgstr ""
@@ -653,10 +653,10 @@ msgid "Theme"
 msgstr ""
 
 msgid "This board"
-msgstr ""
+msgstr "このボード"
 
 msgid "This field is required"
-msgstr ""
+msgstr "この入力欄は必須です"
 
 msgid "This list is empty"
 msgstr "このリストは空です"
