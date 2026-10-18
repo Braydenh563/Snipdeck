@@ -194,6 +194,9 @@ where
                     let _regular = RegularWindow::begin();
                     let _ = window.show();
                     fit_to_screen(window.window());
+                    // Shown again after a close, the window would stay behind the Main
+                    // window (it was created un-activated): bring it up.
+                    raise(window.window());
                     window.invoke_focus_name();
                 }
             }
@@ -212,6 +215,9 @@ where
                     let _regular = RegularWindow::begin();
                     let _ = window.show();
                     fit_to_screen(window.window());
+                    // Shown again after a close, the window would stay behind the Main
+                    // window (it was created un-activated): bring it up.
+                    raise(window.window());
                     window.invoke_focus_name();
                 }
             }
