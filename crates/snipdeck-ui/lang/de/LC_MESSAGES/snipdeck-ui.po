@@ -11,46 +11,46 @@ msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "Eine Liste hält zusammengehörige Textbausteine beisammen, etwa Antworten oder Adressen."
 
 msgid "Actions"
-msgstr ""
+msgstr "Aktionen"
 
 msgid "Add"
-msgstr ""
+msgstr "Hinzufügen"
 
 msgid "Add a snippet, or move items here from another list."
-msgstr ""
+msgstr "Füge einen Textbaustein hinzu oder verschiebe Textbausteine aus einer anderen Liste hierher."
 
 msgid "Add list"
 msgstr "Liste hinzufügen"
 
 msgid "Add some text, or cancel."
-msgstr ""
+msgstr "Füge Text hinzu oder brich ab."
 
 msgid "All"
 msgstr "Alle"
 
 msgid "All items"
-msgstr ""
+msgstr "Alle Textbausteine"
 
 msgid "Amber"
-msgstr ""
+msgstr "Bernstein"
 
 msgid "Appearance"
-msgstr ""
+msgstr "Darstellung"
 
 msgid "Apply the new name"
-msgstr ""
+msgstr "Neuen Namen übernehmen"
 
 msgid "Asks for a value each time"
-msgstr ""
+msgstr "Fragt jedes Mal nach einem Wert"
 
 msgid "Asks you to pick one of the options"
-msgstr ""
+msgstr "Lässt dich eine der Optionen auswählen"
 
 msgid "Blue"
-msgstr ""
+msgstr "Blau"
 
 msgid "Board name"
-msgstr ""
+msgstr "Name des Boards"
 
 msgid "Board: {}"
 msgstr "Board: {}"
@@ -59,34 +59,34 @@ msgid "Boards"
 msgstr "Boards"
 
 msgid "Brings the panel up beside the app you are working in."
-msgstr ""
+msgstr "Holt das Panel neben die App, mit der du gerade arbeitest."
 
 msgid "Cancel"
 msgstr "Abbrechen"
 
 msgid "Capture a region"
-msgstr ""
+msgstr "Bereich aufnehmen"
 
 msgid "Captured items keep their kind."
-msgstr ""
+msgstr "Erfasste Textbausteine behalten ihre Art."
 
 msgid "Changes apply at once."
-msgstr ""
+msgstr "Änderungen werden sofort übernommen."
 
 msgid "Choose one to add it at the end of the text. It is filled in when you use the item."
-msgstr ""
+msgstr "Wähle eine aus, um sie ans Ende des Textes zu setzen. Sie wird beim Einfügen ausgefüllt."
 
 msgid "Choose tags"
-msgstr ""
+msgstr "Schlagwörter wählen"
 
 msgid "Clear search"
 msgstr "Suche löschen"
 
 msgid "Clear selection"
-msgstr ""
+msgstr "Auswahl aufheben"
 
 msgid "Clear the shortcut for {}"
-msgstr ""
+msgstr "Tastenkürzel für {} entfernen"
 
 msgid "Close"
 msgstr "Schließen"
@@ -95,22 +95,22 @@ msgid "Close panel"
 msgstr "Panel schließen"
 
 msgid "Close the tag list"
-msgstr ""
+msgstr "Schlagwortliste schließen"
 
 msgid "Code"
-msgstr ""
+msgstr "Code"
 
 msgid "Colour"
-msgstr ""
+msgstr "Farbe"
 
 msgid "Comfortable view"
-msgstr ""
+msgstr "Komfortable Ansicht"
 
 msgid "Compact view"
-msgstr ""
+msgstr "Kompakte Ansicht"
 
 msgid "Content"
-msgstr ""
+msgstr "Inhalt"
 
 msgid "Control Enter"
 msgstr "Ctrl Enter"
@@ -128,94 +128,94 @@ msgid "Copy something, then save it here from the clipboard."
 msgstr "Kopiere etwas und speichere es dann hier aus der Zwischenablage."
 
 msgid "Dark"
-msgstr ""
+msgstr "Dunkel"
 
 msgid "Date and time in a format you choose"
-msgstr ""
+msgstr "Datum und Uhrzeit in einem Format deiner Wahl"
 
 msgid "Delete"
-msgstr ""
+msgstr "Löschen"
 
 msgid "Delete board"
-msgstr ""
+msgstr "Board löschen"
 
 msgid "Delete for good"
-msgstr ""
+msgstr "Endgültig löschen"
 
 msgid "Delete for good?"
-msgstr ""
+msgstr "Endgültig löschen?"
 
 msgid "Delete for good…"
-msgstr ""
+msgstr "Endgültig löschen…"
 
 msgid "Delete forever…"
-msgstr ""
+msgstr "Endgültig löschen…"
 
 msgid "Delete list"
-msgstr ""
+msgstr "Liste löschen"
 
 msgid "Delete list “{}”?"
-msgstr ""
+msgstr "Liste „{}“ löschen?"
 
 msgid "Delete list…"
-msgstr ""
+msgstr "Liste löschen…"
 
 msgid "Delete tag"
-msgstr ""
+msgstr "Schlagwort löschen"
 
 msgid "Delete tag {}"
-msgstr ""
+msgstr "Schlagwort {} löschen"
 
 msgid "Delete tag “{}”?"
-msgstr ""
+msgstr "Schlagwort „{}“ löschen?"
 
 msgid "Delete tag…"
-msgstr ""
+msgstr "Schlagwort löschen…"
 
 msgid "Delete this board?"
-msgstr ""
+msgstr "Dieses Board löschen?"
 
 msgid "Delete this list?"
-msgstr ""
+msgstr "Diese Liste löschen?"
 
 msgid "Delete this tag?"
-msgstr ""
+msgstr "Dieses Schlagwort löschen?"
 
 msgid "Deleted items stay here for {} days before they are removed."
-msgstr ""
+msgstr "Gelöschte Textbausteine bleiben {} Tage hier, bevor sie entfernt werden."
 
 msgid "Discard"
-msgstr ""
+msgstr "Verwerfen"
 
 msgid "Discard your changes?"
-msgstr ""
+msgstr "Änderungen verwerfen?"
 
 msgid "Done"
-msgstr ""
+msgstr "Fertig"
 
 msgid "Edit"
-msgstr ""
+msgstr "Bearbeiten"
 
 msgid "Edit board"
-msgstr ""
+msgstr "Board bearbeiten"
 
 msgid "Edit item"
-msgstr ""
+msgstr "Textbaustein bearbeiten"
 
 msgid "Edit list"
-msgstr ""
+msgstr "Liste bearbeiten"
 
 msgid "Edit list…"
-msgstr ""
+msgstr "Liste bearbeiten…"
 
 msgid "Empty Trash"
-msgstr ""
+msgstr "Papierkorb leeren"
 
 msgid "Empty Trash…"
-msgstr ""
+msgstr "Papierkorb leeren…"
 
 msgid "Empty the Trash?"
-msgstr ""
+msgstr "Papierkorb leeren?"
 
 msgid "Enter"
 msgstr "Enter"
@@ -224,43 +224,43 @@ msgid "Escape"
 msgstr "Esc"
 
 msgid "Everything in the Trash is deleted for good. This can't be undone."
-msgstr ""
+msgstr "Alles im Papierkorb wird endgültig gelöscht. Dies kann nicht rückgängig gemacht werden."
 
 msgid "Fetches each site's small icon from the site itself. Off by default, so no request is made."
-msgstr ""
+msgstr "Holt das kleine Symbol jeder Website direkt von der Website. Standardmäßig aus, daher wird keine Anfrage gesendet."
 
 msgid "Fields"
 msgstr "Felder"
 
 msgid "File"
-msgstr ""
+msgstr "Datei"
 
 msgid "Fill in template"
 msgstr "Vorlage ausfüllen"
 
 msgid "Follow Windows switches with your system setting."
-msgstr ""
+msgstr "Folgt dem Windows-Design gemäß deiner Systemeinstellung."
 
 msgid "For example, Email replies"
-msgstr ""
+msgstr "Zum Beispiel E-Mail-Antworten"
 
 msgid "For example, Work"
-msgstr ""
+msgstr "Zum Beispiel Arbeit"
 
 msgid "General"
-msgstr ""
+msgstr "Allgemein"
 
 msgid "Give the board a name."
-msgstr ""
+msgstr "Gib dem Board einen Namen."
 
 msgid "Give the list a name."
-msgstr ""
+msgstr "Gib der Liste einen Namen."
 
 msgid "Green"
-msgstr ""
+msgstr "Grün"
 
 msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it."
-msgstr ""
+msgstr "In Listen ausgeblendet, bis du die Leertaste gedrückt hältst. Vom Zwischenablageverlauf ausgeschlossen und {} Sekunden nach der Verwendung aus der Zwischenablage gelöscht."
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "Verborgen. Halte die Leertaste gedrückt, um es anzuzeigen."
@@ -269,58 +269,58 @@ msgid "Hidden. Open it in the Panel to reveal."
 msgstr "Verborgen. Öffne es im Panel, um es anzuzeigen."
 
 msgid "How wide the panel opens, from {} to {} pixels."
-msgstr ""
+msgstr "Wie breit sich das Panel öffnet, von {} bis {} Pixel."
 
 msgid "Image"
-msgstr ""
+msgstr "Bild"
 
 msgid "In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe."
-msgstr ""
+msgstr "In diesen Programmen kopiert Snipdeck, statt einzufügen. Verwende den Dateinamen des Programms, z. B. notepad.exe."
 
 msgid "Insert"
 msgstr "Einfügen"
 
 msgid "Insert {}"
-msgstr ""
+msgstr "{} einfügen"
 
 msgid "It is removed from {n} item. The item stays."
-msgstr ""
+msgstr "Er wird aus {n} Textbaustein entfernt. Der Textbaustein bleibt erhalten."
 
 msgid "Item actions"
-msgstr ""
+msgstr "Aktionen für Textbausteine"
 
 msgid "Items are removed after {} days."
-msgstr ""
+msgstr "Textbausteine werden nach {} Tagen entfernt."
 
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
-msgstr ""
+msgstr "Seine Listen und {n} Textbaustein werden in den Papierkorb verschoben. Du kannst sie 30 Tage lang wiederherstellen."
 
 msgid "Keep editing"
-msgstr ""
+msgstr "Weiter bearbeiten"
 
 msgid "Keep panel on top"
-msgstr ""
+msgstr "Panel immer im Vordergrund halten"
 
 msgid "Keep running in the tray when the window closes"
-msgstr ""
+msgstr "Beim Schließen des Fensters im Infobereich weiterlaufen"
 
 msgid "Kind"
-msgstr ""
+msgstr "Art"
 
 msgid "Language"
-msgstr ""
+msgstr "Sprache"
 
 msgid "Light"
-msgstr ""
+msgstr "Hell"
 
 msgid "Link"
-msgstr ""
+msgstr "Link"
 
 msgid "List"
-msgstr ""
+msgstr "Liste"
 
 msgid "List name"
-msgstr ""
+msgstr "Listenname"
 
 msgid "Lists"
 msgstr "Listen"
@@ -329,64 +329,64 @@ msgid "Loading"
 msgstr "Wird geladen"
 
 msgid "Make the panel narrower"
-msgstr ""
+msgstr "Panel schmaler machen"
 
 msgid "Make the panel wider"
-msgstr ""
+msgstr "Panel breiter machen"
 
 msgid "Manage tags"
-msgstr ""
+msgstr "Schlagwörter verwalten"
 
 msgid "Manage tags…"
-msgstr ""
+msgstr "Schlagwörter verwalten…"
 
 msgid "Manual"
-msgstr ""
+msgstr "Manuell"
 
 msgid "More"
-msgstr ""
+msgstr "Mehr"
 
 msgid "Most used"
-msgstr ""
+msgstr "Am häufigsten verwendet"
 
 msgid "Move"
-msgstr ""
+msgstr "Verschieben"
 
 msgid "Move to list"
-msgstr ""
+msgstr "In Liste verschieben"
 
 msgid "Move to list…"
-msgstr ""
+msgstr "In Liste verschieben…"
 
 msgid "Navigation"
-msgstr ""
+msgstr "Navigation"
 
 msgid "Never paste into"
-msgstr ""
+msgstr "Niemals einfügen in"
 
 msgid "New board"
-msgstr ""
+msgstr "Neues Board"
 
 msgid "New item"
-msgstr ""
+msgstr "Neuer Textbaustein"
 
 msgid "New list"
 msgstr "Neue Liste"
 
 msgid "New name for {}"
-msgstr ""
+msgstr "Neuer Name für {}"
 
 msgid "New tag"
-msgstr ""
+msgstr "Neues Schlagwort"
 
 msgid "New tag, then Enter"
-msgstr ""
+msgstr "Neues Schlagwort, dann Enter"
 
 msgid "No colour"
-msgstr ""
+msgstr "Keine Farbe"
 
 msgid "No items with this tag"
-msgstr ""
+msgstr "Keine Textbausteine mit diesem Schlagwort"
 
 msgid "No lists yet"
 msgstr "Noch keine Listen"
@@ -395,28 +395,28 @@ msgid "No matches"
 msgstr "Keine Treffer"
 
 msgid "No programs yet."
-msgstr ""
+msgstr "Noch keine Programme."
 
 msgid "No recent items"
-msgstr ""
+msgstr "Keine neuen Textbausteine"
 
 msgid "No snippets yet"
 msgstr "Noch keine Textbausteine"
 
 msgid "No tags"
-msgstr ""
+msgstr "Keine Schlagwörter"
 
 msgid "No tags yet"
-msgstr ""
+msgstr "Noch keine Schlagwörter"
 
 msgid "No tags yet. Add one below."
-msgstr ""
+msgstr "Noch keine Schlagwörter. Füge unten eines hinzu."
 
 msgid "No tags yet. Add tags to an item and they appear here."
-msgstr ""
+msgstr "Noch keine Schlagwörter. Füge einem Textbaustein Schlagwörter hinzu, dann erscheinen sie hier."
 
 msgid "Not set"
-msgstr ""
+msgstr "Nicht festgelegt"
 
 msgid "Nothing matches “{}”."
 msgstr "Nichts passt zu „{}“."
@@ -425,7 +425,7 @@ msgid "Nothing on this board matches “{}”."
 msgstr "Auf diesem Board passt nichts zu „{}“."
 
 msgid "Nothing pinned"
-msgstr ""
+msgstr "Nichts angeheftet"
 
 msgid "Nothing pinned matches “{}”."
 msgstr "Kein angehefteter Textbaustein passt zu „{}“."
@@ -434,31 +434,31 @@ msgid "Nothing pinned yet"
 msgstr "Noch nichts angeheftet"
 
 msgid "Only text, code, link and template items can be sensitive."
-msgstr ""
+msgstr "Nur Text-, Code-, Link- und Vorlagen-Textbausteine können vertraulich sein."
 
 msgid "Open Settings"
-msgstr ""
+msgstr "Einstellungen öffnen"
 
 msgid "Open the picker"
-msgstr ""
+msgstr "Auswahl öffnen"
 
 msgid "Optional: the first line of the text is used"
-msgstr ""
+msgstr "Optional: Die erste Zeile des Textes wird verwendet"
 
 msgid "Orange"
-msgstr ""
+msgstr "Orange"
 
 msgid "Panel menu"
-msgstr ""
+msgstr "Panel-Menü"
 
 msgid "Panel width"
-msgstr ""
+msgstr "Panelbreite"
 
 msgid "Paste"
 msgstr "Einfügen"
 
 msgid "Paste the next item"
-msgstr ""
+msgstr "Nächsten Textbaustein einfügen"
 
 msgid "Pastes into {}"
 msgstr "Einfügen in {}"
@@ -467,16 +467,16 @@ msgid "Pastes into {} · {}"
 msgstr "Einfügen in {} · {}"
 
 msgid "Pastes the next item of the list in order."
-msgstr ""
+msgstr "Fügt den nächsten Textbaustein der Liste der Reihe nach ein."
 
 msgid "Pin"
-msgstr ""
+msgstr "Anheften"
 
 msgid "Pin a snippet from the Panel to find it here."
 msgstr "Hefte einen Textbaustein im Panel an, um ihn hier zu finden."
 
 msgid "Pin the snippets you use most to keep them one click away."
-msgstr ""
+msgstr "Hefte die Textbausteine an, die du am häufigsten nutzt, damit sie mit einem Klick erreichbar sind."
 
 msgid "Pinned"
 msgstr "Angeheftet"
@@ -485,172 +485,172 @@ msgid "Pinned snippets"
 msgstr "Angeheftete Textbausteine"
 
 msgid "Placeholders"
-msgstr ""
+msgstr "Platzhalter"
 
 msgid "Press the new shortcut"
-msgstr ""
+msgstr "Neues Tastenkürzel drücken"
 
 msgid "Preview"
 msgstr "Vorschau"
 
 msgid "Privacy"
-msgstr ""
+msgstr "Datenschutz"
 
 msgid "Program to add"
-msgstr ""
+msgstr "Hinzuzufügendes Programm"
 
 msgid "Recent"
-msgstr ""
+msgstr "Zuletzt verwendet"
 
 msgid "Recently used"
-msgstr ""
+msgstr "Kürzlich verwendet"
 
 msgid "Red"
-msgstr ""
+msgstr "Rot"
 
 msgid "Remove tag {}"
-msgstr ""
+msgstr "Schlagwort {} entfernen"
 
 msgid "Remove {} from the list"
-msgstr ""
+msgstr "{} aus der Liste entfernen"
 
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
-msgstr ""
+msgstr "Schlagwörter umbenennen oder löschen. Beim Löschen eines Schlagworts wird es aus seinen Textbausteinen entfernt; die Textbausteine bleiben erhalten."
 
 msgid "Rename tag {}"
-msgstr ""
+msgstr "Schlagwort {} umbenennen"
 
 msgid "Required"
 msgstr "Pflichtfeld"
 
 msgid "Restore"
-msgstr ""
+msgstr "Wiederherstellen"
 
 msgid "Results"
 msgstr "Ergebnisse"
 
 msgid "Rose"
-msgstr ""
+msgstr "Rosé"
 
 msgid "Save"
-msgstr ""
+msgstr "Speichern"
 
 msgid "Save from clipboard"
 msgstr "Aus der Zwischenablage speichern"
 
 msgid "Save your first snippet, or copy something and save it from the clipboard."
-msgstr ""
+msgstr "Speichere deinen ersten Textbaustein oder kopiere etwas und speichere es aus der Zwischenablage."
 
 msgid "Scope"
 msgstr "Bereich"
 
 msgid "Scroll left"
-msgstr ""
+msgstr "Nach links scrollen"
 
 msgid "Scroll right"
-msgstr ""
+msgstr "Nach rechts scrollen"
 
 msgid "Search all snippets"
 msgstr "Alle Textbausteine durchsuchen"
 
 msgid "Search every board and paste without opening the window."
-msgstr ""
+msgstr "Durchsuche alle Boards und füge ein, ohne das Fenster zu öffnen."
 
 msgid "Search in"
 msgstr "Suchen in"
 
 msgid "Search results"
-msgstr ""
+msgstr "Suchergebnisse"
 
 msgid "Search snippets"
 msgstr "Textbausteine suchen"
 
 msgid "Selects part of the screen and saves it as an item."
-msgstr ""
+msgstr "Wählt einen Bereich des Bildschirms aus und speichert ihn als Textbaustein."
 
 msgid "Sensitive item"
-msgstr ""
+msgstr "Vertraulicher Textbaustein"
 
 msgid "Settings"
-msgstr ""
+msgstr "Einstellungen"
 
 msgid "Shift Enter"
 msgstr "Shift Enter"
 
 msgid "Shortcuts"
-msgstr ""
+msgstr "Tastenkürzel"
 
 msgid "Show or hide the panel"
-msgstr ""
+msgstr "Panel anzeigen oder ausblenden"
 
 msgid "Show website icons on links"
-msgstr ""
+msgstr "Website-Symbole bei Links anzeigen"
 
 msgid "Slate"
-msgstr ""
+msgstr "Schiefergrau"
 
 msgid "Snipdeck"
 msgstr "Snipdeck"
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
-msgstr ""
+msgstr "Snipdeck wartet im Infobereich, damit die Tastenkürzel nach der Anmeldung funktionieren."
 
 msgid "Snippets"
 msgstr "Textbausteine"
 
 msgid "Sort items by"
-msgstr ""
+msgstr "Textbausteine sortieren nach"
 
 msgid "Start with Windows"
-msgstr ""
+msgstr "Mit Windows starten"
 
 msgid "Tab"
 msgstr "Tab"
 
 msgid "Tag"
-msgstr ""
+msgstr "Schlagwörter"
 
 msgid "Tag a snippet to see it here."
-msgstr ""
+msgstr "Versieh einen Textbaustein mit einem Schlagwort, um ihn hier zu sehen."
 
 msgid "Tags"
-msgstr ""
+msgstr "Schlagwörter"
 
 msgid "Tags…"
-msgstr ""
+msgstr "Schlagwörter…"
 
 msgid "Takes effect the next time Snipdeck starts."
-msgstr ""
+msgstr "Wird beim nächsten Start von Snipdeck wirksam."
 
 msgid "Teal"
-msgstr ""
+msgstr "Blaugrün"
 
 msgid "Template"
-msgstr ""
+msgstr "Vorlage"
 
 msgid "Template text"
-msgstr ""
+msgstr "Vorlagentext"
 
 msgid "Text"
-msgstr ""
+msgstr "Text"
 
 msgid "The Trash is empty"
-msgstr ""
+msgstr "Der Papierkorb ist leer"
 
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
-msgstr ""
+msgstr "Die Liste und ihre {} Textbausteine werden in den Papierkorb verschoben. Du kannst sie {} Tage lang wiederherstellen."
 
 msgid "The selected items are deleted for good. This can't be undone."
-msgstr ""
+msgstr "Die ausgewählten Textbausteine werden endgültig gelöscht. Dies kann nicht rückgängig gemacht werden."
 
 msgid "The tag is removed from its items. The items themselves stay."
-msgstr ""
+msgstr "Das Schlagwort wird aus seinen Textbausteinen entfernt. Die Textbausteine selbst bleiben erhalten."
 
 msgid "The time now"
-msgstr ""
+msgstr "Die aktuelle Uhrzeit"
 
 msgid "Theme"
-msgstr ""
+msgstr "Design"
 
 msgid "This board"
 msgstr "Dieses Board"
@@ -662,70 +662,70 @@ msgid "This list is empty"
 msgstr "Diese Liste ist leer"
 
 msgid "This text is {}. Anything over 16 KB opens read-only here."
-msgstr ""
+msgstr "Dieser Text ist {}. Alles über 16 KB wird hier nur zum Lesen geöffnet."
 
 msgid "Tile view"
-msgstr ""
+msgstr "Kachelansicht"
 
 msgid "Title"
-msgstr ""
+msgstr "Titel"
 
 msgid "Today's date"
-msgstr ""
+msgstr "Heutiges Datum"
 
 msgid "Trash"
-msgstr ""
+msgstr "Papierkorb"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
-msgstr ""
+msgstr "Aktiviere den Zwischenablageverlauf in den Einstellungen, um Kopiertes zu sammeln."
 
 msgid "Turn this off and closing the main window quits Snipdeck."
-msgstr ""
+msgstr "Wenn du das ausschaltest, beendet Snipdeck sich beim Schließen des Hauptfensters."
 
 msgid "Unpin"
-msgstr ""
+msgstr "Lösen"
 
 msgid "Use"
-msgstr ""
+msgstr "Verwenden"
 
 msgid "Violet"
-msgstr ""
+msgstr "Violett"
 
 msgid "What is on the clipboard"
-msgstr ""
+msgstr "Was in der Zwischenablage liegt"
 
 msgid "What you changed has not been saved."
-msgstr ""
+msgstr "Deine Änderungen wurden nicht gespeichert."
 
 msgid "What you changed in this item has not been saved."
-msgstr ""
+msgstr "Deine Änderungen an diesem Textbaustein wurden nicht gespeichert."
 
 msgid "Where the text cursor lands after pasting"
-msgstr ""
+msgstr "Wo der Textcursor nach dem Einfügen landet"
 
 msgid "Windows"
-msgstr ""
+msgstr "Windows"
 
 msgid "Your deck is empty"
-msgstr ""
+msgstr "Dein Deck ist leer"
 
 msgid "https://example.com"
-msgstr ""
+msgstr "https://example.com"
 
 msgid "notepad.exe"
-msgstr ""
+msgstr "notepad.exe"
 
 msgid "px"
-msgstr ""
+msgstr "px"
 
 msgid "{n} item"
-msgstr ""
+msgstr "{n} Textbaustein"
 
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
-msgstr ""
+msgstr "{n} Textbaustein wird mit ihr in den Papierkorb verschoben. Du kannst ihn 30 Tage lang wiederherstellen."
 
 msgid "{} (Pro)"
-msgstr ""
+msgstr "{} (Pro)"
 
 msgid "{} selected"
-msgstr ""
+msgstr "{} ausgewählt"
