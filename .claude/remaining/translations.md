@@ -8,9 +8,10 @@ Task: fill every empty msgstr in the six lang/<locale>/LC_MESSAGES/snipdeck-ui.p
 - es (26 entries)
 - fr (26 entries)
 - pt-BR (26 entries)
+- ja (26 entries)
 
 ## Next
-- ja, zh-Hans (26 entries each), one commit per locale, `i18n: <locale> translated`
+- zh-Hans (26 entries), one commit, `i18n: zh-Hans translated`
 
 ## Blocked / for human review
 - Baseline is 156 untranslated (26 per locale), not 1290 as the brief said.

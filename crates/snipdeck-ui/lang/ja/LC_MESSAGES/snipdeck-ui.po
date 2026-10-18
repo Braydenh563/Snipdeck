@@ -14,7 +14,7 @@ msgid "Add list"
 msgstr "リストを追加"
 
 msgid "All"
-msgstr ""
+msgstr "すべて"
 
 msgid "Board: {}"
 msgstr "ボード: {}"
@@ -23,19 +23,19 @@ msgid "Boards"
 msgstr "ボード"
 
 msgid "Cancel"
-msgstr ""
+msgstr "キャンセル"
 
 msgid "Clear search"
 msgstr "検索をクリア"
 
 msgid "Close"
-msgstr ""
+msgstr "閉じる"
 
 msgid "Close panel"
 msgstr "パネルを閉じる"
 
 msgid "Control Enter"
-msgstr ""
+msgstr "Ctrl Enter"
 
 msgid "Copies to clipboard"
 msgstr "クリップボードにコピーされます"
@@ -44,7 +44,7 @@ msgid "Copy"
 msgstr "コピー"
 
 msgid "Copy something, then save it from the Panel."
-msgstr ""
+msgstr "何かをコピーしてから、パネルで保存できます。"
 
 msgid "Copy something, then save it here from the clipboard."
 msgstr "何かをコピーしてから、クリップボードからここに保存できます。"
@@ -53,22 +53,22 @@ msgid "Enter"
 msgstr "Enter"
 
 msgid "Escape"
-msgstr ""
+msgstr "Esc"
 
 msgid "Fields"
-msgstr ""
+msgstr "入力欄"
 
 msgid "Fill in template"
-msgstr ""
+msgstr "テンプレートに入力"
 
 msgid "Hidden. Hold Space to reveal."
-msgstr ""
+msgstr "非表示。スペースキーを押し続けると表示されます。"
 
 msgid "Hidden. Open it in the Panel to reveal."
-msgstr ""
+msgstr "非表示。パネルで開くと表示されます。"
 
 msgid "Insert"
-msgstr ""
+msgstr "貼り付け"
 
 msgid "Keep on top"
 msgstr "常に前面に表示"
@@ -89,19 +89,19 @@ msgid "No matches"
 msgstr "一致する項目がありません"
 
 msgid "No snippets yet"
-msgstr ""
+msgstr "スニペットはまだありません"
 
 msgid "Nothing matches “{}”."
-msgstr ""
+msgstr "「{}」に一致するものはありません。"
 
 msgid "Nothing on this board matches “{}”."
 msgstr "このボードに「{}」に一致するものはありません。"
 
 msgid "Nothing pinned matches “{}”."
-msgstr ""
+msgstr "ピン留めしたスニペットに「{}」は一致しません。"
 
 msgid "Nothing pinned yet"
-msgstr ""
+msgstr "ピン留めはまだありません"
 
 msgid "Paste"
 msgstr "貼り付け"
@@ -113,34 +113,34 @@ msgid "Pastes into {} · {}"
 msgstr "{} · {} に貼り付け"
 
 msgid "Pin a snippet from the Panel to find it here."
-msgstr ""
+msgstr "パネルでスニペットをピン留めすると、ここに表示されます。"
 
 msgid "Pinned"
-msgstr ""
+msgstr "ピン留め"
 
 msgid "Pinned snippets"
 msgstr "ピン留めしたスニペット"
 
 msgid "Preview"
-msgstr ""
+msgstr "プレビュー"
 
 msgid "Required"
-msgstr ""
+msgstr "必須"
 
 msgid "Results"
-msgstr ""
+msgstr "検索結果"
 
 msgid "Save from clipboard"
 msgstr "クリップボードから保存"
 
 msgid "Scope"
-msgstr ""
+msgstr "範囲"
 
 msgid "Search all snippets"
-msgstr ""
+msgstr "すべてのスニペットを検索"
 
 msgid "Search in"
-msgstr ""
+msgstr "検索対象"
 
 msgid "Search snippets"
 msgstr "スニペットを検索"
@@ -155,13 +155,13 @@ msgid "Snippets"
 msgstr "スニペット"
 
 msgid "Tab"
-msgstr ""
+msgstr "Tab"
 
 msgid "This board"
-msgstr ""
+msgstr "このボード"
 
 msgid "This field is required"
-msgstr ""
+msgstr "この入力欄は必須です"
 
 msgid "This list is empty"
 msgstr "このリストは空です"
