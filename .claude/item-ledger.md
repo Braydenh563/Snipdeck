@@ -9,3 +9,4 @@ date | item | type | rung | rework | note
 2026-10-18 | Merge step 9 tray | merge | sonnet | 0 | 
 2026-10-18 | Merge step 6 maintenance | merge | sonnet | 1 | 
 2026-10-18 | Step 4 Panel binding (kebab, resize, quick edit) | feature | sonnet | 0 | 
+2026-10-18 | Step 7 Settings window | feature | sonnet | 0 | 
