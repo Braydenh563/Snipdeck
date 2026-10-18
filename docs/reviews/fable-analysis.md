@@ -21,4 +21,9 @@ Ranked findings. Status: `[ ]` open, `[~]` ticketed in HANDOVER, `[x]` fixed (co
 - (to be filled)
 
 ## Logo
-- (to be filled)
+Current (`assets/logo/snipdeck-icon.svg`, rendered at 128 px): three fanned cards with a blue spine on a near-black rounded tile; wordmark in IBM Plex Sans SemiBold. It is competent, but:
+- L1 The near-black tile contradicts DESIGN.md ("warm card stock", Index Blue only for selection): use neutral-850 warm (hue 80) or the light `bg.app` tile with a hairline, so the icon matches the app's chrome in both themes.
+- L2 At 16-32 px (tray, taskbar) three cards + fold + three text lines blur into a grey smudge; ship size-specific variants: 16/20/24 px = one card with the blue index tab and two bars; 32-48 px = two cards; 64+ = the full stack. `scripts/make_logo.py` should emit all sizes into the `.ico` (16-256) the exe and tray need (HANDOVER 9b, still missing).
+- L3 The blue spine reads as a notebook/binder. The product metaphor is an index card deck: make the blue a left index *tab* (short, rounded, like the list tabs in the Panel) rather than a full-height spine, and drop the folded corner so the only accent is the tab.
+- L4 The text bars are mid-grey on white: at small sizes contrast fails; use ink (neutral-850) bars, two of them, the first longer (title + preview, matching ItemCard anatomy).
+- L5 The wordmark is fine; keep letter-spacing slightly tighter (-1%) and align its x-height with the tile's optical centre (currently sits a little low).
