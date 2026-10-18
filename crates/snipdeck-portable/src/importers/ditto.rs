@@ -32,13 +32,16 @@
 //! paste text, sticky ordering, and Ditto's own export files.
 //!
 //! The file is opened read-only, with triggers and untrusted-schema functions disabled; it is
-//! never modified.
+//! never modified. `Main` and `Data` must be ordinary tables (no views, virtual tables or
+//! computed columns, which could expand a small file without bound), values over 10 MB are
+//! never loaded, and what is held is counted against [`MEMORY_BUDGET`] as rows are read.
 
 use std::collections::HashMap;
 use std::path::Path;
 
+use rusqlite::limits::Limit;
 use rusqlite::types::ValueRef;
-use rusqlite::{Connection, OpenFlags, Row};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, Row};
 use snipdeck_core::Timestamp;
 
 use crate::error::{Error, Result};
@@ -65,6 +68,21 @@ const REQUIRED: [(&str, &[&str]); 2] = [
     ("Data", &["lParentID", "strClipBoardFormat", "ooData"]),
 ];
 
+/// The most bytes of one value read from the file. A text clip can be 5 MB of UTF-8, so up to
+/// twice that (UTF-16) plus the terminator is read; anything longer is not loaded at all
+/// (`length()` is asked first) and the clip is reported as too large.
+const VALUE_LIMIT: u64 = 2 * TEXT_LIMIT + 4;
+
+/// [`VALUE_LIMIT`] as an SQL parameter.
+fn value_limit() -> i64 {
+    i64::try_from(VALUE_LIMIT).unwrap_or(i64::MAX)
+}
+
+/// SQLite's own cap on a value or row ([`Limit::SQLITE_LIMIT_LENGTH`]), set on the connection as
+/// a backstop. It is far above [`VALUE_LIMIT`] so that a legitimately huge clip is skipped with
+/// a warning (its row must still be readable to find that out) instead of failing the import.
+const ROW_LIMIT: i32 = 64 * 1024 * 1024;
+
 /// Nested groups deeper than this are not followed (and a cycle in `lParentID` cannot loop).
 const MAX_GROUP_DEPTH: usize = 8;
 
@@ -86,14 +104,22 @@ pub fn import_ditto<L: Library>(
 
     let mut report = ImportReport::default();
     let groups = read_groups(&conn)?;
-    let mut clips = read_clips(&conn, options.limits.max_items, &mut report)?;
-    fill_texts(&conn, &mut clips, &mut report)?;
+    let mut clips = read_clips(&conn, options.limits.max_items, MEMORY_BUDGET, &mut report)?;
+    fill_texts(&conn, &mut clips, MEMORY_BUDGET, &mut report)?;
 
     let mut by_list: HashMap<Option<i64>, Vec<&Clip>> = HashMap::new();
     let mut non_text = 0_usize;
     let mut total_bytes = 0_u64;
     let mut truncated = false;
     for clip in &clips {
+        if let Some(size) = clip.too_large {
+            report.items_skipped += 1;
+            report.warn(Warning::TooLarge {
+                name: format!("Ditto clip {}", clip.id),
+                size,
+            });
+            continue;
+        }
         let Some(text) = clip.text.as_deref() else {
             non_text += 1;
             continue;
@@ -188,6 +214,7 @@ fn open_read_only(path: &Path) -> Result<Connection> {
         rusqlite::config::DbConfig::SQLITE_DBCONFIG_ENABLE_TRIGGER,
         false,
     )?;
+    conn.set_limit(Limit::SQLITE_LIMIT_LENGTH, ROW_LIMIT)?;
     conn.pragma_update(None, "query_only", true)?;
     conn.busy_timeout(std::time::Duration::from_secs(2))?;
     Ok(conn)
@@ -199,12 +226,35 @@ fn check_schema(conn: &Connection, path: &Path) -> Result<()> {
         reason,
     };
     for (table, required) in REQUIRED {
+        // Only real tables: a view, a virtual table or a generated column computes its rows
+        // from a few bytes of schema, so a small file could expand without bound.
+        let (kind, sql): (String, Option<String>) = conn
+            .query_row(
+                "SELECT type, sql FROM sqlite_master
+                 WHERE lower(name) = lower(?1) AND type IN ('table', 'view')",
+                [table],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .optional()
+            .map_err(|e| not_ditto(e.to_string()))?
+            .ok_or_else(|| not_ditto(format!("there is no `{table}` table")))?;
+        if kind != "table" {
+            return Err(not_ditto(format!("`{table}` is a {kind}, not a table")));
+        }
+        if sql.is_some_and(|sql| {
+            sql.trim_start()
+                .get(..14)
+                .is_some_and(|head| head.eq_ignore_ascii_case("CREATE VIRTUAL"))
+        }) {
+            return Err(not_ditto(format!("`{table}` is a virtual table, not a table")));
+        }
         // Table names are literals above; PRAGMA cannot take a parameter.
         let mut stmt = conn
-            .prepare(&format!("PRAGMA table_info({table})"))
+            .prepare(&format!("PRAGMA table_xinfo({table})"))
             .map_err(|e| not_ditto(e.to_string()))?;
-        let columns: Vec<String> = stmt
-            .query_map([], |r| r.get::<_, String>(1))
+        // (name, hidden): `hidden` is 0 for an ordinary column, 2 or 3 for a generated one.
+        let columns: Vec<(String, i64)> = stmt
+            .query_map([], |r| Ok((r.get::<_, String>(1)?, r.get::<_, i64>(6)?)))
             .map_err(|e| not_ditto(e.to_string()))?
             .collect::<core::result::Result<_, _>>()
             .map_err(|e| not_ditto(e.to_string()))?;
@@ -212,8 +262,14 @@ fn check_schema(conn: &Connection, path: &Path) -> Result<()> {
             return Err(not_ditto(format!("there is no `{table}` table")));
         }
         for column in required {
-            if !columns.iter().any(|c| c.eq_ignore_ascii_case(column)) {
+            let Some((_, hidden)) = columns.iter().find(|(c, _)| c.eq_ignore_ascii_case(column))
+            else {
                 return Err(not_ditto(format!("`{table}` has no `{column}` column")));
+            };
+            if *hidden != 0 {
+                return Err(not_ditto(format!(
+                    "`{table}.{column}` is a computed column"
+                )));
             }
         }
     }
@@ -228,6 +284,8 @@ struct Clip {
     last_used: i64,
     text: Option<String>,
     unicode: bool,
+    /// The size of a text value over [`VALUE_LIMIT`], which was not loaded.
+    too_large: Option<u64>,
 }
 
 /// An integer-valued column, tolerating real numbers and NULL (SQLite columns are loosely typed
@@ -292,7 +350,12 @@ fn group_path(groups: &HashMap<i64, (String, i64)>, id: i64) -> String {
     parts.join(" / ")
 }
 
-fn read_clips(conn: &Connection, max: usize, report: &mut ImportReport) -> Result<Vec<Clip>> {
+fn read_clips(
+    conn: &Connection,
+    max: usize,
+    budget: u64,
+    report: &mut ImportReport,
+) -> Result<Vec<Clip>> {
     // `lastPasteDate` exists from Ditto 3.x on; older files get NULL.
     let has_last_paste = conn
         .prepare("SELECT 1 FROM pragma_table_info('Main') WHERE name = 'lastPasteDate'")?
@@ -303,11 +366,13 @@ fn read_clips(conn: &Connection, max: usize, report: &mut ImportReport) -> Resul
         "NULL"
     };
     let mut stmt = conn.prepare(&format!(
-        "SELECT lID, lDate, mText, lDontAutoDelete, lParentID, {last_paste}
+        "SELECT lID, lDate, CASE WHEN length(mText) > ?1 THEN NULL ELSE mText END,
+                lDontAutoDelete, lParentID, {last_paste}, length(mText)
          FROM Main WHERE bIsGroup = 0 OR bIsGroup IS NULL ORDER BY lID DESC"
     ))?;
-    let mut rows = stmt.query([])?;
+    let mut rows = stmt.query([value_limit()])?;
     let mut clips = Vec::new();
+    let mut held = 0_u64;
     while let Some(row) = rows.next()? {
         if clips.len() >= max {
             report.warn(Warning::Truncated {
@@ -316,9 +381,19 @@ fn read_clips(conn: &Connection, max: usize, report: &mut ImportReport) -> Resul
             break;
         }
         let Some(id) = int_at(row, 0) else { continue };
+        let too_large = int_at(row, 6)
+            .and_then(|n| u64::try_from(n).ok())
+            .filter(|n| *n > VALUE_LIMIT);
         let text = bytes_at(row, 2)
             .filter(|b| !b.is_empty())
             .map(|b| decode_text(&b).0);
+        held += text.as_ref().map_or(0, |t| t.len() as u64);
+        if held > budget {
+            report.warn(Warning::Truncated {
+                reason: "reached the import memory limit".to_owned(),
+            });
+            break;
+        }
         clips.push(Clip {
             id,
             date: int_at(row, 1).unwrap_or(0),
@@ -327,6 +402,7 @@ fn read_clips(conn: &Connection, max: usize, report: &mut ImportReport) -> Resul
             last_used: int_at(row, 5).unwrap_or(0),
             text,
             unicode: false,
+            too_large,
         });
     }
     Ok(clips)
@@ -334,27 +410,42 @@ fn read_clips(conn: &Connection, max: usize, report: &mut ImportReport) -> Resul
 
 /// Replaces each clip's `mText` (possibly truncated by Ditto) with the full text of its
 /// `CF_UNICODETEXT` row, or `CF_TEXT` if there is none.
-fn fill_texts(conn: &Connection, clips: &mut [Clip], report: &mut ImportReport) -> Result<()> {
+fn fill_texts(
+    conn: &Connection,
+    clips: &mut [Clip],
+    budget: u64,
+    report: &mut ImportReport,
+) -> Result<()> {
     let index: HashMap<i64, usize> = clips.iter().enumerate().map(|(i, c)| (c.id, i)).collect();
     let mut stmt = conn.prepare(
-        "SELECT lParentID, strClipBoardFormat, ooData FROM Data
-         WHERE strClipBoardFormat IN ('CF_UNICODETEXT', 'CF_TEXT')",
+        "SELECT lParentID, strClipBoardFormat,
+                CASE WHEN length(ooData) > ?1 THEN NULL ELSE ooData END, length(ooData)
+         FROM Data WHERE strClipBoardFormat IN ('CF_UNICODETEXT', 'CF_TEXT')",
     )?;
-    let mut rows = stmt.query([])?;
+    let mut rows = stmt.query([value_limit()])?;
+    let mut held: u64 = clips
+        .iter()
+        .map(|c| c.text.as_ref().map_or(0, |t| t.len() as u64))
+        .sum();
     while let Some(row) = rows.next()? {
         let Some(&i) = int_at(row, 0).and_then(|id| index.get(&id)) else {
             continue;
         };
         let format = bytes_at(row, 1).unwrap_or_default();
+        let size = int_at(row, 3).and_then(|n| u64::try_from(n).ok());
+        if size.is_some_and(|n| n > VALUE_LIMIT) {
+            // Too big to hold, and never loaded: the clip is reported by its real size, unless
+            // better text is (or comes) from another row.
+            if !clips[i].unicode {
+                clips[i].too_large = size;
+            }
+            continue;
+        }
         let Some(mut data) = bytes_at(row, 2) else {
             continue;
         };
         let unicode = format == b"CF_UNICODETEXT";
-        if clips[i].unicode || data.len() as u64 > 2 * TEXT_LIMIT + 4 {
-            if !clips[i].unicode {
-                // Too big to hold: leave the (short) mText; the size check reports it.
-                clips[i].text = Some("x".repeat(usize::try_from(TEXT_LIMIT).unwrap_or(0) + 1));
-            }
+        if clips[i].unicode {
             continue;
         }
         // Both formats end with a terminating NUL (a wide one for Unicode).
@@ -370,7 +461,15 @@ fn fill_texts(conn: &Connection, clips: &mut [Clip], report: &mut ImportReport) 
             decode_text(&data)
         };
         note_lossy(how, &format!("Ditto clip {}", clips[i].id), report);
+        held = held - clips[i].text.as_ref().map_or(0, |t| t.len() as u64) + text.len() as u64;
+        if held > budget {
+            report.warn(Warning::Truncated {
+                reason: "reached the import memory limit".to_owned(),
+            });
+            break;
+        }
         clips[i].text = Some(text);
+        clips[i].too_large = None;
         clips[i].unicode = unicode;
     }
     Ok(())
@@ -411,4 +510,77 @@ fn plan_item(clip: &Clip, now: Timestamp) -> PlanItem {
             .filter(|t| i64::try_from(t.as_nanosecond()).is_ok());
     }
     item
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn database(clips: usize, text: &str) -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE Main(lID INTEGER PRIMARY KEY, lDate INTEGER, mText TEXT,
+                lDontAutoDelete INTEGER, bIsGroup INTEGER, lParentID INTEGER);
+             CREATE TABLE Data(lID INTEGER PRIMARY KEY, lParentID INTEGER,
+                strClipBoardFormat TEXT, ooData BLOB);",
+        )
+        .unwrap();
+        for id in 1..=clips {
+            conn.execute(
+                "INSERT INTO Main (lID, lDate, mText, bIsGroup, lParentID) VALUES (?1, 0, ?2, 0, -1)",
+                rusqlite::params![i64::try_from(id).unwrap(), text],
+            )
+            .unwrap();
+        }
+        conn
+    }
+
+    /// Security review 2, finding 3: rows are counted against the memory budget as they are
+    /// read, not after they are all held.
+    #[test]
+    fn reading_descriptions_stops_at_the_memory_budget() {
+        let conn = database(10, &"x".repeat(1000));
+        let mut report = ImportReport::default();
+        let clips = read_clips(&conn, 100, 3500, &mut report).unwrap();
+        assert_eq!(clips.len(), 3);
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|w| matches!(w, Warning::Truncated { .. })),
+            "{:?}",
+            report.warnings
+        );
+        let mut report = ImportReport::default();
+        let clips = read_clips(&conn, 100, 10_000, &mut report).unwrap();
+        assert_eq!((clips.len(), report.warnings.len()), (10, 0));
+    }
+
+    #[test]
+    fn reading_full_texts_stops_at_the_memory_budget() {
+        let conn = database(10, "short");
+        for id in 1..=10_i64 {
+            conn.execute(
+                "INSERT INTO Data (lParentID, strClipBoardFormat, ooData) VALUES (?1, 'CF_TEXT', ?2)",
+                rusqlite::params![id, vec![b'y'; 1000]],
+            )
+            .unwrap();
+        }
+        let mut report = ImportReport::default();
+        let mut clips = read_clips(&conn, 100, u64::MAX, &mut report).unwrap();
+        fill_texts(&conn, &mut clips, 3500, &mut report).unwrap();
+        let full = clips
+            .iter()
+            .filter(|c| c.text.as_deref().is_some_and(|t| t.len() == 1000))
+            .count();
+        assert!((1..=3).contains(&full), "{full} clips got their full text");
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|w| matches!(w, Warning::Truncated { .. })),
+            "{:?}",
+            report.warnings
+        );
+    }
 }

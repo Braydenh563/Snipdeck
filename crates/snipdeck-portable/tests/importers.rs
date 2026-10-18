@@ -500,6 +500,108 @@ fn ditto_tolerates_odd_column_types() {
     assert_healthy(&s);
 }
 
+// ---- security review 2, finding 3: a hostile Ditto file cannot make the import huge ----
+
+/// A database whose `Main` and `Data` are views that compute their rows: a few KiB of file
+/// that would expand to hundreds of MiB.
+#[test]
+fn ditto_refuses_views_standing_in_for_its_tables() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("views.db");
+    Connection::open(&path)
+        .unwrap()
+        .execute_batch(
+            "CREATE VIEW Main AS
+               WITH RECURSIVE c(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM c WHERE n < 12)
+               SELECT n AS lID, 0 AS lDate, CAST(zeroblob(5000000) AS TEXT) AS mText,
+                      0 AS lDontAutoDelete, 0 AS bIsGroup, -1 AS lParentID FROM c;
+             CREATE VIEW Data AS
+               SELECT 1 AS lParentID, 'CF_TEXT' AS strClipBoardFormat, zeroblob(10) AS ooData;",
+        )
+        .unwrap();
+    let mut s = store();
+    let e = import_ditto(&mut s, &path, at(1), &ImportOptions::default()).unwrap_err();
+    assert!(
+        matches!(&e, Error::NotDitto { reason, .. } if reason.contains("not a table")),
+        "{e}"
+    );
+    assert_eq!(counts(&s), (0, 0, 0, 0));
+}
+
+#[test]
+fn ditto_refuses_virtual_tables_and_computed_columns() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut s = store();
+
+    let virtual_table = dir.path().join("virtual.db");
+    Connection::open(&virtual_table)
+        .unwrap()
+        .execute_batch(
+            "CREATE VIRTUAL TABLE Main USING fts5(lID, lDate, mText, lDontAutoDelete, bIsGroup, lParentID);
+             CREATE TABLE Data(lID INTEGER PRIMARY KEY, lParentID INTEGER, strClipBoardFormat TEXT, ooData BLOB);",
+        )
+        .unwrap();
+    let e = import_ditto(&mut s, &virtual_table, at(1), &ImportOptions::default()).unwrap_err();
+    assert!(matches!(e, Error::NotDitto { .. }), "{e}");
+
+    // A generated column computes its value for every row on every read.
+    let generated = dir.path().join("generated.db");
+    let conn = Connection::open(&generated).unwrap();
+    conn.execute_batch(
+        "CREATE TABLE Main(lID INTEGER PRIMARY KEY, lDate INTEGER,
+            mText TEXT GENERATED ALWAYS AS (CAST(zeroblob(4000000) AS TEXT)) VIRTUAL,
+            lDontAutoDelete INTEGER, bIsGroup INTEGER, lParentID INTEGER);
+         CREATE TABLE Data(lID INTEGER PRIMARY KEY, lParentID INTEGER, strClipBoardFormat TEXT, ooData BLOB);
+         WITH RECURSIVE c(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM c WHERE n < 12)
+           INSERT INTO Main (lID, lDate, lDontAutoDelete, bIsGroup, lParentID)
+           SELECT n, 0, 0, 0, -1 FROM c;",
+    )
+    .unwrap();
+    drop(conn);
+    let e = import_ditto(&mut s, &generated, at(1), &ImportOptions::default()).unwrap_err();
+    assert!(matches!(e, Error::NotDitto { .. }), "{e}");
+    assert_eq!(counts(&s), (0, 0, 0, 0));
+}
+
+/// Rows over the per-value limit are skipped with their real size; the rest still imports.
+#[test]
+fn ditto_skips_oversized_values_with_their_real_size_and_carries_on() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("Data.db");
+    let d = Ditto::new(&path);
+    let big = 12_000_000_usize;
+    // Oversized CF_UNICODETEXT, then an oversized description with no data rows.
+    d.clip(1, 1_700_000_000, Some("big data row"), false, -1);
+    d.data(1, "CF_UNICODETEXT", &vec![b'a'; big]);
+    d.clip(2, 1_700_000_100, None, false, -1);
+    d.0.execute(
+        "UPDATE Main SET mText = ?1 WHERE lID = 2",
+        rusqlite::params![vec![b'b'; big]],
+    )
+    .unwrap();
+    d.clip(3, 1_700_000_200, Some("fine"), false, -1);
+    drop(d);
+
+    let mut s = store();
+    let report = import_ditto(&mut s, &path, at(9), &ImportOptions::default()).unwrap();
+    assert_eq!(report.items_added, 1, "{report:?}");
+    assert_eq!(report.items_skipped, 2, "{report:?}");
+    let mut sizes: Vec<_> = report
+        .warnings
+        .iter()
+        .filter_map(|w| match w {
+            Warning::TooLarge { name, size } => Some((name.as_str(), *size)),
+            _ => None,
+        })
+        .collect();
+    sizes.sort_unstable();
+    assert_eq!(
+        sizes,
+        [("Ditto clip 1", big as u64), ("Ditto clip 2", big as u64)]
+    );
+    assert_healthy(&s);
+}
+
 #[test]
 fn ditto_group_cycles_and_depth_cannot_loop() {
     let dir = tempfile::tempdir().unwrap();
