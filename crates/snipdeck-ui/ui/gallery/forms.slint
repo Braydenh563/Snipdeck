@@ -1,0 +1,133 @@
+import { Theme, Type, Space, Palette, Fonts } from "../theme.slint";
+import { Toggle } from "../components/choice.slint";
+import { TextField } from "../components/text_field.slint";
+import { FormField, FormSection, SettingRow, Segmented, SelectField, NumberStepper } from "../components/form.slint";
+
+// Segmented, SelectField, NumberStepper, FormField and SettingRow in every state (DESIGN.md §4 forms). The
+// `focus-*` functions put the keyboard focus on a control so a screenshot shows its ring and the tests can drive it.
+export component FormControlsGallery inherits Window {
+    background: Theme.bg-app;
+    preferred-width: 520px;
+    preferred-height: 760px;
+
+    in property <bool> dark: false;
+    in-out property <int> seg: 1;
+    in-out property <int> sel: 0;
+    in-out property <bool> sel-open: false;
+    in-out property <int> num: 320;
+    in-out property <bool> on: true;
+    in-out property <int> changes: 0;
+    out property <bool> seg-focused: seg-c.has-focus;
+    out property <bool> sel-focused: sel-c.has-focus;
+    out property <bool> num-focused: num-c.has-focus;
+
+    public function focus-seg() { seg-c.focus(); }
+    public function focus-sel() { sel-c.focus(); }
+    public function focus-num() { num-c.focus(); }
+
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    VerticalLayout {
+        padding: Space.s4;
+        spacing: Space.s4;
+        alignment: start;
+
+        FormField {
+            label: "Sort items by";
+            helper: "Manual keeps the order you drag them into.";
+            seg-c := Segmented {
+                label: "Sort items by";
+                options: ["Manual", "Most used", "Recently used"];
+                current: root.seg;
+                chosen(i) => {
+                    root.seg = i;
+                    root.changes += 1;
+                }
+            }
+        }
+        FormField {
+            label: "List";
+            sel-c := SelectField {
+                label: "List";
+                options: ["Email replies", "Addresses", "Code", "A list with a rather long name that elides"];
+                current: root.sel;
+                open <=> root.sel-open;
+                chosen(i) => {
+                    root.sel = i;
+                    root.changes += 1;
+                }
+            }
+        }
+        FormField {
+            label: "Panel width";
+            num-c := NumberStepper {
+                label: "Panel width";
+                decrease-label: "Narrower";
+                increase-label: "Wider";
+                unit: "px";
+                min: 260;
+                max: 480;
+                step: 10;
+                value: root.num;
+                stepped(v) => {
+                    root.num = v;
+                    root.changes += 1;
+                }
+            }
+        }
+        FormField {
+            label: "Name";
+            helper: "Shown in the sidebar.";
+            error: "Give it a name.";
+            TextField {
+                label: "Name";
+                error: "";
+            }
+        }
+        FormSection {
+            title: "Disabled";
+            SettingRow {
+                title: "Segmented";
+                description: "Cannot change while the panel is locked.";
+                Segmented {
+                    width: 240px;
+                    label: "Locked sort";
+                    options: ["Manual", "Most used", "Recent"];
+                    current: 0;
+                    enabled: false;
+                }
+            }
+            SettingRow {
+                title: "Select and stepper";
+                SelectField {
+                    width: 160px;
+                    label: "Locked list";
+                    options: ["Email replies"];
+                    current: 0;
+                    enabled: false;
+                }
+            }
+            SettingRow {
+                title: "Stepper";
+                NumberStepper {
+                    label: "Locked width";
+                    decrease-label: "Narrower";
+                    increase-label: "Wider";
+                    min: 0;
+                    max: 10;
+                    value: 10;
+                    enabled: false;
+                }
+            }
+            SettingRow {
+                title: "Switch";
+                description: "A setting with an explanation under it.";
+                Toggle {
+                    a11y-label: "Switch";
+                    checked <=> root.on;
+                }
+            }
+        }
+    }
+}

@@ -16,6 +16,7 @@ export component Button inherits Rectangle {
     in property <bool> loading: false;
     // Overrides the spoken label (icon-only usage); defaults to `text`.
     in property <string> a11y-label;
+    out property <bool> has-focus: scope.has-focus;
     callback clicked();
 
     property <bool> active: root.enabled && !root.loading;

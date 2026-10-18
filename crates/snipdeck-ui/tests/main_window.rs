@@ -199,3 +199,102 @@ fn the_empty_state_keeps_the_list_pane_free_of_cards() {
     }
 }
 
+// ---- CJK (measured, never a golden: system fallback fonts differ per machine) ----------------------
+
+const SURFACE_LIGHT: [u8; 3] = [0xFB, 0xFA, 0xF7];
+
+/// y of every card top on the column `x`: where the surface fill starts below something else.
+fn card_tops(f: &Frame, x: u32, height: u32) -> Vec<u32> {
+    let mut tops = Vec::new();
+    for y in 100..height - 40 {
+        if f.pixel(x, y) == SURFACE_LIGHT && f.pixel(x, y - 1) != SURFACE_LIGHT {
+            tops.push(y);
+        }
+    }
+    tops
+}
+
+fn long_rows(cjk: bool) -> Vec<snipdeck_ui::MainRow> {
+    let (title, preview) = if cjk {
+        (
+            "請求書のお願い",
+            "お世話になっております。先月分の請求書をお送りいただけますでしょうか。ご確認のほどよろしくお願いいたします。先月分の請求書をお送りいただけますでしょうか。",
+        )
+    } else {
+        (
+            "Invoice request",
+            "Thank you for your help so far. Could you send last month's invoice when you have a moment? Payment reminder attached, thanks again.",
+        )
+    };
+    (0..4)
+        .map(|_| fixture::row(snipdeck_ui::ItemKind::Text, title, preview))
+        .collect()
+}
+
+#[test]
+fn cjk_rows_keep_the_card_pitch_and_stay_inside_the_list_pane() {
+    for view in [MainView::Comfortable, MainView::Compact] {
+        let mut pitches = Vec::new();
+        for cjk in [false, true] {
+            let h = window(SIZE, false);
+            fixture::set_rows(&h.component, long_rows(cjk));
+            h.component.set_view(view);
+            let f = render(&h);
+            let tops = card_tops(&f, 252, SIZE.1);
+            assert!(tops.len() >= 3, "{view:?} cjk={cjk}: card tops {tops:?}");
+            pitches.push(tops.windows(2).map(|w| w[1] - w[0]).collect::<Vec<_>>());
+
+            // Nothing is drawn in the right padding of the list pane.
+            for y in (110..SIZE.1 - 60).step_by(3) {
+                assert_eq!(
+                    f.pixel(SIZE.0 - 6, y),
+                    APP_LIGHT,
+                    "{view:?} cjk={cjk}: ink at the right edge, y={y}"
+                );
+            }
+            // The first card holds ink (the glyphs drew, tofu or not).
+            let (top, bottom) = (tops[0], tops[1]);
+            let mut ink = 0;
+            for y in top + 2..bottom - 2 {
+                for x in (256..SIZE.0 - 40).step_by(2) {
+                    if f.pixel(x, y) != SURFACE_LIGHT {
+                        ink += 1;
+                    }
+                }
+            }
+            assert!(ink > 50, "{view:?} cjk={cjk}: only {ink} ink pixels in the first card");
+        }
+        assert_eq!(pitches[0], pitches[1], "{view:?}: CJK text changes the row height");
+    }
+}
+
+#[test]
+fn the_cjk_family_setting_reaches_every_text_of_the_window() {
+    use snipdeck_ui::Fonts;
+    let h = window(SIZE, false);
+    let base = render(&h);
+    // Plex Mono is bundled, so the effect is the same on every machine: all UI text changes family.
+    h.component.global::<Fonts<'_>>().set_cjk_family("IBM Plex Mono".into());
+    let changed = render(&h);
+    let mut differing = 0;
+    for y in (0..SIZE.1).step_by(2) {
+        for x in (0..SIZE.0).step_by(2) {
+            if base.pixel(x, y) != changed.pixel(x, y) {
+                differing += 1;
+            }
+        }
+    }
+    assert!(differing > 1500, "only {differing} pixels changed");
+    h.component.global::<Fonts<'_>>().set_cjk_family("".into());
+    let back = render(&h);
+    for y in (0..SIZE.1).step_by(7) {
+        for x in (0..SIZE.0).step_by(7) {
+            assert_eq!(
+                back.pixel(x, y),
+                base.pixel(x, y),
+                "resetting the family restores Plex Sans at ({x}, {y})"
+            );
+        }
+    }
+}
+

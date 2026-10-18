@@ -1,0 +1,571 @@
+import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+import { StateColor } from "state-color.slint";
+import { FieldError } from "text_field.slint";
+
+// Form building blocks for the editors and the settings page (DESIGN.md §4). Every control here is one tab stop
+// with arrow keys inside it, has a hover, pressed, disabled and keyboard-focus state, an accessible role and label,
+// and a hit target of at least `Space.hit-min`. Values go in as properties and out as callbacks; the host writes
+// the answer back (`in property` + `chosen(...)`), so a control never shows a value the host has not accepted.
+
+// A labelled field: label above, the control in the middle, an optional helper line and an inline error below.
+// TextField draws its own error; this one is for the controls that have none (Segmented, SelectField, ...).
+export component FormField inherits VerticalLayout {
+    in property <string> label;
+    in property <string> helper;
+    in property <string> error;
+
+    spacing: Space.s1;
+    alignment: start;
+
+    Text {
+        text: root.label;
+        color: Theme.text-primary;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        font-weight: Type.medium;
+        wrap: word-wrap;
+        accessible-role: none;
+    }
+    @children
+    if root.helper != "": Text {
+        text: root.helper;
+        color: Theme.text-secondary;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        wrap: word-wrap;
+        accessible-role: none;
+    }
+    if root.error != "": FieldError { text: root.error; }
+}
+
+// The page of a form: a Flickable that can bring a control into view. Controls call `reveal` when they gain the
+// keyboard focus (Slint does not scroll to the focus by itself); `top` is the control's y relative to the top of
+// the visible area (`control.absolute-position.y - page.absolute-position.y`).
+export component FormScroll inherits Flickable {
+    public function reveal(top: length, h: length) {
+        if (top < 0px) {
+            root.content-y = min(0px, root.content-y - top);
+        } else if (top + h > root.height) {
+            root.content-y = max(root.height - root.content-height, root.content-y - (top + h - root.height));
+        }
+    }
+}
+
+// A group of fields under a heading (settings page).
+export component FormSection inherits VerticalLayout {
+    in property <string> title;
+
+    spacing: Space.s1;
+    alignment: start;
+    accessible-role: groupbox;
+    accessible-label: root.title;
+
+    Text {
+        text: root.title;
+        color: Theme.text-primary;
+        font-family: Fonts.sans;
+        font-size: Type.md;
+        font-weight: Type.semibold;
+        accessible-role: none;
+    }
+    Rectangle {
+        height: 1px;
+        background: Theme.border-subtle;
+    }
+    @children
+}
+
+// A setting: title and explanation on the left, the control (the children) on the right, a hairline below.
+export component SettingRow inherits Rectangle {
+    in property <string> title;
+    in property <string> description;
+
+    min-height: Space.hit + 2 * Space.s2;
+    accessible-role: groupbox;
+    accessible-label: root.title;
+    accessible-description: root.description;
+
+    HorizontalLayout {
+        padding-top: Space.s2;
+        padding-bottom: Space.s2;
+        spacing: Space.s4;
+        VerticalLayout {
+            horizontal-stretch: 1;
+            min-width: 0px;
+            alignment: center;
+            spacing: Space.s0-5;
+            Text {
+                text: root.title;
+                color: Theme.text-primary;
+                font-family: Fonts.sans;
+                font-size: Type.base;
+                wrap: word-wrap;
+                accessible-role: none;
+            }
+            if root.description != "": Text {
+                text: root.description;
+                color: Theme.text-secondary;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                wrap: word-wrap;
+                accessible-role: none;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            @children
+        }
+    }
+    Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        background: Theme.border-subtle;
+    }
+}
+
+// A few mutually exclusive choices in one row (kind, sort, theme). One tab stop; Left / Right / Up / Down / Home /
+// End move and choose at once, like a radio group. The host owns `current`.
+export component Segmented inherits Rectangle {
+    in property <[string]> options;
+    in property <int> current: 0;
+    // Spoken name of the group ("Theme").
+    in property <string> label;
+    in property <bool> enabled: true;
+    callback chosen(index: int);
+    out property <bool> has-focus: scope.has-focus;
+
+    function move(to: int) {
+        if (root.enabled && to >= 0 && to < root.options.length && to != root.current) {
+            root.chosen(to);
+        }
+    }
+
+    height: max(Space.hit, Type.line-base + Space.s2);
+    background: Theme.bg-sunken;
+    border-radius: Radius.md;
+    border-width: 1px;
+    border-color: Theme.border-default;
+    opacity: root.enabled ? 1.0 : 0.45;
+    forward-focus: scope;
+    accessible-role: radio-group;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+
+    HorizontalLayout {
+        padding: Space.s0-5;
+        spacing: Space.s0-5;
+        for option[i] in root.options: Rectangle {
+            horizontal-stretch: 1;
+            min-width: Space.hit-min;
+            border-radius: Radius.sm;
+            background: i == root.current ? Theme.bg-surface
+                : (touch.pressed && root.enabled) ? StateColor.pressed()
+                : (touch.has-hover && root.enabled) ? Theme.bg-hover : transparent;
+            border-width: i == root.current ? 1px : 0px;
+            border-color: Theme.border-strong;
+            accessible-role: radio-button;
+            accessible-label: option;
+            accessible-checkable: true;
+            accessible-checked: i == root.current;
+            accessible-enabled: root.enabled;
+            accessible-action-default => { root.move(i); }
+            animate background { duration: Motion.instant; easing: Motion.out; }
+
+            Text {
+                text: option;
+                color: Theme.text-primary;
+                font-family: Fonts.sans;
+                font-size: Type.base;
+                font-weight: i == root.current ? Type.semibold : Type.regular;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+            touch := TouchArea {
+                enabled: root.enabled;
+                clicked => { root.move(i); }
+            }
+        }
+    }
+
+    // 2px ring, 2px offset (DESIGN.md §2).
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.md + 2px;
+        background: transparent;
+    }
+
+    scope := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == Key.RightArrow || event.text == Key.DownArrow) {
+                root.move(root.current + 1);
+                return accept;
+            }
+            if (event.text == Key.LeftArrow || event.text == Key.UpArrow) {
+                root.move(root.current - 1);
+                return accept;
+            }
+            if (event.text == Key.Home) {
+                root.move(0);
+                return accept;
+            }
+            if (event.text == Key.End) {
+                root.move(root.options.length - 1);
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
+// A drop-down that opens in the flow of the form (the list pushes what is below it down) instead of in a popup, so
+// it never fights the window's z-order and works in a small window. One tab stop. Closed: Down, Up, Enter or Space
+// open it. Open: Up / Down / Home / End move the highlight, Enter or Space chooses, Esc closes (and is not passed on,
+// so it does not cancel the editor), Tab or losing the focus closes. Fits a short list; it does not scroll.
+export component SelectField inherits VerticalLayout {
+    in property <[string]> options;
+    in property <int> current: 0;
+    in property <string> label;
+    // Shown when `current` is outside `options`.
+    in property <string> placeholder;
+    in property <bool> enabled: true;
+    in-out property <bool> open: false;
+    out property <bool> has-focus: scope.has-focus;
+    callback chosen(index: int);
+
+    property <int> hl: 0;
+    property <string> value: (root.current >= 0 && root.current < root.options.length)
+        ? root.options[root.current] : root.placeholder;
+
+    function toggle() {
+        if (!root.enabled) {
+            return;
+        }
+        if (root.open) {
+            root.open = false;
+        } else {
+            root.hl = max(0, root.current);
+            root.open = true;
+            scope.focus();
+        }
+    }
+    function pick(i: int) {
+        root.open = false;
+        root.chosen(i);
+    }
+
+    spacing: Space.s1;
+    alignment: start;
+    forward-focus: scope;
+
+    box := Rectangle {
+        height: max(Space.hit, Type.line-base + Space.s2);
+        background: !root.enabled ? Theme.bg-sunken
+            : (touch.pressed) ? StateColor.pressed() : Theme.bg-surface;
+        border-radius: Radius.md;
+        border-width: 1px;
+        border-color: root.open || scope.has-focus ? Theme.accent
+            : (touch.has-hover && root.enabled) ? Theme.text-secondary : Theme.border-strong;
+        opacity: root.enabled ? 1.0 : 0.45;
+        accessible-role: combobox;
+        accessible-label: root.label;
+        accessible-value: root.value;
+        accessible-expanded: root.open;
+        accessible-enabled: root.enabled;
+        accessible-action-default => { root.toggle(); }
+        animate border-color { duration: Motion.instant; easing: Motion.out; }
+
+        HorizontalLayout {
+            padding-left: Space.s2;
+            padding-right: Space.s2;
+            spacing: Space.s2;
+            Text {
+                horizontal-stretch: 1;
+                min-width: 0px;
+                text: root.value;
+                color: Theme.text-primary;
+                font-family: Fonts.sans;
+                font-size: Type.base;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+            Icon {
+                source: Icons.caret-down;
+                transform-rotation: root.open ? 180deg : 0deg;
+                tint: Theme.text-secondary;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+
+        Rectangle {
+            x: -4px;
+            y: -4px;
+            width: parent.width + 8px;
+            height: parent.height + 8px;
+            border-width: scope.has-focus ? 2px : 0px;
+            border-color: Theme.focus-ring;
+            border-radius: Radius.md + 2px;
+            background: transparent;
+        }
+
+        touch := TouchArea {
+            enabled: root.enabled;
+            clicked => { root.toggle(); }
+        }
+    }
+
+    if root.open: Rectangle {
+        height: choices.preferred-height;
+        background: Theme.bg-overlay;
+        border-radius: Radius.md;
+        border-width: 1px;
+        border-color: Theme.border-default;
+        accessible-role: list;
+        accessible-label: root.label;
+
+        choices := VerticalLayout {
+            padding: Space.s0-5;
+            for option[i] in root.options: Rectangle {
+                height: max(Space.hit, Type.line-base + Space.s2);
+                border-radius: Radius.sm;
+                background: row-touch.pressed ? StateColor.pressed()
+                    : (i == root.hl || row-touch.has-hover) ? Theme.bg-hover : transparent;
+                accessible-role: list-item;
+                accessible-label: option;
+                accessible-checkable: true;
+                accessible-checked: i == root.current;
+                accessible-action-default => { root.pick(i); }
+
+                HorizontalLayout {
+                    padding-left: Space.s2;
+                    padding-right: Space.s2;
+                    spacing: Space.s2;
+                    Text {
+                        horizontal-stretch: 1;
+                        min-width: 0px;
+                        text: option;
+                        color: Theme.text-primary;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        font-weight: i == root.current ? Type.semibold : Type.regular;
+                        vertical-alignment: center;
+                        overflow: elide;
+                        accessible-role: none;
+                    }
+                    if i == root.current: Icon {
+                        source: Icons.check;
+                        tint: Theme.text-primary;
+                        y: (parent.height - self.height) / 2;
+                    }
+                }
+                row-touch := TouchArea {
+                    clicked => { root.pick(i); }
+                }
+            }
+        }
+    }
+
+    scope := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (!root.open) {
+                if (event.text == Key.DownArrow || event.text == Key.UpArrow || event.text == "\n" || event.text == " ") {
+                    root.toggle();
+                    return accept;
+                }
+                return reject;
+            }
+            if (event.text == Key.Escape) {
+                root.open = false;
+                return accept;
+            }
+            if (event.text == Key.DownArrow) {
+                root.hl = min(root.options.length - 1, root.hl + 1);
+                return accept;
+            }
+            if (event.text == Key.UpArrow) {
+                root.hl = max(0, root.hl - 1);
+                return accept;
+            }
+            if (event.text == Key.Home) {
+                root.hl = 0;
+                return accept;
+            }
+            if (event.text == Key.End) {
+                root.hl = root.options.length - 1;
+                return accept;
+            }
+            if (event.text == "\n" || event.text == " ") {
+                root.pick(root.hl);
+                return accept;
+            }
+            if (event.text == Key.Tab || event.text == Key.Backtab) {
+                root.open = false;
+            }
+            return reject;
+        }
+        changed has-focus => {
+            if (!self.has-focus) {
+                root.open = false;
+            }
+        }
+    }
+}
+
+// One minus / plus button of the stepper. Not a tab stop: the stepper itself takes Up / Down.
+component StepButton inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> enabled: true;
+    callback clicked();
+
+    width: Space.hit;
+    height: Space.hit;
+    border-radius: Radius.md;
+    background: (touch.pressed && root.enabled) ? StateColor.pressed()
+        : (touch.has-hover && root.enabled) ? Theme.bg-hover : transparent;
+    opacity: root.enabled ? 1.0 : 0.45;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    Icon {
+        source: root.icon;
+        tint: Theme.text-primary;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+}
+
+// An integer between `min` and `max` with minus and plus buttons. One tab stop; Up / Down step by `step`, PageUp /
+// PageDown by ten steps, Home / End jump to the ends. `unit` ("px") follows the number. The host owns `value`.
+export component NumberStepper inherits Rectangle {
+    in property <int> value;
+    in property <int> min: 0;
+    in property <int> max: 100;
+    in property <int> step: 1;
+    in property <string> unit;
+    in property <string> label;
+    in property <string> decrease-label;
+    in property <string> increase-label;
+    in property <bool> enabled: true;
+    out property <bool> has-focus: scope.has-focus;
+    callback stepped(value: int);
+
+    function set(to: int) {
+        if (root.enabled) {
+            let v = Math.max(root.min, Math.min(root.max, to));
+            if (v != root.value) {
+                root.stepped(v);
+            }
+        }
+    }
+
+    height: Space.hit;
+    min-width: 3 * Space.hit + Space.s4;
+    forward-focus: scope;
+    accessible-role: spinbox;
+    accessible-label: root.label;
+    accessible-value: "\{root.value}";
+    accessible-value-minimum: root.min;
+    accessible-value-maximum: root.max;
+    accessible-value-step: root.step;
+    accessible-enabled: root.enabled;
+    accessible-action-increment => { root.set(root.value + root.step); }
+    accessible-action-decrement => { root.set(root.value - root.step); }
+
+    Rectangle {
+        background: !root.enabled ? Theme.bg-sunken : Theme.bg-surface;
+        border-radius: Radius.md;
+        border-width: 1px;
+        border-color: scope.has-focus ? Theme.accent : Theme.border-strong;
+        opacity: root.enabled ? 1.0 : 0.45;
+        animate border-color { duration: Motion.instant; easing: Motion.out; }
+    }
+    HorizontalLayout {
+        spacing: Space.s1;
+        StepButton {
+            icon: Icons.minus;
+            label: root.decrease-label;
+            enabled: root.enabled && root.value > root.min;
+            clicked => { root.set(root.value - root.step); }
+        }
+        Text {
+            horizontal-stretch: 1;
+            text: root.unit == "" ? "\{root.value}" : "\{root.value} \{root.unit}";
+            color: Theme.text-primary;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        StepButton {
+            icon: Icons.plus;
+            label: root.increase-label;
+            enabled: root.enabled && root.value < root.max;
+            clicked => { root.set(root.value + root.step); }
+        }
+    }
+
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.md + 2px;
+        background: transparent;
+    }
+
+    scope := FocusScope {
+        enabled: root.enabled;
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == Key.UpArrow || event.text == Key.RightArrow) {
+                root.set(root.value + root.step);
+                return accept;
+            }
+            if (event.text == Key.DownArrow || event.text == Key.LeftArrow) {
+                root.set(root.value - root.step);
+                return accept;
+            }
+            if (event.text == Key.PageUp) {
+                root.set(root.value + 10 * root.step);
+                return accept;
+            }
+            if (event.text == Key.PageDown) {
+                root.set(root.value - 10 * root.step);
+                return accept;
+            }
+            if (event.text == Key.Home) {
+                root.set(root.min);
+                return accept;
+            }
+            if (event.text == Key.End) {
+                root.set(root.max);
+                return accept;
+            }
+            return reject;
+        }
+    }
+}

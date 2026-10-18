@@ -1,0 +1,1114 @@
+// The editors of the Main window (DESIGN.md §4 and §5, SPEC §5.4): `ItemEditor`, `ListEditor`, `BoardEditor` and
+// `TagManager`. Each is its own window, opened by the host from a Main window gesture; none of them talks to the
+// store. A window takes the values to show as properties and reports gestures as callbacks:
+//
+//   - Values the user edits are `in-out` properties (`item-title`, `content`, ...). The host sets them before it
+//     shows the window and reads them in `save-requested`.
+//   - Validation the editor can do alone (a required field is empty) shows inline and keeps `save-requested` from
+//     firing. Validation that needs the store (a name already taken) comes in as `*-error` properties; the host sets
+//     them after `save-requested` and the window shows them. Typing emits `edited()` so the host can clear them.
+//   - Keyboard: Tab / Shift+Tab move between fields (the page scrolls to the focused field), Ctrl+Enter saves,
+//     Esc cancels. Leaving with unsaved changes asks first (a Dialog; the window has no focus trap beyond what
+//     Dialog gives it, see README).
+//
+// Colour names and kind order are the host's mapping to its enums; they are listed next to each property.
+import { ListView } from "std-widgets.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue } from "theme.slint";
+import { Icons } from "icons.slint";
+import { Icon } from "components/icon.slint";
+import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
+import { IconButton, IconButtonSize } from "components/icon-button.slint";
+import { TextField } from "components/text_field.slint";
+import { Toggle, Radio } from "components/choice.slint";
+import { Tag } from "components/tag.slint";
+import { Swatch } from "components/swatch.slint";
+import { Dialog, DialogVariant } from "components/dialog.slint";
+import { Chooser, ChoiceEntry } from "components/chooser.slint";
+import { FormField, FormScroll, Segmented, SelectField } from "components/form.slint";
+
+// An information strip: icon plus text, never colour alone.
+component Notice inherits Rectangle {
+    in property <string> text;
+
+    height: row.preferred-height;
+    background: Theme.info-bg;
+    border-radius: Radius.md;
+    border-width: 1px;
+    border-color: Theme.border-default;
+    accessible-role: AccessibleRole.text;
+    accessible-label: root.text;
+
+    row := HorizontalLayout {
+        padding: Space.s2;
+        spacing: Space.s2;
+        Icon {
+            source: Icons.info;
+            tint: Theme.info-fg;
+            y: (Type.line-sm - self.height) / 2 + Space.s0-5;
+        }
+        Text {
+            horizontal-stretch: 1;
+            text: root.text;
+            color: Theme.text-primary;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            wrap: word-wrap;
+            accessible-role: none;
+        }
+    }
+}
+
+// The button row at the bottom of an editor: Delete at the left (when the thing exists), Cancel and Save at the right.
+component EditorFooter inherits Rectangle {
+    in property <bool> show-delete: false;
+    in property <string> delete-label;
+    in property <string> cancel-label;
+    in property <string> save-label;
+    callback delete();
+    callback cancel();
+    callback save();
+
+    height: row.preferred-height + 1px;
+    background: Theme.bg-surface;
+
+    Rectangle {
+        height: 1px;
+        background: Theme.border-subtle;
+    }
+    row := HorizontalLayout {
+        padding: Space.s3;
+        padding-top: Space.s3 + 1px;
+        padding-left: Space.s4;
+        padding-right: Space.s4;
+        spacing: Space.s2;
+        if root.show-delete: Button {
+            text: root.delete-label;
+            icon: Icons.trash;
+            variant: ButtonVariant.ghost;
+            clicked => { root.delete(); }
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+        }
+        Button {
+            text: root.cancel-label;
+            clicked => { root.cancel(); }
+        }
+        Button {
+            text: root.save-label;
+            variant: ButtonVariant.primary;
+            clicked => { root.save(); }
+        }
+    }
+}
+
+// ---- Item editor ---------------------------------------------------------------------------------
+
+// One line of the template placeholder help.
+struct PlaceholderHelp {
+    token: string,
+    help: string,
+    prompted: bool,
+}
+
+// Kinds the user may switch between: Text, Code, Link, Template (0 to 3). Image and File (4, 5) come from capture
+// and drop; their editor shows what the item holds and lets title, tags, list and flags change.
+export component ItemEditor inherits Window {
+    title: root.is-new ? @tr("New item") : @tr("Edit item");
+    background: Theme.bg-app;
+    min-width: 420px;
+    min-height: 380px;
+    preferred-width: 560px;
+    preferred-height: 700px;
+
+    in property <bool> dark: false;
+    in property <bool> is-new: false;
+    // 0 text, 1 code, 2 link, 3 template, 4 image, 5 file.
+    in-out property <int> kind-index: 0;
+    in-out property <string> item-title;
+    // The text (kinds 0 to 3). Image and file items have no text to edit.
+    in-out property <string> content;
+    in-out property <bool> sensitive: false;
+    // The list the item is in: an index into `list-names`.
+    in-out property <int> list-index: 0;
+    in property <[string]> list-names;
+    // Every tag, with `checked` on the ones this item has.
+    in property <[ChoiceEntry]> tags;
+    // How many of `tags` are ticked ("No tags" shows when it is 0).
+    in property <int> tags-on: 0;
+    // From the host: a title or content problem only the store or the parser knows ("Link needs a scheme").
+    in property <string> title-error;
+    in property <string> content-error;
+    // The clipboard is cleared this long after a sensitive item is used (Settings).
+    in property <int> clear-seconds: 30;
+    // The text is over the inline limit (16 KB, SPEC §5.4): shown read-only; `content-size` is its size ("2.4 MB").
+    in property <bool> content-large: false;
+    in property <string> content-size;
+    // Image and file items.
+    in property <image> preview;
+    in property <string> attachment-name;
+    in property <string> attachment-detail;
+    // False on the free plan: `{field}` and `{choice}` are marked Pro in the placeholder help.
+    in property <bool> prompted-available: true;
+    // Anything changed since the window opened (the host clears it after a save with `mark-clean()`).
+    out property <bool> dirty: false;
+    in-out property <bool> discard-open: false;
+    in-out property <bool> tags-open: false;
+
+    // Fires only when the item passes the checks the window can make itself.
+    callback save-requested();
+    // Leaving without saving; sent after the user confirmed discarding changes, or at once when nothing changed.
+    callback cancel-requested();
+    callback delete-requested();
+    callback tag-toggled(index: int);
+    // A new tag name was entered; the host creates it and adds it to `tags` (ticked).
+    callback tag-added(name: string);
+    // Any edit; the host clears `title-error` and `content-error` here.
+    callback edited();
+
+    public function mark-clean() { root.dirty = false; }
+    public function focus-title() { title-field.focus(); }
+
+    property <bool> text-kind: root.kind-index <= 3;
+    property <string> sensitive-help: root.text-kind
+        ? @tr("Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it.", root.clear-seconds)
+        : @tr("Only text, code, link and template items can be sensitive.");
+    property <bool> show-errors: false;
+    property <bool> content-missing: root.text-kind && root.content == "";
+    property <string> content-shown-error: root.content-error != "" ? root.content-error
+        : (root.show-errors && root.content-missing) ? @tr("Add some text, or cancel.") : "";
+    property <[PlaceholderHelp]> placeholders: [
+        { token: "{date}", help: @tr("Today's date") },
+        { token: "{time}", help: @tr("The time now") },
+        { token: "{datetime:FORMAT}", help: @tr("Date and time in a format you choose") },
+        { token: "{clipboard}", help: @tr("What is on the clipboard") },
+        { token: "{cursor}", help: @tr("Where the text cursor lands after pasting") },
+        { token: "{field:Name}", help: @tr("Asks for a value each time"), prompted: true },
+        { token: "{choice:Name|a|b}", help: @tr("Asks you to pick one of the options"), prompted: true },
+    ];
+
+    function touch() {
+        root.dirty = true;
+        root.edited();
+    }
+    function reveal-field(y: length, h: length) {
+        flick.reveal(y - flick.absolute-position.y, h);
+    }
+    function try-save() {
+        root.show-errors = true;
+        if (root.content-missing || root.content-error != "" || root.title-error != "") {
+            return;
+        }
+        root.save-requested();
+    }
+    function request-cancel() {
+        if (root.dirty) {
+            root.discard-open = true;
+        } else {
+            root.cancel-requested();
+        }
+    }
+
+    init => {
+        Palette.dark = root.dark;
+        title-field.focus();
+    }
+    changed dark => {
+        Palette.dark = root.dark;
+    }
+
+    scope := FocusScope {
+        capture-key-pressed(event) => {
+            if (event.text == "\n" && event.modifiers.control && !root.discard-open) {
+                root.try-save();
+                return accept;
+            }
+            return reject;
+        }
+        key-pressed(event) => {
+            if (event.text == Key.Escape && !root.discard-open) {
+                if (root.tags-open) {
+                    root.tags-open = false;
+                } else {
+                    root.request-cancel();
+                }
+                return accept;
+            }
+            return reject;
+        }
+
+        VerticalLayout {
+            flick := FormScroll {
+                vertical-stretch: 1;
+                content-height: form.preferred-height;
+                content-width: self.width;
+
+                form := VerticalLayout {
+                    width: flick.width;
+                    padding: Space.s4;
+                    spacing: Space.s4;
+                    alignment: start;
+
+                    // Kind: a choice for text items, a fixed label for captured ones.
+                    if root.text-kind: FormField {
+                        label: @tr("Kind");
+                        kind-choice := Segmented {
+                            label: @tr("Kind");
+                            options: [@tr("Text"), @tr("Code"), @tr("Link"), @tr("Template")];
+                            current: root.kind-index;
+                            chosen(i) => {
+                                root.kind-index = i;
+                                root.touch();
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if !root.text-kind: FormField {
+                        label: @tr("Kind");
+                        helper: @tr("Captured items keep their kind.");
+                        Text {
+                            text: root.kind-index == 4 ? @tr("Image") : @tr("File");
+                            color: Theme.text-primary;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            font-weight: Type.medium;
+                        }
+                    }
+
+                    FormField {
+                        label: @tr("Title");
+                        title-field := TextField {
+                            label: @tr("Title");
+                            placeholder: @tr("Optional: the first line of the text is used");
+                            error: root.title-error;
+                            text <=> root.item-title;
+                            edited(t) => { root.touch(); }
+                            accepted(t) => { root.try-save(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+
+                    // The content: text for kinds 0 to 3, what the item holds for image and file. One slot, so the
+                    // text field exists whatever the kind (a field inside an `if` cannot be focused from here).
+                    Rectangle {
+                        height: root.text-kind ? content-form.preferred-height : attachment.preferred-height;
+                        clip: true;
+
+                        content-form := FormField {
+                            width: parent.width;
+                            label: root.kind-index == 2 ? @tr("Link") : root.kind-index == 3 ? @tr("Template text") : @tr("Content");
+                            visible: root.text-kind;
+                            content-field := TextField {
+                                label: root.kind-index == 2 ? @tr("Link") : @tr("Content");
+                                enabled: root.text-kind;
+                                placeholder: root.kind-index == 2 ? @tr("https://example.com") : "";
+                                single-line: root.kind-index == 2;
+                                min-lines: 6;
+                                max-lines: 14;
+                                monospace: root.kind-index == 1;
+                                read-only: root.content-large;
+                                error: root.content-shown-error;
+                                text <=> root.content;
+                                edited(t) => { root.touch(); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            if root.content-large: Notice {
+                                text: @tr("This text is {}. Anything over 16 KB opens read-only here.", root.content-size);
+                            }
+                        }
+                        attachment := VerticalLayout {
+                            width: parent.width;
+                            spacing: Space.s2;
+                            visible: !root.text-kind;
+                            if !root.text-kind && root.kind-index == 4: Rectangle {
+                                height: 200px;
+                                background: Theme.bg-sunken;
+                                border-radius: Radius.md;
+                                border-width: 1px;
+                                border-color: Theme.border-default;
+                                clip: true;
+                                accessible-role: image;
+                                accessible-label: root.attachment-name;
+                                Image {
+                                    source: root.preview;
+                                    width: parent.width - 2 * Space.s2;
+                                    height: parent.height - 2 * Space.s2;
+                                    x: Space.s2;
+                                    y: Space.s2;
+                                    image-fit: contain;
+                                }
+                            }
+                            if !root.text-kind: Text {
+                                text: root.attachment-name;
+                                color: Theme.text-primary;
+                                font-family: Fonts.sans;
+                                font-size: Type.base;
+                                font-weight: Type.medium;
+                                overflow: elide;
+                            }
+                            if !root.text-kind: Text {
+                                text: root.attachment-detail;
+                                color: Theme.text-secondary;
+                                font-family: Fonts.sans;
+                                font-size: Type.sm;
+                                wrap: word-wrap;
+                            }
+                        }
+                    }
+
+                    // Placeholder help for templates.
+                    if root.kind-index == 3: VerticalLayout {
+                        spacing: Space.s1;
+                        Text {
+                            text: @tr("Placeholders");
+                            color: Theme.text-primary;
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            font-weight: Type.medium;
+                            accessible-role: none;
+                        }
+                        Text {
+                            text: @tr("Choose one to add it at the end of the text. It is filled in when you use the item.");
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            wrap: word-wrap;
+                            accessible-role: none;
+                        }
+                        for ph in root.placeholders: HorizontalLayout {
+                            spacing: Space.s2;
+                            Button {
+                                size: ButtonSize.sm;
+                                text: ph.token;
+                                a11y-label: @tr("Insert {}", ph.token);
+                                enabled: !root.content-large && (!ph.prompted || root.prompted-available);
+                                clicked => {
+                                    root.content = root.content + ph.token;
+                                    root.touch();
+                                }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            Text {
+                                horizontal-stretch: 1;
+                                min-width: 0px;
+                                text: (ph.prompted && !root.prompted-available) ? @tr("{} (Pro)", ph.help) : ph.help;
+                                color: Theme.text-secondary;
+                                font-family: Fonts.sans;
+                                font-size: Type.sm;
+                                vertical-alignment: center;
+                                wrap: word-wrap;
+                                accessible-role: none;
+                            }
+                        }
+                    }
+
+                    FormField {
+                        label: @tr("List");
+                        list-choice := SelectField {
+                            label: @tr("List");
+                            options: root.list-names;
+                            current: root.list-index;
+                            chosen(i) => {
+                                root.list-index = i;
+                                root.touch();
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+
+                    FormField {
+                        label: @tr("Tags");
+                        HorizontalLayout {
+                            spacing: Space.s2;
+                            Rectangle {
+                                horizontal-stretch: 1;
+                                min-width: 0px;
+                                clip: true;
+                                HorizontalLayout {
+                                    spacing: Space.s1;
+                                    alignment: start;
+                                    for tag[i] in root.tags: Rectangle {
+                                        // Only the ticked ones take room.
+                                        width: tag.checked ? chip.preferred-width : 0px;
+                                        visible: tag.checked;
+                                        chip := Tag {
+                                            text: tag.label;
+                                            removable: true;
+                                            remove-label: @tr("Remove tag {}", tag.label);
+                                            enabled: tag.checked;
+                                            removed => {
+                                                root.tag-toggled(i);
+                                                root.touch();
+                                            }
+                                        }
+                                    }
+                                }
+                                Text {
+                                    visible: root.tags-on == 0;
+                                    text: @tr("No tags");
+                                    color: Theme.text-secondary;
+                                    font-family: Fonts.sans;
+                                    font-size: Type.base;
+                                    vertical-alignment: center;
+                                }
+                            }
+                            Button {
+                                text: root.tags-open ? @tr("Done") : @tr("Choose tags");
+                                a11y-label: root.tags-open ? @tr("Close the tag list") : @tr("Choose tags");
+                                clicked => { root.tags-open = !root.tags-open; }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                        if root.tags-open: Chooser {
+                            entries: root.tags;
+                            label: @tr("Tags");
+                            empty-text: @tr("No tags yet. Add one below.");
+                            multi: true;
+                            chosen(i) => {
+                                root.tag-toggled(i);
+                                root.touch();
+                            }
+                            dismissed => { root.tags-open = false; }
+                            init => { self.focus-chooser(); }
+                        }
+                        new-tag := TextField {
+                            label: @tr("New tag");
+                            placeholder: @tr("New tag, then Enter");
+                            accepted(t) => {
+                                if (t != "") {
+                                    root.tag-added(t);
+                                    root.touch();
+                                    self.text = "";
+                                }
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+
+                    FormField {
+                        label: @tr("Privacy");
+                        helper: root.sensitive-help;
+                        sensitive-toggle := Toggle {
+                            accessible-description: root.sensitive-help;
+                            text: @tr("Sensitive item");
+                            checked <=> root.sensitive;
+                            enabled: root.text-kind;
+                            toggled(v) => { root.touch(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                }
+            }
+
+            EditorFooter {
+                show-delete: !root.is-new;
+                delete-label: @tr("Delete");
+                cancel-label: @tr("Cancel");
+                save-label: @tr("Save");
+                delete => { root.delete-requested(); }
+                cancel => { root.request-cancel(); }
+                save => { root.try-save(); }
+            }
+        }
+    }
+
+    Dialog {
+        open: root.discard-open;
+        variant: DialogVariant.destructive;
+        title: @tr("Discard your changes?");
+        body: @tr("What you changed in this item has not been saved.");
+        dismissed => { root.discard-open = false; }
+        closed => { scope.focus(); }
+        Button {
+            text: @tr("Keep editing");
+            clicked => { root.discard-open = false; }
+        }
+        Button {
+            text: @tr("Discard");
+            variant: ButtonVariant.danger;
+            clicked => {
+                root.discard-open = false;
+                root.cancel-requested();
+            }
+        }
+    }
+}
+
+// ---- List and board editors ----------------------------------------------------------------------
+
+// The cell of the colour picker that means "no colour". Same size and states as `Swatch`.
+component NoColour inherits Rectangle {
+    in property <string> label;
+    in property <bool> selected: false;
+    in property <bool> show-focus: false;
+    callback clicked();
+
+    width: Space.hit;
+    height: Space.hit;
+    accessible-role: radio-button;
+    accessible-label: root.label;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.clicked(); }
+
+    Rectangle {
+        border-width: root.selected ? 2px : 0px;
+        border-color: Theme.text-primary;
+        border-radius: Radius.lg;
+        background: transparent;
+    }
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: touch.has-hover || touch.pressed ? 22px : 20px;
+        height: self.width;
+        border-radius: Radius.sm;
+        border-width: 1px;
+        border-color: Theme.border-strong;
+        background: touch.pressed ? Theme.bg-sunken : transparent;
+        animate width { duration: Motion.instant; easing: Motion.out; }
+        Icon {
+            source: Icons.x;
+            size: 12px;
+            tint: Theme.text-secondary;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: root.show-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.lg + 2px;
+        background: transparent;
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+// "No colour" and the nine list hues as one radio group: one tab stop, Left / Right / Home / End choose.
+// `accent` is -1 for none, else the index into the hues in the order of `ListHue` (blue, teal, green, amber,
+// orange, red, rose, violet, slate); `names` are the spoken colour names in that order.
+component ColourPicker inherits Rectangle {
+    in property <int> accent: -1;
+    in property <string> label;
+    in property <string> none-label;
+    in property <[string]> names;
+    callback chosen(accent: int);
+    out property <bool> has-focus: scope.has-focus;
+
+    function move(to: int) {
+        if (to >= -1 && to <= 8 && to != root.accent) {
+            root.chosen(to);
+        }
+    }
+
+    height: Space.hit;
+    forward-focus: scope;
+    accessible-role: radio-group;
+    accessible-label: root.label;
+
+    HorizontalLayout {
+        spacing: Space.s1;
+        alignment: start;
+        NoColour {
+            label: root.none-label;
+            selected: root.accent == -1;
+            show-focus: scope.has-focus && root.accent == -1;
+            clicked => { root.move(-1); }
+        }
+        for h[i] in [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.rose, ListHue.violet, ListHue.slate]: Swatch {
+            hue: h;
+            label: root.names[i];
+            selected: i == root.accent;
+            keyboard-focusable: false;
+            show-focus: scope.has-focus && i == root.accent;
+            clicked => { root.move(i); }
+        }
+    }
+
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == Key.RightArrow || event.text == Key.DownArrow) {
+                root.move(root.accent + 1);
+                return accept;
+            }
+            if (event.text == Key.LeftArrow || event.text == Key.UpArrow) {
+                root.move(root.accent - 1);
+                return accept;
+            }
+            if (event.text == Key.Home) {
+                root.move(-1);
+                return accept;
+            }
+            if (event.text == Key.End) {
+                root.move(8);
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
+// The shared body of ListEditor and BoardEditor: a name, a colour, a sort order, and deletion that asks first and
+// says how many items are affected. `ListEditor` and `BoardEditor` only set the wording.
+component EntityEditor inherits Window {
+    background: Theme.bg-app;
+    min-width: 380px;
+    min-height: 300px;
+    preferred-width: 460px;
+    preferred-height: 440px;
+
+    in property <bool> dark: false;
+    in property <bool> is-new: false;
+    in-out property <string> name;
+    // Needs the store (a name already taken); the host sets it after `save-requested`.
+    in property <string> name-error;
+    // -1 no colour, else 0 to 8 in the order of `ListHue`.
+    in-out property <int> accent: -1;
+    // 0 manual, 1 most used, 2 recently used.
+    in-out property <int> sort-index: 0;
+    in property <bool> show-colour: true;
+    in property <bool> show-sort: true;
+    // How many items a deletion affects (the confirmation says so).
+    in property <int> item-count: 0;
+    // False when this one cannot be deleted (the last board); `delete-hint` says why.
+    in property <bool> can-delete: true;
+    in property <string> delete-hint;
+    // Wording, set by ListEditor and BoardEditor.
+    in property <string> name-label;
+    in property <string> name-placeholder;
+    in property <string> missing-name-text;
+    in property <string> delete-label;
+    in property <string> delete-title;
+    in property <string> delete-body;
+    out property <bool> dirty: false;
+    in-out property <bool> discard-open: false;
+    in-out property <bool> delete-open: false;
+
+    callback save-requested();
+    callback cancel-requested();
+    // Sent after the user confirmed in the dialog.
+    callback delete-confirmed();
+    callback edited();
+
+    public function mark-clean() { root.dirty = false; }
+
+    property <bool> show-errors: false;
+    property <bool> name-missing: root.name == "";
+    property <string> name-shown-error: root.name-error != "" ? root.name-error
+        : (root.show-errors && root.name-missing) ? root.missing-name-text : "";
+    property <[string]> colour-names: [
+        @tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"),
+        @tr("Red"), @tr("Rose"), @tr("Violet"), @tr("Slate"),
+    ];
+
+    function touch() {
+        root.dirty = true;
+        root.edited();
+    }
+    function reveal-field(y: length, h: length) {
+        flick.reveal(y - flick.absolute-position.y, h);
+    }
+    function try-save() {
+        root.show-errors = true;
+        if (root.name-missing || root.name-error != "") {
+            name-field.focus();
+            return;
+        }
+        root.save-requested();
+    }
+    function request-cancel() {
+        if (root.dirty) {
+            root.discard-open = true;
+        } else {
+            root.cancel-requested();
+        }
+    }
+
+    init => {
+        Palette.dark = root.dark;
+        name-field.focus();
+    }
+    changed dark => {
+        Palette.dark = root.dark;
+    }
+
+    scope := FocusScope {
+        capture-key-pressed(event) => {
+            if (event.text == "\n" && event.modifiers.control && !root.discard-open && !root.delete-open) {
+                root.try-save();
+                return accept;
+            }
+            return reject;
+        }
+        key-pressed(event) => {
+            if (event.text == Key.Escape && !root.discard-open && !root.delete-open) {
+                root.request-cancel();
+                return accept;
+            }
+            return reject;
+        }
+
+        VerticalLayout {
+            flick := FormScroll {
+                vertical-stretch: 1;
+                content-height: form.preferred-height;
+                content-width: self.width;
+
+                form := VerticalLayout {
+                    width: flick.width;
+                    padding: Space.s4;
+                    spacing: Space.s4;
+                    alignment: start;
+
+                    FormField {
+                        label: root.name-label;
+                        name-field := TextField {
+                            label: root.name-label;
+                            placeholder: root.name-placeholder;
+                            error: root.name-shown-error;
+                            text <=> root.name;
+                            edited(t) => { root.touch(); }
+                            accepted(t) => { root.try-save(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if root.show-colour: FormField {
+                        label: @tr("Colour");
+                        ColourPicker {
+                            label: @tr("Colour");
+                            none-label: @tr("No colour");
+                            names: root.colour-names;
+                            accent: root.accent;
+                            chosen(a) => {
+                                root.accent = a;
+                                root.touch();
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if root.show-sort: FormField {
+                        label: @tr("Sort items by");
+                        Segmented {
+                            label: @tr("Sort items by");
+                            options: [@tr("Manual"), @tr("Most used"), @tr("Recently used")];
+                            current: root.sort-index;
+                            chosen(i) => {
+                                root.sort-index = i;
+                                root.touch();
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if !root.is-new && !root.can-delete && root.delete-hint != "": Notice {
+                        text: root.delete-hint;
+                    }
+                }
+            }
+
+            EditorFooter {
+                show-delete: !root.is-new && root.can-delete;
+                delete-label: root.delete-label;
+                cancel-label: @tr("Cancel");
+                save-label: @tr("Save");
+                delete => { root.delete-open = true; }
+                cancel => { root.request-cancel(); }
+                save => { root.try-save(); }
+            }
+        }
+    }
+
+    Dialog {
+        open: root.discard-open;
+        variant: DialogVariant.destructive;
+        title: @tr("Discard your changes?");
+        body: @tr("What you changed has not been saved.");
+        dismissed => { root.discard-open = false; }
+        closed => { scope.focus(); }
+        Button {
+            text: @tr("Keep editing");
+            clicked => { root.discard-open = false; }
+        }
+        Button {
+            text: @tr("Discard");
+            variant: ButtonVariant.danger;
+            clicked => {
+                root.discard-open = false;
+                root.cancel-requested();
+            }
+        }
+    }
+
+    Dialog {
+        open: root.delete-open;
+        variant: DialogVariant.destructive;
+        title: root.delete-title;
+        body: root.delete-body;
+        dismissed => { root.delete-open = false; }
+        closed => { scope.focus(); }
+        Button {
+            text: @tr("Cancel");
+            clicked => { root.delete-open = false; }
+        }
+        Button {
+            text: root.delete-label;
+            variant: ButtonVariant.danger;
+            clicked => {
+                root.delete-open = false;
+                root.delete-confirmed();
+            }
+        }
+    }
+}
+
+export component ListEditor inherits EntityEditor {
+    title: root.is-new ? @tr("New list") : @tr("Edit list");
+    name-label: @tr("List name");
+    name-placeholder: @tr("For example, Email replies");
+    missing-name-text: @tr("Give the list a name.");
+    delete-label: @tr("Delete list");
+    delete-title: @tr("Delete this list?");
+    delete-body: @tr("{n} item will move to Trash with it. You can restore them for 30 days." | "{n} items will move to Trash with it. You can restore them for 30 days." % root.item-count);
+}
+
+// Boards carry a name only in the data model today (snipdeck-core `Board`); colour and sort are shown because the
+// design gives boards both, and the host can hide either with `show-colour` / `show-sort`.
+export component BoardEditor inherits EntityEditor {
+    title: root.is-new ? @tr("New board") : @tr("Edit board");
+    name-label: @tr("Board name");
+    name-placeholder: @tr("For example, Work");
+    missing-name-text: @tr("Give the board a name.");
+    delete-label: @tr("Delete board");
+    delete-title: @tr("Delete this board?");
+    delete-body: @tr("Its lists and {n} item will move to Trash. You can restore them for 30 days." | "Its lists and {n} items will move to Trash. You can restore them for 30 days." % root.item-count);
+}
+
+// ---- Tag management ------------------------------------------------------------------------------
+
+// Rename and delete tags. A row shows the tag and how many items carry it; Rename turns the name into a field
+// (Enter applies, Esc cancels), Delete asks first and says how many items lose the tag (the items stay).
+export component TagManager inherits Window {
+    title: @tr("Tags");
+    background: Theme.bg-app;
+    min-width: 360px;
+    min-height: 280px;
+    preferred-width: 440px;
+    preferred-height: 520px;
+
+    in property <bool> dark: false;
+    // label = name, count = items with the tag.
+    in property <[ChoiceEntry]> tags;
+    // From the host after `rename-requested` ("A tag with that name exists").
+    in property <string> rename-error;
+    // The row being renamed, or -1.
+    in-out property <int> editing: -1;
+    in-out property <string> rename-text;
+    // The row whose deletion the dialog asks about, or -1 (dialog closed).
+    in-out property <int> delete-index: -1;
+
+    callback rename-requested(index: int, name: string);
+    callback delete-confirmed(index: int);
+    callback close-requested();
+
+    public function finish-rename() { root.editing = -1; }
+
+    property <length> row-h: max(Space.hit + Space.s2, Type.line-base + Space.s3);
+
+    function begin-rename(i: int) {
+        root.rename-text = root.tags[i].label;
+        root.editing = i;
+    }
+    function apply-rename() {
+        if (root.editing >= 0 && root.rename-text != "") {
+            root.rename-requested(root.editing, root.rename-text);
+        }
+    }
+
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    scope := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.Escape && root.delete-index < 0) {
+                if (root.editing >= 0) {
+                    root.editing = -1;
+                } else {
+                    root.close-requested();
+                }
+                return accept;
+            }
+            return reject;
+        }
+
+        VerticalLayout {
+            padding: Space.s4;
+            spacing: Space.s3;
+
+            Text {
+                text: @tr("Rename or delete tags. Deleting a tag removes it from its items; the items stay.");
+                color: Theme.text-secondary;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                wrap: word-wrap;
+                accessible-role: none;
+            }
+
+            Rectangle {
+                vertical-stretch: 1;
+                background: Theme.bg-surface;
+                border-radius: Radius.md;
+                border-width: 1px;
+                border-color: Theme.border-default;
+                clip: true;
+
+                if root.tags.length == 0: Text {
+                    x: Space.s4;
+                    width: parent.width - 2 * Space.s4;
+                    text: @tr("No tags yet. Add tags to an item and they appear here.");
+                    color: Theme.text-secondary;
+                    font-family: Fonts.sans;
+                    font-size: Type.base;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    wrap: word-wrap;
+                }
+                ListView {
+                    visible: root.tags.length > 0;
+                    vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+                    horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+                    accessible-role: list;
+                    accessible-label: @tr("Tags");
+                    for tag[i] in root.tags: Rectangle {
+                        height: root.row-h;
+                        accessible-role: list-item;
+                        accessible-label: tag.label;
+                        accessible-description: @tr("{n} item" | "{n} items" % tag.count);
+
+                        Rectangle {
+                            y: parent.height - 1px;
+                            height: 1px;
+                            background: Theme.border-subtle;
+                        }
+                        HorizontalLayout {
+                            padding-left: Space.s3;
+                            padding-right: Space.s2;
+                            spacing: Space.s2;
+                            if root.editing != i: Text {
+                                horizontal-stretch: 1;
+                                min-width: 0px;
+                                text: tag.label;
+                                color: Theme.text-primary;
+                                font-family: Fonts.sans;
+                                font-size: Type.base;
+                                vertical-alignment: center;
+                                overflow: elide;
+                                accessible-role: none;
+                            }
+                            if root.editing != i: Text {
+                                text: @tr("{n} item" | "{n} items" % tag.count);
+                                color: Theme.text-secondary;
+                                font-family: Fonts.sans;
+                                font-size: Type.sm;
+                                vertical-alignment: center;
+                                accessible-role: none;
+                            }
+                            if root.editing == i: VerticalLayout {
+                                horizontal-stretch: 1;
+                                alignment: center;
+                                TextField {
+                                    label: @tr("New name for {}", tag.label);
+                                    error: root.rename-error;
+                                    text: root.rename-text;
+                                    edited(t) => { root.rename-text = t; }
+                                    accepted(t) => { root.apply-rename(); }
+                                    init => { self.focus(); self.select-all(); }
+                                }
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                IconButton {
+                                    icon: root.editing == i ? Icons.check : Icons.pencil-simple;
+                                    tooltip: root.editing == i ? @tr("Apply the new name") : @tr("Rename tag {}", tag.label);
+                                    clicked => {
+                                        if (root.editing == i) {
+                                            root.apply-rename();
+                                        } else {
+                                            root.begin-rename(i);
+                                        }
+                                    }
+                                }
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                IconButton {
+                                    icon: Icons.trash;
+                                    tooltip: @tr("Delete tag {}", tag.label);
+                                    clicked => { root.delete-index = i; }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                alignment: end;
+                Button {
+                    text: @tr("Close");
+                    variant: ButtonVariant.primary;
+                    clicked => { root.close-requested(); }
+                }
+            }
+        }
+    }
+
+    Dialog {
+        open: root.delete-index >= 0;
+        variant: DialogVariant.destructive;
+        title: @tr("Delete this tag?");
+        body: @tr("It is removed from {n} item. The item stays." | "It is removed from {n} items. The items stay." % (root.delete-index >= 0 && root.delete-index < root.tags.length ? root.tags[root.delete-index].count : 0));
+        dismissed => { root.delete-index = -1; }
+        closed => { scope.focus(); }
+        Button {
+            text: @tr("Cancel");
+            clicked => { root.delete-index = -1; }
+        }
+        Button {
+            text: @tr("Delete tag");
+            variant: ButtonVariant.danger;
+            clicked => {
+                let i = root.delete-index;
+                root.delete-index = -1;
+                root.delete-confirmed(i);
+            }
+        }
+    }
+}
