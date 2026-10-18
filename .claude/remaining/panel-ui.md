@@ -1,5 +1,8 @@
 # panel-ui remaining work
 
-Done: tests (panel_logic, panel.rs goldens added), kebab menu, tooltip via tip-set, resize grips, quick-edit hooks, pinned strip wheel + carets (first pass, panel_logic 40/47 passing).
-Next: merge claude/compassionate-pascal-pod8ux (coordinator's tooltip mechanism, keep both), fix failing tests (strip overflow, tooltip swap, scrim click, a11y labels), i18n extract, goldens, gate.
-Blocked: none.
+Done: kebab menu (app-menu-*), tooltips via tip-set for every icon-only control, resize grips (resize-requested), quick-edit hooks
+(edit/rename/delete-requested), pinned strip wheel + floating carets, i18n extract, goldens (panel-*, deck-parts-*), CODEMAP.
+Merged claude/compassionate-pascal-pod8ux; replaced the coordinator's two-button tooltip block with the general tip-set.
+Next: gate result; hand over.
+Blocked: gate fast-checks fail on files owned by others (cargo fmt on snipdeck-app/tests/panel_window.rs,
+clippy in snipdeck-ui/tests/main_window_logic.rs:411, picker golden flaky search caret).
