@@ -31,7 +31,7 @@ Hub = this session (`claude/compassionate-pascal-pod8ux`, PR #5). It owns the re
     - L8: icon-name audit, meatball vs kebab etc. (Inbox 13:3x), with B15.
   - Opus review of the merges (11 findings): agent fixing on `claude/review-fixes-2`; hub merges.
 - Before ship (owner 2026-10-19): a security scan (claude-security or the security-reviewer over the whole diff) plus F2, with every bug and security finding fixed; then update the PR title and body (interim body set 2026-10-19).
-- [!] Release workflow "like the Tessellate repo" (owner 2026-10-19): the lean-workflow guard blocks CI work in unattended runs, including reading Tessellate's workflows. Owner: paste Tessellate's release workflow or run it attended; the hub then writes `.github/workflows/release.yml` (or a proposal the owner applies).
+- Release workflow (owner 2026-10-19, modelled on Tessellate): proposals in `docs/ci-proposals/` (release.yml, secrets.yml, release-build.yml edit; README says how). Owner applies them. The smoke step needs B13 `--check-db` merged before the tag. Ship step: bump [workspace.package] version to 1.0.0 and rename the CHANGELOG header.
 - F-phase order (owner 2026-10-19): after every A-E item lands, F1 Fable pass + audit runs in a NEW cloud session (fresh context, brief `docs/fable-brief.md`), findings in `docs/reviews/fable-v1.md`. The hub then implements EVERY flagged issue (split across the wave sessions by area, no finding dropped or deferred without the owner), then a second polish pass (D3 de-slop + F3 ux-auditor and blind-tester), then F2 Opus review, then F4 gate and ship.
 
 ## Task list (mirror of the session's tasks, 2026-10-19 13:20; details per item in `docs/V1-PLAN.md`)
