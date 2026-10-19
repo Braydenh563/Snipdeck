@@ -253,6 +253,18 @@ fn a_floating_panel_never_collapses() {
 }
 
 #[test]
+fn leaving_the_panel_while_a_menu_is_open_neither_collapses_nor_closes_it() {
+    let mut w = docked(DockTrigger::Both, DockEdge::Right);
+    w.ctl.open_app_menu();
+    assert_eq!(w.ctl.dock_event(DockEvent::PanelHover(false)), Vec::new());
+    assert!(!w.ctl.dock_needs_tick(), "no leave delay runs under a menu");
+    advance(&w, 5_000);
+    assert_eq!(w.ctl.dock_event(DockEvent::Tick), Vec::new());
+    assert!(w.ctl.view().app_menu.is_some());
+    assert!(!w.ctl.view().dock_collapsed);
+}
+
+#[test]
 fn collapsing_closes_an_open_menu() {
     let mut w = docked(DockTrigger::Both, DockEdge::Right);
     w.ctl.open_app_menu();

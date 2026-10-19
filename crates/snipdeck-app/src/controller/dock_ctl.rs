@@ -70,6 +70,11 @@ where
     /// Something happened to the handle or the open Panel (or the hotkey, a paste or time):
     /// runs the state machine and returns the placement it asks for.
     pub fn dock_event(&mut self, event: DockEvent) -> Vec<Effect> {
+        // The pointer moving onto an open menu (or the window edge under it) is not leaving:
+        // a menu in use keeps the Panel open.
+        if event == DockEvent::PanelHover(false) && self.menu != PanelMenu::None {
+            return Vec::new();
+        }
         let config = self.dock_config();
         let now = self.clock.now();
         let action = self.dock.on(event, now, &config);
