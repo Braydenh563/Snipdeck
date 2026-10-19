@@ -1,7 +1,7 @@
 # Now (2026-10-19 13:15, away mode on, stop at 80% weekly usage)
 Goal: ship v1 (`docs/V1-PLAN.md` "V1 ship list" is the queue; `.claude/work-order.md` continue mode; decisions in `.claude/now.md`). Branch `claude/compassionate-pascal-pod8ux`, PR #5 (never merge). Repo public: CI (3-5 min) is the main test runner; local cargo only targeted, `/tmp/target-main`, at most two cargo users (4 cores).
 
-State at 88b0db2: agents A1-A3 merged; clippy green; main_window add-list tests and panel menu tests fixed; panel sensitive-reveal fixed (panel_row masked the revealed row) - confirm on CI. Owner applied the CI proposals to ci.yml and release-build.yml; Dependabot copy still pending (`docs/ci-proposals/dependabot.yml` -> `.github/dependabot.yml`), then delete `docs/ci-proposals/`. CodeQL: 3 test-only alerts await owner dismissal ("Used in tests", PR comment posted); the cleartext one is fixed.
+State at 88b0db2: agents A1-A3 merged; clippy green; main_window add-list tests and panel menu tests fixed; panel sensitive-reveal fixed (panel_row masked the revealed row); CI at 19c9160: app green, only snipdeck-ui goldens red (D1). Owner applied the CI proposals to ci.yml and release-build.yml; Dependabot applied too; proposals folder deleted. CodeQL: 3 test-only alerts await owner dismissal ("Used in tests", PR comment posted); the cleartext one is fixed.
 
 In flight: Sonnet agent C8+C9 (Supporter wording in app, FREE_BOARD_LIMIT 5, mailto SUPPORTER_EMAIL_PLACEHOLDER constant, Free vs Supporter table in Settings and the get-licence dialog) plus the owner decision: encryption on disk is FREE, only the master password is Supporter (Feature::SensitiveEncryption -> MasterPassword; flip the Free-does-not-encrypt tests; tables on site/README/docs).
 
