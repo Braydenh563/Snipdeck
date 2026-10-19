@@ -9,8 +9,9 @@ Next, in order: CI green on PR #5 -> translations pass for ~80 new strings per l
 
 ## Parallel work (orchestration ledger, 2026-10-19 14:25)
 Hub = this session (`claude/compassionate-pascal-pod8ux`, PR #5). It owns the release branch, merges, `.po/.pot`, `CODEMAP.md`, `HANDOVER.md`, licence/Supporter wording, goldens (D1).
-- Wave 3a cloud session `session_01Haxw5UhdjTPvNo4KAUcPWG`, branch `claude/v1-wave3a`: now B3, B6, B9, B13 -> PR; then B1, B2, B12, C1 (PR every 2-3 items).
-- Wave 3b cloud session `session_016pPMHPMEKcG9VuaY2dcBbm`, branch `claude/v1-wave3b`: now B4, B8, B10, B14 -> PR; then B5, B7, B11, C4.
+- Wave 3a cloud session `session_01Haxw5UhdjTPvNo4KAUcPWG`, branch `claude/v1-wave3a`: B3, B6, B9, B13 done -> PR #6 (hub merges). It correctly refuses extra work sent by message (no owner authority), so follow-up queues go to NEW sessions whose first prompt carries the task.
+- Wave 3c cloud session `session_01U6UTKpv5YUhk3MdMBGxHoh`, branch `claude/v1-wave3c` (started 16:00): B1, B2, B12, C1.
+- Wave 3b cloud session `session_016pPMHPMEKcG9VuaY2dcBbm`, branch `claude/v1-wave3b`: B4, B8, B10, B14 -> PR. When it opens its PR, start wave 3d (new session) for B5, B7 + L7, B11, C4.
 - Hub local agents (max 3 + Haiku; one cargo user): C8/C9 + free encryption (finishing), C7 done (58e0d1e), Opus review of merges; next translations (Haiku), C5 accent, C3 master password, C2 paste stack, C6 edge dock, B15.
 - Cloud PRs target the release branch, never main. Hub merges in landing order (merge commits, no rebase), runs CI, then tells the sessions; they merge the release branch back before their next PR.
 - After all UI items land: D1 goldens once, D2 shots, D3, D5, E1, then F1-F4.
