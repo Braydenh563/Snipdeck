@@ -801,7 +801,7 @@ where
         let Some(from) = order.iter().position(|i| *i == id) else {
             return;
         };
-        let Some((to, placement)) = reorder(&order, from, delta) else {
+        let Some((_, placement)) = reorder(&order, from, delta) else {
             return;
         };
         let done = self.store.move_item(id, list, placement);
@@ -809,7 +809,15 @@ where
         self.finish(&done);
         if moved {
             self.main_fresh();
-            self.main.set_cursor(to);
+            self.follow_moved_row(id);
+        }
+    }
+
+    /// Puts the cursor on item `id` among the rows now shown (a label filter can hide some of the
+    /// list, so its place in the list is not its row).
+    fn follow_moved_row(&mut self, id: ItemId) {
+        if let Some(at) = self.main.keys().iter().position(|k| *k == Key::Item(id)) {
+            self.main.set_cursor(at);
         }
     }
 
@@ -839,7 +847,7 @@ where
         let Some(delta) = b.checked_signed_diff(a) else {
             return;
         };
-        let Some((to, placement)) = reorder(&order, a, delta) else {
+        let Some((_, placement)) = reorder(&order, a, delta) else {
             return;
         };
         let done = self.store.move_item(moved, list, placement);
@@ -847,7 +855,7 @@ where
         self.finish(&done);
         if moved_ok {
             self.main_fresh();
-            self.main.set_cursor(to);
+            self.follow_moved_row(moved);
         }
     }
 

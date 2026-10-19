@@ -1109,6 +1109,39 @@ fn dragging_a_row_onto_another_row_puts_it_in_that_place() {
 }
 
 #[test]
+fn the_cursor_follows_a_dragged_row_when_a_label_filter_hides_others() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Email replies");
+    let titles_now = titles(&ctl.main_screen());
+    label_row(&mut ctl, 1, ItemLabel::Teal);
+    label_row(&mut ctl, 3, ItemLabel::Teal);
+    ctl.main_set_label_filter(Some(ItemLabel::Teal));
+    let shown = titles(&ctl.main_screen());
+    assert_eq!(shown, [titles_now[1].clone(), titles_now[3].clone()]);
+    ctl.main_drop_row(0, 1);
+    let screen = ctl.main_screen();
+    assert_eq!(
+        titles(&screen),
+        [titles_now[3].clone(), titles_now[1].clone()]
+    );
+    assert_eq!(
+        screen.rows[screen.cursor].title, titles_now[1],
+        "on the dragged row"
+    );
+}
+
+#[test]
+fn a_row_can_be_dropped_on_a_list_from_a_view_that_cannot_reorder() {
+    let mut ctl = pro();
+    assert!(!ctl.main_screen().reorderable, "All items");
+    let first = ctl.main_screen().rows[0].title.clone();
+    let code = list_index(&ctl.main_screen(), "Code");
+    ctl.main_drop_on_list(0, code);
+    open_list(&mut ctl, "Code");
+    assert!(titles(&ctl.main_screen()).contains(&first));
+}
+
+#[test]
 fn dragging_rows_does_nothing_in_a_system_view() {
     let mut ctl = pro();
     let before = titles(&ctl.main_screen());

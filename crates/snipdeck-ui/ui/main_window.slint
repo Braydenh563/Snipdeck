@@ -1283,6 +1283,8 @@ export component MainWindow inherits Window {
 
                             for row[i] in root.list-model: Rectangle {
                                 property <bool> is-cursor: i == root.cur;
+                                // The row being dragged over this one: a drop lands after it when coming from above.
+                                property <int> row-from: -1;
                                 height: card.preferred-height + root.row-gap + (i == root.rows.length - 1 ? 2 * root.ring : 0px);
 
                                 init => {
@@ -1298,7 +1300,8 @@ export component MainWindow inherits Window {
                                 row-drop := DropArea {
                                     enabled: root.rows-reorderable;
                                     can-drop(event) => {
-                                        root.payload-row(event.data) >= 0 && root.payload-row(event.data) != i ? DragAction.move : DragAction.none
+                                        row-from = root.payload-row(event.data);
+                                        row-from >= 0 && row-from != i ? DragAction.move : DragAction.none
                                     }
                                     dropped(event) => {
                                         root.row-dropped(root.payload-row(event.data), i);
@@ -1306,7 +1309,7 @@ export component MainWindow inherits Window {
                                     }
 
                                     DragArea {
-                                        allow-move: root.rows-reorderable;
+                                        allow-move: !root.in-trash;
                                         data: root.row-payload(i);
 
                                         card := MainCard {
@@ -1336,11 +1339,12 @@ export component MainWindow inherits Window {
                                         }
                                     }
                                 }
-                                // The drop target: a 2px accent line where the dragged row would land.
+                                // The drop target: a 2px accent line where the dragged row would land: below this row when it
+                                // comes from above, above it otherwise.
                                 Rectangle {
                                     visible: row-drop.has-drag;
                                     x: root.ring;
-                                    y: 0px;
+                                    y: row-from >= 0 && row-from < i ? card.y + card.height - 1px : 0px;
                                     width: parent.width - 2 * root.ring;
                                     height: 2px;
                                     background: Theme.accent;

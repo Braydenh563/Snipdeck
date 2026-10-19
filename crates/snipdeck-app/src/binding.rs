@@ -543,11 +543,27 @@ where
                 .unwrap_or_default()
                 .into()
         });
-        window.on_row_payload(|row| Payload::Row(row).into_transfer());
-        window.on_payload_row(|data| match Payload::of(&data) {
-            Some(Payload::Row(row)) => row,
-            _ => -1,
-        });
+        {
+            let core = Rc::clone(&core);
+            window.on_row_payload(move |row| {
+                core.shown
+                    .borrow()
+                    .as_ref()
+                    .and_then(|view| view.rows.get(index(row)))
+                    .map_or_else(slint::DataTransfer::default, |r| {
+                        Payload::Item(r.id).into_transfer()
+                    })
+            });
+        }
+        {
+            let core = Rc::clone(&core);
+            window.on_payload_row(move |data| match Payload::of(&data) {
+                Some(Payload::Item(id)) => core.shown.borrow().as_ref().map_or(-1, |view| {
+                    view.rows.iter().position(|r| r.id == id).map_or(-1, to_i32)
+                }),
+                _ => -1,
+            });
+        }
         wire!(on_row_dropped_on_tab, |ctl, row, tab| ctl
             .panel_drop_on_tab(index(row), index(tab)));
         wire!(on_text_dropped, |ctl, text| ctl
@@ -1105,12 +1121,13 @@ pub(crate) fn extension_of(name: &str) -> String {
         .unwrap_or_default()
 }
 
-/// What an in-window drag carries: the index of the row or the sidebar list being dragged. It
-/// rides as user data, so it never reaches another app as text.
+/// What an in-window drag carries: the item or the list being dragged, by id, so a row that
+/// moves while the drag is in flight cannot change what is dropped. It rides as user data, so
+/// it never reaches another app as text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Payload {
-    Row(i32),
-    List(i32),
+    Item(snipdeck_core::ItemId),
+    List(snipdeck_core::ListId),
 }
 
 impl Payload {

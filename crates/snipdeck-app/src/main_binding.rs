@@ -36,7 +36,7 @@ use crate::{
     },
     host::ClipboardText,
     item_editor::Origin,
-    main_window::{EditorKind, EditorView, Section, SelectMode, ViewMode},
+    main_window::{EditorKind, EditorView, Key, Section, SelectMode, ViewMode},
     native_window::{
         fit_logical, fit_to_screen, place_of, place_over_owner, restore_place, size_before_show,
     },
@@ -639,16 +639,53 @@ where
             .main_drop_on_list(index(row), index(list)));
         wire!(on_list_dropped, |ctl, from, onto| ctl
             .main_drop_list(index(from), index(onto)));
-        window.on_row_payload(|row| Payload::Row(row).into_transfer());
-        window.on_list_payload(|list| Payload::List(list).into_transfer());
-        window.on_payload_row(|data| match Payload::of(&data) {
-            Some(Payload::Row(row)) => row,
-            _ => -1,
-        });
-        window.on_payload_list(|data| match Payload::of(&data) {
-            Some(Payload::List(list)) => list,
-            _ => -1,
-        });
+        {
+            let core = Rc::clone(&core);
+            window.on_row_payload(move |row| {
+                core.shown
+                    .borrow()
+                    .as_ref()
+                    .and_then(|s| s.rows.get(index(row)))
+                    .and_then(|r| match r.key {
+                        Key::Item(id) => Some(Payload::Item(id)),
+                        _ => None,
+                    })
+                    .map_or_else(slint::DataTransfer::default, Payload::into_transfer)
+            });
+        }
+        {
+            let core = Rc::clone(&core);
+            window.on_list_payload(move |list| {
+                core.shown
+                    .borrow()
+                    .as_ref()
+                    .and_then(|s| s.lists.get(index(list)))
+                    .map_or_else(slint::DataTransfer::default, |l| {
+                        Payload::List(l.id).into_transfer()
+                    })
+            });
+        }
+        {
+            let core = Rc::clone(&core);
+            window.on_payload_row(move |data| match Payload::of(&data) {
+                Some(Payload::Item(id)) => core.shown.borrow().as_ref().map_or(-1, |s| {
+                    s.rows
+                        .iter()
+                        .position(|r| r.key == Key::Item(id))
+                        .map_or(-1, to_i32)
+                }),
+                _ => -1,
+            });
+        }
+        {
+            let core = Rc::clone(&core);
+            window.on_payload_list(move |data| match Payload::of(&data) {
+                Some(Payload::List(id)) => core.shown.borrow().as_ref().map_or(-1, |s| {
+                    s.lists.iter().position(|l| l.id == id).map_or(-1, to_i32)
+                }),
+                _ => -1,
+            });
+        }
         wire_title_bar(window);
         wire!(on_new_item_requested, |ctl| ctl.open_new_item(Origin::Main));
         {

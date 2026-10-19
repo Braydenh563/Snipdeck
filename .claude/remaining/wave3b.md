@@ -40,3 +40,7 @@
 - Tests: controller tests in `main_controller.rs`; pointer-driven drags in `main_window_logic.rs` and `panel_logic.rs`.
 - Not done: dropping files or images from outside (only text); tile view and Panel row reorder by drag; no drop test for the Panel's external text drop (the testing backend's native-drag helpers need Slint's `internal` feature, which does not build from crates.io), so that wiring is checked only by compile and the controller tests.
 - Unverified on Windows: winit/OLE text drops into the Panel, pointer feel of the 8px drag threshold, the drop highlight visuals (2px accent line on rows, outline on tabs and sidebar entries).
+
+## Update (B11 review)
+- Independent review fixed: drop line below the target when dragging down; rows can be dragged to a sidebar list from any view but Trash; cursor follows the dragged row under a label filter; payloads carry item/list ids (not row indexes); text payload no longer copied on empty text.
+- Known/left: dragging one row of a multi-row selection moves only that row (the Move to list chooser moves the selection); the Panel's alternative to dropping on a tab is the editor's list field (Edit in the item menu), there is no Move to entry in the Panel menu.
