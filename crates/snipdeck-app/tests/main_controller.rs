@@ -1088,6 +1088,81 @@ fn alt_arrows_move_an_item_within_its_list_and_the_cursor_follows() {
 }
 
 #[test]
+fn dragging_a_row_onto_another_row_puts_it_in_that_place() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Email replies");
+    let before = titles(&ctl.main_screen());
+    ctl.main_drop_row(0, 2);
+    let after = titles(&ctl.main_screen());
+    assert_eq!(
+        after[..3],
+        [before[1].clone(), before[2].clone(), before[0].clone()]
+    );
+    ctl.main_drop_row(2, 0);
+    assert_eq!(titles(&ctl.main_screen()), before, "and back");
+    ctl.main_drop_row(1, 1);
+    assert_eq!(
+        titles(&ctl.main_screen()),
+        before,
+        "onto itself does nothing"
+    );
+}
+
+#[test]
+fn dragging_rows_does_nothing_in_a_system_view() {
+    let mut ctl = pro();
+    let before = titles(&ctl.main_screen());
+    ctl.main_drop_row(0, 1);
+    assert_eq!(titles(&ctl.main_screen()), before, "All items");
+}
+
+#[test]
+fn dropping_a_row_on_a_list_moves_the_item_to_its_end() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Email replies");
+    let first = titles(&ctl.main_screen())[0].clone();
+    let code = list_index(&ctl.main_screen(), "Code");
+    ctl.main_drop_on_list(0, code);
+    assert!(
+        !titles(&ctl.main_screen()).contains(&first),
+        "gone from the open list"
+    );
+    open_list(&mut ctl, "Code");
+    assert_eq!(titles(&ctl.main_screen()).last(), Some(&first));
+}
+
+#[test]
+fn dropping_a_row_on_its_own_list_does_nothing() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Email replies");
+    let before = titles(&ctl.main_screen());
+    let own = list_index(&ctl.main_screen(), "Email replies");
+    ctl.main_drop_on_list(0, own);
+    assert_eq!(titles(&ctl.main_screen()), before);
+}
+
+#[test]
+fn dragging_a_list_onto_another_puts_it_in_that_place() {
+    let mut ctl = pro();
+    ctl.main_drop_list(2, 0);
+    let names: Vec<_> = ctl
+        .main_screen()
+        .lists
+        .iter()
+        .map(|l| l.name.clone())
+        .collect();
+    assert_eq!(names, ["Code", "Email replies", "Addresses"]);
+    ctl.main_drop_list(0, 9);
+    let again: Vec<_> = ctl
+        .main_screen()
+        .lists
+        .iter()
+        .map(|l| l.name.clone())
+        .collect();
+    assert_eq!(again, names, "a target out of range does nothing");
+}
+
+#[test]
 fn items_do_not_move_in_a_sorted_list_a_search_or_a_system_view() {
     let mut ctl = pro();
     let before = titles(&ctl.main_screen());

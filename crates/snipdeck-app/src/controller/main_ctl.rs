@@ -799,6 +799,77 @@ where
         }
     }
 
+    /// A drag of row `from` ended on row `onto`: the item takes that row's place. Like
+    /// Alt+Up / Alt+Down, only a list in manual order can be arranged by hand.
+    pub fn main_drop_row(&mut self, from: usize, onto: usize) {
+        self.main_fresh();
+        if !self.main.reorderable() {
+            return;
+        }
+        let Some(list) = self.main.open_list().map(|l| l.id) else {
+            return;
+        };
+        let keys = self.main.keys();
+        let (Some(Key::Item(moved)), Some(Key::Item(target))) =
+            (keys.get(from).copied(), keys.get(onto).copied())
+        else {
+            return;
+        };
+        let order = self.main.manual_order(list);
+        let (Some(a), Some(b)) = (
+            order.iter().position(|i| *i == moved),
+            order.iter().position(|i| *i == target),
+        ) else {
+            return;
+        };
+        let Some(delta) = b.checked_signed_diff(a) else {
+            return;
+        };
+        let Some((to, placement)) = reorder(&order, a, delta) else {
+            return;
+        };
+        let done = self.store.move_item(moved, list, placement);
+        let moved_ok = done.is_ok();
+        self.finish(&done);
+        if moved_ok {
+            self.main_fresh();
+            self.main.set_cursor(to);
+        }
+    }
+
+    /// A drag of row `row` ended on list `list` of the sidebar: the item goes to the end of it.
+    pub fn main_drop_on_list(&mut self, row: usize, list: usize) {
+        self.main_fresh();
+        let Some(Key::Item(id)) = self.main.keys().get(row).copied() else {
+            return;
+        };
+        let Some(target) = self.main.lists().get(list) else {
+            return;
+        };
+        let (target, name) = (target.id, target.name.as_str().to_owned());
+        if self.main.item(id).is_none_or(|i| i.list_id == target) {
+            return;
+        }
+        match self.store.move_item(id, target, Placement::Last) {
+            Ok(()) => {
+                self.library_changed();
+                self.show_toast(neutral_toast(ToastMessage::ItemsMoved {
+                    count: 1,
+                    list: name,
+                }));
+            }
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
+    /// A drag of list `from` of the sidebar ended on list `onto`: the list takes its place.
+    pub fn main_drop_list(&mut self, from: usize, onto: usize) {
+        let Some(delta) = onto.checked_signed_diff(from) else {
+            return;
+        };
+        self.main_reorder_list(from, delta);
+    }
+
     // ---- Boards --------------------------------------------------------------------------------
 
     /// The Main window's Help menu or F1: queues `OpenHelp(topic)` for the Panel's binding to
