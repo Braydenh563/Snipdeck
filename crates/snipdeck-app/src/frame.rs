@@ -317,6 +317,8 @@ fn cut(span: Range<i32>, low: i32, len: u32) -> (i32, u32) {
 fn far_side(low: i32, span: u32, len: u32) -> i32 {
     let start = i64::from(low) + i64::from(span) - i64::from(len);
     i32::try_from(start).unwrap_or(low)
+}
+
 /// The title bar and frame a regular window adds around its content, in logical pixels, with
 /// some air so the window does not touch the taskbar.
 pub const WINDOW_CHROME: f32 = 56.0;
