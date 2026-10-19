@@ -9,7 +9,8 @@
 //! library.
 
 use snipdeck_core::{
-    BoardId, Feature, Item, ItemId, ListAccent, ListId, ListSort, Name, Placement, Tag,
+    BoardId, Feature, Item, ItemId, ItemLabel, ListAccent, ListIcon, ListId, ListSort, Name,
+    Placement, Tag,
 };
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
@@ -25,8 +26,8 @@ use crate::{
     host::ClipboardText,
     list_text,
     main_window::{
-        Counts, DeleteHint, EditorKind, EditorView, Key, NameError, Row, Section, SelectMode,
-        SideList, SideTag, ViewMode, reorder,
+        Counts, DeleteHint, EditorKind, EditorView, Key, LabelChip, NameError, Row, Section,
+        SelectMode, SideList, SideTag, ViewMode, reorder,
     },
     panel::UseLabel,
     settings::HotkeyAction,
@@ -141,6 +142,10 @@ pub struct MainScreen {
     pub section_index: usize,
     /// The row style.
     pub view_mode: ViewMode,
+    /// The chips of the colour-label filter row.
+    pub label_chips: Vec<LabelChip>,
+    /// The colour label the rows are filtered by.
+    pub label_filter: Option<ItemLabel>,
     /// The search text.
     pub query: String,
     /// The keyboard cursor.
@@ -226,6 +231,8 @@ where
             section: self.main.section(),
             section_index: self.main.section_index(),
             view_mode: self.main.view_mode(),
+            label_chips: self.main.label_chips(),
+            label_filter: self.main.label_filter(),
             query: self.main.query().to_owned(),
             cursor: self.main.cursor(),
             selected_count: self.main.selected_count(),
@@ -300,6 +307,14 @@ where
         if self.main.set_query(&self.store, query).is_err() {
             self.show_toast(failed());
         }
+        self.revealed = None;
+    }
+
+    /// A label chip was chosen (`None` clears the filter): the rows show only the items with that
+    /// colour label.
+    pub fn main_set_label_filter(&mut self, label: Option<ItemLabel>) {
+        self.main_fresh();
+        self.main.set_label_filter(label);
         self.revealed = None;
     }
 
@@ -422,6 +437,7 @@ where
                 copy.tags = original.tags;
                 copy.sensitive = original.sensitive;
                 copy.always_plain = original.always_plain;
+                copy.label = original.label;
                 copy.source_app = original.source_app;
                 b.insert_item(&copy, &formats, Placement::After(*id))?;
             }
@@ -804,6 +820,77 @@ where
         }
     }
 
+    /// A drag of row `from` ended on row `onto`: the item takes that row's place. Like
+    /// Alt+Up / Alt+Down, only a list in manual order can be arranged by hand.
+    pub fn main_drop_row(&mut self, from: usize, onto: usize) {
+        self.main_fresh();
+        if !self.main.reorderable() {
+            return;
+        }
+        let Some(list) = self.main.open_list().map(|l| l.id) else {
+            return;
+        };
+        let keys = self.main.keys();
+        let (Some(Key::Item(moved)), Some(Key::Item(target))) =
+            (keys.get(from).copied(), keys.get(onto).copied())
+        else {
+            return;
+        };
+        let order = self.main.manual_order(list);
+        let (Some(a), Some(b)) = (
+            order.iter().position(|i| *i == moved),
+            order.iter().position(|i| *i == target),
+        ) else {
+            return;
+        };
+        let Some(delta) = b.checked_signed_diff(a) else {
+            return;
+        };
+        let Some((to, placement)) = reorder(&order, a, delta) else {
+            return;
+        };
+        let done = self.store.move_item(moved, list, placement);
+        let moved_ok = done.is_ok();
+        self.finish(&done);
+        if moved_ok {
+            self.main_fresh();
+            self.main.set_cursor(to);
+        }
+    }
+
+    /// A drag of row `row` ended on list `list` of the sidebar: the item goes to the end of it.
+    pub fn main_drop_on_list(&mut self, row: usize, list: usize) {
+        self.main_fresh();
+        let Some(Key::Item(id)) = self.main.keys().get(row).copied() else {
+            return;
+        };
+        let Some(target) = self.main.lists().get(list) else {
+            return;
+        };
+        let (target, name) = (target.id, target.name.as_str().to_owned());
+        if self.main.item(id).is_none_or(|i| i.list_id == target) {
+            return;
+        }
+        match self.store.move_item(id, target, Placement::Last) {
+            Ok(()) => {
+                self.library_changed();
+                self.show_toast(neutral_toast(ToastMessage::ItemsMoved {
+                    count: 1,
+                    list: name,
+                }));
+            }
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
+    /// A drag of list `from` of the sidebar ended on list `onto`: the list takes its place.
+    pub fn main_drop_list(&mut self, from: usize, onto: usize) {
+        let Some(delta) = onto.checked_signed_diff(from) else {
+            return;
+        };
+        self.main_reorder_list(from, delta);
+    }
+
     // ---- Boards --------------------------------------------------------------------------------
 
     /// The Main window's Help menu or F1: queues `OpenHelp(topic)` for the Panel's binding to
@@ -929,6 +1016,7 @@ where
                     self.main.lists().iter().map(|l| l.name.as_str()),
                 ),
                 accent: None,
+                icon: None,
                 sort: ListSort::Manual,
                 item_count: 0,
                 can_delete: false,
@@ -972,6 +1060,7 @@ where
             is_new: false,
             name: list.name.as_str().to_owned(),
             accent: list.accent,
+            icon: list.icon,
             sort: list.sort,
             item_count: count,
             can_delete: true,
@@ -1002,6 +1091,7 @@ where
                     self.main.boards().iter().map(|b| b.name.as_str()),
                 ),
                 accent: None,
+                icon: None,
                 sort: ListSort::Manual,
                 item_count: 0,
                 can_delete: false,
@@ -1024,6 +1114,7 @@ where
             is_new: false,
             name: self.main.board_name().to_owned(),
             accent: None,
+            icon: None,
             sort: ListSort::Manual,
             item_count: self.main.side_lists().iter().map(|l| l.count).sum(),
             can_delete,
@@ -1042,7 +1133,13 @@ where
 
     /// The editor's Save: checks the name, writes the list or board and closes the editor. A
     /// refused name keeps it open with the reason (see [`EditorView::name_error`]).
-    pub fn main_editor_save(&mut self, name: &str, accent: Option<ListAccent>, sort: ListSort) {
+    pub fn main_editor_save(
+        &mut self,
+        name: &str,
+        accent: Option<ListAccent>,
+        icon: Option<ListIcon>,
+        sort: ListSort,
+    ) {
         self.main_fresh();
         let Some(slot) = self.editor.as_mut() else {
             return;
@@ -1066,7 +1163,7 @@ where
             return;
         }
         let now = self.clock.now();
-        match self.write_editor(target, name, accent, sort, now) {
+        match self.write_editor(target, name, accent, icon, sort, now) {
             Ok(opened) => {
                 self.editor = None;
                 self.library_changed();
@@ -1087,6 +1184,7 @@ where
         target: EditorTarget,
         name: Name,
         accent: Option<ListAccent>,
+        icon: Option<ListIcon>,
         sort: ListSort,
         now: snipdeck_core::Timestamp,
     ) -> snipdeck_store::Result<Option<Opened>> {
@@ -1094,6 +1192,7 @@ where
             EditorTarget::NewList(board) => {
                 let mut list = snipdeck_core::List::new(board, name, now);
                 list.accent = accent;
+                list.icon = icon;
                 list.sort = sort;
                 self.store.insert_list(&list, Placement::Last)?;
                 Ok(Some(Opened::List(list.id)))
@@ -1102,6 +1201,7 @@ where
                 let mut list = self.store.list(id)?;
                 list.name = name;
                 list.accent = accent;
+                list.icon = icon;
                 list.sort = sort;
                 list.updated_at = now;
                 self.store.update_list(&list)?;

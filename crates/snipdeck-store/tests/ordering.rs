@@ -328,3 +328,17 @@ fn listing_lists_of_a_missing_or_trashed_board_is_not_found() {
         })
     ));
 }
+
+#[test]
+fn a_list_icon_round_trips_and_can_be_cleared() {
+    let mut s = store();
+    let b = board(&mut s, "b");
+    let mut l = list(&mut s, b.id, "l");
+    assert_eq!(s.lists(b.id).unwrap()[0].icon, None);
+    l.icon = Some(snipdeck_core::ListIcon::RocketLaunch);
+    s.update_list(&l).unwrap();
+    assert_eq!(s.lists(b.id).unwrap()[0], l);
+    l.icon = None;
+    s.update_list(&l).unwrap();
+    assert_eq!(s.lists(b.id).unwrap()[0].icon, None);
+}

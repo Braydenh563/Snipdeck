@@ -1,4 +1,4 @@
-import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook } from "../theme.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, ListHue, ListAccent } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 import { CardDepth, CardShadow } from "card-depth.slint";
@@ -140,6 +140,11 @@ export component ItemCard inherits Rectangle {
     // Mixed views: the list the item belongs to (6px mark + name at the right).
     in property <string> list-name;
     in property <color> list-color;
+    // The colour label the user gave the item: -1 none, else 0 to 7 in the order blue, teal, green, amber, orange,
+    // red, violet, slate. The bar is drawn only when `label-name` is also set: colour is never the only cue, and
+    // the name is spoken as part of the description.
+    in property <int> label: -1;
+    in property <string> label-name;
     // 1-based place in the paste stack (SPEC 5.1); 0 = not marked. Drawn as an icon plus a number, never colour alone.
     in property <int> stack-position: 0;
     in property <bool> selected: false;
@@ -260,6 +265,9 @@ export component ItemCard inherits Rectangle {
     property <length> preview-h: root.shown-preview == "" ? 0px : min(m-preview.preferred-height, root.preview-lines * Type.line-sm);
     property <length> tile-title-h: min(m-title-wrap.preferred-height, 2 * Type.line-base);
     property <length> label-h: Type.line-sm + Space.s1;
+    property <bool> has-label: root.label >= 0 && root.label < 8 && root.label-name != "";
+    property <string> described: root.sensitive && !root.shown && root.masked-hint != "" ? root.masked-hint : root.list-name;
+    property <[ListHue]> label-hues: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate];
 
     property <length> compact-h: max(Space.hit, Type.line-base + Space.s1);
     property <length> comfortable-h: max(Space.hit, root.is-image ? 2 * root.pad-y + root.thumb-h : 0px,
@@ -287,7 +295,7 @@ export component ItemCard inherits Rectangle {
         : (root.preview != "" ? root.title + ", " + root.preview : root.title)
             + (root.stack-position > 0 ? ", " + @tr("paste stack, number {}", root.stack-position) : "");
     // A masked secret says how to reveal it (`masked-hint`); otherwise the list the item belongs to.
-    accessible-description: root.sensitive && !root.shown && root.masked-hint != "" ? root.masked-hint : root.list-name;
+    accessible-description: root.has-label ? (root.described == "" ? @tr("label: {}", root.label-name) : root.described + ", " + @tr("label: {}", root.label-name)) : root.described;
     accessible-item-selectable: true;
     accessible-item-selected: root.selected;
     accessible-action-default => {
@@ -385,6 +393,17 @@ export component ItemCard inherits Rectangle {
         border-color: root.selected ? Theme.accent : Theme.border-subtle;
 
         animate y { duration: root.lifted ? Motion.quick : Motion.settle; easing: root.lifted ? Motion.out : Motion.in-out; }
+
+        // The colour label: a 4px rounded bar inside the left edge, never a fill. In high contrast it takes the
+        // text colour (the label's name is in the description and the editor).
+        if root.has-label: Rectangle {
+            x: 1px;
+            y: Space.s1;
+            width: Space.s1;
+            height: parent.height - 2 * Space.s1;
+            border-radius: Radius.sm / 2;
+            background: Theme.hc-border != transparent ? Theme.text-primary : ListAccent.color(root.label-hues[root.label]);
+        }
 
         // Number gutter and the index-card rule (compact and comfortable; tiles number inline).
         if !root.tile: ItemGutter {

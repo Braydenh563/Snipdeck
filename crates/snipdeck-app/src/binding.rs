@@ -10,8 +10,8 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
-use snipdeck_core::{ItemKind, UseMode};
+use slint::{ComponentHandle, Global, Model, ModelRc, SharedString, VecModel};
+use snipdeck_core::{ItemKind, ItemLabel, ListIcon, UseMode};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::SystemLook,
@@ -761,6 +761,7 @@ fn render_recent(window: &ui::PanelWindow, previous: Option<&View>, view: &View)
             label: t.label.as_str().into(),
             count: 0,
             color: list_color(t.accent, view.dark),
+            icon: slint::Image::default(),
             checked: false,
         })));
     }
@@ -806,7 +807,10 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         window.set_board_name(view.board_name.as_str().into());
     }
     if differs(&|p| p.tabs == view.tabs && p.dark == view.dark) {
-        window.set_tabs(model(view.tabs.iter().map(|t| tab_item(t, view.dark))));
+        let icons = ui::ListIcons::get(window).get_all();
+        window.set_tabs(model(
+            view.tabs.iter().map(|t| tab_item(t, view.dark, &icons)),
+        ));
         // The dock's handle wears the colour of the list on show.
         let accent = view.tabs.iter().find(|t| t.active).and_then(|t| t.accent);
         window.set_dock_has_list_color(accent.is_some());
@@ -972,11 +976,48 @@ pub(crate) fn to_i32(n: usize) -> i32 {
     i32::try_from(n).unwrap_or(i32::MAX)
 }
 
-fn tab_item(tab: &Tab, dark: bool) -> ui::TabItem {
+fn tab_item(tab: &Tab, dark: bool, icons: &ModelRc<slint::Image>) -> ui::TabItem {
     ui::TabItem {
         text: tab.name.as_str().into(),
         accent: list_color(tab.accent, dark),
+        icon: list_icon_image(icons, tab.icon),
     }
+}
+
+/// The image of a list's icon from the UI's `ListIcons.all` (in the order of [`ListIcon::ALL`]);
+/// an empty image when the list has none.
+pub(crate) fn list_icon_image(
+    icons: &ModelRc<slint::Image>,
+    icon: Option<ListIcon>,
+) -> slint::Image {
+    icon.and_then(|icon| ListIcon::ALL.iter().position(|x| *x == icon))
+        .and_then(|i| icons.row_data(i))
+        .unwrap_or_default()
+}
+
+/// The row's colour label as the windows take it: -1 for none, else the position in
+/// [`ItemLabel::ALL`], with the label's name.
+pub(crate) fn label_fields(label: Option<ItemLabel>) -> (i32, SharedString) {
+    label
+        .and_then(|l| {
+            ItemLabel::ALL
+                .iter()
+                .position(|x| *x == l)
+                .map(|i| (to_i32(i), SharedString::from(wording::item_label_name(l))))
+        })
+        .unwrap_or((-1, SharedString::new()))
+}
+
+/// The item editor's label index: -1 for none, else the position in [`ItemLabel::ALL`].
+pub(crate) fn label_index(label: Option<ItemLabel>) -> i32 {
+    label_fields(label).0
+}
+
+/// The label an index stands for (`None` for -1 or anything out of range).
+pub(crate) fn label_of(index: i32) -> Option<ItemLabel> {
+    usize::try_from(index)
+        .ok()
+        .and_then(|i| ItemLabel::ALL.get(i).copied())
 }
 
 /// The text shown instead of a sensitive item's preview.
@@ -989,6 +1030,7 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         || (SharedString::new(), slint::Color::default()),
         |label| (label.name.as_str().into(), list_color(label.accent, dark)),
     );
+    let (label, label_name) = label_fields(row.label);
     ui::PanelRow {
         kind: item_kind(row),
         title: row.title.as_str().into(),
@@ -1010,6 +1052,8 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         },
         list_name,
         list_color,
+        label,
+        label_name,
         image: slint::Image::default(),
         stack_position: 0,
     }
@@ -1064,6 +1108,7 @@ mod tests {
             preview: preview.into(),
             list: None,
             pinned: false,
+            label: None,
         }
     }
 

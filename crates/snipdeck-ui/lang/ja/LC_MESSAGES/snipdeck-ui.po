@@ -193,6 +193,9 @@ msgstr ""
 msgid "Clear"
 msgstr ""
 
+msgid "Clear filter"
+msgstr ""
+
 msgid "Clear recent history"
 msgstr ""
 
@@ -243,6 +246,9 @@ msgstr "コード"
 
 msgid "Colour"
 msgstr "色"
+
+msgid "Colour label"
+msgstr ""
 
 msgid "Comfortable view"
 msgstr "ゆったり表示"
@@ -562,6 +568,9 @@ msgstr "テンプレートに入力"
 msgid "Filter as you type"
 msgstr ""
 
+msgid "Filter by colour label"
+msgstr ""
+
 msgid "Fixed placeholders filled in when you paste."
 msgstr ""
 
@@ -678,6 +687,9 @@ msgstr "ポインターが開いたパネルから外れてからパネルがた
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "パネルを開く幅（{}〜{}ピクセル）。"
+
+msgid "Icon"
+msgstr ""
 
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
 msgstr ""
@@ -931,8 +943,14 @@ msgstr "バックアップはまだありません。"
 msgid "No colour"
 msgstr "色なし"
 
+msgid "No icon"
+msgstr ""
+
 msgid "No items with this tag"
 msgstr "このタグのスニペットはありません"
+
+msgid "No label"
+msgstr ""
 
 msgid "No lists yet"
 msgstr "リストはまだありません"
@@ -1914,6 +1932,9 @@ msgstr ""
 
 msgid "https://example.com"
 msgstr "https://example.com"
+
+msgid "label: {}"
+msgstr ""
 
 msgid "ms"
 msgstr "ms"

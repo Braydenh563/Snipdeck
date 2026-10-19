@@ -124,14 +124,17 @@ pub fn tabs() -> Vec<TabItem> {
         TabItem {
             text: "Email replies".into(),
             accent: TEAL_600,
+            icon: slint::Image::default(),
         },
         TabItem {
             text: "Addresses".into(),
             accent: AMBER_600,
+            icon: slint::Image::default(),
         },
         TabItem {
             text: "Code".into(),
             accent: VIOLET_600,
+            icon: slint::Image::default(),
         },
     ]
 }

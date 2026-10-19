@@ -536,6 +536,20 @@ ui_tests! {
         assert_eq!(take(&log), ["tab:2"]);
     }
 
+    fn a_list_icon_on_a_tab_does_not_change_its_name() {
+        use slint::{Global, Model};
+        let (ui, _log) = start();
+        let icons = snipdeck_ui::ListIcons::get(&ui).get_all();
+        assert_eq!(icons.row_count(), 24);
+        let mut tabs: Vec<snipdeck_ui::TabItem> = ui.get_tabs().iter().collect();
+        tabs[2].icon = icons.row_data(12).expect("the code icon");
+        ui.set_tabs(slint::ModelRc::new(slint::VecModel::from(tabs)));
+        slint::platform::update_timers_and_animations();
+        let tab = find(&ui, "Code", AccessibleRole::Tab);
+        assert_eq!(tab.accessible_label().as_deref(), Some("Code"));
+        assert!(tab.size().height >= 24.0);
+    }
+
     fn right_clicking_a_tab_asks_for_its_list_menu_and_the_tab_says_it_has_one() {
         let (ui, log) = start();
         let tab = find(&ui, "Code", AccessibleRole::Tab);
@@ -1407,6 +1421,7 @@ ui_tests! {
             label: "Replies".into(),
             count: 0,
             color: slint::Color::default(),
+            icon: slint::Image::default(),
             checked: false,
         }])));
         press_at(&ui, centre(&find(&ui, "Recent", AccessibleRole::Tab)));

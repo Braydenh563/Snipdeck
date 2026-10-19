@@ -51,6 +51,9 @@ export struct PanelRow {
     // Mixed views (search): the list the row lives in, with its colour.
     list-name: string,
     list-color: color,
+    // The item's colour label (-1 none, else 0 to 7 in the order of `ItemLabel`) and its name.
+    label: int,
+    label-name: string,
     image: image,
     // 1-based place in the paste stack; 0 = not marked.
     stack-position: int,
@@ -956,6 +959,8 @@ export component PanelWindow inherits Window {
                                 image: row.image;
                                 list-name: row.list-name;
                                 list-color: row.list-color;
+                                label: row.label;
+                                label-name: row.label-name;
                                 stack-position: row.stack-position;
                                 selected: i == root.sel;
                                 use-label: root.use-label;

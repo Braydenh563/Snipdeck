@@ -150,6 +150,7 @@ impl ItemEditorSlot {
             ticked(true).map(|t| t.name.clone()).collect(),
             input.source_path.clone(),
         )
+        .with_label(input.label)
     }
 }
 
@@ -317,6 +318,7 @@ where
             sensitive: false,
             list_index,
             source_path: String::new(),
+            label: None,
         };
         let mut slot = ItemEditorSlot {
             seq: 0,
@@ -367,6 +369,7 @@ where
             sensitive: item.sensitive,
             list_index,
             source_path: String::new(),
+            label: item.label,
         };
         let (mut original_text, mut large, mut attachment) = (None, None, None);
         if item_editor::is_text_kind(item.kind) {
@@ -495,6 +498,7 @@ where
             }
         }
         slot.fields.title.clone_from(&draft.title);
+        slot.fields.label = draft.item_label();
         if item_editor::is_text_kind(slot.fields.kind) {
             slot.fields.content.clone_from(&draft.content);
         }
@@ -867,6 +871,7 @@ where
             ItemTarget::New => {
                 let mut item = Item::new(list_id, title, kind, now);
                 item.sensitive = sensitive;
+                item.label = input.label;
                 item.tags = tags.ticked;
                 item.preview = preview_of(is_text, text.as_deref(), sensitive);
                 self.store.atomically(|b| {
@@ -884,6 +889,7 @@ where
                     item.list_id = list_id;
                     item.tags = tags.ticked;
                     item.sensitive = sensitive;
+                    item.label = input.label;
                     item.updated_at = now;
                     // The preview follows the text on screen when the text itself is unchanged.
                     let shown = text.as_deref().unwrap_or(&input.content);
