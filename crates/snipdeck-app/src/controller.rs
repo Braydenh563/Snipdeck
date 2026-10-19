@@ -86,6 +86,14 @@ pub trait Library: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + BlobS
     /// The store failing to read.
     fn key_ring_exists(&self) -> snipdeck_store::Result<bool>;
 
+    /// Whether any sensitive item, a trashed one included, is stored as plain text (it was made
+    /// sensitive before a key existed). Setting up encryption encrypts it.
+    ///
+    /// # Errors
+    ///
+    /// The store failing to read.
+    fn has_plain_sensitive(&self) -> snipdeck_store::Result<bool>;
+
     /// Sets up encryption (no master password) and leaves the library unlocked.
     ///
     /// # Errors
@@ -114,6 +122,10 @@ impl Library for Store {
 
     fn key_ring_exists(&self) -> snipdeck_store::Result<bool> {
         Store::key_ring_exists(self)
+    }
+
+    fn has_plain_sensitive(&self) -> snipdeck_store::Result<bool> {
+        Store::has_plain_sensitive(self)
     }
 
     fn create_key_ring(&mut self, ring: &KeyRing<'_>) -> snipdeck_store::Result<()> {

@@ -16,7 +16,7 @@ use common::*;
 use rusqlite::Connection;
 use snipdeck_core::{Content, FileEntry, Format, Formats, INLINE_LIMIT, Item, ItemKind, Placement};
 use snipdeck_store::crypto::{CryptoError, KdfParams, KeyRing, MemoryKeyProvider};
-use snipdeck_store::{BlobStore, Error, ItemRepo, Store};
+use snipdeck_store::{BlobStore, Error, ItemRepo, Store, TrashRepo, Trashable};
 
 fn provider() -> MemoryKeyProvider {
     MemoryKeyProvider::new().unwrap()
@@ -283,6 +283,23 @@ fn creating_the_key_ring_encrypts_existing_sensitive_items() {
     assert_eq!(s.formats(open.id).unwrap(), text_formats("visible text"));
     drop(s);
     assert_no_plaintext(dir.path(), &[b"ZQ9earlySECRET", b"zq9earlysecret"]);
+}
+
+#[test]
+fn plain_sensitive_items_are_reported_until_the_key_ring_encrypts_them() {
+    let p = provider();
+    let (_dir, mut s, l) = on_disk();
+    assert!(!s.has_plain_sensitive().unwrap());
+    item(&mut s, l.id, "open", "visible text");
+    assert!(!s.has_plain_sensitive().unwrap(), "a plain item is not one");
+    let it = secret_item(l.id, "Wifi");
+    s.insert_item(&it, &text_formats("hunter2"), Placement::Last)
+        .unwrap();
+    // A trashed one still counts: it is restorable, and still on disk.
+    s.trash(Trashable::Item(it.id), at(1)).unwrap();
+    assert!(s.has_plain_sensitive().unwrap());
+    s.create_key_ring(&ring(&p), None).unwrap();
+    assert!(!s.has_plain_sensitive().unwrap());
 }
 
 #[test]
