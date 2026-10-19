@@ -469,6 +469,9 @@ msgstr "リンク"
 msgid "List"
 msgstr "リスト"
 
+msgid "List actions"
+msgstr "リストの操作"
+
 msgid "List name"
 msgstr "リスト名"
 
@@ -774,6 +777,9 @@ msgstr "検索結果"
 
 msgid "Right edge"
 msgstr "右端"
+
+msgid "Right-click or press Menu for list actions"
+msgstr "右クリックまたはメニューキーでリストの操作を表示"
 
 msgid "Rose"
 msgstr "ローズ"
