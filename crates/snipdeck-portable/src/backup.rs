@@ -171,7 +171,7 @@ pub fn list_backups(data_dir: &Path) -> Result<Vec<BackupFile>> {
 /// library adds nothing). Pass a `key` to restore encrypted sensitive items;
 /// [`KeySource::Library`] uses the library's own unlocked key.
 ///
-/// `max_boards` is the most live boards the library may hold afterwards (the Free tier's 3;
+/// `max_boards` is the most live boards the library may hold afterwards (the Free tier's 5;
 /// `None` on Supporter), as [`ImportOptions::max_boards`]: a restore that would go past it is refused
 /// and changes nothing.
 ///
