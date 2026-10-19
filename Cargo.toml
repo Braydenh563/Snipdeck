@@ -93,6 +93,11 @@ undocumented_unsafe_blocks = "warn"
 debug = "line-tables-only"
 incremental = false
 
+# Dependencies carry no debug info: the crash log only needs line tables for Snipdeck's own
+# crates, and dropping them halves the target dir (CI's runner ran out of disk at the deny step).
+[profile.dev.package."*"]
+debug = false
+
 # Shipping builds (docs/reviews/fable-analysis.md P1): one codegen unit with fat LTO for a small,
 # fast exe; symbols stripped. `panic` stays `unwind` until the crash log (C4) owns panics.
 [profile.release]
