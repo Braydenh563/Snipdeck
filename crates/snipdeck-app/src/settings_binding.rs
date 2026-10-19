@@ -26,6 +26,7 @@ use snipdeck_store::Store;
 use snipdeck_ui as ui;
 
 use crate::{
+    accent::AccentChoice,
     binding::{Loggable, Shown, arm_toast, model, redraw_all, register_redraw, to_i32},
     controller::{Controller, ToastPhase, ToastView},
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
@@ -384,6 +385,8 @@ struct BackupLine {
 )]
 struct PageView {
     look: snipdeck_platform::system_look::SystemLook,
+    accent: Option<crate::accent::Accent>,
+    accent_index: i32,
     hotkeys: Vec<HotkeyRow>,
     theme_index: i32,
     language_index: i32,
@@ -413,6 +416,13 @@ struct PageState {
     no_paste_error: String,
     licence_error: String,
     backups: Vec<BackupFile>,
+}
+
+fn accent_index(accent: AccentChoice) -> i32 {
+    AccentChoice::ALL
+        .iter()
+        .position(|a| *a == accent)
+        .map_or(0, crate::binding::to_i32)
 }
 
 fn theme_index(theme: Theme) -> i32 {
@@ -490,6 +500,8 @@ where
         .collect();
     PageView {
         look: controller.settings_look(),
+        accent: controller.accent(),
+        accent_index: accent_index(settings.accent),
         hotkeys,
         theme_index: theme_index(settings.theme),
         language_index: language_index(&settings.language),
@@ -886,6 +898,14 @@ where
                     _ => Theme::System,
                 };
             })));
+        wire!(on_accent_chosen, |core, i| core.act(|ctl| ctl
+            .update_settings(|s| {
+                s.accent = usize::try_from(i)
+                    .ok()
+                    .and_then(|at| AccentChoice::ALL.get(at))
+                    .copied()
+                    .unwrap_or_default();
+            })));
         wire!(on_language_chosen, |core, i| core.act(|ctl| ctl
             .update_settings(|s| {
                 s.language = usize::try_from(i - 1)
@@ -957,9 +977,16 @@ where
 fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageView) {
     let differs = |same: &dyn Fn(&PageView) -> bool| previous.is_none_or(|p| !same(p));
 
-    if differs(&|p| p.look == view.look) {
+    if differs(&|p| p.look == view.look && p.accent == view.accent) {
         window.set_dark(view.look.dark);
-        set_look(window, view.look.high_contrast.as_ref());
+        set_look(
+            window,
+            view.look.high_contrast.as_ref(),
+            view.accent.as_ref(),
+        );
+    }
+    if differs(&|p| p.accent_index == view.accent_index) {
+        window.set_accent_index(view.accent_index);
     }
     if differs(&|p| p.hotkeys == view.hotkeys) {
         window.set_hotkeys(model(view.hotkeys.iter().map(|h| ui::HotkeySetting {

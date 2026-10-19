@@ -117,6 +117,8 @@ pub struct MainScreen {
     pub dark: bool,
     /// The high-contrast colours, while a Windows high-contrast theme is on.
     pub high_contrast: Option<HighContrast>,
+    /// The user's accent, when it is not the built-in blue.
+    pub accent: Option<crate::accent::Accent>,
     /// The open board's name.
     pub board_name: String,
     /// The board menu while it is open.
@@ -205,6 +207,7 @@ where
         MainScreen {
             dark: look.dark,
             high_contrast: look.high_contrast,
+            accent: self.accent(),
             board_name: self.main.board_name().to_owned(),
             board_menu: self
                 .main

@@ -14,7 +14,7 @@ use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use snipdeck_core::{ItemKind, UseMode};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
-    system_look::{Rgb, SystemLook},
+    system_look::SystemLook,
     tray::TrayEvent,
 };
 use snipdeck_ui as ui;
@@ -690,17 +690,12 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
     }
-    if differs(&|p| p.high_contrast == view.high_contrast) {
-        let look = window.global::<ui::SystemLook<'_>>();
-        look.set_high_contrast(view.high_contrast.is_some());
-        if let Some(hc) = &view.high_contrast {
-            let color = |c: Rgb| slint::Color::from_rgb_u8(c.r, c.g, c.b);
-            look.set_hc_window(color(hc.window));
-            look.set_hc_window_text(color(hc.window_text));
-            look.set_hc_highlight(color(hc.highlight));
-            look.set_hc_highlight_text(color(hc.highlight_text));
-            look.set_hc_gray_text(color(hc.gray_text));
-        }
+    if differs(&|p| p.high_contrast == view.high_contrast && p.accent == view.accent) {
+        crate::popup_window::set_look_globals(
+            &window.global::<ui::SystemLook<'_>>(),
+            view.high_contrast.as_ref(),
+            view.accent.as_ref(),
+        );
     }
     if differs(&|p| p.board_name == view.board_name) {
         window.set_board_name(view.board_name.as_str().into());

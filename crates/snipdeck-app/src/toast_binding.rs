@@ -17,12 +17,13 @@ use snipdeck_platform::{
 use snipdeck_ui as ui;
 
 use crate::{
+    accent::Accent,
     binding::{redraw_all, register_redraw},
     controller::{Controller, Library, ToastPhase, ToastView, View},
     frame::Rect,
     host::ClipboardText,
     placement::{self, PopupHost},
-    popup_window::{Shell, set_high_contrast},
+    popup_window::{Shell, set_look_globals},
     toast::ToastKind,
     wording,
 };
@@ -34,6 +35,7 @@ pub type OthersShowing = Rc<dyn Fn() -> bool>;
 struct Shown {
     dark: bool,
     high_contrast: Option<HighContrast>,
+    accent: Option<Accent>,
     toast: ToastView,
 }
 
@@ -86,6 +88,7 @@ where
         *self.shown.borrow_mut() = Some(Shown {
             dark: view.dark,
             high_contrast: view.high_contrast,
+            accent: view.accent,
             toast: toast.clone(),
         });
         let size = (window.get_content_width(), window.get_content_height());
@@ -178,10 +181,11 @@ fn render(window: &ui::ToastWindow, previous: Option<&Shown>, view: &View, toast
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
     }
-    if differs(&|p| p.high_contrast == view.high_contrast) {
-        set_high_contrast(
+    if differs(&|p| p.high_contrast == view.high_contrast && p.accent == view.accent) {
+        set_look_globals(
             &window.global::<ui::SystemLook<'_>>(),
             view.high_contrast.as_ref(),
+            view.accent.as_ref(),
         );
     }
     if differs(&|p| p.toast == *toast) {

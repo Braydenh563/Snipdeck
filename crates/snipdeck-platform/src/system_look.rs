@@ -64,6 +64,8 @@ pub struct SystemLook {
     pub dark: bool,
     /// A high-contrast theme is on, with its colours. Wins over everything else.
     pub high_contrast: Option<HighContrast>,
+    /// The colour Windows uses as its accent, when it can be read.
+    pub accent: Option<Rgb>,
 }
 
 /// Reads the current [`SystemLook`]. Cheap enough to call on every change notification, and

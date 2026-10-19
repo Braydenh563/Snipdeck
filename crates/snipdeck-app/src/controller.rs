@@ -34,6 +34,7 @@ pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameE
 pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry};
 
 use crate::{
+    accent::Accent,
     capture::{self, Captured},
     dock::DockState,
     fill::{self, FillModel},
@@ -320,6 +321,8 @@ pub struct View {
     /// The high-contrast colours while a Windows high-contrast theme is on (it overrides the
     /// theme setting), else `None`.
     pub high_contrast: Option<HighContrast>,
+    /// The user's accent, when it is not the built-in blue.
+    pub accent: Option<Accent>,
     /// The toast, if one is showing.
     pub toast: Option<ToastView>,
     /// The board menu's entries while it is open.
@@ -592,6 +595,7 @@ where
             docked: self.dock_edge().is_some(),
             dark: self.look().dark,
             high_contrast: self.look().high_contrast,
+            accent: self.accent(),
             toast: self.toast_view(),
             board_menu: (self.menu == PanelMenu::Board).then(|| {
                 self.model
@@ -651,6 +655,13 @@ where
         })
     }
 
+    /// The user's accent: the preset they chose, or the Windows accent; `None` keeps the built-in blue.
+    #[must_use]
+    pub fn accent(&self) -> Option<Accent> {
+        let system = self.os_look.accent.map(|c| [c.r, c.g, c.b]);
+        crate::accent::resolve(self.settings.accent, system)
+    }
+
     /// The look in force: the `theme` setting over what Windows says; high contrast always wins.
     fn look(&self) -> SystemLook {
         SystemLook {
@@ -660,6 +671,7 @@ where
                 Theme::Dark => true,
             },
             high_contrast: self.os_look.high_contrast,
+            accent: self.os_look.accent,
         }
     }
 
@@ -2938,6 +2950,7 @@ mod tests {
         SystemLook {
             dark,
             high_contrast: None,
+            accent: None,
         }
     }
 
@@ -2973,6 +2986,7 @@ mod tests {
             w.ctl.set_system_look(SystemLook {
                 dark: false,
                 high_contrast: Some(hc),
+                accent: None,
             });
             assert_eq!(w.ctl.view().high_contrast, Some(hc), "{theme:?}");
             w.ctl.set_system_look(os(false));

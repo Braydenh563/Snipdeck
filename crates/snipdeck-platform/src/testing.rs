@@ -449,6 +449,7 @@ mod tests {
         handle.set(SystemLook {
             dark: true,
             high_contrast: None,
+            accent: None,
         });
         assert!(look.read().dark);
     }

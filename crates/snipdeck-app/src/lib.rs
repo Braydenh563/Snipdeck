@@ -4,6 +4,7 @@
 //! under Slint's headless testing backend.
 #![forbid(unsafe_code)]
 
+pub mod accent;
 pub mod binding;
 pub mod capture;
 pub mod cli;

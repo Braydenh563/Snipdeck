@@ -21,11 +21,12 @@ use slint::{
 use snipdeck_core::{ItemKind, ListAccent, ListSort};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
-    system_look::{HighContrast, Rgb},
+    system_look::HighContrast,
 };
 use snipdeck_ui as ui;
 
 use crate::{
+    accent::Accent,
     binding::{
         Loggable, Shown, arm_toast, extension_of, index, item_kind_of, model, redraw_all,
         register_redraw, to_i32,
@@ -40,6 +41,7 @@ use crate::{
         fit_logical, fit_to_screen, place_of, place_over_owner, restore_place, size_before_show,
     },
     palette::list_color,
+    popup_window::set_look_globals,
     wording,
 };
 
@@ -836,8 +838,8 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     if differs(&|p| p.dark == screen.dark) {
         window.set_dark(screen.dark);
     }
-    if differs(&|p| p.high_contrast == screen.high_contrast) {
-        set_look(window, screen.high_contrast.as_ref());
+    if differs(&|p| (p.high_contrast, p.accent) == (screen.high_contrast, screen.accent)) {
+        apply_look(window, screen);
     }
     if differs(&|p| p.panel_hotkey == screen.panel_hotkey) {
         window.set_panel_hotkey(screen.panel_hotkey.as_str().into());
@@ -932,22 +934,13 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     }
 }
 
-/// The Windows high-contrast colours, or off.
-pub(crate) fn set_look<C>(component: &C, hc: Option<&HighContrast>)
+/// The Windows high-contrast colours and the accent, or off.
+pub(crate) fn set_look<C>(component: &C, hc: Option<&HighContrast>, accent: Option<&Accent>)
 where
     C: ComponentHandle,
     for<'a> ui::SystemLook<'a>: slint::Global<'a, C>,
 {
-    let look = component.global::<ui::SystemLook<'_>>();
-    look.set_high_contrast(hc.is_some());
-    if let Some(hc) = hc {
-        let color = |c: Rgb| slint::Color::from_rgb_u8(c.r, c.g, c.b);
-        look.set_hc_window(color(hc.window));
-        look.set_hc_window_text(color(hc.window_text));
-        look.set_hc_highlight(color(hc.highlight));
-        look.set_hc_highlight_text(color(hc.highlight_text));
-        look.set_hc_gray_text(color(hc.gray_text));
-    }
+    set_look_globals(&component.global::<ui::SystemLook<'_>>(), hc, accent);
 }
 
 fn apply_look<C>(component: &C, screen: &MainScreen)
@@ -955,7 +948,11 @@ where
     C: ComponentHandle,
     for<'a> ui::SystemLook<'a>: slint::Global<'a, C>,
 {
-    set_look(component, screen.high_contrast.as_ref());
+    set_look(
+        component,
+        screen.high_contrast.as_ref(),
+        screen.accent.as_ref(),
+    );
 }
 
 fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {

@@ -641,6 +641,7 @@ fn windows_dark_mode_and_high_contrast_reach_the_window() {
         r.binding.system_look(SystemLook {
             dark: true,
             high_contrast: None,
+            accent: None,
         });
         assert!(r.ui.get_dark(), "theme = system follows Windows");
 
@@ -651,6 +652,7 @@ fn windows_dark_mode_and_high_contrast_reach_the_window() {
                 highlight: snipdeck_platform::system_look::Rgb { r: 1, g: 2, b: 3 },
                 ..hc
             }),
+            accent: None,
         });
         assert!(look.get_high_contrast());
         assert_eq!(look.get_hc_highlight(), slint::Color::from_rgb_u8(1, 2, 3));
@@ -670,6 +672,7 @@ fn an_explicit_theme_ignores_windows_dark_mode() {
         r.binding.system_look(SystemLook {
             dark: true,
             high_contrast: None,
+            accent: None,
         });
         assert!(!r.ui.get_dark());
     });

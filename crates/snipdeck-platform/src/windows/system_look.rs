@@ -53,6 +53,7 @@ pub fn read() -> SystemLook {
     SystemLook {
         dark: apps_use_light_theme() == Some(false),
         high_contrast: high_contrast(),
+        accent: accent_color(),
     }
 }
 
@@ -75,6 +76,28 @@ fn apps_use_light_theme() -> Option<bool> {
         )
     };
     (code == ERROR_SUCCESS).then_some(data != 0)
+}
+
+/// The user's accent colour: `HKCU\Software\Microsoft\Windows\DWM`, DWORD `ColorizationColor`
+/// (0xAARRGGBB). `None` when the value is missing.
+fn accent_color() -> Option<Rgb> {
+    let mut data: u32 = 0;
+    let mut size = u32::try_from(std::mem::size_of::<u32>()).unwrap_or(4);
+    // SAFETY: as in `apps_use_light_theme`: static NUL-terminated names, valid out-pointers,
+    // `RRF_RT_REG_DWORD` limits what is written to a DWORD.
+    let code = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            w!(r"Software\Microsoft\Windows\DWM"),
+            w!("ColorizationColor"),
+            RRF_RT_REG_DWORD,
+            None,
+            Some((&raw mut data).cast::<c_void>()),
+            Some(&raw mut size),
+        )
+    };
+    let [_, r, g, b] = data.to_be_bytes();
+    (code == ERROR_SUCCESS).then_some(Rgb { r, g, b })
 }
 
 fn sys_color(index: SYS_COLOR_INDEX) -> Rgb {

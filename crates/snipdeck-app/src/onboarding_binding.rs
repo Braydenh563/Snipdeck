@@ -122,7 +122,11 @@ where
         let settings = controller.settings();
         let look = controller.settings_look();
         window.set_dark(look.dark);
-        set_look(&window, look.high_contrast.as_ref());
+        set_look(
+            &window,
+            look.high_contrast.as_ref(),
+            controller.accent().as_ref(),
+        );
         let step = controller.tour_step().unwrap_or_default();
         window.set_step(to_i32(step.index()));
         window.set_step_count(to_i32(TourStep::ALL.len()));

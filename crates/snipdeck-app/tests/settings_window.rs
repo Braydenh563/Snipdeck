@@ -326,6 +326,29 @@ fn removing_a_program_is_written_too_and_a_repeat_is_refused_in_words() {
 }
 
 #[test]
+fn the_accent_applies_at_once_and_blue_keeps_the_built_in_palette() {
+    on_ui_thread(|| {
+        let r = rig();
+        let look = r.ui.global::<snipdeck_ui::SystemLook<'_>>();
+        assert!(!look.get_accent_custom(), "blue is the palette's own");
+        r.ui.invoke_accent_chosen(1);
+        assert_eq!(r.ui.get_accent_index(), 1);
+        assert!(look.get_accent_custom());
+        assert_eq!(
+            look.get_accent_light().default,
+            slint::Color::from_rgb_u8(0x04, 0x84, 0x84),
+            "teal-600"
+        );
+        r.ui.invoke_accent_chosen(0);
+        assert!(!look.get_accent_custom());
+        assert_eq!(
+            r.ctl.borrow().settings().accent,
+            snipdeck_app::accent::AccentChoice::Blue
+        );
+    });
+}
+
+#[test]
 fn the_theme_applies_at_once_and_the_page_shows_what_is_stored() {
     on_ui_thread(|| {
         let r = rig();
