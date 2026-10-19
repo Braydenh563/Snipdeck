@@ -470,6 +470,8 @@ where
         wire_effects!(on_item_menu_activated, |ctl, i| ctl
             .choose_item_menu(index(i)));
         wire!(on_item_menu_dismissed, |ctl| ctl.close_item_menu());
+        wire!(on_stack_started, |ctl| ctl.start_stack());
+        wire!(on_stack_ended, |ctl| ctl.end_stack());
         wire!(on_list_menu_requested, |ctl, i| ctl
             .open_list_menu(index(i)));
         wire_effects!(on_list_menu_activated, |ctl, i| ctl
@@ -696,6 +698,14 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             view.high_contrast.as_ref(),
             view.accent.as_ref(),
         );
+    }
+    if differs(&|p| p.stack == view.stack) {
+        window.set_stack_visible(view.stack.is_some());
+        let stack = view.stack.clone().unwrap_or_default();
+        window.set_stack_running(stack.running);
+        window.set_stack_count(to_i32(stack.count));
+        window.set_stack_position(to_i32(stack.position));
+        window.set_stack_next_title(stack.next_title.as_str().into());
     }
     if differs(&|p| p.board_name == view.board_name) {
         window.set_board_name(view.board_name.as_str().into());

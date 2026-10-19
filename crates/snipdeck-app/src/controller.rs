@@ -209,6 +209,19 @@ pub enum ToastPhase {
     Exit,
 }
 
+/// The paste stack strip of the Panel.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct StackView {
+    /// How many items are marked.
+    pub count: usize,
+    /// "Start stack" was chosen: Paste next walks the marks.
+    pub running: bool,
+    /// How many have been pasted so far (the index of the next one).
+    pub position: usize,
+    /// The title of the item Paste next pastes next (empty when it has no title).
+    pub next_title: String,
+}
+
 /// The toast on screen.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToastView {
@@ -323,6 +336,8 @@ pub struct View {
     pub high_contrast: Option<HighContrast>,
     /// The user's accent, when it is not the built-in blue.
     pub accent: Option<Accent>,
+    /// The paste stack, while items are marked or it runs.
+    pub stack: Option<StackView>,
     /// The toast, if one is showing.
     pub toast: Option<ToastView>,
     /// The board menu's entries while it is open.
@@ -391,6 +406,10 @@ pub struct Controller<S, C, K, T> {
     fill_seq: u64,
     /// Where "paste next" is in its run.
     queue: PasteQueue,
+    /// The items marked for a paste stack, in marking order.
+    stack: Vec<ItemId>,
+    /// The marked items are being pasted one by one ("Start stack" was chosen).
+    stack_running: bool,
     /// Which of the Panel's two menus is open (never both).
     menu: PanelMenu,
     /// The Main window's state.
@@ -511,6 +530,8 @@ where
             fill: None,
             fill_seq: 0,
             queue: PasteQueue::default(),
+            stack: Vec::new(),
+            stack_running: false,
             menu: PanelMenu::None,
             main: MainModel::new(),
             editor: None,
@@ -596,6 +617,7 @@ where
             dark: self.look().dark,
             high_contrast: self.look().high_contrast,
             accent: self.accent(),
+            stack: self.stack_view(),
             toast: self.toast_view(),
             board_menu: (self.menu == PanelMenu::Board).then(|| {
                 self.model
@@ -1233,6 +1255,64 @@ where
         self.show_toast(toast);
     }
 
+    fn stack_view(&self) -> Option<StackView> {
+        if self.stack.is_empty() {
+            return None;
+        }
+        let position = if self.stack_running {
+            self.queue.position()
+        } else {
+            0
+        };
+        let next_title = self
+            .stack
+            .get(position)
+            .and_then(|id| self.store.item(*id).ok())
+            .map(|i| i.title)
+            .unwrap_or_default();
+        Some(StackView {
+            count: self.stack.len(),
+            running: self.stack_running,
+            position,
+            next_title,
+        })
+    }
+
+    /// Marks `item` for the paste stack, or unmarks it. Ignored while a stack runs.
+    pub fn toggle_stack_mark(&mut self, item: ItemId) {
+        if self.stack_running {
+            return;
+        }
+        if let Some(at) = self.stack.iter().position(|id| *id == item) {
+            self.stack.remove(at);
+        } else {
+            self.stack.push(item);
+        }
+    }
+
+    /// "Start stack": Paste next now walks the marked items. A Supporter feature.
+    pub fn start_stack(&mut self) {
+        if self.stack.is_empty() {
+            return;
+        }
+        if !self.entitlements.allows(Feature::PasteStack) {
+            self.show_toast(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::NeedsPro(Feature::PasteStack),
+            });
+            return;
+        }
+        self.queue.reset();
+        self.stack_running = true;
+    }
+
+    /// Drops the marks and ends a running stack (Esc in the Panel, "End stack", or the last paste).
+    pub fn end_stack(&mut self) {
+        self.stack.clear();
+        self.stack_running = false;
+        self.queue.reset();
+    }
+
     /// The paste-next hotkey: pastes the next item of the pinned strip (when the board has
     /// pinned items) or of the list the Panel shows. See [`paste_next`].
     pub fn paste_next(&mut self) -> Option<UseResult> {
@@ -1246,6 +1326,7 @@ where
         self.on_target_changed();
         let pinned = self.model.pinned();
         let (source, ids) = match (self.model.board(), self.model.list()) {
+            _ if self.stack_running => (paste_next::Source::Stack, self.stack.clone()),
             (Some(board), _) if !pinned.is_empty() => (
                 paste_next::Source::Pinned(board),
                 pinned.iter().map(|r| r.id).collect::<Vec<_>>(),
@@ -1266,6 +1347,7 @@ where
                 None
             }
             paste_next::Next::Finished => {
+                self.end_stack();
                 self.show_toast(neutral(ToastMessage::PasteNextFinished));
                 None
             }
@@ -2349,6 +2431,87 @@ mod tests {
         assert_eq!(
             ctl.view().toast.expect("toast").message,
             ToastMessage::NoListToSave
+        );
+    }
+
+    #[test]
+    fn a_marked_stack_is_pasted_in_the_order_it_was_marked_and_then_ends() {
+        let mut w = world();
+        w.ctl.toggle_stack_mark(w.ids[2]);
+        w.ctl.toggle_stack_mark(w.ids[0]);
+        w.ctl.toggle_stack_mark(w.ids[1]);
+        w.ctl.toggle_stack_mark(w.ids[1]);
+        let stack = w.ctl.view().stack.expect("marks show");
+        assert_eq!((stack.count, stack.running), (2, false));
+
+        w.ctl.start_stack();
+        let stack = w.ctl.view().stack.expect("running");
+        assert_eq!(
+            (stack.running, stack.position, stack.next_title.as_str()),
+            (true, 0, "Three")
+        );
+
+        w.ctl.paste_next();
+        assert_eq!(w.ctl.view().stack.expect("running").position, 1);
+        w.ctl.paste_next();
+        assert_eq!(pasted(&w), ["third", "first"]);
+
+        assert_eq!(w.ctl.paste_next(), None);
+        assert_eq!(
+            w.ctl.view().toast.expect("toast").message,
+            ToastMessage::PasteNextFinished
+        );
+        assert_eq!(
+            w.ctl.view().stack,
+            None,
+            "finishing the queue ends the stack"
+        );
+    }
+
+    #[test]
+    fn ending_a_stack_forgets_the_marks_and_paste_next_goes_back_to_the_list() {
+        let mut w = world();
+        w.ctl.toggle_stack_mark(w.ids[2]);
+        w.ctl.start_stack();
+        w.ctl.end_stack();
+        assert_eq!(w.ctl.view().stack, None);
+        w.ctl.paste_next();
+        assert_eq!(pasted(&w), ["first"]);
+    }
+
+    #[test]
+    fn starting_a_stack_is_a_pro_feature_and_needs_marks() {
+        let mut w = build(Opts {
+            tier: Tier::Free,
+            ..Opts::default()
+        });
+        w.ctl.toggle_stack_mark(w.ids[0]);
+        w.ctl.start_stack();
+        assert_eq!(
+            w.ctl.view().toast.expect("toast").message,
+            ToastMessage::NeedsPro(Feature::PasteStack)
+        );
+        assert!(!w.ctl.view().stack.expect("marks stay").running);
+
+        let mut w = world();
+        w.ctl.start_stack();
+        assert_eq!(w.ctl.view().stack, None, "nothing marked, nothing starts");
+    }
+
+    #[test]
+    fn the_item_menu_marks_and_unmarks_for_the_stack() {
+        let mut w = world();
+        let id = w.ids[0];
+        assert!(
+            w.ctl
+                .item_menu_entries(id)
+                .contains(&ItemMenuEntry::Stack { marked: false })
+        );
+        w.ctl.toggle_stack_mark(id);
+        assert!(
+            w.ctl
+                .item_menu_entries(id)
+                .contains(&ItemMenuEntry::Stack { marked: true })
         );
     }
 
