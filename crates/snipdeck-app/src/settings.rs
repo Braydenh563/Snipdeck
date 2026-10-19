@@ -166,6 +166,10 @@ fn salvage_no_paste_apps(text: &str) -> Vec<String> {
 }
 
 /// The user's settings.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "one field per setting; they are independent switches, not a state"
+)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {

@@ -214,7 +214,7 @@ mod tests {
     fn a_window_taller_than_the_work_area_is_cut_to_it_with_room_for_the_title_bar() {
         // 1040 px of work area at 150 %: 693 logical, minus the chrome.
         let (w, h) = open_size((640.0, 760.0), &monitor(1.5));
-        assert_eq!(w, 640.0);
+        assert!((w - 640.0).abs() < 0.01, "{w}");
         assert!((h - (1040.0 / 1.5 - WINDOW_CHROME)).abs() < 0.01, "{h}");
         assert!(h < 760.0);
     }
