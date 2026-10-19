@@ -138,6 +138,8 @@ export component ItemCard inherits Rectangle {
     // Mixed views: the list the item belongs to (6px mark + name at the right).
     in property <string> list-name;
     in property <color> list-color;
+    // 1-based place in the paste stack (SPEC 5.1); 0 = not marked. Drawn as an icon plus a number, never colour alone.
+    in property <int> stack-position: 0;
     in property <bool> selected: false;
     // "Paste" when a target is known, otherwise "Copy"; the card adds the Enter glyph. Shown on hover or keyboard focus.
     in property <string> use-label;
@@ -280,7 +282,8 @@ export component ItemCard inherits Rectangle {
     forward-focus: scope;
     accessible-role: list-item;
     accessible-label: root.sensitive && !root.shown ? root.title
-        : root.preview != "" ? root.title + ", " + root.preview : root.title;
+        : (root.preview != "" ? root.title + ", " + root.preview : root.title)
+            + (root.stack-position > 0 ? ", " + @tr("paste stack, number {}", root.stack-position) : "");
     // A masked secret says how to reveal it (`masked-hint`); otherwise the list the item belongs to.
     accessible-description: root.sensitive && !root.shown && root.masked-hint != "" ? root.masked-hint : root.list-name;
     accessible-item-selectable: true;
@@ -625,6 +628,37 @@ export component ItemCard inherits Rectangle {
             mouse-cursor: pointer;
             changed has-hover => { root.more-hover = self.has-hover; }
             clicked => { root.context-menu-requested(more.x, more.y + more.height); }
+        }
+    }
+
+    // ---- Paste stack mark: the stack glyph and the item's place, left of More --------------------
+    if root.stack-position > 0: Rectangle {
+        width: stack-mark-row.preferred-width + 2 * Space.s1;
+        height: root.more-side;
+        x: more.x - self.width - Space.s1;
+        y: more.y;
+        border-radius: Radius.md;
+        background: Theme.accent-subtle;
+        stack-mark-row := HorizontalLayout {
+            padding-left: Space.s1;
+            padding-right: Space.s1;
+            spacing: Space.s0-5;
+            alignment: center;
+            Icon {
+                source: Icons.stack;
+                size: 12px;
+                tint: Theme.accent-text;
+                y: (parent.height - self.height) / 2;
+            }
+            Text {
+                text: root.stack-position;
+                font-family: Fonts.sans;
+                font-size: Type.xs;
+                font-weight: Type.medium;
+                color: Theme.accent-text;
+                vertical-alignment: center;
+                accessible-role: AccessibleRole.none;
+            }
         }
     }
 

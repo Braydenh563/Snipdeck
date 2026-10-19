@@ -50,6 +50,8 @@ export struct PanelRow {
     list-name: string,
     list-color: color,
     image: image,
+    // 1-based place in the paste stack; 0 = not marked.
+    stack-position: int,
 }
 
 // Per-list view choice (SPEC 5.1): one-line rows or cards with a two-line preview.
@@ -808,6 +810,7 @@ export component PanelWindow inherits Window {
                                 image: row.image;
                                 list-name: row.list-name;
                                 list-color: row.list-color;
+                                stack-position: row.stack-position;
                                 selected: i == root.sel;
                                 use-label: root.use-label;
                                 masked-hint: @tr("Hidden. Hold Space to reveal.");

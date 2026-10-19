@@ -237,6 +237,8 @@ pub struct StackView {
     pub position: usize,
     /// The title of the item Paste next pastes next (empty when it has no title).
     pub next_title: String,
+    /// The marked items, in the order they will be pasted.
+    pub items: Vec<ItemId>,
 }
 
 /// The toast on screen.
@@ -1320,6 +1322,7 @@ where
             running: self.stack_running,
             position,
             next_title,
+            items: self.stack.clone(),
         })
     }
 
