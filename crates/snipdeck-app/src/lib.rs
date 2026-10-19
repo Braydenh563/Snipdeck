@@ -12,6 +12,7 @@ pub mod crash;
 pub mod demo;
 pub mod drafts;
 pub mod editor_binding;
+pub mod dock;
 pub mod fill;
 pub mod frame;
 pub mod host;

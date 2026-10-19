@@ -32,6 +32,131 @@ pub struct PanelGeometry {
     pub w: u32,
     /// Height.
     pub h: u32,
+    /// The screen edge the Panel is docked to on this monitor, if the user docked it. A
+    /// floating Panel has none. Absent in older files; an unknown name reads as none.
+    #[serde(
+        default,
+        deserialize_with = "lenient_edge",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub edge: Option<DockEdge>,
+}
+
+/// Reads an edge name; anything else (a hand-edited or future value) is "not docked" rather
+/// than a reason to drop the whole geometry list.
+fn lenient_edge<'de, D>(deserializer: D) -> Result<Option<DockEdge>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(serde_json::from_value(value).ok())
+}
+
+/// A screen edge the Panel can dock to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DockEdge {
+    /// The left edge of the work area.
+    Left,
+    /// The right edge.
+    Right,
+    /// The top edge.
+    Top,
+    /// The bottom edge.
+    Bottom,
+}
+
+impl DockEdge {
+    /// Every edge, in the order Settings lists them.
+    pub const ALL: [Self; 4] = [Self::Left, Self::Right, Self::Top, Self::Bottom];
+
+    /// The handle strip runs up and down (the Panel is docked to the left or the right).
+    #[must_use]
+    pub const fn vertical(self) -> bool {
+        matches!(self, Self::Left | Self::Right)
+    }
+
+    /// A name for the log.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Left => "left",
+            Self::Right => "right",
+            Self::Top => "top",
+            Self::Bottom => "bottom",
+        }
+    }
+}
+
+/// What makes a docked Panel slide out of its handle.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum DockTrigger {
+    /// The Panel never collapses to a handle.
+    #[default]
+    Off,
+    /// Resting the pointer on the handle opens it.
+    Hover,
+    /// Clicking the handle opens it.
+    Click,
+    /// Either.
+    Both,
+}
+
+impl DockTrigger {
+    /// Every choice, in the order Settings lists them.
+    pub const ALL: [Self; 4] = [Self::Off, Self::Hover, Self::Click, Self::Both];
+
+    /// Hovering the handle opens the Panel.
+    #[must_use]
+    pub const fn hover(self) -> bool {
+        matches!(self, Self::Hover | Self::Both)
+    }
+
+    /// Clicking the handle opens the Panel.
+    #[must_use]
+    pub const fn click(self) -> bool {
+        matches!(self, Self::Click | Self::Both)
+    }
+}
+
+/// How long the pointer rests on the handle before the Panel opens, in milliseconds.
+pub const HOVER_DELAY_MS: std::ops::RangeInclusive<u32> = 0..=2000;
+/// How long the pointer is off the open Panel before it collapses, in milliseconds.
+pub const LEAVE_DELAY_MS: std::ops::RangeInclusive<u32> = 0..=5000;
+
+/// The edge dock (SPEC 5.1): a docked Panel collapses to a thin handle and slides out again.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DockSettings {
+    /// What opens the collapsed Panel; `off` keeps a docked Panel open.
+    pub trigger: DockTrigger,
+    /// Hover delay, 0 to 2000 ms (DESIGN.md: 150 ms).
+    pub hover_delay_ms: u32,
+    /// Leave delay, 0 to 5000 ms.
+    pub leave_delay_ms: u32,
+}
+
+impl Default for DockSettings {
+    fn default() -> Self {
+        Self {
+            trigger: DockTrigger::Off,
+            hover_delay_ms: 150,
+            leave_delay_ms: 400,
+        }
+    }
+}
+
+impl DockSettings {
+    /// Puts both delays in range.
+    pub fn sanitize(&mut self) {
+        self.hover_delay_ms = self
+            .hover_delay_ms
+            .clamp(*HOVER_DELAY_MS.start(), *HOVER_DELAY_MS.end());
+        self.leave_delay_ms = self
+            .leave_delay_ms
+            .clamp(*LEAVE_DELAY_MS.start(), *LEAVE_DELAY_MS.end());
+    }
 }
 
 /// What a global hotkey does.
@@ -184,6 +309,8 @@ pub struct Settings {
     pub panel_geometry: Vec<PanelGeometry>,
     /// Executable names that never receive an auto-paste (lower case).
     pub no_paste_apps: Vec<String>,
+    /// The edge dock: when a docked Panel collapses to a handle, and the delays.
+    pub dock: DockSettings,
 }
 
 impl Default for Settings {
@@ -198,6 +325,7 @@ impl Default for Settings {
             panel_width: PANEL_WIDTH_DEFAULT,
             panel_geometry: Vec::new(),
             no_paste_apps: Vec::new(),
+            dock: DockSettings::default(),
         }
     }
 }
@@ -259,6 +387,7 @@ impl Settings {
             Some(serde_json::Value::String(one)) => settings.no_paste_apps = vec![one.clone()],
             _ => {}
         }
+        field!(dock);
         settings
     }
 
@@ -282,6 +411,7 @@ impl Settings {
             .panel_width
             .clamp(*PANEL_WIDTH.start(), *PANEL_WIDTH.end());
         self.sanitize_panel_geometry();
+        self.dock.sanitize();
         let mut seen = std::collections::BTreeSet::new();
         self.no_paste_apps = self
             .no_paste_apps
@@ -424,9 +554,78 @@ mod tests {
             y: 40,
             w: 400,
             h: 700,
+            edge: Some(DockEdge::Right),
         });
         let back = Settings::from_json(&settings.to_json());
         assert_eq!(back.panel_geometry, settings.panel_geometry);
+    }
+
+    #[test]
+    fn the_dock_is_off_by_default_with_the_documented_delays() {
+        let dock = Settings::default().dock;
+        assert_eq!(dock.trigger, DockTrigger::Off);
+        assert_eq!((dock.hover_delay_ms, dock.leave_delay_ms), (150, 400));
+    }
+
+    #[test]
+    fn dock_settings_round_trip_and_an_old_file_gets_the_defaults() {
+        let settings = Settings {
+            dock: DockSettings {
+                trigger: DockTrigger::Both,
+                hover_delay_ms: 300,
+                leave_delay_ms: 900,
+            },
+            ..Settings::default()
+        };
+        assert_eq!(Settings::from_json(&settings.to_json()), settings);
+        assert_eq!(
+            Settings::from_json(r#"{"version":1}"#).dock,
+            DockSettings::default()
+        );
+        let partial = Settings::from_json(r#"{"dock":{"trigger":"hover"}}"#).dock;
+        assert_eq!(partial.trigger, DockTrigger::Hover);
+        assert_eq!(partial.hover_delay_ms, 150);
+    }
+
+    #[test]
+    fn the_dock_delays_are_clamped() {
+        let dock = Settings::from_json(
+            r#"{"dock":{"trigger":"click","hover_delay_ms":999999,"leave_delay_ms":999999}}"#,
+        )
+        .dock;
+        assert_eq!((dock.hover_delay_ms, dock.leave_delay_ms), (2000, 5000));
+        let mut settings = Settings::default();
+        settings.dock.hover_delay_ms = 0;
+        settings.dock.leave_delay_ms = 0;
+        settings.sanitize();
+        assert_eq!(
+            (settings.dock.hover_delay_ms, settings.dock.leave_delay_ms),
+            (0, 0)
+        );
+    }
+
+    #[test]
+    fn a_bad_dock_trigger_falls_back_without_losing_the_other_fields() {
+        let settings = Settings::from_json(r#"{"dock":{"trigger":"sideways"},"theme":"dark"}"#);
+        assert_eq!(settings.dock, DockSettings::default());
+        assert_eq!(settings.theme, Theme::Dark);
+    }
+
+    #[test]
+    fn a_geometry_without_an_edge_is_floating_and_an_unknown_edge_is_too() {
+        let settings = Settings::from_json(
+            r#"{"panel_geometry":[
+                {"monitor_id":"A","x":0,"y":0,"w":300,"h":500},
+                {"monitor_id":"B","x":0,"y":0,"w":300,"h":500,"edge":"diagonal"},
+                {"monitor_id":"C","x":0,"y":0,"w":300,"h":500,"edge":"top"}
+            ]}"#,
+        );
+        let edges: Vec<_> = settings.panel_geometry.iter().map(|g| g.edge).collect();
+        assert_eq!(edges, [None, None, Some(DockEdge::Top)]);
+        assert!(
+            !Settings::default().to_json().contains("edge"),
+            "no edge is written for a floating Panel"
+        );
     }
 
     #[test]
@@ -437,6 +636,7 @@ mod tests {
             y: 0,
             w,
             h: 500,
+            edge: None,
         };
         let mut settings = Settings {
             panel_geometry: vec![

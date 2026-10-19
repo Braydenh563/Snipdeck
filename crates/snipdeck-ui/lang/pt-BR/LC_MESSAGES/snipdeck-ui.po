@@ -76,6 +76,9 @@ msgstr "Quadro: {}"
 msgid "Boards"
 msgstr "Quadros"
 
+msgid "Bottom edge"
+msgstr "Borda inferior"
+
 msgid "Brings the panel up beside the app you are working in."
 msgstr "Traz o painel ao lado do aplicativo em que você está trabalhando."
 
@@ -114,6 +117,9 @@ msgstr "Limpar seleção"
 
 msgid "Clear the shortcut for {}"
 msgstr "Limpar o atalho de {}"
+
+msgid "Click"
+msgstr "Clique"
 
 msgid "Close"
 msgstr "Fechar"
@@ -220,6 +226,9 @@ msgstr "Descartar"
 msgid "Discard your changes?"
 msgstr "Descartar suas alterações?"
 
+msgid "Dock to"
+msgstr "Acoplar a"
+
 msgid "Done"
 msgstr "Concluído"
 
@@ -286,6 +295,12 @@ msgstr "Arquivo"
 msgid "Fill in template"
 msgstr "Preencher modelo"
 
+msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
+msgstr "Fixa o painel em uma borda da tela, no monitor em que ele está. «Flutuante» deixa o painel em qualquer lugar."
+
+msgid "Floating"
+msgstr "Flutuante"
+
 msgid "Follow Windows"
 msgstr "Seguir o Windows"
 
@@ -321,6 +336,21 @@ msgstr "Oculto. Segure a barra de espaço para revelar."
 
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "Oculto. Abra-o no painel para revelar."
+
+msgid "Hover"
+msgstr "Passar o mouse"
+
+msgid "Hover and click"
+msgstr "Passar o mouse e clicar"
+
+msgid "Hover delay"
+msgstr "Atraso ao passar o mouse"
+
+msgid "How long the pointer rests on the strip before the panel opens, from 0 to {} milliseconds."
+msgstr "Quanto tempo o ponteiro fica sobre a faixa antes de o painel abrir, de 0 a {} milissegundos."
+
+msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
+msgstr "Quanto tempo o ponteiro fica fora do painel aberto antes de ele recolher, de 0 a {} milissegundos."
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Largura em que o painel abre, de {} a {} pixels."
@@ -363,6 +393,18 @@ msgstr "Tipo"
 
 msgid "Language"
 msgstr "Idioma"
+
+msgid "Leave delay"
+msgstr "Atraso ao sair"
+
+msgid "Left edge"
+msgstr "Borda esquerda"
+
+msgid "Lengthen the hover delay"
+msgstr "Aumentar o atraso ao passar o mouse"
+
+msgid "Lengthen the leave delay"
+msgstr "Aumentar o atraso ao sair"
 
 msgid "Licence"
 msgstr "Licença"
@@ -499,6 +541,12 @@ msgstr "Nenhum trecho fixado corresponde a “{}”."
 msgid "Nothing pinned yet"
 msgstr "Nada fixado ainda"
 
+msgid "Off"
+msgstr "Desativado"
+
+msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
+msgstr "«Desativado» mantém aberto um painel acoplado. Caso contrário, ele recolhe em uma faixa fina, e o atalho do painel também o abre."
+
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "Somente trechos de texto, código, link e modelo podem ser sensíveis."
 
@@ -510,6 +558,9 @@ msgstr "Abrir configurações"
 
 msgid "Open Snipdeck"
 msgstr "Abrir o Snipdeck"
+
+msgid "Open a docked panel by"
+msgstr "Abrir um painel acoplado por"
 
 msgid "Open data folder"
 msgstr "Abrir a pasta de dados"
@@ -525,6 +576,9 @@ msgstr "Laranja"
 
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "Fora dessa pasta, o Snipdeck só grava a entrada de inicialização do Windows (se você ativá-la) e a área de transferência quando você usa um trecho."
+
+msgid "Panel dock"
+msgstr "Acoplamento do painel"
 
 msgid "Panel menu"
 msgstr "Menu do painel"
@@ -628,6 +682,9 @@ msgstr "As alterações que você não tinha salvo foram restauradas."
 msgid "Results"
 msgstr "Resultados"
 
+msgid "Right edge"
+msgstr "Borda direita"
+
 msgid "Rose"
 msgstr "Rosa"
 
@@ -685,6 +742,12 @@ msgstr "Shift Enter"
 msgid "Shortcuts"
 msgstr "Atalhos"
 
+msgid "Shorten the hover delay"
+msgstr "Diminuir o atraso ao passar o mouse"
+
+msgid "Shorten the leave delay"
+msgstr "Diminuir o atraso ao sair"
+
 msgid "Show or hide the panel"
 msgstr "Mostrar ou ocultar o painel"
 
@@ -696,6 +759,9 @@ msgstr "Snipdeck"
 
 msgid "Snipdeck Pro"
 msgstr "Snipdeck Pro"
+
+msgid "Snipdeck handle, press the Panel hotkey to open"
+msgstr "Alça do Snipdeck, pressione o atalho do painel para abrir"
 
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "O Snipdeck não tem conta, servidor nem telemetria e não abre nenhuma porta de rede. Nada do que você salva sai deste PC."
@@ -799,6 +865,9 @@ msgstr "Para remover tudo, use \"Apagar a biblioteca\" acima e depois apague a p
 msgid "Today's date"
 msgstr "Data de hoje"
 
+msgid "Top edge"
+msgstr "Borda superior"
+
 msgid "Trash"
 msgstr "Lixeira"
 
@@ -846,6 +915,9 @@ msgstr "Sua biblioteca fica em uma única pasta, %LOCALAPPDATA%\\Snipdeck: snipd
 
 msgid "https://example.com"
 msgstr "https://example.com"
+
+msgid "ms"
+msgstr "ms"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"

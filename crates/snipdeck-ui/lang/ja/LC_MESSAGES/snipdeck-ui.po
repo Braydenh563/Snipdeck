@@ -76,6 +76,9 @@ msgstr "ボード: {}"
 msgid "Boards"
 msgstr "ボード"
 
+msgid "Bottom edge"
+msgstr "下端"
+
 msgid "Brings the panel up beside the app you are working in."
 msgstr "作業中のアプリの横にパネルを表示します。"
 
@@ -114,6 +117,9 @@ msgstr "選択を解除"
 
 msgid "Clear the shortcut for {}"
 msgstr "{} のショートカットを消去"
+
+msgid "Click"
+msgstr "クリック"
 
 msgid "Close"
 msgstr "閉じる"
@@ -220,6 +226,9 @@ msgstr "破棄"
 msgid "Discard your changes?"
 msgstr "変更を破棄しますか？"
 
+msgid "Dock to"
+msgstr "固定先"
+
 msgid "Done"
 msgstr "完了"
 
@@ -286,6 +295,12 @@ msgstr "ファイル"
 msgid "Fill in template"
 msgstr "テンプレートに入力"
 
+msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
+msgstr "パネルを、表示中のモニターの画面の端に固定します。「フローティング」ではどこにでも置けます。"
+
+msgid "Floating"
+msgstr "フローティング"
+
 msgid "Follow Windows"
 msgstr "Windowsに合わせる"
 
@@ -321,6 +336,21 @@ msgstr "非表示。スペースキーを押し続けると表示されます。
 
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "非表示。パネルで開くと表示されます。"
+
+msgid "Hover"
+msgstr "ポイント"
+
+msgid "Hover and click"
+msgstr "ポイントとクリック"
+
+msgid "Hover delay"
+msgstr "ポイントの待ち時間"
+
+msgid "How long the pointer rests on the strip before the panel opens, from 0 to {} milliseconds."
+msgstr "ポインターが帯の上にとどまってからパネルが開くまでの時間（0〜{}ミリ秒）。"
+
+msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
+msgstr "ポインターが開いたパネルから外れてからパネルがたたまれるまでの時間（0〜{}ミリ秒）。"
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "パネルを開く幅（{}〜{}ピクセル）。"
@@ -363,6 +393,18 @@ msgstr "種類"
 
 msgid "Language"
 msgstr "言語"
+
+msgid "Leave delay"
+msgstr "離れたときの待ち時間"
+
+msgid "Left edge"
+msgstr "左端"
+
+msgid "Lengthen the hover delay"
+msgstr "ポイントの待ち時間を長くする"
+
+msgid "Lengthen the leave delay"
+msgstr "離れたときの待ち時間を長くする"
 
 msgid "Licence"
 msgstr "ライセンス"
@@ -499,6 +541,12 @@ msgstr "ピン留めしたスニペットに「{}」は一致しません。"
 msgid "Nothing pinned yet"
 msgstr "ピン留めはまだありません"
 
+msgid "Off"
+msgstr "オフ"
+
+msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
+msgstr "「オフ」にすると、固定したパネルは開いたままになります。それ以外では細い帯にたたまれ、パネルのショートカットでも開けます。"
+
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "テキスト、コード、リンク、テンプレートのスニペットのみ機密にできます。"
 
@@ -510,6 +558,9 @@ msgstr "設定を開く"
 
 msgid "Open Snipdeck"
 msgstr "Snipdeck を開く"
+
+msgid "Open a docked panel by"
+msgstr "固定したパネルを開く操作"
 
 msgid "Open data folder"
 msgstr "データフォルダーを開く"
@@ -525,6 +576,9 @@ msgstr "オレンジ"
 
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "このフォルダーの外にSnipdeckが書き込むのは、Windowsのスタートアップ項目（オンにした場合）と、スニペットを使うときのクリップボードだけです。"
+
+msgid "Panel dock"
+msgstr "パネルの固定"
 
 msgid "Panel menu"
 msgstr "パネルメニュー"
@@ -628,6 +682,9 @@ msgstr "保存していなかった変更を復元しました。"
 msgid "Results"
 msgstr "検索結果"
 
+msgid "Right edge"
+msgstr "右端"
+
 msgid "Rose"
 msgstr "ローズ"
 
@@ -685,6 +742,12 @@ msgstr "Shift Enter"
 msgid "Shortcuts"
 msgstr "ショートカット"
 
+msgid "Shorten the hover delay"
+msgstr "ポイントの待ち時間を短くする"
+
+msgid "Shorten the leave delay"
+msgstr "離れたときの待ち時間を短くする"
+
 msgid "Show or hide the panel"
 msgstr "パネルを表示または非表示"
 
@@ -696,6 +759,9 @@ msgstr "Snipdeck"
 
 msgid "Snipdeck Pro"
 msgstr "Snipdeck Pro"
+
+msgid "Snipdeck handle, press the Panel hotkey to open"
+msgstr "Snipdeck のハンドル。開くにはパネルのショートカットを押してください"
 
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeckにはアカウントもサーバーもテレメトリもなく、ネットワークポートも開きません。保存した内容がこのPCの外に出ることはありません。"
@@ -799,6 +865,9 @@ msgstr "すべてを削除するには、上の「ライブラリを削除」を
 msgid "Today's date"
 msgstr "今日の日付"
 
+msgid "Top edge"
+msgstr "上端"
+
 msgid "Trash"
 msgstr "ゴミ箱"
 
@@ -846,6 +915,9 @@ msgstr "ライブラリは1つのフォルダー（%LOCALAPPDATA%\\Snipdeck）�
 
 msgid "https://example.com"
 msgstr "https://example.com"
+
+msgid "ms"
+msgstr "ms"
 
 msgid "notepad.exe"
 msgstr "notepad.exe"

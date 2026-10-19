@@ -31,7 +31,7 @@ use crate::{
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
     main_binding::{RegularWindow, raise, set_look},
     native_window::fit_to_screen,
-    settings::{HotkeyAction, Hotkeys, Settings, Theme},
+    settings::{DockEdge, DockTrigger, HotkeyAction, Hotkeys, Settings, Theme},
     toast::{Toast, ToastKind, ToastMessage},
     wording::{self, LANGUAGE_NAMES, LANGUAGE_TAGS},
 };
@@ -324,6 +324,10 @@ struct PageView {
     autostart: bool,
     close_to_tray: bool,
     panel_width: i32,
+    dock_edge_index: i32,
+    dock_trigger_index: i32,
+    dock_hover_delay: i32,
+    dock_leave_delay: i32,
     no_paste_apps: Vec<String>,
     no_paste_error: String,
     pro: bool,
@@ -348,6 +352,36 @@ fn theme_index(theme: Theme) -> i32 {
         Theme::Light => 1,
         Theme::Dark => 2,
     }
+}
+
+/// The "Dock to" choice for `edge`: 0 is floating, then the edges in [`DockEdge::ALL`] order.
+fn dock_edge_index(edge: Option<DockEdge>) -> i32 {
+    edge.and_then(|e| DockEdge::ALL.iter().position(|a| *a == e))
+        .map_or(0, |i| to_i32(i + 1))
+}
+
+/// The edge the "Dock to" choice `index` names; `None` is floating.
+fn dock_edge_of(index: i32) -> Option<DockEdge> {
+    usize::try_from(index - 1)
+        .ok()
+        .and_then(|at| DockEdge::ALL.get(at))
+        .copied()
+}
+
+fn dock_trigger_index(trigger: DockTrigger) -> i32 {
+    DockTrigger::ALL
+        .iter()
+        .position(|t| *t == trigger)
+        .map_or(0, to_i32)
+}
+
+/// The trigger the segment `index` names; anything else is off.
+fn dock_trigger_of(index: i32) -> DockTrigger {
+    usize::try_from(index)
+        .ok()
+        .and_then(|at| DockTrigger::ALL.get(at))
+        .copied()
+        .unwrap_or_default()
 }
 
 fn language_index(tag: &str) -> i32 {
@@ -393,6 +427,10 @@ where
         autostart: settings.autostart,
         close_to_tray: settings.close_to_tray,
         panel_width: i32::try_from(settings.panel_width).unwrap_or(320),
+        dock_edge_index: dock_edge_index(controller.dock_edge()),
+        dock_trigger_index: dock_trigger_index(settings.dock.trigger),
+        dock_hover_delay: i32::try_from(settings.dock.hover_delay_ms).unwrap_or(150),
+        dock_leave_delay: i32::try_from(settings.dock.leave_delay_ms).unwrap_or(400),
         no_paste_apps: settings.no_paste_apps.clone(),
         no_paste_error: state.no_paste_error.clone(),
         pro: controller.tier() == snipdeck_core::Tier::Pro,
@@ -802,6 +840,19 @@ where
             .act(|ctl| ctl.update_settings(
                 |s| s.panel_width = u32::try_from(width).unwrap_or(0)
             )));
+        wire!(on_dock_edge_chosen, |core, i| core
+            .act(|ctl| ctl.dock_to(dock_edge_of(i))));
+        wire!(on_dock_trigger_chosen, |core, i| core.act(
+            |ctl| ctl.update_settings(|s| s.dock.trigger = dock_trigger_of(i))
+        ));
+        wire!(on_dock_hover_delay_chosen, |core, ms| core
+            .act(|ctl| ctl.update_settings(
+                |s| s.dock.hover_delay_ms = u32::try_from(ms).unwrap_or(0)
+            )));
+        wire!(on_dock_leave_delay_chosen, |core, ms| core
+            .act(|ctl| ctl.update_settings(
+                |s| s.dock.leave_delay_ms = u32::try_from(ms).unwrap_or(0)
+            )));
         wire!(on_no_paste_app_added, |core, name| core
             .no_paste_added(&name));
         wire!(on_no_paste_app_removed, |core, i| core
@@ -858,6 +909,18 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.panel_width == view.panel_width) {
         window.set_panel_width(view.panel_width);
+    }
+    if differs(&|p| p.dock_edge_index == view.dock_edge_index) {
+        window.set_dock_edge_index(view.dock_edge_index);
+    }
+    if differs(&|p| p.dock_trigger_index == view.dock_trigger_index) {
+        window.set_dock_trigger_index(view.dock_trigger_index);
+    }
+    if differs(&|p| p.dock_hover_delay == view.dock_hover_delay) {
+        window.set_dock_hover_delay(view.dock_hover_delay);
+    }
+    if differs(&|p| p.dock_leave_delay == view.dock_leave_delay) {
+        window.set_dock_leave_delay(view.dock_leave_delay);
     }
     if differs(&|p| p.no_paste_apps == view.no_paste_apps) {
         window.set_no_paste_apps(model(
@@ -1131,6 +1194,29 @@ mod tests {
         assert_eq!(human_size(34 * 1024), "34 KB");
         assert_eq!(human_size(1024 * 1024), "1.0 MB");
         assert_eq!(human_size(1024 * 1024 * 3 / 2), "1.5 MB");
+    }
+
+    #[test]
+    fn the_dock_to_choice_maps_to_an_edge_and_back() {
+        assert_eq!(dock_edge_index(None), 0);
+        for (i, edge) in DockEdge::ALL.into_iter().enumerate() {
+            let index = to_i32(i + 1);
+            assert_eq!(dock_edge_index(Some(edge)), index, "{edge:?}");
+            assert_eq!(dock_edge_of(index), Some(edge), "{edge:?}");
+        }
+        assert_eq!(dock_edge_of(0), None, "floating");
+        assert_eq!(dock_edge_of(-1), None);
+        assert_eq!(dock_edge_of(99), None);
+    }
+
+    #[test]
+    fn the_trigger_segments_map_to_a_trigger_and_back() {
+        for (i, trigger) in DockTrigger::ALL.into_iter().enumerate() {
+            assert_eq!(dock_trigger_index(trigger), to_i32(i), "{trigger:?}");
+            assert_eq!(dock_trigger_of(to_i32(i)), trigger);
+        }
+        assert_eq!(dock_trigger_of(-3), DockTrigger::Off);
+        assert_eq!(dock_trigger_of(42), DockTrigger::Off);
     }
 
     #[test]
