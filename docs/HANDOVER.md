@@ -44,7 +44,7 @@ Hub = this session (`claude/compassionate-pascal-pod8ux`, PR #5). It owns the re
 - [ ] C4 Item colour label and list icon
 - [ ] C5 Accent colour (Index Blue default, presets, Windows accent), HC, 225%
 - [ ] C6 Edge dock ships: settings and wizard steps checked
-- [ ] C7 MSIX packaging and signing docs
+- [x] C7 MSIX packaging and signing docs (docs/packaging.md, 58e0d1e; code gap: Store build needs the WinRT StartupTask API for autostart)
 - [ ] D3 De-slop pass over every window state
 - [ ] D5 Controller split under 800 lines
 - [ ] E1 Docs: user guide, CHANGELOG, privacy, licensing, HANDOVER, CODEMAP
