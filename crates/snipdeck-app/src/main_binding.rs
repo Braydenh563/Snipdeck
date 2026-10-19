@@ -182,7 +182,14 @@ where
 {
     /// Runs `f` on the controller, then redraws every window.
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<S, C, K, T>) -> R) -> R {
-        let result = f(&mut self.controller.borrow_mut());
+        let mut ctl = self.controller.borrow_mut();
+        // The editors for a new list or board start from words in the language shown now.
+        if let Some(window) = self.window.upgrade() {
+            let words = window.global::<ui::CommandTexts<'_>>();
+            ctl.set_new_name_bases(&words.get_new_list_name(), &words.get_new_board_name());
+        }
+        let result = f(&mut ctl);
+        drop(ctl);
         redraw_all();
         result
     }
@@ -207,16 +214,19 @@ where
         let Some(command) = crate::command_binding::command_of(id) else {
             return;
         };
-        if command == crate::commands::Command::Search {
-            if let Some(window) = self.window.upgrade() {
-                window.invoke_focus_search();
+        match command {
+            crate::commands::Command::Search => {
+                if let Some(window) = self.window.upgrade() {
+                    window.invoke_focus_search();
+                }
+                return;
             }
-            return;
-        }
-        // The tour has its own window: the same opener as Help's "Show the welcome tour again".
-        if command == crate::commands::Command::Tour {
-            crate::onboarding_binding::request_open();
-            return;
+            // The tour has its own window: the same opener as Help's "Show the welcome tour again".
+            crate::commands::Command::Tour => {
+                crate::onboarding_binding::request_open();
+                return;
+            }
+            _ => {}
         }
         let cursor = self.shown.borrow().as_ref().map_or(0, |s| s.cursor);
         self.act(|ctl| ctl.run_command(command, cursor));
@@ -549,6 +559,10 @@ where
         wire!(on_add_list_requested, |ctl| ctl.main_new_list());
         wire!(on_list_edit_requested, |ctl, i| ctl
             .main_edit_list(index(i)));
+        wire!(on_list_export_requested, |ctl, i| ctl.main_export_list(
+            index(i),
+            &crate::paths::documents_folder().unwrap_or_else(std::env::temp_dir)
+        ));
         wire!(on_list_delete_confirmed, |ctl, i| ctl
             .main_delete_list(index(i)));
         wire!(on_tag_delete_confirmed, |ctl, i| ctl
@@ -575,14 +589,20 @@ where
                 }
             });
         }
-        window.on_settings_requested(crate::settings_binding::request_open);
+        window.on_settings_requested(|| {
+            // Settings opens over the Main window the user is in.
+            crate::native_window::note_opener(crate::native_window::Surface::Main);
+            crate::settings_binding::request_open();
+        });
         wire!(on_panel_requested, |ctl| ctl.main_show_panel());
-        wire!(on_help_requested, |ctl, i| ctl.main_open_help(match i {
-            0 => HelpTopic::Troubleshoot,
-            2 => HelpTopic::About,
-            4 => HelpTopic::Shortcuts,
-            _ => HelpTopic::Guide,
-        }));
+        wire!(on_help_requested, |ctl, page| ctl.main_open_help(
+            match page {
+                ui::HelpPage::Troubleshoot => HelpTopic::Troubleshoot,
+                ui::HelpPage::Guide => HelpTopic::Guide,
+                ui::HelpPage::About => HelpTopic::About,
+                ui::HelpPage::Shortcuts => HelpTopic::Shortcuts,
+            }
+        ));
         {
             let core = Rc::clone(&core);
             window.on_palette_opened(move || core.fill_palette(""));
@@ -595,6 +615,8 @@ where
             let core = Rc::clone(&core);
             window.on_command_requested(move |id| {
                 crate::trace!("callback main command_requested ({id})");
+                // A command that opens a window (Settings, an editor, the Picker) opens over Main.
+                crate::native_window::note_opener(crate::native_window::Surface::Main);
                 core.run_command(id);
             });
         }
@@ -1147,6 +1169,7 @@ fn action_of(action: ui::ItemAction) -> MainAction {
         ui::ItemAction::Copy => MainAction::Copy,
         ui::ItemAction::Edit => MainAction::Edit,
         ui::ItemAction::Pin => MainAction::Pin,
+        ui::ItemAction::Duplicate => MainAction::Duplicate,
         ui::ItemAction::Move => MainAction::Move,
         ui::ItemAction::Tag => MainAction::Tag,
         ui::ItemAction::Delete => MainAction::Delete,
@@ -1168,7 +1191,8 @@ loggable_debug!(
     ui::MainSection,
     ui::MainView,
     ui::SelectMode,
-    ui::ItemAction
+    ui::ItemAction,
+    ui::HelpPage
 );
 
 #[cfg(test)]

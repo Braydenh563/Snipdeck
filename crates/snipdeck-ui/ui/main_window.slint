@@ -61,7 +61,11 @@ export enum MainView { comfortable, compact, tile }
 export enum SelectMode { replace, toggle, extend }
 // What the context menu, the bulk bar and the shortcuts ask for. The host applies it to the selection when
 // `selected-count` > 1, else to the row the index names.
-export enum ItemAction { use, copy, edit, pin, move, tag, delete, restore, delete-forever }
+export enum ItemAction { use, copy, edit, duplicate, pin, move, tag, delete, restore, delete-forever }
+
+// The pages the Help menu and its shortcuts open (the host's HelpTopic). "Show Panel" is not one: it has its own
+// callback. Named so the menu's row order and the keys (F1, Ctrl+/) cannot drift apart from the host's mapping.
+export enum HelpPage { troubleshoot, guide, about, shortcuts }
 
 // One item card, mapped from a row.
 component MainCard inherits ItemCard {
@@ -185,8 +189,8 @@ export component MainWindow inherits Window {
     callback panel-requested();
     // The configured Show/hide Panel hotkey ("Ctrl+Alt+Space"), empty while it is off; shown in the button's tooltip.
     in property <string> panel-hotkey;
-    // 0 Troubleshoot, 1 User guide, 2 About (the host's HelpTopic); F1 asks for the guide.
-    callback help-requested(int);
+    // F1 asks for the guide, Ctrl+/ for the shortcuts, the Help menu for any of them.
+    callback help-requested(HelpPage);
     // ---- Command palette: the host fills `palette-rows` (filtered for the query it is told about).
     in property <[PaletteRow]> palette-rows;
     in-out property <bool> palette-open: false;
@@ -197,6 +201,7 @@ export component MainWindow inherits Window {
     callback command-requested(int);
     callback add-list-requested();
     callback list-edit-requested(int);
+    callback list-export-requested(int);
     callback list-delete-confirmed(int);
     callback manage-tags-requested();
     callback tag-delete-confirmed(int);
@@ -227,6 +232,11 @@ export component MainWindow inherits Window {
         search.select-all();
     }
     public function open-palette() {
+        // Like Ctrl+K: nothing opens over a menu, a dialog or the palette itself (asking the host to
+        // refill the rows of an open palette would leave the field's text and the rows apart).
+        if (root.overlay-open) {
+            return;
+        }
         root.palette-open = true;
         root.palette-opened();
     }
@@ -349,6 +359,7 @@ export component MainWindow inherits Window {
 
     property <[MenuEntry]> nav-entries: root.nav-section(root.nav-menu-flat) == MainSection.list ? [
         { text: @tr("Edit list…"), icon: Icons.pencil-simple },
+        { text: @tr("Export as text"), icon: Icons.copy },
         { text: @tr("Delete list…"), icon: Icons.trash, destructive: true },
     ] : root.nav-section(root.nav-menu-flat) == MainSection.tag ? [
         { text: @tr("Manage tags…"), icon: Icons.tag },
@@ -365,6 +376,8 @@ export component MainWindow inherits Window {
         if (s == MainSection.list) {
             if (i == 0) {
                 root.list-edit-requested(index);
+            } else if (i == 1) {
+                root.list-export-requested(index);
             } else {
                 root.ask(1, index);
             }
@@ -481,6 +494,7 @@ export component MainWindow inherits Window {
         { text: @tr("Copy"), icon: Icons.copy, shortcut: "Shift+Enter", disabled: root.multi },
         { separator: true },
         { text: @tr("Edit"), icon: Icons.pencil-simple, shortcut: "Ctrl+E", disabled: root.multi },
+        { text: @tr("Duplicate"), icon: Icons.stack },
         { text: root.rows[root.item-menu-index].pinned && !root.multi ? @tr("Unpin") : @tr("Pin"), icon: Icons.push-pin, shortcut: "Ctrl+P" },
         { text: @tr("Move to list…"), icon: Icons.folder },
         { text: @tr("Tags…"), icon: Icons.tag },
@@ -500,12 +514,14 @@ export component MainWindow inherits Window {
         } else if (i == 3) {
             root.act(ItemAction.edit, index);
         } else if (i == 4) {
-            root.act(ItemAction.pin, index);
+            root.act(ItemAction.duplicate, index);
         } else if (i == 5) {
-            root.act(ItemAction.move, index);
+            root.act(ItemAction.pin, index);
         } else if (i == 6) {
+            root.act(ItemAction.move, index);
+        } else if (i == 7) {
             root.act(ItemAction.tag, index);
-        } else if (i == 8) {
+        } else if (i == 9) {
             root.act(ItemAction.delete, index);
         }
         if (!root.chooser-open && !root.confirm-shown) {
@@ -613,7 +629,7 @@ export component MainWindow inherits Window {
                     return accept;
                 }
                 if (event.text == "/") {
-                    root.help-requested(3);
+                    root.help-requested(HelpPage.shortcuts);
                     return accept;
                 }
                 if (event.text == ",") {
@@ -643,7 +659,7 @@ export component MainWindow inherits Window {
                 }
             }
             if (event.text == Key.F1) {
-                root.help-requested(1);
+                root.help-requested(HelpPage.guide);
                 return accept;
             }
             if (event.text == "/" && !search.has-focus && !event.modifiers.control && !event.modifiers.alt) {
@@ -1603,10 +1619,17 @@ export component MainWindow inherits Window {
         }
         activated(i) => {
             root.close-menus();
-            if (i == 3) {
+            // The row order is the `entries` list above.
+            if (i == 0) {
+                root.help-requested(HelpPage.troubleshoot);
+            } else if (i == 1) {
+                root.help-requested(HelpPage.guide);
+            } else if (i == 2) {
+                root.help-requested(HelpPage.about);
+            } else if (i == 3) {
                 root.panel-requested();
             } else {
-                root.help-requested(i);
+                root.help-requested(HelpPage.shortcuts);
             }
         }
         dismissed => { root.close-menus(); }

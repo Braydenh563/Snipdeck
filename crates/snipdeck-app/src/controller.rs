@@ -423,6 +423,10 @@ pub struct Controller<S, C, K, T> {
     panel_revealed: Option<snipdeck_core::ItemId>,
     /// What Windows says about light / dark and high contrast.
     os_look: SystemLook,
+    /// The words a new list's and a new board's editor name starts from, in the language shown
+    /// (the Main window's binding sets them; see [`Controller::set_new_name_bases`]).
+    new_list_base: String,
+    new_board_base: String,
     session: Session,
     saver: Option<SettingsSaver>,
     /// Where the edge dock is (see [`crate::dock`]).
@@ -532,6 +536,8 @@ where
             revealed: None,
             panel_revealed: None,
             os_look: SystemLook::default(),
+            new_list_base: crate::starter::NEW_LIST.to_owned(),
+            new_board_base: crate::starter::NEW_BOARD.to_owned(),
             session: Session::default(),
             saver: None,
             dock: DockState::default(),
@@ -845,6 +851,9 @@ where
     /// "Hide the panel when it loses focus" is on. Only the Panel does this: the Main window,
     /// Settings and the editors are ordinary windows that stay until closed.
     pub fn on_foreground_changed(&mut self) -> Vec<Effect> {
+        // A held reveal ends with the focus: the key release goes to the window that has the
+        // focus now (Alt+Tab away from the Panel), so it never arrives here.
+        self.panel_revealed = None;
         self.on_target_changed();
         if self.hides_on_blur() {
             self.hide_with_hint()
@@ -941,11 +950,22 @@ where
         self.on_top = on_top;
     }
 
+    /// Sets the words a new list's and a new board's editor name starts from ("New list" gives
+    /// "New list 1"), translated by the window layer: the controller has no `@tr`.
+    pub fn set_new_name_bases(&mut self, list: &str, board: &str) {
+        list.clone_into(&mut self.new_list_base);
+        board.clone_into(&mut self.new_board_base);
+    }
+
     /// A regular Snipdeck window (Main, Settings, an editor, Help) gained or lost the focus
     /// (`active`: one of them has it now). While one has it a pinned Panel is not topmost, so
     /// that window can cover it; once the focus is in another app the Panel is topmost again.
     pub fn set_own_window_active(&mut self, active: bool) {
         self.own_window_active = active;
+        if active {
+            // The Panel lost the focus to a Snipdeck window: no key release will reach it.
+            self.panel_revealed = None;
+        }
     }
 
     // ---- Gestures ----------------------------------------------------------------------------
@@ -2831,6 +2851,42 @@ mod tests {
         w.ctl.set_own_window_active(true);
         w.ctl.set_own_window_active(false);
         assert!(!w.ctl.view().topmost);
+    }
+
+    fn reveal_first_row(w: &mut World) {
+        let id = w.ids[0];
+        make_sensitive(w, id);
+        w.ctl.refresh_panel().expect("refresh");
+        w.ctl.reveal_row(0, true);
+        assert_eq!(w.ctl.view().revealed, Some(0), "held: the row is revealed");
+    }
+
+    #[test]
+    fn a_held_reveal_ends_when_the_foreground_changes() {
+        // Alt+Tab away from a pinned Panel: the Space release goes to the other window.
+        let mut w = unpinned_world(Settings::default());
+        w.ctl.set_on_top(true);
+        reveal_first_row(&mut w);
+        assert_eq!(w.ctl.on_foreground_changed(), []);
+        assert_eq!(w.ctl.view().revealed, None);
+        assert!(w.ctl.visible(), "pinned: the Panel stays, hidden text");
+    }
+
+    #[test]
+    fn a_held_reveal_ends_when_a_snipdeck_window_takes_the_focus() {
+        let mut w = unpinned_world(Settings::default());
+        w.ctl.set_on_top(true);
+        reveal_first_row(&mut w);
+        w.ctl.set_own_window_active(true);
+        assert_eq!(w.ctl.view().revealed, None);
+    }
+
+    #[test]
+    fn a_held_reveal_ends_when_the_panel_hides() {
+        let mut w = unpinned_world(Settings::default());
+        reveal_first_row(&mut w);
+        w.ctl.hide();
+        assert_eq!(w.ctl.view().revealed, None);
     }
 
     #[test]

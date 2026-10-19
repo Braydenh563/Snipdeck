@@ -48,7 +48,7 @@ pub struct Item {
     /// Shown in the favourites strip.
     pub pinned: bool,
     /// Masked, kept out of history, auto-cleared from the clipboard after use, and encrypted at
-    /// rest with Pro (SPEC §5.7).
+    /// rest with Supporter (SPEC §5.7).
     pub sensitive: bool,
     /// Always paste as plain text (SPEC §5.1a).
     pub always_plain: bool,

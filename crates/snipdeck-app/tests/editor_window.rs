@@ -667,7 +667,6 @@ fn a_free_user_sees_prompted_fields_refused_with_the_pro_toast() {
         menu(&r, "New snippet");
         let ed = r.ed();
         assert!(!ed.get_prompted_available());
-        assert!(!ed.get_encryption_available());
         click(
             ed.window(),
             &find(&ed, "Template", AccessibleRole::RadioButton),
@@ -682,9 +681,12 @@ fn a_free_user_sees_prompted_fields_refused_with_the_pro_toast() {
         let said = find(&ed, "Template text", AccessibleRole::TextInput)
             .accessible_description()
             .expect("description");
-        assert!(said.contains("Pro"), "{said}");
-        assert_eq!(r.panel.get_toast_text(), "This item uses a Pro feature.");
-        // The placeholder buttons mark the Pro ones.
+        assert!(said.contains("Supporter"), "{said}");
+        assert_eq!(
+            r.panel.get_toast_text(),
+            "This item uses a Supporter feature."
+        );
+        // The placeholder buttons mark the Supporter ones.
         assert!(
             !find(&ed, "Insert {field:Name}", AccessibleRole::Button)
                 .accessible_enabled()
@@ -705,7 +707,8 @@ fn a_free_user_sees_prompted_fields_refused_with_the_pro_toast() {
                 .expect("description")
                 .to_string()
         };
-        assert!(sensitive_help.contains("Pro"), "{sensitive_help}");
+        // Encryption is free: the switch asks nothing of Free.
+        assert!(!sensitive_help.contains("Supporter"), "{sensitive_help}");
     });
 }
 

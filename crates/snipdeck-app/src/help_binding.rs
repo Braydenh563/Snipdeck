@@ -84,7 +84,7 @@ pub trait HelpHost {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SystemHelpHost;
 
-fn launch(target: &OsStr) -> Result<(), String> {
+pub(crate) fn launch(target: &OsStr) -> Result<(), String> {
     let opener = if cfg!(windows) {
         "explorer"
     } else if cfg!(target_os = "macos") {
@@ -234,7 +234,7 @@ where
 // ---- Logic -------------------------------------------------------------------------------------
 
 /// The setting switches the report lists: booleans and numbers only, never text the user typed.
-fn report_flags(settings: &crate::settings::Settings) -> Vec<(String, String)> {
+pub(crate) fn report_flags(settings: &crate::settings::Settings) -> Vec<(String, String)> {
     let on = |b: bool| if b { "on" } else { "off" }.to_owned();
     vec![
         ("Start with Windows".into(), on(settings.autostart)),
@@ -329,7 +329,7 @@ where
         window.set_build_date(build_date().into());
         window.set_tier(
             if matches!(tier, Tier::Pro) {
-                "Pro"
+                "Supporter"
             } else {
                 "Free"
             }
@@ -434,7 +434,7 @@ where
             ReportInfo {
                 version: env!("CARGO_PKG_VERSION").to_owned(),
                 tier: if matches!(controller.tier(), Tier::Pro) {
-                    "Pro"
+                    "Supporter"
                 } else {
                     "Free"
                 }

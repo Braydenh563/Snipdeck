@@ -61,7 +61,7 @@ pub fn toast_text(message: &ToastMessage) -> String {
         ToastMessage::ClipboardBusy => {
             "Couldn't reach the clipboard. Another app may be using it.".into()
         }
-        ToastMessage::NeedsPro(_) => "This item uses a Pro feature.".into(),
+        ToastMessage::NeedsPro(_) => "This item uses a Supporter feature.".into(),
         ToastMessage::TemplateBroken => "This template can't be read. Open it to fix it.".into(),
         ToastMessage::Locked => "Unlock your library to use this item.".into(),
         ToastMessage::Saved { list } => format!("Saved to {list}"),
@@ -105,7 +105,7 @@ pub fn toast_text(message: &ToastMessage) -> String {
         ToastMessage::DeletedForever { .. } => "Deleted for good".into(),
         ToastMessage::TrashEmptied => "The Trash is empty".into(),
         ToastMessage::BoardLimit => {
-            "The Free plan includes 3 boards. Upgrade to Pro for more.".into()
+            "The Free plan includes 5 boards. Supporter adds unlimited boards.".into()
         }
         ToastMessage::LibraryProblem => {
             "Snipdeck found a problem in your library. Export a copy to be safe.".into()
@@ -113,7 +113,7 @@ pub fn toast_text(message: &ToastMessage) -> String {
         ToastMessage::CrashedLastTime => {
             "Snipdeck closed unexpectedly last time. Open the log?".into()
         }
-        ToastMessage::LicenceAccepted => "Snipdeck Pro is on. Thank you.".into(),
+        ToastMessage::LicenceAccepted => "Snipdeck Supporter is on. Thank you.".into(),
         ToastMessage::LicenceRejected(problem) => licence_problem_text(*problem).into(),
         ToastMessage::BackupMade => "Backed up".into(),
         ToastMessage::BackupFailed => "Couldn't make a backup.".into(),
@@ -130,6 +130,7 @@ pub fn toast_text(message: &ToastMessage) -> String {
             "Couldn't erase everything. Quit Snipdeck and try again.".into()
         }
         ToastMessage::FolderNotOpened => "Couldn't open the folder.".into(),
+        ToastMessage::MailNotOpened => "Couldn't open your email app.".into(),
         ToastMessage::AutostartFailed => "Couldn't change the Windows start-up entry.".into(),
         ToastMessage::CannotOpenLog => "Couldn't open the log folder.".into(),
         ToastMessage::KeyUnavailable => {
@@ -156,9 +157,9 @@ pub const fn licence_problem_text(problem: LicenceProblem) -> &'static str {
             "That licence key is not valid. Check that you copied all of it."
         }
         LicenceProblem::NewerFormat => "That key needs a newer Snipdeck. Update and try again.",
-        LicenceProblem::WrongTier => "That key is not for Snipdeck Pro.",
+        LicenceProblem::WrongTier => "That key is not for Snipdeck Supporter.",
         LicenceProblem::NotSaved => {
-            "The key is valid but couldn't be saved, so Pro will be off next time."
+            "The key is valid but couldn't be saved, so Supporter will be off next time."
         }
     }
 }
@@ -372,7 +373,7 @@ pub fn editor_problem_text(problem: &EditorProblem) -> String {
         EditorProblem::LinkHasSpace => "A link can't contain spaces or line breaks.".into(),
         EditorProblem::Template(why) => format!("This template can't be read: {why}."),
         EditorProblem::NeedsPro(_) => {
-            "Fields that ask for a value are a Pro feature. Remove them to save.".into()
+            "Fields that ask for a value are a Supporter feature. Remove them to save.".into()
         }
         EditorProblem::SourceEmpty => "Choose a file, or cancel.".into(),
         EditorProblem::SourceMissing => "There is no file at that path.".into(),

@@ -548,7 +548,6 @@ where
             large: slot.large,
             attachment: slot.attachment.clone(),
             prompted_available: self.entitlements.allows(Feature::PromptedFields),
-            encryption_available: self.entitlements.allows(Feature::SensitiveEncryption),
             can_browse: self.editor_env.picker.is_some(),
             restored: slot.restored,
         })
@@ -806,12 +805,12 @@ where
             return self.save_failed(slot, SaveFailure::ListGone);
         };
 
-        // The key: made on the first sensitive item on Pro, opened whenever one exists.
-        if sensitive || slot.original_sensitive {
-            let create = sensitive && self.entitlements.allows(Feature::SensitiveEncryption);
-            if let Err(e) = self.ensure_key(create) {
-                return self.save_failed(slot, SaveFailure::of(&e));
-            }
+        // The key: made on the first sensitive item (on every plan: encryption is free), opened
+        // whenever one exists.
+        if (sensitive || slot.original_sensitive)
+            && let Err(e) = self.ensure_key(sensitive)
+        {
+            return self.save_failed(slot, SaveFailure::of(&e));
         }
 
         let tags = match self.resolve_tags(slot) {
@@ -906,7 +905,7 @@ where
 
     /// Makes the library key usable: nothing to do when it is open; opens it when it exists;
     /// makes it, with no master password, when `create` and it does not exist (the first
-    /// sensitive item on Pro; the user is not asked).
+    /// sensitive item; the user is not asked).
     fn ensure_key(&mut self, create: bool) -> snipdeck_store::Result<()> {
         if self.store.is_unlocked() {
             return Ok(());

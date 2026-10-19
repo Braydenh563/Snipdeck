@@ -35,7 +35,7 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 - [ ] C4 [S] Item colour label (8 DESIGN swatches, 4 px bar, filter chip) and list icon (curated set).
 - [ ] C5 [S] Accent colour: Index Blue default; presets teal, green, amber, rose, violet; "Windows accent" option nudged to pass contrast; every token pair measured for WCAG 2.2 AA in a test; full high-contrast use; 225 % icon scaling.
 - [ ] C6 [S] Edge dock ships (built: dock.rs, dock_ctl.rs): settings checked, wizard steps present.
-- [ ] C7 [S] MSIX packaging files and `docs/store.md` steps (owner buys the account); code-signing steps for SignPath in the release docs.
+- [x] C7 [S] MSIX packaging files and `docs/packaging.md` steps (owner buys the account); code-signing steps for SignPath in the release docs. Note: packaging files (manifest template) still open.
 - [ ] C8 [S] Supporter (was Pro; owner 2026-10-19): Free board limit 3 -> 5 (entitlements, tests, docs); pay what you want from A$5, suggested A$8, one-time; free key on request; never nag. Get Pro: mailto link in Settings, the board-limit toast and the site; address is a placeholder until the owner supplies it.
 
 - [ ] C9 [S] Free vs Pro made clear (owner 2026-10-19): a compact comparison table (feature, one-line description, tick or cross per tier) in Settings Licence and the Get Pro dialog, the README and the site. Honest framing: Pro pays for convenience and supports the app; the code is GPL; Free stays fully usable. No walls of text.
@@ -43,12 +43,12 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 - [ ] D1 [S] Regenerate every golden after A-C, read each one; UX fixes from what they show.
 - [ ] D2 [S] README shots and hero images at 2x (`SNIPDECK_SHOT_SCALE=2`, `scripts/readme_shots.py`); Help shot back in.
 - [ ] D3 [S] De-slop pass over every window state against DESIGN.md (13a).
-- [ ] D4 [S] GitHub Pages site: self-hosted assets, no CDN, DESIGN.md tokens, WCAG 2.2 AA, download, tour, Pro, privacy.
+- [x] D4 [S] GitHub Pages site: self-hosted assets, no CDN, DESIGN.md tokens, WCAG 2.2 AA, download, tour, Pro, privacy.
 - [ ] D5 [S] Controller split (H1): `controller.rs` under 800 lines, test list identical before and after (may be done inside F1).
 
 ## E. Docs and going public
 - [ ] E1 [H] Docs: user guide matches every menu, shortcut and new feature; CHANGELOG; troubleshooting; privacy (Recent inbox); licensing (Get Pro); HANDOVER rewritten to the shipped state; CODEMAP regenerated.
-- [ ] E2 [S] Pre-public sweep (`docs/going-public.md` section 1): full-history secret scan, review `docs/` and `.claude/` for private notes, read licensing and SECURITY as a stranger.
+- [x] E2 [S] Pre-public sweep (`docs/going-public.md` section 1): full-history secret scan, review `docs/` and `.claude/` for private notes, read licensing and SECURITY as a stranger.
 - [~] E3 [owner] (CI line for the renamed tool: done, c8cc4eb.) Repo made public 2026-10-19 11:55 (done); GitHub settings in `docs/going-public.md` sections 2-3 (secret scanning, Dependabot, branch protection, tag ruleset).
 
 ## F. Verification

@@ -27,13 +27,11 @@ where
         match command {
             Command::NewItem => self.open_new_item(Origin::Main),
             Command::NewList => self.main_new_list(),
-            // The window moves its own focus; the binding opens the tour window
-            // (`onboarding_binding::request_open`).
+            // Not the controller's: `MainBinding::run_command` handles both before it gets here
+            // (Search moves the window's focus, Tour opens the tour window). The arm stays only so
+            // the match is exhaustive.
             Command::Search | Command::Tour => {}
-            Command::ShowPanel => {
-                let effects = self.show();
-                self.pending.extend(effects);
-            }
+            Command::ShowPanel => self.main_show_panel(),
             Command::OpenPicker => self.open_picker(),
             Command::QuickCapture => self.quick_capture(),
             Command::Settings => self.pending.push(Effect::OpenSettings),

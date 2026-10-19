@@ -22,66 +22,67 @@ arm_toast | crates/snipdeck-app/src/binding.rs:67
 DOCK_REPLACE_AFTER | crates/snipdeck-app/src/binding.rs:90
 place | crates/snipdeck-app/src/binding.rs:93
 Binding | crates/snipdeck-app/src/binding.rs:103
-impl std::fmt::Debug for Binding | crates/snipdeck-app/src/binding.rs:115
-fmt | crates/snipdeck-app/src/binding.rs:116
-impl Binding | crates/snipdeck-app/src/binding.rs:121
-hotkey | crates/snipdeck-app/src/binding.rs:123
-show | crates/snipdeck-app/src/binding.rs:129
-target_changed | crates/snipdeck-app/src/binding.rs:134
-hotkey_problems | crates/snipdeck-app/src/binding.rs:139
-redraw | crates/snipdeck-app/src/binding.rs:146
-tray | crates/snipdeck-app/src/binding.rs:151
-system_look | crates/snipdeck-app/src/binding.rs:157
-frame_changed | crates/snipdeck-app/src/binding.rs:164
-frame_moved | crates/snipdeck-app/src/binding.rs:170
-restore_frame | crates/snipdeck-app/src/binding.rs:175
-Core | crates/snipdeck-app/src/binding.rs:180
-impl Core<S, C, K, T> | crates/snipdeck-app/src/binding.rs:197
-new | crates/snipdeck-app/src/binding.rs:205
-act | crates/snipdeck-app/src/binding.rs:232
-act_effects | crates/snipdeck-app/src/binding.rs:239
-apply | crates/snipdeck-app/src/binding.rs:244
-sync | crates/snipdeck-app/src/binding.rs:298
-arm_dock | crates/snipdeck-app/src/binding.rs:326
-arm_clipboard_clear | crates/snipdeck-app/src/binding.rs:346
-arm_settings | crates/snipdeck-app/src/binding.rs:368
-impl Controller<S, C, K, T> | crates/snipdeck-app/src/binding.rs:388
-bind | crates/snipdeck-app/src/binding.rs:405
-Loggable | crates/snipdeck-app/src/binding.rs:579
-log | crates/snipdeck-app/src/binding.rs:580
-impl Loggable for i32 | crates/snipdeck-app/src/binding.rs:583
-log | crates/snipdeck-app/src/binding.rs:584
-impl Loggable for f32 | crates/snipdeck-app/src/binding.rs:589
-log | crates/snipdeck-app/src/binding.rs:590
-impl Loggable for bool | crates/snipdeck-app/src/binding.rs:595
-log | crates/snipdeck-app/src/binding.rs:596
-impl Loggable for ui::ResizeEdge | crates/snipdeck-app/src/binding.rs:601
-log | crates/snipdeck-app/src/binding.rs:602
-impl Loggable for SharedString | crates/snipdeck-app/src/binding.rs:607
-log | crates/snipdeck-app/src/binding.rs:608
-Shown | crates/snipdeck-app/src/binding.rs:614
-impl std::fmt::Display for Shown<'_> | crates/snipdeck-app/src/binding.rs:616
-fmt | crates/snipdeck-app/src/binding.rs:617
-edge_of | crates/snipdeck-app/src/binding.rs:633
-index | crates/snipdeck-app/src/binding.rs:646
-render | crates/snipdeck-app/src/binding.rs:657
-render_app_menu | crates/snipdeck-app/src/binding.rs:779
-model | crates/snipdeck-app/src/binding.rs:799
-to_i32 | crates/snipdeck-app/src/binding.rs:803
-tab_item | crates/snipdeck-app/src/binding.rs:807
-MASKED_PREVIEW | crates/snipdeck-app/src/binding.rs:815
-panel_row | crates/snipdeck-app/src/binding.rs:819
-item_kind | crates/snipdeck-app/src/binding.rs:849
-item_kind_of | crates/snipdeck-app/src/binding.rs:854
-extension_of | crates/snipdeck-app/src/binding.rs:869
-tests | crates/snipdeck-app/src/binding.rs:882
-row | crates/snipdeck-app/src/binding.rs:888
-a_sensitive_row_is_masked_and_never_carries_a_preview_kind | crates/snipdeck-app/src/binding.rs:902
-kinds_map_one_to_one | crates/snipdeck-app/src/binding.rs:910
-a_file_row_shows_its_extension | crates/snipdeck-app/src/binding.rs:924
-a_mixed_view_row_carries_its_list_name_and_colour | crates/snipdeck-app/src/binding.rs:944
-indexes_never_wrap | crates/snipdeck-app/src/binding.rs:963
-models_keep_their_order | crates/snipdeck-app/src/binding.rs:970
+impl std::fmt::Debug for Binding | crates/snipdeck-app/src/binding.rs:116
+fmt | crates/snipdeck-app/src/binding.rs:117
+impl Binding | crates/snipdeck-app/src/binding.rs:122
+hotkey | crates/snipdeck-app/src/binding.rs:124
+show | crates/snipdeck-app/src/binding.rs:130
+target_changed | crates/snipdeck-app/src/binding.rs:135
+hotkey_problems | crates/snipdeck-app/src/binding.rs:140
+own_window_active | crates/snipdeck-app/src/binding.rs:146
+redraw | crates/snipdeck-app/src/binding.rs:153
+tray | crates/snipdeck-app/src/binding.rs:158
+system_look | crates/snipdeck-app/src/binding.rs:164
+frame_changed | crates/snipdeck-app/src/binding.rs:171
+frame_moved | crates/snipdeck-app/src/binding.rs:177
+restore_frame | crates/snipdeck-app/src/binding.rs:182
+Core | crates/snipdeck-app/src/binding.rs:187
+impl Core<S, C, K, T> | crates/snipdeck-app/src/binding.rs:204
+new | crates/snipdeck-app/src/binding.rs:212
+act | crates/snipdeck-app/src/binding.rs:239
+act_effects | crates/snipdeck-app/src/binding.rs:246
+apply | crates/snipdeck-app/src/binding.rs:251
+sync | crates/snipdeck-app/src/binding.rs:305
+arm_dock | crates/snipdeck-app/src/binding.rs:333
+arm_clipboard_clear | crates/snipdeck-app/src/binding.rs:353
+arm_settings | crates/snipdeck-app/src/binding.rs:375
+impl Controller<S, C, K, T> | crates/snipdeck-app/src/binding.rs:395
+bind | crates/snipdeck-app/src/binding.rs:412
+Loggable | crates/snipdeck-app/src/binding.rs:616
+log | crates/snipdeck-app/src/binding.rs:617
+impl Loggable for i32 | crates/snipdeck-app/src/binding.rs:620
+log | crates/snipdeck-app/src/binding.rs:621
+impl Loggable for f32 | crates/snipdeck-app/src/binding.rs:626
+log | crates/snipdeck-app/src/binding.rs:627
+impl Loggable for bool | crates/snipdeck-app/src/binding.rs:632
+log | crates/snipdeck-app/src/binding.rs:633
+impl Loggable for ui::ResizeEdge | crates/snipdeck-app/src/binding.rs:638
+log | crates/snipdeck-app/src/binding.rs:639
+impl Loggable for SharedString | crates/snipdeck-app/src/binding.rs:644
+log | crates/snipdeck-app/src/binding.rs:645
+Shown | crates/snipdeck-app/src/binding.rs:651
+impl std::fmt::Display for Shown<'_> | crates/snipdeck-app/src/binding.rs:653
+fmt | crates/snipdeck-app/src/binding.rs:654
+edge_of | crates/snipdeck-app/src/binding.rs:670
+index | crates/snipdeck-app/src/binding.rs:683
+render | crates/snipdeck-app/src/binding.rs:694
+render_app_menu | crates/snipdeck-app/src/binding.rs:846
+model | crates/snipdeck-app/src/binding.rs:867
+to_i32 | crates/snipdeck-app/src/binding.rs:871
+tab_item | crates/snipdeck-app/src/binding.rs:875
+MASKED_PREVIEW | crates/snipdeck-app/src/binding.rs:883
+panel_row | crates/snipdeck-app/src/binding.rs:887
+item_kind | crates/snipdeck-app/src/binding.rs:917
+item_kind_of | crates/snipdeck-app/src/binding.rs:922
+extension_of | crates/snipdeck-app/src/binding.rs:937
+tests | crates/snipdeck-app/src/binding.rs:950
+row | crates/snipdeck-app/src/binding.rs:956
+a_sensitive_row_is_masked_and_never_carries_a_preview_kind | crates/snipdeck-app/src/binding.rs:970
+kinds_map_one_to_one | crates/snipdeck-app/src/binding.rs:978
+a_file_row_shows_its_extension | crates/snipdeck-app/src/binding.rs:992
+a_mixed_view_row_carries_its_list_name_and_colour | crates/snipdeck-app/src/binding.rs:1012
+indexes_never_wrap | crates/snipdeck-app/src/binding.rs:1031
+models_keep_their_order | crates/snipdeck-app/src/binding.rs:1038
 
 ### crates/snipdeck-app/src/capture.rs
 
@@ -107,257 +108,319 @@ the_default_list_is_the_current_one_else_the_first_that_exists | crates/snipdeck
 ### crates/snipdeck-app/src/cli.rs
 
 Args | crates/snipdeck-app/src/cli.rs:11
-ArgError | crates/snipdeck-app/src/cli.rs:28
-USAGE | crates/snipdeck-app/src/cli.rs:38
-parse | crates/snipdeck-app/src/cli.rs:54
-tests | crates/snipdeck-app/src/cli.rs:79
-parse_all | crates/snipdeck-app/src/cli.rs:82
-no_arguments_is_the_normal_start | crates/snipdeck-app/src/cli.rs:87
-flags_and_values_are_read | crates/snipdeck-app/src/cli.rs:92
-a_data_dir_that_is_not_utf8_is_kept_not_a_panic | crates/snipdeck-app/src/cli.rs:101
-a_screenshot_implies_the_demo | crates/snipdeck-app/src/cli.rs:109
-mistakes_are_named | crates/snipdeck-app/src/cli.rs:116
+ArgError | crates/snipdeck-app/src/cli.rs:32
+USAGE | crates/snipdeck-app/src/cli.rs:42
+parse | crates/snipdeck-app/src/cli.rs:60
+tests | crates/snipdeck-app/src/cli.rs:87
+parse_all | crates/snipdeck-app/src/cli.rs:90
+no_arguments_is_the_normal_start | crates/snipdeck-app/src/cli.rs:95
+flags_and_values_are_read | crates/snipdeck-app/src/cli.rs:100
+a_data_dir_that_is_not_utf8_is_kept_not_a_panic | crates/snipdeck-app/src/cli.rs:109
+the_check_flags_are_read | crates/snipdeck-app/src/cli.rs:117
+a_screenshot_implies_the_demo | crates/snipdeck-app/src/cli.rs:124
+mistakes_are_named | crates/snipdeck-app/src/cli.rs:131
+
+### crates/snipdeck-app/src/command_binding.rs
+
+texts | crates/snipdeck-app/src/command_binding.rs:19
+context | crates/snipdeck-app/src/command_binding.rs:29
+rows | crates/snipdeck-app/src/command_binding.rs:41
+fill | crates/snipdeck-app/src/command_binding.rs:59
+command_of | crates/snipdeck-app/src/command_binding.rs:65
+
+### crates/snipdeck-app/src/commands.rs
+
+Command | crates/snipdeck-app/src/commands.rs:13
+impl Command | crates/snipdeck-app/src/commands.rs:66
+from_id | crates/snipdeck-app/src/commands.rs:98
+id | crates/snipdeck-app/src/commands.rs:106
+shortcut | crates/snipdeck-app/src/commands.rs:117
+needs_item | crates/snipdeck-app/src/commands.rs:140
+chord_text | crates/snipdeck-app/src/commands.rs:155
+chord_caps | crates/snipdeck-app/src/commands.rs:161
+caps | crates/snipdeck-app/src/commands.rs:171
+spoken | crates/snipdeck-app/src/commands.rs:194
+Context | crates/snipdeck-app/src/commands.rs:212
+Entry | crates/snipdeck-app/src/commands.rs:225
+available | crates/snipdeck-app/src/commands.rs:238
+rank | crates/snipdeck-app/src/commands.rs:251
+entries | crates/snipdeck-app/src/commands.rs:270
+tests | crates/snipdeck-app/src/commands.rs:306
+texts | crates/snipdeck-app/src/commands.rs:309
+ctx | crates/snipdeck-app/src/commands.rs:343
+labels | crates/snipdeck-app/src/commands.rs:352
+the_catalogue_ids_round_trip | crates/snipdeck-app/src/commands.rs:357
+an_empty_query_lists_what_applies_in_catalogue_order | crates/snipdeck-app/src/commands.rs:367
+item_commands_follow_the_cursor_and_the_trash | crates/snipdeck-app/src/commands.rs:376
+the_filter_matches_names_and_synonyms_ignoring_case | crates/snipdeck-app/src/commands.rs:391
+a_name_match_outranks_a_synonym_match | crates/snipdeck-app/src/commands.rs:404
+every_word_of_the_query_must_match | crates/snipdeck-app/src/commands.rs:422
+global_hotkeys_show_the_configured_chords | crates/snipdeck-app/src/commands.rs:430
+new_list_and_new_item_have_their_own_chords | crates/snipdeck-app/src/commands.rs:450
+caps_and_speech_of_a_shortcut | crates/snipdeck-app/src/commands.rs:463
 
 ### crates/snipdeck-app/src/controller.rs
 
-dock_ctl | crates/snipdeck-app/src/controller.rs:25
-editor_ctl | crates/snipdeck-app/src/controller.rs:26
-main_ctl | crates/snipdeck-app/src/controller.rs:27
-onboarding_ctl | crates/snipdeck-app/src/controller.rs:28
-panel | crates/snipdeck-app/src/controller.rs:29
-settings_ctl | crates/snipdeck-app/src/controller.rs:30
-REFOCUS_WAIT | crates/snipdeck-app/src/controller.rs:53
-BLUR_GRACE | crates/snipdeck-app/src/controller.rs:56
-TOAST_ENTER | crates/snipdeck-app/src/controller.rs:58
-TOAST_HOLD | crates/snipdeck-app/src/controller.rs:60
-TOAST_UNDO_HOLD | crates/snipdeck-app/src/controller.rs:63
-TOAST_EXIT | crates/snipdeck-app/src/controller.rs:65
-Library | crates/snipdeck-app/src/controller.rs:69
-atomically | crates/snipdeck-app/src/controller.rs:76
-key_ring_exists | crates/snipdeck-app/src/controller.rs:86
-create_key_ring | crates/snipdeck-app/src/controller.rs:93
-unlock_key_ring | crates/snipdeck-app/src/controller.rs:100
-is_unlocked | crates/snipdeck-app/src/controller.rs:103
-impl Library for Store | crates/snipdeck-app/src/controller.rs:106
-atomically | crates/snipdeck-app/src/controller.rs:107
-key_ring_exists | crates/snipdeck-app/src/controller.rs:114
-create_key_ring | crates/snipdeck-app/src/controller.rs:118
-unlock_key_ring | crates/snipdeck-app/src/controller.rs:122
-is_unlocked | crates/snipdeck-app/src/controller.rs:126
-Services | crates/snipdeck-app/src/controller.rs:133
-ClipboardDigest | crates/snipdeck-app/src/controller.rs:145
-impl ClipboardDigest | crates/snipdeck-app/src/controller.rs:150
-of | crates/snipdeck-app/src/controller.rs:151
-matches | crates/snipdeck-app/src/controller.rs:157
-Effect | crates/snipdeck-app/src/controller.rs:165
-ToastPhase | crates/snipdeck-app/src/controller.rs:199
-ToastView | crates/snipdeck-app/src/controller.rs:210
-PickerView | crates/snipdeck-app/src/controller.rs:227
-FillView | crates/snipdeck-app/src/controller.rs:242
-FillSubmission | crates/snipdeck-app/src/controller.rs:259
-UseResult | crates/snipdeck-app/src/controller.rs:267
-View | crates/snipdeck-app/src/controller.rs:282
-Undo | crates/snipdeck-app/src/controller.rs:336
-ActiveToast | crates/snipdeck-app/src/controller.rs:341
-Controller | crates/snipdeck-app/src/controller.rs:348
-LogOpener | crates/snipdeck-app/src/controller.rs:412
-PanelMenu | crates/snipdeck-app/src/controller.rs:416
-Session | crates/snipdeck-app/src/controller.rs:430
-impl std::fmt::Debug for Controller<S, C, K, T> | crates/snipdeck-app/src/controller.rs:442
-fmt | crates/snipdeck-app/src/controller.rs:443
-impl Controller<S, C, K, T> | crates/snipdeck-app/src/controller.rs:450
-new | crates/snipdeck-app/src/controller.rs:463
-set_system_look | crates/snipdeck-app/src/controller.rs:520
-set_log_opener | crates/snipdeck-app/src/controller.rs:525
-set_settings_saver | crates/snipdeck-app/src/controller.rs:531
-view | crates/snipdeck-app/src/controller.rs:539
-toast_view | crates/snipdeck-app/src/controller.rs:623
-look | crates/snipdeck-app/src/controller.rs:635
-hotkeys_paused | crates/snipdeck-app/src/controller.rs:648
-visible | crates/snipdeck-app/src/controller.rs:654
-model | crates/snipdeck-app/src/controller.rs:660
-settings | crates/snipdeck-app/src/controller.rs:666
-store | crates/snipdeck-app/src/controller.rs:672
-services | crates/snipdeck-app/src/controller.rs:678
-on_hotkey | crates/snipdeck-app/src/controller.rs:685
-show | crates/snipdeck-app/src/controller.rs:719
-second_launch | crates/snipdeck-app/src/controller.rs:730
-hide | crates/snipdeck-app/src/controller.rs:739
-hide_with_hint | crates/snipdeck-app/src/controller.rs:750
-close | crates/snipdeck-app/src/controller.rs:766
-on_tray | crates/snipdeck-app/src/controller.rs:775
-drag | crates/snipdeck-app/src/controller.rs:796
-on_target_changed | crates/snipdeck-app/src/controller.rs:804
-on_foreground_changed | crates/snipdeck-app/src/controller.rs:814
-hides_on_blur | crates/snipdeck-app/src/controller.rs:824
-update_settings | crates/snipdeck-app/src/controller.rs:843
-remember_main_window | crates/snipdeck-app/src/controller.rs:861
-set_theme | crates/snipdeck-app/src/controller.rs:866
-settings_wait | crates/snipdeck-app/src/controller.rs:873
-save_settings_if_due | crates/snipdeck-app/src/controller.rs:879
-flush_settings | crates/snipdeck-app/src/controller.rs:902
-set_on_top | crates/snipdeck-app/src/controller.rs:907
-set_query | crates/snipdeck-app/src/controller.rs:914
-move_selection | crates/snipdeck-app/src/controller.rs:919
-select_tab | crates/snipdeck-app/src/controller.rs:924
-activate_row | crates/snipdeck-app/src/controller.rs:934
-quick_use | crates/snipdeck-app/src/controller.rs:942
-activate_pinned | crates/snipdeck-app/src/controller.rs:950
-open_board_menu | crates/snipdeck-app/src/controller.rs:958
-close_board_menu | crates/snipdeck-app/src/controller.rs:963
-choose_board | crates/snipdeck-app/src/controller.rs:970
-add_list | crates/snipdeck-app/src/controller.rs:980
-refresh_panel | crates/snipdeck-app/src/controller.rs:994
-switch_board | crates/snipdeck-app/src/controller.rs:999
-use_item | crates/snipdeck-app/src/controller.rs:1009
-open_picker | crates/snipdeck-app/src/controller.rs:1018
-close_picker | crates/snipdeck-app/src/controller.rs:1029
-picker | crates/snipdeck-app/src/controller.rs:1037
-picker_query | crates/snipdeck-app/src/controller.rs:1042
-picker_scope | crates/snipdeck-app/src/controller.rs:1049
-picker_move | crates/snipdeck-app/src/controller.rs:1056
-picker_take | crates/snipdeck-app/src/controller.rs:1065
-picker_use | crates/snipdeck-app/src/controller.rs:1076
-target_caret | crates/snipdeck-app/src/controller.rs:1086
-picker_take_number | crates/snipdeck-app/src/controller.rs:1091
-open_fill | crates/snipdeck-app/src/controller.rs:1100
-fill | crates/snipdeck-app/src/controller.rs:1111
-fill_changed | crates/snipdeck-app/src/controller.rs:1116
-cancel_fill | crates/snipdeck-app/src/controller.rs:1124
-take_fill | crates/snipdeck-app/src/controller.rs:1134
-run_fill | crates/snipdeck-app/src/controller.rs:1150
-submit_fill | crates/snipdeck-app/src/controller.rs:1155
-quick_capture | crates/snipdeck-app/src/controller.rs:1166
-paste_next | crates/snipdeck-app/src/controller.rs:1199
-run_use | crates/snipdeck-app/src/controller.rs:1236
-schedule_clipboard_clear | crates/snipdeck-app/src/controller.rs:1306
-clipboard_clear_wait | crates/snipdeck-app/src/controller.rs:1326
-clear_clipboard_if_due | crates/snipdeck-app/src/controller.rs:1332
-show_toast | crates/snipdeck-app/src/controller.rs:1351
-show_undo_toast | crates/snipdeck-app/src/controller.rs:1364
-toast_action | crates/snipdeck-app/src/controller.rs:1374
-claim_toast_timer | crates/snipdeck-app/src/controller.rs:1397
-report_hotkey_problems | crates/snipdeck-app/src/controller.rs:1406
-toast_tick | crates/snipdeck-app/src/controller.rs:1425
-report_maintenance | crates/snipdeck-app/src/controller.rs:1450
-neutral | crates/snipdeck-app/src/controller.rs:1458
-failed | crates/snipdeck-app/src/controller.rs:1465
-policy_of | crates/snipdeck-app/src/controller.rs:1472
-tests | crates/snipdeck-app/src/controller.rs:1479
-at | crates/snipdeck-app/src/controller.rs:1499
-outlook | crates/snipdeck-app/src/controller.rs:1503
-add | crates/snipdeck-app/src/controller.rs:1520
-world_with | crates/snipdeck-app/src/controller.rs:1565
-build | crates/snipdeck-app/src/controller.rs:1573
-world | crates/snipdeck-app/src/controller.rs:1651
-uses | crates/snipdeck-app/src/controller.rs:1655
-the_view_shows_the_board_the_rows_and_where_a_click_goes | crates/snipdeck-app/src/controller.rs:1660
-the_target_changing_updates_the_footer | crates/snipdeck-app/src/controller.rs:1680
-activating_a_row_pastes_it_counts_the_use_and_toasts | crates/snipdeck-app/src/controller.rs:1690
-a_template_fills_clipboard_from_what_the_user_copied | crates/snipdeck-app/src/controller.rs:1730
-make_sensitive | crates/snipdeck-app/src/controller.rs:1753
-a_copied_sensitive_item_leaves_the_clipboard_after_thirty_seconds | crates/snipdeck-app/src/controller.rs:1761
-a_newer_copy_is_not_cleared_with_the_sensitive_one | crates/snipdeck-app/src/controller.rs:1784
-copy_only_leaves_the_item_on_the_clipboard_and_sends_no_keys | crates/snipdeck-app/src/controller.rs:1799
-quick_use_pastes_the_nth_row | crates/snipdeck-app/src/controller.rs:1821
-with_no_target_a_click_copies_and_says_so | crates/snipdeck-app/src/controller.rs:1830
-an_app_the_user_excluded_is_copied_into_not_pasted | crates/snipdeck-app/src/controller.rs:1848
-a_failed_clipboard_is_a_danger_toast_and_not_counted | crates/snipdeck-app/src/controller.rs:1869
-a_row_that_does_not_exist_is_ignored | crates/snipdeck-app/src/controller.rs:1882
-a_template_with_prompts_opens_the_fill_form_then_pastes_with_the_answers | crates/snipdeck-app/src/controller.rs:1890
-a_required_field_left_empty_keeps_the_form_open_and_pastes_nothing | crates/snipdeck-app/src/controller.rs:1926
-copying_a_template_asks_the_same_questions_and_copies | crates/snipdeck-app/src/controller.rs:1944
-cancelling_the_form_forgets_it_and_hands_the_focus_back_once | crates/snipdeck-app/src/controller.rs:1955
-every_form_that_opens_is_a_new_one_for_the_window | crates/snipdeck-app/src/controller.rs:1972
-a_free_user_is_told_about_pro_instead_of_being_asked | crates/snipdeck-app/src/controller.rs:1985
-searching_filters_rows_across_lists_and_resets_the_selection | crates/snipdeck-app/src/controller.rs:2003
-picking_a_tab_shows_that_list_and_ends_the_search | crates/snipdeck-app/src/controller.rs:2016
-the_board_menu_lists_boards_and_choosing_one_closes_it | crates/snipdeck-app/src/controller.rs:2035
-the_toggle_hotkey_hides_and_shows_and_rereads_the_target_on_show | crates/snipdeck-app/src/controller.rs:2047
-picker_titles | crates/snipdeck-app/src/controller.rs:2068
-pasted | crates/snipdeck-app/src/controller.rs:2079
-the_picker_hotkey_opens_the_picker_over_the_library_and_again_closes_it | crates/snipdeck-app/src/controller.rs:2093
-the_picker_searches_by_scope_and_moves_a_selection | crates/snipdeck-app/src/controller.rs:2116
-enter_in_the_picker_pastes_counts_the_use_and_closes_it | crates/snipdeck-app/src/controller.rs:2147
-shift_enter_in_the_picker_only_copies | crates/snipdeck-app/src/controller.rs:2165
-a_number_key_takes_the_nth_row_and_a_missing_row_leaves_the_picker_open | crates/snipdeck-app/src/controller.rs:2177
-a_template_chosen_in_the_picker_closes_it_and_opens_the_fill_form | crates/snipdeck-app/src/controller.rs:2195
-escape_closes_the_picker_and_hands_the_focus_back_once | crates/snipdeck-app/src/controller.rs:2209
-the_target_is_read_when_the_picker_opens_and_kept_while_it_is_open | crates/snipdeck-app/src/controller.rs:2222
-quick_capture_saves_the_clipboard_text_at_the_top_of_the_shown_list | crates/snipdeck-app/src/controller.rs:2240
-quick_capture_with_nothing_on_the_clipboard_saves_nothing | crates/snipdeck-app/src/controller.rs:2274
-quick_capture_without_any_list_says_so | crates/snipdeck-app/src/controller.rs:2286
-paste_next_is_a_pro_feature | crates/snipdeck-app/src/controller.rs:2317
-paste_next_walks_the_shown_list_then_says_it_is_done_and_starts_again | crates/snipdeck-app/src/controller.rs:2335
-paste_next_prefers_the_pinned_strip_and_reads_the_target_when_pressed | crates/snipdeck-app/src/controller.rs:2365
-a_clipboard_that_is_busy_fails_the_paste_and_counts_nothing | crates/snipdeck-app/src/controller.rs:2385
-close_hides_with_a_tray_icon_and_drag_asks_the_host | crates/snipdeck-app/src/controller.rs:2399
-hide_hint | crates/snipdeck-app/src/controller.rs:2408
-the_first_close_of_a_session_tells_how_to_get_the_panel_back | crates/snipdeck-app/src/controller.rs:2417
-a_second_hide_says_nothing | crates/snipdeck-app/src/controller.rs:2434
-the_toggle_hotkey_and_tray_hide_say_nothing | crates/snipdeck-app/src/controller.rs:2448
-without_a_toggle_chord_the_toast_names_only_the_tray | crates/snipdeck-app/src/controller.rs:2463
-closing_without_a_tray_quits_and_shows_no_toast | crates/snipdeck-app/src/controller.rs:2476
-a_toast_walks_enter_hold_exit_and_goes | crates/snipdeck-app/src/controller.rs:2483
-a_stale_tick_does_not_touch_a_newer_toast | crates/snipdeck-app/src/controller.rs:2500
-hotkey_problems_show_a_toast_naming_the_chord | crates/snipdeck-app/src/controller.rs:2518
-a_hotkey_problem_is_worded_by_why_it_failed | crates/snipdeck-app/src/controller.rs:2538
-the_dark_theme_setting_reaches_the_view | crates/snipdeck-app/src/controller.rs:2563
-with_tray | crates/snipdeck-app/src/controller.rs:2573
-the_tray_toggles_the_panel_and_open_panel_always_shows_it | crates/snipdeck-app/src/controller.rs:2578
-the_tray_menu_opens_snipdeck_and_quits | crates/snipdeck-app/src/controller.rs:2594
-pause_hotkeys_asks_the_host_and_silences_hotkeys_that_were_already_queued | crates/snipdeck-app/src/controller.rs:2605
-a_second_launch_opens_the_main_window_when_the_panel_is_already_up | crates/snipdeck-app/src/controller.rs:2626
-closing_the_panel_hides_it_when_a_tray_icon_can_bring_it_back | crates/snipdeck-app/src/controller.rs:2635
-closing_the_panel_quits_without_a_tray_icon_or_with_close_to_tray_off | crates/snipdeck-app/src/controller.rs:2644
-unpinned_world | crates/snipdeck-app/src/controller.rs:2661
-an_unpinned_panel_hides_when_another_app_takes_the_foreground | crates/snipdeck-app/src/controller.rs:2669
-a_pinned_panel_stays | crates/snipdeck-app/src/controller.rs:2679
-with_the_setting_off_the_panel_stays | crates/snipdeck-app/src/controller.rs:2687
-the_tray_or_desktop_taking_the_foreground_does_not_hide_the_panel | crates/snipdeck-app/src/controller.rs:2697
-a_foreground_change_right_after_show_is_ignored | crates/snipdeck-app/src/controller.rs:2706
-the_picker_open_blocks_the_hide | crates/snipdeck-app/src/controller.rs:2722
-a_foreground_change_still_updates_the_footer | crates/snipdeck-app/src/controller.rs:2730
-closing_the_main_window_quits_when_keep_running_is_off | crates/snipdeck-app/src/controller.rs:2741
-closing_the_main_window_does_not_quit_with_a_tray_icon | crates/snipdeck-app/src/controller.rs:2754
-closing_the_main_window_quits_without_a_tray_when_the_panel_is_hidden | crates/snipdeck-app/src/controller.rs:2762
-real_tray_clicks_on_the_fake_reach_the_controller | crates/snipdeck-app/src/controller.rs:2773
-a_failed_first_show_then_explorer_starting_lets_close_hide | crates/snipdeck-app/src/controller.rs:2840
-explorer_restarting_without_taking_the_icon_back_makes_close_quit | crates/snipdeck-app/src/controller.rs:2859
-hiding_the_icon_makes_close_quit | crates/snipdeck-app/src/controller.rs:2879
-os | crates/snipdeck-app/src/controller.rs:2890
-the_system_theme_follows_windows_and_light_and_dark_ignore_it | crates/snipdeck-app/src/controller.rs:2898
-high_contrast_wins_over_every_theme_setting | crates/snipdeck-app/src/controller.rs:2915
-a_fake_source_drives_the_look_through_a_change | crates/snipdeck-app/src/controller.rs:2937
-saving_world | crates/snipdeck-app/src/controller.rs:2950
-the_main_window_place_is_remembered_in_the_settings | crates/snipdeck-app/src/controller.rs:2961
-a_setting_is_written_after_the_quiet_time_by_the_injected_clock | crates/snipdeck-app/src/controller.rs:2975
-several_quick_changes_make_one_write_and_flush_writes_at_once | crates/snipdeck-app/src/controller.rs:2999
-an_unchanged_setting_schedules_nothing | crates/snipdeck-app/src/controller.rs:3016
-without_a_saver_changes_stay_in_memory | crates/snipdeck-app/src/controller.rs:3027
-a_failed_write_toasts_once_and_succeeds_when_the_disk_does | crates/snipdeck-app/src/controller.rs:3036
-app_menu_index | crates/snipdeck-app/src/controller.rs:3068
-row_titles | crates/snipdeck-app/src/controller.rs:3072
-display | crates/snipdeck-app/src/controller.rs:3076
-the_app_menu_opens_and_closes_without_a_choice | crates/snipdeck-app/src/controller.rs:3090
-opening_the_app_menu_closes_the_board_menu_and_hiding_closes_it | crates/snipdeck-app/src/controller.rs:3100
-each_app_menu_entry_asks_the_host_for_its_thing_and_closes_the_menu | crates/snipdeck-app/src/controller.rs:3111
-pause_hotkeys_toggles_and_the_view_says_which_way_it_is | crates/snipdeck-app/src/controller.rs:3137
-a_line_in_the_app_menu_does_nothing_and_a_missing_row_closes_it | crates/snipdeck-app/src/controller.rs:3156
-edit_and_rename_ask_for_the_quick_editor_on_that_row | crates/snipdeck-app/src/controller.rs:3167
-deleting_a_row_trashes_it_with_an_undo_toast_that_brings_it_back | crates/snipdeck-app/src/controller.rs:3177
-the_item_menu_opens_on_a_row_and_closes_without_a_choice | crates/snipdeck-app/src/controller.rs:3195
-the_item_menu_edits_pins_and_trashes_the_row_it_was_opened_on | crates/snipdeck-app/src/controller.rs:3208
-a_line_in_the_item_menu_does_nothing_and_hiding_closes_it | crates/snipdeck-app/src/controller.rs:3247
-deleting_a_row_that_is_not_there_changes_nothing | crates/snipdeck-app/src/controller.rs:3265
-a_resize_grip_asks_the_host_to_start_the_os_resize | crates/snipdeck-app/src/controller.rs:3273
-a_frame_wider_than_480_is_cut_remembered_and_the_host_told | crates/snipdeck-app/src/controller.rs:3282
-a_move_across_a_monitor_edge_is_remembered_but_not_pulled_back | crates/snipdeck-app/src/controller.rs:3303
-a_frame_inside_the_limits_is_remembered_as_it_is_with_no_effect | crates/snipdeck-app/src/controller.rs:3328
-a_frame_with_no_size_is_not_a_place_the_user_chose | crates/snipdeck-app/src/controller.rs:3346
-each_monitor_keeps_its_own_place_and_restoring_uses_the_one_it_is_on | crates/snipdeck-app/src/controller.rs:3359
-a_stored_place_is_fitted_to_a_monitor_that_has_become_smaller | crates/snipdeck-app/src/controller.rs:3399
-a_remembered_frame_is_written_after_the_quiet_time | crates/snipdeck-app/src/controller.rs:3424
+commands_ctl | crates/snipdeck-app/src/controller.rs:25
+dock_ctl | crates/snipdeck-app/src/controller.rs:26
+editor_ctl | crates/snipdeck-app/src/controller.rs:27
+main_ctl | crates/snipdeck-app/src/controller.rs:28
+onboarding_ctl | crates/snipdeck-app/src/controller.rs:29
+panel | crates/snipdeck-app/src/controller.rs:30
+settings_ctl | crates/snipdeck-app/src/controller.rs:31
+REFOCUS_WAIT | crates/snipdeck-app/src/controller.rs:54
+BLUR_GRACE | crates/snipdeck-app/src/controller.rs:57
+TOAST_ENTER | crates/snipdeck-app/src/controller.rs:59
+TOAST_HOLD | crates/snipdeck-app/src/controller.rs:61
+TOAST_UNDO_HOLD | crates/snipdeck-app/src/controller.rs:64
+TOAST_HOVER_RECHECK | crates/snipdeck-app/src/controller.rs:66
+TOAST_HOVER_RECHECKS | crates/snipdeck-app/src/controller.rs:69
+TOAST_EXIT | crates/snipdeck-app/src/controller.rs:71
+Library | crates/snipdeck-app/src/controller.rs:75
+atomically | crates/snipdeck-app/src/controller.rs:82
+key_ring_exists | crates/snipdeck-app/src/controller.rs:92
+create_key_ring | crates/snipdeck-app/src/controller.rs:99
+unlock_key_ring | crates/snipdeck-app/src/controller.rs:106
+is_unlocked | crates/snipdeck-app/src/controller.rs:109
+impl Library for Store | crates/snipdeck-app/src/controller.rs:112
+atomically | crates/snipdeck-app/src/controller.rs:113
+key_ring_exists | crates/snipdeck-app/src/controller.rs:120
+create_key_ring | crates/snipdeck-app/src/controller.rs:124
+unlock_key_ring | crates/snipdeck-app/src/controller.rs:128
+is_unlocked | crates/snipdeck-app/src/controller.rs:132
+Services | crates/snipdeck-app/src/controller.rs:139
+ClipboardDigest | crates/snipdeck-app/src/controller.rs:151
+impl ClipboardDigest | crates/snipdeck-app/src/controller.rs:156
+of | crates/snipdeck-app/src/controller.rs:157
+matches | crates/snipdeck-app/src/controller.rs:163
+Effect | crates/snipdeck-app/src/controller.rs:171
+ToastPhase | crates/snipdeck-app/src/controller.rs:207
+ToastView | crates/snipdeck-app/src/controller.rs:218
+PickerView | crates/snipdeck-app/src/controller.rs:235
+FillView | crates/snipdeck-app/src/controller.rs:250
+FillSubmission | crates/snipdeck-app/src/controller.rs:267
+UseResult | crates/snipdeck-app/src/controller.rs:275
+View | crates/snipdeck-app/src/controller.rs:290
+Undo | crates/snipdeck-app/src/controller.rs:353
+ActiveToast | crates/snipdeck-app/src/controller.rs:358
+Controller | crates/snipdeck-app/src/controller.rs:373
+LogOpener | crates/snipdeck-app/src/controller.rs:443
+PanelMenu | crates/snipdeck-app/src/controller.rs:447
+Session | crates/snipdeck-app/src/controller.rs:461
+impl std::fmt::Debug for Controller<S, C, K, T> | crates/snipdeck-app/src/controller.rs:473
+fmt | crates/snipdeck-app/src/controller.rs:474
+impl Controller<S, C, K, T> | crates/snipdeck-app/src/controller.rs:481
+new | crates/snipdeck-app/src/controller.rs:494
+set_system_look | crates/snipdeck-app/src/controller.rs:554
+set_log_opener | crates/snipdeck-app/src/controller.rs:559
+set_settings_saver | crates/snipdeck-app/src/controller.rs:565
+view | crates/snipdeck-app/src/controller.rs:573
+toast_view | crates/snipdeck-app/src/controller.rs:661
+look | crates/snipdeck-app/src/controller.rs:673
+hotkeys_paused | crates/snipdeck-app/src/controller.rs:687
+visible | crates/snipdeck-app/src/controller.rs:693
+model | crates/snipdeck-app/src/controller.rs:699
+settings | crates/snipdeck-app/src/controller.rs:705
+store | crates/snipdeck-app/src/controller.rs:711
+services | crates/snipdeck-app/src/controller.rs:717
+on_hotkey | crates/snipdeck-app/src/controller.rs:724
+show | crates/snipdeck-app/src/controller.rs:758
+second_launch | crates/snipdeck-app/src/controller.rs:769
+hide | crates/snipdeck-app/src/controller.rs:778
+hide_with_hint | crates/snipdeck-app/src/controller.rs:789
+close | crates/snipdeck-app/src/controller.rs:805
+on_tray | crates/snipdeck-app/src/controller.rs:814
+drag | crates/snipdeck-app/src/controller.rs:835
+on_target_changed | crates/snipdeck-app/src/controller.rs:843
+on_foreground_changed | crates/snipdeck-app/src/controller.rs:853
+hides_on_blur | crates/snipdeck-app/src/controller.rs:866
+update_settings | crates/snipdeck-app/src/controller.rs:885
+remember_main_window | crates/snipdeck-app/src/controller.rs:903
+set_theme | crates/snipdeck-app/src/controller.rs:908
+settings_wait | crates/snipdeck-app/src/controller.rs:915
+save_settings_if_due | crates/snipdeck-app/src/controller.rs:921
+flush_settings | crates/snipdeck-app/src/controller.rs:944
+set_on_top | crates/snipdeck-app/src/controller.rs:949
+set_new_name_bases | crates/snipdeck-app/src/controller.rs:955
+set_own_window_active | crates/snipdeck-app/src/controller.rs:963
+set_query | crates/snipdeck-app/src/controller.rs:974
+move_selection | crates/snipdeck-app/src/controller.rs:979
+select_tab | crates/snipdeck-app/src/controller.rs:984
+activate_row | crates/snipdeck-app/src/controller.rs:994
+quick_use | crates/snipdeck-app/src/controller.rs:1002
+activate_pinned | crates/snipdeck-app/src/controller.rs:1010
+open_board_menu | crates/snipdeck-app/src/controller.rs:1018
+close_board_menu | crates/snipdeck-app/src/controller.rs:1023
+choose_board | crates/snipdeck-app/src/controller.rs:1030
+add_list | crates/snipdeck-app/src/controller.rs:1040
+refresh_panel | crates/snipdeck-app/src/controller.rs:1054
+switch_board | crates/snipdeck-app/src/controller.rs:1059
+use_item | crates/snipdeck-app/src/controller.rs:1069
+open_picker | crates/snipdeck-app/src/controller.rs:1078
+close_picker | crates/snipdeck-app/src/controller.rs:1089
+picker | crates/snipdeck-app/src/controller.rs:1097
+picker_query | crates/snipdeck-app/src/controller.rs:1102
+picker_scope | crates/snipdeck-app/src/controller.rs:1109
+picker_move | crates/snipdeck-app/src/controller.rs:1116
+picker_take | crates/snipdeck-app/src/controller.rs:1125
+picker_use | crates/snipdeck-app/src/controller.rs:1136
+target_caret | crates/snipdeck-app/src/controller.rs:1146
+picker_take_number | crates/snipdeck-app/src/controller.rs:1151
+open_fill | crates/snipdeck-app/src/controller.rs:1160
+fill | crates/snipdeck-app/src/controller.rs:1171
+fill_changed | crates/snipdeck-app/src/controller.rs:1176
+cancel_fill | crates/snipdeck-app/src/controller.rs:1184
+take_fill | crates/snipdeck-app/src/controller.rs:1194
+run_fill | crates/snipdeck-app/src/controller.rs:1210
+submit_fill | crates/snipdeck-app/src/controller.rs:1215
+quick_capture | crates/snipdeck-app/src/controller.rs:1226
+paste_next | crates/snipdeck-app/src/controller.rs:1259
+run_use | crates/snipdeck-app/src/controller.rs:1296
+schedule_clipboard_clear | crates/snipdeck-app/src/controller.rs:1363
+clipboard_clear_wait | crates/snipdeck-app/src/controller.rs:1385
+clear_clipboard_if_due | crates/snipdeck-app/src/controller.rs:1391
+show_toast | crates/snipdeck-app/src/controller.rs:1410
+show_undo_toast | crates/snipdeck-app/src/controller.rs:1425
+toast_action | crates/snipdeck-app/src/controller.rs:1435
+claim_toast_timer | crates/snipdeck-app/src/controller.rs:1458
+report_hotkey_problems | crates/snipdeck-app/src/controller.rs:1467
+toast_tick | crates/snipdeck-app/src/controller.rs:1486
+toast_hover | crates/snipdeck-app/src/controller.rs:1522
+report_maintenance | crates/snipdeck-app/src/controller.rs:1530
+neutral | crates/snipdeck-app/src/controller.rs:1538
+failed | crates/snipdeck-app/src/controller.rs:1545
+policy_of | crates/snipdeck-app/src/controller.rs:1552
+tests | crates/snipdeck-app/src/controller.rs:1559
+at | crates/snipdeck-app/src/controller.rs:1579
+outlook | crates/snipdeck-app/src/controller.rs:1583
+add | crates/snipdeck-app/src/controller.rs:1600
+world_with | crates/snipdeck-app/src/controller.rs:1645
+build | crates/snipdeck-app/src/controller.rs:1653
+world | crates/snipdeck-app/src/controller.rs:1731
+uses | crates/snipdeck-app/src/controller.rs:1735
+the_view_shows_the_board_the_rows_and_where_a_click_goes | crates/snipdeck-app/src/controller.rs:1740
+the_target_changing_updates_the_footer | crates/snipdeck-app/src/controller.rs:1760
+activating_a_row_pastes_it_counts_the_use_and_toasts | crates/snipdeck-app/src/controller.rs:1770
+a_template_fills_clipboard_from_what_the_user_copied | crates/snipdeck-app/src/controller.rs:1810
+make_sensitive | crates/snipdeck-app/src/controller.rs:1833
+a_copied_sensitive_item_leaves_the_clipboard_after_thirty_seconds | crates/snipdeck-app/src/controller.rs:1841
+the_clipboard_clear_time_is_the_setting_and_zero_turns_it_off | crates/snipdeck-app/src/controller.rs:1861
+a_newer_copy_is_not_cleared_with_the_sensitive_one | crates/snipdeck-app/src/controller.rs:1878
+copy_only_leaves_the_item_on_the_clipboard_and_sends_no_keys | crates/snipdeck-app/src/controller.rs:1893
+quick_use_pastes_the_nth_row | crates/snipdeck-app/src/controller.rs:1915
+with_no_target_a_click_copies_and_says_so | crates/snipdeck-app/src/controller.rs:1924
+an_app_the_user_excluded_is_copied_into_not_pasted | crates/snipdeck-app/src/controller.rs:1942
+a_failed_clipboard_is_a_danger_toast_and_not_counted | crates/snipdeck-app/src/controller.rs:1963
+a_row_that_does_not_exist_is_ignored | crates/snipdeck-app/src/controller.rs:1976
+a_template_with_prompts_opens_the_fill_form_then_pastes_with_the_answers | crates/snipdeck-app/src/controller.rs:1984
+a_required_field_left_empty_keeps_the_form_open_and_pastes_nothing | crates/snipdeck-app/src/controller.rs:2020
+copying_a_template_asks_the_same_questions_and_copies | crates/snipdeck-app/src/controller.rs:2038
+cancelling_the_form_forgets_it_and_hands_the_focus_back_once | crates/snipdeck-app/src/controller.rs:2049
+every_form_that_opens_is_a_new_one_for_the_window | crates/snipdeck-app/src/controller.rs:2066
+a_free_user_is_told_about_pro_instead_of_being_asked | crates/snipdeck-app/src/controller.rs:2079
+searching_filters_rows_across_lists_and_resets_the_selection | crates/snipdeck-app/src/controller.rs:2097
+picking_a_tab_shows_that_list_and_ends_the_search | crates/snipdeck-app/src/controller.rs:2110
+the_board_menu_lists_boards_and_choosing_one_closes_it | crates/snipdeck-app/src/controller.rs:2129
+the_toggle_hotkey_hides_and_shows_and_rereads_the_target_on_show | crates/snipdeck-app/src/controller.rs:2141
+picker_titles | crates/snipdeck-app/src/controller.rs:2162
+pasted | crates/snipdeck-app/src/controller.rs:2173
+the_picker_hotkey_opens_the_picker_over_the_library_and_again_closes_it | crates/snipdeck-app/src/controller.rs:2187
+the_picker_searches_by_scope_and_moves_a_selection | crates/snipdeck-app/src/controller.rs:2210
+enter_in_the_picker_pastes_counts_the_use_and_closes_it | crates/snipdeck-app/src/controller.rs:2241
+shift_enter_in_the_picker_only_copies | crates/snipdeck-app/src/controller.rs:2259
+a_number_key_takes_the_nth_row_and_a_missing_row_leaves_the_picker_open | crates/snipdeck-app/src/controller.rs:2271
+a_template_chosen_in_the_picker_closes_it_and_opens_the_fill_form | crates/snipdeck-app/src/controller.rs:2289
+escape_closes_the_picker_and_hands_the_focus_back_once | crates/snipdeck-app/src/controller.rs:2303
+the_target_is_read_when_the_picker_opens_and_kept_while_it_is_open | crates/snipdeck-app/src/controller.rs:2316
+quick_capture_saves_the_clipboard_text_at_the_top_of_the_shown_list | crates/snipdeck-app/src/controller.rs:2334
+quick_capture_with_nothing_on_the_clipboard_saves_nothing | crates/snipdeck-app/src/controller.rs:2368
+quick_capture_without_any_list_says_so | crates/snipdeck-app/src/controller.rs:2380
+paste_next_is_a_pro_feature | crates/snipdeck-app/src/controller.rs:2411
+paste_next_walks_the_shown_list_then_says_it_is_done_and_starts_again | crates/snipdeck-app/src/controller.rs:2429
+paste_next_prefers_the_pinned_strip_and_reads_the_target_when_pressed | crates/snipdeck-app/src/controller.rs:2459
+a_clipboard_that_is_busy_fails_the_paste_and_counts_nothing | crates/snipdeck-app/src/controller.rs:2479
+close_hides_with_a_tray_icon_and_drag_asks_the_host | crates/snipdeck-app/src/controller.rs:2493
+hide_hint | crates/snipdeck-app/src/controller.rs:2502
+the_first_close_of_a_session_tells_how_to_get_the_panel_back | crates/snipdeck-app/src/controller.rs:2511
+a_second_hide_says_nothing | crates/snipdeck-app/src/controller.rs:2528
+the_toggle_hotkey_and_tray_hide_say_nothing | crates/snipdeck-app/src/controller.rs:2542
+without_a_toggle_chord_the_toast_names_only_the_tray | crates/snipdeck-app/src/controller.rs:2557
+closing_without_a_tray_quits_and_shows_no_toast | crates/snipdeck-app/src/controller.rs:2570
+a_toast_walks_enter_hold_exit_and_goes | crates/snipdeck-app/src/controller.rs:2577
+a_toast_under_the_pointer_stays_and_goes_a_moment_after_the_pointer_leaves | crates/snipdeck-app/src/controller.rs:2594
+a_hover_that_ends_before_the_hold_does_does_not_change_the_timing | crates/snipdeck-app/src/controller.rs:2614
+a_pointer_leave_that_never_comes_cannot_keep_a_toast_for_good | crates/snipdeck-app/src/controller.rs:2625
+a_newer_toast_does_not_inherit_the_hover | crates/snipdeck-app/src/controller.rs:2642
+a_stale_tick_does_not_touch_a_newer_toast | crates/snipdeck-app/src/controller.rs:2658
+hotkey_problems_show_a_toast_naming_the_chord | crates/snipdeck-app/src/controller.rs:2676
+a_hotkey_problem_is_worded_by_why_it_failed | crates/snipdeck-app/src/controller.rs:2696
+the_dark_theme_setting_reaches_the_view | crates/snipdeck-app/src/controller.rs:2721
+with_tray | crates/snipdeck-app/src/controller.rs:2731
+the_tray_toggles_the_panel_and_open_panel_always_shows_it | crates/snipdeck-app/src/controller.rs:2736
+the_tray_menu_opens_snipdeck_and_quits | crates/snipdeck-app/src/controller.rs:2752
+pause_hotkeys_asks_the_host_and_silences_hotkeys_that_were_already_queued | crates/snipdeck-app/src/controller.rs:2763
+a_second_launch_opens_the_main_window_when_the_panel_is_already_up | crates/snipdeck-app/src/controller.rs:2784
+closing_the_panel_hides_it_when_a_tray_icon_can_bring_it_back | crates/snipdeck-app/src/controller.rs:2793
+closing_the_panel_quits_without_a_tray_icon_or_with_close_to_tray_off | crates/snipdeck-app/src/controller.rs:2802
+unpinned_world | crates/snipdeck-app/src/controller.rs:2819
+an_unpinned_panel_hides_when_another_app_takes_the_foreground | crates/snipdeck-app/src/controller.rs:2827
+a_pinned_panel_is_topmost_unless_a_snipdeck_window_is_active | crates/snipdeck-app/src/controller.rs:2837
+reveal_first_row | crates/snipdeck-app/src/controller.rs:2856
+a_held_reveal_ends_when_the_foreground_changes | crates/snipdeck-app/src/controller.rs:2865
+a_held_reveal_ends_when_a_snipdeck_window_takes_the_focus | crates/snipdeck-app/src/controller.rs:2876
+a_held_reveal_ends_when_the_panel_hides | crates/snipdeck-app/src/controller.rs:2885
+a_pinned_panel_stays | crates/snipdeck-app/src/controller.rs:2893
+with_the_setting_off_the_panel_stays | crates/snipdeck-app/src/controller.rs:2901
+the_tray_or_desktop_taking_the_foreground_does_not_hide_the_panel | crates/snipdeck-app/src/controller.rs:2911
+a_foreground_change_right_after_show_is_ignored | crates/snipdeck-app/src/controller.rs:2920
+the_picker_open_blocks_the_hide | crates/snipdeck-app/src/controller.rs:2936
+a_foreground_change_still_updates_the_footer | crates/snipdeck-app/src/controller.rs:2944
+closing_the_main_window_quits_when_keep_running_is_off | crates/snipdeck-app/src/controller.rs:2955
+closing_the_main_window_does_not_quit_with_a_tray_icon | crates/snipdeck-app/src/controller.rs:2968
+closing_the_main_window_quits_without_a_tray_when_the_panel_is_hidden | crates/snipdeck-app/src/controller.rs:2976
+real_tray_clicks_on_the_fake_reach_the_controller | crates/snipdeck-app/src/controller.rs:2987
+a_failed_first_show_then_explorer_starting_lets_close_hide | crates/snipdeck-app/src/controller.rs:3054
+explorer_restarting_without_taking_the_icon_back_makes_close_quit | crates/snipdeck-app/src/controller.rs:3073
+hiding_the_icon_makes_close_quit | crates/snipdeck-app/src/controller.rs:3093
+os | crates/snipdeck-app/src/controller.rs:3104
+the_system_theme_follows_windows_and_light_and_dark_ignore_it | crates/snipdeck-app/src/controller.rs:3113
+motion_is_reduced_by_the_setting_or_by_windows | crates/snipdeck-app/src/controller.rs:3130
+high_contrast_wins_over_every_theme_setting | crates/snipdeck-app/src/controller.rs:3147
+a_fake_source_drives_the_look_through_a_change | crates/snipdeck-app/src/controller.rs:3170
+saving_world | crates/snipdeck-app/src/controller.rs:3183
+the_main_window_place_is_remembered_in_the_settings | crates/snipdeck-app/src/controller.rs:3194
+a_setting_is_written_after_the_quiet_time_by_the_injected_clock | crates/snipdeck-app/src/controller.rs:3208
+several_quick_changes_make_one_write_and_flush_writes_at_once | crates/snipdeck-app/src/controller.rs:3232
+an_unchanged_setting_schedules_nothing | crates/snipdeck-app/src/controller.rs:3249
+without_a_saver_changes_stay_in_memory | crates/snipdeck-app/src/controller.rs:3260
+a_failed_write_toasts_once_and_succeeds_when_the_disk_does | crates/snipdeck-app/src/controller.rs:3269
+app_menu_index | crates/snipdeck-app/src/controller.rs:3301
+row_titles | crates/snipdeck-app/src/controller.rs:3305
+display | crates/snipdeck-app/src/controller.rs:3309
+the_app_menu_opens_and_closes_without_a_choice | crates/snipdeck-app/src/controller.rs:3323
+opening_the_app_menu_closes_the_board_menu_and_hiding_closes_it | crates/snipdeck-app/src/controller.rs:3333
+each_app_menu_entry_asks_the_host_for_its_thing_and_closes_the_menu | crates/snipdeck-app/src/controller.rs:3344
+pause_hotkeys_toggles_and_the_view_says_which_way_it_is | crates/snipdeck-app/src/controller.rs:3375
+a_line_in_the_app_menu_does_nothing_and_a_missing_row_closes_it | crates/snipdeck-app/src/controller.rs:3394
+edit_and_rename_ask_for_the_quick_editor_on_that_row | crates/snipdeck-app/src/controller.rs:3405
+deleting_a_row_trashes_it_with_an_undo_toast_that_brings_it_back | crates/snipdeck-app/src/controller.rs:3415
+the_item_menu_opens_on_a_row_and_closes_without_a_choice | crates/snipdeck-app/src/controller.rs:3433
+the_item_menu_edits_pins_and_trashes_the_row_it_was_opened_on | crates/snipdeck-app/src/controller.rs:3446
+a_line_in_the_item_menu_does_nothing_and_hiding_closes_it | crates/snipdeck-app/src/controller.rs:3485
+deleting_a_row_that_is_not_there_changes_nothing | crates/snipdeck-app/src/controller.rs:3503
+a_resize_grip_asks_the_host_to_start_the_os_resize | crates/snipdeck-app/src/controller.rs:3511
+a_frame_wider_than_480_is_cut_remembered_and_the_host_told | crates/snipdeck-app/src/controller.rs:3520
+a_move_across_a_monitor_edge_is_remembered_but_not_pulled_back | crates/snipdeck-app/src/controller.rs:3541
+a_frame_inside_the_limits_is_remembered_as_it_is_with_no_effect | crates/snipdeck-app/src/controller.rs:3566
+a_frame_with_no_size_is_not_a_place_the_user_chose | crates/snipdeck-app/src/controller.rs:3584
+each_monitor_keeps_its_own_place_and_restoring_uses_the_one_it_is_on | crates/snipdeck-app/src/controller.rs:3597
+a_stored_place_is_fitted_to_a_monitor_that_has_become_smaller | crates/snipdeck-app/src/controller.rs:3637
+a_remembered_frame_is_written_after_the_quiet_time | crates/snipdeck-app/src/controller.rs:3662
+
+### crates/snipdeck-app/src/controller/commands_ctl.rs
+
+impl Controller<S, C, K, T> | crates/snipdeck-app/src/controller/commands_ctl.rs:16
+run_command | crates/snipdeck-app/src/controller/commands_ctl.rs:26
 
 ### crates/snipdeck-app/src/controller/dock_ctl.rs
 
@@ -432,67 +495,70 @@ open_failed | crates/snipdeck-app/src/controller/editor_ctl.rs:991
 
 ### crates/snipdeck-app/src/controller/main_ctl.rs
 
-TagRenameError | crates/snipdeck-app/src/controller/main_ctl.rs:36
-MainAction | crates/snipdeck-app/src/controller/main_ctl.rs:47
-BoardMenuEntry | crates/snipdeck-app/src/controller/main_ctl.rs:70
-TagChoice | crates/snipdeck-app/src/controller/main_ctl.rs:100
-MainScreen | crates/snipdeck-app/src/controller/main_ctl.rs:111
-EditorTarget | crates/snipdeck-app/src/controller/main_ctl.rs:154
-Opened | crates/snipdeck-app/src/controller/main_ctl.rs:162
-EditorSlot | crates/snipdeck-app/src/controller/main_ctl.rs:169
-impl Controller<S, C, K, T> | crates/snipdeck-app/src/controller/main_ctl.rs:174
-main_screen | crates/snipdeck-app/src/controller/main_ctl.rs:184
-main_fresh | crates/snipdeck-app/src/controller/main_ctl.rs:225
-tag_choices | crates/snipdeck-app/src/controller/main_ctl.rs:232
-library_changed | crates/snipdeck-app/src/controller/main_ctl.rs:260
-main_open | crates/snipdeck-app/src/controller/main_ctl.rs:270
-main_set_query | crates/snipdeck-app/src/controller/main_ctl.rs:277
-main_set_view | crates/snipdeck-app/src/controller/main_ctl.rs:286
-main_select | crates/snipdeck-app/src/controller/main_ctl.rs:291
-main_select_all | crates/snipdeck-app/src/controller/main_ctl.rs:297
-main_clear_selection | crates/snipdeck-app/src/controller/main_ctl.rs:303
-main_reveal | crates/snipdeck-app/src/controller/main_ctl.rs:309
-main_action | crates/snipdeck-app/src/controller/main_ctl.rs:328
-pin | crates/snipdeck-app/src/controller/main_ctl.rs:365
-trash_items | crates/snipdeck-app/src/controller/main_ctl.rs:382
-restore | crates/snipdeck-app/src/controller/main_ctl.rs:410
-delete_forever | crates/snipdeck-app/src/controller/main_ctl.rs:430
-board_limit | crates/snipdeck-app/src/controller/main_ctl.rs:447
-finish | crates/snipdeck-app/src/controller/main_ctl.rs:453
-main_move_to | crates/snipdeck-app/src/controller/main_ctl.rs:461
-main_toggle_tag | crates/snipdeck-app/src/controller/main_ctl.rs:499
-main_window_closed | crates/snipdeck-app/src/controller/main_ctl.rs:536
-main_rename_tag | crates/snipdeck-app/src/controller/main_ctl.rs:548
-main_delete_tag | crates/snipdeck-app/src/controller/main_ctl.rs:570
-main_undo | crates/snipdeck-app/src/controller/main_ctl.rs:582
-main_empty_trash | crates/snipdeck-app/src/controller/main_ctl.rs:595
-purge_expired_trash | crates/snipdeck-app/src/controller/main_ctl.rs:613
-trash_cutoff | crates/snipdeck-app/src/controller/main_ctl.rs:624
-main_delete_list | crates/snipdeck-app/src/controller/main_ctl.rs:633
-trash_list | crates/snipdeck-app/src/controller/main_ctl.rs:641
-main_reorder_list | crates/snipdeck-app/src/controller/main_ctl.rs:656
-main_reorder_items | crates/snipdeck-app/src/controller/main_ctl.rs:671
-main_open_help | crates/snipdeck-app/src/controller/main_ctl.rs:702
-main_board_menu_open | crates/snipdeck-app/src/controller/main_ctl.rs:707
-main_board_menu_close | crates/snipdeck-app/src/controller/main_ctl.rs:712
-board_menu_entries | crates/snipdeck-app/src/controller/main_ctl.rs:716
-main_board_menu_activate | crates/snipdeck-app/src/controller/main_ctl.rs:743
-open_board | crates/snipdeck-app/src/controller/main_ctl.rs:774
-main_reorder_board | crates/snipdeck-app/src/controller/main_ctl.rs:781
-main_new_list | crates/snipdeck-app/src/controller/main_ctl.rs:798
-main_edit_list | crates/snipdeck-app/src/controller/main_ctl.rs:824
-panel_edit_list | crates/snipdeck-app/src/controller/main_ctl.rs:839
-open_list_editor | crates/snipdeck-app/src/controller/main_ctl.rs:849
-new_board | crates/snipdeck-app/src/controller/main_ctl.rs:867
-edit_board | crates/snipdeck-app/src/controller/main_ctl.rs:894
-open_editor | crates/snipdeck-app/src/controller/main_ctl.rs:915
-main_editor_save | crates/snipdeck-app/src/controller/main_ctl.rs:923
-write_editor | crates/snipdeck-app/src/controller/main_ctl.rs:963
-main_editor_delete | crates/snipdeck-app/src/controller/main_ctl.rs:1005
-main_editor_close | crates/snipdeck-app/src/controller/main_ctl.rs:1032
-main_editor_edited | crates/snipdeck-app/src/controller/main_ctl.rs:1037
-neutral_toast | crates/snipdeck-app/src/controller/main_ctl.rs:1044
-restore_failed | crates/snipdeck-app/src/controller/main_ctl.rs:1052
+TagRenameError | crates/snipdeck-app/src/controller/main_ctl.rs:38
+MainAction | crates/snipdeck-app/src/controller/main_ctl.rs:49
+BoardMenuEntry | crates/snipdeck-app/src/controller/main_ctl.rs:74
+TagChoice | crates/snipdeck-app/src/controller/main_ctl.rs:104
+MainScreen | crates/snipdeck-app/src/controller/main_ctl.rs:115
+EditorTarget | crates/snipdeck-app/src/controller/main_ctl.rs:162
+Opened | crates/snipdeck-app/src/controller/main_ctl.rs:170
+EditorSlot | crates/snipdeck-app/src/controller/main_ctl.rs:177
+impl Controller<S, C, K, T> | crates/snipdeck-app/src/controller/main_ctl.rs:182
+main_screen | crates/snipdeck-app/src/controller/main_ctl.rs:192
+main_fresh | crates/snipdeck-app/src/controller/main_ctl.rs:240
+tag_choices | crates/snipdeck-app/src/controller/main_ctl.rs:247
+library_changed | crates/snipdeck-app/src/controller/main_ctl.rs:275
+main_open | crates/snipdeck-app/src/controller/main_ctl.rs:285
+main_set_query | crates/snipdeck-app/src/controller/main_ctl.rs:292
+main_set_view | crates/snipdeck-app/src/controller/main_ctl.rs:301
+main_select | crates/snipdeck-app/src/controller/main_ctl.rs:306
+main_select_all | crates/snipdeck-app/src/controller/main_ctl.rs:312
+main_clear_selection | crates/snipdeck-app/src/controller/main_ctl.rs:318
+main_reveal | crates/snipdeck-app/src/controller/main_ctl.rs:324
+main_action | crates/snipdeck-app/src/controller/main_ctl.rs:343
+pin | crates/snipdeck-app/src/controller/main_ctl.rs:381
+duplicate | crates/snipdeck-app/src/controller/main_ctl.rs:400
+trash_items | crates/snipdeck-app/src/controller/main_ctl.rs:420
+restore | crates/snipdeck-app/src/controller/main_ctl.rs:448
+delete_forever | crates/snipdeck-app/src/controller/main_ctl.rs:468
+board_limit | crates/snipdeck-app/src/controller/main_ctl.rs:485
+finish | crates/snipdeck-app/src/controller/main_ctl.rs:491
+main_move_to | crates/snipdeck-app/src/controller/main_ctl.rs:499
+main_toggle_tag | crates/snipdeck-app/src/controller/main_ctl.rs:537
+main_window_closed | crates/snipdeck-app/src/controller/main_ctl.rs:574
+main_rename_tag | crates/snipdeck-app/src/controller/main_ctl.rs:586
+main_delete_tag | crates/snipdeck-app/src/controller/main_ctl.rs:608
+main_undo | crates/snipdeck-app/src/controller/main_ctl.rs:620
+main_empty_trash | crates/snipdeck-app/src/controller/main_ctl.rs:633
+purge_expired_trash | crates/snipdeck-app/src/controller/main_ctl.rs:651
+trash_cutoff | crates/snipdeck-app/src/controller/main_ctl.rs:662
+main_delete_list | crates/snipdeck-app/src/controller/main_ctl.rs:671
+main_export_list | crates/snipdeck-app/src/controller/main_ctl.rs:681
+trash_list | crates/snipdeck-app/src/controller/main_ctl.rs:729
+main_reorder_list | crates/snipdeck-app/src/controller/main_ctl.rs:744
+main_reorder_items | crates/snipdeck-app/src/controller/main_ctl.rs:759
+main_open_help | crates/snipdeck-app/src/controller/main_ctl.rs:790
+main_show_panel | crates/snipdeck-app/src/controller/main_ctl.rs:796
+main_board_menu_open | crates/snipdeck-app/src/controller/main_ctl.rs:802
+main_board_menu_close | crates/snipdeck-app/src/controller/main_ctl.rs:807
+board_menu_entries | crates/snipdeck-app/src/controller/main_ctl.rs:811
+main_board_menu_activate | crates/snipdeck-app/src/controller/main_ctl.rs:838
+open_board | crates/snipdeck-app/src/controller/main_ctl.rs:869
+main_reorder_board | crates/snipdeck-app/src/controller/main_ctl.rs:876
+main_new_list | crates/snipdeck-app/src/controller/main_ctl.rs:893
+main_edit_list | crates/snipdeck-app/src/controller/main_ctl.rs:922
+panel_edit_list | crates/snipdeck-app/src/controller/main_ctl.rs:937
+open_list_editor | crates/snipdeck-app/src/controller/main_ctl.rs:947
+new_board | crates/snipdeck-app/src/controller/main_ctl.rs:965
+edit_board | crates/snipdeck-app/src/controller/main_ctl.rs:995
+open_editor | crates/snipdeck-app/src/controller/main_ctl.rs:1016
+main_editor_save | crates/snipdeck-app/src/controller/main_ctl.rs:1024
+write_editor | crates/snipdeck-app/src/controller/main_ctl.rs:1064
+main_editor_delete | crates/snipdeck-app/src/controller/main_ctl.rs:1106
+main_editor_close | crates/snipdeck-app/src/controller/main_ctl.rs:1133
+main_editor_edited | crates/snipdeck-app/src/controller/main_ctl.rs:1138
+neutral_toast | crates/snipdeck-app/src/controller/main_ctl.rs:1145
+restore_failed | crates/snipdeck-app/src/controller/main_ctl.rs:1153
 
 ### crates/snipdeck-app/src/controller/onboarding_ctl.rs
 
@@ -508,38 +574,38 @@ finish_tour | crates/snipdeck-app/src/controller/onboarding_ctl.rs:61
 ### crates/snipdeck-app/src/controller/panel.rs
 
 HelpTopic | crates/snipdeck-app/src/controller/panel.rs:18
-AppMenuEntry | crates/snipdeck-app/src/controller/panel.rs:30
-ItemMenuEntry | crates/snipdeck-app/src/controller/panel.rs:57
-ListMenuEntry | crates/snipdeck-app/src/controller/panel.rs:78
-LIST_MENU | crates/snipdeck-app/src/controller/panel.rs:86
-APP_MENU | crates/snipdeck-app/src/controller/panel.rs:90
-impl Controller<S, C, K, T> | crates/snipdeck-app/src/controller/panel.rs:103
-open_app_menu | crates/snipdeck-app/src/controller/panel.rs:113
-close_app_menu | crates/snipdeck-app/src/controller/panel.rs:118
-choose_app_menu | crates/snipdeck-app/src/controller/panel.rs:125
-open_help | crates/snipdeck-app/src/controller/panel.rs:155
-menu_row | crates/snipdeck-app/src/controller/panel.rs:162
-item_menu_entries | crates/snipdeck-app/src/controller/panel.rs:171
-open_item_menu | crates/snipdeck-app/src/controller/panel.rs:186
-close_item_menu | crates/snipdeck-app/src/controller/panel.rs:198
-choose_item_menu | crates/snipdeck-app/src/controller/panel.rs:205
-open_list_menu | crates/snipdeck-app/src/controller/panel.rs:242
-edit_list_tab | crates/snipdeck-app/src/controller/panel.rs:249
-close_list_menu | crates/snipdeck-app/src/controller/panel.rs:259
-choose_list_menu | crates/snipdeck-app/src/controller/panel.rs:269
-set_item_pinned | crates/snipdeck-app/src/controller/panel.rs:282
-row_id | crates/snipdeck-app/src/controller/panel.rs:299
-edit_row | crates/snipdeck-app/src/controller/panel.rs:304
-rename_row | crates/snipdeck-app/src/controller/panel.rs:312
-delete_row | crates/snipdeck-app/src/controller/panel.rs:318
-trash_with_undo | crates/snipdeck-app/src/controller/panel.rs:325
-reveal_row | crates/snipdeck-app/src/controller/panel.rs:348
-resize | crates/snipdeck-app/src/controller/panel.rs:363
-frame_changed | crates/snipdeck-app/src/controller/panel.rs:372
-frame_moved | crates/snipdeck-app/src/controller/panel.rs:381
-remember_frame | crates/snipdeck-app/src/controller/panel.rs:385
-placement | crates/snipdeck-app/src/controller/panel.rs:426
-restore_frame | crates/snipdeck-app/src/controller/panel.rs:435
+AppMenuEntry | crates/snipdeck-app/src/controller/panel.rs:32
+ItemMenuEntry | crates/snipdeck-app/src/controller/panel.rs:63
+ListMenuEntry | crates/snipdeck-app/src/controller/panel.rs:84
+LIST_MENU | crates/snipdeck-app/src/controller/panel.rs:92
+APP_MENU | crates/snipdeck-app/src/controller/panel.rs:96
+impl Controller<S, C, K, T> | crates/snipdeck-app/src/controller/panel.rs:111
+open_app_menu | crates/snipdeck-app/src/controller/panel.rs:121
+close_app_menu | crates/snipdeck-app/src/controller/panel.rs:126
+choose_app_menu | crates/snipdeck-app/src/controller/panel.rs:133
+open_help | crates/snipdeck-app/src/controller/panel.rs:165
+menu_row | crates/snipdeck-app/src/controller/panel.rs:172
+item_menu_entries | crates/snipdeck-app/src/controller/panel.rs:181
+open_item_menu | crates/snipdeck-app/src/controller/panel.rs:196
+close_item_menu | crates/snipdeck-app/src/controller/panel.rs:208
+choose_item_menu | crates/snipdeck-app/src/controller/panel.rs:215
+open_list_menu | crates/snipdeck-app/src/controller/panel.rs:252
+edit_list_tab | crates/snipdeck-app/src/controller/panel.rs:259
+close_list_menu | crates/snipdeck-app/src/controller/panel.rs:269
+choose_list_menu | crates/snipdeck-app/src/controller/panel.rs:279
+set_item_pinned | crates/snipdeck-app/src/controller/panel.rs:292
+row_id | crates/snipdeck-app/src/controller/panel.rs:309
+edit_row | crates/snipdeck-app/src/controller/panel.rs:314
+rename_row | crates/snipdeck-app/src/controller/panel.rs:322
+delete_row | crates/snipdeck-app/src/controller/panel.rs:328
+trash_with_undo | crates/snipdeck-app/src/controller/panel.rs:335
+reveal_row | crates/snipdeck-app/src/controller/panel.rs:358
+resize | crates/snipdeck-app/src/controller/panel.rs:373
+frame_changed | crates/snipdeck-app/src/controller/panel.rs:382
+frame_moved | crates/snipdeck-app/src/controller/panel.rs:391
+remember_frame | crates/snipdeck-app/src/controller/panel.rs:395
+placement | crates/snipdeck-app/src/controller/panel.rs:436
+restore_frame | crates/snipdeck-app/src/controller/panel.rs:445
 
 ### crates/snipdeck-app/src/controller/settings_ctl.rs
 
@@ -753,12 +819,12 @@ bind_item_editor | crates/snipdeck-app/src/editor_binding.rs:100
 impl EditorCore<S, C, K, T> | crates/snipdeck-app/src/editor_binding.rs:122
 act | crates/snipdeck-app/src/editor_binding.rs:130
 sync | crates/snipdeck-app/src/editor_binding.rs:137
-start_autosave | crates/snipdeck-app/src/editor_binding.rs:179
-window_for_use | crates/snipdeck-app/src/editor_binding.rs:207
-wire | crates/snipdeck-app/src/editor_binding.rs:219
-browse | crates/snipdeck-app/src/editor_binding.rs:302
-read_input | crates/snipdeck-app/src/editor_binding.rs:322
-apply_state | crates/snipdeck-app/src/editor_binding.rs:335
+start_autosave | crates/snipdeck-app/src/editor_binding.rs:180
+window_for_use | crates/snipdeck-app/src/editor_binding.rs:208
+wire | crates/snipdeck-app/src/editor_binding.rs:220
+browse | crates/snipdeck-app/src/editor_binding.rs:303
+read_input | crates/snipdeck-app/src/editor_binding.rs:323
+apply_state | crates/snipdeck-app/src/editor_binding.rs:336
 set_tags | crates/snipdeck-app/src/editor_binding.rs:354
 fill | crates/snipdeck-app/src/editor_binding.rs:366
 bring_to_front | crates/snipdeck-app/src/editor_binding.rs:406
@@ -794,24 +860,24 @@ a_required_field_left_blank_is_missing | crates/snipdeck-app/src/fill.rs:239
 ### crates/snipdeck-app/src/fill_binding.rs
 
 FILL_WIDTH | crates/snipdeck-app/src/fill_binding.rs:33
-Shown | crates/snipdeck-app/src/fill_binding.rs:36
-FillCore | crates/snipdeck-app/src/fill_binding.rs:46
-impl FillCore<S, C, K, T> | crates/snipdeck-app/src/fill_binding.rs:56
-act | crates/snipdeck-app/src/fill_binding.rs:63
-sync | crates/snipdeck-app/src/fill_binding.rs:69
-draw | crates/snipdeck-app/src/fill_binding.rs:83
-give_up | crates/snipdeck-app/src/fill_binding.rs:145
-submit | crates/snipdeck-app/src/fill_binding.rs:157
-wire | crates/snipdeck-app/src/fill_binding.rs:167
-FillUi | crates/snipdeck-app/src/fill_binding.rs:191
-impl std::fmt::Debug for FillUi | crates/snipdeck-app/src/fill_binding.rs:198
-fmt | crates/snipdeck-app/src/fill_binding.rs:199
-impl FillUi | crates/snipdeck-app/src/fill_binding.rs:204
-new | crates/snipdeck-app/src/fill_binding.rs:207
-window | crates/snipdeck-app/src/fill_binding.rs:248
-placed | crates/snipdeck-app/src/fill_binding.rs:255
-form_field | crates/snipdeck-app/src/fill_binding.rs:262
-render | crates/snipdeck-app/src/fill_binding.rs:278
+Shown | crates/snipdeck-app/src/fill_binding.rs:40
+FillCore | crates/snipdeck-app/src/fill_binding.rs:51
+impl FillCore<S, C, K, T> | crates/snipdeck-app/src/fill_binding.rs:61
+act | crates/snipdeck-app/src/fill_binding.rs:68
+sync | crates/snipdeck-app/src/fill_binding.rs:74
+draw | crates/snipdeck-app/src/fill_binding.rs:88
+give_up | crates/snipdeck-app/src/fill_binding.rs:151
+submit | crates/snipdeck-app/src/fill_binding.rs:163
+wire | crates/snipdeck-app/src/fill_binding.rs:173
+FillUi | crates/snipdeck-app/src/fill_binding.rs:197
+impl std::fmt::Debug for FillUi | crates/snipdeck-app/src/fill_binding.rs:204
+fmt | crates/snipdeck-app/src/fill_binding.rs:205
+impl FillUi | crates/snipdeck-app/src/fill_binding.rs:210
+new | crates/snipdeck-app/src/fill_binding.rs:213
+window | crates/snipdeck-app/src/fill_binding.rs:254
+placed | crates/snipdeck-app/src/fill_binding.rs:261
+form_field | crates/snipdeck-app/src/fill_binding.rs:268
+render | crates/snipdeck-app/src/fill_binding.rs:284
 
 ### crates/snipdeck-app/src/frame.rs
 
@@ -839,39 +905,76 @@ cut | crates/snipdeck-app/src/frame.rs:303
 far_side | crates/snipdeck-app/src/frame.rs:317
 WINDOW_CHROME | crates/snipdeck-app/src/frame.rs:324
 open_size | crates/snipdeck-app/src/frame.rs:330
-inside | crates/snipdeck-app/src/frame.rs:344
-tests | crates/snipdeck-app/src/frame.rs:351
-monitor | crates/snipdeck-app/src/frame.rs:354
-at | crates/snipdeck-app/src/frame.rs:367
-a_window_that_fits_opens_at_its_wanted_size | crates/snipdeck-app/src/frame.rs:372
-a_window_taller_than_the_work_area_is_cut_to_it_with_room_for_the_title_bar | crates/snipdeck-app/src/frame.rs:377
-a_tiny_work_area_still_gives_a_positive_size | crates/snipdeck-app/src/frame.rs:386
-width_is_held_between_260_and_480 | crates/snipdeck-app/src/frame.rs:393
-the_limits_are_logical_so_they_grow_with_the_scale | crates/snipdeck-app/src/frame.rs:401
-height_is_held_between_the_minimum_and_the_work_area | crates/snipdeck-app/src/frame.rs:409
-the_frame_is_moved_inside_the_work_area | crates/snipdeck-app/src/frame.rs:416
-a_work_area_that_does_not_start_at_zero_is_respected | crates/snipdeck-app/src/frame.rs:424
-a_work_area_smaller_than_the_minimum_wins_over_it | crates/snipdeck-app/src/frame.rs:432
-a_nonsense_scale_counts_as_one | crates/snipdeck-app/src/frame.rs:439
-area | crates/snipdeck-app/src/frame.rs:445
-a_left_handle_is_a_six_pixel_strip_over_the_panels_former_height | crates/snipdeck-app/src/frame.rs:450
-a_right_handle_is_flush_with_the_far_edge | crates/snipdeck-app/src/frame.rs:456
-top_and_bottom_handles_run_along_the_width | crates/snipdeck-app/src/frame.rs:462
-the_handle_thickness_is_logical_so_it_grows_with_the_scale | crates/snipdeck-app/src/frame.rs:474
-a_handle_is_cut_to_the_work_area | crates/snipdeck-app/src/frame.rs:480
-a_span_outside_the_work_area_gives_the_whole_edge | crates/snipdeck-app/src/frame.rs:492
-a_work_area_that_does_not_start_at_zero_gets_its_own_edge | crates/snipdeck-app/src/frame.rs:507
-every_handle_lies_inside_the_work_area | crates/snipdeck-app/src/frame.rs:524
-a_work_area_thinner_than_the_handle_still_holds_it | crates/snipdeck-app/src/frame.rs:550
-a_docked_panel_on_the_left_or_right_takes_the_full_height | crates/snipdeck-app/src/frame.rs:556
-a_docked_panel_on_the_top_or_bottom_keeps_its_height_and_centres | crates/snipdeck-app/src/frame.rs:568
-a_docked_panel_keeps_the_panel_width_limits_and_stays_inside | crates/snipdeck-app/src/frame.rs:580
-a_collapsed_panel_opens_where_its_handle_is | crates/snipdeck-app/src/frame.rs:598
-a_frame_against_its_edge_is_flush_to_within_two_pixels | crates/snipdeck-app/src/frame.rs:616
-the_nearest_edge_is_the_one_the_panel_centre_is_closest_to | crates/snipdeck-app/src/frame.rs:629
-a_window_taller_than_the_work_area_is_cut_and_moved_onto_it | crates/snipdeck-app/src/frame.rs:638
-a_window_that_fits_is_left_alone | crates/snipdeck-app/src/frame.rs:646
-a_monitor_id_names_its_size_too | crates/snipdeck-app/src/frame.rs:655
+place_near | crates/snipdeck-app/src/frame.rs:349
+inside | crates/snipdeck-app/src/frame.rs:365
+tests | crates/snipdeck-app/src/frame.rs:372
+monitor | crates/snipdeck-app/src/frame.rs:375
+at | crates/snipdeck-app/src/frame.rs:388
+a_window_that_fits_opens_at_its_wanted_size | crates/snipdeck-app/src/frame.rs:393
+a_window_taller_than_the_work_area_is_cut_to_it_with_room_for_the_title_bar | crates/snipdeck-app/src/frame.rs:398
+a_tiny_work_area_still_gives_a_positive_size | crates/snipdeck-app/src/frame.rs:407
+width_is_held_between_260_and_480 | crates/snipdeck-app/src/frame.rs:414
+the_limits_are_logical_so_they_grow_with_the_scale | crates/snipdeck-app/src/frame.rs:422
+height_is_held_between_the_minimum_and_the_work_area | crates/snipdeck-app/src/frame.rs:430
+the_frame_is_moved_inside_the_work_area | crates/snipdeck-app/src/frame.rs:437
+a_work_area_that_does_not_start_at_zero_is_respected | crates/snipdeck-app/src/frame.rs:445
+a_work_area_smaller_than_the_minimum_wins_over_it | crates/snipdeck-app/src/frame.rs:453
+a_nonsense_scale_counts_as_one | crates/snipdeck-app/src/frame.rs:460
+area | crates/snipdeck-app/src/frame.rs:466
+a_left_handle_is_a_six_pixel_strip_over_the_panels_former_height | crates/snipdeck-app/src/frame.rs:471
+a_right_handle_is_flush_with_the_far_edge | crates/snipdeck-app/src/frame.rs:477
+top_and_bottom_handles_run_along_the_width | crates/snipdeck-app/src/frame.rs:483
+the_handle_thickness_is_logical_so_it_grows_with_the_scale | crates/snipdeck-app/src/frame.rs:495
+a_handle_is_cut_to_the_work_area | crates/snipdeck-app/src/frame.rs:501
+a_span_outside_the_work_area_gives_the_whole_edge | crates/snipdeck-app/src/frame.rs:513
+a_work_area_that_does_not_start_at_zero_gets_its_own_edge | crates/snipdeck-app/src/frame.rs:528
+every_handle_lies_inside_the_work_area | crates/snipdeck-app/src/frame.rs:545
+a_work_area_thinner_than_the_handle_still_holds_it | crates/snipdeck-app/src/frame.rs:571
+a_docked_panel_on_the_left_or_right_takes_the_full_height | crates/snipdeck-app/src/frame.rs:577
+a_docked_panel_on_the_top_or_bottom_keeps_its_height_and_centres | crates/snipdeck-app/src/frame.rs:589
+a_docked_panel_keeps_the_panel_width_limits_and_stays_inside | crates/snipdeck-app/src/frame.rs:601
+a_collapsed_panel_opens_where_its_handle_is | crates/snipdeck-app/src/frame.rs:619
+a_frame_against_its_edge_is_flush_to_within_two_pixels | crates/snipdeck-app/src/frame.rs:637
+the_nearest_edge_is_the_one_the_panel_centre_is_closest_to | crates/snipdeck-app/src/frame.rs:650
+a_window_taller_than_the_work_area_is_cut_and_moved_onto_it | crates/snipdeck-app/src/frame.rs:659
+screen | crates/snipdeck-app/src/frame.rs:666
+a_window_opens_centred_over_its_owner | crates/snipdeck-app/src/frame.rs:676
+a_window_over_an_owner_at_the_edge_is_moved_inside_the_work_area | crates/snipdeck-app/src/frame.rs:696
+a_window_larger_than_the_work_area_is_cut_to_it | crates/snipdeck-app/src/frame.rs:710
+an_owner_on_another_monitor_still_gives_a_window_on_this_one | crates/snipdeck-app/src/frame.rs:716
+a_window_that_fits_is_left_alone | crates/snipdeck-app/src/frame.rs:737
+a_monitor_id_names_its_size_too | crates/snipdeck-app/src/frame.rs:746
+
+### crates/snipdeck-app/src/headless.rs
+
+Outcome | crates/snipdeck-app/src/headless.rs:24
+COULD_NOT_RUN | crates/snipdeck-app/src/headless.rs:32
+could_not_run | crates/snipdeck-app/src/headless.rs:34
+open | crates/snipdeck-app/src/headless.rs:42
+check_db | crates/snipdeck-app/src/headless.rs:48
+NOT_CHECKED | crates/snipdeck-app/src/headless.rs:75
+FolderDoctor | crates/snipdeck-app/src/headless.rs:78
+impl DoctorHost for FolderDoctor<'_> | crates/snipdeck-app/src/headless.rs:85
+today | crates/snipdeck-app/src/headless.rs:86
+data_dir_writable | crates/snipdeck-app/src/headless.rs:90
+free_bytes | crates/snipdeck-app/src/headless.rs:96
+integrity | crates/snipdeck-app/src/headless.rs:100
+backup_dates | crates/snipdeck-app/src/headless.rs:104
+sensitive_items | crates/snipdeck-app/src/headless.rs:110
+key_ring_exists | crates/snipdeck-app/src/headless.rs:117
+shortcuts_unset | crates/snipdeck-app/src/headless.rs:121
+shortcuts_total | crates/snipdeck-app/src/headless.rs:138
+tray_present | crates/snipdeck-app/src/headless.rs:142
+newest_crash | crates/snipdeck-app/src/headless.rs:146
+troubleshoot | crates/snipdeck-app/src/headless.rs:154
+tier_word | crates/snipdeck-app/src/headless.rs:189
+folder_or_default | crates/snipdeck-app/src/headless.rs:200
+tests | crates/snipdeck-app/src/headless.rs:208
+library | crates/snipdeck-app/src/headless.rs:213
+a_healthy_library_passes_check_db | crates/snipdeck-app/src/headless.rs:220
+a_fresh_empty_folder_is_healthy | crates/snipdeck-app/src/headless.rs:228
+a_running_app_is_named_not_a_panic | crates/snipdeck-app/src/headless.rs:236
+troubleshoot_prints_the_report_with_the_folder_hidden | crates/snipdeck-app/src/headless.rs:245
 
 ### crates/snipdeck-app/src/help_binding.rs
 
@@ -915,28 +1018,28 @@ HelpCore | crates/snipdeck-app/src/help_binding.rs:266
 impl HelpCore<C, K, T> | crates/snipdeck-app/src/help_binding.rs:277
 run_checks | crates/snipdeck-app/src/help_binding.rs:284
 sync | crates/snipdeck-app/src/help_binding.rs:296
-danger_toast | crates/snipdeck-app/src/help_binding.rs:369
-opened | crates/snipdeck-app/src/help_binding.rs:379
-open_folder | crates/snipdeck-app/src/help_binding.rs:386
-open_logs_folder | crates/snipdeck-app/src/help_binding.rs:390
-fix | crates/snipdeck-app/src/help_binding.rs:399
-copy_report | crates/snipdeck-app/src/help_binding.rs:414
-open_url | crates/snipdeck-app/src/help_binding.rs:443
-HelpBinding | crates/snipdeck-app/src/help_binding.rs:449
-impl std::fmt::Debug for HelpBinding<C, K, T> | crates/snipdeck-app/src/help_binding.rs:453
-fmt | crates/snipdeck-app/src/help_binding.rs:454
-impl HelpBinding<C, K, T> | crates/snipdeck-app/src/help_binding.rs:459
-new | crates/snipdeck-app/src/help_binding.rs:467
-refresh | crates/snipdeck-app/src/help_binding.rs:540
-HelpUi | crates/snipdeck-app/src/help_binding.rs:550
-impl std::fmt::Debug for HelpUi | crates/snipdeck-app/src/help_binding.rs:555
-fmt | crates/snipdeck-app/src/help_binding.rs:556
-impl HelpUi | crates/snipdeck-app/src/help_binding.rs:561
-new | crates/snipdeck-app/src/help_binding.rs:564
-open | crates/snipdeck-app/src/help_binding.rs:615
-tests | crates/snipdeck-app/src/help_binding.rs:627
-the_links_point_at_the_repository | crates/snipdeck-app/src/help_binding.rs:633
-the_report_flags_are_switches_and_numbers_never_typed_text | crates/snipdeck-app/src/help_binding.rs:640
+danger_toast | crates/snipdeck-app/src/help_binding.rs:383
+opened | crates/snipdeck-app/src/help_binding.rs:393
+open_folder | crates/snipdeck-app/src/help_binding.rs:400
+open_logs_folder | crates/snipdeck-app/src/help_binding.rs:404
+fix | crates/snipdeck-app/src/help_binding.rs:413
+copy_report | crates/snipdeck-app/src/help_binding.rs:428
+open_url | crates/snipdeck-app/src/help_binding.rs:457
+HelpBinding | crates/snipdeck-app/src/help_binding.rs:463
+impl std::fmt::Debug for HelpBinding<C, K, T> | crates/snipdeck-app/src/help_binding.rs:467
+fmt | crates/snipdeck-app/src/help_binding.rs:468
+impl HelpBinding<C, K, T> | crates/snipdeck-app/src/help_binding.rs:473
+new | crates/snipdeck-app/src/help_binding.rs:481
+refresh | crates/snipdeck-app/src/help_binding.rs:554
+HelpUi | crates/snipdeck-app/src/help_binding.rs:564
+impl std::fmt::Debug for HelpUi | crates/snipdeck-app/src/help_binding.rs:569
+fmt | crates/snipdeck-app/src/help_binding.rs:570
+impl HelpUi | crates/snipdeck-app/src/help_binding.rs:575
+new | crates/snipdeck-app/src/help_binding.rs:578
+open | crates/snipdeck-app/src/help_binding.rs:634
+tests | crates/snipdeck-app/src/help_binding.rs:646
+the_links_point_at_the_repository | crates/snipdeck-app/src/help_binding.rs:652
+the_report_flags_are_switches_and_numbers_never_typed_text | crates/snipdeck-app/src/help_binding.rs:659
 
 ### crates/snipdeck-app/src/host.rs
 
@@ -1064,47 +1167,51 @@ off_windows_there_is_no_provider | crates/snipdeck-app/src/key_provider.rs:53
 binding | crates/snipdeck-app/src/lib.rs:7
 capture | crates/snipdeck-app/src/lib.rs:8
 cli | crates/snipdeck-app/src/lib.rs:9
-controller | crates/snipdeck-app/src/lib.rs:10
-crash | crates/snipdeck-app/src/lib.rs:11
-demo | crates/snipdeck-app/src/lib.rs:12
-dock | crates/snipdeck-app/src/lib.rs:13
-doctor | crates/snipdeck-app/src/lib.rs:14
-drafts | crates/snipdeck-app/src/lib.rs:15
-editor_binding | crates/snipdeck-app/src/lib.rs:16
-fill | crates/snipdeck-app/src/lib.rs:17
-fill_binding | crates/snipdeck-app/src/lib.rs:18
-frame | crates/snipdeck-app/src/lib.rs:19
-help_binding | crates/snipdeck-app/src/lib.rs:20
-host | crates/snipdeck-app/src/lib.rs:21
-item_editor | crates/snipdeck-app/src/lib.rs:22
-key_provider | crates/snipdeck-app/src/lib.rs:23
-licence_store | crates/snipdeck-app/src/lib.rs:24
-main_binding | crates/snipdeck-app/src/lib.rs:25
-main_window | crates/snipdeck-app/src/lib.rs:26
-maintenance | crates/snipdeck-app/src/lib.rs:27
-native_window | crates/snipdeck-app/src/lib.rs:28
-onboarding_binding | crates/snipdeck-app/src/lib.rs:29
-palette | crates/snipdeck-app/src/lib.rs:30
-panel | crates/snipdeck-app/src/lib.rs:31
-paste_next | crates/snipdeck-app/src/lib.rs:32
-paths | crates/snipdeck-app/src/lib.rs:33
-picker | crates/snipdeck-app/src/lib.rs:34
-picker_binding | crates/snipdeck-app/src/lib.rs:35
-placement | crates/snipdeck-app/src/lib.rs:36
-platform | crates/snipdeck-app/src/lib.rs:37
-popup_window | crates/snipdeck-app/src/lib.rs:38
-screenshot | crates/snipdeck-app/src/lib.rs:39
-settings | crates/snipdeck-app/src/lib.rs:40
-settings_binding | crates/snipdeck-app/src/lib.rs:41
-settings_store | crates/snipdeck-app/src/lib.rs:42
-starter | crates/snipdeck-app/src/lib.rs:43
-toast | crates/snipdeck-app/src/lib.rs:44
-toast_binding | crates/snipdeck-app/src/lib.rs:45
-tour | crates/snipdeck-app/src/lib.rs:46
-trace | crates/snipdeck-app/src/lib.rs:47
-usecase | crates/snipdeck-app/src/lib.rs:48
-window_kind | crates/snipdeck-app/src/lib.rs:49
-wording | crates/snipdeck-app/src/lib.rs:50
+command_binding | crates/snipdeck-app/src/lib.rs:10
+commands | crates/snipdeck-app/src/lib.rs:11
+controller | crates/snipdeck-app/src/lib.rs:12
+crash | crates/snipdeck-app/src/lib.rs:13
+demo | crates/snipdeck-app/src/lib.rs:14
+dock | crates/snipdeck-app/src/lib.rs:15
+doctor | crates/snipdeck-app/src/lib.rs:16
+drafts | crates/snipdeck-app/src/lib.rs:17
+editor_binding | crates/snipdeck-app/src/lib.rs:18
+fill | crates/snipdeck-app/src/lib.rs:19
+fill_binding | crates/snipdeck-app/src/lib.rs:20
+frame | crates/snipdeck-app/src/lib.rs:21
+headless | crates/snipdeck-app/src/lib.rs:22
+help_binding | crates/snipdeck-app/src/lib.rs:23
+host | crates/snipdeck-app/src/lib.rs:24
+item_editor | crates/snipdeck-app/src/lib.rs:25
+key_provider | crates/snipdeck-app/src/lib.rs:26
+licence_store | crates/snipdeck-app/src/lib.rs:27
+list_text | crates/snipdeck-app/src/lib.rs:28
+main_binding | crates/snipdeck-app/src/lib.rs:29
+main_window | crates/snipdeck-app/src/lib.rs:30
+maintenance | crates/snipdeck-app/src/lib.rs:31
+native_window | crates/snipdeck-app/src/lib.rs:32
+onboarding_binding | crates/snipdeck-app/src/lib.rs:33
+palette | crates/snipdeck-app/src/lib.rs:34
+panel | crates/snipdeck-app/src/lib.rs:35
+paste_next | crates/snipdeck-app/src/lib.rs:36
+paths | crates/snipdeck-app/src/lib.rs:37
+picker | crates/snipdeck-app/src/lib.rs:38
+picker_binding | crates/snipdeck-app/src/lib.rs:39
+placement | crates/snipdeck-app/src/lib.rs:40
+platform | crates/snipdeck-app/src/lib.rs:41
+popup_window | crates/snipdeck-app/src/lib.rs:42
+screenshot | crates/snipdeck-app/src/lib.rs:43
+settings | crates/snipdeck-app/src/lib.rs:44
+settings_binding | crates/snipdeck-app/src/lib.rs:45
+settings_store | crates/snipdeck-app/src/lib.rs:46
+starter | crates/snipdeck-app/src/lib.rs:47
+toast | crates/snipdeck-app/src/lib.rs:48
+toast_binding | crates/snipdeck-app/src/lib.rs:49
+tour | crates/snipdeck-app/src/lib.rs:50
+trace | crates/snipdeck-app/src/lib.rs:51
+usecase | crates/snipdeck-app/src/lib.rs:52
+window_kind | crates/snipdeck-app/src/lib.rs:53
+wording | crates/snipdeck-app/src/lib.rs:54
 
 ### crates/snipdeck-app/src/licence_store.rs
 
@@ -1120,97 +1227,112 @@ no_file_or_a_bad_one_is_the_free_plan | crates/snipdeck-app/src/licence_store.rs
 a_saved_good_key_is_pro_on_the_next_start | crates/snipdeck-app/src/licence_store.rs:97
 every_licence_error_has_its_own_problem | crates/snipdeck-app/src/licence_store.rs:110
 
+### crates/snipdeck-app/src/list_text.rs
+
+Entry | crates/snipdeck-app/src/list_text.rs:13
+render | crates/snipdeck-app/src/list_text.rs:22
+path | crates/snipdeck-app/src/list_text.rs:40
+tests | crates/snipdeck-app/src/list_text.rs:70
+entry | crates/snipdeck-app/src/list_text.rs:73
+items_follow_the_name_apart_by_dashes | crates/snipdeck-app/src/list_text.rs:81
+an_empty_list_is_just_its_name | crates/snipdeck-app/src/list_text.rs:90
+the_file_name_is_safe_dated_and_never_overwrites | crates/snipdeck-app/src/list_text.rs:95
+
 ### crates/snipdeck-app/src/main.rs
 
-main | crates/snipdeck-app/src/main.rs:57
-take_screenshot | crates/snipdeck-app/src/main.rs:92
-run | crates/snipdeck-app/src/main.rs:103
-SharedTray | crates/snipdeck-app/src/main.rs:347
-start_maintenance | crates/snipdeck-app/src/main.rs:351
-show_tray | crates/snipdeck-app/src/main.rs:389
-Hotkeys | crates/snipdeck-app/src/main.rs:401
-effect_handler | crates/snipdeck-app/src/main.rs:409
-resize_direction | crates/snipdeck-app/src/main.rs:498
-restore_frame | crates/snipdeck-app/src/main.rs:514
-watch_window_events | crates/snipdeck-app/src/main.rs:528
-report_hotkey_problems | crates/snipdeck-app/src/main.rs:588
-Library | crates/snipdeck-app/src/main.rs:601
-open_library | crates/snipdeck-app/src/main.rs:604
-select_backend | crates/snipdeck-app/src/main.rs:657
-with_app_icon | crates/snipdeck-app/src/main.rs:687
-attach_when_created | crates/snipdeck-app/src/main.rs:707
-with_binding | crates/snipdeck-app/src/main.rs:720
-on_ui_thread | crates/snipdeck-app/src/main.rs:731
+main | crates/snipdeck-app/src/main.rs:58
+headless | crates/snipdeck-app/src/main.rs:97
+take_screenshot | crates/snipdeck-app/src/main.rs:119
+run | crates/snipdeck-app/src/main.rs:130
+SharedTray | crates/snipdeck-app/src/main.rs:378
+start_maintenance | crates/snipdeck-app/src/main.rs:382
+show_tray | crates/snipdeck-app/src/main.rs:420
+Hotkeys | crates/snipdeck-app/src/main.rs:432
+effect_handler | crates/snipdeck-app/src/main.rs:440
+resize_direction | crates/snipdeck-app/src/main.rs:538
+restore_frame | crates/snipdeck-app/src/main.rs:554
+watch_window_events | crates/snipdeck-app/src/main.rs:568
+report_hotkey_problems | crates/snipdeck-app/src/main.rs:628
+Library | crates/snipdeck-app/src/main.rs:641
+open_library | crates/snipdeck-app/src/main.rs:644
+select_backend | crates/snipdeck-app/src/main.rs:697
+with_app_icon | crates/snipdeck-app/src/main.rs:727
+attach_when_created | crates/snipdeck-app/src/main.rs:747
+with_binding | crates/snipdeck-app/src/main.rs:760
+on_ui_thread | crates/snipdeck-app/src/main.rs:771
 
 ### crates/snipdeck-app/src/main_binding.rs
 
-RegularWindow | crates/snipdeck-app/src/main_binding.rs:55
-impl RegularWindow | crates/snipdeck-app/src/main_binding.rs:57
-create | crates/snipdeck-app/src/main_binding.rs:59
-impl Drop for RegularWindow | crates/snipdeck-app/src/main_binding.rs:66
-drop | crates/snipdeck-app/src/main_binding.rs:67
-regular_window_being_shown | crates/snipdeck-app/src/main_binding.rs:75
-EDITOR_WIDTH | crates/snipdeck-app/src/main_binding.rs:80
-size_to_content | crates/snipdeck-app/src/main_binding.rs:85
-Editors | crates/snipdeck-app/src/main_binding.rs:94
-MainCore | crates/snipdeck-app/src/main_binding.rs:101
-MainBinding | crates/snipdeck-app/src/main_binding.rs:115
-impl std::fmt::Debug for MainBinding<S, C, K, T> | crates/snipdeck-app/src/main_binding.rs:119
-fmt | crates/snipdeck-app/src/main_binding.rs:120
-impl MainBinding<S, C, K, T> | crates/snipdeck-app/src/main_binding.rs:125
-list_editor | crates/snipdeck-app/src/main_binding.rs:134
-board_editor | crates/snipdeck-app/src/main_binding.rs:140
-tag_manager | crates/snipdeck-app/src/main_binding.rs:146
-redraw | crates/snipdeck-app/src/main_binding.rs:151
-clone_handle | crates/snipdeck-app/src/main_binding.rs:156
-impl MainCore<S, C, K, T> | crates/snipdeck-app/src/main_binding.rs:160
-act | crates/snipdeck-app/src/main_binding.rs:168
-sync | crates/snipdeck-app/src/main_binding.rs:176
-sync_tag_manager | crates/snipdeck-app/src/main_binding.rs:199
-tag_manager_window | crates/snipdeck-app/src/main_binding.rs:223
-open_tag_manager | crates/snipdeck-app/src/main_binding.rs:258
-sync_editors | crates/snipdeck-app/src/main_binding.rs:273
-list_editor_window | crates/snipdeck-app/src/main_binding.rs:333
-board_editor_window | crates/snipdeck-app/src/main_binding.rs:365
-wire_editor_common | crates/snipdeck-app/src/main_binding.rs:393
-impl Controller<S, C, K, T> | crates/snipdeck-app/src/main_binding.rs:418
-bind_main | crates/snipdeck-app/src/main_binding.rs:432
-watch_place | crates/snipdeck-app/src/main_binding.rs:547
-wire_title_bar | crates/snipdeck-app/src/main_binding.rs:578
-MainUi | crates/snipdeck-app/src/main_binding.rs:601
-impl std::fmt::Debug for MainUi | crates/snipdeck-app/src/main_binding.rs:608
-fmt | crates/snipdeck-app/src/main_binding.rs:609
-impl MainUi | crates/snipdeck-app/src/main_binding.rs:614
-new | crates/snipdeck-app/src/main_binding.rs:616
-open | crates/snipdeck-app/src/main_binding.rs:711
-bind | crates/snipdeck-app/src/main_binding.rs:721
-list_editor | crates/snipdeck-app/src/main_binding.rs:727
-window | crates/snipdeck-app/src/main_binding.rs:733
-raise | crates/snipdeck-app/src/main_binding.rs:739
-render | crates/snipdeck-app/src/main_binding.rs:748
-set_look | crates/snipdeck-app/src/main_binding.rs:848
-apply_look | crates/snipdeck-app/src/main_binding.rs:865
-main_row | crates/snipdeck-app/src/main_binding.rs:873
-menu_entry | crates/snipdeck-app/src/main_binding.rs:900
-error_text | crates/snipdeck-app/src/main_binding.rs:914
-fill_list_editor | crates/snipdeck-app/src/main_binding.rs:922
-fill_board_editor | crates/snipdeck-app/src/main_binding.rs:937
-hint_text | crates/snipdeck-app/src/main_binding.rs:950
-accent_index | crates/snipdeck-app/src/main_binding.rs:961
-accent_of | crates/snipdeck-app/src/main_binding.rs:967
-sort_index | crates/snipdeck-app/src/main_binding.rs:974
-sort_of | crates/snipdeck-app/src/main_binding.rs:982
-ui_section | crates/snipdeck-app/src/main_binding.rs:990
-section_of | crates/snipdeck-app/src/main_binding.rs:1002
-ui_view | crates/snipdeck-app/src/main_binding.rs:1013
-view_of | crates/snipdeck-app/src/main_binding.rs:1021
-select_mode | crates/snipdeck-app/src/main_binding.rs:1029
-action_of | crates/snipdeck-app/src/main_binding.rs:1037
-tests | crates/snipdeck-app/src/main_binding.rs:1068
-accent_and_sort_indexes_round_trip_in_the_editors_order | crates/snipdeck-app/src/main_binding.rs:1073
-a_window_created_under_create_sees_the_regular_flag | crates/snipdeck-app/src/main_binding.rs:1090
-create_nests_and_clears_the_flag_when_it_returns_an_error | crates/snipdeck-app/src/main_binding.rs:1098
-a_label_is_the_use_label_the_window_expects | crates/snipdeck-app/src/main_binding.rs:1110
+RegularWindow | crates/snipdeck-app/src/main_binding.rs:57
+impl RegularWindow | crates/snipdeck-app/src/main_binding.rs:59
+create | crates/snipdeck-app/src/main_binding.rs:61
+create_window | crates/snipdeck-app/src/main_binding.rs:74
+impl Drop for RegularWindow | crates/snipdeck-app/src/main_binding.rs:82
+drop | crates/snipdeck-app/src/main_binding.rs:83
+regular_window_being_shown | crates/snipdeck-app/src/main_binding.rs:91
+EDITOR_WIDTH | crates/snipdeck-app/src/main_binding.rs:96
+size_to_content | crates/snipdeck-app/src/main_binding.rs:101
+Editors | crates/snipdeck-app/src/main_binding.rs:110
+MainCore | crates/snipdeck-app/src/main_binding.rs:117
+MainBinding | crates/snipdeck-app/src/main_binding.rs:131
+impl std::fmt::Debug for MainBinding<S, C, K, T> | crates/snipdeck-app/src/main_binding.rs:135
+fmt | crates/snipdeck-app/src/main_binding.rs:136
+impl MainBinding<S, C, K, T> | crates/snipdeck-app/src/main_binding.rs:141
+list_editor | crates/snipdeck-app/src/main_binding.rs:150
+board_editor | crates/snipdeck-app/src/main_binding.rs:156
+tag_manager | crates/snipdeck-app/src/main_binding.rs:162
+redraw | crates/snipdeck-app/src/main_binding.rs:167
+clone_handle | crates/snipdeck-app/src/main_binding.rs:172
+impl MainCore<S, C, K, T> | crates/snipdeck-app/src/main_binding.rs:176
+act | crates/snipdeck-app/src/main_binding.rs:184
+fill_palette | crates/snipdeck-app/src/main_binding.rs:198
+run_command | crates/snipdeck-app/src/main_binding.rs:213
+sync | crates/snipdeck-app/src/main_binding.rs:237
+sync_tag_manager | crates/snipdeck-app/src/main_binding.rs:260
+tag_manager_window | crates/snipdeck-app/src/main_binding.rs:284
+open_tag_manager | crates/snipdeck-app/src/main_binding.rs:319
+sync_editors | crates/snipdeck-app/src/main_binding.rs:335
+list_editor_window | crates/snipdeck-app/src/main_binding.rs:397
+board_editor_window | crates/snipdeck-app/src/main_binding.rs:429
+wire_editor_common | crates/snipdeck-app/src/main_binding.rs:457
+impl Controller<S, C, K, T> | crates/snipdeck-app/src/main_binding.rs:482
+bind_main | crates/snipdeck-app/src/main_binding.rs:496
+watch_place | crates/snipdeck-app/src/main_binding.rs:657
+wire_title_bar | crates/snipdeck-app/src/main_binding.rs:689
+MainUi | crates/snipdeck-app/src/main_binding.rs:712
+impl std::fmt::Debug for MainUi | crates/snipdeck-app/src/main_binding.rs:719
+fmt | crates/snipdeck-app/src/main_binding.rs:720
+impl MainUi | crates/snipdeck-app/src/main_binding.rs:725
+new | crates/snipdeck-app/src/main_binding.rs:727
+open | crates/snipdeck-app/src/main_binding.rs:830
+bind | crates/snipdeck-app/src/main_binding.rs:840
+list_editor | crates/snipdeck-app/src/main_binding.rs:846
+window | crates/snipdeck-app/src/main_binding.rs:852
+raise | crates/snipdeck-app/src/main_binding.rs:858
+render | crates/snipdeck-app/src/main_binding.rs:867
+set_look | crates/snipdeck-app/src/main_binding.rs:972
+apply_look | crates/snipdeck-app/src/main_binding.rs:990
+main_row | crates/snipdeck-app/src/main_binding.rs:1002
+menu_entry | crates/snipdeck-app/src/main_binding.rs:1029
+error_text | crates/snipdeck-app/src/main_binding.rs:1043
+fill_list_editor | crates/snipdeck-app/src/main_binding.rs:1051
+fill_board_editor | crates/snipdeck-app/src/main_binding.rs:1066
+hint_text | crates/snipdeck-app/src/main_binding.rs:1079
+accent_index | crates/snipdeck-app/src/main_binding.rs:1090
+accent_of | crates/snipdeck-app/src/main_binding.rs:1096
+sort_index | crates/snipdeck-app/src/main_binding.rs:1103
+sort_of | crates/snipdeck-app/src/main_binding.rs:1111
+ui_section | crates/snipdeck-app/src/main_binding.rs:1119
+section_of | crates/snipdeck-app/src/main_binding.rs:1131
+ui_view | crates/snipdeck-app/src/main_binding.rs:1142
+view_of | crates/snipdeck-app/src/main_binding.rs:1150
+select_mode | crates/snipdeck-app/src/main_binding.rs:1158
+action_of | crates/snipdeck-app/src/main_binding.rs:1166
+tests | crates/snipdeck-app/src/main_binding.rs:1199
+accent_and_sort_indexes_round_trip_in_the_editors_order | crates/snipdeck-app/src/main_binding.rs:1204
+a_window_created_under_create_sees_the_regular_flag | crates/snipdeck-app/src/main_binding.rs:1221
+create_nests_and_clears_the_flag_when_it_returns_an_error | crates/snipdeck-app/src/main_binding.rs:1229
+a_label_is_the_use_label_the_window_expects | crates/snipdeck-app/src/main_binding.rs:1241
 
 ### crates/snipdeck-app/src/main_window.rs
 
@@ -1377,17 +1499,43 @@ set_panel_taskbar | crates/snipdeck-app/src/native_window.rs:50
 set_panel_taskbar | crates/snipdeck-app/src/native_window.rs:63
 raise | crates/snipdeck-app/src/native_window.rs:66
 raise_window | crates/snipdeck-app/src/native_window.rs:73
-work_area_of | crates/snipdeck-app/src/native_window.rs:83
-work_area_of | crates/snipdeck-app/src/native_window.rs:93
-monitor_of | crates/snipdeck-app/src/native_window.rs:100
-monitor_near_cursor | crates/snipdeck-app/src/native_window.rs:123
-monitor_near_cursor | crates/snipdeck-app/src/native_window.rs:135
-fit_logical | crates/snipdeck-app/src/native_window.rs:142
-size_before_show | crates/snipdeck-app/src/native_window.rs:159
-fit_to_screen | crates/snipdeck-app/src/native_window.rs:167
-restore_place | crates/snipdeck-app/src/native_window.rs:209
-place_of | crates/snipdeck-app/src/native_window.rs:246
-raise_window | crates/snipdeck-app/src/native_window.rs:271
+settle_behind_active | crates/snipdeck-app/src/native_window.rs:86
+settle_behind_active | crates/snipdeck-app/src/native_window.rs:105
+STEP_DOWN_SETTLE | crates/snipdeck-app/src/native_window.rs:110
+work_area_of | crates/snipdeck-app/src/native_window.rs:115
+work_area_of | crates/snipdeck-app/src/native_window.rs:125
+monitor_of | crates/snipdeck-app/src/native_window.rs:132
+monitor_near_cursor | crates/snipdeck-app/src/native_window.rs:155
+monitor_near_cursor | crates/snipdeck-app/src/native_window.rs:167
+fit_logical | crates/snipdeck-app/src/native_window.rs:174
+size_before_show | crates/snipdeck-app/src/native_window.rs:191
+fit_to_screen | crates/snipdeck-app/src/native_window.rs:199
+Surface | crates/snipdeck-app/src/native_window.rs:242
+SurfaceFn | crates/snipdeck-app/src/native_window.rs:251
+shown_frame | crates/snipdeck-app/src/native_window.rs:262
+register_surface | crates/snipdeck-app/src/native_window.rs:280
+note_opener | crates/snipdeck-app/src/native_window.rs:292
+last_opener | crates/snipdeck-app/src/native_window.rs:298
+owner | crates/snipdeck-app/src/native_window.rs:303
+place_over_owner | crates/snipdeck-app/src/native_window.rs:322
+ActiveWindows | crates/snipdeck-app/src/native_window.rs:373
+impl ActiveWindows<Id> | crates/snipdeck-app/src/native_window.rs:378
+new | crates/snipdeck-app/src/native_window.rs:381
+set | crates/snipdeck-app/src/native_window.rs:389
+take_change | crates/snipdeck-app/src/native_window.rs:398
+impl Default for ActiveWindows<Id> | crates/snipdeck-app/src/native_window.rs:407
+default | crates/snipdeck-app/src/native_window.rs:408
+FOCUS_SETTLE | crates/snipdeck-app/src/native_window.rs:414
+ActiveFn | crates/snipdeck-app/src/native_window.rs:416
+on_own_window_active | crates/snipdeck-app/src/native_window.rs:427
+note_window_event | crates/snipdeck-app/src/native_window.rs:433
+track_focus | crates/snipdeck-app/src/native_window.rs:451
+restore_place | crates/snipdeck-app/src/native_window.rs:462
+place_of | crates/snipdeck-app/src/native_window.rs:499
+raise_window | crates/snipdeck-app/src/native_window.rs:524
+tests | crates/snipdeck-app/src/native_window.rs:527
+a_window_gaining_the_focus_is_reported_once | crates/snipdeck-app/src/native_window.rs:531
+focus_passing_between_two_windows_is_no_change | crates/snipdeck-app/src/native_window.rs:542
 
 ### crates/snipdeck-app/src/onboarding_binding.rs
 
@@ -1417,8 +1565,8 @@ impl std::fmt::Debug for OnboardingUi | crates/snipdeck-app/src/onboarding_bindi
 fmt | crates/snipdeck-app/src/onboarding_binding.rs:349
 impl OnboardingUi | crates/snipdeck-app/src/onboarding_binding.rs:354
 new | crates/snipdeck-app/src/onboarding_binding.rs:357
-open | crates/snipdeck-app/src/onboarding_binding.rs:426
-window | crates/snipdeck-app/src/onboarding_binding.rs:432
+open | crates/snipdeck-app/src/onboarding_binding.rs:427
+window | crates/snipdeck-app/src/onboarding_binding.rs:433
 
 ### crates/snipdeck-app/src/palette.rs
 
@@ -1511,30 +1659,31 @@ an_empty_source_is_reported_and_a_click_elsewhere_does_not_advance | crates/snip
 
 SETTINGS_FILE | crates/snipdeck-app/src/paths.rs:8
 BAD_FILE | crates/snipdeck-app/src/paths.rs:10
-data_dir | crates/snipdeck-app/src/paths.rs:16
-LoadOutcome | crates/snipdeck-app/src/paths.rs:28
-Loaded | crates/snipdeck-app/src/paths.rs:45
-impl Loaded | crates/snipdeck-app/src/paths.rs:52
-may_save | crates/snipdeck-app/src/paths.rs:56
-decode | crates/snipdeck-app/src/paths.rs:64
-read_settings | crates/snipdeck-app/src/paths.rs:88
-write_salvaged | crates/snipdeck-app/src/paths.rs:130
-load_settings | crates/snipdeck-app/src/paths.rs:139
-tests | crates/snipdeck-app/src/paths.rs:144
-env | crates/snipdeck-app/src/paths.rs:147
-windows_uses_local_app_data | crates/snipdeck-app/src/paths.rs:156
-elsewhere_prefers_xdg_then_home | crates/snipdeck-app/src/paths.rs:165
-settings_load_tolerantly | crates/snipdeck-app/src/paths.rs:180
-a_damaged_file_is_set_aside_as_bad_and_what_parses_is_kept | crates/snipdeck-app/src/paths.rs:201
-salvaged_settings_are_written_at_once_so_the_next_launch_keeps_them | crates/snipdeck-app/src/paths.rs:228
-write_salvaged_does_nothing_unless_a_file_was_set_aside | crates/snipdeck-app/src/paths.rs:251
-a_wrong_type_is_damage_but_an_out_of_range_number_is_not | crates/snipdeck-app/src/paths.rs:283
-a_good_or_missing_file_makes_no_bad_file | crates/snipdeck-app/src/paths.rs:298
-a_byte_order_mark_from_notepad_is_not_damage | crates/snipdeck-app/src/paths.rs:308
-utf16_files_with_a_mark_are_read_too | crates/snipdeck-app/src/paths.rs:322
-the_outcome_says_what_was_found | crates/snipdeck-app/src/paths.rs:343
-a_file_that_cannot_be_read_is_never_to_be_overwritten | crates/snipdeck-app/src/paths.rs:356
-a_damaged_file_that_cannot_be_set_aside_is_left_alone_and_not_to_be_overwritten | crates/snipdeck-app/src/paths.rs:368
+documents_folder | crates/snipdeck-app/src/paths.rs:14
+data_dir | crates/snipdeck-app/src/paths.rs:27
+LoadOutcome | crates/snipdeck-app/src/paths.rs:39
+Loaded | crates/snipdeck-app/src/paths.rs:56
+impl Loaded | crates/snipdeck-app/src/paths.rs:63
+may_save | crates/snipdeck-app/src/paths.rs:67
+decode | crates/snipdeck-app/src/paths.rs:75
+read_settings | crates/snipdeck-app/src/paths.rs:99
+write_salvaged | crates/snipdeck-app/src/paths.rs:141
+load_settings | crates/snipdeck-app/src/paths.rs:150
+tests | crates/snipdeck-app/src/paths.rs:155
+env | crates/snipdeck-app/src/paths.rs:158
+windows_uses_local_app_data | crates/snipdeck-app/src/paths.rs:167
+elsewhere_prefers_xdg_then_home | crates/snipdeck-app/src/paths.rs:176
+settings_load_tolerantly | crates/snipdeck-app/src/paths.rs:191
+a_damaged_file_is_set_aside_as_bad_and_what_parses_is_kept | crates/snipdeck-app/src/paths.rs:212
+salvaged_settings_are_written_at_once_so_the_next_launch_keeps_them | crates/snipdeck-app/src/paths.rs:239
+write_salvaged_does_nothing_unless_a_file_was_set_aside | crates/snipdeck-app/src/paths.rs:262
+a_wrong_type_is_damage_but_an_out_of_range_number_is_not | crates/snipdeck-app/src/paths.rs:294
+a_good_or_missing_file_makes_no_bad_file | crates/snipdeck-app/src/paths.rs:309
+a_byte_order_mark_from_notepad_is_not_damage | crates/snipdeck-app/src/paths.rs:319
+utf16_files_with_a_mark_are_read_too | crates/snipdeck-app/src/paths.rs:333
+the_outcome_says_what_was_found | crates/snipdeck-app/src/paths.rs:354
+a_file_that_cannot_be_read_is_never_to_be_overwritten | crates/snipdeck-app/src/paths.rs:367
+a_damaged_file_that_cannot_be_set_aside_is_left_alone_and_not_to_be_overwritten | crates/snipdeck-app/src/paths.rs:379
 
 ### crates/snipdeck-app/src/picker.rs
 
@@ -1575,27 +1724,27 @@ a_big_library_shows_the_best_fifty | crates/snipdeck-app/src/picker.rs:385
 PICKER_WIDTH | crates/snipdeck-app/src/picker_binding.rs:36
 AnchorMemory | crates/snipdeck-app/src/picker_binding.rs:41
 Shown | crates/snipdeck-app/src/picker_binding.rs:46
-PickerCore | crates/snipdeck-app/src/picker_binding.rs:52
-impl PickerCore<S, C, K, T> | crates/snipdeck-app/src/picker_binding.rs:63
-act | crates/snipdeck-app/src/picker_binding.rs:71
-sync | crates/snipdeck-app/src/picker_binding.rs:78
-draw | crates/snipdeck-app/src/picker_binding.rs:92
-give_up | crates/snipdeck-app/src/picker_binding.rs:137
-use_row | crates/snipdeck-app/src/picker_binding.rs:149
-use_number | crates/snipdeck-app/src/picker_binding.rs:155
-finish_use | crates/snipdeck-app/src/picker_binding.rs:162
-wire | crates/snipdeck-app/src/picker_binding.rs:171
-PickerUi | crates/snipdeck-app/src/picker_binding.rs:203
-impl std::fmt::Debug for PickerUi | crates/snipdeck-app/src/picker_binding.rs:210
-fmt | crates/snipdeck-app/src/picker_binding.rs:211
-impl PickerUi | crates/snipdeck-app/src/picker_binding.rs:216
-new | crates/snipdeck-app/src/picker_binding.rs:219
-window | crates/snipdeck-app/src/picker_binding.rs:260
-placed | crates/snipdeck-app/src/picker_binding.rs:267
-scope_of | crates/snipdeck-app/src/picker_binding.rs:272
-scope_in | crates/snipdeck-app/src/picker_binding.rs:280
-picker_row | crates/snipdeck-app/src/picker_binding.rs:290
-render | crates/snipdeck-app/src/picker_binding.rs:317
+PickerCore | crates/snipdeck-app/src/picker_binding.rs:53
+impl PickerCore<S, C, K, T> | crates/snipdeck-app/src/picker_binding.rs:64
+act | crates/snipdeck-app/src/picker_binding.rs:72
+sync | crates/snipdeck-app/src/picker_binding.rs:79
+draw | crates/snipdeck-app/src/picker_binding.rs:93
+give_up | crates/snipdeck-app/src/picker_binding.rs:139
+use_row | crates/snipdeck-app/src/picker_binding.rs:151
+use_number | crates/snipdeck-app/src/picker_binding.rs:157
+finish_use | crates/snipdeck-app/src/picker_binding.rs:164
+wire | crates/snipdeck-app/src/picker_binding.rs:173
+PickerUi | crates/snipdeck-app/src/picker_binding.rs:205
+impl std::fmt::Debug for PickerUi | crates/snipdeck-app/src/picker_binding.rs:212
+fmt | crates/snipdeck-app/src/picker_binding.rs:213
+impl PickerUi | crates/snipdeck-app/src/picker_binding.rs:218
+new | crates/snipdeck-app/src/picker_binding.rs:221
+window | crates/snipdeck-app/src/picker_binding.rs:262
+placed | crates/snipdeck-app/src/picker_binding.rs:269
+scope_of | crates/snipdeck-app/src/picker_binding.rs:274
+scope_in | crates/snipdeck-app/src/picker_binding.rs:282
+picker_row | crates/snipdeck-app/src/picker_binding.rs:292
+render | crates/snipdeck-app/src/picker_binding.rs:319
 
 ### crates/snipdeck-app/src/placement.rs
 
@@ -1695,177 +1844,186 @@ PANEL_WIDTH | crates/snipdeck-app/src/settings.rs:12
 PANEL_WIDTH_DEFAULT | crates/snipdeck-app/src/settings.rs:14
 BACKUPS_KEEP | crates/snipdeck-app/src/settings.rs:16
 BACKUPS_KEEP_DEFAULT | crates/snipdeck-app/src/settings.rs:18
-PANEL_GEOMETRY_LIMIT | crates/snipdeck-app/src/settings.rs:21
-PANEL_SIDE_LIMIT | crates/snipdeck-app/src/settings.rs:23
-PanelGeometry | crates/snipdeck-app/src/settings.rs:28
-lenient_edge | crates/snipdeck-app/src/settings.rs:51
-DockEdge | crates/snipdeck-app/src/settings.rs:62
-impl DockEdge | crates/snipdeck-app/src/settings.rs:73
-vertical | crates/snipdeck-app/src/settings.rs:79
-name | crates/snipdeck-app/src/settings.rs:85
-DockTrigger | crates/snipdeck-app/src/settings.rs:98
-impl DockTrigger | crates/snipdeck-app/src/settings.rs:110
-hover | crates/snipdeck-app/src/settings.rs:116
-click | crates/snipdeck-app/src/settings.rs:122
-HOVER_DELAY_MS | crates/snipdeck-app/src/settings.rs:128
-LEAVE_DELAY_MS | crates/snipdeck-app/src/settings.rs:130
-DockSettings | crates/snipdeck-app/src/settings.rs:135
-impl Default for DockSettings | crates/snipdeck-app/src/settings.rs:144
-default | crates/snipdeck-app/src/settings.rs:145
-impl DockSettings | crates/snipdeck-app/src/settings.rs:154
-sanitize | crates/snipdeck-app/src/settings.rs:156
-HotkeyAction | crates/snipdeck-app/src/settings.rs:168
-impl HotkeyAction | crates/snipdeck-app/src/settings.rs:179
-default_chord | crates/snipdeck-app/src/settings.rs:190
-Theme | crates/snipdeck-app/src/settings.rs:203
-Hotkeys | crates/snipdeck-app/src/settings.rs:216
-impl Default for Hotkeys | crates/snipdeck-app/src/settings.rs:227
-default | crates/snipdeck-app/src/settings.rs:228
-impl Hotkeys | crates/snipdeck-app/src/settings.rs:238
-slot | crates/snipdeck-app/src/settings.rs:239
-chord | crates/snipdeck-app/src/settings.rs:250
-salvage_no_paste_apps | crates/snipdeck-app/src/settings.rs:263
-WindowPlace | crates/snipdeck-app/src/settings.rs:297
-impl WindowPlace | crates/snipdeck-app/src/settings.rs:310
-Settings | crates/snipdeck-app/src/settings.rs:322
-impl Default for Settings | crates/snipdeck-app/src/settings.rs:362
-default | crates/snipdeck-app/src/settings.rs:363
-impl Settings | crates/snipdeck-app/src/settings.rs:385
-tour_due | crates/snipdeck-app/src/settings.rs:390
-from_json | crates/snipdeck-app/src/settings.rs:397
-from_fields | crates/snipdeck-app/src/settings.rs:416
-to_json | crates/snipdeck-app/src/settings.rs:467
-sanitize | crates/snipdeck-app/src/settings.rs:474
-sanitize_panel_geometry | crates/snipdeck-app/src/settings.rs:514
-remember_panel_geometry | crates/snipdeck-app/src/settings.rs:534
-hotkey_conflicts | crates/snipdeck-app/src/settings.rs:542
-tests | crates/snipdeck-app/src/settings.rs:552
-defaults_are_valid_and_conflict_free | crates/snipdeck-app/src/settings.rs:556
-it_round_trips_through_json | crates/snipdeck-app/src/settings.rs:568
-the_welcome_tour_flag_round_trips | crates/snipdeck-app/src/settings.rs:579
-an_old_file_without_the_flag_is_not_onboarded_and_keeps_its_fields | crates/snipdeck-app/src/settings.rs:589
-the_tour_opens_only_for_an_unseen_empty_library | crates/snipdeck-app/src/settings.rs:599
-garbage_gives_the_defaults | crates/snipdeck-app/src/settings.rs:615
-one_bad_field_keeps_the_rest | crates/snipdeck-app/src/settings.rs:622
-unknown_fields_and_old_versions_are_tolerated | crates/snipdeck-app/src/settings.rs:631
-the_panel_width_is_clamped | crates/snipdeck-app/src/settings.rs:639
-an_old_file_without_panel_geometry_loads_with_none | crates/snipdeck-app/src/settings.rs:651
-the_main_window_place_round_trips_and_a_degenerate_one_is_dropped | crates/snipdeck-app/src/settings.rs:658
-panel_geometry_round_trips | crates/snipdeck-app/src/settings.rs:677
-the_dock_is_off_by_default_with_the_documented_delays | crates/snipdeck-app/src/settings.rs:692
-dock_settings_round_trip_and_an_old_file_gets_the_defaults | crates/snipdeck-app/src/settings.rs:699
-the_dock_delays_are_clamped | crates/snipdeck-app/src/settings.rs:719
-a_bad_dock_trigger_falls_back_without_losing_the_other_fields | crates/snipdeck-app/src/settings.rs:736
-a_geometry_without_an_edge_is_floating_and_an_unknown_edge_is_too | crates/snipdeck-app/src/settings.rs:743
-panel_geometry_keeps_one_usable_entry_per_monitor_and_a_bounded_list | crates/snipdeck-app/src/settings.rs:760
-excluded_apps_are_normalised | crates/snipdeck-app/src/settings.rs:797
-one_bad_excluded_app_keeps_the_others | crates/snipdeck-app/src/settings.rs:807
-a_list_of_the_wrong_shape_is_an_empty_list_and_a_lone_name_is_a_list | crates/snipdeck-app/src/settings.rs:819
-a_truncated_file_keeps_the_excluded_apps_it_still_has | crates/snipdeck-app/src/settings.rs:836
-old_files_without_the_window_fields_get_the_defaults | crates/snipdeck-app/src/settings.rs:877
-one_bad_window_field_keeps_the_rest | crates/snipdeck-app/src/settings.rs:886
-backups_to_keep_defaults_to_seven_and_is_held_between_one_and_sixty | crates/snipdeck-app/src/settings.rs:896
-the_window_fields_round_trip | crates/snipdeck-app/src/settings.rs:917
-an_invalid_chord_falls_back_and_a_blank_one_stays_off | crates/snipdeck-app/src/settings.rs:928
-chords_are_stored_in_canonical_form | crates/snipdeck-app/src/settings.rs:939
-a_shared_chord_is_kept_by_the_first_action_only | crates/snipdeck-app/src/settings.rs:945
+CLIPBOARD_CLEAR_SECS | crates/snipdeck-app/src/settings.rs:21
+CLIPBOARD_CLEAR_SECS_DEFAULT | crates/snipdeck-app/src/settings.rs:23
+PANEL_GEOMETRY_LIMIT | crates/snipdeck-app/src/settings.rs:26
+PANEL_SIDE_LIMIT | crates/snipdeck-app/src/settings.rs:28
+PanelGeometry | crates/snipdeck-app/src/settings.rs:33
+lenient_edge | crates/snipdeck-app/src/settings.rs:56
+DockEdge | crates/snipdeck-app/src/settings.rs:67
+impl DockEdge | crates/snipdeck-app/src/settings.rs:78
+vertical | crates/snipdeck-app/src/settings.rs:84
+name | crates/snipdeck-app/src/settings.rs:90
+DockTrigger | crates/snipdeck-app/src/settings.rs:103
+impl DockTrigger | crates/snipdeck-app/src/settings.rs:115
+hover | crates/snipdeck-app/src/settings.rs:121
+click | crates/snipdeck-app/src/settings.rs:127
+HOVER_DELAY_MS | crates/snipdeck-app/src/settings.rs:133
+LEAVE_DELAY_MS | crates/snipdeck-app/src/settings.rs:135
+DockSettings | crates/snipdeck-app/src/settings.rs:140
+impl Default for DockSettings | crates/snipdeck-app/src/settings.rs:149
+default | crates/snipdeck-app/src/settings.rs:150
+impl DockSettings | crates/snipdeck-app/src/settings.rs:159
+sanitize | crates/snipdeck-app/src/settings.rs:161
+HotkeyAction | crates/snipdeck-app/src/settings.rs:173
+impl HotkeyAction | crates/snipdeck-app/src/settings.rs:184
+default_chord | crates/snipdeck-app/src/settings.rs:195
+Theme | crates/snipdeck-app/src/settings.rs:208
+Hotkeys | crates/snipdeck-app/src/settings.rs:221
+impl Default for Hotkeys | crates/snipdeck-app/src/settings.rs:232
+default | crates/snipdeck-app/src/settings.rs:233
+impl Hotkeys | crates/snipdeck-app/src/settings.rs:243
+slot | crates/snipdeck-app/src/settings.rs:244
+chord | crates/snipdeck-app/src/settings.rs:255
+salvage_no_paste_apps | crates/snipdeck-app/src/settings.rs:268
+WindowPlace | crates/snipdeck-app/src/settings.rs:302
+impl WindowPlace | crates/snipdeck-app/src/settings.rs:315
+Settings | crates/snipdeck-app/src/settings.rs:327
+impl Default for Settings | crates/snipdeck-app/src/settings.rs:371
+default | crates/snipdeck-app/src/settings.rs:372
+impl Settings | crates/snipdeck-app/src/settings.rs:396
+tour_due | crates/snipdeck-app/src/settings.rs:401
+from_json | crates/snipdeck-app/src/settings.rs:408
+from_fields | crates/snipdeck-app/src/settings.rs:427
+to_json | crates/snipdeck-app/src/settings.rs:480
+sanitize | crates/snipdeck-app/src/settings.rs:487
+sanitize_panel_geometry | crates/snipdeck-app/src/settings.rs:530
+remember_panel_geometry | crates/snipdeck-app/src/settings.rs:550
+hotkey_conflicts | crates/snipdeck-app/src/settings.rs:558
+tests | crates/snipdeck-app/src/settings.rs:568
+defaults_are_valid_and_conflict_free | crates/snipdeck-app/src/settings.rs:572
+it_round_trips_through_json | crates/snipdeck-app/src/settings.rs:584
+the_welcome_tour_flag_round_trips | crates/snipdeck-app/src/settings.rs:595
+an_old_file_without_the_flag_is_not_onboarded_and_keeps_its_fields | crates/snipdeck-app/src/settings.rs:605
+the_tour_opens_only_for_an_unseen_empty_library | crates/snipdeck-app/src/settings.rs:615
+garbage_gives_the_defaults | crates/snipdeck-app/src/settings.rs:631
+one_bad_field_keeps_the_rest | crates/snipdeck-app/src/settings.rs:638
+unknown_fields_and_old_versions_are_tolerated | crates/snipdeck-app/src/settings.rs:647
+the_panel_width_is_clamped | crates/snipdeck-app/src/settings.rs:655
+an_old_file_without_panel_geometry_loads_with_none | crates/snipdeck-app/src/settings.rs:667
+the_main_window_place_round_trips_and_a_degenerate_one_is_dropped | crates/snipdeck-app/src/settings.rs:674
+panel_geometry_round_trips | crates/snipdeck-app/src/settings.rs:693
+the_dock_is_off_by_default_with_the_documented_delays | crates/snipdeck-app/src/settings.rs:708
+dock_settings_round_trip_and_an_old_file_gets_the_defaults | crates/snipdeck-app/src/settings.rs:715
+the_dock_delays_are_clamped | crates/snipdeck-app/src/settings.rs:735
+a_bad_dock_trigger_falls_back_without_losing_the_other_fields | crates/snipdeck-app/src/settings.rs:752
+a_geometry_without_an_edge_is_floating_and_an_unknown_edge_is_too | crates/snipdeck-app/src/settings.rs:759
+panel_geometry_keeps_one_usable_entry_per_monitor_and_a_bounded_list | crates/snipdeck-app/src/settings.rs:776
+excluded_apps_are_normalised | crates/snipdeck-app/src/settings.rs:813
+one_bad_excluded_app_keeps_the_others | crates/snipdeck-app/src/settings.rs:823
+a_list_of_the_wrong_shape_is_an_empty_list_and_a_lone_name_is_a_list | crates/snipdeck-app/src/settings.rs:835
+a_truncated_file_keeps_the_excluded_apps_it_still_has | crates/snipdeck-app/src/settings.rs:852
+old_files_without_the_window_fields_get_the_defaults | crates/snipdeck-app/src/settings.rs:893
+one_bad_window_field_keeps_the_rest | crates/snipdeck-app/src/settings.rs:902
+backups_to_keep_defaults_to_seven_and_is_held_between_one_and_sixty | crates/snipdeck-app/src/settings.rs:912
+reduced_motion_is_off_by_default_and_round_trips | crates/snipdeck-app/src/settings.rs:933
+the_clipboard_clear_time_defaults_to_thirty_seconds_and_zero_means_never | crates/snipdeck-app/src/settings.rs:946
+the_window_fields_round_trip | crates/snipdeck-app/src/settings.rs:966
+an_invalid_chord_falls_back_and_a_blank_one_stays_off | crates/snipdeck-app/src/settings.rs:977
+chords_are_stored_in_canonical_form | crates/snipdeck-app/src/settings.rs:988
+a_shared_chord_is_kept_by_the_first_action_only | crates/snipdeck-app/src/settings.rs:994
 
 ### crates/snipdeck-app/src/settings_binding.rs
 
-SettingsHost | crates/snipdeck-app/src/settings_binding.rs:42
-apply_hotkeys | crates/snipdeck-app/src/settings_binding.rs:45
-set_autostart | crates/snipdeck-app/src/settings_binding.rs:52
-set_panel_in_taskbar | crates/snipdeck-app/src/settings_binding.rs:55
-open_folder | crates/snipdeck-app/src/settings_binding.rs:62
-documents_folder | crates/snipdeck-app/src/settings_binding.rs:65
-apply_hotkeys | crates/snipdeck-app/src/settings_binding.rs:71
-PanelTaskbar | crates/snipdeck-app/src/settings_binding.rs:87
-SystemHost | crates/snipdeck-app/src/settings_binding.rs:91
-impl SystemHost | crates/snipdeck-app/src/settings_binding.rs:96
-new | crates/snipdeck-app/src/settings_binding.rs:100
-impl SettingsHost for SystemHost | crates/snipdeck-app/src/settings_binding.rs:108
-apply_hotkeys | crates/snipdeck-app/src/settings_binding.rs:109
-set_autostart | crates/snipdeck-app/src/settings_binding.rs:113
-set_panel_in_taskbar | crates/snipdeck-app/src/settings_binding.rs:128
-open_folder | crates/snipdeck-app/src/settings_binding.rs:132
-documents_folder | crates/snipdeck-app/src/settings_binding.rs:147
-ERASE_WORD | crates/snipdeck-app/src/settings_binding.rs:160
-erase_confirmed | crates/snipdeck-app/src/settings_binding.rs:165
-HotkeyRefusal | crates/snipdeck-app/src/settings_binding.rs:171
-with_hotkey | crates/snipdeck-app/src/settings_binding.rs:186
-without_hotkey | crates/snipdeck-app/src/settings_binding.rs:205
-NoPasteRefusal | crates/snipdeck-app/src/settings_binding.rs:213
-with_no_paste_app | crates/snipdeck-app/src/settings_binding.rs:227
-human_size | crates/snipdeck-app/src/settings_binding.rs:245
-key_chips | crates/snipdeck-app/src/settings_binding.rs:260
-try_register | crates/snipdeck-app/src/settings_binding.rs:277
-arm_settings_save | crates/snipdeck-app/src/settings_binding.rs:302
-action_name | crates/snipdeck-app/src/settings_binding.rs:329
-hotkey_refusal_text | crates/snipdeck-app/src/settings_binding.rs:338
-no_paste_refusal_text | crates/snipdeck-app/src/settings_binding.rs:359
-HotkeyRow | crates/snipdeck-app/src/settings_binding.rs:370
-BackupLine | crates/snipdeck-app/src/settings_binding.rs:377
-PageView | crates/snipdeck-app/src/settings_binding.rs:390
-PageState | crates/snipdeck-app/src/settings_binding.rs:416
-theme_index | crates/snipdeck-app/src/settings_binding.rs:423
-dock_edge_index | crates/snipdeck-app/src/settings_binding.rs:432
-dock_edge_of | crates/snipdeck-app/src/settings_binding.rs:438
-dock_trigger_index | crates/snipdeck-app/src/settings_binding.rs:445
-dock_trigger_of | crates/snipdeck-app/src/settings_binding.rs:453
-language_index | crates/snipdeck-app/src/settings_binding.rs:461
-page_view | crates/snipdeck-app/src/settings_binding.rs:468
-SettingsCore | crates/snipdeck-app/src/settings_binding.rs:530
-SettingsBinding | crates/snipdeck-app/src/settings_binding.rs:547
-impl std::fmt::Debug for SettingsBinding<C, K, T> | crates/snipdeck-app/src/settings_binding.rs:551
-fmt | crates/snipdeck-app/src/settings_binding.rs:552
-impl SettingsBinding<C, K, T> | crates/snipdeck-app/src/settings_binding.rs:557
-redraw | crates/snipdeck-app/src/settings_binding.rs:564
-impl SettingsCore<C, K, T> | crates/snipdeck-app/src/settings_binding.rs:570
-act | crates/snipdeck-app/src/settings_binding.rs:577
-refresh_backups | crates/snipdeck-app/src/settings_binding.rs:583
-sync | crates/snipdeck-app/src/settings_binding.rs:593
-arm_save | crates/snipdeck-app/src/settings_binding.rs:622
-force_redraw | crates/snipdeck-app/src/settings_binding.rs:628
-toast | crates/snipdeck-app/src/settings_binding.rs:633
-set_conflict | crates/snipdeck-app/src/settings_binding.rs:641
-hotkey_recorded | crates/snipdeck-app/src/settings_binding.rs:647
-hotkey_cleared | crates/snipdeck-app/src/settings_binding.rs:672
-try_register | crates/snipdeck-app/src/settings_binding.rs:685
-no_paste_added | crates/snipdeck-app/src/settings_binding.rs:702
-no_paste_removed | crates/snipdeck-app/src/settings_binding.rs:716
-autostart_toggled | crates/snipdeck-app/src/settings_binding.rs:729
-licence_submitted | crates/snipdeck-app/src/settings_binding.rs:744
-backup_now | crates/snipdeck-app/src/settings_binding.rs:754
-restore | crates/snipdeck-app/src/settings_binding.rs:763
-open_data_folder | crates/snipdeck-app/src/settings_binding.rs:775
-open_backups_folder | crates/snipdeck-app/src/settings_binding.rs:783
-open_folder | crates/snipdeck-app/src/settings_binding.rs:792
-export | crates/snipdeck-app/src/settings_binding.rs:800
-erase | crates/snipdeck-app/src/settings_binding.rs:816
-impl Controller<Store, C, K, T> | crates/snipdeck-app/src/settings_binding.rs:830
-bind_settings | crates/snipdeck-app/src/settings_binding.rs:842
-render | crates/snipdeck-app/src/settings_binding.rs:962
-request_open | crates/snipdeck-app/src/settings_binding.rs:1068
-SettingsUi | crates/snipdeck-app/src/settings_binding.rs:1077
-impl std::fmt::Debug for SettingsUi | crates/snipdeck-app/src/settings_binding.rs:1082
-fmt | crates/snipdeck-app/src/settings_binding.rs:1083
-impl SettingsUi | crates/snipdeck-app/src/settings_binding.rs:1088
-new | crates/snipdeck-app/src/settings_binding.rs:1091
-open | crates/snipdeck-app/src/settings_binding.rs:1161
-window | crates/snipdeck-app/src/settings_binding.rs:1167
-tests | crates/snipdeck-app/src/settings_binding.rs:1173
-only_the_exact_word_confirms_the_erase | crates/snipdeck-app/src/settings_binding.rs:1178
-a_new_shortcut_replaces_only_its_own_action | crates/snipdeck-app/src/settings_binding.rs:1196
-a_shortcut_another_action_has_is_refused_and_names_that_action | crates/snipdeck-app/src/settings_binding.rs:1205
-text_that_is_not_a_shortcut_is_refused | crates/snipdeck-app/src/settings_binding.rs:1221
-applying_the_hotkeys_removes_the_ones_that_are_off | crates/snipdeck-app/src/settings_binding.rs:1232
-a_shortcut_another_program_owns_is_reported_for_its_action | crates/snipdeck-app/src/settings_binding.rs:1246
-program_names_are_trimmed_lower_cased_and_not_repeated | crates/snipdeck-app/src/settings_binding.rs:1259
-sizes_read_in_the_unit_a_person_would_use | crates/snipdeck-app/src/settings_binding.rs:1279
-the_dock_to_choice_maps_to_an_edge_and_back | crates/snipdeck-app/src/settings_binding.rs:1290
-the_trigger_segments_map_to_a_trigger_and_back | crates/snipdeck-app/src/settings_binding.rs:1303
-a_shortcut_splits_into_one_chip_per_key | crates/snipdeck-app/src/settings_binding.rs:1313
-every_language_has_a_name_and_a_tag | crates/snipdeck-app/src/settings_binding.rs:1320
+SUPPORTER_EMAIL | crates/snipdeck-app/src/settings_binding.rs:44
+supporter_mailto | crates/snipdeck-app/src/settings_binding.rs:49
+SettingsHost | crates/snipdeck-app/src/settings_binding.rs:54
+apply_hotkeys | crates/snipdeck-app/src/settings_binding.rs:57
+set_autostart | crates/snipdeck-app/src/settings_binding.rs:64
+set_panel_in_taskbar | crates/snipdeck-app/src/settings_binding.rs:67
+open_folder | crates/snipdeck-app/src/settings_binding.rs:74
+open_url | crates/snipdeck-app/src/settings_binding.rs:81
+documents_folder | crates/snipdeck-app/src/settings_binding.rs:84
+apply_hotkeys | crates/snipdeck-app/src/settings_binding.rs:90
+PanelTaskbar | crates/snipdeck-app/src/settings_binding.rs:106
+SystemHost | crates/snipdeck-app/src/settings_binding.rs:110
+impl SystemHost | crates/snipdeck-app/src/settings_binding.rs:115
+new | crates/snipdeck-app/src/settings_binding.rs:119
+impl SettingsHost for SystemHost | crates/snipdeck-app/src/settings_binding.rs:127
+apply_hotkeys | crates/snipdeck-app/src/settings_binding.rs:128
+set_autostart | crates/snipdeck-app/src/settings_binding.rs:132
+set_panel_in_taskbar | crates/snipdeck-app/src/settings_binding.rs:147
+open_folder | crates/snipdeck-app/src/settings_binding.rs:151
+open_url | crates/snipdeck-app/src/settings_binding.rs:155
+documents_folder | crates/snipdeck-app/src/settings_binding.rs:159
+ERASE_WORD | crates/snipdeck-app/src/settings_binding.rs:167
+erase_confirmed | crates/snipdeck-app/src/settings_binding.rs:172
+HotkeyRefusal | crates/snipdeck-app/src/settings_binding.rs:178
+with_hotkey | crates/snipdeck-app/src/settings_binding.rs:193
+without_hotkey | crates/snipdeck-app/src/settings_binding.rs:212
+NoPasteRefusal | crates/snipdeck-app/src/settings_binding.rs:220
+with_no_paste_app | crates/snipdeck-app/src/settings_binding.rs:234
+human_size | crates/snipdeck-app/src/settings_binding.rs:252
+key_chips | crates/snipdeck-app/src/settings_binding.rs:267
+try_register | crates/snipdeck-app/src/settings_binding.rs:284
+arm_settings_save | crates/snipdeck-app/src/settings_binding.rs:309
+action_name | crates/snipdeck-app/src/settings_binding.rs:336
+hotkey_refusal_text | crates/snipdeck-app/src/settings_binding.rs:345
+no_paste_refusal_text | crates/snipdeck-app/src/settings_binding.rs:366
+HotkeyRow | crates/snipdeck-app/src/settings_binding.rs:377
+BackupLine | crates/snipdeck-app/src/settings_binding.rs:384
+PageView | crates/snipdeck-app/src/settings_binding.rs:397
+PageState | crates/snipdeck-app/src/settings_binding.rs:425
+theme_index | crates/snipdeck-app/src/settings_binding.rs:432
+dock_edge_index | crates/snipdeck-app/src/settings_binding.rs:441
+dock_edge_of | crates/snipdeck-app/src/settings_binding.rs:447
+dock_trigger_index | crates/snipdeck-app/src/settings_binding.rs:454
+dock_trigger_of | crates/snipdeck-app/src/settings_binding.rs:462
+language_index | crates/snipdeck-app/src/settings_binding.rs:470
+page_view | crates/snipdeck-app/src/settings_binding.rs:477
+SettingsCore | crates/snipdeck-app/src/settings_binding.rs:541
+SettingsBinding | crates/snipdeck-app/src/settings_binding.rs:558
+impl std::fmt::Debug for SettingsBinding<C, K, T> | crates/snipdeck-app/src/settings_binding.rs:562
+fmt | crates/snipdeck-app/src/settings_binding.rs:563
+impl SettingsBinding<C, K, T> | crates/snipdeck-app/src/settings_binding.rs:568
+redraw | crates/snipdeck-app/src/settings_binding.rs:575
+impl SettingsCore<C, K, T> | crates/snipdeck-app/src/settings_binding.rs:581
+act | crates/snipdeck-app/src/settings_binding.rs:588
+refresh_backups | crates/snipdeck-app/src/settings_binding.rs:594
+sync | crates/snipdeck-app/src/settings_binding.rs:604
+arm_save | crates/snipdeck-app/src/settings_binding.rs:633
+force_redraw | crates/snipdeck-app/src/settings_binding.rs:639
+toast | crates/snipdeck-app/src/settings_binding.rs:644
+set_conflict | crates/snipdeck-app/src/settings_binding.rs:652
+hotkey_recorded | crates/snipdeck-app/src/settings_binding.rs:658
+hotkey_cleared | crates/snipdeck-app/src/settings_binding.rs:683
+try_register | crates/snipdeck-app/src/settings_binding.rs:696
+no_paste_added | crates/snipdeck-app/src/settings_binding.rs:713
+no_paste_removed | crates/snipdeck-app/src/settings_binding.rs:727
+autostart_toggled | crates/snipdeck-app/src/settings_binding.rs:740
+licence_submitted | crates/snipdeck-app/src/settings_binding.rs:755
+backup_now | crates/snipdeck-app/src/settings_binding.rs:765
+restore | crates/snipdeck-app/src/settings_binding.rs:774
+open_data_folder | crates/snipdeck-app/src/settings_binding.rs:786
+open_backups_folder | crates/snipdeck-app/src/settings_binding.rs:794
+get_supporter | crates/snipdeck-app/src/settings_binding.rs:804
+open_folder | crates/snipdeck-app/src/settings_binding.rs:812
+export | crates/snipdeck-app/src/settings_binding.rs:820
+erase | crates/snipdeck-app/src/settings_binding.rs:836
+impl Controller<Store, C, K, T> | crates/snipdeck-app/src/settings_binding.rs:850
+bind_settings | crates/snipdeck-app/src/settings_binding.rs:862
+render | crates/snipdeck-app/src/settings_binding.rs:994
+request_open | crates/snipdeck-app/src/settings_binding.rs:1110
+SettingsUi | crates/snipdeck-app/src/settings_binding.rs:1119
+impl std::fmt::Debug for SettingsUi | crates/snipdeck-app/src/settings_binding.rs:1124
+fmt | crates/snipdeck-app/src/settings_binding.rs:1125
+impl SettingsUi | crates/snipdeck-app/src/settings_binding.rs:1130
+new | crates/snipdeck-app/src/settings_binding.rs:1133
+open | crates/snipdeck-app/src/settings_binding.rs:1204
+window | crates/snipdeck-app/src/settings_binding.rs:1210
+tests | crates/snipdeck-app/src/settings_binding.rs:1216
+only_the_exact_word_confirms_the_erase | crates/snipdeck-app/src/settings_binding.rs:1221
+a_new_shortcut_replaces_only_its_own_action | crates/snipdeck-app/src/settings_binding.rs:1239
+a_shortcut_another_action_has_is_refused_and_names_that_action | crates/snipdeck-app/src/settings_binding.rs:1248
+text_that_is_not_a_shortcut_is_refused | crates/snipdeck-app/src/settings_binding.rs:1264
+applying_the_hotkeys_removes_the_ones_that_are_off | crates/snipdeck-app/src/settings_binding.rs:1275
+a_shortcut_another_program_owns_is_reported_for_its_action | crates/snipdeck-app/src/settings_binding.rs:1289
+program_names_are_trimmed_lower_cased_and_not_repeated | crates/snipdeck-app/src/settings_binding.rs:1302
+sizes_read_in_the_unit_a_person_would_use | crates/snipdeck-app/src/settings_binding.rs:1322
+the_dock_to_choice_maps_to_an_edge_and_back | crates/snipdeck-app/src/settings_binding.rs:1333
+the_trigger_segments_map_to_a_trigger_and_back | crates/snipdeck-app/src/settings_binding.rs:1346
+a_shortcut_splits_into_one_chip_per_key | crates/snipdeck-app/src/settings_binding.rs:1356
+every_language_has_a_name_and_a_tag | crates/snipdeck-app/src/settings_binding.rs:1363
 
 ### crates/snipdeck-app/src/settings_store.rs
 
@@ -1922,49 +2080,52 @@ the_file_sink_writes_the_settings_file_after_the_quiet_time | crates/snipdeck-ap
 STARTER_BOARD | crates/snipdeck-app/src/starter.rs:10
 STARTER_LIST | crates/snipdeck-app/src/starter.rs:12
 NEW_LIST | crates/snipdeck-app/src/starter.rs:14
-ensure_board | crates/snipdeck-app/src/starter.rs:21
-make_starter | crates/snipdeck-app/src/starter.rs:32
-add_list | crates/snipdeck-app/src/starter.rs:49
-tests | crates/snipdeck-app/src/starter.rs:83
-now | crates/snipdeck-app/src/starter.rs:89
-names | crates/snipdeck-app/src/starter.rs:93
-an_empty_library_gets_one_board_with_one_list_once | crates/snipdeck-app/src/starter.rs:103
-a_library_with_a_board_is_left_alone | crates/snipdeck-app/src/starter.rs:117
-new_lists_are_numbered_and_go_last | crates/snipdeck-app/src/starter.rs:125
-adding_a_list_without_a_board_makes_the_starter_board | crates/snipdeck-app/src/starter.rs:137
+NEW_BOARD | crates/snipdeck-app/src/starter.rs:16
+numbered_name | crates/snipdeck-app/src/starter.rs:22
+ensure_board | crates/snipdeck-app/src/starter.rs:36
+make_starter | crates/snipdeck-app/src/starter.rs:47
+add_list | crates/snipdeck-app/src/starter.rs:64
+tests | crates/snipdeck-app/src/starter.rs:98
+now | crates/snipdeck-app/src/starter.rs:104
+names | crates/snipdeck-app/src/starter.rs:108
+a_numbered_name_takes_the_first_free_number | crates/snipdeck-app/src/starter.rs:118
+an_empty_library_gets_one_board_with_one_list_once | crates/snipdeck-app/src/starter.rs:128
+a_library_with_a_board_is_left_alone | crates/snipdeck-app/src/starter.rs:142
+new_lists_are_numbered_and_go_last | crates/snipdeck-app/src/starter.rs:150
+adding_a_list_without_a_board_makes_the_starter_board | crates/snipdeck-app/src/starter.rs:162
 
 ### crates/snipdeck-app/src/toast.rs
 
 ToastKind | crates/snipdeck-app/src/toast.rs:11
 LicenceProblem | crates/snipdeck-app/src/toast.rs:22
 ToastMessage | crates/snipdeck-app/src/toast.rs:39
-Toast | crates/snipdeck-app/src/toast.rs:205
-after_use | crates/snipdeck-app/src/toast.rs:215
-after_error | crates/snipdeck-app/src/toast.rs:256
-tests | crates/snipdeck-app/src/toast.rs:277
-a_paste_names_the_app | crates/snipdeck-app/src/toast.rs:287
-a_plain_copy_is_a_success | crates/snipdeck-app/src/toast.rs:299
-an_excluded_app_says_pasting_is_off | crates/snipdeck-app/src/toast.rs:309
-a_paste_into_an_excluded_app_says_pasting_is_off_too | crates/snipdeck-app/src/toast.rs:324
-an_elevated_target_explains_why_it_was_only_copied | crates/snipdeck-app/src/toast.rs:342
-nothing_focused_and_a_vanished_target_have_their_own_messages | crates/snipdeck-app/src/toast.rs:361
-errors_are_danger_toasts_with_a_specific_cause | crates/snipdeck-app/src/toast.rs:385
+Toast | crates/snipdeck-app/src/toast.rs:207
+after_use | crates/snipdeck-app/src/toast.rs:217
+after_error | crates/snipdeck-app/src/toast.rs:258
+tests | crates/snipdeck-app/src/toast.rs:279
+a_paste_names_the_app | crates/snipdeck-app/src/toast.rs:289
+a_plain_copy_is_a_success | crates/snipdeck-app/src/toast.rs:301
+an_excluded_app_says_pasting_is_off | crates/snipdeck-app/src/toast.rs:311
+a_paste_into_an_excluded_app_says_pasting_is_off_too | crates/snipdeck-app/src/toast.rs:326
+an_elevated_target_explains_why_it_was_only_copied | crates/snipdeck-app/src/toast.rs:344
+nothing_focused_and_a_vanished_target_have_their_own_messages | crates/snipdeck-app/src/toast.rs:363
+errors_are_danger_toasts_with_a_specific_cause | crates/snipdeck-app/src/toast.rs:387
 
 ### crates/snipdeck-app/src/toast_binding.rs
 
 OthersShowing | crates/snipdeck-app/src/toast_binding.rs:31
 Shown | crates/snipdeck-app/src/toast_binding.rs:34
-ToastCore | crates/snipdeck-app/src/toast_binding.rs:40
-impl ToastCore<S, C, K, T> | crates/snipdeck-app/src/toast_binding.rs:50
-sync | crates/snipdeck-app/src/toast_binding.rs:57
-ToastUi | crates/snipdeck-app/src/toast_binding.rs:107
-impl std::fmt::Debug for ToastUi | crates/snipdeck-app/src/toast_binding.rs:114
-fmt | crates/snipdeck-app/src/toast_binding.rs:115
-impl ToastUi | crates/snipdeck-app/src/toast_binding.rs:120
-new | crates/snipdeck-app/src/toast_binding.rs:123
-window | crates/snipdeck-app/src/toast_binding.rs:164
-placed | crates/snipdeck-app/src/toast_binding.rs:171
-render | crates/snipdeck-app/src/toast_binding.rs:176
+ToastCore | crates/snipdeck-app/src/toast_binding.rs:41
+impl ToastCore<S, C, K, T> | crates/snipdeck-app/src/toast_binding.rs:51
+sync | crates/snipdeck-app/src/toast_binding.rs:58
+ToastUi | crates/snipdeck-app/src/toast_binding.rs:115
+impl std::fmt::Debug for ToastUi | crates/snipdeck-app/src/toast_binding.rs:122
+fmt | crates/snipdeck-app/src/toast_binding.rs:123
+impl ToastUi | crates/snipdeck-app/src/toast_binding.rs:128
+new | crates/snipdeck-app/src/toast_binding.rs:131
+window | crates/snipdeck-app/src/toast_binding.rs:172
+placed | crates/snipdeck-app/src/toast_binding.rs:179
+render | crates/snipdeck-app/src/toast_binding.rs:184
 
 ### crates/snipdeck-app/src/tour.rs
 
@@ -2024,27 +2185,29 @@ only_regular_windows_get_the_icon | crates/snipdeck-app/src/window_kind.rs:51
 
 tray_labels | crates/snipdeck-app/src/wording.rs:24
 toast_text | crates/snipdeck-app/src/wording.rs:38
-licence_problem_text | crates/snipdeck-app/src/wording.rs:151
-LANGUAGE_NAMES | crates/snipdeck-app/src/wording.rs:168
-LANGUAGE_TAGS | crates/snipdeck-app/src/wording.rs:179
-UNDO_LABEL | crates/snipdeck-app/src/wording.rs:182
-OPEN_LOG_LABEL | crates/snipdeck-app/src/wording.rs:185
-toast_button_text | crates/snipdeck-app/src/wording.rs:189
-use_label_text | crates/snipdeck-app/src/wording.rs:201
-UNDOCK_TEXT | crates/snipdeck-app/src/wording.rs:209
-app_menu_text | crates/snipdeck-app/src/wording.rs:213
-item_menu_text | crates/snipdeck-app/src/wording.rs:231
-board_menu_text | crates/snipdeck-app/src/wording.rs:246
-name_error_text | crates/snipdeck-app/src/wording.rs:261
-tag_rename_error_text | crates/snipdeck-app/src/wording.rs:272
-delete_hint_text | crates/snipdeck-app/src/wording.rs:283
-size_text | crates/snipdeck-app/src/wording.rs:293
-attachment_name_text | crates/snipdeck-app/src/wording.rs:308
-attachment_detail_text | crates/snipdeck-app/src/wording.rs:320
-editor_problem_text | crates/snipdeck-app/src/wording.rs:332
-tests | crates/snipdeck-app/src/wording.rs:388
-a_paste_names_the_app_and_an_anonymous_one_still_reads_well | crates/snipdeck-app/src/wording.rs:392
-every_message_has_text | crates/snipdeck-app/src/wording.rs:410
+licence_problem_text | crates/snipdeck-app/src/wording.rs:152
+LANGUAGE_NAMES | crates/snipdeck-app/src/wording.rs:169
+LANGUAGE_TAGS | crates/snipdeck-app/src/wording.rs:180
+UNDO_LABEL | crates/snipdeck-app/src/wording.rs:183
+OPEN_LOG_LABEL | crates/snipdeck-app/src/wording.rs:186
+toast_button_text | crates/snipdeck-app/src/wording.rs:190
+use_label_text | crates/snipdeck-app/src/wording.rs:202
+UNDOCK_TEXT | crates/snipdeck-app/src/wording.rs:210
+app_menu_text | crates/snipdeck-app/src/wording.rs:214
+app_menu_shortcut | crates/snipdeck-app/src/wording.rs:234
+item_menu_shortcut | crates/snipdeck-app/src/wording.rs:246
+item_menu_text | crates/snipdeck-app/src/wording.rs:259
+board_menu_text | crates/snipdeck-app/src/wording.rs:274
+name_error_text | crates/snipdeck-app/src/wording.rs:289
+tag_rename_error_text | crates/snipdeck-app/src/wording.rs:300
+delete_hint_text | crates/snipdeck-app/src/wording.rs:311
+size_text | crates/snipdeck-app/src/wording.rs:321
+attachment_name_text | crates/snipdeck-app/src/wording.rs:336
+attachment_detail_text | crates/snipdeck-app/src/wording.rs:348
+editor_problem_text | crates/snipdeck-app/src/wording.rs:360
+tests | crates/snipdeck-app/src/wording.rs:416
+a_paste_names_the_app_and_an_anonymous_one_still_reads_well | crates/snipdeck-app/src/wording.rs:420
+every_message_has_text | crates/snipdeck-app/src/wording.rs:438
 
 ### crates/snipdeck-core/build.rs
 
@@ -2093,20 +2256,20 @@ blob_ref_rejects_non_canonical_hex | crates/snipdeck-core/src/content.rs:190
 ### crates/snipdeck-core/src/entitlements.rs
 
 Tier | crates/snipdeck-core/src/entitlements.rs:8
-Entitlements | crates/snipdeck-core/src/entitlements.rs:36
-impl Entitlements | crates/snipdeck-core/src/entitlements.rs:40
-new | crates/snipdeck-core/src/entitlements.rs:45
-tier | crates/snipdeck-core/src/entitlements.rs:50
-allows | crates/snipdeck-core/src/entitlements.rs:55
-require | crates/snipdeck-core/src/entitlements.rs:74
-can_create_board | crates/snipdeck-core/src/entitlements.rs:83
-impl Default for Entitlements | crates/snipdeck-core/src/entitlements.rs:88
-default | crates/snipdeck-core/src/entitlements.rs:90
-tests | crates/snipdeck-core/src/entitlements.rs:96
-feature_keys_round_trip | crates/snipdeck-core/src/entitlements.rs:103
-default_is_free | crates/snipdeck-core/src/entitlements.rs:108
-free_has_no_pro_features_and_pro_has_all | crates/snipdeck-core/src/entitlements.rs:113
-free_can_create_three_boards | crates/snipdeck-core/src/entitlements.rs:123
+Entitlements | crates/snipdeck-core/src/entitlements.rs:38
+impl Entitlements | crates/snipdeck-core/src/entitlements.rs:42
+new | crates/snipdeck-core/src/entitlements.rs:47
+tier | crates/snipdeck-core/src/entitlements.rs:52
+allows | crates/snipdeck-core/src/entitlements.rs:57
+require | crates/snipdeck-core/src/entitlements.rs:76
+can_create_board | crates/snipdeck-core/src/entitlements.rs:85
+impl Default for Entitlements | crates/snipdeck-core/src/entitlements.rs:90
+default | crates/snipdeck-core/src/entitlements.rs:92
+tests | crates/snipdeck-core/src/entitlements.rs:98
+feature_keys_round_trip | crates/snipdeck-core/src/entitlements.rs:105
+default_is_free | crates/snipdeck-core/src/entitlements.rs:110
+free_has_no_pro_features_and_pro_has_all | crates/snipdeck-core/src/entitlements.rs:115
+free_can_create_five_boards | crates/snipdeck-core/src/entitlements.rs:125
 
 ### crates/snipdeck-core/src/error.rs
 
@@ -2807,18 +2970,19 @@ HighContrast | crates/snipdeck-platform/src/system_look.rs:33
 impl Default for HighContrast | crates/snipdeck-platform/src/system_look.rs:46
 default | crates/snipdeck-platform/src/system_look.rs:48
 SystemLook | crates/snipdeck-platform/src/system_look.rs:62
-SystemLookSource | crates/snipdeck-platform/src/system_look.rs:71
-read | crates/snipdeck-platform/src/system_look.rs:73
-WM_SYSCOLORCHANGE | crates/snipdeck-platform/src/system_look.rs:79
-WM_SETTINGCHANGE | crates/snipdeck-platform/src/system_look.rs:81
-WM_THEMECHANGED | crates/snipdeck-platform/src/system_look.rs:83
-SPI_SETHIGHCONTRAST | crates/snipdeck-platform/src/system_look.rs:85
-IMMERSIVE_COLOR_SET | crates/snipdeck-platform/src/system_look.rs:88
-message_may_change_look | crates/snipdeck-platform/src/system_look.rs:97
-tests | crates/snipdeck-platform/src/system_look.rs:108
-colorref_is_blue_green_red | crates/snipdeck-platform/src/system_look.rs:112
-the_default_look_is_light_with_no_high_contrast | crates/snipdeck-platform/src/system_look.rs:118
-only_colour_related_changes_trigger_a_re_read | crates/snipdeck-platform/src/system_look.rs:125
+SystemLookSource | crates/snipdeck-platform/src/system_look.rs:73
+read | crates/snipdeck-platform/src/system_look.rs:75
+WM_SYSCOLORCHANGE | crates/snipdeck-platform/src/system_look.rs:81
+WM_SETTINGCHANGE | crates/snipdeck-platform/src/system_look.rs:83
+WM_THEMECHANGED | crates/snipdeck-platform/src/system_look.rs:85
+SPI_SETHIGHCONTRAST | crates/snipdeck-platform/src/system_look.rs:87
+SPI_SETCLIENTAREAANIMATION | crates/snipdeck-platform/src/system_look.rs:89
+IMMERSIVE_COLOR_SET | crates/snipdeck-platform/src/system_look.rs:92
+message_may_change_look | crates/snipdeck-platform/src/system_look.rs:101
+tests | crates/snipdeck-platform/src/system_look.rs:114
+colorref_is_blue_green_red | crates/snipdeck-platform/src/system_look.rs:118
+the_default_look_is_light_with_no_high_contrast_and_full_motion | crates/snipdeck-platform/src/system_look.rs:124
+only_colour_related_changes_trigger_a_re_read | crates/snipdeck-platform/src/system_look.rs:132
 
 ### crates/snipdeck-platform/src/testing.rs
 
@@ -2854,30 +3018,32 @@ log | crates/snipdeck-platform/src/testing.rs:196
 emit | crates/snipdeck-platform/src/testing.rs:200
 set_on_screen | crates/snipdeck-platform/src/testing.rs:206
 left_click | crates/snipdeck-platform/src/testing.rs:214
-right_click | crates/snipdeck-platform/src/testing.rs:221
-gesture | crates/snipdeck-platform/src/testing.rs:225
-pick | crates/snipdeck-platform/src/testing.rs:248
-taskbar_created | crates/snipdeck-platform/src/testing.rs:258
-impl Tray for FakeTray | crates/snipdeck-platform/src/testing.rs:274
-show | crates/snipdeck-platform/src/testing.rs:275
-hide | crates/snipdeck-platform/src/testing.rs:288
-set_tooltip | crates/snipdeck-platform/src/testing.rs:298
-set_hotkeys_paused | crates/snipdeck-platform/src/testing.rs:305
-set_labels | crates/snipdeck-platform/src/testing.rs:312
-FakeSystemLook | crates/snipdeck-platform/src/testing.rs:322
-impl FakeSystemLook | crates/snipdeck-platform/src/testing.rs:324
-new | crates/snipdeck-platform/src/testing.rs:327
-set | crates/snipdeck-platform/src/testing.rs:332
-impl SystemLookSource for FakeSystemLook | crates/snipdeck-platform/src/testing.rs:337
-read | crates/snipdeck-platform/src/testing.rs:338
-tests | crates/snipdeck-platform/src/testing.rs:344
-tray | crates/snipdeck-platform/src/testing.rs:349
-a_hidden_tray_hears_nothing | crates/snipdeck-platform/src/testing.rs:359
-clicks_and_menu_picks_reach_the_app_as_events | crates/snipdeck-platform/src/testing.rs:367
-explorer_restarting_brings_back_a_wanted_icon_even_after_a_failed_show | crates/snipdeck-platform/src/testing.rs:384
-the_app_hears_when_the_icon_appears_and_goes_once_per_change | crates/snipdeck-platform/src/testing.rs:398
-a_failed_re_add_leaves_the_icon_gone | crates/snipdeck-platform/src/testing.rs:419
-the_fake_look_follows_what_the_test_sets | crates/snipdeck-platform/src/testing.rs:431
+double_click | crates/snipdeck-platform/src/testing.rs:219
+right_click | crates/snipdeck-platform/src/testing.rs:226
+gesture | crates/snipdeck-platform/src/testing.rs:230
+pick | crates/snipdeck-platform/src/testing.rs:253
+taskbar_created | crates/snipdeck-platform/src/testing.rs:263
+impl Tray for FakeTray | crates/snipdeck-platform/src/testing.rs:279
+show | crates/snipdeck-platform/src/testing.rs:280
+hide | crates/snipdeck-platform/src/testing.rs:293
+set_tooltip | crates/snipdeck-platform/src/testing.rs:303
+set_hotkeys_paused | crates/snipdeck-platform/src/testing.rs:310
+set_labels | crates/snipdeck-platform/src/testing.rs:317
+FakeSystemLook | crates/snipdeck-platform/src/testing.rs:327
+impl FakeSystemLook | crates/snipdeck-platform/src/testing.rs:329
+new | crates/snipdeck-platform/src/testing.rs:332
+set | crates/snipdeck-platform/src/testing.rs:337
+impl SystemLookSource for FakeSystemLook | crates/snipdeck-platform/src/testing.rs:342
+read | crates/snipdeck-platform/src/testing.rs:343
+tests | crates/snipdeck-platform/src/testing.rs:349
+tray | crates/snipdeck-platform/src/testing.rs:354
+a_hidden_tray_hears_nothing | crates/snipdeck-platform/src/testing.rs:364
+clicks_and_menu_picks_reach_the_app_as_events | crates/snipdeck-platform/src/testing.rs:372
+a_double_click_asks_for_the_main_window | crates/snipdeck-platform/src/testing.rs:389
+explorer_restarting_brings_back_a_wanted_icon_even_after_a_failed_show | crates/snipdeck-platform/src/testing.rs:398
+the_app_hears_when_the_icon_appears_and_goes_once_per_change | crates/snipdeck-platform/src/testing.rs:412
+a_failed_re_add_leaves_the_icon_gone | crates/snipdeck-platform/src/testing.rs:433
+the_fake_look_follows_what_the_test_sets | crates/snipdeck-platform/src/testing.rs:445
 
 ### crates/snipdeck-platform/src/tray.rs
 
@@ -2895,50 +3061,52 @@ of | crates/snipdeck-platform/src/tray.rs:106
 TrayEvent | crates/snipdeck-platform/src/tray.rs:118
 MenuLine | crates/snipdeck-platform/src/tray.rs:137
 Gesture | crates/snipdeck-platform/src/tray.rs:153
-Reaction | crates/snipdeck-platform/src/tray.rs:162
-NIN_SELECT | crates/snipdeck-platform/src/tray.rs:172
-NIN_KEYSELECT | crates/snipdeck-platform/src/tray.rs:174
-WM_CONTEXTMENU | crates/snipdeck-platform/src/tray.rs:176
-classify | crates/snipdeck-platform/src/tray.rs:184
-decode_callback | crates/snipdeck-platform/src/tray.rs:195
-decode_anchor | crates/snipdeck-platform/src/tray.rs:205
-Tray | crates/snipdeck-platform/src/tray.rs:220
-show | crates/snipdeck-platform/src/tray.rs:229
-hide | crates/snipdeck-platform/src/tray.rs:236
-set_tooltip | crates/snipdeck-platform/src/tray.rs:243
-set_hotkeys_paused | crates/snipdeck-platform/src/tray.rs:250
-set_labels | crates/snipdeck-platform/src/tray.rs:257
-TrayModel | crates/snipdeck-platform/src/tray.rs:262
-impl TrayModel | crates/snipdeck-platform/src/tray.rs:269
-new | crates/snipdeck-platform/src/tray.rs:272
-show | crates/snipdeck-platform/src/tray.rs:282
-hide | crates/snipdeck-platform/src/tray.rs:287
-is_wanted | crates/snipdeck-platform/src/tray.rs:293
-set_tooltip | crates/snipdeck-platform/src/tray.rs:298
-tooltip | crates/snipdeck-platform/src/tray.rs:304
-tooltip_utf16 | crates/snipdeck-platform/src/tray.rs:315
-hotkeys_paused | crates/snipdeck-platform/src/tray.rs:329
-set_hotkeys_paused | crates/snipdeck-platform/src/tray.rs:334
-set_labels | crates/snipdeck-platform/src/tray.rs:339
-menu | crates/snipdeck-platform/src/tray.rs:345
-gesture | crates/snipdeck-platform/src/tray.rs:362
-pick | crates/snipdeck-platform/src/tray.rs:373
-on_taskbar_created | crates/snipdeck-platform/src/tray.rs:388
-tests | crates/snipdeck-platform/src/tray.rs:394
-model | crates/snipdeck-platform/src/tray.rs:397
-only_select_and_context_menu_codes_are_gestures | crates/snipdeck-platform/src/tray.rs:404
-the_callback_words_are_split_and_the_anchor_is_signed | crates/snipdeck-platform/src/tray.rs:415
-left_click_toggles_the_panel | crates/snipdeck-platform/src/tray.rs:424
-right_click_offers_the_menu_with_quit_after_a_separator | crates/snipdeck-platform/src/tray.rs:433
-the_tooltip_says_the_hotkeys_are_paused_while_they_are | crates/snipdeck-platform/src/tray.rs:457
-translated_labels_replace_the_english_ones_in_the_menu | crates/snipdeck-platform/src/tray.rs:471
-the_default_labels_are_the_english_entry_names | crates/snipdeck-platform/src/tray.rs:502
-pause_hotkeys_toggles_and_shows_a_check | crates/snipdeck-platform/src/tray.rs:510
-the_other_entries_map_to_their_events | crates/snipdeck-platform/src/tray.rs:536
-command_ids_round_trip_and_are_never_zero | crates/snipdeck-platform/src/tray.rs:544
-a_hidden_icon_ignores_stale_gestures | crates/snipdeck-platform/src/tray.rs:554
-explorer_restarting_re_adds_a_wanted_icon_only | crates/snipdeck-platform/src/tray.rs:563
-the_tooltip_is_cut_to_what_the_shell_shows_without_splitting_a_pair | crates/snipdeck-platform/src/tray.rs:573
+Reaction | crates/snipdeck-platform/src/tray.rs:164
+NIN_SELECT | crates/snipdeck-platform/src/tray.rs:174
+NIN_KEYSELECT | crates/snipdeck-platform/src/tray.rs:176
+WM_LBUTTONDBLCLK | crates/snipdeck-platform/src/tray.rs:178
+WM_CONTEXTMENU | crates/snipdeck-platform/src/tray.rs:180
+classify | crates/snipdeck-platform/src/tray.rs:189
+decode_callback | crates/snipdeck-platform/src/tray.rs:201
+decode_anchor | crates/snipdeck-platform/src/tray.rs:211
+Tray | crates/snipdeck-platform/src/tray.rs:226
+show | crates/snipdeck-platform/src/tray.rs:235
+hide | crates/snipdeck-platform/src/tray.rs:242
+set_tooltip | crates/snipdeck-platform/src/tray.rs:249
+set_hotkeys_paused | crates/snipdeck-platform/src/tray.rs:256
+set_labels | crates/snipdeck-platform/src/tray.rs:263
+TrayModel | crates/snipdeck-platform/src/tray.rs:268
+impl TrayModel | crates/snipdeck-platform/src/tray.rs:275
+new | crates/snipdeck-platform/src/tray.rs:278
+show | crates/snipdeck-platform/src/tray.rs:288
+hide | crates/snipdeck-platform/src/tray.rs:293
+is_wanted | crates/snipdeck-platform/src/tray.rs:299
+set_tooltip | crates/snipdeck-platform/src/tray.rs:304
+tooltip | crates/snipdeck-platform/src/tray.rs:310
+tooltip_utf16 | crates/snipdeck-platform/src/tray.rs:321
+hotkeys_paused | crates/snipdeck-platform/src/tray.rs:335
+set_hotkeys_paused | crates/snipdeck-platform/src/tray.rs:340
+set_labels | crates/snipdeck-platform/src/tray.rs:345
+menu | crates/snipdeck-platform/src/tray.rs:351
+gesture | crates/snipdeck-platform/src/tray.rs:368
+pick | crates/snipdeck-platform/src/tray.rs:380
+on_taskbar_created | crates/snipdeck-platform/src/tray.rs:395
+tests | crates/snipdeck-platform/src/tray.rs:401
+model | crates/snipdeck-platform/src/tray.rs:404
+only_select_and_context_menu_codes_are_gestures | crates/snipdeck-platform/src/tray.rs:411
+the_callback_words_are_split_and_the_anchor_is_signed | crates/snipdeck-platform/src/tray.rs:423
+left_click_toggles_the_panel | crates/snipdeck-platform/src/tray.rs:432
+double_click_opens_the_main_window | crates/snipdeck-platform/src/tray.rs:441
+right_click_offers_the_menu_with_quit_after_a_separator | crates/snipdeck-platform/src/tray.rs:452
+the_tooltip_says_the_hotkeys_are_paused_while_they_are | crates/snipdeck-platform/src/tray.rs:476
+translated_labels_replace_the_english_ones_in_the_menu | crates/snipdeck-platform/src/tray.rs:490
+the_default_labels_are_the_english_entry_names | crates/snipdeck-platform/src/tray.rs:521
+pause_hotkeys_toggles_and_shows_a_check | crates/snipdeck-platform/src/tray.rs:529
+the_other_entries_map_to_their_events | crates/snipdeck-platform/src/tray.rs:555
+command_ids_round_trip_and_are_never_zero | crates/snipdeck-platform/src/tray.rs:563
+a_hidden_icon_ignores_stale_gestures | crates/snipdeck-platform/src/tray.rs:573
+explorer_restarting_re_adds_a_wanted_icon_only | crates/snipdeck-platform/src/tray.rs:582
+the_tooltip_is_cut_to_what_the_shell_shows_without_splitting_a_pair | crates/snipdeck-platform/src/tray.rs:592
 
 ### crates/snipdeck-platform/src/win_formats.rs
 
@@ -3350,21 +3518,22 @@ WinSystemLook | crates/snipdeck-platform/src/windows/system_look.rs:41
 impl SystemLookSource for WinSystemLook | crates/snipdeck-platform/src/windows/system_look.rs:43
 read | crates/snipdeck-platform/src/windows/system_look.rs:44
 read | crates/snipdeck-platform/src/windows/system_look.rs:52
-apps_use_light_theme | crates/snipdeck-platform/src/windows/system_look.rs:60
-sys_color | crates/snipdeck-platform/src/windows/system_look.rs:80
-high_contrast | crates/snipdeck-platform/src/windows/system_look.rs:87
-SystemLookWatcher | crates/snipdeck-platform/src/windows/system_look.rs:116
-impl std::fmt::Debug for SystemLookWatcher | crates/snipdeck-platform/src/windows/system_look.rs:120
-fmt | crates/snipdeck-platform/src/windows/system_look.rs:121
-impl SystemLookWatcher | crates/snipdeck-platform/src/windows/system_look.rs:126
-start | crates/snipdeck-platform/src/windows/system_look.rs:134
-Watcher | crates/snipdeck-platform/src/windows/system_look.rs:142
-impl WindowHandler for Watcher | crates/snipdeck-platform/src/windows/system_look.rs:146
-message | crates/snipdeck-platform/src/windows/system_look.rs:147
-tests | crates/snipdeck-platform/src/windows/system_look.rs:166
-the_portable_message_codes_match_the_windows_constants | crates/snipdeck-platform/src/windows/system_look.rs:175
-reading_the_look_does_not_fail | crates/snipdeck-platform/src/windows/system_look.rs:186
-the_watcher_starts_and_stops | crates/snipdeck-platform/src/windows/system_look.rs:192
+client_area_animation | crates/snipdeck-platform/src/windows/system_look.rs:62
+apps_use_light_theme | crates/snipdeck-platform/src/windows/system_look.rs:78
+sys_color | crates/snipdeck-platform/src/windows/system_look.rs:98
+high_contrast | crates/snipdeck-platform/src/windows/system_look.rs:105
+SystemLookWatcher | crates/snipdeck-platform/src/windows/system_look.rs:134
+impl std::fmt::Debug for SystemLookWatcher | crates/snipdeck-platform/src/windows/system_look.rs:138
+fmt | crates/snipdeck-platform/src/windows/system_look.rs:139
+impl SystemLookWatcher | crates/snipdeck-platform/src/windows/system_look.rs:144
+start | crates/snipdeck-platform/src/windows/system_look.rs:152
+Watcher | crates/snipdeck-platform/src/windows/system_look.rs:160
+impl WindowHandler for Watcher | crates/snipdeck-platform/src/windows/system_look.rs:164
+message | crates/snipdeck-platform/src/windows/system_look.rs:165
+tests | crates/snipdeck-platform/src/windows/system_look.rs:184
+the_portable_message_codes_match_the_windows_constants | crates/snipdeck-platform/src/windows/system_look.rs:193
+reading_the_look_does_not_fail | crates/snipdeck-platform/src/windows/system_look.rs:208
+the_watcher_starts_and_stops | crates/snipdeck-platform/src/windows/system_look.rs:214
 
 ### crates/snipdeck-platform/src/windows/target.rs
 
@@ -3424,47 +3593,47 @@ fullscreen_in_front | crates/snipdeck-platform/src/windows/target.rs:733
 
 ### crates/snipdeck-platform/src/windows/tray.rs
 
-WM_COMMANDS | crates/snipdeck-platform/src/windows/tray.rs:60
-WM_TRAY | crates/snipdeck-platform/src/windows/tray.rs:62
-ICON_ID | crates/snipdeck-platform/src/windows/tray.rs:64
-REPLY_TIMEOUT | crates/snipdeck-platform/src/windows/tray.rs:66
-Reply | crates/snipdeck-platform/src/windows/tray.rs:68
-Command | crates/snipdeck-platform/src/windows/tray.rs:70
-WinTray | crates/snipdeck-platform/src/windows/tray.rs:79
-impl std::fmt::Debug for WinTray | crates/snipdeck-platform/src/windows/tray.rs:85
-fmt | crates/snipdeck-platform/src/windows/tray.rs:86
-impl WinTray | crates/snipdeck-platform/src/windows/tray.rs:91
-start | crates/snipdeck-platform/src/windows/tray.rs:100
-call | crates/snipdeck-platform/src/windows/tray.rs:112
-impl Tray for WinTray | crates/snipdeck-platform/src/windows/tray.rs:126
-show | crates/snipdeck-platform/src/windows/tray.rs:127
-hide | crates/snipdeck-platform/src/windows/tray.rs:131
-set_tooltip | crates/snipdeck-platform/src/windows/tray.rs:135
-set_hotkeys_paused | crates/snipdeck-platform/src/windows/tray.rs:139
-set_labels | crates/snipdeck-platform/src/windows/tray.rs:143
-TrayHandler | crates/snipdeck-platform/src/windows/tray.rs:149
-impl TrayHandler | crates/snipdeck-platform/src/windows/tray.rs:159
-new | crates/snipdeck-platform/src/windows/tray.rs:160
-allow_taskbar_created | crates/snipdeck-platform/src/windows/tray.rs:182
-emit | crates/snipdeck-platform/src/windows/tray.rs:192
-set_added | crates/snipdeck-platform/src/windows/tray.rs:198
-data | crates/snipdeck-platform/src/windows/tray.rs:204
-notify | crates/snipdeck-platform/src/windows/tray.rs:225
-add_icon | crates/snipdeck-platform/src/windows/tray.rs:241
-remove_icon | crates/snipdeck-platform/src/windows/tray.rs:259
-refresh_tip | crates/snipdeck-platform/src/windows/tray.rs:272
-serve | crates/snipdeck-platform/src/windows/tray.rs:283
-on_callback | crates/snipdeck-platform/src/windows/tray.rs:316
-impl WindowHandler for TrayHandler | crates/snipdeck-platform/src/windows/tray.rs:341
-message | crates/snipdeck-platform/src/windows/tray.rs:342
-load_icon | crates/snipdeck-platform/src/windows/tray.rs:380
-popup_menu | crates/snipdeck-platform/src/windows/tray.rs:408
-restore_foreground | crates/snipdeck-platform/src/windows/tray.rs:452
-build_menu | crates/snipdeck-platform/src/windows/tray.rs:467
-tests | crates/snipdeck-platform/src/windows/tray.rs:509
-the_portable_callback_codes_match_the_windows_constants | crates/snipdeck-platform/src/windows/tray.rs:516
-the_tooltip_buffer_holds_what_the_model_allows | crates/snipdeck-platform/src/windows/tray.rs:524
-the_icon_starts_and_stops_without_being_shown | crates/snipdeck-platform/src/windows/tray.rs:532
+WM_COMMANDS | crates/snipdeck-platform/src/windows/tray.rs:61
+WM_TRAY | crates/snipdeck-platform/src/windows/tray.rs:63
+ICON_ID | crates/snipdeck-platform/src/windows/tray.rs:65
+REPLY_TIMEOUT | crates/snipdeck-platform/src/windows/tray.rs:67
+Reply | crates/snipdeck-platform/src/windows/tray.rs:69
+Command | crates/snipdeck-platform/src/windows/tray.rs:71
+WinTray | crates/snipdeck-platform/src/windows/tray.rs:80
+impl std::fmt::Debug for WinTray | crates/snipdeck-platform/src/windows/tray.rs:86
+fmt | crates/snipdeck-platform/src/windows/tray.rs:87
+impl WinTray | crates/snipdeck-platform/src/windows/tray.rs:92
+start | crates/snipdeck-platform/src/windows/tray.rs:101
+call | crates/snipdeck-platform/src/windows/tray.rs:113
+impl Tray for WinTray | crates/snipdeck-platform/src/windows/tray.rs:127
+show | crates/snipdeck-platform/src/windows/tray.rs:128
+hide | crates/snipdeck-platform/src/windows/tray.rs:132
+set_tooltip | crates/snipdeck-platform/src/windows/tray.rs:136
+set_hotkeys_paused | crates/snipdeck-platform/src/windows/tray.rs:140
+set_labels | crates/snipdeck-platform/src/windows/tray.rs:144
+TrayHandler | crates/snipdeck-platform/src/windows/tray.rs:150
+impl TrayHandler | crates/snipdeck-platform/src/windows/tray.rs:160
+new | crates/snipdeck-platform/src/windows/tray.rs:161
+allow_taskbar_created | crates/snipdeck-platform/src/windows/tray.rs:183
+emit | crates/snipdeck-platform/src/windows/tray.rs:193
+set_added | crates/snipdeck-platform/src/windows/tray.rs:199
+data | crates/snipdeck-platform/src/windows/tray.rs:205
+notify | crates/snipdeck-platform/src/windows/tray.rs:226
+add_icon | crates/snipdeck-platform/src/windows/tray.rs:242
+remove_icon | crates/snipdeck-platform/src/windows/tray.rs:260
+refresh_tip | crates/snipdeck-platform/src/windows/tray.rs:273
+serve | crates/snipdeck-platform/src/windows/tray.rs:284
+on_callback | crates/snipdeck-platform/src/windows/tray.rs:317
+impl WindowHandler for TrayHandler | crates/snipdeck-platform/src/windows/tray.rs:342
+message | crates/snipdeck-platform/src/windows/tray.rs:343
+load_icon | crates/snipdeck-platform/src/windows/tray.rs:381
+popup_menu | crates/snipdeck-platform/src/windows/tray.rs:409
+restore_foreground | crates/snipdeck-platform/src/windows/tray.rs:453
+build_menu | crates/snipdeck-platform/src/windows/tray.rs:468
+tests | crates/snipdeck-platform/src/windows/tray.rs:510
+the_portable_callback_codes_match_the_windows_constants | crates/snipdeck-platform/src/windows/tray.rs:517
+the_tooltip_buffer_holds_what_the_model_allows | crates/snipdeck-platform/src/windows/tray.rs:526
+the_icon_starts_and_stops_without_being_shown | crates/snipdeck-platform/src/windows/tray.rs:534
 
 ### crates/snipdeck-platform/src/windows/window_style.rs
 
@@ -3473,11 +3642,12 @@ SUBCLASS_ID | crates/snipdeck-platform/src/windows/window_style.rs:41
 install_panel_style | crates/snipdeck-platform/src/windows/window_style.rs:53
 set_panel_taskbar | crates/snipdeck-platform/src/windows/window_style.rs:98
 raise_without_activating | crates/snipdeck-platform/src/windows/window_style.rs:144
-ex_style_bits | crates/snipdeck-platform/src/windows/window_style.rs:178
-ex_style_slot | crates/snipdeck-platform/src/windows/window_style.rs:187
-style_index | crates/snipdeck-platform/src/windows/window_style.rs:198
-work_area_near_cursor | crates/snipdeck-platform/src/windows/window_style.rs:241
-work_area_of | crates/snipdeck-platform/src/windows/window_style.rs:282
+place_behind_foreground | crates/snipdeck-platform/src/windows/window_style.rs:180
+ex_style_bits | crates/snipdeck-platform/src/windows/window_style.rs:213
+ex_style_slot | crates/snipdeck-platform/src/windows/window_style.rs:222
+style_index | crates/snipdeck-platform/src/windows/window_style.rs:233
+work_area_near_cursor | crates/snipdeck-platform/src/windows/window_style.rs:276
+work_area_of | crates/snipdeck-platform/src/windows/window_style.rs:317
 
 ### crates/snipdeck-portable/src/archive.rs
 
@@ -4068,17 +4238,17 @@ a_failed_change_reveals_nothing_and_changes_nothing | crates/snipdeck-store/src/
 every_password_set_uses_a_fresh_salt_and_nonce | crates/snipdeck-store/src/crypto/keyring.rs:527
 records_unlock_with_their_own_parameters_not_the_current_ones | crates/snipdeck-store/src/crypto/keyring.rs:540
 every_modified_byte_of_a_record_is_rejected | crates/snipdeck-store/src/crypto/keyring.rs:559
-truncated_or_foreign_records_are_invalid | crates/snipdeck-store/src/crypto/keyring.rs:575
-record_with_inner | crates/snipdeck-store/src/crypto/keyring.rs:590
-hostile_work_factors_are_refused_before_any_hashing | crates/snipdeck-store/src/crypto/keyring.rs:597
-malformed_inner_plaintext_is_invalid | crates/snipdeck-store/src/crypto/keyring.rs:625
-the_password_header_is_authenticated | crates/snipdeck-store/src/crypto/keyring.rs:639
-kdf_params_are_validated | crates/snipdeck-store/src/crypto/keyring.rs:657
-production_settings_have_a_floor | crates/snipdeck-store/src/crypto/keyring.rs:674
-argon2id_output_is_stable | crates/snipdeck-store/src/crypto/keyring.rs:689
-hex | crates/snipdeck-store/src/crypto/keyring.rs:700
-default_params_timing | crates/snipdeck-store/src/crypto/keyring.rs:712
-debug_output_shows_no_secrets | crates/snipdeck-store/src/crypto/keyring.rs:731
+truncated_or_foreign_records_are_invalid | crates/snipdeck-store/src/crypto/keyring.rs:579
+record_with_inner | crates/snipdeck-store/src/crypto/keyring.rs:594
+hostile_work_factors_are_refused_before_any_hashing | crates/snipdeck-store/src/crypto/keyring.rs:601
+malformed_inner_plaintext_is_invalid | crates/snipdeck-store/src/crypto/keyring.rs:629
+the_password_header_is_authenticated | crates/snipdeck-store/src/crypto/keyring.rs:643
+kdf_params_are_validated | crates/snipdeck-store/src/crypto/keyring.rs:661
+production_settings_have_a_floor | crates/snipdeck-store/src/crypto/keyring.rs:678
+argon2id_output_is_stable | crates/snipdeck-store/src/crypto/keyring.rs:693
+hex | crates/snipdeck-store/src/crypto/keyring.rs:704
+default_params_timing | crates/snipdeck-store/src/crypto/keyring.rs:716
+debug_output_shows_no_secrets | crates/snipdeck-store/src/crypto/keyring.rs:735
 
 ### crates/snipdeck-store/src/crypto/provider.rs
 
@@ -4469,6 +4639,11 @@ mark_for | scripts/make_logo.py:72
 render | scripts/make_logo.py:80
 ico_bytes | scripts/make_logo.py:85
 main | scripts/make_logo.py:97
+
+### scripts/make_msix_assets.py
+
+scaled | scripts/make_msix_assets.py:29
+main | scripts/make_msix_assets.py:34
 
 ### scripts/readme_shots.py
 
@@ -4904,8 +5079,9 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 |---|---|
 | `crates/snipdeck-app/src/binding.rs` (inline) | 6 |
 | `crates/snipdeck-app/src/capture.rs` (inline) | 6 |
-| `crates/snipdeck-app/src/cli.rs` (inline) | 5 |
-| `crates/snipdeck-app/src/controller.rs` (inline) | 96 |
+| `crates/snipdeck-app/src/cli.rs` (inline) | 6 |
+| `crates/snipdeck-app/src/commands.rs` (inline) | 9 |
+| `crates/snipdeck-app/src/controller.rs` (inline) | 106 |
 | `crates/snipdeck-app/src/controller/tests/dock.rs` | 26 |
 | `crates/snipdeck-app/src/controller/tests/onboarding.rs` | 7 |
 | `crates/snipdeck-app/src/crash.rs` (inline) | 10 |
@@ -4914,15 +5090,18 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/doctor.rs` (inline) | 11 |
 | `crates/snipdeck-app/src/drafts.rs` (inline) | 3 |
 | `crates/snipdeck-app/src/fill.rs` (inline) | 6 |
-| `crates/snipdeck-app/src/frame.rs` (inline) | 28 |
+| `crates/snipdeck-app/src/frame.rs` (inline) | 32 |
+| `crates/snipdeck-app/src/headless.rs` (inline) | 4 |
 | `crates/snipdeck-app/src/help_binding.rs` (inline) | 2 |
 | `crates/snipdeck-app/src/host.rs` (inline) | 9 |
 | `crates/snipdeck-app/src/item_editor.rs` (inline) | 12 |
 | `crates/snipdeck-app/src/key_provider.rs` (inline) | 1 |
 | `crates/snipdeck-app/src/licence_store.rs` (inline) | 3 |
+| `crates/snipdeck-app/src/list_text.rs` (inline) | 3 |
 | `crates/snipdeck-app/src/main_binding.rs` (inline) | 4 |
 | `crates/snipdeck-app/src/main_window.rs` (inline) | 19 |
 | `crates/snipdeck-app/src/maintenance.rs` (inline) | 14 |
+| `crates/snipdeck-app/src/native_window.rs` (inline) | 2 |
 | `crates/snipdeck-app/src/palette.rs` (inline) | 4 |
 | `crates/snipdeck-app/src/panel.rs` (inline) | 13 |
 | `crates/snipdeck-app/src/paste_next.rs` (inline) | 5 |
@@ -4930,10 +5109,10 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/picker.rs` (inline) | 7 |
 | `crates/snipdeck-app/src/placement.rs` (inline) | 13 |
 | `crates/snipdeck-app/src/platform.rs` (inline) | 1 |
-| `crates/snipdeck-app/src/settings.rs` (inline) | 29 |
+| `crates/snipdeck-app/src/settings.rs` (inline) | 31 |
 | `crates/snipdeck-app/src/settings_binding.rs` (inline) | 12 |
 | `crates/snipdeck-app/src/settings_store.rs` (inline) | 14 |
-| `crates/snipdeck-app/src/starter.rs` (inline) | 4 |
+| `crates/snipdeck-app/src/starter.rs` (inline) | 5 |
 | `crates/snipdeck-app/src/toast.rs` (inline) | 7 |
 | `crates/snipdeck-app/src/tour.rs` (inline) | 1 |
 | `crates/snipdeck-app/src/trace.rs` (inline) | 2 |
@@ -4945,12 +5124,12 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/editor_controller.rs` | 35 |
 | `crates/snipdeck-app/tests/editor_window.rs` | 17 |
 | `crates/snipdeck-app/tests/fill_window.rs` | 9 |
-| `crates/snipdeck-app/tests/main_controller.rs` | 40 |
-| `crates/snipdeck-app/tests/main_window.rs` | 33 |
-| `crates/snipdeck-app/tests/panel_window.rs` | 46 |
+| `crates/snipdeck-app/tests/main_controller.rs` | 49 |
+| `crates/snipdeck-app/tests/main_window.rs` | 41 |
+| `crates/snipdeck-app/tests/panel_window.rs` | 47 |
 | `crates/snipdeck-app/tests/picker_window.rs` | 15 |
 | `crates/snipdeck-app/tests/screenshot.rs` | 2 |
-| `crates/snipdeck-app/tests/settings_window.rs` | 22 |
+| `crates/snipdeck-app/tests/settings_window.rs` | 27 |
 | `crates/snipdeck-app/tests/support/mod.rs` | 0 |
 | `crates/snipdeck-core/src/board.rs` (inline) | 1 |
 | `crates/snipdeck-core/src/content.rs` (inline) | 5 |
@@ -4979,8 +5158,8 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-platform/src/pipeline.rs` (inline) | 12 |
 | `crates/snipdeck-platform/src/route.rs` (inline) | 6 |
 | `crates/snipdeck-platform/src/system_look.rs` (inline) | 3 |
-| `crates/snipdeck-platform/src/testing.rs` (inline) | 6 |
-| `crates/snipdeck-platform/src/tray.rs` (inline) | 13 |
+| `crates/snipdeck-platform/src/testing.rs` (inline) | 7 |
+| `crates/snipdeck-platform/src/tray.rs` (inline) | 14 |
 | `crates/snipdeck-platform/src/win_formats.rs` (inline) | 27 |
 | `crates/snipdeck-platform/src/win_logic.rs` (inline) | 20 |
 | `crates/snipdeck-platform/src/windows/clipboard.rs` (inline) | 7 |

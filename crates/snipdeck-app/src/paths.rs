@@ -9,6 +9,17 @@ pub const SETTINGS_FILE: &str = "settings.json";
 /// Where a settings file that could not be read as it stands is set aside.
 pub const BAD_FILE: &str = "settings.json.bad";
 
+/// The user's Documents folder, where exports go (not checked to exist).
+#[must_use]
+pub fn documents_folder() -> Option<PathBuf> {
+    let home = if cfg!(windows) {
+        std::env::var_os("USERPROFILE")
+    } else {
+        std::env::var_os("HOME")
+    }?;
+    Some(PathBuf::from(home).join("Documents"))
+}
+
 /// The data folder: `%LOCALAPPDATA%\Snipdeck` on Windows (the database must not roam),
 /// `$XDG_DATA_HOME/snipdeck` or `~/.local/share/snipdeck` elsewhere. `env` reads an
 /// environment variable; `windows` says which rule applies.

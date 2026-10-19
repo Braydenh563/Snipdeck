@@ -175,8 +175,8 @@ fn list_editor() -> (ListEditor, Log) {
 fn settings() -> (SettingsPage, Log) {
     let ui = SettingsPage::new().expect("settings");
     fixture::settings(&ui);
-    // Tall enough that the whole page is on screen: the testing backend only lists what is visible.
-    ui.window().set_size(slint::LogicalSize::new(640.0, 2000.0));
+    // Tall enough that the whole page (with the plan table in Licence) is on screen: the testing backend only lists what is visible.
+    ui.window().set_size(slint::LogicalSize::new(640.0, 4000.0));
     ui.show().expect("show");
     settle();
     let log: Log = Rc::default();
@@ -521,15 +521,11 @@ ui_tests! {
         assert!(!ui.get_dirty());
     }
 
-    fn the_free_plan_says_encryption_is_pro_and_a_kind_with_no_text_switches_sensitive_off() {
+    fn the_sensitive_switch_asks_nothing_of_free_and_a_kind_with_no_text_switches_it_off() {
         let (ui, _log) = item_editor();
         let toggle = find(&ui, "Sensitive item", AccessibleRole::Switch);
-        let paid = toggle.accessible_description().expect("description").to_string();
-        assert!(!paid.contains("Pro"), "{paid}");
-        ui.set_encryption_available(false);
-        settle();
-        let free = toggle.accessible_description().expect("description").to_string();
-        assert!(free.starts_with(&paid) && free.ends_with("Encrypting it on disk is a Pro feature."), "{free}");
+        let said = toggle.accessible_description().expect("description").to_string();
+        assert!(!said.contains("Supporter"), "encryption is free: {said}");
         // Choosing Image with the switch on turns it off.
         ui.set_is_new(true);
         ui.set_sensitive(true);
@@ -1319,5 +1315,18 @@ ui_tests! {
         assert_eq!(tour.len(), 1);
         tour[0].invoke_accessible_default_action();
         assert_eq!(*log.borrow(), ["tour"]);
+    }
+
+    fn the_shortcuts_tab_says_where_to_change_the_global_keys_to_a_screen_reader() {
+        let ui = HelpWindow::new().expect("help");
+        fixture::help(&ui);
+        ui.set_tab(2);
+        ui.window().set_size(slint::LogicalSize::new(600.0, 900.0));
+        ui.show().expect("show");
+        settle();
+        let note: Vec<_> = ElementHandle::find_by_accessible_label(&ui, "Change these in Settings.")
+            .filter(|e| e.accessible_role() == Some(AccessibleRole::Text))
+            .collect();
+        assert_eq!(note.len(), 1, "the line under the global keys is exposed as text");
     }
 }
