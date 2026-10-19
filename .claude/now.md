@@ -7,6 +7,7 @@ Goal: ship v1 by the morning. Branch `claude/compassionate-pascal-pod8ux`, PR #5
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-10-19 C1 Recent in the main window: it is in v1 and now lists the entries (read-only: text preview, app and relative time from the injected clock, Copy, Save to…, Remove, Clear; the sidebar count is real). Reason: SPEC 5.6 promises one-click promote, SPEC 5.1 puts Recent in the sidebar and V1-PLAN C1 says "sidebar entry"; a sidebar entry that only points at the Panel's clock tab reads as broken, and the data and actions already exist, so the list is a view over them.
 - 2026-10-19 17:40 owner: "dont budget, go to 82% usage then wrap up by 85". No budget mode; keep max tier (3 agents + Haiku, Opus allowed); at 82% weekly start the wrap-up (Morning summary, push, retro), finished by 85%.
 - 2026-10-19: Encryption of sensitive items on disk is free for everyone (it is security, not convenience); only the master password stays Supporter. Owner: "go with your recommendation".
 - Local clippy runs on `cargo +1.99.1` with CARGO_TARGET_DIR=/tmp/target-199 (stable here is 1.97 and misses CI lints such as assert_is_empty); reason: four CI rounds lost to lints only 1.99 reports.

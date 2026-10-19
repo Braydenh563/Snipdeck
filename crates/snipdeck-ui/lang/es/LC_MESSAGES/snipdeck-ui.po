@@ -223,6 +223,9 @@ msgstr ""
 msgid "Clipboard clear time"
 msgstr ""
 
+msgid "Clipboard history"
+msgstr ""
+
 msgid "Close"
 msgstr "Cerrar"
 
@@ -779,6 +782,9 @@ msgstr "Mover a lista…"
 msgid "Navigation"
 msgstr "Navegación"
 
+msgid "Never keep copies from these programs"
+msgstr ""
+
 msgid "Never paste into"
 msgstr "No pegar nunca en"
 
@@ -878,6 +884,9 @@ msgstr "Ningún fragmento fijado coincide con “{}”."
 msgid "Nothing pinned yet"
 msgstr "Aún no hay nada fijado"
 
+msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
+msgstr ""
+
 msgid "OK"
 msgstr "Correcto"
 
@@ -889,6 +898,9 @@ msgstr ""
 
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "«Desactivado» mantiene abierto un panel acoplado. Si no, se pliega en una franja fina, y el atajo del panel también lo abre."
+
+msgid "Off unless you turn it on. It keeps the text you copy, on this computer only, for the last 200 copies or 7 days, whichever is fewer. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
+msgstr ""
 
 msgid "One hotkey turns copied text into an item."
 msgstr ""
@@ -927,9 +939,6 @@ msgid "Open the Microsoft Store page"
 msgstr "Abrir la página de Microsoft Store"
 
 msgid "Open the Picker at your cursor"
-msgstr ""
-
-msgid "Open the clock tab at the left of the Panel's tabs to see what you copied and save it to a list."
 msgstr ""
 
 msgid "Open the picker"
@@ -1020,6 +1029,9 @@ msgstr "Pega el siguiente fragmento de la lista, en orden."
 msgid "Path to the file"
 msgstr "Ruta del archivo"
 
+msgid "Pause history"
+msgstr ""
+
 msgid "Pause hotkeys"
 msgstr "Pausar atajos"
 
@@ -1080,6 +1092,9 @@ msgstr "Problema"
 msgid "Program to add"
 msgstr "Programa para añadir"
 
+msgid "Program to leave out of Recent"
+msgstr ""
+
 msgid "Prompt for a value or a choice each time you paste."
 msgstr ""
 
@@ -1099,9 +1114,6 @@ msgid "Recent"
 msgstr "Recientes"
 
 msgid "Recent copies"
-msgstr ""
-
-msgid "Recent copies are in the Panel"
 msgstr ""
 
 msgid "Recent entry actions"
@@ -1407,6 +1419,9 @@ msgstr ""
 
 msgid "Text"
 msgstr "Texto"
+
+msgid "Text you copy appears here, newest first, until you clear it or it is older than 7 days."
+msgstr ""
 
 msgid "Text you copy shows up here for a week. Save the useful ones to a list."
 msgstr ""

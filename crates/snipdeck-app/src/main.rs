@@ -226,6 +226,20 @@ fn run(args: &Args) -> Result<(), String> {
     // (off Windows, or it failed to start) or while no icon is there, closing the Panel quits.
     let tray = Rc::new(RefCell::new(tray));
     show_tray(&mut tray.borrow_mut(), &window);
+    // "Pause history" is in the tray menu while clipboard history is on, checked while paused.
+    // `try_borrow_mut`: the sink can run while the tray is borrowed by an effect; the next
+    // change tells it again.
+    controller.borrow_mut().set_tray_history_sink({
+        let tray = Rc::clone(&tray);
+        move |available, paused| {
+            if let Ok(mut tray) = tray.try_borrow_mut()
+                && let Some(tray) = tray.as_mut()
+                && let Err(e) = tray.set_history(available, paused)
+            {
+                eprintln!("snipdeck: cannot update the tray's history entry: {e}");
+            }
+        }
+    });
 
     let hotkeys = Rc::new(RefCell::new(hotkeys));
     // Resuming after "Pause hotkeys" registers the chords in force then, not the launch ones.

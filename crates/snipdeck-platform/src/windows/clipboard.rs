@@ -879,11 +879,11 @@ fn observe_change(hwnd: HWND) -> ClipboardChange {
     // SAFETY: no preconditions.
     if unsafe { IsClipboardFormatAvailable(u32::from(CF_UNICODETEXT.0)) }.is_ok() {
         // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
-        if let Ok(handle) = unsafe { GetClipboardData(u32::from(CF_UNICODETEXT.0)) } {
-            if let Some(mut bytes) = read_global(HGLOBAL(handle.0), READ_TEXT_LIMIT) {
-                change.text = Some(win_formats::from_unicode_text(&bytes));
-                wipe(&mut bytes);
-            }
+        if let Ok(handle) = unsafe { GetClipboardData(u32::from(CF_UNICODETEXT.0)) }
+            && let Some(mut bytes) = read_global(HGLOBAL(handle.0), READ_TEXT_LIMIT)
+        {
+            change.text = Some(win_formats::from_unicode_text(&bytes));
+            wipe(&mut bytes);
         }
     }
     change

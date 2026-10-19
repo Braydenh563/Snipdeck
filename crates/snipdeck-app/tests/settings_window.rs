@@ -223,7 +223,7 @@ impl Rig {
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
-        let cases: [Case; 15] = [
+        let cases: [Case; 16] = [
             (
                 "theme",
                 |r| r.ui.invoke_theme_chosen(2),
@@ -273,6 +273,11 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
                 "a program added",
                 |r| r.ui.invoke_no_paste_app_added("KeePass.EXE".into()),
                 |s| s.no_paste_apps == ["keepass.exe"],
+            ),
+            (
+                "an app left out of Recent",
+                |r| r.ui.invoke_no_history_app_added(" KeePass.EXE ".into()),
+                |s| s.no_history_apps == ["keepass.exe"],
             ),
             (
                 "a shortcut recorded",
@@ -345,6 +350,34 @@ fn removing_a_program_is_written_too_and_a_repeat_is_refused_in_words() {
         );
         r.advance(500);
         assert_eq!(load_settings(r.dir.path()).no_paste_apps, ["putty.exe"]);
+    });
+}
+
+#[test]
+fn the_apps_left_out_of_recent_are_a_list_with_add_remove_and_words_for_a_refusal() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_no_history_app_added("keepass.exe".into());
+        r.ui.invoke_no_history_app_added("Putty.exe".into());
+        assert_eq!(r.ui.get_no_history_apps().row_count(), 2);
+        r.ui.invoke_no_history_app_added("KEEPASS.exe".into());
+        assert_eq!(
+            r.ui.get_no_history_error(),
+            "keepass.exe is already in the list."
+        );
+        assert_eq!(r.ui.get_no_history_apps().row_count(), 2, "not added twice");
+        // The other list is untouched, and an empty field says nothing.
+        assert_eq!(r.ui.get_no_paste_apps().row_count(), 0);
+        r.ui.invoke_no_history_app_added("C:\\x\\y.exe".into());
+        assert_eq!(
+            r.ui.get_no_history_error(),
+            "Use just the program's file name, like notepad.exe."
+        );
+        r.ui.invoke_no_history_app_removed(0);
+        assert_eq!(r.ui.get_no_history_error(), "");
+        r.ui.invoke_no_history_app_removed(9);
+        r.advance(500);
+        assert_eq!(load_settings(r.dir.path()).no_history_apps, ["putty.exe"]);
     });
 }
 

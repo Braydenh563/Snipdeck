@@ -314,6 +314,13 @@ impl Tray for FakeTray {
         Ok(())
     }
 
+    fn set_history(&mut self, available: bool, paused: bool) -> Result<(), ServiceError> {
+        let mut state = lock(&self.state);
+        state.model.set_history(available, paused);
+        state.log.push(format!("history:{available}:{paused}"));
+        Ok(())
+    }
+
     fn set_labels(&mut self, labels: TrayLabels) -> Result<(), ServiceError> {
         let mut state = lock(&self.state);
         state.log.push(format!("labels:{}", labels.open_panel));

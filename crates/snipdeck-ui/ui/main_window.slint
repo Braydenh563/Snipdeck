@@ -35,6 +35,7 @@ import { Dialog, DialogVariant } from "components/dialog.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
 import { CommandPalette, PaletteRow } from "components/command-palette.slint";
 import { CommandTexts } from "command_texts.slint";
+import { RecentRow } from "panel.slint";
 
 export { ChoiceEntry, PaletteRow }
 
@@ -149,6 +150,9 @@ export component MainWindow inherits Window {
     in property <int> count-recent: -1;
     // Clipboard history is on: the Recent entries are listed in the Panel's clock tab, so this section points there.
     in property <bool> recent-on: false;
+    // The Recent section's entries (newest first) and the lists "Save to…" offers. Empty in every other section.
+    in property <[RecentRow]> recent-rows;
+    in property <[ChoiceEntry]> recent-targets;
     in property <int> count-trash: -1;
     in property <[MainRow]> rows;
     in property <int> selected-count: 0;
@@ -182,6 +186,11 @@ export component MainWindow inherits Window {
     callback select-all-requested();
     callback clear-selection-requested();
     callback item-action(ItemAction, int);
+    // The Recent section: copy an entry, remove it, save it to the n-th of `recent-targets`, or clear them all.
+    callback recent-copied(int);
+    callback recent-deleted(int);
+    callback recent-saved(int, int);
+    callback recent-cleared();
     callback move-chosen(int);
     callback tag-toggled(int, bool);
     callback reveal-requested(int, bool);
@@ -252,7 +261,7 @@ export component MainWindow inherits Window {
     out property <bool> rail: root.narrow;
     out property <int> columns: root.cols;
     out property <bool> confirm-open: root.confirm-shown;
-    out property <bool> menu-open: item-menu-open || nav-menu-open || chooser-open || help-menu-open;
+    out property <bool> menu-open: item-menu-open || nav-menu-open || chooser-open || help-menu-open || recent-menu-open || recent-save-open;
 
     // ---- Internals ----------------------------------------------------------------------------
     property <int> used-index: -1;
@@ -282,6 +291,14 @@ export component MainWindow inherits Window {
     property <length> nav-menu-y: 0px;
     property <int> nav-menu-flat: 0;
     property <bool> chooser-open: false;
+    // The Recent entry menu and its "Save to…" chooser: the row they act on, and where they open.
+    property <bool> recent-menu-open: false;
+    property <bool> recent-save-open: false;
+    property <int> recent-menu-row: 0;
+    property <length> recent-menu-x: 0px;
+    property <length> recent-menu-y: 0px;
+    // The Recent section lists entries (instead of the empty state).
+    property <bool> recent-shown: root.section == MainSection.recent && root.recent-on && root.recent-rows.length > 0;
     property <bool> chooser-tags: false;
     property <length> chooser-x: 0px;
     property <length> chooser-y: 0px;
@@ -290,7 +307,7 @@ export component MainWindow inherits Window {
     property <int> confirm-kind: 0;
     property <int> confirm-target: 0;
     property <bool> confirm-shown: false;
-    property <bool> overlay-open: root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.palette-open;
+    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.palette-open;
 
     init => {
         Palette.dark = root.dark;
@@ -480,7 +497,34 @@ export component MainWindow inherits Window {
         root.help-menu-open = true;
     }
 
+    pure function ago(minutes: int) -> string {
+        return minutes < 1 ? @tr("Just now")
+            : minutes < 60 ? @tr("{} min ago", minutes)
+            : minutes < 1440 ? @tr("{} h ago", floor(minutes / 60))
+            : @tr("{} d ago", floor(minutes / 1440));
+    }
+
+    function open-recent-menu(row: int, x: length, y: length) {
+        root.nav-origin = false;
+        root.recent-menu-row = row;
+        root.recent-menu-x = x;
+        root.recent-menu-y = y;
+        root.recent-save-open = false;
+        root.recent-menu-open = true;
+    }
+
+    function open-recent-save(row: int, x: length, y: length) {
+        root.nav-origin = false;
+        root.recent-menu-row = row;
+        root.recent-menu-x = x;
+        root.recent-menu-y = y;
+        root.recent-menu-open = false;
+        root.recent-save-open = true;
+    }
+
     function close-menus() {
+        root.recent-menu-open = false;
+        root.recent-save-open = false;
         root.item-menu-open = false;
         root.nav-menu-open = false;
         root.help-menu-open = false;
@@ -1340,7 +1384,50 @@ export component MainWindow inherits Window {
                         }
                     }
 
-                    if root.rows.length == 0 && !root.loading: EmptyState {
+                    // ---- The Recent inbox: a read-only list of what was copied, with Copy, Save to… and Remove ----
+                    if root.recent-shown: VerticalLayout {
+                        x: root.pad;
+                        width: parent.width - 2 * root.pad;
+                        height: parent.height;
+                        spacing: Space.s2;
+                        HorizontalLayout {
+                            alignment: end;
+                            Button {
+                                variant: ButtonVariant.ghost;
+                                icon: Icons.trash;
+                                text: @tr("Clear recent history");
+                                clicked => { root.recent-cleared(); }
+                            }
+                        }
+                        ListView {
+                            vertical-stretch: 1;
+                            accessible-label: @tr("Recent copies");
+                            for entry[i] in root.recent-rows: Rectangle {
+                                height: rcard.preferred-height + root.row-gap;
+                                rcard := ItemCard {
+                                    y: 0px;
+                                    width: parent.width;
+                                    height: self.preferred-height;
+                                    variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
+                                    kind: ItemKind.text;
+                                    preview: entry.preview;
+                                    list-name: entry.app == "" ? root.ago(entry.age-minutes) : entry.app + " · " + root.ago(entry.age-minutes);
+                                    list-color: transparent;
+                                    use-label: @tr("Copy");
+                                    use => { root.recent-copied(i); }
+                                    copy => { root.recent-copied(i); }
+                                    double-clicked => {
+                                        root.open-recent-save(i, self.absolute-position.x + Space.s6, self.absolute-position.y + self.height);
+                                    }
+                                    context-menu-requested(x, y) => {
+                                        root.open-recent-menu(i, self.absolute-position.x + x, self.absolute-position.y + y);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if root.rows.length == 0 && !root.loading && !root.recent-shown: EmptyState {
                         x: root.pad;
                         width: parent.width - 2 * root.pad;
                         height: parent.height;
@@ -1350,14 +1437,14 @@ export component MainWindow inherits Window {
                         heading: root.searching ? @tr("No matches")
                             : root.section == MainSection.all ? @tr("Your deck is empty")
                             : root.section == MainSection.pinned ? @tr("Nothing pinned")
-                            : root.section == MainSection.recent ? (root.recent-on ? @tr("Recent copies are in the Panel") : @tr("No recent items"))
+                            : root.section == MainSection.recent ? (root.recent-on ? @tr("Nothing copied yet") : @tr("No recent items"))
                             : root.in-trash ? @tr("The Trash is empty")
                             : root.section == MainSection.list ? @tr("This list is empty")
                             : @tr("No items with this tag");
                         body: root.searching ? @tr("Nothing matches “{}”.", root.query)
                             : root.section == MainSection.all ? @tr("Save your first snippet, or copy something and save it from the clipboard.")
                             : root.section == MainSection.pinned ? @tr("Pin the snippets you use most to keep them one click away.")
-                            : root.section == MainSection.recent ? (root.recent-on ? @tr("Open the clock tab at the left of the Panel's tabs to see what you copied and save it to a list.") : @tr("Turn on clipboard history in Settings to collect what you copy."))
+                            : root.section == MainSection.recent ? (root.recent-on ? @tr("Text you copy appears here, newest first, until you clear it or it is older than 7 days.") : @tr("Turn on clipboard history in Settings to collect what you copy."))
                             : root.in-trash ? @tr("Deleted items stay here for {} days before they are removed.", root.trash-days)
                             : root.section == MainSection.list ? @tr("Add a snippet, or move items here from another list.")
                             : @tr("Tag a snippet to see it here.");
@@ -1579,12 +1666,54 @@ export component MainWindow inherits Window {
         dismissed => { root.board-menu-dismissed(); }
     }
 
-    if root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.chooser-open: TouchArea {
+    if root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.chooser-open || root.recent-menu-open || root.recent-save-open: TouchArea {
         pointer-event(event) => {
             if (event.kind == PointerEventKind.down) {
                 root.close-menus();
             }
         }
+    }
+    if root.recent-menu-open: Menu {
+        x: max(0px, min(root.recent-menu-x, root.width - self.width - Space.s2));
+        y: max(0px, min(root.recent-menu-y, root.height - self.height - Space.s2));
+        entries: [
+            { text: @tr("Save to…"), icon: Icons.folder },
+            { text: @tr("Copy"), icon: Icons.copy },
+            { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
+        ];
+        label: @tr("Recent entry actions");
+        init => { self.focus-menu(); }
+        activated(i) => {
+            root.recent-menu-open = false;
+            if (i == 0) {
+                root.recent-save-open = true;
+            } else if (i == 1) {
+                root.recent-copied(root.recent-menu-row);
+                root.restore-focus();
+            } else {
+                root.recent-deleted(root.recent-menu-row);
+                root.restore-focus();
+            }
+        }
+        dismissed => { root.close-menus(); }
+    }
+    if root.recent-save-open: Chooser {
+        x: max(0px, min(root.recent-menu-x, root.width - self.width - Space.s2));
+        y: max(0px, min(root.recent-menu-y, root.height - self.height - Space.s2));
+        width: min(240px, root.width - 2 * Space.s2);
+        entries: root.recent-targets;
+        label: @tr("Save to…");
+        empty-text: @tr("No lists yet");
+        init => {
+            self.current = 0;
+            self.focus-chooser();
+        }
+        chosen(i) => {
+            root.recent-save-open = false;
+            root.recent-saved(root.recent-menu-row, i);
+            root.restore-focus();
+        }
+        dismissed => { root.close-menus(); }
     }
     if root.item-menu-open: Menu {
         x: max(0px, min(root.item-menu-x, root.width - self.width - Space.s2));

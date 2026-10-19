@@ -16,9 +16,13 @@ use crate::{
     capture::{self, Captured},
     host::ClipboardText,
     recent::{
-        self, ClipboardObservation, RecentCapture, RecentSettings, RecentView, SaveTarget, row_view,
+        self, ClipboardObservation, RecentCapture, RecentRowView, RecentSettings, RecentView,
+        SaveTarget, row_view,
     },
 };
+
+/// What the tray menu is told: (clipboard history is on, collecting is paused).
+pub(super) type HistorySink = Box<dyn Fn(bool, bool)>;
 
 impl<S, C, K, T> Controller<S, C, K, T>
 where
@@ -56,8 +60,18 @@ where
         self.sync_recent_gate();
     }
 
+    /// Where the tray menu hears whether "Pause history" is offered and checked. Told at once,
+    /// then after every change to either.
+    pub fn set_tray_history_sink(&mut self, sink: impl Fn(bool, bool) + 'static) {
+        self.tray_history = Some(Box::new(sink));
+        self.sync_recent_gate();
+    }
+
     /// Opens the gate only for an opted-in, unpaused inbox.
     pub(super) fn sync_recent_gate(&self) {
+        if let Some(sink) = &self.tray_history {
+            sink(self.settings.recent_history, self.session.history_paused);
+        }
         if let Some(gate) = &self.recent_gate {
             gate.set(self.recent_settings().collecting());
         }
@@ -123,6 +137,22 @@ where
             return None;
         }
         let now = self.clock.now();
+        Some(RecentView {
+            open: self.session.recent_open,
+            paused: self.session.history_paused,
+            rows: self
+                .recent_entries()
+                .iter()
+                .filter(|e| matches_query(&e.text, self.model.query()))
+                .map(|e| row_view(e, now))
+                .collect(),
+            targets: self.save_targets(),
+        })
+    }
+
+    /// The lists "Save to…" offers: every list, labelled with its board's name when there are
+    /// several boards.
+    pub(super) fn save_targets(&self) -> Vec<SaveTarget> {
         let boards = self.store.boards().unwrap_or_default();
         let several = boards.len() > 1;
         let mut targets = Vec::new();
@@ -140,17 +170,52 @@ where
                 });
             }
         }
-        Some(RecentView {
-            open: self.session.recent_open,
-            paused: self.session.history_paused,
-            rows: self
-                .recent_entries()
-                .iter()
-                .filter(|e| matches_query(&e.text, self.model.query()))
-                .map(|e| row_view(e, now))
-                .collect(),
-            targets,
-        })
+        targets
+    }
+
+    /// The Main window's Recent section: the entries (newest first) that the window's search
+    /// box matches, as of now. Empty while the inbox is off.
+    pub(super) fn main_recent_rows(&self) -> Vec<RecentRowView> {
+        let now = self.clock.now();
+        self.main_recent_entries()
+            .iter()
+            .map(|e| row_view(e, now))
+            .collect()
+    }
+
+    fn main_recent_entries(&self) -> Vec<RecentEntry> {
+        let query = self.main.query();
+        self.recent_entries()
+            .into_iter()
+            .filter(|e| matches_query(&e.text, query))
+            .collect()
+    }
+
+    fn main_recent_id_at(&self, index: usize) -> Option<i64> {
+        self.main_recent_entries().get(index).map(|e| e.id)
+    }
+
+    /// [`recent_copy`](Self::recent_copy) for row `index` of the Main window's Recent list.
+    pub fn main_recent_copy(&mut self, index: usize) {
+        if let Some(id) = self.main_recent_id_at(index) {
+            self.recent_copy(id);
+        }
+    }
+
+    /// [`recent_delete`](Self::recent_delete) for row `index` of the Main window's Recent list.
+    pub fn main_recent_delete(&mut self, index: usize) {
+        if let Some(id) = self.main_recent_id_at(index) {
+            self.recent_delete(id);
+        }
+    }
+
+    /// "Save to…" for row `index` of the Main window's Recent list, into the `target`th of
+    /// [`super::MainScreen::recent_targets`].
+    pub fn main_recent_promote(&mut self, index: usize, target: usize) {
+        let targets = self.save_targets();
+        if let (Some(id), Some(to)) = (self.main_recent_id_at(index), targets.get(target)) {
+            self.recent_promote(id, to.id);
+        }
     }
 
     /// The clock tab was chosen (`true`) or a list tab was (`false`).

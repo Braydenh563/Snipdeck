@@ -191,3 +191,107 @@ fn the_clock_tab_cannot_open_while_history_is_off() {
     w.ctl.update_settings(|s| s.recent_history = true);
     assert!(!w.ctl.view().recent.expect("on").open);
 }
+
+#[test]
+fn the_main_window_lists_the_entries_and_counts_them() {
+    let mut w = world_with(None, on());
+    w.ctl.on_clipboard_change(&copied("alpha one"));
+    w.clock.set(at("2026-10-17T10:35:00Z"));
+    w.ctl.on_clipboard_change(&copied("beta two"));
+    w.clock.set(at("2026-10-17T10:40:00Z"));
+    // The count is real in every section; the rows only in the Recent section.
+    let screen = w.ctl.main_screen();
+    assert_eq!(screen.counts.recent, 2);
+    assert_eq!(screen.recent_rows.len(), 0);
+    w.ctl.main_open(crate::main_window::Section::Recent);
+    let screen = w.ctl.main_screen();
+    let rows: Vec<_> = screen
+        .recent_rows
+        .iter()
+        .map(|r| (r.preview.as_str(), r.app.as_str(), r.age_minutes))
+        .collect();
+    assert_eq!(
+        rows,
+        [("beta two", "Notepad", 5), ("alpha one", "Notepad", 10)]
+    );
+    let targets: Vec<_> = screen
+        .recent_targets
+        .iter()
+        .map(|t| t.label.as_str())
+        .collect();
+    assert_eq!(targets, ["Replies", "Links"]);
+}
+
+#[test]
+fn the_main_window_search_narrows_recent_and_rows_act_on_what_is_shown() {
+    let mut w = world_with(None, on());
+    w.ctl.on_clipboard_change(&copied("alpha one"));
+    w.ctl.on_clipboard_change(&copied("beta two"));
+    w.ctl.main_open(crate::main_window::Section::Recent);
+    w.ctl.main_set_query("beta");
+    let screen = w.ctl.main_screen();
+    assert_eq!(screen.recent_rows.len(), 1);
+    // The count stays the whole inbox.
+    assert_eq!(screen.counts.recent, 2);
+    w.ctl.main_recent_promote(0, 1);
+    let items = w.ctl.store().items(w.links_list).expect("items");
+    assert_eq!(items[0].preview, "beta two");
+    w.ctl.main_recent_copy(0);
+    assert_eq!(w.ctl.services().clipboard.written.len(), 1);
+    w.ctl.main_recent_delete(0);
+    assert_eq!(w.ctl.recent_entries().len(), 1);
+    // Out-of-range rows do nothing.
+    w.ctl.main_recent_copy(5);
+    w.ctl.main_recent_delete(5);
+    w.ctl.main_recent_promote(5, 0);
+    w.ctl.main_recent_promote(0, 99);
+    assert_eq!(w.ctl.recent_entries().len(), 1);
+}
+
+#[test]
+fn the_main_window_clear_empties_recent_and_off_shows_nothing() {
+    let mut w = world_with(None, on());
+    w.ctl.on_clipboard_change(&copied("one"));
+    w.ctl.main_open(crate::main_window::Section::Recent);
+    assert_eq!(w.ctl.recent_clear(), 1);
+    let screen = w.ctl.main_screen();
+    assert_eq!(screen.counts.recent, 0);
+    assert!(screen.recent_rows.is_empty() && screen.recent_on);
+    w.ctl.on_clipboard_change(&copied("two"));
+    w.ctl.update_settings(|s| s.recent_history = false);
+    let screen = w.ctl.main_screen();
+    assert_eq!((screen.counts.recent, screen.recent_rows.len()), (0, 0));
+    assert!(!screen.recent_on);
+}
+
+#[test]
+fn the_tray_menu_is_told_when_history_is_on_and_when_it_is_paused() {
+    use std::{cell::RefCell, rc::Rc};
+    let seen: Rc<RefCell<Vec<(bool, bool)>>> = Rc::default();
+    let mut w = world();
+    w.ctl.set_tray_history_sink({
+        let seen = Rc::clone(&seen);
+        move |available, paused| seen.borrow_mut().push((available, paused))
+    });
+    // Told at once: off by default, so no entry.
+    assert_eq!(seen.borrow().last(), Some(&(false, false)));
+    w.ctl.update_settings(|s| s.recent_history = true);
+    assert_eq!(seen.borrow().last(), Some(&(true, false)));
+    // The tray's own toggle pauses collecting and the sink hears the new state.
+    assert_eq!(
+        w.ctl
+            .on_tray(snipdeck_platform::tray::TrayEvent::HistoryPaused(true))
+            .len(),
+        0
+    );
+    assert!(w.ctl.recent_paused());
+    assert_eq!(seen.borrow().last(), Some(&(true, true)));
+    w.ctl.on_clipboard_change(&copied("while paused"));
+    assert_eq!(w.ctl.recent_entries().len(), 0);
+    w.ctl
+        .on_tray(snipdeck_platform::tray::TrayEvent::HistoryPaused(false));
+    assert_eq!(seen.borrow().last(), Some(&(true, false)));
+    // Turning the inbox off takes the entry away.
+    w.ctl.update_settings(|s| s.recent_history = false);
+    assert_eq!(seen.borrow().last(), Some(&(false, false)));
+}

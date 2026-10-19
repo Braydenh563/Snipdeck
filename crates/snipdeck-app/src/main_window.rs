@@ -64,7 +64,8 @@ pub enum Section {
     All,
     /// The pinned items.
     Pinned,
-    /// The Recent inbox (opt-in clipboard history, not built yet: always empty).
+    /// The Recent inbox (opt-in clipboard history). Its entries are not items: the controller lists
+    /// them (see `recent_ctl.rs`), so the model's rows stay empty here.
     Recent,
     /// Everything deleted in the last [`TRASH_DAYS`] days.
     Trash,
@@ -148,7 +149,7 @@ pub struct Counts {
     pub all: usize,
     /// Pinned items.
     pub pinned: usize,
-    /// The Recent inbox.
+    /// The Recent inbox (the controller fills this from the store; the model only holds items).
     pub recent: usize,
     /// Trash entries.
     pub trash: usize,
@@ -899,7 +900,7 @@ mod tests {
     }
 
     #[test]
-    fn recent_is_empty_until_the_inbox_exists() {
+    fn recent_has_no_item_rows() {
         let (_store, mut model) = loaded();
         model.open(Section::Recent);
         assert_eq!(model.rows().len(), 0);

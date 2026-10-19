@@ -73,6 +73,7 @@ enum Command {
     Hide(Reply),
     Tooltip(String, Reply),
     Paused(bool, Reply),
+    History(bool, bool, Reply),
     Labels(TrayLabels, Reply),
 }
 
@@ -139,6 +140,10 @@ impl Tray for WinTray {
 
     fn set_hotkeys_paused(&mut self, paused: bool) -> Result<(), Error> {
         self.call(|reply| Command::Paused(paused, reply))
+    }
+
+    fn set_history(&mut self, available: bool, paused: bool) -> Result<(), Error> {
+        self.call(|reply| Command::History(available, paused, reply))
     }
 
     fn set_labels(&mut self, labels: TrayLabels) -> Result<(), Error> {
@@ -304,6 +309,11 @@ impl TrayHandler {
             Command::Paused(paused, reply) => {
                 self.model.borrow_mut().set_hotkeys_paused(paused);
                 let _ = reply.send(self.refresh_tip(hwnd));
+            }
+            Command::History(available, paused, reply) => {
+                // The menu is built from the model on every right click: nothing to redraw.
+                self.model.borrow_mut().set_history(available, paused);
+                let _ = reply.send(Ok(()));
             }
             Command::Labels(labels, reply) => {
                 // The menu is built from the model on every right click: nothing to redraw.

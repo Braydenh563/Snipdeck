@@ -546,6 +546,9 @@ pub struct Controller<S, C, K, T> {
     lock: lock_ctl::LockState,
     /// Switches the clipboard listener of the Recent inbox (see `recent_ctl.rs`).
     recent_gate: Option<snipdeck_platform::clipboard_watch::WatchGate>,
+    /// Told whether clipboard history is on and whether it is paused, for the tray menu's
+    /// "Pause history" entry (see `recent_ctl.rs`).
+    tray_history: Option<recent_ctl::HistorySink>,
 }
 
 /// Opens the folder of the crash reports in the file manager.
@@ -664,6 +667,7 @@ where
             pending: Vec::new(),
             lock: lock_ctl::LockState::new(shown_at),
             recent_gate: None,
+            tray_history: None,
         })
     }
 
@@ -950,6 +954,10 @@ where
             TrayEvent::HotkeysPaused(paused) => {
                 self.session.hotkeys_paused = paused;
                 vec![Effect::SetHotkeysPaused(paused)]
+            }
+            TrayEvent::HistoryPaused(paused) => {
+                self.set_recent_paused(paused);
+                Vec::new()
             }
             TrayEvent::Quit => vec![Effect::Quit],
             TrayEvent::IconPresent(present) => {

@@ -223,6 +223,9 @@ msgstr ""
 msgid "Clipboard clear time"
 msgstr ""
 
+msgid "Clipboard history"
+msgstr ""
+
 msgid "Close"
 msgstr "关闭"
 
@@ -778,6 +781,9 @@ msgstr "移动到列表…"
 msgid "Navigation"
 msgstr "导航"
 
+msgid "Never keep copies from these programs"
+msgstr ""
+
 msgid "Never paste into"
 msgstr "从不粘贴到"
 
@@ -877,6 +883,9 @@ msgstr "没有与“{}”匹配的置顶片段。"
 msgid "Nothing pinned yet"
 msgstr "还没有置顶内容"
 
+msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
+msgstr ""
+
 msgid "OK"
 msgstr "正常"
 
@@ -888,6 +897,9 @@ msgstr ""
 
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "选择“关闭”则已停靠的面板保持展开。否则它会收成一条细条，面板快捷键同样可以将其展开。"
+
+msgid "Off unless you turn it on. It keeps the text you copy, on this computer only, for the last 200 copies or 7 days, whichever is fewer. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
+msgstr ""
 
 msgid "One hotkey turns copied text into an item."
 msgstr ""
@@ -926,9 +938,6 @@ msgid "Open the Microsoft Store page"
 msgstr "打开 Microsoft Store 页面"
 
 msgid "Open the Picker at your cursor"
-msgstr ""
-
-msgid "Open the clock tab at the left of the Panel's tabs to see what you copied and save it to a list."
 msgstr ""
 
 msgid "Open the picker"
@@ -1018,6 +1027,9 @@ msgstr "按顺序粘贴列表中的下一个片段。"
 msgid "Path to the file"
 msgstr "文件路径"
 
+msgid "Pause history"
+msgstr ""
+
 msgid "Pause hotkeys"
 msgstr "暂停热键"
 
@@ -1078,6 +1090,9 @@ msgstr "问题"
 msgid "Program to add"
 msgstr "要添加的程序"
 
+msgid "Program to leave out of Recent"
+msgstr ""
+
 msgid "Prompt for a value or a choice each time you paste."
 msgstr ""
 
@@ -1097,9 +1112,6 @@ msgid "Recent"
 msgstr "最近"
 
 msgid "Recent copies"
-msgstr ""
-
-msgid "Recent copies are in the Panel"
 msgstr ""
 
 msgid "Recent entry actions"
@@ -1404,6 +1416,9 @@ msgstr ""
 
 msgid "Text"
 msgstr "文本"
+
+msgid "Text you copy appears here, newest first, until you clear it or it is older than 7 days."
+msgstr ""
 
 msgid "Text you copy shows up here for a week. Save the useful ones to a list."
 msgstr ""
