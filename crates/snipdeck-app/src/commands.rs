@@ -427,9 +427,11 @@ mod tests {
 
     #[test]
     fn global_hotkeys_show_the_configured_chords() {
-        let mut hotkeys = Hotkeys::default();
-        hotkeys.picker = "Ctrl+Alt+K".into();
-        hotkeys.capture = String::new();
+        let hotkeys = Hotkeys {
+            picker: "Ctrl+Alt+K".into(),
+            capture: String::new(),
+            ..Hotkeys::default()
+        };
         let found = entries(&texts(), &ctx(&hotkeys), "");
         let find = |label: &str| found.iter().find(|e| e.label == label).cloned();
         assert_eq!(

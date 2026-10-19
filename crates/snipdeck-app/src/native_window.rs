@@ -208,7 +208,9 @@ pub fn fit_to_screen(window: &slint::Window) {
 /// A window the others open over: the Main window or the Panel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Surface {
+    /// The Main window.
     Main,
+    /// The Panel.
     Panel,
 }
 
@@ -336,6 +338,7 @@ pub struct ActiveWindows<Id> {
 }
 
 impl<Id: PartialEq> ActiveWindows<Id> {
+    /// No window active.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -393,7 +396,7 @@ pub fn note_window_event(window: &slint::Window, event: &winit::event::WindowEve
     let winit::event::WindowEvent::Focused(focused) = event else {
         return;
     };
-    let Some(id) = window.with_winit_window(|w| w.id()) else {
+    let Some(id) = window.with_winit_window(slint::winit_030::winit::window::Window::id) else {
         return;
     };
     FOCUSED.with(|set| set.borrow_mut().set(id, *focused));

@@ -19,7 +19,8 @@ pub const NEW_LIST: &str = "New list";
 #[must_use]
 pub fn numbered_name<'a>(base: &str, taken: impl IntoIterator<Item = &'a str>) -> String {
     let taken: Vec<String> = taken.into_iter().map(str::to_lowercase).collect();
-    (1_u32..)
+    // One more candidate than there are names, so one of them is always free.
+    (1..=taken.len() + 1)
         .map(|n| format!("{base} {n}"))
         .find(|name| !taken.contains(&name.to_lowercase()))
         .unwrap_or_else(|| base.to_owned())

@@ -355,6 +355,10 @@ struct ActiveToast {
 }
 
 /// The Panel's brain. See the module documentation.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "independent UI states, not a hidden state machine"
+)]
 pub struct Controller<S, C, K, T> {
     store: S,
     services: Services<C, K, T>,
