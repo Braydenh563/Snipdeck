@@ -1025,6 +1025,10 @@ impl SettingsHost for NoHost {
         Ok(())
     }
 
+    fn open_url(&self, _url: &str) -> Result<(), String> {
+        Ok(())
+    }
+
     fn documents_folder(&self) -> Option<PathBuf> {
         None
     }
