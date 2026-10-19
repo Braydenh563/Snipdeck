@@ -625,6 +625,8 @@ impl HelpUi {
 
 #[cfg(test)]
 mod tests {
+    use std::fmt::Write as _;
+
     use super::*;
 
     #[test]
@@ -642,7 +644,10 @@ mod tests {
             ..crate::settings::Settings::default()
         };
         let flags = report_flags(&settings);
-        let text: String = flags.iter().map(|(n, v)| format!("{n}={v};")).collect();
+        let text = flags.iter().fold(String::new(), |mut s, (n, v)| {
+            let _ = write!(s, "{n}={v};");
+            s
+        });
         assert!(!text.contains("keepass"));
         assert!(!text.contains("de;"));
         assert!(flags.contains(&("Programs that never get a paste".to_owned(), "1".to_owned())));
