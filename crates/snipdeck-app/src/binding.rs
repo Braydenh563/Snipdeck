@@ -423,7 +423,8 @@ where
         wire_effects!(on_item_menu_activated, |ctl, i| ctl
             .choose_item_menu(index(i)));
         wire!(on_item_menu_dismissed, |ctl| ctl.close_item_menu());
-        wire!(on_reveal_requested, |ctl, i, on| ctl.reveal_row(index(i), on));
+        wire!(on_reveal_requested, |ctl, i, on| ctl
+            .reveal_row(index(i), on));
         wire!(on_selection_moved, |ctl, delta| ctl
             .move_selection(isize::try_from(delta).unwrap_or(0)));
         wire!(on_tab_selected, |ctl, i| ctl.select_tab(index(i)));
@@ -694,7 +695,9 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     {
         render_app_menu(window, view);
     }
-    if differs(&|p| p.item_menu == view.item_menu) || window.get_item_menu_open() != view.item_menu.is_some() {
+    if differs(&|p| p.item_menu == view.item_menu)
+        || window.get_item_menu_open() != view.item_menu.is_some()
+    {
         let entries = view.item_menu.iter().flatten().map(|&entry| ui::MenuEntry {
             text: wording::item_menu_text(entry).into(),
             separator: entry == ItemMenuEntry::Separator,

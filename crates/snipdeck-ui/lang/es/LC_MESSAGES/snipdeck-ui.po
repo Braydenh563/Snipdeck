@@ -13,6 +13,9 @@ msgstr "Una imagen PNG. Snipdeck guarda su propia copia."
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "Una lista agrupa fragmentos relacionados, como respuestas o direcciones."
 
+msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
+msgstr "Una tira con tus fragmentos junto a la aplicación en la que trabajas. Haz clic en uno para pegarlo allí."
+
 msgid "About"
 msgstr "Acerca de"
 
@@ -58,6 +61,9 @@ msgstr "Pide un valor cada vez"
 msgid "Asks you to pick one of the options"
 msgstr "Te pide elegir una de las opciones"
 
+msgid "Back"
+msgstr "Atrás"
+
 msgid "Back up now"
 msgstr "Hacer copia ahora"
 
@@ -84,6 +90,9 @@ msgstr "Tableros"
 
 msgid "Bottom edge"
 msgstr "Borde inferior"
+
+msgid "Bring up the panel, open the picker, save the clipboard or paste the next item from any app."
+msgstr "Muestra el panel, abre el selector, guarda el portapapeles o pega el siguiente elemento desde cualquier aplicación."
 
 msgid "Brings the panel up beside the app you are working in."
 msgstr "Muestra el panel junto a la aplicación en la que trabajas."
@@ -334,6 +343,9 @@ msgstr "Por ejemplo, Trabajo"
 msgid "Free plan"
 msgstr "Plan gratuito"
 
+msgid "Get started"
+msgstr "Empezar"
+
 msgid "Give the board a name."
 msgstr "Ponle un nombre al tablero."
 
@@ -528,6 +540,9 @@ msgstr "Nueva etiqueta"
 
 msgid "New tag, then Enter"
 msgstr "Nueva etiqueta y luego Enter"
+
+msgid "Next"
+msgstr "Siguiente"
 
 msgid "No backups yet."
 msgstr "Aún no hay copias de seguridad."
@@ -832,6 +847,9 @@ msgstr "Mostrar Snipdeck en la barra de tareas"
 msgid "Show or hide the panel"
 msgstr "Mostrar u ocultar el panel"
 
+msgid "Skip"
+msgstr "Omitir"
+
 msgid "Slate"
 msgstr "Pizarra"
 
@@ -849,6 +867,9 @@ msgstr "Snipdeck no tiene cuenta, ni servidor, ni telemetría, y no abre ningún
 
 msgid "Snipdeck keeps its own copy of the file."
 msgstr "Snipdeck guarda su propia copia del archivo."
+
+msgid "Snipdeck keeps the text you paste again and again, one shortcut away. Three things to know:"
+msgstr "Snipdeck guarda el texto que pegas una y otra vez, a un atajo de distancia. Tres cosas que conviene saber:"
 
 msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
 msgstr "Snipdeck nunca busca por su cuenta. Esto abre la página de versiones en el navegador."
@@ -873,6 +894,12 @@ msgstr "Código fuente"
 
 msgid "Start with Windows"
 msgstr "Iniciar con Windows"
+
+msgid "Start-up"
+msgstr "Inicio"
+
+msgid "Step {} of {}"
+msgstr "Paso {} de {}"
 
 msgid "Tab"
 msgstr "Tab"
@@ -918,6 +945,12 @@ msgstr "La lista y sus {} fragmentos se mueven a la papelera. Puedes restaurarlo
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "Las más antiguas se eliminan cuando hay más que este número."
+
+msgid "The panel"
+msgstr "El panel"
+
+msgid "The picker"
+msgstr "El selector"
 
 msgid "The report holds versions and settings switches, never your items."
 msgstr "El informe contiene versiones e interruptores de ajustes, nunca tus elementos."
@@ -1006,6 +1039,9 @@ msgstr "Violeta"
 msgid "Warning"
 msgstr "Advertencia"
 
+msgid "Welcome to Snipdeck"
+msgstr "Te damos la bienvenida a Snipdeck"
+
 msgid "What is on the clipboard"
 msgstr "Lo que hay en el portapapeles"
 
@@ -1017,6 +1053,9 @@ msgstr "Los cambios en este fragmento no se han guardado."
 
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "Con la chincheta desactivada, el panel se oculta en cuanto cambias a otra aplicación. Un panel fijado se queda."
+
+msgid "Where the panel sits"
+msgstr "Dónde se coloca el panel"
 
 msgid "Where the text cursor lands after pasting"
 msgstr "Dónde cae el cursor de texto tras pegar"
@@ -1035,6 +1074,9 @@ msgstr "Tu mazo está vacío"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "Tu biblioteca está en una sola carpeta, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (tableros, listas, fragmentos, etiquetas y la Papelera), blobs (imágenes, archivos y texto largo), settings.json, tu clave de licencia, copias de seguridad (tantas como elijas conservar) y registros."
+
+msgid "Your shortcuts"
+msgstr "Tus atajos"
 
 msgid "https://example.com"
 msgstr "https://example.com"

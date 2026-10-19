@@ -107,10 +107,11 @@ where
     /// Puts `text` on the clipboard for the user to keep (the diagnostic report) and says so in a
     /// toast. Returns whether it worked.
     pub fn copy_text(&mut self, text: &str) -> bool {
-        let copied = snipdeck_platform::payload::Payload::new(vec![
-            snipdeck_platform::payload::Data::Text(text.to_owned()),
-        ])
-        .is_some_and(|payload| self.services.clipboard.write_persistent(&payload).is_ok());
+        let copied =
+            snipdeck_platform::payload::Payload::new(vec![snipdeck_platform::payload::Data::Text(
+                text.to_owned(),
+            )])
+            .is_some_and(|payload| self.services.clipboard.write_persistent(&payload).is_ok());
         self.show_toast(if copied {
             Toast {
                 kind: ToastKind::Success,

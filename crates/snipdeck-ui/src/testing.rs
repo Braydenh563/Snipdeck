@@ -109,7 +109,10 @@ impl<C: ComponentHandle> Harness<C> {
                 scale_factor: scale,
             });
         }
-        window.set_size(PhysicalSize::new(scaled(width, scale), scaled(height, scale)));
+        window.set_size(PhysicalSize::new(
+            scaled(width, scale),
+            scaled(height, scale),
+        ));
         component.show().expect("showing the window");
         Self { component, window }
     }

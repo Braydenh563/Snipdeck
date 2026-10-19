@@ -5,7 +5,7 @@
 use slint::{Color, Image, ModelRc, Rgba8Pixel, SharedPixelBuffer, SharedString, VecModel};
 use snipdeck_ui::{
     BackupRow, ChoiceEntry, HelpCheck, HelpWindow, HotkeySetting, ItemEditor, ListEditor,
-    SettingsPage, TagManager,
+    OnboardingWindow, SettingsPage, TagManager,
 };
 
 pub fn strings(items: &[&str]) -> ModelRc<SharedString> {
@@ -151,6 +151,15 @@ pub fn help(ui: &HelpWindow) {
     ui.set_build_date("2026-10-19".into());
     ui.set_tier("Free".into());
     ui.set_source_url("https://github.com/Braydenh563/Snipdeck".into());
+/// The welcome tour on `step` (0 to 3), with the defaults of a first run.
+pub fn onboarding(ui: &OnboardingWindow, step: i32) {
+    ui.set_step(step);
+    ui.set_hotkeys(ModelRc::new(VecModel::from(hotkeys())));
+    ui.set_autostart(false);
+    ui.set_close_to_tray(true);
+    ui.set_panel_in_taskbar(false);
+    ui.set_panel_hide_on_blur(true);
+    ui.set_dock_edge_index(0);
 }
 
 pub fn tag_manager(ui: &TagManager) {

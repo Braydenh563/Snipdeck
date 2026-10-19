@@ -13,6 +13,9 @@ msgstr "PNG 图片。Snipdeck 会保存自己的副本。"
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "列表可以把相关的片段放在一起，例如回复或地址。"
 
+msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
+msgstr "在你正在使用的应用旁边显示的片段栏。点击其中一条，即可粘贴到该应用。"
+
 msgid "About"
 msgstr "关于"
 
@@ -58,6 +61,9 @@ msgstr "每次都询问值"
 msgid "Asks you to pick one of the options"
 msgstr "让你从选项中选择一项"
 
+msgid "Back"
+msgstr "上一步"
+
 msgid "Back up now"
 msgstr "立即备份"
 
@@ -84,6 +90,9 @@ msgstr "看板"
 
 msgid "Bottom edge"
 msgstr "底边"
+
+msgid "Bring up the panel, open the picker, save the clipboard or paste the next item from any app."
+msgstr "在任何应用中，都可以呼出面板、打开选择器、保存剪贴板内容或粘贴下一项。"
 
 msgid "Brings the panel up beside the app you are working in."
 msgstr "在你正在使用的应用旁边显示面板。"
@@ -334,6 +343,9 @@ msgstr "例如：工作"
 msgid "Free plan"
 msgstr "免费版"
 
+msgid "Get started"
+msgstr "开始使用"
+
 msgid "Give the board a name."
 msgstr "请为看板命名。"
 
@@ -528,6 +540,9 @@ msgstr "新建标签"
 
 msgid "New tag, then Enter"
 msgstr "新建标签，然后按 Enter"
+
+msgid "Next"
+msgstr "下一步"
 
 msgid "No backups yet."
 msgstr "还没有备份。"
@@ -832,6 +847,9 @@ msgstr "在任务栏中显示 Snipdeck"
 msgid "Show or hide the panel"
 msgstr "显示或隐藏面板"
 
+msgid "Skip"
+msgstr "跳过"
+
 msgid "Slate"
 msgstr "石板灰"
 
@@ -849,6 +867,9 @@ msgstr "Snipdeck 没有账户、没有服务器、没有遥测，也不开放任
 
 msgid "Snipdeck keeps its own copy of the file."
 msgstr "Snipdeck 会保存该文件的副本。"
+
+msgid "Snipdeck keeps the text you paste again and again, one shortcut away. Three things to know:"
+msgstr "Snipdeck 为你保存那些反复粘贴的文字，一个快捷键即可调用。先了解三件事："
 
 msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
 msgstr "Snipdeck 不会自行检查。这会在浏览器中打开发布页面。"
@@ -873,6 +894,12 @@ msgstr "源代码"
 
 msgid "Start with Windows"
 msgstr "随 Windows 启动"
+
+msgid "Start-up"
+msgstr "启动"
+
+msgid "Step {} of {}"
+msgstr "第 {} 步，共 {} 步"
 
 msgid "Tab"
 msgstr "Tab"
@@ -918,6 +945,12 @@ msgstr "该列表及其中的 {} 个片段将移至回收站。你可以在 {} �
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "超过此数量后，最旧的备份会被删除。"
+
+msgid "The panel"
+msgstr "面板"
+
+msgid "The picker"
+msgstr "选择器"
 
 msgid "The report holds versions and settings switches, never your items."
 msgstr "报告只包含版本和设置开关,绝不包含你的条目。"
@@ -1006,6 +1039,9 @@ msgstr "紫罗兰色"
 msgid "Warning"
 msgstr "警告"
 
+msgid "Welcome to Snipdeck"
+msgstr "欢迎使用 Snipdeck"
+
 msgid "What is on the clipboard"
 msgstr "剪贴板中的内容"
 
@@ -1017,6 +1053,9 @@ msgstr "此片段的更改尚未保存。"
 
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "图钉关闭时，切换到其他应用后面板会立即隐藏。已固定的面板不会隐藏。"
+
+msgid "Where the panel sits"
+msgstr "面板的位置"
 
 msgid "Where the text cursor lands after pasting"
 msgstr "粘贴后文本光标的位置"
@@ -1035,6 +1074,9 @@ msgstr "你的卡组是空的"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "你的资料库位于同一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：snipdeck.db（看板、列表、片段、标签和回收站）、blobs（图片、文件和长文本）、settings.json、你的许可证密钥、备份（按你选择保留的份数）和日志。"
+
+msgid "Your shortcuts"
+msgstr "你的快捷键"
 
 msgid "https://example.com"
 msgstr "https://example.com"

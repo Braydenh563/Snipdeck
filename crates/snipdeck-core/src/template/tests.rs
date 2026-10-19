@@ -305,7 +305,11 @@ fn reusing_a_name_for_a_different_prompt_is_an_error() {
 
 #[test]
 fn more_than_sixteen_distinct_prompts_is_an_error_but_a_reused_name_is_not() {
-    let many = |n: usize| (0..n).map(|i| format!("{{field:F{i}}}")).collect::<String>();
+    let many = |n: usize| {
+        (0..n)
+            .map(|i| format!("{{field:F{i}}}"))
+            .collect::<String>()
+    };
     assert!(Template::parse(&many(16)).is_ok());
     assert_eq!(
         parse_err(&many(17)).kind,

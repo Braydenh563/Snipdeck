@@ -14,7 +14,8 @@ use std::{cell::RefCell, rc::Rc};
 use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery, ElementRoot};
 use slint::{ComponentHandle, ModelRc, VecModel, platform::Key};
 use snipdeck_ui::{
-    BoardEditor, FormControlsGallery, HelpWindow, ItemEditor, ListEditor, SettingsPage, TagManager,
+    BoardEditor, FormControlsGallery, HelpWindow, ItemEditor, ListEditor, OnboardingWindow,
+    SettingsPage, TagManager,
 };
 
 #[path = "support/mod.rs"]
@@ -122,6 +123,39 @@ fn item_editor() -> (ItemEditor, Log) {
     {
         let log = log.clone();
         ui.on_tag_added(move |n| log.borrow_mut().push(format!("tag-added:{n}")));
+    }
+    (ui, log)
+}
+
+fn onboarding(step: i32) -> (OnboardingWindow, Log) {
+    let ui = OnboardingWindow::new().expect("onboarding");
+    fixture::onboarding(&ui, step);
+    ui.window().set_size(slint::LogicalSize::new(560.0, 700.0));
+    ui.show().expect("show");
+    settle();
+    let log: Log = Rc::default();
+    ui.on_back_requested(log_hook(&log, "back"));
+    ui.on_next_requested(log_hook(&log, "next"));
+    ui.on_skip_requested(log_hook(&log, "skip"));
+    {
+        let log = log.clone();
+        ui.on_hotkey_recorded(move |i, c| log.borrow_mut().push(format!("hk:{i}:{c}")));
+    }
+    {
+        let log = log.clone();
+        ui.on_dock_edge_chosen(move |i| log.borrow_mut().push(format!("dock:{i}")));
+    }
+    {
+        let log = log.clone();
+        ui.on_autostart_toggled(move |on| log.borrow_mut().push(format!("autostart:{on}")));
+    }
+    {
+        let log = log.clone();
+        ui.on_close_to_tray_toggled(move |on| log.borrow_mut().push(format!("tray:{on}")));
+    }
+    {
+        let log = log.clone();
+        ui.on_panel_in_taskbar_toggled(move |on| log.borrow_mut().push(format!("taskbar:{on}")));
     }
     (ui, log)
 }
@@ -1135,6 +1169,92 @@ ui_tests! {
             }
         }
         assert!(checked >= 14, "checked {checked}");
+    }
+
+    // ---- Welcome tour ------------------------------------------------------------------------
+
+    fn the_tour_offers_skip_on_every_step_and_back_only_after_the_first() {
+        for step in 0..4 {
+            let (ui, log) = onboarding(step);
+            find(&ui, "Skip", AccessibleRole::Button).invoke_accessible_default_action();
+            assert_eq!(take(&log), ["skip"], "step {step}");
+            assert_eq!(
+                missing(&ui, "Back", AccessibleRole::Button),
+                step == 0,
+                "step {step}"
+            );
+            if step > 0 {
+                find(&ui, "Back", AccessibleRole::Button).invoke_accessible_default_action();
+                assert_eq!(take(&log), ["back"]);
+            }
+            // The last step's button finishes; the others go on.
+            let next = if step == 3 { "Get started" } else { "Next" };
+            find(&ui, next, AccessibleRole::Button).invoke_accessible_default_action();
+            assert_eq!(take(&log), ["next"], "step {step}");
+        }
+    }
+
+    fn escape_is_skip_on_every_step() {
+        for step in 0..4 {
+            let (ui, log) = onboarding(step);
+            press_key(&ui, Key::Escape);
+            assert_eq!(take(&log), ["skip"], "step {step}");
+        }
+    }
+
+    fn each_step_shows_its_own_content() {
+        let (ui, _) = onboarding(0);
+        let _ = find(&ui, "The panel", AccessibleRole::Groupbox);
+        let _ = find(&ui, "The picker", AccessibleRole::Groupbox);
+        assert!(missing(&ui, "Start with Windows", AccessibleRole::Switch));
+        ui.set_step(1);
+        settle();
+        assert!(missing(&ui, "The panel", AccessibleRole::Groupbox));
+        let _ = find(&ui, "Show or hide the panel", AccessibleRole::Button);
+        ui.set_step(2);
+        settle();
+        let _ = find(&ui, "Dock to", AccessibleRole::Combobox);
+        let _ = find(&ui, "Show Snipdeck in the taskbar", AccessibleRole::Switch);
+        ui.set_step(3);
+        settle();
+        let _ = find(&ui, "Start with Windows", AccessibleRole::Switch);
+        let _ = find(&ui, "Keep running in the tray when the window closes", AccessibleRole::Switch);
+    }
+
+    fn the_shortcut_step_records_through_the_settings_recorder() {
+        let (ui, log) = onboarding(1);
+        let first = find(&ui, "Show or hide the panel", AccessibleRole::Button);
+        assert_eq!(first.accessible_value().as_deref(), Some("Ctrl+Alt+V"));
+        first.invoke_accessible_default_action();
+        chord(ui.window(), &[Key::Control, Key::Alt], "k");
+        settle();
+        assert_eq!(take(&log), ["hk:0:Ctrl+Alt+K"]);
+    }
+
+    fn the_panel_and_start_up_steps_report_their_choices() {
+        let (ui, log) = onboarding(2);
+        let combo = find(&ui, "Dock to", AccessibleRole::Combobox);
+        assert_eq!(combo.accessible_value().as_deref(), Some("Floating"));
+        combo.invoke_accessible_default_action();
+        settle();
+        find(&ui, "Left edge", AccessibleRole::ListItem).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["dock:1"]);
+        find(&ui, "Show Snipdeck in the taskbar", AccessibleRole::Switch).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["taskbar:true"]);
+
+        ui.set_step(3);
+        settle();
+        find(&ui, "Start with Windows", AccessibleRole::Switch).invoke_accessible_default_action();
+        find(&ui, "Keep running in the tray when the window closes", AccessibleRole::Switch)
+            .invoke_accessible_default_action();
+        assert_eq!(take(&log), ["autostart:true", "tray:false"]);
+    }
+
+    fn a_refused_start_up_entry_is_spoken_in_the_window() {
+        let (ui, _) = onboarding(3);
+        ui.set_notice("Could not change the start-up entry.".into());
+        settle();
+        let _ = find(&ui, "Could not change the start-up entry.", AccessibleRole::Text);
     }
 }
 
