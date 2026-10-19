@@ -139,6 +139,26 @@ pub struct Services<C, K, T> {
     pub timing: T,
 }
 
+/// A keyed hash of a clipboard text: enough to tell whether the clipboard still holds it,
+/// without keeping the text itself.
+#[derive(Debug, Clone)]
+struct ClipboardDigest {
+    state: std::hash::RandomState,
+    hash: u64,
+}
+
+impl ClipboardDigest {
+    fn of(text: &str) -> Self {
+        let state = std::hash::RandomState::new();
+        let hash = std::hash::BuildHasher::hash_one(&state, text);
+        Self { state, hash }
+    }
+
+    fn matches(&self, text: &str) -> bool {
+        std::hash::BuildHasher::hash_one(&self.state, text) == self.hash
+    }
+}
+
 /// Something the host (the window and the process) must do. The controller decides, the host
 /// acts: nothing here touches a window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -162,8 +182,9 @@ pub enum Effect {
     NewItem,
     /// Open a help page (not built yet: the host logs it).
     OpenHelp(HelpTopic),
-    /// Open the welcome tour, creating its window the first time ([`Controller::show_welcome_tour`]).
-    OpenOnboarding,
+    /// Show the list editor the controller just opened, even if the Main window never was
+    /// (the Panel's list menu and tab double-click).
+    OpenListEditor,
     /// Open the item editor on an item. The Panel's binding does it
     /// ([`Controller::open_item_editor`]); the host has nothing more to do.
     EditItem(ItemId),
@@ -332,8 +353,9 @@ pub struct Controller<S, C, K, T> {
     /// The zone `{date}` and `{time}` show; the system's, except in tests.
     tz: TimeZone,
     /// A sensitive item's text left on the clipboard by a copy, and when to take it off again
-    /// (if the clipboard still holds exactly that text).
-    clipboard_clear: Option<(Timestamp, String)>,
+    /// (if the clipboard still holds exactly that text). Only a keyed hash of the text is kept,
+    /// so the secret does not sit in memory for the wait.
+    clipboard_clear: Option<(Timestamp, ClipboardDigest)>,
     model: PanelModel,
     settings: Settings,
     entitlements: Entitlements,
@@ -1290,7 +1312,11 @@ where
         let Ok(due) = self.clock.now().checked_add(Self::SENSITIVE_CLIPBOARD_LIFE) else {
             return;
         };
-        self.clipboard_clear = self.services.clipboard.read_text().map(|text| (due, text));
+        self.clipboard_clear = self
+            .services
+            .clipboard
+            .read_text()
+            .map(|text| (due, ClipboardDigest::of(&text)));
     }
 
     /// How long until the clipboard is to be cleared of a copied sensitive item, if one waits.
@@ -1310,7 +1336,10 @@ where
         if self.clock.now() < *due {
             return;
         }
-        if let Some((_, text)) = self.clipboard_clear.take() {
+        if let Some((_, digest)) = self.clipboard_clear.take()
+            && let Some(text) = self.services.clipboard.read_text()
+            && digest.matches(&text)
+        {
             self.services.clipboard.clear_if_text(&text);
         }
     }

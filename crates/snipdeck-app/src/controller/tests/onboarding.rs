@@ -46,17 +46,17 @@ fn the_tour_is_not_due_once_seen_or_when_the_library_has_items() {
 }
 
 #[test]
-fn showing_the_tour_again_starts_at_the_welcome_and_asks_for_the_window() {
+fn showing_the_tour_again_starts_at_the_welcome() {
     let mut ctl = first_run(Settings {
         onboarded: true,
         ..Settings::default()
     });
     assert_eq!(ctl.tour_step(), None);
-    assert_eq!(ctl.show_welcome_tour(), vec![Effect::OpenOnboarding]);
+    ctl.show_welcome_tour();
     assert_eq!(ctl.tour_step(), Some(TourStep::Welcome));
     ctl.tour_next();
     ctl.tour_next();
-    assert_eq!(ctl.show_welcome_tour(), vec![Effect::OpenOnboarding]);
+    ctl.show_welcome_tour();
     assert_eq!(ctl.tour_step(), Some(TourStep::Welcome));
 }
 

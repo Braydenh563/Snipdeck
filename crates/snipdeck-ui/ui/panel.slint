@@ -211,6 +211,8 @@ export component PanelWindow inherits Window {
     property <bool> pastes: root.target-name != "";
     property <string> use-label: root.pastes ? @tr("Paste") : @tr("Copy");
     property <bool> searching: root.query != "";
+    // Space is held down to reveal the selected sensitive row.
+    property <bool> held-reveal: false;
     property <bool> no-lists: root.tabs.length == 0;
     property <int> sel: root.rows.length == 0 ? -1 : min(max(root.selected-index, 0), root.rows.length - 1);
     property <int> used-index: -1;
@@ -540,6 +542,16 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                 }
+                // Hold Space on the selected sensitive row reveals it (the cards are not
+                // focusable, so their own Space handling never sees the key). With a query,
+                // Space is a text key of the search field.
+                if (search.has-focus && event.text == " " && !root.searching && root.sel >= 0 && root.sel < root.rows.length && root.rows[root.sel].kind == ItemKind.sensitive) {
+                    if (!root.held-reveal) {
+                        root.held-reveal = true;
+                        root.reveal-requested(root.sel, true);
+                    }
+                    return accept;
+                }
                 // Digits are quick-use only while there is no query; with one they are search text.
                 if (!root.searching && !event.modifiers.shift && root.digit(event.text) > 0) {
                     root.quick(root.digit(event.text));
@@ -547,6 +559,15 @@ export component PanelWindow inherits Window {
                 }
                 if (!search.has-focus && event.text != " " && root.printable(event.text)) {
                     root.type-into-search(event.text);
+                    return accept;
+                }
+                return reject;
+            }
+
+            capture-key-released(event) => {
+                if (event.text == " " && root.held-reveal) {
+                    root.held-reveal = false;
+                    root.reveal-requested(root.sel, false);
                     return accept;
                 }
                 return reject;

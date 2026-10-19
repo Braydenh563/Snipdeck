@@ -182,6 +182,35 @@ fn element<C: ComponentHandle>(ui: &C, label: &str, role: AccessibleRole) -> Ele
 // ---- Opening ---------------------------------------------------------------------------------
 
 #[test]
+fn the_panel_list_menu_opens_the_list_editor_without_the_main_window() {
+    on_ui_thread(|| {
+        let ctl = controller(Tier::Pro);
+        let main_ui = MainUi::new(&ctl);
+        assert!(main_ui.list_editor().is_none());
+        let tab = ctl
+            .borrow_mut()
+            .view()
+            .tabs
+            .iter()
+            .position(|t| t.name == "Code")
+            .expect("Code tab");
+        ctl.borrow_mut().open_list_menu(tab);
+        let effects = ctl.borrow_mut().choose_list_menu(0);
+        assert_eq!(effects, [Effect::OpenListEditor]);
+        main_ui.bind().expect("bind");
+        let editor = main_ui.list_editor().expect("list editor window");
+        assert!(editor.window().is_visible());
+        assert!(
+            !main_ui.window().expect("bound").window().is_visible(),
+            "the Main window itself stays hidden"
+        );
+        // Opening Main afterwards still works.
+        main_ui.open().expect("open");
+        assert!(main_ui.window().expect("main").window().is_visible());
+    });
+}
+
+#[test]
 fn open_snipdeck_from_the_tray_creates_the_window_once_and_shows_it_again_after_it_is_closed() {
     on_ui_thread(|| {
         let ctl = controller(Tier::Pro);

@@ -452,7 +452,11 @@ fn effect_handler(
                 eprintln!("snipdeck: cannot open the settings: {e}");
             }
         }
-        Effect::OpenOnboarding => snipdeck_app::onboarding_binding::request_open(),
+        Effect::OpenListEditor => {
+            if let Err(e) = main_ui.bind() {
+                eprintln!("snipdeck: cannot open the list editor: {e}");
+            }
+        }
         Effect::DragWindow => {
             if let Some(window) = window.upgrade() {
                 // The Panel has no OS caption: the header starts the move itself.

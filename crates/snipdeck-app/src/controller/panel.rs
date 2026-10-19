@@ -246,11 +246,13 @@ where
     }
 
     /// A double-click on list tab `index`: the list editor, without the menu.
-    pub fn edit_list_tab(&mut self, index: usize) {
-        if let Some(id) = self.model.tabs().get(index).map(|t| t.id) {
-            self.menu = PanelMenu::None;
-            self.panel_edit_list(id, false);
-        }
+    pub fn edit_list_tab(&mut self, index: usize) -> Vec<Effect> {
+        let Some(id) = self.model.tabs().get(index).map(|t| t.id) else {
+            return Vec::new();
+        };
+        self.menu = PanelMenu::None;
+        self.panel_edit_list(id, false);
+        vec![Effect::OpenListEditor]
     }
 
     /// Esc, or a click outside the menu: closes it without a choice.
@@ -272,9 +274,9 @@ where
         match LIST_MENU.get(index) {
             Some(ListMenuEntry::Edit) => self.panel_edit_list(id, false),
             Some(ListMenuEntry::Delete) => self.panel_edit_list(id, true),
-            None => {}
+            None => return Vec::new(),
         }
-        Vec::new()
+        vec![Effect::OpenListEditor]
     }
 
     fn set_item_pinned(&mut self, id: ItemId, pin: bool) {
