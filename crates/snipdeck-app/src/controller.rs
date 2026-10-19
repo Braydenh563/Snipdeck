@@ -22,6 +22,7 @@ use snipdeck_store::{
     crypto::KeyRing,
 };
 
+mod commands_ctl;
 mod dock_ctl;
 mod editor_ctl;
 mod main_ctl;
@@ -180,6 +181,8 @@ pub enum Effect {
     /// Start a new snippet. The Panel's binding opens the item editor on it
     /// ([`Controller::open_new_item`]); the host has nothing more to do.
     NewItem,
+    /// Show the Main window with the command palette open (the Panel's "All commands…" and Ctrl+K).
+    OpenCommands,
     /// Open a help page (not built yet: the host logs it).
     OpenHelp(HelpTopic),
     /// Show the list editor the controller just opened, even if the Main window never was
@@ -329,6 +332,9 @@ pub struct View {
     pub list_menu: Option<Vec<ListMenuEntry>>,
     /// "Pause hotkeys" is on (its menu row is checked).
     pub hotkeys_paused: bool,
+    /// The Picker's configured hotkey as text ("Ctrl+Shift+Space"), empty while it is off: the
+    /// Panel's footer names it so the user learns it works anywhere.
+    pub picker_chord: String,
     /// The Picker, while it is open.
     pub picker: Option<PickerView>,
     /// The template fill form, while it is open.
@@ -597,6 +603,8 @@ where
             },
             list_menu: matches!(self.menu, PanelMenu::List(_)).then(|| LIST_MENU.to_vec()),
             hotkeys_paused: self.session.hotkeys_paused,
+            picker_chord: crate::commands::chord_text(&self.settings.hotkeys, HotkeyAction::Picker)
+                .unwrap_or_default(),
             picker: self.picker.as_ref().map(|p| PickerView {
                 rows: p.rows(),
                 scope: p.scope(),
@@ -3146,6 +3154,7 @@ mod tests {
     fn each_app_menu_entry_asks_the_host_for_its_thing_and_closes_the_menu() {
         let cases = [
             (AppMenuEntry::Open, Effect::OpenMainWindow),
+            (AppMenuEntry::Commands, Effect::OpenCommands),
             (AppMenuEntry::NewSnippet, Effect::NewItem),
             (AppMenuEntry::Settings, Effect::OpenSettings),
             (
@@ -3153,6 +3162,10 @@ mod tests {
                 Effect::OpenHelp(HelpTopic::Troubleshoot),
             ),
             (AppMenuEntry::UserGuide, Effect::OpenHelp(HelpTopic::Guide)),
+            (
+                AppMenuEntry::Shortcuts,
+                Effect::OpenHelp(HelpTopic::Shortcuts),
+            ),
             (AppMenuEntry::About, Effect::OpenHelp(HelpTopic::About)),
             (AppMenuEntry::Quit, Effect::Quit),
         ];

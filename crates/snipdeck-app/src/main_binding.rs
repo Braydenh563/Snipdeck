@@ -187,6 +187,41 @@ where
         result
     }
 
+    /// Fills the command palette with the commands that match `query`.
+    fn fill_palette(&self, query: &str) {
+        let Some(window) = self.window.upgrade() else {
+            return;
+        };
+        let ctl = self.controller.borrow();
+        crate::command_binding::fill(
+            &window,
+            &ctl.settings().hotkeys,
+            self.shown.borrow().as_ref(),
+            query,
+        );
+    }
+
+    /// The palette ran command `id`: Search moves the window's own focus, Tour opens the tour
+    /// window, every other command is the controller's.
+    fn run_command(self: &Rc<Self>, id: i32) {
+        let Some(command) = crate::command_binding::command_of(id) else {
+            return;
+        };
+        if command == crate::commands::Command::Search {
+            if let Some(window) = self.window.upgrade() {
+                window.invoke_focus_search();
+            }
+            return;
+        }
+        // The tour has its own window: the same opener as Help's "Show the welcome tour again".
+        if command == crate::commands::Command::Tour {
+            crate::onboarding_binding::request_open();
+            return;
+        }
+        let cursor = self.shown.borrow().as_ref().map_or(0, |s| s.cursor);
+        self.act(|ctl| ctl.run_command(command, cursor));
+    }
+
     /// Copies the controller's screen into the window and the editors, and keeps the toast
     /// timer running.
     fn sync(self: &Rc<Self>) {
@@ -529,8 +564,24 @@ where
         wire!(on_help_requested, |ctl, i| ctl.main_open_help(match i {
             0 => HelpTopic::Troubleshoot,
             2 => HelpTopic::About,
+            4 => HelpTopic::Shortcuts,
             _ => HelpTopic::Guide,
         }));
+        {
+            let core = Rc::clone(&core);
+            window.on_palette_opened(move || core.fill_palette(""));
+        }
+        {
+            let core = Rc::clone(&core);
+            window.on_palette_query_changed(move |query| core.fill_palette(query.as_str()));
+        }
+        {
+            let core = Rc::clone(&core);
+            window.on_command_requested(move |id| {
+                crate::trace!("callback main command_requested ({id})");
+                core.run_command(id);
+            });
+        }
         wire!(on_item_reorder_requested, |ctl, d| ctl
             .main_reorder_items(isize::try_from(d).unwrap_or(0)));
         wire!(on_list_reorder_requested, |ctl, i, d| ctl

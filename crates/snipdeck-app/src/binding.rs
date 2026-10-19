@@ -497,6 +497,9 @@ where
         wire_effects!(on_app_menu_activated, |ctl, i| ctl
             .choose_app_menu(index(i)));
         wire_effects!(on_help_requested, |ctl| ctl.open_help(HelpTopic::Guide));
+        wire_effects!(on_shortcuts_requested, |ctl| ctl
+            .open_help(HelpTopic::Shortcuts));
+        wire_effects!(on_commands_requested, |_ctl| vec![Effect::OpenCommands]);
         wire!(on_app_menu_dismissed, |ctl| ctl.close_app_menu());
         wire_effects!(on_edit_requested, |ctl, i| ctl.edit_row(index(i)));
         wire_effects!(on_rename_requested, |ctl, i| ctl.rename_row(index(i)));
@@ -758,6 +761,18 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         window.set_board_menu_entries(model(entries));
         window.set_board_menu_open(view.board_menu.is_some());
     }
+    if differs(&|p| p.picker_chord == view.picker_chord) {
+        let (keys, spoken) = if view.picker_chord.is_empty() {
+            (Vec::new(), String::new())
+        } else {
+            (
+                crate::commands::caps(&view.picker_chord),
+                crate::commands::spoken(&view.picker_chord),
+            )
+        };
+        window.set_picker_keys(model(keys.iter().map(|k| k.as_str().into())));
+        window.set_picker_spoken(spoken.into());
+    }
     if differs(&|p| p.app_menu == view.app_menu && p.hotkeys_paused == view.hotkeys_paused)
         || window.get_app_menu_open() != view.app_menu.is_some()
     {
@@ -768,6 +783,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     {
         let entries = view.item_menu.iter().flatten().map(|&entry| ui::MenuEntry {
             text: wording::item_menu_text(entry).into(),
+            shortcut: wording::item_menu_shortcut(entry).into(),
             separator: entry == ItemMenuEntry::Separator,
             destructive: entry == ItemMenuEntry::Trash,
             ..Default::default()
@@ -819,6 +835,7 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
         } else {
             slint::Image::default()
         },
+        shortcut: wording::app_menu_shortcut(entry).into(),
         separator: entry == AppMenuEntry::Separator,
         ..Default::default()
     });

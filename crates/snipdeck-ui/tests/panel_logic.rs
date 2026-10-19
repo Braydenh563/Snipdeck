@@ -63,6 +63,8 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_reveal_requested, |i, on| format!("reveal:{i}:{on}"));
     hook!(on_close_requested, || "close".to_string());
     hook!(on_help_requested, || "help".to_string());
+    hook!(on_commands_requested, || "commands".to_string());
+    hook!(on_shortcuts_requested, || "shortcuts".to_string());
     hook!(on_drag_requested, || "drag".to_string());
     hook!(on_pin_toggled, |on| format!("pin:{on}"));
     hook!(on_add_list_requested, || "add-list".to_string());
@@ -350,6 +352,28 @@ ui_tests! {
         assert_eq!(take(&log), ["help"]);
     }
 
+    fn ctrl_k_asks_for_the_commands_and_ctrl_slash_for_the_shortcuts() {
+        let (ui, log) = start();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "k");
+        assert_eq!(take(&log), ["commands"]);
+        chord(ui.window(), &[Key::Control], "/");
+        assert_eq!(take(&log), ["shortcuts"]);
+    }
+
+    fn the_footer_names_the_pickers_configured_hotkey_only_when_there_is_one() {
+        let (ui, _log) = start();
+        let hint = |ui: &PanelWindow| all(ui, "Control Shift Space", AccessibleRole::Text).len();
+        assert_eq!(hint(&ui), 0, "no chord set, no hint");
+        ui.set_picker_keys(ModelRc::new(VecModel::from(
+            ["Ctrl", "Shift", "Space"].map(slint::SharedString::from).to_vec(),
+        )));
+        ui.set_picker_spoken("Control Shift Space".into());
+        assert_eq!(hint(&ui), 1, "the caps are spoken as the chord");
+        ui.set_picker_keys(ModelRc::new(VecModel::from(Vec::<slint::SharedString>::new())));
+        assert_eq!(hint(&ui), 0, "switching the hotkey off removes the hint");
+    }
+
     fn enter_uses_the_selected_row_and_shift_enter_only_copies() {
         let (ui, log) = start();
         press(ui.window(), &key(Key::DownArrow));
@@ -495,7 +519,7 @@ ui_tests! {
         w.dispatch_event(WindowEvent::PointerReleased { position: at, button: PointerEventButton::Left });
         assert_eq!(take(&log), ["drag"]);
 
-        find(&ui, "Close panel", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
+        find(&ui, "Close panel (Esc)", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
         assert_eq!(take(&log), ["close"], "the close button is not a drag handle");
     }
 
@@ -657,7 +681,7 @@ ui_tests! {
 
     fn every_control_has_a_role_and_a_label() {
         let (ui, _log) = start();
-        let _ = find(&ui, "Close panel", AccessibleRole::Button);
+        let _ = find(&ui, "Close panel (Esc)", AccessibleRole::Button);
         let _ = find(&ui, "Keep panel on top", AccessibleRole::Button);
         let _ = find(&ui, "Board: Work", AccessibleRole::Button);
         let search = find(&ui, "Search snippets", AccessibleRole::TextInput);
@@ -739,7 +763,7 @@ ui_tests! {
         assert!(kebab.size().width >= MIN_HIT && kebab.size().height >= MIN_HIT);
         // Between the pin and the close button.
         let pin = find(&ui, "Keep panel on top", AccessibleRole::Button).absolute_position().x;
-        let close = find(&ui, "Close panel", AccessibleRole::Button).absolute_position().x;
+        let close = find(&ui, "Close panel (Esc)", AccessibleRole::Button).absolute_position().x;
         assert!(pin < kebab.absolute_position().x && kebab.absolute_position().x < close);
 
         assert!(missing(&ui, "Panel menu", AccessibleRole::List), "closed by default");
@@ -841,7 +865,7 @@ ui_tests! {
         let (ui, _log) = start();
         let kebab = find(&ui, "More", AccessibleRole::Button);
         let pin = find(&ui, "Keep panel on top", AccessibleRole::Button);
-        let close = find(&ui, "Close panel", AccessibleRole::Button);
+        let close = find(&ui, "Close panel (Esc)", AccessibleRole::Button);
         move_to(&ui, centre(&kebab));
         wait(600);
         assert_eq!(ui.get_tooltip_shown(), "More");
@@ -850,7 +874,7 @@ ui_tests! {
         assert_eq!(ui.get_tooltip_shown(), "Keep panel on top", "no second 500ms wait");
         move_to(&ui, centre(&close));
         settle();
-        assert_eq!(ui.get_tooltip_shown(), "Close panel");
+        assert_eq!(ui.get_tooltip_shown(), "Close panel (Esc)");
         // After a rest the next one waits again.
         move_to(&ui, away(&ui));
         wait(1000);
@@ -872,7 +896,7 @@ ui_tests! {
             wait(501);
             assert_eq!(ui.get_tooltip_shown(), label, "tooltip of {label:?}");
         };
-        for label in ["More", "Keep panel on top", "Close panel", "Add list", "Scroll right"] {
+        for label in ["More", "Keep panel on top", "Close panel (Esc)", "Add list", "Scroll right"] {
             hover(label);
         }
         // The left caret only exists once the row has been scrolled.
@@ -997,7 +1021,7 @@ ui_tests! {
         press_at(&ui, LogicalPosition::new(w - 10.0, y));
         assert_eq!(take(&log), ["use:0"], "and on the right side");
         // The header buttons next to the top-right corner still work.
-        find(&ui, "Close panel", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
+        find(&ui, "Close panel (Esc)", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
         assert_eq!(take(&log), ["close"]);
         // A press on the top edge over the header is a resize, not a drag.
         press_at(&ui, LogicalPosition::new(120.0, 1.0));

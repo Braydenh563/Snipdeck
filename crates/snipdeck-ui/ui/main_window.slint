@@ -15,7 +15,8 @@
 //             Enter uses, Shift+Enter copies, F2 or Ctrl+E edits, Ctrl+P pins, Delete deletes, Esc clears
 //             the selection, Menu or Shift+F10 the context menu, hold Space reveals a sensitive item,
 //             Alt+Up / Alt+Down move the row within its list (`item-reorder-requested`)
-//   anywhere  Ctrl+F or / search, Ctrl+N new item
+//   anywhere  Ctrl+F or / search, Ctrl+N new item, Ctrl+K (or Ctrl+Shift+P) the command palette, Ctrl+, Settings,
+//             Ctrl+/ the keyboard shortcuts, F1 the user guide
 import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette } from "theme.slint";
 import { Icons } from "icons.slint";
@@ -32,8 +33,10 @@ import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind, Tooltip } from "c
 import { Menu, MenuEntry } from "components/menu.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
+import { CommandPalette, PaletteRow } from "components/command-palette.slint";
+import { CommandTexts } from "command_texts.slint";
 
-export { ChoiceEntry }
+export { ChoiceEntry, PaletteRow }
 
 // One item of the item area. `selected` is written by the host (see the file header).
 export struct MainRow {
@@ -182,6 +185,14 @@ export component MainWindow inherits Window {
     in property <string> panel-hotkey;
     // 0 Troubleshoot, 1 User guide, 2 About (the host's HelpTopic); F1 asks for the guide.
     callback help-requested(int);
+    // ---- Command palette: the host fills `palette-rows` (filtered for the query it is told about).
+    in property <[PaletteRow]> palette-rows;
+    in-out property <bool> palette-open: false;
+    // The palette opened: the host sets the full list of commands.
+    callback palette-opened();
+    callback palette-query-changed(string);
+    // The user ran the command with this id (`snipdeck-app`'s `Command` index).
+    callback command-requested(int);
     callback add-list-requested();
     callback list-edit-requested(int);
     callback list-delete-confirmed(int);
@@ -209,6 +220,10 @@ export component MainWindow inherits Window {
     public function focus-search() {
         search.focus();
         search.select-all();
+    }
+    public function open-palette() {
+        root.palette-open = true;
+        root.palette-opened();
     }
     public function focus-items() {
         items-scope.focus();
@@ -257,7 +272,7 @@ export component MainWindow inherits Window {
     property <int> confirm-kind: 0;
     property <int> confirm-target: 0;
     property <bool> confirm-shown: false;
-    property <bool> overlay-open: root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown;
+    property <bool> overlay-open: root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.palette-open;
 
     init => {
         Palette.dark = root.dark;
@@ -588,6 +603,18 @@ export component MainWindow inherits Window {
                 return reject;
             }
             if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                if (event.text == "k" || event.text == "K" || (event.modifiers.shift && (event.text == "p" || event.text == "P"))) {
+                    root.open-palette();
+                    return accept;
+                }
+                if (event.text == "/") {
+                    root.help-requested(3);
+                    return accept;
+                }
+                if (event.text == ",") {
+                    root.settings-requested();
+                    return accept;
+                }
                 if (event.text == "f" || event.text == "F") {
                     root.focus-search();
                     return accept;
@@ -905,6 +932,13 @@ export component MainWindow inherits Window {
                                 clicked => { root.panel-requested(); }
                             }
                             Rectangle { width: Space.s2; }
+                            commands-button := IconButton {
+                                scaled: true;
+                                icon: Icons.keyboard;
+                                tooltip: @tr("Commands (Ctrl+K)");
+                                y: (parent.height - self.height) / 2;
+                                clicked => { root.open-palette(); }
+                            }
                             view-comfortable := IconButton {
                                 scaled: true;
                                 icon: Icons.rows;
@@ -1286,6 +1320,8 @@ export component MainWindow inherits Window {
                             : root.in-trash ? @tr("Deleted items stay here for {} days before they are removed.", root.trash-days)
                             : root.section == MainSection.list ? @tr("Add a snippet, or move items here from another list.")
                             : @tr("Tag a snippet to see it here.");
+                        hint: !root.searching && (root.section == MainSection.all || root.section == MainSection.list)
+                            ? @tr("Press Ctrl+N to add a snippet, or Ctrl+K to see every command.") : "";
                         action-text: root.searching ? ""
                             : root.section == MainSection.all || root.section == MainSection.list ? @tr("New item")
                             : root.section == MainSection.recent ? @tr("Open Settings") : "";
@@ -1451,10 +1487,12 @@ export component MainWindow inherits Window {
     }
 
     // ---- Tooltips for the icon-only toolbar buttons (500ms rest, instant between buttons) -----------
-    property <string> tip: view-comfortable.has-hover || view-comfortable.has-focus ? @tr("Comfortable view")
+    property <string> tip: commands-button.has-hover || commands-button.has-focus ? @tr("Commands (Ctrl+K)")
+        : view-comfortable.has-hover || view-comfortable.has-focus ? @tr("Comfortable view")
         : view-compact.has-hover || view-compact.has-focus ? @tr("Compact view")
         : view-tile.has-hover || view-tile.has-focus ? @tr("Tile view") : "";
-    property <length> tip-x: view-comfortable.has-hover || view-comfortable.has-focus ? view-comfortable.absolute-position.x
+    property <length> tip-x: commands-button.has-hover || commands-button.has-focus ? commands-button.absolute-position.x
+        : view-comfortable.has-hover || view-comfortable.has-focus ? view-comfortable.absolute-position.x
         : view-compact.has-hover || view-compact.has-focus ? view-compact.absolute-position.x : view-tile.absolute-position.x;
     property <bool> tip-open: false;
     changed tip => {
@@ -1536,6 +1574,7 @@ export component MainWindow inherits Window {
             { text: @tr("User guide"), shortcut: "F1" },
             { text: @tr("About Snipdeck") },
             { text: @tr("Show Panel"), shortcut: root.panel-hotkey },
+            { text: @tr("Keyboard shortcuts"), shortcut: "Ctrl+/" },
         ];
         label: @tr("Help");
         icons: false;
@@ -1575,6 +1614,25 @@ export component MainWindow inherits Window {
             }
         }
         dismissed => { root.close-menus(); }
+    }
+
+    if root.palette-open: CommandPalette {
+        width: root.width;
+        height: root.height;
+        rows: root.palette-rows;
+        title: CommandTexts.palette-title;
+        placeholder: CommandTexts.palette-placeholder;
+        init => { self.focus-field(); }
+        query-changed(text) => { root.palette-query-changed(text); }
+        chosen(id) => {
+            root.palette-open = false;
+            root.restore-focus();
+            root.command-requested(id);
+        }
+        dismissed => {
+            root.palette-open = false;
+            root.restore-focus();
+        }
     }
 
     // Last, so it sits on top and traps the pointer.

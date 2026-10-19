@@ -52,6 +52,9 @@ msgstr "同时忘记加密密钥"
 msgid "Amber"
 msgstr "琥珀色"
 
+msgid "Anywhere in Windows"
+msgstr ""
+
 msgid "Appearance"
 msgstr "外观"
 
@@ -115,6 +118,9 @@ msgstr "取消"
 msgid "Captured items keep their kind."
 msgstr "捕获的片段保留其类型。"
 
+msgid "Change these in Settings."
+msgstr ""
+
 msgid "Changes apply at once."
 msgstr "更改立即生效。"
 
@@ -142,6 +148,9 @@ msgstr "清除搜索"
 msgid "Clear selection"
 msgstr "清除选择"
 
+msgid "Clear the search, then close"
+msgstr ""
+
 msgid "Clear the shortcut for {}"
 msgstr "清除 {} 的快捷键"
 
@@ -151,8 +160,8 @@ msgstr "点击"
 msgid "Close"
 msgstr "关闭"
 
-msgid "Close panel"
-msgstr "关闭面板"
+msgid "Close panel (Esc)"
+msgstr ""
 
 msgid "Close the tag list"
 msgstr "关闭标签列表"
@@ -165,6 +174,18 @@ msgstr "颜色"
 
 msgid "Comfortable view"
 msgstr "舒适视图"
+
+msgid "Command palette (every action)"
+msgstr ""
+
+msgid "Commands"
+msgstr ""
+
+msgid "Commands (Ctrl+K)"
+msgstr ""
+
+msgid "Commands in the Main window"
+msgstr ""
 
 msgid "Compact view"
 msgstr "紧凑视图"
@@ -184,11 +205,20 @@ msgstr "复制"
 msgid "Copy diagnostic report"
 msgstr "复制诊断报告"
 
+msgid "Copy selected item"
+msgstr ""
+
 msgid "Copy something, then save it from the Panel."
 msgstr "先复制一些内容，然后在面板中保存。"
 
 msgid "Copy something, then save it here from the clipboard."
 msgstr "先复制一些内容，然后从剪贴板保存到这里。"
+
+msgid "Copy the item"
+msgstr ""
+
+msgid "Copy the result"
+msgstr ""
 
 msgid "Dark"
 msgstr "深色"
@@ -274,6 +304,18 @@ msgstr "编辑列表"
 msgid "Edit list…"
 msgstr "编辑列表…"
 
+msgid "Edit selected item"
+msgstr ""
+
+msgid "Edit the item"
+msgstr ""
+
+msgid "Edit the result"
+msgstr ""
+
+msgid "Editors"
+msgstr ""
+
 msgid "Empty Trash"
 msgstr "清空回收站"
 
@@ -325,6 +367,9 @@ msgstr "文件"
 msgid "Fill in template"
 msgstr "填写模板"
 
+msgid "Filter as you type"
+msgstr ""
+
 msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
 msgstr "将面板固定在其所在显示器的某条屏幕边缘。选择“浮动”则可放在任意位置。"
 
@@ -357,6 +402,18 @@ msgstr "请为列表命名。"
 
 msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
 msgstr "为面板提供任务栏按钮。关闭后，面板不会出现在任务栏和 Alt+Tab 中；仍可通过通知区域图标和面板快捷键唤回。"
+
+msgid "Go to All items"
+msgstr ""
+
+msgid "Go to Pinned"
+msgstr ""
+
+msgid "Go to Recent"
+msgstr ""
+
+msgid "Go to Trash"
+msgstr ""
 
 msgid "Green"
 msgstr "绿色"
@@ -436,6 +493,9 @@ msgstr "面板保持在最前"
 msgid "Keep running in the tray when the window closes"
 msgstr "关闭窗口时继续在通知区域运行"
 
+msgid "Keyboard shortcuts"
+msgstr ""
+
 msgid "Kind"
 msgstr "类型"
 
@@ -487,6 +547,9 @@ msgstr "正在加载"
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会发送到任何地方。"
 
+msgid "Main window"
+msgstr ""
+
 msgid "Make the panel narrower"
 msgstr "缩窄面板"
 
@@ -513,6 +576,21 @@ msgstr "最常用"
 
 msgid "Move"
 msgstr "移动"
+
+msgid "Move selected item to Trash"
+msgstr ""
+
+msgid "Move the item to the Trash"
+msgstr ""
+
+msgid "Move the item up or down its list"
+msgstr ""
+
+msgid "Move through the items"
+msgstr ""
+
+msgid "Move through the results"
+msgstr ""
 
 msgid "Move to Trash"
 msgstr "移到回收站"
@@ -550,6 +628,12 @@ msgstr "新建标签，然后按 Enter"
 msgid "Next"
 msgstr "下一步"
 
+msgid "Next list"
+msgstr ""
+
+msgid "Next scope"
+msgstr ""
+
 msgid "No backups yet."
 msgstr "还没有备份。"
 
@@ -564,6 +648,9 @@ msgstr "还没有列表"
 
 msgid "No matches"
 msgstr "没有匹配项"
+
+msgid "No matching command"
+msgstr ""
 
 msgid "No programs yet."
 msgstr "还没有程序。"
@@ -622,6 +709,9 @@ msgstr "打开"
 msgid "Open Panel"
 msgstr "打开面板"
 
+msgid "Open Picker"
+msgstr ""
+
 msgid "Open Settings"
 msgstr "打开设置"
 
@@ -642,6 +732,9 @@ msgstr "打开日志文件夹"
 
 msgid "Open the Microsoft Store page"
 msgstr "打开 Microsoft Store 页面"
+
+msgid "Open the Picker at your cursor"
+msgstr ""
 
 msgid "Open the picker"
 msgstr "打开选择器"
@@ -670,6 +763,9 @@ msgstr "橙色"
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "在该文件夹之外，Snipdeck 只会写入 Windows 开机启动项（如果你开启了它），以及在你使用片段时写入剪贴板。"
 
+msgid "Panel"
+msgstr ""
+
 msgid "Panel dock"
 msgstr "面板停靠"
 
@@ -685,8 +781,17 @@ msgstr "粘贴"
 msgid "Paste a licence key to turn on Pro. The key is checked on this PC and nothing is sent anywhere."
 msgstr "粘贴许可证密钥即可开启 Pro。密钥只在这台电脑上验证，不会发送到任何地方。"
 
+msgid "Paste the Nth result"
+msgstr ""
+
 msgid "Paste the next item"
 msgstr "粘贴下一个片段"
+
+msgid "Paste the next item of a stack"
+msgstr ""
+
+msgid "Paste the result"
+msgstr ""
 
 msgid "Pastes into {}"
 msgstr "粘贴到 {}"
@@ -703,6 +808,12 @@ msgstr "文件路径"
 msgid "Pause hotkeys"
 msgstr "暂停热键"
 
+msgid "Picker"
+msgstr ""
+
+msgid "Picker anywhere"
+msgstr ""
+
 msgid "Picture file"
 msgstr "图片文件"
 
@@ -711,6 +822,12 @@ msgstr "置顶"
 
 msgid "Pin a snippet from the Panel to find it here."
 msgstr "在面板中置顶片段后，即可在这里找到。"
+
+msgid "Pin or unpin the item"
+msgstr ""
+
+msgid "Pin selected item"
+msgstr ""
 
 msgid "Pin the snippets you use most to keep them one click away."
 msgstr "将常用的片段置顶，即可一键直达。"
@@ -723,6 +840,9 @@ msgstr "已置顶的片段"
 
 msgid "Placeholders"
 msgstr "占位符"
+
+msgid "Press Ctrl+N to add a snippet, or Ctrl+K to see every command."
+msgstr ""
 
 msgid "Press the new shortcut"
 msgstr "按下新的快捷键"
@@ -738,6 +858,12 @@ msgstr "问题"
 
 msgid "Program to add"
 msgstr "要添加的程序"
+
+msgid "Quick capture"
+msgstr ""
+
+msgid "Quick capture the clipboard"
+msgstr ""
 
 msgid "Quit"
 msgstr "退出"
@@ -817,6 +943,9 @@ msgstr "向左滚动"
 msgid "Scroll right"
 msgstr "向右滚动"
 
+msgid "Search"
+msgstr ""
+
 msgid "Search all snippets"
 msgstr "搜索所有片段"
 
@@ -831,6 +960,9 @@ msgstr "搜索结果"
 
 msgid "Search snippets"
 msgstr "搜索片段"
+
+msgid "Select every item"
+msgstr ""
 
 msgid "Sensitive item"
 msgstr "敏感片段"
@@ -861,6 +993,9 @@ msgstr ""
 
 msgid "Show Snipdeck in the taskbar"
 msgstr "在任务栏中显示 Snipdeck"
+
+msgid "Show or hide the Panel"
+msgstr ""
 
 msgid "Show or hide the panel"
 msgstr "显示或隐藏面板"
@@ -1048,14 +1183,29 @@ msgstr "在设置中开启剪贴板历史，以收集你复制的内容。"
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "关闭后，关闭面板或主窗口将退出 Snipdeck。"
 
+msgid "Type a command"
+msgstr ""
+
 msgid "Type {} to confirm"
 msgstr "输入 {} 以确认"
 
 msgid "Unpin"
 msgstr "取消置顶"
 
+msgid "Unpin selected item"
+msgstr ""
+
 msgid "Use"
 msgstr "使用"
+
+msgid "Use selected item"
+msgstr ""
+
+msgid "Use the Nth item"
+msgstr ""
+
+msgid "Use the item"
+msgstr ""
 
 msgid "User guide"
 msgstr "用户指南"
@@ -1114,6 +1264,54 @@ msgstr "你的资料库位于同一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：s
 msgid "Your shortcuts"
 msgstr "你的快捷键"
 
+msgid "add create folder group"
+msgstr ""
+
+msgid "add create snippet note write"
+msgstr ""
+
+msgid "change modify rename"
+msgstr ""
+
+msgid "clipboard duplicate"
+msgstr ""
+
+msgid "clipboard save grab screenshot"
+msgstr ""
+
+msgid "delete remove discard"
+msgstr ""
+
+msgid "deleted restore bin show"
+msgstr ""
+
+msgid "diagnose doctor problems fix"
+msgstr ""
+
+msgid "everything home show"
+msgstr ""
+
+msgid "favourite favorite keep"
+msgstr ""
+
+msgid "favourite favorite remove"
+msgstr ""
+
+msgid "favourites favorites show"
+msgstr ""
+
+msgid "find filter look"
+msgstr ""
+
+msgid "help docs manual how"
+msgstr ""
+
+msgid "history clipboard show"
+msgstr ""
+
+msgid "hotkeys keys cheat sheet bindings chords"
+msgstr ""
+
 msgid "https://example.com"
 msgstr "https://example.com"
 
@@ -1123,8 +1321,35 @@ msgstr "毫秒"
 msgid "notepad.exe"
 msgstr "notepad.exe"
 
+msgid "open toggle deck hide"
+msgstr ""
+
+msgid "paste insert send"
+msgstr ""
+
+msgid "preferences options configure hotkeys theme backup"
+msgstr ""
+
 msgid "px"
 msgstr "px"
+
+msgid "quick find paste palette"
+msgstr ""
+
+msgid "tutorial intro onboarding basics learn"
+msgstr ""
+
+msgid "version licence update"
+msgstr ""
+
+msgid "view mode layout cards switch"
+msgstr ""
+
+msgid "view mode layout grid switch"
+msgstr ""
+
+msgid "view mode layout list dense switch"
+msgstr ""
 
 msgid "{n} item"
 msgstr "{n} 个片段"
@@ -1134,6 +1359,9 @@ msgstr "{n} 个片段将一同移至回收站。你可以在 30 天内恢复它�
 
 msgid "{} (Pro)"
 msgstr "{} (Pro)"
+
+msgid "{} found"
+msgstr ""
 
 msgid "{} of the checks need a look."
 msgstr "有 {} 项检查需要留意。"

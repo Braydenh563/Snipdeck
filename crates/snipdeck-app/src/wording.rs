@@ -214,6 +214,7 @@ pub const fn app_menu_text(entry: crate::controller::AppMenuEntry) -> &'static s
     use crate::controller::AppMenuEntry;
     match entry {
         AppMenuEntry::Open => "Open Snipdeck",
+        AppMenuEntry::Commands => "All commands\u{2026}",
         AppMenuEntry::NewSnippet => "New snippet",
         AppMenuEntry::Settings => "Settings\u{2026}",
         AppMenuEntry::Dock => "Dock to the nearest edge",
@@ -221,8 +222,34 @@ pub const fn app_menu_text(entry: crate::controller::AppMenuEntry) -> &'static s
         AppMenuEntry::Separator => "",
         AppMenuEntry::Troubleshoot => "Troubleshoot\u{2026}",
         AppMenuEntry::UserGuide => "User guide",
+        AppMenuEntry::Shortcuts => "Keyboard shortcuts",
         AppMenuEntry::About => "About Snipdeck",
         AppMenuEntry::Quit => "Quit",
+    }
+}
+
+/// The shortcut shown beside a row of the Panel's kebab menu; empty where the row has none.
+#[must_use]
+pub const fn app_menu_shortcut(entry: crate::controller::AppMenuEntry) -> &'static str {
+    use crate::controller::AppMenuEntry;
+    match entry {
+        AppMenuEntry::Commands => "Ctrl+K",
+        AppMenuEntry::UserGuide => "F1",
+        AppMenuEntry::Shortcuts => "Ctrl+/",
+        _ => "",
+    }
+}
+
+/// The shortcut shown beside a row of the Panel's item menu; empty where the row has none.
+#[must_use]
+pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'static str {
+    use crate::controller::ItemMenuEntry;
+    match entry {
+        ItemMenuEntry::Use => "Enter",
+        ItemMenuEntry::Copy => "Shift+Enter",
+        ItemMenuEntry::Edit => "Ctrl+E",
+        ItemMenuEntry::Trash => "Del",
+        ItemMenuEntry::Pin { .. } | ItemMenuEntry::Separator => "",
     }
 }
 

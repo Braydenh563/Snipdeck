@@ -451,6 +451,14 @@ fn effect_handler(
                 eprintln!("snipdeck: cannot open the main window: {e}");
             }
         }
+        // The Panel's "All commands…" and Ctrl+K: the Main window, with the palette open.
+        Effect::OpenCommands => {
+            if main_ui.open().is_ok()
+                && let Some(window) = main_ui.window()
+            {
+                window.invoke_open_palette();
+            }
+        }
         Effect::OpenSettings => {
             if let Err(e) = settings_ui.open() {
                 eprintln!("snipdeck: cannot open the settings: {e}");

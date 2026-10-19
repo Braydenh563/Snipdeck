@@ -14,6 +14,7 @@
 //   1-9             use the Nth row while the search is empty (digits are text once a query exists)
 //   Ctrl+Tab        next list, Ctrl+Shift+Tab previous; Ctrl+F focuses and selects the search
 //   Menu, Shift+F10 context menu of the selected row (on the focused kebab button: the Panel menu)
+//   Ctrl+K          all commands (the Main window's palette); Ctrl+/ the keyboard shortcuts; F1 the user guide
 //   Ctrl+E, F2      edit / rename the selected row (also a double-click on a row edits it)
 //   Delete          delete the selected row while the search is empty (with a query it edits the text)
 //   Esc             closes an open menu; else clears the search; with nothing to clear, asks the host to hide the Panel
@@ -169,6 +170,13 @@ export component PanelWindow inherits Window {
     callback app-menu-requested();
     // F1: the user guide.
     callback help-requested();
+    // Ctrl+K: all commands, in the Main window's palette.
+    callback commands-requested();
+    // Ctrl+/: the keyboard shortcuts.
+    callback shortcuts-requested();
+    // The configured Picker hotkey as key caps and spoken, for the footer hint (empty = the hotkey is off).
+    in property <[string]> picker-keys;
+    in property <string> picker-spoken;
     callback app-menu-activated(int);
     callback app-menu-dismissed();
     callback item-menu-activated(int);
@@ -481,6 +489,14 @@ export component PanelWindow inherits Window {
                         search.select-all();
                         return accept;
                     }
+                    if (event.text == "k" || event.text == "K") {
+                        root.commands-requested();
+                        return accept;
+                    }
+                    if (event.text == "/") {
+                        root.shortcuts-requested();
+                        return accept;
+                    }
                     if ((event.text == "e" || event.text == "E") && root.sel >= 0) {
                         root.edit-requested(root.sel);
                         return accept;
@@ -632,7 +648,7 @@ export component PanelWindow inherits Window {
                         }
                         close := IconButton {
                             icon: Icons.x;
-                            tooltip: @tr("Close panel");
+                            tooltip: @tr("Close panel (Esc)");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.close-requested(); }
                             changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
@@ -877,6 +893,26 @@ export component PanelWindow inherits Window {
                             }
                             Text {
                                 text: @tr("Copy");
+                                font-family: Fonts.sans;
+                                font-size: Type.sm;
+                                color: Theme.text-secondary;
+                                vertical-alignment: center;
+                                accessible-role: AccessibleRole.none;
+                            }
+                        }
+                        // The Picker's hotkey, as the user set it: a hint that it works anywhere, not only here.
+                        if !root.narrow && root.picker-keys.length > 0: HorizontalLayout {
+                            spacing: Space.s1;
+                            Rectangle {
+                                width: picker-caps.min-width;
+                                picker-caps := KeyCombo {
+                                    keys: root.picker-keys;
+                                    label: root.picker-spoken;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                            }
+                            Text {
+                                text: @tr("Picker anywhere");
                                 font-family: Fonts.sans;
                                 font-size: Type.sm;
                                 color: Theme.text-secondary;
