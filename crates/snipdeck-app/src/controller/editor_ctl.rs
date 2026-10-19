@@ -189,10 +189,9 @@ where
             && matches!(self.store.has_plain_sensitive(), Ok(true));
         self.refresh_master();
         match self.ensure_key(migrate) {
-            Ok(()) => {}
             // A master password is set: the library waits for it, silently. The unlock window
             // opens when a sensitive item is first needed.
-            Err(snipdeck_store::Error::Crypto(CryptoError::PasswordRequired)) => {}
+            Ok(()) | Err(snipdeck_store::Error::Crypto(CryptoError::PasswordRequired)) => {}
             Err(e) => self.show_toast(open_failed(&e)),
         }
     }

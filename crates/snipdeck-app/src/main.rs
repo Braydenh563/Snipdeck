@@ -42,9 +42,9 @@ use snipdeck_app::{
     screenshot,
     settings::{Settings, Theme},
     settings_binding::{PanelTaskbar, SettingsUi, SystemHost},
-    unlock_binding::UnlockUi,
     settings_store::{FileSink, SettingsSaver},
     toast_binding::ToastUi,
+    unlock_binding::UnlockUi,
     window_kind,
 };
 use snipdeck_core::{Entitlements, Tier, Timestamp};

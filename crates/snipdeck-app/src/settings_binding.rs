@@ -798,7 +798,9 @@ where
         window.set_master_problem(ui::MasterProblem::None);
         match result {
             Ok(()) => window.invoke_close_master(),
-            Err(problem) => window.set_master_problem(crate::unlock_binding::slint_problem(problem)),
+            Err(problem) => {
+                window.set_master_problem(crate::unlock_binding::slint_problem(problem));
+            }
         }
     }
 

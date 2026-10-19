@@ -132,6 +132,11 @@ What is **not** guaranteed:
 
 ## Limits and non-goals
 
+* No recovery if the master password is forgotten: while one is set the DEK is only inside the
+  password-sealed record, so the OS binding alone cannot open it. The app says so before a
+  password is set (Settings > Privacy).
+* The app passes the typed password to the store as `&str` and keeps no copy, but the Slint
+  string behind the field is not wiped from memory when the field is emptied.
 * No recovery if the OS binding is lost (new Windows profile, DPAPI master key reset) and no
   recovery key. A "recovery key" export would be a separate feature.
 * Encrypts item content only. Titles, tags and search text are not covered; the FTS index

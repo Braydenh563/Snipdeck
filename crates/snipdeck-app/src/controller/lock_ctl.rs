@@ -254,11 +254,15 @@ where
             return Err(MasterProblem::Failed);
         }
         master_password::check_new(new, again).map_err(MasterProblem::from)?;
-        let exists = self.store.key_ring_exists().map_err(|_| MasterProblem::Failed)?;
+        let exists = self
+            .store
+            .key_ring_exists()
+            .map_err(|_| MasterProblem::Failed)?;
         let done = if exists {
             // Opens the key when it is not open yet, then wraps it under the password.
-            self.ensure_key(false)
-                .and_then(|()| self.with_ring(|store, ring| store.change_master_password(ring, None, Some(new))))
+            self.ensure_key(false).and_then(|()| {
+                self.with_ring(|store, ring| store.change_master_password(ring, None, Some(new)))
+            })
         } else {
             self.with_ring(|store, ring| store.create_key_ring(ring, Some(new)))
         };

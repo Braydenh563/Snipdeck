@@ -63,7 +63,7 @@ Hub = this session (`claude/compassionate-pascal-pod8ux`, PR #5). It owns the re
 - [ ] B15 Wording and a11y leftovers (ux-audit list)
 - [ ] C1 Recent inbox (opt-in clipboard history)
 - [ ] C2 Paste stack (Supporter)
-- [ ] C3 Master password (Supporter)
+- [x] C3 Master password (Supporter): set/change/remove in Settings > Privacy, unlock window, 15 min idle lock; Windows behaviour unverified
 - [ ] C4 Item colour label and list icon
 - [ ] C5 Accent colour (Index Blue default, presets, Windows accent), HC, 225%
 - [ ] C6 Edge dock ships: settings and wizard steps checked

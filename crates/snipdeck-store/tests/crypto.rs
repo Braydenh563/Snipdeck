@@ -592,7 +592,10 @@ fn a_password_added_later_locks_a_restart_and_removing_it_opens_without_one() {
             .unwrap();
         s.change_master_password(&ring(&p), None, Some("pw"))
             .unwrap();
-        assert!(s.is_unlocked(), "setting a password does not lock the session");
+        assert!(
+            s.is_unlocked(),
+            "setting a password does not lock the session"
+        );
     }
     let mut s = Store::open(dir.path()).unwrap();
     assert!(s.has_master_password(&ring(&p)).unwrap());
@@ -601,10 +604,7 @@ fn a_password_added_later_locks_a_restart_and_removing_it_opens_without_one() {
         Err(Error::Crypto(CryptoError::PasswordRequired))
     ));
     assert!(!s.is_unlocked());
-    assert!(matches!(
-        s.formats(item.id),
-        Err(Error::EncryptionLocked)
-    ));
+    assert!(matches!(s.formats(item.id), Err(Error::EncryptionLocked)));
     s.unlock_key_ring(&ring(&p), Some("pw")).unwrap();
     assert_eq!(s.formats(item.id).unwrap(), text_formats("kept"));
     s.change_master_password(&ring(&p), Some("pw"), None)

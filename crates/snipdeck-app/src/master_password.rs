@@ -11,7 +11,7 @@ pub const MIN_LEN: usize = 8;
 
 /// After this long without using a sensitive item, the library locks and asks again
 /// (SPEC 5.7 "idle timeout").
-pub const IDLE_LOCK: std::time::Duration = std::time::Duration::from_secs(15 * 60);
+pub const IDLE_LOCK: std::time::Duration = std::time::Duration::from_mins(15);
 
 /// What is wrong with a new password.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -116,7 +116,10 @@ mod tests {
 
     #[test]
     fn a_different_repeat_is_a_mismatch_after_the_length_check() {
-        assert_eq!(check_new("correct horse", "correct hors"), Err(NewProblem::Mismatch));
+        assert_eq!(
+            check_new("correct horse", "correct hors"),
+            Err(NewProblem::Mismatch)
+        );
         assert_eq!(check_new("short", "other"), Err(NewProblem::TooShort));
     }
 
@@ -124,7 +127,11 @@ mod tests {
     fn strength_rises_with_length_and_variety() {
         assert_eq!(strength(""), Strength::Weak);
         assert_eq!(strength("abc"), Strength::Weak);
-        assert_eq!(strength("aaaaaaaaaaaa"), Strength::Weak, "one repeated character");
+        assert_eq!(
+            strength("aaaaaaaaaaaa"),
+            Strength::Weak,
+            "one repeated character"
+        );
         assert_eq!(strength("abcdefgh"), Strength::Fair);
         assert_eq!(strength("abcdefghijkl"), Strength::Good);
         assert_eq!(strength("Abcdef1!"), Strength::Good, "mixed classes");
@@ -134,7 +141,12 @@ mod tests {
 
     #[test]
     fn levels_are_zero_to_three_in_order() {
-        let all = [Strength::Weak, Strength::Fair, Strength::Good, Strength::Strong];
+        let all = [
+            Strength::Weak,
+            Strength::Fair,
+            Strength::Good,
+            Strength::Strong,
+        ];
         assert_eq!(all.map(Strength::level), [0, 1, 2, 3]);
     }
 }

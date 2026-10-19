@@ -31,7 +31,7 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 ## C. Wave 4: the deferred features, now in v1
 - [ ] C1 [S] Recent inbox (SPEC 5.6): opt-in, off by default, last 200 entries or 7 days, excludes sensitive/password sources and Windows "exclude from history" formats; Promote to a list; clock tab in the Panel; sidebar entry.
 - [ ] C2 [S] Paste stack (Pro, SPEC 5.1): multi-select, Start stack, queue shown in the Panel, Paste next advances.
-- [ ] C3 [S] Master password (Pro, SPEC 5.7): Argon2id, unlock per session and idle timeout, change and remove, recovery warning.
+- [x] C3 [S] Master password (Pro, SPEC 5.7): Argon2id, unlock per session and idle timeout, change and remove, recovery warning. (`controller/lock_ctl.rs`, `unlock_binding.rs`, `master_password.slint`; Windows behaviour unverified.)
 - [ ] C4 [S] Item colour label (8 DESIGN swatches, 4 px bar, filter chip) and list icon (curated set).
 - [ ] C5 [S] Accent colour: Index Blue default; presets teal, green, amber, rose, violet; "Windows accent" option nudged to pass contrast; every token pair measured for WCAG 2.2 AA in a test; full high-contrast use; 225 % icon scaling.
 - [ ] C6 [S] Edge dock ships (built: dock.rs, dock_ctl.rs): settings checked, wizard steps present.

@@ -36,6 +36,13 @@ type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 const SECRET: &str = "ZQ9-correct-horse-battery";
 const PASSWORD: &str = "tulip harbour 42";
 
+/// `by` short of the idle time.
+fn just_before_idle(by: Duration) -> Duration {
+    IDLE_LOCK
+        .checked_sub(by)
+        .expect("shorter than the idle time")
+}
+
 fn t0() -> Timestamp {
     "2026-10-17T10:30:00Z".parse().expect("timestamp")
 }
@@ -259,7 +266,10 @@ fn needing_a_locked_item_opens_the_prompt_and_the_right_password_unlocks() {
         r.ctl.unlock_with_password("not the password"),
         Err(MasterProblem::WrongPassword)
     );
-    assert_eq!(r.ctl.unlock_with_password(""), Err(MasterProblem::CurrentEmpty));
+    assert_eq!(
+        r.ctl.unlock_with_password(""),
+        Err(MasterProblem::CurrentEmpty)
+    );
     assert!(r.ctl.library_locked(), "still locked after the wrong tries");
     assert!(r.ctl.unlock_prompt_open(), "the prompt stays for a retry");
 
@@ -318,11 +328,17 @@ fn revealing_a_sensitive_row_while_locked_asks_for_the_password_instead() {
 fn opening_a_locked_sensitive_item_in_the_editor_prompts() {
     let mut r = with_password(Tier::Pro).restart(Tier::Pro);
     r.ctl.open_item_editor(r.id);
-    assert!(!r.ctl.item_editor_open(), "nothing decrypted without the key");
+    assert!(
+        !r.ctl.item_editor_open(),
+        "nothing decrypted without the key"
+    );
     assert!(r.ctl.unlock_prompt_open());
     r.ctl.unlock_with_password(PASSWORD).expect("unlock");
     r.ctl.open_item_editor(r.id);
-    assert_eq!(r.ctl.item_editor_view().expect("editor").fields.content, SECRET);
+    assert_eq!(
+        r.ctl.item_editor_view().expect("editor").fields.content,
+        SECRET
+    );
 }
 
 // ---- Change and remove -------------------------------------------------------------------------
@@ -344,7 +360,8 @@ fn changing_the_password_needs_the_current_one_and_keeps_every_item() {
         Err(MasterProblem::TooShort)
     );
     assert_eq!(
-        r.ctl.change_master_password(PASSWORD, new, "marble orchard 78"),
+        r.ctl
+            .change_master_password(PASSWORD, new, "marble orchard 78"),
         Err(MasterProblem::Mismatch)
     );
     r.ctl
@@ -396,14 +413,18 @@ fn changing_or_removing_when_none_is_set_is_refused() {
         r.ctl.change_master_password(PASSWORD, PASSWORD, PASSWORD),
         Err(MasterProblem::Failed)
     );
-    assert_eq!(r.ctl.remove_master_password(PASSWORD), Err(MasterProblem::Failed));
+    assert_eq!(
+        r.ctl.remove_master_password(PASSWORD),
+        Err(MasterProblem::Failed)
+    );
 }
 
 #[test]
 fn setting_again_while_one_is_set_is_refused() {
     let mut r = with_password(Tier::Pro);
     assert_eq!(
-        r.ctl.set_master_password("another phrase 9", "another phrase 9"),
+        r.ctl
+            .set_master_password("another phrase 9", "another phrase 9"),
         Err(MasterProblem::Failed)
     );
 }
@@ -413,7 +434,9 @@ fn a_lapsed_licence_can_still_unlock_change_and_remove() {
     // Set as a Supporter, then the next run has no licence: the library must not be trapped.
     let mut r = with_password(Tier::Pro).restart(Tier::Free);
     assert!(r.ctl.library_locked());
-    r.ctl.unlock_with_password(PASSWORD).expect("unlock on Free");
+    r.ctl
+        .unlock_with_password(PASSWORD)
+        .expect("unlock on Free");
     let new = "marble orchard 77";
     r.ctl
         .change_master_password(PASSWORD, new, new)
@@ -433,7 +456,7 @@ fn a_lapsed_licence_can_still_unlock_change_and_remove() {
 fn the_library_locks_after_the_idle_time_and_asks_again() {
     let mut r = with_password(Tier::Pro);
     assert_eq!(r.ctl.idle_lock_wait(), Some(IDLE_LOCK));
-    r.advance(IDLE_LOCK - Duration::from_secs(1));
+    r.advance(just_before_idle(Duration::from_secs(1)));
     assert!(!r.ctl.lock_if_idle(), "a second early");
     assert_eq!(r.ctl.idle_lock_wait(), Some(Duration::from_secs(1)));
     assert_eq!(r.secret().as_deref(), Some(SECRET));
@@ -450,14 +473,15 @@ fn the_library_locks_after_the_idle_time_and_asks_again() {
 #[test]
 fn using_the_library_restarts_the_idle_count() {
     let mut r = with_password(Tier::Pro);
-    r.advance(IDLE_LOCK - Duration::from_secs(60));
+    r.advance(just_before_idle(Duration::from_mins(1)));
     let used = r.ctl.use_item(r.id, UseMode::Copy);
-    assert!(matches!(
-        used,
-        snipdeck_app::controller::UseResult::Done(_)
-    ));
-    assert_eq!(r.ctl.idle_lock_wait(), Some(IDLE_LOCK), "counted from the use");
-    r.advance(IDLE_LOCK - Duration::from_secs(1));
+    assert!(matches!(used, snipdeck_app::controller::UseResult::Done(_)));
+    assert_eq!(
+        r.ctl.idle_lock_wait(),
+        Some(IDLE_LOCK),
+        "counted from the use"
+    );
+    r.advance(just_before_idle(Duration::from_secs(1)));
     assert!(!r.ctl.lock_if_idle());
     r.advance(Duration::from_secs(1));
     assert!(r.ctl.lock_if_idle());
@@ -489,5 +513,9 @@ fn without_a_password_nothing_ever_locks() {
     r.advance(IDLE_LOCK * 4);
     assert!(!r.ctl.lock_if_idle());
     r.ctl.lock_now();
-    assert_eq!(r.secret().as_deref(), Some(SECRET), "OS-only keys stay open");
+    assert_eq!(
+        r.secret().as_deref(),
+        Some(SECRET),
+        "OS-only keys stay open"
+    );
 }

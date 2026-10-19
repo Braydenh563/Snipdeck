@@ -1474,7 +1474,9 @@ fn escape_closes_only_the_form_and_the_focus_goes_back_to_its_button() {
         // The first field has the focus: typing goes into it.
         support::type_text(r.ui.window(), "abc");
         assert_eq!(
-            element(&r.ui, "New password", AccessibleRole::TextInput).accessible_value().as_deref(),
+            element(&r.ui, "New password", AccessibleRole::TextInput)
+                .accessible_value()
+                .as_deref(),
             Some(""),
             "masked: the value is not exposed, but the field took the keys"
         );
