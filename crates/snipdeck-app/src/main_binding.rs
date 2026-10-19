@@ -207,9 +207,12 @@ where
         let Some(command) = crate::command_binding::command_of(id) else {
             return;
         };
-        if command == crate::commands::Command::Search {
-            if let Some(window) = self.window.upgrade() {
-                window.invoke_focus_search();
+        match command {
+            crate::commands::Command::Search => {
+                if let Some(window) = self.window.upgrade() {
+                    window.invoke_focus_search();
+                }
+                return;
             }
             return;
         }
