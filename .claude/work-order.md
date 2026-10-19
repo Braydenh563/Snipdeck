@@ -13,3 +13,4 @@ Queue = docs/V1-PLAN.md "V1 ship list" (authoritative; tick there too).
 - [ ] E1 docs; E2 pre-public sweep
 - [ ] F1 Fable sweep (owner-approved, one agent); F2 Opus review; F3 ux-auditor + blind-tester; F4 gate --full, PR body, summary, retro
 - [x] CI workflow line updated by the owner (c8cc4eb).
+- [!] CI customisation (owner asked; guard blocks agents): copy docs/ci-proposals/ into the workflow folder (Dependabot groups, Windows clippy, timeouts, release attestation + size report).
