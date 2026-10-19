@@ -268,6 +268,18 @@ impl TrayHandler {
         )
     }
 
+    /// Shows the model's hover text on the icon, if the icon is there.
+    fn refresh_tip(&self, hwnd: HWND) -> Result<(), Error> {
+        if !self.added.get() {
+            return Ok(());
+        }
+        Self::notify(
+            "Shell_NotifyIconW(NIM_MODIFY)",
+            NIM_MODIFY,
+            &self.data(hwnd, NIF_TIP | NIF_SHOWTIP),
+        )
+    }
+
     fn serve(&self, hwnd: HWND, command: Command) {
         // A dropped reply receiver (the caller timed out) is not an error here.
         match command {
@@ -286,25 +298,16 @@ impl TrayHandler {
             }
             Command::Tooltip(text, reply) => {
                 self.model.borrow_mut().set_tooltip(&text);
-                let result = if self.added.get() {
-                    Self::notify(
-                        "Shell_NotifyIconW(NIM_MODIFY)",
-                        NIM_MODIFY,
-                        &self.data(hwnd, NIF_TIP | NIF_SHOWTIP),
-                    )
-                } else {
-                    Ok(())
-                };
-                let _ = reply.send(result);
+                let _ = reply.send(self.refresh_tip(hwnd));
             }
             Command::Paused(paused, reply) => {
                 self.model.borrow_mut().set_hotkeys_paused(paused);
-                let _ = reply.send(Ok(()));
+                let _ = reply.send(self.refresh_tip(hwnd));
             }
             Command::Labels(labels, reply) => {
                 // The menu is built from the model on every right click: nothing to redraw.
                 self.model.borrow_mut().set_labels(labels);
-                let _ = reply.send(Ok(()));
+                let _ = reply.send(self.refresh_tip(hwnd));
             }
         }
     }
@@ -325,6 +328,8 @@ impl TrayHandler {
             Some(Reaction::PopupMenu(lines)) => {
                 if let Some(entry) = popup_menu(hwnd, &lines, wparam.0) {
                     let event = self.model.borrow_mut().pick(entry);
+                    // The paused hover text follows the check mark.
+                    let _ = self.refresh_tip(hwnd);
                     self.emit(event);
                 }
             }
