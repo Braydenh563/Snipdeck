@@ -8,9 +8,9 @@ budget: owner at 40% weekly; own budget line 60%, stop line 65% (owner: wrap up 
 - [x] Merge step 4 (Panel binding: kebab, resize, quick edit) when its agent reports; gate; push
 - [x] Merge step 6 (maintenance + crash log) when its agent reports; gate; push
 - [x] Merge step 9 (tray icon, .ico, Open Panel fix) when its agent reports; gate; push
-- [ ] Step 8: ItemEditor binding + New snippet (create/edit text, link, template, image, file; sensitive toggle with silent key provisioning)
+- [x] Step 8 (merged f4d4d18; gate pending): ItemEditor binding + New snippet (create/edit text, link, template, image, file; sensitive toggle with silent key provisioning)
 - [x] Step 7: Settings window (hotkeys, theme, language, autostart, licence entry, Privacy, Backups, Data section)
-- [ ] Step 5: Picker + TemplateFill windows on their hotkeys
+- [x] Step 5 (merged; gate pending): Picker + TemplateFill windows on their hotkeys
 - [ ] Step 7a: Onboarding (4 steps, Getting started list)
 - [ ] Step 13: UX learnability U1-U9 (plus tier A of .claude/remaining/polish-backlog.md and the owner's 23:52 findings in now.md) + ux-auditor + blind-tester; fix findings. Owner (23:14): first-hide toast naming the hotkey and the tray click; Settings toggle "Show Snipdeck in the taskbar" (WS_EX_TOOLWINDOW off + taskbar button, default off)
 - [ ] Step 3a: Edge dock with reveal (owner 23:20 "Do both"): docked Panel collapses to a slim handle strip on its screen edge (vertical on left/right, horizontal on top/bottom), slides out on hover and/or click (Settings: trigger hover/click/both, hover delay, leave delay), collapses when the pointer leaves or after a paste; handle always on top, non-activating, keyboard via the Panel hotkey; edge remembered per monitor; Linux tests on an injected clock; Windows hit-test unverified until the owner runs it
@@ -22,3 +22,12 @@ budget: owner at 40% weekly; own budget line 60%, stop line 65% (owner: wrap up 
 - [ ] Step 19: docs (README with real screenshots per now.md 02:55, user guide, CHANGELOG, HANDOVER rewrite)
 - [ ] Step 20: reviewer on the whole diff since main; fix findings
 - [ ] Gate --full; PR #5 body refreshed with the three gate lines; morning summary; retro
+
+## Leftovers from the stopped agents (2026-10-19 05:10, integration branch 8fe541d)
+- [ ] Integration gate: cargo check, test, clippy, doc on the merged tree; fix what the merge broke
+- [ ] Goldens: regenerate only the ones the merged work changes (settings-*, empty-*, main-*, editor-*), read each
+- [ ] Step 13 item 7: first-hide toast naming the hotkey and the tray click (toast window now merged)
+- [ ] Step 13 tier A + audit-13a items not yet done (ux.md lists done: A8, A23, audit 1, audit 5); audit 9 menu focus ring needs a design call
+- [ ] Picker: decide whether the fill form's live preview masks a sensitive template (default: mask, reveal on hold Space like lists)
+- [ ] codemap regenerate; CHANGELOG lines for steps 3a, 5, 8, 13
+- [ ] Owner on Windows: editor (DPAPI key, file dialog, raise), picker (caret, focus, popups), dock (strip hover, DPI, taskbar), ux (taskbar buttons, icons, work-area sizing, hide on blur)
