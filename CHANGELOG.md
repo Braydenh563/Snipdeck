@@ -33,7 +33,7 @@ Windows PC.
 - The Snipdeck icon on the app and in the tray, and a translated tray menu.
 - Translations for Spanish, German, French, Brazilian Portuguese, Japanese and Simplified Chinese.
 - The Picker, the template fill form and quick capture (`Ctrl+Shift+2` saves the clipboard text as a new item).
-- Paste next (`Ctrl+Alt+V`) for Pro, over the pinned strip or the current list.
+- Paste next (`Ctrl+Alt+V`) for Supporter, over the pinned strip or the current list.
 - The item editor for text, code, link, template, image and file items, with drafts that survive a crash.
 - Export of the whole library as one `.snipdeck` file from Settings.
 - `snipdeck-licence-issuer`, a tool for making licence keys.
@@ -57,8 +57,29 @@ Windows PC.
 - A Help menu in the Main window, `F1` for the Help window, and a link to the welcome tour in About.
 - A welcome tour on the first start. **Show the welcome tour again** in Help replays it.
 - A Help window with a **Troubleshoot** checklist and **About**.
+- **Ctrl+Z** undoes the last delete. The Undo message stays at least 5 seconds and waits while the pointer is on
+  it.
+- New shortcuts: `Ctrl+N` (new item), `Ctrl+Shift+N` (new list), `Ctrl+F` (search), `Ctrl+W` (close or hide) and
+  `Ctrl+,` (Settings), in the Main window and the Panel.
+- **Duplicate** in the item menu of the Main window.
+- **Export as text** in a list's menu writes the list's text items to a `.txt` file in Documents.
+- A **More** (⋯) button on rows and cards opens the item menu for a mouse or touch screen.
+- A **Getting started** list on the first run, with four cards that show how to use Snipdeck.
+- A double-click on the tray icon opens the Main window.
+- **Reduce motion** in Settings. It is also on when Windows has Animation effects off.
+- **Clear the clipboard after copying a sensitive item** in Settings (30 seconds by default, 0 never clears it).
+- **Accent colour** in Settings: Blue, Teal, Green, Amber, Rose, Violet or the Windows accent.
+- **Command palette** (`Ctrl+K`) and a shortcuts sheet (`Ctrl+/`), with shortcut hints in menus and tooltips.
+- **Paste stack** (Supporter): mark items, press **Start stack**, then `Ctrl+Alt+V` pastes them one by one.
+- **Master password** (Supporter) for sensitive items. Snipdeck asks for it when you first need a sensitive item
+  and again after 15 minutes without use. There is no recovery if you forget it.
+- **Supporter**: pay what you want from A$5 (suggested A$8), one time. **Get Supporter…** in Settings, and a
+  Free and Supporter table that shows what each plan has.
+- `--check-db` checks the library for damage and exits. `--troubleshoot` prints the Troubleshoot report and exits.
 
 ### Changed
+- The Free plan now has up to 5 boards. The paid plan is called Supporter.
+- Encrypting sensitive items on disk is free on every plan. Supporter adds the master password.
 - Quick start is now "get the folder, double-click `Snipdeck.bat`". Users no longer need Rust, Visual Studio or git.
 - `Snipdeck.bat update` downloads the newest release instead of running `git pull`. The source build moved to
   `Snipdeck.bat build` and is for developers.
