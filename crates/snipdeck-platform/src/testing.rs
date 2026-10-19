@@ -449,7 +449,9 @@ mod tests {
         handle.set(SystemLook {
             dark: true,
             high_contrast: None,
+            reduce_motion: true,
         });
         assert!(look.read().dark);
+        assert!(look.read().reduce_motion);
     }
 }

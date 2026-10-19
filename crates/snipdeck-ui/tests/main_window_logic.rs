@@ -124,6 +124,9 @@ fn start() -> (MainWindow, Log) {
     hook!(on_tag_toggled, |i, on| format!("tag:{i}:{on}"));
     hook!(on_reveal_requested, |i, on| format!("reveal:{i}:{on}"));
     hook!(on_settings_requested, || "settings".to_string());
+    hook!(on_add_list_requested, || "add-list".to_string());
+    hook!(on_close_requested, || "close".to_string());
+    hook!(on_undo_requested, || "undo".to_string());
     hook!(on_help_requested, |page| format!("help:{page:?}"));
     hook!(on_panel_requested, || "panel".to_string());
     hook!(on_list_edit_requested, |i| format!("list-edit:{i}"));
@@ -614,6 +617,29 @@ ui_tests! {
         press_key(&ui, Key::DownArrow);
         let cols = ui.get_columns();
         assert_eq!(take(&log), [format!("select:{}:Replace", (1 + cols).min(7))]);
+    }
+
+    fn ctrl_shift_n_adds_a_list_ctrl_w_closes_and_ctrl_comma_opens_settings() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control, Key::Shift], "N");
+        assert_eq!(take(&log), ["add-list"], "not a new item");
+        chord(ui.window(), &[Key::Control], "w");
+        assert_eq!(take(&log), ["close"]);
+        chord(ui.window(), &[Key::Control], ",");
+        assert_eq!(take(&log), ["settings"]);
+    }
+
+    fn ctrl_z_undoes_unless_the_search_field_is_being_typed_in() {
+        let (ui, log) = start();
+        ui.invoke_focus_items();
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "z");
+        assert_eq!(take(&log), ["undo"]);
+        chord(ui.window(), &[Key::Control], "f");
+        take(&log);
+        chord(ui.window(), &[Key::Control], "z");
+        assert_eq!(take(&log), Vec::<String>::new(), "the field undoes its own typing");
     }
 
     fn the_board_button_names_the_board_and_asks_for_the_menu() {

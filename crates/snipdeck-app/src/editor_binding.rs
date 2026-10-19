@@ -146,7 +146,7 @@ where
         let Some(window) = self.window_for_use() else {
             return;
         };
-        set_look(&window, view.high_contrast.as_ref());
+        set_look(&window, view.high_contrast.as_ref(), view.reduced_motion);
         window.set_dark(view.dark);
         let fresh = view.seq != self.seq.get();
         {

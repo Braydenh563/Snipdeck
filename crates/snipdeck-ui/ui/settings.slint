@@ -60,6 +60,7 @@ export component SettingsPage inherits Window {
     in-out property <bool> close-to-tray: true;
     in-out property <bool> panel-in-taskbar: false;
     in-out property <bool> panel-hide-on-blur: true;
+    in-out property <bool> reduce-motion: false;
     in property <int> panel-width: 320;
     in property <int> panel-width-min: 260;
     in property <int> panel-width-max: 480;
@@ -74,6 +75,9 @@ export component SettingsPage inherits Window {
     in property <int> backups-keep: 7;
     in property <int> backups-keep-min: 1;
     in property <int> backups-keep-max: 60;
+    // Seconds before a copied sensitive item is cleared from the clipboard; 0 = never.
+    in property <int> clipboard-clear-secs: 30;
+    in property <int> clipboard-clear-secs-max: 600;
     // Program names the panel never pastes into ("keepass.exe").
     in property <[string]> no-paste-apps;
     // Set by the host when `no-paste-app-added` was refused ("Already in the list").
@@ -113,12 +117,14 @@ export component SettingsPage inherits Window {
     callback close-to-tray-toggled(on: bool);
     callback panel-in-taskbar-toggled(on: bool);
     callback panel-hide-on-blur-toggled(on: bool);
+    callback reduce-motion-toggled(on: bool);
     callback panel-width-chosen(width: int);
     callback dock-edge-chosen(index: int);
     callback dock-trigger-chosen(index: int);
     callback dock-hover-delay-chosen(ms: int);
     callback dock-leave-delay-chosen(ms: int);
     callback backups-keep-chosen(count: int);
+    callback clipboard-clear-secs-chosen(secs: int);
     callback no-paste-app-added(name: string);
     callback no-paste-app-removed(index: int);
     callback licence-submitted(key: string);
@@ -252,6 +258,18 @@ export component SettingsPage inherits Window {
                             options: root.languages;
                             current: root.language-index;
                             chosen(i) => { root.language-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Reduce motion");
+                        description: @tr("Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off.");
+                        Toggle {
+                            a11y-label: @tr("Reduce motion");
+                            checked <=> root.reduce-motion;
+                            toggled(on) => { root.reduce-motion-toggled(on); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
@@ -539,7 +557,7 @@ export component SettingsPage inherits Window {
                         font-family: Fonts.sans;
                         font-size: Type.sm;
                         wrap: word-wrap;
-                        accessible-role: none;
+                        accessible-role: AccessibleRole.text;
                     }
                     SettingRow {
                         title: @tr("Backups to keep");
@@ -746,6 +764,24 @@ export component SettingsPage inherits Window {
 
                 FormSection {
                     title: @tr("Privacy");
+                    SettingRow {
+                        title: @tr("Clear the clipboard after copying a sensitive item");
+                        description: @tr("Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead.");
+                        NumberStepper {
+                            label: @tr("Clipboard clear time");
+                            decrease-label: @tr("Clear the clipboard sooner");
+                            increase-label: @tr("Clear the clipboard later");
+                            unit: @tr("s");
+                            min: 0;
+                            max: root.clipboard-clear-secs-max;
+                            step: 5;
+                            value: root.clipboard-clear-secs;
+                            stepped(v) => { root.clipboard-clear-secs-chosen(v); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
                     for line in [
                         @tr("Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."),
                         @tr("Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."),

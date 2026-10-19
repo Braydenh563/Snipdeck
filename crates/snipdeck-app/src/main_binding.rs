@@ -573,6 +573,22 @@ where
             .main_board_menu_activate(index(i)));
         wire!(on_board_menu_dismissed, |ctl| ctl.main_board_menu_close());
         wire!(on_toast_undo, |ctl| ctl.toast_action());
+        wire!(on_undo_requested, |ctl| ctl.main_undo());
+        {
+            let core = Rc::clone(&core);
+            window.on_toast_hover_changed(move |on| core.controller.borrow_mut().toast_hover(on));
+        }
+        {
+            // Ctrl+W is the X button: the same decision between hiding and quitting.
+            let weak = window.as_weak();
+            window.on_close_requested(move || {
+                if let Some(window) = weak.upgrade() {
+                    window
+                        .window()
+                        .dispatch_event(slint::platform::WindowEvent::CloseRequested);
+                }
+            });
+        }
         window.on_settings_requested(|| {
             // Settings opens over the Main window the user is in.
             crate::native_window::note_opener(crate::native_window::Surface::Main);
@@ -854,8 +870,10 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     if differs(&|p| p.dark == screen.dark) {
         window.set_dark(screen.dark);
     }
-    if differs(&|p| p.high_contrast == screen.high_contrast) {
-        set_look(window, screen.high_contrast.as_ref());
+    if differs(&|p| {
+        p.high_contrast == screen.high_contrast && p.reduced_motion == screen.reduced_motion
+    }) {
+        set_look(window, screen.high_contrast.as_ref(), screen.reduced_motion);
     }
     if differs(&|p| p.panel_hotkey == screen.panel_hotkey) {
         window.set_panel_hotkey(screen.panel_hotkey.as_str().into());
@@ -950,13 +968,14 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     }
 }
 
-/// The Windows high-contrast colours, or off.
-pub(crate) fn set_look<C>(component: &C, hc: Option<&HighContrast>)
+/// The Windows high-contrast colours (or off) and whether motion is reduced.
+pub(crate) fn set_look<C>(component: &C, hc: Option<&HighContrast>, reduced_motion: bool)
 where
     C: ComponentHandle,
     for<'a> ui::SystemLook<'a>: slint::Global<'a, C>,
 {
     let look = component.global::<ui::SystemLook<'_>>();
+    look.set_reduced_motion(reduced_motion);
     look.set_high_contrast(hc.is_some());
     if let Some(hc) = hc {
         let color = |c: Rgb| slint::Color::from_rgb_u8(c.r, c.g, c.b);
@@ -973,7 +992,11 @@ where
     C: ComponentHandle,
     for<'a> ui::SystemLook<'a>: slint::Global<'a, C>,
 {
-    set_look(component, screen.high_contrast.as_ref());
+    set_look(
+        component,
+        screen.high_contrast.as_ref(),
+        screen.reduced_motion,
+    );
 }
 
 fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {

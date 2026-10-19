@@ -154,6 +154,15 @@ msgstr "Effacer la recherche"
 msgid "Clear selection"
 msgstr "Effacer la sélection"
 
+msgid "Clear the clipboard after copying a sensitive item"
+msgstr ""
+
+msgid "Clear the clipboard later"
+msgstr ""
+
+msgid "Clear the clipboard sooner"
+msgstr ""
+
 msgid "Clear the search, then close"
 msgstr ""
 
@@ -163,6 +172,9 @@ msgstr "Effacer le raccourci de {}"
 msgid "Click"
 msgstr "Clic"
 
+msgid "Clipboard clear time"
+msgstr ""
+
 msgid "Close"
 msgstr "Fermer"
 
@@ -171,6 +183,9 @@ msgstr ""
 
 msgid "Close the tag list"
 msgstr "Fermer la liste des étiquettes"
+
+msgid "Close the window"
+msgstr ""
 
 msgid "Code"
 msgstr "Code"
@@ -470,8 +485,8 @@ msgstr "Aide"
 msgid "Help sections"
 msgstr "Sections de l'aide"
 
-msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard 30 seconds after you copy it."
-msgstr "Masqué dans les listes tant que vous ne maintenez pas la barre d’espace, exclu de l’historique du presse-papiers et effacé du presse-papiers 30 secondes après la copie."
+msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard a little after you copy it (the time is in Settings)."
+msgstr ""
 
 msgid "Hidden on screen and kept out of clipboard history."
 msgstr ""
@@ -481,6 +496,9 @@ msgstr "Masqué. Maintenez la touche Espace pour afficher."
 
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "Masqué. Ouvrez-le dans le panneau pour l'afficher."
+
+msgid "Hide the Panel"
+msgstr ""
 
 msgid "Hide the panel when it loses focus"
 msgstr "Masquer le panneau quand il perd le focus"
@@ -966,6 +984,9 @@ msgstr "Utilisés récemment"
 msgid "Red"
 msgstr "Rouge"
 
+msgid "Reduce motion"
+msgstr ""
+
 msgid "Remove tag {}"
 msgstr "Retirer l'étiquette {}"
 
@@ -1052,6 +1073,9 @@ msgstr "Résultats de recherche"
 
 msgid "Search snippets"
 msgstr "Rechercher des extraits"
+
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
+msgstr ""
 
 msgid "Select every item"
 msgstr ""
@@ -1294,11 +1318,17 @@ msgstr "Activez l'historique du presse-papiers dans les paramètres pour collect
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "Si tu désactives cette option, fermer le panneau ou la fenêtre principale quitte Snipdeck."
 
+msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
+msgstr ""
+
 msgid "Type a command"
 msgstr ""
 
 msgid "Type {} to confirm"
 msgstr "Saisissez {} pour confirmer"
+
+msgid "Undo the delete"
+msgstr ""
 
 msgid "Unpin"
 msgstr "Désépingler"
@@ -1445,6 +1475,9 @@ msgid "px"
 msgstr "px"
 
 msgid "quick find paste palette"
+msgstr ""
+
+msgid "s"
 msgstr ""
 
 msgid "tutorial intro onboarding basics learn"
