@@ -9,6 +9,7 @@ Next, in order: CI green on PR #5 -> translations pass for ~80 new strings per l
 
 ## Parallel work (orchestration ledger, 2026-10-19 14:25)
 Hub = this session (`claude/compassionate-pascal-pod8ux`, PR #5). It owns the release branch, merges, `.po/.pot`, `CODEMAP.md`, `HANDOVER.md`, licence/Supporter wording, goldens (D1).
+- 327d145 merged 3b B5+B7 (gate ok, app/deck/panel tests ok). C3 agent running in wt-c3. 3b on B11+C4; 3a on C2; 3c on folder picker.
 - Wave 3a cloud session `session_01Haxw5UhdjTPvNo4KAUcPWG`, branch `claude/v1-wave3a`: B3, B6, B9, B13 done -> PR #6 (hub merges). It correctly refuses extra work sent by message (no owner authority), so follow-up queues go to NEW sessions whose first prompt carries the task. Owner (16:0x) is authorising the sessions directly: 3a next = C5, C6, C2 (after #6 merges).
 - Wave 3c cloud session `session_01U6UTKpv5YUhk3MdMBGxHoh`, branch `claude/v1-wave3c` (started 16:00): B1, B2, B12, C1.
 - Wave 3b cloud session `session_016pPMHPMEKcG9VuaY2dcBbm`, branch `claude/v1-wave3b`: B4, B8, B10, B14 -> PR. Next (owner authorising): B5, B7 + L7, B11, C4 on the same branch.
