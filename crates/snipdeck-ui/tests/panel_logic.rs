@@ -58,6 +58,8 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_quick_use, |n| format!("quick:{n}"));
     hook!(on_selection_moved, |d| format!("move:{d}"));
     hook!(on_tab_selected, |i| format!("tab:{i}"));
+    hook!(on_list_menu_requested, |i| format!("list-menu:{i}"));
+    hook!(on_list_edit_requested, |i| format!("list-edit:{i}"));
     hook!(on_close_requested, || "close".to_string());
     hook!(on_drag_requested, || "drag".to_string());
     hook!(on_pin_toggled, |on| format!("pin:{on}"));
@@ -427,6 +429,28 @@ ui_tests! {
         tab.invoke_accessible_default_action();
         assert_eq!(ui.get_current_tab(), 2);
         assert_eq!(take(&log), ["tab:2"]);
+    }
+
+    #[test]
+    fn right_clicking_a_tab_asks_for_its_list_menu_and_the_tab_says_it_has_one() {
+        let (ui, log) = start();
+        let tab = find(&ui, "Code", AccessibleRole::Tab);
+        assert_eq!(
+            tab.accessible_description().as_deref(),
+            Some("Right-click or press Menu for list actions")
+        );
+        let at = centre(&tab);
+        move_to(&ui, at);
+        ui.window().dispatch_event(WindowEvent::PointerPressed {
+            position: at,
+            button: PointerEventButton::Right,
+        });
+        ui.window().dispatch_event(WindowEvent::PointerReleased {
+            position: at,
+            button: PointerEventButton::Right,
+        });
+        assert_eq!(take(&log), ["list-menu:2"], "no selection change either");
+        assert_eq!(ui.get_current_tab(), 0);
     }
 
     // ---- Header --------------------------------------------------------------------------------

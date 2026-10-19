@@ -423,6 +423,11 @@ where
         wire_effects!(on_item_menu_activated, |ctl, i| ctl
             .choose_item_menu(index(i)));
         wire!(on_item_menu_dismissed, |ctl| ctl.close_item_menu());
+        wire!(on_list_menu_requested, |ctl, i| ctl.open_list_menu(index(i)));
+        wire_effects!(on_list_menu_activated, |ctl, i| ctl
+            .choose_list_menu(index(i)));
+        wire!(on_list_menu_dismissed, |ctl| ctl.close_list_menu());
+        wire!(on_list_edit_requested, |ctl, i| ctl.edit_list_tab(index(i)));
         wire!(on_reveal_requested, |ctl, i, on| ctl
             .reveal_row(index(i), on));
         wire!(on_selection_moved, |ctl, delta| ctl
@@ -706,6 +711,11 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         });
         window.set_item_menu_entries(model(entries));
         window.set_item_menu_open(view.item_menu.is_some());
+    }
+    if differs(&|p| p.list_menu == view.list_menu)
+        || window.get_list_menu_open() != view.list_menu.is_some()
+    {
+        window.set_list_menu_open(view.list_menu.is_some());
     }
     if differs(&|p| p.toast == view.toast) {
         if let Some(toast) = &view.toast {
