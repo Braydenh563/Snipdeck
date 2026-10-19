@@ -654,7 +654,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
     let mut store = Store::open(&folder).map_err(|e| format!("{}: {e}", folder.display()))?;
     // A new library has no board, and the Panel cannot make one: without this every control of a
     // first run has nothing to act on (an empty board menu, no tabs, no rows).
-    match snipdeck_app::starter::ensure_board(&mut store, now) {
+    match snipdeck_app::starter::ensure_first_run(&mut store, now) {
         Ok(made) => snipdeck_app::trace!("real library; starter board made: {made}"),
         Err(e) => eprintln!("snipdeck: could not create the first board: {e}"),
     }
