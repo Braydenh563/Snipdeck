@@ -402,6 +402,10 @@ type Hotkeys = Rc<RefCell<Box<dyn host::HotkeyBackend>>>;
 
 /// What the host does with the controller's [`Effect`]s: quit, pause or resume the hotkeys,
 /// start a window drag, open the Main window.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the host's handles, each used by one effect; wired once in main"
+)]
 fn effect_handler(
     hotkeys: Hotkeys,
     chords_now: impl Fn() -> snipdeck_app::settings::Hotkeys + 'static,
