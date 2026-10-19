@@ -82,7 +82,7 @@ Settings, **Shortcuts**: an empty field means the hotkey is off.
 target runs as administrator, or when the program is in **Never paste into** in Settings. The message says
 which. The Panel footer shows where a click will go.
 
-**Ctrl+Alt+V says "This item uses a Pro feature".** Paste next is a Pro feature. Enter a key in Settings,
+**Ctrl+Alt+V says "This item uses a Pro feature".** Paste next is a Supporter feature. Enter a key in Settings,
 **Licence**.
 
 **Using a template says "This template can't be read".** A placeholder in it is wrong. Open the item and fix

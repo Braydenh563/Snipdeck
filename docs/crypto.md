@@ -1,6 +1,6 @@
 # Encryption of sensitive items
 
-Code: `crates/snipdeck-store/src/crypto.rs` and `crypto/`. Pro feature (SPEC §5.7).
+Code: `crates/snipdeck-store/src/crypto.rs` and `crypto/`. Supporter feature (SPEC §5.7).
 
 ## Hierarchy
 

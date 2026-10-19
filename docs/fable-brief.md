@@ -1,6 +1,6 @@
 # Fable pass brief (owner-approved: ONE focused Fable agent, run once)
 
-Owner, 2026-10-18: "use fable to round out the app, do an analysis, fix, refinement, upgrade, and more to push the application to a finished state." Earlier (2026-10-17): "analyse the application, poke holes in it, fix bugs, security issues, other issues missed, challenge architectural decisions and find front and back end issues; one to polish and validate the app."
+Owner request, 2026-10-18 (and earlier, 2026-10-17): one focused pass to analyse the app, poke holes in it, fix bugs, security and architecture issues, and polish and validate it.
 
 Run it only after the feature queue in `docs/HANDOVER.md` (Main window wired, list/snippet management, Picker windows, quick edit, resize, tray fixes) has landed and CI is green, so it works on a near-complete app. One agent, one pass, on its own branch/PR.
 

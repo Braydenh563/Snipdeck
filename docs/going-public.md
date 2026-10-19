@@ -1,21 +1,39 @@
 # Going public
 
-Owner checklist for making the Snipdeck repository public. Do it in this order. Nothing here is done yet.
+Owner checklist for making the Snipdeck repository public. Do it in this order. Section 1 has been checked by an agent (results below); sections 2 to 7 are still open.
 
 ## 1. Before the switch (repo still private)
 
-- [ ] Scan the full history, not only the current files. Run `gitleaks detect --source . --log-opts="--all"` and
+- [x] Scan the full history, not only the current files. Run `gitleaks detect --source . --log-opts="--all"` and
       `trufflehog git file://. --only-verified`. Check every hit by hand.
-- [ ] Search history for key files: `git log --all --name-only | grep -iE '\.(pem|key|env|pfx|p12)$|private'`.
+      Result (2026-10-19): neither tool was installed, so a scripted scan of the whole history (454 commits, all
+      branches, every added line) looked for private-key blocks, `ghp_`, `github_pat_`, `sk-`, `xox`, `AKIA` and
+      `AIza` tokens, JWT-like strings, password and token assignments and 32-byte base64 keys. No secrets. The
+      only hits are test values: the development licence vectors (signed with the public development seed) and
+      the throwaway test public key. The production public key never appears. Optional: run gitleaks yourself
+      before the switch.
+- [x] Search history for key files: `git log --all --name-only | grep -iE '\.(pem|key|env|pfx|p12)$|private'`.
       No hits is the goal.
-- [ ] If anything secret was ever committed, treat it as leaked. Replace it, then rewrite history or start a
+      Result: no hits for those extensions or names. The only database file is the test fixture
+      `crates/snipdeck-store/tests/fixtures/v1.db` (schema and sample rows only).
+- [x] If anything secret was ever committed, treat it as leaked. Replace it, then rewrite history or start a
       fresh repo. Deleting the file in a new commit is not enough.
+      Result: nothing secret was found, so no rewrite is needed.
 - [ ] Confirm the private signing key is not in the repo, the working folder, backups synced to the cloud or
       CI logs. Keep it only with the owner, in a password manager, plus one offline copy.
-- [ ] Read `docs/licensing.md` and `SECURITY.md` once as a stranger. Remove anything private (names, order
+- [x] Read `docs/licensing.md` and `SECURITY.md` once as a stranger. Remove anything private (names, order
       lists, personal paths).
-- [ ] Check `docs/`, `.claude/` and `spikes-results/` for notes or test output you do not want public.
+      Result: both, plus README and CONTRIBUTING, updated for the Supporter wording and stale facts; licence
+      internals and bypass-useful remarks trimmed to what `docs/licensing.md` publishes.
+- [x] Check `docs/`, `.claude/` and `spikes-results/` for notes or test output you do not want public.
+      Result: the owner's chat messages in `.claude/now.md` and a few docs are replaced by `[owner message
+      omitted]` plus the triage; licence-gating details removed from `docs/reviews/M1-review.md`,
+      `docs/HANDOVER.md` and `docs/architecture.md`; a stale clone URL and a local path removed.
+      `spikes-results/` is ignored and was never committed.
 - [ ] Decide the account name and email that commits show. Old commits keep the author address.
+      Note: 6 commits (GitHub web merges) carry your personal email address; the rest use
+      noreply addresses. Commit messages also link four `claude.ai/code/session_...` URLs. Neither is secret;
+      only a history rewrite would remove them, so decide before the switch whether you mind.
 
 ## 2. Repository secret
 

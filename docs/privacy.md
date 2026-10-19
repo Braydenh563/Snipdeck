@@ -22,7 +22,7 @@ entry (if you turn it on) and the clipboard when you use an item.
 ## Sensitive items
 
 Items marked sensitive are masked in the UI, excluded from Windows clipboard history and cloud
-clipboard, and (Pro) encrypted at rest with a key protected by Windows DPAPI and, optionally, a master
+clipboard, and (Supporter) encrypted at rest with a key protected by Windows DPAPI and, optionally, a master
 password. Titles, tags and search text are not encrypted ([`crypto.md`](crypto.md)).
 
 ## Removing everything

@@ -8,7 +8,7 @@ This guide says what the app is built to do.
 
 ## The idea in one minute
 
-- A **board** is a workspace, such as "Work" or "Personal". The Free plan has up to 3 boards.
+- A **board** is a workspace, such as "Work" or "Personal". The Free plan has up to 5 boards.
 - A **list** is a group of items in a board, such as "Email replies". Lists show as tabs in the Panel. A new
   library starts with a board called "My snippets" and a list called "Snippets".
 - An **item** is one thing to paste: text, code, a link, a template, an image or a file.
@@ -47,8 +47,8 @@ editor, the **Placeholders** list inserts one for you.
 | `{date}`, `{time}` | Today's date, or the time | Free |
 | `{datetime:FORMAT}` | Date and time in a format you choose, such as `{datetime:%d %B %Y}` | Free |
 | `{cursor}` | Nothing. It marks where the text cursor ends up after pasting. | Free |
-| `{field:Name}` or `{field:Name\|default}` | Asks you for a value each time | Pro |
-| `{choice:Name\|a\|b}` | Asks you to pick one of the options | Pro |
+| `{field:Name}` or `{field:Name\|default}` | Asks you for a value each time | Supporter |
+| `{choice:Name\|a\|b}` | Asks you to pick one of the options | Supporter |
 
 `{date}` and `{time}` use your computer's time zone. `{clipboard}` inserts the clipboard text. Type `{{` and `}}` for literal braces. Any other braces are an error, and the editor says so when
 you save.
@@ -65,7 +65,7 @@ sensitive. A sensitive item:
 - Is put on the clipboard marked private, so Windows clipboard history and cloud clipboard skip it. If you only copied it, Snipdeck
   clears it from the clipboard after 30 seconds (if the clipboard still holds it).
 - Is masked in the fill form.
-- On Pro, is also encrypted on disk with a key protected by Windows. The title, tags and search text are not
+- With Supporter, is also encrypted on disk with a key protected by Windows. The title, tags and search text are not
   encrypted. See [`crypto.md`](crypto.md).
 
 ## Paste an item
@@ -94,7 +94,7 @@ and the start of the content.
 - `1` to `9` use that row while the box is empty. `Alt+1` to `Alt+9` work at any time.
 - `Ctrl+E` edits the selected item. `Esc` closes the Picker.
 
-### Paste next (Pro)
+### Paste next (Supporter)
 
 `Ctrl+Alt+V` pastes the next item of the pinned strip (or, with nothing pinned, of the list you are looking
 at), one per press. After the last one, a message says so and the next press starts again.
@@ -161,7 +161,7 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   window closes** is on by default. Turn it off and closing the Panel or the Main window quits Snipdeck.
 - **Never paste into.** Program file names, such as `notepad.exe`. Snipdeck copies instead of pasting there.
 - **Licence.** Paste your key (it starts with `SNIP1.`) and press **Activate**. See the
-  [README](../README.md#licence).
+  [README](../README.md#free-and-supporter).
 - **Backups.** Snipdeck backs up once a day and keeps the newest ones: set **Backups to keep** from 1 to 60
   (default 7). **Restore** adds back what is missing and
   never removes anything. **Back up now** makes one on demand. **Open data folder** and **Open backups folder** open them.
@@ -184,7 +184,7 @@ or CopyQ data has no screen in this version.
 | Anywhere | `Ctrl+Alt+Space` | Show or hide the Panel |
 | Anywhere | `Ctrl+Shift+Space` | Open the Picker |
 | Anywhere | `Ctrl+Shift+2` | Save the clipboard text as a new item |
-| Anywhere | `Ctrl+Alt+V` | Paste next (Pro) |
+| Anywhere | `Ctrl+Alt+V` | Paste next (Supporter) |
 | Panel | `Up`, `Down`, `PageUp`, `PageDown` | Move the selection |
 | Panel | `Enter`, `Shift+Enter` | Use, or copy only |
 | Panel | `1` to `9` | Use that row (search box empty) |

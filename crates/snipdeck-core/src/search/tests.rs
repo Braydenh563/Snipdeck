@@ -22,7 +22,7 @@ fn titles(index: &SearchIndex, items: &[Item], query: &str, limit: usize) -> Vec
 
 fn sample() -> Vec<Item> {
     vec![
-        item("Email signature", "Best regards,\nBrayden"),
+        item("Email signature", "Best regards,\nAlex"),
         item("Meeting link", "https://meet.example.com/standup"),
         item(
             "Invoice reminder",

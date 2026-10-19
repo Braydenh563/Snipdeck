@@ -6,8 +6,8 @@ steps from `docs/spikes/`, and writes up the results. You answer **p**ass / **f*
 ## Run it
 
 1. Get the repo on your Windows PC (Windows 10 1903+ or Windows 11):
-   - `git clone https://github.com/Braydenh563/Backpack` then `git checkout claude/clipboard-assistant-design-o1eool`, **or**
-   - download the ZIP of that branch from GitHub (Code > Download ZIP) and unzip it.
+   - `git clone https://github.com/Braydenh563/Snipdeck`, **or**
+   - download the ZIP from GitHub (Code > Download ZIP) and unzip it.
 2. Double-click **`run-windows-tests.bat`** in the repo root.
    (From Git Bash or WSL: `tools/windows-test/run-tests.sh`. From PowerShell: `.\tools\windows-test\run-tests.ps1`.)
 

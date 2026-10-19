@@ -70,10 +70,10 @@ More in [`tools/launcher/README.md`](tools/launcher/README.md).
 - **Main window.** Boards, lists, tags, Pinned and Trash. Compact, comfortable and tile views, search,
   multi-select and keyboard reordering.
 - **Six kinds of item.** Text, code, link, template, image and file.
-- **Templates.** Insert `{date}`, `{time}` or your own date format. Pro adds fields and choices that ask you
+- **Templates.** Insert `{date}`, `{time}` or your own date format. Supporter adds fields and choices that ask you
   for a value each time.
 - **Quick capture.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>2</kbd> to save the clipboard text as a new item.
-- **Sensitive items.** Hidden in lists, kept out of Windows clipboard history, and encrypted on disk with Pro.
+- **Sensitive items.** Hidden in lists, kept out of Windows clipboard history, and encrypted on disk with Supporter.
 - **Safe to change.** Deleted things stay in the Trash for 30 days, with Undo. Daily backups are automatic.
 - **Your way.** Light, dark or Windows theme, seven languages, and hotkeys you can change.
 
@@ -130,7 +130,7 @@ Rendered from the app's own interface, in light or dark to match your GitHub the
 | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Space</kbd> | Show or hide the Panel |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> | Open the Picker |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>2</kbd> | Save the clipboard text as a new item |
-| <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> | Paste the next pinned item or list item (Pro) |
+| <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> | Paste the next pinned item or list item (Supporter) |
 
 Change any of them in Settings. If another program owns a hotkey, Snipdeck says so and the rest keep working.
 
@@ -176,11 +176,13 @@ Icons and fonts are packaged with the app. Your library stays on your PC in `%LO
 Details: [`docs/privacy.md`](docs/privacy.md).
 </details>
 
-## Free and Pro
+## Free and Supporter
 
-Snipdeck is free software under [GPL-3.0-only](LICENSE). Free covers everyday use with up to 3 boards. Pro
-adds more boards, templates that ask for values, encryption of sensitive items and paste next. Enter a key
-under **Licence** in Settings. See [`docs/licensing.md`](docs/licensing.md).
+Snipdeck is free software under [GPL-3.0-only](LICENSE). Free covers everyday use with up to 5 boards.
+Supporter is pay what you want, from A$5 (suggested A$8), one time, with every 1.x update. It adds more
+boards, templates that ask for values, encryption of sensitive items and paste next, and it supports the
+project. If you cannot afford it, ask for a key. Enter a key under **Licence** in Settings. Nothing nags you.
+See [`docs/licensing.md`](docs/licensing.md).
 
 ## Help and contributing
 

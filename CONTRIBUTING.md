@@ -1,6 +1,6 @@
 # Contributing to Snipdeck
 
-Thanks for helping. Snipdeck is a work in progress ([`README.md`](README.md#what-works-today) says what
+Thanks for helping. Snipdeck is a work in progress ([`README.md`](README.md#features) says what
 exists). Read [`docs/SPEC.md`](docs/SPEC.md) for what it does, [`DESIGN.md`](DESIGN.md) for how it looks,
 [`docs/architecture.md`](docs/architecture.md) and [`docs/development.md`](docs/development.md) for how
 the code is split, and [`docs/PLAN.md`](docs/PLAN.md) for what is next. Everyone taking part follows the
