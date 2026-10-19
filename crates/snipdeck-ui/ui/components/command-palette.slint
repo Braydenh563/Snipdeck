@@ -159,7 +159,7 @@ export component CommandPalette inherits Rectangle {
                 }
                 Flickable {
                     // Keeps the highlighted row in view.
-                    viewport-y: min(0px, max(-(root.cur + 1) * root.row-h + self.height, -root.cur * root.row-h));
+                    content-y: min(0px, max(-(root.cur + 1) * root.row-h + self.height, -root.cur * root.row-h));
                     height: min(root.rows.length * root.row-h, Space.s12 * 6);
                     interactive: false;
                     VerticalLayout {

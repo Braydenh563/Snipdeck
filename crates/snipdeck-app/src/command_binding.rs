@@ -2,7 +2,7 @@
 //! translated words from `CommandTexts`, the shortcuts and the filter from [`crate::commands`]) and
 //! fills them into the window.
 
-use slint::{ComponentHandle, Global, Model};
+use slint::{Global, Model};
 use snipdeck_ui as ui;
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
 /// The `(label, synonyms)` of every command in the language selected for the UI now, in the order
 /// of [`Command::ALL`].
 #[must_use]
-pub fn texts(window: &impl ComponentHandle) -> Vec<(String, String)> {
+pub fn texts(window: &ui::MainWindow) -> Vec<(String, String)> {
     ui::CommandTexts::get(window)
         .get_all()
         .iter()
@@ -39,7 +39,7 @@ pub fn context<'a>(hotkeys: &'a Hotkeys, screen: Option<&MainScreen>) -> Context
 /// The rows for `query`, as the window draws them.
 #[must_use]
 pub fn rows(
-    window: &impl ComponentHandle,
+    window: &ui::MainWindow,
     hotkeys: &Hotkeys,
     screen: Option<&MainScreen>,
     query: &str,
@@ -56,12 +56,7 @@ pub fn rows(
 }
 
 /// Fills the palette of `window` with the rows for `query`.
-pub fn fill(
-    window: &ui::MainWindow,
-    hotkeys: &Hotkeys,
-    screen: Option<&MainScreen>,
-    query: &str,
-) {
+pub fn fill(window: &ui::MainWindow, hotkeys: &Hotkeys, screen: Option<&MainScreen>, query: &str) {
     window.set_palette_rows(model(rows(window, hotkeys, screen, query).into_iter()));
 }
 

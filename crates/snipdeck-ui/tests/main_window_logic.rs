@@ -674,7 +674,9 @@ fn palette_rows(ui: &MainWindow, rows: &[(i32, &str, &[&str])]) {
             id: *id,
             label: (*label).into(),
             keys: ModelRc::new(VecModel::from(
-                keys.iter().map(|k| (*k).into()).collect::<Vec<SharedString>>(),
+                keys.iter()
+                    .map(|k| (*k).into())
+                    .collect::<Vec<SharedString>>(),
             )),
             spoken: keys.join(" ").into(),
         })

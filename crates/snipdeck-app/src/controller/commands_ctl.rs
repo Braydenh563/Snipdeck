@@ -8,8 +8,8 @@ use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use super::{Controller, Effect, HelpTopic, Library, MainAction};
 use crate::{
     commands::Command,
-    item_editor::Origin,
     host::ClipboardText,
+    item_editor::Origin,
     main_window::{Section, ViewMode},
 };
 

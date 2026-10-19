@@ -178,7 +178,11 @@ pub fn caps(shortcut: &str) -> Vec<String> {
             continue;
         }
         let (token, tail) = rest.split_once('+').unwrap_or((rest, ""));
-        parts.push(if token == "Enter" { "↵".into() } else { token.into() });
+        parts.push(if token == "Enter" {
+            "↵".into()
+        } else {
+            token.into()
+        });
         rest = tail;
     }
     parts
@@ -402,9 +406,15 @@ mod tests {
         // Both reach it through synonyms: catalogue order breaks the tie.
         assert_eq!(labels(&found), ["Settings", "Keyboard shortcuts"]);
         let found = entries(&texts(), &ctx(&hotkeys), "view");
-        assert_eq!(found.first().map(|e| e.label.as_str()), Some("Comfortable view"));
+        assert_eq!(
+            found.first().map(|e| e.label.as_str()),
+            Some("Comfortable view")
+        );
         let found = entries(&texts(), &ctx(&hotkeys), "trash");
-        assert_eq!(labels(&found), ["Move selected item to Trash", "Go to Trash"]);
+        assert_eq!(
+            labels(&found),
+            ["Move selected item to Trash", "Go to Trash"]
+        );
     }
 
     #[test]
@@ -422,7 +432,10 @@ mod tests {
         hotkeys.capture = String::new();
         let found = entries(&texts(), &ctx(&hotkeys), "");
         let find = |label: &str| found.iter().find(|e| e.label == label).cloned();
-        assert_eq!(find("Open Picker").map(|e| e.keys), Some(vec!["Ctrl".to_owned(), "Alt".into(), "K".into()]));
+        assert_eq!(
+            find("Open Picker").map(|e| e.keys),
+            Some(vec!["Ctrl".to_owned(), "Alt".into(), "K".into()])
+        );
         assert_eq!(find("Quick capture").map(|e| e.keys), Some(Vec::new()));
         assert_eq!(
             find("Show Panel").map(|e| e.keys.join("+")),
