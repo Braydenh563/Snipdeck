@@ -7,6 +7,12 @@ In flight: Sonnet agent C8+C9 (Supporter wording in app, FREE_BOARD_LIMIT 5, mai
 
 Next, in order: CI green on PR #5 -> translations pass for ~80 new strings per locale (Haiku; `python3 scripts/i18n.py check`) -> D1 goldens regenerate + read -> wave 3 B1-B15 -> wave 4 C1-C7 -> D2 README shots/hero, D3, D5 -> E1 docs -> F1 Fable sweep (owner-approved, one agent; brief `docs/fable-brief.md`) -> F2 Opus review -> F3 ux-auditor + blind-tester -> F4 gate --full, PR body, retro. Use cloud sessions/agents in parallel only on separate branches; one cargo-heavy agent per target dir.
 
+## Parallel work (2026-10-19 14:13)
+- Cloud session "wave 3a" (B3 export as text, B6 duplicate, B9 tray double-click, B13 CLI): branch `claude/v1-wave3a`, PR into this branch when done.
+- Cloud session "wave 3b" (B4 undo, B8 shortcuts, B10 reduced motion, B14 sensitive clear): branch `claude/v1-wave3b`, PR into this branch.
+- Local agents: C8/C9 + free encryption (working tree), C7 packaging docs (docs only, no cargo).
+- Merge order when they land: C8/C9 first, then 3a, then 3b; then D1 goldens once, after all UI changes.
+
 ## Task list (mirror of the session's tasks, 2026-10-19 13:20; details per item in `docs/V1-PLAN.md`)
 
 - [~] A1-A3 Merge review, windows-ui, learnability agents and gate (merged; CI fixes 844a0bd..19c9160; confirm green)
