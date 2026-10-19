@@ -28,7 +28,13 @@ export component Tab inherits Rectangle {
     in property <bool> focus-visible: false;
     // Forced hover for galleries and screenshots.
     in property <bool> show-hover: false;
+    // Spoken after the label when the tab has a context menu ("Right-click or press Menu for list actions"); the app
+    // translates it. Empty: no menu.
+    in property <string> menu-hint;
     callback clicked();
+    // Right-click released on the tab (position inside the tab); the bar adds the Menu key and Shift+F10.
+    callback context-menu-requested(length, length);
+    callback double-clicked();
 
     property <bool> hovered: (touch.has-hover && root.enabled) || root.show-hover;
     property <bool> over: root.drag-over;
@@ -43,6 +49,7 @@ export component Tab inherits Rectangle {
     opacity: root.enabled ? 1.0 : 0.45;
     accessible-role: tab;
     accessible-label: root.text;
+    accessible-description: root.menu-hint;
     accessible-enabled: root.enabled;
     accessible-item-index: root.index;
     accessible-item-count: root.count;
@@ -102,6 +109,12 @@ export component Tab inherits Rectangle {
     touch := TouchArea {
         enabled: root.enabled;
         clicked => { root.clicked(); }
+        double-clicked => { root.double-clicked(); }
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
+                root.context-menu-requested(self.mouse-x, self.mouse-y);
+            }
+        }
     }
 }
 
@@ -117,6 +130,8 @@ export component ListTabBar inherits Rectangle {
     // Accessible names for the bar and the add button (the app translates them).
     in property <string> label;
     in property <string> add-label;
+    // Spoken as each tab's description when the app offers a tab menu (empty: none).
+    in property <string> menu-hint;
     // Forced states for galleries and screenshots.
     in property <int> show-hover-index: -1;
     in property <bool> show-focus: false;
@@ -124,6 +139,10 @@ export component ListTabBar inherits Rectangle {
     // The user picked tab `index` (click or keyboard). `current` is already updated.
     callback selected(index: int);
     callback add-clicked();
+    // Right-click, Menu or Shift+F10 on tab `index`: where to put the menu, in window coordinates.
+    callback menu-requested(index: int, x: length, y: length);
+    // Double-click or F2 on tab `index`.
+    callback edit-requested(index: int);
 
     out property <bool> has-focus: scope.has-focus;
     // The "+" button is under the pointer or holds keyboard focus (the host shows its tooltip).
@@ -181,6 +200,14 @@ export component ListTabBar inherits Rectangle {
             } else if (event.text == Key.End) {
                 root.select(root.tabs.length - 1);
                 return accept;
+            } else if (root.menu-hint != "" && root.current >= 0 && root.current < root.tabs.length) {
+                if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
+                    root.menu-requested(root.current, root.absolute-position.x + Space.s2, root.absolute-position.y + root.height);
+                    return accept;
+                } else if (event.text == Key.F2) {
+                    root.edit-requested(root.current);
+                    return accept;
+                }
             }
             return reject;
         }
@@ -216,7 +243,18 @@ export component ListTabBar inherits Rectangle {
                     index: i;
                     count: root.tabs.length;
                     focus-visible: (scope.has-focus || root.show-focus) && i == root.current;
+                    menu-hint: root.menu-hint;
                     clicked => { root.select(i); }
+                    context-menu-requested(x, y) => {
+                        if (root.menu-hint != "") {
+                            root.menu-requested(i, self.absolute-position.x + x, self.absolute-position.y + y);
+                        }
+                    }
+                    double-clicked => {
+                        if (root.menu-hint != "") {
+                            root.edit-requested(i);
+                        }
+                    }
                     // Also on layout: at start-up the selected tab is placed after `selected` is set.
                     changed selected => {
                         if (self.selected) { root.reveal(self.x, self.width); }

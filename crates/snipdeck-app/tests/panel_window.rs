@@ -327,6 +327,21 @@ fn a_context_menu_request_opens_the_item_menu_and_dismissing_closes_it() {
 }
 
 #[test]
+fn a_list_menu_request_opens_the_list_menu_and_dismissing_closes_it() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_list_menu_open());
+        r.ui.invoke_list_menu_requested(1);
+        assert!(r.ui.get_list_menu_open());
+        r.ui.invoke_list_menu_dismissed();
+        assert!(!r.ui.get_list_menu_open());
+        r.ui.invoke_list_menu_requested(1);
+        r.ui.invoke_list_menu_activated(0);
+        assert!(!r.ui.get_list_menu_open(), "a choice closes the menu");
+    });
+}
+
+#[test]
 fn typing_in_the_search_filters_the_rows() {
     on_ui_thread(|| {
         let r = rig();

@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use snipdeck_app::{
     controller::{
-        Controller, MainAction, MainScreen, Services, TOAST_ENTER, TOAST_EXIT, TOAST_HOLD,
+        Controller, LIST_MENU, MainAction, MainScreen, Services, TOAST_ENTER, TOAST_EXIT, TOAST_HOLD,
         TOAST_UNDO_HOLD, TagRenameError,
     },
     demo,
@@ -616,6 +616,67 @@ fn the_editor_can_delete_a_list_after_its_confirmation() {
     assert!(screen.editor.is_none());
     assert_eq!(screen.lists.len(), 2);
     assert!(screen.toast.unwrap().undo);
+}
+
+// ---- The Panel's list tab menu --------------------------------------------------------------
+
+fn tab_index(ctl: &Ctl, name: &str) -> usize {
+    ctl.view()
+        .tabs
+        .iter()
+        .position(|t| t.name == name)
+        .expect("tab")
+}
+
+#[test]
+fn the_list_menu_opens_on_a_tab_and_closes_without_a_choice() {
+    let mut ctl = pro();
+    assert_eq!(ctl.view().list_menu, None);
+    ctl.open_list_menu(tab_index(&ctl, "Code"));
+    assert_eq!(ctl.view().list_menu, Some(LIST_MENU.to_vec()));
+    ctl.close_list_menu();
+    assert_eq!(ctl.view().list_menu, None);
+    ctl.open_list_menu(99);
+    assert_eq!(ctl.view().list_menu, None, "no such tab");
+    assert!(ctl.main_screen().editor.is_none());
+}
+
+#[test]
+fn the_list_menu_edits_the_list_it_was_opened_on() {
+    let mut ctl = pro();
+    ctl.open_list_menu(tab_index(&ctl, "Code"));
+    assert_eq!(ctl.choose_list_menu(0), Vec::new());
+    assert_eq!(ctl.view().list_menu, None, "a choice closes the menu");
+    let editor = ctl.main_screen().editor.expect("editor");
+    assert_eq!(editor.name, "Code");
+    assert!(!editor.is_new && editor.can_delete && !editor.open_delete);
+    ctl.main_editor_save("Snippets", None, ListSort::Manual);
+    assert_eq!(ctl.view().tabs[tab_index(&ctl, "Snippets")].name, "Snippets");
+}
+
+#[test]
+fn the_list_menu_delete_confirms_then_trashes_with_undo() {
+    let mut ctl = pro();
+    let tabs = ctl.view().tabs.len();
+    ctl.open_list_menu(tab_index(&ctl, "Code"));
+    assert_eq!(ctl.choose_list_menu(1), Vec::new());
+    let editor = ctl.main_screen().editor.expect("editor");
+    assert!(editor.open_delete, "the confirmation is already asking");
+    assert_eq!(ctl.view().tabs.len(), tabs, "nothing is deleted before it");
+    ctl.main_editor_delete();
+    assert_eq!(ctl.view().tabs.len(), tabs - 1);
+    assert!(ctl.view().toast.expect("toast").undo);
+    ctl.main_undo();
+    assert_eq!(ctl.view().tabs.len(), tabs);
+}
+
+#[test]
+fn a_double_click_on_a_tab_opens_the_list_editor() {
+    let mut ctl = pro();
+    ctl.edit_list_tab(tab_index(&ctl, "Code"));
+    let editor = ctl.main_screen().editor.expect("editor");
+    assert_eq!(editor.name, "Code");
+    assert!(!editor.open_delete);
 }
 
 // ---- Boards and the Free cap ----------------------------------------------------------------

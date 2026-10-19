@@ -472,6 +472,9 @@ msgstr "Liens"
 msgid "List"
 msgstr "Liste"
 
+msgid "List actions"
+msgstr "Actions de la liste"
+
 msgid "List name"
 msgstr "Nom de la liste"
 
@@ -777,6 +780,9 @@ msgstr "Résultats"
 
 msgid "Right edge"
 msgstr "Bord droit"
+
+msgid "Right-click or press Menu for list actions"
+msgstr "Clic droit ou touche Menu pour les actions de la liste"
 
 msgid "Rose"
 msgstr "Rose"

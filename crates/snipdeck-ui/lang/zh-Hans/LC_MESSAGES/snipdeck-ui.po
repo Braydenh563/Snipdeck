@@ -472,6 +472,9 @@ msgstr "链接"
 msgid "List"
 msgstr "列表"
 
+msgid "List actions"
+msgstr "列表操作"
+
 msgid "List name"
 msgstr "列表名称"
 
@@ -777,6 +780,9 @@ msgstr "搜索结果"
 
 msgid "Right edge"
 msgstr "右边"
+
+msgid "Right-click or press Menu for list actions"
+msgstr "右键单击或按菜单键查看列表操作"
 
 msgid "Rose"
 msgstr "玫瑰色"

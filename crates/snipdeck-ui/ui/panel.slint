@@ -110,6 +110,15 @@ export component PanelWindow inherits Window {
     // `pinned-context-menu-requested`; the Panel places it at the pointer (`item-menu-x`, `item-menu-y`).
     in property <bool> item-menu-open: false;
     in property <[MenuEntry]> item-menu-entries;
+    // The context menu of a list tab (right-click, Menu, Shift+F10, F2 or a double-click edits): the host sets
+    // `list-menu-open` on `list-menu-requested`; its rows are fixed here ("Edit list…", "Delete list…").
+    in property <bool> list-menu-open: false;
+    property <length> list-menu-x: 0px;
+    property <length> list-menu-y: 0px;
+    property <[MenuEntry]> list-menu-entries: [
+        { text: @tr("Edit list…"), icon: Icons.pencil-simple },
+        { text: @tr("Delete list…"), icon: Icons.trash, destructive: true },
+    ];
     property <length> item-menu-x: 0px;
     property <length> item-menu-y: 0px;
     // Toast: empty text hides it. The app owns its timing (Toast documents the phases).
@@ -161,6 +170,10 @@ export component PanelWindow inherits Window {
     callback app-menu-dismissed();
     callback item-menu-activated(int);
     callback item-menu-dismissed();
+    callback list-menu-requested(int);
+    callback list-menu-activated(int);
+    callback list-menu-dismissed();
+    callback list-edit-requested(int);
     // Quick edit of row `index`: Ctrl+E or a double-click, F2, Delete (SPEC 5.1). A double-click has
     // already used the row once (the first click); the host decides what the second means.
     callback edit-requested(int);
@@ -192,7 +205,7 @@ export component PanelWindow inherits Window {
     out property <length> scroll-y: list.content-y;
     out property <bool> search-focused: search.has-focus;
     // The text of the tooltip on screen (empty = none), for tests and assistive checks.
-    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open ? root.tip : "";
+    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open ? root.tip : "";
 
     // ---- Internals ----------------------------------------------------------------------------
     property <bool> pastes: root.target-name != "";
@@ -281,6 +294,11 @@ export component PanelWindow inherits Window {
     }
     changed item-menu-open => {
         if (!root.item-menu-open) {
+            search.focus();
+        }
+    }
+    changed list-menu-open => {
+        if (!root.list-menu-open) {
             search.focus();
         }
     }
@@ -425,11 +443,14 @@ export component PanelWindow inherits Window {
             forward-focus: search;
 
             capture-key-pressed(event) => {
-                if (root.board-menu-open || root.app-menu-open || root.item-menu-open) {
+                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open) {
                     // The menu owns the keyboard; Esc closes it.
                     if (event.text == Key.Escape) {
                         if (root.item-menu-open) {
                             root.item-menu-dismissed();
+                        }
+                        if (root.list-menu-open) {
+                            root.list-menu-dismissed();
                         }
                         if (root.app-menu-open) {
                             root.app-menu-dismissed();
@@ -622,10 +643,17 @@ export component PanelWindow inherits Window {
                         current <=> root.current-tab;
                         label: @tr("Lists");
                         add-label: @tr("Add list");
+                        menu-hint: @tr("Right-click or press Menu for list actions");
                         // The "+" is the last 28px of the bar.
                         changed add-active => { root.tip-set(self.add-label, self.absolute-position.x + self.width - Space.hit / 2, self.absolute-position.y + self.height, self.add-active); }
                         selected(index) => { root.pick-tab(index); }
                         add-clicked => { root.add-list-requested(); }
+                        menu-requested(index, x, y) => {
+                            root.list-menu-x = x;
+                            root.list-menu-y = y;
+                            root.list-menu-requested(index);
+                        }
+                        edit-requested(index) => { root.list-edit-requested(index); }
                     }
                 }
 
@@ -881,6 +909,21 @@ export component PanelWindow inherits Window {
             init => { self.focus-menu(); }
             activated(i) => { root.item-menu-activated(i); }
             dismissed => { root.item-menu-dismissed(); }
+        }
+
+        // ---- The list menu (right-click, Menu, Shift+F10 on a list tab): at the pointer, kept inside the window.
+        if root.list-menu-open: TouchArea {
+            clicked => { root.list-menu-dismissed(); }
+        }
+        if root.list-menu-open: Menu {
+            width: min(Space.s12 * 4, root.width - 2 * Space.s2);
+            x: min(max(Space.s2, root.list-menu-x), root.width - self.width - Space.s2);
+            y: min(max(Space.s2, root.list-menu-y), root.height - self.height - Space.s2);
+            entries: root.list-menu-entries;
+            label: @tr("List actions");
+            init => { self.focus-menu(); }
+            activated(i) => { root.list-menu-activated(i); }
+            dismissed => { root.list-menu-dismissed(); }
         }
 
         // The tooltip of whichever icon-only control is hovered or focused, centred under it and kept
