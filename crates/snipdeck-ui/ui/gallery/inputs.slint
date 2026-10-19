@@ -127,7 +127,6 @@ export component TabsGallery inherits Window {
     in-out property <int> current: 1;
     in-out property <int> picked: -1;
     in-out property <int> adds: 0;
-    in-out property <int> drops: 0;
     out property <length> overflow-scroll-x: overflow.scroll-x;
     out property <length> end-scroll-x: overflow-end.scroll-x;
     out property <bool> bar-has-focus: bar.has-focus;
@@ -171,7 +170,6 @@ export component TabsGallery inherits Window {
             current <=> root.current;
             selected(i) => { root.picked = i; }
             add-clicked => { root.adds += 1; }
-            dropped(i) => { root.drops += 1; }
         }
         Caption { text: "hover on Code, keyboard focus on active tab"; }
         ListTabBar {

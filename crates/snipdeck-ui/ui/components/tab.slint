@@ -21,8 +21,6 @@ export component Tab inherits Rectangle {
     in property <bool> enabled: true;
     // A drag (an item being moved to this list) is hovering over the tab.
     in property <bool> drag-over: false;
-    // Whether dropping an item on this tab is accepted.
-    in property <bool> accepts-drop: true;
     // Position among the tabs, for assistive technology (0-based).
     in property <int> index: 0;
     in property <int> count: 1;
@@ -31,11 +29,9 @@ export component Tab inherits Rectangle {
     // Forced hover for galleries and screenshots.
     in property <bool> show-hover: false;
     callback clicked();
-    // An item was dropped on the tab.
-    callback dropped();
 
     property <bool> hovered: (touch.has-hover && root.enabled) || root.show-hover;
-    property <bool> over: root.drag-over || drop.has-drag;
+    property <bool> over: root.drag-over;
 
     // Grows with the text size so the label and the underline never collide.
     height: max(Space.s8, Type.line-base + Space.s3);
@@ -107,15 +103,6 @@ export component Tab inherits Rectangle {
         enabled: root.enabled;
         clicked => { root.clicked(); }
     }
-
-    drop := DropArea {
-        enabled: root.enabled && root.accepts-drop;
-        can-drop(event) => { DragAction.move }
-        dropped(event) => {
-            root.dropped();
-            DragAction.move
-        }
-    }
 }
 
 // DESIGN.md §4 ListTabBar: Tab x N, horizontal overflow scroll, and a "+" that adds a list.
@@ -137,8 +124,6 @@ export component ListTabBar inherits Rectangle {
     // The user picked tab `index` (click or keyboard). `current` is already updated.
     callback selected(index: int);
     callback add-clicked();
-    // An item was dropped on tab `index`.
-    callback dropped(index: int);
 
     out property <bool> has-focus: scope.has-focus;
     // The "+" button is under the pointer or holds keyboard focus (the host shows its tooltip).
@@ -232,7 +217,6 @@ export component ListTabBar inherits Rectangle {
                     count: root.tabs.length;
                     focus-visible: (scope.has-focus || root.show-focus) && i == root.current;
                     clicked => { root.select(i); }
-                    dropped => { root.dropped(i); }
                     // Also on layout: at start-up the selected tab is placed after `selected` is set.
                     changed selected => {
                         if (self.selected) { root.reveal(self.x, self.width); }
