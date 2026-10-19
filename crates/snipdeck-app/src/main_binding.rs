@@ -545,6 +545,8 @@ where
                 }
             });
         }
+        wire!(on_label_filter_requested, |ctl, i| ctl
+            .main_set_label_filter(crate::binding::label_of(i)));
         wire!(on_view_changed, |ctl, v| ctl.main_set_view(view_of(v)));
         wire!(on_select_requested, |ctl, i, mode| ctl
             .main_select(index(i), select_mode(mode)));
@@ -866,6 +868,19 @@ pub(crate) fn raise(window: &slint::Window) {
 
 // ---- Screen -> window --------------------------------------------------------------------------
 
+/// The colour-label filter row.
+fn set_label_filter(window: &ui::MainWindow, screen: &MainScreen) {
+    window.set_label_chips(model(screen.label_chips.iter().map(|chip| {
+        let (label, label_name) = crate::binding::label_fields(Some(chip.label));
+        ui::LabelChipEntry {
+            label,
+            name: label_name,
+            count: to_i32(chip.count),
+        }
+    })));
+    window.set_label_filter(crate::binding::label_index(screen.label_filter));
+}
+
 /// The sidebar's lists, with their colour marks and icons.
 fn set_side_lists(window: &ui::MainWindow, screen: &MainScreen) {
     let icons = ui::ListIcons::get(window).get_all();
@@ -902,6 +917,9 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     }
     if differs(&|p| p.lists == screen.lists && p.dark == screen.dark) {
         set_side_lists(window, screen);
+    }
+    if differs(&|p| p.label_chips == screen.label_chips && p.label_filter == screen.label_filter) {
+        set_label_filter(window, screen);
     }
     if differs(&|p| p.tags == screen.tags) {
         window.set_tags(model(screen.tags.iter().map(|t| ui::ChoiceEntry {

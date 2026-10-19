@@ -19,11 +19,14 @@ use snipdeck_app::{
     },
     demo,
     host::{FakeTargets, FixedClock},
-    main_window::{DeleteHint, EditorKind, NameError, Section, SelectMode},
+    item_editor::EditorInput,
+    main_window::{DeleteHint, EditorKind, Key, NameError, Section, SelectMode},
     settings::Settings,
     toast::ToastMessage,
 };
-use snipdeck_core::{Entitlements, ListAccent, ListIcon, ListSort, Name, Tag, Tier, Timestamp};
+use snipdeck_core::{
+    Entitlements, ItemLabel, ListAccent, ListIcon, ListSort, Name, Tag, Tier, Timestamp,
+};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::{BoardRepo, ItemRepo, Store, TagRepo, TrashRepo, Trashable};
 
@@ -708,6 +711,97 @@ fn a_list_saved_with_an_icon_reads_back_with_it_and_none_clears_it() {
     ctl.main_editor_save("Addresses", None, None, ListSort::Manual);
     assert_eq!(ctl.main_screen().lists[index].icon, None);
     assert_eq!(ctl.view().tabs[index].icon, None);
+}
+
+/// Gives the item in row `row` of the open view the colour label `label`.
+fn label_row(ctl: &mut Ctl, row: usize, label: ItemLabel) {
+    let Key::Item(id) = ctl.main_screen().rows[row].key else {
+        panic!("row {row} is not an item");
+    };
+    ctl.open_item_editor(id);
+    let fields = ctl.item_editor_view().expect("editor").fields;
+    ctl.item_editor_save(&EditorInput {
+        label: Some(label),
+        ..fields
+    });
+}
+
+#[test]
+fn filtering_by_label_shows_only_matching_items_and_clearing_restores_them() {
+    let mut ctl = pro();
+    let all = titles(&ctl.main_screen());
+    assert!(all.len() >= 4);
+    assert_eq!(
+        ctl.main_screen().label_chips.len(),
+        0,
+        "no labels, no chips"
+    );
+    label_row(&mut ctl, 0, ItemLabel::Amber);
+    label_row(&mut ctl, 1, ItemLabel::Teal);
+    label_row(&mut ctl, 2, ItemLabel::Teal);
+    let screen = ctl.main_screen();
+    let chips: Vec<_> = screen
+        .label_chips
+        .iter()
+        .map(|c| (c.label, c.count))
+        .collect();
+    assert_eq!(
+        chips,
+        [(ItemLabel::Teal, 2), (ItemLabel::Amber, 1)],
+        "one chip per label in use, in the label order"
+    );
+    assert_eq!(screen.label_filter, None);
+    let before = titles(&screen);
+
+    ctl.main_set_label_filter(Some(ItemLabel::Teal));
+    let screen = ctl.main_screen();
+    assert_eq!(screen.label_filter, Some(ItemLabel::Teal));
+    assert_eq!(screen.rows.len(), 2, "the count follows the filter");
+    assert!(screen.rows.iter().all(|r| r.label == Some(ItemLabel::Teal)));
+    assert_eq!(
+        screen.label_chips.len(),
+        2,
+        "the chips still offer the other labels"
+    );
+
+    // One at a time: another label replaces the first.
+    ctl.main_set_label_filter(Some(ItemLabel::Amber));
+    assert_eq!(ctl.main_screen().rows.len(), 1);
+    // A label nothing carries shows no rows, and its chip stays so it can be cleared.
+    ctl.main_set_label_filter(Some(ItemLabel::Red));
+    let screen = ctl.main_screen();
+    assert_eq!(screen.rows.len(), 0);
+    assert!(
+        screen
+            .label_chips
+            .iter()
+            .any(|c| c.label == ItemLabel::Red && c.count == 0)
+    );
+
+    ctl.main_set_label_filter(None);
+    let screen = ctl.main_screen();
+    assert_eq!(titles(&screen), before, "clearing restores every item");
+    assert_eq!(screen.label_filter, None);
+}
+
+#[test]
+fn the_label_filter_applies_to_a_list_and_to_a_search() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Addresses");
+    label_row(&mut ctl, 0, ItemLabel::Blue);
+    let in_list = ctl.main_screen().rows.len();
+    ctl.main_set_label_filter(Some(ItemLabel::Blue));
+    assert_eq!(ctl.main_screen().rows.len(), 1);
+    ctl.main_set_query("a");
+    assert!(
+        ctl.main_screen()
+            .rows
+            .iter()
+            .all(|r| r.label == Some(ItemLabel::Blue))
+    );
+    ctl.main_set_query("");
+    ctl.main_set_label_filter(None);
+    assert_eq!(ctl.main_screen().rows.len(), in_list);
 }
 
 #[test]

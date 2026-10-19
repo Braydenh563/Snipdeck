@@ -9,7 +9,8 @@
 //! library.
 
 use snipdeck_core::{
-    BoardId, Feature, Item, ItemId, ListAccent, ListIcon, ListId, ListSort, Name, Placement, Tag,
+    BoardId, Feature, Item, ItemId, ItemLabel, ListAccent, ListIcon, ListId, ListSort, Name,
+    Placement, Tag,
 };
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
@@ -25,8 +26,8 @@ use crate::{
     host::ClipboardText,
     list_text,
     main_window::{
-        Counts, DeleteHint, EditorKind, EditorView, Key, NameError, Row, Section, SelectMode,
-        SideList, SideTag, ViewMode, reorder,
+        Counts, DeleteHint, EditorKind, EditorView, Key, LabelChip, NameError, Row, Section,
+        SelectMode, SideList, SideTag, ViewMode, reorder,
     },
     panel::UseLabel,
     settings::HotkeyAction,
@@ -137,6 +138,10 @@ pub struct MainScreen {
     pub section_index: usize,
     /// The row style.
     pub view_mode: ViewMode,
+    /// The chips of the colour-label filter row.
+    pub label_chips: Vec<LabelChip>,
+    /// The colour label the rows are filtered by.
+    pub label_filter: Option<ItemLabel>,
     /// The search text.
     pub query: String,
     /// The keyboard cursor.
@@ -220,6 +225,8 @@ where
             section: self.main.section(),
             section_index: self.main.section_index(),
             view_mode: self.main.view_mode(),
+            label_chips: self.main.label_chips(),
+            label_filter: self.main.label_filter(),
             query: self.main.query().to_owned(),
             cursor: self.main.cursor(),
             selected_count: self.main.selected_count(),
@@ -294,6 +301,14 @@ where
         if self.main.set_query(&self.store, query).is_err() {
             self.show_toast(failed());
         }
+        self.revealed = None;
+    }
+
+    /// A label chip was chosen (`None` clears the filter): the rows show only the items with that
+    /// colour label.
+    pub fn main_set_label_filter(&mut self, label: Option<ItemLabel>) {
+        self.main_fresh();
+        self.main.set_label_filter(label);
         self.revealed = None;
     }
 

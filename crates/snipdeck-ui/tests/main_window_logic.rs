@@ -346,6 +346,42 @@ ui_tests! {
         assert_eq!(description("In a list").as_deref(), Some("Work, label: Slate"));
     }
 
+    fn the_label_filter_row_names_each_colour_and_a_chosen_chip_clears_on_a_second_choice() {
+        use snipdeck_ui::LabelChipEntry;
+        let (ui, _log) = start();
+        let asked: Rc<RefCell<Vec<i32>>> = Rc::default();
+        {
+            let asked = asked.clone();
+            ui.on_label_filter_requested(move |i| asked.borrow_mut().push(i));
+        }
+        assert!(missing(&ui, "Teal", AccessibleRole::Button), "no labels, no row");
+        ui.set_label_chips(slint::ModelRc::new(VecModel::from(vec![
+            LabelChipEntry { label: 1, name: "Teal".into(), count: 2 },
+            LabelChipEntry { label: 3, name: "Amber".into(), count: 1 },
+        ])));
+        settle();
+        for name in ["Teal", "Amber"] {
+            let chip = find(&ui, name, AccessibleRole::Button);
+            let s = chip.size();
+            assert!(s.height >= MIN_HIT && s.width >= MIN_HIT, "{name}");
+            assert_eq!(chip.accessible_checked(), Some(false));
+        }
+        assert_eq!(find(&ui, "Teal", AccessibleRole::Button).accessible_value().as_deref(), Some("2"));
+        assert!(missing(&ui, "Clear filter", AccessibleRole::Button), "nothing to clear yet");
+
+        find(&ui, "Teal", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(*asked.borrow(), [1]);
+        // The host applies it.
+        ui.set_label_filter(1);
+        settle();
+        assert_eq!(find(&ui, "Teal", AccessibleRole::Button).accessible_checked(), Some(true));
+        assert_eq!(find(&ui, "Amber", AccessibleRole::Button).accessible_checked(), Some(false));
+        find(&ui, "Teal", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(*asked.borrow(), [1, -1], "choosing the active chip again clears");
+        find(&ui, "Clear filter", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(*asked.borrow(), [1, -1, -1]);
+    }
+
     // ---- Selection with the real binding ---------------------------------------------------------
 
     fn shift_arrows_select_a_range_and_the_bulk_bar_appears() {

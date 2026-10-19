@@ -5,8 +5,10 @@
 
 - Piece 2 item colour label: `label`/`label-name` on PanelRow/MainRow, 4px bar + description on ItemCard, label picker in ItemEditor (ColourPicker now takes `hues`), EditorInput.label + draft, design/tools/palette.py checks the 8 hues on hover/selected fills (all >= 3:1).
 
+- Piece 3 filter chip: `MainModel::label_filter/label_chips/set_label_filter`, `Controller::main_set_label_filter`, MainScreen.label_chips/label_filter, LabelChip component + filter row in main_window.slint (single select, same chip or Clear filter clears, item count text).
+
 ## Next
-- Piece 3 filter chip, 4 DESIGN/SPEC/user-guide.
+- Piece 4 DESIGN.md / SPEC.md / user-guide.md.
 
 ## Blocked
 - none

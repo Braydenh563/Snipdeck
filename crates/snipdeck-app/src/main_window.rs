@@ -134,6 +134,15 @@ pub struct SideList {
     pub count: usize,
 }
 
+/// A chip of the colour-label filter row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LabelChip {
+    /// The label.
+    pub label: ItemLabel,
+    /// How many items of the open view carry it.
+    pub count: usize,
+}
+
 /// A tag in the sidebar.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SideTag {
@@ -250,6 +259,7 @@ pub struct MainModel {
     query: String,
     hits: Vec<ItemId>,
     view: ViewMode,
+    label_filter: Option<ItemLabel>,
     selected: HashSet<Key>,
     anchor: Option<Key>,
     cursor: usize,
@@ -289,6 +299,7 @@ impl MainModel {
             query: String::new(),
             hits: Vec::new(),
             view: ViewMode::Comfortable,
+            label_filter: None,
             selected: HashSet::new(),
             anchor: None,
             cursor: 0,
@@ -554,23 +565,67 @@ impl MainModel {
                 .map(Entry::Trashed)
                 .collect();
         }
+        let wanted = self.label_filter;
+        self.unfiltered_items()
+            .into_iter()
+            .filter(|i| wanted.is_none() || i.label == wanted)
+            .map(Entry::Item)
+            .collect()
+    }
+
+    /// The items of the open view before the colour-label filter: the search hits while
+    /// searching, else the section's items.
+    fn unfiltered_items(&self) -> Vec<&Item> {
         if self.searching() {
             let by_id: HashMap<ItemId, &Item> = self.items.iter().map(|i| (i.id, i)).collect();
             return self
                 .hits
                 .iter()
                 .filter_map(|id| by_id.get(id).copied())
-                .map(Entry::Item)
                 .collect();
         }
-        let items: Vec<&Item> = match self.section {
+        match self.section {
             Section::All => self.items.iter().collect(),
             Section::Pinned => self.items.iter().filter(|i| i.pinned).collect(),
             Section::Recent | Section::Trash => Vec::new(),
             Section::List(id) => self.list_items(id),
             Section::Tag(id) => self.items.iter().filter(|i| i.tags.contains(&id)).collect(),
-        };
-        items.into_iter().map(Entry::Item).collect()
+        }
+    }
+
+    /// The chips of the filter row: one per colour label some item of the open view carries
+    /// (in the label order, with how many), plus the active filter even when nothing carries it,
+    /// so it can always be cleared.
+    #[must_use]
+    pub fn label_chips(&self) -> Vec<LabelChip> {
+        if self.section == Section::Trash {
+            return Vec::new();
+        }
+        let items = self.unfiltered_items();
+        ItemLabel::ALL
+            .iter()
+            .filter_map(|label| {
+                let count = items.iter().filter(|i| i.label == Some(*label)).count();
+                (count > 0 || self.label_filter == Some(*label)).then_some(LabelChip {
+                    label: *label,
+                    count,
+                })
+            })
+            .collect()
+    }
+
+    /// The colour label the view is filtered by.
+    #[must_use]
+    pub fn label_filter(&self) -> Option<ItemLabel> {
+        self.label_filter
+    }
+
+    /// Filters the view by a colour label (`None` shows every item). The selection clears and the
+    /// cursor returns to the top.
+    pub fn set_label_filter(&mut self, label: Option<ItemLabel>) {
+        self.label_filter = label;
+        self.clear_selection();
+        self.cursor = 0;
     }
 
     /// The items of list `id` in the list's own order (manual, most used or recently used).
