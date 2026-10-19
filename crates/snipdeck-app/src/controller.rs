@@ -199,6 +199,10 @@ pub enum UseResult {
 
 /// Everything the Panel window shows, as plain data.
 #[derive(Debug, Clone, PartialEq)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "one field per thing the window shows; they are independent flags, not a state"
+)]
 pub struct View {
     /// The board's name.
     pub board_name: String,
