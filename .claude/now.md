@@ -82,3 +82,4 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - "can you do anything else to speed up development?? can you hit anything that doesnt need excessive compiling and make more progress?? hit the heavy things later tonight or smth idk" -> triaged: docs/CHANGELOG/CONTRIBUTING/codemap/i18n/inventory now; compiles batched.
 - "can you do anything else?" -> triaged: merge review (Opus), Panel gaps + leftovers coded in a worktree without cargo (Sonnet), README draft (Sonnet), all while clippy runs.
 - "Opus I shouldnbt be having to ask if there is anything else yu cna do, please try to make sure you are steamrolling towards shipping the v1" -> standing rule: always pick up the next queue item while builds/agents run.
+- "can you do anything else?? can you push part of it or smth??" -> pushed the integration so CI checks in parallel with local clippy.
