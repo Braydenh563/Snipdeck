@@ -1,3 +1,6 @@
+# Now (2026-10-19 10:35, away mode)
+Goal: finish the v1 ship list (`docs/V1-PLAN.md` top section), branch `claude/compassionate-pascal-pod8ux`, PR #5 (never merge). CI blocked: the account's free Actions allowance is used up until 1 Nov or until the owner makes the repo public, so verify locally (stable + 1.99.1). Queue in `.claude/work-order.md`; decisions in `.claude/now.md`. Stop at 80% weekly usage. Next: merge agents A1-A3, then wave 3.
+
 # Session state (2026-10-18 13:50, Fable session, away mode; branch `claude/compassionate-pascal-pod8ux`, PR #5)
 
 - **This session runs on Fable** and is the one permitted Fable agent; it delegates implementation to Sonnet/Haiku. Queue: `.claude/work-order.md` (continue mode). Decisions and inbox: `.claude/now.md`. Plan with per-step status: `docs/V1-PLAN.md`.
