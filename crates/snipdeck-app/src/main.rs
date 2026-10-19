@@ -31,6 +31,7 @@ use snipdeck_app::{
     crash, demo,
     drafts::Drafts,
     fill_binding::FillUi,
+    headless,
     help_binding::{HelpUi, SystemHelpHost},
     host, key_provider,
     main_binding::{self, MainUi},
@@ -69,6 +70,9 @@ fn main() -> ExitCode {
         println!("{}", cli::USAGE);
         return ExitCode::SUCCESS;
     }
+    if args.check_db || args.troubleshoot {
+        return headless(&args);
+    }
     snipdeck_app::trace!(
         "start: snipdeck-app {} demo={} hidden={} dark={}",
         env!("CARGO_PKG_VERSION"),
@@ -87,6 +91,29 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+/// `--check-db` and `--troubleshoot`: print and exit, without starting the app.
+fn headless(args: &Args) -> ExitCode {
+    let Some(folder) = headless::folder_or_default(args.data_dir.as_ref()) else {
+        eprintln!("snipdeck: cannot find a data folder; pass --data-dir <folder>");
+        return ExitCode::from(2);
+    };
+    let mut worst = 0;
+    if args.check_db {
+        let out = headless::check_db(&folder);
+        println!("{}", out.text);
+        worst = worst.max(out.code);
+    }
+    if args.troubleshoot {
+        let today = Timestamp::now()
+            .to_zoned(jiff::tz::TimeZone::system())
+            .date();
+        let out = headless::troubleshoot(&folder, today, std::env::consts::OS);
+        println!("{}", out.text);
+        worst = worst.max(out.code);
+    }
+    ExitCode::from(worst)
 }
 
 fn take_screenshot(path: &std::path::Path, dark: bool) -> Result<(), String> {
@@ -452,13 +479,14 @@ fn effect_handler(
             }
         }
         // The Panel's "All commands…" and Ctrl+K: the Main window, with the palette open.
-        Effect::OpenCommands => {
-            if main_ui.open().is_ok()
-                && let Some(window) = main_ui.window()
-            {
-                window.invoke_open_palette();
+        Effect::OpenCommands => match main_ui.open() {
+            Ok(()) => {
+                if let Some(window) = main_ui.window() {
+                    window.invoke_open_palette();
+                }
             }
-        }
+            Err(e) => eprintln!("snipdeck: cannot open the command palette: {e}"),
+        },
         Effect::OpenSettings => {
             if let Err(e) = settings_ui.open() {
                 eprintln!("snipdeck: cannot open the settings: {e}");

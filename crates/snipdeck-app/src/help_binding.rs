@@ -234,7 +234,7 @@ where
 // ---- Logic -------------------------------------------------------------------------------------
 
 /// The setting switches the report lists: booleans and numbers only, never text the user typed.
-fn report_flags(settings: &crate::settings::Settings) -> Vec<(String, String)> {
+pub(crate) fn report_flags(settings: &crate::settings::Settings) -> Vec<(String, String)> {
     let on = |b: bool| if b { "on" } else { "off" }.to_owned();
     vec![
         ("Start with Windows".into(), on(settings.autostart)),

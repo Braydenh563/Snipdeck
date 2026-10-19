@@ -301,6 +301,9 @@ msgstr ""
 msgid "Done"
 msgstr "完了"
 
+msgid "Duplicate"
+msgstr ""
+
 msgid "Edit"
 msgstr "編集"
 
@@ -369,6 +372,9 @@ msgstr "ゴミ箱のすべてが完全に削除されます。この操作は元
 
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "ライブラリの中身はすべて削除されます：ボード、リスト、スニペット、画像、下書き、バックアップ。コピーが必要な場合は先にエクスポートしてください。設定とライセンスは残ります。"
+
+msgid "Export as text"
+msgstr ""
 
 msgid "Export library"
 msgstr "ライブラリをエクスポート"
@@ -1476,3 +1482,6 @@ msgstr "{} 件の項目に確認が必要です。"
 
 msgid "{} selected"
 msgstr "{} 件選択中"
+
+msgid "{}, {} of {}"
+msgstr ""

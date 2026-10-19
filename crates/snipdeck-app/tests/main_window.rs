@@ -10,7 +10,12 @@
     reason = "test code: a failure is a failed test"
 )]
 
-use std::{cell::RefCell, rc::Rc, time::Duration};
+use std::{
+    cell::RefCell,
+    path::{Path, PathBuf},
+    rc::Rc,
+    time::Duration,
+};
 
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
 use slint::{ComponentHandle, Model, platform::Key};
@@ -20,15 +25,19 @@ use snipdeck_app::{
     demo,
     host::{FakeTargets, FixedClock},
     main_binding::{MainBinding, MainUi},
-    settings::Settings,
+    native_window::{self, Surface},
+    onboarding_binding::OnboardingUi,
+    settings::{Hotkeys, Settings},
+    settings_binding::SettingsHost,
 };
+use snipdeck_app::{commands::Command, host::HotkeyProblem};
 use snipdeck_core::{Entitlements, Tier, Timestamp};
 use snipdeck_platform::{
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
     tray::TrayEvent,
 };
 use snipdeck_store::{BoardRepo, ItemRepo, Store, TagRepo, TrashRepo};
-use snipdeck_ui::{ItemAction, MainSection, MainWindow, PanelWindow, SelectMode};
+use snipdeck_ui::{ItemAction, MainSection, MainView, MainWindow, PanelWindow, SelectMode};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -993,5 +1002,162 @@ fn the_board_menu_moves_the_open_board_down_and_up() {
         );
         r.ui.invoke_board_menu_activated(3 + 2);
         assert_eq!(order(&r), ["Work", "Personal"]);
+    });
+}
+
+// ---- The command palette ---------------------------------------------------------------------
+
+/// A machine that does nothing: the tour window needs a host and these tests never reach it.
+struct NoHost;
+
+impl SettingsHost for NoHost {
+    fn apply_hotkeys(&self, _hotkeys: &Hotkeys) -> Vec<HotkeyProblem> {
+        Vec::new()
+    }
+
+    fn set_autostart(&self, _on: bool) -> Result<(), String> {
+        Ok(())
+    }
+
+    fn set_panel_in_taskbar(&self, _on: bool) {}
+
+    fn open_folder(&self, _folder: &Path) -> Result<(), String> {
+        Ok(())
+    }
+
+    fn documents_folder(&self) -> Option<PathBuf> {
+        None
+    }
+}
+
+#[test]
+fn the_command_texts_have_one_entry_per_command() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(
+            snipdeck_app::command_binding::texts(&r.ui).len(),
+            Command::ALL.len(),
+            "`CommandTexts.all` (command_texts.slint) is in the order of `Command::ALL`"
+        );
+    });
+}
+
+#[test]
+fn a_palette_id_runs_the_command_it_names() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_command_requested(Command::GoTrash.id());
+        assert_eq!(r.ui.get_section(), MainSection::Trash);
+        r.ui.invoke_command_requested(Command::GoAll.id());
+        assert_eq!(r.ui.get_section(), MainSection::All);
+        r.ui.invoke_command_requested(Command::ViewCompact.id());
+        assert_eq!(r.ui.get_view(), MainView::Compact);
+        r.ui.invoke_command_requested(Command::ViewTile.id());
+        assert_eq!(r.ui.get_view(), MainView::Tile);
+        r.ui.invoke_command_requested(Command::NewList.id());
+        assert!(
+            r.binding.list_editor().is_some(),
+            "New list opens the list editor"
+        );
+    });
+}
+
+#[test]
+fn an_unknown_palette_id_does_nothing() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_command_requested(-1);
+        r.ui.invoke_command_requested(i32::try_from(Command::ALL.len()).unwrap());
+        assert_eq!(r.ui.get_section(), MainSection::All);
+        assert!(r.binding.list_editor().is_none());
+    });
+}
+
+#[test]
+fn the_search_command_moves_the_focus_to_the_search_field() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_focus_items();
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_search_focused());
+        r.ui.invoke_command_requested(Command::Search.id());
+        slint::platform::update_timers_and_animations();
+        assert!(r.ui.get_search_focused());
+        assert!(
+            r.ctl.borrow().tour_step().is_none(),
+            "the controller was not asked to do anything else"
+        );
+    });
+}
+
+#[test]
+fn the_tour_command_opens_the_welcome_tour_window() {
+    on_ui_thread(|| {
+        let r = rig();
+        let tour = OnboardingUi::new(&r.ctl, Rc::new(NoHost));
+        assert!(
+            tour.window().is_none(),
+            "not created before it is asked for"
+        );
+        assert!(r.ctl.borrow().tour_step().is_none());
+        r.ui.invoke_command_requested(Command::Tour.id());
+        assert!(r.ctl.borrow().tour_step().is_some(), "the tour runs");
+        assert!(tour.window().expect("created").window().is_visible());
+    });
+}
+
+#[test]
+fn a_command_and_the_settings_shortcut_open_their_window_over_the_main_window() {
+    on_ui_thread(|| {
+        let r = rig();
+        native_window::note_opener(Surface::Panel);
+        r.ui.invoke_command_requested(Command::Settings.id());
+        assert_eq!(native_window::last_opener(), Some(Surface::Main));
+
+        native_window::note_opener(Surface::Panel);
+        r.ui.invoke_settings_requested();
+        assert_eq!(native_window::last_opener(), Some(Surface::Main));
+    });
+}
+
+#[test]
+fn opening_the_palette_fills_every_command_and_never_refills_an_open_one() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_palette_open());
+        r.ui.invoke_open_palette();
+        assert!(r.ui.get_palette_open());
+        let offered = r.ui.get_palette_rows().row_count();
+        assert!(offered > 0, "the palette lists the commands");
+        assert!(
+            (0..offered).any(|i| r.ui.get_palette_rows().row_data(i).unwrap().label == "Settings"),
+            "Settings is one of them"
+        );
+
+        // The palette is up with the user's query in its field: a second request (the Panel's
+        // Ctrl+K, say) must not reset the rows under it.
+        r.ui.set_palette_rows(slint::ModelRc::default());
+        r.ui.invoke_open_palette();
+        assert!(r.ui.get_palette_open());
+        assert_eq!(
+            r.ui.get_palette_rows().row_count(),
+            0,
+            "the rows stay with the field's text"
+        );
+    });
+}
+
+#[test]
+fn the_palette_does_not_open_over_a_menu() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.button("Help").invoke_accessible_default_action();
+        slint::platform::update_timers_and_animations();
+        assert!(r.ui.get_menu_open());
+        r.ui.invoke_open_palette();
+        assert!(
+            !r.ui.get_palette_open(),
+            "a menu is open: the same rule as Ctrl+K"
+        );
     });
 }

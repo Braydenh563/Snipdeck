@@ -157,12 +157,7 @@ impl SettingsHost for SystemHost {
     }
 
     fn documents_folder(&self) -> Option<PathBuf> {
-        let home = if cfg!(windows) {
-            std::env::var_os("USERPROFILE")
-        } else {
-            std::env::var_os("HOME")
-        }?;
-        Some(PathBuf::from(home).join("Documents"))
+        crate::paths::documents_folder()
     }
 }
 

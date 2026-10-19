@@ -215,6 +215,11 @@ impl FakeTray {
         let _ = self.gesture(Gesture::Select);
     }
 
+    /// The user double-clicks the icon.
+    pub fn double_click(&self) {
+        let _ = self.gesture(Gesture::DoubleSelect);
+    }
+
     /// The user right-clicks the icon and the menu opens; returns it. Nothing is chosen until
     /// [`FakeTray::pick`].
     #[must_use]
@@ -378,6 +383,15 @@ mod tests {
         assert!(tray.hotkeys_paused());
         tray.pick(TrayEntry::Quit);
         assert_eq!(rx.try_recv(), Ok(TrayEvent::Quit));
+    }
+
+    #[test]
+    fn a_double_click_asks_for_the_main_window() {
+        let (mut tray, rx) = tray();
+        tray.show().unwrap();
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::IconPresent(true)));
+        tray.double_click();
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::OpenSnipdeck));
     }
 
     #[test]
