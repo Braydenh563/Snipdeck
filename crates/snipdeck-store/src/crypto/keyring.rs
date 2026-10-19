@@ -566,7 +566,11 @@ mod tests {
                 bytes[index] ^= 0x01;
                 let result =
                     KeyRecord::from_bytes(bytes).and_then(|bad| ring.unlock(&bad, password));
-                assert!(result.is_err(), "byte {index} password {password:?}");
+                assert!(
+                    result.is_err(),
+                    "byte {index}, with a password: {}",
+                    password.is_some()
+                );
             }
         }
     }
