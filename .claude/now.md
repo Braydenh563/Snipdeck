@@ -82,3 +82,5 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - "can you do anything else to speed up development?? can you hit anything that doesnt need excessive compiling and make more progress?? hit the heavy things later tonight or smth idk" -> triaged: docs/CHANGELOG/CONTRIBUTING/codemap/i18n/inventory now; compiles batched.
 - "can you do anything else?" -> triaged: merge review (Opus), Panel gaps + leftovers coded in a worktree without cargo (Sonnet), README draft (Sonnet), all while clippy runs.
 - "Opus I shouldnbt be having to ask if there is anything else yu cna do, please try to make sure you are steamrolling towards shipping the v1" -> standing rule: always pick up the next queue item while builds/agents run.
+
+- 2026-10-19: Panel card/chip context menu BUILT (not removed): the Main window already has an item menu (`MainAction`), so the Panel gets the same idea (Use, Copy, Edit, Pin/Unpin, Move to Trash) via `open_item_menu`/`choose_item_menu`; Menu key / Shift+F10 and right-click both open it. Reason: dead declarations promised it and every action already exists in the controller.

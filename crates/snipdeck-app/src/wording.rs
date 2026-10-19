@@ -212,6 +212,21 @@ pub const fn app_menu_text(entry: crate::controller::AppMenuEntry) -> &'static s
     }
 }
 
+/// The words of a row of the Panel's item menu.
+#[must_use]
+pub const fn item_menu_text(entry: crate::controller::ItemMenuEntry) -> &'static str {
+    use crate::controller::ItemMenuEntry;
+    match entry {
+        ItemMenuEntry::Use => "Use",
+        ItemMenuEntry::Copy => "Copy",
+        ItemMenuEntry::Edit => "Edit\u{2026}",
+        ItemMenuEntry::Pin { pinned: false } => "Pin",
+        ItemMenuEntry::Pin { pinned: true } => "Unpin",
+        ItemMenuEntry::Trash => "Move to Trash",
+        ItemMenuEntry::Separator => "",
+    }
+}
+
 /// The words of a board menu entry.
 #[must_use]
 pub fn board_menu_text(entry: &crate::controller::BoardMenuEntry) -> String {

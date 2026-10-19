@@ -312,6 +312,21 @@ fn holding_a_sensitive_row_reveals_its_text_and_releasing_hides_it() {
 }
 
 #[test]
+fn a_context_menu_request_opens_the_item_menu_and_dismissing_closes_it() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_item_menu_open());
+        r.ui.invoke_context_menu_requested(1, 10.0, 10.0);
+        assert!(r.ui.get_item_menu_open());
+        assert!(r.ui.get_item_menu_entries().row_count() >= 5);
+        r.ui.invoke_item_menu_dismissed();
+        assert!(!r.ui.get_item_menu_open());
+        r.ui.invoke_pinned_context_menu_requested(0, 10.0, 10.0);
+        assert!(r.ui.get_item_menu_open());
+    });
+}
+
+#[test]
 fn typing_in_the_search_filters_the_rows() {
     on_ui_thread(|| {
         let r = rig();

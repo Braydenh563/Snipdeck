@@ -29,7 +29,7 @@ mod panel;
 mod settings_ctl;
 
 pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameError};
-pub use panel::{APP_MENU, AppMenuEntry, HelpTopic};
+pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry};
 
 use crate::{
     capture::{self, Captured},
@@ -292,6 +292,8 @@ pub struct View {
     pub board_menu: Option<Vec<String>>,
     /// The kebab menu's rows while it is open ([`APP_MENU`]).
     pub app_menu: Option<Vec<AppMenuEntry>>,
+    /// The context menu of a card or pinned chip while it is open.
+    pub item_menu: Option<Vec<ItemMenuEntry>>,
     /// "Pause hotkeys" is on (its menu row is checked).
     pub hotkeys_paused: bool,
     /// The Picker, while it is open.
@@ -382,6 +384,8 @@ enum PanelMenu {
     Board,
     /// The kebab's ([`APP_MENU`]).
     App,
+    /// The context menu of an item's card or pinned chip.
+    Item(ItemId),
 }
 
 /// Facts about the running app that are not settings and not on screen.
@@ -535,6 +539,10 @@ where
                     .collect()
             }),
             app_menu: (self.menu == PanelMenu::App).then(|| APP_MENU.to_vec()),
+            item_menu: match self.menu {
+                PanelMenu::Item(id) => Some(self.item_menu_entries(id)),
+                _ => None,
+            },
             hotkeys_paused: self.session.hotkeys_paused,
             picker: self.picker.as_ref().map(|p| PickerView {
                 rows: p.rows(),
@@ -2854,6 +2862,76 @@ mod tests {
         assert_eq!(w.ctl.store().trashed().expect("trash"), Vec::new());
         let toast = w.ctl.view().toast.expect("toast");
         assert_eq!(toast.message, ToastMessage::Restored { count: 1 });
+    }
+
+    #[test]
+    fn the_item_menu_opens_on_a_row_and_closes_without_a_choice() {
+        let mut w = world();
+        assert_eq!(w.ctl.view().item_menu, None);
+        w.ctl.open_item_menu(1, false);
+        let entries = w.ctl.view().item_menu.expect("menu");
+        assert!(entries.contains(&ItemMenuEntry::Pin { pinned: false }));
+        w.ctl.close_item_menu();
+        assert_eq!(w.ctl.view().item_menu, None);
+        w.ctl.open_item_menu(99, false);
+        assert_eq!(w.ctl.view().item_menu, None, "no such row");
+    }
+
+    #[test]
+    fn the_item_menu_edits_pins_and_trashes_the_row_it_was_opened_on() {
+        let mut w = world();
+        let id = w.ctl.model().rows()[1].id;
+        let index_of = |w: &World, entry: ItemMenuEntry| {
+            w.ctl
+                .view()
+                .item_menu
+                .expect("menu")
+                .iter()
+                .position(|e| *e == entry)
+                .expect("entry")
+        };
+        w.ctl.open_item_menu(1, false);
+        let edit = index_of(&w, ItemMenuEntry::Edit);
+        assert_eq!(w.ctl.choose_item_menu(edit), [Effect::EditItem(id)]);
+        assert_eq!(w.ctl.view().item_menu, None);
+
+        w.ctl.open_item_menu(1, false);
+        let pin = index_of(&w, ItemMenuEntry::Pin { pinned: false });
+        assert_eq!(w.ctl.choose_item_menu(pin), Vec::new());
+        assert!(w.ctl.store().item(id).expect("item").pinned);
+        w.ctl.open_item_menu(1, false);
+        assert!(
+            w.ctl
+                .view()
+                .item_menu
+                .expect("menu")
+                .contains(&ItemMenuEntry::Pin { pinned: true })
+        );
+        w.ctl.close_item_menu();
+
+        w.ctl.open_item_menu(1, false);
+        let trash = index_of(&w, ItemMenuEntry::Trash);
+        assert_eq!(w.ctl.choose_item_menu(trash), Vec::new());
+        assert_eq!(row_titles(&w), ["One", "Three", "Greeting"]);
+        assert!(w.ctl.view().toast.expect("toast").undo);
+    }
+
+    #[test]
+    fn a_line_in_the_item_menu_does_nothing_and_hiding_closes_it() {
+        let mut w = world();
+        w.ctl.open_item_menu(0, false);
+        let line = w
+            .ctl
+            .view()
+            .item_menu
+            .expect("menu")
+            .iter()
+            .position(|e| *e == ItemMenuEntry::Separator)
+            .expect("line");
+        assert_eq!(w.ctl.choose_item_menu(line), Vec::new());
+        assert!(w.ctl.view().item_menu.is_some(), "a line is not a choice");
+        w.ctl.hide();
+        assert_eq!(w.ctl.view().item_menu, None);
     }
 
     #[test]
