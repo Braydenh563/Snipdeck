@@ -1492,6 +1492,9 @@ msgstr ""
 msgid "paste insert send"
 msgstr ""
 
+msgid "paste stack, number {}"
+msgstr ""
+
 msgid "preferences options configure hotkeys theme backup"
 msgstr ""
 

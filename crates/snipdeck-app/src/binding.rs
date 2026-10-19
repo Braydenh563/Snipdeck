@@ -739,9 +739,18 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             title: r.title.as_str().into(),
         })));
     }
-    if differs(&|p| p.rows == view.rows && p.dark == view.dark) {
+    if differs(&|p| {
+        p.rows == view.rows
+            && p.dark == view.dark
+            && p.stack.as_ref().map(|s| &s.items) == view.stack.as_ref().map(|s| &s.items)
+    }) {
+        let marked = view.stack.as_ref().map_or(&[][..], |s| s.items.as_slice());
         window.set_rows(model(view.rows.iter().enumerate().map(|(i, r)| {
             let mut row = panel_row(r, view.dark);
+            row.stack_position = marked
+                .iter()
+                .position(|id| *id == r.id)
+                .map_or(0, |at| to_i32(at + 1));
             // The one sensitive row held revealed: the controller put its text in the preview.
             if view.revealed == Some(i) {
                 row.preview = r.preview.as_str().into();
@@ -917,6 +926,7 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         list_name,
         list_color,
         image: slint::Image::default(),
+        stack_position: 0,
     }
 }
 

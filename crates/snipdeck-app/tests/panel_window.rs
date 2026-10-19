@@ -321,6 +321,12 @@ fn the_stack_strip_shows_the_marks_and_its_buttons_start_and_end_the_stack() {
         r.ui.invoke_query_changed("".into());
         assert!(r.ui.get_stack_visible());
         assert_eq!(r.ui.get_stack_count(), 1);
+        assert_eq!(
+            r.ui.get_rows().row_data(0).expect("row").stack_position,
+            1,
+            "the marked card wears its place in the stack"
+        );
+        assert_eq!(r.ui.get_rows().row_data(1).expect("row").stack_position, 0);
         assert!(!r.ui.get_stack_running());
         r.ui.invoke_stack_started();
         assert!(r.ui.get_stack_running());
