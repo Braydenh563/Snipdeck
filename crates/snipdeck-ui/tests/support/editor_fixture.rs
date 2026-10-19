@@ -151,6 +151,8 @@ pub fn help(ui: &HelpWindow) {
     ui.set_build_date("2026-10-19".into());
     ui.set_tier("Free".into());
     ui.set_source_url("https://github.com/Braydenh563/Snipdeck".into());
+}
+
 /// The welcome tour on `step` (0 to 3), with the defaults of a first run.
 pub fn onboarding(ui: &OnboardingWindow, step: i32) {
     ui.set_step(step);
