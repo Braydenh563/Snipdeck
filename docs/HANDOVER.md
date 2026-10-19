@@ -7,6 +7,47 @@ In flight: Sonnet agent C8+C9 (Supporter wording in app, FREE_BOARD_LIMIT 5, mai
 
 Next, in order: CI green on PR #5 -> translations pass for ~80 new strings per locale (Haiku; `python3 scripts/i18n.py check`) -> D1 goldens regenerate + read -> wave 3 B1-B15 -> wave 4 C1-C7 -> D2 README shots/hero, D3, D5 -> E1 docs -> F1 Fable sweep (owner-approved, one agent; brief `docs/fable-brief.md`) -> F2 Opus review -> F3 ux-auditor + blind-tester -> F4 gate --full, PR body, retro. Use cloud sessions/agents in parallel only on separate branches; one cargo-heavy agent per target dir.
 
+## Task list (mirror of the session's tasks, 2026-10-19 13:20; details per item in `docs/V1-PLAN.md`)
+
+- [~] A1-A3 Merge review, windows-ui, learnability agents and gate (merged; CI fixes 844a0bd..19c9160; confirm green)
+- [~] C8 Supporter wording, Free 5 boards, Get Supporter mailto placeholder (agent in flight)
+- [~] C9 Free vs Supporter table: Settings, get-licence dialog, README, site (agent in flight)
+- [~] Encryption on disk free, master password Supporter (agent in flight; decision in now.md)
+- [ ] Translations: ~80 new strings per locale (`python3 scripts/i18n.py check`)
+- [ ] D1-D2 Regenerate goldens (read each PNG), README 2x shots and hero images
+- [ ] B1 Import (.snipdeck, Ditto, CopyQ, folder) with preview, also for Restore
+- [ ] B2 Windows clipboard-history importer
+- [ ] B3 Export a list as text
+- [ ] B4 Ctrl+Z undo; Undo toast >=5 s, pause on hover
+- [ ] B5 Getting started list on first run
+- [ ] B6 Duplicate item
+- [ ] B7 More (...) button on rows and cards
+- [ ] B8 Shortcuts Ctrl+N/Shift+N/F/D/W/,
+- [ ] B9 Tray double-click opens Main
+- [ ] B10 Reduced-motion setting
+- [ ] B11 Drag and drop (reorder, move to tab, drop to create)
+- [ ] B12 Perf: cached index, budget tests, size/RAM report
+- [ ] B13 CLI --check-db and --troubleshoot
+- [ ] B14 Sensitive clipboard clear setting + SPEC fix
+- [ ] B15 Wording and a11y leftovers (ux-audit list)
+- [ ] C1 Recent inbox (opt-in clipboard history)
+- [ ] C2 Paste stack (Supporter)
+- [ ] C3 Master password (Supporter)
+- [ ] C4 Item colour label and list icon
+- [ ] C5 Accent colour (Index Blue default, presets, Windows accent), HC, 225%
+- [ ] C6 Edge dock ships: settings and wizard steps checked
+- [ ] C7 MSIX packaging and signing docs
+- [ ] D3 De-slop pass over every window state
+- [ ] D5 Controller split under 800 lines
+- [ ] E1 Docs: user guide, CHANGELOG, privacy, licensing, HANDOVER, CODEMAP
+- [ ] F1 Fable critical sweep (one agent, owner-approved; `docs/fable-brief.md`)
+- [ ] F2 Opus review of the whole diff; fixes
+- [ ] F3 ux-auditor and blind-tester on the final build; fixes
+- [ ] F4 gate --full both toolchains, Windows check, deny, CI green, PR body, retro
+- [ ] Delete `docs/ci-proposals/` once the owner has copied `dependabot.yml`
+- Done: D4 Pages site, E2 pre-public sweep, keygen rename, CI proposals applied by owner (ci.yml, release-build.yml), CodeQL cleartext fix.
+- Owner (G): copy dependabot.yml; dismiss 3 test-only CodeQL alerts ("Used in tests"); supply the Supporter email; Windows test run; merge PR #5; tag v1.0.0; release SHA-256 in `tools/launcher/release-sha256.txt`; SignPath/Store later.
+
 # Session state (2026-10-18 13:50, Fable session, away mode; branch `claude/compassionate-pascal-pod8ux`, PR #5)
 
 - **This session runs on Fable** and is the one permitted Fable agent; it delegates implementation to Sonnet/Haiku. Queue: `.claude/work-order.md` (continue mode). Decisions and inbox: `.claude/now.md`. Plan with per-step status: `docs/V1-PLAN.md`.
