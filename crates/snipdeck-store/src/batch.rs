@@ -366,7 +366,7 @@ impl Store {
     /// Restoring a list or item inside a trashed board revives the board too, so the Free
     /// board limit cannot be bypassed by trashing a board, creating another and restoring the
     /// first. Storage stays free of entitlements: the app passes the limit
-    /// (`Some(Entitlements::FREE_BOARD_LIMIT)` on Free, `None` on Pro). Over the limit it fails
+    /// (`Some(Entitlements::FREE_BOARD_LIMIT)` on Free, `None` on Supporter). Over the limit it fails
     /// with `Error::Core(ProRequired(Feature::UnlimitedBoards))`, the upsell path, and changes
     /// nothing.
     ///

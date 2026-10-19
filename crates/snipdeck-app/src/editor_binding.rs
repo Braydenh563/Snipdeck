@@ -346,7 +346,6 @@ fn apply_state(w: &ui::ItemEditor, view: &ItemEditorView) {
     w.set_privacy_error(text(&view.privacy_problem));
     w.set_banner(text(&view.banner));
     w.set_prompted_available(view.prompted_available);
-    w.set_encryption_available(view.encryption_available);
     w.set_can_browse(view.can_browse);
     w.set_restored(view.restored);
 }

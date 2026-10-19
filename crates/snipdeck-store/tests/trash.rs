@@ -441,8 +441,8 @@ fn purging_leaves_tags_alone() {
     assert_healthy(&s);
 }
 
-/// Review M1: a Free user with 3 boards trashes one, creates another (2 live, so allowed) and
-/// restores the first: that must not give 4 live boards.
+/// Review M1: a Free user with 5 boards trashes one, creates another (4 live, so allowed) and
+/// restores the first: that must not give 6 live boards.
 #[test]
 fn restore_cannot_revive_a_board_past_the_callers_limit() {
     use snipdeck_core::{Entitlements, Feature, Tier};
@@ -452,11 +452,12 @@ fn restore_cannot_revive_a_board_past_the_callers_limit() {
     let a = board(&mut s, "A");
     let a_list = list(&mut s, a.id, "inbox");
     let a_item = item(&mut s, a_list.id, "note", "note");
-    board(&mut s, "B");
-    board(&mut s, "C");
+    for name in ["B", "C", "D", "E"] {
+        board(&mut s, name);
+    }
     s.trash(Trashable::Board(a.id), at(1)).unwrap();
     assert!(free.can_create_board(s.boards().unwrap().len()));
-    board(&mut s, "D");
+    board(&mut s, "F");
 
     for target in [
         Trashable::Board(a.id),
@@ -473,7 +474,7 @@ fn restore_cannot_revive_a_board_past_the_callers_limit() {
         );
         assert_eq!(
             board_names(&s),
-            ["B", "C", "D"],
+            ["B", "C", "D", "E", "F"],
             "{target:?}: nothing revived"
         );
     }
@@ -484,7 +485,7 @@ fn restore_cannot_revive_a_board_past_the_callers_limit() {
         .unwrap();
     let revived = s.restore_with(Trashable::Item(a_item.id), limit).unwrap();
     assert_eq!(revived, [Trashable::Board(a.id)]);
-    assert_eq!(board_names(&s), ["A", "C", "D"]);
+    assert_eq!(board_names(&s), ["A", "C", "D", "E", "F"]);
 }
 
 #[test]

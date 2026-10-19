@@ -16,6 +16,8 @@ import { IconButton, IconButtonSize } from "components/icon-button.slint";
 import { TextField } from "components/text_field.slint";
 import { Toggle } from "components/choice.slint";
 import { HotkeyRecorder } from "components/hotkey_recorder.slint";
+import { Dialog } from "components/dialog.slint";
+import { PlanTable } from "components/plan-table.slint";
 import { FormField, FormScroll, FormSection, SettingRow, Segmented, SelectField, NumberStepper } from "components/form.slint";
 
 // One global shortcut as the page shows it. The order of `SettingsPage.hotkeys` is fixed: show or hide the panel,
@@ -76,7 +78,7 @@ export component SettingsPage inherits Window {
     in property <[string]> no-paste-apps;
     // Set by the host when `no-paste-app-added` was refused ("Already in the list").
     in property <string> no-paste-error;
-    // Whether this library is Pro (a valid licence key, or the demo).
+    // Whether this library is Supporter (a valid licence key, or the demo).
     in property <bool> pro: false;
     // Set by the host when `licence-submitted` was refused; the same words as the toast.
     in property <string> licence-error;
@@ -88,6 +90,8 @@ export component SettingsPage inherits Window {
     in property <string> toast-text;
     in property <ToastKind> toast-kind: ToastKind.neutral;
     in property <ToastPhase> toast-phase: ToastPhase.hold;
+    // The "Get Supporter" dialog (price, what each plan includes, the email button) is open.
+    in-out property <bool> supporter-open: false;
     // The "Erase library" confirmation is open.
     in-out property <bool> erase-open: false;
     // What is typed in the licence field, in the erase confirmation, and its key switch.
@@ -116,6 +120,8 @@ export component SettingsPage inherits Window {
     callback no-paste-app-added(name: string);
     callback no-paste-app-removed(index: int);
     callback licence-submitted(key: string);
+    // "Email me" in the Get Supporter dialog: the host opens the email app (a mailto: link).
+    callback supporter-requested();
     callback backup-now-requested();
     callback backup-restore-requested(index: int);
     callback open-data-folder-requested();
@@ -469,10 +475,22 @@ export component SettingsPage inherits Window {
                 FormSection {
                     title: @tr("Licence");
                     SettingRow {
-                        title: root.pro ? @tr("Snipdeck Pro") : @tr("Free plan");
+                        title: root.pro ? @tr("Snipdeck Supporter") : @tr("Free plan");
                         description: root.pro
-                            ? @tr("Every Pro feature is on. Thank you.")
-                            : @tr("Paste a licence key to turn on Pro. The key is checked on this PC and nothing is sent anywhere.");
+                            ? @tr("Every Supporter feature is on. Thank you.")
+                            : @tr("Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere.");
+                    }
+                    if !root.pro: SettingRow {
+                        title: @tr("Get Supporter");
+                        description: @tr("Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included.");
+                        Button {
+                            text: @tr("Get Supporter…");
+                            enabled: !root.supporter-open;
+                            clicked => { root.supporter-open = true; }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
                     }
                     if !root.pro: HorizontalLayout {
                         spacing: Space.s2;
@@ -500,6 +518,15 @@ export component SettingsPage inherits Window {
                             }
                         }
                     }
+                    Text {
+                        text: @tr("Free is fully usable. Supporter pays for convenience and supports the app.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: none;
+                    }
+                    PlanTable { }
                 }
 
                 FormSection {
@@ -745,5 +772,37 @@ export component SettingsPage inherits Window {
         height: self.preferred-height;
         x: (root.width - self.width) / 2;
         y: root.height - self.height - Space.s4;
+    }
+
+    // Last, so it sits on top and traps the pointer.
+    Dialog {
+        title: @tr("Get Supporter");
+        body: @tr("Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions.");
+        open: root.supporter-open;
+        dismissed => { root.supporter-open = false; }
+        accepted => { root.supporter-requested(); root.supporter-open = false; }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: Space.s3;
+            Flickable {
+                // Short windows scroll the table instead of pushing the buttons off the screen.
+                height: min(table.preferred-height, max(Space.s12 * 2, root.height - Space.s12 * 6));
+                content-height: table.preferred-height;
+                table := PlanTable { width: parent.width; }
+            }
+            HorizontalLayout {
+                spacing: Space.s2;
+                alignment: end;
+                Button {
+                    text: @tr("Close");
+                    clicked => { root.supporter-open = false; }
+                }
+                Button {
+                    text: @tr("Email me");
+                    variant: ButtonVariant.primary;
+                    clicked => { root.supporter-requested(); root.supporter-open = false; }
+                }
+            }
+        }
     }
 }

@@ -172,7 +172,7 @@ pub fn list_backups(data_dir: &Path) -> Result<Vec<BackupFile>> {
 /// [`KeySource::Library`] uses the library's own unlocked key.
 ///
 /// `max_boards` is the most live boards the library may hold afterwards (the Free tier's 3;
-/// `None` on Pro), as [`ImportOptions::max_boards`]: a restore that would go past it is refused
+/// `None` on Supporter), as [`ImportOptions::max_boards`]: a restore that would go past it is refused
 /// and changes nothing.
 ///
 /// # Errors

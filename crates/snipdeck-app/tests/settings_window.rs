@@ -23,7 +23,7 @@ use std::{
 };
 
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
-use slint::{ComponentHandle, Model};
+use slint::{ComponentHandle, Global, Model};
 use snipdeck_app::{
     controller::{Controller, Effect, Services},
     demo,
@@ -38,7 +38,7 @@ use snipdeck_app::{
     wording,
 };
 use snipdeck_core::{
-    Entitlements, Tier, Timestamp,
+    Entitlements, Feature, Tier, Timestamp,
     licence::{
         IS_DEVELOPMENT_KEY,
         signing::{SigningKey, pro_payload, sign_token},
@@ -78,6 +78,8 @@ struct FakeHost {
     /// The last "Panel taskbar button" the page asked for.
     taskbar: Cell<Option<bool>>,
     opened: RefCell<Vec<PathBuf>>,
+    /// The links the page asked to open.
+    urls: RefCell<Vec<String>>,
     documents: RefCell<Option<PathBuf>>,
 }
 
@@ -100,6 +102,11 @@ impl SettingsHost for FakeHost {
 
     fn open_folder(&self, folder: &Path) -> Result<(), String> {
         self.opened.borrow_mut().push(folder.to_owned());
+        Ok(())
+    }
+
+    fn open_url(&self, url: &str) -> Result<(), String> {
+        self.urls.borrow_mut().push(url.to_owned());
         Ok(())
     }
 
@@ -150,7 +157,7 @@ fn rig_on(store: Store, tier: Tier, dir: tempfile::TempDir, with_data_dir: bool)
     *host.documents.borrow_mut() = Some(dir.path().join("Documents"));
     let ui = SettingsPage::new().expect("settings page");
     // Tall, so the whole page is on screen.
-    ui.window().set_size(slint::LogicalSize::new(640.0, 2400.0));
+    ui.window().set_size(slint::LogicalSize::new(640.0, 4000.0));
     let data_dir = with_data_dir.then(|| dir.path().to_owned());
     let host_dyn: Rc<dyn SettingsHost> = Rc::clone(&host) as Rc<dyn SettingsHost>;
     let binding = Controller::bind_settings(&ctl, &ui, data_dir, host_dyn);
@@ -656,7 +663,10 @@ fn a_good_licence_key_turns_pro_on_and_is_remembered() {
         r.ui.invoke_licence_submitted(format!("  {key}\n").into());
         assert!(r.ui.get_pro());
         assert_eq!(r.ui.get_licence_error(), "");
-        assert_eq!(r.ui.get_toast_text(), "Snipdeck Pro is on. Thank you.");
+        assert_eq!(
+            r.ui.get_toast_text(),
+            "Snipdeck Supporter is on. Thank you."
+        );
         assert_eq!(r.ui.get_toast_kind(), ToastKind::Success);
         assert_eq!(r.ctl.borrow().tier(), Tier::Pro);
         assert_eq!(
@@ -666,7 +676,7 @@ fn a_good_licence_key_turns_pro_on_and_is_remembered() {
         assert_eq!(
             licence_store::entitlements(r.dir.path(), now()).tier(),
             Tier::Pro,
-            "the next start is Pro"
+            "the next start is Supporter"
         );
     });
 }
@@ -957,6 +967,10 @@ fn erasing_can_keep_the_encryption_key_or_forget_it() {
 fn the_erase_button_stays_off_until_the_word_is_typed() {
     on_ui_thread(|| {
         let r = library_on_disk(false);
+        // The page scrolls, and the accessibility queries only see what is inside the window:
+        // make it tall enough for the whole confirmation (the Licence section has the plan table).
+        r.ui.window()
+            .set_size(slint::LogicalSize::new(640.0, 4000.0));
         assert!(!r.ui.get_erase_open());
         element(&r.ui, "Erase library\u{2026}", AccessibleRole::Button)
             .invoke_accessible_default_action();
@@ -1044,5 +1058,94 @@ fn the_main_windows_settings_button_opens_the_page_once_and_shows_it_again() {
             "the same window"
         );
         assert_eq!(again.get_hotkeys().row_count(), 4);
+    });
+}
+
+#[test]
+fn get_supporter_opens_the_email_app_with_the_one_named_address() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_supporter_open());
+        r.ui.invoke_supporter_requested();
+        assert_eq!(
+            *r.host.urls.borrow(),
+            [format!("mailto:{}", settings_binding::SUPPORTER_EMAIL)]
+        );
+        assert_eq!(
+            settings_binding::supporter_mailto(),
+            "mailto:SUPPORTER_EMAIL_PLACEHOLDER",
+            "the placeholder stays until the owner supplies the address"
+        );
+    });
+}
+
+/// The comparison table is held to `entitlements.rs`: its Supporter-only rows are exactly the
+/// `Feature`s, except floating lists (in the enum, not part of v1, so not on the website either).
+#[test]
+fn the_plan_table_lists_exactly_the_supporter_features() {
+    on_ui_thread(|| {
+        let r = rig();
+        let rows: Vec<_> = snipdeck_ui::PlanTexts::get(&r.ui)
+            .get_rows()
+            .iter()
+            .collect();
+        let mut listed: Vec<String> = rows
+            .iter()
+            .filter(|row| !row.feature.is_empty())
+            .map(|row| row.feature.to_string())
+            .collect();
+        let mut expected: Vec<String> = Feature::ALL
+            .iter()
+            .filter(|f| **f != Feature::FloatingLists)
+            .map(|f| f.key().to_owned())
+            .collect();
+        listed.sort();
+        expected.sort();
+        assert_eq!(listed, expected);
+        for row in &rows {
+            assert!(row.supporter, "{}: Supporter has everything", row.name);
+            assert_eq!(
+                row.free,
+                row.feature.is_empty() || row.feature == Feature::UnlimitedBoards.key(),
+                "{}: Free lacks exactly the Supporter features (boards are limited, not missing)",
+                row.name
+            );
+            assert!(!row.name.is_empty() && !row.description.is_empty());
+        }
+        let boards = rows
+            .iter()
+            .find(|row| row.feature == Feature::UnlimitedBoards.key())
+            .expect("boards row");
+        assert_eq!(
+            boards.free_note,
+            format!("up to {}", Entitlements::FREE_BOARD_LIMIT)
+        );
+    });
+}
+
+#[test]
+fn the_plan_table_says_each_answer_in_words_not_colour() {
+    on_ui_thread(|| {
+        let r = rig();
+        element(
+            &r.ui,
+            "Free and Supporter compared",
+            AccessibleRole::Groupbox,
+        );
+        // A row says both answers in its description.
+        let row = element(&r.ui, "Paste stack", AccessibleRole::Groupbox);
+        let said = row
+            .accessible_description()
+            .expect("description")
+            .to_string();
+        assert!(said.contains("Free: Not included."), "{said}");
+        assert!(said.contains("Supporter: Included."), "{said}");
+        let boards = element(&r.ui, "Boards", AccessibleRole::Groupbox);
+        let said = boards
+            .accessible_description()
+            .expect("description")
+            .to_string();
+        assert!(said.contains("Free: Included, up to 5."), "{said}");
+        assert!(said.contains("Supporter: Included, unlimited."), "{said}");
     });
 }

@@ -162,7 +162,7 @@ fn a_new_item_starts_in_the_list_the_origin_shows_with_that_boards_lists_to_choo
         (v.fields.title.as_str(), v.fields.content.as_str()),
         ("", "")
     );
-    assert!(v.prompted_available && v.encryption_available);
+    assert!(v.prompted_available);
     assert!(!v.can_browse, "no file dialog was given");
     assert!(!v.restored);
 
@@ -599,24 +599,23 @@ fn a_free_user_can_still_retitle_a_template_that_already_prompts() {
 }
 
 #[test]
-fn a_free_user_may_mark_an_item_sensitive_but_nothing_is_encrypted() {
-    let mut r = rig(Tier::Free);
-    r.ctl.open_new_item(Origin::Main);
-    let v = view(&r.ctl);
-    assert!(!v.encryption_available);
-    r.ctl.item_editor_save(&EditorInput {
-        sensitive: true,
-        ..typed(&v, "Pin", "1234")
-    });
-    assert!(!r.ctl.item_editor_open());
-    let id = id_of(&r.ctl, "Pin");
-    let item = r.ctl.store().item(id).expect("item");
+fn a_free_user_marking_an_item_sensitive_gets_it_encrypted_like_everyone() {
+    let data = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    let mut ctl = on_disk(Tier::Free, &provider, true, data.path());
+    assert!(!ctl.store().key_ring_exists().expect("ring"));
+    let id = save_sensitive(&mut ctl, "Pin", SECRET);
+    assert!(
+        ctl.store().key_ring_exists().expect("ring"),
+        "the key is made on first use, on Free too"
+    );
+    assert!(ctl.store().is_unlocked());
+    let item = ctl.store().item(id).expect("item");
     assert!(item.sensitive);
     assert_eq!(item.preview, "", "a sensitive item has no preview");
-    assert!(
-        !r.ctl.store().key_ring_exists().expect("ring"),
-        "no key was made"
-    );
+    assert_eq!(text_of(&ctl, id), SECRET, "reads back while unlocked");
+    // The database, its log and the drafts folder never saw the text.
+    assert_no_plaintext(data.path(), &[SECRET.as_bytes()]);
 }
 
 // ---- Editing -----------------------------------------------------------------------------------

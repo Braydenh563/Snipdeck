@@ -30,18 +30,18 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 
 | Term | Meaning |
 |---|---|
-| **Board** | Top-level workspace (e.g. "Work", "Personal"). Free tier: 3 boards. |
+| **Board** | Top-level workspace (e.g. "Work", "Personal"). Free tier: 5 boards. |
 | **List** | Ordered collection of Items inside a Board (e.g. "Email replies"). Has optional colour accent. |
 | **Item** | One saved thing the user can paste. Has a title, one or more Formats, tags, flags. |
 | **Format** | One clipboard representation of an Item: `text`, `html`, `rtf`, `image/png`, `files`. An Item may hold several (e.g. html + text fallback). |
 | **Template** | An Item whose text contains placeholders, resolved at use time. |
-| **Placeholder** | `{date}`, `{time}`, `{datetime:FORMAT}`, `{clipboard}`, `{cursor}` (static/free) and `{field:Name}` / `{field:Name|default}` / `{choice:Name|a|b}` (prompted/Pro). |
+| **Placeholder** | `{date}`, `{time}`, `{datetime:FORMAT}`, `{clipboard}`, `{cursor}` (static/free) and `{field:Name}` / `{field:Name|default}` / `{choice:Name|a|b}` (prompted/Supporter). |
 | **Tag** | Free-form label across Boards; filterable. |
 | **Pinned** | Item shown in the panel's favourites strip, above list order. |
-| **Sensitive** | Item that is masked and excluded from history (clipboard auto-clear after use is v1.1); encrypted at rest (Pro). |
+| **Sensitive** | Item that is masked and excluded from history (clipboard auto-clear after use is v1.1); encrypted at rest (all tiers). |
 | **Recent inbox** | Opt-in clipboard history. Last 200 entries or 7 days (configurable). Promote → List. |
 | **Panel** | Small dockable, always-on-top, non-activating window showing a Board (lists as tabs). |
-| **Floating list** | A List detached from the Panel into its own mini-panel (Pro). |
+| **Floating list** | A List detached from the Panel into its own mini-panel (Supporter). |
 | **Picker** | Hotkey-summoned, keyboard-first popup at the cursor: type to filter, Enter to paste. |
 | **Main window** | Full manager: sidebar / item list / detail editor. |
 | **Use** | Executing an Item: resolve template → write clipboard → paste or copy. |
@@ -70,13 +70,13 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - **First-run position:** docked to the right edge, full height minus taskbar, always-on-top, auto-hide off (changeable in onboarding).
 - **Fullscreen apps:** the panel auto-hides while a fullscreen app is in front and returns afterwards; hotkeys keep working.
 - Inline quick-edit for short text and titles; everything else opens the Editor.
-- Detach a list tab → **Floating list** (Pro).
+- Detach a list tab → **Floating list** (Supporter).
 
 ### 5.1a Use semantics (paste & clipboard)
 - **Paste** = write item to clipboard → paste key into Target → **restore the previous clipboard**. A fixed 300 ms wait is only the fallback: the primary signal is **delayed rendering** (the item's formats are rendered on demand and the previous clipboard is restored once the target has asked for them, with a 2 s cap), because slow targets such as Remote Desktop may otherwise receive the old content (M0 S1). **(unverified)**
 - **Copy** (`Shift+click`, `Shift+Enter`, or no Target) = item stays on the clipboard.
 - **Paste as plain text:** `Alt+click` / `Alt+Enter`; per-item "always paste as plain text" option.
-- **Paste stack (Pro):** multi-select items → "Start stack". The panel shows the queue; the global **Paste next** hotkey (default `Ctrl+Alt+V`) pastes the head and advances. `Ctrl+V` is never hooked. `Esc` in the panel or finishing the queue ends the stack.
+- **Paste stack (Supporter):** multi-select items → "Start stack". The panel shows the queue; the global **Paste next** hotkey (default `Ctrl+Alt+V`) pastes the head and advances. `Ctrl+V` is never hooked. `Esc` in the panel or finishing the queue ends the stack.
 - Elevated targets (UIPI) and failures fall back to Copy with an explaining toast ("Couldn't paste into Task Manager (runs as admin). Copied instead.").
 
 ### 5.2 Picker
@@ -114,7 +114,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 
 ### 5.7 Sensitive items
 - Free: masked `••••` (click-and-hold to reveal), excluded from history. Clipboard auto-clear after N s (default 30) is **v1.1**: v1.0 does not clear the clipboard on a timer, an auto-paste restores the previous clipboard, and the editor makes no promise about it.
-- Pro: encrypted at rest (XChaCha20-Poly1305); key wrapped by OS (DPAPI) and optionally by a
+- Free and Supporter: encrypted at rest (XChaCha20-Poly1305); key wrapped by OS (DPAPI). Supporter adds an optional
   **master password** (Argon2id) → unlock prompt per session / idle timeout.
 
 ### 5.7a Deletion & recovery
@@ -138,23 +138,26 @@ Seeds a **Getting started** list whose cards teach by doing ("Click me to paste"
 - Importers: Ditto, CopyQ, Windows clipboard history (current session), folder of `.txt`/`.md`.
 - Data folder relocatable (e.g. into OneDrive/Dropbox for DIY sync); DB is single-writer — warn on concurrent use.
 
-## 6. Free vs Pro
+## 6. Free vs Supporter
 
-| Feature | Free | Pro |
+The paid tier is called Supporter (it was Pro; internal identifiers such as `Tier::Pro` keep the old name). Pay what you want from A$5, suggested A$8, one-time, every 1.x update included; a key is free on request ("Can't afford it? Email me"). Free stays fully usable and the code is GPL-3.0: Supporter pays for convenience and supports the app.
+
+| Feature | Free | Supporter |
 |---|---|---|
-| Boards | 3 | Unlimited |
+| Boards | 5 | Unlimited |
 | Lists / items | Unlimited | Unlimited |
 | Panel, picker, capture, OCR, editors, history | ✓ | ✓ |
 | Static placeholders | ✓ | ✓ |
 | Prompted template fields (`{field}`, `{choice}`) | — | ✓ |
 | Sensitive masking + auto-clear | ✓ | ✓ |
-| Sensitive encryption + master password | — | ✓ |
+| Sensitive encryption at rest | ✓ | ✓ |
+| Master password | — | ✓ |
 | Floating (detached) lists | — | ✓ |
 | Paste stack | — | ✓ |
 
 Licence key: offline Ed25519-signed token, no phone-home (ADR-0005).
 
-**Upsell:** shown only when the user tries a Pro action (a calm sheet: what it does, price, "Enter key" / "Get Pro"), plus a subtle "Pro" section in Settings listing Pro features. No nags, banners or countdowns.
+**Upsell:** shown only when the user tries a Supporter action (a calm sheet: what it does, price, "Enter key" / "Get Supporter"; Get Supporter opens an email to the owner), plus a Free vs Supporter table in Settings > Licence (feature, one-line description, tick or cross per tier; a tick or cross is never colour alone). No nags, banners or countdowns.
 
 ## 7. Internationalisation & accessibility
 - Launch locales: **en, es, de, fr, pt-BR, ja, zh-Hans**. All strings via Slint `@tr()` / gettext `.po`.

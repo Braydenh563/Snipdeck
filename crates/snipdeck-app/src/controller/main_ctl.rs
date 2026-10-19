@@ -478,7 +478,7 @@ where
         }
     }
 
-    /// The Free plan's live-board limit, for restoring a board; `None` on Pro.
+    /// The Free plan's live-board limit, for restoring a board; `None` on Supporter.
     fn board_limit(&self) -> Option<usize> {
         (!self.entitlements.allows(Feature::UnlimitedBoards))
             .then_some(snipdeck_core::Entitlements::FREE_BOARD_LIMIT)

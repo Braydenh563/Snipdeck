@@ -16,7 +16,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use slint::{ComponentHandle, SharedString};
+use slint::{ComponentHandle, Global, SharedString};
 use snipdeck_platform::{
     chord::Chord,
     pipeline::{Clipboard, Keyboard, Timing},
@@ -37,6 +37,18 @@ use crate::{
 };
 
 // ---- What the machine is asked to do -----------------------------------------------------------
+
+/// The address "Get Supporter" and "Email me" write to. A placeholder until the owner supplies the
+/// real one: replace this one line before release (the website has the same placeholder, in
+/// `site/index.html`).
+pub const SUPPORTER_EMAIL: &str = "SUPPORTER_EMAIL_PLACEHOLDER";
+
+/// The link behind "Get Supporter": opens the user's email app with a new message to
+/// [`SUPPORTER_EMAIL`].
+#[must_use]
+pub fn supporter_mailto() -> String {
+    format!("mailto:{SUPPORTER_EMAIL}")
+}
 
 /// What Settings asks of the machine. [`SystemHost`] is the real one; tests bring a fake.
 pub trait SettingsHost {
@@ -60,6 +72,13 @@ pub trait SettingsHost {
     ///
     /// The file manager could not be started.
     fn open_folder(&self, folder: &Path) -> Result<(), String>;
+
+    /// Opens `url` (here, the `mailto:` link of Get Supporter) in the default program.
+    ///
+    /// # Errors
+    ///
+    /// The program could not be started.
+    fn open_url(&self, url: &str) -> Result<(), String>;
 
     /// Where an export is saved, if the machine has a Documents folder.
     fn documents_folder(&self) -> Option<PathBuf>;
@@ -130,18 +149,11 @@ impl SettingsHost for SystemHost {
     }
 
     fn open_folder(&self, folder: &Path) -> Result<(), String> {
-        let opener = if cfg!(windows) {
-            "explorer"
-        } else if cfg!(target_os = "macos") {
-            "open"
-        } else {
-            "xdg-open"
-        };
-        std::process::Command::new(opener)
-            .arg(folder)
-            .spawn()
-            .map(drop)
-            .map_err(|e| e.to_string())
+        crate::help_binding::launch(folder.as_os_str())
+    }
+
+    fn open_url(&self, url: &str) -> Result<(), String> {
+        crate::help_binding::launch(std::ffi::OsStr::new(url))
     }
 
     fn documents_folder(&self) -> Option<PathBuf> {
@@ -784,6 +796,15 @@ where
         self.open_folder(&backups);
     }
 
+    /// Opens the email app for Get Supporter.
+    fn get_supporter(self: &Rc<Self>) {
+        if let Err(error) = self.host.open_url(&supporter_mailto()) {
+            crate::trace!("get supporter: {error}");
+            self.toast(ToastKind::Danger, ToastMessage::MailNotOpened);
+            redraw_all();
+        }
+    }
+
     fn open_folder(self: &Rc<Self>, folder: &Path) {
         if let Err(error) = self.host.open_folder(folder) {
             crate::trace!("open folder: {error}");
@@ -858,6 +879,8 @@ where
             }
         });
         register_redraw(&core.redraw);
+        ui::PlanTexts::get(window)
+            .set_board_limit(to_i32(snipdeck_core::Entitlements::FREE_BOARD_LIMIT));
         let follow = window.invoke_follow_windows_text();
         window.set_languages(model(
             std::iter::once(follow).chain(LANGUAGE_NAMES.iter().map(|n| SharedString::from(*n))),
@@ -930,6 +953,7 @@ where
             .no_paste_removed(crate::binding::index(i)));
         wire!(on_licence_submitted, |core, key| core
             .licence_submitted(&key));
+        wire!(on_supporter_requested, |core| core.get_supporter());
         wire!(on_backup_now_requested, |core| core.backup_now());
         wire!(on_backup_restore_requested, |core, i| core
             .restore(crate::binding::index(i)));

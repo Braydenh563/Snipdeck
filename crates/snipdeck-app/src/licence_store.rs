@@ -39,7 +39,7 @@ pub fn write(folder: &Path, token: &str) -> io::Result<()> {
     })
 }
 
-/// What the saved key entitles the user to: Pro for a good key, Free for none or a bad one.
+/// What the saved key entitles the user to: Supporter for a good key, Free for none or a bad one.
 #[must_use]
 pub fn entitlements(folder: &Path, now: Timestamp) -> Entitlements {
     read(folder)

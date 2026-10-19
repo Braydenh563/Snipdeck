@@ -182,7 +182,7 @@ Every icon-only control has a tooltip and an accessible label with the same word
 |---|---|---|---|
 | **ItemCard** | number gutter, content-aware leading, title, preview, use label | The core object you click to use | compact (28px row) · comfortable (≤ 3 lines, thumbnail) · tile (main-window grid) |
 | DeckEdge | 2 offset card edges | Signals more cards below or above the fold | bottom · top |
-| ListTabBar | Tab ×N, overflow, + | Switch and reorder lists in the panel | scrollable, draggable (detach = Pro) |
+| ListTabBar | Tab ×N, overflow, + | Switch and reorder lists in the panel | scrollable, draggable (detach = Supporter) |
 | BoardSwitcher | Button + Menu | Change board | — |
 | PinnedStrip | Tag-style pinned items | One-click access to pinned items | horizontal scroll |
 | SidebarItem | icon, label, count | Main-window navigation | board, list (8px colour mark), tag, system |
@@ -190,6 +190,7 @@ Every icon-only control has a tooltip and an accessible label with the same word
 | HotkeyRecorder | Keycap combo, clear | Rebind shortcuts, detect conflicts | idle, recording, conflict |
 | EmptyState | heading, one sentence, primary action | Teach how to fill an empty surface | list, board, search, inbox |
 | Dialog | title, body, actions | Confirm, licence, import | default · destructive |
+| PlanTable | feature + one-line description, Free and Supporter columns | Settings > Licence and the Get Supporter dialog | tick (success-fg) or cross (text-secondary) with a note ("up to 5"); each row's accessible description says "Free: Included. Supporter: Not included." so state is never colour alone |
 | EditorToolbar | IconButtons, Menu | Text transforms / image tools | text · image |
 
 ### Patterns / templates

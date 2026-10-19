@@ -140,13 +140,12 @@ fn item_editor_new_file_with_a_path_problem_a_banner_and_a_restored_draft() {
 }
 
 #[test]
-fn item_editor_free_plan_says_sensitive_is_not_encrypted() {
+fn item_editor_sensitive_with_a_locked_library() {
     let h = item((560, 900), false);
-    h.component.set_encryption_available(false);
     h.component.set_sensitive(true);
     h.component
         .set_privacy_error("Unlock your library to save this item.".into());
-    assert_golden("item-editor-free-sensitive-light", &render(&h));
+    assert_golden("item-editor-sensitive-locked-light", &render(&h));
 }
 
 #[test]

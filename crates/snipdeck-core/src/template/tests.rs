@@ -603,7 +603,7 @@ fn render_checked_enforces_the_entitlement_that_render_does_not() {
     let t = Template::parse("Hi {field:Name|there}").unwrap();
     let a = BTreeMap::new();
     let ctx = RenderContext::new(now(), &a);
-    // `render` is the unchecked primitive: it resolves Pro prompts for anyone.
+    // `render` is the unchecked primitive: it resolves Supporter prompts for anyone.
     assert_eq!(t.render(&ctx).text, "Hi there");
     assert_eq!(
         t.render_checked(&Entitlements::new(Tier::Free), &ctx),

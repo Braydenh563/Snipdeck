@@ -69,7 +69,7 @@ to and no file overwrites another.
 `ItemKind` (text, template, code, link, image, file) describes content; `Item::sensitive` is
 separate. DESIGN.md's "Sensitive" leading row is a UI rule: draw the lock whenever the flag is
 set. One source of truth, and clearing the flag restores the real kind. A sensitive item's
-preview is empty, so no plaintext of it is stored outside its content, which Pro encrypts; the
+preview is empty, so no plaintext of it is stored outside its content, which Supporter encrypts; the
 `•••• 7f3a` hint in DESIGN.md is therefore not shown in v1.
 
 ### Order belongs to storage

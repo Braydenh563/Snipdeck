@@ -877,28 +877,32 @@ fn new_board_rename_and_delete_use_the_board_editor() {
 }
 
 #[test]
-fn the_free_plan_stops_a_fourth_board_with_a_toast() {
+fn the_free_plan_stops_a_sixth_board_with_a_toast() {
     on_ui_thread(|| {
         let r = rig_tier(Tier::Free);
-        r.ui.invoke_board_menu_requested();
-        r.ui.invoke_board_menu_activated(3);
-        r.binding.board_editor().unwrap().set_name("Third".into());
-        r.binding.board_editor().unwrap().invoke_save_requested();
-        assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 3);
-
-        r.ui.invoke_board_menu_requested();
-        let new =
+        let new_board_entry = |r: &Rig| {
             r.ui.get_board_menu_entries()
                 .iter()
                 .position(|e| e.text.starts_with("New board"))
-                .unwrap();
-        r.ui.invoke_board_menu_activated(i32::try_from(new).unwrap());
+                .unwrap()
+        };
+        // Two boards in the demo; add the third, fourth and fifth.
+        for name in ["Third", "Fourth", "Fifth"] {
+            r.ui.invoke_board_menu_requested();
+            r.ui.invoke_board_menu_activated(i32::try_from(new_board_entry(&r)).unwrap());
+            r.binding.board_editor().unwrap().set_name(name.into());
+            r.binding.board_editor().unwrap().invoke_save_requested();
+        }
+        assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 5);
+
+        r.ui.invoke_board_menu_requested();
+        r.ui.invoke_board_menu_activated(i32::try_from(new_board_entry(&r)).unwrap());
         assert!(!r.binding.board_editor().unwrap().window().is_visible());
         assert_eq!(
             r.ui.get_toast_text(),
-            "The Free plan includes 3 boards. Upgrade to Pro for more."
+            "The Free plan includes 5 boards. Supporter adds unlimited boards."
         );
-        assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 3);
+        assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 5);
     });
 }
 
@@ -1018,6 +1022,10 @@ impl SettingsHost for NoHost {
     fn set_panel_in_taskbar(&self, _on: bool) {}
 
     fn open_folder(&self, _folder: &Path) -> Result<(), String> {
+        Ok(())
+    }
+
+    fn open_url(&self, _url: &str) -> Result<(), String> {
         Ok(())
     }
 

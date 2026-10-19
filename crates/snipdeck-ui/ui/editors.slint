@@ -149,10 +149,8 @@ export component ItemEditor inherits Window {
     in property <image> preview;
     in property <string> attachment-name;
     in property <string> attachment-detail;
-    // False on the free plan: `{field}` and `{choice}` are marked Pro in the placeholder help.
+    // False on the free plan: `{field}` and `{choice}` are marked Supporter in the placeholder help.
     in property <bool> prompted-available: true;
-    // False on the free plan: a sensitive item is masked but not encrypted on disk (Pro).
-    in property <bool> encryption-available: true;
     // A new Image or File item: the path of the file to keep a copy of, a problem with it, and whether the host can
     // open a file dialog (`browse-requested`).
     in-out property <string> source-path;
@@ -190,7 +188,7 @@ export component ItemEditor inherits Window {
     property <bool> text-kind: root.kind-index <= 3;
     property <string> sensitive-base: @tr("Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard 30 seconds after you copy it.");
     property <string> sensitive-help: root.text-kind
-        ? (root.encryption-available ? root.sensitive-base : root.sensitive-base + " " + @tr("Encrypting it on disk is a Pro feature."))
+        ? root.sensitive-base
         : @tr("Only text, code, link and template items can be sensitive.");
     property <bool> show-errors: false;
     property <bool> content-missing: root.text-kind && root.content == "";
@@ -460,7 +458,7 @@ export component ItemEditor inherits Window {
                             Text {
                                 horizontal-stretch: 1;
                                 min-width: 0px;
-                                text: (ph.prompted && !root.prompted-available) ? @tr("{} (Pro)", ph.help) : ph.help;
+                                text: (ph.prompted && !root.prompted-available) ? @tr("{} (Supporter)", ph.help) : ph.help;
                                 color: Theme.text-secondary;
                                 font-family: Fonts.sans;
                                 font-size: Type.sm;
