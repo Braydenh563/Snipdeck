@@ -27,7 +27,7 @@ component ItemGutter inherits Rectangle {
         text: "\{root.number}";
         font-family: Fonts.mono;
         font-size: Type.xs;
-        color: root.selected ? Theme.text-secondary-on-selected : Theme.text-tertiary;
+        color: root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary;
         horizontal-alignment: center;
         vertical-alignment: center;
     }
@@ -400,7 +400,7 @@ export component ItemCard inherits Rectangle {
                 text: "\{root.number}";
                 font-family: Fonts.mono;
                 font-size: Type.xs;
-                color: root.selected ? Theme.text-secondary-on-selected : Theme.text-tertiary;
+                color: root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary;
                 vertical-alignment: center;
             }
             if root.lifted: Icon {
@@ -447,6 +447,7 @@ export component ItemCard inherits Rectangle {
             // outline (drawn on top) hides the square corners as far as it can.
             if root.image.width > 0: Image {
                 source: root.image;
+                accessible-role: none;
                 x: 1px;
                 y: 1px;
                 width: parent.width - 2px;

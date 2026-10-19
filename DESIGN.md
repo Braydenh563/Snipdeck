@@ -58,7 +58,7 @@ Components reference **semantic tokens only**.
 | `blue-100` | `#EBF2FE` | light selected / accent-subtle |
 | `blue-300` | `#ABCDFE` | dark accent text |
 | `blue-400` | `#74ACFF` | dark focus ring |
-| `blue-500` | `#438AF1` | light focus ring |
+| `blue-500` | `#438AF1` | logo mark |
 | `blue-600` | `#2870D4` | **accent.default** (both themes) |
 | `blue-700` | `#195AB3` | accent hover / light accent text |
 | `blue-800` | `#0C448F` | pressed |
@@ -86,7 +86,7 @@ Components reference **semantic tokens only**.
 | `accent.default` | `#2870D4` | `#2870D4` | selection fill, active tab underline, toggles on, focus-adjacent states. **Not** buttons |
 | `accent.hover` / `.pressed` | `#195AB3` / `#0C448F` | same | |
 | `accent.text` | `#195AB3` | `#ABCDFE` | links, accent labels |
-| `focus.ring` | `#438AF1` | `#74ACFF` | 2px ring, 2px offset |
+| `focus.ring` | `#2870D4` | `#74ACFF` | 2px ring, 2px offset |
 | `success.fg/bg` | `#007132` / `#E3F9E6` | `#A0DCAC` / `#013F18` | always with ✓ icon |
 | `warning.fg/bg` | `#624001` / `#FEEFDB` | `#EDC388` / `#472D00` | always with ! icon |
 | `danger.fg/bg/solid` | `#AA1E25` / `#FEEEEC` / `#CA3134` | `#FEB5AE` / `#63060E` / `#CA3134` | |

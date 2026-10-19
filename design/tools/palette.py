@@ -88,7 +88,7 @@ THEMES = {
     "text.on-accent": "neutral-0",
     "ink.default": "neutral-850", "ink.hover": "neutral-700", "ink.pressed": "neutral-600", "text.on-ink": "neutral-0",
     "accent.default": "blue-600", "accent.hover": "blue-700", "accent.pressed": "blue-800",
-    "accent.text": "blue-700", "accent.subtle": "blue-100", "focus.ring": "blue-500",
+    "accent.text": "blue-700", "accent.subtle": "blue-100", "focus.ring": "blue-600",
     "success.fg": "green-700", "success.bg": "green-100",
     "warning.fg": "amber-800", "warning.bg": "amber-100",
     "danger.fg": "red-700", "danger.bg": "red-100", "danger.solid": "red-600",
