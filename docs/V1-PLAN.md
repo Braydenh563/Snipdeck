@@ -49,7 +49,7 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 ## E. Docs and going public
 - [ ] E1 [H] Docs: user guide matches every menu, shortcut and new feature; CHANGELOG; troubleshooting; privacy (Recent inbox); licensing (Get Pro); HANDOVER rewritten to the shipped state; CODEMAP regenerated.
 - [ ] E2 [S] Pre-public sweep (`docs/going-public.md` section 1): full-history secret scan, review `docs/` and `.claude/` for private notes, read licensing and SECURITY as a stranger.
-- [ ] E3 [owner] In the CI workflow test step, change `-p snipdeck-keygen` to `-p snipdeck-licence-issuer` (the tool was renamed in ec1edcc; agents may not edit workflows). Make the repo public; GitHub settings in `docs/going-public.md` sections 2-3 (secret scanning, Dependabot, branch protection, tag ruleset).
+- [ ] E3 [owner] (CI line for the renamed tool: done, c8cc4eb.) Make the repo public; GitHub settings in `docs/going-public.md` sections 2-3 (secret scanning, Dependabot, branch protection, tag ruleset).
 
 ## F. Verification
 - [ ] F1 [F] Fable critical sweep (`docs/fable-brief.md`): architecture, complexity, frontend, backend, UI/UX, efficiency, security, bugs; ranked findings, then fixes.
