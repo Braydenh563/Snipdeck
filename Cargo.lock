@@ -4520,6 +4520,7 @@ dependencies = [
  "i-slint-backend-testing",
  "jiff",
  "png",
+ "rusqlite",
  "serde",
  "serde_json",
  "slint",

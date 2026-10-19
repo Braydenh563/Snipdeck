@@ -8,7 +8,8 @@
 
 use slint::Global;
 use snipdeck_platform::tray::TrayLabels;
-use snipdeck_ui::{PanelWindow, TrayTexts};
+use snipdeck_portable::Warning;
+use snipdeck_ui::{ImportTexts, PanelWindow, SettingsPage, TrayTexts};
 
 use snipdeck_core::{ItemKind, ItemLabel, ListIcon};
 
@@ -79,6 +80,58 @@ pub fn list_icon_name(icon: ListIcon) -> &'static str {
     }
 }
 
+/// The sentence for an import warning, in the language selected for the UI: the Settings import
+/// preview lists these under "Will not be imported". The wording lives in the UI crate's
+/// `ImportTexts` global (Rust cannot reach the translation catalogs); `window` is the Settings
+/// page, through which the global is reached.
+///
+/// The importers name an entry that has no title "entry N" (history imports) or "Ditto clip N";
+/// those labels are internals and read as "Clip N" here.
+#[must_use]
+pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
+    let texts = ImportTexts::get(window);
+    let count = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
+    let name = |name: &str| -> slint::SharedString {
+        match numbered_label(name) {
+            Some(n) => texts.invoke_clip_name(count(n)),
+            None => name.into(),
+        }
+    };
+    let text = match warning {
+        Warning::NewerMinorVersion { found } => texts.invoke_newer_minor_version(found.into()),
+        Warning::UnknownEntries { count: n } => texts.invoke_unknown_entries(count(*n)),
+        Warning::UnreferencedAssets { count: n } => texts.invoke_unreferenced_assets(count(*n)),
+        Warning::SensitiveNeedKey { count: n } => texts.invoke_sensitive_need_key(count(*n)),
+        Warning::CannotDecrypt { title } => texts.invoke_cannot_decrypt(title.into()),
+        Warning::SensitiveOmittedByExport { count: n } => {
+            texts.invoke_sensitive_omitted_by_export(i32::try_from(*n).unwrap_or(i32::MAX))
+        }
+        Warning::BoardLimit { limit, total } => {
+            texts.invoke_board_limit(count(*total), count(*limit))
+        }
+        Warning::LossyText { name: n } => texts.invoke_lossy_text(name(n)),
+        Warning::TooLarge { name: n, size } => {
+            texts.invoke_too_large(name(n), size_text(*size).into())
+        }
+        Warning::Empty { name: n } => texts.invoke_empty(name(n)),
+        Warning::Unreadable { name: n, .. } => texts.invoke_unreadable(name(n)),
+        Warning::SymlinkSkipped { name: n } => texts.invoke_symlink_skipped(name(n)),
+        Warning::NonTextSkipped { count: n } => texts.invoke_non_text_skipped(count(*n)),
+        Warning::Truncated { .. } => texts.invoke_truncated(),
+        // Free text from an importer: already a sentence, in English.
+        Warning::Note(note) => return note.clone(),
+    };
+    text.into()
+}
+
+/// The N in "entry N" or "Ditto clip N", the labels the importers give a clip without a title.
+fn numbered_label(name: &str) -> Option<usize> {
+    let digits = name
+        .strip_prefix("entry ")
+        .or_else(|| name.strip_prefix("Ditto clip "))?;
+    digits.parse().ok()
+}
+
 /// The words for `message`.
 #[must_use]
 #[allow(clippy::too_many_lines, reason = "one match arm per toast message")]
@@ -111,6 +164,29 @@ pub fn toast_text(message: &ToastMessage) -> String {
         ToastMessage::NeedsPro(_) => "This item uses a Supporter feature.".into(),
         ToastMessage::TemplateBroken => "This template can't be read. Open it to fix it.".into(),
         ToastMessage::Locked => "Unlock your library to use this item.".into(),
+        ToastMessage::Unlocked => "Library unlocked.".into(),
+        ToastMessage::MasterPasswordSet => "Master password set.".into(),
+        ToastMessage::MasterPasswordChanged => "Master password changed.".into(),
+        ToastMessage::MasterPasswordRemoved => "Master password removed.".into(),
+        ToastMessage::MasterPasswordChangedNotOpen => {
+            "Master password changed. Snipdeck couldn't open the library just now. Unlock it with \
+             the new password."
+                .into()
+        }
+        ToastMessage::MasterPasswordRemovedNotOpen => {
+            "Master password removed. Snipdeck couldn't open the library just now. Restart \
+             Snipdeck to use your sensitive items."
+                .into()
+        }
+        ToastMessage::LockedEditorClosed => {
+            "Your library locked after a while. The sensitive item you were editing was closed \
+             without saving."
+                .into()
+        }
+        ToastMessage::UnlockFirst => {
+            "Unlock your library first, so your sensitive items are included. Nothing was done."
+                .into()
+        }
         ToastMessage::Saved { list } => format!("Saved to {list}"),
         ToastMessage::NothingToSave => "Nothing to save. Copy some text first.".into(),
         ToastMessage::TooLargeToSave => "That text is too large to save.".into(),
@@ -170,6 +246,10 @@ pub fn toast_text(message: &ToastMessage) -> String {
         ToastMessage::BackupRestored { items: 1 } => "Restored 1 item from the backup".into(),
         ToastMessage::BackupRestored { items } => format!("Restored {items} items from the backup"),
         ToastMessage::RestoreFailed => "Couldn't restore that backup.".into(),
+        ToastMessage::Imported { items: 0 } => "Nothing new to import.".into(),
+        ToastMessage::Imported { items: 1 } => "Imported 1 item".into(),
+        ToastMessage::Imported { items } => format!("Imported {items} items"),
+        ToastMessage::ImportFailed => "Couldn't import that.".into(),
         ToastMessage::Exported { file } => format!("Saved {file} in your Documents folder"),
         ToastMessage::ExportFailed => "Couldn't export your library.".into(),
         ToastMessage::LibraryErased => "Your library was erased.".into(),
@@ -231,6 +311,25 @@ pub const UNDO_LABEL: &str = "Undo";
 
 /// The label of the crash toast's button.
 pub const OPEN_LOG_LABEL: &str = "Open log";
+
+/// Why an import could not be previewed, in words for the page.
+#[must_use]
+pub const fn import_problem_text(problem: crate::controller::ImportProblem) -> &'static str {
+    use crate::controller::{ImportKind, ImportProblem};
+    match problem {
+        ImportProblem::Unreadable => "Snipdeck couldn't open that. Check that it still exists.",
+        ImportProblem::NotThisKind(ImportKind::Snipdeck) => {
+            "That isn't a Snipdeck file, or it is damaged."
+        }
+        ImportProblem::NotThisKind(ImportKind::Ditto) => "That isn't a Ditto database.",
+        ImportProblem::NotThisKind(ImportKind::CopyQ) => "That isn't a CopyQ export.",
+        ImportProblem::NotThisKind(ImportKind::Folder) => "Snipdeck couldn't read that folder.",
+        ImportProblem::TooNew => {
+            "That file is from a newer Snipdeck. Update Snipdeck to import it."
+        }
+        ImportProblem::Failed => "Couldn't import that.",
+    }
+}
 
 /// The label of `toast`'s button; empty when it has none.
 #[must_use]
@@ -297,7 +396,7 @@ pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'st
         ItemMenuEntry::Copy => "Shift+Enter",
         ItemMenuEntry::Edit => "Ctrl+E",
         ItemMenuEntry::Trash => "Del",
-        ItemMenuEntry::Pin { .. } | ItemMenuEntry::Separator => "",
+        ItemMenuEntry::Pin { .. } | ItemMenuEntry::Stack { .. } | ItemMenuEntry::Separator => "",
     }
 }
 
@@ -311,6 +410,8 @@ pub const fn item_menu_text(entry: crate::controller::ItemMenuEntry) -> &'static
         ItemMenuEntry::Edit => "Edit\u{2026}",
         ItemMenuEntry::Pin { pinned: false } => "Pin",
         ItemMenuEntry::Pin { pinned: true } => "Unpin",
+        ItemMenuEntry::Stack { marked: false } => "Add to paste stack",
+        ItemMenuEntry::Stack { marked: true } => "Remove from paste stack",
         ItemMenuEntry::Trash => "Move to Trash",
         ItemMenuEntry::Separator => "",
     }
@@ -491,6 +592,14 @@ mod tests {
             ToastMessage::NeedsPro(Feature::PromptedFields),
             ToastMessage::TemplateBroken,
             ToastMessage::Locked,
+            ToastMessage::Unlocked,
+            ToastMessage::MasterPasswordSet,
+            ToastMessage::MasterPasswordChanged,
+            ToastMessage::MasterPasswordRemoved,
+            ToastMessage::MasterPasswordChangedNotOpen,
+            ToastMessage::MasterPasswordRemovedNotOpen,
+            ToastMessage::UnlockFirst,
+            ToastMessage::LockedEditorClosed,
             ToastMessage::Saved {
                 list: "Notes".into(),
             },
@@ -527,6 +636,8 @@ mod tests {
             ToastMessage::DeletedForever { count: 1 },
             ToastMessage::TrashEmptied,
             ToastMessage::BoardLimit,
+            ToastMessage::Imported { items: 3 },
+            ToastMessage::ImportFailed,
             ToastMessage::LibraryProblem,
             ToastMessage::CrashedLastTime,
             ToastMessage::CannotOpenLog,

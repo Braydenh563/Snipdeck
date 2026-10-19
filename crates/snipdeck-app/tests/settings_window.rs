@@ -25,7 +25,7 @@ use std::{
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
 use slint::{ComponentHandle, Global, Model, platform::Key};
 use snipdeck_app::{
-    controller::{Controller, Effect, Services},
+    controller::{Controller, Effect, MasterState, Services},
     demo,
     frame::{Monitor, Rect},
     host::{FakeHotkeys, FakeTargets, FixedClock, HotkeyProblem},
@@ -56,7 +56,7 @@ use snipdeck_ui::{SettingsPage, ToastKind};
 
 #[path = "support/mod.rs"]
 mod support;
-use support::{key, on_ui_thread, press};
+use support::{SharedProvider, key, on_ui_thread, press};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 type Bound = SettingsBinding<FakeClipboard, FakeKeyboard, FakeTiming>;
@@ -81,6 +81,8 @@ struct FakeHost {
     /// The links the page asked to open.
     urls: RefCell<Vec<String>>,
     documents: RefCell<Option<PathBuf>>,
+    /// What the import dialog answers, once.
+    import_pick: RefCell<Option<PathBuf>>,
 }
 
 impl SettingsHost for FakeHost {
@@ -112,6 +114,14 @@ impl SettingsHost for FakeHost {
 
     fn documents_folder(&self) -> Option<PathBuf> {
         self.documents.borrow().clone()
+    }
+
+    fn pick_import(
+        &self,
+        _kind: snipdeck_app::controller::ImportKind,
+        _owner: Option<isize>,
+    ) -> Option<PathBuf> {
+        self.import_pick.borrow_mut().take()
     }
 }
 
@@ -209,10 +219,11 @@ impl Rig {
 // ---- Every setting is written after the quiet time -----------------------------------------
 
 #[test]
+#[allow(clippy::too_many_lines, reason = "one table of every toggle")]
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
-        let cases: [Case; 14] = [
+        let cases: [Case; 15] = [
             (
                 "theme",
                 |r| r.ui.invoke_theme_chosen(2),
@@ -242,6 +253,11 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
                 "hide the panel on blur",
                 |r| r.ui.invoke_panel_hide_on_blur_toggled(false),
                 |s| !s.panel_hide_on_blur,
+            ),
+            (
+                "keep a Recent inbox",
+                |r| r.ui.invoke_recent_history_toggled(true),
+                |s| s.recent_history,
             ),
             (
                 "backups to keep",
@@ -333,6 +349,29 @@ fn removing_a_program_is_written_too_and_a_repeat_is_refused_in_words() {
 }
 
 #[test]
+fn the_accent_applies_at_once_and_blue_keeps_the_built_in_palette() {
+    on_ui_thread(|| {
+        let r = rig();
+        let look = r.ui.global::<snipdeck_ui::SystemLook<'_>>();
+        assert!(!look.get_accent_custom(), "blue is the palette's own");
+        r.ui.invoke_accent_chosen(1);
+        assert_eq!(r.ui.get_accent_index(), 1);
+        assert!(look.get_accent_custom());
+        assert_eq!(
+            look.get_accent_light().default,
+            slint::Color::from_rgb_u8(0x04, 0x84, 0x84),
+            "teal-600"
+        );
+        r.ui.invoke_accent_chosen(0);
+        assert!(!look.get_accent_custom());
+        assert_eq!(
+            r.ctl.borrow().settings().accent,
+            snipdeck_app::accent::AccentChoice::Blue
+        );
+    });
+}
+
+#[test]
 fn the_theme_applies_at_once_and_the_page_shows_what_is_stored() {
     on_ui_thread(|| {
         let r = rig();
@@ -379,6 +418,44 @@ fn the_dock_group_shows_what_is_stored_and_holds_the_delays_in_range() {
         assert_eq!(r.ctl.borrow().settings().dock.trigger, DockTrigger::Click);
         // The control the group is found by.
         element(&r.ui, "Dock to", AccessibleRole::Combobox);
+    });
+}
+
+#[test]
+fn the_welcome_tour_docks_the_panel_from_its_position_step() {
+    on_ui_thread(|| {
+        let r = rig();
+        let tour = snipdeck_ui::OnboardingWindow::new().expect("tour window");
+        let host: Rc<dyn SettingsHost> = Rc::clone(&r.host) as Rc<dyn SettingsHost>;
+        let _binding = Controller::bind_onboarding(&r.ctl, &tour, host);
+        tour.show().expect("show");
+        assert_eq!(tour.get_dock_edge_index(), 0, "floating to begin with");
+        // Docking needs to know where the Panel is.
+        let monitor = Monitor {
+            id: Monitor::id_of("DISPLAY1", 1920, 1080),
+            work_area: Rect {
+                x: 0,
+                y: 0,
+                w: 1920,
+                h: 1040,
+            },
+            scale: 1.0,
+        };
+        let floating = Rect {
+            x: 600,
+            y: 100,
+            w: 320,
+            h: 480,
+        };
+        r.ctl.borrow_mut().frame_changed(&monitor, floating);
+
+        tour.invoke_dock_edge_chosen(3);
+        assert_eq!(r.ctl.borrow().dock_edge(), Some(DockEdge::Top));
+        assert_eq!(tour.get_dock_edge_index(), 3, "the step follows");
+
+        tour.invoke_dock_edge_chosen(0);
+        assert_eq!(r.ctl.borrow().dock_edge(), None);
+        assert_eq!(tour.get_dock_edge_index(), 0);
     });
 }
 
@@ -801,6 +878,17 @@ fn restoring_a_backup_round_trips_the_demo_library() {
         );
         assert_eq!(b.ctl.borrow().store().boards().unwrap().len(), 0);
         b.ui.invoke_backup_restore_requested(0);
+        // Restore shows the preview first and writes nothing yet.
+        assert!(b.ui.get_import_open());
+        assert_eq!(b.ui.get_import_confirm_label(), "Restore");
+        assert_eq!(usize::try_from(b.ui.get_import_items()), Ok(plain.len()));
+        assert!(b.ui.get_import_boards() >= 2);
+        assert_eq!(b.ui.get_import_duplicates(), 0);
+        assert!(!b.ui.get_import_blocked());
+        assert_eq!(b.ctl.borrow().store().boards().unwrap().len(), 0);
+        assert_eq!(b.ui.get_toast_text(), "");
+        b.ui.invoke_import_confirmed();
+        assert!(!b.ui.get_import_open());
         assert_eq!(
             b.ui.get_toast_text(),
             format!("Restored {} items from the backup", plain.len())
@@ -815,6 +903,13 @@ fn restoring_a_backup_round_trips_the_demo_library() {
 
         // Restoring over an intact library adds no item twice.
         b.ui.invoke_backup_restore_requested(0);
+        assert!(b.ui.get_import_open());
+        assert_eq!(b.ui.get_import_items(), 0);
+        assert_eq!(
+            usize::try_from(b.ui.get_import_duplicates()),
+            Ok(plain.len())
+        );
+        b.ui.invoke_import_confirmed();
         assert_eq!(
             b.ui.get_toast_text(),
             "Nothing to restore: your library already has everything in that backup."
@@ -1090,6 +1185,162 @@ fn the_main_windows_settings_button_opens_the_page_once_and_shows_it_again() {
     });
 }
 
+// ---- Import ---------------------------------------------------------------------------------
+
+#[test]
+fn import_shows_a_preview_first_and_writes_only_when_confirmed() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            Store::open_in_memory().unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            true,
+        );
+        let folder = r.dir.path().join("notes");
+        std::fs::create_dir_all(&folder).unwrap();
+        for i in 0..3 {
+            std::fs::write(folder.join(format!("n{i}.txt")), format!("note {i}")).unwrap();
+        }
+        std::fs::write(folder.join("empty.txt"), "").unwrap();
+
+        // Cancelling the dialog does nothing.
+        r.ui.invoke_import_source_chosen(3);
+        assert!(!r.ui.get_import_open());
+
+        *r.host.import_pick.borrow_mut() = Some(folder.clone());
+        r.ui.invoke_import_source_chosen(3);
+        assert!(r.ui.get_import_open());
+        assert_eq!(r.ui.get_import_title(), "Import from notes");
+        assert_eq!(r.ui.get_import_confirm_label(), "Import");
+        assert_eq!(r.ui.get_import_items(), 3);
+        assert_eq!(r.ui.get_import_lists(), 1);
+        assert_eq!(r.ui.get_import_problem(), "");
+        assert!(
+            r.ui.get_import_warnings().row_count() >= 1,
+            "the empty file is listed as not imported"
+        );
+        assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 0);
+
+        // Cancel closes it and still writes nothing.
+        r.ui.invoke_import_cancelled();
+        assert!(!r.ui.get_import_open());
+        assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 0);
+
+        *r.host.import_pick.borrow_mut() = Some(folder);
+        r.ui.invoke_import_source_chosen(3);
+        r.ui.invoke_import_confirmed();
+        assert!(!r.ui.get_import_open());
+        assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 3);
+        assert_eq!(r.ui.get_toast_text(), "Imported 3 items");
+    });
+}
+
+#[test]
+fn a_file_that_cannot_be_imported_shows_a_problem_and_nothing_to_confirm() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            Store::open_in_memory().unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            true,
+        );
+        let junk = r.dir.path().join("junk.db");
+        std::fs::write(&junk, b"not a database").unwrap();
+        *r.host.import_pick.borrow_mut() = Some(junk);
+        r.ui.invoke_import_source_chosen(1);
+        assert!(r.ui.get_import_open());
+        assert_eq!(r.ui.get_import_problem(), "That isn't a Ditto database.");
+        // Confirming a problem writes nothing.
+        r.ui.invoke_import_confirmed();
+        assert!(!r.ui.get_import_open());
+        assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 0);
+        assert_eq!(r.ui.get_toast_text(), "");
+    });
+}
+
+// ---- Import wording and dialogs ---------------------------------------------------------------
+
+/// Every warning the importers can raise, one of each variant. The `match` makes a new variant a
+/// compile error here until it is listed (and so given a sentence).
+fn every_warning() -> Vec<snipdeck_portable::Warning> {
+    use snipdeck_portable::Warning as W;
+    let name = || "Notes.txt".to_owned();
+    let all = vec![
+        W::NewerMinorVersion {
+            found: "1.9".into(),
+        },
+        W::UnknownEntries { count: 2 },
+        W::UnreferencedAssets { count: 1 },
+        W::SensitiveNeedKey { count: 3 },
+        W::CannotDecrypt {
+            title: "Bank PIN".into(),
+        },
+        W::SensitiveOmittedByExport { count: 4 },
+        W::BoardLimit { limit: 3, total: 5 },
+        W::LossyText { name: name() },
+        W::TooLarge {
+            name: name(),
+            size: 6_000_000,
+        },
+        W::Empty { name: name() },
+        W::Unreadable {
+            name: name(),
+            reason: "os error 5".into(),
+        },
+        W::SymlinkSkipped { name: name() },
+        W::NonTextSkipped { count: 7 },
+        W::Truncated {
+            reason: "too many entries".into(),
+        },
+        W::Note("Something else happened.".into()),
+    ];
+    for w in &all {
+        match w {
+            W::NewerMinorVersion { .. }
+            | W::UnknownEntries { .. }
+            | W::UnreferencedAssets { .. }
+            | W::SensitiveNeedKey { .. }
+            | W::CannotDecrypt { .. }
+            | W::SensitiveOmittedByExport { .. }
+            | W::BoardLimit { .. }
+            | W::LossyText { .. }
+            | W::TooLarge { .. }
+            | W::Empty { .. }
+            | W::Unreadable { .. }
+            | W::SymlinkSkipped { .. }
+            | W::NonTextSkipped { .. }
+            | W::Truncated { .. }
+            | W::Note(_) => {}
+        }
+    }
+    all
+}
+
+#[test]
+fn every_import_warning_reads_as_a_plain_sentence() {
+    on_ui_thread(|| {
+        let r = rig();
+        for warning in every_warning() {
+            let text = snipdeck_app::wording::import_warning_text(&r.ui, &warning);
+            assert!(!text.trim().is_empty(), "{warning:?} has no text");
+            assert!(!text.contains('`'), "{warning:?} shows a backtick: {text}");
+            assert!(
+                text.chars().next().is_some_and(char::is_uppercase)
+                    || text.starts_with(char::is_numeric),
+                "{warning:?} should start like a sentence: {text}"
+            );
+        }
+        // The file or item is named by an argument.
+        let w = snipdeck_portable::Warning::Empty {
+            name: "notes.txt".into(),
+        };
+        assert_eq!(
+            snipdeck_app::wording::import_warning_text(&r.ui, &w),
+            "notes.txt is empty and was skipped."
+        );
+    });
+}
+
 #[test]
 fn get_supporter_opens_the_email_app_with_the_one_named_address() {
     on_ui_thread(|| {
@@ -1195,6 +1446,61 @@ fn the_get_supporter_dialog_opens_closes_with_escape_and_emails() {
     });
 }
 
+#[test]
+fn the_importers_internal_labels_become_clip_numbers() {
+    on_ui_thread(|| {
+        let r = rig();
+        for label in ["entry 3", "Ditto clip 3"] {
+            let w = snipdeck_portable::Warning::Empty { name: label.into() };
+            assert_eq!(
+                snipdeck_app::wording::import_warning_text(&r.ui, &w),
+                "Clip 3 is empty and was skipped."
+            );
+        }
+    });
+}
+
+#[test]
+fn a_ditto_preview_lists_its_warnings_in_plain_sentences() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            Store::open_in_memory().unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            true,
+        );
+        let db = r.dir.path().join("Ditto.db");
+        let conn = rusqlite::Connection::open(&db).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE Main(lID INTEGER PRIMARY KEY AUTOINCREMENT, lDate INTEGER, mText TEXT,
+                lShortCut INTEGER, lDontAutoDelete INTEGER, CRC INTEGER, bIsGroup INTEGER,
+                lParentID INTEGER, QuickPasteText TEXT, clipOrder REAL, clipGroupOrder REAL,
+                globalShortCut INTEGER, lastPasteDate INTEGER, stickyClipOrder REAL,
+                stickyClipGroupOrder REAL, MoveToGroupShortCut INTEGER, GlobalMoveToGroupShortCut INTEGER);
+             CREATE TABLE Data(lID INTEGER PRIMARY KEY AUTOINCREMENT, lParentID INTEGER,
+                strClipBoardFormat TEXT, ooData BLOB);
+             CREATE TABLE Types(lID INTEGER PRIMARY KEY AUTOINCREMENT, TypeText TEXT);
+             INSERT INTO Main (lID, lDate, mText, bIsGroup, lParentID) VALUES (1, 1700000000, 'hello', 0, -1);
+             INSERT INTO Main (lID, lDate, mText, bIsGroup, lParentID) VALUES (2, 1700000100, '', 0, -1);
+             INSERT INTO Data (lParentID, strClipBoardFormat, ooData) VALUES (2, 'CF_DIB', x'01020304');",
+        )
+        .unwrap();
+        drop(conn);
+        *r.host.import_pick.borrow_mut() = Some(db);
+        r.ui.invoke_import_source_chosen(1);
+        assert!(r.ui.get_import_open());
+        let lines: Vec<String> =
+            r.ui.get_import_warnings()
+                .iter()
+                .map(|l| l.to_string())
+                .collect();
+        assert_eq!(
+            lines,
+            ["1 item that is not text (a picture or file) was skipped."]
+        );
+    });
+}
+
 /// The comparison table is held to `entitlements.rs`: its Supporter-only rows are exactly the
 /// `Feature`s, except floating lists (in the enum, not part of v1, so not on the website either).
 #[test]
@@ -1240,6 +1546,57 @@ fn the_plan_table_lists_exactly_the_supporter_features() {
 }
 
 #[test]
+fn the_preview_titles_and_the_free_limit_come_from_the_page() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(
+            r.ui.get_free_board_limit(),
+            i32::try_from(snipdeck_core::Entitlements::FREE_BOARD_LIMIT).unwrap()
+        );
+        r.ui.set_import_name("2026-10-17".into());
+        r.ui.set_import_restore(true);
+        assert_eq!(r.ui.get_import_title(), "Restore the backup of 2026-10-17");
+        assert_eq!(r.ui.get_import_confirm_label(), "Restore");
+        r.ui.set_import_restore(false);
+        assert_eq!(r.ui.get_import_title(), "Import from 2026-10-17");
+        assert_eq!(r.ui.get_import_confirm_label(), "Import");
+    });
+}
+
+#[test]
+fn each_import_choice_asks_for_its_own_dialog() {
+    use snipdeck_app::controller::ImportKind;
+    use snipdeck_platform::file_dialog::PickKind;
+    for (kind, dialog) in [
+        (ImportKind::Snipdeck, PickKind::Snipdeck),
+        (ImportKind::Ditto, PickKind::Ditto),
+        (ImportKind::CopyQ, PickKind::CopyQ),
+        (ImportKind::Folder, PickKind::Folder),
+    ] {
+        assert_eq!(settings_binding::pick_kind(kind), dialog);
+    }
+}
+
+#[test]
+fn the_recent_inbox_is_off_until_chosen_and_its_clear_button_empties_it() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_recent_history(), "off by default");
+        r.ui.invoke_recent_history_toggled(true);
+        assert!(r.ctl.borrow().settings().recent_history);
+        r.ctl
+            .borrow_mut()
+            .on_clipboard_change(&snipdeck_app::recent::ClipboardObservation {
+                text: Some("copied".into()),
+                ..Default::default()
+            });
+        assert_eq!(r.ctl.borrow().recent_entries().len(), 1);
+        r.ui.invoke_recent_history_cleared();
+        assert_eq!(r.ctl.borrow().recent_entries().len(), 0);
+    });
+}
+
+#[test]
 fn the_plan_table_says_each_answer_in_words_not_colour() {
     on_ui_thread(|| {
         let r = rig();
@@ -1263,5 +1620,295 @@ fn the_plan_table_says_each_answer_in_words_not_colour() {
             .to_string();
         assert!(said.contains("Free: Included, up to 5."), "{said}");
         assert!(said.contains("Supporter: Included, unlimited."), "{said}");
+    });
+}
+
+// ---- Master password (SPEC 5.7, V1-PLAN C3) ----------------------------------------------------
+
+const PASSWORD: &str = "tulip harbour 42";
+
+/// A page over the demo library with a machine that can protect a key, on `tier`, with a cheap
+/// Argon2id so each set or unlock takes milliseconds.
+fn master_rig(tier: Tier) -> Rig {
+    let r = rig_on(
+        demo::store(now()).expect("demo"),
+        tier,
+        tempfile::tempdir().expect("dir"),
+        true,
+    );
+    {
+        let mut ctl = r.ctl.borrow_mut();
+        ctl.set_key_provider(Box::new(MemoryKeyProvider::new().expect("provider")));
+        ctl.set_kdf_params(
+            snipdeck_store::crypto::KdfParams::insecure_for_tests(64, 1, 1).expect("params"),
+        );
+    }
+    r.binding.redraw();
+    slint::platform::update_timers_and_animations();
+    r
+}
+
+/// The Privacy section's row (the plan table has a row of the same name).
+fn master_row(r: &Rig) -> ElementHandle {
+    ElementHandle::find_by_accessible_label(&r.ui, "Master password")
+        .filter(|e| e.accessible_role() == Some(AccessibleRole::Groupbox))
+        .find(|e| {
+            e.accessible_description()
+                .is_some_and(|d| !d.starts_with("Lock your encrypted items"))
+        })
+        .expect("the master password row")
+}
+
+fn click(r: &Rig, label: &str) {
+    element(&r.ui, label, AccessibleRole::Button).invoke_accessible_default_action();
+    slint::platform::update_timers_and_animations();
+}
+
+fn type_in(r: &Rig, label: &str, text: &str) {
+    element(&r.ui, label, AccessibleRole::TextInput).set_accessible_value(text);
+}
+
+fn texts(r: &Rig, text: &str) -> usize {
+    ElementHandle::find_by_accessible_label(&r.ui, text)
+        .filter(|e| e.accessible_role() == Some(AccessibleRole::Text))
+        .count()
+}
+
+#[test]
+fn a_free_user_sees_the_master_password_row_with_a_supporter_note_and_no_way_to_set_it() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Free);
+        let row = master_row(&r);
+        let note = row.accessible_description().expect("a description");
+        assert!(note.contains("A Supporter feature"), "{note}");
+        assert!(note.contains("15 minutes"), "{note}");
+        assert!(
+            note.contains("when you first use a sensitive item"),
+            "asked at the first use, not at start-up: {note}"
+        );
+        assert!(!note.contains("starts"), "{note}");
+        let set = element(&r.ui, "Set password\u{2026}", AccessibleRole::Button);
+        assert_eq!(set.accessible_enabled(), Some(false));
+        set.invoke_accessible_default_action();
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        assert_eq!(r.ctl.borrow().master_password_state(), MasterState::NotSet);
+    });
+}
+
+#[test]
+fn a_machine_without_key_protection_says_so_and_offers_nothing() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            demo::store(now()).expect("demo"),
+            Tier::Pro,
+            tempfile::tempdir().expect("dir"),
+            true,
+        );
+        let note = master_row(&r)
+            .accessible_description()
+            .expect("a description");
+        assert!(note.contains("can't protect a key"), "{note}");
+        assert_eq!(
+            element(&r.ui, "Set password\u{2026}", AccessibleRole::Button).accessible_enabled(),
+            Some(false)
+        );
+    });
+}
+
+#[test]
+fn a_key_record_that_cannot_be_read_offers_no_password_and_says_why() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        let provider = SharedProvider::new();
+        {
+            let mut ctl = r.ctl.borrow_mut();
+            ctl.set_key_provider(Box::new(provider.clone()));
+            ctl.set_master_password(PASSWORD, PASSWORD).expect("set");
+            provider.fail_unwraps_after(Some(0));
+            ctl.unlock_library();
+            assert_eq!(ctl.master_password_state(), MasterState::KeyUnavailable);
+        }
+        r.binding.redraw();
+        slint::platform::update_timers_and_animations();
+        let note = master_row(&r)
+            .accessible_description()
+            .expect("a description");
+        assert!(note.contains("couldn't read your encryption key"), "{note}");
+        assert_eq!(
+            element(&r.ui, "Set password\u{2026}", AccessibleRole::Button).accessible_enabled(),
+            Some(false),
+            "not offered over a record that may hold a password"
+        );
+    });
+}
+
+#[test]
+fn a_supporter_sets_a_master_password_through_the_form() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        click(&r, "Set password\u{2026}");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Set);
+
+        // The form says what forgetting costs, in words, before asking for anything, and a screen
+        // reader gets it as the group's description.
+        let form = element(&r.ui, "Set master password", AccessibleRole::Groupbox);
+        let warning = form.accessible_description().expect("a description");
+        assert!(warning.contains("can never be opened again"), "{warning}");
+        assert!(warning.contains("keeps no recovery key"), "{warning}");
+
+        // A short one, then two that differ: each says which problem in words and nothing is set.
+        type_in(&r, "New password", "short");
+        type_in(&r, "Repeat the new password", "short");
+        click(&r, "Set password");
+        assert_eq!(texts(&r, "Use at least 8 characters."), 1);
+        assert_eq!(r.ctl.borrow().master_password_state(), MasterState::NotSet);
+        type_in(&r, "New password", PASSWORD);
+        type_in(&r, "Repeat the new password", "tulip harbour 43");
+        click(&r, "Set password");
+        assert_eq!(texts(&r, "The two passwords are not the same."), 1);
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Set);
+
+        // The strength hint is words that follow the typing.
+        assert_eq!(texts(&r, "Strength: strong"), 1, "a 16 character phrase");
+        type_in(&r, "New password", "short");
+        assert_eq!(texts(&r, "Strength: weak"), 1);
+        type_in(&r, "New password", PASSWORD);
+
+        type_in(&r, "Repeat the new password", PASSWORD);
+        click(&r, "Set password");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        assert_eq!(r.ui.get_master_state(), 2, "the row now shows it is on");
+        assert_eq!(r.ctl.borrow().master_password_state(), MasterState::Set);
+        assert!(
+            r.ui.get_toast_text().contains("Master password set"),
+            "{}",
+            r.ui.get_toast_text()
+        );
+        element(&r.ui, "Change\u{2026}", AccessibleRole::Button);
+        element(&r.ui, "Remove\u{2026}", AccessibleRole::Button);
+    });
+}
+
+#[test]
+fn passwords_are_hidden_from_the_accessibility_tree() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        click(&r, "Set password\u{2026}");
+        type_in(&r, "New password", PASSWORD);
+        let field = element(&r.ui, "New password", AccessibleRole::TextInput);
+        assert_ne!(
+            field.accessible_value().as_deref(),
+            Some(PASSWORD),
+            "a screen reader is not handed the password"
+        );
+        assert!(field.accessible_value().is_none_or(|v| v.is_empty()));
+    });
+}
+
+#[test]
+fn changing_and_removing_ask_for_the_current_password_and_say_when_it_is_wrong() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        r.ctl
+            .borrow_mut()
+            .set_master_password(PASSWORD, PASSWORD)
+            .expect("set");
+        r.binding.redraw();
+        slint::platform::update_timers_and_animations();
+
+        click(&r, "Change\u{2026}");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Change);
+        let new = "marble orchard 77";
+        type_in(&r, "Current password", "not the password");
+        type_in(&r, "New password", new);
+        type_in(&r, "Repeat the new password", new);
+        click(&r, "Change password");
+        assert_eq!(texts(&r, "That password is not right. Try again."), 1);
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Change);
+        type_in(&r, "Current password", PASSWORD);
+        click(&r, "Change password");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        assert!(r.ui.get_toast_text().contains("changed"));
+
+        click(&r, "Remove\u{2026}");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Remove);
+        assert_eq!(
+            ElementHandle::find_by_accessible_label(&r.ui, "New password").count(),
+            0,
+            "removing asks only for the current password"
+        );
+        click(&r, "Remove password");
+        assert_eq!(texts(&r, "Enter your password."), 1, "empty is told apart");
+        type_in(&r, "Current password", PASSWORD);
+        click(&r, "Remove password");
+        assert_eq!(
+            texts(&r, "That password is not right. Try again."),
+            1,
+            "the old password is gone after the change"
+        );
+        type_in(&r, "Current password", new);
+        click(&r, "Remove password");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        assert_eq!(r.ui.get_master_state(), 1);
+        assert_eq!(r.ctl.borrow().master_password_state(), MasterState::NotSet);
+    });
+}
+
+#[test]
+fn escape_closes_only_the_form_and_the_focus_goes_back_to_its_button() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        click(&r, "Set password\u{2026}");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Set);
+        // The first field has the focus: typing goes into it.
+        support::type_text(r.ui.window(), "abc");
+        assert_eq!(
+            element(&r.ui, "New password", AccessibleRole::TextInput)
+                .accessible_value()
+                .as_deref(),
+            Some(""),
+            "masked: the value is not exposed, but the field took the keys"
+        );
+        press(r.ui.window(), &key(Key::Escape));
+        slint::platform::update_timers_and_animations();
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        assert!(r.ui.window().is_visible(), "Escape did not close the page");
+        // What was typed is gone with the form.
+        // The focus is on the button that opened it: Enter opens the form again.
+        press(r.ui.window(), "\n");
+        slint::platform::update_timers_and_animations();
+        assert_eq!(
+            r.ui.get_master_mode(),
+            snipdeck_ui::MasterMode::Set,
+            "focus came back to the Set password button"
+        );
+        assert_eq!(
+            element(&r.ui, "New password", AccessibleRole::TextInput)
+                .accessible_value()
+                .as_deref(),
+            Some(""),
+        );
+    });
+}
+
+#[test]
+fn a_locked_library_offers_unlock_in_the_row_and_asks_for_the_prompt() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        {
+            let mut ctl = r.ctl.borrow_mut();
+            ctl.set_master_password(PASSWORD, PASSWORD).expect("set");
+            ctl.lock_now();
+        }
+        r.binding.redraw();
+        slint::platform::update_timers_and_animations();
+        let note = master_row(&r)
+            .accessible_description()
+            .expect("a description");
+        assert!(note.contains("locked"), "{note}");
+        click(&r, "Unlock\u{2026}");
+        let mut ctl = r.ctl.borrow_mut();
+        assert!(ctl.unlock_prompt_open());
+        assert!(ctl.take_pending().contains(&Effect::OpenUnlock));
     });
 }

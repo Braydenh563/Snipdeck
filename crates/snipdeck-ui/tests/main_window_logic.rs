@@ -435,6 +435,25 @@ ui_tests! {
         assert!(ui.get_confirm_open());
     }
 
+    fn the_trash_context_menu_says_delete_for_good_like_the_button_and_the_dialog() {
+        let (ui, _log) = start();
+        ui.set_section(MainSection::Trash);
+        settle();
+        press_key(&ui, Key::Menu);
+        assert!(ui.get_menu_open());
+        let _ = find(&ui, "Delete for good…", AccessibleRole::ListItem);
+        assert!(missing(&ui, "Delete forever…", AccessibleRole::ListItem));
+    }
+
+    fn the_status_line_is_a_polite_live_region() {
+        use i_slint_backend_testing::AccessibleLiveness;
+        let (ui, _log) = start();
+        ui.set_selected_count(2);
+        settle();
+        let status = find(&ui, "2 selected", AccessibleRole::Text);
+        assert_eq!(status.accessible_live_region(), Some(AccessibleLiveness::Polite));
+    }
+
     // ---- Sidebar -----------------------------------------------------------------------------------
 
     fn the_sidebar_is_one_tab_stop_with_arrows_home_end_and_enter() {
@@ -807,6 +826,13 @@ fn live_status(ui: &MainWindow) -> String {
     let live: Vec<ElementHandle> = by_role(ui, AccessibleRole::Text)
         .into_iter()
         .filter(|e| e.accessible_live_region() == Some(AccessibleLiveness::Polite))
+        // Not the status line along the window's bottom edge, which is a live region of its own.
+        .filter(|e| {
+            e.absolute_position().y + e.size().height
+                < f32::from(u16::try_from(ui.window().size().height).unwrap_or(u16::MAX))
+                    / ui.window().scale_factor()
+                    - 1.0
+        })
         .collect();
     assert_eq!(live.len(), 1, "one polite live region in the palette");
     live[0].accessible_label().expect("a label").to_string()

@@ -14,7 +14,7 @@ use slint::{ComponentHandle, Global, Model, ModelRc, SharedString, VecModel};
 use snipdeck_core::{ItemKind, ItemLabel, ListIcon, UseMode};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
-    system_look::{Rgb, SystemLook},
+    system_look::SystemLook,
     tray::TrayEvent,
 };
 use snipdeck_ui as ui;
@@ -108,6 +108,7 @@ pub struct Binding {
     own_window_active: Rc<dyn Fn(bool)>,
     tray: Rc<dyn Fn(TrayEvent)>,
     system_look: Rc<dyn Fn(SystemLook)>,
+    clipboard_changed: Rc<dyn Fn(snipdeck_platform::clipboard_watch::ClipboardChange)>,
     frame_changed: Rc<FrameFn>,
     frame_moved: Rc<FrameFn>,
     restore_frame: Rc<MonitorFn>,
@@ -159,6 +160,12 @@ impl Binding {
         (self.tray)(event);
     }
 
+    /// The clipboard changed and the Recent inbox is listening: the policy decides whether to
+    /// keep it.
+    pub fn clipboard_changed(&self, change: snipdeck_platform::clipboard_watch::ClipboardChange) {
+        (self.clipboard_changed)(change);
+    }
+
     /// Windows' light / dark or high-contrast state is `look` (read at start-up, and again on
     /// every change notification; an unchanged look redraws nothing).
     pub fn system_look(&self, look: SystemLook) {
@@ -197,6 +204,8 @@ struct Core<S, C, K, T> {
     settings_timer: Cell<bool>,
     /// A timer is waiting to clear a copied sensitive item off the clipboard.
     clipboard_timer: Cell<bool>,
+    /// A timer is waiting for the idle lock of the master password.
+    idle_timer: Cell<bool>,
     /// Sends the dock its ticks while a hover or leave delay runs.
     dock_timer: slint::Timer,
 }
@@ -228,6 +237,7 @@ where
                 }),
                 settings_timer: Cell::new(false),
                 clipboard_timer: Cell::new(false),
+                idle_timer: Cell::new(false),
                 dock_timer: slint::Timer::default(),
             }
         });
@@ -327,6 +337,7 @@ where
         *self.shown.borrow_mut() = Some(view);
         self.arm_settings();
         self.arm_clipboard_clear();
+        self.arm_idle_lock();
     }
 
     /// Runs the dock's tick timer while a hover or leave delay is running, and only then.
@@ -366,6 +377,32 @@ where
             core.clipboard_timer.set(false);
             core.controller.borrow_mut().clear_clipboard_if_due();
             core.sync();
+        });
+    }
+
+    /// Keeps one timer running while a master password is set and the library is open; the
+    /// controller's clock decides whether the idle time is up. Using the library moves the
+    /// deadline, so the timer may fire early and then waits again for what is left.
+    fn arm_idle_lock(self: &Rc<Self>) {
+        if self.idle_timer.get() {
+            return;
+        }
+        let Some(wait) = self.controller.borrow().idle_lock_wait() else {
+            return;
+        };
+        self.idle_timer.set(true);
+        let core = Rc::downgrade(self);
+        slint::Timer::single_shot(wait.max(std::time::Duration::from_millis(250)), move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.idle_timer.set(false);
+            let locked = core.controller.borrow_mut().lock_if_idle();
+            core.sync();
+            if locked {
+                // The other windows hide what they revealed.
+                redraw_all();
+            }
         });
     }
 
@@ -470,6 +507,8 @@ where
         wire_effects!(on_item_menu_activated, |ctl, i| ctl
             .choose_item_menu(index(i)));
         wire!(on_item_menu_dismissed, |ctl| ctl.close_item_menu());
+        wire!(on_stack_started, |ctl| ctl.start_stack());
+        wire!(on_stack_ended, |ctl| ctl.end_stack());
         wire!(on_list_menu_requested, |ctl, i| ctl
             .open_list_menu(index(i)));
         wire_effects!(on_list_menu_activated, |ctl, i| ctl
@@ -481,6 +520,11 @@ where
         wire!(on_selection_moved, |ctl, delta| ctl
             .move_selection(isize::try_from(delta).unwrap_or(0)));
         wire!(on_tab_selected, |ctl, i| ctl.select_tab(index(i)));
+        wire!(on_recent_toggled, |ctl, open| ctl.set_recent_open(open));
+        wire!(on_recent_copied, |ctl, i| ctl.recent_copy_at(index(i)));
+        wire!(on_recent_deleted, |ctl, i| ctl.recent_delete_at(index(i)));
+        wire!(on_recent_saved, |ctl, i, target| ctl
+            .recent_promote_at(index(i), index(target)));
         wire_effects!(on_pinned_used, |ctl, i| {
             let used = ctl.activate_pinned(index(i), UseMode::Paste);
             ctl.dock_after_use(&used)
@@ -582,6 +626,18 @@ where
                 let core = Rc::clone(&core);
                 Rc::new(move |look| core.act(|ctl| ctl.set_system_look(look)))
             },
+            clipboard_changed: {
+                let core = Rc::clone(&core);
+                Rc::new(
+                    move |change: snipdeck_platform::clipboard_watch::ClipboardChange| {
+                        core.act(|ctl| {
+                            ctl.on_clipboard_change(&crate::recent::ClipboardObservation::from(
+                                change,
+                            ));
+                        });
+                    },
+                )
+            },
             frame_changed: {
                 let core = Rc::clone(&core);
                 Rc::new(move |monitor: &Monitor, frame| {
@@ -680,6 +736,36 @@ fn edge_of(edge: ui::ResizeEdge) -> Edge {
     }
 }
 
+/// The Recent inbox's tab and list.
+fn render_recent(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
+    let differs = |same: &dyn Fn(&View) -> bool| previous.is_none_or(|p| !same(p));
+    let available = view.recent.is_some();
+    if window.get_recent_available() != available {
+        window.set_recent_available(available);
+    }
+    let paused = view.recent.as_ref().is_some_and(|r| r.paused);
+    if window.get_recent_paused() != paused {
+        window.set_recent_paused(paused);
+    }
+    if differs(&|p| p.recent == view.recent && p.dark == view.dark) {
+        let (rows, targets) = view.recent.as_ref().map_or((&[][..], &[][..]), |r| {
+            (r.rows.as_slice(), r.targets.as_slice())
+        });
+        window.set_recent_rows(model(rows.iter().map(|r| ui::RecentRow {
+            preview: r.preview.as_str().into(),
+            app: r.app.as_str().into(),
+            age_minutes: i32::try_from(r.age_minutes).unwrap_or(i32::MAX),
+        })));
+        window.set_recent_targets(model(targets.iter().map(|t| ui::ChoiceEntry {
+            label: t.label.as_str().into(),
+            count: 0,
+            color: list_color(t.accent, view.dark),
+            icon: slint::Image::default(),
+            checked: false,
+        })));
+    }
+}
+
 pub(crate) fn index(i: i32) -> usize {
     usize::try_from(i).unwrap_or(usize::MAX)
 }
@@ -698,19 +784,23 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         window.set_dark(view.dark);
     }
     if differs(&|p| {
-        p.high_contrast == view.high_contrast && p.reduced_motion == view.reduced_motion
+        (p.high_contrast, p.accent, p.reduced_motion)
+            == (view.high_contrast, view.accent, view.reduced_motion)
     }) {
-        let look = window.global::<ui::SystemLook<'_>>();
-        look.set_reduced_motion(view.reduced_motion);
-        look.set_high_contrast(view.high_contrast.is_some());
-        if let Some(hc) = &view.high_contrast {
-            let color = |c: Rgb| slint::Color::from_rgb_u8(c.r, c.g, c.b);
-            look.set_hc_window(color(hc.window));
-            look.set_hc_window_text(color(hc.window_text));
-            look.set_hc_highlight(color(hc.highlight));
-            look.set_hc_highlight_text(color(hc.highlight_text));
-            look.set_hc_gray_text(color(hc.gray_text));
-        }
+        crate::popup_window::set_look_globals(
+            &window.global::<ui::SystemLook<'_>>(),
+            view.high_contrast.as_ref(),
+            view.accent.as_ref(),
+            view.reduced_motion,
+        );
+    }
+    if differs(&|p| p.stack == view.stack) {
+        window.set_stack_visible(view.stack.is_some());
+        let stack = view.stack.clone().unwrap_or_default();
+        window.set_stack_running(stack.running);
+        window.set_stack_count(to_i32(stack.count));
+        window.set_stack_position(to_i32(stack.position));
+        window.set_stack_next_title(stack.next_title.as_str().into());
     }
     if differs(&|p| p.board_name == view.board_name) {
         window.set_board_name(view.board_name.as_str().into());
@@ -736,9 +826,18 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             title: r.title.as_str().into(),
         })));
     }
-    if differs(&|p| p.rows == view.rows && p.dark == view.dark) {
+    if differs(&|p| {
+        p.rows == view.rows
+            && p.dark == view.dark
+            && p.stack.as_ref().map(|s| &s.items) == view.stack.as_ref().map(|s| &s.items)
+    }) {
+        let marked = view.stack.as_ref().map_or(&[][..], |s| s.items.as_slice());
         window.set_rows(model(view.rows.iter().enumerate().map(|(i, r)| {
             let mut row = panel_row(r, view.dark);
+            row.stack_position = marked
+                .iter()
+                .position(|id| *id == r.id)
+                .map_or(0, |at| to_i32(at + 1));
             // The one sensitive row held revealed: the controller put its text in the preview.
             if view.revealed == Some(i) {
                 row.preview = r.preview.as_str().into();
@@ -746,6 +845,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             row
         })));
     }
+    render_recent(window, previous, view);
     let revealed = view.revealed.map_or(-1, to_i32);
     if window.get_revealed_index() != revealed {
         window.set_revealed_index(revealed);
@@ -954,6 +1054,7 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         label,
         label_name,
         image: slint::Image::default(),
+        stack_position: 0,
     }
 }
 

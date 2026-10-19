@@ -272,6 +272,25 @@ impl<'p> KeyRing<'p> {
         }
     }
 
+    /// Whether `record` needs a master password to open (the mode byte inside the OS-wrapped
+    /// blob). Opens the OS binding, never the data key.
+    ///
+    /// # Errors
+    ///
+    /// [`CryptoError::Provider`] if the OS binding rejects the record;
+    /// [`CryptoError::InvalidKeyRecord`] for a damaged one.
+    pub fn has_password(&self, record: &KeyRecord) -> Result<bool, CryptoError> {
+        let inner = self
+            .provider
+            .unwrap_key(&record.0[MAGIC.len()..])
+            .map_err(CryptoError::Provider)?;
+        match (inner.first().copied(), inner.len()) {
+            (Some(MODE_OS_ONLY), OS_ONLY_INNER_LEN) => Ok(false),
+            (Some(MODE_PASSWORD), PASSWORD_INNER_LEN) => Ok(true),
+            _ => Err(CryptoError::InvalidKeyRecord),
+        }
+    }
+
     /// Re-wraps the data key in `record` under a new master password (`None` removes it).
     /// The data key is unchanged, so encrypted items stay readable and are not rewritten.
     /// `current` must be the present password (`None` if there is none). On any error the old

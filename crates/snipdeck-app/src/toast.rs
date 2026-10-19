@@ -69,6 +69,22 @@ pub enum ToastMessage {
     TemplateBroken,
     /// "Unlock your library to use this item."
     Locked,
+    /// "Library unlocked." (the master password was accepted)
+    Unlocked,
+    /// "Master password set."
+    MasterPasswordSet,
+    /// "Master password changed."
+    MasterPasswordChanged,
+    /// "Master password removed."
+    MasterPasswordRemoved,
+    /// "Master password changed. Snipdeck couldn't open the library with it just now; ..."
+    MasterPasswordChangedNotOpen,
+    /// "Master password removed. Snipdeck couldn't open the library just now; ..."
+    MasterPasswordRemovedNotOpen,
+    /// "Unlock your library first, so a copy includes your sensitive items."
+    UnlockFirst,
+    /// "Your library locked. The sensitive item you were editing was closed without saving."
+    LockedEditorClosed,
     /// "Saved to {list}" (quick capture).
     Saved {
         /// The list's name.
@@ -167,6 +183,13 @@ pub enum ToastMessage {
     },
     /// "Couldn't restore that backup."
     RestoreFailed,
+    /// "Imported 5 items".
+    Imported {
+        /// Items added.
+        items: usize,
+    },
+    /// "Couldn't import that."
+    ImportFailed,
     /// "Saved {file} in {folder}": an export.
     Exported {
         /// The file's name.

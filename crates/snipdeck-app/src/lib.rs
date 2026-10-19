@@ -4,6 +4,7 @@
 //! under Slint's headless testing backend.
 #![forbid(unsafe_code)]
 
+pub mod accent;
 pub mod binding;
 pub mod capture;
 pub mod cli;
@@ -22,6 +23,7 @@ pub mod frame;
 pub mod headless;
 pub mod help_binding;
 pub mod host;
+pub mod index_cache;
 pub mod item_editor;
 pub mod key_provider;
 pub mod licence_store;
@@ -29,6 +31,7 @@ pub mod list_text;
 pub mod main_binding;
 pub mod main_window;
 pub mod maintenance;
+pub mod master_password;
 pub mod native_window;
 pub mod onboarding_binding;
 pub mod palette;
@@ -40,6 +43,7 @@ pub mod picker_binding;
 pub mod placement;
 pub mod platform;
 pub(crate) mod popup_window;
+pub mod recent;
 pub mod screenshot;
 pub mod settings;
 pub mod settings_binding;
@@ -49,6 +53,7 @@ pub mod toast;
 pub mod toast_binding;
 pub mod tour;
 pub mod trace;
+pub mod unlock_binding;
 pub mod usecase;
 pub mod window_kind;
 pub mod wording;

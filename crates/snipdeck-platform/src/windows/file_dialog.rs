@@ -1,22 +1,33 @@
-//! `WinFilePicker`: [`FilePicker`] on the standard Open dialog (`GetOpenFileNameW`).
+//! `WinFilePicker`: [`FilePicker`] on the system's file dialogs.
 //!
-//! The dialog is modal to `owner` when one is given (Windows disables it while the dialog is up,
-//! so the UI toolkit receives no events meanwhile), runs on the calling thread and blocks it
-//! until the user chooses or cancels. It never changes the process's working directory
-//! (`OFN_NOCHANGEDIR`). A path longer than [`BUFFER_UNITS`] code units is not offered: the
-//! dialog itself refuses it.
+//! A file is chosen with the standard Open dialog (`GetOpenFileNameW`) filtered by the kind's
+//! extensions ([`PickKind::filters`]); a folder with the Vista-style folder picker
+//! (`IFileOpenDialog` with `FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM`). Both are modal to `owner`
+//! when one is given (Windows disables it while the dialog is up, so the UI toolkit receives no
+//! events meanwhile), run on the calling thread and block it until the user chooses or cancels.
+//! Neither changes the process's working directory. A file path longer than [`BUFFER_UNITS`] code
+//! units is not offered: the dialog itself refuses it.
 //!
-//! **Unverified on Windows.**
+//! **Unverified on Windows**: both dialogs compile for the Windows targets but have not been run.
 
 use std::ffi::c_void;
+use std::os::windows::ffi::OsStringExt;
 use std::path::PathBuf;
 
-use windows::Win32::Foundation::HWND;
+use windows::Win32::Foundation::{ERROR_CANCELLED, HWND};
+use windows::Win32::System::Com::{
+    CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, CoCreateInstance, CoInitializeEx,
+    CoTaskMemFree, CoUninitialize,
+};
 use windows::Win32::UI::Controls::Dialogs::{
     CommDlgExtendedError, GetOpenFileNameW, OFN_EXPLORER, OFN_FILEMUSTEXIST, OFN_HIDEREADONLY,
     OFN_NOCHANGEDIR, OFN_PATHMUSTEXIST, OPENFILENAMEW,
 };
-use windows::core::{PCWSTR, PWSTR};
+use windows::Win32::UI::Shell::{
+    FOS_FORCEFILESYSTEM, FOS_PATHMUSTEXIST, FOS_PICKFOLDERS, FileOpenDialog, IFileOpenDialog,
+    SIGDN_FILESYSPATH,
+};
+use windows::core::{HRESULT, PCWSTR, PWSTR};
 
 use crate::error::Error;
 use crate::file_dialog::{FilePicker, PickKind, filter_utf16, path_of_buffer};
@@ -24,50 +35,109 @@ use crate::file_dialog::{FilePicker, PickKind, filter_utf16, path_of_buffer};
 /// The size of the buffer the dialog writes the chosen path into (the Win32 maximum path).
 const BUFFER_UNITS: usize = 32_768;
 
-/// The standard Open dialog.
+/// The system's file and folder dialogs.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct WinFilePicker;
 
 impl FilePicker for WinFilePicker {
     fn pick(&self, kind: PickKind, owner: Option<isize>) -> Result<Option<PathBuf>, Error> {
-        let filter = match kind {
-            PickKind::Image => filter_utf16(&[("PNG pictures", "*.png"), ("All files", "*.*")]),
-            PickKind::Any => filter_utf16(&[("All files", "*.*")]),
-        };
-        let mut buffer = vec![0_u16; BUFFER_UNITS];
-        let mut dialog = OPENFILENAMEW {
-            lStructSize: u32::try_from(std::mem::size_of::<OPENFILENAMEW>())
-                .map_err(|_| Error::Unavailable("the dialog structure is too large"))?,
-            hwndOwner: HWND(owner.unwrap_or(0) as *mut c_void),
-            lpstrFilter: PCWSTR(filter.as_ptr()),
-            nFilterIndex: 1,
-            lpstrFile: PWSTR(buffer.as_mut_ptr()),
-            nMaxFile: u32::try_from(buffer.len())
-                .map_err(|_| Error::Unavailable("the dialog buffer is too large"))?,
-            Flags: OFN_EXPLORER
-                | OFN_FILEMUSTEXIST
-                | OFN_PATHMUSTEXIST
-                | OFN_HIDEREADONLY
-                | OFN_NOCHANGEDIR,
-            ..Default::default()
-        };
-        // SAFETY: `dialog` is fully initialised: its size is right, `lpstrFilter` points into
-        // `filter` (double-NUL ended) and `lpstrFile` into `buffer` (`nMaxFile` units), and both
-        // vectors outlive the call. The call only writes into `buffer`. `hwndOwner` is a handle
-        // the caller got from the toolkit (or null); Windows validates it.
-        let chosen = unsafe { GetOpenFileNameW(&raw mut dialog) };
-        if chosen.as_bool() {
-            return Ok(path_of_buffer(&buffer));
+        let owner = HWND(owner.unwrap_or(0) as *mut c_void);
+        if kind == PickKind::Folder {
+            pick_folder(owner)
+        } else {
+            pick_file(kind, owner)
         }
-        // SAFETY: no pointers; reads the calling thread's last dialog error.
-        let code = unsafe { CommDlgExtendedError() };
-        if code.0 == 0 {
-            // The user cancelled.
-            return Ok(None);
+    }
+}
+
+fn pick_file(kind: PickKind, owner: HWND) -> Result<Option<PathBuf>, Error> {
+    let filter = filter_utf16(kind.filters());
+    let mut buffer = vec![0_u16; BUFFER_UNITS];
+    let mut dialog = OPENFILENAMEW {
+        lStructSize: u32::try_from(std::mem::size_of::<OPENFILENAMEW>())
+            .map_err(|_| Error::Unavailable("the dialog structure is too large"))?,
+        hwndOwner: owner,
+        lpstrFilter: PCWSTR(filter.as_ptr()),
+        nFilterIndex: 1,
+        lpstrFile: PWSTR(buffer.as_mut_ptr()),
+        nMaxFile: u32::try_from(buffer.len())
+            .map_err(|_| Error::Unavailable("the dialog buffer is too large"))?,
+        Flags: OFN_EXPLORER
+            | OFN_FILEMUSTEXIST
+            | OFN_PATHMUSTEXIST
+            | OFN_HIDEREADONLY
+            | OFN_NOCHANGEDIR,
+        ..Default::default()
+    };
+    // SAFETY: `dialog` is fully initialised: its size is right, `lpstrFilter` points into
+    // `filter` (double-NUL ended) and `lpstrFile` into `buffer` (`nMaxFile` units), and both
+    // vectors outlive the call. The call only writes into `buffer`. `hwndOwner` is a handle
+    // the caller got from the toolkit (or null); Windows validates it.
+    let chosen = unsafe { GetOpenFileNameW(&raw mut dialog) };
+    if chosen.as_bool() {
+        return Ok(path_of_buffer(&buffer));
+    }
+    // SAFETY: no pointers; reads the calling thread's last dialog error.
+    let code = unsafe { CommDlgExtendedError() };
+    if code.0 == 0 {
+        // The user cancelled.
+        return Ok(None);
+    }
+    Err(Error::Os {
+        op: "GetOpenFileNameW",
+        code: code.0,
+    })
+}
+
+/// Balances a successful `CoInitializeEx` on this thread when dropped.
+struct ComGuard(bool);
+
+impl Drop for ComGuard {
+    fn drop(&mut self) {
+        if self.0 {
+            // SAFETY: balances the successful `CoInitializeEx` in `pick_folder` on this thread.
+            unsafe { CoUninitialize() };
         }
-        Err(Error::Os {
-            op: "GetOpenFileNameW",
-            code: code.0,
-        })
+    }
+}
+
+/// The folder picker. `HRESULT_FROM_WIN32(ERROR_CANCELLED)` from `Show` is the user cancelling.
+fn pick_folder(owner: HWND) -> Result<Option<PathBuf>, Error> {
+    let os = |op: &'static str, e: &windows::core::Error| Error::Os {
+        op,
+        code: e.code().0.cast_unsigned(),
+    };
+    // SAFETY: no pointers. The toolkit has usually initialised COM on this thread already, in
+    // which case this fails harmlessly (a different mode) or just counts; only a success is
+    // balanced by the guard.
+    let _com = ComGuard(unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED) }.is_ok());
+    // SAFETY: creates an in-process COM object of the type asked for.
+    let dialog: IFileOpenDialog =
+        unsafe { CoCreateInstance(&FileOpenDialog, None, CLSCTX_INPROC_SERVER) }
+            .map_err(|e| os("CoCreateInstance(FileOpenDialog)", &e))?;
+    // SAFETY: plain method calls on the live COM object above; `owner` is a handle from the
+    // toolkit (or null), which Windows validates.
+    unsafe {
+        let options = dialog
+            .GetOptions()
+            .map_err(|e| os("IFileDialog::GetOptions", &e))?;
+        dialog
+            .SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST)
+            .map_err(|e| os("IFileDialog::SetOptions", &e))?;
+        if let Err(e) = dialog.Show(Some(owner)) {
+            if e.code() == HRESULT::from_win32(ERROR_CANCELLED.0) {
+                return Ok(None);
+            }
+            return Err(os("IFileDialog::Show", &e));
+        }
+        let item = dialog
+            .GetResult()
+            .map_err(|e| os("IFileDialog::GetResult", &e))?;
+        let name = item
+            .GetDisplayName(SIGDN_FILESYSPATH)
+            .map_err(|e| os("IShellItem::GetDisplayName", &e))?;
+        let path = PathBuf::from(std::ffi::OsString::from_wide(name.as_wide()));
+        CoTaskMemFree(Some(name.0.cast_const().cast()));
+        Ok(Some(path))
     }
 }

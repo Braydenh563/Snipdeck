@@ -26,8 +26,12 @@ use snipdeck_store::Store;
 use snipdeck_ui as ui;
 
 use crate::{
+    accent::AccentChoice,
     binding::{Loggable, Shown, arm_toast, model, redraw_all, register_redraw, to_i32},
-    controller::{Controller, ToastPhase, ToastView},
+    controller::{
+        Controller, ImportKind, ImportPreview, ImportProblem, ImportSource, MasterState,
+        ToastPhase, ToastView,
+    },
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
     main_binding::{create_window, raise, set_look},
     native_window::fit_to_screen,
@@ -84,6 +88,11 @@ pub trait SettingsHost {
 
     /// Where an export is saved, if the machine has a Documents folder.
     fn documents_folder(&self) -> Option<PathBuf>;
+
+    /// Asks the user for the file (or, for [`ImportKind::Folder`], the folder) to import.
+    /// `owner` is the Settings window's native handle: it is disabled while the dialog is open.
+    /// `None` when they cancelled or the machine has no dialog.
+    fn pick_import(&self, kind: ImportKind, owner: Option<isize>) -> Option<PathBuf>;
 }
 
 /// Registers `hotkeys` with `backend`: a shortcut that is off is removed (which
@@ -160,6 +169,35 @@ impl SettingsHost for SystemHost {
 
     fn documents_folder(&self) -> Option<PathBuf> {
         crate::paths::documents_folder()
+    }
+
+    fn pick_import(&self, kind: ImportKind, owner: Option<isize>) -> Option<PathBuf> {
+        #[cfg(windows)]
+        {
+            crate::platform::file_picker()?
+                .pick(pick_kind(kind), owner)
+                .ok()
+                .flatten()
+        }
+        #[cfg(not(windows))]
+        {
+            // Only Windows has a file dialog.
+            let _ = (kind, owner);
+            None
+        }
+    }
+}
+
+/// The dialog an import choice opens: files filtered by the source's extension, or the folder
+/// picker.
+#[must_use]
+pub const fn pick_kind(kind: ImportKind) -> snipdeck_platform::file_dialog::PickKind {
+    use snipdeck_platform::file_dialog::PickKind;
+    match kind {
+        ImportKind::Snipdeck => PickKind::Snipdeck,
+        ImportKind::Ditto => PickKind::Ditto,
+        ImportKind::CopyQ => PickKind::CopyQ,
+        ImportKind::Folder => PickKind::Folder,
     }
 }
 
@@ -388,6 +426,64 @@ struct BackupLine {
     size: String,
 }
 
+/// An import waiting for the user's answer: what was chosen and what a dry run said about it.
+#[derive(Debug, Clone)]
+struct PendingImport {
+    source: ImportSource,
+    /// A backup being restored, not a file imported: the confirm button says Restore.
+    restore: bool,
+    /// The file or folder name, or the backup's date: what the page's title names.
+    name: String,
+    outcome: Result<ImportPreview, ImportProblem>,
+}
+
+/// The preview as the page draws it.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+struct ImportLines {
+    open: bool,
+    name: String,
+    restore: bool,
+    problem: String,
+    boards: i32,
+    lists: i32,
+    items: i32,
+    duplicates: i32,
+    blocked: bool,
+    warnings: Vec<snipdeck_portable::Warning>,
+    more: i32,
+}
+
+/// How many warnings the preview lists; the rest are counted.
+const WARNINGS_SHOWN: usize = 6;
+
+impl ImportLines {
+    fn of(pending: Option<&PendingImport>) -> Self {
+        let Some(pending) = pending else {
+            return Self::default();
+        };
+        let mut lines = Self {
+            open: true,
+            name: pending.name.clone(),
+            restore: pending.restore,
+            ..Self::default()
+        };
+        match &pending.outcome {
+            Err(problem) => lines.problem = wording::import_problem_text(*problem).into(),
+            Ok(p) => {
+                lines.boards = to_i32(p.boards);
+                lines.lists = to_i32(p.lists);
+                lines.items = to_i32(p.items);
+                lines.duplicates = to_i32(p.duplicates);
+                lines.blocked = p.blocked_by_board_limit;
+                lines.warnings = p.warnings.iter().take(WARNINGS_SHOWN).cloned().collect();
+                lines.more =
+                    to_i32(p.warnings.len().saturating_sub(WARNINGS_SHOWN) + p.warnings_dropped);
+            }
+        }
+        lines
+    }
+}
+
 /// Everything the page shows, built from the controller and the page's own state. Compared with
 /// the last one drawn so a redraw sets only what changed (re-setting a model would reset the
 /// page's scroll and a recorder that is waiting for keys).
@@ -398,6 +494,8 @@ struct BackupLine {
 )]
 struct PageView {
     look: snipdeck_platform::system_look::SystemLook,
+    accent: Option<crate::accent::Accent>,
+    accent_index: i32,
     hotkeys: Vec<HotkeyRow>,
     theme_index: i32,
     language_index: i32,
@@ -405,6 +503,7 @@ struct PageView {
     close_to_tray: bool,
     panel_in_taskbar: bool,
     panel_hide_on_blur: bool,
+    recent_history: bool,
     reduce_motion: bool,
     panel_width: i32,
     dock_edge_index: i32,
@@ -417,8 +516,13 @@ struct PageView {
     no_paste_error: String,
     pro: bool,
     licence_error: String,
+    /// 0 = no key protection on this machine, 1 = no master password, 2 = one is set.
+    master_state: i32,
+    master_locked: bool,
+    master_allowed: bool,
     has_data_folder: bool,
     backups: Vec<BackupLine>,
+    import: ImportLines,
     toast: Option<ToastView>,
 }
 
@@ -429,6 +533,14 @@ struct PageState {
     no_paste_error: String,
     licence_error: String,
     backups: Vec<BackupFile>,
+    import: Option<PendingImport>,
+}
+
+fn accent_index(accent: AccentChoice) -> i32 {
+    AccentChoice::ALL
+        .iter()
+        .position(|a| *a == accent)
+        .map_or(0, crate::binding::to_i32)
 }
 
 fn theme_index(theme: Theme) -> i32 {
@@ -506,6 +618,8 @@ where
         .collect();
     PageView {
         look: controller.settings_look(),
+        accent: controller.accent(),
+        accent_index: accent_index(settings.accent),
         hotkeys,
         theme_index: theme_index(settings.theme),
         language_index: language_index(&settings.language),
@@ -513,6 +627,7 @@ where
         close_to_tray: settings.close_to_tray,
         panel_in_taskbar: settings.panel_in_taskbar,
         panel_hide_on_blur: settings.panel_hide_on_blur,
+        recent_history: settings.recent_history,
         reduce_motion: settings.reduce_motion,
         panel_width: i32::try_from(settings.panel_width).unwrap_or(320),
         dock_edge_index: dock_edge_index(controller.dock_edge()),
@@ -525,6 +640,14 @@ where
         no_paste_error: state.no_paste_error.clone(),
         pro: controller.tier() == snipdeck_core::Tier::Pro,
         licence_error: state.licence_error.clone(),
+        master_state: match controller.master_password_state() {
+            MasterState::Unavailable => 0,
+            MasterState::NotSet => 1,
+            MasterState::Set => 2,
+            MasterState::KeyUnavailable => 3,
+        },
+        master_locked: controller.library_locked(),
+        master_allowed: controller.master_password_allowed(),
         has_data_folder,
         backups: state
             .backups
@@ -534,6 +657,7 @@ where
                 size: human_size(b.bytes),
             })
             .collect(),
+        import: ImportLines::of(state.import.as_ref()),
         toast: controller.settings_toast(),
     }
 }
@@ -764,6 +888,35 @@ where
         redraw_all();
     }
 
+    /// The master password form's action. The passwords exist only in these arguments: they go
+    /// to the controller and are not stored. A refusal is written to the page so it can say
+    /// which field to fix; success closes the form.
+    fn master_submitted(
+        self: &Rc<Self>,
+        mode: ui::MasterMode,
+        current: &str,
+        new: &str,
+        again: &str,
+    ) {
+        let result = self.act(|ctl| match mode {
+            ui::MasterMode::Set => ctl.set_master_password(new, again),
+            ui::MasterMode::Change => ctl.change_master_password(current, new, again),
+            ui::MasterMode::Remove => ctl.remove_master_password(current),
+            ui::MasterMode::Closed => Ok(()),
+        });
+        let Some(window) = self.window.upgrade() else {
+            return;
+        };
+        // Cleared first, so the same refusal twice in a row is announced twice.
+        window.set_master_problem(ui::MasterProblem::None);
+        match result {
+            Ok(()) => window.invoke_close_master(),
+            Err(problem) => {
+                window.set_master_problem(crate::unlock_binding::slint_problem(problem));
+            }
+        }
+    }
+
     fn backup_now(self: &Rc<Self>) {
         let Some(dir) = self.data_dir.clone() else {
             return;
@@ -773,16 +926,75 @@ where
         redraw_all();
     }
 
+    /// "Restore" on a backup row: shows what the backup would add, the same preview as an import.
     fn restore(self: &Rc<Self>, index: usize) {
-        let file = self
-            .state
-            .borrow()
-            .backups
-            .get(index)
-            .map(|b| b.path.clone());
-        if let Some(file) = file {
-            self.act(|ctl| ctl.restore_backup(&file));
+        let backup = self.state.borrow().backups.get(index).cloned();
+        if let Some(backup) = backup {
+            self.preview(
+                ImportSource::Snipdeck(backup.path),
+                true,
+                backup.date.to_string(),
+            );
         }
+    }
+
+    /// The "Import..." choice `kind`: asks for the file, then shows the preview.
+    fn import_chosen(self: &Rc<Self>, kind: i32) {
+        let kind = match kind {
+            0 => ImportKind::Snipdeck,
+            1 => ImportKind::Ditto,
+            2 => ImportKind::CopyQ,
+            _ => ImportKind::Folder,
+        };
+        let owner = self
+            .window
+            .upgrade()
+            .and_then(|w| crate::native_window::handle_of(w.window()));
+        let Some(path) = self.host.pick_import(kind, owner) else {
+            return;
+        };
+        let source = ImportSource::of(kind, path);
+        let name = source.file_name();
+        self.preview(source, false, name);
+    }
+
+    /// Works out what `source` would do (nothing is written) and opens the preview on it.
+    fn preview(self: &Rc<Self>, source: ImportSource, restore: bool, name: String) {
+        let outcome = self.act(|ctl| {
+            if restore {
+                ctl.preview_restore(source.path())
+            } else {
+                ctl.preview_import(&source)
+            }
+        });
+        self.state.borrow_mut().import = Some(PendingImport {
+            source,
+            restore,
+            name,
+            outcome,
+        });
+        redraw_all();
+    }
+
+    /// "Import" / "Restore" in the preview: does what was previewed.
+    fn import_confirmed(self: &Rc<Self>) {
+        let Some(pending) = self.state.borrow_mut().import.take() else {
+            return;
+        };
+        if pending.outcome.is_ok() {
+            if pending.restore {
+                self.act(|ctl| ctl.restore_backup(pending.source.path()));
+            } else {
+                self.act(|ctl| ctl.apply_import(&pending.source));
+            }
+            self.refresh_backups();
+        }
+        redraw_all();
+    }
+
+    fn import_cancelled(self: &Rc<Self>) {
+        self.state.borrow_mut().import = None;
+        redraw_all();
     }
 
     fn open_data_folder(self: &Rc<Self>) {
@@ -888,6 +1100,7 @@ where
         ui::PlanTexts::get(window)
             .set_board_limit(to_i32(snipdeck_core::Entitlements::FREE_BOARD_LIMIT));
         let follow = window.invoke_follow_windows_text();
+        window.set_free_board_limit(to_i32(snipdeck_core::Entitlements::FREE_BOARD_LIMIT));
         window.set_languages(model(
             std::iter::once(follow).chain(LANGUAGE_NAMES.iter().map(|n| SharedString::from(*n))),
         ));
@@ -915,6 +1128,14 @@ where
                     _ => Theme::System,
                 };
             })));
+        wire!(on_accent_chosen, |core, i| core.act(|ctl| ctl
+            .update_settings(|s| {
+                s.accent = usize::try_from(i)
+                    .ok()
+                    .and_then(|at| AccentChoice::ALL.get(at))
+                    .copied()
+                    .unwrap_or_default();
+            })));
         wire!(on_language_chosen, |core, i| core.act(|ctl| ctl
             .update_settings(|s| {
                 s.language = usize::try_from(i - 1)
@@ -932,6 +1153,11 @@ where
         });
         wire!(on_panel_hide_on_blur_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.panel_hide_on_blur = on)));
+        wire!(on_recent_history_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.recent_history = on)));
+        wire!(on_recent_history_cleared, |core| {
+            core.act(Controller::recent_clear);
+        });
         wire!(on_reduce_motion_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.reduce_motion = on)));
         wire!(on_panel_width_chosen, |core, width| core
@@ -964,6 +1190,21 @@ where
             .no_paste_removed(crate::binding::index(i)));
         wire!(on_licence_submitted, |core, key| core
             .licence_submitted(&key));
+        {
+            // Not through `wire!`: it traces every argument, and these are passwords.
+            let core = Rc::clone(&core);
+            window.on_master_submitted(move |mode, current, new, again| {
+                crate::trace!("callback settings on_master_submitted (passwords not shown)");
+                core.master_submitted(mode, &current, &new, &again);
+            });
+        }
+        wire!(on_master_unlock_requested, |core| core
+            .act(Controller::request_unlock));
+        window.on_master_strength(|password| crate::master_password::strength(&password).level());
+        window.set_master_idle_minutes(
+            i32::try_from(crate::master_password::IDLE_LOCK.as_secs() / 60).unwrap_or(15),
+        );
+        window.set_master_min_length(to_i32(crate::master_password::MIN_LEN));
         wire!(on_supporter_requested, |core| core.get_supporter());
         wire!(on_backup_now_requested, |core| core.backup_now());
         wire!(on_backup_restore_requested, |core, i| core
@@ -973,6 +1214,10 @@ where
         wire!(on_open_backups_folder_requested, |core| core
             .open_backups_folder());
         wire!(on_export_requested, |core| core.export());
+        wire!(on_import_source_chosen, |core, kind| core
+            .import_chosen(kind));
+        wire!(on_import_confirmed, |core| core.import_confirmed());
+        wire!(on_import_cancelled, |core| core.import_cancelled());
         wire!(on_erase_confirmed, |core, typed, forget| core
             .erase(&typed, forget));
         {
@@ -989,6 +1234,25 @@ where
 
 // ---- Page state -> window ----------------------------------------------------------------------
 
+/// Copies the import preview into the window.
+fn render_import(window: &ui::SettingsPage, i: &ImportLines) {
+    window.set_import_open(i.open);
+    window.set_import_name(i.name.as_str().into());
+    window.set_import_restore(i.restore);
+    window.set_import_problem(i.problem.as_str().into());
+    window.set_import_boards(i.boards);
+    window.set_import_lists(i.lists);
+    window.set_import_items(i.items);
+    window.set_import_duplicates(i.duplicates);
+    window.set_import_blocked(i.blocked);
+    window.set_import_warnings(model(
+        i.warnings
+            .iter()
+            .map(|w| SharedString::from(wording::import_warning_text(window, w))),
+    ));
+    window.set_import_warnings_more(i.more);
+}
+
 #[allow(
     clippy::too_many_lines,
     reason = "one flat pass over the page, a few lines per property"
@@ -996,13 +1260,17 @@ where
 fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageView) {
     let differs = |same: &dyn Fn(&PageView) -> bool| previous.is_none_or(|p| !same(p));
 
-    if differs(&|p| p.look == view.look) {
+    if differs(&|p| p.look == view.look && p.accent == view.accent) {
         window.set_dark(view.look.dark);
         set_look(
             window,
             view.look.high_contrast.as_ref(),
+            view.accent.as_ref(),
             view.look.reduce_motion,
         );
+    }
+    if differs(&|p| p.accent_index == view.accent_index) {
+        window.set_accent_index(view.accent_index);
     }
     if differs(&|p| p.hotkeys == view.hotkeys) {
         window.set_hotkeys(model(view.hotkeys.iter().map(|h| ui::HotkeySetting {
@@ -1028,6 +1296,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.panel_hide_on_blur == view.panel_hide_on_blur) {
         window.set_panel_hide_on_blur(view.panel_hide_on_blur);
+    }
+    if differs(&|p| p.recent_history == view.recent_history) {
+        window.set_recent_history(view.recent_history);
     }
     if differs(&|p| p.backups_keep == view.backups_keep) {
         window.set_backups_keep(view.backups_keep);
@@ -1069,6 +1340,15 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.licence_error == view.licence_error) {
         window.set_licence_error(view.licence_error.as_str().into());
     }
+    if differs(&|p| p.master_state == view.master_state) {
+        window.set_master_state(view.master_state);
+    }
+    if differs(&|p| p.master_locked == view.master_locked) {
+        window.set_master_locked(view.master_locked);
+    }
+    if differs(&|p| p.master_allowed == view.master_allowed) {
+        window.set_master_allowed(view.master_allowed);
+    }
     if differs(&|p| p.has_data_folder == view.has_data_folder) {
         window.set_has_data_folder(view.has_data_folder);
     }
@@ -1077,6 +1357,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
             date: b.date.as_str().into(),
             size: b.size.as_str().into(),
         })));
+    }
+    if differs(&|p| p.import == view.import) {
+        render_import(window, &view.import);
     }
     if differs(&|p| p.toast == view.toast) {
         if let Some(toast) = &view.toast {

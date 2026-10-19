@@ -108,7 +108,7 @@ export component SidebarItem inherits Rectangle {
             text: "\{root.count}";
             font-family: Fonts.mono;
             font-size: Type.xs;
-            color: Theme.text-secondary;
+            color: root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary;
             vertical-alignment: center;
             horizontal-alignment: right;
         }

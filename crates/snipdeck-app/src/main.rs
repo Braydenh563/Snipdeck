@@ -44,6 +44,7 @@ use snipdeck_app::{
     settings_binding::{PanelTaskbar, SettingsUi, SystemHost},
     settings_store::{FileSink, SettingsSaver},
     toast_binding::ToastUi,
+    unlock_binding::UnlockUi,
     window_kind,
 };
 use snipdeck_core::{Entitlements, Tier, Timestamp};
@@ -135,6 +136,7 @@ fn run(args: &Args) -> Result<(), String> {
         on_second: Box::new(|| on_ui_thread(Binding::show)),
         on_target_changed: Box::new(|| with_binding(Binding::target_changed)),
         on_tray: Box::new(|event| on_ui_thread(move |b| b.tray(event))),
+        on_clipboard_change: Box::new(|change| on_ui_thread(move |b| b.clipboard_changed(change))),
         on_look_changed: {
             let look = Arc::clone(&look);
             // Read on the UI thread: the value is fresher than the one the watcher saw.
@@ -162,6 +164,7 @@ fn run(args: &Args) -> Result<(), String> {
         attach_panel,
         popups,
         tray,
+        recent_gate,
         warnings,
         keep_alive: _keep_alive,
     } = host;
@@ -196,6 +199,8 @@ fn run(args: &Args) -> Result<(), String> {
     {
         let mut controller = controller.borrow_mut();
         controller.set_system_look(look.read());
+        controller.set_recent_gate(recent_gate);
+        controller.prune_recent();
         if let Some(saver) = saver {
             controller.set_settings_saver(saver);
         }
@@ -251,6 +256,8 @@ fn run(args: &Args) -> Result<(), String> {
             Rc::clone(&panel_taskbar),
         )),
     ));
+    // The master password prompt, made when a locked sensitive item is first needed.
+    let unlock_ui = Rc::new(UnlockUi::new(&controller));
     let help_ui = Rc::new(HelpUi::new(
         &controller,
         settings_folder.clone(),
@@ -303,6 +310,7 @@ fn run(args: &Args) -> Result<(), String> {
         Rc::clone(&tray),
         Rc::clone(&settings_ui),
         Rc::clone(&help_ui),
+        Rc::clone(&unlock_ui),
         Rc::clone(&attach_now),
     ));
     // The Picker, the fill form and the toast window (made when first needed).
@@ -445,6 +453,7 @@ fn effect_handler(
     tray: SharedTray,
     settings_ui: Rc<SettingsUi>,
     help_ui: Rc<HelpUi>,
+    unlock_ui: Rc<UnlockUi>,
     attach_panel: Rc<dyn Fn()>,
 ) -> impl Fn(&Effect) + 'static {
     move |effect| match effect {
@@ -490,6 +499,12 @@ fn effect_handler(
         Effect::OpenSettings => {
             if let Err(e) = settings_ui.open() {
                 eprintln!("snipdeck: cannot open the settings: {e}");
+            }
+        }
+        // A locked sensitive item behind a master password: ask for it.
+        Effect::OpenUnlock => {
+            if let Err(e) = unlock_ui.open() {
+                eprintln!("snipdeck: cannot open the unlock window: {e}");
             }
         }
         Effect::OpenListEditor => {

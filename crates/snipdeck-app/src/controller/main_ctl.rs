@@ -118,6 +118,8 @@ pub struct MainScreen {
     pub dark: bool,
     /// The high-contrast colours, while a Windows high-contrast theme is on.
     pub high_contrast: Option<HighContrast>,
+    /// The user's accent, when it is not the built-in blue.
+    pub accent: Option<crate::accent::Accent>,
     /// Animations are off.
     pub reduced_motion: bool,
     /// The open board's name.
@@ -132,6 +134,8 @@ pub struct MainScreen {
     pub tag_choices: Vec<TagChoice>,
     /// The numbers beside the system views.
     pub counts: Counts,
+    /// The Recent inbox is on (its entries are listed in the Panel's clock tab).
+    pub recent_on: bool,
     /// What the sidebar has open.
     pub section: Section,
     /// The index into `lists` or `tags` that `section` names.
@@ -212,6 +216,7 @@ where
         MainScreen {
             dark: look.dark,
             high_contrast: look.high_contrast,
+            accent: self.accent(),
             reduced_motion: look.reduce_motion,
             board_name: self.main.board_name().to_owned(),
             board_menu: self
@@ -222,6 +227,7 @@ where
             tags: self.main.side_tags(),
             tag_choices: self.tag_choices(),
             counts: self.main.counts(),
+            recent_on: self.settings.recent_history,
             section: self.main.section(),
             section_index: self.main.section_index(),
             view_mode: self.main.view_mode(),
@@ -338,18 +344,19 @@ where
     /// hides it again.
     pub fn main_reveal(&mut self, index: usize, on: bool) {
         self.main_fresh();
-        self.revealed = if on {
-            self.main
-                .rows()
-                .get(index)
-                .filter(|r| r.sensitive)
-                .and_then(|r| match r.key {
-                    Key::Item(id) => Some(id),
-                    _ => None,
-                })
-        } else {
-            None
-        };
+        let id = on
+            .then(|| {
+                self.main
+                    .rows()
+                    .get(index)
+                    .filter(|r| r.sensitive)
+                    .and_then(|r| match r.key {
+                        Key::Item(id) => Some(id),
+                        _ => None,
+                    })
+            })
+            .flatten();
+        self.revealed = id.filter(|_| self.reveal_allowed());
     }
 
     // ---- Item actions --------------------------------------------------------------------------

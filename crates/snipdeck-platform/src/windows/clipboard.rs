@@ -84,8 +84,8 @@ use windows::Win32::Foundation::{
 };
 use windows::Win32::System::DataExchange::{
     AddClipboardFormatListener, CloseClipboard, EmptyClipboard, EnumClipboardFormats,
-    GetClipboardData, GetClipboardOwner, GetClipboardSequenceNumber, OpenClipboard,
-    RegisterClipboardFormatW, RemoveClipboardFormatListener, SetClipboardData,
+    GetClipboardData, GetClipboardOwner, GetClipboardSequenceNumber, IsClipboardFormatAvailable,
+    OpenClipboard, RegisterClipboardFormatW, RemoveClipboardFormatListener, SetClipboardData,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::Memory::{
@@ -101,6 +101,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 use windows::core::{HRESULT, PCWSTR, w};
 
 use crate::cf_html;
+use crate::clipboard_watch::{self, ChangeSink, ClipboardChange, WatchGate};
 use crate::error::Error as ServiceError;
 use crate::payload::{Data, FilePayload, Payload};
 use crate::pipeline::{Clipboard, Error};
@@ -244,6 +245,14 @@ impl WinClipboard {
     /// `None` if there is no text or the clipboard stays busy. Writes nothing, so no markers.
     pub fn read_text(&mut self) -> Option<String> {
         self.call(read_text_job).ok().flatten()
+    }
+
+    /// Reports every clipboard change to `sink` (on the clipboard thread) while `gate` is open.
+    /// While the gate is closed nothing is read. Replaces an earlier listener.
+    pub fn watch(&self, gate: WatchGate, sink: ChangeSink) {
+        let _ = self.call(move || {
+            with_owner(|owner| owner.watch = Some(Watch { gate, sink }));
+        });
     }
 
     /// Empties the clipboard if it holds exactly `text` as `CF_UNICODETEXT`. Whether it did.
@@ -601,6 +610,14 @@ struct Owner {
     ledger: OwnerLedger,
     /// Formats of the latest transient write still to render; empty once ownership is lost.
     delayed: Vec<Entry>,
+    /// The Recent inbox's listener, once installed with [`WinClipboard::watch`].
+    watch: Option<Watch>,
+}
+
+/// A listener for clipboard changes and the switch that turns it on.
+struct Watch {
+    gate: WatchGate,
+    sink: ChangeSink,
 }
 
 thread_local! {
@@ -634,6 +651,7 @@ fn owner_thread(
             rendered,
             ledger: OwnerLedger::default(),
             delayed: Vec::new(),
+            watch: None,
         });
     });
     // Without the listener a render's possible bump on close goes unrecorded and the restore
@@ -791,6 +809,7 @@ fn render_all_formats(hwnd: HWND) {
 
 /// `WM_CLIPBOARDUPDATE`: lets the ledger take a requester's bump on close as ours.
 fn clipboard_updated(hwnd: HWND) {
+    report_change(hwnd);
     if with_owner(|owner| owner.ledger.wants_update()) != Some(true) {
         return;
     }
@@ -799,6 +818,75 @@ fn clipboard_updated(hwnd: HWND) {
     // SAFETY: no preconditions.
     let sequence = unsafe { GetClipboardSequenceNumber() };
     with_owner(|owner| owner.ledger.clipboard_updated(still_owner, sequence));
+}
+
+/// Hands the change to the Recent inbox's listener, if one is installed and switched on.
+fn report_change(hwnd: HWND) {
+    // Taken out for the call, so the listener runs with no borrow of the owner state held.
+    let Some(watch) = with_owner(|owner| owner.watch.take()).flatten() else {
+        return;
+    };
+    if watch.gate.is_open() {
+        (watch.sink)(observe_change(hwnd));
+    }
+    with_owner(|owner| {
+        if owner.watch.is_none() {
+            owner.watch = Some(watch);
+        }
+    });
+}
+
+/// Reads who changed the clipboard and what it holds, unless the source asked to be left out
+/// (`ExcludeClipboardContentFromMonitorProcessing`, `CanIncludeInClipboardHistory` = 0): then
+/// the text is never read. Our own writes are reported as `own` and not read either.
+fn observe_change(hwnd: HWND) -> ClipboardChange {
+    let formats = Formats::register();
+    // SAFETY: no preconditions.
+    let owner = unsafe { GetClipboardOwner() }.ok();
+    if owner == Some(hwnd) {
+        return ClipboardChange {
+            own: true,
+            ..ClipboardChange::default()
+        };
+    }
+    let mut change = ClipboardChange {
+        source_app: owner.and_then(super::target::window_exe_name),
+        ..ClipboardChange::default()
+    };
+    // SAFETY: no preconditions; a format id of 0 is not asked about.
+    let monitor_marker = formats.exclude_monitor != 0
+        && unsafe { IsClipboardFormatAvailable(formats.exclude_monitor) }.is_ok();
+    if monitor_marker {
+        change.excluded_format = true;
+        return change;
+    }
+    let Some(_open) = OpenGuard::open(hwnd, READ_OPEN_BUDGET) else {
+        return change;
+    };
+    let history = if formats.history == 0 {
+        None
+    } else {
+        // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
+        unsafe { GetClipboardData(formats.history) }
+            .ok()
+            .and_then(|handle| read_global(HGLOBAL(handle.0), 16))
+            .and_then(|bytes| clipboard_watch::dword(&bytes))
+    };
+    if clipboard_watch::excluded_by_markers(false, history) {
+        change.excluded_format = true;
+        return change;
+    }
+    // SAFETY: no preconditions.
+    if unsafe { IsClipboardFormatAvailable(u32::from(CF_UNICODETEXT.0)) }.is_ok() {
+        // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
+        if let Ok(handle) = unsafe { GetClipboardData(u32::from(CF_UNICODETEXT.0)) }
+            && let Some(mut bytes) = read_global(HGLOBAL(handle.0), READ_TEXT_LIMIT)
+        {
+            change.text = Some(win_formats::from_unicode_text(&bytes));
+            wipe(&mut bytes);
+        }
+    }
+    change
 }
 
 fn owner_hwnd() -> Option<HWND> {

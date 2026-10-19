@@ -113,7 +113,8 @@ export component TextField inherits VerticalLayout {
     forward-focus: input;
     accessible-role: text-input;
     accessible-label: root.label;
-    accessible-value <=> root.text;
+    // A password is never handed to a screen reader or other accessibility client.
+    accessible-value: root.input-type == InputType.password ? "" : root.text;
     accessible-placeholder-text: root.placeholder;
     accessible-description: root.error;
     accessible-enabled: root.enabled;

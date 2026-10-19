@@ -104,6 +104,10 @@ pub struct ImportOptions<'k> {
     pub max_boards: Option<usize>,
     /// Limits for reading untrusted input.
     pub limits: Limits,
+    /// Run the whole import (validation, duplicate skipping, the board limit) and report what it
+    /// would add, then roll the transaction back so the library is unchanged. This is the
+    /// preview the Settings import and Restore show before anything is written.
+    pub dry_run: bool,
 }
 
 /// A board name from a file or folder name: trimmed, control characters replaced, shortened to
@@ -127,13 +131,22 @@ pub(crate) fn finish<L: Library>(
 ) -> Result<ImportReport> {
     if options.merge == MergeStrategy::SkipDuplicates {
         let mut known = existing_hashes(lib)?;
-        report.items_skipped += plan.drop_duplicates(&mut known);
+        let dropped = plan.drop_duplicates(&mut known);
+        report.items_skipped += dropped;
+        report.duplicates_skipped += dropped;
     }
     warn_board_limit(lib, &plan, options, &mut report)?;
     let mut no_assets = |_: &AssetRef| -> Result<Vec<u8>> {
         Err(Error::malformed("import", "internal: no assets expected"))
     };
-    apply(lib, &plan, &mut no_assets, report, options.max_boards)
+    apply(
+        lib,
+        &plan,
+        &mut no_assets,
+        report,
+        options.max_boards,
+        options.dry_run,
+    )
 }
 
 fn warn_board_limit<L: Library>(
@@ -233,7 +246,9 @@ pub fn import_archive<L: Library, R: Read + Seek>(
 
     if options.merge == MergeStrategy::SkipDuplicates {
         let mut known = existing_hashes(lib)?;
-        report.items_skipped += plan.drop_duplicates(&mut known);
+        let dropped = plan.drop_duplicates(&mut known);
+        report.items_skipped += dropped;
+        report.duplicates_skipped += dropped;
     }
     warn_board_limit(lib, &plan, options, &mut report)?;
 
@@ -250,7 +265,14 @@ pub fn import_archive<L: Library, R: Read + Seek>(
         }
         Ok(bytes)
     };
-    apply(lib, &plan, &mut fetch, report, options.max_boards)
+    apply(
+        lib,
+        &plan,
+        &mut fetch,
+        report,
+        options.max_boards,
+        options.dry_run,
+    )
 }
 
 /// Reads `manifest.json`: checks it is a Snipdeck manifest of a readable version before looking

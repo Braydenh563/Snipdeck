@@ -169,9 +169,9 @@ INSERT INTO item_fts (item_fts, rank) VALUES ('secure-delete', 1);
 INSERT INTO item_fts (item_fts) VALUES ('optimize');
 ";
 
-/// Version 3: an item's colour label and a list's icon. Both are optional text keys, checked
+/// Version 4: an item's colour label and a list's icon. Both are optional text keys, checked
 /// against the sets `snipdeck-core` defines (adding a key later is a new migration).
-pub(crate) const V3: &str = r"
+pub(crate) const V4: &str = r"
 ALTER TABLE items ADD COLUMN label TEXT
     CHECK (label IS NULL OR label IN
         ('blue', 'teal', 'green', 'amber', 'orange', 'red', 'violet', 'slate'));

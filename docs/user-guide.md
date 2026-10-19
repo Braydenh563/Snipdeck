@@ -10,17 +10,21 @@ This guide says what the app is built to do.
 
 - A **board** is a workspace, such as "Work" or "Personal". The Free plan has up to 5 boards.
 - A **list** is a group of items in a board, such as "Email replies". Lists show as tabs in the Panel. A new
-  library starts with a board called "My snippets" and a list called "Snippets".
+  library starts with a board called "My snippets", a list called "Snippets" and a short **Getting started**
+  list. Its four cards show how to paste, copy, try a template and open the menu. Delete the list when you
+  no longer need it.
 - An **item** is one thing to paste: text, code, a link, a template, an image or a file.
-- The **Panel** is the small window on your board. It can dock to a screen edge (see Settings). The **Picker** searches every board at your caret. The
-  **Main window** is where you organise everything.
+- The **Panel** is the small window on your board. It can dock to a screen edge (see [Settings](#settings)).
+  The **Picker** searches every board at your caret. The **Main window** is where you organise everything.
+- The **tray icon** keeps Snipdeck running. A left click shows or hides the Panel. A double-click opens the
+  Main window. The right-click menu has Open Panel, Open Snipdeck, Pause hotkeys and Quit.
 - The **target** is the app you were typing in. When you click an item, Snipdeck pastes into the target. The
   Panel never takes the focus away from it.
 
 ## Add a snippet
 
-Open the Main window and press `Ctrl+N` or the **New item** button. You can also choose **New snippet** in the
-Panel menu (the three dots). Pick a **Kind**, fill in the fields and press `Ctrl+Enter` or **Save**. The item
+Press `Ctrl+N` in the Main window or the Panel, or use the **New item** button. You can also choose **New
+snippet** in the Panel menu (the three dots). Pick a **Kind**, fill in the fields and press `Ctrl+Enter` or **Save**. The item
 goes into the list you were looking at.
 
 | Kind | What to enter |
@@ -62,10 +66,12 @@ Turn on **Sensitive item** under **Privacy** in the editor. Only text, code, lin
 sensitive. A sensitive item:
 
 - Shows as a lock with a hidden preview in lists. In the Main window, hold `Space` on the row (in the Panel too) to reveal it.
-- Is put on the clipboard marked private, so Windows clipboard history and cloud clipboard skip it. If you only copied it, Snipdeck
-  clears it from the clipboard after 30 seconds (if the clipboard still holds it).
+- Is put on the clipboard marked private, so Windows clipboard history and cloud clipboard skip it. If you only
+  copied it, Snipdeck clears it from the clipboard after 30 seconds, if nothing else has been copied since.
+  Change the time, or turn this off, under **Privacy** in Settings.
 - Is masked in the fill form.
-- Is also encrypted on disk, on every plan, with a key protected by Windows (Supporter can add a master password). The title, tags and search text are not
+- Is also encrypted on disk, on every plan, with a key protected by Windows. Supporter can add a master
+  password (see [Master password](#master-password-supporter)). The title, tags and search text are not
   encrypted. See [`crypto.md`](crypto.md).
 
 ## Paste an item
@@ -99,6 +105,18 @@ and the start of the content.
 `Ctrl+Alt+V` pastes the next item of the pinned strip (or, with nothing pinned, of the list you are looking
 at), one per press. After the last one, a message says so and the next press starts again.
 
+### Paste stack (Supporter)
+
+A paste stack is a queue you choose yourself.
+
+1. In the Panel, open an item's menu and choose **Add to paste stack**. Do this for each item. The Panel
+   shows how many are marked. Choose **Remove from paste stack** to take one out.
+2. Press **Start stack** in the strip that appears.
+3. Press `Ctrl+Alt+V` once for each item. The strip shows "2 of 5 · next: Title".
+
+`Esc` in the Panel, the **End stack** button, or pasting the last item ends the stack. **Clear** drops the
+marks before you start. On the Free plan, Start stack tells you it is a Supporter feature.
+
 ## Organise
 
 Use the Main window. The sidebar lists **All items**, **Pinned**, your lists, your tags and the **Trash**. The
@@ -111,6 +129,12 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
   used or recently used. Move a list with `Alt+Up` or `Alt+Down` while it is selected in the sidebar.
 - **Order of items.** Select a row and press `Alt+Up` or `Alt+Down`.
 - **Move.** Choose **Move to list…** from the item menu to move one or more selected items.
+- **Duplicate.** Choose **Duplicate** from the item menu in the Main window to make a copy of the item right
+  after it.
+- **Export a list as text.** Right-click a list in the sidebar and choose **Export as text**. Snipdeck writes
+  a `.txt` file in your Documents folder, such as `Code-20261019.txt`, and a message gives its name. The file
+  starts with the list name. Each item follows, with its title when it has one, and a line of dashes between
+  items. Images, files and sensitive items are left out, because the file is plain text.
 - **Tags.** Choose **Tags…** to tick the tags of the selected items. Delete a tag from the sidebar; its items
   stay. New tags are made in the item editor.
 - **Pin.** Press `Ctrl+P` on a row, or choose **Pin** from its menu. Pinned items show in a strip under the
@@ -119,8 +143,11 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
   entries.
 - **Select many.** `Ctrl`+click or `Ctrl+Space` adds a row, `Shift`+click or `Shift+Arrow` extends, and
   `Ctrl+A` selects all. `Esc` clears the selection.
-- **Open the item menu** with a right-click, the `Menu` key or `Shift+F10`. In the Panel it offers Use, Copy,
-  Edit, Pin or Unpin, and Move to Trash.
+- **Open the item menu** with a right-click, the `Menu` key or `Shift+F10`. Or point at a row or card, or
+  focus it, and press the **More** (⋯) button that appears. It opens the same menu, for a mouse or touch
+  screen. In the Main window the menu offers Use or Paste, Copy, Edit, Duplicate, Pin or Unpin, Move to list,
+  Tags and Move to Trash. In the Panel it offers Use, Copy, Edit, Pin or Unpin, Add to paste stack and Move
+  to Trash.
 - **Edit or delete a list in the Panel.** Right-click its tab, or press `Menu`, `Shift+F10` or `F2` on it.
   Double-click a tab to edit it.
 
@@ -136,9 +163,18 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
 ### Trash and undo
 
 Deleting an item, list or board moves it to the **Trash**. A message with an **Undo** button stays for about
-5 seconds. Later, open **Trash** to restore items (`Enter` or **Restore**) or delete them for good. Deleted
+5 seconds, and longer while the pointer is on it. `Ctrl+Z` does the same as the button. In a search box
+`Ctrl+Z` undoes your typing instead. Later, open **Trash** to restore items (`Enter` or **Restore**) or delete them for good. Deleted
 things are removed from the Trash after 30 days, and **Empty Trash** removes them at once. A board comes back
 only if the Free plan has room for it.
+
+## Commands and shortcuts
+
+- **All commands.** Press `Ctrl+K` (or `Ctrl+Shift+P`) in the Main window, or choose **All commands…** in
+  the Panel menu. Type a few letters, such as "new" or "hotkeys", and press `Enter`. The palette lists the
+  actions of the app, so you never need to remember where one lives.
+- **Keyboard shortcuts.** Press `Ctrl+/` to see every shortcut. It is also a tab in the Help window.
+  Menus and tooltips show the shortcut beside an action.
 
 ## Help and the welcome tour
 
@@ -158,7 +194,10 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   says which.
 - **Appearance.** **Theme** is Windows, Light or Dark. **Language** offers English, Español, Deutsch,
   Français, Português (Brasil), 日本語 and 简体中文, and takes effect the next time Snipdeck starts.
-  **Panel width** is 260 to 480 pixels. You can also drag the Panel's edges.
+  **Accent colour** is Blue (the default), Teal, Green, Amber, Rose, Violet or Windows accent, which follows your
+  Windows colour and is adjusted so text stays readable. **Reduce motion** turns off sliding and fading. It is
+  also off when Windows has **Animation effects** off. **Panel width** is 260 to 480 pixels. You can also drag
+  the Panel's edges.
 - **Panel dock.** **Dock to** fixes the Panel against Floating, Left edge, Right edge, Top edge or Bottom edge
   of the monitor it is on. **Open a docked panel by** is Off, Hover, Click or Hover and click. Off keeps a docked
   Panel open. The other choices fold it into a thin strip, and the Panel shortcut opens it too. **Hover delay**
@@ -169,8 +208,9 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   **Start with Windows** starts Snipdeck hidden in the tray when you sign in. **Keep running in the tray when the
   window closes** is on by default. Turn it off and closing the Panel or the Main window quits Snipdeck.
 - **Never paste into.** Program file names, such as `notepad.exe`. Snipdeck copies instead of pasting there.
-- **Licence.** Paste your key (it starts with `SNIP1.`) and press **Activate**. See the
-  [README](../README.md#free-and-supporter).
+- **Licence.** Shows your plan. **Get Supporter…** opens a dialog with the price and a Free and Supporter
+  table. To turn on Supporter, paste your key (it starts with `SNIP1.`) and press **Activate**. See
+  [Free and Supporter](#free-and-supporter) and [`licensing.md`](licensing.md).
 - **Backups.** Snipdeck backs up once a day and keeps the newest ones: set **Backups to keep** from 1 to 60
   (default 7). **Restore** adds back what is missing and
   never removes anything. **Back up now** makes one on demand. **Open data folder** and **Open backups folder** open them.
@@ -178,13 +218,61 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   `Snipdeck-library-20261018.snipdeck`. **Erase library** deletes every board, list, item and backup after
   you type `DELETE`. Your settings and licence stay. Tick **Also forget the encryption key** only if you do not
   need encrypted items in old exports.
-- **Privacy.** A short summary of what is stored and where.
+- **Privacy.** **Clear the clipboard after copying a sensitive item** sets the seconds (30 by default, `0`
+  never clears it). **Master password** sets, changes or removes the password (Supporter). Below them is a
+  short summary of what is stored and where.
+
+## Master password (Supporter)
+
+Sensitive items are encrypted with a key that Windows protects. A master password adds a password on top.
+Set it under **Privacy** in Settings with **Set password…**. It needs at least 8 characters, and Snipdeck
+shows how strong it looks.
+
+- **Unlock when needed.** With a password set, the library starts locked, but Snipdeck does not ask at
+  start-up. It asks the first time you need a sensitive item. Other items always work.
+- **Lock after 15 minutes.** After 15 minutes without use the library locks again. An open sensitive item
+  closes without saving, and a message says so.
+- **While locked,** Snipdeck will not back up, export or restore, because the copy would miss your sensitive
+  items. It asks you to unlock first. The daily backup waits and is tried again later.
+- **No recovery.** If you forget the password, your sensitive items can never be opened again. Snipdeck
+  cannot reset it and keeps no recovery key. Your other items are not affected. Write the password down
+  somewhere safe.
+- **Change or remove it** with **Change…** and **Remove…**. Both ask for the current password. After you
+  remove it, Windows alone protects the key, as on the Free plan. Only setting a password needs Supporter.
+  You can always unlock, change or remove one, so a missing licence never traps your library.
+
+If Windows cannot protect a key on your PC, the master password is not available. See
+[`troubleshooting.md`](troubleshooting.md) and [`crypto.md`](crypto.md).
+
+## Free and Supporter
+
+Snipdeck is free software. Free covers everyday use. Supporter is pay what you want from A$5 (suggested A$8),
+one time, with every 1.x update. Free stays fully usable, and nothing nags you.
+
+| Feature | Free | Supporter |
+|---|---|---|
+| Boards | Up to 5 | Unlimited |
+| Lists and items, Panel and Picker | Yes | Yes |
+| Save from the clipboard | Yes | Yes |
+| Dock to a screen edge | Yes | Yes |
+| Templates with date, time and cursor | Yes | Yes |
+| Sensitive items, masked | Yes | Yes |
+| Encryption on disk | Yes | Yes |
+| Backups, export, light and dark, 7 languages | Yes | Yes |
+| Templates that ask for a value or a choice | No | Yes |
+| Master password | No | Yes |
+| Paste stack, and Paste next | No | Yes |
+
+If you reach the board limit, a message says so. See [`licensing.md`](licensing.md).
 
 ## Import and export
 
 Export is in Settings, as above. The file is a zip with JSON ([`format.md`](format.md)), so other tools can
-read it. To bring a library back, restore one of the backups listed in Settings. Importing text files, Ditto
-or CopyQ data has no screen in this version.
+read it. To export one list as text, see [Organise](#organise). To bring a library back, restore one of the
+backups listed in Settings.
+
+<!-- TODO(B1, B2): Import screen for .snipdeck, Ditto, CopyQ and text files, and the Windows clipboard-history importer. Not in this branch yet. -->
+Importing text files, Ditto or CopyQ data has no screen in this version.
 
 ## Keyboard reference
 
@@ -193,14 +281,16 @@ or CopyQ data has no screen in this version.
 | Anywhere | `Ctrl+Alt+Space` | Show or hide the Panel |
 | Anywhere | `Ctrl+Shift+Space` | Open the Picker |
 | Anywhere | `Ctrl+Shift+2` | Save the clipboard text as a new item |
-| Anywhere | `Ctrl+Alt+V` | Paste next (Supporter) |
+| Anywhere | `Ctrl+Alt+V` | Paste next, or the next item of a paste stack (Supporter) |
 | Panel | `Up`, `Down`, `PageUp`, `PageDown` | Move the selection |
 | Panel | `Enter`, `Shift+Enter` | Use, or copy only |
 | Panel | `1` to `9` | Use that row (search box empty) |
 | Panel | `Ctrl+Tab`, `Ctrl+Shift+Tab` | Next or previous list |
 | Panel | `Ctrl+F` | Focus the search box |
+| Panel | `Ctrl+K` | All commands (opens them in the Main window) |
 | Panel | `Ctrl+N`, `Ctrl+Shift+N` | New item, new list |
 | Panel | `Ctrl+,` | Settings |
+| Panel | `Ctrl+/` | Show the keyboard shortcuts |
 | Panel | `Ctrl+W` | Hide the Panel |
 | Panel | `Ctrl+Z` | Undo the delete (search box empty) |
 | Panel | `Ctrl+E`, `F2` | Edit the selected item |
@@ -210,6 +300,8 @@ or CopyQ data has no screen in this version.
 | Picker | `Tab`, `Shift+Tab` | Change scope |
 | Picker | `Alt+1` to `Alt+9` | Use that row |
 | Picker | `Ctrl+E`, `Esc` | Edit, close |
+| Main window | `Ctrl+K`, `Ctrl+Shift+P` | All commands |
+| Main window | `Ctrl+/` | Show the keyboard shortcuts |
 | Main window | `Ctrl+N`, `Ctrl+Shift+N` | New item, new list |
 | Main window | `Ctrl+,` | Settings |
 | Main window | `Ctrl+W` | Close the window |
@@ -231,3 +323,14 @@ or CopyQ data has no screen in this version.
 `Snipdeck.bat` passes extra options to the app: `--hidden` starts with the Panel hidden, `--dark` forces the
 dark theme for this run, and `--data-dir <folder>` uses another library folder. `Snipdeck.bat demo` opens a
 sample library that is kept in memory and saves nothing.
+
+Two options print a report and exit, without opening a window. Close Snipdeck first. Run them from a
+Command Prompt, with `app\snipdeck.exe` in the folder that holds `Snipdeck.bat`:
+
+- `--check-db` checks the library for damage. It prints the result and exits with 0 (healthy), 1 (problems
+  found) or 2 (the check could not run).
+- `--troubleshoot` prints the same report as **Troubleshoot** in the Help window.
+
+Add `--data-dir <folder>` to check a library somewhere else.
+
+<!-- TODO(B11, C1, C4, B15): drag and drop, the Recent inbox, item colour labels and list icons, and the wording and accessibility pass are in other branches. Add them here when they merge. -->

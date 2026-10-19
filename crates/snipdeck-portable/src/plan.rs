@@ -309,9 +309,18 @@ pub(crate) fn apply<L: Library>(
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
     mut report: ImportReport,
     max_boards: Option<usize>,
+    dry_run: bool,
 ) -> Result<ImportReport> {
-    lib.atomically(|batch| write(batch, plan, fetch, &mut report, max_boards))?;
-    Ok(report)
+    let written = lib.atomically(|batch| {
+        write(batch, plan, fetch, &mut report, max_boards)?;
+        // A dry run does the real writes so its counts are exact, then fails the transaction
+        // so none of it (blob files included) remains.
+        if dry_run { Err(Error::DryRun) } else { Ok(()) }
+    });
+    match written {
+        Ok(()) | Err(Error::DryRun) => Ok(report),
+        Err(e) => Err(e),
+    }
 }
 
 fn write(
@@ -581,6 +590,7 @@ mod tests {
             &mut fetch,
             ImportReport::default(),
             None,
+            false,
         )
         .unwrap();
         assert_eq!(
@@ -620,6 +630,7 @@ mod tests {
                 &mut fetch,
                 ImportReport::default(),
                 None,
+                false,
             )
             .unwrap_err();
             assert!(matches!(err, Error::Malformed { .. }), "{err}");
@@ -647,7 +658,15 @@ mod tests {
             }],
         };
         let mut fetch = |_: &AssetRef| Ok(Vec::new());
-        let report = apply(&mut s, &plan, &mut fetch, ImportReport::default(), None).unwrap();
+        let report = apply(
+            &mut s,
+            &plan,
+            &mut fetch,
+            ImportReport::default(),
+            None,
+            false,
+        )
+        .unwrap();
         assert_eq!(report.tags_added, 1);
         assert_eq!(s.tags().unwrap().len(), 3);
         assert_eq!(s.check_integrity().unwrap(), Vec::<String>::new());
@@ -665,6 +684,7 @@ mod tests {
             &mut fetch,
             ImportReport::default(),
             None,
+            false,
         )
         .unwrap_err();
         assert_eq!(state(&s).4, before.4);

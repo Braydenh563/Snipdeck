@@ -21,11 +21,12 @@ use slint::{
 use snipdeck_core::{ItemKind, ListAccent, ListIcon, ListSort};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
-    system_look::{HighContrast, Rgb},
+    system_look::HighContrast,
 };
 use snipdeck_ui as ui;
 
 use crate::{
+    accent::Accent,
     binding::{
         Loggable, Shown, arm_toast, extension_of, index, item_kind_of, model, redraw_all,
         register_redraw, to_i32,
@@ -40,6 +41,7 @@ use crate::{
         fit_logical, fit_to_screen, place_of, place_over_owner, restore_place, size_before_show,
     },
     palette::list_color,
+    popup_window::set_look_globals,
     wording,
 };
 
@@ -101,6 +103,9 @@ const EDITOR_WIDTH: f32 = 460.0;
 fn size_to_content(window: &slint::Window, wanted: impl Fn() -> f32) {
     // The form's height depends on its width (a notice wraps), so give it the width first.
     window.set_size(slint::LogicalSize::new(EDITOR_WIDTH, 300.0));
+    // The window is hidden and was filled just now: its `if` rows (the last-board notice) are only
+    // created by a layout pass, so run one before reading the height.
+    ui::layout::force_layout(window);
     let (w, h) = fit_logical((EDITOR_WIDTH, wanted()));
     window.set_size(slint::LogicalSize::new(w, h));
 }
@@ -893,16 +898,15 @@ fn set_side_lists(window: &ui::MainWindow, screen: &MainScreen) {
     })));
 }
 
+#[allow(clippy::too_many_lines, reason = "one flat screen-to-window diff")]
 fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainScreen) {
     let differs = |same: &dyn Fn(&MainScreen) -> bool| previous.is_none_or(|p| !same(p));
 
     if differs(&|p| p.dark == screen.dark) {
         window.set_dark(screen.dark);
     }
-    if differs(&|p| {
-        p.high_contrast == screen.high_contrast && p.reduced_motion == screen.reduced_motion
-    }) {
-        set_look(window, screen.high_contrast.as_ref(), screen.reduced_motion);
+    if differs(&|p| look_key(p) == look_key(screen)) {
+        apply_look(window, screen);
     }
     if differs(&|p| p.panel_hotkey == screen.panel_hotkey) {
         window.set_panel_hotkey(screen.panel_hotkey.as_str().into());
@@ -938,6 +942,9 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
             icon: slint::Image::default(),
             checked: t.checked,
         })));
+    }
+    if window.get_recent_on() != screen.recent_on {
+        window.set_recent_on(screen.recent_on);
     }
     if differs(&|p| p.counts == screen.counts) {
         window.set_count_all(to_i32(screen.counts.all));
@@ -997,23 +1004,27 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     }
 }
 
-/// The Windows high-contrast colours (or off) and whether motion is reduced.
-pub(crate) fn set_look<C>(component: &C, hc: Option<&HighContrast>, reduced_motion: bool)
-where
+/// The Windows high-contrast colours, the accent and whether motion is reduced.
+pub(crate) fn set_look<C>(
+    component: &C,
+    hc: Option<&HighContrast>,
+    accent: Option<&Accent>,
+    reduced_motion: bool,
+) where
     C: ComponentHandle,
     for<'a> ui::SystemLook<'a>: slint::Global<'a, C>,
 {
-    let look = component.global::<ui::SystemLook<'_>>();
-    look.set_reduced_motion(reduced_motion);
-    look.set_high_contrast(hc.is_some());
-    if let Some(hc) = hc {
-        let color = |c: Rgb| slint::Color::from_rgb_u8(c.r, c.g, c.b);
-        look.set_hc_window(color(hc.window));
-        look.set_hc_window_text(color(hc.window_text));
-        look.set_hc_highlight(color(hc.highlight));
-        look.set_hc_highlight_text(color(hc.highlight_text));
-        look.set_hc_gray_text(color(hc.gray_text));
-    }
+    set_look_globals(
+        &component.global::<ui::SystemLook<'_>>(),
+        hc,
+        accent,
+        reduced_motion,
+    );
+}
+
+/// What `apply_look` reads, to tell whether the window's look changed.
+fn look_key(screen: &MainScreen) -> (Option<HighContrast>, Option<Accent>, bool) {
+    (screen.high_contrast, screen.accent, screen.reduced_motion)
 }
 
 fn apply_look<C>(component: &C, screen: &MainScreen)
@@ -1024,6 +1035,7 @@ where
     set_look(
         component,
         screen.high_contrast.as_ref(),
+        screen.accent.as_ref(),
         screen.reduced_motion,
     );
 }

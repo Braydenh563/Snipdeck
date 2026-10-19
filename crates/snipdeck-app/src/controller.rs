@@ -18,22 +18,27 @@ use snipdeck_platform::{
     tray::TrayEvent,
 };
 use snipdeck_store::{
-    Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, Store, TagRepo, TrashRepo, Trashable,
-    crypto::KeyRing,
+    Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, RecentRepo, Store, TagRepo, TrashRepo,
+    Trashable, crypto::KeyRing,
 };
 
 mod commands_ctl;
 mod dock_ctl;
 mod editor_ctl;
+mod lock_ctl;
 mod main_ctl;
 mod onboarding_ctl;
 mod panel;
+mod recent_ctl;
 mod settings_ctl;
 
+pub use lock_ctl::{MasterProblem, MasterState};
 pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameError};
 pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry};
+pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 
 use crate::{
+    accent::Accent,
     capture::{self, Captured},
     dock::DockState,
     fill::{self, FillModel},
@@ -72,7 +77,9 @@ pub const TOAST_EXIT: Duration = Duration::from_millis(90);
 
 /// What the controller needs from the library: every repository trait in one bound, and a way
 /// to make several writes land together (or not at all).
-pub trait Library: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + BlobStore {
+pub trait Library:
+    BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + BlobStore + RecentRepo
+{
     /// Runs `f` in one store transaction: what it does through the [`Batch`] commits together
     /// when `f` returns `Ok`, and none of it happens when it returns `Err`.
     ///
@@ -99,19 +106,51 @@ pub trait Library: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + BlobS
     /// The store failing to read.
     fn has_plain_sensitive(&self) -> snipdeck_store::Result<bool>;
 
-    /// Sets up encryption (no master password) and leaves the library unlocked.
+    /// Sets up encryption, with a master password if `password` is `Some`, and leaves the library
+    /// unlocked.
     ///
     /// # Errors
     ///
     /// The key could not be made or wrapped, or the store failed.
-    fn create_key_ring(&mut self, ring: &KeyRing<'_>) -> snipdeck_store::Result<()>;
+    fn create_key_ring(
+        &mut self,
+        ring: &KeyRing<'_>,
+        password: Option<&str>,
+    ) -> snipdeck_store::Result<()>;
 
-    /// Opens the stored key (no master password).
+    /// Opens the stored key. `password` is the master password, `None` when none is set.
     ///
     /// # Errors
     ///
-    /// The key does not open (a master password is set, another user's key), or the store failed.
-    fn unlock_key_ring(&mut self, ring: &KeyRing<'_>) -> snipdeck_store::Result<()>;
+    /// The key does not open (a wrong or missing password, another user's key), or the store
+    /// failed.
+    fn unlock_key_ring(
+        &mut self,
+        ring: &KeyRing<'_>,
+        password: Option<&str>,
+    ) -> snipdeck_store::Result<()>;
+
+    /// Whether the stored key needs a master password (`false` with no key).
+    ///
+    /// # Errors
+    ///
+    /// The OS binding rejected the record, or the store failed.
+    fn has_master_password(&self, ring: &KeyRing<'_>) -> snipdeck_store::Result<bool>;
+
+    /// Re-wraps the key under a new master password (`None` removes it). `current` is the one set.
+    ///
+    /// # Errors
+    ///
+    /// A wrong `current`, an empty `new`, or the store failed. Nothing changes on error.
+    fn change_master_password(
+        &mut self,
+        ring: &KeyRing<'_>,
+        current: Option<&str>,
+        new: Option<&str>,
+    ) -> snipdeck_store::Result<()>;
+
+    /// Forgets the key and every decrypted payload held in memory (the idle lock).
+    fn lock_key_ring(&mut self);
 
     /// Whether the key is open.
     fn is_unlocked(&self) -> bool;
@@ -133,12 +172,37 @@ impl Library for Store {
         Store::has_plain_sensitive(self)
     }
 
-    fn create_key_ring(&mut self, ring: &KeyRing<'_>) -> snipdeck_store::Result<()> {
-        Store::create_key_ring(self, ring, None)
+    fn create_key_ring(
+        &mut self,
+        ring: &KeyRing<'_>,
+        password: Option<&str>,
+    ) -> snipdeck_store::Result<()> {
+        Store::create_key_ring(self, ring, password)
     }
 
-    fn unlock_key_ring(&mut self, ring: &KeyRing<'_>) -> snipdeck_store::Result<()> {
-        Store::unlock_key_ring(self, ring, None)
+    fn unlock_key_ring(
+        &mut self,
+        ring: &KeyRing<'_>,
+        password: Option<&str>,
+    ) -> snipdeck_store::Result<()> {
+        Store::unlock_key_ring(self, ring, password)
+    }
+
+    fn has_master_password(&self, ring: &KeyRing<'_>) -> snipdeck_store::Result<bool> {
+        Store::has_master_password(self, ring)
+    }
+
+    fn change_master_password(
+        &mut self,
+        ring: &KeyRing<'_>,
+        current: Option<&str>,
+        new: Option<&str>,
+    ) -> snipdeck_store::Result<()> {
+        Store::change_master_password(self, ring, current, new)
+    }
+
+    fn lock_key_ring(&mut self) {
+        Store::lock_key_ring(self);
     }
 
     fn is_unlocked(&self) -> bool {
@@ -212,6 +276,8 @@ pub enum Effect {
     ResizeWindow(Edge),
     /// Move and size the Panel to this frame (a stored place restored, or a frame clamped).
     PlaceWindow(Rect),
+    /// Show the window that asks for the master password (a locked sensitive item was needed).
+    OpenUnlock,
 }
 
 /// How far a toast is through its life (the Slint `ToastPhase`).
@@ -223,6 +289,21 @@ pub enum ToastPhase {
     Hold,
     /// Fading out.
     Exit,
+}
+
+/// The paste stack strip of the Panel.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct StackView {
+    /// How many items are marked.
+    pub count: usize,
+    /// "Start stack" was chosen: Paste next walks the marks.
+    pub running: bool,
+    /// How many have been pasted so far (the index of the next one).
+    pub position: usize,
+    /// The title of the item Paste next pastes next (empty when it has no title).
+    pub next_title: String,
+    /// The marked items, in the order they will be pasted.
+    pub items: Vec<ItemId>,
 }
 
 /// The toast on screen.
@@ -337,6 +418,10 @@ pub struct View {
     /// The high-contrast colours while a Windows high-contrast theme is on (it overrides the
     /// theme setting), else `None`.
     pub high_contrast: Option<HighContrast>,
+    /// The user's accent, when it is not the built-in blue.
+    pub accent: Option<Accent>,
+    /// The paste stack, while items are marked or it runs.
+    pub stack: Option<StackView>,
     /// Animations are off: the `reduce_motion` setting, or Windows' "Animation effects" off.
     pub reduced_motion: bool,
     /// The toast, if one is showing.
@@ -358,6 +443,8 @@ pub struct View {
     pub picker: Option<PickerView>,
     /// The template fill form, while it is open.
     pub fill: Option<FillView>,
+    /// The Recent inbox (clock tab), while it is on in the settings.
+    pub recent: Option<crate::recent::RecentView>,
 }
 
 /// What pressing Undo on the toast `seq` brings back from the Trash.
@@ -394,6 +481,8 @@ pub struct Controller<S, C, K, T> {
     /// so the secret does not sit in memory for the wait.
     clipboard_clear: Option<(Timestamp, ClipboardDigest)>,
     model: PanelModel,
+    /// The search index shared by the Panel and the Picker, rebuilt only after a write.
+    index_cache: crate::index_cache::IndexCache,
     settings: Settings,
     entitlements: Entitlements,
     visible: bool,
@@ -411,6 +500,10 @@ pub struct Controller<S, C, K, T> {
     fill_seq: u64,
     /// Where "paste next" is in its run.
     queue: PasteQueue,
+    /// The items marked for a paste stack, in marking order.
+    stack: Vec<ItemId>,
+    /// The marked items are being pasted one by one ("Start stack" was chosen).
+    stack_running: bool,
     /// Which of the Panel's two menus is open (never both).
     menu: PanelMenu,
     /// The Main window's state.
@@ -449,6 +542,10 @@ pub struct Controller<S, C, K, T> {
     drag_started: bool,
     /// Placements decided outside a Panel gesture, waiting for the binding.
     pending: Vec<Effect>,
+    /// The master password: whether one is set, whether its prompt is open, the idle clock.
+    lock: lock_ctl::LockState,
+    /// Switches the clipboard listener of the Recent inbox (see `recent_ctl.rs`).
+    recent_gate: Option<snipdeck_platform::clipboard_watch::WatchGate>,
 }
 
 /// Opens the folder of the crash reports in the file manager.
@@ -470,12 +567,17 @@ enum PanelMenu {
 
 /// Facts about the running app that are not settings and not on screen.
 #[derive(Debug, Default, Clone, Copy)]
+#[allow(clippy::struct_excessive_bools, reason = "independent session flags")]
 struct Session {
     /// A real tray icon is in the notification area now (from `TrayEvent::IconPresent`):
     /// closing the Panel may hide it.
     tray_available: bool,
     /// "Pause hotkeys" is on.
     hotkeys_paused: bool,
+    /// "Pause history" is on: the Recent inbox collects nothing until Snipdeck restarts.
+    history_paused: bool,
+    /// The Panel's clock tab is the one selected.
+    recent_open: bool,
     /// The last settings save failed and the user was told.
     save_failed: bool,
     /// The welcome tour's step while it is open.
@@ -511,7 +613,8 @@ where
         settings: Settings,
         entitlements: Entitlements,
     ) -> snipdeck_store::Result<Self> {
-        let mut model = PanelModel::load(&store, None, None)?;
+        let index_cache = crate::index_cache::IndexCache::new();
+        let mut model = PanelModel::load_cached(&store, None, None, &index_cache)?;
         model.set_policy(policy_of(&settings));
         model.set_target(target.current());
         let shown_at = clock.now();
@@ -523,6 +626,7 @@ where
             tz: TimeZone::system(),
             clipboard_clear: None,
             model,
+            index_cache,
             settings,
             entitlements,
             visible: true,
@@ -535,6 +639,8 @@ where
             fill: None,
             fill_seq: 0,
             queue: PasteQueue::default(),
+            stack: Vec::new(),
+            stack_running: false,
             menu: PanelMenu::None,
             main: MainModel::new(),
             editor: None,
@@ -556,6 +662,8 @@ where
             monitor: None,
             drag_started: false,
             pending: Vec::new(),
+            lock: lock_ctl::LockState::new(shown_at),
+            recent_gate: None,
         })
     }
 
@@ -621,6 +729,8 @@ where
             docked: self.dock_edge().is_some(),
             dark: self.look().dark,
             high_contrast: self.look().high_contrast,
+            accent: self.accent(),
+            stack: self.stack_view(),
             reduced_motion: self.look().reduce_motion,
             toast: self.toast_view(),
             board_menu: (self.menu == PanelMenu::Board).then(|| {
@@ -666,6 +776,7 @@ where
                     masked,
                 }
             }),
+            recent: self.recent_view(),
         }
     }
 
@@ -681,6 +792,13 @@ where
         })
     }
 
+    /// The user's accent: the preset they chose, or the Windows accent; `None` keeps the built-in blue.
+    #[must_use]
+    pub fn accent(&self) -> Option<Accent> {
+        let system = self.os_look.accent.map(|c| [c.r, c.g, c.b]);
+        crate::accent::resolve(self.settings.accent, system)
+    }
+
     /// The look in force: the `theme` setting over what Windows says; high contrast always wins.
     fn look(&self) -> SystemLook {
         SystemLook {
@@ -690,6 +808,7 @@ where
                 Theme::Dark => true,
             },
             high_contrast: self.os_look.high_contrast,
+            accent: self.os_look.accent,
             reduce_motion: self.os_look.reduce_motion || self.settings.reduce_motion,
         }
     }
@@ -908,6 +1027,7 @@ where
             saver.changed(&self.settings, now);
         }
         self.dock_resync();
+        self.sync_recent_gate();
     }
 
     /// The Main window was moved, resized, maximised or restored: remembers where it is, to
@@ -1090,7 +1210,7 @@ where
     pub fn open_picker(&mut self) {
         self.fill = None;
         self.on_target_changed();
-        match PickerModel::load(&self.store, self.model.board()) {
+        match PickerModel::load_cached(&self.store, self.model.board(), &self.index_cache) {
             Ok(picker) => self.picker = Some(picker),
             Err(_) => self.show_toast(failed()),
         }
@@ -1266,6 +1386,65 @@ where
         self.show_toast(toast);
     }
 
+    fn stack_view(&self) -> Option<StackView> {
+        if self.stack.is_empty() {
+            return None;
+        }
+        let position = if self.stack_running {
+            self.queue.position()
+        } else {
+            0
+        };
+        let next_title = self
+            .stack
+            .get(position)
+            .and_then(|id| self.store.item(*id).ok())
+            .map(|i| i.title)
+            .unwrap_or_default();
+        Some(StackView {
+            count: self.stack.len(),
+            running: self.stack_running,
+            position,
+            next_title,
+            items: self.stack.clone(),
+        })
+    }
+
+    /// Marks `item` for the paste stack, or unmarks it. Ignored while a stack runs.
+    pub fn toggle_stack_mark(&mut self, item: ItemId) {
+        if self.stack_running {
+            return;
+        }
+        if let Some(at) = self.stack.iter().position(|id| *id == item) {
+            self.stack.remove(at);
+        } else {
+            self.stack.push(item);
+        }
+    }
+
+    /// "Start stack": Paste next now walks the marked items. A Supporter feature.
+    pub fn start_stack(&mut self) {
+        if self.stack.is_empty() {
+            return;
+        }
+        if !self.entitlements.allows(Feature::PasteStack) {
+            self.show_toast(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::NeedsPro(Feature::PasteStack),
+            });
+            return;
+        }
+        self.queue.reset();
+        self.stack_running = true;
+    }
+
+    /// Drops the marks and ends a running stack (Esc in the Panel, "End stack", or the last paste).
+    pub fn end_stack(&mut self) {
+        self.stack.clear();
+        self.stack_running = false;
+        self.queue.reset();
+    }
+
     /// The paste-next hotkey: pastes the next item of the pinned strip (when the board has
     /// pinned items) or of the list the Panel shows. See [`paste_next`].
     pub fn paste_next(&mut self) -> Option<UseResult> {
@@ -1279,6 +1458,7 @@ where
         self.on_target_changed();
         let pinned = self.model.pinned();
         let (source, ids) = match (self.model.board(), self.model.list()) {
+            _ if self.stack_running => (paste_next::Source::Stack, self.stack.clone()),
             (Some(board), _) if !pinned.is_empty() => (
                 paste_next::Source::Pinned(board),
                 pinned.iter().map(|r| r.id).collect::<Vec<_>>(),
@@ -1299,6 +1479,7 @@ where
                 None
             }
             paste_next::Next::Finished => {
+                self.end_stack();
                 self.show_toast(neutral(ToastMessage::PasteNextFinished));
                 None
             }
@@ -1343,6 +1524,7 @@ where
         };
         match usecase::use_item(&mut self.store, &mut env, &request) {
             Ok(used) => {
+                self.note_activity();
                 self.queue.used(item);
                 self.schedule_clipboard_clear(item, used.outcome);
                 self.show_toast(toast::after_use(
@@ -1420,6 +1602,10 @@ where
     /// Shows `toast`, replacing the one on screen. The host then calls
     /// [`toast_tick`](Self::toast_tick) after [`TOAST_ENTER`] and follows the delays it returns.
     pub fn show_toast(&mut self, toast: Toast) {
+        // A locked sensitive item behind a master password asks for it, as well as saying so.
+        if toast.message == ToastMessage::Locked {
+            self.request_unlock();
+        }
         self.toast_seq += 1;
         self.undo = None;
         self.toast = Some(ActiveToast {
@@ -1585,6 +1771,7 @@ mod tests {
 
     mod dock;
     mod onboarding;
+    mod recent;
 
     type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 
@@ -2420,6 +2607,87 @@ mod tests {
     }
 
     #[test]
+    fn a_marked_stack_is_pasted_in_the_order_it_was_marked_and_then_ends() {
+        let mut w = world();
+        w.ctl.toggle_stack_mark(w.ids[2]);
+        w.ctl.toggle_stack_mark(w.ids[0]);
+        w.ctl.toggle_stack_mark(w.ids[1]);
+        w.ctl.toggle_stack_mark(w.ids[1]);
+        let stack = w.ctl.view().stack.expect("marks show");
+        assert_eq!((stack.count, stack.running), (2, false));
+
+        w.ctl.start_stack();
+        let stack = w.ctl.view().stack.expect("running");
+        assert_eq!(
+            (stack.running, stack.position, stack.next_title.as_str()),
+            (true, 0, "Three")
+        );
+
+        w.ctl.paste_next();
+        assert_eq!(w.ctl.view().stack.expect("running").position, 1);
+        w.ctl.paste_next();
+        assert_eq!(pasted(&w), ["third", "first"]);
+
+        assert_eq!(w.ctl.paste_next(), None);
+        assert_eq!(
+            w.ctl.view().toast.expect("toast").message,
+            ToastMessage::PasteNextFinished
+        );
+        assert_eq!(
+            w.ctl.view().stack,
+            None,
+            "finishing the queue ends the stack"
+        );
+    }
+
+    #[test]
+    fn ending_a_stack_forgets_the_marks_and_paste_next_goes_back_to_the_list() {
+        let mut w = world();
+        w.ctl.toggle_stack_mark(w.ids[2]);
+        w.ctl.start_stack();
+        w.ctl.end_stack();
+        assert_eq!(w.ctl.view().stack, None);
+        w.ctl.paste_next();
+        assert_eq!(pasted(&w), ["first"]);
+    }
+
+    #[test]
+    fn starting_a_stack_is_a_pro_feature_and_needs_marks() {
+        let mut w = build(Opts {
+            tier: Tier::Free,
+            ..Opts::default()
+        });
+        w.ctl.toggle_stack_mark(w.ids[0]);
+        w.ctl.start_stack();
+        assert_eq!(
+            w.ctl.view().toast.expect("toast").message,
+            ToastMessage::NeedsPro(Feature::PasteStack)
+        );
+        assert!(!w.ctl.view().stack.expect("marks stay").running);
+
+        let mut w = world();
+        w.ctl.start_stack();
+        assert_eq!(w.ctl.view().stack, None, "nothing marked, nothing starts");
+    }
+
+    #[test]
+    fn the_item_menu_marks_and_unmarks_for_the_stack() {
+        let mut w = world();
+        let id = w.ids[0];
+        assert!(
+            w.ctl
+                .item_menu_entries(id)
+                .contains(&ItemMenuEntry::Stack { marked: false })
+        );
+        w.ctl.toggle_stack_mark(id);
+        assert!(
+            w.ctl
+                .item_menu_entries(id)
+                .contains(&ItemMenuEntry::Stack { marked: true })
+        );
+    }
+
+    #[test]
     fn paste_next_is_a_pro_feature() {
         let mut w = build(Opts {
             tier: Tier::Free,
@@ -3117,6 +3385,7 @@ mod tests {
         SystemLook {
             dark,
             high_contrast: None,
+            accent: None,
             reduce_motion: false,
         }
     }
@@ -3170,6 +3439,7 @@ mod tests {
             w.ctl.set_system_look(SystemLook {
                 dark: false,
                 high_contrast: Some(hc),
+                accent: None,
                 reduce_motion: false,
             });
             assert_eq!(w.ctl.view().high_contrast, Some(hc), "{theme:?}");

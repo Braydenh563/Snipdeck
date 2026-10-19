@@ -233,6 +233,8 @@ pub struct ItemEditorView {
     pub dark: bool,
     /// The high-contrast colours, while a Windows high-contrast theme is on.
     pub high_contrast: Option<HighContrast>,
+    /// The user's accent, when it is not the built-in blue.
+    pub accent: Option<crate::accent::Accent>,
     /// Animations are off.
     pub reduced_motion: bool,
     /// The starting values.

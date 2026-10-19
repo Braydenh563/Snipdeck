@@ -72,6 +72,11 @@ pub enum ItemMenuEntry {
         /// The item is pinned now (the row reads "Unpin").
         pinned: bool,
     },
+    /// Add the item to the paste stack, or take it out when `marked`.
+    Stack {
+        /// The item is marked now (the row reads "Remove from paste stack").
+        marked: bool,
+    },
     /// Move the item to the Trash, with an Undo toast.
     Trash,
     /// A line between groups.
@@ -186,6 +191,9 @@ where
             ItemMenuEntry::Separator,
             ItemMenuEntry::Edit,
             ItemMenuEntry::Pin { pinned },
+            ItemMenuEntry::Stack {
+                marked: self.stack.contains(&id),
+            },
             ItemMenuEntry::Separator,
             ItemMenuEntry::Trash,
         ]
@@ -236,6 +244,10 @@ where
             ItemMenuEntry::Edit => vec![Effect::EditItem(id)],
             ItemMenuEntry::Pin { pinned } => {
                 self.set_item_pinned(id, !pinned);
+                Vec::new()
+            }
+            ItemMenuEntry::Stack { .. } => {
+                self.toggle_stack_mark(id);
                 Vec::new()
             }
             ItemMenuEntry::Trash => {
@@ -356,15 +368,16 @@ where
     /// letting go hides it again. The same rule as [`main_reveal`](Self::main_reveal): only a
     /// sensitive row reveals.
     pub fn reveal_row(&mut self, index: usize, on: bool) {
-        self.panel_revealed = if on {
-            self.model
-                .rows()
-                .get(index)
-                .filter(|r| r.sensitive)
-                .map(|r| r.id)
-        } else {
-            None
-        };
+        let id = on
+            .then(|| {
+                self.model
+                    .rows()
+                    .get(index)
+                    .filter(|r| r.sensitive)
+                    .map(|r| r.id)
+            })
+            .flatten();
+        self.panel_revealed = id.filter(|_| self.reveal_allowed());
     }
 
     // ---- The window frame ----------------------------------------------------------------------

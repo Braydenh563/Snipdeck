@@ -443,6 +443,10 @@ macro_rules! repo_impls {
                 items::all_items(self.reader().conn)
             }
 
+            fn change_counter(&self) -> u64 {
+                self.reader().conn.total_changes()
+            }
+
             fn item(&self, id: ItemId) -> Result<Item> {
                 items::item(self.reader().conn, id)
             }

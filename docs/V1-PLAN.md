@@ -12,33 +12,33 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 - [x] A4 CI fixes for clippy 1.99 and tests (fill_window sensitive template, 051ece4).
 
 ## B. Wave 3: finish the features (three S agents)
-- [ ] B1 [S] Import: Settings "Import…" for `.snipdeck`, Ditto, CopyQ, folder of .txt/.md; preview of what it adds (also for Restore); Free board limit respected.
-- [ ] B2 [S] Windows clipboard-history importer (current session; Windows-only, wizard step).
-- [ ] B3 [S] Export a list as text.
-- [ ] B4 [S] Ctrl+Z undoes the last undoable action; Undo toast >= 5 s and pauses on hover.
-- [ ] B5 [S] "Getting started" list seeded on first run (`starter.rs`).
-- [ ] B6 [S] Duplicate item.
-- [ ] B7 [S] Hover/focus "More" (⋯) button on rows and cards = the context menu.
-- [ ] B8 [S] Shortcuts: Ctrl+N, Ctrl+Shift+N, Ctrl+F, Ctrl+D, Ctrl+W, Ctrl+, (where not already in A3).
-- [ ] B9 [S] Tray double-click opens the Main window.
-- [ ] B10 [S] Reduced-motion setting (and follow Windows "Animation effects").
+- [x] B1 [S] Import: Settings "Import…" for `.snipdeck`, Ditto, CopyQ, folder of .txt/.md; preview of what it adds (also for Restore); Free board limit respected.
+- [x] B2 [S] Windows clipboard-history importer (current session; Windows-only, wizard step).
+- [x] B3 [S] Export a list as text.
+- [x] B4 [S] Ctrl+Z undoes the last undoable action; Undo toast >= 5 s and pauses on hover.
+- [x] B5 [S] "Getting started" list seeded on first run (`starter.rs`).
+- [x] B6 [S] Duplicate item.
+- [x] B7 [S] Hover/focus "More" (⋯) button on rows and cards = the context menu.
+- [~] B8 [S] Shortcuts: Ctrl+N, Ctrl+Shift+N, Ctrl+F, Ctrl+D, Ctrl+W, Ctrl+, (where not already in A3).
+- [x] B9 [S] Tray double-click opens the Main window.
+- [x] B10 [S] Reduced-motion setting (and follow Windows "Animation effects").
 - [ ] B11 [S] Drag and drop: reorder items and lists; drop items on a list tab to move; drop files/text on the Panel to create.
-- [ ] B12 [S] Perf: cached per-board index on the store change counter; budget tests (search < 16 ms / 10k, Panel load < 50 ms); release size and idle RAM printed by the Windows build.
-- [ ] B13 [S] CLI: `--check-db`, `--troubleshoot`.
-- [ ] B14 [S] Sensitive clipboard clear: keep the copy-only clear, add the setting (30 s, 0 = off); SPEC 5.7 updated to match.
-- [ ] B15 [S] Wording and a11y leftovers: Help glyph, "Delete for good" everywhere, list-bullets icon, live regions on status texts, HC selected-state tokens, tooltips on every icon button and rail item, German segmented widths, menu Tab dismisses, Pin/Unpin label, Move to Trash button variant, radio arrow keys, dock handle hit area, tab tooltips, Panel row focus ring (`.claude/remaining/ux-audit-2026-10-19.md`).
+- [x] B12 [S] Perf: cached per-board index on the store change counter; budget tests (search < 16 ms / 10k, Panel load < 50 ms); release size and idle RAM printed by the Windows build.
+- [x] B13 [S] CLI: `--check-db`, `--troubleshoot`.
+- [x] B14 [S] Sensitive clipboard clear: keep the copy-only clear, add the setting (30 s, 0 = off); SPEC 5.7 updated to match.
+- [x] B15 [S] Wording and a11y leftovers: Help glyph, "Delete for good" everywhere, list-bullets icon, live regions on status texts, HC selected-state tokens, tooltips on every icon button and rail item, German segmented widths, menu Tab dismisses, Pin/Unpin label, Move to Trash button variant, radio arrow keys, dock handle hit area, tab tooltips, Panel row focus ring (`.claude/remaining/ux-audit-2026-10-19.md`).
 
 ## C. Wave 4: the deferred features, now in v1
 - [ ] C1 [S] Recent inbox (SPEC 5.6): opt-in, off by default, last 200 entries or 7 days, excludes sensitive/password sources and Windows "exclude from history" formats; Promote to a list; clock tab in the Panel; sidebar entry.
-- [ ] C2 [S] Paste stack (Pro, SPEC 5.1): multi-select, Start stack, queue shown in the Panel, Paste next advances.
-- [ ] C3 [S] Master password (Pro, SPEC 5.7): Argon2id, unlock per session and idle timeout, change and remove, recovery warning.
+- [x] C2 [S] Paste stack (Pro, SPEC 5.1): multi-select, Start stack, queue shown in the Panel, Paste next advances.
+- [x] C3 [S] Master password (Pro, SPEC 5.7): Argon2id, unlock per session and idle timeout, change and remove, recovery warning. (`controller/lock_ctl.rs`, `unlock_binding.rs`, `master_password.slint`; Windows behaviour unverified.)
 - [ ] C4 [S] Item colour label (8 DESIGN swatches, 4 px bar, filter chip) and list icon (curated set).
-- [ ] C5 [S] Accent colour: Index Blue default; presets teal, green, amber, rose, violet; "Windows accent" option nudged to pass contrast; every token pair measured for WCAG 2.2 AA in a test; full high-contrast use; 225 % icon scaling.
-- [ ] C6 [S] Edge dock ships (built: dock.rs, dock_ctl.rs): settings checked, wizard steps present.
+- [x] C5 [S] Accent colour: Index Blue default; presets teal, green, amber, rose, violet; "Windows accent" option nudged to pass contrast; every token pair measured for WCAG 2.2 AA in a test; full high-contrast use; 225 % icon scaling.
+- [x] C6 [S] Edge dock ships (built: dock.rs, dock_ctl.rs): settings checked, wizard steps present.
 - [x] C7 [S] MSIX packaging files and `docs/packaging.md` steps (owner buys the account); code-signing steps for SignPath in the release docs. Note: packaging files (manifest template) still open.
-- [ ] C8 [S] Supporter (was Pro; owner 2026-10-19): Free board limit 3 -> 5 (entitlements, tests, docs); pay what you want from A$5, suggested A$8, one-time; free key on request; never nag. Get Supporter: mailto link in Settings, the board-limit toast and the site; address is a placeholder until the owner supplies it.
+- [x] C8 [S] Supporter (was Pro; owner 2026-10-19): Free board limit 3 -> 5 (entitlements, tests, docs); pay what you want from A$5, suggested A$8, one-time; free key on request; never nag. Get Supporter: mailto link in Settings, the board-limit toast and the site; address is a placeholder until the owner supplies it.
 
-- [ ] C9 [S] Free vs Supporter made clear (owner 2026-10-19): a compact comparison table (feature, one-line description, tick or cross per tier) in Settings Licence and the Get Supporter dialog, the README and the site. Honest framing: Supporter pays for convenience and supports the app; the code is GPL; Free stays fully usable. No walls of text.
+- [x] C9 [S] Free vs Supporter made clear (owner 2026-10-19): a compact comparison table (feature, one-line description, tick or cross per tier) in Settings Licence and the Get Supporter dialog, the README and the site. Honest framing: Supporter pays for convenience and supports the app; the code is GPL; Free stays fully usable. No walls of text.
 ## D. Images, site, controller
 - [ ] D1 [S] Regenerate every golden after A-C, read each one; UX fixes from what they show.
 - [ ] D2 [S] README shots and hero images at 2x (`SNIPDECK_SHOT_SCALE=2`, `scripts/readme_shots.py`); Help shot back in.
