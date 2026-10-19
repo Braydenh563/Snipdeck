@@ -364,8 +364,8 @@ msgstr "ヘルプ"
 msgid "Help sections"
 msgstr "ヘルプのセクション"
 
-msgid "Hidden in lists until you hold Space, and kept out of clipboard history."
-msgstr "Space キーを押し続けるまでリストでは隠れ、クリップボード履歴には残りません。"
+msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard 30 seconds after you copy it."
+msgstr "Space キーを押し続けるまで一覧では非表示になり、クリップボード履歴にも残らず、コピーから 30 秒後にクリップボードから消去されます。"
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "非表示。スペースキーを押し続けると表示されます。"
@@ -856,6 +856,9 @@ msgstr "スレート"
 msgid "Snipdeck"
 msgstr "Snipdeck"
 
+msgid "Snipdeck (hotkeys paused)"
+msgstr "Snipdeck（ホットキーは一時停止中）"
+
 msgid "Snipdeck Pro"
 msgstr "Snipdeck Pro"
 
@@ -891,6 +894,9 @@ msgstr "並べ替え"
 
 msgid "Source code"
 msgstr "ソースコード"
+
+msgid "Space"
+msgstr "Space"
 
 msgid "Start with Windows"
 msgstr "Windows の起動時に開始"

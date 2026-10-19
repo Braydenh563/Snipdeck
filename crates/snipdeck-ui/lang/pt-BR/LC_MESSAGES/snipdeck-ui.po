@@ -364,8 +364,8 @@ msgstr "Ajuda"
 msgid "Help sections"
 msgstr "Seções da ajuda"
 
-msgid "Hidden in lists until you hold Space, and kept out of clipboard history."
-msgstr "Oculto nas listas até você manter a barra de espaço pressionada, e fora do histórico da área de transferência."
+msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard 30 seconds after you copy it."
+msgstr "Oculto nas listas até você manter a barra de espaço pressionada, fora do histórico da área de transferência e apagado da área de transferência 30 segundos depois de copiado."
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "Oculto. Segure a barra de espaço para revelar."
@@ -856,6 +856,9 @@ msgstr "Ardósia"
 msgid "Snipdeck"
 msgstr "Snipdeck"
 
+msgid "Snipdeck (hotkeys paused)"
+msgstr "Snipdeck (atalhos pausados)"
+
 msgid "Snipdeck Pro"
 msgstr "Snipdeck Pro"
 
@@ -891,6 +894,9 @@ msgstr "Ordenar trechos por"
 
 msgid "Source code"
 msgstr "Código-fonte"
+
+msgid "Space"
+msgstr "Espaço"
 
 msgid "Start with Windows"
 msgstr "Iniciar com o Windows"

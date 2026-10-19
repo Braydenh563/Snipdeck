@@ -246,6 +246,13 @@ impl WinClipboard {
         self.call(read_text_job).ok().flatten()
     }
 
+    /// Empties the clipboard if it holds exactly `text` as `CF_UNICODETEXT`. Whether it did.
+    pub fn clear_if_text(&mut self, text: &str) -> bool {
+        let expected = text.to_owned();
+        self.call(move || clear_if_text_job(&expected))
+            .unwrap_or(false)
+    }
+
     fn call<R: Send + 'static>(
         &self,
         job: impl FnOnce() -> R + Send + 'static,
@@ -969,6 +976,34 @@ fn read_text_job() -> Option<String> {
     let text = win_formats::from_unicode_text(&bytes);
     wipe(&mut bytes);
     Some(text)
+}
+
+fn clear_if_text_job(expected: &str) -> bool {
+    let Some(hwnd) = owner_hwnd() else {
+        return false;
+    };
+    let Some(_open) = OpenGuard::open(hwnd, WRITE_OPEN_BUDGET) else {
+        return false;
+    };
+    // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
+    let Ok(handle) = (unsafe { GetClipboardData(u32::from(CF_UNICODETEXT.0)) }) else {
+        return false;
+    };
+    let Some(mut bytes) = read_global(HGLOBAL(handle.0), READ_TEXT_LIMIT) else {
+        return false;
+    };
+    let same = win_formats::from_unicode_text(&bytes) == expected;
+    wipe(&mut bytes);
+    if !same {
+        return false;
+    }
+    // SAFETY: the clipboard is open by this thread with our window as the owner.
+    if unsafe { EmptyClipboard() }.is_err() {
+        return false;
+    }
+    // The clear is a write of its own: an older Written no longer matches anything.
+    with_owner(|owner| owner.ledger.begin_write());
+    true
 }
 
 /// Dispatches the `WM_CLIPBOARDUPDATE`s already queued for our window.
