@@ -7,11 +7,13 @@ In flight: Sonnet agent C8+C9 (Supporter wording in app, FREE_BOARD_LIMIT 5, mai
 
 Next, in order: CI green on PR #5 -> translations pass for ~80 new strings per locale (Haiku; `python3 scripts/i18n.py check`) -> D1 goldens regenerate + read -> wave 3 B1-B15 -> wave 4 C1-C7 -> D2 README shots/hero, D3, D5 -> E1 docs -> F1 Fable sweep (owner-approved, one agent; brief `docs/fable-brief.md`) -> F2 Opus review -> F3 ux-auditor + blind-tester -> F4 gate --full, PR body, retro. Use cloud sessions/agents in parallel only on separate branches; one cargo-heavy agent per target dir.
 
-## Parallel work (2026-10-19 14:13)
-- Cloud session "wave 3a" (B3 export as text, B6 duplicate, B9 tray double-click, B13 CLI): branch `claude/v1-wave3a`, PR into this branch when done.
-- Cloud session "wave 3b" (B4 undo, B8 shortcuts, B10 reduced motion, B14 sensitive clear): branch `claude/v1-wave3b`, PR into this branch.
-- Local agents: C8/C9 + free encryption (working tree), C7 packaging docs (docs only, no cargo).
-- Merge order when they land: C8/C9 first, then 3a, then 3b; then D1 goldens once, after all UI changes.
+## Parallel work (orchestration ledger, 2026-10-19 14:25)
+Hub = this session (`claude/compassionate-pascal-pod8ux`, PR #5). It owns the release branch, merges, `.po/.pot`, `CODEMAP.md`, `HANDOVER.md`, licence/Supporter wording, goldens (D1).
+- Wave 3a cloud session `session_01Haxw5UhdjTPvNo4KAUcPWG`, branch `claude/v1-wave3a`: now B3, B6, B9, B13 -> PR; then B1, B2, B12, C1 (PR every 2-3 items).
+- Wave 3b cloud session `session_016pPMHPMEKcG9VuaY2dcBbm`, branch `claude/v1-wave3b`: now B4, B8, B10, B14 -> PR; then B5, B7, B11, C4.
+- Hub local agents (max 3 + Haiku; one cargo user): C8/C9 + free encryption (finishing), C7 done (58e0d1e), Opus review of merges; next translations (Haiku), C5 accent, C3 master password, C2 paste stack, C6 edge dock, B15.
+- Cloud PRs target the release branch, never main. Hub merges in landing order (merge commits, no rebase), runs CI, then tells the sessions; they merge the release branch back before their next PR.
+- After all UI items land: D1 goldens once, D2 shots, D3, D5, E1, then F1-F4.
 
 ## Task list (mirror of the session's tasks, 2026-10-19 13:20; details per item in `docs/V1-PLAN.md`)
 
