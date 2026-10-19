@@ -1,7 +1,6 @@
-## Now (2026-10-18 13:45, away mode)
-Goal: ship v1 by the morning of 2026-10-19. Branch `claude/compassionate-pascal-pod8ux`, PR #5 (open, CI green on 8dc9fd0). Queue = `.claude/work-order.md`. Next: merge steps 4/6/9 as their agents report, then step 8.
-- Decision (away, 2026-10-18): budget line 55% weekly, stop line 60% (owner is at 40% and needs the rest). Dropped from v1: steps 14 (item colour label + list icon), 15 (accent colour + HC), 18 (edge dock): post-v1.
-- Inbox items are all triaged into the plan (steps 4, 7, 7a, 7b, 9, 17; Store/Pages/signing answered in chat and noted for HANDOVER).
+## Now (2026-10-19 00:30, away mode, max tier)
+Goal: ship v1 by the morning. Branch `claude/compassionate-pascal-pod8ux`, PR #5 (open; CI red on fe2172d: settings goldens, fix in progress). Queue = `.claude/work-order.md`: 0 CI goldens fix, 1 merge step 8 (editor agent), 2 merge step 5 (picker agent), 3 merge step 3a (dock agent), 4 step 13 UX + owner findings (toast, taskbar toggle, window icons, tag manager, New-list space, Main window behaviour, autostart), 5 steps 7a, 7b, 11b, 11, 13a, 19, 20, gate --full, PR body, summary, retro.
+- Decision (away, 2026-10-19): max tier kept (up to three agents building, one Opus); budget line 55% weekly, stop line 60%; the owner's wrong-chat message (composer grammar) is dropped, not logged.
 
 # now.md
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
