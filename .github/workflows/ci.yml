@@ -49,4 +49,4 @@ jobs:
       - run: cargo check --workspace --all-targets --locked
       # Windows-specific logic that needs no window: paths, DPAPI, file permissions, the store
       # and the portable format. The UI and app crates are exercised by the Linux job.
-      - run: cargo test -p snipdeck-core -p snipdeck-store -p snipdeck-portable -p snipdeck-keygen --locked
+      - run: cargo test -p snipdeck-core -p snipdeck-store -p snipdeck-portable -p snipdeck-licence-issuer --locked
