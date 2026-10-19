@@ -724,7 +724,14 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         })));
     }
     if differs(&|p| p.rows == view.rows && p.dark == view.dark) {
-        window.set_rows(model(view.rows.iter().map(|r| panel_row(r, view.dark))));
+        window.set_rows(model(view.rows.iter().enumerate().map(|(i, r)| {
+            let mut row = panel_row(r, view.dark);
+            // The one sensitive row held revealed: the controller put its text in the preview.
+            if view.revealed == Some(i) {
+                row.preview = r.preview.as_str().into();
+            }
+            row
+        })));
     }
     let revealed = view.revealed.map_or(-1, to_i32);
     if window.get_revealed_index() != revealed {
