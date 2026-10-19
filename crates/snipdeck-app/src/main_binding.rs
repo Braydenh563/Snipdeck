@@ -972,6 +972,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
                 label: t.label.as_str().into(),
                 count: 0,
                 color: list_color(t.accent, screen.dark),
+                icon: slint::Image::default(),
                 checked: false,
             }
         })));
