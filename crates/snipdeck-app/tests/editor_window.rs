@@ -109,6 +109,17 @@ fn rig_at(data: &Path, tier: Tier, provider: &SharedProvider) -> Rig {
     }
 }
 
+impl Drop for Rig {
+    /// A shown window is held by the windowing system, and its callbacks hold the controller and
+    /// with it the data folder's lock: hiding them is what lets a "restart" open the folder again.
+    fn drop(&mut self) {
+        let _ = self.panel.hide();
+        if let Some(w) = self.editor.window() {
+            let _ = w.hide();
+        }
+    }
+}
+
 impl Rig {
     /// The editor window, which must be up.
     fn ed(&self) -> ItemEditor {

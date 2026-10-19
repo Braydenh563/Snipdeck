@@ -217,51 +217,75 @@ where
     }
 
     fn wire(self: &Rc<Self>, w: &ui::ItemEditor) {
-        let core = Rc::clone(self);
+        let core = Rc::downgrade(self);
         let weak = w.as_weak();
         w.on_save_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
             crate::trace!("callback editor save-requested");
             if let Some(w) = weak.upgrade() {
                 let input = read_input(&w);
                 core.act(|ctl| ctl.item_editor_save(&input));
             }
         });
-        let core = Rc::clone(self);
+        let core = Rc::downgrade(self);
         w.on_cancel_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
             crate::trace!("callback editor cancel-requested");
             core.act(Controller::item_editor_cancel);
         });
-        let core = Rc::clone(self);
+        let core = Rc::downgrade(self);
         w.on_delete_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
             crate::trace!("callback editor delete-requested");
             core.act(Controller::item_editor_delete);
         });
-        let core = Rc::clone(self);
+        let core = Rc::downgrade(self);
         w.on_tag_toggled(move |i| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
             core.act(|ctl| ctl.item_editor_tag_toggled(index(i)));
         });
-        let core = Rc::clone(self);
+        let core = Rc::downgrade(self);
         w.on_tag_added(move |name| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
             core.act(|ctl| ctl.item_editor_tag_added(name.as_str()));
         });
-        let core = Rc::clone(self);
+        let core = Rc::downgrade(self);
         w.on_edited(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
             // Typing only clears a refusal; nothing else on screen changes.
             core.controller.borrow_mut().item_editor_edited();
             core.sync();
         });
-        let core = Rc::clone(self);
+        let core = Rc::downgrade(self);
         let weak = w.as_weak();
         w.on_browse_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
             crate::trace!("callback editor browse-requested");
             if let Some(w) = weak.upgrade() {
                 core.browse(&w);
             }
         });
         // The window's own close button: leaves like Cancel, asking first when something changed.
-        let core = Rc::clone(self);
+        let core = Rc::downgrade(self);
         let weak = w.as_weak();
         w.window().on_close_requested(move || {
+            let Some(core) = core.upgrade() else {
+                return CloseRequestResponse::HideWindow;
+            };
             if let Some(w) = weak.upgrade()
                 && w.get_dirty()
             {
