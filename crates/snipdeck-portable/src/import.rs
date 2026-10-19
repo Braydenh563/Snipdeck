@@ -21,8 +21,8 @@ use std::str::FromStr;
 
 use snipdeck_core::Content;
 use snipdeck_core::{
-    BlobRef, BoardId, FileEntry, Format, FormatKind, Formats, Inline, ItemId, ItemKind, ListAccent,
-    ListId, ListSort, ListView, Name, TagId, Timestamp,
+    BlobRef, BoardId, FileEntry, Format, FormatKind, Formats, Inline, ItemId, ItemKind, ItemLabel,
+    ListAccent, ListIcon, ListId, ListSort, ListView, Name, TagId, Timestamp,
 };
 use snipdeck_store::crypto::{DataKey, Slot, decrypt_payload};
 use snipdeck_store::name_key;
@@ -517,6 +517,11 @@ impl<R: Read + Seek> Builder<'_, R> {
             .as_deref()
             .map(|a| parse_key::<ListAccent>(a, "list accent"))
             .transpose()?;
+        list.icon = dto
+            .icon
+            .as_deref()
+            .map(|i| parse_key::<ListIcon>(i, "list icon"))
+            .transpose()?;
         list.view = parse_key::<ListView>(&dto.view, "list view")?;
         list.sort = parse_key::<ListSort>(&dto.sort, "list sort")?;
         for item in &dto.items {
@@ -561,6 +566,11 @@ impl<R: Read + Seek> Builder<'_, R> {
             pinned: dto.pinned,
             sensitive: dto.sensitive,
             always_plain: dto.always_plain,
+            label: dto
+                .label
+                .as_deref()
+                .map(|l| parse_key::<ItemLabel>(l, "item label"))
+                .transpose()?,
             use_count: dto.use_count,
             last_used_at: dto
                 .last_used_at

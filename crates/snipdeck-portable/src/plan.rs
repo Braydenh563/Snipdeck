@@ -17,8 +17,9 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use snipdeck_core::{
-    BlobRef, Board, Content, FileEntry, Format, FormatKind, Formats, Item, ItemId, ItemKind, List,
-    ListAccent, ListSort, ListView, Name, Placement, Tag, TagId, Timestamp,
+    BlobRef, Board, Content, FileEntry, Format, FormatKind, Formats, Item, ItemId, ItemKind,
+    ItemLabel, List, ListAccent, ListIcon, ListSort, ListView, Name, Placement, Tag, TagId,
+    Timestamp,
 };
 use snipdeck_store::crypto::{DataKey, Slot};
 use snipdeck_store::{
@@ -90,6 +91,7 @@ pub(crate) struct PlanItem {
     pub pinned: bool,
     pub sensitive: bool,
     pub always_plain: bool,
+    pub label: Option<ItemLabel>,
     pub use_count: u32,
     pub last_used_at: Option<Timestamp>,
     pub source_app: Option<String>,
@@ -119,6 +121,7 @@ impl PlanItem {
             pinned: false,
             sensitive: false,
             always_plain: false,
+            label: None,
             use_count: 0,
             last_used_at: None,
             source_app: None,
@@ -139,6 +142,7 @@ impl PlanItem {
 pub(crate) struct PlanList {
     pub name: Name,
     pub accent: Option<ListAccent>,
+    pub icon: Option<ListIcon>,
     pub view: ListView,
     pub sort: ListSort,
     pub created_at: Timestamp,
@@ -151,6 +155,7 @@ impl PlanList {
         Self {
             name,
             accent: None,
+            icon: None,
             view: ListView::Comfortable,
             sort: ListSort::Manual,
             created_at: now,
@@ -369,6 +374,7 @@ fn write(
             let mut list = List::new(board.id, plan_list.name.clone(), plan_list.created_at);
             list.updated_at = plan_list.updated_at;
             list.accent = plan_list.accent;
+            list.icon = plan_list.icon;
             list.view = plan_list.view;
             list.sort = plan_list.sort;
             lib.insert_list(&list, Placement::Last)?;
@@ -396,6 +402,7 @@ fn build_item(
     item.pinned = plan.pinned;
     item.sensitive = plan.sensitive;
     item.always_plain = plan.always_plain;
+    item.label = plan.label;
     item.use_count = plan.use_count;
     item.last_used_at = plan.last_used_at;
     item.source_app.clone_from(&plan.source_app);

@@ -24,6 +24,30 @@ keyed_enum! {
     }
 }
 
+keyed_enum! {
+    /// An item's colour label: a 4px bar on its card, and a filter in the Main window. The label
+    /// is always shown with its name (tooltip, accessible description, filter chip text), so
+    /// colour is never the only cue.
+    pub enum ItemLabel ("item label") {
+        /// Blue.
+        Blue = "blue",
+        /// Teal.
+        Teal = "teal",
+        /// Green.
+        Green = "green",
+        /// Amber.
+        Amber = "amber",
+        /// Orange.
+        Orange = "orange",
+        /// Red.
+        Red = "red",
+        /// Violet.
+        Violet = "violet",
+        /// Slate.
+        Slate = "slate",
+    }
+}
+
 /// One saved thing the user can paste (SPEC §4), without its content.
 ///
 /// Content lives in [`Formats`](crate::Formats), which storage loads separately and only
@@ -56,6 +80,8 @@ pub struct Item {
     pub use_count: u32,
     /// When the item was last used.
     pub last_used_at: Option<Timestamp>,
+    /// The colour label, if the user set one.
+    pub label: Option<ItemLabel>,
     /// Name of the app the content was captured from, if known.
     pub source_app: Option<String>,
     /// When the item was created.
@@ -83,6 +109,7 @@ impl Item {
             always_plain: false,
             use_count: 0,
             last_used_at: None,
+            label: None,
             source_app: None,
             created_at: now,
             updated_at: now,
@@ -141,11 +168,17 @@ mod tests {
     }
 
     #[test]
+    fn item_label_keys_round_trip_and_there_are_eight() {
+        crate::key::assert_keys_round_trip(ItemLabel::ALL, ItemLabel::key);
+        assert_eq!(ItemLabel::ALL.len(), 8);
+    }
+
+    #[test]
     fn new_item_is_unused_and_unflagged() {
         let item = item();
         assert_eq!((item.use_count, item.last_used_at), (0, None));
         assert!(!item.pinned && !item.sensitive && !item.always_plain);
-        assert!(item.tags.is_empty() && item.preview.is_empty());
+        assert!(item.tags.is_empty() && item.preview.is_empty() && item.label.is_none());
         assert_eq!((item.created_at, item.updated_at), (now(), now()));
     }
 
