@@ -5,7 +5,7 @@
 
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 
-use super::{Controller, Effect, Library};
+use super::{Controller, Library};
 use crate::{host::ClipboardText, tour::TourStep};
 
 impl<S, C, K, T> Controller<S, C, K, T>
