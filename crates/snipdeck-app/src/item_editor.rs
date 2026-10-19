@@ -9,7 +9,7 @@
 use std::{fs, io::Read, path::Path};
 
 use snipdeck_core::{
-    Content, Feature, FileEntry, Inline, ItemKind,
+    Content, Feature, FileEntry, Inline, ItemKind, ItemLabel,
     template::{Template, TemplateError},
 };
 use snipdeck_platform::system_look::HighContrast;
@@ -86,6 +86,8 @@ pub struct EditorInput {
     pub list_index: usize,
     /// The path field of a new Image or File item.
     pub source_path: String,
+    /// The colour label chosen, if any.
+    pub label: Option<ItemLabel>,
 }
 
 /// Why the editor refuses something. The words are `wording::editor_problem_text`.

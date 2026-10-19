@@ -1015,6 +1015,7 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
         || (SharedString::new(), slint::Color::default()),
         |label| (label.name.as_str().into(), list_color(label.accent, dark)),
     );
+    let (label, label_name) = crate::binding::label_fields(row.label);
     ui::MainRow {
         kind: item_kind_of(row.kind, row.sensitive),
         title: row.title.as_str().into(),
@@ -1031,6 +1032,8 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
         },
         list_name,
         list_color: color,
+        label,
+        label_name,
         image: slint::Image::default(),
         pinned: row.pinned,
         selected: row.selected,

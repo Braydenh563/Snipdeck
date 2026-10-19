@@ -328,6 +328,7 @@ fn read_input(w: &ui::ItemEditor) -> EditorInput {
         sensitive: w.get_sensitive(),
         list_index: index(w.get_list_index()),
         source_path: w.get_source_path().to_string(),
+        label: crate::binding::label_of(w.get_label_index()),
     }
 }
 
@@ -378,6 +379,7 @@ fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
             .map(|n| SharedString::from(n.as_str())),
     ));
     w.set_list_index(to_i32(fields.list_index));
+    w.set_label_index(crate::binding::label_index(fields.label));
     w.set_content_large(view.large.is_some());
     w.set_content_size(
         view.large

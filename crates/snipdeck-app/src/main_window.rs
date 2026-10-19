@@ -10,8 +10,8 @@
 use std::collections::{HashMap, HashSet};
 
 use snipdeck_core::{
-    Board, BoardId, Item, ItemId, ItemKind, List, ListAccent, ListIcon, ListId, ListSort,
-    Placement, Tag, TagId,
+    Board, BoardId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
+    ListSort, Placement, Tag, TagId,
 };
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable};
 
@@ -113,6 +113,8 @@ pub struct Row {
     pub list: Option<ListLabel>,
     /// Pinned.
     pub pinned: bool,
+    /// The item's colour label.
+    pub label: Option<ItemLabel>,
     /// In the selection.
     pub selected: bool,
 }
@@ -617,6 +619,7 @@ impl MainModel {
                         .then(|| self.list_labels.get(&item.list_id).cloned())
                         .flatten(),
                     pinned: item.pinned,
+                    label: item.label,
                     selected: self.selected.contains(&Key::Item(item.id)),
                 },
                 Entry::Trashed(entry) => {
@@ -633,6 +636,7 @@ impl MainModel {
                         },
                         list: None,
                         pinned: false,
+                        label: None,
                         selected: self.selected.contains(&key),
                     }
                 }

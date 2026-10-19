@@ -113,6 +113,126 @@ struct PlaceholderHelp {
     prompted: bool,
 }
 
+// The cell of the colour picker that means "no colour". Same size and states as `Swatch`.
+component NoColour inherits Rectangle {
+    in property <string> label;
+    in property <bool> selected: false;
+    in property <bool> show-focus: false;
+    callback clicked();
+
+    width: Space.hit;
+    height: Space.hit;
+    accessible-role: radio-button;
+    accessible-label: root.label;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.clicked(); }
+
+    Rectangle {
+        border-width: root.selected ? 2px : 0px;
+        border-color: Theme.text-primary;
+        border-radius: Radius.lg;
+        background: transparent;
+    }
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: touch.has-hover || touch.pressed ? 22px : 20px;
+        height: self.width;
+        border-radius: Radius.sm;
+        border-width: 1px;
+        border-color: Theme.border-strong;
+        background: touch.pressed ? Theme.bg-sunken : transparent;
+        animate width { duration: Motion.instant; easing: Motion.out; }
+        Icon {
+            source: Icons.x;
+            size: 12px;
+            tint: Theme.text-secondary;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: root.show-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.lg + 2px;
+        background: transparent;
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+// "No colour" and a set of hues as one radio group: one tab stop, Left / Right / Home / End choose. Used for a list's
+// colour (the nine list hues) and an item's colour label (eight of them).
+// `accent` is -1 for none, else the index into `hues`; `names` are the spoken colour names in that order.
+component ColourPicker inherits Rectangle {
+    in property <[ListHue]> hues;
+    in property <int> accent: -1;
+    in property <string> label;
+    in property <string> none-label;
+    in property <[string]> names;
+    callback chosen(accent: int);
+    out property <bool> has-focus: scope.has-focus;
+
+    function move(to: int) {
+        if (to >= -1 && to < root.hues.length && to != root.accent) {
+            root.chosen(to);
+        }
+    }
+
+    height: Space.hit;
+    forward-focus: scope;
+    accessible-role: radio-group;
+    accessible-label: root.label;
+
+    HorizontalLayout {
+        spacing: Space.s1;
+        alignment: start;
+        NoColour {
+            label: root.none-label;
+            selected: root.accent == -1;
+            show-focus: scope.has-focus && root.accent == -1;
+            clicked => { root.move(-1); }
+        }
+        for h[i] in root.hues: Swatch {
+            hue: h;
+            label: root.names[i];
+            selected: i == root.accent;
+            keyboard-focusable: false;
+            show-focus: scope.has-focus && i == root.accent;
+            clicked => { root.move(i); }
+        }
+    }
+
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == Key.RightArrow || event.text == Key.DownArrow) {
+                root.move(root.accent + 1);
+                return accept;
+            }
+            if (event.text == Key.LeftArrow || event.text == Key.UpArrow) {
+                root.move(root.accent - 1);
+                return accept;
+            }
+            if (event.text == Key.Home) {
+                root.move(-1);
+                return accept;
+            }
+            if (event.text == Key.End) {
+                root.move(root.hues.length - 1);
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
 // Kinds the user may switch between: Text, Code, Link, Template (0 to 3). A NEW item may also be an Image or a File
 // (4, 5): it asks for the path of the file (typed or, where the host can, chosen with `browse-requested`). An item
 // that already exists keeps its kind: an Image or File shows what it holds and lets title, tags, list and flags
@@ -136,6 +256,8 @@ export component ItemEditor inherits Window {
     // The list the item is in: an index into `list-names`.
     in-out property <int> list-index: 0;
     in property <[string]> list-names;
+    // The colour label: -1 none, else 0 to 7 in the order blue, teal, green, amber, orange, red, violet, slate.
+    in-out property <int> label-index: -1;
     // Every tag, with `checked` on the ones this item has.
     in property <[ChoiceEntry]> tags;
     // How many of `tags` are ticked ("No tags" shows when it is 0).
@@ -487,6 +609,24 @@ export component ItemEditor inherits Window {
                     }
 
                     FormField {
+                        label: @tr("Colour label");
+                        ColourPicker {
+                            hues: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate];
+                            label: @tr("Colour label");
+                            none-label: @tr("No label");
+                            names: [@tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Orange"), @tr("Red"), @tr("Violet"), @tr("Slate")];
+                            accent: root.label-index;
+                            chosen(a) => {
+                                root.label-index = a;
+                                root.touch();
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+
+                    FormField {
                         label: @tr("Tags");
                         HorizontalLayout {
                             spacing: Space.s2;
@@ -624,125 +764,6 @@ export component ItemEditor inherits Window {
 }
 
 // ---- List and board editors ----------------------------------------------------------------------
-
-// The cell of the colour picker that means "no colour". Same size and states as `Swatch`.
-component NoColour inherits Rectangle {
-    in property <string> label;
-    in property <bool> selected: false;
-    in property <bool> show-focus: false;
-    callback clicked();
-
-    width: Space.hit;
-    height: Space.hit;
-    accessible-role: radio-button;
-    accessible-label: root.label;
-    accessible-checkable: true;
-    accessible-checked: root.selected;
-    accessible-action-default => { root.clicked(); }
-
-    Rectangle {
-        border-width: root.selected ? 2px : 0px;
-        border-color: Theme.text-primary;
-        border-radius: Radius.lg;
-        background: transparent;
-    }
-    Rectangle {
-        x: (parent.width - self.width) / 2;
-        y: (parent.height - self.height) / 2;
-        width: touch.has-hover || touch.pressed ? 22px : 20px;
-        height: self.width;
-        border-radius: Radius.sm;
-        border-width: 1px;
-        border-color: Theme.border-strong;
-        background: touch.pressed ? Theme.bg-sunken : transparent;
-        animate width { duration: Motion.instant; easing: Motion.out; }
-        Icon {
-            source: Icons.x;
-            size: 12px;
-            tint: Theme.text-secondary;
-            x: (parent.width - self.width) / 2;
-            y: (parent.height - self.height) / 2;
-        }
-    }
-    Rectangle {
-        x: -4px;
-        y: -4px;
-        width: parent.width + 8px;
-        height: parent.height + 8px;
-        border-width: root.show-focus ? 2px : 0px;
-        border-color: Theme.focus-ring;
-        border-radius: Radius.lg + 2px;
-        background: transparent;
-    }
-    touch := TouchArea {
-        clicked => { root.clicked(); }
-    }
-}
-
-// "No colour" and the nine list hues as one radio group: one tab stop, Left / Right / Home / End choose.
-// `accent` is -1 for none, else the index into the hues in the order of `ListHue` (blue, teal, green, amber,
-// orange, red, rose, violet, slate); `names` are the spoken colour names in that order.
-component ColourPicker inherits Rectangle {
-    in property <int> accent: -1;
-    in property <string> label;
-    in property <string> none-label;
-    in property <[string]> names;
-    callback chosen(accent: int);
-    out property <bool> has-focus: scope.has-focus;
-
-    function move(to: int) {
-        if (to >= -1 && to <= 8 && to != root.accent) {
-            root.chosen(to);
-        }
-    }
-
-    height: Space.hit;
-    forward-focus: scope;
-    accessible-role: radio-group;
-    accessible-label: root.label;
-
-    HorizontalLayout {
-        spacing: Space.s1;
-        alignment: start;
-        NoColour {
-            label: root.none-label;
-            selected: root.accent == -1;
-            show-focus: scope.has-focus && root.accent == -1;
-            clicked => { root.move(-1); }
-        }
-        for h[i] in [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.rose, ListHue.violet, ListHue.slate]: Swatch {
-            hue: h;
-            label: root.names[i];
-            selected: i == root.accent;
-            keyboard-focusable: false;
-            show-focus: scope.has-focus && i == root.accent;
-            clicked => { root.move(i); }
-        }
-    }
-
-    scope := FocusScope {
-        focus-on-click: false;
-        key-pressed(event) => {
-            if (event.text == Key.RightArrow || event.text == Key.DownArrow) {
-                root.move(root.accent + 1);
-                return accept;
-            }
-            if (event.text == Key.LeftArrow || event.text == Key.UpArrow) {
-                root.move(root.accent - 1);
-                return accept;
-            }
-            if (event.text == Key.Home) {
-                root.move(-1);
-                return accept;
-            }
-            if (event.text == Key.End) {
-                root.move(8);
-                return accept;
-            }
-            return reject;
-        }
-    }
-}
 
 // A list's icon, as one radio group like `ColourPicker`: "No icon" and the 24 icons in a grid of 9 columns, one tab
 // stop, Left / Right step by one, Up / Down by a row, Home / End jump. `icon` is -1 for none, else the index into
@@ -1026,6 +1047,7 @@ component EntityEditorBody inherits Rectangle {
                     if root.show-colour: FormField {
                         label: @tr("Colour");
                         ColourPicker {
+                            hues: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.rose, ListHue.violet, ListHue.slate];
                             label: @tr("Colour");
                             none-label: @tr("No colour");
                             names: root.colour-names;

@@ -385,6 +385,28 @@ ui_tests! {
         assert!(ui.get_dirty());
     }
 
+    fn the_item_colour_label_is_one_of_eight_named_swatches_chosen_by_pointer_or_arrows() {
+        let (ui, _log) = item_editor();
+        assert_eq!(ui.get_label_index(), -1, "an item starts without a label");
+        let names = ["Blue", "Teal", "Green", "Amber", "Orange", "Red", "Violet", "Slate"];
+        for name in names {
+            let swatch = all(&ui, name, AccessibleRole::RadioButton)
+                .into_iter()
+                .next()
+                .unwrap_or_else(|| panic!("no swatch named {name}"));
+            let s = swatch.size();
+            assert!(s.width >= MIN_HIT && s.height >= MIN_HIT, "{name}");
+        }
+        assert!(missing(&ui, "Rose", AccessibleRole::RadioButton), "rose is a list hue only");
+        let _ = find(&ui, "No label", AccessibleRole::RadioButton);
+        assert!(!ui.get_dirty());
+        find(&ui, "Violet", AccessibleRole::RadioButton).invoke_accessible_default_action();
+        assert_eq!(ui.get_label_index(), 6, "Violet is the seventh label");
+        assert!(ui.get_dirty());
+        find(&ui, "No label", AccessibleRole::RadioButton).invoke_accessible_default_action();
+        assert_eq!(ui.get_label_index(), -1);
+    }
+
     fn tags_remove_from_the_chips_choose_from_the_list_and_add_by_name() {
         let (ui, log) = item_editor();
         find(&ui, "Remove tag billing", AccessibleRole::Button).invoke_accessible_default_action();

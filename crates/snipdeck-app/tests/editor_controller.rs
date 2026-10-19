@@ -25,7 +25,7 @@ use snipdeck_app::{
 };
 use snipdeck_core::{
     Content, Entitlements, Feature, Format, FormatKind, Formats, Inline, Item, ItemId, ItemKind,
-    Placement, Tier, Timestamp,
+    ItemLabel, Placement, Tier, Timestamp,
 };
 use snipdeck_platform::{
     file_dialog::{FakeFilePicker, PickKind},
@@ -253,6 +253,50 @@ fn edit_opens_the_item_with_its_fields_and_the_main_window_and_picker_ask_the_sa
     r.ctl.picker_edit(99);
     assert!(!r.ctl.item_editor_open());
     assert!(r.ctl.picker().is_some());
+}
+
+#[test]
+fn an_items_colour_label_is_saved_read_back_and_cleared_by_none() {
+    let mut r = pro();
+    let office = id_of(&r.ctl, "Office");
+    r.ctl.open_item_editor(office);
+    assert_eq!(view(&r.ctl).fields.label, None, "unlabelled to start");
+    r.ctl.item_editor_save(&EditorInput {
+        label: Some(ItemLabel::Violet),
+        ..view(&r.ctl).fields
+    });
+    assert!(!r.ctl.item_editor_open());
+    assert_eq!(
+        r.ctl.store().item(office).expect("item").label,
+        Some(ItemLabel::Violet)
+    );
+    r.ctl.open_item_editor(office);
+    assert_eq!(view(&r.ctl).fields.label, Some(ItemLabel::Violet));
+    r.ctl.item_editor_save(&EditorInput {
+        label: None,
+        ..view(&r.ctl).fields
+    });
+    assert_eq!(r.ctl.store().item(office).expect("item").label, None);
+}
+
+#[test]
+fn a_new_items_label_is_kept_in_its_draft() {
+    let data = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    {
+        let mut ctl = on_disk(Tier::Pro, &provider, true, data.path());
+        ctl.open_new_item(Origin::Main);
+        let v = view(&ctl);
+        ctl.item_editor_autosave(&EditorInput {
+            label: Some(ItemLabel::Amber),
+            ..typed(&v, "Unsaved", "text")
+        });
+    }
+    let mut ctl = on_disk(Tier::Pro, &provider, true, data.path());
+    ctl.open_new_item(Origin::Main);
+    let v = view(&ctl);
+    assert!(v.restored);
+    assert_eq!(v.fields.label, Some(ItemLabel::Amber));
 }
 
 #[test]

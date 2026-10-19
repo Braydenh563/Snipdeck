@@ -10,7 +10,7 @@ use slint::Global;
 use snipdeck_platform::tray::TrayLabels;
 use snipdeck_ui::{PanelWindow, TrayTexts};
 
-use snipdeck_core::{ItemKind, ListIcon};
+use snipdeck_core::{ItemKind, ItemLabel, ListIcon};
 
 use crate::{
     item_editor::{AttachmentView, EditorProblem, SaveFailure},
@@ -29,6 +29,22 @@ pub fn tray_labels(window: &PanelWindow) -> TrayLabels {
         pause_hotkeys: texts.get_pause_hotkeys().into(),
         quit: texts.get_quit().into(),
         tooltip_paused: texts.get_tooltip_paused().into(),
+    }
+}
+
+/// The name of an item colour label: shown beside the colour wherever it appears, so the colour is
+/// never the only cue.
+#[must_use]
+pub fn item_label_name(label: ItemLabel) -> &'static str {
+    match label {
+        ItemLabel::Blue => "Blue",
+        ItemLabel::Teal => "Teal",
+        ItemLabel::Green => "Green",
+        ItemLabel::Amber => "Amber",
+        ItemLabel::Orange => "Orange",
+        ItemLabel::Red => "Red",
+        ItemLabel::Violet => "Violet",
+        ItemLabel::Slate => "Slate",
     }
 }
 

@@ -11,7 +11,7 @@ use std::{
 };
 
 use slint::{ComponentHandle, Global, Model, ModelRc, SharedString, VecModel};
-use snipdeck_core::{ItemKind, ListIcon, UseMode};
+use snipdeck_core::{ItemKind, ItemLabel, ListIcon, UseMode};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::{Rgb, SystemLook},
@@ -894,6 +894,31 @@ pub(crate) fn list_icon_image(
         .unwrap_or_default()
 }
 
+/// The row's colour label as the windows take it: -1 for none, else the position in
+/// [`ItemLabel::ALL`], with the label's name.
+pub(crate) fn label_fields(label: Option<ItemLabel>) -> (i32, SharedString) {
+    label
+        .and_then(|l| {
+            ItemLabel::ALL
+                .iter()
+                .position(|x| *x == l)
+                .map(|i| (to_i32(i), SharedString::from(wording::item_label_name(l))))
+        })
+        .unwrap_or((-1, SharedString::new()))
+}
+
+/// The item editor's label index: -1 for none, else the position in [`ItemLabel::ALL`].
+pub(crate) fn label_index(label: Option<ItemLabel>) -> i32 {
+    label_fields(label).0
+}
+
+/// The label an index stands for (`None` for -1 or anything out of range).
+pub(crate) fn label_of(index: i32) -> Option<ItemLabel> {
+    usize::try_from(index)
+        .ok()
+        .and_then(|i| ItemLabel::ALL.get(i).copied())
+}
+
 /// The text shown instead of a sensitive item's preview.
 pub const MASKED_PREVIEW: &str = "••••••••";
 
@@ -904,6 +929,7 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         || (SharedString::new(), slint::Color::default()),
         |label| (label.name.as_str().into(), list_color(label.accent, dark)),
     );
+    let (label, label_name) = label_fields(row.label);
     ui::PanelRow {
         kind: item_kind(row),
         title: row.title.as_str().into(),
@@ -925,6 +951,8 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         },
         list_name,
         list_color,
+        label,
+        label_name,
         image: slint::Image::default(),
     }
 }
@@ -978,6 +1006,7 @@ mod tests {
             preview: preview.into(),
             list: None,
             pinned: false,
+            label: None,
         }
     }
 
