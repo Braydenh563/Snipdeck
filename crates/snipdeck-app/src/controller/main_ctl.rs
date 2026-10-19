@@ -15,7 +15,7 @@ use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::HighContrast,
 };
-use snipdeck_store::{ItemRepo, ListRepo, TrashRepo, Trashable};
+use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
 
 use super::{
     Controller, Effect, HelpTopic, Library, Toast, ToastKind, ToastMessage, ToastView, UseResult,
