@@ -519,3 +519,200 @@ fn without_a_password_nothing_ever_locks() {
         "OS-only keys stay open"
     );
 }
+
+// ---- A sensitive editor and the lock -----------------------------------------------------------
+
+#[test]
+fn locking_closes_a_sensitive_editor_so_no_plain_text_stays_on_screen() {
+    let mut r = with_password(Tier::Pro);
+    r.ctl.open_item_editor(r.id);
+    assert!(r.ctl.item_editor_open());
+    r.advance(IDLE_LOCK);
+    assert!(r.ctl.lock_if_idle());
+    assert!(!r.ctl.item_editor_open(), "the editor is closed");
+    assert!(r.ctl.item_editor_view().is_none(), "and holds no text");
+    assert!(r.ctl.library_locked());
+}
+
+#[test]
+fn typing_in_a_sensitive_editor_counts_as_use() {
+    let mut r = with_password(Tier::Pro);
+    r.ctl.open_item_editor(r.id);
+    r.advance(just_before_idle(Duration::from_secs(1)));
+    r.ctl.item_editor_edited();
+    assert_eq!(
+        r.ctl.idle_lock_wait(),
+        Some(IDLE_LOCK),
+        "counted from the key"
+    );
+    r.advance(just_before_idle(Duration::from_secs(1)));
+    assert!(
+        !r.ctl.lock_if_idle(),
+        "more than the idle time since opening"
+    );
+    assert!(r.ctl.item_editor_open(), "still open while typing");
+    r.advance(Duration::from_secs(1));
+    assert!(r.ctl.lock_if_idle(), "idle after the last key");
+    assert!(!r.ctl.item_editor_open());
+}
+
+#[test]
+fn a_plain_editor_stays_open_through_the_lock() {
+    let mut r = with_password(Tier::Pro);
+    r.ctl.open_new_item(Origin::Main);
+    assert!(r.ctl.item_editor_open());
+    r.advance(IDLE_LOCK);
+    assert!(r.ctl.lock_if_idle());
+    assert!(r.ctl.item_editor_open(), "nothing secret in it");
+}
+
+#[test]
+fn an_editor_switched_to_sensitive_is_closed_by_the_lock_too() {
+    let mut r = with_password(Tier::Pro);
+    r.ctl.open_new_item(Origin::Main);
+    let v = r.ctl.item_editor_view().expect("editor");
+    // The two-second tick hands over what the window holds, including the Sensitive switch.
+    r.ctl.item_editor_autosave(&EditorInput {
+        sensitive: true,
+        content: SECRET.into(),
+        ..v.fields
+    });
+    r.ctl.item_editor_edited();
+    r.advance(IDLE_LOCK);
+    assert!(r.ctl.lock_if_idle());
+    assert!(!r.ctl.item_editor_open());
+}
+
+// ---- A change whose reopen fails ---------------------------------------------------------------
+
+#[test]
+fn a_change_that_cannot_reopen_the_library_still_says_it_changed() {
+    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let new = "marble orchard 77";
+    // One unwrap for the change itself, none left for opening the key after it.
+    r.provider.fail_unwraps_after(Some(1));
+    assert_eq!(r.ctl.change_master_password(PASSWORD, new, new), Ok(()));
+    assert_eq!(r.toast(), Some(ToastMessage::MasterPasswordChangedNotOpen));
+    assert_eq!(r.ctl.master_password_state(), MasterState::Set);
+    assert!(r.ctl.library_locked(), "still locked, and says so");
+    r.provider.fail_unwraps_after(None);
+    assert_eq!(
+        r.ctl.unlock_with_password(PASSWORD),
+        Err(MasterProblem::WrongPassword),
+        "the old password is gone"
+    );
+    r.ctl
+        .unlock_with_password(new)
+        .expect("the new one opens it");
+    assert_eq!(r.secret().as_deref(), Some(SECRET));
+}
+
+#[test]
+fn a_removal_that_cannot_reopen_the_library_still_says_it_removed() {
+    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    r.provider.fail_unwraps_after(Some(1));
+    assert_eq!(r.ctl.remove_master_password(PASSWORD), Ok(()));
+    assert_eq!(r.toast(), Some(ToastMessage::MasterPasswordRemovedNotOpen));
+    assert_eq!(r.ctl.master_password_state(), MasterState::NotSet);
+    assert!(!r.ctl.unlock_prompt_open(), "no password left to ask for");
+    r.provider.fail_unwraps_after(None);
+    let r = r.restart(Tier::Pro);
+    assert_eq!(r.secret().as_deref(), Some(SECRET), "opens by itself again");
+}
+
+// ---- A key record that cannot be read ----------------------------------------------------------
+
+#[test]
+fn a_key_record_that_cannot_be_read_is_not_offered_a_password() {
+    let r = with_password(Tier::Pro);
+    r.provider.fail_unwraps_after(Some(0));
+    let mut r = r.restart(Tier::Pro);
+    assert_eq!(r.toast(), Some(ToastMessage::KeyUnavailable));
+    assert_eq!(r.ctl.master_password_state(), MasterState::KeyUnavailable);
+    assert_eq!(
+        r.ctl.set_master_password(PASSWORD, PASSWORD),
+        Err(MasterProblem::Failed),
+        "not a second record over one that may hold a password"
+    );
+    r.provider.fail_unwraps_after(None);
+    let r = r.restart(Tier::Pro);
+    assert_eq!(
+        r.ctl.master_password_state(),
+        MasterState::Set,
+        "back to normal"
+    );
+}
+
+// ---- Copies of the library while it is locked --------------------------------------------------
+
+fn backup_files(data: &Path) -> Vec<(std::path::PathBuf, Vec<u8>)> {
+    snipdeck_portable::backup::list_backups(data)
+        .expect("list")
+        .into_iter()
+        .map(|b| {
+            let bytes = std::fs::read(&b.path).expect("read");
+            (b.path, bytes)
+        })
+        .collect()
+}
+
+#[test]
+fn a_locked_library_does_not_export_or_back_up_a_copy_without_its_sensitive_items() {
+    let mut r = with_password(Tier::Pro);
+    assert!(r.ctl.backup_now(r.data.path()), "a complete one while open");
+    let before = backup_files(r.data.path());
+    assert_eq!(before.len(), 1);
+    let mut r = r.restart(Tier::Pro);
+    let out = tempfile::tempdir().expect("dir");
+
+    assert_eq!(r.ctl.export_library(out.path()), None);
+    assert_eq!(r.toast(), Some(ToastMessage::UnlockFirst));
+    assert!(r.ctl.unlock_prompt_open(), "asks for the password");
+    assert_eq!(
+        std::fs::read_dir(out.path()).expect("dir").count(),
+        0,
+        "no partial file"
+    );
+
+    r.ctl.cancel_unlock();
+    assert!(!r.ctl.backup_now(r.data.path()));
+    assert_eq!(r.toast(), Some(ToastMessage::UnlockFirst));
+    assert!(r.ctl.unlock_prompt_open());
+    assert_eq!(
+        backup_files(r.data.path()),
+        before,
+        "today's complete backup is not replaced"
+    );
+
+    r.ctl.unlock_with_password(PASSWORD).expect("unlock");
+    assert!(r.ctl.export_library(out.path()).is_some());
+    assert!(r.ctl.backup_now(r.data.path()));
+}
+
+#[test]
+fn a_locked_library_does_not_restore_a_backup_that_would_drop_sensitive_items() {
+    let mut r = with_password(Tier::Pro);
+    assert!(r.ctl.backup_now(r.data.path()));
+    let file = backup_files(r.data.path()).remove(0).0;
+    let mut r = r.restart(Tier::Pro);
+
+    assert!(!r.ctl.restore_backup(&file));
+    assert_eq!(r.toast(), Some(ToastMessage::UnlockFirst));
+    assert!(r.ctl.unlock_prompt_open());
+
+    r.ctl.unlock_with_password(PASSWORD).expect("unlock");
+    assert!(r.ctl.restore_backup(&file));
+}
+
+#[test]
+fn copying_a_locked_item_puts_nothing_on_the_clipboard() {
+    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let used = r.ctl.use_item(r.id, UseMode::Copy);
+    assert!(matches!(used, snipdeck_app::controller::UseResult::Failed));
+    assert_eq!(r.toast(), Some(ToastMessage::Locked));
+    assert!(r.ctl.unlock_prompt_open());
+    assert!(
+        r.ctl.services().clipboard.written.is_empty(),
+        "no empty or partial copy"
+    );
+}

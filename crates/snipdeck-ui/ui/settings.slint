@@ -104,7 +104,7 @@ export component SettingsPage inherits Window {
     in-out property <string> erase-text;
     in-out property <bool> forget-key: false;
     property <int> erase-focus: 0;
-    // The master password (SPEC 5.7). `master-state`: 0 = this PC cannot protect a key, 1 = none set, 2 = set.
+    // The master password (SPEC 5.7). `master-state`: 0 = this PC cannot protect a key, 1 = none set, 2 = set, 3 = the key could not be read.
     in property <int> master-state: 1;
     // A password is set and the sensitive items are locked now.
     in property <bool> master-locked: false;
@@ -821,13 +821,15 @@ export component SettingsPage inherits Window {
                         title: @tr("Master password");
                         description: root.master-state == 0
                             ? @tr("Snipdeck can't protect a key on this PC, so a master password is not available.")
+                            : root.master-state == 3
+                            ? @tr("Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again.")
                             : root.master-state == 2
                             ? (root.master-locked
                                 ? @tr("A master password is on and your sensitive items are locked.")
                                 : @tr("A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes))
                             : root.master-allowed
-                            ? @tr("Adds a password on top of Windows' own protection for your sensitive items. Asked for once each time Snipdeck starts and again after {} minutes without use.", root.master-idle-minutes)
-                            : @tr("A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for once each time Snipdeck starts and again after {} minutes without use.", root.master-idle-minutes);
+                            ? @tr("Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes)
+                            : @tr("A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes);
                         HorizontalLayout {
                             spacing: Space.s2;
                             if root.master-state != 2: Button {

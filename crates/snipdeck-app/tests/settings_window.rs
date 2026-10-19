@@ -56,7 +56,7 @@ use snipdeck_ui::{SettingsPage, ToastKind};
 
 #[path = "support/mod.rs"]
 mod support;
-use support::{key, on_ui_thread, press};
+use support::{SharedProvider, key, on_ui_thread, press};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 type Bound = SettingsBinding<FakeClipboard, FakeKeyboard, FakeTiming>;
@@ -1325,6 +1325,11 @@ fn a_free_user_sees_the_master_password_row_with_a_supporter_note_and_no_way_to_
         let note = row.accessible_description().expect("a description");
         assert!(note.contains("A Supporter feature"), "{note}");
         assert!(note.contains("15 minutes"), "{note}");
+        assert!(
+            note.contains("when you first use a sensitive item"),
+            "asked at the first use, not at start-up: {note}"
+        );
+        assert!(!note.contains("starts"), "{note}");
         let set = element(&r.ui, "Set password\u{2026}", AccessibleRole::Button);
         assert_eq!(set.accessible_enabled(), Some(false));
         set.invoke_accessible_default_action();
@@ -1349,6 +1354,33 @@ fn a_machine_without_key_protection_says_so_and_offers_nothing() {
         assert_eq!(
             element(&r.ui, "Set password\u{2026}", AccessibleRole::Button).accessible_enabled(),
             Some(false)
+        );
+    });
+}
+
+#[test]
+fn a_key_record_that_cannot_be_read_offers_no_password_and_says_why() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        let provider = SharedProvider::new();
+        {
+            let mut ctl = r.ctl.borrow_mut();
+            ctl.set_key_provider(Box::new(provider.clone()));
+            ctl.set_master_password(PASSWORD, PASSWORD).expect("set");
+            provider.fail_unwraps_after(Some(0));
+            ctl.unlock_library();
+            assert_eq!(ctl.master_password_state(), MasterState::KeyUnavailable);
+        }
+        r.binding.redraw();
+        slint::platform::update_timers_and_animations();
+        let note = master_row(&r)
+            .accessible_description()
+            .expect("a description");
+        assert!(note.contains("couldn't read your encryption key"), "{note}");
+        assert_eq!(
+            element(&r.ui, "Set password\u{2026}", AccessibleRole::Button).accessible_enabled(),
+            Some(false),
+            "not offered over a record that may hold a password"
         );
     });
 }

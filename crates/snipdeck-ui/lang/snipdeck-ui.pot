@@ -10,19 +10,19 @@ msgstr ""
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr ""
 
-#: ui/settings.slint:830
-msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for once each time Snipdeck starts and again after {} minutes without use."
+#: ui/settings.slint:832
+msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr ""
 
 #: ui/panel.slint:861
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr ""
 
-#: ui/settings.slint:826
+#: ui/settings.slint:828
 msgid "A master password is on and your sensitive items are locked."
 msgstr ""
 
-#: ui/settings.slint:827
+#: ui/settings.slint:829
 msgid "A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use."
 msgstr ""
 
@@ -66,8 +66,8 @@ msgstr ""
 msgid "Add some text, or cancel."
 msgstr ""
 
-#: ui/settings.slint:829
-msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for once each time Snipdeck starts and again after {} minutes without use."
+#: ui/settings.slint:831
+msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr ""
 
 #: ui/picker.slint:372
@@ -202,7 +202,7 @@ msgstr ""
 msgid "Changes apply at once."
 msgstr ""
 
-#: ui/settings.slint:850
+#: ui/settings.slint:852
 msgid "Change…"
 msgstr ""
 
@@ -266,7 +266,7 @@ msgstr ""
 msgid "Clipboard clear time"
 msgstr ""
 
-#: ui/components/shortcuts-sheet.slint:135 ui/components/shortcuts-sheet.slint:141 ui/editors.slint:1251 ui/picker.slint:489 ui/settings.slint:932 ui/template_fill.slint:186
+#: ui/components/shortcuts-sheet.slint:135 ui/components/shortcuts-sheet.slint:141 ui/editors.slint:1251 ui/picker.slint:489 ui/settings.slint:934 ui/template_fill.slint:186
 msgid "Close"
 msgstr ""
 
@@ -498,7 +498,7 @@ msgstr ""
 msgid "Editors"
 msgstr ""
 
-#: ui/settings.slint:936
+#: ui/settings.slint:938
 msgid "Email me"
 msgstr ""
 
@@ -638,7 +638,7 @@ msgstr ""
 msgid "Free plan"
 msgstr ""
 
-#: ui/settings.slint:539 ui/settings.slint:910
+#: ui/settings.slint:539 ui/settings.slint:912
 msgid "Get Supporter"
 msgstr ""
 
@@ -874,7 +874,7 @@ msgstr ""
 msgid "Lock your encrypted items behind a password you choose."
 msgstr ""
 
-#: ui/settings.slint:881
+#: ui/settings.slint:883
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr ""
 
@@ -1178,7 +1178,7 @@ msgstr ""
 msgid "Orange"
 msgstr ""
 
-#: ui/settings.slint:883
+#: ui/settings.slint:885
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr ""
 
@@ -1258,7 +1258,7 @@ msgstr ""
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included."
 msgstr ""
 
-#: ui/settings.slint:911
+#: ui/settings.slint:913
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions."
 msgstr ""
 
@@ -1382,7 +1382,7 @@ msgstr ""
 msgid "Remove {} from the list"
 msgstr ""
 
-#: ui/settings.slint:859
+#: ui/settings.slint:861
 msgid "Remove…"
 msgstr ""
 
@@ -1530,7 +1530,7 @@ msgstr ""
 msgid "Set password"
 msgstr ""
 
-#: ui/settings.slint:834
+#: ui/settings.slint:836
 msgid "Set password…"
 msgstr ""
 
@@ -1606,11 +1606,15 @@ msgstr ""
 msgid "Snipdeck can't protect a key on this PC, so a master password is not available."
 msgstr ""
 
+#: ui/settings.slint:825
+msgid "Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again."
+msgstr ""
+
 #: ui/panel.slint:1112
 msgid "Snipdeck handle, press the Panel hotkey to open"
 msgstr ""
 
-#: ui/settings.slint:879
+#: ui/settings.slint:881
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr ""
 
@@ -1626,7 +1630,7 @@ msgstr ""
 msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
 msgstr ""
 
-#: ui/settings.slint:882
+#: ui/settings.slint:884
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr ""
 
@@ -1830,7 +1834,7 @@ msgstr ""
 msgid "Title"
 msgstr ""
 
-#: ui/settings.slint:884
+#: ui/settings.slint:886
 msgid "To remove everything, use Erase library above and then delete the folder."
 msgstr ""
 
@@ -1894,7 +1898,7 @@ msgstr ""
 msgid "Unlock your sensitive items"
 msgstr ""
 
-#: ui/settings.slint:843
+#: ui/settings.slint:845
 msgid "Unlock…"
 msgstr ""
 
@@ -1994,7 +1998,7 @@ msgstr ""
 msgid "Your deck is empty"
 msgstr ""
 
-#: ui/settings.slint:880
+#: ui/settings.slint:882
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr ""
 

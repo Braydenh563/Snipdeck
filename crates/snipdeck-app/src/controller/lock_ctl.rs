@@ -36,6 +36,9 @@ use crate::{
 pub enum MasterState {
     /// The machine cannot protect a key (no DPAPI), so there is no key to put a password on.
     Unavailable,
+    /// The key record could not be read (the key store failed), so nobody knows whether a
+    /// password is set. Nothing is offered until it can be read.
+    KeyUnavailable,
     /// None set.
     NotSet,
     /// Set: the library asks for it.
@@ -75,6 +78,8 @@ impl From<NewProblem> for MasterProblem {
 pub(super) struct LockState {
     /// The stored key needs a password (read from the key record, refreshed by every change).
     set: bool,
+    /// The key record could not be read at the last look, so `set` is not known.
+    unreadable: bool,
     /// The last time the user used the library; the idle lock counts from here.
     active_at: Timestamp,
     /// The unlock window is open.
@@ -87,6 +92,7 @@ impl LockState {
     pub(super) fn new(now: Timestamp) -> Self {
         Self {
             set: false,
+            unreadable: false,
             active_at: now,
             prompt: false,
             kdf: None,
@@ -134,14 +140,28 @@ where
     /// Reads from the key record whether a password is set. Called at start-up and after
     /// anything that can change the record.
     pub(super) fn refresh_master(&mut self) {
-        let set = match self.editor_env.keys.as_deref() {
+        let (set, unreadable) = match self.editor_env.keys.as_deref() {
             Some(provider) => {
                 let ring = ring_on(provider, self.lock.kdf);
-                self.store.has_master_password(&ring).unwrap_or(false)
+                match self.store.has_master_password(&ring) {
+                    Ok(set) => (set, false),
+                    Err(e) => {
+                        crate::trace!("key record not read: {e}");
+                        (false, true)
+                    }
+                }
             }
-            None => false,
+            None => (false, false),
         };
         self.lock.set = set;
+        self.lock.unreadable = unreadable;
+        if self.lock.unreadable {
+            // Not "no password": the Settings row offers nothing, and the user is told.
+            self.show_toast(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::KeyUnavailable,
+            });
+        }
     }
 
     /// Whether a master password is set, or cannot be.
@@ -149,6 +169,8 @@ where
     pub fn master_password_state(&self) -> MasterState {
         if self.editor_env.keys.is_none() {
             MasterState::Unavailable
+        } else if self.lock.unreadable {
+            MasterState::KeyUnavailable
         } else if self.lock.set {
             MasterState::Set
         } else {
@@ -187,6 +209,26 @@ where
             return false;
         }
         self.note_activity();
+        true
+    }
+
+    /// For a copy of the whole library (backup, export, restore): `true` when the key exists and
+    /// is not open, so the copy would leave out the sensitive items or lose them. The unlock
+    /// window is asked for when a password is what is missing; the toast says why nothing was
+    /// done. A copy never goes ahead on a locked library.
+    pub(super) fn copy_blocked_by_lock(&mut self) -> bool {
+        if !matches!(self.store.key_ring_exists(), Ok(true)) || self.store.is_unlocked() {
+            return false;
+        }
+        if self.library_locked() {
+            self.request_unlock();
+            self.show_toast(neutral(ToastMessage::UnlockFirst));
+        } else {
+            self.show_toast(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::KeyUnavailable,
+            });
+        }
         true
     }
 
@@ -250,7 +292,7 @@ where
         if self.editor_env.keys.is_none() {
             return Err(MasterProblem::Unavailable);
         }
-        if self.lock.set {
+        if self.lock.set || self.lock.unreadable {
             return Err(MasterProblem::Failed);
         }
         master_password::check_new(new, again).map_err(MasterProblem::from)?;
@@ -291,10 +333,16 @@ where
         master_password::check_new(new, again).map_err(MasterProblem::from)?;
         self.with_ring(|store, ring| store.change_master_password(ring, Some(current), Some(new)))
             .map_err(|e| problem_of(&e))?;
-        // The user just proved the password: the library opens if it was locked.
-        self.open_after_change(Some(new))?;
+        // The password is changed for good from here. The user just proved the old one, so the
+        // library opens if it was locked; if that fails the change still stands and the toast
+        // says the library is locked.
+        let reopened = self.open_after_change(Some(new));
         self.note_activity();
-        self.show_toast(neutral(ToastMessage::MasterPasswordChanged));
+        self.show_toast(neutral(if reopened.is_ok() {
+            ToastMessage::MasterPasswordChanged
+        } else {
+            ToastMessage::MasterPasswordChangedNotOpen
+        }));
         Ok(())
     }
 
@@ -308,11 +356,17 @@ where
         self.check_can_change(current)?;
         self.with_ring(|store, ring| store.change_master_password(ring, Some(current), None))
             .map_err(|e| problem_of(&e))?;
+        // The record is OS-only from here, so there is no password to ask for, whether or not
+        // the key opens now.
         self.lock.set = false;
         self.lock.prompt = false;
-        self.open_after_change(None)?;
+        let reopened = self.open_after_change(None);
         self.note_activity();
-        self.show_toast(neutral(ToastMessage::MasterPasswordRemoved));
+        self.show_toast(neutral(if reopened.is_ok() {
+            ToastMessage::MasterPasswordRemoved
+        } else {
+            ToastMessage::MasterPasswordRemovedNotOpen
+        }));
         let _ = self.refresh_panel();
         Ok(())
     }
@@ -335,9 +389,10 @@ where
         if self.store.is_unlocked() {
             return Ok(());
         }
-        let result = self.with_ring(|store, ring| store.unlock_key_ring(ring, password));
+        self.with_ring(|store, ring| store.unlock_key_ring(ring, password))
+            .map_err(|_| MasterProblem::Failed)?;
         self.lock.prompt = false;
-        result.map_err(|_| MasterProblem::Failed)
+        Ok(())
     }
 
     /// Runs `f` on the library with the key ring of this machine.
@@ -381,7 +436,7 @@ where
     }
 
     /// Locks the library now: the key and every decrypted payload held in memory are dropped, a
-    /// revealed row is hidden again. Does nothing without a master password (the OS-only key
+    /// revealed row is hidden again, and an editor of a sensitive item is closed. Does nothing without a master password (the OS-only key
     /// opens at start-up and has nothing to ask for).
     pub fn lock_now(&mut self) {
         if !self.lock.set {
@@ -390,6 +445,10 @@ where
         self.store.lock_key_ring();
         self.revealed = None;
         self.panel_revealed = None;
+        // An open editor of a sensitive item holds its text in the window: it closes, unsaved.
+        if self.close_sensitive_item_editor() {
+            self.show_toast(neutral(ToastMessage::LockedEditorClosed));
+        }
         let _ = self.refresh_panel();
     }
 }

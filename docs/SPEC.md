@@ -118,6 +118,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
   **master password** (Argon2id) → unlock prompt per session / idle timeout.
   - Settings > Privacy sets, changes or removes it (typed twice, at least 8 characters, a strength hint in words). Setting is Supporter; changing, removing and unlocking always work, so a lapsed licence never traps a library.
   - With a password set the library starts locked and says nothing. The unlock window opens the first time a locked sensitive item is needed (use, reveal, edit), and again after 15 minutes without use (`IDLE_LOCK`). A wrong password changes nothing and allows another try; Esc leaves it locked.
+  - Locking (idle or otherwise) also closes an open editor of a sensitive item without saving it, so no plain text stays on screen; typing in such an editor counts as use. A backup, export or restore never runs on a locked library (it would leave out or lose the sensitive items): it asks for the password instead, and the scheduled backup waits.
   - Forgetting it loses the sensitive items for good: while a password is set the data key exists only sealed under it inside the OS-wrapped record, there is no recovery key, and the form says so before the password is set. Other items are not affected.
 
 ### 5.7a Deletion & recovery

@@ -533,6 +533,7 @@ where
             MasterState::Unavailable => 0,
             MasterState::NotSet => 1,
             MasterState::Set => 2,
+            MasterState::KeyUnavailable => 3,
         },
         master_locked: controller.library_locked(),
         master_allowed: controller.master_password_allowed(),

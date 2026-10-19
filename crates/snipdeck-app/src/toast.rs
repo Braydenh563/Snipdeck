@@ -77,6 +77,14 @@ pub enum ToastMessage {
     MasterPasswordChanged,
     /// "Master password removed."
     MasterPasswordRemoved,
+    /// "Master password changed. Snipdeck couldn't open the library with it just now; ..."
+    MasterPasswordChangedNotOpen,
+    /// "Master password removed. Snipdeck couldn't open the library just now; ..."
+    MasterPasswordRemovedNotOpen,
+    /// "Unlock your library first, so a copy includes your sensitive items."
+    UnlockFirst,
+    /// "Your library locked. The sensitive item you were editing was closed without saving."
+    LockedEditorClosed,
     /// "Saved to {list}" (quick capture).
     Saved {
         /// The list's name.

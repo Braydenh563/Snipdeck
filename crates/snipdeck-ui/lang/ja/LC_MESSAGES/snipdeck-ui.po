@@ -10,7 +10,7 @@ msgstr ""
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "PNG画像。Snipdeckが独自のコピーを保存します。"
 
-msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for once each time Snipdeck starts and again after {} minutes without use."
+msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr ""
 
 msgid "A list keeps related snippets together, like replies or addresses."
@@ -52,7 +52,7 @@ msgstr "リストを追加"
 msgid "Add some text, or cancel."
 msgstr "テキストを追加するか、キャンセルしてください。"
 
-msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for once each time Snipdeck starts and again after {} minutes without use."
+msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr ""
 
 msgid "All"
@@ -1205,6 +1205,9 @@ msgid "Snipdeck Supporter"
 msgstr "Snipdeck サポーター"
 
 msgid "Snipdeck can't protect a key on this PC, so a master password is not available."
+msgstr ""
+
+msgid "Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again."
 msgstr ""
 
 msgid "Snipdeck handle, press the Panel hotkey to open"
