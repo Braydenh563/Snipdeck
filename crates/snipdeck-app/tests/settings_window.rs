@@ -25,7 +25,7 @@ use std::{
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
 use slint::{ComponentHandle, Global, Model, platform::Key};
 use snipdeck_app::{
-    controller::{Controller, Effect, Services},
+    controller::{Controller, Effect, MasterState, Services},
     demo,
     frame::{Monitor, Rect},
     host::{FakeHotkeys, FakeTargets, FixedClock, HotkeyProblem},
@@ -1263,5 +1263,261 @@ fn the_plan_table_says_each_answer_in_words_not_colour() {
             .to_string();
         assert!(said.contains("Free: Included, up to 5."), "{said}");
         assert!(said.contains("Supporter: Included, unlimited."), "{said}");
+    });
+}
+
+// ---- Master password (SPEC 5.7, V1-PLAN C3) ----------------------------------------------------
+
+const PASSWORD: &str = "tulip harbour 42";
+
+/// A page over the demo library with a machine that can protect a key, on `tier`, with a cheap
+/// Argon2id so each set or unlock takes milliseconds.
+fn master_rig(tier: Tier) -> Rig {
+    let r = rig_on(
+        demo::store(now()).expect("demo"),
+        tier,
+        tempfile::tempdir().expect("dir"),
+        true,
+    );
+    {
+        let mut ctl = r.ctl.borrow_mut();
+        ctl.set_key_provider(Box::new(MemoryKeyProvider::new().expect("provider")));
+        ctl.set_kdf_params(
+            snipdeck_store::crypto::KdfParams::insecure_for_tests(64, 1, 1).expect("params"),
+        );
+    }
+    r.binding.redraw();
+    slint::platform::update_timers_and_animations();
+    r
+}
+
+/// The Privacy section's row (the plan table has a row of the same name).
+fn master_row(r: &Rig) -> ElementHandle {
+    ElementHandle::find_by_accessible_label(&r.ui, "Master password")
+        .filter(|e| e.accessible_role() == Some(AccessibleRole::Groupbox))
+        .find(|e| {
+            e.accessible_description()
+                .is_some_and(|d| !d.starts_with("Lock your encrypted items"))
+        })
+        .expect("the master password row")
+}
+
+fn click(r: &Rig, label: &str) {
+    element(&r.ui, label, AccessibleRole::Button).invoke_accessible_default_action();
+    slint::platform::update_timers_and_animations();
+}
+
+fn type_in(r: &Rig, label: &str, text: &str) {
+    element(&r.ui, label, AccessibleRole::TextInput).set_accessible_value(text);
+}
+
+fn texts(r: &Rig, text: &str) -> usize {
+    ElementHandle::find_by_accessible_label(&r.ui, text)
+        .filter(|e| e.accessible_role() == Some(AccessibleRole::Text))
+        .count()
+}
+
+#[test]
+fn a_free_user_sees_the_master_password_row_with_a_supporter_note_and_no_way_to_set_it() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Free);
+        let row = master_row(&r);
+        let note = row.accessible_description().expect("a description");
+        assert!(note.contains("A Supporter feature"), "{note}");
+        assert!(note.contains("15 minutes"), "{note}");
+        let set = element(&r.ui, "Set password\u{2026}", AccessibleRole::Button);
+        assert_eq!(set.accessible_enabled(), Some(false));
+        set.invoke_accessible_default_action();
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        assert_eq!(r.ctl.borrow().master_password_state(), MasterState::NotSet);
+    });
+}
+
+#[test]
+fn a_machine_without_key_protection_says_so_and_offers_nothing() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            demo::store(now()).expect("demo"),
+            Tier::Pro,
+            tempfile::tempdir().expect("dir"),
+            true,
+        );
+        let note = master_row(&r)
+            .accessible_description()
+            .expect("a description");
+        assert!(note.contains("can't protect a key"), "{note}");
+        assert_eq!(
+            element(&r.ui, "Set password\u{2026}", AccessibleRole::Button).accessible_enabled(),
+            Some(false)
+        );
+    });
+}
+
+#[test]
+fn a_supporter_sets_a_master_password_through_the_form() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        click(&r, "Set password\u{2026}");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Set);
+
+        // The form says what forgetting costs, in words, before asking for anything, and a screen
+        // reader gets it as the group's description.
+        let form = element(&r.ui, "Set master password", AccessibleRole::Groupbox);
+        let warning = form.accessible_description().expect("a description");
+        assert!(warning.contains("can never be opened again"), "{warning}");
+        assert!(warning.contains("keeps no recovery key"), "{warning}");
+
+        // A short one, then two that differ: each says which problem in words and nothing is set.
+        type_in(&r, "New password", "short");
+        type_in(&r, "Repeat the new password", "short");
+        click(&r, "Set password");
+        assert_eq!(texts(&r, "Use at least 8 characters."), 1);
+        assert_eq!(r.ctl.borrow().master_password_state(), MasterState::NotSet);
+        type_in(&r, "New password", PASSWORD);
+        type_in(&r, "Repeat the new password", "tulip harbour 43");
+        click(&r, "Set password");
+        assert_eq!(texts(&r, "The two passwords are not the same."), 1);
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Set);
+
+        // The strength hint is words that follow the typing.
+        assert_eq!(texts(&r, "Strength: strong"), 1, "a 16 character phrase");
+        type_in(&r, "New password", "short");
+        assert_eq!(texts(&r, "Strength: weak"), 1);
+        type_in(&r, "New password", PASSWORD);
+
+        type_in(&r, "Repeat the new password", PASSWORD);
+        click(&r, "Set password");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        assert_eq!(r.ui.get_master_state(), 2, "the row now shows it is on");
+        assert_eq!(r.ctl.borrow().master_password_state(), MasterState::Set);
+        assert!(
+            r.ui.get_toast_text().contains("Master password set"),
+            "{}",
+            r.ui.get_toast_text()
+        );
+        element(&r.ui, "Change\u{2026}", AccessibleRole::Button);
+        element(&r.ui, "Remove\u{2026}", AccessibleRole::Button);
+    });
+}
+
+#[test]
+fn passwords_are_hidden_from_the_accessibility_tree() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        click(&r, "Set password\u{2026}");
+        type_in(&r, "New password", PASSWORD);
+        let field = element(&r.ui, "New password", AccessibleRole::TextInput);
+        assert_ne!(
+            field.accessible_value().as_deref(),
+            Some(PASSWORD),
+            "a screen reader is not handed the password"
+        );
+        assert!(field.accessible_value().is_none_or(|v| v.is_empty()));
+    });
+}
+
+#[test]
+fn changing_and_removing_ask_for_the_current_password_and_say_when_it_is_wrong() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        r.ctl
+            .borrow_mut()
+            .set_master_password(PASSWORD, PASSWORD)
+            .expect("set");
+        r.binding.redraw();
+        slint::platform::update_timers_and_animations();
+
+        click(&r, "Change\u{2026}");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Change);
+        let new = "marble orchard 77";
+        type_in(&r, "Current password", "not the password");
+        type_in(&r, "New password", new);
+        type_in(&r, "Repeat the new password", new);
+        click(&r, "Change password");
+        assert_eq!(texts(&r, "That password is not right. Try again."), 1);
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Change);
+        type_in(&r, "Current password", PASSWORD);
+        click(&r, "Change password");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        assert!(r.ui.get_toast_text().contains("changed"));
+
+        click(&r, "Remove\u{2026}");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Remove);
+        assert_eq!(
+            ElementHandle::find_by_accessible_label(&r.ui, "New password").count(),
+            0,
+            "removing asks only for the current password"
+        );
+        click(&r, "Remove password");
+        assert_eq!(texts(&r, "Enter your password."), 1, "empty is told apart");
+        type_in(&r, "Current password", PASSWORD);
+        click(&r, "Remove password");
+        assert_eq!(
+            texts(&r, "That password is not right. Try again."),
+            1,
+            "the old password is gone after the change"
+        );
+        type_in(&r, "Current password", new);
+        click(&r, "Remove password");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        assert_eq!(r.ui.get_master_state(), 1);
+        assert_eq!(r.ctl.borrow().master_password_state(), MasterState::NotSet);
+    });
+}
+
+#[test]
+fn escape_closes_only_the_form_and_the_focus_goes_back_to_its_button() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        click(&r, "Set password\u{2026}");
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Set);
+        // The first field has the focus: typing goes into it.
+        support::type_text(r.ui.window(), "abc");
+        assert_eq!(
+            element(&r.ui, "New password", AccessibleRole::TextInput).accessible_value().as_deref(),
+            Some(""),
+            "masked: the value is not exposed, but the field took the keys"
+        );
+        press(r.ui.window(), &key(Key::Escape));
+        slint::platform::update_timers_and_animations();
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        assert!(r.ui.window().is_visible(), "Escape did not close the page");
+        // What was typed is gone with the form.
+        // The focus is on the button that opened it: Enter opens the form again.
+        press(r.ui.window(), "\n");
+        slint::platform::update_timers_and_animations();
+        assert_eq!(
+            r.ui.get_master_mode(),
+            snipdeck_ui::MasterMode::Set,
+            "focus came back to the Set password button"
+        );
+        assert_eq!(
+            element(&r.ui, "New password", AccessibleRole::TextInput)
+                .accessible_value()
+                .as_deref(),
+            Some(""),
+        );
+    });
+}
+
+#[test]
+fn a_locked_library_offers_unlock_in_the_row_and_asks_for_the_prompt() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        {
+            let mut ctl = r.ctl.borrow_mut();
+            ctl.set_master_password(PASSWORD, PASSWORD).expect("set");
+            ctl.lock_now();
+        }
+        r.binding.redraw();
+        slint::platform::update_timers_and_animations();
+        let note = master_row(&r)
+            .accessible_description()
+            .expect("a description");
+        assert!(note.contains("locked"), "{note}");
+        click(&r, "Unlock\u{2026}");
+        let mut ctl = r.ctl.borrow_mut();
+        assert!(ctl.unlock_prompt_open());
+        assert!(ctl.take_pending().contains(&Effect::OpenUnlock));
     });
 }

@@ -10,8 +10,20 @@ msgstr ""
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "Una imagen PNG. Snipdeck guarda su propia copia."
 
+msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for once each time Snipdeck starts and again after {} minutes without use."
+msgstr ""
+
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "Una lista agrupa fragmentos relacionados, como respuestas o direcciones."
+
+msgid "A master password is on and your sensitive items are locked."
+msgstr ""
+
+msgid "A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use."
+msgstr ""
+
+msgid "A master password is part of Supporter."
+msgstr ""
 
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "Una tira con tus fragmentos junto a la aplicación en la que trabajas. Haz clic en uno para pegarlo allí."
@@ -39,6 +51,9 @@ msgstr "Añadir lista"
 
 msgid "Add some text, or cancel."
 msgstr "Añade texto o cancela."
+
+msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for once each time Snipdeck starts and again after {} minutes without use."
+msgstr ""
 
 msgid "All"
 msgstr "Todos"
@@ -69,6 +84,9 @@ msgstr "Pide un valor cada vez"
 
 msgid "Asks you to pick one of the options"
 msgstr "Te pide elegir una de las opciones"
+
+msgid "At least {} characters. A few unrelated words make a good password."
+msgstr ""
 
 msgid "Back"
 msgstr "Atrás"
@@ -124,11 +142,20 @@ msgstr "Cancelar"
 msgid "Captured items keep their kind."
 msgstr "Los fragmentos capturados conservan su tipo."
 
+msgid "Change master password"
+msgstr ""
+
+msgid "Change password"
+msgstr ""
+
 msgid "Change these in Settings."
 msgstr ""
 
 msgid "Changes apply at once."
 msgstr "Los cambios se aplican de inmediato."
+
+msgid "Change…"
+msgstr ""
 
 msgid "Check again"
 msgstr "Comprobar de nuevo"
@@ -239,6 +266,9 @@ msgid "Copy the item"
 msgstr ""
 
 msgid "Copy the result"
+msgstr ""
+
+msgid "Current password"
 msgstr ""
 
 msgid "Daily backups, a plain zip export, and your choice of theme."
@@ -363,6 +393,12 @@ msgstr ""
 
 msgid "Enter"
 msgstr "Enter"
+
+msgid "Enter your master password to use the sensitive items in your library. Your other items are always available."
+msgstr ""
+
+msgid "Enter your password."
+msgstr ""
 
 msgid "Erase everything"
 msgstr "Borrar todo"
@@ -520,6 +556,9 @@ msgstr "Cuánto tiempo permanece el puntero fuera del panel abierto antes de que
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Ancho con el que se abre el panel, de {} a {} píxeles."
+
+msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
+msgstr ""
 
 msgid "Image"
 msgstr "Imagen"
@@ -697,6 +736,9 @@ msgstr "Nueva lista"
 
 msgid "New name for {}"
 msgstr "Nuevo nombre para {}"
+
+msgid "New password"
+msgstr ""
 
 msgid "New tag"
 msgstr "Nueva etiqueta"
@@ -987,17 +1029,29 @@ msgstr "Rojo"
 msgid "Reduce motion"
 msgstr ""
 
+msgid "Remove master password"
+msgstr ""
+
+msgid "Remove password"
+msgstr ""
+
 msgid "Remove tag {}"
 msgstr "Quitar la etiqueta {}"
 
 msgid "Remove {} from the list"
 msgstr "Quitar {} de la lista"
 
+msgid "Remove…"
+msgstr ""
+
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
 msgstr "Cambia el nombre o elimina etiquetas. Al eliminar una etiqueta, se quita de sus fragmentos; los fragmentos se conservan."
 
 msgid "Rename tag {}"
 msgstr "Renombrar la etiqueta {}"
+
+msgid "Repeat the new password"
+msgstr ""
 
 msgid "Required"
 msgstr "Obligatorio"
@@ -1092,6 +1146,15 @@ msgstr ""
 msgid "Separate workspaces, such as Work and Personal."
 msgstr ""
 
+msgid "Set master password"
+msgstr ""
+
+msgid "Set password"
+msgstr ""
+
+msgid "Set password…"
+msgstr ""
+
 msgid "Settings"
 msgstr "Configuración"
 
@@ -1144,6 +1207,9 @@ msgstr "Snipdeck (atajos en pausa)"
 msgid "Snipdeck Supporter"
 msgstr "Snipdeck Colaborador"
 
+msgid "Snipdeck can't protect a key on this PC, so a master password is not available."
+msgstr ""
+
 msgid "Snipdeck handle, press the Panel hotkey to open"
 msgstr "Tirador de Snipdeck, pulsa el atajo del panel para abrir"
 
@@ -1189,6 +1255,18 @@ msgstr "Inicio"
 msgid "Step {} of {}"
 msgstr "Paso {} de {}"
 
+msgid "Strength: fair"
+msgstr ""
+
+msgid "Strength: good"
+msgstr ""
+
+msgid "Strength: strong"
+msgstr ""
+
+msgid "Strength: weak"
+msgstr ""
+
 msgid "Supporter"
 msgstr ""
 
@@ -1228,11 +1306,17 @@ msgstr ""
 msgid "Text"
 msgstr "Texto"
 
+msgid "That password is not right. Try again."
+msgstr ""
+
 msgid "The Trash is empty"
 msgstr "La papelera está vacía"
 
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "La clave abre los elementos cifrados de las exportaciones que guardaste antes. Si la olvidas, esos elementos no se podrán abrir nunca más."
+
+msgid "The library could not be unlocked or changed. Nothing was changed."
+msgstr ""
 
 msgid "The licences of the libraries Snipdeck is built from."
 msgstr "Las licencias de las bibliotecas con las que se crea Snipdeck."
@@ -1260,6 +1344,9 @@ msgstr "La etiqueta se quita de sus fragmentos. Los fragmentos se conservan."
 
 msgid "The time now"
 msgstr "La hora actual"
+
+msgid "The two passwords are not the same."
+msgstr ""
 
 msgid "Theme"
 msgstr "Tema"
@@ -1330,6 +1417,18 @@ msgstr "Escribe {} para confirmar"
 msgid "Undo the delete"
 msgstr ""
 
+msgid "Unlock"
+msgstr ""
+
+msgid "Unlock Snipdeck"
+msgstr ""
+
+msgid "Unlock your sensitive items"
+msgstr ""
+
+msgid "Unlock…"
+msgstr ""
+
 msgid "Unpin"
 msgstr "Desfijar"
 
@@ -1338,6 +1437,9 @@ msgstr ""
 
 msgid "Use"
 msgstr "Usar"
+
+msgid "Use at least {} characters."
+msgstr ""
 
 msgid "Use selected item"
 msgstr ""
@@ -1401,6 +1503,9 @@ msgstr "Tu mazo está vacío"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "Tu biblioteca está en una sola carpeta, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (tableros, listas, fragmentos, etiquetas y la Papelera), blobs (imágenes, archivos y texto largo), settings.json, tu clave de licencia, copias de seguridad (tantas como elijas conservar) y registros."
+
+msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
+msgstr ""
 
 msgid "Your shortcuts"
 msgstr "Tus atajos"

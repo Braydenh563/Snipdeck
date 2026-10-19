@@ -10,8 +10,20 @@ msgstr ""
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "PNG 图片。Snipdeck 会保存自己的副本。"
 
+msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for once each time Snipdeck starts and again after {} minutes without use."
+msgstr ""
+
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "列表可以把相关的片段放在一起，例如回复或地址。"
+
+msgid "A master password is on and your sensitive items are locked."
+msgstr ""
+
+msgid "A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use."
+msgstr ""
+
+msgid "A master password is part of Supporter."
+msgstr ""
 
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "在你正在使用的应用旁边显示的片段栏。点击其中一条，即可粘贴到该应用。"
@@ -39,6 +51,9 @@ msgstr "添加列表"
 
 msgid "Add some text, or cancel."
 msgstr "添加一些文本，或取消。"
+
+msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for once each time Snipdeck starts and again after {} minutes without use."
+msgstr ""
 
 msgid "All"
 msgstr "全部"
@@ -69,6 +84,9 @@ msgstr "每次都询问值"
 
 msgid "Asks you to pick one of the options"
 msgstr "让你从选项中选择一项"
+
+msgid "At least {} characters. A few unrelated words make a good password."
+msgstr ""
 
 msgid "Back"
 msgstr "上一步"
@@ -124,11 +142,20 @@ msgstr "取消"
 msgid "Captured items keep their kind."
 msgstr "捕获的片段保留其类型。"
 
+msgid "Change master password"
+msgstr ""
+
+msgid "Change password"
+msgstr ""
+
 msgid "Change these in Settings."
 msgstr ""
 
 msgid "Changes apply at once."
 msgstr "更改立即生效。"
+
+msgid "Change…"
+msgstr ""
 
 msgid "Check again"
 msgstr "重新检查"
@@ -239,6 +266,9 @@ msgid "Copy the item"
 msgstr ""
 
 msgid "Copy the result"
+msgstr ""
+
+msgid "Current password"
 msgstr ""
 
 msgid "Daily backups, a plain zip export, and your choice of theme."
@@ -363,6 +393,12 @@ msgstr ""
 
 msgid "Enter"
 msgstr "Enter"
+
+msgid "Enter your master password to use the sensitive items in your library. Your other items are always available."
+msgstr ""
+
+msgid "Enter your password."
+msgstr ""
 
 msgid "Erase everything"
 msgstr "全部删除"
@@ -519,6 +555,9 @@ msgstr "指针离开已展开的面板多久后面板收起，范围为 0 至 {}
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "面板展开的宽度，范围为 {} 至 {} 像素。"
+
+msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
+msgstr ""
 
 msgid "Image"
 msgstr "图片"
@@ -696,6 +735,9 @@ msgstr "新建列表"
 
 msgid "New name for {}"
 msgstr "{} 的新名称"
+
+msgid "New password"
+msgstr ""
 
 msgid "New tag"
 msgstr "新建标签"
@@ -985,17 +1027,29 @@ msgstr "红色"
 msgid "Reduce motion"
 msgstr ""
 
+msgid "Remove master password"
+msgstr ""
+
+msgid "Remove password"
+msgstr ""
+
 msgid "Remove tag {}"
 msgstr "移除标签 {}"
 
 msgid "Remove {} from the list"
 msgstr "从列表中移除 {}"
 
+msgid "Remove…"
+msgstr ""
+
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
 msgstr "重命名或删除标签。删除标签会将其从片段中移除，片段本身保留。"
 
 msgid "Rename tag {}"
 msgstr "重命名标签 {}"
+
+msgid "Repeat the new password"
+msgstr ""
 
 msgid "Required"
 msgstr "必填"
@@ -1090,6 +1144,15 @@ msgstr ""
 msgid "Separate workspaces, such as Work and Personal."
 msgstr ""
 
+msgid "Set master password"
+msgstr ""
+
+msgid "Set password"
+msgstr ""
+
+msgid "Set password…"
+msgstr ""
+
 msgid "Settings"
 msgstr "设置"
 
@@ -1141,6 +1204,9 @@ msgstr "Snipdeck（热键已暂停）"
 msgid "Snipdeck Supporter"
 msgstr "Snipdeck 支持者"
 
+msgid "Snipdeck can't protect a key on this PC, so a master password is not available."
+msgstr ""
+
 msgid "Snipdeck handle, press the Panel hotkey to open"
 msgstr "Snipdeck 拉手，按面板快捷键即可展开"
 
@@ -1186,6 +1252,18 @@ msgstr "启动"
 msgid "Step {} of {}"
 msgstr "第 {} 步，共 {} 步"
 
+msgid "Strength: fair"
+msgstr ""
+
+msgid "Strength: good"
+msgstr ""
+
+msgid "Strength: strong"
+msgstr ""
+
+msgid "Strength: weak"
+msgstr ""
+
 msgid "Supporter"
 msgstr ""
 
@@ -1225,11 +1303,17 @@ msgstr ""
 msgid "Text"
 msgstr "文本"
 
+msgid "That password is not right. Try again."
+msgstr ""
+
 msgid "The Trash is empty"
 msgstr "回收站为空"
 
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "该密钥用于打开你之前保存的导出文件中的加密项目。如果忘记它，这些项目将永远无法再打开。"
+
+msgid "The library could not be unlocked or changed. Nothing was changed."
+msgstr ""
 
 msgid "The licences of the libraries Snipdeck is built from."
 msgstr "构成 Snipdeck 的库的许可证。"
@@ -1257,6 +1341,9 @@ msgstr "标签将从其片段中移除，片段本身保留。"
 
 msgid "The time now"
 msgstr "当前时间"
+
+msgid "The two passwords are not the same."
+msgstr ""
 
 msgid "Theme"
 msgstr "主题"
@@ -1327,6 +1414,18 @@ msgstr "输入 {} 以确认"
 msgid "Undo the delete"
 msgstr ""
 
+msgid "Unlock"
+msgstr ""
+
+msgid "Unlock Snipdeck"
+msgstr ""
+
+msgid "Unlock your sensitive items"
+msgstr ""
+
+msgid "Unlock…"
+msgstr ""
+
 msgid "Unpin"
 msgstr "取消置顶"
 
@@ -1335,6 +1434,9 @@ msgstr ""
 
 msgid "Use"
 msgstr "使用"
+
+msgid "Use at least {} characters."
+msgstr ""
 
 msgid "Use selected item"
 msgstr ""
@@ -1398,6 +1500,9 @@ msgstr "你的卡组是空的"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "你的资料库位于同一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：snipdeck.db（看板、列表、片段、标签和回收站）、blobs（图片、文件和长文本）、settings.json、你的许可证密钥、备份（按你选择保留的份数）和日志。"
+
+msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
+msgstr ""
 
 msgid "Your shortcuts"
 msgstr "你的快捷键"

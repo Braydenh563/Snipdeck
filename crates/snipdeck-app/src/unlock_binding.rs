@@ -64,6 +64,12 @@ where
     K: Keyboard + 'static,
     T: Timing + 'static,
 {
+    /// Closes the window if the controller no longer wants the prompt (the library was opened
+    /// another way, or the password removed). Every window's redraw does this too.
+    pub fn redraw(&self) {
+        self.core.close_if_not_wanted();
+    }
+
     /// Gets the window ready to be shown: an empty field and no error, the look of the app, and
     /// the keyboard on the password field.
     pub fn prepare(&self) {
