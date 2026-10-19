@@ -1163,6 +1163,59 @@ fn dragging_a_list_onto_another_puts_it_in_that_place() {
 }
 
 #[test]
+fn text_dropped_on_the_panel_becomes_an_item_at_the_top_of_the_shown_list() {
+    let mut ctl = pro();
+    let before = ctl.view().rows.len();
+    ctl.panel_drop_text("A dropped sentence.");
+    let view = ctl.view();
+    assert_eq!(view.rows.len(), before + 1);
+    assert_eq!(view.rows[0].title, "A dropped sentence.");
+    assert!(matches!(
+        ctl.main_screen().toast.map(|t| t.message),
+        Some(ToastMessage::Saved { .. })
+    ));
+}
+
+#[test]
+fn a_dropped_address_becomes_a_link_and_blank_text_saves_nothing() {
+    let mut ctl = pro();
+    ctl.panel_drop_text("https://example.com/page");
+    assert_eq!(ctl.view().rows[0].kind, snipdeck_core::ItemKind::Link);
+    let count = ctl.view().rows.len();
+    ctl.panel_drop_text("   \n ");
+    assert_eq!(ctl.view().rows.len(), count);
+}
+
+#[test]
+fn dropping_a_panel_row_on_a_tab_moves_the_item_to_that_lists_end() {
+    let mut ctl = pro();
+    let first = ctl.view().rows[0].title.clone();
+    let tabs = ctl.view().tabs.clone();
+    let other = tabs.iter().position(|t| !t.active).unwrap();
+    ctl.panel_drop_on_tab(0, other);
+    assert!(
+        !ctl.view().rows.iter().any(|r| r.title == first),
+        "gone from the shown list"
+    );
+    ctl.select_tab(other);
+    assert_eq!(ctl.view().rows.last().unwrap().title, first);
+    assert!(matches!(
+        ctl.main_screen().toast.map(|t| t.message),
+        Some(ToastMessage::ItemsMoved { count: 1, .. })
+    ));
+}
+
+#[test]
+fn dropping_a_panel_row_on_its_own_tab_does_nothing() {
+    let mut ctl = pro();
+    let before: Vec<_> = ctl.view().rows.iter().map(|r| r.title.clone()).collect();
+    let own = ctl.view().tabs.iter().position(|t| t.active).unwrap();
+    ctl.panel_drop_on_tab(0, own);
+    let after: Vec<_> = ctl.view().rows.iter().map(|r| r.title.clone()).collect();
+    assert_eq!(before, after);
+}
+
+#[test]
 fn items_do_not_move_in_a_sorted_list_a_search_or_a_system_view() {
     let mut ctl = pro();
     let before = titles(&ctl.main_screen());

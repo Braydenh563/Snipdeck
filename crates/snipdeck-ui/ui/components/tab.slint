@@ -38,9 +38,12 @@ export component Tab inherits Rectangle {
     // Right-click released on the tab (position inside the tab); the bar adds the Menu key and Shift+F10.
     callback context-menu-requested(length, length);
     callback double-clicked();
+    // A dragged item is over the tab: whether the host accepts the payload, and the drop itself.
+    pure callback drop-accepted(data-transfer) -> bool;
+    callback dropped(data-transfer);
 
     property <bool> hovered: (touch.has-hover && root.enabled) || root.show-hover;
-    property <bool> over: root.drag-over;
+    property <bool> over: root.drag-over || tab-drop.has-drag;
 
     // Grows with the text size so the label and the underline never collide.
     height: max(Space.s8, Type.line-base + Space.s3);
@@ -116,13 +119,24 @@ export component Tab inherits Rectangle {
         background: transparent;
     }
 
-    touch := TouchArea {
+    tab-drop := DropArea {
+        width: parent.width;
+        height: parent.height;
         enabled: root.enabled;
-        clicked => { root.clicked(); }
-        double-clicked => { root.double-clicked(); }
-        pointer-event(event) => {
-            if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
-                root.context-menu-requested(self.mouse-x, self.mouse-y);
+        can-drop(event) => { root.drop-accepted(event.data) ? DragAction.move : DragAction.none }
+        dropped(event) => {
+            root.dropped(event.data);
+            return DragAction.move;
+        }
+
+        touch := TouchArea {
+            enabled: root.enabled;
+            clicked => { root.clicked(); }
+            double-clicked => { root.double-clicked(); }
+            pointer-event(event) => {
+                if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
+                    root.context-menu-requested(self.mouse-x, self.mouse-y);
+                }
             }
         }
     }
@@ -201,6 +215,9 @@ export component ListTabBar inherits Rectangle {
     // The user picked tab `index` (click or keyboard). `current` is already updated.
     callback selected(index: int);
     callback add-clicked();
+    // An item dragged from the list was dropped on tab `index`; `drop-accepted` asks the host whether the payload is one.
+    pure callback drop-accepted(data-transfer) -> bool;
+    callback tab-dropped(index: int, data: data-transfer);
     // Right-click, Menu or Shift+F10 on tab `index`: where to put the menu, in window coordinates.
     callback menu-requested(index: int, x: length, y: length);
     // Double-click or F2 on tab `index`.
@@ -305,6 +322,8 @@ export component ListTabBar inherits Rectangle {
                     show-hover: i == root.show-hover-index;
                     index: i;
                     count: root.tabs.length;
+                    drop-accepted(data) => { root.drop-accepted(data) }
+                    dropped(data) => { root.tab-dropped(i, data); }
                     focus-visible: (scope.has-focus || root.show-focus) && i == root.current && !root.none-selected;
                     menu-hint: root.menu-hint;
                     clicked => { root.select(i); }

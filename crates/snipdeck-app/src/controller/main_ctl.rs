@@ -113,6 +113,10 @@ pub struct TagChoice {
 
 /// Everything the Main window shows, as plain data.
 #[derive(Debug, Clone, PartialEq)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "one field per thing the window shows; they are independent flags, not a state"
+)]
 pub struct MainScreen {
     /// Dark theme.
     pub dark: bool,

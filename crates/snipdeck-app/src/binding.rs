@@ -537,6 +537,21 @@ where
         wire!(on_pin_toggled, |ctl, on| ctl.set_on_top(on));
         wire!(on_add_list_requested, |ctl| ctl.add_list());
         wire!(on_add_from_clipboard, |ctl| ctl.quick_capture());
+        window.on_payload_text(|data| {
+            data.plain_text()
+                .map(|t| t.to_string())
+                .unwrap_or_default()
+                .into()
+        });
+        window.on_row_payload(|row| Payload::Row(row).into_transfer());
+        window.on_payload_row(|data| match Payload::of(&data) {
+            Some(Payload::Row(row)) => row,
+            _ => -1,
+        });
+        wire!(on_row_dropped_on_tab, |ctl, row, tab| ctl
+            .panel_drop_on_tab(index(row), index(tab)));
+        wire!(on_text_dropped, |ctl, text| ctl
+            .panel_drop_text(text.as_str()));
         wire!(on_app_menu_requested, |ctl| ctl.open_app_menu());
         wire_effects!(on_app_menu_activated, |ctl, i| ctl
             .choose_app_menu(index(i)));
@@ -1088,6 +1103,26 @@ pub(crate) fn extension_of(name: &str) -> String {
         })
         .map(str::to_ascii_uppercase)
         .unwrap_or_default()
+}
+
+/// What an in-window drag carries: the index of the row or the sidebar list being dragged. It
+/// rides as user data, so it never reaches another app as text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Payload {
+    Row(i32),
+    List(i32),
+}
+
+impl Payload {
+    pub(crate) fn into_transfer(self) -> slint::DataTransfer {
+        let mut data = slint::DataTransfer::default();
+        data.set_user_data(Rc::new(self));
+        data
+    }
+
+    pub(crate) fn of(data: &slint::DataTransfer) -> Option<Self> {
+        data.user_data()?.downcast_ref::<Self>().copied()
+    }
 }
 
 #[cfg(test)]

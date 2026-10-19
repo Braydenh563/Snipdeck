@@ -28,7 +28,7 @@ use snipdeck_ui as ui;
 use crate::{
     accent::Accent,
     binding::{
-        Loggable, Shown, arm_toast, extension_of, index, item_kind_of, model, redraw_all,
+        Loggable, Payload, Shown, arm_toast, extension_of, index, item_kind_of, model, redraw_all,
         register_redraw, to_i32,
     },
     controller::{
@@ -885,26 +885,6 @@ pub(crate) fn raise(window: &slint::Window) {
         w.set_minimized(false);
         w.focus_window();
     });
-}
-
-/// What an in-window drag carries: the index of the row or the sidebar list being dragged. It
-/// rides as user data, so it never reaches another app as text.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Payload {
-    Row(i32),
-    List(i32),
-}
-
-impl Payload {
-    fn into_transfer(self) -> slint::DataTransfer {
-        let mut data = slint::DataTransfer::default();
-        data.set_user_data(Rc::new(self));
-        data
-    }
-
-    fn of(data: &slint::DataTransfer) -> Option<Self> {
-        data.user_data()?.downcast_ref::<Self>().copied()
-    }
 }
 
 // ---- Screen -> window --------------------------------------------------------------------------
