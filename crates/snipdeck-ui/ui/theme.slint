@@ -23,8 +23,9 @@ export global SystemLook {
     in property <color> hc-gray-text: #3ff23f;
     // ADR-0008: the main window keeps the OS caption buttons and reserves their strip at the top right. The
     // platform layer sets this (logical px, from DWMWA_CAPTION_BUTTON_BOUNDS) on start-up, on DPI and on theme
-    // change; the main window's title bar lays out around it. 138 = 3 x 46 until measured.
-    in property <length> caption-inset: 138px;
+    // change; the main window's title bar lays out around it. 0 while the OS draws its own title bar (the app
+    // sets 0 too, main_binding.rs), so the toolbar's buttons sit at the top right.
+    in property <length> caption-inset: 0px;
 }
 
 export global Fonts {
