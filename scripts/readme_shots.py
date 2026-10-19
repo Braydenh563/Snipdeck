@@ -28,7 +28,7 @@ SHOTS = {
     "panel": "panel",
     "picker": "picker",
     "fill": "fill",
-    "editor": "item-editor-template",
+    "editor": "item-editor-text",
     "settings": "settings",
     "help": "help-troubleshoot",
     "tags": "tag-manager",

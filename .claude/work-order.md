@@ -41,3 +41,4 @@ budget: owner at 40% weekly; own budget line 60%, stop line 65% (owner: wrap up 
 - [ ] README shots (after goldens regenerate): `SNIPDECK_SHOT_SCALE=2 SNIPDECK_SHOTS_DIR=<scratch>/shots cargo test -p snipdeck-ui --no-fail-fast`, then `python3 scripts/readme_shots.py <scratch>/shots`; view hero + 8 tour images light/dark; commit with README.
 - [ ] Help window: add "Show the welcome tour again" (onboarding_binding::request_open) and a Main window Help entry.
 - [ ] Scout's not-done list (2026-10-19 07:50): A12 {clipboard}/local tz, A11 sensitive clipboard clear, A1 Main geometry memory, A7 tray paused tooltip, audit 6 "Space" @tr, audit 9 menu focus ring; rest (drag-reorder, Duplicate, Copy to board, Create-named) post-v1 unless cheap.
+- [ ] README: re-add the Help screenshot block (removed until help-troubleshoot goldens exist); editor shot back to item-editor-template once it has a dark golden.

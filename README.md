@@ -102,7 +102,7 @@ Rendered from the app's own interface, in light or dark to match your GitHub the
 </p>
 
 <details>
-<summary><b>More screenshots</b>: tile view, item editor, Settings and Help</summary>
+<summary><b>More screenshots</b>: tile view, item editor and Settings</summary>
 
 <br>
 
@@ -112,18 +112,13 @@ Rendered from the app's own interface, in light or dark to match your GitHub the
 </p>
 
 <p align="center">
-  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/editor-dark.png"><img src="docs/images/editor-light.png" alt="The item editor on a template" width="620"></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/editor-dark.png"><img src="docs/images/editor-light.png" alt="The item editor on a text item" width="620"></picture>
   <br><sub><b>Item editor</b>: text, code, links, templates, images and files, with a sensitive switch.</sub>
 </p>
 
 <p align="center">
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/settings-dark.png"><img src="docs/images/settings-light.png" alt="The Settings window" width="700"></picture>
   <br><sub><b>Settings</b>: hotkeys, theme, language, dock edge, backups and privacy on one page.</sub>
-</p>
-
-<p align="center">
-  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/help-dark.png"><img src="docs/images/help-light.png" alt="The Help window troubleshooting checklist" width="660"></picture>
-  <br><sub><b>Help</b>: a troubleshooting checklist with a fix button for each problem it finds.</sub>
 </p>
 
 </details>
