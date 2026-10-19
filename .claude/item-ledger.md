@@ -11,3 +11,4 @@ date | item | type | rung | rework | note
 2026-10-18 | Step 4 Panel binding (kebab, resize, quick edit) | feature | sonnet | 0 | 
 2026-10-18 | Step 7 Settings window | feature | sonnet | 0 | 
 2026-10-18 | Security review fixes 1-11,13 | fix | sonnet | 0 | 
+2026-10-19 | CI: settings goldens after the website-icons row removal | fix | fable | 0 | 
