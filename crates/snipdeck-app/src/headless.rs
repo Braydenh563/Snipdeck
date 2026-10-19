@@ -238,7 +238,7 @@ mod tests {
         let _held = Store::open(dir.path()).expect("held");
         let out = check_db(dir.path());
         assert_eq!(out.code, COULD_NOT_RUN);
-        assert!(!out.text.is_empty());
+        assert!(out.text.contains("already using"), "{}", out.text);
     }
 
     #[test]
