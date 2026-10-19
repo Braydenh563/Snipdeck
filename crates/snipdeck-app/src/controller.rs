@@ -1224,7 +1224,16 @@ where
             now: self.clock.now(),
             entitlements: self.entitlements,
             answers,
-            clipboard_text: self.services.clipboard.read_text(),
+            // Only a template can say `{clipboard}`: other items never read what the user copied.
+            clipboard_text: if self
+                .store
+                .item(item)
+                .is_ok_and(|i| i.kind == snipdeck_core::ItemKind::Template)
+            {
+                self.services.clipboard.read_text()
+            } else {
+                None
+            },
             tz: self.tz.clone(),
             locale: Locale::for_tag(&self.settings.language),
         };

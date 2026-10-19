@@ -87,8 +87,9 @@ mod imp {
                 return;
             };
             self.0.register_popup(hwnd);
-            // False means Windows refused the subclass; the window then activates on click.
-            let _ = window_style::install_panel_style(hwnd);
+            // Popups never get a taskbar button. False means Windows refused the subclass; the
+            // window then activates on click.
+            let _ = window_style::install_panel_style(hwnd, false);
         }
 
         fn activate(&self, window: &slint::Window) -> bool {
