@@ -36,9 +36,9 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 - [ ] C5 [S] Accent colour: Index Blue default; presets teal, green, amber, rose, violet; "Windows accent" option nudged to pass contrast; every token pair measured for WCAG 2.2 AA in a test; full high-contrast use; 225 % icon scaling.
 - [ ] C6 [S] Edge dock ships (built: dock.rs, dock_ctl.rs): settings checked, wizard steps present.
 - [x] C7 [S] MSIX packaging files and `docs/packaging.md` steps (owner buys the account); code-signing steps for SignPath in the release docs. Note: packaging files (manifest template) still open.
-- [ ] C8 [S] Supporter (was Pro; owner 2026-10-19): Free board limit 3 -> 5 (entitlements, tests, docs); pay what you want from A$5, suggested A$8, one-time; free key on request; never nag. Get Pro: mailto link in Settings, the board-limit toast and the site; address is a placeholder until the owner supplies it.
+- [ ] C8 [S] Supporter (was Pro; owner 2026-10-19): Free board limit 3 -> 5 (entitlements, tests, docs); pay what you want from A$5, suggested A$8, one-time; free key on request; never nag. Get Supporter: mailto link in Settings, the board-limit toast and the site; address is a placeholder until the owner supplies it.
 
-- [ ] C9 [S] Free vs Pro made clear (owner 2026-10-19): a compact comparison table (feature, one-line description, tick or cross per tier) in Settings Licence and the Get Pro dialog, the README and the site. Honest framing: Pro pays for convenience and supports the app; the code is GPL; Free stays fully usable. No walls of text.
+- [ ] C9 [S] Free vs Supporter made clear (owner 2026-10-19): a compact comparison table (feature, one-line description, tick or cross per tier) in Settings Licence and the Get Supporter dialog, the README and the site. Honest framing: Supporter pays for convenience and supports the app; the code is GPL; Free stays fully usable. No walls of text.
 ## D. Images, site, controller
 - [ ] D1 [S] Regenerate every golden after A-C, read each one; UX fixes from what they show.
 - [ ] D2 [S] README shots and hero images at 2x (`SNIPDECK_SHOT_SCALE=2`, `scripts/readme_shots.py`); Help shot back in.
@@ -47,7 +47,7 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 - [ ] D5 [S] Controller split (H1): `controller.rs` under 800 lines, test list identical before and after (may be done inside F1).
 
 ## E. Docs and going public
-- [ ] E1 [H] Docs: user guide matches every menu, shortcut and new feature; CHANGELOG; troubleshooting; privacy (Recent inbox); licensing (Get Pro); HANDOVER rewritten to the shipped state; CODEMAP regenerated.
+- [ ] E1 [H] Docs: user guide matches every menu, shortcut and new feature; CHANGELOG; troubleshooting; privacy (Recent inbox); licensing (Get Supporter); HANDOVER rewritten to the shipped state; CODEMAP regenerated.
 - [x] E2 [S] Pre-public sweep (`docs/going-public.md` section 1): full-history secret scan, review `docs/` and `.claude/` for private notes, read licensing and SECURITY as a stranger.
 - [~] E3 [owner] (CI line for the renamed tool: done, c8cc4eb.) Repo made public 2026-10-19 11:55 (done); GitHub settings in `docs/going-public.md` sections 2-3 (secret scanning, Dependabot, branch protection, tag ruleset).
 
@@ -59,7 +59,7 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 
 ## G. Owner on Windows and release
 - [ ] G1 [owner] Windows run: `Snipdeck.bat` on a clean PC, `run-windows-tests.bat` (M2, M3 and new steps), tray, taskbar, Alt+Tab, placement at 100/150/225 %, file dialog, caret, DPAPI, autostart, dock hover, IME (S2).
-- [ ] G2 [owner] Supply the Get Pro address; review and merge PR #5.
+- [ ] G2 [owner] Supply the Get Supporter address; review and merge PR #5.
 - [ ] G3 [owner] Tag `v1.0.0`; the release workflow builds the zip; add its SHA-256 to `tools/launcher/release-sha256.txt`.
 - [ ] G4 [owner] After release: apply to SignPath Foundation; Microsoft Store submission (optional).
 

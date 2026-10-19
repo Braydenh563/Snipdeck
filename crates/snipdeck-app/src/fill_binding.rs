@@ -34,10 +34,15 @@ use crate::{
 pub const FILL_WIDTH: f32 = 440.0;
 
 #[derive(Clone)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "a snapshot of independent switches, not a state"
+)]
 struct Shown {
     dark: bool,
     high_contrast: Option<HighContrast>,
     accent: Option<Accent>,
+    reduced_motion: bool,
     /// The form on screen (`seq`) and its preview.
     seq: u64,
     preview: String,
@@ -107,6 +112,7 @@ where
             dark: view.dark,
             high_contrast: view.high_contrast,
             accent: view.accent,
+            reduced_motion: view.reduced_motion,
             seq: fill.seq,
             preview: fill.preview.clone(),
             masked: fill.masked,
@@ -289,11 +295,15 @@ fn render(
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
     }
-    if differs(&|p| p.high_contrast == view.high_contrast && p.accent == view.accent) {
+    if differs(&|p| {
+        (p.high_contrast, p.accent, p.reduced_motion)
+            == (view.high_contrast, view.accent, view.reduced_motion)
+    }) {
         set_look_globals(
             &window.global::<ui::SystemLook<'_>>(),
             view.high_contrast.as_ref(),
             view.accent.as_ref(),
+            view.reduced_motion,
         );
     }
     // The fields are set once per form: afterwards the window holds what is typed.

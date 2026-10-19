@@ -15,11 +15,11 @@ where
     K: Keyboard,
     T: Timing,
 {
-    /// Whether the tour opens by itself now: it has not been seen and the library holds no item
+    /// Whether the tour opens by itself now: it has not been seen and the library holds no item of the user's
     /// (see `Settings::tour_due`). The host asks once at start-up.
     #[must_use]
     pub fn tour_due(&self) -> bool {
-        let empty = self.store.all_items().is_ok_and(|items| items.is_empty());
+        let empty = crate::starter::library_is_untouched(&self.store).unwrap_or(false);
         self.settings.tour_due(empty)
     }
 

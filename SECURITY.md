@@ -54,8 +54,8 @@ Out of scope:
 - **Storage:** SQLite with `secure_delete`, plus a blob folder; a single writer holds a lock file
   ([`docs/store.md`](docs/store.md)).
 - **Sensitive items:** masked in the UI and excluded from history; the clipboard is cleared after use (the
-  masking and clearing are specified in SPEC §5.7 and not all built yet). With Supporter, item payloads are encrypted with XChaCha20-Poly1305 under a
-  random data key, wrapped by the Windows account (DPAPI) and optionally sealed by a master password
+  masking and clearing are specified in SPEC §5.7 and not all built yet). Item payloads are encrypted with XChaCha20-Poly1305 under a
+  random data key, wrapped by the Windows account (DPAPI) and optionally sealed by a master password (a Supporter feature)
   (Argon2id). The envelope is bound to the item and format. Titles, tags and search text are not
   encrypted.
 - **Untrusted input** (archives, importers) is read with hard size and count limits, never extracted to

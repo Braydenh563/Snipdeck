@@ -36,6 +36,7 @@ struct Shown {
     dark: bool,
     high_contrast: Option<HighContrast>,
     accent: Option<Accent>,
+    reduced_motion: bool,
     toast: ToastView,
 }
 
@@ -77,6 +78,12 @@ where
         };
         if created {
             let weak: Weak<Self> = Rc::downgrade(self);
+            let hover = Weak::clone(&weak);
+            window.on_hover_changed(move |on| {
+                if let Some(core) = hover.upgrade() {
+                    core.controller.borrow_mut().toast_hover(on);
+                }
+            });
             window.on_undo(move || {
                 if let Some(core) = weak.upgrade() {
                     core.controller.borrow_mut().main_undo();
@@ -89,6 +96,7 @@ where
             dark: view.dark,
             high_contrast: view.high_contrast,
             accent: view.accent,
+            reduced_motion: view.reduced_motion,
             toast: toast.clone(),
         });
         let size = (window.get_content_width(), window.get_content_height());
@@ -181,11 +189,15 @@ fn render(window: &ui::ToastWindow, previous: Option<&Shown>, view: &View, toast
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
     }
-    if differs(&|p| p.high_contrast == view.high_contrast && p.accent == view.accent) {
+    if differs(&|p| {
+        (p.high_contrast, p.accent, p.reduced_motion)
+            == (view.high_contrast, view.accent, view.reduced_motion)
+    }) {
         set_look_globals(
             &window.global::<ui::SystemLook<'_>>(),
             view.high_contrast.as_ref(),
             view.accent.as_ref(),
+            view.reduced_motion,
         );
     }
     if differs(&|p| p.toast == *toast) {

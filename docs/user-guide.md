@@ -65,7 +65,7 @@ sensitive. A sensitive item:
 - Is put on the clipboard marked private, so Windows clipboard history and cloud clipboard skip it. If you only copied it, Snipdeck
   clears it from the clipboard after 30 seconds (if the clipboard still holds it).
 - Is masked in the fill form.
-- With Supporter, is also encrypted on disk with a key protected by Windows. The title, tags and search text are not
+- Is also encrypted on disk, on every plan, with a key protected by Windows (Supporter can add a master password). The title, tags and search text are not
   encrypted. See [`crypto.md`](crypto.md).
 
 ## Paste an item
@@ -190,6 +190,10 @@ or CopyQ data has no screen in this version.
 | Panel | `1` to `9` | Use that row (search box empty) |
 | Panel | `Ctrl+Tab`, `Ctrl+Shift+Tab` | Next or previous list |
 | Panel | `Ctrl+F` | Focus the search box |
+| Panel | `Ctrl+N`, `Ctrl+Shift+N` | New item, new list |
+| Panel | `Ctrl+,` | Settings |
+| Panel | `Ctrl+W` | Hide the Panel |
+| Panel | `Ctrl+Z` | Undo the delete (search box empty) |
 | Panel | `Ctrl+E`, `F2` | Edit the selected item |
 | Panel | `Delete` | Move the selected item to the Trash (not while searching) |
 | Panel | `Menu`, `Shift+F10` | Open the item menu |
@@ -197,7 +201,10 @@ or CopyQ data has no screen in this version.
 | Picker | `Tab`, `Shift+Tab` | Change scope |
 | Picker | `Alt+1` to `Alt+9` | Use that row |
 | Picker | `Ctrl+E`, `Esc` | Edit, close |
-| Main window | `Ctrl+N` | New item |
+| Main window | `Ctrl+N`, `Ctrl+Shift+N` | New item, new list |
+| Main window | `Ctrl+,` | Settings |
+| Main window | `Ctrl+W` | Close the window |
+| Main window | `Ctrl+Z` | Undo the delete (not while typing in the search box) |
 | Main window | `Ctrl+F`, `/` | Search |
 | Main window | `Enter`, `Shift+Enter` | Use, or copy only |
 | Main window | `Ctrl+E`, `F2` | Edit |

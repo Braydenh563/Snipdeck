@@ -86,7 +86,7 @@ where
     K: Keyboard,
     T: Timing,
 {
-    /// Whether Settings shows the Pro licence.
+    /// Whether Settings shows the Supporter licence.
     #[must_use]
     pub fn tier(&self) -> Tier {
         self.entitlements.tier()
@@ -135,13 +135,13 @@ where
         self.toast_view()
     }
 
-    /// Checks a pasted licence key. A good one turns Pro on at once and is saved in `data_dir`
-    /// (`None` in the demo, which keeps nothing) so the next start is Pro too; a bad one changes
+    /// Checks a pasted licence key. A good one turns Supporter on at once and is saved in `data_dir`
+    /// (`None` in the demo, which keeps nothing) so the next start is Supporter too; a bad one changes
     /// nothing and raises a toast that says what is wrong with it.
     ///
     /// # Errors
     ///
-    /// Why the key was not accepted. [`LicenceProblem::NotSaved`] means Pro is on for this run only.
+    /// Why the key was not accepted. [`LicenceProblem::NotSaved`] means Supporter is on for this run only.
     pub fn apply_licence(
         &mut self,
         token: &str,
@@ -170,7 +170,7 @@ where
             }),
             Err(problem) => self.show_toast(danger(ToastMessage::LicenceRejected(problem))),
         }
-        // Pro lifts the Free caps the windows show.
+        // Supporter lifts the Free caps the windows show.
         let _ = self.refresh_panel();
         result
     }

@@ -507,6 +507,13 @@ where
         wire_effects!(on_rename_requested, |ctl, i| ctl.rename_row(index(i)));
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.toast_action());
+        wire!(on_undo_requested, |ctl| ctl.main_undo());
+        wire_effects!(on_new_item_requested, |_ctl| vec![Effect::NewItem]);
+        wire_effects!(on_settings_requested, |_ctl| vec![Effect::OpenSettings]);
+        {
+            let core = Rc::clone(&core);
+            window.on_toast_hover_changed(move |on| core.controller.borrow_mut().toast_hover(on));
+        }
         wire_effects!(on_resize_requested, |ctl, edge| ctl.resize(edge_of(edge)));
         wire_effects!(on_handle_hovered, |ctl, on| ctl
             .dock_event(DockEvent::HandleHover(on)));
@@ -692,11 +699,15 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
     }
-    if differs(&|p| p.high_contrast == view.high_contrast && p.accent == view.accent) {
+    if differs(&|p| {
+        (p.high_contrast, p.accent, p.reduced_motion)
+            == (view.high_contrast, view.accent, view.reduced_motion)
+    }) {
         crate::popup_window::set_look_globals(
             &window.global::<ui::SystemLook<'_>>(),
             view.high_contrast.as_ref(),
             view.accent.as_ref(),
+            view.reduced_motion,
         );
     }
     if differs(&|p| p.stack == view.stack) {
@@ -756,6 +767,10 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     }
     if window.get_topmost() != view.topmost {
         window.set_topmost(view.topmost);
+        if !view.topmost {
+            // winit's step-down also raises the Panel above Main: put it back behind it.
+            crate::native_window::settle_behind_active(window);
+        }
     }
     if differs(&|p| p.footer == view.footer) {
         let (app, title) = match &view.footer {

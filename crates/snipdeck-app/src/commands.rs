@@ -117,6 +117,7 @@ impl Command {
     pub fn shortcut(self, hotkeys: &Hotkeys) -> Option<String> {
         let fixed = match self {
             Self::NewItem => "Ctrl+N",
+            Self::NewList => "Ctrl+Shift+N",
             Self::Search => "Ctrl+F",
             Self::Settings => "Ctrl+,",
             Self::UserGuide => "F1",
@@ -442,6 +443,19 @@ mod tests {
         assert_eq!(
             find("Show Panel").map(|e| e.keys.join("+")),
             Some(HotkeyAction::TogglePanel.default_chord().to_owned())
+        );
+    }
+
+    #[test]
+    fn new_list_and_new_item_have_their_own_chords() {
+        let hotkeys = Hotkeys::default();
+        assert_eq!(
+            Command::NewItem.shortcut(&hotkeys).as_deref(),
+            Some("Ctrl+N")
+        );
+        assert_eq!(
+            Command::NewList.shortcut(&hotkeys).as_deref(),
+            Some("Ctrl+Shift+N")
         );
     }
 

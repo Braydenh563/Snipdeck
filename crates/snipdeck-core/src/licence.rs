@@ -53,8 +53,8 @@ pub enum LicenceError {
     /// The token uses a format version this build does not understand; update Snipdeck.
     #[error("licence key format version {0} is not supported")]
     UnsupportedVersion(u64),
-    /// The token is validly signed but is not for the Pro tier.
-    #[error("licence key is not for Snipdeck Pro")]
+    /// The token is validly signed but is not for the Supporter tier.
+    #[error("licence key is not for Snipdeck Supporter")]
     WrongTier,
 }
 
@@ -68,14 +68,14 @@ pub struct Licence {
 }
 
 impl Licence {
-    /// The tier this licence grants: always Pro in format v1.
+    /// The tier this licence grants: always Supporter in format v1.
     pub const fn tier(&self) -> Tier {
         Tier::Pro
     }
 
     /// What the licence unlocks.
     ///
-    /// Pro unlocks every [`Feature`], so the token's `features` list does not narrow it; see
+    /// Supporter unlocks every [`Feature`], so the token's `features` list does not narrow it; see
     /// [`Licence::features`].
     pub const fn entitlements(&self) -> Entitlements {
         Entitlements::new(Tier::Pro)

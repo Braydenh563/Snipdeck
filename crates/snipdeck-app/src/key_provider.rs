@@ -1,5 +1,5 @@
 //! What wraps the library's encryption key (SPEC 5.7, `docs/crypto.md`): Windows DPAPI for the
-//! current user. The first sensitive item on Pro makes the key and asks this to protect it,
+//! current user. The first sensitive item on Supporter makes the key and asks this to protect it,
 //! without a prompt; every later start asks it to open the key again.
 //!
 //! Off Windows there is no key protection to offer, so [`provider`] returns `None` and the item

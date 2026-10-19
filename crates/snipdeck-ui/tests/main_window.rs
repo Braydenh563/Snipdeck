@@ -175,6 +175,10 @@ fn the_sidebar_is_232px_wide_with_a_subtle_hairline_and_app_chrome() {
 #[test]
 fn the_toolbar_leaves_the_caption_button_strip_free() {
     let h = window(SIZE, false);
+    // The theme's inset defaults to 0 (renders show the toolbar buttons); the app sets the real strip.
+    h.component
+        .global::<SystemLook<'_>>()
+        .set_caption_inset(138.0);
     let f = render(&h);
     // ADR-0008: 138px (3 x 46) at the top right belong to the OS caption buttons; nothing is drawn there.
     for x in (SIZE.0 - 138)..SIZE.0 {
@@ -211,6 +215,9 @@ fn the_new_item_button_ends_at_the_toolbars_right_padding() {
     for (scale, size) in [(1.0_f32, SIZE), (2.25, (1400, 900))] {
         let h = window(size, false);
         h.component.global::<SystemLook<'_>>().set_text_scale(scale);
+        h.component
+            .global::<SystemLook<'_>>()
+            .set_caption_inset(138.0);
         let f = render(&h);
         let edge = size.0 - 138 - 8 - 1;
         assert_eq!(

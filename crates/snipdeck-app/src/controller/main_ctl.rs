@@ -119,6 +119,8 @@ pub struct MainScreen {
     pub high_contrast: Option<HighContrast>,
     /// The user's accent, when it is not the built-in blue.
     pub accent: Option<crate::accent::Accent>,
+    /// Animations are off.
+    pub reduced_motion: bool,
     /// The open board's name.
     pub board_name: String,
     /// The board menu while it is open.
@@ -208,6 +210,7 @@ where
             dark: look.dark,
             high_contrast: look.high_contrast,
             accent: self.accent(),
+            reduced_motion: look.reduce_motion,
             board_name: self.main.board_name().to_owned(),
             board_menu: self
                 .main
@@ -481,7 +484,7 @@ where
         }
     }
 
-    /// The Free plan's live-board limit, for restoring a board; `None` on Pro.
+    /// The Free plan's live-board limit, for restoring a board; `None` on Supporter.
     fn board_limit(&self) -> Option<usize> {
         (!self.entitlements.allows(Feature::UnlimitedBoards))
             .then_some(snipdeck_core::Entitlements::FREE_BOARD_LIMIT)
@@ -904,7 +907,7 @@ where
                 kind: EditorKind::List,
                 is_new: true,
                 name: crate::starter::numbered_name(
-                    crate::starter::NEW_LIST,
+                    &self.new_list_base,
                     self.main.lists().iter().map(|l| l.name.as_str()),
                 ),
                 accent: None,
@@ -977,7 +980,7 @@ where
                 kind: EditorKind::Board,
                 is_new: true,
                 name: crate::starter::numbered_name(
-                    "New board",
+                    &self.new_board_base,
                     self.main.boards().iter().map(|b| b.name.as_str()),
                 ),
                 accent: None,

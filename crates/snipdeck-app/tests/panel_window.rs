@@ -660,6 +660,7 @@ fn windows_dark_mode_and_high_contrast_reach_the_window() {
             dark: true,
             high_contrast: None,
             accent: None,
+            reduce_motion: false,
         });
         assert!(r.ui.get_dark(), "theme = system follows Windows");
 
@@ -671,6 +672,7 @@ fn windows_dark_mode_and_high_contrast_reach_the_window() {
                 ..hc
             }),
             accent: None,
+            reduce_motion: false,
         });
         assert!(look.get_high_contrast());
         assert_eq!(look.get_hc_highlight(), slint::Color::from_rgb_u8(1, 2, 3));
@@ -683,6 +685,29 @@ fn windows_dark_mode_and_high_contrast_reach_the_window() {
 }
 
 #[test]
+fn reduced_motion_reaches_the_window_from_windows_or_the_setting() {
+    on_ui_thread(|| {
+        let r = rig();
+        let look = r.ui.global::<snipdeck_ui::SystemLook<'_>>();
+        assert!(!look.get_reduced_motion());
+
+        r.binding.system_look(SystemLook {
+            reduce_motion: true,
+            ..SystemLook::default()
+        });
+        assert!(look.get_reduced_motion(), "Windows animation effects off");
+
+        r.binding.system_look(SystemLook::default());
+        assert!(!look.get_reduced_motion());
+        r.ctl
+            .borrow_mut()
+            .update_settings(|s| s.reduce_motion = true);
+        r.binding.system_look(SystemLook::default());
+        assert!(look.get_reduced_motion(), "the Snipdeck setting");
+    });
+}
+
+#[test]
 fn an_explicit_theme_ignores_windows_dark_mode() {
     on_ui_thread(|| {
         let r = rig();
@@ -691,6 +716,7 @@ fn an_explicit_theme_ignores_windows_dark_mode() {
             dark: true,
             high_contrast: None,
             accent: None,
+            reduce_motion: false,
         });
         assert!(!r.ui.get_dark());
     });

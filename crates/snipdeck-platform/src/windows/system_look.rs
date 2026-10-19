@@ -25,10 +25,10 @@ use windows::Win32::Graphics::Gdi::{
 use windows::Win32::System::Registry::{HKEY_CURRENT_USER, RRF_RT_REG_DWORD, RegGetValueW};
 use windows::Win32::UI::Accessibility::{HCF_HIGHCONTRASTON, HIGHCONTRASTW};
 use windows::Win32::UI::WindowsAndMessaging::{
-    SPI_GETHIGHCONTRAST, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, SystemParametersInfoW,
-    WM_SETTINGCHANGE,
+    SPI_GETCLIENTAREAANIMATION, SPI_GETHIGHCONTRAST, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS,
+    SystemParametersInfoW, WM_SETTINGCHANGE,
 };
-use windows::core::{PCWSTR, w};
+use windows::core::{BOOL, PCWSTR, w};
 
 use super::hidden_window::{HiddenWindow, WindowHandler};
 use crate::error::Error;
@@ -54,7 +54,25 @@ pub fn read() -> SystemLook {
         dark: apps_use_light_theme() == Some(false),
         high_contrast: high_contrast(),
         accent: accent_color(),
+        reduce_motion: !client_area_animation(),
     }
+}
+
+/// "Animation effects" (`SPI_GETCLIENTAREAANIMATION`). An unreadable value counts as on, so a
+/// failed call never turns the animations off.
+fn client_area_animation() -> bool {
+    let mut on = BOOL(1);
+    // SAFETY: `on` is a valid `BOOL`, which is what `SPI_GETCLIENTAREAANIMATION` writes through
+    // `pvParam`; `uiparam` is unused and zero.
+    let read = unsafe {
+        SystemParametersInfoW(
+            SPI_GETCLIENTAREAANIMATION,
+            0,
+            Some((&raw mut on).cast::<c_void>()),
+            SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0),
+        )
+    };
+    read.is_err() || on.as_bool()
 }
 
 /// `AppsUseLightTheme`: `Some(true)` light, `Some(false)` dark, `None` if the value is missing.
@@ -188,7 +206,7 @@ impl WindowHandler for Watcher {
 #[cfg(test)]
 mod tests {
     use windows::Win32::UI::WindowsAndMessaging::{
-        SPI_SETHIGHCONTRAST, WM_SYSCOLORCHANGE, WM_THEMECHANGED,
+        SPI_SETCLIENTAREAANIMATION, SPI_SETHIGHCONTRAST, WM_SYSCOLORCHANGE, WM_THEMECHANGED,
     };
 
     use super::*;
@@ -199,6 +217,10 @@ mod tests {
         assert_eq!(portable::WM_SETTINGCHANGE, WM_SETTINGCHANGE);
         assert_eq!(portable::WM_THEMECHANGED, WM_THEMECHANGED);
         assert_eq!(portable::WM_SYSCOLORCHANGE, WM_SYSCOLORCHANGE);
+        assert_eq!(
+            portable::SPI_SETCLIENTAREAANIMATION,
+            SPI_SETCLIENTAREAANIMATION.0 as usize
+        );
         assert_eq!(
             portable::SPI_SETHIGHCONTRAST,
             SPI_SETHIGHCONTRAST.0 as usize

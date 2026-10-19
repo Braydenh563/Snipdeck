@@ -177,10 +177,17 @@ where
     }
 
     /// Opens the library key at start-up when one was made on an earlier run, so sensitive items
-    /// can be used and edited. Without a key nothing happens; a key that does not open is a toast
-    /// (the items stay as they are).
+    /// can be used and edited. A key that does not open is a toast (the items stay as they are).
+    ///
+    /// A library from before encryption was free for every plan can hold sensitive items as
+    /// plain text and no key: when the machine can protect a key, it is made now, which encrypts
+    /// those items. Without key protection they stay as they are, and no toast is shown.
     pub fn unlock_library(&mut self) {
-        if let Err(e) = self.ensure_key(false) {
+        let migrate = self.editor_env.keys.is_some()
+            && !self.store.is_unlocked()
+            && !matches!(self.store.key_ring_exists(), Ok(true))
+            && matches!(self.store.has_plain_sensitive(), Ok(true));
+        if let Err(e) = self.ensure_key(migrate) {
             self.show_toast(open_failed(&e));
         }
     }
@@ -533,6 +540,7 @@ where
             dark: look.dark,
             high_contrast: look.high_contrast,
             accent: self.accent(),
+            reduced_motion: look.reduce_motion,
             fields: slot.fields.clone(),
             list_names: slot.lists.iter().map(|(_, n)| n.clone()).collect(),
             tags: slot
@@ -548,7 +556,6 @@ where
             large: slot.large,
             attachment: slot.attachment.clone(),
             prompted_available: self.entitlements.allows(Feature::PromptedFields),
-            encryption_available: self.entitlements.allows(Feature::SensitiveEncryption),
             can_browse: self.editor_env.picker.is_some(),
             restored: slot.restored,
         })
@@ -806,12 +813,12 @@ where
             return self.save_failed(slot, SaveFailure::ListGone);
         };
 
-        // The key: made on the first sensitive item on Pro, opened whenever one exists.
-        if sensitive || slot.original_sensitive {
-            let create = sensitive && self.entitlements.allows(Feature::SensitiveEncryption);
-            if let Err(e) = self.ensure_key(create) {
-                return self.save_failed(slot, SaveFailure::of(&e));
-            }
+        // The key: made on the first sensitive item (on every plan: encryption is free), opened
+        // whenever one exists.
+        if (sensitive || slot.original_sensitive)
+            && let Err(e) = self.ensure_key(sensitive)
+        {
+            return self.save_failed(slot, SaveFailure::of(&e));
         }
 
         let tags = match self.resolve_tags(slot) {
@@ -906,7 +913,7 @@ where
 
     /// Makes the library key usable: nothing to do when it is open; opens it when it exists;
     /// makes it, with no master password, when `create` and it does not exist (the first
-    /// sensitive item on Pro; the user is not asked).
+    /// sensitive item; the user is not asked).
     fn ensure_key(&mut self, create: bool) -> snipdeck_store::Result<()> {
         if self.store.is_unlocked() {
             return Ok(());

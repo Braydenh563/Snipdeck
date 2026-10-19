@@ -90,6 +90,20 @@ impl Store {
         ring_exists(&self.conn)
     }
 
+    /// Whether any sensitive item, a trashed one included, is still stored as plain text
+    /// (made sensitive before encryption was set up). Creating the key ring encrypts them.
+    pub fn has_plain_sensitive(&self) -> Result<bool> {
+        Ok(self
+            .conn
+            .query_row(
+                "SELECT 1 FROM items WHERE sensitive = 1 AND encrypted = 0 LIMIT 1",
+                [],
+                |_| Ok(()),
+            )
+            .optional()?
+            .is_some())
+    }
+
     /// The stored key record (the wrapped data key), if encryption was set up. It is safe to copy:
     /// useless without the OS binding and the master password. Erasing a library uses it to keep
     /// the key while everything else goes ([`Store::restore_key_record`]).
@@ -116,7 +130,7 @@ impl Store {
         Ok(())
     }
 
-    /// Sets up encryption of sensitive items (Pro): makes a new data key, stores the record
+    /// Sets up encryption of sensitive items (Supporter): makes a new data key, stores the record
     /// that protects it (OS binding through `ring`'s provider, plus the master password if
     /// given), unlocks, and encrypts every sensitive item that is still in plain text.
     ///

@@ -111,7 +111,7 @@ pub enum EditorProblem {
     LinkHasSpace,
     /// The template does not parse; carries the parser's own explanation.
     Template(String),
-    /// The text uses something Pro (a prompted placeholder).
+    /// The text uses something Supporter (a prompted placeholder).
     NeedsPro(Feature),
     /// No file chosen.
     SourceEmpty,
@@ -233,6 +233,8 @@ pub struct ItemEditorView {
     pub high_contrast: Option<HighContrast>,
     /// The user's accent, when it is not the built-in blue.
     pub accent: Option<crate::accent::Accent>,
+    /// Animations are off.
+    pub reduced_motion: bool,
     /// The starting values.
     pub fields: EditorInput,
     /// The names of the lists to choose from.
@@ -253,10 +255,8 @@ pub struct ItemEditorView {
     pub large: Option<u64>,
     /// What an existing Image or File holds.
     pub attachment: Option<AttachmentView>,
-    /// Prompted placeholders are available (Pro).
+    /// Prompted placeholders are available (Supporter).
     pub prompted_available: bool,
-    /// Encryption is available (Pro): off, a sensitive item is only masked.
-    pub encryption_available: bool,
     /// The app can open a file dialog.
     pub can_browse: bool,
     /// The fields hold a draft from an earlier session.

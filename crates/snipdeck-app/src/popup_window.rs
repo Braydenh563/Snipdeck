@@ -137,13 +137,15 @@ impl<W: ComponentHandle + 'static> Shell<W> {
     }
 }
 
-/// Sets the high-contrast colours and the accent of a window's `SystemLook` global (a global is per
-/// window).
+/// Sets the high-contrast colours, the accent and reduced motion of a window's `SystemLook` global (a
+/// global is per window).
 pub(crate) fn set_look_globals(
     look: &ui::SystemLook<'_>,
     hc: Option<&HighContrast>,
     accent: Option<&Accent>,
+    reduced_motion: bool,
 ) {
+    look.set_reduced_motion(reduced_motion);
     look.set_high_contrast(hc.is_some());
     if let Some(hc) = hc {
         let color = |c: Rgb| slint::Color::from_rgb_u8(c.r, c.g, c.b);

@@ -450,7 +450,9 @@ mod tests {
             dark: true,
             high_contrast: None,
             accent: None,
+            reduce_motion: true,
         });
         assert!(look.read().dark);
+        assert!(look.read().reduce_motion);
     }
 }

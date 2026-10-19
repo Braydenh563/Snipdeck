@@ -479,13 +479,14 @@ fn effect_handler(
             }
         }
         // The Panel's "All commands…" and Ctrl+K: the Main window, with the palette open.
-        Effect::OpenCommands => {
-            if main_ui.open().is_ok()
-                && let Some(window) = main_ui.window()
-            {
-                window.invoke_open_palette();
+        Effect::OpenCommands => match main_ui.open() {
+            Ok(()) => {
+                if let Some(window) = main_ui.window() {
+                    window.invoke_open_palette();
+                }
             }
-        }
+            Err(e) => eprintln!("snipdeck: cannot open the command palette: {e}"),
+        },
         Effect::OpenSettings => {
             if let Err(e) = settings_ui.open() {
                 eprintln!("snipdeck: cannot open the settings: {e}");
@@ -681,7 +682,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
     let mut store = Store::open(&folder).map_err(|e| format!("{}: {e}", folder.display()))?;
     // A new library has no board, and the Panel cannot make one: without this every control of a
     // first run has nothing to act on (an empty board menu, no tabs, no rows).
-    match snipdeck_app::starter::ensure_board(&mut store, now) {
+    match snipdeck_app::starter::ensure_first_run(&mut store, now) {
         Ok(made) => snipdeck_app::trace!("real library; starter board made: {made}"),
         Err(e) => eprintln!("snipdeck: could not create the first board: {e}"),
     }

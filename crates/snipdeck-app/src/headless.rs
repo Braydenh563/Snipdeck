@@ -188,7 +188,7 @@ pub fn troubleshoot(folder: &Path, today: Date, os: &str) -> Outcome {
 
 fn tier_word(tier: Tier) -> String {
     if matches!(tier, Tier::Pro) {
-        "Pro"
+        "Supporter"
     } else {
         "Free"
     }

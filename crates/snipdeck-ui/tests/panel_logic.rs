@@ -74,6 +74,10 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_board_menu_dismissed, || "board-dismissed".to_string());
     hook!(on_pinned_used, |i| format!("pinned:{i}"));
     hook!(on_toast_undo, || "undo".to_string());
+    hook!(on_undo_requested, || "ctrl-z".to_string());
+    hook!(on_new_item_requested, || "new".to_string());
+    hook!(on_settings_requested, || "settings".to_string());
+    hook!(on_toast_hover_changed, |h| format!("hover:{h}"));
     hook!(on_app_menu_requested, || "app-menu".to_string());
     hook!(on_app_menu_activated, |i| format!("app:{i}"));
     hook!(on_app_menu_dismissed, || "app-dismissed".to_string());
@@ -278,13 +282,31 @@ ui_tests! {
         assert_eq!(take(&log), ["reveal:4:false"]);
     }
 
+    fn a_reveal_the_host_ended_without_a_key_release_can_be_started_again() {
+        // Alt+Tab while Space is held: the release never arrives, the host sets the index to -1.
+        let (ui, log) = start();
+        ui.set_selected_index(4);
+        settle();
+        take(&log);
+        ui.window().dispatch_event(WindowEvent::KeyPressed { text: " ".into() });
+        assert_eq!(take(&log), ["reveal:4:true"]);
+        ui.set_revealed_index(4);
+        settle();
+        ui.set_revealed_index(-1);
+        settle();
+        ui.window().dispatch_event(WindowEvent::KeyPressed { text: " ".into() });
+        assert_eq!(take(&log), ["reveal:4:true"], "held-reveal was reset, so Space asks again");
+    }
+
     fn space_on_a_plain_selected_row_does_not_reveal() {
         let (ui, log) = start();
         ui.set_selected_index(0);
         settle();
         take(&log);
         press(ui.window(), " ");
-        assert!(take(&log).is_empty(), "no reveal for a plain row");
+        // Not a reveal: with the search focused, Space is a text key, so the search reports " " (the host reads a
+        // blank query as no query, `Panel::is_searching`).
+        assert_eq!(take(&log), ["query: "], "no reveal for a plain row; the space is search text");
     }
 
     fn escape_clears_the_search_first_and_then_asks_to_close() {
@@ -361,6 +383,26 @@ ui_tests! {
         assert_eq!(take(&log), ["shortcuts"]);
     }
 
+    fn the_new_list_close_settings_and_undo_shortcuts_report_what_was_asked() {
+        let (ui, log) = start();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "n");
+        assert_eq!(take(&log), ["new"]);
+        chord(ui.window(), &[Key::Control, Key::Shift], "N");
+        assert_eq!(take(&log), ["add-list"]);
+        chord(ui.window(), &[Key::Control], ",");
+        assert_eq!(take(&log), ["settings"]);
+        chord(ui.window(), &[Key::Control], "w");
+        assert_eq!(take(&log), ["close"]);
+        chord(ui.window(), &[Key::Control], "z");
+        assert_eq!(take(&log), ["ctrl-z"]);
+        type_text(ui.window(), "inv");
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "z");
+        assert!(!take(&log).contains(&"ctrl-z".to_string()), "typed text undoes itself");
+    }
+
     fn the_footer_names_the_pickers_configured_hotkey_only_when_there_is_one() {
         let (ui, _log) = start();
         let hint = |ui: &PanelWindow| all(ui, "Control Shift Space", AccessibleRole::Text).len();
@@ -370,6 +412,11 @@ ui_tests! {
         )));
         ui.set_picker_spoken("Control Shift Space".into());
         assert_eq!(hint(&ui), 1, "the caps are spoken as the chord");
+        assert_eq!(
+            all(&ui, "Picker anywhere", AccessibleRole::Text).len(),
+            1,
+            "the words beside the caps are read too"
+        );
         ui.set_picker_keys(ModelRc::new(VecModel::from(Vec::<slint::SharedString>::new())));
         assert_eq!(hint(&ui), 0, "switching the hotkey off removes the hint");
     }
@@ -677,6 +724,32 @@ ui_tests! {
         assert!(missing(&ui, "Copied", AccessibleRole::Text));
     }
 
+    fn the_pointer_on_a_toast_or_its_undo_button_reports_hover() {
+        let (ui, log) = start();
+        ui.set_toast_text("Deleted".into());
+        ui.set_toast_undo_label("Undo".into());
+        settle();
+        take(&log);
+        let centre = |e: &ElementHandle| {
+            let (p, s) = (e.absolute_position(), e.size());
+            slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0)
+        };
+        let text_at = centre(&find(&ui, "Deleted", AccessibleRole::Text));
+        let button_at = centre(&find(&ui, "Undo", AccessibleRole::Button));
+        let away = slint::LogicalPosition::new(2.0, 2.0);
+        let w = ui.window();
+        w.dispatch_event(slint::platform::WindowEvent::PointerMoved { position: text_at });
+        settle();
+        assert_eq!(take(&log), ["hover:true"]);
+        w.dispatch_event(slint::platform::WindowEvent::PointerMoved { position: button_at });
+        settle();
+        let seen = take(&log);
+        assert!(!seen.contains(&"hover:false".to_string()), "the button is still the toast: {seen:?} {text_at:?} {button_at:?}");
+        w.dispatch_event(slint::platform::WindowEvent::PointerMoved { position: away });
+        settle();
+        assert_eq!(take(&log).last().map(String::as_str), Some("hover:false"));
+    }
+
     // ---- Accessibility and hit targets -----------------------------------------------------------
 
     fn every_control_has_a_role_and_a_label() {
@@ -976,6 +1049,27 @@ ui_tests! {
         assert_eq!(take(&log), ["use:0"]);
         ui.window().dispatch_event(WindowEvent::PointerExited);
         assert_eq!(take(&hovers), ["panel-hover:false"]);
+    }
+
+    fn moving_the_pointer_from_the_more_button_onto_its_open_menu_keeps_the_pointer_over_the_panel() {
+        let (ui, log) = start();
+        let hovers: Log = Rc::default();
+        {
+            let hovers = hovers.clone();
+            ui.on_panel_hovered(move |on| hovers.borrow_mut().push(format!("panel-hover:{on}")));
+        }
+        let kebab = find(&ui, "More", AccessibleRole::Button);
+        move_to(&ui, centre(&kebab));
+        ui.set_app_menu_open(true);
+        settle();
+        let menu = find(&ui, "Panel menu", AccessibleRole::List);
+        for item in all(&ui, "Settings", AccessibleRole::ListItem) {
+            move_to(&ui, centre(&item));
+        }
+        move_to(&ui, centre(&menu));
+        assert!(ui.get_app_menu_open(), "the menu stays open under the pointer");
+        assert_eq!(take(&hovers), ["panel-hover:true"], "never reported as left");
+        assert_eq!(take(&log), [] as [String; 0], "no dismissal from hovering");
     }
 
     fn a_collapsed_panel_is_one_named_handle_that_reports_hover_and_click() {

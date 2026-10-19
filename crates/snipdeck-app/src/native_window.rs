@@ -77,6 +77,38 @@ pub fn raise_window(window: &slint::Window) {
     }
 }
 
+/// After the Panel stepped down from topmost (a regular Snipdeck window took the focus), puts it
+/// back just behind that window. winit's step-down raises the Panel above every non-topmost
+/// window, so without this it would land on top of Main a moment after Main was activated. Runs
+/// a little later, once winit has applied the step-down; does nothing if the Panel is topmost
+/// again by then. Windows only, and not verified on Windows yet.
+#[cfg(windows)]
+pub fn settle_behind_active(window: &PanelWindow) {
+    use slint::ComponentHandle;
+    let weak = window.as_weak();
+    slint::Timer::single_shot(STEP_DOWN_SETTLE, move || {
+        let Some(window) = weak.upgrade() else {
+            return;
+        };
+        if window.get_topmost() {
+            return;
+        }
+        if let Some(hwnd) = handle(&window) {
+            let placed = snipdeck_platform::windows::window_style::place_behind_foreground(hwnd);
+            crate::trace!("panel behind the active window {hwnd:#x}: {placed}");
+        }
+    });
+}
+
+/// Nothing to reorder off Windows.
+#[cfg(not(windows))]
+pub fn settle_behind_active(_window: &PanelWindow) {}
+
+/// How long winit gets to apply the topmost step-down before the Panel is put behind the active
+/// window (longer than a window message round trip, shorter than anything a user notices).
+#[cfg(windows)]
+const STEP_DOWN_SETTLE: std::time::Duration = std::time::Duration::from_millis(30);
+
 /// The work area of the monitor holding `window`: without the taskbar on Windows, none
 /// elsewhere (winit reports only the whole monitor).
 #[cfg(windows)]
@@ -259,6 +291,12 @@ pub fn register_surface(
 /// The surface the user just acted on: a secondary window opens over it.
 pub fn note_opener(surface: Surface) {
     OPENER.with(|o| o.set(Some(surface)));
+}
+
+/// The surface [`note_opener`] was last told about.
+#[must_use]
+pub fn last_opener() -> Option<Surface> {
+    OPENER.with(std::cell::Cell::get)
 }
 
 /// The shown surface to open over: the one acted on last, else the Main window, else the Panel.

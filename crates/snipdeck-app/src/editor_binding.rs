@@ -7,10 +7,10 @@
 //! drawn from the controller by the shared redraw (see `binding::redraw_all`), so the Panel's
 //! quick edit, the Main window's Edit and New, the Picker's Ctrl+E and Ctrl+N all open it the same
 //! way: by asking the controller. While it is open a timer asks the controller for a draft every
-//! [`AUTOSAVE_EVERY`](crate::drafts::AUTOSAVE_EVERY).
+//! [`crate::drafts::AUTOSAVE_EVERY`].
 //!
 //! The typed text stays in the window until Save, the draft tick or Discard asks for it; this
-//! file reads it through [`read_input`] and never logs it.
+//! file reads it through `read_input` and never logs it.
 
 use std::{
     cell::{Cell, RefCell},
@@ -146,7 +146,12 @@ where
         let Some(window) = self.window_for_use() else {
             return;
         };
-        set_look(&window, view.high_contrast.as_ref(), view.accent.as_ref());
+        set_look(
+            &window,
+            view.high_contrast.as_ref(),
+            view.accent.as_ref(),
+            view.reduced_motion,
+        );
         window.set_dark(view.dark);
         let fresh = view.seq != self.seq.get();
         {
@@ -346,7 +351,6 @@ fn apply_state(w: &ui::ItemEditor, view: &ItemEditorView) {
     w.set_privacy_error(text(&view.privacy_problem));
     w.set_banner(text(&view.banner));
     w.set_prompted_available(view.prompted_available);
-    w.set_encryption_available(view.encryption_available);
     w.set_can_browse(view.can_browse);
     w.set_restored(view.restored);
 }

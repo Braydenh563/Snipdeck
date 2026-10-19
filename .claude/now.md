@@ -7,6 +7,7 @@ Goal: ship v1 by the morning. Branch `claude/compassionate-pascal-pod8ux`, PR #5
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-10-19 17:40 owner: "dont budget, go to 82% usage then wrap up by 85". No budget mode; keep max tier (3 agents + Haiku, Opus allowed); at 82% weekly start the wrap-up (Morning summary, push, retro), finished by 85%.
 - 2026-10-19: Encryption of sensitive items on disk is free for everyone (it is security, not convenience); only the master password stays Supporter. Owner: "go with your recommendation".
 - Local clippy runs on `cargo +1.99.1` with CARGO_TARGET_DIR=/tmp/target-199 (stable here is 1.97 and misses CI lints such as assert_is_empty); reason: four CI rounds lost to lints only 1.99 reports.
 - 2026-10-18 23:24: owner permits five agents. Three cargo builds at once at most (target-main editor, target-b picker, target-c dock with debug=0); docs and audit agents run no cargo.
@@ -19,6 +20,8 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-10-18: The owner said "you are fable btw": this session runs on Fable, so it IS the one permitted Fable agent. Step 4 (docs/fable-brief.md) is done by this session: Fable does analysis, design calls, security review and judgement; Sonnet/Haiku agents do the mechanical implementation with exact file/line instructions; no second Fable agent is spawned (that would be two). Token rules of the brief still apply to this session (grep CODEMAP, line ranges, no whole build logs).
 
 ## Inbox
+- 2026-10-19 18:15 owner: "Im going to sleep and wont be able to pick up on these things for you. finish and ship autonomously in collab with the other agents"
+- Hub note: main_binding::size_to_content reads wanted_height on a reused hidden editor before a layout pass (stale height; found by hidden-test-fixes). Fix with C3 or B15.
 - 2026-10-19 14:3x owner, verbatim: "and then when you do the fable pass and audit after everything is done, put it on a new sesison and context as well and then make sure you implement all the issues it flaggs before another polish and then the ship." -> placed: HANDOVER ledger, F-phase order.
 - (owner, 2026-10-19 09:1x, verbatim) [owner message omitted] -> placed: agent "windows-ui" (ring clipping, menu width, placement, default names, Open Panel button, Panel z-order) and agent "learnability" (command palette, shortcut hints).
 - (owner, 2026-10-19 09:0x) [owner message omitted] -> placed: agent "panel-z" (Panel drops below while a Snipdeck regular window is active).
