@@ -8,6 +8,9 @@ export struct CommandText {
 }
 
 export global CommandTexts {
+    // The names the list and board editors start with for a new one ("New list 1"): the host numbers them.
+    out property <string> new-list-name: @tr("New list");
+    out property <string> new-board-name: @tr("New board");
     out property <[CommandText]> all: [
         { label: @tr("New item"), words: @tr("add create snippet note write") },
         { label: @tr("New list"), words: @tr("add create folder group") },

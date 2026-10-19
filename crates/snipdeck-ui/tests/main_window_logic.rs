@@ -11,7 +11,9 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery, ElementRoot};
+use i_slint_backend_testing::{
+    AccessibleLiveness, AccessibleRole, ElementHandle, ElementQuery, ElementRoot,
+};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel, platform::Key};
 use snipdeck_ui::{Fonts, MainSection, MainView, MainWindow, PaletteRow, selection};
 
@@ -122,7 +124,7 @@ fn start() -> (MainWindow, Log) {
     hook!(on_tag_toggled, |i, on| format!("tag:{i}:{on}"));
     hook!(on_reveal_requested, |i, on| format!("reveal:{i}:{on}"));
     hook!(on_settings_requested, || "settings".to_string());
-    hook!(on_help_requested, |i| format!("help:{i}"));
+    hook!(on_help_requested, |page| format!("help:{page:?}"));
     hook!(on_panel_requested, || "panel".to_string());
     hook!(on_list_edit_requested, |i| format!("list-edit:{i}"));
     hook!(on_list_delete_confirmed, |i| format!("list-delete:{i}"));
@@ -563,9 +565,14 @@ ui_tests! {
         assert_eq!(ui.get_query(), "", "and is not typed into it");
     }
 
-    fn the_help_button_opens_a_menu_of_three_pages_and_f1_asks_for_the_guide() {
+    fn the_help_button_opens_a_menu_of_four_pages_and_f1_asks_for_the_guide() {
         let (ui, log) = start();
-        for (label, topic) in [("Troubleshoot…", 0), ("User guide", 1), ("About Snipdeck", 2)] {
+        for (label, topic) in [
+            ("Troubleshoot…", "Troubleshoot"),
+            ("User guide", "Guide"),
+            ("About Snipdeck", "About"),
+            ("Keyboard shortcuts", "Shortcuts"),
+        ] {
             find(&ui, "Help", AccessibleRole::Button).invoke_accessible_default_action();
             settle();
             assert!(ui.get_menu_open(), "the Help menu is open");
@@ -575,7 +582,7 @@ ui_tests! {
             assert_eq!(take(&log), [format!("help:{topic}")]);
         }
         press_key(&ui, Key::F1);
-        assert_eq!(take(&log), ["help:1"]);
+        assert_eq!(take(&log), ["help:Guide"]);
     }
 
     fn ctrl_n_and_the_buttons_report_what_was_asked() {
@@ -711,6 +718,16 @@ ui_tests! {
 
 // ---- Command palette and shortcut hints ------------------------------------------------------------
 
+/// What the palette's polite live region says now.
+fn live_status(ui: &MainWindow) -> String {
+    let live: Vec<ElementHandle> = by_role(ui, AccessibleRole::Text)
+        .into_iter()
+        .filter(|e| e.accessible_live_region() == Some(AccessibleLiveness::Polite))
+        .collect();
+    assert_eq!(live.len(), 1, "one polite live region in the palette");
+    live[0].accessible_label().expect("a label").to_string()
+}
+
 /// Sets the rows the host would send: `(id, label, keys)`.
 fn palette_rows(ui: &MainWindow, rows: &[(i32, &str, &[&str])]) {
     let rows: Vec<PaletteRow> = rows
@@ -771,7 +788,7 @@ ui_tests! {
         assert_eq!(item.accessible_item_count(), Some(3));
         assert_eq!(item.accessible_item_selected(), Some(true), "the first row is highlighted");
         assert_eq!(find(&ui, "Search", AccessibleRole::ListItem).accessible_item_selected(), Some(false));
-        find(&ui, "3 found", AccessibleRole::Text);
+        assert_eq!(live_status(&ui), "New item, 1 of 3", "the live footer names the highlighted row and its place");
     }
 
     fn typing_reports_the_query_and_the_hosts_rows_replace_the_list() {
@@ -785,9 +802,10 @@ ui_tests! {
         palette_rows(&ui, &[SAMPLE[1]]);
         assert!(missing(&ui, "New item", AccessibleRole::ListItem));
         find(&ui, "Search", AccessibleRole::ListItem);
-        find(&ui, "1 found", AccessibleRole::Text);
+        assert_eq!(live_status(&ui), "Search, 1 of 1");
         palette_rows(&ui, &[]);
         find(&ui, "No matching command", AccessibleRole::Text);
+        assert_eq!(live_status(&ui), "0 found");
     }
 
     fn arrows_move_the_highlight_wrapping_and_enter_runs_the_command_and_gives_focus_back() {
@@ -797,6 +815,7 @@ ui_tests! {
         take(&log);
         press_key(&ui, Key::DownArrow);
         assert_eq!(find(&ui, "Search", AccessibleRole::ListItem).accessible_item_selected(), Some(true));
+        assert_eq!(live_status(&ui), "Search, 2 of 3", "the live region follows the highlight");
         press_key(&ui, Key::UpArrow);
         press_key(&ui, Key::UpArrow);
         assert_eq!(
@@ -844,7 +863,7 @@ ui_tests! {
         chord(ui.window(), &[Key::Control], ",");
         assert_eq!(take(&log), ["settings"]);
         chord(ui.window(), &[Key::Control], "/");
-        assert_eq!(take(&log), ["help:3"]);
+        assert_eq!(take(&log), ["help:Shortcuts"]);
         assert!(!ui.get_search_focused(), "Ctrl+/ is not the bare / that opens the search");
     }
 
@@ -856,7 +875,7 @@ ui_tests! {
         assert_eq!(row.accessible_description().as_deref(), Some("Ctrl+/"));
         row.invoke_accessible_default_action();
         settle();
-        assert_eq!(take(&log), ["help:3"]);
+        assert_eq!(take(&log), ["help:Shortcuts"]);
     }
 
     fn an_empty_deck_names_the_keys_that_help() {

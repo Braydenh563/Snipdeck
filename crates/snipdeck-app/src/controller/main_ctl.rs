@@ -901,7 +901,7 @@ where
                 kind: EditorKind::List,
                 is_new: true,
                 name: crate::starter::numbered_name(
-                    crate::starter::NEW_LIST,
+                    &self.new_list_base,
                     self.main.lists().iter().map(|l| l.name.as_str()),
                 ),
                 accent: None,
@@ -974,7 +974,7 @@ where
                 kind: EditorKind::Board,
                 is_new: true,
                 name: crate::starter::numbered_name(
-                    "New board",
+                    &self.new_board_base,
                     self.main.boards().iter().map(|b| b.name.as_str()),
                 ),
                 accent: None,

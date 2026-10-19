@@ -12,6 +12,8 @@ pub const STARTER_BOARD: &str = "My snippets";
 pub const STARTER_LIST: &str = "Snippets";
 /// The name of a list made with the `+` tab (numbered when taken).
 pub const NEW_LIST: &str = "New list";
+/// The name a new board's editor starts from (numbered when taken).
+pub const NEW_BOARD: &str = "New board";
 
 /// The name the list and board editors start with for a new one: `base` and the first number
 /// (from 1) no name in `taken` already has, compared without regard to case. The editor selects

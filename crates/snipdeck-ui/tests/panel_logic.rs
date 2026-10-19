@@ -278,6 +278,22 @@ ui_tests! {
         assert_eq!(take(&log), ["reveal:4:false"]);
     }
 
+    fn a_reveal_the_host_ended_without_a_key_release_can_be_started_again() {
+        // Alt+Tab while Space is held: the release never arrives, the host sets the index to -1.
+        let (ui, log) = start();
+        ui.set_selected_index(4);
+        settle();
+        take(&log);
+        ui.window().dispatch_event(WindowEvent::KeyPressed { text: " ".into() });
+        assert_eq!(take(&log), ["reveal:4:true"]);
+        ui.set_revealed_index(4);
+        settle();
+        ui.set_revealed_index(-1);
+        settle();
+        ui.window().dispatch_event(WindowEvent::KeyPressed { text: " ".into() });
+        assert_eq!(take(&log), ["reveal:4:true"], "held-reveal was reset, so Space asks again");
+    }
+
     fn space_on_a_plain_selected_row_does_not_reveal() {
         let (ui, log) = start();
         ui.set_selected_index(0);
@@ -370,6 +386,11 @@ ui_tests! {
         )));
         ui.set_picker_spoken("Control Shift Space".into());
         assert_eq!(hint(&ui), 1, "the caps are spoken as the chord");
+        assert_eq!(
+            all(&ui, "Picker anywhere", AccessibleRole::Text).len(),
+            1,
+            "the words beside the caps are read too"
+        );
         ui.set_picker_keys(ModelRc::new(VecModel::from(Vec::<slint::SharedString>::new())));
         assert_eq!(hint(&ui), 0, "switching the hotkey off removes the hint");
     }

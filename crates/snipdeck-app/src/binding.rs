@@ -751,6 +751,10 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     }
     if window.get_topmost() != view.topmost {
         window.set_topmost(view.topmost);
+        if !view.topmost {
+            // winit's step-down also raises the Panel above Main: put it back behind it.
+            crate::native_window::settle_behind_active(window);
+        }
     }
     if differs(&|p| p.footer == view.footer) {
         let (app, title) = match &view.footer {
