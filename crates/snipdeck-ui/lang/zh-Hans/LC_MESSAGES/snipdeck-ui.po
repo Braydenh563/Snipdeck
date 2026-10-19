@@ -13,6 +13,9 @@ msgstr "PNG 图片。Snipdeck 会保存自己的副本。"
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "列表可以把相关的片段放在一起，例如回复或地址。"
 
+msgid "About"
+msgstr "关于"
+
 msgid "Actions"
 msgstr "操作"
 
@@ -91,6 +94,9 @@ msgstr "浏览文件"
 msgid "Browse…"
 msgstr "浏览…"
 
+msgid "Built on"
+msgstr "构建日期"
+
 msgid "Cancel"
 msgstr "取消"
 
@@ -99,6 +105,15 @@ msgstr "捕获的片段保留其类型。"
 
 msgid "Changes apply at once."
 msgstr "更改立即生效。"
+
+msgid "Check again"
+msgstr "重新检查"
+
+msgid "Check for updates"
+msgstr "检查更新"
+
+msgid "Checks"
+msgstr "检查项"
 
 msgid "Choose a file, or cancel."
 msgstr "请选择文件，或取消。"
@@ -153,6 +168,9 @@ msgstr "复制到剪贴板"
 
 msgid "Copy"
 msgstr "复制"
+
+msgid "Copy diagnostic report"
+msgstr "复制诊断报告"
 
 msgid "Copy something, then save it from the Panel."
 msgstr "先复制一些内容，然后在面板中保存。"
@@ -274,6 +292,9 @@ msgstr "Esc"
 msgid "Every Pro feature is on. Thank you."
 msgstr "所有 Pro 功能均已开启。谢谢。"
 
+msgid "Everything checks out."
+msgstr "一切正常。"
+
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr "回收站中的所有内容都将被永久删除，此操作无法撤销。"
 
@@ -324,6 +345,12 @@ msgstr "为面板提供任务栏按钮。关闭后，面板不会出现在任务
 
 msgid "Green"
 msgstr "绿色"
+
+msgid "Help"
+msgstr "帮助"
+
+msgid "Help sections"
+msgstr "帮助分区"
 
 msgid "Hidden in lists until you hold Space, and kept out of clipboard history."
 msgstr "在列表中隐藏，按住空格键才会显示，且不会进入剪贴板历史。"
@@ -424,6 +451,9 @@ msgstr "浅色"
 msgid "Link"
 msgstr "链接"
 
+msgid "Links"
+msgstr "链接"
+
 msgid "List"
 msgstr "列表"
 
@@ -453,6 +483,9 @@ msgstr "管理标签…"
 
 msgid "Manual"
 msgstr "手动"
+
+msgid "Microsoft Store"
+msgstr "Microsoft Store"
 
 msgid "More"
 msgstr "更多"
@@ -550,6 +583,9 @@ msgstr "没有与“{}”匹配的置顶片段。"
 msgid "Nothing pinned yet"
 msgstr "还没有置顶内容"
 
+msgid "OK"
+msgstr "正常"
+
 msgid "Off"
 msgstr "关闭"
 
@@ -558,6 +594,9 @@ msgstr "选择“关闭”则已停靠的面板保持展开。否则它会收成
 
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "只有文本、代码、链接和模板类型的片段可以设为敏感。"
+
+msgid "Open"
+msgstr "打开"
 
 msgid "Open Panel"
 msgstr "打开面板"
@@ -577,8 +616,29 @@ msgstr "打开备份文件夹"
 msgid "Open data folder"
 msgstr "打开数据文件夹"
 
+msgid "Open logs folder"
+msgstr "打开日志文件夹"
+
+msgid "Open the Microsoft Store page"
+msgstr "打开 Microsoft Store 页面"
+
 msgid "Open the picker"
 msgstr "打开选择器"
+
+msgid "Open the releases page"
+msgstr "打开发布页面"
+
+msgid "Open the source code"
+msgstr "打开源代码"
+
+msgid "Open the third-party notices"
+msgstr "打开第三方声明"
+
+msgid "Open the user guide"
+msgstr "打开用户指南"
+
+msgid "Opens in your browser."
+msgstr "在浏览器中打开。"
 
 msgid "Optional: the first line of the text is used"
 msgstr "可选：使用文本的第一行"
@@ -651,6 +711,9 @@ msgstr "预览"
 
 msgid "Privacy"
 msgstr "隐私"
+
+msgid "Problem"
+msgstr "问题"
 
 msgid "Program to add"
 msgstr "要添加的程序"
@@ -787,6 +850,9 @@ msgstr "Snipdeck 没有账户、没有服务器、没有遥测，也不开放任
 msgid "Snipdeck keeps its own copy of the file."
 msgstr "Snipdeck 会保存该文件的副本。"
 
+msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
+msgstr "Snipdeck 不会自行检查。这会在浏览器中打开发布页面。"
+
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck 从不连接互联网：它显示的每个图标和字体都已随应用打包。"
 
@@ -801,6 +867,9 @@ msgstr "片段"
 
 msgid "Sort items by"
 msgstr "排序方式"
+
+msgid "Source code"
+msgstr "源代码"
 
 msgid "Start with Windows"
 msgstr "随 Windows 启动"
@@ -841,11 +910,17 @@ msgstr "回收站为空"
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "该密钥用于打开你之前保存的导出文件中的加密项目。如果忘记它，这些项目将永远无法再打开。"
 
+msgid "The licences of the libraries Snipdeck is built from."
+msgstr "构成 Snipdeck 的库的许可证。"
+
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "该列表及其中的 {} 个片段将移至回收站。你可以在 {} 天内恢复它们。"
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "超过此数量后，最旧的备份会被删除。"
+
+msgid "The report holds versions and settings switches, never your items."
+msgstr "报告只包含版本和设置开关,绝不包含你的条目。"
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "所选片段将被永久删除，此操作无法撤销。"
@@ -859,8 +934,14 @@ msgstr "当前时间"
 msgid "Theme"
 msgstr "主题"
 
+msgid "Third-party notices"
+msgstr "第三方声明"
+
 msgid "This board"
 msgstr "此看板"
+
+msgid "This copy"
+msgstr "此副本"
 
 msgid "This demo keeps nothing on disk, so there are no backups."
 msgstr "此演示不会在磁盘上保存任何内容，因此没有备份。"
@@ -886,11 +967,17 @@ msgstr "要删除所有内容，请使用上方的“删除资料库”，然后
 msgid "Today's date"
 msgstr "今天的日期"
 
+msgid "Tools"
+msgstr "工具"
+
 msgid "Top edge"
 msgstr "顶边"
 
 msgid "Trash"
 msgstr "回收站"
+
+msgid "Troubleshoot"
+msgstr "故障排除"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "在设置中开启剪贴板历史，以收集你复制的内容。"
@@ -907,8 +994,17 @@ msgstr "取消置顶"
 msgid "Use"
 msgstr "使用"
 
+msgid "User guide"
+msgstr "用户指南"
+
+msgid "Version"
+msgstr "版本"
+
 msgid "Violet"
 msgstr "紫罗兰色"
+
+msgid "Warning"
+msgstr "警告"
 
 msgid "What is on the clipboard"
 msgstr "剪贴板中的内容"
@@ -960,6 +1056,9 @@ msgstr "{n} 个片段将一同移至回收站。你可以在 30 天内恢复它�
 
 msgid "{} (Pro)"
 msgstr "{} (Pro)"
+
+msgid "{} of the checks need a look."
+msgstr "有 {} 项检查需要留意。"
 
 msgid "{} selected"
 msgstr "已选择 {} 项"

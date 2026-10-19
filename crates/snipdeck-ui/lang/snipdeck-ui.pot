@@ -14,6 +14,10 @@ msgstr ""
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr ""
 
+#: ui/help.slint:100
+msgid "About"
+msgstr ""
+
 #: ui/main_window.slint:1481
 msgid "Actions"
 msgstr ""
@@ -70,7 +74,7 @@ msgstr ""
 msgid "Asks you to pick one of the options"
 msgstr ""
 
-#: ui/settings.slint:596
+#: ui/help.slint:79 ui/settings.slint:596
 msgid "Back up now"
 msgstr ""
 
@@ -118,6 +122,10 @@ msgstr ""
 msgid "Browse…"
 msgstr ""
 
+#: ui/help.slint:258
+msgid "Built on"
+msgstr ""
+
 #: ui/editors.slint:595 ui/editors.slint:916 ui/editors.slint:954 ui/editors.slint:1260 ui/main_window.slint:1525 ui/settings.slint:695 ui/template_fill.slint:304
 msgid "Cancel"
 msgstr ""
@@ -128,6 +136,18 @@ msgstr ""
 
 #: ui/settings.slint:192
 msgid "Changes apply at once."
+msgstr ""
+
+#: ui/help.slint:191
+msgid "Check again"
+msgstr ""
+
+#: ui/help.slint:300
+msgid "Check for updates"
+msgstr ""
+
+#: ui/help.slint:127
+msgid "Checks"
 msgstr ""
 
 #: ui/editors.slint:201
@@ -200,6 +220,10 @@ msgstr ""
 
 #: ui/main_window.slint:445 ui/panel.slint:189 ui/panel.slint:793 ui/picker.slint:132 ui/picker.slint:478 ui/template_fill.slint:62
 msgid "Copy"
+msgstr ""
+
+#: ui/help.slint:196
+msgid "Copy diagnostic report"
 msgstr ""
 
 #: ui/picker.slint:451
@@ -362,6 +386,10 @@ msgstr ""
 msgid "Every Pro feature is on. Thank you."
 msgstr ""
 
+#: ui/help.slint:116
+msgid "Everything checks out."
+msgstr ""
+
 #: ui/main_window.slint:366
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr ""
@@ -428,6 +456,14 @@ msgstr ""
 
 #: ui/editors.slint:794
 msgid "Green"
+msgstr ""
+
+#: ui/help.slint:26
+msgid "Help"
+msgstr ""
+
+#: ui/help.slint:99
+msgid "Help sections"
 msgstr ""
 
 #: ui/editors.slint:191
@@ -546,7 +582,7 @@ msgstr ""
 msgid "Lengthen the leave delay"
 msgstr ""
 
-#: ui/settings.slint:470
+#: ui/help.slint:268 ui/settings.slint:470
 msgid "Licence"
 msgstr ""
 
@@ -560,6 +596,10 @@ msgstr ""
 
 #: ui/editors.slint:284 ui/editors.slint:285 ui/editors.slint:333 ui/editors.slint:336
 msgid "Link"
+msgstr ""
+
+#: ui/help.slint:280
+msgid "Links"
 msgstr ""
 
 #: ui/editors.slint:474 ui/editors.slint:476
@@ -600,6 +640,10 @@ msgstr ""
 
 #: ui/editors.slint:896
 msgid "Manual"
+msgstr ""
+
+#: ui/help.slint:309
+msgid "Microsoft Store"
 msgstr ""
 
 #: ui/panel.slint:558
@@ -730,6 +774,10 @@ msgstr ""
 msgid "Nothing pinned yet"
 msgstr ""
 
+#: ui/help.slint:70
+msgid "OK"
+msgstr ""
+
 #: ui/settings.slint:346
 msgid "Off"
 msgstr ""
@@ -742,11 +790,15 @@ msgstr ""
 msgid "Only text, code, link and template items can be sensitive."
 msgstr ""
 
+#: ui/help.slint:285 ui/help.slint:294 ui/help.slint:303 ui/help.slint:311 ui/help.slint:320
+msgid "Open"
+msgstr ""
+
 #: ui/tray_texts.slint:5
 msgid "Open Panel"
 msgstr ""
 
-#: ui/main_window.slint:1248
+#: ui/help.slint:79 ui/main_window.slint:1248
 msgid "Open Settings"
 msgstr ""
 
@@ -762,12 +814,40 @@ msgstr ""
 msgid "Open backups folder"
 msgstr ""
 
-#: ui/settings.slint:604
+#: ui/help.slint:205 ui/settings.slint:604
 msgid "Open data folder"
+msgstr ""
+
+#: ui/help.slint:79 ui/help.slint:210
+msgid "Open logs folder"
+msgstr ""
+
+#: ui/help.slint:312
+msgid "Open the Microsoft Store page"
 msgstr ""
 
 #: ui/settings.slint:130
 msgid "Open the picker"
+msgstr ""
+
+#: ui/help.slint:304
+msgid "Open the releases page"
+msgstr ""
+
+#: ui/help.slint:295
+msgid "Open the source code"
+msgstr ""
+
+#: ui/help.slint:321
+msgid "Open the third-party notices"
+msgstr ""
+
+#: ui/help.slint:286
+msgid "Open the user guide"
+msgstr ""
+
+#: ui/help.slint:283
+msgid "Opens in your browser."
 msgstr ""
 
 #: ui/editors.slint:314
@@ -864,6 +944,10 @@ msgstr ""
 
 #: ui/editors.slint:564 ui/settings.slint:719
 msgid "Privacy"
+msgstr ""
+
+#: ui/help.slint:70
+msgid "Problem"
 msgstr ""
 
 #: ui/settings.slint:448
@@ -1046,6 +1130,10 @@ msgstr ""
 msgid "Snipdeck keeps its own copy of the file."
 msgstr ""
 
+#: ui/help.slint:301
+msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
+msgstr ""
+
 #: ui/settings.slint:724
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr ""
@@ -1064,6 +1152,10 @@ msgstr ""
 
 #: ui/editors.slint:893 ui/editors.slint:895
 msgid "Sort items by"
+msgstr ""
+
+#: ui/help.slint:291
+msgid "Source code"
 msgstr ""
 
 #: ui/settings.slint:299 ui/settings.slint:302
@@ -1118,12 +1210,20 @@ msgstr ""
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr ""
 
+#: ui/help.slint:318
+msgid "The licences of the libraries Snipdeck is built from."
+msgstr ""
+
 #: ui/main_window.slint:364
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr ""
 
 #: ui/settings.slint:517
 msgid "The oldest ones are deleted once there are more than this."
+msgstr ""
+
+#: ui/help.slint:216
+msgid "The report holds versions and settings switches, never your items."
 msgstr ""
 
 #: ui/main_window.slint:367
@@ -1142,8 +1242,16 @@ msgstr ""
 msgid "Theme"
 msgstr ""
 
+#: ui/help.slint:317
+msgid "Third-party notices"
+msgstr ""
+
 #: ui/picker.slint:377
 msgid "This board"
+msgstr ""
+
+#: ui/help.slint:246
+msgid "This copy"
 msgstr ""
 
 #: ui/settings.slint:533
@@ -1178,12 +1286,20 @@ msgstr ""
 msgid "Today's date"
 msgstr ""
 
+#: ui/help.slint:185
+msgid "Tools"
+msgstr ""
+
 #: ui/settings.slint:332
 msgid "Top edge"
 msgstr ""
 
 #: ui/main_window.slint:564 ui/main_window.slint:721
 msgid "Trash"
+msgstr ""
+
+#: ui/help.slint:100
+msgid "Troubleshoot"
 msgstr ""
 
 #: ui/main_window.slint:1242
@@ -1206,8 +1322,20 @@ msgstr ""
 msgid "Use"
 msgstr ""
 
+#: ui/help.slint:282
+msgid "User guide"
+msgstr ""
+
+#: ui/help.slint:248
+msgid "Version"
+msgstr ""
+
 #: ui/editors.slint:795
 msgid "Violet"
+msgstr ""
+
+#: ui/help.slint:70
+msgid "Warning"
 msgstr ""
 
 #: ui/editors.slint:206
@@ -1276,6 +1404,10 @@ msgstr ""
 
 #: ui/editors.slint:462
 msgid "{} (Pro)"
+msgstr ""
+
+#: ui/help.slint:117
+msgid "{} of the checks need a look."
 msgstr ""
 
 #: ui/main_window.slint:1276 ui/main_window.slint:1289 ui/main_window.slint:1393
