@@ -1,5 +1,5 @@
 mode: continue
-status: active (owner /away 2026-10-19 10:35: finish the v1 ship list)
+status: paused (owner 2026-10-19 12:40: exit away mode)
 max-continues: 60
 max-idle-minutes: 60
 started: 2026-10-19 10:35
