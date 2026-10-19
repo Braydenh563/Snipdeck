@@ -15,10 +15,10 @@ use std::{
 };
 
 use slint::{
-    CloseRequestResponse, ComponentHandle, SharedString,
+    CloseRequestResponse, ComponentHandle, Global, SharedString,
     winit_030::{WinitWindowAccessor, winit},
 };
-use snipdeck_core::{ItemKind, ListAccent, ListSort};
+use snipdeck_core::{ItemKind, ListAccent, ListIcon, ListSort};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::{HighContrast, Rgb},
@@ -274,6 +274,7 @@ where
             label: t.name.as_str().into(),
             count: to_i32(t.count),
             color: slint::Color::default(),
+            icon: slint::Image::default(),
             checked: false,
         })));
         window.set_dark(screen.dark);
@@ -403,12 +404,13 @@ where
         let weak = w.as_weak();
         w.on_save_requested(move || {
             if let Some(w) = weak.upgrade() {
-                let (name, accent, sort) = (
+                let (name, accent, icon, sort) = (
                     w.get_name(),
                     accent_of(w.get_accent()),
+                    icon_of(w.get_icon_index()),
                     sort_of(w.get_sort_index()),
                 );
-                core.act(|ctl| ctl.main_editor_save(name.as_str(), accent, sort));
+                core.act(|ctl| ctl.main_editor_save(name.as_str(), accent, icon, sort));
             }
         });
         self.wire_editor_common(
@@ -436,7 +438,7 @@ where
         w.on_save_requested(move || {
             if let Some(w) = weak.upgrade() {
                 let name = w.get_name();
-                core.act(|ctl| ctl.main_editor_save(name.as_str(), None, ListSort::Manual));
+                core.act(|ctl| ctl.main_editor_save(name.as_str(), None, None, ListSort::Manual));
             }
         });
         self.wire_editor_common(
@@ -864,6 +866,18 @@ pub(crate) fn raise(window: &slint::Window) {
 
 // ---- Screen -> window --------------------------------------------------------------------------
 
+/// The sidebar's lists, with their colour marks and icons.
+fn set_side_lists(window: &ui::MainWindow, screen: &MainScreen) {
+    let icons = ui::ListIcons::get(window).get_all();
+    window.set_lists(model(screen.lists.iter().map(|l| ui::ChoiceEntry {
+        label: l.name.as_str().into(),
+        count: to_i32(l.count),
+        color: list_color(l.accent, screen.dark),
+        icon: crate::binding::list_icon_image(&icons, l.icon),
+        checked: false,
+    })));
+}
+
 fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainScreen) {
     let differs = |same: &dyn Fn(&MainScreen) -> bool| previous.is_none_or(|p| !same(p));
 
@@ -887,18 +901,14 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         window.set_board_menu_open(screen.board_menu.is_some());
     }
     if differs(&|p| p.lists == screen.lists && p.dark == screen.dark) {
-        window.set_lists(model(screen.lists.iter().map(|l| ui::ChoiceEntry {
-            label: l.name.as_str().into(),
-            count: to_i32(l.count),
-            color: list_color(l.accent, screen.dark),
-            checked: false,
-        })));
+        set_side_lists(window, screen);
     }
     if differs(&|p| p.tags == screen.tags) {
         window.set_tags(model(screen.tags.iter().map(|t| ui::ChoiceEntry {
             label: t.name.as_str().into(),
             count: to_i32(t.count),
             color: slint::Color::default(),
+            icon: slint::Image::default(),
             checked: false,
         })));
     }
@@ -907,6 +917,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
             label: t.name.as_str().into(),
             count: to_i32(t.count),
             color: slint::Color::default(),
+            icon: slint::Image::default(),
             checked: t.checked,
         })));
     }
@@ -1052,6 +1063,12 @@ fn fill_list_editor(window: &ui::ListEditor, view: &EditorView) {
     window.set_is_new(view.is_new);
     window.set_name(view.name.as_str().into());
     window.set_accent(accent_index(view.accent));
+    window.set_icon_names(model(
+        ListIcon::ALL
+            .iter()
+            .map(|i| SharedString::from(wording::list_icon_name(*i))),
+    ));
+    window.set_icon_index(icon_index(view.icon));
     window.set_sort_index(sort_index(view.sort));
     window.set_show_colour(true);
     window.set_show_sort(true);
@@ -1097,6 +1114,19 @@ fn accent_of(index: i32) -> Option<ListAccent> {
     usize::try_from(index)
         .ok()
         .and_then(|i| ListAccent::ALL.get(i).copied())
+}
+
+/// The editor's icon index: -1 for none, else the position in [`ListIcon::ALL`] (the order of the
+/// window's `ListIcons.all`).
+fn icon_index(icon: Option<ListIcon>) -> i32 {
+    icon.and_then(|a| ListIcon::ALL.iter().position(|x| *x == a))
+        .map_or(-1, to_i32)
+}
+
+fn icon_of(index: i32) -> Option<ListIcon> {
+    usize::try_from(index)
+        .ok()
+        .and_then(|i| ListIcon::ALL.get(i).copied())
 }
 
 /// 0 manual, 1 most used, 2 recently used.

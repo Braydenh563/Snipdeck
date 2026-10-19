@@ -10,8 +10,8 @@
 use std::collections::{HashMap, HashSet};
 
 use snipdeck_core::{
-    Board, BoardId, Item, ItemId, ItemKind, List, ListAccent, ListId, ListSort, Placement, Tag,
-    TagId,
+    Board, BoardId, Item, ItemId, ItemKind, List, ListAccent, ListIcon, ListId, ListSort,
+    Placement, Tag, TagId,
 };
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable};
 
@@ -126,6 +126,8 @@ pub struct SideList {
     pub name: String,
     /// Its colour.
     pub accent: Option<ListAccent>,
+    /// Its icon.
+    pub icon: Option<ListIcon>,
     /// How many items it holds.
     pub count: usize,
 }
@@ -212,6 +214,8 @@ pub struct EditorView {
     pub name: String,
     /// A list's colour.
     pub accent: Option<ListAccent>,
+    /// A list's icon.
+    pub icon: Option<ListIcon>,
     /// A list's item order.
     pub sort: ListSort,
     /// How many items deleting it affects.
@@ -443,6 +447,7 @@ impl MainModel {
                 id: l.id,
                 name: l.name.as_str().to_owned(),
                 accent: l.accent,
+                icon: l.icon,
                 count: self.list_counts.get(&l.id).copied().unwrap_or(0),
             })
             .collect()

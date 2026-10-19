@@ -356,6 +356,7 @@ fn set_tags(w: &ui::ItemEditor, tags: &[(String, bool)]) {
         label: label.as_str().into(),
         count: 0,
         color: slint::Color::default(),
+        icon: slint::Image::default(),
         checked: *checked,
     });
     w.set_tags(model(entries));

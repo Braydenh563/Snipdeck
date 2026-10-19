@@ -32,6 +32,7 @@ pub fn tag_entries() -> Vec<ChoiceEntry> {
         label: label.into(),
         count,
         color: Color::default(),
+        icon: slint::Image::default(),
         checked,
     })
     .to_vec()
@@ -180,6 +181,7 @@ pub fn tag_manager(ui: &TagManager) {
             label: label.into(),
             count,
             color: Color::default(),
+            icon: slint::Image::default(),
             checked: false,
         })
         .to_vec(),

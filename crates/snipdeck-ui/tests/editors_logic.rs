@@ -646,6 +646,45 @@ ui_tests! {
         assert_eq!(ui.get_accent(), -1, "No colour is the first stop");
     }
 
+    fn the_icon_group_chooses_with_the_pointer_and_arrow_keys() {
+        let (ui, _log) = list_editor();
+        let names: Vec<slint::SharedString> = (0..24).map(|i| format!("Icon {i}").into()).collect();
+        ui.set_icon_names(slint::ModelRc::new(slint::VecModel::from(names)));
+        settle();
+        assert_eq!(ui.get_icon_index(), -1, "a list starts without an icon");
+        assert_eq!(find(&ui, "No icon", AccessibleRole::RadioButton).accessible_checked(), Some(true));
+        for i in 0..24 {
+            let cell = find(&ui, &format!("Icon {i}"), AccessibleRole::RadioButton);
+            let s = cell.size();
+            assert!(s.width >= MIN_HIT && s.height >= MIN_HIT, "icon {i}");
+        }
+        assert!(!ui.get_dirty());
+        find(&ui, "Icon 1", AccessibleRole::RadioButton).invoke_accessible_default_action();
+        assert_eq!(ui.get_icon_index(), 1);
+        assert!(ui.get_dirty());
+        assert_eq!(find(&ui, "Icon 1", AccessibleRole::RadioButton).accessible_checked(), Some(true));
+        find(&ui, "No icon", AccessibleRole::RadioButton).invoke_accessible_default_action();
+        assert_eq!(ui.get_icon_index(), -1);
+
+        // Tab from the name passes the colour group and reaches the icon group.
+        press_key(&ui, Key::Tab);
+        press_key(&ui, Key::Tab);
+        press_key(&ui, Key::RightArrow);
+        assert_eq!(ui.get_icon_index(), 0);
+        press_key(&ui, Key::DownArrow);
+        assert_eq!(ui.get_icon_index(), 9, "Down moves a row");
+        press_key(&ui, Key::UpArrow);
+        assert_eq!(ui.get_icon_index(), 0);
+        press_key(&ui, Key::End);
+        assert_eq!(ui.get_icon_index(), 23);
+        press_key(&ui, Key::RightArrow);
+        assert_eq!(ui.get_icon_index(), 23, "End is the last stop");
+        press_key(&ui, Key::Home);
+        assert_eq!(ui.get_icon_index(), -1);
+        press_key(&ui, Key::LeftArrow);
+        assert_eq!(ui.get_icon_index(), -1, "No icon is the first stop");
+    }
+
     fn sort_is_a_choice_of_three() {
         let (ui, _log) = list_editor();
         find(&ui, "Most used", AccessibleRole::RadioButton).invoke_accessible_default_action();

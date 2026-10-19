@@ -15,6 +15,7 @@
 import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue } from "theme.slint";
 import { Icons } from "icons.slint";
+import { ListIcons } from "list-icons.slint";
 import { Icon } from "components/icon.slint";
 import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
 import { IconButton, IconButtonSize } from "components/icon-button.slint";
@@ -743,6 +744,143 @@ component ColourPicker inherits Rectangle {
     }
 }
 
+// A list's icon, as one radio group like `ColourPicker`: "No icon" and the 24 icons in a grid of 9 columns, one tab
+// stop, Left / Right step by one, Up / Down by a row, Home / End jump. `icon` is -1 for none, else the index into
+// `ListIcons.all` (the order of snipdeck-core `ListIcon::ALL`); `names` are the spoken icon names in that order.
+// A selected cell has a 2px ring and a filled background, so the choice is not colour alone.
+component IconCell inherits Rectangle {
+    in property <image> source;
+    in property <string> label;
+    in property <bool> selected: false;
+    in property <bool> show-focus: false;
+    callback clicked();
+
+    width: Space.hit;
+    height: Space.hit;
+    accessible-role: radio-button;
+    accessible-label: root.label;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.clicked(); }
+
+    Rectangle {
+        border-width: root.selected ? 2px : 0px;
+        border-color: Theme.text-primary;
+        border-radius: Radius.lg;
+        background: transparent;
+    }
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        width: 22px;
+        height: 22px;
+        border-radius: Radius.sm;
+        background: touch.pressed ? Theme.bg-sunken : touch.has-hover ? Theme.bg-hover : root.selected ? Theme.bg-selected : transparent;
+        Icon {
+            source: root.source;
+            size: 16px;
+            tint: root.selected ? Theme.text-on-selected : Theme.text-secondary;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: root.show-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.lg + 2px;
+        background: transparent;
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+component IconPicker inherits Rectangle {
+    in property <int> icon: -1;
+    in property <string> label;
+    in property <string> none-label;
+    in property <[string]> names;
+    callback chosen(icon: int);
+    out property <bool> has-focus: scope.has-focus;
+
+    property <int> columns: 9;
+    property <int> total: ListIcons.all.length;
+
+    function move(to: int) {
+        if (to >= -1 && to < root.total && to != root.icon) {
+            root.chosen(to);
+        }
+    }
+
+    height: 3 * Space.hit + 2 * Space.s1;
+    forward-focus: scope;
+    accessible-role: radio-group;
+    accessible-label: root.label;
+
+    VerticalLayout {
+        spacing: Space.s1;
+        alignment: start;
+        for row in 3: HorizontalLayout {
+            spacing: Space.s1;
+            alignment: start;
+            for col in root.columns: Rectangle {
+                // 0 is "no icon"; 1 to 24 are the icons.
+                property <int> cell: row * root.columns + col;
+                width: Space.hit;
+                height: Space.hit;
+                if cell == 0: NoColour {
+                    label: root.none-label;
+                    selected: root.icon == -1;
+                    show-focus: scope.has-focus && root.icon == -1;
+                    clicked => { root.move(-1); }
+                }
+                if cell > 0 && cell <= root.total: IconCell {
+                    source: ListIcons.all[cell - 1];
+                    label: root.names[cell - 1];
+                    selected: cell - 1 == root.icon;
+                    show-focus: scope.has-focus && cell - 1 == root.icon;
+                    clicked => { root.move(cell - 1); }
+                }
+            }
+        }
+    }
+
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == Key.RightArrow) {
+                root.move(root.icon + 1);
+                return accept;
+            }
+            if (event.text == Key.LeftArrow) {
+                root.move(root.icon - 1);
+                return accept;
+            }
+            if (event.text == Key.DownArrow) {
+                root.move(min(root.icon + root.columns, root.total - 1));
+                return accept;
+            }
+            if (event.text == Key.UpArrow) {
+                root.move(max(root.icon - root.columns, -1));
+                return accept;
+            }
+            if (event.text == Key.Home) {
+                root.move(-1);
+                return accept;
+            }
+            if (event.text == Key.End) {
+                root.move(root.total - 1);
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
 // The shared body of ListEditor and BoardEditor: a name, a colour, a sort order, and deletion that asks first and
 // says how many items are affected. `ListEditor` and `BoardEditor` windows only set the wording and forward the rest
 // (a window that inherits a component does not get that component's properties in its Rust API, so they are
@@ -757,8 +895,13 @@ component EntityEditorBody inherits Rectangle {
     in property <string> name-error;
     // -1 no colour, else 0 to 8 in the order of `ListHue`.
     in-out property <int> accent: -1;
+    // -1 no icon, else 0 to 23 in the order of `ListIcons.all`.
+    in-out property <int> icon-index: -1;
+    // The spoken icon names, in the same order.
+    in property <[string]> icon-names;
     // 0 manual, 1 most used, 2 recently used.
     in-out property <int> sort-index: 0;
+    in property <bool> show-icon: false;
     in property <bool> show-colour: true;
     in property <bool> show-sort: true;
     // How many items a deletion affects (the confirmation says so).
@@ -896,6 +1039,22 @@ component EntityEditorBody inherits Rectangle {
                             }
                         }
                     }
+                    if root.show-icon: FormField {
+                        label: @tr("Icon");
+                        IconPicker {
+                            label: @tr("Icon");
+                            none-label: @tr("No icon");
+                            names: root.icon-names;
+                            icon: root.icon-index;
+                            chosen(i) => {
+                                root.icon-index = i;
+                                root.touch();
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
                     if root.show-sort: FormField {
                         label: @tr("Sort items by");
                         Segmented {
@@ -989,6 +1148,9 @@ export component ListEditor inherits Window {
     in property <string> name-error <=> body.name-error;
     // -1 no colour, else 0 to 8 in the order of `ListHue` (blue, teal, green, amber, orange, red, rose, violet, slate).
     in-out property <int> accent <=> body.accent;
+    // -1 no icon, else 0 to 23 in the order of the `ListIcons` global.
+    in-out property <int> icon-index <=> body.icon-index;
+    in property <[string]> icon-names <=> body.icon-names;
     // 0 manual, 1 most used, 2 recently used.
     in-out property <int> sort-index <=> body.sort-index;
     in property <bool> show-colour <=> body.show-colour;
@@ -1010,6 +1172,7 @@ export component ListEditor inherits Window {
     public function focus-name() { body.focus-name(); }
 
     body := EntityEditorBody {
+        show-icon: true;
         name-label: @tr("List name");
         name-placeholder: @tr("For example, Email replies");
         missing-name-text: @tr("Give the list a name.");

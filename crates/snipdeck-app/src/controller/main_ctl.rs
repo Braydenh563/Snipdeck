@@ -9,7 +9,7 @@
 //! library.
 
 use snipdeck_core::{
-    BoardId, Feature, Item, ItemId, ListAccent, ListId, ListSort, Name, Placement, Tag,
+    BoardId, Feature, Item, ItemId, ListAccent, ListIcon, ListId, ListSort, Name, Placement, Tag,
 };
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
@@ -908,6 +908,7 @@ where
                     self.main.lists().iter().map(|l| l.name.as_str()),
                 ),
                 accent: None,
+                icon: None,
                 sort: ListSort::Manual,
                 item_count: 0,
                 can_delete: false,
@@ -951,6 +952,7 @@ where
             is_new: false,
             name: list.name.as_str().to_owned(),
             accent: list.accent,
+            icon: list.icon,
             sort: list.sort,
             item_count: count,
             can_delete: true,
@@ -981,6 +983,7 @@ where
                     self.main.boards().iter().map(|b| b.name.as_str()),
                 ),
                 accent: None,
+                icon: None,
                 sort: ListSort::Manual,
                 item_count: 0,
                 can_delete: false,
@@ -1003,6 +1006,7 @@ where
             is_new: false,
             name: self.main.board_name().to_owned(),
             accent: None,
+            icon: None,
             sort: ListSort::Manual,
             item_count: self.main.side_lists().iter().map(|l| l.count).sum(),
             can_delete,
@@ -1021,7 +1025,13 @@ where
 
     /// The editor's Save: checks the name, writes the list or board and closes the editor. A
     /// refused name keeps it open with the reason (see [`EditorView::name_error`]).
-    pub fn main_editor_save(&mut self, name: &str, accent: Option<ListAccent>, sort: ListSort) {
+    pub fn main_editor_save(
+        &mut self,
+        name: &str,
+        accent: Option<ListAccent>,
+        icon: Option<ListIcon>,
+        sort: ListSort,
+    ) {
         self.main_fresh();
         let Some(slot) = self.editor.as_mut() else {
             return;
@@ -1045,7 +1055,7 @@ where
             return;
         }
         let now = self.clock.now();
-        match self.write_editor(target, name, accent, sort, now) {
+        match self.write_editor(target, name, accent, icon, sort, now) {
             Ok(opened) => {
                 self.editor = None;
                 self.library_changed();
@@ -1066,6 +1076,7 @@ where
         target: EditorTarget,
         name: Name,
         accent: Option<ListAccent>,
+        icon: Option<ListIcon>,
         sort: ListSort,
         now: snipdeck_core::Timestamp,
     ) -> snipdeck_store::Result<Option<Opened>> {
@@ -1073,6 +1084,7 @@ where
             EditorTarget::NewList(board) => {
                 let mut list = snipdeck_core::List::new(board, name, now);
                 list.accent = accent;
+                list.icon = icon;
                 list.sort = sort;
                 self.store.insert_list(&list, Placement::Last)?;
                 Ok(Some(Opened::List(list.id)))
@@ -1081,6 +1093,7 @@ where
                 let mut list = self.store.list(id)?;
                 list.name = name;
                 list.accent = accent;
+                list.icon = icon;
                 list.sort = sort;
                 list.updated_at = now;
                 self.store.update_list(&list)?;

@@ -5,7 +5,8 @@
 use std::collections::HashMap;
 
 use snipdeck_core::{
-    Board, BoardId, Item, ItemId, ItemKind, List, ListAccent, ListId, ListSort, search::SearchIndex,
+    Board, BoardId, Item, ItemId, ItemKind, List, ListAccent, ListIcon, ListId, ListSort,
+    search::SearchIndex,
 };
 use snipdeck_platform::route::{Policy, Route, Target, decide};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo};
@@ -52,6 +53,8 @@ pub struct Tab {
     pub name: String,
     /// Its colour.
     pub accent: Option<ListAccent>,
+    /// Its icon.
+    pub icon: Option<ListIcon>,
     /// The list currently shown.
     pub active: bool,
 }
@@ -249,6 +252,7 @@ impl PanelModel {
                 id: l.id,
                 name: l.name.as_str().to_owned(),
                 accent: l.accent,
+                icon: l.icon,
                 active: Some(l.id) == self.list,
             })
             .collect()

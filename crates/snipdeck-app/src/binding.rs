@@ -10,8 +10,8 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
-use snipdeck_core::{ItemKind, UseMode};
+use slint::{ComponentHandle, Global, Model, ModelRc, SharedString, VecModel};
+use snipdeck_core::{ItemKind, ListIcon, UseMode};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::{Rgb, SystemLook},
@@ -716,7 +716,10 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         window.set_board_name(view.board_name.as_str().into());
     }
     if differs(&|p| p.tabs == view.tabs && p.dark == view.dark) {
-        window.set_tabs(model(view.tabs.iter().map(|t| tab_item(t, view.dark))));
+        let icons = ui::ListIcons::get(window).get_all();
+        window.set_tabs(model(
+            view.tabs.iter().map(|t| tab_item(t, view.dark, &icons)),
+        ));
         // The dock's handle wears the colour of the list on show.
         let accent = view.tabs.iter().find(|t| t.active).and_then(|t| t.accent);
         window.set_dock_has_list_color(accent.is_some());
@@ -872,11 +875,23 @@ pub(crate) fn to_i32(n: usize) -> i32 {
     i32::try_from(n).unwrap_or(i32::MAX)
 }
 
-fn tab_item(tab: &Tab, dark: bool) -> ui::TabItem {
+fn tab_item(tab: &Tab, dark: bool, icons: &ModelRc<slint::Image>) -> ui::TabItem {
     ui::TabItem {
         text: tab.name.as_str().into(),
         accent: list_color(tab.accent, dark),
+        icon: list_icon_image(icons, tab.icon),
     }
+}
+
+/// The image of a list's icon from the UI's `ListIcons.all` (in the order of [`ListIcon::ALL`]);
+/// an empty image when the list has none.
+pub(crate) fn list_icon_image(
+    icons: &ModelRc<slint::Image>,
+    icon: Option<ListIcon>,
+) -> slint::Image {
+    icon.and_then(|icon| ListIcon::ALL.iter().position(|x| *x == icon))
+        .and_then(|i| icons.row_data(i))
+        .unwrap_or_default()
 }
 
 /// The text shown instead of a sensitive item's preview.
