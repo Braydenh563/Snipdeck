@@ -690,3 +690,26 @@ fn a_wrong_current_password_changes_nothing_and_the_old_one_still_works() {
     s.lock_key_ring();
     s.unlock_key_ring(&ring(&p), Some("old")).unwrap();
 }
+
+#[test]
+fn a_rekeyed_record_opens_with_the_new_password_while_the_old_record_still_opens_with_the_old() {
+    // A password change writes the new record over the old one only after this holds, so a
+    // wrong write cannot lock the user out: the record handed back is good before it is stored.
+    let p = provider();
+    let ring = ring(&p);
+    let (_, old) = ring.create(Some("one")).unwrap();
+    let (key, new) = ring.rekey(&old, Some("one"), Some("two")).unwrap();
+    assert!(
+        ring.unlock(&new, Some("two")).is_ok(),
+        "the new record opens"
+    );
+    assert!(
+        ring.unlock(&new, Some("one")).is_err(),
+        "and only with the new password"
+    );
+    assert!(
+        ring.unlock(&old, Some("one")).is_ok(),
+        "the old record is untouched"
+    );
+    drop(key);
+}

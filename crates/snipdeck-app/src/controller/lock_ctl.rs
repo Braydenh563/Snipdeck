@@ -84,6 +84,9 @@ pub(super) struct LockState {
     prompt: bool,
     /// A step whose key derivation is running elsewhere ([`MasterJob`]); no other starts.
     busy: Option<MasterOp>,
+    /// Counts the times a running step was given up on (the library locked, or the unlock
+    /// window closed): an outcome stamped with an older count is dropped.
+    generation: u64,
     /// Cost of Argon2id for a new password; `None` is [`KdfParams::DEFAULT`]. Tests make it cheap.
     pub(super) kdf: Option<KdfParams>,
 }
@@ -96,6 +99,7 @@ impl LockState {
             active_at: now,
             prompt: false,
             busy: None,
+            generation: 0,
             kdf: None,
         }
     }
@@ -245,6 +249,10 @@ where
     /// The user closed the unlock window without a password. The library stays locked.
     pub fn cancel_unlock(&mut self) {
         self.lock.prompt = false;
+        // A password already being checked must not open the library after the user said no.
+        if self.lock.busy == Some(MasterOp::Unlock) {
+            self.invalidate_master();
+        }
     }
 
     /// Opens the library with the master password typed in the unlock window. On success the
@@ -327,9 +335,24 @@ where
         self.lock.busy
     }
 
-    /// Gives up on a step whose outcome will never come (its thread died). Nothing changed.
-    pub fn abort_master(&mut self) {
+    /// Whether `done` is the outcome of the step that is running now. It is not when the library
+    /// was locked, or the unlock window closed, while the key was being derived: the window then
+    /// only stops waiting, and [`finish_master`](Self::finish_master) would drop it anyway.
+    #[must_use]
+    pub fn master_current(&self, done: &MasterDone) -> bool {
+        self.lock.busy.is_some() && done.generation == self.lock.generation
+    }
+
+    /// Gives up on the running step: its outcome, when it comes, is dropped with its key.
+    fn invalidate_master(&mut self) {
+        self.lock.generation = self.lock.generation.wrapping_add(1);
         self.lock.busy = None;
+    }
+
+    /// Marks the step as running and stamps the job so a stale outcome can be told.
+    fn start(&mut self, job: MasterJob) -> MasterJob {
+        self.lock.busy = Some(job.op());
+        job.stamped(self.lock.generation)
     }
 
     /// The first part of [`unlock_with_password`](Self::unlock_with_password). `Ok(None)`: the
@@ -355,8 +378,7 @@ where
         let provider = self.provider()?;
         let record = self.stored_record()?;
         let job = MasterJob::unlock(record, password, provider, self.lock.kdf);
-        self.lock.busy = Some(job.op());
-        Ok(Some(job))
+        Ok(Some(self.start(job)))
     }
 
     /// The first part of [`set_master_password`](Self::set_master_password).
@@ -398,8 +420,7 @@ where
         } else {
             MasterJob::create(new, provider, self.lock.kdf)
         };
-        self.lock.busy = Some(job.op());
-        Ok(job)
+        Ok(self.start(job))
     }
 
     /// The first part of [`change_master_password`](Self::change_master_password).
@@ -427,8 +448,7 @@ where
             provider,
             self.lock.kdf,
         );
-        self.lock.busy = Some(job.op());
-        Ok(job)
+        Ok(self.start(job))
     }
 
     /// The first part of [`remove_master_password`](Self::remove_master_password).
@@ -453,8 +473,7 @@ where
             provider,
             self.lock.kdf,
         );
-        self.lock.busy = Some(job.op());
-        Ok(job)
+        Ok(self.start(job))
     }
 
     /// Applies the outcome of a [`MasterJob`]: stores the new record, opens the library, and tells
@@ -465,6 +484,10 @@ where
     /// [`MasterProblem::WrongPassword`] for an unlock, change or removal with the wrong
     /// password; [`MasterProblem::Failed`] for anything else that went wrong. Nothing changed.
     pub fn finish_master(&mut self, done: MasterDone) -> Result<(), MasterProblem> {
+        if !self.master_current(&done) {
+            // Locked or cancelled meanwhile: nothing is applied and the key is wiped on drop.
+            return Err(MasterProblem::Failed);
+        }
         self.lock.busy = None;
         let op = done.op;
         let (key, record) = done.outcome.map_err(|e| match op {
@@ -484,15 +507,22 @@ where
                 Ok(())
             }
             (MasterOp::Set { exists }, Some(record)) => {
-                let stored = if exists {
+                if exists {
                     self.store
                         .replace_key_record(&record)
-                        .and_then(|()| self.store.open_with_key(key))
+                        .map_err(|_| MasterProblem::Failed)?;
+                    // The password is set for good from here, whether or not the library
+                    // opens now: a retry must ask for it, not offer to set it again.
+                    self.lock.set = true;
+                    self.store
+                        .open_with_key(key)
+                        .map_err(|_| MasterProblem::Failed)?;
                 } else {
-                    self.store.install_key_ring(key, &record)
-                };
-                stored.map_err(|_| MasterProblem::Failed)?;
-                self.lock.set = true;
+                    self.store
+                        .install_key_ring(key, &record)
+                        .map_err(|_| MasterProblem::Failed)?;
+                    self.lock.set = true;
+                }
                 self.note_activity();
                 self.show_toast(neutral(ToastMessage::MasterPasswordSet));
                 let _ = self.refresh_panel();
@@ -612,6 +642,8 @@ where
         if !self.lock.set {
             return;
         }
+        // A change or removal still being derived must not reopen what is being locked.
+        self.invalidate_master();
         self.store.lock_key_ring();
         self.revealed = None;
         self.panel_revealed = None;

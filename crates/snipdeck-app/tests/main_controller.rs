@@ -1181,6 +1181,32 @@ fn palette_item_commands_act_on_the_row_under_the_cursor() {
 }
 
 #[test]
+fn the_palette_duplicate_command_puts_a_copy_after_the_row_under_the_cursor() {
+    use snipdeck_app::commands::Command;
+    let mut ctl = pro();
+    let before = ctl.main_screen();
+    let target = before.rows[1].title.clone();
+
+    ctl.run_command(Command::DuplicateItem, 1);
+    let after = ctl.main_screen();
+    assert_eq!(
+        after.rows.len(),
+        before.rows.len() + 1,
+        "one copy was added"
+    );
+    assert_eq!(
+        titles(&after).iter().filter(|t| **t == target).count(),
+        2,
+        "the copy keeps the title"
+    );
+    assert_eq!(
+        after.rows[1].key, before.rows[1].key,
+        "the original stays where it was, the copy goes after it"
+    );
+    assert_ne!(after.rows[2].key, before.rows[2].key);
+}
+
+#[test]
 fn the_palette_new_list_command_opens_the_list_editor() {
     use snipdeck_app::{commands::Command, main_window::EditorKind};
     let mut ctl = pro();

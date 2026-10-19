@@ -118,7 +118,7 @@ msgstr ""
 msgid "Asks you to pick one of the options"
 msgstr ""
 
-#: ui/master_password.slint:209
+#: ui/master_password.slint:218
 msgid "At least {} characters. A few unrelated words make a good password."
 msgstr ""
 
@@ -128,6 +128,10 @@ msgstr ""
 
 #: ui/help.slint:90 ui/settings.slint:762
 msgid "Back up now"
+msgstr ""
+
+#: ui/toast_texts.slint:139
+msgid "Backed up"
 msgstr ""
 
 #: ui/settings.slint:716
@@ -190,7 +194,7 @@ msgstr ""
 msgid "Built on"
 msgstr ""
 
-#: ui/editors.slint:594 ui/editors.slint:923 ui/editors.slint:961 ui/editors.slint:1269 ui/main_window.slint:1705 ui/master_password.slint:246 ui/master_password.slint:354 ui/settings.slint:953 ui/settings.slint:1027 ui/template_fill.slint:305
+#: ui/editors.slint:594 ui/editors.slint:923 ui/editors.slint:961 ui/editors.slint:1269 ui/main_window.slint:1705 ui/master_password.slint:256 ui/master_password.slint:372 ui/settings.slint:953 ui/settings.slint:1027 ui/template_fill.slint:305
 msgid "Cancel"
 msgstr ""
 
@@ -326,7 +330,7 @@ msgstr ""
 msgid "Command palette (every action)"
 msgstr ""
 
-#: ui/command_texts.slint:42
+#: ui/command_texts.slint:43
 msgid "Commands"
 msgstr ""
 
@@ -348,6 +352,26 @@ msgstr ""
 
 #: ui/template_fill.slint:291
 msgid "Control Enter"
+msgstr ""
+
+#: ui/toast_texts.slint:15
+msgid "Copied"
+msgstr ""
+
+#: ui/toast_texts.slint:21
+msgid "Copied. Nothing in {} can take text right now."
+msgstr ""
+
+#: ui/toast_texts.slint:24
+msgid "Copied. Pasting into {} is turned off."
+msgstr ""
+
+#: ui/toast_texts.slint:27
+msgid "Copied. The window you were using went away."
+msgstr ""
+
+#: ui/toast_texts.slint:18
+msgid "Copied. {} runs as administrator, so Snipdeck can't paste into it."
 msgstr ""
 
 #: ui/panel.slint:1154 ui/panel.slint:1169
@@ -386,7 +410,79 @@ msgstr ""
 msgid "CopyQ export"
 msgstr ""
 
-#: ui/master_password.slint:186 ui/master_password.slint:187
+#: ui/toast_texts.slint:175
+msgid "Couldn't change the Windows start-up entry."
+msgstr ""
+
+#: ui/toast_texts.slint:166
+msgid "Couldn't erase everything. Quit Snipdeck and try again."
+msgstr ""
+
+#: ui/toast_texts.slint:160
+msgid "Couldn't export your library."
+msgstr ""
+
+#: ui/toast_texts.slint:154
+msgid "Couldn't import that."
+msgstr ""
+
+#: ui/toast_texts.slint:142
+msgid "Couldn't make a backup."
+msgstr ""
+
+#: ui/toast_texts.slint:100
+msgid "Couldn't open that window."
+msgstr ""
+
+#: ui/toast_texts.slint:181
+msgid "Couldn't open the encryption key. Nothing was saved."
+msgstr ""
+
+#: ui/toast_texts.slint:169
+msgid "Couldn't open the folder."
+msgstr ""
+
+#: ui/toast_texts.slint:178
+msgid "Couldn't open the log folder."
+msgstr ""
+
+#: ui/toast_texts.slint:196
+msgid "Couldn't open this item."
+msgstr ""
+
+#: ui/toast_texts.slint:172
+msgid "Couldn't open your email app."
+msgstr ""
+
+#: ui/toast_texts.slint:30
+msgid "Couldn't reach the clipboard. Another app may be using it."
+msgstr ""
+
+#: ui/toast_texts.slint:148
+msgid "Couldn't restore that backup."
+msgstr ""
+
+#: ui/toast_texts.slint:199
+msgid "Couldn't save a draft of what you typed."
+msgstr ""
+
+#: ui/toast_texts.slint:193
+msgid "Couldn't save this item. Nothing was changed."
+msgstr ""
+
+#: ui/toast_texts.slint:103
+msgid "Couldn't save your settings. Snipdeck will try again."
+msgstr ""
+
+#: ui/toast_texts.slint:97
+msgid "Couldn't use this item."
+msgstr ""
+
+#: ui/toast_texts.slint:190
+msgid "Couldn't write to your library. Check that the disk has room."
+msgstr ""
+
+#: ui/master_password.slint:194 ui/master_password.slint:195
 msgid "Current password"
 msgstr ""
 
@@ -458,8 +554,20 @@ msgstr ""
 msgid "Delete this tag?"
 msgstr ""
 
+#: ui/toast_texts.slint:112
+msgid "Deleted board “{}”"
+msgstr ""
+
+#: ui/toast_texts.slint:121
+msgid "Deleted for good"
+msgstr ""
+
 #: ui/main_window.slint:1365
 msgid "Deleted items stay here for {} days before they are removed."
+msgstr ""
+
+#: ui/toast_texts.slint:109
+msgid "Deleted list “{}”"
 msgstr ""
 
 #: ui/settings.slint:972
@@ -498,6 +606,10 @@ msgstr ""
 msgid "Duplicate"
 msgstr ""
 
+#: ui/command_texts.slint:32
+msgid "Duplicate selected item"
+msgstr ""
+
 #: ui/components/shortcuts-sheet.slint:99 ui/components/shortcuts-sheet.slint:118
 msgid "Duplicate the item"
 msgstr ""
@@ -522,7 +634,7 @@ msgstr ""
 msgid "Edit list…"
 msgstr ""
 
-#: ui/command_texts.slint:32
+#: ui/command_texts.slint:33
 msgid "Edit selected item"
 msgstr ""
 
@@ -566,7 +678,7 @@ msgstr ""
 msgid "Enter"
 msgstr ""
 
-#: ui/master_password.slint:325
+#: ui/master_password.slint:342
 msgid "Enter your master password to use the sensitive items in your library. Your other items are always available."
 msgstr ""
 
@@ -710,19 +822,19 @@ msgstr ""
 msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
 msgstr ""
 
-#: ui/command_texts.slint:36
+#: ui/command_texts.slint:37
 msgid "Go to All items"
 msgstr ""
 
-#: ui/command_texts.slint:37
+#: ui/command_texts.slint:38
 msgid "Go to Pinned"
 msgstr ""
 
-#: ui/command_texts.slint:38
+#: ui/command_texts.slint:39
 msgid "Go to Recent"
 msgstr ""
 
-#: ui/command_texts.slint:39
+#: ui/command_texts.slint:40
 msgid "Go to Trash"
 msgstr ""
 
@@ -812,6 +924,10 @@ msgstr ""
 
 #: ui/settings.slint:810
 msgid "Import into your library, see a preview first"
+msgstr ""
+
+#: ui/toast_texts.slint:151
+msgid "Imported {} item"
 msgstr ""
 
 #: ui/settings.slint:808
@@ -906,6 +1022,10 @@ msgstr ""
 msgid "Lengthen the leave delay"
 msgstr ""
 
+#: ui/toast_texts.slint:42
+msgid "Library unlocked."
+msgstr ""
+
 #: ui/help.slint:300 ui/settings.slint:615
 msgid "Licence"
 msgstr ""
@@ -982,8 +1102,28 @@ msgstr ""
 msgid "Manual"
 msgstr ""
 
-#: ui/components/plan-table.slint:36 ui/master_password.slint:336 ui/master_password.slint:337 ui/settings.slint:1071
+#: ui/components/plan-table.slint:36 ui/master_password.slint:354 ui/master_password.slint:355 ui/settings.slint:1071
 msgid "Master password"
+msgstr ""
+
+#: ui/toast_texts.slint:48
+msgid "Master password changed."
+msgstr ""
+
+#: ui/toast_texts.slint:54
+msgid "Master password changed. Snipdeck couldn't open the library just now. Unlock it with the new password."
+msgstr ""
+
+#: ui/toast_texts.slint:51
+msgid "Master password removed."
+msgstr ""
+
+#: ui/toast_texts.slint:57
+msgid "Master password removed. Snipdeck couldn't open the library just now. Restart Snipdeck to use your sensitive items."
+msgstr ""
+
+#: ui/toast_texts.slint:45
+msgid "Master password set."
 msgstr ""
 
 #: ui/help.slint:350
@@ -1002,7 +1142,7 @@ msgstr ""
 msgid "Move"
 msgstr ""
 
-#: ui/command_texts.slint:35
+#: ui/command_texts.slint:36
 msgid "Move selected item to Trash"
 msgstr ""
 
@@ -1034,6 +1174,14 @@ msgstr ""
 msgid "Move to list…"
 msgstr ""
 
+#: ui/toast_texts.slint:106
+msgid "Moved {} item to the Trash"
+msgstr ""
+
+#: ui/toast_texts.slint:118
+msgid "Moved {} item to {}"
+msgstr ""
+
 #: ui/main_window.slint:681
 msgid "Navigation"
 msgstr ""
@@ -1058,7 +1206,7 @@ msgstr ""
 msgid "New name for {}"
 msgstr ""
 
-#: ui/master_password.slint:199 ui/master_password.slint:200
+#: ui/master_password.slint:208 ui/master_password.slint:209
 msgid "New password"
 msgstr ""
 
@@ -1150,7 +1298,7 @@ msgstr ""
 msgid "Nothing matches “{}”."
 msgstr ""
 
-#: ui/settings.slint:913
+#: ui/settings.slint:913 ui/toast_texts.slint:151
 msgid "Nothing new to import."
 msgstr ""
 
@@ -1168,6 +1316,18 @@ msgstr ""
 
 #: ui/picker.slint:446
 msgid "Nothing pinned yet"
+msgstr ""
+
+#: ui/toast_texts.slint:78
+msgid "Nothing to paste next. Pin a snippet, or add one to this list."
+msgstr ""
+
+#: ui/toast_texts.slint:145
+msgid "Nothing to restore: your library already has everything in that backup."
+msgstr ""
+
+#: ui/toast_texts.slint:69
+msgid "Nothing to save. Copy some text first."
 msgstr ""
 
 #: ui/help.slint:81
@@ -1342,6 +1502,18 @@ msgstr ""
 msgid "Paste with a click, or search at your caret."
 msgstr ""
 
+#: ui/toast_texts.slint:204
+msgid "Paste your licence key first."
+msgstr ""
+
+#: ui/toast_texts.slint:12
+msgid "Pasted"
+msgstr ""
+
+#: ui/toast_texts.slint:12
+msgid "Pasted into {}"
+msgstr ""
+
 #: ui/panel.slint:1153 ui/panel.slint:1168
 msgid "Pastes into {}"
 msgstr ""
@@ -1394,7 +1566,7 @@ msgstr ""
 msgid "Pin or unpin the item"
 msgstr ""
 
-#: ui/command_texts.slint:33
+#: ui/command_texts.slint:34
 msgid "Pin selected item"
 msgstr ""
 
@@ -1518,7 +1690,7 @@ msgstr ""
 msgid "Rename tag {}"
 msgstr ""
 
-#: ui/master_password.slint:221 ui/master_password.slint:222
+#: ui/master_password.slint:231 ui/master_password.slint:232
 msgid "Repeat the new password"
 msgstr ""
 
@@ -1536,6 +1708,14 @@ msgstr ""
 
 #: ui/editors.slint:273
 msgid "Restored the changes you had not saved."
+msgstr ""
+
+#: ui/toast_texts.slint:115
+msgid "Restored {} item"
+msgstr ""
+
+#: ui/toast_texts.slint:145
+msgid "Restored {} item from the backup"
 msgstr ""
 
 #: ui/picker.slint:407
@@ -1584,6 +1764,14 @@ msgstr ""
 
 #: ui/main_window.slint:1362
 msgid "Save your first snippet, or copy something and save it from the clipboard."
+msgstr ""
+
+#: ui/toast_texts.slint:66
+msgid "Saved to {}"
+msgstr ""
+
+#: ui/toast_texts.slint:157
+msgid "Saved {} in your Documents folder"
 msgstr ""
 
 #: ui/settings.slint:794
@@ -1682,6 +1870,10 @@ msgstr ""
 msgid "Shortcuts"
 msgstr ""
 
+#: ui/toast_texts.slint:90
+msgid "Shortcuts are unavailable, so {} is not active. Restart Snipdeck to try again."
+msgstr ""
+
 #: ui/settings.slint:503
 msgid "Shorten the hover delay"
 msgstr ""
@@ -1738,12 +1930,24 @@ msgstr ""
 msgid "Snipdeck Supporter"
 msgstr ""
 
+#: ui/toast_texts.slint:136
+msgid "Snipdeck Supporter is on. Thank you."
+msgstr ""
+
 #: ui/master_password.slint:53 ui/settings.slint:1073
 msgid "Snipdeck can't protect a key on this PC, so a master password is not available."
 msgstr ""
 
+#: ui/toast_texts.slint:133
+msgid "Snipdeck closed unexpectedly last time. Open the log?"
+msgstr ""
+
 #: ui/settings.slint:1075
 msgid "Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again."
+msgstr ""
+
+#: ui/toast_texts.slint:130
+msgid "Snipdeck found a problem in your library. Export a copy to be safe."
 msgstr ""
 
 #: ui/panel.slint:1419
@@ -1752,6 +1956,14 @@ msgstr ""
 
 #: ui/settings.slint:1132
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
+msgstr ""
+
+#: ui/toast_texts.slint:94
+msgid "Snipdeck is still running. Click the tray icon to bring the panel back."
+msgstr ""
+
+#: ui/toast_texts.slint:94
+msgid "Snipdeck is still running. Press {} or click the tray icon to bring the panel back."
 msgstr ""
 
 #: ui/editors.slint:361
@@ -1882,20 +2094,60 @@ msgstr ""
 msgid "Text you copy shows up here for a week. Save the useful ones to a list."
 msgstr ""
 
+#: ui/toast_texts.slint:8
+msgid "That app"
+msgstr ""
+
+#: ui/toast_texts.slint:207
+msgid "That is not a Snipdeck licence key. A key starts with SNIP1."
+msgstr ""
+
+#: ui/toast_texts.slint:216
+msgid "That key is not for Snipdeck Supporter."
+msgstr ""
+
+#: ui/toast_texts.slint:213
+msgid "That key needs a newer Snipdeck. Update and try again."
+msgstr ""
+
+#: ui/toast_texts.slint:210
+msgid "That licence key is not valid. Check that you copied all of it."
+msgstr ""
+
+#: ui/toast_texts.slint:187
+msgid "That list was deleted. Choose another list."
+msgstr ""
+
 #: ui/master_password.slint:41
 msgid "That password is not right. Try again."
+msgstr ""
+
+#: ui/toast_texts.slint:72
+msgid "That text is too large to save."
+msgstr ""
+
+#: ui/toast_texts.slint:81
+msgid "That was the last one. Paste next starts again from the first."
+msgstr ""
+
+#: ui/toast_texts.slint:127
+msgid "The Free plan includes 5 boards. Supporter adds unlimited boards."
 msgstr ""
 
 #: ui/settings.slint:877
 msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
 msgstr ""
 
-#: ui/main_window.slint:1358
+#: ui/main_window.slint:1358 ui/toast_texts.slint:124
 msgid "The Trash is empty"
 msgstr ""
 
 #: ui/import_texts.slint:50
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
+msgstr ""
+
+#: ui/toast_texts.slint:219
+msgid "The key is valid but couldn't be saved, so Supporter will be off next time."
 msgstr ""
 
 #: ui/settings.slint:999
@@ -1954,6 +2206,10 @@ msgstr ""
 msgid "Theme"
 msgstr ""
 
+#: ui/toast_texts.slint:75
+msgid "There is no list to save into. Add a list first."
+msgstr ""
+
 #: ui/help.slint:358
 msgid "Third-party notices"
 msgstr ""
@@ -1978,8 +2234,20 @@ msgstr ""
 msgid "This file was made by a newer Snipdeck (format {}), so anything this version does not know was left out."
 msgstr ""
 
+#: ui/toast_texts.slint:33
+msgid "This item uses a Supporter feature."
+msgstr ""
+
+#: ui/toast_texts.slint:184
+msgid "This item was deleted. Nothing was saved."
+msgstr ""
+
 #: ui/main_window.slint:1359 ui/panel.slint:1080
 msgid "This list is empty"
+msgstr ""
+
+#: ui/toast_texts.slint:36
+msgid "This template can't be read. Open it to fix it."
 msgstr ""
 
 #: ui/editors.slint:350
@@ -2034,7 +2302,7 @@ msgstr ""
 msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
 msgstr ""
 
-#: ui/command_texts.slint:43
+#: ui/command_texts.slint:44
 msgid "Type a command"
 msgstr ""
 
@@ -2046,15 +2314,23 @@ msgstr ""
 msgid "Undo the delete"
 msgstr ""
 
-#: ui/master_password.slint:359
+#: ui/master_password.slint:377
 msgid "Unlock"
 msgstr ""
 
-#: ui/master_password.slint:271 ui/master_password.slint:314
+#: ui/master_password.slint:281 ui/master_password.slint:331
 msgid "Unlock Snipdeck"
 msgstr ""
 
-#: ui/master_password.slint:316
+#: ui/toast_texts.slint:63
+msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
+msgstr ""
+
+#: ui/toast_texts.slint:39
+msgid "Unlock your library to use this item."
+msgstr ""
+
+#: ui/master_password.slint:333
 msgid "Unlock your sensitive items"
 msgstr ""
 
@@ -2070,7 +2346,7 @@ msgstr ""
 msgid "Unpin"
 msgstr ""
 
-#: ui/command_texts.slint:34
+#: ui/command_texts.slint:35
 msgid "Unpin selected item"
 msgstr ""
 
@@ -2182,6 +2458,14 @@ msgstr ""
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr ""
 
+#: ui/toast_texts.slint:60
+msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
+msgstr ""
+
+#: ui/toast_texts.slint:163
+msgid "Your library was erased."
+msgstr ""
+
 #: ui/master_password.slint:80
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr ""
@@ -2202,23 +2486,27 @@ msgstr ""
 msgid "and {} more"
 msgstr ""
 
-#: ui/command_texts.slint:32
+#: ui/command_texts.slint:33
 msgid "change modify rename"
 msgstr ""
 
 #: ui/command_texts.slint:31
-msgid "clipboard duplicate"
+msgid "clipboard"
 msgstr ""
 
 #: ui/command_texts.slint:20
 msgid "clipboard save grab screenshot"
 msgstr ""
 
-#: ui/command_texts.slint:35
+#: ui/command_texts.slint:32
+msgid "copy clone twice"
+msgstr ""
+
+#: ui/command_texts.slint:36
 msgid "delete remove discard"
 msgstr ""
 
-#: ui/command_texts.slint:39
+#: ui/command_texts.slint:40
 msgid "deleted restore bin show"
 msgstr ""
 
@@ -2226,19 +2514,19 @@ msgstr ""
 msgid "diagnose doctor problems fix"
 msgstr ""
 
-#: ui/command_texts.slint:36
+#: ui/command_texts.slint:37
 msgid "everything home show"
 msgstr ""
 
-#: ui/command_texts.slint:33
+#: ui/command_texts.slint:34
 msgid "favourite favorite keep"
 msgstr ""
 
-#: ui/command_texts.slint:34
+#: ui/command_texts.slint:35
 msgid "favourite favorite remove"
 msgstr ""
 
-#: ui/command_texts.slint:37
+#: ui/command_texts.slint:38
 msgid "favourites favorites show"
 msgstr ""
 
@@ -2250,7 +2538,7 @@ msgstr ""
 msgid "help docs manual how"
 msgstr ""
 
-#: ui/command_texts.slint:38
+#: ui/command_texts.slint:39
 msgid "history clipboard show"
 msgstr ""
 
@@ -2342,6 +2630,10 @@ msgstr ""
 msgid "{} already in your library, skipped"
 msgstr ""
 
+#: ui/toast_texts.slint:87
+msgid "{} can't be used as a shortcut. Choose another in Settings."
+msgstr ""
+
 #: ui/import_texts.slint:41
 msgid "{} could not be read and was skipped."
 msgstr ""
@@ -2372,6 +2664,10 @@ msgstr ""
 
 #: ui/import_texts.slint:32
 msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
+msgstr ""
+
+#: ui/toast_texts.slint:84
+msgid "{} is used by another app. Choose another in Settings."
 msgstr ""
 
 #: ui/import_texts.slint:35

@@ -640,7 +640,7 @@ export component PanelWindow inherits Window {
                         root.edit-requested(root.sel);
                         return accept;
                     }
-                    if ((event.text == "d" || event.text == "D") && root.sel >= 0) {
+                    if ((event.text == "d" || event.text == "D") && root.sel >= 0 && !root.recent-open) {
                         root.duplicate-requested(root.sel);
                         return accept;
                     }

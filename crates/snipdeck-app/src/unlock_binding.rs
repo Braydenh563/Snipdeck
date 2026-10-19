@@ -171,6 +171,21 @@ where
 
     /// The outcome of the key derivation `submitted` started.
     fn finished(self: &Rc<Self>, done: crate::master_job::MasterDone) {
+        let (current, idle) = {
+            let ctl = self.controller.borrow();
+            (ctl.master_current(&done), ctl.master_busy().is_none())
+        };
+        if !current {
+            // The window was closed or the library locked again while the password was being
+            // checked: the answer is dropped (with its key) and the window only stops waiting.
+            drop(done);
+            if let Some(window) = self.window.upgrade()
+                && idle
+            {
+                window.set_busy(false);
+            }
+            return;
+        }
         let result = self.controller.borrow_mut().finish_master(done);
         let Some(window) = self.window.upgrade() else {
             redraw_all();

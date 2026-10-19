@@ -56,6 +56,8 @@ pub struct MasterJob {
     work: Work,
     provider: Arc<dyn KeyProvider>,
     kdf: Option<KdfParams>,
+    /// The controller's generation when the step began (see [`MasterJob::stamped`]).
+    generation: u64,
 }
 
 impl core::fmt::Debug for MasterJob {
@@ -85,6 +87,7 @@ impl MasterJob {
             },
             provider,
             kdf,
+            generation: 0,
         }
     }
 
@@ -106,6 +109,7 @@ impl MasterJob {
             },
             provider,
             kdf,
+            generation: 0,
         }
     }
 
@@ -122,6 +126,7 @@ impl MasterJob {
             },
             provider,
             kdf,
+            generation: 0,
         }
     }
 
@@ -129,6 +134,15 @@ impl MasterJob {
     #[must_use]
     pub const fn op(&self) -> MasterOp {
         self.op
+    }
+
+    /// Marks the job with the controller's generation when it began. The outcome carries the
+    /// mark back, and the controller drops an outcome from an older generation (the library
+    /// was locked, or the unlock window closed, while the key was being derived).
+    #[must_use]
+    pub(crate) const fn stamped(mut self, generation: u64) -> Self {
+        self.generation = generation;
+        self
     }
 
     /// Does the key derivation. Touches no controller and no store.
@@ -160,6 +174,7 @@ impl MasterJob {
         };
         MasterDone {
             op: self.op,
+            generation: self.generation,
             outcome,
         }
     }
@@ -168,6 +183,7 @@ impl MasterJob {
 /// What a job produced: the opened data key and, except for an unlock, the key record to store.
 pub struct MasterDone {
     pub(crate) op: MasterOp,
+    pub(crate) generation: u64,
     pub(crate) outcome: Result<(DataKey, Option<KeyRecord>), CryptoError>,
 }
 
@@ -181,10 +197,13 @@ impl core::fmt::Debug for MasterDone {
 }
 
 impl MasterDone {
-    /// A step that could not run at all (no thread, or the derivation panicked).
-    pub(crate) const fn failed(op: MasterOp) -> Self {
+    /// The outcome of a step that could not run at all (no thread, or the derivation panicked),
+    /// for `job`: the controller frees itself and the window shows the problem.
+    #[must_use]
+    pub fn failed(job: &MasterJob) -> Self {
         Self {
-            op,
+            op: job.op,
+            generation: job.generation,
             outcome: Err(CryptoError::Primitive),
         }
     }
@@ -258,18 +277,57 @@ impl Offload for Threads {
             *n
         });
         WAITING.with(|w| w.borrow_mut().insert(ticket, finish));
-        let op = job.op();
+        let failed = MasterDone::failed(&job);
         let spawned = std::thread::Builder::new()
             .name("snipdeck-master".to_owned())
             .spawn(move || {
-                // A panic in the derivation must not leave the window waiting for ever.
-                let done = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| job.run()))
-                    .unwrap_or_else(|_| MasterDone::failed(op));
+                let done = guarded(job);
                 // The event loop being gone means the app is closing; there is nobody to tell.
                 let _ = slint::invoke_from_event_loop(move || deliver(ticket, done));
             });
         if spawned.is_err() {
-            deliver(ticket, MasterDone::failed(op));
+            deliver(ticket, failed);
         }
+    }
+}
+
+/// Runs `job`; a panic in the derivation becomes a failed outcome, so the window is never left
+/// waiting for ever.
+fn guarded(job: MasterJob) -> MasterDone {
+    let failed = MasterDone::failed(&job);
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| job.run())).unwrap_or(failed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snipdeck_store::crypto::KeyProviderError;
+
+    /// A provider whose every call panics: the derivation dies on its worker thread.
+    struct Panics;
+
+    impl KeyProvider for Panics {
+        fn wrap_key(&self, _key: &[u8]) -> Result<Vec<u8>, KeyProviderError> {
+            panic!("the OS key store blew up");
+        }
+
+        fn unwrap_key(&self, _wrapped: &[u8]) -> Result<Zeroizing<Vec<u8>>, KeyProviderError> {
+            panic!("the OS key store blew up");
+        }
+    }
+
+    #[test]
+    fn a_derivation_that_panics_comes_back_as_a_failure_with_the_same_mark() {
+        let job = MasterJob::create("a password", Arc::new(Panics), None).stamped(7);
+        let done = guarded(job);
+        assert!(
+            done.outcome.is_err(),
+            "no key came out of a dead derivation"
+        );
+        assert_eq!(done.op(), MasterOp::Set { exists: false });
+        assert_eq!(
+            done.generation, 7,
+            "the mark survives, so a stale one is still dropped"
+        );
     }
 }

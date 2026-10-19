@@ -372,7 +372,7 @@ where
                 ToastPhase::Hold => ui::ToastPhase::Hold,
                 ToastPhase::Exit => ui::ToastPhase::Exit,
             });
-            window.set_toast_text(wording::toast_text(&toast.message).into());
+            window.set_toast_text(wording::toast_text(&window, &toast.message).into());
             if self.controller.borrow_mut().claim_toast_timer(toast.seq) {
                 arm_toast(
                     Rc::downgrade(&self.controller),

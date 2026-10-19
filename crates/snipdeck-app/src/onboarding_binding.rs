@@ -160,7 +160,7 @@ where
         window.set_panel_hide_on_blur(settings.panel_hide_on_blur);
         window.set_dock_edge_index(dock_edge_index(controller.dock_edge()));
         window.set_notice(if self.autostart_failed.get() {
-            wording::toast_text(&ToastMessage::AutostartFailed).into()
+            wording::toast_text(&window, &ToastMessage::AutostartFailed).into()
         } else {
             SharedString::new()
         });

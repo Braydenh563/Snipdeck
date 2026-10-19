@@ -45,6 +45,8 @@ pub enum Command {
     UseItem,
     /// Copy the item under the cursor.
     CopyItem,
+    /// Copy the item under the cursor into a new item after it.
+    DuplicateItem,
     /// Edit the item under the cursor.
     EditItem,
     /// Pin the item under the cursor.
@@ -65,7 +67,7 @@ pub enum Command {
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 25] = [
+    pub const ALL: [Self; 26] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
@@ -83,6 +85,7 @@ impl Command {
         Self::ViewTile,
         Self::UseItem,
         Self::CopyItem,
+        Self::DuplicateItem,
         Self::EditItem,
         Self::PinItem,
         Self::UnpinItem,
@@ -124,6 +127,7 @@ impl Command {
             Self::Shortcuts => "Ctrl+/",
             Self::UseItem => "Enter",
             Self::CopyItem => "Shift+Enter",
+            Self::DuplicateItem => "Ctrl+D",
             Self::EditItem => "Ctrl+E",
             Self::PinItem | Self::UnpinItem => "Ctrl+P",
             Self::TrashItem => "Del",
@@ -142,6 +146,7 @@ impl Command {
             self,
             Self::UseItem
                 | Self::CopyItem
+                | Self::DuplicateItem
                 | Self::EditItem
                 | Self::PinItem
                 | Self::UnpinItem
@@ -237,9 +242,11 @@ pub struct Entry {
 #[must_use]
 pub fn available(command: Command, ctx: &Context<'_>) -> bool {
     match command {
-        Command::UseItem | Command::CopyItem | Command::EditItem | Command::TrashItem => {
-            ctx.has_item && !ctx.in_trash
-        }
+        Command::UseItem
+        | Command::CopyItem
+        | Command::DuplicateItem
+        | Command::EditItem
+        | Command::TrashItem => ctx.has_item && !ctx.in_trash,
         Command::PinItem => ctx.has_item && !ctx.in_trash && !ctx.item_pinned,
         Command::UnpinItem => ctx.has_item && !ctx.in_trash && ctx.item_pinned,
         _ => true,
@@ -325,6 +332,7 @@ mod tests {
             ("Tile view", "view mode"),
             ("Use selected item", "paste"),
             ("Copy selected item", "clipboard"),
+            ("Duplicate selected item", "copy clone"),
             ("Edit selected item", "change"),
             ("Pin selected item", "favourite"),
             ("Unpin selected item", "favourite"),
@@ -385,6 +393,23 @@ mod tests {
         c.has_item = true;
         c.in_trash = true;
         assert!(!labels(&entries(&texts(), &c, "")).contains(&"Edit selected item"));
+    }
+
+    #[test]
+    fn duplicate_is_offered_for_an_item_outside_the_trash_and_has_ctrl_d() {
+        let hotkeys = Hotkeys::default();
+        let mut c = ctx(&hotkeys);
+        assert!(labels(&entries(&texts(), &c, "")).contains(&"Duplicate selected item"));
+        assert_eq!(
+            Command::DuplicateItem.shortcut(&hotkeys).as_deref(),
+            Some("Ctrl+D")
+        );
+        assert!(Command::DuplicateItem.needs_item());
+        c.in_trash = true;
+        assert!(!labels(&entries(&texts(), &c, "")).contains(&"Duplicate selected item"));
+        c.in_trash = false;
+        c.has_item = false;
+        assert!(!labels(&entries(&texts(), &c, "")).contains(&"Duplicate selected item"));
     }
 
     #[test]

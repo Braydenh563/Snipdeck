@@ -966,7 +966,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
                 ToastPhase::Exit => ui::ToastPhase::Exit,
             });
             window.set_toast_undo_label(wording::toast_button_text(toast).into());
-            window.set_toast_text(wording::toast_text(&toast.message).into());
+            window.set_toast_text(wording::toast_text(window, &toast.message).into());
         } else {
             window.set_toast_text(SharedString::new());
             window.set_toast_undo_label(SharedString::new());

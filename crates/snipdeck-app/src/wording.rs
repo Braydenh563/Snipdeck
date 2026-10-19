@@ -1,15 +1,15 @@
-//! The words Rust puts on screen: the English text of the toasts, and the tray menu's labels.
+//! The words Rust puts on screen: the toasts, the tray menu's labels and the Panel's menus.
 //!
-//! The Panel's own strings are `@tr` in Slint and translate with the bundled catalogs. Toast
-//! text is built in Rust from [`ToastMessage`] variants, and Rust cannot reach those catalogs,
-//! so it is literal English until the UI crate exposes a translated `ToastTexts` global (listed
-//! in `docs/HANDOVER.md`). The tray menu already does: its words are the UI crate's `TrayTexts`
-//! global, read with [`tray_labels`].
+//! The Panel's own strings are `@tr` in Slint and translate with the bundled catalogs. Rust
+//! cannot reach those catalogs, so what it shows goes through a UI-crate global that holds the
+//! `@tr` text: `ToastTexts` (every toast, read with [`toast_text`]), `TrayTexts` ([`tray_labels`])
+//! and `ImportTexts`. The Panel's item and kebab menus below are still plain English (listed in
+//! `docs/HANDOVER.md`).
 
 use slint::Global;
 use snipdeck_platform::tray::TrayLabels;
 use snipdeck_portable::Warning;
-use snipdeck_ui::{ImportTexts, PanelWindow, SettingsPage, TrayTexts};
+use snipdeck_ui::{ImportTexts, PanelWindow, SettingsPage, ToastTexts, TrayTexts};
 
 use snipdeck_core::ItemKind;
 
@@ -85,163 +85,105 @@ fn numbered_label(name: &str) -> Option<usize> {
     digits.parse().ok()
 }
 
-/// The words for `message`.
+/// The words for `message`, in the language selected for the UI. The sentences live in the UI
+/// crate's `ToastTexts` global (Rust cannot reach the translation catalogs); `window` is any
+/// window of the UI, through which the global is reached.
 #[must_use]
 #[allow(clippy::too_many_lines, reason = "one match arm per toast message")]
-pub fn toast_text(message: &ToastMessage) -> String {
-    let app = |name: &str| {
-        if name.is_empty() {
-            "That app".to_owned()
-        } else {
-            name.to_owned()
+pub fn toast_text<C>(window: &C, message: &ToastMessage) -> String
+where
+    for<'a> ToastTexts<'a>: Global<'a, C>,
+{
+    let t = ToastTexts::get(window);
+    let count = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
+    let text = match message {
+        ToastMessage::Pasted { app } => t.invoke_pasted(app.into()),
+        ToastMessage::Copied => t.invoke_copied(),
+        ToastMessage::CopiedElevated { app } => t.invoke_copied_elevated(app.into()),
+        ToastMessage::CopiedNothingFocused { app } => t.invoke_copied_nothing_focused(app.into()),
+        ToastMessage::CopiedExcluded { app } => t.invoke_copied_excluded(app.into()),
+        ToastMessage::CopiedTargetGone => t.invoke_copied_target_gone(),
+        ToastMessage::ClipboardBusy => t.invoke_clipboard_busy(),
+        ToastMessage::NeedsPro(_) => t.invoke_needs_pro(),
+        ToastMessage::TemplateBroken => t.invoke_template_broken(),
+        ToastMessage::Locked => t.invoke_locked(),
+        ToastMessage::Unlocked => t.invoke_unlocked(),
+        ToastMessage::MasterPasswordSet => t.invoke_master_password_set(),
+        ToastMessage::MasterPasswordChanged => t.invoke_master_password_changed(),
+        ToastMessage::MasterPasswordRemoved => t.invoke_master_password_removed(),
+        ToastMessage::MasterPasswordChangedNotOpen => t.invoke_master_password_changed_not_open(),
+        ToastMessage::MasterPasswordRemovedNotOpen => t.invoke_master_password_removed_not_open(),
+        ToastMessage::LockedEditorClosed => t.invoke_locked_editor_closed(),
+        ToastMessage::UnlockFirst => t.invoke_unlock_first(),
+        ToastMessage::Saved { list } => t.invoke_saved(list.into()),
+        ToastMessage::NothingToSave => t.invoke_nothing_to_save(),
+        ToastMessage::TooLargeToSave => t.invoke_too_large_to_save(),
+        ToastMessage::NoListToSave => t.invoke_no_list_to_save(),
+        ToastMessage::NothingToPasteNext => t.invoke_nothing_to_paste_next(),
+        ToastMessage::PasteNextFinished => t.invoke_paste_next_finished(),
+        ToastMessage::HotkeyInUse { chord } => t.invoke_hotkey_in_use(chord.into()),
+        ToastMessage::HotkeyInvalid { chord } => t.invoke_hotkey_invalid(chord.into()),
+        ToastMessage::HotkeyUnavailable { chord } => t.invoke_hotkey_unavailable(chord.into()),
+        ToastMessage::PanelHidden { chord } => {
+            t.invoke_panel_hidden(chord.as_deref().unwrap_or_default().into())
         }
+        ToastMessage::Failed => t.invoke_failed(),
+        ToastMessage::WindowNotShown => t.invoke_window_not_shown(),
+        ToastMessage::SettingsNotSaved => t.invoke_settings_not_saved(),
+        ToastMessage::ItemsTrashed { count: n } => t.invoke_items_trashed(count(*n)),
+        ToastMessage::ListTrashed { name } => t.invoke_list_trashed(name.into()),
+        ToastMessage::BoardTrashed { name } => t.invoke_board_trashed(name.into()),
+        ToastMessage::Restored { count: n } => t.invoke_restored(count(*n)),
+        ToastMessage::ItemsMoved { count: n, list } => t.invoke_items_moved(count(*n), list.into()),
+        ToastMessage::DeletedForever { .. } => t.invoke_deleted_forever(),
+        ToastMessage::TrashEmptied => t.invoke_trash_emptied(),
+        ToastMessage::BoardLimit => t.invoke_board_limit(),
+        ToastMessage::LibraryProblem => t.invoke_library_problem(),
+        ToastMessage::CrashedLastTime => t.invoke_crashed_last_time(),
+        ToastMessage::LicenceAccepted => t.invoke_licence_accepted(),
+        ToastMessage::LicenceRejected(problem) => return licence_problem_text(window, *problem),
+        ToastMessage::BackupMade => t.invoke_backup_made(),
+        ToastMessage::BackupFailed => t.invoke_backup_failed(),
+        ToastMessage::BackupRestored { items } => t.invoke_backup_restored(count(*items)),
+        ToastMessage::RestoreFailed => t.invoke_restore_failed(),
+        ToastMessage::Imported { items } => t.invoke_imported(count(*items)),
+        ToastMessage::ImportFailed => t.invoke_import_failed(),
+        ToastMessage::Exported { file } => t.invoke_exported(file.into()),
+        ToastMessage::ExportFailed => t.invoke_export_failed(),
+        ToastMessage::LibraryErased => t.invoke_library_erased(),
+        ToastMessage::EraseFailed => t.invoke_erase_failed(),
+        ToastMessage::FolderNotOpened => t.invoke_folder_not_opened(),
+        ToastMessage::MailNotOpened => t.invoke_mail_not_opened(),
+        ToastMessage::AutostartFailed => t.invoke_autostart_failed(),
+        ToastMessage::CannotOpenLog => t.invoke_cannot_open_log(),
+        ToastMessage::KeyUnavailable => t.invoke_key_unavailable(),
+        ToastMessage::ItemGone => t.invoke_item_gone(),
+        ToastMessage::ListGone => t.invoke_list_gone(),
+        ToastMessage::StorageFailed => t.invoke_storage_failed(),
+        ToastMessage::NotSaved => t.invoke_not_saved(),
+        ToastMessage::NotOpened => t.invoke_not_opened(),
+        ToastMessage::DraftNotSaved => t.invoke_draft_not_saved(),
     };
-    match message {
-        ToastMessage::Pasted { app } if app.is_empty() => "Pasted".into(),
-        ToastMessage::Pasted { app } => format!("Pasted into {app}"),
-        ToastMessage::Copied => "Copied".into(),
-        ToastMessage::CopiedElevated { app: name } => format!(
-            "Copied. {} runs as administrator, so Snipdeck can't paste into it.",
-            app(name)
-        ),
-        ToastMessage::CopiedNothingFocused { app: name } => {
-            format!("Copied. Nothing in {} can take text right now.", app(name))
-        }
-        ToastMessage::CopiedExcluded { app: name } => {
-            format!("Copied. Pasting into {} is turned off.", app(name))
-        }
-        ToastMessage::CopiedTargetGone => "Copied. The window you were using went away.".into(),
-        ToastMessage::ClipboardBusy => {
-            "Couldn't reach the clipboard. Another app may be using it.".into()
-        }
-        ToastMessage::NeedsPro(_) => "This item uses a Supporter feature.".into(),
-        ToastMessage::TemplateBroken => "This template can't be read. Open it to fix it.".into(),
-        ToastMessage::Locked => "Unlock your library to use this item.".into(),
-        ToastMessage::Unlocked => "Library unlocked.".into(),
-        ToastMessage::MasterPasswordSet => "Master password set.".into(),
-        ToastMessage::MasterPasswordChanged => "Master password changed.".into(),
-        ToastMessage::MasterPasswordRemoved => "Master password removed.".into(),
-        ToastMessage::MasterPasswordChangedNotOpen => {
-            "Master password changed. Snipdeck couldn't open the library just now. Unlock it with \
-             the new password."
-                .into()
-        }
-        ToastMessage::MasterPasswordRemovedNotOpen => {
-            "Master password removed. Snipdeck couldn't open the library just now. Restart \
-             Snipdeck to use your sensitive items."
-                .into()
-        }
-        ToastMessage::LockedEditorClosed => {
-            "Your library locked after a while. The sensitive item you were editing was closed \
-             without saving."
-                .into()
-        }
-        ToastMessage::UnlockFirst => {
-            "Unlock your library first, so your sensitive items are included. Nothing was done."
-                .into()
-        }
-        ToastMessage::Saved { list } => format!("Saved to {list}"),
-        ToastMessage::NothingToSave => "Nothing to save. Copy some text first.".into(),
-        ToastMessage::TooLargeToSave => "That text is too large to save.".into(),
-        ToastMessage::NoListToSave => "There is no list to save into. Add a list first.".into(),
-        ToastMessage::NothingToPasteNext => {
-            "Nothing to paste next. Pin a snippet, or add one to this list.".into()
-        }
-        ToastMessage::PasteNextFinished => {
-            "That was the last one. Paste next starts again from the first.".into()
-        }
-        ToastMessage::HotkeyInUse { chord } => {
-            format!("{chord} is used by another app. Choose another in Settings.")
-        }
-        ToastMessage::HotkeyInvalid { chord } => {
-            format!("{chord} can't be used as a shortcut. Choose another in Settings.")
-        }
-        ToastMessage::HotkeyUnavailable { chord } => format!(
-            "Shortcuts are unavailable, so {chord} is not active. Restart Snipdeck to try again."
-        ),
-        ToastMessage::PanelHidden { chord: Some(chord) } => format!(
-            "Snipdeck is still running. Press {chord} or click the tray icon to bring the panel back."
-        ),
-        ToastMessage::PanelHidden { chord: None } => {
-            "Snipdeck is still running. Click the tray icon to bring the panel back.".into()
-        }
-        ToastMessage::Failed => "Couldn't use this item.".into(),
-        ToastMessage::WindowNotShown => "Couldn't open that window.".into(),
-        ToastMessage::SettingsNotSaved => {
-            "Couldn't save your settings. Snipdeck will try again.".into()
-        }
-        ToastMessage::ItemsTrashed { count: 1 } => "Moved 1 item to the Trash".into(),
-        ToastMessage::ItemsTrashed { count } => format!("Moved {count} items to the Trash"),
-        ToastMessage::ListTrashed { name } => format!("Deleted list \u{201c}{name}\u{201d}"),
-        ToastMessage::BoardTrashed { name } => format!("Deleted board \u{201c}{name}\u{201d}"),
-        ToastMessage::Restored { count: 1 } => "Restored 1 item".into(),
-        ToastMessage::Restored { count } => format!("Restored {count} items"),
-        ToastMessage::ItemsMoved { count: 1, list } => format!("Moved 1 item to {list}"),
-        ToastMessage::ItemsMoved { count, list } => format!("Moved {count} items to {list}"),
-        ToastMessage::DeletedForever { .. } => "Deleted for good".into(),
-        ToastMessage::TrashEmptied => "The Trash is empty".into(),
-        ToastMessage::BoardLimit => {
-            "The Free plan includes 5 boards. Supporter adds unlimited boards.".into()
-        }
-        ToastMessage::LibraryProblem => {
-            "Snipdeck found a problem in your library. Export a copy to be safe.".into()
-        }
-        ToastMessage::CrashedLastTime => {
-            "Snipdeck closed unexpectedly last time. Open the log?".into()
-        }
-        ToastMessage::LicenceAccepted => "Snipdeck Supporter is on. Thank you.".into(),
-        ToastMessage::LicenceRejected(problem) => licence_problem_text(*problem).into(),
-        ToastMessage::BackupMade => "Backed up".into(),
-        ToastMessage::BackupFailed => "Couldn't make a backup.".into(),
-        ToastMessage::BackupRestored { items: 0 } => {
-            "Nothing to restore: your library already has everything in that backup.".into()
-        }
-        ToastMessage::BackupRestored { items: 1 } => "Restored 1 item from the backup".into(),
-        ToastMessage::BackupRestored { items } => format!("Restored {items} items from the backup"),
-        ToastMessage::RestoreFailed => "Couldn't restore that backup.".into(),
-        ToastMessage::Imported { items: 0 } => "Nothing new to import.".into(),
-        ToastMessage::Imported { items: 1 } => "Imported 1 item".into(),
-        ToastMessage::Imported { items } => format!("Imported {items} items"),
-        ToastMessage::ImportFailed => "Couldn't import that.".into(),
-        ToastMessage::Exported { file } => format!("Saved {file} in your Documents folder"),
-        ToastMessage::ExportFailed => "Couldn't export your library.".into(),
-        ToastMessage::LibraryErased => "Your library was erased.".into(),
-        ToastMessage::EraseFailed => {
-            "Couldn't erase everything. Quit Snipdeck and try again.".into()
-        }
-        ToastMessage::FolderNotOpened => "Couldn't open the folder.".into(),
-        ToastMessage::MailNotOpened => "Couldn't open your email app.".into(),
-        ToastMessage::AutostartFailed => "Couldn't change the Windows start-up entry.".into(),
-        ToastMessage::CannotOpenLog => "Couldn't open the log folder.".into(),
-        ToastMessage::KeyUnavailable => {
-            "Couldn't open the encryption key. Nothing was saved.".into()
-        }
-        ToastMessage::ItemGone => "This item was deleted. Nothing was saved.".into(),
-        ToastMessage::ListGone => "That list was deleted. Choose another list.".into(),
-        ToastMessage::StorageFailed => {
-            "Couldn't write to your library. Check that the disk has room.".into()
-        }
-        ToastMessage::NotSaved => "Couldn't save this item. Nothing was changed.".into(),
-        ToastMessage::NotOpened => "Couldn't open this item.".into(),
-        ToastMessage::DraftNotSaved => "Couldn't save a draft of what you typed.".into(),
-    }
+    text.into()
 }
 
-/// Why a licence key was refused, in words (the toast and the line under the key field).
+/// Why a licence key was refused, in words (the toast and the line under the key field), in the
+/// language selected for the UI.
 #[must_use]
-pub const fn licence_problem_text(problem: LicenceProblem) -> &'static str {
+pub fn licence_problem_text<C>(window: &C, problem: LicenceProblem) -> String
+where
+    for<'a> ToastTexts<'a>: Global<'a, C>,
+{
+    let t = ToastTexts::get(window);
     match problem {
-        LicenceProblem::Empty => "Paste your licence key first.",
-        LicenceProblem::NotAKey => "That is not a Snipdeck licence key. A key starts with SNIP1.",
-        LicenceProblem::BadSignature => {
-            "That licence key is not valid. Check that you copied all of it."
-        }
-        LicenceProblem::NewerFormat => "That key needs a newer Snipdeck. Update and try again.",
-        LicenceProblem::WrongTier => "That key is not for Snipdeck Supporter.",
-        LicenceProblem::NotSaved => {
-            "The key is valid but couldn't be saved, so Supporter will be off next time."
-        }
+        LicenceProblem::Empty => t.invoke_licence_empty(),
+        LicenceProblem::NotAKey => t.invoke_licence_not_a_key(),
+        LicenceProblem::BadSignature => t.invoke_licence_bad_signature(),
+        LicenceProblem::NewerFormat => t.invoke_licence_newer_format(),
+        LicenceProblem::WrongTier => t.invoke_licence_wrong_tier(),
+        LicenceProblem::NotSaved => t.invoke_licence_not_saved(),
     }
+    .into()
 }
 
 /// The names of the interface languages Settings offers, each in its own language, after
@@ -512,121 +454,5 @@ pub fn editor_problem_text(problem: &EditorProblem) -> String {
         EditorProblem::BrowseFailed => {
             "The file dialog couldn't open. Type the path instead.".into()
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_paste_names_the_app_and_an_anonymous_one_still_reads_well() {
-        assert_eq!(
-            toast_text(&ToastMessage::Pasted {
-                app: "Outlook".into()
-            }),
-            "Pasted into Outlook"
-        );
-        assert_eq!(
-            toast_text(&ToastMessage::Pasted { app: String::new() }),
-            "Pasted"
-        );
-        assert_eq!(
-            toast_text(&ToastMessage::CopiedElevated { app: String::new() }),
-            "Copied. That app runs as administrator, so Snipdeck can't paste into it."
-        );
-    }
-
-    #[test]
-    fn every_message_has_text() {
-        use snipdeck_core::Feature;
-        let all = [
-            ToastMessage::Copied,
-            ToastMessage::CopiedTargetGone,
-            ToastMessage::ClipboardBusy,
-            ToastMessage::NeedsPro(Feature::PromptedFields),
-            ToastMessage::TemplateBroken,
-            ToastMessage::Locked,
-            ToastMessage::Unlocked,
-            ToastMessage::MasterPasswordSet,
-            ToastMessage::MasterPasswordChanged,
-            ToastMessage::MasterPasswordRemoved,
-            ToastMessage::MasterPasswordChangedNotOpen,
-            ToastMessage::MasterPasswordRemovedNotOpen,
-            ToastMessage::UnlockFirst,
-            ToastMessage::LockedEditorClosed,
-            ToastMessage::Saved {
-                list: "Notes".into(),
-            },
-            ToastMessage::NothingToSave,
-            ToastMessage::TooLargeToSave,
-            ToastMessage::NoListToSave,
-            ToastMessage::NothingToPasteNext,
-            ToastMessage::PasteNextFinished,
-            ToastMessage::HotkeyInUse {
-                chord: "Ctrl+Alt+Space".into(),
-            },
-            ToastMessage::HotkeyInvalid {
-                chord: "Ctrl+Alt+Space".into(),
-            },
-            ToastMessage::HotkeyUnavailable {
-                chord: "Ctrl+Alt+Space".into(),
-            },
-            ToastMessage::Failed,
-            ToastMessage::PanelHidden { chord: None },
-            ToastMessage::SettingsNotSaved,
-            ToastMessage::ItemsTrashed { count: 1 },
-            ToastMessage::ItemsTrashed { count: 3 },
-            ToastMessage::ListTrashed {
-                name: "Code".into(),
-            },
-            ToastMessage::BoardTrashed {
-                name: "Work".into(),
-            },
-            ToastMessage::Restored { count: 2 },
-            ToastMessage::ItemsMoved {
-                count: 2,
-                list: "Code".into(),
-            },
-            ToastMessage::DeletedForever { count: 1 },
-            ToastMessage::TrashEmptied,
-            ToastMessage::BoardLimit,
-            ToastMessage::Imported { items: 3 },
-            ToastMessage::ImportFailed,
-            ToastMessage::LibraryProblem,
-            ToastMessage::CrashedLastTime,
-            ToastMessage::CannotOpenLog,
-            ToastMessage::KeyUnavailable,
-            ToastMessage::ItemGone,
-            ToastMessage::ListGone,
-            ToastMessage::StorageFailed,
-            ToastMessage::NotSaved,
-            ToastMessage::NotOpened,
-            ToastMessage::DraftNotSaved,
-        ];
-        for message in all {
-            assert!(!toast_text(&message).is_empty(), "{message:?}");
-        }
-        assert!(
-            toast_text(&ToastMessage::PanelHidden {
-                chord: Some("Ctrl+Shift+Space".into())
-            })
-            .contains("Press Ctrl+Shift+Space or click the tray icon")
-        );
-        assert!(!toast_text(&ToastMessage::PanelHidden { chord: None }).contains("Press"));
-        assert!(
-            toast_text(&ToastMessage::HotkeyInUse {
-                chord: "Ctrl+Alt+Space".into()
-            })
-            .starts_with("Ctrl+Alt+Space")
-        );
-        let chord = String::from("Ctrl+Alt+Space");
-        assert!(
-            toast_text(&ToastMessage::HotkeyInvalid {
-                chord: chord.clone()
-            })
-            .contains("can't be used")
-        );
-        assert!(toast_text(&ToastMessage::HotkeyUnavailable { chord }).contains("unavailable"));
     }
 }

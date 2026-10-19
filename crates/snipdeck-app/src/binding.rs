@@ -931,7 +931,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                     ToastPhase::Hold => ui::ToastPhase::Hold,
                     ToastPhase::Exit => ui::ToastPhase::Exit,
                 });
-                window.set_toast_text(wording::toast_text(&toast.message).into());
+                window.set_toast_text(wording::toast_text(window, &toast.message).into());
             }
         } else {
             window.set_toast_text(SharedString::new());

@@ -1385,6 +1385,8 @@ ui_tests! {
         press(ui.window(), &key(Key::Delete));
         press(ui.window(), &key(Key::F2));
         press(ui.window(), "1");
+        chord(ui.window(), &[Key::Control], "e");
+        chord(ui.window(), &[Key::Control], "d");
         settle();
         // The digit is search text only with a query; here it must not use an item either.
         let seen = take(&log);
@@ -1392,7 +1394,7 @@ ui_tests! {
         assert!(seen.contains(&"rdel:1".to_string()), "{seen:?}");
         for line in &seen {
             assert!(
-                !line.starts_with("use:") && !line.starts_with("delete:") && !line.starts_with("rename:") && !line.starts_with("quick:") && !line.starts_with("move:"),
+                !line.starts_with("use:") && !line.starts_with("edit:") && !line.starts_with("duplicate:") && !line.starts_with("delete:") && !line.starts_with("rename:") && !line.starts_with("quick:") && !line.starts_with("move:"),
                 "an item shortcut fired in the Recent list: {line}"
             );
         }
