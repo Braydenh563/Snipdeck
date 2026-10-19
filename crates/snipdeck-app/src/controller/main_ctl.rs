@@ -401,7 +401,7 @@ where
 
     /// Each item again, directly after itself: same title, content, tags and flags; pinned off and
     /// use history cleared, like a new item.
-    fn duplicate(&mut self, items: &[ItemId]) {
+    pub(super) fn duplicate(&mut self, items: &[ItemId]) {
         let now = self.clock.now();
         let done = self.store.atomically(|b| {
             for id in items {

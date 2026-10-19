@@ -148,6 +148,8 @@ Icons: **Phosphor (Regular)**, MIT licence, 16px in rows and 20px in toolbars. T
 | Restore / undo | `arrow-counter-clockwise` | | |
 | Use (paste or copy per setting) | `arrow-bend-down-left` (the Enter key) | row action, menu, keycaps | |
 | Copy | `copy` | | |
+| Duplicate item | `files` | item menu | `copy`, `stack` |
+| Paste stack position | `stack-simple` | card badge | `stack` (that is a board) |
 | Move to list | `folder` | | |
 | Board / list / tag | `stack` / `rows` / `tag` | sidebar, empty states | |
 | List view / card view | `rows` / `squares-four` | Main window toolbar | `squares-four` for anything else |

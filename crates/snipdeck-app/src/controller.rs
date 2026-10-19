@@ -3743,6 +3743,28 @@ mod tests {
     }
 
     #[test]
+    fn duplicate_puts_a_copy_after_the_row_from_the_menu_and_from_ctrl_d() {
+        let mut w = world();
+        w.ctl.open_item_menu(0, false);
+        let entries = w.ctl.view().item_menu.expect("menu");
+        let duplicate = entries
+            .iter()
+            .position(|e| *e == ItemMenuEntry::Duplicate)
+            .expect("entry");
+        assert_eq!(w.ctl.choose_item_menu(duplicate), Vec::new());
+        assert_eq!(row_titles(&w), ["One", "One", "Two", "Three", "Greeting"]);
+        assert_eq!(w.ctl.view().item_menu, None);
+
+        w.ctl.duplicate_row(2);
+        assert_eq!(
+            row_titles(&w),
+            ["One", "One", "Two", "Two", "Three", "Greeting"]
+        );
+        w.ctl.duplicate_row(99);
+        assert_eq!(row_titles(&w).len(), 6, "no such row");
+    }
+
+    #[test]
     fn a_line_in_the_item_menu_does_nothing_and_hiding_closes_it() {
         let mut w = world();
         w.ctl.open_item_menu(0, false);

@@ -191,6 +191,7 @@ ui_tests! {
         press_key(&ui, Key::F2);
         chord(ui.window(), &[Key::Control], "e");
         chord(ui.window(), &[Key::Control], "p");
+        chord(ui.window(), &[Key::Control], "d");
         press_key(&ui, Key::Delete);
         assert_eq!(
             take(&log),
@@ -200,9 +201,19 @@ ui_tests! {
                 "action:Edit:1",
                 "action:Edit:1",
                 "action:Pin:1",
+                "action:Duplicate:1",
                 "action:Delete:1"
             ]
         );
+    }
+
+    fn ctrl_d_duplicates_nothing_in_the_trash() {
+        let (ui, log) = start();
+        ui.set_section(MainSection::Trash);
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "d");
+        assert_eq!(take(&log), Vec::<String>::new());
     }
 
     fn escape_clears_a_selection_and_does_nothing_without_one() {

@@ -272,6 +272,7 @@ pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'st
         ItemMenuEntry::Use => "Enter",
         ItemMenuEntry::Copy => "Shift+Enter",
         ItemMenuEntry::Edit => "Ctrl+E",
+        ItemMenuEntry::Duplicate => "Ctrl+D",
         ItemMenuEntry::Trash => "Del",
         ItemMenuEntry::Pin { .. } | ItemMenuEntry::Stack { .. } | ItemMenuEntry::Separator => "",
     }
@@ -285,6 +286,7 @@ pub const fn item_menu_text(entry: crate::controller::ItemMenuEntry) -> &'static
         ItemMenuEntry::Use => "Use",
         ItemMenuEntry::Copy => "Copy",
         ItemMenuEntry::Edit => "Edit\u{2026}",
+        ItemMenuEntry::Duplicate => "Duplicate",
         ItemMenuEntry::Pin { pinned: false } => "Pin",
         ItemMenuEntry::Pin { pinned: true } => "Unpin",
         ItemMenuEntry::Stack { marked: false } => "Add to paste stack",

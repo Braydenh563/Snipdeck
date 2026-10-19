@@ -190,6 +190,7 @@ or CopyQ data has no screen in this version.
 | Panel | `1` to `9` | Use that row (search box empty) |
 | Panel | `Ctrl+Tab`, `Ctrl+Shift+Tab` | Next or previous list |
 | Panel | `Ctrl+F` | Focus the search box |
+| Panel | `Ctrl+D` | Duplicate |
 | Panel | `Ctrl+N`, `Ctrl+Shift+N` | New item, new list |
 | Panel | `Ctrl+,` | Settings |
 | Panel | `Ctrl+W` | Hide the Panel |
@@ -208,6 +209,7 @@ or CopyQ data has no screen in this version.
 | Main window | `Ctrl+F`, `/` | Search |
 | Main window | `Enter`, `Shift+Enter` | Use, or copy only |
 | Main window | `Ctrl+E`, `F2` | Edit |
+| Main window | `Ctrl+D` | Duplicate |
 | Main window | `Ctrl+P` | Pin or unpin |
 | Main window | `Delete` | Move to the Trash (in the Trash: delete for good) |
 | Main window | `Ctrl+A`, `Ctrl+Space` | Select all, toggle a row |
