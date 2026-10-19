@@ -87,8 +87,8 @@ pub struct ImportPreview {
     pub duplicates: usize,
     /// Tags that would be created.
     pub tags: usize,
-    /// What will not be imported or needs a look, already worded.
-    pub warnings: Vec<String>,
+    /// What will not be imported or needs a look (worded by `wording::import_warning_text`).
+    pub warnings: Vec<snipdeck_portable::Warning>,
     /// Warnings left out of `warnings` because there were too many.
     pub warnings_dropped: usize,
     /// The Free plan's board limit would be passed, so the import is refused until Pro.
@@ -472,7 +472,7 @@ where
             items: report.items_added,
             duplicates: report.duplicates_skipped,
             tags: report.tags_added,
-            warnings: report.warnings.iter().map(ToString::to_string).collect(),
+            warnings: report.warnings,
             warnings_dropped: report.warnings_dropped,
             blocked_by_board_limit: blocked,
         })

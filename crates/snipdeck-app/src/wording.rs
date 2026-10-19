@@ -8,7 +8,8 @@
 
 use slint::Global;
 use snipdeck_platform::tray::TrayLabels;
-use snipdeck_ui::{PanelWindow, TrayTexts};
+use snipdeck_portable::Warning;
+use snipdeck_ui::{ImportTexts, PanelWindow, SettingsPage, TrayTexts};
 
 use snipdeck_core::ItemKind;
 
@@ -30,6 +31,58 @@ pub fn tray_labels(window: &PanelWindow) -> TrayLabels {
         quit: texts.get_quit().into(),
         tooltip_paused: texts.get_tooltip_paused().into(),
     }
+}
+
+/// The sentence for an import warning, in the language selected for the UI: the Settings import
+/// preview lists these under "Will not be imported". The wording lives in the UI crate's
+/// `ImportTexts` global (Rust cannot reach the translation catalogs); `window` is the Settings
+/// page, through which the global is reached.
+///
+/// The importers name an entry that has no title "entry N" (history imports) or "Ditto clip N";
+/// those labels are internals and read as "Clip N" here.
+#[must_use]
+pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
+    let texts = ImportTexts::get(window);
+    let count = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
+    let name = |name: &str| -> slint::SharedString {
+        match numbered_label(name) {
+            Some(n) => texts.invoke_clip_name(count(n)),
+            None => name.into(),
+        }
+    };
+    let text = match warning {
+        Warning::NewerMinorVersion { found } => texts.invoke_newer_minor_version(found.into()),
+        Warning::UnknownEntries { count: n } => texts.invoke_unknown_entries(count(*n)),
+        Warning::UnreferencedAssets { count: n } => texts.invoke_unreferenced_assets(count(*n)),
+        Warning::SensitiveNeedKey { count: n } => texts.invoke_sensitive_need_key(count(*n)),
+        Warning::CannotDecrypt { title } => texts.invoke_cannot_decrypt(title.into()),
+        Warning::SensitiveOmittedByExport { count: n } => {
+            texts.invoke_sensitive_omitted_by_export(i32::try_from(*n).unwrap_or(i32::MAX))
+        }
+        Warning::BoardLimit { limit, total } => {
+            texts.invoke_board_limit(count(*total), count(*limit))
+        }
+        Warning::LossyText { name: n } => texts.invoke_lossy_text(name(n)),
+        Warning::TooLarge { name: n, size } => {
+            texts.invoke_too_large(name(n), size_text(*size).into())
+        }
+        Warning::Empty { name: n } => texts.invoke_empty(name(n)),
+        Warning::Unreadable { name: n, .. } => texts.invoke_unreadable(name(n)),
+        Warning::SymlinkSkipped { name: n } => texts.invoke_symlink_skipped(name(n)),
+        Warning::NonTextSkipped { count: n } => texts.invoke_non_text_skipped(count(*n)),
+        Warning::Truncated { .. } => texts.invoke_truncated(),
+        // Free text from an importer: already a sentence, in English.
+        Warning::Note(note) => return note.clone(),
+    };
+    text.into()
+}
+
+/// The N in "entry N" or "Ditto clip N", the labels the importers give a clip without a title.
+fn numbered_label(name: &str) -> Option<usize> {
+    let digits = name
+        .strip_prefix("entry ")
+        .or_else(|| name.strip_prefix("Ditto clip "))?;
+    digits.parse().ok()
 }
 
 /// The words for `message`.

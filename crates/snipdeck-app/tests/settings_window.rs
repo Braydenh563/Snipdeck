@@ -109,7 +109,11 @@ impl SettingsHost for FakeHost {
         self.documents.borrow().clone()
     }
 
-    fn pick_import(&self, _kind: snipdeck_app::controller::ImportKind) -> Option<PathBuf> {
+    fn pick_import(
+        &self,
+        _kind: snipdeck_app::controller::ImportKind,
+        _owner: Option<isize>,
+    ) -> Option<PathBuf> {
         self.import_pick.borrow_mut().take()
     }
 }
@@ -1142,4 +1146,174 @@ fn a_file_that_cannot_be_imported_shows_a_problem_and_nothing_to_confirm() {
         assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 0);
         assert_eq!(r.ui.get_toast_text(), "");
     });
+}
+
+// ---- Import wording and dialogs ---------------------------------------------------------------
+
+/// Every warning the importers can raise, one of each variant. The `match` makes a new variant a
+/// compile error here until it is listed (and so given a sentence).
+fn every_warning() -> Vec<snipdeck_portable::Warning> {
+    use snipdeck_portable::Warning as W;
+    let name = || "notes.txt".to_owned();
+    let all = vec![
+        W::NewerMinorVersion {
+            found: "1.9".into(),
+        },
+        W::UnknownEntries { count: 2 },
+        W::UnreferencedAssets { count: 1 },
+        W::SensitiveNeedKey { count: 3 },
+        W::CannotDecrypt {
+            title: "Bank PIN".into(),
+        },
+        W::SensitiveOmittedByExport { count: 4 },
+        W::BoardLimit { limit: 3, total: 5 },
+        W::LossyText { name: name() },
+        W::TooLarge {
+            name: name(),
+            size: 6_000_000,
+        },
+        W::Empty { name: name() },
+        W::Unreadable {
+            name: name(),
+            reason: "os error 5".into(),
+        },
+        W::SymlinkSkipped { name: name() },
+        W::NonTextSkipped { count: 7 },
+        W::Truncated {
+            reason: "too many entries".into(),
+        },
+        W::Note("something else".into()),
+    ];
+    for w in &all {
+        match w {
+            W::NewerMinorVersion { .. }
+            | W::UnknownEntries { .. }
+            | W::UnreferencedAssets { .. }
+            | W::SensitiveNeedKey { .. }
+            | W::CannotDecrypt { .. }
+            | W::SensitiveOmittedByExport { .. }
+            | W::BoardLimit { .. }
+            | W::LossyText { .. }
+            | W::TooLarge { .. }
+            | W::Empty { .. }
+            | W::Unreadable { .. }
+            | W::SymlinkSkipped { .. }
+            | W::NonTextSkipped { .. }
+            | W::Truncated { .. }
+            | W::Note(_) => {}
+        }
+    }
+    all
+}
+
+#[test]
+fn every_import_warning_reads_as_a_plain_sentence() {
+    on_ui_thread(|| {
+        let r = rig();
+        for warning in every_warning() {
+            let text = snipdeck_app::wording::import_warning_text(&r.ui, &warning);
+            assert!(!text.trim().is_empty(), "{warning:?} has no text");
+            assert!(!text.contains('`'), "{warning:?} shows a backtick: {text}");
+            assert!(
+                text.chars().next().is_some_and(char::is_uppercase)
+                    || text.starts_with(char::is_numeric),
+                "{warning:?} should start like a sentence: {text}"
+            );
+        }
+        // The file or item is named by an argument.
+        let w = snipdeck_portable::Warning::Empty {
+            name: "notes.txt".into(),
+        };
+        assert_eq!(
+            snipdeck_app::wording::import_warning_text(&r.ui, &w),
+            "notes.txt is empty and was skipped."
+        );
+    });
+}
+
+#[test]
+fn the_importers_internal_labels_become_clip_numbers() {
+    on_ui_thread(|| {
+        let r = rig();
+        for label in ["entry 3", "Ditto clip 3"] {
+            let w = snipdeck_portable::Warning::Empty { name: label.into() };
+            assert_eq!(
+                snipdeck_app::wording::import_warning_text(&r.ui, &w),
+                "Clip 3 is empty and was skipped."
+            );
+        }
+    });
+}
+
+#[test]
+fn a_ditto_preview_lists_its_warnings_in_plain_sentences() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            Store::open_in_memory().unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            true,
+        );
+        let db = r.dir.path().join("Ditto.db");
+        let conn = rusqlite::Connection::open(&db).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE Main(lID INTEGER PRIMARY KEY AUTOINCREMENT, lDate INTEGER, mText TEXT,
+                lShortCut INTEGER, lDontAutoDelete INTEGER, CRC INTEGER, bIsGroup INTEGER,
+                lParentID INTEGER, QuickPasteText TEXT, clipOrder REAL, clipGroupOrder REAL,
+                globalShortCut INTEGER, lastPasteDate INTEGER, stickyClipOrder REAL,
+                stickyClipGroupOrder REAL, MoveToGroupShortCut INTEGER, GlobalMoveToGroupShortCut INTEGER);
+             CREATE TABLE Data(lID INTEGER PRIMARY KEY AUTOINCREMENT, lParentID INTEGER,
+                strClipBoardFormat TEXT, ooData BLOB);
+             CREATE TABLE Types(lID INTEGER PRIMARY KEY AUTOINCREMENT, TypeText TEXT);
+             INSERT INTO Main (lID, lDate, mText, bIsGroup, lParentID) VALUES (1, 1700000000, 'hello', 0, -1);
+             INSERT INTO Main (lID, lDate, mText, bIsGroup, lParentID) VALUES (2, 1700000100, '', 0, -1);
+             INSERT INTO Data (lParentID, strClipBoardFormat, ooData) VALUES (2, 'CF_DIB', x'01020304');",
+        )
+        .unwrap();
+        drop(conn);
+        *r.host.import_pick.borrow_mut() = Some(db);
+        r.ui.invoke_import_source_chosen(1);
+        assert!(r.ui.get_import_open());
+        let lines: Vec<String> =
+            r.ui.get_import_warnings()
+                .iter()
+                .map(|l| l.to_string())
+                .collect();
+        assert_eq!(
+            lines,
+            ["1 item that is not text (a picture or file) was skipped."]
+        );
+    });
+}
+
+#[test]
+fn the_preview_titles_and_the_free_limit_come_from_the_page() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(
+            r.ui.get_free_board_limit(),
+            i32::try_from(snipdeck_core::Entitlements::FREE_BOARD_LIMIT).unwrap()
+        );
+        r.ui.set_import_name("2026-10-17".into());
+        r.ui.set_import_restore(true);
+        assert_eq!(r.ui.get_import_title(), "Restore the backup of 2026-10-17");
+        assert_eq!(r.ui.get_import_confirm_label(), "Restore");
+        r.ui.set_import_restore(false);
+        assert_eq!(r.ui.get_import_title(), "Import from 2026-10-17");
+        assert_eq!(r.ui.get_import_confirm_label(), "Import");
+    });
+}
+
+#[test]
+fn each_import_choice_asks_for_its_own_dialog() {
+    use snipdeck_app::controller::ImportKind;
+    use snipdeck_platform::file_dialog::PickKind;
+    for (kind, dialog) in [
+        (ImportKind::Snipdeck, PickKind::Snipdeck),
+        (ImportKind::Ditto, PickKind::Ditto),
+        (ImportKind::CopyQ, PickKind::CopyQ),
+        (ImportKind::Folder, PickKind::Folder),
+    ] {
+        assert_eq!(settings_binding::pick_kind(kind), dialog);
+    }
 }

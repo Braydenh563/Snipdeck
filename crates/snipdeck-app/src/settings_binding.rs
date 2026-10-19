@@ -67,8 +67,9 @@ pub trait SettingsHost {
     fn documents_folder(&self) -> Option<PathBuf>;
 
     /// Asks the user for the file (or, for [`ImportKind::Folder`], the folder) to import.
+    /// `owner` is the Settings window's native handle: it is disabled while the dialog is open.
     /// `None` when they cancelled or the machine has no dialog.
-    fn pick_import(&self, kind: ImportKind) -> Option<PathBuf>;
+    fn pick_import(&self, kind: ImportKind, owner: Option<isize>) -> Option<PathBuf>;
 }
 
 /// Registers `hotkeys` with `backend`: a shortcut that is off is removed (which
@@ -159,28 +160,33 @@ impl SettingsHost for SystemHost {
         Some(PathBuf::from(home).join("Documents"))
     }
 
-    fn pick_import(&self, kind: ImportKind) -> Option<PathBuf> {
+    fn pick_import(&self, kind: ImportKind, owner: Option<isize>) -> Option<PathBuf> {
         #[cfg(windows)]
         {
-            use snipdeck_platform::file_dialog::PickKind;
-            let picked = crate::platform::file_picker()?
-                .pick(PickKind::Any, None)
+            crate::platform::file_picker()?
+                .pick(pick_kind(kind), owner)
                 .ok()
-                .flatten()?;
-            // The standard Open dialog chooses files only: for a folder the user picks any file
-            // inside it.
-            if kind == ImportKind::Folder {
-                picked.parent().map(Path::to_path_buf)
-            } else {
-                Some(picked)
-            }
+                .flatten()
         }
         #[cfg(not(windows))]
         {
             // Only Windows has a file dialog.
-            let _ = kind;
+            let _ = (kind, owner);
             None
         }
+    }
+}
+
+/// The dialog an import choice opens: files filtered by the source's extension, or the folder
+/// picker.
+#[must_use]
+pub const fn pick_kind(kind: ImportKind) -> snipdeck_platform::file_dialog::PickKind {
+    use snipdeck_platform::file_dialog::PickKind;
+    match kind {
+        ImportKind::Snipdeck => PickKind::Snipdeck,
+        ImportKind::Ditto => PickKind::Ditto,
+        ImportKind::CopyQ => PickKind::CopyQ,
+        ImportKind::Folder => PickKind::Folder,
     }
 }
 
@@ -415,7 +421,8 @@ struct PendingImport {
     source: ImportSource,
     /// A backup being restored, not a file imported: the confirm button says Restore.
     restore: bool,
-    title: String,
+    /// The file or folder name, or the backup's date: what the page's title names.
+    name: String,
     outcome: Result<ImportPreview, ImportProblem>,
 }
 
@@ -423,15 +430,15 @@ struct PendingImport {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct ImportLines {
     open: bool,
-    title: String,
-    confirm: String,
+    name: String,
+    restore: bool,
     problem: String,
     boards: i32,
     lists: i32,
     items: i32,
     duplicates: i32,
     blocked: bool,
-    warnings: Vec<String>,
+    warnings: Vec<snipdeck_portable::Warning>,
     more: i32,
 }
 
@@ -445,8 +452,8 @@ impl ImportLines {
         };
         let mut lines = Self {
             open: true,
-            title: pending.title.clone(),
-            confirm: if pending.restore { "Restore" } else { "Import" }.into(),
+            name: pending.name.clone(),
+            restore: pending.restore,
             ..Self::default()
         };
         match &pending.outcome {
@@ -854,8 +861,11 @@ where
     fn restore(self: &Rc<Self>, index: usize) {
         let backup = self.state.borrow().backups.get(index).cloned();
         if let Some(backup) = backup {
-            let title = format!("Restore the backup of {}", backup.date);
-            self.preview(ImportSource::Snipdeck(backup.path), true, title);
+            self.preview(
+                ImportSource::Snipdeck(backup.path),
+                true,
+                backup.date.to_string(),
+            );
         }
     }
 
@@ -867,16 +877,20 @@ where
             2 => ImportKind::CopyQ,
             _ => ImportKind::Folder,
         };
-        let Some(path) = self.host.pick_import(kind) else {
+        let owner = self
+            .window
+            .upgrade()
+            .and_then(|w| crate::native_window::handle_of(w.window()));
+        let Some(path) = self.host.pick_import(kind, owner) else {
             return;
         };
         let source = ImportSource::of(kind, path);
-        let title = format!("Import from {}", source.file_name());
-        self.preview(source, false, title);
+        let name = source.file_name();
+        self.preview(source, false, name);
     }
 
     /// Works out what `source` would do (nothing is written) and opens the preview on it.
-    fn preview(self: &Rc<Self>, source: ImportSource, restore: bool, title: String) {
+    fn preview(self: &Rc<Self>, source: ImportSource, restore: bool, name: String) {
         let outcome = self.act(|ctl| {
             if restore {
                 ctl.preview_restore(source.path())
@@ -887,7 +901,7 @@ where
         self.state.borrow_mut().import = Some(PendingImport {
             source,
             restore,
-            title,
+            name,
             outcome,
         });
         redraw_all();
@@ -1006,6 +1020,7 @@ where
         });
         register_redraw(&core.redraw);
         let follow = window.invoke_follow_windows_text();
+        window.set_free_board_limit(to_i32(snipdeck_core::Entitlements::FREE_BOARD_LIMIT));
         window.set_languages(model(
             std::iter::once(follow).chain(LANGUAGE_NAMES.iter().map(|n| SharedString::from(*n))),
         ));
@@ -1108,8 +1123,8 @@ where
 /// Copies the import preview into the window.
 fn render_import(window: &ui::SettingsPage, i: &ImportLines) {
     window.set_import_open(i.open);
-    window.set_import_title(i.title.as_str().into());
-    window.set_import_confirm_label(i.confirm.as_str().into());
+    window.set_import_name(i.name.as_str().into());
+    window.set_import_restore(i.restore);
     window.set_import_problem(i.problem.as_str().into());
     window.set_import_boards(i.boards);
     window.set_import_lists(i.lists);
@@ -1117,7 +1132,9 @@ fn render_import(window: &ui::SettingsPage, i: &ImportLines) {
     window.set_import_duplicates(i.duplicates);
     window.set_import_blocked(i.blocked);
     window.set_import_warnings(model(
-        i.warnings.iter().map(|w| SharedString::from(w.as_str())),
+        i.warnings
+            .iter()
+            .map(|w| SharedString::from(wording::import_warning_text(window, w))),
     ));
     window.set_import_warnings_more(i.more);
 }

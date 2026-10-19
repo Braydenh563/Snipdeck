@@ -92,9 +92,14 @@ export component SettingsPage inherits Window {
     in-out property <bool> erase-open: false;
     // The import preview (also used by Restore): what the import would do, worked out before anything is written.
     in property <bool> import-open: false;
-    // What is being imported ("Import from notes.snipdeck") and the confirm button's words ("Import" / "Restore").
-    in property <string> import-title;
-    in property <string> import-confirm-label;
+    // What is being imported: the file or folder name (or the backup's date when `import-restore`). The title
+    // ("Import from notes.snipdeck") and the confirm button's words ("Import" / "Restore") follow from them.
+    in property <string> import-name;
+    in property <bool> import-restore: false;
+    out property <string> import-title: root.import-restore ? @tr("Restore the backup of {}", root.import-name) : @tr("Import from {}", root.import-name);
+    out property <string> import-confirm-label: root.import-restore ? @tr("Restore") : @tr("Import");
+    // The Free plan's board limit, set by the host from the entitlements.
+    in property <int> free-board-limit: 0;
     // Non-empty when the source could not be read; the preview then only offers Close.
     in property <string> import-problem;
     in property <int> import-boards: 0;
@@ -737,7 +742,7 @@ export component SettingsPage inherits Window {
                             accessible-label: root.import-problem;
                         }
                         if root.import-problem == "" && root.import-blocked: Text {
-                            text: @tr("The Free plan includes 3 boards. This would go over that, so it needs Pro.");
+                            text: @tr("The Free plan includes {} boards. This would go over that, so it needs Pro.", root.free-board-limit);
                             color: Theme.danger-fg;
                             font-family: Fonts.sans;
                             font-size: Type.base;

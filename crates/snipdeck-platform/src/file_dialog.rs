@@ -1,7 +1,8 @@
 //! Choosing a file for an Image or File item.
 //!
 //! [`FilePicker`] is what the item editor asks; Windows answers with the standard Open dialog
-//! (`windows::file_dialog::WinFilePicker`, `GetOpenFileNameW`) and tests with
+//! (`windows::file_dialog::WinFilePicker`: `GetOpenFileNameW` for files, `IFileOpenDialog` in
+//! folder mode for folders; both **unverified on Windows**) and tests with
 //! [`FakeFilePicker`]. Off Windows the app has no picker and the editor only offers its path
 //! field. The pure parts of the Win32 call (the filter string, reading the chosen path back)
 //! live here so they are tested everywhere.
@@ -17,6 +18,31 @@ pub enum PickKind {
     Image,
     /// Any file.
     Any,
+    /// A `.snipdeck` file (an export or a backup).
+    Snipdeck,
+    /// A Ditto database (`.db`).
+    Ditto,
+    /// A `CopyQ` JSON export (`.json`).
+    CopyQ,
+    /// A folder, chosen with the folder picker rather than by picking a file inside it.
+    Folder,
+}
+
+impl PickKind {
+    /// The `(label, pattern)` choices of the dialog's file-type list, the kind's own first and
+    /// "All files" last (empty for a folder, which has no file types).
+    #[cfg(any(windows, test))]
+    pub(crate) const fn filters(self) -> &'static [(&'static str, &'static str)] {
+        const ALL: (&str, &str) = ("All files", "*.*");
+        match self {
+            Self::Image => &[("PNG pictures", "*.png"), ALL],
+            Self::Any => &[ALL],
+            Self::Snipdeck => &[("Snipdeck files", "*.snipdeck"), ALL],
+            Self::Ditto => &[("Ditto databases", "*.db"), ALL],
+            Self::CopyQ => &[("CopyQ exports", "*.json"), ALL],
+            Self::Folder => &[],
+        }
+    }
 }
 
 /// Lets the user choose one existing file.
@@ -120,6 +146,19 @@ impl FilePicker for FakeFilePicker {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn each_kind_offers_its_own_extension_first_and_all_files_last() {
+        let patterns = |k: PickKind| -> Vec<&'static str> {
+            k.filters().iter().map(|(_, pattern)| *pattern).collect()
+        };
+        assert_eq!(patterns(PickKind::Image), ["*.png", "*.*"]);
+        assert_eq!(patterns(PickKind::Any), ["*.*"]);
+        assert_eq!(patterns(PickKind::Snipdeck), ["*.snipdeck", "*.*"]);
+        assert_eq!(patterns(PickKind::Ditto), ["*.db", "*.*"]);
+        assert_eq!(patterns(PickKind::CopyQ), ["*.json", "*.*"]);
+        assert_eq!(PickKind::Folder.filters(), []);
+    }
 
     #[test]
     fn the_filter_is_pairs_of_nul_ended_strings_and_one_more_nul() {
