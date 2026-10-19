@@ -2497,9 +2497,9 @@ upsert_with_tags | crates/snipdeck-core/src/search.rs:127
 remove | crates/snipdeck-core/src/search.rs:150
 query | crates/snipdeck-core/src/search.rs:167
 run | crates/snipdeck-core/src/search.rs:173
-score_parallel | crates/snipdeck-core/src/search.rs:238
-score_chunk | crates/snipdeck-core/src/search.rs:261
-tests | crates/snipdeck-core/src/search.rs:286
+score_parallel | crates/snipdeck-core/src/search.rs:245
+score_chunk | crates/snipdeck-core/src/search.rs:268
+tests | crates/snipdeck-core/src/search.rs:293
 
 ### crates/snipdeck-core/src/search/tests.rs
 
@@ -2525,9 +2525,10 @@ very_long_titles_do_not_break_matching | crates/snipdeck-core/src/search/tests.r
 corpus | crates/snipdeck-core/src/search/tests.rs:215
 parallel_and_serial_scoring_agree | crates/snipdeck-core/src/search/tests.rs:264
 results_are_sorted_by_score_then_given_order | crates/snipdeck-core/src/search/tests.rs:284
-queries_never_panic_and_respect_the_limit | crates/snipdeck-core/src/search/tests.rs:300
-SPEC_BUDGET | crates/snipdeck-core/src/search/tests.rs:319
-search_10k_items_stays_within_budget | crates/snipdeck-core/src/search/tests.rs:335
+highlight_indices_stay_inside_the_title | crates/snipdeck-core/src/search/tests.rs:301
+queries_never_panic_and_respect_the_limit | crates/snipdeck-core/src/search/tests.rs:316
+SPEC_BUDGET | crates/snipdeck-core/src/search/tests.rs:335
+search_10k_items_stays_within_budget | crates/snipdeck-core/src/search/tests.rs:351
 
 ### crates/snipdeck-core/src/tag.rs
 
@@ -5127,7 +5128,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-core/src/licence/signing.rs` (inline) | 4 |
 | `crates/snipdeck-core/src/list.rs` (inline) | 3 |
 | `crates/snipdeck-core/src/name.rs` (inline) | 4 |
-| `crates/snipdeck-core/src/search/tests.rs` (inline) | 20 |
+| `crates/snipdeck-core/src/search/tests.rs` (inline) | 21 |
 | `crates/snipdeck-core/src/tag.rs` (inline) | 1 |
 | `crates/snipdeck-core/src/template/tests.rs` (inline) | 53 |
 | `crates/snipdeck-core/tests/licence.rs` | 17 |
