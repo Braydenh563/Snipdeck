@@ -1,5 +1,11 @@
-# Now (2026-10-19 12:35, away mode)
-Goal: finish the v1 ship list (`docs/V1-PLAN.md` top section), branch `claude/compassionate-pascal-pod8ux`, PR #5 (never merge). Repo public: CI is the main test runner; local cargo targeted only, /tmp/target-main, at most two users. Agents A1-A3 merged; clippy fixed (844a0bd); open: panel_window sensitive-reveal test failure (cause unknown, read the CI panic). C8/C9 Supporter agent running. Workflow edits blocked by the guard even when the owner allowed them: owner copies `docs/ci-proposals/`. Queue in `.claude/work-order.md`; decisions in `.claude/now.md`. Stop at 80% weekly usage.
+# Now (2026-10-19 13:15, away mode on, stop at 80% weekly usage)
+Goal: ship v1 (`docs/V1-PLAN.md` "V1 ship list" is the queue; `.claude/work-order.md` continue mode; decisions in `.claude/now.md`). Branch `claude/compassionate-pascal-pod8ux`, PR #5 (never merge). Repo public: CI (3-5 min) is the main test runner; local cargo only targeted, `/tmp/target-main`, at most two cargo users (4 cores).
+
+State at 88b0db2: agents A1-A3 merged; clippy green; main_window add-list tests and panel menu tests fixed; panel sensitive-reveal fixed (panel_row masked the revealed row) - confirm on CI. Owner applied the CI proposals to ci.yml and release-build.yml; Dependabot copy still pending (`docs/ci-proposals/dependabot.yml` -> `.github/dependabot.yml`), then delete `docs/ci-proposals/`. CodeQL: 3 test-only alerts await owner dismissal ("Used in tests", PR comment posted); the cleartext one is fixed.
+
+In flight: Sonnet agent C8+C9 (Supporter wording in app, FREE_BOARD_LIMIT 5, mailto SUPPORTER_EMAIL_PLACEHOLDER constant, Free vs Supporter table in Settings and the get-licence dialog) plus the owner decision: encryption on disk is FREE, only the master password is Supporter (Feature::SensitiveEncryption -> MasterPassword; flip the Free-does-not-encrypt tests; tables on site/README/docs).
+
+Next, in order: CI green on PR #5 -> translations pass for ~80 new strings per locale (Haiku; `python3 scripts/i18n.py check`) -> D1 goldens regenerate + read -> wave 3 B1-B15 -> wave 4 C1-C7 -> D2 README shots/hero, D3, D5 -> E1 docs -> F1 Fable sweep (owner-approved, one agent; brief `docs/fable-brief.md`) -> F2 Opus review -> F3 ux-auditor + blind-tester -> F4 gate --full, PR body, retro. Use cloud sessions/agents in parallel only on separate branches; one cargo-heavy agent per target dir.
 
 # Session state (2026-10-18 13:50, Fable session, away mode; branch `claude/compassionate-pascal-pod8ux`, PR #5)
 
