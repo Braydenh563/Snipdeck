@@ -57,12 +57,13 @@ export component Toast inherits Rectangle {
     // DESIGN.md §4: the host keeps a toast in `hold` for this long.
     out property <duration> hold-duration: 2500ms;
     callback undo();
-    // The pointer is on the toast or its button: the host keeps the toast up while it is.
+    // The pointer is on the toast or its button has focus: the host keeps the toast up while it is.
     callback hover-changed(hovered: bool);
 
     // An ancestor TouchArea keeps its hover while the pointer is on a child, so the toast does not
     // flicker as the pointer crosses onto the Undo button, and the button still gets its clicks.
-    property <bool> over: area.has-hover;
+    property <bool> button-focus: false;
+    property <bool> over: area.has-hover || root.button-focus;
     changed over => { root.hover-changed(root.over); }
 
     property <color> fg: root.kind == ToastKind.success ? Theme.success-fg
@@ -115,6 +116,7 @@ export component Toast inherits Rectangle {
                 size: ButtonSize.sm;
                 y: (parent.height - self.height) / 2;
                 clicked => { root.undo(); }
+                changed has-focus => { root.button-focus = self.has-focus; }
             }
         }
     }

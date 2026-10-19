@@ -1362,6 +1362,7 @@ export component MainWindow inherits Window {
                         x: (parent.width - self.width) / 2;
                         y: parent.height - self.height - Space.s2;
                         undo => { root.toast-undo(); }
+                        hover-changed(h) => { root.toast-hover-changed(h); }
                     }
                 }
 

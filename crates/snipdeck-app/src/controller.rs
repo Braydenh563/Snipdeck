@@ -62,6 +62,11 @@ pub const TOAST_HOLD: Duration = Duration::from_millis(2500);
 /// An undoable toast (a delete) settles for this long, so that it is on screen for 5 s with its
 /// fade-in (SPEC §5.7a).
 pub const TOAST_UNDO_HOLD: Duration = Duration::from_millis(4880);
+/// A hovered toast looks again after this long to see whether the pointer has left.
+pub const TOAST_HOVER_RECHECK: Duration = Duration::from_millis(500);
+/// A toast is held for at most this many rechecks (a minute), so a missed pointer-leave (its
+/// window hid under the pointer) cannot keep it on screen for good.
+pub const TOAST_HOVER_RECHECKS: u32 = 120;
 /// A toast fades out for this long (`Motion.fade`) before it is gone.
 pub const TOAST_EXIT: Duration = Duration::from_millis(90);
 
@@ -354,10 +359,10 @@ struct ActiveToast {
     toast: Toast,
     phase: ToastPhase,
     seq: u64,
-    /// The pointer is on the toast: its hold does not end.
+    /// The pointer is on the toast (or the Undo button has focus): its hold does not end.
     hovered: bool,
-    /// The hold ended under the pointer, so no timer is running until the pointer leaves.
-    held: bool,
+    /// How many times the hold has been extended for `hovered`, at most [`TOAST_HOVER_RECHECKS`].
+    extended: u32,
 }
 
 /// The Panel's brain. See the module documentation.
@@ -1390,7 +1395,7 @@ where
             phase: ToastPhase::Enter,
             seq: self.toast_seq,
             hovered: false,
-            held: false,
+            extended: 0,
         });
     }
 
@@ -1469,9 +1474,16 @@ where
                     Some(TOAST_HOLD)
                 }
             }
-            ToastPhase::Hold if active.hovered => {
-                active.held = true;
-                None
+            ToastPhase::Hold if active.hovered && active.extended < TOAST_HOVER_RECHECKS => {
+                active.extended += 1;
+                Some(TOAST_HOVER_RECHECK)
+            }
+            ToastPhase::Hold
+                if !active.hovered && active.extended > 0 && active.extended != u32::MAX =>
+            {
+                // The pointer left while the hold was extended: a fresh hold, once.
+                active.extended = u32::MAX;
+                Some(TOAST_HOLD)
             }
             ToastPhase::Hold => {
                 active.phase = ToastPhase::Exit;
@@ -1485,17 +1497,12 @@ where
         }
     }
 
-    /// The pointer entered (`on`) or left the toast. A toast under the pointer stays: its hold
-    /// ends only after the pointer has left. When the hold had already run out under the
-    /// pointer, returns the toast's `seq` and the delay for the host to arm its timer with again.
-    pub fn toast_hover(&mut self, on: bool) -> Option<(u64, Duration)> {
-        let active = self.toast.as_mut()?;
-        active.hovered = on;
-        if on || !active.held {
-            return None;
+    /// The pointer entered (`on`) or left the toast, or the Undo button gained or lost focus. A
+    /// toast in use stays: its hold is extended while this is on, and runs a fresh hold after.
+    pub fn toast_hover(&mut self, on: bool) {
+        if let Some(active) = self.toast.as_mut() {
+            active.hovered = on;
         }
-        active.held = false;
-        Some((active.seq, TOAST_HOLD))
     }
 
     /// Logs what a maintenance run did (`SNIPDECK_LOG=1`) and shows its toast when it has one:
@@ -2569,13 +2576,15 @@ mod tests {
         w.ctl.delete_row(1);
         let seq = w.ctl.view().toast.expect("toast").seq;
         assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_UNDO_HOLD));
-        assert_eq!(w.ctl.toast_hover(true), None);
-        // The hold is over, but the pointer is on the toast: it stays, and the timer chain ends.
-        assert_eq!(w.ctl.toast_tick(seq), None);
+        w.ctl.toast_hover(true);
+        // The hold is over, but the pointer is on the toast: it looks again, and again.
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_HOVER_RECHECK));
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_HOVER_RECHECK));
         let toast = w.ctl.view().toast.expect("still there");
         assert_eq!((toast.phase, toast.undo), (ToastPhase::Hold, true));
         // The pointer leaves: a fresh hold, then the fade-out as usual.
-        assert_eq!(w.ctl.toast_hover(false), Some((seq, TOAST_HOLD)));
+        w.ctl.toast_hover(false);
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_HOLD));
         assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_EXIT));
         assert_eq!(w.ctl.toast_tick(seq), None);
         assert!(w.ctl.view().toast.is_none());
@@ -2587,9 +2596,26 @@ mod tests {
         w.ctl.delete_row(1);
         let seq = w.ctl.view().toast.expect("toast").seq;
         assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_UNDO_HOLD));
-        assert_eq!(w.ctl.toast_hover(true), None);
-        assert_eq!(w.ctl.toast_hover(false), None, "the timer is still running");
+        w.ctl.toast_hover(true);
+        w.ctl.toast_hover(false);
         assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_EXIT));
+    }
+
+    #[test]
+    fn a_pointer_leave_that_never_comes_cannot_keep_a_toast_for_good() {
+        let mut w = world();
+        w.ctl.delete_row(1);
+        let seq = w.ctl.view().toast.expect("toast").seq;
+        w.ctl.toast_tick(seq);
+        w.ctl.toast_hover(true);
+        for _ in 0..TOAST_HOVER_RECHECKS {
+            assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_HOVER_RECHECK));
+        }
+        assert_eq!(
+            w.ctl.toast_tick(seq),
+            Some(TOAST_EXIT),
+            "a minute is enough"
+        );
     }
 
     #[test]

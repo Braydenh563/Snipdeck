@@ -17,7 +17,7 @@ use snipdeck_platform::{
 use snipdeck_ui as ui;
 
 use crate::{
-    binding::{redraw_all, register_redraw, toast_hovered},
+    binding::{redraw_all, register_redraw},
     controller::{Controller, Library, ToastPhase, ToastView, View},
     frame::Rect,
     host::ClipboardText,
@@ -79,7 +79,7 @@ where
             let hover = Weak::clone(&weak);
             window.on_hover_changed(move |on| {
                 if let Some(core) = hover.upgrade() {
-                    toast_hovered(&core.controller, on);
+                    core.controller.borrow_mut().toast_hover(on);
                 }
             });
             window.on_undo(move || {
