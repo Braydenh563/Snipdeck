@@ -89,6 +89,12 @@ pub enum ToastMessage {
         /// The chord as typed in Settings, for example `Ctrl+Alt+Space`.
         chord: String,
     },
+    /// "Snipdeck is still running. Press {chord} or click the tray icon to bring the panel back."
+    /// (shown once, the first time the Panel hides itself)
+    PanelHidden {
+        /// The Panel hotkey, or `None` when it is switched off.
+        chord: Option<String>,
+    },
     /// "Couldn't use this item."
     Failed,
     /// "Couldn't open that window." (the Picker or the fill form could not be shown)

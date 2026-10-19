@@ -39,6 +39,7 @@ struct Shown {
     /// The form on screen (`seq`) and its preview.
     seq: u64,
     preview: String,
+    masked: bool,
     copies: bool,
 }
 
@@ -105,6 +106,7 @@ where
             high_contrast: view.high_contrast,
             seq: fill.seq,
             preview: fill.preview.clone(),
+            masked: fill.masked,
             copies,
         });
         let size = (FILL_WIDTH, window.get_content_height());
@@ -295,8 +297,12 @@ fn render(
         window.set_template_title(fill.title.as_str().into());
         window.set_fields(model(fill.fields.iter().map(form_field)));
     }
-    if differs(&|p| p.preview == fill.preview) {
-        window.set_preview(fill.preview.as_str().into());
+    if differs(&|p| p.preview == fill.preview && p.masked == fill.masked) {
+        window.set_preview(if fill.masked {
+            crate::binding::MASKED_PREVIEW.into()
+        } else {
+            fill.preview.as_str().into()
+        });
     }
     if differs(&|p| p.copies == copies) {
         window.set_copies(copies);

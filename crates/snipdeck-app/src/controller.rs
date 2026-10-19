@@ -29,7 +29,7 @@ mod panel;
 mod settings_ctl;
 
 pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameError};
-pub use panel::{APP_MENU, AppMenuEntry, HelpTopic};
+pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry};
 
 use crate::{
     capture::{self, Captured},
@@ -223,8 +223,11 @@ pub struct FillView {
     pub title: String,
     /// One per prompt.
     pub fields: Vec<fill::Field>,
-    /// The text as it would be pasted now.
+    /// The text as it would be pasted now; empty while `masked`.
     pub preview: String,
+    /// The template item is sensitive: the preview would show its secret text, so it is left
+    /// out and the window draws a mask instead.
+    pub masked: bool,
 }
 
 /// A filled-in form, ready to be used: see [`Controller::take_fill`].
@@ -261,8 +264,10 @@ pub struct View {
     pub current_tab: usize,
     /// The pinned strip.
     pub pinned: Vec<Row>,
-    /// The item rows.
+    /// The item rows. A revealed sensitive row carries its real text in `preview`.
     pub rows: Vec<Row>,
+    /// The index in `rows` of the sensitive row held revealed.
+    pub revealed: Option<usize>,
     /// The search text.
     pub query: String,
     /// The keyboard-selected row.
@@ -290,6 +295,8 @@ pub struct View {
     pub board_menu: Option<Vec<String>>,
     /// The kebab menu's rows while it is open ([`APP_MENU`]).
     pub app_menu: Option<Vec<AppMenuEntry>>,
+    /// The context menu of a card or pinned chip while it is open.
+    pub item_menu: Option<Vec<ItemMenuEntry>>,
     /// "Pause hotkeys" is on (its menu row is checked).
     pub hotkeys_paused: bool,
     /// The Picker, while it is open.
@@ -353,6 +360,8 @@ pub struct Controller<S, C, K, T> {
     timer_seq: u64,
     /// A sensitive item held revealed in the Main window.
     revealed: Option<snipdeck_core::ItemId>,
+    /// A sensitive item held revealed in the Panel (its own: the two windows hold separately).
+    panel_revealed: Option<snipdeck_core::ItemId>,
     /// What Windows says about light / dark and high contrast.
     os_look: SystemLook,
     session: Session,
@@ -378,6 +387,8 @@ enum PanelMenu {
     Board,
     /// The kebab's ([`APP_MENU`]).
     App,
+    /// The context menu of an item's card or pinned chip.
+    Item(ItemId),
 }
 
 /// Facts about the running app that are not settings and not on screen.
@@ -453,6 +464,7 @@ where
             undo: None,
             timer_seq: 0,
             revealed: None,
+            panel_revealed: None,
             os_look: SystemLook::default(),
             session: Session::default(),
             saver: None,
@@ -494,12 +506,23 @@ where
             .and_then(|id| self.model.boards().iter().find(|b| b.id == id))
             .map(|b| b.name.as_str().to_owned())
             .unwrap_or_default();
+        let mut rows = self.model.rows();
+        let mut revealed = None;
+        if let Some(id) = self.panel_revealed
+            && let Some(at) = rows.iter().position(|r| r.id == id && r.sensitive)
+        {
+            revealed = Some(at);
+            if let Ok(Some(text)) = usecase::item_text(&self.store, id) {
+                rows[at].preview = text.chars().take(snipdeck_core::Item::PREVIEW_CHARS).collect();
+            }
+        }
         View {
             board_name,
             current_tab: tabs.iter().position(|t| t.active).unwrap_or(0),
             tabs,
             pinned: self.model.pinned(),
-            rows: self.model.rows(),
+            rows,
+            revealed,
             query: self.model.query().to_owned(),
             selected: self.model.selected_position().unwrap_or(0),
             footer: self.model.footer(),
@@ -519,6 +542,10 @@ where
                     .collect()
             }),
             app_menu: (self.menu == PanelMenu::App).then(|| APP_MENU.to_vec()),
+            item_menu: match self.menu {
+                PanelMenu::Item(id) => Some(self.item_menu_entries(id)),
+                _ => None,
+            },
             hotkeys_paused: self.session.hotkeys_paused,
             picker: self.picker.as_ref().map(|p| PickerView {
                 rows: p.rows(),
@@ -527,15 +554,25 @@ where
                 selected: p.selected(),
                 footer: self.model.footer(),
             }),
-            fill: self.fill.as_ref().map(|f| FillView {
-                seq: self.fill_seq,
-                title: f.title().to_owned(),
-                fields: f.fields().to_vec(),
-                preview: f.preview(
-                    self.clock.now(),
-                    &TimeZone::UTC,
-                    Locale::for_tag(&self.settings.language),
-                ),
+            fill: self.fill.as_ref().map(|f| {
+                // A sensitive template's text must not reach the window (the Picker and the
+                // lists mask it the same way); an unreadable item masks too.
+                let masked = self.store.item(f.item()).is_ok_and(|i| i.sensitive);
+                FillView {
+                    seq: self.fill_seq,
+                    title: f.title().to_owned(),
+                    fields: f.fields().to_vec(),
+                    preview: if masked {
+                        String::new()
+                    } else {
+                        f.preview(
+                            self.clock.now(),
+                            &TimeZone::UTC,
+                            Locale::for_tag(&self.settings.language),
+                        )
+                    },
+                    masked,
+                }
             }),
         }
     }
@@ -659,15 +696,34 @@ where
     /// Hides the Panel (Esc with nothing to clear, the close button, the toggle hotkey).
     pub fn hide(&mut self) -> Vec<Effect> {
         self.visible = false;
+        self.panel_revealed = None;
         self.menu = PanelMenu::None;
         vec![Effect::HidePanel]
+    }
+
+    /// Hides the Panel because the user did not ask for it by the way back (the close button, a
+    /// click elsewhere), and the first time ever says how to bring it back: a toast naming the
+    /// hotkey and the tray click, remembered in the settings so it comes once. The toggle hotkey
+    /// and the tray click hide without it: the user just used the way back.
+    fn hide_with_hint(&mut self) -> Vec<Effect> {
+        let effects = self.hide();
+        if !self.settings.hide_hint_shown {
+            self.update_settings(|s| s.hide_hint_shown = true);
+            let chord = self.settings.hotkeys.toggle_panel.trim();
+            let chord = (!chord.is_empty()).then(|| chord.to_owned());
+            self.show_toast(Toast {
+                kind: ToastKind::Neutral,
+                message: ToastMessage::PanelHidden { chord },
+            });
+        }
+        effects
     }
 
     /// The close button or Esc on an empty search. With `close_to_tray` on and a tray icon to
     /// get it back from, the Panel hides; otherwise closing it quits the app.
     pub fn close(&mut self) -> Vec<Effect> {
         if self.settings.close_to_tray && self.session.tray_available {
-            self.hide()
+            self.hide_with_hint()
         } else {
             vec![Effect::Quit]
         }
@@ -716,7 +772,7 @@ where
     pub fn on_foreground_changed(&mut self) -> Vec<Effect> {
         self.on_target_changed();
         if self.hides_on_blur() {
-            self.hide()
+            self.hide_with_hint()
         } else {
             Vec::new()
         }
@@ -2166,6 +2222,80 @@ mod tests {
         assert_eq!(w.ctl.show(), [Effect::ShowPanel]);
     }
 
+    fn hide_hint(w: &World) -> Option<ToastMessage> {
+        w.ctl
+            .view()
+            .toast
+            .map(|t| t.message)
+            .filter(|m| matches!(m, ToastMessage::PanelHidden { .. }))
+    }
+
+    #[test]
+    fn the_first_close_of_a_session_tells_how_to_get_the_panel_back() {
+        let mut w = world();
+        with_tray(&mut w);
+        assert_eq!(w.ctl.close(), [Effect::HidePanel]);
+        assert_eq!(
+            hide_hint(&w),
+            Some(ToastMessage::PanelHidden {
+                chord: Some(Settings::default().hotkeys.toggle_panel)
+            })
+        );
+        assert!(w.ctl.settings().hide_hint_shown, "remembered in the settings");
+    }
+
+    #[test]
+    fn a_second_hide_says_nothing() {
+        let mut w = world();
+        with_tray(&mut w);
+        w.ctl.close();
+        let _ = w.ctl.show();
+        w.ctl.show_toast(Toast {
+            kind: ToastKind::Neutral,
+            message: ToastMessage::Copied,
+        });
+        w.ctl.close();
+        assert_eq!(hide_hint(&w), None);
+    }
+
+    #[test]
+    fn the_toggle_hotkey_and_tray_hide_say_nothing() {
+        let mut w = world();
+        with_tray(&mut w);
+        assert_eq!(
+            w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+            [Effect::HidePanel]
+        );
+        assert_eq!(hide_hint(&w), None);
+        let _ = w.ctl.show();
+        assert_eq!(
+            w.ctl.on_tray(TrayEvent::TogglePanel),
+            [Effect::HidePanel]
+        );
+        assert_eq!(hide_hint(&w), None);
+        assert!(!w.ctl.settings().hide_hint_shown);
+    }
+
+    #[test]
+    fn without_a_toggle_chord_the_toast_names_only_the_tray() {
+        let mut settings = Settings::default();
+        settings.hotkeys.toggle_panel = String::new();
+        let mut w = world_with(Some(outlook()), settings);
+        with_tray(&mut w);
+        w.ctl.close();
+        assert_eq!(
+            hide_hint(&w),
+            Some(ToastMessage::PanelHidden { chord: None })
+        );
+    }
+
+    #[test]
+    fn closing_without_a_tray_quits_and_shows_no_toast() {
+        let mut w = world();
+        assert_eq!(w.ctl.close(), [Effect::Quit]);
+        assert_eq!(hide_hint(&w), None);
+    }
+
     #[test]
     fn a_toast_walks_enter_hold_exit_and_goes() {
         let mut w = world();
@@ -2837,6 +2967,76 @@ mod tests {
         assert_eq!(w.ctl.store().trashed().expect("trash"), Vec::new());
         let toast = w.ctl.view().toast.expect("toast");
         assert_eq!(toast.message, ToastMessage::Restored { count: 1 });
+    }
+
+    #[test]
+    fn the_item_menu_opens_on_a_row_and_closes_without_a_choice() {
+        let mut w = world();
+        assert_eq!(w.ctl.view().item_menu, None);
+        w.ctl.open_item_menu(1, false);
+        let entries = w.ctl.view().item_menu.expect("menu");
+        assert!(entries.contains(&ItemMenuEntry::Pin { pinned: false }));
+        w.ctl.close_item_menu();
+        assert_eq!(w.ctl.view().item_menu, None);
+        w.ctl.open_item_menu(99, false);
+        assert_eq!(w.ctl.view().item_menu, None, "no such row");
+    }
+
+    #[test]
+    fn the_item_menu_edits_pins_and_trashes_the_row_it_was_opened_on() {
+        let mut w = world();
+        let id = w.ctl.model().rows()[1].id;
+        let index_of = |w: &World, entry: ItemMenuEntry| {
+            w.ctl
+                .view()
+                .item_menu
+                .expect("menu")
+                .iter()
+                .position(|e| *e == entry)
+                .expect("entry")
+        };
+        w.ctl.open_item_menu(1, false);
+        let edit = index_of(&w, ItemMenuEntry::Edit);
+        assert_eq!(w.ctl.choose_item_menu(edit), [Effect::EditItem(id)]);
+        assert_eq!(w.ctl.view().item_menu, None);
+
+        w.ctl.open_item_menu(1, false);
+        let pin = index_of(&w, ItemMenuEntry::Pin { pinned: false });
+        assert_eq!(w.ctl.choose_item_menu(pin), Vec::new());
+        assert!(w.ctl.store().item(id).expect("item").pinned);
+        w.ctl.open_item_menu(1, false);
+        assert!(
+            w.ctl
+                .view()
+                .item_menu
+                .expect("menu")
+                .contains(&ItemMenuEntry::Pin { pinned: true })
+        );
+        w.ctl.close_item_menu();
+
+        w.ctl.open_item_menu(1, false);
+        let trash = index_of(&w, ItemMenuEntry::Trash);
+        assert_eq!(w.ctl.choose_item_menu(trash), Vec::new());
+        assert_eq!(row_titles(&w), ["One", "Three", "Greeting"]);
+        assert!(w.ctl.view().toast.expect("toast").undo);
+    }
+
+    #[test]
+    fn a_line_in_the_item_menu_does_nothing_and_hiding_closes_it() {
+        let mut w = world();
+        w.ctl.open_item_menu(0, false);
+        let line = w
+            .ctl
+            .view()
+            .item_menu
+            .expect("menu")
+            .iter()
+            .position(|e| *e == ItemMenuEntry::Separator)
+            .expect("line");
+        assert_eq!(w.ctl.choose_item_menu(line), Vec::new());
+        assert!(w.ctl.view().item_menu.is_some(), "a line is not a choice");
+        w.ctl.hide();
+        assert_eq!(w.ctl.view().item_menu, None);
     }
 
     #[test]

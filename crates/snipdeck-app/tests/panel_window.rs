@@ -293,6 +293,40 @@ fn the_panel_shows_the_demo_library() {
 }
 
 #[test]
+fn holding_a_sensitive_row_reveals_its_text_and_releasing_hides_it() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(r.ui.get_rows().row_data(5).unwrap().preview, "");
+        r.ui.invoke_reveal_requested(5, true);
+        assert_eq!(r.ui.get_revealed_index(), 5);
+        assert_eq!(
+            r.ui.get_rows().row_data(5).unwrap().preview,
+            "hunter2-correct-horse"
+        );
+        r.ui.invoke_reveal_requested(5, false);
+        assert_eq!(r.ui.get_revealed_index(), -1);
+        assert_eq!(r.ui.get_rows().row_data(5).unwrap().preview, "");
+        r.ui.invoke_reveal_requested(0, true);
+        assert_eq!(r.ui.get_revealed_index(), -1, "only sensitive rows reveal");
+    });
+}
+
+#[test]
+fn a_context_menu_request_opens_the_item_menu_and_dismissing_closes_it() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_item_menu_open());
+        r.ui.invoke_context_menu_requested(1, 10.0, 10.0);
+        assert!(r.ui.get_item_menu_open());
+        assert!(r.ui.get_item_menu_entries().row_count() >= 5);
+        r.ui.invoke_item_menu_dismissed();
+        assert!(!r.ui.get_item_menu_open());
+        r.ui.invoke_pinned_context_menu_requested(0, 10.0, 10.0);
+        assert!(r.ui.get_item_menu_open());
+    });
+}
+
+#[test]
 fn typing_in_the_search_filters_the_rows() {
     on_ui_thread(|| {
         let r = rig();

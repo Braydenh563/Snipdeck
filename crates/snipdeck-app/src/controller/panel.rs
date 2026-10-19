@@ -2,11 +2,11 @@
 //! edit / rename / delete do to a row, and how a resize or a move is clamped and remembered per
 //! monitor (DESIGN.md §5 Panel). Part of the [`Controller`]; the window is the host's.
 
-use snipdeck_core::ItemId;
+use snipdeck_core::{ItemId, UseMode};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
-use snipdeck_store::{TrashRepo, Trashable};
+use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
 
-use super::{Controller, Effect, Library, PanelMenu, failed};
+use super::{Controller, Effect, Library, PanelMenu, UseResult, failed};
 use crate::{
     frame::{self, Edge, Monitor, Rect},
     host::ClipboardText,
@@ -49,6 +49,27 @@ pub enum AppMenuEntry {
     About,
     /// Exit the app.
     Quit,
+}
+
+/// One row of the context menu of an item's card or pinned chip, in the order it is drawn
+/// (the Main window's item menu, less its list and tag choosers).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ItemMenuEntry {
+    /// Use the item (paste, or copy where it cannot paste).
+    Use,
+    /// Copy the item.
+    Copy,
+    /// Edit the item in the item editor.
+    Edit,
+    /// Pin the item, or unpin it when `pinned`.
+    Pin {
+        /// The item is pinned now (the row reads "Unpin").
+        pinned: bool,
+    },
+    /// Move the item to the Trash, with an Undo toast.
+    Trash,
+    /// A line between groups.
+    Separator,
 }
 
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
@@ -117,6 +138,101 @@ where
         }
     }
 
+    // ---- The item menu -------------------------------------------------------------------------
+
+    /// The row of item `id` in the list or the pinned strip.
+    fn menu_row(&self, id: ItemId) -> Option<crate::panel::Row> {
+        self.model
+            .rows()
+            .into_iter()
+            .chain(self.model.pinned())
+            .find(|r| r.id == id)
+    }
+
+    /// The rows of the item menu for `id`.
+    pub(super) fn item_menu_entries(&self, id: ItemId) -> Vec<ItemMenuEntry> {
+        let pinned = self.menu_row(id).is_some_and(|r| r.pinned);
+        vec![
+            ItemMenuEntry::Use,
+            ItemMenuEntry::Copy,
+            ItemMenuEntry::Separator,
+            ItemMenuEntry::Edit,
+            ItemMenuEntry::Pin { pinned },
+            ItemMenuEntry::Separator,
+            ItemMenuEntry::Trash,
+        ]
+    }
+
+    /// Right-click, the Menu key or Shift+F10 on card `index` (or on pinned chip `index` when
+    /// `in_strip`): opens the item menu.
+    pub fn open_item_menu(&mut self, index: usize, in_strip: bool) {
+        let rows = if in_strip {
+            self.model.pinned()
+        } else {
+            self.model.rows()
+        };
+        if let Some(row) = rows.get(index) {
+            self.menu = PanelMenu::Item(row.id);
+        }
+    }
+
+    /// Esc, or a click outside the menu: closes it without a choice.
+    pub fn close_item_menu(&mut self) {
+        if matches!(self.menu, PanelMenu::Item(_)) {
+            self.menu = PanelMenu::None;
+        }
+    }
+
+    /// The user chose row `index` of the item menu. The menu closes (a line stays open).
+    pub fn choose_item_menu(&mut self, index: usize) -> Vec<Effect> {
+        let PanelMenu::Item(id) = self.menu else {
+            return Vec::new();
+        };
+        let Some(entry) = self.item_menu_entries(id).get(index).copied() else {
+            self.menu = PanelMenu::None;
+            return Vec::new();
+        };
+        if entry == ItemMenuEntry::Separator {
+            return Vec::new();
+        }
+        self.menu = PanelMenu::None;
+        match entry {
+            ItemMenuEntry::Use => {
+                let used: UseResult = self.use_item(id, UseMode::Paste);
+                self.dock_after_use(&used)
+            }
+            ItemMenuEntry::Copy => {
+                self.use_item(id, UseMode::Copy);
+                Vec::new()
+            }
+            ItemMenuEntry::Edit => vec![Effect::EditItem(id)],
+            ItemMenuEntry::Pin { pinned } => {
+                self.set_item_pinned(id, !pinned);
+                Vec::new()
+            }
+            ItemMenuEntry::Trash => {
+                self.trash_with_undo(id);
+                Vec::new()
+            }
+            ItemMenuEntry::Separator => Vec::new(),
+        }
+    }
+
+    fn set_item_pinned(&mut self, id: ItemId, pin: bool) {
+        let now = self.clock.now();
+        let done = self.store.atomically(|b| {
+            let mut item = b.item(id)?;
+            item.pinned = pin;
+            item.updated_at = now;
+            b.update_item(&item, None)?;
+            Ok(())
+        });
+        match done {
+            Ok(()) => self.library_changed(),
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
     // ---- Row actions ---------------------------------------------------------------------------
 
     fn row_id(&self, index: usize) -> Option<ItemId> {
@@ -139,9 +255,13 @@ where
     /// Delete on row `index`: moves the item to the Trash and offers Undo for 5 s (the same
     /// Trash and Undo as the Main window; [`main_undo`](Self::main_undo) brings it back).
     pub fn delete_row(&mut self, index: usize) {
-        let Some(id) = self.row_id(index) else {
-            return;
-        };
+        if let Some(id) = self.row_id(index) {
+            self.trash_with_undo(id);
+        }
+    }
+
+    /// Moves item `id` to the Trash and offers Undo for 5 s.
+    fn trash_with_undo(&mut self, id: ItemId) {
         let now = self.clock.now();
         let done = self.store.atomically(|b| b.trash(Trashable::Item(id), now));
         if done.is_err() {
@@ -159,6 +279,21 @@ where
             },
             vec![Trashable::Item(id)],
         );
+    }
+
+    /// Holding Space (or the pointer) on sensitive row `index` reveals its text in the Panel;
+    /// letting go hides it again. The same rule as [`main_reveal`](Self::main_reveal): only a
+    /// sensitive row reveals.
+    pub fn reveal_row(&mut self, index: usize, on: bool) {
+        self.panel_revealed = if on {
+            self.model
+                .rows()
+                .get(index)
+                .filter(|r| r.sensitive)
+                .map(|r| r.id)
+        } else {
+            None
+        };
     }
 
     // ---- The window frame ----------------------------------------------------------------------

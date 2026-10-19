@@ -106,6 +106,12 @@ export component PanelWindow inherits Window {
     // and clears it on `app-menu-activated` or `app-menu-dismissed`.
     in-out property <bool> app-menu-open: false;
     in property <[MenuEntry]> app-menu-entries;
+    // The context menu of a card or pinned chip: the host fills it on `context-menu-requested` /
+    // `pinned-context-menu-requested`; the Panel places it at the pointer (`item-menu-x`, `item-menu-y`).
+    in property <bool> item-menu-open: false;
+    in property <[MenuEntry]> item-menu-entries;
+    property <length> item-menu-x: 0px;
+    property <length> item-menu-y: 0px;
     // Toast: empty text hides it. The app owns its timing (Toast documents the phases).
     in property <string> toast-text;
     in property <ToastKind> toast-kind: ToastKind.neutral;
@@ -151,6 +157,8 @@ export component PanelWindow inherits Window {
     callback app-menu-requested();
     callback app-menu-activated(int);
     callback app-menu-dismissed();
+    callback item-menu-activated(int);
+    callback item-menu-dismissed();
     // Quick edit of row `index`: Ctrl+E or a double-click, F2, Delete (SPEC 5.1). A double-click has
     // already used the row once (the first click); the host decides what the second means.
     callback edit-requested(int);
@@ -182,7 +190,7 @@ export component PanelWindow inherits Window {
     out property <length> scroll-y: list.content-y;
     out property <bool> search-focused: search.has-focus;
     // The text of the tooltip on screen (empty = none), for tests and assistive checks.
-    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open ? root.tip : "";
+    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open ? root.tip : "";
 
     // ---- Internals ----------------------------------------------------------------------------
     property <bool> pastes: root.target-name != "";
@@ -266,6 +274,11 @@ export component PanelWindow inherits Window {
     // A closed menu leaves no focused control behind: typing goes to the search again.
     changed app-menu-open => {
         if (!root.app-menu-open) {
+            search.focus();
+        }
+    }
+    changed item-menu-open => {
+        if (!root.item-menu-open) {
             search.focus();
         }
     }
@@ -410,9 +423,12 @@ export component PanelWindow inherits Window {
             forward-focus: search;
 
             capture-key-pressed(event) => {
-                if (root.board-menu-open || root.app-menu-open) {
+                if (root.board-menu-open || root.app-menu-open || root.item-menu-open) {
                     // The menu owns the keyboard; Esc closes it.
                     if (event.text == Key.Escape) {
+                        if (root.item-menu-open) {
+                            root.item-menu-dismissed();
+                        }
                         if (root.app-menu-open) {
                             root.app-menu-dismissed();
                         }
@@ -491,6 +507,8 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                     if ((event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) && root.sel >= 0) {
+                        root.item-menu-x = Space.s6;
+                        root.item-menu-y = deck.absolute-position.y + Space.s8;
                         root.context-menu-requested(root.sel, Space.s6, Space.s8);
                         return accept;
                     }
@@ -608,7 +626,7 @@ export component PanelWindow inherits Window {
                 if root.pinned.length > 0 && !root.searching: HorizontalLayout {
                     padding-left: Space.s2;
                     padding-right: Space.s2;
-                    PinnedStrip {
+                    strip := PinnedStrip {
                         items: root.pinned;
                         accessible-role: AccessibleRole.list;
                         accessible-label: @tr("Pinned snippets");
@@ -617,7 +635,12 @@ export component PanelWindow inherits Window {
                         tip(text, cx, bottom, on) => { root.tip-set(text, cx, bottom, on); }
                         use(i) => { root.pinned-used(i); }
                         copy(i) => { root.pinned-copied(i); }
-                        context-menu-requested(i, x, y) => { root.pinned-context-menu-requested(i, x, y); }
+                        context-menu-requested(i, x, y) => {
+                            // `x` is within the chip: the menu opens under the strip's left end.
+                            root.item-menu-x = self.absolute-position.x + Space.s2;
+                            root.item-menu-y = self.absolute-position.y + self.height;
+                            root.pinned-context-menu-requested(i, x, y);
+                        }
                     }
                 }
 
@@ -685,7 +708,11 @@ export component PanelWindow inherits Window {
                                     root.selected-index = i;
                                     root.edit-requested(i);
                                 }
-                                context-menu-requested(x, y) => { root.context-menu-requested(i, x, y); }
+                                context-menu-requested(x, y) => {
+                                    root.item-menu-x = self.absolute-position.x + x;
+                                    root.item-menu-y = self.absolute-position.y + y;
+                                    root.context-menu-requested(i, x, y);
+                                }
                                 reveal-requested(on) => { root.reveal-requested(i, on); }
                             }
                         }
@@ -832,6 +859,22 @@ export component PanelWindow inherits Window {
             init => { self.focus-menu(); }
             activated(i) => { root.app-menu-activated(i); }
             dismissed => { root.app-menu-dismissed(); }
+        }
+
+        // ---- The item menu (right-click, Menu key, Shift+F10 on a card or chip): at the pointer, kept inside the window.
+        if root.item-menu-open: TouchArea {
+            clicked => { root.item-menu-dismissed(); }
+        }
+        if root.item-menu-open: Menu {
+            width: min(Space.s12 * 4, root.width - 2 * Space.s2);
+            x: min(max(Space.s2, root.item-menu-x), root.width - self.width - Space.s2);
+            y: min(max(Space.s2, root.item-menu-y), root.height - self.height - Space.s2);
+            entries: root.item-menu-entries;
+            label: @tr("Item actions");
+            icons: false;
+            init => { self.focus-menu(); }
+            activated(i) => { root.item-menu-activated(i); }
+            dismissed => { root.item-menu-dismissed(); }
         }
 
         // The tooltip of whichever icon-only control is hovered or focused, centred under it and kept

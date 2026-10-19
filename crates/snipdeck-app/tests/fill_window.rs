@@ -33,7 +33,7 @@ use snipdeck_platform::{
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
     tray::TrayEvent,
 };
-use snipdeck_store::Store;
+use snipdeck_store::{ItemRepo, Store};
 use snipdeck_ui::{PanelWindow, PickerWindow, TemplateFillWindow};
 
 #[path = "support/mod.rs"]
@@ -62,7 +62,10 @@ fn now() -> Timestamp {
 }
 
 fn rig() -> Rig {
-    let store = demo::store(now()).expect("demo store");
+    rig_on(demo::store(now()).expect("demo store"))
+}
+
+fn rig_on(store: Store) -> Rig {
     let targets = FakeTargets::new(Some(demo::target()));
     targets.set_caret(Some(ScreenRect {
         x: 400,
@@ -206,6 +209,30 @@ fn the_form_follows_the_picker_even_when_the_caret_can_no_longer_be_read() {
         let _ = r.fill.window().expect("form");
         let at = r.fill.placed().expect("it was placed");
         assert_eq!((at.x, at.y), (400, 224), "where the Picker was");
+    });
+}
+
+#[test]
+fn a_sensitive_template_previews_as_a_mask_and_never_its_text() {
+    on_ui_thread(|| {
+        let mut store = demo::store(now()).expect("demo store");
+        let mut template = store
+            .all_items()
+            .expect("items")
+            .into_iter()
+            .find(|i| i.title == "Invoice reminder")
+            .expect("the template");
+        template.sensitive = true;
+        store.update_item(&template, None).expect("mark sensitive");
+        let r = rig_on(store);
+        let (_, form) = r.open_form(false);
+        assert_eq!(form.get_preview(), "\u{2022}".repeat(8));
+        type_text(form.window(), "Alice");
+        assert_eq!(
+            form.get_preview(),
+            "\u{2022}".repeat(8),
+            "typing does not unmask it"
+        );
     });
 }
 

@@ -20,7 +20,7 @@ use snipdeck_platform::{
 use snipdeck_ui as ui;
 
 use crate::{
-    controller::{AppMenuEntry, Controller, Effect, Library, ToastPhase, View},
+    controller::{AppMenuEntry, Controller, Effect, ItemMenuEntry, Library, ToastPhase, View},
     dock::DockEvent,
     frame::{Edge, Monitor, Rect},
     host::{ClipboardText, HotkeyProblem},
@@ -364,9 +364,6 @@ where
     /// `ShowPanel` has shown the window, a `HidePanel` has hidden it); the host handles the
     /// rest (`OpenPicker`, `StartCapture`, `PasteNext`, `DragWindow`).
     ///
-    /// Not yet wired, because the feature behind it is not built: the Panel's row context
-    /// menus (`context-menu-requested`, `pinned-context-menu-requested`) and the hold-to-reveal
-    /// of a sensitive row (`reveal-requested`).
     #[allow(
         clippy::too_many_lines,
         reason = "one flat list of the window's callbacks, each a single line"
@@ -412,6 +409,14 @@ where
             let used = ctl.quick_use(u8::try_from(n).unwrap_or(0));
             ctl.dock_after_use(&used)
         });
+        wire!(on_context_menu_requested, |ctl, i, _x, _y| ctl
+            .open_item_menu(index(i), false));
+        wire!(on_pinned_context_menu_requested, |ctl, i, _x, _y| ctl
+            .open_item_menu(index(i), true));
+        wire_effects!(on_item_menu_activated, |ctl, i| ctl
+            .choose_item_menu(index(i)));
+        wire!(on_item_menu_dismissed, |ctl| ctl.close_item_menu());
+        wire!(on_reveal_requested, |ctl, i, on| ctl.reveal_row(index(i), on));
         wire!(on_selection_moved, |ctl, delta| ctl
             .move_selection(isize::try_from(delta).unwrap_or(0)));
         wire!(on_tab_selected, |ctl, i| ctl.select_tab(index(i)));
@@ -522,6 +527,12 @@ impl Loggable for i32 {
     }
 }
 
+impl Loggable for f32 {
+    fn log(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self}")
+    }
+}
+
 impl Loggable for bool {
     fn log(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self}")
@@ -622,6 +633,10 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.rows == view.rows && p.dark == view.dark) {
         window.set_rows(model(view.rows.iter().map(|r| panel_row(r, view.dark))));
     }
+    let revealed = view.revealed.map_or(-1, to_i32);
+    if window.get_revealed_index() != revealed {
+        window.set_revealed_index(revealed);
+    }
     if window.get_current_tab() != to_i32(view.current_tab) {
         window.set_current_tab(to_i32(view.current_tab));
     }
@@ -654,6 +669,16 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         || window.get_app_menu_open() != view.app_menu.is_some()
     {
         render_app_menu(window, view);
+    }
+    if differs(&|p| p.item_menu == view.item_menu) || window.get_item_menu_open() != view.item_menu.is_some() {
+        let entries = view.item_menu.iter().flatten().map(|&entry| ui::MenuEntry {
+            text: wording::item_menu_text(entry).into(),
+            separator: entry == ItemMenuEntry::Separator,
+            destructive: entry == ItemMenuEntry::Trash,
+            ..Default::default()
+        });
+        window.set_item_menu_entries(model(entries));
+        window.set_item_menu_open(view.item_menu.is_some());
     }
     if differs(&|p| p.toast == view.toast) {
         if let Some(toast) = &view.toast {
