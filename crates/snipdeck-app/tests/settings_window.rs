@@ -1128,7 +1128,10 @@ fn the_get_supporter_dialog_opens_closes_with_escape_and_emails() {
             .expect("a plan table inside the dialog card");
         let (tp, ts) = (table.absolute_position(), table.size());
         assert!(cs.width > 0.0 && cs.height > 0.0, "the card has a size");
-        assert!(ts.width > 0.0 && ts.height > 0.0, "the table has a size: {ts:?}");
+        assert!(
+            ts.width > 0.0 && ts.height > 0.0,
+            "the table has a size: {ts:?}"
+        );
         assert!(
             tp.x >= cp.x && tp.x + ts.width <= cp.x + cs.width,
             "the table ({tp:?} {ts:?}) is inside the card ({cp:?} {cs:?}) across"
