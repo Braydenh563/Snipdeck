@@ -300,7 +300,9 @@ ui_tests! {
         settle();
         take(&log);
         press(ui.window(), " ");
-        assert!(take(&log).is_empty(), "no reveal for a plain row");
+        // Not a reveal: with the search focused, Space is a text key, so the search reports " " (the host reads a
+        // blank query as no query, `Panel::is_searching`).
+        assert_eq!(take(&log), ["query: "], "no reveal for a plain row; the space is search text");
     }
 
     fn escape_clears_the_search_first_and_then_asks_to_close() {
