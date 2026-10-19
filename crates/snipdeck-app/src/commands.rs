@@ -1,0 +1,442 @@
+//! The command palette's catalogue: every action the Main window offers, the shortcut each has, and
+//! the filter that narrows the list as the user types.
+//!
+//! Slint-free. The words come from the UI crate's `CommandTexts` global (translated there, in the order
+//! of [`Command::ALL`]); the shortcuts come from here, and the three global hotkeys read the chords in
+//! the settings, so a rebound hotkey shows as rebound.
+
+use crate::settings::{HotkeyAction, Hotkeys};
+
+/// One thing the palette can run. The order of [`Command::ALL`] is the order of the UI crate's
+/// `CommandTexts.all`, and the id the palette reports is the index in it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Command {
+    /// A new snippet in the open list.
+    NewItem,
+    /// A new list on the open board.
+    NewList,
+    /// Move to the search field.
+    Search,
+    /// Show the Panel.
+    ShowPanel,
+    /// Open the Picker.
+    OpenPicker,
+    /// Quick capture.
+    QuickCapture,
+    /// Open Settings.
+    Settings,
+    /// Open the user guide.
+    UserGuide,
+    /// Show the welcome tour.
+    Tour,
+    /// Show the keyboard shortcuts.
+    Shortcuts,
+    /// Open the troubleshooting window.
+    Troubleshoot,
+    /// Open About.
+    About,
+    /// Comfortable rows.
+    ViewComfortable,
+    /// Compact rows.
+    ViewCompact,
+    /// Tiles.
+    ViewTile,
+    /// Use the item under the cursor.
+    UseItem,
+    /// Copy the item under the cursor.
+    CopyItem,
+    /// Edit the item under the cursor.
+    EditItem,
+    /// Pin the item under the cursor.
+    PinItem,
+    /// Unpin the item under the cursor.
+    UnpinItem,
+    /// Move the item under the cursor to the Trash.
+    TrashItem,
+    /// Open All items.
+    GoAll,
+    /// Open Pinned.
+    GoPinned,
+    /// Open Recent.
+    GoRecent,
+    /// Open the Trash.
+    GoTrash,
+}
+
+impl Command {
+    /// Every command, in the order of `CommandTexts.all`.
+    pub const ALL: [Self; 25] = [
+        Self::NewItem,
+        Self::NewList,
+        Self::Search,
+        Self::ShowPanel,
+        Self::OpenPicker,
+        Self::QuickCapture,
+        Self::Settings,
+        Self::UserGuide,
+        Self::Tour,
+        Self::Shortcuts,
+        Self::Troubleshoot,
+        Self::About,
+        Self::ViewComfortable,
+        Self::ViewCompact,
+        Self::ViewTile,
+        Self::UseItem,
+        Self::CopyItem,
+        Self::EditItem,
+        Self::PinItem,
+        Self::UnpinItem,
+        Self::TrashItem,
+        Self::GoAll,
+        Self::GoPinned,
+        Self::GoRecent,
+        Self::GoTrash,
+    ];
+
+    /// The command with palette id `id`.
+    #[must_use]
+    pub fn from_id(id: i32) -> Option<Self> {
+        usize::try_from(id)
+            .ok()
+            .and_then(|i| Self::ALL.get(i).copied())
+    }
+
+    /// The palette id (the index in [`Command::ALL`]).
+    #[must_use]
+    pub fn id(self) -> i32 {
+        Self::ALL
+            .iter()
+            .position(|c| *c == self)
+            .and_then(|i| i32::try_from(i).ok())
+            .unwrap_or(0)
+    }
+
+    /// The shortcut text ("Ctrl+N"), `None` when the command has none (or its hotkey is off).
+    /// The three global hotkeys follow the settings.
+    #[must_use]
+    pub fn shortcut(self, hotkeys: &Hotkeys) -> Option<String> {
+        let fixed = match self {
+            Self::NewItem => "Ctrl+N",
+            Self::Search => "Ctrl+F",
+            Self::Settings => "Ctrl+,",
+            Self::UserGuide => "F1",
+            Self::Shortcuts => "Ctrl+/",
+            Self::UseItem => "Enter",
+            Self::CopyItem => "Shift+Enter",
+            Self::EditItem => "Ctrl+E",
+            Self::PinItem | Self::UnpinItem => "Ctrl+P",
+            Self::TrashItem => "Del",
+            Self::ShowPanel => return chord_text(hotkeys, HotkeyAction::TogglePanel),
+            Self::OpenPicker => return chord_text(hotkeys, HotkeyAction::Picker),
+            Self::QuickCapture => return chord_text(hotkeys, HotkeyAction::Capture),
+            _ => return None,
+        };
+        Some(fixed.to_owned())
+    }
+
+    /// Acts on the item under the cursor, so it is offered only with one there.
+    #[must_use]
+    pub const fn needs_item(self) -> bool {
+        matches!(
+            self,
+            Self::UseItem
+                | Self::CopyItem
+                | Self::EditItem
+                | Self::PinItem
+                | Self::UnpinItem
+                | Self::TrashItem
+        )
+    }
+}
+
+/// The configured chord of a global hotkey as text ("Ctrl+Alt+Space"); `None` while it is off.
+#[must_use]
+pub fn chord_text(hotkeys: &Hotkeys, action: HotkeyAction) -> Option<String> {
+    hotkeys.chord(action).map(|c| c.to_string())
+}
+
+/// The caps and the spoken form of a global hotkey's configured chord; both empty while it is off.
+#[must_use]
+pub fn chord_caps(hotkeys: &Hotkeys, action: HotkeyAction) -> (Vec<String>, String) {
+    chord_text(hotkeys, action).map_or_else(
+        || (Vec::new(), String::new()),
+        |text| (caps(&text), spoken(&text)),
+    )
+}
+
+/// The caps of a shortcut: `"Ctrl+Shift+Enter"` becomes `["Ctrl", "Shift", "↵"]`. A `+` key is written
+/// `"Ctrl++"` and kept as a cap of its own.
+#[must_use]
+pub fn caps(shortcut: &str) -> Vec<String> {
+    let mut parts: Vec<String> = Vec::new();
+    let mut rest = shortcut;
+    while !rest.is_empty() {
+        if let Some(tail) = rest.strip_prefix('+') {
+            // A bare "+" at the start of a token is the plus key; the separator is the next one.
+            parts.push("+".into());
+            rest = tail.strip_prefix('+').unwrap_or(tail);
+            continue;
+        }
+        let (token, tail) = rest.split_once('+').unwrap_or((rest, ""));
+        parts.push(if token == "Enter" { "↵".into() } else { token.into() });
+        rest = tail;
+    }
+    parts
+}
+
+/// The spoken form of a shortcut ("Control Shift N") for assistive technology.
+#[must_use]
+pub fn spoken(shortcut: &str) -> String {
+    caps(shortcut)
+        .iter()
+        .map(|cap| match cap.as_str() {
+            "Ctrl" => "Control",
+            "↵" => "Enter",
+            "Del" => "Delete",
+            "+" => "Plus",
+            "," => "Comma",
+            "/" => "Slash",
+            other => other,
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// What the palette may offer right now.
+#[derive(Debug, Clone, Copy)]
+pub struct Context<'a> {
+    /// The configured hotkeys, for the shortcuts of the global ones.
+    pub hotkeys: &'a Hotkeys,
+    /// There is an item under the cursor.
+    pub has_item: bool,
+    /// That item is pinned (offers Unpin instead of Pin).
+    pub item_pinned: bool,
+    /// The Trash is open (its items are restored or deleted there, not edited or pinned).
+    pub in_trash: bool,
+}
+
+/// One row the palette shows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Entry {
+    /// What runs.
+    pub command: Command,
+    /// The translated name.
+    pub label: String,
+    /// The shortcut as caps (empty = none).
+    pub keys: Vec<String>,
+    /// The shortcut spoken.
+    pub spoken: String,
+}
+
+/// Whether `command` is offered in `ctx`.
+#[must_use]
+pub fn available(command: Command, ctx: &Context<'_>) -> bool {
+    match command {
+        Command::UseItem | Command::CopyItem | Command::EditItem | Command::TrashItem => {
+            ctx.has_item && !ctx.in_trash
+        }
+        Command::PinItem => ctx.has_item && !ctx.in_trash && !ctx.item_pinned,
+        Command::UnpinItem => ctx.has_item && !ctx.in_trash && ctx.item_pinned,
+        _ => true,
+    }
+}
+
+/// How well `word` matches a command: 0 at the start of the label, 1 at the start of a label word, 2
+/// inside the label, 3 in the synonyms, `None` not at all. Both texts are lowercase.
+fn rank(label: &str, synonyms: &str, word: &str) -> Option<usize> {
+    if label.starts_with(word) {
+        Some(0)
+    } else if label.split_whitespace().any(|w| w.starts_with(word)) {
+        Some(1)
+    } else if label.contains(word) {
+        Some(2)
+    } else if synonyms.contains(word) {
+        Some(3)
+    } else {
+        None
+    }
+}
+
+/// The entries for `query`, best match first. `texts` holds `(label, synonyms)` per command in the order
+/// of [`Command::ALL`]. Each whitespace-separated word of the query must appear (ignoring case) in the
+/// label or the synonyms; a word at the start of the label ranks above one inside it, above one in the
+/// synonyms. An empty query keeps the catalogue order.
+#[must_use]
+pub fn entries(texts: &[(String, String)], ctx: &Context<'_>, query: &str) -> Vec<Entry> {
+    let words: Vec<String> = query.split_whitespace().map(str::to_lowercase).collect();
+    let mut scored: Vec<(usize, usize, Entry)> = Vec::new();
+    for (i, command) in Command::ALL.iter().copied().enumerate() {
+        let Some((label, synonyms)) = texts.get(i) else {
+            continue;
+        };
+        if !available(command, ctx) {
+            continue;
+        }
+        let (label_lc, synonyms_lc) = (label.to_lowercase(), synonyms.to_lowercase());
+        let ranks: Option<Vec<usize>> = words
+            .iter()
+            .map(|word| rank(&label_lc, &synonyms_lc, word))
+            .collect();
+        let Some(ranks) = ranks else {
+            continue;
+        };
+        let score: usize = ranks.iter().sum();
+        let shortcut = command.shortcut(ctx.hotkeys);
+        scored.push((
+            score,
+            i,
+            Entry {
+                command,
+                label: label.clone(),
+                keys: shortcut.as_deref().map(caps).unwrap_or_default(),
+                spoken: shortcut.as_deref().map(spoken).unwrap_or_default(),
+            },
+        ));
+    }
+    scored.sort_by_key(|(score, i, _)| (*score, *i));
+    scored.into_iter().map(|(_, _, entry)| entry).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn texts() -> Vec<(String, String)> {
+        let labels = [
+            ("New item", "add create snippet"),
+            ("New list", "add create folder"),
+            ("Search", "find filter"),
+            ("Show Panel", "open toggle"),
+            ("Open Picker", "quick find paste"),
+            ("Quick capture", "clipboard save"),
+            ("Settings", "preferences hotkeys"),
+            ("User guide", "help docs"),
+            ("Welcome tour", "tutorial intro"),
+            ("Keyboard shortcuts", "hotkeys keys cheat sheet"),
+            ("Troubleshoot…", "diagnose"),
+            ("About Snipdeck", "version"),
+            ("Comfortable view", "view mode"),
+            ("Compact view", "view mode"),
+            ("Tile view", "view mode"),
+            ("Use selected item", "paste"),
+            ("Copy selected item", "clipboard"),
+            ("Edit selected item", "change"),
+            ("Pin selected item", "favourite"),
+            ("Unpin selected item", "favourite"),
+            ("Move selected item to Trash", "delete"),
+            ("Go to All items", "everything"),
+            ("Go to Pinned", "favourites"),
+            ("Go to Recent", "history"),
+            ("Go to Trash", "deleted"),
+        ];
+        labels
+            .iter()
+            .map(|(a, b)| ((*a).to_owned(), (*b).to_owned()))
+            .collect()
+    }
+
+    fn ctx(hotkeys: &Hotkeys) -> Context<'_> {
+        Context {
+            hotkeys,
+            has_item: true,
+            item_pinned: false,
+            in_trash: false,
+        }
+    }
+
+    fn labels(found: &[Entry]) -> Vec<&str> {
+        found.iter().map(|e| e.label.as_str()).collect()
+    }
+
+    #[test]
+    fn the_catalogue_ids_round_trip() {
+        for (i, command) in Command::ALL.iter().enumerate() {
+            assert_eq!(usize::try_from(command.id()), Ok(i));
+            assert_eq!(Command::from_id(command.id()), Some(*command));
+        }
+        assert_eq!(Command::from_id(-1), None);
+        assert_eq!(Command::from_id(99), None);
+    }
+
+    #[test]
+    fn an_empty_query_lists_what_applies_in_catalogue_order() {
+        let hotkeys = Hotkeys::default();
+        let found = entries(&texts(), &ctx(&hotkeys), "");
+        assert_eq!(found.first().map(|e| e.label.as_str()), Some("New item"));
+        assert!(labels(&found).contains(&"Pin selected item"));
+        assert!(!labels(&found).contains(&"Unpin selected item"));
+    }
+
+    #[test]
+    fn item_commands_follow_the_cursor_and_the_trash() {
+        let hotkeys = Hotkeys::default();
+        let mut c = ctx(&hotkeys);
+        c.item_pinned = true;
+        let pinned = entries(&texts(), &c, "pin");
+        assert!(labels(&pinned).contains(&"Unpin selected item"));
+        assert!(!labels(&pinned).contains(&"Pin selected item"));
+        c.has_item = false;
+        assert!(!labels(&entries(&texts(), &c, "")).contains(&"Edit selected item"));
+        c.has_item = true;
+        c.in_trash = true;
+        assert!(!labels(&entries(&texts(), &c, "")).contains(&"Edit selected item"));
+    }
+
+    #[test]
+    fn the_filter_matches_names_and_synonyms_ignoring_case() {
+        let hotkeys = Hotkeys::default();
+        let c = ctx(&hotkeys);
+        assert_eq!(
+            labels(&entries(&texts(), &c, "ADD"))[..2],
+            ["New item", "New list"]
+        );
+        let by_name = entries(&texts(), &c, "short");
+        assert_eq!(labels(&by_name), ["Keyboard shortcuts"]);
+        assert_eq!(entries(&texts(), &c, "zzzz"), Vec::new());
+    }
+
+    #[test]
+    fn a_name_match_outranks_a_synonym_match() {
+        let hotkeys = Hotkeys::default();
+        let found = entries(&texts(), &ctx(&hotkeys), "hotkeys");
+        // Both reach it through synonyms: catalogue order breaks the tie.
+        assert_eq!(labels(&found), ["Settings", "Keyboard shortcuts"]);
+        let found = entries(&texts(), &ctx(&hotkeys), "view");
+        assert_eq!(found.first().map(|e| e.label.as_str()), Some("Comfortable view"));
+        let found = entries(&texts(), &ctx(&hotkeys), "trash");
+        assert_eq!(labels(&found), ["Move selected item to Trash", "Go to Trash"]);
+    }
+
+    #[test]
+    fn every_word_of_the_query_must_match() {
+        let hotkeys = Hotkeys::default();
+        let c = ctx(&hotkeys);
+        assert_eq!(labels(&entries(&texts(), &c, "new list")), ["New list"]);
+        assert_eq!(entries(&texts(), &c, "new zzz"), Vec::new());
+    }
+
+    #[test]
+    fn global_hotkeys_show_the_configured_chords() {
+        let mut hotkeys = Hotkeys::default();
+        hotkeys.picker = "Ctrl+Alt+K".into();
+        hotkeys.capture = String::new();
+        let found = entries(&texts(), &ctx(&hotkeys), "");
+        let find = |label: &str| found.iter().find(|e| e.label == label).cloned();
+        assert_eq!(find("Open Picker").map(|e| e.keys), Some(vec!["Ctrl".to_owned(), "Alt".into(), "K".into()]));
+        assert_eq!(find("Quick capture").map(|e| e.keys), Some(Vec::new()));
+        assert_eq!(
+            find("Show Panel").map(|e| e.keys.join("+")),
+            Some(HotkeyAction::TogglePanel.default_chord().to_owned())
+        );
+    }
+
+    #[test]
+    fn caps_and_speech_of_a_shortcut() {
+        assert_eq!(caps("Ctrl+Shift+Enter"), ["Ctrl", "Shift", "↵"]);
+        assert_eq!(caps("Ctrl+,"), ["Ctrl", ","]);
+        assert_eq!(caps("Ctrl++"), ["Ctrl", "+"]);
+        assert_eq!(caps("F1"), ["F1"]);
+        assert_eq!(spoken("Ctrl+/"), "Control Slash");
+        assert_eq!(spoken("Del"), "Delete");
+    }
+}

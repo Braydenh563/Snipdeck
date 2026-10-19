@@ -950,7 +950,12 @@ fn maintenance_reports_a_damaged_library_and_a_crash_as_toasts() {
 fn the_main_windows_help_entries_queue_the_same_effect_as_the_panels_kebab() {
     use snipdeck_app::controller::{Effect, HelpTopic};
     let (mut ctl, _) = rig(Tier::Pro);
-    for topic in [HelpTopic::Troubleshoot, HelpTopic::Guide, HelpTopic::About] {
+    for topic in [
+        HelpTopic::Troubleshoot,
+        HelpTopic::Guide,
+        HelpTopic::About,
+        HelpTopic::Shortcuts,
+    ] {
         ctl.main_open_help(topic);
         assert_eq!(ctl.take_pending(), [Effect::OpenHelp(topic)]);
     }
@@ -982,4 +987,77 @@ fn the_real_jobs_back_up_purge_and_check_the_library_on_the_injected_clock() {
     assert_eq!(maintenance::run(&mut m, &mut ctl), 0);
     let mut restarted = Maintenance::new(dir.path(), Box::new(clock.clone()));
     assert_eq!(maintenance::run(&mut restarted, &mut ctl), 0);
+}
+
+// ---- The command palette's routes ----------------------------------------------------------------
+
+#[test]
+fn palette_commands_that_belong_to_other_windows_queue_the_menus_effects() {
+    use snipdeck_app::{
+        commands::Command,
+        controller::{Effect, HelpTopic},
+    };
+    let mut ctl = pro();
+    for (command, effects) in [
+        (Command::Settings, vec![Effect::OpenSettings]),
+        (Command::ShowPanel, vec![Effect::ShowPanel]),
+        (Command::Tour, vec![Effect::OpenOnboarding]),
+        (
+            Command::Shortcuts,
+            vec![Effect::OpenHelp(HelpTopic::Shortcuts)],
+        ),
+        (Command::UserGuide, vec![Effect::OpenHelp(HelpTopic::Guide)]),
+        (
+            Command::Troubleshoot,
+            vec![Effect::OpenHelp(HelpTopic::Troubleshoot)],
+        ),
+        (Command::About, vec![Effect::OpenHelp(HelpTopic::About)]),
+    ] {
+        ctl.run_command(command, 0);
+        assert_eq!(ctl.take_pending(), effects, "{command:?}");
+    }
+}
+
+#[test]
+fn palette_navigation_and_view_commands_change_the_main_screen() {
+    use snipdeck_app::{commands::Command, main_window::ViewMode};
+    let mut ctl = pro();
+    ctl.run_command(Command::GoTrash, 0);
+    assert_eq!(ctl.main_screen().section, Section::Trash);
+    ctl.run_command(Command::GoPinned, 0);
+    assert_eq!(ctl.main_screen().section, Section::Pinned);
+    ctl.run_command(Command::GoAll, 0);
+    assert_eq!(ctl.main_screen().section, Section::All);
+    ctl.run_command(Command::ViewTile, 0);
+    assert_eq!(ctl.main_screen().view_mode, ViewMode::Tile);
+    ctl.run_command(Command::ViewCompact, 0);
+    assert_eq!(ctl.main_screen().view_mode, ViewMode::Compact);
+}
+
+#[test]
+fn palette_item_commands_act_on_the_row_under_the_cursor() {
+    use snipdeck_app::commands::Command;
+    let mut ctl = pro();
+    let before = ctl.main_screen();
+    let target = before.rows[1].title.clone();
+    let pinned = before.rows[1].pinned;
+
+    ctl.run_command(Command::PinItem, 1);
+    let after = ctl.main_screen();
+    assert_eq!(after.rows[row_of(&after, &target)].pinned, !pinned);
+
+    ctl.run_command(Command::TrashItem, row_of(&after, &target));
+    let after = ctl.main_screen();
+    assert!(!titles(&after).contains(&target), "moved to the Trash");
+    assert_eq!(after.counts.trash, before.counts.trash + 1);
+}
+
+#[test]
+fn the_palette_new_list_command_opens_the_list_editor() {
+    use snipdeck_app::{commands::Command, main_window::EditorKind};
+    let mut ctl = pro();
+    ctl.run_command(Command::NewList, 0);
+    let editor = ctl.main_screen().editor.expect("the list editor");
+    assert_eq!(editor.kind, EditorKind::List);
+    assert!(editor.is_new);
 }

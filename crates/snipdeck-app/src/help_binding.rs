@@ -302,6 +302,20 @@ where
         }
         let (look, tier, toast): (_, _, Option<ToastView>) = {
             let controller = self.controller.borrow();
+            let hotkeys = &controller.settings().hotkeys;
+            let strings = |keys: Vec<String>| model(keys.iter().map(|k| k.as_str().into()));
+            let (keys, spoken) = crate::commands::chord_caps(hotkeys, HotkeyAction::TogglePanel);
+            window.set_panel_keys(strings(keys));
+            window.set_panel_spoken(spoken.into());
+            let (keys, spoken) = crate::commands::chord_caps(hotkeys, HotkeyAction::Picker);
+            window.set_picker_keys(strings(keys));
+            window.set_picker_spoken(spoken.into());
+            let (keys, spoken) = crate::commands::chord_caps(hotkeys, HotkeyAction::Capture);
+            window.set_capture_keys(strings(keys));
+            window.set_capture_spoken(spoken.into());
+            let (keys, spoken) = crate::commands::chord_caps(hotkeys, HotkeyAction::PasteNext);
+            window.set_paste_next_keys(strings(keys));
+            window.set_paste_next_spoken(spoken.into());
             (
                 controller.settings_look(),
                 controller.tier(),
@@ -591,7 +605,11 @@ impl HelpUi {
                 let Some((window, binding)) = slot.as_ref() else {
                     return Ok(());
                 };
-                window.set_tab(i32::from(topic == HelpTopic::About));
+                window.set_tab(match topic {
+                    HelpTopic::About => 1,
+                    HelpTopic::Shortcuts => 2,
+                    _ => 0,
+                });
                 window.show()?;
                 fit_to_screen(window.window());
                 // The checks are fresh every time the window comes up.

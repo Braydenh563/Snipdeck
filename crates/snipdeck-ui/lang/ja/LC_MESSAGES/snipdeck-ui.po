@@ -52,6 +52,9 @@ msgstr "暗号化キーも削除する"
 msgid "Amber"
 msgstr "アンバー"
 
+msgid "Anywhere in Windows"
+msgstr ""
+
 msgid "Appearance"
 msgstr "外観"
 
@@ -115,6 +118,9 @@ msgstr "キャンセル"
 msgid "Captured items keep their kind."
 msgstr "キャプチャしたスニペットは種類を保持します。"
 
+msgid "Change these in Settings."
+msgstr ""
+
 msgid "Changes apply at once."
 msgstr "変更はすぐに適用されます。"
 
@@ -142,6 +148,9 @@ msgstr "検索をクリア"
 msgid "Clear selection"
 msgstr "選択を解除"
 
+msgid "Clear the search, then close"
+msgstr ""
+
 msgid "Clear the shortcut for {}"
 msgstr "{} のショートカットを消去"
 
@@ -151,8 +160,8 @@ msgstr "クリック"
 msgid "Close"
 msgstr "閉じる"
 
-msgid "Close panel"
-msgstr "パネルを閉じる"
+msgid "Close panel (Esc)"
+msgstr ""
 
 msgid "Close the tag list"
 msgstr "タグ一覧を閉じる"
@@ -165,6 +174,18 @@ msgstr "色"
 
 msgid "Comfortable view"
 msgstr "ゆったり表示"
+
+msgid "Command palette (every action)"
+msgstr ""
+
+msgid "Commands"
+msgstr ""
+
+msgid "Commands (Ctrl+K)"
+msgstr ""
+
+msgid "Commands in the Main window"
+msgstr ""
 
 msgid "Compact view"
 msgstr "コンパクト表示"
@@ -184,11 +205,20 @@ msgstr "コピー"
 msgid "Copy diagnostic report"
 msgstr "診断レポートをコピー"
 
+msgid "Copy selected item"
+msgstr ""
+
 msgid "Copy something, then save it from the Panel."
 msgstr "何かをコピーしてから、パネルで保存できます。"
 
 msgid "Copy something, then save it here from the clipboard."
 msgstr "何かをコピーしてから、クリップボードからここに保存できます。"
+
+msgid "Copy the item"
+msgstr ""
+
+msgid "Copy the result"
+msgstr ""
 
 msgid "Dark"
 msgstr "ダーク"
@@ -274,6 +304,18 @@ msgstr "リストを編集"
 msgid "Edit list…"
 msgstr "リストを編集…"
 
+msgid "Edit selected item"
+msgstr ""
+
+msgid "Edit the item"
+msgstr ""
+
+msgid "Edit the result"
+msgstr ""
+
+msgid "Editors"
+msgstr ""
+
 msgid "Empty Trash"
 msgstr "ゴミ箱を空にする"
 
@@ -325,6 +367,9 @@ msgstr "ファイル"
 msgid "Fill in template"
 msgstr "テンプレートに入力"
 
+msgid "Filter as you type"
+msgstr ""
+
 msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
 msgstr "パネルを、表示中のモニターの画面の端に固定します。「フローティング」ではどこにでも置けます。"
 
@@ -357,6 +402,18 @@ msgstr "リストに名前を付けてください。"
 
 msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
 msgstr "パネルにタスクバーのボタンを表示します。オフにすると、タスクバーと Alt+Tab には表示されません。通知領域のアイコンとパネルのショートカットからは引き続き呼び出せます。"
+
+msgid "Go to All items"
+msgstr ""
+
+msgid "Go to Pinned"
+msgstr ""
+
+msgid "Go to Recent"
+msgstr ""
+
+msgid "Go to Trash"
+msgstr ""
 
 msgid "Green"
 msgstr "緑"
@@ -436,6 +493,9 @@ msgstr "パネルを手前に表示"
 msgid "Keep running in the tray when the window closes"
 msgstr "ウィンドウを閉じても通知領域で実行を続ける"
 
+msgid "Keyboard shortcuts"
+msgstr ""
+
 msgid "Kind"
 msgstr "種類"
 
@@ -487,6 +547,9 @@ msgstr "読み込み中"
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "ログはSnipdeckが異常終了したときだけ書き込まれ、スニペットの内容は含まれず、どこにも送信されません。"
 
+msgid "Main window"
+msgstr ""
+
 msgid "Make the panel narrower"
 msgstr "パネルを狭くする"
 
@@ -513,6 +576,21 @@ msgstr "よく使う順"
 
 msgid "Move"
 msgstr "移動"
+
+msgid "Move selected item to Trash"
+msgstr ""
+
+msgid "Move the item to the Trash"
+msgstr ""
+
+msgid "Move the item up or down its list"
+msgstr ""
+
+msgid "Move through the items"
+msgstr ""
+
+msgid "Move through the results"
+msgstr ""
 
 msgid "Move to Trash"
 msgstr "ゴミ箱に移動"
@@ -550,6 +628,12 @@ msgstr "新しいタグ、次に Enter"
 msgid "Next"
 msgstr "次へ"
 
+msgid "Next list"
+msgstr ""
+
+msgid "Next scope"
+msgstr ""
+
 msgid "No backups yet."
 msgstr "バックアップはまだありません。"
 
@@ -564,6 +648,9 @@ msgstr "リストはまだありません"
 
 msgid "No matches"
 msgstr "一致する項目がありません"
+
+msgid "No matching command"
+msgstr ""
 
 msgid "No programs yet."
 msgstr "まだプログラムがありません。"
@@ -622,6 +709,9 @@ msgstr "開く"
 msgid "Open Panel"
 msgstr "パネルを開く"
 
+msgid "Open Picker"
+msgstr ""
+
 msgid "Open Settings"
 msgstr "設定を開く"
 
@@ -642,6 +732,9 @@ msgstr "ログフォルダーを開く"
 
 msgid "Open the Microsoft Store page"
 msgstr "Microsoft Store のページを開く"
+
+msgid "Open the Picker at your cursor"
+msgstr ""
 
 msgid "Open the picker"
 msgstr "ピッカーを開く"
@@ -670,6 +763,9 @@ msgstr "オレンジ"
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "このフォルダーの外にSnipdeckが書き込むのは、Windowsのスタートアップ項目（オンにした場合）と、スニペットを使うときのクリップボードだけです。"
 
+msgid "Panel"
+msgstr ""
+
 msgid "Panel dock"
 msgstr "パネルの固定"
 
@@ -685,8 +781,17 @@ msgstr "貼り付け"
 msgid "Paste a licence key to turn on Pro. The key is checked on this PC and nothing is sent anywhere."
 msgstr "ライセンスキーを貼り付けるとProが有効になります。キーはこのPCで確認され、何も送信されません。"
 
+msgid "Paste the Nth result"
+msgstr ""
+
 msgid "Paste the next item"
 msgstr "次のスニペットを貼り付け"
+
+msgid "Paste the next item of a stack"
+msgstr ""
+
+msgid "Paste the result"
+msgstr ""
 
 msgid "Pastes into {}"
 msgstr "{} に貼り付け"
@@ -703,6 +808,12 @@ msgstr "ファイルのパス"
 msgid "Pause hotkeys"
 msgstr "ホットキーを一時停止"
 
+msgid "Picker"
+msgstr ""
+
+msgid "Picker anywhere"
+msgstr ""
+
 msgid "Picture file"
 msgstr "画像ファイル"
 
@@ -711,6 +822,12 @@ msgstr "ピン留め"
 
 msgid "Pin a snippet from the Panel to find it here."
 msgstr "パネルでスニペットをピン留めすると、ここに表示されます。"
+
+msgid "Pin or unpin the item"
+msgstr ""
+
+msgid "Pin selected item"
+msgstr ""
 
 msgid "Pin the snippets you use most to keep them one click away."
 msgstr "よく使うスニペットをピン留めすると、ワンクリックですぐに使えます。"
@@ -723,6 +840,9 @@ msgstr "ピン留めしたスニペット"
 
 msgid "Placeholders"
 msgstr "プレースホルダー"
+
+msgid "Press Ctrl+N to add a snippet, or Ctrl+K to see every command."
+msgstr ""
 
 msgid "Press the new shortcut"
 msgstr "新しいショートカットを押してください"
@@ -738,6 +858,12 @@ msgstr "問題"
 
 msgid "Program to add"
 msgstr "追加するプログラム"
+
+msgid "Quick capture"
+msgstr ""
+
+msgid "Quick capture the clipboard"
+msgstr ""
 
 msgid "Quit"
 msgstr "終了"
@@ -817,6 +943,9 @@ msgstr "左へスクロール"
 msgid "Scroll right"
 msgstr "右へスクロール"
 
+msgid "Search"
+msgstr ""
+
 msgid "Search all snippets"
 msgstr "すべてのスニペットを検索"
 
@@ -831,6 +960,9 @@ msgstr "検索結果"
 
 msgid "Search snippets"
 msgstr "スニペットを検索"
+
+msgid "Select every item"
+msgstr ""
 
 msgid "Sensitive item"
 msgstr "機密のスニペット"
@@ -853,8 +985,14 @@ msgstr "離れたときの待ち時間を短くする"
 msgid "Show"
 msgstr "表示"
 
+msgid "Show Panel"
+msgstr ""
+
 msgid "Show Snipdeck in the taskbar"
 msgstr "Snipdeck をタスクバーに表示する"
+
+msgid "Show or hide the Panel"
+msgstr ""
 
 msgid "Show or hide the panel"
 msgstr "パネルを表示または非表示"
@@ -1042,14 +1180,29 @@ msgstr "設定でクリップボード履歴をオンにすると、コピーし
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "オフにすると、パネルまたはメインウィンドウを閉じたときに Snipdeck が終了します。"
 
+msgid "Type a command"
+msgstr ""
+
 msgid "Type {} to confirm"
 msgstr "確認のため {} と入力"
 
 msgid "Unpin"
 msgstr "ピン留めを解除"
 
+msgid "Unpin selected item"
+msgstr ""
+
 msgid "Use"
 msgstr "使用"
+
+msgid "Use selected item"
+msgstr ""
+
+msgid "Use the Nth item"
+msgstr ""
+
+msgid "Use the item"
+msgstr ""
 
 msgid "User guide"
 msgstr "ユーザーガイド"
@@ -1108,6 +1261,54 @@ msgstr "ライブラリは1つのフォルダー（%LOCALAPPDATA%\\Snipdeck）�
 msgid "Your shortcuts"
 msgstr "ショートカット設定"
 
+msgid "add create folder group"
+msgstr ""
+
+msgid "add create snippet note write"
+msgstr ""
+
+msgid "change modify rename"
+msgstr ""
+
+msgid "clipboard duplicate"
+msgstr ""
+
+msgid "clipboard save grab screenshot"
+msgstr ""
+
+msgid "delete remove discard"
+msgstr ""
+
+msgid "deleted restore bin show"
+msgstr ""
+
+msgid "diagnose doctor problems fix"
+msgstr ""
+
+msgid "everything home show"
+msgstr ""
+
+msgid "favourite favorite keep"
+msgstr ""
+
+msgid "favourite favorite remove"
+msgstr ""
+
+msgid "favourites favorites show"
+msgstr ""
+
+msgid "find filter look"
+msgstr ""
+
+msgid "help docs manual how"
+msgstr ""
+
+msgid "history clipboard show"
+msgstr ""
+
+msgid "hotkeys keys cheat sheet bindings chords"
+msgstr ""
+
 msgid "https://example.com"
 msgstr "https://example.com"
 
@@ -1117,8 +1318,35 @@ msgstr "ms"
 msgid "notepad.exe"
 msgstr "notepad.exe"
 
+msgid "open toggle deck hide"
+msgstr ""
+
+msgid "paste insert send"
+msgstr ""
+
+msgid "preferences options configure hotkeys theme backup"
+msgstr ""
+
 msgid "px"
 msgstr "px"
+
+msgid "quick find paste palette"
+msgstr ""
+
+msgid "tutorial intro onboarding basics learn"
+msgstr ""
+
+msgid "version licence update"
+msgstr ""
+
+msgid "view mode layout cards switch"
+msgstr ""
+
+msgid "view mode layout grid switch"
+msgstr ""
+
+msgid "view mode layout list dense switch"
+msgstr ""
 
 msgid "{n} item"
 msgstr "{n}件のスニペット"
@@ -1128,6 +1356,9 @@ msgstr "{n}件のスニペットも一緒にゴミ箱に移動します。30日�
 
 msgid "{} (Pro)"
 msgstr "{} (Pro)"
+
+msgid "{} found"
+msgstr ""
 
 msgid "{} of the checks need a look."
 msgstr "{} 件の項目に確認が必要です。"

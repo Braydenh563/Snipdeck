@@ -7,6 +7,8 @@
 pub mod binding;
 pub mod capture;
 pub mod cli;
+pub mod command_binding;
+pub mod commands;
 pub mod controller;
 pub mod crash;
 pub mod demo;

@@ -13,6 +13,8 @@ export component EmptyState inherits VerticalLayout {
     in property <string> heading;
     in property <string> body;
     in property <string> action-text;
+    // An optional line under the button naming the key that does the same ("Press Ctrl+N to add a snippet").
+    in property <string> hint;
     callback action();
 
     padding: Space.s6;
@@ -54,5 +56,13 @@ export component EmptyState inherits VerticalLayout {
             variant: ButtonVariant.primary;
             clicked => { root.action(); }
         }
+    }
+    if root.hint != "": Text {
+        text: root.hint;
+        color: Theme.text-secondary;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        horizontal-alignment: center;
+        wrap: word-wrap;
     }
 }

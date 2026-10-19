@@ -12,8 +12,8 @@
 use std::{cell::RefCell, rc::Rc};
 
 use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery, ElementRoot};
-use slint::{ComponentHandle, Model, VecModel, platform::Key};
-use snipdeck_ui::{Fonts, MainSection, MainView, MainWindow, selection};
+use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel, platform::Key};
+use snipdeck_ui::{Fonts, MainSection, MainView, MainWindow, PaletteRow, selection};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -128,6 +128,9 @@ fn start() -> (MainWindow, Log) {
     hook!(on_tag_delete_confirmed, |i| format!("tag-delete:{i}"));
     hook!(on_empty_trash_confirmed, || "empty-trash".to_string());
     hook!(on_manage_tags_requested, || "manage-tags".to_string());
+    hook!(on_palette_opened, || "palette-opened".to_string());
+    hook!(on_palette_query_changed, |q| format!("palette-query:{q}"));
+    hook!(on_command_requested, |id| format!("command:{id}"));
     ui.invoke_focus_items();
     settle();
     (ui, log)
@@ -658,5 +661,161 @@ ui_tests! {
         assert_eq!(fonts.get_mono(), "IBM Plex Mono", "code and keycaps never change");
         fonts.set_cjk_family("".into());
         assert_eq!(fonts.get_sans(), "IBM Plex Sans");
+    }
+}
+
+// ---- Command palette and shortcut hints ------------------------------------------------------------
+
+/// Sets the rows the host would send: `(id, label, keys)`.
+fn palette_rows(ui: &MainWindow, rows: &[(i32, &str, &[&str])]) {
+    let rows: Vec<PaletteRow> = rows
+        .iter()
+        .map(|(id, label, keys)| PaletteRow {
+            id: *id,
+            label: (*label).into(),
+            keys: ModelRc::new(VecModel::from(
+                keys.iter().map(|k| (*k).into()).collect::<Vec<SharedString>>(),
+            )),
+            spoken: keys.join(" ").into(),
+        })
+        .collect();
+    ui.set_palette_rows(ModelRc::new(VecModel::from(rows)));
+    settle();
+}
+
+const SAMPLE: [(i32, &str, &[&str]); 3] = [
+    (0, "New item", &["Ctrl", "N"]),
+    (2, "Search", &["Ctrl", "F"]),
+    (9, "Keyboard shortcuts", &["Ctrl", "/"]),
+];
+
+ui_tests! {
+    fn ctrl_k_ctrl_shift_p_and_the_toolbar_button_open_the_palette_and_ask_for_rows() {
+        let (ui, log) = start();
+        assert!(!ui.get_palette_open());
+        chord(ui.window(), &[Key::Control], "k");
+        settle();
+        assert!(ui.get_palette_open());
+        assert_eq!(take(&log), ["palette-opened"]);
+        press_key(&ui, Key::Escape);
+        assert!(!ui.get_palette_open());
+
+        chord(ui.window(), &[Key::Control, Key::Shift], "P");
+        settle();
+        assert!(ui.get_palette_open(), "Ctrl+Shift+P opens it too");
+        press_key(&ui, Key::Escape);
+        take(&log);
+
+        find(&ui, "Commands (Ctrl+K)", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_palette_open(), "the toolbar button opens it");
+        assert_eq!(take(&log), ["palette-opened"]);
+    }
+
+    fn the_palette_lists_commands_as_list_items_with_their_shortcuts_spoken() {
+        let (ui, _log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        palette_rows(&ui, &SAMPLE);
+        let list = by_role(&ui, AccessibleRole::List);
+        assert!(!list.is_empty());
+        let item = find(&ui, "New item", AccessibleRole::ListItem);
+        assert_eq!(item.accessible_description().as_deref(), Some("Ctrl N"));
+        assert_eq!(item.accessible_item_index(), Some(0));
+        assert_eq!(item.accessible_item_count(), Some(3));
+        assert_eq!(item.accessible_item_selected(), Some(true), "the first row is highlighted");
+        assert_eq!(find(&ui, "Search", AccessibleRole::ListItem).accessible_item_selected(), Some(false));
+        find(&ui, "3 found", AccessibleRole::Text);
+    }
+
+    fn typing_reports_the_query_and_the_hosts_rows_replace_the_list() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        palette_rows(&ui, &SAMPLE);
+        take(&log);
+        type_text(ui.window(), "se");
+        settle();
+        assert_eq!(take(&log), ["palette-query:s", "palette-query:se"]);
+        palette_rows(&ui, &[SAMPLE[1]]);
+        assert!(missing(&ui, "New item", AccessibleRole::ListItem));
+        find(&ui, "Search", AccessibleRole::ListItem);
+        find(&ui, "1 found", AccessibleRole::Text);
+        palette_rows(&ui, &[]);
+        find(&ui, "No matching command", AccessibleRole::Text);
+    }
+
+    fn arrows_move_the_highlight_wrapping_and_enter_runs_the_command_and_gives_focus_back() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        palette_rows(&ui, &SAMPLE);
+        take(&log);
+        press_key(&ui, Key::DownArrow);
+        assert_eq!(find(&ui, "Search", AccessibleRole::ListItem).accessible_item_selected(), Some(true));
+        press_key(&ui, Key::UpArrow);
+        press_key(&ui, Key::UpArrow);
+        assert_eq!(
+            find(&ui, "Keyboard shortcuts", AccessibleRole::ListItem).accessible_item_selected(),
+            Some(true),
+            "Up from the first row wraps to the last"
+        );
+        press_key(&ui, Key::Return);
+        assert_eq!(take(&log), ["command:9"], "the id of the highlighted row, not its position");
+        assert!(!ui.get_palette_open());
+        assert!(ui.get_items_focused(), "the keyboard is back on the items");
+    }
+
+    fn clicking_a_row_runs_it_and_escape_closes_without_running() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        palette_rows(&ui, &SAMPLE);
+        take(&log);
+        press_key(&ui, Key::Escape);
+        assert!(!ui.get_palette_open());
+        assert!(ui.get_items_focused(), "Escape returns the focus");
+        assert_eq!(take(&log), Vec::<String>::new());
+
+        chord(ui.window(), &[Key::Control], "k");
+        palette_rows(&ui, &SAMPLE);
+        take(&log);
+        find(&ui, "Search", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["command:2"]);
+        assert!(!ui.get_palette_open());
+    }
+
+    fn the_palette_swallows_the_windows_other_shortcuts_while_it_is_open() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        palette_rows(&ui, &SAMPLE);
+        take(&log);
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        assert!(!take(&log).contains(&"new".to_string()), "Ctrl+N does not add an item behind the palette");
+    }
+
+    fn ctrl_comma_and_ctrl_slash_open_settings_and_the_shortcuts_sheet() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], ",");
+        assert_eq!(take(&log), ["settings"]);
+        chord(ui.window(), &[Key::Control], "/");
+        assert_eq!(take(&log), ["help:3"]);
+        assert!(!ui.get_search_focused(), "Ctrl+/ is not the bare / that opens the search");
+    }
+
+    fn the_help_menu_lists_the_shortcuts_with_their_keys() {
+        let (ui, log) = start();
+        find(&ui, "Help", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        let row = find(&ui, "Keyboard shortcuts", AccessibleRole::ListItem);
+        assert_eq!(row.accessible_description().as_deref(), Some("Ctrl+/"));
+        row.invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["help:3"]);
+    }
+
+    fn an_empty_deck_names_the_keys_that_help() {
+        let (ui, _log) = start();
+        fixture::set_rows(&ui, Vec::new());
+        settle();
+        find(&ui, "Press Ctrl+N to add a snippet, or Ctrl+K to see every command.", AccessibleRole::Text);
     }
 }

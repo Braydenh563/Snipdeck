@@ -52,6 +52,9 @@ msgstr "Auch den Verschlüsselungsschlüssel vergessen"
 msgid "Amber"
 msgstr "Bernstein"
 
+msgid "Anywhere in Windows"
+msgstr ""
+
 msgid "Appearance"
 msgstr "Darstellung"
 
@@ -115,6 +118,9 @@ msgstr "Abbrechen"
 msgid "Captured items keep their kind."
 msgstr "Erfasste Textbausteine behalten ihre Art."
 
+msgid "Change these in Settings."
+msgstr ""
+
 msgid "Changes apply at once."
 msgstr "Änderungen werden sofort übernommen."
 
@@ -142,6 +148,9 @@ msgstr "Suche löschen"
 msgid "Clear selection"
 msgstr "Auswahl aufheben"
 
+msgid "Clear the search, then close"
+msgstr ""
+
 msgid "Clear the shortcut for {}"
 msgstr "Tastenkürzel für {} entfernen"
 
@@ -151,8 +160,8 @@ msgstr "Klick"
 msgid "Close"
 msgstr "Schließen"
 
-msgid "Close panel"
-msgstr "Panel schließen"
+msgid "Close panel (Esc)"
+msgstr ""
 
 msgid "Close the tag list"
 msgstr "Schlagwortliste schließen"
@@ -165,6 +174,18 @@ msgstr "Farbe"
 
 msgid "Comfortable view"
 msgstr "Komfortable Ansicht"
+
+msgid "Command palette (every action)"
+msgstr ""
+
+msgid "Commands"
+msgstr ""
+
+msgid "Commands (Ctrl+K)"
+msgstr ""
+
+msgid "Commands in the Main window"
+msgstr ""
 
 msgid "Compact view"
 msgstr "Kompakte Ansicht"
@@ -184,11 +205,20 @@ msgstr "Kopieren"
 msgid "Copy diagnostic report"
 msgstr "Diagnosebericht kopieren"
 
+msgid "Copy selected item"
+msgstr ""
+
 msgid "Copy something, then save it from the Panel."
 msgstr "Kopiere etwas und speichere es dann im Panel."
 
 msgid "Copy something, then save it here from the clipboard."
 msgstr "Kopiere etwas und speichere es dann hier aus der Zwischenablage."
+
+msgid "Copy the item"
+msgstr ""
+
+msgid "Copy the result"
+msgstr ""
 
 msgid "Dark"
 msgstr "Dunkel"
@@ -274,6 +304,18 @@ msgstr "Liste bearbeiten"
 msgid "Edit list…"
 msgstr "Liste bearbeiten…"
 
+msgid "Edit selected item"
+msgstr ""
+
+msgid "Edit the item"
+msgstr ""
+
+msgid "Edit the result"
+msgstr ""
+
+msgid "Editors"
+msgstr ""
+
 msgid "Empty Trash"
 msgstr "Papierkorb leeren"
 
@@ -325,6 +367,9 @@ msgstr "Datei"
 msgid "Fill in template"
 msgstr "Vorlage ausfüllen"
 
+msgid "Filter as you type"
+msgstr ""
+
 msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
 msgstr "Setzt das Panel an einen Bildschirmrand, auf dem Monitor, auf dem es sich befindet. „Frei“ lässt es überall stehen."
 
@@ -357,6 +402,18 @@ msgstr "Gib der Liste einen Namen."
 
 msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
 msgstr "Gibt dem Panel eine Schaltfläche in der Taskleiste. Ausgeschaltet bleibt es aus Taskleiste und Alt+Tab heraus; das Symbol im Infobereich und der Panel-Shortcut holen es weiterhin zurück."
+
+msgid "Go to All items"
+msgstr ""
+
+msgid "Go to Pinned"
+msgstr ""
+
+msgid "Go to Recent"
+msgstr ""
+
+msgid "Go to Trash"
+msgstr ""
 
 msgid "Green"
 msgstr "Grün"
@@ -436,6 +493,9 @@ msgstr "Panel immer im Vordergrund halten"
 msgid "Keep running in the tray when the window closes"
 msgstr "Beim Schließen des Fensters im Infobereich weiterlaufen"
 
+msgid "Keyboard shortcuts"
+msgstr ""
+
 msgid "Kind"
 msgstr "Art"
 
@@ -487,6 +547,9 @@ msgstr "Wird geladen"
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Protokolle werden nur geschrieben, wenn Snipdeck abstürzt, enthalten keine Inhalte von Textbausteinen und werden nirgendwohin gesendet."
 
+msgid "Main window"
+msgstr ""
+
 msgid "Make the panel narrower"
 msgstr "Panel schmaler machen"
 
@@ -513,6 +576,21 @@ msgstr "Am häufigsten verwendet"
 
 msgid "Move"
 msgstr "Verschieben"
+
+msgid "Move selected item to Trash"
+msgstr ""
+
+msgid "Move the item to the Trash"
+msgstr ""
+
+msgid "Move the item up or down its list"
+msgstr ""
+
+msgid "Move through the items"
+msgstr ""
+
+msgid "Move through the results"
+msgstr ""
 
 msgid "Move to Trash"
 msgstr "In den Papierkorb"
@@ -550,6 +628,12 @@ msgstr "Neues Schlagwort, dann Enter"
 msgid "Next"
 msgstr "Weiter"
 
+msgid "Next list"
+msgstr ""
+
+msgid "Next scope"
+msgstr ""
+
 msgid "No backups yet."
 msgstr "Noch keine Sicherungen."
 
@@ -564,6 +648,9 @@ msgstr "Noch keine Listen"
 
 msgid "No matches"
 msgstr "Keine Treffer"
+
+msgid "No matching command"
+msgstr ""
 
 msgid "No programs yet."
 msgstr "Noch keine Programme."
@@ -622,6 +709,9 @@ msgstr "Öffnen"
 msgid "Open Panel"
 msgstr "Panel öffnen"
 
+msgid "Open Picker"
+msgstr ""
+
 msgid "Open Settings"
 msgstr "Einstellungen öffnen"
 
@@ -642,6 +732,9 @@ msgstr "Protokollordner öffnen"
 
 msgid "Open the Microsoft Store page"
 msgstr "Seite im Microsoft Store öffnen"
+
+msgid "Open the Picker at your cursor"
+msgstr ""
 
 msgid "Open the picker"
 msgstr "Auswahl öffnen"
@@ -670,6 +763,9 @@ msgstr "Orange"
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "Außerhalb dieses Ordners schreibt Snipdeck nur den Windows-Autostart-Eintrag (wenn du ihn einschaltest) und die Zwischenablage, wenn du einen Textbaustein verwendest."
 
+msgid "Panel"
+msgstr ""
+
 msgid "Panel dock"
 msgstr "Panel andocken"
 
@@ -685,8 +781,17 @@ msgstr "Einfügen"
 msgid "Paste a licence key to turn on Pro. The key is checked on this PC and nothing is sent anywhere."
 msgstr "Füge einen Lizenzschlüssel ein, um Pro einzuschalten. Der Schlüssel wird auf diesem PC geprüft und nichts wird irgendwohin gesendet."
 
+msgid "Paste the Nth result"
+msgstr ""
+
 msgid "Paste the next item"
 msgstr "Nächsten Textbaustein einfügen"
+
+msgid "Paste the next item of a stack"
+msgstr ""
+
+msgid "Paste the result"
+msgstr ""
 
 msgid "Pastes into {}"
 msgstr "Einfügen in {}"
@@ -703,6 +808,12 @@ msgstr "Pfad zur Datei"
 msgid "Pause hotkeys"
 msgstr "Tastenkürzel pausieren"
 
+msgid "Picker"
+msgstr ""
+
+msgid "Picker anywhere"
+msgstr ""
+
 msgid "Picture file"
 msgstr "Bilddatei"
 
@@ -711,6 +822,12 @@ msgstr "Anheften"
 
 msgid "Pin a snippet from the Panel to find it here."
 msgstr "Hefte einen Textbaustein im Panel an, um ihn hier zu finden."
+
+msgid "Pin or unpin the item"
+msgstr ""
+
+msgid "Pin selected item"
+msgstr ""
 
 msgid "Pin the snippets you use most to keep them one click away."
 msgstr "Hefte die Textbausteine an, die du am häufigsten nutzt, damit sie mit einem Klick erreichbar sind."
@@ -723,6 +840,9 @@ msgstr "Angeheftete Textbausteine"
 
 msgid "Placeholders"
 msgstr "Platzhalter"
+
+msgid "Press Ctrl+N to add a snippet, or Ctrl+K to see every command."
+msgstr ""
 
 msgid "Press the new shortcut"
 msgstr "Neues Tastenkürzel drücken"
@@ -738,6 +858,12 @@ msgstr "Problem"
 
 msgid "Program to add"
 msgstr "Hinzuzufügendes Programm"
+
+msgid "Quick capture"
+msgstr ""
+
+msgid "Quick capture the clipboard"
+msgstr ""
 
 msgid "Quit"
 msgstr "Beenden"
@@ -817,6 +943,9 @@ msgstr "Nach links scrollen"
 msgid "Scroll right"
 msgstr "Nach rechts scrollen"
 
+msgid "Search"
+msgstr ""
+
 msgid "Search all snippets"
 msgstr "Alle Textbausteine durchsuchen"
 
@@ -831,6 +960,9 @@ msgstr "Suchergebnisse"
 
 msgid "Search snippets"
 msgstr "Textbausteine suchen"
+
+msgid "Select every item"
+msgstr ""
 
 msgid "Sensitive item"
 msgstr "Vertraulicher Textbaustein"
@@ -853,8 +985,14 @@ msgstr "Verzögerung beim Verlassen verkürzen"
 msgid "Show"
 msgstr "Anzeigen"
 
+msgid "Show Panel"
+msgstr ""
+
 msgid "Show Snipdeck in the taskbar"
 msgstr "Snipdeck in der Taskleiste anzeigen"
+
+msgid "Show or hide the Panel"
+msgstr ""
 
 msgid "Show or hide the panel"
 msgstr "Panel anzeigen oder ausblenden"
@@ -1042,14 +1180,29 @@ msgstr "Aktiviere den Zwischenablageverlauf in den Einstellungen, um Kopiertes z
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "Schaltest du das aus, beendet das Schließen des Panels oder des Hauptfensters Snipdeck."
 
+msgid "Type a command"
+msgstr ""
+
 msgid "Type {} to confirm"
 msgstr "Gib {} zur Bestätigung ein"
 
 msgid "Unpin"
 msgstr "Lösen"
 
+msgid "Unpin selected item"
+msgstr ""
+
 msgid "Use"
 msgstr "Verwenden"
+
+msgid "Use selected item"
+msgstr ""
+
+msgid "Use the Nth item"
+msgstr ""
+
+msgid "Use the item"
+msgstr ""
 
 msgid "User guide"
 msgstr "Benutzerhandbuch"
@@ -1108,6 +1261,54 @@ msgstr "Deine Bibliothek liegt in einem Ordner, %LOCALAPPDATA%\\Snipdeck: snipde
 msgid "Your shortcuts"
 msgstr "Deine Tastenkürzel"
 
+msgid "add create folder group"
+msgstr ""
+
+msgid "add create snippet note write"
+msgstr ""
+
+msgid "change modify rename"
+msgstr ""
+
+msgid "clipboard duplicate"
+msgstr ""
+
+msgid "clipboard save grab screenshot"
+msgstr ""
+
+msgid "delete remove discard"
+msgstr ""
+
+msgid "deleted restore bin show"
+msgstr ""
+
+msgid "diagnose doctor problems fix"
+msgstr ""
+
+msgid "everything home show"
+msgstr ""
+
+msgid "favourite favorite keep"
+msgstr ""
+
+msgid "favourite favorite remove"
+msgstr ""
+
+msgid "favourites favorites show"
+msgstr ""
+
+msgid "find filter look"
+msgstr ""
+
+msgid "help docs manual how"
+msgstr ""
+
+msgid "history clipboard show"
+msgstr ""
+
+msgid "hotkeys keys cheat sheet bindings chords"
+msgstr ""
+
 msgid "https://example.com"
 msgstr "https://example.com"
 
@@ -1117,8 +1318,35 @@ msgstr "ms"
 msgid "notepad.exe"
 msgstr "notepad.exe"
 
+msgid "open toggle deck hide"
+msgstr ""
+
+msgid "paste insert send"
+msgstr ""
+
+msgid "preferences options configure hotkeys theme backup"
+msgstr ""
+
 msgid "px"
 msgstr "px"
+
+msgid "quick find paste palette"
+msgstr ""
+
+msgid "tutorial intro onboarding basics learn"
+msgstr ""
+
+msgid "version licence update"
+msgstr ""
+
+msgid "view mode layout cards switch"
+msgstr ""
+
+msgid "view mode layout grid switch"
+msgstr ""
+
+msgid "view mode layout list dense switch"
+msgstr ""
 
 msgid "{n} item"
 msgstr "{n} Textbaustein"
@@ -1128,6 +1356,9 @@ msgstr "{n} Textbaustein wird mit ihr in den Papierkorb verschoben. Du kannst ih
 
 msgid "{} (Pro)"
 msgstr "{} (Pro)"
+
+msgid "{} found"
+msgstr ""
 
 msgid "{} of the checks need a look."
 msgstr "{} der Prüfungen brauchen einen Blick."

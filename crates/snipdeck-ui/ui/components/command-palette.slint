@@ -1,0 +1,200 @@
+import { Theme, Type, Radius, Space, Motion, Fonts, SystemLook } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { SearchField } from "text_field.slint";
+import { KeyCombo } from "keycap.slint";
+
+// One row of the palette: the app builds it (already filtered), `id` is the command it runs.
+export struct PaletteRow {
+    id: int,
+    label: string,
+    // The shortcut as key caps ("Ctrl", "N"); empty = none.
+    keys: [string],
+    // The same shortcut spoken ("Control N").
+    spoken: string,
+}
+
+// One palette row: label left, key caps right, 28px like a menu row.
+component PaletteItem inherits Rectangle {
+    in property <PaletteRow> data;
+    in property <bool> current: false;
+    in property <int> index: 0;
+    in property <int> count: 1;
+    callback activated();
+    callback pointer-entered();
+
+    height: max(Space.hit, Type.line-base + Space.s2);
+    background: root.current ? Theme.bg-overlay-hover : transparent;
+    border-radius: Radius.sm;
+    border-width: root.current ? 2px : 0px;
+    border-color: Theme.focus-ring;
+    accessible-role: list-item;
+    accessible-label: root.data.label;
+    accessible-description: root.data.spoken;
+    accessible-item-index: root.index;
+    accessible-item-count: root.count;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.current;
+    accessible-action-default => { root.activated(); }
+
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    HorizontalLayout {
+        padding-left: Space.s2;
+        padding-right: Space.s2;
+        spacing: Space.s2;
+        Text {
+            text: root.data.label;
+            color: Theme.text-primary;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+            accessible-role: none;
+        }
+        if root.data.keys.length > 0: Rectangle {
+            width: caps.min-width;
+            caps := KeyCombo {
+                keys: root.data.keys;
+                label: root.data.spoken;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+    }
+
+    TouchArea {
+        changed has-hover => {
+            if (self.has-hover) {
+                root.pointer-entered();
+            }
+        }
+        clicked => { root.activated(); }
+    }
+}
+
+// The command palette: a floating searchable list of every action with its shortcut, over a 40% scrim.
+// Place it as the LAST child of the window. The host owns the rows (it filters them for `query` and sets
+// `rows` again on `query-changed`). The field keeps the keyboard: typing filters, Up/Down move the highlight
+// (wrapping), Enter runs it (`chosen(id)`), Esc asks to close (`dismissed`). A click on the scrim closes it.
+// The footer count is a polite live region so a screen reader hears how many commands are left.
+export component CommandPalette inherits Rectangle {
+    in property <[PaletteRow]> rows;
+    in property <string> placeholder;
+    in property <string> title;
+    in-out property <string> query <=> field.text;
+    in-out property <int> current: 0;
+    callback query-changed(string);
+    callback chosen(int);
+    callback dismissed();
+
+    public function focus-field() {
+        field.focus();
+        field.select-all();
+    }
+
+    property <int> cur: root.rows.length == 0 ? -1 : min(max(root.current, 0), root.rows.length - 1);
+    property <color> scrim: ((Theme.dark || Theme.hc-border != transparent) ? Theme.bg-app : Theme.text-primary).with-alpha(0.4);
+    property <length> row-h: max(Space.hit, Type.line-base + Space.s2);
+
+    function move(delta: int) {
+        if (root.rows.length > 0) {
+            root.current = mod(root.cur + delta + root.rows.length, root.rows.length);
+        }
+    }
+
+    background: root.scrim;
+    accessible-role: groupbox;
+    accessible-label: root.title;
+
+    // Modal: the pointer does not reach what is behind; a click outside the card closes.
+    TouchArea {
+        clicked => { root.dismissed(); }
+    }
+
+    card := Rectangle {
+        width: min(Space.s12 * 9, parent.width - 2 * Space.s4);
+        x: (parent.width - self.width) / 2;
+        y: min(Space.s12, parent.height / 8);
+        height: min(content.preferred-height, parent.height - self.y - Space.s4);
+        background: Theme.bg-overlay;
+        border-radius: Radius.lg;
+        border-width: 1px;
+        border-color: Theme.border-default;
+        clip: true;
+        TouchArea { }
+
+        FocusScope {
+            forward-focus: field;
+            capture-key-pressed(event) => {
+                if (event.text == Key.Escape) {
+                    root.dismissed();
+                    return accept;
+                }
+                if (event.text == Key.DownArrow) {
+                    root.move(1);
+                    return accept;
+                }
+                if (event.text == Key.UpArrow) {
+                    root.move(-1);
+                    return accept;
+                }
+                if (event.text == Key.Return && root.cur >= 0 && !field.composing) {
+                    root.chosen(root.rows[root.cur].id);
+                    return accept;
+                }
+                return reject;
+            }
+
+            content := VerticalLayout {
+                padding: Space.s2;
+                spacing: Space.s2;
+                field := SearchField {
+                    placeholder: root.placeholder;
+                    label: root.title;
+                    clear-label: @tr("Clear search");
+                    edited(text) => {
+                        root.current = 0;
+                        root.query-changed(text);
+                    }
+                }
+                Flickable {
+                    // Keeps the highlighted row in view.
+                    viewport-y: min(0px, max(-(root.cur + 1) * root.row-h + self.height, -root.cur * root.row-h));
+                    height: min(root.rows.length * root.row-h, Space.s12 * 6);
+                    interactive: false;
+                    VerticalLayout {
+                        accessible-role: list;
+                        accessible-label: root.title;
+                        for row[i] in root.rows: PaletteItem {
+                            data: row;
+                            index: i;
+                            count: root.rows.length;
+                            current: root.cur == i;
+                            pointer-entered => { root.current = i; }
+                            activated => { root.chosen(row.id); }
+                        }
+                    }
+                }
+                if root.rows.length == 0: Text {
+                    text: @tr("No matching command");
+                    color: Theme.text-secondary;
+                    font-family: Fonts.sans;
+                    font-size: Type.base;
+                    horizontal-alignment: center;
+                    height: root.row-h;
+                    vertical-alignment: center;
+                    accessible-role: text;
+                }
+                Text {
+                    text: @tr("{} found", root.rows.length);
+                    color: Theme.text-secondary;
+                    font-family: Fonts.sans;
+                    font-size: Type.sm;
+                    horizontal-alignment: right;
+                    accessible-role: text;
+                    accessible-live-region: polite;
+                }
+            }
+        }
+    }
+}

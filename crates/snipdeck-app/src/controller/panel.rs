@@ -22,6 +22,8 @@ pub enum HelpTopic {
     Guide,
     /// The About box.
     About,
+    /// The Help window on its Shortcuts tab (Ctrl+/, "Keyboard shortcuts").
+    Shortcuts,
 }
 
 /// One row of the Panel's kebab menu, in the order it is drawn. The menu is flat: a row's
@@ -30,6 +32,8 @@ pub enum HelpTopic {
 pub enum AppMenuEntry {
     /// Open the Main window.
     Open,
+    /// Open the Main window on its command palette ("All commands…", Ctrl+K).
+    Commands,
     /// Make a new snippet.
     NewSnippet,
     /// Open Settings.
@@ -45,6 +49,8 @@ pub enum AppMenuEntry {
     Troubleshoot,
     /// Help: the user guide.
     UserGuide,
+    /// Help: the keyboard shortcuts (Ctrl+/).
+    Shortcuts,
     /// Help: About Snipdeck.
     About,
     /// Exit the app.
@@ -87,8 +93,9 @@ pub const LIST_MENU: [ListMenuEntry; 2] = [ListMenuEntry::Edit, ListMenuEntry::D
 
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
 /// `Menu` has no sub-menus.
-pub const APP_MENU: [AppMenuEntry; 10] = [
+pub const APP_MENU: [AppMenuEntry; 12] = [
     AppMenuEntry::Open,
+    AppMenuEntry::Commands,
     AppMenuEntry::NewSnippet,
     AppMenuEntry::Settings,
     AppMenuEntry::Dock,
@@ -96,6 +103,7 @@ pub const APP_MENU: [AppMenuEntry; 10] = [
     AppMenuEntry::Separator,
     AppMenuEntry::Troubleshoot,
     AppMenuEntry::UserGuide,
+    AppMenuEntry::Shortcuts,
     AppMenuEntry::About,
     AppMenuEntry::Quit,
 ];
@@ -133,6 +141,7 @@ where
         self.menu = PanelMenu::None;
         match entry {
             AppMenuEntry::Open => vec![Effect::OpenMainWindow],
+            AppMenuEntry::Commands => vec![Effect::OpenCommands],
             AppMenuEntry::NewSnippet => vec![Effect::NewItem],
             AppMenuEntry::Settings => vec![Effect::OpenSettings],
             AppMenuEntry::Dock => {
@@ -145,6 +154,7 @@ where
             }
             AppMenuEntry::Troubleshoot => vec![Effect::OpenHelp(HelpTopic::Troubleshoot)],
             AppMenuEntry::UserGuide => vec![Effect::OpenHelp(HelpTopic::Guide)],
+            AppMenuEntry::Shortcuts => vec![Effect::OpenHelp(HelpTopic::Shortcuts)],
             AppMenuEntry::About => vec![Effect::OpenHelp(HelpTopic::About)],
             AppMenuEntry::Quit => vec![Effect::Quit],
             AppMenuEntry::Separator => Vec::new(),

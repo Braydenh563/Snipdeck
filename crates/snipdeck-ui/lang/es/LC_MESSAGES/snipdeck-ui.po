@@ -52,6 +52,9 @@ msgstr "Olvidar también la clave de cifrado"
 msgid "Amber"
 msgstr "Ámbar"
 
+msgid "Anywhere in Windows"
+msgstr ""
+
 msgid "Appearance"
 msgstr "Apariencia"
 
@@ -115,6 +118,9 @@ msgstr "Cancelar"
 msgid "Captured items keep their kind."
 msgstr "Los fragmentos capturados conservan su tipo."
 
+msgid "Change these in Settings."
+msgstr ""
+
 msgid "Changes apply at once."
 msgstr "Los cambios se aplican de inmediato."
 
@@ -142,6 +148,9 @@ msgstr "Borrar búsqueda"
 msgid "Clear selection"
 msgstr "Borrar selección"
 
+msgid "Clear the search, then close"
+msgstr ""
+
 msgid "Clear the shortcut for {}"
 msgstr "Borrar el atajo de {}"
 
@@ -151,8 +160,8 @@ msgstr "Clic"
 msgid "Close"
 msgstr "Cerrar"
 
-msgid "Close panel"
-msgstr "Cerrar panel"
+msgid "Close panel (Esc)"
+msgstr ""
 
 msgid "Close the tag list"
 msgstr "Cerrar la lista de etiquetas"
@@ -165,6 +174,18 @@ msgstr "Color"
 
 msgid "Comfortable view"
 msgstr "Vista cómoda"
+
+msgid "Command palette (every action)"
+msgstr ""
+
+msgid "Commands"
+msgstr ""
+
+msgid "Commands (Ctrl+K)"
+msgstr ""
+
+msgid "Commands in the Main window"
+msgstr ""
 
 msgid "Compact view"
 msgstr "Vista compacta"
@@ -184,11 +205,20 @@ msgstr "Copiar"
 msgid "Copy diagnostic report"
 msgstr "Copiar informe de diagnóstico"
 
+msgid "Copy selected item"
+msgstr ""
+
 msgid "Copy something, then save it from the Panel."
 msgstr "Copia algo y luego guárdalo desde el panel."
 
 msgid "Copy something, then save it here from the clipboard."
 msgstr "Copia algo y luego guárdalo aquí desde el portapapeles."
+
+msgid "Copy the item"
+msgstr ""
+
+msgid "Copy the result"
+msgstr ""
 
 msgid "Dark"
 msgstr "Oscuro"
@@ -274,6 +304,18 @@ msgstr "Editar lista"
 msgid "Edit list…"
 msgstr "Editar lista…"
 
+msgid "Edit selected item"
+msgstr ""
+
+msgid "Edit the item"
+msgstr ""
+
+msgid "Edit the result"
+msgstr ""
+
+msgid "Editors"
+msgstr ""
+
 msgid "Empty Trash"
 msgstr "Vaciar papelera"
 
@@ -325,6 +367,9 @@ msgstr "Archivo"
 msgid "Fill in template"
 msgstr "Rellenar plantilla"
 
+msgid "Filter as you type"
+msgstr ""
+
 msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
 msgstr "Fija el panel a un borde de la pantalla, en el monitor en el que está. «Flotante» permite dejarlo en cualquier sitio."
 
@@ -357,6 +402,18 @@ msgstr "Ponle un nombre a la lista."
 
 msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
 msgstr "Da al panel un botón en la barra de tareas. Desactivado, queda fuera de la barra de tareas y de Alt+Tab; el icono de la bandeja y el atajo del panel lo siguen mostrando."
+
+msgid "Go to All items"
+msgstr ""
+
+msgid "Go to Pinned"
+msgstr ""
+
+msgid "Go to Recent"
+msgstr ""
+
+msgid "Go to Trash"
+msgstr ""
 
 msgid "Green"
 msgstr "Verde"
@@ -436,6 +493,9 @@ msgstr "Mantener el panel encima"
 msgid "Keep running in the tray when the window closes"
 msgstr "Seguir ejecutándose en la bandeja al cerrar la ventana"
 
+msgid "Keyboard shortcuts"
+msgstr ""
+
 msgid "Kind"
 msgstr "Tipo"
 
@@ -487,6 +547,9 @@ msgstr "Cargando"
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Los registros solo se escriben cuando Snipdeck se cierra por un error, no contienen el contenido de los fragmentos y no se envían a ningún sitio."
 
+msgid "Main window"
+msgstr ""
+
 msgid "Make the panel narrower"
 msgstr "Hacer el panel más estrecho"
 
@@ -513,6 +576,21 @@ msgstr "Más usados"
 
 msgid "Move"
 msgstr "Mover"
+
+msgid "Move selected item to Trash"
+msgstr ""
+
+msgid "Move the item to the Trash"
+msgstr ""
+
+msgid "Move the item up or down its list"
+msgstr ""
+
+msgid "Move through the items"
+msgstr ""
+
+msgid "Move through the results"
+msgstr ""
 
 msgid "Move to Trash"
 msgstr "Mover a la papelera"
@@ -550,6 +628,12 @@ msgstr "Nueva etiqueta y luego Enter"
 msgid "Next"
 msgstr "Siguiente"
 
+msgid "Next list"
+msgstr ""
+
+msgid "Next scope"
+msgstr ""
+
 msgid "No backups yet."
 msgstr "Aún no hay copias de seguridad."
 
@@ -564,6 +648,9 @@ msgstr "Aún no hay listas"
 
 msgid "No matches"
 msgstr "Sin coincidencias"
+
+msgid "No matching command"
+msgstr ""
 
 msgid "No programs yet."
 msgstr "Aún no hay programas."
@@ -622,6 +709,9 @@ msgstr "Abrir"
 msgid "Open Panel"
 msgstr "Abrir panel"
 
+msgid "Open Picker"
+msgstr ""
+
 msgid "Open Settings"
 msgstr "Abrir configuración"
 
@@ -642,6 +732,9 @@ msgstr "Abrir carpeta de registros"
 
 msgid "Open the Microsoft Store page"
 msgstr "Abrir la página de Microsoft Store"
+
+msgid "Open the Picker at your cursor"
+msgstr ""
 
 msgid "Open the picker"
 msgstr "Abrir el selector"
@@ -670,6 +763,9 @@ msgstr "Naranja"
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr "Fuera de esa carpeta Snipdeck solo escribe la entrada de inicio de Windows (si la activas) y el portapapeles cuando usas un fragmento."
 
+msgid "Panel"
+msgstr ""
+
 msgid "Panel dock"
 msgstr "Acoplado del panel"
 
@@ -685,8 +781,17 @@ msgstr "Pegar"
 msgid "Paste a licence key to turn on Pro. The key is checked on this PC and nothing is sent anywhere."
 msgstr "Pega una clave de licencia para activar Pro. La clave se comprueba en este PC y no se envía nada a ningún sitio."
 
+msgid "Paste the Nth result"
+msgstr ""
+
 msgid "Paste the next item"
 msgstr "Pegar el siguiente fragmento"
+
+msgid "Paste the next item of a stack"
+msgstr ""
+
+msgid "Paste the result"
+msgstr ""
 
 msgid "Pastes into {}"
 msgstr "Pega en {}"
@@ -703,6 +808,12 @@ msgstr "Ruta del archivo"
 msgid "Pause hotkeys"
 msgstr "Pausar atajos"
 
+msgid "Picker"
+msgstr ""
+
+msgid "Picker anywhere"
+msgstr ""
+
 msgid "Picture file"
 msgstr "Archivo de imagen"
 
@@ -711,6 +822,12 @@ msgstr "Fijar"
 
 msgid "Pin a snippet from the Panel to find it here."
 msgstr "Fija un fragmento desde el panel para encontrarlo aquí."
+
+msgid "Pin or unpin the item"
+msgstr ""
+
+msgid "Pin selected item"
+msgstr ""
 
 msgid "Pin the snippets you use most to keep them one click away."
 msgstr "Fija los fragmentos que más usas para tenerlos a un clic."
@@ -723,6 +840,9 @@ msgstr "Fragmentos fijados"
 
 msgid "Placeholders"
 msgstr "Marcadores de posición"
+
+msgid "Press Ctrl+N to add a snippet, or Ctrl+K to see every command."
+msgstr ""
 
 msgid "Press the new shortcut"
 msgstr "Pulsa el nuevo atajo"
@@ -738,6 +858,12 @@ msgstr "Problema"
 
 msgid "Program to add"
 msgstr "Programa para añadir"
+
+msgid "Quick capture"
+msgstr ""
+
+msgid "Quick capture the clipboard"
+msgstr ""
 
 msgid "Quit"
 msgstr "Salir"
@@ -817,6 +943,9 @@ msgstr "Desplazar a la izquierda"
 msgid "Scroll right"
 msgstr "Desplazar a la derecha"
 
+msgid "Search"
+msgstr ""
+
 msgid "Search all snippets"
 msgstr "Buscar en todos los fragmentos"
 
@@ -831,6 +960,9 @@ msgstr "Resultados de búsqueda"
 
 msgid "Search snippets"
 msgstr "Buscar fragmentos"
+
+msgid "Select every item"
+msgstr ""
 
 msgid "Sensitive item"
 msgstr "Fragmento sensible"
@@ -853,8 +985,14 @@ msgstr "Acortar el retraso al salir"
 msgid "Show"
 msgstr "Mostrar"
 
+msgid "Show Panel"
+msgstr ""
+
 msgid "Show Snipdeck in the taskbar"
 msgstr "Mostrar Snipdeck en la barra de tareas"
+
+msgid "Show or hide the Panel"
+msgstr ""
 
 msgid "Show or hide the panel"
 msgstr "Mostrar u ocultar el panel"
@@ -1042,14 +1180,29 @@ msgstr "Activa el historial del portapapeles en Configuración para registrar lo
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "Si lo desactivas, al cerrar el panel o la ventana principal se cierra Snipdeck."
 
+msgid "Type a command"
+msgstr ""
+
 msgid "Type {} to confirm"
 msgstr "Escribe {} para confirmar"
 
 msgid "Unpin"
 msgstr "Desfijar"
 
+msgid "Unpin selected item"
+msgstr ""
+
 msgid "Use"
 msgstr "Usar"
+
+msgid "Use selected item"
+msgstr ""
+
+msgid "Use the Nth item"
+msgstr ""
+
+msgid "Use the item"
+msgstr ""
 
 msgid "User guide"
 msgstr "Guía del usuario"
@@ -1108,6 +1261,54 @@ msgstr "Tu biblioteca está en una sola carpeta, %LOCALAPPDATA%\\Snipdeck: snipd
 msgid "Your shortcuts"
 msgstr "Tus atajos"
 
+msgid "add create folder group"
+msgstr ""
+
+msgid "add create snippet note write"
+msgstr ""
+
+msgid "change modify rename"
+msgstr ""
+
+msgid "clipboard duplicate"
+msgstr ""
+
+msgid "clipboard save grab screenshot"
+msgstr ""
+
+msgid "delete remove discard"
+msgstr ""
+
+msgid "deleted restore bin show"
+msgstr ""
+
+msgid "diagnose doctor problems fix"
+msgstr ""
+
+msgid "everything home show"
+msgstr ""
+
+msgid "favourite favorite keep"
+msgstr ""
+
+msgid "favourite favorite remove"
+msgstr ""
+
+msgid "favourites favorites show"
+msgstr ""
+
+msgid "find filter look"
+msgstr ""
+
+msgid "help docs manual how"
+msgstr ""
+
+msgid "history clipboard show"
+msgstr ""
+
+msgid "hotkeys keys cheat sheet bindings chords"
+msgstr ""
+
 msgid "https://example.com"
 msgstr "https://example.com"
 
@@ -1117,8 +1318,35 @@ msgstr "ms"
 msgid "notepad.exe"
 msgstr "notepad.exe"
 
+msgid "open toggle deck hide"
+msgstr ""
+
+msgid "paste insert send"
+msgstr ""
+
+msgid "preferences options configure hotkeys theme backup"
+msgstr ""
+
 msgid "px"
 msgstr "px"
+
+msgid "quick find paste palette"
+msgstr ""
+
+msgid "tutorial intro onboarding basics learn"
+msgstr ""
+
+msgid "version licence update"
+msgstr ""
+
+msgid "view mode layout cards switch"
+msgstr ""
+
+msgid "view mode layout grid switch"
+msgstr ""
+
+msgid "view mode layout list dense switch"
+msgstr ""
 
 msgid "{n} item"
 msgstr "{n} fragmento"
@@ -1128,6 +1356,9 @@ msgstr "{n} fragmento se moverá también a la papelera. Puedes restaurarlo dura
 
 msgid "{} (Pro)"
 msgstr "{} (Pro)"
+
+msgid "{} found"
+msgstr ""
 
 msgid "{} of the checks need a look."
 msgstr "{} de las comprobaciones requieren atención."

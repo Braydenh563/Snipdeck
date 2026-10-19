@@ -11,6 +11,7 @@ import { Icon } from "components/icon.slint";
 import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
 import { Toast, ToastKind, ToastPhase } from "components/feedback.slint";
 import { FormScroll, FormSection, SettingRow, Segmented } from "components/form.slint";
+import { ShortcutsSheet } from "components/shortcuts-sheet.slint";
 
 // One line of the Troubleshoot list, already in words (the doctor's English; see snipdeck-app `doctor`).
 export struct HelpCheck {
@@ -35,9 +36,18 @@ export component HelpWindow inherits Window {
     out property <length> wanted-height: 640px;
 
     in property <bool> dark: false;
-    // 0 Troubleshoot, 1 About.
+    // 0 Troubleshoot, 1 About, 2 Shortcuts.
     in-out property <int> tab: 0;
     in property <[HelpCheck]> checks;
+    // The configured global hotkeys as key caps, and spoken, for the Shortcuts tab (empty = the hotkey is off).
+    in property <[string]> panel-keys;
+    in property <[string]> picker-keys;
+    in property <[string]> capture-keys;
+    in property <[string]> paste-next-keys;
+    in property <string> panel-spoken;
+    in property <string> picker-spoken;
+    in property <string> capture-spoken;
+    in property <string> paste-next-spoken;
     // False in the demo, which has no data folder.
     in property <bool> has-data-folder: true;
     in property <string> version: "0.1.0";
@@ -98,7 +108,7 @@ export component HelpWindow inherits Window {
 
             Segmented {
                 label: @tr("Help sections");
-                options: [@tr("Troubleshoot"), @tr("About")];
+                options: [@tr("Troubleshoot"), @tr("About"), @tr("Shortcuts")];
                 current: root.tab;
                 chosen(i) => { root.tab = i; }
             }
@@ -222,6 +232,23 @@ export component HelpWindow inherits Window {
                             accessible-role: none;
                         }
                     }
+                }
+            }
+
+            if root.tab == 2: FormScroll {
+                content-height: sheet.preferred-height;
+                content-width: self.width;
+
+                sheet := ShortcutsSheet {
+                    width: parent.width;
+                    panel-keys: root.panel-keys;
+                    picker-keys: root.picker-keys;
+                    capture-keys: root.capture-keys;
+                    paste-next-keys: root.paste-next-keys;
+                    panel-spoken: root.panel-spoken;
+                    picker-spoken: root.picker-spoken;
+                    capture-spoken: root.capture-spoken;
+                    paste-next-spoken: root.paste-next-spoken;
                 }
             }
 
