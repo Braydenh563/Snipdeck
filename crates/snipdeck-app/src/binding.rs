@@ -455,7 +455,7 @@ where
         wire_effects!(on_list_menu_activated, |ctl, i| ctl
             .choose_list_menu(index(i)));
         wire!(on_list_menu_dismissed, |ctl| ctl.close_list_menu());
-        wire!(on_list_edit_requested, |ctl, i| ctl.edit_list_tab(index(i)));
+        wire_effects!(on_list_edit_requested, |ctl, i| ctl.edit_list_tab(index(i)));
         wire!(on_reveal_requested, |ctl, i, on| ctl
             .reveal_row(index(i), on));
         wire!(on_selection_moved, |ctl, delta| ctl

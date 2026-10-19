@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use snipdeck_app::{
     controller::{
-        Controller, LIST_MENU, MainAction, MainScreen, Services, TOAST_ENTER, TOAST_EXIT,
+        Controller, Effect, LIST_MENU, MainAction, MainScreen, Services, TOAST_ENTER, TOAST_EXIT,
         TOAST_HOLD, TOAST_UNDO_HOLD, TagRenameError,
     },
     demo,
@@ -645,7 +645,7 @@ fn the_list_menu_opens_on_a_tab_and_closes_without_a_choice() {
 fn the_list_menu_edits_the_list_it_was_opened_on() {
     let mut ctl = pro();
     ctl.open_list_menu(tab_index(&ctl, "Code"));
-    assert_eq!(ctl.choose_list_menu(0), Vec::new());
+    assert_eq!(ctl.choose_list_menu(0), vec![Effect::OpenListEditor]);
     assert_eq!(ctl.view().list_menu, None, "a choice closes the menu");
     let editor = ctl.main_screen().editor.expect("editor");
     assert_eq!(editor.name, "Code");
@@ -662,7 +662,7 @@ fn the_list_menu_delete_confirms_then_trashes_with_undo() {
     let mut ctl = pro();
     let tabs = ctl.view().tabs.len();
     ctl.open_list_menu(tab_index(&ctl, "Code"));
-    assert_eq!(ctl.choose_list_menu(1), Vec::new());
+    assert_eq!(ctl.choose_list_menu(1), vec![Effect::OpenListEditor]);
     let editor = ctl.main_screen().editor.expect("editor");
     assert!(editor.open_delete, "the confirmation is already asking");
     assert_eq!(ctl.view().tabs.len(), tabs, "nothing is deleted before it");
@@ -676,7 +676,8 @@ fn the_list_menu_delete_confirms_then_trashes_with_undo() {
 #[test]
 fn a_double_click_on_a_tab_opens_the_list_editor() {
     let mut ctl = pro();
-    ctl.edit_list_tab(tab_index(&ctl, "Code"));
+    let code = tab_index(&ctl, "Code");
+    assert_eq!(ctl.edit_list_tab(code), vec![Effect::OpenListEditor]);
     let editor = ctl.main_screen().editor.expect("editor");
     assert_eq!(editor.name, "Code");
     assert!(!editor.open_delete);

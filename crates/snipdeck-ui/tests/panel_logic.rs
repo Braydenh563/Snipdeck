@@ -60,6 +60,7 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_tab_selected, |i| format!("tab:{i}"));
     hook!(on_list_menu_requested, |i| format!("list-menu:{i}"));
     hook!(on_list_edit_requested, |i| format!("list-edit:{i}"));
+    hook!(on_reveal_requested, |i, on| format!("reveal:{i}:{on}"));
     hook!(on_close_requested, || "close".to_string());
     hook!(on_help_requested, || "help".to_string());
     hook!(on_drag_requested, || "drag".to_string());
@@ -260,6 +261,28 @@ ui_tests! {
         press(ui.window(), " ");
         assert_eq!(ui.get_query(), "");
         assert!(take(&log).is_empty(), "no callbacks fired");
+    }
+
+    fn holding_space_on_the_selected_sensitive_row_reveals_it_and_releasing_hides_it() {
+        let (ui, log) = start();
+        ui.set_selected_index(4);
+        settle();
+        take(&log);
+        ui.window().dispatch_event(WindowEvent::KeyPressed { text: " ".into() });
+        ui.window().dispatch_event(WindowEvent::KeyPressed { text: " ".into() });
+        assert_eq!(take(&log), ["reveal:4:true"], "a key repeat does not ask twice");
+        assert_eq!(ui.get_query(), "", "the space is not typed into the search");
+        ui.window().dispatch_event(WindowEvent::KeyReleased { text: " ".into() });
+        assert_eq!(take(&log), ["reveal:4:false"]);
+    }
+
+    fn space_on_a_plain_selected_row_does_not_reveal() {
+        let (ui, log) = start();
+        ui.set_selected_index(0);
+        settle();
+        take(&log);
+        press(ui.window(), " ");
+        assert!(take(&log).is_empty(), "no reveal for a plain row");
     }
 
     fn escape_clears_the_search_first_and_then_asks_to_close() {

@@ -371,7 +371,7 @@ impl OnboardingUi {
             let controller = Rc::clone(controller);
             Box::new(move || {
                 // The tour always starts at the first step.
-                drop(controller.borrow_mut().show_welcome_tour());
+                controller.borrow_mut().show_welcome_tour();
                 let mut slot = slot.borrow_mut();
                 if slot.is_none() {
                     let window = RegularWindow::create(ui::OnboardingWindow::new)?;

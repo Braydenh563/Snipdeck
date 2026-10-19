@@ -600,6 +600,8 @@ fn wire_title_bar(window: &ui::MainWindow) {
 /// every time. Not generic: the host keeps one of these.
 pub struct MainUi {
     open: Box<dyn Fn() -> Result<(), slint::PlatformError>>,
+    bind: Box<dyn Fn() -> Result<(), slint::PlatformError>>,
+    list_editor: Box<dyn Fn() -> Option<ui::ListEditor>>,
     window: Box<dyn Fn() -> Option<ui::MainWindow>>,
 }
 
@@ -620,13 +622,14 @@ impl MainUi {
     {
         type Slot<S, C, K, T> = Rc<RefCell<Option<(ui::MainWindow, MainBinding<S, C, K, T>)>>>;
         let slot: Slot<S, C, K, T> = Rc::default();
-        let open = {
+        // Creates the window and its binding the first time, without showing it (the Panel's
+        // list editor needs the binding, not the window).
+        let ensure: Rc<dyn Fn() -> Result<(), slint::PlatformError>> = {
             let slot = Rc::clone(&slot);
             let controller = Rc::clone(controller);
-            Box::new(move || {
+            Rc::new(move || {
                 let mut slot = slot.borrow_mut();
-                let created = slot.is_none();
-                if created {
+                if slot.is_none() {
                     let window = RegularWindow::create(ui::MainWindow::new)?;
                     size_before_show(
                         window.window(),
@@ -635,13 +638,24 @@ impl MainUi {
                     let binding = Controller::bind_main(&controller, &window);
                     *slot = Some((window, binding));
                 }
+                Ok(())
+            })
+        };
+        let placed = Rc::new(std::cell::Cell::new(false));
+        let open = {
+            let slot = Rc::clone(&slot);
+            let controller = Rc::clone(controller);
+            let ensure = Rc::clone(&ensure);
+            Box::new(move || {
+                ensure()?;
+                let slot = slot.borrow();
                 let Some((window, binding)) = slot.as_ref() else {
                     return Ok(());
                 };
                 // Reading the library again: it may have changed while the window was closed.
                 binding.redraw();
                 window.show()?;
-                if created {
+                if !placed.replace(true) {
                     // Where the user left it (then cut to the screen below); only once, as a
                     // hidden window keeps its place.
                     let saved = controller.borrow().settings().main_window;
@@ -655,6 +669,16 @@ impl MainUi {
                 Ok(())
             })
         };
+        let bind = {
+            let slot = Rc::clone(&slot);
+            Box::new(move || {
+                ensure()?;
+                if let Some((_, binding)) = slot.borrow().as_ref() {
+                    binding.redraw();
+                }
+                Ok(())
+            })
+        };
         let window = {
             let slot = Rc::clone(&slot);
             Box::new(move || {
@@ -663,7 +687,20 @@ impl MainUi {
                     .map(|(window, _)| window.clone_strong())
             })
         };
-        Self { open, window }
+        let list_editor = {
+            let slot = Rc::clone(&slot);
+            Box::new(move || {
+                slot.borrow()
+                    .as_ref()
+                    .and_then(|(_, binding)| binding.list_editor())
+            })
+        };
+        Self {
+            open,
+            bind,
+            list_editor,
+            window,
+        }
     }
 
     /// Creates the window if this is the first time, then shows it and brings it to the front.
@@ -673,6 +710,22 @@ impl MainUi {
     /// The windowing system failed to create or show it.
     pub fn open(&self) -> Result<(), slint::PlatformError> {
         (self.open)()
+    }
+
+    /// Creates the window and its binding if needed without showing it, and redraws, so the
+    /// list or board editor window the controller asked for appears (the Panel's list menu).
+    ///
+    /// # Errors
+    ///
+    /// The windowing system failed to create the window.
+    pub fn bind(&self) -> Result<(), slint::PlatformError> {
+        (self.bind)()
+    }
+
+    /// The list editor window, once the Main binding has opened it.
+    #[must_use]
+    pub fn list_editor(&self) -> Option<ui::ListEditor> {
+        (self.list_editor)()
     }
 
     /// The window, once it has been created.

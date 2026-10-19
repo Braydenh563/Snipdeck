@@ -24,10 +24,10 @@ where
     }
 
     /// Starts the tour at its first step, for Help's "Show the welcome tour again" and for the
-    /// first run. Returns the effect that opens the window.
-    pub fn show_welcome_tour(&mut self) -> Vec<Effect> {
+    /// first run. The window is opened by
+    /// [`crate::onboarding_binding::request_open`].
+    pub fn show_welcome_tour(&mut self) {
         self.session.tour = Some(TourStep::Welcome);
-        vec![Effect::OpenOnboarding]
     }
 
     /// The step the tour is on; `None` when it is not running.
