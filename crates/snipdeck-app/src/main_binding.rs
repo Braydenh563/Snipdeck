@@ -633,6 +633,22 @@ where
             .main_reorder_items(isize::try_from(d).unwrap_or(0)));
         wire!(on_list_reorder_requested, |ctl, i, d| ctl
             .main_reorder_list(index(i), isize::try_from(d).unwrap_or(0)));
+        wire!(on_row_dropped, |ctl, from, onto| ctl
+            .main_drop_row(index(from), index(onto)));
+        wire!(on_row_dropped_on_list, |ctl, row, list| ctl
+            .main_drop_on_list(index(row), index(list)));
+        wire!(on_list_dropped, |ctl, from, onto| ctl
+            .main_drop_list(index(from), index(onto)));
+        window.on_row_payload(|row| Payload::Row(row).into_transfer());
+        window.on_list_payload(|list| Payload::List(list).into_transfer());
+        window.on_payload_row(|data| match Payload::of(&data) {
+            Some(Payload::Row(row)) => row,
+            _ => -1,
+        });
+        window.on_payload_list(|data| match Payload::of(&data) {
+            Some(Payload::List(list)) => list,
+            _ => -1,
+        });
         wire_title_bar(window);
         wire!(on_new_item_requested, |ctl| ctl.open_new_item(Origin::Main));
         {
@@ -871,6 +887,26 @@ pub(crate) fn raise(window: &slint::Window) {
     });
 }
 
+/// What an in-window drag carries: the index of the row or the sidebar list being dragged. It
+/// rides as user data, so it never reaches another app as text.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Payload {
+    Row(i32),
+    List(i32),
+}
+
+impl Payload {
+    fn into_transfer(self) -> slint::DataTransfer {
+        let mut data = slint::DataTransfer::default();
+        data.set_user_data(Rc::new(self));
+        data
+    }
+
+    fn of(data: &slint::DataTransfer) -> Option<Self> {
+        data.user_data()?.downcast_ref::<Self>().copied()
+    }
+}
+
 // ---- Screen -> window --------------------------------------------------------------------------
 
 /// The colour-label filter row.
@@ -979,6 +1015,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     if window.get_query().as_str() != screen.query {
         window.set_query(screen.query.as_str().into());
     }
+    window.set_rows_reorderable(screen.reorderable);
     if window.get_cursor() != to_i32(screen.cursor) {
         window.set_cursor(to_i32(screen.cursor));
     }

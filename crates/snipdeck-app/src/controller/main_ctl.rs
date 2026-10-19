@@ -150,6 +150,8 @@ pub struct MainScreen {
     pub query: String,
     /// The keyboard cursor.
     pub cursor: usize,
+    /// Rows can be dragged into a new place: the open list is in manual order and no search is running.
+    pub reorderable: bool,
     /// The rows.
     pub rows: Vec<Row>,
     /// How many rows are selected.
@@ -235,6 +237,7 @@ where
             label_filter: self.main.label_filter(),
             query: self.main.query().to_owned(),
             cursor: self.main.cursor(),
+            reorderable: self.main.reorderable(),
             selected_count: self.main.selected_count(),
             rows,
             use_label: self.model.use_label(),
@@ -847,6 +850,9 @@ where
     /// A drag of row `row` ended on list `list` of the sidebar: the item goes to the end of it.
     pub fn main_drop_on_list(&mut self, row: usize, list: usize) {
         self.main_fresh();
+        if self.main.section() == Section::Trash {
+            return;
+        }
         let Some(Key::Item(id)) = self.main.keys().get(row).copied() else {
             return;
         };
