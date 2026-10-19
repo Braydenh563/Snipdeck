@@ -238,7 +238,7 @@ fn under_reduced_motion_a_pulled_card_does_not_move_but_still_shows_the_check() 
 #[test]
 fn keyboard_focus_draws_a_2px_ring_and_nothing_else_does() {
     use slint::platform::{Key, WindowEvent};
-    for (dark, ring) in [(false, [0x43, 0x8A, 0xF1]), (true, [0x74, 0xAC, 0xFF])] {
+    for (dark, ring) in [(false, [0x28, 0x70, 0xD4]), (true, [0x74, 0xAC, 0xFF])] {
         let h = Harness::new(DeckGallery::new, GALLERY.0, GALLERY.1);
         h.component.set_dark(dark);
         let before = h.render();
