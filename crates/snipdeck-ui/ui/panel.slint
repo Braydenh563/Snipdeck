@@ -224,6 +224,13 @@ export component PanelWindow inherits Window {
     property <bool> searching: root.query != "";
     // Space is held down to reveal the selected sensitive row.
     property <bool> held-reveal: false;
+    // The host hid the text again without a key release (the window lost the focus while Space was
+    // held, Alt+Tab): the key is no longer held, so the next press must reveal again.
+    changed revealed-index => {
+        if (self.revealed-index < 0) {
+            self.held-reveal = false;
+        }
+    }
     property <bool> no-lists: root.tabs.length == 0;
     property <int> sel: root.rows.length == 0 ? -1 : min(max(root.selected-index, 0), root.rows.length - 1);
     property <int> used-index: -1;

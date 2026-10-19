@@ -838,6 +838,9 @@ where
         } else {
             Vec::new()
         }
+        // A held reveal ends with the focus: the key release goes to the window that has the
+        // focus now (Alt+Tab away from the Panel), so it never arrives here.
+        self.panel_revealed = None;
     }
 
     /// Whether a foreground change now should hide the Panel.
@@ -946,6 +949,10 @@ where
     pub fn move_selection(&mut self, delta: isize) {
         self.model.move_selection(delta);
     }
+        if active {
+            // The Panel lost the focus to a Snipdeck window: no key release will reach it.
+            self.panel_revealed = None;
+        }
 
     /// The user picked tab `index`: shows that list and ends the search.
     pub fn select_tab(&mut self, index: usize) {
@@ -2735,6 +2742,42 @@ mod tests {
         let mut w = unpinned_world(Settings {
             panel_hide_on_blur: false,
             ..Settings::default()
+    fn reveal_first_row(w: &mut World) {
+        let id = w.ids[0];
+        make_sensitive(w, id);
+        w.ctl.refresh_panel().expect("refresh");
+        w.ctl.reveal_row(0, true);
+        assert_eq!(w.ctl.view().revealed, Some(0), "held: the row is revealed");
+    }
+
+    #[test]
+    fn a_held_reveal_ends_when_the_foreground_changes() {
+        // Alt+Tab away from a pinned Panel: the Space release goes to the other window.
+        let mut w = unpinned_world(Settings::default());
+        w.ctl.set_on_top(true);
+        reveal_first_row(&mut w);
+        assert_eq!(w.ctl.on_foreground_changed(), []);
+        assert_eq!(w.ctl.view().revealed, None);
+        assert!(w.ctl.visible(), "pinned: the Panel stays, hidden text");
+    }
+
+    #[test]
+    fn a_held_reveal_ends_when_a_snipdeck_window_takes_the_focus() {
+        let mut w = unpinned_world(Settings::default());
+        w.ctl.set_on_top(true);
+        reveal_first_row(&mut w);
+        w.ctl.set_own_window_active(true);
+        assert_eq!(w.ctl.view().revealed, None);
+    }
+
+    #[test]
+    fn a_held_reveal_ends_when_the_panel_hides() {
+        let mut w = unpinned_world(Settings::default());
+        reveal_first_row(&mut w);
+        w.ctl.hide();
+        assert_eq!(w.ctl.view().revealed, None);
+    }
+
         });
         assert_eq!(w.ctl.on_foreground_changed(), []);
         assert!(w.ctl.visible());
