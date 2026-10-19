@@ -72,6 +72,19 @@ pub enum ItemMenuEntry {
     Separator,
 }
 
+/// One row of the context menu of a list tab, in the order it is drawn. The Panel draws the
+/// words itself (they are `@tr` there), so the order here is the order in `panel.slint`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ListMenuEntry {
+    /// Rename, recolour or re-sort the list in the list editor.
+    Edit,
+    /// Delete the list: the list editor opens with its confirmation showing.
+    Delete,
+}
+
+/// The list tab menu's rows.
+pub const LIST_MENU: [ListMenuEntry; 2] = [ListMenuEntry::Edit, ListMenuEntry::Delete];
+
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
 /// `Menu` has no sub-menus.
 pub const APP_MENU: [AppMenuEntry; 10] = [
@@ -216,6 +229,47 @@ where
             }
             ItemMenuEntry::Separator => Vec::new(),
         }
+    }
+
+    // ---- The list tab menu ---------------------------------------------------------------------
+
+    /// Right-click, the Menu key or Shift+F10 on list tab `index`: opens the list menu.
+    pub fn open_list_menu(&mut self, index: usize) {
+        if let Some(tab) = self.model.tabs().get(index) {
+            self.menu = PanelMenu::List(tab.id);
+        }
+    }
+
+    /// A double-click on list tab `index`: the list editor, without the menu.
+    pub fn edit_list_tab(&mut self, index: usize) {
+        if let Some(id) = self.model.tabs().get(index).map(|t| t.id) {
+            self.menu = PanelMenu::None;
+            self.panel_edit_list(id, false);
+        }
+    }
+
+    /// Esc, or a click outside the menu: closes it without a choice.
+    pub fn close_list_menu(&mut self) {
+        if matches!(self.menu, PanelMenu::List(_)) {
+            self.menu = PanelMenu::None;
+        }
+    }
+
+    /// The user chose row `index` of [`LIST_MENU`]. The list editor (its own window, drawn
+    /// from the Main window's screen) is how the list is renamed and deleted, so the Main
+    /// window and the Panel share one path: a delete asks there, then moves the list and its
+    /// items to the Trash with an Undo toast.
+    pub fn choose_list_menu(&mut self, index: usize) -> Vec<Effect> {
+        let PanelMenu::List(id) = self.menu else {
+            return Vec::new();
+        };
+        self.menu = PanelMenu::None;
+        match LIST_MENU.get(index) {
+            Some(ListMenuEntry::Edit) => self.panel_edit_list(id, false),
+            Some(ListMenuEntry::Delete) => self.panel_edit_list(id, true),
+            None => {}
+        }
+        Vec::new()
     }
 
     fn set_item_pinned(&mut self, id: ItemId, pin: bool) {

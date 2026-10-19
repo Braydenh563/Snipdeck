@@ -8,7 +8,7 @@
 use std::{collections::BTreeMap, time::Duration};
 
 use snipdeck_core::{
-    BoardId, Entitlements, Feature, ItemId, Timestamp, UseMode, UseOutcome,
+    BoardId, Entitlements, Feature, ItemId, ListId, Timestamp, UseMode, UseOutcome,
     template::{Locale, Template, TimeZone},
 };
 use snipdeck_platform::{
@@ -30,7 +30,7 @@ mod panel;
 mod settings_ctl;
 
 pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameError};
-pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry};
+pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry};
 
 use crate::{
     capture::{self, Captured},
@@ -300,6 +300,8 @@ pub struct View {
     pub app_menu: Option<Vec<AppMenuEntry>>,
     /// The context menu of a card or pinned chip while it is open.
     pub item_menu: Option<Vec<ItemMenuEntry>>,
+    /// The context menu of a list tab while it is open ([`LIST_MENU`]).
+    pub list_menu: Option<Vec<ListMenuEntry>>,
     /// "Pause hotkeys" is on (its menu row is checked).
     pub hotkeys_paused: bool,
     /// The Picker, while it is open.
@@ -392,6 +394,8 @@ enum PanelMenu {
     App,
     /// The context menu of an item's card or pinned chip.
     Item(ItemId),
+    /// The context menu of a list tab.
+    List(ListId),
 }
 
 /// Facts about the running app that are not settings and not on screen.
@@ -554,6 +558,7 @@ where
                 PanelMenu::Item(id) => Some(self.item_menu_entries(id)),
                 _ => None,
             },
+            list_menu: matches!(self.menu, PanelMenu::List(_)).then(|| LIST_MENU.to_vec()),
             hotkeys_paused: self.session.hotkeys_paused,
             picker: self.picker.as_ref().map(|p| PickerView {
                 rows: p.rows(),

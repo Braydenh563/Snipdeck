@@ -15,7 +15,7 @@ use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::HighContrast,
 };
-use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
+use snipdeck_store::{ItemRepo, ListRepo, TrashRepo, Trashable};
 
 use super::{Controller, Library, Toast, ToastKind, ToastMessage, ToastView, UseResult, failed};
 use crate::{
@@ -814,7 +814,7 @@ where
     /// "Edit list…": opens the list editor for list `index` of the sidebar.
     pub fn main_edit_list(&mut self, index: usize) {
         self.main_fresh();
-        let Some(list) = self.main.lists().get(index) else {
+        let Some(list) = self.main.lists().get(index).cloned() else {
             return;
         };
         let count = self
@@ -822,6 +822,22 @@ where
             .side_lists()
             .get(index)
             .map_or(0, |side| side.count);
+        self.open_list_editor(&list, count, false);
+    }
+
+    /// The Panel's list menu ("Edit list…", "Delete list…"): opens the list editor on list `id`
+    /// (any board), with the delete confirmation already open when `open_delete`.
+    pub(super) fn panel_edit_list(&mut self, id: ListId, open_delete: bool) {
+        self.main_fresh();
+        let Ok(list) = self.store.list(id) else {
+            self.show_toast(failed());
+            return;
+        };
+        let count = self.store.items(id).map_or(0, |items| items.len());
+        self.open_list_editor(&list, count, open_delete);
+    }
+
+    fn open_list_editor(&mut self, list: &snipdeck_core::List, count: usize, open_delete: bool) {
         let view = EditorView {
             seq: 0,
             kind: EditorKind::List,
@@ -833,35 +849,9 @@ where
             can_delete: true,
             delete_hint: None,
             name_error: None,
-            open_delete: false,
+            open_delete,
         };
         self.open_editor(EditorTarget::List(list.id), view);
-    }
-
-    fn new_board(&mut self) {
-        if !self.entitlements.can_create_board(self.main.boards().len()) {
-            self.show_toast(Toast {
-                kind: ToastKind::Neutral,
-                message: ToastMessage::BoardLimit,
-            });
-            return;
-        }
-        self.open_editor(
-            EditorTarget::NewBoard,
-            EditorView {
-                seq: 0,
-                kind: EditorKind::Board,
-                is_new: true,
-                name: String::new(),
-                accent: None,
-                sort: ListSort::Manual,
-                item_count: 0,
-                can_delete: false,
-                delete_hint: None,
-                name_error: None,
-                open_delete: false,
-            },
-        );
     }
 
     /// The board editor for the open board; `open_delete` starts with the confirmation open.
