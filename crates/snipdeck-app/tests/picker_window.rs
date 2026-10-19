@@ -368,11 +368,19 @@ fn ctrl_e_opens_the_editor_on_the_selected_item_and_closes_the_picker() {
         let r = rig();
         let w = r.open();
         type_text(w.window(), "out of office");
-        assert!(r.ctl.borrow().picker().expect("open").item_at(0).is_some());
+        let id = r
+            .ctl
+            .borrow()
+            .picker()
+            .expect("open")
+            .item_at(0)
+            .expect("row");
+        let title = r.ctl.borrow().store().item(id).expect("item").title;
         chord(w.window(), &[Key::Control], "e");
         let ctl = r.ctl.borrow();
         let editor = ctl.item_editor_view().expect("the editor opened");
-        assert!(!editor.is_new, "it edits the selected item");
+        assert!(!editor.is_new, "it edits an existing item");
+        assert_eq!(editor.fields.title, title, "it edits the selected item");
         drop(ctl);
         assert!(!w.window().is_visible());
         assert!(

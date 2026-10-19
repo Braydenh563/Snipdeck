@@ -37,3 +37,4 @@ budget: owner at 40% weekly; own budget line 60%, stop line 65% (owner: wrap up 
 - Panel: `context-menu-requested` / `pinned-context-menu-requested` declared, not forwarded by ItemCard, not wired (binding.rs:368). Build the card menu or remove the declarations.
 - ListTabBar `dropped(index)` has no consumer: wire drop-onto-tab or remove.
 - Verify accessible labels on Segmented, SelectField, NumberStepper, SearchField, HotkeyRecorder.
+- [ ] Merge review blocker: all 8 settings-*.png goldens were reverted by merge d9ad7c7 and miss the Window behaviour group and Backups stepper: UPDATE_GOLDEN=1 regenerate in the test batch and read each.

@@ -168,6 +168,7 @@ where
         self.raise.set(view.raise);
         fill(&window, &view);
         let _ = window.show();
+        crate::native_window::fit_to_screen(window.window());
         window.invoke_focus_title();
         if view.restored {
             window.invoke_mark_dirty();
@@ -208,6 +209,8 @@ where
             return Some(w.clone_strong());
         }
         let w = RegularWindow::create(ui::ItemEditor::new).ok()?;
+        // The window's preferred size (editors.slint), cut to the screen before the first show.
+        crate::native_window::size_before_show(w.window(), (560.0, 700.0));
         self.wire(&w);
         *self.window.borrow_mut() = Some(w.clone_strong());
         Some(w)
