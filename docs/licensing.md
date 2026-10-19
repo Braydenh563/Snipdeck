@@ -1,6 +1,46 @@
 # Licence keys
 
-Snipdeck is free software (GPL-3.0-only). Free covers everyday use with up to 5 boards.
+Snipdeck is free software (GPL-3.0-only). Free covers everyday use. **Supporter** is for people who want a
+few extra conveniences and want to support the project.
+
+## Free and Supporter
+
+| | Free | Supporter |
+|---|---|---|
+| Boards | Up to 5 | Unlimited |
+| Lists, items, Panel, Picker, save from the clipboard | Yes | Yes |
+| Templates with date, time and cursor | Yes | Yes |
+| Sensitive items, masked, and encryption on disk | Yes | Yes |
+| Backups, export, light and dark, 7 languages | Yes | Yes |
+| Dock to a screen edge | Yes | Yes |
+| Templates that ask for a value or a choice | No | Yes |
+| Master password | No | Yes |
+| Paste stack and Paste next | No | Yes |
+
+Encryption of sensitive items on disk is free for everyone, because it is security and not a convenience. Only
+the master password is a Supporter feature.
+
+## Get Supporter
+
+- **Pay what you want, from A$5.** The suggested price is A$8. You pay once, and every 1.x update is
+  included.
+- **Open Settings and choose Get Supporter…** It shows the price and an **Email me** button, which opens a
+  message to the author in your email app, to ask for a key. <!-- TODO(G2): the address is a placeholder until the owner supplies it. -->
+- **Can't afford it?** Ask for a key and say so. No questions.
+- **Turn it on.** Paste the key under **Licence** in Settings and press **Activate**. The key is checked on
+  your PC. Nothing is sent anywhere, and Snipdeck never goes online to check it.
+- **Nothing nags you.** There are no pop-ups, countdowns or trial limits. If you reach the 5-board limit, a
+  message says so. Nothing is hidden or deleted.
+
+## If your key stops working
+
+If a key is rejected, the window says why. Check that you pasted the whole line, which starts with `SNIP1.`.
+If it still fails, ask for a new one. If you stop using Supporter, your library stays as it is. You keep every
+item. Features that need Supporter simply stop working, and you can always unlock, change or remove a master
+password.
+
+## For developers
+
 **Supporter** is pay what you want, from A$5 (suggested A$8), one time, with every 1.x update. It
 adds more boards, templates that ask for values, a master password for encrypted items and paste next.
 Encrypting sensitive items on disk is free for everyone: it is security, not convenience.
