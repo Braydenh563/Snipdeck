@@ -35,3 +35,8 @@ Nothing.
 - `WS_EX_NOACTIVATE` window still gets mouse moves (assumed yes) and Slint's `has-hover` refreshing after the window grows under a stationary pointer (the OS may not send a mouse move; if not, the open panel only reports a leave after the pointer has been over it once).
 - The window's minimum size really lifts when collapsed (a 6 px wide window is accepted by winit/Windows; the placement is asked again 50 ms after the collapse in case it was held to the old minimum).
 - Always-on-top strip over full-screen apps, multi-monitor edges between two monitors (the strip sits on the monitor's own work area edge).
+
+## Status (after first green build)
+- Verified in tests: app lib 342 pass; panel_window 43; settings_window 20; ui panel 17; panel_logic 49 (the ancestor-TouchArea hover works: reported once, swallows no click).
+- Settings-page goldens regenerated (only the new "Panel dock" group differs; read before/after).
+- Remaining: workspace clippy and doc, final full runs.

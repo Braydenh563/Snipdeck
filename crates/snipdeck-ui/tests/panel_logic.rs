@@ -78,7 +78,6 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_pinned_copied, |i| format!("pinned-copy:{i}"));
     hook!(on_handle_hovered, |on| format!("handle-hover:{on}"));
     hook!(on_handle_clicked, || "handle-click".to_string());
-    hook!(on_panel_hovered, |on| format!("panel-hover:{on}"));
     {
         let log = log.clone();
         ui.on_context_menu_requested(move |i, _, _| log.borrow_mut().push(format!("menu:{i}")));
@@ -879,6 +878,12 @@ ui_tests! {
 
     fn the_open_panel_reports_the_pointer_over_any_part_of_it_once_and_swallows_no_click() {
         let (ui, log) = start();
+        // Not hooked by `start`: every pointer move in the other tests would report it.
+        let hovers: Log = Rc::default();
+        {
+            let hovers = hovers.clone();
+            ui.on_panel_hovered(move |on| hovers.borrow_mut().push(format!("panel-hover:{on}")));
+        }
         let row = rows(&ui).into_iter().next().expect("a row");
         let kebab = find(&ui, "More", AccessibleRole::Button);
         // A row, the header's kebab button, an edge grip, and the list again: always inside.
@@ -886,12 +891,13 @@ ui_tests! {
         for at in [centre(&row), centre(&kebab), grip, centre(&row)] {
             move_to(&ui, at);
         }
-        assert_eq!(take(&log), ["panel-hover:true"], "reported on entering, not on every move");
+        assert_eq!(take(&hovers), ["panel-hover:true"], "reported on entering, not on every move");
+        assert!(take(&log).is_empty());
         // Clicks still reach the controls under the hover area.
         press_at(&ui, centre(&row));
         assert_eq!(take(&log), ["use:0"]);
         ui.window().dispatch_event(WindowEvent::PointerExited);
-        assert_eq!(take(&log), ["panel-hover:false"]);
+        assert_eq!(take(&hovers), ["panel-hover:false"]);
     }
 
     fn a_collapsed_panel_is_one_named_handle_that_reports_hover_and_click() {
