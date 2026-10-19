@@ -6,7 +6,7 @@
 
 use slint::{ComponentHandle, ModelRc, VecModel, platform::Key};
 use snipdeck_ui::{
-    BoardEditor, ItemEditor, ListEditor, SettingsPage, SystemLook, TagManager,
+    BoardEditor, HelpWindow, ItemEditor, ListEditor, SettingsPage, SystemLook, TagManager,
     testing::{Frame, Harness, assert_golden},
 };
 
@@ -20,6 +20,7 @@ mod fixture;
 const ITEM: (u32, u32) = (560, 760);
 const SMALL: (u32, u32) = (460, 440);
 const SETTINGS: (u32, u32) = (640, 1000);
+const HELP: (u32, u32) = (600, 640);
 
 // Palette values from design/tokens/palette.json.
 const APP_LIGHT: [u8; 3] = [0xF5, 0xF3, 0xF1];
@@ -372,4 +373,33 @@ fn form_controls_in_every_state() {
     h.component.set_sel_open(true);
     h.component.invoke_focus_sel();
     assert_golden("formctl-select-open-dark", &render(&h));
+}
+
+#[test]
+fn help_troubleshoot_with_a_failing_row_light_and_dark() {
+    let h = Harness::new(HelpWindow::new, HELP.0, HELP.1);
+    fixture::help(&h.component);
+    assert_golden("help-troubleshoot-light", &render(&h));
+    drop(h);
+
+    let h = Harness::new(HelpWindow::new, HELP.0, HELP.1);
+    h.component.set_dark(true);
+    fixture::help(&h.component);
+    assert_golden("help-troubleshoot-dark", &render(&h));
+}
+
+#[test]
+fn help_about_light_and_dark() {
+    let h = Harness::new(HelpWindow::new, HELP.0, HELP.1);
+    fixture::help(&h.component);
+    h.component.set_tab(1);
+    h.component.set_has_notices(true);
+    assert_golden("help-about-light", &render(&h));
+    drop(h);
+
+    let h = Harness::new(HelpWindow::new, HELP.0, HELP.1);
+    h.component.set_dark(true);
+    fixture::help(&h.component);
+    h.component.set_tab(1);
+    assert_golden("help-about-dark", &render(&h));
 }

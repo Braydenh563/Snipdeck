@@ -4,7 +4,8 @@
 
 use slint::{Color, Image, ModelRc, Rgba8Pixel, SharedPixelBuffer, SharedString, VecModel};
 use snipdeck_ui::{
-    BackupRow, ChoiceEntry, HotkeySetting, ItemEditor, ListEditor, SettingsPage, TagManager,
+    BackupRow, ChoiceEntry, HelpCheck, HelpWindow, HotkeySetting, ItemEditor, ListEditor,
+    SettingsPage, TagManager,
 };
 
 pub fn strings(items: &[&str]) -> ModelRc<SharedString> {
@@ -116,6 +117,40 @@ pub fn settings(ui: &SettingsPage) {
             size: "33 KB".into(),
         },
     ])));
+}
+
+/// The Troubleshoot list with one failing row, one warning and the rest fine.
+pub fn help(ui: &HelpWindow) {
+    let row = |label: &str, detail: &str, status: i32, fix: i32| HelpCheck {
+        label: label.into(),
+        detail: detail.into(),
+        status,
+        fix,
+    };
+    ui.set_checks(ModelRc::new(VecModel::from(vec![
+        row("Data folder", "Writable, with room to spare.", 0, 0),
+        row(
+            "Database",
+            "The integrity check found 1 problem(s); the first: row 3 missing",
+            2,
+            0,
+        ),
+        row(
+            "Backups",
+            "The newest backup is from 2026-10-10, 9 days ago (2 kept).",
+            1,
+            1,
+        ),
+        row("Encryption key", "No item is marked sensitive.", 0, 0),
+        row("Shortcuts", "All global shortcuts are set.", 0, 0),
+        row("Tray icon", "The icon is in the notification area.", 0, 0),
+        row("Crash reports", "No crash report.", 0, 0),
+    ])));
+    ui.set_problems(2);
+    ui.set_version("0.1.0".into());
+    ui.set_build_date("2026-10-19".into());
+    ui.set_tier("Free".into());
+    ui.set_source_url("https://github.com/Braydenh563/Snipdeck".into());
 }
 
 pub fn tag_manager(ui: &TagManager) {

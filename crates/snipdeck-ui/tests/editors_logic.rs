@@ -14,7 +14,7 @@ use std::{cell::RefCell, rc::Rc};
 use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery, ElementRoot};
 use slint::{ComponentHandle, ModelRc, VecModel, platform::Key};
 use snipdeck_ui::{
-    BoardEditor, FormControlsGallery, ItemEditor, ListEditor, SettingsPage, TagManager,
+    BoardEditor, FormControlsGallery, HelpWindow, ItemEditor, ListEditor, SettingsPage, TagManager,
 };
 
 #[path = "support/mod.rs"]
@@ -1136,4 +1136,49 @@ ui_tests! {
         }
         assert!(checked >= 14, "checked {checked}");
     }
+}
+
+#[test]
+fn help_rows_are_labelled_with_their_status_and_the_fix_buttons_call_back() {
+    let ui = HelpWindow::new().expect("help");
+    fixture::help(&ui);
+    ui.window().set_size(slint::LogicalSize::new(600.0, 900.0));
+    ui.show().expect("show");
+    settle();
+    let log: Log = Rc::default();
+    {
+        let log = log.clone();
+        ui.on_fix_requested(move |fix| log.borrow_mut().push(format!("fix:{fix}")));
+    }
+    {
+        let log = log.clone();
+        ui.on_close_requested(move || log.borrow_mut().push("close".into()));
+    }
+
+    let database: Vec<_> =
+        ElementHandle::find_by_accessible_label(&ui, "Database: Problem").collect();
+    assert_eq!(database.len(), 1);
+    assert_eq!(
+        database[0].accessible_role(),
+        Some(AccessibleRole::Groupbox)
+    );
+    assert!(
+        database[0]
+            .accessible_description()
+            .is_some_and(|d| d.contains("row 3 missing"))
+    );
+    assert_eq!(
+        ElementHandle::find_by_accessible_label(&ui, "Backups: Warning").count(),
+        1
+    );
+
+    let back_up: Vec<_> = ElementHandle::find_by_accessible_label(&ui, "Back up now")
+        .filter(|e| e.accessible_role() == Some(AccessibleRole::Button))
+        .collect();
+    assert_eq!(back_up.len(), 1);
+    back_up[0].invoke_accessible_default_action();
+    assert_eq!(*log.borrow(), ["fix:1"]);
+
+    press_key(&ui, Key::Escape);
+    assert_eq!(log.borrow().last().map(String::as_str), Some("close"));
 }

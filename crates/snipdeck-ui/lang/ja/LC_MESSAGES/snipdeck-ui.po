@@ -13,6 +13,9 @@ msgstr "PNG画像。Snipdeckが独自のコピーを保存します。"
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "リストには、返信文や住所など関連するスニペットをまとめておけます。"
 
+msgid "About"
+msgstr "バージョン情報"
+
 msgid "Actions"
 msgstr "操作"
 
@@ -91,6 +94,9 @@ msgstr "ファイルを参照"
 msgid "Browse…"
 msgstr "参照…"
 
+msgid "Built on"
+msgstr "ビルド日"
+
 msgid "Cancel"
 msgstr "キャンセル"
 
@@ -99,6 +105,15 @@ msgstr "キャプチャしたスニペットは種類を保持します。"
 
 msgid "Changes apply at once."
 msgstr "変更はすぐに適用されます。"
+
+msgid "Check again"
+msgstr "もう一度確認"
+
+msgid "Check for updates"
+msgstr "更新を確認"
+
+msgid "Checks"
+msgstr "確認項目"
 
 msgid "Choose a file, or cancel."
 msgstr "ファイルを選ぶか、キャンセルしてください。"
@@ -153,6 +168,9 @@ msgstr "クリップボードにコピーされます"
 
 msgid "Copy"
 msgstr "コピー"
+
+msgid "Copy diagnostic report"
+msgstr "診断レポートをコピー"
 
 msgid "Copy something, then save it from the Panel."
 msgstr "何かをコピーしてから、パネルで保存できます。"
@@ -274,6 +292,9 @@ msgstr "Esc"
 msgid "Every Pro feature is on. Thank you."
 msgstr "Proの機能がすべて使えます。ありがとうございます。"
 
+msgid "Everything checks out."
+msgstr "問題ありません。"
+
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr "ゴミ箱のすべてが完全に削除されます。この操作は元に戻せません。"
 
@@ -324,6 +345,12 @@ msgstr "パネルにタスクバーのボタンを表示します。オフにす
 
 msgid "Green"
 msgstr "緑"
+
+msgid "Help"
+msgstr "ヘルプ"
+
+msgid "Help sections"
+msgstr "ヘルプのセクション"
 
 msgid "Hidden in lists until you hold Space, and kept out of clipboard history."
 msgstr "Space キーを押し続けるまでリストでは隠れ、クリップボード履歴には残りません。"
@@ -424,6 +451,9 @@ msgstr "ライト"
 msgid "Link"
 msgstr "リンク"
 
+msgid "Links"
+msgstr "リンク"
+
 msgid "List"
 msgstr "リスト"
 
@@ -453,6 +483,9 @@ msgstr "タグを管理…"
 
 msgid "Manual"
 msgstr "手動"
+
+msgid "Microsoft Store"
+msgstr "Microsoft Store"
 
 msgid "More"
 msgstr "その他"
@@ -550,6 +583,9 @@ msgstr "ピン留めしたスニペットに「{}」は一致しません。"
 msgid "Nothing pinned yet"
 msgstr "ピン留めはまだありません"
 
+msgid "OK"
+msgstr "OK"
+
 msgid "Off"
 msgstr "オフ"
 
@@ -558,6 +594,9 @@ msgstr "「オフ」にすると、固定したパネルは開いたままにな
 
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "テキスト、コード、リンク、テンプレートのスニペットのみ機密にできます。"
+
+msgid "Open"
+msgstr "開く"
 
 msgid "Open Panel"
 msgstr "パネルを開く"
@@ -577,8 +616,29 @@ msgstr "バックアップフォルダーを開く"
 msgid "Open data folder"
 msgstr "データフォルダーを開く"
 
+msgid "Open logs folder"
+msgstr "ログフォルダーを開く"
+
+msgid "Open the Microsoft Store page"
+msgstr "Microsoft Store のページを開く"
+
 msgid "Open the picker"
 msgstr "ピッカーを開く"
+
+msgid "Open the releases page"
+msgstr "リリースのページを開く"
+
+msgid "Open the source code"
+msgstr "ソースコードを開く"
+
+msgid "Open the third-party notices"
+msgstr "サードパーティの通知を開く"
+
+msgid "Open the user guide"
+msgstr "ユーザーガイドを開く"
+
+msgid "Opens in your browser."
+msgstr "ブラウザーで開きます。"
 
 msgid "Optional: the first line of the text is used"
 msgstr "任意: テキストの1行目が使われます"
@@ -651,6 +711,9 @@ msgstr "プレビュー"
 
 msgid "Privacy"
 msgstr "プライバシー"
+
+msgid "Problem"
+msgstr "問題"
 
 msgid "Program to add"
 msgstr "追加するプログラム"
@@ -787,6 +850,9 @@ msgstr "Snipdeckにはアカウントもサーバーもテレメトリもなく�
 msgid "Snipdeck keeps its own copy of the file."
 msgstr "Snipdeckがファイルの独自のコピーを保存します。"
 
+msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
+msgstr "Snipdeck が自動で確認することはありません。ブラウザーでリリースのページを開きます。"
+
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck はインターネットに接続しません。表示するアイコンとフォントはすべて同梱されています。"
 
@@ -801,6 +867,9 @@ msgstr "スニペット"
 
 msgid "Sort items by"
 msgstr "並べ替え"
+
+msgid "Source code"
+msgstr "ソースコード"
 
 msgid "Start with Windows"
 msgstr "Windows の起動時に開始"
@@ -841,11 +910,17 @@ msgstr "ゴミ箱は空です"
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "このキーは、以前に保存したエクスポート内の暗号化された項目を開くためのものです。削除すると、それらの項目は二度と開けません。"
 
+msgid "The licences of the libraries Snipdeck is built from."
+msgstr "Snipdeck のビルドに使われているライブラリのライセンスです。"
+
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "リストとその{}件のスニペットはゴミ箱に移動します。{}日間復元できます。"
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "この数を超えると、古いものから削除されます。"
+
+msgid "The report holds versions and settings switches, never your items."
+msgstr "レポートにはバージョンと設定のスイッチが含まれ、アイテムは含まれません。"
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "選択したスニペットは完全に削除されます。この操作は元に戻せません。"
@@ -859,8 +934,14 @@ msgstr "現在時刻"
 msgid "Theme"
 msgstr "テーマ"
 
+msgid "Third-party notices"
+msgstr "サードパーティの通知"
+
 msgid "This board"
 msgstr "このボード"
+
+msgid "This copy"
+msgstr "このコピー"
 
 msgid "This demo keeps nothing on disk, so there are no backups."
 msgstr "このデモはディスクに何も保存しないため、バックアップはありません。"
@@ -886,11 +967,17 @@ msgstr "すべてを削除するには、上の「ライブラリを削除」を
 msgid "Today's date"
 msgstr "今日の日付"
 
+msgid "Tools"
+msgstr "ツール"
+
 msgid "Top edge"
 msgstr "上端"
 
 msgid "Trash"
 msgstr "ゴミ箱"
+
+msgid "Troubleshoot"
+msgstr "トラブルシューティング"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "設定でクリップボード履歴をオンにすると、コピーした内容が保存されます。"
@@ -907,8 +994,17 @@ msgstr "ピン留めを解除"
 msgid "Use"
 msgstr "使用"
 
+msgid "User guide"
+msgstr "ユーザーガイド"
+
+msgid "Version"
+msgstr "バージョン"
+
 msgid "Violet"
 msgstr "バイオレット"
+
+msgid "Warning"
+msgstr "警告"
 
 msgid "What is on the clipboard"
 msgstr "クリップボードの内容"
@@ -960,6 +1056,9 @@ msgstr "{n}件のスニペットも一緒にゴミ箱に移動します。30日�
 
 msgid "{} (Pro)"
 msgstr "{} (Pro)"
+
+msgid "{} of the checks need a look."
+msgstr "{} 件の項目に確認が必要です。"
 
 msgid "{} selected"
 msgstr "{} 件選択中"

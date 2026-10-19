@@ -13,6 +13,9 @@ msgstr "Uma imagem PNG. O Snipdeck guarda a própria cópia."
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "Uma lista reúne trechos relacionados, como respostas ou endereços."
 
+msgid "About"
+msgstr "Sobre"
+
 msgid "Actions"
 msgstr "Ações"
 
@@ -91,6 +94,9 @@ msgstr "Procurar um arquivo"
 msgid "Browse…"
 msgstr "Procurar…"
 
+msgid "Built on"
+msgstr "Compilado em"
+
 msgid "Cancel"
 msgstr "Cancelar"
 
@@ -99,6 +105,15 @@ msgstr "Os trechos capturados mantêm o tipo."
 
 msgid "Changes apply at once."
 msgstr "As alterações são aplicadas de imediato."
+
+msgid "Check again"
+msgstr "Verificar novamente"
+
+msgid "Check for updates"
+msgstr "Verificar atualizações"
+
+msgid "Checks"
+msgstr "Verificações"
 
 msgid "Choose a file, or cancel."
 msgstr "Escolha um arquivo ou cancele."
@@ -153,6 +168,9 @@ msgstr "Copia para a área de transferência"
 
 msgid "Copy"
 msgstr "Copiar"
+
+msgid "Copy diagnostic report"
+msgstr "Copiar relatório de diagnóstico"
 
 msgid "Copy something, then save it from the Panel."
 msgstr "Copie algo e depois salve pelo painel."
@@ -274,6 +292,9 @@ msgstr "Esc"
 msgid "Every Pro feature is on. Thank you."
 msgstr "Todos os recursos Pro estão ativados. Obrigado."
 
+msgid "Everything checks out."
+msgstr "Está tudo certo."
+
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr "Tudo na lixeira será excluído definitivamente. Isso não pode ser desfeito."
 
@@ -324,6 +345,12 @@ msgstr "Dá ao painel um botão na barra de tarefas. Desativado, ele fica fora d
 
 msgid "Green"
 msgstr "Verde"
+
+msgid "Help"
+msgstr "Ajuda"
+
+msgid "Help sections"
+msgstr "Seções da ajuda"
 
 msgid "Hidden in lists until you hold Space, and kept out of clipboard history."
 msgstr "Oculto nas listas até você manter a barra de espaço pressionada, e fora do histórico da área de transferência."
@@ -424,6 +451,9 @@ msgstr "Claro"
 msgid "Link"
 msgstr "Link"
 
+msgid "Links"
+msgstr "Links"
+
 msgid "List"
 msgstr "Lista"
 
@@ -453,6 +483,9 @@ msgstr "Gerenciar etiquetas…"
 
 msgid "Manual"
 msgstr "Manual"
+
+msgid "Microsoft Store"
+msgstr "Microsoft Store"
 
 msgid "More"
 msgstr "Mais"
@@ -550,6 +583,9 @@ msgstr "Nenhum trecho fixado corresponde a “{}”."
 msgid "Nothing pinned yet"
 msgstr "Nada fixado ainda"
 
+msgid "OK"
+msgstr "OK"
+
 msgid "Off"
 msgstr "Desativado"
 
@@ -558,6 +594,9 @@ msgstr "«Desativado» mantém aberto um painel acoplado. Caso contrário, ele r
 
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "Somente trechos de texto, código, link e modelo podem ser sensíveis."
+
+msgid "Open"
+msgstr "Abrir"
 
 msgid "Open Panel"
 msgstr "Abrir painel"
@@ -577,8 +616,29 @@ msgstr "Abrir a pasta de backups"
 msgid "Open data folder"
 msgstr "Abrir a pasta de dados"
 
+msgid "Open logs folder"
+msgstr "Abrir pasta de logs"
+
+msgid "Open the Microsoft Store page"
+msgstr "Abrir a página da Microsoft Store"
+
 msgid "Open the picker"
 msgstr "Abrir o seletor"
+
+msgid "Open the releases page"
+msgstr "Abrir a página de versões"
+
+msgid "Open the source code"
+msgstr "Abrir o código-fonte"
+
+msgid "Open the third-party notices"
+msgstr "Abrir os avisos de terceiros"
+
+msgid "Open the user guide"
+msgstr "Abrir o guia do usuário"
+
+msgid "Opens in your browser."
+msgstr "Abre no seu navegador."
 
 msgid "Optional: the first line of the text is used"
 msgstr "Opcional: a primeira linha do texto é usada"
@@ -651,6 +711,9 @@ msgstr "Pré-visualização"
 
 msgid "Privacy"
 msgstr "Privacidade"
+
+msgid "Problem"
+msgstr "Problema"
 
 msgid "Program to add"
 msgstr "Programa a adicionar"
@@ -787,6 +850,9 @@ msgstr "O Snipdeck não tem conta, servidor nem telemetria e não abre nenhuma p
 msgid "Snipdeck keeps its own copy of the file."
 msgstr "O Snipdeck guarda a própria cópia do arquivo."
 
+msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
+msgstr "O Snipdeck nunca verifica sozinho. Isto abre a página de versões no seu navegador."
+
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "O Snipdeck nunca se conecta à internet: todos os ícones e fontes que ele mostra vêm incluídos."
 
@@ -801,6 +867,9 @@ msgstr "Trechos"
 
 msgid "Sort items by"
 msgstr "Ordenar trechos por"
+
+msgid "Source code"
+msgstr "Código-fonte"
 
 msgid "Start with Windows"
 msgstr "Iniciar com o Windows"
@@ -841,11 +910,17 @@ msgstr "A lixeira está vazia"
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "A chave abre os itens criptografados em exportações que você salvou antes. Se você a esquecer, esses itens nunca mais poderão ser abertos."
 
+msgid "The licences of the libraries Snipdeck is built from."
+msgstr "As licenças das bibliotecas com as quais o Snipdeck é feito."
+
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "A lista e seus {} trechos são movidos para a lixeira. Você pode restaurá-los por {} dias."
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "As mais antigas são excluídas quando houver mais do que este número."
+
+msgid "The report holds versions and settings switches, never your items."
+msgstr "O relatório contém versões e opções de configuração, nunca os seus itens."
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "Os trechos selecionados serão excluídos definitivamente. Isso não pode ser desfeito."
@@ -859,8 +934,14 @@ msgstr "A hora atual"
 msgid "Theme"
 msgstr "Tema"
 
+msgid "Third-party notices"
+msgstr "Avisos de terceiros"
+
 msgid "This board"
 msgstr "Este quadro"
+
+msgid "This copy"
+msgstr "Esta cópia"
 
 msgid "This demo keeps nothing on disk, so there are no backups."
 msgstr "Esta demonstração não grava nada no disco, então não há backups."
@@ -886,11 +967,17 @@ msgstr "Para remover tudo, use \"Apagar a biblioteca\" acima e depois apague a p
 msgid "Today's date"
 msgstr "Data de hoje"
 
+msgid "Tools"
+msgstr "Ferramentas"
+
 msgid "Top edge"
 msgstr "Borda superior"
 
 msgid "Trash"
 msgstr "Lixeira"
+
+msgid "Troubleshoot"
+msgstr "Solução de problemas"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Ative o histórico da área de transferência em Configurações para reunir o que você copiar."
@@ -907,8 +994,17 @@ msgstr "Desafixar"
 msgid "Use"
 msgstr "Usar"
 
+msgid "User guide"
+msgstr "Guia do usuário"
+
+msgid "Version"
+msgstr "Versão"
+
 msgid "Violet"
 msgstr "Violeta"
+
+msgid "Warning"
+msgstr "Aviso"
 
 msgid "What is on the clipboard"
 msgstr "O que está na área de transferência"
@@ -960,6 +1056,9 @@ msgstr "{n} trecho também será movido para a lixeira. Você pode restaurá-lo 
 
 msgid "{} (Pro)"
 msgstr "{} (Pro)"
+
+msgid "{} of the checks need a look."
+msgstr "{} das verificações precisam de atenção."
 
 msgid "{} selected"
 msgstr "{} selecionado(s)"

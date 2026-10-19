@@ -13,6 +13,9 @@ msgstr "Une image PNG. Snipdeck en garde sa propre copie."
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "Une liste regroupe des extraits liés, comme des réponses ou des adresses."
 
+msgid "About"
+msgstr "À propos"
+
 msgid "Actions"
 msgstr "Actions"
 
@@ -91,6 +94,9 @@ msgstr "Parcourir pour choisir un fichier"
 msgid "Browse…"
 msgstr "Parcourir…"
 
+msgid "Built on"
+msgstr "Compilé le"
+
 msgid "Cancel"
 msgstr "Annuler"
 
@@ -99,6 +105,15 @@ msgstr "Les extraits capturés gardent leur type."
 
 msgid "Changes apply at once."
 msgstr "Les modifications s'appliquent immédiatement."
+
+msgid "Check again"
+msgstr "Vérifier à nouveau"
+
+msgid "Check for updates"
+msgstr "Rechercher des mises à jour"
+
+msgid "Checks"
+msgstr "Vérifications"
 
 msgid "Choose a file, or cancel."
 msgstr "Choisissez un fichier, ou annulez."
@@ -153,6 +168,9 @@ msgstr "Copie dans le presse-papiers"
 
 msgid "Copy"
 msgstr "Copier"
+
+msgid "Copy diagnostic report"
+msgstr "Copier le rapport de diagnostic"
 
 msgid "Copy something, then save it from the Panel."
 msgstr "Copiez quelque chose, puis enregistrez-le depuis le panneau."
@@ -274,6 +292,9 @@ msgstr "Esc"
 msgid "Every Pro feature is on. Thank you."
 msgstr "Toutes les fonctions Pro sont activées. Merci."
 
+msgid "Everything checks out."
+msgstr "Tout est en ordre."
+
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr "Tout ce qui se trouve dans la corbeille sera supprimé définitivement. Cette action est irréversible."
 
@@ -324,6 +345,12 @@ msgstr "Donne au panneau un bouton dans la barre des tâches. Désactivé, il re
 
 msgid "Green"
 msgstr "Vert"
+
+msgid "Help"
+msgstr "Aide"
+
+msgid "Help sections"
+msgstr "Sections de l'aide"
 
 msgid "Hidden in lists until you hold Space, and kept out of clipboard history."
 msgstr "Masqué dans les listes tant que tu ne maintiens pas la barre d'espace, et exclu de l'historique du presse-papiers."
@@ -424,6 +451,9 @@ msgstr "Clair"
 msgid "Link"
 msgstr "Lien"
 
+msgid "Links"
+msgstr "Liens"
+
 msgid "List"
 msgstr "Liste"
 
@@ -453,6 +483,9 @@ msgstr "Gérer les étiquettes…"
 
 msgid "Manual"
 msgstr "Manuel"
+
+msgid "Microsoft Store"
+msgstr "Microsoft Store"
 
 msgid "More"
 msgstr "Plus"
@@ -550,6 +583,9 @@ msgstr "Aucun extrait épinglé ne correspond à « {} »."
 msgid "Nothing pinned yet"
 msgstr "Rien d'épinglé pour le moment"
 
+msgid "OK"
+msgstr "OK"
+
 msgid "Off"
 msgstr "Désactivé"
 
@@ -558,6 +594,9 @@ msgstr "« Désactivé » laisse un panneau ancré ouvert. Sinon, il se replie e
 
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "Seuls les extraits de texte, de code, de lien et de modèle peuvent être sensibles."
+
+msgid "Open"
+msgstr "Ouvrir"
 
 msgid "Open Panel"
 msgstr "Ouvrir le panneau"
@@ -577,8 +616,29 @@ msgstr "Ouvrir le dossier des sauvegardes"
 msgid "Open data folder"
 msgstr "Ouvrir le dossier de données"
 
+msgid "Open logs folder"
+msgstr "Ouvrir le dossier des journaux"
+
+msgid "Open the Microsoft Store page"
+msgstr "Ouvrir la page du Microsoft Store"
+
 msgid "Open the picker"
 msgstr "Ouvrir le sélecteur"
+
+msgid "Open the releases page"
+msgstr "Ouvrir la page des versions"
+
+msgid "Open the source code"
+msgstr "Ouvrir le code source"
+
+msgid "Open the third-party notices"
+msgstr "Ouvrir les mentions des tiers"
+
+msgid "Open the user guide"
+msgstr "Ouvrir le guide de l'utilisateur"
+
+msgid "Opens in your browser."
+msgstr "S'ouvre dans votre navigateur."
 
 msgid "Optional: the first line of the text is used"
 msgstr "Facultatif : la première ligne du texte est utilisée"
@@ -651,6 +711,9 @@ msgstr "Aperçu"
 
 msgid "Privacy"
 msgstr "Confidentialité"
+
+msgid "Problem"
+msgstr "Problème"
 
 msgid "Program to add"
 msgstr "Programme à ajouter"
@@ -787,6 +850,9 @@ msgstr "Snipdeck n’a ni compte, ni serveur, ni télémétrie, et n’ouvre auc
 msgid "Snipdeck keeps its own copy of the file."
 msgstr "Snipdeck garde sa propre copie du fichier."
 
+msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
+msgstr "Snipdeck ne cherche jamais de lui-même. Cela ouvre la page des versions dans votre navigateur."
+
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck ne se connecte jamais à internet : chaque icône et chaque police affichée est fournie avec lui."
 
@@ -801,6 +867,9 @@ msgstr "Extraits"
 
 msgid "Sort items by"
 msgstr "Trier les extraits par"
+
+msgid "Source code"
+msgstr "Code source"
 
 msgid "Start with Windows"
 msgstr "Démarrer avec Windows"
@@ -841,11 +910,17 @@ msgstr "La corbeille est vide"
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "La clé ouvre les éléments chiffrés des exports enregistrés plus tôt. Si vous l’oubliez, ces éléments ne pourront plus jamais être ouverts."
 
+msgid "The licences of the libraries Snipdeck is built from."
+msgstr "Les licences des bibliothèques avec lesquelles Snipdeck est construit."
+
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "La liste et ses {} extraits sont déplacés dans la corbeille. Vous pouvez les restaurer pendant {} jours."
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "Les plus anciennes sont supprimées au-delà de ce nombre."
+
+msgid "The report holds versions and settings switches, never your items."
+msgstr "Le rapport contient des versions et des réglages, jamais vos éléments."
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "Les extraits sélectionnés seront supprimés définitivement. Cette action est irréversible."
@@ -859,8 +934,14 @@ msgstr "L'heure actuelle"
 msgid "Theme"
 msgstr "Thème"
 
+msgid "Third-party notices"
+msgstr "Mentions des tiers"
+
 msgid "This board"
 msgstr "Ce tableau"
+
+msgid "This copy"
+msgstr "Cet exemplaire"
 
 msgid "This demo keeps nothing on disk, so there are no backups."
 msgstr "Cette démo n’enregistre rien sur le disque, il n’y a donc pas de sauvegarde."
@@ -886,11 +967,17 @@ msgstr "Pour tout supprimer, utilisez « Effacer la bibliothèque » ci-dessus, 
 msgid "Today's date"
 msgstr "Date du jour"
 
+msgid "Tools"
+msgstr "Outils"
+
 msgid "Top edge"
 msgstr "Bord supérieur"
 
 msgid "Trash"
 msgstr "Corbeille"
+
+msgid "Troubleshoot"
+msgstr "Dépannage"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Activez l'historique du presse-papiers dans les paramètres pour collecter ce que vous copiez."
@@ -907,8 +994,17 @@ msgstr "Désépingler"
 msgid "Use"
 msgstr "Utiliser"
 
+msgid "User guide"
+msgstr "Guide de l'utilisateur"
+
+msgid "Version"
+msgstr "Version"
+
 msgid "Violet"
 msgstr "Violet"
+
+msgid "Warning"
+msgstr "Avertissement"
 
 msgid "What is on the clipboard"
 msgstr "Ce qui se trouve dans le presse-papiers"
@@ -960,6 +1056,9 @@ msgstr "{n} extrait sera aussi déplacé dans la corbeille. Vous pouvez le resta
 
 msgid "{} (Pro)"
 msgstr "{} (Pro)"
+
+msgid "{} of the checks need a look."
+msgstr "{} des vérifications demandent votre attention."
 
 msgid "{} selected"
 msgstr "{} sélectionné(s)"

@@ -31,6 +31,7 @@ use snipdeck_app::{
     crash, demo,
     drafts::Drafts,
     fill_binding::FillUi,
+    help_binding::{HelpUi, SystemHelpHost},
     host, key_provider,
     main_binding::{self, MainUi},
     maintenance::{self, Maintenance},
@@ -219,6 +220,11 @@ fn run(args: &Args) -> Result<(), String> {
             Rc::clone(&panel_taskbar),
         )),
     ));
+    let help_ui = Rc::new(HelpUi::new(
+        &controller,
+        settings_folder.clone(),
+        Rc::new(SystemHelpHost),
+    ));
     // The Panel's native window exists once it has been shown. Attached on the first show, which
     // a `--hidden` start reaches later, from the tray or the hotkey.
     let attach_now: Rc<dyn Fn()> = {
@@ -257,6 +263,7 @@ fn run(args: &Args) -> Result<(), String> {
         Rc::clone(&main_ui),
         Rc::clone(&tray),
         Rc::clone(&settings_ui),
+        Rc::clone(&help_ui),
         Rc::clone(&attach_now),
     ));
     // The Picker, the fill form and the toast window (made when first needed).
@@ -385,6 +392,7 @@ fn effect_handler(
     main_ui: Rc<MainUi>,
     tray: SharedTray,
     settings_ui: Rc<SettingsUi>,
+    help_ui: Rc<HelpUi>,
     attach_panel: Rc<dyn Fn()>,
 ) -> impl Fn(&Effect) + 'static {
     move |effect| match effect {
@@ -449,9 +457,12 @@ fn effect_handler(
             // A `--hidden` start has no native Panel window until now.
             attach_panel();
         }
-        // Not built yet (V1-PLAN step 7b): the click is logged and nothing happens.
-        Effect::OpenHelp(_) => {
-            snipdeck_app::trace!("host: {effect:?} is not built yet");
+        // The Help window (Troubleshoot, About), made the first time and raised after that; the
+        // user guide opens in the browser.
+        Effect::OpenHelp(topic) => {
+            if let Err(e) = help_ui.open(*topic) {
+                eprintln!("snipdeck: cannot open the help: {e}");
+            }
         }
         // The binding has already acted: placed the window, or opened the item editor.
         Effect::HidePanel | Effect::PlaceWindow(_) | Effect::NewItem | Effect::EditItem(_) => {}
