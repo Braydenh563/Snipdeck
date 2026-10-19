@@ -298,7 +298,7 @@ fn an_unlocked_library_or_one_without_a_password_never_prompts() {
     let mut r = rig(Tier::Pro);
     r.ctl.request_unlock();
     assert!(!r.ctl.unlock_prompt_open());
-    assert!(r.ctl.take_pending().is_empty());
+    assert_eq!(r.ctl.take_pending(), Vec::<Effect>::new());
     let mut r = with_password(Tier::Pro);
     r.ctl.request_unlock();
     assert!(!r.ctl.unlock_prompt_open(), "open already");

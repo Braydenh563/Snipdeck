@@ -298,9 +298,6 @@ msgstr "Excluir definitivamente?"
 msgid "Delete for good…"
 msgstr "Excluir definitivamente…"
 
-msgid "Delete forever…"
-msgstr "Excluir para sempre…"
-
 msgid "Delete list"
 msgstr "Excluir lista"
 

@@ -298,9 +298,6 @@ msgstr "要永久删除吗？"
 msgid "Delete for good…"
 msgstr "永久删除…"
 
-msgid "Delete forever…"
-msgstr "永久删除…"
-
 msgid "Delete list"
 msgstr "删除列表"
 

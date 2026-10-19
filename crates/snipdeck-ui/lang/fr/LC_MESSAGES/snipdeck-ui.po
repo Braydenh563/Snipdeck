@@ -298,9 +298,6 @@ msgstr "Supprimer définitivement ?"
 msgid "Delete for good…"
 msgstr "Supprimer définitivement…"
 
-msgid "Delete forever…"
-msgstr "Supprimer définitivement…"
-
 msgid "Delete list"
 msgstr "Supprimer la liste"
 

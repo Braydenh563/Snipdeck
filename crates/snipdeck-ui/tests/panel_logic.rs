@@ -684,6 +684,18 @@ ui_tests! {
         assert!(missing(&ui, "Save from clipboard", AccessibleRole::Button));
     }
 
+    fn the_empty_state_is_announced_when_a_search_comes_up_empty() {
+        use i_slint_backend_testing::AccessibleLiveness;
+        let (ui, _log) = start();
+        fixture::set_rows(&ui, Vec::new());
+        ui.set_query("zzz".into());
+        settle();
+        assert_eq!(
+            find(&ui, "No matches", AccessibleRole::Text).accessible_live_region(),
+            Some(AccessibleLiveness::Polite)
+        );
+    }
+
     fn a_board_with_no_lists_offers_a_new_list() {
         let (ui, log) = start();
         fixture::set_rows(&ui, Vec::new());

@@ -510,6 +510,7 @@ export component SettingsPage inherits Window {
                                 IconButton {
                                     icon: Icons.x;
                                     tooltip: @tr("Remove {} from the list", app);
+                                    own-tooltip: true;
                                     clicked => { root.no-paste-app-removed(i); }
                                     changed has-focus => {
                                         if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
