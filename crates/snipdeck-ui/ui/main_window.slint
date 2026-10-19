@@ -116,6 +116,7 @@ component SidebarHeading inherits Rectangle {
             size: IconButtonSize.sm;
             icon: root.action-icon;
             tooltip: root.action-label;
+            own-tooltip: true;
             y: (parent.height - self.height) / 2;
             clicked => { root.action(); }
         }
@@ -488,7 +489,7 @@ export component MainWindow inherits Window {
     property <[MenuEntry]> item-entries: root.in-trash ? [
         { text: @tr("Restore"), icon: Icons.arrow-counter-clockwise },
         { separator: true },
-        { text: @tr("Delete forever…"), icon: Icons.trash, destructive: true, shortcut: "Del" },
+        { text: @tr("Delete for good…"), icon: Icons.trash, destructive: true, shortcut: "Del" },
     ] : [
         { text: root.use-label, icon: Icons.arrow-bend-down-left, shortcut: "Enter", disabled: root.multi },
         { text: @tr("Copy"), icon: Icons.copy, shortcut: "Shift+Enter", disabled: root.multi },
@@ -697,6 +698,7 @@ export component MainWindow inherits Window {
                                 scaled: true;
                                 icon: Icons.stack;
                                 tooltip: @tr("Board: {}", root.board-name);
+                                own-tooltip: true;
                                 active: root.board-menu-open;
                                 y: (parent.height - self.height) / 2;
                                 clicked => { root.board-menu-requested(); }
@@ -880,7 +882,7 @@ export component MainWindow inherits Window {
                             }
                             if !root.narrow: Button {
                                 variant: ButtonVariant.ghost;
-                                icon: Icons.info;
+                                icon: Icons.question;
                                 text: @tr("Help");
                                 y: (parent.height - self.height) / 2;
                                 clicked => { root.open-help-menu(); }
@@ -889,13 +891,15 @@ export component MainWindow inherits Window {
                                 scaled: true;
                                 icon: Icons.gear;
                                 tooltip: @tr("Settings");
+                                own-tooltip: true;
                                 y: (parent.height - self.height) / 2;
                                 clicked => { root.settings-requested(); }
                             }
                             if root.narrow: IconButton {
                                 scaled: true;
-                                icon: Icons.info;
+                                icon: Icons.question;
                                 tooltip: @tr("Help");
+                                own-tooltip: true;
                                 y: (parent.height - self.height) / 2;
                                 clicked => { root.open-help-menu(); }
                             }
@@ -962,6 +966,7 @@ export component MainWindow inherits Window {
                                 scaled: true;
                                 icon: Icons.sidebar-simple;
                                 tooltip: root.panel-hotkey == "" ? @tr("Show Panel") : @tr("Show Panel ({})", root.panel-hotkey);
+                                own-tooltip: true;
                                 y: (parent.height - self.height) / 2;
                                 clicked => { root.panel-requested(); }
                             }
@@ -1458,6 +1463,7 @@ export component MainWindow inherits Window {
                             horizontal-stretch: 0;
                             icon: Icons.x;
                             tooltip: @tr("Clear selection");
+                            own-tooltip: true;
                             y: (parent.height - self.height) / 2;
                             clicked => { root.clear-selection-requested(); }
                         }
@@ -1469,6 +1475,7 @@ export component MainWindow inherits Window {
                     height: max(Space.s8, Type.line-sm + Space.s3);
                     accessible-role: AccessibleRole.text;
                     accessible-label: root.status-text;
+                    accessible-live-region: polite;
 
                     Rectangle {
                         y: 0;
