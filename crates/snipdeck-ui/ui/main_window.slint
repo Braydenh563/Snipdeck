@@ -299,6 +299,12 @@ export component MainWindow inherits Window {
     property <length> recent-menu-y: 0px;
     // The Recent section lists entries (instead of the empty state).
     property <bool> recent-shown: root.section == MainSection.recent && root.recent-on && root.recent-rows.length > 0;
+    // Roving focus in the Recent list: one tab stop (`items-scope`), the active row clamped to the list.
+    property <int> recent-cursor: 0;
+    property <int> rcur: root.recent-rows.length == 0 ? -1 : min(max(root.recent-cursor, 0), root.recent-rows.length - 1);
+    function move-recent(to: int) {
+        root.recent-cursor = min(max(to, 0), root.recent-rows.length - 1);
+    }
     property <bool> chooser-tags: false;
     property <length> chooser-x: 0px;
     property <length> chooser-y: 0px;
@@ -1123,6 +1129,34 @@ export component MainWindow inherits Window {
                                 root.item-reorder-requested(event.text == Key.UpArrow ? -1 : 1);
                                 return accept;
                             }
+                            if (root.recent-shown && !event.modifiers.alt && !ctrl) {
+                                // Recent list: Up/Down/Home/End/PageUp/PageDown move the active row, Enter or Space
+                                // copies it, Delete removes it, Menu or Shift+F10 opens its menu, Right "Save to…".
+                                let last = root.recent-rows.length - 1;
+                                if (event.text == Key.DownArrow) { root.move-recent(root.rcur + 1); return accept; }
+                                if (event.text == Key.UpArrow) { root.move-recent(root.rcur - 1); return accept; }
+                                if (event.text == Key.PageDown) { root.move-recent(root.rcur + root.page-rows); return accept; }
+                                if (event.text == Key.PageUp) { root.move-recent(root.rcur - root.page-rows); return accept; }
+                                if (event.text == Key.Home) { root.move-recent(0); return accept; }
+                                if (event.text == Key.End) { root.move-recent(last); return accept; }
+                                if (event.text == Key.Return || event.text == " ") {
+                                    root.recent-copied(root.rcur);
+                                    return accept;
+                                }
+                                if (event.text == Key.Delete) {
+                                    root.recent-deleted(root.rcur);
+                                    return accept;
+                                }
+                                if (event.text == Key.Menu || (shift && event.text == Key.F10)) {
+                                    root.open-recent-menu(root.rcur, root.sidebar-w + root.pad * 2, root.bar-h * 2 + Space.s8);
+                                    return accept;
+                                }
+                                if (event.text == Key.RightArrow) {
+                                    root.open-recent-save(root.rcur, root.sidebar-w + root.pad * 2, root.bar-h * 2 + Space.s8);
+                                    return accept;
+                                }
+                                return reject;
+                            }
                             if (event.modifiers.alt || root.rows.length == 0) {
                                 return reject;
                             }
@@ -1399,27 +1433,58 @@ export component MainWindow inherits Window {
                                 clicked => { root.recent-cleared(); }
                             }
                         }
-                        ListView {
+                        rlist := ListView {
                             vertical-stretch: 1;
                             accessible-label: @tr("Recent copies");
                             for entry[i] in root.recent-rows: Rectangle {
-                                height: rcard.preferred-height + root.row-gap;
+                                property <bool> is-active: i == root.rcur;
+                                function reveal() {
+                                    if (root.rcur == 0) {
+                                        rlist.content-y = 0px;
+                                    } else if (self.y + rlist.content-y < 0px) {
+                                        rlist.content-y = -self.y;
+                                    } else if (self.y + self.height + rlist.content-y > rlist.height) {
+                                        rlist.content-y = rlist.height - self.y - self.height;
+                                    }
+                                }
+                                height: rcard.preferred-height + root.row-gap + (i == root.recent-rows.length - 1 ? 2 * root.ring : 0px);
+                                init => {
+                                    if (self.is-active) { self.reveal(); }
+                                }
+                                changed is-active => {
+                                    if (self.is-active) { self.reveal(); }
+                                }
+                                changed y => {
+                                    if (self.is-active) { self.reveal(); }
+                                }
                                 rcard := ItemCard {
-                                    y: 0px;
-                                    width: parent.width;
+                                    x: root.ring;
+                                    y: root.ring;
+                                    width: parent.width - 2 * root.ring;
                                     height: self.preferred-height;
+                                    keyboard-focusable: false;
+                                    selected: i == root.rcur;
+                                    show-focus: i == root.rcur && items-scope.has-focus;
                                     variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
                                     kind: ItemKind.text;
                                     preview: entry.preview;
                                     list-name: entry.app == "" ? root.ago(entry.age-minutes) : entry.app + " · " + root.ago(entry.age-minutes);
                                     list-color: transparent;
                                     use-label: @tr("Copy");
-                                    use => { root.recent-copied(i); }
-                                    copy => { root.recent-copied(i); }
+                                    use => {
+                                        root.recent-cursor = i;
+                                        root.recent-copied(i);
+                                    }
+                                    copy => {
+                                        root.recent-cursor = i;
+                                        root.recent-copied(i);
+                                    }
                                     double-clicked => {
+                                        root.recent-cursor = i;
                                         root.open-recent-save(i, self.absolute-position.x + Space.s6, self.absolute-position.y + self.height);
                                     }
                                     context-menu-requested(x, y) => {
+                                        root.recent-cursor = i;
                                         root.open-recent-menu(i, self.absolute-position.x + x, self.absolute-position.y + y);
                                     }
                                 }

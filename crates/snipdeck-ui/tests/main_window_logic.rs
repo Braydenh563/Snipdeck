@@ -936,4 +936,39 @@ ui_tests! {
         settle();
         find(&ui, "Press Ctrl+N to add a snippet, or Ctrl+K to see every command.", AccessibleRole::Text);
     }
+
+    fn the_recent_list_is_one_tab_stop_with_a_roving_active_row() {
+        let (ui, log) = start();
+        let hook = |name: &'static str| {
+            let log = log.clone();
+            move |i: i32| log.borrow_mut().push(format!("{name}:{i}"))
+        };
+        ui.on_recent_copied(hook("copy"));
+        ui.on_recent_deleted(hook("delete"));
+        {
+            let log = log.clone();
+            ui.on_recent_saved(move |r, t| log.borrow_mut().push(format!("save:{r}:{t}")));
+        }
+        let entry = |text: &str| snipdeck_ui::RecentRow { preview: text.into(), app: "".into(), age_minutes: 1 };
+        ui.set_recent_on(true);
+        ui.set_recent_rows(ModelRc::new(VecModel::from(vec![entry("one"), entry("two"), entry("three")])));
+        ui.set_section(MainSection::Recent);
+        ui.invoke_focus_items();
+        settle();
+        take(&log);
+        press_key(&ui, Key::Return);
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::Return);
+        press_key(&ui, Key::Home);
+        press_key(&ui, Key::End);
+        chord(ui.window(), &[Key::Control], &key(Key::Delete));
+        press_key(&ui, Key::Delete);
+        press_key(&ui, Key::Home);
+        press_key(&ui, Key::RightArrow);
+        assert_eq!(take(&log), ["copy:0", "copy:2", "delete:2"]);
+        let chooser = ElementHandle::find_by_accessible_label(&ui, "Save to…").count();
+        assert!(chooser > 0, "Right arrow opens the Save to… chooser");
+    }
 }
