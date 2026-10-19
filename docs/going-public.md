@@ -69,9 +69,8 @@ Owner checklist for making the Snipdeck repository public. Do it in this order. 
 
 ## 5. Microsoft Store (MSIX)
 
-- [ ] Note: `docs/store.md` is the storage-layer page (data folder, schema), not a Microsoft Store guide. No
-      Store packaging notes exist in the repo yet. Write them (MSIX identity, signing, Partner Center listing)
-      in step 21 and link them here.
+- [ ] The Store and packaging steps (MSIX identity, signing, Partner Center listing) are in
+      [`packaging.md`](packaging.md). `docs/store.md` is the storage-layer page, not a Store guide.
 - [ ] Register a Partner Center account first. The Store signs the package itself.
 - [ ] Once listed, put the Store link in the About window constant and the README.
 
