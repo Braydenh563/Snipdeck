@@ -20,6 +20,15 @@
 
 Read this first in a new session, then `docs/PLAN.md`, `docs/SPEC.md`, `DESIGN.md`.
 
+## Resume after /clear (written 2026-10-19 02:20)
+A fresh session continues from here. Do, in order:
+1. `scripts/orient.sh`, then read `.claude/now.md` (queue, decisions, inbox) and `.claude/work-order.md`.
+2. Subscribe to PR activity for Braydenh563/Snipdeck#5 (branch `claude/compassionate-pascal-pod8ux`, CI green on dd18b23 after a runner-loss re-run).
+3. Agent branches in `.claude/worktrees/` (each has `.claude/remaining/<name>.md`): `agent-editor` (step 8 item editor, committed), `agent-picker` (step 5 Picker/Fill/toast), `agent-dock` (step 3a edge dock), `agent-ux` (step 13 per `.claude/remaining/step13-plan.md`). For each: commit any leftover changes on its branch, finish build/tests with one agent per target dir (/tmp/target-main, -b, -c; max three builds), merge into the PR branch, run the gate, push, tick the work order.
+4. Merge order: editor, dock, picker (step 13 item 7 toast needs it), ux.
+5. Then the rest of the work order: 7a onboarding, 7b Help & About (repo/Store links), 11b, 11, 13a, ship-bar control inventory (Haiku), ux-auditor + blind-tester, 19 docs, 20 reviewer, gate --full, PR body, morning summary, retro.
+Rules: Haiku for grunt work with a runnable check, Sonnet implements, Opus only after a lower rung fails; budget line 60% weekly, stop at 65%; never merge the PR.
+
 ## Where things stand
 
 - **Repo:** `Braydenh563/Snipdeck`, local folder `/home/user/Snipdeck`. PR #1, #2 (M0/M1) and #3 (lean workflow) are merged into `main`.
