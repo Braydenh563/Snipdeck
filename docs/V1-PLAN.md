@@ -12,21 +12,21 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 - [x] A4 CI fixes for clippy 1.99 and tests (fill_window sensitive template, 051ece4).
 
 ## B. Wave 3: finish the features (three S agents)
-- [ ] B1 [S] Import: Settings "Import…" for `.snipdeck`, Ditto, CopyQ, folder of .txt/.md; preview of what it adds (also for Restore); Free board limit respected.
-- [ ] B2 [S] Windows clipboard-history importer (current session; Windows-only, wizard step).
+- [x] B1 [S] Import: Settings "Import…" for `.snipdeck`, Ditto, CopyQ, folder of .txt/.md; preview of what it adds (also for Restore); Free board limit respected.
+- [x] B2 [S] Windows clipboard-history importer (current session; Windows-only, wizard step).
 - [x] B3 [S] Export a list as text.
 - [x] B4 [S] Ctrl+Z undoes the last undoable action; Undo toast >= 5 s and pauses on hover.
 - [x] B5 [S] "Getting started" list seeded on first run (`starter.rs`).
 - [x] B6 [S] Duplicate item.
 - [x] B7 [S] Hover/focus "More" (⋯) button on rows and cards = the context menu.
-- [x] B8 [S] Shortcuts: Ctrl+N, Ctrl+Shift+N, Ctrl+F, Ctrl+D, Ctrl+W, Ctrl+, (where not already in A3).
+- [~] B8 [S] Shortcuts: Ctrl+N, Ctrl+Shift+N, Ctrl+F, Ctrl+D, Ctrl+W, Ctrl+, (where not already in A3).
 - [x] B9 [S] Tray double-click opens the Main window.
 - [x] B10 [S] Reduced-motion setting (and follow Windows "Animation effects").
 - [ ] B11 [S] Drag and drop: reorder items and lists; drop items on a list tab to move; drop files/text on the Panel to create.
-- [ ] B12 [S] Perf: cached per-board index on the store change counter; budget tests (search < 16 ms / 10k, Panel load < 50 ms); release size and idle RAM printed by the Windows build.
+- [x] B12 [S] Perf: cached per-board index on the store change counter; budget tests (search < 16 ms / 10k, Panel load < 50 ms); release size and idle RAM printed by the Windows build.
 - [x] B13 [S] CLI: `--check-db`, `--troubleshoot`.
 - [x] B14 [S] Sensitive clipboard clear: keep the copy-only clear, add the setting (30 s, 0 = off); SPEC 5.7 updated to match.
-- [ ] B15 [S] Wording and a11y leftovers: Help glyph, "Delete for good" everywhere, list-bullets icon, live regions on status texts, HC selected-state tokens, tooltips on every icon button and rail item, German segmented widths, menu Tab dismisses, Pin/Unpin label, Move to Trash button variant, radio arrow keys, dock handle hit area, tab tooltips, Panel row focus ring (`.claude/remaining/ux-audit-2026-10-19.md`).
+- [x] B15 [S] Wording and a11y leftovers: Help glyph, "Delete for good" everywhere, list-bullets icon, live regions on status texts, HC selected-state tokens, tooltips on every icon button and rail item, German segmented widths, menu Tab dismisses, Pin/Unpin label, Move to Trash button variant, radio arrow keys, dock handle hit area, tab tooltips, Panel row focus ring (`.claude/remaining/ux-audit-2026-10-19.md`).
 
 ## C. Wave 4: the deferred features, now in v1
 - [ ] C1 [S] Recent inbox (SPEC 5.6): opt-in, off by default, last 200 entries or 7 days, excludes sensitive/password sources and Windows "exclude from history" formats; Promote to a list; clock tab in the Panel; sidebar entry.
