@@ -10,7 +10,8 @@ export enum DialogVariant { default, destructive }
 // is behind while `open` is still good practice (the pointer is blocked by the scrim either way). When the dialog
 // closes it emits `closed` so the host can put keyboard focus back on whatever opened it.
 //
-// The children are the actions row, laid out right-aligned, e.g. a secondary and a primary `Button`.
+// The children are the actions row, laid out right-aligned, e.g. a secondary and a primary `Button`. With `fill`
+// the children stretch across the card instead (a child that wants the width sets `horizontal-stretch: 1`).
 // Keyboard: Esc emits `dismissed`; Enter emits `accepted` (default variant only: in a destructive dialog the
 // destructive action is never the Enter default, so Enter on the dialog itself does nothing and focus starts on
 // the dialog, then Tab reaches the buttons in order). Esc and Enter react to key PRESS only.
@@ -21,6 +22,8 @@ export component Dialog inherits Rectangle {
     in property <string> title;
     in property <string> body;
     in property <DialogVariant> variant: DialogVariant.default;
+    // The children fill the card's width (a wide body such as a table) instead of sitting right-aligned.
+    in property <bool> fill: false;
     callback dismissed();
     callback accepted();
     // The dialog closed (`open` went false): the host puts keyboard focus back on whatever opened it.
@@ -111,7 +114,7 @@ export component Dialog inherits Rectangle {
                     }
                     HorizontalLayout {
                         spacing: Space.s2;
-                        alignment: end;
+                        alignment: root.fill ? stretch : end;
                         @children
                     }
                 }
