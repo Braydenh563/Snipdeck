@@ -12,3 +12,4 @@ Queue = docs/V1-PLAN.md "V1 ship list" (authoritative; tick there too).
 - [ ] D1-D2 goldens, README shots, hero images; D3 de-slop; D4 Pages site; D5 controller split
 - [ ] E1 docs; E2 pre-public sweep
 - [ ] F1 Fable sweep (owner-approved, one agent); F2 Opus review; F3 ux-auditor + blind-tester; F4 gate --full, PR body, summary, retro
+- [!] CI workflow line still names `snipdeck-keygen` after the rename (ec1edcc): owner changes `-p snipdeck-keygen` to `-p snipdeck-licence-issuer` in the Linux test step.
