@@ -732,14 +732,16 @@ fn click_at(window: &slint::Window, position: slint::LogicalPosition) {
     slint::platform::update_timers_and_animations();
 }
 
-const MENU_ROWS: [&str; 9] = [
+const MENU_ROWS: [&str; 11] = [
     "Open Snipdeck",
+    "All commands\u{2026}",
     "New snippet",
     "Settings\u{2026}",
     "Dock to the nearest edge",
     "Pause hotkeys",
     "Troubleshoot\u{2026}",
     "User guide",
+    "Keyboard shortcuts",
     "About Snipdeck",
     "Quit",
 ];
@@ -910,7 +912,7 @@ fn pause_hotkeys_is_checked_while_paused() {
         open_menu(&r);
         let checked = |r: &Rig| {
             r.ui.get_app_menu_entries()
-                .row_data(4)
+                .row_data(5)
                 .expect("the Pause row")
                 .icon
                 .size()
