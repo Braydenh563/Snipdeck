@@ -564,7 +564,10 @@ mod tests {
     fn the_tour_opens_only_for_an_unseen_empty_library() {
         let new = Settings::default();
         assert!(new.tour_due(true));
-        assert!(!new.tour_due(false), "an old library with no flag in its file");
+        assert!(
+            !new.tour_due(false),
+            "an old library with no flag in its file"
+        );
         let seen = Settings {
             onboarded: true,
             ..Settings::default()

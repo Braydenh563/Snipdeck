@@ -13,6 +13,9 @@ msgstr "PNG画像。Snipdeckが独自のコピーを保存します。"
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "リストには、返信文や住所など関連するスニペットをまとめておけます。"
 
+msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
+msgstr "作業中のアプリの横に、スニペットを並べた帯が表示されます。クリックすると、そのアプリに貼り付けます。"
+
 msgid "Actions"
 msgstr "操作"
 
@@ -55,6 +58,9 @@ msgstr "毎回値を尋ねる"
 msgid "Asks you to pick one of the options"
 msgstr "オプションから1つ選択を求めます"
 
+msgid "Back"
+msgstr "戻る"
+
 msgid "Back up now"
 msgstr "今すぐバックアップ"
 
@@ -81,6 +87,9 @@ msgstr "ボード"
 
 msgid "Bottom edge"
 msgstr "下端"
+
+msgid "Bring up the panel, open the picker, save the clipboard or paste the next item from any app."
+msgstr "どのアプリからでも、パネルの表示、ピッカーの起動、クリップボードの保存、次の項目の貼り付けができます。"
 
 msgid "Brings the panel up beside the app you are working in."
 msgstr "作業中のアプリの横にパネルを表示します。"
@@ -313,6 +322,9 @@ msgstr "例: 仕事"
 msgid "Free plan"
 msgstr "無料プラン"
 
+msgid "Get started"
+msgstr "はじめる"
+
 msgid "Give the board a name."
 msgstr "ボードに名前を付けてください。"
 
@@ -495,6 +507,9 @@ msgstr "新しいタグ"
 
 msgid "New tag, then Enter"
 msgstr "新しいタグ、次に Enter"
+
+msgid "Next"
+msgstr "次へ"
 
 msgid "No backups yet."
 msgstr "バックアップはまだありません。"
@@ -769,6 +784,9 @@ msgstr "Snipdeck をタスクバーに表示する"
 msgid "Show or hide the panel"
 msgstr "パネルを表示または非表示"
 
+msgid "Skip"
+msgstr "スキップ"
+
 msgid "Slate"
 msgstr "スレート"
 
@@ -787,6 +805,9 @@ msgstr "Snipdeckにはアカウントもサーバーもテレメトリもなく�
 msgid "Snipdeck keeps its own copy of the file."
 msgstr "Snipdeckがファイルの独自のコピーを保存します。"
 
+msgid "Snipdeck keeps the text you paste again and again, one shortcut away. Three things to know:"
+msgstr "何度も貼り付けるテキストを、ショートカット一つで呼び出せます。まず知っておきたい3つのこと:"
+
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck はインターネットに接続しません。表示するアイコンとフォントはすべて同梱されています。"
 
@@ -804,6 +825,12 @@ msgstr "並べ替え"
 
 msgid "Start with Windows"
 msgstr "Windows の起動時に開始"
+
+msgid "Start-up"
+msgstr "起動"
+
+msgid "Step {} of {}"
+msgstr "ステップ {} / {}"
 
 msgid "Tab"
 msgstr "Tab"
@@ -846,6 +873,12 @@ msgstr "リストとその{}件のスニペットはゴミ箱に移動します�
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "この数を超えると、古いものから削除されます。"
+
+msgid "The panel"
+msgstr "パネル"
+
+msgid "The picker"
+msgstr "ピッカー"
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "選択したスニペットは完全に削除されます。この操作は元に戻せません。"
@@ -910,6 +943,9 @@ msgstr "使用"
 msgid "Violet"
 msgstr "バイオレット"
 
+msgid "Welcome to Snipdeck"
+msgstr "Snipdeck へようこそ"
+
 msgid "What is on the clipboard"
 msgstr "クリップボードの内容"
 
@@ -921,6 +957,9 @@ msgstr "このスニペットの変更は保存されていません。"
 
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "ピンがオフのとき、ほかのアプリに切り替えるとすぐにパネルが隠れます。ピン留めしたパネルは隠れません。"
+
+msgid "Where the panel sits"
+msgstr "パネルの位置"
 
 msgid "Where the text cursor lands after pasting"
 msgstr "貼り付け後のテキストカーソルの位置"
@@ -939,6 +978,9 @@ msgstr "デッキは空です"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "ライブラリは1つのフォルダー（%LOCALAPPDATA%\\Snipdeck）にあります：snipdeck.db（ボード、リスト、スニペット、タグ、ゴミ箱）、blobs（画像、ファイル、長いテキスト）、settings.json、ライセンスキー、バックアップ（保持すると選んだ数）、ログ。"
+
+msgid "Your shortcuts"
+msgstr "ショートカット設定"
 
 msgid "https://example.com"
 msgstr "https://example.com"
