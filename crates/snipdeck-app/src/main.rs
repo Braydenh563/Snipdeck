@@ -272,11 +272,7 @@ fn run(args: &Args) -> Result<(), String> {
             })
         };
         (
-            PickerUi::new(
-                &controller,
-                Rc::clone(&popups),
-                Rc::clone(&anchor),
-            ),
+            PickerUi::new(&controller, Rc::clone(&popups), Rc::clone(&anchor)),
             FillUi::new(&controller, Rc::clone(&popups), anchor),
             ToastUi::new(&controller, popups, others),
         )

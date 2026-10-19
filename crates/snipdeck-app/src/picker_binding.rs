@@ -21,7 +21,7 @@ use crate::{
     binding::{
         MASKED_PREVIEW, extension_of, index, item_kind_of, model, redraw_all, register_redraw,
     },
-    controller::{Controller, Effect, Library, PickerView, View},
+    controller::{Controller, Library, PickerView, View},
     frame::Rect,
     host::ClipboardText,
     palette::list_color,
@@ -39,7 +39,6 @@ pub const PICKER_WIDTH: f32 = 560.0;
 /// the Picker opens its form at the same place, once the Target's caret is no longer readable
 /// (the Picker has the keyboard by then).
 pub type AnchorMemory = Rc<Cell<Option<Anchor>>>;
-
 
 /// What the window shows now, so a redraw sets only what changed (re-setting the rows would
 /// reset the list's scroll).
@@ -193,7 +192,8 @@ where
         wire!(on_selection_moved, |core, delta| core.act(
             |ctl| ctl.picker_move(isize::try_from(delta).unwrap_or(0))
         ));
-        wire!(on_edit_requested, |core, i| core.act(|ctl| ctl.picker_edit(index(i))));
+        wire!(on_edit_requested, |core, i| core
+            .act(|ctl| ctl.picker_edit(index(i))));
         wire!(on_close_requested, |core| core
             .act(Controller::close_picker));
     }

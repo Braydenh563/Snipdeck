@@ -22,8 +22,8 @@ use snipdeck_store::{
     crypto::KeyRing,
 };
 
-mod editor_ctl;
 mod dock_ctl;
+mod editor_ctl;
 mod main_ctl;
 mod panel;
 mod settings_ctl;

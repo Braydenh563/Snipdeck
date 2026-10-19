@@ -106,12 +106,7 @@ fn rig() -> Rig {
     }));
     popups.cursor.set(Some((900, 600)));
     let anchor = AnchorMemory::default();
-    let picker = PickerUi::new(
-        &ctl,
-        popups.clone(),
-        Rc::clone(&anchor),
-        Rc::new(|_: &Effect| {}),
-    );
+    let picker = PickerUi::new(&ctl, popups.clone(), Rc::clone(&anchor));
     let fill = FillUi::new(&ctl, popups.clone(), anchor);
     let toasts = ToastUi::new(&ctl, popups.clone(), Rc::new(|| false));
     let _ = ctl.borrow_mut().hide();

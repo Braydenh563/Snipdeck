@@ -490,7 +490,10 @@ mod tests {
 
     #[test]
     fn a_span_outside_the_work_area_gives_the_whole_edge() {
-        let reversed = Range { start: 700, end: 200 };
+        let reversed = Range {
+            start: 700,
+            end: 200,
+        };
         for along in [5000..6000, -900..-100, 300..300, reversed] {
             assert_eq!(
                 handle_rect(DockEdge::Right, area(), along.clone(), 1.0),

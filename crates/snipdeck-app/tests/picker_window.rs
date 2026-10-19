@@ -160,7 +160,6 @@ impl Rig {
         self.picker.window().expect("the Picker window was made")
     }
 
-
     fn uses(&self, id: ItemId) -> u32 {
         self.ctl.borrow().store().item(id).expect("item").use_count
     }
