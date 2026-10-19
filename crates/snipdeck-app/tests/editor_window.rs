@@ -44,7 +44,7 @@ struct Rig {
     /// The data folder.
     data: std::path::PathBuf,
     /// Holds a temporary data folder up for the life of the rig.
-    _guard: Option<tempfile::TempDir>,
+    guard: Option<tempfile::TempDir>,
 }
 
 fn now() -> Timestamp {
@@ -58,7 +58,7 @@ fn rig() -> Rig {
 fn rig_tier(tier: Tier) -> Rig {
     let dir = tempfile::tempdir().expect("dir");
     let mut r = rig_at(dir.path(), tier, &SharedProvider::new());
-    r._guard = Some(dir);
+    r.guard = Some(dir);
     r
 }
 
@@ -105,7 +105,7 @@ fn rig_at(data: &Path, tier: Tier, provider: &SharedProvider) -> Rig {
         editor,
         _binding: binding,
         data: data.to_owned(),
-        _guard: None,
+        guard: None,
     }
 }
 
@@ -792,7 +792,6 @@ fn the_editor_fields_have_roles_labels_and_big_enough_targets() {
         for kind in 0..=5 {
             ed.set_kind_index(kind);
             settle();
-            eprintln!("kind {kind}");
             let _ = find(&ed, "Title", AccessibleRole::TextInput);
             let _ = find(&ed, "Save", AccessibleRole::Button);
             let _ = find(&ed, "Cancel", AccessibleRole::Button);
