@@ -38,8 +38,9 @@ export component MenuItem inherits Rectangle {
     height: max(Space.hit, Type.line-base + Space.s2);
     background: root.current && !root.disabled ? Theme.bg-overlay-hover : transparent;
     border-radius: Radius.sm;
-    border-width: root.current && !root.disabled && Theme.hc-border != transparent ? 1px : 0px;
-    border-color: Theme.hc-border;
+    // The highlighted row is where the keyboard is: it carries the focus ring (WCAG 2.4.7).
+    border-width: root.current && !root.disabled ? 2px : 0px;
+    border-color: Theme.focus-ring;
     opacity: root.disabled ? 0.45 : 1.0;
     accessible-role: list-item;
     accessible-label: root.text;

@@ -36,7 +36,7 @@ component HotkeyChip inherits Rectangle {
 // format for the platform layer, not translated copy.
 global Combo {
     pure public function key-name(t: string) -> string {
-        if (t == " ") { return "Space"; }
+        if (t == " ") { return @tr("Space"); }
         if (t == "\n") { return "Enter"; }
         if (t == Key.Tab) { return "Tab"; }
         if (t == Key.Backspace) { return "Backspace"; }
