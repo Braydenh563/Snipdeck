@@ -1374,3 +1374,6 @@ msgstr "{} de las comprobaciones requieren atención."
 
 msgid "{} selected"
 msgstr "{} seleccionados"
+
+msgid "{}, {} of {}"
+msgstr ""

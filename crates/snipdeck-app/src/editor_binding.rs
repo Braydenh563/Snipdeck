@@ -7,10 +7,10 @@
 //! drawn from the controller by the shared redraw (see `binding::redraw_all`), so the Panel's
 //! quick edit, the Main window's Edit and New, the Picker's Ctrl+E and Ctrl+N all open it the same
 //! way: by asking the controller. While it is open a timer asks the controller for a draft every
-//! [`AUTOSAVE_EVERY`](crate::drafts::AUTOSAVE_EVERY).
+//! [`crate::drafts::AUTOSAVE_EVERY`].
 //!
 //! The typed text stays in the window until Save, the draft tick or Discard asks for it; this
-//! file reads it through [`read_input`] and never logs it.
+//! file reads it through `read_input` and never logs it.
 
 use std::{
     cell::{Cell, RefCell},

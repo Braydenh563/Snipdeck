@@ -1374,3 +1374,6 @@ msgstr "有 {} 项检查需要留意。"
 
 msgid "{} selected"
 msgstr "已选择 {} 项"
+
+msgid "{}, {} of {}"
+msgstr ""

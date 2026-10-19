@@ -1374,3 +1374,6 @@ msgstr "{} 件の項目に確認が必要です。"
 
 msgid "{} selected"
 msgstr "{} 件選択中"
+
+msgid "{}, {} of {}"
+msgstr ""
