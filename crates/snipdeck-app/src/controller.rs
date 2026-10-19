@@ -1730,7 +1730,8 @@ mod tests {
     #[test]
     fn a_copied_sensitive_item_leaves_the_clipboard_after_thirty_seconds() {
         let mut w = world();
-        make_sensitive(&mut w, w.ids[0]);
+        let id = w.ids[0];
+        make_sensitive(&mut w, id);
         w.ctl.activate_row(0, UseMode::Copy);
         assert_eq!(
             w.ctl.clipboard_clear_wait(),
@@ -1752,7 +1753,8 @@ mod tests {
     #[test]
     fn a_newer_copy_is_not_cleared_with_the_sensitive_one() {
         let mut w = world();
-        make_sensitive(&mut w, w.ids[0]);
+        let id = w.ids[0];
+        make_sensitive(&mut w, id);
         w.ctl.activate_row(0, UseMode::Copy);
         w.ctl.activate_row(1, UseMode::Copy);
         w.clock.set(at("2026-10-17T10:31:00Z"));

@@ -51,7 +51,6 @@ struct Rig {
     popups: Rc<FakePopups>,
     picker: PickerUi,
     toasts: ToastUi,
-    effects: Rc<RefCell<Vec<Effect>>>,
     #[allow(dead_code, reason = "bound for the life of the rig")]
     fill: FillUi,
 }
@@ -114,9 +113,7 @@ fn rig_at(scale: f32) -> Rig {
     let ctl = Rc::new(RefCell::new(ctl));
     let _ = ctl.borrow_mut().on_tray(TrayEvent::IconPresent(true));
     let panel = PanelWindow::new().expect("panel");
-    let effects: Rc<RefCell<Vec<Effect>>> = Rc::default();
-    let log = Rc::clone(&effects);
-    let binding = Controller::bind(&ctl, &panel, move |e| log.borrow_mut().push(*e));
+    let binding = Controller::bind(&ctl, &panel, |_| {});
     let popups = Rc::new(FakePopups::one(monitor(scale)));
     popups.cursor.set(Some((900, 600)));
     let anchor = AnchorMemory::default();
@@ -134,7 +131,6 @@ fn rig_at(scale: f32) -> Rig {
         popups,
         picker,
         toasts,
-        effects,
         fill,
     }
 }
@@ -351,7 +347,7 @@ fn escape_closes_the_picker_and_the_target_gets_the_focus_back() {
             1,
             "the Target is the foreground again"
         );
-        assert!(r.ctl.borrow().services().keyboard.sent.is_empty());
+        assert_eq!(r.ctl.borrow().services().keyboard.sent.len(), 0);
         // The hotkey again opens it, with the search empty.
         let w = r.open();
         assert!(w.window().is_visible());
