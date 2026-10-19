@@ -164,6 +164,22 @@ pub enum ToastMessage {
     FolderNotOpened,
     /// "Couldn't change the Windows start-up entry."
     AutostartFailed,
+    /// "Couldn't open the log folder."
+    CannotOpenLog,
+    /// "Couldn't unlock the encryption key. Nothing was saved."
+    KeyUnavailable,
+    /// "This item was deleted. Nothing was saved."
+    ItemGone,
+    /// "That list was deleted. Choose another list."
+    ListGone,
+    /// "Couldn't write to your library. Check that the disk has room."
+    StorageFailed,
+    /// "Couldn't save this item. Nothing was changed."
+    NotSaved,
+    /// "Couldn't open this item."
+    NotOpened,
+    /// "Couldn't save a draft of what you typed."
+    DraftNotSaved,
 }
 
 /// A toast: a style and a message.

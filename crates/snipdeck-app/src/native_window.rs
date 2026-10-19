@@ -24,17 +24,23 @@ fn hwnd_of(window: &winit::window::Window) -> Option<isize> {
 
 /// The Win32 window handle of the Panel, once its window exists (the event loop makes it when
 /// the Panel is first shown; later hides and shows keep the same window).
-#[cfg(windows)]
 #[must_use]
 pub fn handle(window: &PanelWindow) -> Option<isize> {
     use slint::ComponentHandle;
     window.window().with_winit_window(hwnd_of).flatten()
 }
 
-/// The Win32 window handle of the Panel: none off Windows.
+/// The Win32 window handle of `window`, once its native window exists.
+#[cfg(windows)]
+#[must_use]
+pub fn handle_of(window: &slint::Window) -> Option<isize> {
+    window.with_winit_window(hwnd_of).flatten()
+}
+
+/// The Win32 window handle of `window`: none off Windows.
 #[cfg(not(windows))]
 #[must_use]
-pub fn handle(_window: &PanelWindow) -> Option<isize> {
+pub fn handle_of(_window: &slint::Window) -> Option<isize> {
     None
 }
 

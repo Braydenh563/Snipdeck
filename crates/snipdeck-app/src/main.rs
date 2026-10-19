@@ -28,7 +28,9 @@ use snipdeck_app::{
     binding::Binding,
     cli::{self, Args},
     controller::{Controller, Effect},
-    crash, demo, host,
+    crash, demo,
+    drafts::Drafts,
+    host, key_provider,
     main_binding::{self, MainUi},
     maintenance::{self, Maintenance},
     platform::{self, Callbacks, Host, Start},
@@ -160,6 +162,20 @@ fn run(args: &Args) -> Result<(), String> {
         if let Some(saver) = saver {
             controller.set_settings_saver(saver);
         }
+        // The item editor: drafts live in the data folder (the demo has none), the library key
+        // is wrapped by DPAPI, Browse opens the Windows file dialog, and the crash toast's
+        // "Open log" opens the reports folder.
+        if let Some(folder) = &settings_folder {
+            controller.set_drafts(Drafts::in_data_dir(folder));
+        }
+        if let Some(provider) = key_provider::provider() {
+            controller.set_key_provider(provider);
+        }
+        if let Some(picker) = platform::file_picker() {
+            controller.set_file_picker(picker);
+        }
+        controller.set_log_opener(Box::new(crash::open_log_folder));
+        controller.unlock_library();
     }
 
     // The tray makes closing the Panel safe (it hides, and the icon brings it back). Whether an
@@ -200,6 +216,8 @@ fn run(args: &Args) -> Result<(), String> {
         ),
     );
     BINDING.with(|b| *b.borrow_mut() = Some(binding.clone()));
+    // The item editor opens from the Panel, the Main window and the Picker; one binding draws it.
+    let _item_editor = Controller::bind_item_editor(&controller);
     // Frame changes are remembered only once the stored place has been restored.
     let frames_armed = Rc::new(Cell::new(false));
     watch_window_events(&window, binding.clone(), Rc::clone(&frames_armed));
@@ -257,10 +275,9 @@ where
         };
         let reported =
             maintenance::run(&mut maintenance.borrow_mut(), &mut controller.borrow_mut());
-        // A toast the run set is drawn (and its timer started) by the next redraw; the borrow is
-        // released, and an empty hotkey report changes nothing but triggers that redraw.
+        // A toast the run set is drawn (and its timer started) by a redraw; the borrow is released.
         if reported > 0 {
-            with_binding(|b| b.hotkey_problems(&[]));
+            with_binding(Binding::redraw);
         }
     });
     let first = slint::Timer::default();
@@ -363,12 +380,12 @@ fn effect_handler(
                 restore_frame(&window);
             }
         }
-        // Not built yet (V1-PLAN steps 7b and 8): the click is logged and nothing happens.
-        Effect::NewItem | Effect::OpenHelp(_) | Effect::EditItem(_) => {
+        // Not built yet (V1-PLAN step 7b): the click is logged and nothing happens.
+        Effect::OpenHelp(_) => {
             snipdeck_app::trace!("host: {effect:?} is not built yet");
         }
-        // The binding has already placed the window.
-        Effect::HidePanel | Effect::PlaceWindow(_) => {}
+        // The binding has already acted: placed the window, or opened the item editor.
+        Effect::HidePanel | Effect::PlaceWindow(_) | Effect::NewItem | Effect::EditItem(_) => {}
     }
 }
 

@@ -10,7 +10,12 @@ use slint::Global;
 use snipdeck_platform::tray::TrayLabels;
 use snipdeck_ui::{PanelWindow, TrayTexts};
 
-use crate::toast::{LicenceProblem, ToastMessage};
+use snipdeck_core::ItemKind;
+
+use crate::{
+    item_editor::{AttachmentView, EditorProblem, SaveFailure},
+    toast::{LicenceProblem, ToastMessage},
+};
 
 /// The tray menu's words in the language selected for the UI now (English until a bundled
 /// translation is selected). `window` is any window of the UI: Slint globals are reached
@@ -111,6 +116,18 @@ pub fn toast_text(message: &ToastMessage) -> String {
         }
         ToastMessage::FolderNotOpened => "Couldn't open the folder.".into(),
         ToastMessage::AutostartFailed => "Couldn't change the Windows start-up entry.".into(),
+        ToastMessage::CannotOpenLog => "Couldn't open the log folder.".into(),
+        ToastMessage::KeyUnavailable => {
+            "Couldn't open the encryption key. Nothing was saved.".into()
+        }
+        ToastMessage::ItemGone => "This item was deleted. Nothing was saved.".into(),
+        ToastMessage::ListGone => "That list was deleted. Choose another list.".into(),
+        ToastMessage::StorageFailed => {
+            "Couldn't write to your library. Check that the disk has room.".into()
+        }
+        ToastMessage::NotSaved => "Couldn't save this item. Nothing was changed.".into(),
+        ToastMessage::NotOpened => "Couldn't open this item.".into(),
+        ToastMessage::DraftNotSaved => "Couldn't save a draft of what you typed.".into(),
     }
 }
 
@@ -148,6 +165,21 @@ pub const LANGUAGE_TAGS: [&str; 7] = ["en", "es", "de", "fr", "pt-BR", "ja", "zh
 
 /// The label of a toast's undo button.
 pub const UNDO_LABEL: &str = "Undo";
+
+/// The label of the crash toast's button.
+pub const OPEN_LOG_LABEL: &str = "Open log";
+
+/// The label of `toast`'s button; empty when it has none.
+#[must_use]
+pub const fn toast_button_text(toast: &crate::controller::ToastView) -> &'static str {
+    if toast.undo {
+        UNDO_LABEL
+    } else if toast.open_log {
+        OPEN_LOG_LABEL
+    } else {
+        ""
+    }
+}
 
 /// The Main window's item-use button: "Use" where a click pastes, "Copy" where it cannot.
 #[must_use]
@@ -207,6 +239,102 @@ pub fn delete_hint_text(hint: crate::main_window::DeleteHint) -> String {
     match hint {
         crate::main_window::DeleteHint::LastBoard => {
             "This is your only board. Add another before deleting it.".into()
+        }
+    }
+}
+
+/// A size for people: "800 bytes", "12 KB", "2.4 MB".
+#[must_use]
+pub fn size_text(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = 1024 * 1024;
+    if bytes < KB {
+        format!("{bytes} bytes")
+    } else if bytes < MB {
+        format!("{} KB", bytes / KB)
+    } else {
+        let tenths = bytes.saturating_mul(10) / MB;
+        format!("{}.{} MB", tenths / 10, tenths % 10)
+    }
+}
+
+/// What the item editor shows as the name of an existing Image or File item.
+#[must_use]
+pub fn attachment_name_text(attachment: &AttachmentView) -> String {
+    match attachment.kind {
+        ItemKind::Image => "Picture".to_owned(),
+        _ if attachment.files > 1 => {
+            format!("{} and {} more", attachment.name, attachment.files - 1)
+        }
+        _ => attachment.name.clone(),
+    }
+}
+
+/// What the item editor shows under the name of an existing Image or File item.
+#[must_use]
+pub fn attachment_detail_text(attachment: &AttachmentView) -> String {
+    let size = size_text(attachment.bytes);
+    match (attachment.kind, attachment.dimensions) {
+        (ItemKind::Image, Some((w, h))) => format!("PNG, {w} \u{d7} {h}, {size}"),
+        (ItemKind::Image, None) => format!("PNG, {size}"),
+        _ if attachment.files > 1 => format!("{} files, {size} in all", attachment.files),
+        _ => size,
+    }
+}
+
+/// Why the item editor refuses something, in words.
+#[must_use]
+pub fn editor_problem_text(problem: &EditorProblem) -> String {
+    match problem {
+        EditorProblem::TitleTooLong { max } => {
+            format!("A title can have at most {max} characters.")
+        }
+        EditorProblem::TitleHasControl => {
+            "A title can't contain line breaks or control characters.".into()
+        }
+        EditorProblem::ContentEmpty => "Add some text, or cancel.".into(),
+        EditorProblem::ContentTooLong { max_kb } => format!(
+            "This text is over {max_kb} KB, the most that can be edited here. Shorten it, or keep it in a file."
+        ),
+        EditorProblem::LinkNeedsScheme => "A link needs a scheme such as https://".into(),
+        EditorProblem::LinkHasSpace => "A link can't contain spaces or line breaks.".into(),
+        EditorProblem::Template(why) => format!("This template can't be read: {why}."),
+        EditorProblem::NeedsPro(_) => {
+            "Fields that ask for a value are a Pro feature. Remove them to save.".into()
+        }
+        EditorProblem::SourceEmpty => "Choose a file, or cancel.".into(),
+        EditorProblem::SourceMissing => "There is no file at that path.".into(),
+        EditorProblem::SourceNotAFile => "That path is a folder, not a file.".into(),
+        EditorProblem::SourceUnreadable => {
+            "Snipdeck can't read that file. It may be in use or protected.".into()
+        }
+        EditorProblem::SourceTooLarge { max_mb } => {
+            format!("That file is over {max_mb} MB, the most an item can hold.")
+        }
+        EditorProblem::SourceEmptyFile => "That file is empty.".into(),
+        EditorProblem::SourceNotPng => {
+            "An Image item holds a PNG picture. Choose a PNG file, or add this one as a File."
+                .into()
+        }
+        EditorProblem::SourceBadName => {
+            "Snipdeck can't keep a file with that name. Rename the file and try again.".into()
+        }
+        EditorProblem::Tag(error) => name_error_text(error),
+        EditorProblem::Save(failure) => match failure {
+            SaveFailure::Locked => "Unlock your library to save this item.".into(),
+            SaveFailure::KeyUnavailable => {
+                "Snipdeck couldn't open the encryption key, so nothing was saved.".into()
+            }
+            SaveFailure::ItemGone => "This item was deleted, so nothing was saved.".into(),
+            SaveFailure::ListGone => "That list was deleted. Choose another list.".into(),
+            SaveFailure::Storage => {
+                "Snipdeck couldn't write to your library. Check that the disk has room.".into()
+            }
+            SaveFailure::Other => "Snipdeck couldn't save this item. Nothing was changed.".into(),
+        },
+        EditorProblem::DraftNotSaved => "Snipdeck couldn't save a draft of what you typed.".into(),
+        EditorProblem::BrowseFailed => {
+            "The file dialog couldn't open. Type the path instead.".into()
         }
     }
 }
@@ -274,6 +402,14 @@ mod tests {
             ToastMessage::BoardLimit,
             ToastMessage::LibraryProblem,
             ToastMessage::CrashedLastTime,
+            ToastMessage::CannotOpenLog,
+            ToastMessage::KeyUnavailable,
+            ToastMessage::ItemGone,
+            ToastMessage::ListGone,
+            ToastMessage::StorageFailed,
+            ToastMessage::NotSaved,
+            ToastMessage::NotOpened,
+            ToastMessage::DraftNotSaved,
         ];
         for message in all {
             assert!(!toast_text(&message).is_empty(), "{message:?}");

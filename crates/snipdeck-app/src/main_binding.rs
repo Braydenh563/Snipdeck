@@ -6,8 +6,9 @@
 //! The Panel and the Main window read one library and share one toast, so after any gesture
 //! every bound window is redrawn from the controller (see `binding::redraw_all`).
 //!
-//! What is not wired because the feature behind it is not built: the item editor ("New item",
-//! Edit), the tag manager, the Recent inbox.
+//! What is not wired because the feature behind it is not built: the tag manager, the Recent
+//! inbox. "New item" and Edit open the item editor, which has its own window
+//! ([`editor_binding`](crate::editor_binding)).
 
 use std::{
     cell::{Cell, RefCell},
@@ -32,6 +33,7 @@ use crate::{
     },
     controller::{BoardMenuEntry, Controller, Library, MainAction, MainScreen, ToastPhase},
     host::ClipboardText,
+    item_editor::Origin,
     main_window::{EditorKind, EditorView, Section, SelectMode, ViewMode},
     native_window::fit_to_screen,
     palette::list_color,
@@ -321,8 +323,8 @@ where
     /// Draws the controller's Main screen in `window` and routes the window's gestures (and
     /// those of the list and board editors it opens) to it.
     ///
-    /// Not wired, because the features behind them are not built: "New item" and Edit (the item
-    /// editor), "Manage tags…", the Settings button.
+    /// Not wired, because the features behind them are not built: "Manage tags…", the Settings
+    /// button.
     pub fn bind_main(this: &Rc<RefCell<Self>>, window: &ui::MainWindow) -> MainBinding<S, C, K, T> {
         let core = Rc::new_cyclic(|weak: &Weak<MainCore<S, C, K, T>>| {
             let weak = weak.clone();
@@ -396,17 +398,15 @@ where
         wire!(on_board_menu_activated, |ctl, i| ctl
             .main_board_menu_activate(index(i)));
         wire!(on_board_menu_dismissed, |ctl| ctl.main_board_menu_close());
-        wire!(on_toast_undo, |ctl| ctl.main_undo());
+        wire!(on_toast_undo, |ctl| ctl.toast_action());
         window.on_settings_requested(crate::settings_binding::request_open);
         wire!(on_item_reorder_requested, |ctl, d| ctl
             .main_reorder_items(isize::try_from(d).unwrap_or(0)));
         wire!(on_list_reorder_requested, |ctl, i, d| ctl
             .main_reorder_list(index(i), isize::try_from(d).unwrap_or(0)));
         wire_title_bar(window);
+        wire!(on_new_item_requested, |ctl| ctl.open_new_item(Origin::Main));
         // The callbacks the window has no feature for yet still leave a line in the log.
-        window.on_new_item_requested(|| {
-            crate::trace!("callback main new_item_requested: no item editor yet");
-        });
         window.on_manage_tags_requested(|| {
             crate::trace!("callback main manage_tags_requested: no tag manager yet");
         });
@@ -609,11 +609,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
                 ToastPhase::Hold => ui::ToastPhase::Hold,
                 ToastPhase::Exit => ui::ToastPhase::Exit,
             });
-            window.set_toast_undo_label(if toast.undo {
-                wording::UNDO_LABEL.into()
-            } else {
-                SharedString::new()
-            });
+            window.set_toast_undo_label(wording::toast_button_text(toast).into());
             window.set_toast_text(wording::toast_text(&toast.message).into());
         } else {
             window.set_toast_text(SharedString::new());

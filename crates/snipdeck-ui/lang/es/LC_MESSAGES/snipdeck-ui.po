@@ -7,6 +7,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "A PNG picture. Snipdeck keeps its own copy."
+msgstr "Una imagen PNG. Snipdeck guarda su propia copia."
+
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "Una lista agrupa fragmentos relacionados, como respuestas o direcciones."
 
@@ -76,6 +79,12 @@ msgstr "Tableros"
 msgid "Brings the panel up beside the app you are working in."
 msgstr "Muestra el panel junto a la aplicación en la que trabajas."
 
+msgid "Browse for a file"
+msgstr "Buscar un archivo"
+
+msgid "Browse…"
+msgstr "Examinar…"
+
 msgid "Cancel"
 msgstr "Cancelar"
 
@@ -87,6 +96,9 @@ msgstr "Los fragmentos capturados conservan su tipo."
 
 msgid "Changes apply at once."
 msgstr "Los cambios se aplican de inmediato."
+
+msgid "Choose a file, or cancel."
+msgstr "Elige un archivo o cancela."
 
 msgid "Choose one to add it at the end of the text. It is filled in when you use the item."
 msgstr "Elige uno para añadirlo al final del texto. Se rellena al usar el fragmento."
@@ -234,6 +246,9 @@ msgstr "Vaciar papelera…"
 
 msgid "Empty the Trash?"
 msgstr "¿Vaciar la papelera?"
+
+msgid "Encrypting it on disk is a Pro feature."
+msgstr "El cifrado en el disco es una función Pro."
 
 msgid "Enter"
 msgstr "Enter"
@@ -535,8 +550,14 @@ msgstr "Pega en {} · {}"
 msgid "Pastes the next item of the list in order."
 msgstr "Pega el siguiente fragmento de la lista, en orden."
 
+msgid "Path to the file"
+msgstr "Ruta del archivo"
+
 msgid "Pause hotkeys"
 msgstr "Pausar atajos"
+
+msgid "Picture file"
+msgstr "Archivo de imagen"
 
 msgid "Pin"
 msgstr "Fijar"
@@ -600,6 +621,9 @@ msgstr "Restaurar"
 
 msgid "Restore the backup of {}"
 msgstr "Restaurar la copia del {}"
+
+msgid "Restored the changes you had not saved."
+msgstr "Se restauraron los cambios que no habías guardado."
 
 msgid "Results"
 msgstr "Resultados"
@@ -675,6 +699,9 @@ msgstr "Snipdeck Pro"
 
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeck no tiene cuenta, ni servidor, ni telemetría, y no abre ningún puerto de red. Nada de lo que guardas sale de este PC."
+
+msgid "Snipdeck keeps its own copy of the file."
+msgstr "Snipdeck guarda su propia copia del archivo."
 
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck nunca se conecta a internet: todos los iconos y fuentes que muestra vienen incluidos."
@@ -757,8 +784,8 @@ msgstr "Este campo es obligatorio"
 msgid "This list is empty"
 msgstr "Esta lista está vacía"
 
-msgid "This text is {}. Anything over 16 KB opens read-only here."
-msgstr "Este texto es {}. Todo lo que supere 16 KB se abre aquí en solo lectura."
+msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
+msgstr "Este texto es {}. Todo lo que supere 16 KB se abre aquí en solo lectura, y se muestran los primeros 16 KB."
 
 msgid "Tile view"
 msgstr "Vista de mosaico"

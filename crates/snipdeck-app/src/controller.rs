@@ -19,8 +19,10 @@ use snipdeck_platform::{
 };
 use snipdeck_store::{
     Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, Store, TagRepo, TrashRepo, Trashable,
+    crypto::KeyRing,
 };
 
+mod editor_ctl;
 mod main_ctl;
 mod panel;
 mod settings_ctl;
@@ -69,6 +71,30 @@ pub trait Library: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + BlobS
         &mut self,
         f: impl FnOnce(&mut Batch<'_>) -> snipdeck_store::Result<T>,
     ) -> snipdeck_store::Result<T>;
+
+    /// Whether encryption of sensitive items has been set up.
+    ///
+    /// # Errors
+    ///
+    /// The store failing to read.
+    fn key_ring_exists(&self) -> snipdeck_store::Result<bool>;
+
+    /// Sets up encryption (no master password) and leaves the library unlocked.
+    ///
+    /// # Errors
+    ///
+    /// The key could not be made or wrapped, or the store failed.
+    fn create_key_ring(&mut self, ring: &KeyRing<'_>) -> snipdeck_store::Result<()>;
+
+    /// Opens the stored key (no master password).
+    ///
+    /// # Errors
+    ///
+    /// The key does not open (a master password is set, another user's key), or the store failed.
+    fn unlock_key_ring(&mut self, ring: &KeyRing<'_>) -> snipdeck_store::Result<()>;
+
+    /// Whether the key is open.
+    fn is_unlocked(&self) -> bool;
 }
 
 impl Library for Store {
@@ -77,6 +103,22 @@ impl Library for Store {
         f: impl FnOnce(&mut Batch<'_>) -> snipdeck_store::Result<T>,
     ) -> snipdeck_store::Result<T> {
         self.transaction(f)
+    }
+
+    fn key_ring_exists(&self) -> snipdeck_store::Result<bool> {
+        Store::key_ring_exists(self)
+    }
+
+    fn create_key_ring(&mut self, ring: &KeyRing<'_>) -> snipdeck_store::Result<()> {
+        Store::create_key_ring(self, ring, None)
+    }
+
+    fn unlock_key_ring(&mut self, ring: &KeyRing<'_>) -> snipdeck_store::Result<()> {
+        Store::unlock_key_ring(self, ring, None)
+    }
+
+    fn is_unlocked(&self) -> bool {
+        Store::is_unlocked(self)
     }
 }
 
@@ -109,11 +151,13 @@ pub enum Effect {
     Quit,
     /// Open the Settings window, creating it the first time (the Panel menu's "Settings").
     OpenSettings,
-    /// Start a new snippet (not built yet: the host logs it).
+    /// Start a new snippet. The Panel's binding opens the item editor on it
+    /// ([`Controller::open_new_item`]); the host has nothing more to do.
     NewItem,
     /// Open a help page (not built yet: the host logs it).
     OpenHelp(HelpTopic),
-    /// Open the quick editor on an item (V1-PLAN step 8; the host logs it until then).
+    /// Open the item editor on an item. The Panel's binding does it
+    /// ([`Controller::open_item_editor`]); the host has nothing more to do.
     EditItem(ItemId),
     /// Start the OS resize of the Panel from an edge or corner.
     ResizeWindow(Edge),
@@ -145,6 +189,8 @@ pub struct ToastView {
     pub phase: ToastPhase,
     /// It carries an Undo button ([`Controller::main_undo`]).
     pub undo: bool,
+    /// It carries an "Open log" button ([`Controller::toast_action`]).
+    pub open_log: bool,
 }
 
 /// The Picker window's content.
@@ -277,6 +323,13 @@ pub struct Controller<S, C, K, T> {
     /// The list or board editor, while one is open.
     editor: Option<main_ctl::EditorSlot>,
     editor_seq: u64,
+    /// The item editor, while one is open.
+    item_editor: Option<editor_ctl::ItemEditorSlot>,
+    item_editor_seq: u64,
+    /// What the item editor needs from the machine (drafts folder, key protection, file dialog).
+    editor_env: editor_ctl::EditorEnv,
+    /// Opens the folder of the crash reports (the "Open log" button of the crash toast).
+    log_opener: Option<LogOpener>,
     /// What the toast on screen undoes.
     undo: Option<Undo>,
     /// The toast whose timer chain a window has started.
@@ -288,6 +341,9 @@ pub struct Controller<S, C, K, T> {
     session: Session,
     saver: Option<SettingsSaver>,
 }
+
+/// Opens the folder of the crash reports in the file manager.
+pub type LogOpener = Box<dyn Fn() -> std::io::Result<()>>;
 
 /// The menu drawn inside the Panel, if any.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -363,6 +419,10 @@ where
             main: MainModel::new(),
             editor: None,
             editor_seq: 0,
+            item_editor: None,
+            item_editor_seq: 0,
+            editor_env: editor_ctl::EditorEnv::default(),
+            log_opener: None,
             undo: None,
             timer_seq: 0,
             revealed: None,
@@ -378,6 +438,11 @@ where
     /// The next [`view`](Self::view) follows it, unless the `theme` setting is not `system`.
     pub fn set_system_look(&mut self, look: SystemLook) {
         self.os_look = look;
+    }
+
+    /// Lets the crash toast's "Open log" button open the reports folder with `opener`.
+    pub fn set_log_opener(&mut self, opener: LogOpener) {
+        self.log_opener = Some(opener);
     }
 
     /// Writes setting changes to disk through `saver` from now on. Without one (the demo)
@@ -449,6 +514,7 @@ where
             message: t.toast.message.clone(),
             phase: t.phase,
             undo: self.undo.as_ref().is_some_and(|u| u.seq == t.seq),
+            open_log: t.toast.message == ToastMessage::CrashedLastTime,
         })
     }
 
@@ -1051,6 +1117,29 @@ where
             seq: self.toast_seq,
             targets,
         });
+    }
+
+    /// The toast's button: "Open log" on the crash toast (opens the reports folder and closes
+    /// the toast; a folder that cannot be opened says so), "Undo" on any other.
+    pub fn toast_action(&mut self) {
+        if self
+            .toast
+            .as_ref()
+            .is_some_and(|t| t.toast.message == ToastMessage::CrashedLastTime)
+        {
+            let opened = self.log_opener.as_ref().is_some_and(|open| open().is_ok());
+            if opened {
+                self.toast = None;
+                self.undo = None;
+            } else {
+                self.show_toast(Toast {
+                    kind: ToastKind::Danger,
+                    message: ToastMessage::CannotOpenLog,
+                });
+            }
+            return;
+        }
+        self.main_undo();
     }
 
     /// Whether the caller should start the timer chain for toast `seq`: true once per toast,

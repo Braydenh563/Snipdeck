@@ -402,7 +402,106 @@ ui_tests! {
         ui.set_content_size("2.4 MB".into());
         settle();
         assert_eq!(find(&ui, "Content", AccessibleRole::TextInput).accessible_read_only(), Some(true));
-        let _ = find(&ui, "This text is 2.4 MB. Anything over 16 KB opens read-only here.", AccessibleRole::Text);
+        let _ = find(
+            &ui,
+            "This text is 2.4 MB. Anything over 16 KB opens read-only here, and the first 16 KB are shown.",
+            AccessibleRole::Text,
+        );
+    }
+
+    fn a_new_item_may_be_an_image_or_a_file_and_asks_for_its_path() {
+        let (ui, log) = item_editor();
+        // An existing text item has four kinds to choose from.
+        assert!(missing(&ui, "Image", AccessibleRole::RadioButton));
+        ui.set_is_new(true);
+        settle();
+        for label in ["Text", "Code", "Link", "Template", "Image", "File"] {
+            let _ = find(&ui, label, AccessibleRole::RadioButton);
+        }
+        find(&ui, "File", AccessibleRole::RadioButton).invoke_accessible_default_action();
+        settle();
+        assert_eq!(ui.get_kind_index(), 5);
+        assert!(!ui.get_sensitive());
+        // The path field is there; Browse only when the host can open a dialog.
+        let field = find(&ui, "File", AccessibleRole::TextInput);
+        assert!(missing(&ui, "Browse for a file", AccessibleRole::Button));
+        ui.set_can_browse(true);
+        settle();
+        let _ = take(&log);
+        find(&ui, "Browse for a file", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), Vec::<String>::new(), "browse is its own callback");
+        // No path: Ctrl+Enter says what is missing and does not save.
+        chord(ui.window(), &[Key::Control], "\n");
+        assert!(take(&log).is_empty());
+        assert_eq!(field.accessible_description().as_deref(), Some("Choose a file, or cancel."));
+        ui.set_source_path("C:\\a\\b.txt".into());
+        settle();
+        chord(ui.window(), &[Key::Control], "\n");
+        assert_eq!(take(&log), ["save"]);
+        // A problem with the path from the host blocks saving and is spoken.
+        ui.set_source_error("There is no file at that path.".into());
+        settle();
+        chord(ui.window(), &[Key::Control], "\n");
+        assert!(take(&log).is_empty());
+        assert_eq!(
+            field.accessible_description().as_deref(),
+            Some("There is no file at that path.")
+        );
+    }
+
+    fn browse_reaches_the_host_and_the_path_it_fills_marks_the_form_changed() {
+        let (ui, _log) = item_editor();
+        ui.set_is_new(true);
+        ui.set_kind_index(4);
+        ui.set_can_browse(true);
+        settle();
+        let browsed = Rc::new(RefCell::new(0));
+        {
+            let browsed = browsed.clone();
+            ui.on_browse_requested(move || *browsed.borrow_mut() += 1);
+        }
+        find(&ui, "Browse for a file", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(*browsed.borrow(), 1);
+        assert!(!ui.get_dirty());
+        ui.set_source_path("C:\\pic.png".into());
+        ui.invoke_mark_dirty();
+        assert!(ui.get_dirty());
+        press_key(&ui, Key::Escape);
+        assert!(ui.get_discard_open(), "a restored or browsed form asks before it is thrown away");
+    }
+
+    fn the_host_can_say_a_form_was_restored_and_a_save_failed() {
+        let (ui, _log) = item_editor();
+        assert!(missing(&ui, "Restored the changes you had not saved.", AccessibleRole::Text));
+        ui.set_restored(true);
+        ui.set_banner("Snipdeck couldn't save this item. Nothing was changed.".into());
+        ui.set_privacy_error("Unlock your library to save this item.".into());
+        settle();
+        let _ = find(&ui, "Restored the changes you had not saved.", AccessibleRole::Text);
+        // Both problems are on screen as text the user can read.
+        let _ = find(&ui, "Snipdeck couldn't save this item. Nothing was changed.", AccessibleRole::Text);
+        ui.invoke_mark_dirty();
+        assert!(ui.get_dirty());
+        ui.invoke_mark_clean();
+        assert!(!ui.get_dirty());
+    }
+
+    fn the_free_plan_says_encryption_is_pro_and_a_kind_with_no_text_switches_sensitive_off() {
+        let (ui, _log) = item_editor();
+        let toggle = find(&ui, "Sensitive item", AccessibleRole::Switch);
+        let paid = toggle.accessible_description().expect("description").to_string();
+        assert!(!paid.contains("Pro"), "{paid}");
+        ui.set_encryption_available(false);
+        settle();
+        let free = toggle.accessible_description().expect("description").to_string();
+        assert!(free.starts_with(&paid) && free.ends_with("Encrypting it on disk is a Pro feature."), "{free}");
+        // Choosing Image with the switch on turns it off.
+        ui.set_is_new(true);
+        ui.set_sensitive(true);
+        settle();
+        find(&ui, "Image", AccessibleRole::RadioButton).invoke_accessible_default_action();
+        settle();
+        assert!(!ui.get_sensitive());
     }
 
     fn delete_is_offered_for_an_existing_item_only() {

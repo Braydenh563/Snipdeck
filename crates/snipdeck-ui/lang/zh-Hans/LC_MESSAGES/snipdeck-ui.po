@@ -7,6 +7,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+msgid "A PNG picture. Snipdeck keeps its own copy."
+msgstr "PNG 图片。Snipdeck 会保存自己的副本。"
+
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "列表可以把相关的片段放在一起，例如回复或地址。"
 
@@ -76,6 +79,12 @@ msgstr "看板"
 msgid "Brings the panel up beside the app you are working in."
 msgstr "在你正在使用的应用旁边显示面板。"
 
+msgid "Browse for a file"
+msgstr "浏览文件"
+
+msgid "Browse…"
+msgstr "浏览…"
+
 msgid "Cancel"
 msgstr "取消"
 
@@ -87,6 +96,9 @@ msgstr "捕获的片段保留其类型。"
 
 msgid "Changes apply at once."
 msgstr "更改立即生效。"
+
+msgid "Choose a file, or cancel."
+msgstr "请选择文件，或取消。"
 
 msgid "Choose one to add it at the end of the text. It is filled in when you use the item."
 msgstr "选择一项将其添加到文本末尾。使用该片段时会填入内容。"
@@ -234,6 +246,9 @@ msgstr "清空回收站…"
 
 msgid "Empty the Trash?"
 msgstr "要清空回收站吗？"
+
+msgid "Encrypting it on disk is a Pro feature."
+msgstr "磁盘加密是 Pro 功能。"
 
 msgid "Enter"
 msgstr "Enter"
@@ -535,8 +550,14 @@ msgstr "粘贴到 {} · {}"
 msgid "Pastes the next item of the list in order."
 msgstr "按顺序粘贴列表中的下一个片段。"
 
+msgid "Path to the file"
+msgstr "文件路径"
+
 msgid "Pause hotkeys"
 msgstr "暂停热键"
+
+msgid "Picture file"
+msgstr "图片文件"
 
 msgid "Pin"
 msgstr "置顶"
@@ -600,6 +621,9 @@ msgstr "还原"
 
 msgid "Restore the backup of {}"
 msgstr "还原 {} 的备份"
+
+msgid "Restored the changes you had not saved."
+msgstr "已恢复你尚未保存的更改。"
 
 msgid "Results"
 msgstr "搜索结果"
@@ -675,6 +699,9 @@ msgstr "Snipdeck Pro"
 
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeck 没有账户、没有服务器、没有遥测，也不开放任何网络端口。你保存的内容不会离开这台电脑。"
+
+msgid "Snipdeck keeps its own copy of the file."
+msgstr "Snipdeck 会保存该文件的副本。"
 
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck 从不连接互联网：它显示的每个图标和字体都已随应用打包。"
@@ -757,8 +784,8 @@ msgstr "此字段为必填项"
 msgid "This list is empty"
 msgstr "此列表为空"
 
-msgid "This text is {}. Anything over 16 KB opens read-only here."
-msgstr "此文本为 {}。超过 16 KB 的内容将在此以只读方式打开。"
+msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
+msgstr "此文本为 {}。超过 16 KB 的内容将在此以只读方式打开，并显示前 16 KB。"
 
 msgid "Tile view"
 msgstr "平铺视图"
