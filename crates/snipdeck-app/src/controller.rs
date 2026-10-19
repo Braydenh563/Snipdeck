@@ -300,8 +300,12 @@ pub struct View {
     pub footer: Footer,
     /// What a click does.
     pub use_label: UseLabel,
-    /// Keep on top.
+    /// Keep on top (the pin button's state).
     pub on_top: bool,
+    /// Whether the window is topmost now: pinned, and no Snipdeck window of the regular kind
+    /// (Main, Settings, an editor, Help) is the active one. Such a window is allowed to cover the
+    /// Panel; the Panel goes back to the top when focus moves to another app.
+    pub topmost: bool,
     /// Only the dock's handle shows (the window is a thin strip, see [`crate::dock`]).
     pub dock_collapsed: bool,
     /// The handle runs up and down (the Panel is docked to the left or right edge).
@@ -363,6 +367,8 @@ pub struct Controller<S, C, K, T> {
     /// When the Panel was last shown (or created): the start of [`BLUR_GRACE`].
     shown_at: Timestamp,
     on_top: bool,
+    /// A regular Snipdeck window (not the Panel) holds the focus.
+    own_window_active: bool,
     toast: Option<ActiveToast>,
     toast_seq: u64,
     /// The Picker, while it is open.
@@ -485,6 +491,7 @@ where
             visible: true,
             shown_at,
             on_top: true,
+            own_window_active: false,
             toast: None,
             toast_seq: 0,
             picker: None,
@@ -569,6 +576,7 @@ where
             footer: self.model.footer(),
             use_label: self.model.use_label(),
             on_top: self.on_top,
+            topmost: self.on_top && !self.own_window_active,
             dock_collapsed: self.dock.is_collapsed(),
             dock_vertical: self.dock_edge().is_none_or(DockEdge::vertical),
             docked: self.dock_edge().is_some(),
@@ -906,6 +914,13 @@ where
     /// The pin button: keep the Panel on top or not.
     pub fn set_on_top(&mut self, on_top: bool) {
         self.on_top = on_top;
+    }
+
+    /// A regular Snipdeck window (Main, Settings, an editor, Help) gained or lost the focus
+    /// (`active`: one of them has it now). While one has it a pinned Panel is not topmost, so
+    /// that window can cover it; once the focus is in another app the Panel is topmost again.
+    pub fn set_own_window_active(&mut self, active: bool) {
+        self.own_window_active = active;
     }
 
     // ---- Gestures ----------------------------------------------------------------------------
@@ -2673,6 +2688,26 @@ mod tests {
         assert!(!w.ctl.visible());
         // Hidden already: a later change has nothing to hide.
         assert_eq!(w.ctl.on_foreground_changed(), []);
+    }
+
+    #[test]
+    fn a_pinned_panel_is_topmost_unless_a_snipdeck_window_is_active() {
+        let mut w = unpinned_world(Settings::default());
+        assert!(!w.ctl.view().topmost, "unpinned: never topmost");
+        w.ctl.set_on_top(true);
+        assert!(w.ctl.view().topmost);
+        w.ctl.set_own_window_active(true);
+        assert!(!w.ctl.view().topmost, "Main can cover the Panel");
+        assert!(w.ctl.view().on_top, "the pin button stays pressed");
+        w.ctl.set_own_window_active(false);
+        assert!(
+            w.ctl.view().topmost,
+            "back on top once focus is in another app"
+        );
+        w.ctl.set_on_top(false);
+        w.ctl.set_own_window_active(true);
+        w.ctl.set_own_window_active(false);
+        assert!(!w.ctl.view().topmost);
     }
 
     #[test]

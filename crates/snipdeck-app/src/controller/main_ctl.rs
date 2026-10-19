@@ -28,6 +28,7 @@ use crate::{
         SideList, SideTag, ViewMode, reorder,
     },
     panel::UseLabel,
+    settings::HotkeyAction,
     usecase,
 };
 
@@ -147,6 +148,8 @@ pub struct MainScreen {
     pub toast: Option<ToastView>,
     /// The list or board editor, while one is open.
     pub editor: Option<EditorView>,
+    /// The Show/hide Panel hotkey as the user would press it ("Ctrl+Alt+Space"); empty while it is off.
+    pub panel_hotkey: String,
 }
 
 /// What an open editor edits.
@@ -219,6 +222,12 @@ where
             revealed,
             toast: self.toast_view(),
             editor: self.editor.as_ref().map(|e| e.view.clone()),
+            panel_hotkey: self
+                .settings
+                .hotkeys
+                .chord(HotkeyAction::TogglePanel)
+                .map(|chord| chord.to_string())
+                .unwrap_or_default(),
         }
     }
 
@@ -703,6 +712,13 @@ where
         self.pending.push(Effect::OpenHelp(topic));
     }
 
+    /// "Show Panel" in the Main window: shows the Panel (or brings an open one forward) the way
+    /// the tray and the hotkey do. The Panel's window acts on the effect when it redraws.
+    pub fn main_show_panel(&mut self) {
+        let effects = self.show();
+        self.pending.extend(effects);
+    }
+
     /// Opens the board menu.
     pub fn main_board_menu_open(&mut self) {
         self.main.set_board_menu(true);
@@ -808,7 +824,10 @@ where
                 seq: 0,
                 kind: EditorKind::List,
                 is_new: true,
-                name: String::new(),
+                name: crate::starter::numbered_name(
+                    crate::starter::NEW_LIST,
+                    self.main.lists().iter().map(|l| l.name.as_str()),
+                ),
                 accent: None,
                 sort: ListSort::Manual,
                 item_count: 0,
@@ -878,7 +897,10 @@ where
                 seq: 0,
                 kind: EditorKind::Board,
                 is_new: true,
-                name: String::new(),
+                name: crate::starter::numbered_name(
+                    "New board",
+                    self.main.boards().iter().map(|b| b.name.as_str()),
+                ),
                 accent: None,
                 sort: ListSort::Manual,
                 item_count: 0,

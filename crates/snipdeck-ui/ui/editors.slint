@@ -822,7 +822,15 @@ component EntityEditorBody inherits Rectangle {
     // The height that shows the whole form and the footer: a host that opens the window sizes it to this.
     out property <length> wanted-height: form.preferred-height + footer.height;
 
-    public function focus-name() { name-field.focus(); name-field.set-cursor(1000000); }
+    // A new list or board starts with a sample name: select it, so typing replaces it. An existing name keeps the caret at its end.
+    public function focus-name() {
+        name-field.focus();
+        if (root.is-new) {
+            name-field.select-all();
+        } else {
+            name-field.set-cursor(1000000);
+        }
+    }
 
     init => {
         Palette.dark = root.dark;

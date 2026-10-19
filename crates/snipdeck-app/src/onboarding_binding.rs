@@ -21,7 +21,7 @@ use crate::{
     binding::{Loggable, Shown, model, redraw_all, register_redraw, to_i32},
     controller::Controller,
     host::ClipboardText,
-    main_binding::{RegularWindow, raise, set_look},
+    main_binding::{create_window, raise, set_look},
     native_window::fit_to_screen,
     settings::{HotkeyAction, Hotkeys},
     settings_binding::{
@@ -374,7 +374,7 @@ impl OnboardingUi {
                 controller.borrow_mut().show_welcome_tour();
                 let mut slot = slot.borrow_mut();
                 if slot.is_none() {
-                    let window = RegularWindow::create(ui::OnboardingWindow::new)?;
+                    let window = create_window(ui::OnboardingWindow::new)?;
                     crate::native_window::size_before_show(
                         window.window(),
                         (window.get_wanted_width(), window.get_wanted_height()),
@@ -386,6 +386,7 @@ impl OnboardingUi {
                 let Some((window, binding)) = slot.as_ref() else {
                     return Ok(());
                 };
+                crate::native_window::place_over_owner(window.window());
                 window.show()?;
                 fit_to_screen(window.window());
                 // The window was hidden, so it skipped the redraws; draw it now that it is up.

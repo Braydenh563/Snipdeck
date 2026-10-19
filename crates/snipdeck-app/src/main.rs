@@ -301,6 +301,10 @@ fn run(args: &Args) -> Result<(), String> {
         move |effect| on_effect(effect)
     });
     BINDING.with(|b| *b.borrow_mut() = Some(binding.clone()));
+    // The Panel steps down from topmost while one of the app's regular windows has the focus.
+    snipdeck_app::native_window::on_own_window_active(|active| {
+        with_binding(|b| b.own_window_active(active));
+    });
     // The item editor opens from the Panel, the Main window and the Picker; one binding draws it.
     let _item_editor = Controller::bind_item_editor(&controller);
     // Frame changes are remembered only once the stored place has been restored.

@@ -13,6 +13,18 @@ pub const STARTER_LIST: &str = "Snippets";
 /// The name of a list made with the `+` tab (numbered when taken).
 pub const NEW_LIST: &str = "New list";
 
+/// The name the list and board editors start with for a new one: `base` and the first number
+/// (from 1) no name in `taken` already has, compared without regard to case. The editor selects
+/// it so typing replaces it.
+#[must_use]
+pub fn numbered_name<'a>(base: &str, taken: impl IntoIterator<Item = &'a str>) -> String {
+    let taken: Vec<String> = taken.into_iter().map(str::to_lowercase).collect();
+    (1_u32..)
+        .map(|n| format!("{base} {n}"))
+        .find(|name| !taken.contains(&name.to_lowercase()))
+        .unwrap_or_else(|| base.to_owned())
+}
+
 /// Gives a library without boards one board with one list. Returns whether it made them.
 ///
 /// # Errors
@@ -97,6 +109,16 @@ mod tests {
             .iter()
             .map(|l| l.name.as_str().to_owned())
             .collect()
+    }
+
+    #[test]
+    fn a_numbered_name_takes_the_first_free_number() {
+        assert_eq!(numbered_name("New list", []), "New list 1");
+        assert_eq!(
+            numbered_name("New list", ["Snippets", "new list 1", "New list 3"]),
+            "New list 2"
+        );
+        assert_eq!(numbered_name("New board", ["New list 1"]), "New board 1");
     }
 
     #[test]

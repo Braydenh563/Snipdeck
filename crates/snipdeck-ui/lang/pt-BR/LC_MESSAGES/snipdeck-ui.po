@@ -853,6 +853,12 @@ msgstr "Diminuir o atraso ao sair"
 msgid "Show"
 msgstr "Mostrar"
 
+msgid "Show Panel"
+msgstr ""
+
+msgid "Show Panel ({})"
+msgstr ""
+
 msgid "Show Snipdeck in the taskbar"
 msgstr "Mostrar o Snipdeck na barra de tarefas"
 

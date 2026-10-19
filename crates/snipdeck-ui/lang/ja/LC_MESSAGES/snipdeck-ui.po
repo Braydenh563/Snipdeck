@@ -853,6 +853,12 @@ msgstr "離れたときの待ち時間を短くする"
 msgid "Show"
 msgstr "表示"
 
+msgid "Show Panel"
+msgstr ""
+
+msgid "Show Panel ({})"
+msgstr ""
+
 msgid "Show Snipdeck in the taskbar"
 msgstr "Snipdeck をタスクバーに表示する"
 
