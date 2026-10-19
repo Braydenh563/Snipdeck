@@ -340,6 +340,27 @@ pub fn open_size(wanted: (f32, f32), monitor: &Monitor) -> (f32, f32) {
     (w.max(1.0), h.max(1.0))
 }
 
+/// Where a secondary window of outer `size` (physical pixels) opens: centred over `owner` (the
+/// window it was opened from; pass the work area itself to centre on the screen), then cut to
+/// `work_area` and moved inside it, so it never hangs under the taskbar or off the monitor. The
+/// owner may be on a monitor other than `work_area`'s, or half off screen: the result is still
+/// on `work_area`.
+#[must_use]
+pub fn place_near(owner: Rect, size: (u32, u32), work_area: Rect) -> Rect {
+    let w = size.0.min(work_area.w);
+    let h = size.1.min(work_area.h);
+    let centred = |start: i32, span: u32, len: u32| {
+        let half = (i64::from(span) - i64::from(len)) / 2;
+        i32::try_from(i64::from(start) + half).unwrap_or(start)
+    };
+    Rect {
+        x: inside(centred(owner.x, owner.w, w), w, work_area.x, work_area.w),
+        y: inside(centred(owner.y, owner.h, h), h, work_area.y, work_area.h),
+        w,
+        h,
+    }
+}
+
 /// `start` moved so `[start, start + len)` lies in `[low, low + span)`.
 fn inside(start: i32, len: u32, low: i32, span: u32) -> i32 {
     let high = i64::from(low) + i64::from(span) - i64::from(len);
@@ -640,6 +661,76 @@ mod tests {
         assert_eq!(fit(at(400, 100, 960, 1140), area), at(400, 0, 960, 1040));
         assert_eq!(fit(at(1700, 900, 640, 760), area), at(1280, 280, 640, 760));
         assert_eq!(fit(at(-50, -10, 3000, 3000), area), area);
+    }
+
+    fn screen() -> Rect {
+        Rect {
+            x: 0,
+            y: 0,
+            w: 1920,
+            h: 1040,
+        }
+    }
+
+    #[test]
+    fn a_window_opens_centred_over_its_owner() {
+        let owner = Rect {
+            x: 400,
+            y: 200,
+            w: 1000,
+            h: 600,
+        };
+        let placed = place_near(owner, (600, 400), screen());
+        assert_eq!(
+            placed,
+            Rect {
+                x: 600,
+                y: 300,
+                w: 600,
+                h: 400
+            }
+        );
+    }
+
+    #[test]
+    fn a_window_over_an_owner_at_the_edge_is_moved_inside_the_work_area() {
+        // The owner sits low and right: a centred editor would end under the taskbar.
+        let owner = Rect {
+            x: 1500,
+            y: 800,
+            w: 400,
+            h: 300,
+        };
+        let placed = place_near(owner, (560, 700), screen());
+        assert_eq!((placed.x, placed.y), (1360, 340));
+        assert!(placed.y + 700 <= 1040 && placed.x + 560 <= 1920);
+    }
+
+    #[test]
+    fn a_window_larger_than_the_work_area_is_cut_to_it() {
+        let placed = place_near(screen(), (3000, 2000), screen());
+        assert_eq!(placed, screen());
+    }
+
+    #[test]
+    fn an_owner_on_another_monitor_still_gives_a_window_on_this_one() {
+        let second = Rect {
+            x: 1920,
+            y: 0,
+            w: 1280,
+            h: 720,
+        };
+        let owner = Rect {
+            x: -200,
+            y: 100,
+            w: 600,
+            h: 400,
+        };
+        let placed = place_near(owner, (500, 500), second);
+        assert_eq!((placed.x, placed.y), (1920, 50));
+        // Centring on a work area itself is centring on the screen.
+        let centred = place_near(second, (500, 500), second);
+        assert_eq!((centred.x, centred.y), (1920 + 390, 110));
     }
 
     #[test]

@@ -123,6 +123,7 @@ fn start() -> (MainWindow, Log) {
     hook!(on_reveal_requested, |i, on| format!("reveal:{i}:{on}"));
     hook!(on_settings_requested, || "settings".to_string());
     hook!(on_help_requested, |i| format!("help:{i}"));
+    hook!(on_panel_requested, || "panel".to_string());
     hook!(on_list_edit_requested, |i| format!("list-edit:{i}"));
     hook!(on_list_delete_confirmed, |i| format!("list-delete:{i}"));
     hook!(on_tag_delete_confirmed, |i| format!("tag-delete:{i}"));
@@ -454,6 +455,46 @@ ui_tests! {
         settle();
         find(&ui, "Delete list", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["list-delete:0"]);
+    }
+
+    fn a_context_menu_is_as_wide_as_its_rows_not_the_window() {
+        let (ui, _log) = start();
+        for _ in 0..12 {
+            if ui.get_sidebar_focused() {
+                break;
+            }
+            press_key(&ui, Key::Backtab);
+        }
+        for _ in 0..4 {
+            press_key(&ui, Key::DownArrow);
+        }
+        press_key(&ui, Key::Menu);
+        let menu = find(&ui, "Actions", AccessibleRole::List);
+        let size = menu.size();
+        assert!(
+            (180.0..=320.0).contains(&size.width),
+            "the list menu is {}px wide",
+            size.width
+        );
+        let window = ui.window().size().to_logical(ui.window().scale_factor());
+        let right = menu.absolute_position().x + size.width;
+        assert!(right <= window.width, "the menu ends at {right}px of {}", window.width);
+    }
+
+    fn the_toolbar_and_the_help_menu_can_show_the_panel() {
+        let (ui, log) = start();
+        // Without a hotkey the tooltip is plain; with one it names it.
+        find(&ui, "Show Panel", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["panel"]);
+        ui.set_panel_hotkey("Ctrl+Alt+Space".into());
+        settle();
+        find(&ui, "Show Panel (Ctrl+Alt+Space)", AccessibleRole::Button)
+            .invoke_accessible_default_action();
+        assert_eq!(take(&log), ["panel"]);
+
+        find(&ui, "Help", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Show Panel", AccessibleRole::ListItem).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["panel"]);
     }
 
     fn a_tag_and_the_trash_have_their_own_confirmations() {

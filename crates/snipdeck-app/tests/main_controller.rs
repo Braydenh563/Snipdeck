@@ -525,7 +525,7 @@ fn a_new_list_opens_the_editor_and_saving_adds_and_opens_it() {
     let editor = ctl.main_screen().editor.expect("editor");
     assert_eq!(editor.kind, EditorKind::List);
     assert!(editor.is_new && !editor.can_delete);
-    assert_eq!(editor.name, "");
+    assert_eq!(editor.name, "New list 1", "a sample name the editor selects");
 
     ctl.main_editor_save("   ", None, ListSort::Manual);
     let editor = ctl.main_screen().editor.expect("still open");
@@ -699,6 +699,7 @@ fn a_new_board_is_made_through_the_menu_and_opened() {
     let editor = ctl.main_screen().editor.expect("board editor");
     assert_eq!(editor.kind, EditorKind::Board);
     assert!(editor.is_new);
+    assert_eq!(editor.name, "New board 1");
     ctl.main_editor_save("Side projects", None, ListSort::Manual);
     let screen = ctl.main_screen();
     assert_eq!(screen.board_name, "Side projects");
@@ -982,4 +983,20 @@ fn the_real_jobs_back_up_purge_and_check_the_library_on_the_injected_clock() {
     assert_eq!(maintenance::run(&mut m, &mut ctl), 0);
     let mut restarted = Maintenance::new(dir.path(), Box::new(clock.clone()));
     assert_eq!(maintenance::run(&mut restarted, &mut ctl), 0);
+}
+
+#[test]
+fn the_main_window_can_show_the_panel_again_and_names_its_hotkey() {
+    use snipdeck_app::controller::Effect;
+    let (mut ctl, _) = rig(Tier::Pro);
+    assert_eq!(ctl.main_screen().panel_hotkey, "Ctrl+Alt+Space");
+    // The Panel was closed: "Show Panel" asks the host to show it, as the tray does.
+    drop(ctl.hide());
+    assert!(!ctl.visible());
+    ctl.main_show_panel();
+    assert!(ctl.visible());
+    assert_eq!(ctl.take_pending(), [Effect::ShowPanel]);
+    // Already up: the same effect brings it forward.
+    ctl.main_show_panel();
+    assert_eq!(ctl.take_pending(), [Effect::ShowPanel]);
 }

@@ -203,6 +203,211 @@ pub fn fit_to_screen(window: &slint::Window) {
     });
 }
 
+// ---- Opening a secondary window near the one it was opened from --------------------------------
+
+/// A window the others open over: the Main window or the Panel.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Surface {
+    Main,
+    Panel,
+}
+
+/// Where a surface is now, if it is shown: its outer frame, and the monitor it is on (none
+/// where the host cannot tell).
+type SurfaceFn = dyn Fn() -> Option<(Rect, Option<Monitor>)>;
+
+thread_local! {
+    static SURFACES: std::cell::RefCell<Vec<(Surface, Box<SurfaceFn>)>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+    static OPENER: std::cell::Cell<Option<Surface>> = const { std::cell::Cell::new(None) };
+}
+
+/// The frame and monitor of `window` while it is shown (none when hidden or without a native
+/// window).
+#[must_use]
+pub fn shown_frame(window: &slint::Window) -> Option<(Rect, Option<Monitor>)> {
+    if !window.is_visible() {
+        return None;
+    }
+    let (at, size) = (window.position(), window.size());
+    let monitor = window.with_winit_window(monitor_of).flatten();
+    Some((
+        Rect {
+            x: at.x,
+            y: at.y,
+            w: size.width,
+            h: size.height,
+        },
+        monitor,
+    ))
+}
+
+/// Tells [`place_over_owner`] where `surface` is: `frame` reports it while it is shown.
+pub fn register_surface(
+    surface: Surface,
+    frame: impl Fn() -> Option<(Rect, Option<Monitor>)> + 'static,
+) {
+    SURFACES.with(|all| {
+        let mut all = all.borrow_mut();
+        all.retain(|(s, _)| *s != surface);
+        all.push((surface, Box::new(frame)));
+    });
+}
+
+/// The surface the user just acted on: a secondary window opens over it.
+pub fn note_opener(surface: Surface) {
+    OPENER.with(|o| o.set(Some(surface)));
+}
+
+/// The shown surface to open over: the one acted on last, else the Main window, else the Panel.
+fn owner() -> Option<(Rect, Option<Monitor>)> {
+    let first = OPENER.with(std::cell::Cell::get);
+    let order = [first, Some(Surface::Main), Some(Surface::Panel)];
+    SURFACES.with(|all| {
+        let all = all.borrow();
+        order
+            .into_iter()
+            .flatten()
+            .find_map(|wanted| all.iter().find(|(s, _)| *s == wanted).and_then(|(_, f)| f()))
+    })
+}
+
+/// Positions (and, if need be, shrinks) a secondary window that is about to be shown: centred
+/// over the window it was opened from (the Main window or the Panel), else centred on the
+/// monitor under the pointer, and always inside that monitor's work area. Call it right before
+/// `show()`, after the size is set: a window that is already up is left where it is. Without a
+/// native window (tests, other platforms) nothing happens and [`fit_to_screen`] stays the
+/// fallback after the show.
+pub fn place_over_owner(window: &slint::Window) {
+    if window.is_visible() {
+        return;
+    }
+    let (owner, monitor) = match owner() {
+        Some((rect, Some(monitor))) => (rect, monitor),
+        Some((rect, None)) => {
+            let Some(monitor) = monitor_near_cursor() else {
+                return;
+            };
+            (rect, monitor)
+        }
+        None => {
+            let Some(monitor) = monitor_near_cursor() else {
+                return;
+            };
+            (monitor.work_area, monitor)
+        }
+    };
+    let logical = window.size().to_logical(window.scale_factor());
+    let (w, h) = frame::open_size((logical.width, logical.height), &monitor);
+    let physical = |logical: f32| {
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "a window size in pixels is positive and far below u32::MAX"
+        )]
+        let px = (logical * monitor.scale).round() as u32;
+        px
+    };
+    let inner = (physical(w).max(1), physical(h).max(1));
+    // The title bar and frame are outside the size the window is given.
+    let outer = (inner.0, inner.1.saturating_add(physical(frame::WINDOW_CHROME)));
+    let at = frame::place_near(owner, outer, monitor.work_area);
+    crate::trace!("place window {inner:?} over {owner:?} -> {at:?} in {:?}", monitor.work_area);
+    window.set_size(slint::LogicalSize::new(w, h));
+    window.set_position(slint::PhysicalPosition::new(at.x, at.y));
+}
+
+// ---- Which Snipdeck window has the focus -----------------------------------------------------------
+
+/// The regular windows that have the focus. Focus passes from one window to the next as a loss
+/// then a gain (or the other way), so the change is reported only once it has settled
+/// ([`ActiveWindows::take_change`]).
+#[derive(Debug)]
+pub struct ActiveWindows<Id> {
+    focused: Vec<Id>,
+    reported: bool,
+}
+
+impl<Id: PartialEq> ActiveWindows<Id> {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            focused: Vec::new(),
+            reported: false,
+        }
+    }
+
+    /// `id` gained (`true`) or lost the focus.
+    pub fn set(&mut self, id: Id, focused: bool) {
+        self.focused.retain(|f| *f != id);
+        if focused {
+            self.focused.push(id);
+        }
+    }
+
+    /// The new answer to "does a Snipdeck window have the focus", when it differs from the one
+    /// last handed out.
+    pub fn take_change(&mut self) -> Option<bool> {
+        let now = !self.focused.is_empty();
+        (now != self.reported).then(|| {
+            self.reported = now;
+            now
+        })
+    }
+}
+
+impl<Id: PartialEq> Default for ActiveWindows<Id> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// How long a focus change waits for the next window's gain before it is reported.
+const FOCUS_SETTLE: std::time::Duration = std::time::Duration::from_millis(60);
+
+type ActiveFn = dyn Fn(bool);
+
+thread_local! {
+    static FOCUSED: std::cell::RefCell<ActiveWindows<winit::window::WindowId>> =
+        const { std::cell::RefCell::new(ActiveWindows::new()) };
+    static ON_ACTIVE: std::cell::RefCell<Option<std::rc::Rc<ActiveFn>>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Who hears when a regular Snipdeck window gains the focus (`true`) or the focus leaves them
+/// all (`false`): the controller, which then drops the Panel from topmost or restores it.
+pub fn on_own_window_active(report: impl Fn(bool) + 'static) {
+    ON_ACTIVE.with(|f| *f.borrow_mut() = Some(std::rc::Rc::new(report)));
+}
+
+/// Feeds a winit window event of a regular window to the focus tracking. Every regular window
+/// does this; the Main window, which handles its own events, calls it from there.
+pub fn note_window_event(window: &slint::Window, event: &winit::event::WindowEvent) {
+    let winit::event::WindowEvent::Focused(focused) = event else {
+        return;
+    };
+    let Some(id) = window.with_winit_window(|w| w.id()) else {
+        return;
+    };
+    FOCUSED.with(|set| set.borrow_mut().set(id, *focused));
+    slint::Timer::single_shot(FOCUS_SETTLE, || {
+        let change = FOCUSED.with(|set| set.borrow_mut().take_change());
+        let report = ON_ACTIVE.with(|f| f.borrow().clone());
+        if let (Some(active), Some(report)) = (change, report) {
+            report(active);
+        }
+    });
+}
+
+/// Starts following the focus of a regular window.
+pub fn track_focus(window: &slint::Window) {
+    use slint::winit_030::EventResult;
+    window.on_winit_window_event(|slint_window, event| {
+        note_window_event(slint_window, event);
+        EventResult::Propagate
+    });
+}
+
 /// Puts a Main window that was just shown where the user left it: at `place`, cut and moved
 /// inside the work area of the monitor it lands on (a monitor that is gone, or a smaller
 /// screen, still gives a window on screen), and maximised again if it was.
@@ -269,3 +474,32 @@ pub fn place_of(
 /// Brings `window` in front without activating it: nothing off Windows.
 #[cfg(not(windows))]
 pub fn raise_window(_window: &slint::Window) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_window_gaining_the_focus_is_reported_once() {
+        let mut tracker = ActiveWindows::new();
+        assert_eq!(tracker.take_change(), None);
+        tracker.set(1, true);
+        assert_eq!(tracker.take_change(), Some(true));
+        assert_eq!(tracker.take_change(), None);
+        tracker.set(1, false);
+        assert_eq!(tracker.take_change(), Some(false));
+    }
+
+    #[test]
+    fn focus_passing_between_two_windows_is_no_change() {
+        let mut tracker = ActiveWindows::new();
+        tracker.set(1, true);
+        assert_eq!(tracker.take_change(), Some(true));
+        // Lost, then gained, before anyone asked: the loss never shows.
+        tracker.set(1, false);
+        tracker.set(2, true);
+        assert_eq!(tracker.take_change(), None);
+        tracker.set(2, false);
+        assert_eq!(tracker.take_change(), Some(false));
+    }
+}

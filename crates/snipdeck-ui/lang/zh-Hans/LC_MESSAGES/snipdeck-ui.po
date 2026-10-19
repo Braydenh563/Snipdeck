@@ -853,6 +853,12 @@ msgstr "缩短离开延迟"
 msgid "Show"
 msgstr "显示"
 
+msgid "Show Panel"
+msgstr ""
+
+msgid "Show Panel ({})"
+msgstr ""
+
 msgid "Show Snipdeck in the taskbar"
 msgstr "在任务栏中显示 Snipdeck"
 

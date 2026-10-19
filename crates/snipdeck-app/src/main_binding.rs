@@ -36,7 +36,7 @@ use crate::{
     host::ClipboardText,
     item_editor::Origin,
     main_window::{EditorKind, EditorView, Section, SelectMode, ViewMode},
-    native_window::{fit_logical, fit_to_screen, place_of, restore_place, size_before_show},
+    native_window::{fit_logical, fit_to_screen, place_of, place_over_owner, restore_place, size_before_show},
     palette::list_color,
     wording,
 };
@@ -61,6 +61,20 @@ impl RegularWindow {
         let _guard = Self(());
         make()
     }
+}
+
+/// Makes a regular window with `make` (see [`RegularWindow::create`]) and starts following its
+/// focus, so the Panel can step aside for it (`Controller::set_own_window_active`).
+///
+/// # Errors
+///
+/// What `make` returns.
+pub fn create_window<T: ComponentHandle>(
+    make: impl FnOnce() -> Result<T, slint::PlatformError>,
+) -> Result<T, slint::PlatformError> {
+    let window = RegularWindow::create(make)?;
+    crate::native_window::track_focus(window.window());
+    Ok(window)
 }
 
 impl Drop for RegularWindow {
@@ -224,7 +238,7 @@ where
         if let Some(w) = self.tag_manager.borrow().as_ref() {
             return Some(w.clone_strong());
         }
-        let w = RegularWindow::create(ui::TagManager::new).ok()?;
+        let w = create_window(ui::TagManager::new).ok()?;
         let (core, weak) = (Rc::clone(self), w.as_weak());
         w.on_rename_requested(move |i, name| {
             crate::trace!("callback tags rename_requested ({i}, {name:?})");
@@ -264,6 +278,7 @@ where
         self.sync_tag_manager(&screen, true);
         window.set_rename_error(SharedString::new());
         window.invoke_finish_rename();
+        place_over_owner(window.window());
         let _ = window.show();
         fit_to_screen(window.window());
         raise(window.window());
@@ -296,6 +311,7 @@ where
                 if fresh {
                     fill_list_editor(&window, view);
                     size_to_content(window.window(), || window.get_wanted_height());
+                    place_over_owner(window.window());
                     let _ = window.show();
                     fit_to_screen(window.window());
                     // Shown again after a close, the window would stay behind the Main
@@ -317,6 +333,7 @@ where
                 if fresh {
                     fill_board_editor(&window, view);
                     size_to_content(window.window(), || window.get_wanted_height());
+                    place_over_owner(window.window());
                     let _ = window.show();
                     fit_to_screen(window.window());
                     // Shown again after a close, the window would stay behind the Main
@@ -334,7 +351,7 @@ where
         if let Some(w) = self.editors.borrow().list.as_ref() {
             return Some(w.clone_strong());
         }
-        let w = RegularWindow::create(ui::ListEditor::new).ok()?;
+        let w = create_window(ui::ListEditor::new).ok()?;
         let core = Rc::clone(self);
         let weak = w.as_weak();
         w.on_save_requested(move || {
@@ -366,7 +383,7 @@ where
         if let Some(w) = self.editors.borrow().board.as_ref() {
             return Some(w.clone_strong());
         }
-        let w = RegularWindow::create(ui::BoardEditor::new).ok()?;
+        let w = create_window(ui::BoardEditor::new).ok()?;
         let core = Rc::clone(self);
         let weak = w.as_weak();
         w.on_save_requested(move || {
@@ -456,6 +473,7 @@ where
                 let core = Rc::clone(&core);
                 window.$on(move |$($arg),*| {
                     crate::trace!("callback main {}{}", stringify!($on), Shown(&[$(&$arg as &dyn Loggable),*]));
+                    crate::native_window::note_opener(crate::native_window::Surface::Main);
                     core.act(|$ctl| {
                         let _ = $body;
                     });
@@ -505,6 +523,7 @@ where
         wire!(on_board_menu_dismissed, |ctl| ctl.main_board_menu_close());
         wire!(on_toast_undo, |ctl| ctl.toast_action());
         window.on_settings_requested(crate::settings_binding::request_open);
+        wire!(on_panel_requested, |ctl| ctl.main_show_panel());
         wire!(on_help_requested, |ctl, i| ctl.main_open_help(match i {
             0 => HelpTopic::Troubleshoot,
             2 => HelpTopic::About,
@@ -558,6 +577,7 @@ fn watch_place<S, C, K, T>(
     window
         .window()
         .on_winit_window_event(move |slint_window, event| {
+            crate::native_window::note_window_event(slint_window, event);
             if matches!(event, WindowEvent::Moved(_) | WindowEvent::Resized(_))
                 && let Some(controller) = controller.upgrade()
                 && let Ok(mut controller) = controller.try_borrow_mut()
@@ -627,12 +647,20 @@ impl MainUi {
                 let mut slot = slot.borrow_mut();
                 let created = slot.is_none();
                 if created {
-                    let window = RegularWindow::create(ui::MainWindow::new)?;
+                    let window = create_window(ui::MainWindow::new)?;
                     size_before_show(
                         window.window(),
                         (window.get_wanted_width(), window.get_wanted_height()),
                     );
                     let binding = Controller::bind_main(&controller, &window);
+                    let weak = window.as_weak();
+                    crate::native_window::register_surface(
+                        crate::native_window::Surface::Main,
+                        move || {
+                            weak.upgrade()
+                                .and_then(|w| crate::native_window::shown_frame(w.window()))
+                        },
+                    );
                     *slot = Some((window, binding));
                 }
                 let Some((window, binding)) = slot.as_ref() else {
@@ -700,6 +728,9 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     }
     if differs(&|p| p.high_contrast == screen.high_contrast) {
         set_look(window, screen.high_contrast.as_ref());
+    }
+    if differs(&|p| p.panel_hotkey == screen.panel_hotkey) {
+        window.set_panel_hotkey(screen.panel_hotkey.as_str().into());
     }
     if differs(&|p| p.board_name == screen.board_name) {
         window.set_board_name(screen.board_name.as_str().into());

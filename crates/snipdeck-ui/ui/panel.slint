@@ -76,7 +76,7 @@ component ResizeGrip inherits TouchArea {
 export component PanelWindow inherits Window {
     title: @tr("Snipdeck");
     no-frame: true;
-    always-on-top: root.on-top;
+    always-on-top: root.topmost;
     background: Theme.bg-app;
     // A collapsed dock is a strip a few pixels thick: the Panel's minimum size does not apply.
     min-width: root.dock-collapsed ? 0px : 260px;
@@ -140,8 +140,11 @@ export component PanelWindow inherits Window {
     // The keyboard-selected row. The panel moves it itself and reports `selection-moved`; the app
     // writes it back (it resets to 0 when the query changes).
     in-out property <int> selected-index: 0;
-    // Keep on top (the pin button). Drives the window's `always-on-top`.
+    // Keep on top (the pin button).
     in-out property <bool> on-top: true;
+    // Whether the window is topmost now (the host: pinned, and no Snipdeck window of the regular kind is active, so
+    // the Main window can cover the Panel). Drives the window's `always-on-top`.
+    in property <bool> topmost: true;
 
     // ---- Gestures out -------------------------------------------------------------------------
     callback query-changed(string);
@@ -684,11 +687,12 @@ export component PanelWindow inherits Window {
                     min-height: Space.s12;
                     clip: true;
 
+                    // Inset by the focus ring's reach (4px) so the viewport never clips the ring of the selected card.
                     list := ListView {
-                        x: Space.s2;
-                        y: Space.s1;
-                        width: parent.width - 2 * Space.s2;
-                        height: parent.height - Space.s1;
+                        x: Space.s2 - Space.s1;
+                        y: 0px;
+                        width: parent.width - 2 * Space.s2 + 2 * Space.s1;
+                        height: parent.height;
                         vertical-scrollbar-policy: ScrollBarPolicy.always-off;
                         horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
                         accessible-label: @tr("Snippets");
@@ -696,7 +700,7 @@ export component PanelWindow inherits Window {
 
                         for row[i] in root.rows: Rectangle {
                             property <bool> is-selected: i == root.sel;
-                            height: card.preferred-height + root.row-gap;
+                            height: card.preferred-height + root.row-gap + (i == root.rows.length - 1 ? 2 * Space.s1 : 0px);
 
                             init => {
                                 if (self.is-selected) { root.reveal(self.y, self.height); }
@@ -709,9 +713,9 @@ export component PanelWindow inherits Window {
                             }
 
                             card := ItemCard {
-                                x: 0;
-                                y: 0;
-                                width: parent.width;
+                                x: Space.s1;
+                                y: Space.s1;
+                                width: parent.width - 2 * Space.s1;
                                 height: self.preferred-height;
                                 variant: root.view == PanelView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
                                 kind: row.kind;
@@ -871,7 +875,6 @@ export component PanelWindow inherits Window {
         if root.board-menu-open: Menu {
             x: Space.s2;
             y: root.header-h - Space.s1;
-            width: min(Space.s12 * 5, root.width - 2 * Space.s2);
             entries: root.board-menu-entries;
             label: @tr("Boards");
             icons: false;
@@ -885,7 +888,6 @@ export component PanelWindow inherits Window {
             clicked => { root.app-menu-dismissed(); }
         }
         if root.app-menu-open: Menu {
-            width: min(Space.s12 * 5, root.width - 2 * Space.s2);
             x: min(max(Space.s2, kebab.absolute-position.x + kebab.width - self.width), root.width - self.width - Space.s2);
             y: root.header-h - Space.s1;
             entries: root.app-menu-entries;
@@ -900,7 +902,6 @@ export component PanelWindow inherits Window {
             clicked => { root.item-menu-dismissed(); }
         }
         if root.item-menu-open: Menu {
-            width: min(Space.s12 * 4, root.width - 2 * Space.s2);
             x: min(max(Space.s2, root.item-menu-x), root.width - self.width - Space.s2);
             y: min(max(Space.s2, root.item-menu-y), root.height - self.height - Space.s2);
             entries: root.item-menu-entries;
@@ -916,7 +917,6 @@ export component PanelWindow inherits Window {
             clicked => { root.list-menu-dismissed(); }
         }
         if root.list-menu-open: Menu {
-            width: min(Space.s12 * 4, root.width - 2 * Space.s2);
             x: min(max(Space.s2, root.list-menu-x), root.width - self.width - Space.s2);
             y: min(max(Space.s2, root.list-menu-y), root.height - self.height - Space.s2);
             entries: root.list-menu-entries;

@@ -33,7 +33,7 @@ use crate::{
     drafts::AUTOSAVE_EVERY,
     host::ClipboardText,
     item_editor::{EditorInput, EditorProblem, ItemEditorView, kind_at, kind_index},
-    main_binding::{RegularWindow, set_look},
+    main_binding::{create_window, set_look},
     native_window, wording,
 };
 
@@ -167,6 +167,7 @@ where
         self.seq.set(view.seq);
         self.raise.set(view.raise);
         fill(&window, &view);
+        crate::native_window::place_over_owner(window.window());
         let _ = window.show();
         crate::native_window::fit_to_screen(window.window());
         window.invoke_focus_title();
@@ -208,7 +209,7 @@ where
         if let Some(w) = self.window.borrow().as_ref() {
             return Some(w.clone_strong());
         }
-        let w = RegularWindow::create(ui::ItemEditor::new).ok()?;
+        let w = create_window(ui::ItemEditor::new).ok()?;
         // The window's preferred size (editors.slint), cut to the screen before the first show.
         crate::native_window::size_before_show(w.window(), (560.0, 700.0));
         self.wire(&w);

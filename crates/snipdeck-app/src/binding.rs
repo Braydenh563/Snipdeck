@@ -105,6 +105,7 @@ pub struct Binding {
     show: Rc<dyn Fn()>,
     target_changed: Rc<dyn Fn()>,
     hotkey_problems: Rc<ProblemsFn>,
+    own_window_active: Rc<dyn Fn(bool)>,
     tray: Rc<dyn Fn(TrayEvent)>,
     system_look: Rc<dyn Fn(SystemLook)>,
     frame_changed: Rc<FrameFn>,
@@ -138,6 +139,12 @@ impl Binding {
     /// Some hotkeys could not be registered: tell the user.
     pub fn hotkey_problems(&self, problems: &[HotkeyProblem]) {
         (self.hotkey_problems)(problems);
+    }
+
+    /// A regular Snipdeck window gained or lost the focus: while one has it the Panel is not
+    /// topmost (see `Controller::set_own_window_active`).
+    pub fn own_window_active(&self, active: bool) {
+        (self.own_window_active)(active);
     }
 
     /// Draws every bound window again from the controller. For a change made on the
@@ -409,6 +416,14 @@ where
     ) -> Binding {
         let core = Core::new(this, window, Box::new(on_effect));
         core.sync();
+        {
+            // Where the other windows open over the Panel, while it is shown.
+            let weak = window.as_weak();
+            crate::native_window::register_surface(crate::native_window::Surface::Panel, move || {
+                weak.upgrade()
+                    .and_then(|w| crate::native_window::shown_frame(w.window()))
+            });
+        }
 
         // Wires `ui.on_<name>(|args| ...)` to a controller call, redrawing afterwards.
         macro_rules! wire {
@@ -416,6 +431,7 @@ where
                 let core = Rc::clone(&core);
                 window.$on(move |$($arg),*| {
                     crate::trace!("callback {}{}", stringify!($on), Shown(&[$(&$arg as &dyn Loggable),*]));
+                    crate::native_window::note_opener(crate::native_window::Surface::Panel);
                     core.act(|$ctl| {
                         let _ = $body;
                     });
@@ -427,6 +443,7 @@ where
                 let core = Rc::clone(&core);
                 window.$on(move |$($arg),*| {
                     crate::trace!("callback {}{}", stringify!($on), Shown(&[$(&$arg as &dyn Loggable),*]));
+                    crate::native_window::note_opener(crate::native_window::Surface::Panel);
                     core.act_effects(|$ctl| $body);
                 });
             }};
@@ -532,6 +549,13 @@ where
                 let core = Rc::clone(&core);
                 Rc::new(move |problems: &[HotkeyProblem]| {
                     core.act(|ctl| ctl.report_hotkey_problems(problems));
+                })
+            },
+            own_window_active: {
+                let core = Rc::clone(&core);
+                Rc::new(move |active: bool| {
+                    crate::trace!("own window active {active}");
+                    core.act(|ctl| ctl.set_own_window_active(active));
                 })
             },
             tray: {
@@ -711,6 +735,9 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     }
     if window.get_on_top() != view.on_top {
         window.set_on_top(view.on_top);
+    }
+    if window.get_topmost() != view.topmost {
+        window.set_topmost(view.topmost);
     }
     if differs(&|p| p.footer == view.footer) {
         let (app, title) = match &view.footer {

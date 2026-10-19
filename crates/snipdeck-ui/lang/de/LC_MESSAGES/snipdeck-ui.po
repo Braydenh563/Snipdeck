@@ -853,6 +853,12 @@ msgstr "Verzögerung beim Verlassen verkürzen"
 msgid "Show"
 msgstr "Anzeigen"
 
+msgid "Show Panel"
+msgstr ""
+
+msgid "Show Panel ({})"
+msgstr ""
+
 msgid "Show Snipdeck in the taskbar"
 msgstr "Snipdeck in der Taskleiste anzeigen"
 

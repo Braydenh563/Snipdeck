@@ -29,7 +29,7 @@ use crate::{
     binding::{Loggable, Shown, arm_toast, model, redraw_all, register_redraw, to_i32},
     controller::{Controller, ToastPhase, ToastView},
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
-    main_binding::{RegularWindow, raise, set_look},
+    main_binding::{create_window, raise, set_look},
     native_window::fit_to_screen,
     settings::{DockEdge, DockTrigger, HotkeyAction, Hotkeys, Settings, Theme},
     toast::{Toast, ToastKind, ToastMessage},
@@ -1106,7 +1106,7 @@ impl SettingsUi {
             Box::new(move || {
                 let mut slot = slot.borrow_mut();
                 if slot.is_none() {
-                    let window = RegularWindow::create(ui::SettingsPage::new)?;
+                    let window = create_window(ui::SettingsPage::new)?;
                     crate::native_window::size_before_show(
                         window.window(),
                         (window.get_wanted_width(), window.get_wanted_height()),
@@ -1122,6 +1122,7 @@ impl SettingsUi {
                 let Some((window, binding)) = slot.as_ref() else {
                     return Ok(());
                 };
+                crate::native_window::place_over_owner(window.window());
                 window.show()?;
                 fit_to_screen(window.window());
                 // The page was hidden, so it skipped the redraws; draw it now that it is up.

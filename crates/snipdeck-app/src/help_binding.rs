@@ -29,7 +29,7 @@ use crate::{
     crash,
     doctor::{self, Check, DoctorHost, Fix, ReportInfo, Status},
     host::ClipboardText,
-    main_binding::{RegularWindow, raise, set_look},
+    main_binding::{create_window, raise, set_look},
     native_window::fit_to_screen,
     settings::HotkeyAction,
     settings_binding::action_name,
@@ -579,7 +579,7 @@ impl HelpUi {
             move |topic: HelpTopic| -> Result<(), slint::PlatformError> {
                 let mut slot = slot.borrow_mut();
                 if slot.is_none() {
-                    let window = RegularWindow::create(ui::HelpWindow::new)?;
+                    let window = create_window(ui::HelpWindow::new)?;
                     crate::native_window::size_before_show(
                         window.window(),
                         (window.get_wanted_width(), window.get_wanted_height()),
@@ -592,6 +592,7 @@ impl HelpUi {
                     return Ok(());
                 };
                 window.set_tab(i32::from(topic == HelpTopic::About));
+                crate::native_window::place_over_owner(window.window());
                 window.show()?;
                 fit_to_screen(window.window());
                 // The checks are fresh every time the window comes up.

@@ -176,6 +176,10 @@ export component MainWindow inherits Window {
     callback tag-toggled(int, bool);
     callback reveal-requested(int, bool);
     callback settings-requested();
+    // "Show Panel": the toolbar button and the Help menu's last entry (the Panel may have been closed).
+    callback panel-requested();
+    // The configured Show/hide Panel hotkey ("Ctrl+Alt+Space"), empty while it is off; shown in the button's tooltip.
+    in property <string> panel-hotkey;
     // 0 Troubleshoot, 1 User guide, 2 About (the host's HelpTopic); F1 asks for the guide.
     callback help-requested(int);
     callback add-list-requested();
@@ -224,6 +228,8 @@ export component MainWindow inherits Window {
     property <length> bar-h: max(Space.s8 + Space.s3, Type.line-base + Space.s2 + Space.s3);
     property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : 232px + (root.text-scale - 1) * 96px;
     property <length> pad: Space.s4;
+    // The keyboard focus ring is drawn this far outside a card; the lists are inset by it so a scroll viewport never clips it.
+    property <length> ring: Space.s1;
     property <int> n-lists: root.lists.length;
     property <int> n-tags: root.tags.length;
     property <int> nav-total: 4 + root.n-lists + root.n-tags;
@@ -316,8 +322,8 @@ export component MainWindow inherits Window {
     function open-nav-menu(flat: int, x: length, y: length) {
         root.nav-origin = true;
         root.nav-menu-flat = flat;
-        root.nav-menu-x = min(x, root.width - 220px);
-        root.nav-menu-y = min(y, root.height - 100px);
+        root.nav-menu-x = x;
+        root.nav-menu-y = y;
         root.nav-menu-open = true;
     }
 
@@ -427,8 +433,8 @@ export component MainWindow inherits Window {
     function open-item-menu(index: int, x: length, y: length) {
         root.nav-origin = false;
         root.item-menu-index = index;
-        root.item-menu-x = min(max(x, 0px), max(0px, root.width - 220px));
-        root.item-menu-y = min(max(y, 0px), max(0px, root.height - 280px));
+        root.item-menu-x = x;
+        root.item-menu-y = y;
         root.item-menu-open = true;
     }
 
@@ -532,14 +538,14 @@ export component MainWindow inherits Window {
     // ---- Tile grid geometry -----------------------------------------------------------------------
     property <length> tile-gap: Space.s2;
     property <length> tile-min-w: Space.s12 * 4 * root.text-scale;
-    property <int> cols: max(1, min(6, floor((grid.width + root.tile-gap) / (root.tile-min-w + root.tile-gap))));
+    property <int> cols: max(1, min(6, floor((grid.width - 2 * root.ring + root.tile-gap) / (root.tile-min-w + root.tile-gap))));
     // Only the visible one of the two lists builds rows.
     property <[MainRow]> list-model: root.tile ? [] : root.rows;
     property <int> grid-row-count: root.tile ? ceil(root.rows.length / root.cols) : 0;
     pure function tile-index(r: int, c: int) -> int {
         return r * root.cols + c;
     }
-    property <length> tile-w: (grid.width - (root.cols - 1) * root.tile-gap) / root.cols;
+    property <length> tile-w: (grid.width - 2 * root.ring - (root.cols - 1) * root.tile-gap) / root.cols;
     pure function row-has-image(r: int) -> bool {
         let n = root.cols;
         return (r * n < root.rows.length && root.rows[r * n].kind == ItemKind.image)
@@ -891,6 +897,14 @@ export component MainWindow inherits Window {
                         HorizontalLayout {
                             spacing: 0px;
                             horizontal-stretch: 0;
+                            panel-show := IconButton {
+                                scaled: true;
+                                icon: Icons.sidebar-simple;
+                                tooltip: root.panel-hotkey == "" ? @tr("Show Panel") : @tr("Show Panel ({})", root.panel-hotkey);
+                                y: (parent.height - self.height) / 2;
+                                clicked => { root.panel-requested(); }
+                            }
+                            Rectangle { width: Space.s2; }
                             view-comfortable := IconButton {
                                 scaled: true;
                                 icon: Icons.rows;
@@ -1091,10 +1105,10 @@ export component MainWindow inherits Window {
                     Rectangle {
                         visible: !root.tile;
                         list := ListView {
-                            x: root.pad;
-                            y: Space.s1;
-                            width: parent.width - 2 * root.pad;
-                            height: parent.height - Space.s1;
+                            x: root.pad - root.ring;
+                            y: 0px;
+                            width: parent.width - 2 * root.pad + 2 * root.ring;
+                            height: parent.height;
                             vertical-scrollbar-policy: ScrollBarPolicy.always-off;
                             horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
                             accessible-label: @tr("Snippets");
@@ -1102,7 +1116,7 @@ export component MainWindow inherits Window {
 
                             for row[i] in root.list-model: Rectangle {
                                 property <bool> is-cursor: i == root.cur;
-                                height: card.preferred-height + root.row-gap;
+                                height: card.preferred-height + root.row-gap + (i == root.rows.length - 1 ? 2 * root.ring : 0px);
 
                                 init => {
                                     if (self.is-cursor) { root.reveal-list(self.y, self.height); }
@@ -1115,9 +1129,9 @@ export component MainWindow inherits Window {
                                 }
 
                                 card := MainCard {
-                                    x: 0;
-                                    y: 0;
-                                    width: parent.width;
+                                    x: root.ring;
+                                    y: root.ring;
+                                    width: parent.width - 2 * root.ring;
                                     height: self.preferred-height;
                                     variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
                                     data: row;
@@ -1159,10 +1173,10 @@ export component MainWindow inherits Window {
                     Rectangle {
                         visible: root.tile;
                         grid := ListView {
-                            x: root.pad;
-                            y: Space.s1;
-                            width: parent.width - 2 * root.pad;
-                            height: parent.height - Space.s1;
+                            x: root.pad - root.ring;
+                            y: 0px;
+                            width: parent.width - 2 * root.pad + 2 * root.ring;
+                            height: parent.height;
                             vertical-scrollbar-policy: ScrollBarPolicy.always-off;
                             horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
                             accessible-label: @tr("Snippets");
@@ -1170,7 +1184,7 @@ export component MainWindow inherits Window {
 
                             for r in root.grid-row-count: Rectangle {
                                 property <bool> has-cursor: floor(root.cur / root.cols) == r;
-                                height: (root.row-has-image(r) ? probe-image.preferred-height : probe-text.preferred-height) + root.tile-gap;
+                                height: (root.row-has-image(r) ? probe-image.preferred-height : probe-text.preferred-height) + root.tile-gap + (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
 
                                 init => {
                                     if (self.has-cursor) { root.reveal-grid(self.y, self.height); }
@@ -1183,9 +1197,10 @@ export component MainWindow inherits Window {
                                 }
 
                                 for c in root.cols: Rectangle {
-                                    x: c * (root.tile-w + root.tile-gap);
+                                    x: root.ring + c * (root.tile-w + root.tile-gap);
+                                    y: root.ring;
                                     width: root.tile-w;
-                                    height: parent.height - root.tile-gap;
+                                    height: parent.height - root.tile-gap - (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
                                     if root.tile-index(r, c) < root.rows.length: tile-card := MainCard {
                                         width: parent.width;
                                         height: parent.height;
@@ -1474,7 +1489,6 @@ export component MainWindow inherits Window {
     if root.board-menu-open: Menu {
         x: Space.s2;
         y: root.bar-h - Space.s1;
-        width: min(Space.s12 * 5, root.width - 2 * Space.s2);
         entries: root.board-menu-entries;
         label: @tr("Boards");
         icons: false;
@@ -1491,8 +1505,8 @@ export component MainWindow inherits Window {
         }
     }
     if root.item-menu-open: Menu {
-        x: root.item-menu-x;
-        y: root.item-menu-y;
+        x: max(0px, min(root.item-menu-x, root.width - self.width - Space.s2));
+        y: max(0px, min(root.item-menu-y, root.height - self.height - Space.s2));
         entries: root.item-entries;
         label: @tr("Item actions");
         init => {
@@ -1503,8 +1517,8 @@ export component MainWindow inherits Window {
         dismissed => { root.close-menus(); }
     }
     if root.nav-menu-open: Menu {
-        x: root.nav-menu-x;
-        y: root.nav-menu-y;
+        x: max(0px, min(root.nav-menu-x, root.width - self.width - Space.s2));
+        y: max(0px, min(root.nav-menu-y, root.height - self.height - Space.s2));
         entries: root.nav-entries;
         label: @tr("Actions");
         init => {
@@ -1517,11 +1531,11 @@ export component MainWindow inherits Window {
     if root.help-menu-open: Menu {
         x: Space.s2;
         y: max(0px, root.height - root.bar-h - self.height);
-        width: min(Space.s12 * 4, root.width - 2 * Space.s2);
         entries: [
             { text: @tr("Troubleshoot…") },
             { text: @tr("User guide"), shortcut: "F1" },
             { text: @tr("About Snipdeck") },
+            { text: @tr("Show Panel"), shortcut: root.panel-hotkey },
         ];
         label: @tr("Help");
         icons: false;
@@ -1531,7 +1545,11 @@ export component MainWindow inherits Window {
         }
         activated(i) => {
             root.close-menus();
-            root.help-requested(i);
+            if (i == 3) {
+                root.panel-requested();
+            } else {
+                root.help-requested(i);
+            }
         }
         dismissed => { root.close-menus(); }
     }
