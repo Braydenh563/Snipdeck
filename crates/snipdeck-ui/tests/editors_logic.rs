@@ -467,7 +467,7 @@ ui_tests! {
         assert_eq!(take(&log), Vec::<String>::new(), "browse is its own callback");
         // No path: Ctrl+Enter says what is missing and does not save.
         chord(ui.window(), &[Key::Control], "\n");
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log), [] as [String; 0]);
         assert_eq!(field.accessible_description().as_deref(), Some("Choose a file, or cancel."));
         ui.set_source_path("C:\\a\\b.txt".into());
         settle();
@@ -477,7 +477,7 @@ ui_tests! {
         ui.set_source_error("There is no file at that path.".into());
         settle();
         chord(ui.window(), &[Key::Control], "\n");
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log), [] as [String; 0]);
         assert_eq!(
             field.accessible_description().as_deref(),
             Some("There is no file at that path.")
