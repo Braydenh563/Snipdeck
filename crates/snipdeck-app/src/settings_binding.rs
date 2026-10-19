@@ -402,6 +402,7 @@ struct PageView {
     dock_hover_delay: i32,
     dock_leave_delay: i32,
     backups_keep: i32,
+    clipboard_clear_secs: i32,
     no_paste_apps: Vec<String>,
     no_paste_error: String,
     pro: bool,
@@ -508,6 +509,7 @@ where
         dock_hover_delay: i32::try_from(settings.dock.hover_delay_ms).unwrap_or(150),
         dock_leave_delay: i32::try_from(settings.dock.leave_delay_ms).unwrap_or(400),
         backups_keep: i32::try_from(settings.backups_keep).unwrap_or(7),
+        clipboard_clear_secs: i32::try_from(settings.clipboard_clear_secs).unwrap_or(30),
         no_paste_apps: settings.no_paste_apps.clone(),
         no_paste_error: state.no_paste_error.clone(),
         pro: controller.tier() == snipdeck_core::Tier::Pro,
@@ -929,6 +931,9 @@ where
             .act(|ctl| ctl.update_settings(
                 |s| s.backups_keep = u32::try_from(n).unwrap_or(0)
             )));
+        wire!(on_clipboard_clear_secs_chosen, |core, n| core.act(|ctl| {
+            ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0))
+        }));
         wire!(on_no_paste_app_added, |core, name| core
             .no_paste_added(&name));
         wire!(on_no_paste_app_removed, |core, i| core
@@ -993,6 +998,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.backups_keep == view.backups_keep) {
         window.set_backups_keep(view.backups_keep);
+    }
+    if differs(&|p| p.clipboard_clear_secs == view.clipboard_clear_secs) {
+        window.set_clipboard_clear_secs(view.clipboard_clear_secs);
     }
     if differs(&|p| p.panel_width == view.panel_width) {
         window.set_panel_width(view.panel_width);

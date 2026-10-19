@@ -148,6 +148,15 @@ msgstr "Limpar pesquisa"
 msgid "Clear selection"
 msgstr "Limpar seleção"
 
+msgid "Clear the clipboard after copying a sensitive item"
+msgstr ""
+
+msgid "Clear the clipboard later"
+msgstr ""
+
+msgid "Clear the clipboard sooner"
+msgstr ""
+
 msgid "Clear the search, then close"
 msgstr ""
 
@@ -156,6 +165,9 @@ msgstr "Limpar o atalho de {}"
 
 msgid "Click"
 msgstr "Clique"
+
+msgid "Clipboard clear time"
+msgstr ""
 
 msgid "Close"
 msgstr "Fechar"
@@ -424,8 +436,8 @@ msgstr "Ajuda"
 msgid "Help sections"
 msgstr "Seções da ajuda"
 
-msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard 30 seconds after you copy it."
-msgstr "Oculto nas listas até você manter a barra de espaço pressionada, fora do histórico da área de transferência e apagado da área de transferência 30 segundos depois de copiado."
+msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard a little after you copy it (the time is in Settings)."
+msgstr ""
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "Oculto. Segure a barra de espaço para revelar."
@@ -961,6 +973,9 @@ msgstr "Resultados da pesquisa"
 msgid "Search snippets"
 msgstr "Pesquisar trechos"
 
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
+msgstr ""
+
 msgid "Select every item"
 msgstr ""
 
@@ -1334,6 +1349,9 @@ msgid "px"
 msgstr "px"
 
 msgid "quick find paste palette"
+msgstr ""
+
+msgid "s"
 msgstr ""
 
 msgid "tutorial intro onboarding basics learn"

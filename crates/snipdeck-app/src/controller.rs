@@ -1324,19 +1324,18 @@ where
         }
     }
 
-    /// How long a copied sensitive item may stay on the clipboard.
-    pub const SENSITIVE_CLIPBOARD_LIFE: Duration = Duration::from_secs(30);
-
     /// After a copy of a sensitive item, remembers its text on the clipboard to be cleared
-    /// [`SENSITIVE_CLIPBOARD_LIFE`](Self::SENSITIVE_CLIPBOARD_LIFE) from now. A paste restores
-    /// the user's own clipboard, so it leaves nothing to clear.
+    /// `clipboard_clear_secs` from now (0 = never). A paste restores the user's own clipboard,
+    /// so it leaves nothing to clear.
     fn schedule_clipboard_clear(&mut self, item: ItemId, outcome: UseOutcome) {
-        if matches!(outcome, UseOutcome::Pasted)
+        let life = Duration::from_secs(u64::from(self.settings.clipboard_clear_secs));
+        if life.is_zero()
+            || matches!(outcome, UseOutcome::Pasted)
             || !self.store.item(item).is_ok_and(|i| i.sensitive)
         {
             return;
         }
-        let Ok(due) = self.clock.now().checked_add(Self::SENSITIVE_CLIPBOARD_LIFE) else {
+        let Ok(due) = self.clock.now().checked_add(life) else {
             return;
         };
         self.clipboard_clear = self
@@ -1790,10 +1789,7 @@ mod tests {
         let id = w.ids[0];
         make_sensitive(&mut w, id);
         w.ctl.activate_row(0, UseMode::Copy);
-        assert_eq!(
-            w.ctl.clipboard_clear_wait(),
-            Some(Ctl::SENSITIVE_CLIPBOARD_LIFE)
-        );
+        assert_eq!(w.ctl.clipboard_clear_wait(), Some(Duration::from_secs(30)));
         w.clock.set(at("2026-10-17T10:30:29Z"));
         w.ctl.clear_clipboard_if_due();
         assert_eq!(
@@ -1805,6 +1801,23 @@ mod tests {
         w.ctl.clear_clipboard_if_due();
         assert_eq!(w.ctl.services.clipboard.read_text(), None);
         assert_eq!(w.ctl.clipboard_clear_wait(), None);
+    }
+
+    #[test]
+    fn the_clipboard_clear_time_is_the_setting_and_zero_turns_it_off() {
+        let mut w = world();
+        let id = w.ids[0];
+        make_sensitive(&mut w, id);
+        w.ctl.update_settings(|s| s.clipboard_clear_secs = 10);
+        w.ctl.activate_row(0, UseMode::Copy);
+        assert_eq!(w.ctl.clipboard_clear_wait(), Some(Duration::from_secs(10)));
+        w.clock.set(at("2026-10-17T10:30:10Z"));
+        w.ctl.clear_clipboard_if_due();
+        assert_eq!(w.ctl.services.clipboard.read_text(), None);
+
+        w.ctl.update_settings(|s| s.clipboard_clear_secs = 0);
+        w.ctl.activate_row(0, UseMode::Copy);
+        assert_eq!(w.ctl.clipboard_clear_wait(), None, "0 = never clear");
     }
 
     #[test]

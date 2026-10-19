@@ -148,6 +148,15 @@ msgstr "清除搜索"
 msgid "Clear selection"
 msgstr "清除选择"
 
+msgid "Clear the clipboard after copying a sensitive item"
+msgstr ""
+
+msgid "Clear the clipboard later"
+msgstr ""
+
+msgid "Clear the clipboard sooner"
+msgstr ""
+
 msgid "Clear the search, then close"
 msgstr ""
 
@@ -156,6 +165,9 @@ msgstr "清除 {} 的快捷键"
 
 msgid "Click"
 msgstr "点击"
+
+msgid "Clipboard clear time"
+msgstr ""
 
 msgid "Close"
 msgstr "关闭"
@@ -424,8 +436,8 @@ msgstr "帮助"
 msgid "Help sections"
 msgstr "帮助分区"
 
-msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard 30 seconds after you copy it."
-msgstr "在列表中隐藏，按住空格键才会显示；不会进入剪贴板历史记录，复制 30 秒后会从剪贴板清除。"
+msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard a little after you copy it (the time is in Settings)."
+msgstr ""
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "已隐藏。按住空格键即可显示。"
@@ -961,6 +973,9 @@ msgstr "搜索结果"
 msgid "Search snippets"
 msgstr "搜索片段"
 
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
+msgstr ""
+
 msgid "Select every item"
 msgstr ""
 
@@ -1334,6 +1349,9 @@ msgid "px"
 msgstr "px"
 
 msgid "quick find paste palette"
+msgstr ""
+
+msgid "s"
 msgstr ""
 
 msgid "tutorial intro onboarding basics learn"
