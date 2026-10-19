@@ -20,6 +20,7 @@ Hub = this session (`claude/compassionate-pascal-pod8ux`, PR #5). It owns the re
   - Hub: A1-A3 (confirm CI), C8, C9 (agent finishing), translations, C5, C3, C2, C6, C7 manifest template, B15, open review leftovers (Haiku audit of `docs/reviews/*.md` and the now.md Inbox; leftovers go to the hub), D1-D5, E1, F1-F4.
   - Owner: E3, G1-G4.
   - Done: A4, C7 docs, D4, E2.
+- F-phase order (owner 2026-10-19): after every A-E item lands, F1 Fable pass + audit runs in a NEW cloud session (fresh context, brief `docs/fable-brief.md`), findings in `docs/reviews/fable-v1.md`. The hub then implements EVERY flagged issue (split across the wave sessions by area, no finding dropped or deferred without the owner), then a second polish pass (D3 de-slop + F3 ux-auditor and blind-tester), then F2 Opus review, then F4 gate and ship.
 
 ## Task list (mirror of the session's tasks, 2026-10-19 13:20; details per item in `docs/V1-PLAN.md`)
 
