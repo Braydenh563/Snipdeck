@@ -102,7 +102,14 @@ impl<C: ComponentHandle> Harness<C> {
         let window = WINDOW
             .with(|w| w.borrow().clone())
             .expect("platform created a window");
-        window.set_size(PhysicalSize::new(width, height));
+        // `SNIPDECK_SHOT_SCALE` renders at a display scale (README screenshots); the goldens are 1x.
+        let scale = shot_scale();
+        if scale != 1.0 {
+            window.dispatch_event(slint::platform::WindowEvent::ScaleFactorChanged {
+                scale_factor: scale,
+            });
+        }
+        window.set_size(PhysicalSize::new(scaled(width, scale), scaled(height, scale)));
         component.show().expect("showing the window");
         Self { component, window }
     }
@@ -162,6 +169,25 @@ impl<C: ComponentHandle> Harness<C> {
     }
 }
 
+/// The display scale from `SNIPDECK_SHOT_SCALE` (1 when unset or not a number from 1 to 4).
+fn shot_scale() -> f32 {
+    std::env::var("SNIPDECK_SHOT_SCALE")
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok())
+        .filter(|s| (1.0..=4.0).contains(s))
+        .unwrap_or(1.0)
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    reason = "window sizes are small positive pixel counts"
+)]
+fn scaled(px: u32, scale: f32) -> u32 {
+    (px as f32 * scale).round() as u32
+}
+
 fn golden_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
@@ -208,6 +234,11 @@ fn read_png(path: &Path) -> Option<Frame> {
 /// # Panics
 /// On a mismatch or a missing golden (run with `UPDATE_GOLDEN=1` to create it).
 pub fn assert_golden(name: &str, frame: &Frame) {
+    // `SNIPDECK_SHOTS_DIR` collects every render there (README screenshots) instead of comparing.
+    if let Some(dir) = std::env::var_os("SNIPDECK_SHOTS_DIR") {
+        write_png(&Path::new(&dir).join(format!("{name}.png")), frame);
+        return;
+    }
     let path = golden_dir().join(format!("{name}.png"));
     if std::env::var_os("UPDATE_GOLDEN").is_some() {
         write_png(&path, frame);
