@@ -937,8 +937,8 @@ msgstr "你的数据"
 msgid "Your deck is empty"
 msgstr "你的卡组是空的"
 
-msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (the newest 7) and logs."
-msgstr "你的资料库位于同一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：snipdeck.db（看板、列表、片段、标签和回收站）、blobs（图片、文件和长文本）、settings.json、你的许可证密钥、备份（最新的 7 份）和日志。"
+msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
+msgstr "你的资料库位于同一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：snipdeck.db（看板、列表、片段、标签和回收站）、blobs（图片、文件和长文本）、settings.json、你的许可证密钥、备份（按你选择保留的份数）和日志。"
 
 msgid "https://example.com"
 msgstr "https://example.com"

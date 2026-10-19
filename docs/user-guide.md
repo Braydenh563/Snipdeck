@@ -12,7 +12,7 @@ This guide says what the app is built to do.
 - A **list** is a group of items in a board, such as "Email replies". Lists show as tabs in the Panel. A new
   library starts with a board called "My snippets" and a list called "Snippets".
 - An **item** is one thing to paste: text, code, a link, a template, an image or a file.
-- The **Panel** is the small window on your board. The **Picker** searches every board at your caret. The
+- The **Panel** is the small window on your board. It can dock to a screen edge (see Settings). The **Picker** searches every board at your caret. The
   **Main window** is where you organise everything.
 - The **target** is the app you were typing in. When you click an item, Snipdeck pastes into the target. The
   Panel never takes the focus away from it.
@@ -62,7 +62,7 @@ check the preview and press `Ctrl+Enter` to insert. `Esc` cancels.
 Turn on **Sensitive item** under **Privacy** in the editor. Only text, code, link and template items can be
 sensitive. A sensitive item:
 
-- Shows as a lock with a hidden preview. In the Main window, hold `Space` on the row to reveal it.
+- Shows as a lock with a hidden preview in lists. In the Main window, hold `Space` on the row to reveal it.
 - Is put on the clipboard marked private, so Windows clipboard history and cloud clipboard skip it.
 - On Pro, is also encrypted on disk with a key protected by Windows. The title, tags and search text are not
   encrypted. See [`crypto.md`](crypto.md).
@@ -137,13 +137,21 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
 - **Appearance.** **Theme** is Windows, Light or Dark. **Language** offers English, Español, Deutsch,
   Français, Português (Brasil), 日本語 and 简体中文, and takes effect the next time Snipdeck starts.
   **Panel width** is 260 to 480 pixels. You can also drag the Panel's edges.
-- **General.** **Start with Windows** starts Snipdeck hidden in the tray when you sign in. **Keep running in
-  the tray when the window closes** decides whether closing the Panel hides it or quits.
+- **Panel dock.** **Dock to** fixes the Panel against Floating, Left edge, Right edge, Top edge or Bottom edge
+  of the monitor it is on. **Open a docked panel by** is Off, Hover, Click or Hover and click. Off keeps a docked
+  Panel open. The other choices fold it into a thin strip, and the Panel shortcut opens it too. **Hover delay**
+  (0 to 2000 ms, default 150) is how long the pointer rests on the strip. **Leave delay** (0 to 5000 ms, default
+  400) is how long it stays off the Panel before it folds.
+- **Window behaviour.** **Show Snipdeck in the taskbar** gives the Panel a taskbar button (off by default).
+  **Hide the panel when it loses focus** hides an unpinned Panel when you switch to another app (on by default).
+  **Start with Windows** starts Snipdeck hidden in the tray when you sign in. **Keep running in the tray when the
+  window closes** is on by default. Turn it off and closing the Panel or the Main window quits Snipdeck.
 - **Never paste into.** Program file names, such as `notepad.exe`. Snipdeck copies instead of pasting there.
 - **Licence.** Paste your key (it starts with `SNIP1.`) and press **Activate**. See the
   [README](../README.md#licence).
-- **Backups.** Snipdeck backs up once a day and keeps the newest 7. **Restore** adds back what is missing and
-  never removes anything. **Back up now** makes one on demand, and **Open data folder** opens the folder.
+- **Backups.** Snipdeck backs up once a day and keeps the newest ones: set **Backups to keep** from 1 to 60
+  (default 7). **Restore** adds back what is missing and
+  never removes anything. **Back up now** makes one on demand. **Open data folder** and **Open backups folder** open them.
 - **Your data.** **Export library** saves one `.snipdeck` file in your Documents folder, named like
   `Snipdeck-library-20261018.snipdeck`. **Erase library** deletes every board, list, item and backup after
   you type `DELETE`. Your settings and licence stay. Tick **Also forget the encryption key** only if you do not

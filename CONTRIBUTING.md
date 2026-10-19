@@ -35,6 +35,16 @@ scripts/gate.sh --staged   # check what is staged, not the working tree (use bef
 scripts/gate.sh --full     # plus the whole test suite; run once before you push
 ```
 
+The fast checks are these three commands, and the gate runs them for you:
+
+```sh
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
+```
+
+Tests are `cargo test --workspace --locked`.
+
 It prints three lines at the end (`ran`, `failed`, `skipped`); paste them in the pull request. CI also
 runs `cargo deny check` and a Windows `cargo check`:
 

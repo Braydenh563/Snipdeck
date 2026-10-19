@@ -1247,7 +1247,7 @@ msgid "Your deck is empty"
 msgstr ""
 
 #: ui/settings.slint:722
-msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (the newest 7) and logs."
+msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr ""
 
 #: ui/editors.slint:338

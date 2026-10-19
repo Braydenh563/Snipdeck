@@ -37,6 +37,14 @@ Windows PC.
 - The item editor for text, code, link, template, image and file items, with drafts that survive a crash.
 - Export of the whole library as one `.snipdeck` file from Settings.
 - `snipdeck-keygen`, a tool for making licence keys.
+- Edge docking for the Panel: **Dock to** (Floating, Left, Right, Top or Bottom edge), **Open a docked panel by**
+  (Off, Hover, Click or Hover and click), **Hover delay** and **Leave delay**. A docked Panel can fold into a thin
+  strip. The Panel shortcut folds and unfolds it too. The edge is remembered for each monitor.
+- A **Window behaviour** group in Settings: **Show Snipdeck in the taskbar**, **Hide the panel when it loses
+  focus**, **Start with Windows** and **Keep running in the tray when the window closes**.
+- **Backups to keep** in Settings: a stepper from 1 to 60 (default 7) for the daily backups.
+- A toast window that shows messages from the Picker and the fill form. Sensitive items stay hidden in Panel and
+  Main window lists until you hold `Space`.
 
 ### Changed
 - Quick start is now "get the folder, double-click `Snipdeck.bat`". Users no longer need Rust, Visual Studio or git.
@@ -45,6 +53,11 @@ Windows PC.
 - The Windows build no longer needs the Visual C++ Redistributable.
 - The Panel is raised each time it is shown, and the tray's left click toggles it.
 - A new library starts with a board called "My snippets" and a list called "Snippets".
+- The Panel is out of the taskbar and Alt+Tab by default, and hides when you switch to another app unless it is
+  pinned. Both can be changed under **Window behaviour**.
+- Settings now fits the screen. The Item editor, Settings and Main window open as normal windows with
+  their own taskbar buttons.
+- The icon-fetching "website icons" setting is gone. Snipdeck never goes online, so icons are packaged.
 
 ### Fixed
 - A backup is no longer made while the encrypted-items key is locked. That backup would have left sensitive
@@ -55,6 +68,8 @@ Windows PC.
   command.
 - Backup, restore and clean refuse to run while the downloaded app is running.
 - Launcher logs hide your user name more thoroughly.
+- **+ New item** in the Main window opens the editor.
+- The tag manager in the Main window now renames and deletes tags.
 
 ### Security
 - The launcher checks the SHA-256 of the download against the release and against a pinned list. A release

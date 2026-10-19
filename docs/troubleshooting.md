@@ -51,6 +51,21 @@ hotkeys may be paused: choose **Pause hotkeys** in the tray menu to switch them 
 icon, closing the Panel quits Snipdeck, so start it again with `Snipdeck.bat`. Starting a second copy also
 brings the running one forward.
 
+**The Panel is not in the taskbar or Alt+Tab.** That is the default. Turn on **Show Snipdeck in the taskbar**
+under Settings, **Window behaviour**.
+
+**The Panel hides when I click another app.** **Hide the panel when it loses focus** is on by default. Pin the
+Panel with its keep-on-top button, or turn the setting off.
+
+**Closing a window quits Snipdeck.** Turn on **Keep running in the tray when the window closes** under
+Settings, **Window behaviour**. With it off, closing the Panel or the Main window quits.
+
+**The Panel is a thin strip on the screen edge.** It is docked and folded. Hover over the strip or click it
+(depending on **Open a docked panel by**), or press the Panel shortcut. To undock, set **Dock to** to Floating
+under Settings, **Panel dock**.
+
+**A sensitive item shows no text.** Lists hide it. Hold `Space` on its row in the Main window to reveal it.
+
 **The Panel opens off screen or on the wrong monitor.** Snipdeck remembers the Panel's size and place for each
 monitor and keeps it inside the monitor. After you unplug a monitor, press `Ctrl+Alt+Space` once. If it is
 still out of reach, quit from the tray and start Snipdeck again.
@@ -110,6 +125,7 @@ later, so delete it once the new version runs well ([`store.md`](store.md)).
 - The Panel is 260 to 480 pixels wide at 100% scale. Drag its edges to resize it. Its size and place are
   remembered per monitor.
 - The size limits follow the display scale of the monitor the Panel is on.
+- A docked Panel's edge, the strip's hit area and the taskbar buttons have not been tested on Windows either.
 - The Panel's area is the whole monitor, not the area without the taskbar, so it can sit under the taskbar.
   Move it up if that happens.
 - Scaling, resizing and moving between monitors with different scales have not been tested on Windows. If

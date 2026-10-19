@@ -937,8 +937,8 @@ msgstr "Tus datos"
 msgid "Your deck is empty"
 msgstr "Tu mazo está vacío"
 
-msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (the newest 7) and logs."
-msgstr "Tu biblioteca está en una sola carpeta, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (tableros, listas, fragmentos, etiquetas y la Papelera), blobs (imágenes, archivos y texto largo), settings.json, tu clave de licencia, copias de seguridad (las 7 más recientes) y registros."
+msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
+msgstr "Tu biblioteca está en una sola carpeta, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (tableros, listas, fragmentos, etiquetas y la Papelera), blobs (imágenes, archivos y texto largo), settings.json, tu clave de licencia, copias de seguridad (tantas como elijas conservar) y registros."
 
 msgid "https://example.com"
 msgstr "https://example.com"

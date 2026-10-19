@@ -31,3 +31,9 @@ budget: owner at 40% weekly; own budget line 60%, stop line 65% (owner: wrap up 
 - [ ] Picker: decide whether the fill form's live preview masks a sensitive template (default: mask, reveal on hold Space like lists)
 - [ ] codemap regenerate; CHANGELOG lines for steps 3a, 5, 8, 13
 - [ ] Owner on Windows: editor (DPAPI key, file dialog, raise), picker (caret, focus, popups), dock (strip hover, DPI, taskbar), ux (taskbar buttons, icons, work-area sizing, hide on blur)
+
+### From the control inventory (compile batch)
+- Panel: `reveal-requested` (Hold Space on a sensitive card) is not wired; the "Hidden. Hold Space to reveal." hint promises it. Wire it.
+- Panel: `context-menu-requested` / `pinned-context-menu-requested` declared, not forwarded by ItemCard, not wired (binding.rs:368). Build the card menu or remove the declarations.
+- ListTabBar `dropped(index)` has no consumer: wire drop-onto-tab or remove.
+- Verify accessible labels on Segmented, SelectField, NumberStepper, SearchField, HotkeyRecorder.
