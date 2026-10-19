@@ -419,10 +419,13 @@ where
         {
             // Where the other windows open over the Panel, while it is shown.
             let weak = window.as_weak();
-            crate::native_window::register_surface(crate::native_window::Surface::Panel, move || {
-                weak.upgrade()
-                    .and_then(|w| crate::native_window::shown_frame(w.window()))
-            });
+            crate::native_window::register_surface(
+                crate::native_window::Surface::Panel,
+                move || {
+                    weak.upgrade()
+                        .and_then(|w| crate::native_window::shown_frame(w.window()))
+                },
+            );
         }
 
         // Wires `ui.on_<name>(|args| ...)` to a controller call, redrawing afterwards.

@@ -36,7 +36,9 @@ use crate::{
     host::ClipboardText,
     item_editor::Origin,
     main_window::{EditorKind, EditorView, Section, SelectMode, ViewMode},
-    native_window::{fit_logical, fit_to_screen, place_of, place_over_owner, restore_place, size_before_show},
+    native_window::{
+        fit_logical, fit_to_screen, place_of, place_over_owner, restore_place, size_before_show,
+    },
     palette::list_color,
     wording,
 };

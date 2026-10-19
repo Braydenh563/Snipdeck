@@ -165,7 +165,6 @@ export component Menu inherits Rectangle {
     // A host that sets `width` itself overrides this.
     property <length> text-w: text-measure.preferred-width;
     property <length> key-w: key-measure.preferred-width;
-    min-width: 180px;
     width: min(max(180px, root.text-w + (root.key-w > 0px ? root.key-w + 2 * Space.s1 + 2px + Space.s2 : 0px)
         + (root.icons ? 16px + Space.s2 : 0px) + 2 * Space.s2 + 2 * Space.s1 + 2px), 320px);
     height: lay.preferred-height;

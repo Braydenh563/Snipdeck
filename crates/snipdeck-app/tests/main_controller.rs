@@ -525,7 +525,10 @@ fn a_new_list_opens_the_editor_and_saving_adds_and_opens_it() {
     let editor = ctl.main_screen().editor.expect("editor");
     assert_eq!(editor.kind, EditorKind::List);
     assert!(editor.is_new && !editor.can_delete);
-    assert_eq!(editor.name, "New list 1", "a sample name the editor selects");
+    assert_eq!(
+        editor.name, "New list 1",
+        "a sample name the editor selects"
+    );
 
     ctl.main_editor_save("   ", None, ListSort::Manual);
     let editor = ctl.main_screen().editor.expect("still open");

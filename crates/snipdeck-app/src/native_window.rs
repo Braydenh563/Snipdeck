@@ -265,10 +265,11 @@ fn owner() -> Option<(Rect, Option<Monitor>)> {
     let order = [first, Some(Surface::Main), Some(Surface::Panel)];
     SURFACES.with(|all| {
         let all = all.borrow();
-        order
-            .into_iter()
-            .flatten()
-            .find_map(|wanted| all.iter().find(|(s, _)| *s == wanted).and_then(|(_, f)| f()))
+        order.into_iter().flatten().find_map(|wanted| {
+            all.iter()
+                .find(|(s, _)| *s == wanted)
+                .and_then(|(_, f)| f())
+        })
     })
 }
 
@@ -310,9 +311,15 @@ pub fn place_over_owner(window: &slint::Window) {
     };
     let inner = (physical(w).max(1), physical(h).max(1));
     // The title bar and frame are outside the size the window is given.
-    let outer = (inner.0, inner.1.saturating_add(physical(frame::WINDOW_CHROME)));
+    let outer = (
+        inner.0,
+        inner.1.saturating_add(physical(frame::WINDOW_CHROME)),
+    );
     let at = frame::place_near(owner, outer, monitor.work_area);
-    crate::trace!("place window {inner:?} over {owner:?} -> {at:?} in {:?}", monitor.work_area);
+    crate::trace!(
+        "place window {inner:?} over {owner:?} -> {at:?} in {:?}",
+        monitor.work_area
+    );
     window.set_size(slint::LogicalSize::new(w, h));
     window.set_position(slint::PhysicalPosition::new(at.x, at.y));
 }

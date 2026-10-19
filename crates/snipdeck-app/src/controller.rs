@@ -2671,7 +2671,10 @@ mod tests {
         assert!(!w.ctl.view().topmost, "Main can cover the Panel");
         assert!(w.ctl.view().on_top, "the pin button stays pressed");
         w.ctl.set_own_window_active(false);
-        assert!(w.ctl.view().topmost, "back on top once focus is in another app");
+        assert!(
+            w.ctl.view().topmost,
+            "back on top once focus is in another app"
+        );
         w.ctl.set_on_top(false);
         w.ctl.set_own_window_active(true);
         w.ctl.set_own_window_active(false);
