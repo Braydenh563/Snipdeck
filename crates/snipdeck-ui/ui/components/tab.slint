@@ -7,6 +7,8 @@ import { Icon } from "icon.slint";
 export struct TabItem {
     text: string,
     accent: color,
+    // The list's icon, drawn before the name; an empty image is none. The name stays the accessible name.
+    icon: image,
 }
 
 // DESIGN.md §4 Tab (panel variant): an index-card divider tab. The list colour appears only as the 2px
@@ -17,6 +19,7 @@ export struct TabItem {
 export component Tab inherits Rectangle {
     in property <string> text;
     in property <color> accent;
+    in property <image> icon;
     in property <bool> selected: false;
     in property <bool> enabled: true;
     // A drag (an item being moved to this list) is hovering over the tab.
@@ -64,6 +67,13 @@ export component Tab inherits Rectangle {
         padding-right: Space.s3;
         padding-bottom: Space.s0-5;
         alignment: center;
+        spacing: Space.s1;
+        if root.icon.width > 0: Icon {
+            source: root.icon;
+            size: Space.s4 * SystemLook.text-scale;
+            tint: root.selected || root.hovered ? Theme.text-primary : Theme.text-secondary;
+            y: (parent.height - self.height) / 2;
+        }
         Text {
             text: root.text;
             color: root.selected || root.hovered ? Theme.text-primary : Theme.text-secondary;
@@ -289,6 +299,7 @@ export component ListTabBar inherits Rectangle {
                 for item[i] in root.tabs: tab := Tab {
                     text: item.text;
                     accent: item.accent;
+                    icon: item.icon;
                     selected: i == root.current && !root.none-selected;
                     drag-over: i == root.drag-over-index;
                     show-hover: i == root.show-hover-index;

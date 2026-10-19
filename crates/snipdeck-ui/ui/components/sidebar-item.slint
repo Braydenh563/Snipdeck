@@ -15,7 +15,8 @@ export component SidebarItem inherits Rectangle {
     in property <string> label;
     // Hidden when negative.
     in property <int> count: -1;
-    // System items: the glyph. Ignored by the other kinds.
+    // System items: the glyph. Lists: their own icon, drawn after the colour mark (an empty image is none).
+    // Tags and boards ignore it.
     in property <image> icon;
     // List items: the list colour (the 8px mark).
     in property <color> mark-color;
@@ -30,6 +31,8 @@ export component SidebarItem inherits Rectangle {
 
     property <length> mark-size: Space.s2 * SystemLook.text-scale;
     property <length> glyph-size: Space.s4 * SystemLook.text-scale;
+    property <bool> list-icon-shown: root.kind == SidebarItemKind.list && root.icon.width > 0;
+    property <length> lead-width: root.glyph-size + (root.list-icon-shown ? Space.s1 + root.glyph-size : 0px);
     property <bool> hovered: touch.has-hover;
     property <bool> focused: scope.has-focus || root.show-focus;
     property <image> glyph: root.kind == SidebarItemKind.board ? Icons.stack
@@ -58,13 +61,30 @@ export component SidebarItem inherits Rectangle {
         spacing: Space.s2;
 
         Rectangle {
-            width: root.rail ? root.width : root.glyph-size;
-            if root.kind == SidebarItemKind.list: Rectangle {
-                x: (parent.width - self.width) / 2;
-                y: (parent.height - self.height) / 2;
-                width: root.mark-size;
-                height: root.mark-size;
-                background: root.mark-color;
+            width: root.rail ? root.width : root.lead-width;
+            if root.kind == SidebarItemKind.list: HorizontalLayout {
+                alignment: root.rail ? center : start;
+                spacing: Space.s1;
+                Rectangle {
+                    width: root.rail ? root.mark-size : root.glyph-size;
+                    Rectangle {
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                        width: root.mark-size;
+                        height: root.mark-size;
+                        background: root.mark-color;
+                    }
+                }
+                if root.list-icon-shown: Rectangle {
+                    width: root.glyph-size;
+                    Icon {
+                        source: root.icon;
+                        tint: root.selected ? Theme.accent-on-selected : Theme.text-secondary;
+                        size: root.glyph-size;
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                    }
+                }
             }
             if root.kind != SidebarItemKind.list && root.glyph.width > 0: Icon {
                 source: root.glyph;

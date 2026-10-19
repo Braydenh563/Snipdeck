@@ -31,8 +31,8 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 | Term | Meaning |
 |---|---|
 | **Board** | Top-level workspace (e.g. "Work", "Personal"). Free tier: 5 boards. |
-| **List** | Ordered collection of Items inside a Board (e.g. "Email replies"). Has optional colour accent. |
-| **Item** | One saved thing the user can paste. Has a title, one or more Formats, tags, flags. |
+| **List** | Ordered collection of Items inside a Board (e.g. "Email replies"). Has optional colour accent and an optional icon (one of 24 curated glyphs). |
+| **Item** | One saved thing the user can paste. Has a title, one or more Formats, tags, flags, and an optional colour label (one of 8; a 4px bar on the card, filterable in the Main window; the name is always available as text). |
 | **Format** | One clipboard representation of an Item: `text`, `html`, `rtf`, `image/png`, `files`. An Item may hold several (e.g. html + text fallback). |
 | **Template** | An Item whose text contains placeholders, resolved at use time. |
 | **Placeholder** | `{date}`, `{time}`, `{datetime:FORMAT}`, `{clipboard}`, `{cursor}` (static/free) and `{field:Name}` / `{field:Name|default}` / `{choice:Name|a|b}` (prompted/Supporter). |

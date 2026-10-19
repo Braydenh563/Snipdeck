@@ -92,6 +92,7 @@ pub fn sample_store() -> Store {
     let work = board(&mut s, "Work");
     let mut replies = List::new(work.id, name("Replies"), at(2));
     replies.accent = Some(ListAccent::Blue);
+    replies.icon = Some(snipdeck_core::ListIcon::Briefcase);
     replies.view = ListView::Compact;
     replies.sort = ListSort::MostUsed;
     s.insert_list(&replies, Placement::Last).unwrap();
@@ -106,6 +107,7 @@ pub fn sample_store() -> Store {
     a.tags = [mail.id, urgent.id].into_iter().collect();
     a.pinned = true;
     a.always_plain = true;
+    a.label = Some(snipdeck_core::ItemLabel::Amber);
     a.use_count = 5;
     a.last_used_at = Some(at(500));
     a.source_app = Some("Outlook".to_owned());
@@ -190,6 +192,7 @@ pub struct ItemSnap {
     pub title: String,
     pub kind: String,
     pub flags: (bool, bool, bool),
+    pub label: Option<snipdeck_core::ItemLabel>,
     pub use_count: u32,
     pub last_used_at: Option<Timestamp>,
     pub source_app: Option<String>,
@@ -251,6 +254,7 @@ pub fn snapshot(store: &Store) -> Snap {
                     title: item.title,
                     kind: item.kind.key().to_owned(),
                     flags: (item.pinned, item.sensitive, item.always_plain),
+                    label: item.label,
                     use_count: item.use_count,
                     last_used_at: item.last_used_at,
                     source_app: item.source_app,
@@ -264,8 +268,8 @@ pub fn snapshot(store: &Store) -> Snap {
             lists.push(ListSnap {
                 name: list.name.to_string(),
                 style: format!(
-                    "{:?}/{}/{}/{}/{}",
-                    list.accent, list.view, list.sort, list.created_at, list.updated_at
+                    "{:?}/{:?}/{}/{}/{}/{}",
+                    list.accent, list.icon, list.view, list.sort, list.created_at, list.updated_at
                 ),
                 items,
             });

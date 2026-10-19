@@ -139,6 +139,7 @@ pub fn lists() -> Vec<ChoiceEntry> {
         label: label.into(),
         count,
         color,
+        icon: slint::Image::default(),
         checked: false,
     })
     .to_vec()
@@ -150,6 +151,7 @@ pub fn tags() -> Vec<ChoiceEntry> {
             label: label.into(),
             count,
             color: Color::default(),
+            icon: slint::Image::default(),
             checked: false,
         })
         .to_vec()

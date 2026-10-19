@@ -7,7 +7,8 @@ use std::rc::Rc;
 
 use crate::index_cache::IndexCache;
 use snipdeck_core::{
-    Board, BoardId, Item, ItemId, ItemKind, List, ListAccent, ListId, ListSort, search::SearchIndex,
+    Board, BoardId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
+    ListSort, search::SearchIndex,
 };
 use snipdeck_platform::route::{Policy, Route, Target, decide};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo};
@@ -34,6 +35,8 @@ pub struct Row {
     pub list: Option<ListLabel>,
     /// Shown in the pinned strip too.
     pub pinned: bool,
+    /// The item's colour label.
+    pub label: Option<ItemLabel>,
 }
 
 /// A list's name and accent, shown on rows in mixed views.
@@ -54,6 +57,8 @@ pub struct Tab {
     pub name: String,
     /// Its colour.
     pub accent: Option<ListAccent>,
+    /// Its icon.
+    pub icon: Option<ListIcon>,
     /// The list currently shown.
     pub active: bool,
 }
@@ -259,6 +264,7 @@ impl PanelModel {
                 id: l.id,
                 name: l.name.as_str().to_owned(),
                 accent: l.accent,
+                icon: l.icon,
                 active: Some(l.id) == self.list,
             })
             .collect()
@@ -353,6 +359,7 @@ impl PanelModel {
                 .then(|| self.list_labels.get(&item.list_id).cloned())
                 .flatten(),
             pinned: item.pinned,
+            label: item.label,
         }
     }
 

@@ -30,7 +30,8 @@ const JOIN_LIVE: &str = "JOIN lists l ON l.id = i.list_id JOIN boards b ON b.id 
 const WHERE_LIVE: &str = "i.deleted_at IS NULL AND l.deleted_at IS NULL AND b.deleted_at IS NULL";
 
 const COLUMNS: &str = "i.id, i.list_id, i.title, i.kind, i.preview, i.pinned, i.sensitive, \
-     i.always_plain, i.use_count, i.last_used_at, i.source_app, i.created_at, i.updated_at";
+     i.always_plain, i.use_count, i.last_used_at, i.source_app, i.created_at, i.updated_at, \
+     i.label";
 
 struct ItemRow {
     id: Vec<u8>,
@@ -46,6 +47,7 @@ struct ItemRow {
     source_app: Option<String>,
     created_at: i64,
     updated_at: i64,
+    label: Option<String>,
 }
 
 impl ItemRow {
@@ -64,6 +66,7 @@ impl ItemRow {
             source_app: row.get(10)?,
             created_at: row.get(11)?,
             updated_at: row.get(12)?,
+            label: row.get(13)?,
         })
     }
 
@@ -82,6 +85,7 @@ impl ItemRow {
             use_count: u32::try_from(self.use_count)
                 .map_err(|_| Error::Corrupt("a use count is out of range".to_owned()))?,
             last_used_at: from_opt_nanos(self.last_used_at)?,
+            label: self.label.as_deref().map(str::parse).transpose()?,
             source_app: self.source_app,
             created_at: from_nanos(self.created_at)?,
             updated_at: from_nanos(self.updated_at)?,
@@ -429,8 +433,8 @@ pub(crate) fn insert_item(
     conn.execute(
         "INSERT INTO items (id, list_id, title, kind, preview, pinned, sensitive, always_plain,
                             use_count, last_used_at, source_app, rank, created_at, updated_at,
-                            encrypted)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+                            encrypted, label)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
         params![
             id,
             list,
@@ -446,7 +450,8 @@ pub(crate) fn insert_item(
             rank,
             created,
             updated,
-            flag(encrypt)
+            flag(encrypt),
+            item.label.map(snipdeck_core::ItemLabel::key)
         ],
     )?;
     let seq = conn.last_insert_rowid();
@@ -502,7 +507,7 @@ pub(crate) fn update_item(cx: &mut Ctx<'_>, item: &Item, formats: Option<&Format
     conn.execute(
         "UPDATE items SET title = ?2, kind = ?3, preview = ?4, pinned = ?5, sensitive = ?6,
                 always_plain = ?7, source_app = ?8, created_at = ?9, updated_at = ?10,
-                encrypted = ?11
+                encrypted = ?11, label = ?12
          WHERE id = ?1",
         params![
             id,
@@ -515,7 +520,8 @@ pub(crate) fn update_item(cx: &mut Ctx<'_>, item: &Item, formats: Option<&Format
             item.source_app,
             created,
             updated,
-            flag(encrypted)
+            flag(encrypted),
+            item.label.map(snipdeck_core::ItemLabel::key)
         ],
     )?;
     write_tags(conn, id, &item.tags)?;

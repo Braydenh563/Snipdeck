@@ -20,7 +20,7 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use snipdeck_core::{ItemId, ItemKind};
+use snipdeck_core::{ItemId, ItemKind, ItemLabel};
 
 /// How often the open editor saves its draft.
 pub const AUTOSAVE_EVERY: Duration = Duration::from_secs(2);
@@ -74,6 +74,9 @@ pub struct Draft {
     pub new_tags: Vec<String>,
     /// The path field (a new Image or File item).
     pub source_path: String,
+    /// The colour label (`ItemLabel::key`); drafts written before labels existed have none.
+    #[serde(default)]
+    pub label: Option<String>,
 }
 
 impl Draft {
@@ -103,7 +106,21 @@ impl Draft {
             tags,
             new_tags,
             source_path,
+            label: None,
         }
+    }
+
+    /// The same draft with the colour label chosen.
+    #[must_use]
+    pub fn with_label(mut self, label: Option<ItemLabel>) -> Self {
+        self.label = label.map(|l| l.key().to_owned());
+        self
+    }
+
+    /// The label the draft holds, if it is one this version knows.
+    #[must_use]
+    pub fn item_label(&self) -> Option<ItemLabel> {
+        self.label.as_deref().and_then(|k| k.parse().ok())
     }
 
     /// The kind the draft was in, if it is one this version knows.

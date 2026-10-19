@@ -19,11 +19,14 @@ use snipdeck_app::{
     },
     demo,
     host::{FakeTargets, FixedClock},
-    main_window::{DeleteHint, EditorKind, NameError, Section, SelectMode},
+    item_editor::EditorInput,
+    main_window::{DeleteHint, EditorKind, Key, NameError, Section, SelectMode},
     settings::Settings,
     toast::ToastMessage,
 };
-use snipdeck_core::{Entitlements, ListAccent, ListSort, Name, Tag, Tier, Timestamp};
+use snipdeck_core::{
+    Entitlements, ItemLabel, ListAccent, ListIcon, ListSort, Name, Tag, Tier, Timestamp,
+};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_store::{BoardRepo, ItemRepo, Store, TagRepo, TrashRepo, Trashable};
 
@@ -633,18 +636,23 @@ fn a_new_list_opens_the_editor_and_saving_adds_and_opens_it() {
         "a sample name the editor selects"
     );
 
-    ctl.main_editor_save("   ", None, ListSort::Manual);
+    ctl.main_editor_save("   ", None, None, ListSort::Manual);
     let editor = ctl.main_screen().editor.expect("still open");
     assert_eq!(editor.name_error, Some(NameError::Empty));
     ctl.main_editor_edited();
     assert_eq!(ctl.main_screen().editor.unwrap().name_error, None);
-    ctl.main_editor_save(&"x".repeat(101), None, ListSort::Manual);
+    ctl.main_editor_save(&"x".repeat(101), None, None, ListSort::Manual);
     assert_eq!(
         ctl.main_screen().editor.unwrap().name_error,
         Some(NameError::TooLong { max: 100 })
     );
 
-    ctl.main_editor_save("  Snippets 2 ", Some(ListAccent::Rose), ListSort::MostUsed);
+    ctl.main_editor_save(
+        "  Snippets 2 ",
+        Some(ListAccent::Rose),
+        None,
+        ListSort::MostUsed,
+    );
     let screen = ctl.main_screen();
     assert!(screen.editor.is_none());
     assert_eq!(screen.lists.len(), 4);
@@ -678,11 +686,122 @@ fn editing_a_list_renames_recolours_and_re_sorts_it() {
         (editor.name.as_str(), editor.accent, editor.item_count),
         ("Addresses", Some(ListAccent::Amber), 2)
     );
-    ctl.main_editor_save("Places", None, ListSort::RecentlyUsed);
+    ctl.main_editor_save("Places", None, None, ListSort::RecentlyUsed);
     let screen = ctl.main_screen();
     let list = &screen.lists[index];
     assert_eq!((list.name.as_str(), list.accent), ("Places", None));
     assert_eq!(ctl.view().tabs[index].name, "Places");
+}
+
+#[test]
+fn a_list_saved_with_an_icon_reads_back_with_it_and_none_clears_it() {
+    let mut ctl = pro();
+    let index = list_index(&ctl.main_screen(), "Addresses");
+    ctl.main_edit_list(index);
+    assert_eq!(ctl.main_screen().editor.unwrap().icon, None);
+    ctl.main_editor_save("Addresses", None, Some(ListIcon::House), ListSort::Manual);
+    assert_eq!(ctl.main_screen().lists[index].icon, Some(ListIcon::House));
+    assert_eq!(ctl.view().tabs[index].icon, Some(ListIcon::House));
+    ctl.main_edit_list(index);
+    assert_eq!(
+        ctl.main_screen().editor.unwrap().icon,
+        Some(ListIcon::House),
+        "the editor opens with it"
+    );
+    ctl.main_editor_save("Addresses", None, None, ListSort::Manual);
+    assert_eq!(ctl.main_screen().lists[index].icon, None);
+    assert_eq!(ctl.view().tabs[index].icon, None);
+}
+
+/// Gives the item in row `row` of the open view the colour label `label`.
+fn label_row(ctl: &mut Ctl, row: usize, label: ItemLabel) {
+    let Key::Item(id) = ctl.main_screen().rows[row].key else {
+        panic!("row {row} is not an item");
+    };
+    ctl.open_item_editor(id);
+    let fields = ctl.item_editor_view().expect("editor").fields;
+    ctl.item_editor_save(&EditorInput {
+        label: Some(label),
+        ..fields
+    });
+}
+
+#[test]
+fn filtering_by_label_shows_only_matching_items_and_clearing_restores_them() {
+    let mut ctl = pro();
+    let all = titles(&ctl.main_screen());
+    assert!(all.len() >= 4);
+    assert_eq!(
+        ctl.main_screen().label_chips.len(),
+        0,
+        "no labels, no chips"
+    );
+    label_row(&mut ctl, 0, ItemLabel::Amber);
+    label_row(&mut ctl, 1, ItemLabel::Teal);
+    label_row(&mut ctl, 2, ItemLabel::Teal);
+    let screen = ctl.main_screen();
+    let chips: Vec<_> = screen
+        .label_chips
+        .iter()
+        .map(|c| (c.label, c.count))
+        .collect();
+    assert_eq!(
+        chips,
+        [(ItemLabel::Teal, 2), (ItemLabel::Amber, 1)],
+        "one chip per label in use, in the label order"
+    );
+    assert_eq!(screen.label_filter, None);
+    let before = titles(&screen);
+
+    ctl.main_set_label_filter(Some(ItemLabel::Teal));
+    let screen = ctl.main_screen();
+    assert_eq!(screen.label_filter, Some(ItemLabel::Teal));
+    assert_eq!(screen.rows.len(), 2, "the count follows the filter");
+    assert!(screen.rows.iter().all(|r| r.label == Some(ItemLabel::Teal)));
+    assert_eq!(
+        screen.label_chips.len(),
+        2,
+        "the chips still offer the other labels"
+    );
+
+    // One at a time: another label replaces the first.
+    ctl.main_set_label_filter(Some(ItemLabel::Amber));
+    assert_eq!(ctl.main_screen().rows.len(), 1);
+    // A label nothing carries shows no rows, and its chip stays so it can be cleared.
+    ctl.main_set_label_filter(Some(ItemLabel::Red));
+    let screen = ctl.main_screen();
+    assert_eq!(screen.rows.len(), 0);
+    assert!(
+        screen
+            .label_chips
+            .iter()
+            .any(|c| c.label == ItemLabel::Red && c.count == 0)
+    );
+
+    ctl.main_set_label_filter(None);
+    let screen = ctl.main_screen();
+    assert_eq!(titles(&screen), before, "clearing restores every item");
+    assert_eq!(screen.label_filter, None);
+}
+
+#[test]
+fn the_label_filter_applies_to_a_list_and_to_a_search() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Addresses");
+    label_row(&mut ctl, 0, ItemLabel::Blue);
+    let in_list = ctl.main_screen().rows.len();
+    ctl.main_set_label_filter(Some(ItemLabel::Blue));
+    assert_eq!(ctl.main_screen().rows.len(), 1);
+    ctl.main_set_query("a");
+    assert!(
+        ctl.main_screen()
+            .rows
+            .iter()
+            .all(|r| r.label == Some(ItemLabel::Blue))
+    );
+    ctl.main_set_query("");
+    ctl.main_set_label_filter(None);
+    assert_eq!(ctl.main_screen().rows.len(), in_list);
 }
 
 #[test]
@@ -756,7 +875,7 @@ fn the_list_menu_edits_the_list_it_was_opened_on() {
     let editor = ctl.main_screen().editor.expect("editor");
     assert_eq!(editor.name, "Code");
     assert!(!editor.is_new && editor.can_delete && !editor.open_delete);
-    ctl.main_editor_save("Snippets", None, ListSort::Manual);
+    ctl.main_editor_save("Snippets", None, None, ListSort::Manual);
     assert_eq!(
         ctl.view().tabs[tab_index(&ctl, "Snippets")].name,
         "Snippets"
@@ -807,7 +926,7 @@ fn a_new_board_is_made_through_the_menu_and_opened() {
     assert_eq!(editor.kind, EditorKind::Board);
     assert!(editor.is_new);
     assert_eq!(editor.name, "New board 1");
-    ctl.main_editor_save("Side projects", None, ListSort::Manual);
+    ctl.main_editor_save("Side projects", None, None, ListSort::Manual);
     let screen = ctl.main_screen();
     assert_eq!(screen.board_name, "Side projects");
     assert_eq!(screen.lists.len(), 0);
@@ -836,7 +955,7 @@ fn renaming_the_open_board_uses_the_board_editor() {
     assert_eq!(editor.name, "Work");
     assert_eq!(editor.item_count, 10, "the lists of the open board");
     assert!(editor.can_delete && !editor.open_delete);
-    ctl.main_editor_save("Office", None, ListSort::Manual);
+    ctl.main_editor_save("Office", None, None, ListSort::Manual);
     assert_eq!(ctl.main_screen().board_name, "Office");
     assert_eq!(ctl.view().board_name, "Office");
 }
@@ -896,7 +1015,7 @@ fn free_allows_five_boards_and_a_sixth_says_so() {
         let new = menu_index(&mut ctl, &BoardMenuEntry::New);
         ctl.main_board_menu_activate(new);
         assert!(ctl.main_screen().editor.is_some());
-        ctl.main_editor_save(name, None, ListSort::Manual);
+        ctl.main_editor_save(name, None, None, ListSort::Manual);
     }
     assert_eq!(ctl.store().boards().unwrap().len(), 5);
 
@@ -915,7 +1034,7 @@ fn undo_cannot_bring_a_board_back_past_the_free_limit() {
     for name in ["Third", "Fourth", "Fifth"] {
         let new = menu_index(&mut ctl, &BoardMenuEntry::New);
         ctl.main_board_menu_activate(new);
-        ctl.main_editor_save(name, None, ListSort::Manual);
+        ctl.main_editor_save(name, None, None, ListSort::Manual);
     }
     // Delete the open board (Fifth), add another, then try to restore Fifth from the Trash.
     let delete = menu_index(&mut ctl, &BoardMenuEntry::Delete);
@@ -924,7 +1043,7 @@ fn undo_cannot_bring_a_board_back_past_the_free_limit() {
     let fifth = ctl.store().trashed().unwrap()[0].target;
     let new = menu_index(&mut ctl, &BoardMenuEntry::New);
     ctl.main_board_menu_activate(new);
-    ctl.main_editor_save("Replacement", None, ListSort::Manual);
+    ctl.main_editor_save("Replacement", None, None, ListSort::Manual);
     assert_eq!(ctl.store().boards().unwrap().len(), 5);
     ctl.main_open(Section::Trash);
     let at = ctl
@@ -969,6 +1088,81 @@ fn alt_arrows_move_an_item_within_its_list_and_the_cursor_follows() {
 }
 
 #[test]
+fn dragging_a_row_onto_another_row_puts_it_in_that_place() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Email replies");
+    let before = titles(&ctl.main_screen());
+    ctl.main_drop_row(0, 2);
+    let after = titles(&ctl.main_screen());
+    assert_eq!(
+        after[..3],
+        [before[1].clone(), before[2].clone(), before[0].clone()]
+    );
+    ctl.main_drop_row(2, 0);
+    assert_eq!(titles(&ctl.main_screen()), before, "and back");
+    ctl.main_drop_row(1, 1);
+    assert_eq!(
+        titles(&ctl.main_screen()),
+        before,
+        "onto itself does nothing"
+    );
+}
+
+#[test]
+fn dragging_rows_does_nothing_in_a_system_view() {
+    let mut ctl = pro();
+    let before = titles(&ctl.main_screen());
+    ctl.main_drop_row(0, 1);
+    assert_eq!(titles(&ctl.main_screen()), before, "All items");
+}
+
+#[test]
+fn dropping_a_row_on_a_list_moves_the_item_to_its_end() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Email replies");
+    let first = titles(&ctl.main_screen())[0].clone();
+    let code = list_index(&ctl.main_screen(), "Code");
+    ctl.main_drop_on_list(0, code);
+    assert!(
+        !titles(&ctl.main_screen()).contains(&first),
+        "gone from the open list"
+    );
+    open_list(&mut ctl, "Code");
+    assert_eq!(titles(&ctl.main_screen()).last(), Some(&first));
+}
+
+#[test]
+fn dropping_a_row_on_its_own_list_does_nothing() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Email replies");
+    let before = titles(&ctl.main_screen());
+    let own = list_index(&ctl.main_screen(), "Email replies");
+    ctl.main_drop_on_list(0, own);
+    assert_eq!(titles(&ctl.main_screen()), before);
+}
+
+#[test]
+fn dragging_a_list_onto_another_puts_it_in_that_place() {
+    let mut ctl = pro();
+    ctl.main_drop_list(2, 0);
+    let names: Vec<_> = ctl
+        .main_screen()
+        .lists
+        .iter()
+        .map(|l| l.name.clone())
+        .collect();
+    assert_eq!(names, ["Code", "Email replies", "Addresses"]);
+    ctl.main_drop_list(0, 9);
+    let again: Vec<_> = ctl
+        .main_screen()
+        .lists
+        .iter()
+        .map(|l| l.name.clone())
+        .collect();
+    assert_eq!(again, names, "a target out of range does nothing");
+}
+
+#[test]
 fn items_do_not_move_in_a_sorted_list_a_search_or_a_system_view() {
     let mut ctl = pro();
     let before = titles(&ctl.main_screen());
@@ -978,7 +1172,7 @@ fn items_do_not_move_in_a_sorted_list_a_search_or_a_system_view() {
     open_list(&mut ctl, "Code");
     let index = list_index(&ctl.main_screen(), "Code");
     ctl.main_edit_list(index);
-    ctl.main_editor_save("Code", Some(ListAccent::Violet), ListSort::MostUsed);
+    ctl.main_editor_save("Code", Some(ListAccent::Violet), None, ListSort::MostUsed);
     let before = titles(&ctl.main_screen());
     ctl.main_reorder_items(1);
     assert_eq!(titles(&ctl.main_screen()), before, "sorted by use");
@@ -1188,4 +1382,42 @@ fn the_palette_new_list_command_opens_the_list_editor() {
     let editor = ctl.main_screen().editor.expect("the list editor");
     assert_eq!(editor.kind, EditorKind::List);
     assert!(editor.is_new);
+}
+
+#[test]
+fn opening_another_section_clears_the_label_filter() {
+    let mut ctl = pro();
+    label_row(&mut ctl, 0, ItemLabel::Teal);
+    ctl.main_set_label_filter(Some(ItemLabel::Teal));
+    open_list(&mut ctl, "Addresses");
+    let screen = ctl.main_screen();
+    assert_eq!(screen.label_filter, None);
+    assert!(
+        !screen.rows.is_empty(),
+        "the other list shows all its items"
+    );
+    ctl.main_set_label_filter(Some(ItemLabel::Teal));
+    ctl.main_open(snipdeck_app::main_window::Section::Trash);
+    assert_eq!(ctl.main_screen().label_filter, None);
+}
+
+#[test]
+fn duplicating_a_labelled_item_keeps_its_label() {
+    let mut ctl = pro();
+    label_row(&mut ctl, 0, ItemLabel::Teal);
+    let screen = ctl.main_screen();
+    let id = match screen.rows[0].key {
+        snipdeck_app::main_window::Key::Item(id) => id,
+        other => panic!("{other:?}"),
+    };
+    let list = ctl.store().item(id).unwrap().list_id;
+    assert!(ctl.main_action(MainAction::Duplicate, 0).is_none());
+    let labelled = ctl
+        .store()
+        .items(list)
+        .unwrap()
+        .iter()
+        .filter(|i| i.label == Some(ItemLabel::Teal))
+        .count();
+    assert_eq!(labelled, 2, "the copy carries the label");
 }
