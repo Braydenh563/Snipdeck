@@ -501,7 +501,7 @@ export component PanelWindow inherits Window {
                     root.app-menu-requested();
                     return accept;
                 }
-                if (event.text == Key.F2 && root.sel >= 0) {
+                if (event.text == Key.F2 && root.sel >= 0 && !tab-bar.has-focus) {
                     root.rename-requested(root.sel);
                     return accept;
                 }

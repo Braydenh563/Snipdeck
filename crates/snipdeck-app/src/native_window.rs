@@ -166,6 +166,10 @@ pub fn size_before_show(window: &slint::Window, wanted: (f32, f32)) {
 /// and moved onto it. Call it right after `show()`; nothing happens without a native window.
 pub fn fit_to_screen(window: &slint::Window) {
     let _ = window.with_winit_window(|w| {
+        // A maximised window reaches past the work area by its frame; Windows keeps it there.
+        if w.is_maximized() {
+            return;
+        }
         let Some(monitor) = monitor_of(w) else {
             return;
         };
