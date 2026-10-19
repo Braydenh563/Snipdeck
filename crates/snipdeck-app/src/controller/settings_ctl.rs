@@ -14,14 +14,170 @@ use jiff::tz::TimeZone;
 use snipdeck_core::{Entitlements, Feature, Tier, licence::verify_embedded};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_portable::{
-    ExportOptions, KeySource, SensitivePolicy,
+    BoardLayout, ExportOptions, ImportOptions, ImportReport, KeySource, MergeStrategy,
+    SensitivePolicy,
     backup::{self, BackupOutcome},
-    export_to_path,
+    export_to_path, import_archive_path, import_copyq_json, import_ditto, import_folder,
 };
 use snipdeck_store::Store;
 
 use super::{Controller, Toast, ToastKind, ToastMessage};
 use crate::{host::ClipboardText, licence_store, starter, toast::LicenceProblem};
+
+/// Where an import reads from. Each variant is one kind of source the Settings "Import..." row
+/// offers; a new source (the Windows clipboard history, say) is one more variant, one arm in
+/// `ImportSource::run` and one entry in the page's list.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ImportSource {
+    /// A `.snipdeck` file (an export or a backup): its boards come back under their own names.
+    Snipdeck(PathBuf),
+    /// A Ditto clipboard-manager database.
+    Ditto(PathBuf),
+    /// A `CopyQ` JSON export.
+    CopyQ(PathBuf),
+    /// A folder of `.txt` and `.md` files, one item each.
+    Folder(PathBuf),
+}
+
+impl ImportSource {
+    /// The file or folder this reads.
+    #[must_use]
+    pub fn path(&self) -> &Path {
+        match self {
+            Self::Snipdeck(p) | Self::Ditto(p) | Self::CopyQ(p) | Self::Folder(p) => p,
+        }
+    }
+
+    /// The name of the file or folder, for the preview's heading.
+    #[must_use]
+    pub fn file_name(&self) -> String {
+        self.path()
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default()
+    }
+
+    /// Runs the importer for this source over `store`. With `options.dry_run` nothing is kept.
+    fn run(
+        &self,
+        store: &mut Store,
+        now: jiff::Timestamp,
+        options: &ImportOptions<'_>,
+    ) -> snipdeck_portable::Result<ImportReport> {
+        match self {
+            Self::Snipdeck(p) => import_archive_path(store, p, now, options),
+            Self::Ditto(p) => import_ditto(store, p, now, options),
+            Self::CopyQ(p) => import_copyq_json(store, p, now, options),
+            Self::Folder(p) => import_folder(store, p, now, options),
+        }
+    }
+}
+
+/// What an import would do, worked out by a dry run: nothing has been written. Plain data for
+/// the preview.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportPreview {
+    /// Boards that would be created.
+    pub boards: usize,
+    /// Lists that would be created.
+    pub lists: usize,
+    /// Items that would be added.
+    pub items: usize,
+    /// Items already in the library (same content), which are skipped.
+    pub duplicates: usize,
+    /// Tags that would be created.
+    pub tags: usize,
+    /// What will not be imported or needs a look, already worded.
+    pub warnings: Vec<String>,
+    /// Warnings left out of `warnings` because there were too many.
+    pub warnings_dropped: usize,
+    /// The Free plan's board limit would be passed, so the import is refused until Pro.
+    pub blocked_by_board_limit: bool,
+}
+
+impl ImportPreview {
+    /// Whether importing would change nothing.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.boards == 0 && self.lists == 0 && self.items == 0 && self.tags == 0
+    }
+}
+
+/// Why a source could not be previewed or imported.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImportProblem {
+    /// The file or folder could not be opened.
+    Unreadable,
+    /// It is not the kind of file the choice named, or it is damaged.
+    NotThisKind(ImportKind),
+    /// A `.snipdeck` file from a newer Snipdeck.
+    TooNew,
+    /// Anything else (the library could not be written, the file is over the safety limits).
+    Failed,
+}
+
+/// The kind of source, without a path: what the page's choices and the problem wording name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImportKind {
+    /// A `.snipdeck` file.
+    Snipdeck,
+    /// A Ditto database.
+    Ditto,
+    /// A `CopyQ` export.
+    CopyQ,
+    /// A folder of text files.
+    Folder,
+}
+
+impl ImportSource {
+    /// The source of `kind` at `path`.
+    #[must_use]
+    pub fn of(kind: ImportKind, path: PathBuf) -> Self {
+        match kind {
+            ImportKind::Snipdeck => Self::Snipdeck(path),
+            ImportKind::Ditto => Self::Ditto(path),
+            ImportKind::CopyQ => Self::CopyQ(path),
+            ImportKind::Folder => Self::Folder(path),
+        }
+    }
+
+    /// The kind of this source.
+    #[must_use]
+    pub fn kind(&self) -> ImportKind {
+        match self {
+            Self::Snipdeck(_) => ImportKind::Snipdeck,
+            Self::Ditto(_) => ImportKind::Ditto,
+            Self::CopyQ(_) => ImportKind::CopyQ,
+            Self::Folder(_) => ImportKind::Folder,
+        }
+    }
+}
+
+fn problem_of(source: &ImportSource, error: &snipdeck_portable::Error) -> ImportProblem {
+    use snipdeck_portable::Error as E;
+    match error {
+        E::File { .. } | E::Io(_) => ImportProblem::Unreadable,
+        E::FormatTooNew { .. } => ImportProblem::TooNew,
+        E::NotAnArchive(_)
+        | E::UnsafeEntry { .. }
+        | E::MissingEntry(_)
+        | E::Malformed { .. }
+        | E::UnsupportedFormat(_)
+        | E::CountMismatch { .. }
+        | E::AssetMismatch { .. }
+        | E::DuplicateId { .. }
+        | E::NotDitto { .. }
+        | E::Sqlite(_) => ImportProblem::NotThisKind(source.kind()),
+        _ => ImportProblem::Failed,
+    }
+}
+
+fn is_board_limit(error: &snipdeck_portable::Error) -> bool {
+    matches!(
+        error,
+        snipdeck_portable::Error::Core(snipdeck_core::Error::ProRequired(_))
+    )
+}
 
 /// Files and folders of the data folder that "Erase library" leaves: the settings (and the copies
 /// of a damaged file set aside), the licence key, the crash logs and the lock the running app
@@ -218,15 +374,19 @@ where
     /// Restores `backup` (a file `backup::list_backups` found) into the library: what is missing
     /// comes back, nothing is removed. A Free library stays within its board limit.
     pub fn restore_backup(&mut self, backup_file: &Path) -> bool {
-        let max_boards = (!self.entitlements.allows(Feature::UnlimitedBoards))
-            .then_some(Entitlements::FREE_BOARD_LIMIT);
-        let restored = backup::restore(
-            &mut self.store,
-            backup_file,
-            self.clock.now(),
-            KeySource::Library,
-            max_boards,
-        );
+        let source = ImportSource::Snipdeck(backup_file.to_path_buf());
+        // The same preview the page shows first: a refusal is known before anything is written.
+        let restored = match self.preview_import(&source) {
+            Ok(preview) if preview.blocked_by_board_limit => {
+                self.show_toast(danger(ToastMessage::BoardLimit));
+                return false;
+            }
+            Ok(_) => self.import_report(&source, false),
+            Err(_) => {
+                self.show_toast(danger(ToastMessage::RestoreFailed));
+                return false;
+            }
+        };
         let worked = restored.is_ok();
         match restored {
             Ok(report) => {
@@ -244,6 +404,93 @@ where
             Err(_) => self.show_toast(danger(ToastMessage::RestoreFailed)),
         }
         worked
+    }
+
+    /// The importer options every Settings import uses: duplicates are skipped, a `.snipdeck`
+    /// keeps its boards, encrypted items open with the library's own key, and a Free library
+    /// stays within its board limit.
+    fn import_report(
+        &mut self,
+        source: &ImportSource,
+        dry_run: bool,
+    ) -> snipdeck_portable::Result<ImportReport> {
+        let max_boards = (!self.entitlements.allows(Feature::UnlimitedBoards))
+            .then_some(Entitlements::FREE_BOARD_LIMIT);
+        let options = ImportOptions {
+            merge: MergeStrategy::SkipDuplicates,
+            layout: BoardLayout::KeepBoards,
+            key: KeySource::Library,
+            max_boards,
+            dry_run,
+            ..ImportOptions::default()
+        };
+        source.run(&mut self.store, self.clock.now(), &options)
+    }
+
+    /// Works out what importing `source` would do, writing nothing: the preview the page shows
+    /// before the user agrees. Under the Free plan's board limit the counts are still those of
+    /// the file, and `blocked_by_board_limit` says the import would be refused.
+    ///
+    /// # Errors
+    ///
+    /// Why the source cannot be read.
+    pub fn preview_import(
+        &mut self,
+        source: &ImportSource,
+    ) -> Result<ImportPreview, ImportProblem> {
+        let (report, blocked) = match self.import_report(source, true) {
+            Ok(report) => (report, false),
+            Err(e) if is_board_limit(&e) => {
+                // Refused for the limit: read it again without the limit for the counts.
+                let options = ImportOptions {
+                    merge: MergeStrategy::SkipDuplicates,
+                    layout: BoardLayout::KeepBoards,
+                    key: KeySource::Library,
+                    dry_run: true,
+                    ..ImportOptions::default()
+                };
+                let report = source
+                    .run(&mut self.store, self.clock.now(), &options)
+                    .map_err(|e| problem_of(source, &e))?;
+                (report, true)
+            }
+            Err(e) => return Err(problem_of(source, &e)),
+        };
+        Ok(ImportPreview {
+            boards: report.boards_added,
+            lists: report.lists_added,
+            items: report.items_added,
+            duplicates: report.items_skipped,
+            tags: report.tags_added,
+            warnings: report.warnings.iter().map(ToString::to_string).collect(),
+            warnings_dropped: report.warnings_dropped,
+            blocked_by_board_limit: blocked,
+        })
+    }
+
+    /// Imports `source` for real, as previewed, and says how many items came in. Returns
+    /// whether it worked.
+    pub fn apply_import(&mut self, source: &ImportSource) -> bool {
+        match self.import_report(source, false) {
+            Ok(report) => {
+                let _ = self.refresh_panel();
+                self.show_toast(Toast {
+                    kind: ToastKind::Success,
+                    message: ToastMessage::Imported {
+                        items: report.items_added,
+                    },
+                });
+                true
+            }
+            Err(e) if is_board_limit(&e) => {
+                self.show_toast(danger(ToastMessage::BoardLimit));
+                false
+            }
+            Err(_) => {
+                self.show_toast(danger(ToastMessage::ImportFailed));
+                false
+            }
+        }
     }
 
     /// Exports the whole library as one `.snipdeck` file in `folder`, under a name that does not

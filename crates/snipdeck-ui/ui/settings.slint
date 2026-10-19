@@ -90,11 +90,29 @@ export component SettingsPage inherits Window {
     in property <ToastPhase> toast-phase: ToastPhase.hold;
     // The "Erase library" confirmation is open.
     in-out property <bool> erase-open: false;
+    // The import preview (also used by Restore): what the import would do, worked out before anything is written.
+    in property <bool> import-open: false;
+    // What is being imported ("Import from notes.snipdeck") and the confirm button's words ("Import" / "Restore").
+    in property <string> import-title;
+    in property <string> import-confirm-label;
+    // Non-empty when the source could not be read; the preview then only offers Close.
+    in property <string> import-problem;
+    in property <int> import-boards: 0;
+    in property <int> import-lists: 0;
+    in property <int> import-items: 0;
+    in property <int> import-duplicates: 0;
+    // The Free plan's board limit would be passed.
+    in property <bool> import-blocked: false;
+    // What will not be imported, already worded, and how many more there were.
+    in property <[string]> import-warnings;
+    in property <int> import-warnings-more: 0;
     // What is typed in the licence field, in the erase confirmation, and its key switch.
     in-out property <string> licence-text;
     in-out property <string> erase-text;
     in-out property <bool> forget-key: false;
     property <int> erase-focus: 0;
+    // The four sources are shown (after "Import…") and none is chosen yet.
+    property <bool> import-choosing: false;
     // What the confirmation must be typed as, exactly.
     out property <string> erase-word: "DELETE";
 
@@ -121,6 +139,11 @@ export component SettingsPage inherits Window {
     callback open-data-folder-requested();
     callback open-backups-folder-requested();
     callback export-requested();
+    // The "Import..." choices: 0 a .snipdeck file, 1 a Ditto database, 2 a CopyQ export, 3 a folder of text files.
+    // The host asks for the file, works out the preview and sets the import-* properties below.
+    callback import-source-chosen(kind: int);
+    callback import-confirmed();
+    callback import-cancelled();
     // The host checks `typed` again: only the exact word erases.
     callback erase-confirmed(typed: string, forget-key: bool);
     callback close-requested();
@@ -172,7 +195,11 @@ export component SettingsPage inherits Window {
     scope := FocusScope {
         key-pressed(event) => {
             if (event.text == Key.Escape) {
-                root.close-requested();
+                if (root.import-open) {
+                    root.import-cancelled();
+                } else {
+                    root.close-requested();
+                }
                 return accept;
             }
             return reject;
@@ -632,6 +659,160 @@ export component SettingsPage inherits Window {
                             clicked => { root.export-requested(); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Import");
+                        description: @tr("Bring in items from a Snipdeck file or another clipboard manager. You see what will be added before anything is written.");
+                        Button {
+                            text: @tr("Import…");
+                            enabled: root.has-data-folder && !root.import-open;
+                            a11y-label: @tr("Import into your library, see a preview first");
+                            clicked => { root.import-choosing = !root.import-choosing; }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if root.import-choosing && !root.import-open: VerticalLayout {
+                        spacing: Space.s2;
+                        accessible-role: groupbox;
+                        accessible-label: @tr("Choose what to import");
+                        for choice[i] in [
+                            @tr(".snipdeck file"),
+                            @tr("Ditto database"),
+                            @tr("CopyQ export"),
+                            @tr("Folder of .txt and .md files"),
+                        ]: HorizontalLayout {
+                            alignment: start;
+                            Button {
+                                text: choice;
+                                a11y-label: @tr("Import from: {}", choice);
+                                clicked => {
+                                    root.import-choosing = false;
+                                    root.import-source-chosen(i);
+                                }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                    }
+                    if root.import-open: VerticalLayout {
+                        spacing: Space.s2;
+                        padding-top: Space.s2;
+                        accessible-role: groupbox;
+                        accessible-label: root.import-title;
+                        Text {
+                            text: root.import-title;
+                            color: Theme.text-primary;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            font-weight: Type.semibold;
+                            wrap: word-wrap;
+                            accessible-role: none;
+                        }
+                        if root.import-problem != "": Text {
+                            text: root.import-problem;
+                            color: Theme.danger-fg;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            wrap: word-wrap;
+                            accessible-role: text;
+                            accessible-label: root.import-problem;
+                        }
+                        if root.import-problem == "" && root.import-blocked: Text {
+                            text: @tr("The Free plan includes 3 boards. This would go over that, so it needs Pro.");
+                            color: Theme.danger-fg;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            wrap: word-wrap;
+                            accessible-role: text;
+                            accessible-label: self.text;
+                        }
+                        if root.import-problem == "" && root.import-items > 0: Text {
+                            text: @tr("{} item in {} list will be added" | "{} items in {} lists will be added" % root.import-items, root.import-items, root.import-lists);
+                            color: Theme.text-primary;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            wrap: word-wrap;
+                            accessible-role: text;
+                            accessible-label: self.text;
+                        }
+                        if root.import-problem == "" && root.import-boards > 0: Text {
+                            text: @tr("{} new board will be made" | "{} new boards will be made" % root.import-boards, root.import-boards);
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            wrap: word-wrap;
+                            accessible-role: text;
+                            accessible-label: self.text;
+                        }
+                        if root.import-problem == "" && root.import-duplicates > 0: Text {
+                            text: @tr("{} already in your library, skipped" | "{} already in your library, skipped" % root.import-duplicates, root.import-duplicates);
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            wrap: word-wrap;
+                            accessible-role: text;
+                            accessible-label: self.text;
+                        }
+                        if root.import-problem == "" && root.import-items == 0 && root.import-boards == 0: Text {
+                            text: @tr("Nothing new to import.");
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            accessible-role: text;
+                            accessible-label: self.text;
+                        }
+                        if root.import-warnings.length > 0: VerticalLayout {
+                            spacing: Space.s1;
+                            accessible-role: groupbox;
+                            accessible-label: @tr("Will not be imported");
+                            Text {
+                                text: @tr("Will not be imported");
+                                color: Theme.text-primary;
+                                font-family: Fonts.sans;
+                                font-size: Type.sm;
+                                font-weight: Type.semibold;
+                                accessible-role: none;
+                            }
+                            for line in root.import-warnings: Text {
+                                text: line;
+                                color: Theme.text-secondary;
+                                font-family: Fonts.sans;
+                                font-size: Type.sm;
+                                wrap: word-wrap;
+                                accessible-role: text;
+                                accessible-label: line;
+                            }
+                            if root.import-warnings-more > 0: Text {
+                                text: @tr("and {} more" | "and {} more" % root.import-warnings-more, root.import-warnings-more);
+                                color: Theme.text-secondary;
+                                font-family: Fonts.sans;
+                                font-size: Type.sm;
+                                accessible-role: none;
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: Space.s2;
+                            alignment: end;
+                            Button {
+                                text: root.import-problem != "" ? @tr("Close") : @tr("Cancel");
+                                clicked => { root.import-cancelled(); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            if root.import-problem == "": Button {
+                                text: root.import-confirm-label;
+                                variant: ButtonVariant.primary;
+                                enabled: !root.import-blocked && (root.import-items > 0 || root.import-boards > 0);
+                                clicked => { root.import-confirmed(); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
                             }
                         }
                     }

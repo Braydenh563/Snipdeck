@@ -79,6 +79,8 @@ struct FakeHost {
     taskbar: Cell<Option<bool>>,
     opened: RefCell<Vec<PathBuf>>,
     documents: RefCell<Option<PathBuf>>,
+    /// What the import dialog answers, once.
+    import_pick: RefCell<Option<PathBuf>>,
 }
 
 impl SettingsHost for FakeHost {
@@ -105,6 +107,10 @@ impl SettingsHost for FakeHost {
 
     fn documents_folder(&self) -> Option<PathBuf> {
         self.documents.borrow().clone()
+    }
+
+    fn pick_import(&self, _kind: snipdeck_app::controller::ImportKind) -> Option<PathBuf> {
+        self.import_pick.borrow_mut().take()
     }
 }
 
@@ -762,6 +768,17 @@ fn restoring_a_backup_round_trips_the_demo_library() {
         );
         assert_eq!(b.ctl.borrow().store().boards().unwrap().len(), 0);
         b.ui.invoke_backup_restore_requested(0);
+        // Restore shows the preview first and writes nothing yet.
+        assert!(b.ui.get_import_open());
+        assert_eq!(b.ui.get_import_confirm_label(), "Restore");
+        assert_eq!(usize::try_from(b.ui.get_import_items()), Ok(plain.len()));
+        assert!(b.ui.get_import_boards() >= 2);
+        assert_eq!(b.ui.get_import_duplicates(), 0);
+        assert!(!b.ui.get_import_blocked());
+        assert_eq!(b.ctl.borrow().store().boards().unwrap().len(), 0);
+        assert_eq!(b.ui.get_toast_text(), "");
+        b.ui.invoke_import_confirmed();
+        assert!(!b.ui.get_import_open());
         assert_eq!(
             b.ui.get_toast_text(),
             format!("Restored {} items from the backup", plain.len())
@@ -776,6 +793,13 @@ fn restoring_a_backup_round_trips_the_demo_library() {
 
         // Restoring over an intact library adds no item twice.
         b.ui.invoke_backup_restore_requested(0);
+        assert!(b.ui.get_import_open());
+        assert_eq!(b.ui.get_import_items(), 0);
+        assert_eq!(
+            usize::try_from(b.ui.get_import_duplicates()),
+            Ok(plain.len())
+        );
+        b.ui.invoke_import_confirmed();
         assert_eq!(
             b.ui.get_toast_text(),
             "Nothing to restore: your library already has everything in that backup."
@@ -1044,5 +1068,78 @@ fn the_main_windows_settings_button_opens_the_page_once_and_shows_it_again() {
             "the same window"
         );
         assert_eq!(again.get_hotkeys().row_count(), 4);
+    });
+}
+
+// ---- Import ---------------------------------------------------------------------------------
+
+#[test]
+fn import_shows_a_preview_first_and_writes_only_when_confirmed() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            Store::open_in_memory().unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            true,
+        );
+        let folder = r.dir.path().join("notes");
+        std::fs::create_dir_all(&folder).unwrap();
+        for i in 0..3 {
+            std::fs::write(folder.join(format!("n{i}.txt")), format!("note {i}")).unwrap();
+        }
+        std::fs::write(folder.join("empty.txt"), "").unwrap();
+
+        // Cancelling the dialog does nothing.
+        r.ui.invoke_import_source_chosen(3);
+        assert!(!r.ui.get_import_open());
+
+        *r.host.import_pick.borrow_mut() = Some(folder.clone());
+        r.ui.invoke_import_source_chosen(3);
+        assert!(r.ui.get_import_open());
+        assert_eq!(r.ui.get_import_title(), "Import from notes");
+        assert_eq!(r.ui.get_import_confirm_label(), "Import");
+        assert_eq!(r.ui.get_import_items(), 3);
+        assert_eq!(r.ui.get_import_lists(), 1);
+        assert_eq!(r.ui.get_import_problem(), "");
+        assert!(
+            r.ui.get_import_warnings().row_count() >= 1,
+            "the empty file is listed as not imported"
+        );
+        assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 0);
+
+        // Cancel closes it and still writes nothing.
+        r.ui.invoke_import_cancelled();
+        assert!(!r.ui.get_import_open());
+        assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 0);
+
+        *r.host.import_pick.borrow_mut() = Some(folder);
+        r.ui.invoke_import_source_chosen(3);
+        r.ui.invoke_import_confirmed();
+        assert!(!r.ui.get_import_open());
+        assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 3);
+        assert_eq!(r.ui.get_toast_text(), "Imported 3 items");
+    });
+}
+
+#[test]
+fn a_file_that_cannot_be_imported_shows_a_problem_and_nothing_to_confirm() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            Store::open_in_memory().unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            true,
+        );
+        let junk = r.dir.path().join("junk.db");
+        std::fs::write(&junk, b"not a database").unwrap();
+        *r.host.import_pick.borrow_mut() = Some(junk);
+        r.ui.invoke_import_source_chosen(1);
+        assert!(r.ui.get_import_open());
+        assert_eq!(r.ui.get_import_problem(), "That isn't a Ditto database.");
+        // Confirming a problem writes nothing.
+        r.ui.invoke_import_confirmed();
+        assert!(!r.ui.get_import_open());
+        assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 0);
+        assert_eq!(r.ui.get_toast_text(), "");
     });
 }

@@ -32,6 +32,7 @@ mod settings_ctl;
 
 pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameError};
 pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry};
+pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 
 use crate::{
     capture::{self, Captured},

@@ -167,6 +167,13 @@ pub enum ToastMessage {
     },
     /// "Couldn't restore that backup."
     RestoreFailed,
+    /// "Imported 5 items".
+    Imported {
+        /// Items added.
+        items: usize,
+    },
+    /// "Couldn't import that."
+    ImportFailed,
     /// "Saved {file} in {folder}": an export.
     Exported {
         /// The file's name.

@@ -123,6 +123,10 @@ pub fn toast_text(message: &ToastMessage) -> String {
         ToastMessage::BackupRestored { items: 1 } => "Restored 1 item from the backup".into(),
         ToastMessage::BackupRestored { items } => format!("Restored {items} items from the backup"),
         ToastMessage::RestoreFailed => "Couldn't restore that backup.".into(),
+        ToastMessage::Imported { items: 0 } => "Nothing new to import.".into(),
+        ToastMessage::Imported { items: 1 } => "Imported 1 item".into(),
+        ToastMessage::Imported { items } => format!("Imported {items} items"),
+        ToastMessage::ImportFailed => "Couldn't import that.".into(),
         ToastMessage::Exported { file } => format!("Saved {file} in your Documents folder"),
         ToastMessage::ExportFailed => "Couldn't export your library.".into(),
         ToastMessage::LibraryErased => "Your library was erased.".into(),
@@ -183,6 +187,25 @@ pub const UNDO_LABEL: &str = "Undo";
 
 /// The label of the crash toast's button.
 pub const OPEN_LOG_LABEL: &str = "Open log";
+
+/// Why an import could not be previewed, in words for the page.
+#[must_use]
+pub const fn import_problem_text(problem: crate::controller::ImportProblem) -> &'static str {
+    use crate::controller::{ImportKind, ImportProblem};
+    match problem {
+        ImportProblem::Unreadable => "Snipdeck couldn't open that. Check that it still exists.",
+        ImportProblem::NotThisKind(ImportKind::Snipdeck) => {
+            "That isn't a Snipdeck file, or it is damaged."
+        }
+        ImportProblem::NotThisKind(ImportKind::Ditto) => "That isn't a Ditto database.",
+        ImportProblem::NotThisKind(ImportKind::CopyQ) => "That isn't a CopyQ export.",
+        ImportProblem::NotThisKind(ImportKind::Folder) => "Snipdeck couldn't read that folder.",
+        ImportProblem::TooNew => {
+            "That file is from a newer Snipdeck. Update Snipdeck to import it."
+        }
+        ImportProblem::Failed => "Couldn't import that.",
+    }
+}
 
 /// The label of `toast`'s button; empty when it has none.
 #[must_use]
@@ -479,6 +502,8 @@ mod tests {
             ToastMessage::DeletedForever { count: 1 },
             ToastMessage::TrashEmptied,
             ToastMessage::BoardLimit,
+            ToastMessage::Imported { items: 3 },
+            ToastMessage::ImportFailed,
             ToastMessage::LibraryProblem,
             ToastMessage::CrashedLastTime,
             ToastMessage::CannotOpenLog,
