@@ -80,16 +80,15 @@ where
     /// Copies the controller's Picker into the window, opening or closing it as needed.
     fn sync(self: &Rc<Self>) {
         let view = self.controller.borrow().view();
-        match &view.picker {
-            Some(picker) => self.draw(&view, picker),
-            None => {
-                self.shell.hide();
-                // A template chosen in the Picker opens its form where the Picker was.
-                if view.fill.is_none() {
-                    self.anchor.set(None);
-                }
-                *self.shown.borrow_mut() = None;
+        if let Some(picker) = &view.picker {
+            self.draw(&view, picker);
+        } else {
+            self.shell.hide();
+            // A template chosen in the Picker opens its form where the Picker was.
+            if view.fill.is_none() {
+                self.anchor.set(None);
             }
+            *self.shown.borrow_mut() = None;
         }
     }
 

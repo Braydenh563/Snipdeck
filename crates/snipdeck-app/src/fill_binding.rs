@@ -71,12 +71,11 @@ where
             let copies = ctl.fill().is_some_and(|f| f.mode() == UseMode::Copy);
             (ctl.view(), copies)
         };
-        match &view.fill {
-            Some(fill) => self.draw(&view, fill, copies),
-            None => {
-                self.shell.hide();
-                *self.shown.borrow_mut() = None;
-            }
+        if let Some(fill) = &view.fill {
+            self.draw(&view, fill, copies);
+        } else {
+            self.shell.hide();
+            *self.shown.borrow_mut() = None;
         }
     }
 

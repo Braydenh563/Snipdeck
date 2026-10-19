@@ -99,17 +99,16 @@ pub fn place_popup(
     caret: Option<ScreenRect>,
     logical: (f32, f32),
 ) -> Option<(Rect, Anchor)> {
-    let anchor = match caret {
-        Some(c) => Anchor::Caret(Rect {
+    let anchor = if let Some(c) = caret {
+        Anchor::Caret(Rect {
             x: c.x,
             y: c.y,
             w: c.w,
             h: c.h,
-        }),
-        None => {
-            let (x, y) = host.cursor()?;
-            Anchor::Point(x, y)
-        }
+        })
+    } else {
+        let (x, y) = host.cursor()?;
+        Anchor::Point(x, y)
     };
     let frame = place_at(host, anchor, logical)?;
     Some((frame, anchor))

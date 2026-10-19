@@ -145,6 +145,14 @@ fn rig_at(scale: f32) -> Rig {
     }
 }
 
+fn titles(window: &snipdeck_ui::PickerWindow) -> Vec<String> {
+    window
+        .get_rows()
+        .iter()
+        .map(|r| r.title.to_string())
+        .collect()
+}
+
 impl Rig {
     fn open(&self) -> snipdeck_ui::PickerWindow {
         self.binding.hotkey(HotkeyAction::Picker);
@@ -152,13 +160,6 @@ impl Rig {
         self.picker.window().expect("the Picker window was made")
     }
 
-    fn titles(&self, window: &snipdeck_ui::PickerWindow) -> Vec<String> {
-        window
-            .get_rows()
-            .iter()
-            .map(|r| r.title.to_string())
-            .collect()
-    }
 
     fn uses(&self, id: ItemId) -> u32 {
         self.ctl.borrow().store().item(id).expect("item").use_count
@@ -204,7 +205,7 @@ fn the_hotkey_opens_the_picker_below_the_caret_and_the_window_is_registered() {
             ["attach", "activate"],
             "registered with the tracker, and given the keyboard to type into"
         );
-        assert_eq!(r.titles(&w).len(), 11, "every item of every board");
+        assert_eq!(titles(&w).len(), 11, "every item of every board");
     });
 }
 
@@ -259,7 +260,7 @@ fn typing_filters_across_the_boards_and_enter_pastes_into_the_target() {
         let w = r.open();
         type_text(w.window(), "retry");
         assert_eq!(r.ctl.borrow().picker().expect("open").query(), "retry");
-        assert_eq!(r.titles(&w)[0], "Retry helper", "search spans every list");
+        assert_eq!(titles(&w)[0], "Retry helper", "search spans every list");
         assert_eq!(w.get_rows().row_data(0).expect("row").list_name, "Code");
 
         press(w.window(), &key(Key::Return));
