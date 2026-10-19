@@ -561,12 +561,14 @@ where
         wire!(on_toast_undo, |ctl| ctl.toast_action());
         window.on_settings_requested(crate::settings_binding::request_open);
         wire!(on_panel_requested, |ctl| ctl.main_show_panel());
-        wire!(on_help_requested, |ctl, i| ctl.main_open_help(match i {
-            0 => HelpTopic::Troubleshoot,
-            2 => HelpTopic::About,
-            4 => HelpTopic::Shortcuts,
-            _ => HelpTopic::Guide,
-        }));
+        wire!(on_help_requested, |ctl, page| ctl.main_open_help(
+            match page {
+                ui::HelpPage::Troubleshoot => HelpTopic::Troubleshoot,
+                ui::HelpPage::Guide => HelpTopic::Guide,
+                ui::HelpPage::About => HelpTopic::About,
+                ui::HelpPage::Shortcuts => HelpTopic::Shortcuts,
+            }
+        ));
         {
             let core = Rc::clone(&core);
             window.on_palette_opened(move || core.fill_palette(""));
@@ -1145,7 +1147,8 @@ loggable_debug!(
     ui::MainSection,
     ui::MainView,
     ui::SelectMode,
-    ui::ItemAction
+    ui::ItemAction,
+    ui::HelpPage
 );
 
 #[cfg(test)]

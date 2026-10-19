@@ -122,7 +122,7 @@ fn start() -> (MainWindow, Log) {
     hook!(on_tag_toggled, |i, on| format!("tag:{i}:{on}"));
     hook!(on_reveal_requested, |i, on| format!("reveal:{i}:{on}"));
     hook!(on_settings_requested, || "settings".to_string());
-    hook!(on_help_requested, |i| format!("help:{i}"));
+    hook!(on_help_requested, |page| format!("help:{page:?}"));
     hook!(on_panel_requested, || "panel".to_string());
     hook!(on_list_edit_requested, |i| format!("list-edit:{i}"));
     hook!(on_list_delete_confirmed, |i| format!("list-delete:{i}"));
@@ -559,9 +559,14 @@ ui_tests! {
         assert_eq!(ui.get_query(), "", "and is not typed into it");
     }
 
-    fn the_help_button_opens_a_menu_of_three_pages_and_f1_asks_for_the_guide() {
+    fn the_help_button_opens_a_menu_of_four_pages_and_f1_asks_for_the_guide() {
         let (ui, log) = start();
-        for (label, topic) in [("Troubleshoot…", 0), ("User guide", 1), ("About Snipdeck", 2)] {
+        for (label, topic) in [
+            ("Troubleshoot…", "Troubleshoot"),
+            ("User guide", "Guide"),
+            ("About Snipdeck", "About"),
+            ("Keyboard shortcuts", "Shortcuts"),
+        ] {
             find(&ui, "Help", AccessibleRole::Button).invoke_accessible_default_action();
             settle();
             assert!(ui.get_menu_open(), "the Help menu is open");
@@ -571,7 +576,7 @@ ui_tests! {
             assert_eq!(take(&log), [format!("help:{topic}")]);
         }
         press_key(&ui, Key::F1);
-        assert_eq!(take(&log), ["help:1"]);
+        assert_eq!(take(&log), ["help:Guide"]);
     }
 
     fn ctrl_n_and_the_buttons_report_what_was_asked() {
@@ -840,7 +845,7 @@ ui_tests! {
         chord(ui.window(), &[Key::Control], ",");
         assert_eq!(take(&log), ["settings"]);
         chord(ui.window(), &[Key::Control], "/");
-        assert_eq!(take(&log), ["help:3"]);
+        assert_eq!(take(&log), ["help:Shortcuts"]);
         assert!(!ui.get_search_focused(), "Ctrl+/ is not the bare / that opens the search");
     }
 
@@ -852,7 +857,7 @@ ui_tests! {
         assert_eq!(row.accessible_description().as_deref(), Some("Ctrl+/"));
         row.invoke_accessible_default_action();
         settle();
-        assert_eq!(take(&log), ["help:3"]);
+        assert_eq!(take(&log), ["help:Shortcuts"]);
     }
 
     fn an_empty_deck_names_the_keys_that_help() {

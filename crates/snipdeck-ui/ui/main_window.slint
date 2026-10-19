@@ -63,6 +63,10 @@ export enum SelectMode { replace, toggle, extend }
 // `selected-count` > 1, else to the row the index names.
 export enum ItemAction { use, copy, edit, pin, move, tag, delete, restore, delete-forever }
 
+// The pages the Help menu and its shortcuts open (the host's HelpTopic). "Show Panel" is not one: it has its own
+// callback. Named so the menu's row order and the keys (F1, Ctrl+/) cannot drift apart from the host's mapping.
+export enum HelpPage { troubleshoot, guide, about, shortcuts }
+
 // One item card, mapped from a row.
 component MainCard inherits ItemCard {
     in property <MainRow> data;
@@ -183,8 +187,8 @@ export component MainWindow inherits Window {
     callback panel-requested();
     // The configured Show/hide Panel hotkey ("Ctrl+Alt+Space"), empty while it is off; shown in the button's tooltip.
     in property <string> panel-hotkey;
-    // 0 Troubleshoot, 1 User guide, 2 About (the host's HelpTopic); F1 asks for the guide.
-    callback help-requested(int);
+    // F1 asks for the guide, Ctrl+/ for the shortcuts, the Help menu for any of them.
+    callback help-requested(HelpPage);
     // ---- Command palette: the host fills `palette-rows` (filtered for the query it is told about).
     in property <[PaletteRow]> palette-rows;
     in-out property <bool> palette-open: false;
@@ -608,7 +612,7 @@ export component MainWindow inherits Window {
                     return accept;
                 }
                 if (event.text == "/") {
-                    root.help-requested(3);
+                    root.help-requested(HelpPage.shortcuts);
                     return accept;
                 }
                 if (event.text == ",") {
@@ -625,7 +629,7 @@ export component MainWindow inherits Window {
                 }
             }
             if (event.text == Key.F1) {
-                root.help-requested(1);
+                root.help-requested(HelpPage.guide);
                 return accept;
             }
             if (event.text == "/" && !search.has-focus && !event.modifiers.control && !event.modifiers.alt) {
@@ -1584,10 +1588,17 @@ export component MainWindow inherits Window {
         }
         activated(i) => {
             root.close-menus();
-            if (i == 3) {
+            // The row order is the `entries` list above.
+            if (i == 0) {
+                root.help-requested(HelpPage.troubleshoot);
+            } else if (i == 1) {
+                root.help-requested(HelpPage.guide);
+            } else if (i == 2) {
+                root.help-requested(HelpPage.about);
+            } else if (i == 3) {
                 root.panel-requested();
             } else {
-                root.help-requested(i);
+                root.help-requested(HelpPage.shortcuts);
             }
         }
         dismissed => { root.close-menus(); }
