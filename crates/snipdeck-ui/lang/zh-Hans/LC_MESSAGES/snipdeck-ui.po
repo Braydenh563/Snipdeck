@@ -64,6 +64,9 @@ msgstr "{} 的备份（{}）"
 msgid "Backups"
 msgstr "备份"
 
+msgid "Backups to keep"
+msgstr "保留的备份数"
+
 msgid "Blue"
 msgstr "蓝色"
 
@@ -90,9 +93,6 @@ msgstr "浏览…"
 
 msgid "Cancel"
 msgstr "取消"
-
-msgid "Capture a region"
-msgstr "捕获区域"
 
 msgid "Captured items keep their kind."
 msgstr "捕获的片段保留其类型。"
@@ -165,9 +165,6 @@ msgstr "深色"
 
 msgid "Date and time in a format you choose"
 msgstr "以你选择的格式显示日期和时间"
-
-msgid "Delete"
-msgstr "删除"
 
 msgid "Delete board"
 msgstr "删除看板"
@@ -316,26 +313,29 @@ msgstr "例如：工作"
 msgid "Free plan"
 msgstr "免费版"
 
-msgid "General"
-msgstr "常规"
-
 msgid "Give the board a name."
 msgstr "请为看板命名。"
 
 msgid "Give the list a name."
 msgstr "请为列表命名。"
 
+msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
+msgstr "为面板提供任务栏按钮。关闭后，面板不会出现在任务栏和 Alt+Tab 中；仍可通过通知区域图标和面板快捷键唤回。"
+
 msgid "Green"
 msgstr "绿色"
 
-msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it."
-msgstr "在按住空格键之前在列表中隐藏，不计入剪贴板历史，并在使用后 {} 秒从剪贴板中清除。"
+msgid "Hidden in lists until you hold Space, and kept out of clipboard history."
+msgstr "在列表中隐藏，按住空格键才会显示，且不会进入剪贴板历史。"
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "已隐藏。按住空格键即可显示。"
 
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "已隐藏。在面板中打开即可显示。"
+
+msgid "Hide the panel when it loses focus"
+msgstr "失去焦点时隐藏面板"
 
 msgid "Hover"
 msgstr "悬停"
@@ -381,6 +381,12 @@ msgstr "其列表及其中的 {n} 个片段将移至回收站。你可以在 30 
 
 msgid "Keep editing"
 msgstr "继续编辑"
+
+msgid "Keep fewer backups"
+msgstr "减少保留的备份"
+
+msgid "Keep more backups"
+msgstr "增加保留的备份"
 
 msgid "Keep panel on top"
 msgstr "面板保持在最前"
@@ -456,6 +462,9 @@ msgstr "最常用"
 
 msgid "Move"
 msgstr "移动"
+
+msgid "Move to Trash"
+msgstr "移到回收站"
 
 msgid "Move to list"
 msgstr "移动到列表"
@@ -561,6 +570,9 @@ msgstr "打开 Snipdeck"
 
 msgid "Open a docked panel by"
 msgstr "展开已停靠面板的方式"
+
+msgid "Open backups folder"
+msgstr "打开备份文件夹"
 
 msgid "Open data folder"
 msgstr "打开数据文件夹"
@@ -697,11 +709,17 @@ msgstr "保存"
 msgid "Save from clipboard"
 msgstr "从剪贴板保存"
 
+msgid "Save the clipboard as an item"
+msgstr "将剪贴板保存为片段"
+
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr "保存你的第一个片段，或复制一些内容后从剪贴板保存。"
 
 msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
 msgstr "把所有看板、列表和片段保存为一个 .snipdeck 文件，放在你的“文档”文件夹中。"
+
+msgid "Saves the text on the clipboard as a new item in the list the panel shows."
+msgstr "将剪贴板中的文本作为新片段保存到面板当前显示的列表中。"
 
 msgid "Scope"
 msgstr "范围"
@@ -727,9 +745,6 @@ msgstr "搜索结果"
 msgid "Search snippets"
 msgstr "搜索片段"
 
-msgid "Selects part of the screen and saves it as an item."
-msgstr "选择屏幕的一部分并将其保存为片段。"
-
 msgid "Sensitive item"
 msgstr "敏感片段"
 
@@ -747,6 +762,9 @@ msgstr "缩短悬停延迟"
 
 msgid "Shorten the leave delay"
 msgstr "缩短离开延迟"
+
+msgid "Show Snipdeck in the taskbar"
+msgstr "在任务栏中显示 Snipdeck"
 
 msgid "Show or hide the panel"
 msgstr "显示或隐藏面板"
@@ -772,8 +790,8 @@ msgstr "Snipdeck 会保存该文件的副本。"
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck 从不连接互联网：它显示的每个图标和字体都已随应用打包。"
 
-msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
-msgstr "Snipdeck 每天保存一份资料库副本，并保留最新的 7 份。还原只会补回缺少的内容，不会删除任何东西。"
+msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
+msgstr "Snipdeck 每天保存一份资料库副本，并保留最新的 {} 份。还原只会补回缺少的内容，不会删除任何东西。"
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck 会待在系统托盘中，以便登录后快捷键仍可使用。"
@@ -826,6 +844,9 @@ msgstr "该密钥用于打开你之前保存的导出文件中的加密项目。
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "该列表及其中的 {} 个片段将移至回收站。你可以在 {} 天内恢复它们。"
 
+msgid "The oldest ones are deleted once there are more than this."
+msgstr "超过此数量后，最旧的备份会被删除。"
+
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "所选片段将被永久删除，此操作无法撤销。"
 
@@ -874,8 +895,8 @@ msgstr "回收站"
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "在设置中开启剪贴板历史，以收集你复制的内容。"
 
-msgid "Turn this off and closing the main window quits Snipdeck."
-msgstr "关闭此项后，关闭主窗口将退出 Snipdeck。"
+msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
+msgstr "关闭后，关闭面板或主窗口将退出 Snipdeck。"
 
 msgid "Type {} to confirm"
 msgstr "输入 {} 以确认"
@@ -898,8 +919,14 @@ msgstr "更改尚未保存。"
 msgid "What you changed in this item has not been saved."
 msgstr "此片段的更改尚未保存。"
 
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
+msgstr "图钉关闭时，切换到其他应用后面板会立即隐藏。已固定的面板不会隐藏。"
+
 msgid "Where the text cursor lands after pasting"
 msgstr "粘贴后文本光标的位置"
+
+msgid "Window behaviour"
+msgstr "窗口行为"
 
 msgid "Windows"
 msgstr "Windows"

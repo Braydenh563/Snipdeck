@@ -8,7 +8,7 @@
 use std::{collections::BTreeMap, time::Duration};
 
 use snipdeck_core::{
-    BoardId, Entitlements, Feature, ItemId, UseMode, UseOutcome,
+    BoardId, Entitlements, Feature, ItemId, Timestamp, UseMode, UseOutcome,
     template::{Locale, Template, TimeZone},
 };
 use snipdeck_platform::{
@@ -28,7 +28,7 @@ mod main_ctl;
 mod panel;
 mod settings_ctl;
 
-pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice};
+pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameError};
 pub use panel::{APP_MENU, AppMenuEntry, HelpTopic};
 
 use crate::{
@@ -50,6 +50,9 @@ use crate::{
 /// How long the Target gets to take the focus back before keys are injected (the M2 spike's
 /// 50 ms; Windows restores the focused control asynchronously).
 pub const REFOCUS_WAIT: Duration = Duration::from_millis(50);
+/// A foreground change this soon after the Panel was shown does not hide it: showing the Panel
+/// (a hotkey, the tray) can itself move the foreground around while Windows settles.
+pub const BLUR_GRACE: Duration = Duration::from_millis(400);
 /// A toast fades in for this long (`Motion.quick`) before it counts as settled.
 pub const TOAST_ENTER: Duration = Duration::from_millis(120);
 /// A settled toast stays this long (`Toast.hold-duration`, DESIGN.md §4).
@@ -318,6 +321,8 @@ pub struct Controller<S, C, K, T> {
     settings: Settings,
     entitlements: Entitlements,
     visible: bool,
+    /// When the Panel was last shown (or created): the start of [`BLUR_GRACE`].
+    shown_at: Timestamp,
     on_top: bool,
     toast: Option<ActiveToast>,
     toast_seq: u64,
@@ -419,6 +424,7 @@ where
         let mut model = PanelModel::load(&store, None, None)?;
         model.set_policy(policy_of(&settings));
         model.set_target(target.current());
+        let shown_at = clock.now();
         Ok(Self {
             store,
             services,
@@ -428,6 +434,7 @@ where
             settings,
             entitlements,
             visible: true,
+            shown_at,
             on_top: true,
             toast: None,
             toast_seq: 0,
@@ -635,7 +642,18 @@ where
         self.visible = true;
         // A Panel shown again is open: the host places it from the stored frame.
         self.dock = DockState::Expanded;
+        self.shown_at = self.clock.now();
         vec![Effect::ShowPanel]
+    }
+
+    /// A second launch of the app: shows a hidden Panel, and opens the Main window when the
+    /// Panel is already up (the user ran Snipdeck again because they wanted something more).
+    pub fn second_launch(&mut self) -> Vec<Effect> {
+        if self.visible {
+            vec![Effect::OpenMainWindow]
+        } else {
+            self.show()
+        }
     }
 
     /// Hides the Panel (Esc with nothing to clear, the close button, the toggle hotkey).
@@ -689,6 +707,34 @@ where
         if self.picker.is_none() && self.fill.is_none() {
             self.model.set_target(self.target.current());
         }
+    }
+
+    /// The foreground window changed: the Target follows it (see
+    /// [`on_target_changed`](Self::on_target_changed)), and an unpinned Panel hides when
+    /// "Hide the panel when it loses focus" is on. Only the Panel does this: the Main window,
+    /// Settings and the editors are ordinary windows that stay until closed.
+    pub fn on_foreground_changed(&mut self) -> Vec<Effect> {
+        self.on_target_changed();
+        if self.hides_on_blur() {
+            self.hide()
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Whether a foreground change now should hide the Panel.
+    fn hides_on_blur(&self) -> bool {
+        self.visible
+            && !self.on_top
+            && self.settings.panel_hide_on_blur
+            // The Picker and the fill form take the foreground themselves.
+            && self.picker.is_none()
+            && self.fill.is_none()
+            // The tray, the desktop or the taskbar taking the foreground is no Target: the
+            // user who just clicked the tray icon to open the Panel must not see it vanish.
+            && self.target.current().is_some()
+            && Duration::try_from(self.clock.now().duration_since(self.shown_at))
+                .is_ok_and(|since| since > BLUR_GRACE)
     }
 
     // ---- Settings ----------------------------------------------------------------------------
@@ -2247,6 +2293,15 @@ mod tests {
     }
 
     #[test]
+    fn a_second_launch_opens_the_main_window_when_the_panel_is_already_up() {
+        let mut w = world();
+        assert_eq!(w.ctl.second_launch(), [Effect::OpenMainWindow]);
+        w.ctl.hide();
+        assert_eq!(w.ctl.second_launch(), [Effect::ShowPanel]);
+        assert!(w.ctl.visible());
+    }
+
+    #[test]
     fn closing_the_panel_hides_it_when_a_tray_icon_can_bring_it_back() {
         let mut w = world();
         with_tray(&mut w);
@@ -2270,6 +2325,118 @@ mod tests {
         );
         with_tray(&mut w);
         assert_eq!(w.ctl.close(), [Effect::Quit]);
+    }
+
+    /// An unpinned Panel that has been up for a second, with the default settings.
+    fn unpinned_world(settings: Settings) -> World {
+        let mut w = world_with(Some(outlook()), settings);
+        w.ctl.set_on_top(false);
+        w.clock.set(at("2026-10-17T10:30:01Z"));
+        w
+    }
+
+    #[test]
+    fn an_unpinned_panel_hides_when_another_app_takes_the_foreground() {
+        let mut w = unpinned_world(Settings::default());
+        w.targets.set(Some(outlook()));
+        assert_eq!(w.ctl.on_foreground_changed(), [Effect::HidePanel]);
+        assert!(!w.ctl.visible());
+        // Hidden already: a later change has nothing to hide.
+        assert_eq!(w.ctl.on_foreground_changed(), []);
+    }
+
+    #[test]
+    fn a_pinned_panel_stays() {
+        let mut w = unpinned_world(Settings::default());
+        w.ctl.set_on_top(true);
+        assert_eq!(w.ctl.on_foreground_changed(), []);
+        assert!(w.ctl.visible());
+    }
+
+    #[test]
+    fn with_the_setting_off_the_panel_stays() {
+        let mut w = unpinned_world(Settings {
+            panel_hide_on_blur: false,
+            ..Settings::default()
+        });
+        assert_eq!(w.ctl.on_foreground_changed(), []);
+        assert!(w.ctl.visible());
+    }
+
+    #[test]
+    fn the_tray_or_desktop_taking_the_foreground_does_not_hide_the_panel() {
+        let mut w = unpinned_world(Settings::default());
+        // The tracker reports no Target for the tray, the taskbar or the desktop.
+        w.targets.set(None);
+        assert_eq!(w.ctl.on_foreground_changed(), []);
+        assert!(w.ctl.visible());
+    }
+
+    #[test]
+    fn a_foreground_change_right_after_show_is_ignored() {
+        let mut w = unpinned_world(Settings::default());
+        w.ctl.hide();
+        w.clock.set(at("2026-10-17T10:31:00Z"));
+        assert_eq!(w.ctl.show(), [Effect::ShowPanel]);
+        w.clock.set(at("2026-10-17T10:31:00.400Z"));
+        assert_eq!(
+            w.ctl.on_foreground_changed(),
+            [],
+            "400 ms is still the grace"
+        );
+        w.clock.set(at("2026-10-17T10:31:00.401Z"));
+        assert_eq!(w.ctl.on_foreground_changed(), [Effect::HidePanel]);
+    }
+
+    #[test]
+    fn the_picker_open_blocks_the_hide() {
+        let mut w = unpinned_world(Settings::default());
+        w.ctl.open_picker();
+        assert_eq!(w.ctl.on_foreground_changed(), []);
+        assert!(w.ctl.visible());
+    }
+
+    #[test]
+    fn a_foreground_change_still_updates_the_footer() {
+        let mut w = unpinned_world(Settings {
+            panel_hide_on_blur: false,
+            ..Settings::default()
+        });
+        w.targets.set(None);
+        let _ = w.ctl.on_foreground_changed();
+        assert_eq!(w.ctl.view().footer, Footer::Copies);
+    }
+
+    #[test]
+    fn closing_the_main_window_quits_when_keep_running_is_off() {
+        let mut w = world_with(
+            Some(outlook()),
+            Settings {
+                close_to_tray: false,
+                ..Settings::default()
+            },
+        );
+        with_tray(&mut w);
+        assert!(w.ctl.main_window_closed());
+    }
+
+    #[test]
+    fn closing_the_main_window_does_not_quit_with_a_tray_icon() {
+        let mut w = world();
+        with_tray(&mut w);
+        w.ctl.hide();
+        assert!(!w.ctl.main_window_closed());
+    }
+
+    #[test]
+    fn closing_the_main_window_quits_without_a_tray_when_the_panel_is_hidden() {
+        let mut w = world();
+        assert!(!w.ctl.main_window_closed(), "the Panel is still up");
+        w.ctl.hide();
+        assert!(
+            w.ctl.main_window_closed(),
+            "nothing could bring a window back"
+        );
     }
 
     #[test]

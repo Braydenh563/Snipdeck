@@ -100,6 +100,8 @@ pub fn settings(ui: &SettingsPage) {
     ui.set_theme_index(0);
     ui.set_autostart(true);
     ui.set_close_to_tray(true);
+    ui.set_panel_in_taskbar(false);
+    ui.set_panel_hide_on_blur(true);
     ui.set_panel_width(320);
     ui.set_no_paste_apps(strings(&["keepass.exe", "1password.exe"]));
     ui.set_pro(false);

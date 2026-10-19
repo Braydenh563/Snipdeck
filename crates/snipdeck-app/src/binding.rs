@@ -121,7 +121,8 @@ impl Binding {
         (self.hotkey)(action);
     }
 
-    /// Shows the Panel (a second launch asked for it).
+    /// A second launch asked for the app: shows the Panel, or opens the Main window if the
+    /// Panel is already up.
     pub fn show(&self) {
         (self.show)();
     }
@@ -456,7 +457,7 @@ where
                 let core = Rc::clone(&core);
                 Rc::new(move || {
                     crate::trace!("show requested");
-                    core.act_effects(Controller::show);
+                    core.act_effects(Controller::second_launch);
                 })
             },
             target_changed: {
@@ -465,7 +466,7 @@ where
                     // The tracker can call this from inside a controller call; skip then.
                     if core.controller.try_borrow_mut().is_ok() {
                         crate::trace!("target changed");
-                        core.act(Controller::on_target_changed);
+                        core.act_effects(Controller::on_foreground_changed);
                     } else {
                         crate::trace!("target changed during a controller call: skipped");
                     }

@@ -40,8 +40,12 @@ export component SettingsPage inherits Window {
     background: Theme.bg-app;
     min-width: 420px;
     min-height: 360px;
-    preferred-width: 640px;
-    preferred-height: 760px;
+    preferred-width: root.wanted-width;
+    preferred-height: root.wanted-height;
+
+    // The size the window opens at; the host cuts it to the screen before the window exists.
+    out property <length> wanted-width: 640px;
+    out property <length> wanted-height: 760px;
 
     in property <bool> dark: false;
     in property <[HotkeySetting]> hotkeys;
@@ -52,6 +56,8 @@ export component SettingsPage inherits Window {
     in property <int> language-index: 0;
     in-out property <bool> autostart: false;
     in-out property <bool> close-to-tray: true;
+    in-out property <bool> panel-in-taskbar: false;
+    in-out property <bool> panel-hide-on-blur: true;
     in property <int> panel-width: 320;
     in property <int> panel-width-min: 260;
     in property <int> panel-width-max: 480;
@@ -63,6 +69,9 @@ export component SettingsPage inherits Window {
     in property <int> dock-hover-delay-max: 2000;
     in property <int> dock-leave-delay: 400;
     in property <int> dock-leave-delay-max: 5000;
+    in property <int> backups-keep: 7;
+    in property <int> backups-keep-min: 1;
+    in property <int> backups-keep-max: 60;
     // Program names the panel never pastes into ("keepass.exe").
     in property <[string]> no-paste-apps;
     // Set by the host when `no-paste-app-added` was refused ("Already in the list").
@@ -96,17 +105,21 @@ export component SettingsPage inherits Window {
     callback language-chosen(index: int);
     callback autostart-toggled(on: bool);
     callback close-to-tray-toggled(on: bool);
+    callback panel-in-taskbar-toggled(on: bool);
+    callback panel-hide-on-blur-toggled(on: bool);
     callback panel-width-chosen(width: int);
     callback dock-edge-chosen(index: int);
     callback dock-trigger-chosen(index: int);
     callback dock-hover-delay-chosen(ms: int);
     callback dock-leave-delay-chosen(ms: int);
+    callback backups-keep-chosen(count: int);
     callback no-paste-app-added(name: string);
     callback no-paste-app-removed(index: int);
     callback licence-submitted(key: string);
     callback backup-now-requested();
     callback backup-restore-requested(index: int);
     callback open-data-folder-requested();
+    callback open-backups-folder-requested();
     callback export-requested();
     // The host checks `typed` again: only the exact word erases.
     callback erase-confirmed(typed: string, forget-key: bool);
@@ -115,13 +128,13 @@ export component SettingsPage inherits Window {
     property <[string]> hotkey-names: [
         @tr("Show or hide the panel"),
         @tr("Open the picker"),
-        @tr("Capture a region"),
+        @tr("Save the clipboard as an item"),
         @tr("Paste the next item"),
     ];
     property <[string]> hotkey-help: [
         @tr("Brings the panel up beside the app you are working in."),
         @tr("Search every board and paste without opening the window."),
-        @tr("Selects part of the screen and saves it as an item."),
+        @tr("Saves the text on the clipboard as a new item in the list the panel shows."),
         @tr("Pastes the next item of the list in order."),
     ];
 
@@ -257,6 +270,58 @@ export component SettingsPage inherits Window {
                 }
 
                 FormSection {
+                    title: @tr("Window behaviour");
+                    SettingRow {
+                        title: @tr("Show Snipdeck in the taskbar");
+                        description: @tr("Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back.");
+                        Toggle {
+                            a11y-label: @tr("Show Snipdeck in the taskbar");
+                            checked <=> root.panel-in-taskbar;
+                            toggled(on) => { root.panel-in-taskbar-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Hide the panel when it loses focus");
+                        description: @tr("When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays.");
+                        Toggle {
+                            a11y-label: @tr("Hide the panel when it loses focus");
+                            checked <=> root.panel-hide-on-blur;
+                            toggled(on) => { root.panel-hide-on-blur-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Start with Windows");
+                        description: @tr("Snipdeck waits in the tray so the shortcuts work after you sign in.");
+                        Toggle {
+                            a11y-label: @tr("Start with Windows");
+                            checked <=> root.autostart;
+                            toggled(on) => { root.autostart-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Keep running in the tray when the window closes");
+                        description: @tr("Turn this off and closing the Panel or the Main window quits Snipdeck.");
+                        Toggle {
+                            a11y-label: @tr("Keep running in the tray when the window closes");
+                            checked <=> root.close-to-tray;
+                            toggled(on) => { root.close-to-tray-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                }
+
+                FormSection {
                     title: @tr("Panel dock");
                     SettingRow {
                         title: @tr("Dock to");
@@ -317,34 +382,6 @@ export component SettingsPage inherits Window {
                             step: 100;
                             value: root.dock-leave-delay;
                             stepped(v) => { root.dock-leave-delay-chosen(v); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                    }
-                }
-
-                FormSection {
-                    title: @tr("General");
-                    SettingRow {
-                        title: @tr("Start with Windows");
-                        description: @tr("Snipdeck waits in the tray so the shortcuts work after you sign in.");
-                        Toggle {
-                            a11y-label: @tr("Start with Windows");
-                            checked <=> root.autostart;
-                            toggled(on) => { root.autostart-toggled(on); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                    }
-                    SettingRow {
-                        title: @tr("Keep running in the tray when the window closes");
-                        description: @tr("Turn this off and closing the main window quits Snipdeck.");
-                        Toggle {
-                            a11y-label: @tr("Keep running in the tray when the window closes");
-                            checked <=> root.close-to-tray;
-                            toggled(on) => { root.close-to-tray-toggled(on); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
@@ -468,12 +505,29 @@ export component SettingsPage inherits Window {
                 FormSection {
                     title: @tr("Backups");
                     Text {
-                        text: @tr("Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything.");
+                        text: @tr("Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything.", root.backups-keep);
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.sm;
                         wrap: word-wrap;
                         accessible-role: none;
+                    }
+                    SettingRow {
+                        title: @tr("Backups to keep");
+                        description: @tr("The oldest ones are deleted once there are more than this.");
+                        NumberStepper {
+                            label: @tr("Backups to keep");
+                            decrease-label: @tr("Keep fewer backups");
+                            increase-label: @tr("Keep more backups");
+                            min: root.backups-keep-min;
+                            max: root.backups-keep-max;
+                            step: 1;
+                            value: root.backups-keep;
+                            stepped(v) => { root.backups-keep-chosen(v); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
                     }
                     if !root.has-data-folder: Text {
                         text: @tr("This demo keeps nothing on disk, so there are no backups.");
@@ -551,6 +605,15 @@ export component SettingsPage inherits Window {
                             icon: Icons.folder;
                             enabled: root.has-data-folder;
                             clicked => { root.open-data-folder-requested(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                        Button {
+                            text: @tr("Open backups folder");
+                            icon: Icons.folder;
+                            enabled: root.has-data-folder;
+                            clicked => { root.open-backups-folder-requested(); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

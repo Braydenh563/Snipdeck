@@ -51,6 +51,9 @@ pub trait SettingsHost {
     /// Why it could not be changed.
     fn set_autostart(&self, on: bool) -> Result<(), String>;
 
+    /// Gives the Panel a taskbar button, or takes it away, while the app runs.
+    fn set_panel_in_taskbar(&self, on: bool);
+
     /// Shows `folder` in the file manager.
     ///
     /// # Errors
@@ -79,16 +82,26 @@ pub fn apply_hotkeys(
     host::register_all(backend, hotkeys)
 }
 
-/// The real machine: the hotkey service the host started, the registry, the file manager.
+/// Gives the Panel's window a taskbar button or takes it away (set by the app's `main`, which
+/// owns the Panel window).
+pub type PanelTaskbar = Rc<dyn Fn(bool)>;
+
+/// The real machine: the hotkey service the host started, the registry, the file manager, the
+/// Panel's window.
 pub struct SystemHost {
     hotkeys: Rc<RefCell<Box<dyn HotkeyBackend>>>,
+    panel_taskbar: PanelTaskbar,
 }
 
 impl SystemHost {
-    /// A host that registers shortcuts with `hotkeys`.
+    /// A host that registers shortcuts with `hotkeys` and changes the Panel's taskbar button
+    /// with `panel_taskbar`.
     #[must_use]
-    pub fn new(hotkeys: Rc<RefCell<Box<dyn HotkeyBackend>>>) -> Self {
-        Self { hotkeys }
+    pub fn new(hotkeys: Rc<RefCell<Box<dyn HotkeyBackend>>>, panel_taskbar: PanelTaskbar) -> Self {
+        Self {
+            hotkeys,
+            panel_taskbar,
+        }
     }
 }
 
@@ -110,6 +123,10 @@ impl SettingsHost for SystemHost {
             let _ = on;
             Ok(())
         }
+    }
+
+    fn set_panel_in_taskbar(&self, on: bool) {
+        (self.panel_taskbar)(on);
     }
 
     fn open_folder(&self, folder: &Path) -> Result<(), String> {
@@ -259,7 +276,7 @@ const fn action_name(action: HotkeyAction) -> &'static str {
     match action {
         HotkeyAction::TogglePanel => "Show or hide the panel",
         HotkeyAction::Picker => "Open the picker",
-        HotkeyAction::Capture => "Capture a region",
+        HotkeyAction::Capture => "Save the clipboard as an item",
         HotkeyAction::PasteNext => "Paste the next item",
     }
 }
@@ -323,11 +340,14 @@ struct PageView {
     language_index: i32,
     autostart: bool,
     close_to_tray: bool,
+    panel_in_taskbar: bool,
+    panel_hide_on_blur: bool,
     panel_width: i32,
     dock_edge_index: i32,
     dock_trigger_index: i32,
     dock_hover_delay: i32,
     dock_leave_delay: i32,
+    backups_keep: i32,
     no_paste_apps: Vec<String>,
     no_paste_error: String,
     pro: bool,
@@ -426,11 +446,14 @@ where
         language_index: language_index(&settings.language),
         autostart: settings.autostart,
         close_to_tray: settings.close_to_tray,
+        panel_in_taskbar: settings.panel_in_taskbar,
+        panel_hide_on_blur: settings.panel_hide_on_blur,
         panel_width: i32::try_from(settings.panel_width).unwrap_or(320),
         dock_edge_index: dock_edge_index(controller.dock_edge()),
         dock_trigger_index: dock_trigger_index(settings.dock.trigger),
         dock_hover_delay: i32::try_from(settings.dock.hover_delay_ms).unwrap_or(150),
         dock_leave_delay: i32::try_from(settings.dock.leave_delay_ms).unwrap_or(400),
+        backups_keep: i32::try_from(settings.backups_keep).unwrap_or(7),
         no_paste_apps: settings.no_paste_apps.clone(),
         no_paste_error: state.no_paste_error.clone(),
         pro: controller.tier() == snipdeck_core::Tier::Pro,
@@ -727,6 +750,16 @@ where
         self.open_folder(&dir);
     }
 
+    /// Opens the folder of the daily backups (made if no backup has been taken yet).
+    fn open_backups_folder(self: &Rc<Self>) {
+        let Some(dir) = self.data_dir.clone() else {
+            return;
+        };
+        let backups = dir.join("backups");
+        let _ = std::fs::create_dir_all(&backups);
+        self.open_folder(&backups);
+    }
+
     fn open_folder(self: &Rc<Self>, folder: &Path) {
         if let Err(error) = self.host.open_folder(folder) {
             crate::trace!("open folder: {error}");
@@ -836,6 +869,12 @@ where
         wire!(on_autostart_toggled, |core, on| core.autostart_toggled(on));
         wire!(on_close_to_tray_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.close_to_tray = on)));
+        wire!(on_panel_in_taskbar_toggled, |core, on| {
+            core.host.set_panel_in_taskbar(on);
+            core.act(|ctl| ctl.update_settings(|s| s.panel_in_taskbar = on));
+        });
+        wire!(on_panel_hide_on_blur_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.panel_hide_on_blur = on)));
         wire!(on_panel_width_chosen, |core, width| core
             .act(|ctl| ctl.update_settings(
                 |s| s.panel_width = u32::try_from(width).unwrap_or(0)
@@ -853,6 +892,10 @@ where
             .act(|ctl| ctl.update_settings(
                 |s| s.dock.leave_delay_ms = u32::try_from(ms).unwrap_or(0)
             )));
+        wire!(on_backups_keep_chosen, |core, n| core
+            .act(|ctl| ctl.update_settings(
+                |s| s.backups_keep = u32::try_from(n).unwrap_or(0)
+            )));
         wire!(on_no_paste_app_added, |core, name| core
             .no_paste_added(&name));
         wire!(on_no_paste_app_removed, |core, i| core
@@ -864,6 +907,8 @@ where
             .restore(crate::binding::index(i)));
         wire!(on_open_data_folder_requested, |core| core
             .open_data_folder());
+        wire!(on_open_backups_folder_requested, |core| core
+            .open_backups_folder());
         wire!(on_export_requested, |core| core.export());
         wire!(on_erase_confirmed, |core, typed, forget| core
             .erase(&typed, forget));
@@ -906,6 +951,15 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.close_to_tray == view.close_to_tray) {
         window.set_close_to_tray(view.close_to_tray);
+    }
+    if differs(&|p| p.panel_in_taskbar == view.panel_in_taskbar) {
+        window.set_panel_in_taskbar(view.panel_in_taskbar);
+    }
+    if differs(&|p| p.panel_hide_on_blur == view.panel_hide_on_blur) {
+        window.set_panel_hide_on_blur(view.panel_hide_on_blur);
+    }
+    if differs(&|p| p.backups_keep == view.backups_keep) {
+        window.set_backups_keep(view.backups_keep);
     }
     if differs(&|p| p.panel_width == view.panel_width) {
         window.set_panel_width(view.panel_width);
@@ -1019,7 +1073,11 @@ impl SettingsUi {
             Box::new(move || {
                 let mut slot = slot.borrow_mut();
                 if slot.is_none() {
-                    let window = ui::SettingsPage::new()?;
+                    let window = RegularWindow::create(ui::SettingsPage::new)?;
+                    crate::native_window::size_before_show(
+                        window.window(),
+                        (window.get_wanted_width(), window.get_wanted_height()),
+                    );
                     let binding = Controller::bind_settings(
                         &controller,
                         &window,
@@ -1031,7 +1089,6 @@ impl SettingsUi {
                 let Some((window, binding)) = slot.as_ref() else {
                     return Ok(());
                 };
-                let _regular = RegularWindow::begin();
                 window.show()?;
                 fit_to_screen(window.window());
                 // The page was hidden, so it skipped the redraws; draw it now that it is up.

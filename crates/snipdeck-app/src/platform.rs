@@ -187,10 +187,10 @@ mod imp {
             },
             target: Box::new(Tracker(tracker)),
             hotkeys: Box::new(Hotkeys(hotkeys)),
-            attach_panel: Box::new(move |hwnd| {
+            attach_panel: Box::new(move |hwnd, in_taskbar| {
                 panel_tracker.set_panel(hwnd);
                 // False means Windows refused the subclass; the panel then activates on click.
-                let _ = window_style::install_panel_style(hwnd);
+                let _ = window_style::install_panel_style(hwnd, in_taskbar);
             }),
             popups: Rc::new(Popups(popup_tracker)),
             tray,
@@ -249,7 +249,7 @@ mod imp {
             },
             target: Box::new(FakeTargets::new(Some(crate::demo::target()))),
             hotkeys: Box::new(FakeHotkeys::default()),
-            attach_panel: Box::new(|_| {}),
+            attach_panel: Box::new(|_, _| {}),
             popups: std::rc::Rc::new(crate::placement::NoPopups),
             // No tray off Windows: closing the Panel quits the dev build.
             tray: None,
@@ -311,9 +311,10 @@ pub struct Host {
     pub target: Box<dyn TargetSource>,
     /// Registers the global hotkeys.
     pub hotkeys: Box<dyn HotkeyBackend>,
-    /// Call with the Panel's native window handle once the window exists: the Target tracker
-    /// then ignores it and it becomes a non-activating tool window.
-    pub attach_panel: Box<dyn Fn(isize)>,
+    /// Call with the Panel's native window handle once the window exists, and whether it has a
+    /// taskbar button (the `panel_in_taskbar` setting): the Target tracker then ignores it and
+    /// it becomes a non-activating window.
+    pub attach_panel: Box<dyn Fn(isize, bool)>,
     /// What the Picker, the fill form and the toast window ask of the machine: their handles
     /// registered, the keyboard taken, the mouse and the monitors read.
     pub popups: std::rc::Rc<dyn crate::placement::PopupHost>,
@@ -371,6 +372,6 @@ mod tests {
         assert!(host.tray.is_none(), "no tray off Windows");
         assert_eq!(host.warnings, Vec::<String>::new());
         assert!(!system_look().read().dark);
-        (host.attach_panel)(0);
+        (host.attach_panel)(0, false);
     }
 }

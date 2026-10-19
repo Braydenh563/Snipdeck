@@ -64,6 +64,9 @@ msgstr "Sauvegarde du {}, {}"
 msgid "Backups"
 msgstr "Sauvegardes"
 
+msgid "Backups to keep"
+msgstr "Sauvegardes à conserver"
+
 msgid "Blue"
 msgstr "Bleu"
 
@@ -90,9 +93,6 @@ msgstr "Parcourir…"
 
 msgid "Cancel"
 msgstr "Annuler"
-
-msgid "Capture a region"
-msgstr "Capturer une zone"
 
 msgid "Captured items keep their kind."
 msgstr "Les extraits capturés gardent leur type."
@@ -165,9 +165,6 @@ msgstr "Sombre"
 
 msgid "Date and time in a format you choose"
 msgstr "Date et heure dans le format de votre choix"
-
-msgid "Delete"
-msgstr "Supprimer"
 
 msgid "Delete board"
 msgstr "Supprimer le tableau"
@@ -316,26 +313,29 @@ msgstr "Par exemple, Travail"
 msgid "Free plan"
 msgstr "Offre gratuite"
 
-msgid "General"
-msgstr "Général"
-
 msgid "Give the board a name."
 msgstr "Donnez un nom au tableau."
 
 msgid "Give the list a name."
 msgstr "Donnez un nom à la liste."
 
+msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
+msgstr "Donne au panneau un bouton dans la barre des tâches. Désactivé, il reste hors de la barre des tâches et d'Alt+Tab ; l'icône de la zone de notification et le raccourci du panneau le ramènent toujours."
+
 msgid "Green"
 msgstr "Vert"
 
-msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it."
-msgstr "Masqué dans les listes tant que vous ne maintenez pas Espace, exclu de l'historique du presse-papiers et effacé du presse-papiers {} secondes après utilisation."
+msgid "Hidden in lists until you hold Space, and kept out of clipboard history."
+msgstr "Masqué dans les listes tant que tu ne maintiens pas la barre d'espace, et exclu de l'historique du presse-papiers."
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "Masqué. Maintenez la touche Espace pour afficher."
 
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "Masqué. Ouvrez-le dans le panneau pour l'afficher."
+
+msgid "Hide the panel when it loses focus"
+msgstr "Masquer le panneau quand il perd le focus"
 
 msgid "Hover"
 msgstr "Survol"
@@ -381,6 +381,12 @@ msgstr "Ses listes et {n} extrait seront déplacés dans la corbeille. Vous pouv
 
 msgid "Keep editing"
 msgstr "Continuer la modification"
+
+msgid "Keep fewer backups"
+msgstr "Conserver moins de sauvegardes"
+
+msgid "Keep more backups"
+msgstr "Conserver plus de sauvegardes"
 
 msgid "Keep panel on top"
 msgstr "Garder le panneau au premier plan"
@@ -456,6 +462,9 @@ msgstr "Les plus utilisés"
 
 msgid "Move"
 msgstr "Déplacer"
+
+msgid "Move to Trash"
+msgstr "Mettre à la corbeille"
 
 msgid "Move to list"
 msgstr "Déplacer vers la liste"
@@ -561,6 +570,9 @@ msgstr "Ouvrir Snipdeck"
 
 msgid "Open a docked panel by"
 msgstr "Ouvrir un panneau ancré par"
+
+msgid "Open backups folder"
+msgstr "Ouvrir le dossier des sauvegardes"
 
 msgid "Open data folder"
 msgstr "Ouvrir le dossier de données"
@@ -697,11 +709,17 @@ msgstr "Enregistrer"
 msgid "Save from clipboard"
 msgstr "Enregistrer depuis le presse-papiers"
 
+msgid "Save the clipboard as an item"
+msgstr "Enregistrer le presse-papiers comme extrait"
+
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr "Enregistrez votre premier extrait, ou copiez quelque chose et enregistrez-le depuis le presse-papiers."
 
 msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
 msgstr "Enregistre tous les tableaux, listes et extraits dans un seul fichier .snipdeck, dans votre dossier Documents."
+
+msgid "Saves the text on the clipboard as a new item in the list the panel shows."
+msgstr "Enregistre le texte du presse-papiers comme nouvel extrait dans la liste affichée par le panneau."
 
 msgid "Scope"
 msgstr "Portée"
@@ -727,9 +745,6 @@ msgstr "Résultats de recherche"
 msgid "Search snippets"
 msgstr "Rechercher des extraits"
 
-msgid "Selects part of the screen and saves it as an item."
-msgstr "Sélectionne une partie de l'écran et l'enregistre comme extrait."
-
 msgid "Sensitive item"
 msgstr "Extrait sensible"
 
@@ -747,6 +762,9 @@ msgstr "Raccourcir le délai de survol"
 
 msgid "Shorten the leave delay"
 msgstr "Raccourcir le délai de sortie"
+
+msgid "Show Snipdeck in the taskbar"
+msgstr "Afficher Snipdeck dans la barre des tâches"
 
 msgid "Show or hide the panel"
 msgstr "Afficher ou masquer le panneau"
@@ -772,8 +790,8 @@ msgstr "Snipdeck garde sa propre copie du fichier."
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck ne se connecte jamais à internet : chaque icône et chaque police affichée est fournie avec lui."
 
-msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
-msgstr "Snipdeck enregistre une copie de votre bibliothèque une fois par jour et garde les 7 plus récentes. La restauration remet ce qui manque et ne supprime jamais rien."
+msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
+msgstr "Snipdeck enregistre une copie de votre bibliothèque une fois par jour et garde les {} plus récentes. La restauration remet ce qui manque et ne supprime jamais rien."
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck reste dans la zone de notification pour que les raccourcis fonctionnent après la connexion."
@@ -826,6 +844,9 @@ msgstr "La clé ouvre les éléments chiffrés des exports enregistrés plus tô
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "La liste et ses {} extraits sont déplacés dans la corbeille. Vous pouvez les restaurer pendant {} jours."
 
+msgid "The oldest ones are deleted once there are more than this."
+msgstr "Les plus anciennes sont supprimées au-delà de ce nombre."
+
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "Les extraits sélectionnés seront supprimés définitivement. Cette action est irréversible."
 
@@ -874,8 +895,8 @@ msgstr "Corbeille"
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Activez l'historique du presse-papiers dans les paramètres pour collecter ce que vous copiez."
 
-msgid "Turn this off and closing the main window quits Snipdeck."
-msgstr "Si vous désactivez cette option, la fermeture de la fenêtre principale quitte Snipdeck."
+msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
+msgstr "Si tu désactives cette option, fermer le panneau ou la fenêtre principale quitte Snipdeck."
 
 msgid "Type {} to confirm"
 msgstr "Saisissez {} pour confirmer"
@@ -898,8 +919,14 @@ msgstr "Les modifications n'ont pas été enregistrées."
 msgid "What you changed in this item has not been saved."
 msgstr "Les modifications de cet extrait n'ont pas été enregistrées."
 
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
+msgstr "Quand l'épingle est désactivée, le panneau se masque dès que tu passes à une autre application. Un panneau épinglé reste."
+
 msgid "Where the text cursor lands after pasting"
 msgstr "Où le curseur de texte se place après le collage"
+
+msgid "Window behaviour"
+msgstr "Comportement de la fenêtre"
 
 msgid "Windows"
 msgstr "Windows"

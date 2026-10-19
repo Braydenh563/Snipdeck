@@ -119,7 +119,7 @@ pub enum BackupResult {
 /// The three jobs, as the scheduler needs them. The app's implementation is [`ControllerJobs`];
 /// tests use a fake that records the calls.
 pub trait Jobs {
-    /// Writes today's backup (the date of `now`) unless it exists, and keeps the newest 7.
+    /// Writes today's backup (the date of `now`) unless it exists, and keeps the newest `backups_keep` (7 unless the user changed it).
     ///
     /// # Errors
     ///
@@ -368,7 +368,9 @@ where
         // Encrypted with the library's key when it has one; a library with no key ring has no
         // encrypted items, so a backup never holds a sensitive item in plain text.
         let key = snipdeck_portable::Library::data_key(store);
-        match backup::run_if_due(store, self.data_dir, now, backup::DEFAULT_KEEP, key) {
+        let keep = usize::try_from(self.controller.settings().backups_keep)
+            .unwrap_or(backup::DEFAULT_KEEP);
+        match backup::run_if_due(store, self.data_dir, now, keep, key) {
             Ok(BackupOutcome::Created { pruned, .. }) => Ok(BackupResult::Created {
                 pruned: pruned.len(),
             }),

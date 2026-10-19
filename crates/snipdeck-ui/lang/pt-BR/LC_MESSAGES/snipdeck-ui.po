@@ -64,6 +64,9 @@ msgstr "Backup de {}, {}"
 msgid "Backups"
 msgstr "Backups"
 
+msgid "Backups to keep"
+msgstr "Backups a manter"
+
 msgid "Blue"
 msgstr "Azul"
 
@@ -90,9 +93,6 @@ msgstr "Procurar…"
 
 msgid "Cancel"
 msgstr "Cancelar"
-
-msgid "Capture a region"
-msgstr "Capturar uma região"
 
 msgid "Captured items keep their kind."
 msgstr "Os trechos capturados mantêm o tipo."
@@ -165,9 +165,6 @@ msgstr "Escuro"
 
 msgid "Date and time in a format you choose"
 msgstr "Data e hora no formato escolhido"
-
-msgid "Delete"
-msgstr "Excluir"
 
 msgid "Delete board"
 msgstr "Excluir quadro"
@@ -316,26 +313,29 @@ msgstr "Por exemplo, Trabalho"
 msgid "Free plan"
 msgstr "Plano gratuito"
 
-msgid "General"
-msgstr "Geral"
-
 msgid "Give the board a name."
 msgstr "Dê um nome ao quadro."
 
 msgid "Give the list a name."
 msgstr "Dê um nome à lista."
 
+msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
+msgstr "Dá ao painel um botão na barra de tarefas. Desativado, ele fica fora da barra de tarefas e do Alt+Tab; o ícone da bandeja e o atalho do painel continuam trazendo-o de volta."
+
 msgid "Green"
 msgstr "Verde"
 
-msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it."
-msgstr "Oculto nas listas até você segurar a barra de espaço, fora do histórico da área de transferência e removido da área de transferência {} segundos após o uso."
+msgid "Hidden in lists until you hold Space, and kept out of clipboard history."
+msgstr "Oculto nas listas até você manter a barra de espaço pressionada, e fora do histórico da área de transferência."
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "Oculto. Segure a barra de espaço para revelar."
 
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "Oculto. Abra-o no painel para revelar."
+
+msgid "Hide the panel when it loses focus"
+msgstr "Ocultar o painel ao perder o foco"
 
 msgid "Hover"
 msgstr "Passar o mouse"
@@ -381,6 +381,12 @@ msgstr "Suas listas e {n} trecho serão movidos para a lixeira. Você pode resta
 
 msgid "Keep editing"
 msgstr "Continuar editando"
+
+msgid "Keep fewer backups"
+msgstr "Manter menos backups"
+
+msgid "Keep more backups"
+msgstr "Manter mais backups"
 
 msgid "Keep panel on top"
 msgstr "Manter o painel no topo"
@@ -456,6 +462,9 @@ msgstr "Mais usados"
 
 msgid "Move"
 msgstr "Mover"
+
+msgid "Move to Trash"
+msgstr "Mover para a lixeira"
 
 msgid "Move to list"
 msgstr "Mover para a lista"
@@ -561,6 +570,9 @@ msgstr "Abrir o Snipdeck"
 
 msgid "Open a docked panel by"
 msgstr "Abrir um painel acoplado por"
+
+msgid "Open backups folder"
+msgstr "Abrir a pasta de backups"
 
 msgid "Open data folder"
 msgstr "Abrir a pasta de dados"
@@ -697,11 +709,17 @@ msgstr "Salvar"
 msgid "Save from clipboard"
 msgstr "Salvar da área de transferência"
 
+msgid "Save the clipboard as an item"
+msgstr "Salvar a área de transferência como trecho"
+
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr "Salve seu primeiro trecho ou copie algo e salve-o a partir da área de transferência."
 
 msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
 msgstr "Salva todos os quadros, listas e trechos em um arquivo .snipdeck na sua pasta Documentos."
+
+msgid "Saves the text on the clipboard as a new item in the list the panel shows."
+msgstr "Salva o texto da área de transferência como um novo trecho na lista mostrada pelo painel."
 
 msgid "Scope"
 msgstr "Escopo"
@@ -727,9 +745,6 @@ msgstr "Resultados da pesquisa"
 msgid "Search snippets"
 msgstr "Pesquisar trechos"
 
-msgid "Selects part of the screen and saves it as an item."
-msgstr "Seleciona parte da tela e a salva como trecho."
-
 msgid "Sensitive item"
 msgstr "Trecho sensível"
 
@@ -747,6 +762,9 @@ msgstr "Diminuir o atraso ao passar o mouse"
 
 msgid "Shorten the leave delay"
 msgstr "Diminuir o atraso ao sair"
+
+msgid "Show Snipdeck in the taskbar"
+msgstr "Mostrar o Snipdeck na barra de tarefas"
 
 msgid "Show or hide the panel"
 msgstr "Mostrar ou ocultar o painel"
@@ -772,8 +790,8 @@ msgstr "O Snipdeck guarda a própria cópia do arquivo."
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "O Snipdeck nunca se conecta à internet: todos os ícones e fontes que ele mostra vêm incluídos."
 
-msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
-msgstr "O Snipdeck salva uma cópia da sua biblioteca uma vez por dia e mantém as 7 mais recentes. Restaurar traz de volta o que falta e nunca remove nada."
+msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
+msgstr "O Snipdeck salva uma cópia da sua biblioteca uma vez por dia e mantém as {} mais recentes. Restaurar traz de volta o que falta e nunca remove nada."
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "O Snipdeck aguarda na bandeja para que os atalhos funcionem após o login."
@@ -826,6 +844,9 @@ msgstr "A chave abre os itens criptografados em exportações que você salvou a
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "A lista e seus {} trechos são movidos para a lixeira. Você pode restaurá-los por {} dias."
 
+msgid "The oldest ones are deleted once there are more than this."
+msgstr "As mais antigas são excluídas quando houver mais do que este número."
+
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "Os trechos selecionados serão excluídos definitivamente. Isso não pode ser desfeito."
 
@@ -874,8 +895,8 @@ msgstr "Lixeira"
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Ative o histórico da área de transferência em Configurações para reunir o que você copiar."
 
-msgid "Turn this off and closing the main window quits Snipdeck."
-msgstr "Se você desativar isso, fechar a janela principal encerra o Snipdeck."
+msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
+msgstr "Se você desativar, fechar o painel ou a janela principal encerra o Snipdeck."
 
 msgid "Type {} to confirm"
 msgstr "Digite {} para confirmar"
@@ -898,8 +919,14 @@ msgstr "As alterações não foram salvas."
 msgid "What you changed in this item has not been saved."
 msgstr "As alterações neste trecho não foram salvas."
 
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
+msgstr "Com o alfinete desativado, o painel se oculta assim que você muda para outro aplicativo. Um painel fixado permanece."
+
 msgid "Where the text cursor lands after pasting"
 msgstr "Onde o cursor de texto fica após colar"
+
+msgid "Window behaviour"
+msgstr "Comportamento da janela"
 
 msgid "Windows"
 msgstr "Windows"

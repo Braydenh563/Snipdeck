@@ -195,11 +195,16 @@ pub const WS_EX_TOOLWINDOW: u32 = 0x0000_0080;
 /// `WS_EX_APPWINDOW`.
 pub const WS_EX_APPWINDOW: u32 = 0x0004_0000;
 
-/// The extended style the panel must have: never activated by a click, no taskbar button, no
-/// Alt+Tab entry. winit adds `WS_EX_APPWINDOW` to top-level windows, which would override
-/// `WS_EX_TOOLWINDOW`, so it is stripped.
-pub const fn panel_ex_style(style: u32) -> u32 {
-    (style | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) & !WS_EX_APPWINDOW
+/// The extended style the panel must have: never activated by a click. Without a taskbar
+/// button (`in_taskbar` false) it is also a tool window with no Alt+Tab entry, and
+/// `WS_EX_APPWINDOW` is stripped (winit adds it to top-level windows, and it would override
+/// `WS_EX_TOOLWINDOW`). With one it is an app window and not a tool window.
+pub const fn panel_ex_style(style: u32, in_taskbar: bool) -> u32 {
+    if in_taskbar {
+        (style | WS_EX_NOACTIVATE | WS_EX_APPWINDOW) & !WS_EX_TOOLWINDOW
+    } else {
+        (style | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) & !WS_EX_APPWINDOW
+    }
 }
 
 /// One `SetWindowPos` z-order step of [`raise_steps`].
@@ -516,11 +521,30 @@ mod tests {
 
     #[test]
     fn panel_style_is_noactivate_toolwindow_and_not_appwindow() {
-        let style = panel_ex_style(WS_EX_APPWINDOW | 0x1);
+        let style = panel_ex_style(WS_EX_APPWINDOW | 0x1, false);
         assert_ne!(style & WS_EX_NOACTIVATE, 0);
         assert_ne!(style & WS_EX_TOOLWINDOW, 0);
         assert_eq!(style & WS_EX_APPWINDOW, 0);
         assert_eq!(style & 0x1, 0x1, "other bits are kept");
-        assert_eq!(panel_ex_style(style), style, "idempotent");
+        assert_eq!(panel_ex_style(style, false), style, "idempotent");
+    }
+
+    #[test]
+    fn panel_style_with_taskbar_has_appwindow_and_no_toolwindow() {
+        let style = panel_ex_style(WS_EX_TOOLWINDOW | 0x1, true);
+        assert_ne!(
+            style & WS_EX_NOACTIVATE,
+            0,
+            "a click still never activates it"
+        );
+        assert_ne!(style & WS_EX_APPWINDOW, 0);
+        assert_eq!(style & WS_EX_TOOLWINDOW, 0);
+        assert_eq!(style & 0x1, 0x1, "other bits are kept");
+        assert_eq!(panel_ex_style(style, true), style, "idempotent");
+        // Turning it off again gives the tool window back.
+        assert_eq!(
+            panel_ex_style(style, false) & (WS_EX_TOOLWINDOW | WS_EX_APPWINDOW),
+            WS_EX_TOOLWINDOW
+        );
     }
 }

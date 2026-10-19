@@ -259,7 +259,7 @@ ui_tests! {
         take(&log);
         press_key(&ui, Key::Menu);
         assert!(ui.get_menu_open());
-        for label in ["Use", "Copy", "Edit", "Pin", "Move to list…", "Tags…", "Delete"] {
+        for label in ["Use", "Copy", "Edit", "Pin", "Move to list…", "Tags…", "Move to Trash"] {
             let _ = find(&ui, label, AccessibleRole::ListItem);
         }
         press_key(&ui, Key::Escape);
@@ -328,7 +328,7 @@ ui_tests! {
         let flags: Vec<bool> = (0..rows.row_count()).map(|i| rows.row_data(i).unwrap().selected).collect();
         assert_eq!(flags, [false, true, true, true, false, false, false, false]);
         let _ = find(&ui, "3 selected", AccessibleRole::Groupbox);
-        for label in ["Move", "Tag", "Pin", "Delete", "Clear selection"] {
+        for label in ["Move", "Tag", "Pin", "Move to Trash", "Clear selection"] {
             let b = find(&ui, label, AccessibleRole::Button);
             assert!(b.size().height >= MIN_HIT && b.size().width >= MIN_HIT, "{label}");
         }
@@ -336,7 +336,7 @@ ui_tests! {
         press_key(&ui, Key::Menu);
         assert_eq!(find(&ui, "Use", AccessibleRole::ListItem).accessible_enabled(), Some(false));
         assert_eq!(find(&ui, "Edit", AccessibleRole::ListItem).accessible_enabled(), Some(false));
-        assert_eq!(find(&ui, "Delete", AccessibleRole::ListItem).accessible_enabled(), Some(true));
+        assert_eq!(find(&ui, "Move to Trash", AccessibleRole::ListItem).accessible_enabled(), Some(true));
         press_key(&ui, Key::Escape);
 
         chord(ui.window(), &[Key::Control], "a");
@@ -351,7 +351,7 @@ ui_tests! {
         ui.set_selected_count(2);
         settle();
         take(&log);
-        find(&ui, "Delete", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Move to Trash", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["action:Delete:0"]);
         find(&ui, "Clear selection", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["clear"]);

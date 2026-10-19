@@ -64,6 +64,9 @@ msgstr "{} のバックアップ（{}）"
 msgid "Backups"
 msgstr "バックアップ"
 
+msgid "Backups to keep"
+msgstr "保持するバックアップ数"
+
 msgid "Blue"
 msgstr "青"
 
@@ -90,9 +93,6 @@ msgstr "参照…"
 
 msgid "Cancel"
 msgstr "キャンセル"
-
-msgid "Capture a region"
-msgstr "領域をキャプチャ"
 
 msgid "Captured items keep their kind."
 msgstr "キャプチャしたスニペットは種類を保持します。"
@@ -165,9 +165,6 @@ msgstr "ダーク"
 
 msgid "Date and time in a format you choose"
 msgstr "任意の形式の日付と時刻"
-
-msgid "Delete"
-msgstr "削除"
 
 msgid "Delete board"
 msgstr "ボードを削除"
@@ -316,26 +313,29 @@ msgstr "例: 仕事"
 msgid "Free plan"
 msgstr "無料プラン"
 
-msgid "General"
-msgstr "全般"
-
 msgid "Give the board a name."
 msgstr "ボードに名前を付けてください。"
 
 msgid "Give the list a name."
 msgstr "リストに名前を付けてください。"
 
+msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
+msgstr "パネルにタスクバーのボタンを表示します。オフにすると、タスクバーと Alt+Tab には表示されません。通知領域のアイコンとパネルのショートカットからは引き続き呼び出せます。"
+
 msgid "Green"
 msgstr "緑"
 
-msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it."
-msgstr "スペースキーを押し続けるまでリストでは非表示になり、クリップボード履歴から除外され、使用後{}秒でクリップボードからクリアされます。"
+msgid "Hidden in lists until you hold Space, and kept out of clipboard history."
+msgstr "Space キーを押し続けるまでリストでは隠れ、クリップボード履歴には残りません。"
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "非表示。スペースキーを押し続けると表示されます。"
 
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "非表示。パネルで開くと表示されます。"
+
+msgid "Hide the panel when it loses focus"
+msgstr "フォーカスを失ったらパネルを隠す"
 
 msgid "Hover"
 msgstr "ポイント"
@@ -381,6 +381,12 @@ msgstr "そのリストと{n}件のスニペットはゴミ箱に移動します
 
 msgid "Keep editing"
 msgstr "編集を続ける"
+
+msgid "Keep fewer backups"
+msgstr "バックアップを減らす"
+
+msgid "Keep more backups"
+msgstr "バックアップを増やす"
 
 msgid "Keep panel on top"
 msgstr "パネルを手前に表示"
@@ -456,6 +462,9 @@ msgstr "よく使う順"
 
 msgid "Move"
 msgstr "移動"
+
+msgid "Move to Trash"
+msgstr "ゴミ箱に移動"
 
 msgid "Move to list"
 msgstr "リストに移動"
@@ -561,6 +570,9 @@ msgstr "Snipdeck を開く"
 
 msgid "Open a docked panel by"
 msgstr "固定したパネルを開く操作"
+
+msgid "Open backups folder"
+msgstr "バックアップフォルダーを開く"
 
 msgid "Open data folder"
 msgstr "データフォルダーを開く"
@@ -697,11 +709,17 @@ msgstr "保存"
 msgid "Save from clipboard"
 msgstr "クリップボードから保存"
 
+msgid "Save the clipboard as an item"
+msgstr "クリップボードをスニペットとして保存"
+
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr "最初のスニペットを保存するか、何かをコピーしてクリップボードから保存してください。"
 
 msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
 msgstr "すべてのボード、リスト、スニペットを1つの .snipdeck ファイルとして［ドキュメント］フォルダーに保存します。"
+
+msgid "Saves the text on the clipboard as a new item in the list the panel shows."
+msgstr "クリップボードのテキストを、パネルに表示中のリストに新しいスニペットとして保存します。"
 
 msgid "Scope"
 msgstr "範囲"
@@ -727,9 +745,6 @@ msgstr "検索結果"
 msgid "Search snippets"
 msgstr "スニペットを検索"
 
-msgid "Selects part of the screen and saves it as an item."
-msgstr "画面の一部を選択して、スニペットとして保存します。"
-
 msgid "Sensitive item"
 msgstr "機密のスニペット"
 
@@ -747,6 +762,9 @@ msgstr "ポイントの待ち時間を短くする"
 
 msgid "Shorten the leave delay"
 msgstr "離れたときの待ち時間を短くする"
+
+msgid "Show Snipdeck in the taskbar"
+msgstr "Snipdeck をタスクバーに表示する"
 
 msgid "Show or hide the panel"
 msgstr "パネルを表示または非表示"
@@ -772,8 +790,8 @@ msgstr "Snipdeckがファイルの独自のコピーを保存します。"
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck はインターネットに接続しません。表示するアイコンとフォントはすべて同梱されています。"
 
-msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
-msgstr "Snipdeckはライブラリのコピーを1日1回保存し、新しい7つを残します。復元では足りないものだけが戻り、何も削除されません。"
+msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
+msgstr "Snipdeckはライブラリのコピーを1日1回保存し、新しい{}つを残します。復元では足りないものだけが戻り、何も削除されません。"
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck はサインイン後にショートカットが使えるよう、通知領域で待機します。"
@@ -826,6 +844,9 @@ msgstr "このキーは、以前に保存したエクスポート内の暗号化
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "リストとその{}件のスニペットはゴミ箱に移動します。{}日間復元できます。"
 
+msgid "The oldest ones are deleted once there are more than this."
+msgstr "この数を超えると、古いものから削除されます。"
+
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "選択したスニペットは完全に削除されます。この操作は元に戻せません。"
 
@@ -874,8 +895,8 @@ msgstr "ゴミ箱"
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "設定でクリップボード履歴をオンにすると、コピーした内容が保存されます。"
 
-msgid "Turn this off and closing the main window quits Snipdeck."
-msgstr "これをオフにすると、メインウィンドウを閉じたときにSnipdeckが終了します。"
+msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
+msgstr "オフにすると、パネルまたはメインウィンドウを閉じたときに Snipdeck が終了します。"
 
 msgid "Type {} to confirm"
 msgstr "確認のため {} と入力"
@@ -898,8 +919,14 @@ msgstr "変更は保存されていません。"
 msgid "What you changed in this item has not been saved."
 msgstr "このスニペットの変更は保存されていません。"
 
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
+msgstr "ピンがオフのとき、ほかのアプリに切り替えるとすぐにパネルが隠れます。ピン留めしたパネルは隠れません。"
+
 msgid "Where the text cursor lands after pasting"
 msgstr "貼り付け後のテキストカーソルの位置"
+
+msgid "Window behaviour"
+msgstr "ウィンドウの動作"
 
 msgid "Windows"
 msgstr "Windows"

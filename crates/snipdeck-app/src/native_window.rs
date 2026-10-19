@@ -43,6 +43,25 @@ pub fn handle(window: &PanelWindow) -> Option<isize> {
     handle_of(window.window())
 }
 
+/// Gives the Panel a taskbar button and Alt+Tab entry (`on`) or takes them away, live. Windows
+/// refreshes the taskbar only when the window is hidden and shown again, which the platform call
+/// does for a visible Panel without activating it.
+#[cfg(windows)]
+pub fn set_panel_taskbar(window: &PanelWindow, on: bool) {
+    use slint::{ComponentHandle, winit_030::winit::platform::windows::WindowExtWindows};
+    window
+        .window()
+        .with_winit_window(|w| w.set_skip_taskbar(!on));
+    if let Some(hwnd) = handle(window) {
+        let changed = snipdeck_platform::windows::window_style::set_panel_taskbar(hwnd, on);
+        crate::trace!("panel taskbar button {on} on {hwnd:#x}: {changed}");
+    }
+}
+
+/// The Panel has no taskbar button off Windows: nothing to change.
+#[cfg(not(windows))]
+pub fn set_panel_taskbar(_window: &PanelWindow, _on: bool) {}
+
 /// Brings the shown Panel in front of the other windows without activating it.
 pub fn raise(window: &PanelWindow) {
     use slint::ComponentHandle;
@@ -98,6 +117,49 @@ pub fn monitor_of(window: &winit::window::Window) -> Option<Monitor> {
         work_area: work_area_of(window).unwrap_or(whole),
         scale,
     })
+}
+
+/// The monitor the mouse pointer is on, for sizing a window before it exists. Windows only.
+#[cfg(windows)]
+fn monitor_near_cursor() -> Option<Monitor> {
+    let (x, y, w, h, dpi) = snipdeck_platform::windows::window_style::work_area_near_cursor()?;
+    #[allow(clippy::cast_precision_loss, reason = "a DPI value is far below 2^24")]
+    let scale = dpi as f32 / 96.0;
+    Some(Monitor {
+        id: Monitor::id_of("cursor", w, h),
+        work_area: Rect { x, y, w, h },
+        scale,
+    })
+}
+
+#[cfg(not(windows))]
+fn monitor_near_cursor() -> Option<Monitor> {
+    None
+}
+
+/// `wanted` (logical pixels) cut to the work area of the monitor under the pointer, or as it is
+/// where the host cannot tell. The size is traced under `SNIPDECK_LOG=1`.
+#[must_use]
+pub fn fit_logical(wanted: (f32, f32)) -> (f32, f32) {
+    let Some(monitor) = monitor_near_cursor() else {
+        return wanted;
+    };
+    let fitted = frame::open_size(wanted, &monitor);
+    crate::trace!(
+        "open size {wanted:?} -> {fitted:?} in work area {:?} at scale {}",
+        monitor.work_area,
+        monitor.scale
+    );
+    fitted
+}
+
+/// Gives a regular window that does not exist yet its size, before its first `show()`: `wanted`
+/// cut to the screen (see [`fit_logical`]). Setting a size makes Slint keep it instead of
+/// applying the preferred size, which on a small or scaled screen is taller than the screen.
+/// [`fit_to_screen`] stays as the fallback once the window exists.
+pub fn size_before_show(window: &slint::Window, wanted: (f32, f32)) {
+    let (w, h) = fit_logical(wanted);
+    window.set_size(slint::LogicalSize::new(w, h));
 }
 
 /// Keeps a shown regular window (Main, Settings, an editor) inside its monitor's work area:

@@ -9,7 +9,7 @@
 //! library.
 
 use snipdeck_core::{
-    BoardId, Feature, Item, ItemId, ListAccent, ListId, ListSort, Name, Placement,
+    BoardId, Feature, Item, ItemId, ListAccent, ListId, ListSort, Name, Placement, Tag,
 };
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
@@ -27,6 +27,17 @@ use crate::{
     panel::UseLabel,
     usecase,
 };
+
+/// Why a tag could not be renamed in the Tag manager.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TagRenameError {
+    /// The new name is not a valid name (blank, too long, a control character).
+    Name(NameError),
+    /// Another tag already has that name (compared ignoring case).
+    Exists,
+    /// The library could not be written; a toast says so.
+    Failed,
+}
 
 /// What the context menu, the bulk bar and the shortcuts of the Main window ask for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -513,6 +524,43 @@ where
             Ok(())
         });
         self.finish(&done);
+    }
+
+    /// The Main window's close button. Returns whether Snipdeck should quit with it: when
+    /// "Keep running in the tray" is off, or when nothing could bring a window back (no tray
+    /// icon and the Panel hidden). Otherwise the window just hides.
+    #[must_use]
+    pub fn main_window_closed(&self) -> bool {
+        !self.settings.close_to_tray || (!self.session.tray_available && !self.visible)
+    }
+
+    /// Renames tag `index` (in the order of [`MainScreen::tags`]) to `name`. A name another tag
+    /// has is refused with [`TagRenameError::Exists`] and no toast: the Tag manager shows the
+    /// reason beside the field. A tag that is no longer there is left alone.
+    ///
+    /// # Errors
+    ///
+    /// Why the name was refused, or [`TagRenameError::Failed`] when the library could not be
+    /// written.
+    pub fn main_rename_tag(&mut self, index: usize, name: &str) -> Result<(), TagRenameError> {
+        self.main_fresh();
+        let name = Name::new(name).map_err(|error| {
+            NameError::of(&error).map_or(TagRenameError::Failed, TagRenameError::Name)
+        })?;
+        let Some(tag) = self.main.tags().get(index).map(|t| t.id) else {
+            return Ok(());
+        };
+        match self.store.update_tag(&Tag { id: tag, name }) {
+            Ok(()) => {
+                self.library_changed();
+                Ok(())
+            }
+            Err(snipdeck_store::Error::TagExists(_)) => Err(TagRenameError::Exists),
+            Err(_) => {
+                self.show_toast(failed());
+                Err(TagRenameError::Failed)
+            }
+        }
     }
 
     /// Deletes tag `index` after the window's confirmation (its items stay).

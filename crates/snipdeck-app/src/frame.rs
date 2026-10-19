@@ -317,6 +317,25 @@ fn cut(span: Range<i32>, low: i32, len: u32) -> (i32, u32) {
 fn far_side(low: i32, span: u32, len: u32) -> i32 {
     let start = i64::from(low) + i64::from(span) - i64::from(len);
     i32::try_from(start).unwrap_or(low)
+/// The title bar and frame a regular window adds around its content, in logical pixels, with
+/// some air so the window does not touch the taskbar.
+pub const WINDOW_CHROME: f32 = 56.0;
+
+/// The logical size a regular window is opened at: `wanted`, cut so that it (with its title bar)
+/// fits the work area of `monitor`. A window taller than the screen opens half off it and its
+/// lower part is never painted.
+#[must_use]
+pub fn open_size(wanted: (f32, f32), monitor: &Monitor) -> (f32, f32) {
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "screen sizes are far below 2^24 pixels"
+    )]
+    let room = |physical: u32| (physical as f32 / monitor.scale - WINDOW_CHROME).max(0.0);
+    let (w, h) = (
+        wanted.0.min(room(monitor.work_area.w)),
+        wanted.1.min(room(monitor.work_area.h)),
+    );
+    (w.max(1.0), h.max(1.0))
 }
 
 /// `start` moved so `[start, start + len)` lies in `[low, low + span)`.
@@ -345,6 +364,27 @@ mod tests {
 
     fn at(x: i32, y: i32, w: u32, h: u32) -> Rect {
         Rect { x, y, w, h }
+    }
+
+    #[test]
+    fn a_window_that_fits_opens_at_its_wanted_size() {
+        assert_eq!(open_size((640.0, 760.0), &monitor(1.0)), (640.0, 760.0));
+    }
+
+    #[test]
+    fn a_window_taller_than_the_work_area_is_cut_to_it_with_room_for_the_title_bar() {
+        // 1040 px of work area at 150 %: 693 logical, minus the chrome.
+        let (w, h) = open_size((640.0, 760.0), &monitor(1.5));
+        assert!((w - 640.0).abs() < 0.01, "{w}");
+        assert!((h - (1040.0 / 1.5 - WINDOW_CHROME)).abs() < 0.01, "{h}");
+        assert!(h < 760.0);
+    }
+
+    #[test]
+    fn a_tiny_work_area_still_gives_a_positive_size() {
+        let mut m = monitor(2.0);
+        m.work_area = at(0, 0, 40, 20);
+        assert_eq!(open_size((640.0, 760.0), &m), (1.0, 1.0));
     }
 
     #[test]

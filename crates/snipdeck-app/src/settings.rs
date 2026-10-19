@@ -12,6 +12,10 @@ pub const VERSION: u32 = 1;
 pub const PANEL_WIDTH: std::ops::RangeInclusive<u32> = 260..=480;
 /// The Panel's default width.
 pub const PANEL_WIDTH_DEFAULT: u32 = 320;
+/// How many daily backups may be kept (Settings > Backups).
+pub const BACKUPS_KEEP: std::ops::RangeInclusive<u32> = 1..=60;
+/// The default number of backups kept (SPEC 5.7a).
+pub const BACKUPS_KEEP_DEFAULT: u32 = 7;
 
 /// How many monitors' Panel geometry is remembered.
 pub const PANEL_GEOMETRY_LIMIT: usize = 16;
@@ -287,6 +291,10 @@ fn salvage_no_paste_apps(text: &str) -> Vec<String> {
 }
 
 /// The user's settings.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "one field per setting; they are independent switches, not a state"
+)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
@@ -302,8 +310,16 @@ pub struct Settings {
     pub autostart: bool,
     /// Closing the main window hides it to the tray instead of quitting.
     pub close_to_tray: bool,
+    /// The Panel has a taskbar button (and an Alt+Tab entry). Off by default: the tray icon and
+    /// the panel shortcut bring it back.
+    pub panel_in_taskbar: bool,
+    /// An unpinned Panel hides when another app takes the foreground. A pinned Panel and the
+    /// Main window never hide this way.
+    pub panel_hide_on_blur: bool,
     /// Panel width in logical pixels.
     pub panel_width: u32,
+    /// How many daily backups to keep (1 to 60).
+    pub backups_keep: u32,
     /// Where the Panel sat on each monitor it was moved or resized on; wins over `panel_width`
     /// there. Absent in older files.
     pub panel_geometry: Vec<PanelGeometry>,
@@ -322,7 +338,10 @@ impl Default for Settings {
             language: String::new(),
             autostart: false,
             close_to_tray: true,
+            panel_in_taskbar: false,
+            panel_hide_on_blur: true,
             panel_width: PANEL_WIDTH_DEFAULT,
+            backups_keep: BACKUPS_KEEP_DEFAULT,
             panel_geometry: Vec::new(),
             no_paste_apps: Vec::new(),
             dock: DockSettings::default(),
@@ -373,7 +392,10 @@ impl Settings {
         field!(language);
         field!(autostart);
         field!(close_to_tray);
+        field!(panel_in_taskbar);
+        field!(panel_hide_on_blur);
         field!(panel_width);
+        field!(backups_keep);
         field!(panel_geometry);
         // Element by element: one bad entry must not drop the whole list, or auto-paste would
         // go into the apps the user excluded.
@@ -410,6 +432,9 @@ impl Settings {
         self.panel_width = self
             .panel_width
             .clamp(*PANEL_WIDTH.start(), *PANEL_WIDTH.end());
+        self.backups_keep = self
+            .backups_keep
+            .clamp(*BACKUPS_KEEP.start(), *BACKUPS_KEEP.end());
         self.sanitize_panel_geometry();
         self.dock.sanitize();
         let mut seen = std::collections::BTreeSet::new();
@@ -743,6 +768,56 @@ mod tests {
             Settings::from_json(&full[..start]).no_paste_apps,
             Vec::<String>::new()
         );
+    }
+
+    #[test]
+    fn old_files_without_the_window_fields_get_the_defaults() {
+        let settings = Settings::from_json("{}");
+        assert!(!settings.panel_in_taskbar);
+        assert!(settings.panel_hide_on_blur);
+        let settings = Settings::from_json(r#"{"theme":"dark","close_to_tray":false}"#);
+        assert!(!settings.panel_in_taskbar && settings.panel_hide_on_blur);
+    }
+
+    #[test]
+    fn one_bad_window_field_keeps_the_rest() {
+        let settings = Settings::from_json(
+            r#"{"panel_in_taskbar":"x","panel_hide_on_blur":false,"theme":"dark"}"#,
+        );
+        assert!(!settings.panel_in_taskbar, "the bad one falls back");
+        assert!(!settings.panel_hide_on_blur);
+        assert_eq!(settings.theme, Theme::Dark);
+    }
+
+    #[test]
+    fn backups_to_keep_defaults_to_seven_and_is_held_between_one_and_sixty() {
+        assert_eq!(Settings::from_json("{}").backups_keep, 7);
+        assert_eq!(Settings::from_json(r#"{"backups_keep":0}"#).backups_keep, 1);
+        assert_eq!(
+            Settings::from_json(r#"{"backups_keep":900}"#).backups_keep,
+            60
+        );
+        assert_eq!(
+            Settings::from_json(r#"{"backups_keep":12}"#).backups_keep,
+            12
+        );
+        let bad = Settings::from_json(r#"{"backups_keep":"many","theme":"dark"}"#);
+        assert_eq!((bad.backups_keep, bad.theme), (7, Theme::Dark));
+        let kept = Settings {
+            backups_keep: 30,
+            ..Settings::default()
+        };
+        assert_eq!(Settings::from_json(&kept.to_json()), kept);
+    }
+
+    #[test]
+    fn the_window_fields_round_trip() {
+        let settings = Settings {
+            panel_in_taskbar: true,
+            panel_hide_on_blur: false,
+            ..Settings::default()
+        };
+        assert_eq!(Settings::from_json(&settings.to_json()), settings);
     }
 
     #[test]

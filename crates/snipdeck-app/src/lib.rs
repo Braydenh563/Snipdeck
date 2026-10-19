@@ -42,4 +42,5 @@ pub mod toast;
 pub mod toast_binding;
 pub mod trace;
 pub mod usecase;
+pub mod window_kind;
 pub mod wording;
