@@ -688,11 +688,29 @@ where
         vec![Effect::HidePanel]
     }
 
+    /// Hides the Panel because the user did not ask for it by the way back (the close button, a
+    /// click elsewhere), and the first time ever says how to bring it back: a toast naming the
+    /// hotkey and the tray click, remembered in the settings so it comes once. The toggle hotkey
+    /// and the tray click hide without it: the user just used the way back.
+    fn hide_with_hint(&mut self) -> Vec<Effect> {
+        let effects = self.hide();
+        if !self.settings.hide_hint_shown {
+            self.update_settings(|s| s.hide_hint_shown = true);
+            let chord = self.settings.hotkeys.toggle_panel.trim();
+            let chord = (!chord.is_empty()).then(|| chord.to_owned());
+            self.show_toast(Toast {
+                kind: ToastKind::Neutral,
+                message: ToastMessage::PanelHidden { chord },
+            });
+        }
+        effects
+    }
+
     /// The close button or Esc on an empty search. With `close_to_tray` on and a tray icon to
     /// get it back from, the Panel hides; otherwise closing it quits the app.
     pub fn close(&mut self) -> Vec<Effect> {
         if self.settings.close_to_tray && self.session.tray_available {
-            self.hide()
+            self.hide_with_hint()
         } else {
             vec![Effect::Quit]
         }
@@ -741,7 +759,7 @@ where
     pub fn on_foreground_changed(&mut self) -> Vec<Effect> {
         self.on_target_changed();
         if self.hides_on_blur() {
-            self.hide()
+            self.hide_with_hint()
         } else {
             Vec::new()
         }
@@ -2189,6 +2207,80 @@ mod tests {
         assert!(!w.ctl.visible());
         assert_eq!(w.ctl.drag(), [Effect::DragWindow]);
         assert_eq!(w.ctl.show(), [Effect::ShowPanel]);
+    }
+
+    fn hide_hint(w: &World) -> Option<ToastMessage> {
+        w.ctl
+            .view()
+            .toast
+            .map(|t| t.message)
+            .filter(|m| matches!(m, ToastMessage::PanelHidden { .. }))
+    }
+
+    #[test]
+    fn the_first_close_of_a_session_tells_how_to_get_the_panel_back() {
+        let mut w = world();
+        with_tray(&mut w);
+        assert_eq!(w.ctl.close(), [Effect::HidePanel]);
+        assert_eq!(
+            hide_hint(&w),
+            Some(ToastMessage::PanelHidden {
+                chord: Some(Settings::default().hotkeys.toggle_panel)
+            })
+        );
+        assert!(w.ctl.settings().hide_hint_shown, "remembered in the settings");
+    }
+
+    #[test]
+    fn a_second_hide_says_nothing() {
+        let mut w = world();
+        with_tray(&mut w);
+        w.ctl.close();
+        let _ = w.ctl.show();
+        w.ctl.show_toast(Toast {
+            kind: ToastKind::Neutral,
+            message: ToastMessage::Copied,
+        });
+        w.ctl.close();
+        assert_eq!(hide_hint(&w), None);
+    }
+
+    #[test]
+    fn the_toggle_hotkey_and_tray_hide_say_nothing() {
+        let mut w = world();
+        with_tray(&mut w);
+        assert_eq!(
+            w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+            [Effect::HidePanel]
+        );
+        assert_eq!(hide_hint(&w), None);
+        let _ = w.ctl.show();
+        assert_eq!(
+            w.ctl.on_tray(TrayEvent::TogglePanel),
+            [Effect::HidePanel]
+        );
+        assert_eq!(hide_hint(&w), None);
+        assert!(!w.ctl.settings().hide_hint_shown);
+    }
+
+    #[test]
+    fn without_a_toggle_chord_the_toast_names_only_the_tray() {
+        let mut settings = Settings::default();
+        settings.hotkeys.toggle_panel = String::new();
+        let mut w = world_with(Some(outlook()), settings);
+        with_tray(&mut w);
+        w.ctl.close();
+        assert_eq!(
+            hide_hint(&w),
+            Some(ToastMessage::PanelHidden { chord: None })
+        );
+    }
+
+    #[test]
+    fn closing_without_a_tray_quits_and_shows_no_toast() {
+        let mut w = world();
+        assert_eq!(w.ctl.close(), [Effect::Quit]);
+        assert_eq!(hide_hint(&w), None);
     }
 
     #[test]

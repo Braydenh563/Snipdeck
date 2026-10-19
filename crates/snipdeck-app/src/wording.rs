@@ -75,6 +75,12 @@ pub fn toast_text(message: &ToastMessage) -> String {
         ToastMessage::HotkeyInUse { chord } => {
             format!("{chord} is used by another app. Choose another in Settings.")
         }
+        ToastMessage::PanelHidden { chord: Some(chord) } => format!(
+            "Snipdeck is still running. Press {chord} or click the tray icon to bring the panel back."
+        ),
+        ToastMessage::PanelHidden { chord: None } => {
+            "Snipdeck is still running. Click the tray icon to bring the panel back.".into()
+        }
         ToastMessage::Failed => "Couldn't use this item.".into(),
         ToastMessage::WindowNotShown => "Couldn't open that window.".into(),
         ToastMessage::SettingsNotSaved => {
@@ -414,6 +420,7 @@ mod tests {
                 chord: "Ctrl+Alt+Space".into(),
             },
             ToastMessage::Failed,
+            ToastMessage::PanelHidden { chord: None },
             ToastMessage::SettingsNotSaved,
             ToastMessage::ItemsTrashed { count: 1 },
             ToastMessage::ItemsTrashed { count: 3 },
@@ -445,6 +452,13 @@ mod tests {
         for message in all {
             assert!(!toast_text(&message).is_empty(), "{message:?}");
         }
+        assert!(
+            toast_text(&ToastMessage::PanelHidden {
+                chord: Some("Ctrl+Shift+Space".into())
+            })
+            .contains("Press Ctrl+Shift+Space or click the tray icon")
+        );
+        assert!(!toast_text(&ToastMessage::PanelHidden { chord: None }).contains("Press"));
         assert!(
             toast_text(&ToastMessage::HotkeyInUse {
                 chord: "Ctrl+Alt+Space".into()
