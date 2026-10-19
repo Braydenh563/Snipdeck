@@ -519,6 +519,31 @@ fn the_trash_keeps_things_thirty_days_by_the_injected_clock() {
 // ---- Lists ----------------------------------------------------------------------------------
 
 #[test]
+fn the_new_list_and_new_board_names_start_from_the_words_the_window_layer_gave() {
+    let mut ctl = pro();
+    ctl.set_new_name_bases("Neue Liste", "Neues Board");
+    ctl.main_new_list();
+    assert_eq!(
+        ctl.main_screen().editor.expect("editor").name,
+        "Neue Liste 1"
+    );
+    ctl.main_editor_close();
+    ctl.main_board_menu_open();
+    let new = ctl
+        .main_screen()
+        .board_menu
+        .unwrap()
+        .iter()
+        .position(|e| *e == snipdeck_app::controller::BoardMenuEntry::New)
+        .unwrap();
+    ctl.main_board_menu_activate(new);
+    assert_eq!(
+        ctl.main_screen().editor.expect("editor").name,
+        "Neues Board 1"
+    );
+}
+
+#[test]
 fn a_new_list_opens_the_editor_and_saving_adds_and_opens_it() {
     let mut ctl = pro();
     ctl.main_new_list();

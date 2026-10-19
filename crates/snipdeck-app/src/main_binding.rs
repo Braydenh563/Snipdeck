@@ -182,7 +182,14 @@ where
 {
     /// Runs `f` on the controller, then redraws every window.
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<S, C, K, T>) -> R) -> R {
-        let result = f(&mut self.controller.borrow_mut());
+        let mut ctl = self.controller.borrow_mut();
+        // The editors for a new list or board start from words in the language shown now.
+        if let Some(window) = self.window.upgrade() {
+            let words = window.global::<ui::CommandTexts<'_>>();
+            ctl.set_new_name_bases(&words.get_new_list_name(), &words.get_new_board_name());
+        }
+        let result = f(&mut ctl);
+        drop(ctl);
         redraw_all();
         result
     }
@@ -214,12 +221,12 @@ where
                 }
                 return;
             }
-            return;
-        }
-        // The tour has its own window: the same opener as Help's "Show the welcome tour again".
-        if command == crate::commands::Command::Tour {
-            crate::onboarding_binding::request_open();
-            return;
+            // The tour has its own window: the same opener as Help's "Show the welcome tour again".
+            crate::commands::Command::Tour => {
+                crate::onboarding_binding::request_open();
+                return;
+            }
+            _ => {}
         }
         let cursor = self.shown.borrow().as_ref().map_or(0, |s| s.cursor);
         self.act(|ctl| ctl.run_command(command, cursor));
@@ -588,6 +595,8 @@ where
             let core = Rc::clone(&core);
             window.on_command_requested(move |id| {
                 crate::trace!("callback main command_requested ({id})");
+                // A command that opens a window (Settings, an editor, the Picker) opens over Main.
+                crate::native_window::note_opener(crate::native_window::Surface::Main);
                 core.run_command(id);
             });
         }
@@ -598,8 +607,6 @@ where
         wire_title_bar(window);
         wire!(on_new_item_requested, |ctl| ctl.open_new_item(Origin::Main));
         {
-                // A command that opens a window (Settings, an editor, the Picker) opens over Main.
-                crate::native_window::note_opener(crate::native_window::Surface::Main);
             // The X hides the window, or quits when nothing could bring it back (the setting
             // "Keep running in the tray" is off, or there is no tray icon and the Panel is down).
             let core = Rc::clone(&core);
