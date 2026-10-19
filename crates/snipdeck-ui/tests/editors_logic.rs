@@ -1155,11 +1155,22 @@ fn help_rows_are_labelled_with_their_status_and_the_fix_buttons_call_back() {
         ui.on_close_requested(move || log.borrow_mut().push("close".into()));
     }
 
-    let database: Vec<_> = ElementHandle::find_by_accessible_label(&ui, "Database: Problem").collect();
+    let database: Vec<_> =
+        ElementHandle::find_by_accessible_label(&ui, "Database: Problem").collect();
     assert_eq!(database.len(), 1);
-    assert_eq!(database[0].accessible_role(), Some(AccessibleRole::Groupbox));
-    assert!(database[0].accessible_description().is_some_and(|d| d.contains("row 3 missing")));
-    assert_eq!(ElementHandle::find_by_accessible_label(&ui, "Backups: Warning").count(), 1);
+    assert_eq!(
+        database[0].accessible_role(),
+        Some(AccessibleRole::Groupbox)
+    );
+    assert!(
+        database[0]
+            .accessible_description()
+            .is_some_and(|d| d.contains("row 3 missing"))
+    );
+    assert_eq!(
+        ElementHandle::find_by_accessible_label(&ui, "Backups: Warning").count(),
+        1
+    );
 
     let back_up: Vec<_> = ElementHandle::find_by_accessible_label(&ui, "Back up now")
         .filter(|e| e.accessible_role() == Some(AccessibleRole::Button))

@@ -129,8 +129,18 @@ pub fn help(ui: &HelpWindow) {
     };
     ui.set_checks(ModelRc::new(VecModel::from(vec![
         row("Data folder", "Writable, with room to spare.", 0, 0),
-        row("Database", "The integrity check found 1 problem(s); the first: row 3 missing", 2, 0),
-        row("Backups", "The newest backup is from 2026-10-10, 9 days ago (2 kept).", 1, 1),
+        row(
+            "Database",
+            "The integrity check found 1 problem(s); the first: row 3 missing",
+            2,
+            0,
+        ),
+        row(
+            "Backups",
+            "The newest backup is from 2026-10-10, 9 days ago (2 kept).",
+            1,
+            1,
+        ),
         row("Encryption key", "No item is marked sensitive.", 0, 0),
         row("Shortcuts", "All global shortcuts are set.", 0, 0),
         row("Tray icon", "The icon is in the notification area.", 0, 0),

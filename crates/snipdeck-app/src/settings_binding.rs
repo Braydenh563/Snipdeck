@@ -272,7 +272,7 @@ pub fn key_chips(value: &str) -> Vec<String> {
 }
 
 /// Names of the actions, for the message when two share a shortcut.
-const fn action_name(action: HotkeyAction) -> &'static str {
+pub(crate) const fn action_name(action: HotkeyAction) -> &'static str {
     match action {
         HotkeyAction::TogglePanel => "Show or hide the panel",
         HotkeyAction::Picker => "Open the picker",

@@ -17,6 +17,7 @@ pub mod editor_binding;
 pub mod fill;
 pub mod fill_binding;
 pub mod frame;
+pub mod help_binding;
 pub mod host;
 pub mod item_editor;
 pub mod key_provider;

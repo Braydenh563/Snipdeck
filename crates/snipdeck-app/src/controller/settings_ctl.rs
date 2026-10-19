@@ -92,6 +92,36 @@ where
         self.entitlements.tier()
     }
 
+    /// Today's local date by the controller's clock, for the Help window's checks.
+    #[must_use]
+    pub fn today(&self) -> jiff::civil::Date {
+        self.clock.now().to_zoned(TimeZone::system()).date()
+    }
+
+    /// Whether a tray icon is in the notification area now, for the Help window's checks.
+    #[must_use]
+    pub fn tray_icon_present(&self) -> bool {
+        self.session.tray_available
+    }
+
+    /// Puts `text` on the clipboard for the user to keep (the diagnostic report) and says so in a
+    /// toast. Returns whether it worked.
+    pub fn copy_text(&mut self, text: &str) -> bool {
+        let copied = snipdeck_platform::payload::Payload::new(vec![
+            snipdeck_platform::payload::Data::Text(text.to_owned()),
+        ])
+        .is_some_and(|payload| self.services.clipboard.write_persistent(&payload).is_ok());
+        self.show_toast(if copied {
+            Toast {
+                kind: ToastKind::Success,
+                message: ToastMessage::Copied,
+            }
+        } else {
+            danger(ToastMessage::ClipboardBusy)
+        });
+        copied
+    }
+
     /// The look in force (dark or light, high contrast), which the Settings window follows.
     #[must_use]
     pub fn settings_look(&self) -> snipdeck_platform::system_look::SystemLook {

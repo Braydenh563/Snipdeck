@@ -147,7 +147,12 @@ pub trait DoctorHost {
     fn newest_crash(&self) -> Option<String>;
 }
 
-fn check(label: &'static str, status: Status, detail: impl Into<String>, fix: Option<Fix>) -> Check {
+fn check(
+    label: &'static str,
+    status: Status,
+    detail: impl Into<String>,
+    fix: Option<Fix>,
+) -> Check {
     Check {
         label,
         status,
@@ -173,23 +178,33 @@ pub fn run(host: &dyn DoctorHost) -> Vec<Check> {
 /// The worst status among `checks` (`Ok` for none).
 #[must_use]
 pub fn worst(checks: &[Check]) -> Status {
-    checks.iter().fold(Status::Ok, |worst, c| match (worst, c.status) {
-        (Status::Fail, _) | (_, Status::Fail) => Status::Fail,
-        (Status::Warn, _) | (_, Status::Warn) => Status::Warn,
-        _ => Status::Ok,
-    })
+    checks
+        .iter()
+        .fold(Status::Ok, |worst, c| match (worst, c.status) {
+            (Status::Fail, _) | (_, Status::Fail) => Status::Fail,
+            (Status::Warn, _) | (_, Status::Warn) => Status::Warn,
+            _ => Status::Ok,
+        })
 }
 
 fn data_folder(host: &dyn DoctorHost) -> Check {
     let label = LABELS[0];
     if let Err(e) = host.data_dir_writable() {
-        return check(label, Status::Fail, format!("Snipdeck cannot write to its data folder: {e}"), None);
+        return check(
+            label,
+            Status::Fail,
+            format!("Snipdeck cannot write to its data folder: {e}"),
+            None,
+        );
     }
     match host.free_bytes() {
         Some(free) if free < LOW_SPACE_BYTES => check(
             label,
             Status::Warn,
-            format!("Writable, but only {} MB are free on its drive.", free / (1024 * 1024)),
+            format!(
+                "Writable, but only {} MB are free on its drive.",
+                free / (1024 * 1024)
+            ),
             None,
         ),
         _ => check(label, Status::Ok, "Writable, with room to spare.", None),
@@ -199,10 +214,18 @@ fn data_folder(host: &dyn DoctorHost) -> Check {
 fn database(host: &dyn DoctorHost) -> Check {
     let label = LABELS[1];
     match host.integrity() {
-        Err(e) => check(label, Status::Fail, format!("The integrity check could not run: {e}"), None),
-        Ok(problems) if problems.is_empty() => {
-            check(label, Status::Ok, "The integrity check found no problems.", None)
-        }
+        Err(e) => check(
+            label,
+            Status::Fail,
+            format!("The integrity check could not run: {e}"),
+            None,
+        ),
+        Ok(problems) if problems.is_empty() => check(
+            label,
+            Status::Ok,
+            "The integrity check found no problems.",
+            None,
+        ),
         Ok(problems) => check(
             label,
             Status::Fail,
@@ -221,11 +244,21 @@ fn backups(host: &dyn DoctorHost) -> Check {
     let dates = match host.backup_dates() {
         Ok(dates) => dates,
         Err(e) => {
-            return check(label, Status::Warn, format!("The backups cannot be read: {e}"), Some(Fix::BackUpNow));
+            return check(
+                label,
+                Status::Warn,
+                format!("The backups cannot be read: {e}"),
+                Some(Fix::BackUpNow),
+            );
         }
     };
     let Some(newest) = dates.iter().max().copied() else {
-        return check(label, Status::Warn, "No backup has been made yet.", Some(Fix::BackUpNow));
+        return check(
+            label,
+            Status::Warn,
+            "No backup has been made yet.",
+            Some(Fix::BackUpNow),
+        );
     };
     let age = host
         .today()
@@ -235,11 +268,19 @@ fn backups(host: &dyn DoctorHost) -> Check {
         check(
             label,
             Status::Warn,
-            format!("The newest backup is from {newest}, {age} days ago ({} kept).", dates.len()),
+            format!(
+                "The newest backup is from {newest}, {age} days ago ({} kept).",
+                dates.len()
+            ),
             Some(Fix::BackUpNow),
         )
     } else {
-        check(label, Status::Ok, format!("Newest backup {newest}, {} kept.", dates.len()), None)
+        check(
+            label,
+            Status::Ok,
+            format!("Newest backup {newest}, {} kept.", dates.len()),
+            None,
+        )
     }
 }
 
@@ -247,20 +288,37 @@ fn encryption(host: &dyn DoctorHost) -> Check {
     let label = LABELS[3];
     let sensitive = match host.sensitive_items() {
         Ok(n) => n,
-        Err(e) => return check(label, Status::Warn, format!("The items cannot be read: {e}"), None),
+        Err(e) => {
+            return check(
+                label,
+                Status::Warn,
+                format!("The items cannot be read: {e}"),
+                None,
+            );
+        }
     };
     if sensitive == 0 {
         return check(label, Status::Ok, "No item is marked sensitive.", None);
     }
     match host.key_ring_exists() {
-        Ok(true) => check(label, Status::Ok, format!("{sensitive} sensitive item(s), the key is present."), None),
+        Ok(true) => check(
+            label,
+            Status::Ok,
+            format!("{sensitive} sensitive item(s), the key is present."),
+            None,
+        ),
         Ok(false) => check(
             label,
             Status::Fail,
             format!("{sensitive} sensitive item(s) but no encryption key: they cannot be read."),
             None,
         ),
-        Err(e) => check(label, Status::Warn, format!("The key cannot be checked: {e}"), None),
+        Err(e) => check(
+            label,
+            Status::Warn,
+            format!("The key cannot be checked: {e}"),
+            None,
+        ),
     }
 }
 
@@ -270,7 +328,12 @@ fn shortcuts(host: &dyn DoctorHost) -> Check {
     if unset.is_empty() {
         check(label, Status::Ok, "All global shortcuts are set.", None)
     } else if unset.len() >= host.shortcuts_total() {
-        check(label, Status::Warn, "No global shortcut is set.", Some(Fix::OpenSettings))
+        check(
+            label,
+            Status::Warn,
+            "No global shortcut is set.",
+            Some(Fix::OpenSettings),
+        )
     } else {
         check(
             label,
@@ -283,7 +346,12 @@ fn shortcuts(host: &dyn DoctorHost) -> Check {
 
 fn tray(host: &dyn DoctorHost) -> Check {
     if host.tray_present() {
-        check(LABELS[5], Status::Ok, "The icon is in the notification area.", None)
+        check(
+            LABELS[5],
+            Status::Ok,
+            "The icon is in the notification area.",
+            None,
+        )
     } else {
         check(
             LABELS[5],
@@ -371,7 +439,10 @@ mod tests {
                 writable: Ok(()),
                 free: Some(10 * 1024 * 1024 * 1024),
                 integrity: Ok(Vec::new()),
-                backups: Ok(vec![Date::constant(2026, 10, 18), Date::constant(2026, 10, 17)]),
+                backups: Ok(vec![
+                    Date::constant(2026, 10, 18),
+                    Date::constant(2026, 10, 17),
+                ]),
                 sensitive: Ok(0),
                 key: Ok(true),
                 unset: Vec::new(),
@@ -426,81 +497,202 @@ mod tests {
         let checks = run(&Fake::default());
         let labels: Vec<_> = checks.iter().map(|c| c.label).collect();
         assert_eq!(labels, LABELS);
-        assert!(checks.iter().all(|c| c.status == Status::Ok && c.fix.is_none()), "{checks:?}");
+        assert!(
+            checks
+                .iter()
+                .all(|c| c.status == Status::Ok && c.fix.is_none()),
+            "{checks:?}"
+        );
         assert_eq!(worst(&checks), Status::Ok);
     }
 
     #[test]
     fn the_data_folder_fails_when_unwritable_and_warns_when_nearly_full() {
-        let fail = only(&Fake { writable: Err("read-only".into()), ..Fake::default() }, "Data folder");
+        let fail = only(
+            &Fake {
+                writable: Err("read-only".into()),
+                ..Fake::default()
+            },
+            "Data folder",
+        );
         assert_eq!(fail.status, Status::Fail);
         assert!(fail.detail.contains("read-only"));
-        let warn = only(&Fake { free: Some(50 * 1024 * 1024), ..Fake::default() }, "Data folder");
+        let warn = only(
+            &Fake {
+                free: Some(50 * 1024 * 1024),
+                ..Fake::default()
+            },
+            "Data folder",
+        );
         assert_eq!(warn.status, Status::Warn);
         assert!(warn.detail.contains("50 MB"));
-        let unknown = only(&Fake { free: None, ..Fake::default() }, "Data folder");
+        let unknown = only(
+            &Fake {
+                free: None,
+                ..Fake::default()
+            },
+            "Data folder",
+        );
         assert_eq!(unknown.status, Status::Ok);
     }
 
     #[test]
     fn the_database_fails_on_a_finding_or_when_the_check_cannot_run() {
-        let found = only(&Fake { integrity: Ok(vec!["row 3 missing".into(), "x".into()]), ..Fake::default() }, "Database");
+        let found = only(
+            &Fake {
+                integrity: Ok(vec!["row 3 missing".into(), "x".into()]),
+                ..Fake::default()
+            },
+            "Database",
+        );
         assert_eq!(found.status, Status::Fail);
         assert!(found.detail.contains("2 problem") && found.detail.contains("row 3 missing"));
-        let broken = only(&Fake { integrity: Err("locked".into()), ..Fake::default() }, "Database");
+        let broken = only(
+            &Fake {
+                integrity: Err("locked".into()),
+                ..Fake::default()
+            },
+            "Database",
+        );
         assert_eq!(broken.status, Status::Fail);
     }
 
     #[test]
     fn backups_warn_when_missing_or_stale_and_offer_a_backup() {
-        let none = only(&Fake { backups: Ok(Vec::new()), ..Fake::default() }, "Backups");
-        assert_eq!((none.status, none.fix), (Status::Warn, Some(Fix::BackUpNow)));
-        let stale = only(&Fake { backups: Ok(vec![Date::constant(2026, 10, 10)]), ..Fake::default() }, "Backups");
-        assert_eq!((stale.status, stale.fix), (Status::Warn, Some(Fix::BackUpNow)));
+        let none = only(
+            &Fake {
+                backups: Ok(Vec::new()),
+                ..Fake::default()
+            },
+            "Backups",
+        );
+        assert_eq!(
+            (none.status, none.fix),
+            (Status::Warn, Some(Fix::BackUpNow))
+        );
+        let stale = only(
+            &Fake {
+                backups: Ok(vec![Date::constant(2026, 10, 10)]),
+                ..Fake::default()
+            },
+            "Backups",
+        );
+        assert_eq!(
+            (stale.status, stale.fix),
+            (Status::Warn, Some(Fix::BackUpNow))
+        );
         assert!(stale.detail.contains("2026-10-10") && stale.detail.contains("9 days"));
         let fresh = only(&Fake::default(), "Backups");
         assert_eq!((fresh.status, fresh.fix), (Status::Ok, None));
         assert!(fresh.detail.contains("2026-10-18") && fresh.detail.contains("2 kept"));
-        let unreadable = only(&Fake { backups: Err("denied".into()), ..Fake::default() }, "Backups");
+        let unreadable = only(
+            &Fake {
+                backups: Err("denied".into()),
+                ..Fake::default()
+            },
+            "Backups",
+        );
         assert_eq!(unreadable.status, Status::Warn);
     }
 
     #[test]
     fn the_key_matters_only_when_sensitive_items_exist() {
-        let none = only(&Fake { sensitive: Ok(0), key: Ok(false), ..Fake::default() }, "Encryption key");
+        let none = only(
+            &Fake {
+                sensitive: Ok(0),
+                key: Ok(false),
+                ..Fake::default()
+            },
+            "Encryption key",
+        );
         assert_eq!(none.status, Status::Ok);
-        let missing = only(&Fake { sensitive: Ok(3), key: Ok(false), ..Fake::default() }, "Encryption key");
+        let missing = only(
+            &Fake {
+                sensitive: Ok(3),
+                key: Ok(false),
+                ..Fake::default()
+            },
+            "Encryption key",
+        );
         assert_eq!(missing.status, Status::Fail);
-        let present = only(&Fake { sensitive: Ok(3), key: Ok(true), ..Fake::default() }, "Encryption key");
+        let present = only(
+            &Fake {
+                sensitive: Ok(3),
+                key: Ok(true),
+                ..Fake::default()
+            },
+            "Encryption key",
+        );
         assert_eq!(present.status, Status::Ok);
     }
 
     #[test]
     fn unset_shortcuts_warn_and_open_settings() {
-        let some = only(&Fake { unset: vec!["Open the picker".into()], ..Fake::default() }, "Shortcuts");
-        assert_eq!((some.status, some.fix), (Status::Warn, Some(Fix::OpenSettings)));
+        let some = only(
+            &Fake {
+                unset: vec!["Open the picker".into()],
+                ..Fake::default()
+            },
+            "Shortcuts",
+        );
+        assert_eq!(
+            (some.status, some.fix),
+            (Status::Warn, Some(Fix::OpenSettings))
+        );
         assert!(some.detail.contains("Open the picker"));
-        let all = only(&Fake { unset: vec!["a".into(), "b".into(), "c".into(), "d".into()], ..Fake::default() }, "Shortcuts");
+        let all = only(
+            &Fake {
+                unset: vec!["a".into(), "b".into(), "c".into(), "d".into()],
+                ..Fake::default()
+            },
+            "Shortcuts",
+        );
         assert_eq!(all.detail, "No global shortcut is set.");
     }
 
     #[test]
     fn a_missing_tray_icon_warns() {
-        assert_eq!(only(&Fake { tray: false, ..Fake::default() }, "Tray icon").status, Status::Warn);
+        assert_eq!(
+            only(
+                &Fake {
+                    tray: false,
+                    ..Fake::default()
+                },
+                "Tray icon"
+            )
+            .status,
+            Status::Warn
+        );
     }
 
     #[test]
     fn a_crash_report_warns_and_offers_the_logs_folder() {
-        let c = only(&Fake { crash: Some("crash-2026-10-18.txt".into()), ..Fake::default() }, "Crash reports");
+        let c = only(
+            &Fake {
+                crash: Some("crash-2026-10-18.txt".into()),
+                ..Fake::default()
+            },
+            "Crash reports",
+        );
         assert_eq!((c.status, c.fix), (Status::Warn, Some(Fix::OpenLogsFolder)));
         assert!(c.detail.contains("crash-2026-10-18.txt"));
     }
 
     #[test]
     fn the_worst_status_wins() {
-        let checks = run(&Fake { tray: false, integrity: Err("x".into()), ..Fake::default() });
+        let checks = run(&Fake {
+            tray: false,
+            integrity: Err("x".into()),
+            ..Fake::default()
+        });
         assert_eq!(worst(&checks), Status::Fail);
-        assert_eq!(worst(&run(&Fake { tray: false, ..Fake::default() })), Status::Warn);
+        assert_eq!(
+            worst(&run(&Fake {
+                tray: false,
+                ..Fake::default()
+            })),
+            Status::Warn
+        );
     }
 
     #[test]
