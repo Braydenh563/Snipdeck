@@ -237,12 +237,8 @@ mod tests {
                 "Right-click for more"
             ]
         );
-        assert!(
-            store
-                .items(store.lists(board).unwrap()[1].id)
-                .unwrap()
-                .is_empty()
-        );
+        let starter = store.lists(board).unwrap()[1].id;
+        assert_eq!(store.items(starter).unwrap().len(), 0);
     }
 
     #[test]
