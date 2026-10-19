@@ -142,6 +142,8 @@ export component MainWindow inherits Window {
     in property <int> count-all: -1;
     in property <int> count-pinned: -1;
     in property <int> count-recent: -1;
+    // Clipboard history is on: the Recent entries are listed in the Panel's clock tab, so this section points there.
+    in property <bool> recent-on: false;
     in property <int> count-trash: -1;
     in property <[MainRow]> rows;
     in property <int> selected-count: 0;
@@ -1309,14 +1311,14 @@ export component MainWindow inherits Window {
                         heading: root.searching ? @tr("No matches")
                             : root.section == MainSection.all ? @tr("Your deck is empty")
                             : root.section == MainSection.pinned ? @tr("Nothing pinned")
-                            : root.section == MainSection.recent ? @tr("No recent items")
+                            : root.section == MainSection.recent ? (root.recent-on ? @tr("Recent copies are in the Panel") : @tr("No recent items"))
                             : root.in-trash ? @tr("The Trash is empty")
                             : root.section == MainSection.list ? @tr("This list is empty")
                             : @tr("No items with this tag");
                         body: root.searching ? @tr("Nothing matches “{}”.", root.query)
                             : root.section == MainSection.all ? @tr("Save your first snippet, or copy something and save it from the clipboard.")
                             : root.section == MainSection.pinned ? @tr("Pin the snippets you use most to keep them one click away.")
-                            : root.section == MainSection.recent ? @tr("Turn on clipboard history in Settings to collect what you copy.")
+                            : root.section == MainSection.recent ? (root.recent-on ? @tr("Open the clock tab at the left of the Panel's tabs to see what you copied and save it to a list.") : @tr("Turn on clipboard history in Settings to collect what you copy."))
                             : root.in-trash ? @tr("Deleted items stay here for {} days before they are removed.", root.trash-days)
                             : root.section == MainSection.list ? @tr("Add a snippet, or move items here from another list.")
                             : @tr("Tag a snippet to see it here.");
@@ -1324,7 +1326,7 @@ export component MainWindow inherits Window {
                             ? @tr("Press Ctrl+N to add a snippet, or Ctrl+K to see every command.") : "";
                         action-text: root.searching ? ""
                             : root.section == MainSection.all || root.section == MainSection.list ? @tr("New item")
-                            : root.section == MainSection.recent ? @tr("Open Settings") : "";
+                            : root.section == MainSection.recent && !root.recent-on ? @tr("Open Settings") : "";
                         action => {
                             if (root.section == MainSection.recent) {
                                 root.settings-requested();

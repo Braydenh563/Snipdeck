@@ -18,8 +18,8 @@ use snipdeck_platform::{
     tray::TrayEvent,
 };
 use snipdeck_store::{
-    Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, Store, TagRepo, TrashRepo, Trashable,
-    crypto::KeyRing,
+    Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, RecentRepo, Store, TagRepo, TrashRepo,
+    Trashable, crypto::KeyRing,
 };
 
 mod commands_ctl;
@@ -28,6 +28,7 @@ mod editor_ctl;
 mod main_ctl;
 mod onboarding_ctl;
 mod panel;
+mod recent_ctl;
 mod settings_ctl;
 
 pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameError};
@@ -68,7 +69,9 @@ pub const TOAST_EXIT: Duration = Duration::from_millis(90);
 
 /// What the controller needs from the library: every repository trait in one bound, and a way
 /// to make several writes land together (or not at all).
-pub trait Library: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + BlobStore {
+pub trait Library:
+    BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + BlobStore + RecentRepo
+{
     /// Runs `f` in one store transaction: what it does through the [`Batch`] commits together
     /// when `f` returns `Ok`, and none of it happens when it returns `Err`.
     ///
@@ -340,6 +343,8 @@ pub struct View {
     pub picker: Option<PickerView>,
     /// The template fill form, while it is open.
     pub fill: Option<FillView>,
+    /// The Recent inbox (clock tab), while it is on in the settings.
+    pub recent: Option<crate::recent::RecentView>,
 }
 
 /// What pressing Undo on the toast `seq` brings back from the Trash.
@@ -425,6 +430,8 @@ pub struct Controller<S, C, K, T> {
     drag_started: bool,
     /// Placements decided outside a Panel gesture, waiting for the binding.
     pending: Vec<Effect>,
+    /// Switches the clipboard listener of the Recent inbox (see `recent_ctl.rs`).
+    recent_gate: Option<snipdeck_platform::clipboard_watch::WatchGate>,
 }
 
 /// Opens the folder of the crash reports in the file manager.
@@ -446,12 +453,17 @@ enum PanelMenu {
 
 /// Facts about the running app that are not settings and not on screen.
 #[derive(Debug, Default, Clone, Copy)]
+#[allow(clippy::struct_excessive_bools, reason = "independent session flags")]
 struct Session {
     /// A real tray icon is in the notification area now (from `TrayEvent::IconPresent`):
     /// closing the Panel may hide it.
     tray_available: bool,
     /// "Pause hotkeys" is on.
     hotkeys_paused: bool,
+    /// "Pause history" is on: the Recent inbox collects nothing until Snipdeck restarts.
+    history_paused: bool,
+    /// The Panel's clock tab is the one selected.
+    recent_open: bool,
     /// The last settings save failed and the user was told.
     save_failed: bool,
     /// The welcome tour's step while it is open.
@@ -532,6 +544,7 @@ where
             monitor: None,
             drag_started: false,
             pending: Vec::new(),
+            recent_gate: None,
         })
     }
 
@@ -641,6 +654,7 @@ where
                     masked,
                 }
             }),
+            recent: self.recent_view(),
         }
     }
 
@@ -879,6 +893,7 @@ where
             saver.changed(&self.settings, now);
         }
         self.dock_resync();
+        self.sync_recent_gate();
     }
 
     /// The Main window was moved, resized, maximised or restored: remembers where it is, to
@@ -1525,6 +1540,7 @@ mod tests {
 
     mod dock;
     mod onboarding;
+    mod recent;
 
     type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 

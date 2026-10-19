@@ -118,6 +118,56 @@ export component Tab inherits Rectangle {
     }
 }
 
+// The Recent inbox's tab (SPEC 5.1, 5.6): a clock at the far left of the Panel's tab row, shown while clipboard
+// history is on. Same height, underline and focus ring as a list `Tab`; the underline uses the accent colour
+// because a clock has no list colour.
+export component ClockTab inherits Rectangle {
+    in property <string> label;
+    in property <bool> selected: false;
+    // Keyboard focus is on the tab.
+    in property <bool> focus-visible: false;
+    callback clicked();
+
+    property <bool> hovered: touch.has-hover;
+
+    height: max(Space.s8, Type.line-base + Space.s3);
+    width: Space.s8;
+    background: root.hovered && !root.selected ? Theme.bg-hover : transparent;
+    border-top-left-radius: Radius.sm;
+    border-top-right-radius: Radius.sm;
+    accessible-role: tab;
+    accessible-label: root.label;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.selected;
+    accessible-action-default => { root.clicked(); }
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    Icon {
+        source: Icons.clock;
+        tint: root.selected || root.hovered ? Theme.text-primary : Theme.text-secondary;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height - Space.s0-5) / 2;
+    }
+    Rectangle {
+        x: 0px;
+        y: parent.height - Space.s0-5;
+        width: parent.width;
+        height: Space.s0-5;
+        background: root.selected ? Theme.accent : transparent;
+    }
+    Rectangle {
+        y: 0px;
+        height: parent.height - Space.s0-5;
+        border-width: root.focus-visible ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.sm;
+        background: transparent;
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
 // DESIGN.md §4 ListTabBar: Tab x N, horizontal overflow scroll, and a "+" that adds a list.
 //
 // One tab stop. Left / Right move between tabs, Home / End jump to the first / last, and the selection follows
@@ -127,6 +177,8 @@ export component ListTabBar inherits Rectangle {
     in-out property <int> current: 0;
     // Index of the tab an item is being dragged over, or -1.
     in property <int> drag-over-index: -1;
+    // No list is the current one (the Recent tab is): no tab is drawn selected, and the current one can be picked again.
+    in property <bool> none-selected: false;
     // Accessible names for the bar and the add button (the app translates them).
     in property <string> label;
     in property <string> add-label;
@@ -160,7 +212,7 @@ export component ListTabBar inherits Rectangle {
     accessible-delegate-focus: root.current;
 
     function select(index: int) {
-        if (index < 0 || index >= root.tabs.length || index == root.current) {
+        if (index < 0 || index >= root.tabs.length || (index == root.current && !root.none-selected)) {
             return;
         }
         root.current = index;
@@ -237,12 +289,12 @@ export component ListTabBar inherits Rectangle {
                 for item[i] in root.tabs: tab := Tab {
                     text: item.text;
                     accent: item.accent;
-                    selected: i == root.current;
+                    selected: i == root.current && !root.none-selected;
                     drag-over: i == root.drag-over-index;
                     show-hover: i == root.show-hover-index;
                     index: i;
                     count: root.tabs.length;
-                    focus-visible: (scope.has-focus || root.show-focus) && i == root.current;
+                    focus-visible: (scope.has-focus || root.show-focus) && i == root.current && !root.none-selected;
                     menu-hint: root.menu-hint;
                     clicked => { root.select(i); }
                     context-menu-requested(x, y) => {

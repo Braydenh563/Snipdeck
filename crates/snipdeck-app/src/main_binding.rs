@@ -826,6 +826,7 @@ pub(crate) fn raise(window: &slint::Window) {
 
 // ---- Screen -> window --------------------------------------------------------------------------
 
+#[allow(clippy::too_many_lines, reason = "one flat screen-to-window diff")]
 fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainScreen) {
     let differs = |same: &dyn Fn(&MainScreen) -> bool| previous.is_none_or(|p| !same(p));
 
@@ -869,6 +870,9 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
             color: slint::Color::default(),
             checked: t.checked,
         })));
+    }
+    if window.get_recent_on() != screen.recent_on {
+        window.set_recent_on(screen.recent_on);
     }
     if differs(&|p| p.counts == screen.counts) {
         window.set_count_all(to_i32(screen.counts.all));

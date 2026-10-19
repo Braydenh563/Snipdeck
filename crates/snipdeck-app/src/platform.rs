@@ -9,6 +9,7 @@
 use std::sync::Arc;
 
 use snipdeck_platform::{
+    clipboard_watch::{ClipboardChange, WatchGate},
     system_look::SystemLookSource,
     tray::{Tray, TrayEvent},
 };
@@ -41,7 +42,7 @@ mod imp {
 
     use std::sync::Arc;
 
-    use super::{Callbacks, Host, Start};
+    use super::{Callbacks, Host, Start, WatchGate};
     use crate::{
         controller::Services,
         frame::{Monitor, Rect},
@@ -142,6 +143,7 @@ mod imp {
             on_target_changed,
             on_tray,
             on_look_changed,
+            on_clipboard_change,
         } = callbacks;
         // Before any window exists: the tray's window, menu and icon are made ahead of the UI
         // toolkit, which would otherwise be too late to make the process DPI aware.
@@ -155,6 +157,10 @@ mod imp {
             }
         }
         let clipboard = WinClipboard::new().map_err(|e| format!("clipboard service: {e}"))?;
+        // The Recent inbox's listener (UNVERIFIED on Windows). It reads nothing until the
+        // controller opens the gate, which it does only for an opted-in, unpaused inbox.
+        let recent_gate = WatchGate::new();
+        clipboard.watch(recent_gate.clone(), on_clipboard_change);
         let hotkeys = HotkeyService::start(move |id| {
             if let Some(action) = action_of(id) {
                 on_hotkey(action);
@@ -195,6 +201,7 @@ mod imp {
             }),
             popups: Rc::new(Popups(popup_tracker)),
             tray,
+            recent_gate,
             warnings,
             keep_alive,
         })))
@@ -210,7 +217,7 @@ mod imp {
         testing::{FakeClipboard, FakeKeyboard, FakeSystemLook, FakeTiming},
     };
 
-    use super::{Callbacks, Host, Start};
+    use super::{Callbacks, Host, Start, WatchGate};
     use crate::{
         controller::Services,
         host::{FakeHotkeys, FakeTargets},
@@ -238,6 +245,7 @@ mod imp {
             callbacks.on_target_changed,
             callbacks.on_tray,
             callbacks.on_look_changed,
+            callbacks.on_clipboard_change,
         );
         Ok(Start::Run(Box::new(Host {
             services: Services {
@@ -254,6 +262,7 @@ mod imp {
             popups: std::rc::Rc::new(crate::placement::NoPopups),
             // No tray off Windows: closing the Panel quits the dev build.
             tray: None,
+            recent_gate: WatchGate::new(),
             warnings: Vec::new(),
             keep_alive: Vec::new(),
         })))
@@ -302,6 +311,8 @@ pub struct Callbacks {
     /// Windows' light / dark or high-contrast state may have changed (watcher thread); read
     /// [`system_look`] on the UI thread.
     pub on_look_changed: Box<dyn Fn() + Send>,
+    /// The clipboard changed and the Recent inbox is listening (clipboard thread).
+    pub on_clipboard_change: Box<dyn Fn(ClipboardChange) + Send>,
 }
 
 /// The platform services the app runs on.
@@ -321,6 +332,8 @@ pub struct Host {
     pub popups: std::rc::Rc<dyn crate::placement::PopupHost>,
     /// The notification-area icon, if one could be created (never off Windows). Not yet shown.
     pub tray: Option<Box<dyn Tray>>,
+    /// Switches the clipboard listener of the Recent inbox on and off.
+    pub recent_gate: WatchGate,
     /// Services that failed to start but are not essential: print them.
     pub warnings: Vec<String>,
     /// Kept alive for the life of the process (the single-instance claim, the colour-mode
@@ -364,6 +377,7 @@ mod tests {
             on_target_changed: Box::new(|| {}),
             on_tray: Box::new(|_| {}),
             on_look_changed: Box::new(|| {}),
+            on_clipboard_change: Box::new(|_| {}),
         };
         let Ok(Start::Run(host)) = connect(callbacks, true) else {
             panic!("the dev host always starts")

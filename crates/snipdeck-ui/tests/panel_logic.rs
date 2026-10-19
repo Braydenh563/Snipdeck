@@ -22,7 +22,9 @@ use slint::{
     ComponentHandle, LogicalPosition, ModelRc, VecModel,
     platform::{Key, PointerEventButton, WindowEvent},
 };
-use snipdeck_ui::{PanelView, PanelWindow, PinnedItem, ResizeEdge, ToastKind};
+use snipdeck_ui::{
+    ChoiceEntry, PanelView, PanelWindow, PinnedItem, RecentRow, ResizeEdge, ToastKind,
+};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -1197,5 +1199,111 @@ ui_tests! {
         set_pinned(&ui, fixture::pinned_n(12));
         press_at(&ui, centre(&find(&ui, "Pinned 02", AccessibleRole::Button)));
         assert_eq!(take(&log), ["pinned:1"]);
+    }
+
+    // ---- The Recent inbox -----------------------------------------------------------------------
+
+    fn the_clock_tab_exists_only_while_history_is_on() {
+        let (ui, _log) = start();
+        assert!(missing(&ui, "Recent", AccessibleRole::Tab), "off by default: no clock tab");
+        ui.set_recent_available(true);
+        settle();
+        let tab = find(&ui, "Recent", AccessibleRole::Tab);
+        let first_list_tab = by_role(&ui, AccessibleRole::Tab)
+            .into_iter()
+            .filter(|t| t.accessible_label().as_deref() != Some("Recent"))
+            .map(|t| t.absolute_position().x)
+            .fold(f32::MAX, f32::min);
+        assert!(tab.absolute_position().x < first_list_tab, "the clock is at the far left");
+        assert!(tab.size().width >= MIN_HIT && tab.size().height >= MIN_HIT);
+    }
+
+    fn choosing_the_clock_tab_shows_the_entries_and_a_list_tab_goes_back() {
+        let (ui, log) = start();
+        let (rec, rec_log) = (ui.as_weak(), log.clone());
+        ui.on_recent_toggled(move |open| {
+            let _ = &rec;
+            rec_log.borrow_mut().push(format!("recent:{open}"));
+        });
+        ui.set_recent_available(true);
+        ui.set_recent_rows(ModelRc::new(VecModel::from(vec![
+            RecentRow { preview: "first copy".into(), app: "Notepad".into(), age_minutes: 3 },
+            RecentRow { preview: "second copy".into(), app: "".into(), age_minutes: 0 },
+        ])));
+        settle();
+        let list_rows = rows(&ui).len();
+        press_at(&ui, centre(&find(&ui, "Recent", AccessibleRole::Tab)));
+        settle();
+        assert!(ui.get_recent_open());
+        assert_eq!(take(&log), ["recent:true"]);
+        assert!(rows(&ui).len() != list_rows || list_rows == 0, "the entries replaced the list rows");
+        assert!(!all(&ui, "Recent copies", AccessibleRole::List).is_empty(), "the Recent list is labelled");
+
+        // A list tab leaves the inbox and reports the tab.
+        let tabs = by_role(&ui, AccessibleRole::Tab);
+        let list_tab = tabs
+            .iter()
+            .find(|t| t.accessible_label().as_deref() != Some("Recent"))
+            .expect("a list tab");
+        press_at(&ui, centre(list_tab));
+        settle();
+        assert!(!ui.get_recent_open());
+        let seen = take(&log);
+        assert!(seen.contains(&"recent:false".to_string()), "{seen:?}");
+        assert!(seen.iter().any(|l| l.starts_with("tab:")), "{seen:?}");
+    }
+
+    fn the_recent_list_has_its_own_keys_and_none_of_the_item_shortcuts_fire() {
+        let (ui, log) = start();
+        let (copied, removed) = (log.clone(), log.clone());
+        ui.on_recent_copied(move |i| copied.borrow_mut().push(format!("rcopy:{i}")));
+        ui.on_recent_deleted(move |i| removed.borrow_mut().push(format!("rdel:{i}")));
+        ui.set_recent_available(true);
+        ui.set_recent_rows(ModelRc::new(VecModel::from(vec![
+            RecentRow { preview: "one".into(), app: "".into(), age_minutes: 1 },
+            RecentRow { preview: "two".into(), app: "".into(), age_minutes: 2 },
+        ])));
+        press_at(&ui, centre(&find(&ui, "Recent", AccessibleRole::Tab)));
+        settle();
+        take(&log);
+
+        press(ui.window(), &key(Key::DownArrow));
+        assert_eq!(ui.get_recent_selected(), 1);
+        assert_eq!(ui.get_selected_index(), 0, "the item selection did not move");
+        press(ui.window(), &key(Key::DownArrow));
+        assert_eq!(ui.get_recent_selected(), 1, "clamped at the last entry");
+        press(ui.window(), &key(Key::Return));
+        press(ui.window(), &key(Key::Delete));
+        press(ui.window(), &key(Key::F2));
+        press(ui.window(), "1");
+        settle();
+        // The digit is search text only with a query; here it must not use an item either.
+        let seen = take(&log);
+        assert!(seen.contains(&"rcopy:1".to_string()), "{seen:?}");
+        assert!(seen.contains(&"rdel:1".to_string()), "{seen:?}");
+        for line in &seen {
+            assert!(
+                !line.starts_with("use:") && !line.starts_with("delete:") && !line.starts_with("rename:") && !line.starts_with("quick:") && !line.starts_with("move:"),
+                "an item shortcut fired in the Recent list: {line}"
+            );
+        }
+    }
+
+    fn the_empty_recent_list_says_why_and_the_menu_offers_save_to() {
+        let (ui, _log) = start();
+        ui.set_recent_available(true);
+        ui.set_recent_targets(ModelRc::new(VecModel::from(vec![ChoiceEntry {
+            label: "Replies".into(),
+            count: 0,
+            color: slint::Color::default(),
+            checked: false,
+        }])));
+        press_at(&ui, centre(&find(&ui, "Recent", AccessibleRole::Tab)));
+        settle();
+        assert!(!all(&ui, "Nothing copied yet", AccessibleRole::Text).is_empty()
+            || ElementHandle::find_by_accessible_label(&ui, "Nothing copied yet").next().is_some());
+        ui.set_recent_paused(true);
+        settle();
+        assert!(ElementHandle::find_by_accessible_label(&ui, "History is paused").next().is_some());
     }
 }

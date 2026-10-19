@@ -126,6 +126,8 @@ pub struct MainScreen {
     pub tag_choices: Vec<TagChoice>,
     /// The numbers beside the system views.
     pub counts: Counts,
+    /// The Recent inbox is on (its entries are listed in the Panel's clock tab).
+    pub recent_on: bool,
     /// What the sidebar has open.
     pub section: Section,
     /// The index into `lists` or `tags` that `section` names.
@@ -211,6 +213,7 @@ where
             tags: self.main.side_tags(),
             tag_choices: self.tag_choices(),
             counts: self.main.counts(),
+            recent_on: self.settings.recent_history,
             section: self.main.section(),
             section_index: self.main.section_index(),
             view_mode: self.main.view_mode(),

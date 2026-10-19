@@ -39,6 +39,7 @@ pub mod picker_binding;
 pub mod placement;
 pub mod platform;
 pub(crate) mod popup_window;
+pub mod recent;
 pub mod screenshot;
 pub mod settings;
 pub mod settings_binding;
