@@ -76,7 +76,7 @@ component PaletteItem inherits Rectangle {
 // Place it as the LAST child of the window. The host owns the rows (it filters them for `query` and sets
 // `rows` again on `query-changed`). The field keeps the keyboard: typing filters, Up/Down move the highlight
 // (wrapping), Enter runs it (`chosen(id)`), Esc asks to close (`dismissed`). A click on the scrim closes it.
-// The footer count is a polite live region so a screen reader hears how many commands are left.
+// The footer is a polite live region: the highlighted command and its position ("Settings, 2 of 7").
 export component CommandPalette inherits Rectangle {
     in property <[PaletteRow]> rows;
     in property <string> placeholder;
@@ -95,6 +95,9 @@ export component CommandPalette inherits Rectangle {
     property <int> cur: root.rows.length == 0 ? -1 : min(max(root.current, 0), root.rows.length - 1);
     property <color> scrim: ((Theme.dark || Theme.hc-border != transparent) ? Theme.bg-app : Theme.text-primary).with-alpha(0.4);
     property <length> row-h: max(Space.hit, Type.line-base + Space.s2);
+    // What the polite live region says: the highlighted command and where it stands ("Settings, 2 of 7"),
+    // so a screen reader hears each arrow press and the count after each keystroke.
+    property <string> status: root.cur < 0 ? @tr("{} found", 0) : @tr("{}, {} of {}", root.rows[root.cur].label, root.cur + 1, root.rows.length);
 
     function move(delta: int) {
         if (root.rows.length > 0) {
@@ -186,7 +189,7 @@ export component CommandPalette inherits Rectangle {
                     accessible-role: text;
                 }
                 Text {
-                    text: @tr("{} found", root.rows.length);
+                    text: root.status;
                     color: Theme.text-secondary;
                     font-family: Fonts.sans;
                     font-size: Type.sm;
