@@ -524,8 +524,15 @@ fn add_list_opens_the_editor_and_saving_adds_the_list() {
         assert!(editor.window().is_visible());
         assert!(editor.get_is_new());
         assert!(!editor.get_can_delete());
+        assert_eq!(
+            editor.get_name(),
+            "New list 1",
+            "a numbered name to type over"
+        );
 
         // An empty name is refused with the reason, and the editor stays.
+        editor.set_name("".into());
+        editor.invoke_edited();
         editor.invoke_save_requested();
         assert!(editor.window().is_visible());
         assert_eq!(editor.get_name_error(), "Give it a name.");
@@ -570,7 +577,7 @@ fn add_list_works_again_after_the_editor_and_the_main_window_were_closed() {
         assert!(editor.get_is_new());
         assert_eq!(
             editor.get_name(),
-            "",
+            "New list 1",
             "a fresh form, not the half typed one"
         );
     });
