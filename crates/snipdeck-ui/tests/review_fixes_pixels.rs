@@ -108,7 +108,7 @@ fn hc_the_selected_choice_rows_check_is_visible() {
 
 /// Light-theme blue-600 (the first tab's accent in the gallery) and the focus ring colour.
 const BLUE_600: [u8; 3] = [0x28, 0x70, 0xD4];
-const FOCUS_RING: [u8; 3] = [0x43, 0x8A, 0xF1];
+const FOCUS_RING: [u8; 3] = [0x28, 0x70, 0xD4];
 
 #[test]
 fn the_selected_tabs_focus_ring_does_not_cover_its_underline() {

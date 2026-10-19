@@ -215,6 +215,11 @@ impl FakeTray {
         let _ = self.gesture(Gesture::Select);
     }
 
+    /// The user double-clicks the icon.
+    pub fn double_click(&self) {
+        let _ = self.gesture(Gesture::DoubleSelect);
+    }
+
     /// The user right-clicks the icon and the menu opens; returns it. Nothing is chosen until
     /// [`FakeTray::pick`].
     #[must_use]
@@ -381,6 +386,15 @@ mod tests {
     }
 
     #[test]
+    fn a_double_click_asks_for_the_main_window() {
+        let (mut tray, rx) = tray();
+        tray.show().unwrap();
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::IconPresent(true)));
+        tray.double_click();
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::OpenSnipdeck));
+    }
+
+    #[test]
     fn explorer_restarting_brings_back_a_wanted_icon_even_after_a_failed_show() {
         let (mut tray, _rx) = tray();
         tray.set_fail_show(true);
@@ -435,7 +449,10 @@ mod tests {
         handle.set(SystemLook {
             dark: true,
             high_contrast: None,
+            accent: None,
+            reduce_motion: true,
         });
         assert!(look.read().dark);
+        assert!(look.read().reduce_motion);
     }
 }

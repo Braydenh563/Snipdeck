@@ -57,6 +57,14 @@ export component Toast inherits Rectangle {
     // DESIGN.md §4: the host keeps a toast in `hold` for this long.
     out property <duration> hold-duration: 2500ms;
     callback undo();
+    // The pointer is on the toast or its button has focus: the host keeps the toast up while it is.
+    callback hover-changed(hovered: bool);
+
+    // An ancestor TouchArea keeps its hover while the pointer is on a child, so the toast does not
+    // flicker as the pointer crosses onto the Undo button, and the button still gets its clicks.
+    property <bool> button-focus: false;
+    property <bool> over: area.has-hover || root.button-focus;
+    changed over => { root.hover-changed(root.over); }
 
     property <color> fg: root.kind == ToastKind.success ? Theme.success-fg
         : root.kind == ToastKind.danger ? Theme.danger-fg : Theme.text-primary;
@@ -74,36 +82,42 @@ export component Toast inherits Rectangle {
 
     animate opacity { duration: root.phase == ToastPhase.exit ? Motion.fade : Motion.quick; easing: Motion.out; }
 
-    HorizontalLayout {
-        padding-left: Space.s3;
-        padding-right: root.undo-label != "" ? Space.s1 : Space.s3;
-        padding-top: Space.s2;
-        padding-bottom: Space.s2;
-        spacing: Space.s2;
-        Rectangle {
-            width: 16px;
-            Icon {
-                source: root.kind == ToastKind.success ? Icons.check-circle
-                    : root.kind == ToastKind.danger ? Icons.warning : Icons.info;
-                tint: root.fg;
-                y: (parent.height - self.height) / 2;
+    preferred-width: row.preferred-width;
+    preferred-height: row.preferred-height;
+
+    area := TouchArea {
+        row := HorizontalLayout {
+            padding-left: Space.s3;
+            padding-right: root.undo-label != "" ? Space.s1 : Space.s3;
+            padding-top: Space.s2;
+            padding-bottom: Space.s2;
+            spacing: Space.s2;
+            Rectangle {
+                width: 16px;
+                Icon {
+                    source: root.kind == ToastKind.success ? Icons.check-circle
+                        : root.kind == ToastKind.danger ? Icons.warning : Icons.info;
+                    tint: root.fg;
+                    y: (parent.height - self.height) / 2;
+                }
             }
-        }
-        Text {
-            text: root.text;
-            color: root.fg;
-            font-family: Fonts.sans;
-            font-size: Type.base;
-            vertical-alignment: center;
-            wrap: word-wrap;
-            overflow: elide;
-        }
-        if root.undo-label != "": Button {
-            text: root.undo-label;
-            variant: ButtonVariant.ghost;
-            size: ButtonSize.sm;
-            y: (parent.height - self.height) / 2;
-            clicked => { root.undo(); }
+            Text {
+                text: root.text;
+                color: root.fg;
+                font-family: Fonts.sans;
+                font-size: Type.base;
+                vertical-alignment: center;
+                wrap: word-wrap;
+                overflow: elide;
+            }
+            if root.undo-label != "": Button {
+                text: root.undo-label;
+                variant: ButtonVariant.ghost;
+                size: ButtonSize.sm;
+                y: (parent.height - self.height) / 2;
+                clicked => { root.undo(); }
+                changed has-focus => { root.button-focus = self.has-focus; }
+            }
         }
     }
 }

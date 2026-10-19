@@ -16,6 +16,8 @@ import { IconButton, IconButtonSize } from "components/icon-button.slint";
 import { TextField } from "components/text_field.slint";
 import { Toggle } from "components/choice.slint";
 import { HotkeyRecorder } from "components/hotkey_recorder.slint";
+import { Dialog } from "components/dialog.slint";
+import { PlanTable } from "components/plan-table.slint";
 import { FormField, FormScroll, FormSection, SettingRow, Segmented, SelectField, NumberStepper } from "components/form.slint";
 
 // One global shortcut as the page shows it. The order of `SettingsPage.hotkeys` is fixed: show or hide the panel,
@@ -51,6 +53,7 @@ export component SettingsPage inherits Window {
     in property <[HotkeySetting]> hotkeys;
     // 0 follow Windows, 1 light, 2 dark.
     in property <int> theme-index: 0;
+    in property <int> accent-index: 0;
     // Native language names ("English", ...), the first being "Follow Windows" if the host offers it.
     in property <[string]> languages;
     in property <int> language-index: 0;
@@ -59,6 +62,7 @@ export component SettingsPage inherits Window {
     in-out property <bool> panel-in-taskbar: false;
     in-out property <bool> panel-hide-on-blur: true;
     in-out property <bool> recent-history: false;
+    in-out property <bool> reduce-motion: false;
     in property <int> panel-width: 320;
     in property <int> panel-width-min: 260;
     in property <int> panel-width-max: 480;
@@ -73,11 +77,14 @@ export component SettingsPage inherits Window {
     in property <int> backups-keep: 7;
     in property <int> backups-keep-min: 1;
     in property <int> backups-keep-max: 60;
+    // Seconds before a copied sensitive item is cleared from the clipboard; 0 = never.
+    in property <int> clipboard-clear-secs: 30;
+    in property <int> clipboard-clear-secs-max: 600;
     // Program names the panel never pastes into ("keepass.exe").
     in property <[string]> no-paste-apps;
     // Set by the host when `no-paste-app-added` was refused ("Already in the list").
     in property <string> no-paste-error;
-    // Whether this library is Pro (a valid licence key, or the demo).
+    // Whether this library is Supporter (a valid licence key, or the demo).
     in property <bool> pro: false;
     // Set by the host when `licence-submitted` was refused; the same words as the toast.
     in property <string> licence-error;
@@ -89,6 +96,8 @@ export component SettingsPage inherits Window {
     in property <string> toast-text;
     in property <ToastKind> toast-kind: ToastKind.neutral;
     in property <ToastPhase> toast-phase: ToastPhase.hold;
+    // The "Get Supporter" dialog (price, what each plan includes, the email button) is open.
+    in-out property <bool> supporter-open: false;
     // The "Erase library" confirmation is open.
     in-out property <bool> erase-open: false;
     // The import preview (also used by Restore): what the import would do, worked out before anything is written.
@@ -119,6 +128,8 @@ export component SettingsPage inherits Window {
     property <int> erase-focus: 0;
     // The four sources are shown (after "Import…") and none is chosen yet.
     property <bool> import-choosing: false;
+    // Goes up when the Get Supporter dialog closes: its button takes the focus back.
+    property <int> supporter-focus: 0;
     // What the confirmation must be typed as, exactly.
     out property <string> erase-word: "DELETE";
 
@@ -126,6 +137,7 @@ export component SettingsPage inherits Window {
     callback hotkey-recorded(index: int, combo: string);
     callback hotkey-cleared(index: int);
     callback theme-chosen(index: int);
+    callback accent-chosen(index: int);
     callback language-chosen(index: int);
     callback autostart-toggled(on: bool);
     callback close-to-tray-toggled(on: bool);
@@ -133,15 +145,19 @@ export component SettingsPage inherits Window {
     callback recent-history-cleared();
     callback panel-in-taskbar-toggled(on: bool);
     callback panel-hide-on-blur-toggled(on: bool);
+    callback reduce-motion-toggled(on: bool);
     callback panel-width-chosen(width: int);
     callback dock-edge-chosen(index: int);
     callback dock-trigger-chosen(index: int);
     callback dock-hover-delay-chosen(ms: int);
     callback dock-leave-delay-chosen(ms: int);
     callback backups-keep-chosen(count: int);
+    callback clipboard-clear-secs-chosen(secs: int);
     callback no-paste-app-added(name: string);
     callback no-paste-app-removed(index: int);
     callback licence-submitted(key: string);
+    // "Email me" in the Get Supporter dialog: the host opens the email app (a mailto: link).
+    callback supporter-requested();
     callback backup-now-requested();
     callback backup-restore-requested(index: int);
     callback open-data-folder-requested();
@@ -273,6 +289,20 @@ export component SettingsPage inherits Window {
                         }
                     }
                     SettingRow {
+                        title: @tr("Accent colour");
+                        description: @tr("Windows accent follows your Windows personalisation.");
+                        SelectField {
+                            width: 200px * SystemLook.text-scale;
+                            label: @tr("Accent colour");
+                            options: [@tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Rose"), @tr("Violet"), @tr("Windows accent")];
+                            current: root.accent-index;
+                            chosen(i) => { root.accent-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
                         title: @tr("Language");
                         description: @tr("Takes effect the next time Snipdeck starts.");
                         SelectField {
@@ -281,6 +311,18 @@ export component SettingsPage inherits Window {
                             options: root.languages;
                             current: root.language-index;
                             chosen(i) => { root.language-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Reduce motion");
+                        description: @tr("Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off.");
+                        Toggle {
+                            a11y-label: @tr("Reduce motion");
+                            checked <=> root.reduce-motion;
+                            toggled(on) => { root.reduce-motion-toggled(on); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
@@ -534,10 +576,23 @@ export component SettingsPage inherits Window {
                 FormSection {
                     title: @tr("Licence");
                     SettingRow {
-                        title: root.pro ? @tr("Snipdeck Pro") : @tr("Free plan");
+                        title: root.pro ? @tr("Snipdeck Supporter") : @tr("Free plan");
                         description: root.pro
-                            ? @tr("Every Pro feature is on. Thank you.")
-                            : @tr("Paste a licence key to turn on Pro. The key is checked on this PC and nothing is sent anywhere.");
+                            ? @tr("Every Supporter feature is on. Thank you.")
+                            : @tr("Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere.");
+                    }
+                    if !root.pro: SettingRow {
+                        title: @tr("Get Supporter");
+                        description: @tr("Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included.");
+                        Button {
+                            text: @tr("Get Supporter…");
+                            focus-request: root.supporter-focus;
+                            enabled: !root.supporter-open;
+                            clicked => { root.supporter-open = true; }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
                     }
                     if !root.pro: HorizontalLayout {
                         spacing: Space.s2;
@@ -565,6 +620,14 @@ export component SettingsPage inherits Window {
                             }
                         }
                     }
+                    Text {
+                        text: @tr("Free is fully usable. Supporter pays for convenience and supports the app.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                    }
+                    PlanTable { }
                 }
 
                 FormSection {
@@ -575,7 +638,7 @@ export component SettingsPage inherits Window {
                         font-family: Fonts.sans;
                         font-size: Type.sm;
                         wrap: word-wrap;
-                        accessible-role: none;
+                        accessible-role: AccessibleRole.text;
                     }
                     SettingRow {
                         title: @tr("Backups to keep");
@@ -773,7 +836,7 @@ export component SettingsPage inherits Window {
                             accessible-label: root.import-problem;
                         }
                         if root.import-problem == "" && root.import-blocked: Text {
-                            text: @tr("The Free plan includes {} boards. This would go over that, so it needs Pro.", root.free-board-limit);
+                            text: @tr("The Free plan includes {} boards. This would go over that, so it needs Supporter.", root.free-board-limit);
                             color: Theme.danger-fg;
                             font-family: Fonts.sans;
                             font-size: Type.base;
@@ -948,6 +1011,24 @@ export component SettingsPage inherits Window {
 
                 FormSection {
                     title: @tr("Privacy");
+                    SettingRow {
+                        title: @tr("Clear the clipboard after copying a sensitive item");
+                        description: @tr("Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead.");
+                        NumberStepper {
+                            label: @tr("Clipboard clear time");
+                            decrease-label: @tr("Clear the clipboard sooner");
+                            increase-label: @tr("Clear the clipboard later");
+                            unit: @tr("s");
+                            min: 0;
+                            max: root.clipboard-clear-secs-max;
+                            step: 5;
+                            value: root.clipboard-clear-secs;
+                            stepped(v) => { root.clipboard-clear-secs-chosen(v); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
                     for line in [
                         @tr("Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."),
                         @tr("Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."),
@@ -976,5 +1057,41 @@ export component SettingsPage inherits Window {
         height: self.preferred-height;
         x: (root.width - self.width) / 2;
         y: root.height - self.height - Space.s4;
+    }
+
+    // Last, so it sits on top and traps the pointer.
+    Dialog {
+        title: @tr("Get Supporter");
+        body: @tr("Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions.");
+        open: root.supporter-open;
+        fill: true;
+        dismissed => { root.supporter-open = false; }
+        // The button is off while the dialog is open, so the focus has to come back to it (WCAG 2.4.3).
+        closed => { root.supporter-focus += 1; }
+        accepted => { root.supporter-requested(); root.supporter-open = false; }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: Space.s3;
+            plan-flick := Flickable {
+                // Short windows scroll the table instead of pushing the buttons off the screen.
+                height: min(table.preferred-height, max(Space.s12 * 2, root.height - Space.s12 * 6));
+                content-width: self.width;
+                content-height: table.preferred-height;
+                table := PlanTable { width: plan-flick.content-width; }
+            }
+            HorizontalLayout {
+                spacing: Space.s2;
+                alignment: end;
+                Button {
+                    text: @tr("Close");
+                    clicked => { root.supporter-open = false; }
+                }
+                Button {
+                    text: @tr("Email me");
+                    variant: ButtonVariant.primary;
+                    clicked => { root.supporter-requested(); root.supporter-open = false; }
+                }
+            }
+        }
     }
 }

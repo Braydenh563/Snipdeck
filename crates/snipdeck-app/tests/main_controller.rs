@@ -236,6 +236,84 @@ fn pin_toggles_one_row_or_the_whole_selection_and_the_panel_follows() {
 }
 
 #[test]
+fn duplicate_copies_each_selected_item_next_to_it_unpinned_and_unused() {
+    let mut ctl = pro();
+    let screen = ctl.main_screen();
+    let at = row_of(&screen, "Out of office");
+    let id = match screen.rows[at].key {
+        snipdeck_app::main_window::Key::Item(id) => id,
+        other => panic!("{other:?}"),
+    };
+    ctl.main_action(MainAction::Pin, at);
+    ctl.main_action(MainAction::Use, at).expect("a use");
+    let original = ctl.store().item(id).unwrap();
+    let siblings = ctl.store().items(original.list_id).unwrap();
+    let place = siblings.iter().position(|i| i.id == id).unwrap();
+
+    assert!(ctl.main_action(MainAction::Duplicate, at).is_none());
+
+    let after = ctl.store().items(original.list_id).unwrap();
+    assert_eq!(after.len(), siblings.len() + 1);
+    let copy = &after[place + 1];
+    assert_ne!(copy.id, id);
+    assert_eq!(after[place].id, id, "the original stays put");
+    assert_eq!(copy.title, original.title);
+    assert_eq!(copy.preview, original.preview);
+    assert_eq!(copy.tags, original.tags);
+    assert_eq!(
+        ctl.store().formats(copy.id).unwrap(),
+        ctl.store().formats(id).unwrap()
+    );
+    assert!(original.pinned && original.use_count == 1);
+    assert!(!copy.pinned && copy.use_count == 0 && copy.last_used_at.is_none());
+    assert_eq!(copy.created_at, now());
+}
+
+#[test]
+fn export_list_writes_its_text_items_to_a_dated_file_and_skips_secrets() {
+    let mut ctl = pro();
+    let screen = ctl.main_screen();
+    let code = list_index(&screen, "Code");
+    let dir = tempfile::tempdir().expect("dir");
+
+    let file = ctl.main_export_list(code, dir.path()).expect("a file");
+
+    assert_eq!(file.file_name().unwrap(), "Code-20261017.txt");
+    let text = std::fs::read_to_string(&file).expect("read");
+    assert!(text.starts_with("Code\n\n"), "{text}");
+    let list = ctl.main_screen().lists[code].id;
+    for item in ctl.store().items(list).unwrap() {
+        let body = snipdeck_app::usecase::item_text(ctl.store(), item.id);
+        match (item.sensitive, body) {
+            (false, Ok(Some(body))) => assert!(text.contains(body.trim_end()), "{body}"),
+            (true, Ok(Some(body))) => assert!(!text.contains(body.trim_end()), "secret in file"),
+            _ => {}
+        }
+    }
+    assert!(matches!(
+        message(&ctl.main_screen()),
+        ToastMessage::Exported { .. }
+    ));
+    // A second export the same day does not overwrite the first.
+    let again = ctl.main_export_list(code, dir.path()).expect("a file");
+    assert_eq!(again.file_name().unwrap(), "Code-20261017-2.txt");
+}
+
+#[test]
+fn export_list_that_cannot_be_written_says_so() {
+    let mut ctl = pro();
+    let code = list_index(&ctl.main_screen(), "Code");
+    let dir = tempfile::tempdir().expect("dir");
+    let blocker = dir.path().join("file");
+    std::fs::write(&blocker, "x").expect("write");
+    assert!(
+        ctl.main_export_list(code, &blocker.join("inside"))
+            .is_none()
+    );
+    assert_eq!(message(&ctl.main_screen()), ToastMessage::ExportFailed);
+}
+
+#[test]
 fn move_sends_the_chosen_rows_to_the_end_of_a_list_on_the_open_board() {
     let mut ctl = pro();
     let screen = ctl.main_screen();
@@ -519,6 +597,31 @@ fn the_trash_keeps_things_thirty_days_by_the_injected_clock() {
 // ---- Lists ----------------------------------------------------------------------------------
 
 #[test]
+fn the_new_list_and_new_board_names_start_from_the_words_the_window_layer_gave() {
+    let mut ctl = pro();
+    ctl.set_new_name_bases("Neue Liste", "Neues Board");
+    ctl.main_new_list();
+    assert_eq!(
+        ctl.main_screen().editor.expect("editor").name,
+        "Neue Liste 1"
+    );
+    ctl.main_editor_close();
+    ctl.main_board_menu_open();
+    let new = ctl
+        .main_screen()
+        .board_menu
+        .unwrap()
+        .iter()
+        .position(|e| *e == snipdeck_app::controller::BoardMenuEntry::New)
+        .unwrap();
+    ctl.main_board_menu_activate(new);
+    assert_eq!(
+        ctl.main_screen().editor.expect("editor").name,
+        "Neues Board 1"
+    );
+}
+
+#[test]
 fn a_new_list_opens_the_editor_and_saving_adds_and_opens_it() {
     let mut ctl = pro();
     ctl.main_new_list();
@@ -785,51 +888,55 @@ fn the_last_board_cannot_be_deleted() {
 }
 
 #[test]
-fn free_allows_three_boards_and_a_fourth_says_so() {
+fn free_allows_five_boards_and_a_sixth_says_so() {
     use snipdeck_app::controller::BoardMenuEntry;
     let (mut ctl, _) = rig(Tier::Free);
-    // Two boards in the demo; add the third.
-    let new = menu_index(&mut ctl, &BoardMenuEntry::New);
-    ctl.main_board_menu_activate(new);
-    assert!(ctl.main_screen().editor.is_some());
-    ctl.main_editor_save("Third", None, ListSort::Manual);
-    assert_eq!(ctl.store().boards().unwrap().len(), 3);
+    // Two boards in the demo; add the third, fourth and fifth.
+    for name in ["Third", "Fourth", "Fifth"] {
+        let new = menu_index(&mut ctl, &BoardMenuEntry::New);
+        ctl.main_board_menu_activate(new);
+        assert!(ctl.main_screen().editor.is_some());
+        ctl.main_editor_save(name, None, ListSort::Manual);
+    }
+    assert_eq!(ctl.store().boards().unwrap().len(), 5);
 
     let new = menu_index(&mut ctl, &BoardMenuEntry::New);
     ctl.main_board_menu_activate(new);
     let screen = ctl.main_screen();
-    assert!(screen.editor.is_none(), "no editor for a fourth board");
+    assert!(screen.editor.is_none(), "no editor for a sixth board");
     assert_eq!(message(&screen), ToastMessage::BoardLimit);
-    assert_eq!(ctl.store().boards().unwrap().len(), 3);
+    assert_eq!(ctl.store().boards().unwrap().len(), 5);
 }
 
 #[test]
 fn undo_cannot_bring_a_board_back_past_the_free_limit() {
     use snipdeck_app::controller::BoardMenuEntry;
     let (mut ctl, _) = rig(Tier::Free);
-    let new = menu_index(&mut ctl, &BoardMenuEntry::New);
-    ctl.main_board_menu_activate(new);
-    ctl.main_editor_save("Third", None, ListSort::Manual);
-    // Delete the open board (Third), add another, then try to restore Third from the Trash.
+    for name in ["Third", "Fourth", "Fifth"] {
+        let new = menu_index(&mut ctl, &BoardMenuEntry::New);
+        ctl.main_board_menu_activate(new);
+        ctl.main_editor_save(name, None, ListSort::Manual);
+    }
+    // Delete the open board (Fifth), add another, then try to restore Fifth from the Trash.
     let delete = menu_index(&mut ctl, &BoardMenuEntry::Delete);
     ctl.main_board_menu_activate(delete);
     ctl.main_editor_delete();
-    let third = ctl.store().trashed().unwrap()[0].target;
+    let fifth = ctl.store().trashed().unwrap()[0].target;
     let new = menu_index(&mut ctl, &BoardMenuEntry::New);
     ctl.main_board_menu_activate(new);
     ctl.main_editor_save("Replacement", None, ListSort::Manual);
-    assert_eq!(ctl.store().boards().unwrap().len(), 3);
+    assert_eq!(ctl.store().boards().unwrap().len(), 5);
     ctl.main_open(Section::Trash);
     let at = ctl
         .main_screen()
         .rows
         .iter()
-        .position(|r| Trashable::from(r.key) == third)
+        .position(|r| Trashable::from(r.key) == fifth)
         .unwrap();
     ctl.main_action(MainAction::Restore, at);
     let screen = ctl.main_screen();
     assert_eq!(message(&screen), ToastMessage::BoardLimit);
-    assert_eq!(ctl.store().boards().unwrap().len(), 3, "still three");
+    assert_eq!(ctl.store().boards().unwrap().len(), 5, "still five");
     assert_eq!(screen.counts.trash, 1, "it waits in the Trash");
 }
 

@@ -162,7 +162,7 @@ fn a_new_item_starts_in_the_list_the_origin_shows_with_that_boards_lists_to_choo
         (v.fields.title.as_str(), v.fields.content.as_str()),
         ("", "")
     );
-    assert!(v.prompted_available && v.encryption_available);
+    assert!(v.prompted_available);
     assert!(!v.can_browse, "no file dialog was given");
     assert!(!v.restored);
 
@@ -599,24 +599,23 @@ fn a_free_user_can_still_retitle_a_template_that_already_prompts() {
 }
 
 #[test]
-fn a_free_user_may_mark_an_item_sensitive_but_nothing_is_encrypted() {
-    let mut r = rig(Tier::Free);
-    r.ctl.open_new_item(Origin::Main);
-    let v = view(&r.ctl);
-    assert!(!v.encryption_available);
-    r.ctl.item_editor_save(&EditorInput {
-        sensitive: true,
-        ..typed(&v, "Pin", "1234")
-    });
-    assert!(!r.ctl.item_editor_open());
-    let id = id_of(&r.ctl, "Pin");
-    let item = r.ctl.store().item(id).expect("item");
+fn a_free_user_marking_an_item_sensitive_gets_it_encrypted_like_everyone() {
+    let data = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    let mut ctl = on_disk(Tier::Free, &provider, true, data.path());
+    assert!(!ctl.store().key_ring_exists().expect("ring"));
+    let id = save_sensitive(&mut ctl, "Pin", SECRET);
+    assert!(
+        ctl.store().key_ring_exists().expect("ring"),
+        "the key is made on first use, on Free too"
+    );
+    assert!(ctl.store().is_unlocked());
+    let item = ctl.store().item(id).expect("item");
     assert!(item.sensitive);
     assert_eq!(item.preview, "", "a sensitive item has no preview");
-    assert!(
-        !r.ctl.store().key_ring_exists().expect("ring"),
-        "no key was made"
-    );
+    assert_eq!(text_of(&ctl, id), SECRET, "reads back while unlocked");
+    // The database, its log and the drafts folder never saw the text.
+    assert_no_plaintext(data.path(), &[SECRET.as_bytes()]);
 }
 
 // ---- Editing -----------------------------------------------------------------------------------
@@ -963,6 +962,79 @@ fn a_key_that_will_not_open_is_a_toast_at_start_and_when_opening() {
         "no editor over text that cannot be read"
     );
     assert_eq!(toast(&ctl), ToastMessage::KeyUnavailable);
+}
+
+/// A library as an earlier version left it: a sensitive item stored as plain text, no key ring.
+fn seed_plain_sensitive(data: &Path, title: &str, secret: &str) -> ItemId {
+    let mut store = Store::open(data).expect("store");
+    demo::seed(&mut store, now()).expect("seed");
+    let list = store.all_items().expect("items")[0].list_id;
+    let mut item = Item::new(list, title.into(), ItemKind::Text, now());
+    item.sensitive = true;
+    let text = Content::Inline(Inline::new(secret.as_bytes().to_vec()).expect("inline"));
+    let formats = Formats::new(vec![Format::Text(text)]).expect("formats");
+    store
+        .insert_item(&item, &formats, Placement::Last)
+        .expect("item");
+    assert!(!store.key_ring_exists().expect("ring"));
+    item.id
+}
+
+#[test]
+fn start_up_encrypts_sensitive_items_an_earlier_version_left_in_plain_text() {
+    let data = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    let id = seed_plain_sensitive(data.path(), "Old secret", SECRET);
+    // Free: encryption is on for every plan, so the first start fixes the old item.
+    let mut ctl = on_disk(Tier::Free, &provider, true, data.path());
+    ctl.unlock_library();
+    assert!(ctl.store().key_ring_exists().expect("ring"));
+    assert!(ctl.store().is_unlocked());
+    // So a backup now carries the item (encrypted with the key) instead of leaving it out.
+    assert!(ctl.store().data_key().is_some());
+    assert_eq!(text_of(&ctl, id), SECRET);
+    drop(ctl);
+    assert_no_plaintext(data.path(), &[SECRET.as_bytes()]);
+}
+
+#[test]
+fn start_up_leaves_a_library_without_sensitive_items_without_a_key() {
+    let data = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    {
+        let mut store = Store::open(data.path()).expect("store");
+        let board = snipdeck_core::Board::new(snipdeck_core::Name::new("B").expect("name"), now());
+        snipdeck_store::BoardRepo::insert_board(&mut store, &board, Placement::Last)
+            .expect("board");
+        let list = snipdeck_core::List::new(
+            board.id,
+            snipdeck_core::Name::new("L").expect("name"),
+            now(),
+        );
+        store.insert_list(&list, Placement::Last).expect("list");
+        let item = Item::new(list.id, "Plain".into(), ItemKind::Text, now());
+        let text = Content::Inline(Inline::new(b"visible".to_vec()).expect("inline"));
+        let formats = Formats::new(vec![Format::Text(text)]).expect("formats");
+        store
+            .insert_item(&item, &formats, Placement::Last)
+            .expect("item");
+    }
+    let mut ctl = on_disk(Tier::Free, &provider, true, data.path());
+    ctl.unlock_library();
+    assert!(!ctl.store().key_ring_exists().expect("ring"));
+    assert!(ctl.view().toast.is_none());
+}
+
+#[test]
+fn start_up_without_key_protection_keeps_plain_sensitive_items_and_stays_quiet() {
+    let data = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    let id = seed_plain_sensitive(data.path(), "Old secret", SECRET);
+    let mut ctl = on_disk(Tier::Free, &provider, false, data.path());
+    ctl.unlock_library();
+    assert!(!ctl.store().key_ring_exists().expect("ring"));
+    assert_eq!(text_of(&ctl, id), SECRET, "still readable");
+    assert!(ctl.view().toast.is_none());
 }
 
 // ---- Large text --------------------------------------------------------------------------------

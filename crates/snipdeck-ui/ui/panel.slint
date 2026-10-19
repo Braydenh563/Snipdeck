@@ -34,6 +34,7 @@ import { SearchField } from "components/text_field.slint";
 import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
 import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind, Tooltip } from "components/feedback.slint";
 import { Menu, MenuEntry } from "components/menu.slint";
+import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
 import { IconButton } from "components/icon-button.slint";
 import { Keycap, KeyCombo } from "components/keycap.slint";
 import { DockHandle } from "components/dock-handle.slint";
@@ -184,6 +185,8 @@ export component PanelWindow inherits Window {
     callback recent-deleted(int);
     callback recent-saved(int, int);
     callback add-list-requested();
+    callback new-item-requested();
+    callback settings-requested();
     callback add-from-clipboard();
     callback pinned-used(int);
     callback pinned-copied(int);
@@ -203,6 +206,14 @@ export component PanelWindow inherits Window {
     in property <string> picker-spoken;
     callback app-menu-activated(int);
     callback app-menu-dismissed();
+    // The paste stack (SPEC 5.1): items marked from the item menu, then "Start stack" makes Paste next walk them.
+    in property <bool> stack-visible: false;
+    in property <bool> stack-running: false;
+    in property <int> stack-count: 0;
+    in property <int> stack-position: 0;
+    in property <string> stack-next-title: "";
+    callback stack-started();
+    callback stack-ended();
     callback item-menu-activated(int);
     callback item-menu-dismissed();
     callback list-menu-requested(int);
@@ -218,6 +229,9 @@ export component PanelWindow inherits Window {
     callback resize-requested(ResizeEdge);
     callback pin-toggled(bool);
     callback toast-undo();
+    callback toast-hover-changed(hovered: bool);
+    // Ctrl+Z: undo the delete the toast offers to undo.
+    callback undo-requested();
     callback close-requested();
     // Pointer down on the header: the host starts the OS window drag.
     callback drag-requested();
@@ -248,6 +262,13 @@ export component PanelWindow inherits Window {
     property <bool> searching: root.query != "";
     // Space is held down to reveal the selected sensitive row.
     property <bool> held-reveal: false;
+    // The host hid the text again without a key release (the window lost the focus while Space was
+    // held, Alt+Tab): the key is no longer held, so the next press must reveal again.
+    changed revealed-index => {
+        if (self.revealed-index < 0) {
+            self.held-reveal = false;
+        }
+    }
     property <bool> no-lists: root.tabs.length == 0;
     property <int> sel: root.rows.length == 0 ? -1 : min(max(root.selected-index, 0), root.rows.length - 1);
     property <int> used-index: -1;
@@ -585,6 +606,27 @@ export component PanelWindow inherits Window {
                         root.commands-requested();
                         return accept;
                     }
+                    if (event.text == "n" || event.text == "N") {
+                        if (event.modifiers.shift) {
+                            root.add-list-requested();
+                        } else {
+                            root.new-item-requested();
+                        }
+                        return accept;
+                    }
+                    if (event.text == ",") {
+                        root.settings-requested();
+                        return accept;
+                    }
+                    if ((event.text == "w" || event.text == "W") && !event.modifiers.shift) {
+                        root.close-requested();
+                        return accept;
+                    }
+                    // Typed text in the search field undoes itself; with an empty field Ctrl+Z is the toast's Undo.
+                    if ((event.text == "z" || event.text == "Z") && !event.modifiers.shift && root.query == "") {
+                        root.undo-requested();
+                        return accept;
+                    }
                     if (event.text == "/") {
                         root.shortcuts-requested();
                         return accept;
@@ -605,6 +647,8 @@ export component PanelWindow inherits Window {
                 if (event.text == Key.Escape) {
                     if (root.searching) {
                         root.clear-query();
+                    } else if (root.stack-visible) {
+                        root.stack-ended();
                     } else {
                         root.close-requested();
                     }
@@ -1047,6 +1091,47 @@ export component PanelWindow inherits Window {
                         x: (parent.width - self.width) / 2;
                         y: parent.height - self.height - Space.s2;
                         undo => { root.toast-undo(); }
+                        hover-changed(h) => { root.toast-hover-changed(h); }
+                    }
+                }
+
+                // ---- Paste stack: the marked items, and Start / End ---------------------------------------
+                if root.stack-visible: Rectangle {
+                    height: max(Space.s8, Type.line-sm + Space.s3);
+                    background: Theme.accent-subtle;
+                    accessible-role: AccessibleRole.text;
+                    accessible-label: root.stack-running
+                        ? @tr("Paste stack, item {} of {}, next: {}", root.stack-position + 1, root.stack-count, root.stack-next-title)
+                        : @tr("Paste stack, {} marked", root.stack-count);
+                    HorizontalLayout {
+                        padding-left: Space.s3;
+                        padding-right: Space.s2;
+                        spacing: Space.s2;
+                        Text {
+                            horizontal-stretch: 1;
+                            text: root.stack-running
+                                ? @tr("{} of {} · next: {}", root.stack-position + 1, root.stack-count, root.stack-next-title)
+                                : @tr("Paste stack: {} marked", root.stack-count);
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            color: Theme.accent-text;
+                            vertical-alignment: center;
+                            overflow: elide;
+                            accessible-role: AccessibleRole.none;
+                        }
+                        if !root.stack-running: Button {
+                            text: @tr("Start stack");
+                            size: ButtonSize.sm;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.stack-started(); }
+                        }
+                        Button {
+                            text: root.stack-running ? @tr("End stack") : @tr("Clear");
+                            variant: ButtonVariant.ghost;
+                            size: ButtonSize.sm;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.stack-ended(); }
+                        }
                     }
                 }
 
@@ -1116,7 +1201,7 @@ export component PanelWindow inherits Window {
                                 font-size: Type.sm;
                                 color: Theme.text-secondary;
                                 vertical-alignment: center;
-                                accessible-role: AccessibleRole.none;
+                                accessible-role: AccessibleRole.text;
                             }
                         }
                     }

@@ -451,7 +451,7 @@ mod tests {
         assert_eq!(row.app, "Notepad");
         assert_eq!(row.age_minutes, 5);
         // A clock that went backwards never shows a negative age.
-        let earlier = now() - Duration::from_secs(60);
+        let earlier = now() - Duration::from_mins(1);
         assert_eq!(row_view(&entry, earlier).age_minutes, 0);
     }
 

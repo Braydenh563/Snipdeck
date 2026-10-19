@@ -7,7 +7,7 @@
 //! is saved or the changes are discarded.
 //!
 //! **A sensitive item never gets a draft.** A draft is plain text on disk, and the point of a
-//! sensitive item is that its content is not (encrypted at rest with Pro, masked on Free). The
+//! sensitive item is that its content is not (encrypted at rest with Supporter, masked on Free). The
 //! editor therefore neither writes a draft while "Sensitive item" is on nor keeps one it wrote
 //! before the switch was turned on: see [`Drafts::clear`].
 //!

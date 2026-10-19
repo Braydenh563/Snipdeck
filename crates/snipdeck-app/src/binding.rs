@@ -14,7 +14,7 @@ use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use snipdeck_core::{ItemKind, UseMode};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
-    system_look::{Rgb, SystemLook},
+    system_look::SystemLook,
     tray::TrayEvent,
 };
 use snipdeck_ui as ui;
@@ -477,6 +477,8 @@ where
         wire_effects!(on_item_menu_activated, |ctl, i| ctl
             .choose_item_menu(index(i)));
         wire!(on_item_menu_dismissed, |ctl| ctl.close_item_menu());
+        wire!(on_stack_started, |ctl| ctl.start_stack());
+        wire!(on_stack_ended, |ctl| ctl.end_stack());
         wire!(on_list_menu_requested, |ctl, i| ctl
             .open_list_menu(index(i)));
         wire_effects!(on_list_menu_activated, |ctl, i| ctl
@@ -517,6 +519,13 @@ where
         wire_effects!(on_rename_requested, |ctl, i| ctl.rename_row(index(i)));
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.toast_action());
+        wire!(on_undo_requested, |ctl| ctl.main_undo());
+        wire_effects!(on_new_item_requested, |_ctl| vec![Effect::NewItem]);
+        wire_effects!(on_settings_requested, |_ctl| vec![Effect::OpenSettings]);
+        {
+            let core = Rc::clone(&core);
+            window.on_toast_hover_changed(move |on| core.controller.borrow_mut().toast_hover(on));
+        }
         wire_effects!(on_resize_requested, |ctl, edge| ctl.resize(edge_of(edge)));
         wire_effects!(on_handle_hovered, |ctl, on| ctl
             .dock_event(DockEvent::HandleHover(on)));
@@ -743,17 +752,24 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
     }
-    if differs(&|p| p.high_contrast == view.high_contrast) {
-        let look = window.global::<ui::SystemLook<'_>>();
-        look.set_high_contrast(view.high_contrast.is_some());
-        if let Some(hc) = &view.high_contrast {
-            let color = |c: Rgb| slint::Color::from_rgb_u8(c.r, c.g, c.b);
-            look.set_hc_window(color(hc.window));
-            look.set_hc_window_text(color(hc.window_text));
-            look.set_hc_highlight(color(hc.highlight));
-            look.set_hc_highlight_text(color(hc.highlight_text));
-            look.set_hc_gray_text(color(hc.gray_text));
-        }
+    if differs(&|p| {
+        (p.high_contrast, p.accent, p.reduced_motion)
+            == (view.high_contrast, view.accent, view.reduced_motion)
+    }) {
+        crate::popup_window::set_look_globals(
+            &window.global::<ui::SystemLook<'_>>(),
+            view.high_contrast.as_ref(),
+            view.accent.as_ref(),
+            view.reduced_motion,
+        );
+    }
+    if differs(&|p| p.stack == view.stack) {
+        window.set_stack_visible(view.stack.is_some());
+        let stack = view.stack.clone().unwrap_or_default();
+        window.set_stack_running(stack.running);
+        window.set_stack_count(to_i32(stack.count));
+        window.set_stack_position(to_i32(stack.position));
+        window.set_stack_next_title(stack.next_title.as_str().into());
     }
     if differs(&|p| p.board_name == view.board_name) {
         window.set_board_name(view.board_name.as_str().into());
@@ -805,6 +821,10 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     }
     if window.get_topmost() != view.topmost {
         window.set_topmost(view.topmost);
+        if !view.topmost {
+            // winit's step-down also raises the Panel above Main: put it back behind it.
+            crate::native_window::settle_behind_active(window);
+        }
     }
     if differs(&|p| p.footer == view.footer) {
         let (app, title) = match &view.footer {

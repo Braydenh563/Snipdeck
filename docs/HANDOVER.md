@@ -9,10 +9,14 @@ Next, in order: CI green on PR #5 -> translations pass for ~80 new strings per l
 
 ## Parallel work (orchestration ledger, 2026-10-19 14:25)
 Hub = this session (`claude/compassionate-pascal-pod8ux`, PR #5). It owns the release branch, merges, `.po/.pot`, `CODEMAP.md`, `HANDOVER.md`, licence/Supporter wording, goldens (D1).
-- Wave 3a cloud session `session_01Haxw5UhdjTPvNo4KAUcPWG`, branch `claude/v1-wave3a`: B3, B6, B9, B13 done -> PR #6 (hub merges). It correctly refuses extra work sent by message (no owner authority), so follow-up queues go to NEW sessions whose first prompt carries the task.
+- 327d145 merged 3b B5+B7 (gate ok, app/deck/panel tests ok). C3 agent running in wt-c3. 3b on B11+C4; 3a on C2; 3c on folder picker.
+- Wave 3a cloud session `session_01Haxw5UhdjTPvNo4KAUcPWG`, branch `claude/v1-wave3a`: B3, B6, B9, B13 done -> PR #6 (hub merges). It correctly refuses extra work sent by message (no owner authority), so follow-up queues go to NEW sessions whose first prompt carries the task. Owner (16:0x) is authorising the sessions directly: 3a next = C5, C6, C2 (after #6 merges).
 - Wave 3c cloud session `session_01U6UTKpv5YUhk3MdMBGxHoh`, branch `claude/v1-wave3c` (started 16:00): B1, B2, B12, C1.
-- Wave 3b cloud session `session_016pPMHPMEKcG9VuaY2dcBbm`, branch `claude/v1-wave3b`: B4, B8, B10, B14 -> PR. When it opens its PR, start wave 3d (new session) for B5, B7 + L7, B11, C4.
-- Hub local agents (max 3 + Haiku; one cargo user): C8/C9 + free encryption (finishing), C7 done (58e0d1e), Opus review of merges; next translations (Haiku), C5 accent, C3 master password, C2 paste stack, C6 edge dock, B15.
+- Wave 3b cloud session `session_016pPMHPMEKcG9VuaY2dcBbm`, branch `claude/v1-wave3b`: B4, B8, B10, B14 -> PR. Next (owner authorising): B5, B7 + L7, B11, C4 on the same branch.
+- Landed on the release branch (19 Oct): wave 3a PR #6 (B3, B6, B9, B13) as 49d7be3; review-fixes-2 (11 Opus findings) as f38375b + adb9fba (rustdoc private links fixed); C8/C9 Supporter rename, 5 free boards, free encryption, Get Supporter dialog, plan table (662b886, fad6d50, 6d2500e).
+- Open PRs into the release branch: #7 wave 3b (B4, B8, B10, B14), #8 wave 3c part 1 (dry-run import, B2).
+- Hub local agents: hidden-test-fixes (branch claude/hidden-test-fixes; the editors golden binary stops CI's cargo test, hiding 6 editors_logic + 1 panel_logic failures and a search proptest bug: highlight indices out of range for "0\U00011CA9$"), Opus review of C8/C9. Next: translations (Haiku), C3 master password, B15, leftovers L1-L6 and L8.
+- Disk: the container ran out (19 Oct 16:44); keep one target dir per agent, /tmp/target-fix is 9 GB.
 - Cloud PRs target the release branch, never main. Hub merges in landing order (merge commits, no rebase), runs CI, then tells the sessions; they merge the release branch back before their next PR.
 - After all UI items land: D1 goldens once, D2 shots, D3, D5, E1, then F1-F4.
 - Full assignment of the V1 ship list (every open item has an owner):

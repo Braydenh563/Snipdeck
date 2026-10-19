@@ -7,6 +7,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid ".snipdeck file"
+msgstr ""
+
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "Uma imagem PNG. O Snipdeck guarda a própria cópia."
 
@@ -21,6 +24,9 @@ msgstr "Sobre"
 
 msgid "About Snipdeck"
 msgstr "Sobre o Snipdeck"
+
+msgid "Accent colour"
+msgstr ""
 
 msgid "Actions"
 msgstr "Ações"
@@ -61,6 +67,9 @@ msgstr "Aparência"
 msgid "Apply the new name"
 msgstr "Aplicar o novo nome"
 
+msgid "As many as you like, of every kind."
+msgstr ""
+
 msgid "Asks for a value each time"
 msgstr "Pede um valor a cada vez"
 
@@ -82,6 +91,9 @@ msgstr "Backups"
 msgid "Backups to keep"
 msgstr "Backups a manter"
 
+msgid "Backups, export, light and dark, 7 languages"
+msgstr ""
+
 msgid "Blue"
 msgstr "Azul"
 
@@ -96,6 +108,9 @@ msgstr "Quadros"
 
 msgid "Bottom edge"
 msgstr "Borda inferior"
+
+msgid "Bring in items from a Snipdeck file or another clipboard manager. You see what will be added before anything is written."
+msgstr ""
 
 msgid "Bring up the panel, open the picker, save the clipboard or paste the next item from any app."
 msgstr "Abra o painel, abra o seletor, salve a área de transferência ou cole o próximo item de qualquer aplicativo."
@@ -142,11 +157,29 @@ msgstr "Escolha um para adicioná-lo ao fim do texto. Ele é preenchido quando v
 msgid "Choose tags"
 msgstr "Escolher etiquetas"
 
+msgid "Choose what to import"
+msgstr ""
+
+msgid "Clear"
+msgstr ""
+
+msgid "Clear recent history"
+msgstr ""
+
 msgid "Clear search"
 msgstr "Limpar pesquisa"
 
 msgid "Clear selection"
 msgstr "Limpar seleção"
+
+msgid "Clear the clipboard after copying a sensitive item"
+msgstr ""
+
+msgid "Clear the clipboard later"
+msgstr ""
+
+msgid "Clear the clipboard sooner"
+msgstr ""
 
 msgid "Clear the search, then close"
 msgstr ""
@@ -157,6 +190,12 @@ msgstr "Limpar o atalho de {}"
 msgid "Click"
 msgstr "Clique"
 
+msgid "Clip {}"
+msgstr ""
+
+msgid "Clipboard clear time"
+msgstr ""
+
 msgid "Close"
 msgstr "Fechar"
 
@@ -165,6 +204,9 @@ msgstr ""
 
 msgid "Close the tag list"
 msgstr "Fechar a lista de etiquetas"
+
+msgid "Close the window"
+msgstr ""
 
 msgid "Code"
 msgstr "Código"
@@ -218,6 +260,12 @@ msgid "Copy the item"
 msgstr ""
 
 msgid "Copy the result"
+msgstr ""
+
+msgid "CopyQ export"
+msgstr ""
+
+msgid "Daily backups, a plain zip export, and your choice of theme."
 msgstr ""
 
 msgid "Dark"
@@ -277,17 +325,29 @@ msgstr "Os trechos excluídos ficam aqui por {} dias antes de serem removidos."
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "Apaga todos os quadros, listas, trechos e backups deste PC. Isso não pode ser desfeito."
 
+msgid "Deletes everything in the Recent inbox now."
+msgstr ""
+
 msgid "Discard"
 msgstr "Descartar"
 
 msgid "Discard your changes?"
 msgstr "Descartar suas alterações?"
 
+msgid "Ditto database"
+msgstr ""
+
 msgid "Dock to"
 msgstr "Acoplar a"
 
+msgid "Dock to a screen edge"
+msgstr ""
+
 msgid "Done"
 msgstr "Concluído"
+
+msgid "Duplicate"
+msgstr ""
 
 msgid "Edit"
 msgstr "Editar"
@@ -316,6 +376,9 @@ msgstr ""
 msgid "Editors"
 msgstr ""
 
+msgid "Email me"
+msgstr ""
+
 msgid "Empty Trash"
 msgstr "Esvaziar lixeira"
 
@@ -325,8 +388,11 @@ msgstr "Esvaziar lixeira…"
 msgid "Empty the Trash?"
 msgstr "Esvaziar a lixeira?"
 
-msgid "Encrypting it on disk is a Pro feature."
-msgstr "A criptografia no disco é um recurso Pro."
+msgid "Encryption on disk"
+msgstr ""
+
+msgid "End stack"
+msgstr ""
 
 msgid "Enter"
 msgstr "Enter"
@@ -343,8 +409,8 @@ msgstr "Apagar a biblioteca…"
 msgid "Escape"
 msgstr "Esc"
 
-msgid "Every Pro feature is on. Thank you."
-msgstr "Todos os recursos Pro estão ativados. Obrigado."
+msgid "Every Supporter feature is on. Thank you."
+msgstr "Todos os recursos de Apoiador estão ativados. Obrigado."
 
 msgid "Everything checks out."
 msgstr "Está tudo certo."
@@ -355,8 +421,14 @@ msgstr "Tudo na lixeira será excluído definitivamente. Isso não pode ser desf
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "Tudo na sua biblioteca será apagado: quadros, listas, trechos, imagens, rascunhos e backups. Exporte antes se quiser uma cópia. Suas configurações e sua licença permanecem."
 
+msgid "Export as text"
+msgstr ""
+
 msgid "Export library"
 msgstr "Exportar a biblioteca"
+
+msgid "Feature"
+msgstr ""
 
 msgid "Fields"
 msgstr "Campos"
@@ -370,11 +442,20 @@ msgstr "Preencher modelo"
 msgid "Filter as you type"
 msgstr ""
 
+msgid "Fixed placeholders filled in when you paste."
+msgstr ""
+
 msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
 msgstr "Fixa o painel em uma borda da tela, no monitor em que ele está. «Flutuante» deixa o painel em qualquer lugar."
 
 msgid "Floating"
 msgstr "Flutuante"
+
+msgid "Fold the Panel into a thin strip."
+msgstr ""
+
+msgid "Folder of .txt and .md files"
+msgstr ""
 
 msgid "Follow Windows"
 msgstr "Seguir o Windows"
@@ -388,8 +469,23 @@ msgstr "Por exemplo, Respostas de e-mail"
 msgid "For example, Work"
 msgstr "Por exemplo, Trabalho"
 
+msgid "Free"
+msgstr ""
+
+msgid "Free and Supporter compared"
+msgstr ""
+
+msgid "Free is fully usable. Supporter pays for convenience and supports the app."
+msgstr ""
+
 msgid "Free plan"
 msgstr "Plano gratuito"
+
+msgid "Get Supporter"
+msgstr ""
+
+msgid "Get Supporter…"
+msgstr ""
 
 msgid "Get started"
 msgstr "Começar"
@@ -424,8 +520,11 @@ msgstr "Ajuda"
 msgid "Help sections"
 msgstr "Seções da ajuda"
 
-msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard 30 seconds after you copy it."
-msgstr "Oculto nas listas até você manter a barra de espaço pressionada, fora do histórico da área de transferência e apagado da área de transferência 30 segundos depois de copiado."
+msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard a little after you copy it (the time is in Settings)."
+msgstr ""
+
+msgid "Hidden on screen and kept out of clipboard history."
+msgstr ""
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "Oculto. Segure a barra de espaço para revelar."
@@ -433,8 +532,14 @@ msgstr "Oculto. Segure a barra de espaço para revelar."
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "Oculto. Abra-o no painel para revelar."
 
+msgid "Hide the Panel"
+msgstr ""
+
 msgid "Hide the panel when it loses focus"
 msgstr "Ocultar o painel ao perder o foco"
+
+msgid "History is paused"
+msgstr ""
 
 msgid "Hover"
 msgstr "Passar o mouse"
@@ -457,8 +562,26 @@ msgstr "Largura em que o painel abre, de {} a {} pixels."
 msgid "Image"
 msgstr "Imagem"
 
+msgid "Import"
+msgstr ""
+
+msgid "Import from {}"
+msgstr ""
+
+msgid "Import from: {}"
+msgstr ""
+
+msgid "Import into your library, see a preview first"
+msgstr ""
+
+msgid "Import…"
+msgstr ""
+
 msgid "In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe."
 msgstr "Nestes programas, o Snipdeck copia em vez de colar. Use o nome do arquivo do programa, por exemplo notepad.exe."
+
+msgid "Included"
+msgstr ""
 
 msgid "Insert"
 msgstr "Colar"
@@ -477,6 +600,12 @@ msgstr "Os trechos são removidos após {} dias."
 
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
 msgstr "Suas listas e {n} trecho serão movidos para a lixeira. Você pode restaurá-los por 30 dias."
+
+msgid "Just now"
+msgstr ""
+
+msgid "Keep a Recent inbox of what you copy"
+msgstr ""
 
 msgid "Keep editing"
 msgstr "Continuar editando"
@@ -541,8 +670,14 @@ msgstr "Nome da lista"
 msgid "Lists"
 msgstr "Listas"
 
+msgid "Lists and items"
+msgstr ""
+
 msgid "Loading"
 msgstr "Carregando"
+
+msgid "Lock your encrypted items behind a password you choose."
+msgstr ""
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Os registros só são gravados quando o Snipdeck fecha de forma inesperada, não têm o conteúdo dos trechos e nunca são enviados a lugar nenhum."
@@ -564,6 +699,9 @@ msgstr "Gerenciar etiquetas…"
 
 msgid "Manual"
 msgstr "Manual"
+
+msgid "Master password"
+msgstr ""
 
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
@@ -673,11 +811,20 @@ msgstr "Nenhuma etiqueta ainda. Adicione uma abaixo."
 msgid "No tags yet. Add tags to an item and they appear here."
 msgstr "Nenhuma etiqueta ainda. Adicione etiquetas a um trecho e elas aparecerão aqui."
 
+msgid "Not included"
+msgstr ""
+
 msgid "Not set"
 msgstr "Não definido"
 
+msgid "Nothing copied yet"
+msgstr ""
+
 msgid "Nothing matches “{}”."
 msgstr "Nada corresponde a “{}”."
+
+msgid "Nothing new to import."
+msgstr ""
 
 msgid "Nothing on this board matches “{}”."
 msgstr "Nada neste quadro corresponde a “{}”."
@@ -697,8 +844,14 @@ msgstr "OK"
 msgid "Off"
 msgstr "Desativado"
 
+msgid "Off by default. Keeps the text you copy, for the last 200 copies or 7 days, whichever is fewer, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
+msgstr ""
+
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "«Desativado» mantém aberto um painel acoplado. Caso contrário, ele recolhe em uma faixa fina, e o atalho do painel também o abre."
+
+msgid "One hotkey turns copied text into an item."
+msgstr ""
 
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "Somente trechos de texto, código, link e modelo podem ser sensíveis."
@@ -736,6 +889,9 @@ msgstr "Abrir a página da Microsoft Store"
 msgid "Open the Picker at your cursor"
 msgstr ""
 
+msgid "Open the clock tab at the left of the Panel's tabs to see what you copied and save it to a list."
+msgstr ""
+
 msgid "Open the picker"
 msgstr "Abrir o seletor"
 
@@ -766,6 +922,9 @@ msgstr "Fora dessa pasta, o Snipdeck só grava a entrada de inicialização do W
 msgid "Panel"
 msgstr ""
 
+msgid "Panel and Picker"
+msgstr ""
+
 msgid "Panel dock"
 msgstr "Acoplamento do painel"
 
@@ -778,8 +937,20 @@ msgstr "Largura do painel"
 msgid "Paste"
 msgstr "Colar"
 
-msgid "Paste a licence key to turn on Pro. The key is checked on this PC and nothing is sent anywhere."
-msgstr "Cole uma chave de licença para ativar o Pro. A chave é verificada neste PC e nada é enviado a lugar nenhum."
+msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
+msgstr "Cole uma chave de licença para ativar o Apoiador. A chave é verificada neste PC e nada é enviado a lugar nenhum."
+
+msgid "Paste stack"
+msgstr ""
+
+msgid "Paste stack, item {} of {}, next: {}"
+msgstr ""
+
+msgid "Paste stack, {} marked"
+msgstr ""
+
+msgid "Paste stack: {} marked"
+msgstr ""
 
 msgid "Paste the Nth result"
 msgstr ""
@@ -791,6 +962,9 @@ msgid "Paste the next item of a stack"
 msgstr ""
 
 msgid "Paste the result"
+msgstr ""
+
+msgid "Paste with a click, or search at your caret."
 msgstr ""
 
 msgid "Pastes into {}"
@@ -807,6 +981,12 @@ msgstr "Caminho do arquivo"
 
 msgid "Pause hotkeys"
 msgstr "Pausar atalhos"
+
+msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included."
+msgstr ""
+
+msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions."
+msgstr ""
 
 msgid "Picker"
 msgstr ""
@@ -859,6 +1039,12 @@ msgstr "Problema"
 msgid "Program to add"
 msgstr "Programa a adicionar"
 
+msgid "Prompt for a value or a choice each time you paste."
+msgstr ""
+
+msgid "Queue several items, then paste them one per hotkey press."
+msgstr ""
+
 msgid "Quick capture"
 msgstr ""
 
@@ -871,11 +1057,26 @@ msgstr "Sair"
 msgid "Recent"
 msgstr "Recentes"
 
+msgid "Recent copies"
+msgstr ""
+
+msgid "Recent copies are in the Panel"
+msgstr ""
+
+msgid "Recent entry actions"
+msgstr ""
+
 msgid "Recently used"
 msgstr "Usados recentemente"
 
 msgid "Red"
 msgstr "Vermelho"
+
+msgid "Reduce motion"
+msgstr ""
+
+msgid "Remove from Recent"
+msgstr ""
 
 msgid "Remove tag {}"
 msgstr "Remover a etiqueta {}"
@@ -904,6 +1105,9 @@ msgstr "As alterações que você não tinha salvo foram restauradas."
 msgid "Results"
 msgstr "Resultados"
 
+msgid "Resume it from the tray icon, then copy some text."
+msgstr ""
+
 msgid "Right edge"
 msgstr "Borda direita"
 
@@ -922,8 +1126,14 @@ msgstr "Salvar"
 msgid "Save from clipboard"
 msgstr "Salvar da área de transferência"
 
+msgid "Save from the clipboard"
+msgstr ""
+
 msgid "Save the clipboard as an item"
 msgstr "Salvar a área de transferência como trecho"
+
+msgid "Save to…"
+msgstr ""
 
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr "Salve seu primeiro trecho ou copie algo e salve-o a partir da área de transferência."
@@ -961,11 +1171,23 @@ msgstr "Resultados da pesquisa"
 msgid "Search snippets"
 msgstr "Pesquisar trechos"
 
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
+msgstr ""
+
 msgid "Select every item"
 msgstr ""
 
 msgid "Sensitive item"
 msgstr "Trecho sensível"
+
+msgid "Sensitive items are encrypted on disk, on every plan."
+msgstr ""
+
+msgid "Sensitive items, masked"
+msgstr ""
+
+msgid "Separate workspaces, such as Work and Personal."
+msgstr ""
 
 msgid "Settings"
 msgstr "Configurações"
@@ -1015,8 +1237,8 @@ msgstr "Snipdeck"
 msgid "Snipdeck (hotkeys paused)"
 msgstr "Snipdeck (atalhos pausados)"
 
-msgid "Snipdeck Pro"
-msgstr "Snipdeck Pro"
+msgid "Snipdeck Supporter"
+msgstr "Snipdeck Apoiador"
 
 msgid "Snipdeck handle, press the Panel hotkey to open"
 msgstr "Alça do Snipdeck, pressione o atalho do painel para abrir"
@@ -1054,6 +1276,9 @@ msgstr "Código-fonte"
 msgid "Space"
 msgstr "Espaço"
 
+msgid "Start stack"
+msgstr ""
+
 msgid "Start with Windows"
 msgstr "Iniciar com o Windows"
 
@@ -1062,6 +1287,9 @@ msgstr "Inicialização"
 
 msgid "Step {} of {}"
 msgstr "Etapa {} de {}"
+
+msgid "Supporter"
+msgstr ""
 
 msgid "Tab"
 msgstr "Tab"
@@ -1090,11 +1318,26 @@ msgstr "Modelo"
 msgid "Template text"
 msgstr "Texto do modelo"
 
+msgid "Templates that ask"
+msgstr ""
+
+msgid "Templates with date, time and cursor"
+msgstr ""
+
 msgid "Text"
 msgstr "Texto"
 
+msgid "Text you copy shows up here for a week. Save the useful ones to a list."
+msgstr ""
+
+msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
+msgstr ""
+
 msgid "The Trash is empty"
 msgstr "A lixeira está vazia"
+
+msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
+msgstr ""
 
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "A chave abre os itens criptografados em exportações que você salvou antes. Se você a esquecer, esses itens nunca mais poderão ser abertos."
@@ -1120,6 +1363,9 @@ msgstr "O relatório contém versões e opções de configuração, nunca os seu
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "Os trechos selecionados serão excluídos definitivamente. Isso não pode ser desfeito."
 
+msgid "The sensitive item \"{}\" cannot be unlocked with this computer's key and was skipped."
+msgstr ""
+
 msgid "The tag is removed from its items. The items themselves stay."
 msgstr "A etiqueta é removida dos seus trechos. Os trechos permanecem."
 
@@ -1143,6 +1389,9 @@ msgstr "Esta demonstração não grava nada no disco, então não há backups."
 
 msgid "This field is required"
 msgstr "Este campo é obrigatório"
+
+msgid "This file was made by a newer Snipdeck (format {}), so anything this version does not know was left out."
+msgstr ""
 
 msgid "This list is empty"
 msgstr "Esta lista está vazia"
@@ -1183,11 +1432,17 @@ msgstr "Ative o histórico da área de transferência em Configurações para re
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "Se você desativar, fechar o painel ou a janela principal encerra o Snipdeck."
 
+msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
+msgstr ""
+
 msgid "Type a command"
 msgstr ""
 
 msgid "Type {} to confirm"
 msgstr "Digite {} para confirmar"
+
+msgid "Undo the delete"
+msgstr ""
 
 msgid "Unpin"
 msgstr "Desafixar"
@@ -1246,11 +1501,23 @@ msgstr "Onde o painel fica"
 msgid "Where the text cursor lands after pasting"
 msgstr "Onde o cursor de texto fica após colar"
 
+msgid "Will not be imported"
+msgstr ""
+
 msgid "Window behaviour"
 msgstr "Comportamento da janela"
 
 msgid "Windows"
 msgstr "Windows"
+
+msgid "Windows accent"
+msgstr ""
+
+msgid "Windows accent follows your Windows personalisation."
+msgstr ""
+
+msgid "You would have {} boards, and the Free plan includes {}."
+msgstr ""
 
 msgid "Your data"
 msgstr "Seus dados"
@@ -1268,6 +1535,9 @@ msgid "add create folder group"
 msgstr ""
 
 msgid "add create snippet note write"
+msgstr ""
+
+msgid "and {} more"
 msgstr ""
 
 msgid "change modify rename"
@@ -1336,7 +1606,16 @@ msgstr "px"
 msgid "quick find paste palette"
 msgstr ""
 
+msgid "s"
+msgstr ""
+
 msgid "tutorial intro onboarding basics learn"
+msgstr ""
+
+msgid "unlimited"
+msgstr ""
+
+msgid "up to {}"
 msgstr ""
 
 msgid "version licence update"
@@ -1357,14 +1636,68 @@ msgstr "{n} trecho"
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgstr "{n} trecho também será movido para a lixeira. Você pode restaurá-lo por 30 dias."
 
-msgid "{} (Pro)"
-msgstr "{} (Pro)"
+msgid "{} (Supporter)"
+msgstr "{} (Apoiador)"
+
+msgid "{} already in your library, skipped"
+msgstr ""
+
+msgid "{} could not be read and was skipped."
+msgstr ""
+
+msgid "{} d ago"
+msgstr ""
+
+msgid "{} file in this archive is not known to this version and was left out."
+msgstr ""
 
 msgid "{} found"
+msgstr ""
+
+msgid "{} h ago"
+msgstr ""
+
+msgid "{} is a link to somewhere else and was not followed."
+msgstr ""
+
+msgid "{} is empty and was skipped."
+msgstr ""
+
+msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
+msgstr ""
+
+msgid "{} is {}, over the 5 MB limit for text, and was skipped."
+msgstr ""
+
+msgid "{} item in {} list will be added"
+msgstr ""
+
+msgid "{} item that is not text (a picture or file) was skipped."
+msgstr ""
+
+msgid "{} min ago"
+msgstr ""
+
+msgid "{} new board will be made"
 msgstr ""
 
 msgid "{} of the checks need a look."
 msgstr "{} das verificações precisam de atenção."
 
+msgid "{} of {} · next: {}"
+msgstr ""
+
+msgid "{} picture or file that no snippet uses was left out."
+msgstr ""
+
 msgid "{} selected"
 msgstr "{} selecionado(s)"
+
+msgid "{} sensitive item is encrypted with a key this library does not have and was skipped."
+msgstr ""
+
+msgid "{} sensitive item was left out when this file was made."
+msgstr ""
+
+msgid "{}, {} of {}"
+msgstr ""

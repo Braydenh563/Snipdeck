@@ -2,7 +2,7 @@
 //! turns the window's callbacks into Back, Next and Skip (the controller's `tour_*` methods) or
 //! into the same changes Settings makes (a recorded shortcut, the dock edge, the taskbar and
 //! tray switches, Start with Windows). Those go through [`SettingsHost`] like Settings, so tests
-//! run them against fakes, and share Settings' logic: [`with_hotkey`], [`try_register`] and the
+//! run them against fakes, and share Settings' logic: [`with_hotkey`], `try_register` and the
 //! dock-edge mapping.
 //!
 //! Like Settings, the window is made the first time it is asked for and then reused.
@@ -122,7 +122,12 @@ where
         let settings = controller.settings();
         let look = controller.settings_look();
         window.set_dark(look.dark);
-        set_look(&window, look.high_contrast.as_ref());
+        set_look(
+            &window,
+            look.high_contrast.as_ref(),
+            controller.accent().as_ref(),
+            look.reduce_motion,
+        );
         let step = controller.tour_step().unwrap_or_default();
         window.set_step(to_i32(step.index()));
         window.set_step_count(to_i32(TourStep::ALL.len()));

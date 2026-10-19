@@ -21,11 +21,12 @@ use slint::{
 use snipdeck_core::{ItemKind, ListAccent, ListSort};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
-    system_look::{HighContrast, Rgb},
+    system_look::HighContrast,
 };
 use snipdeck_ui as ui;
 
 use crate::{
+    accent::Accent,
     binding::{
         Loggable, Shown, arm_toast, extension_of, index, item_kind_of, model, redraw_all,
         register_redraw, to_i32,
@@ -40,6 +41,7 @@ use crate::{
         fit_logical, fit_to_screen, place_of, place_over_owner, restore_place, size_before_show,
     },
     palette::list_color,
+    popup_window::set_look_globals,
     wording,
 };
 
@@ -182,7 +184,14 @@ where
 {
     /// Runs `f` on the controller, then redraws every window.
     fn act<R>(self: &Rc<Self>, f: impl FnOnce(&mut Controller<S, C, K, T>) -> R) -> R {
-        let result = f(&mut self.controller.borrow_mut());
+        let mut ctl = self.controller.borrow_mut();
+        // The editors for a new list or board start from words in the language shown now.
+        if let Some(window) = self.window.upgrade() {
+            let words = window.global::<ui::CommandTexts<'_>>();
+            ctl.set_new_name_bases(&words.get_new_list_name(), &words.get_new_board_name());
+        }
+        let result = f(&mut ctl);
+        drop(ctl);
         redraw_all();
         result
     }
@@ -207,16 +216,19 @@ where
         let Some(command) = crate::command_binding::command_of(id) else {
             return;
         };
-        if command == crate::commands::Command::Search {
-            if let Some(window) = self.window.upgrade() {
-                window.invoke_focus_search();
+        match command {
+            crate::commands::Command::Search => {
+                if let Some(window) = self.window.upgrade() {
+                    window.invoke_focus_search();
+                }
+                return;
             }
-            return;
-        }
-        // The tour has its own window: the same opener as Help's "Show the welcome tour again".
-        if command == crate::commands::Command::Tour {
-            crate::onboarding_binding::request_open();
-            return;
+            // The tour has its own window: the same opener as Help's "Show the welcome tour again".
+            crate::commands::Command::Tour => {
+                crate::onboarding_binding::request_open();
+                return;
+            }
+            _ => {}
         }
         let cursor = self.shown.borrow().as_ref().map_or(0, |s| s.cursor);
         self.act(|ctl| ctl.run_command(command, cursor));
@@ -549,6 +561,10 @@ where
         wire!(on_add_list_requested, |ctl| ctl.main_new_list());
         wire!(on_list_edit_requested, |ctl, i| ctl
             .main_edit_list(index(i)));
+        wire!(on_list_export_requested, |ctl, i| ctl.main_export_list(
+            index(i),
+            &crate::paths::documents_folder().unwrap_or_else(std::env::temp_dir)
+        ));
         wire!(on_list_delete_confirmed, |ctl, i| ctl
             .main_delete_list(index(i)));
         wire!(on_tag_delete_confirmed, |ctl, i| ctl
@@ -559,14 +575,36 @@ where
             .main_board_menu_activate(index(i)));
         wire!(on_board_menu_dismissed, |ctl| ctl.main_board_menu_close());
         wire!(on_toast_undo, |ctl| ctl.toast_action());
-        window.on_settings_requested(crate::settings_binding::request_open);
+        wire!(on_undo_requested, |ctl| ctl.main_undo());
+        {
+            let core = Rc::clone(&core);
+            window.on_toast_hover_changed(move |on| core.controller.borrow_mut().toast_hover(on));
+        }
+        {
+            // Ctrl+W is the X button: the same decision between hiding and quitting.
+            let weak = window.as_weak();
+            window.on_close_requested(move || {
+                if let Some(window) = weak.upgrade() {
+                    window
+                        .window()
+                        .dispatch_event(slint::platform::WindowEvent::CloseRequested);
+                }
+            });
+        }
+        window.on_settings_requested(|| {
+            // Settings opens over the Main window the user is in.
+            crate::native_window::note_opener(crate::native_window::Surface::Main);
+            crate::settings_binding::request_open();
+        });
         wire!(on_panel_requested, |ctl| ctl.main_show_panel());
-        wire!(on_help_requested, |ctl, i| ctl.main_open_help(match i {
-            0 => HelpTopic::Troubleshoot,
-            2 => HelpTopic::About,
-            4 => HelpTopic::Shortcuts,
-            _ => HelpTopic::Guide,
-        }));
+        wire!(on_help_requested, |ctl, page| ctl.main_open_help(
+            match page {
+                ui::HelpPage::Troubleshoot => HelpTopic::Troubleshoot,
+                ui::HelpPage::Guide => HelpTopic::Guide,
+                ui::HelpPage::About => HelpTopic::About,
+                ui::HelpPage::Shortcuts => HelpTopic::Shortcuts,
+            }
+        ));
         {
             let core = Rc::clone(&core);
             window.on_palette_opened(move || core.fill_palette(""));
@@ -579,6 +617,8 @@ where
             let core = Rc::clone(&core);
             window.on_command_requested(move |id| {
                 crate::trace!("callback main command_requested ({id})");
+                // A command that opens a window (Settings, an editor, the Picker) opens over Main.
+                crate::native_window::note_opener(crate::native_window::Surface::Main);
                 core.run_command(id);
             });
         }
@@ -833,8 +873,8 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     if differs(&|p| p.dark == screen.dark) {
         window.set_dark(screen.dark);
     }
-    if differs(&|p| p.high_contrast == screen.high_contrast) {
-        set_look(window, screen.high_contrast.as_ref());
+    if differs(&|p| look_key(p) == look_key(screen)) {
+        apply_look(window, screen);
     }
     if differs(&|p| p.panel_hotkey == screen.panel_hotkey) {
         window.set_panel_hotkey(screen.panel_hotkey.as_str().into());
@@ -932,22 +972,27 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     }
 }
 
-/// The Windows high-contrast colours, or off.
-pub(crate) fn set_look<C>(component: &C, hc: Option<&HighContrast>)
-where
+/// The Windows high-contrast colours, the accent and whether motion is reduced.
+pub(crate) fn set_look<C>(
+    component: &C,
+    hc: Option<&HighContrast>,
+    accent: Option<&Accent>,
+    reduced_motion: bool,
+) where
     C: ComponentHandle,
     for<'a> ui::SystemLook<'a>: slint::Global<'a, C>,
 {
-    let look = component.global::<ui::SystemLook<'_>>();
-    look.set_high_contrast(hc.is_some());
-    if let Some(hc) = hc {
-        let color = |c: Rgb| slint::Color::from_rgb_u8(c.r, c.g, c.b);
-        look.set_hc_window(color(hc.window));
-        look.set_hc_window_text(color(hc.window_text));
-        look.set_hc_highlight(color(hc.highlight));
-        look.set_hc_highlight_text(color(hc.highlight_text));
-        look.set_hc_gray_text(color(hc.gray_text));
-    }
+    set_look_globals(
+        &component.global::<ui::SystemLook<'_>>(),
+        hc,
+        accent,
+        reduced_motion,
+    );
+}
+
+/// What `apply_look` reads, to tell whether the window's look changed.
+fn look_key(screen: &MainScreen) -> (Option<HighContrast>, Option<Accent>, bool) {
+    (screen.high_contrast, screen.accent, screen.reduced_motion)
 }
 
 fn apply_look<C>(component: &C, screen: &MainScreen)
@@ -955,7 +1000,12 @@ where
     C: ComponentHandle,
     for<'a> ui::SystemLook<'a>: slint::Global<'a, C>,
 {
-    set_look(component, screen.high_contrast.as_ref());
+    set_look(
+        component,
+        screen.high_contrast.as_ref(),
+        screen.accent.as_ref(),
+        screen.reduced_motion,
+    );
 }
 
 fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
@@ -1128,6 +1178,7 @@ fn action_of(action: ui::ItemAction) -> MainAction {
         ui::ItemAction::Copy => MainAction::Copy,
         ui::ItemAction::Edit => MainAction::Edit,
         ui::ItemAction::Pin => MainAction::Pin,
+        ui::ItemAction::Duplicate => MainAction::Duplicate,
         ui::ItemAction::Move => MainAction::Move,
         ui::ItemAction::Tag => MainAction::Tag,
         ui::ItemAction::Delete => MainAction::Delete,
@@ -1149,7 +1200,8 @@ loggable_debug!(
     ui::MainSection,
     ui::MainView,
     ui::SelectMode,
-    ui::ItemAction
+    ui::ItemAction,
+    ui::HelpPage
 );
 
 #[cfg(test)]

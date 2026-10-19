@@ -9,10 +9,24 @@ import "../fonts/IBMPlexSans-SemiBold.ttf";
 import "../fonts/IBMPlexMono-Regular.ttf";
 import "../fonts/IBMPlexMono-Medium.ttf";
 
+// The accent tokens of one theme, for a user-chosen accent other than the built-in blue.
+export struct AccentSteps {
+    default: color,
+    hover: color,
+    pressed: color,
+    text: color,
+    subtle: color,
+    focus: color,
+}
+
 // Everything the platform layer decides. Set from Rust on start-up and on every system change.
 export global SystemLook {
     in property <bool> high-contrast: false;
     in property <bool> reduced-motion: false;
+    // The user's accent (Settings > Appearance). While `accent-custom` is off the palette's blue is used.
+    in property <bool> accent-custom: false;
+    in property <AccentSteps> accent-light;
+    in property <AccentSteps> accent-dark;
     // Windows "Text size" (Settings > Accessibility), 1.0 ..= 2.25. DPI is handled by Slint's scale factor.
     in property <float> text-scale: 1.0;
     // System colours (GetSysColor), used only while `high-contrast` is on.
@@ -96,13 +110,15 @@ export global Motion {
 // Semantic tokens, swapped for system colours in high-contrast mode (DESIGN.md §8).
 export global Theme {
     property <bool> hc: SystemLook.high-contrast;
+    property <bool> custom: SystemLook.accent-custom;
+    property <AccentSteps> steps: Palette.dark ? SystemLook.accent-dark : SystemLook.accent-light;
     out property <bool> dark: Palette.dark;
 
     out property <color> bg-app: hc ? SystemLook.hc-window : Palette.bg-app;
     out property <color> bg-surface: hc ? SystemLook.hc-window : Palette.bg-surface;
     out property <color> bg-sunken: hc ? SystemLook.hc-window : Palette.bg-sunken;
     out property <color> bg-hover: hc ? SystemLook.hc-window : Palette.bg-hover;
-    out property <color> bg-selected: hc ? SystemLook.hc-highlight : Palette.bg-selected;
+    out property <color> bg-selected: hc ? SystemLook.hc-highlight : custom ? steps.subtle : Palette.bg-selected;
     out property <color> bg-overlay: hc ? SystemLook.hc-window : Palette.bg-overlay;
     // The highlighted row of a menu or popover (`bg-hover` equals `bg-overlay` in dark).
     out property <color> bg-overlay-hover: hc ? SystemLook.hc-window : Palette.bg-overlay-hover;
@@ -117,18 +133,18 @@ export global Theme {
     // Secondary text and accent glyphs drawn on a `bg-selected` row. In high contrast that fill is the system
     // highlight, which is also `accent-text` and close to `text-secondary` (window text): both would vanish.
     out property <color> text-secondary-on-selected: hc ? SystemLook.hc-highlight-text : Palette.text-secondary;
-    out property <color> accent-on-selected: hc ? SystemLook.hc-highlight-text : Palette.accent-text;
+    out property <color> accent-on-selected: hc ? SystemLook.hc-highlight-text : custom ? steps.text : Palette.accent-text;
     out property <color> text-on-accent: hc ? SystemLook.hc-highlight-text : Palette.text-on-accent;
     out property <color> ink: hc ? SystemLook.hc-window-text : Palette.ink-default;
     out property <color> ink-hover: hc ? SystemLook.hc-highlight : Palette.ink-hover;
     out property <color> ink-pressed: hc ? SystemLook.hc-highlight : Palette.ink-pressed;
     out property <color> text-on-ink: hc ? SystemLook.hc-window : Palette.text-on-ink;
-    out property <color> accent: hc ? SystemLook.hc-highlight : Palette.accent-default;
-    out property <color> accent-hover: hc ? SystemLook.hc-highlight : Palette.accent-hover;
-    out property <color> accent-pressed: hc ? SystemLook.hc-highlight : Palette.accent-pressed;
-    out property <color> accent-text: hc ? SystemLook.hc-highlight : Palette.accent-text;
-    out property <color> accent-subtle: hc ? SystemLook.hc-window : Palette.accent-subtle;
-    out property <color> focus-ring: hc ? SystemLook.hc-highlight : Palette.focus-ring;
+    out property <color> accent: hc ? SystemLook.hc-highlight : custom ? steps.default : Palette.accent-default;
+    out property <color> accent-hover: hc ? SystemLook.hc-highlight : custom ? steps.hover : Palette.accent-hover;
+    out property <color> accent-pressed: hc ? SystemLook.hc-highlight : custom ? steps.pressed : Palette.accent-pressed;
+    out property <color> accent-text: hc ? SystemLook.hc-highlight : custom ? steps.text : Palette.accent-text;
+    out property <color> accent-subtle: hc ? SystemLook.hc-window : custom ? steps.subtle : Palette.accent-subtle;
+    out property <color> focus-ring: hc ? SystemLook.hc-highlight : custom ? steps.focus : Palette.focus-ring;
     out property <color> success-fg: hc ? SystemLook.hc-window-text : Palette.success-fg;
     out property <color> success-bg: hc ? SystemLook.hc-window : Palette.success-bg;
     out property <color> warning-fg: hc ? SystemLook.hc-window-text : Palette.warning-fg;

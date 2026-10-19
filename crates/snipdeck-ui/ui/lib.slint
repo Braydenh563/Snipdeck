@@ -2,7 +2,7 @@
 // `components.slint` so no unused-export warnings fire; only globals the Rust side sets and the
 // gallery windows (rendered by the screenshot tests) are exported.
 import { Button } from "components.slint";
-export { SystemLook, Palette, Fonts } from "theme.slint";
+export { SystemLook, Palette, Fonts, AccentSteps } from "theme.slint";
 
 export { ButtonGallery } from "gallery/buttons.slint";
 export { I18nProbe } from "gallery/i18n_probe.slint";
@@ -23,7 +23,8 @@ export { Icons } from "icons.slint";
 export { ItemKind, ItemCardVariant, ToastKind, ToastPhase, MenuEntry, PinnedItem } from "components.slint";
 
 export { CommandTexts, CommandText } from "command_texts.slint";
-export { MainWindow, MainRow, MainSection, MainView, SelectMode, ItemAction, ChoiceEntry, PaletteRow } from "main_window.slint";
+export { PlanTexts, PlanRow } from "components.slint";
+export { MainWindow, MainRow, MainSection, MainView, SelectMode, ItemAction, HelpPage, ChoiceEntry, PaletteRow } from "main_window.slint";
 
 export { ItemEditor, ListEditor, BoardEditor, TagManager } from "editors.slint";
 export { SettingsPage, HotkeySetting, BackupRow } from "settings.slint";

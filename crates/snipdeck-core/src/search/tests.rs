@@ -295,6 +295,22 @@ fn results_are_sorted_by_score_then_given_order() {
     }
 }
 
+/// Found by the property test below (seed in `proptest-regressions/search/tests.txt`): the
+/// highlight indices must be positions in the title's characters, whatever the matcher counts.
+#[test]
+fn highlight_indices_stay_inside_the_title() {
+    let items = [item("0\u{11CA9}$", "0\u{11CA9}$")];
+    let index = SearchIndex::new(&items);
+    let hits = index.query("$", 1);
+    let count = u32::try_from(items[0].title.chars().count()).unwrap();
+    assert_eq!(hits.len(), 1);
+    assert!(
+        hits[0].title_indices.iter().all(|&i| i < count),
+        "{:?}",
+        hits[0].title_indices
+    );
+}
+
 proptest! {
     #[test]
     fn queries_never_panic_and_respect_the_limit(

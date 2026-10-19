@@ -28,7 +28,7 @@ pub enum LicenceProblem {
     BadSignature,
     /// The key comes from a newer Snipdeck.
     NewerFormat,
-    /// The key is genuine but not for Pro.
+    /// The key is genuine but not for Supporter.
     WrongTier,
     /// The key is good but could not be saved next to the library.
     NotSaved,
@@ -63,7 +63,7 @@ pub enum ToastMessage {
     CopiedTargetGone,
     /// "Couldn't reach the clipboard. Another app may be using it."
     ClipboardBusy,
-    /// "This item uses a Pro feature."
+    /// "This item uses a Supporter feature."
     NeedsPro(Feature),
     /// "This template can't be read. Open it to fix it."
     TemplateBroken,
@@ -145,14 +145,14 @@ pub enum ToastMessage {
     },
     /// "The Trash is empty".
     TrashEmptied,
-    /// "The Free plan includes 3 boards. Upgrade to Pro for more."
+    /// "The Free plan includes 5 boards. Supporter adds unlimited boards."
     BoardLimit,
     /// "Snipdeck found a problem in your library. Export a copy to be safe." (the weekly check)
     LibraryProblem,
     /// "Snipdeck closed unexpectedly last time. Open the log?" The action opens the log folder
     /// (`crash::open_log_folder`).
     CrashedLastTime,
-    /// "Snipdeck Pro is on. Thank you."
+    /// "Snipdeck Supporter is on. Thank you."
     LicenceAccepted,
     /// A licence key that was refused, and why.
     LicenceRejected(LicenceProblem),
@@ -187,6 +187,8 @@ pub enum ToastMessage {
     EraseFailed,
     /// "Couldn't open the folder."
     FolderNotOpened,
+    /// "Couldn't open your email app." (Get Supporter)
+    MailNotOpened,
     /// "Couldn't change the Windows start-up entry."
     AutostartFailed,
     /// "Couldn't open the log folder."

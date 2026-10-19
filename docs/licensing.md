@@ -2,7 +2,8 @@
 
 Snipdeck is free software (GPL-3.0-only). Free covers everyday use with up to 5 boards.
 **Supporter** is pay what you want, from A$5 (suggested A$8), one time, with every 1.x update. It
-adds more boards, templates that ask for values, encryption of sensitive items and paste next.
+adds more boards, templates that ask for values, a master password for encrypted items and paste next.
+Encrypting sensitive items on disk is free for everyone: it is security, not convenience.
 Supporter is unlocked by an offline, Ed25519-signed licence key (ADR-0005). There is no
 account, no phone-home and no clock check: a key either verifies against the public key
 compiled into the build or it does not. If you cannot afford it, ask for a key.

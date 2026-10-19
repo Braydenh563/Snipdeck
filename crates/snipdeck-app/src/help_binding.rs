@@ -84,7 +84,7 @@ pub trait HelpHost {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SystemHelpHost;
 
-fn launch(target: &OsStr) -> Result<(), String> {
+pub(crate) fn launch(target: &OsStr) -> Result<(), String> {
     let opener = if cfg!(windows) {
         "explorer"
     } else if cfg!(target_os = "macos") {
@@ -234,7 +234,7 @@ where
 // ---- Logic -------------------------------------------------------------------------------------
 
 /// The setting switches the report lists: booleans and numbers only, never text the user typed.
-fn report_flags(settings: &crate::settings::Settings) -> Vec<(String, String)> {
+pub(crate) fn report_flags(settings: &crate::settings::Settings) -> Vec<(String, String)> {
     let on = |b: bool| if b { "on" } else { "off" }.to_owned();
     vec![
         ("Start with Windows".into(), on(settings.autostart)),
@@ -300,7 +300,7 @@ where
         if !window.window().is_visible() {
             return;
         }
-        let (look, tier, toast): (_, _, Option<ToastView>) = {
+        let (look, accent, tier, toast): (_, _, _, Option<ToastView>) = {
             let controller = self.controller.borrow();
             let hotkeys = &controller.settings().hotkeys;
             let strings = |keys: Vec<String>| model(keys.iter().map(|k| k.as_str().into()));
@@ -318,18 +318,24 @@ where
             window.set_paste_next_spoken(spoken.into());
             (
                 controller.settings_look(),
+                controller.accent(),
                 controller.tier(),
                 controller.settings_toast(),
             )
         };
         window.set_dark(look.dark);
-        set_look(&window, look.high_contrast.as_ref());
+        set_look(
+            &window,
+            look.high_contrast.as_ref(),
+            accent.as_ref(),
+            look.reduce_motion,
+        );
         window.set_has_data_folder(self.data_dir.is_some());
         window.set_version(env!("CARGO_PKG_VERSION").into());
         window.set_build_date(build_date().into());
         window.set_tier(
             if matches!(tier, Tier::Pro) {
-                "Pro"
+                "Supporter"
             } else {
                 "Free"
             }
@@ -434,7 +440,7 @@ where
             ReportInfo {
                 version: env!("CARGO_PKG_VERSION").to_owned(),
                 tier: if matches!(controller.tier(), Tier::Pro) {
-                    "Pro"
+                    "Supporter"
                 } else {
                     "Free"
                 }

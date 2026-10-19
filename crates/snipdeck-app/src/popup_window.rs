@@ -12,7 +12,7 @@ use slint::{ComponentHandle, PhysicalPosition, PhysicalSize};
 use snipdeck_platform::system_look::{HighContrast, Rgb};
 use snipdeck_ui as ui;
 
-use crate::{frame::Rect, placement::PopupHost};
+use crate::{accent::Accent, frame::Rect, placement::PopupHost};
 
 /// One popup window and its state. Not generic over the controller: the bindings own that.
 pub(crate) struct Shell<W: ComponentHandle + 'static> {
@@ -137,8 +137,15 @@ impl<W: ComponentHandle + 'static> Shell<W> {
     }
 }
 
-/// Sets the high-contrast colours of a window's `SystemLook` global (a global is per window).
-pub(crate) fn set_high_contrast(look: &ui::SystemLook<'_>, hc: Option<&HighContrast>) {
+/// Sets the high-contrast colours, the accent and reduced motion of a window's `SystemLook` global (a
+/// global is per window).
+pub(crate) fn set_look_globals(
+    look: &ui::SystemLook<'_>,
+    hc: Option<&HighContrast>,
+    accent: Option<&Accent>,
+    reduced_motion: bool,
+) {
+    look.set_reduced_motion(reduced_motion);
     look.set_high_contrast(hc.is_some());
     if let Some(hc) = hc {
         let color = |c: Rgb| slint::Color::from_rgb_u8(c.r, c.g, c.b);
@@ -147,5 +154,21 @@ pub(crate) fn set_high_contrast(look: &ui::SystemLook<'_>, hc: Option<&HighContr
         look.set_hc_highlight(color(hc.highlight));
         look.set_hc_highlight_text(color(hc.highlight_text));
         look.set_hc_gray_text(color(hc.gray_text));
+    }
+    look.set_accent_custom(accent.is_some());
+    if let Some(accent) = accent {
+        let steps = |s: &crate::accent::Steps| {
+            let color = |[r, g, b]: crate::accent::Rgb| slint::Color::from_rgb_u8(r, g, b);
+            ui::AccentSteps {
+                default: color(s.default),
+                hover: color(s.hover),
+                pressed: color(s.pressed),
+                text: color(s.text),
+                subtle: color(s.subtle),
+                focus: color(s.focus),
+            }
+        };
+        look.set_accent_light(steps(&accent.light));
+        look.set_accent_dark(steps(&accent.dark));
     }
 }

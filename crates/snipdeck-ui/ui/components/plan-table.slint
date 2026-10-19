@@ -1,0 +1,165 @@
+import { Theme, Type, Space, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+
+// One line of the Free vs Supporter comparison. `feature` is the `snipdeck-core` `Feature` key for a
+// Supporter-only row ("" for a row both plans have), so a test in `snipdeck-app` can hold the table to
+// `entitlements.rs`. `free-note` / `supporter-note` add a few words to the tick ("up to 5", "unlimited").
+export struct PlanRow {
+    feature: string,
+    name: string,
+    description: string,
+    free: bool,
+    supporter: bool,
+    free-note: string,
+    supporter-note: string,
+}
+
+// The rows of the comparison, the same wording as the table on the website (site/index.html, #compare).
+// Source of truth for what is Supporter-only: `snipdeck-core` `entitlements.rs` (`Feature`). Floating lists
+// are in that enum but not part of v1, so they have no row here (nor on the website); add one when they ship.
+// `board-limit` is `Entitlements::FREE_BOARD_LIMIT`, written in by the host.
+export global PlanTexts {
+    in property <int> board-limit: 5;
+
+    out property <[PlanRow]> rows: [
+        { feature: "unlimited-boards", name: @tr("Boards"), description: @tr("Separate workspaces, such as Work and Personal."), free: true, supporter: true, free-note: @tr("up to {}", root.board-limit), supporter-note: @tr("unlimited") },
+        { feature: "", name: @tr("Lists and items"), description: @tr("As many as you like, of every kind."), free: true, supporter: true, free-note: "", supporter-note: "" },
+        { feature: "", name: @tr("Panel and Picker"), description: @tr("Paste with a click, or search at your caret."), free: true, supporter: true, free-note: "", supporter-note: "" },
+        { feature: "", name: @tr("Save from the clipboard"), description: @tr("One hotkey turns copied text into an item."), free: true, supporter: true, free-note: "", supporter-note: "" },
+        { feature: "", name: @tr("Dock to a screen edge"), description: @tr("Fold the Panel into a thin strip."), free: true, supporter: true, free-note: "", supporter-note: "" },
+        { feature: "", name: @tr("Templates with date, time and cursor"), description: @tr("Fixed placeholders filled in when you paste."), free: true, supporter: true, free-note: "", supporter-note: "" },
+        { feature: "", name: @tr("Sensitive items, masked"), description: @tr("Hidden on screen and kept out of clipboard history."), free: true, supporter: true, free-note: "", supporter-note: "" },
+        { feature: "", name: @tr("Encryption on disk"), description: @tr("Sensitive items are encrypted on disk, on every plan."), free: true, supporter: true, free-note: "", supporter-note: "" },
+        { feature: "", name: @tr("Backups, export, light and dark, 7 languages"), description: @tr("Daily backups, a plain zip export, and your choice of theme."), free: true, supporter: true, free-note: "", supporter-note: "" },
+        { feature: "prompted-fields", name: @tr("Templates that ask"), description: @tr("Prompt for a value or a choice each time you paste."), free: false, supporter: true, free-note: "", supporter-note: "" },
+        { feature: "master-password", name: @tr("Master password"), description: @tr("Lock your encrypted items behind a password you choose."), free: false, supporter: true, free-note: "", supporter-note: "" },
+        { feature: "paste-stack", name: @tr("Paste stack"), description: @tr("Queue several items, then paste them one per hotkey press."), free: false, supporter: true, free-note: "", supporter-note: "" },
+    ];
+
+    // The words a screen reader says for one plan's cell: "Included, up to 5" or "Not included".
+    public pure function said(yes: bool, note: string) -> string {
+        return (yes ? @tr("Included") : @tr("Not included")) + (note != "" ? ", " + note : "");
+    }
+}
+
+// A tick or a cross, with the note under it. Never colour alone: the two shapes differ, and the row's
+// accessible description spells the answer out in words. Decorative for assistive technology.
+component PlanMark inherits VerticalLayout {
+    in property <bool> yes;
+    in property <string> note;
+
+    spacing: Space.s0-5;
+    alignment: center;
+    accessible-role: none;
+
+    HorizontalLayout {
+        alignment: center;
+        Icon {
+            source: root.yes ? Icons.check : Icons.x;
+            tint: root.yes ? Theme.success-fg : Theme.text-secondary;
+            size: 16px;
+        }
+    }
+    if root.note != "": Text {
+        text: root.note;
+        color: Theme.text-secondary;
+        font-family: Fonts.sans;
+        font-size: Type.xs;
+        horizontal-alignment: center;
+        wrap: word-wrap;
+        accessible-role: none;
+    }
+}
+
+// The Free vs Supporter comparison (DESIGN.md §4 forms): a feature with its one-line description, then a tick
+// or a cross per plan. Compact: it sits in Settings > Licence and in the Get Supporter dialog.
+export component PlanTable inherits VerticalLayout {
+    // Width of each plan's column.
+    property <length> column: Space.s12 * 1.5;
+
+    spacing: 0px;
+    accessible-role: groupbox;
+    accessible-label: @tr("Free and Supporter compared");
+
+    HorizontalLayout {
+        padding-bottom: Space.s1;
+        spacing: Space.s2;
+        Text {
+            horizontal-stretch: 1;
+            text: @tr("Feature");
+            color: Theme.text-secondary;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            font-weight: Type.semibold;
+            accessible-role: none;
+        }
+        Text {
+            width: root.column;
+            text: @tr("Free");
+            color: Theme.text-secondary;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            font-weight: Type.semibold;
+            horizontal-alignment: center;
+            accessible-role: none;
+        }
+        Text {
+            width: root.column;
+            text: @tr("Supporter");
+            color: Theme.text-secondary;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            font-weight: Type.semibold;
+            horizontal-alignment: center;
+            accessible-role: none;
+        }
+    }
+    for row in PlanTexts.rows: Rectangle {
+        min-height: line.preferred-height;
+        accessible-role: groupbox;
+        accessible-label: row.name;
+        accessible-description: row.description + " " + @tr("Free") + ": " + PlanTexts.said(row.free, row.free-note) + ". " + @tr("Supporter") + ": " + PlanTexts.said(row.supporter, row.supporter-note) + ".";
+
+        Rectangle {
+            height: 1px;
+            background: Theme.border-subtle;
+        }
+        line := HorizontalLayout {
+            padding-top: Space.s1;
+            padding-bottom: Space.s1;
+            spacing: Space.s2;
+            VerticalLayout {
+                horizontal-stretch: 1;
+                min-width: 0px;
+                alignment: center;
+                Text {
+                    text: row.name;
+                    color: Theme.text-primary;
+                    font-family: Fonts.sans;
+                    font-size: Type.sm;
+                    wrap: word-wrap;
+                    accessible-role: none;
+                }
+                Text {
+                    text: row.description;
+                    color: Theme.text-secondary;
+                    font-family: Fonts.sans;
+                    font-size: Type.xs;
+                    wrap: word-wrap;
+                    accessible-role: none;
+                }
+            }
+            PlanMark {
+                width: root.column;
+                yes: row.free;
+                note: row.free-note;
+            }
+            PlanMark {
+                width: root.column;
+                yes: row.supporter;
+                note: row.supporter-note;
+            }
+        }
+    }
+}

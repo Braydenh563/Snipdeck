@@ -97,7 +97,7 @@ pub struct ImportOptions<'k> {
     /// tier's limit). Nothing is blocked: the caller decides. Use [`ImportOptions::max_boards`]
     /// to enforce a limit.
     pub free_board_limit: Option<usize>,
-    /// The most live boards the library may hold once the import is done (the Free tier's 3).
+    /// The most live boards the library may hold once the import is done (the Free tier's 5).
     /// An import that would go past it is refused inside its transaction with
     /// `ProRequired(UnlimitedBoards)` and changes nothing; the caller passes `None` on Pro. A
     /// restore of boards the user already has cannot grow past the limit this way.

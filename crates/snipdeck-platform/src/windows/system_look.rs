@@ -25,10 +25,10 @@ use windows::Win32::Graphics::Gdi::{
 use windows::Win32::System::Registry::{HKEY_CURRENT_USER, RRF_RT_REG_DWORD, RegGetValueW};
 use windows::Win32::UI::Accessibility::{HCF_HIGHCONTRASTON, HIGHCONTRASTW};
 use windows::Win32::UI::WindowsAndMessaging::{
-    SPI_GETHIGHCONTRAST, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, SystemParametersInfoW,
-    WM_SETTINGCHANGE,
+    SPI_GETCLIENTAREAANIMATION, SPI_GETHIGHCONTRAST, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS,
+    SystemParametersInfoW, WM_SETTINGCHANGE,
 };
-use windows::core::{PCWSTR, w};
+use windows::core::{BOOL, PCWSTR, w};
 
 use super::hidden_window::{HiddenWindow, WindowHandler};
 use crate::error::Error;
@@ -53,7 +53,26 @@ pub fn read() -> SystemLook {
     SystemLook {
         dark: apps_use_light_theme() == Some(false),
         high_contrast: high_contrast(),
+        accent: accent_color(),
+        reduce_motion: !client_area_animation(),
     }
+}
+
+/// "Animation effects" (`SPI_GETCLIENTAREAANIMATION`). An unreadable value counts as on, so a
+/// failed call never turns the animations off.
+fn client_area_animation() -> bool {
+    let mut on = BOOL(1);
+    // SAFETY: `on` is a valid `BOOL`, which is what `SPI_GETCLIENTAREAANIMATION` writes through
+    // `pvParam`; `uiparam` is unused and zero.
+    let read = unsafe {
+        SystemParametersInfoW(
+            SPI_GETCLIENTAREAANIMATION,
+            0,
+            Some((&raw mut on).cast::<c_void>()),
+            SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0),
+        )
+    };
+    read.is_err() || on.as_bool()
 }
 
 /// `AppsUseLightTheme`: `Some(true)` light, `Some(false)` dark, `None` if the value is missing.
@@ -75,6 +94,28 @@ fn apps_use_light_theme() -> Option<bool> {
         )
     };
     (code == ERROR_SUCCESS).then_some(data != 0)
+}
+
+/// The user's accent colour: `HKCU\Software\Microsoft\Windows\DWM`, DWORD `ColorizationColor`
+/// (0xAARRGGBB). `None` when the value is missing.
+fn accent_color() -> Option<Rgb> {
+    let mut data: u32 = 0;
+    let mut size = u32::try_from(std::mem::size_of::<u32>()).unwrap_or(4);
+    // SAFETY: as in `apps_use_light_theme`: static NUL-terminated names, valid out-pointers,
+    // `RRF_RT_REG_DWORD` limits what is written to a DWORD.
+    let code = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            w!(r"Software\Microsoft\Windows\DWM"),
+            w!("ColorizationColor"),
+            RRF_RT_REG_DWORD,
+            None,
+            Some((&raw mut data).cast::<c_void>()),
+            Some(&raw mut size),
+        )
+    };
+    let [_, r, g, b] = data.to_be_bytes();
+    (code == ERROR_SUCCESS).then_some(Rgb { r, g, b })
 }
 
 fn sys_color(index: SYS_COLOR_INDEX) -> Rgb {
@@ -165,7 +206,7 @@ impl WindowHandler for Watcher {
 #[cfg(test)]
 mod tests {
     use windows::Win32::UI::WindowsAndMessaging::{
-        SPI_SETHIGHCONTRAST, WM_SYSCOLORCHANGE, WM_THEMECHANGED,
+        SPI_SETCLIENTAREAANIMATION, SPI_SETHIGHCONTRAST, WM_SYSCOLORCHANGE, WM_THEMECHANGED,
     };
 
     use super::*;
@@ -176,6 +217,10 @@ mod tests {
         assert_eq!(portable::WM_SETTINGCHANGE, WM_SETTINGCHANGE);
         assert_eq!(portable::WM_THEMECHANGED, WM_THEMECHANGED);
         assert_eq!(portable::WM_SYSCOLORCHANGE, WM_SYSCOLORCHANGE);
+        assert_eq!(
+            portable::SPI_SETCLIENTAREAANIMATION,
+            SPI_SETCLIENTAREAANIMATION.0 as usize
+        );
         assert_eq!(
             portable::SPI_SETHIGHCONTRAST,
             SPI_SETHIGHCONTRAST.0 as usize

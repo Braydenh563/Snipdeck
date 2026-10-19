@@ -309,8 +309,11 @@ fn encryption(host: &dyn DoctorHost) -> Check {
         ),
         Ok(false) => check(
             label,
-            Status::Fail,
-            format!("{sensitive} sensitive item(s) but no encryption key: they cannot be read."),
+            Status::Warn,
+            format!(
+                "{sensitive} sensitive item(s) are stored as plain text (no encryption key yet): \
+                 masked and readable, but not encrypted."
+            ),
             None,
         ),
         Err(e) => check(
@@ -379,7 +382,7 @@ fn crashes(host: &dyn DoctorHost) -> Check {
 pub struct ReportInfo {
     /// Snipdeck's version.
     pub version: String,
-    /// The licence tier ("Free", "Pro").
+    /// The licence tier ("Free", "Supporter").
     pub tier: String,
     /// The operating system and its build.
     pub os: String,
@@ -614,7 +617,10 @@ mod tests {
             },
             "Encryption key",
         );
-        assert_eq!(missing.status, Status::Fail);
+        // Not a failure: without a key the items are plain text, readable but not encrypted.
+        assert_eq!(missing.status, Status::Warn);
+        assert!(missing.detail.contains("plain text"), "{}", missing.detail);
+        assert!(!missing.detail.contains("cannot be read"));
         let present = only(
             &Fake {
                 sensitive: Ok(3),

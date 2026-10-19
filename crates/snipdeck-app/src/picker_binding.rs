@@ -18,6 +18,7 @@ use snipdeck_platform::{
 use snipdeck_ui as ui;
 
 use crate::{
+    accent::Accent,
     binding::{
         MASKED_PREVIEW, extension_of, index, item_kind_of, model, redraw_all, register_redraw,
     },
@@ -28,7 +29,7 @@ use crate::{
     panel::Footer,
     picker::{Entry, Scope},
     placement::{self, Anchor, PopupHost},
-    popup_window::{Shell, set_high_contrast},
+    popup_window::{Shell, set_look_globals},
     toast::{Toast, ToastKind, ToastMessage},
 };
 
@@ -46,6 +47,8 @@ pub type AnchorMemory = Rc<Cell<Option<Anchor>>>;
 struct Shown {
     dark: bool,
     high_contrast: Option<HighContrast>,
+    accent: Option<Accent>,
+    reduced_motion: bool,
     picker: PickerView,
 }
 
@@ -106,6 +109,8 @@ where
         *self.shown.borrow_mut() = Some(Shown {
             dark: view.dark,
             high_contrast: view.high_contrast,
+            accent: view.accent,
+            reduced_motion: view.reduced_motion,
             picker: picker.clone(),
         });
         let size = (PICKER_WIDTH, window.get_content_height());
@@ -319,10 +324,15 @@ fn render(window: &ui::PickerWindow, previous: Option<&Shown>, view: &View, pick
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
     }
-    if differs(&|p| p.high_contrast == view.high_contrast) {
-        set_high_contrast(
+    if differs(&|p| {
+        (p.high_contrast, p.accent, p.reduced_motion)
+            == (view.high_contrast, view.accent, view.reduced_motion)
+    }) {
+        set_look_globals(
             &window.global::<ui::SystemLook<'_>>(),
             view.high_contrast.as_ref(),
+            view.accent.as_ref(),
+            view.reduced_motion,
         );
     }
     if differs(&|p| p.picker.rows == picker.rows && p.dark == view.dark) {

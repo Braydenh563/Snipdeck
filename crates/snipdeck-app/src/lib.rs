@@ -4,6 +4,7 @@
 //! under Slint's headless testing backend.
 #![forbid(unsafe_code)]
 
+pub mod accent;
 pub mod binding;
 pub mod capture;
 pub mod cli;
@@ -19,12 +20,14 @@ pub mod editor_binding;
 pub mod fill;
 pub mod fill_binding;
 pub mod frame;
+pub mod headless;
 pub mod help_binding;
 pub mod host;
 pub mod index_cache;
 pub mod item_editor;
 pub mod key_provider;
 pub mod licence_store;
+pub mod list_text;
 pub mod main_binding;
 pub mod main_window;
 pub mod maintenance;

@@ -23,7 +23,7 @@ use std::{
 };
 
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
-use slint::{ComponentHandle, Model};
+use slint::{ComponentHandle, Global, Model, platform::Key};
 use snipdeck_app::{
     controller::{Controller, Effect, Services},
     demo,
@@ -38,7 +38,7 @@ use snipdeck_app::{
     wording,
 };
 use snipdeck_core::{
-    Entitlements, Tier, Timestamp,
+    Entitlements, Feature, Tier, Timestamp,
     licence::{
         IS_DEVELOPMENT_KEY,
         signing::{SigningKey, pro_payload, sign_token},
@@ -56,7 +56,7 @@ use snipdeck_ui::{SettingsPage, ToastKind};
 
 #[path = "support/mod.rs"]
 mod support;
-use support::on_ui_thread;
+use support::{key, on_ui_thread, press};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 type Bound = SettingsBinding<FakeClipboard, FakeKeyboard, FakeTiming>;
@@ -78,6 +78,8 @@ struct FakeHost {
     /// The last "Panel taskbar button" the page asked for.
     taskbar: Cell<Option<bool>>,
     opened: RefCell<Vec<PathBuf>>,
+    /// The links the page asked to open.
+    urls: RefCell<Vec<String>>,
     documents: RefCell<Option<PathBuf>>,
     /// What the import dialog answers, once.
     import_pick: RefCell<Option<PathBuf>>,
@@ -102,6 +104,11 @@ impl SettingsHost for FakeHost {
 
     fn open_folder(&self, folder: &Path) -> Result<(), String> {
         self.opened.borrow_mut().push(folder.to_owned());
+        Ok(())
+    }
+
+    fn open_url(&self, url: &str) -> Result<(), String> {
+        self.urls.borrow_mut().push(url.to_owned());
         Ok(())
     }
 
@@ -160,7 +167,7 @@ fn rig_on(store: Store, tier: Tier, dir: tempfile::TempDir, with_data_dir: bool)
     *host.documents.borrow_mut() = Some(dir.path().join("Documents"));
     let ui = SettingsPage::new().expect("settings page");
     // Tall, so the whole page is on screen.
-    ui.window().set_size(slint::LogicalSize::new(640.0, 2400.0));
+    ui.window().set_size(slint::LogicalSize::new(640.0, 4000.0));
     let data_dir = with_data_dir.then(|| dir.path().to_owned());
     let host_dyn: Rc<dyn SettingsHost> = Rc::clone(&host) as Rc<dyn SettingsHost>;
     let binding = Controller::bind_settings(&ctl, &ui, data_dir, host_dyn);
@@ -212,6 +219,7 @@ impl Rig {
 // ---- Every setting is written after the quiet time -----------------------------------------
 
 #[test]
+#[allow(clippy::too_many_lines, reason = "one table of every toggle")]
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
@@ -341,6 +349,29 @@ fn removing_a_program_is_written_too_and_a_repeat_is_refused_in_words() {
 }
 
 #[test]
+fn the_accent_applies_at_once_and_blue_keeps_the_built_in_palette() {
+    on_ui_thread(|| {
+        let r = rig();
+        let look = r.ui.global::<snipdeck_ui::SystemLook<'_>>();
+        assert!(!look.get_accent_custom(), "blue is the palette's own");
+        r.ui.invoke_accent_chosen(1);
+        assert_eq!(r.ui.get_accent_index(), 1);
+        assert!(look.get_accent_custom());
+        assert_eq!(
+            look.get_accent_light().default,
+            slint::Color::from_rgb_u8(0x04, 0x84, 0x84),
+            "teal-600"
+        );
+        r.ui.invoke_accent_chosen(0);
+        assert!(!look.get_accent_custom());
+        assert_eq!(
+            r.ctl.borrow().settings().accent,
+            snipdeck_app::accent::AccentChoice::Blue
+        );
+    });
+}
+
+#[test]
 fn the_theme_applies_at_once_and_the_page_shows_what_is_stored() {
     on_ui_thread(|| {
         let r = rig();
@@ -387,6 +418,44 @@ fn the_dock_group_shows_what_is_stored_and_holds_the_delays_in_range() {
         assert_eq!(r.ctl.borrow().settings().dock.trigger, DockTrigger::Click);
         // The control the group is found by.
         element(&r.ui, "Dock to", AccessibleRole::Combobox);
+    });
+}
+
+#[test]
+fn the_welcome_tour_docks_the_panel_from_its_position_step() {
+    on_ui_thread(|| {
+        let r = rig();
+        let tour = snipdeck_ui::OnboardingWindow::new().expect("tour window");
+        let host: Rc<dyn SettingsHost> = Rc::clone(&r.host) as Rc<dyn SettingsHost>;
+        let _binding = Controller::bind_onboarding(&r.ctl, &tour, host);
+        tour.show().expect("show");
+        assert_eq!(tour.get_dock_edge_index(), 0, "floating to begin with");
+        // Docking needs to know where the Panel is.
+        let monitor = Monitor {
+            id: Monitor::id_of("DISPLAY1", 1920, 1080),
+            work_area: Rect {
+                x: 0,
+                y: 0,
+                w: 1920,
+                h: 1040,
+            },
+            scale: 1.0,
+        };
+        let floating = Rect {
+            x: 600,
+            y: 100,
+            w: 320,
+            h: 480,
+        };
+        r.ctl.borrow_mut().frame_changed(&monitor, floating);
+
+        tour.invoke_dock_edge_chosen(3);
+        assert_eq!(r.ctl.borrow().dock_edge(), Some(DockEdge::Top));
+        assert_eq!(tour.get_dock_edge_index(), 3, "the step follows");
+
+        tour.invoke_dock_edge_chosen(0);
+        assert_eq!(r.ctl.borrow().dock_edge(), None);
+        assert_eq!(tour.get_dock_edge_index(), 0);
     });
 }
 
@@ -585,6 +654,35 @@ fn backups_to_keep_is_what_the_prune_keeps() {
     });
 }
 
+#[test]
+fn the_reduce_motion_switch_turns_animation_off_in_the_page_itself() {
+    on_ui_thread(|| {
+        let r = rig();
+        let look = r.ui.global::<snipdeck_ui::SystemLook<'_>>();
+        assert!(!r.ui.get_reduce_motion());
+        assert!(!look.get_reduced_motion());
+        r.ui.invoke_reduce_motion_toggled(true);
+        assert!(r.ctl.borrow().settings().reduce_motion);
+        assert!(r.ui.get_reduce_motion());
+        assert!(look.get_reduced_motion());
+        r.ui.invoke_reduce_motion_toggled(false);
+        assert!(!look.get_reduced_motion());
+    });
+}
+
+#[test]
+fn the_clipboard_clear_time_is_held_between_zero_and_ten_minutes() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(r.ui.get_clipboard_clear_secs(), 30);
+        r.ui.invoke_clipboard_clear_secs_chosen(0);
+        assert_eq!(r.ctl.borrow().settings().clipboard_clear_secs, 0);
+        assert_eq!(r.ui.get_clipboard_clear_secs(), 0);
+        r.ui.invoke_clipboard_clear_secs_chosen(99_999);
+        assert_eq!(r.ctl.borrow().settings().clipboard_clear_secs, 600);
+    });
+}
+
 // ---- Licence --------------------------------------------------------------------------------
 
 fn token(seed: &[u8; 32], payload: &str) -> String {
@@ -671,7 +769,10 @@ fn a_good_licence_key_turns_pro_on_and_is_remembered() {
         r.ui.invoke_licence_submitted(format!("  {key}\n").into());
         assert!(r.ui.get_pro());
         assert_eq!(r.ui.get_licence_error(), "");
-        assert_eq!(r.ui.get_toast_text(), "Snipdeck Pro is on. Thank you.");
+        assert_eq!(
+            r.ui.get_toast_text(),
+            "Snipdeck Supporter is on. Thank you."
+        );
         assert_eq!(r.ui.get_toast_kind(), ToastKind::Success);
         assert_eq!(r.ctl.borrow().tier(), Tier::Pro);
         assert_eq!(
@@ -681,7 +782,7 @@ fn a_good_licence_key_turns_pro_on_and_is_remembered() {
         assert_eq!(
             licence_store::entitlements(r.dir.path(), now()).tier(),
             Tier::Pro,
-            "the next start is Pro"
+            "the next start is Supporter"
         );
     });
 }
@@ -990,6 +1091,10 @@ fn erasing_can_keep_the_encryption_key_or_forget_it() {
 fn the_erase_button_stays_off_until_the_word_is_typed() {
     on_ui_thread(|| {
         let r = library_on_disk(false);
+        // The page scrolls, and the accessibility queries only see what is inside the window:
+        // make it tall enough for the whole confirmation (the Licence section has the plan table).
+        r.ui.window()
+            .set_size(slint::LogicalSize::new(640.0, 4000.0));
         assert!(!r.ui.get_erase_open());
         element(&r.ui, "Erase library\u{2026}", AccessibleRole::Button)
             .invoke_accessible_default_action();
@@ -1237,6 +1342,111 @@ fn every_import_warning_reads_as_a_plain_sentence() {
 }
 
 #[test]
+fn get_supporter_opens_the_email_app_with_the_one_named_address() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_supporter_open());
+        r.ui.invoke_supporter_requested();
+        assert_eq!(
+            *r.host.urls.borrow(),
+            [format!("mailto:{}", settings_binding::SUPPORTER_EMAIL)]
+        );
+        // Pinned on purpose: this is the placeholder, so it fails the day the real address goes
+        // into `SUPPORTER_EMAIL`. Change it together with that constant (and `site/index.html`).
+        assert_eq!(
+            settings_binding::supporter_mailto(),
+            "mailto:SUPPORTER_EMAIL_PLACEHOLDER",
+            "the placeholder stays until the owner supplies the address"
+        );
+    });
+}
+
+#[test]
+fn the_free_is_fully_usable_line_is_readable_by_a_screen_reader() {
+    on_ui_thread(|| {
+        let r = rig();
+        element(
+            &r.ui,
+            "Free is fully usable. Supporter pays for convenience and supports the app.",
+            AccessibleRole::Text,
+        );
+    });
+}
+
+/// The whole path a person takes: the button opens the dialog, Escape closes it with the focus
+/// back on the button (WCAG 2.4.3), and "Email me" hands the mailto link to the host.
+#[test]
+fn the_get_supporter_dialog_opens_closes_with_escape_and_emails() {
+    on_ui_thread(|| {
+        let r = rig();
+        let button = || element(&r.ui, "Get Supporter\u{2026}", AccessibleRole::Button);
+        let settle = slint::platform::update_timers_and_animations;
+        assert!(!r.ui.get_supporter_open());
+        assert_eq!(button().accessible_enabled(), Some(true));
+
+        button().invoke_accessible_default_action();
+        settle();
+        assert!(r.ui.get_supporter_open(), "the button opens the dialog");
+        assert_eq!(button().accessible_enabled(), Some(false), "and goes off");
+
+        // The comparison table inside the dialog is laid out and sits within the card.
+        // The dialog card is the group that also carries the dialog's body text.
+        let card = ElementHandle::find_by_accessible_label(&r.ui, "Get Supporter")
+            .filter(|e| e.accessible_role() == Some(AccessibleRole::Groupbox))
+            .find(|e| {
+                e.accessible_description()
+                    .is_some_and(|d| d.contains("Can't afford it"))
+            })
+            .expect("the dialog card");
+        let (cp, cs) = (card.absolute_position(), card.size());
+        let table = ElementHandle::find_by_accessible_label(&r.ui, "Free and Supporter compared")
+            .filter(|e| e.accessible_role() == Some(AccessibleRole::Groupbox))
+            .find(|e| {
+                let p = e.absolute_position();
+                p.x >= cp.x && p.y >= cp.y && p.y <= cp.y + cs.height
+            })
+            .expect("a plan table inside the dialog card");
+        let (tp, ts) = (table.absolute_position(), table.size());
+        assert!(cs.width > 0.0 && cs.height > 0.0, "the card has a size");
+        assert!(
+            ts.width > 0.0 && ts.height > 0.0,
+            "the table has a size: {ts:?}"
+        );
+        assert!(
+            tp.x >= cp.x && tp.x + ts.width <= cp.x + cs.width,
+            "the table ({tp:?} {ts:?}) is inside the card ({cp:?} {cs:?}) across"
+        );
+        assert!(
+            tp.y >= cp.y && tp.y + ts.height <= cp.y + cs.height,
+            "the table ({tp:?} {ts:?}) is inside the card ({cp:?} {cs:?}) down"
+        );
+
+        press(r.ui.window(), &key(Key::Escape));
+        settle();
+        assert!(!r.ui.get_supporter_open(), "Escape closes it");
+        assert_eq!(button().accessible_enabled(), Some(true));
+        assert!(r.host.urls.borrow().is_empty(), "closing sends nothing");
+
+        // The focus is back on the button: Enter presses it again.
+        press(r.ui.window(), "\n");
+        settle();
+        assert!(
+            r.ui.get_supporter_open(),
+            "after Escape the focus is on the button that opened the dialog"
+        );
+
+        element(&r.ui, "Email me", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(!r.ui.get_supporter_open(), "Email me closes the dialog");
+        assert_eq!(
+            *r.host.urls.borrow(),
+            [settings_binding::supporter_mailto()],
+            "and opens the mailto link, once"
+        );
+    });
+}
+
+#[test]
 fn the_importers_internal_labels_become_clip_numbers() {
     on_ui_thread(|| {
         let r = rig();
@@ -1291,6 +1501,50 @@ fn a_ditto_preview_lists_its_warnings_in_plain_sentences() {
     });
 }
 
+/// The comparison table is held to `entitlements.rs`: its Supporter-only rows are exactly the
+/// `Feature`s, except floating lists (in the enum, not part of v1, so not on the website either).
+#[test]
+fn the_plan_table_lists_exactly_the_supporter_features() {
+    on_ui_thread(|| {
+        let r = rig();
+        let rows: Vec<_> = snipdeck_ui::PlanTexts::get(&r.ui)
+            .get_rows()
+            .iter()
+            .collect();
+        let mut listed: Vec<String> = rows
+            .iter()
+            .filter(|row| !row.feature.is_empty())
+            .map(|row| row.feature.to_string())
+            .collect();
+        let mut expected: Vec<String> = Feature::ALL
+            .iter()
+            .filter(|f| **f != Feature::FloatingLists)
+            .map(|f| f.key().to_owned())
+            .collect();
+        listed.sort();
+        expected.sort();
+        assert_eq!(listed, expected);
+        for row in &rows {
+            assert!(row.supporter, "{}: Supporter has everything", row.name);
+            assert_eq!(
+                row.free,
+                row.feature.is_empty() || row.feature == Feature::UnlimitedBoards.key(),
+                "{}: Free lacks exactly the Supporter features (boards are limited, not missing)",
+                row.name
+            );
+            assert!(!row.name.is_empty() && !row.description.is_empty());
+        }
+        let boards = rows
+            .iter()
+            .find(|row| row.feature == Feature::UnlimitedBoards.key())
+            .expect("boards row");
+        assert_eq!(
+            boards.free_note,
+            format!("up to {}", Entitlements::FREE_BOARD_LIMIT)
+        );
+    });
+}
+
 #[test]
 fn the_preview_titles_and_the_free_limit_come_from_the_page() {
     on_ui_thread(|| {
@@ -1339,5 +1593,32 @@ fn the_recent_inbox_is_off_until_chosen_and_its_clear_button_empties_it() {
         assert_eq!(r.ctl.borrow().recent_entries().len(), 1);
         r.ui.invoke_recent_history_cleared();
         assert_eq!(r.ctl.borrow().recent_entries().len(), 0);
+    });
+}
+
+#[test]
+fn the_plan_table_says_each_answer_in_words_not_colour() {
+    on_ui_thread(|| {
+        let r = rig();
+        element(
+            &r.ui,
+            "Free and Supporter compared",
+            AccessibleRole::Groupbox,
+        );
+        // A row says both answers in its description.
+        let row = element(&r.ui, "Paste stack", AccessibleRole::Groupbox);
+        let said = row
+            .accessible_description()
+            .expect("description")
+            .to_string();
+        assert!(said.contains("Free: Not included."), "{said}");
+        assert!(said.contains("Supporter: Included."), "{said}");
+        let boards = element(&r.ui, "Boards", AccessibleRole::Groupbox);
+        let said = boards
+            .accessible_description()
+            .expect("description")
+            .to_string();
+        assert!(said.contains("Free: Included, up to 5."), "{said}");
+        assert!(said.contains("Supporter: Included, unlimited."), "{said}");
     });
 }

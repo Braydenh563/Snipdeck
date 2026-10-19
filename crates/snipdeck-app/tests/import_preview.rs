@@ -120,6 +120,18 @@ fn what_is_already_in_the_library_is_counted_and_skipped() {
     assert_eq!(counts(&ctl).1, after_first.1 + 1);
 }
 
+/// Adds boards (each with one list) until the store holds `total`.
+fn add_boards_up_to(store: &mut Store, total: usize) {
+    let mut n = 0;
+    while store.boards().unwrap().len() < total {
+        n += 1;
+        let board = Board::new(Name::new(&format!("Extra {n}")).unwrap(), now());
+        store.insert_board(&board, Placement::Last).unwrap();
+        let list = List::new(board.id, Name::new("L").unwrap(), now());
+        store.insert_list(&list, Placement::Last).unwrap();
+    }
+}
+
 #[test]
 fn a_snipdeck_file_previews_its_boards_and_imports_them() {
     let dir = tempfile::tempdir().unwrap();
@@ -136,14 +148,11 @@ fn a_snipdeck_file_previews_its_boards_and_imports_them() {
 #[test]
 fn a_free_library_imports_a_many_board_archive_as_one_board() {
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("three.snipdeck");
-    let mut three = demo::store(now()).unwrap();
-    let board = Board::new(Name::new("Third").unwrap(), now());
-    three.insert_board(&board, Placement::Last).unwrap();
-    let list = List::new(board.id, Name::new("L").unwrap(), now());
-    three.insert_list(&list, Placement::Last).unwrap();
-    assert_eq!(three.boards().unwrap().len(), 3);
-    export_to_path(&three, now(), &ExportOptions::default(), &path).unwrap();
+    let path = dir.path().join("many.snipdeck");
+    // One board more than the Free plan allows.
+    let mut many = demo::store(now()).unwrap();
+    add_boards_up_to(&mut many, Entitlements::FREE_BOARD_LIMIT + 1);
+    export_to_path(&many, now(), &ExportOptions::default(), &path).unwrap();
     let source = ImportSource::Snipdeck(path.clone());
 
     let mut mine = Store::open_in_memory().unwrap();
@@ -157,12 +166,9 @@ fn a_free_library_imports_a_many_board_archive_as_one_board() {
     assert_eq!(preview.boards, 1);
     assert!(ctl.apply_import(&source));
     assert_eq!(ctl.store().boards().unwrap().len(), before + 1);
-    // A restore keeps the boards (two with items), so this Free library would pass the limit.
+    // A restore keeps the boards (two with items), so this full Free library would pass the limit.
     let mut theirs = Store::open_in_memory().unwrap();
-    for label in ["Mine", "Yours"] {
-        let extra = Board::new(Name::new(label).unwrap(), now());
-        theirs.insert_board(&extra, Placement::Last).unwrap();
-    }
+    add_boards_up_to(&mut theirs, Entitlements::FREE_BOARD_LIMIT);
     let mut other = rig_on(theirs, Tier::Free);
     assert!(other.preview_restore(&path).unwrap().blocked_by_board_limit);
     assert!(!other.restore_backup(&path));
@@ -185,12 +191,17 @@ fn only_real_duplicates_are_counted_as_duplicates() {
 #[test]
 fn the_free_board_limit_blocks_the_preview_and_the_import_writes_nothing() {
     let dir = tempfile::tempdir().unwrap();
-    // The demo library has two boards; one more is the Free plan's limit of three.
-    let mut ctl = rig_on(demo::store(now()).unwrap(), Tier::Free);
+    // One board short of the Free plan's limit, so one more import fits and a second does not.
+    let mut store = demo::store(now()).unwrap();
+    add_boards_up_to(&mut store, Entitlements::FREE_BOARD_LIMIT - 1);
+    let mut ctl = rig_on(store, Tier::Free);
     let first = folder_of(dir.path(), 2);
     assert!(!ctl.preview_import(&first).unwrap().blocked_by_board_limit);
     assert!(ctl.apply_import(&first));
-    assert_eq!(ctl.store().boards().unwrap().len(), 3);
+    assert_eq!(
+        ctl.store().boards().unwrap().len(),
+        Entitlements::FREE_BOARD_LIMIT
+    );
 
     // A fourth board is over the limit.
     let other = dir.path().join("more");
@@ -207,10 +218,15 @@ fn the_free_board_limit_blocks_the_preview_and_the_import_writes_nothing() {
     assert_eq!(toast, ToastMessage::BoardLimit);
 
     // The same import on Pro is allowed.
-    let mut pro = rig_on(demo::store(now()).unwrap(), Tier::Pro);
+    let mut pro_store = demo::store(now()).unwrap();
+    add_boards_up_to(&mut pro_store, Entitlements::FREE_BOARD_LIMIT - 1);
+    let mut pro = rig_on(pro_store, Tier::Pro);
     assert!(pro.apply_import(&first));
     assert!(pro.apply_import(&second));
-    assert_eq!(pro.store().boards().unwrap().len(), 4);
+    assert_eq!(
+        pro.store().boards().unwrap().len(),
+        Entitlements::FREE_BOARD_LIMIT + 1
+    );
 }
 
 #[test]

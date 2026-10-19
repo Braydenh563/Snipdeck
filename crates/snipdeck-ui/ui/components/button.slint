@@ -16,8 +16,14 @@ export component Button inherits Rectangle {
     in property <bool> loading: false;
     // Overrides the spoken label (icon-only usage); defaults to `text`.
     in property <string> a11y-label;
+    // Each time this goes up the button takes the keyboard focus (to hand it back after a dialog closed).
+    in property <int> focus-request: 0;
     out property <bool> has-focus: scope.has-focus;
     callback clicked();
+
+    changed focus-request => {
+        if (root.focus-request > 0) { scope.focus(); }
+    }
 
     property <bool> active: root.enabled && !root.loading;
     // 24 / 28 / 32, and taller once the Windows text size makes the label taller (equal at 100%).

@@ -73,7 +73,7 @@ More in [`tools/launcher/README.md`](tools/launcher/README.md).
 - **Templates.** Insert `{date}`, `{time}` or your own date format. Supporter adds fields and choices that ask you
   for a value each time.
 - **Quick capture.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>2</kbd> to save the clipboard text as a new item.
-- **Sensitive items.** Hidden in lists, kept out of Windows clipboard history, and encrypted on disk with Supporter.
+- **Sensitive items.** Hidden in lists, kept out of Windows clipboard history, and encrypted on disk.
 - **Safe to change.** Deleted things stay in the Trash for 30 days, with Undo. Daily backups are automatic.
 - **Your way.** Light, dark or Windows theme, seven languages, and hotkeys you can change.
 
@@ -180,8 +180,8 @@ Details: [`docs/privacy.md`](docs/privacy.md).
 
 Snipdeck is free software under [GPL-3.0-only](LICENSE). Free covers everyday use with up to 5 boards.
 Supporter is pay what you want, from A$5 (suggested A$8), one time, with every 1.x update. It adds more
-boards, templates that ask for values, encryption of sensitive items and paste next, and it supports the
-project. If you cannot afford it, ask for a key. Enter a key under **Licence** in Settings. Nothing nags you.
+boards, templates that ask for values, a master password for your encrypted items and paste next, and it
+supports the project. Encryption on disk is free for everyone. If you cannot afford it, ask for a key. Enter a key under **Licence** in Settings. Nothing nags you.
 See [`docs/licensing.md`](docs/licensing.md).
 
 ## Help and contributing
