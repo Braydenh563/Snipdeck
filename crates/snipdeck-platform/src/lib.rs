@@ -18,6 +18,7 @@
 
 pub mod cf_html;
 pub mod chord;
+pub mod clipboard_history;
 pub mod command_line;
 pub mod error;
 pub mod file_dialog;

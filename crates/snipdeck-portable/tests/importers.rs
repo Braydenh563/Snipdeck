@@ -18,7 +18,8 @@ use std::path::Path;
 use common::*;
 use rusqlite::Connection;
 use snipdeck_portable::{
-    Error, ImportOptions, MergeStrategy, Warning, import_copyq_json, import_ditto, import_folder,
+    Error, HistoryEntry, ImportOptions, MergeStrategy, Warning, import_copyq_json, import_ditto,
+    import_entries, import_folder,
 };
 use snipdeck_store::{BlobStore, BoardRepo, ItemRepo, ListRepo, Store, TagRepo};
 
@@ -971,4 +972,112 @@ fn dry_run_counts_duplicates_as_skipped() {
     let preview = import_folder(&mut s, dir.path(), at(10), &dry).unwrap();
     assert_eq!((preview.items_added, preview.items_skipped), (0, 1));
     assert_eq!(contents(&s).len(), 1);
+}
+
+// ---------------------------------------------------------------- clipboard history
+
+fn clip(text: &str, secs: Option<i64>) -> HistoryEntry {
+    HistoryEntry {
+        text: text.to_owned(),
+        timestamp: secs.map(at),
+    }
+}
+
+#[test]
+fn history_keeps_order_skips_blank_and_titles_from_first_line() {
+    let mut s = store();
+    let entries = [
+        clip("first\nsecond line", Some(5)),
+        clip("  \r\n\t ", None),
+        clip("", None),
+        clip("third", None),
+    ];
+    let report = import_entries(&mut s, &entries, "", at(9), &ImportOptions::default()).unwrap();
+    assert_healthy(&s);
+    assert_eq!(
+        (report.boards_added, report.lists_added, report.items_added),
+        (1, 1, 2)
+    );
+    assert_eq!(report.items_skipped, 2);
+    assert_eq!(
+        contents(&s),
+        [(
+            "Windows clipboard history".to_owned(),
+            "Windows clipboard history".to_owned(),
+            vec![
+                ("first".to_owned(), "first\nsecond line".to_owned()),
+                ("third".to_owned(), "third".to_owned()),
+            ]
+        )]
+    );
+    let item = first_item(&s);
+    assert_eq!(item.created_at, at(5));
+}
+
+#[test]
+fn history_board_name_comes_from_options_then_argument() {
+    let mut s = store();
+    let e = [clip("a", None)];
+    import_entries(
+        &mut s,
+        &e,
+        "Zwischenablage",
+        at(1),
+        &ImportOptions::default(),
+    )
+    .unwrap();
+    let opts = ImportOptions {
+        board_name: Some("Chosen".to_owned()),
+        ..ImportOptions::default()
+    };
+    import_entries(&mut s, &e, "Zwischenablage", at(2), &opts).unwrap();
+    let names: Vec<_> = s
+        .boards()
+        .unwrap()
+        .iter()
+        .map(|b| b.name.to_string())
+        .collect();
+    assert!(names.contains(&"Zwischenablage".to_owned()) && names.contains(&"Chosen".to_owned()));
+}
+
+#[test]
+fn history_skips_an_entry_over_the_text_limit_with_a_warning() {
+    let mut s = store();
+    let huge = "x".repeat(5 * 1024 * 1024 + 1);
+    let entries = [clip(&huge, None), clip("ok", None)];
+    let report = import_entries(&mut s, &entries, "", at(1), &ImportOptions::default()).unwrap();
+    assert_eq!((report.items_added, report.items_skipped), (1, 1));
+    assert!(report.warnings.iter().any(
+        |w| matches!(w, Warning::TooLarge { name, size } if name == "entry 1" && *size == 5 * 1024 * 1024 + 1)
+    ));
+}
+
+#[test]
+fn history_dry_run_writes_nothing_and_duplicates_are_skipped() {
+    let mut s = store();
+    let entries = [clip("same", None), clip("other", None)];
+    let dry = ImportOptions {
+        dry_run: true,
+        ..ImportOptions::default()
+    };
+    let preview = import_entries(&mut s, &entries, "", at(1), &dry).unwrap();
+    assert_eq!(preview.items_added, 2);
+    assert_eq!(counts(&s), (0, 0, 0, 0));
+
+    import_entries(&mut s, &entries, "", at(2), &ImportOptions::default()).unwrap();
+    let skip = ImportOptions {
+        merge: MergeStrategy::SkipDuplicates,
+        ..ImportOptions::default()
+    };
+    let again = import_entries(&mut s, &entries, "", at(3), &skip).unwrap();
+    assert_eq!((again.items_added, again.items_skipped), (0, 2));
+    assert_eq!(contents(&s).len(), 1);
+}
+
+#[test]
+fn history_with_nothing_importable_adds_no_board() {
+    let mut s = store();
+    let report = import_entries(&mut s, &[], "", at(1), &ImportOptions::default()).unwrap();
+    assert_eq!(report.boards_added, 0);
+    assert_eq!(counts(&s), (0, 0, 0, 0));
 }

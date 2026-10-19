@@ -9,10 +9,12 @@
 mod copyq;
 mod ditto;
 mod folder;
+mod history;
 
 pub use copyq::import_copyq_json;
 pub use ditto::import_ditto;
 pub use folder::import_folder;
+pub use history::{HistoryEntry, import_entries};
 
 use crate::report::{ImportReport, Warning};
 
