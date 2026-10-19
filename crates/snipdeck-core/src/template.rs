@@ -79,6 +79,10 @@ mod tests;
 /// this is a mistake, not a use case.
 pub const MAX_RENDERED_BYTES: usize = 16 * 1024 * 1024;
 
+/// The most distinct prompts (fields and choices) one template may have: the fill form
+/// validates and lists this many, so a template with more is refused when it is parsed.
+pub const MAX_PROMPTS: usize = 16;
+
 /// Placeholder keywords, for hints in error messages.
 const KEYWORDS: [&str; 7] = [
     "date",
@@ -339,6 +343,11 @@ pub enum TemplateErrorKind {
         /// The name.
         name: String,
     },
+    /// More than [`MAX_PROMPTS`] distinct prompts.
+    TooManyPrompts {
+        /// The limit, [`MAX_PROMPTS`].
+        max: usize,
+    },
     /// A `%x` in a `{datetime:…}` format that is not in the supported set.
     UnknownFormatSpecifier {
         /// The character after the `%`.
@@ -403,6 +412,10 @@ impl fmt::Display for TemplateErrorKind {
                 f,
                 "`{name}` is used for two different prompts; use the same kind and options \
                  each time, or pick another name"
+            ),
+            Self::TooManyPrompts { max } => write!(
+                f,
+                "a template can ask for at most {max} different fields or choices"
             ),
             Self::UnknownFormatSpecifier { specifier } => write!(
                 f,
@@ -778,6 +791,9 @@ impl Parser {
     ) -> Result<usize, TemplateError> {
         let Some(&index) = self.prompt_index.get(name) else {
             let index = self.prompts.len();
+            if index >= MAX_PROMPTS {
+                return err(span, TemplateErrorKind::TooManyPrompts { max: MAX_PROMPTS });
+            }
             self.prompt_index.insert(name.to_owned(), index);
             self.prompts.push(Prompt {
                 name: name.to_owned(),

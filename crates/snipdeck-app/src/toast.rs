@@ -89,6 +89,16 @@ pub enum ToastMessage {
         /// The chord as typed in Settings, for example `Ctrl+Alt+Space`.
         chord: String,
     },
+    /// "{chord} can't be used as a shortcut. Choose another in Settings."
+    HotkeyInvalid {
+        /// The chord as typed in Settings.
+        chord: String,
+    },
+    /// "Shortcuts are unavailable, so {chord} is not active. Restart Snipdeck to try again."
+    HotkeyUnavailable {
+        /// The chord that could not be registered.
+        chord: String,
+    },
     /// "Snipdeck is still running. Press {chord} or click the tray icon to bring the panel back."
     /// (shown once, the first time the Panel hides itself)
     PanelHidden {

@@ -106,6 +106,7 @@ pub struct Binding {
     tray: Rc<dyn Fn(TrayEvent)>,
     system_look: Rc<dyn Fn(SystemLook)>,
     frame_changed: Rc<FrameFn>,
+    frame_moved: Rc<FrameFn>,
     restore_frame: Rc<MonitorFn>,
 }
 
@@ -160,6 +161,12 @@ impl Binding {
     /// the limits if it got out of them ([`Effect::PlaceWindow`]).
     pub fn frame_changed(&self, monitor: &Monitor, frame: Rect) {
         (self.frame_changed)(monitor, frame);
+    }
+
+    /// The Panel was moved to `frame` on `monitor`: remembered, never pulled back inside the
+    /// work area (a Panel may straddle two monitors while it is dragged across).
+    pub fn frame_moved(&self, monitor: &Monitor, frame: Rect) {
+        (self.frame_moved)(monitor, frame);
     }
 
     /// The Panel is shown on `monitor`: put it where the user left it there, if they did.
@@ -448,6 +455,15 @@ where
         wire_effects!(on_panel_hovered, |ctl, on| ctl
             .dock_event(DockEvent::PanelHover(on)));
         wire_effects!(on_close_requested, |ctl| ctl.close());
+        // An OS close (Alt+F4, WM_CLOSE) goes the same way as the close button: the controller
+        // decides between hiding to the tray and quitting, and keeps `visible` in step.
+        {
+            let core = Rc::clone(&core);
+            window.window().on_close_requested(move || {
+                core.act_effects(|ctl| ctl.close());
+                slint::CloseRequestResponse::KeepWindowShown
+            });
+        }
         wire_effects!(on_drag_requested, |ctl| ctl.drag());
 
         Binding {
@@ -501,6 +517,14 @@ where
                     // call; that frame is already clamped, so skip it.
                     if core.controller.try_borrow_mut().is_ok() {
                         core.act_effects(|ctl| ctl.frame_changed(monitor, frame));
+                    }
+                })
+            },
+            frame_moved: {
+                let core = Rc::clone(&core);
+                Rc::new(move |monitor: &Monitor, frame| {
+                    if core.controller.try_borrow_mut().is_ok() {
+                        core.act_effects(|ctl| ctl.frame_moved(monitor, frame));
                     }
                 })
             },
@@ -754,7 +778,12 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
     ui::PanelRow {
         kind: item_kind(row),
         title: row.title.as_str().into(),
-        preview: row.preview.as_str().into(),
+        // Never rely on the store keeping a sensitive preview empty.
+        preview: if row.sensitive {
+            SharedString::new()
+        } else {
+            row.preview.as_str().into()
+        },
         masked_preview: if row.sensitive {
             MASKED_PREVIEW.into()
         } else {
@@ -825,7 +854,7 @@ mod tests {
 
     #[test]
     fn a_sensitive_row_is_masked_and_never_carries_a_preview_kind() {
-        let mapped = panel_row(&row(ItemKind::Text, true, ""), false);
+        let mapped = panel_row(&row(ItemKind::Text, true, "hunter2"), false);
         assert_eq!(mapped.kind, ui::ItemKind::Sensitive);
         assert_eq!(mapped.masked_preview.as_str(), MASKED_PREVIEW);
         assert_eq!(mapped.preview.as_str(), "");

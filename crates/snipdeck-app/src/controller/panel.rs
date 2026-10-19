@@ -309,6 +309,24 @@ where
     /// its quiet time. When the clamp changed the frame the host is told to place the window
     /// there.
     pub fn frame_changed(&mut self, monitor: &Monitor, frame: Rect) -> Vec<Effect> {
+        self.remember_frame(monitor, frame, true)
+    }
+
+    /// The Panel was only moved to `frame` (a drag in progress or ended). The size is clamped
+    /// and the place remembered, but the position is not pulled inside the work area and the
+    /// host is not told to place the window: a Panel straddling two monitors must be able to
+    /// cross, and answering every `Moved` could loop on rounding. The place is fitted when it
+    /// is restored ([`Self::placement`]) and when the Panel is next resized.
+    pub fn frame_moved(&mut self, monitor: &Monitor, frame: Rect) -> Vec<Effect> {
+        self.remember_frame(monitor, frame, false)
+    }
+
+    fn remember_frame(
+        &mut self,
+        monitor: &Monitor,
+        frame: Rect,
+        clamp_position: bool,
+    ) -> Vec<Effect> {
         if frame.w == 0 || frame.h == 0 {
             // Minimised or not yet laid out: not a place the user chose.
             return Vec::new();
@@ -319,7 +337,14 @@ where
             return Vec::new();
         }
         self.monitor = Some(monitor.clone());
-        let clamped = frame::clamp(frame, monitor);
+        let mut clamped = frame::clamp(frame, monitor);
+        if !clamp_position {
+            clamped = Rect {
+                x: frame.x,
+                y: frame.y,
+                ..clamped
+            };
+        }
         let mut edge = self.stored_geometry(monitor).and_then(|g| g.edge);
         // The first move of a drag that started on a docked Panel takes it off its edge.
         let dragged = std::mem::take(&mut self.drag_started);
@@ -327,7 +352,7 @@ where
             edge = None;
         }
         self.update_settings(|s| s.remember_panel_geometry(clamped.geometry(monitor, edge)));
-        if clamped == frame {
+        if clamped == frame || !clamp_position {
             Vec::new()
         } else {
             vec![Effect::PlaceWindow(clamped)]

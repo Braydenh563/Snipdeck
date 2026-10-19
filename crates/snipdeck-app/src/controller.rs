@@ -1300,11 +1300,17 @@ where
     /// Reports hotkeys that could not be registered (the first one is shown).
     pub fn report_hotkey_problems(&mut self, problems: &[crate::host::HotkeyProblem]) {
         if let Some(problem) = problems.first() {
+            let chord = problem.chord.clone();
+            let message = match problem.failure {
+                crate::host::HotkeyFailure::InUse => ToastMessage::HotkeyInUse { chord },
+                crate::host::HotkeyFailure::Invalid => ToastMessage::HotkeyInvalid { chord },
+                crate::host::HotkeyFailure::Unavailable => {
+                    ToastMessage::HotkeyUnavailable { chord }
+                }
+            };
             self.show_toast(Toast {
                 kind: ToastKind::Danger,
-                message: ToastMessage::HotkeyInUse {
-                    chord: problem.chord.clone(),
-                },
+                message,
             });
         }
     }
@@ -2352,6 +2358,31 @@ mod tests {
     }
 
     #[test]
+    fn a_hotkey_problem_is_worded_by_why_it_failed() {
+        use crate::host::{HotkeyFailure, HotkeyProblem};
+        let mut w = world();
+        let mut message = |failure| {
+            w.ctl.report_hotkey_problems(&[HotkeyProblem {
+                action: HotkeyAction::Picker,
+                chord: "F13".into(),
+                failure,
+            }]);
+            w.ctl.view().toast.expect("toast").message
+        };
+        let chord = String::from("F13");
+        assert_eq!(
+            message(HotkeyFailure::Invalid),
+            ToastMessage::HotkeyInvalid {
+                chord: chord.clone()
+            }
+        );
+        assert_eq!(
+            message(HotkeyFailure::Unavailable),
+            ToastMessage::HotkeyUnavailable { chord }
+        );
+    }
+
+    #[test]
     fn the_dark_theme_setting_reaches_the_view() {
         let settings = Settings {
             theme: Theme::Dark,
@@ -3074,6 +3105,31 @@ mod tests {
         assert_eq!(
             (stored[0].monitor_id.as_str(), stored[0].w, stored[0].h),
             (m.id.as_str(), 480, 600)
+        );
+    }
+
+    #[test]
+    fn a_move_across_a_monitor_edge_is_remembered_but_not_pulled_back() {
+        let mut w = world();
+        let m = display();
+        let straddling = Rect {
+            x: 1800,
+            y: 100,
+            w: 400,
+            h: 600,
+        };
+        assert_eq!(w.ctl.frame_moved(&m, straddling), Vec::new());
+        let stored = &w.ctl.settings().panel_geometry;
+        assert_eq!((stored[0].x, stored[0].y), (1800, 100));
+        // Restoring fits it inside the work area; a resize still clamps and answers.
+        let fitted = Rect {
+            x: 1520,
+            ..straddling
+        };
+        assert_eq!(w.ctl.placement(&m), Some(fitted));
+        assert_eq!(
+            w.ctl.frame_changed(&m, straddling),
+            [Effect::PlaceWindow(fitted)]
         );
     }
 
