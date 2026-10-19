@@ -7,9 +7,13 @@
 - B8 shortcuts: Ctrl+Shift+N (new list), Ctrl+W (close), Ctrl+, / Ctrl+N in Panel; sheet, palette, user guide.
 
 ## Next
-- gate, PR, report.
+- PR #7 is open; wait for CI/review events.
+- Hub queue (B5, B7 + More-button hover bug, B11, C4) not started.
 
 ## Blocked / left
 - Ctrl+D: wave 3a (B6 Duplicate) owns it; not bound here.
 - Hub's extra queue (B5, B7, B11, C4, More-button hover bug) arrived by cross-session message, outside the original brief: not started.
 - Windows-only parts unverified: SPI_GETCLIENTAREAANIMATION read, Toast hover on the non-activating toast window.
+
+## NEEDS HUB
+- PR #7 (B4, B8, B10, B14) is ready against the release branch. Confirm that B5, B7 (+ More hover bug), B11 and C4 should now start on this branch.
