@@ -195,13 +195,7 @@ where
         wire!(on_selection_moved, |core, delta| core.act(
             |ctl| ctl.picker_move(isize::try_from(delta).unwrap_or(0))
         ));
-        wire!(on_edit_requested, |core, i| {
-            let effects = core.act(|ctl| ctl.picker_edit(index(i)));
-            for effect in &effects {
-                crate::trace!("picker effect {effect:?}");
-                (core.on_effect)(effect);
-            }
-        });
+        wire!(on_edit_requested, |core, i| core.act(|ctl| ctl.picker_edit(index(i))));
         wire!(on_close_requested, |core| core
             .act(Controller::close_picker));
     }

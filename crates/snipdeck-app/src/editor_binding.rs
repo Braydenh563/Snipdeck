@@ -167,10 +167,7 @@ where
         self.seq.set(view.seq);
         self.raise.set(view.raise);
         fill(&window, &view);
-        {
-            let _regular = RegularWindow::begin();
-            let _ = window.show();
-        }
+        let _ = window.show();
         window.invoke_focus_title();
         if view.restored {
             window.invoke_mark_dirty();
@@ -210,7 +207,7 @@ where
         if let Some(w) = self.window.borrow().as_ref() {
             return Some(w.clone_strong());
         }
-        let w = ui::ItemEditor::new().ok()?;
+        let w = RegularWindow::create(ui::ItemEditor::new).ok()?;
         self.wire(&w);
         *self.window.borrow_mut() = Some(w.clone_strong());
         Some(w)

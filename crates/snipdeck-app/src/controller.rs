@@ -976,14 +976,6 @@ where
         }
     }
 
-    /// Ctrl+E on result row `index`: closes the Picker and asks the host to edit that item.
-    pub fn picker_edit(&mut self, index: usize) -> Vec<Effect> {
-        self.picker_take(index)
-            .map(Effect::EditItem)
-            .into_iter()
-            .collect()
-    }
-
     /// Where the Target's text caret is on the screen, if it has one. Read it before a window
     /// of ours takes the foreground.
     #[must_use]
