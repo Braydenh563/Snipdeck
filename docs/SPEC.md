@@ -38,7 +38,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 | **Placeholder** | `{date}`, `{time}`, `{datetime:FORMAT}`, `{clipboard}`, `{cursor}` (static/free) and `{field:Name}` / `{field:Name|default}` / `{choice:Name|a|b}` (prompted/Supporter). |
 | **Tag** | Free-form label across Boards; filterable. |
 | **Pinned** | Item shown in the panel's favourites strip, above list order. |
-| **Sensitive** | Item that is masked and excluded from history (clipboard auto-clear after use is v1.1); encrypted at rest (all tiers). |
+| **Sensitive** | Item that is masked and excluded from history (a copy is cleared from the clipboard after 30 s); encrypted at rest (all tiers). |
 | **Recent inbox** | Opt-in clipboard history. Last 200 entries or 7 days (configurable). Promote → List. |
 | **Panel** | Small dockable, always-on-top, non-activating window showing a Board (lists as tabs). |
 | **Floating list** | A List detached from the Panel into its own mini-panel (Supporter). |
@@ -113,7 +113,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - One click **promote** to a List.
 
 ### 5.7 Sensitive items
-- Free: masked `••••` (click-and-hold to reveal), excluded from history. Clipboard auto-clear after N s (default 30) is **v1.1**: v1.0 does not clear the clipboard on a timer, an auto-paste restores the previous clipboard, and the editor makes no promise about it.
+- Free: masked `••••` (click-and-hold to reveal), excluded from history. A copied sensitive item is cleared from the clipboard 30 seconds later if the clipboard still holds it (A11); an auto-paste restores the previous clipboard. The 30 s is fixed in v1.0; making it a setting (N s) is v1.1, and the editor says "30 seconds".
 - Free and Supporter: encrypted at rest (XChaCha20-Poly1305); key wrapped by OS (DPAPI). Supporter adds an optional
   **master password** (Argon2id) → unlock prompt per session / idle timeout.
 
