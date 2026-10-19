@@ -14,8 +14,8 @@ use std::time::Duration;
 
 use snipdeck_app::{
     controller::{
-        Controller, LIST_MENU, MainAction, MainScreen, Services, TOAST_ENTER, TOAST_EXIT, TOAST_HOLD,
-        TOAST_UNDO_HOLD, TagRenameError,
+        Controller, LIST_MENU, MainAction, MainScreen, Services, TOAST_ENTER, TOAST_EXIT,
+        TOAST_HOLD, TOAST_UNDO_HOLD, TagRenameError,
     },
     demo,
     host::{FakeTargets, FixedClock},
@@ -651,7 +651,10 @@ fn the_list_menu_edits_the_list_it_was_opened_on() {
     assert_eq!(editor.name, "Code");
     assert!(!editor.is_new && editor.can_delete && !editor.open_delete);
     ctl.main_editor_save("Snippets", None, ListSort::Manual);
-    assert_eq!(ctl.view().tabs[tab_index(&ctl, "Snippets")].name, "Snippets");
+    assert_eq!(
+        ctl.view().tabs[tab_index(&ctl, "Snippets")].name,
+        "Snippets"
+    );
 }
 
 #[test]

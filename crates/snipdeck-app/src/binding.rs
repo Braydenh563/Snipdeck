@@ -450,7 +450,8 @@ where
         wire_effects!(on_item_menu_activated, |ctl, i| ctl
             .choose_item_menu(index(i)));
         wire!(on_item_menu_dismissed, |ctl| ctl.close_item_menu());
-        wire!(on_list_menu_requested, |ctl, i| ctl.open_list_menu(index(i)));
+        wire!(on_list_menu_requested, |ctl, i| ctl
+            .open_list_menu(index(i)));
         wire_effects!(on_list_menu_activated, |ctl, i| ctl
             .choose_list_menu(index(i)));
         wire!(on_list_menu_dismissed, |ctl| ctl.close_list_menu());
