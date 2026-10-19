@@ -6,6 +6,7 @@
 //! | [`keyboard`] | `WinKeyboard`: [`crate::pipeline::Keyboard`] via `SendInput` |
 //! | [`target`] | Foreground tracking, UIPI check, caret / UI Automation focus probe |
 //! | [`window_style`] | Non-activating panel style and its `WM_STYLECHANGING` subclass |
+//! | [`screen`] | Mouse position and the work area and scale of the monitor under a point |
 //! | [`hotkey`] | Global hotkeys on a dedicated thread |
 //! | [`autostart`] | Start with Windows (`HKCU\...\Run`) |
 //! | [`single_instance`] | One running instance; a second launch signals the first |
@@ -26,6 +27,7 @@ pub mod file_dialog;
 mod hidden_window;
 pub mod hotkey;
 pub mod keyboard;
+pub mod screen;
 pub mod single_instance;
 pub mod system_look;
 pub mod target;

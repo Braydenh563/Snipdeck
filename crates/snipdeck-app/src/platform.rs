@@ -30,6 +30,7 @@ mod imp {
             clipboard::WinClipboard,
             hotkey::{HotkeyError, HotkeyService},
             keyboard::WinKeyboard,
+            screen,
             single_instance::{Acquired, SingleInstance},
             system_look::{SystemLookWatcher, WinSystemLook},
             target::TargetTracker,
@@ -43,7 +44,9 @@ mod imp {
     use super::{Callbacks, Host, Start};
     use crate::{
         controller::Services,
+        frame::{Monitor, Rect},
         host::{HotkeyBackend, HotkeyFailure, TargetSource, action_of},
+        placement::PopupHost,
     };
     use snipdeck_platform::{chord::Chord, system_look::SystemLookSource};
 
@@ -68,6 +71,48 @@ mod imp {
 
         fn refocus(&self) -> bool {
             self.0.refocus_target()
+        }
+
+        fn caret(&self) -> Option<snipdeck_platform::route::ScreenRect> {
+            self.0.caret()
+        }
+    }
+
+    /// The Picker, the fill form and the toast window on the real machine.
+    struct Popups(Rc<TargetTracker>);
+
+    impl PopupHost for Popups {
+        fn attach(&self, window: &slint::Window) {
+            let Some(hwnd) = crate::native_window::handle_of(window) else {
+                return;
+            };
+            self.0.register_popup(hwnd);
+            // False means Windows refused the subclass; the window then activates on click.
+            let _ = window_style::install_panel_style(hwnd);
+        }
+
+        fn activate(&self, window: &slint::Window) -> bool {
+            crate::native_window::handle_of(window)
+                .is_some_and(|hwnd| self.0.begin_text_entry_in(hwnd))
+        }
+
+        fn cursor(&self) -> Option<(i32, i32)> {
+            screen::cursor_position()
+        }
+
+        fn monitor_at(&self, x: i32, y: i32) -> Option<Monitor> {
+            let facts = screen::monitor_at(x, y)?;
+            let area = |r: snipdeck_platform::route::ScreenRect| Rect {
+                x: r.x,
+                y: r.y,
+                w: r.w,
+                h: r.h,
+            };
+            Some(Monitor {
+                id: Monitor::id_of("monitor", facts.bounds.w, facts.bounds.h),
+                work_area: area(facts.work_area),
+                scale: facts.scale,
+            })
         }
     }
 
@@ -117,6 +162,7 @@ mod imp {
         .map_err(|e| format!("hotkey service: {e}"))?;
         let tracker = Rc::new(TargetTracker::install(on_target_changed));
         let panel_tracker = Rc::clone(&tracker);
+        let popup_tracker = Rc::clone(&tracker);
 
         // The tray and the colour-mode watcher are conveniences: without them the app still
         // runs (closing the Panel then quits, and the theme is read once), so a failure to
@@ -146,6 +192,7 @@ mod imp {
                 // False means Windows refused the subclass; the panel then activates on click.
                 let _ = window_style::install_panel_style(hwnd);
             }),
+            popups: Rc::new(Popups(popup_tracker)),
             tray,
             warnings,
             keep_alive,
@@ -203,6 +250,7 @@ mod imp {
             target: Box::new(FakeTargets::new(Some(crate::demo::target()))),
             hotkeys: Box::new(FakeHotkeys::default()),
             attach_panel: Box::new(|_| {}),
+            popups: std::rc::Rc::new(crate::placement::NoPopups),
             // No tray off Windows: closing the Panel quits the dev build.
             tray: None,
             warnings: Vec::new(),
@@ -266,6 +314,9 @@ pub struct Host {
     /// Call with the Panel's native window handle once the window exists: the Target tracker
     /// then ignores it and it becomes a non-activating tool window.
     pub attach_panel: Box<dyn Fn(isize)>,
+    /// What the Picker, the fill form and the toast window ask of the machine: their handles
+    /// registered, the keyboard taken, the mouse and the monitors read.
+    pub popups: std::rc::Rc<dyn crate::placement::PopupHost>,
     /// The notification-area icon, if one could be created (never off Windows). Not yet shown.
     pub tray: Option<Box<dyn Tray>>,
     /// Services that failed to start but are not essential: print them.

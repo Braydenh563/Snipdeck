@@ -22,14 +22,6 @@ fn hwnd_of(window: &winit::window::Window) -> Option<isize> {
     }
 }
 
-/// The Win32 window handle of the Panel, once its window exists (the event loop makes it when
-/// the Panel is first shown; later hides and shows keep the same window).
-#[must_use]
-pub fn handle(window: &PanelWindow) -> Option<isize> {
-    use slint::ComponentHandle;
-    window.window().with_winit_window(hwnd_of).flatten()
-}
-
 /// The Win32 window handle of `window`, once its native window exists.
 #[cfg(windows)]
 #[must_use]
@@ -44,18 +36,28 @@ pub fn handle_of(_window: &slint::Window) -> Option<isize> {
     None
 }
 
+/// The Win32 window handle of the Panel, once its window exists (none off Windows).
+#[must_use]
+pub fn handle(window: &PanelWindow) -> Option<isize> {
+    use slint::ComponentHandle;
+    handle_of(window.window())
+}
+
 /// Brings the shown Panel in front of the other windows without activating it.
-#[cfg(windows)]
 pub fn raise(window: &PanelWindow) {
-    if let Some(hwnd) = handle(window) {
+    use slint::ComponentHandle;
+    raise_window(window.window());
+}
+
+/// Brings the shown window in front of the other windows without activating it.
+#[cfg(windows)]
+pub fn raise_window(window: &slint::Window) {
+    if let Some(hwnd) = handle_of(window) {
         let raised = snipdeck_platform::windows::window_style::raise_without_activating(hwnd);
-        crate::trace!("raise panel {hwnd:#x}: {raised}");
+        crate::trace!("raise window {hwnd:#x}: {raised}");
     }
 }
 
-/// Brings the shown Panel in front of the other windows: nothing to do off Windows.
-#[cfg(not(windows))]
-pub fn raise(_window: &PanelWindow) {}
 
 /// The work area of the monitor holding `window`: without the taskbar on Windows, none
 /// elsewhere (winit reports only the whole monitor).
@@ -135,3 +137,7 @@ pub fn fit_to_screen(window: &slint::Window) {
         w.set_outer_position(winit::dpi::PhysicalPosition::new(fitted.x, fitted.y));
     });
 }
+
+/// Brings `window` in front without activating it: nothing off Windows.
+#[cfg(not(windows))]
+pub fn raise_window(_window: &slint::Window) {}
