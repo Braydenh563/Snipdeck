@@ -490,6 +490,7 @@ struct PageView {
     close_to_tray: bool,
     panel_in_taskbar: bool,
     panel_hide_on_blur: bool,
+    recent_history: bool,
     panel_width: i32,
     dock_edge_index: i32,
     dock_trigger_index: i32,
@@ -598,6 +599,7 @@ where
         close_to_tray: settings.close_to_tray,
         panel_in_taskbar: settings.panel_in_taskbar,
         panel_hide_on_blur: settings.panel_hide_on_blur,
+        recent_history: settings.recent_history,
         panel_width: i32::try_from(settings.panel_width).unwrap_or(320),
         dock_edge_index: dock_edge_index(controller.dock_edge()),
         dock_trigger_index: dock_trigger_index(settings.dock.trigger),
@@ -1065,6 +1067,11 @@ where
         });
         wire!(on_panel_hide_on_blur_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.panel_hide_on_blur = on)));
+        wire!(on_recent_history_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.recent_history = on)));
+        wire!(on_recent_history_cleared, |core| {
+            core.act(Controller::recent_clear);
+        });
         wire!(on_panel_width_chosen, |core, width| core
             .act(|ctl| ctl.update_settings(
                 |s| s.panel_width = u32::try_from(width).unwrap_or(0)
@@ -1170,6 +1177,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.panel_hide_on_blur == view.panel_hide_on_blur) {
         window.set_panel_hide_on_blur(view.panel_hide_on_blur);
+    }
+    if differs(&|p| p.recent_history == view.recent_history) {
+        window.set_recent_history(view.recent_history);
     }
     if differs(&|p| p.backups_keep == view.backups_keep) {
         window.set_backups_keep(view.backups_keep);

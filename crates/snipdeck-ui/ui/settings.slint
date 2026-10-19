@@ -58,6 +58,7 @@ export component SettingsPage inherits Window {
     in-out property <bool> close-to-tray: true;
     in-out property <bool> panel-in-taskbar: false;
     in-out property <bool> panel-hide-on-blur: true;
+    in-out property <bool> recent-history: false;
     in property <int> panel-width: 320;
     in property <int> panel-width-min: 260;
     in property <int> panel-width-max: 480;
@@ -128,6 +129,8 @@ export component SettingsPage inherits Window {
     callback language-chosen(index: int);
     callback autostart-toggled(on: bool);
     callback close-to-tray-toggled(on: bool);
+    callback recent-history-toggled(on: bool);
+    callback recent-history-cleared();
     callback panel-in-taskbar-toggled(on: bool);
     callback panel-hide-on-blur-toggled(on: bool);
     callback panel-width-chosen(width: int);
@@ -348,6 +351,34 @@ export component SettingsPage inherits Window {
                             a11y-label: @tr("Keep running in the tray when the window closes");
                             checked <=> root.close-to-tray;
                             toggled(on) => { root.close-to-tray-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Recent");
+                    SettingRow {
+                        title: @tr("Keep a Recent inbox of what you copy");
+                        description: @tr("Off by default. Keeps the text you copy, for the last 200 copies or 7 days, whichever is fewer, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept.");
+                        Toggle {
+                            a11y-label: @tr("Keep a Recent inbox of what you copy");
+                            checked <=> root.recent-history;
+                            toggled(on) => { root.recent-history-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Clear recent history");
+                        description: @tr("Deletes everything in the Recent inbox now.");
+                        Button {
+                            text: @tr("Clear recent history");
+                            variant: ButtonVariant.ghost;
+                            clicked => { root.recent-history-cleared(); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

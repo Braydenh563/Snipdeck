@@ -215,7 +215,7 @@ impl Rig {
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
-        let cases: [Case; 14] = [
+        let cases: [Case; 15] = [
             (
                 "theme",
                 |r| r.ui.invoke_theme_chosen(2),
@@ -245,6 +245,11 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
                 "hide the panel on blur",
                 |r| r.ui.invoke_panel_hide_on_blur_toggled(false),
                 |s| !s.panel_hide_on_blur,
+            ),
+            (
+                "keep a Recent inbox",
+                |r| r.ui.invoke_recent_history_toggled(true),
+                |s| s.recent_history,
             ),
             (
                 "backups to keep",
@@ -1316,4 +1321,23 @@ fn each_import_choice_asks_for_its_own_dialog() {
     ] {
         assert_eq!(settings_binding::pick_kind(kind), dialog);
     }
+}
+
+#[test]
+fn the_recent_inbox_is_off_until_chosen_and_its_clear_button_empties_it() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_recent_history(), "off by default");
+        r.ui.invoke_recent_history_toggled(true);
+        assert!(r.ctl.borrow().settings().recent_history);
+        r.ctl
+            .borrow_mut()
+            .on_clipboard_change(&snipdeck_app::recent::ClipboardObservation {
+                text: Some("copied".into()),
+                ..Default::default()
+            });
+        assert_eq!(r.ctl.borrow().recent_entries().len(), 1);
+        r.ui.invoke_recent_history_cleared();
+        assert_eq!(r.ctl.borrow().recent_entries().len(), 0);
+    });
 }
