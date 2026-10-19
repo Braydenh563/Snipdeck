@@ -293,6 +293,25 @@ fn the_panel_shows_the_demo_library() {
 }
 
 #[test]
+fn holding_a_sensitive_row_reveals_its_text_and_releasing_hides_it() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(r.ui.get_rows().row_data(5).unwrap().preview, "");
+        r.ui.invoke_reveal_requested(5, true);
+        assert_eq!(r.ui.get_revealed_index(), 5);
+        assert_eq!(
+            r.ui.get_rows().row_data(5).unwrap().preview,
+            "hunter2-correct-horse"
+        );
+        r.ui.invoke_reveal_requested(5, false);
+        assert_eq!(r.ui.get_revealed_index(), -1);
+        assert_eq!(r.ui.get_rows().row_data(5).unwrap().preview, "");
+        r.ui.invoke_reveal_requested(0, true);
+        assert_eq!(r.ui.get_revealed_index(), -1, "only sensitive rows reveal");
+    });
+}
+
+#[test]
 fn typing_in_the_search_filters_the_rows() {
     on_ui_thread(|| {
         let r = rig();

@@ -364,9 +364,6 @@ where
     /// `ShowPanel` has shown the window, a `HidePanel` has hidden it); the host handles the
     /// rest (`OpenPicker`, `StartCapture`, `PasteNext`, `DragWindow`).
     ///
-    /// Not yet wired, because the feature behind it is not built: the Panel's row context
-    /// menus (`context-menu-requested`, `pinned-context-menu-requested`) and the hold-to-reveal
-    /// of a sensitive row (`reveal-requested`).
     #[allow(
         clippy::too_many_lines,
         reason = "one flat list of the window's callbacks, each a single line"
@@ -412,6 +409,7 @@ where
             let used = ctl.quick_use(u8::try_from(n).unwrap_or(0));
             ctl.dock_after_use(&used)
         });
+        wire!(on_reveal_requested, |ctl, i, on| ctl.reveal_row(index(i), on));
         wire!(on_selection_moved, |ctl, delta| ctl
             .move_selection(isize::try_from(delta).unwrap_or(0)));
         wire!(on_tab_selected, |ctl, i| ctl.select_tab(index(i)));
@@ -621,6 +619,10 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     }
     if differs(&|p| p.rows == view.rows && p.dark == view.dark) {
         window.set_rows(model(view.rows.iter().map(|r| panel_row(r, view.dark))));
+    }
+    let revealed = view.revealed.map_or(-1, to_i32);
+    if window.get_revealed_index() != revealed {
+        window.set_revealed_index(revealed);
     }
     if window.get_current_tab() != to_i32(view.current_tab) {
         window.set_current_tab(to_i32(view.current_tab));

@@ -261,8 +261,10 @@ pub struct View {
     pub current_tab: usize,
     /// The pinned strip.
     pub pinned: Vec<Row>,
-    /// The item rows.
+    /// The item rows. A revealed sensitive row carries its real text in `preview`.
     pub rows: Vec<Row>,
+    /// The index in `rows` of the sensitive row held revealed.
+    pub revealed: Option<usize>,
     /// The search text.
     pub query: String,
     /// The keyboard-selected row.
@@ -353,6 +355,8 @@ pub struct Controller<S, C, K, T> {
     timer_seq: u64,
     /// A sensitive item held revealed in the Main window.
     revealed: Option<snipdeck_core::ItemId>,
+    /// A sensitive item held revealed in the Panel (its own: the two windows hold separately).
+    panel_revealed: Option<snipdeck_core::ItemId>,
     /// What Windows says about light / dark and high contrast.
     os_look: SystemLook,
     session: Session,
@@ -453,6 +457,7 @@ where
             undo: None,
             timer_seq: 0,
             revealed: None,
+            panel_revealed: None,
             os_look: SystemLook::default(),
             session: Session::default(),
             saver: None,
@@ -494,12 +499,23 @@ where
             .and_then(|id| self.model.boards().iter().find(|b| b.id == id))
             .map(|b| b.name.as_str().to_owned())
             .unwrap_or_default();
+        let mut rows = self.model.rows();
+        let mut revealed = None;
+        if let Some(id) = self.panel_revealed
+            && let Some(at) = rows.iter().position(|r| r.id == id && r.sensitive)
+        {
+            revealed = Some(at);
+            if let Ok(Some(text)) = usecase::item_text(&self.store, id) {
+                rows[at].preview = text.chars().take(snipdeck_core::Item::PREVIEW_CHARS).collect();
+            }
+        }
         View {
             board_name,
             current_tab: tabs.iter().position(|t| t.active).unwrap_or(0),
             tabs,
             pinned: self.model.pinned(),
-            rows: self.model.rows(),
+            rows,
+            revealed,
             query: self.model.query().to_owned(),
             selected: self.model.selected_position().unwrap_or(0),
             footer: self.model.footer(),
@@ -659,6 +675,7 @@ where
     /// Hides the Panel (Esc with nothing to clear, the close button, the toggle hotkey).
     pub fn hide(&mut self) -> Vec<Effect> {
         self.visible = false;
+        self.panel_revealed = None;
         self.menu = PanelMenu::None;
         vec![Effect::HidePanel]
     }

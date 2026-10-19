@@ -161,6 +161,21 @@ where
         );
     }
 
+    /// Holding Space (or the pointer) on sensitive row `index` reveals its text in the Panel;
+    /// letting go hides it again. The same rule as [`main_reveal`](Self::main_reveal): only a
+    /// sensitive row reveals.
+    pub fn reveal_row(&mut self, index: usize, on: bool) {
+        self.panel_revealed = if on {
+            self.model
+                .rows()
+                .get(index)
+                .filter(|r| r.sensitive)
+                .map(|r| r.id)
+        } else {
+            None
+        };
+    }
+
     // ---- The window frame ----------------------------------------------------------------------
 
     /// Pointer down on a resize grip: the host starts the OS resize from `edge`.
