@@ -204,7 +204,7 @@ impl Rig {
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
-        let cases: [Case; 10] = [
+        let cases: [Case; 11] = [
             (
                 "theme",
                 |r| r.ui.invoke_theme_chosen(2),
@@ -234,6 +234,11 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
                 "hide the panel on blur",
                 |r| r.ui.invoke_panel_hide_on_blur_toggled(false),
                 |s| !s.panel_hide_on_blur,
+            ),
+            (
+                "backups to keep",
+                |r| r.ui.invoke_backups_keep_chosen(12),
+                |s| s.backups_keep == 12,
             ),
             (
                 "panel width",
@@ -435,7 +440,11 @@ fn the_window_behaviour_toggles_start_at_their_defaults_and_reach_the_host() {
         assert!(r.ui.get_panel_hide_on_blur(), "on by default");
 
         r.ui.invoke_panel_in_taskbar_toggled(true);
-        assert_eq!(r.host.taskbar.get(), Some(true), "the Panel's window is told");
+        assert_eq!(
+            r.host.taskbar.get(),
+            Some(true),
+            "the Panel's window is told"
+        );
         assert!(r.ctl.borrow().settings().panel_in_taskbar);
         assert!(r.ui.get_panel_in_taskbar());
         r.ui.invoke_panel_in_taskbar_toggled(false);
@@ -444,6 +453,29 @@ fn the_window_behaviour_toggles_start_at_their_defaults_and_reach_the_host() {
         r.ui.invoke_panel_hide_on_blur_toggled(false);
         assert!(!r.ctl.borrow().settings().panel_hide_on_blur);
         assert!(!r.ui.get_panel_hide_on_blur());
+    });
+}
+
+#[test]
+fn backups_to_keep_is_what_the_prune_keeps() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_backups_keep_chosen(2);
+        assert_eq!(r.ctl.borrow().settings().backups_keep, 2);
+        assert_eq!(r.ui.get_backups_keep(), 2);
+        // Four days of backups on the frozen clock, moved on a day at a time.
+        for day in 0..4 {
+            r.clock
+                .set(at(&format!("2026-10-{:02}T10:30:00Z", 17 + day)));
+            assert!(r.ctl.borrow_mut().backup_now(r.dir.path()));
+        }
+        let files = std::fs::read_dir(r.dir.path().join("backups"))
+            .unwrap()
+            .count();
+        assert_eq!(files, 2, "only the newest two stay");
+        // A bigger number is held between 1 and 60.
+        r.ui.invoke_backups_keep_chosen(900);
+        assert_eq!(r.ctl.borrow().settings().backups_keep, 60);
     });
 }
 
@@ -562,6 +594,7 @@ fn the_demo_is_pro_and_keeps_nothing_on_disk() {
         r.ui.invoke_backup_now_requested();
         r.ui.invoke_export_requested();
         r.ui.invoke_open_data_folder_requested();
+        r.ui.invoke_open_backups_folder_requested();
         r.ui.invoke_erase_confirmed("DELETE".into(), true);
         assert!(r.host.opened.borrow().is_empty());
         assert!(!r.dir.path().join("backups").exists());
@@ -713,6 +746,11 @@ fn export_saves_a_new_file_in_documents_each_time_and_opens_the_folder() {
         );
         r.ui.invoke_open_data_folder_requested();
         assert_eq!(r.host.opened.borrow().last().unwrap(), r.dir.path());
+        r.ui.invoke_open_backups_folder_requested();
+        assert_eq!(
+            r.host.opened.borrow().last().unwrap(),
+            &r.dir.path().join("backups")
+        );
     });
 }
 

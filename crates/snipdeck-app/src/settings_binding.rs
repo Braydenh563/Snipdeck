@@ -97,10 +97,7 @@ impl SystemHost {
     /// A host that registers shortcuts with `hotkeys` and changes the Panel's taskbar button
     /// with `panel_taskbar`.
     #[must_use]
-    pub fn new(
-        hotkeys: Rc<RefCell<Box<dyn HotkeyBackend>>>,
-        panel_taskbar: PanelTaskbar,
-    ) -> Self {
+    pub fn new(hotkeys: Rc<RefCell<Box<dyn HotkeyBackend>>>, panel_taskbar: PanelTaskbar) -> Self {
         Self {
             hotkeys,
             panel_taskbar,
@@ -346,6 +343,7 @@ struct PageView {
     panel_in_taskbar: bool,
     panel_hide_on_blur: bool,
     panel_width: i32,
+    backups_keep: i32,
     no_paste_apps: Vec<String>,
     no_paste_error: String,
     pro: bool,
@@ -417,6 +415,7 @@ where
         panel_in_taskbar: settings.panel_in_taskbar,
         panel_hide_on_blur: settings.panel_hide_on_blur,
         panel_width: i32::try_from(settings.panel_width).unwrap_or(320),
+        backups_keep: i32::try_from(settings.backups_keep).unwrap_or(7),
         no_paste_apps: settings.no_paste_apps.clone(),
         no_paste_error: state.no_paste_error.clone(),
         pro: controller.tier() == snipdeck_core::Tier::Pro,
@@ -713,6 +712,16 @@ where
         self.open_folder(&dir);
     }
 
+    /// Opens the folder of the daily backups (made if no backup has been taken yet).
+    fn open_backups_folder(self: &Rc<Self>) {
+        let Some(dir) = self.data_dir.clone() else {
+            return;
+        };
+        let backups = dir.join("backups");
+        let _ = std::fs::create_dir_all(&backups);
+        self.open_folder(&backups);
+    }
+
     fn open_folder(self: &Rc<Self>, folder: &Path) {
         if let Err(error) = self.host.open_folder(folder) {
             crate::trace!("open folder: {error}");
@@ -832,6 +841,10 @@ where
             .act(|ctl| ctl.update_settings(
                 |s| s.panel_width = u32::try_from(width).unwrap_or(0)
             )));
+        wire!(on_backups_keep_chosen, |core, n| core
+            .act(|ctl| ctl.update_settings(
+                |s| s.backups_keep = u32::try_from(n).unwrap_or(0)
+            )));
         wire!(on_no_paste_app_added, |core, name| core
             .no_paste_added(&name));
         wire!(on_no_paste_app_removed, |core, i| core
@@ -843,6 +856,8 @@ where
             .restore(crate::binding::index(i)));
         wire!(on_open_data_folder_requested, |core| core
             .open_data_folder());
+        wire!(on_open_backups_folder_requested, |core| core
+            .open_backups_folder());
         wire!(on_export_requested, |core| core.export());
         wire!(on_erase_confirmed, |core, typed, forget| core
             .erase(&typed, forget));
@@ -891,6 +906,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.panel_hide_on_blur == view.panel_hide_on_blur) {
         window.set_panel_hide_on_blur(view.panel_hide_on_blur);
+    }
+    if differs(&|p| p.backups_keep == view.backups_keep) {
+        window.set_backups_keep(view.backups_keep);
     }
     if differs(&|p| p.panel_width == view.panel_width) {
         window.set_panel_width(view.panel_width);
@@ -993,6 +1011,10 @@ impl SettingsUi {
                 let mut slot = slot.borrow_mut();
                 if slot.is_none() {
                     let window = RegularWindow::create(ui::SettingsPage::new)?;
+                    crate::native_window::size_before_show(
+                        window.window(),
+                        (window.get_wanted_width(), window.get_wanted_height()),
+                    );
                     let binding = Controller::bind_settings(
                         &controller,
                         &window,

@@ -164,7 +164,7 @@ where
             &self.store,
             data_dir,
             &now.to_zoned(TimeZone::system()),
-            backup::DEFAULT_KEEP,
+            usize::try_from(self.settings.backups_keep).unwrap_or(backup::DEFAULT_KEEP),
             key,
         ) {
             Ok(BackupOutcome::Created { .. }) => true,

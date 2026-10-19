@@ -386,11 +386,16 @@ fn load_icon() -> HICON {
             unsafe { LoadImageW(module, name, IMAGE_ICON, cx, cy, LR_SHARED) }.ok()?;
         Some(HICON(handle.0))
     };
-    own.and_then(|module| load(Some(module), PCWSTR(std::ptr::without_provenance::<u16>(usize::from(
-        dpi::APP_ICON_RESOURCE,
-    )))))
-        .or_else(|| load(None, IDI_APPLICATION))
-        .unwrap_or_default()
+    own.and_then(|module| {
+        load(
+            Some(module),
+            PCWSTR(std::ptr::without_provenance::<u16>(usize::from(
+                dpi::APP_ICON_RESOURCE,
+            ))),
+        )
+    })
+    .or_else(|| load(None, IDI_APPLICATION))
+    .unwrap_or_default()
 }
 
 /// Shows `lines` at the click position (`anchor`, the callback's `wParam`) and returns the entry

@@ -61,6 +61,9 @@ msgstr "Sauvegarde du {}, {}"
 msgid "Backups"
 msgstr "Sauvegardes"
 
+msgid "Backups to keep"
+msgstr "Sauvegardes à conserver"
+
 msgid "Blue"
 msgstr "Bleu"
 
@@ -144,9 +147,6 @@ msgstr "Sombre"
 
 msgid "Date and time in a format you choose"
 msgstr "Date et heure dans le format de votre choix"
-
-msgid "Delete"
-msgstr "Supprimer"
 
 msgid "Delete board"
 msgstr "Supprimer le tableau"
@@ -337,6 +337,12 @@ msgstr "Ses listes et {n} extrait seront déplacés dans la corbeille. Vous pouv
 msgid "Keep editing"
 msgstr "Continuer la modification"
 
+msgid "Keep fewer backups"
+msgstr "Conserver moins de sauvegardes"
+
+msgid "Keep more backups"
+msgstr "Conserver plus de sauvegardes"
+
 msgid "Keep panel on top"
 msgstr "Garder le panneau au premier plan"
 
@@ -399,6 +405,9 @@ msgstr "Les plus utilisés"
 
 msgid "Move"
 msgstr "Déplacer"
+
+msgid "Move to Trash"
+msgstr "Mettre à la corbeille"
 
 msgid "Move to list"
 msgstr "Déplacer vers la liste"
@@ -495,6 +504,9 @@ msgstr "Ouvrir les paramètres"
 
 msgid "Open Snipdeck"
 msgstr "Ouvrir Snipdeck"
+
+msgid "Open backups folder"
+msgstr "Ouvrir le dossier des sauvegardes"
 
 msgid "Open data folder"
 msgstr "Ouvrir le dossier de données"
@@ -685,8 +697,8 @@ msgstr "Snipdeck n’a ni compte, ni serveur, ni télémétrie, et n’ouvre auc
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck ne se connecte jamais à internet : chaque icône et chaque police affichée est fournie avec lui."
 
-msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
-msgstr "Snipdeck enregistre une copie de votre bibliothèque une fois par jour et garde les 7 plus récentes. La restauration remet ce qui manque et ne supprime jamais rien."
+msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
+msgstr "Snipdeck enregistre une copie de votre bibliothèque une fois par jour et garde les {} plus récentes. La restauration remet ce qui manque et ne supprime jamais rien."
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck reste dans la zone de notification pour que les raccourcis fonctionnent après la connexion."
@@ -738,6 +750,9 @@ msgstr "La clé ouvre les éléments chiffrés des exports enregistrés plus tô
 
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "La liste et ses {} extraits sont déplacés dans la corbeille. Vous pouvez les restaurer pendant {} jours."
+
+msgid "The oldest ones are deleted once there are more than this."
+msgstr "Les plus anciennes sont supprimées au-delà de ce nombre."
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "Les extraits sélectionnés seront supprimés définitivement. Cette action est irréversible."

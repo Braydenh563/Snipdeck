@@ -420,6 +420,9 @@ fn a_second_launch_shows_a_hidden_panel() {
         assert!(!r.window().is_visible());
         r.binding.show();
         assert!(r.window().is_visible());
+        // Run again while it is up: the Main window opens instead.
+        r.binding.show();
+        assert_eq!(r.effects.borrow().last(), Some(&Effect::OpenMainWindow));
     });
 }
 

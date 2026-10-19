@@ -120,8 +120,12 @@ export component MainWindow inherits Window {
     background: Theme.bg-app;
     min-width: 480px;
     min-height: 360px;
-    preferred-width: 1100px;
-    preferred-height: 720px;
+    preferred-width: root.wanted-width;
+    preferred-height: root.wanted-height;
+
+    // The size the window opens at; the host cuts it to the screen before the window exists.
+    out property <length> wanted-width: 1100px;
+    out property <length> wanted-height: 720px;
 
     // ---- State in -----------------------------------------------------------------------------
     in property <bool> dark: false;
@@ -445,7 +449,7 @@ export component MainWindow inherits Window {
         { text: @tr("Move to list…"), icon: Icons.folder },
         { text: @tr("Tags…"), icon: Icons.tag },
         { separator: true },
-        { text: @tr("Delete"), icon: Icons.trash, destructive: true, shortcut: "Del" },
+        { text: @tr("Move to Trash"), icon: Icons.trash, destructive: true, shortcut: "Del" },
     ];
 
     function item-menu-activated(i: int) {
@@ -931,7 +935,7 @@ export component MainWindow inherits Window {
                         }
                         if root.in-trash && root.rows.length > 0: Button {
                             horizontal-stretch: 0;
-                            variant: ButtonVariant.secondary;
+                            variant: ButtonVariant.danger;
                             icon: Icons.trash;
                             text: @tr("Empty Trash…");
                             y: (parent.height - self.height) / 2;
@@ -1316,7 +1320,7 @@ export component MainWindow inherits Window {
                             horizontal-stretch: 0;
                             variant: ButtonVariant.danger;
                             icon: Icons.trash;
-                            text: @tr("Delete");
+                            text: @tr("Move to Trash");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.act(ItemAction.delete, root.cur); }
                         }

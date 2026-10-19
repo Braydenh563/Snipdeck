@@ -40,8 +40,12 @@ export component SettingsPage inherits Window {
     background: Theme.bg-app;
     min-width: 420px;
     min-height: 360px;
-    preferred-width: 640px;
-    preferred-height: 760px;
+    preferred-width: root.wanted-width;
+    preferred-height: root.wanted-height;
+
+    // The size the window opens at; the host cuts it to the screen before the window exists.
+    out property <length> wanted-width: 640px;
+    out property <length> wanted-height: 760px;
 
     in property <bool> dark: false;
     in property <[HotkeySetting]> hotkeys;
@@ -57,6 +61,9 @@ export component SettingsPage inherits Window {
     in property <int> panel-width: 320;
     in property <int> panel-width-min: 260;
     in property <int> panel-width-max: 480;
+    in property <int> backups-keep: 7;
+    in property <int> backups-keep-min: 1;
+    in property <int> backups-keep-max: 60;
     // Program names the panel never pastes into ("keepass.exe").
     in property <[string]> no-paste-apps;
     // Set by the host when `no-paste-app-added` was refused ("Already in the list").
@@ -93,12 +100,14 @@ export component SettingsPage inherits Window {
     callback panel-in-taskbar-toggled(on: bool);
     callback panel-hide-on-blur-toggled(on: bool);
     callback panel-width-chosen(width: int);
+    callback backups-keep-chosen(count: int);
     callback no-paste-app-added(name: string);
     callback no-paste-app-removed(index: int);
     callback licence-submitted(key: string);
     callback backup-now-requested();
     callback backup-restore-requested(index: int);
     callback open-data-folder-requested();
+    callback open-backups-folder-requested();
     callback export-requested();
     // The host checks `typed` again: only the exact word erases.
     callback erase-confirmed(typed: string, forget-key: bool);
@@ -416,12 +425,29 @@ export component SettingsPage inherits Window {
                 FormSection {
                     title: @tr("Backups");
                     Text {
-                        text: @tr("Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything.");
+                        text: @tr("Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything.", root.backups-keep);
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.sm;
                         wrap: word-wrap;
                         accessible-role: none;
+                    }
+                    SettingRow {
+                        title: @tr("Backups to keep");
+                        description: @tr("The oldest ones are deleted once there are more than this.");
+                        NumberStepper {
+                            label: @tr("Backups to keep");
+                            decrease-label: @tr("Keep fewer backups");
+                            increase-label: @tr("Keep more backups");
+                            min: root.backups-keep-min;
+                            max: root.backups-keep-max;
+                            step: 1;
+                            value: root.backups-keep;
+                            stepped(v) => { root.backups-keep-chosen(v); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
                     }
                     if !root.has-data-folder: Text {
                         text: @tr("This demo keeps nothing on disk, so there are no backups.");
@@ -499,6 +525,15 @@ export component SettingsPage inherits Window {
                             icon: Icons.folder;
                             enabled: root.has-data-folder;
                             clicked => { root.open-data-folder-requested(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                        Button {
+                            text: @tr("Open backups folder");
+                            icon: Icons.folder;
+                            enabled: root.has-data-folder;
+                            clicked => { root.open-backups-folder-requested(); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

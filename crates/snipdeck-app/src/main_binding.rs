@@ -33,7 +33,7 @@ use crate::{
     controller::{BoardMenuEntry, Controller, Library, MainAction, MainScreen, ToastPhase},
     host::ClipboardText,
     main_window::{EditorKind, EditorView, Section, SelectMode, ViewMode},
-    native_window::fit_to_screen,
+    native_window::{fit_logical, fit_to_screen, size_before_show},
     palette::list_color,
     wording,
 };
@@ -82,7 +82,8 @@ const EDITOR_WIDTH: f32 = 460.0;
 fn size_to_content(window: &slint::Window, wanted: impl Fn() -> f32) {
     // The form's height depends on its width (a notice wraps), so give it the width first.
     window.set_size(slint::LogicalSize::new(EDITOR_WIDTH, 300.0));
-    window.set_size(slint::LogicalSize::new(EDITOR_WIDTH, wanted()));
+    let (w, h) = fit_logical((EDITOR_WIDTH, wanted()));
+    window.set_size(slint::LogicalSize::new(w, h));
 }
 
 /// The list and board editor windows, made on first use and reused (hidden between uses).
@@ -586,6 +587,10 @@ impl MainUi {
                 let mut slot = slot.borrow_mut();
                 if slot.is_none() {
                     let window = RegularWindow::create(ui::MainWindow::new)?;
+                    size_before_show(
+                        window.window(),
+                        (window.get_wanted_width(), window.get_wanted_height()),
+                    );
                     let binding = Controller::bind_main(&controller, &window);
                     *slot = Some((window, binding));
                 }

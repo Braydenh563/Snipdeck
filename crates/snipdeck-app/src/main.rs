@@ -194,7 +194,10 @@ fn run(args: &Args) -> Result<(), String> {
     let settings_ui = Rc::new(SettingsUi::new(
         &controller,
         settings_folder.clone(),
-        Rc::new(SystemHost::new(Rc::clone(&hotkeys), Rc::clone(&panel_taskbar))),
+        Rc::new(SystemHost::new(
+            Rc::clone(&hotkeys),
+            Rc::clone(&panel_taskbar),
+        )),
     ));
     // The Panel's native window exists once it has been shown. Attached on the first show, which
     // a `--hidden` start reaches later, from the tray or the hotkey.

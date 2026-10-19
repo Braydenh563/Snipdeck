@@ -58,14 +58,25 @@ pub fn install_panel_style(hwnd: isize, in_taskbar: bool) -> bool {
     // Subclass first, so the guard is in place before the style is set.
     // SAFETY: `hwnd` is a window of this thread (caller contract); `panel_subclass_proc` matches
     // `SUBCLASSPROC` and stays valid for the life of the process.
-    let installed = unsafe { SetWindowSubclass(hwnd, Some(panel_subclass_proc), SUBCLASS_ID, usize::from(in_taskbar)) };
+    let installed = unsafe {
+        SetWindowSubclass(
+            hwnd,
+            Some(panel_subclass_proc),
+            SUBCLASS_ID,
+            usize::from(in_taskbar),
+        )
+    };
     if !installed.as_bool() {
         return false;
     }
     // SAFETY: plain calls on the same window handle. A stale handle makes them fail, not crash.
     unsafe {
         let current = ex_style_bits(GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
-        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex_style_slot(panel_ex_style(current, in_taskbar)));
+        SetWindowLongPtrW(
+            hwnd,
+            GWL_EXSTYLE,
+            ex_style_slot(panel_ex_style(current, in_taskbar)),
+        );
         // Not hidden or resized by this call; it only makes Windows re-read the frame styles.
         let _ = SetWindowPos(
             hwnd,
@@ -113,7 +124,11 @@ pub fn set_panel_taskbar(hwnd: isize, in_taskbar: bool) -> bool {
             let _ = ShowWindow(hwnd, SW_HIDE);
         }
         let current = ex_style_bits(GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
-        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex_style_slot(panel_ex_style(current, in_taskbar)));
+        SetWindowLongPtrW(
+            hwnd,
+            GWL_EXSTYLE,
+            ex_style_slot(panel_ex_style(current, in_taskbar)),
+        );
         if visible {
             let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
         }
@@ -216,6 +231,47 @@ unsafe extern "system" fn panel_subclass_proc(
     }
     // SAFETY: forwards the message unchanged to the next procedure in the subclass chain.
     unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
+}
+
+/// The work area and DPI of the monitor the mouse pointer is on: `(x, y, width, height, dpi)` in
+/// physical pixels. A window about to be created (the Main window, Settings) is sized from it
+/// before it exists, because the window's own monitor is not known yet and a window taller than
+/// the work area opens half off the screen. `None` if Windows cannot say.
+#[must_use]
+pub fn work_area_near_cursor() -> Option<(i32, i32, u32, u32, u32)> {
+    use windows::Win32::{
+        Foundation::POINT,
+        Graphics::Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromPoint},
+        UI::{
+            HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI},
+            WindowsAndMessaging::GetCursorPos,
+        },
+    };
+    let mut at = POINT::default();
+    let mut info = MONITORINFO {
+        cbSize: u32::try_from(std::mem::size_of::<MONITORINFO>()).ok()?,
+        ..Default::default()
+    };
+    let (mut dpi_x, mut dpi_y) = (0_u32, 0_u32);
+    // SAFETY: `at`, `info` and the two DPI values are properly sized and outlive the calls; a
+    // failure is reported through the return values, not by crashing.
+    let ok = unsafe {
+        GetCursorPos(&raw mut at).is_ok() && {
+            let monitor = MonitorFromPoint(at, MONITOR_DEFAULTTONEAREST);
+            GetMonitorInfoW(monitor, &raw mut info).as_bool()
+                && GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &raw mut dpi_x, &raw mut dpi_y)
+                    .is_ok()
+        }
+    };
+    if !ok {
+        return None;
+    }
+    let r = info.rcWork;
+    let (w, h) = (
+        u32::try_from(r.right - r.left).ok()?,
+        u32::try_from(r.bottom - r.top).ok()?,
+    );
+    (w > 0 && h > 0 && dpi_x > 0).then_some((r.left, r.top, w, h, dpi_x))
 }
 
 /// The work area (the monitor without the taskbar and other app bars) of the monitor that

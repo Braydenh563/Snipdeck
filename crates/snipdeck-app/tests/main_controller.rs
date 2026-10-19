@@ -293,13 +293,21 @@ fn tags_are_ticked_on_the_chosen_rows_and_unticked_again() {
 /// A demo library with the tags `invoices` and `billing`.
 fn rig_with_tags() -> Ctl {
     let mut store = demo::store(now()).unwrap();
-    store.insert_tag(&Tag::new(Name::new("invoices").unwrap())).unwrap();
-    store.insert_tag(&Tag::new(Name::new("billing").unwrap())).unwrap();
+    store
+        .insert_tag(&Tag::new(Name::new("invoices").unwrap()))
+        .unwrap();
+    store
+        .insert_tag(&Tag::new(Name::new("billing").unwrap()))
+        .unwrap();
     rig_on(store, Tier::Pro).0
 }
 
 fn tag_names(ctl: &mut Ctl) -> Vec<String> {
-    ctl.main_screen().tags.iter().map(|t| t.name.clone()).collect()
+    ctl.main_screen()
+        .tags
+        .iter()
+        .map(|t| t.name.clone())
+        .collect()
 }
 
 #[test]
@@ -315,10 +323,17 @@ fn renaming_a_tag_changes_it_everywhere() {
     assert_eq!(ctl.main_rename_tag(0, "  Invoices 2026 "), Ok(()));
     let after = tag_names(&mut ctl);
     assert!(after.contains(&"Invoices 2026".to_owned()), "{after:?}");
-    assert!(!after.contains(&before[0]), "the old name is gone: {after:?}");
+    assert!(
+        !after.contains(&before[0]),
+        "the old name is gone: {after:?}"
+    );
     // The items that carried it still do (the tag keeps its identity).
     let screen = ctl.main_screen();
-    let renamed = screen.tags.iter().find(|t| t.name == "Invoices 2026").unwrap();
+    let renamed = screen
+        .tags
+        .iter()
+        .find(|t| t.name == "Invoices 2026")
+        .unwrap();
     assert_eq!(renamed.count, 1);
     assert!(screen.toast.is_none());
 }
@@ -331,7 +346,10 @@ fn renaming_to_an_existing_name_is_refused_without_a_toast() {
     let other = names[1].to_uppercase();
     assert_eq!(ctl.main_rename_tag(0, &other), Err(TagRenameError::Exists));
     assert_eq!(tag_names(&mut ctl), names, "nothing changed");
-    assert!(ctl.main_screen().toast.is_none(), "the editor says it, not a toast");
+    assert!(
+        ctl.main_screen().toast.is_none(),
+        "the editor says it, not a toast"
+    );
     // Keeping its own name (only the case differs) is not a clash.
     assert_eq!(ctl.main_rename_tag(0, &names[0].to_uppercase()), Ok(()));
 }

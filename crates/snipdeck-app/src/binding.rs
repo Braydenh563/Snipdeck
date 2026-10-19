@@ -109,7 +109,8 @@ impl Binding {
         (self.hotkey)(action);
     }
 
-    /// Shows the Panel (a second launch asked for it).
+    /// A second launch asked for the app: shows the Panel, or opens the Main window if the
+    /// Panel is already up.
     pub fn show(&self) {
         (self.show)();
     }
@@ -375,7 +376,7 @@ where
                 let core = Rc::clone(&core);
                 Rc::new(move || {
                     crate::trace!("show requested");
-                    core.act_effects(Controller::show);
+                    core.act_effects(Controller::second_launch);
                 })
             },
             target_changed: {

@@ -546,6 +546,16 @@ where
         vec![Effect::ShowPanel]
     }
 
+    /// A second launch of the app: shows a hidden Panel, and opens the Main window when the
+    /// Panel is already up (the user ran Snipdeck again because they wanted something more).
+    pub fn second_launch(&mut self) -> Vec<Effect> {
+        if self.visible {
+            vec![Effect::OpenMainWindow]
+        } else {
+            self.show()
+        }
+    }
+
     /// Hides the Panel (Esc with nothing to clear, the close button, the toggle hotkey).
     pub fn hide(&mut self) -> Vec<Effect> {
         self.visible = false;
@@ -2141,6 +2151,15 @@ mod tests {
     }
 
     #[test]
+    fn a_second_launch_opens_the_main_window_when_the_panel_is_already_up() {
+        let mut w = world();
+        assert_eq!(w.ctl.second_launch(), [Effect::OpenMainWindow]);
+        w.ctl.hide();
+        assert_eq!(w.ctl.second_launch(), [Effect::ShowPanel]);
+        assert!(w.ctl.visible());
+    }
+
+    #[test]
     fn closing_the_panel_hides_it_when_a_tray_icon_can_bring_it_back() {
         let mut w = world();
         with_tray(&mut w);
@@ -2218,7 +2237,11 @@ mod tests {
         w.clock.set(at("2026-10-17T10:31:00Z"));
         assert_eq!(w.ctl.show(), [Effect::ShowPanel]);
         w.clock.set(at("2026-10-17T10:31:00.400Z"));
-        assert_eq!(w.ctl.on_foreground_changed(), [], "400 ms is still the grace");
+        assert_eq!(
+            w.ctl.on_foreground_changed(),
+            [],
+            "400 ms is still the grace"
+        );
         w.clock.set(at("2026-10-17T10:31:00.401Z"));
         assert_eq!(w.ctl.on_foreground_changed(), [Effect::HidePanel]);
     }
@@ -2268,7 +2291,10 @@ mod tests {
         let mut w = world();
         assert!(!w.ctl.main_window_closed(), "the Panel is still up");
         w.ctl.hide();
-        assert!(w.ctl.main_window_closed(), "nothing could bring a window back");
+        assert!(
+            w.ctl.main_window_closed(),
+            "nothing could bring a window back"
+        );
     }
 
     #[test]

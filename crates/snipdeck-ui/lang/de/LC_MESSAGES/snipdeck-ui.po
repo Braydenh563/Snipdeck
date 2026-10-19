@@ -61,6 +61,9 @@ msgstr "Sicherung vom {}, {}"
 msgid "Backups"
 msgstr "Sicherungen"
 
+msgid "Backups to keep"
+msgstr "Zu behaltende Sicherungen"
+
 msgid "Blue"
 msgstr "Blau"
 
@@ -144,9 +147,6 @@ msgstr "Dunkel"
 
 msgid "Date and time in a format you choose"
 msgstr "Datum und Uhrzeit in einem Format deiner Wahl"
-
-msgid "Delete"
-msgstr "Löschen"
 
 msgid "Delete board"
 msgstr "Board löschen"
@@ -337,6 +337,12 @@ msgstr "Seine Listen und {n} Textbaustein werden in den Papierkorb verschoben. D
 msgid "Keep editing"
 msgstr "Weiter bearbeiten"
 
+msgid "Keep fewer backups"
+msgstr "Weniger Sicherungen behalten"
+
+msgid "Keep more backups"
+msgstr "Mehr Sicherungen behalten"
+
 msgid "Keep panel on top"
 msgstr "Panel immer im Vordergrund halten"
 
@@ -399,6 +405,9 @@ msgstr "Am häufigsten verwendet"
 
 msgid "Move"
 msgstr "Verschieben"
+
+msgid "Move to Trash"
+msgstr "In den Papierkorb"
 
 msgid "Move to list"
 msgstr "In Liste verschieben"
@@ -495,6 +504,9 @@ msgstr "Einstellungen öffnen"
 
 msgid "Open Snipdeck"
 msgstr "Snipdeck öffnen"
+
+msgid "Open backups folder"
+msgstr "Sicherungsordner öffnen"
 
 msgid "Open data folder"
 msgstr "Datenordner öffnen"
@@ -685,8 +697,8 @@ msgstr "Snipdeck hat kein Konto, keinen Server und keine Telemetrie und öffnet 
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck verbindet sich nie mit dem Internet: jedes Symbol und jede Schrift, die es zeigt, ist mitgeliefert."
 
-msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
-msgstr "Snipdeck speichert einmal am Tag eine Kopie deiner Bibliothek und behält die neuesten 7. Beim Wiederherstellen wird Fehlendes zurückgeholt, nichts wird entfernt."
+msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
+msgstr "Snipdeck speichert einmal am Tag eine Kopie deiner Bibliothek und behält die neuesten {}. Beim Wiederherstellen wird Fehlendes zurückgeholt, nichts wird entfernt."
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck wartet im Infobereich, damit die Tastenkürzel nach der Anmeldung funktionieren."
@@ -738,6 +750,9 @@ msgstr "Der Schlüssel öffnet die verschlüsselten Textbausteine in früher ges
 
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "Die Liste und ihre {} Textbausteine werden in den Papierkorb verschoben. Du kannst sie {} Tage lang wiederherstellen."
+
+msgid "The oldest ones are deleted once there are more than this."
+msgstr "Die ältesten werden gelöscht, sobald es mehr als diese Anzahl gibt."
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "Die ausgewählten Textbausteine werden endgültig gelöscht. Dies kann nicht rückgängig gemacht werden."

@@ -22,8 +22,8 @@ export component EmptyState inherits VerticalLayout {
     HorizontalLayout {
         alignment: center;
         Icon {
-            source: root.kind == EmptyStateKind.list ? Icons.stack
-                : root.kind == EmptyStateKind.board ? Icons.squares-four
+            source: root.kind == EmptyStateKind.list ? Icons.rows
+                : root.kind == EmptyStateKind.board ? Icons.stack
                 : root.kind == EmptyStateKind.search ? Icons.magnifying-glass
                 : Icons.tray;
             size: Space.s8;

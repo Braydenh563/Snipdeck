@@ -90,7 +90,9 @@ fn rig_with_tags() -> Rig {
     let mut store = demo::store(now()).expect("demo store");
     for name in ["invoices", "billing"] {
         store
-            .insert_tag(&snipdeck_core::Tag::new(snipdeck_core::Name::new(name).unwrap()))
+            .insert_tag(&snipdeck_core::Tag::new(
+                snipdeck_core::Name::new(name).unwrap(),
+            ))
             .unwrap();
     }
     rig_with(controller_on(store, Tier::Pro))
@@ -537,7 +539,11 @@ fn add_list_works_again_after_the_editor_and_the_main_window_were_closed() {
         let editor = r.binding.list_editor().expect("list editor");
         assert!(editor.window().is_visible(), "the + works a second time");
         assert!(editor.get_is_new());
-        assert_eq!(editor.get_name(), "", "a fresh form, not the half typed one");
+        assert_eq!(
+            editor.get_name(),
+            "",
+            "a fresh form, not the half typed one"
+        );
     });
 }
 
@@ -553,7 +559,11 @@ fn add_list_sizes_the_editor_to_its_content() {
             .size()
             .to_logical(editor.window().scale_factor());
         assert!(wanted > 150.0 && wanted < 440.0, "{wanted}");
-        assert!((size.height - wanted).abs() < 1.0, "{} vs {wanted}", size.height);
+        assert!(
+            (size.height - wanted).abs() < 1.0,
+            "{} vs {wanted}",
+            size.height
+        );
         assert!((size.width - 460.0).abs() < 1.0, "{}", size.width);
     });
 }
@@ -561,20 +571,30 @@ fn add_list_sizes_the_editor_to_its_content() {
 // ---- Tags ------------------------------------------------------------------------------------
 
 fn tag_labels(r: &Rig) -> Vec<String> {
-    r.ui.get_tags().iter().map(|t| t.label.to_string()).collect()
+    r.ui.get_tags()
+        .iter()
+        .map(|t| t.label.to_string())
+        .collect()
 }
 
 #[test]
 fn the_tags_gear_opens_the_tag_manager_with_the_tags_and_counts() {
     on_ui_thread(|| {
         let r = rig_with_tags();
-        assert!(r.binding.tag_manager().is_none(), "nothing before it is asked for");
+        assert!(
+            r.binding.tag_manager().is_none(),
+            "nothing before it is asked for"
+        );
         r.ui.invoke_manage_tags_requested();
         let manager = r.binding.tag_manager().expect("tag manager");
         assert!(manager.window().is_visible());
         assert_eq!(manager.get_tags().row_count(), r.ui.get_tags().row_count());
         assert_eq!(manager.get_tags().row_count(), 2);
-        let names: Vec<String> = manager.get_tags().iter().map(|t| t.label.to_string()).collect();
+        let names: Vec<String> = manager
+            .get_tags()
+            .iter()
+            .map(|t| t.label.to_string())
+            .collect();
         assert_eq!(names, tag_labels(&r));
 
         // Closed with its X and opened again from the menu entry: the same window comes back.
@@ -595,11 +615,18 @@ fn renaming_in_the_tag_manager_updates_the_sidebar() {
         let manager = r.binding.tag_manager().unwrap();
         manager.set_editing(0);
         manager.invoke_rename_requested(0, "Receipts".into());
-        assert!(tag_labels(&r).contains(&"Receipts".to_owned()), "{:?}", tag_labels(&r));
+        assert!(
+            tag_labels(&r).contains(&"Receipts".to_owned()),
+            "{:?}",
+            tag_labels(&r)
+        );
         assert_eq!(manager.get_rename_error(), "");
         assert_eq!(manager.get_editing(), -1, "the field closes");
-        let in_manager: Vec<String> =
-            manager.get_tags().iter().map(|t| t.label.to_string()).collect();
+        let in_manager: Vec<String> = manager
+            .get_tags()
+            .iter()
+            .map(|t| t.label.to_string())
+            .collect();
         assert_eq!(in_manager, tag_labels(&r));
     });
 }
@@ -613,7 +640,10 @@ fn a_clashing_rename_shows_the_error_and_keeps_the_editor() {
         let manager = r.binding.tag_manager().unwrap();
         manager.set_editing(0);
         manager.invoke_rename_requested(0, before[1].to_uppercase().into());
-        assert_eq!(manager.get_rename_error(), "A tag with that name already exists.");
+        assert_eq!(
+            manager.get_rename_error(),
+            "A tag with that name already exists."
+        );
         assert_eq!(manager.get_editing(), 0, "the field stays open");
         assert_eq!(tag_labels(&r), before);
 

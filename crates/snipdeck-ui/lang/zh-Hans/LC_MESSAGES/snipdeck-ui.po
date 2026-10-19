@@ -61,6 +61,9 @@ msgstr "{} 的备份（{}）"
 msgid "Backups"
 msgstr "备份"
 
+msgid "Backups to keep"
+msgstr "保留的备份数"
+
 msgid "Blue"
 msgstr "蓝色"
 
@@ -144,9 +147,6 @@ msgstr "深色"
 
 msgid "Date and time in a format you choose"
 msgstr "以你选择的格式显示日期和时间"
-
-msgid "Delete"
-msgstr "删除"
 
 msgid "Delete board"
 msgstr "删除看板"
@@ -337,6 +337,12 @@ msgstr "其列表及其中的 {n} 个片段将移至回收站。你可以在 30 
 msgid "Keep editing"
 msgstr "继续编辑"
 
+msgid "Keep fewer backups"
+msgstr "减少保留的备份"
+
+msgid "Keep more backups"
+msgstr "增加保留的备份"
+
 msgid "Keep panel on top"
 msgstr "面板保持在最前"
 
@@ -399,6 +405,9 @@ msgstr "最常用"
 
 msgid "Move"
 msgstr "移动"
+
+msgid "Move to Trash"
+msgstr "移到回收站"
 
 msgid "Move to list"
 msgstr "移动到列表"
@@ -495,6 +504,9 @@ msgstr "打开设置"
 
 msgid "Open Snipdeck"
 msgstr "打开 Snipdeck"
+
+msgid "Open backups folder"
+msgstr "打开备份文件夹"
 
 msgid "Open data folder"
 msgstr "打开数据文件夹"
@@ -685,8 +697,8 @@ msgstr "Snipdeck 没有账户、没有服务器、没有遥测，也不开放任
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr "Snipdeck 从不连接互联网：它显示的每个图标和字体都已随应用打包。"
 
-msgid "Snipdeck saves a copy of your library once a day and keeps the newest 7. Restoring adds back what is missing and never removes anything."
-msgstr "Snipdeck 每天保存一份资料库副本，并保留最新的 7 份。还原只会补回缺少的内容，不会删除任何东西。"
+msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
+msgstr "Snipdeck 每天保存一份资料库副本，并保留最新的 {} 份。还原只会补回缺少的内容，不会删除任何东西。"
 
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr "Snipdeck 会待在系统托盘中，以便登录后快捷键仍可使用。"
@@ -738,6 +750,9 @@ msgstr "该密钥用于打开你之前保存的导出文件中的加密项目。
 
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr "该列表及其中的 {} 个片段将移至回收站。你可以在 {} 天内恢复它们。"
+
+msgid "The oldest ones are deleted once there are more than this."
+msgstr "超过此数量后，最旧的备份会被删除。"
 
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "所选片段将被永久删除，此操作无法撤销。"

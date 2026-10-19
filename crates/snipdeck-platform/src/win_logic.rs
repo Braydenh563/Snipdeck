@@ -532,7 +532,11 @@ mod tests {
     #[test]
     fn panel_style_with_taskbar_has_appwindow_and_no_toolwindow() {
         let style = panel_ex_style(WS_EX_TOOLWINDOW | 0x1, true);
-        assert_ne!(style & WS_EX_NOACTIVATE, 0, "a click still never activates it");
+        assert_ne!(
+            style & WS_EX_NOACTIVATE,
+            0,
+            "a click still never activates it"
+        );
         assert_ne!(style & WS_EX_APPWINDOW, 0);
         assert_eq!(style & WS_EX_TOOLWINDOW, 0);
         assert_eq!(style & 0x1, 0x1, "other bits are kept");

@@ -519,7 +519,7 @@ export component ItemEditor inherits Window {
 
             EditorFooter {
                 show-delete: !root.is-new;
-                delete-label: @tr("Delete");
+                delete-label: @tr("Move to Trash");
                 cancel-label: @tr("Cancel");
                 save-label: @tr("Save");
                 delete => { root.delete-requested(); }
