@@ -197,6 +197,8 @@ export component SettingsPage inherits Window {
             if (event.text == Key.Escape) {
                 if (root.import-open) {
                     root.import-cancelled();
+                } else if (root.import-choosing) {
+                    root.import-choosing = false;
                 } else {
                     root.close-requested();
                 }
@@ -704,6 +706,18 @@ export component SettingsPage inherits Window {
                         padding-top: Space.s2;
                         accessible-role: groupbox;
                         accessible-label: root.import-title;
+                        // Once laid out: focus the first button and scroll the preview into view
+                        // (the file dialog that opened it took the focus away; a Restore button
+                        // opens it from further up the page).
+                        Timer {
+                            interval: 1ms;
+                            running: true;
+                            triggered => {
+                                self.running = false;
+                                import-first.take-focus();
+                                root.reveal-field(import-first.absolute-position.y, import-first.height);
+                            }
+                        }
                         Text {
                             text: root.import-title;
                             color: Theme.text-primary;
@@ -798,7 +812,7 @@ export component SettingsPage inherits Window {
                         HorizontalLayout {
                             spacing: Space.s2;
                             alignment: end;
-                            Button {
+                            import-first := Button {
                                 text: root.import-problem != "" ? @tr("Close") : @tr("Cancel");
                                 clicked => { root.import-cancelled(); }
                                 changed has-focus => {

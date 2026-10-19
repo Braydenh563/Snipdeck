@@ -131,7 +131,9 @@ pub(crate) fn finish<L: Library>(
 ) -> Result<ImportReport> {
     if options.merge == MergeStrategy::SkipDuplicates {
         let mut known = existing_hashes(lib)?;
-        report.items_skipped += plan.drop_duplicates(&mut known);
+        let dropped = plan.drop_duplicates(&mut known);
+        report.items_skipped += dropped;
+        report.duplicates_skipped += dropped;
     }
     warn_board_limit(lib, &plan, options, &mut report)?;
     let mut no_assets = |_: &AssetRef| -> Result<Vec<u8>> {
@@ -244,7 +246,9 @@ pub fn import_archive<L: Library, R: Read + Seek>(
 
     if options.merge == MergeStrategy::SkipDuplicates {
         let mut known = existing_hashes(lib)?;
-        report.items_skipped += plan.drop_duplicates(&mut known);
+        let dropped = plan.drop_duplicates(&mut known);
+        report.items_skipped += dropped;
+        report.duplicates_skipped += dropped;
     }
     warn_board_limit(lib, &plan, options, &mut report)?;
 

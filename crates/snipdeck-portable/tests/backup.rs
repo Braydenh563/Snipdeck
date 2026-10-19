@@ -20,12 +20,32 @@ use jiff::Zoned;
 use jiff::civil::date;
 use jiff::tz::{Offset, TimeZone};
 use snipdeck_core::{Format, Formats, Item, ItemKind, Placement};
-use snipdeck_portable::KeySource;
 use snipdeck_portable::backup::{
-    BackupOutcome, DEFAULT_KEEP, file_name, list_backups, parse_file_name, restore, run_if_due,
+    BackupOutcome, DEFAULT_KEEP, file_name, list_backups, parse_file_name, run_if_due,
+};
+use snipdeck_portable::{
+    BoardLayout, ImportOptions, ImportReport, KeySource, MergeStrategy, import_archive_path,
 };
 use snipdeck_store::crypto::DataKey;
 use snipdeck_store::{ItemRepo, Store};
+
+/// A restore: the shared import path, keeping the backup's boards and skipping what exists.
+fn restore(
+    lib: &mut Store,
+    backup: &std::path::Path,
+    now: snipdeck_core::Timestamp,
+    key: KeySource<'_>,
+    max_boards: Option<usize>,
+) -> snipdeck_portable::Result<ImportReport> {
+    let options = ImportOptions {
+        layout: BoardLayout::KeepBoards,
+        merge: MergeStrategy::SkipDuplicates,
+        key,
+        max_boards,
+        ..ImportOptions::default()
+    };
+    import_archive_path(lib, backup, now, &options)
+}
 
 fn zone(hours: i8) -> TimeZone {
     TimeZone::fixed(Offset::from_hours(hours).unwrap())

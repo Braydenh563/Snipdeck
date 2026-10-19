@@ -19,10 +19,10 @@ use snipdeck_app::{
     settings::Settings,
     toast::ToastMessage,
 };
-use snipdeck_core::{Entitlements, Tier, Timestamp};
+use snipdeck_core::{Board, Entitlements, List, Name, Placement, Tier, Timestamp};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
 use snipdeck_portable::{ExportOptions, export_to_path};
-use snipdeck_store::{BoardRepo, ItemRepo, Store};
+use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, Store};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 
@@ -126,10 +126,60 @@ fn a_snipdeck_file_previews_its_boards_and_imports_them() {
     let source = snipdeck_file(dir.path());
     let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
     let preview = ctl.preview_import(&source).unwrap();
-    assert!(preview.boards >= 2 && preview.items > 0);
+    assert_eq!(preview.boards, 1, "an import is one new board");
+    assert!(preview.lists >= 2 && preview.items > 0);
     assert_eq!(counts(&ctl), (0, 0));
     assert!(ctl.apply_import(&source));
-    assert_eq!(counts(&ctl), (preview.boards, preview.items));
+    assert_eq!(counts(&ctl), (1, preview.items));
+}
+
+#[test]
+fn a_free_library_imports_a_many_board_archive_as_one_board() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("three.snipdeck");
+    let mut three = demo::store(now()).unwrap();
+    let board = Board::new(Name::new("Third").unwrap(), now());
+    three.insert_board(&board, Placement::Last).unwrap();
+    let list = List::new(board.id, Name::new("L").unwrap(), now());
+    three.insert_list(&list, Placement::Last).unwrap();
+    assert_eq!(three.boards().unwrap().len(), 3);
+    export_to_path(&three, now(), &ExportOptions::default(), &path).unwrap();
+    let source = ImportSource::Snipdeck(path.clone());
+
+    let mut mine = Store::open_in_memory().unwrap();
+    let own = Board::new(Name::new("Mine").unwrap(), now());
+    mine.insert_board(&own, Placement::Last).unwrap();
+    let mut ctl = rig_on(mine, Tier::Free);
+    let before = ctl.store().boards().unwrap().len();
+    assert_eq!(before, 1);
+    let preview = ctl.preview_import(&source).unwrap();
+    assert!(!preview.blocked_by_board_limit);
+    assert_eq!(preview.boards, 1);
+    assert!(ctl.apply_import(&source));
+    assert_eq!(ctl.store().boards().unwrap().len(), before + 1);
+    // A restore keeps the boards (two with items), so this Free library would pass the limit.
+    let mut theirs = Store::open_in_memory().unwrap();
+    for label in ["Mine", "Yours"] {
+        let extra = Board::new(Name::new(label).unwrap(), now());
+        theirs.insert_board(&extra, Placement::Last).unwrap();
+    }
+    let mut other = rig_on(theirs, Tier::Free);
+    assert!(other.preview_restore(&path).unwrap().blocked_by_board_limit);
+    assert!(!other.restore_backup(&path));
+}
+
+#[test]
+fn only_real_duplicates_are_counted_as_duplicates() {
+    let dir = tempfile::tempdir().unwrap();
+    let ImportSource::Folder(folder) = folder_of(dir.path(), 1) else {
+        unreachable!()
+    };
+    fs::write(folder.join("empty.txt"), "").unwrap();
+    let source = ImportSource::Folder(folder);
+    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    assert!(ctl.apply_import(&source));
+    let again = ctl.preview_import(&source).unwrap();
+    assert_eq!((again.items, again.duplicates), (0, 1));
 }
 
 #[test]
@@ -200,20 +250,14 @@ fn a_file_that_is_not_what_was_chosen_is_a_problem_not_a_panic() {
 }
 
 #[test]
-fn restore_goes_through_the_same_dry_run_and_refuses_on_the_limit() {
+fn restore_keeps_the_backups_boards() {
     let dir = tempfile::tempdir().unwrap();
     let ImportSource::Snipdeck(path) = snipdeck_file(dir.path()) else {
         unreachable!()
     };
     let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
-    let preview = ctl
-        .preview_import(&ImportSource::Snipdeck(path.clone()))
-        .unwrap();
+    let preview = ctl.preview_restore(&path).unwrap();
     assert!(ctl.restore_backup(&path));
-    assert_eq!(counts(&ctl).1, preview.items);
-    assert!(
-        !ctl.preview_import(&ImportSource::Snipdeck(path))
-            .unwrap()
-            .blocked_by_board_limit
-    );
+    assert_eq!(counts(&ctl), (preview.boards, preview.items));
+    assert!(!ctl.preview_restore(&path).unwrap().blocked_by_board_limit);
 }

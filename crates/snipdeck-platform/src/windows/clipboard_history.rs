@@ -14,7 +14,7 @@ use windows::ApplicationModel::DataTransfer::{
     Clipboard, ClipboardHistoryItemsResultStatus, StandardDataFormats,
 };
 
-use crate::clipboard_history::{HistoryRead, entry_from};
+use crate::clipboard_history::{HistoryRead, entry_from, read_failure};
 use crate::error::Error;
 
 /// Reads the text entries of this session's clipboard history.
@@ -23,14 +23,23 @@ use crate::error::Error;
 ///
 /// [`Error::Os`] when a `WinRT` call fails other than by the history being off or access denied.
 pub fn read_current_session() -> Result<HistoryRead, Error> {
-    let enabled =
-        Clipboard::IsHistoryEnabled().map_err(|e| Error::from_windows("IsHistoryEnabled", &e))?;
+    let enabled = match Clipboard::IsHistoryEnabled() {
+        Ok(enabled) => enabled,
+        Err(e) => {
+            return read_failure(e.code().0)
+                .map_or_else(|| Err(Error::from_windows("IsHistoryEnabled", &e)), Ok);
+        }
+    };
     if !enabled {
         return Ok(HistoryRead::HistoryDisabled);
     }
-    let result = Clipboard::GetHistoryItemsAsync()
-        .and_then(|op| op.join())
-        .map_err(|e| Error::from_windows("GetHistoryItemsAsync", &e))?;
+    let result = match Clipboard::GetHistoryItemsAsync().and_then(|op| op.join()) {
+        Ok(result) => result,
+        Err(e) => {
+            return read_failure(e.code().0)
+                .map_or_else(|| Err(Error::from_windows("GetHistoryItemsAsync", &e)), Ok);
+        }
+    };
     let status = result
         .Status()
         .map_err(|e| Error::from_windows("Status", &e))?;
@@ -57,7 +66,7 @@ pub fn read_current_session() -> Result<HistoryRead, Error> {
             continue;
         };
         let ticks = item.Timestamp().map_or(0, |t| t.UniversalTime);
-        entries.extend(entry_from(text.to_string_lossy(), ticks));
+        entries.push(entry_from(text.to_string_lossy(), ticks));
     }
     Ok(HistoryRead::Entries(entries))
 }

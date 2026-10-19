@@ -46,6 +46,9 @@ export component Button inherits Rectangle {
     border-color: root.variant == ButtonVariant.secondary ? Theme.border-strong : Theme.hc-border;
     opacity: root.enabled ? 1.0 : 0.45;
     forward-focus: scope;
+
+    // Puts keyboard focus on the button.
+    public function take-focus() { scope.focus(); }
     accessible-role: button;
     accessible-label: root.a11y-label != "" ? root.a11y-label : root.text;
     accessible-enabled: root.enabled;

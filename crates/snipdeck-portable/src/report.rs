@@ -162,6 +162,8 @@ pub struct ImportReport {
     pub items_added: usize,
     /// Items in the source that were not imported (duplicates, unreadable, undecryptable, ...).
     pub items_skipped: usize,
+    /// How many of `items_skipped` were already in the library (content-identical).
+    pub duplicates_skipped: usize,
     /// Tags created (existing tags with the same name are reused).
     pub tags_added: usize,
     /// The boards created, in order, so the UI can open the first one.

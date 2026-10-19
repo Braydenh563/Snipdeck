@@ -877,7 +877,13 @@ where
 
     /// Works out what `source` would do (nothing is written) and opens the preview on it.
     fn preview(self: &Rc<Self>, source: ImportSource, restore: bool, title: String) {
-        let outcome = self.act(|ctl| ctl.preview_import(&source));
+        let outcome = self.act(|ctl| {
+            if restore {
+                ctl.preview_restore(source.path())
+            } else {
+                ctl.preview_import(&source)
+            }
+        });
         self.state.borrow_mut().import = Some(PendingImport {
             source,
             restore,

@@ -166,6 +166,23 @@ fn folder_skips_empty_binary_and_oversized_files() {
     assert!(kinds.contains(&"unreadable") && kinds.contains(&"too large"));
 }
 
+/// Wave 3c review: duplicates are counted apart from the other skips.
+#[test]
+fn duplicates_are_counted_apart_from_other_skips() {
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "a.txt", "same");
+    write(dir.path(), "empty.txt", "");
+    let mut s = store();
+    let opts = ImportOptions {
+        merge: MergeStrategy::SkipDuplicates,
+        ..ImportOptions::default()
+    };
+    let first = import_folder(&mut s, dir.path(), at(1), &opts).unwrap();
+    assert_eq!((first.duplicates_skipped, first.items_skipped), (0, 1));
+    let second = import_folder(&mut s, dir.path(), at(2), &opts).unwrap();
+    assert_eq!((second.duplicates_skipped, second.items_skipped), (1, 2));
+}
+
 /// Security review 2, finding 6: the 5 MB limit is on the text that gets stored, not on the
 /// bytes in the file. Bad bytes become three-byte U+FFFD, and UTF-16 can grow by half.
 #[test]

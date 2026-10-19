@@ -85,19 +85,33 @@ pub fn timestamp_from_ticks(ticks: i64) -> Option<Timestamp> {
     Timestamp::from_second(seconds).ok()
 }
 
-/// Whether a history text is worth importing: it has something other than whitespace.
+/// Builds an entry from a history item's text and ticks. Blank text is kept: the importer
+/// (`import_entries`) warns about it, so the user hears of it.
 #[must_use]
-pub fn keep_text(text: &str) -> bool {
-    !text.trim().is_empty()
-}
-
-/// Builds an entry from a history item's text and ticks, or `None` when the text is not kept.
-#[must_use]
-pub fn entry_from(text: String, ticks: i64) -> Option<ClipboardHistoryEntry> {
-    keep_text(&text).then(|| ClipboardHistoryEntry {
+pub fn entry_from(text: String, ticks: i64) -> ClipboardHistoryEntry {
+    ClipboardHistoryEntry {
         text,
         timestamp: timestamp_from_ticks(ticks),
-    })
+    }
+}
+
+/// `E_ACCESSDENIED`: a policy or the user denied the history.
+#[cfg(any(windows, test))]
+const E_ACCESSDENIED: i32 = 0x8007_0005_u32.cast_signed();
+/// `REGDB_E_CLASSNOTREG`: the `WinRT` class is not there (an edition without clipboard history).
+#[cfg(any(windows, test))]
+const REGDB_E_CLASSNOTREG: i32 = 0x8004_0154_u32.cast_signed();
+
+/// What a failed history call means for the importer, if it is a known "no history here":
+/// `AccessDenied` for `E_ACCESSDENIED`, `Unsupported` for a missing class; `None` otherwise.
+#[cfg(any(windows, test))]
+#[must_use]
+pub(crate) fn read_failure(hresult: i32) -> Option<HistoryRead> {
+    match hresult {
+        E_ACCESSDENIED => Some(HistoryRead::AccessDenied),
+        REGDB_E_CLASSNOTREG => Some(HistoryRead::Unsupported),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -135,12 +149,25 @@ mod tests {
     }
 
     #[test]
-    fn blank_text_is_dropped_and_other_text_is_kept_verbatim() {
-        assert!(entry_from(" \r\n\t".to_owned(), 1).is_none());
-        assert!(entry_from(String::new(), 1).is_none());
-        let e = entry_from("  keep me \n".to_owned(), 0).unwrap();
+    fn blank_text_is_kept_for_the_importer_to_warn_about() {
+        assert_eq!(entry_from(" \r\n\t".to_owned(), 1).text, " \r\n\t");
+        assert_eq!(entry_from(String::new(), 1).text, "");
+        let e = entry_from("  keep me \n".to_owned(), 0);
         assert_eq!(e.text, "  keep me \n");
         assert_eq!(e.timestamp, None);
+    }
+
+    #[test]
+    fn known_failures_map_to_a_read_outcome() {
+        assert_eq!(
+            read_failure(0x8007_0005_u32.cast_signed()),
+            Some(HistoryRead::AccessDenied)
+        );
+        assert_eq!(
+            read_failure(0x8004_0154_u32.cast_signed()),
+            Some(HistoryRead::Unsupported)
+        );
+        assert_eq!(read_failure(0x8000_4005_u32.cast_signed()), None);
     }
 
     #[cfg(not(windows))]

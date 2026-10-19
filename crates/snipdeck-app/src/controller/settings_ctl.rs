@@ -375,18 +375,8 @@ where
     /// comes back, nothing is removed. A Free library stays within its board limit.
     pub fn restore_backup(&mut self, backup_file: &Path) -> bool {
         let source = ImportSource::Snipdeck(backup_file.to_path_buf());
-        // The same preview the page shows first: a refusal is known before anything is written.
-        let restored = match self.preview_import(&source) {
-            Ok(preview) if preview.blocked_by_board_limit => {
-                self.show_toast(danger(ToastMessage::BoardLimit));
-                return false;
-            }
-            Ok(_) => self.import_report(&source, false),
-            Err(_) => {
-                self.show_toast(danger(ToastMessage::RestoreFailed));
-                return false;
-            }
-        };
+        // The shared import path: the board limit is enforced inside its transaction.
+        let restored = self.import_report(&source, BoardLayout::KeepBoards, false);
         let worked = restored.is_ok();
         match restored {
             Ok(report) => {
@@ -407,18 +397,19 @@ where
     }
 
     /// The importer options every Settings import uses: duplicates are skipped, a `.snipdeck`
-    /// keeps its boards, encrypted items open with the library's own key, and a Free library
+    /// lands as `layout` says (one new board for an import, its own boards for a restore), encrypted items open with the library's own key, and a Free library
     /// stays within its board limit.
     fn import_report(
         &mut self,
         source: &ImportSource,
+        layout: BoardLayout,
         dry_run: bool,
     ) -> snipdeck_portable::Result<ImportReport> {
         let max_boards = (!self.entitlements.allows(Feature::UnlimitedBoards))
             .then_some(Entitlements::FREE_BOARD_LIMIT);
         let options = ImportOptions {
             merge: MergeStrategy::SkipDuplicates,
-            layout: BoardLayout::KeepBoards,
+            layout,
             key: KeySource::Library,
             max_boards,
             dry_run,
@@ -438,13 +429,32 @@ where
         &mut self,
         source: &ImportSource,
     ) -> Result<ImportPreview, ImportProblem> {
-        let (report, blocked) = match self.import_report(source, true) {
+        self.preview_as(source, BoardLayout::SingleBoard)
+    }
+
+    /// The preview of restoring a backup: like [`Self::preview_import`], but the backup's boards
+    /// come back under their own names.
+    ///
+    /// # Errors
+    ///
+    /// Why the backup cannot be read.
+    pub fn preview_restore(&mut self, backup_file: &Path) -> Result<ImportPreview, ImportProblem> {
+        let source = ImportSource::Snipdeck(backup_file.to_path_buf());
+        self.preview_as(&source, BoardLayout::KeepBoards)
+    }
+
+    fn preview_as(
+        &mut self,
+        source: &ImportSource,
+        layout: BoardLayout,
+    ) -> Result<ImportPreview, ImportProblem> {
+        let (report, blocked) = match self.import_report(source, layout, true) {
             Ok(report) => (report, false),
             Err(e) if is_board_limit(&e) => {
                 // Refused for the limit: read it again without the limit for the counts.
                 let options = ImportOptions {
                     merge: MergeStrategy::SkipDuplicates,
-                    layout: BoardLayout::KeepBoards,
+                    layout,
                     key: KeySource::Library,
                     dry_run: true,
                     ..ImportOptions::default()
@@ -460,7 +470,7 @@ where
             boards: report.boards_added,
             lists: report.lists_added,
             items: report.items_added,
-            duplicates: report.items_skipped,
+            duplicates: report.duplicates_skipped,
             tags: report.tags_added,
             warnings: report.warnings.iter().map(ToString::to_string).collect(),
             warnings_dropped: report.warnings_dropped,
@@ -471,7 +481,7 @@ where
     /// Imports `source` for real, as previewed, and says how many items came in. Returns
     /// whether it worked.
     pub fn apply_import(&mut self, source: &ImportSource) -> bool {
-        match self.import_report(source, false) {
+        match self.import_report(source, BoardLayout::SingleBoard, false) {
             Ok(report) => {
                 let _ = self.refresh_panel();
                 self.show_toast(Toast {
