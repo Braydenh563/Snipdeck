@@ -1724,6 +1724,7 @@ mod tests {
     fn make_sensitive(w: &mut World, id: ItemId) {
         let mut item = w.ctl.store.item(id).expect("item");
         item.sensitive = true;
+        item.preview.clear();
         w.ctl.store.update_item(&item, None).expect("update");
     }
 

@@ -722,6 +722,10 @@ mod tests {
         assert!(text.contains("close to tray: on"));
         assert!(text.contains("[Problem] Database"));
         assert!(text.contains("<data folder>\\library.db"));
-        assert!(!text.contains("ann"));
+        // "ann" alone also matches the "cannot" of the error text.
+        assert!(
+            !text.contains("\\ann\\"),
+            "the user name in the path is hidden"
+        );
     }
 }
