@@ -1,0 +1,52 @@
+// The sentences of the Settings import preview's "Will not be imported" list. They are built from
+// the importers' warnings in Rust, which cannot reach the translation catalogs, so the app calls
+// these functions (`snipdeck_app::wording::import_warning_text`) and gets the sentence in the
+// language selected for the UI. One function per warning; the file or item is an argument.
+export global ImportTexts {
+    // The name the importers give an entry that has no title of its own (the n-th clip).
+    pure public function clip-name(number: int) -> string {
+        return @tr("Clip {}", number);
+    }
+    pure public function newer-minor-version(found: string) -> string {
+        return @tr("This file was made by a newer Snipdeck (format {}), so anything this version does not know was left out.", found);
+    }
+    pure public function unknown-entries(count: int) -> string {
+        return @tr("{} file in this archive is not known to this version and was left out." | "{} files in this archive are not known to this version and were left out." % count, count);
+    }
+    pure public function unreferenced-assets(count: int) -> string {
+        return @tr("{} picture or file that no snippet uses was left out." | "{} pictures or files that no snippet uses were left out." % count, count);
+    }
+    pure public function sensitive-need-key(count: int) -> string {
+        return @tr("{} sensitive item is encrypted with a key this library does not have and was skipped." | "{} sensitive items are encrypted with a key this library does not have and were skipped." % count, count);
+    }
+    pure public function cannot-decrypt(title: string) -> string {
+        return @tr("The sensitive item \"{}\" cannot be unlocked with this computer's key and was skipped.", title);
+    }
+    pure public function sensitive-omitted-by-export(count: int) -> string {
+        return @tr("{} sensitive item was left out when this file was made." | "{} sensitive items were left out when this file was made." % count, count);
+    }
+    pure public function board-limit(total: int, limit: int) -> string {
+        return @tr("You would have {} boards, and the Free plan includes {}.", total, limit);
+    }
+    pure public function lossy-text(name: string) -> string {
+        return @tr("{} is not valid UTF-8, so characters that could not be read were replaced.", name);
+    }
+    pure public function too-large(name: string, size: string) -> string {
+        return @tr("{} is {}, over the 5 MB limit for text, and was skipped.", name, size);
+    }
+    pure public function empty(name: string) -> string {
+        return @tr("{} is empty and was skipped.", name);
+    }
+    pure public function unreadable(name: string) -> string {
+        return @tr("{} could not be read and was skipped.", name);
+    }
+    pure public function symlink-skipped(name: string) -> string {
+        return @tr("{} is a link to somewhere else and was not followed.", name);
+    }
+    pure public function non-text-skipped(count: int) -> string {
+        return @tr("{} item that is not text (a picture or file) was skipped." | "{} items that are not text (pictures or files) were skipped." % count, count);
+    }
+    pure public function truncated() -> string {
+        return @tr("The import stopped early because the source is bigger than Snipdeck reads in one go.");
+    }
+}

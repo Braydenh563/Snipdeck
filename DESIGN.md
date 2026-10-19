@@ -153,6 +153,7 @@ Icons: **Phosphor (Regular)**, MIT licence, 16px in rows and 20px in toolbars. T
 | Move to list | `folder` | | |
 | Board / list / tag | `stack` / `rows` / `tag` | sidebar, empty states | |
 | List view / card view | `rows` / `squares-four` | Main window toolbar | `squares-four` for anything else |
+| Compact view | `list-bullets` | Main window toolbar | dense one-line rows |
 | Recent | `clock` | | |
 | Sensitive | `lock` | row trailing, editor toggle | an eye |
 | Settings | `gear` | | |

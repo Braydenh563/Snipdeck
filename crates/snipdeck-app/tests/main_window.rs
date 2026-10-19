@@ -1032,6 +1032,14 @@ impl SettingsHost for NoHost {
     fn documents_folder(&self) -> Option<PathBuf> {
         None
     }
+
+    fn pick_import(
+        &self,
+        _kind: snipdeck_app::controller::ImportKind,
+        _owner: Option<isize>,
+    ) -> Option<PathBuf> {
+        None
+    }
 }
 
 #[test]

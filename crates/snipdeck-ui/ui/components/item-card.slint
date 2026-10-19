@@ -44,6 +44,7 @@ component ItemGutter inherits Rectangle {
 // list name in `type.xs`. The colour is on the mark only, never behind text (DESIGN.md §2).
 component ListLabel inherits Rectangle {
     in property <string> name;
+    in property <bool> selected;
     in property <color> mark;
     // Natural width of the name, measured by the card.
     in property <length> text-w;
@@ -68,7 +69,7 @@ component ListLabel inherits Rectangle {
         text: root.name;
         font-family: Fonts.sans;
         font-size: Type.xs;
-        color: Theme.text-secondary;
+        color: root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary;
         vertical-alignment: center;
         overflow: elide;
     }
@@ -79,6 +80,7 @@ component ListLabel inherits Rectangle {
 // glyph for it, so the character would come from whichever system font the machine falls back to.
 component UseLabel inherits Rectangle {
     in property <string> text;
+    in property <bool> selected;
     in property <bool> shown;
     // Colour behind the label so it never mixes with the preview text under it.
     in property <color> backing;
@@ -101,12 +103,12 @@ component UseLabel inherits Rectangle {
         font-family: Fonts.sans;
         font-size: Type.sm;
         font-weight: Type.medium;
-        color: Theme.text-primary;
+        color: root.selected ? Theme.text-on-selected : Theme.text-primary;
         vertical-alignment: center;
     }
     Icon {
         source: Icons.arrow-bend-down-left;
-        tint: Theme.text-primary;
+        tint: root.selected ? Theme.text-on-selected : Theme.text-primary;
         size: root.glyph-size;
         x: Space.s2 + root.text-w + Space.s1;
         y: (parent.height - self.height) / 2;
@@ -513,6 +515,7 @@ export component ItemCard inherits Rectangle {
 
         // List label (mixed views).
         ListLabel {
+            selected: root.selected;
             opacity: root.compact && root.label-visible ? 0.0 : 1.0;
             name: root.list-name;
             mark: root.list-color;
@@ -526,6 +529,7 @@ export component ItemCard inherits Rectangle {
 
         // Use label: bottom right on hover or keyboard focus.
         UseLabel {
+            selected: root.selected;
             text: root.use-label;
             shown: root.label-visible;
             backing: root.fill;

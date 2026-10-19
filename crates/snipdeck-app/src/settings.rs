@@ -363,6 +363,10 @@ pub struct Settings {
     pub main_window: Option<WindowPlace>,
     /// Executable names that never receive an auto-paste (lower case).
     pub no_paste_apps: Vec<String>,
+    /// The Recent inbox is on: Snipdeck keeps the text you copy (SPEC 5.6). Off by default.
+    pub recent_history: bool,
+    /// Executable names that are never kept in the Recent inbox (lower case).
+    pub no_history_apps: Vec<String>,
     /// The edge dock: when a docked Panel collapses to a handle, and the delays.
     pub dock: DockSettings,
     /// The welcome tour has been finished or skipped. Absent (false) in older files; the tour
@@ -390,6 +394,8 @@ impl Default for Settings {
             panel_geometry: Vec::new(),
             main_window: None,
             no_paste_apps: Vec::new(),
+            recent_history: false,
+            no_history_apps: Vec::new(),
             dock: DockSettings::default(),
             onboarded: false,
         }
@@ -469,6 +475,8 @@ impl Settings {
             Some(serde_json::Value::String(one)) => settings.no_paste_apps = vec![one.clone()],
             _ => {}
         }
+        field!(recent_history);
+        field!(no_history_apps);
         field!(dock);
         field!(onboarded);
         settings
@@ -508,6 +516,13 @@ impl Settings {
         let mut seen = std::collections::BTreeSet::new();
         self.no_paste_apps = self
             .no_paste_apps
+            .iter()
+            .map(|a| a.trim().to_ascii_lowercase())
+            .filter(|a| !a.is_empty() && seen.insert(a.clone()))
+            .collect();
+        let mut seen = std::collections::BTreeSet::new();
+        self.no_history_apps = self
+            .no_history_apps
             .iter()
             .map(|a| a.trim().to_ascii_lowercase())
             .filter(|a| !a.is_empty() && seen.insert(a.clone()))
@@ -811,6 +826,22 @@ mod tests {
             settings.panel_geometry.last().expect("last").monitor_id,
             "M39"
         );
+    }
+
+    #[test]
+    fn the_recent_inbox_is_off_by_default_and_its_exclusions_are_normalised() {
+        assert!(!Settings::default().recent_history);
+        assert!(!Settings::from_json("{}").recent_history);
+        let s = Settings::from_json(
+            r#"{"recent_history":true,"no_history_apps":[" KeePass.EXE ","keepass.exe",""]}"#,
+        );
+        assert!(s.recent_history);
+        assert_eq!(s.no_history_apps, ["keepass.exe"]);
+        // A bad field elsewhere keeps the opt-in and the exclusions.
+        let s =
+            Settings::from_json(r#"{"theme":5,"recent_history":true,"no_history_apps":["a.exe"]}"#);
+        assert!(s.recent_history);
+        assert_eq!(s.no_history_apps, ["a.exe"]);
     }
 
     #[test]

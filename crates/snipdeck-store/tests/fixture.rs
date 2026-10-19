@@ -101,7 +101,7 @@ fn open_fixture() -> (tempfile::TempDir, Store) {
 #[test]
 fn a_version_1_database_opens_and_reads_back() {
     let (_dir, s) = open_fixture();
-    assert_eq!(s.schema_version().unwrap(), 2);
+    assert_eq!(s.schema_version().unwrap(), 3);
     let boards = s.boards().unwrap();
     assert_eq!(boards.len(), 1);
     assert_eq!(
@@ -147,9 +147,9 @@ fn the_fixtures_search_index_and_trash_work() {
 /// The v1 to v2 migration (review H1, M6, N5) on the real version-1 file: every row survives,
 /// a backup of version 1 is left next to it, and the new parts are in place.
 #[test]
-fn the_v1_fixture_migrates_to_v2_keeping_every_row_and_leaving_a_backup() {
+fn the_v1_fixture_migrates_to_v3_keeping_every_row_and_leaving_a_backup() {
     let (dir, s) = open_fixture();
-    assert_eq!(s.schema_version().unwrap(), 2);
+    assert_eq!(s.schema_version().unwrap(), 3);
     assert_healthy(&s);
 
     let backup = rusqlite::Connection::open(dir.path().join("snipdeck.db.pre-v1.bak")).unwrap();

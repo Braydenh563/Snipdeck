@@ -1,6 +1,7 @@
 import { Theme, Radius, Space, Motion, SystemLook } from "../theme.slint";
 import { Icon } from "icon.slint";
 import { StateColor } from "state-color.slint";
+import { Tooltip } from "feedback.slint";
 
 export enum IconButtonVariant { ghost, subtle }
 export enum IconButtonSize { sm, md }
@@ -21,12 +22,33 @@ export component IconButton inherits Rectangle {
     // Grows with the Windows text size (`SystemLook.text-scale`), like text and Button do. Off by default so
     // the panel and the galleries keep their sizes.
     in property <bool> scaled: false;
+    // The button shows its own `tooltip` below itself after 500ms of hover or keyboard focus (DESIGN.md §4).
+    // Off where the window already shows one for it (the Panel header, the Main window toolbar).
+    in property <bool> own-tooltip: false;
     out property <bool> has-hover: touch.has-hover && root.enabled;
     out property <bool> has-focus: scope.has-focus;
     callback clicked();
 
     property <float> k: root.scaled ? SystemLook.text-scale : 1.0;
     property <length> side: (root.size == IconButtonSize.sm ? Space.hit-min : Space.hit) * root.k;
+    property <bool> tip-wanted: root.own-tooltip && (root.has-hover || root.has-focus);
+    property <bool> tip-open: false;
+    changed tip-wanted => {
+        if (!root.tip-wanted) {
+            root.tip-open = false;
+            tip-timer.running = false;
+        } else {
+            tip-timer.running = true;
+        }
+    }
+    tip-timer := Timer {
+        interval: 500ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.tip-open = root.tip-wanted;
+        }
+    }
     property <bool> pressed: touch.pressed && root.enabled;
     property <bool> hovered: touch.has-hover && root.enabled;
 
@@ -82,5 +104,14 @@ export component IconButton inherits Rectangle {
             }
             return reject;
         }
+    }
+
+    if root.tip-open: Tooltip {
+        text: root.tooltip;
+        open: true;
+        x: min(0px, root.side - self.preferred-width);
+        y: root.height + Space.s1;
+        width: self.preferred-width;
+        height: self.preferred-height;
     }
 }

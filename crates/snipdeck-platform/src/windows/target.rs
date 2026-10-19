@@ -676,6 +676,19 @@ fn process_exe_name(pid: u32) -> Option<String> {
     win_logic::exe_file_name(&path).map(str::to_owned)
 }
 
+/// The executable file name (lower case) of the process that owns window `hwnd`, for the
+/// Recent inbox's per-app exclusions.
+pub(super) fn window_exe_name(hwnd: HWND) -> Option<String> {
+    let mut pid = 0u32;
+    // SAFETY: `pid` outlives the call; for a window of another process this reads the owner
+    // the system keeps and sends no message.
+    unsafe { GetWindowThreadProcessId(hwnd, Some(&raw mut pid)) };
+    if pid == 0 {
+        return None;
+    }
+    process_exe_name(pid).map(|name| name.to_ascii_lowercase())
+}
+
 /// A handle to `pid` with query-only rights, closed on drop. `None` when Windows refuses.
 fn open_process(pid: u32) -> Option<Owned<HANDLE>> {
     // SAFETY: plain call; the returned handle is owned and closed by `Owned`.

@@ -120,6 +120,50 @@ folder (OneDrive, Dropbox) must not be open on two computers at once.
 upgrade a `snipdeck.db.pre-vN.bak` copy stays next to it. It can hold plain text of items you made sensitive
 later, so delete it once the new version runs well ([`store.md`](store.md)).
 
+**Check the library from a Command Prompt.** With Snipdeck closed, run `app\snipdeck.exe --check-db` to test
+the library for damage (exit code 0 healthy, 1 problems, 2 could not run), or `app\snipdeck.exe --troubleshoot` to
+print the Troubleshoot report. Add `--data-dir <folder>` for a library somewhere else.
+
+## Locked library and the master password
+
+These apply when you have set a master password (a Supporter feature). Your other items always work. Only
+sensitive items are locked.
+
+**"Unlock your library to use this item" or "Unlock your library to save this item".** The library is
+locked. It locks when Snipdeck starts and after 15 minutes without use. Type your master password in the
+**Unlock Snipdeck** window. If the window does not appear, use the item again. You can also choose
+**Unlock…** under **Privacy** in Settings.
+
+**"Your library locked after a while. The sensitive item you were editing was closed without saving."** The 15
+minutes ran out while the editor was open. Unlock, then open the item and type your change again.
+
+**"Unlock your library first, so your sensitive items are included. Nothing was done."** Back up now, Export
+library and Restore do not run on a locked library. A copy made then would miss your sensitive items.
+Unlock, then try again.
+
+**Backups are deferred while locked.** The daily backup waits when the library is locked, and the Troubleshoot
+checklist says "library locked, backup deferred". Nothing is lost. Snipdeck tries again later, and the backup
+is made once you unlock. To make one sooner, unlock and press **Back up now**.
+
+**I forgot my master password.** There is no way to get it back. Snipdeck cannot reset it and keeps no
+recovery key. Backups and exports hold your sensitive items under the same key, so they cannot be opened
+either. Try the passwords you may have used. Your other items are not affected, and they still work in the
+app. Snipdeck will not export or restore while the library is locked, so to keep your other items, use
+**Export as text** on each list (see the [user guide](user-guide.md#organise)). It leaves sensitive items
+out. If you give up on the sensitive items, **Erase library** in Settings with **Also forget the encryption
+key** ticked removes the whole library and the key. Then add your items again. Read the warning in that window
+before you press **Erase everything**.
+
+**"Couldn't open the encryption key. Nothing was saved."** (Also: "Snipdeck couldn't open the encryption key,
+so nothing was saved.") Snipdeck could not read the key that Windows protects. This can happen if the data
+folder came from another Windows account or PC, or if Windows could not unprotect the key. Restart Snipdeck
+and try again. If it keeps happening, your other items still work. Sensitive items made under another
+Windows account cannot be opened here. Run `Snipdeck.bat doctor` and attach the report to a bug report.
+
+**The master password row says Snipdeck can't protect a key on this PC, or couldn't read your key.** The first
+means Windows cannot protect a key here, so a master password is not available. The second is a read failure:
+restart Snipdeck to try again.
+
 ## High DPI and several monitors
 
 - The Panel is 260 to 480 pixels wide at 100% scale. Drag its edges to resize it. Its size and place are

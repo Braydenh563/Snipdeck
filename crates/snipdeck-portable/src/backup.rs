@@ -16,21 +16,18 @@
 //! * **Sensitive items** are encrypted with the key given, or left out of the backup when there
 //!   is none; never written in plain text. A Free-tier library has no key, so its sensitive
 //!   items are not in its backups; the data folder holds them in the database itself.
-//! * **Restore** is an ordinary import: [`restore`].
+//! * **Restore** is an ordinary import ([`crate::import_archive_path`] with `BoardLayout::KeepBoards`).
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use jiff::Zoned;
 use jiff::civil::Date;
-use snipdeck_core::Timestamp;
 use snipdeck_store::crypto::DataKey;
 
 use crate::error::{Error, Result};
 use crate::export::{ExportOptions, ExportReport, SensitivePolicy, export_to_path};
-use crate::import::{BoardLayout, ImportOptions, KeySource, MergeStrategy, import_archive_path};
 use crate::plan::Library;
-use crate::report::ImportReport;
 
 /// How many backups to keep by default (SPEC §5.7a).
 pub const DEFAULT_KEEP: usize = 7;
@@ -164,35 +161,6 @@ pub fn list_backups(data_dir: &Path) -> Result<Vec<BackupFile>> {
     }
     found.sort_by_key(|f| std::cmp::Reverse(f.date));
     Ok(found)
-}
-
-/// Restores a backup: an import that recreates the backup's boards under their own names, with
-/// new ids, skipping items whose content is already in the library (so restoring over an intact
-/// library adds nothing). Pass a `key` to restore encrypted sensitive items;
-/// [`KeySource::Library`] uses the library's own unlocked key.
-///
-/// `max_boards` is the most live boards the library may hold afterwards (the Free tier's 5;
-/// `None` on Supporter), as [`ImportOptions::max_boards`]: a restore that would go past it is refused
-/// and changes nothing.
-///
-/// # Errors
-///
-/// As [`import_archive_path`]; `ProRequired(UnlimitedBoards)` past `max_boards`.
-pub fn restore<L: Library>(
-    lib: &mut L,
-    backup: &Path,
-    now: Timestamp,
-    key: KeySource<'_>,
-    max_boards: Option<usize>,
-) -> Result<ImportReport> {
-    let options = ImportOptions {
-        layout: BoardLayout::KeepBoards,
-        merge: MergeStrategy::SkipDuplicates,
-        key,
-        max_boards,
-        ..ImportOptions::default()
-    };
-    import_archive_path(lib, backup, now, &options)
 }
 
 /// A directory entry as a backup file, if (and only if) it is a regular file with an exact

@@ -3,6 +3,7 @@
 //! | Module | Provides |
 //! |---|---|
 //! | [`clipboard`] | `WinClipboard`: [`crate::pipeline::Clipboard`] with delayed rendering |
+//! | [`clipboard_history`] | Text entries of the Win+V clipboard history (`WinRT`) |
 //! | [`keyboard`] | `WinKeyboard`: [`crate::pipeline::Keyboard`] via `SendInput` |
 //! | [`target`] | Foreground tracking, UIPI check, caret / UI Automation focus probe |
 //! | [`window_style`] | Non-activating panel style and its `WM_STYLECHANGING` subclass |
@@ -21,6 +22,7 @@
 
 pub mod autostart;
 pub mod clipboard;
+pub mod clipboard_history;
 pub mod dpapi;
 pub mod dpi;
 pub mod file_dialog;

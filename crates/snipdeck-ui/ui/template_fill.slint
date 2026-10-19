@@ -184,6 +184,7 @@ export component TemplateFillWindow inherits Window {
                     IconButton {
                         icon: Icons.x;
                         tooltip: @tr("Close");
+                        own-tooltip: true;
                         y: (parent.height - self.height) / 2;
                         clicked => { root.cancelled(); }
                     }

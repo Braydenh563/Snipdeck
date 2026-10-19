@@ -108,6 +108,7 @@ pub struct Binding {
     own_window_active: Rc<dyn Fn(bool)>,
     tray: Rc<dyn Fn(TrayEvent)>,
     system_look: Rc<dyn Fn(SystemLook)>,
+    clipboard_changed: Rc<dyn Fn(snipdeck_platform::clipboard_watch::ClipboardChange)>,
     frame_changed: Rc<FrameFn>,
     frame_moved: Rc<FrameFn>,
     restore_frame: Rc<MonitorFn>,
@@ -157,6 +158,12 @@ impl Binding {
     /// The user clicked the tray icon or chose an entry of its menu.
     pub fn tray(&self, event: TrayEvent) {
         (self.tray)(event);
+    }
+
+    /// The clipboard changed and the Recent inbox is listening: the policy decides whether to
+    /// keep it.
+    pub fn clipboard_changed(&self, change: snipdeck_platform::clipboard_watch::ClipboardChange) {
+        (self.clipboard_changed)(change);
     }
 
     /// Windows' light / dark or high-contrast state is `look` (read at start-up, and again on
@@ -513,6 +520,11 @@ where
         wire!(on_selection_moved, |ctl, delta| ctl
             .move_selection(isize::try_from(delta).unwrap_or(0)));
         wire!(on_tab_selected, |ctl, i| ctl.select_tab(index(i)));
+        wire!(on_recent_toggled, |ctl, open| ctl.set_recent_open(open));
+        wire!(on_recent_copied, |ctl, i| ctl.recent_copy_at(index(i)));
+        wire!(on_recent_deleted, |ctl, i| ctl.recent_delete_at(index(i)));
+        wire!(on_recent_saved, |ctl, i, target| ctl
+            .recent_promote_at(index(i), index(target)));
         wire_effects!(on_pinned_used, |ctl, i| {
             let used = ctl.activate_pinned(index(i), UseMode::Paste);
             ctl.dock_after_use(&used)
@@ -615,6 +627,18 @@ where
                 let core = Rc::clone(&core);
                 Rc::new(move |look| core.act(|ctl| ctl.set_system_look(look)))
             },
+            clipboard_changed: {
+                let core = Rc::clone(&core);
+                Rc::new(
+                    move |change: snipdeck_platform::clipboard_watch::ClipboardChange| {
+                        core.act(|ctl| {
+                            ctl.on_clipboard_change(&crate::recent::ClipboardObservation::from(
+                                change,
+                            ));
+                        });
+                    },
+                )
+            },
             frame_changed: {
                 let core = Rc::clone(&core);
                 Rc::new(move |monitor: &Monitor, frame| {
@@ -713,6 +737,35 @@ fn edge_of(edge: ui::ResizeEdge) -> Edge {
     }
 }
 
+/// The Recent inbox's tab and list.
+fn render_recent(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
+    let differs = |same: &dyn Fn(&View) -> bool| previous.is_none_or(|p| !same(p));
+    let available = view.recent.is_some();
+    if window.get_recent_available() != available {
+        window.set_recent_available(available);
+    }
+    let paused = view.recent.as_ref().is_some_and(|r| r.paused);
+    if window.get_recent_paused() != paused {
+        window.set_recent_paused(paused);
+    }
+    if differs(&|p| p.recent == view.recent && p.dark == view.dark) {
+        let (rows, targets) = view.recent.as_ref().map_or((&[][..], &[][..]), |r| {
+            (r.rows.as_slice(), r.targets.as_slice())
+        });
+        window.set_recent_rows(model(rows.iter().map(|r| ui::RecentRow {
+            preview: r.preview.as_str().into(),
+            app: r.app.as_str().into(),
+            age_minutes: i32::try_from(r.age_minutes).unwrap_or(i32::MAX),
+        })));
+        window.set_recent_targets(model(targets.iter().map(|t| ui::ChoiceEntry {
+            label: t.label.as_str().into(),
+            count: 0,
+            color: list_color(t.accent, view.dark),
+            checked: false,
+        })));
+    }
+}
+
 pub(crate) fn index(i: i32) -> usize {
     usize::try_from(i).unwrap_or(usize::MAX)
 }
@@ -789,6 +842,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             row
         })));
     }
+    render_recent(window, previous, view);
     let revealed = view.revealed.map_or(-1, to_i32);
     if window.get_revealed_index() != revealed {
         window.set_revealed_index(revealed);

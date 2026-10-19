@@ -74,6 +74,19 @@ pub trait ItemRepo {
     /// Every live item, without content, for the picker's in-memory search index.
     fn all_items(&self) -> Result<Vec<Item>>;
 
+    /// A number that grows whenever anything is written to the library, so a cache of what
+    /// was read can tell that it may be stale: equal values mean nothing was written in
+    /// between.
+    ///
+    /// It counts every row SQLite changed through this handle (boards, lists, items, tags,
+    /// the trash, the search tables), in a [`Store`](crate::Store) and in a
+    /// [`Batch`](crate::Batch) alike. It never decreases, and it is not undone by a rollback,
+    /// so a failed write can at worst cost one needless refresh. Reads leave it alone. It is
+    /// only comparable with values from the same open handle (it starts at a small number on
+    /// every open) and says nothing about writes by another process, which the single-writer
+    /// lock rules out.
+    fn change_counter(&self) -> u64;
+
     /// One live item, without content.
     fn item(&self, id: ItemId) -> Result<Item>;
 

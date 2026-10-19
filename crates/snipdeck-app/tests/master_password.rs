@@ -14,7 +14,7 @@
 use std::{path::Path, time::Duration};
 
 use snipdeck_app::{
-    controller::{Controller, Effect, MasterProblem, MasterState, Services},
+    controller::{Controller, Effect, ImportSource, MasterProblem, MasterState, Services},
     demo,
     drafts::Drafts,
     host::{FakeTargets, FixedClock},
@@ -441,7 +441,7 @@ fn an_unlocked_library_or_one_without_a_password_never_prompts() {
     let mut r = rig(Tier::Pro);
     r.ctl.request_unlock();
     assert!(!r.ctl.unlock_prompt_open());
-    assert!(r.ctl.take_pending().is_empty());
+    assert_eq!(r.ctl.take_pending(), Vec::<Effect>::new());
     let mut r = with_password(Tier::Pro);
     r.ctl.request_unlock();
     assert!(!r.ctl.unlock_prompt_open(), "open already");
@@ -864,4 +864,20 @@ fn copying_a_locked_item_puts_nothing_on_the_clipboard() {
         r.ctl.services().clipboard.written.is_empty(),
         "no empty or partial copy"
     );
+}
+
+#[test]
+fn a_locked_library_does_not_import_a_snipdeck_file_that_would_drop_sensitive_items() {
+    let mut r = with_password(Tier::Pro);
+    assert!(r.ctl.backup_now(r.data.path()));
+    let file = backup_files(r.data.path()).remove(0).0;
+    let mut r = r.restart(Tier::Pro);
+    let source = ImportSource::Snipdeck(file);
+
+    assert!(!r.ctl.apply_import(&source));
+    assert_eq!(r.toast(), Some(ToastMessage::UnlockFirst));
+    assert!(r.ctl.unlock_prompt_open());
+
+    r.ctl.unlock_with_password(PASSWORD).expect("unlock");
+    assert!(r.ctl.apply_import(&source));
 }
