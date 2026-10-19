@@ -1,5 +1,5 @@
-# Now (2026-10-19 10:35, away mode)
-Goal: finish the v1 ship list (`docs/V1-PLAN.md` top section), branch `claude/compassionate-pascal-pod8ux`, PR #5 (never merge). CI blocked: the account's free Actions allowance is used up until 1 Nov or until the owner makes the repo public, so verify locally (stable + 1.99.1). Queue in `.claude/work-order.md`; decisions in `.claude/now.md`. Stop at 80% weekly usage. Next: merge agents A1-A3, then wave 3.
+# Now (2026-10-19 12:35, away mode)
+Goal: finish the v1 ship list (`docs/V1-PLAN.md` top section), branch `claude/compassionate-pascal-pod8ux`, PR #5 (never merge). Repo public: CI is the main test runner; local cargo targeted only, /tmp/target-main, at most two users. Agents A1-A3 merged; clippy fixed (844a0bd); open: panel_window sensitive-reveal test failure (cause unknown, read the CI panic). C8/C9 Supporter agent running. Workflow edits blocked by the guard even when the owner allowed them: owner copies `docs/ci-proposals/`. Queue in `.claude/work-order.md`; decisions in `.claude/now.md`. Stop at 80% weekly usage.
 
 # Session state (2026-10-18 13:50, Fable session, away mode; branch `claude/compassionate-pascal-pod8ux`, PR #5)
 
