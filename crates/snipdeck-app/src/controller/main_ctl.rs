@@ -323,18 +323,19 @@ where
     /// hides it again.
     pub fn main_reveal(&mut self, index: usize, on: bool) {
         self.main_fresh();
-        self.revealed = if on {
-            self.main
-                .rows()
-                .get(index)
-                .filter(|r| r.sensitive)
-                .and_then(|r| match r.key {
-                    Key::Item(id) => Some(id),
-                    _ => None,
-                })
-        } else {
-            None
-        };
+        let id = on
+            .then(|| {
+                self.main
+                    .rows()
+                    .get(index)
+                    .filter(|r| r.sensitive)
+                    .and_then(|r| match r.key {
+                        Key::Item(id) => Some(id),
+                        _ => None,
+                    })
+            })
+            .flatten();
+        self.revealed = id.filter(|_| self.reveal_allowed());
     }
 
     // ---- Item actions --------------------------------------------------------------------------

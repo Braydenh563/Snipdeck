@@ -197,6 +197,8 @@ struct Core<S, C, K, T> {
     settings_timer: Cell<bool>,
     /// A timer is waiting to clear a copied sensitive item off the clipboard.
     clipboard_timer: Cell<bool>,
+    /// A timer is waiting for the idle lock of the master password.
+    idle_timer: Cell<bool>,
     /// Sends the dock its ticks while a hover or leave delay runs.
     dock_timer: slint::Timer,
 }
@@ -228,6 +230,7 @@ where
                 }),
                 settings_timer: Cell::new(false),
                 clipboard_timer: Cell::new(false),
+                idle_timer: Cell::new(false),
                 dock_timer: slint::Timer::default(),
             }
         });
@@ -327,6 +330,7 @@ where
         *self.shown.borrow_mut() = Some(view);
         self.arm_settings();
         self.arm_clipboard_clear();
+        self.arm_idle_lock();
     }
 
     /// Runs the dock's tick timer while a hover or leave delay is running, and only then.
@@ -366,6 +370,32 @@ where
             core.clipboard_timer.set(false);
             core.controller.borrow_mut().clear_clipboard_if_due();
             core.sync();
+        });
+    }
+
+    /// Keeps one timer running while a master password is set and the library is open; the
+    /// controller's clock decides whether the idle time is up. Using the library moves the
+    /// deadline, so the timer may fire early and then waits again for what is left.
+    fn arm_idle_lock(self: &Rc<Self>) {
+        if self.idle_timer.get() {
+            return;
+        }
+        let Some(wait) = self.controller.borrow().idle_lock_wait() else {
+            return;
+        };
+        self.idle_timer.set(true);
+        let core = Rc::downgrade(self);
+        slint::Timer::single_shot(wait.max(std::time::Duration::from_millis(250)), move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.idle_timer.set(false);
+            let locked = core.controller.borrow_mut().lock_if_idle();
+            core.sync();
+            if locked {
+                // The other windows hide what they revealed.
+                redraw_all();
+            }
         });
     }
 

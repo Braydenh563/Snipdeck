@@ -20,7 +20,7 @@ use snipdeck_core::{
 use snipdeck_platform::file_dialog::FilePicker;
 use snipdeck_store::{
     BlobStore, ItemRepo, TagRepo,
-    crypto::{CryptoError, KeyProvider, KeyProviderError, KeyRing},
+    crypto::{CryptoError, KeyProvider, KeyProviderError},
     name_key,
 };
 
@@ -43,7 +43,7 @@ pub(super) struct EditorEnv {
     /// Where drafts go (none in the demo, which has no data folder).
     drafts: Option<Drafts>,
     /// Wraps the library key (DPAPI on Windows).
-    keys: Option<Box<dyn KeyProvider>>,
+    pub(super) keys: Option<Box<dyn KeyProvider>>,
     /// The file dialog. Shared so the window can ask it without holding the controller: the
     /// dialog runs its own message loop, and the controller must be free meanwhile.
     picker: Option<Rc<dyn FilePicker>>,
@@ -187,8 +187,13 @@ where
             && !self.store.is_unlocked()
             && !matches!(self.store.key_ring_exists(), Ok(true))
             && matches!(self.store.has_plain_sensitive(), Ok(true));
-        if let Err(e) = self.ensure_key(migrate) {
-            self.show_toast(open_failed(&e));
+        self.refresh_master();
+        match self.ensure_key(migrate) {
+            Ok(()) => {}
+            // A master password is set: the library waits for it, silently. The unlock window
+            // opens when a sensitive item is first needed.
+            Err(snipdeck_store::Error::Crypto(CryptoError::PasswordRequired)) => {}
+            Err(e) => self.show_toast(open_failed(&e)),
         }
     }
 
@@ -344,6 +349,7 @@ where
         if item.sensitive {
             // Opening decrypts the text: the key first.
             self.ensure_key(false)?;
+            self.note_activity();
         }
         let (lists, list_index) = self.list_choices(item.list_id)?;
         let mut fields = EditorInput {
@@ -913,7 +919,7 @@ where
     /// Makes the library key usable: nothing to do when it is open; opens it when it exists;
     /// makes it, with no master password, when `create` and it does not exist (the first
     /// sensitive item; the user is not asked).
-    fn ensure_key(&mut self, create: bool) -> snipdeck_store::Result<()> {
+    pub(super) fn ensure_key(&mut self, create: bool) -> snipdeck_store::Result<()> {
         if self.store.is_unlocked() {
             return Ok(());
         }
@@ -926,11 +932,13 @@ where
                 KeyProviderError::Unavailable("no key protection on this machine".to_owned()),
             )));
         };
-        let ring = KeyRing::new(provider);
+        let ring = super::lock_ctl::ring_on(provider, self.lock.kdf);
+        // A master password is never typed here: a library that has one stays locked until the
+        // unlock window opens it ([`Controller::unlock_with_password`]).
         if exists {
-            self.store.unlock_key_ring(&ring)
+            self.store.unlock_key_ring(&ring, None)
         } else {
-            self.store.create_key_ring(&ring)
+            self.store.create_key_ring(&ring, None)
         }
     }
 }

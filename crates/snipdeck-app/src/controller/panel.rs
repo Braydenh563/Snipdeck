@@ -356,15 +356,16 @@ where
     /// letting go hides it again. The same rule as [`main_reveal`](Self::main_reveal): only a
     /// sensitive row reveals.
     pub fn reveal_row(&mut self, index: usize, on: bool) {
-        self.panel_revealed = if on {
-            self.model
-                .rows()
-                .get(index)
-                .filter(|r| r.sensitive)
-                .map(|r| r.id)
-        } else {
-            None
-        };
+        let id = on
+            .then(|| {
+                self.model
+                    .rows()
+                    .get(index)
+                    .filter(|r| r.sensitive)
+                    .map(|r| r.id)
+            })
+            .flatten();
+        self.panel_revealed = id.filter(|_| self.reveal_allowed());
     }
 
     // ---- The window frame ----------------------------------------------------------------------

@@ -25,11 +25,13 @@ use snipdeck_store::{
 mod commands_ctl;
 mod dock_ctl;
 mod editor_ctl;
+mod lock_ctl;
 mod main_ctl;
 mod onboarding_ctl;
 mod panel;
 mod settings_ctl;
 
+pub use lock_ctl::{MasterProblem, MasterState};
 pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameError};
 pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry};
 
@@ -99,19 +101,51 @@ pub trait Library: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + BlobS
     /// The store failing to read.
     fn has_plain_sensitive(&self) -> snipdeck_store::Result<bool>;
 
-    /// Sets up encryption (no master password) and leaves the library unlocked.
+    /// Sets up encryption, with a master password if `password` is `Some`, and leaves the library
+    /// unlocked.
     ///
     /// # Errors
     ///
     /// The key could not be made or wrapped, or the store failed.
-    fn create_key_ring(&mut self, ring: &KeyRing<'_>) -> snipdeck_store::Result<()>;
+    fn create_key_ring(
+        &mut self,
+        ring: &KeyRing<'_>,
+        password: Option<&str>,
+    ) -> snipdeck_store::Result<()>;
 
-    /// Opens the stored key (no master password).
+    /// Opens the stored key. `password` is the master password, `None` when none is set.
     ///
     /// # Errors
     ///
-    /// The key does not open (a master password is set, another user's key), or the store failed.
-    fn unlock_key_ring(&mut self, ring: &KeyRing<'_>) -> snipdeck_store::Result<()>;
+    /// The key does not open (a wrong or missing password, another user's key), or the store
+    /// failed.
+    fn unlock_key_ring(
+        &mut self,
+        ring: &KeyRing<'_>,
+        password: Option<&str>,
+    ) -> snipdeck_store::Result<()>;
+
+    /// Whether the stored key needs a master password (`false` with no key).
+    ///
+    /// # Errors
+    ///
+    /// The OS binding rejected the record, or the store failed.
+    fn has_master_password(&self, ring: &KeyRing<'_>) -> snipdeck_store::Result<bool>;
+
+    /// Re-wraps the key under a new master password (`None` removes it). `current` is the one set.
+    ///
+    /// # Errors
+    ///
+    /// A wrong `current`, an empty `new`, or the store failed. Nothing changes on error.
+    fn change_master_password(
+        &mut self,
+        ring: &KeyRing<'_>,
+        current: Option<&str>,
+        new: Option<&str>,
+    ) -> snipdeck_store::Result<()>;
+
+    /// Forgets the key and every decrypted payload held in memory (the idle lock).
+    fn lock_key_ring(&mut self);
 
     /// Whether the key is open.
     fn is_unlocked(&self) -> bool;
@@ -133,12 +167,37 @@ impl Library for Store {
         Store::has_plain_sensitive(self)
     }
 
-    fn create_key_ring(&mut self, ring: &KeyRing<'_>) -> snipdeck_store::Result<()> {
-        Store::create_key_ring(self, ring, None)
+    fn create_key_ring(
+        &mut self,
+        ring: &KeyRing<'_>,
+        password: Option<&str>,
+    ) -> snipdeck_store::Result<()> {
+        Store::create_key_ring(self, ring, password)
     }
 
-    fn unlock_key_ring(&mut self, ring: &KeyRing<'_>) -> snipdeck_store::Result<()> {
-        Store::unlock_key_ring(self, ring, None)
+    fn unlock_key_ring(
+        &mut self,
+        ring: &KeyRing<'_>,
+        password: Option<&str>,
+    ) -> snipdeck_store::Result<()> {
+        Store::unlock_key_ring(self, ring, password)
+    }
+
+    fn has_master_password(&self, ring: &KeyRing<'_>) -> snipdeck_store::Result<bool> {
+        Store::has_master_password(self, ring)
+    }
+
+    fn change_master_password(
+        &mut self,
+        ring: &KeyRing<'_>,
+        current: Option<&str>,
+        new: Option<&str>,
+    ) -> snipdeck_store::Result<()> {
+        Store::change_master_password(self, ring, current, new)
+    }
+
+    fn lock_key_ring(&mut self) {
+        Store::lock_key_ring(self);
     }
 
     fn is_unlocked(&self) -> bool {
@@ -212,6 +271,8 @@ pub enum Effect {
     ResizeWindow(Edge),
     /// Move and size the Panel to this frame (a stored place restored, or a frame clamped).
     PlaceWindow(Rect),
+    /// Show the window that asks for the master password (a locked sensitive item was needed).
+    OpenUnlock,
 }
 
 /// How far a toast is through its life (the Slint `ToastPhase`).
@@ -449,6 +510,8 @@ pub struct Controller<S, C, K, T> {
     drag_started: bool,
     /// Placements decided outside a Panel gesture, waiting for the binding.
     pending: Vec<Effect>,
+    /// The master password: whether one is set, whether its prompt is open, the idle clock.
+    lock: lock_ctl::LockState,
 }
 
 /// Opens the folder of the crash reports in the file manager.
@@ -556,6 +619,7 @@ where
             monitor: None,
             drag_started: false,
             pending: Vec::new(),
+            lock: lock_ctl::LockState::new(shown_at),
         })
     }
 
@@ -1343,6 +1407,7 @@ where
         };
         match usecase::use_item(&mut self.store, &mut env, &request) {
             Ok(used) => {
+                self.note_activity();
                 self.queue.used(item);
                 self.schedule_clipboard_clear(item, used.outcome);
                 self.show_toast(toast::after_use(
@@ -1420,6 +1485,10 @@ where
     /// Shows `toast`, replacing the one on screen. The host then calls
     /// [`toast_tick`](Self::toast_tick) after [`TOAST_ENTER`] and follows the delays it returns.
     pub fn show_toast(&mut self, toast: Toast) {
+        // A locked sensitive item behind a master password asks for it, as well as saying so.
+        if toast.message == ToastMessage::Locked {
+            self.request_unlock();
+        }
         self.toast_seq += 1;
         self.undo = None;
         self.toast = Some(ActiveToast {

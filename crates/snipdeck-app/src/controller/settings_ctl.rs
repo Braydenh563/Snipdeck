@@ -310,6 +310,8 @@ where
         self.revealed = None;
         self.editor = None;
         self.undo = None;
+        // The key record may have gone (forgotten) or stayed (with its password).
+        self.refresh_master();
         let _ = self.refresh_panel();
         self.show_toast(if erased {
             Toast {

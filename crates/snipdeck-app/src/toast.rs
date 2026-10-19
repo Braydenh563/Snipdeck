@@ -69,6 +69,14 @@ pub enum ToastMessage {
     TemplateBroken,
     /// "Unlock your library to use this item."
     Locked,
+    /// "Library unlocked." (the master password was accepted)
+    Unlocked,
+    /// "Master password set."
+    MasterPasswordSet,
+    /// "Master password changed."
+    MasterPasswordChanged,
+    /// "Master password removed."
+    MasterPasswordRemoved,
     /// "Saved to {list}" (quick capture).
     Saved {
         /// The list's name.

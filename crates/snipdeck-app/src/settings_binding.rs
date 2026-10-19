@@ -27,7 +27,7 @@ use snipdeck_ui as ui;
 
 use crate::{
     binding::{Loggable, Shown, arm_toast, model, redraw_all, register_redraw, to_i32},
-    controller::{Controller, ToastPhase, ToastView},
+    controller::{Controller, MasterState, ToastPhase, ToastView},
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
     main_binding::{create_window, raise, set_look},
     native_window::fit_to_screen,
@@ -417,6 +417,10 @@ struct PageView {
     no_paste_error: String,
     pro: bool,
     licence_error: String,
+    /// 0 = no key protection on this machine, 1 = no master password, 2 = one is set.
+    master_state: i32,
+    master_locked: bool,
+    master_allowed: bool,
     has_data_folder: bool,
     backups: Vec<BackupLine>,
     toast: Option<ToastView>,
@@ -525,6 +529,13 @@ where
         no_paste_error: state.no_paste_error.clone(),
         pro: controller.tier() == snipdeck_core::Tier::Pro,
         licence_error: state.licence_error.clone(),
+        master_state: match controller.master_password_state() {
+            MasterState::Unavailable => 0,
+            MasterState::NotSet => 1,
+            MasterState::Set => 2,
+        },
+        master_locked: controller.library_locked(),
+        master_allowed: controller.master_password_allowed(),
         has_data_folder,
         backups: state
             .backups
@@ -764,6 +775,33 @@ where
         redraw_all();
     }
 
+    /// The master password form's action. The passwords exist only in these arguments: they go
+    /// to the controller and are not stored. A refusal is written to the page so it can say
+    /// which field to fix; success closes the form.
+    fn master_submitted(
+        self: &Rc<Self>,
+        mode: ui::MasterMode,
+        current: &str,
+        new: &str,
+        again: &str,
+    ) {
+        let result = self.act(|ctl| match mode {
+            ui::MasterMode::Set => ctl.set_master_password(new, again),
+            ui::MasterMode::Change => ctl.change_master_password(current, new, again),
+            ui::MasterMode::Remove => ctl.remove_master_password(current),
+            ui::MasterMode::Closed => Ok(()),
+        });
+        let Some(window) = self.window.upgrade() else {
+            return;
+        };
+        // Cleared first, so the same refusal twice in a row is announced twice.
+        window.set_master_problem(ui::MasterProblem::None);
+        match result {
+            Ok(()) => window.invoke_close_master(),
+            Err(problem) => window.set_master_problem(crate::unlock_binding::slint_problem(problem)),
+        }
+    }
+
     fn backup_now(self: &Rc<Self>) {
         let Some(dir) = self.data_dir.clone() else {
             return;
@@ -964,6 +1002,21 @@ where
             .no_paste_removed(crate::binding::index(i)));
         wire!(on_licence_submitted, |core, key| core
             .licence_submitted(&key));
+        {
+            // Not through `wire!`: it traces every argument, and these are passwords.
+            let core = Rc::clone(&core);
+            window.on_master_submitted(move |mode, current, new, again| {
+                crate::trace!("callback settings on_master_submitted (passwords not shown)");
+                core.master_submitted(mode, &current, &new, &again);
+            });
+        }
+        wire!(on_master_unlock_requested, |core| core
+            .act(Controller::request_unlock));
+        window.on_master_strength(|password| crate::master_password::strength(&password).level());
+        window.set_master_idle_minutes(
+            i32::try_from(crate::master_password::IDLE_LOCK.as_secs() / 60).unwrap_or(15),
+        );
+        window.set_master_min_length(to_i32(crate::master_password::MIN_LEN));
         wire!(on_supporter_requested, |core| core.get_supporter());
         wire!(on_backup_now_requested, |core| core.backup_now());
         wire!(on_backup_restore_requested, |core, i| core
@@ -1068,6 +1121,15 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.licence_error == view.licence_error) {
         window.set_licence_error(view.licence_error.as_str().into());
+    }
+    if differs(&|p| p.master_state == view.master_state) {
+        window.set_master_state(view.master_state);
+    }
+    if differs(&|p| p.master_locked == view.master_locked) {
+        window.set_master_locked(view.master_locked);
+    }
+    if differs(&|p| p.master_allowed == view.master_allowed) {
+        window.set_master_allowed(view.master_allowed);
     }
     if differs(&|p| p.has_data_folder == view.has_data_folder) {
         window.set_has_data_folder(view.has_data_folder);
