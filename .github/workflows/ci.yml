@@ -21,6 +21,7 @@ jobs:
   linux:
     name: Linux (fmt, clippy, test, doc, deny)
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       # Installs the toolchain and components named in rust-toolchain.toml.
@@ -42,11 +43,14 @@ jobs:
   windows-check:
     name: Windows (check)
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
-      - run: cargo check --workspace --all-targets --locked
+      # Clippy rather than a plain check: the cfg(windows) code (Win32 clipboard, keyboard,
+      # hotkeys, DPAPI, window placement) is never linted by the Linux job.
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       # Windows-specific logic that needs no window: paths, DPAPI, file permissions, the store
       # and the portable format. The UI and app crates are exercised by the Linux job.
       - run: cargo test -p snipdeck-core -p snipdeck-store -p snipdeck-portable -p snipdeck-licence-issuer --locked
