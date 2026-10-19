@@ -122,6 +122,7 @@ fn start() -> (MainWindow, Log) {
     hook!(on_tag_toggled, |i, on| format!("tag:{i}:{on}"));
     hook!(on_reveal_requested, |i, on| format!("reveal:{i}:{on}"));
     hook!(on_settings_requested, || "settings".to_string());
+    hook!(on_help_requested, |i| format!("help:{i}"));
     hook!(on_list_edit_requested, |i| format!("list-edit:{i}"));
     hook!(on_list_delete_confirmed, |i| format!("list-delete:{i}"));
     hook!(on_tag_delete_confirmed, |i| format!("tag-delete:{i}"));
@@ -512,6 +513,21 @@ ui_tests! {
         settle();
         assert!(ui.get_search_focused(), "/ moves to the search");
         assert_eq!(ui.get_query(), "", "and is not typed into it");
+    }
+
+    fn the_help_button_opens_a_menu_of_three_pages_and_f1_asks_for_the_guide() {
+        let (ui, log) = start();
+        for (label, topic) in [("Troubleshoot…", 0), ("User guide", 1), ("About Snipdeck", 2)] {
+            find(&ui, "Help", AccessibleRole::Button).invoke_accessible_default_action();
+            settle();
+            assert!(ui.get_menu_open(), "the Help menu is open");
+            find(&ui, label, AccessibleRole::ListItem).invoke_accessible_default_action();
+            settle();
+            assert!(!ui.get_menu_open(), "choosing a page closes the menu");
+            assert_eq!(take(&log), [format!("help:{topic}")]);
+        }
+        press_key(&ui, Key::F1);
+        assert_eq!(take(&log), ["help:1"]);
     }
 
     fn ctrl_n_and_the_buttons_report_what_was_asked() {

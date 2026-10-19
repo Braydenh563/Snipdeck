@@ -17,7 +17,10 @@ use snipdeck_platform::{
 };
 use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
 
-use super::{Controller, Library, Toast, ToastKind, ToastMessage, ToastView, UseResult, failed};
+use super::{
+    Controller, Effect, HelpTopic, Library, Toast, ToastKind, ToastMessage, ToastView, UseResult,
+    failed,
+};
 use crate::{
     host::ClipboardText,
     main_window::{
@@ -693,6 +696,12 @@ where
     }
 
     // ---- Boards --------------------------------------------------------------------------------
+
+    /// The Main window's Help menu or F1: queues `OpenHelp(topic)` for the Panel's binding to
+    /// hand to the host on its next redraw ([`Controller::take_pending`]).
+    pub fn main_open_help(&mut self, topic: HelpTopic) {
+        self.pending.push(Effect::OpenHelp(topic));
+    }
 
     /// Opens the board menu.
     pub fn main_board_menu_open(&mut self) {

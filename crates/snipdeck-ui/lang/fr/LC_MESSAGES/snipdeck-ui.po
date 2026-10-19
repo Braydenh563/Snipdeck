@@ -19,6 +19,9 @@ msgstr "Une bande de vos extraits à côté de l'application dans laquelle vous 
 msgid "About"
 msgstr "À propos"
 
+msgid "About Snipdeck"
+msgstr "À propos de Snipdeck"
+
 msgid "Actions"
 msgstr "Actions"
 
@@ -841,11 +844,17 @@ msgstr "Raccourcir le délai de survol"
 msgid "Shorten the leave delay"
 msgstr "Raccourcir le délai de sortie"
 
+msgid "Show"
+msgstr "Afficher"
+
 msgid "Show Snipdeck in the taskbar"
 msgstr "Afficher Snipdeck dans la barre des tâches"
 
 msgid "Show or hide the panel"
 msgstr "Afficher ou masquer le panneau"
+
+msgid "Show the welcome tour again"
+msgstr "Afficher à nouveau la visite de bienvenue"
 
 msgid "Skip"
 msgstr "Passer"
@@ -1012,6 +1021,9 @@ msgstr "Corbeille"
 msgid "Troubleshoot"
 msgstr "Dépannage"
 
+msgid "Troubleshoot…"
+msgstr "Dépannage…"
+
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Activez l'historique du presse-papiers dans les paramètres pour collecter ce que vous copiez."
 
@@ -1036,11 +1048,17 @@ msgstr "Version"
 msgid "Violet"
 msgstr "Violet"
 
+msgid "Walk through the basics again."
+msgstr "Revoir les bases."
+
 msgid "Warning"
 msgstr "Avertissement"
 
 msgid "Welcome to Snipdeck"
 msgstr "Bienvenue dans Snipdeck"
+
+msgid "Welcome tour"
+msgstr "Visite de bienvenue"
 
 msgid "What is on the clipboard"
 msgstr "Ce qui se trouve dans le presse-papiers"

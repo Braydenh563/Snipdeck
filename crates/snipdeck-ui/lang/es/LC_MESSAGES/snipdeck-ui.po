@@ -19,6 +19,9 @@ msgstr "Una tira con tus fragmentos junto a la aplicación en la que trabajas. H
 msgid "About"
 msgstr "Acerca de"
 
+msgid "About Snipdeck"
+msgstr "Acerca de Snipdeck"
+
 msgid "Actions"
 msgstr "Acciones"
 
@@ -841,11 +844,17 @@ msgstr "Acortar el retraso al pasar el puntero"
 msgid "Shorten the leave delay"
 msgstr "Acortar el retraso al salir"
 
+msgid "Show"
+msgstr "Mostrar"
+
 msgid "Show Snipdeck in the taskbar"
 msgstr "Mostrar Snipdeck en la barra de tareas"
 
 msgid "Show or hide the panel"
 msgstr "Mostrar u ocultar el panel"
+
+msgid "Show the welcome tour again"
+msgstr "Mostrar de nuevo el recorrido de bienvenida"
 
 msgid "Skip"
 msgstr "Omitir"
@@ -1012,6 +1021,9 @@ msgstr "Papelera"
 msgid "Troubleshoot"
 msgstr "Solución de problemas"
 
+msgid "Troubleshoot…"
+msgstr "Solucionar problemas…"
+
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Activa el historial del portapapeles en Configuración para registrar lo que copias."
 
@@ -1036,11 +1048,17 @@ msgstr "Versión"
 msgid "Violet"
 msgstr "Violeta"
 
+msgid "Walk through the basics again."
+msgstr "Repasa lo básico de nuevo."
+
 msgid "Warning"
 msgstr "Advertencia"
 
 msgid "Welcome to Snipdeck"
 msgstr "Te damos la bienvenida a Snipdeck"
+
+msgid "Welcome tour"
+msgstr "Recorrido de bienvenida"
 
 msgid "What is on the clipboard"
 msgstr "Lo que hay en el portapapeles"

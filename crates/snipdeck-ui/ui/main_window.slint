@@ -176,6 +176,8 @@ export component MainWindow inherits Window {
     callback tag-toggled(int, bool);
     callback reveal-requested(int, bool);
     callback settings-requested();
+    // 0 Troubleshoot, 1 User guide, 2 About (the host's HelpTopic); F1 asks for the guide.
+    callback help-requested(int);
     callback add-list-requested();
     callback list-edit-requested(int);
     callback list-delete-confirmed(int);
@@ -213,7 +215,7 @@ export component MainWindow inherits Window {
     out property <bool> rail: root.narrow;
     out property <int> columns: root.cols;
     out property <bool> confirm-open: root.confirm-shown;
-    out property <bool> menu-open: item-menu-open || nav-menu-open || chooser-open;
+    out property <bool> menu-open: item-menu-open || nav-menu-open || chooser-open || help-menu-open;
 
     // ---- Internals ----------------------------------------------------------------------------
     property <int> used-index: -1;
@@ -236,6 +238,7 @@ export component MainWindow inherits Window {
     property <length> item-menu-y: 0px;
     property <int> item-menu-index: 0;
     property <bool> nav-menu-open: false;
+    property <bool> help-menu-open: false;
     property <length> nav-menu-x: 0px;
     property <length> nav-menu-y: 0px;
     property <int> nav-menu-flat: 0;
@@ -248,7 +251,7 @@ export component MainWindow inherits Window {
     property <int> confirm-kind: 0;
     property <int> confirm-target: 0;
     property <bool> confirm-shown: false;
-    property <bool> overlay-open: root.item-menu-open || root.nav-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown;
+    property <bool> overlay-open: root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown;
 
     init => {
         Palette.dark = root.dark;
@@ -429,9 +432,16 @@ export component MainWindow inherits Window {
         root.item-menu-open = true;
     }
 
+    function open-help-menu() {
+        root.close-menus();
+        root.nav-origin = true;
+        root.help-menu-open = true;
+    }
+
     function close-menus() {
         root.item-menu-open = false;
         root.nav-menu-open = false;
+        root.help-menu-open = false;
         root.chooser-open = false;
         root.restore-focus();
     }
@@ -580,6 +590,10 @@ export component MainWindow inherits Window {
                     root.new-item-requested();
                     return accept;
                 }
+            }
+            if (event.text == Key.F1) {
+                root.help-requested(1);
+                return accept;
             }
             if (event.text == "/" && !search.has-focus && !event.modifiers.control && !event.modifiers.alt) {
                 root.focus-search();
@@ -797,12 +811,26 @@ export component MainWindow inherits Window {
                                 y: (parent.height - self.height) / 2;
                                 clicked => { root.settings-requested(); }
                             }
+                            if !root.narrow: Button {
+                                variant: ButtonVariant.ghost;
+                                icon: Icons.info;
+                                text: @tr("Help");
+                                y: (parent.height - self.height) / 2;
+                                clicked => { root.open-help-menu(); }
+                            }
                             if root.narrow: IconButton {
                                 scaled: true;
                                 icon: Icons.gear;
                                 tooltip: @tr("Settings");
                                 y: (parent.height - self.height) / 2;
                                 clicked => { root.settings-requested(); }
+                            }
+                            if root.narrow: IconButton {
+                                scaled: true;
+                                icon: Icons.info;
+                                tooltip: @tr("Help");
+                                y: (parent.height - self.height) / 2;
+                                clicked => { root.open-help-menu(); }
                             }
                         }
                     }
@@ -1455,7 +1483,7 @@ export component MainWindow inherits Window {
         dismissed => { root.board-menu-dismissed(); }
     }
 
-    if root.item-menu-open || root.nav-menu-open || root.chooser-open: TouchArea {
+    if root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.chooser-open: TouchArea {
         pointer-event(event) => {
             if (event.kind == PointerEventKind.down) {
                 root.close-menus();
@@ -1484,6 +1512,27 @@ export component MainWindow inherits Window {
             self.focus-menu();
         }
         activated(i) => { root.nav-menu-activated(i); }
+        dismissed => { root.close-menus(); }
+    }
+    if root.help-menu-open: Menu {
+        x: Space.s2;
+        y: max(0px, root.height - root.bar-h - self.height);
+        width: min(Space.s12 * 4, root.width - 2 * Space.s2);
+        entries: [
+            { text: @tr("Troubleshoot…") },
+            { text: @tr("User guide"), shortcut: "F1" },
+            { text: @tr("About Snipdeck") },
+        ];
+        label: @tr("Help");
+        icons: false;
+        init => {
+            self.current = 0;
+            self.focus-menu();
+        }
+        activated(i) => {
+            root.close-menus();
+            root.help-requested(i);
+        }
         dismissed => { root.close-menus(); }
     }
     if root.chooser-open: Chooser {
