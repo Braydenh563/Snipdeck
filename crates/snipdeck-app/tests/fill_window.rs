@@ -223,6 +223,7 @@ fn a_sensitive_template_previews_as_a_mask_and_never_its_text() {
             .find(|i| i.title == "Invoice reminder")
             .expect("the template");
         template.sensitive = true;
+        template.preview.clear();
         store.update_item(&template, None).expect("mark sensitive");
         let r = rig_on(store);
         let (_, form) = r.open_form(false);
