@@ -327,6 +327,11 @@ pub struct Controller<S, C, K, T> {
     services: Services<C, K, T>,
     target: Box<dyn TargetSource>,
     clock: Box<dyn Clock>,
+    /// The zone `{date}` and `{time}` show; the system's, except in tests.
+    tz: TimeZone,
+    /// A sensitive item's text left on the clipboard by a copy, and when to take it off again
+    /// (if the clipboard still holds exactly that text).
+    clipboard_clear: Option<(Timestamp, String)>,
     model: PanelModel,
     settings: Settings,
     entitlements: Entitlements,
@@ -446,6 +451,8 @@ where
             services,
             target,
             clock,
+            tz: TimeZone::system(),
+            clipboard_clear: None,
             model,
             settings,
             entitlements,
@@ -575,7 +582,7 @@ where
                     } else {
                         f.preview(
                             self.clock.now(),
-                            &TimeZone::UTC,
+                            &self.tz,
                             Locale::for_tag(&self.settings.language),
                         )
                     },
@@ -820,6 +827,12 @@ where
             saver.changed(&self.settings, now);
         }
         self.dock_resync();
+    }
+
+    /// The Main window was moved, resized, maximised or restored: remembers where it is, to
+    /// be written after the quiet time and restored the next time it opens.
+    pub fn remember_main_window(&mut self, place: crate::settings::WindowPlace) {
+        self.update_settings(|s| s.main_window = Some(place));
     }
 
     /// The theme setting (`system`, `light`, `dark`).
@@ -1211,8 +1224,8 @@ where
             now: self.clock.now(),
             entitlements: self.entitlements,
             answers,
-            clipboard_text: None,
-            tz: TimeZone::UTC,
+            clipboard_text: self.services.clipboard.read_text(),
+            tz: self.tz.clone(),
             locale: Locale::for_tag(&self.settings.language),
         };
         let mut env = Env {
@@ -1223,6 +1236,7 @@ where
         match usecase::use_item(&mut self.store, &mut env, &request) {
             Ok(used) => {
                 self.queue.used(item);
+                self.schedule_clipboard_clear(item, used.outcome);
                 self.show_toast(toast::after_use(
                     used.outcome,
                     &route,
@@ -1244,6 +1258,46 @@ where
                 self.show_toast(toast::after_error(&error));
                 UseResult::Failed
             }
+        }
+    }
+
+    /// How long a copied sensitive item may stay on the clipboard.
+    pub const SENSITIVE_CLIPBOARD_LIFE: Duration = Duration::from_secs(30);
+
+    /// After a copy of a sensitive item, remembers its text on the clipboard to be cleared
+    /// [`SENSITIVE_CLIPBOARD_LIFE`](Self::SENSITIVE_CLIPBOARD_LIFE) from now. A paste restores
+    /// the user's own clipboard, so it leaves nothing to clear.
+    fn schedule_clipboard_clear(&mut self, item: ItemId, outcome: UseOutcome) {
+        if matches!(outcome, UseOutcome::Pasted)
+            || !self.store.item(item).is_ok_and(|i| i.sensitive)
+        {
+            return;
+        }
+        let Ok(due) = self.clock.now().checked_add(Self::SENSITIVE_CLIPBOARD_LIFE) else {
+            return;
+        };
+        self.clipboard_clear = self.services.clipboard.read_text().map(|text| (due, text));
+    }
+
+    /// How long until the clipboard is to be cleared of a copied sensitive item, if one waits.
+    /// The host arms a timer for this and then calls
+    /// [`clear_clipboard_if_due`](Self::clear_clipboard_if_due).
+    #[must_use]
+    pub fn clipboard_clear_wait(&self) -> Option<Duration> {
+        let (due, _) = self.clipboard_clear.as_ref()?;
+        Some(Duration::try_from(due.duration_since(self.clock.now())).unwrap_or_default())
+    }
+
+    /// Clears the clipboard if the wait is over and it still holds the copied text.
+    pub fn clear_clipboard_if_due(&mut self) {
+        let Some((due, _)) = &self.clipboard_clear else {
+            return;
+        };
+        if self.clock.now() < *due {
+            return;
+        }
+        if let Some((_, text)) = self.clipboard_clear.take() {
+            self.services.clipboard.clear_if_text(&text);
         }
     }
 
@@ -1531,7 +1585,7 @@ mod tests {
             keyboard: FakeKeyboard::default(),
             timing: FakeTiming::default(),
         };
-        let ctl = Controller::new(
+        let mut ctl = Controller::new(
             store,
             services,
             Box::new(targets.clone()),
@@ -1540,6 +1594,8 @@ mod tests {
             Entitlements::new(tier),
         )
         .expect("controller");
+        // Never the machine's zone: a test's output must not depend on where it runs.
+        ctl.tz = TimeZone::UTC;
         World {
             ctl,
             targets,
@@ -1624,6 +1680,72 @@ mod tests {
             ToastMessage::Pasted {
                 app: "Outlook".into()
             }
+        );
+    }
+
+    #[test]
+    fn a_template_fills_clipboard_from_what_the_user_copied() {
+        let mut w = build(Opts {
+            clipboard: Some("from the clipboard"),
+            ..Opts::default()
+        });
+        let list = w.ctl.model.list().expect("list").id;
+        let id = add(
+            &mut w.ctl.store,
+            list,
+            ItemKind::Template,
+            "Echo",
+            "Got: {clipboard}",
+        );
+        assert_eq!(
+            w.ctl.use_item(id, UseMode::Copy),
+            UseResult::Done(UseOutcome::Copied)
+        );
+        assert_eq!(
+            w.ctl.services.clipboard.read_text().as_deref(),
+            Some("Got: from the clipboard")
+        );
+    }
+
+    fn make_sensitive(w: &mut World, id: ItemId) {
+        let mut item = w.ctl.store.item(id).expect("item");
+        item.sensitive = true;
+        w.ctl.store.update_item(&item, None).expect("update");
+    }
+
+    #[test]
+    fn a_copied_sensitive_item_leaves_the_clipboard_after_thirty_seconds() {
+        let mut w = world();
+        make_sensitive(&mut w, w.ids[0]);
+        w.ctl.activate_row(0, UseMode::Copy);
+        assert_eq!(
+            w.ctl.clipboard_clear_wait(),
+            Some(Ctl::SENSITIVE_CLIPBOARD_LIFE)
+        );
+        w.clock.set(at("2026-10-17T10:30:29Z"));
+        w.ctl.clear_clipboard_if_due();
+        assert_eq!(
+            w.ctl.services.clipboard.read_text().as_deref(),
+            Some("first"),
+            "not yet"
+        );
+        w.clock.set(at("2026-10-17T10:30:30Z"));
+        w.ctl.clear_clipboard_if_due();
+        assert_eq!(w.ctl.services.clipboard.read_text(), None);
+        assert_eq!(w.ctl.clipboard_clear_wait(), None);
+    }
+
+    #[test]
+    fn a_newer_copy_is_not_cleared_with_the_sensitive_one() {
+        let mut w = world();
+        make_sensitive(&mut w, w.ids[0]);
+        w.ctl.activate_row(0, UseMode::Copy);
+        w.ctl.activate_row(1, UseMode::Copy);
+        w.clock.set(at("2026-10-17T10:31:00Z"));
+        w.ctl.clear_clipboard_if_due();
+        assert_eq!(
+            w.ctl.services.clipboard.read_text().as_deref(),
+            Some("second")
         );
     }
 
@@ -2787,6 +2909,20 @@ mod tests {
         );
         w.ctl.set_settings_saver(saver);
         w
+    }
+
+    #[test]
+    fn the_main_window_place_is_remembered_in_the_settings() {
+        let mut w = world();
+        let place = crate::settings::WindowPlace {
+            x: 40,
+            y: 60,
+            w: 1000,
+            h: 640,
+            maximized: false,
+        };
+        w.ctl.remember_main_window(place);
+        assert_eq!(w.ctl.settings().main_window, Some(place));
     }
 
     #[test]

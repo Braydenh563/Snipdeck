@@ -188,6 +188,8 @@ struct Core<S, C, K, T> {
     redraw: Rc<dyn Fn()>,
     /// A timer is waiting to write changed settings.
     settings_timer: Cell<bool>,
+    /// A timer is waiting to clear a copied sensitive item off the clipboard.
+    clipboard_timer: Cell<bool>,
     /// Sends the dock its ticks while a hover or leave delay runs.
     dock_timer: slint::Timer,
 }
@@ -218,6 +220,7 @@ where
                     }
                 }),
                 settings_timer: Cell::new(false),
+                clipboard_timer: Cell::new(false),
                 dock_timer: slint::Timer::default(),
             }
         });
@@ -316,6 +319,7 @@ where
         }
         *self.shown.borrow_mut() = Some(view);
         self.arm_settings();
+        self.arm_clipboard_clear();
     }
 
     /// Runs the dock's tick timer while a hover or leave delay is running, and only then.
@@ -335,6 +339,27 @@ where
         } else {
             self.dock_timer.stop();
         }
+    }
+
+    /// Keeps one timer running while a copied sensitive item waits to come off the clipboard;
+    /// the controller's clock decides whether it is due.
+    fn arm_clipboard_clear(self: &Rc<Self>) {
+        if self.clipboard_timer.get() {
+            return;
+        }
+        let Some(wait) = self.controller.borrow().clipboard_clear_wait() else {
+            return;
+        };
+        self.clipboard_timer.set(true);
+        let core = Rc::downgrade(self);
+        slint::Timer::single_shot(wait, move || {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.clipboard_timer.set(false);
+            core.controller.borrow_mut().clear_clipboard_if_due();
+            core.sync();
+        });
     }
 
     /// Keeps one timer running while changed settings wait to be written: when it fires the

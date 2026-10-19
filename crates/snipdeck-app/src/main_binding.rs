@@ -36,7 +36,7 @@ use crate::{
     host::ClipboardText,
     item_editor::Origin,
     main_window::{EditorKind, EditorView, Section, SelectMode, ViewMode},
-    native_window::{fit_logical, fit_to_screen, size_before_show},
+    native_window::{fit_logical, fit_to_screen, place_of, restore_place, size_before_show},
     palette::list_color,
     wording,
 };
@@ -537,6 +537,39 @@ where
     }
 }
 
+/// Tells the controller where the Main window is whenever it is moved or resized (it keeps the
+/// place for the next start). Armed after the first placement, so the restore itself is not
+/// taken for the user's choice.
+fn watch_place<S, C, K, T>(
+    window: &ui::MainWindow,
+    controller: &Rc<RefCell<Controller<S, C, K, T>>>,
+) where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    use slint::winit_030::{EventResult, winit::event::WindowEvent};
+    let controller = Rc::downgrade(controller);
+    window
+        .window()
+        .on_winit_window_event(move |slint_window, event| {
+            if matches!(event, WindowEvent::Moved(_) | WindowEvent::Resized(_))
+                && let Some(controller) = controller.upgrade()
+                && let Ok(mut controller) = controller.try_borrow_mut()
+            {
+                let previous = controller.settings().main_window;
+                let place = slint_window
+                    .with_winit_window(|w| place_of(w, previous))
+                    .flatten();
+                if let Some(place) = place {
+                    controller.remember_main_window(place);
+                }
+            }
+            EventResult::Propagate
+        });
+}
+
 /// The toolbar's empty parts start the OS window drag, a double click maximises or restores.
 fn wire_title_bar(window: &ui::MainWindow) {
     let weak = window.as_weak();
@@ -588,7 +621,8 @@ impl MainUi {
             let controller = Rc::clone(controller);
             Box::new(move || {
                 let mut slot = slot.borrow_mut();
-                if slot.is_none() {
+                let created = slot.is_none();
+                if created {
                     let window = RegularWindow::create(ui::MainWindow::new)?;
                     size_before_show(
                         window.window(),
@@ -603,6 +637,15 @@ impl MainUi {
                 // Reading the library again: it may have changed while the window was closed.
                 binding.redraw();
                 window.show()?;
+                if created {
+                    // Where the user left it (then cut to the screen below); only once, as a
+                    // hidden window keeps its place.
+                    let saved = controller.borrow().settings().main_window;
+                    if let Some(place) = saved {
+                        restore_place(window.window(), &place);
+                    }
+                    watch_place(window, &controller);
+                }
                 fit_to_screen(window.window());
                 raise(window.window());
                 Ok(())

@@ -367,8 +367,8 @@ msgstr "Aide"
 msgid "Help sections"
 msgstr "Sections de l'aide"
 
-msgid "Hidden in lists until you hold Space, and kept out of clipboard history."
-msgstr "Masqué dans les listes tant que tu ne maintiens pas la barre d'espace, et exclu de l'historique du presse-papiers."
+msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard 30 seconds after you copy it."
+msgstr "Masqué dans les listes tant que vous ne maintenez pas la barre d’espace, exclu de l’historique du presse-papiers et effacé du presse-papiers 30 secondes après la copie."
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "Masqué. Maintenez la touche Espace pour afficher."
@@ -865,6 +865,9 @@ msgstr "Ardoise"
 msgid "Snipdeck"
 msgstr "Snipdeck"
 
+msgid "Snipdeck (hotkeys paused)"
+msgstr "Snipdeck (raccourcis en pause)"
+
 msgid "Snipdeck Pro"
 msgstr "Snipdeck Pro"
 
@@ -900,6 +903,9 @@ msgstr "Trier les extraits par"
 
 msgid "Source code"
 msgstr "Code source"
+
+msgid "Space"
+msgstr "Espace"
 
 msgid "Start with Windows"
 msgstr "Démarrer avec Windows"

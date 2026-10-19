@@ -199,6 +199,69 @@ pub fn fit_to_screen(window: &slint::Window) {
     });
 }
 
+/// Puts a Main window that was just shown where the user left it: at `place`, cut and moved
+/// inside the work area of the monitor it lands on (a monitor that is gone, or a smaller
+/// screen, still gives a window on screen), and maximised again if it was.
+pub fn restore_place(window: &slint::Window, place: &crate::settings::WindowPlace) {
+    let _ = window.with_winit_window(|w| {
+        w.set_outer_position(winit::dpi::PhysicalPosition::new(place.x, place.y));
+        let Some(monitor) = monitor_of(w) else {
+            return;
+        };
+        let (outer, inner) = (w.outer_size(), w.inner_size());
+        let chrome = (
+            outer.width.saturating_sub(inner.width),
+            outer.height.saturating_sub(inner.height),
+        );
+        let fitted = frame::fit(
+            Rect {
+                x: place.x,
+                y: place.y,
+                w: place.w,
+                h: place.h,
+            },
+            monitor.work_area,
+        );
+        let _ = w.request_inner_size(winit::dpi::PhysicalSize::new(
+            fitted.w.saturating_sub(chrome.0).max(1),
+            fitted.h.saturating_sub(chrome.1).max(1),
+        ));
+        w.set_outer_position(winit::dpi::PhysicalPosition::new(fitted.x, fitted.y));
+        if place.maximized {
+            w.set_maximized(true);
+        }
+    });
+}
+
+/// Where a shown Main window is now, for [`Controller::remember_main_window`]: `previous` (the
+/// restored place) is kept while it is maximised, and `None` when it is minimised or has no
+/// size yet.
+///
+/// [`Controller::remember_main_window`]: crate::controller::Controller::remember_main_window
+#[must_use]
+pub fn place_of(
+    window: &winit::window::Window,
+    previous: Option<crate::settings::WindowPlace>,
+) -> Option<crate::settings::WindowPlace> {
+    if window.is_minimized() == Some(true) {
+        return None;
+    }
+    if window.is_maximized() {
+        return previous.map(|p| crate::settings::WindowPlace {
+            maximized: true,
+            ..p
+        });
+    }
+    let (at, size) = (window.outer_position().ok()?, window.outer_size());
+    (size.width > 0 && size.height > 0).then_some(crate::settings::WindowPlace {
+        x: at.x,
+        y: at.y,
+        w: size.width,
+        h: size.height,
+        maximized: false,
+    })
+}
+
 /// Brings `window` in front without activating it: nothing off Windows.
 #[cfg(not(windows))]
 pub fn raise_window(_window: &slint::Window) {}

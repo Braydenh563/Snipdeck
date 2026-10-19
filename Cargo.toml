@@ -16,12 +16,12 @@ publish = false
 snipdeck-core = { path = "crates/snipdeck-core" }
 
 argon2 = { version = "0.6.0", default-features = false, features = ["alloc", "zeroize"] }
-base64 = { version = "0.23.1", default-features = false, features = ["std"] }
+base64 = { version = "0.23.1", default-features = false, features = ["std", "tz-system", "tzdb-bundle-platform"] }
 blake3 = "1.8.7"
 chacha20poly1305 = { version = "0.11.0", default-features = false, features = ["alloc", "zeroize"] }
 ed25519-dalek = { version = "3.0.0", default-features = false }
 getrandom = "0.4.3"
-jiff = { version = "0.2.38", default-features = false, features = ["std"] }
+jiff = { version = "0.2.38", default-features = false, features = ["std", "tz-system", "tzdb-bundle-platform"] }
 nucleo-matcher = "0.3.1"
 # Pure-Rust PNG decode: the Windows clipboard backend synthesizes CF_DIB from an item's PNG.
 png = { version = "0.18.1", default-features = false }

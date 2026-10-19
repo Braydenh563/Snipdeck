@@ -83,6 +83,8 @@ pub struct TrayLabels {
     pub pause_hotkeys: String,
     /// [`TrayEntry::Quit`].
     pub quit: String,
+    /// The hover text while the hotkeys are paused (instead of the tooltip).
+    pub tooltip_paused: String,
 }
 
 impl Default for TrayLabels {
@@ -93,6 +95,7 @@ impl Default for TrayLabels {
             open_snipdeck: english(TrayEntry::OpenSnipdeck),
             pause_hotkeys: english(TrayEntry::PauseHotkeys),
             quit: english(TrayEntry::Quit),
+            tooltip_paused: "Snipdeck (hotkeys paused)".to_owned(),
         }
     }
 }
@@ -296,10 +299,14 @@ impl TrayModel {
         text.clone_into(&mut self.tooltip);
     }
 
-    /// The hover text as given.
+    /// The hover text as given, or the paused text while the hotkeys are paused.
     #[must_use]
     pub fn tooltip(&self) -> &str {
-        &self.tooltip
+        if self.hotkeys_paused {
+            &self.labels.tooltip_paused
+        } else {
+            &self.tooltip
+        }
     }
 
     /// The hover text as UTF-16 for the shell: at most [`TOOLTIP_CAPACITY`] - 1 units (no
@@ -307,7 +314,7 @@ impl TrayModel {
     #[must_use]
     pub fn tooltip_utf16(&self) -> Vec<u16> {
         let mut units = Vec::new();
-        for c in self.tooltip.chars() {
+        for c in self.tooltip().chars() {
             if units.len() + c.len_utf16() >= TOOLTIP_CAPACITY {
                 break;
             }
@@ -447,6 +454,20 @@ mod tests {
     }
 
     #[test]
+    fn the_tooltip_says_the_hotkeys_are_paused_while_they_are() {
+        let mut m = model();
+        let usual = m.tooltip().to_owned();
+        m.set_hotkeys_paused(true);
+        assert_eq!(m.tooltip(), "Snipdeck (hotkeys paused)");
+        assert_eq!(
+            String::from_utf16(&m.tooltip_utf16()).ok().as_deref(),
+            Some("Snipdeck (hotkeys paused)")
+        );
+        m.set_hotkeys_paused(false);
+        assert_eq!(m.tooltip(), usual);
+    }
+
+    #[test]
     fn translated_labels_replace_the_english_ones_in_the_menu() {
         let mut m = model();
         m.set_labels(TrayLabels {
@@ -454,6 +475,7 @@ mod tests {
             open_snipdeck: "Snipdeck öffnen".into(),
             pause_hotkeys: "Tastenkürzel pausieren".into(),
             quit: "Beenden".into(),
+            tooltip_paused: "Snipdeck (Tastenkürzel pausiert)".into(),
         });
         let Some(Reaction::PopupMenu(lines)) = m.gesture(Gesture::ContextMenu) else {
             panic!("a menu")

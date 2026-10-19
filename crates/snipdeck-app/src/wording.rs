@@ -28,6 +28,7 @@ pub fn tray_labels(window: &PanelWindow) -> TrayLabels {
         open_snipdeck: texts.get_open_snipdeck().into(),
         pause_hotkeys: texts.get_pause_hotkeys().into(),
         quit: texts.get_quit().into(),
+        tooltip_paused: texts.get_tooltip_paused().into(),
     }
 }
 
