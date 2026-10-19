@@ -730,9 +730,11 @@ impl MainModel {
 
     // ---- Changing what is shown ----------------------------------------------------------------
 
-    /// Opens `section`: the search ends, the selection clears and the cursor returns to the top.
+    /// Opens `section`: the search ends, the label filter and the selection clear and the cursor
+    /// returns to the top.
     pub fn open(&mut self, section: Section) {
         self.section = section;
+        self.label_filter = None;
         self.query.clear();
         self.hits.clear();
         self.clear_selection();

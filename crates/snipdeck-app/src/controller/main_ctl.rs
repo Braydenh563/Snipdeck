@@ -424,6 +424,7 @@ where
                 copy.tags = original.tags;
                 copy.sensitive = original.sensitive;
                 copy.always_plain = original.always_plain;
+                copy.label = original.label;
                 copy.source_app = original.source_app;
                 b.insert_item(&copy, &formats, Placement::After(*id))?;
             }

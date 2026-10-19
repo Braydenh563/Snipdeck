@@ -26,8 +26,8 @@ keyed_enum! {
 
 keyed_enum! {
     /// An item's colour label: a 4px bar on its card, and a filter in the Main window. The label
-    /// is always shown with its name (tooltip, accessible description, filter chip text), so
-    /// colour is never the only cue.
+    /// is named wherever it can be read as text (the card's accessible description, the filter
+    /// chip, the editor's swatches); on the card itself the bar is the only visible cue.
     pub enum ItemLabel ("item label") {
         /// Blue.
         Blue = "blue",

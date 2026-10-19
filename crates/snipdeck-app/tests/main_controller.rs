@@ -1308,3 +1308,41 @@ fn the_palette_new_list_command_opens_the_list_editor() {
     assert_eq!(editor.kind, EditorKind::List);
     assert!(editor.is_new);
 }
+
+#[test]
+fn opening_another_section_clears_the_label_filter() {
+    let mut ctl = pro();
+    label_row(&mut ctl, 0, ItemLabel::Teal);
+    ctl.main_set_label_filter(Some(ItemLabel::Teal));
+    open_list(&mut ctl, "Addresses");
+    let screen = ctl.main_screen();
+    assert_eq!(screen.label_filter, None);
+    assert!(
+        !screen.rows.is_empty(),
+        "the other list shows all its items"
+    );
+    ctl.main_set_label_filter(Some(ItemLabel::Teal));
+    ctl.main_open(snipdeck_app::main_window::Section::Trash);
+    assert_eq!(ctl.main_screen().label_filter, None);
+}
+
+#[test]
+fn duplicating_a_labelled_item_keeps_its_label() {
+    let mut ctl = pro();
+    label_row(&mut ctl, 0, ItemLabel::Teal);
+    let screen = ctl.main_screen();
+    let id = match screen.rows[0].key {
+        snipdeck_app::main_window::Key::Item(id) => id,
+        other => panic!("{other:?}"),
+    };
+    let list = ctl.store().item(id).unwrap().list_id;
+    assert!(ctl.main_action(MainAction::Duplicate, 0).is_none());
+    let labelled = ctl
+        .store()
+        .items(list)
+        .unwrap()
+        .iter()
+        .filter(|i| i.label == Some(ItemLabel::Teal))
+        .count();
+    assert_eq!(labelled, 2, "the copy carries the label");
+}
