@@ -38,11 +38,8 @@ fn could_not_run(folder: &Path, why: &str) -> Outcome {
     }
 }
 
-/// Opens the library in `folder` without creating one that is not there.
+/// Opens the library in `folder`; a folder with none gets an empty one, which is healthy.
 fn open(folder: &Path) -> Result<Store, Outcome> {
-    if !folder.join("snipdeck.db").is_file() {
-        return Err(could_not_run(folder, "no Snipdeck library here"));
-    }
     Store::open(folder).map_err(|e| could_not_run(folder, &e.to_string()))
 }
 
@@ -228,12 +225,11 @@ mod tests {
     }
 
     #[test]
-    fn a_missing_library_is_not_created_and_could_not_run() {
+    fn a_fresh_empty_folder_is_healthy() {
         let dir = tempfile::tempdir().expect("dir");
         let out = check_db(dir.path());
-        assert_eq!(out.code, COULD_NOT_RUN);
-        assert!(out.text.contains("no Snipdeck library"));
-        assert!(!dir.path().join("snipdeck.db").exists());
+        assert_eq!(out.code, 0, "{}", out.text);
+        assert!(dir.path().join("snipdeck.db").exists());
     }
 
     #[test]
@@ -260,11 +256,5 @@ mod tests {
         assert!(!out.text.contains(&dir.path().display().to_string()));
         // No backup yet: a warning, so exit 1.
         assert_eq!(out.code, 1);
-    }
-
-    #[test]
-    fn troubleshoot_on_a_missing_library_could_not_run() {
-        let dir = tempfile::tempdir().expect("dir");
-        assert_eq!(troubleshoot(dir.path(), TODAY, "x").code, COULD_NOT_RUN);
     }
 }
