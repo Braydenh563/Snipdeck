@@ -750,14 +750,24 @@ fn while_locked_recent_is_hidden_and_collects_nothing_until_unlocked() {
 
     r.ctl.lock_now();
     assert!(r.ctl.library_locked());
-    assert!(r.ctl.recent_entries().is_empty(), "nothing listed while locked");
+    assert!(
+        r.ctl.recent_entries().is_empty(),
+        "nothing listed while locked"
+    );
     let view = r.ctl.view().recent.expect("history is on");
-    assert!(view.locked && view.rows.is_empty(), "the Panel asks for the unlock");
+    assert!(
+        view.locked && view.rows.is_empty(),
+        "the Panel asks for the unlock"
+    );
     assert!(r.ctl.main_screen().recent_locked, "so does the Main window");
     r.ctl.on_clipboard_change(&copied("while locked"));
 
     r.ctl.unlock_with_password(PASSWORD).expect("unlock");
     let texts: Vec<_> = r.ctl.recent_entries().into_iter().map(|e| e.text).collect();
-    assert_eq!(texts, ["before the lock"], "nothing was recorded while locked");
+    assert_eq!(
+        texts,
+        ["before the lock"],
+        "nothing was recorded while locked"
+    );
     assert!(!r.ctl.view().recent.expect("on").locked);
 }

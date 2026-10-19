@@ -1211,15 +1211,32 @@ fn the_recent_section_lists_what_was_copied_and_its_buttons_reach_the_controller
         assert_eq!(r.ctl.borrow().services().clipboard.written.len(), 1);
         let saved_before: usize = {
             let ctl = r.ctl.borrow();
-            ctl.store().boards().unwrap().iter().flat_map(|b| ctl.store().lists(b.id).unwrap()).map(|l| ctl.store().items(l.id).unwrap().len()).sum()
+            ctl.store()
+                .boards()
+                .unwrap()
+                .iter()
+                .flat_map(|b| ctl.store().lists(b.id).unwrap())
+                .map(|l| ctl.store().items(l.id).unwrap().len())
+                .sum()
         };
         r.ui.invoke_recent_saved(id_of(0), 0);
         assert!(!r.ui.get_toast_text().is_empty(), "saving says so");
         {
             let ctl = r.ctl.borrow();
-            let all: Vec<String> = ctl.store().boards().unwrap().iter().flat_map(|b| ctl.store().lists(b.id).unwrap()).flat_map(|l| ctl.store().items(l.id).unwrap()).map(|i| i.preview.clone()).collect();
+            let all: Vec<String> = ctl
+                .store()
+                .boards()
+                .unwrap()
+                .iter()
+                .flat_map(|b| ctl.store().lists(b.id).unwrap())
+                .flat_map(|l| ctl.store().items(l.id).unwrap())
+                .map(|i| i.preview.clone())
+                .collect();
             assert_eq!(all.len(), saved_before + 1, "an item was created");
-            assert!(all.iter().any(|p| p == "second copy"), "with the entry's text: {all:?}");
+            assert!(
+                all.iter().any(|p| p == "second copy"),
+                "with the entry's text: {all:?}"
+            );
         }
         r.ui.invoke_recent_deleted(id_of(0));
         assert_eq!(r.ui.get_recent_rows().row_count(), 1);

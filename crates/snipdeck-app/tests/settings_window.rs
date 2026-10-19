@@ -368,12 +368,26 @@ fn an_app_added_in_settings_is_no_longer_captured_end_to_end() {
                 });
         };
         copy_from("KeePass.exe");
-        assert_eq!(r.ctl.borrow().recent_entries().len(), 1, "captured before it is excluded");
+        assert_eq!(
+            r.ctl.borrow().recent_entries().len(),
+            1,
+            "captured before it is excluded"
+        );
         r.ui.invoke_no_history_app_added("keepass.exe".into());
         copy_from("KeePass.exe");
         copy_from("notepad.exe");
-        let texts: Vec<_> = r.ctl.borrow().recent_entries().into_iter().map(|e| e.text).collect();
-        assert_eq!(texts, ["from notepad.exe", "from KeePass.exe"], "the excluded app is not captured again");
+        let texts: Vec<_> = r
+            .ctl
+            .borrow()
+            .recent_entries()
+            .into_iter()
+            .map(|e| e.text)
+            .collect();
+        assert_eq!(
+            texts,
+            ["from notepad.exe", "from KeePass.exe"],
+            "the excluded app is not captured again"
+        );
     });
 }
 

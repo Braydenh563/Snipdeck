@@ -523,7 +523,8 @@ where
         wire!(on_recent_unlock_requested, |ctl| ctl.request_unlock());
         wire!(on_recent_toggled, |ctl, open| ctl.set_recent_open(open));
         wire!(on_recent_copied, |ctl, id| ctl.recent_copy(i64::from(id)));
-        wire!(on_recent_deleted, |ctl, id| ctl.recent_delete(i64::from(id)));
+        wire!(on_recent_deleted, |ctl, id| ctl
+            .recent_delete(i64::from(id)));
         wire!(on_recent_saved, |ctl, id, target| ctl
             .recent_promote_to(i64::from(id), index(target)));
         wire_effects!(on_pinned_used, |ctl, i| {

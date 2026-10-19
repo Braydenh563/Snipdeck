@@ -582,7 +582,10 @@ mod tests {
             m.pick(TrayEntry::PauseHistory),
             TrayEvent::HistoryPaused(true)
         );
-        assert!(!m.history_paused(), "the click alone does not flip the mark");
+        assert!(
+            !m.history_paused(),
+            "the click alone does not flip the mark"
+        );
         m.set_history(true, true);
         assert!(m.history_paused());
         let labels = menu_labels(&mut m);

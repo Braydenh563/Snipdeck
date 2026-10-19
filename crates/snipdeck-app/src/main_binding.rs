@@ -559,7 +559,8 @@ where
         wire!(on_clear_selection_requested, |ctl| ctl
             .main_clear_selection());
         wire!(on_recent_copied, |ctl, id| ctl.recent_copy(i64::from(id)));
-        wire!(on_recent_deleted, |ctl, id| ctl.recent_delete(i64::from(id)));
+        wire!(on_recent_deleted, |ctl, id| ctl
+            .recent_delete(i64::from(id)));
         wire!(on_recent_saved, |ctl, id, target| ctl
             .recent_promote_to(i64::from(id), index(target)));
         wire!(on_recent_cleared, |ctl| ctl.recent_clear());

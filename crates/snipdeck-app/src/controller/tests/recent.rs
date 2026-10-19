@@ -194,7 +194,12 @@ fn actions_follow_the_entry_id_when_the_list_shifts_under_an_open_menu() {
     let rows = w.ctl.view().recent.expect("on").rows;
     assert_eq!(rows[1].id, id, "the entry moved");
     w.ctl.recent_delete(id);
-    let left: Vec<_> = w.ctl.recent_entries().iter().map(|e| e.text.clone()).collect();
+    let left: Vec<_> = w
+        .ctl
+        .recent_entries()
+        .iter()
+        .map(|e| e.text.clone())
+        .collect();
     assert_eq!(left, ["newcomer"], "Remove hit the original entry");
 }
 
