@@ -854,7 +854,7 @@ fn pause_hotkeys_is_checked_while_paused() {
         open_menu(&r);
         let checked = |r: &Rig| {
             r.ui.get_app_menu_entries()
-                .row_data(3)
+                .row_data(4)
                 .expect("the Pause row")
                 .icon
                 .size()
