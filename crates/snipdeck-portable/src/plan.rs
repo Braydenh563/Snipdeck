@@ -683,7 +683,7 @@ mod tests {
         assert!(items > 0);
         let dropped = again.drop_duplicates(&mut everything);
         assert_eq!(dropped, items);
-        assert!(again.boards.is_empty());
+        assert_eq!(again.boards.len(), 0);
     }
 
     #[test]

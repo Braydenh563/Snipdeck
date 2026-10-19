@@ -393,7 +393,7 @@ fn escape_on_an_untouched_editor_closes_it_and_with_changes_asks_before_discardi
         assert!(!r.editor_shown());
         assert!(!r.ctl.borrow().item_editor_open());
         assert_eq!(r.item_count(), before);
-        assert!(r.draft_files().is_empty());
+        assert_eq!(r.draft_files().len(), 0);
     });
 }
 
@@ -478,7 +478,7 @@ fn a_draft_that_is_typed_back_to_the_start_is_removed() {
         assert_eq!(r.draft_files(), ["new.json"]);
         press(ed.window(), &key(Key::Backspace));
         wait(AUTOSAVE_EVERY);
-        assert!(r.draft_files().is_empty());
+        assert_eq!(r.draft_files().len(), 0);
     });
 }
 

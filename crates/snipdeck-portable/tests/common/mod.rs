@@ -300,7 +300,7 @@ pub fn assert_healthy(store: &Store) {
 
 pub fn assert_trash_empty(store: &Store) {
     use snipdeck_store::TrashRepo;
-    assert!(store.trashed().unwrap().is_empty());
+    assert_eq!(store.trashed().unwrap().len(), 0);
 }
 
 /// The entries of a zip, by name.

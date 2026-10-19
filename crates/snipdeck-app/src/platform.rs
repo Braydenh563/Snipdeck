@@ -369,7 +369,7 @@ mod tests {
             panic!("the dev host always starts")
         };
         assert_eq!(host.target.current(), Some(crate::demo::target()));
-        assert!(host.keep_alive.is_empty());
+        assert_eq!(host.keep_alive.len(), 0);
         assert!(host.tray.is_none(), "no tray off Windows");
         assert_eq!(host.warnings, Vec::<String>::new());
         assert!(!system_look().read().dark);

@@ -251,7 +251,7 @@ fn typing_the_answers_updates_the_preview_and_enter_in_the_last_field_pastes() {
         press(form.window(), &key(Key::Return));
         type_text(form.window(), "1042");
         assert!(form.get_preview().contains("invoice 1042 is due"));
-        assert!(r.ctl.borrow().services().keyboard.sent.is_empty());
+        assert_eq!(r.ctl.borrow().services().keyboard.sent.len(), 0);
         press(form.window(), &key(Key::Return));
 
         assert!(!form.window().is_visible(), "the form is off the screen");
@@ -308,7 +308,7 @@ fn a_required_field_left_empty_keeps_the_form_open_and_flags_it() {
         assert!(form.window().is_visible(), "still open");
         assert!(form.get_showing_errors());
         assert!(r.ctl.borrow().fill().is_some());
-        assert!(r.ctl.borrow().services().keyboard.sent.is_empty());
+        assert_eq!(r.ctl.borrow().services().keyboard.sent.len(), 0);
     });
 }
 
@@ -327,8 +327,8 @@ fn escape_closes_the_form_and_the_target_gets_the_focus_back() {
             base + 1,
             "Esc hands the focus back"
         );
-        assert!(r.ctl.borrow().services().keyboard.sent.is_empty());
-        assert!(r.ctl.borrow().services().clipboard.written.is_empty());
+        assert_eq!(r.ctl.borrow().services().keyboard.sent.len(), 0);
+        assert_eq!(r.ctl.borrow().services().clipboard.written.len(), 0);
     });
 }
 

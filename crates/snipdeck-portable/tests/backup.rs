@@ -153,7 +153,7 @@ fn only_the_newest_keep_backups_survive() {
         else {
             panic!()
         };
-        assert!(prune_failed.is_empty());
+        assert_eq!(prune_failed.len(), 0);
         assert_eq!(pruned.len(), usize::from(day > 3), "day {day}");
     }
     assert_eq!(
@@ -444,7 +444,7 @@ fn restore_refuses_to_go_past_the_board_limit_and_changes_nothing() {
 #[test]
 fn listing_backups_is_newest_first_and_empty_without_a_folder() {
     let dir = tempfile::tempdir().unwrap();
-    assert!(list_backups(dir.path()).unwrap().is_empty());
+    assert_eq!(list_backups(dir.path()).unwrap().len(), 0);
     let s = sample_store();
     for day in [3, 1, 2] {
         run_if_due(&s, dir.path(), &local(2026, 10, day, 12, 0, 0), 7, None).unwrap();

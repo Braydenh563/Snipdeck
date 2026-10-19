@@ -382,7 +382,7 @@ ui_tests! {
         fixture::set_rows(&ui, Vec::new());
         settle();
         assert!(!all(&ui, "No snippets yet", AccessibleRole::Text).is_empty());
-        assert!(rows(&ui).is_empty());
+        assert_eq!(rows(&ui).len(), 0);
 
         type_text(ui.window(), "zz");
         settle();

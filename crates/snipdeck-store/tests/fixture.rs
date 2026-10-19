@@ -133,7 +133,7 @@ fn a_version_1_database_opens_and_reads_back() {
 fn the_fixtures_search_index_and_trash_work() {
     let (_dir, mut s) = open_fixture();
     assert_eq!(s.search("hello", 5).unwrap(), [id::<ItemId>(ITEM_RICH)]);
-    assert!(s.search("hunter2", 5).unwrap().is_empty());
+    assert_eq!(s.search("hunter2", 5).unwrap().len(), 0);
     assert!(s.search("obsolete", 5).unwrap().is_empty(), "trashed");
     let trashed = s.trashed().unwrap();
     assert_eq!(trashed.len(), 1);

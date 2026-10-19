@@ -263,7 +263,7 @@ fn without_a_key_ring_sensitive_items_are_kept_in_plain_text() {
         .unwrap();
     assert_eq!(s.formats(it.id).unwrap(), text_formats("hunter2"));
     assert_eq!(encrypted_flag(&raw(&dir), &it), 0);
-    assert!(s.search("hunter2", 5).unwrap().is_empty());
+    assert_eq!(s.search("hunter2", 5).unwrap().len(), 0);
 }
 
 #[test]
@@ -297,7 +297,7 @@ fn marking_an_item_sensitive_encrypts_it_and_clearing_the_flag_decrypts_it() {
     it.preview = String::new();
     s.update_item(&it, None).unwrap();
     assert_eq!(encrypted_flag(&raw(&dir), &it), 1);
-    assert!(s.search("ghp_ZQ9tokenSECRET", 5).unwrap().is_empty());
+    assert_eq!(s.search("ghp_ZQ9tokenSECRET", 5).unwrap().len(), 0);
     assert_eq!(
         s.formats(it.id).unwrap(),
         text_formats("ghp_ZQ9tokenSECRET")

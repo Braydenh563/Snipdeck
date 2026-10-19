@@ -79,7 +79,7 @@ fn in_memory_stores_are_independent() {
     let mut a = store();
     let b = store();
     board(&mut a, "only in a");
-    assert!(board_names(&b).is_empty());
+    assert_eq!(board_names(&b).len(), 0);
     assert_eq!(a.schema_version().unwrap(), 2);
 }
 

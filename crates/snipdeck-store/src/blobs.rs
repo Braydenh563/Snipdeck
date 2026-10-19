@@ -609,7 +609,7 @@ mod tests {
         let content = blobs.put(vec![7; INLINE_LIMIT]).unwrap();
         assert!(matches!(content, Content::Inline(_)));
         assert_eq!(content.len(), INLINE_LIMIT as u64);
-        assert!(files_under(dir.path()).is_empty());
+        assert_eq!(files_under(dir.path()).len(), 0);
         assert!(matches!(blobs.put(Vec::new()).unwrap(), Content::Inline(_)));
     }
 
@@ -714,7 +714,7 @@ mod tests {
         let Content::Blob { blob, len } = &content else {
             panic!()
         };
-        assert!(files_under(dir.path()).is_empty());
+        assert_eq!(files_under(dir.path()).len(), 0);
         assert!(!blobs.has(blob, *len));
         assert!(blobs.is_transient(blob));
         assert_eq!(
@@ -737,7 +737,7 @@ mod tests {
         };
         blobs.remove(&blob, true).unwrap();
         assert!(!blobs.has(&blob, len));
-        assert!(files_under(dir.path()).is_empty());
+        assert_eq!(files_under(dir.path()).len(), 0);
     }
 
     #[test]

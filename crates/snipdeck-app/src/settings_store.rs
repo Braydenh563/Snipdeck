@@ -383,7 +383,7 @@ mod tests {
         assert!(!s.has_pending());
         assert!(matches!(s.poll(at("2026-10-17T10:00:00Z")), Poll::Idle));
         assert_eq!(s.wait(at("2026-10-17T10:00:00Z")), None);
-        assert!(rec.writes.borrow().is_empty());
+        assert_eq!(rec.writes.borrow().len(), 0);
     }
 
     #[test]
@@ -399,7 +399,7 @@ mod tests {
             s.poll(at("2026-10-17T09:00:00.4Z")),
             Poll::Waiting(d) if d == Duration::from_millis(100)
         ));
-        assert!(rec.writes.borrow().is_empty());
+        assert_eq!(rec.writes.borrow().len(), 0);
         assert!(matches!(s.poll(at("2026-10-17T09:00:00.5Z")), Poll::Saved));
         assert_eq!(*rec.writes.borrow(), [dark()]);
         assert!(!s.has_pending());
@@ -468,7 +468,7 @@ mod tests {
             s.poll(back),
             Poll::Waiting(d) if d == Duration::from_millis(500)
         ));
-        assert!(rec.writes.borrow().is_empty());
+        assert_eq!(rec.writes.borrow().len(), 0);
         assert!(matches!(s.poll(at("2026-10-17T08:00:00.5Z")), Poll::Saved));
         assert_eq!(*rec.writes.borrow(), [dark()]);
     }
@@ -511,7 +511,7 @@ mod tests {
         s.changed(&Settings::default(), at("2026-10-17T09:00:00.1Z"));
         assert!(!s.has_pending());
         assert!(matches!(s.poll(at("2026-10-17T09:01:00Z")), Poll::Idle));
-        assert!(rec.writes.borrow().is_empty());
+        assert_eq!(rec.writes.borrow().len(), 0);
     }
 
     #[test]

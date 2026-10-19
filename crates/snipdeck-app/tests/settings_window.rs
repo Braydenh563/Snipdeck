@@ -461,7 +461,7 @@ fn a_shortcut_another_program_owns_is_refused_and_the_old_ones_stay_registered()
         // The shortcuts registered at start.
         let before =
             settings_binding::apply_hotkeys(&mut *r.host.hotkeys.borrow_mut(), &Hotkeys::default());
-        assert!(before.is_empty());
+        assert_eq!(before.len(), 0);
         r.ui.invoke_hotkey_recorded(2, "Ctrl+Alt+K".into());
         assert_eq!(
             r.ui.get_hotkeys().row_data(2).unwrap().conflict,
@@ -497,7 +497,7 @@ fn while_the_hotkeys_are_paused_nothing_is_registered_but_the_choice_is_kept() {
         let r = rig();
         let _ = r.ctl.borrow_mut().on_tray(TrayEvent::HotkeysPaused(true));
         r.ui.invoke_hotkey_recorded(2, "Ctrl+Alt+K".into());
-        assert!(r.host.hotkeys.borrow().registered.is_empty());
+        assert_eq!(r.host.hotkeys.borrow().registered.len(), 0);
         assert_eq!(r.ctl.borrow().settings().hotkeys.capture, "Ctrl+Alt+K");
     });
 }
@@ -687,7 +687,7 @@ fn the_demo_is_pro_and_keeps_nothing_on_disk() {
         r.ui.invoke_open_data_folder_requested();
         r.ui.invoke_open_backups_folder_requested();
         r.ui.invoke_erase_confirmed("DELETE".into(), true);
-        assert!(r.host.opened.borrow().is_empty());
+        assert_eq!(r.host.opened.borrow().len(), 0);
         assert!(!r.dir.path().join("backups").exists());
         assert!(!r.dir.path().join("Documents").exists());
         assert_eq!(
@@ -760,7 +760,7 @@ fn restoring_a_backup_round_trips_the_demo_library() {
             1,
             "the page found the backup on disk"
         );
-        assert!(b.ctl.borrow().store().boards().unwrap().is_empty());
+        assert_eq!(b.ctl.borrow().store().boards().unwrap().len(), 0);
         b.ui.invoke_backup_restore_requested(0);
         assert_eq!(
             b.ui.get_toast_text(),
@@ -904,7 +904,7 @@ fn erasing_the_library_needs_exactly_the_word_delete() {
         assert_eq!(r.ui.get_toast_kind(), ToastKind::Success);
         // A new empty library with the starter board is running.
         assert_eq!(board_names(r.ctl.borrow().store()), ["My snippets"]);
-        assert!(r.ctl.borrow().store().all_items().unwrap().is_empty());
+        assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 0);
         // The backups went; the settings, the licence and the logs stayed.
         assert_eq!(r.ui.get_backups().row_count(), 0);
         assert!(!r.dir.path().join("backups").exists());
@@ -935,7 +935,7 @@ fn erasing_can_keep_the_encryption_key_or_forget_it() {
             keep.ctl.borrow().store().key_ring_exists().unwrap(),
             "the key record was carried over"
         );
-        assert!(keep.ctl.borrow().store().all_items().unwrap().is_empty());
+        assert_eq!(keep.ctl.borrow().store().all_items().unwrap().len(), 0);
         keep.ui.hide().unwrap();
         drop(keep.ui);
         drop(keep.binding);

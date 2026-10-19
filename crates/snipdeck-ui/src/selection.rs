@@ -212,12 +212,12 @@ mod tests {
     fn out_of_range_indices_are_ignored_and_clamp_drops_vanished_rows() {
         let mut sel = Selection::new();
         sel.select(9, SelectMode::Replace, 5);
-        assert!(sel.is_empty());
+        assert_eq!(sel.len(), 0);
         sel.select_all(5);
         assert_eq!(sel.len(), 5);
         sel.clamp(3);
         assert_eq!(picked(&sel), [0, 1, 2]);
         sel.clear();
-        assert!(sel.is_empty());
+        assert_eq!(sel.len(), 0);
     }
 }
