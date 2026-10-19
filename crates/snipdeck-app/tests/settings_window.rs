@@ -1264,7 +1264,7 @@ fn a_file_that_cannot_be_imported_shows_a_problem_and_nothing_to_confirm() {
 /// compile error here until it is listed (and so given a sentence).
 fn every_warning() -> Vec<snipdeck_portable::Warning> {
     use snipdeck_portable::Warning as W;
-    let name = || "notes.txt".to_owned();
+    let name = || "Notes.txt".to_owned();
     let all = vec![
         W::NewerMinorVersion {
             found: "1.9".into(),
