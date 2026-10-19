@@ -14,7 +14,7 @@ Next, in order: CI green on PR #5 -> translations pass for ~80 new strings per l
 - [~] C9 Free vs Supporter table: Settings, get-licence dialog, README, site (agent in flight)
 - [~] Encryption on disk free, master password Supporter (agent in flight; decision in now.md)
 - [ ] Translations: ~80 new strings per locale (`python3 scripts/i18n.py check`)
-- [ ] D1-D2 Regenerate goldens (read each PNG), README 2x shots and hero images
+- [ ] D1-D2 Regenerate goldens (read each PNG), README 2x shots and hero images. CI at 19c9160: snipdeck-app green; snipdeck-ui screenshots red: 18 goldens differ (form controls, item editor, list editor, settings, tag manager, onboarding) and help-about/help-troubleshoot goldens are missing. Regenerate AFTER the C8/C9 agent lands (it changes Settings and the editors), `UPDATE_GOLDEN=1 cargo test -p snipdeck-ui --test screenshots`, read every changed PNG before committing.
 - [ ] B1 Import (.snipdeck, Ditto, CopyQ, folder) with preview, also for Restore
 - [ ] B2 Windows clipboard-history importer
 - [ ] B3 Export a list as text
