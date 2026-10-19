@@ -11,7 +11,7 @@ use snipdeck_platform::tray::TrayLabels;
 use snipdeck_portable::Warning;
 use snipdeck_ui::{ImportTexts, PanelWindow, SettingsPage, TrayTexts};
 
-use snipdeck_core::ItemKind;
+use snipdeck_core::{ItemKind, ItemLabel, ListIcon};
 
 use crate::{
     item_editor::{AttachmentView, EditorProblem, SaveFailure},
@@ -31,6 +31,53 @@ pub fn tray_labels(window: &PanelWindow) -> TrayLabels {
         pause_history: texts.get_pause_history().into(),
         quit: texts.get_quit().into(),
         tooltip_paused: texts.get_tooltip_paused().into(),
+    }
+}
+
+/// The name of an item colour label: shown beside the colour wherever it appears, so the colour is
+/// never the only cue.
+#[must_use]
+pub fn item_label_name(label: ItemLabel) -> &'static str {
+    match label {
+        ItemLabel::Blue => "Blue",
+        ItemLabel::Teal => "Teal",
+        ItemLabel::Green => "Green",
+        ItemLabel::Amber => "Amber",
+        ItemLabel::Orange => "Orange",
+        ItemLabel::Red => "Red",
+        ItemLabel::Violet => "Violet",
+        ItemLabel::Slate => "Slate",
+    }
+}
+
+/// The spoken name of a list icon, for the icon picker.
+#[must_use]
+pub fn list_icon_name(icon: ListIcon) -> &'static str {
+    match icon {
+        ListIcon::Folder => "Folder",
+        ListIcon::Star => "Star",
+        ListIcon::Heart => "Heart",
+        ListIcon::Briefcase => "Briefcase",
+        ListIcon::House => "House",
+        ListIcon::User => "Person",
+        ListIcon::EnvelopeSimple => "Envelope",
+        ListIcon::ChatCircle => "Chat",
+        ListIcon::Phone => "Phone",
+        ListIcon::CalendarBlank => "Calendar",
+        ListIcon::ShoppingCart => "Shopping cart",
+        ListIcon::CreditCard => "Credit card",
+        ListIcon::Code => "Code",
+        ListIcon::TerminalWindow => "Terminal",
+        ListIcon::BookOpen => "Book",
+        ListIcon::Lightbulb => "Light bulb",
+        ListIcon::Flag => "Flag",
+        ListIcon::BookmarkSimple => "Bookmark",
+        ListIcon::Globe => "Globe",
+        ListIcon::MapPin => "Map pin",
+        ListIcon::Camera => "Camera",
+        ListIcon::MusicNote => "Music",
+        ListIcon::Wrench => "Wrench",
+        ListIcon::RocketLaunch => "Rocket",
     }
 }
 

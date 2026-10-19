@@ -12,7 +12,7 @@ pub(crate) const FORMAT_NAME: &str = "snipdeck-archive";
 /// The newest major version this build reads and the one it writes.
 pub(crate) const MAJOR: u32 = 1;
 /// The minor version this build writes.
-pub(crate) const MINOR: u32 = 0;
+pub(crate) const MINOR: u32 = 1;
 /// The `encryption` value when payloads are `SNENC2` envelopes (`docs/crypto.md`).
 pub(crate) const ENCRYPTION: &str = "SNENC2";
 
@@ -86,6 +86,9 @@ pub(crate) struct ListDto {
     pub name: String,
     #[serde(default)]
     pub accent: Option<String>,
+    /// Added in 1.1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
     pub view: String,
     pub sort: String,
     pub created_at: String,
@@ -104,6 +107,9 @@ pub(crate) struct ItemDto {
     pub sensitive: bool,
     #[serde(default)]
     pub always_plain: bool,
+    /// The colour label; added in 1.1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
     #[serde(default)]
     pub use_count: u32,
     #[serde(default)]

@@ -57,6 +57,7 @@ fn an_item_round_trips_every_field() {
     it.tags = BTreeSet::from([tag.id]);
     it.pinned = true;
     it.always_plain = true;
+    it.label = Some(snipdeck_core::ItemLabel::Violet);
     it.use_count = 42;
     it.last_used_at = Some(Timestamp::new(1_800_000_123, 456_789_012).unwrap());
     it.source_app = Some("Outlook".to_owned());

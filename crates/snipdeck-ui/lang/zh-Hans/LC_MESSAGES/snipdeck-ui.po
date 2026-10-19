@@ -193,6 +193,9 @@ msgstr ""
 msgid "Clear"
 msgstr ""
 
+msgid "Clear filter"
+msgstr ""
+
 msgid "Clear history"
 msgstr ""
 
@@ -252,6 +255,9 @@ msgstr "代码"
 
 msgid "Colour"
 msgstr "颜色"
+
+msgid "Colour label"
+msgstr ""
 
 msgid "Comfortable view"
 msgstr "舒适视图"
@@ -487,6 +493,9 @@ msgstr "填写模板"
 msgid "Filter as you type"
 msgstr ""
 
+msgid "Filter by colour label"
+msgstr ""
+
 msgid "Fixed placeholders filled in when you paste."
 msgstr ""
 
@@ -603,6 +612,9 @@ msgstr "指针离开已展开的面板多久后面板收起，范围为 0 至 {}
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "面板展开的宽度，范围为 {} 至 {} 像素。"
+
+msgid "Icon"
+msgstr ""
 
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
 msgstr ""
@@ -832,8 +844,14 @@ msgstr "还没有备份。"
 msgid "No colour"
 msgstr "无颜色"
 
+msgid "No icon"
+msgstr ""
+
 msgid "No items with this tag"
 msgstr "没有带此标签的片段"
+
+msgid "No label"
+msgstr ""
 
 msgid "No lists yet"
 msgstr "还没有列表"
@@ -1719,6 +1737,9 @@ msgstr ""
 
 msgid "https://example.com"
 msgstr "https://example.com"
+
+msgid "label: {}"
+msgstr ""
 
 msgid "ms"
 msgstr "毫秒"

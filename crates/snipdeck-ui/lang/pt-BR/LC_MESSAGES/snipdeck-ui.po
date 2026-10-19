@@ -193,6 +193,9 @@ msgstr ""
 msgid "Clear"
 msgstr ""
 
+msgid "Clear filter"
+msgstr ""
+
 msgid "Clear history"
 msgstr ""
 
@@ -252,6 +255,9 @@ msgstr "Código"
 
 msgid "Colour"
 msgstr "Cor"
+
+msgid "Colour label"
+msgstr ""
 
 msgid "Comfortable view"
 msgstr "Exibição confortável"
@@ -487,6 +493,9 @@ msgstr "Preencher modelo"
 msgid "Filter as you type"
 msgstr ""
 
+msgid "Filter by colour label"
+msgstr ""
+
 msgid "Fixed placeholders filled in when you paste."
 msgstr ""
 
@@ -603,6 +612,9 @@ msgstr "Quanto tempo o ponteiro fica fora do painel aberto antes de ele recolher
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Largura em que o painel abre, de {} a {} pixels."
+
+msgid "Icon"
+msgstr ""
 
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
 msgstr ""
@@ -832,8 +844,14 @@ msgstr "Ainda não há backups."
 msgid "No colour"
 msgstr "Sem cor"
 
+msgid "No icon"
+msgstr ""
+
 msgid "No items with this tag"
 msgstr "Nenhum trecho com esta etiqueta"
+
+msgid "No label"
+msgstr ""
 
 msgid "No lists yet"
 msgstr "Nenhuma lista ainda"
@@ -1719,6 +1737,9 @@ msgstr ""
 
 msgid "https://example.com"
 msgstr "https://example.com"
+
+msgid "label: {}"
+msgstr ""
 
 msgid "ms"
 msgstr "ms"

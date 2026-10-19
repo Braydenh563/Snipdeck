@@ -350,6 +350,12 @@ fn unknown_keys_are_refused() {
     }));
     assert!(matches!(e, Error::Malformed { .. }), "{e}");
     let e = rejected(&items_edit(|d| {
+        d["boards"][0]["lists"][0]["icon"] = json!("sparkle");
+    }));
+    assert!(matches!(e, Error::Malformed { .. }), "{e}");
+    let e = rejected(&items_edit(|d| first_item(d)["label"] = json!("plaid")));
+    assert!(matches!(e, Error::Malformed { .. }), "{e}");
+    let e = rejected(&items_edit(|d| {
         d["boards"][0]["lists"][0]["view"] = json!("huge");
     }));
     assert!(matches!(e, Error::Malformed { .. }), "{e}");

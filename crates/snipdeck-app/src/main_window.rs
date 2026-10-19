@@ -10,8 +10,8 @@
 use std::collections::{HashMap, HashSet};
 
 use snipdeck_core::{
-    Board, BoardId, Item, ItemId, ItemKind, List, ListAccent, ListId, ListSort, Placement, Tag,
-    TagId,
+    Board, BoardId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
+    ListSort, Placement, Tag, TagId,
 };
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable};
 
@@ -114,6 +114,8 @@ pub struct Row {
     pub list: Option<ListLabel>,
     /// Pinned.
     pub pinned: bool,
+    /// The item's colour label.
+    pub label: Option<ItemLabel>,
     /// In the selection.
     pub selected: bool,
 }
@@ -127,7 +129,18 @@ pub struct SideList {
     pub name: String,
     /// Its colour.
     pub accent: Option<ListAccent>,
+    /// Its icon.
+    pub icon: Option<ListIcon>,
     /// How many items it holds.
+    pub count: usize,
+}
+
+/// A chip of the colour-label filter row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LabelChip {
+    /// The label.
+    pub label: ItemLabel,
+    /// How many items of the open view carry it.
     pub count: usize,
 }
 
@@ -213,6 +226,8 @@ pub struct EditorView {
     pub name: String,
     /// A list's colour.
     pub accent: Option<ListAccent>,
+    /// A list's icon.
+    pub icon: Option<ListIcon>,
     /// A list's item order.
     pub sort: ListSort,
     /// How many items deleting it affects.
@@ -245,6 +260,7 @@ pub struct MainModel {
     query: String,
     hits: Vec<ItemId>,
     view: ViewMode,
+    label_filter: Option<ItemLabel>,
     selected: HashSet<Key>,
     anchor: Option<Key>,
     cursor: usize,
@@ -284,6 +300,7 @@ impl MainModel {
             query: String::new(),
             hits: Vec::new(),
             view: ViewMode::Comfortable,
+            label_filter: None,
             selected: HashSet::new(),
             anchor: None,
             cursor: 0,
@@ -444,6 +461,7 @@ impl MainModel {
                 id: l.id,
                 name: l.name.as_str().to_owned(),
                 accent: l.accent,
+                icon: l.icon,
                 count: self.list_counts.get(&l.id).copied().unwrap_or(0),
             })
             .collect()
@@ -548,23 +566,67 @@ impl MainModel {
                 .map(Entry::Trashed)
                 .collect();
         }
+        let wanted = self.label_filter;
+        self.unfiltered_items()
+            .into_iter()
+            .filter(|i| wanted.is_none() || i.label == wanted)
+            .map(Entry::Item)
+            .collect()
+    }
+
+    /// The items of the open view before the colour-label filter: the search hits while
+    /// searching, else the section's items.
+    fn unfiltered_items(&self) -> Vec<&Item> {
         if self.searching() {
             let by_id: HashMap<ItemId, &Item> = self.items.iter().map(|i| (i.id, i)).collect();
             return self
                 .hits
                 .iter()
                 .filter_map(|id| by_id.get(id).copied())
-                .map(Entry::Item)
                 .collect();
         }
-        let items: Vec<&Item> = match self.section {
+        match self.section {
             Section::All => self.items.iter().collect(),
             Section::Pinned => self.items.iter().filter(|i| i.pinned).collect(),
             Section::Recent | Section::Trash => Vec::new(),
             Section::List(id) => self.list_items(id),
             Section::Tag(id) => self.items.iter().filter(|i| i.tags.contains(&id)).collect(),
-        };
-        items.into_iter().map(Entry::Item).collect()
+        }
+    }
+
+    /// The chips of the filter row: one per colour label some item of the open view carries
+    /// (in the label order, with how many), plus the active filter even when nothing carries it,
+    /// so it can always be cleared.
+    #[must_use]
+    pub fn label_chips(&self) -> Vec<LabelChip> {
+        if self.section == Section::Trash {
+            return Vec::new();
+        }
+        let items = self.unfiltered_items();
+        ItemLabel::ALL
+            .iter()
+            .filter_map(|label| {
+                let count = items.iter().filter(|i| i.label == Some(*label)).count();
+                (count > 0 || self.label_filter == Some(*label)).then_some(LabelChip {
+                    label: *label,
+                    count,
+                })
+            })
+            .collect()
+    }
+
+    /// The colour label the view is filtered by.
+    #[must_use]
+    pub fn label_filter(&self) -> Option<ItemLabel> {
+        self.label_filter
+    }
+
+    /// Filters the view by a colour label (`None` shows every item). The selection clears and the
+    /// cursor returns to the top.
+    pub fn set_label_filter(&mut self, label: Option<ItemLabel>) {
+        self.label_filter = label;
+        self.clear_selection();
+        self.cursor = 0;
     }
 
     /// The items of list `id` in the list's own order (manual, most used or recently used).
@@ -613,6 +675,7 @@ impl MainModel {
                         .then(|| self.list_labels.get(&item.list_id).cloned())
                         .flatten(),
                     pinned: item.pinned,
+                    label: item.label,
                     selected: self.selected.contains(&Key::Item(item.id)),
                 },
                 Entry::Trashed(entry) => {
@@ -629,6 +692,7 @@ impl MainModel {
                         },
                         list: None,
                         pinned: false,
+                        label: None,
                         selected: self.selected.contains(&key),
                     }
                 }
@@ -667,9 +731,11 @@ impl MainModel {
 
     // ---- Changing what is shown ----------------------------------------------------------------
 
-    /// Opens `section`: the search ends, the selection clears and the cursor returns to the top.
+    /// Opens `section`: the search ends, the label filter and the selection clear and the cursor
+    /// returns to the top.
     pub fn open(&mut self, section: Section) {
         self.section = section;
+        self.label_filter = None;
         self.query.clear();
         self.hits.clear();
         self.clear_selection();

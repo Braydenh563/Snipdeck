@@ -23,3 +23,13 @@
 - Unverified on Windows: the More-menu-disappears report (not reproducible in the testing backend; the dock fix is a hypothesis).
 - Remaining UI test failures after merging the release branch look like goldens/pixels (editors, settings, empty states, focus ring, IME); `backups_to_keep_steps...`, `escape_is_skip_on_every_step`, `the_wanted_height_grows...` not diagnosed.
 - Next: B11 (drag/drop + keyboard alternatives), C4 (colour label + list icon).
+
+## Update (C4 data layer, B11 not started)
+- PR #7 (B4, B8, B10, B14, B5, B7) merged. Release branch merged back into this branch (88bce1d).
+- C4 data layer pushed: core types, schema v3, store, archive format 1.1. C4 UI (editors, tab/sidebar icons, card bar, filter chip, DESIGN carve-out) delegated to a background agent; its notes: `.claude/remaining/c4-ui.md`.
+- B11 (drag and drop + keyboard alternatives) not started; start after C4 UI lands to avoid conflicts in panel.slint / main_window.slint / item-card.slint.
+
+## Update (C4 UI reviewed)
+- C4 UI landed (a0faaa9..f2932bb), reviewed independently; fixed: duplicate keeps the label, the label filter clears on a section/board change.
+- Open (not fixed, low): the card's bar has no visible text or tooltip (name only in the accessible description); label names are `@tr` in the editor but English in `wording::item_label_name`; a few hard-coded sizes in IconCell; filter row does not wrap in a narrow window. Visuals and goldens unverified.
+- Next: B11.
