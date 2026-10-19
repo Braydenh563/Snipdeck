@@ -7,8 +7,10 @@
 
 - Piece 3 filter chip: `MainModel::label_filter/label_chips/set_label_filter`, `Controller::main_set_label_filter`, MainScreen.label_chips/label_filter, LabelChip component + filter row in main_window.slint (single select, same chip or Clear filter clears, item count text).
 
+- Piece 4 docs: DESIGN.md carve-out, component table (IconPicker, LabelChip, Swatch rows), SPEC glossary, user guide paragraph.
+
 ## Next
-- Piece 4 DESIGN.md / SPEC.md / user-guide.md.
+- Nothing; owner to run on Windows and regenerate goldens (goldens of tabs, sidebar, editors, main window and panel are expected to change).
 
 ## Blocked
 - none

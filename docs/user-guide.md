@@ -124,6 +124,15 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
 - **Edit or delete a list in the Panel.** Right-click its tab, or press `Menu`, `Shift+F10` or `F2` on it.
   Double-click a tab to edit it.
 
+### Colour labels and list icons
+
+- **Colour label.** In the item editor, choose one of eight named colours under *Colour label* (or *No label*).
+  The card gets a thin bar on its left edge, and screen readers hear the colour's name. In the Main window a
+  row of chips above the items filters the view by label: choose a chip to show only those items, choose it
+  again or *Clear filter* to show everything.
+- **List icon.** In the list editor, pick an icon under *Icon* (or *No icon*). It shows beside the list's name
+  on its tab and in the sidebar. Use the arrow keys to move through the icons.
+
 ### Trash and undo
 
 Deleting an item, list or board moves it to the **Trash**. A message with an **Undo** button stays for about

@@ -98,7 +98,22 @@ Rendered as a **2px underline** on the active list tab, an **8px square mark** i
 **6px mark + list name** label on items in mixed views (picker, search, Recent). Uses step 600 in light and
 step 400 in dark; every one is ≥ 4.2:1 against the surface. Never painted on cards (a full-height left
 border on cards is a generic-AI trope, and within one list it repeats the same colour on every card), and
-never used as a fill behind text.
+never used as a fill behind text. The one exception on a card is the **item colour label** below, which the
+user sets on an item themselves.
+
+A list can also carry one **icon** from a curated set of 24 Phosphor glyphs (`ListIcon`), drawn before the
+name on its panel tab and after the 8px mark in the sidebar. It only helps the eye: the name is always shown
+and stays the accessible name.
+
+### Item colour label
+An item can carry one of eight labels: `blue · teal · green · amber · orange · red · violet · slate` (the list
+hues without rose, same step 600 / 400 tokens). It is drawn as a **4px rounded bar inside the card's left edge**,
+only when the user has set it. Never automatic, never derived from the list colour, never a row background and
+never an emoji. Colour is never the only cue: the label name is in the card's accessible description
+("label: Teal"), in the item editor's swatch names and in the filter chip's text. Each hue is checked at ≥ 3:1
+against the surface, the hover fill and the selected fill in `design/tools/palette.py`; in high contrast the
+bar takes the text colour. The Main window's filter row offers one chip per label in use (colour dot + name +
+count; single select; choosing it again or "Clear filter" clears it).
 
 ### User accent choices
 `blue` (default), `teal`, `green`, `orange`, `rose`, `violet`, `slate`. Each maps to the same
@@ -171,7 +186,9 @@ Every icon-only control has a tooltip and an accessible label with the same word
 | Toggle / Checkbox / Radio | Binary or choice settings | — | on, off, mixed, focus, disabled |
 | Tab | List switcher | panel (underline in list colour) · segmented | default, hover, active, focus, drag-over |
 | Tag (chip) | Item tags, filters | neutral · removable | default, hover, selected |
-| Swatch | Pick a list/accent colour | 9 list hues | default, selected (ring), focus |
+| Swatch | Pick a list/accent colour | 9 list hues; 8 for an item's colour label (with a "No label" cell) | default, selected (ring), focus |
+| IconPicker | Pick a list icon | "No icon" + 24 icons, one tab stop, arrow keys | default, hover, selected (ring), focus |
+| LabelChip | Filter the Main window by colour label | colour dot + name + count | default, hover, selected (ring + check), focus |
 | Tooltip | Name icon-only actions | — | delay 500ms, instant when moving between items |
 | Toast | Transient result ("Copied", "Pasted into Notepad") | neutral · success · danger (with Undo) | enter, hold 2.5s, exit |
 | Skeleton | Loading placeholder matching the final shape | row · tile | — |
@@ -185,7 +202,7 @@ Every icon-only control has a tooltip and an accessible label with the same word
 | ListTabBar | Tab ×N, overflow, + | Switch and reorder lists in the panel | scrollable, draggable (detach = Supporter) |
 | BoardSwitcher | Button + Menu | Change board | — |
 | PinnedStrip | Tag-style pinned items | One-click access to pinned items | horizontal scroll |
-| SidebarItem | icon, label, count | Main-window navigation | board, list (8px colour mark), tag, system |
+| SidebarItem | icon, label, count | Main-window navigation | board, list (8px colour mark, optional list icon), tag, system |
 | TemplateField | label, TextField / choice | Fill in a prompted placeholder | text · choice · date |
 | HotkeyRecorder | Keycap combo, clear | Rebind shortcuts, detect conflicts | idle, recording, conflict |
 | EmptyState | heading, one sentence, primary action | Teach how to fill an empty surface | list, board, search, inbox |
@@ -215,7 +232,7 @@ Every icon-only control has a tooltip and an accessible label with the same word
   | Image | 56×36 thumbnail, radius 4 |
   | File | file-type glyph + extension |
   | Sensitive | lock glyph; preview `•••• •••• 7f3a` in mono |
-- The card has an 8px radius, a `bg.surface` fill and a 1px `border.subtle` border. No coloured edge. In mixed views, a list label (6px mark + name, `type.xs`) sits at the right.
+- The card has an 8px radius, a `bg.surface` fill and a 1px `border.subtle` border. No coloured edge, except the 4px item label bar the user sets themselves (see *Item colour label*). In mixed views, a list label (6px mark + name, `type.xs`) sits at the right.
 - **Use label:** on hover or keyboard focus a single text button appears at the bottom right: **"Paste ↵"** when a target is known, otherwise **"Copy ↵"**. Ghost style, `type.sm` 500. Everything else (Copy, Edit, Pin, Move, Delete) lives in the context menu (right-click, Menu key, `⋯` in the main window). Shift+click always copies.
 - Sensitive items: click-and-hold reveals the content.
 - **Card pull (use feedback):** the card lifts 2px to depth level 2 over 140ms, the gutter number becomes a ✓ in `accent.text`, then it settles back over 200ms after 700ms. With reduced motion: no translation, ✓ swap only.
@@ -264,7 +281,7 @@ Layering: window → cards → lifted (drag) → popovers/menus → toasts → c
 
 ### Do
 - Reference semantic tokens only. New colours come through `palette.py`, and its contrast checks have to pass.
-- Keep **one accent per surface**. List colours appear only as tab underlines, sidebar marks and list labels.
+- Keep **one accent per surface**. List colours appear only as tab underlines, sidebar marks and list labels. The only other coloured mark is the 4px item label bar, set by the user, never automatic and never taken from the list colour.
 - Design every state: hover, focus (visible 2px ring), pressed, disabled, loading (skeleton), empty (EmptyState with an action), error (inline, plus a toast for transient errors).
 - Pair every semantic colour with an icon or label. Hue never carries meaning on its own.
 - Write real copy, in plain verbs: "Copy", "Paste", "Save from clipboard", "Extract text".
@@ -273,7 +290,7 @@ Layering: window → cards → lifted (drag) → popovers/menus → toasts → c
 - No glow, gradient text, glassmorphism blur or AI purple. No pure `#000` or `#FFF`. Mica is the only material, and only on chrome.
 - No blue primary buttons. Blue means selection, focus, links and template fields.
 - No generic leading icons on plain text, and no row of three icon buttons on hover.
-- No status dots in front of every item, and no coloured left-border cards. No decorative eyebrows or version badges in the UI.
+- No status dots in front of every item, and no coloured left-border cards (except the 4px item label bar the user sets themselves; never automatic, never on list colour). No decorative eyebrows or version badges in the UI.
 - Don't mix shadow grammars: no hard offsets, and no heavy shadows in dark mode.
 - Never make the panel louder than the user's app: no animated attention-seekers and no badges for unread history.
 - No radii outside 4 / 6 / 8, and no font sizes outside the type scale.
@@ -309,5 +326,5 @@ Layering: window → cards → lifted (drag) → popovers/menus → toasts → c
 2. **Never steal focus.** Panel and picker interactions must preserve the user's target window (ADR-0003). No component may call activate/focus on the panel except text-entry components, and those must restore the target afterwards.
 3. **4px grid, 4/6/8 radii, 7 type sizes, IBM Plex only, Phosphor only.** No exceptions without updating this file.
 4. **Every interactive element:** 24px or larger hit target, visible focus ring, accessible name (AccessKit), keyboard path, and all five states.
-5. **One accent per surface.** List colours only as tab underlines, sidebar marks and mixed-view labels. Semantic colour always paired with an icon or text.
+5. **One accent per surface.** List colours only as tab underlines, sidebar marks and mixed-view labels, plus the user-set 4px item label bar. Semantic colour always paired with an icon or text.
 6. **Ink commits, blue selects.** Primary buttons use `ink.*`. `accent.*` is never a button fill.
