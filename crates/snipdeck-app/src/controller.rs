@@ -223,8 +223,11 @@ pub struct FillView {
     pub title: String,
     /// One per prompt.
     pub fields: Vec<fill::Field>,
-    /// The text as it would be pasted now.
+    /// The text as it would be pasted now; empty while `masked`.
     pub preview: String,
+    /// The template item is sensitive: the preview would show its secret text, so it is left
+    /// out and the window draws a mask instead.
+    pub masked: bool,
 }
 
 /// A filled-in form, ready to be used: see [`Controller::take_fill`].
@@ -551,15 +554,25 @@ where
                 selected: p.selected(),
                 footer: self.model.footer(),
             }),
-            fill: self.fill.as_ref().map(|f| FillView {
-                seq: self.fill_seq,
-                title: f.title().to_owned(),
-                fields: f.fields().to_vec(),
-                preview: f.preview(
-                    self.clock.now(),
-                    &TimeZone::UTC,
-                    Locale::for_tag(&self.settings.language),
-                ),
+            fill: self.fill.as_ref().map(|f| {
+                // A sensitive template's text must not reach the window (the Picker and the
+                // lists mask it the same way); an unreadable item masks too.
+                let masked = self.store.item(f.item()).is_ok_and(|i| i.sensitive);
+                FillView {
+                    seq: self.fill_seq,
+                    title: f.title().to_owned(),
+                    fields: f.fields().to_vec(),
+                    preview: if masked {
+                        String::new()
+                    } else {
+                        f.preview(
+                            self.clock.now(),
+                            &TimeZone::UTC,
+                            Locale::for_tag(&self.settings.language),
+                        )
+                    },
+                    masked,
+                }
             }),
         }
     }
