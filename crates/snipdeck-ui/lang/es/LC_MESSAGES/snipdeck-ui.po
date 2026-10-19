@@ -361,8 +361,9 @@ msgstr "Borrar la biblioteca…"
 msgid "Escape"
 msgstr "Esc"
 
+#, fuzzy
 msgid "Every Supporter feature is on. Thank you."
-msgstr ""
+msgstr "Todas las funciones de Colaborador están activadas. Gracias."
 
 msgid "Everything checks out."
 msgstr "Todo está en orden."
@@ -847,8 +848,9 @@ msgstr "Ancho del panel"
 msgid "Paste"
 msgstr "Pegar"
 
+#, fuzzy
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
-msgstr ""
+msgstr "Pega una clave de licencia para activar Colaborador. La clave se comprueba en este PC y no se envía nada a ningún sitio."
 
 msgid "Paste stack"
 msgstr ""
@@ -1114,8 +1116,9 @@ msgstr "Snipdeck"
 msgid "Snipdeck (hotkeys paused)"
 msgstr "Snipdeck (atajos en pausa)"
 
+#, fuzzy
 msgid "Snipdeck Supporter"
-msgstr ""
+msgstr "Snipdeck Colaborador"
 
 msgid "Snipdeck handle, press the Panel hotkey to open"
 msgstr "Tirador de Snipdeck, pulsa el atajo del panel para abrir"
@@ -1471,8 +1474,9 @@ msgstr "{n} fragmento"
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgstr "{n} fragmento se moverá también a la papelera. Puedes restaurarlo durante 30 días."
 
+#, fuzzy
 msgid "{} (Supporter)"
-msgstr ""
+msgstr "{} (Colaborador)"
 
 msgid "{} found"
 msgstr ""
