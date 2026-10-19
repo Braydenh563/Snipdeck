@@ -89,3 +89,4 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-10-19: Fill form preview of a sensitive template is masked (FillView.masked, preview left empty in the controller so the text never reaches the window); reason: owner decision 'mask', same as lists/Picker.
 - "the screenshots in the readme are few and poorly styled or presented /structured" -> README screenshot section redone (hero + captioned gallery, more windows).
 - "did you add a way to easily delete and rename lists?? as wella s delete and edit list items?? i havent tested it yet" -> Main: yes (list editor rename/delete, item Edit/Move/Delete). Panel: items yes (menu), lists no -> Panel tab menu queued (agent).
+- "can you also rearrange the readme to be mobile friendly?? look at the readme styles used in my tessellate repo" -> done: Tessellate pattern (centred header with hero, single-column captioned shots, More screenshots in details).

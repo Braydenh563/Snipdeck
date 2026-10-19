@@ -2,28 +2,36 @@
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/logo/snipdeck-logo-dark.svg"><img src="assets/logo/snipdeck-logo-light.svg" alt="Snipdeck" height="88"></picture>
 
-**Your reusable snippets, one click from any app.**
+<i>Your snippets, one click from any app</i>
+
+**Keep the text, links, templates, images and files you paste every day on a small panel at the edge of your screen. Click one and it lands where you were typing.**
+
+[Download](https://github.com/Braydenh563/Snipdeck/releases/latest) ·
+[Install](#install) ·
+[Tour](#a-quick-tour) ·
+[Hotkeys](#hotkeys) ·
+[User guide](docs/user-guide.md)
 
 [![CI](https://github.com/Braydenh563/Snipdeck/actions/workflows/ci.yml/badge.svg)](https://github.com/Braydenh563/Snipdeck/actions/workflows/ci.yml)
 ![Platform: Windows](https://img.shields.io/badge/platform-Windows-2870D4)
 
-[Install](#install) · [Features](#features) · [Tour](#a-quick-tour) · [Hotkeys](#hotkeys) · [Privacy](#privacy) · [User guide](docs/user-guide.md) · [Troubleshooting](docs/troubleshooting.md)
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.png"><img src="docs/images/hero-light.png" alt="The Main window, with the Panel docked on the right and the Picker open over an app" width="900"></picture>
 
 </div>
 
-Snipdeck is a snippet deck for Windows. Keep the text, links, templates, images and files you paste all the
-time on a small panel at the edge of your screen. Click one and it lands in the app you were typing in. The
-panel never takes focus from that app.
-
-You arrange the deck yourself. Boards hold lists, lists hold items. It is not a clipboard history.
-
-<p align="center">
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.png"><img src="docs/images/hero-light.png" alt="The Main window, with the Panel docked on the right and the Picker open over an app" width="960"></picture>
-</p>
+---
 
 > [!NOTE]
 > Snipdeck 1.0 is not released yet. It is tested on Linux, and its Windows behaviour has had limited checks on
 > a real PC, so expect rough edges.
+
+## What it is
+
+Snipdeck is a snippet deck for Windows. The Panel sits at the edge of your screen and never takes the focus
+from the app you are typing in, so a click pastes straight into it. The Picker opens a search box at your
+caret when your hands are on the keyboard.
+
+You arrange the deck yourself: boards hold lists, lists hold items. It is not a clipboard history.
 
 ## Install
 
@@ -71,74 +79,54 @@ More in [`tools/launcher/README.md`](tools/launcher/README.md).
 
 ## A quick tour
 
-<table>
-<tr>
-<td width="50%" valign="top">
+Rendered from the app's own interface, in light or dark to match your GitHub theme.
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/panel-dark.png"><img src="docs/images/panel-light.png" alt="The Panel docked at the screen edge" width="100%"></picture>
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/panel-dark.png"><img src="docs/images/panel-light.png" alt="The Panel docked at the screen edge, with list tabs, pinned items and a list of snippets" width="380"></picture>
+  <br><sub><b>The Panel</b>: your board on the edge of the screen. Click an item and it pastes where you were typing.</sub>
+</p>
 
-**The Panel.** Your board on the edge of the screen. Click an item and it pastes where you were typing.
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/picker-dark.png"><img src="docs/images/picker-light.png" alt="The Picker search box with results from every board" width="620"></picture>
+  <br><sub><b>The Picker</b>: a search box at your caret. Type a few letters and press <kbd>Enter</kbd>.</sub>
+</p>
 
-</td>
-<td width="50%" valign="top">
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/main-dark.png"><img src="docs/images/main-light.png" alt="The Main window with the sidebar and a list of items" width="900"></picture>
+  <br><sub><b>The Main window</b>: boards, lists and tags, with search, multi-select and keyboard reordering.</sub>
+</p>
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/picker-dark.png"><img src="docs/images/picker-light.png" alt="The Picker search box with results" width="100%"></picture>
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/fill-dark.png"><img src="docs/images/fill-light.png" alt="The template fill form with a live preview" width="480"></picture>
+  <br><sub><b>Template fill</b>: a template asks for its fields and shows the result as you type.</sub>
+</p>
 
-**The Picker.** A search box at your caret. Type a few letters and press <kbd>Enter</kbd>.
+<details>
+<summary><b>More screenshots</b>: tile view, item editor, Settings and Help</summary>
 
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
+<br>
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/main-dark.png"><img src="docs/images/main-light.png" alt="The Main window with the sidebar and a list of items" width="100%"></picture>
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/main-tile-dark.png"><img src="docs/images/main-tile-light.png" alt="The Main window in tile view" width="900"></picture>
+  <br><sub><b>Tile view</b>: the same items as cards, handy for images and files.</sub>
+</p>
 
-**The Main window.** Organise boards, lists and tags. Search, multi-select and reorder from the keyboard.
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/editor-dark.png"><img src="docs/images/editor-light.png" alt="The item editor on a template" width="620"></picture>
+  <br><sub><b>Item editor</b>: text, code, links, templates, images and files, with a sensitive switch.</sub>
+</p>
 
-</td>
-<td width="50%" valign="top">
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/settings-dark.png"><img src="docs/images/settings-light.png" alt="The Settings window" width="700"></picture>
+  <br><sub><b>Settings</b>: hotkeys, theme, language, dock edge, backups and privacy on one page.</sub>
+</p>
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/main-tile-dark.png"><img src="docs/images/main-tile-light.png" alt="The Main window in tile view" width="100%"></picture>
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/help-dark.png"><img src="docs/images/help-light.png" alt="The Help window troubleshooting checklist" width="660"></picture>
+  <br><sub><b>Help</b>: a troubleshooting checklist with a fix button for each problem it finds.</sub>
+</p>
 
-**Tile view.** The same items as cards, for images and files.
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/fill-dark.png"><img src="docs/images/fill-light.png" alt="The template fill form with a live preview" width="100%"></picture>
-
-**Template fill.** Templates ask for their fields, with a live preview of the result.
-
-</td>
-<td width="50%" valign="top">
-
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/editor-dark.png"><img src="docs/images/editor-light.png" alt="The item editor on a template" width="100%"></picture>
-
-**Item editor.** Text, code, links, templates, images and files, with a sensitive switch.
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/settings-dark.png"><img src="docs/images/settings-light.png" alt="The Settings window" width="100%"></picture>
-
-**Settings.** Hotkeys, theme, language, dock edge, backups and privacy in one page.
-
-</td>
-<td width="50%" valign="top">
-
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/help-dark.png"><img src="docs/images/help-light.png" alt="The Help window troubleshooting checklist" width="100%"></picture>
-
-**Help.** A troubleshooting checklist with a fix button for each problem it finds.
-
-</td>
-</tr>
-</table>
-
-<p align="center"><sub>Screenshots are rendered from the app's own interface by the test suite, in light and dark to match your GitHub theme.</sub></p>
+</details>
 
 ## Hotkeys
 
