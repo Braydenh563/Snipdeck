@@ -276,7 +276,6 @@ fn run(args: &Args) -> Result<(), String> {
                 &controller,
                 Rc::clone(&popups),
                 Rc::clone(&anchor),
-                Rc::clone(&on_effect),
             ),
             FillUi::new(&controller, Rc::clone(&popups), anchor),
             ToastUi::new(&controller, popups, others),

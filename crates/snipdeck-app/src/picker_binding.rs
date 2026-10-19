@@ -40,7 +40,6 @@ pub const PICKER_WIDTH: f32 = 560.0;
 /// (the Picker has the keyboard by then).
 pub type AnchorMemory = Rc<Cell<Option<Anchor>>>;
 
-type EffectFn = dyn Fn(&Effect);
 
 /// What the window shows now, so a redraw sets only what changed (re-setting the rows would
 /// reset the list's scroll).
@@ -55,7 +54,6 @@ struct PickerCore<S, C, K, T> {
     controller: Rc<RefCell<Controller<S, C, K, T>>>,
     host: Rc<dyn PopupHost>,
     anchor: AnchorMemory,
-    on_effect: Rc<EffectFn>,
     shell: Rc<Shell<ui::PickerWindow>>,
     shown: RefCell<Option<Shown>>,
     /// The logical size the window was last given.
@@ -217,13 +215,11 @@ impl std::fmt::Debug for PickerUi {
 
 impl PickerUi {
     /// Follows `controller`: the window appears when the Picker opens (the hotkey) and goes
-    /// when it closes. `on_effect` receives the effects the window asks for (Ctrl+E:
-    /// [`Effect::EditItem`]). `anchor` is shared with the fill form.
+    /// when it closes. `anchor` is shared with the fill form.
     pub fn new<S, C, K, T>(
         controller: &Rc<RefCell<Controller<S, C, K, T>>>,
         host: Rc<dyn PopupHost>,
         anchor: AnchorMemory,
-        on_effect: Rc<EffectFn>,
     ) -> Self
     where
         S: Library + 'static,
@@ -238,7 +234,6 @@ impl PickerUi {
                 controller: Rc::clone(controller),
                 host,
                 anchor,
-                on_effect,
                 shell: Rc::clone(&shell),
                 shown: RefCell::new(None),
                 size: Cell::new((0.0, 0.0)),

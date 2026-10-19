@@ -77,7 +77,6 @@ pub fn raise_window(window: &slint::Window) {
     }
 }
 
-
 /// The work area of the monitor holding `window`: without the taskbar on Windows, none
 /// elsewhere (winit reports only the whole monitor).
 #[cfg(windows)]

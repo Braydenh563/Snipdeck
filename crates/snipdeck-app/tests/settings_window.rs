@@ -205,7 +205,7 @@ impl Rig {
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
-        let cases: [Case; 11] = [
+        let cases: [Case; 14] = [
             (
                 "theme",
                 |r| r.ui.invoke_theme_chosen(2),
