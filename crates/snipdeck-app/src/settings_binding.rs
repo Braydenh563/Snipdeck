@@ -271,6 +271,60 @@ pub fn key_chips(value: &str) -> Vec<String> {
     chips
 }
 
+/// Registers `next` with the system (unless "Pause hotkeys" is on, `paused`, when the chords in
+/// force are registered at resume). If `action`'s shortcut is refused the old ones are put back
+/// and the reason is returned. Shared by Settings and the welcome tour.
+pub(crate) fn try_register(
+    host: &dyn SettingsHost,
+    paused: bool,
+    action: HotkeyAction,
+    current: &Hotkeys,
+    next: &Hotkeys,
+) -> Option<HotkeyFailure> {
+    if paused {
+        return None;
+    }
+    let refused = host
+        .apply_hotkeys(next)
+        .into_iter()
+        .find(|p| p.action == action);
+    if let Some(problem) = refused {
+        let _ = host.apply_hotkeys(current);
+        return Some(problem.failure);
+    }
+    None
+}
+
+/// Keeps one timer running while changed settings wait for their quiet time: when it fires
+/// the controller writes them if they are due (its clock decides) and the timer is armed again
+/// (by the redraw that follows) for whatever is still waiting. `armed` is the window's flag that
+/// a timer is running. Shared by Settings and the welcome tour.
+pub(crate) fn arm_settings_save<C, K, T>(
+    controller: &Rc<RefCell<Controller<Store, C, K, T>>>,
+    armed: &Rc<Cell<bool>>,
+) where
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    if armed.get() {
+        return;
+    }
+    let Some(wait) = controller.borrow().settings_wait() else {
+        return;
+    };
+    armed.set(true);
+    let (controller, armed) = (Rc::downgrade(controller), Rc::clone(armed));
+    slint::Timer::single_shot(wait, move || {
+        armed.set(false);
+        let Some(controller) = controller.upgrade() else {
+            return;
+        };
+        controller.borrow_mut().save_settings_if_due();
+        redraw_all();
+    });
+}
+
 /// Names of the actions, for the message when two share a shortcut.
 const fn action_name(action: HotkeyAction) -> &'static str {
     match action {
@@ -281,7 +335,7 @@ const fn action_name(action: HotkeyAction) -> &'static str {
     }
 }
 
-fn hotkey_refusal_text(refusal: HotkeyRefusal, combo: &str) -> String {
+pub(crate) fn hotkey_refusal_text(refusal: HotkeyRefusal, combo: &str) -> String {
     match refusal {
         HotkeyRefusal::NotAShortcut => "That combination can't be used as a shortcut.".into(),
         HotkeyRefusal::UsedBy(other) => {
@@ -375,13 +429,13 @@ fn theme_index(theme: Theme) -> i32 {
 }
 
 /// The "Dock to" choice for `edge`: 0 is floating, then the edges in [`DockEdge::ALL`] order.
-fn dock_edge_index(edge: Option<DockEdge>) -> i32 {
+pub(crate) fn dock_edge_index(edge: Option<DockEdge>) -> i32 {
     edge.and_then(|e| DockEdge::ALL.iter().position(|a| *a == e))
         .map_or(0, |i| to_i32(i + 1))
 }
 
 /// The edge the "Dock to" choice `index` names; `None` is floating.
-fn dock_edge_of(index: i32) -> Option<DockEdge> {
+pub(crate) fn dock_edge_of(index: i32) -> Option<DockEdge> {
     usize::try_from(index - 1)
         .ok()
         .and_then(|at| DockEdge::ALL.get(at))
@@ -485,7 +539,7 @@ struct SettingsCore<C, K, T> {
     /// Redraws this window (registered with `binding::register_redraw`).
     redraw: Rc<dyn Fn()>,
     /// A timer is waiting to write changed settings.
-    save_timer: Cell<bool>,
+    save_timer: Rc<Cell<bool>>,
 }
 
 /// A bound Settings page. Dropping it does not unbind the window; the window's callbacks keep the
@@ -564,26 +618,9 @@ where
         self.arm_save();
     }
 
-    /// Keeps one timer running while changed settings wait for their quiet time: when it fires
-    /// the controller writes them if they are due (its clock decides) and the timer is armed
-    /// again for whatever is still waiting.
+    /// See [`arm_settings_save`].
     fn arm_save(self: &Rc<Self>) {
-        if self.save_timer.get() {
-            return;
-        }
-        let Some(wait) = self.controller.borrow().settings_wait() else {
-            return;
-        };
-        self.save_timer.set(true);
-        let core = Rc::downgrade(self);
-        slint::Timer::single_shot(wait, move || {
-            let Some(core) = core.upgrade() else {
-                return;
-            };
-            core.save_timer.set(false);
-            core.controller.borrow_mut().save_settings_if_due();
-            redraw_all();
-        });
+        arm_settings_save(&self.controller, &self.save_timer);
     }
 
     /// Draws everything again, also what the page would otherwise believe it already shows (a
@@ -644,28 +681,20 @@ where
         self.act(|ctl| ctl.update_settings(|s| s.hotkeys = next));
     }
 
-    /// Registers `next` with the system (unless "Pause hotkeys" is on, when the chords in force
-    /// are registered at resume). If `action`'s shortcut is refused the old ones are put back and
-    /// the reason is returned.
+    /// See [`try_register`].
     fn try_register(
         &self,
         action: HotkeyAction,
         current: &Hotkeys,
         next: &Hotkeys,
     ) -> Option<HotkeyFailure> {
-        if self.controller.borrow().hotkeys_paused() {
-            return None;
-        }
-        let refused = self
-            .host
-            .apply_hotkeys(next)
-            .into_iter()
-            .find(|p| p.action == action);
-        if let Some(problem) = refused {
-            let _ = self.host.apply_hotkeys(current);
-            return Some(problem.failure);
-        }
-        None
+        try_register(
+            self.host.as_ref(),
+            self.controller.borrow().hotkeys_paused(),
+            action,
+            current,
+            next,
+        )
     }
 
     // ---- Programs that never get a paste ---------------------------------------------------
@@ -826,7 +855,7 @@ where
                         core.sync();
                     }
                 }),
-                save_timer: Cell::new(false),
+                save_timer: Rc::default(),
             }
         });
         register_redraw(&core.redraw);

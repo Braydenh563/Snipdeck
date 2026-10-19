@@ -327,6 +327,9 @@ pub struct Settings {
     pub no_paste_apps: Vec<String>,
     /// The edge dock: when a docked Panel collapses to a handle, and the delays.
     pub dock: DockSettings,
+    /// The welcome tour has been finished or skipped. Absent (false) in older files; the tour
+    /// is shown on a first run only, see [`Settings::tour_due`].
+    pub onboarded: bool,
 }
 
 impl Default for Settings {
@@ -345,11 +348,20 @@ impl Default for Settings {
             panel_geometry: Vec::new(),
             no_paste_apps: Vec::new(),
             dock: DockSettings::default(),
+            onboarded: false,
         }
     }
 }
 
 impl Settings {
+    /// Whether the welcome tour opens by itself: it has not been seen and the library is empty.
+    /// A settings file from before the tour has no `onboarded` field, so a library that already
+    /// holds items counts as onboarded.
+    #[must_use]
+    pub const fn tour_due(&self, library_is_empty: bool) -> bool {
+        !self.onboarded && library_is_empty
+    }
+
     /// Reads settings from JSON. Never fails: text that is not JSON gives the defaults, and a
     /// field of the wrong type or an out-of-range value gives that field's default.
     #[must_use]
@@ -410,6 +422,7 @@ impl Settings {
             _ => {}
         }
         field!(dock);
+        field!(onboarded);
         settings
     }
 
@@ -525,6 +538,39 @@ mod tests {
             ..Settings::default()
         };
         assert_eq!(Settings::from_json(&settings.to_json()), settings);
+    }
+
+    #[test]
+    fn the_welcome_tour_flag_round_trips() {
+        let settings = Settings {
+            onboarded: true,
+            ..Settings::default()
+        };
+        assert!(Settings::from_json(&settings.to_json()).onboarded);
+        assert!(!Settings::from_json(&Settings::default().to_json()).onboarded);
+    }
+
+    #[test]
+    fn an_old_file_without_the_flag_is_not_onboarded_and_keeps_its_fields() {
+        let old = Settings::from_json(r#"{"theme":"dark","autostart":true}"#);
+        assert!(!old.onboarded);
+        assert_eq!(old.theme, Theme::Dark);
+        // One bad field elsewhere does not lose the flag.
+        let mixed = Settings::from_json(r#"{"onboarded":true,"panel_width":"wide"}"#);
+        assert!(mixed.onboarded);
+    }
+
+    #[test]
+    fn the_tour_opens_only_for_an_unseen_empty_library() {
+        let new = Settings::default();
+        assert!(new.tour_due(true));
+        assert!(!new.tour_due(false), "an old library with no flag in its file");
+        let seen = Settings {
+            onboarded: true,
+            ..Settings::default()
+        };
+        assert!(!seen.tour_due(true));
+        assert!(!seen.tour_due(false));
     }
 
     #[test]

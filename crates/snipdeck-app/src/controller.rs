@@ -25,6 +25,7 @@ use snipdeck_store::{
 mod dock_ctl;
 mod editor_ctl;
 mod main_ctl;
+mod onboarding_ctl;
 mod panel;
 mod settings_ctl;
 
@@ -161,6 +162,8 @@ pub enum Effect {
     NewItem,
     /// Open a help page (not built yet: the host logs it).
     OpenHelp(HelpTopic),
+    /// Open the welcome tour, creating its window the first time ([`Controller::show_welcome_tour`]).
+    OpenOnboarding,
     /// Open the item editor on an item. The Panel's binding does it
     /// ([`Controller::open_item_editor`]); the host has nothing more to do.
     EditItem(ItemId),
@@ -390,6 +393,8 @@ struct Session {
     hotkeys_paused: bool,
     /// The last settings save failed and the user was told.
     save_failed: bool,
+    /// The welcome tour's step while it is open.
+    tour: Option<crate::tour::TourStep>,
 }
 
 impl<S, C, K, T> std::fmt::Debug for Controller<S, C, K, T> {
@@ -1325,6 +1330,7 @@ mod tests {
     use snipdeck_store::Store;
 
     mod dock;
+    mod onboarding;
 
     type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 

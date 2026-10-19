@@ -34,6 +34,7 @@ use snipdeck_app::{
     host, key_provider,
     main_binding::{self, MainUi},
     maintenance::{self, Maintenance},
+    onboarding_binding::OnboardingUi,
     picker_binding::{AnchorMemory, PickerUi},
     platform::{self, Callbacks, Host, Start},
     screenshot,
@@ -219,6 +220,14 @@ fn run(args: &Args) -> Result<(), String> {
             Rc::clone(&panel_taskbar),
         )),
     ));
+    // The welcome tour window, made when it is first opened (the first run, or Help).
+    let onboarding_ui = OnboardingUi::new(
+        &controller,
+        Rc::new(SystemHost::new(
+            Rc::clone(&hotkeys),
+            Rc::clone(&panel_taskbar),
+        )),
+    );
     // The Panel's native window exists once it has been shown. Attached on the first show, which
     // a `--hidden` start reaches later, from the tray or the hotkey.
     let attach_now: Rc<dyn Fn()> = {
@@ -303,6 +312,11 @@ fn run(args: &Args) -> Result<(), String> {
         restore_frame(&window);
         frames_armed.set(true);
         attach_now();
+        // A first run (nothing in the library, tour not seen) opens the welcome tour.
+        let tour_due = controller.borrow().tour_due();
+        if tour_due && let Err(e) = onboarding_ui.open() {
+            eprintln!("snipdeck: cannot open the welcome tour: {e}");
+        }
     }
     // The backup, the Trash purge (30 days, SPEC 5.7a) and the weekly check start 2 s after the
     // first show and repeat every 6 h. Not in the demo, which has no data folder.
@@ -423,6 +437,7 @@ fn effect_handler(
                 eprintln!("snipdeck: cannot open the settings: {e}");
             }
         }
+        Effect::OpenOnboarding => snipdeck_app::onboarding_binding::request_open(),
         Effect::DragWindow => {
             if let Some(window) = window.upgrade() {
                 // The Panel has no OS caption: the header starts the move itself.
