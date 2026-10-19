@@ -264,9 +264,13 @@ ui_tests! {
         take(&log);
         press_key(&ui, Key::Menu);
         assert!(ui.get_menu_open());
-        for label in ["Use", "Copy", "Edit", "Pin", "Move to list…", "Tags…", "Move to Trash"] {
+        for label in ["Use", "Copy", "Edit", "Duplicate", "Pin", "Move to list…", "Tags…", "Move to Trash"] {
             let _ = find(&ui, label, AccessibleRole::ListItem);
         }
+        find(&ui, "Duplicate", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["action:Duplicate:1"]);
+        press_key(&ui, Key::Menu);
         press_key(&ui, Key::Escape);
         assert!(!ui.get_menu_open());
         assert!(ui.get_items_focused(), "focus returns to the items");

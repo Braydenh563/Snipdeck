@@ -236,6 +236,40 @@ fn pin_toggles_one_row_or_the_whole_selection_and_the_panel_follows() {
 }
 
 #[test]
+fn duplicate_copies_each_selected_item_next_to_it_unpinned_and_unused() {
+    let mut ctl = pro();
+    let screen = ctl.main_screen();
+    let at = row_of(&screen, "Out of office");
+    let id = match screen.rows[at].key {
+        snipdeck_app::main_window::Key::Item(id) => id,
+        other => panic!("{other:?}"),
+    };
+    ctl.main_action(MainAction::Pin, at);
+    ctl.main_action(MainAction::Use, at).expect("a use");
+    let original = ctl.store().item(id).unwrap();
+    let siblings = ctl.store().items(original.list_id).unwrap();
+    let place = siblings.iter().position(|i| i.id == id).unwrap();
+
+    assert!(ctl.main_action(MainAction::Duplicate, at).is_none());
+
+    let after = ctl.store().items(original.list_id).unwrap();
+    assert_eq!(after.len(), siblings.len() + 1);
+    let copy = &after[place + 1];
+    assert_ne!(copy.id, id);
+    assert_eq!(after[place].id, id, "the original stays put");
+    assert_eq!(copy.title, original.title);
+    assert_eq!(copy.preview, original.preview);
+    assert_eq!(copy.tags, original.tags);
+    assert_eq!(
+        ctl.store().formats(copy.id).unwrap(),
+        ctl.store().formats(id).unwrap()
+    );
+    assert!(original.pinned && original.use_count == 1);
+    assert!(!copy.pinned && copy.use_count == 0 && copy.last_used_at.is_none());
+    assert_eq!(copy.created_at, now());
+}
+
+#[test]
 fn move_sends_the_chosen_rows_to_the_end_of_a_list_on_the_open_board() {
     let mut ctl = pro();
     let screen = ctl.main_screen();

@@ -54,6 +54,8 @@ pub enum MainAction {
     Edit,
     /// Pin, or unpin when every target is pinned.
     Pin,
+    /// Copy each item, directly after it in its list.
+    Duplicate,
     /// Open the *Move to list* chooser for the targets.
     Move,
     /// Open the *Tags* chooser for the targets.
@@ -363,6 +365,7 @@ where
                 }
             }
             MainAction::Pin => self.pin(&items),
+            MainAction::Duplicate => self.duplicate(&items),
             MainAction::Move | MainAction::Tag => self.main.set_chooser(targets),
             MainAction::Delete => self.trash_items(&items),
             MainAction::Restore => self.restore(&targets),
@@ -382,6 +385,28 @@ where
                 item.pinned = pin;
                 item.updated_at = now;
                 b.update_item(&item, None)?;
+            }
+            Ok(())
+        });
+        self.finish(&done);
+    }
+
+    /// Each item again, directly after itself: same title, content, tags and flags; pinned off and
+    /// use history cleared, like a new item.
+    fn duplicate(&mut self, items: &[ItemId]) {
+        let now = self.clock.now();
+        let done = self.store.atomically(|b| {
+            for id in items {
+                let original = b.item(*id)?;
+                let formats = b.formats(*id)?;
+                let mut copy =
+                    Item::new(original.list_id, original.title.clone(), original.kind, now);
+                copy.preview = original.preview;
+                copy.tags = original.tags;
+                copy.sensitive = original.sensitive;
+                copy.always_plain = original.always_plain;
+                copy.source_app = original.source_app;
+                b.insert_item(&copy, &formats, Placement::After(*id))?;
             }
             Ok(())
         });

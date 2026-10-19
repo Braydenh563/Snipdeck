@@ -289,6 +289,9 @@ msgstr "停靠到"
 msgid "Done"
 msgstr "完成"
 
+msgid "Duplicate"
+msgstr ""
+
 msgid "Edit"
 msgstr "编辑"
 

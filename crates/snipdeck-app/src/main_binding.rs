@@ -1124,6 +1124,7 @@ fn action_of(action: ui::ItemAction) -> MainAction {
         ui::ItemAction::Copy => MainAction::Copy,
         ui::ItemAction::Edit => MainAction::Edit,
         ui::ItemAction::Pin => MainAction::Pin,
+        ui::ItemAction::Duplicate => MainAction::Duplicate,
         ui::ItemAction::Move => MainAction::Move,
         ui::ItemAction::Tag => MainAction::Tag,
         ui::ItemAction::Delete => MainAction::Delete,

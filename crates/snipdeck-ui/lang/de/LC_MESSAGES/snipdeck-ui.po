@@ -289,6 +289,9 @@ msgstr "Andocken an"
 msgid "Done"
 msgstr "Fertig"
 
+msgid "Duplicate"
+msgstr ""
+
 msgid "Edit"
 msgstr "Bearbeiten"
 

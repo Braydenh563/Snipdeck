@@ -289,6 +289,9 @@ msgstr "Acoplar a"
 msgid "Done"
 msgstr "Listo"
 
+msgid "Duplicate"
+msgstr ""
+
 msgid "Edit"
 msgstr "Editar"
 
