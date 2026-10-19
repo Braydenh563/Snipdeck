@@ -556,3 +556,74 @@ fn staged_plaintext_shared_by_two_items_in_one_transaction_survives_until_the_en
         assert_eq!(store.read(c).unwrap().as_ref(), secret.as_slice());
     }
 }
+
+// ---- Master password lifecycle (SPEC 5.7, V1-PLAN C3) -----------------------------------------
+
+#[test]
+fn the_store_says_whether_a_master_password_is_set() {
+    let p = provider();
+    let mut s = store();
+    assert!(
+        !s.has_master_password(&ring(&p)).unwrap(),
+        "no key ring: no password"
+    );
+    s.create_key_ring(&ring(&p), None).unwrap();
+    assert!(!s.has_master_password(&ring(&p)).unwrap());
+    s.change_master_password(&ring(&p), None, Some("pw"))
+        .unwrap();
+    assert!(s.has_master_password(&ring(&p)).unwrap());
+    s.change_master_password(&ring(&p), Some("pw"), None)
+        .unwrap();
+    assert!(!s.has_master_password(&ring(&p)).unwrap());
+}
+
+#[test]
+fn a_password_added_later_locks_a_restart_and_removing_it_opens_without_one() {
+    let p = provider();
+    let dir = tempfile::tempdir().unwrap();
+    let item;
+    {
+        let mut s = Store::open(dir.path()).unwrap();
+        let b = board(&mut s, "b");
+        let l = list(&mut s, b.id, "l");
+        s.create_key_ring(&ring(&p), None).unwrap();
+        item = secret_item(l.id, "x");
+        s.insert_item(&item, &text_formats("kept"), Placement::Last)
+            .unwrap();
+        s.change_master_password(&ring(&p), None, Some("pw"))
+            .unwrap();
+        assert!(s.is_unlocked(), "setting a password does not lock the session");
+    }
+    let mut s = Store::open(dir.path()).unwrap();
+    assert!(s.has_master_password(&ring(&p)).unwrap());
+    assert!(matches!(
+        s.unlock_key_ring(&ring(&p), None),
+        Err(Error::Crypto(CryptoError::PasswordRequired))
+    ));
+    assert!(!s.is_unlocked());
+    assert!(matches!(
+        s.formats(item.id),
+        Err(Error::EncryptionLocked)
+    ));
+    s.unlock_key_ring(&ring(&p), Some("pw")).unwrap();
+    assert_eq!(s.formats(item.id).unwrap(), text_formats("kept"));
+    s.change_master_password(&ring(&p), Some("pw"), None)
+        .unwrap();
+    s.lock_key_ring();
+    s.unlock_key_ring(&ring(&p), None).unwrap();
+    assert_eq!(s.formats(item.id).unwrap(), text_formats("kept"));
+}
+
+#[test]
+fn a_wrong_current_password_changes_nothing_and_the_old_one_still_works() {
+    let p = provider();
+    let mut s = store();
+    s.create_key_ring(&ring(&p), Some("old")).unwrap();
+    assert!(matches!(
+        s.change_master_password(&ring(&p), Some("wrong"), None),
+        Err(Error::Crypto(CryptoError::WrongPassword))
+    ));
+    assert!(s.has_master_password(&ring(&p)).unwrap());
+    s.lock_key_ring();
+    s.unlock_key_ring(&ring(&p), Some("old")).unwrap();
+}

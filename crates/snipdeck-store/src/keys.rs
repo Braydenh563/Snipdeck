@@ -157,6 +157,15 @@ impl Store {
         self.seal_and_unlock(key, None)
     }
 
+    /// Whether the stored key needs a master password to open. `false` when there is no key
+    /// ring. Opens the OS binding but not the data key, so it works while locked.
+    pub fn has_master_password(&self, ring: &KeyRing<'_>) -> Result<bool> {
+        if !ring_exists(&self.conn)? {
+            return Ok(false);
+        }
+        Ok(ring.has_password(&stored_record(&self.conn)?)?)
+    }
+
     /// Re-wraps the data key under a new master password (`None` removes it); no item is
     /// re-encrypted. `current` is the present password. The old record is overwritten in the
     /// database, but a backup taken earlier still opens with the old password
