@@ -559,7 +559,11 @@ where
             .main_board_menu_activate(index(i)));
         wire!(on_board_menu_dismissed, |ctl| ctl.main_board_menu_close());
         wire!(on_toast_undo, |ctl| ctl.toast_action());
-        window.on_settings_requested(crate::settings_binding::request_open);
+        window.on_settings_requested(|| {
+            // Settings opens over the Main window the user is in.
+            crate::native_window::note_opener(crate::native_window::Surface::Main);
+            crate::settings_binding::request_open();
+        });
         wire!(on_panel_requested, |ctl| ctl.main_show_panel());
         wire!(on_help_requested, |ctl, page| ctl.main_open_help(
             match page {
@@ -591,6 +595,8 @@ where
         wire_title_bar(window);
         wire!(on_new_item_requested, |ctl| ctl.open_new_item(Origin::Main));
         {
+                // A command that opens a window (Settings, an editor, the Picker) opens over Main.
+                crate::native_window::note_opener(crate::native_window::Surface::Main);
             // The X hides the window, or quits when nothing could bring it back (the setting
             // "Keep running in the tray" is off, or there is no tray icon and the Panel is down).
             let core = Rc::clone(&core);

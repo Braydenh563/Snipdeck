@@ -293,6 +293,12 @@ pub fn note_opener(surface: Surface) {
     OPENER.with(|o| o.set(Some(surface)));
 }
 
+/// The surface [`note_opener`] was last told about.
+#[must_use]
+pub fn last_opener() -> Option<Surface> {
+    OPENER.with(std::cell::Cell::get)
+}
+
 /// The shown surface to open over: the one acted on last, else the Main window, else the Panel.
 fn owner() -> Option<(Rect, Option<Monitor>)> {
     let first = OPENER.with(std::cell::Cell::get);

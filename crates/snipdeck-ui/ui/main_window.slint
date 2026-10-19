@@ -226,6 +226,11 @@ export component MainWindow inherits Window {
         search.select-all();
     }
     public function open-palette() {
+        // Like Ctrl+K: nothing opens over a menu, a dialog or the palette itself (asking the host to
+        // refill the rows of an open palette would leave the field's text and the rows apart).
+        if (root.overlay-open) {
+            return;
+        }
         root.palette-open = true;
         root.palette-opened();
     }
