@@ -14,6 +14,12 @@ Hub = this session (`claude/compassionate-pascal-pod8ux`, PR #5). It owns the re
 - Hub local agents (max 3 + Haiku; one cargo user): C8/C9 + free encryption (finishing), C7 done (58e0d1e), Opus review of merges; next translations (Haiku), C5 accent, C3 master password, C2 paste stack, C6 edge dock, B15.
 - Cloud PRs target the release branch, never main. Hub merges in landing order (merge commits, no rebase), runs CI, then tells the sessions; they merge the release branch back before their next PR.
 - After all UI items land: D1 goldens once, D2 shots, D3, D5, E1, then F1-F4.
+- Full assignment of the V1 ship list (every open item has an owner):
+  - Wave 3a: B3, B6, B9, B13, B1, B2, B12, C1.
+  - Wave 3b: B4, B8, B10, B14, B5, B7, B11, C4.
+  - Hub: A1-A3 (confirm CI), C8, C9 (agent finishing), translations, C5, C3, C2, C6, C7 manifest template, B15, open review leftovers (Haiku audit of `docs/reviews/*.md` and the now.md Inbox; leftovers go to the hub), D1-D5, E1, F1-F4.
+  - Owner: E3, G1-G4.
+  - Done: A4, C7 docs, D4, E2.
 
 ## Task list (mirror of the session's tasks, 2026-10-19 13:20; details per item in `docs/V1-PLAN.md`)
 
