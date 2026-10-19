@@ -305,8 +305,25 @@ impl<'p> KeyRing<'p> {
         current: Option<&str>,
         new: Option<&str>,
     ) -> Result<KeyRecord, CryptoError> {
+        self.rekey(record, current, new).map(|(_, record)| record)
+    }
+
+    /// As [`change_password`](Self::change_password), and also returns the data key it opened on
+    /// the way, so a caller that must open the library after the change does not derive the
+    /// password twice.
+    ///
+    /// # Errors
+    ///
+    /// As [`change_password`](Self::change_password).
+    pub fn rekey(
+        &self,
+        record: &KeyRecord,
+        current: Option<&str>,
+        new: Option<&str>,
+    ) -> Result<(DataKey, KeyRecord), CryptoError> {
         let key = self.unlock(record, current)?;
-        self.protect(&key, new)
+        let changed = self.protect(&key, new)?;
+        Ok((key, changed))
     }
 
     fn protect(&self, key: &DataKey, password: Option<&str>) -> Result<KeyRecord, CryptoError> {

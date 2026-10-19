@@ -1494,6 +1494,69 @@ fn a_supporter_sets_a_master_password_through_the_form() {
 }
 
 #[test]
+fn while_the_password_is_saved_the_form_says_so_and_waits() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        let held = support::Deferred::default();
+        let _inline_again = held.install();
+        click(&r, "Set password\u{2026}");
+        type_in(&r, "New password", PASSWORD);
+        type_in(&r, "Repeat the new password", PASSWORD);
+        click(&r, "Set password");
+        assert_eq!(held.held(), 1, "the work was handed off");
+        assert!(r.ui.get_master_busy());
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Set);
+        assert_eq!(r.ctl.borrow().master_password_state(), MasterState::NotSet);
+
+        let status = element(&r.ui, "Saving\u{2026}", AccessibleRole::Text);
+        assert_eq!(
+            status.accessible_live_region(),
+            Some(i_slint_backend_testing::AccessibleLiveness::Polite)
+        );
+        let submit = ElementHandle::find_by_accessible_label(&r.ui, "Set password")
+            .find(|e| e.accessible_role() == Some(AccessibleRole::Button))
+            .expect("the submit button");
+        assert_eq!(submit.accessible_enabled(), Some(false));
+        assert_eq!(
+            element(&r.ui, "Cancel", AccessibleRole::Button).accessible_enabled(),
+            Some(false)
+        );
+        click(&r, "Set password");
+        assert_eq!(held.held(), 1, "a second press starts nothing");
+
+        held.release();
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_master_busy());
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        assert_eq!(r.ctl.borrow().master_password_state(), MasterState::Set);
+    });
+}
+
+#[test]
+fn a_wrong_current_password_found_in_the_background_keeps_the_form_open() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        r.ctl
+            .borrow_mut()
+            .set_master_password(PASSWORD, PASSWORD)
+            .expect("set");
+        r.binding.redraw();
+        let held = support::Deferred::default();
+        let _inline_again = held.install();
+        click(&r, "Remove\u{2026}");
+        type_in(&r, "Current password", "not the password");
+        click(&r, "Remove password");
+        assert!(r.ui.get_master_busy());
+        held.release();
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_master_busy());
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Remove);
+        assert_eq!(texts(&r, "That password is not right. Try again."), 1);
+        assert_eq!(r.ctl.borrow().master_password_state(), MasterState::Set);
+    });
+}
+
+#[test]
 fn passwords_are_hidden_from_the_accessibility_tree() {
     on_ui_thread(|| {
         let r = master_rig(Tier::Pro);

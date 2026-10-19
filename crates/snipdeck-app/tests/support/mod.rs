@@ -82,25 +82,25 @@ pub fn key(k: Key) -> String {
 /// controller on the same data folder) opens the key the first run made.
 #[derive(Clone)]
 pub struct SharedProvider {
-    inner: std::rc::Rc<snipdeck_store::crypto::MemoryKeyProvider>,
+    inner: std::sync::Arc<snipdeck_store::crypto::MemoryKeyProvider>,
     /// How many more `unwrap_key` calls work; `None` is no limit. At zero every one fails, as a
     /// key store that went away does.
-    unwraps_left: std::rc::Rc<std::cell::Cell<Option<u32>>>,
+    unwraps_left: std::sync::Arc<std::sync::Mutex<Option<u32>>>,
 }
 
 impl SharedProvider {
     pub fn new() -> Self {
         Self {
-            inner: std::rc::Rc::new(
+            inner: std::sync::Arc::new(
                 snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
             ),
-            unwraps_left: std::rc::Rc::new(std::cell::Cell::new(None)),
+            unwraps_left: std::sync::Arc::new(std::sync::Mutex::new(None)),
         }
     }
 
     /// From now on `n` more unwraps work, then every one fails (`None` lifts the limit).
     pub fn fail_unwraps_after(&self, n: Option<u32>) {
-        self.unwraps_left.set(n);
+        *self.unwraps_left.lock().unwrap() = n;
     }
 }
 
@@ -114,14 +114,16 @@ impl snipdeck_store::crypto::KeyProvider for SharedProvider {
         wrapped: &[u8],
     ) -> Result<snipdeck_store::crypto::Zeroizing<Vec<u8>>, snipdeck_store::crypto::KeyProviderError>
     {
-        if let Some(left) = self.unwraps_left.get() {
+        let mut limit = self.unwraps_left.lock().unwrap();
+        if let Some(left) = *limit {
             if left == 0 {
                 return Err(snipdeck_store::crypto::KeyProviderError::Unavailable(
                     "the key store is gone".to_owned(),
                 ));
             }
-            self.unwraps_left.set(Some(left - 1));
+            *limit = Some(left - 1);
         }
+        drop(limit);
         self.inner.unwrap_key(wrapped)
     }
 }
@@ -157,4 +159,57 @@ pub fn assert_no_plaintext(dir: &std::path::Path, needles: &[&[u8]]) {
         }
     }
     assert!(seen > 0, "there was something to scan");
+}
+
+/// Holds each master password job until the test releases it, so a window can be looked at while
+/// the key is being derived. Installing it replaces the thread's offload; dropping the guard puts
+/// the inline one back (the UI thread is shared by the tests of a file).
+#[derive(Clone, Default)]
+pub struct Deferred {
+    held: std::rc::Rc<
+        std::cell::RefCell<
+            Vec<(
+                snipdeck_app::master_job::MasterJob,
+                snipdeck_app::master_job::Finish,
+            )>,
+        >,
+    >,
+}
+
+impl snipdeck_app::master_job::Offload for Deferred {
+    fn run(
+        &self,
+        job: snipdeck_app::master_job::MasterJob,
+        finish: snipdeck_app::master_job::Finish,
+    ) {
+        self.held.borrow_mut().push((job, finish));
+    }
+}
+
+/// Puts the inline offload back when dropped.
+pub struct DeferredGuard;
+
+impl Drop for DeferredGuard {
+    fn drop(&mut self) {
+        snipdeck_app::master_job::set_offload(std::rc::Rc::new(snipdeck_app::master_job::Inline));
+    }
+}
+
+impl Deferred {
+    /// Makes the windows of this thread hand their jobs to `self`.
+    pub fn install(&self) -> DeferredGuard {
+        snipdeck_app::master_job::set_offload(std::rc::Rc::new(self.clone()));
+        DeferredGuard
+    }
+
+    /// How many jobs are waiting.
+    pub fn held(&self) -> usize {
+        self.held.borrow().len()
+    }
+
+    /// Runs the oldest waiting job and hands its outcome to the window, as the worker would.
+    pub fn release(&self) {
+        let (job, finish) = self.held.borrow_mut().remove(0);
+        finish(job.run());
+    }
 }

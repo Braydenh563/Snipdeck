@@ -30,6 +30,7 @@ pub mod list_text;
 pub mod main_binding;
 pub mod main_window;
 pub mod maintenance;
+pub mod master_job;
 pub mod master_password;
 pub mod native_window;
 pub mod onboarding_binding;

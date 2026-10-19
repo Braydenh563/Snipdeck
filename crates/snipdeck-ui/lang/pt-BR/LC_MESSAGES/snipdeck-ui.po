@@ -355,6 +355,9 @@ msgstr "Concluído"
 msgid "Duplicate"
 msgstr ""
 
+msgid "Duplicate the item"
+msgstr ""
+
 msgid "Edit"
 msgstr "Editar"
 
@@ -1117,6 +1120,9 @@ msgstr "Salva todos os quadros, listas e trechos em um arquivo .snipdeck na sua 
 msgid "Saves the text on the clipboard as a new item in the list the panel shows."
 msgstr "Salva o texto da área de transferência como um novo trecho na lista mostrada pelo painel."
 
+msgid "Saving…"
+msgstr ""
+
 msgid "Scope"
 msgstr "Escopo"
 
@@ -1445,6 +1451,9 @@ msgid "Unlock Snipdeck"
 msgstr ""
 
 msgid "Unlock your sensitive items"
+msgstr ""
+
+msgid "Unlocking…"
 msgstr ""
 
 msgid "Unlock…"

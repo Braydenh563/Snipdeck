@@ -798,16 +798,42 @@ where
         new: &str,
         again: &str,
     ) {
-        let result = self.act(|ctl| match mode {
-            ui::MasterMode::Set => ctl.set_master_password(new, again),
-            ui::MasterMode::Change => ctl.change_master_password(current, new, again),
-            ui::MasterMode::Remove => ctl.remove_master_password(current),
-            ui::MasterMode::Closed => Ok(()),
+        let begun = self.act(|ctl| match mode {
+            ui::MasterMode::Set => ctl.begin_set_master_password(new, again).map(Some),
+            ui::MasterMode::Change => ctl
+                .begin_change_master_password(current, new, again)
+                .map(Some),
+            ui::MasterMode::Remove => ctl.begin_remove_master_password(current).map(Some),
+            ui::MasterMode::Closed => Ok(None),
         });
         let Some(window) = self.window.upgrade() else {
             return;
         };
         // Cleared first, so the same refusal twice in a row is announced twice.
+        window.set_master_problem(ui::MasterProblem::None);
+        match begun {
+            Ok(Some(job)) => {
+                // The key derivation takes a moment on purpose: the form waits, on another thread
+                // in the app, and `master_finished` carries on from here.
+                window.set_master_busy(true);
+                let core = Rc::clone(self);
+                crate::master_job::offload()
+                    .run(job, Box::new(move |done| core.master_finished(done)));
+            }
+            Ok(None) => window.invoke_close_master(),
+            Err(problem) => {
+                window.set_master_problem(crate::unlock_binding::slint_problem(problem));
+            }
+        }
+    }
+
+    /// The outcome of the key derivation `master_submitted` started: applies it and tells the form.
+    fn master_finished(self: &Rc<Self>, done: crate::master_job::MasterDone) {
+        let result = self.act(|ctl| ctl.finish_master(done));
+        let Some(window) = self.window.upgrade() else {
+            return;
+        };
+        window.set_master_busy(false);
         window.set_master_problem(ui::MasterProblem::None);
         match result {
             Ok(()) => window.invoke_close_master(),

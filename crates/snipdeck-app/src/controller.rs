@@ -19,7 +19,7 @@ use snipdeck_platform::{
 };
 use snipdeck_store::{
     Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, Store, TagRepo, TrashRepo, Trashable,
-    crypto::KeyRing,
+    crypto::{DataKey, KeyRecord, KeyRing},
 };
 
 mod commands_ctl;
@@ -133,17 +133,35 @@ pub trait Library: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + BlobS
     /// The OS binding rejected the record, or the store failed.
     fn has_master_password(&self, ring: &KeyRing<'_>) -> snipdeck_store::Result<bool>;
 
-    /// Re-wraps the key under a new master password (`None` removes it). `current` is the one set.
+    /// The stored key record, if encryption was set up. A master password step re-wraps a copy of
+    /// it elsewhere ([`crate::master_job::MasterJob`]).
     ///
     /// # Errors
     ///
-    /// A wrong `current`, an empty `new`, or the store failed. Nothing changes on error.
-    fn change_master_password(
-        &mut self,
-        ring: &KeyRing<'_>,
-        current: Option<&str>,
-        new: Option<&str>,
-    ) -> snipdeck_store::Result<()>;
+    /// The store failing to read.
+    fn key_record(&self) -> snipdeck_store::Result<Option<KeyRecord>>;
+
+    /// Finishes setting up encryption with a key and record made elsewhere, and leaves the library
+    /// unlocked.
+    ///
+    /// # Errors
+    ///
+    /// A key ring exists already, or the store failed. Nothing changes on error.
+    fn install_key_ring(&mut self, key: DataKey, record: &KeyRecord) -> snipdeck_store::Result<()>;
+
+    /// Opens the library with a key opened elsewhere. Does nothing when it is open.
+    ///
+    /// # Errors
+    ///
+    /// The store failed.
+    fn open_with_key(&mut self, key: DataKey) -> snipdeck_store::Result<()>;
+
+    /// Stores a key record re-wrapped elsewhere (a changed or removed master password).
+    ///
+    /// # Errors
+    ///
+    /// There is no key ring, or the store failed. Nothing changes on error.
+    fn replace_key_record(&mut self, record: &KeyRecord) -> snipdeck_store::Result<()>;
 
     /// Forgets the key and every decrypted payload held in memory (the idle lock).
     fn lock_key_ring(&mut self);
@@ -188,13 +206,20 @@ impl Library for Store {
         Store::has_master_password(self, ring)
     }
 
-    fn change_master_password(
-        &mut self,
-        ring: &KeyRing<'_>,
-        current: Option<&str>,
-        new: Option<&str>,
-    ) -> snipdeck_store::Result<()> {
-        Store::change_master_password(self, ring, current, new)
+    fn key_record(&self) -> snipdeck_store::Result<Option<KeyRecord>> {
+        Store::key_record(self)
+    }
+
+    fn install_key_ring(&mut self, key: DataKey, record: &KeyRecord) -> snipdeck_store::Result<()> {
+        Store::install_key_ring(self, key, record)
+    }
+
+    fn open_with_key(&mut self, key: DataKey) -> snipdeck_store::Result<()> {
+        Store::open_with_key(self, key)
+    }
+
+    fn replace_key_record(&mut self, record: &KeyRecord) -> snipdeck_store::Result<()> {
+        Store::replace_key_record(self, record)
     }
 
     fn lock_key_ring(&mut self) {

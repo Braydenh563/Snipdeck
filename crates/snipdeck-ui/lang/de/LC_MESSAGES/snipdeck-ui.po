@@ -355,6 +355,9 @@ msgstr "Fertig"
 msgid "Duplicate"
 msgstr ""
 
+msgid "Duplicate the item"
+msgstr ""
+
 msgid "Edit"
 msgstr "Bearbeiten"
 
@@ -1117,6 +1120,9 @@ msgstr "Speichert alle Boards, Listen und Textbausteine als eine .snipdeck-Datei
 msgid "Saves the text on the clipboard as a new item in the list the panel shows."
 msgstr "Speichert den Text der Zwischenablage als neuen Textbaustein in der Liste, die das Panel zeigt."
 
+msgid "Saving…"
+msgstr ""
+
 msgid "Scope"
 msgstr "Bereich"
 
@@ -1445,6 +1451,9 @@ msgid "Unlock Snipdeck"
 msgstr ""
 
 msgid "Unlock your sensitive items"
+msgstr ""
+
+msgid "Unlocking…"
 msgstr ""
 
 msgid "Unlock…"

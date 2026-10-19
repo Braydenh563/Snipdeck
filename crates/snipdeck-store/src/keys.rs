@@ -143,7 +143,32 @@ impl Store {
             });
         }
         let (key, record) = ring.create(password)?;
-        self.seal_and_unlock(key, Some(&record))
+        self.install_key_ring(key, &record)
+    }
+
+    /// Finishes [`create_key_ring`](Self::create_key_ring) for a key and record made elsewhere
+    /// (by [`KeyRing::create`], possibly on another thread): stores `record`, unlocks with `key`
+    /// and encrypts every sensitive item still in plain text.
+    ///
+    /// Fails with [`Error::AlreadyExists`] if a key ring exists; nothing changes on error.
+    pub fn install_key_ring(&mut self, key: DataKey, record: &KeyRecord) -> Result<()> {
+        if self.key_ring_exists()? {
+            return Err(Error::AlreadyExists {
+                entity: "key ring",
+                id: "1".to_owned(),
+            });
+        }
+        self.seal_and_unlock(key, Some(record))
+    }
+
+    /// Finishes [`unlock_key_ring`](Self::unlock_key_ring) for a key opened elsewhere (by
+    /// [`KeyRing::unlock`]): unlocks with `key` and encrypts any sensitive item still in plain
+    /// text. Does nothing when the library is already open.
+    pub fn open_with_key(&mut self, key: DataKey) -> Result<()> {
+        if self.is_unlocked() {
+            return Ok(());
+        }
+        self.seal_and_unlock(key, None)
     }
 
     /// Unlocks the stored key ring for this session, so sensitive items can be read and
@@ -178,10 +203,19 @@ impl Store {
     ) -> Result<()> {
         let record = stored_record(&self.conn)?;
         let changed = ring.change_password(&record, current, new)?;
+        self.replace_key_record(&changed)
+    }
+
+    /// Overwrites the stored key record with `record`, made by [`KeyRing::rekey`] (possibly on
+    /// another thread) from the record [`Store::key_record`] returned. Fails with
+    /// [`Error::NotFound`] if there is no key ring. The data key is unchanged, so no item is
+    /// re-encrypted.
+    pub fn replace_key_record(&mut self, record: &KeyRecord) -> Result<()> {
+        stored_record(&self.conn)?;
         let tx = begin(&mut self.conn)?;
         tx.execute(
             "UPDATE key_ring SET record = ?1 WHERE id = 1",
-            [changed.as_bytes()],
+            [record.as_bytes()],
         )?;
         tx.commit()?;
         crate::store::checkpoint(&self.conn);

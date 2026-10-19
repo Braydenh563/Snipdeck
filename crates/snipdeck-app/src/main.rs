@@ -36,6 +36,7 @@ use snipdeck_app::{
     host, key_provider,
     main_binding::{self, MainUi},
     maintenance::{self, Maintenance},
+    master_job,
     onboarding_binding::OnboardingUi,
     picker_binding::{AnchorMemory, PickerUi},
     platform::{self, Callbacks, Host, Start},
@@ -209,6 +210,9 @@ fn run(args: &Args) -> Result<(), String> {
         if let Some(provider) = key_provider::provider() {
             controller.set_key_provider(provider);
         }
+        // Argon2id takes a moment on purpose: a master password step works its key out on a
+        // worker thread, and the window waits with a status instead of freezing.
+        master_job::set_offload(Rc::new(master_job::Threads));
         if let Some(picker) = platform::file_picker() {
             controller.set_file_picker(picker);
         }

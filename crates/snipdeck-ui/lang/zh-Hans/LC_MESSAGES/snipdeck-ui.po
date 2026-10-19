@@ -355,6 +355,9 @@ msgstr "完成"
 msgid "Duplicate"
 msgstr ""
 
+msgid "Duplicate the item"
+msgstr ""
+
 msgid "Edit"
 msgstr "编辑"
 
@@ -1117,6 +1120,9 @@ msgstr "把所有看板、列表和片段保存为一个 .snipdeck 文件，放�
 msgid "Saves the text on the clipboard as a new item in the list the panel shows."
 msgstr "将剪贴板中的文本作为新片段保存到面板当前显示的列表中。"
 
+msgid "Saving…"
+msgstr ""
+
 msgid "Scope"
 msgstr "范围"
 
@@ -1445,6 +1451,9 @@ msgid "Unlock Snipdeck"
 msgstr ""
 
 msgid "Unlock your sensitive items"
+msgstr ""
+
+msgid "Unlocking…"
 msgstr ""
 
 msgid "Unlock…"

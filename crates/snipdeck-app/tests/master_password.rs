@@ -19,6 +19,7 @@ use snipdeck_app::{
     drafts::Drafts,
     host::{FakeTargets, FixedClock},
     item_editor::{EditorInput, Origin},
+    master_job::MasterOp,
     master_password::IDLE_LOCK,
     settings::Settings,
     toast::ToastMessage,
@@ -239,6 +240,148 @@ fn a_machine_without_key_protection_cannot_set_one() {
         ctl.set_master_password(PASSWORD, PASSWORD),
         Err(MasterProblem::Unavailable)
     );
+}
+
+// ---- The slow half runs off the controller -----------------------------------------------------
+
+/// Runs a job on another thread, the way the app does, and waits for its outcome.
+fn run_elsewhere(job: snipdeck_app::master_job::MasterJob) -> snipdeck_app::master_job::MasterDone {
+    std::thread::spawn(move || job.run())
+        .join()
+        .expect("the job finishes")
+}
+
+#[test]
+fn setting_a_password_changes_nothing_until_the_outcome_is_applied() {
+    let mut r = rig(Tier::Pro);
+    let job = r
+        .ctl
+        .begin_set_master_password(PASSWORD, PASSWORD)
+        .expect("checked");
+    assert_eq!(job.op(), MasterOp::Set { exists: true });
+    assert_eq!(r.ctl.master_busy(), Some(MasterOp::Set { exists: true }));
+    assert_eq!(
+        r.ctl.master_password_state(),
+        MasterState::NotSet,
+        "still the old state while the key is derived"
+    );
+    assert_eq!(
+        r.ctl.begin_set_master_password(PASSWORD, PASSWORD).err(),
+        Some(MasterProblem::Failed),
+        "one step at a time"
+    );
+    let done = run_elsewhere(job);
+    assert_eq!(r.ctl.finish_master(done), Ok(()));
+    assert_eq!(r.ctl.master_busy(), None);
+    assert_eq!(r.ctl.master_password_state(), MasterState::Set);
+    assert_eq!(r.toast(), Some(ToastMessage::MasterPasswordSet));
+    let r = r.restart(Tier::Pro);
+    assert!(r.ctl.library_locked(), "the password was really stored");
+}
+
+#[test]
+fn a_first_password_on_a_library_without_a_key_makes_the_key_off_the_controller() {
+    let data = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    let clock = FixedClock::new(t0());
+    let store = Store::open(data.path()).expect("store");
+    let mut ctl = Controller::new(
+        store,
+        Services {
+            clipboard: FakeClipboard::default(),
+            keyboard: FakeKeyboard::default(),
+            timing: FakeTiming::default(),
+        },
+        Box::new(FakeTargets::new(Some(demo::target()))),
+        Box::new(clock),
+        Settings::default(),
+        Entitlements::new(Tier::Pro),
+    )
+    .expect("controller");
+    ctl.set_key_provider(Box::new(provider));
+    ctl.set_kdf_params(KdfParams::insecure_for_tests(64, 1, 1).expect("cheap params"));
+    let job = ctl
+        .begin_set_master_password(PASSWORD, PASSWORD)
+        .expect("checked");
+    assert_eq!(job.op(), MasterOp::Set { exists: false });
+    assert_eq!(ctl.finish_master(run_elsewhere(job)), Ok(()));
+    assert_eq!(ctl.master_password_state(), MasterState::Set);
+    assert!(!ctl.library_locked());
+}
+
+#[test]
+fn a_wrong_password_comes_back_from_the_job_and_frees_the_controller() {
+    let mut r = with_password(Tier::Pro).restart(Tier::Pro);
+    let job = r
+        .ctl
+        .begin_unlock_with_password("not the password")
+        .expect("checked")
+        .expect("locked");
+    assert_eq!(r.ctl.master_busy(), Some(MasterOp::Unlock));
+    assert_eq!(
+        r.ctl.finish_master(run_elsewhere(job)),
+        Err(MasterProblem::WrongPassword)
+    );
+    assert_eq!(r.ctl.master_busy(), None);
+    assert!(r.ctl.library_locked());
+    let job = r
+        .ctl
+        .begin_unlock_with_password(PASSWORD)
+        .expect("checked")
+        .expect("locked");
+    assert_eq!(r.ctl.finish_master(run_elsewhere(job)), Ok(()));
+    assert!(!r.ctl.library_locked());
+    assert_eq!(r.secret().as_deref(), Some(SECRET));
+}
+
+#[test]
+fn a_refused_step_never_becomes_busy_and_an_open_library_has_nothing_to_derive() {
+    let mut r = rig(Tier::Pro);
+    assert_eq!(
+        r.ctl.begin_set_master_password("short", "short").err(),
+        Some(MasterProblem::TooShort)
+    );
+    assert_eq!(r.ctl.master_busy(), None);
+    assert!(
+        r.ctl
+            .begin_unlock_with_password("anything")
+            .expect("open already")
+            .is_none()
+    );
+    assert_eq!(r.ctl.master_busy(), None);
+}
+
+#[test]
+fn changing_and_removing_run_the_same_way() {
+    let mut r = with_password(Tier::Pro);
+    let job = r
+        .ctl
+        .begin_change_master_password(PASSWORD, "another long phrase", "another long phrase")
+        .expect("checked");
+    assert_eq!(job.op(), MasterOp::Change);
+    assert_eq!(r.ctl.finish_master(run_elsewhere(job)), Ok(()));
+    assert_eq!(r.toast(), Some(ToastMessage::MasterPasswordChanged));
+    let job = r
+        .ctl
+        .begin_remove_master_password("another long phrase")
+        .expect("checked");
+    assert_eq!(job.op(), MasterOp::Remove);
+    assert_eq!(r.ctl.finish_master(run_elsewhere(job)), Ok(()));
+    assert_eq!(r.ctl.master_password_state(), MasterState::NotSet);
+}
+
+#[test]
+fn a_step_that_never_comes_back_can_be_given_up() {
+    let mut r = rig(Tier::Pro);
+    let job = r
+        .ctl
+        .begin_set_master_password(PASSWORD, PASSWORD)
+        .expect("checked");
+    drop(job);
+    assert!(r.ctl.master_busy().is_some());
+    r.ctl.abort_master();
+    assert_eq!(r.ctl.master_busy(), None);
+    assert_eq!(r.ctl.master_password_state(), MasterState::NotSet);
 }
 
 // ---- Starting locked and the unlock prompt -----------------------------------------------------
@@ -583,19 +726,24 @@ fn an_editor_switched_to_sensitive_is_closed_by_the_lock_too() {
     assert!(!r.ctl.item_editor_open());
 }
 
-// ---- A change whose reopen fails ---------------------------------------------------------------
+// ---- A key store that goes away right after a change ------------------------------------------
+
+// The key is opened once, while the new record is made, and the library opens with that same key:
+// a key store that fails after its first unwrap cannot leave the library locked behind a change
+// the user just made.
 
 #[test]
-fn a_change_that_cannot_reopen_the_library_still_says_it_changed() {
+fn a_change_opens_the_library_with_the_key_it_already_derived() {
     let mut r = with_password(Tier::Pro).restart(Tier::Pro);
     let new = "marble orchard 77";
-    // One unwrap for the change itself, none left for opening the key after it.
     r.provider.fail_unwraps_after(Some(1));
     assert_eq!(r.ctl.change_master_password(PASSWORD, new, new), Ok(()));
-    assert_eq!(r.toast(), Some(ToastMessage::MasterPasswordChangedNotOpen));
+    assert_eq!(r.toast(), Some(ToastMessage::MasterPasswordChanged));
     assert_eq!(r.ctl.master_password_state(), MasterState::Set);
-    assert!(r.ctl.library_locked(), "still locked, and says so");
+    assert!(!r.ctl.library_locked(), "opened by the change itself");
+    assert_eq!(r.secret().as_deref(), Some(SECRET));
     r.provider.fail_unwraps_after(None);
+    let mut r = r.restart(Tier::Pro);
     assert_eq!(
         r.ctl.unlock_with_password(PASSWORD),
         Err(MasterProblem::WrongPassword),
@@ -608,12 +756,13 @@ fn a_change_that_cannot_reopen_the_library_still_says_it_changed() {
 }
 
 #[test]
-fn a_removal_that_cannot_reopen_the_library_still_says_it_removed() {
+fn a_removal_opens_the_library_with_the_key_it_already_derived() {
     let mut r = with_password(Tier::Pro).restart(Tier::Pro);
     r.provider.fail_unwraps_after(Some(1));
     assert_eq!(r.ctl.remove_master_password(PASSWORD), Ok(()));
-    assert_eq!(r.toast(), Some(ToastMessage::MasterPasswordRemovedNotOpen));
+    assert_eq!(r.toast(), Some(ToastMessage::MasterPasswordRemoved));
     assert_eq!(r.ctl.master_password_state(), MasterState::NotSet);
+    assert!(!r.ctl.library_locked());
     assert!(!r.ctl.unlock_prompt_open(), "no password left to ask for");
     r.provider.fail_unwraps_after(None);
     let r = r.restart(Tier::Pro);

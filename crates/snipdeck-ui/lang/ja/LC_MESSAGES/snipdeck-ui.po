@@ -355,6 +355,9 @@ msgstr "完了"
 msgid "Duplicate"
 msgstr ""
 
+msgid "Duplicate the item"
+msgstr ""
+
 msgid "Edit"
 msgstr "編集"
 
@@ -1117,6 +1120,9 @@ msgstr "すべてのボード、リスト、スニペットを1つの .snipdeck 
 msgid "Saves the text on the clipboard as a new item in the list the panel shows."
 msgstr "クリップボードのテキストを、パネルに表示中のリストに新しいスニペットとして保存します。"
 
+msgid "Saving…"
+msgstr ""
+
 msgid "Scope"
 msgstr "範囲"
 
@@ -1445,6 +1451,9 @@ msgid "Unlock Snipdeck"
 msgstr ""
 
 msgid "Unlock your sensitive items"
+msgstr ""
+
+msgid "Unlocking…"
 msgstr ""
 
 msgid "Unlock…"
