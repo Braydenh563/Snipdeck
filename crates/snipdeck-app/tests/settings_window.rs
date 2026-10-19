@@ -1182,7 +1182,7 @@ fn every_warning() -> Vec<snipdeck_portable::Warning> {
         W::Truncated {
             reason: "too many entries".into(),
         },
-        W::Note("something else".into()),
+        W::Note("Something else happened.".into()),
     ];
     for w in &all {
         match w {
