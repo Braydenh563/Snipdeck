@@ -439,7 +439,6 @@ ui_tests! {
         assert_eq!(take(&log), ["tab:2"]);
     }
 
-    #[test]
     fn right_clicking_a_tab_asks_for_its_list_menu_and_the_tab_says_it_has_one() {
         let (ui, log) = start();
         let tab = find(&ui, "Code", AccessibleRole::Tab);
