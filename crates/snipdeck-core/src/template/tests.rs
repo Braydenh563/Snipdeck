@@ -303,6 +303,17 @@ fn reusing_a_name_for_a_different_prompt_is_an_error() {
     );
 }
 
+#[test]
+fn more_than_sixteen_distinct_prompts_is_an_error_but_a_reused_name_is_not() {
+    let many = |n: usize| (0..n).map(|i| format!("{{field:F{i}}}")).collect::<String>();
+    assert!(Template::parse(&many(16)).is_ok());
+    assert_eq!(
+        parse_err(&many(17)).kind,
+        TemplateErrorKind::TooManyPrompts { max: 16 }
+    );
+    assert!(Template::parse(&format!("{} {{field:F0}}", many(16))).is_ok());
+}
+
 // ---- entitlements --------------------------------------------------------------------
 
 #[test]
@@ -821,7 +832,13 @@ proptest! {
                 let unique: std::collections::BTreeSet<_> = names.iter().collect();
                 prop_assert_eq!(unique.len(), names.len());
             }
-            Err(e) => prop_assert!(matches!(e.kind, TemplateErrorKind::ConflictingPrompt { .. }), "{e}"),
+            Err(e) => prop_assert!(
+                matches!(
+                    e.kind,
+                    TemplateErrorKind::ConflictingPrompt { .. } | TemplateErrorKind::TooManyPrompts { .. }
+                ),
+                "{e}"
+            ),
         }
     }
 }

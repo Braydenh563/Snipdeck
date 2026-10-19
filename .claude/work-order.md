@@ -16,8 +16,8 @@ budget: owner at 40% weekly; own budget line 60%, stop line 65% (owner: wrap up 
 - [ ] Step 3a: Edge dock with reveal (owner 23:20 "Do both"): docked Panel collapses to a slim handle strip on its screen edge (vertical on left/right, horizontal on top/bottom), slides out on hover and/or click (Settings: trigger hover/click/both, hover delay, leave delay), collapses when the pointer leaves or after a paste; handle always on top, non-activating, keyboard via the Panel hotkey; edge remembered per monitor; Linux tests on an injected clock; Windows hit-test unverified until the owner runs it
 - [ ] Step 7b: Help & troubleshooting window
 - [x] Step 11a: security review items 1-11,13 (4e73f6d)
-- [ ] Step 11b: security review item 12 (Moved-event clamp, taskbar work area) after step 8
-- [ ] Step 11: PR4 review items 2,5,7,8,9,10,12 (14 done except deny m2-harness [!] CI edit)
+- [x] Step 11b: security review item 12 (Moved-event clamp, taskbar work area) (compile pending)
+- [x] Step 11: PR4 review items 2,5,7,8,9,10,12 (2 already fixed; compile pending) (14 done except deny m2-harness [!] CI edit)
 - [ ] Step 13a: de-slop pass over every window golden against DESIGN.md
 - [ ] Step 19: docs (README with real screenshots per now.md 02:55, user guide, CHANGELOG, HANDOVER rewrite)
 - [ ] Step 20: reviewer on the whole diff since main; fix findings

@@ -75,6 +75,12 @@ pub fn toast_text(message: &ToastMessage) -> String {
         ToastMessage::HotkeyInUse { chord } => {
             format!("{chord} is used by another app. Choose another in Settings.")
         }
+        ToastMessage::HotkeyInvalid { chord } => {
+            format!("{chord} can't be used as a shortcut. Choose another in Settings.")
+        }
+        ToastMessage::HotkeyUnavailable { chord } => format!(
+            "Shortcuts are unavailable, so {chord} is not active. Restart Snipdeck to try again."
+        ),
         ToastMessage::PanelHidden { chord: Some(chord) } => format!(
             "Snipdeck is still running. Press {chord} or click the tray icon to bring the panel back."
         ),
@@ -419,6 +425,12 @@ mod tests {
             ToastMessage::HotkeyInUse {
                 chord: "Ctrl+Alt+Space".into(),
             },
+            ToastMessage::HotkeyInvalid {
+                chord: "Ctrl+Alt+Space".into(),
+            },
+            ToastMessage::HotkeyUnavailable {
+                chord: "Ctrl+Alt+Space".into(),
+            },
             ToastMessage::Failed,
             ToastMessage::PanelHidden { chord: None },
             ToastMessage::SettingsNotSaved,
@@ -465,5 +477,13 @@ mod tests {
             })
             .starts_with("Ctrl+Alt+Space")
         );
+        let chord = String::from("Ctrl+Alt+Space");
+        assert!(
+            toast_text(&ToastMessage::HotkeyInvalid {
+                chord: chord.clone()
+            })
+            .contains("can't be used")
+        );
+        assert!(toast_text(&ToastMessage::HotkeyUnavailable { chord }).contains("unavailable"));
     }
 }

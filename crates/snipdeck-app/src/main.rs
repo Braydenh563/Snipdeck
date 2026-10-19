@@ -56,7 +56,7 @@ fn main() -> ExitCode {
     // First, so that a panic anywhere after this leaves a report (the data folder is told to the
     // hook once it is known).
     crash::install(Timestamp::now);
-    let args = match cli::parse(std::env::args().skip(1)) {
+    let args = match cli::parse(std::env::args_os().skip(1)) {
         Ok(args) => args,
         Err(e) => {
             eprintln!("snipdeck: {e}\n\n{}", cli::USAGE);
@@ -115,6 +115,10 @@ fn run(args: &Args) -> Result<(), String> {
             })
         },
     };
+    // Before any service thread starts: an early event handed to the UI thread needs a backend
+    // (without one `invoke_from_event_loop` fails and the event, e.g. a second launch's show
+    // request, would be lost).
+    select_backend()?;
     let host = match platform::connect(callbacks, !args.demo)? {
         Start::Run(host) => *host,
         Start::AlreadyRunning => return Ok(()),
@@ -136,7 +140,6 @@ fn run(args: &Args) -> Result<(), String> {
         eprintln!("snipdeck: {warning}");
     }
 
-    select_backend()?;
     // The interface language, before any window exists ("" follows the system).
     if let Err(e) = slint::select_bundled_translation(&settings.language) {
         eprintln!("snipdeck: no translation for {:?}: {e}", settings.language);
@@ -495,7 +498,8 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
     window
         .window()
         .on_winit_window_event(move |slint_window, event| {
-            if matches!(event, WindowEvent::Resized(_) | WindowEvent::Moved(_)) && armed.get() {
+            let moved = matches!(event, WindowEvent::Moved(_));
+            if (moved || matches!(event, WindowEvent::Resized(_))) && armed.get() {
                 // winit's own numbers: Slint has not seen this event yet.
                 let frame = slint_window.with_winit_window(|w| {
                     let (at, size) = (w.outer_position().ok()?, w.inner_size());
@@ -510,7 +514,11 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
                     ))
                 });
                 if let Some(Some((monitor, rect))) = frame {
-                    binding.frame_changed(&monitor, rect);
+                    if moved {
+                        binding.frame_moved(&monitor, rect);
+                    } else {
+                        binding.frame_changed(&monitor, rect);
+                    }
                 }
             }
             if !tracing {
@@ -687,8 +695,8 @@ fn with_binding(f: impl FnOnce(&Binding)) {
 
 /// Runs `f` with the binding on the UI thread, whichever thread asks.
 fn on_ui_thread(f: impl FnOnce(&Binding) + Send + 'static) {
-    // Fails when the event loop has already ended (at shutdown: nothing to deliver to) or when
-    // no window backend is selected yet (an event from a service that started early).
+    // Fails when the event loop has already ended (at shutdown: nothing to deliver to); the
+    // backend is selected before the services start.
     if let Err(e) = slint::invoke_from_event_loop(move || with_binding(f)) {
         snipdeck_app::trace!("event for the UI thread dropped: {e}");
     }
