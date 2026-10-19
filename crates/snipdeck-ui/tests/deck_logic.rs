@@ -258,6 +258,75 @@ fn enter_uses_shift_enter_copies_the_menu_key_opens_the_context_menu() {
     assert_eq!(ui.get_last_action(), "");
 }
 
+/// The "More" buttons inside the whole gallery (the query reports one more than once).
+fn more_buttons(ui: &DeckGallery) -> Vec<ElementHandle> {
+    let mut seen = Vec::new();
+    ElementQuery::from_root(ui)
+        .match_descendants()
+        .match_accessible_role(AccessibleRole::Button)
+        .find_all()
+        .into_iter()
+        .filter(|b| b.accessible_label().is_some_and(|l| l == "More"))
+        .filter(|b| {
+            let (p, s) = (b.absolute_position(), b.size());
+            let key = (p.x.to_bits(), p.y.to_bits(), s.width.to_bits());
+            let fresh = !seen.contains(&key);
+            seen.push(key);
+            fresh
+        })
+        .collect()
+}
+
+fn a_hovered_card_shows_a_more_button_that_opens_its_menu_and_a_click_on_it_is_not_a_use() {
+    let ui = gallery();
+    assert!(
+        more_buttons(&ui).is_empty(),
+        "nothing is hovered or focused"
+    );
+
+    let card = &trio(&ui, "Thanks, received")[COMPACT];
+    let (origin, size) = (card.absolute_position(), card.size());
+    ui.window().dispatch_event(WindowEvent::PointerMoved {
+        position: centre(card),
+    });
+    let buttons = more_buttons(&ui);
+    assert_eq!(
+        buttons.len(),
+        1,
+        "only the hovered card has one: {:?}",
+        buttons
+            .iter()
+            .map(|b| (b.absolute_position(), b.size()))
+            .collect::<Vec<_>>()
+    );
+    let more = &buttons[0];
+    let (p, s) = (more.absolute_position(), more.size());
+    assert!(s.width >= 24.0 && s.height >= 24.0, "target size {s:?}");
+    assert!(
+        p.x >= origin.x && p.x + s.width <= origin.x + size.width,
+        "inside the row"
+    );
+
+    ui.set_last_action("".into());
+    let at = centre(more);
+    press(&ui, at, PointerEventButton::Left);
+    release(&ui, at, PointerEventButton::Left);
+    assert_eq!(ui.get_last_action(), "menu");
+    assert_eq!(ui.get_actions(), 1, "one menu request and no use");
+
+    // The default action (assistive technology) asks for the menu too.
+    ui.set_last_action("".into());
+    more.invoke_accessible_default_action();
+    assert_eq!(ui.get_last_action(), "menu");
+
+    ui.window().dispatch_event(WindowEvent::PointerExited);
+    assert!(more_buttons(&ui).is_empty(), "gone with the hover");
+
+    // Keyboard focus shows it as well.
+    tab_to(&ui, 1);
+    assert_eq!(more_buttons(&ui).len(), 1, "the focused card shows it");
+}
+
 fn press_and_hold_reveals_a_sensitive_item_without_using_it() {
     let ui = gallery();
     let card = &trio(&ui, "Server password")[COMPACT];
@@ -496,6 +565,7 @@ fn deck_behaviour() {
     click_uses_shift_click_copies_right_click_asks_for_the_menu();
     a_release_outside_the_card_is_not_a_use();
     enter_uses_shift_enter_copies_the_menu_key_opens_the_context_menu();
+    a_hovered_card_shows_a_more_button_that_opens_its_menu_and_a_click_on_it_is_not_a_use();
     press_and_hold_reveals_a_sensitive_item_without_using_it();
     holding_space_on_a_focused_sensitive_card_reveals_it();
     the_use_label_shows_on_hover_and_keyboard_focus_only();

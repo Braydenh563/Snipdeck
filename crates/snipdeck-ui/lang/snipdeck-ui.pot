@@ -858,7 +858,7 @@ msgstr ""
 msgid "Microsoft Store"
 msgstr ""
 
-#: ui/panel.slint:676
+#: ui/components/item-card.slint:614 ui/panel.slint:676
 msgid "More"
 msgstr ""
 

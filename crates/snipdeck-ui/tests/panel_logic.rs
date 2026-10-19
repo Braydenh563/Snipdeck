@@ -1051,6 +1051,27 @@ ui_tests! {
         assert_eq!(take(&hovers), ["panel-hover:false"]);
     }
 
+    fn moving_the_pointer_from_the_more_button_onto_its_open_menu_keeps_the_pointer_over_the_panel() {
+        let (ui, log) = start();
+        let hovers: Log = Rc::default();
+        {
+            let hovers = hovers.clone();
+            ui.on_panel_hovered(move |on| hovers.borrow_mut().push(format!("panel-hover:{on}")));
+        }
+        let kebab = find(&ui, "More", AccessibleRole::Button);
+        move_to(&ui, centre(&kebab));
+        ui.set_app_menu_open(true);
+        settle();
+        let menu = find(&ui, "Panel menu", AccessibleRole::List);
+        for item in all(&ui, "Settings", AccessibleRole::ListItem) {
+            move_to(&ui, centre(&item));
+        }
+        move_to(&ui, centre(&menu));
+        assert!(ui.get_app_menu_open(), "the menu stays open under the pointer");
+        assert_eq!(take(&hovers), ["panel-hover:true"], "never reported as left");
+        assert_eq!(take(&log), [] as [String; 0], "no dismissal from hovering");
+    }
+
     fn a_collapsed_panel_is_one_named_handle_that_reports_hover_and_click() {
         let (ui, log) = start();
         let row_at = centre(&rows(&ui).into_iter().next().expect("a row"));

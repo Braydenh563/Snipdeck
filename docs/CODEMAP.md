@@ -435,14 +435,14 @@ dock_collapsed | crates/snipdeck-app/src/controller/dock_ctl.rs:52
 dock_needs_tick | crates/snipdeck-app/src/controller/dock_ctl.rs:59
 stored_geometry | crates/snipdeck-app/src/controller/dock_ctl.rs:63
 dock_event | crates/snipdeck-app/src/controller/dock_ctl.rs:72
-dock_after_use | crates/snipdeck-app/src/controller/dock_ctl.rs:81
-dock_act | crates/snipdeck-app/src/controller/dock_ctl.rs:89
-dock_place | crates/snipdeck-app/src/controller/dock_ctl.rs:102
-dock_resync | crates/snipdeck-app/src/controller/dock_ctl.rs:127
-open_frame | crates/snipdeck-app/src/controller/dock_ctl.rs:136
-dock_to | crates/snipdeck-app/src/controller/dock_ctl.rs:161
-dock_toggle | crates/snipdeck-app/src/controller/dock_ctl.rs:180
-take_pending | crates/snipdeck-app/src/controller/dock_ctl.rs:195
+dock_after_use | crates/snipdeck-app/src/controller/dock_ctl.rs:86
+dock_act | crates/snipdeck-app/src/controller/dock_ctl.rs:94
+dock_place | crates/snipdeck-app/src/controller/dock_ctl.rs:107
+dock_resync | crates/snipdeck-app/src/controller/dock_ctl.rs:132
+open_frame | crates/snipdeck-app/src/controller/dock_ctl.rs:141
+dock_to | crates/snipdeck-app/src/controller/dock_ctl.rs:166
+dock_toggle | crates/snipdeck-app/src/controller/dock_ctl.rs:185
+take_pending | crates/snipdeck-app/src/controller/dock_ctl.rs:200
 
 ### crates/snipdeck-app/src/controller/editor_ctl.rs
 
@@ -2079,22 +2079,29 @@ the_file_sink_writes_the_settings_file_after_the_quiet_time | crates/snipdeck-ap
 
 ### crates/snipdeck-app/src/starter.rs
 
-STARTER_BOARD | crates/snipdeck-app/src/starter.rs:10
-STARTER_LIST | crates/snipdeck-app/src/starter.rs:12
-NEW_LIST | crates/snipdeck-app/src/starter.rs:14
-NEW_BOARD | crates/snipdeck-app/src/starter.rs:16
-numbered_name | crates/snipdeck-app/src/starter.rs:22
-ensure_board | crates/snipdeck-app/src/starter.rs:36
-make_starter | crates/snipdeck-app/src/starter.rs:47
-add_list | crates/snipdeck-app/src/starter.rs:64
-tests | crates/snipdeck-app/src/starter.rs:98
-now | crates/snipdeck-app/src/starter.rs:104
-names | crates/snipdeck-app/src/starter.rs:108
-a_numbered_name_takes_the_first_free_number | crates/snipdeck-app/src/starter.rs:118
-an_empty_library_gets_one_board_with_one_list_once | crates/snipdeck-app/src/starter.rs:128
-a_library_with_a_board_is_left_alone | crates/snipdeck-app/src/starter.rs:142
-new_lists_are_numbered_and_go_last | crates/snipdeck-app/src/starter.rs:150
-adding_a_list_without_a_board_makes_the_starter_board | crates/snipdeck-app/src/starter.rs:162
+STARTER_BOARD | crates/snipdeck-app/src/starter.rs:13
+STARTER_LIST | crates/snipdeck-app/src/starter.rs:15
+GETTING_STARTED_LIST | crates/snipdeck-app/src/starter.rs:17
+GETTING_STARTED | crates/snipdeck-app/src/starter.rs:19
+NEW_LIST | crates/snipdeck-app/src/starter.rs:42
+NEW_BOARD | crates/snipdeck-app/src/starter.rs:44
+numbered_name | crates/snipdeck-app/src/starter.rs:50
+ensure_board | crates/snipdeck-app/src/starter.rs:64
+ensure_first_run | crates/snipdeck-app/src/starter.rs:81
+library_is_untouched | crates/snipdeck-app/src/starter.rs:109
+make_starter | crates/snipdeck-app/src/starter.rs:123
+add_list | crates/snipdeck-app/src/starter.rs:140
+tests | crates/snipdeck-app/src/starter.rs:174
+now | crates/snipdeck-app/src/starter.rs:180
+names | crates/snipdeck-app/src/starter.rs:184
+a_numbered_name_takes_the_first_free_number | crates/snipdeck-app/src/starter.rs:194
+an_empty_library_gets_one_board_with_one_list_once | crates/snipdeck-app/src/starter.rs:204
+a_first_run_gets_a_getting_started_list_in_front_once | crates/snipdeck-app/src/starter.rs:218
+a_library_with_a_board_gets_no_getting_started_list | crates/snipdeck-app/src/starter.rs:245
+the_getting_started_cards_do_not_count_as_the_users_library | crates/snipdeck-app/src/starter.rs:253
+a_library_with_a_board_is_left_alone | crates/snipdeck-app/src/starter.rs:276
+new_lists_are_numbered_and_go_last | crates/snipdeck-app/src/starter.rs:284
+adding_a_list_without_a_board_makes_the_starter_board | crates/snipdeck-app/src/starter.rs:296
 
 ### crates/snipdeck-app/src/toast.rs
 
@@ -5087,7 +5094,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/cli.rs` (inline) | 6 |
 | `crates/snipdeck-app/src/commands.rs` (inline) | 9 |
 | `crates/snipdeck-app/src/controller.rs` (inline) | 106 |
-| `crates/snipdeck-app/src/controller/tests/dock.rs` | 26 |
+| `crates/snipdeck-app/src/controller/tests/dock.rs` | 27 |
 | `crates/snipdeck-app/src/controller/tests/onboarding.rs` | 7 |
 | `crates/snipdeck-app/src/crash.rs` (inline) | 10 |
 | `crates/snipdeck-app/src/demo.rs` (inline) | 3 |
@@ -5117,7 +5124,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/settings.rs` (inline) | 31 |
 | `crates/snipdeck-app/src/settings_binding.rs` (inline) | 12 |
 | `crates/snipdeck-app/src/settings_store.rs` (inline) | 14 |
-| `crates/snipdeck-app/src/starter.rs` (inline) | 5 |
+| `crates/snipdeck-app/src/starter.rs` (inline) | 8 |
 | `crates/snipdeck-app/src/toast.rs` (inline) | 7 |
 | `crates/snipdeck-app/src/tour.rs` (inline) | 1 |
 | `crates/snipdeck-app/src/trace.rs` (inline) | 2 |
