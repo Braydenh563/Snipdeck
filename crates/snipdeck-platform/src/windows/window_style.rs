@@ -23,10 +23,10 @@ use std::ffi::c_void;
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::UI::Shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass};
 use windows::Win32::UI::WindowsAndMessaging::{
-    GWL_EXSTYLE, GetWindowLongPtrW, HWND_NOTOPMOST, HWND_TOPMOST, MA_NOACTIVATE, STYLESTRUCT,
-    SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SetWindowLongPtrW,
-    SetWindowPos, WM_MOUSEACTIVATE, WM_NCDESTROY, WM_STYLECHANGING, WS_EX_APPWINDOW,
-    WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
+    GWL_EXSTYLE, GetForegroundWindow, GetWindowLongPtrW, HWND_NOTOPMOST, HWND_TOPMOST,
+    MA_NOACTIVATE, STYLESTRUCT, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE,
+    SWP_NOZORDER, SetWindowLongPtrW, SetWindowPos, WM_MOUSEACTIVATE, WM_NCDESTROY,
+    WM_STYLECHANGING, WS_EX_APPWINDOW, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST,
 };
 
 use crate::win_logic::{self, ZStep, panel_ex_style};
@@ -167,6 +167,41 @@ pub fn raise_without_activating(hwnd: isize) -> bool {
         }
     }
     true
+}
+
+/// Puts the window `hwnd` just behind the foreground window, without activating it or moving it.
+///
+/// winit leaves the topmost band with `SetWindowPos(HWND_NOTOPMOST)` and no `SWP_NOZORDER`, which
+/// also raises the window above every non-topmost window: a pinned Panel that steps down for
+/// Main would land on top of it. Inserting it after the foreground window puts it back behind.
+/// Returns `false` (and changes nothing) for a null handle, when no window or the window itself
+/// is in the foreground, or when the foreground window is topmost (inserting after a topmost
+/// window would make this one topmost again).
+pub fn place_behind_foreground(hwnd: isize) -> bool {
+    if hwnd == 0 {
+        return false;
+    }
+    let hwnd = HWND(hwnd as *mut c_void);
+    // SAFETY: plain calls on window handles; a stale handle makes them fail harmlessly.
+    unsafe {
+        let front = GetForegroundWindow();
+        if front.0.is_null() || front == hwnd {
+            return false;
+        }
+        if ex_style_bits(GetWindowLongPtrW(front, GWL_EXSTYLE)) & WS_EX_TOPMOST.0 != 0 {
+            return false;
+        }
+        SetWindowPos(
+            hwnd,
+            Some(front),
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+        )
+        .is_ok()
+    }
 }
 
 /// The 32 style bits of a `GetWindowLongPtrW` result.
