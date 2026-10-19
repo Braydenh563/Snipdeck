@@ -15,6 +15,7 @@ Start with the [project README](../README.md) for status. Items below are groupe
 |---|---|
 | [`SPEC.md`](SPEC.md) | The v1 product specification: features, Free vs Supporter, performance budget |
 | [`../DESIGN.md`](../DESIGN.md) | Design language: colour, type, components, layout, motion |
+| [`PERF.md`](PERF.md) | Performance budgets, what the search index caches and when, how to measure speed, binary size and idle RAM |
 | [`PLAN.md`](PLAN.md) | Milestones M1-M6, verification labels, Windows gates, risks |
 | [`HANDOVER.md`](HANDOVER.md) | Current state, open gaps, next steps (for whoever works on it next) |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | What changed |

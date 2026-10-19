@@ -1,0 +1,193 @@
+//! The Recent inbox through the controller: off by default, what a clipboard change does with
+//! the opt-in, pause, and promoting to a list. The clock is the fixed one the other controller
+//! tests use.
+
+use super::*;
+use crate::recent::{ClipboardObservation, DEFAULT_MAX_ENTRIES};
+
+fn on() -> Settings {
+    Settings {
+        recent_history: true,
+        no_history_apps: vec!["keepass.exe".to_owned()],
+        ..Settings::default()
+    }
+}
+
+fn copied(text: &str) -> ClipboardObservation {
+    ClipboardObservation {
+        text: Some(text.to_owned()),
+        source_app: Some("notepad.exe".to_owned()),
+        ..ClipboardObservation::default()
+    }
+}
+
+#[test]
+fn nothing_is_kept_until_the_user_opts_in() {
+    let mut w = world();
+    w.ctl.on_clipboard_change(&copied("secret plan"));
+    assert_eq!(w.ctl.recent_entries().len(), 0);
+    assert_eq!(w.ctl.store().recent().expect("recent").len(), 0);
+}
+
+#[test]
+fn with_the_opt_in_a_copy_is_kept_and_a_recopy_moves_to_the_top() {
+    let mut w = world_with(None, on());
+    w.ctl.on_clipboard_change(&copied("one"));
+    w.clock.set(at("2026-10-17T10:31:00Z"));
+    w.ctl.on_clipboard_change(&copied("two"));
+    w.clock.set(at("2026-10-17T10:32:00Z"));
+    w.ctl.on_clipboard_change(&copied("one"));
+    let texts: Vec<_> = w.ctl.recent_entries().into_iter().map(|e| e.text).collect();
+    assert_eq!(texts, ["one", "two"]);
+}
+
+#[test]
+fn pause_stops_collecting_until_resumed() {
+    let mut w = world_with(None, on());
+    w.ctl.set_recent_paused(true);
+    w.ctl.on_clipboard_change(&copied("while paused"));
+    assert_eq!(w.ctl.recent_entries().len(), 0);
+    w.ctl.set_recent_paused(false);
+    w.ctl.on_clipboard_change(&copied("after"));
+    assert_eq!(w.ctl.recent_entries().len(), 1);
+}
+
+#[test]
+fn an_excluded_app_and_an_exclusion_format_are_never_kept() {
+    let mut w = world_with(None, on());
+    let mut from_keepass = copied("hunter2");
+    from_keepass.source_app = Some("KeePass.exe".to_owned());
+    w.ctl.on_clipboard_change(&from_keepass);
+    let mut flagged = copied("token");
+    flagged.excluded_format = true;
+    w.ctl.on_clipboard_change(&flagged);
+    assert_eq!(w.ctl.recent_entries().len(), 0);
+}
+
+#[test]
+fn switching_the_inbox_off_hides_what_was_kept() {
+    let mut w = world_with(None, on());
+    w.ctl.on_clipboard_change(&copied("kept"));
+    assert_eq!(w.ctl.recent_entries().len(), 1);
+    w.ctl.update_settings(|s| s.recent_history = false);
+    assert_eq!(w.ctl.recent_entries().len(), 0);
+}
+
+#[test]
+fn the_cap_holds_at_the_default() {
+    let mut w = world_with(None, on());
+    for i in 0..=DEFAULT_MAX_ENTRIES {
+        w.ctl.on_clipboard_change(&copied(&format!("t{i}")));
+    }
+    assert_eq!(w.ctl.recent_entries().len(), DEFAULT_MAX_ENTRIES);
+}
+
+#[test]
+fn promoting_saves_an_item_at_the_top_of_the_list_and_keeps_the_entry() {
+    let mut w = world_with(None, on());
+    w.ctl.on_clipboard_change(&copied("promote me"));
+    let id = w.ctl.recent_entries()[0].id;
+    let before = w.ctl.store().items(w.links_list).expect("items").len();
+    w.ctl.recent_promote(id, w.links_list);
+    let items = w.ctl.store().items(w.links_list).expect("items");
+    assert_eq!(items.len(), before + 1);
+    assert_eq!(items[0].preview, "promote me");
+    assert_eq!(w.ctl.recent_entries().len(), 1);
+}
+
+#[test]
+fn delete_and_clear_remove_entries() {
+    let mut w = world_with(None, on());
+    w.ctl.on_clipboard_change(&copied("a"));
+    w.ctl.on_clipboard_change(&copied("b"));
+    let first = w.ctl.recent_entries()[0].id;
+    w.ctl.recent_delete(first);
+    assert_eq!(w.ctl.recent_entries().len(), 1);
+    assert_eq!(w.ctl.recent_clear(), 1);
+    assert_eq!(w.ctl.recent_entries().len(), 0);
+}
+
+#[test]
+fn the_listener_gate_follows_the_opt_in_and_the_pause() {
+    use snipdeck_platform::clipboard_watch::WatchGate;
+    let gate = WatchGate::new();
+    let mut w = world();
+    w.ctl.set_recent_gate(gate.clone());
+    assert!(!gate.is_open(), "off by default: nothing is read");
+    w.ctl.update_settings(|s| s.recent_history = true);
+    assert!(gate.is_open());
+    w.ctl.set_recent_paused(true);
+    assert!(!gate.is_open());
+    w.ctl.set_recent_paused(false);
+    assert!(gate.is_open());
+    w.ctl.update_settings(|s| s.recent_history = false);
+    assert!(!gate.is_open());
+}
+
+#[test]
+fn the_view_has_no_recent_part_until_the_opt_in() {
+    let w = world();
+    assert!(w.ctl.view().recent.is_none());
+    let w = world_with(None, on());
+    let recent = w.ctl.view().recent.expect("on");
+    assert!(!recent.open);
+    assert_eq!(recent.rows.len(), 0);
+}
+
+#[test]
+fn the_view_lists_entries_newest_first_with_the_lists_to_save_to() {
+    let mut w = world_with(None, on());
+    w.ctl.on_clipboard_change(&copied("alpha"));
+    w.clock.set(at("2026-10-17T10:35:00Z"));
+    w.ctl.on_clipboard_change(&copied("beta"));
+    w.clock.set(at("2026-10-17T10:40:00Z"));
+    let recent = w.ctl.view().recent.expect("on");
+    let rows: Vec<_> = recent
+        .rows
+        .iter()
+        .map(|r| (r.preview.as_str(), r.age_minutes))
+        .collect();
+    assert_eq!(rows, [("beta", 5), ("alpha", 10)]);
+    assert_eq!(recent.rows[0].app, "Notepad");
+    let targets: Vec<_> = recent.targets.iter().map(|t| t.label.as_str()).collect();
+    assert_eq!(targets, ["Replies", "Links"]);
+}
+
+#[test]
+fn the_search_box_narrows_the_recent_list_and_rows_act_on_what_is_shown() {
+    let mut w = world_with(None, on());
+    w.ctl.on_clipboard_change(&copied("alpha one"));
+    w.ctl.on_clipboard_change(&copied("beta two"));
+    w.ctl.set_query("beta");
+    let recent = w.ctl.view().recent.expect("on");
+    assert_eq!(recent.rows.len(), 1);
+    // Row 0 of the narrowed list is "beta two": saving it saves that text.
+    w.ctl.recent_promote_at(0, 1);
+    let items = w.ctl.store().items(w.links_list).expect("items");
+    assert_eq!(items[0].preview, "beta two");
+}
+
+#[test]
+fn clicking_an_entry_puts_its_text_on_the_clipboard_and_deleting_removes_it() {
+    let mut w = world_with(None, on());
+    w.ctl.on_clipboard_change(&copied("copy me"));
+    w.ctl.set_recent_open(true);
+    assert!(w.ctl.view().recent.expect("on").open);
+    w.ctl.recent_copy_at(0);
+    let written = &w.ctl.services().clipboard.written;
+    assert_eq!(written.len(), 1);
+    w.ctl.recent_delete_at(0);
+    assert_eq!(w.ctl.recent_entries().len(), 0);
+    // Out-of-range rows do nothing.
+    w.ctl.recent_copy_at(7);
+    w.ctl.recent_delete_at(7);
+    w.ctl.recent_promote_at(7, 0);
+}
+
+#[test]
+fn the_clock_tab_cannot_open_while_history_is_off() {
+    let mut w = world();
+    w.ctl.set_recent_open(true);
+    w.ctl.update_settings(|s| s.recent_history = true);
+    assert!(!w.ctl.view().recent.expect("on").open);
+}

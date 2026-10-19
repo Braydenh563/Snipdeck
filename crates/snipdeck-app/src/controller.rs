@@ -18,8 +18,8 @@ use snipdeck_platform::{
     tray::TrayEvent,
 };
 use snipdeck_store::{
-    Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, Store, TagRepo, TrashRepo, Trashable,
-    crypto::KeyRing,
+    Batch, BlobStore, BoardRepo, ItemRepo, ListRepo, RecentRepo, Store, TagRepo, TrashRepo,
+    Trashable, crypto::KeyRing,
 };
 
 mod commands_ctl;
@@ -29,11 +29,13 @@ mod lock_ctl;
 mod main_ctl;
 mod onboarding_ctl;
 mod panel;
+mod recent_ctl;
 mod settings_ctl;
 
 pub use lock_ctl::{MasterProblem, MasterState};
 pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameError};
 pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry};
+pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 
 use crate::{
     accent::Accent,
@@ -75,7 +77,9 @@ pub const TOAST_EXIT: Duration = Duration::from_millis(90);
 
 /// What the controller needs from the library: every repository trait in one bound, and a way
 /// to make several writes land together (or not at all).
-pub trait Library: BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + BlobStore {
+pub trait Library:
+    BoardRepo + ListRepo + ItemRepo + TagRepo + TrashRepo + BlobStore + RecentRepo
+{
     /// Runs `f` in one store transaction: what it does through the [`Batch`] commits together
     /// when `f` returns `Ok`, and none of it happens when it returns `Err`.
     ///
@@ -439,6 +443,8 @@ pub struct View {
     pub picker: Option<PickerView>,
     /// The template fill form, while it is open.
     pub fill: Option<FillView>,
+    /// The Recent inbox (clock tab), while it is on in the settings.
+    pub recent: Option<crate::recent::RecentView>,
 }
 
 /// What pressing Undo on the toast `seq` brings back from the Trash.
@@ -475,6 +481,8 @@ pub struct Controller<S, C, K, T> {
     /// so the secret does not sit in memory for the wait.
     clipboard_clear: Option<(Timestamp, ClipboardDigest)>,
     model: PanelModel,
+    /// The search index shared by the Panel and the Picker, rebuilt only after a write.
+    index_cache: crate::index_cache::IndexCache,
     settings: Settings,
     entitlements: Entitlements,
     visible: bool,
@@ -536,6 +544,8 @@ pub struct Controller<S, C, K, T> {
     pending: Vec<Effect>,
     /// The master password: whether one is set, whether its prompt is open, the idle clock.
     lock: lock_ctl::LockState,
+    /// Switches the clipboard listener of the Recent inbox (see `recent_ctl.rs`).
+    recent_gate: Option<snipdeck_platform::clipboard_watch::WatchGate>,
 }
 
 /// Opens the folder of the crash reports in the file manager.
@@ -557,12 +567,17 @@ enum PanelMenu {
 
 /// Facts about the running app that are not settings and not on screen.
 #[derive(Debug, Default, Clone, Copy)]
+#[allow(clippy::struct_excessive_bools, reason = "independent session flags")]
 struct Session {
     /// A real tray icon is in the notification area now (from `TrayEvent::IconPresent`):
     /// closing the Panel may hide it.
     tray_available: bool,
     /// "Pause hotkeys" is on.
     hotkeys_paused: bool,
+    /// "Pause history" is on: the Recent inbox collects nothing until Snipdeck restarts.
+    history_paused: bool,
+    /// The Panel's clock tab is the one selected.
+    recent_open: bool,
     /// The last settings save failed and the user was told.
     save_failed: bool,
     /// The welcome tour's step while it is open.
@@ -598,7 +613,8 @@ where
         settings: Settings,
         entitlements: Entitlements,
     ) -> snipdeck_store::Result<Self> {
-        let mut model = PanelModel::load(&store, None, None)?;
+        let index_cache = crate::index_cache::IndexCache::new();
+        let mut model = PanelModel::load_cached(&store, None, None, &index_cache)?;
         model.set_policy(policy_of(&settings));
         model.set_target(target.current());
         let shown_at = clock.now();
@@ -610,6 +626,7 @@ where
             tz: TimeZone::system(),
             clipboard_clear: None,
             model,
+            index_cache,
             settings,
             entitlements,
             visible: true,
@@ -646,6 +663,7 @@ where
             drag_started: false,
             pending: Vec::new(),
             lock: lock_ctl::LockState::new(shown_at),
+            recent_gate: None,
         })
     }
 
@@ -758,6 +776,7 @@ where
                     masked,
                 }
             }),
+            recent: self.recent_view(),
         }
     }
 
@@ -1008,6 +1027,7 @@ where
             saver.changed(&self.settings, now);
         }
         self.dock_resync();
+        self.sync_recent_gate();
     }
 
     /// The Main window was moved, resized, maximised or restored: remembers where it is, to
@@ -1190,7 +1210,7 @@ where
     pub fn open_picker(&mut self) {
         self.fill = None;
         self.on_target_changed();
-        match PickerModel::load(&self.store, self.model.board()) {
+        match PickerModel::load_cached(&self.store, self.model.board(), &self.index_cache) {
             Ok(picker) => self.picker = Some(picker),
             Err(_) => self.show_toast(failed()),
         }
@@ -1751,6 +1771,7 @@ mod tests {
 
     mod dock;
     mod onboarding;
+    mod recent;
 
     type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 

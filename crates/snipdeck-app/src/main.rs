@@ -136,6 +136,7 @@ fn run(args: &Args) -> Result<(), String> {
         on_second: Box::new(|| on_ui_thread(Binding::show)),
         on_target_changed: Box::new(|| with_binding(Binding::target_changed)),
         on_tray: Box::new(|event| on_ui_thread(move |b| b.tray(event))),
+        on_clipboard_change: Box::new(|change| on_ui_thread(move |b| b.clipboard_changed(change))),
         on_look_changed: {
             let look = Arc::clone(&look);
             // Read on the UI thread: the value is fresher than the one the watcher saw.
@@ -163,6 +164,7 @@ fn run(args: &Args) -> Result<(), String> {
         attach_panel,
         popups,
         tray,
+        recent_gate,
         warnings,
         keep_alive: _keep_alive,
     } = host;
@@ -197,6 +199,8 @@ fn run(args: &Args) -> Result<(), String> {
     {
         let mut controller = controller.borrow_mut();
         controller.set_system_look(look.read());
+        controller.set_recent_gate(recent_gate);
+        controller.prune_recent();
         if let Some(saver) = saver {
             controller.set_settings_saver(saver);
         }

@@ -81,6 +81,8 @@ struct FakeHost {
     /// The links the page asked to open.
     urls: RefCell<Vec<String>>,
     documents: RefCell<Option<PathBuf>>,
+    /// What the import dialog answers, once.
+    import_pick: RefCell<Option<PathBuf>>,
 }
 
 impl SettingsHost for FakeHost {
@@ -112,6 +114,14 @@ impl SettingsHost for FakeHost {
 
     fn documents_folder(&self) -> Option<PathBuf> {
         self.documents.borrow().clone()
+    }
+
+    fn pick_import(
+        &self,
+        _kind: snipdeck_app::controller::ImportKind,
+        _owner: Option<isize>,
+    ) -> Option<PathBuf> {
+        self.import_pick.borrow_mut().take()
     }
 }
 
@@ -209,10 +219,11 @@ impl Rig {
 // ---- Every setting is written after the quiet time -----------------------------------------
 
 #[test]
+#[allow(clippy::too_many_lines, reason = "one table of every toggle")]
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
-        let cases: [Case; 14] = [
+        let cases: [Case; 15] = [
             (
                 "theme",
                 |r| r.ui.invoke_theme_chosen(2),
@@ -242,6 +253,11 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
                 "hide the panel on blur",
                 |r| r.ui.invoke_panel_hide_on_blur_toggled(false),
                 |s| !s.panel_hide_on_blur,
+            ),
+            (
+                "keep a Recent inbox",
+                |r| r.ui.invoke_recent_history_toggled(true),
+                |s| s.recent_history,
             ),
             (
                 "backups to keep",
@@ -862,6 +878,17 @@ fn restoring_a_backup_round_trips_the_demo_library() {
         );
         assert_eq!(b.ctl.borrow().store().boards().unwrap().len(), 0);
         b.ui.invoke_backup_restore_requested(0);
+        // Restore shows the preview first and writes nothing yet.
+        assert!(b.ui.get_import_open());
+        assert_eq!(b.ui.get_import_confirm_label(), "Restore");
+        assert_eq!(usize::try_from(b.ui.get_import_items()), Ok(plain.len()));
+        assert!(b.ui.get_import_boards() >= 2);
+        assert_eq!(b.ui.get_import_duplicates(), 0);
+        assert!(!b.ui.get_import_blocked());
+        assert_eq!(b.ctl.borrow().store().boards().unwrap().len(), 0);
+        assert_eq!(b.ui.get_toast_text(), "");
+        b.ui.invoke_import_confirmed();
+        assert!(!b.ui.get_import_open());
         assert_eq!(
             b.ui.get_toast_text(),
             format!("Restored {} items from the backup", plain.len())
@@ -876,6 +903,13 @@ fn restoring_a_backup_round_trips_the_demo_library() {
 
         // Restoring over an intact library adds no item twice.
         b.ui.invoke_backup_restore_requested(0);
+        assert!(b.ui.get_import_open());
+        assert_eq!(b.ui.get_import_items(), 0);
+        assert_eq!(
+            usize::try_from(b.ui.get_import_duplicates()),
+            Ok(plain.len())
+        );
+        b.ui.invoke_import_confirmed();
         assert_eq!(
             b.ui.get_toast_text(),
             "Nothing to restore: your library already has everything in that backup."
@@ -1151,6 +1185,162 @@ fn the_main_windows_settings_button_opens_the_page_once_and_shows_it_again() {
     });
 }
 
+// ---- Import ---------------------------------------------------------------------------------
+
+#[test]
+fn import_shows_a_preview_first_and_writes_only_when_confirmed() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            Store::open_in_memory().unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            true,
+        );
+        let folder = r.dir.path().join("notes");
+        std::fs::create_dir_all(&folder).unwrap();
+        for i in 0..3 {
+            std::fs::write(folder.join(format!("n{i}.txt")), format!("note {i}")).unwrap();
+        }
+        std::fs::write(folder.join("empty.txt"), "").unwrap();
+
+        // Cancelling the dialog does nothing.
+        r.ui.invoke_import_source_chosen(3);
+        assert!(!r.ui.get_import_open());
+
+        *r.host.import_pick.borrow_mut() = Some(folder.clone());
+        r.ui.invoke_import_source_chosen(3);
+        assert!(r.ui.get_import_open());
+        assert_eq!(r.ui.get_import_title(), "Import from notes");
+        assert_eq!(r.ui.get_import_confirm_label(), "Import");
+        assert_eq!(r.ui.get_import_items(), 3);
+        assert_eq!(r.ui.get_import_lists(), 1);
+        assert_eq!(r.ui.get_import_problem(), "");
+        assert!(
+            r.ui.get_import_warnings().row_count() >= 1,
+            "the empty file is listed as not imported"
+        );
+        assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 0);
+
+        // Cancel closes it and still writes nothing.
+        r.ui.invoke_import_cancelled();
+        assert!(!r.ui.get_import_open());
+        assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 0);
+
+        *r.host.import_pick.borrow_mut() = Some(folder);
+        r.ui.invoke_import_source_chosen(3);
+        r.ui.invoke_import_confirmed();
+        assert!(!r.ui.get_import_open());
+        assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 3);
+        assert_eq!(r.ui.get_toast_text(), "Imported 3 items");
+    });
+}
+
+#[test]
+fn a_file_that_cannot_be_imported_shows_a_problem_and_nothing_to_confirm() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            Store::open_in_memory().unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            true,
+        );
+        let junk = r.dir.path().join("junk.db");
+        std::fs::write(&junk, b"not a database").unwrap();
+        *r.host.import_pick.borrow_mut() = Some(junk);
+        r.ui.invoke_import_source_chosen(1);
+        assert!(r.ui.get_import_open());
+        assert_eq!(r.ui.get_import_problem(), "That isn't a Ditto database.");
+        // Confirming a problem writes nothing.
+        r.ui.invoke_import_confirmed();
+        assert!(!r.ui.get_import_open());
+        assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 0);
+        assert_eq!(r.ui.get_toast_text(), "");
+    });
+}
+
+// ---- Import wording and dialogs ---------------------------------------------------------------
+
+/// Every warning the importers can raise, one of each variant. The `match` makes a new variant a
+/// compile error here until it is listed (and so given a sentence).
+fn every_warning() -> Vec<snipdeck_portable::Warning> {
+    use snipdeck_portable::Warning as W;
+    let name = || "Notes.txt".to_owned();
+    let all = vec![
+        W::NewerMinorVersion {
+            found: "1.9".into(),
+        },
+        W::UnknownEntries { count: 2 },
+        W::UnreferencedAssets { count: 1 },
+        W::SensitiveNeedKey { count: 3 },
+        W::CannotDecrypt {
+            title: "Bank PIN".into(),
+        },
+        W::SensitiveOmittedByExport { count: 4 },
+        W::BoardLimit { limit: 3, total: 5 },
+        W::LossyText { name: name() },
+        W::TooLarge {
+            name: name(),
+            size: 6_000_000,
+        },
+        W::Empty { name: name() },
+        W::Unreadable {
+            name: name(),
+            reason: "os error 5".into(),
+        },
+        W::SymlinkSkipped { name: name() },
+        W::NonTextSkipped { count: 7 },
+        W::Truncated {
+            reason: "too many entries".into(),
+        },
+        W::Note("Something else happened.".into()),
+    ];
+    for w in &all {
+        match w {
+            W::NewerMinorVersion { .. }
+            | W::UnknownEntries { .. }
+            | W::UnreferencedAssets { .. }
+            | W::SensitiveNeedKey { .. }
+            | W::CannotDecrypt { .. }
+            | W::SensitiveOmittedByExport { .. }
+            | W::BoardLimit { .. }
+            | W::LossyText { .. }
+            | W::TooLarge { .. }
+            | W::Empty { .. }
+            | W::Unreadable { .. }
+            | W::SymlinkSkipped { .. }
+            | W::NonTextSkipped { .. }
+            | W::Truncated { .. }
+            | W::Note(_) => {}
+        }
+    }
+    all
+}
+
+#[test]
+fn every_import_warning_reads_as_a_plain_sentence() {
+    on_ui_thread(|| {
+        let r = rig();
+        for warning in every_warning() {
+            let text = snipdeck_app::wording::import_warning_text(&r.ui, &warning);
+            assert!(!text.trim().is_empty(), "{warning:?} has no text");
+            assert!(!text.contains('`'), "{warning:?} shows a backtick: {text}");
+            assert!(
+                text.chars().next().is_some_and(char::is_uppercase)
+                    || text.starts_with(char::is_numeric),
+                "{warning:?} should start like a sentence: {text}"
+            );
+        }
+        // The file or item is named by an argument.
+        let w = snipdeck_portable::Warning::Empty {
+            name: "notes.txt".into(),
+        };
+        assert_eq!(
+            snipdeck_app::wording::import_warning_text(&r.ui, &w),
+            "notes.txt is empty and was skipped."
+        );
+    });
+}
+
 #[test]
 fn get_supporter_opens_the_email_app_with_the_one_named_address() {
     on_ui_thread(|| {
@@ -1256,6 +1446,61 @@ fn the_get_supporter_dialog_opens_closes_with_escape_and_emails() {
     });
 }
 
+#[test]
+fn the_importers_internal_labels_become_clip_numbers() {
+    on_ui_thread(|| {
+        let r = rig();
+        for label in ["entry 3", "Ditto clip 3"] {
+            let w = snipdeck_portable::Warning::Empty { name: label.into() };
+            assert_eq!(
+                snipdeck_app::wording::import_warning_text(&r.ui, &w),
+                "Clip 3 is empty and was skipped."
+            );
+        }
+    });
+}
+
+#[test]
+fn a_ditto_preview_lists_its_warnings_in_plain_sentences() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            Store::open_in_memory().unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            true,
+        );
+        let db = r.dir.path().join("Ditto.db");
+        let conn = rusqlite::Connection::open(&db).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE Main(lID INTEGER PRIMARY KEY AUTOINCREMENT, lDate INTEGER, mText TEXT,
+                lShortCut INTEGER, lDontAutoDelete INTEGER, CRC INTEGER, bIsGroup INTEGER,
+                lParentID INTEGER, QuickPasteText TEXT, clipOrder REAL, clipGroupOrder REAL,
+                globalShortCut INTEGER, lastPasteDate INTEGER, stickyClipOrder REAL,
+                stickyClipGroupOrder REAL, MoveToGroupShortCut INTEGER, GlobalMoveToGroupShortCut INTEGER);
+             CREATE TABLE Data(lID INTEGER PRIMARY KEY AUTOINCREMENT, lParentID INTEGER,
+                strClipBoardFormat TEXT, ooData BLOB);
+             CREATE TABLE Types(lID INTEGER PRIMARY KEY AUTOINCREMENT, TypeText TEXT);
+             INSERT INTO Main (lID, lDate, mText, bIsGroup, lParentID) VALUES (1, 1700000000, 'hello', 0, -1);
+             INSERT INTO Main (lID, lDate, mText, bIsGroup, lParentID) VALUES (2, 1700000100, '', 0, -1);
+             INSERT INTO Data (lParentID, strClipBoardFormat, ooData) VALUES (2, 'CF_DIB', x'01020304');",
+        )
+        .unwrap();
+        drop(conn);
+        *r.host.import_pick.borrow_mut() = Some(db);
+        r.ui.invoke_import_source_chosen(1);
+        assert!(r.ui.get_import_open());
+        let lines: Vec<String> =
+            r.ui.get_import_warnings()
+                .iter()
+                .map(|l| l.to_string())
+                .collect();
+        assert_eq!(
+            lines,
+            ["1 item that is not text (a picture or file) was skipped."]
+        );
+    });
+}
+
 /// The comparison table is held to `entitlements.rs`: its Supporter-only rows are exactly the
 /// `Feature`s, except floating lists (in the enum, not part of v1, so not on the website either).
 #[test]
@@ -1297,6 +1542,57 @@ fn the_plan_table_lists_exactly_the_supporter_features() {
             boards.free_note,
             format!("up to {}", Entitlements::FREE_BOARD_LIMIT)
         );
+    });
+}
+
+#[test]
+fn the_preview_titles_and_the_free_limit_come_from_the_page() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(
+            r.ui.get_free_board_limit(),
+            i32::try_from(snipdeck_core::Entitlements::FREE_BOARD_LIMIT).unwrap()
+        );
+        r.ui.set_import_name("2026-10-17".into());
+        r.ui.set_import_restore(true);
+        assert_eq!(r.ui.get_import_title(), "Restore the backup of 2026-10-17");
+        assert_eq!(r.ui.get_import_confirm_label(), "Restore");
+        r.ui.set_import_restore(false);
+        assert_eq!(r.ui.get_import_title(), "Import from 2026-10-17");
+        assert_eq!(r.ui.get_import_confirm_label(), "Import");
+    });
+}
+
+#[test]
+fn each_import_choice_asks_for_its_own_dialog() {
+    use snipdeck_app::controller::ImportKind;
+    use snipdeck_platform::file_dialog::PickKind;
+    for (kind, dialog) in [
+        (ImportKind::Snipdeck, PickKind::Snipdeck),
+        (ImportKind::Ditto, PickKind::Ditto),
+        (ImportKind::CopyQ, PickKind::CopyQ),
+        (ImportKind::Folder, PickKind::Folder),
+    ] {
+        assert_eq!(settings_binding::pick_kind(kind), dialog);
+    }
+}
+
+#[test]
+fn the_recent_inbox_is_off_until_chosen_and_its_clear_button_empties_it() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_recent_history(), "off by default");
+        r.ui.invoke_recent_history_toggled(true);
+        assert!(r.ctl.borrow().settings().recent_history);
+        r.ctl
+            .borrow_mut()
+            .on_clipboard_change(&snipdeck_app::recent::ClipboardObservation {
+                text: Some("copied".into()),
+                ..Default::default()
+            });
+        assert_eq!(r.ctl.borrow().recent_entries().len(), 1);
+        r.ui.invoke_recent_history_cleared();
+        assert_eq!(r.ctl.borrow().recent_entries().len(), 0);
     });
 }
 

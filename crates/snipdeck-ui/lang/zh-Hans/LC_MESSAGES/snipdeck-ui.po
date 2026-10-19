@@ -7,6 +7,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+msgid ".snipdeck file"
+msgstr ""
+
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "PNG 图片。Snipdeck 会保存自己的副本。"
 
@@ -124,6 +127,9 @@ msgstr "看板"
 msgid "Bottom edge"
 msgstr "底边"
 
+msgid "Bring in items from a Snipdeck file or another clipboard manager. You see what will be added before anything is written."
+msgstr ""
+
 msgid "Bring up the panel, open the picker, save the clipboard or paste the next item from any app."
 msgstr "在任何应用中，都可以呼出面板、打开选择器、保存剪贴板内容或粘贴下一项。"
 
@@ -178,7 +184,13 @@ msgstr "选择一项将其添加到文本末尾。使用该片段时会填入内
 msgid "Choose tags"
 msgstr "选择标签"
 
+msgid "Choose what to import"
+msgstr ""
+
 msgid "Clear"
+msgstr ""
+
+msgid "Clear recent history"
 msgstr ""
 
 msgid "Clear search"
@@ -204,6 +216,9 @@ msgstr "清除 {} 的快捷键"
 
 msgid "Click"
 msgstr "点击"
+
+msgid "Clip {}"
+msgstr ""
 
 msgid "Clipboard clear time"
 msgstr ""
@@ -274,6 +289,9 @@ msgstr ""
 msgid "Copy the result"
 msgstr ""
 
+msgid "CopyQ export"
+msgstr ""
+
 msgid "Current password"
 msgstr ""
 
@@ -334,11 +352,17 @@ msgstr "已删除的片段会在这里保留 {} 天，之后才会被移除。"
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "删除这台电脑上的所有看板、列表、片段和备份。此操作无法撤销。"
 
+msgid "Deletes everything in the Recent inbox now."
+msgstr ""
+
 msgid "Discard"
 msgstr "放弃"
 
 msgid "Discard your changes?"
 msgstr "要放弃更改吗？"
+
+msgid "Ditto database"
+msgstr ""
 
 msgid "Dock to"
 msgstr "停靠到"
@@ -463,6 +487,9 @@ msgstr "浮动"
 msgid "Fold the Panel into a thin strip."
 msgstr ""
 
+msgid "Folder of .txt and .md files"
+msgstr ""
+
 msgid "Follow Windows"
 msgstr "跟随 Windows"
 
@@ -544,6 +571,9 @@ msgstr ""
 msgid "Hide the panel when it loses focus"
 msgstr "失去焦点时隐藏面板"
 
+msgid "History is paused"
+msgstr ""
+
 msgid "Hover"
 msgstr "悬停"
 
@@ -568,6 +598,21 @@ msgstr ""
 msgid "Image"
 msgstr "图片"
 
+msgid "Import"
+msgstr ""
+
+msgid "Import from {}"
+msgstr ""
+
+msgid "Import from: {}"
+msgstr ""
+
+msgid "Import into your library, see a preview first"
+msgstr ""
+
+msgid "Import…"
+msgstr ""
+
 msgid "In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe."
 msgstr "在这些程序中，Snipdeck 会复制而不是粘贴。请使用程序的文件名，例如 notepad.exe。"
 
@@ -591,6 +636,12 @@ msgstr "片段将在 {} 天后移除。"
 
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
 msgstr "其列表及其中的 {n} 个片段将移至回收站。你可以在 30 天内恢复它们。"
+
+msgid "Just now"
+msgstr ""
+
+msgid "Keep a Recent inbox of what you copy"
+msgstr ""
 
 msgid "Keep editing"
 msgstr "继续编辑"
@@ -805,8 +856,14 @@ msgstr ""
 msgid "Not set"
 msgstr "未设置"
 
+msgid "Nothing copied yet"
+msgstr ""
+
 msgid "Nothing matches “{}”."
 msgstr "没有与“{}”匹配的内容。"
+
+msgid "Nothing new to import."
+msgstr ""
 
 msgid "Nothing on this board matches “{}”."
 msgstr "此看板中没有与“{}”匹配的内容。"
@@ -825,6 +882,9 @@ msgstr "正常"
 
 msgid "Off"
 msgstr "关闭"
+
+msgid "Off by default. Keeps the text you copy, for the last 200 copies or 7 days, whichever is fewer, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
+msgstr ""
 
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "选择“关闭”则已停靠的面板保持展开。否则它会收成一条细条，面板快捷键同样可以将其展开。"
@@ -866,6 +926,9 @@ msgid "Open the Microsoft Store page"
 msgstr "打开 Microsoft Store 页面"
 
 msgid "Open the Picker at your cursor"
+msgstr ""
+
+msgid "Open the clock tab at the left of the Panel's tabs to see what you copied and save it to a list."
 msgstr ""
 
 msgid "Open the picker"
@@ -1033,6 +1096,15 @@ msgstr "退出"
 msgid "Recent"
 msgstr "最近"
 
+msgid "Recent copies"
+msgstr ""
+
+msgid "Recent copies are in the Panel"
+msgstr ""
+
+msgid "Recent entry actions"
+msgstr ""
+
 msgid "Recently used"
 msgstr "最近使用"
 
@@ -1040,6 +1112,9 @@ msgid "Red"
 msgstr "红色"
 
 msgid "Reduce motion"
+msgstr ""
+
+msgid "Remove from Recent"
 msgstr ""
 
 msgid "Remove master password"
@@ -1081,6 +1156,9 @@ msgstr "已恢复你尚未保存的更改。"
 msgid "Results"
 msgstr "搜索结果"
 
+msgid "Resume it from the tray icon, then copy some text."
+msgstr ""
+
 msgid "Right edge"
 msgstr "右边"
 
@@ -1104,6 +1182,9 @@ msgstr ""
 
 msgid "Save the clipboard as an item"
 msgstr "将剪贴板保存为片段"
+
+msgid "Save to…"
+msgstr ""
 
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr "保存你的第一个片段，或复制一些内容后从剪贴板保存。"
@@ -1324,11 +1405,20 @@ msgstr ""
 msgid "Text"
 msgstr "文本"
 
+msgid "Text you copy shows up here for a week. Save the useful ones to a list."
+msgstr ""
+
 msgid "That password is not right. Try again."
+msgstr ""
+
+msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
 msgstr ""
 
 msgid "The Trash is empty"
 msgstr "回收站为空"
+
+msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
+msgstr ""
 
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "该密钥用于打开你之前保存的导出文件中的加密项目。如果忘记它，这些项目将永远无法再打开。"
@@ -1357,6 +1447,9 @@ msgstr "报告只包含版本和设置开关,绝不包含你的条目。"
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr "所选片段将被永久删除，此操作无法撤销。"
 
+msgid "The sensitive item \"{}\" cannot be unlocked with this computer's key and was skipped."
+msgstr ""
+
 msgid "The tag is removed from its items. The items themselves stay."
 msgstr "标签将从其片段中移除，片段本身保留。"
 
@@ -1383,6 +1476,9 @@ msgstr "此演示不会在磁盘上保存任何内容，因此没有备份。"
 
 msgid "This field is required"
 msgstr "此字段为必填项"
+
+msgid "This file was made by a newer Snipdeck (format {}), so anything this version does not know was left out."
+msgstr ""
 
 msgid "This list is empty"
 msgstr "此列表为空"
@@ -1507,6 +1603,9 @@ msgstr "面板的位置"
 msgid "Where the text cursor lands after pasting"
 msgstr "粘贴后文本光标的位置"
 
+msgid "Will not be imported"
+msgstr ""
+
 msgid "Window behaviour"
 msgstr "窗口行为"
 
@@ -1517,6 +1616,9 @@ msgid "Windows accent"
 msgstr ""
 
 msgid "Windows accent follows your Windows personalisation."
+msgstr ""
+
+msgid "You would have {} boards, and the Free plan includes {}."
 msgstr ""
 
 msgid "Your data"
@@ -1538,6 +1640,9 @@ msgid "add create folder group"
 msgstr ""
 
 msgid "add create snippet note write"
+msgstr ""
+
+msgid "and {} more"
 msgstr ""
 
 msgid "change modify rename"
@@ -1642,7 +1747,46 @@ msgstr "{n} 个片段将一同移至回收站。你可以在 30 天内恢复它�
 msgid "{} (Supporter)"
 msgstr "{} (支持者)"
 
+msgid "{} already in your library, skipped"
+msgstr ""
+
+msgid "{} could not be read and was skipped."
+msgstr ""
+
+msgid "{} d ago"
+msgstr ""
+
+msgid "{} file in this archive is not known to this version and was left out."
+msgstr ""
+
 msgid "{} found"
+msgstr ""
+
+msgid "{} h ago"
+msgstr ""
+
+msgid "{} is a link to somewhere else and was not followed."
+msgstr ""
+
+msgid "{} is empty and was skipped."
+msgstr ""
+
+msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
+msgstr ""
+
+msgid "{} is {}, over the 5 MB limit for text, and was skipped."
+msgstr ""
+
+msgid "{} item in {} list will be added"
+msgstr ""
+
+msgid "{} item that is not text (a picture or file) was skipped."
+msgstr ""
+
+msgid "{} min ago"
+msgstr ""
+
+msgid "{} new board will be made"
 msgstr ""
 
 msgid "{} of the checks need a look."
@@ -1651,8 +1795,17 @@ msgstr "有 {} 项检查需要留意。"
 msgid "{} of {} · next: {}"
 msgstr ""
 
+msgid "{} picture or file that no snippet uses was left out."
+msgstr ""
+
 msgid "{} selected"
 msgstr "已选择 {} 项"
+
+msgid "{} sensitive item is encrypted with a key this library does not have and was skipped."
+msgstr ""
+
+msgid "{} sensitive item was left out when this file was made."
+msgstr ""
 
 msgid "{}, {} of {}"
 msgstr ""
