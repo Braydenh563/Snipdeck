@@ -20,6 +20,18 @@ Hub = this session (`claude/compassionate-pascal-pod8ux`, PR #5). It owns the re
   - Hub: A1-A3 (confirm CI), C8, C9 (agent finishing), translations, C5, C3, C2, C6, C7 manifest template, B15, open review leftovers (Haiku audit of `docs/reviews/*.md` and the now.md Inbox; leftovers go to the hub), D1-D5, E1, F1-F4.
   - Owner: E3, G1-G4.
   - Done: A4, C7 docs, D4, E2.
+  - Leftovers from the review-item audit (619a087), all hub unless noted:
+    - L1: CJK test silent skip, make it `#[ignore]` with a reason (PR4 #11).
+    - L2: `cursor_from_end` not applied (PR4 #13); the 120 untranslated entries per locale go to translations.
+    - L3: `cargo deny` does not cover the m2-harness Cargo.lock, and the m3-app step is stale (PR4 #14).
+    - L4: split the five files over 800 lines (H3: windows/clipboard.rs, template.rs, import.rs, blobs.rs, chord.rs), with D5.
+    - L5: key provisioning now that encryption is free (S3), with C3.
+    - L6: the launcher pins the release zip by tag plus SHA-256, not `releases/latest` (S7).
+    - L7: More dropdown closes on pointer move (Inbox 13:1x). Wave 3b, with B7.
+    - L8: icon-name audit, meatball vs kebab etc. (Inbox 13:3x), with B15.
+  - Opus review of the merges (11 findings): agent fixing on `claude/review-fixes-2`; hub merges.
+- Before ship (owner 2026-10-19): a security scan (claude-security or the security-reviewer over the whole diff) plus F2, with every bug and security finding fixed; then update the PR title and body (interim body set 2026-10-19).
+- [!] Release workflow "like the Tessellate repo" (owner 2026-10-19): the lean-workflow guard blocks CI work in unattended runs, including reading Tessellate's workflows. Owner: paste Tessellate's release workflow or run it attended; the hub then writes `.github/workflows/release.yml` (or a proposal the owner applies).
 - F-phase order (owner 2026-10-19): after every A-E item lands, F1 Fable pass + audit runs in a NEW cloud session (fresh context, brief `docs/fable-brief.md`), findings in `docs/reviews/fable-v1.md`. The hub then implements EVERY flagged issue (split across the wave sessions by area, no finding dropped or deferred without the owner), then a second polish pass (D3 de-slop + F3 ux-auditor and blind-tester), then F2 Opus review, then F4 gate and ship.
 
 ## Task list (mirror of the session's tasks, 2026-10-19 13:20; details per item in `docs/V1-PLAN.md`)
