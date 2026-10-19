@@ -1,6 +1,6 @@
 ## Now (2026-10-19 00:30, away mode, max tier)
 Goal: ship v1 by the morning. Branch `claude/compassionate-pascal-pod8ux`, PR #5 (open; CI red on fe2172d: settings goldens, fix in progress). Queue = `.claude/work-order.md`: 0 CI goldens fix, 1 merge step 8 (editor agent), 2 merge step 5 (picker agent), 3 merge step 3a (dock agent), 4 step 13 UX + owner findings (toast, taskbar toggle, window icons, tag manager, New-list space, Main window behaviour, autostart), 5 steps 7a, 7b, 11b, 11, 13a, 19, 20, gate --full, PR body, summary, retro.
-- Decision (away, 2026-10-19): max tier kept (up to three agents building, one Opus); budget line 55% weekly, stop line 60%; the owner's wrong-chat message (composer grammar) is dropped, not logged.
+- Decision (away, 2026-10-19): max tier kept (up to three agents building, one Opus); budget line 60% weekly, stop line 65% (owner 2026-10-19: wrap up close to 65%, not 5% under); the owner's wrong-chat message (composer grammar) is dropped, not logged.
 
 # now.md
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.

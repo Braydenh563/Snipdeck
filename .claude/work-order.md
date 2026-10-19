@@ -3,7 +3,7 @@ status: active (owner said continue 23:16)
 max-continues: 40
 max-idle-minutes: 60
 started: 2026-10-18 13:45
-budget: owner at 40% weekly; own budget line 55%, stop line 60% (owner needs the rest for other work); one agent at a time from 55%
+budget: owner at 40% weekly; own budget line 60%, stop line 65% (owner: wrap up close to 65%, not 5% under); one agent at a time from 60%
 
 - [x] Merge step 4 (Panel binding: kebab, resize, quick edit) when its agent reports; gate; push
 - [x] Merge step 6 (maintenance + crash log) when its agent reports; gate; push
