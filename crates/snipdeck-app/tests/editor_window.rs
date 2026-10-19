@@ -44,6 +44,7 @@ struct Rig {
     /// The data folder.
     data: std::path::PathBuf,
     /// Holds a temporary data folder up for the life of the rig.
+    #[allow(dead_code, reason = "held only so its Drop removes the folder")]
     guard: Option<tempfile::TempDir>,
 }
 
