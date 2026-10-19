@@ -7,6 +7,34 @@ In flight: Sonnet agent C8+C9 (Supporter wording in app, FREE_BOARD_LIMIT 5, mai
 
 Next, in order: CI green on PR #5 -> translations pass for ~80 new strings per locale (Haiku; `python3 scripts/i18n.py check`) -> D1 goldens regenerate + read -> wave 3 B1-B15 -> wave 4 C1-C7 -> D2 README shots/hero, D3, D5 -> E1 docs -> F1 Fable sweep (owner-approved, one agent; brief `docs/fable-brief.md`) -> F2 Opus review -> F3 ux-auditor + blind-tester -> F4 gate --full, PR body, retro. Use cloud sessions/agents in parallel only on separate branches; one cargo-heavy agent per target dir.
 
+## Parallel work (orchestration ledger, 2026-10-19 14:25)
+Hub = this session (`claude/compassionate-pascal-pod8ux`, PR #5). It owns the release branch, merges, `.po/.pot`, `CODEMAP.md`, `HANDOVER.md`, licence/Supporter wording, goldens (D1).
+- Wave 3a cloud session `session_01Haxw5UhdjTPvNo4KAUcPWG`, branch `claude/v1-wave3a`: B3, B6, B9, B13 done -> PR #6 (hub merges). It correctly refuses extra work sent by message (no owner authority), so follow-up queues go to NEW sessions whose first prompt carries the task. Owner (16:0x) is authorising the sessions directly: 3a next = C5, C6, C2 (after #6 merges).
+- Wave 3c cloud session `session_01U6UTKpv5YUhk3MdMBGxHoh`, branch `claude/v1-wave3c` (started 16:00): B1, B2, B12, C1.
+- Wave 3b cloud session `session_016pPMHPMEKcG9VuaY2dcBbm`, branch `claude/v1-wave3b`: B4, B8, B10, B14 -> PR. Next (owner authorising): B5, B7 + L7, B11, C4 on the same branch.
+- Hub local agents (max 3 + Haiku; one cargo user): C8/C9 + free encryption (finishing), review-fixes-2 (11 Opus findings); next translations (Haiku), C3 master password, B15, leftovers L1-L6 and L8.
+- Cloud PRs target the release branch, never main. Hub merges in landing order (merge commits, no rebase), runs CI, then tells the sessions; they merge the release branch back before their next PR.
+- After all UI items land: D1 goldens once, D2 shots, D3, D5, E1, then F1-F4.
+- Full assignment of the V1 ship list (every open item has an owner):
+  - Wave 3a: B3, B6, B9, B13, B1, B2, B12, C1.
+  - Wave 3b: B4, B8, B10, B14, B5, B7, B11, C4.
+  - Hub: A1-A3 (confirm CI), C8, C9 (agent finishing), translations, C5, C3, C2, C6, C7 manifest template, B15, open review leftovers (Haiku audit of `docs/reviews/*.md` and the now.md Inbox; leftovers go to the hub), D1-D5, E1, F1-F4.
+  - Owner: E3, G1-G4.
+  - Done: A4, C7 docs, D4, E2.
+  - Leftovers from the review-item audit (619a087), all hub unless noted:
+    - L1: CJK test silent skip, make it `#[ignore]` with a reason (PR4 #11).
+    - L2: `cursor_from_end` not applied (PR4 #13); the 120 untranslated entries per locale go to translations.
+    - L3: `cargo deny` does not cover the m2-harness Cargo.lock, and the m3-app step is stale (PR4 #14).
+    - L4: split the five files over 800 lines (H3: windows/clipboard.rs, template.rs, import.rs, blobs.rs, chord.rs), with D5.
+    - L5: key provisioning now that encryption is free (S3), with C3.
+    - L6: the launcher pins the release zip by tag plus SHA-256, not `releases/latest` (S7).
+    - L7: More dropdown closes on pointer move (Inbox 13:1x). Wave 3b, with B7.
+    - L8: icon-name audit, meatball vs kebab etc. (Inbox 13:3x), with B15.
+  - Opus review of the merges (11 findings): agent fixing on `claude/review-fixes-2`; hub merges.
+- Before ship (owner 2026-10-19): a security scan (claude-security or the security-reviewer over the whole diff) plus F2, with every bug and security finding fixed; then update the PR title and body (interim body set 2026-10-19).
+- Release workflow (owner 2026-10-19, modelled on Tessellate): applied by the owner (1e9726e): release.yml (tag or manual), secrets.yml (gitleaks), release-build.yml dev-only. The smoke step needs B13 `--check-db` merged before the tag. Ship step: bump [workspace.package] version to 1.0.0 and rename the CHANGELOG header.
+- F-phase order (owner 2026-10-19): after every A-E item lands, F1 Fable pass + audit runs in a NEW cloud session (fresh context, brief `docs/fable-brief.md`), findings in `docs/reviews/fable-v1.md`. The hub then implements EVERY flagged issue (split across the wave sessions by area, no finding dropped or deferred without the owner), then a second polish pass (D3 de-slop + F3 ux-auditor and blind-tester), then F2 Opus review, then F4 gate and ship.
+
 ## Task list (mirror of the session's tasks, 2026-10-19 13:20; details per item in `docs/V1-PLAN.md`)
 
 - [~] A1-A3 Merge review, windows-ui, learnability agents and gate (merged; CI fixes 844a0bd..19c9160; confirm green)
@@ -36,7 +64,7 @@ Next, in order: CI green on PR #5 -> translations pass for ~80 new strings per l
 - [ ] C4 Item colour label and list icon
 - [ ] C5 Accent colour (Index Blue default, presets, Windows accent), HC, 225%
 - [ ] C6 Edge dock ships: settings and wizard steps checked
-- [ ] C7 MSIX packaging and signing docs
+- [x] C7 MSIX packaging and signing docs (docs/packaging.md, 58e0d1e; code gap: Store build needs the WinRT StartupTask API for autostart)
 - [ ] D3 De-slop pass over every window state
 - [ ] D5 Controller split under 800 lines
 - [ ] E1 Docs: user guide, CHANGELOG, privacy, licensing, HANDOVER, CODEMAP

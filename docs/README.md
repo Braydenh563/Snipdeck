@@ -29,6 +29,7 @@ Start with the [project README](../README.md) for status. Items below are groupe
 | [`store.md`](store.md) | Data folder, schema, migrations, search, blobs, trash |
 | [`crypto.md`](crypto.md) | Encryption of sensitive items: key hierarchy, formats, limits |
 | [`format.md`](format.md) | The `.snipdeck` archive format and the importers |
+| [`packaging.md`](packaging.md) | MSIX, Microsoft Store and code-signing steps (owner, on Windows) |
 | [`licensing.md`](licensing.md) | Licence key format, verification, build-time public key, release procedure |
 | [`CODEMAP.md`](CODEMAP.md) | Generated: where every definition and test lives |
 | [`../crates/snipdeck-ui/README.md`](../crates/snipdeck-ui/README.md) | UI crate conventions and test harness |

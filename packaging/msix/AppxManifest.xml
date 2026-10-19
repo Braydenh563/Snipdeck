@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Snipdeck MSIX manifest TEMPLATE. Do not build from this file as it is.
+
+  Fill the {{PLACEHOLDER}} tokens on a COPY (see packaging/msix/README.md). The Store build takes the
+  identity values from Partner Center (Product management > Product identity). A sideload test build
+  takes Publisher from the subject of the test certificate. Keep the filled copy out of git.
+
+  No startupTask extension is declared on purpose. "Start with Windows" needs the WinRT StartupTask API,
+  which the app does not call yet: today it writes an HKCU Run value, which a packaged app does not
+  honour. Add a desktop:Extension Category="windows.startupTask" (and the desktop namespace) only with
+  that code. See docs/packaging.md, section 1.
+
+  The Assets\ paths below must match the files scripts/make_msix_assets.py writes to packaging\msix\Assets\.
+-->
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+         IgnorableNamespaces="uap rescap">
+
+  <!-- {{IDENTITY_NAME}}: the reserved package name, for example YourPublisher.Snipdeck. Copy from Partner Center. -->
+  <!-- {{PUBLISHER}}: the CN=... string. Must match exactly what the package is signed with. -->
+  <!-- {{VERSION}}: four parts, for example 0.1.0.0. Raise it for every upload. Keep the last part 0 for the Store. -->
+  <Identity Name="{{IDENTITY_NAME}}"
+            Publisher="{{PUBLISHER}}"
+            Version="{{VERSION}}"
+            ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Snipdeck</DisplayName>
+    <!-- {{PUBLISHER_DISPLAY_NAME}}: the publisher name from Partner Center. -->
+    <PublisherDisplayName>{{PUBLISHER_DISPLAY_NAME}}</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <!-- MinVersion: the oldest Windows build the app was tested on. MaxVersionTested: the newest one tested. -->
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application Id="Snipdeck" Executable="snipdeck.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Snipdeck"
+                          Description="Sticky-note snippet deck: keep reusable text in cards and paste it into any app."
+                          BackgroundColor="transparent"
+                          Square150x150Logo="Assets\Square150x150Logo.png"
+                          Square44x44Logo="Assets\Square44x44Logo.png" />
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- A Win32 (desktop) app needs full trust: global hotkeys, the tray icon and paste into other apps. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+
+</Package>
