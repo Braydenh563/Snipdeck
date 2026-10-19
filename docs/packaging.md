@@ -14,6 +14,8 @@ comes from memory or from `docs/HANDOVER.md`, not from a page read today.
 
 ## 1. MSIX
 
+The manifest template and the logo script are in [`packaging/msix/`](../packaging/msix/README.md).
+
 ### Inputs from the repo
 
 | What | Value |
