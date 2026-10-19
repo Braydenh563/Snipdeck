@@ -495,7 +495,7 @@ where
         {
             let core = Rc::clone(&core);
             window.window().on_close_requested(move || {
-                core.act_effects(|ctl| ctl.close());
+                core.act_effects(Controller::close);
                 slint::CloseRequestResponse::KeepWindowShown
             });
         }
@@ -650,6 +650,10 @@ pub(crate) fn index(i: i32) -> usize {
 // ---- View -> window ------------------------------------------------------------------------
 
 /// Sets the window's properties from `view`, skipping what `previous` already shows.
+#[allow(
+    clippy::too_many_lines,
+    reason = "one flat pass over the view, a few lines per property"
+)]
 pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     let differs = |same: &dyn Fn(&View) -> bool| previous.is_none_or(|p| !same(p));
 

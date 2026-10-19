@@ -215,6 +215,10 @@ pub struct AttachmentView {
 /// Everything the item editor window shows, as plain data. The text fields are the values to
 /// start from: the window keeps what the user types and sends it back as an [`EditorInput`].
 #[derive(Debug, Clone, PartialEq)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "independent switches the editor shows, not a state"
+)]
 pub struct ItemEditorView {
     /// Changes with every editor that opens, so the window resets its fields for a new one and
     /// keeps what the user typed while the same one stays up.
@@ -456,7 +460,7 @@ pub fn decode_preview(bytes: &[u8]) -> Option<Preview> {
     match frame.color_type {
         png::ColorType::Rgba => rgba.extend_from_slice(data),
         png::ColorType::Rgb => {
-            for px in data.chunks_exact(3) {
+            for px in data.as_chunks::<3>().0 {
                 rgba.extend_from_slice(&[px[0], px[1], px[2], 255]);
             }
         }
@@ -466,7 +470,7 @@ pub fn decode_preview(bytes: &[u8]) -> Option<Preview> {
             }
         }
         png::ColorType::GrayscaleAlpha => {
-            for px in data.chunks_exact(2) {
+            for px in data.as_chunks::<2>().0 {
                 rgba.extend_from_slice(&[px[0], px[0], px[0], px[1]]);
             }
         }

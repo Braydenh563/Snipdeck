@@ -384,21 +384,18 @@ fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
             .unwrap_or_default()
             .into(),
     );
-    match &view.attachment {
-        Some(a) => {
-            w.set_attachment_name(wording::attachment_name_text(a).into());
-            w.set_attachment_detail(wording::attachment_detail_text(a).into());
-            w.set_preview(a.preview.as_ref().map_or_else(slint::Image::default, |p| {
-                slint::Image::from_rgba8(SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
-                    &p.rgba, p.width, p.height,
-                ))
-            }));
-        }
-        None => {
-            w.set_attachment_name(SharedString::new());
-            w.set_attachment_detail(SharedString::new());
-            w.set_preview(slint::Image::default());
-        }
+    if let Some(a) = &view.attachment {
+        w.set_attachment_name(wording::attachment_name_text(a).into());
+        w.set_attachment_detail(wording::attachment_detail_text(a).into());
+        w.set_preview(a.preview.as_ref().map_or_else(slint::Image::default, |p| {
+            slint::Image::from_rgba8(SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
+                &p.rgba, p.width, p.height,
+            ))
+        }));
+    } else {
+        w.set_attachment_name(SharedString::new());
+        w.set_attachment_detail(SharedString::new());
+        w.set_preview(slint::Image::default());
     }
     w.set_discard_open(false);
     w.set_tags_open(false);

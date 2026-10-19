@@ -34,6 +34,7 @@ pub fn tray_labels(window: &PanelWindow) -> TrayLabels {
 
 /// The words for `message`.
 #[must_use]
+#[allow(clippy::too_many_lines, reason = "one match arm per toast message")]
 pub fn toast_text(message: &ToastMessage) -> String {
     let app = |name: &str| {
         if name.is_empty() {

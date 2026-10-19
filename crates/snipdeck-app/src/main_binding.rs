@@ -425,6 +425,10 @@ where
     /// Draws the controller's Main screen in `window` and routes the window's gestures (and
     /// those of the list and board editors it opens) to it.
     ///
+    #[allow(
+        clippy::too_many_lines,
+        reason = "one flat list of the window's callbacks, each a single line"
+    )]
     pub fn bind_main(this: &Rc<RefCell<Self>>, window: &ui::MainWindow) -> MainBinding<S, C, K, T> {
         let core = Rc::new_cyclic(|weak: &Weak<MainCore<S, C, K, T>>| {
             let weak = weak.clone();

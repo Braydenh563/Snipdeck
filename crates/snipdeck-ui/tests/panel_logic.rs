@@ -923,7 +923,7 @@ ui_tests! {
             move_to(&ui, at);
         }
         assert_eq!(take(&hovers), ["panel-hover:true"], "reported on entering, not on every move");
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log), [] as [String; 0]);
         // Clicks still reach the controls under the hover area.
         press_at(&ui, centre(&row));
         assert_eq!(take(&log), ["use:0"]);

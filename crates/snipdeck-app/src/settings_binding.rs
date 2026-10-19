@@ -835,6 +835,10 @@ where
 {
     /// Draws the settings in `window` and routes the page's gestures to the controller. A
     /// `data_dir` of `None` (the demo) switches the backups and the data tools off.
+    #[allow(
+        clippy::too_many_lines,
+        reason = "one flat list of the page's callbacks, each a single line"
+    )]
     pub fn bind_settings(
         this: &Rc<RefCell<Self>>,
         window: &ui::SettingsPage,

@@ -77,6 +77,10 @@ struct Problems {
 
 /// An open item editor.
 #[derive(Debug)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "independent flags of one open editor, not a state"
+)]
 pub(super) struct ItemEditorSlot {
     seq: u64,
     raise: u64,
@@ -353,7 +357,7 @@ where
                 .unwrap_or_default();
             if text.len() > EDIT_LIMIT_BYTES {
                 large = u64::try_from(text.len()).ok();
-                fields.content = item_editor::prefix_of(&text, EDIT_LIMIT_BYTES).to_owned();
+                item_editor::prefix_of(&text, EDIT_LIMIT_BYTES).clone_into(&mut fields.content);
             } else {
                 fields.content.clone_from(&text);
                 original_text = Some(text);
