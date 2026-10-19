@@ -271,6 +271,7 @@ where
             .map_err(|e| problem_of(&e))?;
         self.lock.prompt = false;
         self.note_activity();
+        self.sync_recent_gate();
         self.show_toast(neutral(ToastMessage::Unlocked));
         let _ = self.refresh_panel();
         Ok(())
@@ -445,6 +446,7 @@ where
         self.store.lock_key_ring();
         self.revealed = None;
         self.panel_revealed = None;
+        self.sync_recent_gate();
         // An open editor of a sensitive item holds its text in the window: it closes, unsaved.
         if self.close_sensitive_item_editor() {
             self.show_toast(neutral(ToastMessage::LockedEditorClosed));

@@ -35,7 +35,7 @@ import { Dialog, DialogVariant } from "components/dialog.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
 import { CommandPalette, PaletteRow } from "components/command-palette.slint";
 import { CommandTexts } from "command_texts.slint";
-import { RecentRow } from "panel.slint";
+import { RecentRow, RecentText } from "panel.slint";
 
 export { ChoiceEntry, PaletteRow }
 
@@ -150,6 +150,10 @@ export component MainWindow inherits Window {
     in property <int> count-recent: -1;
     // Clipboard history is on: the Recent entries are listed in the Panel's clock tab, so this section points there.
     in property <bool> recent-on: false;
+    // The library is locked behind a master password: Recent shows nothing (and collects nothing) until it is unlocked.
+    in property <bool> recent-locked: false;
+    // The longest the entries are kept, in days (the empty state names it).
+    in property <int> recent-days: 7;
     // The Recent section's entries (newest first) and the lists "Save to…" offers. Empty in every other section.
     in property <[RecentRow]> recent-rows;
     in property <[ChoiceEntry]> recent-targets;
@@ -186,11 +190,12 @@ export component MainWindow inherits Window {
     callback select-all-requested();
     callback clear-selection-requested();
     callback item-action(ItemAction, int);
-    // The Recent section: copy an entry, remove it, save it to the n-th of `recent-targets`, or clear them all.
+    // The Recent section: copy an entry, remove it, save it to the n-th of `recent-targets` (all by entry id), or clear them all.
     callback recent-copied(int);
     callback recent-deleted(int);
     callback recent-saved(int, int);
     callback recent-cleared();
+    callback recent-unlock-requested();
     callback move-chosen(int);
     callback tag-toggled(int, bool);
     callback reveal-requested(int, bool);
@@ -295,6 +300,8 @@ export component MainWindow inherits Window {
     property <bool> recent-menu-open: false;
     property <bool> recent-save-open: false;
     property <int> recent-menu-row: 0;
+    // The entry the open menu acts on, by id: the list can shift (a new copy, a search edit) while it is open.
+    property <int> recent-menu-id: 0;
     property <length> recent-menu-x: 0px;
     property <length> recent-menu-y: 0px;
     // The Recent section lists entries (instead of the empty state).
@@ -427,15 +434,18 @@ export component MainWindow inherits Window {
     property <string> confirm-title: root.confirm-kind == 1 ? @tr("Delete list “{}”?", root.lists[root.confirm-target].label)
         : root.confirm-kind == 2 ? @tr("Delete tag “{}”?", root.tags[root.confirm-target].label)
         : root.confirm-kind == 3 ? @tr("Empty the Trash?")
+        : root.confirm-kind == 5 ? @tr("Clear recent history?")
         : @tr("Delete for good?");
     property <string> confirm-body: root.confirm-kind == 1
         ? @tr("The list and its {} items move to the Trash. You can restore them for {} days.", root.lists[root.confirm-target].count, root.trash-days)
         : root.confirm-kind == 2 ? @tr("The tag is removed from its items. The items themselves stay.")
         : root.confirm-kind == 3 ? @tr("Everything in the Trash is deleted for good. This can't be undone.")
+        : root.confirm-kind == 5 ? @tr("All {} recent copies are removed. This can't be undone.", root.count-recent)
         : @tr("The selected items are deleted for good. This can't be undone.");
     property <string> confirm-ok: root.confirm-kind == 1 ? @tr("Delete list")
         : root.confirm-kind == 2 ? @tr("Delete tag")
-        : root.confirm-kind == 3 ? @tr("Empty Trash") : @tr("Delete for good");
+        : root.confirm-kind == 3 ? @tr("Empty Trash")
+        : root.confirm-kind == 5 ? @tr("Clear history") : @tr("Delete for good");
     function confirmed() {
         let kind = root.confirm-kind;
         let target = root.confirm-target;
@@ -448,6 +458,8 @@ export component MainWindow inherits Window {
             root.empty-trash-confirmed();
         } else if (kind == 4) {
             root.item-action(ItemAction.delete-forever, target);
+        } else if (kind == 5) {
+            root.recent-cleared();
         }
     }
 
@@ -503,16 +515,10 @@ export component MainWindow inherits Window {
         root.help-menu-open = true;
     }
 
-    pure function ago(minutes: int) -> string {
-        return minutes < 1 ? @tr("Just now")
-            : minutes < 60 ? @tr("{} min ago", minutes)
-            : minutes < 1440 ? @tr("{} h ago", floor(minutes / 60))
-            : @tr("{} d ago", floor(minutes / 1440));
-    }
-
     function open-recent-menu(row: int, x: length, y: length) {
         root.nav-origin = false;
         root.recent-menu-row = row;
+        root.recent-menu-id = root.recent-rows[row].id;
         root.recent-menu-x = x;
         root.recent-menu-y = y;
         root.recent-save-open = false;
@@ -522,6 +528,7 @@ export component MainWindow inherits Window {
     function open-recent-save(row: int, x: length, y: length) {
         root.nav-origin = false;
         root.recent-menu-row = row;
+        root.recent-menu-id = root.recent-rows[row].id;
         root.recent-menu-x = x;
         root.recent-menu-y = y;
         root.recent-menu-open = false;
@@ -1140,11 +1147,11 @@ export component MainWindow inherits Window {
                                 if (event.text == Key.Home) { root.move-recent(0); return accept; }
                                 if (event.text == Key.End) { root.move-recent(last); return accept; }
                                 if (event.text == Key.Return || event.text == " ") {
-                                    root.recent-copied(root.rcur);
+                                    root.recent-copied(root.recent-rows[root.rcur].id);
                                     return accept;
                                 }
                                 if (event.text == Key.Delete) {
-                                    root.recent-deleted(root.rcur);
+                                    root.recent-deleted(root.recent-rows[root.rcur].id);
                                     return accept;
                                 }
                                 if (event.text == Key.Menu || (shift && event.text == Key.F10)) {
@@ -1430,7 +1437,7 @@ export component MainWindow inherits Window {
                                 variant: ButtonVariant.ghost;
                                 icon: Icons.trash;
                                 text: @tr("Clear recent history");
-                                clicked => { root.recent-cleared(); }
+                                clicked => { root.ask(5, 0); }
                             }
                         }
                         rlist := ListView {
@@ -1468,16 +1475,16 @@ export component MainWindow inherits Window {
                                     variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
                                     kind: ItemKind.text;
                                     preview: entry.preview;
-                                    list-name: entry.app == "" ? root.ago(entry.age-minutes) : entry.app + " · " + root.ago(entry.age-minutes);
+                                    list-name: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
                                     list-color: transparent;
                                     use-label: @tr("Copy");
                                     use => {
                                         root.recent-cursor = i;
-                                        root.recent-copied(i);
+                                        root.recent-copied(entry.id);
                                     }
                                     copy => {
                                         root.recent-cursor = i;
-                                        root.recent-copied(i);
+                                        root.recent-copied(entry.id);
                                     }
                                     double-clicked => {
                                         root.recent-cursor = i;
@@ -1502,14 +1509,14 @@ export component MainWindow inherits Window {
                         heading: root.searching ? @tr("No matches")
                             : root.section == MainSection.all ? @tr("Your deck is empty")
                             : root.section == MainSection.pinned ? @tr("Nothing pinned")
-                            : root.section == MainSection.recent ? (root.recent-on ? @tr("Nothing copied yet") : @tr("No recent items"))
+                            : root.section == MainSection.recent ? (root.recent-locked ? @tr("Recent copies are locked") : root.recent-on ? @tr("Nothing copied yet") : @tr("No recent items"))
                             : root.in-trash ? @tr("The Trash is empty")
                             : root.section == MainSection.list ? @tr("This list is empty")
                             : @tr("No items with this tag");
                         body: root.searching ? @tr("Nothing matches “{}”.", root.query)
                             : root.section == MainSection.all ? @tr("Save your first snippet, or copy something and save it from the clipboard.")
                             : root.section == MainSection.pinned ? @tr("Pin the snippets you use most to keep them one click away.")
-                            : root.section == MainSection.recent ? (root.recent-on ? @tr("Text you copy appears here, newest first, until you clear it or it is older than 7 days.") : @tr("Turn on clipboard history in Settings to collect what you copy."))
+                            : root.section == MainSection.recent ? (root.recent-locked ? @tr("Unlock your library to see recent copies. Nothing is collected while it is locked.") : root.recent-on ? @tr("Text you copy appears here, newest first, until you clear it or it is older than {} days.", root.recent-days) : @tr("Turn on clipboard history in Settings to collect what you copy."))
                             : root.in-trash ? @tr("Deleted items stay here for {} days before they are removed.", root.trash-days)
                             : root.section == MainSection.list ? @tr("Add a snippet, or move items here from another list.")
                             : @tr("Tag a snippet to see it here.");
@@ -1517,9 +1524,12 @@ export component MainWindow inherits Window {
                             ? @tr("Press Ctrl+N to add a snippet, or Ctrl+K to see every command.") : "";
                         action-text: root.searching ? ""
                             : root.section == MainSection.all || root.section == MainSection.list ? @tr("New item")
+                            : root.section == MainSection.recent && root.recent-locked ? @tr("Unlock")
                             : root.section == MainSection.recent && !root.recent-on ? @tr("Open Settings") : "";
                         action => {
-                            if (root.section == MainSection.recent) {
+                            if (root.section == MainSection.recent && root.recent-locked) {
+                                root.recent-unlock-requested();
+                            } else if (root.section == MainSection.recent) {
                                 root.settings-requested();
                             } else {
                                 root.new-item-requested();
@@ -1753,10 +1763,10 @@ export component MainWindow inherits Window {
             if (i == 0) {
                 root.recent-save-open = true;
             } else if (i == 1) {
-                root.recent-copied(root.recent-menu-row);
+                root.recent-copied(root.recent-menu-id);
                 root.restore-focus();
             } else {
-                root.recent-deleted(root.recent-menu-row);
+                root.recent-deleted(root.recent-menu-id);
                 root.restore-focus();
             }
         }
@@ -1775,7 +1785,7 @@ export component MainWindow inherits Window {
         }
         chosen(i) => {
             root.recent-save-open = false;
-            root.recent-saved(root.recent-menu-row, i);
+            root.recent-saved(root.recent-menu-id, i);
             root.restore-focus();
         }
         dismissed => { root.close-menus(); }

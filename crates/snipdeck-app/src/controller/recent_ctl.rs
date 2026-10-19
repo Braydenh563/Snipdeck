@@ -73,13 +73,17 @@ where
             sink(self.settings.recent_history, self.session.history_paused);
         }
         if let Some(gate) = &self.recent_gate {
-            gate.set(self.recent_settings().collecting());
+            gate.set(self.recent_settings().collecting() && !self.library_locked());
         }
     }
 
     /// The clipboard changed (the listener's event). Stores the text when the policy allows;
     /// a failure is dropped silently: the inbox is a convenience and must never interrupt.
     pub fn on_clipboard_change(&mut self, observation: &ClipboardObservation) {
+        // Nothing is recorded while the library is locked (the listener's gate is closed too).
+        if self.library_locked() {
+            return;
+        }
         let settings = self.recent_settings();
         let now = self.clock.now();
         let _ = RecentCapture::consider(&mut self.store, observation, &settings, now);
@@ -96,37 +100,15 @@ where
     /// switched-off inbox shows nothing.
     #[must_use]
     pub fn recent_entries(&self) -> Vec<RecentEntry> {
-        if !self.settings.recent_history {
+        if !self.settings.recent_history || self.library_locked() {
             return Vec::new();
         }
         self.store.recent().unwrap_or_default()
     }
 
-    /// The id of the entry on row `index` of the list the Panel shows (the search filters it).
-    fn recent_id_at(&self, index: usize) -> Option<i64> {
-        self.recent_view()?.rows.get(index).map(|r| r.id)
-    }
-
-    /// [`recent_copy`](Self::recent_copy) for row `index` of the Panel's Recent list.
-    pub fn recent_copy_at(&mut self, index: usize) {
-        if let Some(id) = self.recent_id_at(index) {
-            self.recent_copy(id);
-        }
-    }
-
-    /// [`recent_delete`](Self::recent_delete) for row `index` of the Panel's Recent list.
-    pub fn recent_delete_at(&mut self, index: usize) {
-        if let Some(id) = self.recent_id_at(index) {
-            self.recent_delete(id);
-        }
-    }
-
-    /// "Save to…": saves row `index` into the `target`th list of [`RecentView::targets`].
-    pub fn recent_promote_at(&mut self, index: usize, target: usize) {
-        let (Some(id), Some(view)) = (self.recent_id_at(index), self.recent_view()) else {
-            return;
-        };
-        if let Some(to) = view.targets.get(target) {
+    /// "Save to…": saves entry `id` into the `target`th list of [`RecentView::targets`].
+    pub fn recent_promote_to(&mut self, id: i64, target: usize) {
+        if let Some(to) = self.save_targets().get(target) {
             self.recent_promote(id, to.id);
         }
     }
@@ -140,6 +122,7 @@ where
         Some(RecentView {
             open: self.session.recent_open,
             paused: self.session.history_paused,
+            locked: self.library_locked(),
             rows: self
                 .recent_entries()
                 .iter()
@@ -191,31 +174,10 @@ where
             .collect()
     }
 
-    fn main_recent_id_at(&self, index: usize) -> Option<i64> {
-        self.main_recent_entries().get(index).map(|e| e.id)
-    }
-
-    /// [`recent_copy`](Self::recent_copy) for row `index` of the Main window's Recent list.
-    pub fn main_recent_copy(&mut self, index: usize) {
-        if let Some(id) = self.main_recent_id_at(index) {
-            self.recent_copy(id);
-        }
-    }
-
-    /// [`recent_delete`](Self::recent_delete) for row `index` of the Main window's Recent list.
-    pub fn main_recent_delete(&mut self, index: usize) {
-        if let Some(id) = self.main_recent_id_at(index) {
-            self.recent_delete(id);
-        }
-    }
-
-    /// "Save to…" for row `index` of the Main window's Recent list, into the `target`th of
-    /// [`super::MainScreen::recent_targets`].
-    pub fn main_recent_promote(&mut self, index: usize, target: usize) {
-        let targets = self.save_targets();
-        if let (Some(id), Some(to)) = (self.main_recent_id_at(index), targets.get(target)) {
-            self.recent_promote(id, to.id);
-        }
+    /// Whether the Recent lists are hidden behind the master password.
+    #[must_use]
+    pub fn recent_locked(&self) -> bool {
+        self.settings.recent_history && self.library_locked()
     }
 
     /// The clock tab was chosen (`true`) or a list tab was (`false`).

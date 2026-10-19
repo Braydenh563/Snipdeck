@@ -354,6 +354,30 @@ fn removing_a_program_is_written_too_and_a_repeat_is_refused_in_words() {
 }
 
 #[test]
+fn an_app_added_in_settings_is_no_longer_captured_end_to_end() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_recent_history_toggled(true);
+        let copy_from = |app: &str| {
+            r.ctl
+                .borrow_mut()
+                .on_clipboard_change(&snipdeck_app::recent::ClipboardObservation {
+                    text: Some(format!("from {app}")),
+                    source_app: Some(app.to_owned()),
+                    ..Default::default()
+                });
+        };
+        copy_from("KeePass.exe");
+        assert_eq!(r.ctl.borrow().recent_entries().len(), 1, "captured before it is excluded");
+        r.ui.invoke_no_history_app_added("keepass.exe".into());
+        copy_from("KeePass.exe");
+        copy_from("notepad.exe");
+        let texts: Vec<_> = r.ctl.borrow().recent_entries().into_iter().map(|e| e.text).collect();
+        assert_eq!(texts, ["from notepad.exe", "from KeePass.exe"], "the excluded app is not captured again");
+    });
+}
+
+#[test]
 fn the_apps_left_out_of_recent_are_a_list_with_add_remove_and_words_for_a_refusal() {
     on_ui_thread(|| {
         let r = rig();

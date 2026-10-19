@@ -162,7 +162,7 @@ fn the_search_box_narrows_the_recent_list_and_rows_act_on_what_is_shown() {
     let recent = w.ctl.view().recent.expect("on");
     assert_eq!(recent.rows.len(), 1);
     // Row 0 of the narrowed list is "beta two": saving it saves that text.
-    w.ctl.recent_promote_at(0, 1);
+    w.ctl.recent_promote_to(recent.rows[0].id, 1);
     let items = w.ctl.store().items(w.links_list).expect("items");
     assert_eq!(items[0].preview, "beta two");
 }
@@ -172,16 +172,30 @@ fn clicking_an_entry_puts_its_text_on_the_clipboard_and_deleting_removes_it() {
     let mut w = world_with(None, on());
     w.ctl.on_clipboard_change(&copied("copy me"));
     w.ctl.set_recent_open(true);
-    assert!(w.ctl.view().recent.expect("on").open);
-    w.ctl.recent_copy_at(0);
+    let id = w.ctl.view().recent.expect("on").rows[0].id;
+    w.ctl.recent_copy(id);
     let written = &w.ctl.services().clipboard.written;
     assert_eq!(written.len(), 1);
-    w.ctl.recent_delete_at(0);
+    w.ctl.recent_delete(id);
     assert_eq!(w.ctl.recent_entries().len(), 0);
-    // Out-of-range rows do nothing.
-    w.ctl.recent_copy_at(7);
-    w.ctl.recent_delete_at(7);
-    w.ctl.recent_promote_at(7, 0);
+    // An id that is gone does nothing.
+    w.ctl.recent_copy(id);
+    w.ctl.recent_delete(id);
+    w.ctl.recent_promote_to(id, 0);
+}
+
+#[test]
+fn actions_follow_the_entry_id_when_the_list_shifts_under_an_open_menu() {
+    let mut w = world_with(None, on());
+    w.ctl.on_clipboard_change(&copied("original"));
+    let id = w.ctl.view().recent.expect("on").rows[0].id;
+    // The menu is open on "original"; a new copy pushes it down a row.
+    w.ctl.on_clipboard_change(&copied("newcomer"));
+    let rows = w.ctl.view().recent.expect("on").rows;
+    assert_eq!(rows[1].id, id, "the entry moved");
+    w.ctl.recent_delete(id);
+    let left: Vec<_> = w.ctl.recent_entries().iter().map(|e| e.text.clone()).collect();
+    assert_eq!(left, ["newcomer"], "Remove hit the original entry");
 }
 
 #[test]
@@ -233,18 +247,20 @@ fn the_main_window_search_narrows_recent_and_rows_act_on_what_is_shown() {
     assert_eq!(screen.recent_rows.len(), 1);
     // The count stays the whole inbox.
     assert_eq!(screen.counts.recent, 2);
-    w.ctl.main_recent_promote(0, 1);
+    let id = screen.recent_rows[0].id;
+    w.ctl.recent_promote_to(id, 1);
     let items = w.ctl.store().items(w.links_list).expect("items");
     assert_eq!(items[0].preview, "beta two");
-    w.ctl.main_recent_copy(0);
+    w.ctl.recent_copy(id);
     assert_eq!(w.ctl.services().clipboard.written.len(), 1);
-    w.ctl.main_recent_delete(0);
+    w.ctl.recent_delete(id);
     assert_eq!(w.ctl.recent_entries().len(), 1);
-    // Out-of-range rows do nothing.
-    w.ctl.main_recent_copy(5);
-    w.ctl.main_recent_delete(5);
-    w.ctl.main_recent_promote(5, 0);
-    w.ctl.main_recent_promote(0, 99);
+    // An unknown id or target does nothing.
+    w.ctl.recent_copy(id);
+    w.ctl.recent_delete(id);
+    w.ctl.recent_promote_to(id, 0);
+    let other = w.ctl.recent_entries()[0].id;
+    w.ctl.recent_promote_to(other, 99);
     assert_eq!(w.ctl.recent_entries().len(), 1);
 }
 

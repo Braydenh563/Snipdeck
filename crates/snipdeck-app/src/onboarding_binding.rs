@@ -157,6 +157,8 @@ where
         window.set_autostart(settings.autostart);
         window.set_close_to_tray(settings.close_to_tray);
         window.set_recent_history(settings.recent_history);
+        window.set_recent_max_entries(crate::recent::max_entries_count());
+        window.set_recent_max_days(crate::recent::max_age_days());
         window.set_panel_in_taskbar(settings.panel_in_taskbar);
         window.set_panel_hide_on_blur(settings.panel_hide_on_blur);
         window.set_dock_edge_index(dock_edge_index(controller.dock_edge()));

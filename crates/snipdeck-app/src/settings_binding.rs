@@ -1354,6 +1354,8 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.recent_history == view.recent_history) {
         window.set_recent_history(view.recent_history);
+        window.set_recent_max_entries(crate::recent::max_entries_count());
+        window.set_recent_max_days(crate::recent::max_age_days());
     }
     if differs(&|p| p.backups_keep == view.backups_keep) {
         window.set_backups_keep(view.backups_keep);

@@ -446,13 +446,9 @@ impl TrayModel {
                 TrayEvent::HotkeysPaused(self.hotkeys_paused)
             }
             TrayEntry::PauseHistory => {
-                let paused = self.history != History::Paused;
-                self.history = if paused {
-                    History::Paused
-                } else {
-                    History::Collecting
-                };
-                TrayEvent::HistoryPaused(paused)
+                // The check mark follows the controller (`set_history`), not the click: the
+                // controller may decline, and then the menu must not claim otherwise.
+                TrayEvent::HistoryPaused(self.history != History::Paused)
             }
             TrayEntry::Quit => TrayEvent::Quit,
         }
@@ -579,13 +575,15 @@ mod tests {
     }
 
     #[test]
-    fn picking_pause_history_toggles_its_check_mark_and_says_so() {
+    fn picking_pause_history_asks_and_the_check_mark_follows_what_the_app_reports() {
         let mut m = model();
         m.set_history(true, false);
         assert_eq!(
             m.pick(TrayEntry::PauseHistory),
             TrayEvent::HistoryPaused(true)
         );
+        assert!(!m.history_paused(), "the click alone does not flip the mark");
+        m.set_history(true, true);
         assert!(m.history_paused());
         let labels = menu_labels(&mut m);
         assert!(labels.contains(&("Pause history".to_owned(), true)));

@@ -112,6 +112,10 @@ pub struct TagChoice {
 
 /// Everything the Main window shows, as plain data.
 #[derive(Debug, Clone, PartialEq)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "one field per switch the window shows; they are independent flags, not a state"
+)]
 pub struct MainScreen {
     /// Dark theme.
     pub dark: bool,
@@ -135,6 +139,8 @@ pub struct MainScreen {
     pub counts: Counts,
     /// The Recent inbox is on (its entries are listed in the Panel's clock tab).
     pub recent_on: bool,
+    /// The library is locked: the Recent section shows an unlock prompt instead of entries.
+    pub recent_locked: bool,
     /// The Recent section's entries, newest first (the search box narrows them); empty while the
     /// inbox is off or another section is open.
     pub recent_rows: Vec<crate::recent::RecentRowView>,
@@ -232,6 +238,7 @@ where
                 ..self.main.counts()
             },
             recent_on: self.settings.recent_history,
+            recent_locked: self.recent_locked(),
             recent_rows: if in_recent {
                 self.main_recent_rows()
             } else {

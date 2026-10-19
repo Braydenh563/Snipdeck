@@ -36,7 +36,7 @@ use snipdeck_platform::{
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
     tray::TrayEvent,
 };
-use snipdeck_store::{BoardRepo, ItemRepo, Store, TagRepo, TrashRepo};
+use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, Store, TagRepo, TrashRepo};
 use snipdeck_ui::{ItemAction, MainSection, MainView, MainWindow, PanelWindow, SelectMode};
 
 #[path = "support/mod.rs"]
@@ -1206,11 +1206,22 @@ fn the_recent_section_lists_what_was_copied_and_its_buttons_reach_the_controller
             "lists to save to"
         );
 
-        r.ui.invoke_recent_copied(1);
+        let id_of = |i: usize| rows.row_data(i).unwrap().id;
+        r.ui.invoke_recent_copied(id_of(1));
         assert_eq!(r.ctl.borrow().services().clipboard.written.len(), 1);
-        r.ui.invoke_recent_saved(0, 0);
+        let saved_before: usize = {
+            let ctl = r.ctl.borrow();
+            ctl.store().boards().unwrap().iter().flat_map(|b| ctl.store().lists(b.id).unwrap()).map(|l| ctl.store().items(l.id).unwrap().len()).sum()
+        };
+        r.ui.invoke_recent_saved(id_of(0), 0);
         assert!(!r.ui.get_toast_text().is_empty(), "saving says so");
-        r.ui.invoke_recent_deleted(0);
+        {
+            let ctl = r.ctl.borrow();
+            let all: Vec<String> = ctl.store().boards().unwrap().iter().flat_map(|b| ctl.store().lists(b.id).unwrap()).flat_map(|l| ctl.store().items(l.id).unwrap()).map(|i| i.preview.clone()).collect();
+            assert_eq!(all.len(), saved_before + 1, "an item was created");
+            assert!(all.iter().any(|p| p == "second copy"), "with the entry's text: {all:?}");
+        }
+        r.ui.invoke_recent_deleted(id_of(0));
         assert_eq!(r.ui.get_recent_rows().row_count(), 1);
         assert_eq!(r.ui.get_count_recent(), 1);
         r.ui.invoke_recent_cleared();

@@ -732,3 +732,32 @@ fn a_locked_library_does_not_import_a_snipdeck_file_that_would_drop_sensitive_it
     r.ctl.unlock_with_password(PASSWORD).expect("unlock");
     assert!(r.ctl.apply_import(&source));
 }
+
+// ---- Recent while locked -------------------------------------------------------------------------
+
+#[test]
+fn while_locked_recent_is_hidden_and_collects_nothing_until_unlocked() {
+    use snipdeck_app::recent::ClipboardObservation;
+    let copied = |text: &str| ClipboardObservation {
+        text: Some(text.to_owned()),
+        source_app: Some("notepad.exe".to_owned()),
+        ..ClipboardObservation::default()
+    };
+    let mut r = with_password(Tier::Pro);
+    r.ctl.update_settings(|s| s.recent_history = true);
+    r.ctl.on_clipboard_change(&copied("before the lock"));
+    assert_eq!(r.ctl.recent_entries().len(), 1);
+
+    r.ctl.lock_now();
+    assert!(r.ctl.library_locked());
+    assert!(r.ctl.recent_entries().is_empty(), "nothing listed while locked");
+    let view = r.ctl.view().recent.expect("history is on");
+    assert!(view.locked && view.rows.is_empty(), "the Panel asks for the unlock");
+    assert!(r.ctl.main_screen().recent_locked, "so does the Main window");
+    r.ctl.on_clipboard_change(&copied("while locked"));
+
+    r.ctl.unlock_with_password(PASSWORD).expect("unlock");
+    let texts: Vec<_> = r.ctl.recent_entries().into_iter().map(|e| e.text).collect();
+    assert_eq!(texts, ["before the lock"], "nothing was recorded while locked");
+    assert!(!r.ctl.view().recent.expect("on").locked);
+}

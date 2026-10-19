@@ -95,6 +95,9 @@ export component OnboardingWindow inherits Window {
     in-out property <bool> close-to-tray: true;
     // Clipboard history (the Recent inbox): off until the person turns it on here or in Settings.
     in-out property <bool> recent-history: false;
+    // How many copies and how many days the history keeps (the description names them).
+    in property <int> recent-max-entries: 200;
+    in property <int> recent-max-days: 7;
     in property <int> dock-edge-index: 0;
     // The host puts a refusal here (the start-up entry could not be changed).
     in property <string> notice;
@@ -280,7 +283,7 @@ export component OnboardingWindow inherits Window {
                     title: @tr("Clipboard history");
                     SettingRow {
                         title: @tr("Keep a Recent inbox of what you copy");
-                        description: @tr("Off unless you turn it on. It keeps the text you copy, on this computer only, for the last 200 copies or 7 days, whichever is fewer. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings.");
+                        description: @tr("Off unless you turn it on. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings.", root.recent-max-entries, root.recent-max-days);
                         Toggle {
                             a11y-label: @tr("Keep a Recent inbox of what you copy");
                             checked <=> root.recent-history;

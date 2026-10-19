@@ -949,9 +949,9 @@ ui_tests! {
             let log = log.clone();
             ui.on_recent_saved(move |r, t| log.borrow_mut().push(format!("save:{r}:{t}")));
         }
-        let entry = |text: &str| snipdeck_ui::RecentRow { preview: text.into(), app: "".into(), age_minutes: 1 };
+        let entry = |id: i32, text: &str| snipdeck_ui::RecentRow { id, preview: text.into(), app: "".into(), age_minutes: 1 };
         ui.set_recent_on(true);
-        ui.set_recent_rows(ModelRc::new(VecModel::from(vec![entry("one"), entry("two"), entry("three")])));
+        ui.set_recent_rows(ModelRc::new(VecModel::from(vec![entry(10, "one"), entry(20, "two"), entry(30, "three")])));
         ui.set_section(MainSection::Recent);
         ui.invoke_focus_items();
         settle();
@@ -967,8 +967,38 @@ ui_tests! {
         press_key(&ui, Key::Delete);
         press_key(&ui, Key::Home);
         press_key(&ui, Key::RightArrow);
-        assert_eq!(take(&log), ["copy:0", "copy:2", "delete:2"]);
+        assert_eq!(take(&log), ["copy:10", "copy:30", "delete:30"]);
         let chooser = ElementHandle::find_by_accessible_label(&ui, "Save to…").count();
         assert!(chooser > 0, "Right arrow opens the Save to… chooser");
+    }
+
+    fn clearing_the_recent_history_asks_first_and_the_locked_list_offers_the_unlock() {
+        let (ui, log) = start();
+        {
+            let cleared = log.clone();
+            ui.on_recent_cleared(move || cleared.borrow_mut().push("cleared".to_string()));
+            let unlock = log.clone();
+            ui.on_recent_unlock_requested(move || unlock.borrow_mut().push("unlock".to_string()));
+        }
+        let entry = |id: i32| snipdeck_ui::RecentRow { id, preview: "one".into(), app: "".into(), age_minutes: 1 };
+        ui.set_recent_on(true);
+        ui.set_recent_rows(ModelRc::new(VecModel::from(vec![entry(1), entry(2)])));
+        ui.set_section(MainSection::Recent);
+        settle();
+        take(&log);
+        find(&ui, "Clear recent history", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_confirm_open());
+        assert_eq!(take(&log), Vec::<String>::new(), "one click clears nothing");
+        find(&ui, "Clear history", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["cleared"]);
+
+        ui.set_recent_rows(ModelRc::new(VecModel::from(Vec::<snipdeck_ui::RecentRow>::new())));
+        ui.set_recent_locked(true);
+        fixture::set_rows(&ui, Vec::new());
+        settle();
+        assert!(ElementHandle::find_by_accessible_label(&ui, "Recent copies are locked").next().is_some());
+        find(&ui, "Unlock", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["unlock"]);
     }
 }

@@ -67,6 +67,9 @@ msgstr "Todos"
 msgid "All items"
 msgstr "Todos os trechos"
 
+msgid "All {} recent copies are removed. This can't be undone."
+msgstr ""
+
 msgid "Also forget the encryption key"
 msgstr "Esquecer também a chave de criptografia"
 
@@ -190,7 +193,13 @@ msgstr ""
 msgid "Clear"
 msgstr ""
 
+msgid "Clear history"
+msgstr ""
+
 msgid "Clear recent history"
+msgstr ""
+
+msgid "Clear recent history?"
 msgstr ""
 
 msgid "Clear search"
@@ -892,13 +901,13 @@ msgstr "OK"
 msgid "Off"
 msgstr "Desativado"
 
-msgid "Off by default. Keeps the text you copy, for the last 200 copies or 7 days, whichever is fewer, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
+msgid "Off by default. Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr ""
 
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "«Desativado» mantém aberto um painel acoplado. Caso contrário, ele recolhe em uma faixa fina, e o atalho do painel também o abre."
 
-msgid "Off unless you turn it on. It keeps the text you copy, on this computer only, for the last 200 copies or 7 days, whichever is fewer. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
+msgid "Off unless you turn it on. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
 msgstr ""
 
 msgid "One hotkey turns copied text into an item."
@@ -1112,6 +1121,9 @@ msgid "Recent"
 msgstr "Recentes"
 
 msgid "Recent copies"
+msgstr ""
+
+msgid "Recent copies are locked"
 msgstr ""
 
 msgid "Recent entry actions"
@@ -1417,10 +1429,10 @@ msgstr ""
 msgid "Text"
 msgstr "Texto"
 
-msgid "Text you copy appears here, newest first, until you clear it or it is older than 7 days."
+msgid "Text you copy appears here, newest first, until you clear it or it is older than {} days."
 msgstr ""
 
-msgid "Text you copy shows up here for a week. Save the useful ones to a list."
+msgid "Text you copy shows up here for {} days. Save the useful ones to a list."
 msgstr ""
 
 msgid "That password is not right. Try again."
@@ -1550,6 +1562,9 @@ msgid "Unlock"
 msgstr ""
 
 msgid "Unlock Snipdeck"
+msgstr ""
+
+msgid "Unlock your library to see recent copies. Nothing is collected while it is locked."
 msgstr ""
 
 msgid "Unlock your sensitive items"

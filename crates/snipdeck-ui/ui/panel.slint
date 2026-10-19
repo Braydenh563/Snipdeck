@@ -58,9 +58,21 @@ export struct PanelRow {
 // One entry of the Recent inbox (SPEC 5.6), as `snipdeck-app`'s `RecentRowView`: the start of the copied text, the
 // app it came from (empty = unknown) and whole minutes since the copy.
 export struct RecentRow {
+    // The store's id of the entry: actions carry it, so a list that shifts under an open menu cannot redirect them.
+    id: int,
     preview: string,
     app: string,
     age-minutes: int,
+}
+
+// The Recent entries' wording of their age, shared by the Panel and the Main window.
+export global RecentText {
+    pure public function ago(minutes: int) -> string {
+        return minutes < 1 ? @tr("Just now")
+            : minutes < 60 ? @tr("{} min ago", minutes)
+            : minutes < 1440 ? @tr("{} h ago", floor(minutes / 60))
+            : @tr("{} d ago", floor(minutes / 1440));
+    }
 }
 
 // Per-list view choice (SPEC 5.1): one-line rows or cards with a two-line preview.
@@ -109,6 +121,10 @@ export component PanelWindow inherits Window {
     in property <bool> recent-available: false;
     in-out property <bool> recent-open: false;
     in property <bool> recent-paused: false;
+    // The library is locked behind a master password: the list is empty and nothing is collected until it is unlocked.
+    in property <bool> recent-locked: false;
+    // The longest the entries are kept, in days.
+    in property <int> recent-days: 7;
     in property <[RecentRow]> recent-rows;
     // The lists "Save to…" offers.
     in property <[ChoiceEntry]> recent-targets;
@@ -186,6 +202,7 @@ export component PanelWindow inherits Window {
     callback recent-copied(int);
     callback recent-deleted(int);
     callback recent-saved(int, int);
+    callback recent-unlock-requested();
     callback add-list-requested();
     callback new-item-requested();
     callback settings-requested();
@@ -279,6 +296,8 @@ export component PanelWindow inherits Window {
     property <bool> recent-menu-open: false;
     property <bool> recent-save-open: false;
     property <int> recent-menu-row: 0;
+    // The entry the open menu acts on, by id (the rows may shift while it is open).
+    property <int> recent-menu-id: 0;
     property <length> recent-menu-x: 0px;
     property <length> recent-menu-y: 0px;
     property <length> header-h: max(Space.s8 + Space.s2, max(Space.hit, Type.line-base + Space.s2) + Space.s2);
@@ -463,13 +482,6 @@ export component PanelWindow inherits Window {
         root.quick-use(n);
     }
 
-    pure function ago(minutes: int) -> string {
-        return minutes < 1 ? @tr("Just now")
-            : minutes < 60 ? @tr("{} min ago", minutes)
-            : minutes < 1440 ? @tr("{} h ago", floor(minutes / 60))
-            : @tr("{} d ago", floor(minutes / 1440));
-    }
-
     function open-recent() {
         if (!root.recent-available || root.recent-open) {
             return;
@@ -497,6 +509,7 @@ export component PanelWindow inherits Window {
 
     function recent-menu-at(row: int, x: length, y: length) {
         root.recent-menu-row = row;
+        root.recent-menu-id = root.recent-rows[row].id;
         root.recent-menu-x = x;
         root.recent-menu-y = y;
         root.recent-selected = row;
@@ -505,6 +518,7 @@ export component PanelWindow inherits Window {
 
     function recent-save-at(row: int, x: length, y: length) {
         root.recent-menu-row = row;
+        root.recent-menu-id = root.recent-rows[row].id;
         root.recent-menu-x = x;
         root.recent-menu-y = y;
         root.recent-selected = row;
@@ -681,7 +695,7 @@ export component PanelWindow inherits Window {
                 }
                 if (root.recent-open && search.has-focus && root.rsel >= 0) {
                     if (event.text == Key.Return) {
-                        root.recent-copied(root.rsel);
+                        root.recent-copied(root.recent-rows[root.rsel].id);
                         return accept;
                     }
                     if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
@@ -689,7 +703,7 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                     if (event.text == Key.Delete && !root.searching) {
-                        root.recent-deleted(root.rsel);
+                        root.recent-deleted(root.recent-rows[root.rsel].id);
                         return accept;
                     }
                 }
@@ -1018,7 +1032,7 @@ export component PanelWindow inherits Window {
                                     variant: root.view == PanelView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
                                     kind: ItemKind.text;
                                     preview: entry.preview;
-                                    list-name: entry.app == "" ? root.ago(entry.age-minutes) : entry.app + " · " + root.ago(entry.age-minutes);
+                                    list-name: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
                                     list-color: transparent;
                                     selected: i == root.rsel;
                                     use-label: @tr("Copy");
@@ -1026,11 +1040,11 @@ export component PanelWindow inherits Window {
                                     keyboard-focusable: false;
                                     use => {
                                         root.recent-selected = i;
-                                        root.recent-copied(i);
+                                        root.recent-copied(entry.id);
                                     }
                                     copy => {
                                         root.recent-selected = i;
-                                        root.recent-copied(i);
+                                        root.recent-copied(entry.id);
                                     }
                                     double-clicked => {
                                         root.recent-save-at(i, self.absolute-position.x + Space.s6, self.absolute-position.y + self.height);
@@ -1046,10 +1060,13 @@ export component PanelWindow inherits Window {
                             width: parent.width - 2 * Space.s2;
                             height: parent.height;
                             kind: EmptyStateKind.inbox;
-                            heading: root.recent-paused ? @tr("History is paused") : @tr("Nothing copied yet");
-                            body: root.recent-paused ? @tr("Resume it from the tray icon, then copy some text.")
-                                : @tr("Text you copy shows up here for a week. Save the useful ones to a list.");
-                            action-text: "";
+                            heading: root.recent-locked ? @tr("Recent copies are locked")
+                                : root.recent-paused ? @tr("History is paused") : @tr("Nothing copied yet");
+                            body: root.recent-locked ? @tr("Unlock your library to see recent copies. Nothing is collected while it is locked.")
+                                : root.recent-paused ? @tr("Resume it from the tray icon, then copy some text.")
+                                : @tr("Text you copy shows up here for {} days. Save the useful ones to a list.", root.recent-days);
+                            action-text: root.recent-locked ? @tr("Unlock") : "";
+                            action => { root.recent-unlock-requested(); }
                         }
                     }
 
@@ -1292,9 +1309,9 @@ export component PanelWindow inherits Window {
                 if (i == 0) {
                     root.recent-save-open = true;
                 } else if (i == 1) {
-                    root.recent-copied(root.recent-menu-row);
+                    root.recent-copied(root.recent-menu-id);
                 } else {
-                    root.recent-deleted(root.recent-menu-row);
+                    root.recent-deleted(root.recent-menu-id);
                 }
             }
             dismissed => { root.recent-menu-open = false; }
@@ -1312,7 +1329,7 @@ export component PanelWindow inherits Window {
             }
             chosen(i) => {
                 root.recent-save-open = false;
-                root.recent-saved(root.recent-menu-row, i);
+                root.recent-saved(root.recent-menu-id, i);
             }
             dismissed => { root.recent-save-open = false; }
         }

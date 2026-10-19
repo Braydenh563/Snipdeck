@@ -554,11 +554,12 @@ where
         wire!(on_select_all_requested, |ctl| ctl.main_select_all());
         wire!(on_clear_selection_requested, |ctl| ctl
             .main_clear_selection());
-        wire!(on_recent_copied, |ctl, i| ctl.main_recent_copy(index(i)));
-        wire!(on_recent_deleted, |ctl, i| ctl.main_recent_delete(index(i)));
-        wire!(on_recent_saved, |ctl, i, target| ctl
-            .main_recent_promote(index(i), index(target)));
+        wire!(on_recent_copied, |ctl, id| ctl.recent_copy(i64::from(id)));
+        wire!(on_recent_deleted, |ctl, id| ctl.recent_delete(i64::from(id)));
+        wire!(on_recent_saved, |ctl, id, target| ctl
+            .recent_promote_to(i64::from(id), index(target)));
         wire!(on_recent_cleared, |ctl| ctl.recent_clear());
+        wire!(on_recent_unlock_requested, |ctl| ctl.request_unlock());
         wire!(on_item_action, |ctl, action, i| ctl
             .main_action(action_of(action), index(i)));
         wire!(on_move_chosen, |ctl, i| ctl.main_move_to(index(i)));
@@ -919,11 +920,18 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
             checked: t.checked,
         })));
     }
+    if window.get_recent_locked() != screen.recent_locked {
+        window.set_recent_locked(screen.recent_locked);
+    }
+    if window.get_recent_days() != crate::recent::max_age_days() {
+        window.set_recent_days(crate::recent::max_age_days());
+    }
     if window.get_recent_on() != screen.recent_on {
         window.set_recent_on(screen.recent_on);
     }
     if differs(&|p| p.recent_rows == screen.recent_rows) {
         window.set_recent_rows(model(screen.recent_rows.iter().map(|r| ui::RecentRow {
+            id: i32::try_from(r.id).unwrap_or(i32::MAX),
             preview: r.preview.as_str().into(),
             app: r.app.as_str().into(),
             age_minutes: i32::try_from(r.age_minutes).unwrap_or(i32::MAX),
