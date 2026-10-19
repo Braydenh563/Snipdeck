@@ -11,6 +11,7 @@ import { Icon } from "components/icon.slint";
 import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
 import { Toggle } from "components/choice.slint";
 import { HotkeyRecorder } from "components/hotkey_recorder.slint";
+import { FieldError } from "components/text_field.slint";
 import { FormSection, SettingRow, SelectField } from "components/form.slint";
 import { HotkeySetting } from "settings.slint";
 
@@ -139,7 +140,8 @@ export component OnboardingWindow inherits Window {
                     color: Theme.text-secondary;
                     font-family: Fonts.sans;
                     font-size: Type.sm;
-                    accessible-role: none;
+                    accessible-role: text;
+                    accessible-label: self.text;
                 }
                 Text {
                     text: root.step == 0 ? @tr("Welcome to Snipdeck")
@@ -151,7 +153,9 @@ export component OnboardingWindow inherits Window {
                     font-size: Type.xl;
                     font-weight: Type.semibold;
                     wrap: word-wrap;
-                    accessible-role: none;
+                    accessible-role: text;
+                    accessible-label: self.text;
+                    accessible-live-region: polite;
                 }
             }
 
@@ -260,12 +264,8 @@ export component OnboardingWindow inherits Window {
                             toggled(on) => { root.close-to-tray-toggled(on); }
                         }
                     }
-                    if root.notice != "": Text {
+                    if root.notice != "": FieldError {
                         text: root.notice;
-                        color: Theme.danger-fg;
-                        font-family: Fonts.sans;
-                        font-size: Type.sm;
-                        wrap: word-wrap;
                     }
                 }
             }

@@ -19,7 +19,9 @@ export component FieldError inherits HorizontalLayout {
         font-family: Fonts.sans;
         font-size: Type.sm;
         wrap: word-wrap;
-        accessible-role: none;
+        accessible-role: text;
+        accessible-label: root.text;
+        accessible-live-region: assertive;
     }
 }
 

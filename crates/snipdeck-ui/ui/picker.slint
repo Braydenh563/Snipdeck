@@ -421,6 +421,7 @@ export component PickerWindow inherits Window {
                         list-name: row.board-name != "" ? row.board-name + " / " + row.list-name : row.list-name;
                         list-color: row.list-color;
                         selected: i == root.sel;
+                        show-focus: i == root.sel;
                         use-label: "";
                         masked-hint: @tr("Hidden. Open it in the Panel to reveal.");
                         pulling: i == root.used-index;
