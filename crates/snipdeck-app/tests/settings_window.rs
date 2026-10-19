@@ -333,6 +333,29 @@ fn removing_a_program_is_written_too_and_a_repeat_is_refused_in_words() {
 }
 
 #[test]
+fn the_accent_applies_at_once_and_blue_keeps_the_built_in_palette() {
+    on_ui_thread(|| {
+        let r = rig();
+        let look = r.ui.global::<snipdeck_ui::SystemLook<'_>>();
+        assert!(!look.get_accent_custom(), "blue is the palette's own");
+        r.ui.invoke_accent_chosen(1);
+        assert_eq!(r.ui.get_accent_index(), 1);
+        assert!(look.get_accent_custom());
+        assert_eq!(
+            look.get_accent_light().default,
+            slint::Color::from_rgb_u8(0x04, 0x84, 0x84),
+            "teal-600"
+        );
+        r.ui.invoke_accent_chosen(0);
+        assert!(!look.get_accent_custom());
+        assert_eq!(
+            r.ctl.borrow().settings().accent,
+            snipdeck_app::accent::AccentChoice::Blue
+        );
+    });
+}
+
+#[test]
 fn the_theme_applies_at_once_and_the_page_shows_what_is_stored() {
     on_ui_thread(|| {
         let r = rig();
@@ -379,6 +402,44 @@ fn the_dock_group_shows_what_is_stored_and_holds_the_delays_in_range() {
         assert_eq!(r.ctl.borrow().settings().dock.trigger, DockTrigger::Click);
         // The control the group is found by.
         element(&r.ui, "Dock to", AccessibleRole::Combobox);
+    });
+}
+
+#[test]
+fn the_welcome_tour_docks_the_panel_from_its_position_step() {
+    on_ui_thread(|| {
+        let r = rig();
+        let tour = snipdeck_ui::OnboardingWindow::new().expect("tour window");
+        let host: Rc<dyn SettingsHost> = Rc::clone(&r.host) as Rc<dyn SettingsHost>;
+        let _binding = Controller::bind_onboarding(&r.ctl, &tour, host);
+        tour.show().expect("show");
+        assert_eq!(tour.get_dock_edge_index(), 0, "floating to begin with");
+        // Docking needs to know where the Panel is.
+        let monitor = Monitor {
+            id: Monitor::id_of("DISPLAY1", 1920, 1080),
+            work_area: Rect {
+                x: 0,
+                y: 0,
+                w: 1920,
+                h: 1040,
+            },
+            scale: 1.0,
+        };
+        let floating = Rect {
+            x: 600,
+            y: 100,
+            w: 320,
+            h: 480,
+        };
+        r.ctl.borrow_mut().frame_changed(&monitor, floating);
+
+        tour.invoke_dock_edge_chosen(3);
+        assert_eq!(r.ctl.borrow().dock_edge(), Some(DockEdge::Top));
+        assert_eq!(tour.get_dock_edge_index(), 3, "the step follows");
+
+        tour.invoke_dock_edge_chosen(0);
+        assert_eq!(r.ctl.borrow().dock_edge(), None);
+        assert_eq!(tour.get_dock_edge_index(), 0);
     });
 }
 

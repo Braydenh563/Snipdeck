@@ -300,7 +300,7 @@ where
         if !window.window().is_visible() {
             return;
         }
-        let (look, tier, toast): (_, _, Option<ToastView>) = {
+        let (look, accent, tier, toast): (_, _, _, Option<ToastView>) = {
             let controller = self.controller.borrow();
             let hotkeys = &controller.settings().hotkeys;
             let strings = |keys: Vec<String>| model(keys.iter().map(|k| k.as_str().into()));
@@ -318,12 +318,18 @@ where
             window.set_paste_next_spoken(spoken.into());
             (
                 controller.settings_look(),
+                controller.accent(),
                 controller.tier(),
                 controller.settings_toast(),
             )
         };
         window.set_dark(look.dark);
-        set_look(&window, look.high_contrast.as_ref(), look.reduce_motion);
+        set_look(
+            &window,
+            look.high_contrast.as_ref(),
+            accent.as_ref(),
+            look.reduce_motion,
+        );
         window.set_has_data_folder(self.data_dir.is_some());
         window.set_version(env!("CARGO_PKG_VERSION").into());
         window.set_build_date(build_date().into());

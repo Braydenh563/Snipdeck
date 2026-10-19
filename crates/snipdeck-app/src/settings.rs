@@ -331,6 +331,8 @@ pub struct Settings {
     pub hotkeys: Hotkeys,
     /// Colour theme.
     pub theme: Theme,
+    /// Accent colour.
+    pub accent: crate::accent::AccentChoice,
     /// Interface language as a locale tag (`de`, `pt-BR`); empty follows Windows.
     pub language: String,
     /// Start with Windows.
@@ -374,6 +376,7 @@ impl Default for Settings {
             version: VERSION,
             hotkeys: Hotkeys::default(),
             theme: Theme::System,
+            accent: crate::accent::AccentChoice::default(),
             language: String::new(),
             autostart: false,
             close_to_tray: true,
@@ -441,6 +444,7 @@ impl Settings {
         }
         field!(hotkeys);
         field!(theme);
+        field!(accent);
         field!(language);
         field!(autostart);
         field!(close_to_tray);

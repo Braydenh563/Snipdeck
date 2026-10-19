@@ -312,6 +312,24 @@ fn holding_a_sensitive_row_reveals_its_text_and_releasing_hides_it() {
 }
 
 #[test]
+fn the_stack_strip_shows_the_marks_and_its_buttons_start_and_end_the_stack() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_stack_visible());
+        let id = r.ctl.borrow().view().rows[0].id;
+        r.ctl.borrow_mut().toggle_stack_mark(id);
+        r.ui.invoke_query_changed("".into());
+        assert!(r.ui.get_stack_visible());
+        assert_eq!(r.ui.get_stack_count(), 1);
+        assert!(!r.ui.get_stack_running());
+        r.ui.invoke_stack_started();
+        assert!(r.ui.get_stack_running());
+        r.ui.invoke_stack_ended();
+        assert!(!r.ui.get_stack_visible());
+    });
+}
+
+#[test]
 fn a_context_menu_request_opens_the_item_menu_and_dismissing_closes_it() {
     on_ui_thread(|| {
         let r = rig();
@@ -641,6 +659,7 @@ fn windows_dark_mode_and_high_contrast_reach_the_window() {
         r.binding.system_look(SystemLook {
             dark: true,
             high_contrast: None,
+            accent: None,
             reduce_motion: false,
         });
         assert!(r.ui.get_dark(), "theme = system follows Windows");
@@ -652,6 +671,7 @@ fn windows_dark_mode_and_high_contrast_reach_the_window() {
                 highlight: snipdeck_platform::system_look::Rgb { r: 1, g: 2, b: 3 },
                 ..hc
             }),
+            accent: None,
             reduce_motion: false,
         });
         assert!(look.get_high_contrast());
@@ -695,6 +715,7 @@ fn an_explicit_theme_ignores_windows_dark_mode() {
         r.binding.system_look(SystemLook {
             dark: true,
             high_contrast: None,
+            accent: None,
             reduce_motion: false,
         });
         assert!(!r.ui.get_dark());

@@ -17,6 +17,7 @@ use snipdeck_platform::{
 use snipdeck_ui as ui;
 
 use crate::{
+    accent::Accent,
     binding::{index, model, redraw_all, register_redraw},
     controller::{Controller, FillView, Library, View},
     fill::{Field, FieldKind},
@@ -25,7 +26,7 @@ use crate::{
     panel::Footer,
     picker_binding::AnchorMemory,
     placement::{self, PopupHost},
-    popup_window::{Shell, set_high_contrast},
+    popup_window::{Shell, set_look_globals},
     toast::{Toast, ToastKind, ToastMessage},
 };
 
@@ -40,6 +41,7 @@ pub const FILL_WIDTH: f32 = 440.0;
 struct Shown {
     dark: bool,
     high_contrast: Option<HighContrast>,
+    accent: Option<Accent>,
     reduced_motion: bool,
     /// The form on screen (`seq`) and its preview.
     seq: u64,
@@ -109,6 +111,7 @@ where
         *self.shown.borrow_mut() = Some(Shown {
             dark: view.dark,
             high_contrast: view.high_contrast,
+            accent: view.accent,
             reduced_motion: view.reduced_motion,
             seq: fill.seq,
             preview: fill.preview.clone(),
@@ -293,11 +296,13 @@ fn render(
         window.set_dark(view.dark);
     }
     if differs(&|p| {
-        p.high_contrast == view.high_contrast && p.reduced_motion == view.reduced_motion
+        (p.high_contrast, p.accent, p.reduced_motion)
+            == (view.high_contrast, view.accent, view.reduced_motion)
     }) {
-        set_high_contrast(
+        set_look_globals(
             &window.global::<ui::SystemLook<'_>>(),
             view.high_contrast.as_ref(),
+            view.accent.as_ref(),
             view.reduced_motion,
         );
     }

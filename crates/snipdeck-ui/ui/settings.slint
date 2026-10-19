@@ -53,6 +53,7 @@ export component SettingsPage inherits Window {
     in property <[HotkeySetting]> hotkeys;
     // 0 follow Windows, 1 light, 2 dark.
     in property <int> theme-index: 0;
+    in property <int> accent-index: 0;
     // Native language names ("English", ...), the first being "Follow Windows" if the host offers it.
     in property <[string]> languages;
     in property <int> language-index: 0;
@@ -112,6 +113,7 @@ export component SettingsPage inherits Window {
     callback hotkey-recorded(index: int, combo: string);
     callback hotkey-cleared(index: int);
     callback theme-chosen(index: int);
+    callback accent-chosen(index: int);
     callback language-chosen(index: int);
     callback autostart-toggled(on: bool);
     callback close-to-tray-toggled(on: bool);
@@ -244,6 +246,20 @@ export component SettingsPage inherits Window {
                             options: [@tr("Windows"), @tr("Light"), @tr("Dark")];
                             current: root.theme-index;
                             chosen(i) => { root.theme-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Accent colour");
+                        description: @tr("Windows accent follows your Windows personalisation.");
+                        SelectField {
+                            width: 200px * SystemLook.text-scale;
+                            label: @tr("Accent colour");
+                            options: [@tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Rose"), @tr("Violet"), @tr("Windows accent")];
+                            current: root.accent-index;
+                            chosen(i) => { root.accent-chosen(i); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

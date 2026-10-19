@@ -539,6 +539,7 @@ where
             is_new: slot.is_new(),
             dark: look.dark,
             high_contrast: look.high_contrast,
+            accent: self.accent(),
             reduced_motion: look.reduce_motion,
             fields: slot.fields.clone(),
             list_names: slot.lists.iter().map(|(_, n)| n.clone()).collect(),

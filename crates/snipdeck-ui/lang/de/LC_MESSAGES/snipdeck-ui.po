@@ -22,6 +22,9 @@ msgstr "Info"
 msgid "About Snipdeck"
 msgstr "Über Snipdeck"
 
+msgid "Accent colour"
+msgstr ""
+
 msgid "Actions"
 msgstr "Aktionen"
 
@@ -147,6 +150,9 @@ msgstr "Wähle eine aus, um sie ans Ende des Textes zu setzen. Sie wird beim Ein
 
 msgid "Choose tags"
 msgstr "Schlagwörter wählen"
+
+msgid "Clear"
+msgstr ""
 
 msgid "Clear search"
 msgstr "Suche löschen"
@@ -359,6 +365,9 @@ msgid "Empty the Trash?"
 msgstr "Papierkorb leeren?"
 
 msgid "Encryption on disk"
+msgstr ""
+
+msgid "End stack"
 msgstr ""
 
 msgid "Enter"
@@ -871,6 +880,15 @@ msgstr "Füge einen Lizenzschlüssel ein, um Unterstützer einzuschalten. Der Sc
 msgid "Paste stack"
 msgstr ""
 
+msgid "Paste stack, item {} of {}, next: {}"
+msgstr ""
+
+msgid "Paste stack, {} marked"
+msgstr ""
+
+msgid "Paste stack: {} marked"
+msgstr ""
+
 msgid "Paste the Nth result"
 msgstr ""
 
@@ -1177,6 +1195,9 @@ msgstr "Quellcode"
 msgid "Space"
 msgstr "Leertaste"
 
+msgid "Start stack"
+msgstr ""
+
 msgid "Start with Windows"
 msgstr "Mit Windows starten"
 
@@ -1390,6 +1411,12 @@ msgstr "Fensterverhalten"
 msgid "Windows"
 msgstr "Windows"
 
+msgid "Windows accent"
+msgstr ""
+
+msgid "Windows accent follows your Windows personalisation."
+msgstr ""
+
 msgid "Your data"
 msgstr "Deine Daten"
 
@@ -1512,6 +1539,9 @@ msgstr ""
 
 msgid "{} of the checks need a look."
 msgstr "{} der Prüfungen brauchen einen Blick."
+
+msgid "{} of {} · next: {}"
+msgstr ""
 
 msgid "{} selected"
 msgstr "{} ausgewählt"

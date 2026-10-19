@@ -64,6 +64,8 @@ pub struct SystemLook {
     pub dark: bool,
     /// A high-contrast theme is on, with its colours. Wins over everything else.
     pub high_contrast: Option<HighContrast>,
+    /// The colour Windows uses as its accent, when it can be read.
+    pub accent: Option<Rgb>,
     /// Windows' "Animation effects" is off (Settings > Accessibility > Visual effects).
     pub reduce_motion: bool,
 }

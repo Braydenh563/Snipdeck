@@ -22,6 +22,9 @@ msgstr "バージョン情報"
 msgid "About Snipdeck"
 msgstr "Snipdeck について"
 
+msgid "Accent colour"
+msgstr ""
+
 msgid "Actions"
 msgstr "操作"
 
@@ -147,6 +150,9 @@ msgstr "選んだものがテキストの末尾に追加されます。スニペ
 
 msgid "Choose tags"
 msgstr "タグを選択"
+
+msgid "Clear"
+msgstr ""
 
 msgid "Clear search"
 msgstr "検索をクリア"
@@ -359,6 +365,9 @@ msgid "Empty the Trash?"
 msgstr "ゴミ箱を空にしますか？"
 
 msgid "Encryption on disk"
+msgstr ""
+
+msgid "End stack"
 msgstr ""
 
 msgid "Enter"
@@ -871,6 +880,15 @@ msgstr "ライセンスキーを貼り付けるとサポーターが有効にな
 msgid "Paste stack"
 msgstr ""
 
+msgid "Paste stack, item {} of {}, next: {}"
+msgstr ""
+
+msgid "Paste stack, {} marked"
+msgstr ""
+
+msgid "Paste stack: {} marked"
+msgstr ""
+
 msgid "Paste the Nth result"
 msgstr ""
 
@@ -1177,6 +1195,9 @@ msgstr "ソースコード"
 msgid "Space"
 msgstr "Space"
 
+msgid "Start stack"
+msgstr ""
+
 msgid "Start with Windows"
 msgstr "Windows の起動時に開始"
 
@@ -1390,6 +1411,12 @@ msgstr "ウィンドウの動作"
 msgid "Windows"
 msgstr "Windows"
 
+msgid "Windows accent"
+msgstr ""
+
+msgid "Windows accent follows your Windows personalisation."
+msgstr ""
+
 msgid "Your data"
 msgstr "データ"
 
@@ -1512,6 +1539,9 @@ msgstr ""
 
 msgid "{} of the checks need a look."
 msgstr "{} 件の項目に確認が必要です。"
+
+msgid "{} of {} · next: {}"
+msgstr ""
 
 msgid "{} selected"
 msgstr "{} 件選択中"

@@ -33,6 +33,7 @@ import { SearchField } from "components/text_field.slint";
 import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
 import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind, Tooltip } from "components/feedback.slint";
 import { Menu, MenuEntry } from "components/menu.slint";
+import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
 import { IconButton } from "components/icon-button.slint";
 import { Keycap, KeyCombo } from "components/keycap.slint";
 import { DockHandle } from "components/dock-handle.slint";
@@ -181,6 +182,14 @@ export component PanelWindow inherits Window {
     in property <string> picker-spoken;
     callback app-menu-activated(int);
     callback app-menu-dismissed();
+    // The paste stack (SPEC 5.1): items marked from the item menu, then "Start stack" makes Paste next walk them.
+    in property <bool> stack-visible: false;
+    in property <bool> stack-running: false;
+    in property <int> stack-count: 0;
+    in property <int> stack-position: 0;
+    in property <string> stack-next-title: "";
+    callback stack-started();
+    callback stack-ended();
     callback item-menu-activated(int);
     callback item-menu-dismissed();
     callback list-menu-requested(int);
@@ -546,6 +555,8 @@ export component PanelWindow inherits Window {
                 if (event.text == Key.Escape) {
                     if (root.searching) {
                         root.clear-query();
+                    } else if (root.stack-visible) {
+                        root.stack-ended();
                     } else {
                         root.close-requested();
                     }
@@ -882,6 +893,46 @@ export component PanelWindow inherits Window {
                         y: parent.height - self.height - Space.s2;
                         undo => { root.toast-undo(); }
                         hover-changed(h) => { root.toast-hover-changed(h); }
+                    }
+                }
+
+                // ---- Paste stack: the marked items, and Start / End ---------------------------------------
+                if root.stack-visible: Rectangle {
+                    height: max(Space.s8, Type.line-sm + Space.s3);
+                    background: Theme.accent-subtle;
+                    accessible-role: AccessibleRole.text;
+                    accessible-label: root.stack-running
+                        ? @tr("Paste stack, item {} of {}, next: {}", root.stack-position + 1, root.stack-count, root.stack-next-title)
+                        : @tr("Paste stack, {} marked", root.stack-count);
+                    HorizontalLayout {
+                        padding-left: Space.s3;
+                        padding-right: Space.s2;
+                        spacing: Space.s2;
+                        Text {
+                            horizontal-stretch: 1;
+                            text: root.stack-running
+                                ? @tr("{} of {} · next: {}", root.stack-position + 1, root.stack-count, root.stack-next-title)
+                                : @tr("Paste stack: {} marked", root.stack-count);
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            color: Theme.accent-text;
+                            vertical-alignment: center;
+                            overflow: elide;
+                            accessible-role: AccessibleRole.none;
+                        }
+                        if !root.stack-running: Button {
+                            text: @tr("Start stack");
+                            size: ButtonSize.sm;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.stack-started(); }
+                        }
+                        Button {
+                            text: root.stack-running ? @tr("End stack") : @tr("Clear");
+                            variant: ButtonVariant.ghost;
+                            size: ButtonSize.sm;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.stack-ended(); }
+                        }
                     }
                 }
 
