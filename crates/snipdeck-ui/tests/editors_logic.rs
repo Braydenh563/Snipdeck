@@ -1302,3 +1302,24 @@ fn help_rows_are_labelled_with_their_status_and_the_fix_buttons_call_back() {
     press_key(&ui, Key::Escape);
     assert_eq!(log.borrow().last().map(String::as_str), Some("close"));
 }
+
+#[test]
+fn the_about_tab_offers_the_welcome_tour_again() {
+    let ui = HelpWindow::new().expect("help");
+    fixture::help(&ui);
+    ui.set_tab(1);
+    ui.window().set_size(slint::LogicalSize::new(600.0, 900.0));
+    ui.show().expect("show");
+    settle();
+    let log: Log = Rc::default();
+    {
+        let log = log.clone();
+        ui.on_tour_requested(move || log.borrow_mut().push("tour".into()));
+    }
+    let tour: Vec<_> = ElementHandle::find_by_accessible_label(&ui, "Show the welcome tour again")
+        .filter(|e| e.accessible_role() == Some(AccessibleRole::Button))
+        .collect();
+    assert_eq!(tour.len(), 1);
+    tour[0].invoke_accessible_default_action();
+    assert_eq!(*log.borrow(), ["tour"]);
+}

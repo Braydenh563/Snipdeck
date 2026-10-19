@@ -57,6 +57,7 @@ export component HelpWindow inherits Window {
     callback open-logs-folder-requested();
     callback copy-report-requested();
     callback guide-requested();
+    callback tour-requested();
     callback source-requested();
     callback releases-requested();
     callback store-requested();
@@ -285,6 +286,15 @@ export component HelpWindow inherits Window {
                                 text: @tr("Open");
                                 a11y-label: @tr("Open the user guide");
                                 clicked => { root.guide-requested(); }
+                            }
+                        }
+                        SettingRow {
+                            title: @tr("Welcome tour");
+                            description: @tr("Walk through the basics again.");
+                            Button {
+                                text: @tr("Show");
+                                a11y-label: @tr("Show the welcome tour again");
+                                clicked => { root.tour-requested(); }
                             }
                         }
                         SettingRow {
