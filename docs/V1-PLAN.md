@@ -1,3 +1,71 @@
+# V1 ship list (2026-10-19, authoritative)
+
+Everything that must be done before `v1.0.0`, in order. Owner scope decision 2026-10-19: everything planned ships
+except screen capture/OCR, an update check and an activation server. Status: `[x]` done, `[~]` in progress,
+`[ ]` open, `[owner]` only the owner can do it. The waves below this list are history; where they disagree, this
+list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
+
+## A. In flight (wave 2.5)
+- [~] A1 [S] Review fixes: Panel list editor without Main, Space reveal in Panel, drop `OpenOnboarding`, hash the sensitive clipboard text (wt-review).
+- [~] A2 [S] Windows UI: menus sized to content, focus rings inset, `place_near` before show, "New list N" prefilled and selected, Open Panel button, Panel steps down for Snipdeck windows, dialogs over their owner, Settings fits the work area at 150 % (wt-windows-ui).
+- [~] A3 [S] Learnability: Ctrl+K command palette (toolbar, Panel kebab, tray), shortcuts sheet (Ctrl+/ and F1 tab), shortcut hints in menus and tooltips, footer and empty-state hints (wt-learn).
+- [x] A4 CI fixes for clippy 1.99 and tests (fill_window sensitive template, 051ece4).
+
+## B. Wave 3: finish the features (three S agents)
+- [ ] B1 [S] Import: Settings "Import…" for `.snipdeck`, Ditto, CopyQ, folder of .txt/.md; preview of what it adds (also for Restore); Free board limit respected.
+- [ ] B2 [S] Windows clipboard-history importer (current session; Windows-only, wizard step).
+- [ ] B3 [S] Export a list as text.
+- [ ] B4 [S] Ctrl+Z undoes the last undoable action; Undo toast >= 5 s and pauses on hover.
+- [ ] B5 [S] "Getting started" list seeded on first run (`starter.rs`).
+- [ ] B6 [S] Duplicate item.
+- [ ] B7 [S] Hover/focus "More" (⋯) button on rows and cards = the context menu.
+- [ ] B8 [S] Shortcuts: Ctrl+N, Ctrl+Shift+N, Ctrl+F, Ctrl+D, Ctrl+W, Ctrl+, (where not already in A3).
+- [ ] B9 [S] Tray double-click opens the Main window.
+- [ ] B10 [S] Reduced-motion setting (and follow Windows "Animation effects").
+- [ ] B11 [S] Drag and drop: reorder items and lists; drop items on a list tab to move; drop files/text on the Panel to create.
+- [ ] B12 [S] Perf: cached per-board index on the store change counter; budget tests (search < 16 ms / 10k, Panel load < 50 ms); release size and idle RAM printed by the Windows build.
+- [ ] B13 [S] CLI: `--check-db`, `--troubleshoot`.
+- [ ] B14 [S] Sensitive clipboard clear: keep the copy-only clear, add the setting (30 s, 0 = off); SPEC 5.7 updated to match.
+- [ ] B15 [S] Wording and a11y leftovers: Help glyph, "Delete for good" everywhere, list-bullets icon, live regions on status texts, HC selected-state tokens, tooltips on every icon button and rail item, German segmented widths, menu Tab dismisses, Pin/Unpin label, Move to Trash button variant, radio arrow keys, dock handle hit area, tab tooltips, Panel row focus ring (`.claude/remaining/ux-audit-2026-10-19.md`).
+
+## C. Wave 4: the deferred features, now in v1
+- [ ] C1 [S] Recent inbox (SPEC 5.6): opt-in, off by default, last 200 entries or 7 days, excludes sensitive/password sources and Windows "exclude from history" formats; Promote to a list; clock tab in the Panel; sidebar entry.
+- [ ] C2 [S] Paste stack (Pro, SPEC 5.1): multi-select, Start stack, queue shown in the Panel, Paste next advances.
+- [ ] C3 [S] Master password (Pro, SPEC 5.7): Argon2id, unlock per session and idle timeout, change and remove, recovery warning.
+- [ ] C4 [S] Item colour label (8 DESIGN swatches, 4 px bar, filter chip) and list icon (curated set).
+- [ ] C5 [S] Accent colour: Index Blue default; presets teal, green, amber, rose, violet; "Windows accent" option nudged to pass contrast; every token pair measured for WCAG 2.2 AA in a test; full high-contrast use; 225 % icon scaling.
+- [ ] C6 [S] Edge dock ships (built: dock.rs, dock_ctl.rs): settings checked, wizard steps present.
+- [ ] C7 [S] MSIX packaging files and `docs/store.md` steps (owner buys the account); code-signing steps for SignPath in the release docs.
+- [ ] C8 [S] Get Pro: mailto link in Settings, the board-limit toast and the site; address is a placeholder until the owner supplies it.
+
+## D. Images, site, controller
+- [ ] D1 [S] Regenerate every golden after A-C, read each one; UX fixes from what they show.
+- [ ] D2 [S] README shots and hero images at 2x (`SNIPDECK_SHOT_SCALE=2`, `scripts/readme_shots.py`); Help shot back in.
+- [ ] D3 [S] De-slop pass over every window state against DESIGN.md (13a).
+- [ ] D4 [S] GitHub Pages site: self-hosted assets, no CDN, DESIGN.md tokens, WCAG 2.2 AA, download, tour, Pro, privacy.
+- [ ] D5 [S] Controller split (H1): `controller.rs` under 800 lines, test list identical before and after (may be done inside F1).
+
+## E. Docs and going public
+- [ ] E1 [H] Docs: user guide matches every menu, shortcut and new feature; CHANGELOG; troubleshooting; privacy (Recent inbox); licensing (Get Pro); HANDOVER rewritten to the shipped state; CODEMAP regenerated.
+- [ ] E2 [S] Pre-public sweep (`docs/going-public.md` section 1): full-history secret scan, review `docs/` and `.claude/` for private notes, read licensing and SECURITY as a stranger.
+- [ ] E3 [owner] Make the repo public; GitHub settings in `docs/going-public.md` sections 2-3 (secret scanning, Dependabot, branch protection, tag ruleset).
+
+## F. Verification
+- [ ] F1 [F] Fable critical sweep (`docs/fable-brief.md`): architecture, complexity, frontend, backend, UI/UX, efficiency, security, bugs; ranked findings, then fixes.
+- [ ] F2 [O] Independent review of the whole diff since `main`; fixes by S.
+- [ ] F3 [S] ux-auditor and blind-tester runs on the final build; fixes.
+- [ ] F4 [S] `scripts/gate.sh --full` on stable and 1.99.1, Windows target check, `cargo deny`; CI green (needs E3 for free runners); PR #5 body with the gate lines; morning summary; retro.
+
+## G. Owner on Windows and release
+- [ ] G1 [owner] Windows run: `Snipdeck.bat` on a clean PC, `run-windows-tests.bat` (M2, M3 and new steps), tray, taskbar, Alt+Tab, placement at 100/150/225 %, file dialog, caret, DPAPI, autostart, dock hover, IME (S2).
+- [ ] G2 [owner] Supply the Get Pro address; review and merge PR #5.
+- [ ] G3 [owner] Tag `v1.0.0`; the release workflow builds the zip; add its SHA-256 to `tools/launcher/release-sha256.txt`.
+- [ ] G4 [owner] After release: apply to SignPath Foundation; Microsoft Store submission (optional).
+
+Not in v1 (owner, 2026-10-19): screen capture and OCR (SPEC 5.5), an update check (breaks the offline promise), an activation server.
+
+---
+
 # V1 plan: waves and steps (Fable, 2026-10-18)
 
 Owner's order: finish v1 with nothing left undone; lightweight, robust, instinctive. This file is the work order: an
