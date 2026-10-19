@@ -10,8 +10,20 @@ msgstr ""
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "PNG画像。Snipdeckが独自のコピーを保存します。"
 
+msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
+msgstr ""
+
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr "リストには、返信文や住所など関連するスニペットをまとめておけます。"
+
+msgid "A master password is on and your sensitive items are locked."
+msgstr ""
+
+msgid "A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use."
+msgstr ""
+
+msgid "A master password is part of Supporter."
+msgstr ""
 
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "作業中のアプリの横に、スニペットを並べた帯が表示されます。クリックすると、そのアプリに貼り付けます。"
@@ -43,6 +55,9 @@ msgstr "リストを追加"
 msgid "Add some text, or cancel."
 msgstr "テキストを追加するか、キャンセルしてください。"
 
+msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
+msgstr ""
+
 msgid "All"
 msgstr "すべて"
 
@@ -72,6 +87,9 @@ msgstr "毎回値を尋ねる"
 
 msgid "Asks you to pick one of the options"
 msgstr "オプションから1つ選択を求めます"
+
+msgid "At least {} characters. A few unrelated words make a good password."
+msgstr ""
 
 msgid "Back"
 msgstr "戻る"
@@ -127,11 +145,20 @@ msgstr "キャンセル"
 msgid "Captured items keep their kind."
 msgstr "キャプチャしたスニペットは種類を保持します。"
 
+msgid "Change master password"
+msgstr ""
+
+msgid "Change password"
+msgstr ""
+
 msgid "Change these in Settings."
 msgstr ""
 
 msgid "Changes apply at once."
 msgstr "変更はすぐに適用されます。"
+
+msgid "Change…"
+msgstr ""
 
 msgid "Check again"
 msgstr "もう一度確認"
@@ -245,6 +272,9 @@ msgid "Copy the item"
 msgstr ""
 
 msgid "Copy the result"
+msgstr ""
+
+msgid "Current password"
 msgstr ""
 
 msgid "Daily backups, a plain zip export, and your choice of theme."
@@ -372,6 +402,12 @@ msgstr ""
 
 msgid "Enter"
 msgstr "Enter"
+
+msgid "Enter your master password to use the sensitive items in your library. Your other items are always available."
+msgstr ""
+
+msgid "Enter your password."
+msgstr ""
 
 msgid "Erase everything"
 msgstr "すべて削除"
@@ -528,6 +564,9 @@ msgstr "ポインターが開いたパネルから外れてからパネルがた
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "パネルを開く幅（{}〜{}ピクセル）。"
+
+msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
+msgstr ""
 
 msgid "Image"
 msgstr "画像"
@@ -705,6 +744,9 @@ msgstr "新しいリスト"
 
 msgid "New name for {}"
 msgstr "{} の新しい名前"
+
+msgid "New password"
+msgstr ""
 
 msgid "New tag"
 msgstr "新しいタグ"
@@ -1003,17 +1045,29 @@ msgstr "赤"
 msgid "Reduce motion"
 msgstr ""
 
+msgid "Remove master password"
+msgstr ""
+
+msgid "Remove password"
+msgstr ""
+
 msgid "Remove tag {}"
 msgstr "タグ {} を削除"
 
 msgid "Remove {} from the list"
 msgstr "リストから {} を削除"
 
+msgid "Remove…"
+msgstr ""
+
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
 msgstr "タグの名前を変更または削除します。タグを削除しても、それが付いたスニペットは残ります。"
 
 msgid "Rename tag {}"
 msgstr "タグ {} の名前を変更"
+
+msgid "Repeat the new password"
+msgstr ""
 
 msgid "Required"
 msgstr "必須"
@@ -1108,6 +1162,15 @@ msgstr ""
 msgid "Separate workspaces, such as Work and Personal."
 msgstr ""
 
+msgid "Set master password"
+msgstr ""
+
+msgid "Set password"
+msgstr ""
+
+msgid "Set password…"
+msgstr ""
+
 msgid "Settings"
 msgstr "設定"
 
@@ -1159,6 +1222,12 @@ msgstr "Snipdeck（ホットキーは一時停止中）"
 msgid "Snipdeck Supporter"
 msgstr "Snipdeck サポーター"
 
+msgid "Snipdeck can't protect a key on this PC, so a master password is not available."
+msgstr ""
+
+msgid "Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again."
+msgstr ""
+
 msgid "Snipdeck handle, press the Panel hotkey to open"
 msgstr "Snipdeck のハンドル。開くにはパネルのショートカットを押してください"
 
@@ -1207,6 +1276,18 @@ msgstr "起動"
 msgid "Step {} of {}"
 msgstr "ステップ {} / {}"
 
+msgid "Strength: fair"
+msgstr ""
+
+msgid "Strength: good"
+msgstr ""
+
+msgid "Strength: strong"
+msgstr ""
+
+msgid "Strength: weak"
+msgstr ""
+
 msgid "Supporter"
 msgstr ""
 
@@ -1246,11 +1327,17 @@ msgstr ""
 msgid "Text"
 msgstr "テキスト"
 
+msgid "That password is not right. Try again."
+msgstr ""
+
 msgid "The Trash is empty"
 msgstr "ゴミ箱は空です"
 
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr "このキーは、以前に保存したエクスポート内の暗号化された項目を開くためのものです。削除すると、それらの項目は二度と開けません。"
+
+msgid "The library could not be unlocked or changed. Nothing was changed."
+msgstr ""
 
 msgid "The licences of the libraries Snipdeck is built from."
 msgstr "Snipdeck のビルドに使われているライブラリのライセンスです。"
@@ -1278,6 +1365,9 @@ msgstr "タグはスニペットから外されます。スニペット自体は
 
 msgid "The time now"
 msgstr "現在時刻"
+
+msgid "The two passwords are not the same."
+msgstr ""
 
 msgid "Theme"
 msgstr "テーマ"
@@ -1348,6 +1438,18 @@ msgstr "確認のため {} と入力"
 msgid "Undo the delete"
 msgstr ""
 
+msgid "Unlock"
+msgstr ""
+
+msgid "Unlock Snipdeck"
+msgstr ""
+
+msgid "Unlock your sensitive items"
+msgstr ""
+
+msgid "Unlock…"
+msgstr ""
+
 msgid "Unpin"
 msgstr "ピン留めを解除"
 
@@ -1356,6 +1458,9 @@ msgstr ""
 
 msgid "Use"
 msgstr "使用"
+
+msgid "Use at least {} characters."
+msgstr ""
 
 msgid "Use selected item"
 msgstr ""
@@ -1425,6 +1530,9 @@ msgstr "デッキは空です"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "ライブラリは1つのフォルダー（%LOCALAPPDATA%\\Snipdeck）にあります：snipdeck.db（ボード、リスト、スニペット、タグ、ゴミ箱）、blobs（画像、ファイル、長いテキスト）、settings.json、ライセンスキー、バックアップ（保持すると選んだ数）、ログ。"
+
+msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
+msgstr ""
 
 msgid "Your shortcuts"
 msgstr "ショートカット設定"

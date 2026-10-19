@@ -64,6 +64,29 @@ pub fn toast_text(message: &ToastMessage) -> String {
         ToastMessage::NeedsPro(_) => "This item uses a Supporter feature.".into(),
         ToastMessage::TemplateBroken => "This template can't be read. Open it to fix it.".into(),
         ToastMessage::Locked => "Unlock your library to use this item.".into(),
+        ToastMessage::Unlocked => "Library unlocked.".into(),
+        ToastMessage::MasterPasswordSet => "Master password set.".into(),
+        ToastMessage::MasterPasswordChanged => "Master password changed.".into(),
+        ToastMessage::MasterPasswordRemoved => "Master password removed.".into(),
+        ToastMessage::MasterPasswordChangedNotOpen => {
+            "Master password changed. Snipdeck couldn't open the library just now. Unlock it with \
+             the new password."
+                .into()
+        }
+        ToastMessage::MasterPasswordRemovedNotOpen => {
+            "Master password removed. Snipdeck couldn't open the library just now. Restart \
+             Snipdeck to use your sensitive items."
+                .into()
+        }
+        ToastMessage::LockedEditorClosed => {
+            "Your library locked after a while. The sensitive item you were editing was closed \
+             without saving."
+                .into()
+        }
+        ToastMessage::UnlockFirst => {
+            "Unlock your library first, so your sensitive items are included. Nothing was done."
+                .into()
+        }
         ToastMessage::Saved { list } => format!("Saved to {list}"),
         ToastMessage::NothingToSave => "Nothing to save. Copy some text first.".into(),
         ToastMessage::TooLargeToSave => "That text is too large to save.".into(),
@@ -446,6 +469,14 @@ mod tests {
             ToastMessage::NeedsPro(Feature::PromptedFields),
             ToastMessage::TemplateBroken,
             ToastMessage::Locked,
+            ToastMessage::Unlocked,
+            ToastMessage::MasterPasswordSet,
+            ToastMessage::MasterPasswordChanged,
+            ToastMessage::MasterPasswordRemoved,
+            ToastMessage::MasterPasswordChangedNotOpen,
+            ToastMessage::MasterPasswordRemovedNotOpen,
+            ToastMessage::UnlockFirst,
+            ToastMessage::LockedEditorClosed,
             ToastMessage::Saved {
                 list: "Notes".into(),
             },

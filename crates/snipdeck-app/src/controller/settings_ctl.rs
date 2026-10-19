@@ -189,6 +189,10 @@ where
     /// daily run writes only when there is none, and the user asked for a fresh copy).
     /// Returns whether it worked.
     pub fn backup_now(&mut self, data_dir: &Path) -> bool {
+        // A copy of a locked library would lack its sensitive items and replace today's whole one.
+        if self.copy_blocked_by_lock() {
+            return false;
+        }
         let now = self.clock.now();
         let key = snipdeck_portable::Library::data_key(&self.store);
         let made = match backup::run_if_due(
@@ -218,6 +222,10 @@ where
     /// Restores `backup` (a file `backup::list_backups` found) into the library: what is missing
     /// comes back, nothing is removed. A Free library stays within its board limit.
     pub fn restore_backup(&mut self, backup_file: &Path) -> bool {
+        // Without the key the backup's sensitive items cannot be read, and they would be dropped.
+        if self.copy_blocked_by_lock() {
+            return false;
+        }
         let max_boards = (!self.entitlements.allows(Feature::UnlimitedBoards))
             .then_some(Entitlements::FREE_BOARD_LIMIT);
         let restored = backup::restore(
@@ -250,6 +258,9 @@ where
     /// overwrite an earlier export. Sensitive items go in encrypted, or are left out when the
     /// library has no key.
     pub fn export_library(&mut self, folder: &Path) -> Option<PathBuf> {
+        if self.copy_blocked_by_lock() {
+            return None;
+        }
         let now = self.clock.now();
         let path = export_path(folder, now.to_zoned(TimeZone::system()).date());
         let exported = fs::create_dir_all(folder).is_ok()
@@ -310,6 +321,8 @@ where
         self.revealed = None;
         self.editor = None;
         self.undo = None;
+        // The key record may have gone (forgotten) or stayed (with its password).
+        self.refresh_master();
         let _ = self.refresh_panel();
         self.show_toast(if erased {
             Toast {

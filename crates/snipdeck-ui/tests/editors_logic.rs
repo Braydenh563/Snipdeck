@@ -732,6 +732,22 @@ ui_tests! {
         assert!(ui.get_wanted_height() > plain, "{plain} -> {}", ui.get_wanted_height());
     }
 
+    fn force_layout_makes_a_hidden_window_report_the_height_of_its_rows() {
+        // The host sizes a reused, hidden editor from `wanted-height` before showing it: no frame has run, so
+        // only a forced layout pass puts the notice row in the height.
+        let ui = BoardEditor::new().expect("board editor");
+        ui.set_name("Personal".into());
+        ui.set_can_delete(true);
+        ui.show().expect("show");
+        ui.hide().expect("hide");
+        snipdeck_ui::layout::force_layout(ui.window());
+        let plain = ui.get_wanted_height();
+        ui.set_can_delete(false);
+        ui.set_delete_hint("The last board can't be deleted.".into());
+        snipdeck_ui::layout::force_layout(ui.window());
+        assert!(ui.get_wanted_height() > plain, "{plain} -> {}", ui.get_wanted_height());
+    }
+
     // ---- Tag management ----------------------------------------------------------------------
 
     fn tags_rename_with_enter_and_cancel_with_escape() {

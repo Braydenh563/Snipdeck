@@ -103,6 +103,9 @@ const EDITOR_WIDTH: f32 = 460.0;
 fn size_to_content(window: &slint::Window, wanted: impl Fn() -> f32) {
     // The form's height depends on its width (a notice wraps), so give it the width first.
     window.set_size(slint::LogicalSize::new(EDITOR_WIDTH, 300.0));
+    // The window is hidden and was filled just now: its `if` rows (the last-board notice) are only
+    // created by a layout pass, so run one before reading the height.
+    ui::layout::force_layout(window);
     let (w, h) = fit_logical((EDITOR_WIDTH, wanted()));
     window.set_size(slint::LogicalSize::new(w, h));
 }

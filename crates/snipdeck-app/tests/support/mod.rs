@@ -81,19 +81,32 @@ pub fn key(k: Key) -> String {
 /// One in-memory key provider shared by every controller of a test, so a "restart" (a second
 /// controller on the same data folder) opens the key the first run made.
 #[derive(Clone)]
-pub struct SharedProvider(std::rc::Rc<snipdeck_store::crypto::MemoryKeyProvider>);
+pub struct SharedProvider {
+    inner: std::rc::Rc<snipdeck_store::crypto::MemoryKeyProvider>,
+    /// How many more `unwrap_key` calls work; `None` is no limit. At zero every one fails, as a
+    /// key store that went away does.
+    unwraps_left: std::rc::Rc<std::cell::Cell<Option<u32>>>,
+}
 
 impl SharedProvider {
     pub fn new() -> Self {
-        Self(std::rc::Rc::new(
-            snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
-        ))
+        Self {
+            inner: std::rc::Rc::new(
+                snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
+            ),
+            unwraps_left: std::rc::Rc::new(std::cell::Cell::new(None)),
+        }
+    }
+
+    /// From now on `n` more unwraps work, then every one fails (`None` lifts the limit).
+    pub fn fail_unwraps_after(&self, n: Option<u32>) {
+        self.unwraps_left.set(n);
     }
 }
 
 impl snipdeck_store::crypto::KeyProvider for SharedProvider {
     fn wrap_key(&self, key: &[u8]) -> Result<Vec<u8>, snipdeck_store::crypto::KeyProviderError> {
-        self.0.wrap_key(key)
+        self.inner.wrap_key(key)
     }
 
     fn unwrap_key(
@@ -101,7 +114,15 @@ impl snipdeck_store::crypto::KeyProvider for SharedProvider {
         wrapped: &[u8],
     ) -> Result<snipdeck_store::crypto::Zeroizing<Vec<u8>>, snipdeck_store::crypto::KeyProviderError>
     {
-        self.0.unwrap_key(wrapped)
+        if let Some(left) = self.unwraps_left.get() {
+            if left == 0 {
+                return Err(snipdeck_store::crypto::KeyProviderError::Unavailable(
+                    "the key store is gone".to_owned(),
+                ));
+            }
+            self.unwraps_left.set(Some(left - 1));
+        }
+        self.inner.unwrap_key(wrapped)
     }
 }
 

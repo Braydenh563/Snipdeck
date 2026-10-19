@@ -18,6 +18,7 @@ import { Toggle } from "components/choice.slint";
 import { HotkeyRecorder } from "components/hotkey_recorder.slint";
 import { Dialog } from "components/dialog.slint";
 import { PlanTable } from "components/plan-table.slint";
+import { MasterPasswordForm, MasterMode, MasterProblem } from "master_password.slint";
 import { FormField, FormScroll, FormSection, SettingRow, Segmented, SelectField, NumberStepper } from "components/form.slint";
 
 // One global shortcut as the page shows it. The order of `SettingsPage.hotkeys` is fixed: show or hide the panel,
@@ -104,6 +105,21 @@ export component SettingsPage inherits Window {
     in-out property <string> erase-text;
     in-out property <bool> forget-key: false;
     property <int> erase-focus: 0;
+    // The master password (SPEC 5.7). `master-state`: 0 = this PC cannot protect a key, 1 = none set, 2 = set, 3 = the key could not be read.
+    in property <int> master-state: 1;
+    // A password is set and the sensitive items are locked now.
+    in property <bool> master-locked: false;
+    // This plan may set a master password (Supporter).
+    in property <bool> master-allowed: false;
+    in property <int> master-idle-minutes: 15;
+    in property <int> master-min-length: 8;
+    // What the host found wrong with the last attempt; the host clears it when the form closes.
+    in-out property <MasterProblem> master-problem: MasterProblem.none;
+    // Which form is open under the row. The host sets it back to `closed` after a change worked.
+    in-out property <MasterMode> master-mode: MasterMode.closed;
+    // Go up to put the focus on the form's first field, and back on the row's button when the form closes.
+    property <int> master-form-focus: 0;
+    property <int> master-focus: 0;
     // Goes up when the Get Supporter dialog closes: its button takes the focus back.
     property <int> supporter-focus: 0;
     // What the confirmation must be typed as, exactly.
@@ -130,6 +146,11 @@ export component SettingsPage inherits Window {
     callback no-paste-app-added(name: string);
     callback no-paste-app-removed(index: int);
     callback licence-submitted(key: string);
+    // How strong the host finds a typed new password: 0 weak .. 3 strong. Pure: the page calls it as the user types.
+    pure callback master-strength(password: string) -> int;
+    // The form's action. The passwords exist only in this call; the host never stores them.
+    callback master-submitted(mode: MasterMode, current: string, new: string, again: string);
+    callback master-unlock-requested();
     // "Email me" in the Get Supporter dialog: the host opens the email app (a mailto: link).
     callback supporter-requested();
     callback backup-now-requested();
@@ -167,6 +188,20 @@ export component SettingsPage inherits Window {
         root.erase-open = false;
         root.erase-text = "";
         root.forget-key = false;
+    }
+
+    function open-master(mode: MasterMode) {
+        root.master-problem = MasterProblem.none;
+        root.master-mode = mode;
+        root.master-form-focus += 1;
+    }
+
+    // Also the host's way to close the form once a change worked.
+    public function close-master() {
+        root.master-mode = MasterMode.closed;
+        root.master-problem = MasterProblem.none;
+        // The button that opened the form is back, and takes the focus (WCAG 2.4.3).
+        root.master-focus += 1;
     }
 
     function submit-licence() {
@@ -797,6 +832,66 @@ export component SettingsPage inherits Window {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
                         }
+                    }
+                    SettingRow {
+                        title: @tr("Master password");
+                        description: root.master-state == 0
+                            ? @tr("Snipdeck can't protect a key on this PC, so a master password is not available.")
+                            : root.master-state == 3
+                            ? @tr("Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again.")
+                            : root.master-state == 2
+                            ? (root.master-locked
+                                ? @tr("A master password is on and your sensitive items are locked.")
+                                : @tr("A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes))
+                            : root.master-allowed
+                            ? @tr("Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes)
+                            : @tr("A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes);
+                        HorizontalLayout {
+                            spacing: Space.s2;
+                            if root.master-state != 2: Button {
+                                text: @tr("Set password…");
+                                focus-request: root.master-focus;
+                                enabled: root.master-allowed && root.master-state == 1 && root.master-mode == MasterMode.closed;
+                                clicked => { root.open-master(MasterMode.set); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            if root.master-state == 2 && root.master-locked: Button {
+                                text: @tr("Unlock…");
+                                clicked => { root.master-unlock-requested(); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            if root.master-state == 2: Button {
+                                text: @tr("Change…");
+                                focus-request: root.master-focus;
+                                enabled: root.master-mode == MasterMode.closed;
+                                clicked => { root.open-master(MasterMode.change); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            if root.master-state == 2: Button {
+                                text: @tr("Remove…");
+                                enabled: root.master-mode == MasterMode.closed;
+                                clicked => { root.open-master(MasterMode.remove); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                    }
+                    if root.master-mode != MasterMode.closed: MasterPasswordForm {
+                        mode: root.master-mode;
+                        problem: root.master-problem;
+                        min-length: root.master-min-length;
+                        focus-request: root.master-form-focus;
+                        strength(p) => { return root.master-strength(p); }
+                        revealed(y, h) => { root.reveal-field(y, h); }
+                        submitted(c, n, a) => { root.master-submitted(root.master-mode, c, n, a); }
+                        cancelled => { root.close-master(); }
                     }
                     for line in [
                         @tr("Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."),

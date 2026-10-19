@@ -20,7 +20,7 @@ use snipdeck_core::{
 use snipdeck_platform::file_dialog::FilePicker;
 use snipdeck_store::{
     BlobStore, ItemRepo, TagRepo,
-    crypto::{CryptoError, KeyProvider, KeyProviderError, KeyRing},
+    crypto::{CryptoError, KeyProvider, KeyProviderError},
     name_key,
 };
 
@@ -43,7 +43,7 @@ pub(super) struct EditorEnv {
     /// Where drafts go (none in the demo, which has no data folder).
     drafts: Option<Drafts>,
     /// Wraps the library key (DPAPI on Windows).
-    keys: Option<Box<dyn KeyProvider>>,
+    pub(super) keys: Option<Box<dyn KeyProvider>>,
     /// The file dialog. Shared so the window can ask it without holding the controller: the
     /// dialog runs its own message loop, and the controller must be free meanwhile.
     picker: Option<Rc<dyn FilePicker>>,
@@ -106,9 +106,17 @@ pub(super) struct ItemEditorSlot {
     last_draft: Option<Draft>,
     draft_cleared: bool,
     draft_failed_told: bool,
+    /// The Sensitive switch as the window last reported it (the two-second tick): an editor of a
+    /// plain item becomes sensitive when the user turns it on.
+    live_sensitive: bool,
 }
 
 impl ItemEditorSlot {
+    /// Whether this editor holds, or is about to hold, the text of a sensitive item.
+    fn sensitive(&self) -> bool {
+        self.original_sensitive || self.fields.sensitive || self.live_sensitive
+    }
+
     fn draft_key(&self) -> DraftKey {
         match self.target {
             ItemTarget::New => DraftKey::New,
@@ -187,8 +195,12 @@ where
             && !self.store.is_unlocked()
             && !matches!(self.store.key_ring_exists(), Ok(true))
             && matches!(self.store.has_plain_sensitive(), Ok(true));
-        if let Err(e) = self.ensure_key(migrate) {
-            self.show_toast(open_failed(&e));
+        self.refresh_master();
+        match self.ensure_key(migrate) {
+            // A master password is set: the library waits for it, silently. The unlock window
+            // opens when a sensitive item is first needed.
+            Ok(()) | Err(snipdeck_store::Error::Crypto(CryptoError::PasswordRequired)) => {}
+            Err(e) => self.show_toast(open_failed(&e)),
         }
     }
 
@@ -334,6 +346,7 @@ where
             last_draft: None,
             draft_cleared: false,
             draft_failed_told: false,
+            live_sensitive: false,
         };
         slot.baseline = slot.draft_of(&fields);
         Ok(slot)
@@ -344,6 +357,7 @@ where
         if item.sensitive {
             // Opening decrypts the text: the key first.
             self.ensure_key(false)?;
+            self.note_activity();
         }
         let (lists, list_index) = self.list_choices(item.list_id)?;
         let mut fields = EditorInput {
@@ -401,6 +415,7 @@ where
             last_draft: None,
             draft_cleared: false,
             draft_failed_told: false,
+            live_sensitive: false,
         };
         slot.baseline = slot.draft_of(&fields);
         Ok(slot)
@@ -565,9 +580,31 @@ where
 
     /// A field was edited: refusals no longer apply.
     pub fn item_editor_edited(&mut self) {
-        if let Some(slot) = self.item_editor.as_mut() {
-            slot.problems = Problems::default();
+        let Some(slot) = self.item_editor.as_mut() else {
+            return;
+        };
+        slot.problems = Problems::default();
+        // Typing in a sensitive item is use: it must not idle the library out under the
+        // user's hands (the lock closes this editor).
+        if slot.sensitive() {
+            self.note_activity();
         }
+    }
+
+    /// Closes the item editor if it holds a sensitive item's text, as the lock does: the text is
+    /// dropped, not saved, and no draft is kept. Returns whether one was closed.
+    pub(super) fn close_sensitive_item_editor(&mut self) -> bool {
+        if !self
+            .item_editor
+            .as_ref()
+            .is_some_and(ItemEditorSlot::sensitive)
+        {
+            return false;
+        }
+        if let Some(slot) = self.item_editor.take() {
+            self.clear_draft(slot.draft_key());
+        }
+        true
     }
 
     /// Tag `index` of the view was ticked or unticked.
@@ -629,6 +666,7 @@ where
         let Some(slot) = self.item_editor.as_mut() else {
             return false;
         };
+        slot.live_sensitive = input.sensitive;
         let Some(drafts) = self.editor_env.drafts.as_ref() else {
             return false;
         };
@@ -914,7 +952,7 @@ where
     /// Makes the library key usable: nothing to do when it is open; opens it when it exists;
     /// makes it, with no master password, when `create` and it does not exist (the first
     /// sensitive item; the user is not asked).
-    fn ensure_key(&mut self, create: bool) -> snipdeck_store::Result<()> {
+    pub(super) fn ensure_key(&mut self, create: bool) -> snipdeck_store::Result<()> {
         if self.store.is_unlocked() {
             return Ok(());
         }
@@ -927,11 +965,13 @@ where
                 KeyProviderError::Unavailable("no key protection on this machine".to_owned()),
             )));
         };
-        let ring = KeyRing::new(provider);
+        let ring = super::lock_ctl::ring_on(provider, self.lock.kdf);
+        // A master password is never typed here: a library that has one stays locked until the
+        // unlock window opens it ([`Controller::unlock_with_password`]).
         if exists {
-            self.store.unlock_key_ring(&ring)
+            self.store.unlock_key_ring(&ring, None)
         } else {
-            self.store.create_key_ring(&ring)
+            self.store.create_key_ring(&ring, None)
         }
     }
 }
