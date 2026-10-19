@@ -10,6 +10,7 @@ pub mod cli;
 pub mod controller;
 pub mod crash;
 pub mod demo;
+pub mod doctor;
 pub mod dock;
 pub mod drafts;
 pub mod editor_binding;
