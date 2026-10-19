@@ -158,6 +158,8 @@ fn settings() -> (SettingsPage, Log) {
     hook!(on_language_chosen, |i| format!("lang:{i}"));
     hook!(on_autostart_toggled, |on| format!("autostart:{on}"));
     hook!(on_close_to_tray_toggled, |on| format!("tray:{on}"));
+    hook!(on_panel_in_taskbar_toggled, |on| format!("taskbar:{on}"));
+    hook!(on_panel_hide_on_blur_toggled, |on| format!("blur:{on}"));
     hook!(on_panel_width_chosen, |w| format!("width:{w}"));
     hook!(on_no_paste_app_added, |n| format!("app+:{n}"));
     hook!(on_no_paste_app_removed, |i| format!("app-:{i}"));
@@ -380,14 +382,12 @@ ui_tests! {
         let toggle = find(&ui, "Sensitive item", AccessibleRole::Switch);
         assert_eq!(toggle.accessible_checked(), Some(false));
         let text = toggle.accessible_description().expect("description").to_string();
-        assert!(text.contains("30 seconds") && text.contains("clipboard"), "{text}");
+        // It says only what the app does: no promise to clear the clipboard on a timer.
+        assert!(text.contains("clipboard history"), "{text}");
+        assert!(!text.contains("seconds"), "{text}");
         toggle.invoke_accessible_default_action();
         assert!(ui.get_sensitive());
         assert!(ui.get_dirty());
-
-        ui.set_clear_seconds(90);
-        settle();
-        assert!(toggle.accessible_description().unwrap().contains("90 seconds"));
 
         ui.set_kind_index(4);
         settle();
@@ -576,6 +576,29 @@ ui_tests! {
         let _ = find(&ui, "Board name", AccessibleRole::TextInput);
     }
 
+    fn a_new_list_asks_for_just_the_height_of_its_form() {
+        let ui = ListEditor::new().expect("list editor");
+        ui.set_is_new(true);
+        ui.show().expect("show");
+        settle();
+        let wanted = ui.get_wanted_height();
+        // Less than the 440 px every editor used to ask for, more than a bare footer.
+        assert!(wanted > 150.0 && wanted < 440.0, "{wanted}");
+    }
+
+    fn the_wanted_height_grows_with_the_last_board_notice() {
+        let ui = BoardEditor::new().expect("board editor");
+        ui.set_name("Personal".into());
+        ui.set_can_delete(true);
+        ui.show().expect("show");
+        settle();
+        let plain = ui.get_wanted_height();
+        ui.set_can_delete(false);
+        ui.set_delete_hint("The last board can't be deleted.".into());
+        settle();
+        assert!(ui.get_wanted_height() > plain, "{plain} -> {}", ui.get_wanted_height());
+    }
+
     // ---- Tag management ----------------------------------------------------------------------
 
     fn tags_rename_with_enter_and_cancel_with_escape() {
@@ -671,7 +694,7 @@ ui_tests! {
         let names = [
             "Show or hide the panel",
             "Open the picker",
-            "Capture a region",
+            "Save the clipboard as an item",
             "Paste the next item",
         ];
         for name in names {
@@ -735,6 +758,14 @@ ui_tests! {
         let tray = find(&ui, "Keep running in the tray when the window closes", AccessibleRole::Switch);
         tray.invoke_accessible_default_action();
         assert_eq!(take(&log), ["tray:false"]);
+        let taskbar = find(&ui, "Show Snipdeck in the taskbar", AccessibleRole::Switch);
+        assert_eq!(taskbar.accessible_checked(), Some(false), "off by default");
+        taskbar.invoke_accessible_default_action();
+        assert_eq!(take(&log), ["taskbar:true"]);
+        let blur = find(&ui, "Hide the panel when it loses focus", AccessibleRole::Switch);
+        assert_eq!(blur.accessible_checked(), Some(true), "on by default");
+        blur.invoke_accessible_default_action();
+        assert_eq!(take(&log), ["blur:false"]);
         // The host can put a value back (autostart could not be registered).
         ui.set_autostart(true);
         settle();

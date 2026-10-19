@@ -34,8 +34,9 @@ use snipdeck_app::{
     platform::{self, Callbacks, Host, Start},
     screenshot,
     settings::{Settings, Theme},
-    settings_binding::{SettingsUi, SystemHost},
+    settings_binding::{PanelTaskbar, SettingsUi, SystemHost},
     settings_store::{FileSink, SettingsSaver},
+    window_kind,
 };
 use snipdeck_core::{Entitlements, Tier, Timestamp};
 use snipdeck_store::Store;
@@ -182,11 +183,50 @@ fn run(args: &Args) -> Result<(), String> {
         }
     };
     let main_ui = Rc::new(MainUi::new(&controller));
+    let panel_taskbar: PanelTaskbar = {
+        let window = window.as_weak();
+        Rc::new(move |on| {
+            if let Some(window) = window.upgrade() {
+                snipdeck_app::native_window::set_panel_taskbar(&window, on);
+            }
+        })
+    };
     let settings_ui = Rc::new(SettingsUi::new(
         &controller,
         settings_folder.clone(),
-        Rc::new(SystemHost::new(Rc::clone(&hotkeys))),
+        Rc::new(SystemHost::new(Rc::clone(&hotkeys), Rc::clone(&panel_taskbar))),
     ));
+    // The Panel's native window exists once it has been shown. Attached on the first show, which
+    // a `--hidden` start reaches later, from the tray or the hotkey.
+    let attach_now: Rc<dyn Fn()> = {
+        let attach_panel: Rc<dyn Fn(isize, bool)> = Rc::from(attach_panel);
+        let attached = Rc::new(Cell::new(false));
+        let window = window.as_weak();
+        let controller = Rc::downgrade(&controller);
+        Rc::new(move || {
+            if attached.get() {
+                return;
+            }
+            let Some(panel) = window.upgrade() else {
+                return;
+            };
+            let (attach, attached) = (Rc::clone(&attach_panel), Rc::clone(&attached));
+            let (controller, weak) = (controller.clone(), window.clone());
+            attach_when_created(
+                &panel,
+                Box::new(move |hwnd| {
+                    let in_taskbar = controller
+                        .upgrade()
+                        .is_some_and(|c| c.borrow().settings().panel_in_taskbar);
+                    attach(hwnd, in_taskbar);
+                    attached.set(true);
+                    if in_taskbar && let Some(panel) = weak.upgrade() {
+                        snipdeck_app::native_window::set_panel_taskbar(&panel, true);
+                    }
+                }),
+            );
+        })
+    };
     let binding = Controller::bind(
         &controller,
         &window,
@@ -197,6 +237,7 @@ fn run(args: &Args) -> Result<(), String> {
             Rc::clone(&main_ui),
             Rc::clone(&tray),
             Rc::clone(&settings_ui),
+            Rc::clone(&attach_now),
         ),
     );
     BINDING.with(|b| *b.borrow_mut() = Some(binding.clone()));
@@ -218,7 +259,7 @@ fn run(args: &Args) -> Result<(), String> {
             .map_err(|e| format!("showing the Panel: {e}"))?;
         restore_frame(&window);
         frames_armed.set(true);
-        attach_when_created(&window, attach_panel);
+        attach_now();
     }
     // The backup, the Trash purge (30 days, SPEC 5.7a) and the weekly check start 2 s after the
     // first show and repeat every 6 h. Not in the demo, which has no data folder.
@@ -302,6 +343,7 @@ fn effect_handler(
     main_ui: Rc<MainUi>,
     tray: SharedTray,
     settings_ui: Rc<SettingsUi>,
+    attach_panel: Rc<dyn Fn()>,
 ) -> impl Fn(&Effect) + 'static {
     move |effect| match effect {
         Effect::Quit => {
@@ -362,6 +404,8 @@ fn effect_handler(
             if let Some(window) = window.upgrade() {
                 restore_frame(&window);
             }
+            // A `--hidden` start has no native Panel window until now.
+            attach_panel();
         }
         // Not built yet (V1-PLAN steps 7b and 8): the click is logged and nothing happens.
         Effect::NewItem | Effect::OpenHelp(_) | Effect::EditItem(_) => {
@@ -531,18 +575,48 @@ fn select_backend() -> Result<(), String> {
         .backend_name("winit".into())
         .renderer_name("software".into())
         .with_winit_window_attributes_hook(|attributes| {
-            if main_binding::regular_window_being_shown() {
-                return attributes;
-            }
+            // Slint runs this inside `X::new()`: a regular window is one created under
+            // `RegularWindow::create`.
+            let regular = main_binding::regular_window_being_shown();
+            snipdeck_app::trace!("window attributes: regular={regular}");
+            let plan = window_kind::plan(regular);
             #[cfg(windows)]
             let attributes = {
                 use slint::winit_030::winit::platform::windows::WindowAttributesExtWindows;
-                attributes.with_skip_taskbar(true)
+                let attributes = attributes.with_skip_taskbar(plan.skip_taskbar);
+                if plan.window_icon {
+                    with_app_icon(attributes)
+                } else {
+                    attributes
+                }
             };
-            attributes.with_active(false)
+            attributes.with_active(plan.active)
         })
         .select()
         .map_err(|e| format!("selecting the window backend: {e}"))
+}
+
+/// The application icon for a regular window: the small mark for the title bar and the large one
+/// for the taskbar and Alt+Tab, each asked of the executable's icon resource at its exact size.
+/// A missing resource (a development build) leaves the window without an icon, never an error.
+#[cfg(windows)]
+fn with_app_icon(attributes: winit::window::WindowAttributes) -> winit::window::WindowAttributes {
+    use winit::{
+        dpi::PhysicalSize,
+        platform::windows::{IconExtWindows, WindowAttributesExtWindows},
+        window::Icon,
+    };
+    let (small, large) = snipdeck_platform::windows::dpi::window_icon_sizes();
+    let icon = |(cx, cy): (u32, u32)| {
+        Icon::from_resource(
+            snipdeck_platform::windows::dpi::APP_ICON_RESOURCE,
+            Some(PhysicalSize::new(cx, cy)),
+        )
+        .ok()
+    };
+    attributes
+        .with_window_icon(icon(small))
+        .with_taskbar_icon(icon(large))
 }
 
 /// The native window only exists once the event loop runs: look for its handle then.

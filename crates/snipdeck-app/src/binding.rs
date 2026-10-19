@@ -384,7 +384,7 @@ where
                     // The tracker can call this from inside a controller call; skip then.
                     if core.controller.try_borrow_mut().is_ok() {
                         crate::trace!("target changed");
-                        core.act(Controller::on_target_changed);
+                        core.act_effects(Controller::on_foreground_changed);
                     } else {
                         crate::trace!("target changed during a controller call: skipped");
                     }

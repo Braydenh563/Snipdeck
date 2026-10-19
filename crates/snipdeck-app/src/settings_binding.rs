@@ -51,6 +51,9 @@ pub trait SettingsHost {
     /// Why it could not be changed.
     fn set_autostart(&self, on: bool) -> Result<(), String>;
 
+    /// Gives the Panel a taskbar button, or takes it away, while the app runs.
+    fn set_panel_in_taskbar(&self, on: bool);
+
     /// Shows `folder` in the file manager.
     ///
     /// # Errors
@@ -79,16 +82,29 @@ pub fn apply_hotkeys(
     host::register_all(backend, hotkeys)
 }
 
-/// The real machine: the hotkey service the host started, the registry, the file manager.
+/// Gives the Panel's window a taskbar button or takes it away (set by the app's `main`, which
+/// owns the Panel window).
+pub type PanelTaskbar = Rc<dyn Fn(bool)>;
+
+/// The real machine: the hotkey service the host started, the registry, the file manager, the
+/// Panel's window.
 pub struct SystemHost {
     hotkeys: Rc<RefCell<Box<dyn HotkeyBackend>>>,
+    panel_taskbar: PanelTaskbar,
 }
 
 impl SystemHost {
-    /// A host that registers shortcuts with `hotkeys`.
+    /// A host that registers shortcuts with `hotkeys` and changes the Panel's taskbar button
+    /// with `panel_taskbar`.
     #[must_use]
-    pub fn new(hotkeys: Rc<RefCell<Box<dyn HotkeyBackend>>>) -> Self {
-        Self { hotkeys }
+    pub fn new(
+        hotkeys: Rc<RefCell<Box<dyn HotkeyBackend>>>,
+        panel_taskbar: PanelTaskbar,
+    ) -> Self {
+        Self {
+            hotkeys,
+            panel_taskbar,
+        }
     }
 }
 
@@ -110,6 +126,10 @@ impl SettingsHost for SystemHost {
             let _ = on;
             Ok(())
         }
+    }
+
+    fn set_panel_in_taskbar(&self, on: bool) {
+        (self.panel_taskbar)(on);
     }
 
     fn open_folder(&self, folder: &Path) -> Result<(), String> {
@@ -259,7 +279,7 @@ const fn action_name(action: HotkeyAction) -> &'static str {
     match action {
         HotkeyAction::TogglePanel => "Show or hide the panel",
         HotkeyAction::Picker => "Open the picker",
-        HotkeyAction::Capture => "Capture a region",
+        HotkeyAction::Capture => "Save the clipboard as an item",
         HotkeyAction::PasteNext => "Paste the next item",
     }
 }
@@ -323,6 +343,8 @@ struct PageView {
     language_index: i32,
     autostart: bool,
     close_to_tray: bool,
+    panel_in_taskbar: bool,
+    panel_hide_on_blur: bool,
     panel_width: i32,
     no_paste_apps: Vec<String>,
     no_paste_error: String,
@@ -392,6 +414,8 @@ where
         language_index: language_index(&settings.language),
         autostart: settings.autostart,
         close_to_tray: settings.close_to_tray,
+        panel_in_taskbar: settings.panel_in_taskbar,
+        panel_hide_on_blur: settings.panel_hide_on_blur,
         panel_width: i32::try_from(settings.panel_width).unwrap_or(320),
         no_paste_apps: settings.no_paste_apps.clone(),
         no_paste_error: state.no_paste_error.clone(),
@@ -798,6 +822,12 @@ where
         wire!(on_autostart_toggled, |core, on| core.autostart_toggled(on));
         wire!(on_close_to_tray_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.close_to_tray = on)));
+        wire!(on_panel_in_taskbar_toggled, |core, on| {
+            core.host.set_panel_in_taskbar(on);
+            core.act(|ctl| ctl.update_settings(|s| s.panel_in_taskbar = on));
+        });
+        wire!(on_panel_hide_on_blur_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.panel_hide_on_blur = on)));
         wire!(on_panel_width_chosen, |core, width| core
             .act(|ctl| ctl.update_settings(
                 |s| s.panel_width = u32::try_from(width).unwrap_or(0)
@@ -855,6 +885,12 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.close_to_tray == view.close_to_tray) {
         window.set_close_to_tray(view.close_to_tray);
+    }
+    if differs(&|p| p.panel_in_taskbar == view.panel_in_taskbar) {
+        window.set_panel_in_taskbar(view.panel_in_taskbar);
+    }
+    if differs(&|p| p.panel_hide_on_blur == view.panel_hide_on_blur) {
+        window.set_panel_hide_on_blur(view.panel_hide_on_blur);
     }
     if differs(&|p| p.panel_width == view.panel_width) {
         window.set_panel_width(view.panel_width);
@@ -956,7 +992,7 @@ impl SettingsUi {
             Box::new(move || {
                 let mut slot = slot.borrow_mut();
                 if slot.is_none() {
-                    let window = ui::SettingsPage::new()?;
+                    let window = RegularWindow::create(ui::SettingsPage::new)?;
                     let binding = Controller::bind_settings(
                         &controller,
                         &window,
@@ -968,7 +1004,6 @@ impl SettingsUi {
                 let Some((window, binding)) = slot.as_ref() else {
                     return Ok(());
                 };
-                let _regular = RegularWindow::begin();
                 window.show()?;
                 fit_to_screen(window.window());
                 // The page was hidden, so it skipped the redraws; draw it now that it is up.

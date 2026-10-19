@@ -74,6 +74,8 @@ struct FakeHost {
     hotkeys: RefCell<FakeHotkeys>,
     autostart: Cell<Option<bool>>,
     autostart_fails: Cell<bool>,
+    /// The last "Panel taskbar button" the page asked for.
+    taskbar: Cell<Option<bool>>,
     opened: RefCell<Vec<PathBuf>>,
     documents: RefCell<Option<PathBuf>>,
 }
@@ -89,6 +91,10 @@ impl SettingsHost for FakeHost {
         }
         self.autostart.set(Some(on));
         Ok(())
+    }
+
+    fn set_panel_in_taskbar(&self, on: bool) {
+        self.taskbar.set(Some(on));
     }
 
     fn open_folder(&self, folder: &Path) -> Result<(), String> {
@@ -198,7 +204,7 @@ impl Rig {
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
-        let cases: [Case; 8] = [
+        let cases: [Case; 10] = [
             (
                 "theme",
                 |r| r.ui.invoke_theme_chosen(2),
@@ -218,6 +224,16 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
                 "close to tray",
                 |r| r.ui.invoke_close_to_tray_toggled(false),
                 |s| !s.close_to_tray,
+            ),
+            (
+                "panel in the taskbar",
+                |r| r.ui.invoke_panel_in_taskbar_toggled(true),
+                |s| s.panel_in_taskbar,
+            ),
+            (
+                "hide the panel on blur",
+                |r| r.ui.invoke_panel_hide_on_blur_toggled(false),
+                |s| !s.panel_hide_on_blur,
             ),
             (
                 "panel width",
@@ -408,6 +424,26 @@ fn start_with_windows_that_cannot_be_changed_says_so_and_keeps_the_old_value() {
         r.ui.invoke_autostart_toggled(true);
         assert_eq!(r.host.autostart.get(), Some(true));
         assert!(r.ctl.borrow().settings().autostart);
+    });
+}
+
+#[test]
+fn the_window_behaviour_toggles_start_at_their_defaults_and_reach_the_host() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(!r.ui.get_panel_in_taskbar(), "off by default");
+        assert!(r.ui.get_panel_hide_on_blur(), "on by default");
+
+        r.ui.invoke_panel_in_taskbar_toggled(true);
+        assert_eq!(r.host.taskbar.get(), Some(true), "the Panel's window is told");
+        assert!(r.ctl.borrow().settings().panel_in_taskbar);
+        assert!(r.ui.get_panel_in_taskbar());
+        r.ui.invoke_panel_in_taskbar_toggled(false);
+        assert_eq!(r.host.taskbar.get(), Some(false));
+
+        r.ui.invoke_panel_hide_on_blur_toggled(false);
+        assert!(!r.ctl.borrow().settings().panel_hide_on_blur);
+        assert!(!r.ui.get_panel_hide_on_blur());
     });
 }
 

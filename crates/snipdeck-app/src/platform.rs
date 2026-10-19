@@ -141,10 +141,10 @@ mod imp {
             },
             target: Box::new(Tracker(tracker)),
             hotkeys: Box::new(Hotkeys(hotkeys)),
-            attach_panel: Box::new(move |hwnd| {
+            attach_panel: Box::new(move |hwnd, in_taskbar| {
                 panel_tracker.set_panel(hwnd);
                 // False means Windows refused the subclass; the panel then activates on click.
-                let _ = window_style::install_panel_style(hwnd);
+                let _ = window_style::install_panel_style(hwnd, in_taskbar);
             }),
             tray,
             warnings,
@@ -202,7 +202,7 @@ mod imp {
             },
             target: Box::new(FakeTargets::new(Some(crate::demo::target()))),
             hotkeys: Box::new(FakeHotkeys::default()),
-            attach_panel: Box::new(|_| {}),
+            attach_panel: Box::new(|_, _| {}),
             // No tray off Windows: closing the Panel quits the dev build.
             tray: None,
             warnings: Vec::new(),
@@ -247,9 +247,10 @@ pub struct Host {
     pub target: Box<dyn TargetSource>,
     /// Registers the global hotkeys.
     pub hotkeys: Box<dyn HotkeyBackend>,
-    /// Call with the Panel's native window handle once the window exists: the Target tracker
-    /// then ignores it and it becomes a non-activating tool window.
-    pub attach_panel: Box<dyn Fn(isize)>,
+    /// Call with the Panel's native window handle once the window exists, and whether it has a
+    /// taskbar button (the `panel_in_taskbar` setting): the Target tracker then ignores it and
+    /// it becomes a non-activating window.
+    pub attach_panel: Box<dyn Fn(isize, bool)>,
     /// The notification-area icon, if one could be created (never off Windows). Not yet shown.
     pub tray: Option<Box<dyn Tray>>,
     /// Services that failed to start but are not essential: print them.
@@ -304,6 +305,6 @@ mod tests {
         assert!(host.tray.is_none(), "no tray off Windows");
         assert_eq!(host.warnings, Vec::<String>::new());
         assert!(!system_look().read().dark);
-        (host.attach_panel)(0);
+        (host.attach_panel)(0, false);
     }
 }

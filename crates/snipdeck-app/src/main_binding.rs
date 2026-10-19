@@ -7,7 +7,7 @@
 //! every bound window is redrawn from the controller (see `binding::redraw_all`).
 //!
 //! What is not wired because the feature behind it is not built: the item editor ("New item",
-//! Edit), the tag manager, the Recent inbox.
+//! Edit), the Recent inbox.
 
 use std::{
     cell::{Cell, RefCell},
@@ -43,18 +43,20 @@ thread_local! {
     static REGULAR: Cell<usize> = const { Cell::new(0) };
 }
 
-/// Held while a Main window or editor is shown. The host creates its windows un-activated and
-/// out of the taskbar for the Panel's sake (ADR-0003); a window shown under this guard is an
-/// ordinary one, which [`regular_window_being_shown`] tells its window-attributes hook.
+/// Held while a Main window, Settings page or editor is *created*. The host makes its windows
+/// un-activated and out of the taskbar for the Panel's sake (ADR-0003); a window made under this
+/// guard is an ordinary one, which [`regular_window_being_shown`] tells the window-attributes
+/// hook. Slint runs that hook inside `X::new()` and bakes the result into the window, so the
+/// guard has to cover the constructor, not the later `show()`: use [`RegularWindow::create`].
 #[derive(Debug)]
 pub struct RegularWindow(());
 
 impl RegularWindow {
-    /// Starts showing a regular window.
-    #[must_use]
-    pub fn begin() -> Self {
+    /// Runs `make` (a window constructor such as `ui::MainWindow::new`) as a regular window.
+    pub fn create<T>(make: impl FnOnce() -> T) -> T {
         REGULAR.with(|n| n.set(n.get() + 1));
-        Self(())
+        let _guard = Self(());
+        make()
     }
 }
 
@@ -64,10 +66,23 @@ impl Drop for RegularWindow {
     }
 }
 
-/// Whether the window being created now is a Main window or an editor (see [`RegularWindow`]).
+/// Whether the window being created now is a regular one: Main, Settings or an editor (see
+/// [`RegularWindow`]).
 #[must_use]
 pub fn regular_window_being_shown() -> bool {
     REGULAR.with(|n| n.get() > 0)
+}
+
+/// The width an editor window opens at (logical pixels).
+const EDITOR_WIDTH: f32 = 460.0;
+
+/// Sizes an editor window to its content: the height `wanted` reports once the window has its
+/// width. Slint applies `preferred-height` only when a window is first shown, and the editors
+/// are reused, so the host sizes them every time they open.
+fn size_to_content(window: &slint::Window, wanted: impl Fn() -> f32) {
+    // The form's height depends on its width (a notice wraps), so give it the width first.
+    window.set_size(slint::LogicalSize::new(EDITOR_WIDTH, 300.0));
+    window.set_size(slint::LogicalSize::new(EDITOR_WIDTH, wanted()));
 }
 
 /// The list and board editor windows, made on first use and reused (hidden between uses).
@@ -85,6 +100,8 @@ struct MainCore<S, C, K, T> {
     /// What the window shows now, so a redraw sets only what changed.
     shown: RefCell<Option<MainScreen>>,
     editors: RefCell<Editors>,
+    /// The Tag manager window, made the first time it is asked for.
+    tag_manager: RefCell<Option<ui::TagManager>>,
     /// Redraws this window (registered with `binding::register_redraw`).
     redraw: Rc<dyn Fn()>,
 }
@@ -118,6 +135,12 @@ where
     #[must_use]
     pub fn board_editor(&self) -> Option<ui::BoardEditor> {
         self.core.editors.borrow().board.as_ref().map(clone_handle)
+    }
+
+    /// The Tag manager window, if one has been opened.
+    #[must_use]
+    pub fn tag_manager(&self) -> Option<ui::TagManager> {
+        self.core.tag_manager.borrow().as_ref().map(clone_handle)
     }
 
     /// Redraws the window from the controller.
@@ -162,7 +185,84 @@ where
             );
         }
         self.sync_editors(&screen);
+        self.sync_tag_manager(&screen, false);
         *self.shown.borrow_mut() = Some(screen);
+    }
+
+    /// Copies the tags into the Tag manager if it exists, so a delete, an Undo or a rename made
+    /// elsewhere shows there too. Without `force` an unchanged list is left alone (setting a
+    /// model again would reset the list's scroll).
+    fn sync_tag_manager(&self, screen: &MainScreen, force: bool) {
+        let Some(window) = self.tag_manager.borrow().as_ref().map(clone_handle) else {
+            return;
+        };
+        let changed = force
+            || self
+                .shown
+                .borrow()
+                .as_ref()
+                .is_none_or(|p| p.tags != screen.tags || p.dark != screen.dark);
+        if !changed {
+            return;
+        }
+        window.set_tags(model(screen.tags.iter().map(|t| ui::ChoiceEntry {
+            label: t.name.as_str().into(),
+            count: to_i32(t.count),
+            color: slint::Color::default(),
+            checked: false,
+        })));
+        window.set_dark(screen.dark);
+        apply_look(&window, screen);
+    }
+
+    /// The Tag manager window, made on first use (`None` if the windowing system cannot).
+    fn tag_manager_window(self: &Rc<Self>) -> Option<ui::TagManager> {
+        if let Some(w) = self.tag_manager.borrow().as_ref() {
+            return Some(w.clone_strong());
+        }
+        let w = RegularWindow::create(ui::TagManager::new).ok()?;
+        let (core, weak) = (Rc::clone(self), w.as_weak());
+        w.on_rename_requested(move |i, name| {
+            crate::trace!("callback tags rename_requested ({i}, {name:?})");
+            let result = core.act(|ctl| ctl.main_rename_tag(index(i), name.as_str()));
+            if let Some(w) = weak.upgrade() {
+                match result {
+                    Ok(()) => {
+                        w.set_rename_error(SharedString::new());
+                        w.invoke_finish_rename();
+                    }
+                    Err(error) => w.set_rename_error(wording::tag_rename_error_text(&error).into()),
+                }
+            }
+        });
+        let core = Rc::clone(self);
+        w.on_delete_confirmed(move |i| {
+            crate::trace!("callback tags delete_confirmed ({i})");
+            core.act(|ctl| ctl.main_delete_tag(index(i)));
+        });
+        let weak = w.as_weak();
+        w.on_close_requested(move || {
+            if let Some(w) = weak.upgrade() {
+                let _ = w.hide();
+            }
+        });
+        *self.tag_manager.borrow_mut() = Some(w.clone_strong());
+        Some(w)
+    }
+
+    /// Shows the Tag manager with the current tags, in front of the Main window.
+    fn open_tag_manager(self: &Rc<Self>) {
+        let Some(window) = self.tag_manager_window() else {
+            crate::trace!("cannot create the tag manager");
+            return;
+        };
+        let screen = self.controller.borrow_mut().main_screen();
+        self.sync_tag_manager(&screen, true);
+        window.set_rename_error(SharedString::new());
+        window.invoke_finish_rename();
+        let _ = window.show();
+        fit_to_screen(window.window());
+        raise(window.window());
     }
 
     /// Shows, updates or hides the list or board editor to match `screen.editor`.
@@ -191,7 +291,7 @@ where
                 window.set_name_error(error_text(view));
                 if fresh {
                     fill_list_editor(&window, view);
-                    let _regular = RegularWindow::begin();
+                    size_to_content(window.window(), || window.get_wanted_height());
                     let _ = window.show();
                     fit_to_screen(window.window());
                     // Shown again after a close, the window would stay behind the Main
@@ -212,7 +312,7 @@ where
                 window.set_name_error(error_text(view));
                 if fresh {
                     fill_board_editor(&window, view);
-                    let _regular = RegularWindow::begin();
+                    size_to_content(window.window(), || window.get_wanted_height());
                     let _ = window.show();
                     fit_to_screen(window.window());
                     // Shown again after a close, the window would stay behind the Main
@@ -230,7 +330,7 @@ where
         if let Some(w) = self.editors.borrow().list.as_ref() {
             return Some(w.clone_strong());
         }
-        let w = ui::ListEditor::new().ok()?;
+        let w = RegularWindow::create(ui::ListEditor::new).ok()?;
         let core = Rc::clone(self);
         let weak = w.as_weak();
         w.on_save_requested(move || {
@@ -262,7 +362,7 @@ where
         if let Some(w) = self.editors.borrow().board.as_ref() {
             return Some(w.clone_strong());
         }
-        let w = ui::BoardEditor::new().ok()?;
+        let w = RegularWindow::create(ui::BoardEditor::new).ok()?;
         let core = Rc::clone(self);
         let weak = w.as_weak();
         w.on_save_requested(move || {
@@ -321,8 +421,8 @@ where
     /// Draws the controller's Main screen in `window` and routes the window's gestures (and
     /// those of the list and board editors it opens) to it.
     ///
-    /// Not wired, because the features behind them are not built: "New item" and Edit (the item
-    /// editor), "Manage tags…", the Settings button.
+    /// Not wired, because the feature behind it is not built: "New item" and Edit (the item
+    /// editor).
     pub fn bind_main(this: &Rc<RefCell<Self>>, window: &ui::MainWindow) -> MainBinding<S, C, K, T> {
         let core = Rc::new_cyclic(|weak: &Weak<MainCore<S, C, K, T>>| {
             let weak = weak.clone();
@@ -331,6 +431,7 @@ where
                 window: window.as_weak(),
                 shown: RefCell::new(None),
                 editors: RefCell::new(Editors::default()),
+                tag_manager: RefCell::new(None),
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
                         core.sync();
@@ -403,13 +504,30 @@ where
         wire!(on_list_reorder_requested, |ctl, i, d| ctl
             .main_reorder_list(index(i), isize::try_from(d).unwrap_or(0)));
         wire_title_bar(window);
+        {
+            // The X hides the window, or quits when nothing could bring it back (the setting
+            // "Keep running in the tray" is off, or there is no tray icon and the Panel is down).
+            let core = Rc::clone(&core);
+            window.window().on_close_requested(move || {
+                let quit = core.controller.borrow().main_window_closed();
+                crate::trace!("main window close requested: quit {quit}");
+                if quit {
+                    let _ = slint::quit_event_loop();
+                }
+                CloseRequestResponse::HideWindow
+            });
+        }
         // The callbacks the window has no feature for yet still leave a line in the log.
         window.on_new_item_requested(|| {
             crate::trace!("callback main new_item_requested: no item editor yet");
         });
-        window.on_manage_tags_requested(|| {
-            crate::trace!("callback main manage_tags_requested: no tag manager yet");
-        });
+        {
+            let core = Rc::clone(&core);
+            window.on_manage_tags_requested(move || {
+                crate::trace!("callback main manage_tags_requested");
+                core.open_tag_manager();
+            });
+        }
 
         MainBinding { core }
     }
@@ -467,7 +585,7 @@ impl MainUi {
             Box::new(move || {
                 let mut slot = slot.borrow_mut();
                 if slot.is_none() {
-                    let window = ui::MainWindow::new()?;
+                    let window = RegularWindow::create(ui::MainWindow::new)?;
                     let binding = Controller::bind_main(&controller, &window);
                     *slot = Some((window, binding));
                 }
@@ -476,7 +594,6 @@ impl MainUi {
                 };
                 // Reading the library again: it may have changed while the window was closed.
                 binding.redraw();
-                let _regular = RegularWindow::begin();
                 window.show()?;
                 fit_to_screen(window.window());
                 raise(window.window());
@@ -866,14 +983,22 @@ mod tests {
     }
 
     #[test]
-    fn a_regular_window_guard_counts() {
+    fn a_window_created_under_create_sees_the_regular_flag() {
         assert!(!regular_window_being_shown());
-        let a = RegularWindow::begin();
-        let b = RegularWindow::begin();
-        assert!(regular_window_being_shown());
-        drop(a);
-        assert!(regular_window_being_shown());
-        drop(b);
+        let seen = RegularWindow::create(regular_window_being_shown);
+        assert!(seen);
+        assert!(!regular_window_being_shown());
+    }
+
+    #[test]
+    fn create_nests_and_clears_the_flag_when_it_returns_an_error() {
+        let result: Result<(), ()> = RegularWindow::create(|| {
+            RegularWindow::create(|| assert!(regular_window_being_shown()));
+            // The inner guard is gone, the outer one still holds.
+            assert!(regular_window_being_shown());
+            Err(())
+        });
+        assert!(result.is_err());
         assert!(!regular_window_being_shown());
     }
 

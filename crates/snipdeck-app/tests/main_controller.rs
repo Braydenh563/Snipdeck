@@ -15,7 +15,7 @@ use std::time::Duration;
 use snipdeck_app::{
     controller::{
         Controller, MainAction, MainScreen, Services, TOAST_ENTER, TOAST_EXIT, TOAST_HOLD,
-        TOAST_UNDO_HOLD,
+        TOAST_UNDO_HOLD, TagRenameError,
     },
     demo,
     host::{FakeTargets, FixedClock},
@@ -288,6 +288,72 @@ fn tags_are_ticked_on_the_chosen_rows_and_unticked_again() {
     ctl.main_action(MainAction::Tag, 0);
     ctl.main_toggle_tag(0, false);
     assert_eq!(ctl.main_screen().rows.len(), 0);
+}
+
+/// A demo library with the tags `invoices` and `billing`.
+fn rig_with_tags() -> Ctl {
+    let mut store = demo::store(now()).unwrap();
+    store.insert_tag(&Tag::new(Name::new("invoices").unwrap())).unwrap();
+    store.insert_tag(&Tag::new(Name::new("billing").unwrap())).unwrap();
+    rig_on(store, Tier::Pro).0
+}
+
+fn tag_names(ctl: &mut Ctl) -> Vec<String> {
+    ctl.main_screen().tags.iter().map(|t| t.name.clone()).collect()
+}
+
+#[test]
+fn renaming_a_tag_changes_it_everywhere() {
+    let mut ctl = rig_with_tags();
+    let screen = ctl.main_screen();
+    let at = row_of(&screen, "Invoice reminder");
+    ctl.main_action(MainAction::Tag, at);
+    ctl.main_toggle_tag(0, true);
+    let before = tag_names(&mut ctl);
+    assert_eq!(before.len(), 2);
+
+    assert_eq!(ctl.main_rename_tag(0, "  Invoices 2026 "), Ok(()));
+    let after = tag_names(&mut ctl);
+    assert!(after.contains(&"Invoices 2026".to_owned()), "{after:?}");
+    assert!(!after.contains(&before[0]), "the old name is gone: {after:?}");
+    // The items that carried it still do (the tag keeps its identity).
+    let screen = ctl.main_screen();
+    let renamed = screen.tags.iter().find(|t| t.name == "Invoices 2026").unwrap();
+    assert_eq!(renamed.count, 1);
+    assert!(screen.toast.is_none());
+}
+
+#[test]
+fn renaming_to_an_existing_name_is_refused_without_a_toast() {
+    let mut ctl = rig_with_tags();
+    let names = tag_names(&mut ctl);
+    // Compared ignoring case, like the store does.
+    let other = names[1].to_uppercase();
+    assert_eq!(ctl.main_rename_tag(0, &other), Err(TagRenameError::Exists));
+    assert_eq!(tag_names(&mut ctl), names, "nothing changed");
+    assert!(ctl.main_screen().toast.is_none(), "the editor says it, not a toast");
+    // Keeping its own name (only the case differs) is not a clash.
+    assert_eq!(ctl.main_rename_tag(0, &names[0].to_uppercase()), Ok(()));
+}
+
+#[test]
+fn renaming_to_blank_says_give_it_a_name() {
+    let mut ctl = rig_with_tags();
+    let names = tag_names(&mut ctl);
+    assert_eq!(
+        ctl.main_rename_tag(0, "   "),
+        Err(TagRenameError::Name(NameError::Empty))
+    );
+    assert_eq!(tag_names(&mut ctl), names);
+}
+
+#[test]
+fn renaming_with_a_stale_index_does_nothing() {
+    let mut ctl = rig_with_tags();
+    let names = tag_names(&mut ctl);
+    assert_eq!(ctl.main_rename_tag(9, "ghost"), Ok(()), "nothing to rename");
+    assert_eq!(tag_names(&mut ctl), names);
+    assert!(ctl.main_screen().toast.is_none());
 }
 
 #[test]

@@ -201,6 +201,17 @@ pub fn name_error_text(error: &crate::main_window::NameError) -> String {
     }
 }
 
+/// Why the Tag manager refuses a new tag name, in words.
+#[must_use]
+pub fn tag_rename_error_text(error: &crate::controller::TagRenameError) -> String {
+    use crate::controller::TagRenameError;
+    match error {
+        TagRenameError::Name(name) => name_error_text(name),
+        TagRenameError::Exists => "A tag with that name already exists.".into(),
+        TagRenameError::Failed => "Couldn't rename the tag.".into(),
+    }
+}
+
 /// The reason a board cannot be deleted, in words.
 #[must_use]
 pub fn delete_hint_text(hint: crate::main_window::DeleteHint) -> String {

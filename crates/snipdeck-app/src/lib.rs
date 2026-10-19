@@ -32,4 +32,5 @@ pub mod starter;
 pub mod toast;
 pub mod trace;
 pub mod usecase;
+pub mod window_kind;
 pub mod wording;

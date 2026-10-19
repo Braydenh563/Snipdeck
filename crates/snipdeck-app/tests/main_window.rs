@@ -27,7 +27,7 @@ use snipdeck_platform::{
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
     tray::TrayEvent,
 };
-use snipdeck_store::{BoardRepo, ItemRepo, Store, TrashRepo};
+use snipdeck_store::{BoardRepo, ItemRepo, Store, TagRepo, TrashRepo};
 use snipdeck_ui::{ItemAction, MainSection, MainWindow, PanelWindow, SelectMode};
 
 #[path = "support/mod.rs"]
@@ -53,9 +53,13 @@ fn now() -> Timestamp {
 }
 
 fn controller(tier: Tier) -> Rc<RefCell<Ctl>> {
+    controller_on(demo::store(now()).expect("demo store"), tier)
+}
+
+fn controller_on(store: Store, tier: Tier) -> Rc<RefCell<Ctl>> {
     Rc::new(RefCell::new(
         Controller::new(
-            demo::store(now()).expect("demo store"),
+            store,
             Services {
                 clipboard: FakeClipboard {
                     asks_after_polls: Some(1),
@@ -78,7 +82,21 @@ fn rig() -> Rig {
 }
 
 fn rig_tier(tier: Tier) -> Rig {
-    let ctl = controller(tier);
+    rig_with(controller(tier))
+}
+
+/// A rig over the demo library with the tags `invoices` and `billing` added.
+fn rig_with_tags() -> Rig {
+    let mut store = demo::store(now()).expect("demo store");
+    for name in ["invoices", "billing"] {
+        store
+            .insert_tag(&snipdeck_core::Tag::new(snipdeck_core::Name::new(name).unwrap()))
+            .unwrap();
+    }
+    rig_with(controller_on(store, Tier::Pro))
+}
+
+fn rig_with(ctl: Rc<RefCell<Ctl>>) -> Rig {
     let ui = MainWindow::new().expect("main window");
     ui.window().set_size(slint::LogicalSize::new(1100.0, 720.0));
     let binding = Controller::bind_main(&ctl, &ui);
@@ -494,6 +512,135 @@ fn add_list_opens_the_editor_and_saving_adds_the_list() {
         );
         assert_eq!(r.ui.get_section(), MainSection::List);
         assert_eq!(r.ui.get_section_index(), 3);
+    });
+}
+
+#[test]
+fn add_list_works_again_after_the_editor_and_the_main_window_were_closed() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_add_list_requested();
+        let editor = r.binding.list_editor().expect("list editor");
+        assert!(editor.window().is_visible());
+        editor.set_name("Half typed".into());
+
+        // The window's X, not the Cancel button: the headless close path.
+        editor
+            .window()
+            .dispatch_event(slint::platform::WindowEvent::CloseRequested);
+        assert!(!editor.window().is_visible());
+        // Then the Main window closes too, and is opened again the way the tray does.
+        r.ui.window().hide().unwrap();
+        r.ui.window().show().unwrap();
+
+        r.ui.invoke_add_list_requested();
+        let editor = r.binding.list_editor().expect("list editor");
+        assert!(editor.window().is_visible(), "the + works a second time");
+        assert!(editor.get_is_new());
+        assert_eq!(editor.get_name(), "", "a fresh form, not the half typed one");
+    });
+}
+
+#[test]
+fn add_list_sizes_the_editor_to_its_content() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_add_list_requested();
+        let editor = r.binding.list_editor().expect("list editor");
+        let wanted = editor.get_wanted_height();
+        let size = editor
+            .window()
+            .size()
+            .to_logical(editor.window().scale_factor());
+        assert!(wanted > 150.0 && wanted < 440.0, "{wanted}");
+        assert!((size.height - wanted).abs() < 1.0, "{} vs {wanted}", size.height);
+        assert!((size.width - 460.0).abs() < 1.0, "{}", size.width);
+    });
+}
+
+// ---- Tags ------------------------------------------------------------------------------------
+
+fn tag_labels(r: &Rig) -> Vec<String> {
+    r.ui.get_tags().iter().map(|t| t.label.to_string()).collect()
+}
+
+#[test]
+fn the_tags_gear_opens_the_tag_manager_with_the_tags_and_counts() {
+    on_ui_thread(|| {
+        let r = rig_with_tags();
+        assert!(r.binding.tag_manager().is_none(), "nothing before it is asked for");
+        r.ui.invoke_manage_tags_requested();
+        let manager = r.binding.tag_manager().expect("tag manager");
+        assert!(manager.window().is_visible());
+        assert_eq!(manager.get_tags().row_count(), r.ui.get_tags().row_count());
+        assert_eq!(manager.get_tags().row_count(), 2);
+        let names: Vec<String> = manager.get_tags().iter().map(|t| t.label.to_string()).collect();
+        assert_eq!(names, tag_labels(&r));
+
+        // Closed with its X and opened again from the menu entry: the same window comes back.
+        manager
+            .window()
+            .dispatch_event(slint::platform::WindowEvent::CloseRequested);
+        assert!(!manager.window().is_visible());
+        r.ui.invoke_manage_tags_requested();
+        assert!(manager.window().is_visible());
+    });
+}
+
+#[test]
+fn renaming_in_the_tag_manager_updates_the_sidebar() {
+    on_ui_thread(|| {
+        let r = rig_with_tags();
+        r.ui.invoke_manage_tags_requested();
+        let manager = r.binding.tag_manager().unwrap();
+        manager.set_editing(0);
+        manager.invoke_rename_requested(0, "Receipts".into());
+        assert!(tag_labels(&r).contains(&"Receipts".to_owned()), "{:?}", tag_labels(&r));
+        assert_eq!(manager.get_rename_error(), "");
+        assert_eq!(manager.get_editing(), -1, "the field closes");
+        let in_manager: Vec<String> =
+            manager.get_tags().iter().map(|t| t.label.to_string()).collect();
+        assert_eq!(in_manager, tag_labels(&r));
+    });
+}
+
+#[test]
+fn a_clashing_rename_shows_the_error_and_keeps_the_editor() {
+    on_ui_thread(|| {
+        let r = rig_with_tags();
+        let before = tag_labels(&r);
+        r.ui.invoke_manage_tags_requested();
+        let manager = r.binding.tag_manager().unwrap();
+        manager.set_editing(0);
+        manager.invoke_rename_requested(0, before[1].to_uppercase().into());
+        assert_eq!(manager.get_rename_error(), "A tag with that name already exists.");
+        assert_eq!(manager.get_editing(), 0, "the field stays open");
+        assert_eq!(tag_labels(&r), before);
+
+        manager.invoke_rename_requested(0, "".into());
+        assert_eq!(manager.get_rename_error(), "Give it a name.");
+        // A good name clears the message and closes the field.
+        manager.invoke_rename_requested(0, "Receipts".into());
+        assert_eq!(manager.get_rename_error(), "");
+        assert_eq!(manager.get_editing(), -1);
+    });
+}
+
+#[test]
+fn deleting_in_the_tag_manager_asks_then_removes_the_tag() {
+    on_ui_thread(|| {
+        let r = rig_with_tags();
+        let before = tag_labels(&r);
+        r.ui.invoke_manage_tags_requested();
+        let manager = r.binding.tag_manager().unwrap();
+        // The row's Delete only asks; the removal comes with the confirmation.
+        manager.set_delete_index(0);
+        assert_eq!(tag_labels(&r), before);
+        manager.invoke_delete_confirmed(0);
+        let after = tag_labels(&r);
+        assert_eq!(after.len(), 1);
+        assert!(!after.contains(&before[0]));
+        assert_eq!(manager.get_tags().row_count(), 1, "the manager follows");
     });
 }
 

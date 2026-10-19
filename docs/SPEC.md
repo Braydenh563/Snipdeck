@@ -38,7 +38,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 | **Placeholder** | `{date}`, `{time}`, `{datetime:FORMAT}`, `{clipboard}`, `{cursor}` (static/free) and `{field:Name}` / `{field:Name|default}` / `{choice:Name|a|b}` (prompted/Pro). |
 | **Tag** | Free-form label across Boards; filterable. |
 | **Pinned** | Item shown in the panel's favourites strip, above list order. |
-| **Sensitive** | Item that is masked, excluded from history, auto-cleared from clipboard after use; encrypted at rest (Pro). |
+| **Sensitive** | Item that is masked and excluded from history (clipboard auto-clear after use is v1.1); encrypted at rest (Pro). |
 | **Recent inbox** | Opt-in clipboard history. Last 200 entries or 7 days (configurable). Promote → List. |
 | **Panel** | Small dockable, always-on-top, non-activating window showing a Board (lists as tabs). |
 | **Floating list** | A List detached from the Panel into its own mini-panel (Pro). |
@@ -99,7 +99,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - **Image**: crop, rotate/flip, resize/scale, **redact** (blur / solid box). Non-destructive until save.
 
 ### 5.5 Capture & OCR
-- Hotkey (default `Ctrl+Shift+2`) → Snipdeck's own region-select overlay (multi-monitor, DPI-aware).
+- Hotkey (default `Ctrl+Shift+2`) → Snipdeck's own region-select overlay (multi-monitor, DPI-aware). **Not built yet:** v1.0's capture hotkey saves the text on the clipboard as a new item in the list the Panel shows (off until a chord is set), and Settings says so.
 - After selection an **action bar** appears at the selection: **Copy text** (one-off OCR, nothing stored) · **Save text** · **Save image** · **Save both**, plus a list picker (default: active list).
 - Text actions open a small **review popover** with the OCR result, editable before copying/saving.
 - OCR engine: **Windows.Media.Ocr** by default (zero bundle cost); optional **RapidOCR pack**
@@ -113,7 +113,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - One click **promote** to a List.
 
 ### 5.7 Sensitive items
-- Free: masked `••••` (click-and-hold to reveal), excluded from history, clipboard auto-clear after N s (default 30).
+- Free: masked `••••` (click-and-hold to reveal), excluded from history. Clipboard auto-clear after N s (default 30) is **v1.1**: v1.0 does not clear the clipboard on a timer, an auto-paste restores the previous clipboard, and the editor makes no promise about it.
 - Pro: encrypted at rest (XChaCha20-Poly1305); key wrapped by OS (DPAPI) and optionally by a
   **master password** (Argon2id) → unlock prompt per session / idle timeout.
 

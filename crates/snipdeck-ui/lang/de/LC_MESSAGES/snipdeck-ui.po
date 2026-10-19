@@ -79,9 +79,6 @@ msgstr "Holt das Panel neben die App, mit der du gerade arbeitest."
 msgid "Cancel"
 msgstr "Abbrechen"
 
-msgid "Capture a region"
-msgstr "Bereich aufnehmen"
-
 msgid "Captured items keep their kind."
 msgstr "Erfasste Textbausteine behalten ihre Art."
 
@@ -286,26 +283,29 @@ msgstr "Zum Beispiel Arbeit"
 msgid "Free plan"
 msgstr "Kostenloser Tarif"
 
-msgid "General"
-msgstr "Allgemein"
-
 msgid "Give the board a name."
 msgstr "Gib dem Board einen Namen."
 
 msgid "Give the list a name."
 msgstr "Gib der Liste einen Namen."
 
+msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
+msgstr "Gibt dem Panel eine Schaltfläche in der Taskleiste. Ausgeschaltet bleibt es aus Taskleiste und Alt+Tab heraus; das Symbol im Infobereich und der Panel-Shortcut holen es weiterhin zurück."
+
 msgid "Green"
 msgstr "Grün"
 
-msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it."
-msgstr "In Listen ausgeblendet, bis du die Leertaste gedrückt hältst. Vom Zwischenablageverlauf ausgeschlossen und {} Sekunden nach der Verwendung aus der Zwischenablage gelöscht."
+msgid "Hidden in lists until you hold Space, and kept out of clipboard history."
+msgstr "In Listen ausgeblendet, bis du die Leertaste gedrückt hältst, und vom Zwischenablageverlauf ausgeschlossen."
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "Verborgen. Halte die Leertaste gedrückt, um es anzuzeigen."
 
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "Verborgen. Öffne es im Panel, um es anzuzeigen."
+
+msgid "Hide the panel when it loses focus"
+msgstr "Panel ausblenden, wenn es den Fokus verliert"
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Wie breit sich das Panel öffnet, von {} bis {} Pixel."
@@ -616,11 +616,17 @@ msgstr "Speichern"
 msgid "Save from clipboard"
 msgstr "Aus der Zwischenablage speichern"
 
+msgid "Save the clipboard as an item"
+msgstr "Zwischenablage als Textbaustein speichern"
+
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr "Speichere deinen ersten Textbaustein oder kopiere etwas und speichere es aus der Zwischenablage."
 
 msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
 msgstr "Speichert alle Boards, Listen und Textbausteine als eine .snipdeck-Datei in deinem Ordner Dokumente."
+
+msgid "Saves the text on the clipboard as a new item in the list the panel shows."
+msgstr "Speichert den Text der Zwischenablage als neuen Textbaustein in der Liste, die das Panel zeigt."
 
 msgid "Scope"
 msgstr "Bereich"
@@ -646,9 +652,6 @@ msgstr "Suchergebnisse"
 msgid "Search snippets"
 msgstr "Textbausteine suchen"
 
-msgid "Selects part of the screen and saves it as an item."
-msgstr "Wählt einen Bereich des Bildschirms aus und speichert ihn als Textbaustein."
-
 msgid "Sensitive item"
 msgstr "Vertraulicher Textbaustein"
 
@@ -660,6 +663,9 @@ msgstr "Shift Enter"
 
 msgid "Shortcuts"
 msgstr "Tastenkürzel"
+
+msgid "Show Snipdeck in the taskbar"
+msgstr "Snipdeck in der Taskleiste anzeigen"
 
 msgid "Show or hide the panel"
 msgstr "Panel anzeigen oder ausblenden"
@@ -778,8 +784,8 @@ msgstr "Papierkorb"
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Aktiviere den Zwischenablageverlauf in den Einstellungen, um Kopiertes zu sammeln."
 
-msgid "Turn this off and closing the main window quits Snipdeck."
-msgstr "Wenn du das ausschaltest, beendet Snipdeck sich beim Schließen des Hauptfensters."
+msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
+msgstr "Schaltest du das aus, beendet das Schließen des Panels oder des Hauptfensters Snipdeck."
 
 msgid "Type {} to confirm"
 msgstr "Gib {} zur Bestätigung ein"
@@ -802,8 +808,14 @@ msgstr "Deine Änderungen wurden nicht gespeichert."
 msgid "What you changed in this item has not been saved."
 msgstr "Deine Änderungen an diesem Textbaustein wurden nicht gespeichert."
 
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
+msgstr "Ist die Pinnnadel aus, blendet sich das Panel aus, sobald du zu einer anderen App wechselst. Ein angeheftetes Panel bleibt."
+
 msgid "Where the text cursor lands after pasting"
 msgstr "Wo der Textcursor nach dem Einfügen landet"
+
+msgid "Window behaviour"
+msgstr "Fensterverhalten"
 
 msgid "Windows"
 msgstr "Windows"

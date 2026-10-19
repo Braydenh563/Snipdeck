@@ -79,9 +79,6 @@ msgstr "作業中のアプリの横にパネルを表示します。"
 msgid "Cancel"
 msgstr "キャンセル"
 
-msgid "Capture a region"
-msgstr "領域をキャプチャ"
-
 msgid "Captured items keep their kind."
 msgstr "キャプチャしたスニペットは種類を保持します。"
 
@@ -286,26 +283,29 @@ msgstr "例: 仕事"
 msgid "Free plan"
 msgstr "無料プラン"
 
-msgid "General"
-msgstr "全般"
-
 msgid "Give the board a name."
 msgstr "ボードに名前を付けてください。"
 
 msgid "Give the list a name."
 msgstr "リストに名前を付けてください。"
 
+msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
+msgstr "パネルにタスクバーのボタンを表示します。オフにすると、タスクバーと Alt+Tab には表示されません。通知領域のアイコンとパネルのショートカットからは引き続き呼び出せます。"
+
 msgid "Green"
 msgstr "緑"
 
-msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it."
-msgstr "スペースキーを押し続けるまでリストでは非表示になり、クリップボード履歴から除外され、使用後{}秒でクリップボードからクリアされます。"
+msgid "Hidden in lists until you hold Space, and kept out of clipboard history."
+msgstr "Space キーを押し続けるまでリストでは隠れ、クリップボード履歴には残りません。"
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "非表示。スペースキーを押し続けると表示されます。"
 
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "非表示。パネルで開くと表示されます。"
+
+msgid "Hide the panel when it loses focus"
+msgstr "フォーカスを失ったらパネルを隠す"
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "パネルを開く幅（{}〜{}ピクセル）。"
@@ -616,11 +616,17 @@ msgstr "保存"
 msgid "Save from clipboard"
 msgstr "クリップボードから保存"
 
+msgid "Save the clipboard as an item"
+msgstr "クリップボードをスニペットとして保存"
+
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr "最初のスニペットを保存するか、何かをコピーしてクリップボードから保存してください。"
 
 msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
 msgstr "すべてのボード、リスト、スニペットを1つの .snipdeck ファイルとして［ドキュメント］フォルダーに保存します。"
+
+msgid "Saves the text on the clipboard as a new item in the list the panel shows."
+msgstr "クリップボードのテキストを、パネルに表示中のリストに新しいスニペットとして保存します。"
 
 msgid "Scope"
 msgstr "範囲"
@@ -646,9 +652,6 @@ msgstr "検索結果"
 msgid "Search snippets"
 msgstr "スニペットを検索"
 
-msgid "Selects part of the screen and saves it as an item."
-msgstr "画面の一部を選択して、スニペットとして保存します。"
-
 msgid "Sensitive item"
 msgstr "機密のスニペット"
 
@@ -660,6 +663,9 @@ msgstr "Shift Enter"
 
 msgid "Shortcuts"
 msgstr "ショートカット"
+
+msgid "Show Snipdeck in the taskbar"
+msgstr "Snipdeck をタスクバーに表示する"
 
 msgid "Show or hide the panel"
 msgstr "パネルを表示または非表示"
@@ -778,8 +784,8 @@ msgstr "ゴミ箱"
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "設定でクリップボード履歴をオンにすると、コピーした内容が保存されます。"
 
-msgid "Turn this off and closing the main window quits Snipdeck."
-msgstr "これをオフにすると、メインウィンドウを閉じたときにSnipdeckが終了します。"
+msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
+msgstr "オフにすると、パネルまたはメインウィンドウを閉じたときに Snipdeck が終了します。"
 
 msgid "Type {} to confirm"
 msgstr "確認のため {} と入力"
@@ -802,8 +808,14 @@ msgstr "変更は保存されていません。"
 msgid "What you changed in this item has not been saved."
 msgstr "このスニペットの変更は保存されていません。"
 
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
+msgstr "ピンがオフのとき、ほかのアプリに切り替えるとすぐにパネルが隠れます。ピン留めしたパネルは隠れません。"
+
 msgid "Where the text cursor lands after pasting"
 msgstr "貼り付け後のテキストカーソルの位置"
+
+msgid "Window behaviour"
+msgstr "ウィンドウの動作"
 
 msgid "Windows"
 msgstr "Windows"

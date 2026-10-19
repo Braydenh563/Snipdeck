@@ -52,6 +52,8 @@ export component SettingsPage inherits Window {
     in property <int> language-index: 0;
     in-out property <bool> autostart: false;
     in-out property <bool> close-to-tray: true;
+    in-out property <bool> panel-in-taskbar: false;
+    in-out property <bool> panel-hide-on-blur: true;
     in property <int> panel-width: 320;
     in property <int> panel-width-min: 260;
     in property <int> panel-width-max: 480;
@@ -88,6 +90,8 @@ export component SettingsPage inherits Window {
     callback language-chosen(index: int);
     callback autostart-toggled(on: bool);
     callback close-to-tray-toggled(on: bool);
+    callback panel-in-taskbar-toggled(on: bool);
+    callback panel-hide-on-blur-toggled(on: bool);
     callback panel-width-chosen(width: int);
     callback no-paste-app-added(name: string);
     callback no-paste-app-removed(index: int);
@@ -103,13 +107,13 @@ export component SettingsPage inherits Window {
     property <[string]> hotkey-names: [
         @tr("Show or hide the panel"),
         @tr("Open the picker"),
-        @tr("Capture a region"),
+        @tr("Save the clipboard as an item"),
         @tr("Paste the next item"),
     ];
     property <[string]> hotkey-help: [
         @tr("Brings the panel up beside the app you are working in."),
         @tr("Search every board and paste without opening the window."),
-        @tr("Selects part of the screen and saves it as an item."),
+        @tr("Saves the text on the clipboard as a new item in the list the panel shows."),
         @tr("Pastes the next item of the list in order."),
     ];
 
@@ -245,7 +249,31 @@ export component SettingsPage inherits Window {
                 }
 
                 FormSection {
-                    title: @tr("General");
+                    title: @tr("Window behaviour");
+                    SettingRow {
+                        title: @tr("Show Snipdeck in the taskbar");
+                        description: @tr("Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back.");
+                        Toggle {
+                            a11y-label: @tr("Show Snipdeck in the taskbar");
+                            checked <=> root.panel-in-taskbar;
+                            toggled(on) => { root.panel-in-taskbar-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Hide the panel when it loses focus");
+                        description: @tr("When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays.");
+                        Toggle {
+                            a11y-label: @tr("Hide the panel when it loses focus");
+                            checked <=> root.panel-hide-on-blur;
+                            toggled(on) => { root.panel-hide-on-blur-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
                     SettingRow {
                         title: @tr("Start with Windows");
                         description: @tr("Snipdeck waits in the tray so the shortcuts work after you sign in.");
@@ -260,7 +288,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Keep running in the tray when the window closes");
-                        description: @tr("Turn this off and closing the main window quits Snipdeck.");
+                        description: @tr("Turn this off and closing the Panel or the Main window quits Snipdeck.");
                         Toggle {
                             a11y-label: @tr("Keep running in the tray when the window closes");
                             checked <=> root.close-to-tray;

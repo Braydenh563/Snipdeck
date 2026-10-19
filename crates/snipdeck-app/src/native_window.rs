@@ -38,6 +38,25 @@ pub fn handle(_window: &PanelWindow) -> Option<isize> {
     None
 }
 
+/// Gives the Panel a taskbar button and Alt+Tab entry (`on`) or takes them away, live. Windows
+/// refreshes the taskbar only when the window is hidden and shown again, which the platform call
+/// does for a visible Panel without activating it.
+#[cfg(windows)]
+pub fn set_panel_taskbar(window: &PanelWindow, on: bool) {
+    use slint::{ComponentHandle, winit_030::winit::platform::windows::WindowExtWindows};
+    window
+        .window()
+        .with_winit_window(|w| w.set_skip_taskbar(!on));
+    if let Some(hwnd) = handle(window) {
+        let changed = snipdeck_platform::windows::window_style::set_panel_taskbar(hwnd, on);
+        crate::trace!("panel taskbar button {on} on {hwnd:#x}: {changed}");
+    }
+}
+
+/// The Panel has no taskbar button off Windows: nothing to change.
+#[cfg(not(windows))]
+pub fn set_panel_taskbar(_window: &PanelWindow, _on: bool) {}
+
 /// Brings the shown Panel in front of the other windows without activating it.
 #[cfg(windows)]
 pub fn raise(window: &PanelWindow) {

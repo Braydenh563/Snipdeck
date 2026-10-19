@@ -177,6 +177,12 @@ pub struct Settings {
     pub autostart: bool,
     /// Closing the main window hides it to the tray instead of quitting.
     pub close_to_tray: bool,
+    /// The Panel has a taskbar button (and an Alt+Tab entry). Off by default: the tray icon and
+    /// the panel shortcut bring it back.
+    pub panel_in_taskbar: bool,
+    /// An unpinned Panel hides when another app takes the foreground. A pinned Panel and the
+    /// Main window never hide this way.
+    pub panel_hide_on_blur: bool,
     /// Panel width in logical pixels.
     pub panel_width: u32,
     /// Where the Panel sat on each monitor it was moved or resized on; wins over `panel_width`
@@ -195,6 +201,8 @@ impl Default for Settings {
             language: String::new(),
             autostart: false,
             close_to_tray: true,
+            panel_in_taskbar: false,
+            panel_hide_on_blur: true,
             panel_width: PANEL_WIDTH_DEFAULT,
             panel_geometry: Vec::new(),
             no_paste_apps: Vec::new(),
@@ -245,6 +253,8 @@ impl Settings {
         field!(language);
         field!(autostart);
         field!(close_to_tray);
+        field!(panel_in_taskbar);
+        field!(panel_hide_on_blur);
         field!(panel_width);
         field!(panel_geometry);
         // Element by element: one bad entry must not drop the whole list, or auto-paste would
@@ -543,6 +553,35 @@ mod tests {
             Settings::from_json(&full[..start]).no_paste_apps,
             Vec::<String>::new()
         );
+    }
+
+    #[test]
+    fn old_files_without_the_window_fields_get_the_defaults() {
+        let settings = Settings::from_json("{}");
+        assert!(!settings.panel_in_taskbar);
+        assert!(settings.panel_hide_on_blur);
+        let settings = Settings::from_json(r#"{"theme":"dark","close_to_tray":false}"#);
+        assert!(!settings.panel_in_taskbar && settings.panel_hide_on_blur);
+    }
+
+    #[test]
+    fn one_bad_window_field_keeps_the_rest() {
+        let settings = Settings::from_json(
+            r#"{"panel_in_taskbar":"x","panel_hide_on_blur":false,"theme":"dark"}"#,
+        );
+        assert!(!settings.panel_in_taskbar, "the bad one falls back");
+        assert!(!settings.panel_hide_on_blur);
+        assert_eq!(settings.theme, Theme::Dark);
+    }
+
+    #[test]
+    fn the_window_fields_round_trip() {
+        let settings = Settings {
+            panel_in_taskbar: true,
+            panel_hide_on_blur: false,
+            ..Settings::default()
+        };
+        assert_eq!(Settings::from_json(&settings.to_json()), settings);
     }
 
     #[test]

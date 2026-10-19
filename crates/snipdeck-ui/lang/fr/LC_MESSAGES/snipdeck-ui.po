@@ -79,9 +79,6 @@ msgstr "Affiche le panneau à côté de l'application que vous utilisez."
 msgid "Cancel"
 msgstr "Annuler"
 
-msgid "Capture a region"
-msgstr "Capturer une zone"
-
 msgid "Captured items keep their kind."
 msgstr "Les extraits capturés gardent leur type."
 
@@ -286,26 +283,29 @@ msgstr "Par exemple, Travail"
 msgid "Free plan"
 msgstr "Offre gratuite"
 
-msgid "General"
-msgstr "Général"
-
 msgid "Give the board a name."
 msgstr "Donnez un nom au tableau."
 
 msgid "Give the list a name."
 msgstr "Donnez un nom à la liste."
 
+msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
+msgstr "Donne au panneau un bouton dans la barre des tâches. Désactivé, il reste hors de la barre des tâches et d'Alt+Tab ; l'icône de la zone de notification et le raccourci du panneau le ramènent toujours."
+
 msgid "Green"
 msgstr "Vert"
 
-msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it."
-msgstr "Masqué dans les listes tant que vous ne maintenez pas Espace, exclu de l'historique du presse-papiers et effacé du presse-papiers {} secondes après utilisation."
+msgid "Hidden in lists until you hold Space, and kept out of clipboard history."
+msgstr "Masqué dans les listes tant que tu ne maintiens pas la barre d'espace, et exclu de l'historique du presse-papiers."
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "Masqué. Maintenez la touche Espace pour afficher."
 
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "Masqué. Ouvrez-le dans le panneau pour l'afficher."
+
+msgid "Hide the panel when it loses focus"
+msgstr "Masquer le panneau quand il perd le focus"
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Largeur d'ouverture du panneau, de {} à {} pixels."
@@ -616,11 +616,17 @@ msgstr "Enregistrer"
 msgid "Save from clipboard"
 msgstr "Enregistrer depuis le presse-papiers"
 
+msgid "Save the clipboard as an item"
+msgstr "Enregistrer le presse-papiers comme extrait"
+
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr "Enregistrez votre premier extrait, ou copiez quelque chose et enregistrez-le depuis le presse-papiers."
 
 msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
 msgstr "Enregistre tous les tableaux, listes et extraits dans un seul fichier .snipdeck, dans votre dossier Documents."
+
+msgid "Saves the text on the clipboard as a new item in the list the panel shows."
+msgstr "Enregistre le texte du presse-papiers comme nouvel extrait dans la liste affichée par le panneau."
 
 msgid "Scope"
 msgstr "Portée"
@@ -646,9 +652,6 @@ msgstr "Résultats de recherche"
 msgid "Search snippets"
 msgstr "Rechercher des extraits"
 
-msgid "Selects part of the screen and saves it as an item."
-msgstr "Sélectionne une partie de l'écran et l'enregistre comme extrait."
-
 msgid "Sensitive item"
 msgstr "Extrait sensible"
 
@@ -660,6 +663,9 @@ msgstr "Shift Enter"
 
 msgid "Shortcuts"
 msgstr "Raccourcis"
+
+msgid "Show Snipdeck in the taskbar"
+msgstr "Afficher Snipdeck dans la barre des tâches"
 
 msgid "Show or hide the panel"
 msgstr "Afficher ou masquer le panneau"
@@ -778,8 +784,8 @@ msgstr "Corbeille"
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Activez l'historique du presse-papiers dans les paramètres pour collecter ce que vous copiez."
 
-msgid "Turn this off and closing the main window quits Snipdeck."
-msgstr "Si vous désactivez cette option, la fermeture de la fenêtre principale quitte Snipdeck."
+msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
+msgstr "Si tu désactives cette option, fermer le panneau ou la fenêtre principale quitte Snipdeck."
 
 msgid "Type {} to confirm"
 msgstr "Saisissez {} pour confirmer"
@@ -802,8 +808,14 @@ msgstr "Les modifications n'ont pas été enregistrées."
 msgid "What you changed in this item has not been saved."
 msgstr "Les modifications de cet extrait n'ont pas été enregistrées."
 
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
+msgstr "Quand l'épingle est désactivée, le panneau se masque dès que tu passes à une autre application. Un panneau épinglé reste."
+
 msgid "Where the text cursor lands after pasting"
 msgstr "Où le curseur de texte se place après le collage"
+
+msgid "Window behaviour"
+msgstr "Comportement de la fenêtre"
 
 msgid "Windows"
 msgstr "Windows"

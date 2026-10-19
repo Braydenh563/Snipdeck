@@ -140,8 +140,6 @@ export component ItemEditor inherits Window {
     // From the host: a title or content problem only the store or the parser knows ("Link needs a scheme").
     in property <string> title-error;
     in property <string> content-error;
-    // The clipboard is cleared this long after a sensitive item is used (Settings).
-    in property <int> clear-seconds: 30;
     // The text is over the inline limit (16 KB, SPEC §5.4): shown read-only; `content-size` is its size ("2.4 MB").
     in property <bool> content-large: false;
     in property <string> content-size;
@@ -173,7 +171,7 @@ export component ItemEditor inherits Window {
 
     property <bool> text-kind: root.kind-index <= 3;
     property <string> sensitive-help: root.text-kind
-        ? @tr("Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it.", root.clear-seconds)
+        ? @tr("Hidden in lists until you hold Space, and kept out of clipboard history.")
         : @tr("Only text, code, link and template items can be sensitive.");
     property <bool> show-errors: false;
     property <bool> content-missing: root.text-kind && root.content == "";
@@ -748,6 +746,9 @@ component EntityEditorBody inherits Rectangle {
         }
     }
 
+    // The height that shows the whole form and the footer: a host that opens the window sizes it to this.
+    out property <length> wanted-height: form.preferred-height + footer.height;
+
     public function focus-name() { name-field.focus(); name-field.set-cursor(1000000); }
 
     init => {
@@ -837,7 +838,7 @@ component EntityEditorBody inherits Rectangle {
                 }
             }
 
-            EditorFooter {
+            footer := EditorFooter {
                 show-delete: !root.is-new && root.can-delete;
                 delete-label: root.delete-label;
                 cancel-label: @tr("Cancel");
@@ -896,9 +897,12 @@ export component ListEditor inherits Window {
     title: root.is-new ? @tr("New list") : @tr("Edit list");
     background: Theme.bg-app;
     min-width: 380px;
-    min-height: 300px;
+    min-height: min(300px, body.wanted-height);
     preferred-width: 460px;
-    preferred-height: 440px;
+    preferred-height: body.wanted-height;
+
+    // The height that fits the form as it is now (a new list is shorter than one with a Delete row).
+    out property <length> wanted-height <=> body.wanted-height;
 
     in property <bool> dark <=> body.dark;
     in property <bool> is-new <=> body.is-new;
@@ -946,9 +950,12 @@ export component BoardEditor inherits Window {
     title: root.is-new ? @tr("New board") : @tr("Edit board");
     background: Theme.bg-app;
     min-width: 380px;
-    min-height: 300px;
+    min-height: min(300px, body.wanted-height);
     preferred-width: 460px;
-    preferred-height: 440px;
+    preferred-height: body.wanted-height;
+
+    // The height that fits the form as it is now (a new list is shorter than one with a Delete row).
+    out property <length> wanted-height <=> body.wanted-height;
 
     in property <bool> dark <=> body.dark;
     in property <bool> is-new <=> body.is-new;

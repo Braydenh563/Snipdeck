@@ -6,7 +6,9 @@
 //! What this module adds on top, once the app has the window's `HWND`:
 //!
 //! - `WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW` without `WS_EX_APPWINDOW`: a click never activates the
-//!   panel, and it has no taskbar button or Alt+Tab entry.
+//!   panel, and it has no taskbar button or Alt+Tab entry. With the "Show Snipdeck in the
+//!   taskbar" setting on, `WS_EX_APPWINDOW` replaces `WS_EX_TOOLWINDOW` (still never activated by
+//!   a click); [`set_panel_taskbar`] switches between the two while the panel is up.
 //! - A window subclass that re-applies those bits whenever the extended style is about to change
 //!   (`WM_STYLECHANGING`). winit rewrites `GWL_EXSTYLE` from its own flags every time Slint
 //!   changes a window property (title, decorations, level, visibility), which would otherwise
@@ -44,10 +46,11 @@ const SUBCLASS_ID: usize = 0x5344_5043; // "SDPC"
 /// before it is first shown if possible. Calling it again is harmless. The subclass removes itself
 /// on `WM_NCDESTROY`, the last message the window receives; nothing is left to clean up.
 ///
-/// `hwnd` is the raw window handle value (winit's `Win32WindowHandle::hwnd`). Returns `false`
-/// when the handle is null or the subclass could not be installed; the style is then not applied
-/// either, because without the guard it would not last.
-pub fn install_panel_style(hwnd: isize) -> bool {
+/// `hwnd` is the raw window handle value (winit's `Win32WindowHandle::hwnd`); `in_taskbar` is
+/// the "Show Snipdeck in the taskbar" setting. Returns `false` when the handle is null or the
+/// subclass could not be installed; the style is then not applied either, because without the
+/// guard it would not last.
+pub fn install_panel_style(hwnd: isize, in_taskbar: bool) -> bool {
     if hwnd == 0 {
         return false;
     }
@@ -55,14 +58,14 @@ pub fn install_panel_style(hwnd: isize) -> bool {
     // Subclass first, so the guard is in place before the style is set.
     // SAFETY: `hwnd` is a window of this thread (caller contract); `panel_subclass_proc` matches
     // `SUBCLASSPROC` and stays valid for the life of the process.
-    let installed = unsafe { SetWindowSubclass(hwnd, Some(panel_subclass_proc), SUBCLASS_ID, 0) };
+    let installed = unsafe { SetWindowSubclass(hwnd, Some(panel_subclass_proc), SUBCLASS_ID, usize::from(in_taskbar)) };
     if !installed.as_bool() {
         return false;
     }
     // SAFETY: plain calls on the same window handle. A stale handle makes them fail, not crash.
     unsafe {
         let current = ex_style_bits(GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
-        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex_style_slot(panel_ex_style(current)));
+        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex_style_slot(panel_ex_style(current, in_taskbar)));
         // Not hidden or resized by this call; it only makes Windows re-read the frame styles.
         let _ = SetWindowPos(
             hwnd,
@@ -73,6 +76,47 @@ pub fn install_panel_style(hwnd: isize) -> bool {
             0,
             SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
         );
+    }
+    true
+}
+
+/// Switches the panel `hwnd` (already given [`install_panel_style`]) between "has a taskbar
+/// button" and "has none", live. Windows only refreshes the taskbar when the window is hidden and
+/// shown again, so a visible panel is hidden and shown without activating it. Returns `false`
+/// for a null handle or when the subclass is gone.
+pub fn set_panel_taskbar(hwnd: isize, in_taskbar: bool) -> bool {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        IsWindowVisible, SW_HIDE, SW_SHOWNOACTIVATE, ShowWindow,
+    };
+    if hwnd == 0 {
+        return false;
+    }
+    let hwnd = HWND(hwnd as *mut c_void);
+    // SAFETY: `hwnd` is a window of this thread (caller contract); the subclass procedure
+    // matches `SUBCLASSPROC`. Setting it again replaces the reference data, which is what the
+    // `WM_STYLECHANGING` branch reads.
+    let installed = unsafe {
+        SetWindowSubclass(
+            hwnd,
+            Some(panel_subclass_proc),
+            SUBCLASS_ID,
+            usize::from(in_taskbar),
+        )
+    };
+    if !installed.as_bool() {
+        return false;
+    }
+    // SAFETY: plain calls on the same window handle. A stale handle makes them fail, not crash.
+    unsafe {
+        let visible = IsWindowVisible(hwnd).as_bool();
+        if visible {
+            let _ = ShowWindow(hwnd, SW_HIDE);
+        }
+        let current = ex_style_bits(GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
+        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex_style_slot(panel_ex_style(current, in_taskbar)));
+        if visible {
+            let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+        }
     }
     true
 }
@@ -149,7 +193,7 @@ unsafe extern "system" fn panel_subclass_proc(
     wparam: WPARAM,
     lparam: LPARAM,
     _id: usize,
-    _data: usize,
+    data: usize,
 ) -> LRESULT {
     match msg {
         // Belt and braces with WS_EX_NOACTIVATE: a click must not activate the panel.
@@ -158,7 +202,7 @@ unsafe extern "system" fn panel_subclass_proc(
             // SAFETY: for WM_STYLECHANGING, `lparam` points to a STYLESTRUCT that the system
             // owns for the duration of this call; it is checked for null before use.
             if let Some(style) = unsafe { (lparam.0 as *mut STYLESTRUCT).as_mut() } {
-                style.styleNew = panel_ex_style(style.styleNew);
+                style.styleNew = panel_ex_style(style.styleNew, data != 0);
             }
         }
         // The subclass is not removed by the system: remove it here, last message of the window.

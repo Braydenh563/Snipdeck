@@ -79,9 +79,6 @@ msgstr "Muestra el panel junto a la aplicación en la que trabajas."
 msgid "Cancel"
 msgstr "Cancelar"
 
-msgid "Capture a region"
-msgstr "Capturar una región"
-
 msgid "Captured items keep their kind."
 msgstr "Los fragmentos capturados conservan su tipo."
 
@@ -286,26 +283,29 @@ msgstr "Por ejemplo, Trabajo"
 msgid "Free plan"
 msgstr "Plan gratuito"
 
-msgid "General"
-msgstr "General"
-
 msgid "Give the board a name."
 msgstr "Ponle un nombre al tablero."
 
 msgid "Give the list a name."
 msgstr "Ponle un nombre a la lista."
 
+msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
+msgstr "Da al panel un botón en la barra de tareas. Desactivado, queda fuera de la barra de tareas y de Alt+Tab; el icono de la bandeja y el atajo del panel lo siguen mostrando."
+
 msgid "Green"
 msgstr "Verde"
 
-msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard {} seconds after you use it."
-msgstr "Oculto en las listas hasta que mantengas pulsada la barra espaciadora, se excluye del historial del portapapeles y se borra del portapapeles {} segundos después de usarlo."
+msgid "Hidden in lists until you hold Space, and kept out of clipboard history."
+msgstr "Oculto en las listas hasta que mantienes pulsada la barra espaciadora, y fuera del historial del portapapeles."
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "Oculto. Mantén pulsada la barra espaciadora para mostrarlo."
 
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "Oculto. Ábrelo en el panel para mostrarlo."
+
+msgid "Hide the panel when it loses focus"
+msgstr "Ocultar el panel al perder el foco"
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Ancho con el que se abre el panel, de {} a {} píxeles."
@@ -616,11 +616,17 @@ msgstr "Guardar"
 msgid "Save from clipboard"
 msgstr "Guardar desde el portapapeles"
 
+msgid "Save the clipboard as an item"
+msgstr "Guardar el portapapeles como fragmento"
+
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr "Guarda tu primer fragmento o copia algo y guárdalo desde el portapapeles."
 
 msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
 msgstr "Guarda todos los tableros, listas y fragmentos en un archivo .snipdeck en tu carpeta Documentos."
+
+msgid "Saves the text on the clipboard as a new item in the list the panel shows."
+msgstr "Guarda el texto del portapapeles como un fragmento nuevo en la lista que muestra el panel."
 
 msgid "Scope"
 msgstr "Ámbito"
@@ -646,9 +652,6 @@ msgstr "Resultados de búsqueda"
 msgid "Search snippets"
 msgstr "Buscar fragmentos"
 
-msgid "Selects part of the screen and saves it as an item."
-msgstr "Selecciona una parte de la pantalla y la guarda como fragmento."
-
 msgid "Sensitive item"
 msgstr "Fragmento sensible"
 
@@ -660,6 +663,9 @@ msgstr "Shift Enter"
 
 msgid "Shortcuts"
 msgstr "Atajos"
+
+msgid "Show Snipdeck in the taskbar"
+msgstr "Mostrar Snipdeck en la barra de tareas"
 
 msgid "Show or hide the panel"
 msgstr "Mostrar u ocultar el panel"
@@ -778,8 +784,8 @@ msgstr "Papelera"
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Activa el historial del portapapeles en Configuración para registrar lo que copias."
 
-msgid "Turn this off and closing the main window quits Snipdeck."
-msgstr "Si lo desactivas, al cerrar la ventana principal se cierra Snipdeck."
+msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
+msgstr "Si lo desactivas, al cerrar el panel o la ventana principal se cierra Snipdeck."
 
 msgid "Type {} to confirm"
 msgstr "Escribe {} para confirmar"
@@ -802,8 +808,14 @@ msgstr "Los cambios no se han guardado."
 msgid "What you changed in this item has not been saved."
 msgstr "Los cambios en este fragmento no se han guardado."
 
+msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
+msgstr "Con la chincheta desactivada, el panel se oculta en cuanto cambias a otra aplicación. Un panel fijado se queda."
+
 msgid "Where the text cursor lands after pasting"
 msgstr "Dónde cae el cursor de texto tras pegar"
+
+msgid "Window behaviour"
+msgstr "Comportamiento de la ventana"
 
 msgid "Windows"
 msgstr "Windows"
