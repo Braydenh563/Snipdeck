@@ -133,22 +133,22 @@ laptop that is not the signing machine.
 
 ## Keys for friends
 
-`tools/snipdeck-keygen` (binary `snipdeck-keygen`) makes the key pair and signs keys by hand.
+`tools/snipdeck-licence-issuer` (binary `snipdeck-licence-issuer`) makes the key pair and signs keys by hand.
 It is a workspace tool, not part of the app: the signing code lives in
-`snipdeck_core::licence::signing` behind the cargo feature `keygen`, which only this tool
+`snipdeck_core::licence::signing` behind the cargo feature `licence-issuer`, which only this tool
 enables.
 
 ```sh
 # Once: make the key pair. Refuses to overwrite an existing key.
-cargo run -p snipdeck-keygen -- genkey --out ~/snipdeck-licence-keys
+cargo run -p snipdeck-licence-issuer -- genkey --out ~/snipdeck-licence-keys
 #   private.key  (mode 0600; secret)   public.key
 #   SNIPDECK_LICENCE_PUBLIC_KEY=<base64>   <- the exact value the release build takes
 
 # Per friend: print a key to send them.
-cargo run -p snipdeck-keygen -- sign --key ~/snipdeck-licence-keys/private.key --order GIFT-alex
+cargo run -p snipdeck-licence-issuer -- sign --key ~/snipdeck-licence-keys/private.key --order GIFT-alex
 
 # Check any key against a public key and show what it says.
-cargo run -p snipdeck-keygen -- verify --public ~/snipdeck-licence-keys/public.key SNIP1.…
+cargo run -p snipdeck-licence-issuer -- verify --public ~/snipdeck-licence-keys/public.key SNIP1.…
 ```
 
 * `--order` must be 1 to 128 characters of `A-Z a-z 0-9 . _ -`; anything else is refused.

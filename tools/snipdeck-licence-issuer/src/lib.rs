@@ -23,11 +23,11 @@ pub use cli::Command;
 /// The command-line help.
 pub const USAGE: &str = "\
 usage:
-  snipdeck-keygen genkey --out DIR
+  snipdeck-licence-issuer genkey --out DIR
       write DIR/private.key and DIR/public.key; print the build setting for the public key
-  snipdeck-keygen sign --key private.key --order GIFT-name [--email-hash HEX] [--issued UNIX]
+  snipdeck-licence-issuer sign --key private.key --order GIFT-name [--email-hash HEX] [--issued UNIX]
       print a SNIP1. licence key (the format has no expiry field)
-  snipdeck-keygen verify --public public.key KEY
+  snipdeck-licence-issuer verify --public public.key KEY
       check a licence key and print its fields";
 
 const PRIVATE_FILE: &str = "private.key";

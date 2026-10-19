@@ -36,7 +36,7 @@ Windows PC.
 - Paste next (`Ctrl+Alt+V`) for Pro, over the pinned strip or the current list.
 - The item editor for text, code, link, template, image and file items, with drafts that survive a crash.
 - Export of the whole library as one `.snipdeck` file from Settings.
-- `snipdeck-keygen`, a tool for making licence keys.
+- `snipdeck-licence-issuer`, a tool for making licence keys.
 - Edge docking for the Panel: **Dock to** (Floating, Left, Right, Top or Bottom edge), **Open a docked panel by**
   (Off, Hover, Click or Hover and click), **Hover delay** and **Leave delay**. A docked Panel can fold into a thin
   strip. The Panel shortcut folds and unfolds it too. The edge is remembered for each monitor.
@@ -95,7 +95,7 @@ Windows PC.
 - Panel: the "More" (kebab) menu now works (Open Snipdeck, New snippet, Settings, Pause hotkeys, Help, Quit), the edge and corner grips resize the window (260 to 480 wide, remembered per monitor in `panel_geometry`), and Delete / Ctrl+E / F2 on a row act (Delete goes to the Trash with a 5 s Undo). Written on Linux; the OS resize and the per-monitor restore are unverified on Windows.
 - Item editor: New snippet (Panel menu, Main window, Ctrl+N) and Edit (Panel quick edit, Picker Ctrl+E, Main window) open the item editor for text, code, link, template, image and file items. A new Image or File item takes the path of a file (typed, or chosen with Browse on Windows) and keeps its own copy. The first sensitive item on Pro makes the DPAPI-wrapped library key without a prompt and is stored encrypted; text over 16 KB opens read-only; unsaved changes are kept as a draft every 2 s and come back when the editor is opened again (never for a sensitive item); Free users are told prompted placeholders are Pro. The crash toast's "Open log" button opens the reports folder. Written on Linux; DPAPI and the Open dialog are unverified on Windows.
 - Panel: the always-on-top toggle is a distinct `push-pin-simple` icon with a stable "Keep panel on top" label and tooltips on the header buttons.
-- `snipdeck-keygen` (tools/): `genkey`, `sign`, `verify` for friends' licence keys; the signer moved into `snipdeck-core` behind the `keygen` feature.
+- `snipdeck-licence-issuer` (tools/): `genkey`, `sign`, `verify` for friends' licence keys; the signer moved into `snipdeck-core` behind the `licence-issuer` feature.
 - GitHub: RustSec `cargo audit` daily, Dependabot (cargo + actions), and a Windows portable-zip build (dev build on main, release build with SHA-256 on `v*` tags).
 - `docs/reviews/fable-analysis.md`: ranked findings, architecture redesign, UX, security/privacy and feature brainstorm.
 

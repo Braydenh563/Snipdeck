@@ -4550,7 +4550,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "snipdeck-keygen"
+name = "snipdeck-licence-issuer"
 version = "0.1.0"
 dependencies = [
  "base64",

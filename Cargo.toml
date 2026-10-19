@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 # The M0 spikes under `spikes/` declare their own empty `[workspace]` and stay outside.
-members = ["crates/*", "tools/snipdeck-keygen"]
+members = ["crates/*", "tools/snipdeck-licence-issuer"]
 
 [workspace.package]
 version = "0.1.0"

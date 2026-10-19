@@ -4805,48 +4805,48 @@ apply_window_material | spikes/s4-mica/src/platform/windows.rs:227
 watch_ui_settings | spikes/s4-mica/src/platform/windows.rs:344
 on_window_created | spikes/s4-mica/src/platform/windows.rs:367
 
-### tools/snipdeck-keygen/src/cli.rs
+### tools/snipdeck-licence-issuer/src/cli.rs
 
-Command | tools/snipdeck-keygen/src/cli.rs:8
-CliError | tools/snipdeck-keygen/src/cli.rs:38
-text | tools/snipdeck-keygen/src/cli.rs:62
-parse | tools/snipdeck-keygen/src/cli.rs:71
-value | tools/snipdeck-keygen/src/cli.rs:135
-tests | tools/snipdeck-keygen/src/cli.rs:143
-parse_str | tools/snipdeck-keygen/src/cli.rs:146
-genkey_takes_out | tools/snipdeck-keygen/src/cli.rs:151
-sign_takes_key_order_and_optional_fields | tools/snipdeck-keygen/src/cli.rs:164
-verify_takes_public_and_the_key_text | tools/snipdeck-keygen/src/cli.rs:189
-unknown_and_missing_commands | tools/snipdeck-keygen/src/cli.rs:208
+Command | tools/snipdeck-licence-issuer/src/cli.rs:8
+CliError | tools/snipdeck-licence-issuer/src/cli.rs:38
+text | tools/snipdeck-licence-issuer/src/cli.rs:62
+parse | tools/snipdeck-licence-issuer/src/cli.rs:71
+value | tools/snipdeck-licence-issuer/src/cli.rs:135
+tests | tools/snipdeck-licence-issuer/src/cli.rs:143
+parse_str | tools/snipdeck-licence-issuer/src/cli.rs:146
+genkey_takes_out | tools/snipdeck-licence-issuer/src/cli.rs:151
+sign_takes_key_order_and_optional_fields | tools/snipdeck-licence-issuer/src/cli.rs:164
+verify_takes_public_and_the_key_text | tools/snipdeck-licence-issuer/src/cli.rs:189
+unknown_and_missing_commands | tools/snipdeck-licence-issuer/src/cli.rs:208
 
-### tools/snipdeck-keygen/src/lib.rs
+### tools/snipdeck-licence-issuer/src/lib.rs
 
-cli | tools/snipdeck-keygen/src/lib.rs:9
-USAGE | tools/snipdeck-keygen/src/lib.rs:24
-PRIVATE_FILE | tools/snipdeck-keygen/src/lib.rs:33
-PUBLIC_FILE | tools/snipdeck-keygen/src/lib.rs:34
-ToolError | tools/snipdeck-keygen/src/lib.rs:38
-io_error | tools/snipdeck-keygen/src/lib.rs:64
-run | tools/snipdeck-keygen/src/lib.rs:74
-gen_key | tools/snipdeck-keygen/src/lib.rs:96
-write_new | tools/snipdeck-keygen/src/lib.rs:118
-read_key_file | tools/snipdeck-keygen/src/lib.rs:133
-describe | tools/snipdeck-keygen/src/lib.rs:142
-tests | tools/snipdeck-keygen/src/lib.rs:163
-exec | tools/snipdeck-keygen/src/lib.rs:170
-keys | tools/snipdeck-keygen/src/lib.rs:178
-sign | tools/snipdeck-keygen/src/lib.rs:187
-genkey_sign_verify_round_trip_with_the_core_verifier | tools/snipdeck-keygen/src/lib.rs:192
-genkey_prints_the_build_setting_and_refuses_to_overwrite | tools/snipdeck-keygen/src/lib.rs:210
-the_private_key_is_owner_only | tools/snipdeck-keygen/src/lib.rs:227
-a_tampered_key_is_rejected | tools/snipdeck-keygen/src/lib.rs:238
-bad_order_ids_are_refused | tools/snipdeck-keygen/src/lib.rs:259
-email_hash_and_issued_are_carried | tools/snipdeck-keygen/src/lib.rs:273
-a_missing_or_garbled_key_file_is_an_error_not_a_panic | tools/snipdeck-keygen/src/lib.rs:305
+cli | tools/snipdeck-licence-issuer/src/lib.rs:9
+USAGE | tools/snipdeck-licence-issuer/src/lib.rs:24
+PRIVATE_FILE | tools/snipdeck-licence-issuer/src/lib.rs:33
+PUBLIC_FILE | tools/snipdeck-licence-issuer/src/lib.rs:34
+ToolError | tools/snipdeck-licence-issuer/src/lib.rs:38
+io_error | tools/snipdeck-licence-issuer/src/lib.rs:64
+run | tools/snipdeck-licence-issuer/src/lib.rs:74
+gen_key | tools/snipdeck-licence-issuer/src/lib.rs:96
+write_new | tools/snipdeck-licence-issuer/src/lib.rs:118
+read_key_file | tools/snipdeck-licence-issuer/src/lib.rs:133
+describe | tools/snipdeck-licence-issuer/src/lib.rs:142
+tests | tools/snipdeck-licence-issuer/src/lib.rs:163
+exec | tools/snipdeck-licence-issuer/src/lib.rs:170
+keys | tools/snipdeck-licence-issuer/src/lib.rs:178
+sign | tools/snipdeck-licence-issuer/src/lib.rs:187
+genkey_sign_verify_round_trip_with_the_core_verifier | tools/snipdeck-licence-issuer/src/lib.rs:192
+genkey_prints_the_build_setting_and_refuses_to_overwrite | tools/snipdeck-licence-issuer/src/lib.rs:210
+the_private_key_is_owner_only | tools/snipdeck-licence-issuer/src/lib.rs:227
+a_tampered_key_is_rejected | tools/snipdeck-licence-issuer/src/lib.rs:238
+bad_order_ids_are_refused | tools/snipdeck-licence-issuer/src/lib.rs:259
+email_hash_and_issued_are_carried | tools/snipdeck-licence-issuer/src/lib.rs:273
+a_missing_or_garbled_key_file_is_an_error_not_a_panic | tools/snipdeck-licence-issuer/src/lib.rs:305
 
-### tools/snipdeck-keygen/src/main.rs
+### tools/snipdeck-licence-issuer/src/main.rs
 
-main | tools/snipdeck-keygen/src/main.rs:11
+main | tools/snipdeck-licence-issuer/src/main.rs:11
 
 ### tools/windows-test/m2-harness/src/app.rs
 
@@ -5058,5 +5058,5 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/tray_texts.rs` | 1 |
 | `spikes/s3-longtext/src/viewer.rs` (inline) | 1 |
 | `spikes/s4-mica/src/appearance.rs` (inline) | 8 |
-| `tools/snipdeck-keygen/src/cli.rs` (inline) | 4 |
-| `tools/snipdeck-keygen/src/lib.rs` (inline) | 7 |
+| `tools/snipdeck-licence-issuer/src/cli.rs` (inline) | 4 |
+| `tools/snipdeck-licence-issuer/src/lib.rs` (inline) | 7 |

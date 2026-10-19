@@ -1,5 +1,5 @@
 //! Minting licence tokens (the seller's side). Compiled for tests and for the
-//! `snipdeck-keygen` tool (cargo feature `keygen`); the app never links it.
+//! `snipdeck-licence-issuer` tool (cargo feature `licence-issuer`); the app never links it.
 //!
 //! The format is in `docs/licensing.md`. The private key is never in this repository: callers
 //! pass it in.

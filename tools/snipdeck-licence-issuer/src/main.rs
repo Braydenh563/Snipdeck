@@ -1,4 +1,4 @@
-//! `snipdeck-keygen`: the seller's licence tool. See `docs/licensing.md`, "Keys for friends".
+//! `snipdeck-licence-issuer`: the seller's licence tool. See `docs/licensing.md`, "Keys for friends".
 
 #![forbid(unsafe_code)]
 
@@ -6,14 +6,14 @@ use std::io::Write as _;
 use std::process::ExitCode;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use snipdeck_keygen::{USAGE, cli, run};
+use snipdeck_licence_issuer::{USAGE, cli, run};
 
 fn main() -> ExitCode {
     let mut stderr = std::io::stderr();
     let command = match cli::parse(std::env::args_os().skip(1)) {
         Ok(command) => command,
         Err(error) => {
-            let _ = writeln!(stderr, "snipdeck-keygen: {error}\n\n{USAGE}");
+            let _ = writeln!(stderr, "snipdeck-licence-issuer: {error}\n\n{USAGE}");
             return ExitCode::from(2);
         }
     };
@@ -25,7 +25,7 @@ fn main() -> ExitCode {
     match run(&command, now, &mut std::io::stdout()) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            let _ = writeln!(stderr, "snipdeck-keygen: {error}");
+            let _ = writeln!(stderr, "snipdeck-licence-issuer: {error}");
             ExitCode::FAILURE
         }
     }

@@ -9,9 +9,9 @@ repository.workspace = true
 publish.workspace = true
 
 [features]
-# The licence signer (`licence::signing`), for the `snipdeck-keygen` tool only. The app never
+# The licence signer (`licence::signing`), for the `snipdeck-licence-issuer` tool only. The app never
 # enables it, so no signing code is linked into Snipdeck itself.
-keygen = []
+licence-issuer = []
 
 [dependencies]
 base64.workspace = true

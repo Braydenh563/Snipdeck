@@ -17,8 +17,8 @@
 #[cfg(test)]
 mod key_selection;
 mod keys;
-// The signer is only compiled for the `snipdeck-keygen` tool and for tests; the app never links it.
-#[cfg(any(test, feature = "keygen"))]
+// The signer is only compiled for the `snipdeck-licence-issuer` tool and for tests; the app never links it.
+#[cfg(any(test, feature = "licence-issuer"))]
 pub mod signing;
 #[cfg(test)]
 mod testing;
