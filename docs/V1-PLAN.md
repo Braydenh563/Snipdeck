@@ -38,6 +38,7 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 - [ ] C7 [S] MSIX packaging files and `docs/store.md` steps (owner buys the account); code-signing steps for SignPath in the release docs.
 - [ ] C8 [S] Get Pro: mailto link in Settings, the board-limit toast and the site; address is a placeholder until the owner supplies it.
 
+- [ ] C9 [S] Free vs Pro made clear (owner 2026-10-19): a compact comparison table (feature, one-line description, tick or cross per tier) in Settings Licence and the Get Pro dialog, the README and the site. Honest framing: Pro pays for convenience and supports the app; the code is GPL; Free stays fully usable. No walls of text.
 ## D. Images, site, controller
 - [ ] D1 [S] Regenerate every golden after A-C, read each one; UX fixes from what they show.
 - [ ] D2 [S] README shots and hero images at 2x (`SNIPDECK_SHOT_SCALE=2`, `scripts/readme_shots.py`); Help shot back in.
