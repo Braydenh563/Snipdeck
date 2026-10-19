@@ -104,7 +104,7 @@ impl<C: ComponentHandle> Harness<C> {
             .expect("platform created a window");
         // `SNIPDECK_SHOT_SCALE` renders at a display scale (README screenshots); the goldens are 1x.
         let scale = shot_scale();
-        if scale != 1.0 {
+        if (scale - 1.0).abs() > f32::EPSILON {
             window.dispatch_event(slint::platform::WindowEvent::ScaleFactorChanged {
                 scale_factor: scale,
             });
