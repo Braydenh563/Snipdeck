@@ -45,6 +45,18 @@ Windows PC.
 - **Backups to keep** in Settings: a stepper from 1 to 60 (default 7) for the daily backups.
 - A toast window that shows messages from the Picker and the fill form. Sensitive items stay hidden in Panel and
   Main window lists until you hold `Space`.
+- A Panel list tab menu: right-click a tab, or press `Menu`, `Shift+F10` or `F2`, to edit or delete that list.
+  Double-click a tab to edit it.
+- A Panel item menu (right-click, `Menu` or `Shift+F10`) with Use, Copy, Edit, Pin and Move to Trash. Hold `Space`
+  on a Panel row to reveal a sensitive item. The fill form masks sensitive fields.
+- The first time the Panel hides, a toast says Snipdeck is still running and how to bring it back.
+- `{date}` and `{time}` in templates use your local time, and `{clipboard}` inserts the clipboard text. A sensitive
+  item you only copied is cleared from the clipboard after 30 seconds.
+- The Main window remembers its size and place. The tray tooltip says when hotkeys are paused. Menus show a
+  focus ring.
+- A Help menu in the Main window, `F1` for the Help window, and a link to the welcome tour in About.
+- A welcome tour on the first start. **Show the welcome tour again** in Help replays it.
+- A Help window with a **Troubleshoot** checklist and **About**.
 
 ### Changed
 - Quick start is now "get the folder, double-click `Snipdeck.bat`". Users no longer need Rust, Visual Studio or git.

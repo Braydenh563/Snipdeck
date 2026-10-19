@@ -50,8 +50,7 @@ editor, the **Placeholders** list inserts one for you.
 | `{field:Name}` or `{field:Name\|default}` | Asks you for a value each time | Pro |
 | `{choice:Name\|a\|b}` | Asks you to pick one of the options | Pro |
 
-Dates and times use UTC for now, not your time zone. `{clipboard}` is accepted but comes out empty in this
-version. Type `{{` and `}}` for literal braces. Any other braces are an error, and the editor says so when
+`{date}` and `{time}` use your computer's time zone. `{clipboard}` inserts the clipboard text. Type `{{` and `}}` for literal braces. Any other braces are an error, and the editor says so when
 you save.
 
 When you use a template with `{field}` or `{choice}`, a **Fill in template** window opens. Fill the fields,
@@ -62,8 +61,10 @@ check the preview and press `Ctrl+Enter` to insert. `Esc` cancels.
 Turn on **Sensitive item** under **Privacy** in the editor. Only text, code, link and template items can be
 sensitive. A sensitive item:
 
-- Shows as a lock with a hidden preview in lists. In the Main window, hold `Space` on the row to reveal it.
-- Is put on the clipboard marked private, so Windows clipboard history and cloud clipboard skip it.
+- Shows as a lock with a hidden preview in lists. In the Main window, hold `Space` on the row (in the Panel too) to reveal it.
+- Is put on the clipboard marked private, so Windows clipboard history and cloud clipboard skip it. If you only copied it, Snipdeck
+  clears it from the clipboard after 30 seconds (if the clipboard still holds it).
+- Is masked in the fill form.
 - On Pro, is also encrypted on disk with a key protected by Windows. The title, tags and search text are not
   encrypted. See [`crypto.md`](crypto.md).
 
@@ -118,7 +119,10 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
   entries.
 - **Select many.** `Ctrl`+click or `Ctrl+Space` adds a row, `Shift`+click or `Shift+Arrow` extends, and
   `Ctrl+A` selects all. `Esc` clears the selection.
-- **Open the item menu** with a right-click, the `Menu` key or `Shift+F10`.
+- **Open the item menu** with a right-click, the `Menu` key or `Shift+F10`. In the Panel it offers Use, Copy,
+  Edit, Pin or Unpin, and Move to Trash.
+- **Edit or delete a list in the Panel.** Right-click its tab, or press `Menu`, `Shift+F10` or `F2` on it.
+  Double-click a tab to edit it.
 
 ### Trash and undo
 
@@ -126,6 +130,15 @@ Deleting an item, list or board moves it to the **Trash**. A message with an **U
 5 seconds. Later, open **Trash** to restore items (`Enter` or **Restore**) or delete them for good. Deleted
 things are removed from the Trash after 30 days, and **Empty Trash** removes them at once. A board comes back
 only if the Free plan has room for it.
+
+## Help and the welcome tour
+
+Press `F1` or open **Help** in the Main window to see the Help window. **Troubleshoot** is a checklist that finds
+common problems, and **About** shows the version. The welcome tour runs on the first start. To see it again,
+use **Show the welcome tour again** in Help or the link in About.
+
+When the Panel hides for the first time, a message tells you Snipdeck is still running and how to bring it
+back.
 
 ## Settings
 
@@ -179,6 +192,7 @@ or CopyQ data has no screen in this version.
 | Panel | `Ctrl+F` | Focus the search box |
 | Panel | `Ctrl+E`, `F2` | Edit the selected item |
 | Panel | `Delete` | Move the selected item to the Trash (not while searching) |
+| Panel | `Menu`, `Shift+F10` | Open the item menu |
 | Panel | `Esc` | Clear the search; with nothing to clear, hide the Panel |
 | Picker | `Tab`, `Shift+Tab` | Change scope |
 | Picker | `Alt+1` to `Alt+9` | Use that row |
@@ -191,7 +205,8 @@ or CopyQ data has no screen in this version.
 | Main window | `Delete` | Move to the Trash (in the Trash: delete for good) |
 | Main window | `Ctrl+A`, `Ctrl+Space` | Select all, toggle a row |
 | Main window | `Alt+Up`, `Alt+Down` | Move an item or list |
-| Main window | `Space` (hold) | Reveal a sensitive item |
+| Panel, Main window | `Space` (hold) | Reveal a sensitive item |
+| Main window | `F1` | Open the Help window |
 | Item editor | `Ctrl+Enter` | Save |
 | Fill form | `Ctrl+Enter`, `Esc` | Insert, cancel |
 
