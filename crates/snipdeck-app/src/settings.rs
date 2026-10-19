@@ -16,6 +16,11 @@ pub const PANEL_WIDTH_DEFAULT: u32 = 320;
 pub const BACKUPS_KEEP: std::ops::RangeInclusive<u32> = 1..=60;
 /// The default number of backups kept (SPEC 5.7a).
 pub const BACKUPS_KEEP_DEFAULT: u32 = 7;
+/// How long a copied sensitive item may stay on the clipboard, in seconds (Settings > Privacy);
+/// 0 never clears it (SPEC 5.7).
+pub const CLIPBOARD_CLEAR_SECS: std::ops::RangeInclusive<u32> = 0..=600;
+/// The default time before a copied sensitive item is cleared from the clipboard.
+pub const CLIPBOARD_CLEAR_SECS_DEFAULT: u32 = 30;
 
 /// How many monitors' Panel geometry is remembered.
 pub const PANEL_GEOMETRY_LIMIT: usize = 16;
@@ -345,6 +350,10 @@ pub struct Settings {
     pub panel_width: u32,
     /// How many daily backups to keep (1 to 60).
     pub backups_keep: u32,
+    /// Animations are off even when Windows' "Animation effects" is on.
+    pub reduce_motion: bool,
+    /// Seconds after copying a sensitive item before the clipboard is cleared (0 = never).
+    pub clipboard_clear_secs: u32,
     /// Where the Panel sat on each monitor it was moved or resized on; wins over `panel_width`
     /// there. Absent in older files.
     pub panel_geometry: Vec<PanelGeometry>,
@@ -373,6 +382,8 @@ impl Default for Settings {
             hide_hint_shown: false,
             panel_width: PANEL_WIDTH_DEFAULT,
             backups_keep: BACKUPS_KEEP_DEFAULT,
+            reduce_motion: false,
+            clipboard_clear_secs: CLIPBOARD_CLEAR_SECS_DEFAULT,
             panel_geometry: Vec::new(),
             main_window: None,
             no_paste_apps: Vec::new(),
@@ -438,6 +449,8 @@ impl Settings {
         field!(hide_hint_shown);
         field!(panel_width);
         field!(backups_keep);
+        field!(reduce_motion);
+        field!(clipboard_clear_secs);
         field!(panel_geometry);
         field!(main_window);
         // Element by element: one bad entry must not drop the whole list, or auto-paste would
@@ -479,6 +492,9 @@ impl Settings {
         self.backups_keep = self
             .backups_keep
             .clamp(*BACKUPS_KEEP.start(), *BACKUPS_KEEP.end());
+        self.clipboard_clear_secs = self
+            .clipboard_clear_secs
+            .clamp(*CLIPBOARD_CLEAR_SECS.start(), *CLIPBOARD_CLEAR_SECS.end());
         self.sanitize_panel_geometry();
         self.main_window = self.main_window.filter(|p| {
             (WindowPlace::MIN_SIDE..=PANEL_SIDE_LIMIT).contains(&p.w)
@@ -908,6 +924,39 @@ mod tests {
         assert_eq!((bad.backups_keep, bad.theme), (7, Theme::Dark));
         let kept = Settings {
             backups_keep: 30,
+            ..Settings::default()
+        };
+        assert_eq!(Settings::from_json(&kept.to_json()), kept);
+    }
+
+    #[test]
+    fn reduced_motion_is_off_by_default_and_round_trips() {
+        assert!(!Settings::from_json("{}").reduce_motion);
+        assert!(Settings::from_json(r#"{"reduce_motion":true}"#).reduce_motion);
+        let bad = Settings::from_json(r#"{"reduce_motion":"yes","theme":"dark"}"#);
+        assert_eq!((bad.reduce_motion, bad.theme), (false, Theme::Dark));
+        let on = Settings {
+            reduce_motion: true,
+            ..Settings::default()
+        };
+        assert_eq!(Settings::from_json(&on.to_json()), on);
+    }
+
+    #[test]
+    fn the_clipboard_clear_time_defaults_to_thirty_seconds_and_zero_means_never() {
+        assert_eq!(Settings::from_json("{}").clipboard_clear_secs, 30);
+        assert_eq!(
+            Settings::from_json(r#"{"clipboard_clear_secs":0}"#).clipboard_clear_secs,
+            0
+        );
+        assert_eq!(
+            Settings::from_json(r#"{"clipboard_clear_secs":99999}"#).clipboard_clear_secs,
+            600
+        );
+        let bad = Settings::from_json(r#"{"clipboard_clear_secs":"soon","theme":"dark"}"#);
+        assert_eq!((bad.clipboard_clear_secs, bad.theme), (30, Theme::Dark));
+        let kept = Settings {
+            clipboard_clear_secs: 90,
             ..Settings::default()
         };
         assert_eq!(Settings::from_json(&kept.to_json()), kept);

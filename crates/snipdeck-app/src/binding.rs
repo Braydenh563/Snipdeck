@@ -505,6 +505,13 @@ where
         wire_effects!(on_rename_requested, |ctl, i| ctl.rename_row(index(i)));
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.toast_action());
+        wire!(on_undo_requested, |ctl| ctl.main_undo());
+        wire_effects!(on_new_item_requested, |_ctl| vec![Effect::NewItem]);
+        wire_effects!(on_settings_requested, |_ctl| vec![Effect::OpenSettings]);
+        {
+            let core = Rc::clone(&core);
+            window.on_toast_hover_changed(move |on| core.controller.borrow_mut().toast_hover(on));
+        }
         wire_effects!(on_resize_requested, |ctl, edge| ctl.resize(edge_of(edge)));
         wire_effects!(on_handle_hovered, |ctl, on| ctl
             .dock_event(DockEvent::HandleHover(on)));
@@ -690,8 +697,11 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
     }
-    if differs(&|p| p.high_contrast == view.high_contrast) {
+    if differs(&|p| {
+        p.high_contrast == view.high_contrast && p.reduced_motion == view.reduced_motion
+    }) {
         let look = window.global::<ui::SystemLook<'_>>();
+        look.set_reduced_motion(view.reduced_motion);
         look.set_high_contrast(view.high_contrast.is_some());
         if let Some(hc) = &view.high_contrast {
             let color = |c: Rgb| slint::Color::from_rgb_u8(c.r, c.g, c.b);

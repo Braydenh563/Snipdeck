@@ -62,6 +62,11 @@ pub const TOAST_HOLD: Duration = Duration::from_millis(2500);
 /// An undoable toast (a delete) settles for this long, so that it is on screen for 5 s with its
 /// fade-in (SPEC §5.7a).
 pub const TOAST_UNDO_HOLD: Duration = Duration::from_millis(4880);
+/// A hovered toast looks again after this long to see whether the pointer has left.
+pub const TOAST_HOVER_RECHECK: Duration = Duration::from_millis(500);
+/// A toast is held for at most this many rechecks (a minute), so a missed pointer-leave (its
+/// window hid under the pointer) cannot keep it on screen for good.
+pub const TOAST_HOVER_RECHECKS: u32 = 120;
 /// A toast fades out for this long (`Motion.fade`) before it is gone.
 pub const TOAST_EXIT: Duration = Duration::from_millis(90);
 
@@ -320,6 +325,8 @@ pub struct View {
     /// The high-contrast colours while a Windows high-contrast theme is on (it overrides the
     /// theme setting), else `None`.
     pub high_contrast: Option<HighContrast>,
+    /// Animations are off: the `reduce_motion` setting, or Windows' "Animation effects" off.
+    pub reduced_motion: bool,
     /// The toast, if one is showing.
     pub toast: Option<ToastView>,
     /// The board menu's entries while it is open.
@@ -352,6 +359,10 @@ struct ActiveToast {
     toast: Toast,
     phase: ToastPhase,
     seq: u64,
+    /// The pointer is on the toast (or the Undo button has focus): its hold does not end.
+    hovered: bool,
+    /// How many times the hold has been extended for `hovered`, at most [`TOAST_HOVER_RECHECKS`].
+    extended: u32,
 }
 
 /// The Panel's brain. See the module documentation.
@@ -598,6 +609,7 @@ where
             docked: self.dock_edge().is_some(),
             dark: self.look().dark,
             high_contrast: self.look().high_contrast,
+            reduced_motion: self.look().reduce_motion,
             toast: self.toast_view(),
             board_menu: (self.menu == PanelMenu::Board).then(|| {
                 self.model
@@ -666,6 +678,7 @@ where
                 Theme::Dark => true,
             },
             high_contrast: self.os_look.high_contrast,
+            reduce_motion: self.os_look.reduce_motion || self.settings.reduce_motion,
         }
     }
 
@@ -1344,19 +1357,18 @@ where
         }
     }
 
-    /// How long a copied sensitive item may stay on the clipboard.
-    pub const SENSITIVE_CLIPBOARD_LIFE: Duration = Duration::from_secs(30);
-
     /// After a copy of a sensitive item, remembers its text on the clipboard to be cleared
-    /// [`SENSITIVE_CLIPBOARD_LIFE`](Self::SENSITIVE_CLIPBOARD_LIFE) from now. A paste restores
-    /// the user's own clipboard, so it leaves nothing to clear.
+    /// `clipboard_clear_secs` from now (0 = never). A paste restores the user's own clipboard,
+    /// so it leaves nothing to clear.
     fn schedule_clipboard_clear(&mut self, item: ItemId, outcome: UseOutcome) {
-        if matches!(outcome, UseOutcome::Pasted)
+        let life = Duration::from_secs(u64::from(self.settings.clipboard_clear_secs));
+        if life.is_zero()
+            || matches!(outcome, UseOutcome::Pasted)
             || !self.store.item(item).is_ok_and(|i| i.sensitive)
         {
             return;
         }
-        let Ok(due) = self.clock.now().checked_add(Self::SENSITIVE_CLIPBOARD_LIFE) else {
+        let Ok(due) = self.clock.now().checked_add(life) else {
             return;
         };
         self.clipboard_clear = self
@@ -1402,6 +1414,8 @@ where
             toast,
             phase: ToastPhase::Enter,
             seq: self.toast_seq,
+            hovered: false,
+            extended: 0,
         });
     }
 
@@ -1480,6 +1494,17 @@ where
                     Some(TOAST_HOLD)
                 }
             }
+            ToastPhase::Hold if active.hovered && active.extended < TOAST_HOVER_RECHECKS => {
+                active.extended += 1;
+                Some(TOAST_HOVER_RECHECK)
+            }
+            ToastPhase::Hold
+                if !active.hovered && active.extended > 0 && active.extended != u32::MAX =>
+            {
+                // The pointer left while the hold was extended: a fresh hold, once.
+                active.extended = u32::MAX;
+                Some(TOAST_HOLD)
+            }
             ToastPhase::Hold => {
                 active.phase = ToastPhase::Exit;
                 Some(TOAST_EXIT)
@@ -1489,6 +1514,14 @@ where
                 self.undo = None;
                 None
             }
+        }
+    }
+
+    /// The pointer entered (`on`) or left the toast, or the Undo button gained or lost focus. A
+    /// toast in use stays: its hold is extended while this is on, and runs a fresh hold after.
+    pub fn toast_hover(&mut self, on: bool) {
+        if let Some(active) = self.toast.as_mut() {
+            active.hovered = on;
         }
     }
 
@@ -1810,10 +1843,7 @@ mod tests {
         let id = w.ids[0];
         make_sensitive(&mut w, id);
         w.ctl.activate_row(0, UseMode::Copy);
-        assert_eq!(
-            w.ctl.clipboard_clear_wait(),
-            Some(Ctl::SENSITIVE_CLIPBOARD_LIFE)
-        );
+        assert_eq!(w.ctl.clipboard_clear_wait(), Some(Duration::from_secs(30)));
         w.clock.set(at("2026-10-17T10:30:29Z"));
         w.ctl.clear_clipboard_if_due();
         assert_eq!(
@@ -1825,6 +1855,23 @@ mod tests {
         w.ctl.clear_clipboard_if_due();
         assert_eq!(w.ctl.services.clipboard.read_text(), None);
         assert_eq!(w.ctl.clipboard_clear_wait(), None);
+    }
+
+    #[test]
+    fn the_clipboard_clear_time_is_the_setting_and_zero_turns_it_off() {
+        let mut w = world();
+        let id = w.ids[0];
+        make_sensitive(&mut w, id);
+        w.ctl.update_settings(|s| s.clipboard_clear_secs = 10);
+        w.ctl.activate_row(0, UseMode::Copy);
+        assert_eq!(w.ctl.clipboard_clear_wait(), Some(Duration::from_secs(10)));
+        w.clock.set(at("2026-10-17T10:30:10Z"));
+        w.ctl.clear_clipboard_if_due();
+        assert_eq!(w.ctl.services.clipboard.read_text(), None);
+
+        w.ctl.update_settings(|s| s.clipboard_clear_secs = 0);
+        w.ctl.activate_row(0, UseMode::Copy);
+        assert_eq!(w.ctl.clipboard_clear_wait(), None, "0 = never clear");
     }
 
     #[test]
@@ -2544,6 +2591,70 @@ mod tests {
     }
 
     #[test]
+    fn a_toast_under_the_pointer_stays_and_goes_a_moment_after_the_pointer_leaves() {
+        let mut w = world();
+        w.ctl.delete_row(1);
+        let seq = w.ctl.view().toast.expect("toast").seq;
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_UNDO_HOLD));
+        w.ctl.toast_hover(true);
+        // The hold is over, but the pointer is on the toast: it looks again, and again.
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_HOVER_RECHECK));
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_HOVER_RECHECK));
+        let toast = w.ctl.view().toast.expect("still there");
+        assert_eq!((toast.phase, toast.undo), (ToastPhase::Hold, true));
+        // The pointer leaves: a fresh hold, then the fade-out as usual.
+        w.ctl.toast_hover(false);
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_HOLD));
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_EXIT));
+        assert_eq!(w.ctl.toast_tick(seq), None);
+        assert!(w.ctl.view().toast.is_none());
+    }
+
+    #[test]
+    fn a_hover_that_ends_before_the_hold_does_does_not_change_the_timing() {
+        let mut w = world();
+        w.ctl.delete_row(1);
+        let seq = w.ctl.view().toast.expect("toast").seq;
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_UNDO_HOLD));
+        w.ctl.toast_hover(true);
+        w.ctl.toast_hover(false);
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_EXIT));
+    }
+
+    #[test]
+    fn a_pointer_leave_that_never_comes_cannot_keep_a_toast_for_good() {
+        let mut w = world();
+        w.ctl.delete_row(1);
+        let seq = w.ctl.view().toast.expect("toast").seq;
+        w.ctl.toast_tick(seq);
+        w.ctl.toast_hover(true);
+        for _ in 0..TOAST_HOVER_RECHECKS {
+            assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_HOVER_RECHECK));
+        }
+        assert_eq!(
+            w.ctl.toast_tick(seq),
+            Some(TOAST_EXIT),
+            "a minute is enough"
+        );
+    }
+
+    #[test]
+    fn a_newer_toast_does_not_inherit_the_hover() {
+        let mut w = world();
+        w.ctl.delete_row(1);
+        let old = w.ctl.view().toast.expect("toast").seq;
+        w.ctl.toast_tick(old);
+        w.ctl.toast_hover(true);
+        w.ctl.show_toast(Toast {
+            kind: ToastKind::Neutral,
+            message: ToastMessage::Copied,
+        });
+        let seq = w.ctl.view().toast.expect("toast").seq;
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_HOLD));
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_EXIT));
+    }
+
+    #[test]
     fn a_stale_tick_does_not_touch_a_newer_toast() {
         let mut w = world();
         w.ctl.show_toast(Toast {
@@ -2994,6 +3105,7 @@ mod tests {
         SystemLook {
             dark,
             high_contrast: None,
+            reduce_motion: false,
         }
     }
 
@@ -3015,6 +3127,23 @@ mod tests {
     }
 
     #[test]
+    fn motion_is_reduced_by_the_setting_or_by_windows() {
+        let mut w = world();
+        assert!(!w.ctl.view().reduced_motion);
+        w.ctl.update_settings(|s| s.reduce_motion = true);
+        assert!(w.ctl.view().reduced_motion, "the setting alone");
+        w.ctl.update_settings(|s| s.reduce_motion = false);
+        w.ctl.set_system_look(SystemLook {
+            reduce_motion: true,
+            ..os(false)
+        });
+        assert!(w.ctl.view().reduced_motion, "Windows alone");
+        assert!(w.ctl.settings_look().reduce_motion);
+        w.ctl.set_system_look(os(false));
+        assert!(!w.ctl.view().reduced_motion, "and it ends");
+    }
+
+    #[test]
     fn high_contrast_wins_over_every_theme_setting() {
         let hc = HighContrast::default();
         for theme in [Theme::System, Theme::Light, Theme::Dark] {
@@ -3029,6 +3158,7 @@ mod tests {
             w.ctl.set_system_look(SystemLook {
                 dark: false,
                 high_contrast: Some(hc),
+                reduce_motion: false,
             });
             assert_eq!(w.ctl.view().high_contrast, Some(hc), "{theme:?}");
             w.ctl.set_system_look(os(false));

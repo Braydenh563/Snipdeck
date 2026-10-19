@@ -231,6 +231,8 @@ pub struct ItemEditorView {
     pub dark: bool,
     /// The high-contrast colours, while a Windows high-contrast theme is on.
     pub high_contrast: Option<HighContrast>,
+    /// Animations are off.
+    pub reduced_motion: bool,
     /// The starting values.
     pub fields: EditorInput,
     /// The names of the lists to choose from.

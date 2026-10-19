@@ -403,12 +403,14 @@ struct PageView {
     close_to_tray: bool,
     panel_in_taskbar: bool,
     panel_hide_on_blur: bool,
+    reduce_motion: bool,
     panel_width: i32,
     dock_edge_index: i32,
     dock_trigger_index: i32,
     dock_hover_delay: i32,
     dock_leave_delay: i32,
     backups_keep: i32,
+    clipboard_clear_secs: i32,
     no_paste_apps: Vec<String>,
     no_paste_error: String,
     pro: bool,
@@ -509,12 +511,14 @@ where
         close_to_tray: settings.close_to_tray,
         panel_in_taskbar: settings.panel_in_taskbar,
         panel_hide_on_blur: settings.panel_hide_on_blur,
+        reduce_motion: settings.reduce_motion,
         panel_width: i32::try_from(settings.panel_width).unwrap_or(320),
         dock_edge_index: dock_edge_index(controller.dock_edge()),
         dock_trigger_index: dock_trigger_index(settings.dock.trigger),
         dock_hover_delay: i32::try_from(settings.dock.hover_delay_ms).unwrap_or(150),
         dock_leave_delay: i32::try_from(settings.dock.leave_delay_ms).unwrap_or(400),
         backups_keep: i32::try_from(settings.backups_keep).unwrap_or(7),
+        clipboard_clear_secs: i32::try_from(settings.clipboard_clear_secs).unwrap_or(30),
         no_paste_apps: settings.no_paste_apps.clone(),
         no_paste_error: state.no_paste_error.clone(),
         pro: controller.tier() == snipdeck_core::Tier::Pro,
@@ -926,6 +930,8 @@ where
         });
         wire!(on_panel_hide_on_blur_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.panel_hide_on_blur = on)));
+        wire!(on_reduce_motion_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.reduce_motion = on)));
         wire!(on_panel_width_chosen, |core, width| core
             .act(|ctl| ctl.update_settings(
                 |s| s.panel_width = u32::try_from(width).unwrap_or(0)
@@ -947,6 +953,9 @@ where
             .act(|ctl| ctl.update_settings(
                 |s| s.backups_keep = u32::try_from(n).unwrap_or(0)
             )));
+        wire!(on_clipboard_clear_secs_chosen, |core, n| core.act(|ctl| {
+            ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0));
+        }));
         wire!(on_no_paste_app_added, |core, name| core
             .no_paste_added(&name));
         wire!(on_no_paste_app_removed, |core, i| core
@@ -978,12 +987,20 @@ where
 
 // ---- Page state -> window ----------------------------------------------------------------------
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "one flat pass over the page, a few lines per property"
+)]
 fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageView) {
     let differs = |same: &dyn Fn(&PageView) -> bool| previous.is_none_or(|p| !same(p));
 
     if differs(&|p| p.look == view.look) {
         window.set_dark(view.look.dark);
-        set_look(window, view.look.high_contrast.as_ref());
+        set_look(
+            window,
+            view.look.high_contrast.as_ref(),
+            view.look.reduce_motion,
+        );
     }
     if differs(&|p| p.hotkeys == view.hotkeys) {
         window.set_hotkeys(model(view.hotkeys.iter().map(|h| ui::HotkeySetting {
@@ -1012,6 +1029,12 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.backups_keep == view.backups_keep) {
         window.set_backups_keep(view.backups_keep);
+    }
+    if differs(&|p| p.clipboard_clear_secs == view.clipboard_clear_secs) {
+        window.set_clipboard_clear_secs(view.clipboard_clear_secs);
+    }
+    if differs(&|p| p.reduce_motion == view.reduce_motion) {
+        window.set_reduce_motion(view.reduce_motion);
     }
     if differs(&|p| p.panel_width == view.panel_width) {
         window.set_panel_width(view.panel_width);

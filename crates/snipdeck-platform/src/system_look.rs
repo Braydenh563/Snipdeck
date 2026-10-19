@@ -64,6 +64,8 @@ pub struct SystemLook {
     pub dark: bool,
     /// A high-contrast theme is on, with its colours. Wins over everything else.
     pub high_contrast: Option<HighContrast>,
+    /// Windows' "Animation effects" is off (Settings > Accessibility > Visual effects).
+    pub reduce_motion: bool,
 }
 
 /// Reads the current [`SystemLook`]. Cheap enough to call on every change notification, and
@@ -83,6 +85,8 @@ pub const WM_SETTINGCHANGE: u32 = 0x001A;
 pub const WM_THEMECHANGED: u32 = 0x031A;
 /// `SPI_SETHIGHCONTRAST`.
 pub const SPI_SETHIGHCONTRAST: usize = 0x0043;
+/// `SPI_SETCLIENTAREAANIMATION`: "Animation effects" was switched.
+pub const SPI_SETCLIENTAREAANIMATION: usize = 0x1043;
 /// The `lParam` string Windows sends with `WM_SETTINGCHANGE` when the app or system colour mode
 /// changes.
 pub const IMMERSIVE_COLOR_SET: &str = "ImmersiveColorSet";
@@ -98,7 +102,9 @@ pub fn message_may_change_look(message: u32, wparam: usize, setting_area: Option
     match message {
         WM_SYSCOLORCHANGE | WM_THEMECHANGED => true,
         WM_SETTINGCHANGE => {
-            wparam == SPI_SETHIGHCONTRAST || setting_area == Some(IMMERSIVE_COLOR_SET)
+            wparam == SPI_SETHIGHCONTRAST
+                || wparam == SPI_SETCLIENTAREAANIMATION
+                || setting_area == Some(IMMERSIVE_COLOR_SET)
         }
         _ => false,
     }
@@ -115,9 +121,10 @@ mod tests {
     }
 
     #[test]
-    fn the_default_look_is_light_with_no_high_contrast() {
+    fn the_default_look_is_light_with_no_high_contrast_and_full_motion() {
         let look = SystemLook::default();
         assert!(!look.dark);
+        assert!(!look.reduce_motion);
         assert_eq!(look.high_contrast, None);
     }
 
@@ -131,6 +138,11 @@ mod tests {
         assert!(message_may_change_look(
             WM_SETTINGCHANGE,
             SPI_SETHIGHCONTRAST,
+            None
+        ));
+        assert!(message_may_change_look(
+            WM_SETTINGCHANGE,
+            SPI_SETCLIENTAREAANIMATION,
             None
         ));
         assert!(message_may_change_look(WM_THEMECHANGED, 0, None));

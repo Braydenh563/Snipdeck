@@ -183,6 +183,8 @@ export component MainWindow inherits Window {
     callback tag-toggled(int, bool);
     callback reveal-requested(int, bool);
     callback settings-requested();
+    // Ctrl+W: close the window like its X button does.
+    callback close-requested();
     // "Show Panel": the toolbar button and the Help menu's last entry (the Panel may have been closed).
     callback panel-requested();
     // The configured Show/hide Panel hotkey ("Ctrl+Alt+Space"), empty while it is off; shown in the button's tooltip.
@@ -208,6 +210,9 @@ export component MainWindow inherits Window {
     callback board-menu-activated(int);
     callback board-menu-dismissed();
     callback toast-undo();
+    callback toast-hover-changed(hovered: bool);
+    // Ctrl+Z: undo the delete the toast offers to undo.
+    callback undo-requested();
     // Pointer down on an empty part of the title bar: the host starts the OS window drag.
     callback drag-requested();
     callback title-double-clicked();
@@ -636,7 +641,20 @@ export component MainWindow inherits Window {
                     return accept;
                 }
                 if (event.text == "n" || event.text == "N") {
-                    root.new-item-requested();
+                    if (event.modifiers.shift) {
+                        root.add-list-requested();
+                    } else {
+                        root.new-item-requested();
+                    }
+                    return accept;
+                }
+                if ((event.text == "w" || event.text == "W") && !event.modifiers.shift) {
+                    root.close-requested();
+                    return accept;
+                }
+                // A focused search field undoes its own typing.
+                if ((event.text == "z" || event.text == "Z") && !event.modifiers.shift && !search.has-focus) {
+                    root.undo-requested();
                     return accept;
                 }
             }
@@ -1360,6 +1378,7 @@ export component MainWindow inherits Window {
                         x: (parent.width - self.width) / 2;
                         y: parent.height - self.height - Space.s2;
                         undo => { root.toast-undo(); }
+                        hover-changed(h) => { root.toast-hover-changed(h); }
                     }
                 }
 

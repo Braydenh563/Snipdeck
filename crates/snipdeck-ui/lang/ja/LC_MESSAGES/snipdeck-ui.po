@@ -154,6 +154,15 @@ msgstr "検索をクリア"
 msgid "Clear selection"
 msgstr "選択を解除"
 
+msgid "Clear the clipboard after copying a sensitive item"
+msgstr ""
+
+msgid "Clear the clipboard later"
+msgstr ""
+
+msgid "Clear the clipboard sooner"
+msgstr ""
+
 msgid "Clear the search, then close"
 msgstr ""
 
@@ -163,6 +172,9 @@ msgstr "{} のショートカットを消去"
 msgid "Click"
 msgstr "クリック"
 
+msgid "Clipboard clear time"
+msgstr ""
+
 msgid "Close"
 msgstr "閉じる"
 
@@ -171,6 +183,9 @@ msgstr ""
 
 msgid "Close the tag list"
 msgstr "タグ一覧を閉じる"
+
+msgid "Close the window"
+msgstr ""
 
 msgid "Code"
 msgstr "コード"
@@ -469,8 +484,8 @@ msgstr "ヘルプ"
 msgid "Help sections"
 msgstr "ヘルプのセクション"
 
-msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard 30 seconds after you copy it."
-msgstr "Space キーを押し続けるまで一覧では非表示になり、クリップボード履歴にも残らず、コピーから 30 秒後にクリップボードから消去されます。"
+msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard a little after you copy it (the time is in Settings)."
+msgstr ""
 
 msgid "Hidden on screen and kept out of clipboard history."
 msgstr ""
@@ -480,6 +495,9 @@ msgstr "非表示。スペースキーを押し続けると表示されます。
 
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "非表示。パネルで開くと表示されます。"
+
+msgid "Hide the Panel"
+msgstr ""
 
 msgid "Hide the panel when it loses focus"
 msgstr "フォーカスを失ったらパネルを隠す"
@@ -964,6 +982,9 @@ msgstr "最近使ったもの"
 msgid "Red"
 msgstr "赤"
 
+msgid "Reduce motion"
+msgstr ""
+
 msgid "Remove tag {}"
 msgstr "タグ {} を削除"
 
@@ -1050,6 +1071,9 @@ msgstr "検索結果"
 
 msgid "Search snippets"
 msgstr "スニペットを検索"
+
+msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
+msgstr ""
 
 msgid "Select every item"
 msgstr ""
@@ -1291,11 +1315,17 @@ msgstr "設定でクリップボード履歴をオンにすると、コピーし
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "オフにすると、パネルまたはメインウィンドウを閉じたときに Snipdeck が終了します。"
 
+msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
+msgstr ""
+
 msgid "Type a command"
 msgstr ""
 
 msgid "Type {} to confirm"
 msgstr "確認のため {} と入力"
+
+msgid "Undo the delete"
+msgstr ""
 
 msgid "Unpin"
 msgstr "ピン留めを解除"
@@ -1442,6 +1472,9 @@ msgid "px"
 msgstr "px"
 
 msgid "quick find paste palette"
+msgstr ""
+
+msgid "s"
 msgstr ""
 
 msgid "tutorial intro onboarding basics learn"
