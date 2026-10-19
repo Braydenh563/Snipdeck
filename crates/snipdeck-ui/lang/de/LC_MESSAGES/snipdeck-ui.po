@@ -19,6 +19,9 @@ msgstr "Eine Leiste mit deinen Textbausteinen neben der App, in der du arbeitest
 msgid "About"
 msgstr "Info"
 
+msgid "About Snipdeck"
+msgstr "Über Snipdeck"
+
 msgid "Actions"
 msgstr "Aktionen"
 
@@ -841,11 +844,17 @@ msgstr "Verzögerung beim Darüberfahren verkürzen"
 msgid "Shorten the leave delay"
 msgstr "Verzögerung beim Verlassen verkürzen"
 
+msgid "Show"
+msgstr "Anzeigen"
+
 msgid "Show Snipdeck in the taskbar"
 msgstr "Snipdeck in der Taskleiste anzeigen"
 
 msgid "Show or hide the panel"
 msgstr "Panel anzeigen oder ausblenden"
+
+msgid "Show the welcome tour again"
+msgstr "Willkommenstour erneut anzeigen"
 
 msgid "Skip"
 msgstr "Überspringen"
@@ -1012,6 +1021,9 @@ msgstr "Papierkorb"
 msgid "Troubleshoot"
 msgstr "Fehlerbehebung"
 
+msgid "Troubleshoot…"
+msgstr "Fehlerbehebung…"
+
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Aktiviere den Zwischenablageverlauf in den Einstellungen, um Kopiertes zu sammeln."
 
@@ -1036,11 +1048,17 @@ msgstr "Version"
 msgid "Violet"
 msgstr "Violett"
 
+msgid "Walk through the basics again."
+msgstr "Die Grundlagen noch einmal durchgehen."
+
 msgid "Warning"
 msgstr "Warnung"
 
 msgid "Welcome to Snipdeck"
 msgstr "Willkommen bei Snipdeck"
+
+msgid "Welcome tour"
+msgstr "Willkommenstour"
 
 msgid "What is on the clipboard"
 msgstr "Was in der Zwischenablage liegt"

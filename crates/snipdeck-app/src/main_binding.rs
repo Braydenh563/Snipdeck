@@ -30,7 +30,7 @@ use crate::{
         Loggable, Shown, arm_toast, extension_of, index, item_kind_of, model, redraw_all,
         register_redraw, to_i32,
     },
-    controller::{BoardMenuEntry, Controller, Library, MainAction, MainScreen, ToastPhase},
+    controller::{BoardMenuEntry, Controller, HelpTopic, Library, MainAction, MainScreen, ToastPhase},
     host::ClipboardText,
     item_editor::Origin,
     main_window::{EditorKind, EditorView, Section, SelectMode, ViewMode},
@@ -499,6 +499,11 @@ where
         wire!(on_board_menu_dismissed, |ctl| ctl.main_board_menu_close());
         wire!(on_toast_undo, |ctl| ctl.toast_action());
         window.on_settings_requested(crate::settings_binding::request_open);
+        wire!(on_help_requested, |ctl, i| ctl.main_open_help(match i {
+            0 => HelpTopic::Troubleshoot,
+            2 => HelpTopic::About,
+            _ => HelpTopic::Guide,
+        }));
         wire!(on_item_reorder_requested, |ctl, d| ctl
             .main_reorder_items(isize::try_from(d).unwrap_or(0)));
         wire!(on_list_reorder_requested, |ctl, i, d| ctl

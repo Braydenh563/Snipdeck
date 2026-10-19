@@ -19,6 +19,9 @@ msgstr "在你正在使用的应用旁边显示的片段栏。点击其中一条
 msgid "About"
 msgstr "关于"
 
+msgid "About Snipdeck"
+msgstr "关于 Snipdeck"
+
 msgid "Actions"
 msgstr "操作"
 
@@ -841,11 +844,17 @@ msgstr "缩短悬停延迟"
 msgid "Shorten the leave delay"
 msgstr "缩短离开延迟"
 
+msgid "Show"
+msgstr "显示"
+
 msgid "Show Snipdeck in the taskbar"
 msgstr "在任务栏中显示 Snipdeck"
 
 msgid "Show or hide the panel"
 msgstr "显示或隐藏面板"
+
+msgid "Show the welcome tour again"
+msgstr "再次显示欢迎导览"
 
 msgid "Skip"
 msgstr "跳过"
@@ -1012,6 +1021,9 @@ msgstr "回收站"
 msgid "Troubleshoot"
 msgstr "故障排除"
 
+msgid "Troubleshoot…"
+msgstr "故障排除…"
+
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "在设置中开启剪贴板历史，以收集你复制的内容。"
 
@@ -1036,11 +1048,17 @@ msgstr "版本"
 msgid "Violet"
 msgstr "紫罗兰色"
 
+msgid "Walk through the basics again."
+msgstr "重新了解基本用法。"
+
 msgid "Warning"
 msgstr "警告"
 
 msgid "Welcome to Snipdeck"
 msgstr "欢迎使用 Snipdeck"
+
+msgid "Welcome tour"
+msgstr "欢迎导览"
 
 msgid "What is on the clipboard"
 msgstr "剪贴板中的内容"

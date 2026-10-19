@@ -59,6 +59,7 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_selection_moved, |d| format!("move:{d}"));
     hook!(on_tab_selected, |i| format!("tab:{i}"));
     hook!(on_close_requested, || "close".to_string());
+    hook!(on_help_requested, || "help".to_string());
     hook!(on_drag_requested, || "drag".to_string());
     hook!(on_pin_toggled, |on| format!("pin:{on}"));
     hook!(on_add_list_requested, || "add-list".to_string());
@@ -315,6 +316,13 @@ ui_tests! {
         assert!(selected[0]
             .accessible_label()
             .is_some_and(|l| l.starts_with("Invoice reminder")));
+    }
+
+    fn f1_asks_for_the_user_guide() {
+        let (ui, log) = start();
+        take(&log);
+        press(ui.window(), &key(Key::F1));
+        assert_eq!(take(&log), ["help"]);
     }
 
     fn enter_uses_the_selected_row_and_shift_enter_only_copies() {

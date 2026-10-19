@@ -19,6 +19,9 @@ msgstr "作業中のアプリの横に、スニペットを並べた帯が表示
 msgid "About"
 msgstr "バージョン情報"
 
+msgid "About Snipdeck"
+msgstr "Snipdeck について"
+
 msgid "Actions"
 msgstr "操作"
 
@@ -841,11 +844,17 @@ msgstr "ポイントの待ち時間を短くする"
 msgid "Shorten the leave delay"
 msgstr "離れたときの待ち時間を短くする"
 
+msgid "Show"
+msgstr "表示"
+
 msgid "Show Snipdeck in the taskbar"
 msgstr "Snipdeck をタスクバーに表示する"
 
 msgid "Show or hide the panel"
 msgstr "パネルを表示または非表示"
+
+msgid "Show the welcome tour again"
+msgstr "ウェルカムツアーをもう一度表示"
 
 msgid "Skip"
 msgstr "スキップ"
@@ -1012,6 +1021,9 @@ msgstr "ゴミ箱"
 msgid "Troubleshoot"
 msgstr "トラブルシューティング"
 
+msgid "Troubleshoot…"
+msgstr "トラブルシューティング…"
+
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "設定でクリップボード履歴をオンにすると、コピーした内容が保存されます。"
 
@@ -1036,11 +1048,17 @@ msgstr "バージョン"
 msgid "Violet"
 msgstr "バイオレット"
 
+msgid "Walk through the basics again."
+msgstr "基本操作をもう一度確認します。"
+
 msgid "Warning"
 msgstr "警告"
 
 msgid "Welcome to Snipdeck"
 msgstr "Snipdeck へようこそ"
+
+msgid "Welcome tour"
+msgstr "ウェルカムツアー"
 
 msgid "What is on the clipboard"
 msgstr "クリップボードの内容"

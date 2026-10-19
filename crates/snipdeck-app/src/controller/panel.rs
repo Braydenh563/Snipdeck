@@ -138,6 +138,11 @@ where
         }
     }
 
+    /// F1 in the Panel: asks the host for `topic` (the same effect as the kebab's Help rows).
+    pub fn open_help(&mut self, topic: HelpTopic) -> Vec<Effect> {
+        vec![Effect::OpenHelp(topic)]
+    }
+
     // ---- The item menu -------------------------------------------------------------------------
 
     /// The row of item `id` in the list or the pinned strip.

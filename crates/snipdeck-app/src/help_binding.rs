@@ -510,6 +510,7 @@ where
             .open_logs_folder());
         wire!(on_copy_report_requested, |core| core.copy_report());
         wire!(on_guide_requested, |core| core.open_url(GUIDE_URL));
+        wire!(on_tour_requested, |_core| crate::onboarding_binding::request_open());
         wire!(on_source_requested, |core| core.open_url(REPO_URL));
         wire!(on_releases_requested, |core| core.open_url(RELEASES_URL));
         wire!(on_store_requested, |core| {

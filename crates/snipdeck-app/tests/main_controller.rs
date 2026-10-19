@@ -883,6 +883,20 @@ fn maintenance_reports_a_damaged_library_and_a_crash_as_toasts() {
 }
 
 #[test]
+fn the_main_windows_help_entries_queue_the_same_effect_as_the_panels_kebab() {
+    use snipdeck_app::controller::{Effect, HelpTopic};
+    let (mut ctl, _) = rig(Tier::Pro);
+    for topic in [HelpTopic::Troubleshoot, HelpTopic::Guide, HelpTopic::About] {
+        ctl.main_open_help(topic);
+        assert_eq!(ctl.take_pending(), [Effect::OpenHelp(topic)]);
+    }
+    assert_eq!(
+        ctl.open_help(HelpTopic::Guide),
+        [Effect::OpenHelp(HelpTopic::Guide)]
+    );
+}
+
+#[test]
 fn the_real_jobs_back_up_purge_and_check_the_library_on_the_injected_clock() {
     use snipdeck_app::maintenance::{self, Maintenance};
     let dir = tempfile::tempdir().unwrap();

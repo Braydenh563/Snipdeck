@@ -19,6 +19,9 @@ msgstr "Uma faixa com seus trechos ao lado do aplicativo em que você trabalha. 
 msgid "About"
 msgstr "Sobre"
 
+msgid "About Snipdeck"
+msgstr "Sobre o Snipdeck"
+
 msgid "Actions"
 msgstr "Ações"
 
@@ -841,11 +844,17 @@ msgstr "Diminuir o atraso ao passar o mouse"
 msgid "Shorten the leave delay"
 msgstr "Diminuir o atraso ao sair"
 
+msgid "Show"
+msgstr "Mostrar"
+
 msgid "Show Snipdeck in the taskbar"
 msgstr "Mostrar o Snipdeck na barra de tarefas"
 
 msgid "Show or hide the panel"
 msgstr "Mostrar ou ocultar o painel"
+
+msgid "Show the welcome tour again"
+msgstr "Mostrar o tour de boas-vindas novamente"
 
 msgid "Skip"
 msgstr "Pular"
@@ -1012,6 +1021,9 @@ msgstr "Lixeira"
 msgid "Troubleshoot"
 msgstr "Solução de problemas"
 
+msgid "Troubleshoot…"
+msgstr "Solução de problemas…"
+
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Ative o histórico da área de transferência em Configurações para reunir o que você copiar."
 
@@ -1036,11 +1048,17 @@ msgstr "Versão"
 msgid "Violet"
 msgstr "Violeta"
 
+msgid "Walk through the basics again."
+msgstr "Veja o básico novamente."
+
 msgid "Warning"
 msgstr "Aviso"
 
 msgid "Welcome to Snipdeck"
 msgstr "Boas-vindas ao Snipdeck"
+
+msgid "Welcome tour"
+msgstr "Tour de boas-vindas"
 
 msgid "What is on the clipboard"
 msgstr "O que está na área de transferência"

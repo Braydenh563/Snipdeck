@@ -155,6 +155,8 @@ export component PanelWindow inherits Window {
     callback board-menu-activated(int);
     callback board-menu-dismissed();
     callback app-menu-requested();
+    // F1: the user guide.
+    callback help-requested();
     callback app-menu-activated(int);
     callback app-menu-dismissed();
     callback item-menu-activated(int);
@@ -461,6 +463,10 @@ export component PanelWindow inherits Window {
                 }
                 if (event.modifiers.alt || event.modifiers.meta || search.composing) {
                     return reject;
+                }
+                if (event.text == Key.F1) {
+                    root.help-requested();
+                    return accept;
                 }
                 if (event.text == Key.Escape) {
                     if (root.searching) {

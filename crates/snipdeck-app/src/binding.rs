@@ -20,7 +20,9 @@ use snipdeck_platform::{
 use snipdeck_ui as ui;
 
 use crate::{
-    controller::{AppMenuEntry, Controller, Effect, ItemMenuEntry, Library, ToastPhase, View},
+    controller::{
+        AppMenuEntry, Controller, Effect, HelpTopic, ItemMenuEntry, Library, ToastPhase, View,
+    },
     dock::DockEvent,
     frame::{Edge, Monitor, Rect},
     host::{ClipboardText, HotkeyProblem},
@@ -443,6 +445,7 @@ where
         wire!(on_app_menu_requested, |ctl| ctl.open_app_menu());
         wire_effects!(on_app_menu_activated, |ctl, i| ctl
             .choose_app_menu(index(i)));
+        wire_effects!(on_help_requested, |ctl| ctl.open_help(HelpTopic::Guide));
         wire!(on_app_menu_dismissed, |ctl| ctl.close_app_menu());
         wire_effects!(on_edit_requested, |ctl, i| ctl.edit_row(index(i)));
         wire_effects!(on_rename_requested, |ctl, i| ctl.rename_row(index(i)));
