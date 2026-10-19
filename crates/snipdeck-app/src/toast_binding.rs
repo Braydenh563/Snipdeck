@@ -34,6 +34,7 @@ pub type OthersShowing = Rc<dyn Fn() -> bool>;
 struct Shown {
     dark: bool,
     high_contrast: Option<HighContrast>,
+    reduced_motion: bool,
     toast: ToastView,
 }
 
@@ -86,6 +87,7 @@ where
         *self.shown.borrow_mut() = Some(Shown {
             dark: view.dark,
             high_contrast: view.high_contrast,
+            reduced_motion: view.reduced_motion,
             toast: toast.clone(),
         });
         let size = (window.get_content_width(), window.get_content_height());
@@ -178,10 +180,13 @@ fn render(window: &ui::ToastWindow, previous: Option<&Shown>, view: &View, toast
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
     }
-    if differs(&|p| p.high_contrast == view.high_contrast) {
+    if differs(&|p| {
+        p.high_contrast == view.high_contrast && p.reduced_motion == view.reduced_motion
+    }) {
         set_high_contrast(
             &window.global::<ui::SystemLook<'_>>(),
             view.high_contrast.as_ref(),
+            view.reduced_motion,
         );
     }
     if differs(&|p| p.toast == *toast) {

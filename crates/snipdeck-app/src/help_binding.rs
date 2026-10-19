@@ -323,7 +323,7 @@ where
             )
         };
         window.set_dark(look.dark);
-        set_look(&window, look.high_contrast.as_ref());
+        set_look(&window, look.high_contrast.as_ref(), look.reduce_motion);
         window.set_has_data_folder(self.data_dir.is_some());
         window.set_version(env!("CARGO_PKG_VERSION").into());
         window.set_build_date(build_date().into());

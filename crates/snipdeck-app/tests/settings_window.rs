@@ -571,6 +571,22 @@ fn backups_to_keep_is_what_the_prune_keeps() {
 }
 
 #[test]
+fn the_reduce_motion_switch_turns_animation_off_in_the_page_itself() {
+    on_ui_thread(|| {
+        let r = rig();
+        let look = r.ui.global::<snipdeck_ui::SystemLook<'_>>();
+        assert!(!r.ui.get_reduce_motion());
+        assert!(!look.get_reduced_motion());
+        r.ui.invoke_reduce_motion_toggled(true);
+        assert!(r.ctl.borrow().settings().reduce_motion);
+        assert!(r.ui.get_reduce_motion());
+        assert!(look.get_reduced_motion());
+        r.ui.invoke_reduce_motion_toggled(false);
+        assert!(!look.get_reduced_motion());
+    });
+}
+
+#[test]
 fn the_clipboard_clear_time_is_held_between_zero_and_ten_minutes() {
     on_ui_thread(|| {
         let r = rig();

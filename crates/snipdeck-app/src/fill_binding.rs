@@ -36,6 +36,7 @@ pub const FILL_WIDTH: f32 = 440.0;
 struct Shown {
     dark: bool,
     high_contrast: Option<HighContrast>,
+    reduced_motion: bool,
     /// The form on screen (`seq`) and its preview.
     seq: u64,
     preview: String,
@@ -104,6 +105,7 @@ where
         *self.shown.borrow_mut() = Some(Shown {
             dark: view.dark,
             high_contrast: view.high_contrast,
+            reduced_motion: view.reduced_motion,
             seq: fill.seq,
             preview: fill.preview.clone(),
             masked: fill.masked,
@@ -286,10 +288,13 @@ fn render(
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
     }
-    if differs(&|p| p.high_contrast == view.high_contrast) {
+    if differs(&|p| {
+        p.high_contrast == view.high_contrast && p.reduced_motion == view.reduced_motion
+    }) {
         set_high_contrast(
             &window.global::<ui::SystemLook<'_>>(),
             view.high_contrast.as_ref(),
+            view.reduced_motion,
         );
     }
     // The fields are set once per form: afterwards the window holds what is typed.

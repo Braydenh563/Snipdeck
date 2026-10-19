@@ -889,6 +889,9 @@ msgstr "Kürzlich verwendet"
 msgid "Red"
 msgstr "Rot"
 
+msgid "Reduce motion"
+msgstr ""
+
 msgid "Remove tag {}"
 msgstr "Schlagwort {} entfernen"
 
@@ -1197,6 +1200,9 @@ msgstr "Aktiviere den Zwischenablageverlauf in den Einstellungen, um Kopiertes z
 
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "Schaltest du das aus, beendet das Schließen des Panels oder des Hauptfensters Snipdeck."
+
+msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
+msgstr ""
 
 msgid "Type a command"
 msgstr ""

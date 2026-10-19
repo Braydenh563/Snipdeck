@@ -114,6 +114,8 @@ pub struct MainScreen {
     pub dark: bool,
     /// The high-contrast colours, while a Windows high-contrast theme is on.
     pub high_contrast: Option<HighContrast>,
+    /// Animations are off.
+    pub reduced_motion: bool,
     /// The open board's name.
     pub board_name: String,
     /// The board menu while it is open.
@@ -202,6 +204,7 @@ where
         MainScreen {
             dark: look.dark,
             high_contrast: look.high_contrast,
+            reduced_motion: look.reduce_motion,
             board_name: self.main.board_name().to_owned(),
             board_menu: self
                 .main

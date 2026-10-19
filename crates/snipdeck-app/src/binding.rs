@@ -690,8 +690,11 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
     }
-    if differs(&|p| p.high_contrast == view.high_contrast) {
+    if differs(&|p| {
+        p.high_contrast == view.high_contrast && p.reduced_motion == view.reduced_motion
+    }) {
         let look = window.global::<ui::SystemLook<'_>>();
+        look.set_reduced_motion(view.reduced_motion);
         look.set_high_contrast(view.high_contrast.is_some());
         if let Some(hc) = &view.high_contrast {
             let color = |c: Rgb| slint::Color::from_rgb_u8(c.r, c.g, c.b);

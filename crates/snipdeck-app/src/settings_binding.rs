@@ -396,6 +396,7 @@ struct PageView {
     close_to_tray: bool,
     panel_in_taskbar: bool,
     panel_hide_on_blur: bool,
+    reduce_motion: bool,
     panel_width: i32,
     dock_edge_index: i32,
     dock_trigger_index: i32,
@@ -503,6 +504,7 @@ where
         close_to_tray: settings.close_to_tray,
         panel_in_taskbar: settings.panel_in_taskbar,
         panel_hide_on_blur: settings.panel_hide_on_blur,
+        reduce_motion: settings.reduce_motion,
         panel_width: i32::try_from(settings.panel_width).unwrap_or(320),
         dock_edge_index: dock_edge_index(controller.dock_edge()),
         dock_trigger_index: dock_trigger_index(settings.dock.trigger),
@@ -910,6 +912,8 @@ where
         });
         wire!(on_panel_hide_on_blur_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.panel_hide_on_blur = on)));
+        wire!(on_reduce_motion_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.reduce_motion = on)));
         wire!(on_panel_width_chosen, |core, width| core
             .act(|ctl| ctl.update_settings(
                 |s| s.panel_width = u32::try_from(width).unwrap_or(0)
@@ -969,7 +973,11 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
 
     if differs(&|p| p.look == view.look) {
         window.set_dark(view.look.dark);
-        set_look(window, view.look.high_contrast.as_ref());
+        set_look(
+            window,
+            view.look.high_contrast.as_ref(),
+            view.look.reduce_motion,
+        );
     }
     if differs(&|p| p.hotkeys == view.hotkeys) {
         window.set_hotkeys(model(view.hotkeys.iter().map(|h| ui::HotkeySetting {
@@ -1001,6 +1009,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.clipboard_clear_secs == view.clipboard_clear_secs) {
         window.set_clipboard_clear_secs(view.clipboard_clear_secs);
+    }
+    if differs(&|p| p.reduce_motion == view.reduce_motion) {
+        window.set_reduce_motion(view.reduce_motion);
     }
     if differs(&|p| p.panel_width == view.panel_width) {
         window.set_panel_width(view.panel_width);

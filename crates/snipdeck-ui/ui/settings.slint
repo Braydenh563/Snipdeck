@@ -58,6 +58,7 @@ export component SettingsPage inherits Window {
     in-out property <bool> close-to-tray: true;
     in-out property <bool> panel-in-taskbar: false;
     in-out property <bool> panel-hide-on-blur: true;
+    in-out property <bool> reduce-motion: false;
     in property <int> panel-width: 320;
     in property <int> panel-width-min: 260;
     in property <int> panel-width-max: 480;
@@ -110,6 +111,7 @@ export component SettingsPage inherits Window {
     callback close-to-tray-toggled(on: bool);
     callback panel-in-taskbar-toggled(on: bool);
     callback panel-hide-on-blur-toggled(on: bool);
+    callback reduce-motion-toggled(on: bool);
     callback panel-width-chosen(width: int);
     callback dock-edge-chosen(index: int);
     callback dock-trigger-chosen(index: int);
@@ -248,6 +250,18 @@ export component SettingsPage inherits Window {
                             options: root.languages;
                             current: root.language-index;
                             chosen(i) => { root.language-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Reduce motion");
+                        description: @tr("Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off.");
+                        Toggle {
+                            a11y-label: @tr("Reduce motion");
+                            checked <=> root.reduce-motion;
+                            toggled(on) => { root.reduce-motion-toggled(on); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

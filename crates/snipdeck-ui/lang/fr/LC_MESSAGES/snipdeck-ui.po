@@ -889,6 +889,9 @@ msgstr "Utilisés récemment"
 msgid "Red"
 msgstr "Rouge"
 
+msgid "Reduce motion"
+msgstr ""
+
 msgid "Remove tag {}"
 msgstr "Retirer l'étiquette {}"
 
@@ -1197,6 +1200,9 @@ msgstr "Activez l'historique du presse-papiers dans les paramètres pour collect
 
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "Si tu désactives cette option, fermer le panneau ou la fenêtre principale quitte Snipdeck."
+
+msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
+msgstr ""
 
 msgid "Type a command"
 msgstr ""

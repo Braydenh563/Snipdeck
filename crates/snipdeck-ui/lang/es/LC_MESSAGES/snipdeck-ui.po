@@ -889,6 +889,9 @@ msgstr "Usados recientemente"
 msgid "Red"
 msgstr "Rojo"
 
+msgid "Reduce motion"
+msgstr ""
+
 msgid "Remove tag {}"
 msgstr "Quitar la etiqueta {}"
 
@@ -1197,6 +1200,9 @@ msgstr "Activa el historial del portapapeles en Configuración para registrar lo
 
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "Si lo desactivas, al cerrar el panel o la ventana principal se cierra Snipdeck."
+
+msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
+msgstr ""
 
 msgid "Type a command"
 msgstr ""

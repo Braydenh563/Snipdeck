@@ -320,6 +320,8 @@ pub struct View {
     /// The high-contrast colours while a Windows high-contrast theme is on (it overrides the
     /// theme setting), else `None`.
     pub high_contrast: Option<HighContrast>,
+    /// Animations are off: the `reduce_motion` setting, or Windows' "Animation effects" off.
+    pub reduced_motion: bool,
     /// The toast, if one is showing.
     pub toast: Option<ToastView>,
     /// The board menu's entries while it is open.
@@ -592,6 +594,7 @@ where
             docked: self.dock_edge().is_some(),
             dark: self.look().dark,
             high_contrast: self.look().high_contrast,
+            reduced_motion: self.look().reduce_motion,
             toast: self.toast_view(),
             board_menu: (self.menu == PanelMenu::Board).then(|| {
                 self.model
@@ -660,6 +663,7 @@ where
                 Theme::Dark => true,
             },
             high_contrast: self.os_look.high_contrast,
+            reduce_motion: self.os_look.reduce_motion || self.settings.reduce_motion,
         }
     }
 
@@ -2951,6 +2955,7 @@ mod tests {
         SystemLook {
             dark,
             high_contrast: None,
+            reduce_motion: false,
         }
     }
 
@@ -2972,6 +2977,23 @@ mod tests {
     }
 
     #[test]
+    fn motion_is_reduced_by_the_setting_or_by_windows() {
+        let mut w = world();
+        assert!(!w.ctl.view().reduced_motion);
+        w.ctl.update_settings(|s| s.reduce_motion = true);
+        assert!(w.ctl.view().reduced_motion, "the setting alone");
+        w.ctl.update_settings(|s| s.reduce_motion = false);
+        w.ctl.set_system_look(SystemLook {
+            reduce_motion: true,
+            ..os(false)
+        });
+        assert!(w.ctl.view().reduced_motion, "Windows alone");
+        assert!(w.ctl.settings_look().reduce_motion);
+        w.ctl.set_system_look(os(false));
+        assert!(!w.ctl.view().reduced_motion, "and it ends");
+    }
+
+    #[test]
     fn high_contrast_wins_over_every_theme_setting() {
         let hc = HighContrast::default();
         for theme in [Theme::System, Theme::Light, Theme::Dark] {
@@ -2986,6 +3008,7 @@ mod tests {
             w.ctl.set_system_look(SystemLook {
                 dark: false,
                 high_contrast: Some(hc),
+                reduce_motion: false,
             });
             assert_eq!(w.ctl.view().high_contrast, Some(hc), "{theme:?}");
             w.ctl.set_system_look(os(false));

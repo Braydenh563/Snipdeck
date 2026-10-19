@@ -889,6 +889,9 @@ msgstr "最近使用"
 msgid "Red"
 msgstr "红色"
 
+msgid "Reduce motion"
+msgstr ""
+
 msgid "Remove tag {}"
 msgstr "移除标签 {}"
 
@@ -1197,6 +1200,9 @@ msgstr "在设置中开启剪贴板历史，以收集你复制的内容。"
 
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "关闭后，关闭面板或主窗口将退出 Snipdeck。"
+
+msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
+msgstr ""
 
 msgid "Type a command"
 msgstr ""

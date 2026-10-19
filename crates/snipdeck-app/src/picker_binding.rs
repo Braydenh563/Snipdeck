@@ -46,6 +46,7 @@ pub type AnchorMemory = Rc<Cell<Option<Anchor>>>;
 struct Shown {
     dark: bool,
     high_contrast: Option<HighContrast>,
+    reduced_motion: bool,
     picker: PickerView,
 }
 
@@ -106,6 +107,7 @@ where
         *self.shown.borrow_mut() = Some(Shown {
             dark: view.dark,
             high_contrast: view.high_contrast,
+            reduced_motion: view.reduced_motion,
             picker: picker.clone(),
         });
         let size = (PICKER_WIDTH, window.get_content_height());
@@ -319,10 +321,13 @@ fn render(window: &ui::PickerWindow, previous: Option<&Shown>, view: &View, pick
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
     }
-    if differs(&|p| p.high_contrast == view.high_contrast) {
+    if differs(&|p| {
+        p.high_contrast == view.high_contrast && p.reduced_motion == view.reduced_motion
+    }) {
         set_high_contrast(
             &window.global::<ui::SystemLook<'_>>(),
             view.high_contrast.as_ref(),
+            view.reduced_motion,
         );
     }
     if differs(&|p| p.picker.rows == picker.rows && p.dark == view.dark) {

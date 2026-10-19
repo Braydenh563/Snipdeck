@@ -889,6 +889,9 @@ msgstr "Usados recentemente"
 msgid "Red"
 msgstr "Vermelho"
 
+msgid "Reduce motion"
+msgstr ""
+
 msgid "Remove tag {}"
 msgstr "Remover a etiqueta {}"
 
@@ -1197,6 +1200,9 @@ msgstr "Ative o histórico da área de transferência em Configurações para re
 
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "Se você desativar, fechar o painel ou a janela principal encerra o Snipdeck."
+
+msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
+msgstr ""
 
 msgid "Type a command"
 msgstr ""

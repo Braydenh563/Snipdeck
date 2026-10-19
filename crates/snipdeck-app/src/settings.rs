@@ -350,6 +350,8 @@ pub struct Settings {
     pub panel_width: u32,
     /// How many daily backups to keep (1 to 60).
     pub backups_keep: u32,
+    /// Animations are off even when Windows' "Animation effects" is on.
+    pub reduce_motion: bool,
     /// Seconds after copying a sensitive item before the clipboard is cleared (0 = never).
     pub clipboard_clear_secs: u32,
     /// Where the Panel sat on each monitor it was moved or resized on; wins over `panel_width`
@@ -380,6 +382,7 @@ impl Default for Settings {
             hide_hint_shown: false,
             panel_width: PANEL_WIDTH_DEFAULT,
             backups_keep: BACKUPS_KEEP_DEFAULT,
+            reduce_motion: false,
             clipboard_clear_secs: CLIPBOARD_CLEAR_SECS_DEFAULT,
             panel_geometry: Vec::new(),
             main_window: None,
@@ -446,6 +449,7 @@ impl Settings {
         field!(hide_hint_shown);
         field!(panel_width);
         field!(backups_keep);
+        field!(reduce_motion);
         field!(clipboard_clear_secs);
         field!(panel_geometry);
         field!(main_window);
@@ -923,6 +927,19 @@ mod tests {
             ..Settings::default()
         };
         assert_eq!(Settings::from_json(&kept.to_json()), kept);
+    }
+
+    #[test]
+    fn reduced_motion_is_off_by_default_and_round_trips() {
+        assert!(!Settings::from_json("{}").reduce_motion);
+        assert!(Settings::from_json(r#"{"reduce_motion":true}"#).reduce_motion);
+        let bad = Settings::from_json(r#"{"reduce_motion":"yes","theme":"dark"}"#);
+        assert_eq!((bad.reduce_motion, bad.theme), (false, Theme::Dark));
+        let on = Settings {
+            reduce_motion: true,
+            ..Settings::default()
+        };
+        assert_eq!(Settings::from_json(&on.to_json()), on);
     }
 
     #[test]
