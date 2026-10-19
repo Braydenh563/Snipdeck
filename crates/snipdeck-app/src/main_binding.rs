@@ -30,7 +30,9 @@ use crate::{
         Loggable, Shown, arm_toast, extension_of, index, item_kind_of, model, redraw_all,
         register_redraw, to_i32,
     },
-    controller::{BoardMenuEntry, Controller, HelpTopic, Library, MainAction, MainScreen, ToastPhase},
+    controller::{
+        BoardMenuEntry, Controller, HelpTopic, Library, MainAction, MainScreen, ToastPhase,
+    },
     host::ClipboardText,
     item_editor::Origin,
     main_window::{EditorKind, EditorView, Section, SelectMode, ViewMode},
