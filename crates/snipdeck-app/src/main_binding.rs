@@ -28,7 +28,7 @@ use snipdeck_ui as ui;
 use crate::{
     binding::{
         Loggable, Shown, arm_toast, extension_of, index, item_kind_of, model, redraw_all,
-        register_redraw, to_i32,
+        register_redraw, to_i32, toast_hovered,
     },
     controller::{
         BoardMenuEntry, Controller, HelpTopic, Library, MainAction, MainScreen, ToastPhase,
@@ -559,6 +559,22 @@ where
             .main_board_menu_activate(index(i)));
         wire!(on_board_menu_dismissed, |ctl| ctl.main_board_menu_close());
         wire!(on_toast_undo, |ctl| ctl.toast_action());
+        wire!(on_undo_requested, |ctl| ctl.main_undo());
+        {
+            let core = Rc::clone(&core);
+            window.on_toast_hover_changed(move |on| toast_hovered(&core.controller, on));
+        }
+        {
+            // Ctrl+W is the X button: the same decision between hiding and quitting.
+            let weak = window.as_weak();
+            window.on_close_requested(move || {
+                if let Some(window) = weak.upgrade() {
+                    window
+                        .window()
+                        .dispatch_event(slint::platform::WindowEvent::CloseRequested);
+                }
+            });
+        }
         window.on_settings_requested(crate::settings_binding::request_open);
         wire!(on_panel_requested, |ctl| ctl.main_show_panel());
         wire!(on_help_requested, |ctl, i| ctl.main_open_help(match i {

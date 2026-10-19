@@ -148,15 +148,6 @@ msgstr "Borrar búsqueda"
 msgid "Clear selection"
 msgstr "Borrar selección"
 
-msgid "Clear the clipboard after copying a sensitive item"
-msgstr ""
-
-msgid "Clear the clipboard later"
-msgstr ""
-
-msgid "Clear the clipboard sooner"
-msgstr ""
-
 msgid "Clear the search, then close"
 msgstr ""
 
@@ -165,9 +156,6 @@ msgstr "Borrar el atajo de {}"
 
 msgid "Click"
 msgstr "Clic"
-
-msgid "Clipboard clear time"
-msgstr ""
 
 msgid "Close"
 msgstr "Cerrar"
@@ -436,8 +424,8 @@ msgstr "Ayuda"
 msgid "Help sections"
 msgstr "Secciones de la ayuda"
 
-msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard a little after you copy it (the time is in Settings)."
-msgstr ""
+msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard 30 seconds after you copy it."
+msgstr "Oculto en las listas hasta que mantengas pulsada la barra espaciadora, fuera del historial del portapapeles y borrado del portapapeles 30 segundos después de copiarlo."
 
 msgid "Hidden. Hold Space to reveal."
 msgstr "Oculto. Mantén pulsada la barra espaciadora para mostrarlo."
@@ -889,9 +877,6 @@ msgstr "Usados recientemente"
 msgid "Red"
 msgstr "Rojo"
 
-msgid "Reduce motion"
-msgstr ""
-
 msgid "Remove tag {}"
 msgstr "Quitar la etiqueta {}"
 
@@ -975,9 +960,6 @@ msgstr "Resultados de búsqueda"
 
 msgid "Search snippets"
 msgstr "Buscar fragmentos"
-
-msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
-msgstr ""
 
 msgid "Select every item"
 msgstr ""
@@ -1201,9 +1183,6 @@ msgstr "Activa el historial del portapapeles en Configuración para registrar lo
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr "Si lo desactivas, al cerrar el panel o la ventana principal se cierra Snipdeck."
 
-msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
-msgstr ""
-
 msgid "Type a command"
 msgstr ""
 
@@ -1355,9 +1334,6 @@ msgid "px"
 msgstr "px"
 
 msgid "quick find paste palette"
-msgstr ""
-
-msgid "s"
 msgstr ""
 
 msgid "tutorial intro onboarding basics learn"

@@ -86,6 +86,21 @@ pub(crate) fn arm_toast<S, C, K, T>(
     });
 }
 
+/// The pointer entered (`on`) or left the toast: it stays while the pointer is on it. When its
+/// hold had already run out under the pointer, the timer chain starts again from here.
+pub(crate) fn toast_hovered<S, C, K, T>(controller: &Rc<RefCell<Controller<S, C, K, T>>>, on: bool)
+where
+    S: Library + 'static,
+    C: Clipboard + ClipboardText + 'static,
+    K: Keyboard + 'static,
+    T: Timing + 'static,
+{
+    let again = controller.borrow_mut().toast_hover(on);
+    if let Some((seq, delay)) = again {
+        arm_toast(Rc::downgrade(controller), seq, delay);
+    }
+}
+
 /// How long after a collapse the handle's frame is asked for once more (see `Core::apply`).
 const DOCK_REPLACE_AFTER: std::time::Duration = std::time::Duration::from_millis(50);
 
@@ -505,6 +520,13 @@ where
         wire_effects!(on_rename_requested, |ctl, i| ctl.rename_row(index(i)));
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.toast_action());
+        wire!(on_undo_requested, |ctl| ctl.main_undo());
+        wire_effects!(on_new_item_requested, |_ctl| vec![Effect::NewItem]);
+        wire_effects!(on_settings_requested, |_ctl| vec![Effect::OpenSettings]);
+        {
+            let core = Rc::clone(&core);
+            window.on_toast_hover_changed(move |on| toast_hovered(&core.controller, on));
+        }
         wire_effects!(on_resize_requested, |ctl, edge| ctl.resize(edge_of(edge)));
         wire_effects!(on_handle_hovered, |ctl, on| ctl
             .dock_event(DockEvent::HandleHover(on)));

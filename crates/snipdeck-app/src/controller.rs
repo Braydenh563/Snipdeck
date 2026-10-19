@@ -354,6 +354,10 @@ struct ActiveToast {
     toast: Toast,
     phase: ToastPhase,
     seq: u64,
+    /// The pointer is on the toast: its hold does not end.
+    hovered: bool,
+    /// The hold ended under the pointer, so no timer is running until the pointer leaves.
+    held: bool,
 }
 
 /// The Panel's brain. See the module documentation.
@@ -1385,6 +1389,8 @@ where
             toast,
             phase: ToastPhase::Enter,
             seq: self.toast_seq,
+            hovered: false,
+            held: false,
         });
     }
 
@@ -1463,6 +1469,10 @@ where
                     Some(TOAST_HOLD)
                 }
             }
+            ToastPhase::Hold if active.hovered => {
+                active.held = true;
+                None
+            }
             ToastPhase::Hold => {
                 active.phase = ToastPhase::Exit;
                 Some(TOAST_EXIT)
@@ -1473,6 +1483,19 @@ where
                 None
             }
         }
+    }
+
+    /// The pointer entered (`on`) or left the toast. A toast under the pointer stays: its hold
+    /// ends only after the pointer has left. When the hold had already run out under the
+    /// pointer, returns the toast's `seq` and the delay for the host to arm its timer with again.
+    pub fn toast_hover(&mut self, on: bool) -> Option<(u64, Duration)> {
+        let active = self.toast.as_mut()?;
+        active.hovered = on;
+        if on || !active.held {
+            return None;
+        }
+        active.held = false;
+        Some((active.seq, TOAST_HOLD))
     }
 
     /// Logs what a maintenance run did (`SNIPDECK_LOG=1`) and shows its toast when it has one:
@@ -2538,6 +2561,51 @@ mod tests {
         assert_eq!(w.ctl.view().toast.expect("toast").phase, ToastPhase::Exit);
         assert_eq!(w.ctl.toast_tick(seq), None);
         assert!(w.ctl.view().toast.is_none());
+    }
+
+    #[test]
+    fn a_toast_under_the_pointer_stays_and_goes_a_moment_after_the_pointer_leaves() {
+        let mut w = world();
+        w.ctl.delete_row(1);
+        let seq = w.ctl.view().toast.expect("toast").seq;
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_UNDO_HOLD));
+        assert_eq!(w.ctl.toast_hover(true), None);
+        // The hold is over, but the pointer is on the toast: it stays, and the timer chain ends.
+        assert_eq!(w.ctl.toast_tick(seq), None);
+        let toast = w.ctl.view().toast.expect("still there");
+        assert_eq!((toast.phase, toast.undo), (ToastPhase::Hold, true));
+        // The pointer leaves: a fresh hold, then the fade-out as usual.
+        assert_eq!(w.ctl.toast_hover(false), Some((seq, TOAST_HOLD)));
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_EXIT));
+        assert_eq!(w.ctl.toast_tick(seq), None);
+        assert!(w.ctl.view().toast.is_none());
+    }
+
+    #[test]
+    fn a_hover_that_ends_before_the_hold_does_does_not_change_the_timing() {
+        let mut w = world();
+        w.ctl.delete_row(1);
+        let seq = w.ctl.view().toast.expect("toast").seq;
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_UNDO_HOLD));
+        assert_eq!(w.ctl.toast_hover(true), None);
+        assert_eq!(w.ctl.toast_hover(false), None, "the timer is still running");
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_EXIT));
+    }
+
+    #[test]
+    fn a_newer_toast_does_not_inherit_the_hover() {
+        let mut w = world();
+        w.ctl.delete_row(1);
+        let old = w.ctl.view().toast.expect("toast").seq;
+        w.ctl.toast_tick(old);
+        w.ctl.toast_hover(true);
+        w.ctl.show_toast(Toast {
+            kind: ToastKind::Neutral,
+            message: ToastMessage::Copied,
+        });
+        let seq = w.ctl.view().toast.expect("toast").seq;
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_HOLD));
+        assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_EXIT));
     }
 
     #[test]

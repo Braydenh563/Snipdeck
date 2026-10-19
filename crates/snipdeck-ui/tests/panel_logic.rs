@@ -74,6 +74,10 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_board_menu_dismissed, || "board-dismissed".to_string());
     hook!(on_pinned_used, |i| format!("pinned:{i}"));
     hook!(on_toast_undo, || "undo".to_string());
+    hook!(on_undo_requested, || "ctrl-z".to_string());
+    hook!(on_new_item_requested, || "new".to_string());
+    hook!(on_settings_requested, || "settings".to_string());
+    hook!(on_toast_hover_changed, |h| format!("hover:{h}"));
     hook!(on_app_menu_requested, || "app-menu".to_string());
     hook!(on_app_menu_activated, |i| format!("app:{i}"));
     hook!(on_app_menu_dismissed, || "app-dismissed".to_string());
@@ -359,6 +363,26 @@ ui_tests! {
         assert_eq!(take(&log), ["commands"]);
         chord(ui.window(), &[Key::Control], "/");
         assert_eq!(take(&log), ["shortcuts"]);
+    }
+
+    fn the_new_list_close_settings_and_undo_shortcuts_report_what_was_asked() {
+        let (ui, log) = start();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "n");
+        assert_eq!(take(&log), ["new"]);
+        chord(ui.window(), &[Key::Control, Key::Shift], "N");
+        assert_eq!(take(&log), ["add-list"]);
+        chord(ui.window(), &[Key::Control], ",");
+        assert_eq!(take(&log), ["settings"]);
+        chord(ui.window(), &[Key::Control], "w");
+        assert_eq!(take(&log), ["close"]);
+        chord(ui.window(), &[Key::Control], "z");
+        assert_eq!(take(&log), ["ctrl-z"]);
+        type_text(ui.window(), "inv");
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "z");
+        assert!(!take(&log).contains(&"ctrl-z".to_string()), "typed text undoes itself");
     }
 
     fn the_footer_names_the_pickers_configured_hotkey_only_when_there_is_one() {
@@ -675,6 +699,32 @@ ui_tests! {
         ui.set_toast_text("".into());
         settle();
         assert!(missing(&ui, "Copied", AccessibleRole::Text));
+    }
+
+    fn the_pointer_on_a_toast_or_its_undo_button_reports_hover() {
+        let (ui, log) = start();
+        ui.set_toast_text("Deleted".into());
+        ui.set_toast_undo_label("Undo".into());
+        settle();
+        take(&log);
+        let centre = |e: &ElementHandle| {
+            let (p, s) = (e.absolute_position(), e.size());
+            slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0)
+        };
+        let text_at = centre(&find(&ui, "Deleted", AccessibleRole::Text));
+        let button_at = centre(&find(&ui, "Undo", AccessibleRole::Button));
+        let away = slint::LogicalPosition::new(2.0, 2.0);
+        let w = ui.window();
+        w.dispatch_event(slint::platform::WindowEvent::PointerMoved { position: text_at });
+        settle();
+        assert_eq!(take(&log), ["hover:true"]);
+        w.dispatch_event(slint::platform::WindowEvent::PointerMoved { position: button_at });
+        settle();
+        let seen = take(&log);
+        assert!(!seen.contains(&"hover:false".to_string()), "the button is still the toast: {seen:?} {text_at:?} {button_at:?}");
+        w.dispatch_event(slint::platform::WindowEvent::PointerMoved { position: away });
+        settle();
+        assert_eq!(take(&log).last().map(String::as_str), Some("hover:false"));
     }
 
     // ---- Accessibility and hit targets -----------------------------------------------------------

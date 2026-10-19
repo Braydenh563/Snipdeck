@@ -33,6 +33,10 @@ use crate::{
 pub const FILL_WIDTH: f32 = 440.0;
 
 #[derive(Clone)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "a snapshot of independent switches, not a state"
+)]
 struct Shown {
     dark: bool,
     high_contrast: Option<HighContrast>,

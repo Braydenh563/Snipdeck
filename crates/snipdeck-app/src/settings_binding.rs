@@ -936,7 +936,7 @@ where
                 |s| s.backups_keep = u32::try_from(n).unwrap_or(0)
             )));
         wire!(on_clipboard_clear_secs_chosen, |core, n| core.act(|ctl| {
-            ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0))
+            ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0));
         }));
         wire!(on_no_paste_app_added, |core, name| core
             .no_paste_added(&name));
@@ -968,6 +968,10 @@ where
 
 // ---- Page state -> window ----------------------------------------------------------------------
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "one flat pass over the page, a few lines per property"
+)]
 fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageView) {
     let differs = |same: &dyn Fn(&PageView) -> bool| previous.is_none_or(|p| !same(p));
 

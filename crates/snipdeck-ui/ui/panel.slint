@@ -160,6 +160,8 @@ export component PanelWindow inherits Window {
     callback reveal-requested(int, bool);
     callback tab-selected(int);
     callback add-list-requested();
+    callback new-item-requested();
+    callback settings-requested();
     callback add-from-clipboard();
     callback pinned-used(int);
     callback pinned-copied(int);
@@ -194,6 +196,9 @@ export component PanelWindow inherits Window {
     callback resize-requested(ResizeEdge);
     callback pin-toggled(bool);
     callback toast-undo();
+    callback toast-hover-changed(hovered: bool);
+    // Ctrl+Z: undo the delete the toast offers to undo.
+    callback undo-requested();
     callback close-requested();
     // Pointer down on the header: the host starts the OS window drag.
     callback drag-requested();
@@ -491,6 +496,27 @@ export component PanelWindow inherits Window {
                     }
                     if (event.text == "k" || event.text == "K") {
                         root.commands-requested();
+                        return accept;
+                    }
+                    if (event.text == "n" || event.text == "N") {
+                        if (event.modifiers.shift) {
+                            root.add-list-requested();
+                        } else {
+                            root.new-item-requested();
+                        }
+                        return accept;
+                    }
+                    if (event.text == ",") {
+                        root.settings-requested();
+                        return accept;
+                    }
+                    if ((event.text == "w" || event.text == "W") && !event.modifiers.shift) {
+                        root.close-requested();
+                        return accept;
+                    }
+                    // Typed text in the search field undoes itself; with an empty field Ctrl+Z is the toast's Undo.
+                    if ((event.text == "z" || event.text == "Z") && !event.modifiers.shift && root.query == "") {
+                        root.undo-requested();
                         return accept;
                     }
                     if (event.text == "/") {
@@ -848,6 +874,7 @@ export component PanelWindow inherits Window {
                         x: (parent.width - self.width) / 2;
                         y: parent.height - self.height - Space.s2;
                         undo => { root.toast-undo(); }
+                        hover-changed(h) => { root.toast-hover-changed(h); }
                     }
                 }
 
