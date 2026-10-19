@@ -44,9 +44,9 @@ Next, in order: CI green on PR #5 -> translations pass for ~80 new strings per l
 - [ ] F2 Opus review of the whole diff; fixes
 - [ ] F3 ux-auditor and blind-tester on the final build; fixes
 - [ ] F4 gate --full both toolchains, Windows check, deny, CI green, PR body, retro
-- [ ] Delete `docs/ci-proposals/` once the owner has copied `dependabot.yml`
+- [x] CI proposals applied by the owner (dependabot.yml too); `docs/ci-proposals/` deleted
 - Done: D4 Pages site, E2 pre-public sweep, keygen rename, CI proposals applied by owner (ci.yml, release-build.yml), CodeQL cleartext fix.
-- Owner (G): copy dependabot.yml; dismiss 3 test-only CodeQL alerts ("Used in tests"); supply the Supporter email; Windows test run; merge PR #5; tag v1.0.0; release SHA-256 in `tools/launcher/release-sha256.txt`; SignPath/Store later.
+- Owner (G): dismiss 3 test-only CodeQL alerts ("Used in tests"); supply the Supporter email; Windows test run; merge PR #5; tag v1.0.0; release SHA-256 in `tools/launcher/release-sha256.txt`; SignPath/Store later.
 
 # Session state (2026-10-18 13:50, Fable session, away mode; branch `claude/compassionate-pascal-pod8ux`, PR #5)
 
