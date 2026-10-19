@@ -38,3 +38,6 @@ budget: owner at 40% weekly; own budget line 60%, stop line 65% (owner: wrap up 
 - ListTabBar `dropped(index)` has no consumer: wire drop-onto-tab or remove.
 - Verify accessible labels on Segmented, SelectField, NumberStepper, SearchField, HotkeyRecorder.
 - [ ] Merge review blocker: all 8 settings-*.png goldens were reverted by merge d9ad7c7 and miss the Window behaviour group and Backups stepper: UPDATE_GOLDEN=1 regenerate in the test batch and read each.
+- [ ] README shots (after goldens regenerate): `SNIPDECK_SHOT_SCALE=2 SNIPDECK_SHOTS_DIR=<scratch>/shots cargo test -p snipdeck-ui --no-fail-fast`, then `python3 scripts/readme_shots.py <scratch>/shots`; view hero + 8 tour images light/dark; commit with README.
+- [ ] Help window: add "Show the welcome tour again" (onboarding_binding::request_open) and a Main window Help entry.
+- [ ] Scout's not-done list (2026-10-19 07:50): A12 {clipboard}/local tz, A11 sensitive clipboard clear, A1 Main geometry memory, A7 tray paused tooltip, audit 6 "Space" @tr, audit 9 menu focus ring; rest (drag-reorder, Duplicate, Copy to board, Create-named) post-v1 unless cheap.
