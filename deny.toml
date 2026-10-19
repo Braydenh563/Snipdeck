@@ -20,6 +20,7 @@ ignore = [
     { id = "RUSTSEC-2026-0371", reason = "zbus_names unmaintained; transitive via Slint (Linux accessibility/portals only)" },
     { id = "RUSTSEC-2026-0370", reason = "zvariant unmaintained; transitive via Slint (Linux accessibility/portals only)" },
     { id = "RUSTSEC-2026-0372", reason = "zvariant_derive unmaintained; transitive via Slint (Linux accessibility/portals only)" },
+    { id = "RUSTSEC-2025-0141", reason = "bincode unmaintained (not vulnerable); build-time only, via typed-index-collections in Slint's compiler; not linked into the app" },
 ]
 
 [licenses]
