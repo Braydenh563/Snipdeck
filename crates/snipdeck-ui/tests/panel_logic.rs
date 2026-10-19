@@ -386,6 +386,11 @@ ui_tests! {
         )));
         ui.set_picker_spoken("Control Shift Space".into());
         assert_eq!(hint(&ui), 1, "the caps are spoken as the chord");
+        assert_eq!(
+            all(&ui, "Picker anywhere", AccessibleRole::Text).len(),
+            1,
+            "the words beside the caps are read too"
+        );
         ui.set_picker_keys(ModelRc::new(VecModel::from(Vec::<slint::SharedString>::new())));
         assert_eq!(hint(&ui), 0, "switching the hotkey off removes the hint");
     }
