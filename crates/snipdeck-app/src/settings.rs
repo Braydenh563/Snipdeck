@@ -290,6 +290,28 @@ fn salvage_no_paste_apps(text: &str) -> Vec<String> {
     apps
 }
 
+/// Where the Main window sat when it was last moved or resized, in physical pixels in desktop
+/// coordinates (the outer frame, as the OS reports it). While maximised the rectangle is the
+/// restored (normal) place and `maximized` is set.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WindowPlace {
+    /// Left edge.
+    pub x: i32,
+    /// Top edge.
+    pub y: i32,
+    /// Width.
+    pub w: u32,
+    /// Height.
+    pub h: u32,
+    /// The window was maximised.
+    pub maximized: bool,
+}
+
+impl WindowPlace {
+    /// Smallest width or height worth restoring; anything less is a minimised or broken frame.
+    pub const MIN_SIDE: u32 = 200;
+}
+
 /// The user's settings.
 #[allow(
     clippy::struct_excessive_bools,
@@ -326,6 +348,8 @@ pub struct Settings {
     /// Where the Panel sat on each monitor it was moved or resized on; wins over `panel_width`
     /// there. Absent in older files.
     pub panel_geometry: Vec<PanelGeometry>,
+    /// Where the Main window was left; absent until it has been moved or resized.
+    pub main_window: Option<WindowPlace>,
     /// Executable names that never receive an auto-paste (lower case).
     pub no_paste_apps: Vec<String>,
     /// The edge dock: when a docked Panel collapses to a handle, and the delays.
@@ -350,6 +374,7 @@ impl Default for Settings {
             panel_width: PANEL_WIDTH_DEFAULT,
             backups_keep: BACKUPS_KEEP_DEFAULT,
             panel_geometry: Vec::new(),
+            main_window: None,
             no_paste_apps: Vec::new(),
             dock: DockSettings::default(),
             onboarded: false,
@@ -414,6 +439,7 @@ impl Settings {
         field!(panel_width);
         field!(backups_keep);
         field!(panel_geometry);
+        field!(main_window);
         // Element by element: one bad entry must not drop the whole list, or auto-paste would
         // go into the apps the user excluded.
         match map.get("no_paste_apps") {
@@ -454,6 +480,10 @@ impl Settings {
             .backups_keep
             .clamp(*BACKUPS_KEEP.start(), *BACKUPS_KEEP.end());
         self.sanitize_panel_geometry();
+        self.main_window = self.main_window.filter(|p| {
+            (WindowPlace::MIN_SIDE..=PANEL_SIDE_LIMIT).contains(&p.w)
+                && (WindowPlace::MIN_SIDE..=PANEL_SIDE_LIMIT).contains(&p.h)
+        });
         self.dock.sanitize();
         let mut seen = std::collections::BTreeSet::new();
         self.no_paste_apps = self
@@ -622,6 +652,25 @@ mod tests {
         let settings = Settings::from_json(r#"{"version":1,"panel_width":300}"#);
         assert_eq!(settings.panel_geometry, Vec::new());
         assert_eq!(settings.panel_width, 300);
+    }
+
+    #[test]
+    fn the_main_window_place_round_trips_and_a_degenerate_one_is_dropped() {
+        let mut settings = Settings::default();
+        assert_eq!(settings.main_window, None);
+        let place = WindowPlace {
+            x: -1200,
+            y: 30,
+            w: 1100,
+            h: 700,
+            maximized: true,
+        };
+        settings.main_window = Some(place);
+        let back = Settings::from_json(&settings.to_json());
+        assert_eq!(back.main_window, Some(place));
+        settings.main_window = Some(WindowPlace { w: 0, ..place });
+        settings.sanitize();
+        assert_eq!(settings.main_window, None);
     }
 
     #[test]
