@@ -218,11 +218,18 @@ impl SearchIndex {
                 let entry = self.entries.get(at)?;
                 let mut title_indices = Vec::new();
                 if score >> TIER_SHIFT == Tier::Title as u32 {
-                    pattern.indices(
-                        Utf32Str::new(&entry.title, &mut buf),
-                        &mut matcher,
-                        &mut title_indices,
-                    );
+                    // `Utf32Str::new` counts graphemes (a combining mark joins its base letter) and,
+                    // when every grapheme is ASCII, falls back to the raw bytes, so its indices
+                    // can point past the title's characters. Highlighting wants character
+                    // positions, so build the character haystack ourselves.
+                    let haystack = if entry.title.is_ascii() {
+                        Utf32Str::Ascii(entry.title.as_bytes())
+                    } else {
+                        buf.clear();
+                        buf.extend(entry.title.chars());
+                        Utf32Str::Unicode(&buf)
+                    };
+                    pattern.indices(haystack, &mut matcher, &mut title_indices);
                     title_indices.sort_unstable();
                     title_indices.dedup();
                 }

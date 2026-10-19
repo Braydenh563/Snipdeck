@@ -90,10 +90,14 @@ export component HelpWindow inherits Window {
         return fix == 1 ? @tr("Back up now") : (fix == 2 ? @tr("Open Settings") : @tr("Open logs folder"));
     }
 
-    init => { Palette.dark = root.dark; }
+    // The window opens with the focus on its key scope, so Esc closes it before any Tab.
+    init => {
+        Palette.dark = root.dark;
+        scope.focus();
+    }
     changed dark => { Palette.dark = root.dark; }
 
-    FocusScope {
+    scope := FocusScope {
         key-pressed(event) => {
             if (event.text == Key.Escape) {
                 root.close-requested();

@@ -116,7 +116,11 @@ export component OnboardingWindow inherits Window {
     ];
     property <bool> last: root.step >= root.step-count - 1;
 
-    init => { Palette.dark = root.dark; }
+    // The window opens with the focus on its key scope, so Esc skips the tour before any Tab.
+    init => {
+        Palette.dark = root.dark;
+        scope.focus();
+    }
     changed dark => { Palette.dark = root.dark; }
 
     scope := FocusScope {
