@@ -926,3 +926,49 @@ fn copyq_skip_duplicates_applies() {
     let (_, report) = copyq(json, &opts);
     assert_eq!((report.items_added, report.items_skipped), (2, 1));
 }
+
+// ---------------------------------------------------------------- dry run
+
+#[test]
+fn dry_run_reports_exactly_what_a_real_import_adds_and_writes_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "a.txt", "alpha");
+    write(dir.path(), "b.md", "beta");
+    write(dir.path(), "sub/c.txt", "gamma");
+    let mut s = store();
+    let before = (s.boards().unwrap().len(), s.tags().unwrap().len());
+    let dry = ImportOptions {
+        dry_run: true,
+        ..ImportOptions::default()
+    };
+    let preview = import_folder(&mut s, dir.path(), at(9), &dry).unwrap();
+    assert_eq!((s.boards().unwrap().len(), s.tags().unwrap().len()), before);
+    assert!(contents(&s).is_empty());
+
+    let real = import_folder(&mut s, dir.path(), at(9), &ImportOptions::default()).unwrap();
+    assert_eq!(preview.items_added, 3);
+    assert_eq!(
+        (
+            preview.boards_added,
+            preview.lists_added,
+            preview.items_added
+        ),
+        (real.boards_added, real.lists_added, real.items_added)
+    );
+}
+
+#[test]
+fn dry_run_counts_duplicates_as_skipped() {
+    let dir = tempfile::tempdir().unwrap();
+    write(dir.path(), "a.txt", "alpha");
+    let mut s = store();
+    import_folder(&mut s, dir.path(), at(9), &ImportOptions::default()).unwrap();
+    let dry = ImportOptions {
+        dry_run: true,
+        merge: MergeStrategy::SkipDuplicates,
+        ..ImportOptions::default()
+    };
+    let preview = import_folder(&mut s, dir.path(), at(10), &dry).unwrap();
+    assert_eq!((preview.items_added, preview.items_skipped), (0, 1));
+    assert_eq!(contents(&s).len(), 1);
+}

@@ -109,6 +109,9 @@ pub enum Error {
         /// The repeated id.
         id: String,
     },
+    /// Internal: rolls a dry-run import back. Never returned to callers.
+    #[error("dry run")]
+    DryRun,
     /// The input is not a Ditto database.
     #[error("`{}` is not a Ditto database ({reason})", path.display())]
     NotDitto {
