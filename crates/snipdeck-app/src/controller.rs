@@ -372,6 +372,8 @@ pub struct Controller<S, C, K, T> {
     /// so the secret does not sit in memory for the wait.
     clipboard_clear: Option<(Timestamp, ClipboardDigest)>,
     model: PanelModel,
+    /// The search index shared by the Panel and the Picker, rebuilt only after a write.
+    index_cache: crate::index_cache::IndexCache,
     settings: Settings,
     entitlements: Entitlements,
     visible: bool,
@@ -485,7 +487,8 @@ where
         settings: Settings,
         entitlements: Entitlements,
     ) -> snipdeck_store::Result<Self> {
-        let mut model = PanelModel::load(&store, None, None)?;
+        let index_cache = crate::index_cache::IndexCache::new();
+        let mut model = PanelModel::load_cached(&store, None, None, &index_cache)?;
         model.set_policy(policy_of(&settings));
         model.set_target(target.current());
         let shown_at = clock.now();
@@ -497,6 +500,7 @@ where
             tz: TimeZone::system(),
             clipboard_clear: None,
             model,
+            index_cache,
             settings,
             entitlements,
             visible: true,
@@ -1046,7 +1050,7 @@ where
     pub fn open_picker(&mut self) {
         self.fill = None;
         self.on_target_changed();
-        match PickerModel::load(&self.store, self.model.board()) {
+        match PickerModel::load_cached(&self.store, self.model.board(), &self.index_cache) {
             Ok(picker) => self.picker = Some(picker),
             Err(_) => self.show_toast(failed()),
         }

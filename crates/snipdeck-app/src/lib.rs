@@ -21,6 +21,7 @@ pub mod fill_binding;
 pub mod frame;
 pub mod help_binding;
 pub mod host;
+pub mod index_cache;
 pub mod item_editor;
 pub mod key_provider;
 pub mod licence_store;

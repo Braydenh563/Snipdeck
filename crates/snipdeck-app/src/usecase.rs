@@ -368,6 +368,9 @@ mod tests {
         fn all_items(&self) -> snipdeck_store::Result<Vec<Item>> {
             self.0.all_items()
         }
+        fn change_counter(&self) -> u64 {
+            self.0.change_counter()
+        }
         fn item(&self, id: ItemId) -> snipdeck_store::Result<Item> {
             self.0.item(id)
         }

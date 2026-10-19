@@ -3,7 +3,9 @@
 //! models and translates the footer and use-label variants.
 
 use std::collections::HashMap;
+use std::rc::Rc;
 
+use crate::index_cache::IndexCache;
 use snipdeck_core::{
     Board, BoardId, Item, ItemId, ItemKind, List, ListAccent, ListId, ListSort, search::SearchIndex,
 };
@@ -89,7 +91,8 @@ pub struct PanelModel {
     items: Vec<Item>,
     all: Vec<Item>,
     list_labels: HashMap<ListId, ListLabel>,
-    index: SearchIndex,
+    index: Rc<SearchIndex>,
+    cache: IndexCache,
     query: String,
     selected: usize,
     target: Option<Target>,
@@ -111,6 +114,25 @@ impl PanelModel {
     where
         S: BoardRepo + ListRepo + ItemRepo + TagRepo,
     {
+        Self::load_cached(store, board, list, &IndexCache::new())
+    }
+
+    /// Like [`PanelModel::load`], taking the search index from `cache` (built only when the
+    /// library changed since it was last built). The model keeps a handle on `cache` for its
+    /// own reloads.
+    ///
+    /// # Errors
+    ///
+    /// Any store error.
+    pub fn load_cached<S>(
+        store: &S,
+        board: Option<BoardId>,
+        list: Option<ListId>,
+        cache: &IndexCache,
+    ) -> snipdeck_store::Result<Self>
+    where
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+    {
         let boards = store.boards()?;
         let board = board
             .filter(|id| boards.iter().any(|b| b.id == *id))
@@ -127,20 +149,7 @@ impl PanelModel {
             None => Vec::new(),
         };
         let all = store.all_items()?;
-        let tag_names: HashMap<_, _> = store
-            .tags()?
-            .into_iter()
-            .map(|t| (t.id, t.name.as_str().to_owned()))
-            .collect();
-        let mut index = SearchIndex::default();
-        for item in &all {
-            index.upsert_with_tags(
-                item,
-                item.tags
-                    .iter()
-                    .filter_map(|t| tag_names.get(t).map(String::as_str)),
-            );
-        }
+        let index = cache.index(store, &all)?;
         let mut list_labels = HashMap::new();
         for b in &boards {
             for l in store.lists(b.id)? {
@@ -162,6 +171,7 @@ impl PanelModel {
             all,
             list_labels,
             index,
+            cache: cache.clone(),
             query: String::new(),
             selected: 0,
             target: None,
@@ -217,7 +227,7 @@ impl PanelModel {
     where
         S: BoardRepo + ListRepo + ItemRepo + TagRepo,
     {
-        let mut next = Self::load(store, board, list)?;
+        let mut next = Self::load_cached(store, board, list, &self.cache)?;
         next.target = self.target.take();
         next.policy = std::mem::take(&mut self.policy);
         if keep_search {

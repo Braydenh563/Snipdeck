@@ -5,7 +5,9 @@
 //! Like the Panel, matching runs in memory over title, tags and the start of the content.
 
 use std::collections::HashMap;
+use std::rc::Rc;
 
+use crate::index_cache::IndexCache;
 use snipdeck_core::{BoardId, Item, ItemId, ItemKind, ListAccent, ListId, search::SearchIndex};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo};
 
@@ -57,7 +59,7 @@ struct Place {
 pub struct PickerModel {
     /// Every live item, in library order (board, list, manual order).
     places: Vec<Place>,
-    index: SearchIndex,
+    index: Rc<SearchIndex>,
     /// The board the Panel showed when the Picker opened (the "This board" scope).
     board: Option<BoardId>,
     query: String,
@@ -87,26 +89,33 @@ impl PickerModel {
     where
         S: BoardRepo + ListRepo + ItemRepo + TagRepo,
     {
-        let tag_names: HashMap<_, _> = store
-            .tags()?
-            .into_iter()
-            .map(|t| (t.id, t.name.as_str().to_owned()))
-            .collect();
+        Self::load_cached(store, board, &IndexCache::new())
+    }
+
+    /// Like [`PickerModel::load`], taking the search index from `cache` (built only when the
+    /// library changed since it was last built).
+    ///
+    /// # Errors
+    ///
+    /// Any store error.
+    pub fn load_cached<S>(
+        store: &S,
+        board: Option<BoardId>,
+        cache: &IndexCache,
+    ) -> snipdeck_store::Result<Self>
+    where
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+    {
+        let all = store.all_items()?;
+        let index = cache.index(store, &all)?;
         let mut by_list: HashMap<ListId, Vec<Item>> = HashMap::new();
-        for item in store.all_items()? {
+        for item in all {
             by_list.entry(item.list_id).or_default().push(item);
         }
         let mut places = Vec::new();
-        let mut index = SearchIndex::default();
         for b in store.boards()? {
             for l in store.lists(b.id)? {
                 for item in by_list.remove(&l.id).unwrap_or_default() {
-                    index.upsert_with_tags(
-                        &item,
-                        item.tags
-                            .iter()
-                            .filter_map(|t| tag_names.get(t).map(String::as_str)),
-                    );
                     places.push(Place {
                         item,
                         board: b.id,
