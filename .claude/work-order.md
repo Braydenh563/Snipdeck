@@ -19,6 +19,6 @@ budget: owner at 40% weekly; own budget line 60%, stop line 65% (owner: wrap up 
 - [ ] Step 11b: security review item 12 (Moved-event clamp, taskbar work area) after step 8
 - [ ] Step 11: PR4 review items 2,5,7,8,9,10,12 (14 done except deny m2-harness [!] CI edit)
 - [ ] Step 13a: de-slop pass over every window golden against DESIGN.md
-- [ ] Step 19: docs (README, user guide, CHANGELOG, HANDOVER rewrite)
+- [ ] Step 19: docs (README with real screenshots per now.md 02:55, user guide, CHANGELOG, HANDOVER rewrite)
 - [ ] Step 20: reviewer on the whole diff since main; fix findings
 - [ ] Gate --full; PR #5 body refreshed with the three gate lines; morning summary; retro
