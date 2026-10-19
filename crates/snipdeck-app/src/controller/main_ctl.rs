@@ -23,6 +23,7 @@ use super::{
 };
 use crate::{
     host::ClipboardText,
+    list_text,
     main_window::{
         Counts, DeleteHint, EditorKind, EditorView, Key, NameError, Row, Section, SelectMode,
         SideList, SideTag, ViewMode, reorder,
@@ -54,6 +55,8 @@ pub enum MainAction {
     Edit,
     /// Pin, or unpin when every target is pinned.
     Pin,
+    /// Copy each item, directly after it in its list.
+    Duplicate,
     /// Open the *Move to list* chooser for the targets.
     Move,
     /// Open the *Tags* chooser for the targets.
@@ -363,6 +366,7 @@ where
                 }
             }
             MainAction::Pin => self.pin(&items),
+            MainAction::Duplicate => self.duplicate(&items),
             MainAction::Move | MainAction::Tag => self.main.set_chooser(targets),
             MainAction::Delete => self.trash_items(&items),
             MainAction::Restore => self.restore(&targets),
@@ -382,6 +386,28 @@ where
                 item.pinned = pin;
                 item.updated_at = now;
                 b.update_item(&item, None)?;
+            }
+            Ok(())
+        });
+        self.finish(&done);
+    }
+
+    /// Each item again, directly after itself: same title, content, tags and flags; pinned off and
+    /// use history cleared, like a new item.
+    fn duplicate(&mut self, items: &[ItemId]) {
+        let now = self.clock.now();
+        let done = self.store.atomically(|b| {
+            for id in items {
+                let original = b.item(*id)?;
+                let formats = b.formats(*id)?;
+                let mut copy =
+                    Item::new(original.list_id, original.title.clone(), original.kind, now);
+                copy.preview = original.preview;
+                copy.tags = original.tags;
+                copy.sensitive = original.sensitive;
+                copy.always_plain = original.always_plain;
+                copy.source_app = original.source_app;
+                b.insert_item(&copy, &formats, Placement::After(*id))?;
             }
             Ok(())
         });
@@ -645,6 +671,56 @@ where
             return;
         };
         self.trash_list(list.id, list.name.as_str().to_owned());
+    }
+
+    /// "Export as text…" on list `index` of the sidebar: its text items go to a new file in
+    /// `folder` (see [`crate::list_text`]). Returns the file.
+    pub fn main_export_list(
+        &mut self,
+        index: usize,
+        folder: &std::path::Path,
+    ) -> Option<std::path::PathBuf> {
+        self.main_fresh();
+        let list = self.main.lists().get(index)?;
+        let (id, name) = (list.id, list.name.as_str().to_owned());
+        let written = self.store.items(id).ok().and_then(|items| {
+            let entries: Vec<_> = items
+                .iter()
+                .filter(|item| !item.sensitive)
+                .filter_map(|item| {
+                    let text = usecase::item_text(&self.store, item.id).ok()??;
+                    Some(list_text::Entry {
+                        title: item.title.clone(),
+                        text,
+                    })
+                })
+                .collect();
+            let date = self
+                .clock
+                .now()
+                .to_zoned(jiff::tz::TimeZone::system())
+                .date();
+            let path = list_text::path(folder, &name, date);
+            std::fs::create_dir_all(folder).ok()?;
+            std::fs::write(&path, list_text::render(&name, &entries)).ok()?;
+            Some(path)
+        });
+        if let Some(path) = &written {
+            let file = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            self.show_toast(Toast {
+                kind: ToastKind::Success,
+                message: ToastMessage::Exported { file },
+            });
+        } else {
+            self.show_toast(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::ExportFailed,
+            });
+        }
+        written
     }
 
     fn trash_list(&mut self, id: ListId, name: String) {

@@ -120,7 +120,7 @@ pub enum TrayEvent {
     TogglePanel,
     /// "Open Panel".
     OpenPanel,
-    /// "Open Snipdeck".
+    /// "Open Snipdeck", or a double click on the icon.
     OpenSnipdeck,
     /// "Pause hotkeys" was toggled; `true` = the hotkeys should now be off.
     HotkeysPaused(bool),
@@ -153,6 +153,8 @@ pub enum MenuLine {
 pub enum Gesture {
     /// Left click, or Enter / Space on the focused icon.
     Select,
+    /// Double click with the left button.
+    DoubleSelect,
     /// Right click, or the menu key / Shift+F10 on the focused icon.
     ContextMenu,
 }
@@ -172,6 +174,8 @@ pub enum Reaction {
 pub const NIN_SELECT: u32 = 0x0400;
 /// `NIN_KEYSELECT`.
 pub const NIN_KEYSELECT: u32 = 0x0401;
+/// `WM_LBUTTONDBLCLK`.
+pub const WM_LBUTTONDBLCLK: u32 = 0x0203;
 /// `WM_CONTEXTMENU`.
 pub const WM_CONTEXTMENU: u32 = 0x007B;
 
@@ -179,11 +183,13 @@ pub const WM_CONTEXTMENU: u32 = 0x007B;
 ///
 /// Only the select and context-menu notifications count. The raw mouse messages (`WM_LBUTTONUP`
 /// and friends) are ignored on purpose: version 4 sends them *and* `NIN_SELECT` for one click,
-/// and acting on both would toggle the Panel twice.
+/// and acting on both would toggle the Panel twice. `WM_LBUTTONDBLCLK` has no select twin, so it
+/// is the double click.
 #[must_use]
 pub const fn classify(code: u32) -> Option<Gesture> {
     match code {
         NIN_SELECT | NIN_KEYSELECT => Some(Gesture::Select),
+        WM_LBUTTONDBLCLK => Some(Gesture::DoubleSelect),
         WM_CONTEXTMENU => Some(Gesture::ContextMenu),
         _ => None,
     }
@@ -365,6 +371,7 @@ impl TrayModel {
         }
         Some(match gesture {
             Gesture::Select => Reaction::Event(TrayEvent::TogglePanel),
+            Gesture::DoubleSelect => Reaction::Event(TrayEvent::OpenSnipdeck),
             Gesture::ContextMenu => Reaction::PopupMenu(self.menu()),
         })
     }
@@ -405,6 +412,7 @@ mod tests {
         assert_eq!(classify(NIN_SELECT), Some(Gesture::Select));
         assert_eq!(classify(NIN_KEYSELECT), Some(Gesture::Select));
         assert_eq!(classify(WM_CONTEXTMENU), Some(Gesture::ContextMenu));
+        assert_eq!(classify(WM_LBUTTONDBLCLK), Some(Gesture::DoubleSelect));
         // WM_LBUTTONUP, WM_RBUTTONUP, WM_MOUSEMOVE, NIN_POPUPOPEN: not acted on.
         for code in [0x0202, 0x0205, 0x0200, 0x0406, 0] {
             assert_eq!(classify(code), None, "{code:#x}");
@@ -427,6 +435,17 @@ mod tests {
             m.gesture(Gesture::Select),
             Some(Reaction::Event(TrayEvent::TogglePanel))
         );
+    }
+
+    #[test]
+    fn double_click_opens_the_main_window() {
+        let mut m = model();
+        assert_eq!(
+            m.gesture(Gesture::DoubleSelect),
+            Some(Reaction::Event(TrayEvent::OpenSnipdeck))
+        );
+        let mut hidden = TrayModel::new("Snipdeck");
+        assert_eq!(hidden.gesture(Gesture::DoubleSelect), None);
     }
 
     #[test]

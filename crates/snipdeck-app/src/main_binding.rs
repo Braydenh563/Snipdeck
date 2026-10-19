@@ -549,6 +549,10 @@ where
         wire!(on_add_list_requested, |ctl| ctl.main_new_list());
         wire!(on_list_edit_requested, |ctl, i| ctl
             .main_edit_list(index(i)));
+        wire!(on_list_export_requested, |ctl, i| ctl.main_export_list(
+            index(i),
+            &crate::paths::documents_folder().unwrap_or_else(std::env::temp_dir)
+        ));
         wire!(on_list_delete_confirmed, |ctl, i| ctl
             .main_delete_list(index(i)));
         wire!(on_tag_delete_confirmed, |ctl, i| ctl
@@ -1124,6 +1128,7 @@ fn action_of(action: ui::ItemAction) -> MainAction {
         ui::ItemAction::Copy => MainAction::Copy,
         ui::ItemAction::Edit => MainAction::Edit,
         ui::ItemAction::Pin => MainAction::Pin,
+        ui::ItemAction::Duplicate => MainAction::Duplicate,
         ui::ItemAction::Move => MainAction::Move,
         ui::ItemAction::Tag => MainAction::Tag,
         ui::ItemAction::Delete => MainAction::Delete,

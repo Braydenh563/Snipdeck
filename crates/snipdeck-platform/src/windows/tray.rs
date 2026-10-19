@@ -10,7 +10,8 @@
 //! - **`TaskbarCreated`**: Explorer restarted and dropped every icon; the icon is added again if
 //!   it is wanted. A failed [`Tray::show`] (no taskbar yet, at logon) keeps the icon wanted, so
 //!   this also covers a start-up before Explorer. Only one attempt is made per announcement.
-//! - **Left click** (`NIN_SELECT` / `NIN_KEYSELECT`) gives [`TrayEvent::TogglePanel`].
+//! - **Left click** (`NIN_SELECT` / `NIN_KEYSELECT`) gives [`TrayEvent::TogglePanel`]; a **double
+//!   click** (`WM_LBUTTONDBLCLK`) gives [`TrayEvent::OpenSnipdeck`].
 //! - **Right click** (`WM_CONTEXTMENU`) shows a popup menu with `TrackPopupMenu` at the click
 //!   position; the chosen entry becomes a [`TrayEvent`]. The window is made foreground first and
 //!   `WM_NULL` is posted afterwards, as the menu documentation requires, otherwise the menu does
@@ -508,7 +509,7 @@ fn build_menu(lines: &[MenuLine]) -> Option<HMENU> {
 #[cfg(test)]
 mod tests {
     use windows::Win32::UI::Shell::NIN_SELECT;
-    use windows::Win32::UI::WindowsAndMessaging::WM_CONTEXTMENU;
+    use windows::Win32::UI::WindowsAndMessaging::{WM_CONTEXTMENU, WM_LBUTTONDBLCLK};
 
     use super::*;
 
@@ -518,6 +519,7 @@ mod tests {
         // NIN_KEYSELECT = NIN_SELECT | NINF_KEY (1).
         assert_eq!(crate::tray::NIN_KEYSELECT, NIN_SELECT | 1);
         assert_eq!(crate::tray::WM_CONTEXTMENU, WM_CONTEXTMENU);
+        assert_eq!(crate::tray::WM_LBUTTONDBLCLK, WM_LBUTTONDBLCLK);
     }
 
     #[test]
