@@ -120,13 +120,7 @@ fn rig_at(scale: f32) -> Rig {
     let popups = Rc::new(FakePopups::one(monitor(scale)));
     popups.cursor.set(Some((900, 600)));
     let anchor = AnchorMemory::default();
-    let log = Rc::clone(&effects);
-    let picker = PickerUi::new(
-        &ctl,
-        popups.clone(),
-        Rc::clone(&anchor),
-        Rc::new(move |e| log.borrow_mut().push(*e)),
-    );
+    let picker = PickerUi::new(&ctl, popups.clone(), Rc::clone(&anchor));
     let fill = FillUi::new(&ctl, popups.clone(), anchor);
     let toasts = ToastUi::new(&ctl, popups.clone(), Rc::new(|| false));
     // The Panel starts hidden, as when the Picker hotkey is used from another app.
@@ -369,23 +363,17 @@ fn escape_closes_the_picker_and_the_target_gets_the_focus_back() {
 }
 
 #[test]
-fn ctrl_e_asks_the_host_to_edit_the_selected_item_and_closes_the_picker() {
+fn ctrl_e_opens_the_editor_on_the_selected_item_and_closes_the_picker() {
     on_ui_thread(|| {
         let r = rig();
         let w = r.open();
         type_text(w.window(), "out of office");
-        let id = r
-            .ctl
-            .borrow()
-            .picker()
-            .expect("open")
-            .item_at(0)
-            .expect("row");
+        assert!(r.ctl.borrow().picker().expect("open").item_at(0).is_some());
         chord(w.window(), &[Key::Control], "e");
-        assert_eq!(
-            *r.effects.borrow().last().expect("an effect"),
-            Effect::EditItem(id)
-        );
+        let ctl = r.ctl.borrow();
+        let editor = ctl.item_editor_view().expect("the editor opened");
+        assert!(!editor.is_new, "it edits the selected item");
+        drop(ctl);
         assert!(!w.window().is_visible());
         assert!(
             r.ctl.borrow().services().keyboard.sent.is_empty(),
