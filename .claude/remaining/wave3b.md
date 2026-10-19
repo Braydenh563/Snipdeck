@@ -17,3 +17,9 @@
 
 ## NEEDS HUB
 - PR #7 (B4, B8, B10, B14) is ready against the release branch. Confirm that B5, B7 (+ More hover bug), B11 and C4 should now start on this branch.
+
+## Update (B5, B7)
+- Done: B5 Getting started seed (`starter::ensure_first_run`, `library_is_untouched`); B7 More button on cards (not a Tab stop; Menu key / Shift+F10 stay), dock no longer collapses/closes a menu on pointer-leave.
+- Unverified on Windows: the More-menu-disappears report (not reproducible in the testing backend; the dock fix is a hypothesis).
+- Remaining UI test failures after merging the release branch look like goldens/pixels (editors, settings, empty states, focus ring, IME); `backups_to_keep_steps...`, `escape_is_skip_on_every_step`, `the_wanted_height_grows...` not diagnosed.
+- Next: B11 (drag/drop + keyboard alternatives), C4 (colour label + list icon).
