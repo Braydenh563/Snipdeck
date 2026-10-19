@@ -376,8 +376,9 @@ msgstr "Effacer la bibliothèque…"
 msgid "Escape"
 msgstr "Esc"
 
+#, fuzzy
 msgid "Every Supporter feature is on. Thank you."
-msgstr ""
+msgstr "Toutes les fonctions Supporter sont activées. Merci."
 
 msgid "Everything checks out."
 msgstr "Tout est en ordre."
@@ -865,8 +866,9 @@ msgstr "Largeur du panneau"
 msgid "Paste"
 msgstr "Coller"
 
+#, fuzzy
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
-msgstr ""
+msgstr "Collez une clé de licence pour activer Supporter. La clé est vérifiée sur ce PC et rien n’est envoyé nulle part."
 
 msgid "Paste stack"
 msgstr ""
@@ -1138,8 +1140,9 @@ msgstr "Snipdeck"
 msgid "Snipdeck (hotkeys paused)"
 msgstr "Snipdeck (raccourcis en pause)"
 
+#, fuzzy
 msgid "Snipdeck Supporter"
-msgstr ""
+msgstr "Snipdeck Supporter"
 
 msgid "Snipdeck handle, press the Panel hotkey to open"
 msgstr "Poignée de Snipdeck, appuyez sur le raccourci du panneau pour ouvrir"
@@ -1504,8 +1507,9 @@ msgstr "{n} extrait"
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgstr "{n} extrait sera aussi déplacé dans la corbeille. Vous pouvez le restaurer pendant 30 jours."
 
+#, fuzzy
 msgid "{} (Supporter)"
-msgstr ""
+msgstr "{} (Supporter)"
 
 msgid "{} found"
 msgstr ""

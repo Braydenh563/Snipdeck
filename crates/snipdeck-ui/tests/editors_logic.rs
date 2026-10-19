@@ -417,9 +417,9 @@ ui_tests! {
         let toggle = find(&ui, "Sensitive item", AccessibleRole::Switch);
         assert_eq!(toggle.accessible_checked(), Some(false));
         let text = toggle.accessible_description().expect("description").to_string();
-        // It says only what the app does: no promise to clear the clipboard on a timer.
+        // It says what the app does: kept out of clipboard history, and (A11, B14) cleared a while after a copy, with the time in Settings.
         assert!(text.contains("clipboard history"), "{text}");
-        assert!(!text.contains("seconds"), "{text}");
+        assert!(text.contains("the time is in Settings"), "{text}");
         toggle.invoke_accessible_default_action();
         assert!(ui.get_sensitive());
         assert!(ui.get_dirty());
@@ -726,6 +726,9 @@ ui_tests! {
         ui.set_can_delete(false);
         ui.set_delete_hint("The last board can't be deleted.".into());
         settle();
+        // A conditional row is only instantiated by a layout pass, which a frame or the accessibility tree
+        // runs; finding the notice stands for that pass, so the height below is the one a shown window has.
+        let _ = find(&ui, "The last board can't be deleted.", AccessibleRole::Text);
         assert!(ui.get_wanted_height() > plain, "{plain} -> {}", ui.get_wanted_height());
     }
 

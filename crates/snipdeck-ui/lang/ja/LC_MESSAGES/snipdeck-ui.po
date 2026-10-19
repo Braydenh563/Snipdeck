@@ -377,7 +377,7 @@ msgid "Escape"
 msgstr "Esc"
 
 msgid "Every Supporter feature is on. Thank you."
-msgstr ""
+msgstr "サポーターの機能がすべて使えます。ありがとうございます。"
 
 msgid "Everything checks out."
 msgstr "問題ありません。"
@@ -866,7 +866,7 @@ msgid "Paste"
 msgstr "貼り付け"
 
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
-msgstr ""
+msgstr "ライセンスキーを貼り付けるとサポーターが有効になります。キーはこのPCで確認され、何も送信されません。"
 
 msgid "Paste stack"
 msgstr ""
@@ -1139,7 +1139,7 @@ msgid "Snipdeck (hotkeys paused)"
 msgstr "Snipdeck（ホットキーは一時停止中）"
 
 msgid "Snipdeck Supporter"
-msgstr ""
+msgstr "Snipdeck サポーター"
 
 msgid "Snipdeck handle, press the Panel hotkey to open"
 msgstr "Snipdeck のハンドル。開くにはパネルのショートカットを押してください"
@@ -1505,7 +1505,7 @@ msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgstr "{n}件のスニペットも一緒にゴミ箱に移動します。30日間復元できます。"
 
 msgid "{} (Supporter)"
-msgstr ""
+msgstr "{} (サポーター)"
 
 msgid "{} found"
 msgstr ""

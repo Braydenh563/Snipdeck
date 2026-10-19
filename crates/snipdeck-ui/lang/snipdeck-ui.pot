@@ -14,11 +14,11 @@ msgstr ""
 msgid "A list keeps related snippets together, like replies or addresses."
 msgstr ""
 
-#: ui/onboarding.slint:181
+#: ui/onboarding.slint:185
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr ""
 
-#: ui/help.slint:111
+#: ui/help.slint:115
 msgid "About"
 msgstr ""
 
@@ -30,11 +30,11 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
-#: ui/settings.slint:530
+#: ui/settings.slint:533
 msgid "Activate"
 msgstr ""
 
-#: ui/settings.slint:483
+#: ui/settings.slint:485
 msgid "Add"
 msgstr ""
 
@@ -58,7 +58,7 @@ msgstr ""
 msgid "All items"
 msgstr ""
 
-#: ui/settings.slint:711 ui/settings.slint:715
+#: ui/settings.slint:713 ui/settings.slint:717
 msgid "Also forget the encryption key"
 msgstr ""
 
@@ -70,7 +70,7 @@ msgstr ""
 msgid "Anywhere in Windows"
 msgstr ""
 
-#: ui/settings.slint:235
+#: ui/settings.slint:237
 msgid "Appearance"
 msgstr ""
 
@@ -90,23 +90,23 @@ msgstr ""
 msgid "Asks you to pick one of the options"
 msgstr ""
 
-#: ui/onboarding.slint:283
+#: ui/onboarding.slint:287
 msgid "Back"
 msgstr ""
 
-#: ui/help.slint:90 ui/settings.slint:641
+#: ui/help.slint:90 ui/settings.slint:643
 msgid "Back up now"
 msgstr ""
 
-#: ui/settings.slint:595
+#: ui/settings.slint:597
 msgid "Backup of {}, {}"
 msgstr ""
 
-#: ui/settings.slint:551
+#: ui/settings.slint:553
 msgid "Backups"
 msgstr ""
 
-#: ui/settings.slint:561 ui/settings.slint:564
+#: ui/settings.slint:563 ui/settings.slint:566
 msgid "Backups to keep"
 msgstr ""
 
@@ -130,15 +130,15 @@ msgstr ""
 msgid "Boards"
 msgstr ""
 
-#: ui/onboarding.slint:222 ui/settings.slint:356
+#: ui/onboarding.slint:226 ui/settings.slint:358
 msgid "Bottom edge"
 msgstr ""
 
-#: ui/onboarding.slint:191
+#: ui/onboarding.slint:195
 msgid "Bring up the panel, open the picker, save the clipboard or paste the next item from any app."
 msgstr ""
 
-#: ui/settings.slint:147
+#: ui/settings.slint:149
 msgid "Brings the panel up beside the app you are working in."
 msgstr ""
 
@@ -150,11 +150,11 @@ msgstr ""
 msgid "Browse…"
 msgstr ""
 
-#: ui/help.slint:286
+#: ui/help.slint:290
 msgid "Built on"
 msgstr ""
 
-#: ui/editors.slint:594 ui/editors.slint:923 ui/editors.slint:961 ui/editors.slint:1267 ui/main_window.slint:1692 ui/settings.slint:740 ui/template_fill.slint:304
+#: ui/editors.slint:594 ui/editors.slint:923 ui/editors.slint:961 ui/editors.slint:1267 ui/main_window.slint:1692 ui/settings.slint:742 ui/template_fill.slint:304
 msgid "Cancel"
 msgstr ""
 
@@ -166,19 +166,19 @@ msgstr ""
 msgid "Change these in Settings."
 msgstr ""
 
-#: ui/settings.slint:204
+#: ui/settings.slint:206
 msgid "Changes apply at once."
 msgstr ""
 
-#: ui/help.slint:202
+#: ui/help.slint:206
 msgid "Check again"
 msgstr ""
 
-#: ui/help.slint:337
+#: ui/help.slint:341
 msgid "Check for updates"
 msgstr ""
 
-#: ui/help.slint:138
+#: ui/help.slint:142
 msgid "Checks"
 msgstr ""
 
@@ -202,15 +202,15 @@ msgstr ""
 msgid "Clear selection"
 msgstr ""
 
-#: ui/settings.slint:766
+#: ui/settings.slint:768
 msgid "Clear the clipboard after copying a sensitive item"
 msgstr ""
 
-#: ui/settings.slint:771
+#: ui/settings.slint:773
 msgid "Clear the clipboard later"
 msgstr ""
 
-#: ui/settings.slint:770
+#: ui/settings.slint:772
 msgid "Clear the clipboard sooner"
 msgstr ""
 
@@ -218,19 +218,19 @@ msgstr ""
 msgid "Clear the search, then close"
 msgstr ""
 
-#: ui/onboarding.slint:207 ui/settings.slint:224
+#: ui/onboarding.slint:211 ui/settings.slint:226
 msgid "Clear the shortcut for {}"
 msgstr ""
 
-#: ui/settings.slint:370
+#: ui/settings.slint:372
 msgid "Click"
 msgstr ""
 
-#: ui/settings.slint:769
+#: ui/settings.slint:771
 msgid "Clipboard clear time"
 msgstr ""
 
-#: ui/components/shortcuts-sheet.slint:135 ui/components/shortcuts-sheet.slint:141 ui/editors.slint:1251 ui/picker.slint:489 ui/settings.slint:833 ui/template_fill.slint:186
+#: ui/components/shortcuts-sheet.slint:135 ui/components/shortcuts-sheet.slint:141 ui/editors.slint:1251 ui/picker.slint:489 ui/settings.slint:839 ui/template_fill.slint:186
 msgid "Close"
 msgstr ""
 
@@ -294,7 +294,7 @@ msgstr ""
 msgid "Copy"
 msgstr ""
 
-#: ui/help.slint:207
+#: ui/help.slint:211
 msgid "Copy diagnostic report"
 msgstr ""
 
@@ -322,7 +322,7 @@ msgstr ""
 msgid "Daily backups, a plain zip export, and your choice of theme."
 msgstr ""
 
-#: ui/settings.slint:242
+#: ui/settings.slint:244
 msgid "Dark"
 msgstr ""
 
@@ -394,7 +394,7 @@ msgstr ""
 msgid "Deleted items stay here for {} days before they are removed."
 msgstr ""
 
-#: ui/settings.slint:685
+#: ui/settings.slint:687
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr ""
 
@@ -406,7 +406,7 @@ msgstr ""
 msgid "Discard your changes?"
 msgstr ""
 
-#: ui/onboarding.slint:217 ui/onboarding.slint:221 ui/settings.slint:351 ui/settings.slint:355
+#: ui/onboarding.slint:221 ui/onboarding.slint:225 ui/settings.slint:353 ui/settings.slint:357
 msgid "Dock to"
 msgstr ""
 
@@ -458,7 +458,7 @@ msgstr ""
 msgid "Editors"
 msgstr ""
 
-#: ui/settings.slint:837
+#: ui/settings.slint:843
 msgid "Email me"
 msgstr ""
 
@@ -482,15 +482,15 @@ msgstr ""
 msgid "Enter"
 msgstr ""
 
-#: ui/settings.slint:747
+#: ui/settings.slint:749
 msgid "Erase everything"
 msgstr ""
 
-#: ui/settings.slint:684 ui/settings.slint:701
+#: ui/settings.slint:686 ui/settings.slint:703
 msgid "Erase library"
 msgstr ""
 
-#: ui/settings.slint:687
+#: ui/settings.slint:689
 msgid "Erase library…"
 msgstr ""
 
@@ -498,11 +498,11 @@ msgstr ""
 msgid "Escape"
 msgstr ""
 
-#: ui/settings.slint:498
+#: ui/settings.slint:500
 msgid "Every Supporter feature is on. Thank you."
 msgstr ""
 
-#: ui/help.slint:127
+#: ui/help.slint:131
 msgid "Everything checks out."
 msgstr ""
 
@@ -510,7 +510,7 @@ msgstr ""
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr ""
 
-#: ui/settings.slint:703
+#: ui/settings.slint:705
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr ""
 
@@ -518,7 +518,7 @@ msgstr ""
 msgid "Export as text"
 msgstr ""
 
-#: ui/settings.slint:672 ui/settings.slint:675
+#: ui/settings.slint:674 ui/settings.slint:677
 msgid "Export library"
 msgstr ""
 
@@ -546,11 +546,11 @@ msgstr ""
 msgid "Fixed placeholders filled in when you paste."
 msgstr ""
 
-#: ui/onboarding.slint:218 ui/settings.slint:352
+#: ui/onboarding.slint:222 ui/settings.slint:354
 msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
 msgstr ""
 
-#: ui/onboarding.slint:222 ui/settings.slint:356
+#: ui/onboarding.slint:226 ui/settings.slint:358
 msgid "Floating"
 msgstr ""
 
@@ -558,11 +558,11 @@ msgstr ""
 msgid "Fold the Panel into a thin strip."
 msgstr ""
 
-#: ui/settings.slint:159
+#: ui/settings.slint:161
 msgid "Follow Windows"
 msgstr ""
 
-#: ui/settings.slint:238
+#: ui/settings.slint:240
 msgid "Follow Windows switches with your system setting."
 msgstr ""
 
@@ -582,23 +582,23 @@ msgstr ""
 msgid "Free and Supporter compared"
 msgstr ""
 
-#: ui/settings.slint:540
+#: ui/settings.slint:543
 msgid "Free is fully usable. Supporter pays for convenience and supports the app."
 msgstr ""
 
-#: ui/settings.slint:496
+#: ui/settings.slint:498
 msgid "Free plan"
 msgstr ""
 
-#: ui/settings.slint:502 ui/settings.slint:815
+#: ui/settings.slint:504 ui/settings.slint:817
 msgid "Get Supporter"
 msgstr ""
 
-#: ui/settings.slint:505
+#: ui/settings.slint:507
 msgid "Get Supporter…"
 msgstr ""
 
-#: ui/onboarding.slint:287
+#: ui/onboarding.slint:291
 msgid "Get started"
 msgstr ""
 
@@ -610,7 +610,7 @@ msgstr ""
 msgid "Give the list a name."
 msgstr ""
 
-#: ui/onboarding.slint:238 ui/settings.slint:300
+#: ui/onboarding.slint:242 ui/settings.slint:302
 msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
 msgstr ""
 
@@ -638,7 +638,7 @@ msgstr ""
 msgid "Help"
 msgstr ""
 
-#: ui/help.slint:110
+#: ui/help.slint:114
 msgid "Help sections"
 msgstr ""
 
@@ -662,31 +662,31 @@ msgstr ""
 msgid "Hide the Panel"
 msgstr ""
 
-#: ui/onboarding.slint:228 ui/onboarding.slint:231 ui/settings.slint:311 ui/settings.slint:314
+#: ui/onboarding.slint:232 ui/onboarding.slint:235 ui/settings.slint:313 ui/settings.slint:316
 msgid "Hide the panel when it loses focus"
 msgstr ""
 
-#: ui/settings.slint:370
+#: ui/settings.slint:372
 msgid "Hover"
 msgstr ""
 
-#: ui/settings.slint:370
+#: ui/settings.slint:372
 msgid "Hover and click"
 msgstr ""
 
-#: ui/settings.slint:379 ui/settings.slint:382
+#: ui/settings.slint:381 ui/settings.slint:384
 msgid "Hover delay"
 msgstr ""
 
-#: ui/settings.slint:380
+#: ui/settings.slint:382
 msgid "How long the pointer rests on the strip before the panel opens, from 0 to {} milliseconds."
 msgstr ""
 
-#: ui/settings.slint:398
+#: ui/settings.slint:400
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr ""
 
-#: ui/settings.slint:278
+#: ui/settings.slint:280
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr ""
 
@@ -694,7 +694,7 @@ msgstr ""
 msgid "Image"
 msgstr ""
 
-#: ui/settings.slint:419
+#: ui/settings.slint:421
 msgid "In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe."
 msgstr ""
 
@@ -730,11 +730,11 @@ msgstr ""
 msgid "Keep editing"
 msgstr ""
 
-#: ui/settings.slint:565
+#: ui/settings.slint:567
 msgid "Keep fewer backups"
 msgstr ""
 
-#: ui/settings.slint:566
+#: ui/settings.slint:568
 msgid "Keep more backups"
 msgstr ""
 
@@ -742,7 +742,7 @@ msgstr ""
 msgid "Keep panel on top"
 msgstr ""
 
-#: ui/onboarding.slint:259 ui/onboarding.slint:262 ui/settings.slint:335 ui/settings.slint:338
+#: ui/onboarding.slint:263 ui/onboarding.slint:266 ui/settings.slint:337 ui/settings.slint:340
 msgid "Keep running in the tray when the window closes"
 msgstr ""
 
@@ -754,35 +754,35 @@ msgstr ""
 msgid "Kind"
 msgstr ""
 
-#: ui/settings.slint:251 ui/settings.slint:255
+#: ui/settings.slint:253 ui/settings.slint:257
 msgid "Language"
 msgstr ""
 
-#: ui/settings.slint:397 ui/settings.slint:400
+#: ui/settings.slint:399 ui/settings.slint:402
 msgid "Leave delay"
 msgstr ""
 
-#: ui/onboarding.slint:222 ui/settings.slint:356
+#: ui/onboarding.slint:226 ui/settings.slint:358
 msgid "Left edge"
 msgstr ""
 
-#: ui/settings.slint:384
+#: ui/settings.slint:386
 msgid "Lengthen the hover delay"
 msgstr ""
 
-#: ui/settings.slint:402
+#: ui/settings.slint:404
 msgid "Lengthen the leave delay"
 msgstr ""
 
-#: ui/help.slint:296 ui/settings.slint:494
+#: ui/help.slint:300 ui/settings.slint:496
 msgid "Licence"
 msgstr ""
 
-#: ui/settings.slint:518
+#: ui/settings.slint:521
 msgid "Licence key"
 msgstr ""
 
-#: ui/settings.slint:242
+#: ui/settings.slint:244
 msgid "Light"
 msgstr ""
 
@@ -790,7 +790,7 @@ msgstr ""
 msgid "Link"
 msgstr ""
 
-#: ui/help.slint:308
+#: ui/help.slint:312
 msgid "Links"
 msgstr ""
 
@@ -822,7 +822,7 @@ msgstr ""
 msgid "Lock your encrypted items behind a password you choose."
 msgstr ""
 
-#: ui/settings.slint:786
+#: ui/settings.slint:788
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr ""
 
@@ -830,11 +830,11 @@ msgstr ""
 msgid "Main window"
 msgstr ""
 
-#: ui/settings.slint:281
+#: ui/settings.slint:283
 msgid "Make the panel narrower"
 msgstr ""
 
-#: ui/settings.slint:282
+#: ui/settings.slint:284
 msgid "Make the panel wider"
 msgstr ""
 
@@ -854,11 +854,11 @@ msgstr ""
 msgid "Master password"
 msgstr ""
 
-#: ui/help.slint:346
+#: ui/help.slint:350
 msgid "Microsoft Store"
 msgstr ""
 
-#: ui/panel.slint:676
+#: ui/components/item-card.slint:614 ui/panel.slint:676
 msgid "More"
 msgstr ""
 
@@ -906,7 +906,7 @@ msgstr ""
 msgid "Navigation"
 msgstr ""
 
-#: ui/settings.slint:417
+#: ui/settings.slint:419
 msgid "Never paste into"
 msgstr ""
 
@@ -934,7 +934,7 @@ msgstr ""
 msgid "New tag, then Enter"
 msgstr ""
 
-#: ui/onboarding.slint:287
+#: ui/onboarding.slint:291
 msgid "Next"
 msgstr ""
 
@@ -946,7 +946,7 @@ msgstr ""
 msgid "Next scope"
 msgstr ""
 
-#: ui/settings.slint:586
+#: ui/settings.slint:588
 msgid "No backups yet."
 msgstr ""
 
@@ -970,7 +970,7 @@ msgstr ""
 msgid "No matching command"
 msgstr ""
 
-#: ui/settings.slint:427
+#: ui/settings.slint:429
 msgid "No programs yet."
 msgstr ""
 
@@ -1002,7 +1002,7 @@ msgstr ""
 msgid "Not included"
 msgstr ""
 
-#: ui/onboarding.slint:205 ui/settings.slint:222
+#: ui/onboarding.slint:209 ui/settings.slint:224
 msgid "Not set"
 msgstr ""
 
@@ -1030,11 +1030,11 @@ msgstr ""
 msgid "OK"
 msgstr ""
 
-#: ui/components/shortcuts-sheet.slint:15 ui/components/shortcuts-sheet.slint:40 ui/settings.slint:370
+#: ui/components/shortcuts-sheet.slint:15 ui/components/shortcuts-sheet.slint:40 ui/settings.slint:372
 msgid "Off"
 msgstr ""
 
-#: ui/settings.slint:366
+#: ui/settings.slint:368
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr ""
 
@@ -1046,7 +1046,7 @@ msgstr ""
 msgid "Only text, code, link and template items can be sensitive."
 msgstr ""
 
-#: ui/help.slint:313 ui/help.slint:331 ui/help.slint:340 ui/help.slint:348 ui/help.slint:357
+#: ui/help.slint:317 ui/help.slint:335 ui/help.slint:344 ui/help.slint:352 ui/help.slint:361
 msgid "Open"
 msgstr ""
 
@@ -1066,23 +1066,23 @@ msgstr ""
 msgid "Open Snipdeck"
 msgstr ""
 
-#: ui/settings.slint:365 ui/settings.slint:369
+#: ui/settings.slint:367 ui/settings.slint:371
 msgid "Open a docked panel by"
 msgstr ""
 
-#: ui/settings.slint:658
+#: ui/settings.slint:660
 msgid "Open backups folder"
 msgstr ""
 
-#: ui/help.slint:216 ui/settings.slint:649
+#: ui/help.slint:220 ui/settings.slint:651
 msgid "Open data folder"
 msgstr ""
 
-#: ui/help.slint:90 ui/help.slint:221
+#: ui/help.slint:90 ui/help.slint:225
 msgid "Open logs folder"
 msgstr ""
 
-#: ui/help.slint:349
+#: ui/help.slint:353
 msgid "Open the Microsoft Store page"
 msgstr ""
 
@@ -1090,27 +1090,27 @@ msgstr ""
 msgid "Open the Picker at your cursor"
 msgstr ""
 
-#: ui/onboarding.slint:113 ui/settings.slint:142
+#: ui/onboarding.slint:113 ui/settings.slint:144
 msgid "Open the picker"
 msgstr ""
 
-#: ui/help.slint:341
+#: ui/help.slint:345
 msgid "Open the releases page"
 msgstr ""
 
-#: ui/help.slint:332
+#: ui/help.slint:336
 msgid "Open the source code"
 msgstr ""
 
-#: ui/help.slint:358
+#: ui/help.slint:362
 msgid "Open the third-party notices"
 msgstr ""
 
-#: ui/help.slint:314
+#: ui/help.slint:318
 msgid "Open the user guide"
 msgstr ""
 
-#: ui/help.slint:311
+#: ui/help.slint:315
 msgid "Opens in your browser."
 msgstr ""
 
@@ -1122,7 +1122,7 @@ msgstr ""
 msgid "Orange"
 msgstr ""
 
-#: ui/settings.slint:788
+#: ui/settings.slint:790
 msgid "Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."
 msgstr ""
 
@@ -1134,7 +1134,7 @@ msgstr ""
 msgid "Panel and Picker"
 msgstr ""
 
-#: ui/onboarding.slint:215 ui/settings.slint:349
+#: ui/onboarding.slint:219 ui/settings.slint:351
 msgid "Panel dock"
 msgstr ""
 
@@ -1142,7 +1142,7 @@ msgstr ""
 msgid "Panel menu"
 msgstr ""
 
-#: ui/settings.slint:277 ui/settings.slint:280
+#: ui/settings.slint:279 ui/settings.slint:282
 msgid "Panel width"
 msgstr ""
 
@@ -1150,7 +1150,7 @@ msgstr ""
 msgid "Paste"
 msgstr ""
 
-#: ui/settings.slint:499
+#: ui/settings.slint:501
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
 msgstr ""
 
@@ -1162,7 +1162,7 @@ msgstr ""
 msgid "Paste the Nth result"
 msgstr ""
 
-#: ui/onboarding.slint:115 ui/settings.slint:144
+#: ui/onboarding.slint:115 ui/settings.slint:146
 msgid "Paste the next item"
 msgstr ""
 
@@ -1186,7 +1186,7 @@ msgstr ""
 msgid "Pastes into {} · {}"
 msgstr ""
 
-#: ui/settings.slint:150
+#: ui/settings.slint:152
 msgid "Pastes the next item of the list in order."
 msgstr ""
 
@@ -1198,11 +1198,11 @@ msgstr ""
 msgid "Pause hotkeys"
 msgstr ""
 
-#: ui/settings.slint:503
+#: ui/settings.slint:505
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included."
 msgstr ""
 
-#: ui/settings.slint:816
+#: ui/settings.slint:818
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions."
 msgstr ""
 
@@ -1254,7 +1254,7 @@ msgstr ""
 msgid "Press Ctrl+N to add a snippet, or Ctrl+K to see every command."
 msgstr ""
 
-#: ui/onboarding.slint:206 ui/settings.slint:223
+#: ui/onboarding.slint:210 ui/settings.slint:225
 msgid "Press the new shortcut"
 msgstr ""
 
@@ -1262,7 +1262,7 @@ msgstr ""
 msgid "Preview"
 msgstr ""
 
-#: ui/editors.slint:563 ui/settings.slint:764
+#: ui/editors.slint:563 ui/settings.slint:766
 msgid "Privacy"
 msgstr ""
 
@@ -1270,7 +1270,7 @@ msgstr ""
 msgid "Problem"
 msgstr ""
 
-#: ui/settings.slint:472
+#: ui/settings.slint:474
 msgid "Program to add"
 msgstr ""
 
@@ -1306,7 +1306,7 @@ msgstr ""
 msgid "Red"
 msgstr ""
 
-#: ui/settings.slint:265 ui/settings.slint:268
+#: ui/settings.slint:267 ui/settings.slint:270
 msgid "Reduce motion"
 msgstr ""
 
@@ -1314,7 +1314,7 @@ msgstr ""
 msgid "Remove tag {}"
 msgstr ""
 
-#: ui/settings.slint:459
+#: ui/settings.slint:461
 msgid "Remove {} from the list"
 msgstr ""
 
@@ -1330,11 +1330,11 @@ msgstr ""
 msgid "Required"
 msgstr ""
 
-#: ui/main_window.slint:489 ui/main_window.slint:1444 ui/settings.slint:625
+#: ui/main_window.slint:489 ui/main_window.slint:1444 ui/settings.slint:627
 msgid "Restore"
 msgstr ""
 
-#: ui/settings.slint:628
+#: ui/settings.slint:630
 msgid "Restore the backup of {}"
 msgstr ""
 
@@ -1346,7 +1346,7 @@ msgstr ""
 msgid "Results"
 msgstr ""
 
-#: ui/onboarding.slint:222 ui/settings.slint:356
+#: ui/onboarding.slint:226 ui/settings.slint:358
 msgid "Right edge"
 msgstr ""
 
@@ -1358,7 +1358,7 @@ msgstr ""
 msgid "Rose"
 msgstr ""
 
-#: ui/settings.slint:519
+#: ui/settings.slint:522
 msgid "SNIP1."
 msgstr ""
 
@@ -1374,7 +1374,7 @@ msgstr ""
 msgid "Save from the clipboard"
 msgstr ""
 
-#: ui/onboarding.slint:114 ui/settings.slint:143
+#: ui/onboarding.slint:114 ui/settings.slint:145
 msgid "Save the clipboard as an item"
 msgstr ""
 
@@ -1382,11 +1382,11 @@ msgstr ""
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr ""
 
-#: ui/settings.slint:673
+#: ui/settings.slint:675
 msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
 msgstr ""
 
-#: ui/settings.slint:149
+#: ui/settings.slint:151
 msgid "Saves the text on the clipboard as a new item in the list the panel shows."
 msgstr ""
 
@@ -1410,7 +1410,7 @@ msgstr ""
 msgid "Search all snippets"
 msgstr ""
 
-#: ui/onboarding.slint:186 ui/settings.slint:148
+#: ui/onboarding.slint:190 ui/settings.slint:150
 msgid "Search every board and paste without opening the window."
 msgstr ""
 
@@ -1426,7 +1426,7 @@ msgstr ""
 msgid "Search snippets"
 msgstr ""
 
-#: ui/settings.slint:767
+#: ui/settings.slint:769
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr ""
 
@@ -1458,19 +1458,19 @@ msgstr ""
 msgid "Shift Enter"
 msgstr ""
 
-#: ui/help.slint:111 ui/onboarding.slint:190 ui/onboarding.slint:196 ui/settings.slint:212
+#: ui/help.slint:115 ui/onboarding.slint:194 ui/onboarding.slint:200 ui/settings.slint:214
 msgid "Shortcuts"
 msgstr ""
 
-#: ui/settings.slint:383
+#: ui/settings.slint:385
 msgid "Shorten the hover delay"
 msgstr ""
 
-#: ui/settings.slint:401
+#: ui/settings.slint:403
 msgid "Shorten the leave delay"
 msgstr ""
 
-#: ui/help.slint:322
+#: ui/help.slint:326
 msgid "Show"
 msgstr ""
 
@@ -1482,7 +1482,7 @@ msgstr ""
 msgid "Show Panel ({})"
 msgstr ""
 
-#: ui/onboarding.slint:237 ui/onboarding.slint:240 ui/settings.slint:299 ui/settings.slint:302
+#: ui/onboarding.slint:241 ui/onboarding.slint:244 ui/settings.slint:301 ui/settings.slint:304
 msgid "Show Snipdeck in the taskbar"
 msgstr ""
 
@@ -1490,15 +1490,15 @@ msgstr ""
 msgid "Show or hide the Panel"
 msgstr ""
 
-#: ui/onboarding.slint:112 ui/settings.slint:141
+#: ui/onboarding.slint:112 ui/settings.slint:143
 msgid "Show or hide the panel"
 msgstr ""
 
-#: ui/help.slint:323
+#: ui/help.slint:327
 msgid "Show the welcome tour again"
 msgstr ""
 
-#: ui/onboarding.slint:277
+#: ui/onboarding.slint:281
 msgid "Skip"
 msgstr ""
 
@@ -1514,7 +1514,7 @@ msgstr ""
 msgid "Snipdeck (hotkeys paused)"
 msgstr ""
 
-#: ui/settings.slint:496
+#: ui/settings.slint:498
 msgid "Snipdeck Supporter"
 msgstr ""
 
@@ -1522,7 +1522,7 @@ msgstr ""
 msgid "Snipdeck handle, press the Panel hotkey to open"
 msgstr ""
 
-#: ui/settings.slint:784
+#: ui/settings.slint:786
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr ""
 
@@ -1530,23 +1530,23 @@ msgstr ""
 msgid "Snipdeck keeps its own copy of the file."
 msgstr ""
 
-#: ui/onboarding.slint:171
+#: ui/onboarding.slint:175
 msgid "Snipdeck keeps the text you paste again and again, one shortcut away. Three things to know:"
 msgstr ""
 
-#: ui/help.slint:338
+#: ui/help.slint:342
 msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
 msgstr ""
 
-#: ui/settings.slint:787
+#: ui/settings.slint:789
 msgid "Snipdeck never connects to the internet: every icon and font it shows is packaged with it."
 msgstr ""
 
-#: ui/settings.slint:553
+#: ui/settings.slint:555
 msgid "Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything."
 msgstr ""
 
-#: ui/onboarding.slint:251 ui/settings.slint:324
+#: ui/onboarding.slint:255 ui/settings.slint:326
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr ""
 
@@ -1558,7 +1558,7 @@ msgstr ""
 msgid "Sort items by"
 msgstr ""
 
-#: ui/help.slint:328
+#: ui/help.slint:332
 msgid "Source code"
 msgstr ""
 
@@ -1566,15 +1566,15 @@ msgstr ""
 msgid "Space"
 msgstr ""
 
-#: ui/onboarding.slint:250 ui/onboarding.slint:253 ui/settings.slint:323 ui/settings.slint:326
+#: ui/onboarding.slint:254 ui/onboarding.slint:257 ui/settings.slint:325 ui/settings.slint:328
 msgid "Start with Windows"
 msgstr ""
 
-#: ui/onboarding.slint:150
+#: ui/onboarding.slint:154
 msgid "Start-up"
 msgstr ""
 
-#: ui/onboarding.slint:139
+#: ui/onboarding.slint:143
 msgid "Step {} of {}"
 msgstr ""
 
@@ -1602,7 +1602,7 @@ msgstr ""
 msgid "Tags…"
 msgstr ""
 
-#: ui/settings.slint:252
+#: ui/settings.slint:254
 msgid "Takes effect the next time Snipdeck starts."
 msgstr ""
 
@@ -1634,11 +1634,11 @@ msgstr ""
 msgid "The Trash is empty"
 msgstr ""
 
-#: ui/settings.slint:712
+#: ui/settings.slint:714
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
 msgstr ""
 
-#: ui/help.slint:355
+#: ui/help.slint:359
 msgid "The licences of the libraries Snipdeck is built from."
 msgstr ""
 
@@ -1646,19 +1646,19 @@ msgstr ""
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr ""
 
-#: ui/settings.slint:562
+#: ui/settings.slint:564
 msgid "The oldest ones are deleted once there are more than this."
 msgstr ""
 
-#: ui/onboarding.slint:180
+#: ui/onboarding.slint:184
 msgid "The panel"
 msgstr ""
 
-#: ui/onboarding.slint:185
+#: ui/onboarding.slint:189
 msgid "The picker"
 msgstr ""
 
-#: ui/help.slint:227
+#: ui/help.slint:231
 msgid "The report holds versions and settings switches, never your items."
 msgstr ""
 
@@ -1674,11 +1674,11 @@ msgstr ""
 msgid "The time now"
 msgstr ""
 
-#: ui/settings.slint:237 ui/settings.slint:241
+#: ui/settings.slint:239 ui/settings.slint:243
 msgid "Theme"
 msgstr ""
 
-#: ui/help.slint:354
+#: ui/help.slint:358
 msgid "Third-party notices"
 msgstr ""
 
@@ -1686,11 +1686,11 @@ msgstr ""
 msgid "This board"
 msgstr ""
 
-#: ui/help.slint:274
+#: ui/help.slint:278
 msgid "This copy"
 msgstr ""
 
-#: ui/settings.slint:578
+#: ui/settings.slint:580
 msgid "This demo keeps nothing on disk, so there are no backups."
 msgstr ""
 
@@ -1714,7 +1714,7 @@ msgstr ""
 msgid "Title"
 msgstr ""
 
-#: ui/settings.slint:789
+#: ui/settings.slint:791
 msgid "To remove everything, use Erase library above and then delete the folder."
 msgstr ""
 
@@ -1722,11 +1722,11 @@ msgstr ""
 msgid "Today's date"
 msgstr ""
 
-#: ui/help.slint:196
+#: ui/help.slint:200
 msgid "Tools"
 msgstr ""
 
-#: ui/onboarding.slint:222 ui/settings.slint:356
+#: ui/onboarding.slint:226 ui/settings.slint:358
 msgid "Top edge"
 msgstr ""
 
@@ -1734,7 +1734,7 @@ msgstr ""
 msgid "Trash"
 msgstr ""
 
-#: ui/help.slint:111
+#: ui/help.slint:115
 msgid "Troubleshoot"
 msgstr ""
 
@@ -1746,11 +1746,11 @@ msgstr ""
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr ""
 
-#: ui/onboarding.slint:260 ui/settings.slint:336
+#: ui/onboarding.slint:264 ui/settings.slint:338
 msgid "Turn this off and closing the Panel or the Main window quits Snipdeck."
 msgstr ""
 
-#: ui/settings.slint:266
+#: ui/settings.slint:268
 msgid "Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off."
 msgstr ""
 
@@ -1758,7 +1758,7 @@ msgstr ""
 msgid "Type a command"
 msgstr ""
 
-#: ui/settings.slint:724
+#: ui/settings.slint:726
 msgid "Type {} to confirm"
 msgstr ""
 
@@ -1790,11 +1790,11 @@ msgstr ""
 msgid "Use the item"
 msgstr ""
 
-#: ui/command_texts.slint:22 ui/components/shortcuts-sheet.slint:95 ui/help.slint:310 ui/main_window.slint:1609
+#: ui/command_texts.slint:22 ui/components/shortcuts-sheet.slint:95 ui/help.slint:314 ui/main_window.slint:1609
 msgid "User guide"
 msgstr ""
 
-#: ui/help.slint:276
+#: ui/help.slint:280
 msgid "Version"
 msgstr ""
 
@@ -1802,7 +1802,7 @@ msgstr ""
 msgid "Violet"
 msgstr ""
 
-#: ui/help.slint:320
+#: ui/help.slint:324
 msgid "Walk through the basics again."
 msgstr ""
 
@@ -1810,11 +1810,11 @@ msgstr ""
 msgid "Warning"
 msgstr ""
 
-#: ui/onboarding.slint:75 ui/onboarding.slint:147
+#: ui/onboarding.slint:75 ui/onboarding.slint:151
 msgid "Welcome to Snipdeck"
 msgstr ""
 
-#: ui/command_texts.slint:23 ui/help.slint:319
+#: ui/command_texts.slint:23 ui/help.slint:323
 msgid "Welcome tour"
 msgstr ""
 
@@ -1830,11 +1830,11 @@ msgstr ""
 msgid "What you changed in this item has not been saved."
 msgstr ""
 
-#: ui/onboarding.slint:229 ui/settings.slint:312
+#: ui/onboarding.slint:233 ui/settings.slint:314
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr ""
 
-#: ui/onboarding.slint:149
+#: ui/onboarding.slint:153
 msgid "Where the panel sits"
 msgstr ""
 
@@ -1842,15 +1842,15 @@ msgstr ""
 msgid "Where the text cursor lands after pasting"
 msgstr ""
 
-#: ui/onboarding.slint:248 ui/settings.slint:297
+#: ui/onboarding.slint:252 ui/settings.slint:299
 msgid "Window behaviour"
 msgstr ""
 
-#: ui/settings.slint:242
+#: ui/settings.slint:244
 msgid "Windows"
 msgstr ""
 
-#: ui/settings.slint:670
+#: ui/settings.slint:672
 msgid "Your data"
 msgstr ""
 
@@ -1858,11 +1858,11 @@ msgstr ""
 msgid "Your deck is empty"
 msgstr ""
 
-#: ui/settings.slint:785
+#: ui/settings.slint:787
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr ""
 
-#: ui/onboarding.slint:148
+#: ui/onboarding.slint:152
 msgid "Your shortcuts"
 msgstr ""
 
@@ -1934,11 +1934,11 @@ msgstr ""
 msgid "https://example.com"
 msgstr ""
 
-#: ui/settings.slint:385 ui/settings.slint:403
+#: ui/settings.slint:387 ui/settings.slint:405
 msgid "ms"
 msgstr ""
 
-#: ui/settings.slint:473
+#: ui/settings.slint:475
 msgid "notepad.exe"
 msgstr ""
 
@@ -1954,7 +1954,7 @@ msgstr ""
 msgid "preferences options configure hotkeys theme backup"
 msgstr ""
 
-#: ui/settings.slint:283
+#: ui/settings.slint:285
 msgid "px"
 msgstr ""
 
@@ -1962,7 +1962,7 @@ msgstr ""
 msgid "quick find paste palette"
 msgstr ""
 
-#: ui/settings.slint:772
+#: ui/settings.slint:774
 msgid "s"
 msgstr ""
 
@@ -2010,7 +2010,7 @@ msgstr ""
 msgid "{} found"
 msgstr ""
 
-#: ui/help.slint:128
+#: ui/help.slint:132
 msgid "{} of the checks need a look."
 msgstr ""
 

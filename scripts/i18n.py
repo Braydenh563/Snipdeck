@@ -59,12 +59,29 @@ def entry_keys(text):
     return entries
 
 
-def write_file(path, lang, keys, existing, refs):
+def fuzzy_keys(text):
+    """The (ctx, msgid) keys marked `#, fuzzy` (a translator is unsure; Slint treats them as untranslated)."""
+    out, flagged, ctx = set(), False, None
+    for line in text.splitlines():
+        if line.startswith("#,") and "fuzzy" in line:
+            flagged = True
+        elif line.startswith("msgctxt "):
+            ctx = line[8:].strip()[1:-1]
+        elif line.startswith("msgid "):
+            if flagged and line.strip() != 'msgid ""':
+                out.add((ctx, line[6:].strip()[1:-1]))
+            flagged, ctx = False, None
+    return out
+
+
+def write_file(path, lang, keys, existing, refs, fuzzy=frozenset()):
     parts = [header(lang)]
     for ctx, msg in keys:
         block = []
         if refs:
             block.append("#: " + " ".join(refs[(ctx, msg)]))
+        if (ctx, msg) in fuzzy:
+            block.append("#, fuzzy")
         if ctx:
             block.append(f'msgctxt "{ctx}"')
         block.append(f'msgid "{msg}"')
@@ -87,8 +104,8 @@ def main():
         write_file(pot, None, keys, {}, found)
         for lang in LOCALES:
             p = po_path(lang)
-            existing = entry_keys(p.read_text(encoding="utf-8")) if p.exists() else {}
-            write_file(p, lang, keys, existing, None)
+            text = p.read_text(encoding="utf-8") if p.exists() else ""
+            write_file(p, lang, keys, entry_keys(text), None, fuzzy_keys(text))
         print(f"{len(keys)} strings, {len(LOCALES)} locales")
         return 0
     problems, untranslated = [], 0

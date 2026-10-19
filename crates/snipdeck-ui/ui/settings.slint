@@ -103,6 +103,8 @@ export component SettingsPage inherits Window {
     in-out property <string> erase-text;
     in-out property <bool> forget-key: false;
     property <int> erase-focus: 0;
+    // Goes up when the Get Supporter dialog closes: its button takes the focus back.
+    property <int> supporter-focus: 0;
     // What the confirmation must be typed as, exactly.
     out property <string> erase-word: "DELETE";
 
@@ -503,6 +505,7 @@ export component SettingsPage inherits Window {
                         description: @tr("Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included.");
                         Button {
                             text: @tr("Get Supporter…");
+                            focus-request: root.supporter-focus;
                             enabled: !root.supporter-open;
                             clicked => { root.supporter-open = true; }
                             changed has-focus => {
@@ -542,7 +545,6 @@ export component SettingsPage inherits Window {
                         font-family: Fonts.sans;
                         font-size: Type.sm;
                         wrap: word-wrap;
-                        accessible-role: none;
                     }
                     PlanTable { }
                 }
@@ -555,7 +557,7 @@ export component SettingsPage inherits Window {
                         font-family: Fonts.sans;
                         font-size: Type.sm;
                         wrap: word-wrap;
-                        accessible-role: none;
+                        accessible-role: AccessibleRole.text;
                     }
                     SettingRow {
                         title: @tr("Backups to keep");
@@ -815,16 +817,20 @@ export component SettingsPage inherits Window {
         title: @tr("Get Supporter");
         body: @tr("Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions.");
         open: root.supporter-open;
+        fill: true;
         dismissed => { root.supporter-open = false; }
+        // The button is off while the dialog is open, so the focus has to come back to it (WCAG 2.4.3).
+        closed => { root.supporter-focus += 1; }
         accepted => { root.supporter-requested(); root.supporter-open = false; }
         VerticalLayout {
             horizontal-stretch: 1;
             spacing: Space.s3;
-            Flickable {
+            plan-flick := Flickable {
                 // Short windows scroll the table instead of pushing the buttons off the screen.
                 height: min(table.preferred-height, max(Space.s12 * 2, root.height - Space.s12 * 6));
+                content-width: self.width;
                 content-height: table.preferred-height;
-                table := PlanTable { width: parent.width; }
+                table := PlanTable { width: plan-flick.content-width; }
             }
             HorizontalLayout {
                 spacing: Space.s2;

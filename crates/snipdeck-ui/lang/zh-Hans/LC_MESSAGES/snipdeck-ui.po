@@ -377,7 +377,7 @@ msgid "Escape"
 msgstr "Esc"
 
 msgid "Every Supporter feature is on. Thank you."
-msgstr ""
+msgstr "所有支持者功能均已开启。谢谢。"
 
 msgid "Everything checks out."
 msgstr "一切正常。"
@@ -866,7 +866,7 @@ msgid "Paste"
 msgstr "粘贴"
 
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
-msgstr ""
+msgstr "粘贴许可证密钥即可开启支持者功能。密钥只在这台电脑上验证，不会发送到任何地方。"
 
 msgid "Paste stack"
 msgstr ""
@@ -1139,7 +1139,7 @@ msgid "Snipdeck (hotkeys paused)"
 msgstr "Snipdeck（热键已暂停）"
 
 msgid "Snipdeck Supporter"
-msgstr ""
+msgstr "Snipdeck 支持者"
 
 msgid "Snipdeck handle, press the Panel hotkey to open"
 msgstr "Snipdeck 拉手，按面板快捷键即可展开"
@@ -1505,7 +1505,7 @@ msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgstr "{n} 个片段将一同移至回收站。你可以在 30 天内恢复它们。"
 
 msgid "{} (Supporter)"
-msgstr ""
+msgstr "{} (支持者)"
 
 msgid "{} found"
 msgstr ""

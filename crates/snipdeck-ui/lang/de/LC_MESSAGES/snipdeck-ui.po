@@ -377,7 +377,7 @@ msgid "Escape"
 msgstr "Esc"
 
 msgid "Every Supporter feature is on. Thank you."
-msgstr ""
+msgstr "Alle Unterstützer-Funktionen sind aktiv. Vielen Dank."
 
 msgid "Everything checks out."
 msgstr "Alles in Ordnung."
@@ -866,7 +866,7 @@ msgid "Paste"
 msgstr "Einfügen"
 
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
-msgstr ""
+msgstr "Füge einen Lizenzschlüssel ein, um Unterstützer einzuschalten. Der Schlüssel wird auf diesem PC geprüft und nichts wird irgendwohin gesendet."
 
 msgid "Paste stack"
 msgstr ""
@@ -1139,7 +1139,7 @@ msgid "Snipdeck (hotkeys paused)"
 msgstr "Snipdeck (Tastenkürzel pausiert)"
 
 msgid "Snipdeck Supporter"
-msgstr ""
+msgstr "Snipdeck Unterstützer"
 
 msgid "Snipdeck handle, press the Panel hotkey to open"
 msgstr "Snipdeck-Griff, zum Öffnen das Panel-Tastenkürzel drücken"
@@ -1505,7 +1505,7 @@ msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgstr "{n} Textbaustein wird mit ihr in den Papierkorb verschoben. Du kannst ihn 30 Tage lang wiederherstellen."
 
 msgid "{} (Supporter)"
-msgstr ""
+msgstr "{} (Unterstützer)"
 
 msgid "{} found"
 msgstr ""

@@ -23,7 +23,7 @@ use std::{
 };
 
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
-use slint::{ComponentHandle, Global, Model};
+use slint::{ComponentHandle, Global, Model, platform::Key};
 use snipdeck_app::{
     controller::{Controller, Effect, Services},
     demo,
@@ -56,7 +56,7 @@ use snipdeck_ui::{SettingsPage, ToastKind};
 
 #[path = "support/mod.rs"]
 mod support;
-use support::on_ui_thread;
+use support::{key, on_ui_thread, press};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 type Bound = SettingsBinding<FakeClipboard, FakeKeyboard, FakeTiming>;
@@ -1100,10 +1100,97 @@ fn get_supporter_opens_the_email_app_with_the_one_named_address() {
             *r.host.urls.borrow(),
             [format!("mailto:{}", settings_binding::SUPPORTER_EMAIL)]
         );
+        // Pinned on purpose: this is the placeholder, so it fails the day the real address goes
+        // into `SUPPORTER_EMAIL`. Change it together with that constant (and `site/index.html`).
         assert_eq!(
             settings_binding::supporter_mailto(),
             "mailto:SUPPORTER_EMAIL_PLACEHOLDER",
             "the placeholder stays until the owner supplies the address"
+        );
+    });
+}
+
+#[test]
+fn the_free_is_fully_usable_line_is_readable_by_a_screen_reader() {
+    on_ui_thread(|| {
+        let r = rig();
+        element(
+            &r.ui,
+            "Free is fully usable. Supporter pays for convenience and supports the app.",
+            AccessibleRole::Text,
+        );
+    });
+}
+
+/// The whole path a person takes: the button opens the dialog, Escape closes it with the focus
+/// back on the button (WCAG 2.4.3), and "Email me" hands the mailto link to the host.
+#[test]
+fn the_get_supporter_dialog_opens_closes_with_escape_and_emails() {
+    on_ui_thread(|| {
+        let r = rig();
+        let button = || element(&r.ui, "Get Supporter\u{2026}", AccessibleRole::Button);
+        let settle = slint::platform::update_timers_and_animations;
+        assert!(!r.ui.get_supporter_open());
+        assert_eq!(button().accessible_enabled(), Some(true));
+
+        button().invoke_accessible_default_action();
+        settle();
+        assert!(r.ui.get_supporter_open(), "the button opens the dialog");
+        assert_eq!(button().accessible_enabled(), Some(false), "and goes off");
+
+        // The comparison table inside the dialog is laid out and sits within the card.
+        // The dialog card is the group that also carries the dialog's body text.
+        let card = ElementHandle::find_by_accessible_label(&r.ui, "Get Supporter")
+            .filter(|e| e.accessible_role() == Some(AccessibleRole::Groupbox))
+            .find(|e| {
+                e.accessible_description()
+                    .is_some_and(|d| d.contains("Can't afford it"))
+            })
+            .expect("the dialog card");
+        let (cp, cs) = (card.absolute_position(), card.size());
+        let table = ElementHandle::find_by_accessible_label(&r.ui, "Free and Supporter compared")
+            .filter(|e| e.accessible_role() == Some(AccessibleRole::Groupbox))
+            .find(|e| {
+                let p = e.absolute_position();
+                p.x >= cp.x && p.y >= cp.y && p.y <= cp.y + cs.height
+            })
+            .expect("a plan table inside the dialog card");
+        let (tp, ts) = (table.absolute_position(), table.size());
+        assert!(cs.width > 0.0 && cs.height > 0.0, "the card has a size");
+        assert!(
+            ts.width > 0.0 && ts.height > 0.0,
+            "the table has a size: {ts:?}"
+        );
+        assert!(
+            tp.x >= cp.x && tp.x + ts.width <= cp.x + cs.width,
+            "the table ({tp:?} {ts:?}) is inside the card ({cp:?} {cs:?}) across"
+        );
+        assert!(
+            tp.y >= cp.y && tp.y + ts.height <= cp.y + cs.height,
+            "the table ({tp:?} {ts:?}) is inside the card ({cp:?} {cs:?}) down"
+        );
+
+        press(r.ui.window(), &key(Key::Escape));
+        settle();
+        assert!(!r.ui.get_supporter_open(), "Escape closes it");
+        assert_eq!(button().accessible_enabled(), Some(true));
+        assert!(r.host.urls.borrow().is_empty(), "closing sends nothing");
+
+        // The focus is back on the button: Enter presses it again.
+        press(r.ui.window(), "\n");
+        settle();
+        assert!(
+            r.ui.get_supporter_open(),
+            "after Escape the focus is on the button that opened the dialog"
+        );
+
+        element(&r.ui, "Email me", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(!r.ui.get_supporter_open(), "Email me closes the dialog");
+        assert_eq!(
+            *r.host.urls.borrow(),
+            [settings_binding::supporter_mailto()],
+            "and opens the mailto link, once"
         );
     });
 }
