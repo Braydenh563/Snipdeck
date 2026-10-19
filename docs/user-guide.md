@@ -65,7 +65,7 @@ sensitive. A sensitive item:
 - Is put on the clipboard marked private, so Windows clipboard history and cloud clipboard skip it. If you only copied it, Snipdeck
   clears it from the clipboard after 30 seconds (if the clipboard still holds it).
 - Is masked in the fill form.
-- With Supporter, is also encrypted on disk with a key protected by Windows. The title, tags and search text are not
+- Is also encrypted on disk, on every plan, with a key protected by Windows (Supporter can add a master password). The title, tags and search text are not
   encrypted. See [`crypto.md`](crypto.md).
 
 ## Paste an item

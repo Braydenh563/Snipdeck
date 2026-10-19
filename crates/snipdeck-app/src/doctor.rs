@@ -379,7 +379,7 @@ fn crashes(host: &dyn DoctorHost) -> Check {
 pub struct ReportInfo {
     /// Snipdeck's version.
     pub version: String,
-    /// The licence tier ("Free", "Pro").
+    /// The licence tier ("Free", "Supporter").
     pub tier: String,
     /// The operating system and its build.
     pub os: String,

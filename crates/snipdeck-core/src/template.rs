@@ -8,10 +8,10 @@
 //! # Which render method to call
 //!
 //! The app should use [`Template::render_checked`]: it enforces the user's [`Entitlements`]
-//! (prompted fields are Pro) and the output size limit, [`MAX_RENDERED_BYTES`], and reports
+//! (prompted fields are Supporter) and the output size limit, [`MAX_RENDERED_BYTES`], and reports
 //! both as a [`RenderError`]. [`Template::try_render`] does the size check only, for callers
 //! that have verified the entitlement themselves. [`Template::render`] is the unchecked
-//! primitive: it resolves Pro placeholders for anyone and, when the output would be over
+//! primitive: it resolves Supporter placeholders for anyone and, when the output would be over
 //! the limit, cuts it there instead of failing.
 //!
 //! # Syntax
@@ -23,8 +23,8 @@
 //! | `{datetime:FORMAT}` | Free | the date and time formatted by `FORMAT`, see below |
 //! | `{clipboard}` | Free | the clipboard text the caller supplied, or nothing |
 //! | `{cursor}` | Free | nothing; marks where the caret should land, see [`Rendered::cursor_from_end`] |
-//! | `{field:Name}` / `{field:Name\|default}` | Pro | the answer to a text prompt |
-//! | `{choice:Name\|a\|b\|c}` | Pro | the answer to a pick-one prompt |
+//! | `{field:Name}` / `{field:Name\|default}` | Supporter | the answer to a text prompt |
+//! | `{choice:Name\|a\|b\|c}` | Supporter | the answer to a pick-one prompt |
 //!
 //! `{{` and `}}` produce literal braces ([`escape`] does this for arbitrary text). Any other
 //! use of a brace is a [`TemplateError`] with the byte span of the problem: an unknown
@@ -427,7 +427,7 @@ impl fmt::Display for TemplateErrorKind {
 }
 
 /// Why a template could not be rendered. Both cases leave the template and context as they
-/// were; show the user a message (or the Pro upsell) and let them try again.
+/// were; show the user a message (or the Supporter upsell) and let them try again.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum RenderError {
     /// The result would be longer than [`MAX_RENDERED_BYTES`].
@@ -436,8 +436,8 @@ pub enum RenderError {
         /// The limit, [`MAX_RENDERED_BYTES`].
         limit: usize,
     },
-    /// The template needs a Pro feature the entitlements do not include.
-    #[error("`{0}` needs Snipdeck Pro")]
+    /// The template needs a Supporter feature the entitlements do not include.
+    #[error("`{0}` needs Snipdeck Supporter")]
     ProRequired(Feature),
 }
 
@@ -529,7 +529,7 @@ impl Template {
         match feature {
             Feature::PromptedFields => !self.prompts.is_empty(),
             Feature::UnlimitedBoards
-            | Feature::SensitiveEncryption
+            | Feature::MasterPassword
             | Feature::FloatingLists
             | Feature::PasteStack => false,
         }
@@ -557,7 +557,7 @@ impl Template {
     /// option. An answer is used as given, even if empty or not among a choice's options.
     ///
     /// This resolves `{field}` and `{choice}` for any tier, so a caller that forgets
-    /// [`Template::check`] gives Free users a Pro feature. If the output would exceed
+    /// [`Template::check`] gives Free users a Supporter feature. If the output would exceed
     /// [`MAX_RENDERED_BYTES`] it is cut at that length (on a character boundary) rather than
     /// grown without bound; [`Template::try_render`] reports that instead.
     pub fn render(&self, ctx: &RenderContext<'_>) -> Rendered {

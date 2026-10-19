@@ -61,6 +61,9 @@ msgstr "Apariencia"
 msgid "Apply the new name"
 msgstr "Aplicar el nuevo nombre"
 
+msgid "As many as you like, of every kind."
+msgstr ""
+
 msgid "Asks for a value each time"
 msgstr "Pide un valor cada vez"
 
@@ -81,6 +84,9 @@ msgstr "Copias de seguridad"
 
 msgid "Backups to keep"
 msgstr "Copias de seguridad que conservar"
+
+msgid "Backups, export, light and dark, 7 languages"
+msgstr ""
 
 msgid "Blue"
 msgstr "Azul"
@@ -220,6 +226,9 @@ msgstr ""
 msgid "Copy the result"
 msgstr ""
 
+msgid "Daily backups, a plain zip export, and your choice of theme."
+msgstr ""
+
 msgid "Dark"
 msgstr "Oscuro"
 
@@ -286,6 +295,9 @@ msgstr "¿Descartar los cambios?"
 msgid "Dock to"
 msgstr "Acoplar a"
 
+msgid "Dock to a screen edge"
+msgstr ""
+
 msgid "Done"
 msgstr "Listo"
 
@@ -316,6 +328,9 @@ msgstr ""
 msgid "Editors"
 msgstr ""
 
+msgid "Email me"
+msgstr ""
+
 msgid "Empty Trash"
 msgstr "Vaciar papelera"
 
@@ -325,8 +340,8 @@ msgstr "Vaciar papelera…"
 msgid "Empty the Trash?"
 msgstr "¿Vaciar la papelera?"
 
-msgid "Encrypting it on disk is a Pro feature."
-msgstr "El cifrado en el disco es una función Pro."
+msgid "Encryption on disk"
+msgstr ""
 
 msgid "Enter"
 msgstr "Enter"
@@ -343,8 +358,8 @@ msgstr "Borrar la biblioteca…"
 msgid "Escape"
 msgstr "Esc"
 
-msgid "Every Pro feature is on. Thank you."
-msgstr "Todas las funciones Pro están activadas. Gracias."
+msgid "Every Supporter feature is on. Thank you."
+msgstr ""
 
 msgid "Everything checks out."
 msgstr "Todo está en orden."
@@ -358,6 +373,9 @@ msgstr "Se borra todo lo de tu biblioteca: tableros, listas, fragmentos, imágen
 msgid "Export library"
 msgstr "Exportar la biblioteca"
 
+msgid "Feature"
+msgstr ""
+
 msgid "Fields"
 msgstr "Campos"
 
@@ -370,11 +388,17 @@ msgstr "Rellenar plantilla"
 msgid "Filter as you type"
 msgstr ""
 
+msgid "Fixed placeholders filled in when you paste."
+msgstr ""
+
 msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
 msgstr "Fija el panel a un borde de la pantalla, en el monitor en el que está. «Flotante» permite dejarlo en cualquier sitio."
 
 msgid "Floating"
 msgstr "Flotante"
+
+msgid "Fold the Panel into a thin strip."
+msgstr ""
 
 msgid "Follow Windows"
 msgstr "Seguir a Windows"
@@ -388,8 +412,23 @@ msgstr "Por ejemplo, Respuestas de correo"
 msgid "For example, Work"
 msgstr "Por ejemplo, Trabajo"
 
+msgid "Free"
+msgstr ""
+
+msgid "Free and Supporter compared"
+msgstr ""
+
+msgid "Free is fully usable. Supporter pays for convenience and supports the app."
+msgstr ""
+
 msgid "Free plan"
 msgstr "Plan gratuito"
+
+msgid "Get Supporter"
+msgstr ""
+
+msgid "Get Supporter…"
+msgstr ""
 
 msgid "Get started"
 msgstr "Empezar"
@@ -427,6 +466,9 @@ msgstr "Secciones de la ayuda"
 msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard 30 seconds after you copy it."
 msgstr "Oculto en las listas hasta que mantengas pulsada la barra espaciadora, fuera del historial del portapapeles y borrado del portapapeles 30 segundos después de copiarlo."
 
+msgid "Hidden on screen and kept out of clipboard history."
+msgstr ""
+
 msgid "Hidden. Hold Space to reveal."
 msgstr "Oculto. Mantén pulsada la barra espaciadora para mostrarlo."
 
@@ -459,6 +501,9 @@ msgstr "Imagen"
 
 msgid "In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe."
 msgstr "En estos programas Snipdeck copia en lugar de pegar. Usa el nombre de archivo del programa, por ejemplo notepad.exe."
+
+msgid "Included"
+msgstr ""
 
 msgid "Insert"
 msgstr "Pegar"
@@ -541,8 +586,14 @@ msgstr "Nombre de la lista"
 msgid "Lists"
 msgstr "Listas"
 
+msgid "Lists and items"
+msgstr ""
+
 msgid "Loading"
 msgstr "Cargando"
+
+msgid "Lock your encrypted items behind a password you choose."
+msgstr ""
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Los registros solo se escriben cuando Snipdeck se cierra por un error, no contienen el contenido de los fragmentos y no se envían a ningún sitio."
@@ -564,6 +615,9 @@ msgstr "Administrar etiquetas…"
 
 msgid "Manual"
 msgstr "Manual"
+
+msgid "Master password"
+msgstr ""
 
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
@@ -673,6 +727,9 @@ msgstr "Aún no hay etiquetas. Añade una abajo."
 msgid "No tags yet. Add tags to an item and they appear here."
 msgstr "Aún no hay etiquetas. Añade etiquetas a un fragmento y aparecerán aquí."
 
+msgid "Not included"
+msgstr ""
+
 msgid "Not set"
 msgstr "Sin definir"
 
@@ -699,6 +756,9 @@ msgstr "Desactivado"
 
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "«Desactivado» mantiene abierto un panel acoplado. Si no, se pliega en una franja fina, y el atajo del panel también lo abre."
+
+msgid "One hotkey turns copied text into an item."
+msgstr ""
 
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "Solo los fragmentos de texto, código, enlace y plantilla pueden ser sensibles."
@@ -766,6 +826,9 @@ msgstr "Fuera de esa carpeta Snipdeck solo escribe la entrada de inicio de Windo
 msgid "Panel"
 msgstr ""
 
+msgid "Panel and Picker"
+msgstr ""
+
 msgid "Panel dock"
 msgstr "Acoplado del panel"
 
@@ -778,8 +841,11 @@ msgstr "Ancho del panel"
 msgid "Paste"
 msgstr "Pegar"
 
-msgid "Paste a licence key to turn on Pro. The key is checked on this PC and nothing is sent anywhere."
-msgstr "Pega una clave de licencia para activar Pro. La clave se comprueba en este PC y no se envía nada a ningún sitio."
+msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
+msgstr ""
+
+msgid "Paste stack"
+msgstr ""
 
 msgid "Paste the Nth result"
 msgstr ""
@@ -791,6 +857,9 @@ msgid "Paste the next item of a stack"
 msgstr ""
 
 msgid "Paste the result"
+msgstr ""
+
+msgid "Paste with a click, or search at your caret."
 msgstr ""
 
 msgid "Pastes into {}"
@@ -807,6 +876,12 @@ msgstr "Ruta del archivo"
 
 msgid "Pause hotkeys"
 msgstr "Pausar atajos"
+
+msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included."
+msgstr ""
+
+msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions."
+msgstr ""
 
 msgid "Picker"
 msgstr ""
@@ -858,6 +933,12 @@ msgstr "Problema"
 
 msgid "Program to add"
 msgstr "Programa para añadir"
+
+msgid "Prompt for a value or a choice each time you paste."
+msgstr ""
+
+msgid "Queue several items, then paste them one per hotkey press."
+msgstr ""
 
 msgid "Quick capture"
 msgstr ""
@@ -922,6 +1003,9 @@ msgstr "Guardar"
 msgid "Save from clipboard"
 msgstr "Guardar desde el portapapeles"
 
+msgid "Save from the clipboard"
+msgstr ""
+
 msgid "Save the clipboard as an item"
 msgstr "Guardar el portapapeles como fragmento"
 
@@ -966,6 +1050,15 @@ msgstr ""
 
 msgid "Sensitive item"
 msgstr "Fragmento sensible"
+
+msgid "Sensitive items are encrypted on disk, on every plan."
+msgstr ""
+
+msgid "Sensitive items, masked"
+msgstr ""
+
+msgid "Separate workspaces, such as Work and Personal."
+msgstr ""
 
 msgid "Settings"
 msgstr "Configuración"
@@ -1015,8 +1108,8 @@ msgstr "Snipdeck"
 msgid "Snipdeck (hotkeys paused)"
 msgstr "Snipdeck (atajos en pausa)"
 
-msgid "Snipdeck Pro"
-msgstr "Snipdeck Pro"
+msgid "Snipdeck Supporter"
+msgstr ""
 
 msgid "Snipdeck handle, press the Panel hotkey to open"
 msgstr "Tirador de Snipdeck, pulsa el atajo del panel para abrir"
@@ -1063,6 +1156,9 @@ msgstr "Inicio"
 msgid "Step {} of {}"
 msgstr "Paso {} de {}"
 
+msgid "Supporter"
+msgstr ""
+
 msgid "Tab"
 msgstr "Tab"
 
@@ -1089,6 +1185,12 @@ msgstr "Plantilla"
 
 msgid "Template text"
 msgstr "Texto de plantilla"
+
+msgid "Templates that ask"
+msgstr ""
+
+msgid "Templates with date, time and cursor"
+msgstr ""
 
 msgid "Text"
 msgstr "Texto"
@@ -1339,6 +1441,12 @@ msgstr ""
 msgid "tutorial intro onboarding basics learn"
 msgstr ""
 
+msgid "unlimited"
+msgstr ""
+
+msgid "up to {}"
+msgstr ""
+
 msgid "version licence update"
 msgstr ""
 
@@ -1357,8 +1465,8 @@ msgstr "{n} fragmento"
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgstr "{n} fragmento se moverá también a la papelera. Puedes restaurarlo durante 30 días."
 
-msgid "{} (Pro)"
-msgstr "{} (Pro)"
+msgid "{} (Supporter)"
+msgstr ""
 
 msgid "{} found"
 msgstr ""

@@ -785,51 +785,55 @@ fn the_last_board_cannot_be_deleted() {
 }
 
 #[test]
-fn free_allows_three_boards_and_a_fourth_says_so() {
+fn free_allows_five_boards_and_a_sixth_says_so() {
     use snipdeck_app::controller::BoardMenuEntry;
     let (mut ctl, _) = rig(Tier::Free);
-    // Two boards in the demo; add the third.
-    let new = menu_index(&mut ctl, &BoardMenuEntry::New);
-    ctl.main_board_menu_activate(new);
-    assert!(ctl.main_screen().editor.is_some());
-    ctl.main_editor_save("Third", None, ListSort::Manual);
-    assert_eq!(ctl.store().boards().unwrap().len(), 3);
+    // Two boards in the demo; add the third, fourth and fifth.
+    for name in ["Third", "Fourth", "Fifth"] {
+        let new = menu_index(&mut ctl, &BoardMenuEntry::New);
+        ctl.main_board_menu_activate(new);
+        assert!(ctl.main_screen().editor.is_some());
+        ctl.main_editor_save(name, None, ListSort::Manual);
+    }
+    assert_eq!(ctl.store().boards().unwrap().len(), 5);
 
     let new = menu_index(&mut ctl, &BoardMenuEntry::New);
     ctl.main_board_menu_activate(new);
     let screen = ctl.main_screen();
-    assert!(screen.editor.is_none(), "no editor for a fourth board");
+    assert!(screen.editor.is_none(), "no editor for a sixth board");
     assert_eq!(message(&screen), ToastMessage::BoardLimit);
-    assert_eq!(ctl.store().boards().unwrap().len(), 3);
+    assert_eq!(ctl.store().boards().unwrap().len(), 5);
 }
 
 #[test]
 fn undo_cannot_bring_a_board_back_past_the_free_limit() {
     use snipdeck_app::controller::BoardMenuEntry;
     let (mut ctl, _) = rig(Tier::Free);
-    let new = menu_index(&mut ctl, &BoardMenuEntry::New);
-    ctl.main_board_menu_activate(new);
-    ctl.main_editor_save("Third", None, ListSort::Manual);
-    // Delete the open board (Third), add another, then try to restore Third from the Trash.
+    for name in ["Third", "Fourth", "Fifth"] {
+        let new = menu_index(&mut ctl, &BoardMenuEntry::New);
+        ctl.main_board_menu_activate(new);
+        ctl.main_editor_save(name, None, ListSort::Manual);
+    }
+    // Delete the open board (Fifth), add another, then try to restore Fifth from the Trash.
     let delete = menu_index(&mut ctl, &BoardMenuEntry::Delete);
     ctl.main_board_menu_activate(delete);
     ctl.main_editor_delete();
-    let third = ctl.store().trashed().unwrap()[0].target;
+    let fifth = ctl.store().trashed().unwrap()[0].target;
     let new = menu_index(&mut ctl, &BoardMenuEntry::New);
     ctl.main_board_menu_activate(new);
     ctl.main_editor_save("Replacement", None, ListSort::Manual);
-    assert_eq!(ctl.store().boards().unwrap().len(), 3);
+    assert_eq!(ctl.store().boards().unwrap().len(), 5);
     ctl.main_open(Section::Trash);
     let at = ctl
         .main_screen()
         .rows
         .iter()
-        .position(|r| Trashable::from(r.key) == third)
+        .position(|r| Trashable::from(r.key) == fifth)
         .unwrap();
     ctl.main_action(MainAction::Restore, at);
     let screen = ctl.main_screen();
     assert_eq!(message(&screen), ToastMessage::BoardLimit);
-    assert_eq!(ctl.store().boards().unwrap().len(), 3, "still three");
+    assert_eq!(ctl.store().boards().unwrap().len(), 5, "still five");
     assert_eq!(screen.counts.trash, 1, "it waits in the Trash");
 }
 

@@ -61,6 +61,9 @@ msgstr "外观"
 msgid "Apply the new name"
 msgstr "应用新名称"
 
+msgid "As many as you like, of every kind."
+msgstr ""
+
 msgid "Asks for a value each time"
 msgstr "每次都询问值"
 
@@ -81,6 +84,9 @@ msgstr "备份"
 
 msgid "Backups to keep"
 msgstr "保留的备份数"
+
+msgid "Backups, export, light and dark, 7 languages"
+msgstr ""
 
 msgid "Blue"
 msgstr "蓝色"
@@ -220,6 +226,9 @@ msgstr ""
 msgid "Copy the result"
 msgstr ""
 
+msgid "Daily backups, a plain zip export, and your choice of theme."
+msgstr ""
+
 msgid "Dark"
 msgstr "深色"
 
@@ -286,6 +295,9 @@ msgstr "要放弃更改吗？"
 msgid "Dock to"
 msgstr "停靠到"
 
+msgid "Dock to a screen edge"
+msgstr ""
+
 msgid "Done"
 msgstr "完成"
 
@@ -316,6 +328,9 @@ msgstr ""
 msgid "Editors"
 msgstr ""
 
+msgid "Email me"
+msgstr ""
+
 msgid "Empty Trash"
 msgstr "清空回收站"
 
@@ -325,8 +340,8 @@ msgstr "清空回收站…"
 msgid "Empty the Trash?"
 msgstr "要清空回收站吗？"
 
-msgid "Encrypting it on disk is a Pro feature."
-msgstr "磁盘加密是 Pro 功能。"
+msgid "Encryption on disk"
+msgstr ""
 
 msgid "Enter"
 msgstr "Enter"
@@ -343,8 +358,8 @@ msgstr "删除资料库…"
 msgid "Escape"
 msgstr "Esc"
 
-msgid "Every Pro feature is on. Thank you."
-msgstr "所有 Pro 功能均已开启。谢谢。"
+msgid "Every Supporter feature is on. Thank you."
+msgstr ""
 
 msgid "Everything checks out."
 msgstr "一切正常。"
@@ -358,6 +373,9 @@ msgstr "资料库中的所有内容都会被删除：看板、列表、片段、
 msgid "Export library"
 msgstr "导出资料库"
 
+msgid "Feature"
+msgstr ""
+
 msgid "Fields"
 msgstr "字段"
 
@@ -370,11 +388,17 @@ msgstr "填写模板"
 msgid "Filter as you type"
 msgstr ""
 
+msgid "Fixed placeholders filled in when you paste."
+msgstr ""
+
 msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
 msgstr "将面板固定在其所在显示器的某条屏幕边缘。选择“浮动”则可放在任意位置。"
 
 msgid "Floating"
 msgstr "浮动"
+
+msgid "Fold the Panel into a thin strip."
+msgstr ""
 
 msgid "Follow Windows"
 msgstr "跟随 Windows"
@@ -388,8 +412,23 @@ msgstr "例如：邮件回复"
 msgid "For example, Work"
 msgstr "例如：工作"
 
+msgid "Free"
+msgstr ""
+
+msgid "Free and Supporter compared"
+msgstr ""
+
+msgid "Free is fully usable. Supporter pays for convenience and supports the app."
+msgstr ""
+
 msgid "Free plan"
 msgstr "免费版"
+
+msgid "Get Supporter"
+msgstr ""
+
+msgid "Get Supporter…"
+msgstr ""
 
 msgid "Get started"
 msgstr "开始使用"
@@ -427,6 +466,9 @@ msgstr "帮助分区"
 msgid "Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard 30 seconds after you copy it."
 msgstr "在列表中隐藏，按住空格键才会显示；不会进入剪贴板历史记录，复制 30 秒后会从剪贴板清除。"
 
+msgid "Hidden on screen and kept out of clipboard history."
+msgstr ""
+
 msgid "Hidden. Hold Space to reveal."
 msgstr "已隐藏。按住空格键即可显示。"
 
@@ -459,6 +501,9 @@ msgstr "图片"
 
 msgid "In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe."
 msgstr "在这些程序中，Snipdeck 会复制而不是粘贴。请使用程序的文件名，例如 notepad.exe。"
+
+msgid "Included"
+msgstr ""
 
 msgid "Insert"
 msgstr "粘贴"
@@ -541,8 +586,14 @@ msgstr "列表名称"
 msgid "Lists"
 msgstr "列表"
 
+msgid "Lists and items"
+msgstr ""
+
 msgid "Loading"
 msgstr "正在加载"
+
+msgid "Lock your encrypted items behind a password you choose."
+msgstr ""
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会发送到任何地方。"
@@ -564,6 +615,9 @@ msgstr "管理标签…"
 
 msgid "Manual"
 msgstr "手动"
+
+msgid "Master password"
+msgstr ""
 
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
@@ -673,6 +727,9 @@ msgstr "还没有标签。请在下方添加。"
 msgid "No tags yet. Add tags to an item and they appear here."
 msgstr "还没有标签。为片段添加标签后，将显示在这里。"
 
+msgid "Not included"
+msgstr ""
+
 msgid "Not set"
 msgstr "未设置"
 
@@ -699,6 +756,9 @@ msgstr "关闭"
 
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "选择“关闭”则已停靠的面板保持展开。否则它会收成一条细条，面板快捷键同样可以将其展开。"
+
+msgid "One hotkey turns copied text into an item."
+msgstr ""
 
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "只有文本、代码、链接和模板类型的片段可以设为敏感。"
@@ -766,6 +826,9 @@ msgstr "在该文件夹之外，Snipdeck 只会写入 Windows 开机启动项（
 msgid "Panel"
 msgstr ""
 
+msgid "Panel and Picker"
+msgstr ""
+
 msgid "Panel dock"
 msgstr "面板停靠"
 
@@ -778,8 +841,11 @@ msgstr "面板宽度"
 msgid "Paste"
 msgstr "粘贴"
 
-msgid "Paste a licence key to turn on Pro. The key is checked on this PC and nothing is sent anywhere."
-msgstr "粘贴许可证密钥即可开启 Pro。密钥只在这台电脑上验证，不会发送到任何地方。"
+msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
+msgstr ""
+
+msgid "Paste stack"
+msgstr ""
 
 msgid "Paste the Nth result"
 msgstr ""
@@ -791,6 +857,9 @@ msgid "Paste the next item of a stack"
 msgstr ""
 
 msgid "Paste the result"
+msgstr ""
+
+msgid "Paste with a click, or search at your caret."
 msgstr ""
 
 msgid "Pastes into {}"
@@ -807,6 +876,12 @@ msgstr "文件路径"
 
 msgid "Pause hotkeys"
 msgstr "暂停热键"
+
+msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included."
+msgstr ""
+
+msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions."
+msgstr ""
 
 msgid "Picker"
 msgstr ""
@@ -858,6 +933,12 @@ msgstr "问题"
 
 msgid "Program to add"
 msgstr "要添加的程序"
+
+msgid "Prompt for a value or a choice each time you paste."
+msgstr ""
+
+msgid "Queue several items, then paste them one per hotkey press."
+msgstr ""
 
 msgid "Quick capture"
 msgstr ""
@@ -922,6 +1003,9 @@ msgstr "保存"
 msgid "Save from clipboard"
 msgstr "从剪贴板保存"
 
+msgid "Save from the clipboard"
+msgstr ""
+
 msgid "Save the clipboard as an item"
 msgstr "将剪贴板保存为片段"
 
@@ -966,6 +1050,15 @@ msgstr ""
 
 msgid "Sensitive item"
 msgstr "敏感片段"
+
+msgid "Sensitive items are encrypted on disk, on every plan."
+msgstr ""
+
+msgid "Sensitive items, masked"
+msgstr ""
+
+msgid "Separate workspaces, such as Work and Personal."
+msgstr ""
 
 msgid "Settings"
 msgstr "设置"
@@ -1015,8 +1108,8 @@ msgstr "Snipdeck"
 msgid "Snipdeck (hotkeys paused)"
 msgstr "Snipdeck（热键已暂停）"
 
-msgid "Snipdeck Pro"
-msgstr "Snipdeck Pro"
+msgid "Snipdeck Supporter"
+msgstr ""
 
 msgid "Snipdeck handle, press the Panel hotkey to open"
 msgstr "Snipdeck 拉手，按面板快捷键即可展开"
@@ -1063,6 +1156,9 @@ msgstr "启动"
 msgid "Step {} of {}"
 msgstr "第 {} 步，共 {} 步"
 
+msgid "Supporter"
+msgstr ""
+
 msgid "Tab"
 msgstr "Tab"
 
@@ -1089,6 +1185,12 @@ msgstr "模板"
 
 msgid "Template text"
 msgstr "模板文本"
+
+msgid "Templates that ask"
+msgstr ""
+
+msgid "Templates with date, time and cursor"
+msgstr ""
 
 msgid "Text"
 msgstr "文本"
@@ -1339,6 +1441,12 @@ msgstr ""
 msgid "tutorial intro onboarding basics learn"
 msgstr ""
 
+msgid "unlimited"
+msgstr ""
+
+msgid "up to {}"
+msgstr ""
+
 msgid "version licence update"
 msgstr ""
 
@@ -1357,8 +1465,8 @@ msgstr "{n} 个片段"
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgstr "{n} 个片段将一同移至回收站。你可以在 30 天内恢复它们。"
 
-msgid "{} (Pro)"
-msgstr "{} (Pro)"
+msgid "{} (Supporter)"
+msgstr ""
 
 msgid "{} found"
 msgstr ""

@@ -25,7 +25,7 @@ pub enum SignError {
     BadEmailHash,
 }
 
-/// The payload of a v1 Pro token, in the field order the documented vectors use.
+/// The payload of a v1 Supporter token, in the field order the documented vectors use.
 #[derive(Serialize)]
 struct PayloadOut<'a> {
     v: u64,
@@ -57,7 +57,7 @@ pub fn validate_order_id(order: &str) -> Result<(), SignError> {
     }
 }
 
-/// Builds the compact JSON payload of a v1 Pro licence.
+/// Builds the compact JSON payload of a v1 Supporter licence.
 ///
 /// `issued` is Unix seconds, supplied by the caller (no clock is read here).
 ///

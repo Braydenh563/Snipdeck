@@ -64,7 +64,7 @@ pub enum UseError {
     /// The item's template no longer parses.
     #[error(transparent)]
     Template(#[from] TemplateError),
-    /// The template cannot be rendered: a Pro placeholder on Free, or too large.
+    /// The template cannot be rendered: a Supporter placeholder on Free, or too large.
     #[error(transparent)]
     Render(#[from] RenderError),
     /// The template needs answers the request did not carry: show the fill form.

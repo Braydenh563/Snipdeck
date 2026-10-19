@@ -47,7 +47,7 @@ pub enum Error {
         /// The rejected input.
         value: String,
     },
-    /// The action needs Snipdeck Pro; the UI answers this with the upsell sheet (SPEC §6).
-    #[error("`{0}` needs Snipdeck Pro")]
+    /// The action needs Snipdeck Supporter; the UI answers this with the upsell sheet (SPEC §6).
+    #[error("`{0}` needs Snipdeck Supporter")]
     ProRequired(Feature),
 }
