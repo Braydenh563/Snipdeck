@@ -124,10 +124,13 @@ pub fn template_source<S: ItemRepo + BlobStore>(
     }
     let formats = store.formats(item.id)?;
     let text = text_of(store, &formats)?.ok_or(UseError::NotText)?;
-    let title = if item.title.trim().is_empty() {
-        text.lines().next().unwrap_or_default().to_owned()
-    } else {
+    let title = if !item.title.trim().is_empty() {
         item.title
+    } else if item.sensitive {
+        // The first line of a sensitive body is never put on the screen.
+        String::new()
+    } else {
+        text.lines().next().unwrap_or_default().to_owned()
     };
     Ok(Some((title, text)))
 }
