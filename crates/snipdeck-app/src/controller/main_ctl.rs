@@ -863,6 +863,33 @@ where
         self.open_editor(EditorTarget::List(list.id), view);
     }
 
+    /// The board editor for a new board, or the board-limit toast on Free.
+    fn new_board(&mut self) {
+        if !self.entitlements.can_create_board(self.main.boards().len()) {
+            self.show_toast(Toast {
+                kind: ToastKind::Neutral,
+                message: ToastMessage::BoardLimit,
+            });
+            return;
+        }
+        self.open_editor(
+            EditorTarget::NewBoard,
+            EditorView {
+                seq: 0,
+                kind: EditorKind::Board,
+                is_new: true,
+                name: String::new(),
+                accent: None,
+                sort: ListSort::Manual,
+                item_count: 0,
+                can_delete: false,
+                delete_hint: None,
+                name_error: None,
+                open_delete: false,
+            },
+        );
+    }
+
     /// The board editor for the open board; `open_delete` starts with the confirmation open.
     fn edit_board(&mut self, open_delete: bool) {
         let Some(board) = self.main.board() else {
