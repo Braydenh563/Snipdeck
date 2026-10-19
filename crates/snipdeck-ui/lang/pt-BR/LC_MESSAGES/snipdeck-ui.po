@@ -358,6 +358,9 @@ msgstr "Tudo na lixeira será excluído definitivamente. Isso não pode ser desf
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr "Tudo na sua biblioteca será apagado: quadros, listas, trechos, imagens, rascunhos e backups. Exporte antes se quiser uma cópia. Suas configurações e sua licença permanecem."
 
+msgid "Export as text"
+msgstr ""
+
 msgid "Export library"
 msgstr "Exportar a biblioteca"
 

@@ -23,6 +23,7 @@ use super::{
 };
 use crate::{
     host::ClipboardText,
+    list_text,
     main_window::{
         Counts, DeleteHint, EditorKind, EditorView, Key, NameError, Row, Section, SelectMode,
         SideList, SideTag, ViewMode, reorder,
@@ -670,6 +671,56 @@ where
             return;
         };
         self.trash_list(list.id, list.name.as_str().to_owned());
+    }
+
+    /// "Export as text…" on list `index` of the sidebar: its text items go to a new file in
+    /// `folder` (see [`crate::list_text`]). Returns the file.
+    pub fn main_export_list(
+        &mut self,
+        index: usize,
+        folder: &std::path::Path,
+    ) -> Option<std::path::PathBuf> {
+        self.main_fresh();
+        let list = self.main.lists().get(index)?;
+        let (id, name) = (list.id, list.name.as_str().to_owned());
+        let written = self.store.items(id).ok().and_then(|items| {
+            let entries: Vec<_> = items
+                .iter()
+                .filter(|item| !item.sensitive)
+                .filter_map(|item| {
+                    let text = usecase::item_text(&self.store, item.id).ok()??;
+                    Some(list_text::Entry {
+                        title: item.title.clone(),
+                        text,
+                    })
+                })
+                .collect();
+            let date = self
+                .clock
+                .now()
+                .to_zoned(jiff::tz::TimeZone::system())
+                .date();
+            let path = list_text::path(folder, &name, date);
+            std::fs::create_dir_all(folder).ok()?;
+            std::fs::write(&path, list_text::render(&name, &entries)).ok()?;
+            Some(path)
+        });
+        if let Some(path) = &written {
+            let file = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            self.show_toast(Toast {
+                kind: ToastKind::Success,
+                message: ToastMessage::Exported { file },
+            });
+        } else {
+            self.show_toast(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::ExportFailed,
+            });
+        }
+        written
     }
 
     fn trash_list(&mut self, id: ListId, name: String) {

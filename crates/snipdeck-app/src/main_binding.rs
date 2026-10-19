@@ -549,6 +549,10 @@ where
         wire!(on_add_list_requested, |ctl| ctl.main_new_list());
         wire!(on_list_edit_requested, |ctl, i| ctl
             .main_edit_list(index(i)));
+        wire!(on_list_export_requested, |ctl, i| ctl.main_export_list(
+            index(i),
+            &crate::paths::documents_folder().unwrap_or_else(std::env::temp_dir)
+        ));
         wire!(on_list_delete_confirmed, |ctl, i| ctl
             .main_delete_list(index(i)));
         wire!(on_tag_delete_confirmed, |ctl, i| ctl

@@ -270,6 +270,50 @@ fn duplicate_copies_each_selected_item_next_to_it_unpinned_and_unused() {
 }
 
 #[test]
+fn export_list_writes_its_text_items_to_a_dated_file_and_skips_secrets() {
+    let mut ctl = pro();
+    let screen = ctl.main_screen();
+    let code = list_index(&screen, "Code");
+    let dir = tempfile::tempdir().expect("dir");
+
+    let file = ctl.main_export_list(code, dir.path()).expect("a file");
+
+    assert_eq!(file.file_name().unwrap(), "Code-20261017.txt");
+    let text = std::fs::read_to_string(&file).expect("read");
+    assert!(text.starts_with("Code\n\n"), "{text}");
+    let list = ctl.main_screen().lists[code].id;
+    for item in ctl.store().items(list).unwrap() {
+        let body = snipdeck_app::usecase::item_text(ctl.store(), item.id);
+        match (item.sensitive, body) {
+            (false, Ok(Some(body))) => assert!(text.contains(body.trim_end()), "{body}"),
+            (true, Ok(Some(body))) => assert!(!text.contains(body.trim_end()), "secret in file"),
+            _ => {}
+        }
+    }
+    assert!(matches!(
+        message(&ctl.main_screen()),
+        ToastMessage::Exported { .. }
+    ));
+    // A second export the same day does not overwrite the first.
+    let again = ctl.main_export_list(code, dir.path()).expect("a file");
+    assert_eq!(again.file_name().unwrap(), "Code-20261017-2.txt");
+}
+
+#[test]
+fn export_list_that_cannot_be_written_says_so() {
+    let mut ctl = pro();
+    let code = list_index(&ctl.main_screen(), "Code");
+    let dir = tempfile::tempdir().expect("dir");
+    let blocker = dir.path().join("file");
+    std::fs::write(&blocker, "x").expect("write");
+    assert!(
+        ctl.main_export_list(code, &blocker.join("inside"))
+            .is_none()
+    );
+    assert_eq!(message(&ctl.main_screen()), ToastMessage::ExportFailed);
+}
+
+#[test]
 fn move_sends_the_chosen_rows_to_the_end_of_a_list_on_the_open_board() {
     let mut ctl = pro();
     let screen = ctl.main_screen();

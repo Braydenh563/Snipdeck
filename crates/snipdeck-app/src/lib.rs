@@ -25,6 +25,7 @@ pub mod host;
 pub mod item_editor;
 pub mod key_provider;
 pub mod licence_store;
+pub mod list_text;
 pub mod main_binding;
 pub mod main_window;
 pub mod maintenance;

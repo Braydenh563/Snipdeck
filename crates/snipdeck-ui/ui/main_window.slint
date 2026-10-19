@@ -195,6 +195,7 @@ export component MainWindow inherits Window {
     callback command-requested(int);
     callback add-list-requested();
     callback list-edit-requested(int);
+    callback list-export-requested(int);
     callback list-delete-confirmed(int);
     callback manage-tags-requested();
     callback tag-delete-confirmed(int);
@@ -344,6 +345,7 @@ export component MainWindow inherits Window {
 
     property <[MenuEntry]> nav-entries: root.nav-section(root.nav-menu-flat) == MainSection.list ? [
         { text: @tr("Edit list…"), icon: Icons.pencil-simple },
+        { text: @tr("Export as text"), icon: Icons.copy },
         { text: @tr("Delete list…"), icon: Icons.trash, destructive: true },
     ] : root.nav-section(root.nav-menu-flat) == MainSection.tag ? [
         { text: @tr("Manage tags…"), icon: Icons.tag },
@@ -360,6 +362,8 @@ export component MainWindow inherits Window {
         if (s == MainSection.list) {
             if (i == 0) {
                 root.list-edit-requested(index);
+            } else if (i == 1) {
+                root.list-export-requested(index);
             } else {
                 root.ask(1, index);
             }
