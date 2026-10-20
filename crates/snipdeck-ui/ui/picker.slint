@@ -142,7 +142,8 @@ export component PickerWindow inherits Window {
     property <length> body-h: root.rows.length == 0 ? root.empty-h : root.list-h + 2 * Space.s1;
     property <int> page-rows: max(1, min(root.rows.length, root.max-rows) - 1);
 
-    // The footer drops its secondary hints when the window is narrow for the text size. Set from `changed`
+    // The footer drops its secondary hints (Copy, Scope) when the window is narrow for the text size; the use and
+    // Close hints stay, so the way in and the way out are always shown. Set from `changed`
     // handlers, not bound to `root.width`: a window's width follows its layout (see the Panel).
     property <bool> narrow: false;
     property <float> text-scale: SystemLook.text-scale;
@@ -483,7 +484,7 @@ export component PickerWindow inherits Window {
                         key-label: @tr("Tab");
                         text: @tr("Scope");
                     }
-                    if !root.narrow: Hint {
+                    Hint {
                         keys: ["Esc"];
                         key-label: @tr("Escape");
                         text: @tr("Close");
