@@ -204,7 +204,10 @@ fn settings() -> (SettingsPage, Log) {
     hook!(on_paste_rule_removed, |i| format!("app-:{i}"));
     hook!(on_paste_rule_chosen, |i, c| format!("paste:{i}:{c}"));
     hook!(on_text_size_chosen, |i| format!("size:{i}"));
-    hook!(on_help_requested, || "help".to_string());
+    {
+        let log = log.clone();
+        ui.on_help_requested(move || log.borrow_mut().push("help".to_string()));
+    }
     hook!(on_no_history_app_added, |n| format!("hist+:{n}"));
     hook!(on_no_history_app_removed, |i| format!("hist-:{i}"));
     hook!(on_licence_submitted, |k| format!("licence:{k}"));
@@ -1099,6 +1102,8 @@ ui_tests! {
         let (ui, log) = settings();
         find(&ui, "Open the user guide (F1)", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["help"]);
+        // A key goes to the control that has the focus: Tab puts it on the first one.
+        press(ui.window(), &key(Key::Tab));
         press(ui.window(), &key(Key::F1));
         settle();
         assert_eq!(take(&log), ["help"]);
