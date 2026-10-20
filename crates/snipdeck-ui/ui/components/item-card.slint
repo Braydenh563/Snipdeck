@@ -130,15 +130,24 @@ component UseLabel inherits Rectangle {
         y: (parent.height - self.height) / 2;
     }
     // Only while shown does it take the pointer and count as a button for assistive technology: hidden,
-    // the row's own touch area under it gets the click.
+    // the row's own touch area under it gets the click. The target is at least `Space.hit-min` in both
+    // directions (WCAG 2.5.8), centred on the label, which stays its own size.
+    property <length> hit-w: max(root.width, Space.hit-min);
+    property <length> hit-h: max(root.height, Space.hit-min);
     touch := TouchArea {
         enabled: root.shown;
         mouse-cursor: pointer;
+        x: (root.width - self.width) / 2;
+        y: (root.height - self.height) / 2;
+        width: root.hit-w;
+        height: root.hit-h;
         clicked => { root.clicked(); }
     }
     if root.shown: Rectangle {
-        width: 100%;
-        height: 100%;
+        x: (root.width - self.width) / 2;
+        y: (root.height - self.height) / 2;
+        width: root.hit-w;
+        height: root.hit-h;
         accessible-role: button;
         accessible-label: root.item-title == "" ? root.text : root.text + " " + root.item-title;
         accessible-action-default => { root.clicked(); }
