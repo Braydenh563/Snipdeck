@@ -5897,7 +5897,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/primitives.rs` | 6 |
 | `crates/snipdeck-ui/tests/primitives_logic.rs` | 22 |
 | `crates/snipdeck-ui/tests/primitives_pixels.rs` | 8 |
-| `crates/snipdeck-ui/tests/repaint.rs` | 2 |
+| `crates/snipdeck-ui/tests/repaint.rs` | 3 |
 | `crates/snipdeck-ui/tests/review_fixes_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/review_fixes_pixels.rs` | 5 |
 | `crates/snipdeck-ui/tests/support/editor_fixture.rs` | 0 |
