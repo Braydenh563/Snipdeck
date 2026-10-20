@@ -1,5 +1,5 @@
-// The sentences of the Settings import preview's "Will not be imported" list. They are built from
-// the importers' warnings in Rust, which cannot reach the translation catalogs, so the app calls
+// The sentences of the Settings import preview: why an import cannot go ahead, and the "Will not be imported" list.
+// The warnings are built from the importers' reports in Rust, which cannot reach the translation catalogs, so the app calls
 // these functions (`snipdeck_app::wording::import_warning_text`) and gets the sentence in the
 // language selected for the UI. One function per warning; the file or item is an argument.
 export global ImportTexts {
@@ -48,5 +48,41 @@ export global ImportTexts {
     }
     pure public function truncated() -> string {
         return @tr("The import stopped early because the source is bigger than Snipdeck reads in one go.");
+    }
+
+    // Why an import could not be previewed. Shown in place of the counts.
+    pure public function problem-unreadable() -> string {
+        return @tr("Snipdeck couldn't open that. Check that it still exists.");
+    }
+    pure public function problem-not-snipdeck() -> string {
+        return @tr("That isn't a Snipdeck file, or it is damaged.");
+    }
+    pure public function problem-not-ditto() -> string {
+        return @tr("That isn't a Ditto database.");
+    }
+    pure public function problem-not-copyq() -> string {
+        return @tr("That isn't a CopyQ export.");
+    }
+    pure public function problem-not-folder() -> string {
+        return @tr("Snipdeck couldn't read that folder.");
+    }
+    pure public function problem-too-new() -> string {
+        return @tr("That file is from a newer Snipdeck. Update Snipdeck to import it.");
+    }
+    pure public function problem-failed() -> string {
+        return @tr("Couldn't import that.");
+    }
+    pure public function problem-history-off() -> string {
+        return @tr("Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again.");
+    }
+    pure public function problem-history-unavailable() -> string {
+        return @tr("Windows did not let Snipdeck read the clipboard history on this PC.");
+    }
+    pure public function problem-history-empty() -> string {
+        return @tr("The Windows clipboard history has no text in it yet. Copy some text, then try again.");
+    }
+    // The name of the clipboard-history source: the import preview's heading and its choice.
+    pure public function history-name() -> string {
+        return @tr("Windows clipboard history");
     }
 }

@@ -258,23 +258,34 @@ pub const UNDO_LABEL: &str = "Undo";
 /// The label of the crash toast's button.
 pub const OPEN_LOG_LABEL: &str = "Open log";
 
-/// Why an import could not be previewed, in words for the page.
+/// Why an import could not be previewed, in words for the page, in the language selected for the
+/// UI (the sentences are in the `ImportTexts` global; `window` is the Settings page).
 #[must_use]
-pub const fn import_problem_text(problem: crate::controller::ImportProblem) -> &'static str {
+pub fn import_problem_text(
+    window: &SettingsPage,
+    problem: crate::controller::ImportProblem,
+) -> String {
     use crate::controller::{ImportKind, ImportProblem};
+    let texts = ImportTexts::get(window);
     match problem {
-        ImportProblem::Unreadable => "Snipdeck couldn't open that. Check that it still exists.",
-        ImportProblem::NotThisKind(ImportKind::Snipdeck) => {
-            "That isn't a Snipdeck file, or it is damaged."
-        }
-        ImportProblem::NotThisKind(ImportKind::Ditto) => "That isn't a Ditto database.",
-        ImportProblem::NotThisKind(ImportKind::CopyQ) => "That isn't a CopyQ export.",
-        ImportProblem::NotThisKind(ImportKind::Folder) => "Snipdeck couldn't read that folder.",
-        ImportProblem::TooNew => {
-            "That file is from a newer Snipdeck. Update Snipdeck to import it."
-        }
-        ImportProblem::Failed => "Couldn't import that.",
+        ImportProblem::Unreadable => texts.invoke_problem_unreadable(),
+        ImportProblem::NotThisKind(ImportKind::Snipdeck) => texts.invoke_problem_not_snipdeck(),
+        ImportProblem::NotThisKind(ImportKind::Ditto) => texts.invoke_problem_not_ditto(),
+        ImportProblem::NotThisKind(ImportKind::CopyQ) => texts.invoke_problem_not_copyq(),
+        ImportProblem::NotThisKind(ImportKind::Folder) => texts.invoke_problem_not_folder(),
+        ImportProblem::TooNew => texts.invoke_problem_too_new(),
+        ImportProblem::HistoryOff => texts.invoke_problem_history_off(),
+        ImportProblem::HistoryUnavailable => texts.invoke_problem_history_unavailable(),
+        ImportProblem::HistoryEmpty => texts.invoke_problem_history_empty(),
+        ImportProblem::Failed => texts.invoke_problem_failed(),
     }
+    .into()
+}
+
+/// The name the import preview gives the Windows clipboard history, in the UI's language.
+#[must_use]
+pub fn history_source_name(window: &SettingsPage) -> String {
+    ImportTexts::get(window).invoke_history_name().into()
 }
 
 /// The label of `toast`'s button; empty when it has none.

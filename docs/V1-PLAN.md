@@ -13,7 +13,7 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 
 ## B. Wave 3: finish the features (three S agents)
 - [x] B1 [S] Import: Settings "Import…" for `.snipdeck`, Ditto, CopyQ, folder of .txt/.md; preview of what it adds (also for Restore); Free board limit respected.
-- [~] B2 [S] Windows clipboard-history importer (current session; Windows-only, wizard step). Platform reader exists; no UI caller yet (3a wiring it as an Import source).
+- [x] B2 [S] Windows clipboard-history importer (current session; Windows-only): a fifth source in Settings Import, same preview and apply path; off, empty or refused history shows a message in the preview. Windows side unverified.
 - [x] B3 [S] Export a list as text.
 - [x] B4 [S] Ctrl+Z undoes the last undoable action; Undo toast >= 5 s and pauses on hover.
 - [x] B5 [S] "Getting started" list seeded on first run (`starter.rs`).
@@ -40,9 +40,9 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 
 - [x] C9 [S] Free vs Supporter made clear (owner 2026-10-19): a compact comparison table (feature, one-line description, tick or cross per tier) in Settings Licence and the Get Supporter dialog, the README and the site. Honest framing: Supporter pays for convenience and supports the app; the code is GPL; Free stays fully usable. No walls of text.
 ## D. Images, site, controller
-- [ ] D1 [S] Regenerate every golden after A-C, read each one; UX fixes from what they show.
+- [x] D1 [S] Regenerate every golden after A-C, read each one; UX fixes from what they show.
 - [ ] D2 [S] README shots and hero images at 2x (`SNIPDECK_SHOT_SCALE=2`, `scripts/readme_shots.py`); Help shot back in.
-- [ ] D3 [S] De-slop pass over every window state against DESIGN.md (13a).
+- [x] D3 [S] De-slop pass over every window state against DESIGN.md (13a).
 - [x] D4 [S] GitHub Pages site: self-hosted assets, no CDN, DESIGN.md tokens, WCAG 2.2 AA, download, tour, Pro, privacy.
 - [ ] D5 [S] Controller split (H1): `controller.rs` under 800 lines, test list identical before and after (may be done inside F1).
 
