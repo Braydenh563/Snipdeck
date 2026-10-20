@@ -278,8 +278,11 @@ where
                 }
                 Effect::HidePanel => {
                     let _ = window.hide();
-                    // What was opened from the Panel closes with it (O53).
-                    crate::ownership::owner_closed(crate::ownership::Win::Panel);
+                    // What was opened from the Panel closes with it (O53), unless the Panel only
+                    // lost the focus (to one of those windows, most likely).
+                    if !self.controller.borrow_mut().take_blur_hide() {
+                        crate::ownership::owner_closed(crate::ownership::Win::Panel);
+                    }
                 }
                 // The item editor is its own window; the controller opens it and every bound
                 // window (the editor's included) is redrawn from it.

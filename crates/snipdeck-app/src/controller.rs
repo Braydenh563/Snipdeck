@@ -165,6 +165,8 @@ pub struct Controller<S, C, K, T> {
     on_top: bool,
     /// A regular Snipdeck window (not the Panel) holds the focus.
     own_window_active: bool,
+    /// The last hide of the Panel was a blur-hide (focus went elsewhere), not a gesture to close it.
+    blur_hide: bool,
     toast: Option<ActiveToast>,
     toast_seq: u64,
     /// The Picker, while it is open.
@@ -313,6 +315,7 @@ where
             shown_at,
             on_top: true,
             own_window_active: false,
+            blur_hide: false,
             toast: None,
             toast_seq: 0,
             picker: None,
@@ -591,9 +594,16 @@ where
     /// Hides the Panel (Esc with nothing to clear, the close button, the toggle hotkey).
     pub fn hide(&mut self) -> Vec<Effect> {
         self.visible = false;
+        self.blur_hide = false;
         self.panel_revealed = None;
         self.menu = PanelMenu::None;
         vec![Effect::HidePanel]
+    }
+
+    /// Whether the hide just reported was a blur-hide, which leaves the windows opened from the
+    /// Panel up (focus moving to one of them is what caused it). Reading it resets it.
+    pub fn take_blur_hide(&mut self) -> bool {
+        std::mem::take(&mut self.blur_hide)
     }
 
     /// Hides the Panel because the user did not ask for it by the way back (the close button, a
@@ -674,7 +684,9 @@ where
         self.panel_revealed = None;
         self.on_target_changed();
         if self.hides_on_blur() {
-            self.hide_with_hint()
+            let effects = self.hide_with_hint();
+            self.blur_hide = true;
+            effects
         } else {
             Vec::new()
         }
