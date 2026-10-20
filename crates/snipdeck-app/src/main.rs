@@ -5,6 +5,8 @@
 //! Windows is the product. Off Windows the same binary runs on the platform fakes, which is how
 //! `cargo run -p snipdeck-app -- --demo` shows the Panel on a development machine.
 
+// unverified on Windows (Fable v1 sweep A1): no console window for the release GUI build.
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 #![forbid(unsafe_code)]
 #![allow(
     clippy::print_stdout,
@@ -81,6 +83,9 @@ fn main() -> ExitCode {
     // First, so that a panic anywhere after this leaves a report (the data folder is told to the
     // hook once it is known).
     crash::install(Timestamp::now);
+    // A release build on Windows has no console of its own: borrow the parent's for the usage
+    // and `--check-db` / `--troubleshoot` output.
+    platform::attach_parent_console();
     let args = match cli::parse(std::env::args_os().skip(1)) {
         Ok(args) => args,
         Err(e) => {
@@ -177,7 +182,7 @@ fn run(args: &Args) -> Result<(), String> {
     };
     // Only now: reading the settings may move a damaged file aside, and opening the library may
     // migrate it. A second launch (which stops just above) must not touch the running copy's files.
-    let (store, settings, entitlements, settings_folder) = open_library(args)?;
+    let (store, settings, entitlements, settings_folder, saver_baseline) = open_library(args)?;
     let Host {
         services,
         target,
@@ -206,7 +211,14 @@ fn run(args: &Args) -> Result<(), String> {
     let startup_chords = settings.hotkeys.clone();
     let saver = settings_folder
         .clone()
-        .map(|folder| SettingsSaver::new(Box::new(FileSink::new(folder)), settings.clone()));
+        .zip(saver_baseline)
+        .map(|(folder, baseline)| {
+            let mut saver = SettingsSaver::new(Box::new(FileSink::new(folder)), baseline);
+            // A baseline that differs from the settings in use (a failed salvage write) is a change
+            // waiting to be written.
+            saver.changed(&settings, Timestamp::now());
+            saver
+        });
     let controller = Controller::new(
         store,
         services,
@@ -376,7 +388,7 @@ fn run(args: &Args) -> Result<(), String> {
         with_binding(|b| b.own_window_active(active));
     });
     // The item editor opens from the Panel, the Main window and the Picker; one binding draws it.
-    let _item_editor = Controller::bind_item_editor(&controller);
+    let item_editor = Controller::bind_item_editor(&controller);
     // Frame changes are remembered only once the stored place has been restored.
     let frames_armed = Rc::new(Cell::new(false));
     watch_window_events(&window, binding.clone(), Rc::clone(&frames_armed));
@@ -411,6 +423,8 @@ fn run(args: &Args) -> Result<(), String> {
         )
     });
     let ran = slint::run_event_loop_until_quit().map_err(|e| format!("event loop: {e}"));
+    // An editor left open keeps what was typed since the last draft.
+    item_editor.flush_draft();
     // Settings changed in the last moments are still waiting for their quiet time.
     if let Err(e) = controller.borrow_mut().flush_settings() {
         eprintln!("snipdeck: could not save the settings: {e}");
@@ -685,10 +699,17 @@ fn report_hotkey_problems(problems: &[host::HotkeyProblem]) {
     with_binding(|b| b.hotkey_problems(problems));
 }
 
-/// What [`open_library`] returns: the library, the settings, what the user may do, and the folder
-/// settings changes are written to (`None` when they must not be: the demo, `--dark`, and a
-/// settings file that could not be read or set aside).
-type Library = (Store, Settings, Entitlements, Option<PathBuf>);
+/// What [`open_library`] returns: the library, the settings, what the user may do, and the data
+/// folder (`None` only for the demo, which has none), and what the settings saver starts from
+/// (`None` when changes must not be written: the demo, `--dark`, and a settings file that could
+/// not be read or set aside).
+type Library = (
+    Store,
+    Settings,
+    Entitlements,
+    Option<PathBuf>,
+    Option<Settings>,
+);
 
 /// The library, the settings and what the user may do.
 fn open_library(args: &Args) -> Result<Library, String> {
@@ -700,7 +721,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
         };
         let store = demo::store(now).map_err(|e| format!("demo library: {e}"))?;
         snipdeck_app::trace!("demo library");
-        return Ok((store, settings, Entitlements::new(Tier::Pro), None));
+        return Ok((store, settings, Entitlements::new(Tier::Pro), None, None));
     }
     let folder = match &args.data_dir {
         Some(dir) => dir.clone(),
@@ -713,9 +734,16 @@ fn open_library(args: &Args) -> Result<Library, String> {
     let may_save = loaded.may_save();
     // A damaged file was moved aside: write the salvaged values back now, or the next launch would
     // find no file and fall back to the defaults (re-enabling pastes into apps the user excluded).
+    let mut salvage_written = true;
     if may_save && let Err(e) = snipdeck_app::paths::write_salvaged(&folder, &loaded) {
         eprintln!("snipdeck: could not write the recovered settings: {e}");
+        salvage_written = false;
     }
+    // `--dark` is a one-run override and an unreadable file must stay as it is: either stops the
+    // settings saver, and nothing else (drafts, backups and "Back up now" need the folder).
+    // The saver starts from what the file holds, which after a failed salvage write is nothing.
+    let saver_baseline = snipdeck_app::paths::saves_settings(args.dark, &loaded)
+        .then(|| snipdeck_app::paths::saver_baseline(&loaded, salvage_written));
     let mut settings = loaded.settings;
     if !may_save {
         eprintln!(
@@ -724,8 +752,6 @@ fn open_library(args: &Args) -> Result<Library, String> {
             folder.display()
         );
     }
-    // `--dark` is a one-run override: do not write it into the user's settings.
-    let persist = !args.dark && may_save;
     if args.dark {
         settings.theme = Theme::Dark;
     }
@@ -738,7 +764,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
     }
     // The saved licence key, checked again on every start; none or a bad one is the Free plan.
     let entitlements = snipdeck_app::licence_store::entitlements(&folder, now);
-    Ok((store, settings, entitlements, persist.then_some(folder)))
+    Ok((store, settings, entitlements, Some(folder), saver_baseline))
 }
 
 /// Winit with the software renderer; the Panel and the other floating windows are created

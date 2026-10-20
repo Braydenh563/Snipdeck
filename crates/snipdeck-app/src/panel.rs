@@ -112,6 +112,7 @@ impl PanelModel {
     /// # Errors
     ///
     /// Any store error.
+    #[cfg(test)]
     pub fn load<S>(
         store: &S,
         board: Option<BoardId>,
@@ -123,9 +124,9 @@ impl PanelModel {
         Self::load_cached(store, board, list, &IndexCache::new())
     }
 
-    /// Like [`PanelModel::load`], taking the search index from `cache` (built only when the
-    /// library changed since it was last built). The model keeps a handle on `cache` for its
-    /// own reloads.
+    /// Loads the Panel for `board` and `list` (the first of each when `None` or no longer
+    /// present), reading the library through `cache` (read again only when the library changed
+    /// since). The model keeps a handle on `cache` for its own reloads.
     ///
     /// # Errors
     ///

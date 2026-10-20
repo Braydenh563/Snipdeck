@@ -204,6 +204,9 @@ where
             Ok(()) | Err(snipdeck_store::Error::Crypto(CryptoError::PasswordRequired)) => {}
             Err(e) => self.show_toast(open_failed(&e)),
         }
+        // Whether the library is locked has just been settled: the clipboard listener's gate
+        // follows it.
+        self.sync_recent_gate();
     }
 
     // ---- Opening -------------------------------------------------------------------------------

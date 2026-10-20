@@ -31,7 +31,7 @@ use snipdeck_app::{
     host::{FakeHotkeys, FakeTargets, FixedClock, HotkeyProblem},
     licence_store,
     main_binding::MainUi,
-    paths::load_settings,
+    paths::read_settings,
     settings::{DockEdge, DockTrigger, HotkeyAction, Hotkeys, Settings, Theme},
     settings_binding::{self, SettingsBinding, SettingsHost, SettingsUi, request_open},
     settings_store::{FileSink, SettingsSaver},
@@ -335,9 +335,9 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
             r.advance(100);
             assert!(r.settings_file().exists(), "{name}: written at 500 ms");
             assert!(
-                check(&load_settings(r.dir.path())),
+                check(&read_settings(r.dir.path()).settings),
                 "{name}: {:?}",
-                load_settings(r.dir.path())
+                read_settings(r.dir.path()).settings
             );
         }
     });
@@ -363,7 +363,10 @@ fn removing_a_program_is_written_too_and_a_repeat_is_refused_in_words() {
             "the message goes with the next change"
         );
         r.advance(500);
-        assert_eq!(load_settings(r.dir.path()).no_paste_apps, ["putty.exe"]);
+        assert_eq!(
+            read_settings(r.dir.path()).settings.no_paste_apps,
+            ["putty.exe"]
+        );
     });
 }
 
@@ -432,7 +435,10 @@ fn the_apps_left_out_of_recent_are_a_list_with_add_remove_and_words_for_a_refusa
         assert_eq!(r.ui.get_no_history_error(), "");
         r.ui.invoke_no_history_app_removed(9);
         r.advance(500);
-        assert_eq!(load_settings(r.dir.path()).no_history_apps, ["putty.exe"]);
+        assert_eq!(
+            read_settings(r.dir.path()).settings.no_history_apps,
+            ["putty.exe"]
+        );
     });
 }
 
@@ -588,7 +594,7 @@ fn choosing_an_edge_docks_the_panel_there_and_floating_lets_it_go() {
         assert_eq!(r.ui.get_dock_edge_index(), 0);
         assert_eq!(r.ctl.borrow().dock_edge(), None);
         r.advance(500);
-        let stored = load_settings(r.dir.path()).panel_geometry;
+        let stored = read_settings(r.dir.path()).settings.panel_geometry;
         assert_eq!(
             stored[0].edge, None,
             "the floating Panel is stored without an edge"
@@ -1133,7 +1139,10 @@ fn erasing_the_library_needs_exactly_the_word_delete() {
         assert_eq!(r.ui.get_backups().row_count(), 0);
         assert!(!r.dir.path().join("backups").exists());
         assert!(r.settings_file().exists());
-        assert!(!load_settings(r.dir.path()).close_to_tray, "settings stay");
+        assert!(
+            !read_settings(r.dir.path()).settings.close_to_tray,
+            "settings stay"
+        );
         assert_eq!(
             licence_store::read(r.dir.path()).as_deref(),
             Some("SNIP1.kept.kept")

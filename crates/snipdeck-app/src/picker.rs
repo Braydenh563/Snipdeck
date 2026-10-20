@@ -85,6 +85,7 @@ impl PickerModel {
     /// # Errors
     ///
     /// Any store error.
+    #[cfg(test)]
     pub fn load<S>(store: &S, board: Option<BoardId>) -> snipdeck_store::Result<Self>
     where
         S: BoardRepo + ListRepo + ItemRepo + TagRepo,
@@ -92,8 +93,9 @@ impl PickerModel {
         Self::load_cached(store, board, &IndexCache::new())
     }
 
-    /// Like [`PickerModel::load`], taking the search index from `cache` (built only when the
-    /// library changed since it was last built).
+    /// Reads the whole library through `cache` (read again only when the library changed since).
+    /// `board` is the board the Panel shows, for the "This board" scope. Starts with an empty
+    /// query, the All scope and the first row selected.
     ///
     /// # Errors
     ///

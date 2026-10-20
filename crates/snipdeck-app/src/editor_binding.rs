@@ -82,6 +82,12 @@ where
             .map(ComponentHandle::clone_strong)
     }
 
+    /// Writes the draft of the open editor now, without waiting for the timer (the app is
+    /// quitting). Does nothing when no editor is open or the controller is busy.
+    pub fn flush_draft(&self) {
+        self.core.autosave_now();
+    }
+
     /// Redraws the window from the controller.
     pub fn redraw(&self) {
         self.core.sync();
@@ -179,34 +185,42 @@ where
         if view.restored {
             window.invoke_mark_dirty();
         }
-        self.start_autosave();
     }
 
-    fn start_autosave(self: &Rc<Self>) {
+    /// Asks for a draft `AUTOSAVE_EVERY` after the first edit that is not yet saved: one shot,
+    /// so an idle editor runs no timer, and typing without a pause still saves every interval.
+    fn arm_autosave(self: &Rc<Self>) {
+        if self.autosave.running() {
+            return;
+        }
         let weak = Rc::downgrade(self);
         self.autosave
-            .start(slint::TimerMode::Repeated, AUTOSAVE_EVERY, move || {
-                let Some(core) = weak.upgrade() else {
-                    return;
-                };
-                let Some(window) = core
-                    .window
-                    .borrow()
-                    .as_ref()
-                    .map(ComponentHandle::clone_strong)
-                else {
-                    return;
-                };
-                let input = read_input(&window);
-                // Skipped when the controller is busy: the next tick tries again.
-                let changed = core
-                    .controller
-                    .try_borrow_mut()
-                    .is_ok_and(|mut ctl| ctl.item_editor_autosave(&input));
-                if changed {
-                    redraw_all();
+            .start(slint::TimerMode::SingleShot, AUTOSAVE_EVERY, move || {
+                if let Some(core) = weak.upgrade() {
+                    core.autosave_now();
                 }
             });
+    }
+
+    /// Hands the window's fields to the controller to keep as a draft.
+    fn autosave_now(&self) {
+        let Some(window) = self
+            .window
+            .borrow()
+            .as_ref()
+            .map(ComponentHandle::clone_strong)
+        else {
+            return;
+        };
+        let input = read_input(&window);
+        // Skipped when the controller is busy: the next edit asks again.
+        let changed = self
+            .controller
+            .try_borrow_mut()
+            .is_ok_and(|mut ctl| ctl.item_editor_autosave(&input));
+        if changed {
+            redraw_all();
+        }
     }
 
     /// The window, made on first use (`None` if the windowing system cannot).
@@ -272,6 +286,7 @@ where
             };
             // Typing only clears a refusal; nothing else on screen changes.
             core.controller.borrow_mut().item_editor_edited();
+            core.arm_autosave();
             core.sync();
         });
         let core = Rc::downgrade(self);
@@ -295,6 +310,8 @@ where
             if let Some(w) = weak.upgrade()
                 && w.get_dirty()
             {
+                // The window stays up asking; if the app dies there, the draft is current.
+                core.autosave_now();
                 w.set_discard_open(true);
                 return CloseRequestResponse::KeepWindowShown;
             }

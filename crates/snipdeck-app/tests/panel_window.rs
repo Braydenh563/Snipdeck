@@ -752,7 +752,9 @@ fn a_changed_setting_is_written_when_the_quiet_timer_fires_on_the_injected_clock
         r.clock.set(at("2026-10-17T10:30:00.5Z"));
         i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(100));
         assert_eq!(
-            snipdeck_app::paths::load_settings(temp.path()).theme,
+            snipdeck_app::paths::read_settings(temp.path())
+                .settings
+                .theme,
             Theme::Dark
         );
         assert_eq!(r.ctl.borrow().settings_wait(), None);
@@ -1062,7 +1064,9 @@ fn a_resize_to_1000_wide_is_cut_to_480_placed_and_remembered_for_that_monitor() 
         r.clock.set(at("2026-10-17T10:30:00.5Z"));
         i_slint_backend_testing::mock_elapsed_time(Duration::from_millis(600));
         slint::platform::update_timers_and_animations();
-        let stored = snipdeck_app::paths::load_settings(temp.path()).panel_geometry;
+        let stored = snipdeck_app::paths::read_settings(temp.path())
+            .settings
+            .panel_geometry;
         assert_eq!(stored.len(), 1);
         assert_eq!(stored[0].monitor_id, m.id);
         assert_eq!(Rect::of(&stored[0]), cut);

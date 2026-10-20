@@ -602,10 +602,14 @@ where
             // The running library stays the empty one in memory until Snipdeck restarts.
             Err(_) => erased = false,
         }
-        // Nothing of the old library may stay open: a revealed item, an editor, an Undo.
+        // Nothing of the old library may stay open: a revealed item, an editor, an Undo, the item
+        // editor (and its draft), the paste queue and what was cached from the old store.
         self.revealed = None;
         self.editor = None;
         self.undo = None;
+        self.item_editor_cancel();
+        self.queue.reset();
+        self.index_cache.reset();
         // The key record may have gone (forgotten) or stayed (with its password).
         self.refresh_master();
         let _ = self.refresh_panel();

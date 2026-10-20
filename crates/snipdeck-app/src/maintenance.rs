@@ -89,11 +89,11 @@ impl State {
     /// The file cannot be written.
     pub fn save(&self, data_dir: &Path) -> io::Result<()> {
         let text = serde_json::to_string_pretty(self).map_err(io::Error::other)?;
-        let temp = data_dir.join(format!("{STATE_FILE}.tmp"));
-        let written = fs::File::create(&temp).and_then(|mut file| {
-            file.write_all(text.as_bytes())?;
-            file.sync_all()
-        });
+        let (mut file, temp) = crate::settings_store::create_temp(data_dir, STATE_FILE)?;
+        let written = file
+            .write_all(text.as_bytes())
+            .and_then(|()| file.sync_all());
+        drop(file);
         match written.and_then(|()| fs::rename(&temp, data_dir.join(STATE_FILE))) {
             Ok(()) => Ok(()),
             Err(e) => {
@@ -734,7 +734,14 @@ mod tests {
                 crash_acknowledged: None,
             }
         );
-        assert!(!dir.path().join("maintenance.json.tmp").exists());
+        assert!(
+            fs::read_dir(dir.path()).unwrap().all(|e| !e
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .ends_with(".tmp")),
+            "no temporary file is left"
+        );
 
         // A new process an hour later: nothing is due.
         clock.set(at(t0() + HOUR));

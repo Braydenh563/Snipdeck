@@ -278,6 +278,14 @@ pub fn system_look() -> Arc<dyn SystemLookSource> {
     imp::system_look()
 }
 
+/// Lets a GUI-subsystem build print to the terminal that started it (`--help`, `--check-db`,
+/// usage errors). Nothing happens off Windows, where the binary has a console already.
+/// Unverified on Windows (Fable v1 sweep A1).
+pub fn attach_parent_console() {
+    #[cfg(windows)]
+    snipdeck_platform::windows::console::attach_parent_console();
+}
+
 /// The file dialog of this machine: the Windows Open dialog; none elsewhere (the item editor then
 /// offers only its path field).
 #[must_use]

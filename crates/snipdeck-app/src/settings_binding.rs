@@ -1718,6 +1718,30 @@ mod tests {
     use super::*;
     use crate::host::FakeHotkeys;
 
+    /// The refusals' sentences come from the page's text table: English here, the build's source
+    /// language (headless backend, one per test thread).
+    #[test]
+    fn the_refusal_sentences_read_in_english() {
+        i_slint_backend_testing::init_no_event_loop();
+        let page = ui::SettingsPage::new().expect("settings page");
+        assert_eq!(
+            hotkey_refusal_text(
+                &page,
+                HotkeyRefusal::Refused(HotkeyFailure::InUse),
+                "Ctrl+Alt+V"
+            ),
+            "Another program already uses Ctrl+Alt+V."
+        );
+        assert_eq!(
+            program_refusal_text(&page, &ProgramRefusal::Listed("putty.exe".to_owned())),
+            "putty.exe is already in the list."
+        );
+        assert_eq!(
+            program_refusal_text(&page, &ProgramRefusal::HasPath),
+            "Use just the program's file name, like notepad.exe."
+        );
+    }
+
     #[test]
     fn only_the_exact_word_confirms_the_erase() {
         assert!(erase_confirmed("DELETE"));
