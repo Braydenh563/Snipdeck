@@ -1516,10 +1516,10 @@ msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "Snipdeck s'est fermé de façon inattendue la dernière fois. Ouvrir le journal ?"
 
 msgid "Snipdeck couldn't open that. Check that it still exists."
-msgstr ""
+msgstr "Snipdeck n'a pas pu ouvrir ce fichier. Vérifiez qu'il existe toujours."
 
 msgid "Snipdeck couldn't read that folder."
-msgstr ""
+msgstr "Snipdeck n'a pas pu lire ce dossier."
 
 msgid "Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again."
 msgstr "Snipdeck n'a pas pu lire votre clé de chiffrement : le mot de passe principal ne peut donc pas être défini ni modifié pour le moment. Redémarrez Snipdeck pour réessayer."
@@ -1642,19 +1642,19 @@ msgid "That app"
 msgstr "Cette application"
 
 msgid "That file is from a newer Snipdeck. Update Snipdeck to import it."
-msgstr ""
+msgstr "Ce fichier provient d'une version plus récente de Snipdeck. Mettez Snipdeck à jour pour l'importer."
 
 msgid "That is not a Snipdeck licence key. A key starts with SNIP1."
 msgstr "Ce n'est pas une clé de licence Snipdeck. Une clé commence par SNIP1."
 
 msgid "That isn't a CopyQ export."
-msgstr ""
+msgstr "Ce n'est pas un export CopyQ."
 
 msgid "That isn't a Ditto database."
-msgstr ""
+msgstr "Ce n'est pas une base de données Ditto."
 
 msgid "That isn't a Snipdeck file, or it is damaged."
-msgstr ""
+msgstr "Ce n'est pas un fichier Snipdeck, ou il est endommagé."
 
 msgid "That key is not for Snipdeck Supporter."
 msgstr "Cette clé ne correspond pas à Snipdeck Supporter."
@@ -1687,7 +1687,7 @@ msgid "The Trash is empty"
 msgstr "La corbeille est vide"
 
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
-msgstr ""
+msgstr "L'Historique du Presse-papiers ne contient encore aucun texte. Copiez du texte, puis réessayez."
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "L'importation s'est arrêtée plus tôt car la source est plus volumineuse que ce que Snipdeck lit d'un coup."
@@ -1918,13 +1918,13 @@ msgid "Windows accent follows your Windows personalisation."
 msgstr "L'accent Windows suit la personnalisation de Windows."
 
 msgid "Windows clipboard history"
-msgstr ""
+msgstr "Historique du Presse-papiers"
 
 msgid "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again."
-msgstr ""
+msgstr "L'Historique du Presse-papiers est désactivé. Activez-le dans Paramètres Windows > Système > Presse-papiers, copiez du texte, puis réessayez."
 
 msgid "Windows did not let Snipdeck read the clipboard history on this PC."
-msgstr ""
+msgstr "Windows n'a pas permis à Snipdeck de lire l'Historique du Presse-papiers sur ce PC."
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "Vous auriez {} tableaux, et l'offre gratuite en comprend {}."

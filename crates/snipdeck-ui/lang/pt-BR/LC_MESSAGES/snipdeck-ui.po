@@ -1516,10 +1516,10 @@ msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "O Snipdeck foi fechado inesperadamente da última vez. Abrir o log?"
 
 msgid "Snipdeck couldn't open that. Check that it still exists."
-msgstr ""
+msgstr "O Snipdeck não conseguiu abrir isso. Verifique se ainda existe."
 
 msgid "Snipdeck couldn't read that folder."
-msgstr ""
+msgstr "O Snipdeck não conseguiu ler esta pasta."
 
 msgid "Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again."
 msgstr "O Snipdeck não conseguiu ler sua chave de criptografia, então a senha mestra não pode ser definida ou alterada agora. Reinicie o Snipdeck para tentar de novo."
@@ -1642,19 +1642,19 @@ msgid "That app"
 msgstr "Esse app"
 
 msgid "That file is from a newer Snipdeck. Update Snipdeck to import it."
-msgstr ""
+msgstr "Este arquivo é de uma versão mais recente do Snipdeck. Atualize o Snipdeck para importá-lo."
 
 msgid "That is not a Snipdeck licence key. A key starts with SNIP1."
 msgstr "Essa não é uma chave de licença do Snipdeck. Uma chave começa com SNIP1."
 
 msgid "That isn't a CopyQ export."
-msgstr ""
+msgstr "Isso não é uma exportação do CopyQ."
 
 msgid "That isn't a Ditto database."
-msgstr ""
+msgstr "Isso não é um banco de dados do Ditto."
 
 msgid "That isn't a Snipdeck file, or it is damaged."
-msgstr ""
+msgstr "Isso não é um arquivo do Snipdeck ou está danificado."
 
 msgid "That key is not for Snipdeck Supporter."
 msgstr "Essa chave não é para o Supporter do Snipdeck."
@@ -1687,7 +1687,7 @@ msgid "The Trash is empty"
 msgstr "A lixeira está vazia"
 
 msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
-msgstr ""
+msgstr "O Histórico da Área de Transferência ainda não tem texto. Copie algum texto e tente novamente."
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "A importação parou cedo porque a origem é maior do que o Snipdeck lê de uma vez."
@@ -1918,13 +1918,13 @@ msgid "Windows accent follows your Windows personalisation."
 msgstr "O destaque do Windows segue a personalização do seu Windows."
 
 msgid "Windows clipboard history"
-msgstr ""
+msgstr "Histórico da Área de Transferência"
 
 msgid "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again."
-msgstr ""
+msgstr "O Histórico da Área de Transferência está desativado. Ative-o em Configurações do Windows > Sistema > Área de Transferência, copie algum texto e tente novamente."
 
 msgid "Windows did not let Snipdeck read the clipboard history on this PC."
-msgstr ""
+msgstr "O Windows não permitiu que o Snipdeck lesse o Histórico da Área de Transferência neste PC."
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "Você teria {} quadros, e o plano Gratuito inclui {}."
