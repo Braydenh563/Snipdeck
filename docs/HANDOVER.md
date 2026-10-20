@@ -9,6 +9,7 @@ Next, in order: CI green on PR #5 -> translations pass for ~80 new strings per l
 
 ## Parallel work (orchestration ledger, 2026-10-19 14:25)
 Hub = this session (`claude/compassionate-pascal-pod8ux`, PR #5). It owns the release branch, merges, `.po/.pot`, `CODEMAP.md`, `HANDOVER.md`, licence/Supporter wording, goldens (D1).
+- f0c10c2 PR #22 merged (D2: 16 README shots at 2x light+dark, site/img refreshed, lossless + oxipng; docs/images 2.1 MB). Known: settings shot cut mid-row; editor Sensitive toggle differs light/dark (fixture). Open: 3c security, 3b scale.
 - e07ddea PR #20 merged (B2 Import source); caf1222 PR #21 merged (D1 goldens regenerated, D3 de-slop; snipdeck-ui 25 ok). e07ddea CI red only in goldens, fixed by caf1222. Open: 3c security, 3b scale, 3a shots (D2).
 - a4b87c3 PR #18 merged (Move up/down + Panel Alt+Up/Down, WCAG 2.5.7; B11 [x]). CI red only in editors goldens. Open at 03:00: 3b claude/v1-wave3b-keys (Main Alt+Up/Down, card double-click per SPEC), 3c claude/v1-security, 3a claude/v1-wave3a-b2. Next after 3c: D1 goldens.
 - 398d5d8 PR #17 merged (E1 docs; B2 back to [~]: platform reader has no UI caller). e9aacfe: flaky unlock_window worker test fixed (Slint queues a quit when the last window hides outside a loop; the test now runs the loop until the answer is applied; 7/40 -> 0/80). Open at 02:16: 3b claude/v1-wave3b-move (WCAG 2.5.7), 3c claude/v1-security (+ Recent entries encrypted at rest, privacy doc), 3a claude/v1-wave3a-b2 (B2 as an Import source). Then D1 goldens. Weekly 75%.
