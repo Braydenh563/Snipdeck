@@ -793,6 +793,9 @@ mod tests {
         fn change_counter(&self) -> u64 {
             self.0.change_counter()
         }
+        fn usage_counter(&self) -> u64 {
+            self.0.usage_counter()
+        }
         fn item(&self, id: ItemId) -> snipdeck_store::Result<Item> {
             self.0.item(id)
         }

@@ -82,7 +82,7 @@ pub trait ItemRepo {
     /// the trash, the search tables), in a [`Store`](crate::Store) and in a
     /// [`Batch`](crate::Batch) alike. It never decreases, and it is not undone by a rollback,
     /// so a failed write can at worst cost one needless refresh. Reads leave it alone. A counted use ([`ItemRepo::record_use`]) and every write to the Recent inbox are left
-    /// out: they change nothing the search index covers. [`Store::recent_revision`] counts
+    /// out: they change nothing the search index covers. [`RecentRepo::recent_revision`](crate::RecentRepo::recent_revision) counts
     /// those too. It is only comparable with values from the same open handle (it starts at a
     /// small number on every open) and says nothing about writes by another process, which the single-writer
     /// lock rules out.
