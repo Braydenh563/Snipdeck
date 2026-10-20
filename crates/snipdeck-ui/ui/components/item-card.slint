@@ -210,7 +210,10 @@ export component ItemCard inherits Rectangle {
     property <bool> more-visible: root.hovered || root.focused;
     property <length> more-side: Space.hit-min;
     property <bool> focused: scope.has-focus || root.show-focus;
-    property <bool> label-visible: root.use-label != "" && (root.hovered || root.focused || root.show-use-label);
+    // A compact row's hint gives way when it would push the title under its 12-character floor
+    // (large text scale in a narrow panel); the hint is also in the Panel's footer.
+    property <bool> use-label-fits: !root.compact || root.row-w - root.use-w - Space.s2 >= root.min-title-w;
+    property <bool> label-visible: root.use-label != "" && root.use-label-fits && (root.hovered || root.focused || root.show-use-label);
     property <bool> mono-preview: root.kind == ItemKind.code || root.kind == ItemKind.link || root.sensitive;
     property <string> shown-preview: root.sensitive && !root.shown ? root.masked-preview : root.preview;
 

@@ -5249,13 +5249,13 @@ main | scripts/make_msix_assets.py:34
 
 ### scripts/readme_shots.py
 
-rounded | scripts/readme_shots.py:38
-shadow | scripts/readme_shots.py:50
-framed | scripts/readme_shots.py:59
-trim_settings | scripts/readme_shots.py:66
-hero | scripts/readme_shots.py:71
-save | scripts/readme_shots.py:89
-main | scripts/readme_shots.py:96
+rounded | scripts/readme_shots.py:39
+shadow | scripts/readme_shots.py:51
+framed | scripts/readme_shots.py:60
+trim_settings | scripts/readme_shots.py:67
+hero | scripts/readme_shots.py:72
+save | scripts/readme_shots.py:90
+main | scripts/readme_shots.py:98
 
 ### spikes/s1-noactivate/src/main.rs
 
