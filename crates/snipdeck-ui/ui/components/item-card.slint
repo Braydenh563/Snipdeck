@@ -2,6 +2,7 @@ import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, ListHue, ListAcc
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 import { CardDepth, CardShadow } from "card-depth.slint";
+import { StateColor } from "state-color.slint";
 
 export enum ItemKind { text, template, code, link, image, file, sensitive }
 export enum ItemCardVariant { compact, comfortable, tile }
@@ -75,7 +76,9 @@ component ListLabel inherits Rectangle {
     }
 }
 
-// "Paste ↵" / "Copy ↵": ghost style `type.sm` 500. The card's own touch area does the work; this is only the label.
+// "Paste ↵" / "Copy ↵": a ghost button in `type.sm` 500 that does what Enter does on the row (O33). It is
+// not a Tab stop: the row itself is the keyboard path (Enter uses, Shift+Enter copies) and the label shows
+// while the row has focus. A click here is its own: it never selects the row instead of using it.
 // The Enter glyph is the Phosphor `arrow-bend-down-left` icon, not the character U+21B5: IBM Plex has no
 // glyph for it, so the character would come from whichever system font the machine falls back to.
 component UseLabel inherits Rectangle {
@@ -85,12 +88,24 @@ component UseLabel inherits Rectangle {
     // Colour behind the label so it never mixes with the preview text under it.
     in property <color> backing;
     in property <length> text-w;
+    // The item the button acts on: the accessible name is "Paste <title>" / "Copy <title>".
+    in property <string> item-title;
+    // The pointer is on the button (it keeps the row hovered, so the label stays). A binding, not a
+    // `changed` callback: the row's own touch area loses its hover the moment the pointer crosses onto
+    // the button, and a deferred callback would let the button vanish under the press.
+    out property <bool> hovered: touch.has-hover;
+    property <bool> pressed: touch.pressed;
+    callback clicked();
     // The Enter glyph is as tall as the label text.
     out property <length> glyph-size: Type.sm;
+    property <color> ink: root.selected ? Theme.text-on-selected : Theme.text-primary;
     width: root.text-w + Space.s1 + root.glyph-size + 2 * Space.s2;
     height: Type.line-sm + Space.s1;
     border-radius: Radius.sm;
-    background: root.backing;
+    background: root.pressed ? StateColor.pressed() : root.backing;
+    // Hover and pressed read on every row fill (hovered, selected, lifted): a hairline in the text colour.
+    border-width: root.hovered || root.pressed ? 1px : 0px;
+    border-color: root.ink;
     opacity: root.shown ? 1.0 : 0.0;
     visible: root.text != "";
     animate opacity { duration: Motion.fade; easing: Motion.out; }
@@ -103,15 +118,30 @@ component UseLabel inherits Rectangle {
         font-family: Fonts.sans;
         font-size: Type.sm;
         font-weight: Type.medium;
-        color: root.selected ? Theme.text-on-selected : Theme.text-primary;
+        color: root.ink;
         vertical-alignment: center;
+        accessible-role: AccessibleRole.none;
     }
     Icon {
         source: Icons.arrow-bend-down-left;
-        tint: root.selected ? Theme.text-on-selected : Theme.text-primary;
+        tint: root.ink;
         size: root.glyph-size;
         x: Space.s2 + root.text-w + Space.s1;
         y: (parent.height - self.height) / 2;
+    }
+    // Only while shown does it take the pointer and count as a button for assistive technology: hidden,
+    // the row's own touch area under it gets the click.
+    touch := TouchArea {
+        enabled: root.shown;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+    if root.shown: Rectangle {
+        width: 100%;
+        height: 100%;
+        accessible-role: button;
+        accessible-label: root.item-title == "" ? root.text : root.text + " " + root.item-title;
+        accessible-action-default => { root.clicked(); }
     }
 }
 
@@ -207,7 +237,7 @@ export component ItemCard inherits Rectangle {
     property <bool> held-reveal: false;
     property <bool> reveal-armed: false;
     property <bool> shown: !root.sensitive || root.revealed || root.held-reveal;
-    property <bool> hovered: touch.has-hover || root.more-hover;
+    property <bool> hovered: touch.has-hover || root.more-hover || use-btn.hovered;
     property <bool> more-hover: false;
     // The "More" (⋯) button is the context menu for a pointer that does not right-click. It is always drawn,
     // muted until the card is hovered or focused, so pen and touch users can find it (WCAG 2.2 sweep F6).
@@ -560,19 +590,6 @@ export component ItemCard inherits Rectangle {
                 : root.pad-y + (root.title-h - self.height) / 2;
         }
 
-        // Use label: bottom right on hover or keyboard focus.
-        UseLabel {
-            selected: root.selected;
-            text: root.use-label;
-            shown: root.label-visible;
-            backing: root.fill;
-            text-w: m-use.preferred-width;
-            x: parent.width - root.pad-x - root.more-reserve - self.width;
-            y: root.compact ? (parent.height - self.height) / 2
-                : root.tile ? parent.height - root.pad-y - self.height
-                : parent.height - Space.s1 - self.height;
-        }
-
         // Hairline between compact rows (the fill separates hovered, selected and lifted rows).
         if root.compact && root.row-radius == 0px: Rectangle {
             x: 0;
@@ -665,6 +682,25 @@ export component ItemCard inherits Rectangle {
             mouse-cursor: pointer;
             changed has-hover => { root.more-hover = self.has-hover; }
             clicked => { root.context-menu-requested(more.x, more.y + more.height); }
+        }
+    }
+
+    // ---- Use button: bottom right (centre right in a compact row) on hover, focus or `show-use-label` ---
+    // After `touch` like More: a click on it uses the item (O33) and never only selects it in `pick-mode`.
+    use-btn := UseLabel {
+        selected: root.selected;
+        text: root.use-label;
+        item-title: root.title;
+        shown: root.label-visible;
+        backing: root.fill;
+        text-w: m-use.preferred-width;
+        x: root.width - root.pad-x - root.more-reserve - self.width;
+        y: root.compact ? (root.height - self.height) / 2
+            : root.tile ? root.height - root.pad-y - self.height
+            : root.height - Space.s1 - self.height;
+        clicked => {
+            root.pull();
+            root.use();
         }
     }
 
