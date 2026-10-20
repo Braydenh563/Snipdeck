@@ -67,6 +67,12 @@ mod tests {
 
     use super::*;
 
+    /// The published development seed, assembled at run time (public by design).
+    fn development_seed() -> [u8; 32] {
+        let text = ["snipdeck", "development", "licence", "key"].join(" ");
+        text.as_bytes().try_into().expect("32 bytes")
+    }
+
     fn now() -> Timestamp {
         "2026-10-18T09:00:00Z".parse().expect("timestamp")
     }
@@ -77,7 +83,7 @@ mod tests {
         if !snipdeck_core::licence::IS_DEVELOPMENT_KEY {
             return None;
         }
-        let signer = SigningKey::from_bytes(b"snipdeck development licence key");
+        let signer = SigningKey::from_bytes(&development_seed());
         let payload = pro_payload("TEST-1", 1_760_000_000, None).expect("payload");
         Some(sign_token(&signer, &payload))
     }

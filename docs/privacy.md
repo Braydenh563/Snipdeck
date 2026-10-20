@@ -9,7 +9,7 @@ makes a network request; every icon and font it shows is packaged with it.
 |---|---|---|
 | Your library (boards, lists, items, tags, use counts) | `%LOCALAPPDATA%\Snipdeck\snipdeck.db` | SQLite, write-ahead log, `secure_delete` on so deleted rows are overwritten |
 | Large item content (images, files, long text) | `%LOCALAPPDATA%\Snipdeck\blobs\` | Content-addressed files, written atomically |
-| Recent inbox (only if you turn it on) | inside `snipdeck.db` | Up to 200 copies and 7 days of copied text, not encrypted. Backups and exports leave it out |
+| Recent inbox (only if you turn it on) | inside `snipdeck.db` | Up to 200 copies and 7 days of copied text, encrypted like Sensitive items (needs Windows key protection). Backups and exports leave it out |
 | Settings | `%LOCALAPPDATA%\Snipdeck\settings.json` | Plain JSON you can read and edit |
 | Licence key (if you entered one) | `%LOCALAPPDATA%\Snipdeck\licence.key` | One line of text, checked offline at every start |
 | Daily backups | `%LOCALAPPDATA%\Snipdeck\backups\` | Zipped `.snipdeck` exports. The newest 7 are kept; you can choose 1 to 60 |
@@ -41,9 +41,14 @@ text** leaves sensitive items out, because it is plain text.
 keeps the text you copy in other programs, up to the last 200 copies and 7 days, in your library
 (`snipdeck.db`, on this computer only). Text from a Sensitive item, text Snipdeck copied itself, copies
 from programs that ask Windows to keep them out of clipboard history (password managers do), and copies from
-programs on your exclude list are never kept. Unlike Sensitive items, the entries are not encrypted in the
-database, so treat the inbox like your clipboard history: leave it off if other people can read your files.
-With a master password set, the library being locked hides the entries and collects nothing. **Clear recent
+programs on your exclude list are never kept. Like Sensitive items, the entries are encrypted in the
+database with the library key, which Windows protects for your account (DPAPI); the first copy it keeps sets
+that key up, and if Windows cannot protect a key nothing is kept. Entries a version before this one kept as plain
+text are encrypted the first time the library opens with its key. While you are signed in to Windows
+the key is open, so the inbox is as private as your account, not more. With a master password set, the library
+being locked hides the entries, collects nothing, and the key is not available until you unlock. Copies of the
+database made by earlier upgrades (`snipdeck.db.pre-v1.bak` to `snipdeck.db.pre-v4.bak`) held that plain text;
+the first start of this version empties the Recent entries in them, or deletes a copy it cannot clean. **Clear recent
 history** in Settings deletes every entry now, **Pause history** in the tray stops collecting for a while, and
 turning the setting off stops it for good. Nothing in the inbox leaves your computer, and imports (Settings ▸ Your data ▸ Import…) read only the file or
 folder you choose.

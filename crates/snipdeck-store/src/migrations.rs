@@ -55,6 +55,12 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         sql: schema::V4,
         post: None,
     },
+    Migration {
+        version: 5,
+        name: "recent inbox encrypted at rest",
+        sql: crate::recent::V5,
+        post: None,
+    },
 ];
 
 /// The newest schema version this build writes.
@@ -102,6 +108,9 @@ pub(crate) fn migrate(
             found: current,
             supported: latest,
         });
+    }
+    if backup && current > 0 {
+        scrub_older_backups(path, current);
     }
     if current == latest {
         return Ok(Outcome {
@@ -189,7 +198,59 @@ fn write_backup(conn: &Connection, path: &Path, from: u32) -> Result<()> {
         Err(e) => return Err(e.into()),
     }
     let target = target.to_string_lossy().into_owned();
-    conn.execute("VACUUM INTO ?1", [target])?;
+    conn.execute("VACUUM INTO ?1", [&target])?;
+    if from < 5 {
+        scrub_or_delete(Path::new(&target));
+    }
+    Ok(())
+}
+
+/// The first schema version whose Recent text is sealed; earlier copies hold it plain.
+const SEALED_RECENT_SINCE: u32 = 5;
+
+/// Scrubs the Recent inbox of the rollback copies earlier upgrades left (`pre-v1` to `pre-v4`):
+/// those hold plain text too. Runs at every open that has a backup name to look for, and does
+/// nothing for a copy that is not there or has no entries left.
+fn scrub_older_backups(path: &Path, current: u32) {
+    for from in 1..SEALED_RECENT_SINCE.min(current + 1) {
+        let mut name = path.as_os_str().to_owned();
+        name.push(format!(".pre-v{from}.bak"));
+        let copy = std::path::PathBuf::from(name);
+        if copy.is_file() {
+            scrub_or_delete(&copy);
+        }
+    }
+}
+
+/// Scrubs the Recent inbox of a backup; if that fails (a file held by antivirus, a damaged copy)
+/// the backup is deleted instead, because a plain copy is worse than none and a failed scrub
+/// must not stop the library opening.
+fn scrub_or_delete(backup: &Path) {
+    if scrub_recent(&backup.to_string_lossy()).is_err() {
+        let _ = std::fs::remove_file(backup);
+    }
+}
+
+/// Empties the Recent inbox in a backup: its text was plain before schema version 5, and a
+/// rollback copy is not a reason to keep it. Nothing to do for a table that is not there (older
+/// schemas have none) or is empty; a file that cannot be opened or rewritten is an error.
+fn scrub_recent(backup: &str) -> Result<()> {
+    let copy = Connection::open(backup)?;
+    // No -wal or -journal file: the old pages must not pass through a file that is only deleted.
+    copy.pragma_update(None, "journal_mode", "MEMORY")?;
+    copy.pragma_update(None, "secure_delete", "ON")?;
+    let has_table: bool = copy.query_row(
+        "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'recent_entries')",
+        [],
+        |r| r.get(0),
+    )?;
+    if has_table {
+        let entries: i64 =
+            copy.query_row("SELECT count(*) FROM recent_entries", [], |r| r.get(0))?;
+        if entries > 0 {
+            copy.execute_batch("DELETE FROM recent_entries; VACUUM;")?;
+        }
+    }
     Ok(())
 }
 
@@ -199,14 +260,14 @@ mod tests {
     use rusqlite::params;
 
     const NEXT_ADD_COLUMN: Migration = Migration {
-        version: 5,
+        version: 6,
         name: "add boards.colour",
         sql: "ALTER TABLE boards ADD COLUMN colour TEXT;",
         post: None,
     };
 
     const NEXT_BROKEN: Migration = Migration {
-        version: 5,
+        version: 6,
         name: "broken",
         sql: "ALTER TABLE boards ADD COLUMN colour TEXT; THIS IS NOT SQL;",
         post: None,
@@ -277,8 +338,8 @@ mod tests {
 
         let all = with_next(NEXT_ADD_COLUMN);
         let outcome = migrate(&mut conn, &all, Path::new(":memory:"), false).unwrap();
-        assert_eq!(outcome, Outcome { from: 4, to: 5 });
-        assert_eq!(version(&conn), 5);
+        assert_eq!(outcome, Outcome { from: 5, to: 6 });
+        assert_eq!(version(&conn), 6);
         let (name, colour): (String, Option<String>) = conn
             .query_row("SELECT name, colour FROM boards", [], |r| {
                 Ok((r.get(0)?, r.get(1)?))
@@ -304,7 +365,7 @@ mod tests {
             matches!(
                 err,
                 Error::Migration {
-                    version: 5,
+                    version: 6,
                     name: "broken",
                     source: Some(_),
                     ..
@@ -316,7 +377,7 @@ mod tests {
             std::error::Error::source(&err).is_some(),
             "the cause is kept"
         );
-        assert_eq!(version(&conn), 4);
+        assert_eq!(version(&conn), 5);
         // The half-applied ALTER TABLE was undone, and the data is intact.
         assert!(conn.prepare("SELECT colour FROM boards").is_err());
         let boards: i64 = conn
@@ -334,7 +395,7 @@ mod tests {
         let mut conn = fresh();
         migrate(&mut conn, MIGRATIONS, Path::new(":memory:"), false).unwrap();
         let dangling = Migration {
-            version: 5,
+            version: 6,
             name: "orphan a list",
             sql: "INSERT INTO lists (id, board_id, name, list_view, list_sort, rank, created_at, updated_at)
                   VALUES (zeroblob(16), zeroblob(16), 'L', 'compact', 'manual', 1, 0, 0);",
@@ -348,10 +409,10 @@ mod tests {
         )
         .unwrap_err();
         assert!(
-            matches!(err, Error::Migration { version: 5, .. }),
+            matches!(err, Error::Migration { version: 6, .. }),
             "{err:?}"
         );
-        assert_eq!(version(&conn), 4);
+        assert_eq!(version(&conn), 5);
     }
 
     #[test]
@@ -367,8 +428,8 @@ mod tests {
             matches!(
                 err,
                 Error::SchemaTooNew {
-                    found: 5,
-                    supported: 4
+                    found: 6,
+                    supported: 5
                 }
             ),
             "{err:?}"
@@ -378,7 +439,7 @@ mod tests {
             message.contains("newer Snipdeck") && message.contains("update"),
             "{message}"
         );
-        assert_eq!(version(&conn), 5);
+        assert_eq!(version(&conn), 6);
     }
 
     #[test]
@@ -412,10 +473,10 @@ mod tests {
                 outcome,
                 Outcome {
                     from: u32::try_from(start).unwrap(),
-                    to: 4
+                    to: 5
                 }
             );
-            assert_eq!(version(&conn), 4);
+            assert_eq!(version(&conn), 5);
             for sql in [
                 "SELECT label FROM items",
                 "SELECT icon FROM lists",
@@ -437,14 +498,14 @@ mod tests {
         let mut conn = Connection::open(&path).unwrap();
         migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
         assert!(
-            !dir.path().join("snipdeck.db.pre-v4.bak").exists(),
+            !dir.path().join("snipdeck.db.pre-v5.bak").exists(),
             "nothing to back up on creation"
         );
         insert_board(&conn);
 
         migrate(&mut conn, &with_next(NEXT_ADD_COLUMN), &path, true).unwrap();
-        let backup = Connection::open(dir.path().join("snipdeck.db.pre-v4.bak")).unwrap();
-        assert_eq!(version(&backup), 4);
+        let backup = Connection::open(dir.path().join("snipdeck.db.pre-v5.bak")).unwrap();
+        assert_eq!(version(&backup), 5);
         let boards: i64 = backup
             .query_row("SELECT count(*) FROM boards", [], |r| r.get(0))
             .unwrap();
@@ -453,6 +514,65 @@ mod tests {
             backup.prepare("SELECT colour FROM boards").is_err(),
             "the copy predates the change"
         );
+    }
+
+    fn plain_copy_with_one_entry(path: &Path) {
+        let conn = Connection::open(path).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE recent_entries (text TEXT);
+             INSERT INTO recent_entries VALUES ('left over');",
+        )
+        .unwrap();
+    }
+
+    fn entries(path: &Path) -> i64 {
+        Connection::open(path)
+            .unwrap()
+            .query_row("SELECT count(*) FROM recent_entries", [], |r| r.get(0))
+            .unwrap()
+    }
+
+    #[test]
+    fn older_rollback_copies_lose_their_plain_recent_entries_and_a_broken_one_is_deleted() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("snipdeck.db");
+        let mut conn = Connection::open(&path).unwrap();
+        migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
+        let v3 = dir.path().join("snipdeck.db.pre-v3.bak");
+        let v4 = dir.path().join("snipdeck.db.pre-v4.bak");
+        plain_copy_with_one_entry(&v3);
+        std::fs::write(&v4, b"not a database, and held by nobody").unwrap();
+
+        // A library already at the newest version still cleans the copies of earlier upgrades.
+        migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
+        assert_eq!(entries(&v3), 0, "scrubbed");
+        assert!(!v4.exists(), "a copy that cannot be scrubbed is deleted");
+        assert_eq!(version(&conn), 5, "and the open went on");
+    }
+
+    #[test]
+    fn a_scrubbed_copy_uses_no_journal_file_and_a_failed_scrub_does_not_fail_the_open() {
+        let dir = tempfile::tempdir().unwrap();
+        let copy = dir.path().join("copy.bak");
+        plain_copy_with_one_entry(&copy);
+        scrub_recent(&copy.to_string_lossy()).unwrap();
+        assert_eq!(entries(&copy), 0);
+        let leftovers: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name())
+            .collect();
+        assert_eq!(
+            leftovers.len(),
+            1,
+            "no -wal or -journal left: {leftovers:?}"
+        );
+
+        let broken = dir.path().join("broken.bak");
+        std::fs::write(&broken, b"garbage garbage garbage garbage").unwrap();
+        assert!(scrub_recent(&broken.to_string_lossy()).is_err());
+        scrub_or_delete(&broken);
+        assert!(!broken.exists());
     }
 
     /// A real file written by the released version-1 schema (see `tests/fixture.rs`).
@@ -469,7 +589,7 @@ mod tests {
         // A table rebuild, the migration shape that needs foreign keys off: widen the
         // `list_view` check by copying `lists` into a new table.
         let rebuild = Migration {
-            version: 5,
+            version: 6,
             name: "rebuild lists",
             sql: "CREATE TABLE lists_new (
                       id BLOB NOT NULL PRIMARY KEY CHECK (length(id) = 16),
@@ -503,7 +623,7 @@ mod tests {
         let before = counts(&conn);
         assert_eq!(before, [1, 1, 3, 4, 1, 1]);
         let outcome = migrate(&mut conn, &with_next(rebuild), &path, true).unwrap();
-        assert_eq!(outcome, Outcome { from: 1, to: 5 });
+        assert_eq!(outcome, Outcome { from: 1, to: 6 });
         assert_eq!(counts(&conn), before);
         let items_still_reference_the_list: i64 = conn
             .query_row(

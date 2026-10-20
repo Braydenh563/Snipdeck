@@ -188,14 +188,15 @@ where
     /// Opens the library key at start-up when one was made on an earlier run, so sensitive items
     /// can be used and edited. A key that does not open is a toast (the items stay as they are).
     ///
-    /// A library from before encryption was free for every plan can hold sensitive items as
-    /// plain text and no key: when the machine can protect a key, it is made now, which encrypts
-    /// those items. Without key protection they stay as they are, and no toast is shown.
+    /// A library from before encryption was free for every plan can hold sensitive items (or
+    /// Recent entries, before version 5) as plain text and no key: when the machine can protect
+    /// a key, it is made now, which encrypts them. Without key protection they stay as they are, and no toast is shown.
     pub fn unlock_library(&mut self) {
         let migrate = self.editor_env.keys.is_some()
             && !self.store.is_unlocked()
             && !matches!(self.store.key_ring_exists(), Ok(true))
-            && matches!(self.store.has_plain_sensitive(), Ok(true));
+            && (matches!(self.store.has_plain_sensitive(), Ok(true))
+                || matches!(self.store.has_plain_recent(), Ok(true)));
         self.refresh_master();
         match self.ensure_key(migrate) {
             // A master password is set: the library waits for it, silently. The unlock window

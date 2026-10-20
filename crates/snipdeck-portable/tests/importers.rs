@@ -1098,3 +1098,106 @@ fn history_with_nothing_importable_adds_no_board() {
     assert_eq!(report.boards_added, 0);
     assert_eq!(counts(&s), (0, 0, 0, 0));
 }
+
+#[test]
+fn copyq_a_huge_array_of_junk_is_cut_off_at_the_scan_cap() {
+    // 2 MB of `0,` would be a million values; the cap is on items looked at, so the rest is
+    // never even visited, let alone kept.
+    let mut json = String::from("[");
+    json.push_str(&"0,".repeat(1_000_000));
+    json.push_str("0]");
+    let opts = ImportOptions {
+        limits: snipdeck_portable::Limits {
+            max_items: 10,
+            ..snipdeck_portable::Limits::default()
+        },
+        ..ImportOptions::default()
+    };
+    let (s, report) = copyq(json.as_bytes(), &opts);
+    assert_eq!(counts(&s), (0, 0, 0, 0));
+    assert_eq!(report.items_skipped, 40, "scan cap is 4 x max_items");
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Truncated { .. })),
+        "{:?}",
+        report.warnings
+    );
+    assert!(report.warnings.len() <= snipdeck_portable::MAX_WARNINGS);
+}
+
+#[test]
+fn copyq_stops_reading_at_max_items_without_a_tree() {
+    let items: Vec<String> = (0..50).map(|i| format!("item {i}")).collect();
+    let json = serde_json::to_string(&items).unwrap();
+    let opts = ImportOptions {
+        limits: snipdeck_portable::Limits {
+            max_items: 5,
+            ..snipdeck_portable::Limits::default()
+        },
+        ..ImportOptions::default()
+    };
+    let (_, report) = copyq(json.as_bytes(), &opts);
+    assert_eq!(report.items_added, 5);
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Truncated { .. }))
+    );
+}
+
+#[test]
+fn copyq_a_deeply_nested_array_is_skipped_not_recursed_into() {
+    let depth = 200_000;
+    let json = format!("{}{}", "[".repeat(depth), "]".repeat(depth));
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("deep.json");
+    fs::write(&path, json).unwrap();
+    let mut s = store();
+    // Nesting is skipped without being built or recursed into: one unreadable element, or a
+    // refusal; never a stack overflow and never an item.
+    match import_copyq_json(&mut s, &path, at(1), &ImportOptions::default()) {
+        Ok(report) => assert_eq!((report.items_added, report.items_skipped), (0, 1)),
+        Err(e) => assert!(matches!(e, Error::Malformed { .. }), "{e}"),
+    }
+    assert_eq!(counts(&s), (0, 0, 0, 0));
+}
+
+#[test]
+fn copyq_a_huge_tags_array_in_one_item_keeps_only_the_cap() {
+    let tags = format!("[{}]", r#""a","#.repeat(500_000) + r#""b""#);
+    let json = format!(r#"{{"items":[{{"text":"hello","tags":{tags}}}]}}"#);
+    let (s, report) = copyq(json.as_bytes(), &ImportOptions::default());
+    assert_eq!(report.items_added, 1);
+    assert!(report.tags_added <= 2, "{}", report.tags_added);
+    assert_healthy(&s);
+}
+
+#[test]
+fn ditto_reads_at_most_a_capped_number_of_groups() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("Data.db");
+    let d = Ditto::new(&path);
+    // 10 001 group rows from one statement; the importer reads the first 10 000 and says so.
+    d.0.execute_batch(
+        "WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 10001)
+         INSERT INTO Main (lID, lDate, mText, bIsGroup, lParentID)
+         SELECT i, 0, 'g' || i, 1, -1 FROM n;",
+    )
+    .unwrap();
+    d.clip(20_000, 1_700_000_000, Some("a clip"), false, 1);
+    drop(d);
+    let mut s = store();
+    let report = import_ditto(&mut s, &path, at(9), &ImportOptions::default()).unwrap();
+    assert_eq!(report.items_added, 1);
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Truncated { reason } if reason.contains("groups"))),
+        "{:?}",
+        report.warnings
+    );
+}

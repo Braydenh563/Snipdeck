@@ -294,7 +294,10 @@ where
         let w = create_window(ui::TagManager::new).ok()?;
         let (core, weak) = (Rc::clone(self), w.as_weak());
         w.on_rename_requested(move |i, name| {
-            crate::trace!("callback tags rename_requested ({i}, {name:?})");
+            crate::trace!(
+                "callback tags rename_requested ({i}, <{} chars>)",
+                name.chars().count()
+            );
             let result = core.act(|ctl| ctl.main_rename_tag(index(i), name.as_str()));
             if let Some(w) = weak.upgrade() {
                 match result {

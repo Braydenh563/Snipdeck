@@ -104,6 +104,13 @@ impl Store {
             .is_some())
     }
 
+    /// Whether any Recent inbox entry is still stored as plain text (no key was available when
+    /// it was written, or it predates schema version 5). Creating or unlocking the key ring
+    /// encrypts them.
+    pub fn has_plain_recent(&self) -> Result<bool> {
+        crate::recent::has_plain(&self.conn)
+    }
+
     /// The stored key record (the wrapped data key), if encryption was set up. It is safe to copy:
     /// useless without the OS binding and the master password. Erasing a library uses it to keep
     /// the key while everything else goes ([`Store::restore_key_record`]).
@@ -258,9 +265,10 @@ impl Store {
             )?;
         }
         let (encrypted, old) = encrypt_plain_sensitive(&tx, &mut self.blobs, &key)?;
+        let recent = crate::recent::encrypt_plain(&tx, &key)?;
         tx.commit()?;
         self.key = Some(key);
-        if encrypted > 0 {
+        if encrypted > 0 || recent > 0 {
             let mut post = Post::default();
             post.written(Written::default(), old, true);
             self.finish(post);

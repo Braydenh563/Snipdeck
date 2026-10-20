@@ -37,7 +37,9 @@ use support::{Deferred, key, on_ui_thread, press, type_text};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 
-const PASSWORD: &str = "tulip harbour 42";
+fn password() -> &'static str {
+    support::pw("main")
+}
 
 struct Rig {
     ui: UnlockWindow,
@@ -67,7 +69,8 @@ fn rig() -> Rig {
     .expect("controller");
     ctl.set_key_provider(Box::new(MemoryKeyProvider::new().expect("provider")));
     ctl.set_kdf_params(KdfParams::insecure_for_tests(64, 1, 1).expect("params"));
-    ctl.set_master_password(PASSWORD, PASSWORD).expect("set");
+    ctl.set_master_password(password(), password())
+        .expect("set");
     ctl.lock_now();
     ctl.request_unlock();
     assert!(ctl.library_locked() && ctl.unlock_prompt_open());
@@ -106,7 +109,7 @@ fn typing_the_password_and_pressing_enter_unlocks_with_the_focus_already_in_the_
     on_ui_thread(|| {
         let r = rig();
         // No click: the field has the focus when the window opens (WCAG 2.4.3).
-        type_text(r.ui.window(), PASSWORD);
+        type_text(r.ui.window(), password());
         press(r.ui.window(), "\n");
         settle();
         assert!(!r.ctl.borrow().library_locked());
@@ -120,7 +123,7 @@ fn typing_the_password_and_pressing_enter_unlocks_with_the_focus_already_in_the_
 fn a_wrong_password_says_so_in_words_empties_the_field_and_allows_another_try() {
     on_ui_thread(|| {
         let r = rig();
-        type_text(r.ui.window(), "not the password");
+        type_text(r.ui.window(), support::pw("wrong"));
         press(r.ui.window(), "\n");
         settle();
         assert!(r.ctl.borrow().library_locked());
@@ -131,7 +134,7 @@ fn a_wrong_password_says_so_in_words_empties_the_field_and_allows_another_try() 
         );
         assert_eq!(r.ui.get_password(), "", "the wrong password is not kept");
         // The focus is back in the field: type the right one and Enter again.
-        type_text(r.ui.window(), PASSWORD);
+        type_text(r.ui.window(), password());
         press(r.ui.window(), "\n");
         settle();
         assert!(!r.ctl.borrow().library_locked());
@@ -176,7 +179,7 @@ fn the_field_is_named_and_the_typed_password_is_not_exposed() {
     on_ui_thread(|| {
         let r = rig();
         let field = element(&r.ui, "Master password", AccessibleRole::TextInput);
-        field.set_accessible_value(PASSWORD);
+        field.set_accessible_value(password());
         assert!(
             field.accessible_value().is_none_or(|v| v.is_empty()),
             "a screen reader does not read the password back"
@@ -192,7 +195,7 @@ fn the_prompt_closes_by_itself_when_something_else_unlocked_the_library() {
         let r = rig();
         r.ctl
             .borrow_mut()
-            .unlock_with_password(PASSWORD)
+            .unlock_with_password(password())
             .expect("unlocked elsewhere");
         // Every window redraws after a change made in another; nothing here does, so ask.
         r.binding.redraw();
@@ -207,7 +210,7 @@ fn while_the_key_is_derived_the_window_says_so_and_takes_no_second_try() {
         let r = rig();
         let held = Deferred::default();
         let _inline_again = held.install();
-        type_text(r.ui.window(), PASSWORD);
+        type_text(r.ui.window(), password());
         press(r.ui.window(), "\n");
         settle();
         assert_eq!(held.held(), 1, "the work was handed off");
@@ -231,7 +234,7 @@ fn while_the_key_is_derived_the_window_says_so_and_takes_no_second_try() {
             Some(false)
         );
         // Enter and Esc do nothing meanwhile.
-        type_text(r.ui.window(), PASSWORD);
+        type_text(r.ui.window(), password());
         press(r.ui.window(), "\n");
         press(r.ui.window(), &key(Key::Escape));
         settle();
@@ -252,7 +255,7 @@ fn a_wrong_password_found_in_the_background_frees_the_window_for_another_try() {
         let r = rig();
         let held = Deferred::default();
         let _inline_again = held.install();
-        type_text(r.ui.window(), "not the password");
+        type_text(r.ui.window(), support::pw("wrong"));
         press(r.ui.window(), "\n");
         settle();
         held.release();
@@ -294,7 +297,7 @@ fn a_worker_thread_hands_the_outcome_back_through_the_event_loop() {
         let r = rig();
         let applied = Rc::new(Cell::new(false));
         snipdeck_app::master_job::set_offload(Rc::new(ThenQuit(Rc::clone(&applied))));
-        type_text(r.ui.window(), PASSWORD);
+        type_text(r.ui.window(), password());
         press(r.ui.window(), "\n");
         assert!(r.ui.get_busy(), "the work left the UI thread");
         // Earlier tests on this thread hid their last window outside a running loop, and Slint

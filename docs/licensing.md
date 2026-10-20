@@ -152,7 +152,9 @@ the rule.
 Running release-mode tests or timings locally (for example the 10k search timing test) needs
 a key too: use any valid public key, such as the throwaway
 `SNIPDECK_LICENCE_PUBLIC_KEY=Zr5+Myx6RTMyvZ0Kf32wVfXF7xoGraZtmLOftoEMRzo=` (the key of seed
-`[0x0b; 32]`; it is a test value, not a product key).
+`[0x0b; 32]`; it is a test value, not a product key). A release build refuses this key (and
+the other published test keys) unless `SNIPDECK_ALLOW_TEST_LICENCE_KEY=1` is also set, so
+a copy of it in the release secret cannot ship; the official release never sets the opt-in.
 
 ## Production key: generation, storage, rotation
 
@@ -192,6 +194,10 @@ cargo run -p snipdeck-licence-issuer -- sign --key ~/snipdeck-licence-keys/priva
 cargo run -p snipdeck-licence-issuer -- verify --public ~/snipdeck-licence-keys/public.key SNIP1.…
 ```
 
+* `genkey` writes `private.key` **in clear text** (base64 of the seed; mode 0600 on Unix, and on
+  Windows it inherits the folder's permissions, so use a private folder). Keep the folder on an
+  **encrypted drive** (BitLocker, FileVault, LUKS) or move it to an offline token. The tool
+  refuses any folder inside a git work tree, so the key cannot be committed by accident.
 * `--order` must be 1 to 128 characters of `A-Z a-z 0-9 . _ -`; anything else is refused.
   Use **`GIFT-<name>`** (`GIFT-alex`, `GIFT-sam-2`) for every key given away, one per
   person. The order id is signed into the key.

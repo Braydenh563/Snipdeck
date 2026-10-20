@@ -84,7 +84,10 @@ where
     /// A use from the Panel ended with `result`: a paste collapses a docked Panel (a copy
     /// does not: the user is about to paste it by hand).
     pub fn dock_after_use(&mut self, result: &UseResult) -> Vec<Effect> {
-        if matches!(result, UseResult::Done(UseOutcome::Pasted)) {
+        if matches!(
+            result,
+            UseResult::Done(UseOutcome::Pasted | UseOutcome::PastedNotRestored)
+        ) {
             self.dock_event(DockEvent::Pasted)
         } else {
             Vec::new()

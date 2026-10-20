@@ -62,6 +62,12 @@ pub trait ClipboardText {
     /// Empties the clipboard if it still holds exactly `text` (so something the user copied
     /// since is never lost). Whether it was cleared.
     fn clear_if_text(&mut self, text: &str) -> bool;
+    /// The clipboard's sequence number, which changes whenever its contents do; `None` when it
+    /// cannot be read. Covers content that is not text (HTML, images, files).
+    fn sequence_number(&mut self) -> Option<u32>;
+    /// Empties the clipboard, whatever formats it holds, if its sequence number is still
+    /// `sequence`. Whether it did.
+    fn clear_if_sequence(&mut self, sequence: u32) -> bool;
 }
 
 #[cfg(windows)]
@@ -71,6 +77,12 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
     }
     fn clear_if_text(&mut self, text: &str) -> bool {
         Self::clear_if_text(self, text)
+    }
+    fn sequence_number(&mut self) -> Option<u32> {
+        Self::sequence_number(self)
+    }
+    fn clear_if_sequence(&mut self, sequence: u32) -> bool {
+        Self::clear_if_sequence(self, sequence)
     }
 }
 
@@ -88,6 +100,19 @@ impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
             return false;
         }
         self.written.clear();
+        self.sequence += 1;
+        self.log.push("clear".into());
+        true
+    }
+    fn sequence_number(&mut self) -> Option<u32> {
+        Some(self.sequence)
+    }
+    fn clear_if_sequence(&mut self, sequence: u32) -> bool {
+        if self.sequence != sequence {
+            return false;
+        }
+        self.written.clear();
+        self.sequence += 1;
         self.log.push("clear".into());
         true
     }

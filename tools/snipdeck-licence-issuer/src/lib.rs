@@ -47,6 +47,12 @@ pub enum ToolError {
     /// A key file is not base64 of 32 bytes.
     #[error("{0} is not a key file (expected base64 of 32 bytes)")]
     BadKeyFile(String),
+    /// The key folder is inside a git work tree, where the private key could be committed.
+    #[error(
+        "{0} is inside a git work tree; keep the private key outside any repository, on an \
+         encrypted drive"
+    )]
+    InsideRepository(String),
     /// The system random generator failed.
     #[error("the system random generator failed")]
     Random,
@@ -93,7 +99,34 @@ pub fn run(command: &Command, now: i64, out: &mut dyn Write) -> Result<(), ToolE
     }
 }
 
+/// Whether `dir`, or any folder above it, holds a `.git` entry. The folder need not exist yet:
+/// the deepest existing ancestor is resolved (symlinks included) and the rest appended.
+fn inside_git_work_tree(dir: &Path) -> bool {
+    let Ok(absolute) = std::path::absolute(dir) else {
+        return true; // cannot tell: refuse
+    };
+    let mut missing = Vec::new();
+    let mut existing = absolute.as_path();
+    while !existing.exists() {
+        let (Some(name), Some(parent)) = (existing.file_name(), existing.parent()) else {
+            break;
+        };
+        missing.push(name.to_owned());
+        existing = parent;
+    }
+    let Ok(mut resolved) = existing.canonicalize() else {
+        return true;
+    };
+    resolved.extend(missing.iter().rev());
+    resolved
+        .ancestors()
+        .any(|folder| folder.join(".git").exists())
+}
+
 fn gen_key(dir: &Path, out: &mut dyn Write) -> Result<(), ToolError> {
+    if inside_git_work_tree(dir) {
+        return Err(ToolError::InsideRepository(dir.display().to_string()));
+    }
     fs::create_dir_all(dir).map_err(io_error(dir))?;
     let mut seed = [0_u8; 32];
     getrandom::fill(&mut seed).map_err(|_| ToolError::Random)?;
@@ -186,6 +219,34 @@ mod tests {
 
     fn sign(private: &str, order: &str) -> Result<String, ToolError> {
         exec(&["sign", "--key", private, "--order", order]).map(|text| text.trim().to_owned())
+    }
+
+    #[test]
+    fn genkey_refuses_a_folder_inside_a_git_work_tree_and_writes_nothing() {
+        let repo = tempfile::tempdir().unwrap();
+        fs::create_dir(repo.path().join(".git")).unwrap();
+        // The folder itself, an existing subfolder and one that does not exist yet.
+        fs::create_dir(repo.path().join("keys")).unwrap();
+        for sub in ["", "keys", "new/deeper"] {
+            let target = repo.path().join(sub);
+            let path = target.to_str().unwrap();
+            let error = exec(&["genkey", "--out", path]).unwrap_err();
+            assert!(
+                matches!(error, ToolError::InsideRepository(_)),
+                "{sub:?}: {error}"
+            );
+            assert!(!target.join("private.key").exists(), "{sub:?}");
+        }
+        assert!(
+            !repo.path().join("new").exists(),
+            "no folder was created either"
+        );
+    }
+
+    #[test]
+    fn genkey_outside_a_repository_still_works() {
+        let (_dir, private, _) = keys();
+        assert!(Path::new(&private).exists());
     }
 
     #[test]

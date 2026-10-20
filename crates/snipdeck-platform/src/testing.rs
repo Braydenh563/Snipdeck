@@ -29,6 +29,8 @@ pub struct FakeClipboard {
     pub fail_write: bool,
     /// What `restore` returns.
     pub restore_result: Option<Result<bool, Error>>,
+    /// The clipboard sequence number: it increases with every write and every clear.
+    pub sequence: u32,
 }
 
 impl Clipboard for FakeClipboard {
@@ -47,6 +49,7 @@ impl Clipboard for FakeClipboard {
             return Err(Error::Clipboard("busy".into()));
         }
         self.written.push(payload.clone());
+        self.sequence += 1;
         self.log.push(format!("transient:{}", payload.data().len()));
         Ok(())
     }
@@ -55,6 +58,7 @@ impl Clipboard for FakeClipboard {
             return Err(Error::Clipboard("busy".into()));
         }
         self.written.push(payload.clone());
+        self.sequence += 1;
         self.log
             .push(format!("persistent:{}", payload.data().len()));
         Ok(())

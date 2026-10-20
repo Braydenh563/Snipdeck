@@ -98,12 +98,18 @@ const AAD: &[u8] = b"snipdeck/MemoryKeyProvider/1";
 
 #[cfg(test)]
 mod tests {
+    use super::super::key::test_bytes;
     use super::*;
 
     #[test]
     fn wrap_then_unwrap_returns_the_key() {
         let provider = MemoryKeyProvider::new().unwrap();
-        for key in [&[1_u8][..], &[7; 32], &[9; 4096]] {
+        let (one, short, long) = (
+            test_bytes::<1>(1),
+            test_bytes::<32>(7),
+            test_bytes::<4096>(9),
+        );
+        for key in [&one[..], &short[..], &long[..]] {
             let wrapped = provider.wrap_key(key).unwrap();
             assert_eq!(*provider.unwrap_key(&wrapped).unwrap(), key);
         }
@@ -112,7 +118,7 @@ mod tests {
     #[test]
     fn wrapped_blob_hides_the_key_and_is_not_deterministic() {
         let provider = MemoryKeyProvider::new().unwrap();
-        let key = [0x5A_u8; 32];
+        let key = test_bytes::<32>(0x5A);
         let a = provider.wrap_key(&key).unwrap();
         let b = provider.wrap_key(&key).unwrap();
         assert_ne!(a, b);
@@ -123,7 +129,7 @@ mod tests {
     fn another_provider_cannot_unwrap() {
         let wrapped = MemoryKeyProvider::new()
             .unwrap()
-            .wrap_key(&[3; 32])
+            .wrap_key(&test_bytes::<32>(3))
             .unwrap();
         assert_eq!(
             MemoryKeyProvider::new()
@@ -137,7 +143,7 @@ mod tests {
     #[test]
     fn modified_truncated_or_empty_blobs_are_rejected() {
         let provider = MemoryKeyProvider::new().unwrap();
-        let wrapped = provider.wrap_key(&[3; 32]).unwrap();
+        let wrapped = provider.wrap_key(&test_bytes::<32>(3)).unwrap();
         for index in 0..wrapped.len() {
             let mut bad = wrapped.clone();
             bad[index] ^= 0x01;

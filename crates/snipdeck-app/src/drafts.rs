@@ -179,17 +179,46 @@ impl Drafts {
         fs::rename(&side, &path)
     }
 
-    /// Removes the draft of `key`; no draft is not an error.
+    /// Removes the draft of `key`; no draft is not an error. The file is first overwritten in
+    /// place with zeros and flushed (best effort, errors ignored), so a draft that was written
+    /// before "Sensitive item" was ticked does not stay recoverable from the disk's free space.
     ///
     /// # Errors
     ///
     /// The file exists and could not be removed.
     pub fn clear(&self, key: DraftKey) -> io::Result<()> {
-        match fs::remove_file(self.path(key)) {
+        let path = self.path(key);
+        overwrite_with_zeros(&path);
+        match fs::remove_file(&path) {
             Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
             other => other,
         }
     }
+}
+
+/// Overwrites a file in place with zeros and flushes it. Best effort: errors are ignored, and a
+/// journalling or copy-on-write file system or an SSD may still keep older blocks.
+fn overwrite_with_zeros(path: &Path) {
+    use std::io::Write as _;
+    let Ok(meta) = fs::metadata(path) else {
+        return;
+    };
+    if !meta.is_file() || meta.len() > MAX_FILE_BYTES {
+        return;
+    }
+    let Ok(mut file) = fs::OpenOptions::new().write(true).open(path) else {
+        return;
+    };
+    let zeros = [0_u8; 8192];
+    let mut left = meta.len();
+    while left > 0 {
+        let n = usize::try_from(left.min(zeros.len() as u64)).unwrap_or(zeros.len());
+        if file.write_all(&zeros[..n]).is_err() {
+            return;
+        }
+        left -= n as u64;
+    }
+    let _ = file.sync_all();
 }
 
 #[cfg(test)]
@@ -207,6 +236,33 @@ mod tests {
             vec!["fresh".into()],
             String::new(),
         )
+    }
+
+    #[test]
+    fn clearing_overwrites_the_draft_with_zeros_before_removing_it() {
+        let dir = tempfile::tempdir().expect("dir");
+        let drafts = Drafts::in_data_dir(dir.path());
+        let key = DraftKey::New;
+        drafts.save(key, &draft("the early text")).expect("save");
+        // A second name for the same file: it outlives the removal and shows what was left in it.
+        let alias = dir.path().join("alias.bin");
+        fs::hard_link(drafts.path(key), &alias).expect("link");
+        let length = fs::metadata(&alias).expect("meta").len();
+        assert!(fs::read(&alias).expect("read").starts_with(b"{"));
+
+        drafts.clear(key).expect("clear");
+        assert!(!drafts.path(key).exists());
+        let left = fs::read(&alias).expect("alias");
+        assert_eq!(u64::try_from(left.len()).expect("len"), length);
+        assert!(left.iter().all(|b| *b == 0), "the old bytes were zeroed");
+    }
+
+    #[test]
+    fn clearing_a_missing_draft_is_fine() {
+        let dir = tempfile::tempdir().expect("dir");
+        Drafts::in_data_dir(dir.path())
+            .clear(DraftKey::New)
+            .expect("no draft is not an error");
     }
 
     #[test]

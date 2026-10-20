@@ -4517,6 +4517,7 @@ dependencies = [
 name = "snipdeck-app"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "i-slint-backend-testing",
  "jiff",
  "png",
@@ -4565,8 +4566,10 @@ dependencies = [
 name = "snipdeck-platform"
 version = "0.1.0"
 dependencies = [
+ "getrandom 0.4.3",
  "png",
  "snipdeck-core",
+ "tempfile",
  "thiserror 2.0.21",
  "windows",
  "zeroize",

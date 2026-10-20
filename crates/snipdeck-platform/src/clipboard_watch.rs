@@ -51,15 +51,31 @@ impl WatchGate {
     }
 }
 
-/// Whether the markers on the clipboard say the content must stay out of history:
-/// `ExcludeClipboardContentFromMonitorProcessing` present (any value), or
-/// `CanIncludeInClipboardHistory` present with the value 0.
+/// The registered clipboard format that password managers add to say "do not monitor this".
+pub const EXCLUDE_MONITOR_FORMAT: &str = "ExcludeClipboardContentFromMonitorProcessing";
+/// The older marker (older `KeePass` and others): present means "viewers must ignore this".
+pub const VIEWER_IGNORE_FORMAT: &str = "Clipboard Viewer Ignore";
+/// The DWORD format that is 0 when the content must stay out of Windows clipboard history.
+pub const HISTORY_FORMAT: &str = "CanIncludeInClipboardHistory";
+
+/// Which "keep me out of history" markers are on the clipboard, read while it is open.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Markers {
+    /// `ExcludeClipboardContentFromMonitorProcessing` present (any value).
+    pub exclude_from_monitoring: bool,
+    /// `Clipboard Viewer Ignore` present (any value).
+    pub viewer_ignore: bool,
+    /// The value of `CanIncludeInClipboardHistory`, when present.
+    pub can_include_in_history: Option<u32>,
+}
+
+/// Whether the markers on the clipboard say the content must stay out of history: either
+/// presence marker, or `CanIncludeInClipboardHistory` present with the value 0.
 #[must_use]
-pub fn excluded_by_markers(
-    exclude_from_monitoring_present: bool,
-    can_include_in_history: Option<u32>,
-) -> bool {
-    exclude_from_monitoring_present || can_include_in_history == Some(0)
+pub fn excluded_by_markers(markers: Markers) -> bool {
+    markers.exclude_from_monitoring
+        || markers.viewer_ignore
+        || markers.can_include_in_history == Some(0)
 }
 
 /// The value of a `DWORD` format's bytes (little-endian); `None` for fewer than four bytes.
@@ -75,21 +91,39 @@ mod tests {
 
     #[test]
     fn the_markers_decide_exclusion() {
-        // (monitor marker present, history value, excluded)
+        // (monitor marker present, viewer-ignore present, history value, excluded)
         let cases = [
-            (false, None, false),
-            (false, Some(1), false),
-            (false, Some(0), true),
-            (true, None, true),
-            (true, Some(1), true),
+            (false, false, None, false),
+            (false, false, Some(1), false),
+            (false, false, Some(0), true),
+            (true, false, None, true),
+            (true, false, Some(1), true),
+            (false, true, None, true),
+            (false, true, Some(1), true),
+            (true, true, Some(0), true),
         ];
-        for (monitor, history, excluded) in cases {
+        for (monitor, viewer_ignore, history, excluded) in cases {
+            let markers = Markers {
+                exclude_from_monitoring: monitor,
+                viewer_ignore,
+                can_include_in_history: history,
+            };
             assert_eq!(
-                excluded_by_markers(monitor, history),
+                excluded_by_markers(markers),
                 excluded,
-                "{monitor} {history:?}"
+                "{monitor} {viewer_ignore} {history:?}"
             );
         }
+    }
+
+    #[test]
+    fn the_older_viewer_ignore_marker_alone_excludes_a_change() {
+        let markers = Markers {
+            viewer_ignore: true,
+            ..Markers::default()
+        };
+        assert!(excluded_by_markers(markers));
+        assert_eq!(VIEWER_IGNORE_FORMAT, "Clipboard Viewer Ignore");
     }
 
     #[test]

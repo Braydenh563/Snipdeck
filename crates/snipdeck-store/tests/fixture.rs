@@ -101,7 +101,7 @@ fn open_fixture() -> (tempfile::TempDir, Store) {
 #[test]
 fn a_version_1_database_opens_and_reads_back() {
     let (_dir, s) = open_fixture();
-    assert_eq!(s.schema_version().unwrap(), 4);
+    assert_eq!(s.schema_version().unwrap(), 5);
     let boards = s.boards().unwrap();
     assert_eq!(boards.len(), 1);
     assert_eq!(
@@ -149,7 +149,7 @@ fn the_fixtures_search_index_and_trash_work() {
 #[test]
 fn the_v1_fixture_migrates_to_v4_keeping_every_row_and_leaving_a_backup() {
     let (dir, s) = open_fixture();
-    assert_eq!(s.schema_version().unwrap(), 4);
+    assert_eq!(s.schema_version().unwrap(), 5);
     assert_healthy(&s);
 
     let backup = rusqlite::Connection::open(dir.path().join("snipdeck.db.pre-v1.bak")).unwrap();

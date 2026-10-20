@@ -12,3 +12,4 @@ dist/
 # Licence signing keys from `snipdeck-licence-issuer genkey` (docs/licensing.md); never commit them.
 private.key
 licence-keys/
+*.whl

@@ -107,6 +107,14 @@ pub trait Library:
     /// The store failing to read.
     fn has_plain_sensitive(&self) -> snipdeck_store::Result<bool>;
 
+    /// Whether any Recent inbox entry is stored as plain text (kept before a key existed, or by
+    /// version 4). Setting up encryption encrypts it.
+    ///
+    /// # Errors
+    ///
+    /// The store failing to read.
+    fn has_plain_recent(&self) -> snipdeck_store::Result<bool>;
+
     /// Sets up encryption, with a master password if `password` is `Some`, and leaves the library
     /// unlocked.
     ///
@@ -191,6 +199,10 @@ impl Library for Store {
         Store::has_plain_sensitive(self)
     }
 
+    fn has_plain_recent(&self) -> snipdeck_store::Result<bool> {
+        Store::has_plain_recent(self)
+    }
+
     fn create_key_ring(
         &mut self,
         ring: &KeyRing<'_>,
@@ -265,6 +277,17 @@ impl ClipboardDigest {
     fn matches(&self, text: &str) -> bool {
         std::hash::BuildHasher::hash_one(&self.state, text) == self.hash
     }
+}
+
+/// A clear of a sensitive item's clipboard content that is waiting for its time.
+#[derive(Debug, Clone)]
+struct PendingClear {
+    due: Timestamp,
+    /// The copied text, when the item had one: cleared only if the clipboard still holds it.
+    digest: Option<ClipboardDigest>,
+    /// The clipboard sequence number right after our write. Covers every format (HTML, images,
+    /// files): the clipboard is emptied only if nothing has changed it since.
+    sequence: Option<u32>,
 }
 
 /// Something the host (the window and the process) must do. The controller decides, the host
@@ -507,7 +530,7 @@ pub struct Controller<S, C, K, T> {
     /// A sensitive item's text left on the clipboard by a copy, and when to take it off again
     /// (if the clipboard still holds exactly that text). Only a keyed hash of the text is kept,
     /// so the secret does not sit in memory for the wait.
-    clipboard_clear: Option<(Timestamp, ClipboardDigest)>,
+    clipboard_clear: Option<PendingClear>,
     model: PanelModel,
     /// The search index shared by the Panel and the Picker, rebuilt only after a write.
     index_cache: crate::index_cache::IndexCache,
@@ -1698,9 +1721,10 @@ where
         }
     }
 
-    /// After a copy of a sensitive item, remembers its text on the clipboard to be cleared
-    /// `clipboard_clear_secs` from now (0 = never). A paste restores the user's own clipboard,
-    /// so it leaves nothing to clear.
+    /// After a copy of a sensitive item, remembers its content on the clipboard to be cleared
+    /// `clipboard_clear_secs` from now (0 = never). A paste that restored the user's own
+    /// clipboard leaves nothing to clear; one whose snapshot or restore failed
+    /// ([`UseOutcome::PastedNotRestored`]) leaves the item there, so it is cleared like a copy.
     fn schedule_clipboard_clear(&mut self, item: ItemId, outcome: UseOutcome) {
         let life = Duration::from_secs(u64::from(self.settings.clipboard_clear_secs));
         if life.is_zero()
@@ -1712,11 +1736,17 @@ where
         let Ok(due) = self.clock.now().checked_add(life) else {
             return;
         };
-        self.clipboard_clear = self
+        let digest = self
             .services
             .clipboard
             .read_text()
-            .map(|text| (due, ClipboardDigest::of(&text)));
+            .map(|text| ClipboardDigest::of(&text));
+        let sequence = self.services.clipboard.sequence_number();
+        self.clipboard_clear = (digest.is_some() || sequence.is_some()).then_some(PendingClear {
+            due,
+            digest,
+            sequence,
+        });
     }
 
     /// How long until the clipboard is to be cleared of a copied sensitive item, if one waits.
@@ -1724,23 +1754,32 @@ where
     /// [`clear_clipboard_if_due`](Self::clear_clipboard_if_due).
     #[must_use]
     pub fn clipboard_clear_wait(&self) -> Option<Duration> {
-        let (due, _) = self.clipboard_clear.as_ref()?;
-        Some(Duration::try_from(due.duration_since(self.clock.now())).unwrap_or_default())
+        let pending = self.clipboard_clear.as_ref()?;
+        Some(Duration::try_from(pending.due.duration_since(self.clock.now())).unwrap_or_default())
     }
 
     /// Clears the clipboard if the wait is over and it still holds the copied text.
     pub fn clear_clipboard_if_due(&mut self) {
-        let Some((due, _)) = &self.clipboard_clear else {
+        let Some(pending) = &self.clipboard_clear else {
             return;
         };
-        if self.clock.now() < *due {
+        if self.clock.now() < pending.due {
             return;
         }
-        if let Some((_, digest)) = self.clipboard_clear.take()
+        let Some(pending) = self.clipboard_clear.take() else {
+            return;
+        };
+        if let Some(digest) = &pending.digest
             && let Some(text) = self.services.clipboard.read_text()
             && digest.matches(&text)
         {
             self.services.clipboard.clear_if_text(&text);
+            return;
+        }
+        // Not text, or the text could not be read: empty it entirely, but only if nothing has
+        // touched the clipboard since our write.
+        if let Some(sequence) = pending.sequence {
+            self.services.clipboard.clear_if_sequence(sequence);
         }
     }
 
@@ -2234,6 +2273,74 @@ mod tests {
         w.ctl.update_settings(|s| s.clipboard_clear_secs = 0);
         w.ctl.activate_row(0, UseMode::Copy);
         assert_eq!(w.ctl.clipboard_clear_wait(), None, "0 = never clear");
+    }
+
+    #[test]
+    fn a_sensitive_paste_whose_restore_failed_still_arms_the_clear_timer() {
+        let mut w = world();
+        let id = w.ids[0];
+        make_sensitive(&mut w, id);
+        w.ctl.services.clipboard.fail_snapshot = true;
+        assert_eq!(
+            w.ctl.activate_row(0, UseMode::Paste),
+            UseResult::Done(UseOutcome::PastedNotRestored)
+        );
+        assert_eq!(w.ctl.clipboard_clear_wait(), Some(Duration::from_secs(30)));
+        w.clock.set(at("2026-10-17T10:30:30Z"));
+        w.ctl.clear_clipboard_if_due();
+        assert_eq!(w.ctl.services.clipboard.read_text(), None);
+    }
+
+    #[test]
+    fn a_sensitive_paste_that_restored_the_clipboard_arms_no_timer() {
+        let mut w = world();
+        let id = w.ids[0];
+        make_sensitive(&mut w, id);
+        assert_eq!(
+            w.ctl.activate_row(0, UseMode::Paste),
+            UseResult::Done(UseOutcome::Pasted)
+        );
+        assert_eq!(w.ctl.clipboard_clear_wait(), None);
+    }
+
+    #[test]
+    fn the_timer_empties_a_clipboard_with_no_text_if_nothing_changed_since_our_write() {
+        use snipdeck_platform::payload::{Data, Payload};
+        let mut w = world();
+        let id = w.ids[0];
+        make_sensitive(&mut w, id);
+        w.ctl.activate_row(0, UseMode::Copy);
+        // The clipboard now holds an image only (no text): the digest cannot match.
+        w.ctl.services.clipboard.written.clear();
+        w.ctl
+            .services
+            .clipboard
+            .written
+            .push(Payload::new(vec![Data::Png(vec![1, 2, 3])]).expect("payload"));
+        let sequence = w.ctl.services.clipboard.sequence;
+        w.ctl.clipboard_clear.as_mut().expect("armed").sequence = Some(sequence);
+        w.clock.set(at("2026-10-17T10:30:30Z"));
+        w.ctl.clear_clipboard_if_due();
+        assert!(w.ctl.services.clipboard.written.is_empty(), "cleared");
+    }
+
+    #[test]
+    fn the_timer_leaves_a_clipboard_that_changed_since_our_write() {
+        use snipdeck_platform::payload::{Data, Payload};
+        let mut w = world();
+        let id = w.ids[0];
+        make_sensitive(&mut w, id);
+        w.ctl.activate_row(0, UseMode::Copy);
+        w.ctl.services.clipboard.written.clear();
+        w.ctl
+            .services
+            .clipboard
+            .written
+            .push(Payload::new(vec![Data::Png(vec![1, 2, 3])]).expect("payload"));
+        w.ctl.services.clipboard.sequence += 1; // someone else wrote it
+        w.clock.set(at("2026-10-17T10:30:30Z"));
+        w.ctl.clear_clipboard_if_due();
+        assert_eq!(w.ctl.services.clipboard.written.len(), 1, "left alone");
     }
 
     #[test]
