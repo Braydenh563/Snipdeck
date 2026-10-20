@@ -111,6 +111,7 @@ impl Rect {
             w: self.w,
             h: self.h,
             edge,
+            pre_dock: None,
         }
     }
 

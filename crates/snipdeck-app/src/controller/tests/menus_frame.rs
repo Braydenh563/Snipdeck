@@ -374,6 +374,7 @@ fn a_stored_place_is_fitted_to_a_monitor_that_has_become_smaller() {
             w: 480,
             h: 900,
             edge: None,
+            pre_dock: None,
         });
     });
     assert_eq!(

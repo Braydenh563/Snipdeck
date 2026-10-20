@@ -49,6 +49,10 @@ pub struct PanelGeometry {
         skip_serializing_if = "Option::is_none"
     )]
     pub edge: Option<DockEdge>,
+    /// The width and height the Panel had before it was docked, so that undocking (or dragging it
+    /// off its edge) gives them back. Only set while docked.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pre_dock: Option<(u32, u32)>,
 }
 
 /// Reads an edge name; anything else (a hand-edited or future value) is "not docked" rather
@@ -732,6 +736,7 @@ mod tests {
             w: 400,
             h: 700,
             edge: Some(DockEdge::Right),
+            pre_dock: Some((320, 480)),
         });
         let back = Settings::from_json(&settings.to_json());
         assert_eq!(back.panel_geometry, settings.panel_geometry);
@@ -814,6 +819,7 @@ mod tests {
             w,
             h: 500,
             edge: None,
+            pre_dock: None,
         };
         let mut settings = Settings {
             panel_geometry: vec![

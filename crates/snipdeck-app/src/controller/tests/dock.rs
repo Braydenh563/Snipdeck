@@ -78,9 +78,42 @@ fn docking_places_the_panel_flush_with_the_edge_and_remembers_it() {
 fn floating_again_clears_the_edge_and_keeps_the_place() {
     let mut w = docked(DockTrigger::Hover, DockEdge::Left);
     w.ctl.dock_to(None);
-    assert_eq!(w.ctl.take_pending(), place(open_rect(DockEdge::Left)));
+    assert_eq!(w.ctl.take_pending(), place(restored(DockEdge::Left)));
     assert_eq!(w.ctl.dock_edge(), None);
     assert!(!w.ctl.view().docked);
+}
+
+/// The docked frame's place with the size the Panel had before it was docked.
+fn restored(edge: DockEdge) -> Rect {
+    Rect {
+        w: FLOATING.w,
+        h: FLOATING.h,
+        ..open_rect(edge)
+    }
+}
+
+#[test]
+fn dragging_a_docked_panel_off_its_edge_restores_the_size_it_had_before_docking() {
+    let mut w = docked(DockTrigger::Click, DockEdge::Left);
+    assert_eq!(w.ctl.drag(), [Effect::DragWindow]);
+    let away = Rect {
+        x: 500,
+        ..open_rect(DockEdge::Left)
+    };
+    let effects = w.ctl.frame_moved(&display(), away);
+    let back = Rect {
+        w: FLOATING.w,
+        h: FLOATING.h,
+        ..away
+    };
+    assert_eq!(w.ctl.dock_edge(), None);
+    assert_eq!(effects, place(back), "the window is asked to shrink back");
+    assert_eq!(w.ctl.placement(&display()), Some(back));
+    // Docking again from the restored size remembers it again.
+    w.ctl.dock_to(Some(DockEdge::Right));
+    w.ctl.take_pending();
+    w.ctl.dock_to(None);
+    assert_eq!(Rect::of(&w.ctl.settings().panel_geometry[0]).w, FLOATING.w);
 }
 
 #[test]
@@ -335,7 +368,12 @@ fn dragging_a_docked_panel_away_undocks_it() {
     w.ctl.frame_changed(&display(), away);
     assert_eq!(w.ctl.dock_edge(), None);
     assert!(!w.ctl.view().docked);
-    assert_eq!(w.ctl.placement(&display()), Some(away));
+    let back = Rect {
+        w: FLOATING.w,
+        h: FLOATING.h,
+        ..away
+    };
+    assert_eq!(w.ctl.placement(&display()), Some(back));
 }
 
 #[test]
@@ -373,7 +411,7 @@ fn undocking_a_collapsed_panel_opens_it_where_it_floats() {
     let mut w = docked(DockTrigger::Click, DockEdge::Right);
     w.ctl.dock_event(DockEvent::Hotkey);
     w.ctl.dock_to(None);
-    assert_eq!(w.ctl.take_pending(), place(open_rect(DockEdge::Right)));
+    assert_eq!(w.ctl.take_pending(), place(restored(DockEdge::Right)));
     assert!(!w.ctl.view().dock_collapsed);
     assert!(!w.ctl.dock_active());
 }
@@ -397,7 +435,7 @@ fn the_kebab_docks_to_the_nearest_edge_and_then_undocks() {
     assert_eq!(w.ctl.dock_edge(), Some(DockEdge::Left));
     assert!(w.ctl.view().docked);
     assert_eq!(w.ctl.view().app_menu, None);
-    assert_eq!(w.ctl.choose_app_menu(row), place(open_rect(DockEdge::Left)));
+    assert_eq!(w.ctl.choose_app_menu(row), place(restored(DockEdge::Left)));
     assert_eq!(w.ctl.dock_edge(), None);
 }
 

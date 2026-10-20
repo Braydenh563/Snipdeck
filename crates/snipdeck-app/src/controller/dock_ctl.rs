@@ -176,7 +176,15 @@ where
             self.show_toast(neutral(ToastMessage::TaskbarEdge));
             return;
         }
-        let base = self.open_frame(&monitor);
+        let mut base = self.open_frame(&monitor);
+        let stored = self.stored_geometry(&monitor);
+        let earlier = stored.filter(|g| g.edge.is_some()).and_then(|g| g.pre_dock);
+        // The size to give back when the Panel leaves its edge: the one it had when it was
+        // docked, kept while it stays docked (a docked frame is as tall as the screen).
+        let pre_dock = edge.map(|_| earlier.unwrap_or((base.w, base.h)));
+        if let (None, Some((w, h))) = (edge, earlier) {
+            base = Rect { w, h, ..base };
+        }
         let place = match edge {
             Some(edge) => {
                 frame::docked_rect(edge, monitor.work_area, (base.w, base.h), monitor.scale)
@@ -186,7 +194,12 @@ where
         // Open before the settings change, so that undocking does not look like a collapsed
         // Panel losing its trigger.
         self.dock = DockState::Expanded;
-        self.update_settings(|s| s.remember_panel_geometry(place.geometry(&monitor, edge)));
+        self.update_settings(|s| {
+            s.remember_panel_geometry(PanelGeometry {
+                pre_dock,
+                ..place.geometry(&monitor, edge)
+            });
+        });
         self.pending.push(Effect::PlaceWindow(place));
     }
 

@@ -10,6 +10,7 @@ use super::{Controller, Effect, Library, ListDeleteView, PanelMenu, UseResult, f
 use crate::{
     frame::{self, Edge, Monitor, Rect},
     host::ClipboardText,
+    settings::PanelGeometry,
 };
 
 /// A page the Help entries open.
@@ -564,14 +565,35 @@ where
                 ..clamped
             };
         }
-        let mut edge = self.stored_geometry(monitor).and_then(|g| g.edge);
+        let stored = self.stored_geometry(monitor);
+        let mut edge = stored.and_then(|g| g.edge);
+        let mut pre_dock = stored.and_then(|g| g.pre_dock);
         // The first move of a drag that started on a docked Panel takes it off its edge.
         let dragged = std::mem::take(&mut self.drag_started);
+        let mut resized = false;
         if dragged && edge.is_some_and(|e| !frame::is_flush(e, monitor.work_area, clamped)) {
             edge = None;
+            // It gets the size it had before it was docked, not the dock's full height.
+            if let Some((w, h)) = pre_dock.take() {
+                let (x, y) = (clamped.x, clamped.y);
+                clamped = frame::clamp(Rect { w, h, ..clamped }, monitor);
+                clamped.x = x;
+                clamped.y = y;
+                resized = true;
+            }
         }
-        self.update_settings(|s| s.remember_panel_geometry(clamped.geometry(monitor, edge)));
-        if clamped == frame || !clamp_position {
+        if edge.is_none() {
+            pre_dock = None;
+        }
+        self.update_settings(|s| {
+            s.remember_panel_geometry(PanelGeometry {
+                pre_dock,
+                ..clamped.geometry(monitor, edge)
+            });
+        });
+        if resized {
+            vec![Effect::PlaceWindow(clamped)]
+        } else if clamped == frame || !clamp_position {
             Vec::new()
         } else {
             vec![Effect::PlaceWindow(clamped)]
