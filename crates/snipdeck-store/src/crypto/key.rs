@@ -51,6 +51,15 @@ impl DataKey {
         Zeroizing::new(blake3::derive_key(context, &self.0[..]))
     }
 
+    /// Whether `other` is the same key, compared without an early exit.
+    pub(crate) fn same_as(&self, other: &Self) -> bool {
+        self.0
+            .iter()
+            .zip(other.0.iter())
+            .fold(0_u8, |diff, (a, b)| diff | (a ^ b))
+            == 0
+    }
+
     pub(super) fn expose(&self) -> &[u8; KEY_LEN] {
         &self.0
     }

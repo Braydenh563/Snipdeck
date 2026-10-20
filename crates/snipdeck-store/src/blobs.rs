@@ -340,9 +340,27 @@ impl Blobs {
 
     /// Whether the stored file holds exactly `bytes` (a stored blob of the right length whose
     /// content differs is damaged and must be rewritten).
+    ///
+    /// The length is checked first, from metadata alone. The name being the content hash is not
+    /// enough to skip the comparison: the file may have been damaged without changing its
+    /// length, and a put of the same bytes is what repairs that. The content is then compared
+    /// in chunks, stopping at the first difference, so no second full copy is held in memory.
     fn holds_exactly(&self, blob: &BlobRef, bytes: &[u8]) -> bool {
-        self.has(blob, bytes.len() as u64)
-            && fs::read(self.file_path(blob)).is_ok_and(|stored| stored == bytes)
+        const CHUNK: usize = 64 * 1024;
+        if !self.has(blob, bytes.len() as u64) {
+            return false;
+        }
+        let Ok(mut file) = fs::File::open(self.file_path(blob)) else {
+            return false;
+        };
+        let mut buf = vec![0_u8; CHUNK.min(bytes.len())];
+        for expected in bytes.chunks(CHUNK) {
+            let got = &mut buf[..expected.len()];
+            if file.read_exact(got).is_err() || got != expected {
+                return false;
+            }
+        }
+        true
     }
 
     /// Whether the stored blob starts with `prefix` (reads only that many bytes).
@@ -713,6 +731,25 @@ mod tests {
         ));
         assert_eq!(blobs.put(big(5)).unwrap(), content);
         assert_eq!(blobs.read(&content).unwrap().as_ref(), big(5).as_slice());
+    }
+
+    /// The chunked comparison sees damage past the first chunk and in a short final chunk.
+    #[test]
+    fn putting_again_repairs_damage_in_a_later_chunk() {
+        let (_dir, mut blobs) = blobs();
+        let body: Vec<u8> = (0..150_000_u32).map(|n| (n % 251) as u8).collect();
+        let content = blobs.put(body.clone()).unwrap();
+        let Content::Blob { blob, .. } = &content else {
+            panic!()
+        };
+        let path = blobs.path_of(blob).unwrap();
+        for at in [70_000, body.len() - 1] {
+            let mut bytes = std::fs::read(&path).unwrap();
+            bytes[at] ^= 0xFF;
+            std::fs::write(&path, bytes).unwrap();
+            assert_eq!(blobs.put(body.clone()).unwrap(), content);
+            assert_eq!(blobs.read(&content).unwrap().as_ref(), body.as_slice());
+        }
     }
 
     #[test]

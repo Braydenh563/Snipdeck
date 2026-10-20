@@ -754,3 +754,117 @@ fn a_failed_key_setup_leaves_no_envelope_files_behind() {
     assert!(s.create_key_ring(&ring(&p), None).is_err());
     assert_eq!(content_files(dir.path()).len(), before);
 }
+
+#[test]
+fn a_record_for_another_key_is_refused_and_the_old_one_stays() {
+    let p = provider();
+    let mut s = store();
+    let b = board(&mut s, "b");
+    let list = list(&mut s, b.id, "l");
+    s.create_key_ring(&ring(&p), Some(common::pw("pw")))
+        .unwrap();
+    let it = secret_item(list.id, "bank");
+    s.insert_item(&it, &text_formats("kept"), Placement::Last)
+        .unwrap();
+    let before = s.key_record().unwrap().unwrap();
+
+    // A record (and key) made for some other library.
+    let (other_key, other_record) = ring(&p).create(Some(common::pw("pw"))).unwrap();
+    for locked in [false, true] {
+        if locked {
+            s.lock_key_ring();
+        }
+        assert!(matches!(
+            s.replace_key_record_checked(&other_record, &other_key),
+            Err(Error::Invalid(_))
+        ));
+        assert_eq!(
+            s.key_record().unwrap().unwrap().as_bytes(),
+            before.as_bytes()
+        );
+    }
+    assert_eq!(s.previous_key_record().unwrap(), None);
+}
+
+#[test]
+fn a_record_for_the_same_key_replaces_and_keeps_the_previous_one() {
+    let p = provider();
+    let mut s = store();
+    let b = board(&mut s, "b");
+    let list = list(&mut s, b.id, "l");
+    s.create_key_ring(&ring(&p), Some(common::pw("one")))
+        .unwrap();
+    let it = secret_item(list.id, "bank");
+    s.insert_item(&it, &text_formats("kept"), Placement::Last)
+        .unwrap();
+    let old = s.key_record().unwrap().unwrap();
+
+    for locked in [false, true] {
+        let current = s.key_record().unwrap().unwrap();
+        let (pw_from, pw_to) = if locked {
+            ("two", "three")
+        } else {
+            ("one", "two")
+        };
+        let (key, record) = ring(&p)
+            .rekey(&current, Some(common::pw(pw_from)), Some(common::pw(pw_to)))
+            .unwrap();
+        if locked {
+            s.lock_key_ring();
+        }
+        s.replace_key_record_checked(&record, &key).unwrap();
+        assert_eq!(
+            s.key_record().unwrap().unwrap().as_bytes(),
+            record.as_bytes()
+        );
+        assert_eq!(
+            s.previous_key_record().unwrap().unwrap().as_bytes(),
+            current.as_bytes()
+        );
+    }
+    assert_ne!(old.as_bytes(), s.key_record().unwrap().unwrap().as_bytes());
+    s.unlock_key_ring(&ring(&p), Some(common::pw("three")))
+        .unwrap();
+    assert_eq!(s.formats(it.id).unwrap(), text_formats("kept"));
+}
+
+#[test]
+fn plain_formats_returns_every_unencrypted_live_item_in_one_pass() {
+    let prov = provider();
+    let (_dir, mut s, lst) = on_disk();
+    s.create_key_ring(&ring(&prov), None).unwrap();
+
+    let big = s.put(vec![b'Q'; INLINE_LIMIT + 10]).unwrap();
+    let rich = Formats::new(vec![
+        Format::Text(text("plain")),
+        Format::Png(big),
+        Format::Files(vec![
+            FileEntry::new("a.txt", text("file-a")).unwrap(),
+            FileEntry::new("b.txt", text("file-b")).unwrap(),
+        ]),
+    ])
+    .unwrap();
+    let first = Item::new(lst.id, "rich".to_owned(), ItemKind::Text, at(0));
+    s.insert_item(&first, &rich, Placement::Last).unwrap();
+    let second = Item::new(lst.id, "simple".to_owned(), ItemKind::Text, at(1));
+    s.insert_item(&second, &text_formats("two"), Placement::Last)
+        .unwrap();
+    let secret = secret_item(lst.id, "secret");
+    s.insert_item(&secret, &text_formats("hidden"), Placement::Last)
+        .unwrap();
+    let gone = Item::new(lst.id, "trashed".to_owned(), ItemKind::Text, at(2));
+    s.insert_item(&gone, &text_formats("gone"), Placement::Last)
+        .unwrap();
+    s.trash(Trashable::Item(gone.id), at(3)).unwrap();
+
+    let mut got = s.plain_formats().unwrap();
+    got.sort_by_key(|(id, _)| *id == second.id);
+    assert_eq!(got.len(), 2, "no encrypted and no trashed item");
+    assert_eq!(
+        got[0],
+        (first.id, rich),
+        "same as formats(), files and blob included"
+    );
+    assert_eq!(got[1], (second.id, text_formats("two")));
+    assert_eq!(s.formats(first.id).unwrap(), got[0].1);
+}

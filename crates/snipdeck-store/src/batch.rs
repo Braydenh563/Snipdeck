@@ -448,6 +448,10 @@ macro_rules! repo_impls {
                 items::all_items(self.reader().conn)
             }
 
+            fn plain_formats(&self) -> Result<Vec<(ItemId, Formats)>> {
+                items::plain_formats(self.reader().conn)
+            }
+
             fn change_counter(&self) -> u64 {
                 let r = self.reader();
                 r.conn.total_changes().saturating_sub(r.quiet.all.get())
