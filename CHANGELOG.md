@@ -122,8 +122,17 @@ Windows PC.
 - Launcher logs hide your user name more thoroughly.
 - **+ New item** in the Main window opens the editor.
 - The tag manager in the Main window now renames and deletes tags.
+- The library now syncs every commit to disk (`synchronous=FULL`). Before, a power cut right after an edit or
+  a Trash purge could roll the database back while the old content file was already deleted.
+- Menus, form errors, hotkey and no-paste messages and the Help tier are translated in all six languages; they
+  were English everywhere.
+- A failed master-password setup or a failed upgrade copy leaves no stray files; backup pruning ignores a
+  future-dated file; a folder import carries on past an unreadable subfolder.
+- The Move-to-list and Tags chooser and the loading placeholder follow the Windows text size.
 
 ### Security
+- An imported archive can no longer carry a title or source app of tens of megabytes (cut to 1000 and 256
+  characters), and encrypted attachments referenced by many items are read against one total budget.
 - The launcher checks the SHA-256 of the download against the release and against a pinned list. A release
   with no pinned hash needs an explicit yes, or `--allow-unpinned`, and is refused when unattended.
 - `reinstall` closes the app and keeps the old folder until the new one downloads and verifies.
