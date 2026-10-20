@@ -39,7 +39,8 @@
 //! rendering (as soon as ownership is lost, on `WM_DESTROYCLIPBOARD`), snapshots, decoded images,
 //! text read back, and `HGLOBAL`s that Windows refused. Not covered: the caller's
 //! [`crate::payload::Payload`] (the pipeline clones it; its owner drops it), memory handed to
-//! Windows, and pasted files on disk (see [`crate::win_formats::KEPT_PASTE_DIRS`]). Nothing here
+//! Windows, and pasted files on disk (a random folder per paste under `%TEMP%\\Snipdeck`, removed at the next
+//! paste and on a clean exit; deleted, not overwritten). Nothing here
 //! logs content. A private payload carries the markers on every write, kept copies included.
 //!
 //! # When a restore is allowed (sequence numbers)
@@ -71,7 +72,6 @@ use std::fs;
 use std::io::Write as _;
 use std::os::windows::ffi::OsStrExt as _;
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicU8, AtomicU64, Ordering, compiler_fence};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Weak};
@@ -105,7 +105,7 @@ use crate::clipboard_watch::{self, ChangeSink, ClipboardChange, WatchGate};
 use crate::error::Error as ServiceError;
 use crate::payload::{Data, FilePayload, Payload};
 use crate::pipeline::{Clipboard, Error};
-use crate::win_formats::{self, DROPEFFECT_COPY, MARKER_DWORD_ZERO, OwnerLedger, PASTE_DIR_PREFIX};
+use crate::win_formats::{self, DROPEFFECT_COPY, MARKER_DWORD_ZERO, OwnerLedger};
 
 /// How long a caller waits for the clipboard thread to answer. Generous because a snapshot makes
 /// other apps render their delayed formats (a large Excel range takes a while).
@@ -391,6 +391,7 @@ impl Drop for WinClipboard {
         // available after we exit) and WM_DESTROY, which ends the message loop.
         // SAFETY: as in `call`.
         let _ = unsafe { PostMessageW(Some(self.hwnd()), WM_CLOSE, WPARAM(0), LPARAM(0)) };
+        remove_paste_files();
         // A thread stuck in another app's render is left behind rather than hanging the caller.
         match self.exited.recv_timeout(SHUTDOWN_WAIT) {
             Ok(()) | Err(RecvTimeoutError::Disconnected) => {
@@ -541,9 +542,9 @@ fn prepare(payload: &Payload, formats: &Formats) -> Result<Vec<Entry>, Error> {
     Ok(entries)
 }
 
-/// Writes `files` into a fresh `%TEMP%\Snipdeck\paste-<n>\` and returns their UTF-16 paths.
-/// Older paste folders are removed first, except the newest ones kept by
-/// [`win_formats::stale_paste_dirs`] (best effort: a file still open stays until a later paste).
+/// Writes `files` into a fresh, randomly named `%TEMP%\Snipdeck\paste-<random>\` and returns
+/// their UTF-16 paths. Every older paste folder is removed first (best effort: a file still open
+/// stays until a later paste or the clean exit, see [`remove_paste_files`]).
 fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
     let io = |error: std::io::Error| {
         Error::Clipboard(format!(
@@ -559,21 +560,8 @@ fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
     }
     let root = std::env::temp_dir().join("Snipdeck");
     fs::create_dir_all(&root).map_err(io)?;
-    let existing: Vec<u64> = fs::read_dir(&root)
-        .map_err(io)?
-        .flatten()
-        .filter_map(|entry| {
-            entry
-                .file_name()
-                .to_str()
-                .and_then(win_formats::paste_dir_number)
-        })
-        .collect();
-    for number in win_formats::stale_paste_dirs(&existing) {
-        let _ = fs::remove_dir_all(root.join(format!("{PASTE_DIR_PREFIX}{number}")));
-    }
-    let highest = existing.iter().copied().max().unwrap_or(0);
-    let dir = claim_paste_dir(&root, highest.saturating_add(1)).map_err(io)?;
+    win_formats::remove_paste_dirs(&root, None);
+    let dir = win_formats::claim_paste_dir(&root, win_formats::os_random).map_err(io)?;
     let mut paths = Vec::with_capacity(files.len());
     for file in files {
         let path = dir.join(&file.name);
@@ -588,22 +576,10 @@ fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
     Ok(paths)
 }
 
-fn claim_paste_dir(root: &std::path::Path, first: u64) -> std::io::Result<PathBuf> {
-    let mut number = first;
-    loop {
-        let dir = root.join(format!("{PASTE_DIR_PREFIX}{number}"));
-        match fs::create_dir(&dir) {
-            Ok(()) => return Ok(dir),
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-                // Bounded: give up after 1000 taken names rather than loop forever.
-                if number - first >= 1000 {
-                    return Err(error);
-                }
-                number += 1;
-            }
-            Err(error) => return Err(error),
-        }
-    }
+/// Removes the pasted-file folders on a clean exit, so decrypted bytes do not outlive the app.
+/// Best effort; a file another app still has open stays.
+fn remove_paste_files() {
+    win_formats::remove_paste_dirs(&std::env::temp_dir().join("Snipdeck"), None);
 }
 
 /// Overwrites `bytes` with zeros in a way the optimiser may not remove.
@@ -1407,7 +1383,7 @@ mod tests {
 
     #[test]
     #[ignore = "uses the real Windows clipboard"]
-    fn paste_folders_keep_the_previous_one_only() {
+    fn paste_folders_keep_only_the_newest_and_exit_removes_it() {
         let _lock = CLIPBOARD.lock().unwrap_or_else(PoisonError::into_inner);
         let mut clipboard = WinClipboard::new().unwrap();
         let files = |name: &str| {
@@ -1421,18 +1397,18 @@ mod tests {
             clipboard.write_persistent(&files(name)).unwrap();
         }
         let root = std::env::temp_dir().join("Snipdeck");
-        let mut numbers: Vec<u64> = fs::read_dir(&root)
+        let ours: Vec<_> = fs::read_dir(&root)
             .unwrap()
             .flatten()
-            .filter_map(|e| {
+            .filter(|e| {
                 e.file_name()
                     .to_str()
-                    .and_then(win_formats::paste_dir_number)
+                    .is_some_and(win_formats::is_paste_dir_name)
             })
             .collect();
-        numbers.sort_unstable();
-        assert_eq!(numbers.len(), win_formats::KEPT_PASTE_DIRS);
-        let newest = root.join(format!("{PASTE_DIR_PREFIX}{}", numbers[1]));
-        assert!(newest.join("c.txt").is_file());
+        assert_eq!(ours.len(), 1);
+        assert!(ours[0].path().join("c.txt").is_file());
+        drop(clipboard);
+        assert!(!ours[0].path().exists(), "removed on a clean exit");
     }
 }

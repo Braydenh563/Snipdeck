@@ -89,16 +89,80 @@ pub fn is_plain_file_name(name: &str) -> bool {
         .is_ok()
 }
 
-/// Paste folders are `paste-<n>` inside `%TEMP%\Snipdeck`.
+/// Paste folders are `paste-<random>` inside `%TEMP%\Snipdeck`; the older `paste-<n>` names of
+/// earlier versions count as ours too, so they are cleaned up.
 pub const PASTE_DIR_PREFIX: &str = "paste-";
 
-/// The `<n>` of a paste folder name, or `None` for any other name.
-pub fn paste_dir_number(name: &str) -> Option<u64> {
-    let digits = name.strip_prefix(PASTE_DIR_PREFIX)?;
-    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
-        return None;
+/// Whether `name` is a paste folder of ours: the prefix and then only ASCII letters or digits.
+pub fn is_paste_dir_name(name: &str) -> bool {
+    name.strip_prefix(PASTE_DIR_PREFIX)
+        .is_some_and(|rest| !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_alphanumeric()))
+}
+
+/// The folder name for 16 random bytes: `paste-` and 32 hex digits, unpredictable to other users
+/// and processes.
+pub fn paste_dir_name(random: [u8; 16]) -> String {
+    use std::fmt::Write as _;
+    let mut name = String::from(PASTE_DIR_PREFIX);
+    for byte in random {
+        // Writing to a `String` cannot fail.
+        let _ = write!(name, "{byte:02x}");
     }
-    digits.parse().ok()
+    name
+}
+
+/// Creates a fresh, randomly named paste folder under `root` (which must exist). `random` supplies
+/// the 16 bytes, so a test can force a name clash.
+///
+/// # Errors
+///
+/// The I/O error if the folder cannot be created, or after 16 names were all taken.
+pub fn claim_paste_dir(
+    root: &std::path::Path,
+    mut random: impl FnMut() -> std::io::Result<[u8; 16]>,
+) -> std::io::Result<std::path::PathBuf> {
+    let mut last = None;
+    for _ in 0..16 {
+        let dir = root.join(paste_dir_name(random()?));
+        match std::fs::create_dir(&dir) {
+            Ok(()) => return Ok(dir),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => last = Some(error),
+            Err(error) => return Err(error),
+        }
+    }
+    Err(last.unwrap_or_else(|| std::io::Error::other("no free paste folder name")))
+}
+
+/// 16 bytes from the operating system's random generator.
+///
+/// # Errors
+///
+/// An I/O error if the system has no randomness.
+pub fn os_random() -> std::io::Result<[u8; 16]> {
+    let mut bytes = [0_u8; 16];
+    getrandom::fill(&mut bytes).map_err(|_| std::io::Error::other("no system randomness"))?;
+    Ok(bytes)
+}
+
+/// Removes every paste folder of ours under `root` except `keep` (best effort: a file still open
+/// stays until a later call). Returns how many folders were removed. Other names are never
+/// touched.
+pub fn remove_paste_dirs(root: &std::path::Path, keep: Option<&std::path::Path>) -> usize {
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return 0;
+    };
+    let mut removed = 0;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let ours = entry.file_name().to_str().is_some_and(is_paste_dir_name);
+        // `file_type` does not follow links: a link planted under our name is not entered.
+        let is_dir = entry.file_type().is_ok_and(|kind| kind.is_dir());
+        if ours && is_dir && Some(path.as_path()) != keep && std::fs::remove_dir_all(&path).is_ok()
+        {
+            removed += 1;
+        }
+    }
+    removed
 }
 
 /// The most memory one `CF_DIB` conversion may take for each of its two buffers (the decoded
@@ -211,20 +275,6 @@ fn over_white(channel: u8, alpha: u8) -> u8 {
     let (c, a) = (u32::from(channel), u32::from(alpha));
     let blended = (c * a + 255 * (255 - a) + 127) / 255;
     u8::try_from(blended).unwrap_or(u8::MAX)
-}
-
-/// How many paste folders stay on disk, the one being written included: the previous paste's
-/// folder is kept because the clipboard (or a snapshot about to be restored) may still point at
-/// it, or Explorer may still be copying from it.
-pub const KEPT_PASTE_DIRS: usize = 2;
-
-/// The paste folder numbers to delete before a new paste folder is created: all but the newest
-/// `KEPT_PASTE_DIRS - 1` of `existing`, which may be in any order.
-pub fn stale_paste_dirs(existing: &[u64]) -> Vec<u64> {
-    let mut sorted = existing.to_vec();
-    sorted.sort_unstable_by(|a, b| b.cmp(a));
-    sorted.dedup();
-    sorted.split_off(sorted.len().min(KEPT_PASTE_DIRS - 1))
 }
 
 /// What a restore needs to know about the clipboard, read while Snipdeck holds it open.
@@ -423,14 +473,70 @@ mod tests {
     }
 
     #[test]
-    fn paste_dir_numbers_parse_only_our_folders() {
-        assert_eq!(paste_dir_number("paste-0"), Some(0));
-        assert_eq!(paste_dir_number("paste-42"), Some(42));
-        for other in [
-            "paste-", "paste-x", "paste--1", "paste-1a", "Paste-1", "other",
+    fn only_our_paste_folder_names_are_recognised() {
+        for ours in [
+            "paste-0",
+            "paste-42",
+            "paste-9f86d081884c7d659a2feaa0c55ad015",
         ] {
-            assert_eq!(paste_dir_number(other), None, "{other}");
+            assert!(is_paste_dir_name(ours), "{ours}");
         }
+        for other in [
+            "paste-",
+            "paste--1",
+            "paste-1.a",
+            "Paste-1",
+            "other",
+            "paste",
+        ] {
+            assert!(!is_paste_dir_name(other), "{other}");
+        }
+        assert_eq!(paste_dir_name([0xab; 16]).len(), "paste-".len() + 32);
+        assert!(is_paste_dir_name(&paste_dir_name([0; 16])));
+    }
+
+    #[test]
+    fn a_new_paste_folder_has_a_random_name_and_survives_a_name_clash() {
+        let root = tempfile::tempdir().unwrap();
+        let first = claim_paste_dir(root.path(), || Ok([1; 16])).unwrap();
+        let mut calls = 0;
+        let second = claim_paste_dir(root.path(), || {
+            calls += 1;
+            Ok([if calls == 1 { 1 } else { 2 }; 16])
+        })
+        .unwrap();
+        assert_ne!(first, second);
+        assert_eq!(calls, 2, "the clash was retried with a new name");
+        let a = claim_paste_dir(root.path(), os_random).unwrap();
+        let b = claim_paste_dir(root.path(), os_random).unwrap();
+        assert_ne!(a, b);
+        let always_taken = claim_paste_dir(root.path(), || Ok([1; 16]));
+        assert!(
+            always_taken.is_err(),
+            "gives up rather than looping forever"
+        );
+    }
+
+    #[test]
+    fn cleanup_removes_every_paste_folder_but_the_kept_one_and_nothing_else() {
+        let root = tempfile::tempdir().unwrap();
+        let old = claim_paste_dir(root.path(), || Ok([1; 16])).unwrap();
+        std::fs::write(old.join("secret.txt"), b"x").unwrap();
+        let legacy = root.path().join("paste-7");
+        std::fs::create_dir(&legacy).unwrap();
+        let keep = claim_paste_dir(root.path(), || Ok([2; 16])).unwrap();
+        let other = root.path().join("keep-me");
+        std::fs::create_dir(&other).unwrap();
+        let file = root.path().join("paste-file");
+        std::fs::write(&file, b"not a folder").unwrap();
+
+        assert_eq!(remove_paste_dirs(root.path(), Some(&keep)), 2);
+        assert!(!old.exists() && !legacy.exists());
+        assert!(keep.is_dir() && other.is_dir() && file.is_file());
+
+        assert_eq!(remove_paste_dirs(root.path(), None), 1, "the exit cleanup");
+        assert!(!keep.exists() && other.is_dir());
+        assert_eq!(remove_paste_dirs(&root.path().join("missing"), None), 0);
     }
 
     fn encode_png(width: u32, height: u32, color: png::ColorType, data: &[u8]) -> Vec<u8> {
@@ -611,14 +717,6 @@ mod tests {
         assert_eq!(dib_size(1, 1), Some(44));
         assert_eq!(dib_size(u32::MAX, 1), None);
         assert_eq!(dib_size(1, 1 << 31), None);
-    }
-
-    #[test]
-    fn paste_cleanup_keeps_the_previous_folder() {
-        assert_eq!(stale_paste_dirs(&[]), Vec::<u64>::new());
-        assert_eq!(stale_paste_dirs(&[7]), Vec::<u64>::new());
-        assert_eq!(stale_paste_dirs(&[3, 9, 5]), [5, 3]);
-        assert_eq!(stale_paste_dirs(&[2, 2, 1]), [1]);
     }
 
     fn written(ledger: &mut OwnerLedger, sequence: u32) -> u64 {
