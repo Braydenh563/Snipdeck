@@ -7,6 +7,7 @@ Goal: ship v1 by the morning. Branch `claude/compassionate-pascal-pod8ux`, PR #5
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-10-20 owner: "go with your suggestion" (budget at 87%): O54 stays in v1 (Sonnet, after O47 merges). O49/O50 -> v1.0.1 (reverses "including O49"); reason: needs O45+O47 merged first and would push past the 93% ceiling.
 - 2026-10-20 11:30 owner: "use Opus 5.5 medium for O52, O45, O47". Those three on Opus medium; everything else Sonnet. Queue after the O41/O48 agent: O52+O39 Panel wiring (Opus), O53, O45+O44 (Opus), O47 (Opus), O49, O50, O40, O36/O30/O27, visual pass.
 - 2026-10-20 11:10 owner: "I wanted fable to be the overseer auditer for issues and then use other models to fix... use it intentionally". Fable = auditor only (audits each merged range + final pre-ship audit); builds go to hub Sonnet agents, one at a time, from .claude/remaining/fable.md.
 - 2026-10-20 11:05 owner: "push groups to 1.1 but do the rest pls". O46 groups -> v1.1 (reverses hold-v1-for-groups). Fable order: O33/O32 push, O39 Panel, O52, O53, O44+O45 (no groups), O47, O49, O50, O48, O40, O41, visual pass, O30, O27. Stop line 87% unchanged.
