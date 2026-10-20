@@ -35,6 +35,7 @@ where
         }
         self.settings = next;
         self.model.set_policy(policy_of(&self.settings));
+        self.model.set_paste_rules(self.settings.paste_rules());
         let now = self.clock.now();
         if let Some(saver) = &mut self.saver {
             saver.changed(&self.settings, now);

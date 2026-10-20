@@ -655,6 +655,7 @@ fn the_welcome_tour_docks_the_panel_from_its_position_step() {
                 h: 1040,
             },
             scale: 1.0,
+            taskbar: None,
         };
         let floating = Rect {
             x: 600,
@@ -687,6 +688,7 @@ fn choosing_an_edge_docks_the_panel_there_and_floating_lets_it_go() {
                 h: 1040,
             },
             scale: 1.0,
+            taskbar: None,
         };
         let floating = Rect {
             x: 600,

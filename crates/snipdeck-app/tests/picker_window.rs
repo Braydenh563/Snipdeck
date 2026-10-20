@@ -70,6 +70,7 @@ fn monitor(scale: f32) -> Monitor {
             h: 1040,
         },
         scale,
+        taskbar: None,
     }
 }
 

@@ -298,6 +298,7 @@ where
         let index_cache = crate::index_cache::IndexCache::new();
         let mut model = PanelModel::load_cached(&store, None, None, &index_cache)?;
         model.set_policy(policy_of(&settings));
+        model.set_paste_rules(settings.paste_rules());
         model.set_target(target.current());
         let shown_at = clock.now();
         Ok(Self {

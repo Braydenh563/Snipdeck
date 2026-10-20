@@ -38,18 +38,18 @@ fn every_menu_row_has_words_except_the_separators() {
     on_ui_thread(|| {
         let w = PanelWindow::new().unwrap();
         assert_eq!(
-            app_menu_text(&w, AppMenuEntry::Dock, false),
+            app_menu_text(&w, AppMenuEntry::Dock, false, None),
             "Dock to the nearest edge"
         );
         assert_eq!(
-            app_menu_text(&w, AppMenuEntry::Dock, true),
+            app_menu_text(&w, AppMenuEntry::Dock, true, None),
             "Undock the panel"
         );
         assert_eq!(
-            app_menu_text(&w, AppMenuEntry::Commands, false),
+            app_menu_text(&w, AppMenuEntry::Commands, false, None),
             "All commands\u{2026}"
         );
-        assert_eq!(app_menu_text(&w, AppMenuEntry::Separator, false), "");
+        assert_eq!(app_menu_text(&w, AppMenuEntry::Separator, false, None), "");
         assert_eq!(
             item_menu_label(&w, ItemMenuEntry::Pin { pinned: true }),
             "Unpin"

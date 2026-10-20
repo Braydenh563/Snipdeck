@@ -426,3 +426,46 @@ fn a_free_user_is_told_about_pro_instead_of_being_asked() {
         )
     );
 }
+
+#[test]
+fn a_program_rule_in_settings_decides_the_paste_key() {
+    use crate::settings::{ProgramPaste, ProgramRule};
+    use snipdeck_platform::keys::Modifier;
+    let wt = Target {
+        app: "wt.exe".into(),
+        title: "PowerShell".into(),
+        elevated: false,
+        focus: Focus::Caret,
+    };
+    let rule = || ProgramRule {
+        exe: "wt.exe".into(),
+        paste: ProgramPaste::CtrlShiftV,
+    };
+    let shift_down = KeyEvent {
+        key: Key::Modifier(Modifier::Shift),
+        down: true,
+    };
+
+    // A rule changed while running (Settings > Programs).
+    let mut w = world_with(Some(wt.clone()), Settings::default());
+    w.ctl.activate_row(0, UseMode::Paste);
+    assert!(
+        !w.ctl.services().keyboard.sent[0].contains(&shift_down),
+        "Ctrl+V by default: {:?}",
+        w.ctl.services().keyboard.sent
+    );
+    w.ctl.update_settings(|s| s.programs.push(rule()));
+    w.ctl.activate_row(0, UseMode::Paste);
+    let sent = &w.ctl.services().keyboard.sent;
+    assert!(
+        sent[1].contains(&shift_down),
+        "Ctrl+Shift+V after the rule: {sent:?}"
+    );
+
+    // A rule already in the settings file at start.
+    let mut settings = Settings::default();
+    settings.programs.push(rule());
+    let mut w = world_with(Some(wt), settings);
+    w.ctl.activate_row(0, UseMode::Paste);
+    assert!(w.ctl.services().keyboard.sent[0].contains(&shift_down));
+}
