@@ -47,7 +47,7 @@ mod trash;
 
 pub use batch::Batch;
 pub use blobs::BlobStore;
-pub use error::{Error, Result};
+pub use error::{Error, Result, Trouble};
 pub use recent::{RecentEntry, RecentRepo};
 pub use repo::{BoardRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable};
 pub use store::{GcReport, Store};

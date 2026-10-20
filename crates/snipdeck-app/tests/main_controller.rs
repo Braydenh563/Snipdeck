@@ -313,7 +313,10 @@ fn export_list_that_cannot_be_written_says_so() {
         ctl.main_export_list(code, &blocker.join("inside"))
             .is_none()
     );
-    assert_eq!(message(&ctl.main_screen()), ToastMessage::ExportFailed);
+    assert!(matches!(
+        message(&ctl.main_screen()),
+        ToastMessage::ExportFailed(_)
+    ));
 }
 
 #[test]

@@ -23,7 +23,7 @@ use snipdeck_portable::{
 use snipdeck_store::Store;
 
 use super::{Controller, Toast, ToastKind, ToastMessage};
-use crate::{host::ClipboardText, licence_store, starter, toast::LicenceProblem};
+use crate::{failure::Cause, host::ClipboardText, licence_store, starter, toast::LicenceProblem};
 
 /// Where an import reads from. Each variant is one kind of source the Settings "Import..." row
 /// offers; a new source (the Windows clipboard history, say) is one more variant, one arm in
@@ -381,21 +381,21 @@ where
             usize::try_from(self.settings.backups_keep).unwrap_or(backup::DEFAULT_KEEP),
             key,
         ) {
-            Ok(BackupOutcome::Created { .. }) => true,
+            Ok(BackupOutcome::Created { .. }) => Ok(()),
             Ok(BackupOutcome::NotDue { existing }) => {
-                export_to_path(&self.store, now, &self.backup_options(), &existing).is_ok()
+                export_to_path(&self.store, now, &self.backup_options(), &existing).map(|_| ())
             }
-            Err(_) => false,
+            Err(e) => Err(e),
         };
-        self.show_toast(if made {
-            Toast {
+        let worked = made.is_ok();
+        self.show_toast(match made {
+            Ok(()) => Toast {
                 kind: ToastKind::Success,
                 message: ToastMessage::BackupMade,
-            }
-        } else {
-            danger(ToastMessage::BackupFailed)
+            },
+            Err(e) => danger(ToastMessage::BackupFailed(Cause::of_portable(&e))),
         });
-        made
+        worked
     }
 
     /// Restores `backup` (a file `backup::list_backups` found) into the library: what is missing
@@ -422,7 +422,7 @@ where
             Err(snipdeck_portable::Error::Core(snipdeck_core::Error::ProRequired(_))) => {
                 self.show_toast(danger(ToastMessage::BoardLimit));
             }
-            Err(_) => self.show_toast(danger(ToastMessage::RestoreFailed)),
+            Err(e) => self.show_toast(danger(ToastMessage::RestoreFailed(Cause::of_portable(&e)))),
         }
         worked
     }
@@ -532,8 +532,8 @@ where
                 self.show_toast(danger(ToastMessage::BoardLimit));
                 false
             }
-            Err(_) => {
-                self.show_toast(danger(ToastMessage::ImportFailed));
+            Err(e) => {
+                self.show_toast(danger(ToastMessage::ImportFailed(Cause::of_portable(&e))));
                 false
             }
         }
@@ -548,9 +548,13 @@ where
         }
         let now = self.clock.now();
         let path = export_path(folder, now.to_zoned(TimeZone::system()).date());
-        let exported = fs::create_dir_all(folder).is_ok()
-            && export_to_path(&self.store, now, &self.backup_options(), &path).is_ok();
-        if exported {
+        let exported = fs::create_dir_all(folder)
+            .map_err(|e| Cause::of_io(&e))
+            .and_then(|()| {
+                export_to_path(&self.store, now, &self.backup_options(), &path)
+                    .map_err(|e| Cause::of_portable(&e))
+            });
+        if exported.is_ok() {
             let file = path
                 .file_name()
                 .map(|n| n.to_string_lossy().into_owned())
@@ -561,7 +565,8 @@ where
             });
             Some(path)
         } else {
-            self.show_toast(danger(ToastMessage::ExportFailed));
+            let cause = exported.err().unwrap_or(Cause::Other);
+            self.show_toast(danger(ToastMessage::ExportFailed(cause)));
             None
         }
     }

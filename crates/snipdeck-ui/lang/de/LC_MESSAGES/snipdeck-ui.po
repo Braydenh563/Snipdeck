@@ -358,17 +358,65 @@ msgstr "CopyQ-Export"
 msgid "Couldn't change the Windows start-up entry."
 msgstr "Der Windows-Starteintrag konnte nicht geändert werden."
 
+msgid "Couldn't clear old items out of the Trash. Check the disk has room, then restart Snipdeck to try again."
+msgstr ""
+
 msgid "Couldn't erase everything. Quit Snipdeck and try again."
 msgstr "Alles konnte nicht gelöscht werden. Beende Snipdeck und versuche es erneut."
 
-msgid "Couldn't export your library."
-msgstr "Deine Bibliothek konnte nicht exportiert werden."
+msgid "Couldn't export your library. Check the disk has room, then try again."
+msgstr ""
+
+msgid "Couldn't export your library: it is locked. Unlock it, then try again."
+msgstr ""
+
+msgid "Couldn't export your library: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't export your library: the folder can't be written to. Check it isn't read-only or in use, then try again."
+msgstr ""
 
 msgid "Couldn't import that."
 msgstr "Das konnte nicht importiert werden."
 
-msgid "Couldn't make a backup."
-msgstr "Es konnte keine Sicherung erstellt werden."
+msgid "Couldn't import that. Choose the file again, or try another one."
+msgstr ""
+
+msgid "Couldn't import that: it isn't a file Snipdeck can read, or it is damaged. Choose a .snipdeck export."
+msgstr ""
+
+msgid "Couldn't import that: it was made by a newer Snipdeck. Update Snipdeck, then try again."
+msgstr ""
+
+msgid "Couldn't import that: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't import that: the file is in use by another program or can't be read. Close the program using it, then try again."
+msgstr ""
+
+msgid "Couldn't import that: your library is locked. Unlock it, then try again."
+msgstr ""
+
+msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make a backup: the disk is full. Free up some space, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make a backup: your library is locked. Unlock it, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make today's backup: the disk is full. Free up some space, then use Back up now in Settings."
+msgstr ""
 
 msgid "Couldn't open that window."
 msgstr "Dieses Fenster konnte nicht geöffnet werden."
@@ -394,8 +442,23 @@ msgstr "Auf die Zwischenablage kann nicht zugegriffen werden. Eine andere App ve
 msgid "Couldn't rename the tag."
 msgstr "Das Schlagwort konnte nicht umbenannt werden."
 
-msgid "Couldn't restore that backup."
-msgstr "Diese Sicherung konnte nicht wiederhergestellt werden."
+msgid "Couldn't restore that backup. Choose another backup, or try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: a file is in use by another program. Close it, then try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: it isn't a Snipdeck backup, or it is damaged. Choose another backup."
+msgstr ""
+
+msgid "Couldn't restore that backup: it was made by a newer Snipdeck. Update Snipdeck, then try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: your library is locked. Unlock it, then try again."
+msgstr ""
 
 msgid "Couldn't save a draft of what you typed."
 msgstr "Ein Entwurf deiner Eingabe konnte nicht gespeichert werden."
@@ -406,8 +469,17 @@ msgstr "Dieser Textbaustein konnte nicht gespeichert werden. Nichts wurde geänd
 msgid "Couldn't save your settings. Snipdeck will try again."
 msgstr "Deine Einstellungen konnten nicht gespeichert werden. Snipdeck versucht es erneut."
 
-msgid "Couldn't use this item."
-msgstr "Dieser Textbaustein konnte nicht verwendet werden."
+msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
+msgstr ""
+
+msgid "Couldn't use this item: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't use this item: your library file is in use by another program. Close that program, then try again."
+msgstr ""
+
+msgid "Couldn't use this item: your library is locked. Unlock it, then try again."
+msgstr ""
 
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "In deine Bibliothek konnte nicht geschrieben werden. Prüfe, ob auf dem Datenträger Platz ist."
