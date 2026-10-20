@@ -57,7 +57,7 @@ fn every_menu_row_has_words_except_the_separators() {
         assert_eq!(item_menu_label(&w, ItemMenuEntry::Trash), "Move to Trash");
         assert_eq!(item_menu_label(&w, ItemMenuEntry::Separator), "");
         assert_eq!(
-            board_menu_text(&w, &BoardMenuEntry::Delete),
+            board_menu_text(&w, &BoardMenuEntry::Delete { enabled: true }),
             "Delete board\u{2026}"
         );
         assert_eq!(board_menu_text(&w, &BoardMenuEntry::Separator), "");

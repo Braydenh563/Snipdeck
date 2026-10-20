@@ -366,6 +366,34 @@ fn a_list_menu_request_opens_the_list_menu_and_dismissing_closes_it() {
 }
 
 #[test]
+fn delete_on_the_list_menu_shows_only_the_panel_confirmation() {
+    // O52: Delete asked inside the list editor, which then appeared behind the confirmation.
+    on_ui_thread(|| {
+        let r = rig();
+        let lists = r.ui.get_tabs().row_count();
+        r.ui.invoke_list_menu_requested(1);
+        r.ui.invoke_list_menu_activated(1);
+        assert!(!r.ui.get_list_menu_open());
+        assert!(r.ui.get_list_delete_open(), "the Panel asks");
+        assert!(!r.ui.get_list_delete_name().is_empty());
+        assert!(
+            r.ctl.borrow_mut().main_screen().editor.is_none(),
+            "no list editor opens"
+        );
+        r.ui.invoke_list_delete_dismissed();
+        assert!(!r.ui.get_list_delete_open());
+        assert_eq!(r.ui.get_tabs().row_count(), lists, "Cancel keeps the list");
+
+        r.ui.invoke_list_menu_requested(1);
+        r.ui.invoke_list_menu_activated(1);
+        r.ui.invoke_list_delete_confirmed();
+        assert!(!r.ui.get_list_delete_open());
+        assert_eq!(r.ui.get_tabs().row_count(), lists - 1);
+        assert!(r.ctl.borrow_mut().main_screen().editor.is_none());
+    });
+}
+
+#[test]
 fn typing_in_the_search_filters_the_rows() {
     on_ui_thread(|| {
         let r = rig();
@@ -725,6 +753,28 @@ fn an_explicit_theme_ignores_windows_dark_mode() {
             reduce_motion: false,
         });
         assert!(!r.ui.get_dark());
+    });
+}
+
+#[test]
+fn windows_are_painted_in_the_theme_window_colour_before_their_first_frame() {
+    // O52: a window flashed white between showing and its first frame. The colour Windows
+    // paints first is the theme's `bg-app`, and it follows a theme change.
+    on_ui_thread(|| {
+        let r = rig();
+        let erase = snipdeck_app::native_window::erase_colour;
+        r.ctl.borrow_mut().set_theme(Theme::Dark);
+        r.binding.system_look(SystemLook::default());
+        assert_eq!(
+            erase(),
+            Some((0x11, 0x0F, 0x0D)),
+            "dark bg-app (neutral-900)"
+        );
+        r.ctl.borrow_mut().set_theme(Theme::Light);
+        r.binding.system_look(SystemLook::default());
+        let light = erase().expect("a colour");
+        assert_ne!(light, (0xFF, 0xFF, 0xFF), "never the default white");
+        assert_ne!(light, (0x11, 0x0F, 0x0D), "follows the theme");
     });
 }
 

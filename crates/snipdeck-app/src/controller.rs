@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 use snipdeck_core::{
-    Entitlements, ItemId, ListId, Timestamp,
+    BoardId, Entitlements, ItemId, ListId, Timestamp,
     template::{Locale, TimeZone},
 };
 use snipdeck_platform::{
@@ -39,7 +39,8 @@ pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameE
 pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry};
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use views::{
-    Effect, FillSubmission, FillView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
+    Effect, FillSubmission, FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView,
+    UseResult, View,
 };
 
 use crate::{
@@ -185,6 +186,9 @@ pub struct Controller<S, C, K, T> {
     /// The list or board editor, while one is open.
     editor: Option<main_ctl::EditorSlot>,
     editor_seq: u64,
+    /// The board menu's delete confirmation is asking about this board (the Main window draws
+    /// it; no editor opens).
+    board_delete: Option<BoardId>,
     /// The item editor, while one is open.
     item_editor: Option<editor_ctl::ItemEditorSlot>,
     item_editor_seq: u64,
@@ -245,6 +249,8 @@ enum PanelMenu {
     Item(ItemId),
     /// The context menu of a list tab.
     List(ListId),
+    /// The list menu's delete confirmation, asking about this list.
+    DeleteList(ListId),
 }
 
 /// Facts about the running app that are not settings and not on screen.
@@ -327,6 +333,7 @@ where
             main: MainModel::new(),
             editor: None,
             editor_seq: 0,
+            board_delete: None,
             item_editor: None,
             item_editor_seq: 0,
             editor_env: editor_ctl::EditorEnv::default(),
@@ -434,6 +441,7 @@ where
                 _ => None,
             },
             list_menu: matches!(self.menu, PanelMenu::List(_)).then(|| LIST_MENU.to_vec()),
+            list_delete: self.list_delete_view(),
             hotkeys_paused: self.session.hotkeys_paused,
             picker_chord: crate::commands::chord_text(&self.settings.hotkeys, HotkeyAction::Picker)
                 .unwrap_or_default(),
