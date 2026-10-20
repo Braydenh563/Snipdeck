@@ -40,7 +40,7 @@ fn ctrl_a_marks_every_row_and_escape_clears() {
     w.ctl.panel_mark_all();
     assert_eq!(marked(&w), [0, 1, 2, 3]);
     w.ctl.panel_clear_marks();
-    assert!(marked(&w).is_empty());
+    assert_eq!(marked(&w), Vec::<usize>::new());
     assert_eq!(w.ctl.view().marked_count, 0);
 }
 
@@ -84,7 +84,7 @@ fn the_bulk_bar_deletes_the_marked_rows() {
     let mut w = world();
     w.ctl.panel_mark_all();
     w.ctl.bulk_delete();
-    assert!(w.ctl.view().rows.is_empty());
+    assert_eq!(w.ctl.view().rows.len(), 0);
     assert_eq!(
         w.ctl.view().toast.expect("toast").message,
         ToastMessage::ItemsTrashed { count: 4 }
