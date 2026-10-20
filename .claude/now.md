@@ -32,6 +32,11 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-10-18: The owner said "you are fable btw": this session runs on Fable, so it IS the one permitted Fable agent. Step 4 (docs/fable-brief.md) is done by this session: Fable does analysis, design calls, security review and judgement; Sonnet/Haiku agents do the mechanical implementation with exact file/line instructions; no second Fable agent is spawned (that would be two). Token rules of the brief still apply to this session (grep CODEMAP, line ranges, no whole build logs).
 
 ## Inbox
+- 2026-10-20 (owner): "also I want to be able to drag the panel to an edge at any height and be able tohave it dock as a little panel on the side. research and look at microsoft pc manager and how its toolbar works and functions." -> Fable O28.
+- 2026-10-20 (owner): "and can you make it easier to change the sorting method of lists?" -> Fable O30.
+- 2026-10-20 (owner): "these buttons need a bit more visual separation oot to make it clear that some of them have different function other than a view change, elements need to be better grouped by purpose and function" -> Fable O31.
+- 2026-10-20 (owner): "also dock  to the nearest edge doesnt work and flickers for a sec and goes back to normal after if I have the panel on the lower half of the screen and in the middle as it cant dock to the taskbar which it shouldnt, it shouldnt be able to dock to the edge wioth the taskbar but that needs more visual learnability." -> Fable O32 (pure nearest-allowed-edge fn, preview on allowed edges only, no flicker).
+- 2026-10-20 (hub): user-guide links 404 on GitHub -> Fable O29.
 - 2026-10-20 09:10 owner applied the M3 workflow patch (009debc, f194f55): pinned SHAs, windows-build/publish split, persist-credentials false. G item done.
 - 2026-10-20 09:30 owner: "is there any way you can make the Windows test script easier and more understandable to use?? it's kinda unintuitive, annoying and tricky to properly use" -> Sonnet agent on claude/windows-test-ux (one entry bat, v1-check default, plain step cards, results zip to Desktop); hub merges.
 - 2026-10-20 09:40 owner: "im not quite sure but I think the scrolling might be a little laggy?? i dont have reduce motion on but idk, i might be imagining it" -> Fable O27 (measure scroll, virtualised lists, no wheel easing, budget test).
