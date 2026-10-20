@@ -11,16 +11,16 @@ msgid ".snipdeck file"
 msgstr ".snipdeck 文件"
 
 msgid "100 %"
-msgstr ""
+msgstr "100 %"
 
 msgid "125 %"
-msgstr ""
+msgstr "125 %"
 
 msgid "150 %"
-msgstr ""
+msgstr "150 %"
 
 msgid "175 %"
-msgstr ""
+msgstr "175 %"
 
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "PNG 图片。Snipdeck 会保存自己的副本。"
@@ -107,10 +107,10 @@ msgid "Also forget the encryption key"
 msgstr "同时忘记加密密钥"
 
 msgid "Alt 1 to 9"
-msgstr ""
+msgstr "Alt 1 到 9"
 
 msgid "Alt+{}"
-msgstr ""
+msgstr "Alt+{}"
 
 msgid "Amber"
 msgstr "琥珀色"
@@ -155,7 +155,7 @@ msgid "Backup of {}, {}"
 msgstr "{} 的备份（{}）"
 
 msgid "Backups and your data"
-msgstr ""
+msgstr "备份和你的数据"
 
 msgid "Backups to keep"
 msgstr "保留的备份数"
@@ -371,7 +371,7 @@ msgid "Copy the result"
 msgstr "复制结果"
 
 msgid "Copy without pasting"
-msgstr ""
+msgstr "仅复制，不粘贴"
 
 msgid "CopyQ export"
 msgstr "CopyQ 导出"
@@ -380,76 +380,76 @@ msgid "Couldn't change the Windows start-up entry."
 msgstr "无法更改 Windows 开机启动项。"
 
 msgid "Couldn't clear old items out of the Trash. Check the disk has room, then restart Snipdeck to try again."
-msgstr ""
+msgstr "无法清除回收站中的旧项目。请检查磁盘空间，然后重启 Snipdeck 重试。"
 
 msgid "Couldn't erase everything. Quit Snipdeck and try again."
 msgstr "无法全部删除。请退出 Snipdeck 后重试。"
 
 msgid "Couldn't export your library. Check the disk has room, then try again."
-msgstr ""
+msgstr "无法导出你的资料库。请检查磁盘空间，然后重试。"
 
 msgid "Couldn't export your library: it is locked. Unlock it, then try again."
-msgstr ""
+msgstr "无法导出你的资料库：它已锁定。请先解锁，然后重试。"
 
 msgid "Couldn't export your library: the disk is full. Free up some space, then try again."
-msgstr ""
+msgstr "无法导出你的资料库：磁盘已满。请释放一些空间，然后重试。"
 
 msgid "Couldn't export your library: the folder can't be written to. Check it isn't read-only or in use, then try again."
-msgstr ""
+msgstr "无法导出你的资料库：无法写入该文件夹。请检查它是否为只读或正在使用，然后重试。"
 
 msgid "Couldn't import that."
 msgstr "无法导入该内容。"
 
 msgid "Couldn't import that. Choose the file again, or try another one."
-msgstr ""
+msgstr "无法导入。请重新选择文件，或换一个文件试试。"
 
 msgid "Couldn't import that: it isn't a file Snipdeck can read, or it is damaged. Choose a .snipdeck export."
-msgstr ""
+msgstr "无法导入：这不是 Snipdeck 能读取的文件，或文件已损坏。请选择 .snipdeck 导出文件。"
 
 msgid "Couldn't import that: it was made by a newer Snipdeck. Update Snipdeck, then try again."
-msgstr ""
+msgstr "无法导入：它由更新版本的 Snipdeck 创建。请更新 Snipdeck，然后重试。"
 
 msgid "Couldn't import that: the disk is full. Free up some space, then try again."
-msgstr ""
+msgstr "无法导入：磁盘已满。请释放一些空间，然后重试。"
 
 msgid "Couldn't import that: the file is in use by another program or can't be read. Close the program using it, then try again."
-msgstr ""
+msgstr "无法导入：文件正被其他程序使用或无法读取。请关闭使用它的程序，然后重试。"
 
 msgid "Couldn't import that: your library is locked. Unlock it, then try again."
-msgstr ""
+msgstr "无法导入：你的资料库已锁定。请先解锁，然后重试。"
 
 msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
-msgstr ""
+msgstr "无法创建备份。请检查磁盘空间，然后在设置中使用“立即备份”。"
 
 msgid "Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
-msgstr ""
+msgstr "无法创建备份：备份文件正在使用或无法写入。请关闭使用你的 Snipdeck 文件夹的其他程序，然后在设置中使用“立即备份”。"
 
 msgid "Couldn't make a backup: the disk is full. Free up some space, then use Back up now in Settings."
-msgstr ""
+msgstr "无法创建备份：磁盘已满。请释放一些空间，然后在设置中使用“立即备份”。"
 
 msgid "Couldn't make a backup: your library is locked. Unlock it, then use Back up now in Settings."
-msgstr ""
+msgstr "无法创建备份：你的资料库已锁定。请先解锁，然后在设置中使用“立即备份”。"
 
 msgid "Couldn't make that change. Try again, or restart Snipdeck if it keeps happening."
-msgstr ""
+msgstr "无法进行该更改。请重试；如果问题持续出现，请重启 Snipdeck。"
 
 msgid "Couldn't make that change: the disk is full. Free up some space, then try again."
-msgstr ""
+msgstr "无法进行该更改：磁盘已满。请释放一些空间，然后重试。"
 
 msgid "Couldn't make that change: your library file is in use by another program. Close that program, then try again."
-msgstr ""
+msgstr "无法进行该更改：你的资料库文件正被其他程序使用。请关闭该程序，然后重试。"
 
 msgid "Couldn't make that change: your library is locked. Unlock it, then try again."
-msgstr ""
+msgstr "无法进行该更改：你的资料库已锁定。请先解锁，然后重试。"
 
 msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
-msgstr ""
+msgstr "无法创建今天的备份。请检查磁盘空间，然后在设置中使用“立即备份”。"
 
 msgid "Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
-msgstr ""
+msgstr "无法创建今天的备份：备份文件正在使用或无法写入。请关闭使用你的 Snipdeck 文件夹的其他程序，然后在设置中使用“立即备份”。"
 
 msgid "Couldn't make today's backup: the disk is full. Free up some space, then use Back up now in Settings."
-msgstr ""
+msgstr "无法创建今天的备份：磁盘已满。请释放一些空间，然后在设置中使用“立即备份”。"
 
 msgid "Couldn't open that window."
 msgstr "无法打开该窗口。"
@@ -476,22 +476,22 @@ msgid "Couldn't rename the tag."
 msgstr "无法重命名标签。"
 
 msgid "Couldn't restore that backup. Choose another backup, or try again."
-msgstr ""
+msgstr "无法还原该备份。请选择另一个备份，或重试。"
 
 msgid "Couldn't restore that backup: a file is in use by another program. Close it, then try again."
-msgstr ""
+msgstr "无法还原该备份：某个文件正被其他程序使用。请关闭该程序，然后重试。"
 
 msgid "Couldn't restore that backup: it isn't a Snipdeck backup, or it is damaged. Choose another backup."
-msgstr ""
+msgstr "无法还原该备份：它不是 Snipdeck 备份，或已损坏。请选择另一个备份。"
 
 msgid "Couldn't restore that backup: it was made by a newer Snipdeck. Update Snipdeck, then try again."
-msgstr ""
+msgstr "无法还原该备份：它由更新版本的 Snipdeck 创建。请更新 Snipdeck，然后重试。"
 
 msgid "Couldn't restore that backup: the disk is full. Free up some space, then try again."
-msgstr ""
+msgstr "无法还原该备份：磁盘已满。请释放一些空间，然后重试。"
 
 msgid "Couldn't restore that backup: your library is locked. Unlock it, then try again."
-msgstr ""
+msgstr "无法还原该备份：你的资料库已锁定。请先解锁，然后重试。"
 
 msgid "Couldn't save a draft of what you typed."
 msgstr "无法保存你输入内容的草稿。"
@@ -503,25 +503,25 @@ msgid "Couldn't save your settings. Snipdeck will try again."
 msgstr "无法保存你的设置。Snipdeck 将再次尝试。"
 
 msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
-msgstr ""
+msgstr "无法使用此片段。请重试；如果问题持续出现，请重启 Snipdeck。"
 
 msgid "Couldn't use this item: the disk is full. Free up some space, then try again."
-msgstr ""
+msgstr "无法使用此片段：磁盘已满。请释放一些空间，然后重试。"
 
 msgid "Couldn't use this item: your library file is in use by another program. Close that program, then try again."
-msgstr ""
+msgstr "无法使用此片段：你的资料库文件正被其他程序使用。请关闭该程序，然后重试。"
 
 msgid "Couldn't use this item: your library is locked. Unlock it, then try again."
-msgstr ""
+msgstr "无法使用此片段：你的资料库已锁定。请先解锁，然后重试。"
 
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "无法写入你的资料库。请检查磁盘是否有足够空间。"
 
 msgid "Ctrl+Shift+V"
-msgstr ""
+msgstr "Ctrl+Shift+V"
 
 msgid "Ctrl+V"
-msgstr ""
+msgstr "Ctrl+V"
 
 msgid "Current password"
 msgstr "当前密码"
@@ -841,6 +841,12 @@ msgstr "已隐藏。按住空格键即可显示。"
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "已隐藏。在面板中打开即可显示。"
 
+msgid "Hide Panel"
+msgstr "隐藏面板"
+
+msgid "Hide Panel ({})"
+msgstr "隐藏面板 ({})"
+
 msgid "Hide the Panel"
 msgstr "隐藏面板"
 
@@ -950,7 +956,7 @@ msgid "Language"
 msgstr "语言"
 
 msgid "Last backup: {}"
-msgstr ""
+msgstr "上次备份：{}"
 
 msgid "Leave delay"
 msgstr "离开延迟"
@@ -1114,7 +1120,7 @@ msgid "Never keep copies from these programs"
 msgstr "从不保留这些程序中的复制内容"
 
 msgid "Never paste"
-msgstr ""
+msgstr "从不粘贴"
 
 msgid "New board"
 msgstr "新建看板"
@@ -1150,7 +1156,7 @@ msgid "Next scope"
 msgstr "下一个范围"
 
 msgid "No backup yet"
-msgstr ""
+msgstr "还没有备份"
 
 msgid "No colour"
 msgstr "无颜色"
@@ -1177,7 +1183,7 @@ msgid "No programs yet."
 msgstr "还没有程序。"
 
 msgid "No programs yet. Every program gets Ctrl+V."
-msgstr ""
+msgstr "还没有程序。所有程序都使用 Ctrl+V。"
 
 msgid "No recent items"
 msgstr "没有最近的片段"
@@ -1306,7 +1312,7 @@ msgid "Open the user guide"
 msgstr "打开用户指南"
 
 msgid "Open the user guide (F1)"
-msgstr ""
+msgstr "打开用户指南 (F1)"
 
 msgid "Opens in your browser."
 msgstr "在浏览器中打开。"
@@ -1348,7 +1354,7 @@ msgid "Paste a licence key to turn on Supporter. The key is checked on this PC a
 msgstr "粘贴许可证密钥即可开启支持者功能。密钥只在这台电脑上验证，不会发送到任何地方。"
 
 msgid "Paste key for {}"
-msgstr ""
+msgstr "{} 的粘贴键"
 
 msgid "Paste stack"
 msgstr "粘贴堆栈"
@@ -1396,7 +1402,7 @@ msgid "Pastes the next item of the list in order."
 msgstr "按顺序粘贴列表中的下一个片段。"
 
 msgid "Pastes the next item of the list in order. Works with Supporter."
-msgstr ""
+msgstr "按顺序粘贴列表中的下一个片段。需要 Supporter。"
 
 msgid "Path to the file"
 msgstr "文件路径"
@@ -1474,7 +1480,7 @@ msgid "Program to leave out of Recent"
 msgstr "不纳入“最近”的程序"
 
 msgid "Programs"
-msgstr ""
+msgstr "程序"
 
 msgid "Prompt for a value or a choice each time you paste."
 msgstr "每次粘贴时询问值或选项。"
@@ -1605,13 +1611,13 @@ msgid "Saved to {}"
 msgstr "已保存到 {}"
 
 msgid "Saved {}"
-msgstr ""
+msgstr "已保存 {}"
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
-msgstr ""
+msgstr "将所有看板、列表和片段保存为一个 .snipdeck 文件，存放在你选择的文件夹中。"
 
 msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows. Off until you set a shortcut."
-msgstr ""
+msgstr "按下时，将剪贴板中的文本保存为面板当前列表中的新片段。设置快捷键之前保持关闭。"
 
 msgid "Saving…"
 msgstr "正在保存…"
@@ -1680,7 +1686,7 @@ msgid "Shift Enter"
 msgstr "Shift Enter"
 
 msgid "Shift+Insert"
-msgstr ""
+msgstr "Shift+Insert"
 
 msgid "Shortcuts"
 msgstr "快捷键"
@@ -1878,7 +1884,7 @@ msgid "Text"
 msgstr "文本"
 
 msgid "Text size"
-msgstr ""
+msgstr "文字大小"
 
 msgid "Text you copy appears here, newest first, until you clear it or it is older than {} days."
 msgstr "你复制的文本会按最新优先显示在这里，直到你清除或超过 {} 天。"
@@ -1956,7 +1962,7 @@ msgid "The import stopped early because the source is bigger than Snipdeck reads
 msgstr "导入已提前停止，因为源内容比 Snipdeck 一次能读取的量大。"
 
 msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe."
-msgstr ""
+msgstr "Snipdeck 在各程序中用于粘贴的按键。大多数程序使用 Ctrl+V；某些终端需要其他按键。选择“从不粘贴”则改为仅复制。请填写程序的文件名，例如 notepad.exe。"
 
 msgid "The key is valid but couldn't be saved, so Supporter will be off next time."
 msgstr "密钥有效，但无法保存，因此下次 Supporter 将关闭。"
@@ -1983,7 +1989,7 @@ msgid "The panel"
 msgstr "面板"
 
 msgid "The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back."
-msgstr ""
+msgstr "除非开启此项，否则面板不会出现在任务栏和 Alt+Tab 中；请使用托盘图标或面板快捷键将其调出。"
 
 msgid "The picker"
 msgstr "选择器"
@@ -2070,7 +2076,7 @@ msgid "Title"
 msgstr "标题"
 
 msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
-msgstr ""
+msgstr "要删除所有内容，请使用“备份和你的数据”下的“删除资料库”，然后删除该文件夹。"
 
 msgid "Today's date"
 msgstr "今天的日期"
@@ -2154,7 +2160,7 @@ msgid "Use just the program's file name, like notepad.exe."
 msgstr "只需填写程序的文件名，例如 notepad.exe。"
 
 msgid "Use result N"
-msgstr ""
+msgstr "使用第 N 个结果"
 
 msgid "Use selected item"
 msgstr "使用所选片段"
@@ -2232,7 +2238,7 @@ msgid "Windows doesn't allow {} as a shortcut."
 msgstr "Windows 不允许将 {} 用作快捷键。"
 
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
-msgstr ""
+msgstr "Windows 跟随系统的文字大小（设置 > 辅助功能 > 文字大小）。选择一个大小即可改用该大小。"
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "你将拥有 {} 个看板，而免费版仅包含 {} 个。"
@@ -2476,4 +2482,4 @@ msgid "{}.{} MB"
 msgstr "{}.{} MB"
 
 msgid "{}: {}"
-msgstr ""
+msgstr "{}: {}"

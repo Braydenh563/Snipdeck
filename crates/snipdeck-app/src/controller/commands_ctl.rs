@@ -31,7 +31,7 @@ where
             // (Search moves the window's focus, Tour opens the tour window). The arm stays only so
             // the match is exhaustive.
             Command::Search | Command::Tour => {}
-            Command::ShowPanel => self.main_show_panel(),
+            Command::ShowPanel => self.main_toggle_panel(),
             Command::OpenPicker => self.open_picker(),
             Command::QuickCapture => self.quick_capture(),
             Command::Settings => self.pending.push(Effect::OpenSettings),

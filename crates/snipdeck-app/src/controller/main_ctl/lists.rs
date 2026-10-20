@@ -235,6 +235,13 @@ where
         self.pending.extend(effects);
     }
 
+    /// The toolbar's Panel button and the palette's Show Panel: hides the Panel when it is on
+    /// screen, shows it otherwise (a docked Panel folds and unfolds, as with the hotkey).
+    pub fn main_toggle_panel(&mut self) {
+        let effects = self.on_hotkey(crate::settings::HotkeyAction::TogglePanel);
+        self.pending.extend(effects);
+    }
+
     /// Opens the board menu.
     pub fn main_board_menu_open(&mut self) {
         self.main.set_board_menu(true);

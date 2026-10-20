@@ -1645,6 +1645,29 @@ fn the_main_window_can_show_the_panel_again_and_names_its_hotkey() {
     assert_eq!(ctl.take_pending(), [Effect::ShowPanel]);
 }
 
+#[test]
+fn the_panel_button_and_palette_hide_a_panel_that_is_showing() {
+    use snipdeck_app::{commands::Command, controller::Effect};
+    let (mut ctl, _) = rig(Tier::Pro);
+    assert!(ctl.main_screen().panel_visible, "the Panel is up");
+    ctl.main_toggle_panel();
+    assert_eq!(ctl.take_pending(), [Effect::HidePanel]);
+    assert!(!ctl.visible());
+    assert!(
+        !ctl.main_screen().panel_visible,
+        "the button now offers Show"
+    );
+    ctl.main_toggle_panel();
+    assert_eq!(ctl.take_pending(), [Effect::ShowPanel]);
+    assert!(ctl.main_screen().panel_visible);
+    ctl.run_command(Command::ShowPanel, 0);
+    assert_eq!(
+        ctl.take_pending(),
+        [Effect::HidePanel],
+        "the palette toggles too"
+    );
+}
+
 // ---- The command palette's routes ----------------------------------------------------------------
 
 #[test]
@@ -1656,7 +1679,8 @@ fn palette_commands_that_belong_to_other_windows_queue_the_menus_effects() {
     let mut ctl = pro();
     for (command, effects) in [
         (Command::Settings, vec![Effect::OpenSettings]),
-        (Command::ShowPanel, vec![Effect::ShowPanel]),
+        // The Panel is up in this rig, so the toggle hides it.
+        (Command::ShowPanel, vec![Effect::HidePanel]),
         (Command::Tour, vec![]),
         (
             Command::Shortcuts,

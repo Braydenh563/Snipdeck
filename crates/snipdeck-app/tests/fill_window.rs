@@ -112,7 +112,6 @@ fn rig_on(store: Store) -> Rig {
             h: 1040,
         },
         scale: 1.0,
-        taskbar: None,
     }));
     popups.cursor.set(Some((900, 600)));
     let anchor = AnchorMemory::default();

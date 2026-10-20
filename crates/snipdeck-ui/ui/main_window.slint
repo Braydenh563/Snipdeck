@@ -229,6 +229,8 @@ export component MainWindow inherits Window {
     callback panel-requested();
     // The configured Show/hide Panel hotkey ("Ctrl+Alt+Space"), empty while it is off; shown in the button's tooltip.
     in property <string> panel-hotkey;
+    // The Panel is on screen: the toolbar button hides it (pressed, "Hide Panel") instead of showing it.
+    in property <bool> panel-visible;
     // F1 asks for the guide, Ctrl+/ for the shortcuts, the Help menu for any of them.
     callback help-requested(HelpPage);
     // ---- Command palette: the host fills `palette-rows` (filtered for the query it is told about).
@@ -929,9 +931,13 @@ export component MainWindow inherits Window {
                                     }
                                 }
                                 for entry[i] in root.lists: Rectangle {
+                                    // The sidebar list being dragged over this one (-1 for a dragged row): the drop line
+                                    // lands below this entry when coming from above, above it otherwise.
+                                    property <int> list-from: -1;
                                     height: side-list.height;
                                     side-drop := DropArea {
                                         can-drop(event) => {
+                                            list-from = root.payload-list(event.data);
                                             (root.payload-row(event.data) >= 0 && !root.in-trash) || (root.payload-list(event.data) >= 0 && root.payload-list(event.data) != i) ? DragAction.move : DragAction.none
                                         }
                                         dropped(event) => {
@@ -955,13 +961,20 @@ export component MainWindow inherits Window {
                                                 icon: entry.icon;
                                                 rail: root.narrow;
                                                 selected: root.nav-selected == 4 + i;
-                                                drop-target: side-drop.has-drag;
+                                                drop-target: side-drop.has-drag && list-from < 0;
                                                 keyboard-focusable: false;
                                                 show-focus: nav-scope.has-focus && root.nav-cursor == 4 + i;
                                                 clicked => { root.open-section(4 + i); }
                                                 context-menu-requested(x, y) => { root.open-nav-menu(4 + i, root.sidebar-w, self.absolute-position.y + y); }
                                             }
                                         }
+                                    }
+                                    // The drop target of a list reorder: a 2px accent line where the dragged list would land.
+                                    if side-drop.has-drag && list-from >= 0: list-drop-line := Rectangle {
+                                        y: list-from < i ? parent.height - 2px : 0px;
+                                        width: parent.width;
+                                        height: 2px;
+                                        background: Theme.accent;
                                     }
                                 }
 
@@ -1092,7 +1105,10 @@ export component MainWindow inherits Window {
                             panel-show := IconButton {
                                 scaled: true;
                                 icon: Icons.sidebar-simple;
-                                tooltip: root.panel-hotkey == "" ? @tr("Show Panel") : @tr("Show Panel ({})", root.panel-hotkey);
+                                tooltip: root.panel-visible
+                                    ? (root.panel-hotkey == "" ? @tr("Hide Panel") : @tr("Hide Panel ({})", root.panel-hotkey))
+                                    : (root.panel-hotkey == "" ? @tr("Show Panel") : @tr("Show Panel ({})", root.panel-hotkey));
+                                active: root.panel-visible;
                                 own-tooltip: true;
                                 y: (parent.height - self.height) / 2;
                                 clicked => { root.panel-requested(); }

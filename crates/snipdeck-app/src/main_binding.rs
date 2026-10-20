@@ -619,7 +619,7 @@ where
             crate::native_window::note_opener(crate::native_window::Surface::Main);
             crate::settings_binding::request_open();
         });
-        wire!(on_panel_requested, |ctl| ctl.main_show_panel());
+        wire!(on_panel_requested, |ctl| ctl.main_toggle_panel());
         wire!(on_help_requested, |ctl, page| ctl.main_open_help(
             match page {
                 ui::HelpPage::Troubleshoot => HelpTopic::Troubleshoot,
@@ -990,6 +990,9 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     }
     if differs(&|p| p.panel_hotkey == screen.panel_hotkey) {
         window.set_panel_hotkey(screen.panel_hotkey.as_str().into());
+    }
+    if differs(&|p| p.panel_visible == screen.panel_visible) {
+        window.set_panel_visible(screen.panel_visible);
     }
     if differs(&|p| p.board_name == screen.board_name) {
         window.set_board_name(screen.board_name.as_str().into());

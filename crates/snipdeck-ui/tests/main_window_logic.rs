@@ -399,6 +399,54 @@ ui_tests! {
         drag(code, email);
         assert_eq!(take(&log), ["list-dropped:2:0"], "list onto list");
 
+        // While a list is dragged over another, a 2px line marks the slot it would take: below the
+        // target when it comes from above, above it when it comes from below. Nothing before or after.
+        let lines = || {
+            ElementQuery::from_root(&ui)
+                .match_id("MainWindow::list-drop-line")
+                .find_all()
+        };
+        let hover = |from: slint::LogicalPosition, to: slint::LogicalPosition, release: bool| {
+            use slint::platform::{PointerEventButton, WindowEvent};
+            let w = ui.window();
+            w.dispatch_event(WindowEvent::PointerMoved { position: from });
+            w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+            w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(from.x, from.y + 12.0) });
+            w.dispatch_event(WindowEvent::PointerMoved { position: to });
+            settle();
+            let found = lines();
+            if release {
+                w.dispatch_event(WindowEvent::PointerReleased { position: to, button: PointerEventButton::Left });
+                settle();
+            }
+            found
+        };
+        assert!(lines().is_empty(), "no line when nothing is dragged");
+        let email_item = find(&ui, "Email replies", AccessibleRole::ListItem);
+        let code_item = find(&ui, "Code", AccessibleRole::ListItem);
+        // Code is below Email replies: dragging it up puts the line above Email replies.
+        let found = hover(centre_of(&code_item), centre_of(&email_item), true);
+        assert_eq!(found.len(), 1, "one line while a list is over another");
+        let (line, target) = (&found[0], &email_item);
+        assert!(line.size().height <= 2.5 && line.size().height >= 1.5, "2px: {:?}", line.size());
+        assert!(
+            (line.absolute_position().y - target.absolute_position().y).abs() <= 1.5,
+            "above the target when coming from below: {:?} {:?}",
+            line.absolute_position(),
+            target.absolute_position()
+        );
+        let _ = take(&log);
+        assert!(lines().is_empty(), "the line goes with the drop");
+        // And from above: Email replies dragged onto Code puts it below Code.
+        let found = hover(centre_of(&email_item), centre_of(&code_item), true);
+        assert_eq!(found.len(), 1);
+        let bottom = code_item.absolute_position().y + code_item.size().height;
+        assert!(
+            (found[0].absolute_position().y + found[0].size().height - bottom).abs() <= 1.5,
+            "below the target when coming from above"
+        );
+        let _ = take(&log);
+
         ui.set_rows_reorderable(false);
         settle();
         drag(row0, row2);
@@ -784,6 +832,15 @@ ui_tests! {
         find(&ui, "Show Panel (Ctrl+Alt+Space)", AccessibleRole::Button)
             .invoke_accessible_default_action();
         assert_eq!(take(&log), ["panel"]);
+
+        // While the Panel is showing, the button offers to hide it.
+        ui.set_panel_visible(true);
+        settle();
+        find(&ui, "Hide Panel (Ctrl+Alt+Space)", AccessibleRole::Button)
+            .invoke_accessible_default_action();
+        assert_eq!(take(&log), ["panel"]);
+        ui.set_panel_visible(false);
+        settle();
 
         find(&ui, "Help", AccessibleRole::Button).invoke_accessible_default_action();
         find(&ui, "Show Panel", AccessibleRole::ListItem).invoke_accessible_default_action();

@@ -173,6 +173,9 @@ pub struct MainScreen {
     pub editor: Option<EditorView>,
     /// The Show/hide Panel hotkey as the user would press it ("Ctrl+Alt+Space"); empty while it is off.
     pub panel_hotkey: String,
+    /// The Panel is on screen now (not hidden, not folded to its dock handle): the toolbar button
+    /// then hides it instead of showing it.
+    pub panel_visible: bool,
 }
 
 /// What an open editor edits.
@@ -272,6 +275,7 @@ where
                 .chord(HotkeyAction::TogglePanel)
                 .map(|chord| chord.to_string())
                 .unwrap_or_default(),
+            panel_visible: self.visible && !self.dock_collapsed(),
         }
     }
 

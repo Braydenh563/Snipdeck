@@ -1,11 +1,18 @@
-# hub-small
+# hub-small remaining work
+
 ## Done
-- Step 1 merges (uxb, uxa final 0ec9cfe); conflicts resolved.
-- Step 2 compile fixes (menu_form_texts, Monitor taskbar: None in settings/picker/panel/fill tests).
-- Step 3 paste rules patch + test.
-- Step 5: U6 (controller.rs on_foreground_changed), U8 panel_pinned, A6 retry, A7 written_sequence, F2 TOAST_ERROR_HOLD 10 s, A22 uses_clipboard, A23 count_failed_line trace, organise-failure cause (ChangeFailed). U13 Licence after Backups.
-## Skipped
-- U9 (undo until next change + Ctrl+Z, needs reverse ops for move/reorder and keys in two windows: > 150 lines).
-- A25 (lazy index after first show: PanelModel/IndexCache refactor, unmeasured).
+- Merges: uxb, uxa (final tip 0ec9cfe), release branch (6e0babe, RepaintNudge fix); i18n and codemap regenerated.
+- Compile fixes; paste rules set in `Controller::new` and `update_settings` (+ test).
+- U6, U8, A6, A7, F2, A22, A23, U13, organise-failure cause; ticked in docs/reviews/fable-analysis.md.
+- Owner bug: first paste injected old clipboard; `write_confirmed` guard in pipeline + wizard step 27.
+- Owner UI: Main Panel button is a Hide/Show toggle (palette too); sidebar list reorder 2px drop line.
+- All 6 locales translated; `i18n.py check` exits 0.
+
 ## Next
-- goldens (step 4), translations (61 msgids x locales), UX-C (O30 minimal, O26, O31).
+- Run the full gate and `cargo +1.99.1 clippy` once disk is free (last build hit ENOSPC at link; the Rust compiled).
+- Run ui and app tests, in particular main_window_logic (list drop line) and main_controller (panel toggle): never executed.
+- Step 4 goldens (UPDATE_GOLDEN=1), step 6 UX-C (O30, O26, O31).
+
+## Skipped / blocked
+- U9, A25 (over the size budget). O55 is not defined anywhere.
+- F2 deviation: error toast hold is 10 s.
