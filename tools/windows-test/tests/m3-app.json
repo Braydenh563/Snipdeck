@@ -239,6 +239,20 @@
       "title": "No see-through window after Alt+Tab or restore (O39)",
       "do": "Open the Main window and the Panel next to a busy window (for example Notepad with text). Press Alt+Tab to switch away from Main and back to it 20 times, then do the same with the Panel 20 times. Then minimise Main and restore it from the taskbar 5 times. Look at the whole window each time, not only the title bar.",
       "expect": "At no point is any part of the Main window or the Panel see-through: the client area always shows the Snipdeck background and content, never the windows behind it, and never only the border and title bar. Write the step and the count in the note (n) if you ever saw it."
+    },
+    {
+      "id": "27",
+      "v1": true,
+      "title": "Delete on a list or board shows only the confirmation (O52)",
+      "do": "In the Panel right-click a list tab and choose 'Delete list...'. Wait 3 seconds, then press Cancel. Do it again with the tab's Menu key (or Shift+F10) and press Esc. Then in the Main window open the board menu (click the board name) and choose 'Delete board...', wait 3 seconds and press Cancel.",
+      "expect": "Each time only the delete confirmation appears, inside the Panel or the Main window. No list editor or board editor window opens, before or after it, and nothing flashes behind it. Cancel and Esc close it and the list or board is still there. With only one board, 'Delete board...' is greyed out."
+    },
+    {
+      "id": "28",
+      "v1": true,
+      "title": "No white flash when a window opens (O52)",
+      "do": "Set Settings > Theme to Dark. Open each of these three times, closing it between: the list editor (Panel: right-click a tab, 'Edit list...'), the item editor (double-click a row), Settings, Troubleshoot (Panel kebab menu), the board editor (Main: board menu, 'Rename board...'), and the Move chooser (Main: right-click a row, Move to...). Watch each window as it appears. Then set Theme to Light and open the list editor and Settings again.",
+      "expect": "Every window appears in the theme's background colour from its first visible moment: no white or blank frame, not even for a split second, on the first open or on later ones. In Light the first colour is the light background, not pure white. Write any window that flashed in the note (n)."
     }
   ]
 }

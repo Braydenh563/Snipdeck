@@ -857,14 +857,15 @@ fn new_board_rename_and_delete_use_the_board_editor() {
         editor.invoke_save_requested();
         assert_eq!(r.ui.get_board_name(), "Projects");
 
-        // Delete it: the editor opens with its confirmation, which names the item count.
+        // Delete it: only the Main window's confirmation asks, naming the item count; the
+        // editor stays shut (O52).
         r.ui.invoke_board_menu_requested();
         r.ui.invoke_board_menu_activated(4 + 4);
-        assert!(editor.window().is_visible());
-        assert!(editor.get_delete_open());
-        assert!(editor.get_can_delete());
-        assert_eq!(editor.get_item_count(), 0);
-        editor.invoke_delete_confirmed();
+        assert!(!editor.window().is_visible());
+        assert!(r.ui.get_board_delete_open());
+        assert_eq!(r.ui.get_board_delete_count(), 0);
+        r.ui.invoke_board_delete_confirmed();
+        assert!(!r.ui.get_board_delete_open());
         assert!(!editor.window().is_visible());
         assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 2);
         assert_eq!(
@@ -907,21 +908,38 @@ fn the_free_plan_stops_a_sixth_board_with_a_toast() {
 }
 
 #[test]
-fn the_last_board_cannot_be_deleted_and_the_editor_says_why() {
+fn the_last_board_cannot_be_deleted_and_its_menu_entry_is_off() {
     on_ui_thread(|| {
         let r = rig();
         // Leave one board.
         r.ui.invoke_board_menu_requested();
         r.ui.invoke_board_menu_activated(3 + 4);
-        r.binding.board_editor().unwrap().invoke_delete_confirmed();
+        assert!(r.ui.get_board_delete_open());
+        r.ui.invoke_board_delete_confirmed();
         assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 1);
         r.ui.invoke_board_menu_requested();
+        let delete = r.ui.get_board_menu_entries().row_data(1 + 1 + 4).unwrap();
+        assert!(delete.destructive && delete.disabled);
         r.ui.invoke_board_menu_activated(1 + 1 + 4);
-        let editor = r.binding.board_editor().unwrap();
-        assert!(editor.window().is_visible());
-        assert!(!editor.get_can_delete());
-        assert!(!editor.get_delete_hint().is_empty());
-        assert!(!editor.get_delete_open());
+        assert!(!r.ui.get_board_delete_open());
+        assert!(
+            r.binding
+                .board_editor()
+                .is_none_or(|e| !e.window().is_visible())
+        );
+        assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 1);
+    });
+}
+
+#[test]
+fn cancelling_the_board_delete_keeps_the_board() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_board_menu_requested();
+        r.ui.invoke_board_menu_activated(3 + 4);
+        r.ui.invoke_board_delete_dismissed();
+        assert!(!r.ui.get_board_delete_open());
+        assert_eq!(r.ctl.borrow().store().boards().unwrap().len(), 2);
     });
 }
 

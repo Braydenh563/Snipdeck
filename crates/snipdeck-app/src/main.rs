@@ -634,12 +634,21 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
     let tracing = snipdeck_app::trace::enabled();
     let mut cursor = (0.0, 0.0);
     let mut repaint = snipdeck_app::repaint::Watch::new();
+    let weak = window.as_weak();
     window
         .window()
         .on_winit_window_event(move |slint_window, event| {
-            // O39: ask for a frame when Windows may have dropped the window's pixels.
+            // O39: Windows may have dropped the window's pixels (Alt+Tab, restore): damage all of
+            // it, as the Main window does, so the next frame is drawn whole.
             if repaint.on_signal(snipdeck_app::repaint::signal_of(event)) {
+                if let Some(w) = weak.upgrade() {
+                    w.set_repaint_flip(!w.get_repaint_flip());
+                }
                 slint_window.request_redraw();
+            }
+            // O52: the theme colour, not white, before a window's first frame.
+            if matches!(event, WindowEvent::Resized(_)) {
+                snipdeck_app::native_window::paint_before_first_frame(slint_window);
             }
             let moved = matches!(event, WindowEvent::Moved(_));
             if (moved || matches!(event, WindowEvent::Resized(_))) && armed.get() {

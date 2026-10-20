@@ -422,7 +422,7 @@ where
         BoardMenuEntry::Rename => t.invoke_board_rename(),
         BoardMenuEntry::MoveUp { .. } => t.invoke_board_move_up(),
         BoardMenuEntry::MoveDown { .. } => t.invoke_board_move_down(),
-        BoardMenuEntry::Delete => t.invoke_board_delete(),
+        BoardMenuEntry::Delete { .. } => t.invoke_board_delete(),
     }
     .into()
 }
