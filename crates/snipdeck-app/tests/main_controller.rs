@@ -1248,6 +1248,45 @@ fn dropping_a_panel_row_on_its_own_tab_does_nothing() {
     assert_eq!(before, after);
 }
 
+fn panel_titles(ctl: &Ctl) -> Vec<String> {
+    ctl.view().rows.iter().map(|r| r.title.clone()).collect()
+}
+
+#[test]
+fn dragging_a_panel_row_onto_another_takes_its_place() {
+    let mut ctl = pro();
+    let before = panel_titles(&ctl);
+    assert!(before.len() >= 3, "the demo list has rows to arrange");
+    ctl.panel_drop_row(0, 2);
+    let mut want = before.clone();
+    let moved = want.remove(0);
+    want.insert(2, moved);
+    assert_eq!(panel_titles(&ctl), want, "down");
+    ctl.panel_drop_row(2, 0);
+    assert_eq!(panel_titles(&ctl), before, "and back up");
+}
+
+#[test]
+fn dragging_a_panel_row_onto_itself_or_out_of_range_does_nothing() {
+    let mut ctl = pro();
+    let before = panel_titles(&ctl);
+    ctl.panel_drop_row(1, 1);
+    ctl.panel_drop_row(0, 99);
+    ctl.panel_drop_row(99, 0);
+    assert_eq!(panel_titles(&ctl), before);
+}
+
+#[test]
+fn panel_rows_do_not_move_during_a_search() {
+    let mut ctl = pro();
+    ctl.set_query("a");
+    let before = panel_titles(&ctl);
+    ctl.panel_drop_row(0, 1);
+    assert_eq!(panel_titles(&ctl), before);
+    ctl.set_query("");
+    assert!(!ctl.view().rows.is_empty());
+}
+
 #[test]
 fn items_do_not_move_in_a_sorted_list_a_search_or_a_system_view() {
     let mut ctl = pro();

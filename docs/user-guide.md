@@ -322,8 +322,9 @@ Importing text files, Ditto or CopyQ data has no screen in this version.
 
 Every drag has a keyboard or menu way to do the same thing.
 
-- **Reorder snippets:** in the Main window, drag a snippet onto another one in a list that is in manual
-  order. Keyboard: `Alt+Up` or `Alt+Down`.
+- **Reorder snippets:** drag a snippet onto another one, in the Panel or in the Main window (list or tile
+  view), in a list that is in manual order and with no search running. Keyboard: `Alt+Up` or `Alt+Down` in
+  the Main window.
 - **Move to another list:** drag a snippet onto a list in the Main window's sidebar, or onto a list tab in the
   Panel. Keyboard: **Move to list** in the snippet's menu, or the list field in the editor.
 - **Reorder lists:** drag a list onto another in the sidebar. Keyboard: `Alt+Up` or `Alt+Down` on the list.

@@ -7,6 +7,7 @@ Goal: ship v1 by the morning. Branch `claude/compassionate-pascal-pod8ux`, PR #5
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-10-20 hub: [D] File and image drops are out of v1 (B11). Reason: dropped files need path, size and permission handling and image import is outside the v1 scope; text drops and in-app drags ship.
 - 2026-10-20 owner: "send me a notification when you're up to the fable audit... I'll decide if I want to proceed". So the Fable pass waits for owner go: push-notify on reaching it; meanwhile do the security pass, D-items and polish.
 - 2026-10-19 17:40 owner: "dont budget, go to 82% usage then wrap up by 85". No budget mode; keep max tier (3 agents + Haiku, Opus allowed); at 82% weekly start the wrap-up (Morning summary, push, retro), finished by 85%.
 - 2026-10-19: Encryption of sensitive items on disk is free for everyone (it is security, not convenience); only the master password stays Supporter. Owner: "go with your recommendation".

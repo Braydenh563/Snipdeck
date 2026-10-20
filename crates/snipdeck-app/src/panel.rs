@@ -282,6 +282,19 @@ impl PanelModel {
         !self.query.trim().is_empty()
     }
 
+    /// Whether the rows can be arranged by hand: the shown list is in manual order and no
+    /// search is running.
+    #[must_use]
+    pub fn reorderable(&self) -> bool {
+        !self.searching() && self.list().is_some_and(|l| l.sort == ListSort::Manual)
+    }
+
+    /// The shown list's items in manual order.
+    #[must_use]
+    pub fn manual_order(&self) -> Vec<ItemId> {
+        self.items.iter().map(|i| i.id).collect()
+    }
+
     /// Sets the search text; the selection returns to the first row.
     pub fn set_query(&mut self, query: &str) {
         query.clone_into(&mut self.query);

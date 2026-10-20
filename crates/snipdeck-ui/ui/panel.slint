@@ -177,6 +177,8 @@ export component PanelWindow inherits Window {
     pure callback row-payload(int) -> data-transfer;
     pure callback payload-row(data-transfer) -> int;
     callback row-dropped-on-tab(int, int);
+    callback row-dropped(int, int);
+    in property <bool> rows-reorderable;
     // Drag and drop: the host reads the text of a dropped payload (empty when it has none) and saves it as an item.
     pure callback payload-text(data-transfer) -> string;
     callback text-dropped(string);
@@ -956,6 +958,20 @@ export component PanelWindow inherits Window {
                                 if (self.is-selected) { root.reveal(self.y, self.height); }
                             }
 
+                            // The row being dragged over this one: a drop lands after it when coming from above.
+                            property <int> row-from: -1;
+
+                            row-drop := DropArea {
+                                enabled: root.rows-reorderable;
+                                can-drop(event) => {
+                                    row-from = root.payload-row(event.data);
+                                    row-from >= 0 && row-from != i ? DragAction.move : DragAction.none
+                                }
+                                dropped(event) => {
+                                    root.row-dropped(root.payload-row(event.data), i);
+                                    return DragAction.move;
+                                }
+
                             DragArea {
                                 allow-move: !root.searching && !root.recent-open;
                                 data: root.row-payload(i);
@@ -1004,6 +1020,17 @@ export component PanelWindow inherits Window {
                                 }
                                 reveal-requested(on) => { root.reveal-requested(i, on); }
                             }
+                            }
+                            }
+                            // The drop target: a 2px accent line where the dragged row would land: below this row when it
+                            // comes from above, above it otherwise.
+                            Rectangle {
+                                visible: row-drop.has-drag;
+                                x: Space.s1;
+                                y: row-from >= 0 && row-from < i ? card.y + card.height - 1px : 0px;
+                                width: parent.width - 2 * Space.s1;
+                                height: 2px;
+                                background: Theme.accent;
                             }
                         }
                     }

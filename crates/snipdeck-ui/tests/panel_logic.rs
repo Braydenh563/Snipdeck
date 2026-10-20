@@ -90,6 +90,9 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_pinned_copied, |i| format!("pinned-copy:{i}"));
     hook!(on_handle_hovered, |on| format!("handle-hover:{on}"));
     hook!(on_handle_clicked, || "handle-click".to_string());
+    hook!(on_row_dropped, |from, onto| format!(
+        "row-drop:{from}:{onto}"
+    ));
     hook!(on_row_dropped_on_tab, |row, tab| format!(
         "row-on-tab:{row}:{tab}"
     ));
@@ -566,6 +569,33 @@ ui_tests! {
         assert_eq!(take(&log), ["row-on-tab:0:2"]);
         press_at(&ui, row);
         assert_eq!(take(&log), ["use:0"], "a click still uses the row");
+    }
+
+    fn dragging_a_row_onto_another_row_reports_the_drop_only_while_rows_can_be_arranged() {
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let (ui, log) = start();
+        let rows: Vec<_> = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .map(|e| centre(&e))
+            .collect();
+        assert!(rows.len() >= 3, "the fixture shows rows");
+        let (from, onto) = (rows[0], rows[2]);
+        let drag = |ui: &PanelWindow| {
+            let w = ui.window();
+            w.dispatch_event(WindowEvent::PointerMoved { position: from });
+            w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+            w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(from.x, from.y + 12.0) });
+            w.dispatch_event(WindowEvent::PointerMoved { position: onto });
+            w.dispatch_event(WindowEvent::PointerReleased { position: onto, button: PointerEventButton::Left });
+            settle();
+        };
+        let _ = take(&log);
+        ui.set_rows_reorderable(false);
+        drag(&ui);
+        assert!(take(&log).is_empty(), "a sorted list or a search takes no drop");
+        ui.set_rows_reorderable(true);
+        drag(&ui);
+        assert_eq!(take(&log), ["row-drop:0:2"]);
     }
 
     fn a_list_icon_on_a_tab_does_not_change_its_name() {

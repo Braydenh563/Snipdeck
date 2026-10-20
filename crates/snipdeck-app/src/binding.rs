@@ -564,6 +564,8 @@ where
                 _ => -1,
             });
         }
+        wire!(on_row_dropped, |ctl, from, onto| ctl
+            .panel_drop_row(index(from), index(onto)));
         wire!(on_row_dropped_on_tab, |ctl, row, tab| ctl
             .panel_drop_on_tab(index(row), index(tab)));
         wire!(on_text_dropped, |ctl, text| ctl
@@ -848,6 +850,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     }
     if differs(&|p| p.dock_collapsed == view.dock_collapsed) {
         window.set_dock_collapsed(view.dock_collapsed);
+        window.set_rows_reorderable(view.rows_reorderable);
     }
     if differs(&|p| p.dock_vertical == view.dock_vertical) {
         window.set_dock_vertical(view.dock_vertical);
