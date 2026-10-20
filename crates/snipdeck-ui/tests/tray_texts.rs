@@ -22,6 +22,11 @@ fn the_tray_words_follow_the_selected_translation() {
         words(&ui),
         ["Open Panel", "Open Snipdeck", "Pause hotkeys", "Quit"]
     );
+    // The history entry's word (it joins the menu only while clipboard history is on).
+    assert_eq!(
+        TrayTexts::get(&ui).get_pause_history().as_str(),
+        "Pause history"
+    );
     slint::select_bundled_translation("de").expect("de is bundled");
     assert_eq!(
         words(&ui),

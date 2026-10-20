@@ -67,6 +67,9 @@ msgstr "Todos"
 msgid "All items"
 msgstr "Todos los fragmentos"
 
+msgid "All {} recent copies are removed. This can't be undone."
+msgstr ""
+
 msgid "Also forget the encryption key"
 msgstr "Olvidar también la clave de cifrado"
 
@@ -196,8 +199,14 @@ msgstr "Borrar"
 msgid "Clear filter"
 msgstr "Quitar filtro"
 
+msgid "Clear history"
+msgstr ""
+
 msgid "Clear recent history"
 msgstr "Borrar historial reciente"
+
+msgid "Clear recent history?"
+msgstr ""
 
 msgid "Clear search"
 msgstr "Borrar búsqueda"
@@ -228,6 +237,9 @@ msgstr "Clip {}"
 
 msgid "Clipboard clear time"
 msgstr "Tiempo para vaciar el portapapeles"
+
+msgid "Clipboard history"
+msgstr ""
 
 msgid "Close"
 msgstr "Cerrar"
@@ -914,6 +926,9 @@ msgstr[1] "{} elementos movidos a {}"
 msgid "Navigation"
 msgstr "Navegación"
 
+msgid "Never keep copies from these programs"
+msgstr ""
+
 msgid "Never paste into"
 msgstr "No pegar nunca en"
 
@@ -1028,17 +1043,23 @@ msgstr "Nada que restaurar: tu biblioteca ya tiene todo lo de esa copia de segur
 msgid "Nothing to save. Copy some text first."
 msgstr "Nada que guardar. Copia primero algo de texto."
 
+msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
+msgstr ""
+
 msgid "OK"
 msgstr "Correcto"
 
 msgid "Off"
 msgstr "Desactivado"
 
-msgid "Off by default. Keeps the text you copy, for the last 200 copies or 7 days, whichever is fewer, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
-msgstr "Desactivado por defecto. Guarda el texto que copias, las últimas 200 copias o 7 días, lo que sea menos, para que puedas encontrarlo o guardarlo en una lista. De momento solo texto. Los fragmentos sensibles, los gestores de contraseñas y las aplicaciones que excluyas nunca se guardan."
+msgid "Off by default. Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
+msgstr ""
 
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "«Desactivado» mantiene abierto un panel acoplado. Si no, se pliega en una franja fina, y el atajo del panel también lo abre."
+
+msgid "Off unless you turn it on. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
+msgstr ""
 
 msgid "One hotkey turns copied text into an item."
 msgstr "Un atajo convierte el texto copiado en un elemento."
@@ -1078,9 +1099,6 @@ msgstr "Abrir la página de Microsoft Store"
 
 msgid "Open the Picker at your cursor"
 msgstr "Abre el selector en el cursor"
-
-msgid "Open the clock tab at the left of the Panel's tabs to see what you copied and save it to a list."
-msgstr "Abre la pestaña del reloj, a la izquierda de las pestañas del panel, para ver lo que copiaste y guardarlo en una lista."
 
 msgid "Open the picker"
 msgstr "Abrir el selector"
@@ -1178,6 +1196,9 @@ msgstr "Pega el siguiente fragmento de la lista, en orden."
 msgid "Path to the file"
 msgstr "Ruta del archivo"
 
+msgid "Pause history"
+msgstr ""
+
 msgid "Pause hotkeys"
 msgstr "Pausar atajos"
 
@@ -1238,6 +1259,9 @@ msgstr "Problema"
 msgid "Program to add"
 msgstr "Programa para añadir"
 
+msgid "Program to leave out of Recent"
+msgstr ""
+
 msgid "Prompt for a value or a choice each time you paste."
 msgstr "Pide un valor o una opción cada vez que pegas."
 
@@ -1259,8 +1283,8 @@ msgstr "Recientes"
 msgid "Recent copies"
 msgstr "Copias recientes"
 
-msgid "Recent copies are in the Panel"
-msgstr "Las copias recientes están en el panel"
+msgid "Recent copies are locked"
+msgstr ""
 
 msgid "Recent entry actions"
 msgstr "Acciones de entradas recientes"
@@ -1602,8 +1626,11 @@ msgstr "Plantillas con fecha, hora y cursor"
 msgid "Text"
 msgstr "Texto"
 
-msgid "Text you copy shows up here for a week. Save the useful ones to a list."
-msgstr "El texto que copias aparece aquí durante una semana. Guarda los útiles en una lista."
+msgid "Text you copy appears here, newest first, until you clear it or it is older than {} days."
+msgstr ""
+
+msgid "Text you copy shows up here for {} days. Save the useful ones to a list."
+msgstr ""
 
 msgid "That app"
 msgstr "Esa aplicación"
@@ -1778,6 +1805,9 @@ msgstr "Desbloquear Snipdeck"
 
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
 msgstr "Desbloquea primero tu biblioteca para incluir tus fragmentos sensibles. No se hizo nada."
+
+msgid "Unlock your library to see recent copies. Nothing is collected while it is locked."
+msgstr ""
 
 msgid "Unlock your library to use this item."
 msgstr "Desbloquea tu biblioteca para usar este elemento."

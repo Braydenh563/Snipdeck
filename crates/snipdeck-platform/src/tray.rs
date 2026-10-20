@@ -28,16 +28,20 @@ pub enum TrayEntry {
     OpenSnipdeck,
     /// Switch the global hotkeys off or on (a check mark shows when they are off).
     PauseHotkeys,
+    /// Stop or resume collecting the Recent inbox (a check mark shows while it is paused). Only
+    /// in the menu while clipboard history is on.
+    PauseHistory,
     /// Exit Snipdeck.
     Quit,
 }
 
 impl TrayEntry {
     /// Every entry, in menu order.
-    pub const ALL: [Self; 4] = [
+    pub const ALL: [Self; 5] = [
         Self::OpenPanel,
         Self::OpenSnipdeck,
         Self::PauseHotkeys,
+        Self::PauseHistory,
         Self::Quit,
     ];
 
@@ -48,6 +52,7 @@ impl TrayEntry {
             Self::OpenPanel => "Open Panel",
             Self::OpenSnipdeck => "Open Snipdeck",
             Self::PauseHotkeys => "Pause hotkeys",
+            Self::PauseHistory => "Pause history",
             Self::Quit => "Quit",
         }
     }
@@ -60,6 +65,7 @@ impl TrayEntry {
             Self::OpenSnipdeck => 2,
             Self::PauseHotkeys => 3,
             Self::Quit => 4,
+            Self::PauseHistory => 5,
         }
     }
 
@@ -81,6 +87,8 @@ pub struct TrayLabels {
     pub open_snipdeck: String,
     /// [`TrayEntry::PauseHotkeys`].
     pub pause_hotkeys: String,
+    /// [`TrayEntry::PauseHistory`].
+    pub pause_history: String,
     /// [`TrayEntry::Quit`].
     pub quit: String,
     /// The hover text while the hotkeys are paused (instead of the tooltip).
@@ -94,6 +102,7 @@ impl Default for TrayLabels {
             open_panel: english(TrayEntry::OpenPanel),
             open_snipdeck: english(TrayEntry::OpenSnipdeck),
             pause_hotkeys: english(TrayEntry::PauseHotkeys),
+            pause_history: english(TrayEntry::PauseHistory),
             quit: english(TrayEntry::Quit),
             tooltip_paused: "Snipdeck (hotkeys paused)".to_owned(),
         }
@@ -108,6 +117,7 @@ impl TrayLabels {
             TrayEntry::OpenPanel => &self.open_panel,
             TrayEntry::OpenSnipdeck => &self.open_snipdeck,
             TrayEntry::PauseHotkeys => &self.pause_hotkeys,
+            TrayEntry::PauseHistory => &self.pause_history,
             TrayEntry::Quit => &self.quit,
         }
     }
@@ -124,6 +134,8 @@ pub enum TrayEvent {
     OpenSnipdeck,
     /// "Pause hotkeys" was toggled; `true` = the hotkeys should now be off.
     HotkeysPaused(bool),
+    /// "Pause history" was toggled; `true` = collecting should now be paused.
+    HistoryPaused(bool),
     /// "Quit".
     Quit,
     /// The icon is now in the notification area (`true`) or no longer is (`false`): added, taken
@@ -255,6 +267,14 @@ pub trait Tray {
     /// The backend is not running.
     fn set_hotkeys_paused(&mut self, paused: bool) -> Result<(), Error>;
 
+    /// Tells the tray whether clipboard history is on (`available`: "Pause history" is in the
+    /// menu) and whether it is paused (the entry is checked).
+    ///
+    /// # Errors
+    ///
+    /// The backend is not running.
+    fn set_history(&mut self, available: bool, paused: bool) -> Result<(), Error>;
+
     /// Sets the menu texts; the next menu shown uses them.
     ///
     /// # Errors
@@ -269,7 +289,17 @@ pub struct TrayModel {
     wanted: bool,
     tooltip: String,
     hotkeys_paused: bool,
+    history: History,
     labels: TrayLabels,
+}
+
+/// "Pause history" in the menu: not offered (clipboard history is off), offered, or offered and
+/// checked (collecting is paused).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum History {
+    Off,
+    Collecting,
+    Paused,
 }
 
 impl TrayModel {
@@ -280,6 +310,7 @@ impl TrayModel {
             wanted: false,
             tooltip: tooltip.to_owned(),
             hotkeys_paused: false,
+            history: History::Off,
             labels: TrayLabels::default(),
         }
     }
@@ -341,6 +372,28 @@ impl TrayModel {
         self.hotkeys_paused = paused;
     }
 
+    /// Whether "Pause history" is checked.
+    #[must_use]
+    pub fn history_paused(&self) -> bool {
+        self.history == History::Paused
+    }
+
+    /// Whether the menu offers "Pause history" (clipboard history is on).
+    #[must_use]
+    pub fn history_available(&self) -> bool {
+        self.history != History::Off
+    }
+
+    /// The app changed whether clipboard history exists (`available`) and whether it is paused.
+    /// The entry is shown only while it is available.
+    pub fn set_history(&mut self, available: bool, paused: bool) {
+        self.history = match (available, paused) {
+            (false, _) => History::Off,
+            (true, false) => History::Collecting,
+            (true, true) => History::Paused,
+        };
+    }
+
     /// Replaces the menu texts.
     pub fn set_labels(&mut self, labels: TrayLabels) {
         self.labels = labels;
@@ -351,13 +404,20 @@ impl TrayModel {
     pub fn menu(&self) -> Vec<MenuLine> {
         let mut lines = Vec::new();
         for entry in TrayEntry::ALL {
+            if entry == TrayEntry::PauseHistory && self.history == History::Off {
+                continue;
+            }
             if entry == TrayEntry::Quit {
                 lines.push(MenuLine::Separator);
             }
             lines.push(MenuLine::Item {
                 entry,
                 label: self.labels.of(entry).to_owned(),
-                checked: entry == TrayEntry::PauseHotkeys && self.hotkeys_paused,
+                checked: match entry {
+                    TrayEntry::PauseHotkeys => self.hotkeys_paused,
+                    TrayEntry::PauseHistory => self.history == History::Paused,
+                    _ => false,
+                },
             });
         }
         lines
@@ -384,6 +444,11 @@ impl TrayModel {
             TrayEntry::PauseHotkeys => {
                 self.hotkeys_paused = !self.hotkeys_paused;
                 TrayEvent::HotkeysPaused(self.hotkeys_paused)
+            }
+            TrayEntry::PauseHistory => {
+                // The check mark follows the controller (`set_history`), not the click: the
+                // controller may decline, and then the menu must not claim otherwise.
+                TrayEvent::HistoryPaused(self.history != History::Paused)
             }
             TrayEntry::Quit => TrayEvent::Quit,
         }
@@ -472,6 +537,80 @@ mod tests {
         );
     }
 
+    fn menu_labels(m: &mut TrayModel) -> Vec<(String, bool)> {
+        let Some(Reaction::PopupMenu(lines)) = m.gesture(Gesture::ContextMenu) else {
+            panic!("a menu")
+        };
+        lines
+            .iter()
+            .filter_map(|l| match l {
+                MenuLine::Item { label, checked, .. } => Some((label.clone(), *checked)),
+                MenuLine::Separator => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn pause_history_is_in_the_menu_only_while_clipboard_history_is_on() {
+        let mut m = model();
+        assert!(!m.history_available());
+        assert!(
+            menu_labels(&mut m)
+                .iter()
+                .all(|(l, _)| l != "Pause history")
+        );
+        m.set_history(true, false);
+        let labels = menu_labels(&mut m);
+        let at = labels.iter().position(|(l, _)| l == "Pause history");
+        // Right after "Pause hotkeys", before "Quit".
+        assert_eq!(at, Some(3));
+        assert_eq!(labels.last().map(|(l, _)| l.as_str()), Some("Quit"));
+        assert!(labels.iter().all(|(_, checked)| !checked));
+        m.set_history(false, false);
+        assert!(
+            menu_labels(&mut m)
+                .iter()
+                .all(|(l, _)| l != "Pause history")
+        );
+    }
+
+    #[test]
+    fn picking_pause_history_asks_and_the_check_mark_follows_what_the_app_reports() {
+        let mut m = model();
+        m.set_history(true, false);
+        assert_eq!(
+            m.pick(TrayEntry::PauseHistory),
+            TrayEvent::HistoryPaused(true)
+        );
+        assert!(
+            !m.history_paused(),
+            "the click alone does not flip the mark"
+        );
+        m.set_history(true, true);
+        assert!(m.history_paused());
+        let labels = menu_labels(&mut m);
+        assert!(labels.contains(&("Pause history".to_owned(), true)));
+        // The hotkeys check mark is a separate one.
+        assert!(labels.contains(&("Pause hotkeys".to_owned(), false)));
+        assert_eq!(
+            m.pick(TrayEntry::PauseHistory),
+            TrayEvent::HistoryPaused(false)
+        );
+    }
+
+    #[test]
+    fn the_new_entry_has_its_own_command_id() {
+        assert_eq!(
+            TrayEntry::from_command_id(TrayEntry::PauseHistory.command_id()),
+            Some(TrayEntry::PauseHistory)
+        );
+        let mut ids: Vec<_> = TrayEntry::ALL.iter().map(|e| e.command_id()).collect();
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(ids.len(), TrayEntry::ALL.len());
+        assert!(!ids.contains(&0));
+    }
+
     #[test]
     fn the_tooltip_says_the_hotkeys_are_paused_while_they_are() {
         let mut m = model();
@@ -493,6 +632,7 @@ mod tests {
             open_panel: "Panel öffnen".into(),
             open_snipdeck: "Snipdeck öffnen".into(),
             pause_hotkeys: "Tastenkürzel pausieren".into(),
+            pause_history: "Verlauf pausieren".into(),
             quit: "Beenden".into(),
             tooltip_paused: "Snipdeck (Tastenkürzel pausiert)".into(),
         });

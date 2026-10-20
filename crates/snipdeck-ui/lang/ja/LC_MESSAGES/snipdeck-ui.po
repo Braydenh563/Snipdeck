@@ -67,6 +67,9 @@ msgstr "すべて"
 msgid "All items"
 msgstr "すべてのスニペット"
 
+msgid "All {} recent copies are removed. This can't be undone."
+msgstr ""
+
 msgid "Also forget the encryption key"
 msgstr "暗号化キーも削除する"
 
@@ -196,8 +199,14 @@ msgstr "クリア"
 msgid "Clear filter"
 msgstr "フィルターをクリア"
 
+msgid "Clear history"
+msgstr ""
+
 msgid "Clear recent history"
 msgstr "最近の履歴を消去"
+
+msgid "Clear recent history?"
+msgstr ""
 
 msgid "Clear search"
 msgstr "検索をクリア"
@@ -228,6 +237,9 @@ msgstr "クリップ {}"
 
 msgid "Clipboard clear time"
 msgstr "クリップボードの消去時間"
+
+msgid "Clipboard history"
+msgstr ""
 
 msgid "Close"
 msgstr "閉じる"
@@ -909,6 +921,9 @@ msgstr[0] "{} 件のスニペットを {} に移動しました"
 msgid "Navigation"
 msgstr "ナビゲーション"
 
+msgid "Never keep copies from these programs"
+msgstr ""
+
 msgid "Never paste into"
 msgstr "次の場所には貼り付けない"
 
@@ -1023,17 +1038,23 @@ msgstr "復元するものがありません。ライブラリにはそのバッ
 msgid "Nothing to save. Copy some text first."
 msgstr "保存するものがありません。先にテキストをコピーしてください。"
 
+msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
+msgstr ""
+
 msgid "OK"
 msgstr "OK"
 
 msgid "Off"
 msgstr "オフ"
 
-msgid "Off by default. Keeps the text you copy, for the last 200 copies or 7 days, whichever is fewer, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
-msgstr "初期設定はオフです。コピーしたテキストを、直近200件または7日分のうち少ない方まで保存し、後から探したりリストに保存したりできます。現在はテキストのみ対応。機密スニペット、パスワードマネージャー、除外したアプリの内容は保存されません。"
+msgid "Off by default. Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
+msgstr ""
 
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "「オフ」にすると、固定したパネルは開いたままになります。それ以外では細い帯にたたまれ、パネルのショートカットでも開けます。"
+
+msgid "Off unless you turn it on. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
+msgstr ""
 
 msgid "One hotkey turns copied text into an item."
 msgstr "ホットキー1つで、コピーしたテキストをスニペットにできます。"
@@ -1073,9 +1094,6 @@ msgstr "Microsoft Store のページを開く"
 
 msgid "Open the Picker at your cursor"
 msgstr "カーソル位置でピッカーを開く"
-
-msgid "Open the clock tab at the left of the Panel's tabs to see what you copied and save it to a list."
-msgstr "コピーした内容を確認してリストに保存するには、パネルのタブ左側の時計タブを開いてください。"
 
 msgid "Open the picker"
 msgstr "ピッカーを開く"
@@ -1173,6 +1191,9 @@ msgstr "リストの次のスニペットを順番に貼り付けます。"
 msgid "Path to the file"
 msgstr "ファイルのパス"
 
+msgid "Pause history"
+msgstr ""
+
 msgid "Pause hotkeys"
 msgstr "ホットキーを一時停止"
 
@@ -1233,6 +1254,9 @@ msgstr "問題"
 msgid "Program to add"
 msgstr "追加するプログラム"
 
+msgid "Program to leave out of Recent"
+msgstr ""
+
 msgid "Prompt for a value or a choice each time you paste."
 msgstr "貼り付けるたびに、値または選択肢の入力を求めます。"
 
@@ -1254,8 +1278,8 @@ msgstr "最近"
 msgid "Recent copies"
 msgstr "最近のコピー"
 
-msgid "Recent copies are in the Panel"
-msgstr "最近のコピーはパネルにあります"
+msgid "Recent copies are locked"
+msgstr ""
 
 msgid "Recent entry actions"
 msgstr "最近の項目の操作"
@@ -1595,8 +1619,11 @@ msgstr "日付・時刻・カーソル位置を含むテンプレート"
 msgid "Text"
 msgstr "テキスト"
 
-msgid "Text you copy shows up here for a week. Save the useful ones to a list."
-msgstr "コピーしたテキストは1週間ここに表示されます。役立つものはリストに保存してください。"
+msgid "Text you copy appears here, newest first, until you clear it or it is older than {} days."
+msgstr ""
+
+msgid "Text you copy shows up here for {} days. Save the useful ones to a list."
+msgstr ""
 
 msgid "That app"
 msgstr "そのアプリ"
@@ -1771,6 +1798,9 @@ msgstr "Snipdeck のロックを解除"
 
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
 msgstr "機密スニペットを含めるため、先にライブラリのロックを解除してください。何も実行されていません。"
+
+msgid "Unlock your library to see recent copies. Nothing is collected while it is locked."
+msgstr ""
 
 msgid "Unlock your library to use this item."
 msgstr "このスニペットを使うには、ライブラリのロックを解除してください。"

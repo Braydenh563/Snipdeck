@@ -38,6 +38,95 @@ export struct BackupRow {
     size: string,
 }
 
+// A list of program file names with a remove button on each row and a field to add one (the programs Snipdeck never
+// pastes into, and the ones the Recent inbox never keeps copies from). The host trims, lower-cases and refuses
+// repeats; `error` says why an add was refused.
+component ProgramList inherits VerticalLayout {
+    in property <[string]> apps;
+    in property <string> error;
+    in property <string> empty-text;
+    in property <string> field-label;
+    callback added(name: string);
+    callback removed(index: int);
+    // A control inside took the keyboard focus at this place: the page scrolls it into view.
+    callback reveal(y: length, h: length);
+    spacing: Space.s2;
+
+    function add-app() {
+        if (new-app.text != "") {
+            root.added(new-app.text);
+            new-app.text = "";
+        }
+    }
+
+    if root.apps.length == 0: Text {
+        text: root.empty-text;
+        color: Theme.text-secondary;
+        font-family: Fonts.sans;
+        font-size: Type.base;
+        accessible-role: none;
+    }
+    for app[i] in root.apps: Rectangle {
+        height: max(Space.hit + Space.s2, Type.line-base + Space.s3);
+        accessible-role: list-item;
+        accessible-label: app;
+        Rectangle {
+            y: parent.height - 1px;
+            height: 1px;
+            background: Theme.border-subtle;
+        }
+        HorizontalLayout {
+            spacing: Space.s2;
+            Text {
+                horizontal-stretch: 1;
+                min-width: 0px;
+                text: app;
+                color: Theme.text-primary;
+                font-family: Fonts.mono;
+                font-size: Type.base;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+            VerticalLayout {
+                alignment: center;
+                IconButton {
+                    icon: Icons.x;
+                    tooltip: @tr("Remove {} from the list", app);
+                    own-tooltip: true;
+                    clicked => { root.removed(i); }
+                    changed has-focus => {
+                        if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); }
+                    }
+                }
+            }
+        }
+    }
+    HorizontalLayout {
+        spacing: Space.s2;
+        new-app := TextField {
+            horizontal-stretch: 1;
+            label: root.field-label;
+            placeholder: @tr("notepad.exe");
+            error: root.error;
+            accepted(t) => { root.add-app(); }
+            changed has-focus => {
+                if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); }
+            }
+        }
+        VerticalLayout {
+            alignment: start;
+            Button {
+                text: @tr("Add");
+                clicked => { root.add-app(); }
+                changed has-focus => {
+                    if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); }
+                }
+            }
+        }
+    }
+}
+
 export component SettingsPage inherits Window {
     title: @tr("Settings");
     background: Theme.bg-app;
@@ -63,6 +152,9 @@ export component SettingsPage inherits Window {
     in-out property <bool> panel-in-taskbar: false;
     in-out property <bool> panel-hide-on-blur: true;
     in-out property <bool> recent-history: false;
+    // How many copies and how many days the history keeps (the description names them).
+    in property <int> recent-max-entries: 200;
+    in property <int> recent-max-days: 7;
     in-out property <bool> reduce-motion: false;
     in property <int> panel-width: 320;
     in property <int> panel-width-min: 260;
@@ -85,6 +177,9 @@ export component SettingsPage inherits Window {
     in property <[string]> no-paste-apps;
     // Set by the host when `no-paste-app-added` was refused ("Already in the list").
     in property <string> no-paste-error;
+    // The programs the Recent inbox never keeps copies from, and why the last add was refused.
+    in property <[string]> no-history-apps;
+    in property <string> no-history-error;
     // Whether this library is Supporter (a valid licence key, or the demo).
     in property <bool> pro: false;
     // Set by the host when `licence-submitted` was refused; the same words as the toast.
@@ -173,6 +268,8 @@ export component SettingsPage inherits Window {
     callback clipboard-clear-secs-chosen(secs: int);
     callback no-paste-app-added(name: string);
     callback no-paste-app-removed(index: int);
+    callback no-history-app-added(name: string);
+    callback no-history-app-removed(index: int);
     callback licence-submitted(key: string);
     // How strong the host finds a typed new password: 0 weak .. 3 strong. Pure: the page calls it as the user types.
     pure callback master-strength(password: string) -> int;
@@ -240,13 +337,6 @@ export component SettingsPage inherits Window {
     function submit-licence() {
         if (root.licence-text != "") {
             root.licence-submitted(root.licence-text);
-        }
-    }
-
-    function add-app() {
-        if (new-app.text != "") {
-            root.no-paste-app-added(new-app.text);
-            new-app.text = "";
         }
     }
 
@@ -441,7 +531,7 @@ export component SettingsPage inherits Window {
                     title: @tr("Recent");
                     SettingRow {
                         title: @tr("Keep a Recent inbox of what you copy");
-                        description: @tr("Off by default. Keeps the text you copy, for the last 200 copies or 7 days, whichever is fewer, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept.");
+                        description: @tr("Off by default. Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept.", root.recent-max-entries, root.recent-max-days);
                         Toggle {
                             a11y-label: @tr("Keep a Recent inbox of what you copy");
                             checked <=> root.recent-history;
@@ -462,6 +552,31 @@ export component SettingsPage inherits Window {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
                         }
+                    }
+                    Text {
+                        text: @tr("Never keep copies from these programs");
+                        color: Theme.text-primary;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        font-weight: Type.semibold;
+                        accessible-role: none;
+                    }
+                    Text {
+                        text: @tr("Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: none;
+                    }
+                    ProgramList {
+                        apps: root.no-history-apps;
+                        error: root.no-history-error;
+                        empty-text: @tr("No programs yet.");
+                        field-label: @tr("Program to leave out of Recent");
+                        added(name) => { root.no-history-app-added(name); }
+                        removed(i) => { root.no-history-app-removed(i); }
+                        reveal(y, h) => { root.reveal-field(y, h); }
                     }
                 }
 
@@ -543,71 +658,14 @@ export component SettingsPage inherits Window {
                         wrap: word-wrap;
                         accessible-role: none;
                     }
-                    if root.no-paste-apps.length == 0: Text {
-                        text: @tr("No programs yet.");
-                        color: Theme.text-secondary;
-                        font-family: Fonts.sans;
-                        font-size: Type.base;
-                        accessible-role: none;
-                    }
-                    for app[i] in root.no-paste-apps: Rectangle {
-                        height: max(Space.hit + Space.s2, Type.line-base + Space.s3);
-                        accessible-role: list-item;
-                        accessible-label: app;
-                        Rectangle {
-                            y: parent.height - 1px;
-                            height: 1px;
-                            background: Theme.border-subtle;
-                        }
-                        HorizontalLayout {
-                            spacing: Space.s2;
-                            Text {
-                                horizontal-stretch: 1;
-                                min-width: 0px;
-                                text: app;
-                                color: Theme.text-primary;
-                                font-family: Fonts.mono;
-                                font-size: Type.base;
-                                vertical-alignment: center;
-                                overflow: elide;
-                                accessible-role: none;
-                            }
-                            VerticalLayout {
-                                alignment: center;
-                                IconButton {
-                                    icon: Icons.x;
-                                    tooltip: @tr("Remove {} from the list", app);
-                                    own-tooltip: true;
-                                    clicked => { root.no-paste-app-removed(i); }
-                                    changed has-focus => {
-                                        if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    HorizontalLayout {
-                        spacing: Space.s2;
-                        new-app := TextField {
-                            horizontal-stretch: 1;
-                            label: @tr("Program to add");
-                            placeholder: @tr("notepad.exe");
-                            error: root.no-paste-error;
-                            accepted(t) => { root.add-app(); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                        VerticalLayout {
-                            alignment: start;
-                            Button {
-                                text: @tr("Add");
-                                clicked => { root.add-app(); }
-                                changed has-focus => {
-                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                                }
-                            }
-                        }
+                    ProgramList {
+                        apps: root.no-paste-apps;
+                        error: root.no-paste-error;
+                        empty-text: @tr("No programs yet.");
+                        field-label: @tr("Program to add");
+                        added(name) => { root.no-paste-app-added(name); }
+                        removed(i) => { root.no-paste-app-removed(i); }
+                        reveal(y, h) => { root.reveal-field(y, h); }
                     }
                 }
 

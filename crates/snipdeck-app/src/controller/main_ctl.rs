@@ -140,6 +140,13 @@ pub struct MainScreen {
     pub counts: Counts,
     /// The Recent inbox is on (its entries are listed in the Panel's clock tab).
     pub recent_on: bool,
+    /// The library is locked: the Recent section shows an unlock prompt instead of entries.
+    pub recent_locked: bool,
+    /// The Recent section's entries, newest first (the search box narrows them); empty while the
+    /// inbox is off or another section is open.
+    pub recent_rows: Vec<crate::recent::RecentRowView>,
+    /// The lists "Save to…" offers for a Recent entry (empty unless the Recent section is open).
+    pub recent_targets: Vec<crate::recent::SaveTarget>,
     /// What the sidebar has open.
     pub section: Section,
     /// The index into `lists` or `tags` that `section` names.
@@ -219,6 +226,7 @@ where
                 rows[at].preview = text.chars().take(Item::PREVIEW_CHARS).collect();
             }
         }
+        let in_recent = self.main.section() == Section::Recent;
         MainScreen {
             dark: look.dark,
             high_contrast: look.high_contrast,
@@ -232,8 +240,22 @@ where
             lists: self.main.side_lists(),
             tags: self.main.side_tags(),
             tag_choices: self.tag_choices(),
-            counts: self.main.counts(),
+            counts: Counts {
+                recent: self.recent_entries().len(),
+                ..self.main.counts()
+            },
             recent_on: self.settings.recent_history,
+            recent_locked: self.recent_locked(),
+            recent_rows: if in_recent {
+                self.main_recent_rows()
+            } else {
+                Vec::new()
+            },
+            recent_targets: if in_recent {
+                self.save_targets()
+            } else {
+                Vec::new()
+            },
             section: self.main.section(),
             section_index: self.main.section_index(),
             view_mode: self.main.view_mode(),

@@ -67,6 +67,9 @@ msgstr "Alle"
 msgid "All items"
 msgstr "Alle Textbausteine"
 
+msgid "All {} recent copies are removed. This can't be undone."
+msgstr ""
+
 msgid "Also forget the encryption key"
 msgstr "Auch den Verschlüsselungsschlüssel vergessen"
 
@@ -196,8 +199,14 @@ msgstr "Leeren"
 msgid "Clear filter"
 msgstr "Filter leeren"
 
+msgid "Clear history"
+msgstr ""
+
 msgid "Clear recent history"
 msgstr "Verlauf der letzten Kopien leeren"
+
+msgid "Clear recent history?"
+msgstr ""
 
 msgid "Clear search"
 msgstr "Suche löschen"
@@ -228,6 +237,9 @@ msgstr "Clip {}"
 
 msgid "Clipboard clear time"
 msgstr "Zeit bis zum Leeren der Zwischenablage"
+
+msgid "Clipboard history"
+msgstr ""
 
 msgid "Close"
 msgstr "Schließen"
@@ -914,6 +926,9 @@ msgstr[1] "{} Textbausteine nach {} verschoben"
 msgid "Navigation"
 msgstr "Navigation"
 
+msgid "Never keep copies from these programs"
+msgstr ""
+
 msgid "Never paste into"
 msgstr "Niemals einfügen in"
 
@@ -1028,17 +1043,23 @@ msgstr "Nichts wiederherzustellen: Deine Bibliothek enthält bereits alles aus d
 msgid "Nothing to save. Copy some text first."
 msgstr "Nichts zu speichern. Kopiere zuerst etwas Text."
 
+msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
+msgstr ""
+
 msgid "OK"
 msgstr "OK"
 
 msgid "Off"
 msgstr "Aus"
 
-msgid "Off by default. Keeps the text you copy, for the last 200 copies or 7 days, whichever is fewer, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
-msgstr "Standardmäßig aus. Speichert den kopierten Text für die letzten 200 Kopien oder 7 Tage, je nachdem, was weniger ist, damit du ihn wiederfindest oder in einer Liste speichern kannst. Vorerst nur Text. Vertrauliche Textbausteine, Passwortmanager und die von dir ausgeschlossenen Apps werden nie gespeichert."
+msgid "Off by default. Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
+msgstr ""
 
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "„Aus“ lässt ein angedocktes Panel geöffnet. Sonst klappt es zu einem schmalen Streifen zusammen, und das Panel-Tastenkürzel öffnet es ebenfalls."
+
+msgid "Off unless you turn it on. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
+msgstr ""
 
 msgid "One hotkey turns copied text into an item."
 msgstr "Ein Tastenkürzel macht kopierten Text zu einem Textbaustein."
@@ -1078,9 +1099,6 @@ msgstr "Seite im Microsoft Store öffnen"
 
 msgid "Open the Picker at your cursor"
 msgstr "Die Auswahl an deiner Cursorposition öffnen"
-
-msgid "Open the clock tab at the left of the Panel's tabs to see what you copied and save it to a list."
-msgstr "Öffne den Uhr-Reiter links neben den Reitern des Panels, um zu sehen, was du kopiert hast, und es in einer Liste zu speichern."
 
 msgid "Open the picker"
 msgstr "Auswahl öffnen"
@@ -1178,6 +1196,9 @@ msgstr "Fügt den nächsten Textbaustein der Liste der Reihe nach ein."
 msgid "Path to the file"
 msgstr "Pfad zur Datei"
 
+msgid "Pause history"
+msgstr ""
+
 msgid "Pause hotkeys"
 msgstr "Tastenkürzel pausieren"
 
@@ -1238,6 +1259,9 @@ msgstr "Problem"
 msgid "Program to add"
 msgstr "Hinzuzufügendes Programm"
 
+msgid "Program to leave out of Recent"
+msgstr ""
+
 msgid "Prompt for a value or a choice each time you paste."
 msgstr "Bei jedem Einfügen nach einem Wert oder einer Auswahl fragen."
 
@@ -1259,8 +1283,8 @@ msgstr "Zuletzt verwendet"
 msgid "Recent copies"
 msgstr "Zuletzt kopiert"
 
-msgid "Recent copies are in the Panel"
-msgstr "Zuletzt Kopiertes ist im Panel"
+msgid "Recent copies are locked"
+msgstr ""
 
 msgid "Recent entry actions"
 msgstr "Aktionen für Zuletzt Kopiertes"
@@ -1602,8 +1626,11 @@ msgstr "Vorlagen mit Datum, Uhrzeit und Cursor"
 msgid "Text"
 msgstr "Text"
 
-msgid "Text you copy shows up here for a week. Save the useful ones to a list."
-msgstr "Was du kopierst, erscheint hier eine Woche lang. Speichere die nützlichen in einer Liste."
+msgid "Text you copy appears here, newest first, until you clear it or it is older than {} days."
+msgstr ""
+
+msgid "Text you copy shows up here for {} days. Save the useful ones to a list."
+msgstr ""
 
 msgid "That app"
 msgstr "Diese App"
@@ -1778,6 +1805,9 @@ msgstr "Snipdeck entsperren"
 
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
 msgstr "Entsperre zuerst deine Bibliothek, damit deine vertraulichen Textbausteine einbezogen werden. Nichts wurde getan."
+
+msgid "Unlock your library to see recent copies. Nothing is collected while it is locked."
+msgstr ""
 
 msgid "Unlock your library to use this item."
 msgstr "Entsperre deine Bibliothek, um diesen Textbaustein zu verwenden."
