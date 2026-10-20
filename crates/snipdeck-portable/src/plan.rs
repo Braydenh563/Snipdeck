@@ -256,39 +256,56 @@ fn content_parts(content: &Content) -> ([u8; 32], u64) {
 
 /// The content hashes of every live item in `lib` that can be read, for skipping duplicates
 /// (encrypted items are left out while the library is locked).
-pub(crate) fn existing_hashes<L: Library>(lib: &L) -> Result<HashSet<[u8; 32]>> {
+///
+/// Items stored in plain text are hashed from one pass over the tables
+/// ([`ItemRepo::plain_formats`]); only encrypted items are read one by one, as they need the
+/// data key.
+pub(crate) fn existing_hashes<L: ItemRepo>(lib: &L) -> Result<HashSet<[u8; 32]>> {
     let mut known = HashSet::new();
+    let mut seen = HashSet::new();
+    for (id, formats) in lib.plain_formats()? {
+        seen.insert(id);
+        known.insert(hash_formats(&formats));
+    }
     for item in lib.all_items()? {
-        let formats = match lib.formats(item.id) {
-            Ok(formats) => formats,
+        if seen.contains(&item.id) {
+            continue;
+        }
+        match lib.formats(item.id) {
+            Ok(formats) => {
+                known.insert(hash_formats(&formats));
+            }
             // An encrypted item cannot be read while the library is locked. Skipping it only
             // means a duplicate of it is not recognised; refusing would stop a restore of the
             // public items into a locked library.
-            Err(snipdeck_store::Error::EncryptionLocked) => continue,
+            Err(snipdeck_store::Error::EncryptionLocked) => {}
             Err(e) => return Err(e.into()),
-        };
-        let mut hasher = ContentHasher::new();
-        for format in &formats {
-            match format {
-                Format::Text(c) | Format::Html(c) | Format::Rtf(c) | Format::Png(c) => {
-                    let (hash, len) = content_parts(c);
-                    hasher.single(format.kind(), &hash, len);
-                }
-                Format::Files(files) => {
-                    let parts: Vec<_> = files
-                        .iter()
-                        .map(|f| {
-                            let (hash, len) = content_parts(f.content());
-                            (f.name(), hash, len)
-                        })
-                        .collect();
-                    hasher.files(&parts);
-                }
-            }
         }
-        known.insert(hasher.finish());
     }
     Ok(known)
+}
+
+fn hash_formats(formats: &Formats) -> [u8; 32] {
+    let mut hasher = ContentHasher::new();
+    for format in formats {
+        match format {
+            Format::Text(c) | Format::Html(c) | Format::Rtf(c) | Format::Png(c) => {
+                let (hash, len) = content_parts(c);
+                hasher.single(format.kind(), &hash, len);
+            }
+            Format::Files(files) => {
+                let parts: Vec<_> = files
+                    .iter()
+                    .map(|f| {
+                        let (hash, len) = content_parts(f.content());
+                        (f.name(), hash, len)
+                    })
+                    .collect();
+                hasher.files(&parts);
+            }
+        }
+    }
+    hasher.finish()
 }
 
 /// The first part of `bytes` as text, for building a preview without decoding megabytes.
@@ -757,6 +774,84 @@ mod tests {
         for body in ["small", big.as_str()] {
             let plan = PlanItem::text("other title".to_owned(), body.to_owned(), at(1));
             assert!(known.contains(&plan.content_hash), "{} bytes", body.len());
+        }
+    }
+
+    /// Counts `formats` calls; forwards everything to a real store.
+    struct Counting<'a>(&'a Store, std::cell::Cell<usize>);
+
+    impl ItemRepo for Counting<'_> {
+        fn items(&self, list: snipdeck_core::ListId) -> snipdeck_store::Result<Vec<Item>> {
+            self.0.items(list)
+        }
+        fn all_items(&self) -> snipdeck_store::Result<Vec<Item>> {
+            self.0.all_items()
+        }
+        fn plain_formats(&self) -> snipdeck_store::Result<Vec<(ItemId, Formats)>> {
+            self.0.plain_formats()
+        }
+        fn change_counter(&self) -> u64 {
+            self.0.change_counter()
+        }
+        fn item(&self, id: ItemId) -> snipdeck_store::Result<Item> {
+            self.0.item(id)
+        }
+        fn formats(&self, id: ItemId) -> snipdeck_store::Result<Formats> {
+            self.1.set(self.1.get() + 1);
+            self.0.formats(id)
+        }
+        fn insert_item(
+            &mut self,
+            _: &Item,
+            _: &Formats,
+            _: Placement<ItemId>,
+        ) -> snipdeck_store::Result<()> {
+            unreachable!()
+        }
+        fn update_item(&mut self, _: &Item, _: Option<&Formats>) -> snipdeck_store::Result<()> {
+            unreachable!()
+        }
+        fn move_item(
+            &mut self,
+            _: ItemId,
+            _: snipdeck_core::ListId,
+            _: Placement<ItemId>,
+        ) -> snipdeck_store::Result<()> {
+            unreachable!()
+        }
+        fn record_use(&mut self, _: ItemId, _: Timestamp) -> snipdeck_store::Result<()> {
+            unreachable!()
+        }
+        fn search(&self, query: &str, limit: usize) -> snipdeck_store::Result<Vec<ItemId>> {
+            self.0.search(query, limit)
+        }
+    }
+
+    #[test]
+    fn hashing_plain_items_makes_no_per_item_formats_call() {
+        let mut s = Store::open_in_memory().unwrap();
+        let board = Board::new(name("B"), at(0));
+        s.insert_board(&board, Placement::Last).unwrap();
+        let list = List::new(board.id, name("L"), at(0));
+        s.insert_list(&list, Placement::Last).unwrap();
+        let bodies: Vec<String> = (0..5).map(|n| format!("body {n}")).collect();
+        for body in &bodies {
+            let it = Item::new(list.id, "t".to_owned(), ItemKind::Text, at(0));
+            let content = s.put(body.as_bytes().to_vec()).unwrap();
+            s.insert_item(
+                &it,
+                &Formats::new(vec![Format::Text(content)]).unwrap(),
+                Placement::Last,
+            )
+            .unwrap();
+        }
+        let counting = Counting(&s, std::cell::Cell::new(0));
+        let known = existing_hashes(&counting).unwrap();
+        assert_eq!(counting.1.get(), 0);
+        assert_eq!(known.len(), bodies.len());
+        for body in &bodies {
+            let plan = PlanItem::text("x".to_owned(), body.clone(), at(1));
+            assert!(known.contains(&plan.content_hash));
         }
     }
 }

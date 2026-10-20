@@ -383,6 +383,63 @@ pub(crate) fn all_items(conn: &Connection) -> Result<Vec<Item>> {
     fetch(conn, "", &[], "b.rank, l.rank, i.rank")
 }
 
+/// [`ItemRepo::plain_formats`](crate::ItemRepo::plain_formats): two queries for all items.
+pub(crate) fn plain_formats(conn: &Connection) -> Result<Vec<(ItemId, Formats)>> {
+    type Part = (Vec<u8>, Option<Vec<u8>>, Option<Vec<u8>>, Option<i64>);
+    let mut files: HashMap<Vec<u8>, Vec<FileEntry>> = HashMap::new();
+    let mut stmt = conn.prepare_cached(&format!(
+        "SELECT f.item_id, f.name, f.inline_bytes, f.blob_hash, f.len
+         FROM item_files f JOIN items i ON i.id = f.item_id {JOIN_LIVE}
+         WHERE {WHERE_LIVE} AND i.encrypted = 0 ORDER BY f.item_id, f.idx"
+    ))?;
+    let rows = stmt.query_map([], |r| {
+        Ok((
+            r.get::<_, Vec<u8>>(0)?,
+            r.get::<_, String>(1)?,
+            (r.get(2)?, r.get(3)?, r.get(4)?),
+        ))
+    })?;
+    for row in rows {
+        let (id, name, (inline, hash, len)) = row?;
+        files
+            .entry(id)
+            .or_default()
+            .push(FileEntry::new(&name, content_from(inline, hash, len)?)?);
+    }
+
+    let mut stmt = conn.prepare_cached(&format!(
+        "SELECT f.item_id, f.kind, f.inline_bytes, f.blob_hash, f.len
+         FROM item_formats f JOIN items i ON i.id = f.item_id {JOIN_LIVE}
+         WHERE {WHERE_LIVE} AND i.encrypted = 0 ORDER BY f.item_id, f.idx"
+    ))?;
+    let rows = stmt.query_map([], |r| {
+        let part: Part = (r.get(0)?, r.get(2)?, r.get(3)?, r.get(4)?);
+        Ok((r.get::<_, String>(1)?, part))
+    })?;
+    let mut out: Vec<(ItemId, Vec<Format>)> = Vec::new();
+    let mut last: Option<Vec<u8>> = None;
+    for row in rows {
+        let (kind, (id, inline, hash, len)) = row?;
+        let format = match kind.parse::<FormatKind>()? {
+            FormatKind::Files => Format::Files(files.remove(&id).unwrap_or_default()),
+            FormatKind::Text => Format::Text(content_from(inline, hash, len)?),
+            FormatKind::Html => Format::Html(content_from(inline, hash, len)?),
+            FormatKind::Rtf => Format::Rtf(content_from(inline, hash, len)?),
+            FormatKind::Png => Format::Png(content_from(inline, hash, len)?),
+        };
+        if last.as_ref() != Some(&id) {
+            out.push((id_from(&id)?, Vec::new()));
+            last = Some(id);
+        }
+        if let Some((_, formats)) = out.last_mut() {
+            formats.push(format);
+        }
+    }
+    out.into_iter()
+        .map(|(id, formats)| Ok((id, Formats::new(formats)?)))
+        .collect()
+}
+
 pub(crate) fn item(conn: &Connection, id: ItemId) -> Result<Item> {
     fetch(conn, "AND i.id = ?1", &[&id_bytes(id)], "i.rank")?
         .pop()

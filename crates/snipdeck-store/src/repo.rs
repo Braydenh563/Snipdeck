@@ -90,6 +90,23 @@ pub trait ItemRepo {
     /// One live item, without content.
     fn item(&self, id: ItemId) -> Result<Item>;
 
+    /// The stored content of every live item that is not stored encrypted, as
+    /// `(item, formats)`, read in one pass over the tables instead of one
+    /// [`formats`](Self::formats) call per item. Encrypted items are left out, so nothing is
+    /// decrypted; an item with no stored format rows is left out too.
+    ///
+    /// The default asks item by item (and leaves out every sensitive item); [`Store`](crate::Store) and [`Batch`](crate::Batch) read
+    /// the tables directly.
+    fn plain_formats(&self) -> Result<Vec<(ItemId, Formats)>> {
+        let mut out = Vec::new();
+        for item in self.all_items()? {
+            if !item.sensitive {
+                out.push((item.id, self.formats(item.id)?));
+            }
+        }
+        Ok(out)
+    }
+
     /// The item's content, for using, editing or exporting it; decrypted if it is stored
     /// encrypted. Decrypted payloads too large to be inline are held in memory only and are
     /// read through [`BlobStore::read`](crate::BlobStore::read) like any blob.

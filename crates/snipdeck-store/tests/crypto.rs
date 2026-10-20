@@ -827,3 +827,44 @@ fn a_record_for_the_same_key_replaces_and_keeps_the_previous_one() {
         .unwrap();
     assert_eq!(s.formats(it.id).unwrap(), text_formats("kept"));
 }
+
+#[test]
+fn plain_formats_returns_every_unencrypted_live_item_in_one_pass() {
+    let prov = provider();
+    let (_dir, mut s, lst) = on_disk();
+    s.create_key_ring(&ring(&prov), None).unwrap();
+
+    let big = s.put(vec![b'Q'; INLINE_LIMIT + 10]).unwrap();
+    let rich = Formats::new(vec![
+        Format::Text(text("plain")),
+        Format::Png(big),
+        Format::Files(vec![
+            FileEntry::new("a.txt", text("file-a")).unwrap(),
+            FileEntry::new("b.txt", text("file-b")).unwrap(),
+        ]),
+    ])
+    .unwrap();
+    let first = Item::new(lst.id, "rich".to_owned(), ItemKind::Text, at(0));
+    s.insert_item(&first, &rich, Placement::Last).unwrap();
+    let second = Item::new(lst.id, "simple".to_owned(), ItemKind::Text, at(1));
+    s.insert_item(&second, &text_formats("two"), Placement::Last)
+        .unwrap();
+    let secret = secret_item(lst.id, "secret");
+    s.insert_item(&secret, &text_formats("hidden"), Placement::Last)
+        .unwrap();
+    let gone = Item::new(lst.id, "trashed".to_owned(), ItemKind::Text, at(2));
+    s.insert_item(&gone, &text_formats("gone"), Placement::Last)
+        .unwrap();
+    s.trash(Trashable::Item(gone.id), at(3)).unwrap();
+
+    let mut got = s.plain_formats().unwrap();
+    got.sort_by_key(|(id, _)| *id == second.id);
+    assert_eq!(got.len(), 2, "no encrypted and no trashed item");
+    assert_eq!(
+        got[0],
+        (first.id, rich),
+        "same as formats(), files and blob included"
+    );
+    assert_eq!(got[1], (second.id, text_formats("two")));
+    assert_eq!(s.formats(first.id).unwrap(), got[0].1);
+}
