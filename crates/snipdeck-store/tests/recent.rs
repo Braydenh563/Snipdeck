@@ -154,14 +154,23 @@ mod at_rest {
         )
     }
 
+    /// Whether any file of the library holds `needle`. The `-shm` file is an index of the WAL, never
+    /// row text, and Windows keeps a byte-range lock on it while the store is open; the other files
+    /// are opened with every share mode so the open store does not block the read.
     fn holds(dir: &std::path::Path, needle: &str) -> bool {
+        use std::io::Read;
         std::fs::read_dir(dir).unwrap().any(|e| {
             let path = e.unwrap().path();
-            path.is_file()
-                && std::fs::read(&path)
-                    .unwrap()
-                    .windows(needle.len())
-                    .any(|w| w == needle.as_bytes())
+            if !path.is_file() || path.to_string_lossy().ends_with("-shm") {
+                return false;
+            }
+            let mut open = std::fs::OpenOptions::new();
+            open.read(true);
+            #[cfg(windows)]
+            std::os::windows::fs::OpenOptionsExt::share_mode(&mut open, 0x7);
+            let mut bytes = Vec::new();
+            open.open(&path).unwrap().read_to_end(&mut bytes).unwrap();
+            bytes.windows(needle.len()).any(|w| w == needle.as_bytes())
         })
     }
 
