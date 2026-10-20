@@ -185,7 +185,7 @@ component ColourPicker inherits Rectangle {
         }
     }
 
-    height: Space.hit;
+    height: Space.hit * SystemLook.text-scale;
     forward-focus: scope;
     accessible-role: radio-group;
     accessible-label: root.label;
@@ -839,7 +839,7 @@ component IconPicker inherits Rectangle {
         }
     }
 
-    height: 3 * Space.hit + 2 * Space.s1;
+    height: 3 * Space.hit * SystemLook.text-scale + 2 * Space.s1;
     forward-focus: scope;
     accessible-role: radio-group;
     accessible-label: root.label;
