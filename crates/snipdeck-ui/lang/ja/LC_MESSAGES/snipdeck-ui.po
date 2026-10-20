@@ -1467,6 +1467,9 @@ msgstr "必須"
 msgid "Reset Panel size and position"
 msgstr "パネルのサイズと位置をリセット"
 
+msgid "Reset size and position"
+msgstr "サイズと位置をリセット"
+
 msgid "Restore"
 msgstr "復元"
 
@@ -1633,6 +1636,9 @@ msgstr "Snipdeck をタスクバーに表示する"
 
 msgid "Show kind, title, colour, tags and privacy"
 msgstr "種類、タイトル、色、タグ、プライバシーを表示"
+
+msgid "Show numbers"
+msgstr "番号を表示"
 
 msgid "Show or hide the Panel"
 msgstr "パネルの表示／非表示"

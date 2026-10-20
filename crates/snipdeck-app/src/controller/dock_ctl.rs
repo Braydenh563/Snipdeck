@@ -190,7 +190,6 @@ where
         self.pending.push(Effect::PlaceWindow(place));
     }
 
-<<<<<<< HEAD
     /// "Reset size and position": forgets what was remembered for the Panel's current monitor (and
     /// only that one, edge included) and places the Panel at the default frame there. Nothing is
     /// done before the Panel's monitor is known. No Undo toast: it is a plain reset.
@@ -204,8 +203,6 @@ where
         vec![Effect::PlaceWindow(place)]
     }
 
-    /// The kebab's dock row: docks a floating Panel to the edge nearest to it, or undocks.
-=======
     /// The edge the kebab's dock row would dock a floating Panel to: the nearest one that is
     /// not the taskbar's. `None` while docked or before the monitor is known.
     #[must_use]
@@ -222,7 +219,6 @@ where
     }
 
     /// The kebab's dock row: docks a floating Panel to [`Self::dock_target`], or undocks.
->>>>>>> origin/claude/compassionate-pascal-pod8ux
     pub fn dock_toggle(&mut self) {
         if self.dock_edge().is_some() {
             self.dock_to(None);

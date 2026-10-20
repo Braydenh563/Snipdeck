@@ -5,11 +5,10 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-<<<<<<< HEAD
-use crate::{index_cache::IndexCache, main_window::SelectMode};
-=======
-use crate::index_cache::{IndexCache, Snapshot};
->>>>>>> origin/claude/compassionate-pascal-pod8ux
+use crate::{
+    index_cache::{IndexCache, Snapshot},
+    main_window::SelectMode,
+};
 use snipdeck_core::{
     Board, BoardId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
     ListSort, search::SearchIndex,

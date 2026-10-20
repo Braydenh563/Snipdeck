@@ -332,22 +332,6 @@ pub fn app_menu_text(
     use crate::controller::AppMenuEntry;
     let t = MenuTexts::get(window);
     match entry {
-<<<<<<< HEAD
-        AppMenuEntry::Open => "Open Snipdeck",
-        AppMenuEntry::Commands => "All commands\u{2026}",
-        AppMenuEntry::NewSnippet => "New snippet",
-        AppMenuEntry::Settings => "Settings\u{2026}",
-        AppMenuEntry::Dock => "Dock to the nearest edge",
-        AppMenuEntry::PauseHotkeys => "Pause hotkeys",
-        AppMenuEntry::ShowNumbers => "Show numbers",
-        AppMenuEntry::ResetGeometry => "Reset size and position",
-        AppMenuEntry::Separator => "",
-        AppMenuEntry::Troubleshoot => "Troubleshoot\u{2026}",
-        AppMenuEntry::UserGuide => "User guide",
-        AppMenuEntry::Shortcuts => "Keyboard shortcuts",
-        AppMenuEntry::About => "About Snipdeck",
-        AppMenuEntry::Quit => "Quit",
-=======
         AppMenuEntry::Open => t.invoke_app_open(),
         AppMenuEntry::Commands => t.invoke_app_commands(),
         AppMenuEntry::NewSnippet => t.invoke_app_new_snippet(),
@@ -361,13 +345,14 @@ pub fn app_menu_text(
             None => t.invoke_app_dock(),
         },
         AppMenuEntry::PauseHotkeys => t.invoke_app_pause_hotkeys(),
+        AppMenuEntry::ShowNumbers => t.invoke_app_show_numbers(),
+        AppMenuEntry::ResetGeometry => t.invoke_app_reset_geometry(),
         AppMenuEntry::Separator => return String::new(),
         AppMenuEntry::Troubleshoot => t.invoke_app_troubleshoot(),
         AppMenuEntry::UserGuide => t.invoke_app_user_guide(),
         AppMenuEntry::Shortcuts => t.invoke_app_shortcuts(),
         AppMenuEntry::About => t.invoke_app_about(),
         AppMenuEntry::Quit => t.invoke_app_quit(),
->>>>>>> origin/claude/compassionate-pascal-pod8ux
     }
     .into()
 }
@@ -405,36 +390,8 @@ pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'st
     }
 }
 
-<<<<<<< HEAD
-/// The words of a row of the Panel's item menu.
-#[must_use]
-pub const fn item_menu_text(entry: crate::controller::ItemMenuEntry) -> &'static str {
-    use crate::controller::ItemMenuEntry;
-    match entry {
-        ItemMenuEntry::Use => "Use",
-        ItemMenuEntry::Copy => "Copy",
-        ItemMenuEntry::Edit => "Edit\u{2026}",
-        ItemMenuEntry::Duplicate => "Duplicate",
-        ItemMenuEntry::Pin { pinned: false } => "Pin",
-        ItemMenuEntry::Pin { pinned: true } => "Unpin",
-        ItemMenuEntry::Stack { marked: false } => "Add to paste stack",
-        ItemMenuEntry::Stack { marked: true } => "Remove from paste stack",
-        ItemMenuEntry::Trash => "Delete",
-        ItemMenuEntry::MoveTo => "Move to\u{2026}",
-        ItemMenuEntry::Colour => "Colour",
-        ItemMenuEntry::Sensitive { .. } => "Sensitive",
-        ItemMenuEntry::MoveUp { .. } => "Move up",
-        ItemMenuEntry::MoveDown { .. } => "Move down",
-        ItemMenuEntry::Separator => "",
-    }
-}
-
-/// The words of a row of the Panel's item menu, translated where the catalogue has them (the
-/// move rows). `window` is the Panel, through which `ToastTexts` is reached.
-=======
 /// The words of a row of the Panel's item menu. `window` is the Panel, through which
 /// `MenuTexts` and `ToastTexts` are reached.
->>>>>>> origin/claude/compassionate-pascal-pod8ux
 #[must_use]
 pub fn item_menu_label(window: &PanelWindow, entry: crate::controller::ItemMenuEntry) -> String {
     use crate::controller::ItemMenuEntry;
@@ -450,6 +407,9 @@ pub fn item_menu_label(window: &PanelWindow, entry: crate::controller::ItemMenuE
         ItemMenuEntry::Stack { marked: false } => t.invoke_item_stack_add(),
         ItemMenuEntry::Stack { marked: true } => t.invoke_item_stack_remove(),
         ItemMenuEntry::Trash => t.invoke_item_trash(),
+        ItemMenuEntry::MoveTo => t.invoke_item_move_to(),
+        ItemMenuEntry::Colour => t.invoke_item_colour(),
+        ItemMenuEntry::Sensitive { .. } => t.invoke_item_sensitive(),
         ItemMenuEntry::MoveUp { .. } => moves.invoke_menu_move_up(),
         ItemMenuEntry::MoveDown { .. } => moves.invoke_menu_move_down(),
         ItemMenuEntry::Separator => return String::new(),

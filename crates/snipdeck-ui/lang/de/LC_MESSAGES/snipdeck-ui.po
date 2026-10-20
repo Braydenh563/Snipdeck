@@ -1472,6 +1472,9 @@ msgstr "Pflichtfeld"
 msgid "Reset Panel size and position"
 msgstr "Größe und Position des Panels zurücksetzen"
 
+msgid "Reset size and position"
+msgstr "Größe und Position zurücksetzen"
+
 msgid "Restore"
 msgstr "Wiederherstellen"
 
@@ -1640,6 +1643,9 @@ msgstr "Snipdeck in der Taskleiste anzeigen"
 
 msgid "Show kind, title, colour, tags and privacy"
 msgstr "Art, Titel, Farbe, Tags und Datenschutz anzeigen"
+
+msgid "Show numbers"
+msgstr "Nummern anzeigen"
 
 msgid "Show or hide the Panel"
 msgstr "Panel anzeigen oder ausblenden"

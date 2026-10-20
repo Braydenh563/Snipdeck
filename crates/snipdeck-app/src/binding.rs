@@ -1115,19 +1115,10 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
 fn render_app_menu(window: &ui::PanelWindow, view: &View) {
     let check = window.global::<ui::Icons<'_>>().get_check();
     let entries = view.app_menu.iter().flatten().map(|&entry| ui::MenuEntry {
-<<<<<<< HEAD
-        text: if entry == AppMenuEntry::Dock && view.docked {
-            wording::UNDOCK_TEXT.into()
-        } else {
-            wording::app_menu_text(entry).into()
-        },
+        text: wording::app_menu_text(window, entry, view.docked, view.dock_target).into(),
         icon: if (entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused)
             || (entry == AppMenuEntry::ShowNumbers && view.show_numbers)
         {
-=======
-        text: wording::app_menu_text(window, entry, view.docked, view.dock_target).into(),
-        icon: if entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused {
->>>>>>> origin/claude/compassionate-pascal-pod8ux
             check.clone()
         } else {
             slint::Image::default()

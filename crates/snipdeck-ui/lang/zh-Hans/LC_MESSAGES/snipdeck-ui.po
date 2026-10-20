@@ -1467,6 +1467,9 @@ msgstr "必填"
 msgid "Reset Panel size and position"
 msgstr "重置面板大小和位置"
 
+msgid "Reset size and position"
+msgstr "重置大小和位置"
+
 msgid "Restore"
 msgstr "还原"
 
@@ -1633,6 +1636,9 @@ msgstr "在任务栏中显示 Snipdeck"
 
 msgid "Show kind, title, colour, tags and privacy"
 msgstr "显示类型、标题、颜色、标签和隐私"
+
+msgid "Show numbers"
+msgstr "显示编号"
 
 msgid "Show or hide the Panel"
 msgstr "显示或隐藏面板"

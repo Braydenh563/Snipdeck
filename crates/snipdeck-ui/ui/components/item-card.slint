@@ -250,16 +250,10 @@ export component ItemCard inherits Rectangle {
     property <bool> shown: !root.sensitive || root.revealed || root.held-reveal;
     property <bool> hovered: touch.has-hover || root.more-hover || use-btn.hovered;
     property <bool> more-hover: false;
-<<<<<<< HEAD
-    // The "More" (⋯) button is the context menu under the pointer or the keyboard focus. It is not a Tab stop:
-    // the keyboard opens the same menu with the Menu key or Shift+F10 on the card.
-    property <bool> more-visible: root.hovered || root.focused || root.selected;
-=======
     // The "More" (⋯) button is the context menu for a pointer that does not right-click. It is always drawn,
     // muted until the card is hovered or focused, so pen and touch users can find it (WCAG 2.2 sweep F6).
     // It is not a Tab stop: the keyboard opens the same menu with the Menu key or Shift+F10 on the card.
     property <bool> more-emphasised: root.hovered || root.focused;
->>>>>>> origin/claude/compassionate-pascal-pod8ux
     property <length> more-side: Space.hit-min;
     // The trailing slot every variant keeps for the kebab: the list and use labels sit left of it, and the
     // title and preview never run under it.
@@ -680,11 +674,7 @@ export component ItemCard inherits Rectangle {
         visible: root.has-menu;
         width: root.more-side;
         height: root.more-side;
-<<<<<<< HEAD
-        x: root.width - root.pad-x - self.width - (root.compact && root.label-visible ? root.use-w : 0px);
-=======
         x: root.width - root.pad-x - self.width;
->>>>>>> origin/claude/compassionate-pascal-pod8ux
         y: root.compact ? (root.height - self.height) / 2 : Space.s1;
         border-radius: Radius.md;
         background: root.more-hover ? Theme.bg-hover : transparent;

@@ -344,6 +344,7 @@ fn reset_size_and_position_clears_the_stored_geometry_of_this_monitor_only() {
             h: 1040,
         },
         scale: 1.0,
+        taskbar: None,
     };
     let second = Monitor {
         id: Monitor::id_of("DISPLAY2", 1280, 1024),
@@ -354,6 +355,7 @@ fn reset_size_and_position_clears_the_stored_geometry_of_this_monitor_only() {
             h: 984,
         },
         scale: 1.0,
+        taskbar: None,
     };
     w.ctl.frame_changed(
         &second,
@@ -389,7 +391,7 @@ fn reset_size_and_position_clears_the_stored_geometry_of_this_monitor_only() {
         .collect();
     assert_eq!(
         ids,
-        [second.id.clone()],
+        std::slice::from_ref(&second.id),
         "only the current monitor's entry is gone"
     );
     assert!(w.ctl.view().toast.is_none(), "no Undo toast");

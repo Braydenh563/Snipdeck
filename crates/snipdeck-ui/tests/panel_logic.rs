@@ -530,8 +530,11 @@ ui_tests! {
 
     fn the_selected_row_keeps_its_more_button_without_hover() {
         let (ui, _log) = start();
-        // The kebab and the selected row's ⋯ carry the same name; an unselected, unhovered row has none.
-        assert_eq!(all(&ui, "More", AccessibleRole::Button).len(), 2);
+        // The kebab plus one ⋯ per row (always drawn, so the selected row has it without a hover).
+        assert_eq!(
+            all(&ui, "More", AccessibleRole::Button).len(),
+            rows(&ui).len() + 1
+        );
     }
 
     fn the_new_item_row_opens_a_box_that_enter_saves_and_shift_enter_extends() {
@@ -866,17 +869,18 @@ ui_tests! {
             ["Ctrl", "Alt", "Space"].map(slint::SharedString::from).to_vec(),
         )));
         ui.set_picker_spoken("Control Alt Space".into());
-        for scale in [1.0_f32, 1.25, 1.5] {
+        for (scale, w_px, h_px) in [(1.0_f32, 320_u32, 480_u32), (1.25, 400, 600), (1.5, 480, 720)] {
             for text in [1.0_f32, 1.5, 2.25] {
                 ui.window()
                     .dispatch_event(WindowEvent::ScaleFactorChanged { scale_factor: scale });
                 ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(text);
                 settle();
-                ui.window().set_size(slint::PhysicalSize::new((320.0 * scale) as u32, (480.0 * scale) as u32));
+                ui.window().set_size(slint::PhysicalSize::new(w_px, h_px));
                 settle();
                 // The testing backend reports element boxes in the window's own (physical) pixels.
                 let phys = ui.window().size();
-                let win = slint::LogicalSize::new(phys.width as f32, phys.height as f32);
+                let px = |n: u32| f32::from(u16::try_from(n).unwrap_or(u16::MAX));
+                let win = slint::LogicalSize::new(px(phys.width), px(phys.height));
                 let footer = find(&ui, "Pastes into Outlook · New message", AccessibleRole::Text);
                 let (pos, size) = (footer.absolute_position(), footer.size());
                 let ctx = format!("scale {scale}, text {text}");

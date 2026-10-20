@@ -1472,6 +1472,9 @@ msgstr "Obligatoire"
 msgid "Reset Panel size and position"
 msgstr "Réinitialiser la taille et la position du panneau"
 
+msgid "Reset size and position"
+msgstr "Réinitialiser la taille et la position"
+
 msgid "Restore"
 msgstr "Restaurer"
 
@@ -1640,6 +1643,9 @@ msgstr "Afficher Snipdeck dans la barre des tâches"
 
 msgid "Show kind, title, colour, tags and privacy"
 msgstr "Afficher le type, le titre, la couleur, les étiquettes et la confidentialité"
+
+msgid "Show numbers"
+msgstr "Afficher les numéros"
 
 msgid "Show or hide the Panel"
 msgstr "Afficher ou masquer le panneau"
