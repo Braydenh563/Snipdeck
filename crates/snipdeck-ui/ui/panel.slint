@@ -175,6 +175,9 @@ export component PanelWindow inherits Window {
     in property <bool> dock-vertical: true;
     in property <bool> dock-has-list-color: false;
     in property <color> dock-list-color: transparent;
+    // The edge a drag would dock to if released now (O32), in Settings' "Dock to" order: 0 none,
+    // 1 left, 2 right, 3 top, 4 bottom. Drawn as an accent strip along that edge.
+    in property <int> dock-preview: 0;
 
     // ---- State both ways ----------------------------------------------------------------------
     in-out property <int> current-tab: 0;
@@ -1492,6 +1495,16 @@ export component PanelWindow inherits Window {
             border-color: Theme.border-default;
             background: transparent;
         }
+    }
+
+    // The dock preview: an accent strip along the edge the drag would dock to.
+    if root.dock-preview > 0 && !root.dock-collapsed: Rectangle {
+        x: root.dock-preview == 2 ? root.width - self.width : 0;
+        y: root.dock-preview == 4 ? root.height - self.height : 0;
+        width: root.dock-preview <= 2 ? Space.s1 : root.width;
+        height: root.dock-preview >= 3 ? Space.s1 : root.height;
+        background: Theme.accent;
+        accessible-role: none;
     }
 
     // The collapsed dock: a strip over the whole window, in the colour of the list on show.

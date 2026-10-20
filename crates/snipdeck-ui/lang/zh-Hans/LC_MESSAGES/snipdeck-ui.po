@@ -502,8 +502,20 @@ msgstr "停靠到"
 msgid "Dock to a screen edge"
 msgstr "停靠到屏幕边缘"
 
+msgid "Dock to the bottom edge"
+msgstr "停靠到下边缘"
+
+msgid "Dock to the left edge"
+msgstr "停靠到左边缘"
+
 msgid "Dock to the nearest edge"
 msgstr "停靠到最近的边缘"
+
+msgid "Dock to the right edge"
+msgstr "停靠到右边缘"
+
+msgid "Dock to the top edge"
+msgstr "停靠到上边缘"
 
 msgid "Done"
 msgstr "完成"
@@ -1852,6 +1864,9 @@ msgstr "无法使用本电脑的密钥打开敏感片段“{}”，已跳过。"
 
 msgid "The tag is removed from its items. The items themselves stay."
 msgstr "标签将从其片段中移除，片段本身保留。"
+
+msgid "The taskbar is on that edge. Pick another edge, or move the taskbar."
+msgstr "任务栏位于该边缘。请选择其他边缘，或移动任务栏。"
 
 msgid "The time now"
 msgstr "当前时间"

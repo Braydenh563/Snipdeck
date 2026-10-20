@@ -268,12 +268,17 @@ unsafe extern "system" fn panel_subclass_proc(
     unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
 }
 
-/// The work area and DPI of the monitor the mouse pointer is on: `(x, y, width, height, dpi)` in
-/// physical pixels. A window about to be created (the Main window, Settings) is sized from it
-/// before it exists, because the window's own monitor is not known yet and a window taller than
-/// the work area opens half off the screen. `None` if Windows cannot say.
+/// The work area, the whole monitor and the DPI of the monitor the mouse pointer is on: the two
+/// rectangles as `(x, y, width, height)` in physical pixels. A window about to be created (the
+/// Main window, Settings) is sized from it before it exists, because the window's own monitor is
+/// not known yet and a window taller than the work area opens half off the screen. The whole
+/// monitor against the work area says which edge the taskbar takes. `None` if Windows cannot say.
 #[must_use]
-pub fn work_area_near_cursor() -> Option<(i32, i32, u32, u32, u32)> {
+#[allow(
+    clippy::type_complexity,
+    reason = "two rectangles and a DPI, read once"
+)]
+pub fn work_area_near_cursor() -> Option<((i32, i32, u32, u32), (i32, i32, u32, u32), u32)> {
     use windows::Win32::{
         Foundation::POINT,
         Graphics::Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromPoint},
@@ -301,12 +306,16 @@ pub fn work_area_near_cursor() -> Option<(i32, i32, u32, u32, u32)> {
     if !ok {
         return None;
     }
-    let r = info.rcWork;
-    let (w, h) = (
-        u32::try_from(r.right - r.left).ok()?,
-        u32::try_from(r.bottom - r.top).ok()?,
-    );
-    (w > 0 && h > 0 && dpi_x > 0).then_some((r.left, r.top, w, h, dpi_x))
+    let rect = |r: windows::Win32::Foundation::RECT| {
+        Some((
+            r.left,
+            r.top,
+            u32::try_from(r.right - r.left).ok()?,
+            u32::try_from(r.bottom - r.top).ok()?,
+        ))
+    };
+    let (work, whole) = (rect(info.rcWork)?, rect(info.rcMonitor)?);
+    (work.2 > 0 && work.3 > 0 && dpi_x > 0).then_some((work, whole, dpi_x))
 }
 
 /// The work area (the monitor without the taskbar and other app bars) of the monitor that

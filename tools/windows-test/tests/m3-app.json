@@ -211,6 +211,27 @@
       "title": "Panel dock to a screen edge: fold and hover",
       "do": "In Settings > Panel dock set Dock to = Right edge and Open a docked panel by = Hover. Move the pointer away and wait about half a second, then rest the pointer on the thin strip at the screen edge. Then try Click and Hover and click, and finally set Dock to back to Floating.",
       "expect": "The Panel sits against the right edge of the monitor it is on. With Hover it folds into a thin strip after the Leave delay (about 0.4 s) and unfolds when the pointer rests on the strip for the Hover delay (about 0.15 s), without taking keyboard focus from Notepad. With Click it opens only on a click. Floating gives the free Panel back."
+    },
+    {
+      "id": "23",
+      "v1": true,
+      "title": "Dock from the lower middle of the screen",
+      "do": "Set Dock to = Floating. Drag the Panel so it sits in the lower middle of the screen, just above the taskbar and a little left of centre. Open the Panel's three-dots menu and read its dock row, then choose it. Choose the row again to undock.",
+      "expect": "The row reads Dock to the left edge (Dock to the right edge when the Panel is right of centre), never the bottom edge where the taskbar is. Choosing it moves the Panel once to that edge, full height, with no flicker and no snap back to floating. The second choice (Undock the panel) gives the floating Panel back where it was."
+    },
+    {
+      "id": "24",
+      "v1": true,
+      "title": "Drag the Panel to a screen edge to dock it",
+      "do": "With the Panel floating, drag it by its header until its right side is within about 16 px of the right edge of the screen, hold still for a moment, then release. Then drag it down until its bottom is next to the taskbar and release there. Finally, in Settings > Panel dock, pick Bottom edge.",
+      "expect": "Near the right edge a thin accent strip shows along the Panel's right side; about a quarter of a second after you stop moving, the Panel docks to the right edge. Next to the taskbar no strip shows and the Panel stays floating where you dropped it. Picking Bottom edge in Settings shows the message The taskbar is on that edge and the Panel stays floating."
+    },
+    {
+      "id": "25",
+      "v1": true,
+      "title": "Stray marks in text: send a crop",
+      "do": "Open the main window on All items and look at a list chip such as Snippets, then open an empty list to see This list is empty. If you see a stray dot or mark over or next to any letter, press Win+Shift+S, draw a tight box around the mark and the word, and paste the crop into your report together with the window name and your display scale (Settings > System > Display > Scale, for example 125%).",
+      "expect": "Normally there is no mark. The developers cannot reproduce one at 100% or 225% scale on their machine, so the crop plus the scale is what lets them find the cause."
     }
   ]
 }

@@ -502,8 +502,20 @@ msgstr "固定先"
 msgid "Dock to a screen edge"
 msgstr "画面の端に固定"
 
+msgid "Dock to the bottom edge"
+msgstr "下端に固定"
+
+msgid "Dock to the left edge"
+msgstr "左端に固定"
+
 msgid "Dock to the nearest edge"
 msgstr "最も近い端に固定"
+
+msgid "Dock to the right edge"
+msgstr "右端に固定"
+
+msgid "Dock to the top edge"
+msgstr "上端に固定"
 
 msgid "Done"
 msgstr "完了"
@@ -1852,6 +1864,9 @@ msgstr "機密スニペット「{}」は、このコンピューターのキー�
 
 msgid "The tag is removed from its items. The items themselves stay."
 msgstr "タグはスニペットから外されます。スニペット自体は残ります。"
+
+msgid "The taskbar is on that edge. Pick another edge, or move the taskbar."
+msgstr "その端にはタスクバーがあります。別の端を選ぶか、タスクバーを移動してください。"
 
 msgid "The time now"
 msgstr "現在時刻"

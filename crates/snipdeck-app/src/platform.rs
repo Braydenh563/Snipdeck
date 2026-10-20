@@ -113,6 +113,7 @@ mod imp {
             Some(Monitor {
                 id: Monitor::id_of("monitor", facts.bounds.w, facts.bounds.h),
                 work_area: area(facts.work_area),
+                taskbar: None,
                 scale: facts.scale,
             })
         }

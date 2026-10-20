@@ -35,6 +35,9 @@ pub struct Monitor {
     pub id: String,
     /// The part of it a window may use (without the taskbar, where the host can tell).
     pub work_area: Rect,
+    /// The edge the taskbar sits on (the side the work area is inset from), `None` when it
+    /// is hidden or the host cannot tell. The Panel never docks to it.
+    pub taskbar: Option<DockEdge>,
     /// Physical pixels per logical pixel (1.5 at 150 % text scale).
     pub scale: f32,
 }
@@ -278,25 +281,100 @@ pub fn is_flush(edge: DockEdge, work_area: Rect, frame: Rect) -> bool {
     }
 }
 
-/// The edge of `work_area` nearest to the centre of `frame`: where "Dock" puts a floating
-/// Panel.
+/// The edge of `bounds` (the whole monitor) the taskbar takes: the side `work_area` is inset
+/// from, the largest inset when app bars take several. `None` when the two are equal (an
+/// auto-hidden or missing taskbar) or when `work_area` is not inside `bounds`.
 #[must_use]
-pub fn nearest_edge(frame: Rect, work_area: Rect) -> DockEdge {
+pub fn taskbar_edge(bounds: Rect, work_area: Rect) -> Option<DockEdge> {
+    let far = |start: i32, len: u32| i64::from(start) + i64::from(len);
+    let insets = [
+        (i64::from(work_area.x) - i64::from(bounds.x), DockEdge::Left),
+        (
+            far(bounds.x, bounds.w) - far(work_area.x, work_area.w),
+            DockEdge::Right,
+        ),
+        (i64::from(work_area.y) - i64::from(bounds.y), DockEdge::Top),
+        (
+            far(bounds.y, bounds.h) - far(work_area.y, work_area.h),
+            DockEdge::Bottom,
+        ),
+    ];
+    if insets.iter().any(|(inset, _)| *inset < 0) {
+        return None;
+    }
+    insets
+        .into_iter()
+        .filter(|(inset, _)| *inset > 0)
+        .max_by_key(|(inset, _)| *inset)
+        .map(|(_, edge)| edge)
+}
+
+/// The edge of `work_area` nearest to the centre of `frame`, never the `taskbar` edge: where
+/// "Dock" puts a floating Panel. A Panel in the lower middle over a bottom taskbar goes to
+/// the left or the right, whichever is nearer (the left on a tie).
+#[must_use]
+pub fn nearest_dock_edge(frame: Rect, work_area: Rect, taskbar: Option<DockEdge>) -> DockEdge {
     // Twice the distances, so that the centre needs no division.
     let twice = |start: i32, len: u32| i64::from(start) * 2 + i64::from(len);
     let (cx, cy) = (twice(frame.x, frame.w), twice(frame.y, frame.h));
     let (left, top) = (cx - twice(work_area.x, 0), cy - twice(work_area.y, 0));
     let right = twice(work_area.x, 0) + 2 * i64::from(work_area.w) - cx;
     let bottom = twice(work_area.y, 0) + 2 * i64::from(work_area.h) - cy;
-    [
+    let edges = [
         (left, DockEdge::Left),
         (right, DockEdge::Right),
         (top, DockEdge::Top),
         (bottom, DockEdge::Bottom),
+    ];
+    let nearest = |keep: &dyn Fn(DockEdge) -> bool| {
+        edges
+            .into_iter()
+            .filter(|(_, edge)| keep(*edge))
+            .min_by_key(|(distance, _)| *distance)
+            .map_or(DockEdge::Right, |(_, edge)| edge)
+    };
+    let edge = nearest(&|_| true);
+    if Some(edge) != taskbar {
+        return edge;
+    }
+    // Nearest the taskbar: the nearer of the two sides next to it, never the far opposite edge.
+    let horizontal = matches!(edge, DockEdge::Left | DockEdge::Right);
+    nearest(&|e| matches!(e, DockEdge::Left | DockEdge::Right) != horizontal)
+}
+
+/// How close (logical pixels) a dragged Panel's side must come to an edge of the work area
+/// for the drop to dock it there.
+pub const DOCK_SNAP: u32 = 16;
+
+/// The edge a drag would dock the Panel to when it is released now: the edge of `work_area`
+/// that the same side of `frame` lies within [`DOCK_SNAP`] of (at `scale`), the nearer one in
+/// a corner, never the `taskbar` edge. `None` away from every edge.
+#[must_use]
+pub fn dock_preview(
+    frame: Rect,
+    work_area: Rect,
+    taskbar: Option<DockEdge>,
+    scale: f32,
+) -> Option<DockEdge> {
+    let far = |start: i32, len: u32| i64::from(start) + i64::from(len);
+    let snap = i64::from(scaled(DOCK_SNAP, scale));
+    [
+        (i64::from(frame.x) - i64::from(work_area.x), DockEdge::Left),
+        (
+            far(work_area.x, work_area.w) - far(frame.x, frame.w),
+            DockEdge::Right,
+        ),
+        (i64::from(frame.y) - i64::from(work_area.y), DockEdge::Top),
+        (
+            far(work_area.y, work_area.h) - far(frame.y, frame.h),
+            DockEdge::Bottom,
+        ),
     ]
     .into_iter()
-    .min_by_key(|(distance, _)| *distance)
-    .map_or(DockEdge::Right, |(_, edge)| edge)
+    .map(|(gap, edge)| (gap.abs(), edge))
+    .filter(|(gap, edge)| *gap <= snap && Some(*edge) != taskbar)
+    .min_by_key(|(gap, _)| *gap)
+    .map(|(_, edge)| edge)
 }
 
 /// `span` cut to `[low, low + len)`; the whole of it when nothing of `span` is inside.
@@ -381,6 +459,7 @@ mod tests {
                 w: 1920,
                 h: 1040,
             },
+            taskbar: None,
             scale,
         }
     }
@@ -647,12 +726,148 @@ mod tests {
     }
 
     #[test]
-    fn the_nearest_edge_is_the_one_the_panel_centre_is_closest_to() {
+    fn the_nearest_dock_edge_is_the_one_the_panel_centre_is_closest_to() {
         let work = area();
-        assert_eq!(nearest_edge(at(20, 300, 320, 480), work), DockEdge::Left);
-        assert_eq!(nearest_edge(at(1500, 300, 320, 480), work), DockEdge::Right);
-        assert_eq!(nearest_edge(at(800, 5, 320, 240), work), DockEdge::Top);
-        assert_eq!(nearest_edge(at(800, 790, 320, 240), work), DockEdge::Bottom);
+        assert_eq!(
+            nearest_dock_edge(at(20, 300, 320, 480), work, None),
+            DockEdge::Left
+        );
+        assert_eq!(
+            nearest_dock_edge(at(1500, 300, 320, 480), work, None),
+            DockEdge::Right
+        );
+        assert_eq!(
+            nearest_dock_edge(at(800, 5, 320, 240), work, None),
+            DockEdge::Top
+        );
+        assert_eq!(
+            nearest_dock_edge(at(800, 790, 320, 240), work, None),
+            DockEdge::Bottom
+        );
+    }
+
+    #[test]
+    fn the_taskbar_edge_is_never_the_dock_edge() {
+        let work = area();
+        // Lower middle over a bottom taskbar: left or right, the nearer one; the left on a tie.
+        let lower_middle = at(800, 790, 320, 240);
+        assert_eq!(
+            nearest_dock_edge(lower_middle, work, Some(DockEdge::Bottom)),
+            DockEdge::Left
+        );
+        assert_eq!(
+            nearest_dock_edge(at(900, 790, 320, 240), work, Some(DockEdge::Bottom)),
+            DockEdge::Right
+        );
+        // The corners: the nearest edge, and at the bottom a side, never the taskbar.
+        for (corner, edge) in [
+            (at(0, 0, 320, 240), DockEdge::Top),
+            (at(1600, 0, 320, 240), DockEdge::Top),
+            (at(0, 800, 320, 240), DockEdge::Left),
+            (at(1600, 800, 320, 240), DockEdge::Right),
+        ] {
+            assert_eq!(
+                nearest_dock_edge(corner, work, Some(DockEdge::Bottom)),
+                edge,
+                "{corner:?}"
+            );
+        }
+        // The taskbar on each side: the panel against it goes to the nearest other edge.
+        assert_eq!(
+            nearest_dock_edge(at(0, 300, 320, 240), work, Some(DockEdge::Left)),
+            DockEdge::Top
+        );
+        assert_eq!(
+            nearest_dock_edge(at(1600, 300, 320, 240), work, Some(DockEdge::Right)),
+            DockEdge::Top
+        );
+        assert_eq!(
+            nearest_dock_edge(at(800, 0, 320, 240), work, Some(DockEdge::Top)),
+            DockEdge::Left
+        );
+        assert_eq!(
+            nearest_dock_edge(at(900, 800, 320, 240), work, Some(DockEdge::Bottom)),
+            DockEdge::Right
+        );
+        // No taskbar (auto-hidden): every edge counts.
+        assert_eq!(
+            nearest_dock_edge(lower_middle, work, None),
+            DockEdge::Bottom
+        );
+    }
+
+    #[test]
+    fn the_taskbar_edge_is_the_side_the_work_area_is_inset_from() {
+        let whole = at(0, 0, 1920, 1080);
+        assert_eq!(
+            taskbar_edge(whole, at(0, 0, 1920, 1040)),
+            Some(DockEdge::Bottom)
+        );
+        assert_eq!(
+            taskbar_edge(whole, at(0, 40, 1920, 1040)),
+            Some(DockEdge::Top)
+        );
+        assert_eq!(
+            taskbar_edge(whole, at(60, 0, 1860, 1080)),
+            Some(DockEdge::Left)
+        );
+        assert_eq!(
+            taskbar_edge(whole, at(0, 0, 1860, 1080)),
+            Some(DockEdge::Right)
+        );
+        // Auto-hidden or no taskbar; a second monitor at an offset.
+        assert_eq!(taskbar_edge(whole, whole), None);
+        assert_eq!(
+            taskbar_edge(at(1920, 0, 1280, 1024), at(1920, 0, 1280, 984)),
+            Some(DockEdge::Bottom)
+        );
+        // A work area that is not inside the monitor is not trusted.
+        assert_eq!(taskbar_edge(whole, at(-10, 0, 1920, 1040)), None);
+    }
+
+    #[test]
+    fn a_drag_previews_the_edge_its_side_comes_within_the_snap_of() {
+        let work = area();
+        assert_eq!(
+            dock_preview(at(10, 300, 320, 480), work, None, 1.0),
+            Some(DockEdge::Left)
+        );
+        assert_eq!(dock_preview(at(17, 300, 320, 480), work, None, 1.0), None);
+        assert_eq!(
+            dock_preview(at(1590, 300, 320, 480), work, None, 1.0),
+            Some(DockEdge::Right)
+        );
+        assert_eq!(
+            dock_preview(at(800, 12, 320, 480), work, None, 1.0),
+            Some(DockEdge::Top)
+        );
+        assert_eq!(
+            dock_preview(at(800, 550, 320, 480), work, None, 1.0),
+            Some(DockEdge::Bottom)
+        );
+        // Never the taskbar edge: nothing near it, the side in a corner.
+        assert_eq!(
+            dock_preview(at(800, 550, 320, 480), work, Some(DockEdge::Bottom), 1.0),
+            None
+        );
+        assert_eq!(
+            dock_preview(at(4, 555, 320, 480), work, Some(DockEdge::Bottom), 1.0),
+            Some(DockEdge::Left)
+        );
+        // In a corner the nearer edge wins; the snap grows with the scale.
+        assert_eq!(
+            dock_preview(at(8, 3, 320, 480), work, None, 1.0),
+            Some(DockEdge::Top)
+        );
+        assert_eq!(
+            dock_preview(at(30, 300, 320, 480), work, None, 2.0),
+            Some(DockEdge::Left)
+        );
+        // A frame past the edge (half off screen) still previews it.
+        assert_eq!(
+            dock_preview(at(-8, 300, 320, 480), work, None, 1.0),
+            Some(DockEdge::Left)
+        );
     }
 
     #[test]

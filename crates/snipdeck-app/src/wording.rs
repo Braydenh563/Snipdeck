@@ -17,6 +17,7 @@ use snipdeck_core::{ItemKind, ItemLabel, ListIcon};
 
 use crate::{
     item_editor::{AttachmentView, EditorProblem, SaveFailure},
+    settings::DockEdge,
     toast::{LicenceProblem, ToastMessage},
 };
 
@@ -171,6 +172,7 @@ where
         ToastMessage::TooLargeToSave => t.invoke_too_large_to_save(),
         ToastMessage::NoListToSave => t.invoke_no_list_to_save(),
         ToastMessage::NothingToPasteNext => t.invoke_nothing_to_paste_next(),
+        ToastMessage::TaskbarEdge => t.invoke_taskbar_edge(),
         ToastMessage::PasteNextFinished => t.invoke_paste_next_finished(),
         ToastMessage::HotkeyInUse { chord } => t.invoke_hotkey_in_use(chord.into()),
         ToastMessage::HotkeyInvalid { chord } => t.invoke_hotkey_invalid(chord.into()),
@@ -319,12 +321,13 @@ where
 }
 
 /// The words of a row of the Panel's kebab menu. The dock row reads "Undock the panel" while the
-/// Panel is `docked`.
+/// Panel is `docked`, else it names the edge it would dock to (`dock_target`).
 #[must_use]
 pub fn app_menu_text(
     window: &PanelWindow,
     entry: crate::controller::AppMenuEntry,
     docked: bool,
+    dock_target: Option<DockEdge>,
 ) -> String {
     use crate::controller::AppMenuEntry;
     let t = MenuTexts::get(window);
@@ -334,7 +337,13 @@ pub fn app_menu_text(
         AppMenuEntry::NewSnippet => t.invoke_app_new_snippet(),
         AppMenuEntry::Settings => t.invoke_app_settings(),
         AppMenuEntry::Dock if docked => t.invoke_app_undock(),
-        AppMenuEntry::Dock => t.invoke_app_dock(),
+        AppMenuEntry::Dock => match dock_target {
+            Some(DockEdge::Left) => t.invoke_app_dock_left(),
+            Some(DockEdge::Right) => t.invoke_app_dock_right(),
+            Some(DockEdge::Top) => t.invoke_app_dock_top(),
+            Some(DockEdge::Bottom) => t.invoke_app_dock_bottom(),
+            None => t.invoke_app_dock(),
+        },
         AppMenuEntry::PauseHotkeys => t.invoke_app_pause_hotkeys(),
         AppMenuEntry::Separator => return String::new(),
         AppMenuEntry::Troubleshoot => t.invoke_app_troubleshoot(),

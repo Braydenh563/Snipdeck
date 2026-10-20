@@ -118,6 +118,11 @@ Windows PC.
 - The icon-fetching "website icons" setting is gone. Snipdeck never goes online, so icons are packaged.
 
 ### Fixed
+- "Dock to the nearest edge" never picks the edge the taskbar is on (a Panel in the lower middle goes to the
+  left or the right), and the Panel's menu names the edge it would dock to. Dragging the Panel to within a
+  few pixels of a screen edge marks that edge and docks it on release.
+- The "Paste" / "Copy" label on a row is a button: a click on it uses the item (as `Enter` does) instead of
+  only selecting the row in the main window. It names its item for assistive technology ("Copy <title>").
 - A backup is no longer made while the encrypted-items key is locked. That backup would have left sensitive
   items out, so it is tried again later.
 - A crash report no longer quotes snippet text. Report file names use UTC, so a daylight-saving change cannot

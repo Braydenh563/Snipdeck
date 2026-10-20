@@ -88,6 +88,8 @@ pub(crate) fn arm_toast<S, C, K, T>(
 
 /// How long after a collapse the handle's frame is asked for once more (see `Core::apply`).
 const DOCK_REPLACE_AFTER: std::time::Duration = std::time::Duration::from_millis(50);
+/// How long the Panel must hold still after a move for the drag to count as released.
+const DRAG_SETTLE: std::time::Duration = std::time::Duration::from_millis(250);
 
 /// Moves and sizes the window to `frame`.
 fn place(window: &ui::PanelWindow, frame: Rect) {
@@ -688,10 +690,18 @@ where
             },
             frame_moved: {
                 let core = Rc::clone(&core);
+                // A drag ends when the moves stop: the window has no "drag ended" event.
+                let settle = slint::Timer::default();
                 Rc::new(move |monitor: &Monitor, frame| {
                     if core.controller.try_borrow_mut().is_ok() {
                         core.act_effects(|ctl| ctl.frame_moved(monitor, frame));
                     }
+                    let (core, monitor) = (Rc::clone(&core), monitor.clone());
+                    settle.start(slint::TimerMode::SingleShot, DRAG_SETTLE, move || {
+                        if core.controller.try_borrow_mut().is_ok() {
+                            core.act_effects(|ctl| ctl.frame_settled(&monitor, frame));
+                        }
+                    });
                 })
             },
             restore_frame: {
@@ -870,6 +880,9 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.dock_vertical == view.dock_vertical) {
         window.set_dock_vertical(view.dock_vertical);
     }
+    if differs(&|p| p.dock_preview == view.dock_preview) {
+        window.set_dock_preview(crate::settings_binding::dock_edge_index(view.dock_preview));
+    }
     if differs(&|p| p.pinned == view.pinned) {
         window.set_pinned(model(view.pinned.iter().map(|r| ui::PinnedItem {
             title: r.title.as_str().into(),
@@ -1003,7 +1016,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
 fn render_app_menu(window: &ui::PanelWindow, view: &View) {
     let check = window.global::<ui::Icons<'_>>().get_check();
     let entries = view.app_menu.iter().flatten().map(|&entry| ui::MenuEntry {
-        text: wording::app_menu_text(window, entry, view.docked).into(),
+        text: wording::app_menu_text(window, entry, view.docked, view.dock_target).into(),
         icon: if entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused {
             check.clone()
         } else {
