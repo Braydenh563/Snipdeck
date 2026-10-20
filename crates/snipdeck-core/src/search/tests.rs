@@ -341,7 +341,7 @@ const SPEC_BUDGET: Duration = Duration::from_millis(16);
 ///
 /// A release build needs a licence key (see `docs/licensing.md`); any valid public key will
 /// do for timing:
-/// `SNIPDECK_LICENCE_PUBLIC_KEY=Zr5+Myx6RTMyvZ0Kf32wVfXF7xoGraZtmLOftoEMRzo= cargo test --release -p snipdeck-core --lib search_10k -- --ignored --nocapture`.
+/// `SNIPDECK_ALLOW_TEST_LICENCE_KEY=1 SNIPDECK_LICENCE_PUBLIC_KEY=Zr5+Myx6RTMyvZ0Kf32wVfXF7xoGraZtmLOftoEMRzo= cargo test --release -p snipdeck-core --lib search_10k -- --ignored --nocapture`.
 #[test]
 #[ignore = "timing test: run with --release -- --ignored"]
 #[allow(

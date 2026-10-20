@@ -61,7 +61,8 @@ fn a_key_ring_is_created_once_and_persisted() {
         let mut s = Store::open(dir.path()).unwrap();
         assert!(!s.key_ring_exists().unwrap());
         assert!(!s.is_unlocked());
-        s.create_key_ring(&ring(&p), Some("pw")).unwrap();
+        s.create_key_ring(&ring(&p), Some(common::pw("pw")))
+            .unwrap();
         assert!(s.key_ring_exists().unwrap());
         assert!(s.is_unlocked(), "creating unlocks");
         assert!(matches!(
@@ -76,14 +77,15 @@ fn a_key_ring_is_created_once_and_persisted() {
     assert!(s.key_ring_exists().unwrap());
     assert!(!s.is_unlocked(), "a new session starts locked");
     assert!(matches!(
-        s.unlock_key_ring(&ring(&p), Some("nope")),
+        s.unlock_key_ring(&ring(&p), Some(common::pw("nope"))),
         Err(Error::Crypto(CryptoError::WrongPassword))
     ));
     assert!(matches!(
         s.unlock_key_ring(&ring(&p), None),
         Err(Error::Crypto(CryptoError::PasswordRequired))
     ));
-    s.unlock_key_ring(&ring(&p), Some("pw")).unwrap();
+    s.unlock_key_ring(&ring(&p), Some(common::pw("pw")))
+        .unwrap();
     assert!(s.is_unlocked() && s.data_key().is_some());
     s.lock_key_ring();
     assert!(!s.is_unlocked() && s.data_key().is_none());
@@ -371,22 +373,28 @@ fn changing_the_master_password_keeps_items_readable() {
     let mut s = store();
     let b = board(&mut s, "b");
     let l = list(&mut s, b.id, "l");
-    s.create_key_ring(&ring(&p), Some("old")).unwrap();
+    s.create_key_ring(&ring(&p), Some(common::pw("old")))
+        .unwrap();
     let it = secret_item(l.id, "x");
     s.insert_item(&it, &text_formats("kept"), Placement::Last)
         .unwrap();
     assert!(matches!(
-        s.change_master_password(&ring(&p), Some("wrong"), Some("new")),
+        s.change_master_password(
+            &ring(&p),
+            Some(common::pw("wrong")),
+            Some(common::pw("new"))
+        ),
         Err(Error::Crypto(CryptoError::WrongPassword))
     ));
-    s.change_master_password(&ring(&p), Some("old"), Some("new"))
+    s.change_master_password(&ring(&p), Some(common::pw("old")), Some(common::pw("new")))
         .unwrap();
     s.lock_key_ring();
     assert!(matches!(
-        s.unlock_key_ring(&ring(&p), Some("old")),
+        s.unlock_key_ring(&ring(&p), Some(common::pw("old"))),
         Err(Error::Crypto(CryptoError::WrongPassword))
     ));
-    s.unlock_key_ring(&ring(&p), Some("new")).unwrap();
+    s.unlock_key_ring(&ring(&p), Some(common::pw("new")))
+        .unwrap();
     assert_eq!(s.formats(it.id).unwrap(), text_formats("kept"));
 }
 
@@ -401,7 +409,7 @@ fn the_slow_half_of_a_master_password_step_can_run_on_another_thread() {
     // Set: the key and record are made off the store's thread, then installed.
     let (key, record) = {
         let p = p.clone();
-        std::thread::spawn(move || ring(&p).create(Some("one")).unwrap())
+        std::thread::spawn(move || ring(&p).create(Some(common::pw("one"))).unwrap())
             .join()
             .unwrap()
     };
@@ -418,9 +426,13 @@ fn the_slow_half_of_a_master_password_step_can_run_on_another_thread() {
     let old = s.key_record().unwrap().unwrap();
     let (key, record) = {
         let p = p.clone();
-        std::thread::spawn(move || ring(&p).rekey(&old, Some("one"), Some("two")).unwrap())
-            .join()
-            .unwrap()
+        std::thread::spawn(move || {
+            ring(&p)
+                .rekey(&old, Some(common::pw("one")), Some(common::pw("two")))
+                .unwrap()
+        })
+        .join()
+        .unwrap()
     };
     s.replace_key_record(&record).unwrap();
     s.open_with_key(key).unwrap();
@@ -430,7 +442,7 @@ fn the_slow_half_of_a_master_password_step_can_run_on_another_thread() {
     let stored = s.key_record().unwrap().unwrap();
     let key = {
         let p = p.clone();
-        std::thread::spawn(move || ring(&p).unlock(&stored, Some("two")).unwrap())
+        std::thread::spawn(move || ring(&p).unlock(&stored, Some(common::pw("two"))).unwrap())
             .join()
             .unwrap()
     };
@@ -632,10 +644,10 @@ fn the_store_says_whether_a_master_password_is_set() {
     );
     s.create_key_ring(&ring(&p), None).unwrap();
     assert!(!s.has_master_password(&ring(&p)).unwrap());
-    s.change_master_password(&ring(&p), None, Some("pw"))
+    s.change_master_password(&ring(&p), None, Some(common::pw("pw")))
         .unwrap();
     assert!(s.has_master_password(&ring(&p)).unwrap());
-    s.change_master_password(&ring(&p), Some("pw"), None)
+    s.change_master_password(&ring(&p), Some(common::pw("pw")), None)
         .unwrap();
     assert!(!s.has_master_password(&ring(&p)).unwrap());
 }
@@ -653,7 +665,7 @@ fn a_password_added_later_locks_a_restart_and_removing_it_opens_without_one() {
         item = secret_item(l.id, "x");
         s.insert_item(&item, &text_formats("kept"), Placement::Last)
             .unwrap();
-        s.change_master_password(&ring(&p), None, Some("pw"))
+        s.change_master_password(&ring(&p), None, Some(common::pw("pw")))
             .unwrap();
         assert!(
             s.is_unlocked(),
@@ -668,9 +680,10 @@ fn a_password_added_later_locks_a_restart_and_removing_it_opens_without_one() {
     ));
     assert!(!s.is_unlocked());
     assert!(matches!(s.formats(item.id), Err(Error::EncryptionLocked)));
-    s.unlock_key_ring(&ring(&p), Some("pw")).unwrap();
+    s.unlock_key_ring(&ring(&p), Some(common::pw("pw")))
+        .unwrap();
     assert_eq!(s.formats(item.id).unwrap(), text_formats("kept"));
-    s.change_master_password(&ring(&p), Some("pw"), None)
+    s.change_master_password(&ring(&p), Some(common::pw("pw")), None)
         .unwrap();
     s.lock_key_ring();
     s.unlock_key_ring(&ring(&p), None).unwrap();
@@ -681,14 +694,16 @@ fn a_password_added_later_locks_a_restart_and_removing_it_opens_without_one() {
 fn a_wrong_current_password_changes_nothing_and_the_old_one_still_works() {
     let p = provider();
     let mut s = store();
-    s.create_key_ring(&ring(&p), Some("old")).unwrap();
+    s.create_key_ring(&ring(&p), Some(common::pw("old")))
+        .unwrap();
     assert!(matches!(
-        s.change_master_password(&ring(&p), Some("wrong"), None),
+        s.change_master_password(&ring(&p), Some(common::pw("wrong")), None),
         Err(Error::Crypto(CryptoError::WrongPassword))
     ));
     assert!(s.has_master_password(&ring(&p)).unwrap());
     s.lock_key_ring();
-    s.unlock_key_ring(&ring(&p), Some("old")).unwrap();
+    s.unlock_key_ring(&ring(&p), Some(common::pw("old")))
+        .unwrap();
 }
 
 #[test]
@@ -697,18 +712,20 @@ fn a_rekeyed_record_opens_with_the_new_password_while_the_old_record_still_opens
     // wrong write cannot lock the user out: the record handed back is good before it is stored.
     let p = provider();
     let ring = ring(&p);
-    let (_, old) = ring.create(Some("one")).unwrap();
-    let (key, new) = ring.rekey(&old, Some("one"), Some("two")).unwrap();
+    let (_, old) = ring.create(Some(common::pw("one"))).unwrap();
+    let (key, new) = ring
+        .rekey(&old, Some(common::pw("one")), Some(common::pw("two")))
+        .unwrap();
     assert!(
-        ring.unlock(&new, Some("two")).is_ok(),
+        ring.unlock(&new, Some(common::pw("two"))).is_ok(),
         "the new record opens"
     );
     assert!(
-        ring.unlock(&new, Some("one")).is_err(),
+        ring.unlock(&new, Some(common::pw("one"))).is_err(),
         "and only with the new password"
     );
     assert!(
-        ring.unlock(&old, Some("one")).is_ok(),
+        ring.unlock(&old, Some(common::pw("one"))).is_ok(),
         "the old record is untouched"
     );
     drop(key);

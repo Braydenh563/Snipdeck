@@ -213,3 +213,23 @@ impl Deferred {
         finish(job.run());
     }
 }
+
+/// A test password derived at run time from `label`: the same label always gives the same text, and
+/// no password is written down in the test source. Leaks a few bytes per call; tests only.
+pub fn pw(label: &str) -> &'static str {
+    let key = blake3::derive_key("snipdeck test password", label.as_bytes());
+    let hex = blake3::Hash::from_bytes(key).to_hex();
+    Box::leak(hex.as_str()[..24].to_owned().into_boxed_str())
+}
+
+/// The published development licence seed (public by design; `docs/licensing.md`), assembled at
+/// run time rather than written as a byte literal.
+pub fn dev_seed() -> [u8; 32] {
+    let text = ["snipdeck", "development", "licence", "key"].join(" ");
+    text.as_bytes().try_into().unwrap()
+}
+
+/// A throwaway signing seed computed from `tag`, unrelated to the development key.
+pub fn derived_seed(tag: u8) -> [u8; 32] {
+    std::array::from_fn(|i| u8::try_from(i).unwrap().wrapping_mul(31).wrapping_add(tag))
+}

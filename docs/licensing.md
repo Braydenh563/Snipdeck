@@ -152,7 +152,9 @@ the rule.
 Running release-mode tests or timings locally (for example the 10k search timing test) needs
 a key too: use any valid public key, such as the throwaway
 `SNIPDECK_LICENCE_PUBLIC_KEY=Zr5+Myx6RTMyvZ0Kf32wVfXF7xoGraZtmLOftoEMRzo=` (the key of seed
-`[0x0b; 32]`; it is a test value, not a product key).
+`[0x0b; 32]`; it is a test value, not a product key). A release build refuses this key (and
+the other published test keys) unless `SNIPDECK_ALLOW_TEST_LICENCE_KEY=1` is also set, so
+a copy of it in the release secret cannot ship; the official release never sets the opt-in.
 
 ## Production key: generation, storage, rotation
 

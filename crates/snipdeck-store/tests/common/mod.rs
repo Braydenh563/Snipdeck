@@ -125,3 +125,11 @@ pub fn content_files(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
     }
     files
 }
+
+/// A test password derived at run time from `label`: the same label always gives the same text, and
+/// no password is written down in the test source. Leaks a few bytes per call; tests only.
+pub fn pw(label: &str) -> &'static str {
+    let key = blake3::derive_key("snipdeck test password", label.as_bytes());
+    let hex = blake3::Hash::from_bytes(key).to_hex();
+    Box::leak(hex.as_str()[..24].to_owned().into_boxed_str())
+}

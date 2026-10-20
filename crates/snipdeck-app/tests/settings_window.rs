@@ -760,8 +760,6 @@ fn token(seed: &[u8; 32], payload: &str) -> String {
     sign_token(&SigningKey::from_bytes(seed), payload)
 }
 
-const DEV_SEED: &[u8; 32] = b"snipdeck development licence key";
-
 #[test]
 fn a_bad_licence_key_is_rejected_with_a_toast_that_says_what_is_wrong() {
     on_ui_thread(|| {
@@ -781,12 +779,16 @@ fn a_bad_licence_key_is_rejected_with_a_toast_that_says_what_is_wrong() {
             ),
             (
                 "someone else's signature",
-                token(&[7; 32], &order),
+                token(&support::derived_seed(7), &order),
                 BadSignature,
             ),
         ];
         if IS_DEVELOPMENT_KEY {
-            cases.push(("a key for another tier", token(DEV_SEED, team), WrongTier));
+            cases.push((
+                "a key for another tier",
+                token(&support::dev_seed(), team),
+                WrongTier,
+            ));
         }
         let mut texts = Vec::new();
         let mut problems = Vec::new();
@@ -833,7 +835,7 @@ fn a_good_licence_key_turns_pro_on_and_is_remembered() {
         let r = rig();
         assert!(!r.ui.get_pro());
         let key = token(
-            DEV_SEED,
+            &support::dev_seed(),
             &pro_payload("TEST-1", 1_760_000_000, None).unwrap(),
         );
         // A pasted key often carries spaces and a line break.
@@ -1696,7 +1698,9 @@ fn the_plan_table_says_each_answer_in_words_not_colour() {
 
 // ---- Master password (SPEC 5.7, V1-PLAN C3) ----------------------------------------------------
 
-const PASSWORD: &str = "tulip harbour 42";
+fn password() -> &'static str {
+    support::pw("main")
+}
 
 /// A page over the demo library with a machine that can protect a key, on `tier`, with a cheap
 /// Argon2id so each set or unlock takes milliseconds.
@@ -1794,7 +1798,8 @@ fn a_key_record_that_cannot_be_read_offers_no_password_and_says_why() {
         {
             let mut ctl = r.ctl.borrow_mut();
             ctl.set_key_provider(Box::new(provider.clone()));
-            ctl.set_master_password(PASSWORD, PASSWORD).expect("set");
+            ctl.set_master_password(password(), password())
+                .expect("set");
             provider.fail_unwraps_after(Some(0));
             ctl.unlock_library();
             assert_eq!(ctl.master_password_state(), MasterState::KeyUnavailable);
@@ -1833,8 +1838,8 @@ fn a_supporter_sets_a_master_password_through_the_form() {
         click(&r, "Set password");
         assert_eq!(texts(&r, "Use at least 8 characters."), 1);
         assert_eq!(r.ctl.borrow().master_password_state(), MasterState::NotSet);
-        type_in(&r, "New password", PASSWORD);
-        type_in(&r, "Repeat the new password", "tulip harbour 43");
+        type_in(&r, "New password", password());
+        type_in(&r, "Repeat the new password", support::pw("second"));
         click(&r, "Set password");
         assert_eq!(texts(&r, "The two passwords are not the same."), 1);
         assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Set);
@@ -1843,9 +1848,9 @@ fn a_supporter_sets_a_master_password_through_the_form() {
         assert_eq!(texts(&r, "Strength: strong"), 1, "a 16 character phrase");
         type_in(&r, "New password", "short");
         assert_eq!(texts(&r, "Strength: weak"), 1);
-        type_in(&r, "New password", PASSWORD);
+        type_in(&r, "New password", password());
 
-        type_in(&r, "Repeat the new password", PASSWORD);
+        type_in(&r, "Repeat the new password", password());
         click(&r, "Set password");
         assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
         assert_eq!(r.ui.get_master_state(), 2, "the row now shows it is on");
@@ -1867,8 +1872,8 @@ fn while_the_password_is_saved_the_form_says_so_and_waits() {
         let held = support::Deferred::default();
         let _inline_again = held.install();
         click(&r, "Set password\u{2026}");
-        type_in(&r, "New password", PASSWORD);
-        type_in(&r, "Repeat the new password", PASSWORD);
+        type_in(&r, "New password", password());
+        type_in(&r, "Repeat the new password", password());
         click(&r, "Set password");
         assert_eq!(held.held(), 1, "the work was handed off");
         assert!(r.ui.get_master_busy());
@@ -1912,16 +1917,16 @@ fn locking_while_the_password_is_saved_stops_the_form_waiting_and_changes_nothin
         let r = master_rig(Tier::Pro);
         r.ctl
             .borrow_mut()
-            .set_master_password(PASSWORD, PASSWORD)
+            .set_master_password(password(), password())
             .expect("a password to change");
         r.binding.redraw();
         slint::platform::update_timers_and_animations();
         let held = support::Deferred::default();
         let _inline_again = held.install();
         click(&r, "Change\u{2026}");
-        type_in(&r, "Current password", PASSWORD);
-        type_in(&r, "New password", "another long phrase");
-        type_in(&r, "Repeat the new password", "another long phrase");
+        type_in(&r, "Current password", password());
+        type_in(&r, "New password", support::pw("another"));
+        type_in(&r, "Repeat the new password", support::pw("another"));
         click(&r, "Change password");
         assert!(r.ui.get_master_busy());
 
@@ -1945,13 +1950,13 @@ fn a_wrong_current_password_found_in_the_background_keeps_the_form_open() {
         let r = master_rig(Tier::Pro);
         r.ctl
             .borrow_mut()
-            .set_master_password(PASSWORD, PASSWORD)
+            .set_master_password(password(), password())
             .expect("set");
         r.binding.redraw();
         let held = support::Deferred::default();
         let _inline_again = held.install();
         click(&r, "Remove\u{2026}");
-        type_in(&r, "Current password", "not the password");
+        type_in(&r, "Current password", support::pw("wrong"));
         click(&r, "Remove password");
         assert!(r.ui.get_master_busy());
         held.release();
@@ -1968,11 +1973,11 @@ fn passwords_are_hidden_from_the_accessibility_tree() {
     on_ui_thread(|| {
         let r = master_rig(Tier::Pro);
         click(&r, "Set password\u{2026}");
-        type_in(&r, "New password", PASSWORD);
+        type_in(&r, "New password", password());
         let field = element(&r.ui, "New password", AccessibleRole::TextInput);
         assert_ne!(
             field.accessible_value().as_deref(),
-            Some(PASSWORD),
+            Some(password()),
             "a screen reader is not handed the password"
         );
         assert!(field.accessible_value().is_none_or(|v| v.is_empty()));
@@ -1985,21 +1990,21 @@ fn changing_and_removing_ask_for_the_current_password_and_say_when_it_is_wrong()
         let r = master_rig(Tier::Pro);
         r.ctl
             .borrow_mut()
-            .set_master_password(PASSWORD, PASSWORD)
+            .set_master_password(password(), password())
             .expect("set");
         r.binding.redraw();
         slint::platform::update_timers_and_animations();
 
         click(&r, "Change\u{2026}");
         assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Change);
-        let new = "marble orchard 77";
-        type_in(&r, "Current password", "not the password");
+        let new = support::pw("marble");
+        type_in(&r, "Current password", support::pw("wrong"));
         type_in(&r, "New password", new);
         type_in(&r, "Repeat the new password", new);
         click(&r, "Change password");
         assert_eq!(texts(&r, "That password is not right. Try again."), 1);
         assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Change);
-        type_in(&r, "Current password", PASSWORD);
+        type_in(&r, "Current password", password());
         click(&r, "Change password");
         assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
         assert!(r.ui.get_toast_text().contains("changed"));
@@ -2013,7 +2018,7 @@ fn changing_and_removing_ask_for_the_current_password_and_say_when_it_is_wrong()
         );
         click(&r, "Remove password");
         assert_eq!(texts(&r, "Enter your password."), 1, "empty is told apart");
-        type_in(&r, "Current password", PASSWORD);
+        type_in(&r, "Current password", password());
         click(&r, "Remove password");
         assert_eq!(
             texts(&r, "That password is not right. Try again."),
@@ -2071,7 +2076,8 @@ fn a_locked_library_offers_unlock_in_the_row_and_asks_for_the_prompt() {
         let r = master_rig(Tier::Pro);
         {
             let mut ctl = r.ctl.borrow_mut();
-            ctl.set_master_password(PASSWORD, PASSWORD).expect("set");
+            ctl.set_master_password(password(), password())
+                .expect("set");
             ctl.lock_now();
         }
         r.binding.redraw();

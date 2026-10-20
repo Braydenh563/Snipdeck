@@ -38,9 +38,10 @@ expect_fail "release, not base64"        "not base64" env $VAR='%%%' "${build[@]
 expect_fail "release, wrong length"      "32 bytes" env $VAR=AAAA "${build[@]}" --release
 expect_fail "debug, development key set" "development key" env $VAR="$DEV_B64" "${build[@]}"
 expect_ok   "debug, no key (dev key)"    env -u $VAR "${build[@]}"
-expect_ok   "release, production key"    env $VAR="$THROWAWAY" "${build[@]}" --release
+expect_fail "release, published test key" "throwaway" env $VAR="$THROWAWAY" "${build[@]}" --release
+expect_ok   "release, test key with the local opt-in" env $VAR="$THROWAWAY" SNIPDECK_ALLOW_TEST_LICENCE_KEY=1 "${build[@]}" --release
 # The release-mode test run proves the other half: the embedded key is not the development
 # key, so a licence signed with the public development seed unlocks nothing.
-expect_ok   "release tests, production key" env $VAR="$THROWAWAY" cargo $TOOLCHAIN test -p snipdeck-core --locked --release --quiet --lib --test licence
+expect_ok   "release tests, test key with the local opt-in" env $VAR="$THROWAWAY" SNIPDECK_ALLOW_TEST_LICENCE_KEY=1 cargo $TOOLCHAIN test -p snipdeck-core --locked --release --quiet --lib --test licence
 
 if [ "$failures" -eq 0 ]; then echo "licence key guard: all checks passed"; else echo "licence key guard: $failures check(s) FAILED"; exit 1; fi

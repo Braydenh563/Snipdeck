@@ -56,6 +56,21 @@ impl core::fmt::Debug for DataKey {
     }
 }
 
+/// Test key material computed from `tag`, so no key is written as a byte literal in a test.
+#[cfg(test)]
+pub(super) fn test_bytes<const N: usize>(tag: u8) -> [u8; N] {
+    let seed = blake3::derive_key("snipdeck test key material", &[tag]);
+    std::array::from_fn(|i| seed[i % seed.len()])
+}
+
+/// A test password computed from `label`, so no password is written in a test.
+#[cfg(test)]
+pub(super) fn pw(label: &str) -> &'static str {
+    let key = blake3::derive_key("snipdeck test password", label.as_bytes());
+    let hex = blake3::Hash::from_bytes(key).to_hex();
+    Box::leak(hex.as_str()[..24].to_owned().into_boxed_str())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -70,17 +85,16 @@ mod tests {
 
     #[test]
     fn keys_are_built_from_exactly_32_bytes() {
-        assert_eq!(
-            DataKey::from_slice(&[7; KEY_LEN]).unwrap().expose(),
-            &[7; KEY_LEN]
-        );
-        assert!(DataKey::from_slice(&[7; KEY_LEN - 1]).is_none());
-        assert!(DataKey::from_slice(&[7; KEY_LEN + 1]).is_none());
+        let bytes = test_bytes::<KEY_LEN>(7);
+        assert_eq!(DataKey::from_slice(&bytes).unwrap().expose(), &bytes);
+        assert!(DataKey::from_slice(&bytes[..KEY_LEN - 1]).is_none());
+        let long = test_bytes::<{ KEY_LEN + 1 }>(7);
+        assert!(DataKey::from_slice(&long).is_none());
     }
 
     #[test]
     fn debug_output_contains_no_key_bytes() {
-        let key = DataKey::from_bytes([0xAB; KEY_LEN]);
+        let key = DataKey::from_bytes(test_bytes(0xAB));
         let text = format!("{key:?} {key:#?}");
         assert_eq!(text, "DataKey(<redacted>) DataKey(<redacted>)");
     }

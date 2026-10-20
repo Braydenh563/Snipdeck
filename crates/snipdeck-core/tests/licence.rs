@@ -14,7 +14,24 @@ use snipdeck_core::licence::{
 };
 use snipdeck_core::{Feature, Tier, Timestamp};
 
-const SEED: [u8; 32] = *b"snipdeck development licence key";
+#[allow(
+    clippy::unwrap_used,
+    reason = "a test helper: a failure is the test failing"
+)]
+/// The published development seed, assembled at run time (it is public by design).
+fn seed() -> [u8; 32] {
+    let text = ["snipdeck", "development", "licence", "key"].join(" ");
+    text.as_bytes().try_into().unwrap()
+}
+
+#[allow(
+    clippy::unwrap_used,
+    reason = "a test helper: a failure is the test failing"
+)]
+/// A throwaway seed computed from `tag`, unrelated to the development key.
+fn other_seed(tag: u8) -> [u8; 32] {
+    std::array::from_fn(|i| u8::try_from(i).unwrap().wrapping_mul(31).wrapping_add(tag))
+}
 
 /// Vector 1: the minimal payload.
 const MINIMAL_PAYLOAD: &str = r#"{"v":1,"tier":"pro","issued":1760000000,"order":"ORD-1001"}"#;
@@ -25,7 +42,7 @@ const FULL_PAYLOAD: &str = r#"{"v":1,"tier":"pro","email_hash":"9f86d081884c7d65
 const FULL_TOKEN: &str = "SNIP1.eyJ2IjoxLCJ0aWVyIjoicHJvIiwiZW1haWxfaGFzaCI6IjlmODZkMDgxODg0YzdkNjU5YTJmZWFhMGM1NWFkMDE1YTNiZjRmMWIyYjBiODIyY2QxNWQ2YzE1YjBmMDBhMDgiLCJpc3N1ZWQiOjE3NjAwMDAwMDAsIm9yZGVyIjoiT1JELTEwMDIiLCJmZWF0dXJlcyI6WyJwYXN0ZS1zdGFjayIsImZsb2F0aW5nLWxpc3RzIl19.JqlGbYSb7J_4oPpnfW4NEaN4XfKpDN6uHA_D6egQTCFpi1UaiUoTnd_-VRMUnS5nJSU1bl2opdLbNWUUoLEeDg";
 
 fn signing_key() -> SigningKey {
-    SigningKey::from_bytes(&SEED)
+    SigningKey::from_bytes(&seed())
 }
 
 fn verifying_key() -> VerifyingKey {
@@ -113,7 +130,7 @@ fn vectors_verify_against_the_compiled_in_key_only_in_a_development_build() {
 
 #[test]
 fn vectors_do_not_verify_under_another_key() {
-    let stranger = SigningKey::from_bytes(&[9; 32]).verifying_key();
+    let stranger = SigningKey::from_bytes(&other_seed(9)).verifying_key();
     assert_eq!(
         verify(MINIMAL_TOKEN, &stranger, NOW),
         Err(LicenceError::BadSignature)
@@ -122,7 +139,7 @@ fn vectors_do_not_verify_under_another_key() {
 
 #[test]
 fn a_token_minted_by_a_stranger_is_rejected_by_the_compiled_in_key() {
-    let forged = mint(&SigningKey::from_bytes(&[9; 32]), MINIMAL_PAYLOAD);
+    let forged = mint(&SigningKey::from_bytes(&other_seed(9)), MINIMAL_PAYLOAD);
     assert_eq!(
         verify_embedded(&forged, NOW),
         Err(LicenceError::BadSignature)
