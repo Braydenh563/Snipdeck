@@ -57,3 +57,9 @@
 
 ## keys (branch claude/v1-wave3b-keys)
 - Alt+Up/Down in the Main list and tile grid already worked (items-scope key handler, same main_reorder_items path and toast); added the missing UI test for list, compact and tile. Double-click on Main cards: SPEC names none, left unwired, recorded in now.md Decisions.
+
+## D1 + D3 goldens (branch claude/v1-wave3b-goldens)
+- Done: all 7 snipdeck-ui golden binaries regenerated (92 changed, 9 new: help-about/troubleshoot, onboarding-*), every light golden read via contact sheets.
+- Fixed (D3): compact row "Paste" hint covered the title at large text scale in a narrow panel (item-card.slint `use-label-fits`); "No tags" in the item editor was centred, now left-aligned (editors.slint).
+- Judged fine, uncertain: empty number gutter on Main cards (DESIGN §4); controls (switch, colour swatches, `{ }`/calendar glyphs) do not grow with text scale; picker footer drops Copy/Scope/Close at 200% scale; tab bar hard-clips an overflowing tab ("Addres|" at 200%); bulk bar and status bar both say "N selected"; fixture wording "Recent" vs "Recently used" in disabled segmented demo; dark goldens not individually read (layout identical to light).
+- Next: gate, reviewer, PR into release branch, report to hub.
