@@ -157,6 +157,10 @@ export component MainWindow inherits Window {
     in property <string> board-name;
     in property <bool> board-menu-open: false;
     in property <[MenuEntry]> board-menu-entries;
+    // The board menu's "Delete board…" confirmation (O52): the host sets `board-delete-open` after that row, and
+    // nothing else opens (no board editor). `board-delete-count` is how many items go with the open board.
+    in property <bool> board-delete-open: false;
+    in property <int> board-delete-count;
     in property <[ChoiceEntry]> lists;
     in property <[ChoiceEntry]> tags;
     // Tags with a tick for those on the selected items (the host refreshes it on `item-action(tag, ...)`).
@@ -249,6 +253,9 @@ export component MainWindow inherits Window {
     callback board-menu-requested();
     callback board-menu-activated(int);
     callback board-menu-dismissed();
+    // The board delete confirmation: "Delete board", or Cancel / Esc / a click on the scrim.
+    callback board-delete-confirmed();
+    callback board-delete-dismissed();
     callback toast-undo();
     callback toast-hover-changed(hovered: bool);
     // Ctrl+Z: undo the delete the toast offers to undo.
@@ -357,7 +364,7 @@ export component MainWindow inherits Window {
     property <int> confirm-kind: 0;
     property <int> confirm-target: 0;
     property <bool> confirm-shown: false;
-    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.palette-open;
+    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.board-delete-open || root.palette-open;
 
     init => {
         Palette.dark = root.dark;
@@ -2050,6 +2057,25 @@ export component MainWindow inherits Window {
         dismissed => {
             root.palette-open = false;
             root.restore-focus();
+        }
+    }
+
+    // The board delete confirmation, the only thing "Delete board…" shows.
+    Dialog {
+        title: @tr("Delete board “{}”?", root.board-name);
+        body: @tr("Its lists and {} items move to the Trash. You can restore them for {} days.", root.board-delete-count, root.trash-days);
+        variant: DialogVariant.destructive;
+        open: root.board-delete-open;
+        dismissed => { root.board-delete-dismissed(); }
+        closed => { root.restore-focus(); }
+        Button {
+            text: @tr("Cancel");
+            clicked => { root.board-delete-dismissed(); }
+        }
+        Button {
+            variant: ButtonVariant.danger;
+            text: @tr("Delete board");
+            clicked => { root.board-delete-confirmed(); }
         }
     }
 

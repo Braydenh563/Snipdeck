@@ -211,6 +211,9 @@ pub struct View {
     pub item_menu: Option<Vec<ItemMenuEntry>>,
     /// The context menu of a list tab while it is open ([`LIST_MENU`](crate::controller::LIST_MENU)).
     pub list_menu: Option<Vec<ListMenuEntry>>,
+    /// The list menu's "Delete list…" confirmation while it asks (the Panel draws it; no
+    /// editor opens).
+    pub list_delete: Option<ListDeleteView>,
     /// "Pause hotkeys" is on (its menu row is checked).
     pub hotkeys_paused: bool,
     /// The Picker's configured hotkey as text ("Ctrl+Shift+Space"), empty while it is off: the
@@ -222,4 +225,13 @@ pub struct View {
     pub fill: Option<FillView>,
     /// The Recent inbox (clock tab), while it is on in the settings.
     pub recent: Option<crate::recent::RecentView>,
+}
+
+/// The Panel's confirmation before a list goes to the Trash.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ListDeleteView {
+    /// The list's name.
+    pub name: String,
+    /// How many items move to the Trash with it.
+    pub count: usize,
 }

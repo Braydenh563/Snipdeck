@@ -35,6 +35,8 @@ import { SearchField } from "components/text_field.slint";
 import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
 import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind, Tooltip } from "components/feedback.slint";
 import { Menu, MenuEntry } from "components/menu.slint";
+import { Dialog, DialogVariant } from "components/dialog.slint";
+import { RepaintNudge } from "components/repaint.slint";
 import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
 import { IconButton } from "components/icon-button.slint";
 import { Keycap, KeyCombo } from "components/keycap.slint";
@@ -124,6 +126,8 @@ export component PanelWindow inherits Window {
     // of the tab row. `recent-open` is the clock tab being the selected one (the panel sets it; the host is told).
     in property <bool> recent-available: false;
     in-out property <bool> recent-open: false;
+    // The host flips it to redraw the whole window (O39, see `RepaintNudge`).
+    in-out property <bool> repaint-flip: false;
     in property <bool> recent-paused: false;
     // The library is locked behind a master password: the list is empty and nothing is collected until it is unlocked.
     in property <bool> recent-locked: false;
@@ -161,6 +165,13 @@ export component PanelWindow inherits Window {
         { text: @tr("Edit list…"), icon: Icons.pencil-simple },
         { text: @tr("Delete list…"), icon: Icons.trash, destructive: true },
     ];
+    // The list menu's "Delete list…" confirmation (O52): the host sets `list-delete-open` after that row, and nothing
+    // else opens (no list editor). `list-delete-name` and `list-delete-count` fill its words.
+    in property <bool> list-delete-open: false;
+    in property <string> list-delete-name;
+    in property <int> list-delete-count;
+    // How long the Trash keeps what is deleted (the Main window says the same).
+    in property <int> trash-days: 30;
     property <length> item-menu-x: 0px;
     property <length> item-menu-y: 0px;
     // Toast: empty text hides it. The app owns its timing (Toast documents the phases).
@@ -254,6 +265,9 @@ export component PanelWindow inherits Window {
     callback list-menu-activated(int);
     callback list-menu-dismissed();
     callback list-edit-requested(int);
+    // The list delete confirmation: "Delete list", or Cancel / Esc / a click on the scrim.
+    callback list-delete-confirmed();
+    callback list-delete-dismissed();
     // Quick edit of row `index`: Ctrl+E or a double-click, F2, Delete (SPEC 5.1). A double-click has
     // already used the row once (the first click); the host decides what the second means.
     callback edit-requested(int);
@@ -290,7 +304,7 @@ export component PanelWindow inherits Window {
     out property <length> scroll-y: list.content-y;
     out property <bool> search-focused: search.has-focus;
     // The text of the tooltip on screen (empty = none), for tests and assistive checks.
-    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open ? root.tip : "";
+    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open && !root.list-delete-open ? root.tip : "";
 
     // ---- Internals ----------------------------------------------------------------------------
     property <bool> pastes: root.target-name != "";
@@ -401,7 +415,12 @@ export component PanelWindow inherits Window {
         }
     }
     changed list-menu-open => {
-        if (!root.list-menu-open) {
+        if (!root.list-menu-open && !root.list-delete-open) {
+            search.focus();
+        }
+    }
+    changed list-delete-open => {
+        if (!root.list-delete-open) {
             search.focus();
         }
     }
@@ -589,6 +608,10 @@ export component PanelWindow inherits Window {
         }
     }
 
+    // O39: flipping `repaint-flip` damages the whole window (the docked strip too), so a frame Windows threw away is
+    // drawn again whole. Transparent: nothing shows.
+    RepaintNudge { flip: root.repaint-flip; }
+
     // Reports the pointer being over the open Panel (anywhere in it, grips and menus included) without
     // taking any click: a TouchArea that is an ancestor sees pointer moves before its children do and
     // forwards them, so every control inside works as before. The edge dock collapses on its leaving.
@@ -610,9 +633,12 @@ export component PanelWindow inherits Window {
             forward-focus: search;
 
             capture-key-pressed(event) => {
-                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open) {
-                    // The menu owns the keyboard; Esc closes it.
+                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open) {
+                    // The menu (or the confirmation) owns the keyboard; Esc closes it.
                     if (event.text == Key.Escape) {
+                        if (root.list-delete-open) {
+                            root.list-delete-dismissed();
+                        }
                         root.recent-menu-open = false;
                         root.recent-save-open = false;
                         if (root.item-menu-open) {
@@ -1406,6 +1432,25 @@ export component PanelWindow inherits Window {
                 root.recent-saved(root.recent-menu-id, i);
             }
             dismissed => { root.recent-save-open = false; }
+        }
+
+        // ---- The list delete confirmation: over everything but the tooltip and the grips. The only thing "Delete
+        // list…" shows; the list and its items move to the Trash with an Undo toast.
+        Dialog {
+            open: root.list-delete-open;
+            variant: DialogVariant.destructive;
+            title: @tr("Delete list “{}”?", root.list-delete-name);
+            body: @tr("The list and its {} items move to the Trash. You can restore them for {} days.", root.list-delete-count, root.trash-days);
+            dismissed => { root.list-delete-dismissed(); }
+            Button {
+                text: @tr("Cancel");
+                clicked => { root.list-delete-dismissed(); }
+            }
+            Button {
+                variant: ButtonVariant.danger;
+                text: @tr("Delete list");
+                clicked => { root.list-delete-confirmed(); }
+            }
         }
 
         // The tooltip of whichever icon-only control is hovered or focused, centred under it and kept

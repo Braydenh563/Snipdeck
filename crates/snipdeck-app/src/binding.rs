@@ -514,6 +514,8 @@ where
         wire_effects!(on_list_menu_activated, |ctl, i| ctl
             .choose_list_menu(index(i)));
         wire!(on_list_menu_dismissed, |ctl| ctl.close_list_menu());
+        wire!(on_list_delete_confirmed, |ctl| ctl.confirm_list_delete());
+        wire!(on_list_delete_dismissed, |ctl| ctl.cancel_list_delete());
         wire_effects!(on_list_edit_requested, |ctl, i| ctl.edit_list_tab(index(i)));
         wire!(on_reveal_requested, |ctl, i, on| ctl
             .reveal_row(index(i), on));
@@ -818,6 +820,18 @@ pub(crate) fn index(i: i32) -> usize {
 
 // ---- View -> window ------------------------------------------------------------------------
 
+/// The theme's window colour (`Theme.bg-app`) for `view`: the high-contrast window colour, or
+/// the palette's in the view's light or dark.
+fn window_colour(window: &ui::PanelWindow, view: &View) -> (u8, u8, u8) {
+    if let Some(hc) = &view.high_contrast {
+        return (hc.window.r, hc.window.g, hc.window.b);
+    }
+    let palette = window.global::<ui::Palette<'_>>();
+    palette.set_dark(view.dark);
+    let colour = palette.get_bg_app();
+    (colour.red(), colour.green(), colour.blue())
+}
+
 /// Sets the window's properties from `view`, skipping what `previous` already shows.
 #[allow(
     clippy::too_many_lines,
@@ -828,6 +842,9 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
 
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
+    }
+    if differs(&|p| (p.dark, p.high_contrast) == (view.dark, view.high_contrast)) {
+        crate::native_window::set_erase_colour(window.window(), window_colour(window, view));
     }
     if differs(&|p| {
         (p.high_contrast, p.accent, p.reduced_motion)
@@ -973,6 +990,15 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         || window.get_list_menu_open() != view.list_menu.is_some()
     {
         window.set_list_menu_open(view.list_menu.is_some());
+    }
+    if differs(&|p| p.list_delete == view.list_delete)
+        || window.get_list_delete_open() != view.list_delete.is_some()
+    {
+        if let Some(ask) = &view.list_delete {
+            window.set_list_delete_name(ask.name.as_str().into());
+            window.set_list_delete_count(i32::try_from(ask.count).unwrap_or(i32::MAX));
+        }
+        window.set_list_delete_open(view.list_delete.is_some());
     }
     if differs(&|p| p.toast == view.toast) {
         if let Some(toast) = &view.toast {

@@ -397,6 +397,9 @@ msgstr "Date et heure dans le format de votre choix"
 msgid "Delete board"
 msgstr "Supprimer le tableau"
 
+msgid "Delete board “{}”?"
+msgstr ""
+
 msgid "Delete for good"
 msgstr "Supprimer définitivement"
 
@@ -756,6 +759,9 @@ msgid "Its lists and {n} item will move to Trash. You can restore them for 30 da
 msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
 msgstr[0] "Ses listes et {n} extrait seront déplacés dans la corbeille. Vous pouvez les restaurer pendant 30 jours."
 msgstr[1] "Ses listes et {n} extraits seront déplacés dans la corbeille. Vous pouvez les restaurer pendant 30 jours."
+
+msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
+msgstr ""
 
 msgid "Just now"
 msgstr "À l'instant"

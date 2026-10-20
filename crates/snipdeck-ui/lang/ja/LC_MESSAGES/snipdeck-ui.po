@@ -397,6 +397,9 @@ msgstr "任意の形式の日付と時刻"
 msgid "Delete board"
 msgstr "ボードを削除"
 
+msgid "Delete board “{}”?"
+msgstr ""
+
 msgid "Delete for good"
 msgstr "完全に削除"
 
@@ -753,6 +756,9 @@ msgstr "スニペットは{}日後に削除されます。"
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
 msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
 msgstr[0] "そのリストと{n}件のスニペットはゴミ箱に移動します。30日間復元できます。"
+
+msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
+msgstr ""
 
 msgid "Just now"
 msgstr "たった今"

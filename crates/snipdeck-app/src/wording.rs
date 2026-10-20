@@ -404,7 +404,7 @@ pub fn board_menu_text(entry: &crate::controller::BoardMenuEntry) -> String {
         BoardMenuEntry::Rename => "Rename board\u{2026}".into(),
         BoardMenuEntry::MoveUp { .. } => "Move board up".into(),
         BoardMenuEntry::MoveDown { .. } => "Move board down".into(),
-        BoardMenuEntry::Delete => "Delete board\u{2026}".into(),
+        BoardMenuEntry::Delete { .. } => "Delete board\u{2026}".into(),
     }
 }
 

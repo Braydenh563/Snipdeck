@@ -397,6 +397,9 @@ msgstr "以你选择的格式显示日期和时间"
 msgid "Delete board"
 msgstr "删除看板"
 
+msgid "Delete board “{}”?"
+msgstr ""
+
 msgid "Delete for good"
 msgstr "永久删除"
 
@@ -753,6 +756,9 @@ msgstr "片段将在 {} 天后移除。"
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
 msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
 msgstr[0] "其列表及其中的 {n} 个片段将移至回收站。你可以在 30 天内恢复它们。"
+
+msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
+msgstr ""
 
 msgid "Just now"
 msgstr "刚刚"
