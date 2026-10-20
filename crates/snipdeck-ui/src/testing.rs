@@ -88,6 +88,7 @@ pub struct Harness<C: ComponentHandle> {
     /// The component under test.
     pub component: C,
     window: Rc<MinimalSoftwareWindow>,
+    kept: RefCell<Option<SharedPixelBuffer<Rgb8Pixel>>>,
 }
 
 impl<C: ComponentHandle> Harness<C> {
@@ -114,7 +115,11 @@ impl<C: ComponentHandle> Harness<C> {
             scaled(height, scale),
         ));
         component.show().expect("showing the window");
-        Self { component, window }
+        Self {
+            component,
+            window,
+            kept: RefCell::new(None),
+        }
     }
 
     /// Moves the frozen clock forward and runs timers and animations.
@@ -149,6 +154,34 @@ impl<C: ComponentHandle> Harness<C> {
             }
         }
         frame
+    }
+
+    /// Draws the way the Windows backend does: into one buffer that is kept, repainting only what
+    /// changed since the last call. Returns the number of pixels the renderer redrew, or `None`
+    /// when nothing was dirty (the backend then presents no frame). The first call draws all.
+    ///
+    /// Use it on its own, not mixed with [`Harness::render`].
+    pub fn damaged_area(&self) -> Option<u64> {
+        let size = self.window.size();
+        let first = self.kept.borrow().is_none();
+        let mut kept = self.kept.borrow_mut();
+        let buffer = kept
+            .get_or_insert_with(|| SharedPixelBuffer::<Rgb8Pixel>::new(size.width, size.height));
+        let mut area = None;
+        self.window.draw_if_needed(|renderer| {
+            renderer.set_repaint_buffer_type(if first {
+                RepaintBufferType::NewBuffer
+            } else {
+                RepaintBufferType::ReusedBuffer
+            });
+            let region = renderer.render(buffer.make_mut_slice(), size.width as usize);
+            let (w, h) = (
+                region.bounding_box_size().width,
+                region.bounding_box_size().height,
+            );
+            area = Some(u64::from(w) * u64::from(h));
+        });
+        area
     }
 
     fn try_render(&self) -> Option<Frame> {

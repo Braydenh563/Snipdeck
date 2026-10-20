@@ -1,0 +1,12 @@
+// Forces a full repaint of the window it sits in (O39).
+//
+// Slint's software renderer repaints only what changed, and the Windows surface it draws to
+// (softbuffer, GDI `BitBlt`) copies only that damage. When Windows throws the window's pixels away
+// (Alt+Tab back, restore from minimise, display change) nothing is dirty, so no frame is presented
+// and the client area stays blank. The host flips `flip` on those events: the two colours differ,
+// so the whole window is damaged and drawn again, and both are fully transparent, so nothing
+// shows. A window root's own `background` stays an opaque theme colour.
+export component RepaintNudge inherits Rectangle {
+    in property <bool> flip: false;
+    background: root.flip ? #00ffffff : #00000000;
+}
