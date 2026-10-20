@@ -195,6 +195,8 @@ export component PanelWindow inherits Window {
     pure callback payload-row(data-transfer) -> int;
     callback row-dropped-on-tab(int, int);
     callback row-dropped(int, int);
+    // Alt+Up / Alt+Down: move the selected row by -1 or +1.
+    callback item-reorder-requested(int);
     in property <bool> rows-reorderable;
     // Drag and drop: the host reads the text of a dropped payload (empty when it has none) and saves it as an item.
     pure callback payload-text(data-transfer) -> string;
@@ -681,6 +683,12 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                     return reject;
+                }
+                if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !switcher.has-focus && !root.recent-open
+                    && (event.text == Key.UpArrow || event.text == Key.DownArrow)) {
+                    // The keyboard way to arrange rows (WCAG 2.5.7 for the drag); the host ignores it where rows cannot move.
+                    root.item-reorder-requested(event.text == Key.UpArrow ? -1 : 1);
+                    return accept;
                 }
                 if (event.modifiers.alt || event.modifiers.meta || search.composing) {
                     return reject;

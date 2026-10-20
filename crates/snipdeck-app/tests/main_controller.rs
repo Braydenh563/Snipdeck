@@ -14,8 +14,8 @@ use std::time::Duration;
 
 use snipdeck_app::{
     controller::{
-        Controller, Effect, LIST_MENU, MainAction, MainScreen, Services, TOAST_ENTER, TOAST_EXIT,
-        TOAST_HOLD, TOAST_UNDO_HOLD, TagRenameError,
+        Controller, Effect, ItemMenuEntry, LIST_MENU, MainAction, MainScreen, Services,
+        TOAST_ENTER, TOAST_EXIT, TOAST_HOLD, TOAST_UNDO_HOLD, TagRenameError,
     },
     demo,
     host::{FakeTargets, FixedClock},
@@ -1085,6 +1085,97 @@ fn alt_arrows_move_an_item_within_its_list_and_the_cursor_follows() {
         "Invoice reminder",
         "the Panel agrees"
     );
+}
+
+#[test]
+fn moving_an_item_by_the_keyboard_says_where_it_went_and_the_ends_say_nothing() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Email replies");
+    let total = ctl.main_screen().rows.len();
+    ctl.main_select(0, SelectMode::Replace);
+    ctl.main_reorder_items(-1);
+    assert!(
+        ctl.main_screen().toast.is_none(),
+        "off the top does nothing, silently"
+    );
+    ctl.main_reorder_items(1);
+    assert_eq!(
+        message(&ctl.main_screen()),
+        ToastMessage::ItemPlaced { position: 2, total }
+    );
+}
+
+fn panel_selected_title(ctl: &Ctl) -> String {
+    let view = ctl.view();
+    view.rows[view.selected].title.clone()
+}
+
+#[test]
+fn alt_arrows_in_the_panel_move_the_selected_row_and_say_where_it_went() {
+    let mut ctl = pro();
+    let before = panel_titles(&ctl);
+    let total = before.len();
+    ctl.panel_move_selected(-1);
+    assert_eq!(panel_titles(&ctl), before, "off the top does nothing");
+    assert!(ctl.main_screen().toast.is_none());
+    ctl.panel_move_selected(1);
+    let mut want = before.clone();
+    let first = want.remove(0);
+    want.insert(1, first.clone());
+    assert_eq!(panel_titles(&ctl), want);
+    assert_eq!(panel_selected_title(&ctl), first, "the selection follows");
+    assert_eq!(
+        message(&ctl.main_screen()),
+        ToastMessage::ItemPlaced { position: 2, total }
+    );
+    for _ in 0..total {
+        ctl.panel_move_selected(1);
+    }
+    let end = panel_titles(&ctl);
+    ctl.panel_move_selected(1);
+    assert_eq!(panel_titles(&ctl), end, "off the bottom does nothing");
+    assert_eq!(end.last(), Some(&first));
+}
+
+#[test]
+fn the_panels_item_menu_moves_the_row_and_disables_the_ends() {
+    let mut ctl = pro();
+    let before = panel_titles(&ctl);
+    ctl.open_item_menu(0, false);
+    let menu = ctl.view().item_menu.expect("the item menu");
+    assert!(
+        menu.contains(&ItemMenuEntry::MoveUp { enabled: false }),
+        "top row"
+    );
+    let down = menu
+        .iter()
+        .position(|e| *e == ItemMenuEntry::MoveDown { enabled: true })
+        .expect("Move down");
+    ctl.choose_item_menu(down);
+    let mut want = before.clone();
+    let first = want.remove(0);
+    want.insert(1, first);
+    assert_eq!(panel_titles(&ctl), want);
+    assert!(ctl.view().item_menu.is_none(), "the menu closes");
+
+    let last = before.len() - 1;
+    ctl.open_item_menu(last, false);
+    let menu = ctl.view().item_menu.expect("the item menu");
+    assert!(
+        menu.contains(&ItemMenuEntry::MoveDown { enabled: false }),
+        "bottom row"
+    );
+    assert!(menu.contains(&ItemMenuEntry::MoveUp { enabled: true }));
+}
+
+#[test]
+fn the_panels_move_entries_are_disabled_in_a_sorted_list_or_a_search() {
+    let mut ctl = pro();
+    ctl.set_query("a");
+    ctl.open_item_menu(0, false);
+    let menu = ctl.view().item_menu.expect("the item menu");
+    assert!(menu.contains(&ItemMenuEntry::MoveUp { enabled: false }));
+    assert!(menu.contains(&ItemMenuEntry::MoveDown { enabled: false }));
 }
 
 #[test]

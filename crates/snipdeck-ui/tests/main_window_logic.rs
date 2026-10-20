@@ -135,6 +135,7 @@ fn start() -> (MainWindow, Log) {
     hook!(on_select_all_requested, || "select-all".to_string());
     hook!(on_clear_selection_requested, || "clear".to_string());
     hook!(on_item_action, |a, i| format!("action:{a:?}:{i}"));
+    hook!(on_item_reorder_requested, |d| format!("reorder:{d}"));
     hook!(on_move_chosen, |i| format!("move:{i}"));
     hook!(on_tag_toggled, |i, on| format!("tag:{i}:{on}"));
     hook!(on_reveal_requested, |i, on| format!("reveal:{i}:{on}"));
@@ -446,6 +447,61 @@ ui_tests! {
         settle();
         drag(tile0, tile2);
         assert_eq!(take(&log), Vec::<String>::new(), "tiles stay put in a sorted list");
+    }
+
+    fn the_item_menu_offers_move_up_and_down_and_disables_them_at_the_ends() {
+        let (ui, log) = start();
+        let rows = i32::try_from(ui.get_rows().row_count()).expect("rows");
+        press_key(&ui, Key::Menu);
+        assert_eq!(find(&ui, "Move up", AccessibleRole::ListItem).accessible_enabled(), Some(false), "first row");
+        assert_eq!(find(&ui, "Move down", AccessibleRole::ListItem).accessible_enabled(), Some(true));
+        take(&log);
+        find(&ui, "Move down", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["reorder:1"]);
+        assert!(!ui.get_menu_open());
+
+        press_key(&ui, Key::End);
+        assert_eq!(ui.get_cursor(), rows - 1);
+        press_key(&ui, Key::Menu);
+        assert_eq!(find(&ui, "Move down", AccessibleRole::ListItem).accessible_enabled(), Some(false), "last row");
+        assert_eq!(find(&ui, "Move up", AccessibleRole::ListItem).accessible_enabled(), Some(true));
+        take(&log);
+        find(&ui, "Move up", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["reorder:-1"]);
+
+        ui.set_rows_reorderable(false);
+        settle();
+        press_key(&ui, Key::Menu);
+        assert_eq!(find(&ui, "Move up", AccessibleRole::ListItem).accessible_enabled(), Some(false), "sorted list");
+        assert_eq!(find(&ui, "Move down", AccessibleRole::ListItem).accessible_enabled(), Some(false));
+    }
+
+    fn a_tile_click_and_right_click_still_work_under_the_drag_layer() {
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let (ui, log) = start();
+        ui.set_view(MainView::Tile);
+        settle();
+        let tile = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .find(|e| e.accessible_label().is_some_and(|l| l.starts_with("Retry helper")))
+            .map(|e| {
+                let (p, s) = (e.absolute_position(), e.size());
+                slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0)
+            })
+            .expect("a tile");
+        take(&log);
+        press_at_centre(&ui, tile);
+        assert!(take(&log).iter().any(|l| l.starts_with("select:")), "a click picks the tile");
+
+        let w = ui.window();
+        w.dispatch_event(WindowEvent::PointerMoved { position: tile });
+        w.dispatch_event(WindowEvent::PointerPressed { position: tile, button: PointerEventButton::Right });
+        w.dispatch_event(WindowEvent::PointerReleased { position: tile, button: PointerEventButton::Right });
+        settle();
+        assert!(ui.get_menu_open(), "a right-click opens the item menu");
+        let _ = find(&ui, "Move down", AccessibleRole::ListItem);
     }
 
     fn pin_reads_unpin_for_a_pinned_item() {

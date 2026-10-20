@@ -883,6 +883,9 @@ msgstr "最常用"
 msgid "Move"
 msgstr "移动"
 
+msgid "Move down"
+msgstr "下移"
+
 msgid "Move selected item to Trash"
 msgstr ""
 
@@ -906,6 +909,12 @@ msgstr "移动到列表"
 
 msgid "Move to list…"
 msgstr "移动到列表…"
+
+msgid "Move up"
+msgstr "上移"
+
+msgid "Moved to position {} of {}"
+msgstr "已移到第 {} 位，共 {} 项"
 
 msgid "Moved {} item to the Trash"
 msgstr ""

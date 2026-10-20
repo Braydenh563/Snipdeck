@@ -837,7 +837,7 @@ where
         let Some(from) = order.iter().position(|i| *i == id) else {
             return;
         };
-        let Some((_, placement)) = reorder(&order, from, delta) else {
+        let Some((to, placement)) = reorder(&order, from, delta) else {
             return;
         };
         let done = self.store.move_item(id, list, placement);
@@ -846,6 +846,10 @@ where
         if moved {
             self.main_fresh();
             self.follow_moved_row(id);
+            self.show_toast(neutral_toast(ToastMessage::ItemPlaced {
+                position: to + 1,
+                total: order.len(),
+            }));
         }
     }
 

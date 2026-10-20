@@ -1189,16 +1189,10 @@ where
     /// A drag of Panel row `from` ended on row `onto`: the item takes that row's place. Like the
     /// Main window, only a list in manual order, with no search running, can be arranged.
     pub fn panel_drop_row(&mut self, from: usize, onto: usize) {
-        if !self.model.reorderable() {
-            return;
-        }
         let rows = self.model.rows();
         let (Some(moved), Some(target)) =
             (rows.get(from).map(|r| r.id), rows.get(onto).map(|r| r.id))
         else {
-            return;
-        };
-        let Some(list) = self.model.list().map(|l| l.id) else {
             return;
         };
         let order = self.model.manual_order();
@@ -1211,7 +1205,48 @@ where
         let Some(delta) = b.checked_signed_diff(a) else {
             return;
         };
-        let Some((_, placement)) = reorder(&order, a, delta) else {
+        self.panel_place(moved, delta, false);
+    }
+
+    /// Alt+Up / Alt+Down in the Panel: moves the selected row one place.
+    pub fn panel_move_selected(&mut self, delta: isize) {
+        if let Some(id) = self.model.selected() {
+            self.panel_move_item(id, delta);
+        }
+    }
+
+    /// Moves item `id` by `delta` places in the shown list and says where it went.
+    pub(crate) fn panel_move_item(&mut self, id: ItemId, delta: isize) {
+        self.panel_place(id, delta, true);
+    }
+
+    /// Whether item `id` can move by `delta` places in the shown list: it is in manual order,
+    /// no search runs and the place exists.
+    pub(crate) fn can_move_item(&self, id: ItemId, delta: isize) -> bool {
+        if !self.model.reorderable() {
+            return false;
+        }
+        let order = self.model.manual_order();
+        order
+            .iter()
+            .position(|i| *i == id)
+            .is_some_and(|at| reorder(&order, at, delta).is_some())
+    }
+
+    /// Moves `moved` by `delta` places, keeps it selected and, when `announce`, raises a toast
+    /// with its new place.
+    fn panel_place(&mut self, moved: ItemId, delta: isize, announce: bool) {
+        if !self.model.reorderable() {
+            return;
+        }
+        let Some(list) = self.model.list().map(|l| l.id) else {
+            return;
+        };
+        let order = self.model.manual_order();
+        let Some(a) = order.iter().position(|i| *i == moved) else {
+            return;
+        };
+        let Some((to, placement)) = reorder(&order, a, delta) else {
             return;
         };
         match self.store.move_item(moved, list, placement) {
@@ -1222,6 +1257,12 @@ where
                     return;
                 }
                 self.model.select_item(moved);
+                if announce {
+                    self.show_toast(neutral(ToastMessage::ItemPlaced {
+                        position: to + 1,
+                        total: order.len(),
+                    }));
+                }
             }
             Err(_) => self.show_toast(failed()),
         }

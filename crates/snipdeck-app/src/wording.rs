@@ -183,6 +183,9 @@ where
         ToastMessage::BoardTrashed { name } => t.invoke_board_trashed(name.into()),
         ToastMessage::Restored { count: n } => t.invoke_restored(count(*n)),
         ToastMessage::ItemsMoved { count: n, list } => t.invoke_items_moved(count(*n), list.into()),
+        ToastMessage::ItemPlaced { position, total } => {
+            t.invoke_item_placed(count(*position), count(*total))
+        }
         ToastMessage::DeletedForever { .. } => t.invoke_deleted_forever(),
         ToastMessage::TrashEmptied => t.invoke_trash_emptied(),
         ToastMessage::BoardLimit => t.invoke_board_limit(),
@@ -340,6 +343,8 @@ pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'st
         ItemMenuEntry::Edit => "Ctrl+E",
         ItemMenuEntry::Duplicate => "Ctrl+D",
         ItemMenuEntry::Trash => "Del",
+        ItemMenuEntry::MoveUp { .. } => "Alt+Up",
+        ItemMenuEntry::MoveDown { .. } => "Alt+Down",
         ItemMenuEntry::Pin { .. } | ItemMenuEntry::Stack { .. } | ItemMenuEntry::Separator => "",
     }
 }
@@ -358,7 +363,22 @@ pub const fn item_menu_text(entry: crate::controller::ItemMenuEntry) -> &'static
         ItemMenuEntry::Stack { marked: false } => "Add to paste stack",
         ItemMenuEntry::Stack { marked: true } => "Remove from paste stack",
         ItemMenuEntry::Trash => "Move to Trash",
+        ItemMenuEntry::MoveUp { .. } => "Move up",
+        ItemMenuEntry::MoveDown { .. } => "Move down",
         ItemMenuEntry::Separator => "",
+    }
+}
+
+/// The words of a row of the Panel's item menu, translated where the catalogue has them (the
+/// move rows). `window` is the Panel, through which `ToastTexts` is reached.
+#[must_use]
+pub fn item_menu_label(window: &PanelWindow, entry: crate::controller::ItemMenuEntry) -> String {
+    use crate::controller::ItemMenuEntry;
+    let t = ToastTexts::get(window);
+    match entry {
+        ItemMenuEntry::MoveUp { .. } => t.invoke_menu_move_up().into(),
+        ItemMenuEntry::MoveDown { .. } => t.invoke_menu_move_down().into(),
+        other => item_menu_text(other).to_owned(),
     }
 }
 

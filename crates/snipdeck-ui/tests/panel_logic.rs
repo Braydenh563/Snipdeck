@@ -91,6 +91,7 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_pinned_copied, |i| format!("pinned-copy:{i}"));
     hook!(on_handle_hovered, |on| format!("handle-hover:{on}"));
     hook!(on_handle_clicked, || "handle-click".to_string());
+    hook!(on_item_reorder_requested, |d| format!("item-reorder:{d}"));
     hook!(on_row_dropped, |from, onto| format!(
         "row-drop:{from}:{onto}"
     ));
@@ -597,6 +598,16 @@ ui_tests! {
         ui.set_rows_reorderable(true);
         drag(&ui);
         assert_eq!(take(&log), ["row-drop:0:2"]);
+    }
+
+    fn alt_up_and_alt_down_ask_to_move_the_selected_row_and_plain_arrows_only_select() {
+        let (ui, log) = start();
+        let _ = take(&log);
+        chord(ui.window(), &[Key::Alt], &key(Key::DownArrow));
+        chord(ui.window(), &[Key::Alt], &key(Key::UpArrow));
+        assert_eq!(take(&log), ["item-reorder:1", "item-reorder:-1"]);
+        press(ui.window(), &key(Key::DownArrow));
+        assert!(take(&log).iter().all(|l| !l.starts_with("item-reorder")));
     }
 
     fn a_list_icon_on_a_tab_does_not_change_its_name() {
