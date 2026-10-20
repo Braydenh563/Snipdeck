@@ -74,8 +74,10 @@ are right.
 
 ### Windows wizard
 
-`run-windows-tests.bat` builds the apps and walks a person through steps in `tools/windows-test/tests/*.json`
-(`s1`, `s2`, `s4` for the M0 spikes, `m2-platform`, `m3-app`), recording pass, fail or skip per step. Some
+`Test Snipdeck on Windows.bat` (repo root) builds the apps and walks a person through steps in `tools/windows-test/tests/*.json`
+(`s1`, `s2`, `s4` for the M0 spikes, `m2-platform`, `m3-app`), recording pass, fail or skip per step. The default
+is the "v1 check": the steps flagged `"v1": true`. The run ends with one results zip on the Desktop; nothing is
+committed or pushed unless chosen under Advanced options. Some
 steps can run by themselves (`tools/windows-test/auto/`); that automation has never run on Windows, and the
 list of its assumptions is at the end of the wizard README. `tools/windows-test/m2-harness` is a small
 program that drives the platform crate for the M2 steps. When you add Windows-only behaviour, add its

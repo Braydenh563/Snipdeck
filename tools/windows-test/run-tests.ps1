@@ -1,28 +1,30 @@
 <#
 .SYNOPSIS
-  Snipdeck Windows test wizard: builds the M0 spike apps, launches each with the right
-  settings, walks you through the manual test steps, and records the results.
+  Snipdeck Windows test wizard: builds the apps to check, launches each with the right settings, walks you
+  through the steps that need a person, and packs the results into one zip file on the Desktop.
 
 .DESCRIPTION
-  Test definitions live in tests\*.json (one file per spike). Adding a spike means adding a
-  JSON file; this script needs no changes. Works on Windows PowerShell 5.1 and PowerShell 7.
+  Start it by double-clicking "Test Snipdeck on Windows.bat" in the repo root. Test definitions live in
+  tests\*.json (one file per part); adding a part means adding a JSON file, this script needs no changes.
+  Pure flow logic (plans, time left, resume, result counts, file names) is in flow.ps1.
+  Works on Windows PowerShell 5.1 and PowerShell 7.
 
 .EXAMPLE
-  .\run-tests.ps1                      # interactive menus
+  .\run-tests.ps1                      # the recommended "v1 check", with a few plain questions
   .\run-tests.ps1 -Spike S1 -Mode quick
-  .\run-tests.ps1 -Auto                # run the automatable steps without asking (-NoAuto: never)
+  .\run-tests.ps1 -NoAuto              # never run steps automatically (-Auto: always, no questions)
   .\run-tests.ps1 -SelfTest            # validate the test files, no Windows needed
 #>
 [CmdletBinding()]
 param(
     [string[]]$Spike,
-    [ValidateSet('quick', 'standard', 'full')]
+    [ValidateSet('v1', 'quick', 'standard', 'full')]
     [string]$Mode,
     [switch]$SkipPrereqs,
     [switch]$SelfTest,
     [switch]$DryRun,  # developer use: fakes Windows, build and launch so the flow can be tested anywhere
-    [switch]$Auto,    # run the steps that have an "auto" field without asking first
-    [switch]$NoAuto   # never offer the automation (the manual wizard, exactly as before)
+    [switch]$Auto,    # run the steps that have an "auto" field (the default for the recommended check)
+    [switch]$NoAuto   # never run steps automatically: every step is manual
 )
 
 $ErrorActionPreference = 'Stop'
@@ -33,6 +35,8 @@ $OutRoot = Join-Path $RepoRoot 'spikes-results'
 $RunDir = Join-Path $OutRoot 'current'
 $StateFile = Join-Path $RunDir 'state.json'
 $IsWin = ($env:OS -eq 'Windows_NT') -or $DryRun
+$LogFile = Join-Path $OutRoot 'wizard-log.txt'
+. (Join-Path $Here 'flow.ps1')
 
 # ---------------------------------------------------------------- console helpers
 
@@ -72,11 +76,12 @@ function Read-Choice([string]$Prompt, [string]$Keys, [string]$EnterKey = '') {
             }
             $ch = ''
             $key = $null
+            $enterPressed = $false
             try { $key = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown') } catch { $key = $null }
             if ($key) {
                 if ([int]$key.Character -eq 3) {
                     Write-Host ''
-                    Say '  Ctrl+C is turned off here (it would close the test app). Press q to finish. To copy text, select it and press Ctrl+Shift+C.' Yellow
+                    Say-Wrapped 'Ctrl+C is turned off here (it would close the test app). To stop, press ? and then q. To copy text, select it and press Ctrl+Shift+C.' 2 Yellow
                     $showPrompt = $true
                     continue
                 }
@@ -94,12 +99,14 @@ function Read-Choice([string]$Prompt, [string]$Keys, [string]$EnterKey = '') {
                     continue
                 }
                 $ch = ([string]$key.Character).ToLower()
-                if (($ch -eq "`r" -or $ch -eq "`n") -and $EnterKey) { $ch = $EnterKey }
+                $enterPressed = ($ch -eq "`r" -or $ch -eq "`n")
+                if ($enterPressed -and $EnterKey) { $ch = $EnterKey }
             } else {
-                $line = (Read-Host).Trim().ToLower()
-                $ch = if ($line.Length -gt 0) { $line.Substring(0, 1) } elseif ($EnterKey) { $EnterKey } else { '' }
+                $line = Read-Host
+                if ($null -eq $line) { throw 'No keyboard input is available (the window was closed?).' }
+                $ch = Resolve-MenuKey $line $EnterKey $Keys
             }
-            if ($ch -and $Keys.Contains($ch)) { Write-Host $ch; return $ch }
+            if ($ch -and $Keys.Contains($ch)) { if ($key -and $enterPressed) { Write-Host '' } elseif ($key) { Write-Host $ch }; return $ch }
             Write-Host ''
             $showPrompt = $true
         }
@@ -109,7 +116,7 @@ function Read-Choice([string]$Prompt, [string]$Keys, [string]$EnterKey = '') {
 }
 
 function Ask-YesNo([string]$Question, [bool]$Default = $true) {
-    $hint = if ($Default) { '[Y/n]' } else { '[y/N]' }
+    $hint = if ($Default) { '(Y/n)' } else { '(y/N)' }
     $enter = if ($Default) { 'y' } else { 'n' }
     return ((Read-Choice "  $Question $hint " 'yn' $enter) -eq 'y')
 }
@@ -122,8 +129,28 @@ function Write-Banner([string]$Title, [string]$Sub = '') {
     Clear-Host
     Say ('=' * (Get-Width)) DarkCyan
     Say "  $Title" White
-    if ($Sub) { Say "  $Sub" DarkGray }
+    if ($Sub) { Say "  $Sub" Gray }
     Say ('=' * (Get-Width)) DarkCyan
+}
+
+# The same header on every step screen: "Step 3 of 35 - about 40 min left", a text progress bar, which part we are in.
+function Write-StepHeader([int]$Index, [int]$Total, [double]$MinutesLeft, [string]$Section, [string]$Small = '', [string]$Tag = '') {
+    Clear-Host
+    Say ('=' * (Get-Width)) DarkCyan
+    $tagText = if ($Tag) { "   [$Tag]" } else { '' }
+    Say ('  ' + (Format-StepHeader $Index $Total $MinutesLeft) + $tagText) White
+    Say ('  ' + (Format-ProgressBar ($Index - 1) $Total)) Cyan
+    Say "  $Section" Gray
+    if ($Small) { Say "  $Small" DarkGray }
+    Say ('=' * (Get-Width)) DarkCyan
+}
+
+# A small log for problems, so an error message can say where to look.
+function Write-WizardLog([string]$Text) {
+    try {
+        if (-not (Test-Path $OutRoot)) { New-Item -ItemType Directory -Path $OutRoot | Out-Null }
+        Add-Content -Path $LogFile -Value ("{0}  {1}" -f (Get-Date).ToString('s'), $Text) -Encoding UTF8
+    } catch { }
 }
 
 function Write-Utf8([string]$Path, [string]$Text) {
@@ -155,6 +182,7 @@ function Test-Definitions($Spikes) {
             if ($seen.ContainsKey($t.id)) { $problems += "$($s.id): duplicate test id '$($t.id)'" }
             $seen[$t.id] = $true
             if ($t.os -and @('any', 'win10', 'win11') -notcontains $t.os) { $problems += "$($s.id):$($t.id): bad os '$($t.os)'" }
+            if ($null -ne $t.v1 -and $t.v1 -isnot [bool]) { $problems += "$($s.id):$($t.id): 'v1' must be true or false" }
             if ($t.auto -and ($t.auto -isnot [string] -or $t.auto -notmatch '^[A-Za-z][A-Za-z0-9-]*$')) { $problems += "$($s.id):$($t.id): bad auto '$($t.auto)'" }
         }
         if (-not (Test-Path (Join-Path $RepoRoot $s.dir))) { $problems += "$($s.id): folder '$($s.dir)' not found" }
@@ -164,14 +192,7 @@ function Test-Definitions($Spikes) {
 
 function Get-Applicable($SpikeDef, [string]$OsClass, [string]$RunMode) {
     $out = @()
-    foreach ($t in $SpikeDef.tests) {
-        if ($t.os -and $t.os -ne 'any' -and $t.os -ne $OsClass) { continue }
-        $isGate = ($t.gate -eq $true) -or [bool]$t.anyGroup
-        $isOptional = ($t.optional -eq $true)
-        if ($RunMode -eq 'quick' -and -not $isGate) { continue }
-        if ($RunMode -eq 'standard' -and $isOptional) { continue }
-        $out += $t
-    }
+    foreach ($t in $SpikeDef.tests) { if (Test-StepInMode $t $RunMode $OsClass) { $out += $t } }
     return , $out
 }
 
@@ -225,13 +246,15 @@ function Get-EnvInfo {
 }
 
 function Add-CargoToPath {
+    if (-not $env:USERPROFILE) { return }
     $bin = Join-Path $env:USERPROFILE '.cargo\bin'
     if ((Test-Path $bin) -and ($env:PATH -notlike "*$bin*")) { $env:PATH = "$bin;$env:PATH" }
 }
 
 function Install-WithWinget([string]$Id, [string[]]$Extra = @()) {
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-        Say '  winget is not available on this PC. Install manually (see tools\windows-test\README.md).' Yellow
+        Say '  Windows'' app installer (winget) is not on this PC, so this cannot be installed automatically.' Yellow
+        Say-Wrapped 'Install it by hand (Rust: https://rustup.rs  |  Build Tools: https://visualstudio.microsoft.com/downloads/, choose "Desktop development with C++"), then double-click the file again.' 2 Yellow
         return $false
     }
     # Direct call: Start-Process -Wait would also wait for any helper processes the installer leaves running.
@@ -246,59 +269,71 @@ function Test-MsvcTools {
     return [bool]$path
 }
 
+function Test-HasRust {
+    Add-CargoToPath
+    return [bool](Get-Command cargo -ErrorAction SilentlyContinue)
+}
+
 function Invoke-Prereqs {
-    Write-Banner 'Step 1: prerequisites' 'Checks the tools needed to build the test apps'
+    Write-Banner 'Getting ready' 'Checking the tools needed to build Snipdeck'
     if ($DryRun) { Say '  [dry run] skipping tool checks' DarkGray; return $true }
     if (-not $IsWin) {
-        Say '  This is not Windows. The test apps are Windows-only; you can still read the tests (-SelfTest).' Yellow
+        Say-Wrapped 'This is not Windows. The test apps only run on Windows; you can still read the tests (-SelfTest).' 2 Yellow
         return $false
     }
-    Add-CargoToPath
-    $ok = $true
-
-    if (Get-Command cargo -ErrorAction SilentlyContinue) {
-        Say "  [ok] Rust: $(& rustc --version)" Green
-    } else {
-        Say '  [missing] Rust (cargo)' Yellow
-        if (Ask-YesNo 'Install Rust now with winget (Rustlang.Rustup)?') {
-            if (Install-WithWinget 'Rustlang.Rustup') {
-                Add-CargoToPath
-                Say '  Installed. If the next check fails, close this window and run the wizard again.' Yellow
-            }
-        }
-        if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) { $ok = $false }
-    }
-
-    if (Get-Command rustc -ErrorAction SilentlyContinue) {
-        $host_ = (& rustc -vV | Select-String '^host:').ToString()
-        if ($host_ -match 'msvc') {
-            Say "  [ok] Rust toolchain targets MSVC ($($host_.Trim()))" Green
-        } else {
-            Say "  [warn] Rust host is not MSVC: $($host_.Trim())" Yellow
-            if (Ask-YesNo 'Switch to the MSVC toolchain (rustup default stable-x86_64-pc-windows-msvc)?') {
-                & rustup default stable-x86_64-pc-windows-msvc
-            }
-        }
-    }
-
-    if (Test-MsvcTools) {
-        Say '  [ok] Visual Studio Build Tools (C++ workload)' Green
-    } else {
-        Say '  [missing] Visual Studio Build Tools with the C++ workload (needed to link Windows programs)' Yellow
-        Say '            This is a large download (a few GB) and shows an admin (UAC) prompt.' DarkGray
-        if (Ask-YesNo 'Install it now with winget?') {
-            $extra = @('--override', '--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended')
-            [void](Install-WithWinget 'Microsoft.VisualStudio.2022.BuildTools' $extra)
-        }
-        if (-not (Test-MsvcTools)) { Say '  Still missing. Finish the install, then run the wizard again.' Red; $ok = $false }
-    }
-
-    if (Get-Command git -ErrorAction SilentlyContinue) { Say '  [ok] git' Green } else { Say '  [info] git not found: only needed for the optional commit/push at the end' DarkGray }
     Say ''
-    if (-not $ok) {
-        Say '  Some prerequisites are missing. Fix them and run the wizard again.' Red
-        Pause-Enter
+    $hasRust = Test-HasRust
+    $hasMsvc = Test-MsvcTools
+    if ($hasRust) { Say '  [OK]      Rust is installed.' Green } else { Say '  [MISSING] Rust' Yellow }
+    if ($hasMsvc) { Say '  [OK]      Visual Studio C++ Build Tools are installed.' Green } else { Say '  [MISSING] Visual Studio C++ Build Tools' Yellow }
+    Say ''
+
+    $need = @(Get-PrereqPlan $hasRust $hasMsvc)
+    if ($need.Count -gt 0) {
+        Say '  Snipdeck is built on this PC, and that needs:' White
+        foreach ($line in (Format-PrereqLines $need)) { Say-Wrapped "- $line" 4 Gray }
+        $mins = 0; foreach ($n in $need) { $mins += $n.minutes }
+        Say ''
+        Say-Wrapped "In total this takes $(Format-Duration $mins) and only has to be done once. Nothing else on your PC is changed." 2 Gray
+        Say ''
+        if (-not (Ask-YesNo 'Install now?')) {
+            Say '  Okay. The check cannot run without them. Run this file again when you are ready.' Yellow
+            Pause-Enter
+            return $false
+        }
+        foreach ($n in $need) {
+            Say ''
+            if ($n.id -eq 'rust') {
+                Say "  Installing Rust ($($n.size), $(Format-Duration $n.minutes))..." Cyan
+                if (Install-WithWinget 'Rustlang.Rustup') { Add-CargoToPath } else { Write-WizardLog 'winget install Rustlang.Rustup failed' }
+            } else {
+                Say "  Installing the C++ Build Tools ($($n.size), $(Format-Duration $n.minutes))." Cyan
+                Say-Wrapped 'A Windows permission window will appear: choose Yes. Then wait; the window below may sit quiet for a while, that is normal.' 2 Gray
+                $extra = @('--override', '--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended')
+                if (-not (Install-WithWinget 'Microsoft.VisualStudio.2022.BuildTools' $extra)) { Write-WizardLog 'winget install BuildTools failed' }
+            }
+        }
+        Say ''
     }
+
+    $ok = $true
+    if (-not (Test-HasRust)) {
+        Say-Wrapped 'Rust is still not found. If it was just installed, close this window and double-click the file again so Windows picks it up.' 2 Red
+        $ok = $false
+    }
+    if (-not (Test-MsvcTools)) {
+        Say-Wrapped 'The C++ Build Tools are still not found. Finish their installation, then double-click the file again.' 2 Red
+        $ok = $false
+    }
+    if ($ok -and (Get-Command rustc -ErrorAction SilentlyContinue)) {
+        $hostLine = (& rustc -vV | Select-String '^host:').ToString()
+        if ($hostLine -notmatch 'msvc') {
+            Say '  Rust is set up for a different kind of Windows build than Snipdeck uses.' Yellow
+            if (Ask-YesNo 'Switch Rust to the right one now?') { & rustup default stable-x86_64-pc-windows-msvc }
+        }
+        Say "  Ready. ($(& rustc --version))" Green
+    }
+    if (-not $ok) { Pause-Enter }
     return $ok
 }
 
@@ -413,29 +448,68 @@ function Start-App($SpikeDef, $Norm) {
 
 # ---------------------------------------------------------------- build
 
-function Build-Spike($SpikeDef) {
+function Build-Spike($SpikeDef, [int]$N = 1, [int]$Of = 1) {
     $dir = Join-Path $RepoRoot $SpikeDef.dir
     if ($DryRun) { Say "  [dry run] would build $($SpikeDef.id)" DarkGray; return $true }
     while ($true) {
-        Say "  Building $($SpikeDef.id) (cargo build --release). The first build can take several minutes..." Cyan
-        # Direct call, NOT Start-Process -Wait: the MSVC linker leaves mspdbsrv.exe running, and -Wait
-        # waits for the whole process tree, so the wizard would hang after "Finished".
+        Say ''
+        Say "  Building the app, part $N of ${Of}: $(Get-FriendlyName $SpikeDef)" White
+        Say-Wrapped 'The first time takes about 5-10 minutes. Lines will scroll past, and a "still building" note appears every 30 seconds. Nothing is stuck.' 2 Gray
+        Say-Wrapped '(If the window ever stops moving for good, click into it and press Enter: Windows pauses a window while text in it is selected.)' 2 DarkGray
+        $started = Get-Date
+        $code = -1
         Push-Location $dir
-        try { & cargo build --release; $code = $LASTEXITCODE } finally { Pop-Location }
-        if ($code -eq 0) { Say '  Build OK.' Green; return $true }
-        Say "  Build FAILED (exit code $code). Scroll up for the error." Red
-        $c = Read-Choice '  [r]etry, [s]kip this spike, or [q]uit? ' 'rsq'
+        try {
+            # Not Start-Process -Wait: the MSVC linker leaves mspdbsrv.exe running and -Wait would wait for it too.
+            # Waiting on the cargo process itself, 30 s at a time, lets us print a sign of life.
+            $proc = Start-Process -FilePath 'cargo' -ArgumentList @('build', '--release') -NoNewWindow -PassThru
+            $null = $proc.Handle   # keeps the exit code readable after the process ends
+            while (-not $proc.WaitForExit(30000)) {
+                $mins = [int][Math]::Floor(((Get-Date) - $started).TotalMinutes)
+                Say "  ... still building (about $mins min so far, this is normal)" Gray
+            }
+            $code = $proc.ExitCode
+        } catch {
+            Say "  Could not start the build: $($_.Exception.Message)" Red
+            Write-WizardLog "cargo start failed: $($_.Exception.Message)"
+        } finally { Pop-Location }
+        if ($code -eq 0) { Say '  Build finished.' Green; return $true }
+        Write-WizardLog "build failed for $($SpikeDef.id), exit code $code"
+        Say "  The build did not finish (exit code $code). Scroll up to see why." Red
+        Say '  If the message mentions link.exe or Visual Studio, the C++ Build Tools are not set up yet.' Gray
+        $c = Read-Choice '  R = try again   S = skip this part   Q = stop  > ' 'rsq'
         if ($c -eq 'r') { continue }
-        if ($c -eq 'q') { throw 'Quit requested.' }
+        if ($c -eq 'q') { throw 'Stopped at your request.' }
         return $false
     }
 }
 
+# Builds every part of the run up front, so the long wait happens once and the steps never stall. Returns the ids that failed.
+function Build-AllSpikes($Spikes, $Queue, $Results) {
+    $todo = @()
+    foreach ($s in $Spikes) {
+        $open = @($Queue | Where-Object { $_.SpikeId -eq $s.id -and -not (Test-StepAnswered $Results $_.Key) })
+        if ($open.Count -gt 0) { $todo += $s }
+    }
+    $failed = @()
+    $n = 0
+    foreach ($s in $todo) {
+        $n++
+        if (-not (Build-Spike $s $n $todo.Count)) { $failed += $s.id }
+    }
+    return $failed
+}
+
 # ---------------------------------------------------------------- screenshots
 
-function Save-Screenshot([string]$Name) {
+function Save-Screenshot([string]$Name, [int]$Delay = 5, [bool]$Quiet = $false) {
     if ($DryRun) { Say '  [dry run] would take a screenshot' DarkGray; return (Join-Path $RunDir "screens\$Name-dryrun.png") }
     if (-not $IsWin) { Say '  Screenshots only work on Windows.' Yellow; return $null }
+    return (Save-ScreenshotNative $Name $Delay $Quiet)
+}
+
+# Kept apart so the dry run (and other systems) never compile the Windows-only type references.
+function Save-ScreenshotNative([string]$Name, [int]$Delay, [bool]$Quiet) {
     try {
         if (-not ([System.Management.Automation.PSTypeName]'SnipTest.Win').Type) {
             Add-Type -Namespace SnipTest -Name Win -MemberDefinition @'
@@ -451,10 +525,11 @@ function Save-Screenshot([string]$Name) {
         if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
         $file = Join-Path $dir ("{0}-{1}.png" -f $Name, (Get-Date -Format 'HHmmss'))
 
-        Say '  Minimising this window. Bring the test app to the front: capturing in 5 seconds...' Yellow
+        if ($Quiet) { Say "  Taking a screenshot in $Delay seconds. This window hides for a moment..." Yellow }
+        else { Say "  Hiding this window. Bring the test app to the front: capturing in $Delay seconds..." Yellow }
         $h = [SnipTest.Win]::GetConsoleWindow()
         [void][SnipTest.Win]::ShowWindowAsync($h, 6)
-        Start-Sleep -Seconds 5
+        Start-Sleep -Seconds $Delay
         $b = [System.Windows.Forms.SystemInformation]::VirtualScreen
         $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
         $g = [System.Drawing.Graphics]::FromImage($bmp)
@@ -463,7 +538,7 @@ function Save-Screenshot([string]$Name) {
         $g.Dispose(); $bmp.Dispose()
         [void][SnipTest.Win]::ShowWindowAsync($h, 9)
         [void][SnipTest.Win]::SetForegroundWindow($h)
-        Say "  Saved: $file" Green
+        Say "  Screenshot saved: $file" Green
         return $file
     } catch {
         Say "  Screenshot failed: $($_.Exception.Message)" Red
@@ -473,10 +548,10 @@ function Save-Screenshot([string]$Name) {
 
 # ---------------------------------------------------------------- state + report
 
-function New-State([string]$RunMode, [string]$OsClass, $EnvInfo, $SpikeIds) {
+function New-State([string]$RunMode, [string]$OsClass, $EnvInfo, $SpikeIds, [bool]$AutoOn = $true) {
     return [ordered]@{
         started = (Get-Date).ToString('s'); mode = $RunMode; osClass = $OsClass; env = $EnvInfo
-        spikes = @($SpikeIds); results = [ordered]@{}; diag = [ordered]@{}
+        spikes = @($SpikeIds); auto = $AutoOn; results = [ordered]@{}; diag = [ordered]@{}
     }
 }
 
@@ -497,16 +572,18 @@ function Load-State {
     if ($raw.diag) { foreach ($p in $raw.diag.PSObject.Properties) { $diag[$p.Name] = @($p.Value) } }
     $envInfo = [ordered]@{}
     foreach ($p in $raw.env.PSObject.Properties) { $envInfo[$p.Name] = $p.Value }
+    $autoOn = $true; if ($null -ne $raw.auto) { $autoOn = [bool]$raw.auto }
     return [ordered]@{
         started = $raw.started; mode = $raw.mode; osClass = $raw.osClass; env = $envInfo
-        spikes = @($raw.spikes); results = $res; diag = $diag
+        spikes = @($raw.spikes); auto = $autoOn; results = $res; diag = $diag
     }
 }
 
 function Build-OneLine($Spikes, $State) {
     # One line, no line breaks: chat boxes often keep only the first line of a multi-line paste.
     $e = $State.env
-    $parts = @("M0 results ($($State.mode), $($State.osClass))", "$($e.os) build $($e.build)", "GPU $($e.gpu)")
+    $counts = Get-ResultCounts (Get-RunQueue $Spikes $State.spikes $State.mode $State.osClass) $State.results
+    $parts = @("Snipdeck Windows test results ($($State.mode), $($State.osClass))", "$($counts.worked) worked / $($counts.failed) failed / $($counts.skipped) skipped / $($counts.notDone) not done", "$($e.os) build $($e.build)", "GPU $($e.gpu)")
     $verdicts = @(); $others = @()
     foreach ($s in $Spikes) {
         if ($State.spikes -notcontains $s.id) { continue }
@@ -533,8 +610,10 @@ function Build-Report($Spikes, $State, [bool]$ForPaste) {
     $sb = New-Object System.Text.StringBuilder
     $anyAuto = $false
     $e = $State.env
-    [void]$sb.AppendLine('# Snipdeck M0 spikes: Windows test results')
+    $counts = Get-ResultCounts (Get-RunQueue $Spikes $State.spikes $State.mode $State.osClass) $State.results
+    [void]$sb.AppendLine('# Snipdeck: Windows test results')
     [void]$sb.AppendLine('')
+    [void]$sb.AppendLine("- Worked: $($counts.worked)  |  Failed: $($counts.failed)  |  Skipped: $($counts.skipped)  |  Not done: $($counts.notDone)")
     [void]$sb.AppendLine("- Date: $($State.started)  |  Mode: $($State.mode)  |  Steps run as: $($State.osClass)")
     [void]$sb.AppendLine("- OS: $($e.os) (build $($e.build))  |  GPU: $($e.gpu)")
     [void]$sb.AppendLine("- Monitors: $($e.monitors)  |  DPI: $($e.dpi)  |  Apps theme: $($e.appsTheme)  |  Text scale: $($e.textScale)")
@@ -574,14 +653,15 @@ function Build-Report($Spikes, $State, [bool]$ForPaste) {
             }
         }
     }
-    if ($ForPaste) { [void]$sb.AppendLine('(Passing steps without notes are omitted. Full report and screenshots: spikes-results\current\)') }
+    if ($ForPaste) { [void]$sb.AppendLine('(Passing steps without notes are omitted. The full report and screenshots are in the results zip.)') }
     return $sb.ToString()
 }
 
-# ---------------------------------------------------------------- automation (opt-in; see auto\ and README.md)
+# ---------------------------------------------------------------- automation (see auto\ and README.md)
 
 $AutoDir = Join-Path $Here 'auto'
 $script:AutoOn = $false
+$script:Queue = @()          # every step of this run, in order (see Get-RunQueue)
 
 # auto\*.ps1 (helpers, Windows primitives, per-spike steps); with -DryRun the mock primitives load last and replace the real ones.
 function Get-AutoModuleFiles([bool]$Mock) {
@@ -590,30 +670,24 @@ function Get-AutoModuleFiles([bool]$Mock) {
     return $files
 }
 
-function Test-HasAutoSteps($Spikes, $State) {
-    foreach ($s in $Spikes) {
-        if ($State.spikes -notcontains $s.id) { continue }
-        foreach ($t in (Get-Applicable $s $State.osClass $State.mode)) {
-            if (-not $t.auto) { continue }
-            $k = "$($s.id):$($t.id)"
-            if (-not ($State.results.Contains($k) -and @('pass', 'fail', 'skip') -contains $State.results[$k].status)) { return $true }
-        }
+function Test-HasAutoSteps($Queue, $Results) {
+    foreach ($item in @($Queue)) {
+        if ($item.Test.auto -and -not (Test-StepAnswered $Results $item.Key)) { return $true }
     }
     return $false
 }
 
 function Ask-AutoOptIn {
-    Write-Banner 'Optional: let the wizard do some steps for you'
     Say ''
-    Say-Wrapped 'Some steps can be performed and checked automatically: the wizard moves the mouse, types into a scratch Notepad document, switches Windows settings for a few seconds (always switched back), and reads what happened. A 5-second countdown comes first. To stop at any time: hold Esc, or move the mouse. Anything it cannot judge falls back to the normal manual screen. S1 step 5 needs you to accept a UAC prompt.' 2
+    Say-Wrapped 'Some steps can be done and checked for you: the wizard moves the mouse, types into a scratch Notepad document, switches a Windows setting for a few seconds (always switched back) and reads what happened. A 5-second countdown comes first. To stop at any time: hold Esc, or move the mouse. Anything it cannot judge falls back to a normal step for you.' 2
     Say ''
-    return (Ask-YesNo "Let me run the automatable steps for you? Your mouse and keyboard will move; don't touch them." $false)
+    return (Ask-YesNo 'Let the wizard do those steps for you? Your mouse and keyboard will move.' $true)
 }
 
 function Start-Automation {
     $init = Initialize-AutoPrimitives $OutRoot
     if (-not $init.Ok) {
-        Say "  Automation is not available: $($init.Reason). Continuing with the manual steps." Yellow
+        Say "  Automatic steps are not available here ($($init.Reason)). You will do every step yourself." Yellow
         Pause-Enter
         return $false
     }
@@ -629,10 +703,13 @@ function New-AutoCtx($SpikeDef, $T) {
 }
 
 # Runs the step's automation, asks the owner's one-key confirmation if it has one, and shows the outcome.
-function Invoke-EngineAuto($SpikeDef, $T, [int]$Index, [int]$Total) {
-    Write-Banner "$($SpikeDef.id): $($SpikeDef.title)" "Step $Index of $Total  [automated]"
+function Invoke-EngineAuto([int]$QIndex) {
+    $item = $script:Queue[$QIndex]; $SpikeDef = $item.Spike; $T = $item.Test
+    Write-QueueHeader $QIndex 'automatic'
     Say ''
-    Say "  $($T.id)  $($T.title)" White
+    Say "  $($T.title)" White
+    Say ''
+    Say '  The wizard is doing this step for you. Hands off the mouse and keyboard; to stop, hold Esc.' Gray
     Say ''
     $timeout = 60
     if ($T.autoTimeout) { $timeout = [int]$T.autoTimeout }
@@ -645,20 +722,21 @@ function Invoke-EngineAuto($SpikeDef, $T, [int]$Index, [int]$Total) {
     }
     if ($script:AutoState.Aborted) {
         $script:AutoOn = $false
-        Say '  Automation stopped. Every remaining step is manual.' Yellow
+        Say '  Automatic steps stopped. You will do every remaining step yourself.' Yellow
     }
     if (-not $script:AutoState.FocusReturned) { Say '  Click this window to continue.' Yellow }
     Say ''
     if ($ar.status -eq 'pass' -and $ar.manualCheck) {
-        Say '  The automated checks passed. One thing only you can judge:' Cyan
+        Say '  The automatic checks passed. One thing only you can judge:' Cyan
         Say-Wrapped $ar.manualCheck 4 Gray
         if (Ask-YesNo 'Is that right?' $true) { $ar.evidence = "$($ar.evidence); you confirmed: $($ar.manualCheck)" }
         else { $ar.status = 'unsure'; $ar.evidence = "$($ar.evidence); you said NO to: $($ar.manualCheck)" }
     }
+    $label = @{ pass = 'PASSED (it worked)'; fail = 'FAILED (it did not work)'; unsure = 'NOT SURE (you decide on the next screen)' }[$ar.status]
     $color = @{ pass = 'Green'; fail = 'Red'; unsure = 'Yellow' }[$ar.status]
-    Say "  Automation result: $($ar.status.ToUpper())" $color
+    Say "  Automatic result: $label" $color
     Say-Wrapped $ar.evidence 4 DarkGray
-    if ($ar.status -eq 'fail') { Pause-Enter '  Recorded as FAIL. Press Enter to continue (press b on the next screen to come back and override it)...' }
+    if ($ar.status -eq 'fail') { Pause-Enter '  Saved as "did not work". Press Enter to continue (on the next screen, ? then b brings you back to change it)...' }
     elseif ($ar.status -eq 'pass' -and -not $DryRun) { Start-Sleep -Milliseconds 1500 }
     return $ar
 }
@@ -675,103 +753,170 @@ function Save-AutoResult([string]$Key, $Ar, $Existing) {
 
 # ---------------------------------------------------------------- one test screen
 
-function Show-Test($SpikeDef, $T, [int]$Index, [int]$Total, $Existing, $AutoInfo = $null) {
-    $gate = if ($T.gate -eq $true -or $T.anyGroup) { '  [GO/NO-GO STEP]' } else { '' }
-    Write-Banner "$($SpikeDef.id): $($SpikeDef.title)" "Step $Index of $Total$gate"
-    Say ''
-    Say "  $($T.id)  $($T.title)" White
-    Say ''
-    Say '  What to do:' Cyan
-    Say-Wrapped $T.do 4 Gray
-    Say ''
-    Say '  What you should see:' Cyan
-    Say-Wrapped $T.expect 4 Gray
-    Say ''
-    if ($T.clipboard) { Say "  Clipboard: '$($T.clipboard)' is already on your clipboard (press k to put it back)." Green }
-    if (Test-AppRunning) { Say "  App: running (PID $($script:App.proc.Id)), $($script:App.label)" DarkGreen }
-    else { Say '  App: NOT running (press r to launch it)' Yellow }
-    if ($Existing) { Say "  Previous answer for this step: $($Existing.status)  $($Existing.note)" DarkYellow }
-    if ($AutoInfo) {
-        Say "  The automation could not decide this step ($($AutoInfo.status)). What it saw:" Yellow
-        Say-Wrapped $AutoInfo.evidence 4 DarkYellow
-    }
-    Say ''
-    Say '  [p] pass   [f] fail   [s] skip   [n] add note   [c] screenshot   [l] app log   [r] relaunch   [k] re-copy clipboard text   [b] back   [q] finish now' DarkGray
-    if ($script:AutoOn -and $T.auto) { Say '  [a] run the automation for this step again' DarkGray }
-    Say '  Tip: Ctrl+C is turned off here (it would close the wizard). Copying from this window: select text, then right-click or Ctrl+Shift+C. Pasted text is ignored.' DarkGray
+# Same header everywhere: step N of M, time left, progress bar, which part we are in (the technical id stays small and grey).
+function Write-QueueHeader([int]$QIndex, [string]$Tag = '') {
+    $item = $script:Queue[$QIndex]
+    $left = Get-MinutesLeft $script:Queue $script:State.results $QIndex $script:AutoOn
+    $small = "($($item.SpikeId) step $($item.Test.id))"
+    Write-StepHeader ($QIndex + 1) @($script:Queue).Count $left (Get-FriendlyName $item.Spike) $small $Tag
 }
 
-function Run-Spike($SpikeDef, $Tests, $State) {
-    Write-Banner "$($SpikeDef.id): $($SpikeDef.title)" "Notes: $($SpikeDef.note)"
+# Wrapped text with a hanging indent: "  1. first line" then continuation lines under the text.
+function Say-Hanging([string]$Prefix, [string]$Text, [string]$Color = 'Gray') {
+    $width = (Get-Width) - $Prefix.Length
+    $pad = ' ' * $Prefix.Length
+    $line = ''; $first = $true
+    foreach ($word in ($Text -split ' ')) {
+        if (($line.Length + $word.Length + 1) -gt $width -and $line.Length -gt 0) {
+            $lead = $pad; if ($first) { $lead = $Prefix }
+            Say ($lead + $line) $Color
+            $first = $false; $line = $word
+        } else {
+            $line = if ($line.Length -eq 0) { $word } else { "$line $word" }
+        }
+    }
+    $lead = $pad; if ($first) { $lead = $Prefix }
+    Say ($lead + $line) $Color
+}
+
+function Show-Test([int]$QIndex, $Existing, $AutoInfo = $null, [bool]$More = $false) {
+    $item = $script:Queue[$QIndex]; $T = $item.Test
+    $isKey = ($T.gate -eq $true -or $T.anyGroup)
+    $tag = ''; if ($isKey) { $tag = 'key step' }
+    Write-QueueHeader $QIndex $tag
+    Say ''
+    Say "  $($T.title)" White
+    Say ''
+    Say '  DO THIS:' Cyan
+    $n = 0
+    foreach ($action in (Split-Actions $T.do)) { $n++; Say-Hanging ("    {0}. " -f $n) $action Gray }
+    Say ''
+    Say '  YOU SHOULD SEE:' Cyan
+    Say-Wrapped $T.expect 4 Gray
+    Say ''
+    if ($T.clipboard) { Say "  Your clipboard already holds the word '$($T.clipboard)' for this step." Green }
+    if (Test-AppRunning) { Say "  The test app is open. ($($script:App.label), PID $($script:App.proc.Id))" DarkGray }
+    else { Say '  The test app is not open. Press ? and then r to start it.' Yellow }
+    if ($Existing) { Say "  Your earlier answer: $($Existing.status)  $($Existing.note)" Yellow }
+    if ($AutoInfo) {
+        Say "  The automatic check could not decide this one ($($AutoInfo.status)). What it saw:" Yellow
+        Say-Wrapped $AutoInfo.evidence 4 Gray
+    }
+    Say ''
+    Say '  P = it worked      F = it didn''t      S = skip      ? = more options' White
+    if ($More) {
+        Say '    N = add a note              C = take a screenshot' Gray
+        Say '    L = show what the app printed   R = restart the app' Gray
+        Say '    B = go back one step        Q = stop here (continue later)' Gray
+        if ($T.clipboard) { Say '    K = put the clipboard text back' Gray }
+        if ($script:AutoOn -and $T.auto) { Say '    A = let the wizard try this step again' Gray }
+        Say-Wrapped 'Ctrl+C is turned off here. To copy text from this window: select it, then right-click.' 4 DarkGray
+    }
+}
+
+# Shows one part's setup checklist the first time we reach it. Returns $false when the person skips the part.
+function Show-PartIntro($SpikeDef, [int]$PartNo, [int]$PartCount, [int]$StepCount) {
+    Write-Banner "Part $PartNo of ${PartCount}: $(Get-FriendlyName $SpikeDef)" "$StepCount steps to do in this part"
+    Say "  ($($SpikeDef.id))" DarkGray
     Say ''
     Say '  Before you start:' Cyan
-    foreach ($line in $SpikeDef.setup) { Say-Wrapped "- $line" 4 Gray }
+    foreach ($line in $SpikeDef.setup) { Say-Hanging '    - ' $line Gray }
     Say ''
-    if (-not (Ask-YesNo "Run $($SpikeDef.id) now? ($($Tests.Count) steps)" $true)) { return 'skipped' }
-    if (-not (Build-Spike $SpikeDef)) { return 'skipped' }
+    $c = Read-Choice '  Press Enter to start this part, or S to skip all of it > ' 'gs' 'g'
+    return ($c -eq 'g')
+}
 
-    $i = 0
-    $pendingNote = ''
+function Set-StepResult([string]$Key, [string]$Status, [string]$Note, $Shots) {
+    $script:State.results[$Key] = @{ status = $Status; note = $Note; shots = @($Shots | Where-Object { $_ }); at = (Get-Date).ToString('s') }
+    Save-State
+}
+
+function Run-Queue($FailedBuilds) {
+    $State = $script:State
+    $q = $script:Queue
+    $total = @($q).Count
+    $partIds = @($q | ForEach-Object { $_.SpikeId } | Select-Object -Unique)
+    $introDone = @{}
     $autoTried = @{}
-    if ($script:Resumed) {
-        # Skip steps already answered in the previous session (press b to revisit one).
-        while ($i -lt $Tests.Count) {
-            $k0 = "$($SpikeDef.id):$($Tests[$i].id)"
-            if ($State.results.Contains($k0) -and @('pass', 'fail', 'skip') -contains $State.results[$k0].status) { $i++ } else { break }
-        }
-        if ($i -gt 0) { Say "  Resuming: $i step(s) already answered." Green; Start-Sleep -Milliseconds 900 }
-    }
-    while ($i -lt $Tests.Count) {
-        $t = $Tests[$i]
-        $key = "$($SpikeDef.id):$($t.id)"
+    $pendingNote = ''
+    $i = Get-FirstOpenIndex $q $State.results
+    if ($i -gt 0) { Say "  Continuing at step $($i + 1) of $total." Green; Start-Sleep -Milliseconds 900 }
+
+    while ($i -lt $total) {
+        $item = $q[$i]; $spike = $item.Spike; $t = $item.Test; $key = $item.Key
         $existing = if ($State.results.Contains($key)) { $State.results[$key] } else { $null }
+
+        # First time in a part: a build that failed skips the part; otherwise show its checklist.
+        if (-not $introDone.ContainsKey($spike.id)) {
+            $introDone[$spike.id] = $true
+            Stop-App
+            $open = @($q | Where-Object { $_.SpikeId -eq $spike.id -and -not (Test-StepAnswered $State.results $_.Key) })
+            $skipWhy = ''
+            if (@($FailedBuilds) -contains $spike.id) { $skipWhy = 'skipped: the app could not be built' }
+            elseif (-not (Show-PartIntro $spike ([array]::IndexOf($partIds, $spike.id) + 1) $partIds.Count $open.Count)) { $skipWhy = 'skipped: the whole part was skipped' }
+            if ($skipWhy) {
+                foreach ($o in $open) { Set-StepResult $o.Key 'skip' $skipWhy @() }
+                $i = Get-NextOpenIndex $q $State.results $i
+                continue
+            }
+        }
 
         # Make sure the app matches this step's launch settings.
         $norm = Normalize-Launch $t.launch
         $sig = Get-Sig $norm
         $needLaunch = -not (Test-AppRunning)
+        if ($script:App -and $script:App.spike -ne $spike.id) { $needLaunch = $true }
         if ($t.launch -and ($script:App -eq $null -or $script:App.sig -ne $sig)) { $needLaunch = $true }
         if ($needLaunch) {
-            # A step without its own launch settings reuses whatever the app was last started with.
-            $useNorm = if ($t.launch -or $script:App -eq $null) { $norm } else { $script:App.norm }
-            Start-App $SpikeDef $useNorm
+            # A step without its own launch settings reuses whatever the app was last started with (same part only).
+            $useNorm = if ($t.launch -or $script:App -eq $null -or $script:App.spike -ne $spike.id) { $norm } else { $script:App.norm }
+            Start-App $spike $useNorm
         }
 
         if ($t.clipboard) { try { Set-Clipboard -Value $t.clipboard } catch { } }
         $autoInfo = $null
-        if ($script:AutoOn -and $t.auto -and -not $autoTried.ContainsKey($key) -and -not ($existing -and @('pass', 'fail', 'skip') -contains $existing.status)) {
+        if ($script:AutoOn -and $t.auto -and -not $autoTried.ContainsKey($key) -and -not (Test-StepAnswered $State.results $key)) {
             $autoTried[$key] = $true
-            $ar = Invoke-EngineAuto $SpikeDef $t ($i + 1) $Tests.Count
-            if ($ar.status -eq 'pass' -or $ar.status -eq 'fail') { Save-AutoResult $key $ar $existing; $i++; continue }
+            $ar = Invoke-EngineAuto $i
+            if ($ar.status -eq 'pass' -or $ar.status -eq 'fail') { Save-AutoResult $key $ar $existing; $i = Get-NextOpenIndex $q $State.results $i; continue }
             $autoInfo = $ar
         }
-        Show-Test $SpikeDef $t ($i + 1) $Tests.Count $existing $autoInfo
+        Show-Test $i $existing $autoInfo $false
         $advance = $false
-        $keys = 'pfsnclrbqk'
-        if ($script:AutoOn -and $t.auto) { $keys += 'a' }
+        $more = $false
         while (-not $advance) {
-            $k = Read-Choice '  > ' $keys
-            if ($k -eq 'p' -or $k -eq 'f' -or $k -eq 's') {
+            $valid = 'pfsnclrbqk?'
+            if ($script:AutoOn -and $t.auto) { $valid += 'a' }
+            $k = Read-Choice '  > ' $valid
+            if ($k -eq '?') {
+                $more = $true
+                Show-Test $i $existing $autoInfo $true
+            } elseif ($k -eq 'p' -or $k -eq 'f' -or $k -eq 's') {
                 $status = @{ p = 'pass'; f = 'fail'; s = 'skip' }[$k]
                 $note = $pendingNote; $pendingNote = ''
                 if ($autoInfo) {
                     $ev = [string]$autoInfo.evidence
                     if ($ev.Length -gt 300) { $ev = $ev.Substring(0, 300) + '...' }
-                    $note = ("[automation unsure: $ev] " + $note).Trim()
-                }
-                if ($k -eq 'f') {
-                    $typed = Read-Host '  What went wrong? (Enter to leave blank)'
-                    if ($typed) { $note = (($note + ' ' + $typed)).Trim() }
+                    $note = ("[automatic check was not sure: $ev] " + $note).Trim()
                 }
                 $shots = if ($existing) { @($existing.shots) } else { @() }
-                $State.results[$key] = @{ status = $status; note = $note; shots = $shots; at = (Get-Date).ToString('s') }
-                Save-State
-                $i++; $advance = $true
+                if ($k -eq 'f') {
+                    Write-Host ''
+                    $typed = Read-Host '  What happened? (one line, Enter to skip)'
+                    if ($typed) { $note = (($note + ' ' + $typed)).Trim() }
+                    if (Ask-YesNo 'Take a screenshot of the app now? (this window hides for a moment)' $true) {
+                        $shot = Save-Screenshot ("{0}-{1}" -f $spike.id, $t.id) 3 $true
+                        if ($shot) { $shots = @($shots) + $shot }
+                    }
+                }
+                Set-StepResult $key $status $note $shots
+                $i = Get-NextOpenIndex $q $State.results $i
+                $advance = $true
             } elseif ($k -eq 'n') {
                 $typed = Read-Host '  Note'
                 if ($typed) { $pendingNote = (($pendingNote + ' ' + $typed)).Trim() }
             } elseif ($k -eq 'c') {
-                $shot = Save-Screenshot ("{0}-{1}" -f $SpikeDef.id, $t.id)
+                $shot = Save-Screenshot ("{0}-{1}" -f $spike.id, $t.id)
                 if ($shot) {
                     $r = if ($State.results.Contains($key)) { $State.results[$key] } else { @{ status = 'none'; note = ''; shots = @(); at = '' } }
                     $r.shots = @($r.shots) + $shot
@@ -780,30 +925,29 @@ function Run-Spike($SpikeDef, $Tests, $State) {
                 }
             } elseif ($k -eq 'l') {
                 if ($script:App) {
-                    Say '  --- app output (last lines) ---' DarkGray
+                    Say '  --- what the app printed (last lines) ---' DarkGray
                     foreach ($l in ((Read-LogTail $script:App.logOut 12) + (Read-LogTail $script:App.logErr 12))) { Say "    $l" DarkGray }
-                    Say '  -------------------------------' DarkGray
-                } else { Say '  No app running.' Yellow }
+                    Say '  -----------------------------------------' DarkGray
+                } else { Say '  The app is not open.' Yellow }
             } elseif ($k -eq 'r') {
-                $useNorm = if ($t.launch -or $script:App -eq $null) { $norm } else { $script:App.norm }
-                Start-App $SpikeDef $useNorm
-                Say "  Relaunched ($(Describe-Launch $useNorm))." Green
+                $useNorm = if ($t.launch -or $script:App -eq $null -or $script:App.spike -ne $spike.id) { $norm } else { $script:App.norm }
+                Start-App $spike $useNorm
+                Say '  The app was restarted.' Green
             } elseif ($k -eq 'k') {
                 if ($t.clipboard) {
                     try { Set-Clipboard -Value $t.clipboard; Say "  '$($t.clipboard)' is on your clipboard." Green } catch { Say '  Could not set the clipboard.' Yellow }
                 } else { Say '  This step has no clipboard text.' Yellow }
             } elseif ($k -eq 'a') {
-                $ar = Invoke-EngineAuto $SpikeDef $t ($i + 1) $Tests.Count
-                if ($ar.status -eq 'pass' -or $ar.status -eq 'fail') { Save-AutoResult $key $ar $existing; $i++; $advance = $true }
+                $ar = Invoke-EngineAuto $i
+                if ($ar.status -eq 'pass' -or $ar.status -eq 'fail') { Save-AutoResult $key $ar $existing; $i = Get-NextOpenIndex $q $State.results $i; $advance = $true }
                 else {
                     $autoInfo = $ar
-                    if (-not $script:AutoOn) { $keys = 'pfsnclrbqk' }
-                    Show-Test $SpikeDef $t ($i + 1) $Tests.Count $existing $autoInfo
+                    Show-Test $i $existing $autoInfo $more
                 }
             } elseif ($k -eq 'b') {
                 if ($i -gt 0) { $i-- }; $advance = $true
             } elseif ($k -eq 'q') {
-                return 'quit'
+                if (Ask-YesNo 'Stop here? You can continue later by running the file again.' $true) { return 'quit' }
             }
         }
     }
@@ -812,14 +956,37 @@ function Run-Spike($SpikeDef, $Tests, $State) {
 
 # ---------------------------------------------------------------- finish
 
-function Finish-Run($Spikes, $State) {
-    Write-Banner 'Results' 'Saved in spikes-results\current\'
+# Makes the zip on the Desktop (or in spikes-results for a dry run / when there is no Desktop). Returns the path or $null.
+function New-ResultsZip {
+    $destDir = $OutRoot
+    if (-not $DryRun) {
+        try { $desk = [Environment]::GetFolderPath('Desktop'); if ($desk -and (Test-Path $desk)) { $destDir = $desk } } catch { }
+    }
+    $existing = @(Get-ChildItem -Path $destDir -Filter 'Snipdeck-test-results-*.zip' -ErrorAction SilentlyContinue | ForEach-Object { $_.Name })
+    $zip = Join-Path $destDir (Get-ResultsZipName (Get-Date) $existing)
+    try {
+        Compress-Archive -Path (Join-Path $RunDir '*') -DestinationPath $zip -Force
+        return $zip
+    } catch {
+        Write-WizardLog "zip failed: $($_.Exception.Message)"
+        Say "  Could not make the zip file ($($_.Exception.Message))." Red
+        Say "  Everything is in $RunDir : zip that folder yourself and send it." Yellow
+        return $null
+    }
+}
+
+function Finish-Run($Spikes, $State, [bool]$Push, [bool]$Stopped = $false) {
+    $queue = $script:Queue
+    $counts = Get-ResultCounts $queue $State.results
+    if ($Stopped) { Write-Banner 'Stopped for now' 'Here is how far you got' } else { Write-Banner 'All done' 'Here is how it went' }
+    Say ''
+    Say ("  Worked: {0}     Didn't work: {1}     Skipped: {2}     Not done: {3}" -f $counts.worked, $counts.failed, $counts.skipped, $counts.notDone) White
     Say ''
     foreach ($s in $Spikes) {
         if ($State.spikes -notcontains $s.id) { continue }
         $tests = Get-Applicable $s $State.osClass $State.mode
         $v = Get-Verdict $s $tests $State.results
-        Say ("  {0}  {1,-14} {2}" -f $s.id, $v.label, $v.detail) $v.color
+        Say ("  {0,-58} {1}" -f (Get-FriendlyName $s), (Get-PlainVerdict $v.label)) $v.color
     }
     Say ''
     $full = Build-Report $Spikes $State $false
@@ -827,25 +994,25 @@ function Finish-Run($Spikes, $State) {
     Write-Utf8 (Join-Path $RunDir 'results.md') $full
     Write-Utf8 (Join-Path $RunDir 'paste-back.md') $paste
     Save-State
-
     $oneLine = Build-OneLine $Spikes $State
     Write-Utf8 (Join-Path $RunDir 'paste-back-oneline.txt') $oneLine
-    try { Set-Clipboard -Value $oneLine; Say '  A one-line summary is on your clipboard: paste it into the chat with Claude (or answer y below and Claude reads the results from GitHub).' Green }
-    catch { Say "  Summary saved in $RunDir\paste-back-oneline.txt (open it and copy it)." Yellow }
-    Say "  Full report: $RunDir\results.md" Gray
-    if ($script:AutoState -and $script:AutoState.Notepad) { Say '  The scratch Notepad document (snipdeck-auto-*.txt) can be closed without saving.' Gray }
 
-    if ((Test-Path (Join-Path $RunDir 'screens')) -and (Ask-YesNo 'Zip the screenshots and results into one file?' $true)) {
-        $zip = Join-Path $OutRoot ("snipdeck-m0-results-{0}.zip" -f (Get-Date -Format 'yyyyMMdd-HHmm'))
-        Compress-Archive -Path (Join-Path $RunDir '*') -DestinationPath $zip -Force
-        Say "  Created $zip" Green
+    if ($script:AutoState -and $script:AutoState.Notepad) { Say-Wrapped 'The scratch Notepad document (snipdeck-auto-*.txt) can be closed without saving.' 2 Gray }
+    $zip = New-ResultsZip
+    $copied = $false
+    try { Set-Clipboard -Value $oneLine; $copied = $true } catch { }
+    if ($zip) {
+        Say "  Your results file: $zip" Green
+        if (-not $DryRun) { try { Start-Process -FilePath 'explorer.exe' -ArgumentList "/select,`"$zip`"" } catch { } }
     }
-    if (-not $DryRun -and (Ask-YesNo 'Open the results folder?' $true)) { Invoke-Item $RunDir }
+    if ($copied) { Say '  A short summary is on your clipboard.' Green }
+    Say ''
+    Say '  Drag this file into the Claude chat (or paste the summary).' White
 
-    # A dry run must never touch the repository (its results are fake).
-    if (-not $DryRun -and (Get-Command git -ErrorAction SilentlyContinue) -and (Test-Path (Join-Path $RepoRoot '.git'))) {
+    # Sending results to GitHub is only offered when chosen under Advanced options. A dry run never touches the repository.
+    if ($Push -and -not $DryRun -and (Get-Command git -ErrorAction SilentlyContinue) -and (Test-Path (Join-Path $RepoRoot '.git'))) {
         $branch = (& git -C $RepoRoot rev-parse --abbrev-ref HEAD)
-        if (Ask-YesNo "Push the results to GitHub on branch '$branch' so Claude can read them (no pasting needed; text only, no screenshots)?" $true) {
+        if (Ask-YesNo "Send the results text to GitHub on branch '$branch' now?" $false) {
             $dest = Join-Path $RepoRoot 'docs\spikes\results'
             if (-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest | Out-Null }
             $name = "windows-{0}.md" -f (Get-Date -Format 'yyyyMMdd-HHmm')
@@ -856,7 +1023,7 @@ function Finish-Run($Spikes, $State) {
         }
     }
     Say ''
-    Say '  Done. Thank you!' White
+    Say '  Thank you!' White
 }
 
 # ---------------------------------------------------------------- self test (no Windows needed)
@@ -866,7 +1033,7 @@ if ($SelfTest) {
     $problems = Test-Definitions $spikes
     Say "Loaded $(@($spikes).Count) spike file(s)." Gray
     foreach ($s in $spikes) {
-        foreach ($m in 'quick', 'standard', 'full') {
+        foreach ($m in 'v1', 'quick', 'standard', 'full') {
             foreach ($os in 'win10', 'win11') {
                 $n = (Get-Applicable $s $os $m).Count
                 Say ("  {0} {1,-8} {2,-5} -> {3,2} steps" -f $s.id, $m, $os, $n) DarkGray
@@ -910,6 +1077,9 @@ if ($SelfTest) {
             if (-not (Get-Command $t.auto -CommandType Function -ErrorAction SilentlyContinue)) { $problems += "$($s.id):$($t.id): no automation function '$($t.auto)'" }
         }
     }
+    $flowProblems = @(Invoke-FlowSelfTest $spikes)
+    Say "Wizard flow (plans, time left, resume, counts, file names): $(if ($flowProblems.Count) { "$($flowProblems.Count) problem(s)" } else { 'OK' })." Gray
+    $problems += $flowProblems
     $autoProblems = @(Invoke-AutoSelfTest)
     Say "Automation: $autoSteps step(s) have an 'auto' field; unit and mock end-to-end tests: $(if ($autoProblems.Count) { "$($autoProblems.Count) problem(s)" } else { 'OK' })." Gray
     $problems += $autoProblems
@@ -929,16 +1099,60 @@ if ($SelfTest) {
 # ---------------------------------------------------------------- main
 
 $script:State = $null
-$script:Resumed = $false
 $script:CtrlCWas = $null
-try { $script:CtrlCWas = [Console]::TreatControlCAsInput; [Console]::TreatControlCAsInput = $true } catch { }
-try {
-    Write-Banner 'Snipdeck: Windows test wizard' 'Builds the M0 spike apps and walks you through the manual tests'
+
+# The questions behind "Advanced options". Changes and returns the plan (see New-Plan in flow.ps1).
+function Read-AdvancedPlan($Spikes, $Plan) {
+    Write-Banner 'Advanced options' 'Most people should go back and just press Enter for the recommended check'
+    $Plan.advanced = $true
     Say ''
-    Say-Wrapped 'You will answer p (pass), f (fail) or s (skip) for each step. Nothing is sent anywhere: results are saved on this PC. At the end a short summary is copied to your clipboard so you can paste it to Claude.' 2
+    Say '  How thorough?' White
+    Say '    V  The v1 check (recommended): only what is needed to ship v1' Gray
+    Say '    Q  Quick: just the key steps of the parts you pick' Gray
+    Say '    S  Standard: every step except the optional ones' Gray
+    Say '    F  Full: everything' Gray
+    $c = Read-Choice '  > ' 'vqsf' 'v'
+    $Plan.mode = @{ v = 'v1'; q = 'quick'; s = 'standard'; f = 'full' }[$c]
+    if ($Plan.mode -ne 'v1') {
+        Say ''
+        Say '  Which parts do you want to check?' White
+        $ids = @()
+        foreach ($s in $Spikes) { if (Ask-YesNo (Get-FriendlyName $s) $true) { $ids += $s.id } }
+        $Plan.spikeIds = $ids
+    }
+    if (-not $NoAuto) { $Plan.auto = Ask-AutoOptIn } else { $Plan.auto = $false }
+    if ((Get-Command git -ErrorAction SilentlyContinue) -and (Test-Path (Join-Path $RepoRoot '.git'))) {
+        Say ''
+        $Plan.push = Ask-YesNo 'At the end, also offer to send the results text to GitHub? (most people say no)' $false
+    }
+    return $Plan
+}
+
+try {
+    try { $script:CtrlCWas = [Console]::TreatControlCAsInput; [Console]::TreatControlCAsInput = $true } catch { }
+    try { $Host.UI.RawUI.WindowTitle = 'Test Snipdeck on Windows' } catch { }
+    $spikes = Load-Spikes
+    $problems = Test-Definitions $spikes
+    if ($problems.Count -gt 0) {
+        $problems | ForEach-Object { Say "  PROBLEM: $_" Red; Write-WizardLog "definition problem: $_" }
+        Say '  The test files are damaged. Download Snipdeck again, or ask Claude.' Red
+        exit 1
+    }
+
+    # ---- welcome
+    $plan = New-Plan
+    $demoIds = @(Get-PlanSpikeIds $spikes 'v1' @())
+    $demoQueue = @(Get-RunQueue $spikes $demoIds 'v1' 'win11')
+    $demoTime = Format-Duration (Get-MinutesLeft $demoQueue ([ordered]@{}) 0 $true)
+    Write-Banner 'Test Snipdeck on Windows'
+    Say ''
+    Say-Wrapped 'This checks that Snipdeck works on this PC. The wizard builds the app, opens it, and tells you what to try.' 2 White
+    Say-Wrapped "It takes $demoTime, plus a one-time build of 10-20 minutes the first time." 2 Gray
+    Say-Wrapped 'Some steps run by themselves: your mouse and keyboard may move. To stop, hold the Esc key.' 2 Gray
+    Say-Wrapped 'Nothing is sent anywhere. At the end you get one results file to share.' 2 Gray
     Say ''
     if (-not $IsWin) {
-        Say '  Not running on Windows: use -SelfTest to validate the test files only.' Yellow
+        Say '  This is not Windows, so the test apps cannot run here. Use -SelfTest to check the test files.' Yellow
         exit 1
     }
 
@@ -946,90 +1160,105 @@ try {
     if (-not $DryRun -and (Test-Path (Join-Path $OutRoot 'auto-restore.json'))) {
         try {
             . (Join-Path $AutoDir 'lib.ps1'); . (Join-Path $AutoDir 'primitives.ps1')
-            if (Restore-AutoRegistryFromFile $OutRoot) { Say '  Put back the Windows settings an interrupted automation run had switched (theme / transparency / text size).' Yellow }
+            if (Restore-AutoRegistryFromFile $OutRoot) { Say-Wrapped 'Put back the Windows settings an interrupted automatic step had switched (theme / transparency / text size).' 2 Yellow }
         } catch { Say "  Could not restore settings listed in $(Join-Path $OutRoot 'auto-restore.json'): $($_.Exception.Message)" Red }
     }
+    if (-not (Test-Path $OutRoot)) { New-Item -ItemType Directory -Path $OutRoot | Out-Null }
 
-    $spikes = Load-Spikes
-    $problems = Test-Definitions $spikes
-    if ($problems.Count -gt 0) { $problems | ForEach-Object { Say "  PROBLEM: $_" Red }; exit 1 }
+    # ---- an unfinished run? Continuing is the default.
+    $resumed = $false
+    if (Test-Path $StateFile) {
+        $old = $null
+        try { $old = Load-State } catch { Write-WizardLog "state.json unreadable: $($_.Exception.Message)" }
+        if ($old) {
+            $oldQueue = @(Get-RunQueue $spikes $old.spikes $old.mode $old.osClass)
+            if (Test-RunResumable $oldQueue $old.results) {
+                $p = Get-RunProgress $oldQueue $old.results
+                Say "  Last time you answered $($p.answered) of $($p.total) steps and stopped." Gray
+                if (Ask-YesNo 'Continue where you left off?' $true) { $script:State = $old; $resumed = $true }
+            }
+        }
+        if (-not $resumed) {
+            $archive = Join-Path $OutRoot ("run-{0}" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+            Move-Item $RunDir $archive
+            Say "  The earlier run was kept in $archive" DarkGray
+        }
+    }
+
+    # ---- what to run
+    if (-not $resumed) {
+        if ($Spike -or $Mode) {
+            # Command-line choices: no menu.
+            if ($Mode) { $plan.mode = $Mode } else { $plan.mode = 'quick' }
+            if ($Spike) { $plan.spikeIds = @($Spike | ForEach-Object { $_.ToUpper() }) }
+            $plan.advanced = $true
+        } else {
+            Say-Wrapped 'Press Enter to start the recommended "v1 check" (the steps needed before v1 can ship).' 2 White
+            Say-Wrapped 'Or press A for advanced options, or Q to quit.' 2 Gray
+            $c = Read-Choice '  > ' 'gaq' 'g'
+            if ($c -eq 'q') { Say '  Okay, nothing was changed.' Gray; exit 0 }
+            if ($c -eq 'a') { $plan = Read-AdvancedPlan $spikes $plan }
+        }
+        if (@($plan.spikeIds).Count -eq 0) { $plan.spikeIds = @(Get-PlanSpikeIds $spikes $plan.mode @()) }
+        else { $plan.spikeIds = @(Get-PlanSpikeIds $spikes $plan.mode $plan.spikeIds) }
+        if (@($plan.spikeIds).Count -eq 0) { Say '  Nothing selected.' Yellow; exit 0 }
+        if ($NoAuto) { $plan.auto = $false }
+    }
 
     if (-not $SkipPrereqs) { if (-not (Invoke-Prereqs)) { exit 1 } } else { Add-CargoToPath }
 
-    # Resume or start fresh.
-    if (-not (Test-Path $OutRoot)) { New-Item -ItemType Directory -Path $OutRoot | Out-Null }
-    if (Test-Path $StateFile) {
-        Write-Banner 'Previous run found' $RunDir
-        if (Ask-YesNo 'Resume the previous run (answers already given are kept)?' $true) {
-            $script:State = Load-State
-            $script:Resumed = $true
-        } else {
-            $archive = Join-Path $OutRoot ("run-{0}" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
-            Move-Item $RunDir $archive
-            Say "  Old run archived to $archive" DarkGray
-        }
-    }
+    # ---- start (or continue) the run
     if (-not (Test-Path $RunDir)) { New-Item -ItemType Directory -Path $RunDir | Out-Null }
-
     if (-not $script:State) {
         $envInfo = Get-EnvInfo
         $osClass = if ($envInfo.build -ge 22621) { 'win11' } else { 'win10' }
-        Write-Banner 'Step 2: what to test'
-        Say ''
-        Say "  This PC: $($envInfo.os), build $($envInfo.build)" Gray
-        Say "  GPU: $($envInfo.gpu)" Gray
-        Say ''
-        $label = if ($osClass -eq 'win11') { 'Windows 11 22H2+ (Mica supported)' } else { 'Windows 10 / older Windows 11 (no Mica)' }
-        Say "  The S4 steps will use the '$osClass' set: $label." Cyan
-        if (Ask-YesNo 'Use the other set instead?' $false) { $osClass = if ($osClass -eq 'win11') { 'win10' } else { 'win11' } }
-        Say ''
-
-        $ids = @()
-        if ($Spike) { $ids = @($Spike | ForEach-Object { $_.ToUpper() }) }
-        else {
-            Say '  Which prototypes? (recommended order: S1, then S2, then S4)' Cyan
-            foreach ($s in $spikes) {
-                if (Ask-YesNo "$($s.id): $($s.title)" $true) { $ids += $s.id }
-            }
-        }
-        if ($ids.Count -eq 0) { Say '  Nothing selected.' Yellow; exit 0 }
-
-        $runMode = $Mode
-        if (-not $runMode) {
+        $hasOsSteps = (@($spikes | Where-Object { $plan.spikeIds -contains $_.id } | ForEach-Object { $_.tests } | Where-Object { $_.os -and $_.os -ne 'any' }).Count -gt 0)
+        if ($plan.advanced -and $hasOsSteps) {
+            $other = if ($osClass -eq 'win11') { 'Windows 10' } else { 'Windows 11' }
             Say ''
-            Say '  How thorough?' Cyan
-            Say '    [q] quick    only the go/no-go steps (about 20 minutes)' Gray
-            Say '    [s] standard all steps except optional ones' Gray
-            Say '    [f] full     everything' Gray
-            $c = Read-Choice '  > ' 'qsf' 'q'
-            $runMode = @{ q = 'quick'; s = 'standard'; f = 'full' }[$c]
+            Say-Wrapped "Some steps depend on your Windows version. This PC looks like $(if ($osClass -eq 'win11') { 'Windows 11 (22H2 or newer)' } else { 'Windows 10 or an older Windows 11' })." 2 Gray
+            if (Ask-YesNo "Use the $other steps instead?" $false) { $osClass = if ($osClass -eq 'win11') { 'win10' } else { 'win11' } }
         }
-        $script:State = New-State $runMode $osClass $envInfo $ids
+        $script:State = New-State $plan.mode $osClass $envInfo $plan.spikeIds $plan.auto
         Save-State
     }
+    $script:Queue = @(Get-RunQueue $spikes $script:State.spikes $script:State.mode $script:State.osClass)
+    if (@($script:Queue).Count -eq 0) { Say '  There are no steps for this choice.' Yellow; exit 0 }
 
-    # Opt-in automation: asked once (unless -Auto / -NoAuto), only when a selected step has an "auto" field.
-    if (-not $NoAuto -and (Test-HasAutoSteps $spikes $script:State)) {
-        if ($Auto -or (Ask-AutoOptIn)) {
-            $loadError = $null
-            foreach ($f in (Get-AutoModuleFiles ([bool]$DryRun))) {
-                try { . $f } catch { $loadError = "$([IO.Path]::GetFileName($f)): $($_.Exception.Message)"; break }
-            }
-            if ($loadError) { Say "  The automation could not be loaded ($loadError). Continuing with the manual steps." Red; Pause-Enter }
-            else { $script:AutoOn = Start-Automation }
+    # ---- automatic steps (on by default for the recommended check)
+    $wantAuto = ($script:State.auto -and -not $NoAuto) -or $Auto
+    if ($wantAuto -and (Test-HasAutoSteps $script:Queue $script:State.results)) {
+        $loadError = $null
+        foreach ($f in (Get-AutoModuleFiles ([bool]$DryRun))) {
+            try { . $f } catch { $loadError = "$([IO.Path]::GetFileName($f)): $($_.Exception.Message)"; break }
         }
+        if ($loadError) { Say-Wrapped "The automatic steps could not be loaded ($loadError). You will do every step yourself." 2 Red; Pause-Enter }
+        else { $script:AutoOn = Start-Automation }
     }
 
-    $quit = $false
-    foreach ($s in $spikes) {
-        if ($quit) { break }
-        if ($script:State.spikes -notcontains $s.id) { continue }
-        $tests = Get-Applicable $s $script:State.osClass $script:State.mode
-        $outcome = Run-Spike $s $tests $script:State
-        Stop-App
-        if ($outcome -eq 'quit') { $quit = $true }
+    # ---- build everything first, then the steps
+    Write-Banner 'Building the app' 'You can leave this running and come back'
+    Say ''
+    $failedBuilds = @(Build-AllSpikes $spikes $script:Queue $script:State.results)
+    Pause-Enter '  Press Enter to start the steps...'
+    $outcome = Run-Queue $failedBuilds
+    Stop-App
+    Finish-Run $spikes $script:State $plan.push ($outcome -eq 'quit')
+    if ($outcome -eq 'quit') { Say-Wrapped 'To carry on later, double-click Test Snipdeck on Windows.bat again and press Enter at "Continue where you left off?".' 2 Yellow }
+}
+catch {
+    $msg = $_.Exception.Message
+    if ($msg -eq 'Stopped at your request.') {
+        Say ''
+        Say '  Stopped. Run the file again to continue where you left off.' Yellow
+        exit 0
     }
-    Finish-Run $spikes $script:State
+    Write-WizardLog (($_ | Out-String) + $_.ScriptStackTrace)
+    Say ''
+    Say "  $(Get-PlainError $msg)" Red
+    Say "  Technical details are saved in: $LogFile" Gray
+    Say '  If you ask Claude for help, send that file.' Gray
+    exit 1
 }
 finally {
     Stop-App
