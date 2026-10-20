@@ -52,6 +52,9 @@ msgstr "Hinzufügen"
 msgid "Add a snippet, or move items here from another list."
 msgstr "Füge einen Textbaustein hinzu oder verschiebe Textbausteine aus einer anderen Liste hierher."
 
+msgid "Add a snippet… (Enter to save)"
+msgstr "Snippet hinzufügen… (Enter zum Speichern)"
+
 msgid "Add list"
 msgstr "Liste hinzufügen"
 
@@ -307,6 +310,9 @@ msgstr "Wird in die Zwischenablage kopiert"
 msgid "Copy"
 msgstr "Kopieren"
 
+msgid "Copy all"
+msgstr "Alle kopieren"
+
 msgid "Copy diagnostic report"
 msgstr "Diagnosebericht kopieren"
 
@@ -382,6 +388,15 @@ msgstr "Dieser Textbaustein konnte nicht verwendet werden."
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "In deine Bibliothek konnte nicht geschrieben werden. Prüfe, ob auf dem Datenträger Platz ist."
 
+msgid "Create"
+msgstr "Erstellen"
+
+msgid "Create (Enter)"
+msgstr "Erstellen (Enter)"
+
+msgid "Create item"
+msgstr "Element erstellen"
+
 msgid "Current password"
 msgstr "Aktuelles Passwort"
 
@@ -394,11 +409,14 @@ msgstr "Dunkel"
 msgid "Date and time in a format you choose"
 msgstr "Datum und Uhrzeit in einem Format deiner Wahl"
 
+msgid "Delete"
+msgstr "Löschen"
+
 msgid "Delete board"
 msgstr "Board löschen"
 
 msgid "Delete board “{}”?"
-msgstr ""
+msgstr "Board „{}“ löschen?"
 
 msgid "Delete for good"
 msgstr "Endgültig löschen"
@@ -572,7 +590,7 @@ msgid "Feature"
 msgstr "Funktion"
 
 msgid "Fewer options"
-msgstr ""
+msgstr "Weniger Optionen"
 
 msgid "Fields"
 msgstr "Felder"
@@ -680,7 +698,7 @@ msgid "Hidden. Open it in the Panel to reveal."
 msgstr "Verborgen. Öffne es im Panel, um es anzuzeigen."
 
 msgid "Hide kind, title, colour, tags and privacy"
-msgstr ""
+msgstr "Art, Titel, Farbe, Tags und Datenschutz ausblenden"
 
 msgid "Hide the Panel"
 msgstr "Panel ausblenden"
@@ -767,7 +785,7 @@ msgstr[0] "Seine Listen und {n} Textbaustein werden in den Papierkorb verschoben
 msgstr[1] "Seine Listen und {n} Textbausteine werden in den Papierkorb verschoben. Du kannst sie 30 Tage lang wiederherstellen."
 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
-msgstr ""
+msgstr "Seine Listen und {} Elemente kommen in den Papierkorb. Du kannst sie {} Tage lang wiederherstellen."
 
 msgid "Just now"
 msgstr "Gerade eben"
@@ -896,7 +914,7 @@ msgid "More"
 msgstr "Mehr"
 
 msgid "More options"
-msgstr ""
+msgstr "Weitere Optionen"
 
 msgid "Most used"
 msgstr "Am häufigsten verwendet"
@@ -931,6 +949,9 @@ msgstr "In Liste verschieben"
 msgid "Move to list…"
 msgstr "In Liste verschieben…"
 
+msgid "Move to…"
+msgstr "Verschieben nach…"
+
 msgid "Move up"
 msgstr "Nach oben"
 
@@ -961,6 +982,9 @@ msgstr "Neues Board"
 
 msgid "New item"
 msgstr "Neuer Textbaustein"
+
+msgid "New item in {}"
+msgstr "Neues Element in {}"
 
 msgid "New list"
 msgstr "Neue Liste"
@@ -1352,6 +1376,9 @@ msgstr "Neues Passwort wiederholen"
 msgid "Required"
 msgstr "Pflichtfeld"
 
+msgid "Reset Panel size and position"
+msgstr "Größe und Position des Panels zurücksetzen"
+
 msgid "Restore"
 msgstr "Wiederherstellen"
 
@@ -1393,7 +1420,7 @@ msgid "Save"
 msgstr "Speichern"
 
 msgid "Save (Ctrl+Enter)"
-msgstr ""
+msgstr "Speichern (Strg+Enter)"
 
 msgid "Save from clipboard"
 msgstr "Aus der Zwischenablage speichern"
@@ -1458,6 +1485,9 @@ msgstr "Sekunden, bevor ein kopierter vertraulicher Textbaustein aus der Zwische
 msgid "Select every item"
 msgstr "Alle Textbausteine auswählen"
 
+msgid "Sensitive"
+msgstr "Vertraulich"
+
 msgid "Sensitive item"
 msgstr "Vertraulicher Textbaustein"
 
@@ -1510,7 +1540,7 @@ msgid "Show Snipdeck in the taskbar"
 msgstr "Snipdeck in der Taskleiste anzeigen"
 
 msgid "Show kind, title, colour, tags and privacy"
-msgstr ""
+msgstr "Art, Titel, Farbe, Tags und Datenschutz anzeigen"
 
 msgid "Show or hide the Panel"
 msgstr "Panel anzeigen oder ausblenden"
@@ -2089,6 +2119,9 @@ msgstr "Ansicht Layout Raster umschalten"
 
 msgid "view mode layout list dense switch"
 msgstr "Ansicht Layout Liste kompakt umschalten"
+
+msgid "window geometry default restore move resize cut off"
+msgstr "Fenster Geometrie Standard wiederherstellen verschieben Größe abgeschnitten"
 
 msgid "{n} item"
 msgid_plural "{n} items"

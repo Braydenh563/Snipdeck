@@ -52,6 +52,9 @@ msgstr "Adicionar"
 msgid "Add a snippet, or move items here from another list."
 msgstr "Adicione um trecho ou mova itens para cá a partir de outra lista."
 
+msgid "Add a snippet… (Enter to save)"
+msgstr "Adicionar um trecho… (Enter para salvar)"
+
 msgid "Add list"
 msgstr "Adicionar lista"
 
@@ -307,6 +310,9 @@ msgstr "Copia para a área de transferência"
 msgid "Copy"
 msgstr "Copiar"
 
+msgid "Copy all"
+msgstr "Copiar tudo"
+
 msgid "Copy diagnostic report"
 msgstr "Copiar relatório de diagnóstico"
 
@@ -382,6 +388,15 @@ msgstr "Não foi possível usar este item."
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "Não foi possível gravar na sua biblioteca. Verifique se o disco tem espaço."
 
+msgid "Create"
+msgstr "Criar"
+
+msgid "Create (Enter)"
+msgstr "Criar (Enter)"
+
+msgid "Create item"
+msgstr "Criar item"
+
 msgid "Current password"
 msgstr "Senha atual"
 
@@ -394,11 +409,14 @@ msgstr "Escuro"
 msgid "Date and time in a format you choose"
 msgstr "Data e hora no formato escolhido"
 
+msgid "Delete"
+msgstr "Excluir"
+
 msgid "Delete board"
 msgstr "Excluir quadro"
 
 msgid "Delete board “{}”?"
-msgstr ""
+msgstr "Excluir o quadro “{}”?"
 
 msgid "Delete for good"
 msgstr "Excluir definitivamente"
@@ -572,7 +590,7 @@ msgid "Feature"
 msgstr "Recurso"
 
 msgid "Fewer options"
-msgstr ""
+msgstr "Menos opções"
 
 msgid "Fields"
 msgstr "Campos"
@@ -680,7 +698,7 @@ msgid "Hidden. Open it in the Panel to reveal."
 msgstr "Oculto. Abra-o no painel para revelar."
 
 msgid "Hide kind, title, colour, tags and privacy"
-msgstr ""
+msgstr "Ocultar tipo, título, cor, tags e privacidade"
 
 msgid "Hide the Panel"
 msgstr "Ocultar o painel"
@@ -767,7 +785,7 @@ msgstr[0] "Suas listas e {n} item serão movidos para a Lixeira. Você pode rest
 msgstr[1] "Suas listas e {n} itens serão movidos para a Lixeira. Você pode restaurá-los em até 30 dias."
 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
-msgstr ""
+msgstr "Suas listas e {} itens vão para a lixeira. Você pode restaurá-los por {} dias."
 
 msgid "Just now"
 msgstr "Agora mesmo"
@@ -896,7 +914,7 @@ msgid "More"
 msgstr "Mais"
 
 msgid "More options"
-msgstr ""
+msgstr "Mais opções"
 
 msgid "Most used"
 msgstr "Mais usados"
@@ -931,6 +949,9 @@ msgstr "Mover para a lista"
 msgid "Move to list…"
 msgstr "Mover para a lista…"
 
+msgid "Move to…"
+msgstr "Mover para…"
+
 msgid "Move up"
 msgstr "Mover para cima"
 
@@ -961,6 +982,9 @@ msgstr "Novo quadro"
 
 msgid "New item"
 msgstr "Novo trecho"
+
+msgid "New item in {}"
+msgstr "Novo item em {}"
 
 msgid "New list"
 msgstr "Nova lista"
@@ -1352,6 +1376,9 @@ msgstr "Repita a nova senha"
 msgid "Required"
 msgstr "Obrigatório"
 
+msgid "Reset Panel size and position"
+msgstr "Redefinir tamanho e posição do painel"
+
 msgid "Restore"
 msgstr "Restaurar"
 
@@ -1393,7 +1420,7 @@ msgid "Save"
 msgstr "Salvar"
 
 msgid "Save (Ctrl+Enter)"
-msgstr ""
+msgstr "Salvar (Ctrl+Enter)"
 
 msgid "Save from clipboard"
 msgstr "Salvar da área de transferência"
@@ -1458,6 +1485,9 @@ msgstr "Segundos até que um item sensível copiado seja limpo da área de trans
 msgid "Select every item"
 msgstr "Selecionar todos os itens"
 
+msgid "Sensitive"
+msgstr "Sensível"
+
 msgid "Sensitive item"
 msgstr "Trecho sensível"
 
@@ -1510,7 +1540,7 @@ msgid "Show Snipdeck in the taskbar"
 msgstr "Mostrar o Snipdeck na barra de tarefas"
 
 msgid "Show kind, title, colour, tags and privacy"
-msgstr ""
+msgstr "Mostrar tipo, título, cor, tags e privacidade"
 
 msgid "Show or hide the Panel"
 msgstr "Mostrar ou ocultar o painel"
@@ -2089,6 +2119,9 @@ msgstr "modo de exibição layout grade alternar"
 
 msgid "view mode layout list dense switch"
 msgstr "modo de exibição layout lista compacta alternar"
+
+msgid "window geometry default restore move resize cut off"
+msgstr "janela geometria padrão restaurar mover tamanho cortado"
 
 msgid "{n} item"
 msgid_plural "{n} items"

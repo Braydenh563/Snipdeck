@@ -52,6 +52,9 @@ msgstr "追加"
 msgid "Add a snippet, or move items here from another list."
 msgstr "ここにスニペットを追加するか、別のリストから移動します。"
 
+msgid "Add a snippet… (Enter to save)"
+msgstr "スニペットを追加… (Enterで保存)"
+
 msgid "Add list"
 msgstr "リストを追加"
 
@@ -307,6 +310,9 @@ msgstr "クリップボードにコピーされます"
 msgid "Copy"
 msgstr "コピー"
 
+msgid "Copy all"
+msgstr "すべてコピー"
+
 msgid "Copy diagnostic report"
 msgstr "診断レポートをコピー"
 
@@ -382,6 +388,15 @@ msgstr "このスニペットを使用できませんでした。"
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "ライブラリに書き込めませんでした。ディスクに空きがあるか確認してください。"
 
+msgid "Create"
+msgstr "作成"
+
+msgid "Create (Enter)"
+msgstr "作成 (Enter)"
+
+msgid "Create item"
+msgstr "項目を作成"
+
 msgid "Current password"
 msgstr "現在のパスワード"
 
@@ -394,11 +409,14 @@ msgstr "ダーク"
 msgid "Date and time in a format you choose"
 msgstr "任意の形式の日付と時刻"
 
+msgid "Delete"
+msgstr "削除"
+
 msgid "Delete board"
 msgstr "ボードを削除"
 
 msgid "Delete board “{}”?"
-msgstr ""
+msgstr "ボード「{}」を削除しますか?"
 
 msgid "Delete for good"
 msgstr "完全に削除"
@@ -572,7 +590,7 @@ msgid "Feature"
 msgstr "機能"
 
 msgid "Fewer options"
-msgstr ""
+msgstr "オプションを減らす"
 
 msgid "Fields"
 msgstr "入力欄"
@@ -680,7 +698,7 @@ msgid "Hidden. Open it in the Panel to reveal."
 msgstr "非表示。パネルで開くと表示されます。"
 
 msgid "Hide kind, title, colour, tags and privacy"
-msgstr ""
+msgstr "種類、タイトル、色、タグ、プライバシーを隠す"
 
 msgid "Hide the Panel"
 msgstr "パネルを隠す"
@@ -764,7 +782,7 @@ msgid_plural "Its lists and {n} items will move to Trash. You can restore them f
 msgstr[0] "そのリストと{n}件のスニペットはゴミ箱に移動します。30日間復元できます。"
 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
-msgstr ""
+msgstr "このボードのリストと{}件の項目がごみ箱に移動します。{}日間は復元できます。"
 
 msgid "Just now"
 msgstr "たった今"
@@ -893,7 +911,7 @@ msgid "More"
 msgstr "その他"
 
 msgid "More options"
-msgstr ""
+msgstr "その他のオプション"
 
 msgid "Most used"
 msgstr "よく使う順"
@@ -928,6 +946,9 @@ msgstr "リストに移動"
 msgid "Move to list…"
 msgstr "リストに移動…"
 
+msgid "Move to…"
+msgstr "移動先…"
+
 msgid "Move up"
 msgstr "上へ移動"
 
@@ -956,6 +977,9 @@ msgstr "新しいボード"
 
 msgid "New item"
 msgstr "新しいスニペット"
+
+msgid "New item in {}"
+msgstr "{}に新しい項目"
 
 msgid "New list"
 msgstr "新しいリスト"
@@ -1347,6 +1371,9 @@ msgstr "新しいパスワードを再入力"
 msgid "Required"
 msgstr "必須"
 
+msgid "Reset Panel size and position"
+msgstr "パネルのサイズと位置をリセット"
+
 msgid "Restore"
 msgstr "復元"
 
@@ -1386,7 +1413,7 @@ msgid "Save"
 msgstr "保存"
 
 msgid "Save (Ctrl+Enter)"
-msgstr ""
+msgstr "保存 (Ctrl+Enter)"
 
 msgid "Save from clipboard"
 msgstr "クリップボードから保存"
@@ -1451,6 +1478,9 @@ msgstr "機密スニペットをコピーしてから、その後他に何もコ
 msgid "Select every item"
 msgstr "すべてのスニペットを選択"
 
+msgid "Sensitive"
+msgstr "機密"
+
 msgid "Sensitive item"
 msgstr "機密のスニペット"
 
@@ -1503,7 +1533,7 @@ msgid "Show Snipdeck in the taskbar"
 msgstr "Snipdeck をタスクバーに表示する"
 
 msgid "Show kind, title, colour, tags and privacy"
-msgstr ""
+msgstr "種類、タイトル、色、タグ、プライバシーを表示"
 
 msgid "Show or hide the Panel"
 msgstr "パネルの表示／非表示"
@@ -2081,6 +2111,9 @@ msgstr "表示モード レイアウト グリッド 切り替え"
 
 msgid "view mode layout list dense switch"
 msgstr "表示モード レイアウト リスト 切り替え"
+
+msgid "window geometry default restore move resize cut off"
+msgstr "ウィンドウ ジオメトリ 既定 復元 移動 サイズ 切れる"
 
 msgid "{n} item"
 msgid_plural "{n} items"
