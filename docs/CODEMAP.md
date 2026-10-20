@@ -5152,9 +5152,9 @@ rounded | scripts/readme_shots.py:39
 shadow | scripts/readme_shots.py:51
 framed | scripts/readme_shots.py:60
 trim_settings | scripts/readme_shots.py:67
-hero | scripts/readme_shots.py:72
-save | scripts/readme_shots.py:90
-main | scripts/readme_shots.py:98
+hero | scripts/readme_shots.py:74
+save | scripts/readme_shots.py:92
+main | scripts/readme_shots.py:100
 
 ### spikes/s1-noactivate/src/main.rs
 
