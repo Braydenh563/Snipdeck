@@ -2,7 +2,7 @@
 
 ## v1 sweep (2026-10-20)
 
-Branch `claude/v1-fable` (cut from `claude/compassionate-pascal-pod8ux` at bd65932). One pass: three read-only audits (backend, app and platform, frontend/i18n/WCAG) checked against the code, then fixes most severe first. Status: `[x]` fixed in this branch, `[~]` ticketed (HANDOVER), `[D5]` controller.rs edit, waits for the controller split to merge. Every Windows runtime claim is unverified (list at the end of this section).
+Branch `claude/v1-fable` (cut from `claude/compassionate-pascal-pod8ux` at bd65932). One pass: three read-only audits (backend, app and platform, frontend/i18n/WCAG) checked against the code, then fixes most severe first. Status: `[x]` fixed in this branch, `[~]` queued (owner rule 2026-10-20: every flagged issue ships; the hub orders them), `[D5]` controller.rs edit, waits for the controller split to merge. Every Windows runtime claim is unverified (list at the end of this section).
 
 ### Critical
 None found. Checked clean: archive zip-slip/size/ratio/zip64 checks, crypto envelope AAD and nonces and key zeroization, licence verification, Store::transaction rewind and savepoints, no `unwrap`/`expect`/`panic` reachable outside `#[cfg(test)]` in any crate's src (one infallible `expect` at settings.rs:493), every `.slint` string is `@tr`, 7 locales complete for the catalogued strings.
@@ -10,7 +10,7 @@ None found. Checked clean: archive zip-slip/size/ratio/zip64 checks, crypto enve
 ### High
 - [x] B1 Data loss: `store.rs:455` ran WAL with `synchronous=NORMAL` while `Store::finish` (batch.rs:246-252) unlinks replaced and purged blob files right after commit; a power cut could lose the commit and leave the surviving row pointing at a deleted blob. Now `FULL`; `open.rs` asserts the pragma.
 - [ ] A1 Ship: no `windows_subsystem = "windows"` anywhere, so the release exe opens a console window from Explorer and autostart, and closing it kills the app; `--help`/`--check-db`/`--troubleshoot` print to that console. Fix: the attribute in release builds plus `AttachConsole(ATTACH_PARENT_PROCESS)` for the CLI modes (Windows, unverified).
-- [ ] F1 i18n: user-visible English in Rust bypasses the catalogs in all 6 locales: Panel kebab (`wording.rs:313-336`), item menu rows except Move up/down (370-380), board menu (398-409), form and size errors (413-500), `Use`/`Copy`, hotkey and no-paste refusals (`settings_binding.rs:432-460`), Help tier (`help_binding.rs:336-342`), colour-label and icon names (`wording.rs:40-90`). Fix: `MenuTexts`/`FormTexts` Slint globals read like `ToastTexts`; then translate.
+- [x] F1 i18n: user-visible English in Rust bypasses the catalogs in all 6 locales: Panel kebab (`wording.rs:313-336`), item menu rows except Move up/down (370-380), board menu (398-409), form and size errors (413-500), `Use`/`Copy`, hotkey and no-paste refusals (`settings_binding.rs:432-460`), Help tier (`help_binding.rs:336-342`), colour-label and icon names (`wording.rs:40-90`). Fix: `MenuTexts`/`FormTexts` Slint globals read like `ToastTexts`; then translate.
 
 ### Medium
 - [ ] A2 Data loss: `main.rs:728` `persist = !args.dark && may_save` also gates `settings_folder`, so `--dark` or an unreadable settings file turns off drafts (231), the daily backup and Trash purge (407) and "Back up now" (288). Pass the folder always; gate only the saver.
@@ -26,8 +26,8 @@ None found. Checked clean: archive zip-slip/size/ratio/zip64 checks, crypto enve
 - [ ] A12 Arch: synchronous `unlock_with_password`/`set_`/`change_`/`remove_master_password` (lock_ctl.rs:267-313) are reached only from tests; the bindings use `begin_*`. Delete and move the tests ("replace, do not layer").
 - [~] A13 Arch: `impl Controller<Store, ..>` (settings_ctl.rs:262, settings_binding.rs:1256, unlock_binding.rs:97, onboarding_binding.rs:264) skips the `Library` trait, so backup, import, erase and licence cannot run on a fake. Extend `Library`; after D5.
 - [ ] B2 `Store::gc_blobs` has no production caller: crash leftovers and orphan plaintext blobs are never swept. Add it to the daily maintenance job.
-- [ ] B3 Import DoS: an encrypted asset is re-read and re-decrypted once per reference (import.rs:895-912); a 64 MiB asset referenced by 100k items burns CPU once the password is given. Budget the bytes read.
-- [ ] B4 Import DoS: `title` and `source_app` from an archive are unbounded (import.rs:586,601); a 60 MiB title passes every check. Cap like the folder importer.
+- [x] B3 Import DoS: an encrypted asset is re-read and re-decrypted once per reference (import.rs:895-912); a 64 MiB asset referenced by 100k items burns CPU once the password is given. Budget the bytes read.
+- [x] B4 Import DoS: `title` and `source_app` from an archive are unbounded (import.rs:586,601); a 60 MiB title passes every check. Cap like the folder importer.
 - [~] B5 Perf: `existing_hashes` (plan.rs:259-286) is N+1 and decrypts every sensitive item to hash it on every import and restore. One SQL pass over the stored parts.
 - [~] B6 `replace_key_record`/`restore_key_record` (keys.rs:220) store any record without checking it opens to the current key; a wrong record makes every encrypted item unreadable. Verify under the caller's password before UPDATE.
 - [ ] [D5] F2 WCAG 2.2.1: error toasts auto-dismiss after `TOAST_HOLD` 2.5 s (controller.rs:67,1886); only hover extends. Hold errors until dismissed or scale the hold with text length; Escape closes.
@@ -49,15 +49,15 @@ None found. Checked clean: archive zip-slip/size/ratio/zip64 checks, crypto enve
 - [~] [D5] A25 Cold start: `Controller::new` (controller.rs:671) builds the full index before the first `window.show()`; show first, index in an idle callback. Not measured here.
 - [ ] A26 Dead code: `paths::load_settings`, `PanelModel::load`, `PickerModel::load` (tests and demo only); `Store::schema_version`, `Formats::into_vec`, `ImportReport::has_warnings`.
 - [~] A27 Duplication: three settings-save timers (binding.rs:412, settings_binding.rs:396); `act`/`sync` re-implemented in 7 bindings; `open_folder`/`open_url` in SettingsHost and HelpHost; functions over 80 lines (save_item 139, main.rs run 273, bind 262, render 177...). After D5.
-- [ ] B7 `seal_and_unlock` (keys.rs:259-275) writes envelope blobs without the mark/rewind guard; a failed commit leaves ciphertext blobs.
-- [ ] B8 `write_backup` (migrations.rs:190-201) deletes the old `.pre-vN.bak` before `VACUUM INTO`; write `.tmp` then rename.
-- [ ] B9 Backup prune ranks by file-name date; a future-dated file holds a `keep` slot for ever (backup.rs:190-210).
-- [ ] B10 One unreadable subfolder aborts a folder import (folder.rs:62); one unreadable shard aborts `Blobs::list` (blobs.rs:422-447), so gc cannot run.
-- [ ] B11 `plan.rs:473` clones every decrypted payload; take ownership. The blob-hash query-and-convert block is copied four times (store.rs:144, trash.rs:103,165, items.rs:193).
+- [x] B7 `seal_and_unlock` (keys.rs:259-275) writes envelope blobs without the mark/rewind guard; a failed commit leaves ciphertext blobs.
+- [x] B8 `write_backup` (migrations.rs:190-201) deletes the old `.pre-vN.bak` before `VACUUM INTO`; write `.tmp` then rename.
+- [x] B9 Backup prune ranks by file-name date; a future-dated file holds a `keep` slot for ever (backup.rs:190-210).
+- [x] B10 One unreadable subfolder aborts a folder import (folder.rs:62); one unreadable shard aborts `Blobs::list` (blobs.rs:422-447), so gc cannot run.
+- [x] B11 `plan.rs:473` clones every decrypted payload; take ownership. The blob-hash query-and-convert block is copied four times (store.rs:144, trash.rs:103,165, items.rs:193).
 - [~] B12 Items cap checked after the whole 64 MiB `items.json` is parsed (import.rs:399); `holds_exactly` rereads a whole blob on every identical put (blobs.rs:343); `licence::verify` ignores `now`.
 - [~] B13 Files over 800 lines (L4): template.rs (datetime seam ~840-1021), import.rs (Builder ~497-760, verify ~800-974), blobs.rs (tests to blobs/tests.rs), windows/clipboard.rs, chord.rs; controller.rs is D5.
 - [x] F5 `main_window.slint:1351` Space reveal indexed `rows[cur]` with `cur = -1`; guarded like key-released.
-- [~] F6 UX: the item card's kebab shows only on hover or focus (item-card.slint:212), so pen and touch users cannot find it; desktop-acceptable in v1. `Checkbox`/`Radio` (choice.slint) are used only by the gallery.
+- [x] F6 UX: the item card's kebab showed only on hover or focus (item-card.slint:212), so pen and touch users could not find it; now always drawn, muted (text-tertiary) until the card is hovered or focused. `Checkbox`/`Radio` (choice.slint) are used only by the gallery.
 - WCAG checked clean: every IconButton has a tooltip label, 2 px focus rings, 24 px hit targets, reduced motion via Motion tokens, high-contrast token map, no hex outside theme.slint, Escape and focus return on every dialog and menu, Alt+Up/Down in Panel and Main, colour labels named in the accessible description, empty states and confirm dialogs present, secondary text 4.8:1 or better.
 
 ### Unverified on Windows
