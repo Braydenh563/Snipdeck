@@ -5,7 +5,7 @@
 use slint::{Color, Image, ModelRc, Rgba8Pixel, SharedPixelBuffer, SharedString, VecModel};
 use snipdeck_ui::{
     BackupRow, ChoiceEntry, HelpCheck, HelpWindow, HotkeySetting, ItemEditor, ListEditor,
-    OnboardingWindow, SettingsPage, TagManager,
+    OnboardingWindow, PasteRuleRow, SettingsPage, TagManager,
 };
 
 pub fn strings(items: &[&str]) -> ModelRc<SharedString> {
@@ -105,7 +105,21 @@ pub fn settings(ui: &SettingsPage) {
     ui.set_panel_in_taskbar(false);
     ui.set_panel_hide_on_blur(true);
     ui.set_panel_width(320);
-    ui.set_no_paste_apps(strings(&["keepass.exe", "1password.exe"]));
+    ui.set_paste_rules(ModelRc::new(VecModel::from(vec![
+        PasteRuleRow {
+            exe: "keepass.exe".into(),
+            choice: 3,
+        },
+        PasteRuleRow {
+            exe: "1password.exe".into(),
+            choice: 3,
+        },
+        PasteRuleRow {
+            exe: "windowsterminal.exe".into(),
+            choice: 1,
+        },
+    ])));
+    ui.set_last_backup("2026-10-18".into());
     ui.set_pro(false);
     ui.set_has_data_folder(true);
     ui.set_backups(ModelRc::new(VecModel::from(vec![

@@ -334,9 +334,9 @@ fn settings_page_conflict_empty_and_narrow() {
     h.component
         .set_hotkeys(ModelRc::new(VecModel::from(hotkeys)));
     h.component
-        .set_no_paste_apps(ModelRc::new(VecModel::default()));
+        .set_paste_rules(ModelRc::new(VecModel::default()));
     h.component
-        .set_no_paste_error("keepass.exe is already in the list.".into());
+        .set_paste_rule_error("keepass.exe is already in the list.".into());
     assert_golden("settings-conflict-narrow-light", &render(&h));
 }
 

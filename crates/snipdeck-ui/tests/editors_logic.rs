@@ -200,8 +200,11 @@ fn settings() -> (SettingsPage, Log) {
     hook!(on_panel_hide_on_blur_toggled, |on| format!("blur:{on}"));
     hook!(on_panel_width_chosen, |w| format!("width:{w}"));
     hook!(on_backups_keep_chosen, |n| format!("keep:{n}"));
-    hook!(on_no_paste_app_added, |n| format!("app+:{n}"));
-    hook!(on_no_paste_app_removed, |i| format!("app-:{i}"));
+    hook!(on_paste_rule_added, |n| format!("app+:{n}"));
+    hook!(on_paste_rule_removed, |i| format!("app-:{i}"));
+    hook!(on_paste_rule_chosen, |i, c| format!("paste:{i}:{c}"));
+    hook!(on_text_size_chosen, |i| format!("size:{i}"));
+    hook!(on_help_requested, | | "help".to_string());
     hook!(on_no_history_app_added, |n| format!("hist+:{n}"));
     hook!(on_no_history_app_removed, |i| format!("hist-:{i}"));
     hook!(on_licence_submitted, |k| format!("licence:{k}"));
@@ -1034,9 +1037,18 @@ ui_tests! {
         );
     }
 
-    fn programs_the_panel_never_pastes_into_can_be_added_and_removed() {
+    fn each_program_has_a_paste_key_that_can_be_changed_added_and_removed() {
         let (ui, log) = settings();
-        let _ = find(&ui, "keepass.exe", AccessibleRole::ListItem);
+        let _ = find(&ui, "keepass.exe: Never paste", AccessibleRole::ListItem);
+        let _ = find(&ui, "windowsterminal.exe: Ctrl+Shift+V", AccessibleRole::ListItem);
+
+        let combo = find(&ui, "Paste key for windowsterminal.exe", AccessibleRole::Combobox);
+        assert_eq!(combo.accessible_value().as_deref(), Some("Ctrl+Shift+V"));
+        combo.invoke_accessible_default_action();
+        settle();
+        find(&ui, "Shift+Insert", AccessibleRole::ListItem).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["paste:2:2"]);
+
         find(&ui, "Remove 1password.exe from the list", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(take(&log), ["app-:1"]);
 
@@ -1048,7 +1060,7 @@ ui_tests! {
         assert_eq!(take(&log), ["app+:notepad.exe"]);
         assert_eq!(field.accessible_value().as_deref(), Some(""));
 
-        // Two lists have an Add button: the Recent one comes first on the page, this one after it.
+        // Two lists have an Add button: the Recent one comes first on the page, the Programs table after it.
         let adds = all(&ui, "Add", AccessibleRole::Button);
         assert_eq!(adds.len(), 2, "one per program list");
         type_text(ui.window(), "calc.exe");
@@ -1057,6 +1069,39 @@ ui_tests! {
         // An empty field adds nothing.
         adds[1].invoke_accessible_default_action();
         assert_eq!(take(&log), Vec::<String>::new());
+    }
+
+    fn the_text_size_row_reports_the_choice_and_shows_what_the_host_says() {
+        let (ui, log) = settings();
+        let combo = find(&ui, "Text size", AccessibleRole::Combobox);
+        assert_eq!(combo.accessible_value().as_deref(), Some("Windows"));
+        combo.invoke_accessible_default_action();
+        settle();
+        find(&ui, "150 %", AccessibleRole::ListItem).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["size:3"]);
+        ui.set_text_size_index(3);
+        settle();
+        assert_eq!(
+            find(&ui, "Text size", AccessibleRole::Combobox).accessible_value().as_deref(),
+            Some("150 %")
+        );
+    }
+
+    fn the_backups_section_says_when_the_last_backup_was_made() {
+        let (ui, _log) = settings();
+        let _ = find(&ui, "Last backup: 2026-10-18", AccessibleRole::Text);
+        ui.set_last_backup("".into());
+        settle();
+        let _ = find(&ui, "No backup yet", AccessibleRole::Text);
+    }
+
+    fn help_is_one_button_or_f1_away() {
+        let (ui, log) = settings();
+        find(&ui, "Open the user guide (F1)", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["help"]);
+        press(ui.window(), &key(Key::F1));
+        settle();
+        assert_eq!(take(&log), ["help"]);
     }
 
     fn programs_left_out_of_recent_can_be_added_and_removed_with_labelled_buttons() {

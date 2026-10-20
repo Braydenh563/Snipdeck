@@ -601,7 +601,11 @@ impl Settings {
                 // every app.
                 let (rules, names) = salvage_no_paste(text);
                 Self {
-                    programs: rules,
+                    programs: if rules.is_empty() {
+                        builtin_program_rules()
+                    } else {
+                        rules
+                    },
                     no_paste_apps: names,
                     ..Self::default()
                 }
@@ -1107,7 +1111,8 @@ mod tests {
         let settings = Settings::from_json(
             r#"{"no_paste_apps":[" KeePass.EXE ","keepass.exe","","Putty.exe"]}"#,
         );
-        assert_eq!(settings.no_paste_apps, ["keepass.exe", "putty.exe"]);
+        // putty.exe is in the built-in table, so its rule turns to Never in place; keepass.exe is added after it.
+        assert_eq!(settings.no_paste_apps, ["putty.exe", "keepass.exe"]);
     }
 
     /// Security review 2, finding 9: one bad element must not empty the exclusion list, or

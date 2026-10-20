@@ -1966,7 +1966,11 @@ mod tests {
     #[test]
     fn applying_the_hotkeys_removes_the_ones_that_are_off() {
         let mut backend = FakeHotkeys::default();
-        let all = Hotkeys::default();
+        // Capture has no chord until the user sets one.
+        let all = Hotkeys {
+            capture: "Ctrl+Alt+C".into(),
+            ..Hotkeys::default()
+        };
         assert_eq!(apply_hotkeys(&mut backend, &all), Vec::new());
         assert_eq!(backend.registered.len(), 4);
 
