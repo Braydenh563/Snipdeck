@@ -176,6 +176,26 @@ only if the Free plan has room for it.
 - **Keyboard shortcuts.** Press `Ctrl+/` to see every shortcut. It is also a tab in the Help window.
   Menus and tooltips show the shortcut beside an action.
 
+## Recent
+
+The Recent inbox keeps the text you copy in other programs, so you can find it again. It is **off by default**.
+
+- **Turn it on.** Settings ▸ **Recent** ▸ **Keep a Recent inbox of what you copy**, or the **Clipboard history**
+  step of the welcome tour. Nothing is collected before that.
+- **Where it shows.** A **Recent** entry in the Main window's sidebar, and a clock tab in the Panel. The newest
+  copy is first, with the program it came from. Click a row to copy it. The menu (right-click, `Menu` or
+  `Shift+F10`) has **Copy**, **Save to…** (put it in a list as a normal item) and **Remove from Recent**.
+- **How much it keeps.** The last 200 copies, for 7 days at most. Older ones are removed. A copy of the same
+  text moves to the top instead of making a second row. Text only, up to 64 KB per copy.
+- **What it never keeps.** Sensitive items, text copied by Snipdeck itself, copies from password managers
+  (programs that ask Windows to keep a copy out of clipboard history), and copies from programs on your own
+  exclude list. Add a program under **Never keep copies from these programs** by its file name, for example
+  `keepass.exe`.
+- **Pause and clear.** The tray menu has **Pause history** while the inbox is on. **Clear recent history** in
+  Settings, or at the top of the Recent view, removes everything now. You confirm with **Clear history**.
+- **Master password.** While the library is locked, the inbox shows **Recent copies are locked** and collects
+  nothing.
+
 ## Help and the welcome tour
 
 Press `F1` or open **Help** in the Main window to see the Help window. **Troubleshoot** is a checklist that finds
@@ -268,11 +288,27 @@ If you reach the board limit, a message says so. See [`licensing.md`](licensing.
 ## Import and export
 
 Export is in Settings, as above. The file is a zip with JSON ([`format.md`](format.md)), so other tools can
-read it. To export one list as text, see [Organise](#organise). To bring a library back, restore one of the
-backups listed in Settings.
+read it. To export one list as text, see [Organise](#organise).
 
-<!-- TODO(B1, B2): Import screen for .snipdeck, Ditto, CopyQ and text files, and the Windows clipboard-history importer. Not in this branch yet. -->
-Importing text files, Ditto or CopyQ data has no screen in this version.
+**Import.** Choose **Settings ▸ Your data ▸ Import…**, then what you are importing:
+
+- **.snipdeck file:** an export of your own, or one from another PC.
+- **Ditto database:** the database file Ditto keeps.
+- **CopyQ export:** the JSON file CopyQ saves.
+- **Folder of .txt and .md files:** every text and Markdown file in the folder becomes one item.
+
+Snipdeck reads the source first and shows a preview before it changes anything: how many items and lists will
+be added, how many new boards will be made, how many items you already have (these are skipped), and a **Will
+not be imported** list with the reason for each item left out, such as a file over 5 MB, an empty file, a
+picture or file that CopyQ or Ditto holds, or a sensitive item that this PC has no key for. Choose **Import**
+to go ahead or **Cancel** to leave your library as it was. Everything arrives under one new board named after the
+file or folder. The Free plan's board limit still applies, and the preview says when an import would pass it.
+
+**Restore.** Restoring a backup in Settings shows the same preview. A restore puts each board back under its
+own name.
+
+Snipdeck does not import the Windows clipboard history (Win+V) yet. Turn on the [Recent inbox](#recent) to keep
+what you copy from now on.
 
 ## Keyboard reference
 
@@ -350,4 +386,3 @@ Command Prompt, with `app\snipdeck.exe` in the folder that holds `Snipdeck.bat`:
 
 Add `--data-dir <folder>` to check a library somewhere else.
 
-<!-- TODO(C1, B15): the Recent inbox and the wording and accessibility pass are in other branches. Add them here when they merge. -->

@@ -68,14 +68,20 @@ More in [`tools/launcher/README.md`](tools/launcher/README.md).
   into a thin strip. Lists show as tabs, and pinned items sit in a strip under them.
 - **Picker.** A search box at your text caret. It searches every board. Type, press <kbd>Enter</kbd>, done.
 - **Main window.** Boards, lists, tags, Pinned and Trash. Compact, comfortable and tile views, search,
-  multi-select and keyboard reordering.
+  multi-select, drag and drop, and keyboard reordering. A command palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>) lists
+  every action.
 - **Six kinds of item.** Text, code, link, template, image and file.
 - **Templates.** Insert `{date}`, `{time}` or your own date format. Supporter adds fields and choices that ask you
   for a value each time.
 - **Quick capture.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>2</kbd> to save the clipboard text as a new item.
+- **Recent inbox.** Off by default. Keeps what you copy for 7 days (last 200 copies), skips password managers and
+  Sensitive items, and lets you save a copy to a list.
+- **Import.** Bring in a `.snipdeck` file, a Ditto database, a CopyQ export or a folder of `.txt` and `.md`
+  files, after a preview of what it adds.
+- **Colour labels and list icons.** Eight label colours with a filter, and an icon for each list.
 - **Sensitive items.** Hidden in lists, kept out of Windows clipboard history, and encrypted on disk.
 - **Safe to change.** Deleted things stay in the Trash for 30 days, with Undo. Daily backups are automatic.
-- **Your way.** Light, dark or Windows theme, seven languages, and hotkeys you can change.
+- **Your way.** Light, dark or Windows theme, an accent colour, seven languages, and hotkeys you can change.
 
 ## A quick tour
 
@@ -145,6 +151,7 @@ Change any of them in Settings. If another program owns a hotkey, Snipdeck says 
 | Panel, Main window | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Search |
 | Picker | <kbd>Tab</kbd> | Switch between All, This board and Pinned |
 | Main window | <kbd>Ctrl</kbd>+<kbd>N</kbd> | New item |
+| Panel, Main window | <kbd>Ctrl</kbd>+<kbd>D</kbd> | Duplicate the selected item |
 | Main window | <kbd>Ctrl</kbd>+<kbd>P</kbd> | Pin or unpin |
 | Main window | <kbd>Alt</kbd>+<kbd>Up</kbd>, <kbd>Alt</kbd>+<kbd>Down</kbd> | Move an item or list |
 | Editor, fill form | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> | Save, or insert |
@@ -170,6 +177,7 @@ Icons and fonts are packaged with the app. Your library stays on your PC in `%LO
 
 - The library, large content, settings, backups and crash logs are all in that one folder.
 - Crash logs are never sent anywhere and do not quote your snippets.
+- The Recent inbox is off until you turn it on. Its entries stay on this PC and are not encrypted.
 - **Export:** Settings, Your data, Export library saves one `.snipdeck` file (a zip with JSON).
 - **Remove everything:** quit Snipdeck, then delete the folder.
 
