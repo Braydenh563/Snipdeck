@@ -960,7 +960,9 @@ msgstr ""
 
 #: ui/toast_texts.slint:161
 msgid "Imported {} item"
-msgstr ""
+msgid_plural "Imported {} items"
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/settings.slint:866
 msgid "Import…"
@@ -984,7 +986,9 @@ msgstr ""
 
 #: ui/editors.slint:1450
 msgid "It is removed from {n} item. The item stays."
-msgstr ""
+msgid_plural "It is removed from {n} items. The items stay."
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/main_window.slint:1954 ui/panel.slint:1341
 msgid "Item actions"
@@ -996,7 +1000,9 @@ msgstr ""
 
 #: ui/editors.slint:1255
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
-msgstr ""
+msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/panel.slint:75
 msgid "Just now"
@@ -1220,11 +1226,15 @@ msgstr ""
 
 #: ui/toast_texts.slint:106
 msgid "Moved {} item to the Trash"
-msgstr ""
+msgid_plural "Moved {} items to the Trash"
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/toast_texts.slint:118
 msgid "Moved {} item to {}"
-msgstr ""
+msgid_plural "Moved {} items to {}"
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/main_window.slint:776
 msgid "Navigation"
@@ -1780,11 +1790,15 @@ msgstr ""
 
 #: ui/toast_texts.slint:115
 msgid "Restored {} item"
-msgstr ""
+msgid_plural "Restored {} items"
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/toast_texts.slint:155
 msgid "Restored {} item from the backup"
-msgstr ""
+msgid_plural "Restored {} items from the backup"
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/picker.slint:407
 msgid "Results"
@@ -2560,7 +2574,9 @@ msgstr ""
 
 #: ui/settings.slint:1000
 msgid "and {} more"
-msgstr ""
+msgid_plural "and {} more"
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/command_texts.slint:33
 msgid "change modify rename"
@@ -2696,11 +2712,15 @@ msgstr ""
 
 #: ui/editors.slint:1364 ui/editors.slint:1387 ui/main_window.slint:1209 ui/main_window.slint:1836
 msgid "{n} item"
-msgstr ""
+msgid_plural "{n} items"
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/editors.slint:1203
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
-msgstr ""
+msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/editors.slint:584
 msgid "{} (Supporter)"
@@ -2708,7 +2728,9 @@ msgstr ""
 
 #: ui/settings.slint:962
 msgid "{} already in your library, skipped"
-msgstr ""
+msgid_plural "{} already in your library, skipped"
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/toast_texts.slint:87
 msgid "{} can't be used as a shortcut. Choose another in Settings."
@@ -2724,7 +2746,9 @@ msgstr ""
 
 #: ui/import_texts.slint:14
 msgid "{} file in this archive is not known to this version and was left out."
-msgstr ""
+msgid_plural "{} files in this archive are not known to this version and were left out."
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/components/command-palette.slint:100
 msgid "{} found"
@@ -2756,11 +2780,15 @@ msgstr ""
 
 #: ui/settings.slint:944
 msgid "{} item in {} list will be added"
-msgstr ""
+msgid_plural "{} items in {} lists will be added"
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/import_texts.slint:47
 msgid "{} item that is not text (a picture or file) was skipped."
-msgstr ""
+msgid_plural "{} items that are not text (pictures or files) were skipped."
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/panel.slint:76
 msgid "{} min ago"
@@ -2768,7 +2796,9 @@ msgstr ""
 
 #: ui/settings.slint:953
 msgid "{} new board will be made"
-msgstr ""
+msgid_plural "{} new boards will be made"
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/help.slint:132
 msgid "{} of the checks need a look."
@@ -2780,7 +2810,9 @@ msgstr ""
 
 #: ui/import_texts.slint:17
 msgid "{} picture or file that no snippet uses was left out."
-msgstr ""
+msgid_plural "{} pictures or files that no snippet uses were left out."
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/main_window.slint:1716 ui/main_window.slint:1729 ui/main_window.slint:1835
 msgid "{} selected"
@@ -2788,11 +2820,15 @@ msgstr ""
 
 #: ui/import_texts.slint:20
 msgid "{} sensitive item is encrypted with a key this library does not have and was skipped."
-msgstr ""
+msgid_plural "{} sensitive items are encrypted with a key this library does not have and were skipped."
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/import_texts.slint:26
 msgid "{} sensitive item was left out when this file was made."
-msgstr ""
+msgid_plural "{} sensitive items were left out when this file was made."
+msgstr[0] ""
+msgstr[1] ""
 
 #: ui/components/command-palette.slint:100
 msgid "{}, {} of {}"

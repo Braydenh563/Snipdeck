@@ -5106,13 +5106,22 @@ main | scripts/codemap.py:184
 
 ### scripts/i18n.py
 
-collect | scripts/i18n.py:22
-header | scripts/i18n.py:32
-entry_keys | scripts/i18n.py:43
-fuzzy_keys | scripts/i18n.py:62
-write_file | scripts/i18n.py:77
-po_path | scripts/i18n.py:94
-main | scripts/i18n.py:98
+Entry | scripts/i18n.py:42
+Entry.__init__ | scripts/i18n.py:45
+Entry.done | scripts/i18n.py:49
+collect | scripts/i18n.py:53
+header | scripts/i18n.py:67
+quoted | scripts/i18n.py:78
+entry_keys | scripts/i18n.py:83
+fuzzy_keys | scripts/i18n.py:128
+write_file | scripts/i18n.py:143
+po_path | scripts/i18n.py:171
+unescape | scripts/i18n.py:175
+escape | scripts/i18n.py:180
+placeholders | scripts/i18n.py:184
+problems_of | scripts/i18n.py:188
+load | scripts/i18n.py:211
+main | scripts/i18n.py:219
 
 ### scripts/make_logo.py
 
@@ -5733,6 +5742,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/support/panel_fixture.rs` | 0 |
 | `crates/snipdeck-ui/tests/support/picker_fixture.rs` | 0 |
 | `crates/snipdeck-ui/tests/tray_texts.rs` | 1 |
+| `scripts/test_i18n.py` | 16 |
 | `spikes/s3-longtext/src/viewer.rs` (inline) | 1 |
 | `spikes/s4-mica/src/appearance.rs` (inline) | 8 |
 | `tools/snipdeck-licence-issuer/src/cli.rs` (inline) | 4 |
