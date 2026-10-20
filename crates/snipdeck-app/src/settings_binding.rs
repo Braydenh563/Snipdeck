@@ -1089,11 +1089,11 @@ where
             .unwrap_or_default();
         match self.host.read_clipboard_history() {
             HistoryRead::Entries(entries) if !entries.is_empty() => {
-                self.preview(
-                    ImportSource::ClipboardHistory(history_entries(entries)),
-                    false,
-                    name,
-                );
+                let source = ImportSource::ClipboardHistory {
+                    entries: history_entries(entries),
+                    board: name.clone(),
+                };
+                self.preview(source, false, name);
             }
             other => {
                 let problem = match other {
@@ -1104,7 +1104,10 @@ where
                     HistoryRead::Entries(_) => ImportProblem::HistoryEmpty,
                 };
                 self.state.borrow_mut().import = Some(PendingImport {
-                    source: ImportSource::ClipboardHistory(Vec::new()),
+                    source: ImportSource::ClipboardHistory {
+                        entries: Vec::new(),
+                        board: String::new(),
+                    },
                     restore: false,
                     name,
                     outcome: Err(problem),

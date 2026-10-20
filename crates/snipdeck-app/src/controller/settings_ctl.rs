@@ -39,7 +39,13 @@ pub enum ImportSource {
     /// A folder of `.txt` and `.md` files, one item each.
     Folder(PathBuf),
     /// The text entries of the Windows clipboard history (Win+V), already read by the caller.
-    ClipboardHistory(Vec<HistoryEntry>),
+    /// They land on a new board called `board` (the caller words it in the UI's language).
+    ClipboardHistory {
+        /// The text entries, newest first.
+        entries: Vec<HistoryEntry>,
+        /// The name of the board they land on.
+        board: String,
+    },
 }
 
 impl ImportSource {
@@ -48,7 +54,7 @@ impl ImportSource {
     pub fn path(&self) -> Option<&Path> {
         match self {
             Self::Snipdeck(p) | Self::Ditto(p) | Self::CopyQ(p) | Self::Folder(p) => Some(p),
-            Self::ClipboardHistory(_) => None,
+            Self::ClipboardHistory { .. } => None,
         }
     }
 
@@ -74,7 +80,9 @@ impl ImportSource {
             Self::Ditto(p) => import_ditto(store, p, now, options),
             Self::CopyQ(p) => import_copyq_json(store, p, now, options),
             Self::Folder(p) => import_folder(store, p, now, options),
-            Self::ClipboardHistory(entries) => import_entries(store, entries, "", now, options),
+            Self::ClipboardHistory { entries, board } => {
+                import_entries(store, entries, board, now, options)
+            }
         }
     }
 }
@@ -161,7 +169,7 @@ impl ImportSource {
             Self::Ditto(_) => Some(ImportKind::Ditto),
             Self::CopyQ(_) => Some(ImportKind::CopyQ),
             Self::Folder(_) => Some(ImportKind::Folder),
-            Self::ClipboardHistory(_) => None,
+            Self::ClipboardHistory { .. } => None,
         }
     }
 }

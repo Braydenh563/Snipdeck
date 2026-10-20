@@ -280,15 +280,16 @@ fn restore_keeps_the_backups_boards() {
 
 /// Clipboard-history entries as the platform layer hands them over, newest first.
 fn history_of(texts: &[&str]) -> ImportSource {
-    ImportSource::ClipboardHistory(
-        texts
+    ImportSource::ClipboardHistory {
+        entries: texts
             .iter()
             .map(|text| HistoryEntry {
                 text: (*text).to_owned(),
                 timestamp: None,
             })
             .collect(),
-    )
+        board: "Zwischenablageverlauf".to_owned(),
+    }
 }
 
 #[test]
@@ -338,4 +339,29 @@ fn a_history_import_obeys_the_free_board_limit() {
     let before = counts(&ctl);
     assert!(!ctl.apply_import(&source));
     assert_eq!(counts(&ctl), before);
+}
+
+#[test]
+fn a_history_import_names_its_board_as_the_caller_said() {
+    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    assert!(ctl.apply_import(&history_of(&["plain text"])));
+    let names: Vec<String> = ctl
+        .store()
+        .boards()
+        .unwrap()
+        .iter()
+        .map(|b| b.name.to_string())
+        .collect();
+    assert!(
+        names.iter().any(|n| n == "Zwischenablageverlauf"),
+        "{names:?}"
+    );
+}
+
+#[test]
+fn a_history_of_only_blank_entries_previews_as_nothing_to_import() {
+    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    let preview = ctl.preview_import(&history_of(&["  ", "\n"])).unwrap();
+    assert!(preview.is_empty());
+    assert_eq!(preview.warnings.len(), 2);
 }
