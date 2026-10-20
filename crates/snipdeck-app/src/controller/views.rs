@@ -95,6 +95,8 @@ pub struct ToastView {
     pub phase: ToastPhase,
     /// It carries an Undo button ([`Controller::main_undo`](crate::controller::Controller::main_undo)).
     pub undo: bool,
+    /// It carries an Edit button ([`Controller::toast_edit`](crate::controller::Controller::toast_edit)).
+    pub edit: bool,
     /// It carries an "Open log" button ([`Controller::toast_action`](crate::controller::Controller::toast_action)).
     pub open_log: bool,
 }
@@ -215,6 +217,12 @@ pub struct View {
     pub app_menu: Option<Vec<AppMenuEntry>>,
     /// The context menu of a card or pinned chip while it is open.
     pub item_menu: Option<Vec<ItemMenuEntry>>,
+    /// The item menu's Move or Colour choice while it is open (it takes the menu's place).
+    pub choose_menu: Option<ChooseMenu>,
+    /// How many rows the multi-selection holds (the bulk bar shows from one).
+    pub marked_count: usize,
+    /// The rows show their 1 to 9 numbers (the `show_numbers` setting).
+    pub show_numbers: bool,
     /// The context menu of a list tab while it is open ([`LIST_MENU`](crate::controller::LIST_MENU)).
     pub list_menu: Option<Vec<ListMenuEntry>>,
     /// The list menu's "Delete list…" confirmation while it asks (the Panel draws it; no
@@ -231,6 +239,31 @@ pub struct View {
     pub fill: Option<FillView>,
     /// The Recent inbox (clock tab), while it is on in the settings.
     pub recent: Option<crate::recent::RecentView>,
+}
+
+/// What a row of the Move or Colour choice says, before wording.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ChooseLabel {
+    /// A list, by name.
+    List(String),
+    /// A colour label, or `None` for "No label".
+    Colour(Option<snipdeck_core::ItemLabel>),
+}
+
+/// One row of the Move or Colour choice.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChooseEntry {
+    /// The words.
+    pub label: ChooseLabel,
+    /// Every target already has it (the row is checked).
+    pub checked: bool,
+}
+
+/// The item menu's second level: where to move the targets, or which colour to give them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChooseMenu {
+    /// The rows, in order.
+    pub entries: Vec<ChooseEntry>,
 }
 
 /// The Panel's confirmation before a list goes to the Trash.

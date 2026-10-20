@@ -67,6 +67,9 @@ msgstr "Añadir"
 msgid "Add a snippet, or move items here from another list."
 msgstr "Añade un fragmento o mueve aquí elementos de otra lista."
 
+msgid "Add a snippet… (Enter to save)"
+msgstr "Añade un fragmento… (Intro para guardar)"
+
 msgid "Add list"
 msgstr "Añadir lista"
 
@@ -334,6 +337,9 @@ msgstr "Se copia al portapapeles"
 msgid "Copy"
 msgstr "Copiar"
 
+msgid "Copy all"
+msgstr "Copiar todo"
+
 msgid "Copy diagnostic report"
 msgstr "Copiar informe de diagnóstico"
 
@@ -415,6 +421,15 @@ msgstr "No se pudo usar este elemento."
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "No se pudo escribir en tu biblioteca. Comprueba que el disco tenga espacio."
 
+msgid "Create"
+msgstr "Crear"
+
+msgid "Create (Enter)"
+msgstr "Crear (Intro)"
+
+msgid "Create item"
+msgstr "Crear elemento"
+
 msgid "Current password"
 msgstr "Contraseña actual"
 
@@ -427,11 +442,14 @@ msgstr "Oscuro"
 msgid "Date and time in a format you choose"
 msgstr "Fecha y hora en el formato que elijas"
 
+msgid "Delete"
+msgstr "Eliminar"
+
 msgid "Delete board"
 msgstr "Eliminar tablero"
 
 msgid "Delete board “{}”?"
-msgstr ""
+msgstr "¿Eliminar el tablero «{}»?"
 
 msgid "Delete board…"
 msgstr "Eliminar tablero…"
@@ -625,6 +643,9 @@ msgstr "Exportar la biblioteca"
 msgid "Feature"
 msgstr "Función"
 
+msgid "Fewer options"
+msgstr "Menos opciones"
+
 msgid "Fields"
 msgstr "Campos"
 
@@ -736,6 +757,9 @@ msgstr "Oculto. Mantén pulsada la barra espaciadora para mostrarlo."
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "Oculto. Ábrelo en el panel para mostrarlo."
 
+msgid "Hide kind, title, colour, tags and privacy"
+msgstr "Ocultar tipo, título, color, etiquetas y privacidad"
+
 msgid "Hide the Panel"
 msgstr "Ocultar el panel"
 
@@ -821,7 +845,7 @@ msgstr[0] "Sus listas y {n} elemento se moverán a la papelera. Puedes restaurar
 msgstr[1] "Sus listas y {n} elementos se moverán a la papelera. Puedes restaurarlos durante 30 días."
 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
-msgstr ""
+msgstr "Sus listas y {} elementos pasan a la papelera. Puedes restaurarlos durante {} días."
 
 msgid "Just now"
 msgstr "Justo ahora"
@@ -952,6 +976,9 @@ msgstr "Microsoft Store"
 msgid "More"
 msgstr "Más"
 
+msgid "More options"
+msgstr "Más opciones"
+
 msgid "Most used"
 msgstr "Más usados"
 
@@ -990,6 +1017,9 @@ msgstr "Mover a lista"
 
 msgid "Move to list…"
 msgstr "Mover a lista…"
+
+msgid "Move to…"
+msgstr "Mover a…"
 
 msgid "Move up"
 msgstr "Subir"
@@ -1030,6 +1060,9 @@ msgstr "Nuevo tablero…"
 
 msgid "New item"
 msgstr "Nuevo fragmento"
+
+msgid "New item in {}"
+msgstr "Nuevo elemento en {}"
 
 msgid "New list"
 msgstr "Nueva lista"
@@ -1442,6 +1475,12 @@ msgstr "Repite la nueva contraseña"
 msgid "Required"
 msgstr "Obligatorio"
 
+msgid "Reset Panel size and position"
+msgstr "Restablecer tamaño y posición del panel"
+
+msgid "Reset size and position"
+msgstr "Restablecer tamaño y posición"
+
 msgid "Restore"
 msgstr "Restaurar"
 
@@ -1481,6 +1520,9 @@ msgstr "SNIP1."
 
 msgid "Save"
 msgstr "Guardar"
+
+msgid "Save (Ctrl+Enter)"
+msgstr "Guardar (Ctrl+Intro)"
 
 msgid "Save from clipboard"
 msgstr "Guardar desde el portapapeles"
@@ -1545,6 +1587,9 @@ msgstr "Segundos antes de que un fragmento sensible copiado se borre del portapa
 msgid "Select every item"
 msgstr "Selecciona todos los elementos"
 
+msgid "Sensitive"
+msgstr "Confidencial"
+
 msgid "Sensitive item"
 msgstr "Fragmento sensible"
 
@@ -1601,6 +1646,12 @@ msgstr "Mostrar panel ({})"
 
 msgid "Show Snipdeck in the taskbar"
 msgstr "Mostrar Snipdeck en la barra de tareas"
+
+msgid "Show kind, title, colour, tags and privacy"
+msgstr "Mostrar tipo, título, color, etiquetas y privacidad"
+
+msgid "Show numbers"
+msgstr "Mostrar números"
 
 msgid "Show or hide the Panel"
 msgstr "Muestra u oculta el panel"
@@ -2254,6 +2305,9 @@ msgstr "modo de vista diseño cuadrícula cambiar"
 
 msgid "view mode layout list dense switch"
 msgstr "modo de vista diseño lista compacta cambiar"
+
+msgid "window geometry default restore move resize cut off"
+msgstr "ventana geometría predeterminado restaurar mover tamaño cortado"
 
 msgid "{n} item"
 msgid_plural "{n} items"

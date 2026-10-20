@@ -348,6 +348,8 @@ pub fn app_menu_text(
             None => t.invoke_app_dock(),
         },
         AppMenuEntry::PauseHotkeys => t.invoke_app_pause_hotkeys(),
+        AppMenuEntry::ShowNumbers => t.invoke_app_show_numbers(),
+        AppMenuEntry::ResetGeometry => t.invoke_app_reset_geometry(),
         AppMenuEntry::Separator => return String::new(),
         AppMenuEntry::Troubleshoot => t.invoke_app_troubleshoot(),
         AppMenuEntry::UserGuide => t.invoke_app_user_guide(),
@@ -382,7 +384,12 @@ pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'st
         ItemMenuEntry::Trash => "Del",
         ItemMenuEntry::MoveUp { .. } => "Alt+Up",
         ItemMenuEntry::MoveDown { .. } => "Alt+Down",
-        ItemMenuEntry::Pin { .. } | ItemMenuEntry::Stack { .. } | ItemMenuEntry::Separator => "",
+        ItemMenuEntry::Pin { .. }
+        | ItemMenuEntry::Stack { .. }
+        | ItemMenuEntry::MoveTo
+        | ItemMenuEntry::Colour
+        | ItemMenuEntry::Sensitive { .. }
+        | ItemMenuEntry::Separator => "",
     }
 }
 
@@ -403,6 +410,9 @@ pub fn item_menu_label(window: &PanelWindow, entry: crate::controller::ItemMenuE
         ItemMenuEntry::Stack { marked: false } => t.invoke_item_stack_add(),
         ItemMenuEntry::Stack { marked: true } => t.invoke_item_stack_remove(),
         ItemMenuEntry::Trash => t.invoke_item_trash(),
+        ItemMenuEntry::MoveTo => t.invoke_item_move_to(),
+        ItemMenuEntry::Colour => t.invoke_item_colour(),
+        ItemMenuEntry::Sensitive { .. } => t.invoke_item_sensitive(),
         ItemMenuEntry::MoveUp { .. } => moves.invoke_menu_move_up(),
         ItemMenuEntry::MoveDown { .. } => moves.invoke_menu_move_down(),
         ItemMenuEntry::Separator => return String::new(),

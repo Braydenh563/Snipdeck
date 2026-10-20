@@ -67,6 +67,9 @@ msgstr "添加"
 msgid "Add a snippet, or move items here from another list."
 msgstr "添加片段，或从其他列表移动到这里。"
 
+msgid "Add a snippet… (Enter to save)"
+msgstr "添加片段…(按 Enter 保存)"
+
 msgid "Add list"
 msgstr "添加列表"
 
@@ -334,6 +337,9 @@ msgstr "复制到剪贴板"
 msgid "Copy"
 msgstr "复制"
 
+msgid "Copy all"
+msgstr "全部复制"
+
 msgid "Copy diagnostic report"
 msgstr "复制诊断报告"
 
@@ -415,6 +421,15 @@ msgstr "无法使用此片段。"
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "无法写入你的资料库。请检查磁盘是否有足够空间。"
 
+msgid "Create"
+msgstr "创建"
+
+msgid "Create (Enter)"
+msgstr "创建(Enter)"
+
+msgid "Create item"
+msgstr "创建项目"
+
 msgid "Current password"
 msgstr "当前密码"
 
@@ -427,11 +442,14 @@ msgstr "深色"
 msgid "Date and time in a format you choose"
 msgstr "以你选择的格式显示日期和时间"
 
+msgid "Delete"
+msgstr "删除"
+
 msgid "Delete board"
 msgstr "删除看板"
 
 msgid "Delete board “{}”?"
-msgstr ""
+msgstr "删除看板“{}”?"
 
 msgid "Delete board…"
 msgstr "删除看板…"
@@ -625,6 +643,9 @@ msgstr "导出资料库"
 msgid "Feature"
 msgstr "功能"
 
+msgid "Fewer options"
+msgstr "更少选项"
+
 msgid "Fields"
 msgstr "字段"
 
@@ -736,6 +757,9 @@ msgstr "已隐藏。按住空格键即可显示。"
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "已隐藏。在面板中打开即可显示。"
 
+msgid "Hide kind, title, colour, tags and privacy"
+msgstr "隐藏类型、标题、颜色、标签和隐私"
+
 msgid "Hide the Panel"
 msgstr "隐藏面板"
 
@@ -818,7 +842,7 @@ msgid_plural "Its lists and {n} items will move to Trash. You can restore them f
 msgstr[0] "其列表及其中的 {n} 个片段将移至回收站。你可以在 30 天内恢复它们。"
 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
-msgstr ""
+msgstr "它的列表和 {} 个项目将移到回收站。你可以在 {} 天内恢复。"
 
 msgid "Just now"
 msgstr "刚刚"
@@ -949,6 +973,9 @@ msgstr "Microsoft Store"
 msgid "More"
 msgstr "更多"
 
+msgid "More options"
+msgstr "更多选项"
+
 msgid "Most used"
 msgstr "最常用"
 
@@ -988,6 +1015,9 @@ msgstr "移动到列表"
 msgid "Move to list…"
 msgstr "移动到列表…"
 
+msgid "Move to…"
+msgstr "移动到…"
+
 msgid "Move up"
 msgstr "上移"
 
@@ -1025,6 +1055,9 @@ msgstr "新建看板…"
 
 msgid "New item"
 msgstr "新建片段"
+
+msgid "New item in {}"
+msgstr "在 {} 中新建项目"
 
 msgid "New list"
 msgstr "新建列表"
@@ -1437,6 +1470,12 @@ msgstr "再次输入新密码"
 msgid "Required"
 msgstr "必填"
 
+msgid "Reset Panel size and position"
+msgstr "重置面板大小和位置"
+
+msgid "Reset size and position"
+msgstr "重置大小和位置"
+
 msgid "Restore"
 msgstr "还原"
 
@@ -1474,6 +1513,9 @@ msgstr "SNIP1."
 
 msgid "Save"
 msgstr "保存"
+
+msgid "Save (Ctrl+Enter)"
+msgstr "保存 (Ctrl+Enter)"
 
 msgid "Save from clipboard"
 msgstr "从剪贴板保存"
@@ -1538,6 +1580,9 @@ msgstr "复制敏感片段后，若期间未复制其他内容，则在此秒数
 msgid "Select every item"
 msgstr "选择所有片段"
 
+msgid "Sensitive"
+msgstr "敏感"
+
 msgid "Sensitive item"
 msgstr "敏感片段"
 
@@ -1594,6 +1639,12 @@ msgstr "显示面板（{}）"
 
 msgid "Show Snipdeck in the taskbar"
 msgstr "在任务栏中显示 Snipdeck"
+
+msgid "Show kind, title, colour, tags and privacy"
+msgstr "显示类型、标题、颜色、标签和隐私"
+
+msgid "Show numbers"
+msgstr "显示编号"
 
 msgid "Show or hide the Panel"
 msgstr "显示或隐藏面板"
@@ -2246,6 +2297,9 @@ msgstr "视图模式 布局 网格 切换"
 
 msgid "view mode layout list dense switch"
 msgstr "视图模式 布局 列表 紧凑 切换"
+
+msgid "window geometry default restore move resize cut off"
+msgstr "窗口 几何 默认 恢复 移动 大小 被截断"
 
 msgid "{n} item"
 msgid_plural "{n} items"

@@ -376,6 +376,10 @@ pub struct Settings {
     /// The welcome tour has been finished or skipped. Absent (false) in older files; the tour
     /// is shown on a first run only, see [`Settings::tour_due`].
     pub onboarded: bool,
+    /// The item editor's "More options" (Kind, Title, Colour, Tags, Privacy) is open.
+    pub editor_more_open: bool,
+    /// The Panel's rows show their 1 to 9 quick-use numbers (the keys work either way).
+    pub show_numbers: bool,
 }
 
 impl Default for Settings {
@@ -403,6 +407,8 @@ impl Default for Settings {
             no_history_apps: Vec::new(),
             dock: DockSettings::default(),
             onboarded: false,
+            editor_more_open: false,
+            show_numbers: true,
         }
     }
 }
@@ -485,6 +491,8 @@ impl Settings {
         field!(no_history_apps);
         field!(dock);
         field!(onboarded);
+        field!(editor_more_open);
+        field!(show_numbers);
         settings
     }
 

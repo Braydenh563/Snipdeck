@@ -108,10 +108,18 @@ macro_rules! ui_tests {
 fn item_editor() -> (ItemEditor, Log) {
     let ui = ItemEditor::new().expect("item editor");
     fixture::text_item(&ui);
+    // Most tests drive Kind, Title, Colour, Tags and Privacy: "More options" is open, as a user who opened it left it.
+    ui.set_more_open(true);
     ui.window().set_size(slint::LogicalSize::new(640.0, 2000.0));
     ui.show().expect("show");
     settle();
+    ui.invoke_focus_title();
+    settle();
     let log: Log = Rc::default();
+    {
+        let log = log.clone();
+        ui.on_more_toggled(move |open| log.borrow_mut().push(format!("more:{open}")));
+    }
     ui.on_save_requested(log_hook(&log, "save"));
     ui.on_cancel_requested(log_hook(&log, "cancel"));
     ui.on_delete_requested(log_hook(&log, "delete"));
@@ -561,6 +569,53 @@ ui_tests! {
         find(&ui, "Image", AccessibleRole::RadioButton).invoke_accessible_default_action();
         settle();
         assert!(!ui.get_sensitive());
+    }
+
+    fn more_options_start_closed_and_the_toggle_reports_each_change() {
+        let (ui, log) = item_editor();
+        ui.set_more_open(false);
+        settle();
+        find(&ui, "Show kind, title, colour, tags and privacy", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_more_open());
+        assert_eq!(take(&log), ["more:true"]);
+        find(&ui, "Hide kind, title, colour, tags and privacy", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(!ui.get_more_open());
+        assert_eq!(take(&log), ["more:false"]);
+    }
+
+    fn with_more_options_closed_the_editor_starts_in_the_content() {
+        let (ui, _log) = item_editor();
+        ui.set_more_open(false);
+        settle();
+        ui.invoke_focus_title();
+        settle();
+        type_text(ui.window(), "!");
+        settle();
+        assert_eq!(ui.get_item_title(), "Thanks, received", "the title is not typed into");
+        assert!(ui.get_content().contains('!'), "the content took the keys");
+    }
+
+    fn a_refusal_under_more_options_opens_them() {
+        let (ui, _log) = item_editor();
+        ui.set_more_open(false);
+        settle();
+        assert!(!missing(&ui, "Show kind, title, colour, tags and privacy", AccessibleRole::Button));
+        ui.set_title_error("Too long.".into());
+        settle();
+        assert!(!missing(&ui, "Hide kind, title, colour, tags and privacy", AccessibleRole::Button));
+    }
+
+    fn save_names_its_shortcut_in_a_tooltip() {
+        let (ui, _log) = item_editor();
+        let save = find(&ui, "Save", AccessibleRole::Button);
+        let at = slint::LogicalPosition::new(save.absolute_position().x + 4.0, save.absolute_position().y + 4.0);
+        ui.window().dispatch_event(slint::platform::WindowEvent::PointerMoved { position: at });
+        i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(600));
+        settle();
+        let tips = ElementQuery::from_root(&ui).match_inherits("Tooltip").find_all();
+        assert_eq!(tips.len(), 1, "one tooltip after the hover rests");
     }
 
     fn delete_is_offered_for_an_existing_item_only() {

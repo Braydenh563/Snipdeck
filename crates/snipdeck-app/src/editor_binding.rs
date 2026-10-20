@@ -289,6 +289,13 @@ where
             core.act(|ctl| ctl.item_editor_tag_added(name.as_str()));
         });
         let core = Rc::downgrade(self);
+        w.on_more_toggled(move |open| {
+            let Some(core) = core.upgrade() else {
+                return;
+            };
+            core.act(|ctl| ctl.set_editor_more_open(open));
+        });
+        let core = Rc::downgrade(self);
         w.on_edited(move || {
             let Some(core) = core.upgrade() else {
                 return;
@@ -399,6 +406,7 @@ fn set_tags(w: &ui::ItemEditor, tags: &[(String, bool)]) {
 fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
     let fields = &view.fields;
     w.set_is_new(view.is_new);
+    w.set_more_open(view.more_open);
     w.set_kind_index(to_i32(kind_index(fields.kind)));
     w.set_item_title(fields.title.as_str().into());
     w.set_content(fields.content.as_str().into());

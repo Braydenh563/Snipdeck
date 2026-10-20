@@ -203,6 +203,8 @@ export component ItemCard inherits Rectangle {
     // Selection mode (the main window): a click reports `picked(shift, control)` instead of using the item, and a
     // double click uses it. The panel leaves this off: one click uses.
     in property <bool> pick-mode: false;
+    // A Ctrl (Cmd) click reports `picked` even outside `pick-mode`: the Panel's way into a selection.
+    in property <bool> modifier-picks: false;
     // Draws the keyboard focus ring although the card is not the focus owner (the list's cursor row).
     in property <bool> show-focus: false;
     // False where no row menu exists (the Picker): no kebab is drawn and its slot is not kept.
@@ -647,7 +649,7 @@ export component ItemCard inherits Rectangle {
                         root.held-reveal = false;
                         root.reveal-requested(false);
                     } else if (touch.mouse-x >= 0 && touch.mouse-x <= touch.width && touch.mouse-y >= 0 && touch.mouse-y <= touch.height) {
-                        if (root.pick-mode) {
+                        if (root.pick-mode || (root.modifier-picks && (event.modifiers.control || event.modifiers.meta))) {
                             root.picked(event.modifiers.shift, event.modifiers.control || event.modifiers.meta);
                         } else {
                             root.pull();

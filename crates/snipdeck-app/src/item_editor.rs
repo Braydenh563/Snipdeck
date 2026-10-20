@@ -263,6 +263,8 @@ pub struct ItemEditorView {
     pub can_browse: bool,
     /// The fields hold a draft from an earlier session.
     pub restored: bool,
+    /// "More options" (Kind, Title, Colour, Tags, Privacy) is open, as the user left it.
+    pub more_open: bool,
 }
 
 /// `title` trimmed, or why it is refused.

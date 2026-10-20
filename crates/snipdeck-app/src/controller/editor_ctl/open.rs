@@ -51,6 +51,50 @@ where
         }
     }
 
+    /// Ctrl+Shift+N in the quick-add field: the full editor on a new item whose content is `text`
+    /// (a lone web address makes it a Link). The title stays empty: it comes from the first line.
+    pub fn open_new_item_with(&mut self, origin: Origin, text: &str) {
+        if self.raise_item_editor() {
+            return;
+        }
+        self.main_fresh();
+        let Some(list) = self.new_item_list(origin) else {
+            self.show_toast(Toast {
+                kind: ToastKind::Neutral,
+                message: ToastMessage::NoListToSave,
+            });
+            return;
+        };
+        match self.new_slot(list) {
+            Ok(mut slot) => {
+                if !text.trim().is_empty() {
+                    slot.fields.kind = capture::kind_of(text);
+                    text.trim_end().clone_into(&mut slot.fields.content);
+                }
+                self.install_item_editor(slot);
+            }
+            Err(e) => self.show_toast(open_failed(&e)),
+        }
+    }
+
+    /// "Sensitive" in an item's menu: the item with the flag flipped, saved through the editor's own
+    /// path (the content is encrypted or decrypted there). A refusal leaves the editor open with its
+    /// reason.
+    pub fn toggle_item_sensitive(&mut self, id: ItemId) {
+        if self.raise_item_editor() {
+            return;
+        }
+        match self.existing_slot(id) {
+            Ok(slot) => {
+                let mut input = slot.fields.clone();
+                input.sensitive = !input.sensitive;
+                self.install_item_editor(slot);
+                self.item_editor_save(&input);
+            }
+            Err(e) => self.show_toast(open_failed(&e)),
+        }
+    }
+
     /// Opens the editor on item `id` (Ctrl+E, a double-click, Edit in a menu). A sensitive item
     /// needs the library key: it is opened first, and a key that cannot be opened is a toast.
     pub fn open_item_editor(&mut self, id: ItemId) {

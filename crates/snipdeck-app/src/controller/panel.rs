@@ -4,13 +4,12 @@
 
 use snipdeck_core::{ItemId, UseMode};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
-use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
+use snipdeck_store::ItemRepo;
 
 use super::{Controller, Effect, Library, ListDeleteView, PanelMenu, UseResult, failed};
 use crate::{
     frame::{self, Edge, Monitor, Rect},
     host::ClipboardText,
-    toast::{Toast, ToastKind, ToastMessage},
 };
 
 /// A page the Help entries open.
@@ -45,6 +44,10 @@ pub enum AppMenuEntry {
     Dock,
     /// Switch the global hotkeys off and on (checked while they are off).
     PauseHotkeys,
+    /// View: show or hide the 1 to 9 numbers on the rows (checked while shown).
+    ShowNumbers,
+    /// Forget the remembered size and position on this monitor and put the Panel back at the default.
+    ResetGeometry,
     /// A line between groups.
     Separator,
     /// Help: the troubleshooting window.
@@ -81,6 +84,17 @@ pub enum ItemMenuEntry {
     },
     /// Put a copy of the item right after it.
     Duplicate,
+    /// Open the lists to move the item (or the marked items) to.
+    MoveTo,
+    /// Open the colour labels to give the item (or the marked items).
+    Colour,
+    /// Turn the Sensitive flag of the item on or off.
+    Sensitive {
+        /// The item is sensitive now (the row is checked).
+        on: bool,
+        /// Only text, code, link and template items can be sensitive.
+        enabled: bool,
+    },
     /// Move the item one place up in the shown list (the keyboard way is Alt+Up).
     MoveUp {
         /// The list is in manual order, no search runs and the item is not first.
@@ -112,7 +126,7 @@ pub const LIST_MENU: [ListMenuEntry; 2] = [ListMenuEntry::Edit, ListMenuEntry::D
 
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
 /// `Menu` has no sub-menus.
-pub const APP_MENU: [AppMenuEntry; 13] = [
+pub const APP_MENU: [AppMenuEntry; 16] = [
     AppMenuEntry::Open,
     AppMenuEntry::Commands,
     AppMenuEntry::NewSnippet,
@@ -120,6 +134,9 @@ pub const APP_MENU: [AppMenuEntry; 13] = [
     AppMenuEntry::Settings,
     AppMenuEntry::Dock,
     AppMenuEntry::PauseHotkeys,
+    AppMenuEntry::Separator,
+    AppMenuEntry::ShowNumbers,
+    AppMenuEntry::ResetGeometry,
     AppMenuEntry::Separator,
     AppMenuEntry::Troubleshoot,
     AppMenuEntry::UserGuide,
@@ -173,6 +190,11 @@ where
                 self.session.hotkeys_paused = !self.session.hotkeys_paused;
                 vec![Effect::SetHotkeysPaused(self.session.hotkeys_paused)]
             }
+            AppMenuEntry::ShowNumbers => {
+                self.update_settings(|s| s.show_numbers = !s.show_numbers);
+                Vec::new()
+            }
+            AppMenuEntry::ResetGeometry => self.reset_panel_geometry(),
             AppMenuEntry::Troubleshoot => vec![Effect::OpenHelp(HelpTopic::Troubleshoot)],
             AppMenuEntry::UserGuide => vec![Effect::OpenHelp(HelpTopic::Guide)],
             AppMenuEntry::Shortcuts => vec![Effect::OpenHelp(HelpTopic::Shortcuts)],
@@ -200,13 +222,22 @@ where
 
     /// The rows of the item menu for `id`.
     pub(super) fn item_menu_entries(&self, id: ItemId) -> Vec<ItemMenuEntry> {
-        let pinned = self.menu_row(id).is_some_and(|r| r.pinned);
+        let row = self.menu_row(id);
+        let pinned = row.as_ref().is_some_and(|r| r.pinned);
         vec![
             ItemMenuEntry::Use,
             ItemMenuEntry::Copy,
             ItemMenuEntry::Separator,
             ItemMenuEntry::Edit,
             ItemMenuEntry::Duplicate,
+            ItemMenuEntry::MoveTo,
+            ItemMenuEntry::Colour,
+            ItemMenuEntry::Sensitive {
+                on: row.as_ref().is_some_and(|r| r.sensitive),
+                enabled: row
+                    .as_ref()
+                    .is_some_and(|r| crate::item_editor::is_text_kind(r.kind)),
+            },
             ItemMenuEntry::Pin { pinned },
             ItemMenuEntry::Stack {
                 marked: self.stack.contains(&id),
@@ -231,19 +262,31 @@ where
             self.model.rows()
         };
         if let Some(row) = rows.get(index) {
+            self.menu_targets = if in_strip {
+                vec![row.id]
+            } else {
+                self.model.targets(index)
+            };
             self.menu = PanelMenu::Item(row.id);
         }
     }
 
     /// Esc, or a click outside the menu: closes it without a choice.
     pub fn close_item_menu(&mut self) {
-        if matches!(self.menu, PanelMenu::Item(_)) {
+        if matches!(
+            self.menu,
+            PanelMenu::Item(_) | PanelMenu::Move | PanelMenu::Colour
+        ) {
             self.menu = PanelMenu::None;
         }
     }
 
     /// The user chose row `index` of the item menu. The menu closes (a line stays open).
     pub fn choose_item_menu(&mut self, index: usize) -> Vec<Effect> {
+        if matches!(self.menu, PanelMenu::Move | PanelMenu::Colour) {
+            self.choose_second_level(index);
+            return Vec::new();
+        }
         let PanelMenu::Item(id) = self.menu else {
             return Vec::new();
         };
@@ -251,11 +294,32 @@ where
             self.menu = PanelMenu::None;
             return Vec::new();
         };
-        if entry == ItemMenuEntry::Separator {
+        if entry == ItemMenuEntry::Separator
+            || entry
+                == (ItemMenuEntry::Sensitive {
+                    on: false,
+                    enabled: false,
+                })
+            || matches!(entry, ItemMenuEntry::Sensitive { enabled: false, .. })
+        {
+            return Vec::new();
+        }
+        // Move to and Colour open the second level in the menu's place.
+        if matches!(entry, ItemMenuEntry::MoveTo | ItemMenuEntry::Colour) {
+            self.menu = if entry == ItemMenuEntry::MoveTo {
+                PanelMenu::Move
+            } else {
+                PanelMenu::Colour
+            };
             return Vec::new();
         }
         self.menu = PanelMenu::None;
+        let targets = std::mem::take(&mut self.menu_targets);
         match entry {
+            ItemMenuEntry::Sensitive { .. } => {
+                self.toggle_item_sensitive(id);
+                Vec::new()
+            }
             ItemMenuEntry::Use => {
                 let used: UseResult = self.use_item(id, UseMode::Paste);
                 self.dock_after_use(&used)
@@ -266,7 +330,7 @@ where
             }
             ItemMenuEntry::Edit => vec![Effect::EditItem(id)],
             ItemMenuEntry::Duplicate => {
-                self.duplicate(&[id]);
+                self.duplicate(&targets);
                 Vec::new()
             }
             ItemMenuEntry::Pin { pinned } => {
@@ -290,10 +354,11 @@ where
                 Vec::new()
             }
             ItemMenuEntry::Trash => {
-                self.trash_with_undo(id);
+                self.trash_with_undo(&targets);
+                self.model.clear_marks();
                 Vec::new()
             }
-            ItemMenuEntry::Separator => Vec::new(),
+            ItemMenuEntry::MoveTo | ItemMenuEntry::Colour | ItemMenuEntry::Separator => Vec::new(),
         }
     }
 
@@ -422,30 +487,11 @@ where
     /// Delete on row `index`: moves the item to the Trash and offers Undo for 5 s (the same
     /// Trash and Undo as the Main window; [`main_undo`](Self::main_undo) brings it back).
     pub fn delete_row(&mut self, index: usize) {
-        if let Some(id) = self.row_id(index) {
-            self.trash_with_undo(id);
+        if self.model.marked_count() > 0 {
+            self.bulk_delete();
+        } else if let Some(id) = self.row_id(index) {
+            self.trash_with_undo(&[id]);
         }
-    }
-
-    /// Moves item `id` to the Trash and offers Undo for 5 s.
-    fn trash_with_undo(&mut self, id: ItemId) {
-        let now = self.clock.now();
-        let done = self.store.atomically(|b| b.trash(Trashable::Item(id), now));
-        if done.is_err() {
-            self.show_toast(failed());
-            return;
-        }
-        if self.refresh_panel().is_err() {
-            self.show_toast(failed());
-            return;
-        }
-        self.show_undo_toast(
-            Toast {
-                kind: ToastKind::Neutral,
-                message: ToastMessage::ItemsTrashed { count: 1 },
-            },
-            vec![Trashable::Item(id)],
-        );
     }
 
     /// Holding Space (or the pointer) on sensitive row `index` reveals its text in the Panel;
