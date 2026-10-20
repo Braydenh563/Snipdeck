@@ -1040,6 +1040,14 @@ impl SettingsHost for NoHost {
     ) -> Option<PathBuf> {
         None
     }
+
+    fn clipboard_history_supported(&self) -> bool {
+        false
+    }
+
+    fn read_clipboard_history(&self) -> snipdeck_platform::clipboard_history::HistoryRead {
+        snipdeck_platform::clipboard_history::HistoryRead::Unsupported
+    }
 }
 
 #[test]

@@ -307,8 +307,12 @@ file or folder. The Free plan's board limit still applies, and the preview says 
 **Restore.** Restoring a backup in Settings shows the same preview. A restore puts each board back under its
 own name.
 
-Snipdeck does not import the Windows clipboard history (Win+V) yet. Turn on the [Recent inbox](#recent) to keep
-what you copy from now on.
+**Windows clipboard history.** On Windows, **Windows clipboard history** is a fifth choice. It brings in the
+text that Windows still holds in its Win+V history for this sign-in (Windows clears it at sign-out), newest
+first, as one new board, after the same preview. Pictures are not imported. If clipboard history is off in
+Windows, or holds no text, or Windows refuses access, the preview says so and offers nothing to import; turn
+the history on under Windows Settings ▸ System ▸ Clipboard. For what you copy from now on, turn on the
+[Recent inbox](#recent).
 
 ## Keyboard reference
 

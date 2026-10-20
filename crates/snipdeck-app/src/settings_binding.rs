@@ -19,9 +19,13 @@ use std::{
 use slint::{ComponentHandle, Global, SharedString};
 use snipdeck_platform::{
     chord::Chord,
+    clipboard_history::{self, ClipboardHistoryEntry, HistoryRead},
     pipeline::{Clipboard, Keyboard, Timing},
 };
-use snipdeck_portable::backup::{self, BackupFile};
+use snipdeck_portable::{
+    HistoryEntry,
+    backup::{self, BackupFile},
+};
 use snipdeck_store::Store;
 use snipdeck_ui as ui;
 
@@ -93,6 +97,13 @@ pub trait SettingsHost {
     /// `owner` is the Settings window's native handle: it is disabled while the dialog is open.
     /// `None` when they cancelled or the machine has no dialog.
     fn pick_import(&self, kind: ImportKind, owner: Option<isize>) -> Option<PathBuf>;
+
+    /// Whether this PC has a Windows clipboard history to offer as an import source (only
+    /// Windows does). The source is left out of the "Import..." choices when it does not.
+    fn clipboard_history_supported(&self) -> bool;
+
+    /// Reads the text entries of the Windows clipboard history. May block until Windows answers.
+    fn read_clipboard_history(&self) -> HistoryRead;
 }
 
 /// Registers `hotkeys` with `backend`: a shortcut that is off is removed (which
@@ -186,6 +197,27 @@ impl SettingsHost for SystemHost {
             None
         }
     }
+
+    fn clipboard_history_supported(&self) -> bool {
+        cfg!(windows)
+    }
+
+    fn read_clipboard_history(&self) -> HistoryRead {
+        // The WinRT call answers from Windows' own store, so it returns at once in practice; an
+        // error is the history being unreadable, which the preview words like a refusal.
+        clipboard_history::read_current_session().unwrap_or(HistoryRead::AccessDenied)
+    }
+}
+
+/// The platform layer's history entries as the importer takes them.
+fn history_entries(entries: Vec<ClipboardHistoryEntry>) -> Vec<HistoryEntry> {
+    entries
+        .into_iter()
+        .map(|e| HistoryEntry {
+            text: e.text,
+            timestamp: e.timestamp,
+        })
+        .collect()
 }
 
 /// The dialog an import choice opens: files filtered by the source's extension, or the folder
@@ -462,7 +494,8 @@ struct ImportLines {
     open: bool,
     name: String,
     restore: bool,
-    problem: String,
+    /// Why the import cannot go ahead; worded when drawn, in the UI's language.
+    problem: Option<ImportProblem>,
     boards: i32,
     lists: i32,
     items: i32,
@@ -487,7 +520,7 @@ impl ImportLines {
             ..Self::default()
         };
         match &pending.outcome {
-            Err(problem) => lines.problem = wording::import_problem_text(*problem).into(),
+            Err(problem) => lines.problem = Some(*problem),
             Ok(p) => {
                 lines.boards = to_i32(p.boards);
                 lines.lists = to_i32(p.lists);
@@ -1031,7 +1064,8 @@ where
             0 => ImportKind::Snipdeck,
             1 => ImportKind::Ditto,
             2 => ImportKind::CopyQ,
-            _ => ImportKind::Folder,
+            3 => ImportKind::Folder,
+            _ => return self.import_clipboard_history(),
         };
         let owner = self
             .window
@@ -1045,11 +1079,51 @@ where
         self.preview(source, false, name);
     }
 
+    /// The "Windows clipboard history" choice: reads the history, then shows the preview, or says
+    /// in the preview why there is nothing to import (history off, refused, no text).
+    fn import_clipboard_history(self: &Rc<Self>) {
+        let name = self
+            .window
+            .upgrade()
+            .map(|w| wording::history_source_name(&w))
+            .unwrap_or_default();
+        match self.host.read_clipboard_history() {
+            HistoryRead::Entries(entries) if !entries.is_empty() => {
+                let source = ImportSource::ClipboardHistory {
+                    entries: history_entries(entries),
+                    board: name.clone(),
+                };
+                self.preview(source, false, name);
+            }
+            other => {
+                let problem = match other {
+                    HistoryRead::HistoryDisabled => ImportProblem::HistoryOff,
+                    HistoryRead::AccessDenied | HistoryRead::Unsupported => {
+                        ImportProblem::HistoryUnavailable
+                    }
+                    HistoryRead::Entries(_) => ImportProblem::HistoryEmpty,
+                };
+                self.state.borrow_mut().import = Some(PendingImport {
+                    source: ImportSource::ClipboardHistory {
+                        entries: Vec::new(),
+                        board: String::new(),
+                    },
+                    restore: false,
+                    name,
+                    outcome: Err(problem),
+                });
+                redraw_all();
+            }
+        }
+    }
+
     /// Works out what `source` would do (nothing is written) and opens the preview on it.
     fn preview(self: &Rc<Self>, source: ImportSource, restore: bool, name: String) {
         let outcome = self.act(|ctl| {
             if restore {
-                ctl.preview_restore(source.path())
+                source
+                    .path()
+                    .map_or(Err(ImportProblem::Failed), |p| ctl.preview_restore(p))
             } else {
                 ctl.preview_import(&source)
             }
@@ -1070,7 +1144,7 @@ where
         };
         if pending.outcome.is_ok() {
             if pending.restore {
-                self.act(|ctl| ctl.restore_backup(pending.source.path()));
+                self.act(|ctl| pending.source.path().is_some_and(|p| ctl.restore_backup(p)));
             } else {
                 self.act(|ctl| ctl.apply_import(&pending.source));
             }
@@ -1191,6 +1265,7 @@ where
         window.set_languages(model(
             std::iter::once(follow).chain(LANGUAGE_NAMES.iter().map(|n| SharedString::from(*n))),
         ));
+        window.set_import_history_available(core.host.clipboard_history_supported());
         core.refresh_backups();
         core.sync();
 
@@ -1330,7 +1405,9 @@ fn render_import(window: &ui::SettingsPage, i: &ImportLines) {
     window.set_import_open(i.open);
     window.set_import_name(i.name.as_str().into());
     window.set_import_restore(i.restore);
-    window.set_import_problem(i.problem.as_str().into());
+    window.set_import_problem(i.problem.map_or_else(SharedString::new, |p| {
+        wording::import_problem_text(window, p).into()
+    }));
     window.set_import_boards(i.boards);
     window.set_import_lists(i.lists);
     window.set_import_items(i.items);
