@@ -150,7 +150,7 @@ pub fn help(ui: &HelpWindow) {
     ui.set_problems(2);
     ui.set_version("0.1.0".into());
     ui.set_build_date("2026-10-19".into());
-    ui.set_tier("Free".into());
+    ui.set_supporter(false);
     ui.set_source_url("https://github.com/Braydenh563/Snipdeck".into());
 }
 

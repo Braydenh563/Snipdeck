@@ -342,7 +342,7 @@ fn read_input(w: &ui::ItemEditor) -> EditorInput {
 fn apply_state(w: &ui::ItemEditor, view: &ItemEditorView) {
     let text = |p: &Option<EditorProblem>| -> SharedString {
         p.as_ref()
-            .map(wording::editor_problem_text)
+            .map(|problem| wording::editor_problem_text(w, problem))
             .unwrap_or_default()
             .into()
     };
@@ -388,13 +388,13 @@ fn fill(w: &ui::ItemEditor, view: &ItemEditorView) {
     w.set_content_large(view.large.is_some());
     w.set_content_size(
         view.large
-            .map(wording::size_text)
+            .map(|bytes| wording::size_text(w, bytes))
             .unwrap_or_default()
             .into(),
     );
     if let Some(a) = &view.attachment {
-        w.set_attachment_name(wording::attachment_name_text(a).into());
-        w.set_attachment_detail(wording::attachment_detail_text(a).into());
+        w.set_attachment_name(wording::attachment_name_text(w, a).into());
+        w.set_attachment_detail(wording::attachment_detail_text(w, a).into());
         w.set_preview(a.preview.as_ref().map_or_else(slint::Image::default, |p| {
             slint::Image::from_rgba8(SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(
                 &p.rgba, p.width, p.height,

@@ -305,7 +305,9 @@ where
                         w.set_rename_error(SharedString::new());
                         w.invoke_finish_rename();
                     }
-                    Err(error) => w.set_rename_error(wording::tag_rename_error_text(&error).into()),
+                    Err(error) => {
+                        w.set_rename_error(wording::tag_rename_error_text(&w, &error).into());
+                    }
                 }
             }
         });
@@ -363,7 +365,7 @@ where
                 }
                 apply_look(&window, screen);
                 window.set_dark(screen.dark);
-                window.set_name_error(error_text(view));
+                window.set_name_error(error_text(&window, view));
                 if fresh {
                     fill_list_editor(&window, view);
                     size_to_content(window.window(), || window.get_wanted_height());
@@ -385,7 +387,7 @@ where
                 }
                 apply_look(&window, screen);
                 window.set_dark(screen.dark);
-                window.set_name_error(error_text(view));
+                window.set_name_error(error_text(&window, view));
                 if fresh {
                     fill_board_editor(&window, view);
                     size_to_content(window.window(), || window.get_wanted_height());
@@ -978,7 +980,11 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         window.set_board_name(screen.board_name.as_str().into());
     }
     if differs(&|p| p.board_menu == screen.board_menu) {
-        let entries = screen.board_menu.iter().flatten().map(menu_entry);
+        let entries = screen
+            .board_menu
+            .iter()
+            .flatten()
+            .map(|entry| menu_entry(window, entry));
         window.set_board_menu_entries(model(entries));
         window.set_board_menu_open(screen.board_menu.is_some());
     }
@@ -1047,7 +1053,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         window.set_selected_count(to_i32(screen.selected_count));
     }
     if differs(&|p| p.use_label == screen.use_label) {
-        window.set_use_label(wording::use_label_text(screen.use_label).into());
+        window.set_use_label(wording::use_label_text(window, screen.use_label).into());
     }
     let revealed = screen.revealed.map_or(-1, to_i32);
     if window.get_revealed_index() != revealed {
@@ -1159,13 +1165,13 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
     }
 }
 
-fn menu_entry(entry: &BoardMenuEntry) -> ui::MenuEntry {
+fn menu_entry(window: &ui::MainWindow, entry: &BoardMenuEntry) -> ui::MenuEntry {
     let disabled = matches!(
         entry,
         BoardMenuEntry::MoveUp { enabled: false } | BoardMenuEntry::MoveDown { enabled: false }
     );
     ui::MenuEntry {
-        text: wording::board_menu_text(entry).into(),
+        text: wording::board_menu_text(window, entry).into(),
         separator: matches!(entry, BoardMenuEntry::Separator),
         destructive: matches!(entry, BoardMenuEntry::Delete),
         disabled,
@@ -1173,10 +1179,13 @@ fn menu_entry(entry: &BoardMenuEntry) -> ui::MenuEntry {
     }
 }
 
-fn error_text(view: &EditorView) -> SharedString {
+fn error_text<C>(window: &C, view: &EditorView) -> SharedString
+where
+    for<'a> ui::FormTexts<'a>: slint::Global<'a, C>,
+{
     view.name_error
         .as_ref()
-        .map(wording::name_error_text)
+        .map(|error| wording::name_error_text(window, error))
         .unwrap_or_default()
         .into()
 }
@@ -1196,7 +1205,7 @@ fn fill_list_editor(window: &ui::ListEditor, view: &EditorView) {
     window.set_show_sort(true);
     window.set_item_count(to_i32(view.item_count));
     window.set_can_delete(view.can_delete);
-    window.set_delete_hint(hint_text(view));
+    window.set_delete_hint(hint_text(window, view));
     window.set_discard_open(false);
     window.set_delete_open(view.open_delete);
     window.invoke_mark_clean();
@@ -1209,15 +1218,18 @@ fn fill_board_editor(window: &ui::BoardEditor, view: &EditorView) {
     window.set_show_sort(false);
     window.set_item_count(to_i32(view.item_count));
     window.set_can_delete(view.can_delete);
-    window.set_delete_hint(hint_text(view));
+    window.set_delete_hint(hint_text(window, view));
     window.set_discard_open(false);
     window.set_delete_open(view.open_delete);
     window.invoke_mark_clean();
 }
 
-fn hint_text(view: &EditorView) -> SharedString {
+fn hint_text<C>(window: &C, view: &EditorView) -> SharedString
+where
+    for<'a> ui::FormTexts<'a>: slint::Global<'a, C>,
+{
     view.delete_hint
-        .map(wording::delete_hint_text)
+        .map(|hint| wording::delete_hint_text(window, hint))
         .unwrap_or_default()
         .into()
 }
@@ -1350,7 +1362,6 @@ loggable_debug!(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::panel::UseLabel;
 
     #[test]
     fn accent_and_sort_indexes_round_trip_in_the_editors_order() {
@@ -1387,11 +1398,5 @@ mod tests {
         });
         assert!(result.is_err());
         assert!(!regular_window_being_shown());
-    }
-
-    #[test]
-    fn a_label_is_the_use_label_the_window_expects() {
-        assert_eq!(wording::use_label_text(UseLabel::Paste), "Use");
-        assert_eq!(wording::use_label_text(UseLabel::Copy), "Copy");
     }
 }

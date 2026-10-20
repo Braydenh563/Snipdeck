@@ -419,7 +419,8 @@ pub(crate) fn arm_settings_save<C, K, T>(
     });
 }
 
-/// Names of the actions, for the message when two share a shortcut.
+/// Names of the actions in English, for the diagnostic report and the headless demo, which are
+/// English by design. The words a person sees come from [`action_text`].
 pub(crate) const fn action_name(action: HotkeyAction) -> &'static str {
     match action {
         HotkeyAction::TogglePanel => "Show or hide the panel",
@@ -429,37 +430,56 @@ pub(crate) const fn action_name(action: HotkeyAction) -> &'static str {
     }
 }
 
-pub(crate) fn hotkey_refusal_text(refusal: HotkeyRefusal, combo: &str) -> String {
-    match refusal {
-        HotkeyRefusal::NotAShortcut => "That combination can't be used as a shortcut.".into(),
-        HotkeyRefusal::UsedBy(other) => {
-            format!(
-                "{combo} is already used for \u{201c}{}\u{201d}.",
-                action_name(other)
-            )
-        }
-        HotkeyRefusal::Refused(HotkeyFailure::InUse) => {
-            format!("Another program already uses {combo}.")
-        }
-        HotkeyRefusal::Refused(HotkeyFailure::Invalid) => {
-            format!("Windows doesn't allow {combo} as a shortcut.")
-        }
-        HotkeyRefusal::Refused(HotkeyFailure::Unavailable) => {
-            "Shortcuts are not available right now. Try again in a moment.".into()
-        }
+/// The name of an action in the language selected for the UI, for the message when two share a
+/// shortcut. `window` is any window of the UI.
+fn action_text<C>(window: &C, action: HotkeyAction) -> String
+where
+    for<'a> ui::FormTexts<'a>: slint::Global<'a, C>,
+{
+    let t = ui::FormTexts::get(window);
+    match action {
+        HotkeyAction::TogglePanel => t.invoke_action_toggle_panel(),
+        HotkeyAction::Picker => t.invoke_action_picker(),
+        HotkeyAction::Capture => t.invoke_action_capture(),
+        HotkeyAction::PasteNext => t.invoke_action_paste_next(),
     }
+    .into()
 }
 
-fn program_refusal_text(refusal: &ProgramRefusal) -> String {
+pub(crate) fn hotkey_refusal_text<C>(window: &C, refusal: HotkeyRefusal, combo: &str) -> String
+where
+    for<'a> ui::FormTexts<'a>: slint::Global<'a, C>,
+{
+    let t = ui::FormTexts::get(window);
     match refusal {
-        ProgramRefusal::Empty => String::new(),
-        ProgramRefusal::HasPath => "Use just the program's file name, like notepad.exe.".into(),
-        ProgramRefusal::Listed(name) => format!("{name} is already in the list."),
-        ProgramRefusal::TooLong => {
-            format!("Program names are at most {MAX_PROGRAM_NAME} characters.")
+        HotkeyRefusal::NotAShortcut => t.invoke_hotkey_not_a_shortcut(),
+        HotkeyRefusal::UsedBy(other) => {
+            t.invoke_hotkey_used_by(combo.into(), action_text(window, other).into())
         }
-        ProgramRefusal::Full => format!("The list holds at most {MAX_PROGRAMS} programs."),
+        HotkeyRefusal::Refused(HotkeyFailure::InUse) => t.invoke_hotkey_in_use(combo.into()),
+        HotkeyRefusal::Refused(HotkeyFailure::Invalid) => t.invoke_hotkey_invalid(combo.into()),
+        HotkeyRefusal::Refused(HotkeyFailure::Unavailable) => t.invoke_hotkey_unavailable(),
     }
+    .into()
+}
+
+fn program_refusal_text<C>(window: &C, refusal: &ProgramRefusal) -> String
+where
+    for<'a> ui::FormTexts<'a>: slint::Global<'a, C>,
+{
+    let t = ui::FormTexts::get(window);
+    match refusal {
+        ProgramRefusal::Empty => return String::new(),
+        ProgramRefusal::HasPath => t.invoke_program_has_path(),
+        ProgramRefusal::Listed(name) => t.invoke_program_listed(name.as_str().into()),
+        ProgramRefusal::TooLong => {
+            t.invoke_program_too_long(i32::try_from(MAX_PROGRAM_NAME).unwrap_or(i32::MAX))
+        }
+        ProgramRefusal::Full => {
+            t.invoke_program_full(i32::try_from(MAX_PROGRAMS).unwrap_or(i32::MAX))
+        }
+    }
+    .into()
 }
 
 // ---- What the page shows -----------------------------------------------------------------------
@@ -832,6 +852,20 @@ where
 
     // ---- Shortcuts -------------------------------------------------------------------------
 
+    /// Shows why `combo` was refused for the action at `index`, in the window's language.
+    fn refuse_hotkey(&self, index: usize, refusal: HotkeyRefusal, combo: &str) {
+        if let Some(window) = self.window.upgrade() {
+            self.set_conflict(index, hotkey_refusal_text(&window, refusal, combo));
+        }
+    }
+
+    fn program_refusal(&self, refusal: &ProgramRefusal) -> String {
+        self.window
+            .upgrade()
+            .map(|window| program_refusal_text(&window, refusal))
+            .unwrap_or_default()
+    }
+
     fn set_conflict(&self, index: usize, text: String) {
         if let Some(slot) = self.state.borrow_mut().hotkey_conflicts.get_mut(index) {
             *slot = text;
@@ -846,16 +880,13 @@ where
         let next = match with_hotkey(&current, action, combo) {
             Ok(next) => next,
             Err(refusal) => {
-                self.set_conflict(index, hotkey_refusal_text(refusal, combo));
+                self.refuse_hotkey(index, refusal, combo);
                 redraw_all();
                 return;
             }
         };
         if let Some(failure) = self.try_register(action, &current, &next) {
-            self.set_conflict(
-                index,
-                hotkey_refusal_text(HotkeyRefusal::Refused(failure), combo),
-            );
+            self.refuse_hotkey(index, HotkeyRefusal::Refused(failure), combo);
             redraw_all();
             return;
         }
@@ -901,7 +932,7 @@ where
                 self.act(|ctl| ctl.update_settings(|s| s.no_paste_apps = next));
             }
             Err(refusal) => {
-                self.state.borrow_mut().no_paste_error = program_refusal_text(&refusal);
+                self.state.borrow_mut().no_paste_error = self.program_refusal(&refusal);
                 redraw_all();
             }
         }
@@ -928,7 +959,7 @@ where
                 self.act(|ctl| ctl.update_settings(|s| s.no_history_apps = next));
             }
             Err(refusal) => {
-                self.state.borrow_mut().no_history_error = program_refusal_text(&refusal);
+                self.state.borrow_mut().no_history_error = self.program_refusal(&refusal);
                 redraw_all();
             }
         }
@@ -1722,10 +1753,6 @@ mod tests {
             with_hotkey(&current, HotkeyAction::Capture, &taken),
             Err(HotkeyRefusal::UsedBy(HotkeyAction::Picker))
         );
-        assert!(
-            hotkey_refusal_text(HotkeyRefusal::UsedBy(HotkeyAction::Picker), &taken)
-                .contains("Open the picker")
-        );
         // Re-recording an action's own shortcut is not a clash.
         assert!(with_hotkey(&current, HotkeyAction::Picker, &taken).is_ok());
     }
@@ -1807,9 +1834,6 @@ mod tests {
             with_program(&full, "APP3.exe"),
             Err(ProgramRefusal::Listed("app3.exe".into()))
         );
-        for refusal in [ProgramRefusal::TooLong, ProgramRefusal::Full] {
-            assert_ne!(program_refusal_text(&refusal), "");
-        }
     }
 
     #[test]

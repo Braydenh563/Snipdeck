@@ -333,14 +333,7 @@ where
         window.set_has_data_folder(self.data_dir.is_some());
         window.set_version(env!("CARGO_PKG_VERSION").into());
         window.set_build_date(build_date().into());
-        window.set_tier(
-            if matches!(tier, Tier::Pro) {
-                "Supporter"
-            } else {
-                "Free"
-            }
-            .into(),
-        );
+        window.set_supporter(matches!(tier, Tier::Pro));
         window.set_source_url(REPO_URL.into());
         window.set_show_store_link(STORE_URL.is_some());
         window.set_has_notices(self.host.notices_file().is_some());

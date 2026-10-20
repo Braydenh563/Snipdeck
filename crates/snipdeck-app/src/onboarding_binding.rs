@@ -173,6 +173,13 @@ where
 
     // ---- Shortcuts (the Settings logic) ----------------------------------------------------
 
+    /// Shows why `combo` was refused for the action at `index`, in the window's language.
+    fn refuse_hotkey(&self, index: usize, refusal: HotkeyRefusal, combo: &str) {
+        if let Some(window) = self.window.upgrade() {
+            self.set_conflict(index, hotkey_refusal_text(&window, refusal, combo));
+        }
+    }
+
     fn set_conflict(&self, index: usize, text: String) {
         if let Some(slot) = self.conflicts.borrow_mut().get_mut(index) {
             *slot = text;
@@ -187,17 +194,14 @@ where
         let next = match with_hotkey(&current, action, combo) {
             Ok(next) => next,
             Err(refusal) => {
-                self.set_conflict(index, hotkey_refusal_text(refusal, combo));
+                self.refuse_hotkey(index, refusal, combo);
                 redraw_all();
                 return;
             }
         };
         let paused = self.controller.borrow().hotkeys_paused();
         if let Some(failure) = try_register(self.host.as_ref(), paused, action, &current, &next) {
-            self.set_conflict(
-                index,
-                hotkey_refusal_text(HotkeyRefusal::Refused(failure), combo),
-            );
+            self.refuse_hotkey(index, HotkeyRefusal::Refused(failure), combo);
             redraw_all();
             return;
         }

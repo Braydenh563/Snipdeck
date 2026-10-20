@@ -9,7 +9,9 @@
 use slint::Global;
 use snipdeck_platform::tray::TrayLabels;
 use snipdeck_portable::Warning;
-use snipdeck_ui::{ImportTexts, PanelWindow, SettingsPage, ToastTexts, TrayTexts};
+use snipdeck_ui::{
+    FormTexts, ImportTexts, MenuTexts, PanelWindow, SettingsPage, ToastTexts, TrayTexts,
+};
 
 use snipdeck_core::{ItemKind, ItemLabel, ListIcon};
 
@@ -112,7 +114,7 @@ pub fn import_warning_text(window: &SettingsPage, warning: &Warning) -> String {
         }
         Warning::LossyText { name: n } => texts.invoke_lossy_text(name(n)),
         Warning::TooLarge { name: n, size } => {
-            texts.invoke_too_large(name(n), size_text(*size).into())
+            texts.invoke_too_large(name(n), size_text(window, *size).into())
         }
         Warning::Empty { name: n } => texts.invoke_empty(name(n)),
         Warning::Unreadable { name: n, .. } => texts.invoke_unreadable(name(n)),
@@ -141,6 +143,7 @@ fn numbered_label(name: &str) -> Option<usize> {
 pub fn toast_text<C>(window: &C, message: &ToastMessage) -> String
 where
     for<'a> ToastTexts<'a>: Global<'a, C>,
+    for<'a> FormTexts<'a>: Global<'a, C>,
 {
     let t = ToastTexts::get(window);
     let count = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
@@ -301,35 +304,46 @@ pub const fn toast_button_text(toast: &crate::controller::ToastView) -> &'static
 }
 
 /// The Main window's item-use button: "Use" where a click pastes, "Copy" where it cannot.
+/// `window` is any window of the UI, through which the `MenuTexts` global is reached.
 #[must_use]
-pub const fn use_label_text(label: crate::panel::UseLabel) -> &'static str {
+pub fn use_label_text<C>(window: &C, label: crate::panel::UseLabel) -> String
+where
+    for<'a> MenuTexts<'a>: Global<'a, C>,
+{
+    let t = MenuTexts::get(window);
     match label {
-        crate::panel::UseLabel::Paste => "Use",
-        crate::panel::UseLabel::Copy => "Copy",
+        crate::panel::UseLabel::Paste => t.invoke_item_use(),
+        crate::panel::UseLabel::Copy => t.invoke_item_copy(),
     }
+    .into()
 }
 
-/// The kebab's dock row while the Panel is docked.
-pub const UNDOCK_TEXT: &str = "Undock the panel";
-
-/// The words of a row of the Panel's kebab menu.
+/// The words of a row of the Panel's kebab menu. The dock row reads "Undock the panel" while the
+/// Panel is `docked`.
 #[must_use]
-pub const fn app_menu_text(entry: crate::controller::AppMenuEntry) -> &'static str {
+pub fn app_menu_text(
+    window: &PanelWindow,
+    entry: crate::controller::AppMenuEntry,
+    docked: bool,
+) -> String {
     use crate::controller::AppMenuEntry;
+    let t = MenuTexts::get(window);
     match entry {
-        AppMenuEntry::Open => "Open Snipdeck",
-        AppMenuEntry::Commands => "All commands\u{2026}",
-        AppMenuEntry::NewSnippet => "New snippet",
-        AppMenuEntry::Settings => "Settings\u{2026}",
-        AppMenuEntry::Dock => "Dock to the nearest edge",
-        AppMenuEntry::PauseHotkeys => "Pause hotkeys",
-        AppMenuEntry::Separator => "",
-        AppMenuEntry::Troubleshoot => "Troubleshoot\u{2026}",
-        AppMenuEntry::UserGuide => "User guide",
-        AppMenuEntry::Shortcuts => "Keyboard shortcuts",
-        AppMenuEntry::About => "About Snipdeck",
-        AppMenuEntry::Quit => "Quit",
+        AppMenuEntry::Open => t.invoke_app_open(),
+        AppMenuEntry::Commands => t.invoke_app_commands(),
+        AppMenuEntry::NewSnippet => t.invoke_app_new_snippet(),
+        AppMenuEntry::Settings => t.invoke_app_settings(),
+        AppMenuEntry::Dock if docked => t.invoke_app_undock(),
+        AppMenuEntry::Dock => t.invoke_app_dock(),
+        AppMenuEntry::PauseHotkeys => t.invoke_app_pause_hotkeys(),
+        AppMenuEntry::Separator => return String::new(),
+        AppMenuEntry::Troubleshoot => t.invoke_app_troubleshoot(),
+        AppMenuEntry::UserGuide => t.invoke_app_user_guide(),
+        AppMenuEntry::Shortcuts => t.invoke_app_shortcuts(),
+        AppMenuEntry::About => t.invoke_app_about(),
+        AppMenuEntry::Quit => t.invoke_app_quit(),
     }
+    .into()
 }
 
 /// The shortcut shown beside a row of the Panel's kebab menu; empty where the row has none.
@@ -360,178 +374,191 @@ pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'st
     }
 }
 
-/// The words of a row of the Panel's item menu.
-#[must_use]
-pub const fn item_menu_text(entry: crate::controller::ItemMenuEntry) -> &'static str {
-    use crate::controller::ItemMenuEntry;
-    match entry {
-        ItemMenuEntry::Use => "Use",
-        ItemMenuEntry::Copy => "Copy",
-        ItemMenuEntry::Edit => "Edit\u{2026}",
-        ItemMenuEntry::Duplicate => "Duplicate",
-        ItemMenuEntry::Pin { pinned: false } => "Pin",
-        ItemMenuEntry::Pin { pinned: true } => "Unpin",
-        ItemMenuEntry::Stack { marked: false } => "Add to paste stack",
-        ItemMenuEntry::Stack { marked: true } => "Remove from paste stack",
-        ItemMenuEntry::Trash => "Move to Trash",
-        ItemMenuEntry::MoveUp { .. } => "Move up",
-        ItemMenuEntry::MoveDown { .. } => "Move down",
-        ItemMenuEntry::Separator => "",
-    }
-}
-
-/// The words of a row of the Panel's item menu, translated where the catalogue has them (the
-/// move rows). `window` is the Panel, through which `ToastTexts` is reached.
+/// The words of a row of the Panel's item menu. `window` is the Panel, through which
+/// `MenuTexts` and `ToastTexts` are reached.
 #[must_use]
 pub fn item_menu_label(window: &PanelWindow, entry: crate::controller::ItemMenuEntry) -> String {
     use crate::controller::ItemMenuEntry;
-    let t = ToastTexts::get(window);
+    let t = MenuTexts::get(window);
+    let moves = ToastTexts::get(window);
     match entry {
-        ItemMenuEntry::MoveUp { .. } => t.invoke_menu_move_up().into(),
-        ItemMenuEntry::MoveDown { .. } => t.invoke_menu_move_down().into(),
-        other => item_menu_text(other).to_owned(),
+        ItemMenuEntry::Use => t.invoke_item_use(),
+        ItemMenuEntry::Copy => t.invoke_item_copy(),
+        ItemMenuEntry::Edit => t.invoke_item_edit(),
+        ItemMenuEntry::Duplicate => t.invoke_item_duplicate(),
+        ItemMenuEntry::Pin { pinned: false } => t.invoke_item_pin(),
+        ItemMenuEntry::Pin { pinned: true } => t.invoke_item_unpin(),
+        ItemMenuEntry::Stack { marked: false } => t.invoke_item_stack_add(),
+        ItemMenuEntry::Stack { marked: true } => t.invoke_item_stack_remove(),
+        ItemMenuEntry::Trash => t.invoke_item_trash(),
+        ItemMenuEntry::MoveUp { .. } => moves.invoke_menu_move_up(),
+        ItemMenuEntry::MoveDown { .. } => moves.invoke_menu_move_down(),
+        ItemMenuEntry::Separator => return String::new(),
     }
+    .into()
 }
 
 /// The words of a board menu entry.
 #[must_use]
-pub fn board_menu_text(entry: &crate::controller::BoardMenuEntry) -> String {
+pub fn board_menu_text<C>(window: &C, entry: &crate::controller::BoardMenuEntry) -> String
+where
+    for<'a> MenuTexts<'a>: Global<'a, C>,
+{
     use crate::controller::BoardMenuEntry;
+    let t = MenuTexts::get(window);
     match entry {
-        BoardMenuEntry::Board { name, .. } => name.clone(),
-        BoardMenuEntry::Separator => String::new(),
-        BoardMenuEntry::New => "New board\u{2026}".into(),
-        BoardMenuEntry::Rename => "Rename board\u{2026}".into(),
-        BoardMenuEntry::MoveUp { .. } => "Move board up".into(),
-        BoardMenuEntry::MoveDown { .. } => "Move board down".into(),
-        BoardMenuEntry::Delete => "Delete board\u{2026}".into(),
+        BoardMenuEntry::Board { name, .. } => return name.clone(),
+        BoardMenuEntry::Separator => return String::new(),
+        BoardMenuEntry::New => t.invoke_board_new(),
+        BoardMenuEntry::Rename => t.invoke_board_rename(),
+        BoardMenuEntry::MoveUp { .. } => t.invoke_board_move_up(),
+        BoardMenuEntry::MoveDown { .. } => t.invoke_board_move_down(),
+        BoardMenuEntry::Delete => t.invoke_board_delete(),
     }
+    .into()
+}
+
+/// A count as the `int` a Slint function takes.
+fn int<T: TryInto<i32>>(n: T) -> i32 {
+    n.try_into().unwrap_or(i32::MAX)
 }
 
 /// Why an editor refuses a name, in words.
 #[must_use]
-pub fn name_error_text(error: &crate::main_window::NameError) -> String {
+pub fn name_error_text<C>(window: &C, error: &crate::main_window::NameError) -> String
+where
+    for<'a> FormTexts<'a>: Global<'a, C>,
+{
     use crate::main_window::NameError;
+    let t = FormTexts::get(window);
     match error {
-        NameError::Empty => "Give it a name.".into(),
-        NameError::TooLong { max } => format!("Names can have at most {max} characters."),
-        NameError::ControlChar => "Names can't contain line breaks or control characters.".into(),
+        NameError::Empty => t.invoke_name_empty(),
+        NameError::TooLong { max } => t.invoke_name_too_long(int(*max)),
+        NameError::ControlChar => t.invoke_name_control_char(),
     }
+    .into()
 }
 
 /// Why the Tag manager refuses a new tag name, in words.
 #[must_use]
-pub fn tag_rename_error_text(error: &crate::controller::TagRenameError) -> String {
+pub fn tag_rename_error_text<C>(window: &C, error: &crate::controller::TagRenameError) -> String
+where
+    for<'a> FormTexts<'a>: Global<'a, C>,
+{
     use crate::controller::TagRenameError;
+    let t = FormTexts::get(window);
     match error {
-        TagRenameError::Name(name) => name_error_text(name),
-        TagRenameError::Exists => "A tag with that name already exists.".into(),
-        TagRenameError::Failed => "Couldn't rename the tag.".into(),
+        TagRenameError::Name(name) => name_error_text(window, name),
+        TagRenameError::Exists => t.invoke_tag_exists().into(),
+        TagRenameError::Failed => t.invoke_tag_rename_failed().into(),
     }
 }
 
 /// The reason a board cannot be deleted, in words.
 #[must_use]
-pub fn delete_hint_text(hint: crate::main_window::DeleteHint) -> String {
+pub fn delete_hint_text<C>(window: &C, hint: crate::main_window::DeleteHint) -> String
+where
+    for<'a> FormTexts<'a>: Global<'a, C>,
+{
     match hint {
         crate::main_window::DeleteHint::LastBoard => {
-            "This is your only board. Add another before deleting it.".into()
+            FormTexts::get(window).invoke_last_board().into()
         }
     }
 }
 
 /// A size for people: "800 bytes", "12 KB", "2.4 MB".
 #[must_use]
-pub fn size_text(bytes: u64) -> String {
+pub fn size_text<C>(window: &C, bytes: u64) -> String
+where
+    for<'a> FormTexts<'a>: Global<'a, C>,
+{
     const KB: u64 = 1024;
     const MB: u64 = 1024 * 1024;
+    let t = FormTexts::get(window);
     if bytes < KB {
-        format!("{bytes} bytes")
+        t.invoke_size_bytes(int(bytes))
     } else if bytes < MB {
-        format!("{} KB", bytes / KB)
+        t.invoke_size_kb(int(bytes / KB))
     } else {
         let tenths = bytes.saturating_mul(10) / MB;
-        format!("{}.{} MB", tenths / 10, tenths % 10)
+        t.invoke_size_mb(int(tenths / 10), int(tenths % 10))
     }
+    .into()
 }
 
 /// What the item editor shows as the name of an existing Image or File item.
 #[must_use]
-pub fn attachment_name_text(attachment: &AttachmentView) -> String {
+pub fn attachment_name_text<C>(window: &C, attachment: &AttachmentView) -> String
+where
+    for<'a> FormTexts<'a>: Global<'a, C>,
+{
+    let t = FormTexts::get(window);
     match attachment.kind {
-        ItemKind::Image => "Picture".to_owned(),
-        _ if attachment.files > 1 => {
-            format!("{} and {} more", attachment.name, attachment.files - 1)
-        }
+        ItemKind::Image => t.invoke_attachment_picture().into(),
+        _ if attachment.files > 1 => t
+            .invoke_attachment_and_more(attachment.name.as_str().into(), int(attachment.files - 1))
+            .into(),
         _ => attachment.name.clone(),
     }
 }
 
 /// What the item editor shows under the name of an existing Image or File item.
 #[must_use]
-pub fn attachment_detail_text(attachment: &AttachmentView) -> String {
-    let size = size_text(attachment.bytes);
+pub fn attachment_detail_text<C>(window: &C, attachment: &AttachmentView) -> String
+where
+    for<'a> FormTexts<'a>: Global<'a, C>,
+{
+    let t = FormTexts::get(window);
+    let size = size_text(window, attachment.bytes);
     match (attachment.kind, attachment.dimensions) {
-        (ItemKind::Image, Some((w, h))) => format!("PNG, {w} \u{d7} {h}, {size}"),
-        (ItemKind::Image, None) => format!("PNG, {size}"),
-        _ if attachment.files > 1 => format!("{} files, {size} in all", attachment.files),
+        (ItemKind::Image, Some((w, h))) => t
+            .invoke_attachment_image_dimensions(int(w), int(h), size.into())
+            .into(),
+        (ItemKind::Image, None) => t.invoke_attachment_image(size.into()).into(),
+        _ if attachment.files > 1 => t
+            .invoke_attachment_files(int(attachment.files), size.into())
+            .into(),
         _ => size,
     }
 }
 
 /// Why the item editor refuses something, in words.
 #[must_use]
-pub fn editor_problem_text(problem: &EditorProblem) -> String {
+#[allow(clippy::too_many_lines, reason = "one match arm per problem")]
+pub fn editor_problem_text<C>(window: &C, problem: &EditorProblem) -> String
+where
+    for<'a> FormTexts<'a>: Global<'a, C>,
+{
+    let t = FormTexts::get(window);
     match problem {
-        EditorProblem::TitleTooLong { max } => {
-            format!("A title can have at most {max} characters.")
-        }
-        EditorProblem::TitleHasControl => {
-            "A title can't contain line breaks or control characters.".into()
-        }
-        EditorProblem::ContentEmpty => "Add some text, or cancel.".into(),
-        EditorProblem::ContentTooLong { max_kb } => format!(
-            "This text is over {max_kb} KB, the most that can be edited here. Shorten it, or keep it in a file."
-        ),
-        EditorProblem::LinkNeedsScheme => "A link needs a scheme such as https://".into(),
-        EditorProblem::LinkHasSpace => "A link can't contain spaces or line breaks.".into(),
-        EditorProblem::Template(why) => format!("This template can't be read: {why}."),
-        EditorProblem::NeedsPro(_) => {
-            "Fields that ask for a value are a Supporter feature. Remove them to save.".into()
-        }
-        EditorProblem::SourceEmpty => "Choose a file, or cancel.".into(),
-        EditorProblem::SourceMissing => "There is no file at that path.".into(),
-        EditorProblem::SourceNotAFile => "That path is a folder, not a file.".into(),
-        EditorProblem::SourceUnreadable => {
-            "Snipdeck can't read that file. It may be in use or protected.".into()
-        }
-        EditorProblem::SourceTooLarge { max_mb } => {
-            format!("That file is over {max_mb} MB, the most an item can hold.")
-        }
-        EditorProblem::SourceEmptyFile => "That file is empty.".into(),
-        EditorProblem::SourceNotPng => {
-            "An Image item holds a PNG picture. Choose a PNG file, or add this one as a File."
-                .into()
-        }
-        EditorProblem::SourceBadName => {
-            "Snipdeck can't keep a file with that name. Rename the file and try again.".into()
-        }
-        EditorProblem::Tag(error) => name_error_text(error),
+        EditorProblem::TitleTooLong { max } => t.invoke_title_too_long(int(*max)),
+        EditorProblem::TitleHasControl => t.invoke_title_control_char(),
+        EditorProblem::ContentEmpty => t.invoke_content_empty(),
+        EditorProblem::ContentTooLong { max_kb } => t.invoke_content_too_long(int(*max_kb)),
+        EditorProblem::LinkNeedsScheme => t.invoke_link_needs_scheme(),
+        EditorProblem::LinkHasSpace => t.invoke_link_has_space(),
+        EditorProblem::Template(why) => t.invoke_template_unreadable(why.as_str().into()),
+        EditorProblem::NeedsPro(_) => t.invoke_needs_supporter(),
+        EditorProblem::SourceEmpty => t.invoke_source_empty(),
+        EditorProblem::SourceMissing => t.invoke_source_missing(),
+        EditorProblem::SourceNotAFile => t.invoke_source_not_a_file(),
+        EditorProblem::SourceUnreadable => t.invoke_source_unreadable(),
+        EditorProblem::SourceTooLarge { max_mb } => t.invoke_source_too_large(int(*max_mb)),
+        EditorProblem::SourceEmptyFile => t.invoke_source_empty_file(),
+        EditorProblem::SourceNotPng => t.invoke_source_not_png(),
+        EditorProblem::SourceBadName => t.invoke_source_bad_name(),
+        EditorProblem::Tag(error) => return name_error_text(window, error),
         EditorProblem::Save(failure) => match failure {
-            SaveFailure::Locked => "Unlock your library to save this item.".into(),
-            SaveFailure::KeyUnavailable => {
-                "Snipdeck couldn't open the encryption key, so nothing was saved.".into()
-            }
-            SaveFailure::ItemGone => "This item was deleted, so nothing was saved.".into(),
-            SaveFailure::ListGone => "That list was deleted. Choose another list.".into(),
-            SaveFailure::Storage => {
-                "Snipdeck couldn't write to your library. Check that the disk has room.".into()
-            }
-            SaveFailure::Other => "Snipdeck couldn't save this item. Nothing was changed.".into(),
+            SaveFailure::Locked => t.invoke_save_locked(),
+            SaveFailure::KeyUnavailable => t.invoke_save_key_unavailable(),
+            SaveFailure::ItemGone => t.invoke_save_item_gone(),
+            SaveFailure::ListGone => t.invoke_save_list_gone(),
+            SaveFailure::Storage => t.invoke_save_storage(),
+            SaveFailure::Other => t.invoke_save_other(),
         },
-        EditorProblem::DraftNotSaved => "Snipdeck couldn't save a draft of what you typed.".into(),
-        EditorProblem::BrowseFailed => {
-            "The file dialog couldn't open. Type the path instead.".into()
-        }
+        EditorProblem::DraftNotSaved => t.invoke_draft_not_saved(),
+        EditorProblem::BrowseFailed => t.invoke_browse_failed(),
     }
+    .into()
 }
