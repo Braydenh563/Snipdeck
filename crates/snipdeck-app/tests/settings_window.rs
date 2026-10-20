@@ -756,8 +756,18 @@ fn a_shortcut_another_program_owns_is_refused_and_the_old_ones_stay_registered()
             "Another program already uses Ctrl+Alt+K."
         );
         assert_eq!(r.ctl.borrow().settings().hotkeys.capture, "Ctrl+Shift+2");
+        // The other three stay; Paste next is a Supporter feature and this rig is on Free.
         let registered = r.host.hotkeys.borrow().registered.len();
-        assert_eq!(registered, 4, "the capture shortcut is still registered");
+        assert_eq!(registered, 3, "the capture shortcut is still registered");
+        assert!(
+            r.host
+                .hotkeys
+                .borrow()
+                .registered
+                .iter()
+                .any(|(id, chord)| *id == snipdeck_app::host::id_of(HotkeyAction::Capture)
+                    && chord.to_string() == "Ctrl+Shift+2")
+        );
 
         // A free one is registered and stored.
         r.ui.invoke_hotkey_recorded(2, "Ctrl+Alt+J".into());
@@ -775,7 +785,7 @@ fn a_shortcut_another_program_owns_is_refused_and_the_old_ones_stay_registered()
         );
         // Clearing removes the registration.
         r.ui.invoke_hotkey_cleared(2);
-        assert_eq!(r.host.hotkeys.borrow().registered.len(), 3);
+        assert_eq!(r.host.hotkeys.borrow().registered.len(), 2, "Paste next waits for Supporter");
     });
 }
 
@@ -2417,6 +2427,8 @@ fn f1_and_the_help_link_open_the_user_guide_like_the_panel_does() {
                 .contains(&Effect::OpenHelp(snipdeck_app::controller::HelpTopic::Guide))
         };
         assert!(!guide(&r), "nothing queued yet");
+        // A key goes to the control that has the focus: Tab puts it on the first one.
+        press(r.ui.window(), &key(Key::Tab));
         press(r.ui.window(), &key(Key::F1));
         assert!(guide(&r), "F1 asks for the guide");
         element(&r.ui, "Open the user guide (F1)", AccessibleRole::Button)
