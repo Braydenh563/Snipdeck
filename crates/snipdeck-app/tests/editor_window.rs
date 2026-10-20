@@ -501,7 +501,7 @@ fn what_is_typed_is_saved_as_a_draft_every_two_seconds_and_restored_after_a_rest
 fn the_draft_timer_runs_only_after_an_edit_and_quitting_writes_a_final_draft() {
     on_ui_thread(|| {
         let r = rig();
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         // Fields set without an edit gesture arm nothing: no timer, so no draft.
         ed.set_content("set by the host".into());

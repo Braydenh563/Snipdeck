@@ -1420,7 +1420,7 @@ mod tests {
         assert_eq!(find("mintty.exe"), Some(ProgramPaste::ShiftInsert));
         assert_eq!(find("alacritty.exe"), Some(ProgramPaste::CtrlShiftV));
         assert_eq!(find("notepad.exe"), None);
-        assert!(settings.no_paste_apps.is_empty());
+        assert_eq!(settings.no_paste_apps.len(), 0);
         // Those rules are what pastes: ShiftInsert for mintty.
         let rules = settings.paste_rules();
         assert_eq!(
