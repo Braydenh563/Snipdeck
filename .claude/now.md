@@ -7,6 +7,7 @@ Goal: ship v1 by the morning. Branch `claude/compassionate-pascal-pod8ux`, PR #5
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-10-20 11:10 owner: "I wanted fable to be the overseer auditer for issues and then use other models to fix... use it intentionally". Fable = auditor only (audits each merged range + final pre-ship audit); builds go to hub Sonnet agents, one at a time, from .claude/remaining/fable.md.
 - 2026-10-20 11:05 owner: "push groups to 1.1 but do the rest pls". O46 groups -> v1.1 (reverses hold-v1-for-groups). Fable order: O33/O32 push, O39 Panel, O52, O53, O44+O45 (no groups), O47, O49, O50, O48, O40, O41, visual pass, O30, O27. Stop line 87% unchanged.
 - 2026-10-20 Supporter contact email = brayden.hoyle@outlook.com (owner supplied, replaces placeholder; public in app/README/site).
 - 2026-10-20: Weekly stop line raised from 84-85% to 87% (owner: "Go to 87% usage if you need it but I hope not"). Wrap-up at 87%: Morning summary with done, cut short, every remaining item.
