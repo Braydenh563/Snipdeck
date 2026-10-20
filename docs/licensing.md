@@ -194,6 +194,10 @@ cargo run -p snipdeck-licence-issuer -- sign --key ~/snipdeck-licence-keys/priva
 cargo run -p snipdeck-licence-issuer -- verify --public ~/snipdeck-licence-keys/public.key SNIP1.…
 ```
 
+* `genkey` writes `private.key` **in clear text** (base64 of the seed; mode 0600 on Unix, and on
+  Windows it inherits the folder's permissions, so use a private folder). Keep the folder on an
+  **encrypted drive** (BitLocker, FileVault, LUKS) or move it to an offline token. The tool
+  refuses any folder inside a git work tree, so the key cannot be committed by accident.
 * `--order` must be 1 to 128 characters of `A-Z a-z 0-9 . _ -`; anything else is refused.
   Use **`GIFT-<name>`** (`GIFT-alex`, `GIFT-sam-2`) for every key given away, one per
   person. The order id is signed into the key.
