@@ -376,6 +376,7 @@ mod at_rest {
                 copied_at INTEGER NOT NULL
              ) STRICT;
              CREATE INDEX recent_entries_newest ON recent_entries (copied_at DESC, id DESC);
+             ALTER TABLE key_ring DROP COLUMN previous;
              PRAGMA user_version = 4;",
         )
         .unwrap();
@@ -404,7 +405,7 @@ mod at_rest {
         // Opened with no key: the rows are kept and readable, flagged plain.
         {
             let s = Store::open(dir.path()).unwrap();
-            assert_eq!(s.schema_version().unwrap(), 5);
+            assert_eq!(s.schema_version().unwrap(), 6);
             assert_eq!(texts(&s), [m2.clone(), m1.clone()]);
             assert!(s.has_plain_recent().unwrap());
         }
