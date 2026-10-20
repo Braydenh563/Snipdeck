@@ -7,6 +7,7 @@ Goal: ship v1 by the morning. Branch `claude/compassionate-pascal-pod8ux`, PR #5
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-10-20 hub: [D] File and image drops are out of v1 (B11). Reason: dropped files need path, size and permission handling and image import is outside the v1 scope; text drops and in-app drags ship.
 - 2026-10-19 Recent (PR #12 review) [D] While the library is locked, the Recent lists (Main and Panel) show "Recent copies are locked" with an Unlock action, nothing is listed and capture is paused (listener gate closed, controller ignores changes). Reason: the entries are clipboard text that may hold secrets; a locked library must not expose or grow them.
 - 2026-10-19 Recent [D] "Clear recent history" in the Main window asks for confirmation (the list/board-delete dialog, kind 5). Reason: one click deleted up to 200 entries with no undo.
 - 2026-10-19 Recent [D] Recent actions carry the entry id (RecentRow.id), not the row index; the open menu stores the id. Reason: a new copy or search edit shifts rows under an open menu. The tray "Pause history" check follows the controller (TrayModel no longer flips on click) and the sink retries on the next event-loop turn instead of dropping a borrow clash.

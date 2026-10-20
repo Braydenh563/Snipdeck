@@ -1248,6 +1248,74 @@ fn dropping_a_panel_row_on_its_own_tab_does_nothing() {
     assert_eq!(before, after);
 }
 
+fn panel_titles(ctl: &Ctl) -> Vec<String> {
+    ctl.view().rows.iter().map(|r| r.title.clone()).collect()
+}
+
+#[test]
+fn dragging_a_panel_row_onto_another_takes_its_place() {
+    let mut ctl = pro();
+    let before = panel_titles(&ctl);
+    assert!(before.len() >= 3, "the demo list has rows to arrange");
+    ctl.panel_drop_row(0, 2);
+    let mut want = before.clone();
+    let moved = want.remove(0);
+    want.insert(2, moved);
+    assert_eq!(panel_titles(&ctl), want, "down");
+    ctl.panel_drop_row(2, 0);
+    assert_eq!(panel_titles(&ctl), before, "and back up");
+}
+
+#[test]
+fn dragging_a_panel_row_onto_itself_or_out_of_range_does_nothing() {
+    let mut ctl = pro();
+    let before = panel_titles(&ctl);
+    ctl.panel_drop_row(1, 1);
+    ctl.panel_drop_row(0, 99);
+    ctl.panel_drop_row(99, 0);
+    assert_eq!(panel_titles(&ctl), before);
+}
+
+#[test]
+fn the_moved_panel_row_stays_selected() {
+    let mut ctl = pro();
+    let moved = ctl.view().rows[0].title.clone();
+    ctl.panel_drop_row(0, 2);
+    let view = ctl.view();
+    assert_eq!(view.rows[view.selected].title, moved);
+}
+
+#[test]
+fn panel_rows_do_not_move_during_a_search_or_in_a_sorted_list() {
+    let mut ctl = pro();
+    let before = panel_titles(&ctl);
+    ctl.set_query("a");
+    assert!(!ctl.view().rows_reorderable);
+    ctl.panel_drop_row(0, 1);
+    ctl.set_query("");
+    assert!(ctl.view().rows_reorderable);
+    assert_eq!(panel_titles(&ctl), before, "the manual order is untouched");
+}
+
+#[test]
+fn panel_rows_do_not_move_in_a_list_sorted_by_use() {
+    let mut ctl = pro();
+    let tab = ctl
+        .view()
+        .tabs
+        .iter()
+        .position(|t| t.name == "Code")
+        .unwrap();
+    let index = list_index(&ctl.main_screen(), "Code");
+    ctl.main_edit_list(index);
+    ctl.main_editor_save("Code", Some(ListAccent::Violet), None, ListSort::MostUsed);
+    ctl.select_tab(tab);
+    assert!(!ctl.view().rows_reorderable);
+    let before = panel_titles(&ctl);
+    ctl.panel_drop_row(0, 1);
+    assert_eq!(panel_titles(&ctl), before);
+}
+
 #[test]
 fn items_do_not_move_in_a_sorted_list_a_search_or_a_system_view() {
     let mut ctl = pro();

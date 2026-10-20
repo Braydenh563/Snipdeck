@@ -1486,7 +1486,23 @@ export component MainWindow inherits Window {
                                     y: root.ring;
                                     width: root.tile-w;
                                     height: parent.height - root.tile-gap - (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
-                                    if root.tile-index(r, c) < root.rows.length: tile-card := MainCard {
+                                    if root.tile-index(r, c) < root.rows.length: tile-drop := DropArea {
+                                        // The tile being dragged over this one: a drop lands after it when coming from before.
+                                        property <int> tile-from: -1;
+                                        enabled: root.rows-reorderable;
+                                        can-drop(event) => {
+                                            tile-from = root.payload-row(event.data);
+                                            tile-from >= 0 && tile-from != root.tile-index(r, c) ? DragAction.move : DragAction.none
+                                        }
+                                        dropped(event) => {
+                                            root.row-dropped(root.payload-row(event.data), root.tile-index(r, c));
+                                            return DragAction.move;
+                                        }
+
+                                    DragArea {
+                                        allow-move: !root.in-trash;
+                                        data: root.row-payload(root.tile-index(r, c));
+                                    tile-card := MainCard {
                                         width: parent.width;
                                         height: parent.height;
                                         variant: ItemCardVariant.tile;
@@ -1508,6 +1524,17 @@ export component MainWindow inherits Window {
                                             root.open-item-menu(root.tile-index(r, c), self.absolute-position.x + x, self.absolute-position.y + y);
                                         }
                                         reveal-requested(on) => { root.reveal-requested(root.tile-index(r, c), on); }
+                                    }
+                                    }
+                                    // The drop target: a 2px accent bar where the dragged tile would land: after this tile when it
+                                    // comes from before, ahead of it otherwise.
+                                    Rectangle {
+                                        visible: tile-drop.has-drag;
+                                        x: tile-drop.tile-from >= 0 && tile-drop.tile-from < root.tile-index(r, c) ? parent.width - 2px : 0px;
+                                        width: 2px;
+                                        height: parent.height;
+                                        background: Theme.accent;
+                                    }
                                     }
                                 }
                             }
