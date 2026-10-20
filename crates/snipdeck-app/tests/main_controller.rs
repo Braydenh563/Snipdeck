@@ -1105,6 +1105,74 @@ fn moving_an_item_by_the_keyboard_says_where_it_went_and_the_ends_say_nothing() 
     );
 }
 
+#[test]
+fn keyboard_moves_under_a_label_filter_swap_with_the_next_shown_row() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Email replies");
+    let all = titles(&ctl.main_screen());
+    label_row(&mut ctl, 1, ItemLabel::Teal);
+    label_row(&mut ctl, 3, ItemLabel::Teal);
+    ctl.main_set_label_filter(Some(ItemLabel::Teal));
+    ctl.main_select(0, SelectMode::Replace);
+    ctl.main_reorder_items(1);
+    let screen = ctl.main_screen();
+    assert_eq!(titles(&screen), [all[3].clone(), all[1].clone()]);
+    assert_eq!(
+        message(&screen),
+        ToastMessage::ItemPlaced {
+            position: 2,
+            total: 2
+        },
+        "counted among the rows shown"
+    );
+    ctl.main_reorder_items(1);
+    assert_eq!(titles(&ctl.main_screen()), titles(&screen), "the end");
+}
+
+#[test]
+fn a_keyboard_move_does_not_move_a_multi_selection_or_replace_an_undo_toast() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Email replies");
+    let before = titles(&ctl.main_screen());
+    ctl.main_select(0, SelectMode::Replace);
+    ctl.main_select(1, SelectMode::Toggle);
+    ctl.main_reorder_items(1);
+    assert_eq!(
+        titles(&ctl.main_screen()),
+        before,
+        "several rows are selected"
+    );
+
+    ctl.main_select(2, SelectMode::Replace);
+    ctl.main_action(MainAction::Delete, 2);
+    assert!(ctl.main_screen().toast.as_ref().is_some_and(|t| t.undo));
+    ctl.main_select(0, SelectMode::Replace);
+    ctl.main_reorder_items(1);
+    assert!(
+        ctl.main_screen().toast.as_ref().is_some_and(|t| t.undo),
+        "the Undo button stays"
+    );
+}
+
+#[test]
+fn repeated_keyboard_moves_update_one_toast() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Email replies");
+    ctl.main_select(0, SelectMode::Replace);
+    ctl.main_reorder_items(1);
+    let seq = ctl.main_screen().toast.expect("a toast");
+    ctl.main_reorder_items(1);
+    let again = ctl.main_screen().toast.expect("a toast");
+    assert_eq!(seq.seq, again.seq, "the same toast, not restarted");
+    assert_eq!(
+        again.message,
+        ToastMessage::ItemPlaced {
+            position: 3,
+            total: ctl.main_screen().rows.len()
+        }
+    );
+}
+
 fn panel_selected_title(ctl: &Ctl) -> String {
     let view = ctl.view();
     view.rows[view.selected].title.clone()
@@ -1169,9 +1237,26 @@ fn the_panels_item_menu_moves_the_row_and_disables_the_ends() {
 }
 
 #[test]
-fn the_panels_move_entries_are_disabled_in_a_sorted_list_or_a_search() {
+fn the_panels_move_entries_are_disabled_in_a_search_and_in_a_list_sorted_by_use() {
     let mut ctl = pro();
     ctl.set_query("a");
+    ctl.open_item_menu(0, false);
+    let menu = ctl.view().item_menu.expect("the item menu");
+    assert!(menu.contains(&ItemMenuEntry::MoveUp { enabled: false }));
+    assert!(menu.contains(&ItemMenuEntry::MoveDown { enabled: false }));
+    ctl.set_query("");
+    ctl.close_item_menu();
+
+    let tab = ctl
+        .view()
+        .tabs
+        .iter()
+        .position(|t| t.name == "Code")
+        .unwrap();
+    let index = list_index(&ctl.main_screen(), "Code");
+    ctl.main_edit_list(index);
+    ctl.main_editor_save("Code", Some(ListAccent::Violet), None, ListSort::MostUsed);
+    ctl.select_tab(tab);
     ctl.open_item_menu(0, false);
     let menu = ctl.view().item_menu.expect("the item menu");
     assert!(menu.contains(&ItemMenuEntry::MoveUp { enabled: false }));

@@ -603,6 +603,10 @@ ui_tests! {
     fn alt_up_and_alt_down_ask_to_move_the_selected_row_and_plain_arrows_only_select() {
         let (ui, log) = start();
         let _ = take(&log);
+        ui.set_rows_reorderable(false);
+        chord(ui.window(), &[Key::Alt], &key(Key::DownArrow));
+        assert!(take(&log).is_empty(), "a sorted list or a search leaves the key alone");
+        ui.set_rows_reorderable(true);
         chord(ui.window(), &[Key::Alt], &key(Key::DownArrow));
         chord(ui.window(), &[Key::Alt], &key(Key::UpArrow));
         assert_eq!(take(&log), ["item-reorder:1", "item-reorder:-1"]);

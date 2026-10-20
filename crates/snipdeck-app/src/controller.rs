@@ -1258,10 +1258,7 @@ where
                 }
                 self.model.select_item(moved);
                 if announce {
-                    self.show_toast(neutral(ToastMessage::ItemPlaced {
-                        position: to + 1,
-                        total: order.len(),
-                    }));
+                    self.announce_placed(to + 1, order.len());
                 }
             }
             Err(_) => self.show_toast(failed()),
@@ -1765,6 +1762,22 @@ where
             hovered: false,
             extended: 0,
         });
+    }
+
+    /// Says where a keyboard or menu move put an item. A live Undo toast is not replaced (it
+    /// would lose its button), and a repeat while the same words show only updates them, so a
+    /// held key neither restarts the toast nor repeats the announcement.
+    pub(crate) fn announce_placed(&mut self, position: usize, total: usize) {
+        let message = ToastMessage::ItemPlaced { position, total };
+        if self.undo.is_some() {
+            return;
+        }
+        match &mut self.toast {
+            Some(active) if matches!(active.toast.message, ToastMessage::ItemPlaced { .. }) => {
+                active.toast.message = message;
+            }
+            _ => self.show_toast(neutral(message)),
+        }
     }
 
     /// Shows `toast` with an Undo button that brings `targets` back from the Trash

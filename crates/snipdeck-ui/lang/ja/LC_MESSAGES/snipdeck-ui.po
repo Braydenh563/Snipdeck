@@ -917,7 +917,7 @@ msgid "Move up"
 msgstr "上へ移動"
 
 msgid "Moved to position {} of {}"
-msgstr "{}/{} 番目に移動しました"
+msgstr "{}番目に移動しました（全{}件）"
 
 msgid "Moved {} item to the Trash"
 msgid_plural "Moved {} items to the Trash"

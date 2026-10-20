@@ -684,9 +684,9 @@ export component PanelWindow inherits Window {
                     }
                     return reject;
                 }
-                if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !switcher.has-focus && !root.recent-open
+                if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !switcher.has-focus && !root.recent-open && root.rows-reorderable
                     && (event.text == Key.UpArrow || event.text == Key.DownArrow)) {
-                    // The keyboard way to arrange rows (WCAG 2.5.7 for the drag); the host ignores it where rows cannot move.
+                    // The keyboard way to arrange rows (WCAG 2.5.7 for the drag); a sorted list or a search leaves the key alone.
                     root.item-reorder-requested(event.text == Key.UpArrow ? -1 : 1);
                     return accept;
                 }
