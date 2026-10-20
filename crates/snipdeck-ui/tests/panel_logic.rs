@@ -78,6 +78,21 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_toast_undo, || "undo".to_string());
     hook!(on_undo_requested, || "ctrl-z".to_string());
     hook!(on_new_item_requested, || "new".to_string());
+    hook!(on_row_picked, |i, shift, ctrl| format!(
+        "picked:{i}:{shift}:{ctrl}"
+    ));
+    hook!(on_select_all_requested, || "select-all".to_string());
+    hook!(on_selection_extended, |d| format!("extend:{d}"));
+    hook!(on_selection_cleared, || "clear-selection".to_string());
+    hook!(on_bulk_move_requested, || "bulk-move".to_string());
+    hook!(on_bulk_colour_requested, || "bulk-colour".to_string());
+    hook!(on_bulk_delete_requested, || "bulk-delete".to_string());
+    hook!(on_bulk_copy_requested, || "bulk-copy".to_string());
+    hook!(on_quick_add_requested, |t, k, s| format!(
+        "quick-add:{t}:{k}:{s}"
+    ));
+    hook!(on_quick_add_full, |t| format!("quick-add-full:{t}"));
+    ui.on_detect_kind(|t| i32::from(t.starts_with("http")));
     hook!(on_settings_requested, || "settings".to_string());
     hook!(on_toast_hover_changed, |h| format!("hover:{h}"));
     hook!(on_app_menu_requested, || "app-menu".to_string());
@@ -189,6 +204,21 @@ fn press_at(ui: &PanelWindow, at: LogicalPosition) {
         position: at,
         button: PointerEventButton::Left,
     });
+}
+
+fn click_row_with(ui: &PanelWindow, row: usize, modifiers: &[Key]) {
+    let at = centre(&rows(ui)[row]);
+    for m in modifiers {
+        ui.window().dispatch_event(WindowEvent::KeyPressed {
+            text: char::from(*m).to_string().into(),
+        });
+    }
+    press_at(ui, at);
+    for m in modifiers.iter().rev() {
+        ui.window().dispatch_event(WindowEvent::KeyReleased {
+            text: char::from(*m).to_string().into(),
+        });
+    }
 }
 
 fn scroll_at(ui: &PanelWindow, at: LogicalPosition, dx: f32, dy: f32) {
@@ -404,10 +434,8 @@ ui_tests! {
     fn the_new_list_close_settings_and_undo_shortcuts_report_what_was_asked() {
         let (ui, log) = start();
         take(&log);
-        chord(ui.window(), &[Key::Control], "n");
-        assert_eq!(take(&log), ["new"]);
         chord(ui.window(), &[Key::Control, Key::Shift], "N");
-        assert_eq!(take(&log), ["add-list"]);
+        assert_eq!(take(&log), ["quick-add-full:"], "the full editor, prefilled with the box");
         chord(ui.window(), &[Key::Control], ",");
         assert_eq!(take(&log), ["settings"]);
         chord(ui.window(), &[Key::Control], "w");
@@ -419,6 +447,121 @@ ui_tests! {
         take(&log);
         chord(ui.window(), &[Key::Control], "z");
         assert!(!take(&log).contains(&"ctrl-z".to_string()), "typed text undoes itself");
+    }
+
+    // ---- Selection, bulk bar, quick add (O45) ------------------------------------------------------
+
+    fn ctrl_click_on_a_row_picks_it_instead_of_using_it() {
+        let (ui, log) = start();
+        take(&log);
+        click_row_with(&ui, 1, &[Key::Control]);
+        assert_eq!(take(&log), ["picked:1:false:true"]);
+    }
+
+    fn shift_click_still_copies_until_a_selection_exists_then_it_extends() {
+        let (ui, log) = start();
+        take(&log);
+        click_row_with(&ui, 1, &[Key::Shift]);
+        assert_eq!(take(&log), ["copy:1"]);
+        ui.set_marked_count(1);
+        settle();
+        click_row_with(&ui, 2, &[Key::Shift]);
+        assert_eq!(take(&log), ["picked:2:true:false"]);
+    }
+
+    fn a_plain_click_picks_while_rows_are_selected_and_uses_nothing() {
+        let (ui, log) = start();
+        ui.set_marked_count(2);
+        settle();
+        take(&log);
+        click_row_with(&ui, 0, &[]);
+        assert_eq!(take(&log), ["picked:0:false:false"]);
+    }
+
+    fn ctrl_a_selects_all_but_not_while_a_query_is_typed() {
+        let (ui, log) = start();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "a");
+        assert_eq!(take(&log), ["select-all"]);
+        ui.set_query("inv".into());
+        settle();
+        chord(ui.window(), &[Key::Control], "a");
+        assert!(!take(&log).contains(&"select-all".to_string()), "Ctrl+A is the search field's with a query");
+    }
+
+    fn shift_arrows_extend_the_selection() {
+        let (ui, log) = start();
+        take(&log);
+        chord(ui.window(), &[Key::Shift], &key(Key::DownArrow));
+        assert_eq!(take(&log), ["extend:1"]);
+        chord(ui.window(), &[Key::Shift], &key(Key::UpArrow));
+        assert_eq!(take(&log), ["extend:-1"]);
+    }
+
+    fn escape_clears_a_selection_and_delete_removes_all_of_it() {
+        let (ui, log) = start();
+        ui.set_marked_count(2);
+        settle();
+        take(&log);
+        press(ui.window(), &key(Key::Delete));
+        assert_eq!(take(&log), ["bulk-delete"], "one call for the whole selection, no confirm");
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["clear-selection"]);
+    }
+
+    fn the_bulk_bar_names_the_count_and_each_button_reports_its_action() {
+        let (ui, log) = start();
+        assert!(missing(&ui, "2 selected", AccessibleRole::Groupbox), "no bar without a selection");
+        ui.set_marked_count(2);
+        settle();
+        assert!(!missing(&ui, "2 selected", AccessibleRole::Groupbox));
+        take(&log);
+        for (label, line) in [
+            ("Move to…", "bulk-move"),
+            ("Colour", "bulk-colour"),
+            ("Copy all", "bulk-copy"),
+            ("Delete", "bulk-delete"),
+            ("Clear selection", "clear-selection"),
+        ] {
+            find(&ui, label, AccessibleRole::Button).invoke_accessible_default_action();
+            assert_eq!(take(&log), [line], "{label}");
+        }
+    }
+
+    fn the_selected_row_keeps_its_more_button_without_hover() {
+        let (ui, _log) = start();
+        // The kebab and the selected row's ⋯ carry the same name; an unselected, unhovered row has none.
+        assert_eq!(all(&ui, "More", AccessibleRole::Button).len(), 2);
+    }
+
+    fn the_new_item_row_opens_a_box_that_enter_saves_and_shift_enter_extends() {
+        let (ui, log) = start();
+        ui.set_add_list_name("Work".into());
+        settle();
+        assert!(!missing(&ui, "New item in Work", AccessibleRole::Button), "a labelled row under the items");
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        take(&log);
+        type_text(ui.window(), "hello");
+        chord(ui.window(), &[Key::Shift], &key(Key::Return));
+        type_text(ui.window(), "world");
+        press(ui.window(), &key(Key::Return));
+        assert_eq!(take(&log), ["quick-add:hello\nworld:0:false"]);
+    }
+
+    fn quick_add_preselects_link_for_a_url_and_create_and_escape_work() {
+        let (ui, log) = start();
+        ui.set_add_list_name("Work".into());
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        type_text(ui.window(), "https://example.com");
+        take(&log);
+        find(&ui, "Create item", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["quick-add:https://example.com:1:false"]);
+        type_text(ui.window(), "x");
+        press(ui.window(), &key(Key::Escape));
+        settle();
+        assert!(!missing(&ui, "New item in Work", AccessibleRole::Button), "Esc folds the box back to the row");
     }
 
     fn the_footer_names_the_pickers_configured_hotkey_only_when_there_is_one() {

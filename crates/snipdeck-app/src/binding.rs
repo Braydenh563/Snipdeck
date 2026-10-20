@@ -541,6 +541,40 @@ where
         wire!(on_pin_toggled, |ctl, on| ctl.set_on_top(on));
         wire!(on_add_list_requested, |ctl| ctl.add_list());
         wire!(on_add_from_clipboard, |ctl| ctl.quick_capture());
+        wire!(on_row_picked, |ctl, i, shift, ctrl| ctl.panel_mark(
+            index(i),
+            if shift {
+                crate::main_window::SelectMode::Extend
+            } else if ctrl {
+                crate::main_window::SelectMode::Toggle
+            } else {
+                crate::main_window::SelectMode::Replace
+            }
+        ));
+        wire!(on_select_all_requested, |ctl| ctl.panel_mark_all());
+        wire!(on_selection_extended, |ctl, d| ctl
+            .panel_extend_marks(isize::try_from(d).unwrap_or(0)));
+        wire!(on_selection_cleared, |ctl| ctl.panel_clear_marks());
+        wire!(on_bulk_move_requested, |ctl| ctl.bulk_open_move());
+        wire!(on_bulk_colour_requested, |ctl| ctl.bulk_open_colour());
+        wire!(on_bulk_delete_requested, |ctl| ctl.bulk_delete());
+        wire!(on_bulk_copy_requested, |ctl| ctl.bulk_copy());
+        wire!(on_quick_add_requested, |ctl, text, kind, sensitive| ctl
+            .quick_add(
+                text.as_str(),
+                Some(kind_of_index(kind)),
+                sensitive,
+                crate::item_editor::Origin::Panel
+            ));
+        wire!(on_quick_add_full, |ctl, text| ctl.open_new_item_with(
+            crate::item_editor::Origin::Panel,
+            text.as_str()
+        ));
+        window.on_detect_kind(|text| match crate::capture::detect_kind(text.as_str()) {
+            snipdeck_core::ItemKind::Link => 1,
+            snipdeck_core::ItemKind::Template => 2,
+            _ => 0,
+        });
         window.on_payload_text(|data| {
             data.plain_text()
                 .map(|t| t.to_string())
@@ -814,6 +848,15 @@ fn render_recent(window: &ui::PanelWindow, previous: Option<&View>, view: &View)
     }
 }
 
+/// The quick-add box's kind chips (0 Text, 1 Link, 2 Template) as an item kind.
+fn kind_of_index(i: i32) -> snipdeck_core::ItemKind {
+    match i {
+        1 => snipdeck_core::ItemKind::Link,
+        2 => snipdeck_core::ItemKind::Template,
+        _ => snipdeck_core::ItemKind::Text,
+    }
+}
+
 pub(crate) fn index(i: i32) -> usize {
     usize::try_from(i).unwrap_or(usize::MAX)
 }
@@ -968,24 +1011,54 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     {
         render_app_menu(window, view);
     }
-    if differs(&|p| p.item_menu == view.item_menu)
-        || window.get_item_menu_open() != view.item_menu.is_some()
+    if differs(&|p| p.item_menu == view.item_menu && p.choose_menu == view.choose_menu)
+        || window.get_item_menu_open() != (view.item_menu.is_some() || view.choose_menu.is_some())
     {
-        let entries = view.item_menu.iter().flatten().map(|&entry| ui::MenuEntry {
-            text: wording::item_menu_label(window, entry).into(),
-            shortcut: wording::item_menu_shortcut(entry).into(),
-            disabled: matches!(
-                entry,
-                ItemMenuEntry::MoveUp { enabled: false }
-                    | ItemMenuEntry::MoveDown { enabled: false }
-            ),
-            separator: entry == ItemMenuEntry::Separator,
-            destructive: entry == ItemMenuEntry::Trash,
-            ..Default::default()
-        });
-        window.set_item_menu_entries(model(entries));
-        window.set_item_menu_open(view.item_menu.is_some());
+        if let Some(choose) = &view.choose_menu {
+            // The second level (Move to… / Colour): one row per list or colour, checked when every
+            // target already has it.
+            let check = window.global::<ui::Icons<'_>>().get_check();
+            let entries = choose.entries.iter().map(|e| ui::MenuEntry {
+                text: match &e.label {
+                    crate::controller::ChooseLabel::List(name) => name.as_str().into(),
+                    crate::controller::ChooseLabel::Colour(Some(label)) => {
+                        wording::item_label_name(*label).into()
+                    }
+                    crate::controller::ChooseLabel::Colour(None) => "No label".into(),
+                },
+                icon: if e.checked {
+                    check.clone()
+                } else {
+                    slint::Image::default()
+                },
+                ..Default::default()
+            });
+            window.set_item_menu_entries(model(entries));
+            window.set_item_menu_open(true);
+        } else {
+            let entries = view.item_menu.iter().flatten().map(|&entry| ui::MenuEntry {
+                text: wording::item_menu_label(window, entry).into(),
+                shortcut: wording::item_menu_shortcut(entry).into(),
+                disabled: matches!(
+                    entry,
+                    ItemMenuEntry::MoveUp { enabled: false }
+                        | ItemMenuEntry::MoveDown { enabled: false }
+                ),
+                separator: entry == ItemMenuEntry::Separator,
+                destructive: entry == ItemMenuEntry::Trash,
+                ..Default::default()
+            });
+            window.set_item_menu_entries(model(entries));
+            window.set_item_menu_open(view.item_menu.is_some());
+        }
     }
+    window.set_add_list_name(
+        view.tabs
+            .get(view.current_tab)
+            .map_or_else(SharedString::new, |t| t.name.as_str().into()),
+    );
+    window.set_marked_count(to_i32(view.marked_count));
+    window.set_show_numbers(view.show_numbers);
     if differs(&|p| p.list_menu == view.list_menu)
         || window.get_list_menu_open() != view.list_menu.is_some()
     {
