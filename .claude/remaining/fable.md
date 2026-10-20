@@ -1,7 +1,7 @@
 # Fable v1 sweep (F1), branch claude/v1-fable, 2026-10-20
 
 ## Done (pushed)
-- Findings ranked in `docs/reviews/fable-analysis.md` "v1 sweep (2026-10-20)": 0 Critical, 3 High (B1, A1, F1), 19 Medium, 22 Low; `[x]` fixed, `[~]` ticketed, `[D5]` waits for the controller split.
+- Findings ranked in `docs/reviews/fable-analysis.md` "v1 sweep (2026-10-20)": 0 Critical, 6 High (B1, A1, F1, U1-U3), 31 Medium, 28 Low; `[x]` fixed, `[~]` ticketed, `[D5]` waits for the controller split.
 - B1 store `synchronous=FULL` (+ test); F3/F5 Slint fixes (chooser and skeleton text-scale, Space guard).
 - Backend fixes af4327c: B3 encrypted-read budget, B4 title/source_app caps, B7 seal guard, B8 .bak tmp+rename, B9 prune future dates, B10 unreadable subfolder/shard, B11 take-by-value + blob_refs helper, I4 create_new in blobs.rs, dead `into_vec`.
 - F1 i18n 2b0caf8 + 56df7f8: MenuTexts/FormTexts globals, 57 msgids, all 6 locales translated, `i18n.py check` clean.
