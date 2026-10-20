@@ -6,6 +6,13 @@ Goal: ship v1 by the morning. Branch `claude/compassionate-pascal-pod8ux`, PR #5
 # now.md
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
+## Ship queue (owner asleep 2026-10-20 ~18:30 UTC; "ship it"; ceiling 94-95% weekly)
+1. Finisher agent: fix editor_window CI red (7a094e6), merge hub-o47, hub-finish-ui (+goldens), hub-small (5ce79cf, untested), undock restores size, TagManager height, full tests, translations.
+2. O36 scrollbars agent (claude/hub-o36) -> merge after finisher.
+3. Sonnet reviewer (bugs/security) + ux-auditor on merged release; fix high/medium.
+4. Ship prep: gate --full both toolchains, version 1.0.0, CHANGELOG [1.0.0], PR #5 title/body, HANDOVER morning summary, retro.
+v1.0.1: compact dock + dock grips (U22/O28), O54 sidebar resize, O49/O50 header select/delete, O47 a-c (paste/drop create, Ctrl+C), Main quick-add, multi-row drag, toast Edit button, UX-C (O30/O26/O31), U9, A25.
+
 ## Decisions
 - 2026-10-20 owner: "go with your suggestion" (budget at 87%): O54 stays in v1 (Sonnet, after O47 merges). O49/O50 -> v1.0.1 (reverses "including O49"); reason: needs O45+O47 merged first and would push past the 93% ceiling.
 - 2026-10-20 11:30 owner: "use Opus 5.5 medium for O52, O45, O47". Those three on Opus medium; everything else Sonnet. Queue after the O41/O48 agent: O52+O39 Panel wiring (Opus), O53, O45+O44 (Opus), O47 (Opus), O49, O50, O40, O36/O30/O27, visual pass.
