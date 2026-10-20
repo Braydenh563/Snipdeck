@@ -34,6 +34,24 @@ stored_id!(ListId, "list");
 stored_id!(ItemId, "item");
 stored_id!(TagId, "tag");
 
+/// Runs a query whose one column is a 32-byte blob hash and returns the hashes as refs, or
+/// [`Error::Corrupt`] for a value of another length.
+pub(crate) fn blob_refs(
+    conn: &Connection,
+    sql: &str,
+    params: impl rusqlite::Params,
+) -> Result<Vec<BlobRef>> {
+    let mut stmt = conn.prepare_cached(sql)?;
+    let hashes = stmt.query_map(params, |r| r.get::<_, Vec<u8>>(0))?;
+    hashes
+        .map(|hash| {
+            <[u8; 32]>::try_from(hash?)
+                .map(BlobRef::from_bytes)
+                .map_err(|_| Error::Corrupt("a blob hash is not 32 bytes".to_owned()))
+        })
+        .collect()
+}
+
 /// The 16 bytes bound as an id column.
 pub(crate) fn id_bytes<I: StoredId>(id: I) -> [u8; 16] {
     *id.uuid().as_bytes()

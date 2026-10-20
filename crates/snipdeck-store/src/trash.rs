@@ -14,12 +14,12 @@
 //!   includes everything inside it, whatever the inner records' own timestamps.
 
 use rusqlite::{Connection, OptionalExtension, params};
-use snipdeck_core::{BlobRef, BoardId, Feature, ItemId, ListId, Timestamp};
+use snipdeck_core::{BoardId, Feature, ItemId, ListId, Timestamp};
 
 use crate::batch::Ctx;
 use crate::codec::{
-    exists, from_nanos, id_bytes, id_from, nanos, not_found, require_board, require_item,
-    require_list,
+    blob_refs, exists, from_nanos, id_bytes, id_from, nanos, not_found, require_board,
+    require_item, require_list,
 };
 use crate::{Error, Result, TrashEntry, Trashable};
 
@@ -100,18 +100,14 @@ pub(crate) fn purge(cx: &mut Ctx<'_>, cutoff: Timestamp) -> Result<usize> {
     let doomed = "SELECT id FROM items WHERE deleted_at < ?1 OR list_id IN
                     (SELECT id FROM lists WHERE deleted_at < ?1 OR board_id IN
                       (SELECT id FROM boards WHERE deleted_at < ?1))";
-    let mut candidates = Vec::new();
-    {
-        let mut stmt = conn.prepare(&format!(
+    let candidates = blob_refs(
+        conn,
+        &format!(
             "SELECT blob_hash FROM item_formats WHERE blob_hash IS NOT NULL AND item_id IN ({doomed})
              UNION SELECT blob_hash FROM item_files WHERE blob_hash IS NOT NULL AND item_id IN ({doomed})"
-        ))?;
-        for hash in stmt.query_map([cutoff], |r| r.get::<_, Vec<u8>>(0))? {
-            let hash = <[u8; 32]>::try_from(hash?)
-                .map_err(|_| Error::Corrupt("a blob hash is not 32 bytes".to_owned()))?;
-            candidates.push(BlobRef::from_bytes(hash));
-        }
-    }
+        ),
+        [cutoff],
+    )?;
 
     // Foreign keys cascade from boards to lists to items to their content, and the
     // `items_fts_delete` trigger drops the search rows.
@@ -166,18 +162,14 @@ pub(crate) fn purge_entry(cx: &mut Ctx<'_>, target: Trashable) -> Result<()> {
             Trashable::Item(id) => not_found(id),
         });
     }
-    let mut candidates = Vec::new();
-    {
-        let mut stmt = conn.prepare(&format!(
+    let candidates = blob_refs(
+        conn,
+        &format!(
             "SELECT blob_hash FROM item_formats WHERE blob_hash IS NOT NULL AND item_id IN ({doomed})
              UNION SELECT blob_hash FROM item_files WHERE blob_hash IS NOT NULL AND item_id IN ({doomed})"
-        ))?;
-        for hash in stmt.query_map([&id], |r| r.get::<_, Vec<u8>>(0))? {
-            let hash = <[u8; 32]>::try_from(hash?)
-                .map_err(|_| Error::Corrupt("a blob hash is not 32 bytes".to_owned()))?;
-            candidates.push(BlobRef::from_bytes(hash));
-        }
-    }
+        ),
+        [&id],
+    )?;
     // Foreign keys cascade down to the content; the `items_fts_delete` trigger drops the
     // search rows.
     conn.execute(&format!("DELETE FROM {table} WHERE id = ?1"), [&id])?;

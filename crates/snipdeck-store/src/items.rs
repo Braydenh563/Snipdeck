@@ -12,8 +12,8 @@ use zeroize::Zeroizing;
 use crate::batch::Ctx;
 use crate::blobs::Blobs;
 use crate::codec::{
-    content_from, flag, from_nanos, from_opt_nanos, id_bytes, id_from, nanos, not_found, payload,
-    raw_placement, require_item, require_list, require_new,
+    blob_refs, content_from, flag, from_nanos, from_opt_nanos, id_bytes, id_from, nanos, not_found,
+    payload, raw_placement, require_item, require_list, require_new,
 };
 use crate::crypto::{DataKey, Slot, decrypt_payload, encrypt_payload};
 use crate::rank::{self, ITEMS};
@@ -184,18 +184,12 @@ fn check_item(item: &Item) -> Result<()> {
 
 /// Every blob hash the item's formats refer to.
 fn blob_hashes(conn: &Connection, id: [u8; 16]) -> Result<Vec<BlobRef>> {
-    let mut stmt = conn.prepare_cached(
+    blob_refs(
+        conn,
         "SELECT blob_hash FROM item_formats WHERE item_id = ?1 AND blob_hash IS NOT NULL
          UNION SELECT blob_hash FROM item_files WHERE item_id = ?1 AND blob_hash IS NOT NULL",
-    )?;
-    let hashes = stmt.query_map([id], |r| r.get::<_, Vec<u8>>(0))?;
-    hashes
-        .map(|hash| {
-            <[u8; 32]>::try_from(hash?)
-                .map(BlobRef::from_bytes)
-                .map_err(|_| Error::Corrupt("a blob hash is not 32 bytes".to_owned()))
-        })
-        .collect()
+        [id],
+    )
 }
 
 /// What [`write_formats`] did with the blobs it was given.

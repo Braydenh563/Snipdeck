@@ -187,6 +187,31 @@ fn only_the_newest_keep_backups_survive() {
 }
 
 #[test]
+fn a_future_dated_file_does_not_hold_a_keep_slot() {
+    let dir = tempfile::tempdir().unwrap();
+    let s = sample_store();
+    let backups = dir.path().join("backups");
+    fs::create_dir_all(&backups).unwrap();
+    for name in [
+        "snipdeck-backup-20990101.snipdeck",
+        "snipdeck-backup-20261001.snipdeck",
+        "snipdeck-backup-20261002.snipdeck",
+    ] {
+        fs::write(backups.join(name), b"old").unwrap();
+    }
+    run_if_due(&s, dir.path(), &local(2026, 10, 3, 12, 0, 0), 2, None).unwrap();
+    // Two kept by date (the new one and the 2nd); the 1st goes; the future one is left alone.
+    assert_eq!(
+        names(dir.path()),
+        [
+            "snipdeck-backup-20261002.snipdeck",
+            "snipdeck-backup-20261003.snipdeck",
+            "snipdeck-backup-20990101.snipdeck",
+        ]
+    );
+}
+
+#[test]
 fn keep_is_at_least_one_and_the_new_backup_is_never_pruned() {
     let dir = tempfile::tempdir().unwrap();
     let s = sample_store();

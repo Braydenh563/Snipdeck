@@ -303,9 +303,12 @@ fn preview_text(bytes: &[u8]) -> &str {
 
 /// Writes `plan` into `lib` in one transaction (see the module docs). On any error nothing is
 /// added and the error is returned; on success the report counts what was added.
+///
+/// The payloads held in memory are moved out of `plan` as they are written (each is used once),
+/// so the plan cannot be applied a second time.
 pub(crate) fn apply<L: Library>(
     lib: &mut L,
-    plan: &Plan,
+    plan: &mut Plan,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
     mut report: ImportReport,
     max_boards: Option<usize>,
@@ -325,7 +328,7 @@ pub(crate) fn apply<L: Library>(
 
 fn write(
     lib: &mut Batch<'_>,
-    plan: &Plan,
+    plan: &mut Plan,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
     report: &mut ImportReport,
     max_boards: Option<usize>,
@@ -372,14 +375,14 @@ fn write(
         tag_ids.insert(index, id);
     }
 
-    for plan_board in &plan.boards {
+    for plan_board in &mut plan.boards {
         let mut board = Board::new(plan_board.name.clone(), plan_board.created_at);
         board.updated_at = plan_board.updated_at;
         lib.insert_board(&board, Placement::Last)?;
         report.boards_added += 1;
         report.boards.push(board.id);
 
-        for plan_list in &plan_board.lists {
+        for plan_list in &mut plan_board.lists {
             let mut list = List::new(board.id, plan_list.name.clone(), plan_list.created_at);
             list.updated_at = plan_list.updated_at;
             list.accent = plan_list.accent;
@@ -389,7 +392,7 @@ fn write(
             lib.insert_list(&list, Placement::Last)?;
             report.lists_added += 1;
 
-            for plan_item in &plan_list.items {
+            for plan_item in &mut plan_list.items {
                 let (item, formats) = build_item(lib, plan_item, list.id, &tag_ids, fetch)?;
                 lib.insert_item(&item, &formats, Placement::Last)?;
                 report.items_added += 1;
@@ -401,7 +404,7 @@ fn write(
 
 fn build_item(
     lib: &mut Batch<'_>,
-    plan: &PlanItem,
+    plan: &mut PlanItem,
     list: snipdeck_core::ListId,
     tag_ids: &HashMap<usize, TagId>,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
@@ -425,7 +428,7 @@ fn build_item(
         item.preview = Item::preview_of(preview, plan.sensitive);
     }
     let mut formats = Vec::with_capacity(plan.formats.len());
-    for format in &plan.formats {
+    for format in &mut plan.formats {
         match format {
             PlanFormat::Single { kind, source } => {
                 let bytes = resolve(source, fetch)?;
@@ -449,7 +452,7 @@ fn build_item(
             PlanFormat::Files(files) => {
                 let mut entries = Vec::with_capacity(files.len());
                 for file in files {
-                    let content = put(lib, resolve(&file.source, fetch)?, plan.sensitive)?;
+                    let content = put(lib, resolve(&mut file.source, fetch)?, plan.sensitive)?;
                     entries.push(FileEntry::new(&file.name, content)?);
                 }
                 formats.push(Format::Files(entries));
@@ -471,11 +474,11 @@ fn put(lib: &mut Batch<'_>, bytes: Vec<u8>, sensitive: bool) -> Result<Content> 
 }
 
 fn resolve(
-    source: &Source,
+    source: &mut Source,
     fetch: &mut dyn FnMut(&AssetRef) -> Result<Vec<u8>>,
 ) -> Result<Vec<u8>> {
     match source {
-        Source::Bytes(bytes) => Ok(bytes.clone()),
+        Source::Bytes(bytes) => Ok(std::mem::take(bytes)),
         Source::Asset(asset) => fetch(asset),
     }
 }
@@ -586,7 +589,7 @@ mod tests {
         let mut fetch = |_: &AssetRef| Ok(b"big".to_vec());
         let report = apply(
             &mut s,
-            &two_boards(),
+            &mut two_boards(),
             &mut fetch,
             ImportReport::default(),
             None,
@@ -626,7 +629,7 @@ mod tests {
             };
             let err = apply(
                 &mut s,
-                &two_boards(),
+                &mut two_boards(),
                 &mut fetch,
                 ImportReport::default(),
                 None,
@@ -648,7 +651,7 @@ mod tests {
         s.insert_tag(&Tag::new(name("\u{c9}cole"))).unwrap();
         let mut list = PlanList::new(name("L"), at(1));
         list.items = vec![item("t", Source::Bytes(b"t".to_vec()), &[0, 1, 2])];
-        let plan = Plan {
+        let mut plan = Plan {
             tags: vec![name("Straße"), name("STRASSE"), name("e\u{301}cole")],
             boards: vec![PlanBoard {
                 name: name("B"),
@@ -660,7 +663,7 @@ mod tests {
         let mut fetch = |_: &AssetRef| Ok(Vec::new());
         let report = apply(
             &mut s,
-            &plan,
+            &mut plan,
             &mut fetch,
             ImportReport::default(),
             None,
@@ -680,7 +683,7 @@ mod tests {
         let mut fetch = |_: &AssetRef| Err(Error::malformed("test", "boom"));
         apply(
             &mut s,
-            &two_boards(),
+            &mut two_boards(),
             &mut fetch,
             ImportReport::default(),
             None,

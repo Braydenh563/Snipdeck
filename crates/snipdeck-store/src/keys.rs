@@ -61,6 +61,26 @@ fn encrypt_plain_sensitive(
     Ok((count, old))
 }
 
+/// One transaction: stores the key record if given and encrypts what is still plain.
+fn seal_in_transaction(
+    conn: &mut Connection,
+    blobs: &mut crate::blobs::Blobs,
+    key: &DataKey,
+    new_record: Option<&KeyRecord>,
+) -> Result<(usize, Vec<BlobRef>, usize)> {
+    let tx = begin(conn)?;
+    if let Some(record) = new_record {
+        tx.execute(
+            "INSERT INTO key_ring (id, record) VALUES (1, ?1)",
+            [record.as_bytes()],
+        )?;
+    }
+    let (encrypted, old) = encrypt_plain_sensitive(&tx, blobs, key)?;
+    let recent = crate::recent::encrypt_plain(&tx, key)?;
+    tx.commit()?;
+    Ok((encrypted, old, recent))
+}
+
 fn blob_refs(formats: &snipdeck_core::Formats) -> Vec<BlobRef> {
     let mut out = Vec::new();
     for format in formats {
@@ -257,16 +277,21 @@ impl Store {
     }
 
     fn seal_and_unlock(&mut self, key: DataKey, new_record: Option<&KeyRecord>) -> Result<()> {
-        let tx = begin(&mut self.conn)?;
-        if let Some(record) = new_record {
-            tx.execute(
-                "INSERT INTO key_ring (id, record) VALUES (1, ?1)",
-                [record.as_bytes()],
-            )?;
-        }
-        let (encrypted, old) = encrypt_plain_sensitive(&tx, &mut self.blobs, &key)?;
-        let recent = crate::recent::encrypt_plain(&tx, &key)?;
-        tx.commit()?;
+        // The envelope blobs are files: when the transaction fails they must go with it, as in
+        // `Store::transaction`.
+        let mark = self.blobs.mark();
+        let sealed = seal_in_transaction(&mut self.conn, &mut self.blobs, &key, new_record);
+        let (encrypted, old, recent) = match sealed {
+            Ok(done) => {
+                self.blobs.end_log();
+                done
+            }
+            Err(e) => {
+                self.blobs.rewind(mark);
+                self.blobs.end_log();
+                return Err(e);
+            }
+        };
         self.key = Some(key);
         if encrypted > 0 || recent > 0 {
             let mut post = Post::default();

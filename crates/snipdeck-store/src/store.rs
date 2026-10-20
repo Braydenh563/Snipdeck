@@ -9,7 +9,7 @@ use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior};
 use snipdeck_core::BlobRef;
 
 use crate::blobs::Blobs;
-use crate::codec::is_valid_name;
+use crate::codec::{blob_refs, is_valid_name};
 use crate::crypto::DataKey;
 use crate::migrations::{self, MIGRATIONS};
 use crate::{Error, Result};
@@ -63,8 +63,8 @@ pub struct GcReport {
     pub bytes: u64,
     /// Temporary files left by interrupted writes.
     pub leftovers: usize,
-    /// Files that could not be deleted (for example held open by another program); the next
-    /// sweep tries again.
+    /// Files that could not be deleted (for example held open by another program) and folders
+    /// or files that could not be read; the next sweep tries again.
     pub failed: usize,
 }
 
@@ -133,24 +133,21 @@ impl Store {
     /// blob that [`BlobStore::put`](crate::BlobStore::put) has written but the caller has not
     /// yet attached to an item (`put` refreshes the age of a blob it finds already stored).
     pub fn gc_blobs(&mut self, grace: Duration) -> Result<GcReport> {
-        let mut referenced = HashSet::new();
-        let mut stmt = self.conn.prepare(
+        let referenced: HashSet<BlobRef> = blob_refs(
+            &self.conn,
             "SELECT blob_hash FROM item_formats WHERE blob_hash IS NOT NULL
              UNION SELECT blob_hash FROM item_files WHERE blob_hash IS NOT NULL",
-        )?;
-        for hash in stmt.query_map([], |r| r.get::<_, Vec<u8>>(0))? {
-            let hash: [u8; 32] = hash?
-                .try_into()
-                .map_err(|_| Error::Corrupt("a blob hash is not 32 bytes".to_owned()))?;
-            referenced.insert(BlobRef::from_bytes(hash));
-        }
-        drop(stmt);
+            [],
+        )?
+        .into_iter()
+        .collect();
 
         let now = SystemTime::now();
         let old_enough =
             |modified: SystemTime| now.duration_since(modified).is_ok_and(|age| age >= grace);
         let mut report = GcReport::default();
-        let (blobs, leftovers) = self.blobs.list()?;
+        let (blobs, leftovers, unreadable) = self.blobs.list()?;
+        report.failed += unreadable;
         // A file that cannot be deleted now is counted and left for the next sweep, so one
         // locked file does not stop the rest (review M4).
         for stored in blobs {

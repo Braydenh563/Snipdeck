@@ -187,20 +187,41 @@ fn run_steps(conn: &mut Connection, migrations: &[Migration], current: u32) -> R
     Ok(())
 }
 
-/// Copies the database to `<file>.pre-v<from>.bak`, replacing an older copy.
+/// Copies the database to `<file>.pre-v<from>.bak`, replacing an older copy. The new copy is
+/// written beside it and renamed over the old one, so a failed copy leaves the old one.
 fn write_backup(conn: &Connection, path: &Path, from: u32) -> Result<()> {
     let mut name = path.as_os_str().to_owned();
     name.push(format!(".pre-v{from}.bak"));
     let target = std::path::PathBuf::from(name);
-    match std::fs::remove_file(&target) {
+    let mut temp_name = target.as_os_str().to_owned();
+    temp_name.push(".tmp");
+    let temp = std::path::PathBuf::from(temp_name);
+    // `VACUUM INTO` needs a file that does not exist; this one is ours, from an earlier crash.
+    match std::fs::remove_file(&temp) {
         Ok(()) => {}
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
         Err(e) => return Err(e.into()),
     }
-    let target = target.to_string_lossy().into_owned();
-    conn.execute("VACUUM INTO ?1", [&target])?;
+    let copied = conn
+        .execute("VACUUM INTO ?1", [&temp.to_string_lossy().into_owned()])
+        .map_err(Error::from);
+    if let Err(e) = copied {
+        let _ = std::fs::remove_file(&temp);
+        return Err(e);
+    }
     if from < 5 {
-        scrub_or_delete(Path::new(&target));
+        scrub_or_delete(&temp);
+    }
+    if !temp.exists() {
+        // Deleted because it could not be scrubbed: the old copy is just as plain, so it goes too.
+        return match std::fs::remove_file(&target) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.into()),
+            _ => Ok(()),
+        };
+    }
+    if let Err(e) = std::fs::rename(&temp, &target) {
+        let _ = std::fs::remove_file(&temp);
+        return Err(e.into());
     }
     Ok(())
 }
@@ -573,6 +594,26 @@ mod tests {
         assert!(scrub_recent(&broken.to_string_lossy()).is_err());
         scrub_or_delete(&broken);
         assert!(!broken.exists());
+    }
+
+    #[test]
+    fn a_failed_backup_keeps_the_previous_rollback_copy() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("snipdeck.db");
+        let conn = Connection::open(&path).unwrap();
+        conn.execute_batch("CREATE TABLE t (x); PRAGMA user_version = 6;")
+            .unwrap();
+        let old = dir.path().join("snipdeck.db.pre-v6.bak");
+        std::fs::write(&old, b"the previous copy").unwrap();
+        // A directory sits where the new copy is built, so the copy cannot be made.
+        std::fs::create_dir(dir.path().join("snipdeck.db.pre-v6.bak.tmp")).unwrap();
+        assert!(write_backup(&conn, &path, 6).is_err());
+        assert_eq!(std::fs::read(&old).unwrap(), b"the previous copy");
+
+        std::fs::remove_dir(dir.path().join("snipdeck.db.pre-v6.bak.tmp")).unwrap();
+        write_backup(&conn, &path, 6).unwrap();
+        assert_eq!(version(&Connection::open(&old).unwrap()), 6);
+        assert!(!dir.path().join("snipdeck.db.pre-v6.bak.tmp").exists());
     }
 
     /// A real file written by the released version-1 schema (see `tests/fixture.rs`).

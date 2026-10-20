@@ -730,3 +730,27 @@ fn a_rekeyed_record_opens_with_the_new_password_while_the_old_record_still_opens
     );
     drop(key);
 }
+
+#[test]
+fn a_failed_key_setup_leaves_no_envelope_files_behind() {
+    let p = provider();
+    let (dir, mut s, l) = on_disk();
+    let big = s.put(vec![b'Q'; INLINE_LIMIT + 10]).unwrap();
+    let it = secret_item(l.id, "Bank");
+    s.insert_item(
+        &it,
+        &Formats::new(vec![Format::Png(big)]).unwrap(),
+        Placement::Last,
+    )
+    .unwrap();
+    let before = content_files(dir.path()).len();
+    // The envelope is written first; the row update then fails, so the commit never happens.
+    raw(&dir)
+        .execute_batch(
+            "CREATE TRIGGER boom BEFORE UPDATE OF encrypted ON items \
+             BEGIN SELECT RAISE(ABORT, 'boom'); END;",
+        )
+        .unwrap();
+    assert!(s.create_key_ring(&ring(&p), None).is_err());
+    assert_eq!(content_files(dir.path()).len(), before);
+}
