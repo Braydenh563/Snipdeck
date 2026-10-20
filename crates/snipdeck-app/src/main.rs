@@ -274,6 +274,11 @@ fn run(args: &Args) -> Result<(), String> {
         }
     });
 
+    // "Take screenshot" (Panel menu, tray, palette): the snipping overlay and the clipboard.
+    controller
+        .borrow_mut()
+        .set_screen_clip_host(Box::new(snipdeck_app::screen_clip::SystemScreenClip));
+
     let hotkeys = Rc::new(RefCell::new(hotkeys));
     // Resuming after "Pause hotkeys" registers the chords in force then, not the launch ones.
     let chords_now = {

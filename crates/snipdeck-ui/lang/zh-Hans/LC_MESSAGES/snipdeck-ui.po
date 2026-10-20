@@ -406,6 +406,9 @@ msgstr "无法保存此片段。未做任何更改。"
 msgid "Couldn't save your settings. Snipdeck will try again."
 msgstr "无法保存你的设置。Snipdeck 将再次尝试。"
 
+msgid "Couldn't start the screenshot tool."
+msgstr "无法启动截图工具。"
+
 msgid "Couldn't use this item."
 msgstr "无法使用此片段。"
 
@@ -819,6 +822,9 @@ msgstr ""
 
 msgid "Just now"
 msgstr "刚刚"
+
+msgid "Keep Panel visible during screenshots"
+msgstr "截图时保持面板可见"
 
 msgid "Keep a Recent inbox of what you copy"
 msgstr "保留你复制内容的“最近”收件箱"
@@ -1736,6 +1742,12 @@ msgstr "标签"
 msgid "Tags…"
 msgstr "标签…"
 
+msgid "Take screenshot"
+msgstr "截图"
+
+msgid "Take screenshot hides the panel until the picture is taken. Turn this on to leave it on screen."
+msgstr "“截图”会先隐藏面板，直到截好图。打开此项可让面板保持显示。"
+
 msgid "Takes effect the next time Snipdeck starts."
 msgstr "下次启动 Snipdeck 时生效。"
 
@@ -2210,6 +2222,9 @@ msgstr "快速查找 粘贴 面板"
 
 msgid "s"
 msgstr "秒"
+
+msgid "snip snipping capture screen picture image"
+msgstr "截取 截图 屏幕 图片 图像"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "教程 入门 引导 基础 学习"

@@ -152,6 +152,7 @@ export component SettingsPage inherits Window {
     in-out property <bool> close-to-tray: true;
     in-out property <bool> panel-in-taskbar: false;
     in-out property <bool> panel-hide-on-blur: true;
+    in-out property <bool> screenshot-keep-panel: false;
     in-out property <bool> recent-history: false;
     // How many copies and how many days the history keeps (the description names them).
     in property <int> recent-max-entries: 200;
@@ -261,6 +262,7 @@ export component SettingsPage inherits Window {
     callback recent-history-cleared();
     callback panel-in-taskbar-toggled(on: bool);
     callback panel-hide-on-blur-toggled(on: bool);
+    callback screenshot-keep-panel-toggled(on: bool);
     callback reduce-motion-toggled(on: bool);
     callback panel-width-chosen(width: int);
     callback dock-edge-chosen(index: int);
@@ -499,6 +501,18 @@ export component SettingsPage inherits Window {
                             a11y-label: @tr("Hide the panel when it loses focus");
                             checked <=> root.panel-hide-on-blur;
                             toggled(on) => { root.panel-hide-on-blur-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Keep Panel visible during screenshots");
+                        description: @tr("Take screenshot hides the panel until the picture is taken. Turn this on to leave it on screen.");
+                        Toggle {
+                            a11y-label: @tr("Keep Panel visible during screenshots");
+                            checked <=> root.screenshot-keep-panel;
+                            toggled(on) => { root.screenshot-keep-panel-toggled(on); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

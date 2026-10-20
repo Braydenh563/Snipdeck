@@ -232,6 +232,8 @@ pub enum ToastMessage {
     NotOpened,
     /// "Couldn't save a draft of what you typed."
     DraftNotSaved,
+    /// "Couldn't start the screenshot tool." (Take screenshot)
+    ScreenshotFailed,
 }
 
 /// A toast: a style and a message.

@@ -30,6 +30,7 @@ pub fn tray_labels(window: &PanelWindow) -> TrayLabels {
     TrayLabels {
         open_panel: texts.get_open_panel().into(),
         open_snipdeck: texts.get_open_snipdeck().into(),
+        take_screenshot: texts.get_take_screenshot().into(),
         pause_hotkeys: texts.get_pause_hotkeys().into(),
         pause_history: texts.get_pause_history().into(),
         quit: texts.get_quit().into(),
@@ -219,6 +220,7 @@ where
         ToastMessage::NotSaved => t.invoke_not_saved(),
         ToastMessage::NotOpened => t.invoke_not_opened(),
         ToastMessage::DraftNotSaved => t.invoke_draft_not_saved(),
+        ToastMessage::ScreenshotFailed => t.invoke_screenshot_failed(),
     };
     text.into()
 }
@@ -335,6 +337,7 @@ pub fn app_menu_text(
         AppMenuEntry::Open => t.invoke_app_open(),
         AppMenuEntry::Commands => t.invoke_app_commands(),
         AppMenuEntry::NewSnippet => t.invoke_app_new_snippet(),
+        AppMenuEntry::Screenshot => t.invoke_app_screenshot(),
         AppMenuEntry::Settings => t.invoke_app_settings(),
         AppMenuEntry::Dock if docked => t.invoke_app_undock(),
         AppMenuEntry::Dock => match dock_target {

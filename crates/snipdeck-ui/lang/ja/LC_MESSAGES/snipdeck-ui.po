@@ -406,6 +406,9 @@ msgstr "このスニペットを保存できませんでした。何も変更さ
 msgid "Couldn't save your settings. Snipdeck will try again."
 msgstr "設定を保存できませんでした。Snipdeck が再試行します。"
 
+msgid "Couldn't start the screenshot tool."
+msgstr "スクリーンショットのツールを起動できませんでした。"
+
 msgid "Couldn't use this item."
 msgstr "このスニペットを使用できませんでした。"
 
@@ -819,6 +822,9 @@ msgstr ""
 
 msgid "Just now"
 msgstr "たった今"
+
+msgid "Keep Panel visible during screenshots"
+msgstr "スクリーンショット中もパネルを表示したままにする"
 
 msgid "Keep a Recent inbox of what you copy"
 msgstr "コピーした内容を「最近」の受信箱に残す"
@@ -1736,6 +1742,12 @@ msgstr "タグ"
 msgid "Tags…"
 msgstr "タグ…"
 
+msgid "Take screenshot"
+msgstr "スクリーンショットを撮る"
+
+msgid "Take screenshot hides the panel until the picture is taken. Turn this on to leave it on screen."
+msgstr "「スクリーンショットを撮る」は、画像を撮るまでパネルを隠します。オンにすると表示したままになります。"
+
 msgid "Takes effect the next time Snipdeck starts."
 msgstr "次回 Snipdeck の起動時に有効になります。"
 
@@ -2210,6 +2222,9 @@ msgstr "クイック 検索 貼り付け パレット"
 
 msgid "s"
 msgstr "秒"
+
+msgid "snip snipping capture screen picture image"
+msgstr "切り取り スクリーンショット 画面 画像 キャプチャ"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "チュートリアル 入門 基本 学ぶ"

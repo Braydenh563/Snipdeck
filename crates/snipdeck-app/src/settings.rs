@@ -345,6 +345,10 @@ pub struct Settings {
     /// An unpinned Panel hides when another app takes the foreground. A pinned Panel and the
     /// Main window never hide this way.
     pub panel_hide_on_blur: bool,
+    /// "Take screenshot" leaves the Panel on screen while the snipping overlay is up. Off
+    /// (the default): the Panel hides until the picture is taken, so it is not in front of
+    /// the overlay.
+    pub screenshot_keep_panel: bool,
     /// The one-time "Snipdeck is still running" toast has been shown (the first time the Panel
     /// hid itself by the close button or by losing focus).
     pub hide_hint_shown: bool,
@@ -386,6 +390,7 @@ impl Default for Settings {
             close_to_tray: true,
             panel_in_taskbar: false,
             panel_hide_on_blur: true,
+            screenshot_keep_panel: false,
             hide_hint_shown: false,
             panel_width: PANEL_WIDTH_DEFAULT,
             backups_keep: BACKUPS_KEEP_DEFAULT,
@@ -456,6 +461,7 @@ impl Settings {
         field!(close_to_tray);
         field!(panel_in_taskbar);
         field!(panel_hide_on_blur);
+        field!(screenshot_keep_panel);
         field!(hide_hint_shown);
         field!(panel_width);
         field!(backups_keep);
@@ -929,6 +935,7 @@ mod tests {
         let settings = Settings::from_json("{}");
         assert!(!settings.panel_in_taskbar);
         assert!(settings.panel_hide_on_blur);
+        assert!(!settings.screenshot_keep_panel, "off unless asked for");
         let settings = Settings::from_json(r#"{"theme":"dark","close_to_tray":false}"#);
         assert!(!settings.panel_in_taskbar && settings.panel_hide_on_blur);
     }
@@ -1002,6 +1009,7 @@ mod tests {
         let settings = Settings {
             panel_in_taskbar: true,
             panel_hide_on_blur: false,
+            screenshot_keep_panel: true,
             hide_hint_shown: true,
             ..Settings::default()
         };
