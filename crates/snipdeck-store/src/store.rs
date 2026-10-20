@@ -451,8 +451,11 @@ fn configure(conn: &Connection) -> Result<()> {
     // The result row (the mode actually in effect) is `memory` for in-memory databases and
     // may be `delete` on file systems without shared memory; both still work, just slower.
     conn.pragma_update_and_check(None, "journal_mode", "WAL", |r| r.get::<_, String>(0))?;
-    // With WAL, NORMAL cannot corrupt the database; a power cut may lose the last commit.
-    conn.pragma_update(None, "synchronous", "NORMAL")?;
+    // FULL: the WAL is synced at every commit. With NORMAL a power cut could lose the last
+    // commit while the blob files that commit released (`Store::finish`) are already unlinked, so
+    // the surviving row would point at a missing blob. Writes are rare and small, so the extra
+    // fsync per commit is cheap.
+    conn.pragma_update(None, "synchronous", "FULL")?;
     conn.pragma_update(None, "foreign_keys", true)?;
     Ok(())
 }

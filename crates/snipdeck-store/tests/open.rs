@@ -32,6 +32,9 @@ fn the_database_is_in_wal_mode_with_foreign_keys_on() {
     let store = Store::open(dir.path()).unwrap();
     assert_eq!(store.pragma_text("journal_mode").unwrap(), "wal");
     assert_eq!(store.pragma_text("foreign_keys").unwrap(), "1");
+    // FULL (2): a commit that released a blob file must survive a power cut, or the surviving
+    // row would point at a deleted blob (Fable v1 sweep, B1).
+    assert_eq!(store.pragma_text("synchronous").unwrap(), "2");
     // WAL is persistent: a plain connection sees it too.
     let raw = Connection::open(dir.path().join("snipdeck.db")).unwrap();
     let mode: String = raw
