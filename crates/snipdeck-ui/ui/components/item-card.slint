@@ -166,6 +166,8 @@ export component ItemCard inherits Rectangle {
     in property <bool> pick-mode: false;
     // Draws the keyboard focus ring although the card is not the focus owner (the list's cursor row).
     in property <bool> show-focus: false;
+    // False where no row menu exists (the Picker): no kebab is drawn and its slot is not kept.
+    in property <bool> has-menu: true;
 
     callback use();
     callback copy();
@@ -212,6 +214,9 @@ export component ItemCard inherits Rectangle {
     // It is not a Tab stop: the keyboard opens the same menu with the Menu key or Shift+F10 on the card.
     property <bool> more-emphasised: root.hovered || root.focused;
     property <length> more-side: Space.hit-min;
+    // The trailing slot every variant keeps for the kebab: the list and use labels sit left of it, and the
+    // title and preview never run under it.
+    property <length> more-reserve: root.has-menu ? root.more-side + Space.s1 : 0px;
     property <bool> focused: scope.has-focus || root.show-focus;
     // A compact row's hint gives way when it would push the title under its 12-character floor
     // (large text scale in a narrow panel); the hint is also in the Panel's footer.
@@ -241,7 +246,7 @@ export component ItemCard inherits Rectangle {
     property <length> pad-x: root.tile ? Space.s3 : Space.s2;
     property <length> pad-y: root.compact ? 0px : root.tile ? Space.s3 : Space.s2;
     property <length> content-x: root.gutter-w + root.rule-w + root.pad-x;
-    property <length> content-w: max(0px, root.width - root.content-x - root.pad-x);
+    property <length> content-w: max(0px, root.width - root.content-x - root.pad-x - root.more-reserve);
     // Space taken left of the title in the compact and comfortable rows.
     property <length> lead-w: root.comfortable && root.is-image ? root.thumb-w + Space.s2 : root.has-glyph && !root.tile ? root.glyph-group-w + Space.s2 : 0px;
     // DESIGN.md §8: the title never truncates below 12 characters; the preview gives way first. Twelve Latin
@@ -250,16 +255,19 @@ export component ItemCard inherits Rectangle {
     property <length> avg-char-w: m-title.preferred-width / max(1, root.title.character-count);
     property <length> min-title-w: min(m-title.preferred-width, max(Type.base * 7, root.avg-char-w * 12));
     property <length> row-w: root.content-w - root.lead-w;
+    // Gap between the row's text (title or preview) and its trailing label: one step wider than the
+    // inner gaps so the elided preview and the list chip read as two things (owner ask 2026-10-20).
+    property <length> label-gap: Space.s4;
     property <length> list-mark-w: (Space.s1 + Space.s0-5) * SystemLook.text-scale + Space.s1;
     // The list label takes what the title leaves (never below ~8 characters), and never so much
     // that the title would drop under its 12-character floor.
     property <length> list-w: root.list-name == "" ? 0px : min(m-list.preferred-width + root.list-mark-w,
-        min(max(0px, root.row-w - root.min-title-w - Space.s2),
-            max(root.row-w - m-title.preferred-width - Space.s2, Type.xs * 8)));
-    property <length> list-reserve: root.list-w > 0px ? root.list-w + Space.s2 : 0px;
+        min(max(0px, root.row-w - root.min-title-w - root.label-gap),
+            max(root.row-w - m-title.preferred-width - root.label-gap, Type.xs * 8)));
+    property <length> list-reserve: root.list-w > 0px ? root.list-w + root.label-gap : 0px;
     property <length> use-w: m-use.preferred-width + Space.s1 + Type.sm + 2 * Space.s2;
     // A compact row has one trailing slot: the use label replaces the list label while it shows.
-    property <length> trail-reserve: root.compact && root.label-visible ? root.use-w + Space.s2 : root.list-reserve;
+    property <length> trail-reserve: root.compact && root.label-visible ? root.use-w + root.label-gap : root.list-reserve;
     property <length> title-avail: max(0px, root.row-w - root.trail-reserve);
     property <length> title-w: min(m-title.preferred-width, max(root.title-avail, root.min-title-w));
 
@@ -545,8 +553,8 @@ export component ItemCard inherits Rectangle {
             name: root.list-name;
             mark: root.list-color;
             text-w: m-list.preferred-width;
-            max-w: root.tile ? max(0px, root.width - 2 * root.pad-x - 2 * Space.s4 - Space.s2) : root.list-w;
-            x: parent.width - root.pad-x - self.width;
+            max-w: root.tile ? max(0px, root.width - 2 * root.pad-x - root.more-reserve - 2 * Space.s4 - Space.s2) : root.list-w;
+            x: parent.width - root.pad-x - root.more-reserve - self.width;
             y: root.compact ? (parent.height - self.height) / 2
                 : root.tile ? root.pad-y + (root.top-h - self.height) / 2
                 : root.pad-y + (root.title-h - self.height) / 2;
@@ -559,7 +567,7 @@ export component ItemCard inherits Rectangle {
             shown: root.label-visible;
             backing: root.fill;
             text-w: m-use.preferred-width;
-            x: parent.width - root.pad-x - self.width;
+            x: parent.width - root.pad-x - root.more-reserve - self.width;
             y: root.compact ? (parent.height - self.height) / 2
                 : root.tile ? parent.height - root.pad-y - self.height
                 : parent.height - Space.s1 - self.height;
@@ -635,9 +643,10 @@ export component ItemCard inherits Rectangle {
     // After `touch`, so a click on it is its own and never a use. Compact rows keep the use label to its
     // right; the other variants put it in the top-right corner.
     more := Rectangle {
+        visible: root.has-menu;
         width: root.more-side;
         height: root.more-side;
-        x: root.width - root.pad-x - self.width - (root.compact && root.label-visible ? m-use.preferred-width + Space.s2 : 0px);
+        x: root.width - root.pad-x - self.width;
         y: root.compact ? (root.height - self.height) / 2 : Space.s1;
         border-radius: Radius.md;
         background: root.more-hover ? Theme.bg-hover : transparent;
