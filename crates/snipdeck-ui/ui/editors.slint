@@ -65,6 +65,7 @@ component EditorFooter inherits Rectangle {
     in property <string> delete-label;
     in property <string> cancel-label;
     in property <string> save-label;
+    in property <string> save-tooltip;
     callback delete();
     callback cancel();
     callback save();
@@ -98,6 +99,7 @@ component EditorFooter inherits Rectangle {
         }
         Button {
             text: root.save-label;
+            tooltip: root.save-tooltip;
             variant: ButtonVariant.primary;
             clicked => { root.save(); }
         }
@@ -253,6 +255,9 @@ export component ItemEditor inherits Window {
     // The text (kinds 0 to 3). Image and file items have no text to edit.
     in-out property <string> content;
     in-out property <bool> sensitive: false;
+    // "More options" (Kind, Title, Colour, Tags, Privacy) is open; the host remembers it in the settings.
+    in-out property <bool> more-open: false;
+    callback more-toggled(open: bool);
     // The list the item is in: an index into `list-names`.
     in-out property <int> list-index: 0;
     in property <[string]> list-names;
@@ -306,9 +311,19 @@ export component ItemEditor inherits Window {
     // The host restored a draft: the fields differ from what is saved, so leaving asks first.
     public function mark-dirty() { root.dirty = true; }
     // Called by the host after it has set the values: focus with the cursor after the text.
-    public function focus-title() { title-field.focus(); title-field.set-cursor(1000000); }
+    // The first field to type in: the title while "More options" is open, else the content.
+    public function focus-title() {
+        if (root.more-shown) {
+            title-field.focus();
+            title-field.set-cursor(1000000);
+        } else if (root.text-kind) {
+            content-field.focus();
+        }
+    }
 
     property <bool> text-kind: root.kind-index <= 3;
+    // A refusal that sits under "More options" opens it, so it is never hidden.
+    property <bool> more-shown: root.more-open || root.title-error != "" || root.privacy-error != "";
     property <string> sensitive-base: @tr("Hidden in lists until you hold Space, kept out of clipboard history, and cleared from the clipboard a little after you copy it (the time is in Settings).");
     property <string> sensitive-help: root.text-kind
         ? root.sensitive-base
@@ -354,7 +369,7 @@ export component ItemEditor inherits Window {
 
     init => {
         Palette.dark = root.dark;
-        title-field.focus();
+        root.focus-title();
     }
     changed dark => {
         Palette.dark = root.dark;
@@ -394,53 +409,6 @@ export component ItemEditor inherits Window {
 
                     if root.restored: Notice {
                         text: @tr("Restored the changes you had not saved.");
-                    }
-
-                    // Kind: a choice for text items and new items, a fixed label for captured ones.
-                    if root.text-kind || root.is-new: FormField {
-                        label: @tr("Kind");
-                        kind-choice := Segmented {
-                            label: @tr("Kind");
-                            options: root.is-new
-                                ? [@tr("Text"), @tr("Code"), @tr("Link"), @tr("Template"), @tr("Image"), @tr("File")]
-                                : [@tr("Text"), @tr("Code"), @tr("Link"), @tr("Template")];
-                            current: root.kind-index;
-                            chosen(i) => {
-                                root.kind-index = i;
-                                // Only text kinds can be sensitive: the switch goes off with the kind.
-                                if (i >= 4) { root.sensitive = false; }
-                                root.touch();
-                            }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                    }
-                    if !root.text-kind && !root.is-new: FormField {
-                        label: @tr("Kind");
-                        helper: @tr("Captured items keep their kind.");
-                        Text {
-                            text: root.kind-index == 4 ? @tr("Image") : @tr("File");
-                            color: Theme.text-primary;
-                            font-family: Fonts.sans;
-                            font-size: Type.base;
-                            font-weight: Type.medium;
-                        }
-                    }
-
-                    FormField {
-                        label: @tr("Title");
-                        title-field := TextField {
-                            label: @tr("Title");
-                            placeholder: @tr("Optional: the first line of the text is used");
-                            error: root.title-error;
-                            text <=> root.item-title;
-                            edited(t) => { root.touch(); }
-                            accepted(t) => { root.try-save(); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
                     }
 
                     // The content: text for kinds 0 to 3, what the item holds for image and file. One slot, so the
@@ -608,6 +576,74 @@ export component ItemEditor inherits Window {
                         }
                     }
 
+                    // "More options": Kind, Title, Colour, Tags and Privacy. Content and List stay in view; the choice is remembered.
+                    more-toggle := Button {
+                        text: root.more-shown ? @tr("Fewer options") : @tr("More options");
+                        a11y-label: root.more-shown ? @tr("Hide kind, title, colour, tags and privacy") : @tr("Show kind, title, colour, tags and privacy");
+                        accessible-expanded: root.more-shown;
+                        clicked => {
+                            root.more-open = !root.more-shown;
+                            root.more-toggled(root.more-open);
+                        }
+                        changed has-focus => {
+                            if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                        }
+                    }
+                    more-box := Rectangle {
+                        height: root.more-shown ? more-col.preferred-height : 0px;
+                        visible: root.more-shown;
+                        clip: true;
+                        more-col := VerticalLayout {
+                            width: parent.width;
+                            spacing: Space.s4;
+                            alignment: start;
+                    // Kind: a choice for text items and new items, a fixed label for captured ones.
+                    if root.text-kind || root.is-new: FormField {
+                        label: @tr("Kind");
+                        kind-choice := Segmented {
+                            label: @tr("Kind");
+                            options: root.is-new
+                                ? [@tr("Text"), @tr("Code"), @tr("Link"), @tr("Template"), @tr("Image"), @tr("File")]
+                                : [@tr("Text"), @tr("Code"), @tr("Link"), @tr("Template")];
+                            current: root.kind-index;
+                            chosen(i) => {
+                                root.kind-index = i;
+                                // Only text kinds can be sensitive: the switch goes off with the kind.
+                                if (i >= 4) { root.sensitive = false; }
+                                root.touch();
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if !root.text-kind && !root.is-new: FormField {
+                        label: @tr("Kind");
+                        helper: @tr("Captured items keep their kind.");
+                        Text {
+                            text: root.kind-index == 4 ? @tr("Image") : @tr("File");
+                            color: Theme.text-primary;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            font-weight: Type.medium;
+                        }
+                    }
+
+                    FormField {
+                        label: @tr("Title");
+                        title-field := TextField {
+                            label: @tr("Title");
+                            placeholder: @tr("Optional: the first line of the text is used");
+                            error: root.title-error;
+                            text <=> root.item-title;
+                            edited(t) => { root.touch(); }
+                            accepted(t) => { root.try-save(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+
                     FormField {
                         label: @tr("Colour label");
                         ColourPicker {
@@ -717,6 +753,8 @@ export component ItemEditor inherits Window {
                             }
                         }
                     }
+                        }
+                    }
                 }
             }
 
@@ -736,6 +774,7 @@ export component ItemEditor inherits Window {
                 delete-label: @tr("Move to Trash");
                 cancel-label: @tr("Cancel");
                 save-label: @tr("Save");
+                save-tooltip: @tr("Save (Ctrl+Enter)");
                 delete => { root.delete-requested(); }
                 cancel => { root.request-cancel(); }
                 save => { root.try-save(); }

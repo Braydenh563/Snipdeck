@@ -49,6 +49,11 @@ where
         self.update_settings(|s| s.main_window = Some(place));
     }
 
+    /// The item editor's "More options" was opened or closed: remembered across editors and runs.
+    pub fn set_editor_more_open(&mut self, open: bool) {
+        self.update_settings(|s| s.editor_more_open = open);
+    }
+
     /// The theme setting (`system`, `light`, `dark`).
     pub fn set_theme(&mut self, theme: Theme) {
         self.update_settings(|s| s.theme = theme);

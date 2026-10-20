@@ -5,39 +5,7 @@ import { Button, ButtonVariant, ButtonSize } from "button.slint";
 
 // Render-only feedback surfaces: Tooltip, Toast, Skeleton (DESIGN.md §4). The host owns timing.
 
-// Names an icon-only action. Render only: the host places it (below the control, 4px gap) and sets
-// `open`. Timing is the host's: show after `show-delay` of hover or keyboard focus, but instantly
-// when the pointer moves from one tooltip-bearing control to another. Fades in 90ms (also under
-// reduced motion, DESIGN.md §8). Never takes pointer or focus.
-export component Tooltip inherits Rectangle {
-    in property <string> text;
-    in property <bool> open: false;
-    // DESIGN.md §4: how long hover must rest before the host sets `open`.
-    out property <duration> show-delay: 500ms;
-
-    background: Theme.ink;
-    border-radius: Radius.sm;
-    border-width: Theme.hc-border != transparent ? 1px : 0px;
-    border-color: Theme.hc-border;
-    opacity: root.open ? 1.0 : 0.0;
-    accessible-role: AccessibleRole.none;
-    animate opacity { duration: Motion.fade; easing: Motion.out; }
-
-    HorizontalLayout {
-        padding-left: Space.s2;
-        padding-right: Space.s2;
-        padding-top: Space.s1;
-        padding-bottom: Space.s1;
-        Text {
-            text: root.text;
-            color: Theme.text-on-ink;
-            font-family: Fonts.sans;
-            font-size: Type.sm;
-            font-weight: Type.medium;
-            vertical-alignment: center;
-        }
-    }
-}
+export { Tooltip } from "tooltip.slint";
 
 export enum ToastKind { neutral, success, danger }
 

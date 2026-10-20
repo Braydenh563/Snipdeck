@@ -236,6 +236,7 @@ where
             prompted_available: self.entitlements.allows(Feature::PromptedFields),
             can_browse: self.editor_env.picker.is_some(),
             restored: slot.restored,
+            more_open: self.settings.editor_more_open,
         })
     }
 
