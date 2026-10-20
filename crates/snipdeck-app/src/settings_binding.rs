@@ -46,12 +46,10 @@ use crate::{
 
 // ---- What the machine is asked to do -----------------------------------------------------------
 
-/// The address "Get Supporter" and "Email me" write to. A placeholder until the owner supplies the
-/// real one: replace this one line before release (the website has the same placeholder, in
-/// `site/index.html`).
-// TODO(owner): put the real support address here, and change the placeholder pinned in
-// `get_supporter_opens_the_email_app_with_the_one_named_address` (tests/settings_window.rs).
-pub const SUPPORTER_EMAIL: &str = "SUPPORTER_EMAIL_PLACEHOLDER";
+/// The address "Get Supporter" and "Email me" write to: the owner's, supplied 2026-10-20. The
+/// website's two mailto links in `site/index.html` carry the same one, and the test
+/// `get_supporter_opens_the_email_app_with_the_one_named_address` pins it.
+pub const SUPPORTER_EMAIL: &str = "brayden.hoyle@outlook.com";
 
 /// The link behind "Get Supporter": opens the user's email app with a new message to
 /// [`SUPPORTER_EMAIL`].

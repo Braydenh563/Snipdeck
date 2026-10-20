@@ -14,9 +14,8 @@
 <body>
 
 <!--
-  TODO(owner): replace SUPPORTER_EMAIL_PLACEHOLDER with the real Supporter address before publishing.
-  It appears in 2 mailto: links in the #supporter section ("Get Supporter" and "Email me").
-  Find them with: grep -n SUPPORTER_EMAIL_PLACEHOLDER site/index.html
+  The Supporter address appears in 2 mailto: links in the #supporter section ("Get Supporter" and
+  "Email me"); it is the same one as SUPPORTER_EMAIL in crates/snipdeck-app/src/settings_binding.rs.
 
   Editing the Free vs Supporter table: one <tr> per feature in #compare. Copy a row, change the name,
   the one-line description and the two marks (use the #i-check or #i-x symbol, keep the sr-only word).
@@ -215,13 +214,12 @@
             <li><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span>Every 1.x update is included.</span></li>
           </ul>
           <div class="supporter-actions">
-            <!-- TODO(owner): SUPPORTER_EMAIL_PLACEHOLDER is a placeholder address. Replace it before publishing. -->
-            <a class="button button-quiet" href="mailto:SUPPORTER_EMAIL_PLACEHOLDER">
+            <a class="button button-quiet" href="mailto:brayden.hoyle@outlook.com">
               <svg class="mark" aria-hidden="true" focusable="false"><use href="#i-mail"/></svg>
               Get Supporter
             </a>
           </div>
-          <p class="free-key small">Can't afford it? <a href="mailto:SUPPORTER_EMAIL_PLACEHOLDER">Email me</a> and I'll send a key, no questions.</p>
+          <p class="free-key small">Can't afford it? <a href="mailto:brayden.hoyle@outlook.com">Email me</a> and I'll send a key, no questions.</p>
         </div>
       </div>
 

@@ -1450,12 +1450,11 @@ fn get_supporter_opens_the_email_app_with_the_one_named_address() {
             *r.host.urls.borrow(),
             [format!("mailto:{}", settings_binding::SUPPORTER_EMAIL)]
         );
-        // Pinned on purpose: this is the placeholder, so it fails the day the real address goes
-        // into `SUPPORTER_EMAIL`. Change it together with that constant (and `site/index.html`).
+        // Pinned on purpose: the owner's address, the same one as the website's mailto links.
         assert_eq!(
             settings_binding::supporter_mailto(),
-            "mailto:SUPPORTER_EMAIL_PLACEHOLDER",
-            "the placeholder stays until the owner supplies the address"
+            "mailto:brayden.hoyle@outlook.com",
+            "the Supporter address is the owner's"
         );
     });
 }
