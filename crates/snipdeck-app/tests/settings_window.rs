@@ -32,8 +32,12 @@ use snipdeck_app::{
     licence_store,
     main_binding::MainUi,
     paths::read_settings,
-    settings::{DockEdge, DockTrigger, HotkeyAction, Hotkeys, Settings, Theme},
-    settings_binding::{self, SettingsBinding, SettingsHost, SettingsUi, request_open},
+    settings::{
+        DockEdge, DockTrigger, HotkeyAction, Hotkeys, ProgramPaste, Settings, TextSize, Theme,
+    },
+    settings_binding::{
+        self, ExportFolder, SettingsBinding, SettingsHost, SettingsUi, request_open,
+    },
     settings_store::{FileSink, SettingsSaver},
     wording,
 };
@@ -86,6 +90,10 @@ struct FakeHost {
     import_pick: RefCell<Option<PathBuf>>,
     /// What the Windows clipboard history holds; unset reads as "turned off".
     history: RefCell<Option<HistoryRead>>,
+    /// What the export folder dialog answers; unset reads as a machine without a dialog.
+    export_pick: RefCell<Option<ExportFolder>>,
+    /// The owner window handles the export dialog was asked with.
+    export_asked: Cell<u32>,
 }
 
 impl SettingsHost for FakeHost {
@@ -117,6 +125,14 @@ impl SettingsHost for FakeHost {
 
     fn documents_folder(&self) -> Option<PathBuf> {
         self.documents.borrow().clone()
+    }
+
+    fn pick_export_folder(&self, _owner: Option<isize>) -> ExportFolder {
+        self.export_asked.set(self.export_asked.get() + 1);
+        self.export_pick
+            .borrow()
+            .clone()
+            .unwrap_or(ExportFolder::NoDialog)
     }
 
     fn pick_import(
@@ -177,6 +193,9 @@ fn rig_on(store: Store, tier: Tier, dir: tempfile::TempDir, with_data_dir: bool)
         Box::new(FileSink::new(dir.path())),
         Settings::default(),
     ));
+    // The text size is process-wide state on this thread: every page starts from "System".
+    snipdeck_app::text_scale::configure(TextSize::System);
+    snipdeck_app::text_scale::set_system(1.0);
     let host = Rc::new(FakeHost::default());
     *host.documents.borrow_mut() = Some(dir.path().join("Documents"));
     let ui = SettingsPage::new().expect("settings page");
@@ -237,11 +256,16 @@ impl Rig {
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
-        let cases: [Case; 16] = [
+        let cases: [Case; 18] = [
             (
                 "theme",
                 |r| r.ui.invoke_theme_chosen(2),
                 |s| s.theme == Theme::Dark,
+            ),
+            (
+                "text size",
+                |r| r.ui.invoke_text_size_chosen(3),
+                |s| s.text_size == TextSize::P150,
             ),
             (
                 "language",
@@ -285,8 +309,17 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
             ),
             (
                 "a program added",
-                |r| r.ui.invoke_no_paste_app_added("KeePass.EXE".into()),
-                |s| s.no_paste_apps == ["keepass.exe"],
+                |r| r.ui.invoke_paste_rule_added("KeePass.EXE".into()),
+                |s| {
+                    s.programs
+                        .iter()
+                        .any(|p| p.exe == "keepass.exe" && p.paste == ProgramPaste::CtrlShiftV)
+                },
+            ),
+            (
+                "a program's paste key changed",
+                |r| r.ui.invoke_paste_rule_chosen(0, 3),
+                |s| s.programs[0].paste == ProgramPaste::Never && s.no_paste_apps.len() == 1,
             ),
             (
                 "an app left out of Recent",
@@ -344,29 +377,117 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
 }
 
 #[test]
-fn removing_a_program_is_written_too_and_a_repeat_is_refused_in_words() {
+fn programs_start_with_the_terminal_rules_and_add_change_remove_are_written() {
     on_ui_thread(|| {
         let r = rig();
-        r.ui.invoke_no_paste_app_added("keepass.exe".into());
-        r.ui.invoke_no_paste_app_added("Putty.exe".into());
-        assert_eq!(r.ui.get_no_paste_apps().row_count(), 2);
-        r.ui.invoke_no_paste_app_added("KEEPASS.exe".into());
+        let rules = || {
+            let model = r.ui.get_paste_rules();
+            (0..model.row_count())
+                .map(|i| {
+                    let row = model.row_data(i).unwrap();
+                    (row.exe.to_string(), row.choice)
+                })
+                .collect::<Vec<_>>()
+        };
+        // Seeded from the built-in table: Shift+Insert is choice 2, Ctrl+Shift+V choice 1.
         assert_eq!(
-            r.ui.get_no_paste_error(),
-            "keepass.exe is already in the list."
+            rules(),
+            [
+                ("mintty.exe".to_owned(), 2),
+                ("putty.exe".to_owned(), 2),
+                ("kitty.exe".to_owned(), 2),
+                ("alacritty.exe".to_owned(), 1),
+                ("wezterm-gui.exe".to_owned(), 1),
+            ]
         );
-        assert_eq!(r.ui.get_no_paste_apps().row_count(), 2, "not added twice");
-        r.ui.invoke_no_paste_app_removed(0);
+        r.ui.invoke_paste_rule_added("WindowsTerminal.EXE".into());
+        assert_eq!(rules().len(), 6);
+        assert_eq!(rules()[5], ("windowsterminal.exe".to_owned(), 1));
+        r.ui.invoke_paste_rule_added("WINDOWSTERMINAL.exe".into());
         assert_eq!(
-            r.ui.get_no_paste_error(),
+            r.ui.get_paste_rule_error(),
+            "windowsterminal.exe is already in the list."
+        );
+        assert_eq!(rules().len(), 6, "not added twice");
+        // Never paste is choice 3.
+        r.ui.invoke_paste_rule_chosen(5, 3);
+        assert_eq!(rules()[5].1, 3);
+        assert_eq!(
+            r.ctl.borrow().settings().no_paste_apps,
+            ["windowsterminal.exe"],
+            "the copy-instead list follows"
+        );
+        // And the paste key follows a change: back to Ctrl+V.
+        r.ui.invoke_paste_rule_chosen(0, 0);
+        r.ui.invoke_paste_rule_removed(1);
+        assert_eq!(
+            r.ui.get_paste_rule_error(),
             "",
             "the message goes with the next change"
         );
+        r.ui.invoke_paste_rule_removed(99);
         r.advance(500);
+        let saved = read_settings(r.dir.path()).settings;
+        let exes: Vec<&str> = saved.programs.iter().map(|p| p.exe.as_str()).collect();
         assert_eq!(
-            read_settings(r.dir.path()).settings.no_paste_apps,
-            ["putty.exe"]
+            exes,
+            [
+                "mintty.exe",
+                "kitty.exe",
+                "alacritty.exe",
+                "wezterm-gui.exe",
+                "windowsterminal.exe"
+            ]
         );
+        assert_eq!(saved.programs[0].paste, ProgramPaste::CtrlV);
+        assert_eq!(saved.no_paste_apps, ["windowsterminal.exe"]);
+        assert!(
+            !std::fs::read_to_string(r.settings_file())
+                .unwrap()
+                .contains("no_paste_apps"),
+            "the old key is not written any more"
+        );
+    });
+}
+
+#[test]
+fn the_programs_section_is_where_the_page_says_and_each_row_has_a_paste_key_dropdown() {
+    on_ui_thread(|| {
+        let r = rig();
+        element(&r.ui, "Paste key for mintty.exe", AccessibleRole::Combobox);
+        element(&r.ui, "Program to add", AccessibleRole::TextInput);
+        // The section order of the page, top to bottom.
+        let order = [
+            "Shortcuts",
+            "Appearance",
+            "Panel",
+            "Privacy",
+            "Programs",
+            "Licence",
+            "Backups and your data",
+        ];
+        let ys: Vec<f32> = order
+            .iter()
+            .map(|t| {
+                element(&r.ui, t, AccessibleRole::Groupbox)
+                    .absolute_position()
+                    .y
+            })
+            .collect();
+        assert!(ys.windows(2).all(|w| w[0] < w[1]), "{order:?} at {ys:?}");
+        for gone in [
+            "Never paste into",
+            "Panel dock",
+            "Window behaviour",
+            "Recent",
+            "Your data",
+        ] {
+            assert!(
+                !ElementHandle::find_by_accessible_label(&r.ui, gone)
+                    .any(|e| e.accessible_role() == Some(AccessibleRole::Groupbox)),
+                "{gone} is a section of its own no more"
+            );
+        }
     });
 }
 
@@ -425,7 +546,7 @@ fn the_apps_left_out_of_recent_are_a_list_with_add_remove_and_words_for_a_refusa
         );
         assert_eq!(r.ui.get_no_history_apps().row_count(), 2, "not added twice");
         // The other list is untouched, and an empty field says nothing.
-        assert_eq!(r.ui.get_no_paste_apps().row_count(), 0);
+        assert_eq!(r.ui.get_paste_rules().row_count(), 5, "the starting rules");
         r.ui.invoke_no_history_app_added("C:\\x\\y.exe".into());
         assert_eq!(
             r.ui.get_no_history_error(),
@@ -621,8 +742,8 @@ fn a_shortcut_that_clashes_is_refused_and_says_which_action_has_it() {
         );
         assert_eq!(
             r.ctl.borrow().settings().hotkeys.capture,
-            "Ctrl+Shift+2",
-            "unchanged"
+            "",
+            "unchanged: Capture is off until a shortcut is set"
         );
         assert_eq!(r.ctl.borrow().settings_wait(), None, "nothing to write");
         // A good one afterwards clears the message.
@@ -636,9 +757,15 @@ fn a_shortcut_another_program_owns_is_refused_and_the_old_ones_stay_registered()
     on_ui_thread(|| {
         let r = rig();
         r.host.hotkeys.borrow_mut().taken.push("Ctrl+Alt+K".into());
-        // The shortcuts registered at start.
-        let before =
-            settings_binding::apply_hotkeys(&mut *r.host.hotkeys.borrow_mut(), &Hotkeys::default());
+        // The shortcuts registered at start: all four are set.
+        let initial = Hotkeys {
+            capture: "Ctrl+Shift+2".into(),
+            ..Hotkeys::default()
+        };
+        r.ctl
+            .borrow_mut()
+            .update_settings(|s| s.hotkeys = initial.clone());
+        let before = settings_binding::apply_hotkeys(&mut *r.host.hotkeys.borrow_mut(), &initial);
         assert_eq!(before.len(), 0);
         r.ui.invoke_hotkey_recorded(2, "Ctrl+Alt+K".into());
         assert_eq!(
@@ -646,8 +773,20 @@ fn a_shortcut_another_program_owns_is_refused_and_the_old_ones_stay_registered()
             "Another program already uses Ctrl+Alt+K."
         );
         assert_eq!(r.ctl.borrow().settings().hotkeys.capture, "Ctrl+Shift+2");
+        // The other three stay; Paste next is a Supporter feature and this rig is on Free.
         let registered = r.host.hotkeys.borrow().registered.len();
-        assert_eq!(registered, 4, "the capture shortcut is still registered");
+        assert_eq!(registered, 3, "the capture shortcut is still registered");
+        assert!(
+            r.host
+                .hotkeys
+                .borrow()
+                .registered
+                .iter()
+                .any(
+                    |(id, chord)| *id == snipdeck_app::host::id_of(HotkeyAction::Capture)
+                        && chord.to_string() == "Ctrl+Shift+2"
+                )
+        );
 
         // A free one is registered and stored.
         r.ui.invoke_hotkey_recorded(2, "Ctrl+Alt+J".into());
@@ -665,7 +804,11 @@ fn a_shortcut_another_program_owns_is_refused_and_the_old_ones_stay_registered()
         );
         // Clearing removes the registration.
         r.ui.invoke_hotkey_cleared(2);
-        assert_eq!(r.host.hotkeys.borrow().registered.len(), 3);
+        assert_eq!(
+            r.host.hotkeys.borrow().registered.len(),
+            2,
+            "Paste next waits for Supporter"
+        );
     });
 }
 
@@ -1054,10 +1197,7 @@ fn export_saves_a_new_file_in_documents_each_time_and_opens_the_folder() {
         let first = files(&documents);
         assert_eq!(first.len(), 1);
         assert!(first[0].starts_with("Snipdeck-library-") && first[0].ends_with(".snipdeck"));
-        assert_eq!(
-            r.ui.get_toast_text(),
-            format!("Saved {} in your Documents folder", first[0])
-        );
+        assert_eq!(r.ui.get_toast_text(), format!("Saved {}", first[0]));
         assert_eq!(*r.host.opened.borrow(), std::slice::from_ref(&documents));
         r.ui.invoke_export_requested();
         assert_eq!(
@@ -2232,5 +2372,201 @@ fn the_import_problems_follow_the_selected_language() {
         slint::select_bundled_translation("").unwrap();
         assert_ne!(german, english, "the sentence is translated");
         assert!(!german.is_empty());
+    });
+}
+
+// ---- Export asks where to save -------------------------------------------------------------
+
+#[test]
+fn export_saves_in_the_folder_the_dialog_returns_and_a_cancel_exports_nothing() {
+    on_ui_thread(|| {
+        let r = rig();
+        let chosen = r.dir.path().join("Chosen");
+        *r.host.export_pick.borrow_mut() = Some(ExportFolder::Chosen(chosen.clone()));
+        r.ui.invoke_export_requested();
+        let count = |dir: &Path| std::fs::read_dir(dir).map_or(0, Iterator::count);
+        assert_eq!(count(&chosen), 1, "the file is in the chosen folder");
+        assert_eq!(*r.host.opened.borrow(), std::slice::from_ref(&chosen));
+        assert!(
+            !r.dir.path().join("Documents").exists(),
+            "and Documents is not touched"
+        );
+
+        *r.host.export_pick.borrow_mut() = Some(ExportFolder::Cancelled);
+        r.ui.invoke_export_requested();
+        assert_eq!(count(&chosen), 1, "cancelled: nothing more is written");
+        assert_eq!(r.host.opened.borrow().len(), 1);
+        assert_eq!(r.host.export_asked.get(), 2, "it asked each time");
+    });
+}
+
+// ---- The last backup -----------------------------------------------------------------------
+
+#[test]
+fn the_backups_section_names_the_newest_backup_or_says_there_is_none() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(r.ui.get_last_backup(), "", "no backup yet");
+        for day in [17, 18] {
+            r.clock.set(at(&format!("2026-10-{day:02}T10:30:00Z")));
+            assert!(r.ctl.borrow_mut().backup_now(r.dir.path()));
+        }
+        r.ui.invoke_backup_now_requested();
+        let newest = snipdeck_portable::backup::list_backups(r.dir.path())
+            .unwrap()
+            .first()
+            .map(|b| b.date.to_string())
+            .unwrap();
+        assert_eq!(r.ui.get_last_backup(), newest.as_str());
+        assert!(
+            newest.starts_with("2026-10-1"),
+            "the date comes from the frozen clock: {newest}"
+        );
+        let demo = rig_on(
+            demo::store(now()).unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            false,
+        );
+        assert_eq!(demo.ui.get_last_backup(), "", "the demo keeps nothing");
+    });
+}
+
+// ---- Help ----------------------------------------------------------------------------------
+
+#[test]
+fn f1_and_the_help_link_open_the_user_guide_like_the_panel_does() {
+    on_ui_thread(|| {
+        let r = rig();
+        let guide = |r: &Rig| {
+            r.ctl
+                .borrow_mut()
+                .take_pending()
+                .contains(&Effect::OpenHelp(
+                    snipdeck_app::controller::HelpTopic::Guide,
+                ))
+        };
+        assert!(!guide(&r), "nothing queued yet");
+        // A key goes to the control that has the focus: Tab puts it on the first one.
+        press(r.ui.window(), &key(Key::Tab));
+        press(r.ui.window(), &key(Key::F1));
+        assert!(guide(&r), "F1 asks for the guide");
+        element(&r.ui, "Open the user guide (F1)", AccessibleRole::Button)
+            .invoke_accessible_default_action();
+        assert!(guide(&r), "so does the Help link in the footer");
+    });
+}
+
+// ---- Text size ----------------------------------------------------------------------------
+
+#[test]
+fn the_text_size_row_changes_the_setting_and_scales_the_page_at_once() {
+    on_ui_thread(|| {
+        let r = rig();
+        element(&r.ui, "Text size", AccessibleRole::Combobox);
+        let look = r.ui.global::<snipdeck_ui::SystemLook<'_>>();
+        let near = |a: f32, b: f32| (a - b).abs() < 1e-6;
+        assert_eq!(r.ctl.borrow().settings().text_size, TextSize::System);
+        assert_eq!(r.ui.get_text_size_index(), 0);
+        assert!(near(look.get_text_scale(), 1.0));
+
+        r.ui.invoke_text_size_chosen(4);
+        assert_eq!(r.ctl.borrow().settings().text_size, TextSize::P175);
+        assert_eq!(r.ui.get_text_size_index(), 4);
+        assert!(
+            near(look.get_text_scale(), 1.75),
+            "{}",
+            look.get_text_scale()
+        );
+        r.advance(500);
+        assert_eq!(
+            read_settings(r.dir.path()).settings.text_size,
+            TextSize::P175
+        );
+
+        // "Windows" follows what Windows says, and a change of it reaches the page on the
+        // next redraw.
+        r.ui.invoke_text_size_chosen(0);
+        assert!(near(look.get_text_scale(), 1.0));
+        snipdeck_app::text_scale::set_system(1.5);
+        r.binding.redraw();
+        assert!(near(look.get_text_scale(), 1.5));
+        // A fixed size ignores Windows.
+        r.ui.invoke_text_size_chosen(1);
+        assert!(near(look.get_text_scale(), 1.0));
+        snipdeck_app::text_scale::set_system(1.0);
+    });
+}
+
+// ---- Paste next needs Supporter --------------------------------------------------------------
+
+#[test]
+fn paste_next_is_registered_with_supporter_only_and_the_chord_stays_in_the_settings() {
+    on_ui_thread(|| {
+        let paste_next = snipdeck_app::host::id_of(HotkeyAction::PasteNext);
+        let registered = |r: &Rig| {
+            r.host
+                .hotkeys
+                .borrow()
+                .registered
+                .iter()
+                .any(|(id, _)| *id == paste_next)
+        };
+        // Free: recording a chord keeps it, registers the others, and not this one.
+        let free = rig();
+        free.ui.invoke_hotkey_recorded(3, "Ctrl+Alt+M".into());
+        assert_eq!(
+            free.ctl.borrow().settings().hotkeys.paste_next,
+            "Ctrl+Alt+M"
+        );
+        free.ui.invoke_hotkey_recorded(2, "Ctrl+Alt+K".into());
+        assert!(!registered(&free), "Free does not get Paste next");
+        assert_eq!(
+            free.host.hotkeys.borrow().registered.len(),
+            3,
+            "the Panel, the Picker and Capture are registered"
+        );
+        assert_eq!(free.ui.get_hotkeys().row_data(3).unwrap().conflict, "");
+
+        // Supporter: the same chord is registered.
+        let pro = rig_on(
+            demo::store(now()).unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            true,
+        );
+        pro.ui.invoke_hotkey_recorded(3, "Ctrl+Alt+M".into());
+        assert!(registered(&pro));
+    });
+}
+
+#[test]
+fn a_licence_key_registers_paste_next_at_once() {
+    if !IS_DEVELOPMENT_KEY {
+        return;
+    }
+    on_ui_thread(|| {
+        let r = rig();
+        let paste_next = snipdeck_app::host::id_of(HotkeyAction::PasteNext);
+        let registered = || {
+            r.host
+                .hotkeys
+                .borrow()
+                .registered
+                .iter()
+                .any(|(id, _)| *id == paste_next)
+        };
+        r.ui.invoke_hotkey_recorded(3, "Ctrl+Alt+M".into());
+        assert!(!registered(), "stored, not registered, on the Free plan");
+        let key = token(
+            &support::dev_seed(),
+            &pro_payload("TEST-1", 1_760_000_000, None).unwrap(),
+        );
+        r.ui.invoke_licence_submitted(key.into());
+        assert!(r.ui.get_pro());
+        assert!(
+            registered(),
+            "Supporter registers the chord kept in the settings"
+        );
     });
 }

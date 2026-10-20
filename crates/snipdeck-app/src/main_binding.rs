@@ -974,6 +974,8 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     if differs(&|p| p.dark == screen.dark) {
         window.set_dark(screen.dark);
     }
+    // Not behind `differs`: the text size is not part of the screen.
+    crate::text_scale::apply(&window.global::<ui::SystemLook<'_>>());
     if differs(&|p| look_key(p) == look_key(screen)) {
         apply_look(window, screen);
     }

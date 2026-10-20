@@ -52,13 +52,13 @@ icon, closing the Panel quits Snipdeck, so start it again with `Snipdeck.bat`. S
 brings the running one forward.
 
 **The Panel is not in the taskbar or Alt+Tab.** That is the default. Turn on **Show Snipdeck in the taskbar**
-under Settings, **Window behaviour**.
+under Settings, **Panel**.
 
 **The Panel hides when I click another app.** **Hide the panel when it loses focus** is on by default. Pin the
 Panel with its keep-on-top button, or turn the setting off.
 
 **Closing a window quits Snipdeck.** Turn on **Keep running in the tray when the window closes** under
-Settings, **Window behaviour**. With it off, closing the Panel or the Main window quits.
+Settings, **Panel**. With it off, closing the Panel or the Main window quits.
 
 **The Panel is a thin strip on the screen edge.** It is docked and folded. Hover over the strip or click it
 (depending on **Open a docked panel by**), or press the Panel shortcut. To undock, set **Dock to** to Floating
@@ -79,11 +79,14 @@ share, and one that Windows does not allow as a shortcut.
 Settings, **Shortcuts**: an empty field means the hotkey is off.
 
 **A click copies instead of pasting.** Snipdeck copies when it does not know a text box to paste into, when the
-target runs as administrator, or when the program is in **Never paste into** in Settings. The message says
+target runs as administrator, or when the program is set to **Never paste** under Settings, **Programs**. The message says
 which. The Panel footer shows where a click will go.
 
-**Ctrl+Alt+V says "This item uses a Supporter feature".** Paste next is a Supporter feature. Enter a key in Settings,
-**Licence**.
+**Ctrl+Alt+V does nothing, or pastes in Word's Paste Special.** Paste next is a Supporter feature, so on the Free
+plan Snipdeck does not register `Ctrl+Alt+V` and other programs keep it. Enter a key in Settings, **Licence**.
+
+**Text does not paste in my terminal.** Some terminals need another paste key. Settings, **Programs**, lists a row
+per program: add the program's file name and pick **Ctrl+Shift+V** or **Shift+Insert**.
 
 **Using a template says "This template can't be read".** A placeholder in it is wrong. Open the item and fix
 it. The editor lists the placeholders it understands.

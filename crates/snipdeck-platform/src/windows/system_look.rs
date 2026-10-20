@@ -34,6 +34,7 @@ use super::hidden_window::{HiddenWindow, WindowHandler};
 use crate::error::Error;
 use crate::system_look::{
     HighContrast, Rgb, SystemLook, SystemLookSource, message_may_change_look,
+    text_scale_from_percent,
 };
 
 /// Reads the live system look. Stateless, so it is `Send + Sync` and cheap to copy.
@@ -43,6 +44,10 @@ pub struct WinSystemLook;
 impl SystemLookSource for WinSystemLook {
     fn read(&self) -> SystemLook {
         read()
+    }
+
+    fn text_scale(&self) -> f32 {
+        text_scale()
     }
 }
 
@@ -56,6 +61,29 @@ pub fn read() -> SystemLook {
         accent: accent_color(),
         reduce_motion: !client_area_animation(),
     }
+}
+
+/// Windows' "Text size" (Settings > Accessibility): `HKCU\Software\Microsoft\Accessibility`,
+/// DWORD `TextScaleFactor`, a percentage (100 to 225); absent until the user moves the slider,
+/// which counts as 100. **Unverified on Windows.**
+#[must_use]
+pub fn text_scale() -> f32 {
+    let mut data: u32 = 0;
+    let mut size = u32::try_from(std::mem::size_of::<u32>()).unwrap_or(4);
+    // SAFETY: as in `apps_use_light_theme`: static NUL-terminated names, valid out-pointers,
+    // `RRF_RT_REG_DWORD` limits what is written to a DWORD.
+    let code = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            w!(r"Software\Microsoft\Accessibility"),
+            w!("TextScaleFactor"),
+            RRF_RT_REG_DWORD,
+            None,
+            Some((&raw mut data).cast::<c_void>()),
+            Some(&raw mut size),
+        )
+    };
+    text_scale_from_percent((code == ERROR_SUCCESS).then_some(data))
 }
 
 /// "Animation effects" (`SPI_GETCLIENTAREAANIMATION`). An unreadable value counts as on, so a
@@ -231,6 +259,13 @@ mod tests {
     fn reading_the_look_does_not_fail() {
         // The value depends on the machine; this only proves the calls work and agree.
         assert_eq!(read(), WinSystemLook.read());
+    }
+
+    #[test]
+    fn the_text_scale_is_inside_the_supported_range() {
+        let scale = text_scale();
+        assert!((1.0..=2.25).contains(&scale), "{scale}");
+        assert!((WinSystemLook.text_scale() - scale).abs() < f32::EPSILON);
     }
 
     #[test]

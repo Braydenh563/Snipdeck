@@ -233,7 +233,7 @@ export global ToastTexts {
         return @tr("Couldn't import that. Choose the file again, or try another one.");
     }
     pure public function exported(file: string) -> string {
-        return @tr("Saved {} in your Documents folder", file);
+        return @tr("Saved {}", file);
     }
     pure public function export-failed(cause: int) -> string {
         if (cause == 1) {

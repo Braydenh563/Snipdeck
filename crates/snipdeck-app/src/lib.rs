@@ -51,6 +51,7 @@ pub mod settings;
 pub mod settings_binding;
 pub mod settings_store;
 pub mod starter;
+pub mod text_scale;
 pub mod toast;
 pub mod toast_binding;
 pub mod tour;

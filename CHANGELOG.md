@@ -16,6 +16,12 @@ Windows PC.
   and one `Snipdeck-test-results-<date>.zip` on the Desktop at the end. Unverified on Windows.
 
 ### Added
+- Settings > Appearance > Text size: follow the Windows text size or pick 100, 125, 150 or 175 % (unverified on
+  Windows).
+- Settings > Programs: the paste key per program (Ctrl+V, Ctrl+Shift+V, Shift+Insert or never paste), replacing the
+  "Never paste into" list. Earlier lists carry over as "never paste" rows.
+- Export library asks which folder to save in. Settings shows when the last backup was made. F1 and a Help button
+  open the user guide from Settings.
 - `Snipdeck.bat` installs by itself: it downloads the latest release once, checks its SHA-256, unpacks it to an
   `app` folder and starts it. After that it starts offline.
 - Launcher commands `update`, `reinstall`, `backup`, `restore`, `doctor`, `logs` and `uninstall`, and one
@@ -38,7 +44,7 @@ Windows PC.
 - Crash reports in `%LOCALAPPDATA%\Snipdeck\logs` (newest 10 kept).
 - The Snipdeck icon on the app and in the tray, and a translated tray menu.
 - Translations for Spanish, German, French, Brazilian Portuguese, Japanese and Simplified Chinese.
-- The Picker, the template fill form and quick capture (`Ctrl+Shift+2` saves the clipboard text as a new item).
+- The Picker, the template fill form and quick capture (the Capture shortcut saves the clipboard text as a new item; it is off until you set a shortcut).
 - Paste next (`Ctrl+Alt+V`) for Supporter, over the pinned strip or the current list.
 - The item editor for text, code, link, template, image and file items, with drafts that survive a crash.
 - Export of the whole library as one `.snipdeck` file from Settings.
