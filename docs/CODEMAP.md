@@ -1417,11 +1417,12 @@ write | crates/snipdeck-app/src/licence_store.rs:32
 entitlements | crates/snipdeck-app/src/licence_store.rs:44
 problem_of | crates/snipdeck-app/src/licence_store.rs:52
 tests | crates/snipdeck-app/src/licence_store.rs:62
-now | crates/snipdeck-app/src/licence_store.rs:70
-good_key | crates/snipdeck-app/src/licence_store.rs:76
-no_file_or_a_bad_one_is_the_free_plan | crates/snipdeck-app/src/licence_store.rs:86
-a_saved_good_key_is_pro_on_the_next_start | crates/snipdeck-app/src/licence_store.rs:97
-every_licence_error_has_its_own_problem | crates/snipdeck-app/src/licence_store.rs:110
+development_seed | crates/snipdeck-app/src/licence_store.rs:71
+now | crates/snipdeck-app/src/licence_store.rs:76
+good_key | crates/snipdeck-app/src/licence_store.rs:82
+no_file_or_a_bad_one_is_the_free_plan | crates/snipdeck-app/src/licence_store.rs:92
+a_saved_good_key_is_pro_on_the_next_start | crates/snipdeck-app/src/licence_store.rs:103
+every_licence_error_has_its_own_problem | crates/snipdeck-app/src/licence_store.rs:116
 
 ### crates/snipdeck-app/src/list_text.rs
 
@@ -2777,19 +2778,25 @@ errors_never_echo_the_token | crates/snipdeck-core/src/licence.rs:546
 
 ### crates/snipdeck-core/src/licence/key_selection.rs
 
-ENV_VAR | crates/snipdeck-core/src/licence/key_selection.rs:23
-DEVELOPMENT_PUBLIC_KEY | crates/snipdeck-core/src/licence/key_selection.rs:26
-SelectedKey | crates/snipdeck-core/src/licence/key_selection.rs:30
-select | crates/snipdeck-core/src/licence/key_selection.rs:42
-tests | crates/snipdeck-core/src/licence/key_selection.rs:90
-production_key | crates/snipdeck-core/src/licence/key_selection.rs:100
-not_a_curve_point | crates/snipdeck-core/src/licence/key_selection.rs:104
-debug_builds_without_a_configured_key_use_the_development_key | crates/snipdeck-core/src/licence/key_selection.rs:112
-release_builds_without_a_configured_key_fail_and_say_how_to_fix_it | crates/snipdeck-core/src/licence/key_selection.rs:119
-a_blank_variable_counts_as_unset_so_an_empty_ci_secret_cannot_ship_the_development_key | crates/snipdeck-core/src/licence/key_selection.rs:126
-a_configured_production_key_is_used_in_every_profile_in_either_alphabet | crates/snipdeck-core/src/licence/key_selection.rs:134
-the_development_key_is_refused_even_when_configured_explicitly | crates/snipdeck-core/src/licence/key_selection.rs:151
-malformed_keys_are_refused_without_echoing_them | crates/snipdeck-core/src/licence/key_selection.rs:164
+ENV_VAR | crates/snipdeck-core/src/licence/key_selection.rs:27
+ALLOW_TEST_KEY_VAR | crates/snipdeck-core/src/licence/key_selection.rs:30
+TEST_PUBLIC_KEYS | crates/snipdeck-core/src/licence/key_selection.rs:34
+DEVELOPMENT_PUBLIC_KEY | crates/snipdeck-core/src/licence/key_selection.rs:50
+SelectedKey | crates/snipdeck-core/src/licence/key_selection.rs:54
+select | crates/snipdeck-core/src/licence/key_selection.rs:66
+tests | crates/snipdeck-core/src/licence/key_selection.rs:125
+production_key | crates/snipdeck-core/src/licence/key_selection.rs:135
+not_a_curve_point | crates/snipdeck-core/src/licence/key_selection.rs:141
+debug_builds_without_a_configured_key_use_the_development_key | crates/snipdeck-core/src/licence/key_selection.rs:149
+release_builds_without_a_configured_key_fail_and_say_how_to_fix_it | crates/snipdeck-core/src/licence/key_selection.rs:156
+a_blank_variable_counts_as_unset_so_an_empty_ci_secret_cannot_ship_the_development_key | crates/snipdeck-core/src/licence/key_selection.rs:163
+a_configured_production_key_is_used_in_every_profile_in_either_alphabet | crates/snipdeck-core/src/licence/key_selection.rs:174
+the_development_key_is_refused_even_when_configured_explicitly | crates/snipdeck-core/src/licence/key_selection.rs:191
+published_test_keys | crates/snipdeck-core/src/licence/key_selection.rs:204
+the_deny_list_holds_the_public_keys_of_the_published_test_seeds | crates/snipdeck-core/src/licence/key_selection.rs:212
+a_published_test_key_is_refused_in_a_release_build | crates/snipdeck-core/src/licence/key_selection.rs:217
+a_published_test_key_is_allowed_in_debug_and_with_the_explicit_opt_in | crates/snipdeck-core/src/licence/key_selection.rs:229
+malformed_keys_are_refused_without_echoing_them | crates/snipdeck-core/src/licence/key_selection.rs:238
 
 ### crates/snipdeck-core/src/licence/keys.rs
 
@@ -2816,10 +2823,11 @@ bad_email_hashes_are_refused | crates/snipdeck-core/src/licence/signing.rs:151
 
 ### crates/snipdeck-core/src/licence/testing.rs
 
-DEVELOPMENT_SEED | crates/snipdeck-core/src/licence/testing.rs:7
-dev_signing_key | crates/snipdeck-core/src/licence/testing.rs:10
-other_signing_key | crates/snipdeck-core/src/licence/testing.rs:15
-payload | crates/snipdeck-core/src/licence/testing.rs:20
+development_seed | crates/snipdeck-core/src/licence/testing.rs:13
+derived_seed | crates/snipdeck-core/src/licence/testing.rs:19
+dev_signing_key | crates/snipdeck-core/src/licence/testing.rs:29
+other_signing_key | crates/snipdeck-core/src/licence/testing.rs:34
+payload | crates/snipdeck-core/src/licence/testing.rs:39
 
 ### crates/snipdeck-core/src/list.rs
 
@@ -4218,16 +4226,16 @@ impl Builder<'_, R> | crates/snipdeck-portable/src/import.rs:508
 read_tags | crates/snipdeck-portable/src/import.rs:510
 list | crates/snipdeck-portable/src/import.rs:528
 item | crates/snipdeck-portable/src/import.rs:557
-format | crates/snipdeck-portable/src/import.rs:612
-asset_ref | crates/snipdeck-portable/src/import.rs:667
-check_shape | crates/snipdeck-portable/src/import.rs:717
-Payload | crates/snipdeck-portable/src/import.rs:744
-Verdict | crates/snipdeck-portable/src/import.rs:754
-Verified | crates/snipdeck-portable/src/import.rs:763
-Checked | crates/snipdeck-portable/src/import.rs:771
-verify | crates/snipdeck-portable/src/import.rs:785
-verify_item | crates/snipdeck-portable/src/import.rs:818
-check_source | crates/snipdeck-portable/src/import.rs:872
+format | crates/snipdeck-portable/src/import.rs:629
+asset_ref | crates/snipdeck-portable/src/import.rs:684
+check_shape | crates/snipdeck-portable/src/import.rs:734
+Payload | crates/snipdeck-portable/src/import.rs:761
+Verdict | crates/snipdeck-portable/src/import.rs:771
+Verified | crates/snipdeck-portable/src/import.rs:780
+Checked | crates/snipdeck-portable/src/import.rs:788
+verify | crates/snipdeck-portable/src/import.rs:802
+verify_item | crates/snipdeck-portable/src/import.rs:835
+check_source | crates/snipdeck-portable/src/import.rs:889
 
 ### crates/snipdeck-portable/src/importers.rs
 
@@ -4252,17 +4260,45 @@ decoding_handles_boms_and_garbage | crates/snipdeck-portable/src/importers.rs:14
 
 ### crates/snipdeck-portable/src/importers/copyq.rs
 
-MAX_TAGS_PER_ITEM | crates/snipdeck-portable/src/importers/copyq.rs:54
-MAX_TAGS | crates/snipdeck-portable/src/importers/copyq.rs:57
-Tags | crates/snipdeck-portable/src/importers/copyq.rs:62
-impl Tags | crates/snipdeck-portable/src/importers/copyq.rs:69
-index_of | crates/snipdeck-portable/src/importers/copyq.rs:71
-warn | crates/snipdeck-portable/src/importers/copyq.rs:85
-import_copyq_json | crates/snipdeck-portable/src/importers/copyq.rs:106
-import_copyq_bytes | crates/snipdeck-portable/src/importers/copyq.rs:131
-item_len | crates/snipdeck-portable/src/importers/copyq.rs:199
-parse | crates/snipdeck-portable/src/importers/copyq.rs:213
-item_from | crates/snipdeck-portable/src/importers/copyq.rs:254
+MAX_TAGS_PER_ITEM | crates/snipdeck-portable/src/importers/copyq.rs:56
+MAX_TAGS | crates/snipdeck-portable/src/importers/copyq.rs:59
+Tags | crates/snipdeck-portable/src/importers/copyq.rs:64
+impl Tags | crates/snipdeck-portable/src/importers/copyq.rs:71
+index_of | crates/snipdeck-portable/src/importers/copyq.rs:73
+warn | crates/snipdeck-portable/src/importers/copyq.rs:87
+import_copyq_json | crates/snipdeck-portable/src/importers/copyq.rs:108
+import_copyq_bytes | crates/snipdeck-portable/src/importers/copyq.rs:133
+item_len | crates/snipdeck-portable/src/importers/copyq.rs:179
+Scan | crates/snipdeck-portable/src/importers/copyq.rs:195
+impl Scan | crates/snipdeck-portable/src/importers/copyq.rs:208
+new | crates/snipdeck-portable/src/importers/copyq.rs:209
+truncated | crates/snipdeck-portable/src/importers/copyq.rs:224
+take | crates/snipdeck-portable/src/importers/copyq.rs:230
+stop | crates/snipdeck-portable/src/importers/copyq.rs:262
+Entry | crates/snipdeck-portable/src/importers/copyq.rs:268
+Lax | crates/snipdeck-portable/src/importers/copyq.rs:280
+Leaf | crates/snipdeck-portable/src/importers/copyq.rs:288
+drain_seq | crates/snipdeck-portable/src/importers/copyq.rs:290
+drain_map | crates/snipdeck-portable/src/importers/copyq.rs:295
+impl Deserialize<'de> for Leaf | crates/snipdeck-portable/src/importers/copyq.rs:323
+deserialize | crates/snipdeck-portable/src/importers/copyq.rs:324
+impl Deserialize<'de> for Lax | crates/snipdeck-portable/src/importers/copyq.rs:351
+deserialize | crates/snipdeck-portable/src/importers/copyq.rs:352
+impl Deserialize<'de> for Entry | crates/snipdeck-portable/src/importers/copyq.rs:406
+deserialize | crates/snipdeck-portable/src/importers/copyq.rs:407
+scan_seq | crates/snipdeck-portable/src/importers/copyq.rs:451
+Items | crates/snipdeck-portable/src/importers/copyq.rs:464
+impl DeserializeSeed<'de> for Items<'_> | crates/snipdeck-portable/src/importers/copyq.rs:466
+deserialize | crates/snipdeck-portable/src/importers/copyq.rs:469
+Shape | crates/snipdeck-portable/src/importers/copyq.rs:494
+Top | crates/snipdeck-portable/src/importers/copyq.rs:505
+impl Visitor<'de> for Top<'_> | crates/snipdeck-portable/src/importers/copyq.rs:507
+expecting | crates/snipdeck-portable/src/importers/copyq.rs:509
+visit_seq | crates/snipdeck-portable/src/importers/copyq.rs:512
+visit_map | crates/snipdeck-portable/src/importers/copyq.rs:516
+visit_str | crates/snipdeck-portable/src/importers/copyq.rs:533
+parse | crates/snipdeck-portable/src/importers/copyq.rs:541
+item_from | crates/snipdeck-portable/src/importers/copyq.rs:589
 
 ### crates/snipdeck-portable/src/importers/ditto.rs
 
@@ -4270,23 +4306,24 @@ REQUIRED | crates/snipdeck-portable/src/importers/ditto.rs:56
 VALUE_LIMIT | crates/snipdeck-portable/src/importers/ditto.rs:74
 value_limit | crates/snipdeck-portable/src/importers/ditto.rs:77
 ROW_LIMIT | crates/snipdeck-portable/src/importers/ditto.rs:84
-MAX_GROUP_DEPTH | crates/snipdeck-portable/src/importers/ditto.rs:87
-import_ditto | crates/snipdeck-portable/src/importers/ditto.rs:96
-open_read_only | crates/snipdeck-portable/src/importers/ditto.rs:192
-check_schema | crates/snipdeck-portable/src/importers/ditto.rs:223
-Clip | crates/snipdeck-portable/src/importers/ditto.rs:281
-int_at | crates/snipdeck-portable/src/importers/ditto.rs:295
-bytes_at | crates/snipdeck-portable/src/importers/ditto.rs:307
-read_groups | crates/snipdeck-portable/src/importers/ditto.rs:314
-group_path | crates/snipdeck-portable/src/importers/ditto.rs:331
-read_clips | crates/snipdeck-portable/src/importers/ditto.rs:355
-fill_texts | crates/snipdeck-portable/src/importers/ditto.rs:415
-utf16le | crates/snipdeck-portable/src/importers/ditto.rs:480
-plan_item | crates/snipdeck-portable/src/importers/ditto.rs:498
-tests | crates/snipdeck-portable/src/importers/ditto.rs:518
-database | crates/snipdeck-portable/src/importers/ditto.rs:521
-reading_descriptions_stops_at_the_memory_budget | crates/snipdeck-portable/src/importers/ditto.rs:543
-reading_full_texts_stops_at_the_memory_budget | crates/snipdeck-portable/src/importers/ditto.rs:562
+MAX_GROUPS | crates/snipdeck-portable/src/importers/ditto.rs:88
+MAX_GROUP_DEPTH | crates/snipdeck-portable/src/importers/ditto.rs:91
+import_ditto | crates/snipdeck-portable/src/importers/ditto.rs:100
+open_read_only | crates/snipdeck-portable/src/importers/ditto.rs:196
+check_schema | crates/snipdeck-portable/src/importers/ditto.rs:232
+Clip | crates/snipdeck-portable/src/importers/ditto.rs:290
+int_at | crates/snipdeck-portable/src/importers/ditto.rs:304
+bytes_at | crates/snipdeck-portable/src/importers/ditto.rs:316
+read_groups | crates/snipdeck-portable/src/importers/ditto.rs:323
+group_path | crates/snipdeck-portable/src/importers/ditto.rs:349
+read_clips | crates/snipdeck-portable/src/importers/ditto.rs:373
+fill_texts | crates/snipdeck-portable/src/importers/ditto.rs:433
+utf16le | crates/snipdeck-portable/src/importers/ditto.rs:498
+plan_item | crates/snipdeck-portable/src/importers/ditto.rs:516
+tests | crates/snipdeck-portable/src/importers/ditto.rs:536
+database | crates/snipdeck-portable/src/importers/ditto.rs:539
+reading_descriptions_stops_at_the_memory_budget | crates/snipdeck-portable/src/importers/ditto.rs:561
+reading_full_texts_stops_at_the_memory_budget | crates/snipdeck-portable/src/importers/ditto.rs:580
 
 ### crates/snipdeck-portable/src/importers/folder.rs
 
@@ -4295,7 +4332,14 @@ Reader | crates/snipdeck-portable/src/importers/folder.rs:91
 list | crates/snipdeck-portable/src/importers/folder.rs:98
 has_text_extension | crates/snipdeck-portable/src/importers/folder.rs:143
 read_list | crates/snipdeck-portable/src/importers/folder.rs:149
-read_file | crates/snipdeck-portable/src/importers/folder.rs:184
+OpenRefusal | crates/snipdeck-portable/src/importers/folder.rs:186
+is_link | crates/snipdeck-portable/src/importers/folder.rs:194
+open_without_links | crates/snipdeck-portable/src/importers/folder.rs:213
+read_file | crates/snipdeck-portable/src/importers/folder.rs:236
+tests | crates/snipdeck-portable/src/importers/folder.rs:338
+a_regular_file_opens | crates/snipdeck-portable/src/importers/folder.rs:342
+a_directory_or_missing_path_is_an_io_refusal | crates/snipdeck-portable/src/importers/folder.rs:350
+a_symbolic_link_is_refused_not_followed | crates/snipdeck-portable/src/importers/folder.rs:364
 
 ### crates/snipdeck-portable/src/importers/history.rs
 
@@ -4583,21 +4627,21 @@ decrypt_item | crates/snipdeck-store/src/crypto/envelope.rs:109
 is_envelope | crates/snipdeck-store/src/crypto/envelope.rs:120
 associated_data | crates/snipdeck-store/src/crypto/envelope.rs:124
 tests | crates/snipdeck-store/src/crypto/envelope.rs:146
-key | crates/snipdeck-store/src/crypto/envelope.rs:154
-id | crates/snipdeck-store/src/crypto/envelope.rs:158
-round_trips_every_size | crates/snipdeck-store/src/crypto/envelope.rs:163
-envelope_layout_is_header_nonce_ciphertext_tag | crates/snipdeck-store/src/crypto/envelope.rs:177
-plaintext_does_not_appear_in_the_envelope | crates/snipdeck-store/src/crypto/envelope.rs:185
-encrypting_twice_gives_different_envelopes | crates/snipdeck-store/src/crypto/envelope.rs:192
-wrong_key_fails_authentication | crates/snipdeck-store/src/crypto/envelope.rs:200
-envelope_cannot_be_moved_to_another_item | crates/snipdeck-store/src/crypto/envelope.rs:211
-an_envelope_cannot_move_to_another_slot_of_the_same_item | crates/snipdeck-store/src/crypto/envelope.rs:221
-a_version_1_envelope_is_not_an_envelope | crates/snipdeck-store/src/crypto/envelope.rs:249
-the_format_byte_is_part_of_the_associated_data | crates/snipdeck-store/src/crypto/envelope.rs:260
-flipping_any_bit_of_any_byte_is_detected | crates/snipdeck-store/src/crypto/envelope.rs:283
-truncation_and_extension_are_detected | crates/snipdeck-store/src/crypto/envelope.rs:302
-non_envelopes_are_not_encrypted | crates/snipdeck-store/src/crypto/envelope.rs:317
-nonces_do_not_repeat_over_100k_encryptions | crates/snipdeck-store/src/crypto/envelope.rs:332
+key | crates/snipdeck-store/src/crypto/envelope.rs:155
+id | crates/snipdeck-store/src/crypto/envelope.rs:159
+round_trips_every_size | crates/snipdeck-store/src/crypto/envelope.rs:164
+envelope_layout_is_header_nonce_ciphertext_tag | crates/snipdeck-store/src/crypto/envelope.rs:178
+plaintext_does_not_appear_in_the_envelope | crates/snipdeck-store/src/crypto/envelope.rs:186
+encrypting_twice_gives_different_envelopes | crates/snipdeck-store/src/crypto/envelope.rs:193
+wrong_key_fails_authentication | crates/snipdeck-store/src/crypto/envelope.rs:201
+envelope_cannot_be_moved_to_another_item | crates/snipdeck-store/src/crypto/envelope.rs:212
+an_envelope_cannot_move_to_another_slot_of_the_same_item | crates/snipdeck-store/src/crypto/envelope.rs:222
+a_version_1_envelope_is_not_an_envelope | crates/snipdeck-store/src/crypto/envelope.rs:250
+the_format_byte_is_part_of_the_associated_data | crates/snipdeck-store/src/crypto/envelope.rs:261
+flipping_any_bit_of_any_byte_is_detected | crates/snipdeck-store/src/crypto/envelope.rs:285
+truncation_and_extension_are_detected | crates/snipdeck-store/src/crypto/envelope.rs:304
+non_envelopes_are_not_encrypted | crates/snipdeck-store/src/crypto/envelope.rs:319
+nonces_do_not_repeat_over_100k_encryptions | crates/snipdeck-store/src/crypto/envelope.rs:334
 
 ### crates/snipdeck-store/src/crypto/error.rs
 
@@ -4616,10 +4660,12 @@ from_bytes | crates/snipdeck-store/src/crypto/key.rs:44
 expose | crates/snipdeck-store/src/crypto/key.rs:48
 impl core::fmt::Debug for DataKey | crates/snipdeck-store/src/crypto/key.rs:53
 fmt | crates/snipdeck-store/src/crypto/key.rs:54
-tests | crates/snipdeck-store/src/crypto/key.rs:60
-generated_keys_differ | crates/snipdeck-store/src/crypto/key.rs:64
-keys_are_built_from_exactly_32_bytes | crates/snipdeck-store/src/crypto/key.rs:72
-debug_output_contains_no_key_bytes | crates/snipdeck-store/src/crypto/key.rs:82
+test_bytes | crates/snipdeck-store/src/crypto/key.rs:61
+pw | crates/snipdeck-store/src/crypto/key.rs:68
+tests | crates/snipdeck-store/src/crypto/key.rs:75
+generated_keys_differ | crates/snipdeck-store/src/crypto/key.rs:79
+keys_are_built_from_exactly_32_bytes | crates/snipdeck-store/src/crypto/key.rs:87
+debug_output_contains_no_key_bytes | crates/snipdeck-store/src/crypto/key.rs:96
 
 ### crates/snipdeck-store/src/crypto/keyring.rs
 
@@ -4663,33 +4709,33 @@ protect | crates/snipdeck-store/src/crypto/keyring.rs:329
 seal_with_password | crates/snipdeck-store/src/crypto/keyring.rs:350
 unseal_with_password | crates/snipdeck-store/src/crypto/keyring.rs:371
 tests | crates/snipdeck-store/src/crypto/keyring.rs:394
-fast | crates/snipdeck-store/src/crypto/keyring.rs:401
-provider | crates/snipdeck-store/src/crypto/keyring.rs:405
-same_key | crates/snipdeck-store/src/crypto/keyring.rs:409
-os_only_record_round_trips | crates/snipdeck-store/src/crypto/keyring.rs:414
-password_record_round_trips | crates/snipdeck-store/src/crypto/keyring.rs:422
-records_have_the_snkey1_header_and_hide_the_key | crates/snipdeck-store/src/crypto/keyring.rs:431
-wrong_password_is_a_clean_error | crates/snipdeck-store/src/crypto/keyring.rs:447
-password_mode_mismatches_are_reported | crates/snipdeck-store/src/crypto/keyring.rs:461
-empty_passwords_are_refused | crates/snipdeck-store/src/crypto/keyring.rs:477
-a_different_os_binding_cannot_unlock | crates/snipdeck-store/src/crypto/keyring.rs:497
-changing_the_password_keeps_the_data_key_and_old_items | crates/snipdeck-store/src/crypto/keyring.rs:508
-passwords_can_be_added_and_removed | crates/snipdeck-store/src/crypto/keyring.rs:533
-a_failed_change_reveals_nothing_and_changes_nothing | crates/snipdeck-store/src/crypto/keyring.rs:550
-every_password_set_uses_a_fresh_salt_and_nonce | crates/snipdeck-store/src/crypto/keyring.rs:563
-records_unlock_with_their_own_parameters_not_the_current_ones | crates/snipdeck-store/src/crypto/keyring.rs:576
-every_modified_byte_of_a_record_is_rejected | crates/snipdeck-store/src/crypto/keyring.rs:595
-truncated_or_foreign_records_are_invalid | crates/snipdeck-store/src/crypto/keyring.rs:615
-record_with_inner | crates/snipdeck-store/src/crypto/keyring.rs:630
-hostile_work_factors_are_refused_before_any_hashing | crates/snipdeck-store/src/crypto/keyring.rs:637
-malformed_inner_plaintext_is_invalid | crates/snipdeck-store/src/crypto/keyring.rs:665
-the_password_header_is_authenticated | crates/snipdeck-store/src/crypto/keyring.rs:679
-kdf_params_are_validated | crates/snipdeck-store/src/crypto/keyring.rs:697
-production_settings_have_a_floor | crates/snipdeck-store/src/crypto/keyring.rs:714
-argon2id_output_is_stable | crates/snipdeck-store/src/crypto/keyring.rs:729
-hex | crates/snipdeck-store/src/crypto/keyring.rs:740
-default_params_timing | crates/snipdeck-store/src/crypto/keyring.rs:752
-debug_output_shows_no_secrets | crates/snipdeck-store/src/crypto/keyring.rs:771
+fast | crates/snipdeck-store/src/crypto/keyring.rs:402
+provider | crates/snipdeck-store/src/crypto/keyring.rs:406
+same_key | crates/snipdeck-store/src/crypto/keyring.rs:410
+os_only_record_round_trips | crates/snipdeck-store/src/crypto/keyring.rs:415
+password_record_round_trips | crates/snipdeck-store/src/crypto/keyring.rs:423
+records_have_the_snkey1_header_and_hide_the_key | crates/snipdeck-store/src/crypto/keyring.rs:434
+wrong_password_is_a_clean_error | crates/snipdeck-store/src/crypto/keyring.rs:450
+password_mode_mismatches_are_reported | crates/snipdeck-store/src/crypto/keyring.rs:464
+empty_passwords_are_refused | crates/snipdeck-store/src/crypto/keyring.rs:480
+a_different_os_binding_cannot_unlock | crates/snipdeck-store/src/crypto/keyring.rs:500
+changing_the_password_keeps_the_data_key_and_old_items | crates/snipdeck-store/src/crypto/keyring.rs:511
+passwords_can_be_added_and_removed | crates/snipdeck-store/src/crypto/keyring.rs:536
+a_failed_change_reveals_nothing_and_changes_nothing | crates/snipdeck-store/src/crypto/keyring.rs:556
+every_password_set_uses_a_fresh_salt_and_nonce | crates/snipdeck-store/src/crypto/keyring.rs:572
+records_unlock_with_their_own_parameters_not_the_current_ones | crates/snipdeck-store/src/crypto/keyring.rs:585
+every_modified_byte_of_a_record_is_rejected | crates/snipdeck-store/src/crypto/keyring.rs:607
+truncated_or_foreign_records_are_invalid | crates/snipdeck-store/src/crypto/keyring.rs:627
+record_with_inner | crates/snipdeck-store/src/crypto/keyring.rs:642
+hostile_work_factors_are_refused_before_any_hashing | crates/snipdeck-store/src/crypto/keyring.rs:649
+malformed_inner_plaintext_is_invalid | crates/snipdeck-store/src/crypto/keyring.rs:677
+the_password_header_is_authenticated | crates/snipdeck-store/src/crypto/keyring.rs:691
+kdf_params_are_validated | crates/snipdeck-store/src/crypto/keyring.rs:709
+production_settings_have_a_floor | crates/snipdeck-store/src/crypto/keyring.rs:726
+argon2id_output_is_stable | crates/snipdeck-store/src/crypto/keyring.rs:741
+hex | crates/snipdeck-store/src/crypto/keyring.rs:752
+default_params_timing | crates/snipdeck-store/src/crypto/keyring.rs:764
+debug_output_shows_no_secrets | crates/snipdeck-store/src/crypto/keyring.rs:783
 
 ### crates/snipdeck-store/src/crypto/provider.rs
 
@@ -4706,11 +4752,11 @@ wrap_key | crates/snipdeck-store/src/crypto/provider.rs:86
 unwrap_key | crates/snipdeck-store/src/crypto/provider.rs:91
 AAD | crates/snipdeck-store/src/crypto/provider.rs:97
 tests | crates/snipdeck-store/src/crypto/provider.rs:100
-wrap_then_unwrap_returns_the_key | crates/snipdeck-store/src/crypto/provider.rs:104
-wrapped_blob_hides_the_key_and_is_not_deterministic | crates/snipdeck-store/src/crypto/provider.rs:113
-another_provider_cannot_unwrap | crates/snipdeck-store/src/crypto/provider.rs:123
-modified_truncated_or_empty_blobs_are_rejected | crates/snipdeck-store/src/crypto/provider.rs:138
-debug_output_shows_no_key | crates/snipdeck-store/src/crypto/provider.rs:158
+wrap_then_unwrap_returns_the_key | crates/snipdeck-store/src/crypto/provider.rs:105
+wrapped_blob_hides_the_key_and_is_not_deterministic | crates/snipdeck-store/src/crypto/provider.rs:119
+another_provider_cannot_unwrap | crates/snipdeck-store/src/crypto/provider.rs:129
+modified_truncated_or_empty_blobs_are_rejected | crates/snipdeck-store/src/crypto/provider.rs:144
+debug_output_shows_no_key | crates/snipdeck-store/src/crypto/provider.rs:164
 
 ### crates/snipdeck-store/src/error.rs
 
@@ -5623,7 +5669,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-core/src/ids.rs` (inline) | 4 |
 | `crates/snipdeck-core/src/item.rs` (inline) | 8 |
 | `crates/snipdeck-core/src/licence.rs` (inline) | 20 |
-| `crates/snipdeck-core/src/licence/key_selection.rs` (inline) | 6 |
+| `crates/snipdeck-core/src/licence/key_selection.rs` (inline) | 9 |
 | `crates/snipdeck-core/src/licence/keys.rs` (inline) | 3 |
 | `crates/snipdeck-core/src/licence/signing.rs` (inline) | 4 |
 | `crates/snipdeck-core/src/list.rs` (inline) | 4 |
@@ -5660,13 +5706,14 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-portable/src/archive.rs` (inline) | 5 |
 | `crates/snipdeck-portable/src/importers.rs` (inline) | 3 |
 | `crates/snipdeck-portable/src/importers/ditto.rs` (inline) | 2 |
+| `crates/snipdeck-portable/src/importers/folder.rs` (inline) | 3 |
 | `crates/snipdeck-portable/src/plan.rs` (inline) | 7 |
 | `crates/snipdeck-portable/tests/archive_roundtrip.rs` | 17 |
 | `crates/snipdeck-portable/tests/backup.rs` | 13 |
 | `crates/snipdeck-portable/tests/common/mod.rs` | 0 |
 | `crates/snipdeck-portable/tests/hostile.rs` | 22 |
-| `crates/snipdeck-portable/tests/importers.rs` | 36 |
-| `crates/snipdeck-portable/tests/sensitive.rs` | 15 |
+| `crates/snipdeck-portable/tests/importers.rs` | 41 |
+| `crates/snipdeck-portable/tests/sensitive.rs` | 16 |
 | `crates/snipdeck-portable/tests/validation.rs` | 24 |
 | `crates/snipdeck-store/src/blobs.rs` (inline) | 20 |
 | `crates/snipdeck-store/src/crypto/envelope.rs` (inline) | 13 |
