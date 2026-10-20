@@ -27,7 +27,8 @@
 //! rows are zeroed on disk.
 //!
 //! Every time-dependent call takes `now` from the caller; this module never reads the clock.
-//! A write is a database change, so it moves `ItemRepo::change_counter`; a read does not.
+//! A Recent write leaves `ItemRepo::change_counter` alone (it never changes what the index
+//! covers) and moves `Store::recent_revision`; a read moves neither.
 
 use std::time::Duration;
 
@@ -101,6 +102,12 @@ pub trait RecentRepo {
     ///
     /// [`Error::EncryptionLocked`] while the key ring exists and is locked.
     fn recent(&self) -> Result<Vec<RecentEntry>>;
+
+    /// A number that grows with every change to the library, Recent writes included: where
+    /// [`ItemRepo::change_counter`](crate::ItemRepo::change_counter) ignores the inbox and
+    /// counted uses, this moves on any write, so a cache of the Recent list can tell it is
+    /// stale. Comparable only with values from the same open handle.
+    fn recent_revision(&self) -> u64;
 
     /// Deletes one entry; a missing id is not an error.
     fn delete_recent(&mut self, id: i64) -> Result<()>;
@@ -257,6 +264,61 @@ pub(crate) fn encrypt_plain(conn: &Connection, key: &DataKey) -> Result<usize> {
 
 impl RecentRepo for Store {
     fn add_recent(&mut self, text: &str, source_app: Option<&str>, now: Timestamp) -> Result<i64> {
+        self.quietly(|s| s.add_recent_inner(text, source_app, now))
+    }
+
+    fn recent_revision(&self) -> u64 {
+        self.conn.total_changes()
+    }
+
+    fn recent(&self) -> Result<Vec<RecentEntry>> {
+        rows(&self.conn, self.key.as_ref())
+    }
+
+    fn delete_recent(&mut self, id: i64) -> Result<()> {
+        self.quietly(|s| {
+            let tx = begin(&mut s.conn)?;
+            tx.execute("DELETE FROM recent_entries WHERE id = ?1", params![id])?;
+            tx.commit()?;
+            Ok(())
+        })
+    }
+
+    fn clear_recent(&mut self) -> Result<usize> {
+        self.quietly(|s| {
+            let tx = begin(&mut s.conn)?;
+            let n = tx.execute("DELETE FROM recent_entries", [])?;
+            tx.commit()?;
+            Ok(n)
+        })
+    }
+
+    fn prune_recent(
+        &mut self,
+        now: Timestamp,
+        max_entries: usize,
+        max_age: Duration,
+    ) -> Result<usize> {
+        self.quietly(|s| s.prune_recent_inner(now, max_entries, max_age))
+    }
+}
+
+impl Store {
+    /// Runs a write that must not move `change_counter` (see [`Store::quiet`]).
+    fn quietly<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
+        let before = self.conn.total_changes();
+        let out = f(self);
+        let delta = self.conn.total_changes() - before;
+        self.quiet.all.set(self.quiet.all.get() + delta);
+        out
+    }
+
+    fn add_recent_inner(
+        &mut self,
+        text: &str,
+        source_app: Option<&str>,
+        now: Timestamp,
+    ) -> Result<i64> {
         let at = nanos(now)?;
         let key = self.key.as_ref();
         if key.is_none() && keys::ring_exists(&self.conn)? {
@@ -288,25 +350,7 @@ impl RecentRepo for Store {
         Ok(id)
     }
 
-    fn recent(&self) -> Result<Vec<RecentEntry>> {
-        rows(&self.conn, self.key.as_ref())
-    }
-
-    fn delete_recent(&mut self, id: i64) -> Result<()> {
-        let tx = begin(&mut self.conn)?;
-        tx.execute("DELETE FROM recent_entries WHERE id = ?1", params![id])?;
-        tx.commit()?;
-        Ok(())
-    }
-
-    fn clear_recent(&mut self) -> Result<usize> {
-        let tx = begin(&mut self.conn)?;
-        let n = tx.execute("DELETE FROM recent_entries", [])?;
-        tx.commit()?;
-        Ok(n)
-    }
-
-    fn prune_recent(
+    fn prune_recent_inner(
         &mut self,
         now: Timestamp,
         max_entries: usize,

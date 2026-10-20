@@ -42,7 +42,7 @@ pub const REPO_URL: &str = "https://github.com/Braydenh563/Snipdeck";
 /// "Check for updates" opens this page; the app fetches nothing itself.
 pub const RELEASES_URL: &str = "https://github.com/Braydenh563/Snipdeck/releases";
 /// The user guide, opened in the browser by [`HelpTopic::Guide`].
-pub const GUIDE_URL: &str = "https://github.com/Braydenh563/Snipdeck/tree/main/docs/user-guide";
+pub const GUIDE_URL: &str = "https://github.com/Braydenh563/Snipdeck/blob/main/docs/user-guide.md";
 /// The Microsoft Store page; the link stays hidden while this is `None`.
 pub const STORE_URL: Option<&str> = None;
 /// The third-party notices file shipped next to the program, if the package has one.
@@ -333,14 +333,7 @@ where
         window.set_has_data_folder(self.data_dir.is_some());
         window.set_version(env!("CARGO_PKG_VERSION").into());
         window.set_build_date(build_date().into());
-        window.set_tier(
-            if matches!(tier, Tier::Pro) {
-                "Supporter"
-            } else {
-                "Free"
-            }
-            .into(),
-        );
+        window.set_supporter(matches!(tier, Tier::Pro));
         window.set_source_url(REPO_URL.into());
         window.set_show_store_link(STORE_URL.is_some());
         window.set_has_notices(self.host.notices_file().is_some());
@@ -658,7 +651,9 @@ mod tests {
     fn the_links_point_at_the_repository() {
         assert!(RELEASES_URL.starts_with(REPO_URL));
         assert!(GUIDE_URL.starts_with(REPO_URL));
-        assert!(GUIDE_URL.ends_with("docs/user-guide"));
+        // The guide is a file, so the link is a blob path with the extension: a tree path or a
+        // bare name is the GitHub 404 the owner saw (O29).
+        assert!(GUIDE_URL.ends_with("/blob/main/docs/user-guide.md"));
     }
 
     #[test]

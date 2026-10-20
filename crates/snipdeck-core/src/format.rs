@@ -213,11 +213,6 @@ impl Formats {
     pub fn iter(&self) -> core::slice::Iter<'_, Format> {
         self.0.iter()
     }
-
-    /// Unwraps the formats, in preference order.
-    pub fn into_vec(self) -> Vec<Format> {
-        self.0
-    }
 }
 
 impl<'a> IntoIterator for &'a Formats {

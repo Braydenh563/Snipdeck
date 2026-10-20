@@ -6,11 +6,11 @@
 //! [`KeyRing`] brings a [`KeyProvider`](crate::crypto::KeyProvider) (DPAPI in milestone 2).
 
 use rusqlite::{Connection, OptionalExtension};
-use snipdeck_core::{BlobRef, Content, ItemId};
+use snipdeck_core::{BlobRef, Content, FormatKind, ItemId};
 
 use crate::batch::Post;
 use crate::codec::{id_bytes, id_from};
-use crate::crypto::{DataKey, KeyRecord, KeyRing};
+use crate::crypto::{DataKey, KeyRecord, KeyRing, Slot, decrypt_payload};
 use crate::items::{Written, load_formats, write_formats};
 use crate::store::begin;
 use crate::{Error, Result, Store};
@@ -59,6 +59,26 @@ fn encrypt_plain_sensitive(
         // Sensitive items are indexed by title only already; nothing to change there.
     }
     Ok((count, old))
+}
+
+/// One transaction: stores the key record if given and encrypts what is still plain.
+fn seal_in_transaction(
+    conn: &mut Connection,
+    blobs: &mut crate::blobs::Blobs,
+    key: &DataKey,
+    new_record: Option<&KeyRecord>,
+) -> Result<(usize, Vec<BlobRef>, usize)> {
+    let tx = begin(conn)?;
+    if let Some(record) = new_record {
+        tx.execute(
+            "INSERT INTO key_ring (id, record) VALUES (1, ?1)",
+            [record.as_bytes()],
+        )?;
+    }
+    let (encrypted, old) = encrypt_plain_sensitive(&tx, blobs, key)?;
+    let recent = crate::recent::encrypt_plain(&tx, key)?;
+    tx.commit()?;
+    Ok((encrypted, old, recent))
 }
 
 fn blob_refs(formats: &snipdeck_core::Formats) -> Vec<BlobRef> {
@@ -214,14 +234,75 @@ impl Store {
     }
 
     /// Overwrites the stored key record with `record`, made by [`KeyRing::rekey`] (possibly on
-    /// another thread) from the record [`Store::key_record`] returned. Fails with
-    /// [`Error::NotFound`] if there is no key ring. The data key is unchanged, so no item is
-    /// re-encrypted.
+    /// another thread) from the record [`Store::key_record`] returned, and keeps the record it
+    /// replaces ([`Store::previous_key_record`]). `opened` is the data key that call returned.
+    /// The store does not derive the password itself, so it checks `opened` instead: it must be
+    /// the key held while unlocked or, while locked, one that opens an encrypted payload.
+    /// Otherwise [`Error::Invalid`] and nothing changes (a wrong record would make every
+    /// encrypted item unreadable). Fails with [`Error::NotFound`] if there is no key ring.
+    /// Nothing is re-encrypted: the data key is unchanged.
+    ///
+    /// This does not prove `record` itself opens to `opened`; the caller made it from that key.
+    pub fn replace_key_record_checked(
+        &mut self,
+        record: &KeyRecord,
+        opened: &DataKey,
+    ) -> Result<()> {
+        stored_record(&self.conn)?;
+        let matches = match &self.key {
+            Some(held) => held.same_as(opened),
+            None => self.opens_a_payload(opened)?,
+        };
+        if !matches {
+            return Err(Error::Invalid(
+                "the key record does not belong to this library's data key".to_owned(),
+            ));
+        }
+        self.replace_key_record(record)
+    }
+
+    /// Whether `key` opens one inline payload of an encrypted item; `true` when there is none
+    /// to try (nothing is at risk then).
+    fn opens_a_payload(&self, key: &DataKey) -> Result<bool> {
+        let probe: Option<(Vec<u8>, Vec<u8>, String)> = self
+            .conn
+            .query_row(
+                "SELECT i.id, f.inline_bytes, f.kind FROM items i
+                 JOIN item_formats f ON f.item_id = i.id
+                 WHERE i.encrypted = 1 AND f.kind <> 'files' AND f.inline_bytes IS NOT NULL
+                 LIMIT 1",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .optional()?;
+        let Some((id, bytes, kind)) = probe else {
+            return Ok(true);
+        };
+        let kind: FormatKind = kind.parse()?;
+        let id: ItemId = id_from(&id)?;
+        Ok(decrypt_payload(key, &id, Slot::Format(kind), &bytes).is_ok())
+    }
+
+    /// The key record the last replacement overwrote, if any: the way back from a wrong one.
+    pub fn previous_key_record(&self) -> Result<Option<KeyRecord>> {
+        let bytes: Option<Vec<u8>> = self
+            .conn
+            .query_row("SELECT previous FROM key_ring WHERE id = 1", [], |r| {
+                r.get(0)
+            })
+            .optional()?
+            .flatten();
+        bytes.map(|b| Ok(KeyRecord::from_bytes(b)?)).transpose()
+    }
+
+    /// As [`Store::replace_key_record_checked`] without the check on the data key: the caller
+    /// vouches that `record` protects the key the library is encrypted under. The old record is
+    /// still kept. Prefer the checked form.
     pub fn replace_key_record(&mut self, record: &KeyRecord) -> Result<()> {
         stored_record(&self.conn)?;
         let tx = begin(&mut self.conn)?;
         tx.execute(
-            "UPDATE key_ring SET record = ?1 WHERE id = 1",
+            "UPDATE key_ring SET previous = record, record = ?1 WHERE id = 1",
             [record.as_bytes()],
         )?;
         tx.commit()?;
@@ -257,16 +338,21 @@ impl Store {
     }
 
     fn seal_and_unlock(&mut self, key: DataKey, new_record: Option<&KeyRecord>) -> Result<()> {
-        let tx = begin(&mut self.conn)?;
-        if let Some(record) = new_record {
-            tx.execute(
-                "INSERT INTO key_ring (id, record) VALUES (1, ?1)",
-                [record.as_bytes()],
-            )?;
-        }
-        let (encrypted, old) = encrypt_plain_sensitive(&tx, &mut self.blobs, &key)?;
-        let recent = crate::recent::encrypt_plain(&tx, &key)?;
-        tx.commit()?;
+        // The envelope blobs are files: when the transaction fails they must go with it, as in
+        // `Store::transaction`.
+        let mark = self.blobs.mark();
+        let sealed = seal_in_transaction(&mut self.conn, &mut self.blobs, &key, new_record);
+        let (encrypted, old, recent) = match sealed {
+            Ok(done) => {
+                self.blobs.end_log();
+                done
+            }
+            Err(e) => {
+                self.blobs.rewind(mark);
+                self.blobs.end_log();
+                return Err(e);
+            }
+        };
         self.key = Some(key);
         if encrypted > 0 || recent > 0 {
             let mut post = Post::default();

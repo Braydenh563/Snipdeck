@@ -143,9 +143,11 @@ pub fn monitor_of(window: &winit::window::Window) -> Option<Monitor> {
         w: size.width,
         h: size.height,
     };
+    let work_area = work_area_of(window).unwrap_or(whole);
     Some(Monitor {
         id: Monitor::id_of(&monitor.name().unwrap_or_default(), size.width, size.height),
-        work_area: work_area_of(window).unwrap_or(whole),
+        work_area,
+        taskbar: frame::taskbar_edge(whole, work_area),
         scale,
     })
 }
@@ -153,12 +155,21 @@ pub fn monitor_of(window: &winit::window::Window) -> Option<Monitor> {
 /// The monitor the mouse pointer is on, for sizing a window before it exists. Windows only.
 #[cfg(windows)]
 fn monitor_near_cursor() -> Option<Monitor> {
-    let (x, y, w, h, dpi) = snipdeck_platform::windows::window_style::work_area_near_cursor()?;
+    let ((x, y, w, h), (mx, my, mw, mh), dpi) =
+        snipdeck_platform::windows::window_style::work_area_near_cursor()?;
     #[allow(clippy::cast_precision_loss, reason = "a DPI value is far below 2^24")]
     let scale = dpi as f32 / 96.0;
+    let work_area = Rect { x, y, w, h };
+    let bounds = Rect {
+        x: mx,
+        y: my,
+        w: mw,
+        h: mh,
+    };
     Some(Monitor {
         id: Monitor::id_of("cursor", w, h),
-        work_area: Rect { x, y, w, h },
+        work_area,
+        taskbar: frame::taskbar_edge(bounds, work_area),
         scale,
     })
 }

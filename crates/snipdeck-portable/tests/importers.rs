@@ -256,6 +256,40 @@ fn folder_does_not_follow_symbolic_links_or_open_special_files() {
     }
 }
 
+#[cfg(unix)]
+#[test]
+fn folder_carries_on_past_an_unreadable_subfolder() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("root");
+    write(&root, "top.txt", "top");
+    write(&root.join("good"), "a.txt", "fine");
+    write(&root.join("locked"), "b.txt", "hidden");
+    let locked = root.join("locked");
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
+    let readable = fs::read_dir(&locked).is_ok();
+    let outcome = if readable {
+        None
+    } else {
+        let mut s = store();
+        Some(import_folder(&mut s, &root, at(9), &ImportOptions::default()).map(|r| (s, r)))
+    };
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+    // Running as root: the permission bits do not apply, so there is nothing to test.
+    let Some(outcome) = outcome else { return };
+    let (s, report) = outcome.unwrap();
+    assert_eq!(s.all_items().unwrap().len(), 2, "{:?}", report.warnings);
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Unreadable { name, .. } if name == "locked")),
+        "{:?}",
+        report.warnings
+    );
+}
+
 #[test]
 fn folder_errors_and_empty_results() {
     let dir = tempfile::tempdir().unwrap();

@@ -49,6 +49,17 @@ pub struct Report {
 }
 
 impl Report {
+    /// The line printed to stderr: thread, place and the scrubbed message, never the raw payload.
+    #[must_use]
+    pub fn stderr_line(&self) -> String {
+        format!(
+            "thread '{}' panicked at {}:\n{}",
+            self.thread.as_deref().unwrap_or("<unnamed>"),
+            self.location.as_deref().unwrap_or("<unknown>"),
+            self.message
+        )
+    }
+
     /// The text of the file.
     #[must_use]
     pub fn render(&self, now: &Zoned) -> String {
@@ -179,12 +190,18 @@ fn data_dir() -> Option<PathBuf> {
 /// Installs the panic hook: it writes a report with the time `now` returns (a function, so a test
 /// can pass a fixed one), then calls the hook that was set before.
 pub fn install(now: fn() -> Timestamp) {
-    let previous = std::panic::take_hook();
+    // The default hook prints the whole payload, which for a built message can quote library
+    // text. It is replaced, not called: stderr gets the same scrubbed message as the file.
+    drop(std::panic::take_hook());
     std::panic::set_hook(Box::new(move |info| {
+        let report = report_of(info);
         if let Some(dir) = data_dir() {
-            let _ = write_report(&dir, &now().to_zoned(TimeZone::system()), &report_of(info));
+            let _ = write_report(&dir, &now().to_zoned(TimeZone::system()), &report);
         }
-        previous(info);
+        #[allow(clippy::print_stderr, reason = "the panic hook's only way to speak")]
+        {
+            eprintln!("{}", Report::stderr_line(&report));
+        }
     }));
 }
 
@@ -255,6 +272,22 @@ mod tests {
             thread: Some("main".to_owned()),
             backtrace: "frame".to_owned(),
         }
+    }
+
+    #[test]
+    fn the_stderr_line_carries_the_scrubbed_message_only() {
+        let report = Report {
+            message: message_of(&String::from("secret library text")),
+            location: Some("a.rs:1:2".to_owned()),
+            thread: Some("worker".to_owned()),
+            backtrace: String::new(),
+        };
+        let line = report.stderr_line();
+        assert_eq!(
+            line,
+            "thread 'worker' panicked at a.rs:1:2:\n(message omitted, 19 bytes)"
+        );
+        assert!(!line.contains("secret"));
     }
 
     #[test]

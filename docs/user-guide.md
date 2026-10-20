@@ -84,11 +84,13 @@ sensitive. A sensitive item:
 | Press `1` to `9` (search box empty) | Uses the row with that number |
 | Click a pinned chip | Uses that item |
 | Picker: type, then `Enter` | Pastes the first match |
+| Main window: click a row | Selects it (`Ctrl`+click and `Shift`+click extend the selection) |
+| Main window: double-click, `Enter`, or the row's **Use** button | Uses the selected item |
 
 After a paste, Snipdeck puts your earlier clipboard back. If it cannot paste into the target (a password
 box, a program running as administrator, a program in your "never paste into" list), it copies instead and
 a message tells you why. The Panel footer always says where a click will go: "Pastes into Outlook" or
-"Copies to clipboard".
+"Copies to clipboard". A "Copied" or "Pasted" message confirms every use, in the Panel and in the main window.
 
 ### The Picker
 
@@ -220,7 +222,9 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   also off when Windows has **Animation effects** off. **Panel width** is 260 to 480 pixels. You can also drag
   the Panel's edges.
 - **Panel dock.** **Dock to** fixes the Panel against Floating, Left edge, Right edge, Top edge or Bottom edge
-  of the monitor it is on. **Open a docked panel by** is Off, Hover, Click or Hover and click. Off keeps a docked
+  of the monitor it is on. The edge the taskbar is on is never used. You can also drag the Panel by its header
+  to within a few pixels of an edge: a strip marks the edge, and the Panel docks there when you let go. The
+  Panel's menu names the edge it would dock to ("Dock to the right edge"). **Open a docked panel by** is Off, Hover, Click or Hover and click. Off keeps a docked
   Panel open. The other choices fold it into a thin strip, and the Panel shortcut opens it too. **Hover delay**
   (0 to 2000 ms, default 150) is how long the pointer rests on the strip. **Leave delay** (0 to 5000 ms, default
   400) is how long it stays off the Panel before it folds.

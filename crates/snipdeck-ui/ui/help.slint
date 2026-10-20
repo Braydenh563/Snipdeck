@@ -52,7 +52,8 @@ export component HelpWindow inherits Window {
     in property <bool> has-data-folder: true;
     in property <string> version: "0.1.0";
     in property <string> build-date;
-    in property <string> tier: "Free";
+    // Whether the Supporter plan is active; the page names the plan.
+    in property <bool> supporter: false;
     in property <string> source-url;
     // The Microsoft Store link and the third-party notices are hidden until the host has them.
     in property <bool> show-store-link: false;
@@ -299,7 +300,7 @@ export component HelpWindow inherits Window {
                         SettingRow {
                             title: @tr("Licence");
                             Text {
-                                text: root.tier;
+                                text: root.supporter ? @tr("Supporter") : @tr("Free");
                                 color: Theme.text-primary;
                                 font-family: Fonts.sans;
                                 font-size: Type.base;

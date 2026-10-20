@@ -277,11 +277,14 @@ fn more_buttons(ui: &DeckGallery) -> Vec<ElementHandle> {
         .collect()
 }
 
-fn a_hovered_card_shows_a_more_button_that_opens_its_menu_and_a_click_on_it_is_not_a_use() {
+fn every_card_shows_a_more_button_that_opens_its_menu_and_a_click_on_it_is_not_a_use() {
     let ui = gallery();
+    // F6: the button is always drawn (muted until the card is hovered or focused), so pen and
+    // touch users can find it; a hover changes its emphasis, never its presence.
+    let resting = more_buttons(&ui).len();
     assert!(
-        more_buttons(&ui).is_empty(),
-        "nothing is hovered or focused"
+        resting > 1,
+        "every card has one, nothing hovered: {resting}"
     );
 
     let card = &trio(&ui, "Thanks, received")[COMPACT];
@@ -290,22 +293,21 @@ fn a_hovered_card_shows_a_more_button_that_opens_its_menu_and_a_click_on_it_is_n
         position: centre(card),
     });
     let buttons = more_buttons(&ui);
-    assert_eq!(
-        buttons.len(),
-        1,
-        "only the hovered card has one: {:?}",
-        buttons
-            .iter()
-            .map(|b| (b.absolute_position(), b.size()))
-            .collect::<Vec<_>>()
-    );
-    let more = &buttons[0];
-    let (p, s) = (more.absolute_position(), more.size());
+    assert_eq!(buttons.len(), resting, "a hover adds or removes none");
+    let inside: Vec<&ElementHandle> = buttons
+        .iter()
+        .filter(|b| {
+            let (p, s) = (b.absolute_position(), b.size());
+            p.x >= origin.x
+                && p.x + s.width <= origin.x + size.width
+                && p.y >= origin.y
+                && p.y + s.height <= origin.y + size.height
+        })
+        .collect();
+    assert_eq!(inside.len(), 1, "one inside the hovered row");
+    let more = inside[0];
+    let s = more.size();
     assert!(s.width >= 24.0 && s.height >= 24.0, "target size {s:?}");
-    assert!(
-        p.x >= origin.x && p.x + s.width <= origin.x + size.width,
-        "inside the row"
-    );
 
     ui.set_last_action("".into());
     let at = centre(more);
@@ -320,11 +322,19 @@ fn a_hovered_card_shows_a_more_button_that_opens_its_menu_and_a_click_on_it_is_n
     assert_eq!(ui.get_last_action(), "menu");
 
     ui.window().dispatch_event(WindowEvent::PointerExited);
-    assert!(more_buttons(&ui).is_empty(), "gone with the hover");
+    assert_eq!(
+        more_buttons(&ui).len(),
+        resting,
+        "still there without the hover"
+    );
 
-    // Keyboard focus shows it as well.
+    // Keyboard focus keeps it as well.
     tab_to(&ui, 1);
-    assert_eq!(more_buttons(&ui).len(), 1, "the focused card shows it");
+    assert_eq!(
+        more_buttons(&ui).len(),
+        resting,
+        "the focused card keeps it"
+    );
 }
 
 fn press_and_hold_reveals_a_sensitive_item_without_using_it() {
@@ -565,11 +575,111 @@ fn deck_behaviour() {
     click_uses_shift_click_copies_right_click_asks_for_the_menu();
     a_release_outside_the_card_is_not_a_use();
     enter_uses_shift_enter_copies_the_menu_key_opens_the_context_menu();
-    a_hovered_card_shows_a_more_button_that_opens_its_menu_and_a_click_on_it_is_not_a_use();
+    every_card_shows_a_more_button_that_opens_its_menu_and_a_click_on_it_is_not_a_use();
     press_and_hold_reveals_a_sensitive_item_without_using_it();
     holding_space_on_a_focused_sensitive_card_reveals_it();
     the_use_label_shows_on_hover_and_keyboard_focus_only();
     deck_parts_report_clicks_menus_and_have_accessible_names();
     at_225_percent_text_the_rows_grow_and_stay_hittable();
     cjk_cards_keep_their_height_and_stay_inside_the_column();
+    the_use_button_uses_the_item_once_and_never_only_selects_it();
+    the_use_button_is_a_button_for_assistive_technology_only_while_shown();
+}
+
+/// The use buttons ("Paste <title>") the gallery shows right now.
+fn use_buttons(ui: &DeckGallery) -> Vec<ElementHandle> {
+    ElementQuery::from_root(ui)
+        .match_descendants()
+        .match_accessible_role(AccessibleRole::Button)
+        .find_all()
+        .into_iter()
+        .filter(|b| {
+            b.accessible_label()
+                .is_some_and(|l| l.starts_with("Paste "))
+        })
+        .collect()
+}
+
+/// The use button inside `card`, once the card shows it.
+fn use_button_in(ui: &DeckGallery, card: &ElementHandle) -> ElementHandle {
+    let (p, s) = (card.absolute_position(), card.size());
+    use_buttons(ui)
+        .into_iter()
+        .find(|b| {
+            let bp = b.absolute_position();
+            bp.x >= p.x && bp.x <= p.x + s.width && bp.y >= p.y && bp.y <= p.y + s.height
+        })
+        .expect("a use button inside the card")
+}
+
+fn the_use_button_uses_the_item_once_and_never_only_selects_it() {
+    let ui = gallery();
+    // O33: in the main window (`pick-mode`) a click on the row selects it; a click on the row's
+    // "Paste" / "Copy" button must still use the item, exactly once.
+    for pick_mode in [false, true] {
+        ui.set_pick_mode(pick_mode);
+        for (variant, card) in trio(&ui, "Thanks, received").iter().enumerate() {
+            let at = centre(card);
+            ui.window()
+                .dispatch_event(WindowEvent::PointerMoved { position: at });
+            advance(120);
+            let button = use_button_in(&ui, card);
+            assert_eq!(
+                button.accessible_label().as_deref(),
+                Some("Paste Thanks, received"),
+                "named after the item, pick {pick_mode}, variant {variant}"
+            );
+            let before = ui.get_actions();
+            ui.set_last_action("".into());
+            let on_button = centre(&button);
+            press(&ui, on_button, PointerEventButton::Left);
+            advance(50);
+            release(&ui, on_button, PointerEventButton::Left);
+            assert_eq!(
+                ui.get_last_action(),
+                "use",
+                "pick {pick_mode}, variant {variant}"
+            );
+            assert_eq!(ui.get_actions(), before + 1, "exactly one gesture reported");
+            assert_eq!(ui.get_last_title(), "Thanks, received");
+
+            // The row body keeps its own meaning: a pick in selection mode, a use otherwise.
+            ui.set_last_action("".into());
+            click(&ui, card, PointerEventButton::Left);
+            assert_eq!(
+                ui.get_last_action(),
+                if pick_mode { "pick" } else { "use" },
+                "row body, pick {pick_mode}, variant {variant}"
+            );
+        }
+        ui.window().dispatch_event(WindowEvent::PointerMoved {
+            position: LogicalPosition::new(1.0, 1.0),
+        });
+        advance(120);
+    }
+}
+
+fn the_use_button_is_a_button_for_assistive_technology_only_while_shown() {
+    let ui = gallery();
+    // At rest only the sample that keeps its label (`show-label`) has a button to announce.
+    let rest = use_buttons(&ui);
+    assert!(
+        !rest.is_empty()
+            && rest
+                .iter()
+                .all(|b| b.accessible_label().as_deref() == Some("Paste Meeting follow-up")),
+        "only the row that shows its label at rest: {}",
+        rest.len()
+    );
+
+    let card = &trio(&ui, "Design spec")[COMFORTABLE];
+    ui.window().dispatch_event(WindowEvent::PointerMoved {
+        position: centre(card),
+    });
+    advance(120);
+    let button = use_button_in(&ui, card);
+    ui.set_last_action("".into());
+    button.invoke_accessible_default_action();
+    assert_eq!(ui.get_last_action(), "use");
+    assert_eq!(ui.get_last_title(), "Design spec");
 }

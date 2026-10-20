@@ -285,7 +285,14 @@ fn do_register(
     let previous = registered.remove(&id);
     if previous.is_some() {
         // Free the id (and the old chord) first: the same chord again must succeed.
-        unregister_raw(id)?;
+        // Unverified on Windows (Fable v1 sweep A17): if freeing fails the hotkey is still
+        // registered, so it stays in the table.
+        if let Err(e) = unregister_raw(id) {
+            if let Some(old) = previous {
+                registered.insert(id, old);
+            }
+            return Err(e);
+        }
     }
     match register_raw(id, chord) {
         Ok(()) => {

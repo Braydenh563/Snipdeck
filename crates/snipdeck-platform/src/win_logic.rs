@@ -28,6 +28,8 @@ pub const VK_RWIN: u16 = 0x5C;
 pub const VK_V: u16 = 0x56;
 /// `VK_INSERT`.
 pub const VK_INSERT: u16 = 0x2D;
+/// `VK_LEFT`.
+pub const VK_LEFT: u16 = 0x25;
 /// The unassigned virtual key (0xE8) used to mask a lone `Alt` / `Win` release.
 pub const VK_MASK: u16 = 0xE8;
 
@@ -67,6 +69,8 @@ pub const fn key_to_vk(key: Key) -> VirtualKey {
         Key::Modifier(modifier) => modifier_variants(modifier)[0],
         Key::V => plain(VK_V),
         Key::Insert => extended(VK_INSERT),
+        // Unverified on Windows (Fable v1 sweep A5): the arrow keys are extended keys.
+        Key::Left => extended(VK_LEFT),
         Key::Mask => plain(VK_MASK),
     }
 }
@@ -287,6 +291,7 @@ mod tests {
     fn keys_map_to_the_documented_virtual_keys() {
         assert_eq!(key_to_vk(Key::V), plain(0x56));
         assert_eq!(key_to_vk(Key::Insert), extended(0x2D));
+        assert_eq!(key_to_vk(Key::Left), extended(0x25));
         assert_eq!(key_to_vk(Key::Mask), plain(0xE8));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Ctrl)), plain(0xA2));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Shift)), plain(0xA0));

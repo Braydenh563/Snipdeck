@@ -1353,7 +1353,7 @@ export component MainWindow inherits Window {
                                 return accept;
                             }
                             // Keyboard reveal: hold Space (a sensitive item only).
-                            if (event.text == " " && root.rows[root.cur].kind == ItemKind.sensitive) {
+                            if (event.text == " " && root.cur >= 0 && root.rows[root.cur].kind == ItemKind.sensitive) {
                                 root.reveal-requested(root.cur, true);
                                 return accept;
                             }
@@ -1578,7 +1578,7 @@ export component MainWindow inherits Window {
                         x: root.pad;
                         y: Space.s1;
                         width: parent.width - 2 * root.pad;
-                        height: 120px;
+                        height: 120px * SystemLook.text-scale;
                         spacing: root.tile-gap;
                         alignment: start;
                         for n in [0, 1, 2]: Skeleton {
@@ -2013,7 +2013,7 @@ export component MainWindow inherits Window {
     if root.chooser-open: Chooser {
         x: root.chooser-x;
         y: root.chooser-y;
-        width: 240px;
+        width: 240px * SystemLook.text-scale;
         multi: root.chooser-tags;
         entries: root.chooser-tags ? root.tag-choices : root.lists;
         label: root.chooser-tags ? @tr("Tags") : @tr("Move to list");

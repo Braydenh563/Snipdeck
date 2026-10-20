@@ -2,6 +2,7 @@ import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, ListHue, ListAcc
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 import { CardDepth, CardShadow } from "card-depth.slint";
+import { StateColor } from "state-color.slint";
 
 export enum ItemKind { text, template, code, link, image, file, sensitive }
 export enum ItemCardVariant { compact, comfortable, tile }
@@ -75,7 +76,9 @@ component ListLabel inherits Rectangle {
     }
 }
 
-// "Paste ↵" / "Copy ↵": ghost style `type.sm` 500. The card's own touch area does the work; this is only the label.
+// "Paste ↵" / "Copy ↵": a ghost button in `type.sm` 500 that does what Enter does on the row (O33). It is
+// not a Tab stop: the row itself is the keyboard path (Enter uses, Shift+Enter copies) and the label shows
+// while the row has focus. A click here is its own: it never selects the row instead of using it.
 // The Enter glyph is the Phosphor `arrow-bend-down-left` icon, not the character U+21B5: IBM Plex has no
 // glyph for it, so the character would come from whichever system font the machine falls back to.
 component UseLabel inherits Rectangle {
@@ -85,12 +88,24 @@ component UseLabel inherits Rectangle {
     // Colour behind the label so it never mixes with the preview text under it.
     in property <color> backing;
     in property <length> text-w;
+    // The item the button acts on: the accessible name is "Paste <title>" / "Copy <title>".
+    in property <string> item-title;
+    // The pointer is on the button (it keeps the row hovered, so the label stays). A binding, not a
+    // `changed` callback: the row's own touch area loses its hover the moment the pointer crosses onto
+    // the button, and a deferred callback would let the button vanish under the press.
+    out property <bool> hovered: touch.has-hover;
+    property <bool> pressed: touch.pressed;
+    callback clicked();
     // The Enter glyph is as tall as the label text.
     out property <length> glyph-size: Type.sm;
+    property <color> ink: root.selected ? Theme.text-on-selected : Theme.text-primary;
     width: root.text-w + Space.s1 + root.glyph-size + 2 * Space.s2;
     height: Type.line-sm + Space.s1;
     border-radius: Radius.sm;
-    background: root.backing;
+    background: root.pressed ? StateColor.pressed() : root.backing;
+    // Hover and pressed read on every row fill (hovered, selected, lifted): a hairline in the text colour.
+    border-width: root.hovered || root.pressed ? 1px : 0px;
+    border-color: root.ink;
     opacity: root.shown ? 1.0 : 0.0;
     visible: root.text != "";
     animate opacity { duration: Motion.fade; easing: Motion.out; }
@@ -103,15 +118,30 @@ component UseLabel inherits Rectangle {
         font-family: Fonts.sans;
         font-size: Type.sm;
         font-weight: Type.medium;
-        color: root.selected ? Theme.text-on-selected : Theme.text-primary;
+        color: root.ink;
         vertical-alignment: center;
+        accessible-role: AccessibleRole.none;
     }
     Icon {
         source: Icons.arrow-bend-down-left;
-        tint: root.selected ? Theme.text-on-selected : Theme.text-primary;
+        tint: root.ink;
         size: root.glyph-size;
         x: Space.s2 + root.text-w + Space.s1;
         y: (parent.height - self.height) / 2;
+    }
+    // Only while shown does it take the pointer and count as a button for assistive technology: hidden,
+    // the row's own touch area under it gets the click.
+    touch := TouchArea {
+        enabled: root.shown;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+    if root.shown: Rectangle {
+        width: 100%;
+        height: 100%;
+        accessible-role: button;
+        accessible-label: root.item-title == "" ? root.text : root.text + " " + root.item-title;
+        accessible-action-default => { root.clicked(); }
     }
 }
 
@@ -166,6 +196,8 @@ export component ItemCard inherits Rectangle {
     in property <bool> pick-mode: false;
     // Draws the keyboard focus ring although the card is not the focus owner (the list's cursor row).
     in property <bool> show-focus: false;
+    // False where no row menu exists (the Picker): no kebab is drawn and its slot is not kept.
+    in property <bool> has-menu: true;
 
     callback use();
     callback copy();
@@ -205,12 +237,16 @@ export component ItemCard inherits Rectangle {
     property <bool> held-reveal: false;
     property <bool> reveal-armed: false;
     property <bool> shown: !root.sensitive || root.revealed || root.held-reveal;
-    property <bool> hovered: touch.has-hover || root.more-hover;
+    property <bool> hovered: touch.has-hover || root.more-hover || use-btn.hovered;
     property <bool> more-hover: false;
-    // The "More" (⋯) button is the context menu under the pointer or the keyboard focus. It is not a Tab stop:
-    // the keyboard opens the same menu with the Menu key or Shift+F10 on the card.
-    property <bool> more-visible: root.hovered || root.focused;
+    // The "More" (⋯) button is the context menu for a pointer that does not right-click. It is always drawn,
+    // muted until the card is hovered or focused, so pen and touch users can find it (WCAG 2.2 sweep F6).
+    // It is not a Tab stop: the keyboard opens the same menu with the Menu key or Shift+F10 on the card.
+    property <bool> more-emphasised: root.hovered || root.focused;
     property <length> more-side: Space.hit-min;
+    // The trailing slot every variant keeps for the kebab: the list and use labels sit left of it, and the
+    // title and preview never run under it.
+    property <length> more-reserve: root.has-menu ? root.more-side + Space.s1 : 0px;
     property <bool> focused: scope.has-focus || root.show-focus;
     // A compact row's hint gives way when it would push the title under its 12-character floor
     // (large text scale in a narrow panel); the hint is also in the Panel's footer.
@@ -240,7 +276,7 @@ export component ItemCard inherits Rectangle {
     property <length> pad-x: root.tile ? Space.s3 : Space.s2;
     property <length> pad-y: root.compact ? 0px : root.tile ? Space.s3 : Space.s2;
     property <length> content-x: root.gutter-w + root.rule-w + root.pad-x;
-    property <length> content-w: max(0px, root.width - root.content-x - root.pad-x);
+    property <length> content-w: max(0px, root.width - root.content-x - root.pad-x - root.more-reserve);
     // Space taken left of the title in the compact and comfortable rows.
     property <length> lead-w: root.comfortable && root.is-image ? root.thumb-w + Space.s2 : root.has-glyph && !root.tile ? root.glyph-group-w + Space.s2 : 0px;
     // DESIGN.md §8: the title never truncates below 12 characters; the preview gives way first. Twelve Latin
@@ -249,16 +285,19 @@ export component ItemCard inherits Rectangle {
     property <length> avg-char-w: m-title.preferred-width / max(1, root.title.character-count);
     property <length> min-title-w: min(m-title.preferred-width, max(Type.base * 7, root.avg-char-w * 12));
     property <length> row-w: root.content-w - root.lead-w;
+    // Gap between the row's text (title or preview) and its trailing label: one step wider than the
+    // inner gaps so the elided preview and the list chip read as two things (owner ask 2026-10-20).
+    property <length> label-gap: Space.s4;
     property <length> list-mark-w: (Space.s1 + Space.s0-5) * SystemLook.text-scale + Space.s1;
     // The list label takes what the title leaves (never below ~8 characters), and never so much
     // that the title would drop under its 12-character floor.
     property <length> list-w: root.list-name == "" ? 0px : min(m-list.preferred-width + root.list-mark-w,
-        min(max(0px, root.row-w - root.min-title-w - Space.s2),
-            max(root.row-w - m-title.preferred-width - Space.s2, Type.xs * 8)));
-    property <length> list-reserve: root.list-w > 0px ? root.list-w + Space.s2 : 0px;
+        min(max(0px, root.row-w - root.min-title-w - root.label-gap),
+            max(root.row-w - m-title.preferred-width - root.label-gap, Type.xs * 8)));
+    property <length> list-reserve: root.list-w > 0px ? root.list-w + root.label-gap : 0px;
     property <length> use-w: m-use.preferred-width + Space.s1 + Type.sm + 2 * Space.s2;
     // A compact row has one trailing slot: the use label replaces the list label while it shows.
-    property <length> trail-reserve: root.compact && root.label-visible ? root.use-w + Space.s2 : root.list-reserve;
+    property <length> trail-reserve: root.compact && root.label-visible ? root.use-w + root.label-gap : root.list-reserve;
     property <length> title-avail: max(0px, root.row-w - root.trail-reserve);
     property <length> title-w: min(m-title.preferred-width, max(root.title-avail, root.min-title-w));
 
@@ -544,24 +583,11 @@ export component ItemCard inherits Rectangle {
             name: root.list-name;
             mark: root.list-color;
             text-w: m-list.preferred-width;
-            max-w: root.tile ? max(0px, root.width - 2 * root.pad-x - 2 * Space.s4 - Space.s2) : root.list-w;
-            x: parent.width - root.pad-x - self.width;
+            max-w: root.tile ? max(0px, root.width - 2 * root.pad-x - root.more-reserve - 2 * Space.s4 - Space.s2) : root.list-w;
+            x: parent.width - root.pad-x - root.more-reserve - self.width;
             y: root.compact ? (parent.height - self.height) / 2
                 : root.tile ? root.pad-y + (root.top-h - self.height) / 2
                 : root.pad-y + (root.title-h - self.height) / 2;
-        }
-
-        // Use label: bottom right on hover or keyboard focus.
-        UseLabel {
-            selected: root.selected;
-            text: root.use-label;
-            shown: root.label-visible;
-            backing: root.fill;
-            text-w: m-use.preferred-width;
-            x: parent.width - root.pad-x - self.width;
-            y: root.compact ? (parent.height - self.height) / 2
-                : root.tile ? parent.height - root.pad-y - self.height
-                : parent.height - Space.s1 - self.height;
         }
 
         // Hairline between compact rows (the fill separates hovered, selected and lifted rows).
@@ -634,10 +660,10 @@ export component ItemCard inherits Rectangle {
     // After `touch`, so a click on it is its own and never a use. Compact rows keep the use label to its
     // right; the other variants put it in the top-right corner.
     more := Rectangle {
-        visible: root.more-visible;
+        visible: root.has-menu;
         width: root.more-side;
         height: root.more-side;
-        x: root.width - root.pad-x - self.width - (root.compact && root.label-visible ? m-use.preferred-width + Space.s2 : 0px);
+        x: root.width - root.pad-x - self.width;
         y: root.compact ? (root.height - self.height) / 2 : Space.s1;
         border-radius: Radius.md;
         background: root.more-hover ? Theme.bg-hover : transparent;
@@ -648,7 +674,7 @@ export component ItemCard inherits Rectangle {
         Icon {
             source: Icons.dots-three;
             size: 16px;
-            tint: root.more-hover ? Theme.text-primary : Theme.text-secondary;
+            tint: root.more-hover ? Theme.text-primary : (root.more-emphasised ? Theme.text-secondary : Theme.text-tertiary);
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
         }
@@ -656,6 +682,25 @@ export component ItemCard inherits Rectangle {
             mouse-cursor: pointer;
             changed has-hover => { root.more-hover = self.has-hover; }
             clicked => { root.context-menu-requested(more.x, more.y + more.height); }
+        }
+    }
+
+    // ---- Use button: bottom right (centre right in a compact row) on hover, focus or `show-use-label` ---
+    // After `touch` like More: a click on it uses the item (O33) and never only selects it in `pick-mode`.
+    use-btn := UseLabel {
+        selected: root.selected;
+        text: root.use-label;
+        item-title: root.title;
+        shown: root.label-visible;
+        backing: root.fill;
+        text-w: m-use.preferred-width;
+        x: root.width - root.pad-x - root.more-reserve - self.width;
+        y: root.compact ? (root.height - self.height) / 2
+            : root.tile ? root.height - root.pad-y - self.height
+            : root.height - Space.s1 - self.height;
+        clicked => {
+            root.pull();
+            root.use();
         }
     }
 
