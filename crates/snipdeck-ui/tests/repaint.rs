@@ -115,3 +115,21 @@ fn collect(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
         }
     }
 }
+
+/// The nudge must change no pixel: both of its colours are fully transparent (Slint reads
+/// `#RRGGBBAA`; `#00ffffff` was opaque cyan and covered the content after Alt+Tab).
+#[test]
+fn the_flip_changes_no_pixel() {
+    let main = Harness::new(MainWindow::new, 1040, 640);
+    let before = main.render_settled();
+    main.component
+        .set_repaint_flip(!main.component.get_repaint_flip());
+    let after = main.render_settled();
+    for (x, y) in [(10, 10), (300, 300), (700, 400), (1000, 600)] {
+        assert_eq!(
+            before.pixel(x, y),
+            after.pixel(x, y),
+            "pixel ({x}, {y}) changed when the repaint flip was set"
+        );
+    }
+}
