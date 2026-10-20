@@ -84,6 +84,21 @@ fn by_role(root: &impl ElementRoot, role: AccessibleRole) -> Vec<ElementHandle> 
         .collect()
 }
 
+fn press_at_centre(ui: &MainWindow, at: slint::LogicalPosition) {
+    use slint::platform::{PointerEventButton, WindowEvent};
+    let w = ui.window();
+    w.dispatch_event(WindowEvent::PointerMoved { position: at });
+    w.dispatch_event(WindowEvent::PointerPressed {
+        position: at,
+        button: PointerEventButton::Left,
+    });
+    w.dispatch_event(WindowEvent::PointerReleased {
+        position: at,
+        button: PointerEventButton::Left,
+    });
+    settle();
+}
+
 fn press_key(ui: &MainWindow, k: Key) {
     press(ui.window(), &key(k));
     settle();
@@ -137,6 +152,27 @@ fn start() -> (MainWindow, Log) {
     hook!(on_palette_opened, || "palette-opened".to_string());
     hook!(on_palette_query_changed, |q| format!("palette-query:{q}"));
     hook!(on_command_requested, |id| format!("command:{id}"));
+    hook!(on_row_dropped, |from, onto| format!(
+        "row-dropped:{from}:{onto}"
+    ));
+    hook!(on_row_dropped_on_list, |row, list| format!(
+        "row-on-list:{row}:{list}"
+    ));
+    hook!(on_list_dropped, |from, onto| format!(
+        "list-dropped:{from}:{onto}"
+    ));
+    // The host's payloads ride as user data; the tests use plain text of the same shape.
+    ui.on_row_payload(|i| slint::DataTransfer::from(SharedString::from(format!("row:{i}"))));
+    ui.on_list_payload(|i| slint::DataTransfer::from(SharedString::from(format!("list:{i}"))));
+    let index_of = |data: &slint::DataTransfer, prefix: &str| {
+        data.plain_text()
+            .ok()
+            .and_then(|t| t.strip_prefix(prefix).and_then(|n| n.parse::<i32>().ok()))
+            .unwrap_or(-1)
+    };
+    ui.on_payload_row(move |d| index_of(&d, "row:"));
+    ui.on_payload_list(move |d| index_of(&d, "list:"));
+    ui.set_rows_reorderable(true);
     ui.invoke_focus_items();
     settle();
     (ui, log)
@@ -323,6 +359,53 @@ ui_tests! {
         assert!(ui.get_menu_open(), "multi-select stays open");
         press_key(&ui, Key::Escape);
         assert!(!ui.get_menu_open());
+    }
+
+    fn dragging_a_row_onto_a_row_a_list_or_a_list_onto_a_list_reports_the_drop() {
+        let (ui, log) = start();
+        let _ = take(&log);
+        let centre_of = |e: &ElementHandle| {
+            let (p, s) = (e.absolute_position(), e.size());
+            slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0)
+        };
+        let drag = |from: slint::LogicalPosition, to: slint::LogicalPosition| {
+            use slint::platform::{PointerEventButton, WindowEvent};
+            let w = ui.window();
+            w.dispatch_event(WindowEvent::PointerMoved { position: from });
+            w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+            w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(from.x, from.y + 12.0) });
+            w.dispatch_event(WindowEvent::PointerMoved { position: to });
+            w.dispatch_event(WindowEvent::PointerReleased { position: to, button: PointerEventButton::Left });
+            settle();
+        };
+
+        let card = |title: &str| {
+            by_role(&ui, AccessibleRole::ListItem)
+                .into_iter()
+                .find(|e| e.accessible_label().is_some_and(|l| l.starts_with(title)))
+                .unwrap_or_else(|| panic!("no card {title}"))
+        };
+        let row0 = centre_of(&card("Thanks, received"));
+        let row2 = centre_of(&card("Retry helper"));
+        drag(row0, row2);
+        assert_eq!(take(&log), ["row-dropped:0:2"], "row onto row");
+
+        let code = centre_of(&find(&ui, "Code", AccessibleRole::ListItem));
+        drag(row0, code);
+        assert_eq!(take(&log), ["row-on-list:0:2"], "row onto a sidebar list");
+
+        let email = centre_of(&find(&ui, "Email replies", AccessibleRole::ListItem));
+        drag(code, email);
+        assert_eq!(take(&log), ["list-dropped:2:0"], "list onto list");
+
+        ui.set_rows_reorderable(false);
+        settle();
+        drag(row0, row2);
+        assert_eq!(take(&log), Vec::<String>::new(), "rows stay put in a sorted list");
+
+        // A plain click still uses the card: the drag layer must not swallow it.
+        press_at_centre(&ui, row0);
+        assert!(take(&log).iter().any(|l| l.starts_with("select:")), "a click still picks the card");
     }
 
     fn pin_reads_unpin_for_a_pinned_item() {

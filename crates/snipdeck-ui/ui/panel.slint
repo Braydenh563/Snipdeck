@@ -174,6 +174,13 @@ export component PanelWindow inherits Window {
 
     // ---- Gestures out -------------------------------------------------------------------------
     callback query-changed(string);
+    // A row dragged onto a list tab moves its item there. The host builds and reads the in-window payload (a row index).
+    pure callback row-payload(int) -> data-transfer;
+    pure callback payload-row(data-transfer) -> int;
+    callback row-dropped-on-tab(int, int);
+    // Drag and drop: the host reads the text of a dropped payload (empty when it has none) and saves it as an item.
+    pure callback payload-text(data-transfer) -> string;
+    callback text-dropped(string);
     // Enter, a click, or a quick-use key used row `index`.
     callback row-activated(int);
     // Shift+Enter or Shift+click: copy only.
@@ -571,6 +578,16 @@ export component PanelWindow inherits Window {
         visible: !root.dock-collapsed;
         changed has-hover => { root.panel-hovered(self.has-hover); }
 
+        // Text dropped on the Panel is saved as a new item in the list it shows (the host reads the payload).
+        DropArea {
+            width: parent.width;
+            height: parent.height;
+            can-drop(event) => { root.payload-text(event.data) != "" ? DragAction.copy : DragAction.none }
+            dropped(event) => {
+                root.text-dropped(root.payload-text(event.data));
+                return DragAction.copy;
+            }
+
         scope := FocusScope {
             forward-focus: search;
 
@@ -882,6 +899,8 @@ export component PanelWindow inherits Window {
                         // The "+" is the last 28px of the bar.
                         changed add-active => { root.tip-set(self.add-label, self.absolute-position.x + self.width - Space.hit / 2, self.absolute-position.y + self.height, self.add-active); }
                         selected(index) => { root.pick-tab(index); }
+                        drop-accepted(data) => { root.payload-row(data) >= 0 && !root.searching }
+                        tab-dropped(index, data) => { root.row-dropped-on-tab(root.payload-row(data), index); }
                         add-clicked => { root.add-list-requested(); }
                         menu-requested(index, x, y) => {
                             root.list-menu-x = x;
@@ -944,6 +963,10 @@ export component PanelWindow inherits Window {
                                 if (self.is-selected) { root.reveal(self.y, self.height); }
                             }
 
+                            DragArea {
+                                allow-move: !root.searching && !root.recent-open;
+                                data: root.row-payload(i);
+
                             card := ItemCard {
                                 x: Space.s1;
                                 y: Space.s1;
@@ -987,6 +1010,7 @@ export component PanelWindow inherits Window {
                                     root.context-menu-requested(i, x, y);
                                 }
                                 reveal-requested(on) => { root.reveal-requested(i, on); }
+                            }
                             }
                         }
                     }
@@ -1222,6 +1246,7 @@ export component PanelWindow inherits Window {
                     }
                 }
             }
+        }
         }
 
         // ---- The board menu: a scrim that dismisses on click, and the menu under the header ----------
