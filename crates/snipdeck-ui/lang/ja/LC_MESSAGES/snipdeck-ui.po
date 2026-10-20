@@ -571,6 +571,9 @@ msgstr "ライブラリをエクスポート"
 msgid "Feature"
 msgstr "機能"
 
+msgid "Fewer options"
+msgstr ""
+
 msgid "Fields"
 msgstr "入力欄"
 
@@ -675,6 +678,9 @@ msgstr "非表示。スペースキーを押し続けると表示されます。
 
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "非表示。パネルで開くと表示されます。"
+
+msgid "Hide kind, title, colour, tags and privacy"
+msgstr ""
 
 msgid "Hide the Panel"
 msgstr "パネルを隠す"
@@ -885,6 +891,9 @@ msgstr "Microsoft Store"
 
 msgid "More"
 msgstr "その他"
+
+msgid "More options"
+msgstr ""
 
 msgid "Most used"
 msgstr "よく使う順"
@@ -1376,6 +1385,9 @@ msgstr "SNIP1."
 msgid "Save"
 msgstr "保存"
 
+msgid "Save (Ctrl+Enter)"
+msgstr ""
+
 msgid "Save from clipboard"
 msgstr "クリップボードから保存"
 
@@ -1489,6 +1501,9 @@ msgstr "パネルを表示 ({})"
 
 msgid "Show Snipdeck in the taskbar"
 msgstr "Snipdeck をタスクバーに表示する"
+
+msgid "Show kind, title, colour, tags and privacy"
+msgstr ""
 
 msgid "Show or hide the Panel"
 msgstr "パネルの表示／非表示"

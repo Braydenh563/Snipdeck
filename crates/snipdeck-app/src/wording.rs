@@ -323,6 +323,7 @@ pub const fn app_menu_text(entry: crate::controller::AppMenuEntry) -> &'static s
         AppMenuEntry::Settings => "Settings\u{2026}",
         AppMenuEntry::Dock => "Dock to the nearest edge",
         AppMenuEntry::PauseHotkeys => "Pause hotkeys",
+        AppMenuEntry::ShowNumbers => "Show numbers",
         AppMenuEntry::Separator => "",
         AppMenuEntry::Troubleshoot => "Troubleshoot\u{2026}",
         AppMenuEntry::UserGuide => "User guide",
@@ -356,7 +357,12 @@ pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'st
         ItemMenuEntry::Trash => "Del",
         ItemMenuEntry::MoveUp { .. } => "Alt+Up",
         ItemMenuEntry::MoveDown { .. } => "Alt+Down",
-        ItemMenuEntry::Pin { .. } | ItemMenuEntry::Stack { .. } | ItemMenuEntry::Separator => "",
+        ItemMenuEntry::Pin { .. }
+        | ItemMenuEntry::Stack { .. }
+        | ItemMenuEntry::MoveTo
+        | ItemMenuEntry::Colour
+        | ItemMenuEntry::Sensitive { .. }
+        | ItemMenuEntry::Separator => "",
     }
 }
 
@@ -373,7 +379,10 @@ pub const fn item_menu_text(entry: crate::controller::ItemMenuEntry) -> &'static
         ItemMenuEntry::Pin { pinned: true } => "Unpin",
         ItemMenuEntry::Stack { marked: false } => "Add to paste stack",
         ItemMenuEntry::Stack { marked: true } => "Remove from paste stack",
-        ItemMenuEntry::Trash => "Move to Trash",
+        ItemMenuEntry::Trash => "Delete",
+        ItemMenuEntry::MoveTo => "Move to\u{2026}",
+        ItemMenuEntry::Colour => "Colour",
+        ItemMenuEntry::Sensitive { .. } => "Sensitive",
         ItemMenuEntry::MoveUp { .. } => "Move up",
         ItemMenuEntry::MoveDown { .. } => "Move down",
         ItemMenuEntry::Separator => "",

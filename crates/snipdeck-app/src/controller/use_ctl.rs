@@ -203,6 +203,76 @@ where
         self.save_text(Some(text));
     }
 
+    /// The quick-add box's Create (Enter): saves `text` at the end of the list the Panel shows (or
+    /// of the Main window's open list when `main`), as `kind` (`None` picks it from the text), and
+    /// turns Sensitive on when asked. The new item is selected and a toast says where it went, with
+    /// Undo (to the Trash) and Edit. Blank text does nothing. Returns whether an item was added.
+    pub fn quick_add(
+        &mut self,
+        text: &str,
+        kind: Option<snipdeck_core::ItemKind>,
+        sensitive: bool,
+        origin: crate::item_editor::Origin,
+    ) -> bool {
+        if text.trim().is_empty() {
+            return false;
+        }
+        let shown = match origin {
+            crate::item_editor::Origin::Panel => self.model.list().map(|l| l.id),
+            crate::item_editor::Origin::Main => self.main.open_list().map(|l| l.id),
+        };
+        let destination = match capture::default_list(&self.store, shown) {
+            Ok(Some(d)) => d,
+            Ok(None) => {
+                self.show_toast(neutral(ToastMessage::NoListToSave));
+                return false;
+            }
+            Err(_) => {
+                self.show_toast(failed());
+                return false;
+            }
+        };
+        let kind = kind.unwrap_or_else(|| capture::detect_kind(text));
+        let saved = capture::capture_as(
+            &mut self.store,
+            &destination,
+            Some(text),
+            kind,
+            snipdeck_core::Placement::Last,
+            self.clock.now(),
+        );
+        match saved {
+            Ok(Captured::Saved { item, list }) => {
+                self.library_changed();
+                if self.refresh_panel().is_err() {
+                    self.show_toast(failed());
+                    return true;
+                }
+                self.model.select_item(item);
+                self.show_saved_toast(
+                    Toast {
+                        kind: ToastKind::Success,
+                        message: ToastMessage::Saved { list },
+                    },
+                    item,
+                );
+                if sensitive {
+                    self.toggle_item_sensitive(item);
+                }
+                true
+            }
+            Ok(Captured::Empty) => false,
+            Ok(Captured::TooLarge) => {
+                self.show_toast(neutral(ToastMessage::TooLargeToSave));
+                false
+            }
+            Err(_) => {
+                self.show_toast(failed());
+                false
+            }
+        }
+    }
+
     pub(super) fn save_text(&mut self, text: Option<&str>) {
         let current = self.model.list().map(|l| l.id);
         let toast = match capture::default_list(&self.store, current) {

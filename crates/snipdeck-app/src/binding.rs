@@ -1135,6 +1135,7 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         label_name,
         image: slint::Image::default(),
         stack_position: 0,
+        marked: row.marked,
     }
 }
 
@@ -1209,6 +1210,7 @@ mod tests {
             list: None,
             pinned: false,
             label: None,
+            marked: false,
         }
     }
 

@@ -59,6 +59,8 @@ export struct PanelRow {
     image: image,
     // 1-based place in the paste stack; 0 = not marked.
     stack-position: int,
+    // In the multi-selection (Ctrl+click, Shift+click, Ctrl+A).
+    marked: bool,
 }
 
 // One entry of the Recent inbox (SPEC 5.6), as `snipdeck-app`'s `RecentRowView`: the start of the copied text, the

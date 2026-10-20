@@ -27,6 +27,7 @@ mod main_ctl;
 mod onboarding_ctl;
 mod panel;
 mod panel_ctl;
+mod panel_select;
 mod recent_ctl;
 mod settings_ctl;
 mod toast_ctl;
@@ -37,10 +38,11 @@ pub use library::Library;
 pub use lock_ctl::{MasterProblem, MasterState};
 pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameError};
 pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry};
+pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use views::{
-    Effect, FillSubmission, FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView,
-    UseResult, View,
+    ChooseEntry, ChooseLabel, ChooseMenu, Effect, FillSubmission, FillView, ListDeleteView,
+    PickerView, StackView, ToastPhase, ToastView, UseResult, View,
 };
 
 use crate::{
@@ -127,6 +129,11 @@ struct PendingClear {
 struct Undo {
     seq: u64,
     targets: Vec<Trashable>,
+    /// The toast reports an add (quick-add): Undo moves `targets` to the Trash instead of
+    /// bringing them back.
+    adds: bool,
+    /// The toast also carries an Edit button that opens this item's editor.
+    edit: Option<ItemId>,
 }
 
 struct ActiveToast {
@@ -181,6 +188,9 @@ pub struct Controller<S, C, K, T> {
     stack_running: bool,
     /// Which of the Panel's two menus is open (never both).
     menu: PanelMenu,
+    /// What the open item menu, or its Move / Colour choice, acts on: the marked rows when the menu was
+    /// opened on one of them, else the one row.
+    menu_targets: Vec<ItemId>,
     /// The Main window's state.
     main: MainModel,
     /// The list or board editor, while one is open.
@@ -242,6 +252,10 @@ enum PanelMenu {
     App,
     /// The context menu of an item's card or pinned chip.
     Item(ItemId),
+    /// The item menu's "Move to…": the lists to choose from.
+    Move,
+    /// The item menu's "Colour": the labels to choose from.
+    Colour,
     /// The context menu of a list tab.
     List(ListId),
     /// The list menu's delete confirmation, asking about this list.
@@ -325,6 +339,7 @@ where
             stack: Vec::new(),
             stack_running: false,
             menu: PanelMenu::None,
+            menu_targets: Vec::new(),
             main: MainModel::new(),
             editor: None,
             editor_seq: 0,
@@ -431,6 +446,9 @@ where
                 PanelMenu::Item(id) => Some(self.item_menu_entries(id)),
                 _ => None,
             },
+            choose_menu: self.choose_menu_view(),
+            marked_count: self.model.marked_count(),
+            show_numbers: self.settings.show_numbers,
             list_menu: matches!(self.menu, PanelMenu::List(_)).then(|| LIST_MENU.to_vec()),
             list_delete: self.list_delete_view(),
             hotkeys_paused: self.session.hotkeys_paused,
@@ -475,6 +493,10 @@ where
             message: t.toast.message.clone(),
             phase: t.phase,
             undo: self.undo.as_ref().is_some_and(|u| u.seq == t.seq),
+            edit: self
+                .undo
+                .as_ref()
+                .is_some_and(|u| u.seq == t.seq && u.edit.is_some()),
             open_log: t.toast.message == ToastMessage::CrashedLastTime,
         })
     }
@@ -719,3 +741,6 @@ fn policy_of(settings: &Settings) -> snipdeck_platform::route::Policy {
         no_paste_apps: settings.no_paste_apps.clone(),
     }
 }
+
+#[cfg(test)]
+mod tests;

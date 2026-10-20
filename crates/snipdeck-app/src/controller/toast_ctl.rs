@@ -6,7 +6,7 @@ use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::Trashable;
 
 use super::{
-    ActiveToast, Controller, Library, TOAST_EXIT, TOAST_HOLD, TOAST_HOVER_RECHECK,
+    ActiveToast, Controller, Effect, Library, TOAST_EXIT, TOAST_HOLD, TOAST_HOVER_RECHECK,
     TOAST_HOVER_RECHECKS, TOAST_UNDO_HOLD, ToastPhase, Undo, neutral,
 };
 use crate::{
@@ -65,7 +65,33 @@ where
         self.undo = Some(Undo {
             seq: self.toast_seq,
             targets,
+            adds: false,
+            edit: None,
         });
+    }
+
+    /// Shows `toast` ("Saved to …") for the new item `id`, with an Undo button that moves it to
+    /// the Trash and an Edit button that opens it in the editor.
+    pub fn show_saved_toast(&mut self, toast: Toast, id: snipdeck_core::ItemId) {
+        self.show_toast(toast);
+        self.undo = Some(Undo {
+            seq: self.toast_seq,
+            targets: vec![snipdeck_store::Trashable::Item(id)],
+            adds: true,
+            edit: Some(id),
+        });
+    }
+
+    /// The toast's Edit button: opens the editor on the item the toast is about and closes the toast.
+    pub fn toast_edit(&mut self) -> Vec<Effect> {
+        let Some(undo) = self.undo.take() else {
+            return Vec::new();
+        };
+        if self.toast.as_ref().is_none_or(|t| t.seq != undo.seq) {
+            return Vec::new();
+        }
+        self.toast = None;
+        undo.edit.map(Effect::EditItem).into_iter().collect()
     }
 
     /// The toast's button: "Open log" on the crash toast (opens the reports folder and closes

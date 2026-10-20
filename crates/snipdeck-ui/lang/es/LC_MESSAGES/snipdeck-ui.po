@@ -571,6 +571,9 @@ msgstr "Exportar la biblioteca"
 msgid "Feature"
 msgstr "Función"
 
+msgid "Fewer options"
+msgstr ""
+
 msgid "Fields"
 msgstr "Campos"
 
@@ -675,6 +678,9 @@ msgstr "Oculto. Mantén pulsada la barra espaciadora para mostrarlo."
 
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "Oculto. Ábrelo en el panel para mostrarlo."
+
+msgid "Hide kind, title, colour, tags and privacy"
+msgstr ""
 
 msgid "Hide the Panel"
 msgstr "Ocultar el panel"
@@ -888,6 +894,9 @@ msgstr "Microsoft Store"
 
 msgid "More"
 msgstr "Más"
+
+msgid "More options"
+msgstr ""
 
 msgid "Most used"
 msgstr "Más usados"
@@ -1383,6 +1392,9 @@ msgstr "SNIP1."
 msgid "Save"
 msgstr "Guardar"
 
+msgid "Save (Ctrl+Enter)"
+msgstr ""
+
 msgid "Save from clipboard"
 msgstr "Guardar desde el portapapeles"
 
@@ -1496,6 +1508,9 @@ msgstr "Mostrar panel ({})"
 
 msgid "Show Snipdeck in the taskbar"
 msgstr "Mostrar Snipdeck en la barra de tareas"
+
+msgid "Show kind, title, colour, tags and privacy"
+msgstr ""
 
 msgid "Show or hide the Panel"
 msgstr "Muestra u oculta el panel"

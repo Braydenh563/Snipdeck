@@ -320,6 +320,22 @@ where
         if self.toast.as_ref().is_none_or(|t| t.seq != undo.seq) {
             return;
         }
+        if undo.adds {
+            // Undo of an add: the new item goes to the Trash (it can still be restored from there).
+            let now = self.clock.now();
+            let done = self.store.atomically(|b| {
+                for target in &undo.targets {
+                    b.trash(*target, now)?;
+                }
+                Ok(())
+            });
+            self.toast = None;
+            self.library_changed();
+            if done.is_err() || self.refresh_panel().is_err() {
+                self.show_toast(failed());
+            }
+            return;
+        }
         let keys: Vec<Key> = undo.targets.iter().map(|t| Key::from(*t)).collect();
         // The delete is undone: the old toast goes, a "Restored" toast replaces it.
         self.restore(&keys);
