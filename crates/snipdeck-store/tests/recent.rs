@@ -154,14 +154,16 @@ mod at_rest {
         )
     }
 
-    /// Whether any file of the library holds `needle`. The `-shm` file is an index of the WAL, never
-    /// row text, and Windows keeps a byte-range lock on it while the store is open; the other files
-    /// are opened with every share mode so the open store does not block the read.
+    /// Whether any file of the library holds `needle`. The `-shm` file (an index of the WAL) and
+    /// `snipdeck.lock` (the single-instance lock) never hold row text, and Windows keeps a lock on
+    /// both while the store is open; the other files are opened with every share mode so the open
+    /// store does not block the read.
     fn holds(dir: &std::path::Path, needle: &str) -> bool {
         use std::io::Read;
         std::fs::read_dir(dir).unwrap().any(|e| {
             let path = e.unwrap().path();
-            if !path.is_file() || path.to_string_lossy().ends_with("-shm") {
+            let name = path.file_name().unwrap().to_string_lossy();
+            if !path.is_file() || name.ends_with("-shm") || name == "snipdeck.lock" {
                 return false;
             }
             let mut open = std::fs::OpenOptions::new();
