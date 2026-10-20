@@ -45,6 +45,12 @@ impl DataKey {
         Self(Zeroizing::new(bytes))
     }
 
+    /// A 32-byte subkey bound to `context` (BLAKE3 `derive_key`), for values that must not be
+    /// computable without the data key, such as the Recent inbox's duplicate hash.
+    pub(crate) fn derive(&self, context: &str) -> Zeroizing<[u8; KEY_LEN]> {
+        Zeroizing::new(blake3::derive_key(context, &self.0[..]))
+    }
+
     pub(super) fn expose(&self) -> &[u8; KEY_LEN] {
         &self.0
     }

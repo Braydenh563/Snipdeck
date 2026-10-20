@@ -107,6 +107,14 @@ pub trait Library:
     /// The store failing to read.
     fn has_plain_sensitive(&self) -> snipdeck_store::Result<bool>;
 
+    /// Whether any Recent inbox entry is stored as plain text (kept before a key existed, or by
+    /// version 4). Setting up encryption encrypts it.
+    ///
+    /// # Errors
+    ///
+    /// The store failing to read.
+    fn has_plain_recent(&self) -> snipdeck_store::Result<bool>;
+
     /// Sets up encryption, with a master password if `password` is `Some`, and leaves the library
     /// unlocked.
     ///
@@ -189,6 +197,10 @@ impl Library for Store {
 
     fn has_plain_sensitive(&self) -> snipdeck_store::Result<bool> {
         Store::has_plain_sensitive(self)
+    }
+
+    fn has_plain_recent(&self) -> snipdeck_store::Result<bool> {
+        Store::has_plain_recent(self)
     }
 
     fn create_key_ring(

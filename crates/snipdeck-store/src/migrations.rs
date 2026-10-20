@@ -55,6 +55,12 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         sql: schema::V4,
         post: None,
     },
+    Migration {
+        version: 5,
+        name: "recent inbox encrypted at rest",
+        sql: crate::recent::V5,
+        post: None,
+    },
 ];
 
 /// The newest schema version this build writes.
@@ -189,7 +195,27 @@ fn write_backup(conn: &Connection, path: &Path, from: u32) -> Result<()> {
         Err(e) => return Err(e.into()),
     }
     let target = target.to_string_lossy().into_owned();
-    conn.execute("VACUUM INTO ?1", [target])?;
+    conn.execute("VACUUM INTO ?1", [&target])?;
+    if from < 5 {
+        scrub_recent(&target)?;
+    }
+    Ok(())
+}
+
+/// Empties the Recent inbox in a backup: its text was plain before schema version 5, and a
+/// rollback copy is not a reason to keep it. Best effort on a table that is not there (older
+/// schemas have none); a file that cannot be opened or rewritten is an error.
+fn scrub_recent(backup: &str) -> Result<()> {
+    let copy = Connection::open(backup)?;
+    copy.pragma_update(None, "secure_delete", "ON")?;
+    let has_table: bool = copy.query_row(
+        "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'recent_entries')",
+        [],
+        |r| r.get(0),
+    )?;
+    if has_table {
+        copy.execute_batch("DELETE FROM recent_entries; VACUUM;")?;
+    }
     Ok(())
 }
 
@@ -199,14 +225,14 @@ mod tests {
     use rusqlite::params;
 
     const NEXT_ADD_COLUMN: Migration = Migration {
-        version: 5,
+        version: 6,
         name: "add boards.colour",
         sql: "ALTER TABLE boards ADD COLUMN colour TEXT;",
         post: None,
     };
 
     const NEXT_BROKEN: Migration = Migration {
-        version: 5,
+        version: 6,
         name: "broken",
         sql: "ALTER TABLE boards ADD COLUMN colour TEXT; THIS IS NOT SQL;",
         post: None,
@@ -277,8 +303,8 @@ mod tests {
 
         let all = with_next(NEXT_ADD_COLUMN);
         let outcome = migrate(&mut conn, &all, Path::new(":memory:"), false).unwrap();
-        assert_eq!(outcome, Outcome { from: 4, to: 5 });
-        assert_eq!(version(&conn), 5);
+        assert_eq!(outcome, Outcome { from: 5, to: 6 });
+        assert_eq!(version(&conn), 6);
         let (name, colour): (String, Option<String>) = conn
             .query_row("SELECT name, colour FROM boards", [], |r| {
                 Ok((r.get(0)?, r.get(1)?))
@@ -304,7 +330,7 @@ mod tests {
             matches!(
                 err,
                 Error::Migration {
-                    version: 5,
+                    version: 6,
                     name: "broken",
                     source: Some(_),
                     ..
@@ -316,7 +342,7 @@ mod tests {
             std::error::Error::source(&err).is_some(),
             "the cause is kept"
         );
-        assert_eq!(version(&conn), 4);
+        assert_eq!(version(&conn), 5);
         // The half-applied ALTER TABLE was undone, and the data is intact.
         assert!(conn.prepare("SELECT colour FROM boards").is_err());
         let boards: i64 = conn
@@ -334,7 +360,7 @@ mod tests {
         let mut conn = fresh();
         migrate(&mut conn, MIGRATIONS, Path::new(":memory:"), false).unwrap();
         let dangling = Migration {
-            version: 5,
+            version: 6,
             name: "orphan a list",
             sql: "INSERT INTO lists (id, board_id, name, list_view, list_sort, rank, created_at, updated_at)
                   VALUES (zeroblob(16), zeroblob(16), 'L', 'compact', 'manual', 1, 0, 0);",
@@ -348,10 +374,10 @@ mod tests {
         )
         .unwrap_err();
         assert!(
-            matches!(err, Error::Migration { version: 5, .. }),
+            matches!(err, Error::Migration { version: 6, .. }),
             "{err:?}"
         );
-        assert_eq!(version(&conn), 4);
+        assert_eq!(version(&conn), 5);
     }
 
     #[test]
@@ -367,8 +393,8 @@ mod tests {
             matches!(
                 err,
                 Error::SchemaTooNew {
-                    found: 5,
-                    supported: 4
+                    found: 6,
+                    supported: 5
                 }
             ),
             "{err:?}"
@@ -378,7 +404,7 @@ mod tests {
             message.contains("newer Snipdeck") && message.contains("update"),
             "{message}"
         );
-        assert_eq!(version(&conn), 5);
+        assert_eq!(version(&conn), 6);
     }
 
     #[test]
@@ -412,10 +438,10 @@ mod tests {
                 outcome,
                 Outcome {
                     from: u32::try_from(start).unwrap(),
-                    to: 4
+                    to: 5
                 }
             );
-            assert_eq!(version(&conn), 4);
+            assert_eq!(version(&conn), 5);
             for sql in [
                 "SELECT label FROM items",
                 "SELECT icon FROM lists",
@@ -437,14 +463,14 @@ mod tests {
         let mut conn = Connection::open(&path).unwrap();
         migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
         assert!(
-            !dir.path().join("snipdeck.db.pre-v4.bak").exists(),
+            !dir.path().join("snipdeck.db.pre-v5.bak").exists(),
             "nothing to back up on creation"
         );
         insert_board(&conn);
 
         migrate(&mut conn, &with_next(NEXT_ADD_COLUMN), &path, true).unwrap();
-        let backup = Connection::open(dir.path().join("snipdeck.db.pre-v4.bak")).unwrap();
-        assert_eq!(version(&backup), 4);
+        let backup = Connection::open(dir.path().join("snipdeck.db.pre-v5.bak")).unwrap();
+        assert_eq!(version(&backup), 5);
         let boards: i64 = backup
             .query_row("SELECT count(*) FROM boards", [], |r| r.get(0))
             .unwrap();
@@ -469,7 +495,7 @@ mod tests {
         // A table rebuild, the migration shape that needs foreign keys off: widen the
         // `list_view` check by copying `lists` into a new table.
         let rebuild = Migration {
-            version: 5,
+            version: 6,
             name: "rebuild lists",
             sql: "CREATE TABLE lists_new (
                       id BLOB NOT NULL PRIMARY KEY CHECK (length(id) = 16),
@@ -503,7 +529,7 @@ mod tests {
         let before = counts(&conn);
         assert_eq!(before, [1, 1, 3, 4, 1, 1]);
         let outcome = migrate(&mut conn, &with_next(rebuild), &path, true).unwrap();
-        assert_eq!(outcome, Outcome { from: 1, to: 5 });
+        assert_eq!(outcome, Outcome { from: 1, to: 6 });
         assert_eq!(counts(&conn), before);
         let items_still_reference_the_list: i64 = conn
             .query_row(

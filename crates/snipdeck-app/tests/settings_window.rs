@@ -357,6 +357,9 @@ fn removing_a_program_is_written_too_and_a_repeat_is_refused_in_words() {
 fn an_app_added_in_settings_is_no_longer_captured_end_to_end() {
     on_ui_thread(|| {
         let r = rig();
+        r.ctl.borrow_mut().set_key_provider(Box::new(
+            snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
+        ));
         r.ui.invoke_recent_history_toggled(true);
         let copy_from = |app: &str| {
             r.ctl
@@ -1655,6 +1658,9 @@ fn the_recent_inbox_is_off_until_chosen_and_its_clear_button_empties_it() {
     on_ui_thread(|| {
         let r = rig();
         assert!(!r.ui.get_recent_history(), "off by default");
+        r.ctl.borrow_mut().set_key_provider(Box::new(
+            snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
+        ));
         r.ui.invoke_recent_history_toggled(true);
         assert!(r.ctl.borrow().settings().recent_history);
         r.ctl

@@ -193,8 +193,9 @@ The Recent inbox keeps the text you copy in other programs, so you can find it a
   `keepass.exe`.
 - **Pause and clear.** The tray menu has **Pause history** while the inbox is on. **Clear recent history** in
   Settings, or at the top of the Recent view, removes everything now. You confirm with **Clear history**.
-- **Master password.** While the library is locked, the inbox shows **Recent copies are locked** and collects
-  nothing.
+- **Encrypted.** Copies are encrypted on disk with the same key as Sensitive items (Windows protects the key
+  for your account). Without a master password the inbox works as usual; with one, the library locked means
+  the inbox shows **Recent copies are locked** and collects nothing until you unlock.
 
 ## Help and the welcome tour
 

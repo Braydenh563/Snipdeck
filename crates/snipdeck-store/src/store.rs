@@ -86,6 +86,10 @@ impl Store {
         secure_delete(&conn)?;
         let outcome = migrations::migrate(&mut conn, MIGRATIONS, &db_path, true)?;
         configure(&conn)?;
+        if outcome.from != outcome.to {
+            // Pages of a dropped table (the plain Recent inbox, version 5) may sit in the log.
+            checkpoint(&conn);
+        }
         if outcome.from == 1 {
             // Version 1 ran without `secure_delete`, so freed pages may still hold old
             // content: rewrite the file once. Best effort, the migration itself has committed.

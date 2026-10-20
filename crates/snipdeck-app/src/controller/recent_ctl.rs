@@ -85,6 +85,11 @@ where
             return;
         }
         let settings = self.recent_settings();
+        // The inbox is sealed with the library key like Sensitive items: it is made on the
+        // first copy kept (no password asked), and with no key to seal with nothing is kept.
+        if settings.collecting() && self.ensure_key(true).is_err() {
+            return;
+        }
         let now = self.clock.now();
         let _ = RecentCapture::consider(&mut self.store, observation, &settings, now);
     }

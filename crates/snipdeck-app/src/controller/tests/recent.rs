@@ -13,6 +13,16 @@ fn on() -> Settings {
     }
 }
 
+/// The inbox on, with key protection (the test provider stands in for DPAPI): the inbox is
+/// sealed with the library key, so nothing is kept without one.
+fn recent_world() -> World {
+    let mut w = world_with(None, on());
+    w.ctl.set_key_provider(Box::new(
+        snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
+    ));
+    w
+}
+
 fn copied(text: &str) -> ClipboardObservation {
     ClipboardObservation {
         text: Some(text.to_owned()),
@@ -31,7 +41,7 @@ fn nothing_is_kept_until_the_user_opts_in() {
 
 #[test]
 fn with_the_opt_in_a_copy_is_kept_and_a_recopy_moves_to_the_top() {
-    let mut w = world_with(None, on());
+    let mut w = recent_world();
     w.ctl.on_clipboard_change(&copied("one"));
     w.clock.set(at("2026-10-17T10:31:00Z"));
     w.ctl.on_clipboard_change(&copied("two"));
@@ -43,7 +53,7 @@ fn with_the_opt_in_a_copy_is_kept_and_a_recopy_moves_to_the_top() {
 
 #[test]
 fn pause_stops_collecting_until_resumed() {
-    let mut w = world_with(None, on());
+    let mut w = recent_world();
     w.ctl.set_recent_paused(true);
     w.ctl.on_clipboard_change(&copied("while paused"));
     assert_eq!(w.ctl.recent_entries().len(), 0);
@@ -54,7 +64,7 @@ fn pause_stops_collecting_until_resumed() {
 
 #[test]
 fn an_excluded_app_and_an_exclusion_format_are_never_kept() {
-    let mut w = world_with(None, on());
+    let mut w = recent_world();
     let mut from_keepass = copied("hunter2");
     from_keepass.source_app = Some("KeePass.exe".to_owned());
     w.ctl.on_clipboard_change(&from_keepass);
@@ -66,7 +76,7 @@ fn an_excluded_app_and_an_exclusion_format_are_never_kept() {
 
 #[test]
 fn switching_the_inbox_off_hides_what_was_kept() {
-    let mut w = world_with(None, on());
+    let mut w = recent_world();
     w.ctl.on_clipboard_change(&copied("kept"));
     assert_eq!(w.ctl.recent_entries().len(), 1);
     w.ctl.update_settings(|s| s.recent_history = false);
@@ -75,7 +85,7 @@ fn switching_the_inbox_off_hides_what_was_kept() {
 
 #[test]
 fn the_cap_holds_at_the_default() {
-    let mut w = world_with(None, on());
+    let mut w = recent_world();
     for i in 0..=DEFAULT_MAX_ENTRIES {
         w.ctl.on_clipboard_change(&copied(&format!("t{i}")));
     }
@@ -84,7 +94,7 @@ fn the_cap_holds_at_the_default() {
 
 #[test]
 fn promoting_saves_an_item_at_the_top_of_the_list_and_keeps_the_entry() {
-    let mut w = world_with(None, on());
+    let mut w = recent_world();
     w.ctl.on_clipboard_change(&copied("promote me"));
     let id = w.ctl.recent_entries()[0].id;
     let before = w.ctl.store().items(w.links_list).expect("items").len();
@@ -97,7 +107,7 @@ fn promoting_saves_an_item_at_the_top_of_the_list_and_keeps_the_entry() {
 
 #[test]
 fn delete_and_clear_remove_entries() {
-    let mut w = world_with(None, on());
+    let mut w = recent_world();
     w.ctl.on_clipboard_change(&copied("a"));
     w.ctl.on_clipboard_change(&copied("b"));
     let first = w.ctl.recent_entries()[0].id;
@@ -128,7 +138,7 @@ fn the_listener_gate_follows_the_opt_in_and_the_pause() {
 fn the_view_has_no_recent_part_until_the_opt_in() {
     let w = world();
     assert!(w.ctl.view().recent.is_none());
-    let w = world_with(None, on());
+    let w = recent_world();
     let recent = w.ctl.view().recent.expect("on");
     assert!(!recent.open);
     assert_eq!(recent.rows.len(), 0);
@@ -136,7 +146,7 @@ fn the_view_has_no_recent_part_until_the_opt_in() {
 
 #[test]
 fn the_view_lists_entries_newest_first_with_the_lists_to_save_to() {
-    let mut w = world_with(None, on());
+    let mut w = recent_world();
     w.ctl.on_clipboard_change(&copied("alpha"));
     w.clock.set(at("2026-10-17T10:35:00Z"));
     w.ctl.on_clipboard_change(&copied("beta"));
@@ -155,7 +165,7 @@ fn the_view_lists_entries_newest_first_with_the_lists_to_save_to() {
 
 #[test]
 fn the_search_box_narrows_the_recent_list_and_rows_act_on_what_is_shown() {
-    let mut w = world_with(None, on());
+    let mut w = recent_world();
     w.ctl.on_clipboard_change(&copied("alpha one"));
     w.ctl.on_clipboard_change(&copied("beta two"));
     w.ctl.set_query("beta");
@@ -169,7 +179,7 @@ fn the_search_box_narrows_the_recent_list_and_rows_act_on_what_is_shown() {
 
 #[test]
 fn clicking_an_entry_puts_its_text_on_the_clipboard_and_deleting_removes_it() {
-    let mut w = world_with(None, on());
+    let mut w = recent_world();
     w.ctl.on_clipboard_change(&copied("copy me"));
     w.ctl.set_recent_open(true);
     let id = w.ctl.view().recent.expect("on").rows[0].id;
@@ -186,7 +196,7 @@ fn clicking_an_entry_puts_its_text_on_the_clipboard_and_deleting_removes_it() {
 
 #[test]
 fn actions_follow_the_entry_id_when_the_list_shifts_under_an_open_menu() {
-    let mut w = world_with(None, on());
+    let mut w = recent_world();
     w.ctl.on_clipboard_change(&copied("original"));
     let id = w.ctl.view().recent.expect("on").rows[0].id;
     // The menu is open on "original"; a new copy pushes it down a row.
@@ -213,7 +223,7 @@ fn the_clock_tab_cannot_open_while_history_is_off() {
 
 #[test]
 fn the_main_window_lists_the_entries_and_counts_them() {
-    let mut w = world_with(None, on());
+    let mut w = recent_world();
     w.ctl.on_clipboard_change(&copied("alpha one"));
     w.clock.set(at("2026-10-17T10:35:00Z"));
     w.ctl.on_clipboard_change(&copied("beta two"));
@@ -243,7 +253,7 @@ fn the_main_window_lists_the_entries_and_counts_them() {
 
 #[test]
 fn the_main_window_search_narrows_recent_and_rows_act_on_what_is_shown() {
-    let mut w = world_with(None, on());
+    let mut w = recent_world();
     w.ctl.on_clipboard_change(&copied("alpha one"));
     w.ctl.on_clipboard_change(&copied("beta two"));
     w.ctl.main_open(crate::main_window::Section::Recent);
@@ -271,7 +281,7 @@ fn the_main_window_search_narrows_recent_and_rows_act_on_what_is_shown() {
 
 #[test]
 fn the_main_window_clear_empties_recent_and_off_shows_nothing() {
-    let mut w = world_with(None, on());
+    let mut w = recent_world();
     w.ctl.on_clipboard_change(&copied("one"));
     w.ctl.main_open(crate::main_window::Section::Recent);
     assert_eq!(w.ctl.recent_clear(), 1);
@@ -315,4 +325,21 @@ fn the_tray_menu_is_told_when_history_is_on_and_when_it_is_paused() {
     // Turning the inbox off takes the entry away.
     w.ctl.update_settings(|s| s.recent_history = false);
     assert_eq!(seen.borrow().last(), Some(&(false, false)));
+}
+
+#[test]
+fn a_copy_is_kept_sealed_and_nothing_is_kept_without_key_protection() {
+    let mut w = recent_world();
+    w.ctl.on_clipboard_change(&copied("sealed"));
+    assert!(
+        w.ctl.store().key_ring_exists().expect("ring"),
+        "made on the first copy"
+    );
+    assert_eq!(w.ctl.recent_entries().len(), 1);
+
+    // No key protection on the machine: nothing is written in plain text.
+    let mut bare = world_with(None, on());
+    bare.ctl.on_clipboard_change(&copied("unsealed"));
+    assert_eq!(bare.ctl.recent_entries().len(), 0);
+    assert_eq!(bare.ctl.store().recent().expect("recent").len(), 0);
 }

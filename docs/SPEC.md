@@ -110,6 +110,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
   `ExcludeClipboardContentFromMonitorProcessing` / `CanIncludeInClipboardHistory=0` (password managers),
   excluded apps, and Sensitive items.
 - Retention: 200 entries / 7 days (configurable); image entries size-capped.
+- Encrypted at rest with the Sensitive-item key (OS-wrapped, optional master password); locked = hidden and paused. Search filters after decrypt, in memory.
 - One click **promote** to a List.
 
 ### 5.7 Sensitive items

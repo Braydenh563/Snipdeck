@@ -1180,6 +1180,10 @@ fn the_recent_section_lists_what_was_copied_and_its_buttons_reach_the_controller
         let r = rig();
         {
             let mut ctl = r.ctl.borrow_mut();
+            // The inbox is sealed with the library key, so it needs key protection.
+            ctl.set_key_provider(Box::new(
+                snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
+            ));
             ctl.update_settings(|s| s.recent_history = true);
             for text in ["first copy", "second copy"] {
                 ctl.on_clipboard_change(&snipdeck_app::recent::ClipboardObservation {
