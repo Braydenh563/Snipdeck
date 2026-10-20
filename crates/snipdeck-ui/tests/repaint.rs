@@ -12,7 +12,7 @@
 )]
 
 use slint::ComponentHandle;
-use snipdeck_ui::{MainWindow, testing::Harness};
+use snipdeck_ui::{MainWindow, PanelWindow, testing::Harness};
 
 /// Draws until nothing is dirty, as the backend does between events.
 fn settle<C: ComponentHandle>(h: &Harness<C>) {
@@ -39,6 +39,27 @@ fn an_idle_main_window_presents_nothing_and_the_flip_repaints_all_of_it() {
         .set_repaint_flip(!main.component.get_repaint_flip());
     assert_eq!(
         main.damaged_area(),
+        Some(u64::from(w) * u64::from(h)),
+        "flipping back repaints all again"
+    );
+}
+
+#[test]
+fn an_idle_panel_presents_nothing_and_the_flip_repaints_all_of_it() {
+    let (w, h) = (320_u32, 480_u32);
+    let panel = Harness::new(PanelWindow::new, w, h);
+    settle(&panel);
+    assert_eq!(panel.damaged_area(), None, "idle: no frame is presented");
+    panel
+        .component
+        .set_repaint_flip(!panel.component.get_repaint_flip());
+    assert_eq!(panel.damaged_area(), Some(u64::from(w) * u64::from(h)));
+    settle(&panel);
+    panel
+        .component
+        .set_repaint_flip(!panel.component.get_repaint_flip());
+    assert_eq!(
+        panel.damaged_area(),
         Some(u64::from(w) * u64::from(h)),
         "flipping back repaints all again"
     );

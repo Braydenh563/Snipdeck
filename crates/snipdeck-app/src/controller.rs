@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 use snipdeck_core::{
-    Entitlements, ItemId, ListId, Timestamp,
+    BoardId, Entitlements, ItemId, ListId, Timestamp,
     template::{Locale, TimeZone},
 };
 use snipdeck_platform::{
@@ -28,6 +28,7 @@ mod onboarding_ctl;
 mod panel;
 mod panel_ctl;
 mod recent_ctl;
+mod screen_clip_ctl;
 mod settings_ctl;
 mod toast_ctl;
 mod use_ctl;
@@ -39,7 +40,8 @@ pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameE
 pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry};
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use views::{
-    Effect, FillSubmission, FillView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
+    Effect, FillSubmission, FillView, ListDeleteView, PickerView, StackView, ToastPhase, ToastView,
+    UseResult, View,
 };
 
 use crate::{
@@ -195,6 +197,9 @@ pub struct Controller<S, C, K, T> {
     /// The list or board editor, while one is open.
     editor: Option<main_ctl::EditorSlot>,
     editor_seq: u64,
+    /// The board menu's delete confirmation is asking about this board (the Main window draws
+    /// it; no editor opens).
+    board_delete: Option<BoardId>,
     /// The item editor, while one is open.
     item_editor: Option<editor_ctl::ItemEditorSlot>,
     item_editor_seq: u64,
@@ -238,6 +243,9 @@ pub struct Controller<S, C, K, T> {
     /// Told whether clipboard history is on and whether it is paused, for the tray menu's
     /// "Pause history" entry (see `recent_ctl.rs`).
     tray_history: Option<recent_ctl::HistorySink>,
+    /// "Take screenshot": the timing (pure) and the machine it runs on (see `screen_clip_ctl.rs`).
+    screen_clip: crate::screen_clip::ScreenClipFlow,
+    screen_clip_host: Option<Box<dyn crate::screen_clip::ScreenClipHost>>,
 }
 
 /// Opens the folder of the crash reports in the file manager.
@@ -255,6 +263,8 @@ enum PanelMenu {
     Item(ItemId),
     /// The context menu of a list tab.
     List(ListId),
+    /// The list menu's delete confirmation, asking about this list.
+    DeleteList(ListId),
 }
 
 /// Facts about the running app that are not settings and not on screen.
@@ -339,6 +349,7 @@ where
             main: MainModel::new(),
             editor: None,
             editor_seq: 0,
+            board_delete: None,
             item_editor: None,
             item_editor_seq: 0,
             editor_env: editor_ctl::EditorEnv::default(),
@@ -361,6 +372,8 @@ where
             lock: lock_ctl::LockState::new(shown_at),
             recent_gate: None,
             tray_history: None,
+            screen_clip: crate::screen_clip::ScreenClipFlow::new(),
+            screen_clip_host: None,
         })
     }
 
@@ -446,6 +459,7 @@ where
                 _ => None,
             },
             list_menu: matches!(self.menu, PanelMenu::List(_)).then(|| LIST_MENU.to_vec()),
+            list_delete: self.list_delete_view(),
             hotkeys_paused: self.session.hotkeys_paused,
             picker_chord: crate::commands::chord_text(&self.settings.hotkeys, HotkeyAction::Picker)
                 .unwrap_or_default(),
@@ -655,6 +669,7 @@ where
                 self.set_recent_paused(paused);
                 Vec::new()
             }
+            TrayEvent::TakeScreenshot => self.take_screenshot(),
             TrayEvent::Quit => vec![Effect::Quit],
             TrayEvent::IconPresent(present) => {
                 // With an icon in the notification area closing the Panel hides it (when
@@ -714,6 +729,8 @@ where
         self.visible
             && !self.on_top
             && self.settings.panel_hide_on_blur
+            // The snipping overlay takes the foreground itself; a Panel kept on screen for it stays.
+            && !self.screen_clip.waiting()
             // The Picker and the fill form take the foreground themselves.
             && self.picker.is_none()
             && self.fill.is_none()

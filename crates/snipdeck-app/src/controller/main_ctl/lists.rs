@@ -91,7 +91,7 @@ where
         written.ok()
     }
 
-    pub(super) fn trash_list(&mut self, id: ListId, name: String) {
+    pub(in crate::controller) fn trash_list(&mut self, id: ListId, name: String) {
         let now = self.clock.now();
         match self.store.trash(Trashable::List(id), now) {
             Ok(()) => {
@@ -274,7 +274,7 @@ where
         entries.push(BoardMenuEntry::MoveDown {
             enabled: current.is_some_and(|i| i + 1 < count),
         });
-        entries.push(BoardMenuEntry::Delete);
+        entries.push(BoardMenuEntry::Delete { enabled: count > 1 });
         entries
     }
 
@@ -294,7 +294,7 @@ where
             }
             BoardMenuEntry::Separator => {}
             BoardMenuEntry::New => self.new_board(),
-            BoardMenuEntry::Rename => self.edit_board(false),
+            BoardMenuEntry::Rename => self.edit_board(),
             BoardMenuEntry::MoveUp { enabled } => {
                 if enabled {
                     self.main_reorder_board(-1);
@@ -305,8 +305,37 @@ where
                     self.main_reorder_board(1);
                 }
             }
-            BoardMenuEntry::Delete => self.edit_board(true),
+            BoardMenuEntry::Delete { enabled } => {
+                if enabled {
+                    self.board_delete = self.main.board();
+                }
+            }
         }
+    }
+
+    /// How many items the open board holds while its delete confirmation asks.
+    pub(super) fn board_delete_count(&self) -> Option<usize> {
+        let id = self.board_delete?;
+        (self.main.board() == Some(id))
+            .then(|| self.main.side_lists().iter().map(|l| l.count).sum())
+    }
+
+    /// "Delete board" in the Main window's confirmation: the open board, its lists and their
+    /// items move to the Trash, with an Undo toast.
+    pub fn main_board_delete_confirm(&mut self) {
+        self.main_fresh();
+        let Some(id) = self.board_delete.take() else {
+            return;
+        };
+        if self.main.board() == Some(id) && self.main.boards().len() > 1 {
+            let name = self.main.board_name().to_owned();
+            self.trash_board(id, name);
+        }
+    }
+
+    /// Cancel, Esc or a click on the scrim: the board stays.
+    pub fn main_board_delete_cancel(&mut self) {
+        self.board_delete = None;
     }
 
     /// Opens board `id` in the sidebar.

@@ -95,10 +95,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::DailyBackupFailed(_) => 67,
         ToastMessage::TrashPurgeFailed => 68,
         ToastMessage::ChangeFailed(_) => 69,
+        ToastMessage::ScreenshotFailed => 70,
     }
 }
 
-const VARIANTS: usize = 70;
+const VARIANTS: usize = 71;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -210,6 +211,7 @@ fn samples() -> Vec<ToastMessage> {
         M::Imported { items: 0 },
         M::Imported { items: 1 },
         M::TaskbarEdge,
+        M::ScreenshotFailed,
     ]
 }
 

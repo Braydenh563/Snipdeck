@@ -10,6 +10,10 @@ use windows::Win32::Foundation::{POINT, RECT};
 use windows::Win32::Graphics::Gdi::{
     GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromPoint,
 };
+use windows::Win32::System::DataExchange::{
+    GetClipboardSequenceNumber, IsClipboardFormatAvailable,
+};
+use windows::Win32::System::Ole::{CF_BITMAP, CF_DIB, CF_DIBV5};
 use windows::Win32::UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI};
 use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
 
@@ -33,6 +37,23 @@ pub fn cursor_position() -> Option<(i32, i32)> {
     // SAFETY: `at` is a valid POINT that outlives the call.
     unsafe { GetCursorPos(&raw mut at) }.ok()?;
     Some((at.x, at.y))
+}
+
+/// The clipboard's change count and whether it holds a picture, for waiting on a screenshot.
+/// Neither call opens the clipboard or reads what is on it, so nothing waits on another app and
+/// no content is touched.
+#[must_use]
+pub fn clipboard_picture_state() -> (u32, bool) {
+    // SAFETY: no preconditions.
+    let sequence = unsafe { GetClipboardSequenceNumber() };
+    let has = |format: u32| {
+        // SAFETY: no preconditions.
+        unsafe { IsClipboardFormatAvailable(format) }.is_ok()
+    };
+    (
+        sequence,
+        has(u32::from(CF_DIB.0)) || has(u32::from(CF_DIBV5.0)) || has(u32::from(CF_BITMAP.0)),
+    )
 }
 
 /// The monitor that contains `(x, y)`, or the nearest one when the point is outside them all.

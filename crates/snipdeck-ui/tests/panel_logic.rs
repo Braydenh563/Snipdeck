@@ -724,8 +724,14 @@ ui_tests! {
 
     fn the_selected_row_shows_paste_or_copy_and_no_other_row_does() {
         let (ui, _log) = start();
+        // The use button is named after its row: "Paste <title>" / "Copy <title>" (O33).
         let shown = |label: &str| {
-            ElementHandle::find_by_accessible_label(&ui, label)
+            by_role(&ui, AccessibleRole::Button)
+                .into_iter()
+                .filter(|e| {
+                    e.accessible_label()
+                        .is_some_and(|l| l.starts_with(&format!("{label} ")))
+                })
                 .filter(|e| e.computed_opacity() > 0.9)
                 .count()
         };

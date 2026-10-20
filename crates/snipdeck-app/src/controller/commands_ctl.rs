@@ -34,6 +34,10 @@ where
             Command::ShowPanel => self.main_toggle_panel(),
             Command::OpenPicker => self.open_picker(),
             Command::QuickCapture => self.quick_capture(),
+            Command::TakeScreenshot => {
+                let effects = self.take_screenshot();
+                self.pending.extend(effects);
+            }
             Command::Settings => self.pending.push(Effect::OpenSettings),
             Command::UserGuide => self.main_open_help(HelpTopic::Guide),
             Command::Shortcuts => self.main_open_help(HelpTopic::Shortcuts),

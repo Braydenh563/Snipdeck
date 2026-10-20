@@ -371,6 +371,34 @@ fn a_list_menu_request_opens_the_list_menu_and_dismissing_closes_it() {
 }
 
 #[test]
+fn delete_on_the_list_menu_shows_only_the_panel_confirmation() {
+    // O52: Delete asked inside the list editor, which then appeared behind the confirmation.
+    on_ui_thread(|| {
+        let r = rig();
+        let lists = r.ui.get_tabs().row_count();
+        r.ui.invoke_list_menu_requested(1);
+        r.ui.invoke_list_menu_activated(1);
+        assert!(!r.ui.get_list_menu_open());
+        assert!(r.ui.get_list_delete_open(), "the Panel asks");
+        assert!(!r.ui.get_list_delete_name().is_empty());
+        assert!(
+            r.ctl.borrow_mut().main_screen().editor.is_none(),
+            "no list editor opens"
+        );
+        r.ui.invoke_list_delete_dismissed();
+        assert!(!r.ui.get_list_delete_open());
+        assert_eq!(r.ui.get_tabs().row_count(), lists, "Cancel keeps the list");
+
+        r.ui.invoke_list_menu_requested(1);
+        r.ui.invoke_list_menu_activated(1);
+        r.ui.invoke_list_delete_confirmed();
+        assert!(!r.ui.get_list_delete_open());
+        assert_eq!(r.ui.get_tabs().row_count(), lists - 1);
+        assert!(r.ctl.borrow_mut().main_screen().editor.is_none());
+    });
+}
+
+#[test]
 fn typing_in_the_search_filters_the_rows() {
     on_ui_thread(|| {
         let r = rig();
@@ -812,6 +840,28 @@ fn an_explicit_theme_ignores_windows_dark_mode() {
 }
 
 #[test]
+fn windows_are_painted_in_the_theme_window_colour_before_their_first_frame() {
+    // O52: a window flashed white between showing and its first frame. The colour Windows
+    // paints first is the theme's `bg-app`, and it follows a theme change.
+    on_ui_thread(|| {
+        let r = rig();
+        let erase = snipdeck_app::native_window::erase_colour;
+        r.ctl.borrow_mut().set_theme(Theme::Dark);
+        r.binding.system_look(SystemLook::default());
+        assert_eq!(
+            erase(),
+            Some((0x11, 0x0F, 0x0D)),
+            "dark bg-app (neutral-900)"
+        );
+        r.ctl.borrow_mut().set_theme(Theme::Light);
+        r.binding.system_look(SystemLook::default());
+        let light = erase().expect("a colour");
+        assert_ne!(light, (0xFF, 0xFF, 0xFF), "never the default white");
+        assert_ne!(light, (0x11, 0x0F, 0x0D), "follows the theme");
+    });
+}
+
+#[test]
 fn a_changed_setting_is_written_when_the_quiet_timer_fires_on_the_injected_clock() {
     on_ui_thread(|| {
         let r = rig();
@@ -870,10 +920,11 @@ fn click_at(window: &slint::Window, position: slint::LogicalPosition) {
     slint::platform::update_timers_and_animations();
 }
 
-const MENU_ROWS: [&str; 11] = [
+const MENU_ROWS: [&str; 12] = [
     "Open Snipdeck",
     "All commands\u{2026}",
     "New item",
+    "Take screenshot",
     "Settings\u{2026}",
     "Dock to the nearest edge",
     "Pause hotkeys",
@@ -1050,7 +1101,7 @@ fn pause_hotkeys_is_checked_while_paused() {
         open_menu(&r);
         let checked = |r: &Rig| {
             r.ui.get_app_menu_entries()
-                .row_data(5)
+                .row_data(6)
                 .expect("the Pause row")
                 .icon
                 .size()
@@ -1241,7 +1292,7 @@ fn edit_and_rename_on_the_selected_row_ask_for_the_quick_editor() {
 const HANDLE_LABEL: &str = "Snipdeck handle, press the Panel hotkey to open";
 
 /// The Panel on the first monitor, 40 px from its left edge, docked there through the kebab's
-/// "Dock to the nearest edge" row, with the dock trigger set to `trigger`.
+/// "Dock to the left edge" row, with the dock trigger set to `trigger`.
 fn docked_rig(trigger: DockTrigger) -> Rig {
     let r = rig();
     r.ctl
@@ -1258,7 +1309,7 @@ fn docked_rig(trigger: DockTrigger) -> Rig {
         },
     );
     open_menu(&r);
-    click(r.window(), &menu_row(&r, "Dock to the nearest edge"));
+    click(r.window(), &menu_row(&r, "Dock to the left edge"));
     assert_eq!(r.ctl.borrow().dock_edge(), Some(DockEdge::Left));
     r
 }

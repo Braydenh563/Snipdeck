@@ -1,6 +1,6 @@
 //! The list and board editors.
 
-use snipdeck_core::{ListAccent, ListIcon, ListId, ListSort, Name, Placement};
+use snipdeck_core::{BoardId, ListAccent, ListIcon, ListId, ListSort, Name, Placement};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::Trashable;
 
@@ -46,7 +46,6 @@ where
                 can_delete: false,
                 delete_hint: None,
                 name_error: None,
-                open_delete: false,
             },
         );
     }
@@ -62,27 +61,22 @@ where
             .side_lists()
             .get(index)
             .map_or(0, |side| side.count);
-        self.open_list_editor(&list, count, false);
+        self.open_list_editor(&list, count);
     }
 
-    /// The Panel's list menu ("Edit list…", "Delete list…"): opens the list editor on list `id`
-    /// (any board), with the delete confirmation already open when `open_delete`.
-    pub(in super::super) fn panel_edit_list(&mut self, id: ListId, open_delete: bool) {
+    /// The Panel's "Edit list…" (or a double-click on a tab): opens the list editor on list `id`
+    /// (any board).
+    pub(in super::super) fn panel_edit_list(&mut self, id: ListId) {
         self.main_fresh();
         let Ok(list) = self.store.list(id) else {
             self.show_toast(failed());
             return;
         };
         let count = self.store.items(id).map_or(0, |items| items.len());
-        self.open_list_editor(&list, count, open_delete);
+        self.open_list_editor(&list, count);
     }
 
-    pub(super) fn open_list_editor(
-        &mut self,
-        list: &snipdeck_core::List,
-        count: usize,
-        open_delete: bool,
-    ) {
+    pub(super) fn open_list_editor(&mut self, list: &snipdeck_core::List, count: usize) {
         let view = EditorView {
             seq: 0,
             kind: EditorKind::List,
@@ -95,7 +89,6 @@ where
             can_delete: true,
             delete_hint: None,
             name_error: None,
-            open_delete,
         };
         self.open_editor(EditorTarget::List(list.id), view);
     }
@@ -126,13 +119,12 @@ where
                 can_delete: false,
                 delete_hint: None,
                 name_error: None,
-                open_delete: false,
             },
         );
     }
 
-    /// The board editor for the open board; `open_delete` starts with the confirmation open.
-    pub(super) fn edit_board(&mut self, open_delete: bool) {
+    /// The board editor for the open board.
+    pub(super) fn edit_board(&mut self) {
         let Some(board) = self.main.board() else {
             return;
         };
@@ -149,7 +141,6 @@ where
             can_delete,
             delete_hint: (!can_delete).then_some(DeleteHint::LastBoard),
             name_error: None,
-            open_delete: open_delete && can_delete,
         };
         self.open_editor(EditorTarget::Board(board), view);
     }
@@ -261,21 +252,25 @@ where
         match slot.target {
             EditorTarget::List(id) => self.trash_list(id, slot.view.name),
             EditorTarget::Board(id) if self.main.boards().len() > 1 => {
-                let now = self.clock.now();
-                match self.store.trash(Trashable::Board(id), now) {
-                    Ok(()) => {
-                        self.library_changed();
-                        self.show_undo_toast(
-                            neutral_toast(ToastMessage::BoardTrashed {
-                                name: slot.view.name,
-                            }),
-                            vec![Trashable::Board(id)],
-                        );
-                    }
-                    Err(_) => self.show_toast(failed()),
-                }
+                self.trash_board(id, slot.view.name);
             }
             _ => {}
+        }
+    }
+
+    /// Moves board `id` (named `name`) with its lists and items to the Trash, with an Undo
+    /// toast.
+    pub(super) fn trash_board(&mut self, id: BoardId, name: String) {
+        let now = self.clock.now();
+        match self.store.trash(Trashable::Board(id), now) {
+            Ok(()) => {
+                self.library_changed();
+                self.show_undo_toast(
+                    neutral_toast(ToastMessage::BoardTrashed { name }),
+                    vec![Trashable::Board(id)],
+                );
+            }
+            Err(_) => self.show_toast(failed()),
         }
     }
 

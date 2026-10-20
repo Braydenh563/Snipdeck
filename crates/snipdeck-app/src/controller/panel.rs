@@ -6,7 +6,7 @@ use snipdeck_core::{ItemId, UseMode};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
 
-use super::{Controller, Effect, Library, PanelMenu, UseResult, failed};
+use super::{Controller, Effect, Library, ListDeleteView, PanelMenu, UseResult, failed};
 use crate::{
     frame::{self, Edge, Monitor, Rect},
     host::ClipboardText,
@@ -36,6 +36,8 @@ pub enum AppMenuEntry {
     Commands,
     /// Make a new snippet.
     NewSnippet,
+    /// Take a screenshot: the Panel steps aside while the snipping overlay is up.
+    Screenshot,
     /// Open Settings.
     Settings,
     /// Dock the Panel to the edge nearest to it, or undock it when it is docked (the row's
@@ -101,7 +103,7 @@ pub enum ItemMenuEntry {
 pub enum ListMenuEntry {
     /// Rename, recolour or re-sort the list in the list editor.
     Edit,
-    /// Delete the list: the list editor opens with its confirmation showing.
+    /// Delete the list: the Panel asks in its own confirmation; no editor opens.
     Delete,
 }
 
@@ -110,10 +112,11 @@ pub const LIST_MENU: [ListMenuEntry; 2] = [ListMenuEntry::Edit, ListMenuEntry::D
 
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
 /// `Menu` has no sub-menus.
-pub const APP_MENU: [AppMenuEntry; 12] = [
+pub const APP_MENU: [AppMenuEntry; 13] = [
     AppMenuEntry::Open,
     AppMenuEntry::Commands,
     AppMenuEntry::NewSnippet,
+    AppMenuEntry::Screenshot,
     AppMenuEntry::Settings,
     AppMenuEntry::Dock,
     AppMenuEntry::PauseHotkeys,
@@ -160,6 +163,7 @@ where
             AppMenuEntry::Open => vec![Effect::OpenMainWindow],
             AppMenuEntry::Commands => vec![Effect::OpenCommands],
             AppMenuEntry::NewSnippet => vec![Effect::NewItem],
+            AppMenuEntry::Screenshot => self.take_screenshot(),
             AppMenuEntry::Settings => vec![Effect::OpenSettings],
             AppMenuEntry::Dock => {
                 self.dock_toggle();
@@ -308,7 +312,7 @@ where
             return Vec::new();
         };
         self.menu = PanelMenu::None;
-        self.panel_edit_list(id, false);
+        self.panel_edit_list(id);
         vec![Effect::OpenListEditor]
     }
 
@@ -319,21 +323,59 @@ where
         }
     }
 
-    /// The user chose row `index` of [`LIST_MENU`]. The list editor (its own window, drawn
-    /// from the Main window's screen) is how the list is renamed and deleted, so the Main
-    /// window and the Panel share one path: a delete asks there, then moves the list and its
-    /// items to the Trash with an Undo toast.
+    /// The user chose row `index` of [`LIST_MENU`]. Edit opens the list editor (its own window,
+    /// shared with the Main window). Delete only asks: the Panel shows its confirmation and
+    /// nothing else (O52), and [`confirm_list_delete`](Self::confirm_list_delete) moves the list
+    /// and its items to the Trash with an Undo toast.
     pub fn choose_list_menu(&mut self, index: usize) -> Vec<Effect> {
         let PanelMenu::List(id) = self.menu else {
             return Vec::new();
         };
         self.menu = PanelMenu::None;
         match LIST_MENU.get(index) {
-            Some(ListMenuEntry::Edit) => self.panel_edit_list(id, false),
-            Some(ListMenuEntry::Delete) => self.panel_edit_list(id, true),
-            None => return Vec::new(),
+            Some(ListMenuEntry::Edit) => {
+                self.panel_edit_list(id);
+                vec![Effect::OpenListEditor]
+            }
+            Some(ListMenuEntry::Delete) => {
+                self.menu = PanelMenu::DeleteList(id);
+                Vec::new()
+            }
+            None => Vec::new(),
         }
-        vec![Effect::OpenListEditor]
+    }
+
+    /// The list delete confirmation's view while it asks: the list's name and how many items
+    /// go to the Trash with it.
+    pub(super) fn list_delete_view(&self) -> Option<ListDeleteView> {
+        let PanelMenu::DeleteList(id) = self.menu else {
+            return None;
+        };
+        let list = self.store.list(id).ok()?;
+        Some(ListDeleteView {
+            name: list.name.as_str().to_owned(),
+            count: self.store.items(id).map_or(0, |items| items.len()),
+        })
+    }
+
+    /// "Delete list" in the Panel's confirmation: the list and its items move to the Trash,
+    /// with an Undo toast.
+    pub fn confirm_list_delete(&mut self) {
+        let PanelMenu::DeleteList(id) = self.menu else {
+            return;
+        };
+        self.menu = PanelMenu::None;
+        match self.store.list(id) {
+            Ok(list) => self.trash_list(id, list.name.as_str().to_owned()),
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
+    /// Cancel, Esc or a click on the scrim: the confirmation closes and the list stays.
+    pub fn cancel_list_delete(&mut self) {
+        if matches!(self.menu, PanelMenu::DeleteList(_)) {
+            self.menu = PanelMenu::None;
+        }
     }
 
     fn set_item_pinned(&mut self, id: ItemId, pin: bool) {

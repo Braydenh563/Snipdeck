@@ -462,6 +462,12 @@ function Build-Spike($SpikeDef, [int]$N = 1, [int]$Of = 1) {
         try {
             # Not Start-Process -Wait: the MSVC linker leaves mspdbsrv.exe running and -Wait would wait for it too.
             # Waiting on the cargo process itself, 30 s at a time, lets us print a sign of life.
+            # A release build refuses to compile without a licence key. Test builds use the published
+            # throwaway test key (licence/key_selection.rs), set for this wizard process only.
+            if (-not $env:SNIPDECK_LICENCE_PUBLIC_KEY) {
+                $env:SNIPDECK_LICENCE_PUBLIC_KEY = 'Zr5+Myx6RTMyvZ0Kf32wVfXF7xoGraZtmLOftoEMRzo='
+                $env:SNIPDECK_ALLOW_TEST_LICENCE_KEY = '1'
+            }
             $proc = Start-Process -FilePath 'cargo' -ArgumentList @('build', '--release') -NoNewWindow -PassThru
             $null = $proc.Handle   # keeps the exit code readable after the process ends
             while (-not $proc.WaitForExit(30000)) {

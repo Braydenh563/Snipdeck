@@ -238,8 +238,6 @@ pub struct EditorView {
     pub delete_hint: Option<DeleteHint>,
     /// Why the last save was refused.
     pub name_error: Option<NameError>,
-    /// The delete confirmation opens with the window (the board menu's "Delete board…").
-    pub open_delete: bool,
 }
 
 /// The Main window's state.

@@ -244,6 +244,8 @@ pub enum ToastMessage {
     /// A move, reorder or other change to the library that the store refused, for a cause the
     /// error names: "Couldn't make that change: the disk is full. ..."
     ChangeFailed(Cause),
+    /// "Couldn't start the screenshot tool." (Take screenshot)
+    ScreenshotFailed,
 }
 
 /// A toast: a style and a message.

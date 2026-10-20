@@ -597,6 +597,10 @@ where
         wire!(on_board_menu_activated, |ctl, i| ctl
             .main_board_menu_activate(index(i)));
         wire!(on_board_menu_dismissed, |ctl| ctl.main_board_menu_close());
+        wire!(on_board_delete_confirmed, |ctl| ctl
+            .main_board_delete_confirm());
+        wire!(on_board_delete_dismissed, |ctl| ctl
+            .main_board_delete_cancel());
         wire!(on_toast_undo, |ctl| ctl.toast_action());
         wire!(on_undo_requested, |ctl| ctl.main_undo());
         {
@@ -1006,6 +1010,14 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         window.set_board_menu_entries(model(entries));
         window.set_board_menu_open(screen.board_menu.is_some());
     }
+    if differs(&|p| p.board_delete == screen.board_delete)
+        || window.get_board_delete_open() != screen.board_delete.is_some()
+    {
+        if let Some(count) = screen.board_delete {
+            window.set_board_delete_count(i32::try_from(count).unwrap_or(i32::MAX));
+        }
+        window.set_board_delete_open(screen.board_delete.is_some());
+    }
     if differs(&|p| p.lists == screen.lists && p.dark == screen.dark) {
         set_side_lists(window, screen);
     }
@@ -1193,12 +1205,14 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
 fn menu_entry(window: &ui::MainWindow, entry: &BoardMenuEntry) -> ui::MenuEntry {
     let disabled = matches!(
         entry,
-        BoardMenuEntry::MoveUp { enabled: false } | BoardMenuEntry::MoveDown { enabled: false }
+        BoardMenuEntry::MoveUp { enabled: false }
+            | BoardMenuEntry::MoveDown { enabled: false }
+            | BoardMenuEntry::Delete { enabled: false }
     );
     ui::MenuEntry {
         text: wording::board_menu_text(window, entry).into(),
         separator: matches!(entry, BoardMenuEntry::Separator),
-        destructive: matches!(entry, BoardMenuEntry::Delete),
+        destructive: matches!(entry, BoardMenuEntry::Delete { .. }),
         disabled,
         ..Default::default()
     }
@@ -1232,7 +1246,7 @@ fn fill_list_editor(window: &ui::ListEditor, view: &EditorView) {
     window.set_can_delete(view.can_delete);
     window.set_delete_hint(hint_text(window, view));
     window.set_discard_open(false);
-    window.set_delete_open(view.open_delete);
+    window.set_delete_open(false);
     window.invoke_mark_clean();
 }
 
@@ -1245,7 +1259,7 @@ fn fill_board_editor(window: &ui::BoardEditor, view: &EditorView) {
     window.set_can_delete(view.can_delete);
     window.set_delete_hint(hint_text(window, view));
     window.set_discard_open(false);
-    window.set_delete_open(view.open_delete);
+    window.set_delete_open(false);
     window.invoke_mark_clean();
 }
 

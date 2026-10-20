@@ -324,9 +324,9 @@ fn owner() -> Option<(Rect, Option<Monitor>)> {
     })
 }
 
-/// Positions (and, if need be, shrinks) a secondary window that is about to be shown: centred
-/// over the window it was opened from (the Main window or the Panel), else centred on the
-/// monitor under the pointer, and always inside that monitor's work area. Call it right before
+/// Positions (and, if need be, shrinks) a secondary window that is about to be shown: beside
+/// the window it was opened from (the Main window or the Panel; see [`frame::place_beside`]),
+/// else centred on the monitor under the pointer, and always inside that monitor's work area. Call it right before
 /// `show()`, after the size is set: a window that is already up is left where it is. Without a
 /// native window (tests, other platforms) nothing happens and [`fit_to_screen`] stays the
 /// fallback after the show.
@@ -366,7 +366,12 @@ pub fn place_over_owner(window: &slint::Window) {
         inner.0,
         inner.1.saturating_add(physical(frame::WINDOW_CHROME)),
     );
-    let at = frame::place_near(owner, outer, monitor.work_area);
+    let at = frame::place_beside(
+        owner,
+        outer,
+        monitor.work_area,
+        frame::gap_px(monitor.scale),
+    );
     crate::trace!(
         "place window {inner:?} over {owner:?} -> {at:?} in {:?}",
         monitor.work_area
@@ -442,6 +447,9 @@ pub fn on_own_window_active(report: impl Fn(bool) + 'static) {
 /// Feeds a winit window event of a regular window to the focus tracking. Every regular window
 /// does this; the Main window, which handles its own events, calls it from there.
 pub fn note_window_event(window: &slint::Window, event: &winit::event::WindowEvent) {
+    if matches!(event, winit::event::WindowEvent::Resized(_)) {
+        paint_before_first_frame(window);
+    }
     let winit::event::WindowEvent::Focused(focused) = event else {
         return;
     };
@@ -561,4 +569,37 @@ mod tests {
         tracker.set(2, false);
         assert_eq!(tracker.take_change(), Some(false));
     }
+}
+
+// ---- The colour before the first frame (O52) ---------------------------------------------------
+
+thread_local! {
+    /// The theme's window colour, kept for windows whose native window does not exist yet.
+    static ERASE: std::cell::Cell<Option<(u8, u8, u8)>> = const { std::cell::Cell::new(None) };
+}
+
+/// The theme is `rgb` now (the window colour, `Theme.bg-app`): Windows paints every Snipdeck
+/// window with it between showing it and its first frame, instead of white. Given to the window
+/// class through `window` when its native window exists, else by the next window that reports
+/// one ([`paint_before_first_frame`]).
+pub fn set_erase_colour(window: &slint::Window, rgb: (u8, u8, u8)) {
+    ERASE.with(|c| c.set(Some(rgb)));
+    paint_before_first_frame(window);
+}
+
+/// The colour [`set_erase_colour`] keeps, if any.
+#[must_use]
+pub fn erase_colour() -> Option<(u8, u8, u8)> {
+    ERASE.with(std::cell::Cell::get)
+}
+
+/// Gives the kept theme colour to the window class of `window`, once its native window exists.
+/// All Snipdeck windows share one class, so this covers the windows made after it too.
+pub fn paint_before_first_frame(window: &slint::Window) {
+    #[cfg(windows)]
+    if let (Some(rgb), Some(hwnd)) = (erase_colour(), handle_of(window)) {
+        snipdeck_platform::windows::erase::set_class_background(hwnd, rgb);
+    }
+    #[cfg(not(windows))]
+    let _ = window;
 }

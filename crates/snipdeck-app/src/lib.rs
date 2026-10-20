@@ -47,6 +47,7 @@ pub mod platform;
 pub(crate) mod popup_window;
 pub mod recent;
 pub mod repaint;
+pub mod screen_clip;
 pub mod screenshot;
 pub mod settings;
 pub mod settings_binding;

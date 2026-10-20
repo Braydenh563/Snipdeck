@@ -222,15 +222,6 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
 - **Appearance.** **Theme** is Windows, Light or Dark. **Language** offers English, Español, Deutsch,
   Français, Português (Brasil), 日本語 and 简体中文, and takes effect the next time Snipdeck starts.
   **Accent colour** is Blue (the default), Teal, Green, Amber, Rose, Violet or Windows accent, which follows your
-<<<<<<< HEAD
-  Windows colour and is adjusted so text stays readable. **Reduce motion** turns off sliding and fading. It is
-  also off when Windows has **Animation effects** off. **Panel width** is 260 to 480 pixels. You can also drag
-  the Panel's edges.
-- **Panel dock.** **Dock to** fixes the Panel against Floating, Left edge, Right edge, Top edge or Bottom edge
-  of the monitor it is on. The edge the taskbar is on is never used. You can also drag the Panel by its header
-  to within a few pixels of an edge: a strip marks the edge, and the Panel docks there when you let go. The
-  Panel's menu names the edge it would dock to ("Dock to the right edge"). **Open a docked panel by** is Off, Hover, Click or Hover and click. Off keeps a docked
-=======
   Windows colour and is adjusted so text stays readable. **Text size** is Windows (the default, it follows
   Settings > Accessibility > Text size in Windows) or a fixed 100, 125, 150 or 175 %. **Reduce motion** turns off
   sliding and fading. It is also off when Windows has **Animation effects** off. **Panel width** is 260 to 480
@@ -239,9 +230,10 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   **Hide the panel when it loses focus** hides an unpinned Panel when you switch to another app (on by default).
   **Start with Windows** starts Snipdeck hidden in the tray when you sign in. **Keep running in the tray when the
   window closes** is on by default. Turn it off and closing the Panel or the Main window quits Snipdeck.
-  **Dock to** fixes the Panel against Floating, Left edge, Right edge, Top edge or Bottom edge
-  of the monitor it is on. **Open a docked panel by** is Off, Hover, Click or Hover and click. Off keeps a docked
->>>>>>> origin/claude/v1-fable-uxa
+- **Panel dock.** **Dock to** fixes the Panel against Floating, Left edge, Right edge, Top edge or Bottom edge
+  of the monitor it is on. The edge the taskbar is on is never used. You can also drag the Panel by its header
+  to within a few pixels of an edge: a strip marks the edge, and the Panel docks there when you let go. The
+  Panel's menu names the edge it would dock to ("Dock to the right edge"). **Open a docked panel by** is Off, Hover, Click or Hover and click. Off keeps a docked
   Panel open. The other choices fold it into a thin strip, and the Panel shortcut opens it too. **Hover delay**
   (0 to 2000 ms, default 150) is how long the pointer rests on the strip. **Leave delay** (0 to 5000 ms, default
   400) is how long it stays off the Panel before it folds.
