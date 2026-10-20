@@ -1033,45 +1033,56 @@ cut | crates/snipdeck-app/src/frame.rs:303
 far_side | crates/snipdeck-app/src/frame.rs:317
 WINDOW_CHROME | crates/snipdeck-app/src/frame.rs:324
 open_size | crates/snipdeck-app/src/frame.rs:330
-place_near | crates/snipdeck-app/src/frame.rs:349
-inside | crates/snipdeck-app/src/frame.rs:365
-tests | crates/snipdeck-app/src/frame.rs:372
-monitor | crates/snipdeck-app/src/frame.rs:375
-at | crates/snipdeck-app/src/frame.rs:388
-a_window_that_fits_opens_at_its_wanted_size | crates/snipdeck-app/src/frame.rs:393
-a_window_taller_than_the_work_area_is_cut_to_it_with_room_for_the_title_bar | crates/snipdeck-app/src/frame.rs:398
-a_tiny_work_area_still_gives_a_positive_size | crates/snipdeck-app/src/frame.rs:407
-width_is_held_between_260_and_480 | crates/snipdeck-app/src/frame.rs:414
-the_limits_are_logical_so_they_grow_with_the_scale | crates/snipdeck-app/src/frame.rs:422
-height_is_held_between_the_minimum_and_the_work_area | crates/snipdeck-app/src/frame.rs:430
-the_frame_is_moved_inside_the_work_area | crates/snipdeck-app/src/frame.rs:437
-a_work_area_that_does_not_start_at_zero_is_respected | crates/snipdeck-app/src/frame.rs:445
-a_work_area_smaller_than_the_minimum_wins_over_it | crates/snipdeck-app/src/frame.rs:453
-a_nonsense_scale_counts_as_one | crates/snipdeck-app/src/frame.rs:460
-area | crates/snipdeck-app/src/frame.rs:466
-a_left_handle_is_a_six_pixel_strip_over_the_panels_former_height | crates/snipdeck-app/src/frame.rs:471
-a_right_handle_is_flush_with_the_far_edge | crates/snipdeck-app/src/frame.rs:477
-top_and_bottom_handles_run_along_the_width | crates/snipdeck-app/src/frame.rs:483
-the_handle_thickness_is_logical_so_it_grows_with_the_scale | crates/snipdeck-app/src/frame.rs:495
-a_handle_is_cut_to_the_work_area | crates/snipdeck-app/src/frame.rs:501
-a_span_outside_the_work_area_gives_the_whole_edge | crates/snipdeck-app/src/frame.rs:513
-a_work_area_that_does_not_start_at_zero_gets_its_own_edge | crates/snipdeck-app/src/frame.rs:528
-every_handle_lies_inside_the_work_area | crates/snipdeck-app/src/frame.rs:545
-a_work_area_thinner_than_the_handle_still_holds_it | crates/snipdeck-app/src/frame.rs:571
-a_docked_panel_on_the_left_or_right_takes_the_full_height | crates/snipdeck-app/src/frame.rs:577
-a_docked_panel_on_the_top_or_bottom_keeps_its_height_and_centres | crates/snipdeck-app/src/frame.rs:589
-a_docked_panel_keeps_the_panel_width_limits_and_stays_inside | crates/snipdeck-app/src/frame.rs:601
-a_collapsed_panel_opens_where_its_handle_is | crates/snipdeck-app/src/frame.rs:619
-a_frame_against_its_edge_is_flush_to_within_two_pixels | crates/snipdeck-app/src/frame.rs:637
-the_nearest_edge_is_the_one_the_panel_centre_is_closest_to | crates/snipdeck-app/src/frame.rs:650
-a_window_taller_than_the_work_area_is_cut_and_moved_onto_it | crates/snipdeck-app/src/frame.rs:659
-screen | crates/snipdeck-app/src/frame.rs:666
-a_window_opens_centred_over_its_owner | crates/snipdeck-app/src/frame.rs:676
-a_window_over_an_owner_at_the_edge_is_moved_inside_the_work_area | crates/snipdeck-app/src/frame.rs:696
-a_window_larger_than_the_work_area_is_cut_to_it | crates/snipdeck-app/src/frame.rs:710
-an_owner_on_another_monitor_still_gives_a_window_on_this_one | crates/snipdeck-app/src/frame.rs:716
-a_window_that_fits_is_left_alone | crates/snipdeck-app/src/frame.rs:737
-a_monitor_id_names_its_size_too | crates/snipdeck-app/src/frame.rs:746
+WINDOW_GAP | crates/snipdeck-app/src/frame.rs:344
+gap_px | crates/snipdeck-app/src/frame.rs:349
+overlap | crates/snipdeck-app/src/frame.rs:360
+place_beside | crates/snipdeck-app/src/frame.rs:381
+inside | crates/snipdeck-app/src/frame.rs:437
+tests | crates/snipdeck-app/src/frame.rs:444
+monitor | crates/snipdeck-app/src/frame.rs:447
+at | crates/snipdeck-app/src/frame.rs:460
+a_window_that_fits_opens_at_its_wanted_size | crates/snipdeck-app/src/frame.rs:465
+a_window_taller_than_the_work_area_is_cut_to_it_with_room_for_the_title_bar | crates/snipdeck-app/src/frame.rs:470
+a_tiny_work_area_still_gives_a_positive_size | crates/snipdeck-app/src/frame.rs:479
+width_is_held_between_260_and_480 | crates/snipdeck-app/src/frame.rs:486
+the_limits_are_logical_so_they_grow_with_the_scale | crates/snipdeck-app/src/frame.rs:494
+height_is_held_between_the_minimum_and_the_work_area | crates/snipdeck-app/src/frame.rs:502
+the_frame_is_moved_inside_the_work_area | crates/snipdeck-app/src/frame.rs:509
+a_work_area_that_does_not_start_at_zero_is_respected | crates/snipdeck-app/src/frame.rs:517
+a_work_area_smaller_than_the_minimum_wins_over_it | crates/snipdeck-app/src/frame.rs:525
+a_nonsense_scale_counts_as_one | crates/snipdeck-app/src/frame.rs:532
+area | crates/snipdeck-app/src/frame.rs:538
+a_left_handle_is_a_six_pixel_strip_over_the_panels_former_height | crates/snipdeck-app/src/frame.rs:543
+a_right_handle_is_flush_with_the_far_edge | crates/snipdeck-app/src/frame.rs:549
+top_and_bottom_handles_run_along_the_width | crates/snipdeck-app/src/frame.rs:555
+the_handle_thickness_is_logical_so_it_grows_with_the_scale | crates/snipdeck-app/src/frame.rs:567
+a_handle_is_cut_to_the_work_area | crates/snipdeck-app/src/frame.rs:573
+a_span_outside_the_work_area_gives_the_whole_edge | crates/snipdeck-app/src/frame.rs:585
+a_work_area_that_does_not_start_at_zero_gets_its_own_edge | crates/snipdeck-app/src/frame.rs:600
+every_handle_lies_inside_the_work_area | crates/snipdeck-app/src/frame.rs:617
+a_work_area_thinner_than_the_handle_still_holds_it | crates/snipdeck-app/src/frame.rs:643
+a_docked_panel_on_the_left_or_right_takes_the_full_height | crates/snipdeck-app/src/frame.rs:649
+a_docked_panel_on_the_top_or_bottom_keeps_its_height_and_centres | crates/snipdeck-app/src/frame.rs:661
+a_docked_panel_keeps_the_panel_width_limits_and_stays_inside | crates/snipdeck-app/src/frame.rs:673
+a_collapsed_panel_opens_where_its_handle_is | crates/snipdeck-app/src/frame.rs:691
+a_frame_against_its_edge_is_flush_to_within_two_pixels | crates/snipdeck-app/src/frame.rs:709
+the_nearest_edge_is_the_one_the_panel_centre_is_closest_to | crates/snipdeck-app/src/frame.rs:722
+a_window_taller_than_the_work_area_is_cut_and_moved_onto_it | crates/snipdeck-app/src/frame.rs:731
+screen | crates/snipdeck-app/src/frame.rs:738
+a_window_opens_right_of_its_parent_lined_up_with_its_top | crates/snipdeck-app/src/frame.rs:750
+a_window_opens_left_of_a_parent_with_no_room_on_its_right | crates/snipdeck-app/src/frame.rs:757
+a_window_opens_below_a_parent_wide_enough_to_leave_no_side_room | crates/snipdeck-app/src/frame.rs:764
+a_window_opens_above_a_parent_low_on_a_wide_screen | crates/snipdeck-app/src/frame.rs:771
+a_tall_window_beside_a_low_parent_is_moved_up_onto_the_work_area | crates/snipdeck-app/src/frame.rs:778
+the_gap_is_kept_between_the_windows | crates/snipdeck-app/src/frame.rs:785
+with_no_side_that_fits_the_window_covers_the_least_of_the_parent | crates/snipdeck-app/src/frame.rs:792
+a_parent_filling_the_work_area_gets_the_window_centred_over_it | crates/snipdeck-app/src/frame.rs:801
+a_window_larger_than_the_work_area_is_cut_to_it | crates/snipdeck-app/src/frame.rs:807
+a_parent_on_another_monitor_still_gives_a_window_on_this_one | crates/snipdeck-app/src/frame.rs:813
+a_parent_on_a_monitor_left_of_the_origin_gets_the_window_on_its_right | crates/snipdeck-app/src/frame.rs:825
+the_gap_follows_the_display_scale | crates/snipdeck-app/src/frame.rs:832
+a_window_that_fits_is_left_alone | crates/snipdeck-app/src/frame.rs:840
+a_monitor_id_names_its_size_too | crates/snipdeck-app/src/frame.rs:849
 
 ### crates/snipdeck-app/src/headless.rs
 
@@ -1742,24 +1753,24 @@ note_opener | crates/snipdeck-app/src/native_window.rs:292
 last_opener | crates/snipdeck-app/src/native_window.rs:298
 owner | crates/snipdeck-app/src/native_window.rs:303
 place_over_owner | crates/snipdeck-app/src/native_window.rs:322
-ActiveWindows | crates/snipdeck-app/src/native_window.rs:373
-impl ActiveWindows<Id> | crates/snipdeck-app/src/native_window.rs:378
-new | crates/snipdeck-app/src/native_window.rs:381
-set | crates/snipdeck-app/src/native_window.rs:389
-take_change | crates/snipdeck-app/src/native_window.rs:398
-impl Default for ActiveWindows<Id> | crates/snipdeck-app/src/native_window.rs:407
-default | crates/snipdeck-app/src/native_window.rs:408
-FOCUS_SETTLE | crates/snipdeck-app/src/native_window.rs:414
-ActiveFn | crates/snipdeck-app/src/native_window.rs:416
-on_own_window_active | crates/snipdeck-app/src/native_window.rs:427
-note_window_event | crates/snipdeck-app/src/native_window.rs:433
-track_focus | crates/snipdeck-app/src/native_window.rs:451
-restore_place | crates/snipdeck-app/src/native_window.rs:462
-place_of | crates/snipdeck-app/src/native_window.rs:499
-raise_window | crates/snipdeck-app/src/native_window.rs:524
-tests | crates/snipdeck-app/src/native_window.rs:527
-a_window_gaining_the_focus_is_reported_once | crates/snipdeck-app/src/native_window.rs:531
-focus_passing_between_two_windows_is_no_change | crates/snipdeck-app/src/native_window.rs:542
+ActiveWindows | crates/snipdeck-app/src/native_window.rs:378
+impl ActiveWindows<Id> | crates/snipdeck-app/src/native_window.rs:383
+new | crates/snipdeck-app/src/native_window.rs:386
+set | crates/snipdeck-app/src/native_window.rs:394
+take_change | crates/snipdeck-app/src/native_window.rs:403
+impl Default for ActiveWindows<Id> | crates/snipdeck-app/src/native_window.rs:412
+default | crates/snipdeck-app/src/native_window.rs:413
+FOCUS_SETTLE | crates/snipdeck-app/src/native_window.rs:419
+ActiveFn | crates/snipdeck-app/src/native_window.rs:421
+on_own_window_active | crates/snipdeck-app/src/native_window.rs:432
+note_window_event | crates/snipdeck-app/src/native_window.rs:438
+track_focus | crates/snipdeck-app/src/native_window.rs:456
+restore_place | crates/snipdeck-app/src/native_window.rs:467
+place_of | crates/snipdeck-app/src/native_window.rs:504
+raise_window | crates/snipdeck-app/src/native_window.rs:529
+tests | crates/snipdeck-app/src/native_window.rs:532
+a_window_gaining_the_focus_is_reported_once | crates/snipdeck-app/src/native_window.rs:536
+focus_passing_between_two_windows_is_no_change | crates/snipdeck-app/src/native_window.rs:547
 
 ### crates/snipdeck-app/src/onboarding_binding.rs
 
@@ -5662,7 +5673,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/doctor.rs` (inline) | 11 |
 | `crates/snipdeck-app/src/drafts.rs` (inline) | 5 |
 | `crates/snipdeck-app/src/fill.rs` (inline) | 6 |
-| `crates/snipdeck-app/src/frame.rs` (inline) | 32 |
+| `crates/snipdeck-app/src/frame.rs` (inline) | 40 |
 | `crates/snipdeck-app/src/headless.rs` (inline) | 4 |
 | `crates/snipdeck-app/src/help_binding.rs` (inline) | 2 |
 | `crates/snipdeck-app/src/host.rs` (inline) | 9 |

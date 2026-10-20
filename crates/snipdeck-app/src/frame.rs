@@ -340,25 +340,97 @@ pub fn open_size(wanted: (f32, f32), monitor: &Monitor) -> (f32, f32) {
     (w.max(1.0), h.max(1.0))
 }
 
-/// Where a secondary window of outer `size` (physical pixels) opens: centred over `owner` (the
-/// window it was opened from; pass the work area itself to centre on the screen), then cut to
-/// `work_area` and moved inside it, so it never hangs under the taskbar or off the monitor. The
-/// owner may be on a monitor other than `work_area`'s, or half off screen: the result is still
-/// on `work_area`.
+/// The air between a secondary window and the one it opens beside, in logical pixels.
+pub const WINDOW_GAP: f32 = 8.0;
+
+/// [`WINDOW_GAP`] in physical pixels on a display at `scale` (1.5 for 150 %), so the gap looks
+/// the same on every screen.
 #[must_use]
-pub fn place_near(owner: Rect, size: (u32, u32), work_area: Rect) -> Rect {
-    let w = size.0.min(work_area.w);
-    let h = size.1.min(work_area.h);
-    let centred = |start: i32, span: u32, len: u32| {
-        let half = (i64::from(span) - i64::from(len)) / 2;
-        i32::try_from(i64::from(start) + half).unwrap_or(start)
+pub fn gap_px(scale: f32) -> u32 {
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "a gap of a few pixels is positive and far below u32::MAX"
+    )]
+    let px = (WINDOW_GAP * scale.max(1.0)).round() as u32;
+    px
+}
+
+/// How many pixels of `a` and `b` overlap.
+fn overlap(a: Rect, b: Rect) -> u64 {
+    let span = |a0: i32, al: u32, b0: i32, bl: u32| {
+        let lo = i64::from(a0).max(i64::from(b0));
+        let hi = (i64::from(a0) + i64::from(al)).min(i64::from(b0) + i64::from(bl));
+        u64::try_from((hi - lo).max(0)).unwrap_or(0)
     };
-    Rect {
-        x: inside(centred(owner.x, owner.w, w), w, work_area.x, work_area.w),
-        y: inside(centred(owner.y, owner.h, h), h, work_area.y, work_area.h),
-        w,
-        h,
+    span(a.x, a.w, b.x, b.w) * span(a.y, a.h, b.y, b.h)
+}
+
+/// Where a secondary window of outer `size` (physical pixels) opens beside `parent`, the window
+/// it was opened from, on `work_area` (the monitor without its taskbar), `gap` pixels away
+/// (see [`gap_px`]). The sides are tried in order: right of the parent, left, below, above; a
+/// side fits when the whole window is on the work area there. The window lines up with the
+/// parent's top (or left edge) and is moved along the side as far as the work area needs.
+///
+/// When no side fits, the window is cut to the work area and put on the side where it covers
+/// the least of the parent. When it cannot avoid covering the parent (a maximised parent, say),
+/// it is centred over it instead. `parent` may be on another monitor, or half off screen: the
+/// result is always on `work_area`. Pass the work area itself as the parent to centre a window
+/// on the screen.
+#[must_use]
+pub fn place_beside(parent: Rect, size: (u32, u32), work_area: Rect, gap: u32) -> Rect {
+    let (w, h) = (size.0.min(work_area.w), size.1.min(work_area.h));
+    let (gap, wide, high) = (i64::from(gap), i64::from(w), i64::from(h));
+    let (px, py) = (i64::from(parent.x), i64::from(parent.y));
+    let (right, below) = (
+        px + i64::from(parent.w) + gap,
+        py + i64::from(parent.h) + gap,
+    );
+    // Right, left, below, above: the wanted corner, before the work area is taken into account.
+    let wanted = [
+        (right, py),
+        (px - gap - wide, py),
+        (px, below),
+        (px, py - gap - high),
+    ];
+    let clamp = |x: i64, y: i64| {
+        let x = i32::try_from(x).unwrap_or(work_area.x);
+        let y = i32::try_from(y).unwrap_or(work_area.y);
+        Rect {
+            x: inside(x, w, work_area.x, work_area.w),
+            y: inside(y, h, work_area.y, work_area.h),
+            w,
+            h,
+        }
+    };
+    let placed: Vec<Rect> = wanted.iter().map(|&(x, y)| clamp(x, y)).collect();
+    // The side axis is the one the window was put past the parent on: it must not have moved.
+    let fits = |i: usize| {
+        let (at, (x, y)) = (placed[i], wanted[i]);
+        if i < 2 {
+            i64::from(at.x) == x
+        } else {
+            i64::from(at.y) == y
+        }
+    };
+    if let Some(i) = (0..4).find(|&i| fits(i)) {
+        return placed[i];
     }
+    let (best, least) = placed
+        .iter()
+        .map(|&at| (at, overlap(at, parent)))
+        .reduce(|best, next| if next.1 < best.1 { next } else { best })
+        .unwrap_or((placed[0], 0));
+    let unavoidable = u64::from(w) * u64::from(h);
+    let parent_area = u64::from(parent.w) * u64::from(parent.h);
+    if least < unavoidable.min(parent_area) {
+        return best;
+    }
+    let half = |start: i32, span: u32, len: u32| {
+        (i64::from(start) + (i64::from(span) - i64::from(len)) / 2)
+            .clamp(i64::from(i32::MIN), i64::from(i32::MAX))
+    };
+    clamp(half(parent.x, parent.w, w), half(parent.y, parent.h, h))
 }
 
 /// `start` moved so `[start, start + len)` lies in `[low, low + span)`.
@@ -672,65 +744,96 @@ mod tests {
         }
     }
 
+    const GAP: u32 = 8;
+
     #[test]
-    fn a_window_opens_centred_over_its_owner() {
-        let owner = Rect {
-            x: 400,
-            y: 200,
-            w: 1000,
-            h: 600,
-        };
-        let placed = place_near(owner, (600, 400), screen());
-        assert_eq!(
-            placed,
-            Rect {
-                x: 600,
-                y: 300,
-                w: 600,
-                h: 400
-            }
-        );
+    fn a_window_opens_right_of_its_parent_lined_up_with_its_top() {
+        let parent = at(400, 200, 500, 600);
+        let placed = place_beside(parent, (600, 400), screen(), GAP);
+        assert_eq!(placed, at(908, 200, 600, 400));
     }
 
     #[test]
-    fn a_window_over_an_owner_at_the_edge_is_moved_inside_the_work_area() {
-        // The owner sits low and right: a centred editor would end under the taskbar.
-        let owner = Rect {
-            x: 1500,
-            y: 800,
-            w: 400,
-            h: 300,
-        };
-        let placed = place_near(owner, (560, 700), screen());
-        assert_eq!((placed.x, placed.y), (1360, 340));
-        assert!(placed.y + 700 <= 1040 && placed.x + 560 <= 1920);
+    fn a_window_opens_left_of_a_parent_with_no_room_on_its_right() {
+        let parent = at(1200, 200, 700, 600);
+        let placed = place_beside(parent, (600, 400), screen(), GAP);
+        assert_eq!(placed, at(592, 200, 600, 400));
+    }
+
+    #[test]
+    fn a_window_opens_below_a_parent_wide_enough_to_leave_no_side_room() {
+        let parent = at(100, 50, 1700, 300);
+        let placed = place_beside(parent, (600, 400), screen(), GAP);
+        assert_eq!(placed, at(100, 358, 600, 400));
+    }
+
+    #[test]
+    fn a_window_opens_above_a_parent_low_on_a_wide_screen() {
+        let parent = at(100, 700, 1700, 300);
+        let placed = place_beside(parent, (600, 400), screen(), GAP);
+        assert_eq!(placed, at(100, 292, 600, 400));
+    }
+
+    #[test]
+    fn a_tall_window_beside_a_low_parent_is_moved_up_onto_the_work_area() {
+        let parent = at(100, 800, 400, 200);
+        let placed = place_beside(parent, (560, 700), screen(), GAP);
+        assert_eq!(placed, at(508, 340, 560, 700));
+    }
+
+    #[test]
+    fn the_gap_is_kept_between_the_windows() {
+        let parent = at(100, 100, 300, 300);
+        let placed = place_beside(parent, (200, 200), screen(), 12);
+        assert_eq!(placed.x, 412);
+    }
+
+    #[test]
+    fn with_no_side_that_fits_the_window_covers_the_least_of_the_parent() {
+        let parent = at(100, 70, 1700, 900);
+        let placed = place_beside(parent, (600, 400), screen(), GAP);
+        assert_eq!(placed, at(1320, 70, 600, 400));
+        assert!(placed.x + 600 <= 1920 && placed.y + 400 <= 1040);
+        assert!(overlap(placed, parent) < 600 * 400);
+    }
+
+    #[test]
+    fn a_parent_filling_the_work_area_gets_the_window_centred_over_it() {
+        let placed = place_beside(screen(), (600, 400), screen(), GAP);
+        assert_eq!(placed, at(660, 320, 600, 400));
     }
 
     #[test]
     fn a_window_larger_than_the_work_area_is_cut_to_it() {
-        let placed = place_near(screen(), (3000, 2000), screen());
+        let placed = place_beside(screen(), (3000, 2000), screen(), GAP);
         assert_eq!(placed, screen());
     }
 
     #[test]
-    fn an_owner_on_another_monitor_still_gives_a_window_on_this_one() {
-        let second = Rect {
-            x: 1920,
-            y: 0,
-            w: 1280,
-            h: 720,
-        };
-        let owner = Rect {
-            x: -200,
-            y: 100,
-            w: 600,
-            h: 400,
-        };
-        let placed = place_near(owner, (500, 500), second);
-        assert_eq!((placed.x, placed.y), (1920, 50));
-        // Centring on a work area itself is centring on the screen.
-        let centred = place_near(second, (500, 500), second);
+    fn a_parent_on_another_monitor_still_gives_a_window_on_this_one() {
+        let second = at(1920, 0, 1280, 720);
+        let parent = at(-200, 100, 600, 400);
+        let placed = place_beside(parent, (500, 500), second, GAP);
+        assert_eq!(placed, at(1920, 100, 500, 500));
+        assert_eq!(overlap(placed, parent), 0);
+        // The work area itself as the parent is the centre of the screen.
+        let centred = place_beside(second, (500, 500), second, GAP);
         assert_eq!((centred.x, centred.y), (1920 + 390, 110));
+    }
+
+    #[test]
+    fn a_parent_on_a_monitor_left_of_the_origin_gets_the_window_on_its_right() {
+        let area = at(-1920, 0, 1920, 1040);
+        let placed = place_beside(at(-1800, 100, 400, 300), (500, 400), area, GAP);
+        assert_eq!(placed, at(-1392, 100, 500, 400));
+    }
+
+    #[test]
+    fn the_gap_follows_the_display_scale() {
+        assert_eq!(gap_px(1.0), 8);
+        assert_eq!(gap_px(1.5), 12);
+        assert_eq!(gap_px(2.0), 16);
+        assert_eq!(gap_px(0.0), 8);
     }
 
     #[test]

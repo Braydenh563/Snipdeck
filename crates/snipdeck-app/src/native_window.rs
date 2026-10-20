@@ -313,9 +313,9 @@ fn owner() -> Option<(Rect, Option<Monitor>)> {
     })
 }
 
-/// Positions (and, if need be, shrinks) a secondary window that is about to be shown: centred
-/// over the window it was opened from (the Main window or the Panel), else centred on the
-/// monitor under the pointer, and always inside that monitor's work area. Call it right before
+/// Positions (and, if need be, shrinks) a secondary window that is about to be shown: beside
+/// the window it was opened from (the Main window or the Panel; see [`frame::place_beside`]),
+/// else centred on the monitor under the pointer, and always inside that monitor's work area. Call it right before
 /// `show()`, after the size is set: a window that is already up is left where it is. Without a
 /// native window (tests, other platforms) nothing happens and [`fit_to_screen`] stays the
 /// fallback after the show.
@@ -355,7 +355,12 @@ pub fn place_over_owner(window: &slint::Window) {
         inner.0,
         inner.1.saturating_add(physical(frame::WINDOW_CHROME)),
     );
-    let at = frame::place_near(owner, outer, monitor.work_area);
+    let at = frame::place_beside(
+        owner,
+        outer,
+        monitor.work_area,
+        frame::gap_px(monitor.scale),
+    );
     crate::trace!(
         "place window {inner:?} over {owner:?} -> {at:?} in {:?}",
         monitor.work_area
