@@ -117,6 +117,16 @@ export global ToastTexts {
     pure public function items-moved(count: int, list: string) -> string {
         return @tr("Moved {} item to {}" | "Moved {} items to {}" % count, count, list);
     }
+    // The Panel's item menu is drawn by the host; its two move rows are translated here.
+    pure public function menu-move-up() -> string {
+        return @tr("Move up");
+    }
+    pure public function menu-move-down() -> string {
+        return @tr("Move down");
+    }
+    pure public function item-placed(position: int, total: int) -> string {
+        return @tr("Moved to position {} of {}", position, total);
+    }
     pure public function deleted-forever() -> string {
         return @tr("Deleted for good");
     }

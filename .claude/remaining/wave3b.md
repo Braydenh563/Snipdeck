@@ -50,3 +50,7 @@
 - Next: independent review, PR into the release branch, report to hub.
 - Unverified on Windows: drag feel and drop indicators in the Panel and tiles. The Panel has no keyboard reorder; Alt+Up/Down in the Main window is the alternative.
 - Review follow-ups: fixed reorderable flag update, selection follows the moved Panel row, sorted/search tests. Left: Move up/down entries in the item menus and Alt+Up/Down in the Panel (WCAG 2.5.7), tile click/menu tests.
+
+## move (branch claude/v1-wave3b-move, WCAG 2.5.7)
+- Done: Move up / Move down in the Main item menu and the Panel item menu (disabled at the ends, in sorted lists, in a search, in a multi-selection); Alt+Up/Alt+Down in the Panel; ItemPlaced toast ("Moved to position N of M") for keyboard and menu moves in both windows; tile click/menu test; 6 locales translated; Panel shortcuts sheet line.
+- Next: gate, independent reviewer (Sonnet), PR into the release branch, merge release tip, report.

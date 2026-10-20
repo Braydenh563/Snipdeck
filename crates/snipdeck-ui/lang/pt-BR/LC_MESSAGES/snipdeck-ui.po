@@ -889,6 +889,9 @@ msgstr "Mais usados"
 msgid "Move"
 msgstr "Mover"
 
+msgid "Move down"
+msgstr "Mover para baixo"
+
 msgid "Move selected item to Trash"
 msgstr "Mover item selecionado para a Lixeira"
 
@@ -912,6 +915,12 @@ msgstr "Mover para a lista"
 
 msgid "Move to list…"
 msgstr "Mover para a lista…"
+
+msgid "Move up"
+msgstr "Mover para cima"
+
+msgid "Moved to position {} of {}"
+msgstr "Movido para a posição {} de {}"
 
 msgid "Moved {} item to the Trash"
 msgid_plural "Moved {} items to the Trash"

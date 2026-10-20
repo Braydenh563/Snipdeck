@@ -889,6 +889,9 @@ msgstr "Am häufigsten verwendet"
 msgid "Move"
 msgstr "Verschieben"
 
+msgid "Move down"
+msgstr "Nach unten"
+
 msgid "Move selected item to Trash"
 msgstr "Ausgewählten Textbaustein in den Papierkorb verschieben"
 
@@ -912,6 +915,12 @@ msgstr "In Liste verschieben"
 
 msgid "Move to list…"
 msgstr "In Liste verschieben…"
+
+msgid "Move up"
+msgstr "Nach oben"
+
+msgid "Moved to position {} of {}"
+msgstr "Verschoben auf Position {} von {}"
 
 msgid "Moved {} item to the Trash"
 msgid_plural "Moved {} items to the Trash"

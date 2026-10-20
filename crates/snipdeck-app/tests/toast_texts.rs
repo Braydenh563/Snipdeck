@@ -88,10 +88,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::NotSaved => 61,
         ToastMessage::NotOpened => 62,
         ToastMessage::DraftNotSaved => 63,
+        ToastMessage::ItemPlaced { .. } => 64,
     }
 }
 
-const VARIANTS: usize = 64;
+const VARIANTS: usize = 65;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -179,6 +180,10 @@ fn samples() -> Vec<ToastMessage> {
         M::NotSaved,
         M::NotOpened,
         M::DraftNotSaved,
+        M::ItemPlaced {
+            position: 2,
+            total: 7,
+        },
         // The same messages with the other shapes of their arguments.
         M::Pasted { app: String::new() },
         M::CopiedElevated { app: String::new() },
@@ -247,6 +252,13 @@ fn what_a_toast_carries_reaches_its_sentence() {
                 list: s("Code")
             }),
             "Moved 2 items to Code"
+        );
+        assert_eq!(
+            said(ToastMessage::ItemPlaced {
+                position: 2,
+                total: 7
+            }),
+            "Moved to position 2 of 7"
         );
         assert_eq!(
             said(ToastMessage::ListTrashed { name: s("Code") }),
