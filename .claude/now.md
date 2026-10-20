@@ -7,6 +7,7 @@ Goal: ship v1 by the morning. Branch `claude/compassionate-pascal-pod8ux`, PR #5
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-10-20 Supporter contact email = brayden.hoyle@outlook.com (owner supplied, replaces placeholder; public in app/README/site).
 - 2026-10-20: Weekly stop line raised from 84-85% to 87% (owner: "Go to 87% usage if you need it but I hope not"). Wrap-up at 87%: Morning summary with done, cut short, every remaining item.
 - 2026-10-20: Windows Hello quick unlock ships in v1.1, on top of the master password (so Supporter, like the master password). Hello must protect the key, not only gate the UI; the password stays required after a restart and every N days. No passkeys or TOTP authenticator: offline, they add steps but no security. Owner: "1.1".
 - 2026-10-20: Colour picker + screen eyedropper (formats, schemes, contrast) ships in v1.1, not v1. Owner: "alright v1.1 then". Reason: medium size, Windows-only eyedropper, would delay ship.
@@ -31,6 +32,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-10-18: The owner said "you are fable btw": this session runs on Fable, so it IS the one permitted Fable agent. Step 4 (docs/fable-brief.md) is done by this session: Fable does analysis, design calls, security review and judgement; Sonnet/Haiku agents do the mechanical implementation with exact file/line instructions; no second Fable agent is spawned (that would be two). Token rules of the brief still apply to this session (grep CODEMAP, line ranges, no whole build logs).
 
 ## Inbox
+- 2026-10-20 09:05 owner: "here is my main professional email you cna use: brayden.hoyle@outlook.com" -> Supporter contact address; sent to Fable (F4).
 - 2026-10-20 owner: "Go to 87% usage if you need it but I hope not. I’ve given fable some other things to check so that the audit is thorough and make sure to hit the things I want to double and triple check on top of the things you told it to audit. Make sure it doesn’t leave out the other things you told it to audit either. Make sure you are efficiently managing each session and pushing to finish. Are we nearly ready?" -> stop line now 87%; Fable to merge both lists into .claude/remaining/fable.md.
 - 2026-10-20 owner: "Should we add on top of the  verification for private items or whoever password verification the ability to use the windows hello or passkey verification through the os and/or like an Authenticator??" -> decided v1.1 (see Decisions).
 - 2026-10-20 owner: "If you do end up having to wrap up early, please make sure that nothing is missed and note if things were cut shorter than they were supposed to, and list the things left so I can decide if I want to do them but again I’m hoping you finish before that" -> placed in wrap-up procedure (Morning summary: cut-short items + full remaining list).
