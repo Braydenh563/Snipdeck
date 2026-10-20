@@ -2618,68 +2618,6 @@ attachment_name_text | crates/snipdeck-app/src/wording.rs:501
 attachment_detail_text | crates/snipdeck-app/src/wording.rs:517
 editor_problem_text | crates/snipdeck-app/src/wording.rs:538
 
-### crates/snipdeck-app/src/wording.rs
-
-tray_labels | crates/snipdeck-app/src/wording.rs:28
-item_label_name | crates/snipdeck-app/src/wording.rs:43
-list_icon_name | crates/snipdeck-app/src/wording.rs:58
-import_warning_text | crates/snipdeck-app/src/wording.rs:95
-numbered_label | crates/snipdeck-app/src/wording.rs:132
-toast_text | crates/snipdeck-app/src/wording.rs:144
-licence_problem_text | crates/snipdeck-app/src/wording.rs:229
-LANGUAGE_NAMES | crates/snipdeck-app/src/wording.rs:247
-LANGUAGE_TAGS | crates/snipdeck-app/src/wording.rs:258
-UNDO_LABEL | crates/snipdeck-app/src/wording.rs:261
-OPEN_LOG_LABEL | crates/snipdeck-app/src/wording.rs:264
-import_problem_text | crates/snipdeck-app/src/wording.rs:269
-history_source_name | crates/snipdeck-app/src/wording.rs:292
-toast_button_text | crates/snipdeck-app/src/wording.rs:298
-use_label_text | crates/snipdeck-app/src/wording.rs:311
-app_menu_text | crates/snipdeck-app/src/wording.rs:326
-app_menu_shortcut | crates/snipdeck-app/src/wording.rs:360
-item_menu_shortcut | crates/snipdeck-app/src/wording.rs:372
-item_menu_label | crates/snipdeck-app/src/wording.rs:389
-board_menu_text | crates/snipdeck-app/src/wording.rs:412
-int | crates/snipdeck-app/src/wording.rs:431
-name_error_text | crates/snipdeck-app/src/wording.rs:437
-tag_rename_error_text | crates/snipdeck-app/src/wording.rs:453
-delete_hint_text | crates/snipdeck-app/src/wording.rs:468
-size_text | crates/snipdeck-app/src/wording.rs:481
-attachment_name_text | crates/snipdeck-app/src/wording.rs:501
-attachment_detail_text | crates/snipdeck-app/src/wording.rs:517
-editor_problem_text | crates/snipdeck-app/src/wording.rs:538
-
-### crates/snipdeck-app/src/wording.rs
-
-tray_labels | crates/snipdeck-app/src/wording.rs:28
-item_label_name | crates/snipdeck-app/src/wording.rs:43
-list_icon_name | crates/snipdeck-app/src/wording.rs:58
-import_warning_text | crates/snipdeck-app/src/wording.rs:95
-numbered_label | crates/snipdeck-app/src/wording.rs:132
-toast_text | crates/snipdeck-app/src/wording.rs:144
-licence_problem_text | crates/snipdeck-app/src/wording.rs:229
-LANGUAGE_NAMES | crates/snipdeck-app/src/wording.rs:247
-LANGUAGE_TAGS | crates/snipdeck-app/src/wording.rs:258
-UNDO_LABEL | crates/snipdeck-app/src/wording.rs:261
-OPEN_LOG_LABEL | crates/snipdeck-app/src/wording.rs:264
-import_problem_text | crates/snipdeck-app/src/wording.rs:269
-history_source_name | crates/snipdeck-app/src/wording.rs:292
-toast_button_text | crates/snipdeck-app/src/wording.rs:298
-use_label_text | crates/snipdeck-app/src/wording.rs:311
-app_menu_text | crates/snipdeck-app/src/wording.rs:326
-app_menu_shortcut | crates/snipdeck-app/src/wording.rs:360
-item_menu_shortcut | crates/snipdeck-app/src/wording.rs:372
-item_menu_label | crates/snipdeck-app/src/wording.rs:389
-board_menu_text | crates/snipdeck-app/src/wording.rs:412
-int | crates/snipdeck-app/src/wording.rs:431
-name_error_text | crates/snipdeck-app/src/wording.rs:437
-tag_rename_error_text | crates/snipdeck-app/src/wording.rs:453
-delete_hint_text | crates/snipdeck-app/src/wording.rs:468
-size_text | crates/snipdeck-app/src/wording.rs:481
-attachment_name_text | crates/snipdeck-app/src/wording.rs:501
-attachment_detail_text | crates/snipdeck-app/src/wording.rs:517
-editor_problem_text | crates/snipdeck-app/src/wording.rs:538
-
 ### crates/snipdeck-core/build.rs
 
 key_selection | crates/snipdeck-core/build.rs:13
@@ -5978,7 +5916,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/primitives.rs` | 6 |
 | `crates/snipdeck-ui/tests/primitives_logic.rs` | 22 |
 | `crates/snipdeck-ui/tests/primitives_pixels.rs` | 8 |
-| `crates/snipdeck-ui/tests/repaint.rs` | 3 |
+| `crates/snipdeck-ui/tests/repaint.rs` | 4 |
 | `crates/snipdeck-ui/tests/review_fixes_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/review_fixes_pixels.rs` | 5 |
 | `crates/snipdeck-ui/tests/support/editor_fixture.rs` | 0 |

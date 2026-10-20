@@ -155,7 +155,7 @@ Icons: **Phosphor (Regular)**, MIT licence, 16px in rows and 20px in toolbars. T
 | App launcher / switcher | none | | `dots-nine` (bento) |
 | Choose from a list (Board switcher, Select) | `caret-down` after the label | | a hamburger or ··· |
 | Disclose / collapse | `caret-right` / `caret-down`; strip scroll `caret-left` / `caret-right` | | |
-| Keep the Panel on top | `push-pin-simple`, pressed state when on | Panel header | the item pin glyph |
+| Keep the Panel on top | `push-pin`, pressed state when on | Panel header | (the tooltip and checked state carry the meaning) |
 | Pinned item | `push-pin` (filled when pinned) | rows, cards, strip | |
 | Create | `plus` | | |
 | Edit / rename | `pencil-simple` | | |

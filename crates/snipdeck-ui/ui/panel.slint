@@ -873,10 +873,10 @@ export component PanelWindow inherits Window {
                             menu-requested => { root.board-menu-requested(); }
                         }
                         Rectangle { horizontal-stretch: 1; }
-                        // Always-on-top toggle. A diagonal tack (`push-pin-simple`), not the `push-pin`
-                        // used on pinned snippets, so it does not read as "pin this item".
+                        // Always-on-top toggle: the Phosphor pushpin (owner preferred it to the flat tack); its
+                        // tooltip and checked state say "Keep panel on top".
                         pin := IconButton {
-                            icon: Icons.push-pin-simple;
+                            icon: Icons.push-pin;
                             tooltip: @tr("Keep panel on top");
                             active: root.on-top;
                             accessible-checkable: true;
