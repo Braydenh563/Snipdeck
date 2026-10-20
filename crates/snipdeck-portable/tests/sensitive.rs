@@ -580,3 +580,34 @@ fn a_locked_library_with_encrypted_items_can_still_skip_duplicates() {
     assert_eq!(report.items_added, 1, "{report:?}");
     assert_healthy(&s);
 }
+
+#[test]
+fn an_encrypted_payload_on_an_item_marked_not_sensitive_is_refused() {
+    let key = DataKey::generate().unwrap();
+    let bytes = export_bytes(
+        &library(),
+        &ExportOptions {
+            sensitive: SensitivePolicy::Encrypt(&key),
+            ..ExportOptions::default()
+        },
+    );
+    let crafted = edit_json(&bytes, "items.json", |doc| {
+        doc["boards"][0]["lists"][0]["items"][1]["sensitive"] = false.into();
+    });
+    for dry_run in [false, true] {
+        let mut fresh = store();
+        let before = snapshot(&fresh);
+        let opts = ImportOptions {
+            key: KeySource::Given(&key),
+            dry_run,
+            ..keep()
+        };
+        let err = import_archive(&mut fresh, Cursor::new(&crafted), "x", at(1), &opts).unwrap_err();
+        assert!(
+            matches!(err, Error::Malformed { .. }),
+            "dry_run {dry_run}: {err:?}"
+        );
+        assert!(err.to_string().contains("Bank PIN"), "{err}");
+        assert_same(&snapshot(&fresh), &before);
+    }
+}

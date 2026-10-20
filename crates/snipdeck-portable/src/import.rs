@@ -569,6 +569,23 @@ impl<R: Read + Seek> Builder<'_, R> {
         if dto.formats.is_empty() {
             return Err(Error::malformed(ITEMS, format!("item {id} has no formats")));
         }
+        // An encrypted payload on an item that says it is not sensitive would be decrypted with
+        // the library key and stored as plain text: a tampered `items.json` could strip the flag.
+        let any_encrypted = dto.formats.iter().any(|f| {
+            f.encrypted
+                || f.files
+                    .as_deref()
+                    .is_some_and(|files| files.iter().any(|file| file.encrypted))
+        });
+        if any_encrypted && !dto.sensitive {
+            return Err(Error::malformed(
+                ITEMS,
+                format!(
+                    "item {id} (`{}`) has an encrypted payload but is not marked sensitive",
+                    crate::error::display_name(&dto.title)
+                ),
+            ));
+        }
         let mut kinds = HashSet::new();
         let mut formats = Vec::with_capacity(dto.formats.len());
         for format in &dto.formats {
