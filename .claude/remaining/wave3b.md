@@ -49,3 +49,4 @@
 - Done: Panel row reorder by drag (`panel_drop_row`, `rows_reorderable`), Main tile drag (reorder and sidebar drop, reuses `main_drop_row`/`main_drop_on_list`), [D] file/image drops out of v1 recorded.
 - Next: independent review, PR into the release branch, report to hub.
 - Unverified on Windows: drag feel and drop indicators in the Panel and tiles. The Panel has no keyboard reorder; Alt+Up/Down in the Main window is the alternative.
+- Review follow-ups: fixed reorderable flag update, selection follows the moved Panel row, sorted/search tests. Left: Move up/down entries in the item menus and Alt+Up/Down in the Panel (WCAG 2.5.7), tile click/menu tests.

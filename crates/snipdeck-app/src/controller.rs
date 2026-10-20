@@ -1185,7 +1185,9 @@ where
                 self.library_changed();
                 if self.refresh_panel().is_err() {
                     self.show_toast(failed());
+                    return;
                 }
+                self.model.select_item(moved);
             }
             Err(_) => self.show_toast(failed()),
         }

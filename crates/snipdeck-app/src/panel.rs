@@ -391,6 +391,13 @@ impl PanelModel {
         (len > 0).then(|| self.selected.min(len - 1))
     }
 
+    /// Puts the selection on item `id` if it is among the rows shown.
+    pub fn select_item(&mut self, id: ItemId) {
+        if let Some(at) = self.rows().iter().position(|r| r.id == id) {
+            self.selected = at;
+        }
+    }
+
     /// Moves the selection by `delta` rows, stopping at the ends.
     pub fn move_selection(&mut self, delta: isize) {
         let len = self.rows().len();

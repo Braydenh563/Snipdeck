@@ -320,7 +320,7 @@ Importing text files, Ditto or CopyQ data has no screen in this version.
 
 ## Drag and drop
 
-Every drag has a keyboard or menu way to do the same thing.
+Most drags have a keyboard or menu way to do the same thing (the Panel's row reorder has none yet: use `Alt+Up` / `Alt+Down` in the Main window).
 
 - **Reorder snippets:** drag a snippet onto another one, in the Panel or in the Main window (list or tile
   view), in a list that is in manual order and with no search running. Keyboard: `Alt+Up` or `Alt+Down` in
