@@ -168,7 +168,8 @@ fn paste<C: Clipboard, K: Keyboard, T: Timing>(
     payload: &Payload,
     key: PasteKey,
 ) -> Result<UseOutcome, Error> {
-    // A failed snapshot only costs the restore; the paste itself still works.
+    // A failed snapshot only costs the restore; the paste itself still works, but the outcome says
+    // the item was left on the clipboard so a sensitive item can still be cleared later.
     let snapshot = env.clipboard.snapshot().ok();
     let written = env.clipboard.write_transient(payload)?;
 
@@ -194,11 +195,16 @@ fn paste<C: Clipboard, K: Keyboard, T: Timing>(
         return Ok(UseOutcome::CopiedInstead(PasteFailure::TargetUnavailable));
     }
     env.timing.sleep(SETTLE);
-    if let Some(snapshot) = snapshot {
-        // A restore that fails or finds newer content is not worth failing the paste for.
-        let _ = env.clipboard.restore(snapshot, written);
+    let Some(snapshot) = snapshot else {
+        return Ok(UseOutcome::PastedNotRestored);
+    };
+    // `Ok(false)`: the user copied something newer, so our item is already gone. A restore that
+    // errs leaves our item on the clipboard: that is not worth failing the paste for, but it is
+    // reported.
+    match env.clipboard.restore(snapshot, written) {
+        Ok(_) => Ok(UseOutcome::Pasted),
+        Err(_) => Ok(UseOutcome::PastedNotRestored),
     }
-    Ok(UseOutcome::Pasted)
 }
 
 #[cfg(test)]
@@ -282,11 +288,31 @@ mod tests {
     }
 
     #[test]
-    fn a_failed_snapshot_still_pastes_but_does_not_restore() {
+    fn a_failed_snapshot_still_pastes_but_does_not_restore_and_says_so() {
         let mut w = World::new();
         w.clipboard.fail_snapshot = true;
-        assert_eq!(w.run(UseMode::Paste, &PASTE), Ok(UseOutcome::Pasted));
+        assert_eq!(
+            w.run(UseMode::Paste, &PASTE),
+            Ok(UseOutcome::PastedNotRestored)
+        );
         assert!(!w.clipboard.log.contains(&"restore".to_string()));
+    }
+
+    #[test]
+    fn a_failed_restore_is_reported_as_not_restored() {
+        let mut w = World::new();
+        w.clipboard.restore_result = Some(Err(Error::Clipboard("busy".into())));
+        assert_eq!(
+            w.run(UseMode::Paste, &PASTE),
+            Ok(UseOutcome::PastedNotRestored)
+        );
+    }
+
+    #[test]
+    fn a_restore_that_finds_newer_content_is_a_plain_paste() {
+        let mut w = World::new();
+        w.clipboard.restore_result = Some(Ok(false));
+        assert_eq!(w.run(UseMode::Paste, &PASTE), Ok(UseOutcome::Pasted));
     }
 
     #[test]
@@ -302,10 +328,17 @@ mod tests {
 
     #[test]
     fn a_refused_or_failed_restore_does_not_fail_the_paste() {
-        for result in [Ok(false), Err(Error::Clipboard("busy".into()))] {
+        // Refused (newer content): our item is gone, a plain paste. Failed: it may still be there.
+        for (result, outcome) in [
+            (Ok(false), UseOutcome::Pasted),
+            (
+                Err(Error::Clipboard("busy".into())),
+                UseOutcome::PastedNotRestored,
+            ),
+        ] {
             let mut w = World::new();
             w.clipboard.restore_result = Some(result);
-            assert_eq!(w.run(UseMode::Paste, &PASTE), Ok(UseOutcome::Pasted));
+            assert_eq!(w.run(UseMode::Paste, &PASTE), Ok(outcome));
             assert_eq!(w.clipboard.log, ["snapshot", "transient:2", "restore"]);
         }
     }

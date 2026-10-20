@@ -250,7 +250,7 @@ pub fn after_use(outcome: UseOutcome, route: &Route, pasted_into: Option<&str>) 
         CopyReason::NoTarget => String::new(),
     };
     match (outcome, route) {
-        (UseOutcome::Pasted, _) => Toast {
+        (UseOutcome::Pasted | UseOutcome::PastedNotRestored, _) => Toast {
             kind: ToastKind::Success,
             message: ToastMessage::Pasted {
                 app: pasted_into.map(friendly_app_name).unwrap_or_default(),

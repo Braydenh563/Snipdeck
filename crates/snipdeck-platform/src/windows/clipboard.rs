@@ -262,6 +262,20 @@ impl WinClipboard {
             .unwrap_or(false)
     }
 
+    /// The clipboard sequence number (`GetClipboardSequenceNumber`), which changes whenever the
+    /// contents do; `None` if the clipboard thread is not running.
+    pub fn sequence_number(&mut self) -> Option<u32> {
+        // SAFETY: no preconditions.
+        self.call(|| unsafe { GetClipboardSequenceNumber() }).ok()
+    }
+
+    /// Empties the clipboard, whatever formats it holds, if its sequence number is still
+    /// `sequence`. Whether it did.
+    pub fn clear_if_sequence(&mut self, sequence: u32) -> bool {
+        self.call(move || clear_if_sequence_job(sequence))
+            .unwrap_or(false)
+    }
+
     fn call<R: Send + 'static>(
         &self,
         job: impl FnOnce() -> R + Send + 'static,
@@ -1095,6 +1109,27 @@ fn clear_if_text_job(expected: &str) -> bool {
     let same = win_formats::from_unicode_text(&bytes) == expected;
     wipe(&mut bytes);
     if !same {
+        return false;
+    }
+    // SAFETY: the clipboard is open by this thread with our window as the owner.
+    if unsafe { EmptyClipboard() }.is_err() {
+        return false;
+    }
+    // The clear is a write of its own: an older Written no longer matches anything.
+    with_owner(|owner| owner.ledger.begin_write());
+    true
+}
+
+fn clear_if_sequence_job(sequence: u32) -> bool {
+    let Some(hwnd) = owner_hwnd() else {
+        return false;
+    };
+    let Some(_open) = OpenGuard::open(hwnd, WRITE_OPEN_BUDGET) else {
+        return false;
+    };
+    // Checked with the clipboard open, so nothing can change it between the check and the clear.
+    // SAFETY: no preconditions.
+    if unsafe { GetClipboardSequenceNumber() } != sequence {
         return false;
     }
     // SAFETY: the clipboard is open by this thread with our window as the owner.
