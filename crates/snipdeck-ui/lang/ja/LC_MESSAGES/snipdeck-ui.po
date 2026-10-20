@@ -68,7 +68,7 @@ msgid "All items"
 msgstr "すべてのスニペット"
 
 msgid "All {} recent copies are removed. This can't be undone."
-msgstr ""
+msgstr "{}件の最近のコピーを削除します。元に戻せません。"
 
 msgid "Also forget the encryption key"
 msgstr "暗号化キーも削除する"
@@ -200,13 +200,13 @@ msgid "Clear filter"
 msgstr "フィルターをクリア"
 
 msgid "Clear history"
-msgstr ""
+msgstr "履歴を消去"
 
 msgid "Clear recent history"
 msgstr "最近の履歴を消去"
 
 msgid "Clear recent history?"
-msgstr ""
+msgstr "最近の履歴を消去しますか？"
 
 msgid "Clear search"
 msgstr "検索をクリア"
@@ -239,7 +239,7 @@ msgid "Clipboard clear time"
 msgstr "クリップボードの消去時間"
 
 msgid "Clipboard history"
-msgstr ""
+msgstr "クリップボード履歴"
 
 msgid "Close"
 msgstr "閉じる"
@@ -922,7 +922,7 @@ msgid "Navigation"
 msgstr "ナビゲーション"
 
 msgid "Never keep copies from these programs"
-msgstr ""
+msgstr "これらのプログラムからのコピーは保存しない"
 
 msgid "Never paste into"
 msgstr "次の場所には貼り付けない"
@@ -1039,7 +1039,7 @@ msgid "Nothing to save. Copy some text first."
 msgstr "保存するものがありません。先にテキストをコピーしてください。"
 
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
-msgstr ""
+msgstr "これらのプログラムでコピーした内容は「最近」の受信箱に入りません。プログラムのファイル名を使ってください（例: keepass.exe）。"
 
 msgid "OK"
 msgstr "OK"
@@ -1048,13 +1048,13 @@ msgid "Off"
 msgstr "オフ"
 
 msgid "Off by default. Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
-msgstr ""
+msgstr "初期設定はオフです。コピーしたテキストを、最新の{}件または{}日分（どちらか先に達した方）保存します。あとから探したりリストに保存したりできます。現時点ではテキストのみです。機密のスニペット、パスワードマネージャー、除外したアプリの内容は保存されません。"
 
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "「オフ」にすると、固定したパネルは開いたままになります。それ以外では細い帯にたたまれ、パネルのショートカットでも開けます。"
 
 msgid "Off unless you turn it on. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
-msgstr ""
+msgstr "オンにするまではオフです。コピーしたテキストを、このコンピューターのみに、最新の{}件または{}日分（どちらか先に達した方）保存します。パスワードマネージャーのパスワードと機密のスニペットは保存されません。設定でいつでもオフにしたり消去したりできます。"
 
 msgid "One hotkey turns copied text into an item."
 msgstr "ホットキー1つで、コピーしたテキストをスニペットにできます。"
@@ -1192,7 +1192,7 @@ msgid "Path to the file"
 msgstr "ファイルのパス"
 
 msgid "Pause history"
-msgstr ""
+msgstr "履歴を一時停止"
 
 msgid "Pause hotkeys"
 msgstr "ホットキーを一時停止"
@@ -1255,7 +1255,7 @@ msgid "Program to add"
 msgstr "追加するプログラム"
 
 msgid "Program to leave out of Recent"
-msgstr ""
+msgstr "「最近」から除外するプログラム"
 
 msgid "Prompt for a value or a choice each time you paste."
 msgstr "貼り付けるたびに、値または選択肢の入力を求めます。"
@@ -1279,7 +1279,7 @@ msgid "Recent copies"
 msgstr "最近のコピー"
 
 msgid "Recent copies are locked"
-msgstr ""
+msgstr "最近のコピーはロックされています"
 
 msgid "Recent entry actions"
 msgstr "最近の項目の操作"
@@ -1620,10 +1620,10 @@ msgid "Text"
 msgstr "テキスト"
 
 msgid "Text you copy appears here, newest first, until you clear it or it is older than {} days."
-msgstr ""
+msgstr "コピーしたテキストが新しい順にここに表示されます。消去するか、{}日より古くなるまで残ります。"
 
 msgid "Text you copy shows up here for {} days. Save the useful ones to a list."
-msgstr ""
+msgstr "コピーしたテキストはここに{}日間表示されます。役立つものはリストに保存してください。"
 
 msgid "That app"
 msgstr "そのアプリ"
@@ -1800,7 +1800,7 @@ msgid "Unlock your library first, so your sensitive items are included. Nothing 
 msgstr "機密スニペットを含めるため、先にライブラリのロックを解除してください。何も実行されていません。"
 
 msgid "Unlock your library to see recent copies. Nothing is collected while it is locked."
-msgstr ""
+msgstr "最近のコピーを見るにはライブラリのロックを解除してください。ロック中は何も収集されません。"
 
 msgid "Unlock your library to use this item."
 msgstr "このスニペットを使うには、ライブラリのロックを解除してください。"
