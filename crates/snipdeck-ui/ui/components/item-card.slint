@@ -639,7 +639,7 @@ export component ItemCard inherits Rectangle {
         visible: root.more-visible;
         width: root.more-side;
         height: root.more-side;
-        x: root.width - root.pad-x - self.width - (root.compact && root.label-visible ? m-use.preferred-width + Space.s2 : 0px);
+        x: root.width - root.pad-x - self.width - (root.compact && root.label-visible ? root.use-w : 0px);
         y: root.compact ? (root.height - self.height) / 2 : Space.s1;
         border-radius: Radius.md;
         background: root.more-hover ? Theme.bg-hover : transparent;
