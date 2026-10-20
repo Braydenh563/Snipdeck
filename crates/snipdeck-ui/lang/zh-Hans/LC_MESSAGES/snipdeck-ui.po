@@ -710,7 +710,8 @@ msgid "Import into your library, see a preview first"
 msgstr ""
 
 msgid "Imported {} item"
-msgstr ""
+msgid_plural "Imported {} items"
+msgstr[0] ""
 
 msgid "Import…"
 msgstr ""
@@ -728,7 +729,8 @@ msgid "Insert {}"
 msgstr "插入 {}"
 
 msgid "It is removed from {n} item. The item stays."
-msgstr "将从 {n} 个片段中移除。片段本身保留。"
+msgid_plural "It is removed from {n} items. The items stay."
+msgstr[0] "将从 {n} 个片段中移除。片段本身保留。"
 
 msgid "Item actions"
 msgstr "片段操作"
@@ -737,7 +739,8 @@ msgid "Items are removed after {} days."
 msgstr "片段将在 {} 天后移除。"
 
 msgid "Its lists and {n} item will move to Trash. You can restore them for 30 days."
-msgstr "其列表及其中的 {n} 个片段将移至回收站。你可以在 30 天内恢复它们。"
+msgid_plural "Its lists and {n} items will move to Trash. You can restore them for 30 days."
+msgstr[0] "其列表及其中的 {n} 个片段将移至回收站。你可以在 30 天内恢复它们。"
 
 msgid "Just now"
 msgstr ""
@@ -896,10 +899,12 @@ msgid "Move to list…"
 msgstr "移动到列表…"
 
 msgid "Moved {} item to the Trash"
-msgstr ""
+msgid_plural "Moved {} items to the Trash"
+msgstr[0] ""
 
 msgid "Moved {} item to {}"
-msgstr ""
+msgid_plural "Moved {} items to {}"
+msgstr[0] ""
 
 msgid "Navigation"
 msgstr "导航"
@@ -1304,10 +1309,12 @@ msgid "Restored the changes you had not saved."
 msgstr "已恢复你尚未保存的更改。"
 
 msgid "Restored {} item"
-msgstr ""
+msgid_plural "Restored {} items"
+msgstr[0] ""
 
 msgid "Restored {} item from the backup"
-msgstr ""
+msgid_plural "Restored {} items from the backup"
+msgstr[0] ""
 
 msgid "Results"
 msgstr "搜索结果"
@@ -1883,7 +1890,8 @@ msgid "add create snippet note write"
 msgstr ""
 
 msgid "and {} more"
-msgstr ""
+msgid_plural "and {} more"
+msgstr[0] ""
 
 msgid "change modify rename"
 msgstr ""
@@ -1985,16 +1993,19 @@ msgid "view mode layout list dense switch"
 msgstr ""
 
 msgid "{n} item"
-msgstr "{n} 个片段"
+msgid_plural "{n} items"
+msgstr[0] "{n} 个片段"
 
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
-msgstr "{n} 个片段将一同移至回收站。你可以在 30 天内恢复它们。"
+msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
+msgstr[0] "{n} 个片段将一同移至回收站。你可以在 30 天内恢复它们。"
 
 msgid "{} (Supporter)"
 msgstr "{} (支持者)"
 
 msgid "{} already in your library, skipped"
-msgstr ""
+msgid_plural "{} already in your library, skipped"
+msgstr[0] ""
 
 msgid "{} can't be used as a shortcut. Choose another in Settings."
 msgstr ""
@@ -2006,7 +2017,8 @@ msgid "{} d ago"
 msgstr ""
 
 msgid "{} file in this archive is not known to this version and was left out."
-msgstr ""
+msgid_plural "{} files in this archive are not known to this version and were left out."
+msgstr[0] ""
 
 msgid "{} found"
 msgstr ""
@@ -2030,16 +2042,19 @@ msgid "{} is {}, over the 5 MB limit for text, and was skipped."
 msgstr ""
 
 msgid "{} item in {} list will be added"
-msgstr ""
+msgid_plural "{} items in {} lists will be added"
+msgstr[0] ""
 
 msgid "{} item that is not text (a picture or file) was skipped."
-msgstr ""
+msgid_plural "{} items that are not text (pictures or files) were skipped."
+msgstr[0] ""
 
 msgid "{} min ago"
 msgstr ""
 
 msgid "{} new board will be made"
-msgstr ""
+msgid_plural "{} new boards will be made"
+msgstr[0] ""
 
 msgid "{} of the checks need a look."
 msgstr "有 {} 项检查需要留意。"
@@ -2048,16 +2063,19 @@ msgid "{} of {} · next: {}"
 msgstr ""
 
 msgid "{} picture or file that no snippet uses was left out."
-msgstr ""
+msgid_plural "{} pictures or files that no snippet uses were left out."
+msgstr[0] ""
 
 msgid "{} selected"
 msgstr "已选择 {} 项"
 
 msgid "{} sensitive item is encrypted with a key this library does not have and was skipped."
-msgstr ""
+msgid_plural "{} sensitive items are encrypted with a key this library does not have and were skipped."
+msgstr[0] ""
 
 msgid "{} sensitive item was left out when this file was made."
-msgstr ""
+msgid_plural "{} sensitive items were left out when this file was made."
+msgstr[0] ""
 
 msgid "{}, {} of {}"
 msgstr ""
