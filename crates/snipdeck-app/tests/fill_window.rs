@@ -96,7 +96,12 @@ fn rig_on(store: Store) -> Rig {
     let panel = PanelWindow::new().expect("panel");
     let effects: Rc<RefCell<Vec<Effect>>> = Rc::default();
     let log = Rc::clone(&effects);
-    let binding = Controller::bind(&ctl, &panel, move |e| log.borrow_mut().push(*e));
+    let binding = Controller::bind(
+        &ctl,
+        &panel,
+        std::rc::Rc::new(snipdeck_app::placement::NoPopups),
+        move |e| log.borrow_mut().push(*e),
+    );
     let popups = Rc::new(FakePopups::one(Monitor {
         id: Monitor::id_of("DISPLAY1", 1920, 1080),
         work_area: Rect {

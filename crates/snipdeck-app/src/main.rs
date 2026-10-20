@@ -363,10 +363,10 @@ fn run(args: &Args) -> Result<(), String> {
         (
             PickerUi::new(&controller, Rc::clone(&popups), Rc::clone(&anchor)),
             FillUi::new(&controller, Rc::clone(&popups), anchor),
-            ToastUi::new(&controller, popups, others),
+            ToastUi::new(&controller, Rc::clone(&popups), others),
         )
     };
-    let binding = Controller::bind(&controller, &window, {
+    let binding = Controller::bind(&controller, &window, popups, {
         let on_effect = Rc::clone(&on_effect);
         move |effect| on_effect(effect)
     });

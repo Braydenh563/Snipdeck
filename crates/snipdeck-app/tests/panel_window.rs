@@ -19,6 +19,7 @@ use snipdeck_app::{
     demo,
     frame::{Edge, Monitor, Rect},
     host::{Clock, FakeTargets, FixedClock},
+    placement::FakePopups,
     settings::{DockEdge, DockTrigger, HotkeyAction, Settings, Theme},
     settings_store::{FileSink, SettingsSaver},
 };
@@ -47,6 +48,8 @@ struct Rig {
     targets: FakeTargets,
     clock: FixedClock,
     effects: Rc<RefCell<Vec<Effect>>>,
+    /// What the Panel asked of the machine (`activate`, `release`).
+    host: Rc<FakePopups>,
 }
 
 fn now() -> Timestamp {
@@ -107,7 +110,8 @@ fn rig_on(store: Store, tray: bool, clipboard: Vec<snipdeck_platform::payload::P
     let ui = PanelWindow::new().expect("panel");
     let effects: Rc<RefCell<Vec<Effect>>> = Rc::default();
     let log = Rc::clone(&effects);
-    let binding = Controller::bind(&ctl, &ui, move |e| log.borrow_mut().push(*e));
+    let host = Rc::new(FakePopups::default());
+    let binding = Controller::bind(&ctl, &ui, host.clone(), move |e| log.borrow_mut().push(*e));
     ui.show().expect("show");
     slint::platform::update_timers_and_animations();
     Rig {
@@ -117,6 +121,7 @@ fn rig_on(store: Store, tray: bool, clipboard: Vec<snipdeck_platform::payload::P
         targets,
         clock,
         effects,
+        host,
     }
 }
 
@@ -483,6 +488,61 @@ fn the_toggle_hotkey_hides_and_shows_the_panel() {
         r.binding.hotkey(HotkeyAction::PasteNext);
         assert_eq!(*r.effects.borrow(), [Effect::HidePanel, Effect::ShowPanel]);
         assert!(r.ctl.borrow().picker().is_some());
+    });
+}
+
+/// What the Panel has asked of the machine so far, the event loop having run once.
+fn asked(r: &Rig) -> Vec<&'static str> {
+    slint::platform::update_timers_and_animations();
+    r.host.calls.borrow().clone()
+}
+
+#[test]
+fn a_panel_shown_by_the_hotkey_the_tray_or_a_second_launch_takes_the_keyboard() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.binding.hotkey(HotkeyAction::TogglePanel);
+        assert_eq!(asked(&r), ["release"], "hiding gives the keyboard back");
+        r.host.calls.borrow_mut().clear();
+        r.binding.hotkey(HotkeyAction::TogglePanel);
+        assert_eq!(asked(&r), ["activate"], "the hotkey");
+        r.binding.tray(TrayEvent::TogglePanel);
+        r.host.calls.borrow_mut().clear();
+        r.binding.tray(TrayEvent::TogglePanel);
+        assert_eq!(asked(&r), ["activate"], "the tray");
+        r.binding.hotkey(HotkeyAction::TogglePanel);
+        r.host.calls.borrow_mut().clear();
+        r.binding.show();
+        assert_eq!(asked(&r), ["activate"], "a second launch");
+    });
+}
+
+#[test]
+fn escape_hands_the_keyboard_back_before_the_panel_hides() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.host.calls.borrow_mut().clear();
+        press(r.window(), &key(Key::Escape));
+        assert!(!r.window().is_visible());
+        assert_eq!(asked(&r), ["release"]);
+    });
+}
+
+#[test]
+fn a_click_into_the_search_box_takes_the_keyboard() {
+    on_ui_thread(|| {
+        let r = rig();
+        // The window loses the keyboard (another app in front) and the user clicks back into
+        // the box: it is focused again, and the host is asked for the keyboard.
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(false));
+        assert!(!r.ui.get_search_focused());
+        asked(&r);
+        r.host.calls.borrow_mut().clear();
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(true));
+        assert!(r.ui.get_search_focused());
+        assert_eq!(asked(&r), ["activate"]);
     });
 }
 
@@ -1245,6 +1305,8 @@ fn resting_the_pointer_on_the_handle_opens_the_panel_after_the_hover_delay() {
         let r = docked_rig(DockTrigger::Hover);
         r.binding.hotkey(HotkeyAction::TogglePanel);
         r.effects.borrow_mut().clear();
+        asked(&r);
+        r.host.calls.borrow_mut().clear();
         let at_handle = centre(&handle(&r));
         r.window()
             .dispatch_event(slint::platform::WindowEvent::PointerMoved {
@@ -1259,6 +1321,10 @@ fn resting_the_pointer_on_the_handle_opens_the_panel_after_the_hover_delay() {
         assert_eq!(*r.effects.borrow(), [Effect::PlaceWindow(OPEN)]);
         assert_eq!(size(&r), (OPEN.w, OPEN.h));
         assert!(!r.ui.get_dock_collapsed());
+        assert!(
+            !asked(&r).contains(&"activate"),
+            "a pointer passing over the edge never takes the keyboard"
+        );
         assert!(
             !r.ctl.borrow().dock_needs_tick(),
             "the timer stops when idle"

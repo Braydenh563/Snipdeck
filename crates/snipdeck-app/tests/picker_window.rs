@@ -113,7 +113,12 @@ fn rig_at(scale: f32) -> Rig {
     let ctl = Rc::new(RefCell::new(ctl));
     let _ = ctl.borrow_mut().on_tray(TrayEvent::IconPresent(true));
     let panel = PanelWindow::new().expect("panel");
-    let binding = Controller::bind(&ctl, &panel, |_| {});
+    let binding = Controller::bind(
+        &ctl,
+        &panel,
+        std::rc::Rc::new(snipdeck_app::placement::NoPopups),
+        |_| {},
+    );
     let popups = Rc::new(FakePopups::one(monitor(scale)));
     popups.cursor.set(Some((900, 600)));
     let anchor = AnchorMemory::default();

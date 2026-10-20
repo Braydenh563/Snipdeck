@@ -467,7 +467,12 @@ fn the_panel_and_the_main_window_share_one_toast_and_one_timer() {
     on_ui_thread(|| {
         let ctl = controller(Tier::Pro);
         let panel = PanelWindow::new().expect("panel");
-        let _panel_binding: Binding = Controller::bind(&ctl, &panel, |_| {});
+        let _panel_binding: Binding = Controller::bind(
+            &ctl,
+            &panel,
+            std::rc::Rc::new(snipdeck_app::placement::NoPopups),
+            |_| {},
+        );
         panel.show().unwrap();
         let ui = MainWindow::new().expect("main");
         let _binding = Controller::bind_main(&ctl, &ui);

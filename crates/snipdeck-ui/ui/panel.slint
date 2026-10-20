@@ -289,6 +289,13 @@ export component PanelWindow inherits Window {
     // Scroll offset of the list (<= 0), for tests and for the app to persist.
     out property <length> scroll-y: list.content-y;
     out property <bool> search-focused: search.has-focus;
+    // The search box took the focus (a click into it): the host gives the window the keyboard.
+    callback search-focus-gained();
+    changed search-focused => {
+        if (root.search-focused) {
+            root.search-focus-gained();
+        }
+    }
     // The text of the tooltip on screen (empty = none), for tests and assistive checks.
     out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open ? root.tip : "";
 

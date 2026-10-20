@@ -29,6 +29,7 @@ use crate::{
     item_editor::Origin,
     palette::list_color,
     panel::{Footer, Row, Tab},
+    placement::PopupHost,
     settings::HotkeyAction,
     wording,
 };
@@ -194,6 +195,8 @@ impl Binding {
 struct Core<S, C, K, T> {
     controller: Rc<RefCell<Controller<S, C, K, T>>>,
     window: slint::Weak<ui::PanelWindow>,
+    /// What the Panel asks of the machine: the keyboard for text entry, and to give it back.
+    host: Rc<dyn PopupHost>,
     on_effect: Box<dyn Fn(&Effect)>,
     /// What the window shows now, so a redraw sets only what changed (re-setting the rows
     /// model would reset the list's scroll position on every toast tick).
@@ -221,6 +224,7 @@ where
     fn new(
         controller: &Rc<RefCell<Controller<S, C, K, T>>>,
         window: &ui::PanelWindow,
+        host: Rc<dyn PopupHost>,
         on_effect: Box<dyn Fn(&Effect)>,
     ) -> Rc<Self> {
         let core = Rc::new_cyclic(|weak: &Weak<Self>| {
@@ -228,6 +232,7 @@ where
             Self {
                 controller: Rc::clone(controller),
                 window: window.as_weak(),
+                host,
                 on_effect,
                 shown: RefCell::new(None),
                 redraw: Rc::new(move || {
@@ -275,8 +280,15 @@ where
                     // A hidden Panel comes back where it was in the stack, behind the app in
                     // use; and one that is "shown" already (a second Open Panel) may be buried.
                     crate::native_window::raise(&window);
+                    // Shown on purpose (the hotkey, the tray, a second launch): the user types
+                    // next, so the Panel takes the keyboard. A dock-hover reveal never comes
+                    // here, so the pointer passing over the edge steals nothing.
+                    self.activate_soon();
                 }
                 Effect::HidePanel => {
+                    // Back to the Target first, while the Panel still holds the foreground:
+                    // hiding it first would leave the choice of the next window to Windows.
+                    self.host.release();
                     let _ = window.hide();
                 }
                 // The item editor is its own window; the controller opens it and every bound
@@ -309,6 +321,21 @@ where
             }
             (self.on_effect)(effect);
         }
+    }
+
+    /// Takes the keyboard for the Panel once the event loop has run (a `--hidden` start has no
+    /// native window until then). The host remembers the Target before it takes the foreground,
+    /// so the Panel itself is never the Target.
+    fn activate_soon(&self) {
+        let (weak, host) = (self.window.clone(), Rc::clone(&self.host));
+        slint::Timer::single_shot(std::time::Duration::ZERO, move || {
+            if let Some(window) = weak.upgrade()
+                && window.window().is_visible()
+            {
+                let taken = host.activate(window.window());
+                crate::trace!("panel takes the keyboard: {taken}");
+            }
+        });
     }
 
     /// Copies the controller's view into the window and keeps the toast timer running.
@@ -449,9 +476,10 @@ where
     pub fn bind(
         this: &Rc<RefCell<Self>>,
         window: &ui::PanelWindow,
+        host: Rc<dyn PopupHost>,
         on_effect: impl Fn(&Effect) + 'static,
     ) -> Binding {
-        let core = Core::new(this, window, Box::new(on_effect));
+        let core = Core::new(this, window, host, Box::new(on_effect));
         core.sync();
         {
             // Where the other windows open over the Panel, while it is shown.
@@ -601,6 +629,16 @@ where
             .dock_event(DockEvent::HandleClick));
         wire_effects!(on_panel_hovered, |ctl, on| ctl
             .dock_event(DockEvent::PanelHover(on)));
+        // A click into the search box is input to this process, so Windows lets the Panel take
+        // the keyboard for it (the window never activates on a click by itself).
+        {
+            let core = Rc::clone(&core);
+            window.on_search_focus_gained(move || {
+                if let Some(window) = core.window.upgrade() {
+                    let _ = core.host.activate(window.window());
+                }
+            });
+        }
         wire_effects!(on_close_requested, |ctl| ctl.close());
         // An OS close (Alt+F4, WM_CLOSE) goes the same way as the close button: the controller
         // decides between hiding to the tray and quitting, and keeps `visible` in step.

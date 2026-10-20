@@ -96,7 +96,12 @@ fn rig_at(data: &Path, tier: Tier, provider: &SharedProvider) -> Rig {
     panel
         .window()
         .set_size(slint::LogicalSize::new(320.0, 480.0));
-    let binding = Controller::bind(&ctl, &panel, |_| {});
+    let binding = Controller::bind(
+        &ctl,
+        &panel,
+        std::rc::Rc::new(snipdeck_app::placement::NoPopups),
+        |_| {},
+    );
     let editor = Controller::bind_item_editor(&ctl);
     panel.show().expect("show");
     slint::platform::update_timers_and_animations();
