@@ -85,6 +85,7 @@ component MainCard inherits ItemCard {
     in property <MainRow> data;
 
     pick-mode: true;
+    numbered: false;
     keyboard-focusable: false;
     kind: root.data.kind;
     title: root.data.title;
@@ -1795,7 +1796,7 @@ export component MainWindow inherits Window {
                 Rectangle {
                     height: max(Space.s8, Type.line-sm + Space.s3);
                     accessible-role: AccessibleRole.text;
-                    accessible-label: root.status-text;
+                    accessible-label: root.selected-count > 0 ? @tr("{} selected", root.selected-count) : root.status-text;
                     accessible-live-region: polite;
 
                     Rectangle {
@@ -1832,8 +1833,8 @@ export component MainWindow inherits Window {
         }
     }
 
-    property <string> status-text: root.selected-count > 0 ? @tr("{} selected", root.selected-count)
-        : @tr("{n} item" | "{n} items" % root.rows.length);
+    // The bulk bar already says how many are selected; the line shows the count of items and announces the selection.
+    property <string> status-text: @tr("{n} item" | "{n} items" % root.rows.length);
 
     // Keeps the sidebar's cursor row in view. The row's place follows from the row heights, not from measuring
     // the element (a measurement taken before the first layout would scroll the sidebar away).

@@ -63,3 +63,9 @@
 - Fixed (D3): compact row "Paste" hint covered the title at large text scale in a narrow panel (item-card.slint `use-label-fits`); "No tags" in the item editor was centred, now left-aligned (editors.slint).
 - Judged fine, uncertain: empty number gutter on Main cards (DESIGN §4); controls (switch, colour swatches, `{ }`/calendar glyphs) do not grow with text scale; picker footer drops Copy/Scope/Close at 200% scale; tab bar hard-clips an overflowing tab ("Addres|" at 200%); bulk bar and status bar both say "N selected"; fixture wording "Recent" vs "Recently used" in disabled segmented demo; dark goldens not individually read (layout identical to light).
 - Next: gate, reviewer, PR into release branch, report to hub.
+
+## scale follow-up (branch claude/v1-wave3b-scale, off #21 head)
+- Done in code (WIP, goldens not yet regenerated/read): (1) switch/checkbox/radio/swatch/tag glyphs/text-field icons scale with text-scale; (2) picker footer keeps Close when narrow; (3) tab bar caret buttons when tabs overflow (reuse "Scroll left/right" strings); (4) status line shows item count only (selection still announced); (5) Main cards drop the empty number gutter (`numbered: false`).
+- DONE: all five items in code, goldens regenerated and read, reviewer findings fixed, gate and full ui tests green; PR opened. (Was: fix panel pinned-strip "Scroll right" ambiguity if any, regenerate goldens, read light+dark of changed, reviewer, gate --staged, PR, report to hub.
+
+Note: assert_golden tolerates <0.1% pixel diffs, so tiny changes (1px lines) are not rewritten by UPDATE_GOLDEN; delete the PNG to force it.

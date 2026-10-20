@@ -1,4 +1,4 @@
-import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { SystemLook, Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 
@@ -182,6 +182,7 @@ export component TextField inherits VerticalLayout {
                     width: lead-icon.width;
                     lead-icon := Icon {
                         source: root.leading-icon;
+                        size: Space.s4 * SystemLook.text-scale;
                         tint: Theme.text-secondary;
                         y: ((root.single-line ? parent.height : root.line-h) - self.height) / 2;
                     }
@@ -268,8 +269,8 @@ export component TextField inherits VerticalLayout {
                     }
                 }
                 if root.clear-visible: Rectangle {
-                    width: Space.hit-min;
-                    height: Space.hit-min;
+                    width: Space.hit-min * SystemLook.text-scale;
+                    height: Space.hit-min * SystemLook.text-scale;
                     y: root.single-line ? (parent.height - self.height) / 2 : (root.line-h - self.height) / 2;
                     border-radius: Radius.sm;
                     background: clear-touch.pressed ? Theme.bg-sunken : clear-touch.has-hover ? Theme.bg-hover : transparent;
@@ -279,6 +280,7 @@ export component TextField inherits VerticalLayout {
 
                     Icon {
                         source: Icons.x;
+                        size: Space.s4 * SystemLook.text-scale;
                         tint: clear-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
                         x: (parent.width - self.width) / 2;
                         y: (parent.height - self.height) / 2;
