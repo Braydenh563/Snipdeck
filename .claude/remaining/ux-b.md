@@ -22,3 +22,6 @@ Nothing blocking. Optional: controller.rs still uses the unit `ToastMessage::Fai
 ## Notes
 - Windows-only behaviour (U1 activation) is unverified.
 - Shared box OOMs on snipdeck-ui builds with -j 2: use -j 1.
+
+## Queue
+Empty: every assigned item (U1 U3 U5 U7 U10 U12 U14-non-settings U15 U16 U17 U18 U21) is done. U14 settings part, Settings > Backups "Last backup" line and a cause on the organise-failure toast stay with the lead.

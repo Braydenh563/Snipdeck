@@ -167,7 +167,11 @@ fn equal_scores_go_to_the_more_used_item_then_to_the_one_used_last() {
 #[test]
 fn use_never_beats_a_better_match_and_decides_a_cut_at_the_limit() {
     let items = vec![
-        used(item("Reply to customer", ""), 50, Some("2026-10-10T09:00:00Z")),
+        used(
+            item("Reply to customer", ""),
+            50,
+            Some("2026-10-10T09:00:00Z"),
+        ),
         item("Reply", ""),
         used(item("Reply", ""), 3, None),
         item("Reply", ""),
@@ -176,7 +180,9 @@ fn use_never_beats_a_better_match_and_decides_a_cut_at_the_limit() {
     let hits = index.query("reply", 10);
     let exact_first = hits.iter().position(|h| h.id == items[0].id).unwrap();
     assert!(
-        hits[..exact_first].iter().all(|h| h.score > hits[exact_first].score),
+        hits[..exact_first]
+            .iter()
+            .all(|h| h.score > hits[exact_first].score),
         "a heavily used worse match stays behind every better one"
     );
     // Cut to two: the used one of the three equal titles survives the cut.
@@ -193,7 +199,11 @@ fn a_counted_use_reorders_a_tie_without_rebuilding_the_index() {
     assert!(index.refresh_usage(&items));
     assert!(!index.refresh_usage(&items), "nothing more to change");
     assert_eq!(index.query("reply", 1)[0].id, items[2].id);
-    assert_eq!(index.query("", 1)[0].id, items[0].id, "a blank query keeps the list order");
+    assert_eq!(
+        index.query("", 1)[0].id,
+        items[0].id,
+        "a blank query keeps the list order"
+    );
 }
 
 #[test]

@@ -1051,7 +1051,11 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         window.set_count_trash(to_i32(screen.counts.trash));
     }
     if differs(&|p| p.rows == screen.rows && p.dark == screen.dark) {
-        let rows = screen.rows.iter().map(|r| main_row(r, screen.dark)).collect();
+        let rows = screen
+            .rows
+            .iter()
+            .map(|r| main_row(r, screen.dark))
+            .collect();
         if let Some(fresh) = crate::binding::refreshed_model(&window.get_rows(), rows) {
             window.set_rows(fresh);
         }
