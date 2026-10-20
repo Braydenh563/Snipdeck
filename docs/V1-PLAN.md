@@ -13,7 +13,7 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 
 ## B. Wave 3: finish the features (three S agents)
 - [x] B1 [S] Import: Settings "Import…" for `.snipdeck`, Ditto, CopyQ, folder of .txt/.md; preview of what it adds (also for Restore); Free board limit respected.
-- [~] B2 [S] Windows clipboard-history importer (current session; Windows-only, wizard step). Platform reader exists; no UI caller yet (3a wiring it as an Import source).
+- [x] B2 [S] Windows clipboard-history importer (current session; Windows-only): a fifth source in Settings Import, same preview and apply path; off, empty or refused history shows a message in the preview. Windows side unverified.
 - [x] B3 [S] Export a list as text.
 - [x] B4 [S] Ctrl+Z undoes the last undoable action; Undo toast >= 5 s and pauses on hover.
 - [x] B5 [S] "Getting started" list seeded on first run (`starter.rs`).

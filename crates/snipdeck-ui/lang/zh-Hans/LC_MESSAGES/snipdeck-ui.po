@@ -1508,6 +1508,12 @@ msgstr "Snipdeck 无法在此电脑上保护密钥，因此无法使用主密码
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "Snipdeck 上次意外关闭。要打开日志吗？"
 
+msgid "Snipdeck couldn't open that. Check that it still exists."
+msgstr ""
+
+msgid "Snipdeck couldn't read that folder."
+msgstr ""
+
 msgid "Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again."
 msgstr "Snipdeck 无法读取你的加密密钥，因此现在无法设置或更改主密码。请重启 Snipdeck 再试。"
 
@@ -1628,8 +1634,20 @@ msgstr "你复制的文本会在这里保留 {} 天。把有用的保存到列�
 msgid "That app"
 msgstr "该应用"
 
+msgid "That file is from a newer Snipdeck. Update Snipdeck to import it."
+msgstr ""
+
 msgid "That is not a Snipdeck licence key. A key starts with SNIP1."
 msgstr "这不是 Snipdeck 许可证密钥。密钥以 SNIP1 开头。"
+
+msgid "That isn't a CopyQ export."
+msgstr ""
+
+msgid "That isn't a Ditto database."
+msgstr ""
+
+msgid "That isn't a Snipdeck file, or it is damaged."
+msgstr ""
 
 msgid "That key is not for Snipdeck Supporter."
 msgstr "该密钥不适用于 Snipdeck Supporter。"
@@ -1660,6 +1678,9 @@ msgstr "免费版包含 {} 个看板。此操作将超出上限，需要 Support
 
 msgid "The Trash is empty"
 msgstr "回收站为空"
+
+msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
+msgstr ""
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "导入已提前停止，因为源内容比 Snipdeck 一次能读取的量大。"
@@ -1888,6 +1909,15 @@ msgstr "Windows 强调色"
 
 msgid "Windows accent follows your Windows personalisation."
 msgstr "Windows 强调色跟随你的 Windows 个性化设置。"
+
+msgid "Windows clipboard history"
+msgstr ""
+
+msgid "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again."
+msgstr ""
+
+msgid "Windows did not let Snipdeck read the clipboard history on this PC."
+msgstr ""
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "你将拥有 {} 个看板，而免费版仅包含 {} 个。"

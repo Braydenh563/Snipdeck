@@ -14,10 +14,11 @@ use jiff::tz::TimeZone;
 use snipdeck_core::{Entitlements, Feature, Tier, licence::verify_embedded};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_portable::{
-    BoardLayout, ExportOptions, ImportOptions, ImportReport, KeySource, MergeStrategy,
-    SensitivePolicy,
+    BoardLayout, ExportOptions, HistoryEntry, ImportOptions, ImportReport, KeySource,
+    MergeStrategy, SensitivePolicy,
     backup::{self, BackupOutcome},
-    export_to_path, import_archive_path, import_copyq_json, import_ditto, import_folder,
+    export_to_path, import_archive_path, import_copyq_json, import_ditto, import_entries,
+    import_folder,
 };
 use snipdeck_store::Store;
 
@@ -37,22 +38,26 @@ pub enum ImportSource {
     CopyQ(PathBuf),
     /// A folder of `.txt` and `.md` files, one item each.
     Folder(PathBuf),
+    /// The text entries of the Windows clipboard history (Win+V), already read by the caller.
+    ClipboardHistory(Vec<HistoryEntry>),
 }
 
 impl ImportSource {
-    /// The file or folder this reads.
+    /// The file or folder this reads; `None` for the clipboard history.
     #[must_use]
-    pub fn path(&self) -> &Path {
+    pub fn path(&self) -> Option<&Path> {
         match self {
-            Self::Snipdeck(p) | Self::Ditto(p) | Self::CopyQ(p) | Self::Folder(p) => p,
+            Self::Snipdeck(p) | Self::Ditto(p) | Self::CopyQ(p) | Self::Folder(p) => Some(p),
+            Self::ClipboardHistory(_) => None,
         }
     }
 
-    /// The name of the file or folder, for the preview's heading.
+    /// The name of the file or folder, for the preview's heading; empty for the clipboard
+    /// history, which the page names itself.
     #[must_use]
     pub fn file_name(&self) -> String {
         self.path()
-            .file_name()
+            .and_then(Path::file_name)
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default()
     }
@@ -69,6 +74,7 @@ impl ImportSource {
             Self::Ditto(p) => import_ditto(store, p, now, options),
             Self::CopyQ(p) => import_copyq_json(store, p, now, options),
             Self::Folder(p) => import_folder(store, p, now, options),
+            Self::ClipboardHistory(entries) => import_entries(store, entries, "", now, options),
         }
     }
 }
@@ -112,6 +118,12 @@ pub enum ImportProblem {
     NotThisKind(ImportKind),
     /// A `.snipdeck` file from a newer Snipdeck.
     TooNew,
+    /// Windows clipboard history is turned off.
+    HistoryOff,
+    /// This PC cannot give out its clipboard history (an edition without it, or a policy).
+    HistoryUnavailable,
+    /// The clipboard history holds no text.
+    HistoryEmpty,
     /// Anything else (the library could not be written, the file is over the safety limits).
     Failed,
 }
@@ -141,14 +153,15 @@ impl ImportSource {
         }
     }
 
-    /// The kind of this source.
+    /// The kind of this source; `None` for the clipboard history, which is not a file.
     #[must_use]
-    pub fn kind(&self) -> ImportKind {
+    pub fn kind(&self) -> Option<ImportKind> {
         match self {
-            Self::Snipdeck(_) => ImportKind::Snipdeck,
-            Self::Ditto(_) => ImportKind::Ditto,
-            Self::CopyQ(_) => ImportKind::CopyQ,
-            Self::Folder(_) => ImportKind::Folder,
+            Self::Snipdeck(_) => Some(ImportKind::Snipdeck),
+            Self::Ditto(_) => Some(ImportKind::Ditto),
+            Self::CopyQ(_) => Some(ImportKind::CopyQ),
+            Self::Folder(_) => Some(ImportKind::Folder),
+            Self::ClipboardHistory(_) => None,
         }
     }
 }
@@ -167,7 +180,9 @@ fn problem_of(source: &ImportSource, error: &snipdeck_portable::Error) -> Import
         | E::AssetMismatch { .. }
         | E::DuplicateId { .. }
         | E::NotDitto { .. }
-        | E::Sqlite(_) => ImportProblem::NotThisKind(source.kind()),
+        | E::Sqlite(_) => source
+            .kind()
+            .map_or(ImportProblem::Failed, ImportProblem::NotThisKind),
         _ => ImportProblem::Failed,
     }
 }

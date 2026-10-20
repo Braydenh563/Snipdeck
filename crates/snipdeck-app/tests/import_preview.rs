@@ -21,7 +21,7 @@ use snipdeck_app::{
 };
 use snipdeck_core::{Board, Entitlements, List, Name, Placement, Tier, Timestamp};
 use snipdeck_platform::testing::{FakeClipboard, FakeKeyboard, FakeTiming};
-use snipdeck_portable::{ExportOptions, export_to_path};
+use snipdeck_portable::{ExportOptions, HistoryEntry, export_to_path};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, Store};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
@@ -276,4 +276,66 @@ fn restore_keeps_the_backups_boards() {
     assert!(ctl.restore_backup(&path));
     assert_eq!(counts(&ctl), (preview.boards, preview.items));
     assert!(!ctl.preview_restore(&path).unwrap().blocked_by_board_limit);
+}
+
+/// Clipboard-history entries as the platform layer hands them over, newest first.
+fn history_of(texts: &[&str]) -> ImportSource {
+    ImportSource::ClipboardHistory(
+        texts
+            .iter()
+            .map(|text| HistoryEntry {
+                text: (*text).to_owned(),
+                timestamp: None,
+            })
+            .collect(),
+    )
+}
+
+#[test]
+fn the_clipboard_history_previews_and_imports_through_the_same_path_as_a_file() {
+    let source = history_of(&["first copy", "second copy", "third copy"]);
+    assert!(source.path().is_none() && source.kind().is_none());
+    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    let before = counts(&ctl);
+
+    let preview = ctl.preview_import(&source).unwrap();
+    assert_eq!((preview.boards, preview.lists, preview.items), (1, 1, 3));
+    assert_eq!(counts(&ctl), before, "a preview changes nothing");
+
+    assert!(ctl.apply_import(&source));
+    assert_eq!(counts(&ctl), (before.0 + 1, before.1 + 3));
+    assert_eq!(
+        ctl.main_screen().toast.expect("a toast").message,
+        ToastMessage::Imported { items: 3 }
+    );
+}
+
+#[test]
+fn a_second_history_import_skips_what_is_already_there_and_blank_entries_are_listed() {
+    let mut ctl = rig_on(Store::open_in_memory().unwrap(), Tier::Pro);
+    assert!(ctl.apply_import(&history_of(&["alpha", "beta"])));
+    let after_first = counts(&ctl);
+
+    let again = history_of(&["alpha", "beta", "gamma", "   "]);
+    let preview = ctl.preview_import(&again).unwrap();
+    assert_eq!((preview.items, preview.duplicates), (1, 2));
+    assert_eq!(
+        preview.warnings.len(),
+        1,
+        "the blank entry is listed as left out"
+    );
+    assert!(ctl.apply_import(&again));
+    assert_eq!(counts(&ctl).1, after_first.1 + 1);
+}
+
+#[test]
+fn a_history_import_obeys_the_free_board_limit() {
+    let mut store = Store::open_in_memory().unwrap();
+    add_boards_up_to(&mut store, Entitlements::FREE_BOARD_LIMIT);
+    let mut ctl = rig_on(store, Tier::Free);
+    let source = history_of(&["one"]);
+    assert!(ctl.preview_import(&source).unwrap().blocked_by_board_limit);
+    let before = counts(&ctl);
+    assert!(!ctl.apply_import(&source));
+    assert_eq!(counts(&ctl), before);
 }

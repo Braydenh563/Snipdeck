@@ -18,6 +18,7 @@ import { Toggle } from "components/choice.slint";
 import { HotkeyRecorder } from "components/hotkey_recorder.slint";
 import { Dialog } from "components/dialog.slint";
 import { PlanTable } from "components/plan-table.slint";
+import { ImportTexts } from "import_texts.slint";
 import { MasterPasswordForm, MasterMode, MasterProblem } from "master_password.slint";
 import { FormField, FormScroll, FormSection, SettingRow, Segmented, SelectField, NumberStepper } from "components/form.slint";
 
@@ -208,6 +209,8 @@ export component SettingsPage inherits Window {
     in property <int> free-board-limit: 0;
     // Non-empty when the source could not be read; the preview then only offers Close.
     in property <string> import-problem;
+    // The Windows clipboard history is offered as an import source (Windows only).
+    in property <bool> import-history-available: false;
     in property <int> import-boards: 0;
     in property <int> import-lists: 0;
     in property <int> import-items: 0;
@@ -889,6 +892,20 @@ export component SettingsPage inherits Window {
                                 clicked => {
                                     root.import-choosing = false;
                                     root.import-source-chosen(i);
+                                }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                        if root.import-history-available: HorizontalLayout {
+                            alignment: start;
+                            Button {
+                                text: ImportTexts.history-name();
+                                a11y-label: @tr("Import from: {}", ImportTexts.history-name());
+                                clicked => {
+                                    root.import-choosing = false;
+                                    root.import-source-chosen(4);
                                 }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }

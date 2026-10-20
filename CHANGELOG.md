@@ -77,7 +77,8 @@ Windows PC.
   Free and Supporter table that shows what each plan has.
 - **Import** in Settings ▸ Your data: a `.snipdeck` file, a Ditto database, a CopyQ export or a folder of `.txt`
   and `.md` files. A preview says what will be added, what is already there and what will be left out, and why.
-  Restoring a backup shows the same preview.
+  Restoring a backup shows the same preview. On Windows, **Windows clipboard history** is a fifth source: the
+  text still in the Win+V history of this sign-in (unverified on Windows).
 - **Recent inbox**, off by default: the text you copy, for the last 200 copies and 7 days, in the Main window's
   sidebar and a clock tab in the Panel. **Save to…** puts a copy in a list. Sensitive items, password managers
   and programs on your exclude list are skipped. **Pause history** in the tray and **Clear recent history**

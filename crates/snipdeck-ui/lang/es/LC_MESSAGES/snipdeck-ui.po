@@ -1515,6 +1515,12 @@ msgstr "Snipdeck no puede proteger una clave en este PC, así que no hay contras
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "Snipdeck se cerró inesperadamente la última vez. ¿Abrir el registro?"
 
+msgid "Snipdeck couldn't open that. Check that it still exists."
+msgstr ""
+
+msgid "Snipdeck couldn't read that folder."
+msgstr ""
+
 msgid "Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again."
 msgstr "Snipdeck no pudo leer tu clave de cifrado, así que la contraseña maestra no se puede establecer ni cambiar ahora. Reinicia Snipdeck para intentarlo de nuevo."
 
@@ -1635,8 +1641,20 @@ msgstr "El texto que copias aparece aquí durante {} días. Guarda los útiles e
 msgid "That app"
 msgstr "Esa aplicación"
 
+msgid "That file is from a newer Snipdeck. Update Snipdeck to import it."
+msgstr ""
+
 msgid "That is not a Snipdeck licence key. A key starts with SNIP1."
 msgstr "Eso no es una clave de licencia de Snipdeck. Una clave empieza por SNIP1."
+
+msgid "That isn't a CopyQ export."
+msgstr ""
+
+msgid "That isn't a Ditto database."
+msgstr ""
+
+msgid "That isn't a Snipdeck file, or it is damaged."
+msgstr ""
 
 msgid "That key is not for Snipdeck Supporter."
 msgstr "Esa clave no es para Snipdeck Colaborador."
@@ -1667,6 +1685,9 @@ msgstr "El plan Gratis incluye {} tableros. Esto superaría ese límite, así qu
 
 msgid "The Trash is empty"
 msgstr "La papelera está vacía"
+
+msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
+msgstr ""
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "La importación se detuvo pronto porque el origen es más grande de lo que Snipdeck lee de una vez."
@@ -1895,6 +1916,15 @@ msgstr "Acento de Windows"
 
 msgid "Windows accent follows your Windows personalisation."
 msgstr "El acento de Windows sigue tu personalización de Windows."
+
+msgid "Windows clipboard history"
+msgstr ""
+
+msgid "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again."
+msgstr ""
+
+msgid "Windows did not let Snipdeck read the clipboard history on this PC."
+msgstr ""
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "Tendrías {} tableros, y el plan Gratis incluye {}."
