@@ -24,7 +24,7 @@ where
     // ---- Toasts ------------------------------------------------------------------------------
 
     /// Shows `toast`, replacing the one on screen. The host then calls
-    /// [`toast_tick`](Self::toast_tick) after [`TOAST_ENTER`] and follows the delays it returns.
+    /// [`toast_tick`](Self::toast_tick) after [`TOAST_ENTER`](super::TOAST_ENTER) and follows the delays it returns.
     pub fn show_toast(&mut self, toast: Toast) {
         // A locked sensitive item behind a master password asks for it, as well as saying so.
         if toast.message == ToastMessage::Locked {

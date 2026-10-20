@@ -35,7 +35,7 @@ pub enum Effect {
     /// Open the Settings window, creating it the first time (the Panel menu's "Settings").
     OpenSettings,
     /// Start a new snippet. The Panel's binding opens the item editor on it
-    /// ([`Controller::open_new_item`]); the host has nothing more to do.
+    /// ([`Controller::open_new_item`](super::Controller::open_new_item)); the host has nothing more to do.
     NewItem,
     /// Show the Main window with the command palette open (the Panel's "All commands…" and Ctrl+K).
     OpenCommands,
@@ -45,7 +45,7 @@ pub enum Effect {
     /// (the Panel's list menu and tab double-click).
     OpenListEditor,
     /// Open the item editor on an item. The Panel's binding does it
-    /// ([`Controller::open_item_editor`]); the host has nothing more to do.
+    /// ([`Controller::open_item_editor`](super::Controller::open_item_editor)); the host has nothing more to do.
     EditItem(ItemId),
     /// Start the OS resize of the Panel from an edge or corner.
     ResizeWindow(Edge),
@@ -92,9 +92,9 @@ pub struct ToastView {
     pub message: ToastMessage,
     /// Where it is in its life.
     pub phase: ToastPhase,
-    /// It carries an Undo button ([`Controller::main_undo`]).
+    /// It carries an Undo button ([`Controller::main_undo`](super::Controller::main_undo)).
     pub undo: bool,
-    /// It carries an "Open log" button ([`Controller::toast_action`]).
+    /// It carries an "Open log" button ([`Controller::toast_action`](super::Controller::toast_action)).
     pub open_log: bool,
 }
 
@@ -130,7 +130,7 @@ pub struct FillView {
     pub masked: bool,
 }
 
-/// A filled-in form, ready to be used: see [`Controller::take_fill`].
+/// A filled-in form, ready to be used: see [`Controller::take_fill`](super::Controller::take_fill).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FillSubmission {
     pub(super) item: ItemId,
@@ -143,7 +143,7 @@ pub struct FillSubmission {
 pub enum UseResult {
     /// It happened (pasted or copied) and was counted.
     Done(UseOutcome),
-    /// The template needs answers first: the fill form is open, see [`Controller::fill`].
+    /// The template needs answers first: the fill form is open, see [`Controller::fill`](super::Controller::fill).
     NeedsAnswers,
     /// It did not happen; a toast says why.
     Failed,
@@ -205,11 +205,11 @@ pub struct View {
     pub toast: Option<ToastView>,
     /// The board menu's entries while it is open.
     pub board_menu: Option<Vec<String>>,
-    /// The kebab menu's rows while it is open ([`APP_MENU`]).
+    /// The kebab menu's rows while it is open ([`APP_MENU`](super::APP_MENU)).
     pub app_menu: Option<Vec<AppMenuEntry>>,
     /// The context menu of a card or pinned chip while it is open.
     pub item_menu: Option<Vec<ItemMenuEntry>>,
-    /// The context menu of a list tab while it is open ([`LIST_MENU`]).
+    /// The context menu of a list tab while it is open ([`LIST_MENU`](super::LIST_MENU)).
     pub list_menu: Option<Vec<ListMenuEntry>>,
     /// "Pause hotkeys" is on (its menu row is checked).
     pub hotkeys_paused: bool,

@@ -271,7 +271,7 @@ where
         !self.settings.close_to_tray || (!self.session.tray_available && !self.visible)
     }
 
-    /// Renames tag `index` (in the order of [`MainScreen::tags`]) to `name`. A name another tag
+    /// Renames tag `index` (in the order of [`MainScreen::tags`](super::MainScreen::tags)) to `name`. A name another tag
     /// has is refused with [`TagRenameError::Exists`] and no toast: the Tag manager shows the
     /// reason beside the field. A tag that is no longer there is left alone.
     ///
