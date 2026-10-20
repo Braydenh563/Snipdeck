@@ -4,7 +4,7 @@ Inputs: [`SPEC.md`](SPEC.md), [`../DESIGN.md`](../DESIGN.md), [`adr/`](adr/), [`
 
 **Verification labels.** **[L]** verified automatically in cloud CI (Linux). **[W]** needs a Windows run:
 CI builds the Windows artifact and compiles it, but a human must run the Windows test wizard
-(`run-windows-tests.bat`). Every milestone that touches Windows adds its steps to `tools/windows-test/tests/`
+(`Test Snipdeck on Windows.bat`). Every milestone that touches Windows adds its steps to `tools/windows-test/tests/`
 so the owner runs one wizard, once per milestone, instead of reading instructions.
 
 **Agents.** Opus: architecture, contracts, unsafe/Win32 code, reviews. Sonnet: feature implementation per crate.

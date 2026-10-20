@@ -9,6 +9,8 @@ Next, in order: CI green on PR #5 -> translations pass for ~80 new strings per l
 
 ## Parallel work (orchestration ledger, 2026-10-19 14:25)
 Hub = this session (`claude/compassionate-pascal-pod8ux`, PR #5). It owns the release branch, merges, `.po/.pot`, `CODEMAP.md`, `HANDOVER.md`, licence/Supporter wording, goldens (D1).
+- 2026-10-20 09:45 hub: Supporter email + M3 workflow patch done (owner). Fable at 2ccfd1a (F4 done; O25-O27 queued; D5 merge pending). Sonnet agent: Windows test wizard UX on claude/windows-test-ux (hub verifies, merges). Then: merge PR #27, reviewer + blind-tester, F4 ship prep. Owner left: Windows run, licence key secret, dismiss CodeQL, merge PR #5 + tag.
+- 0def478/35c8eee: D5 PR #28 merged (controller.rs 4252 -> 713, controller/*.rs; doc links fixed). Stop line now 87% weekly (owner). Fable PR #27 at 75cc0f8: app Groups 1-3 done; fourth audit U1-U21 (High: U1 Panel never activated for text entry on Windows, U2 text scale not applied, U3 silent backup failure) in progress with two Sonnet agents; then [D5] items (U6 U8 U9 A6 A7 A11b A13 A22 A23 A25 A27 B13 F2), B6 B5 B12 F6, owner extra checks. After Fable: independent Sonnet reviewer on Fable diff + blind-tester (owner asked), fixes, then F4 ship prep. Wrap-up rule: Morning summary lists done, cut short, every remaining item.
 - ccea9db: PR #23 merged (security pass M1, M2, L1-L9; Recent encrypted at rest, schema v5; docs/reviews/security-v1.md has the owner M3 release.yml patch and the CodeQL items to dismiss), PR #24 (settings shot crop), PR #25 (controls/glyphs follow text scale, picker footer, tab carets, one "N selected", no empty gutter), PR #26 (Windows -shm test fix). Stray pyoxipng wheel removed, *.whl ignored. Full workspace tests green on the #23 merge; app+ui green on #25. Open: 3a D5 controller split (claude/v1-wave3a-d5). Next: F1 Fable (notify owner, wait for go), F3, F2, F4.
 - f0c10c2 PR #22 merged (D2: 16 README shots at 2x light+dark, site/img refreshed, lossless + oxipng; docs/images 2.1 MB). Known: settings shot cut mid-row; editor Sensitive toggle differs light/dark (fixture). Open: 3c security, 3b scale.
 - e07ddea PR #20 merged (B2 Import source); caf1222 PR #21 merged (D1 goldens regenerated, D3 de-slop; snipdeck-ui 25 ok). e07ddea CI red only in goldens, fixed by caf1222. Open: 3c security, 3b scale, 3a shots (D2).
@@ -139,15 +141,17 @@ Rules: Haiku for grunt work with a runnable check, Sonnet implements, Opus only 
 - **M1 (core, store, licence, crypto, portability): done and merged into the PR branch.** 488 tests, fmt/clippy/doc/deny
   clean on Rust 1.97 and 1.99.1, Windows target check passes. Opus review in `docs/reviews/M1-review.md`; all
   29 core/store findings fixed. Known gaps: `docs/PLAN.md` "M1 known gaps" (CopyQ `.cpq` not parsed, Windows clipboard-history importer, `DataKey` not `Clone`).
-- **Windows test wizard:** `run-windows-tests.bat` -> `tools/windows-test/` (manual steps in `tests/*.json`,
-  opt-in automation in `auto/`). The automation has **never run on Windows**; its unverified assumptions are
-  listed at the end of `tools/windows-test/README.md`.
+- **Windows test wizard:** `Test Snipdeck on Windows.bat` (repo root) -> `tools/windows-test/` (manual steps in
+  `tests/*.json`, automation in `auto/`, flow logic in `flow.ps1`). Press Enter for the "v1 check" (steps flagged
+  `"v1": true`: M3, M2, S1 and S2 key steps); it ends with `Snipdeck-test-results-<date>.zip` on the Desktop. Neither
+  the new flow nor the automation has run on Windows; the unverified assumptions are listed at the end of
+  `tools/windows-test/README.md`.
 - **CI** (`.github/workflows/ci.yml`): Linux fmt/clippy/test/doc/deny + Windows `cargo check`. It uses the
   newest stable Rust, which has lints that older Rust lacks: always check with `cargo +1.99.1 ...` too.
 
 ## What is blocked on the owner
 
-- Optional re-run on Windows: S2 after adding Japanese / Chinese / Korean keyboards (`run-windows-tests.bat`, S2 only),
+- Optional re-run on Windows: S2 after adding Japanese / Chinese / Korean keyboards (`Test Snipdeck on Windows.bat`, Advanced options, S2 only),
   S1 step 2c after the modifier fix, and the untested S4 steps (W4-W7, Windows 10). None of these gate M2 start.
 
 ## Overnight queue (away mode, started 2026-10-17)
@@ -238,7 +242,7 @@ Progress vs `docs/PLAN.md`: M1 done, M2 done in code (Windows unverified), M3 mo
 9. **Run the fable pass last** (the owner allowed ONE focused Fable agent at the very end of full development: analyse, poke holes, challenge architecture, fix bugs and security issues, polish and validate).
 10. Known gaps: Windows clipboard-history importer, CopyQ `.cpq`, no first-time "hidden to tray" notice, tray menu ignores dark mode, `{clipboard}` template text is `None`, time zone is UTC, Panel row context menus and Panel reveal-in-list are unbound.
 11a. **Owner, GitHub settings (Settings ▸ Code security):** (1) enable **Code scanning ▸ CodeQL default setup** (covers Rust and Actions with no workflow file; the `codeql.yml` workflow was removed because uploads fail with "Code scanning is not enabled for this repository"); (2) enable **Dependency graph**, then `actions/dependency-review-action` can be re-added; (3) OpenSSF Scorecard (`scorecard.yml`, removed) only works on a public repository with code scanning on. RustSec audit (`audit.yml`) and cargo deny run regardless.
-11. **Owner on Windows** (never run, everything Win32 is unverified): `run-windows-tests.bat` (M2 and M3 steps), `run-snipdeck-demo.bat` (builds and opens the demo app), S2 with IMEs, S1 step 2c, S4 on Windows 10.
+11. **Owner on Windows** (never run, everything Win32 is unverified): `Test Snipdeck on Windows.bat` (the v1 check: M2, M3, S1, S2 key steps), `run-snipdeck-demo.bat` (builds and opens the demo app), S2 with IMEs, S1 step 2c, S4 on Windows 10.
 
 ## Working notes that cost time this session
 

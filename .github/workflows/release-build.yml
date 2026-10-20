@@ -27,9 +27,11 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - run: rustup toolchain install stable --profile minimal
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - name: Build
         shell: pwsh
         run: |
@@ -56,10 +58,10 @@ jobs:
           $zip = Get-Item $env:ZIP
           $exe = Get-ChildItem dist -Recurse -Filter snipdeck.exe | Select-Object -First 1
           "### Build size`n| File | MB |`n|---|---|`n| $($exe.Name) | $([math]::Round($exe.Length / 1MB, 2)) |`n| $($zip.Name) | $([math]::Round($zip.Length / 1MB, 2)) |" >> $env:GITHUB_STEP_SUMMARY
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: ${{ env.ZIP }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: snipdeck-windows-x64
           path: |

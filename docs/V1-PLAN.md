@@ -58,7 +58,7 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 - [ ] F4 [S] `scripts/gate.sh --full` on stable and 1.99.1, Windows target check, `cargo deny`; CI green (needs E3 for free runners); PR #5 body with the gate lines; morning summary; retro.
 
 ## G. Owner on Windows and release
-- [ ] G1 [owner] Windows run: `Snipdeck.bat` on a clean PC, `run-windows-tests.bat` (M2, M3 and new steps), tray, taskbar, Alt+Tab, placement at 100/150/225 %, file dialog, caret, DPAPI, autostart, dock hover, IME (S2).
+- [ ] G1 [owner] Windows run: `Snipdeck.bat` on a clean PC, then double-click `Test Snipdeck on Windows.bat` and press Enter (the "v1 check": M3 app shell, M2 platform, S1 panel key steps and S2 IME key steps; about an hour, one results zip on the Desktop to drag into the Claude chat). It contains a step for each of: tray, taskbar, Alt+Tab, placement at 100/150/225 % (M3 20), file dialog (M3 21), caret, DPAPI, autostart, dock hover (M3 22), IME (S2).
 - [ ] G2 [owner] Supply the Get Supporter address; review and merge PR #5.
 - [ ] G3 [owner] Tag `v1.0.0`; the release workflow builds the zip; add its SHA-256 to `tools/launcher/release-sha256.txt`.
 - [ ] G4 [owner] After release: apply to SignPath Foundation; Microsoft Store submission (optional).
@@ -74,7 +74,7 @@ agent is briefed with a step number and reads the step; it does not re-plan. Run
 check), **S** Sonnet high (implementation), **O** Opus medium (review, design-level bugs). Every step: tests first,
 never weaken a test, `scripts/gate.sh --changed` clean on stable and `+1.99.1`, commit every 20 min, report ≤30 lines.
 Findings referenced as `C1`, `H1`, `U3`… are in `docs/reviews/fable-analysis.md`. Windows-only behaviour stays
-"unverified" until the owner runs `run-windows-tests.bat`; every Windows step adds a wizard step in `tools/windows-test/tests/`.
+"unverified" until the owner runs `Test Snipdeck on Windows.bat`; every Windows step adds a wizard step in `tools/windows-test/tests/`.
 
 ## Wave 1 (running): foundations
 1. **[done]** Merge `claude/snipdeck-main-window`, gate, pin icon, Rust 1.99 lints, keygen tool, GitHub workflows, release profiles, privacy doc.
@@ -107,4 +107,4 @@ Findings referenced as `C1`, `H1`, `U3`… are in `docs/reviews/fable-analysis.m
 ## Wave 4: verification and release
 20. **[O reviewer]** Independent review of the whole diff since `main` against SPEC, DESIGN and `docs/reviews/*`: correctness, regressions, security, data safety, missing tests. Findings fixed by **[S]**.
 21. **[S] Fable prep** per `docs/fable-brief.md`: `scripts/gate.sh --full` → `docs/reviews/pre-fable-gate.md`; Haiku scouts → `docs/reviews/pre-fable-facts.md`. Then the Fable session closes the ranked list in `fable-analysis.md` (fix or ticket every item), re-runs the gate, updates the PR body, `/retro`.
-22. **[owner]** Windows: `Snipdeck.bat`, `run-windows-tests.bat` (M2, M3, new steps), the release workflow with `SNIPDECK_LICENCE_PUBLIC_KEY`, signing (SignPath Foundation for open source), tag `v1.0.0`.
+22. **[owner]** Windows: `Snipdeck.bat`, `Test Snipdeck on Windows.bat` (the v1 check: M2, M3, S1, S2 key steps), the release workflow with `SNIPDECK_LICENCE_PUBLIC_KEY`, signing (SignPath Foundation for open source), tag `v1.0.0`.
