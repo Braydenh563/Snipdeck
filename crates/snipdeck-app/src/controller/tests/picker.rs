@@ -79,7 +79,7 @@ fn picker_titles(w: &World) -> Vec<String> {
         .collect()
 }
 
-fn pasted(w: &World) -> Vec<String> {
+pub(super) fn pasted(w: &World) -> Vec<String> {
     w.ctl
         .services()
         .clipboard

@@ -599,6 +599,12 @@ impl HelpUi {
                     );
                     let binding =
                         HelpBinding::new(&controller, &window, data_dir.clone(), Rc::clone(&host));
+                    let weak = window.as_weak();
+                    crate::ownership::register_closer(crate::ownership::Win::Help, move || {
+                        if let Some(w) = weak.upgrade() {
+                            let _ = w.hide();
+                        }
+                    });
                     *slot = Some((window, binding));
                 }
                 let Some((window, binding)) = slot.as_ref() else {
@@ -611,6 +617,7 @@ impl HelpUi {
                 });
                 crate::native_window::place_over_owner(window.window());
                 window.show()?;
+                crate::ownership::opened(crate::ownership::Win::Help);
                 fit_to_screen(window.window());
                 // The checks are fresh every time the window comes up.
                 binding.refresh();

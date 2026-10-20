@@ -4,7 +4,7 @@ use super::*;
 
 // ---- The tray ----------------------------------------------------------------------------
 
-fn with_tray(w: &mut World) {
+pub(super) fn with_tray(w: &mut World) {
     w.ctl.on_tray(TrayEvent::IconPresent(true));
 }
 

@@ -535,7 +535,10 @@ fn a_drag_released_near_an_allowed_edge_docks_there_and_near_the_taskbar_does_no
     let m = taskbar_display(DockEdge::Bottom);
     w.ctl.frame_changed(&m, FLOATING);
     // A move that is not a drag (a restore) previews nothing, and settling changes nothing.
-    let near_right = Rect { x: 1590, ..FLOATING };
+    let near_right = Rect {
+        x: 1590,
+        ..FLOATING
+    };
     w.ctl.frame_moved(&m, near_right);
     assert_eq!(w.ctl.view().dock_preview, None);
     assert_eq!(w.ctl.frame_settled(&m, near_right), Vec::new());

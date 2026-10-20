@@ -30,6 +30,8 @@ mod panel_ctl;
 mod recent_ctl;
 mod screen_clip_ctl;
 mod settings_ctl;
+#[cfg(test)]
+mod tests;
 mod toast_ctl;
 mod use_ctl;
 mod views;
@@ -167,6 +169,8 @@ pub struct Controller<S, C, K, T> {
     on_top: bool,
     /// A regular Snipdeck window (not the Panel) holds the focus.
     own_window_active: bool,
+    /// The last hide of the Panel was a blur-hide (focus went elsewhere), not a gesture to close it.
+    blur_hide: bool,
     toast: Option<ActiveToast>,
     toast_seq: u64,
     /// The Picker, while it is open.
@@ -190,6 +194,9 @@ pub struct Controller<S, C, K, T> {
     /// The board menu's delete confirmation is asking about this board (the Main window draws
     /// it; no editor opens).
     board_delete: Option<BoardId>,
+    /// List and board editors closed with the window that opened them: what was typed in each,
+    /// for the next time it opens (this app session only).
+    parked_editors: Vec<(main_ctl::EditorTarget, crate::main_window::EditorView)>,
     /// The item editor, while one is open.
     item_editor: Option<editor_ctl::ItemEditorSlot>,
     item_editor_seq: u64,
@@ -325,6 +332,7 @@ where
             shown_at,
             on_top: true,
             own_window_active: false,
+            blur_hide: false,
             toast: None,
             toast_seq: 0,
             picker: None,
@@ -338,6 +346,7 @@ where
             editor: None,
             editor_seq: 0,
             board_delete: None,
+            parked_editors: Vec::new(),
             item_editor: None,
             item_editor_seq: 0,
             editor_env: editor_ctl::EditorEnv::default(),
@@ -610,9 +619,16 @@ where
     /// Hides the Panel (Esc with nothing to clear, the close button, the toggle hotkey).
     pub fn hide(&mut self) -> Vec<Effect> {
         self.visible = false;
+        self.blur_hide = false;
         self.panel_revealed = None;
         self.menu = PanelMenu::None;
         vec![Effect::HidePanel]
+    }
+
+    /// Whether the hide just reported was a blur-hide, which leaves the windows opened from the
+    /// Panel up (focus moving to one of them is what caused it). Reading it resets it.
+    pub fn take_blur_hide(&mut self) -> bool {
+        std::mem::take(&mut self.blur_hide)
     }
 
     /// Hides the Panel because the user did not ask for it by the way back (the close button, a
@@ -695,7 +711,9 @@ where
         self.panel_revealed = None;
         self.on_target_changed();
         if self.hides_on_blur() {
-            self.hide_with_hint()
+            let effects = self.hide_with_hint();
+            self.blur_hide = true;
+            effects
         } else {
             Vec::new()
         }

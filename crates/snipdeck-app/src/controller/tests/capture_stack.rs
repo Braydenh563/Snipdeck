@@ -56,8 +56,7 @@ fn quick_capture_without_any_list_says_so() {
     store.insert_board(&board, Placement::Last).expect("board");
     let mut clipboard = FakeClipboard::default();
     clipboard.written.push(
-        snipdeck_platform::payload::Payload::new(vec![Data::Text("x".into())])
-            .expect("payload"),
+        snipdeck_platform::payload::Payload::new(vec![Data::Text("x".into())]).expect("payload"),
     );
     let mut ctl = Controller::new(
         store,

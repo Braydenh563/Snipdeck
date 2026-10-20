@@ -2,17 +2,29 @@
 
 use super::*;
 use crate::host::{FakeTargets, FixedClock};
-use snipdeck_core::{
-    Board, Content, Format, Formats, Inline, Item, ItemKind, List, Name, Placement, Tier,
-    Timestamp,
+use crate::{
+    frame::{Edge, Rect},
+    panel::{Footer, UseLabel},
+    picker::Scope,
 };
+use snipdeck_core::{
+    Board, Content, Format, Formats, Inline, Item, ItemKind, List, Name, Placement, Tier, Timestamp,
+};
+use snipdeck_core::{Feature, UseMode, UseOutcome};
+use snipdeck_platform::system_look::HighContrast;
 use snipdeck_platform::{
     keys::{Key, KeyEvent},
     payload::Data,
     route::{Focus, Target},
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
 };
-use snipdeck_store::Store;
+use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, RecentRepo, Store, TrashRepo};
+
+use look_settings::saving_world;
+use menus_frame::display;
+use picker::pasted;
+use tray::with_tray;
+use use_paste::make_sensitive;
 
 mod capture_stack;
 mod dock;

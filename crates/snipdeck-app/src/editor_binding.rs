@@ -180,6 +180,7 @@ where
         fill(&window, &view);
         crate::native_window::place_over_owner(window.window());
         let _ = window.show();
+        crate::ownership::opened(crate::ownership::Win::ItemEditor);
         crate::native_window::fit_to_screen(window.window());
         window.invoke_focus_title();
         if view.restored {
@@ -232,6 +233,14 @@ where
         // The window's preferred size (editors.slint), cut to the screen before the first show.
         crate::native_window::size_before_show(w.window(), (560.0, 700.0));
         self.wire(&w);
+        // Closes with the window it was opened from, keeping what was typed as its draft.
+        let (core, weak) = (Rc::downgrade(self), w.as_weak());
+        crate::ownership::register_closer(crate::ownership::Win::ItemEditor, move || {
+            if let (Some(core), Some(w)) = (core.upgrade(), weak.upgrade()) {
+                let input = read_input(&w);
+                core.act(|ctl| ctl.item_editor_park(&input));
+            }
+        });
         *self.window.borrow_mut() = Some(w.clone_strong());
         Some(w)
     }

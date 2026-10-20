@@ -301,6 +301,12 @@ export component MainWindow inherits Window {
         root.palette-open = true;
         root.palette-opened();
     }
+    // The window is closing: nothing stays open in it (menus, chooser, palette, dialog) for the next time it shows.
+    public function dismiss-overlays() {
+        root.palette-open = false;
+        root.confirm-shown = false;
+        root.close-menus();
+    }
     public function focus-items() {
         items-scope.focus();
     }

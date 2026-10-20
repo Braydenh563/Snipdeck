@@ -267,6 +267,13 @@
       "title": "Take screenshot from the Panel, the tray and the palette (O48)",
       "do": "Open Paint. Open the Panel menu and choose Take screenshot. Drag a rectangle over part of the screen with the snipping overlay, then paste into Paint with Ctrl+V. Repeat from the tray icon menu (Take screenshot) and from the command palette (type screenshot). Then turn on Settings > Keep Panel visible during screenshots and repeat once. Then start a screenshot, press Esc on the overlay without taking one, and wait a minute.",
       "expect": "On choosing Take screenshot the Panel disappears at once, so it is not in front of the snipping overlay, and the overlay appears. When the snip is taken the clipboard holds the picture and the Panel is shown again within about half a second, without taking focus from the app in front. With the setting on, the Panel stays on screen during the snip. After Esc the Panel returns on its own after about 60 seconds. If the overlay cannot start, the Panel is shown at once with a toast saying so. No snippet is added by itself."
+    },
+    {
+      "id": "31",
+      "v1": true,
+      "title": "Closing Main closes what it opened (O53)",
+      "do": "Open the Main window. From it open Settings, the Troubleshoot window, the Tag manager and an item editor (type a few new words in the item's text, do not save), then a list editor (change its name, do not save). Also open the command palette (Ctrl+K). Close the Main window with its X button. Then open Main again from the tray, open the same item and the same list for editing. Next open the Panel, open Settings and an item editor from the Panel, and close Main: they must stay. Then close the Panel with its X button.",
+      "expect": "Closing Main closes Settings, Troubleshoot, the Tag manager, both editors and the palette together with it, with no question asked. Main opens again with no palette. The item editor and the list editor come back with the words you typed (the item editor says the draft was restored). Closing Main does not close the windows opened from the Panel. Closing the Panel then closes Settings and the editor opened from it. Write which window stayed open, if any, in the note (n)."
     }
   ]
 }

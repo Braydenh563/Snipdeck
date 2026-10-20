@@ -41,15 +41,16 @@ impl ScreenClipHost for FakeHost {
 
 fn with_host(w: &mut World) -> Rc<RefCell<Machine>> {
     let machine = Rc::new(RefCell::new(Machine::default()));
-    w.ctl.set_screen_clip_host(Box::new(FakeHost(Rc::clone(&machine))));
+    w.ctl
+        .set_screen_clip_host(Box::new(FakeHost(Rc::clone(&machine))));
     machine
 }
 
-fn clipboard(sequence: u32, has_image: bool) -> Option<ClipboardProbe> {
-    Some(ClipboardProbe {
+fn clipboard(sequence: u32, has_image: bool) -> ClipboardProbe {
+    ClipboardProbe {
         sequence,
         has_image,
-    })
+    }
 }
 
 /// Moves the controller's clock `seconds` past its start.
@@ -103,13 +104,13 @@ fn the_palette_command_queues_the_same_effects_for_the_host() {
 fn a_picture_on_the_clipboard_shows_the_panel_again_and_adds_nothing() {
     let mut w = world();
     let machine = with_host(&mut w);
-    machine.borrow_mut().probe = clipboard(4, false);
+    machine.borrow_mut().probe = Some(clipboard(4, false));
     let items = w.ctl.view().rows.len();
     w.ctl.on_tray(TrayEvent::TakeScreenshot);
 
     after(&w, 2);
     assert_eq!(w.ctl.screen_clip_tick(), Vec::new(), "nothing new yet");
-    machine.borrow_mut().probe = clipboard(5, true);
+    machine.borrow_mut().probe = Some(clipboard(5, true));
     after(&w, 4);
     assert_eq!(w.ctl.screen_clip_tick(), [Effect::ShowPanel]);
     assert!(w.ctl.visible());
@@ -122,7 +123,7 @@ fn a_picture_on_the_clipboard_shows_the_panel_again_and_adds_nothing() {
 fn the_panel_comes_back_by_itself_after_a_minute() {
     let mut w = world();
     let machine = with_host(&mut w);
-    machine.borrow_mut().probe = clipboard(4, false);
+    machine.borrow_mut().probe = Some(clipboard(4, false));
     w.ctl.on_tray(TrayEvent::TakeScreenshot);
     after(&w, 59);
     assert_eq!(w.ctl.screen_clip_tick(), Vec::new());
@@ -165,7 +166,7 @@ fn keeping_the_panel_visible_hides_nothing_and_blur_does_not_hide_it_either() {
         },
     );
     let machine = with_host(&mut w);
-    machine.borrow_mut().probe = clipboard(4, false);
+    machine.borrow_mut().probe = Some(clipboard(4, false));
     // Past the grace after showing, with the Panel unpinned and hiding on blur on.
     w.ctl.set_on_top(false);
     after(&w, 5);
@@ -175,7 +176,7 @@ fn keeping_the_panel_visible_hides_nothing_and_blur_does_not_hide_it_either() {
     // The overlay takes the foreground: the Panel stays.
     assert_eq!(w.ctl.on_foreground_changed(), Vec::new());
     assert!(w.ctl.visible());
-    machine.borrow_mut().probe = clipboard(5, true);
+    machine.borrow_mut().probe = Some(clipboard(5, true));
     after(&w, 8);
     assert_eq!(w.ctl.screen_clip_tick(), Vec::new(), "nothing was hidden");
     // Done: blur hides an unpinned Panel again.
@@ -195,10 +196,10 @@ fn a_second_ask_while_the_overlay_is_up_starts_nothing() {
 fn a_hidden_panel_stays_hidden_when_it_was_not_hidden_for_the_screenshot() {
     let mut w = world();
     let machine = with_host(&mut w);
-    machine.borrow_mut().probe = clipboard(4, false);
+    machine.borrow_mut().probe = Some(clipboard(4, false));
     w.ctl.hide();
     assert_eq!(w.ctl.on_tray(TrayEvent::TakeScreenshot), Vec::new());
-    machine.borrow_mut().probe = clipboard(5, true);
+    machine.borrow_mut().probe = Some(clipboard(5, true));
     after(&w, 3);
     assert_eq!(w.ctl.screen_clip_tick(), Vec::new());
     assert!(!w.ctl.visible());

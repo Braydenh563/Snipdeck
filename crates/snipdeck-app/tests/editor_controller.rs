@@ -13,7 +13,7 @@
 use std::{cell::RefCell, fs, path::Path, rc::Rc};
 
 use snipdeck_app::{
-    controller::{Controller, MainAction, Services},
+    controller::{Controller, Effect, MainAction, Services},
     demo,
     drafts::{Draft, DraftKey, Drafts},
     host::{FakeTargets, FixedClock},
@@ -1239,6 +1239,54 @@ fn a_draft_comes_back_when_the_editor_is_opened_again() {
     assert_eq!(draft_files(data.path()), Vec::<String>::new());
     ctl.open_new_item(Origin::Main);
     assert!(!view(&ctl).restored);
+}
+
+#[test]
+fn a_blur_hide_leaves_the_editor_it_opened_and_is_told_apart_from_a_close() {
+    let mut r = pro();
+    r.ctl.set_on_top(false);
+    r.clock
+        .set("2026-10-17T10:30:02Z".parse().expect("timestamp"));
+    r.ctl.open_new_item(Origin::Panel);
+    assert!(r.ctl.item_editor_open());
+    // Focus moved to the editor: the Panel hides itself, the editor stays.
+    assert_eq!(r.ctl.on_foreground_changed(), [Effect::HidePanel]);
+    assert!(!r.ctl.visible());
+    assert!(r.ctl.item_editor_open());
+    assert!(
+        r.ctl.take_blur_hide(),
+        "the host must not close the Panel's windows"
+    );
+    assert!(!r.ctl.take_blur_hide(), "read once");
+    // Esc, the hotkey, the tray and the close button hide without the mark.
+    r.ctl.show();
+    r.ctl.hide();
+    assert!(!r.ctl.take_blur_hide());
+}
+
+#[test]
+fn parking_an_editor_closes_it_and_keeps_its_draft_for_the_next_open() {
+    let mut r = pro();
+    let id = id_of(&r.ctl, "Office");
+    r.ctl.open_item_editor(id);
+    let v = view(&r.ctl);
+    let edited = EditorInput {
+        content: "Level 9 (unsaved)".into(),
+        ..v.fields.clone()
+    };
+    // The owner window closed: the typed text is kept and no question is asked.
+    r.ctl.item_editor_park(&edited);
+    assert!(!r.ctl.item_editor_open());
+    assert_eq!(draft_files(r.dir.path()), [format!("{id}.json")]);
+    r.ctl.open_item_editor(id);
+    let back = view(&r.ctl);
+    assert!(back.restored);
+    assert_eq!(back.fields.content, "Level 9 (unsaved)");
+    assert_eq!(
+        text_of(&r.ctl, id),
+        "Level 4, 100 St Georges Terrace, Perth WA 6000",
+        "nothing was saved"
+    );
 }
 
 #[test]
