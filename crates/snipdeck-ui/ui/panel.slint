@@ -27,6 +27,7 @@ import { Theme, Type, Space, Radius, Fonts, SystemLook, Palette } from "theme.sl
 import { Icons } from "icons.slint";
 import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
 import { DeckEdge, DeckEdgePosition } from "components/deck-edge.slint";
+import { OverlayScrollbar } from "components/scrollbar.slint";
 import { PinnedStrip, PinnedItem } from "components/pinned-strip.slint";
 import { BoardSwitcher } from "components/board-switcher.slint";
 import { ListTabBar, TabItem, ClockTab } from "components/tab.slint";
@@ -1095,6 +1096,14 @@ export component PanelWindow inherits Window {
                         }
                     }
 
+                    list-bar := OverlayScrollbar {
+                        content-y: list.content-y;
+                        content-height: list.content-height;
+                        visible-height: list.height;
+                        enabled: list.visible;
+                        scroll-to(y) => { list.content-y = y; }
+                    }
+
                     // More cards below (or above) the fold: two card edges, never a fade.
                     if root.rows.length > 0 && !root.recent-open && list.content-y < -1px: DeckEdge {
                         position: DeckEdgePosition.top;
@@ -1156,6 +1165,14 @@ export component PanelWindow inherits Window {
                                     }
                                 }
                             }
+                        }
+
+                        recent-list-bar := OverlayScrollbar {
+                            content-y: recent-list.content-y;
+                            content-height: recent-list.content-height;
+                            visible-height: recent-list.height;
+                            enabled: recent-list.visible;
+                            scroll-to(y) => { recent-list.content-y = y; }
                         }
                         if root.recent-rows.length == 0: EmptyState {
                             x: Space.s2;

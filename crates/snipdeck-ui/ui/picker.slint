@@ -22,6 +22,7 @@ import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint"
 import { SearchField } from "components/text_field.slint";
 import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
 import { Tag } from "components/tag.slint";
+import { OverlayScrollbar } from "components/scrollbar.slint";
 import { KeyCombo } from "components/keycap.slint";
 
 // One result, as `snipdeck-app` resolves it across boards. The breadcrumb is `board-name / list-name`; the
@@ -437,6 +438,16 @@ export component PickerWindow inherits Window {
                             root.row-copied(i);
                         }
                     }
+                }
+
+                list-bar := OverlayScrollbar {
+                    y: list.y;
+                    height: list.height;
+                    content-y: list.content-y;
+                    content-height: list.content-height;
+                    visible-height: list.height;
+                    enabled: list.visible;
+                    scroll-to(y) => { list.content-y = y; }
                 }
 
                 if root.rows.length == 0: EmptyState {

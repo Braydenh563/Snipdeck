@@ -25,6 +25,7 @@ import { Tag } from "components/tag.slint";
 import { Swatch } from "components/swatch.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
+import { OverlayScrollbar } from "components/scrollbar.slint";
 import { FormField, FormScroll, Segmented, SelectField } from "components/form.slint";
 
 // An information strip: icon plus text, never colour alone.
@@ -1353,7 +1354,7 @@ export component TagManager inherits Window {
                     vertical-alignment: center;
                     wrap: word-wrap;
                 }
-                ListView {
+                tag-list := ListView {
                     visible: root.tags.length > 0;
                     vertical-scrollbar-policy: ScrollBarPolicy.always-off;
                     horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
@@ -1431,6 +1432,14 @@ export component TagManager inherits Window {
                             }
                         }
                     }
+                }
+
+                tag-list-bar := OverlayScrollbar {
+                    content-y: tag-list.content-y;
+                    content-height: tag-list.content-height;
+                    visible-height: tag-list.height;
+                    enabled: tag-list.visible;
+                    scroll-to(y) => { tag-list.content-y = y; }
                 }
             }
 

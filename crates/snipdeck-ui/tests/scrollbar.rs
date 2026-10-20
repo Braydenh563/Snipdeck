@@ -75,11 +75,13 @@ fn the_thumb_is_proportional_and_follows_the_scroll_position() {
     let top = h.component.get_thumb_y();
     assert_eq!(top, 2.0);
     // Wheel down 100px: the thumb moves by 100/360 of its travel.
-    h.component.window().dispatch_event(WindowEvent::PointerScrolled {
-        position: LogicalPosition::new(100.0, 100.0),
-        delta_x: 0.0,
-        delta_y: -100.0,
-    });
+    h.component
+        .window()
+        .dispatch_event(WindowEvent::PointerScrolled {
+            position: LogicalPosition::new(100.0, 100.0),
+            delta_x: 0.0,
+            delta_y: -100.0,
+        });
     let _ = h.render_settled();
     assert_eq!(h.component.get_scrolled(), -100.0);
     let moved = h.component.get_thumb_y();
@@ -148,7 +150,9 @@ fn golden_light_dark_and_high_contrast() {
     assert_golden("scrollbar-light", &undrawn(false).render_settled());
     assert_golden("scrollbar-dark", &undrawn(true).render_settled());
     let h = undrawn(false);
-    h.component.global::<SystemLook<'_>>().set_high_contrast(true);
+    h.component
+        .global::<SystemLook<'_>>()
+        .set_high_contrast(true);
     assert_golden("scrollbar-hc", &h.render_settled());
 }
 

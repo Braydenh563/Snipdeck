@@ -1,6 +1,7 @@
 import { Theme, Type, Radius, Space, Motion, Fonts, SystemLook } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
+import { OverlayScrollbar } from "scrollbar.slint";
 
 // One choice of a Chooser or one navigation entry of the main window's sidebar (a list or a tag): its label, an
 // optional count, the list colour (transparent = no mark) and whether it is ticked (tags on the selected items).
@@ -184,5 +185,14 @@ export component Chooser inherits Rectangle {
                 }
             }
         }
+    }
+
+    OverlayScrollbar {
+        y: flick.y;
+        height: flick.height;
+        content-y: flick.content-y;
+        content-height: flick.content-height;
+        visible-height: flick.height;
+        scroll-to(y) => { flick.content-y = y; }
     }
 }

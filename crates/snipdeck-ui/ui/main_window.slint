@@ -24,6 +24,7 @@ import { RepaintNudge } from "components/repaint.slint";
 import { Icon } from "components/icon.slint";
 import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
 import { DeckEdge, DeckEdgePosition } from "components/deck-edge.slint";
+import { OverlayScrollbar } from "components/scrollbar.slint";
 import { SidebarItem, SidebarItemKind } from "components/sidebar-item.slint";
 import { BoardSwitcher } from "components/board-switcher.slint";
 import { SearchField } from "components/text_field.slint";
@@ -822,188 +823,199 @@ export component MainWindow inherits Window {
                         }
                     }
 
-                    nav-flick := Flickable {
+                    Rectangle {
                         vertical-stretch: 1;
-                        interactive: false;
-                        // As tall as the child: a viewport shorter than its child would centre the child in it.
-                        content-height: max(self.height, nav-content.preferred-height);
+                        nav-flick := Flickable {
+                            width: parent.width;
+                            height: parent.height;
+                            interactive: false;
+                            // As tall as the child: a viewport shorter than its child would centre the child in it.
+                            content-height: max(self.height, nav-content.preferred-height);
 
-                        nav-scope := FocusScope {
-                            width: nav-flick.width;
-                            height: max(nav-flick.height, nav-content.preferred-height);
-                            focus-gained(reason) => {
-                                // Tab lands on the open view; a focus given back after a menu keeps the cursor.
-                                if (reason == FocusReason.tab-navigation) {
-                                    root.nav-cursor = root.nav-selected;
-                                }
-                            }
-                            key-pressed(event) => {
-                                if (event.modifiers.alt && (event.text == Key.UpArrow || event.text == Key.DownArrow)) {
-                                    if (root.nav-cursor >= 4 && root.nav-cursor < 4 + root.n-lists) {
-                                        let delta = event.text == Key.UpArrow ? -1 : 1;
-                                        root.list-reorder-requested(root.nav-cursor - 4, delta);
-                                        root.nav-cursor = min(max(root.nav-cursor + delta, 4), 3 + root.n-lists);
-                                    }
-                                    return accept;
-                                }
-                                if (event.text == Key.DownArrow) {
-                                    root.nav-cursor = min(root.nav-cursor + 1, root.nav-total - 1);
-                                    return accept;
-                                }
-                                if (event.text == Key.UpArrow) {
-                                    root.nav-cursor = max(root.nav-cursor - 1, 0);
-                                    return accept;
-                                }
-                                if (event.text == Key.Home) {
-                                    root.nav-cursor = 0;
-                                    return accept;
-                                }
-                                if (event.text == Key.End) {
-                                    root.nav-cursor = root.nav-total - 1;
-                                    return accept;
-                                }
-                                if (event.text == Key.Return || event.text == " ") {
-                                    root.open-section(root.nav-cursor);
-                                    return accept;
-                                }
-                                if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
-                                    if (root.nav-cursor >= 3) {
-                                        root.open-nav-menu(root.nav-cursor, root.sidebar-w, root.bar-h + Space.s8);
-                                    }
-                                    return accept;
-                                }
-                                return reject;
-                            }
-
-                            nav-content := VerticalLayout {
-                                padding: Space.s2;
-                                padding-top: Space.s1;
-                                spacing: Space.s0-5;
-                                alignment: start;
-
-                                SidebarItem {
-                                    kind: SidebarItemKind.system;
-                                    icon: Icons.stack;
-                                    label: @tr("All items");
-                                    count: root.count-all;
-                                    rail: root.narrow;
-                                    selected: root.nav-selected == 0;
-                                    keyboard-focusable: false;
-                                    show-focus: nav-scope.has-focus && root.nav-cursor == 0;
-                                    clicked => { root.open-section(0); }
-                                }
-                                SidebarItem {
-                                    kind: SidebarItemKind.system;
-                                    icon: Icons.push-pin;
-                                    label: @tr("Pinned");
-                                    count: root.count-pinned;
-                                    rail: root.narrow;
-                                    selected: root.nav-selected == 1;
-                                    keyboard-focusable: false;
-                                    show-focus: nav-scope.has-focus && root.nav-cursor == 1;
-                                    clicked => { root.open-section(1); }
-                                }
-                                SidebarItem {
-                                    kind: SidebarItemKind.system;
-                                    icon: Icons.clock;
-                                    label: @tr("Recent");
-                                    count: root.count-recent;
-                                    rail: root.narrow;
-                                    selected: root.nav-selected == 2;
-                                    keyboard-focusable: false;
-                                    show-focus: nav-scope.has-focus && root.nav-cursor == 2;
-                                    clicked => { root.open-section(2); }
-                                }
-                                SidebarItem {
-                                    kind: SidebarItemKind.system;
-                                    icon: Icons.trash;
-                                    label: @tr("Trash");
-                                    count: root.count-trash;
-                                    rail: root.narrow;
-                                    selected: root.nav-selected == 3;
-                                    keyboard-focusable: false;
-                                    show-focus: nav-scope.has-focus && root.nav-cursor == 3;
-                                    clicked => { root.open-section(3); }
-                                    context-menu-requested(x, y) => { root.open-nav-menu(3, root.sidebar-w, self.absolute-position.y + y); }
-                                }
-
-                                if !root.narrow: SidebarHeading {
-                                    text: @tr("Lists");
-                                    action-icon: Icons.plus;
-                                    action-label: @tr("Add list");
-                                    action => { root.add-list-requested(); }
-                                }
-                                if root.narrow: Rectangle {
-                                    height: Space.s2;
-                                    Rectangle {
-                                        y: (parent.height - self.height) / 2;
-                                        height: 1px;
-                                        background: Theme.border-subtle;
+                            nav-scope := FocusScope {
+                                width: nav-flick.width;
+                                height: max(nav-flick.height, nav-content.preferred-height);
+                                focus-gained(reason) => {
+                                    // Tab lands on the open view; a focus given back after a menu keeps the cursor.
+                                    if (reason == FocusReason.tab-navigation) {
+                                        root.nav-cursor = root.nav-selected;
                                     }
                                 }
-                                for entry[i] in root.lists: Rectangle {
-                                    height: side-list.height;
-                                    side-drop := DropArea {
-                                        can-drop(event) => {
-                                            (root.payload-row(event.data) >= 0 && !root.in-trash) || (root.payload-list(event.data) >= 0 && root.payload-list(event.data) != i) ? DragAction.move : DragAction.none
+                                key-pressed(event) => {
+                                    if (event.modifiers.alt && (event.text == Key.UpArrow || event.text == Key.DownArrow)) {
+                                        if (root.nav-cursor >= 4 && root.nav-cursor < 4 + root.n-lists) {
+                                            let delta = event.text == Key.UpArrow ? -1 : 1;
+                                            root.list-reorder-requested(root.nav-cursor - 4, delta);
+                                            root.nav-cursor = min(max(root.nav-cursor + delta, 4), 3 + root.n-lists);
                                         }
-                                        dropped(event) => {
-                                            if (root.payload-row(event.data) >= 0) {
-                                                root.row-dropped-on-list(root.payload-row(event.data), i);
-                                            } else {
-                                                root.list-dropped(root.payload-list(event.data), i);
+                                        return accept;
+                                    }
+                                    if (event.text == Key.DownArrow) {
+                                        root.nav-cursor = min(root.nav-cursor + 1, root.nav-total - 1);
+                                        return accept;
+                                    }
+                                    if (event.text == Key.UpArrow) {
+                                        root.nav-cursor = max(root.nav-cursor - 1, 0);
+                                        return accept;
+                                    }
+                                    if (event.text == Key.Home) {
+                                        root.nav-cursor = 0;
+                                        return accept;
+                                    }
+                                    if (event.text == Key.End) {
+                                        root.nav-cursor = root.nav-total - 1;
+                                        return accept;
+                                    }
+                                    if (event.text == Key.Return || event.text == " ") {
+                                        root.open-section(root.nav-cursor);
+                                        return accept;
+                                    }
+                                    if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
+                                        if (root.nav-cursor >= 3) {
+                                            root.open-nav-menu(root.nav-cursor, root.sidebar-w, root.bar-h + Space.s8);
+                                        }
+                                        return accept;
+                                    }
+                                    return reject;
+                                }
+
+                                nav-content := VerticalLayout {
+                                    padding: Space.s2;
+                                    padding-top: Space.s1;
+                                    spacing: Space.s0-5;
+                                    alignment: start;
+
+                                    SidebarItem {
+                                        kind: SidebarItemKind.system;
+                                        icon: Icons.stack;
+                                        label: @tr("All items");
+                                        count: root.count-all;
+                                        rail: root.narrow;
+                                        selected: root.nav-selected == 0;
+                                        keyboard-focusable: false;
+                                        show-focus: nav-scope.has-focus && root.nav-cursor == 0;
+                                        clicked => { root.open-section(0); }
+                                    }
+                                    SidebarItem {
+                                        kind: SidebarItemKind.system;
+                                        icon: Icons.push-pin;
+                                        label: @tr("Pinned");
+                                        count: root.count-pinned;
+                                        rail: root.narrow;
+                                        selected: root.nav-selected == 1;
+                                        keyboard-focusable: false;
+                                        show-focus: nav-scope.has-focus && root.nav-cursor == 1;
+                                        clicked => { root.open-section(1); }
+                                    }
+                                    SidebarItem {
+                                        kind: SidebarItemKind.system;
+                                        icon: Icons.clock;
+                                        label: @tr("Recent");
+                                        count: root.count-recent;
+                                        rail: root.narrow;
+                                        selected: root.nav-selected == 2;
+                                        keyboard-focusable: false;
+                                        show-focus: nav-scope.has-focus && root.nav-cursor == 2;
+                                        clicked => { root.open-section(2); }
+                                    }
+                                    SidebarItem {
+                                        kind: SidebarItemKind.system;
+                                        icon: Icons.trash;
+                                        label: @tr("Trash");
+                                        count: root.count-trash;
+                                        rail: root.narrow;
+                                        selected: root.nav-selected == 3;
+                                        keyboard-focusable: false;
+                                        show-focus: nav-scope.has-focus && root.nav-cursor == 3;
+                                        clicked => { root.open-section(3); }
+                                        context-menu-requested(x, y) => { root.open-nav-menu(3, root.sidebar-w, self.absolute-position.y + y); }
+                                    }
+
+                                    if !root.narrow: SidebarHeading {
+                                        text: @tr("Lists");
+                                        action-icon: Icons.plus;
+                                        action-label: @tr("Add list");
+                                        action => { root.add-list-requested(); }
+                                    }
+                                    if root.narrow: Rectangle {
+                                        height: Space.s2;
+                                        Rectangle {
+                                            y: (parent.height - self.height) / 2;
+                                            height: 1px;
+                                            background: Theme.border-subtle;
+                                        }
+                                    }
+                                    for entry[i] in root.lists: Rectangle {
+                                        height: side-list.height;
+                                        side-drop := DropArea {
+                                            can-drop(event) => {
+                                                (root.payload-row(event.data) >= 0 && !root.in-trash) || (root.payload-list(event.data) >= 0 && root.payload-list(event.data) != i) ? DragAction.move : DragAction.none
                                             }
-                                            return DragAction.move;
-                                        }
+                                            dropped(event) => {
+                                                if (root.payload-row(event.data) >= 0) {
+                                                    root.row-dropped-on-list(root.payload-row(event.data), i);
+                                                } else {
+                                                    root.list-dropped(root.payload-list(event.data), i);
+                                                }
+                                                return DragAction.move;
+                                            }
 
-                                        DragArea {
-                                            allow-move: true;
-                                            data: root.list-payload(i);
+                                            DragArea {
+                                                allow-move: true;
+                                                data: root.list-payload(i);
 
-                                            side-list := SidebarItem {
-                                                kind: SidebarItemKind.list;
-                                                label: entry.label;
-                                                count: entry.count;
-                                                mark-color: entry.color;
-                                                icon: entry.icon;
-                                                rail: root.narrow;
-                                                selected: root.nav-selected == 4 + i;
-                                                drop-target: side-drop.has-drag;
-                                                keyboard-focusable: false;
-                                                show-focus: nav-scope.has-focus && root.nav-cursor == 4 + i;
-                                                clicked => { root.open-section(4 + i); }
-                                                context-menu-requested(x, y) => { root.open-nav-menu(4 + i, root.sidebar-w, self.absolute-position.y + y); }
+                                                side-list := SidebarItem {
+                                                    kind: SidebarItemKind.list;
+                                                    label: entry.label;
+                                                    count: entry.count;
+                                                    mark-color: entry.color;
+                                                    icon: entry.icon;
+                                                    rail: root.narrow;
+                                                    selected: root.nav-selected == 4 + i;
+                                                    drop-target: side-drop.has-drag;
+                                                    keyboard-focusable: false;
+                                                    show-focus: nav-scope.has-focus && root.nav-cursor == 4 + i;
+                                                    clicked => { root.open-section(4 + i); }
+                                                    context-menu-requested(x, y) => { root.open-nav-menu(4 + i, root.sidebar-w, self.absolute-position.y + y); }
+                                                }
                                             }
                                         }
                                     }
-                                }
 
-                                if !root.narrow: SidebarHeading {
-                                    text: @tr("Tags");
-                                    action-icon: Icons.gear;
-                                    action-label: @tr("Manage tags");
-                                    action => { root.manage-tags-requested(); }
-                                }
-                                if root.narrow && root.n-tags > 0: Rectangle {
-                                    height: Space.s2;
-                                    Rectangle {
-                                        y: (parent.height - self.height) / 2;
-                                        height: 1px;
-                                        background: Theme.border-subtle;
+                                    if !root.narrow: SidebarHeading {
+                                        text: @tr("Tags");
+                                        action-icon: Icons.gear;
+                                        action-label: @tr("Manage tags");
+                                        action => { root.manage-tags-requested(); }
+                                    }
+                                    if root.narrow && root.n-tags > 0: Rectangle {
+                                        height: Space.s2;
+                                        Rectangle {
+                                            y: (parent.height - self.height) / 2;
+                                            height: 1px;
+                                            background: Theme.border-subtle;
+                                        }
+                                    }
+                                    for entry[i] in root.tags: SidebarItem {
+                                        kind: SidebarItemKind.tag;
+                                        label: entry.label;
+                                        count: entry.count;
+                                        rail: root.narrow;
+                                        selected: root.nav-selected == 4 + root.n-lists + i;
+                                        keyboard-focusable: false;
+                                        show-focus: nav-scope.has-focus && root.nav-cursor == 4 + root.n-lists + i;
+                                        clicked => { root.open-section(4 + root.n-lists + i); }
+                                        context-menu-requested(x, y) => { root.open-nav-menu(4 + root.n-lists + i, root.sidebar-w, self.absolute-position.y + y); }
                                     }
                                 }
-                                for entry[i] in root.tags: SidebarItem {
-                                    kind: SidebarItemKind.tag;
-                                    label: entry.label;
-                                    count: entry.count;
-                                    rail: root.narrow;
-                                    selected: root.nav-selected == 4 + root.n-lists + i;
-                                    keyboard-focusable: false;
-                                    show-focus: nav-scope.has-focus && root.nav-cursor == 4 + root.n-lists + i;
-                                    clicked => { root.open-section(4 + root.n-lists + i); }
-                                    context-menu-requested(x, y) => { root.open-nav-menu(4 + root.n-lists + i, root.sidebar-w, self.absolute-position.y + y); }
-                                }
                             }
+                        }
+
+                        OverlayScrollbar {
+                            content-y: nav-flick.content-y;
+                            content-height: nav-flick.content-height;
+                            visible-height: nav-flick.height;
+                            scroll-to(y) => { nav-flick.content-y = y; }
                         }
                     }
 
@@ -1464,6 +1476,14 @@ export component MainWindow inherits Window {
                                 }
                             }
                         }
+
+                        list-bar := OverlayScrollbar {
+                            content-y: list.content-y;
+                            content-height: list.content-height;
+                            visible-height: list.height;
+                            enabled: list.visible;
+                            scroll-to(y) => { list.content-y = y; }
+                        }
                         if root.rows.length > 0 && list.content-y < -1px: DeckEdge {
                             position: DeckEdgePosition.top;
                             x: root.pad;
@@ -1563,6 +1583,14 @@ export component MainWindow inherits Window {
                                 }
                             }
                         }
+
+                        grid-bar := OverlayScrollbar {
+                            content-y: grid.content-y;
+                            content-height: grid.content-height;
+                            visible-height: grid.height;
+                            enabled: grid.visible;
+                            scroll-to(y) => { grid.content-y = y; }
+                        }
                         if root.rows.length > 0 && grid.content-y < -1px: DeckEdge {
                             position: DeckEdgePosition.top;
                             x: root.pad;
@@ -1616,61 +1644,72 @@ export component MainWindow inherits Window {
                                 clicked => { root.ask(5, 0); }
                             }
                         }
-                        rlist := ListView {
+                        Rectangle {
                             vertical-stretch: 1;
-                            accessible-label: @tr("Recent copies");
-                            for entry[i] in root.recent-rows: Rectangle {
-                                property <bool> is-active: i == root.rcur;
-                                function reveal() {
-                                    if (root.rcur == 0) {
-                                        rlist.content-y = 0px;
-                                    } else if (self.y + rlist.content-y < 0px) {
-                                        rlist.content-y = -self.y;
-                                    } else if (self.y + self.height + rlist.content-y > rlist.height) {
-                                        rlist.content-y = rlist.height - self.y - self.height;
+                            rlist := ListView {
+                                width: parent.width;
+                                height: parent.height;
+                                accessible-label: @tr("Recent copies");
+                                for entry[i] in root.recent-rows: Rectangle {
+                                    property <bool> is-active: i == root.rcur;
+                                    function reveal() {
+                                        if (root.rcur == 0) {
+                                            rlist.content-y = 0px;
+                                        } else if (self.y + rlist.content-y < 0px) {
+                                            rlist.content-y = -self.y;
+                                        } else if (self.y + self.height + rlist.content-y > rlist.height) {
+                                            rlist.content-y = rlist.height - self.y - self.height;
+                                        }
+                                    }
+                                    height: rcard.preferred-height + root.row-gap + (i == root.recent-rows.length - 1 ? 2 * root.ring : 0px);
+                                    init => {
+                                        if (self.is-active) { self.reveal(); }
+                                    }
+                                    changed is-active => {
+                                        if (self.is-active) { self.reveal(); }
+                                    }
+                                    changed y => {
+                                        if (self.is-active) { self.reveal(); }
+                                    }
+                                    rcard := ItemCard {
+                                        x: root.ring;
+                                        y: root.ring;
+                                        width: parent.width - 2 * root.ring;
+                                        height: self.preferred-height;
+                                        keyboard-focusable: false;
+                                        selected: i == root.rcur;
+                                        show-focus: i == root.rcur && items-scope.has-focus;
+                                        variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
+                                        kind: ItemKind.text;
+                                        preview: entry.preview;
+                                        list-name: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
+                                        list-color: transparent;
+                                        use-label: @tr("Copy");
+                                        use => {
+                                            root.recent-cursor = i;
+                                            root.recent-copied(entry.id);
+                                        }
+                                        copy => {
+                                            root.recent-cursor = i;
+                                            root.recent-copied(entry.id);
+                                        }
+                                        double-clicked => {
+                                            root.recent-cursor = i;
+                                            root.open-recent-save(i, self.absolute-position.x + Space.s6, self.absolute-position.y + self.height);
+                                        }
+                                        context-menu-requested(x, y) => {
+                                            root.recent-cursor = i;
+                                            root.open-recent-menu(i, self.absolute-position.x + x, self.absolute-position.y + y);
+                                        }
                                     }
                                 }
-                                height: rcard.preferred-height + root.row-gap + (i == root.recent-rows.length - 1 ? 2 * root.ring : 0px);
-                                init => {
-                                    if (self.is-active) { self.reveal(); }
-                                }
-                                changed is-active => {
-                                    if (self.is-active) { self.reveal(); }
-                                }
-                                changed y => {
-                                    if (self.is-active) { self.reveal(); }
-                                }
-                                rcard := ItemCard {
-                                    x: root.ring;
-                                    y: root.ring;
-                                    width: parent.width - 2 * root.ring;
-                                    height: self.preferred-height;
-                                    keyboard-focusable: false;
-                                    selected: i == root.rcur;
-                                    show-focus: i == root.rcur && items-scope.has-focus;
-                                    variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
-                                    kind: ItemKind.text;
-                                    preview: entry.preview;
-                                    list-name: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
-                                    list-color: transparent;
-                                    use-label: @tr("Copy");
-                                    use => {
-                                        root.recent-cursor = i;
-                                        root.recent-copied(entry.id);
-                                    }
-                                    copy => {
-                                        root.recent-cursor = i;
-                                        root.recent-copied(entry.id);
-                                    }
-                                    double-clicked => {
-                                        root.recent-cursor = i;
-                                        root.open-recent-save(i, self.absolute-position.x + Space.s6, self.absolute-position.y + self.height);
-                                    }
-                                    context-menu-requested(x, y) => {
-                                        root.recent-cursor = i;
-                                        root.open-recent-menu(i, self.absolute-position.x + x, self.absolute-position.y + y);
-                                    }
-                                }
+                            }
+
+                            rlist-bar := OverlayScrollbar {
+                                content-y: rlist.content-y;
+                                content-height: rlist.content-height;
+                                visible-height: rlist.height;
+                                scroll-to(y) => { rlist.content-y = y; }
                             }
                         }
                     }

@@ -2,6 +2,7 @@ import { Theme, Type, Radius, Space, Motion, Fonts, SystemLook } from "../theme.
 import { Icons } from "../icons.slint";
 import { SearchField } from "text_field.slint";
 import { KeyCombo } from "keycap.slint";
+import { OverlayScrollbar } from "scrollbar.slint";
 
 // One row of the palette: the app builds it (already filtered), `id` is the command it runs.
 export struct PaletteRow {
@@ -160,22 +161,37 @@ export component CommandPalette inherits Rectangle {
                         root.query-changed(text);
                     }
                 }
-                Flickable {
-                    // Keeps the highlighted row in view.
-                    content-y: min(0px, max(-(root.cur + 1) * root.row-h + self.height, -root.cur * root.row-h));
+                Rectangle {
+                    // Keeps the highlighted row in view (the scrollbar may move the list away from it until the highlight moves).
+                    property <length> follow: min(0px, max(-(root.cur + 1) * root.row-h + plist.height, -root.cur * root.row-h));
+                    property <int> n: root.rows.length;
                     height: min(root.rows.length * root.row-h, Space.s12 * 6);
-                    interactive: false;
-                    VerticalLayout {
-                        accessible-role: list;
-                        accessible-label: root.title;
-                        for row[i] in root.rows: PaletteItem {
-                            data: row;
-                            index: i;
-                            count: root.rows.length;
-                            current: root.cur == i;
-                            pointer-entered => { root.current = i; }
-                            activated => { root.chosen(row.id); }
+                    init => { plist.content-y = self.follow; }
+                    changed follow => { plist.content-y = self.follow; }
+                    changed n => { plist.content-y = self.follow; }
+
+                    plist := Flickable {
+                        width: parent.width;
+                        height: parent.height;
+                        interactive: false;
+                        VerticalLayout {
+                            accessible-role: list;
+                            accessible-label: root.title;
+                            for row[i] in root.rows: PaletteItem {
+                                data: row;
+                                index: i;
+                                count: root.rows.length;
+                                current: root.cur == i;
+                                pointer-entered => { root.current = i; }
+                                activated => { root.chosen(row.id); }
+                            }
                         }
+                    }
+                    OverlayScrollbar {
+                        content-y: plist.content-y;
+                        content-height: plist.content-height;
+                        visible-height: plist.height;
+                        scroll-to(y) => { plist.content-y = y; }
                     }
                 }
                 if root.rows.length == 0: Text {
