@@ -215,3 +215,131 @@ function Invoke-AutoSelfTest {
     $script:AutoState.WizardHwnd = [long]0
     return @($p)
 }
+
+# ---------------------------------------------------------------- wizard flow (flow.ps1): plans, time, resume, counts, file names
+
+function New-FlowFakeQueue([int]$N, [string]$AutoFrom = '') {
+    $q = @()
+    for ($i = 1; $i -le $N; $i++) {
+        $t = [pscustomobject]@{ id = "$i"; auto = $null; minutes = $null; gate = $false; anyGroup = $null; optional = $false; v1 = $false; os = $null }
+        if ($AutoFrom -and $i -ge [int]$AutoFrom) { $t.auto = 'Invoke-Fake' }
+        $q += [pscustomobject]@{ Key = "X:$i"; SpikeId = 'X'; Spike = $null; Test = $t }
+    }
+    return , $q
+}
+
+function Invoke-FlowSelfTest($Spikes) {
+    $p = New-Object System.Collections.ArrayList
+    function Expect([bool]$Cond, [string]$What) { if (-not $Cond) { [void]$p.Add("flow: $What") } }
+    $ids = { param($x) (@($x) -join ',') }
+
+    # ---- the recommended plan is the default
+    $plan = New-Plan
+    Expect ($plan.mode -eq 'v1' -and $plan.auto -eq $true -and $plan.push -eq $false -and $plan.advanced -eq $false) 'New-Plan: v1, automation on, no push, not advanced'
+    Expect ((Resolve-MenuKey '' 'g' 'gaq') -eq 'g') 'menu: Enter gives the default'
+    Expect ((Resolve-MenuKey $null 'g' 'gaq') -eq 'g') 'menu: null gives the default'
+    Expect ((Resolve-MenuKey '  A ' 'g' 'gaq') -eq 'a') 'menu: typed A is a'
+    Expect ((Resolve-MenuKey 'x' 'g' 'gaq') -eq '') 'menu: an unknown key is refused'
+    Expect ((Resolve-MenuKey 'quit' 'g' 'gaq') -eq 'q') 'menu: first letter counts'
+
+    # ---- which parts and steps the v1 check contains (real test files)
+    $v1Ids = Get-PlanSpikeIds $Spikes 'v1' @()
+    Expect ((& $ids $v1Ids) -eq 'M2,M3,S1,S2') "v1 parts: expected M2,M3,S1,S2, got $(& $ids $v1Ids)"
+    Expect ((& $ids (Get-PlanSpikeIds $Spikes 'full' @())) -eq (& $ids ($Spikes | ForEach-Object { $_.id }))) 'full: every part'
+    Expect ((& $ids (Get-PlanSpikeIds $Spikes 'quick' @('s4'))) -eq 'S4') 'explicit part ids win and are case-insensitive'
+    foreach ($s in $Spikes) {
+        Expect ([bool]$s.friendly) "$($s.id): missing a friendly name"
+        foreach ($t in $s.tests) {
+            if ($t.v1 -eq $true -and $t.optional -eq $true) { [void]$p.Add("flow: $($s.id):$($t.id) is optional but part of the v1 check") }
+        }
+        if (@($v1Ids) -contains $s.id) {
+            foreach ($t in $s.tests) {
+                if (($t.gate -eq $true -or $t.anyGroup) -and $t.v1 -ne $true) { [void]$p.Add("flow: $($s.id):$($t.id) is a key step but missing from the v1 check") }
+            }
+        }
+    }
+    $q1 = Get-RunQueue $Spikes $v1Ids 'v1' 'win11'
+    $keys = @($q1 | ForEach-Object { $_.Key })
+    foreach ($must in 'M3:1', 'M3:9', 'M3:10', 'M3:20', 'M3:21', 'M3:22', 'M2:1', 'M2:16', 'S1:2c', 'S1:5', 'S1:6', 'S2:1', 'S2:15') { Expect ($keys -contains $must) "v1 check lacks $must" }
+    Expect ($keys -notcontains 'S1:2a' -and $keys -notcontains 'M3:15') 'v1 check holds a step it should not (S1:2a, M3:15)'
+    Expect (@(Get-RunQueue $Spikes @('S4') 'quick' 'win10' | ForEach-Object { $_.Test.os } | Where-Object { $_ -eq 'win11' }).Count -eq 0) 'queue: win11-only steps leak into a win10 run'
+
+    # ---- time and progress text
+    Expect ((Format-Duration 0.4) -eq 'under a minute') 'duration < 1 min'
+    Expect ((Format-Duration 1) -eq 'about 1 min') 'duration 1 min'
+    Expect ((Format-Duration 12.2) -eq 'about 13 min') "duration 12.2: $(Format-Duration 12.2)"
+    Expect ((Format-Duration 47) -eq 'about 45 min') "duration 47 rounds to 5: $(Format-Duration 47)"
+    Expect ((Format-Duration 95) -eq 'about 1 h 35 min') "duration 95: $(Format-Duration 95)"
+    Expect ((Format-Duration 120) -eq 'about 2 h') "duration 120: $(Format-Duration 120)"
+    Expect ((Format-StepHeader 3 35 40) -eq 'Step 3 of 35 - about 40 min left') "step header: $(Format-StepHeader 3 35 40)"
+    Expect ((Format-StepHeader 35 35 0.2) -eq 'Step 35 of 35 - almost done') "step header at the end: $(Format-StepHeader 35 35 0.2)"
+    Expect ((Format-ProgressBar 0 10 10) -eq '[----------]   0%') "bar 0: '$(Format-ProgressBar 0 10 10)'"
+    Expect ((Format-ProgressBar 5 10 10) -eq '[#####-----]  50%') "bar 50: '$(Format-ProgressBar 5 10 10)'"
+    Expect ((Format-ProgressBar 10 10 10) -eq '[##########] 100%') "bar 100: '$(Format-ProgressBar 10 10 10)'"
+    Expect ((Format-ProgressBar 99 10 10) -eq '[##########] 100%' -and (Format-ProgressBar -3 10 10) -eq '[----------]   0%') 'bar clamps'
+    Expect ((Format-ProgressBar 1 0 10).StartsWith('[')) 'bar survives a zero total'
+
+    $manual = [pscustomobject]@{ auto = $null; minutes = $null }
+    $auto = [pscustomobject]@{ auto = 'Invoke-X'; minutes = $null }
+    $slow = [pscustomobject]@{ auto = $null; minutes = 4 }
+    Expect ((Get-StepMinutes $manual $true) -eq 1.5 -and (Get-StepMinutes $auto $true) -eq 0.5 -and (Get-StepMinutes $auto $false) -eq 1.5 -and (Get-StepMinutes $slow $true) -eq 4) 'step minutes'
+    $fq = New-FlowFakeQueue 4
+    $res = [ordered]@{ 'X:1' = @{ status = 'pass' }; 'X:2' = @{ status = 'skip' } }
+    Expect ((Get-MinutesLeft $fq $res 0 $true) -eq 3.0) "minutes left from the start (answered steps do not count): $(Get-MinutesLeft $fq $res 0 $true)"
+    Expect ((Get-MinutesLeft $fq $res 3 $true) -eq 1.5) 'minutes left on the last step'
+    Expect ((Get-MinutesLeft $fq $res 4 $true) -eq 0) 'minutes left past the end'
+    $faq = New-FlowFakeQueue 4 '3'
+    Expect ((Get-MinutesLeft $faq ([ordered]@{}) 0 $true) -eq 4.0) 'minutes left: 2 manual + 2 automatic'
+    Expect ((Get-MinutesLeft $faq ([ordered]@{}) 0 $false) -eq 6.0) 'minutes left: automation off'
+
+    # ---- resume
+    $none = [ordered]@{}
+    $some = [ordered]@{ 'X:1' = @{ status = 'pass' } }
+    $all = [ordered]@{ 'X:1' = @{ status = 'pass' }; 'X:2' = @{ status = 'fail' }; 'X:3' = @{ status = 'skip' }; 'X:4' = @{ status = 'pass' } }
+    $odd = [ordered]@{ 'X:1' = @{ status = 'none' } }
+    Expect (-not (Test-RunResumable $fq $none)) 'resume: nothing answered is not worth continuing'
+    Expect (Test-RunResumable $fq $some) 'resume: some answered, some left'
+    Expect (-not (Test-RunResumable $fq $all)) 'resume: everything answered is finished'
+    Expect (-not (Test-RunResumable $fq $odd)) "resume: a 'none' entry is not an answer"
+    $pr = Get-RunProgress $fq $some
+    Expect ($pr.total -eq 4 -and $pr.answered -eq 1 -and $pr.remaining -eq 3) 'run progress counts'
+    Expect ((Get-FirstOpenIndex $fq $some) -eq 1 -and (Get-FirstOpenIndex $fq $none) -eq 0) 'first open step'
+    Expect ((Get-NextOpenIndex $fq $some 0) -eq 1 -and (Get-NextOpenIndex $fq $all 0) -eq 4 -and (Get-NextOpenIndex $fq $some 3) -eq 4) 'next open step (4 = the run is over)'
+
+    # ---- result counts and wording
+    $c = Get-ResultCounts $fq ([ordered]@{ 'X:1' = @{ status = 'pass' }; 'X:2' = @{ status = 'fail' }; 'X:3' = @{ status = 'skip' } })
+    Expect ($c.worked -eq 1 -and $c.failed -eq 1 -and $c.skipped -eq 1 -and $c.notDone -eq 1) 'result counts'
+    Expect ((Get-PlainVerdict 'GATE PASSED') -like 'All key*' -and (Get-PlainVerdict 'GATE FAILED') -like 'A key step did not*' -and (Get-PlainVerdict 'INCOMPLETE') -like '*not finished') 'plain verdict wording'
+    Expect ((Get-FriendlyName ([pscustomobject]@{ friendly = $null; title = 'Technical title' })) -eq 'Technical title') 'friendly name falls back to the title'
+
+    # ---- results file name
+    $day = [datetime]::new(2026, 10, 20, 15, 30, 0)
+    Expect ((Get-ResultsZipName $day @()) -eq 'Snipdeck-test-results-2026-10-20.zip') 'zip name'
+    Expect ((Get-ResultsZipName $day @('Snipdeck-test-results-2026-10-20.zip')) -eq 'Snipdeck-test-results-2026-10-20-2.zip') 'zip name when taken'
+    Expect ((Get-ResultsZipName $day @('snipdeck-test-results-2026-10-20.ZIP', 'Snipdeck-test-results-2026-10-20-2.zip')) -eq 'Snipdeck-test-results-2026-10-20-3.zip') 'zip name when two are taken (any case)'
+
+    # ---- step text: numbered actions never lose or invent words
+    $sample = @(Split-Actions 'Open Notepad and type abc. Press Ctrl+V. Open Win+V history.')
+    Expect ($sample.Count -eq 3 -and $sample[0] -eq 'Open Notepad and type abc.') "split actions: $($sample -join ' / ')"
+    Expect (@(Split-Actions 'Version 1.5 is fine, e.g. this stays together').Count -eq 1) 'split actions: no split before lowercase'
+    Expect (@(Split-Actions '').Count -eq 0) 'split actions: empty'
+    foreach ($s in $Spikes) {
+        foreach ($t in $s.tests) {
+            $parts = @(Split-Actions $t.do)
+            $norm = ([string]$t.do -replace '\s+', ' ').Trim()
+            if ($parts.Count -lt 1 -or (($parts -join ' ') -ne $norm)) { [void]$p.Add("flow: $($s.id):$($t.id): Split-Actions changed the text") }
+        }
+    }
+
+    # ---- prerequisites and errors
+    Expect (@(Get-PrereqPlan $true $true).Count -eq 0) 'prereqs: nothing missing'
+    $one = @(Get-PrereqPlan $false $true)
+    Expect ($one.Count -eq 1 -and $one[0].id -eq 'rust' -and -not $one[0].admin) 'prereqs: Rust only'
+    $two = @(Get-PrereqPlan $false $false)
+    Expect ($two.Count -eq 2 -and $two[1].id -eq 'msvc' -and $two[1].admin) 'prereqs: both, build tools need admin'
+    $lines = (@(Format-PrereqLines $two) -join ' ')
+    Expect ($lines -match 'allow' -and $lines -match 'GB') 'prereq text names the size and the permission prompt'
+    Expect ((Get-PlainError "boom`r`n  here") -eq 'Something went wrong: boom here') 'plain error text'
+    Expect ((Get-PlainError ('x' * 500)).Length -lt 260) 'plain error is cut'
+    return @($p)
+}

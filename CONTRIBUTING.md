@@ -104,7 +104,7 @@ Other generated files: `python3 scripts/ui_icons.py` after adding an icon SVG, a
 ## Testing on Windows
 
 Cloud CI compiles for Windows but cannot click, paste or use an IME. Treat any Windows behaviour as
-**unverified** until the test wizard has run it on a real Windows PC: double-click `run-windows-tests.bat`
+**unverified** until the test wizard has run it on a real Windows PC: double-click `Test Snipdeck on Windows.bat`
 in the repo root (details in [`tools/windows-test/README.md`](tools/windows-test/README.md)). A change that
 adds Windows-only behaviour adds its manual steps to `tools/windows-test/tests/`.
 

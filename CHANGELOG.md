@@ -9,6 +9,12 @@ Windows PC.
 
 ## [Unreleased] (1.0.0)
 
+### Changed
+- The Windows test wizard is now one file at the repo root, `Test Snipdeck on Windows.bat` (it replaces
+  `run-windows-tests.bat`): a four-line welcome, Enter for the recommended "v1 check", plain-language steps with
+  one layout (`DO THIS`, `YOU SHOULD SEE`, P / F / S), prerequisites installed after one question, a resume question,
+  and one `Snipdeck-test-results-<date>.zip` on the Desktop at the end. Unverified on Windows.
+
 ### Added
 - `Snipdeck.bat` installs by itself: it downloads the latest release once, checks its SHA-256, unpacks it to an
   `app` folder and starts it. After that it starts offline.

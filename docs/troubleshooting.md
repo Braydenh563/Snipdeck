@@ -193,7 +193,7 @@ Do not attach your library or a backup unless you have looked at what is in it.
 ### Building and running
 
 **`cargo` is not found (Windows).** `run-snipdeck-demo.bat` stops with "Rust is not installed". Run
-`run-windows-tests.bat` once (it offers to install Rust and the Visual Studio C++ Build Tools with `winget`),
+`Test Snipdeck on Windows.bat` once (it offers to install Rust and the Visual Studio C++ Build Tools with `winget`),
 or install them yourself from <https://rustup.rs>, then close the window and run the batch file again so the
 new PATH is picked up.
 

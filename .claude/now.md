@@ -32,6 +32,13 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - 2026-10-18: The owner said "you are fable btw": this session runs on Fable, so it IS the one permitted Fable agent. Step 4 (docs/fable-brief.md) is done by this session: Fable does analysis, design calls, security review and judgement; Sonnet/Haiku agents do the mechanical implementation with exact file/line instructions; no second Fable agent is spawned (that would be two). Token rules of the brief still apply to this session (grep CODEMAP, line ranges, no whole build logs).
 
 ## Inbox
+- 2026-10-20 (owner, screenshot): "im pressing that copy button but it is just selecting the row? i dont think it is doing anything?? is it supposed to?? learnability and usability issue" -> Fable O33.
+- 2026-10-20 (owner): "when the large panel is sized thin enough, these icons become the same and are visuallyu confusing" -> Fable O34.
+- 2026-10-20 (owner): "should the icons be coloured instead of having them both there?" -> Fable O35 (one tinted list glyph, 3:1).
+- 2026-10-20 (owner): "there's no scrollbar on this panel and probably otheres even when it is scrollable" -> Fable O36 (shared ScrollArea).
+- 2026-10-20 (owner): "should these buttons be better designed and structured ui wise?" (Troubleshoot Tools) -> Fable O37.
+- 2026-10-20 (owner): "and the small panel needs a minimise button" -> Fable O38 (+ clipped footer hint).
+- 2026-10-20 (hub): done: M3 release.yml patch applied by owner (f194f55); Supporter email set (brayden.hoyle@outlook.com); Windows test wizard UX merged (claude/windows-test-ux).
 - 2026-10-20 (owner): "also I want to be able to drag the panel to an edge at any height and be able tohave it dock as a little panel on the side. research and look at microsoft pc manager and how its toolbar works and functions." -> Fable O28.
 - 2026-10-20 (owner): "and can you make it easier to change the sorting method of lists?" -> Fable O30.
 - 2026-10-20 (owner): "these buttons need a bit more visual separation oot to make it clear that some of them have different function other than a view change, elements need to be better grouped by purpose and function" -> Fable O31.

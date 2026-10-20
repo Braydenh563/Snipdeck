@@ -141,15 +141,17 @@ Rules: Haiku for grunt work with a runnable check, Sonnet implements, Opus only 
 - **M1 (core, store, licence, crypto, portability): done and merged into the PR branch.** 488 tests, fmt/clippy/doc/deny
   clean on Rust 1.97 and 1.99.1, Windows target check passes. Opus review in `docs/reviews/M1-review.md`; all
   29 core/store findings fixed. Known gaps: `docs/PLAN.md` "M1 known gaps" (CopyQ `.cpq` not parsed, Windows clipboard-history importer, `DataKey` not `Clone`).
-- **Windows test wizard:** `run-windows-tests.bat` -> `tools/windows-test/` (manual steps in `tests/*.json`,
-  opt-in automation in `auto/`). The automation has **never run on Windows**; its unverified assumptions are
-  listed at the end of `tools/windows-test/README.md`.
+- **Windows test wizard:** `Test Snipdeck on Windows.bat` (repo root) -> `tools/windows-test/` (manual steps in
+  `tests/*.json`, automation in `auto/`, flow logic in `flow.ps1`). Press Enter for the "v1 check" (steps flagged
+  `"v1": true`: M3, M2, S1 and S2 key steps); it ends with `Snipdeck-test-results-<date>.zip` on the Desktop. Neither
+  the new flow nor the automation has run on Windows; the unverified assumptions are listed at the end of
+  `tools/windows-test/README.md`.
 - **CI** (`.github/workflows/ci.yml`): Linux fmt/clippy/test/doc/deny + Windows `cargo check`. It uses the
   newest stable Rust, which has lints that older Rust lacks: always check with `cargo +1.99.1 ...` too.
 
 ## What is blocked on the owner
 
-- Optional re-run on Windows: S2 after adding Japanese / Chinese / Korean keyboards (`run-windows-tests.bat`, S2 only),
+- Optional re-run on Windows: S2 after adding Japanese / Chinese / Korean keyboards (`Test Snipdeck on Windows.bat`, Advanced options, S2 only),
   S1 step 2c after the modifier fix, and the untested S4 steps (W4-W7, Windows 10). None of these gate M2 start.
 
 ## Overnight queue (away mode, started 2026-10-17)
@@ -240,7 +242,7 @@ Progress vs `docs/PLAN.md`: M1 done, M2 done in code (Windows unverified), M3 mo
 9. **Run the fable pass last** (the owner allowed ONE focused Fable agent at the very end of full development: analyse, poke holes, challenge architecture, fix bugs and security issues, polish and validate).
 10. Known gaps: Windows clipboard-history importer, CopyQ `.cpq`, no first-time "hidden to tray" notice, tray menu ignores dark mode, `{clipboard}` template text is `None`, time zone is UTC, Panel row context menus and Panel reveal-in-list are unbound.
 11a. **Owner, GitHub settings (Settings ▸ Code security):** (1) enable **Code scanning ▸ CodeQL default setup** (covers Rust and Actions with no workflow file; the `codeql.yml` workflow was removed because uploads fail with "Code scanning is not enabled for this repository"); (2) enable **Dependency graph**, then `actions/dependency-review-action` can be re-added; (3) OpenSSF Scorecard (`scorecard.yml`, removed) only works on a public repository with code scanning on. RustSec audit (`audit.yml`) and cargo deny run regardless.
-11. **Owner on Windows** (never run, everything Win32 is unverified): `run-windows-tests.bat` (M2 and M3 steps), `run-snipdeck-demo.bat` (builds and opens the demo app), S2 with IMEs, S1 step 2c, S4 on Windows 10.
+11. **Owner on Windows** (never run, everything Win32 is unverified): `Test Snipdeck on Windows.bat` (the v1 check: M2, M3, S1, S2 key steps), `run-snipdeck-demo.bat` (builds and opens the demo app), S2 with IMEs, S1 step 2c, S4 on Windows 10.
 
 ## Working notes that cost time this session
 

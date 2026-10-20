@@ -1,6 +1,7 @@
 {
   "id": "M2",
   "title": "Windows platform backend: clipboard, hotkeys, paste pipeline",
+  "friendly": "Paste and hotkeys (the part that talks to Windows)",
   "note": "docs/PLAN.md (M2), crates/snipdeck-platform/src/windows/",
   "dir": "tools/windows-test/m2-harness",
   "exe": "m2-harness",
@@ -12,21 +13,23 @@
     "Turn on clipboard history: press Win+V, then 'Turn on' (needed to check that pasted items never show up there).",
     "Open a normal (non-admin) Notepad. Have Word, Chrome (signed in to Gmail), Paint, an Explorer folder and Windows Terminal ready. Optional: OneNote, Remote Desktop, Ditto or CopyQ, PowerToys.",
     "The harness has no window; it registers global hotkeys: Ctrl+Alt+1 paste text, 2 HTML, 3 plain, 4 copy, 5 PNG, 6 files, 7 print Target info, 8 long unicode, Q quit. Focus the target app BEFORE pressing a chord and hold the keys until the paste happens (that exercises the Alt mask).",
-    "It never prints clipboard content or window titles (title length only). 'l' shows its log."
+    "It never prints clipboard content or window titles (title length only). ? then l shows its log."
   ],
   "tests": [
     {
       "id": "1",
+      "v1": true,
       "gate": true,
       "launch": {
         "args": []
       },
       "title": "Start-up report",
-      "do": "Press 'l' to read the harness log.",
+      "do": "Press ? then l to read the harness log.",
       "expect": "windows= and integrity=not elevated. dpapi=ok (round-trip=True, wrong-entropy-rejected=True). chords line: Ctrl+Alt+1 parses, Shift+A and A are rejected. instance=first. 'hotkeys registered=9 in-use=0 errors=0' plus one 'registered' line per chord. If a chord is InUse, record which."
     },
     {
       "id": "2",
+      "v1": true,
       "gate": true,
       "clipboard": "BEFORE",
       "title": "Notepad: paste, clipboard restored",
@@ -35,6 +38,7 @@
     },
     {
       "id": "3",
+      "v1": true,
       "gate": true,
       "title": "Alt and Win held: no menu hints, no Start menu",
       "do": "In Notepad: hold Alt, then press Ctrl+1 (the chord) and keep Alt down for a second after the text appears; release. Repeat holding Ctrl+Alt+1 together. S1 2c again: hold the Windows key, press Ctrl+Alt+1 with Win still down, release all.",
@@ -42,6 +46,7 @@
     },
     {
       "id": "4",
+      "v1": true,
       "gate": true,
       "title": "HTML into Word and Gmail compose",
       "do": "Word: click into a blank document, press Ctrl+Alt+2. Chrome: Gmail compose (rich text), click into the body, Ctrl+Alt+2.",
@@ -49,6 +54,7 @@
     },
     {
       "id": "5",
+      "v1": true,
       "gate": true,
       "title": "Plain paste (HTML item as text)",
       "do": "In Word, then in Gmail compose, press Ctrl+Alt+3.",
@@ -56,6 +62,7 @@
     },
     {
       "id": "6",
+      "v1": true,
       "gate": true,
       "title": "Copy mode leaves the item on the clipboard",
       "do": "In Notepad press Ctrl+Alt+4. Then press Ctrl+V.",
@@ -122,15 +129,17 @@
     },
     {
       "id": "15",
+      "v1": true,
       "launch": {
         "args": []
       },
       "title": "Single instance: later launches raise the first",
-      "do": "With the harness running, open a terminal and run tools\\windows-test\\m2-harness\\target\\release\\m2-harness.exe three times in a row, quickly. Press 'l'.",
+      "do": "With the harness running, open a terminal and run tools\\windows-test\\m2-harness\\target\\release\\m2-harness.exe three times in a row, quickly. Press ? then l.",
       "expect": "Each launch prints '[m2] second instance' and exits. The harness log gains three '[m2] raised' lines. Hotkeys still work."
     },
     {
       "id": "16",
+      "v1": true,
       "launch": {
         "args": [
           "--autostart-test",
@@ -144,6 +153,7 @@
     },
     {
       "id": "17",
+      "v1": true,
       "launch": {
         "args": [
           "--probe",
@@ -151,11 +161,12 @@
         ]
       },
       "title": "Hotkey conflict reports InUse",
-      "do": "The wizard launched the harness with --probe Win+L. Read the log ('l'). With PowerToys installed also relaunch by hand with --probe Win+Shift+C (Color Picker default) while it runs.",
+      "do": "The wizard launched the harness with --probe Win+L. Read the log (? then l). With PowerToys installed also relaunch by hand with --probe Win+Shift+C (Color Picker default) while it runs.",
       "expect": "'hotkey Win+L InUse (another app owns it)' and in-use=1; the nine real hotkeys still register. With PowerToys running Win+Shift+C is InUse too. No crash."
     },
     {
       "id": "18",
+      "v1": true,
       "launch": {
         "args": []
       },
