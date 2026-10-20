@@ -886,6 +886,9 @@ msgstr "よく使う順"
 msgid "Move"
 msgstr "移動"
 
+msgid "Move down"
+msgstr "下へ移動"
+
 msgid "Move selected item to Trash"
 msgstr "選択したスニペットをゴミ箱へ移動"
 
@@ -909,6 +912,12 @@ msgstr "リストに移動"
 
 msgid "Move to list…"
 msgstr "リストに移動…"
+
+msgid "Move up"
+msgstr "上へ移動"
+
+msgid "Moved to position {} of {}"
+msgstr "{}番目に移動しました（全{}件）"
 
 msgid "Moved {} item to the Trash"
 msgid_plural "Moved {} items to the Trash"

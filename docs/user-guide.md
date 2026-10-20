@@ -127,7 +127,7 @@ toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable
   Trash.
 - **Lists.** Add a list with **Add list** in the sidebar, or the **+** tab in the Panel. **Edit list** sets the name, a colour and the sort: manual, most
   used or recently used. Move a list with `Alt+Up` or `Alt+Down` while it is selected in the sidebar.
-- **Order of items.** Select a row and press `Alt+Up` or `Alt+Down`.
+- **Order of items.** Select a row and press `Alt+Up` or `Alt+Down`, in the Main window or the Panel, or choose **Move up** / **Move down** in the snippet's menu.
 - **Move.** Choose **Move to list…** from the item menu to move one or more selected items.
 - **Duplicate.** Choose **Duplicate** from the item menu in the Main window to make a copy of the item right
   after it.
@@ -351,6 +351,7 @@ what you copy from now on.
 | Main window | `Delete` | Move to the Trash (in the Trash: delete for good) |
 | Main window | `Ctrl+A`, `Ctrl+Space` | Select all, toggle a row |
 | Main window | `Alt+Up`, `Alt+Down` | Move an item or list |
+| Panel | `Alt+Up`, `Alt+Down` | Move the selected item |
 | Panel, Main window | `Space` (hold) | Reveal a sensitive item |
 | Main window | `F1` | Open the Help window |
 | Item editor | `Ctrl+Enter` | Save |
@@ -358,11 +359,11 @@ what you copy from now on.
 
 ## Drag and drop
 
-Most drags have a keyboard or menu way to do the same thing (the Panel's row reorder has none yet: use `Alt+Up` / `Alt+Down` in the Main window).
+Every drag has a keyboard or menu way to do the same thing.
 
 - **Reorder snippets:** drag a snippet onto another one, in the Panel or in the Main window (list or tile
-  view), in a list that is in manual order and with no search running. Keyboard: `Alt+Up` or `Alt+Down` in
-  the Main window.
+  view), in a list that is in manual order and with no search running. Keyboard: `Alt+Up` or `Alt+Down`, or
+  **Move up** / **Move down** in the snippet's menu.
 - **Move to another list:** drag a snippet onto a list in the Main window's sidebar, or onto a list tab in the
   Panel. Keyboard: **Move to list** in the snippet's menu, or the list field in the editor.
 - **Reorder lists:** drag a list onto another in the sidebar. Keyboard: `Alt+Up` or `Alt+Down` on the list.

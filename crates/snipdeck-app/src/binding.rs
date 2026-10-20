@@ -566,6 +566,8 @@ where
                 _ => -1,
             });
         }
+        wire!(on_item_reorder_requested, |ctl, delta| ctl
+            .panel_move_selected(isize::try_from(delta).unwrap_or(0)));
         wire!(on_row_dropped, |ctl, from, onto| ctl
             .panel_drop_row(index(from), index(onto)));
         wire!(on_row_dropped_on_tab, |ctl, row, tab| ctl
@@ -953,8 +955,13 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         || window.get_item_menu_open() != view.item_menu.is_some()
     {
         let entries = view.item_menu.iter().flatten().map(|&entry| ui::MenuEntry {
-            text: wording::item_menu_text(entry).into(),
+            text: wording::item_menu_label(window, entry).into(),
             shortcut: wording::item_menu_shortcut(entry).into(),
+            disabled: matches!(
+                entry,
+                ItemMenuEntry::MoveUp { enabled: false }
+                    | ItemMenuEntry::MoveDown { enabled: false }
+            ),
             separator: entry == ItemMenuEntry::Separator,
             destructive: entry == ItemMenuEntry::Trash,
             ..Default::default()

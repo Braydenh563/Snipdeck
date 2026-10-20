@@ -79,6 +79,16 @@ pub enum ItemMenuEntry {
     },
     /// Put a copy of the item right after it.
     Duplicate,
+    /// Move the item one place up in the shown list (the keyboard way is Alt+Up).
+    MoveUp {
+        /// The list is in manual order, no search runs and the item is not first.
+        enabled: bool,
+    },
+    /// Move the item one place down in the shown list (Alt+Down).
+    MoveDown {
+        /// The list is in manual order, no search runs and the item is not last.
+        enabled: bool,
+    },
     /// Move the item to the Trash, with an Undo toast.
     Trash,
     /// A line between groups.
@@ -197,6 +207,12 @@ where
             ItemMenuEntry::Stack {
                 marked: self.stack.contains(&id),
             },
+            ItemMenuEntry::MoveUp {
+                enabled: self.can_move_item(id, -1),
+            },
+            ItemMenuEntry::MoveDown {
+                enabled: self.can_move_item(id, 1),
+            },
             ItemMenuEntry::Separator,
             ItemMenuEntry::Trash,
         ]
@@ -255,6 +271,18 @@ where
             }
             ItemMenuEntry::Stack { .. } => {
                 self.toggle_stack_mark(id);
+                Vec::new()
+            }
+            ItemMenuEntry::MoveUp { enabled } => {
+                if enabled {
+                    self.panel_move_item(id, -1);
+                }
+                Vec::new()
+            }
+            ItemMenuEntry::MoveDown { enabled } => {
+                if enabled {
+                    self.panel_move_item(id, 1);
+                }
                 Vec::new()
             }
             ItemMenuEntry::Trash => {
