@@ -46,9 +46,9 @@ database with the library key, which Windows protects for your account (DPAPI); 
 that key up, and if Windows cannot protect a key nothing is kept. Entries a version before this one kept as plain
 text are encrypted the first time the library opens with its key. While you are signed in to Windows
 the key is open, so the inbox is as private as your account, not more. With a master password set, the library
-being locked hides the entries, collects nothing, and the key is not available until you unlock. A copy of the
-database made before that update (`snipdeck.db.pre-v4.bak`, from an older release) can still hold the old plain
-text: delete those files once the new version runs well. **Clear recent
+being locked hides the entries, collects nothing, and the key is not available until you unlock. Copies of the
+database made by earlier upgrades (`snipdeck.db.pre-v1.bak` to `snipdeck.db.pre-v4.bak`) held that plain text;
+the first start of this version empties the Recent entries in them, or deletes a copy it cannot clean. **Clear recent
 history** in Settings deletes every entry now, **Pause history** in the tray stops collecting for a while, and
 turning the setting off stops it for good. Nothing in the inbox leaves your computer, and imports (Settings ▸ Your data ▸ Import…) read only the file or
 folder you choose.
