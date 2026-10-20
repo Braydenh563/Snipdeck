@@ -22,6 +22,7 @@ pub mod fill_binding;
 pub mod frame;
 pub mod headless;
 pub mod help_binding;
+pub mod history;
 pub mod host;
 pub mod index_cache;
 pub mod item_editor;

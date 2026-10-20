@@ -1046,11 +1046,17 @@ msgstr "Noch nichts angeheftet"
 msgid "Nothing to paste next. Pin a snippet, or add one to this list."
 msgstr "Nichts zum Einfügen als Nächstes. Heft einen Textbaustein an oder füge ihn dieser Liste hinzu."
 
+msgid "Nothing to redo"
+msgstr ""
+
 msgid "Nothing to restore: your library already has everything in that backup."
 msgstr "Nichts wiederherzustellen: Deine Bibliothek enthält bereits alles aus dieser Sicherung."
 
 msgid "Nothing to save. Copy some text first."
 msgstr "Nichts zu speichern. Kopiere zuerst etwas Text."
+
+msgid "Nothing to undo"
+msgstr ""
 
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "Was du in diesen Programmen kopierst, landet nicht im Posteingang „Zuletzt“. Verwende den Dateinamen des Programms, zum Beispiel keepass.exe."
@@ -1303,6 +1309,15 @@ msgstr "Kürzlich verwendet"
 
 msgid "Red"
 msgstr "Rot"
+
+msgid "Redid {}"
+msgstr ""
+
+msgid "Redo"
+msgstr ""
+
+msgid "Redo {} (Ctrl+Y)"
+msgstr ""
 
 msgid "Reduce motion"
 msgstr "Bewegung reduzieren"
@@ -1824,8 +1839,14 @@ msgstr "Befehl eingeben"
 msgid "Type {} to confirm"
 msgstr "Gib {} zur Bestätigung ein"
 
-msgid "Undo the delete"
-msgstr "Löschen rückgängig machen"
+msgid "Undid {}"
+msgstr ""
+
+msgid "Undo"
+msgstr ""
+
+msgid "Undo {} (Ctrl+Z)"
+msgstr ""
 
 msgid "Unlock"
 msgstr "Entsperren"
@@ -1959,6 +1980,9 @@ msgstr "Deine vertraulichen Textbausteine werden nur durch Windows geschützt, w
 msgid "Your shortcuts"
 msgstr "Deine Tastenkürzel"
 
+msgid "add"
+msgstr ""
+
 msgid "add create folder group"
 msgstr "hinzufügen erstellen Ordner Gruppe"
 
@@ -1979,8 +2003,14 @@ msgstr "Zwischenablage"
 msgid "clipboard save grab screenshot"
 msgstr "Zwischenablage speichern erfassen Bildschirmfoto"
 
+msgid "colour change"
+msgstr ""
+
 msgid "copy clone twice"
 msgstr "kopieren klonen zweimal"
+
+msgid "delete"
+msgstr ""
 
 msgid "delete remove discard"
 msgstr "löschen entfernen verwerfen"
@@ -1990,6 +2020,15 @@ msgstr "gelöscht wiederherstellen Papierkorb anzeigen"
 
 msgid "diagnose doctor problems fix"
 msgstr "diagnostizieren Diagnose Probleme beheben"
+
+msgid "drop"
+msgstr ""
+
+msgid "duplicate"
+msgstr ""
+
+msgid "edit"
+msgstr ""
 
 msgid "everything home show"
 msgstr "alles Start anzeigen"
@@ -2021,6 +2060,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "Markierung: {}"
 
+msgid "move"
+msgstr ""
+
 msgid "ms"
 msgstr "ms"
 
@@ -2030,11 +2072,17 @@ msgstr "notepad.exe"
 msgid "open toggle deck hide"
 msgstr "öffnen umschalten Deck ausblenden"
 
+msgid "paste"
+msgstr ""
+
 msgid "paste insert send"
 msgstr "einfügen senden"
 
 msgid "paste stack, number {}"
 msgstr "Einfügestapel, Nummer {}"
+
+msgid "pin"
+msgstr ""
 
 msgid "preferences options configure hotkeys theme backup"
 msgstr "Einstellungen Optionen konfigurieren Tastenkürzel Design Sicherung"
@@ -2045,8 +2093,14 @@ msgstr "px"
 msgid "quick find paste palette"
 msgstr "schnell finden einfügen Palette"
 
+msgid "reorder"
+msgstr ""
+
 msgid "s"
 msgstr "s"
+
+msgid "tag change"
+msgstr ""
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "Tutorial Einführung Einstieg Grundlagen lernen"

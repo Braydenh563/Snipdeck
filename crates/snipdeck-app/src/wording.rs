@@ -182,6 +182,8 @@ where
         ToastMessage::ListTrashed { name } => t.invoke_list_trashed(name.into()),
         ToastMessage::BoardTrashed { name } => t.invoke_board_trashed(name.into()),
         ToastMessage::Restored { count: n } => t.invoke_restored(count(*n)),
+        ToastMessage::Undone { action } => t.invoke_undone(action_word(&t, *action)),
+        ToastMessage::Redone { action } => t.invoke_redone(action_word(&t, *action)),
         ToastMessage::ItemsMoved { count: n, list } => t.invoke_items_moved(count(*n), list.into()),
         ToastMessage::ItemPlaced { position, total } => {
             t.invoke_item_placed(count(*position), count(*total))
@@ -251,6 +253,34 @@ pub const LANGUAGE_NAMES: [&str; 7] = [
 
 /// The locale tags of [`LANGUAGE_NAMES`] (`settings.language`).
 pub const LANGUAGE_TAGS: [&str; 7] = ["en", "es", "de", "fr", "pt-BR", "ja", "zh-Hans"];
+
+/// The words of an action in the undo history ("delete", "move"), in the UI's language.
+fn action_word(t: &ToastTexts<'_>, action: crate::history::Action) -> slint::SharedString {
+    t.invoke_action_word(action.code())
+}
+
+/// The tooltip and accessible name of the Undo button: "Undo delete (Ctrl+Z)", or "Nothing to
+/// undo" when `action` is `None`.
+#[must_use]
+pub fn undo_tip<C>(window: &C, action: Option<crate::history::Action>) -> String
+where
+    for<'a> ToastTexts<'a>: Global<'a, C>,
+{
+    let t = ToastTexts::get(window);
+    let word = action.map(|a| action_word(&t, a)).unwrap_or_default();
+    t.invoke_undo_tip(word).into()
+}
+
+/// The tooltip and accessible name of the Redo button: "Redo delete (Ctrl+Y)".
+#[must_use]
+pub fn redo_tip<C>(window: &C, action: Option<crate::history::Action>) -> String
+where
+    for<'a> ToastTexts<'a>: Global<'a, C>,
+{
+    let t = ToastTexts::get(window);
+    let word = action.map(|a| action_word(&t, a)).unwrap_or_default();
+    t.invoke_redo_tip(word).into()
+}
 
 /// The label of a toast's undo button.
 pub const UNDO_LABEL: &str = "Undo";

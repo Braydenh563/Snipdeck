@@ -1,9 +1,11 @@
 //! Item actions and the Trash with its Undo.
 
+use crate::history::{Action, Change};
 use snipdeck_core::{Feature, Item, ItemId, Name, Placement, Tag};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
 
+use super::super::history_ctl::{item_targets, move_recorded, update_recorded};
 use super::super::{Controller, Library, Toast, ToastKind, ToastMessage, UseResult, failed};
 use super::{MainAction, TagRenameError, neutral_toast, restore_failed};
 use crate::{
@@ -64,15 +66,21 @@ where
         let pin = !items
             .iter()
             .all(|id| self.main.item(*id).is_some_and(|i| i.pinned));
+        let mut changes = Vec::new();
         let done = self.store.atomically(|b| {
+            changes.clear();
             for id in items {
-                let mut item = b.item(*id)?;
+                let before = b.item(*id)?;
+                let mut item = before.clone();
                 item.pinned = pin;
                 item.updated_at = now;
-                b.update_item(&item, None)?;
+                update_recorded(b, &before, &item, &mut changes)?;
             }
             Ok(())
         });
+        if done.is_ok() {
+            self.record_step(Action::Pin, changes);
+        }
         self.finish(&done);
     }
 
@@ -83,7 +91,9 @@ where
     pub(in super::super) fn duplicate(&mut self, items: &[ItemId]) {
         let now = self.clock.now();
         let locked = self.library_locked();
+        let mut made = Vec::new();
         let done = self.store.atomically(|b| {
+            made.clear();
             for id in items {
                 let original = b.item(*id)?;
                 if locked && original.sensitive {
@@ -99,9 +109,16 @@ where
                 copy.label = original.label;
                 copy.source_app = original.source_app;
                 b.insert_item(&copy, &formats, Placement::After(*id))?;
+                made.push(copy.id);
             }
             Ok(())
         });
+        if done.is_ok() && !made.is_empty() {
+            self.record_step(
+                Action::Duplicate,
+                vec![Change::Restore(item_targets(&made))],
+            );
+        }
         if matches!(done, Err(snipdeck_store::Error::EncryptionLocked)) {
             self.request_unlock();
             self.show_toast(Toast {
@@ -125,14 +142,14 @@ where
             Ok(())
         });
         if done.is_ok() {
-            let targets = items.iter().map(|id| Trashable::Item(*id)).collect();
+            let step = self.record_step(Action::Delete, vec![Change::Trash(item_targets(items))]);
             self.library_changed();
             self.show_undo_toast(
                 Toast {
                     kind: ToastKind::Neutral,
                     message: ToastMessage::ItemsTrashed { count: items.len() },
                 },
-                targets,
+                step,
             );
         } else {
             self.show_toast(failed());
@@ -162,6 +179,8 @@ where
     }
 
     pub(super) fn delete_forever(&mut self, targets: &[Key]) {
+        // Steps may name what goes for good.
+        self.clear_history();
         let done = self.store.atomically(|b| {
             for key in targets {
                 b.purge_entry(Trashable::from(*key))?;
@@ -178,7 +197,7 @@ where
     }
 
     /// The Free plan's live-board limit, for restoring a board; `None` on Supporter.
-    pub(super) fn board_limit(&self) -> Option<usize> {
+    pub(in super::super) fn board_limit(&self) -> Option<usize> {
         (!self.entitlements.allows(Feature::UnlimitedBoards))
             .then_some(snipdeck_core::Entitlements::FREE_BOARD_LIMIT)
     }
@@ -210,15 +229,18 @@ where
         if items.is_empty() {
             return;
         }
+        let mut changes = Vec::new();
         let done = self.store.atomically(|b| {
+            changes.clear();
             for id in &items {
-                b.move_item(*id, list, Placement::Last)?;
+                move_recorded(b, *id, list, Placement::Last, &mut changes)?;
             }
             Ok(())
         });
         self.main.set_chooser(Vec::new());
         match done {
             Ok(()) => {
+                self.record_step(Action::Move, changes);
                 self.library_changed();
                 self.show_toast(neutral_toast(ToastMessage::ItemsMoved {
                     count: items.len(),
@@ -245,21 +267,27 @@ where
                 _ => None,
             })
             .collect();
+        let mut changes = Vec::new();
         let done = self.store.atomically(|b| {
+            changes.clear();
             for id in &items {
-                let mut item = b.item(*id)?;
-                let changed = if on {
+                let before = b.item(*id)?;
+                let mut item = before.clone();
+                let touched = if on {
                     item.tags.insert(tag)
                 } else {
                     item.tags.remove(&tag)
                 };
-                if changed {
+                if touched {
                     item.updated_at = now;
-                    b.update_item(&item, None)?;
+                    update_recorded(b, &before, &item, &mut changes)?;
                 }
             }
             Ok(())
         });
+        if done.is_ok() {
+            self.record_step(Action::Tag, changes);
+        }
         self.finish(&done);
     }
 
@@ -320,13 +348,13 @@ where
         if self.toast.as_ref().is_none_or(|t| t.seq != undo.seq) {
             return;
         }
-        let keys: Vec<Key> = undo.targets.iter().map(|t| Key::from(*t)).collect();
-        // The delete is undone: the old toast goes, a "Restored" toast replaces it.
-        self.restore(&keys);
+        // The step is taken back: the old toast goes, a new one replaces it.
+        self.undo_step(Some(undo.step));
     }
 
     /// "Empty Trash" after the window's confirmation.
     pub fn main_empty_trash(&mut self) {
+        self.clear_history();
         let Some(cutoff) = self.trash_cutoff(0) else {
             return;
         };

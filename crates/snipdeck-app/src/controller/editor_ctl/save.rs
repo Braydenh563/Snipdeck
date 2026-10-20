@@ -2,7 +2,7 @@
 
 use snipdeck_core::{Feature, Item, ItemKind, Name, Placement, Tag};
 use snipdeck_store::{
-    ItemRepo, TagRepo,
+    ItemRepo, TagRepo, Trashable,
     crypto::{CryptoError, KeyProviderError},
     name_key,
 };
@@ -13,6 +13,7 @@ use super::{
     save_failed_message,
 };
 use crate::{
+    history::{Action, Change, Snap},
     host::ClipboardText,
     item_editor::{self, EditorInput, EditorProblem, SaveFailure, Source},
 };
@@ -146,6 +147,7 @@ where
             Ok(t) => t,
             Err(e) => return self.save_failed(slot, SaveFailure::of(&e)),
         };
+        let mut recorded: Option<(Action, Vec<Change>)> = None;
         let wrote = match slot.target {
             ItemTarget::New => {
                 let mut item = Item::new(list_id, title, kind, now);
@@ -153,16 +155,24 @@ where
                 item.label = input.label;
                 item.tags = tags.ticked;
                 item.preview = preview_of(is_text, text.as_deref(), sensitive);
-                self.store.atomically(|b| {
+                let done = self.store.atomically(|b| {
                     for tag in &tags.created {
                         b.insert_tag(tag)?;
                     }
                     let formats = build_formats(b, sensitive, text.as_deref(), source.as_ref())?;
                     b.insert_item(&item, &formats, Placement::First)
-                })
+                });
+                if done.is_ok() {
+                    recorded = Some((
+                        Action::Add,
+                        vec![Change::Restore(vec![Trashable::Item(item.id)])],
+                    ));
+                }
+                done
             }
             ItemTarget::Item(id) => match self.store.item(id) {
                 Ok(mut item) => {
+                    let before = item.clone();
                     item.title = title;
                     item.kind = kind;
                     item.list_id = list_id;
@@ -177,7 +187,7 @@ where
                     } else {
                         String::new()
                     };
-                    self.store.atomically(|b| {
+                    let done = self.store.atomically(|b| {
                         for tag in &tags.created {
                             b.insert_tag(tag)?;
                         }
@@ -186,13 +196,27 @@ where
                             None => None,
                         };
                         b.update_item(&item, formats.as_ref())
-                    })
+                    });
+                    if done.is_ok() {
+                        recorded = edit_step(
+                            &before,
+                            &item,
+                            slot.original_text.as_deref(),
+                            text.as_deref(),
+                        );
+                    }
+                    done
                 }
                 Err(e) => Err(e),
             },
         };
         match wrote {
-            Ok(()) => Ok(list_name),
+            Ok(()) => {
+                if let Some((action, changes)) = recorded {
+                    self.record_step(action, changes);
+                }
+                Ok(list_name)
+            }
             Err(e) => self.save_failed(slot, SaveFailure::of(&e)),
         }
     }
@@ -261,5 +285,98 @@ where
         } else {
             self.store.create_key_ring(&ring, None)
         }
+    }
+}
+
+/// The history step for an edit that changed `before` into `after`, with the text it replaced
+/// (`old_text`) and the text it wrote (`new_text`, `None` when the content stayed). `None` when
+/// nothing changed, or when undoing it would need a sensitive item's text kept in memory or text
+/// the editor never read.
+fn edit_step(
+    before: &Item,
+    after: &Item,
+    old_text: Option<&str>,
+    new_text: Option<&str>,
+) -> Option<(Action, Vec<Change>)> {
+    let (old, new) = match new_text {
+        None => (None, None),
+        Some(new) => {
+            if before.sensitive || after.sensitive {
+                return None;
+            }
+            (Some(old_text?.to_owned()), Some(new.to_owned()))
+        }
+    };
+    // The same fields apart from the colour label and the edit time: a colour change.
+    let mut same = after.clone();
+    same.label = before.label;
+    same.updated_at = before.updated_at;
+    let colour_only = new.is_none() && same == *before && after.label != before.label;
+    let action = if colour_only {
+        Action::Colour
+    } else {
+        Action::Edit
+    };
+    Some((
+        action,
+        vec![Change::Update {
+            before: Box::new(Snap {
+                item: before.clone(),
+                text: old,
+            }),
+            after: Box::new(Snap {
+                item: after.clone(),
+                text: new,
+            }),
+        }],
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snipdeck_core::{ItemLabel, ListId, Timestamp};
+
+    fn item() -> Item {
+        let at: Timestamp = "2026-10-17T10:30:00Z".parse().unwrap();
+        Item::new(
+            ListId::generate(),
+            "Greeting".to_owned(),
+            ItemKind::Text,
+            at,
+        )
+    }
+
+    #[test]
+    fn a_label_only_change_is_a_colour_step() {
+        let before = item();
+        let mut after = before.clone();
+        after.label = Some(ItemLabel::Blue);
+        let (action, changes) = edit_step(&before, &after, Some("hi"), None).unwrap();
+        assert_eq!(action, Action::Colour);
+        assert_eq!(changes.len(), 1);
+    }
+
+    #[test]
+    fn a_text_change_keeps_both_texts_and_a_sensitive_one_is_not_recorded() {
+        let before = item();
+        let after = before.clone();
+        let (action, changes) = edit_step(&before, &after, Some("old"), Some("new")).unwrap();
+        assert_eq!(action, Action::Edit);
+        let Change::Update {
+            before: b,
+            after: a,
+        } = &changes[0]
+        else {
+            panic!("an update");
+        };
+        assert_eq!(
+            (b.text.as_deref(), a.text.as_deref()),
+            (Some("old"), Some("new"))
+        );
+        let mut secret = before.clone();
+        secret.sensitive = true;
+        assert!(edit_step(&before, &secret, Some("old"), Some("new")).is_none());
+        assert!(edit_step(&before, &after, None, Some("new")).is_none());
     }
 }

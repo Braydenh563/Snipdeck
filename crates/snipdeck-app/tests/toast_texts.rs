@@ -10,6 +10,7 @@
 )]
 
 use snipdeck_app::{
+    history::Action,
     toast::{LicenceProblem, ToastMessage},
     wording::{licence_problem_text, toast_text},
 };
@@ -89,10 +90,12 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::NotOpened => 62,
         ToastMessage::DraftNotSaved => 63,
         ToastMessage::ItemPlaced { .. } => 64,
+        ToastMessage::Undone { .. } => 65,
+        ToastMessage::Redone { .. } => 66,
     }
 }
 
-const VARIANTS: usize = 65;
+const VARIANTS: usize = 67;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -100,6 +103,7 @@ fn s(text: &str) -> String {
 
 /// One message per variant, with the awkward arguments (no app name, a count of one, a count of
 /// none) as extra entries.
+#[allow(clippy::too_many_lines, reason = "a table with one row per message")]
 fn samples() -> Vec<ToastMessage> {
     use ToastMessage as M;
     vec![
@@ -184,6 +188,12 @@ fn samples() -> Vec<ToastMessage> {
             position: 2,
             total: 7,
         },
+        M::Undone {
+            action: Action::Delete,
+        },
+        M::Redone {
+            action: Action::Move,
+        },
         // The same messages with the other shapes of their arguments.
         M::Pasted { app: String::new() },
         M::CopiedElevated { app: String::new() },
@@ -245,6 +255,18 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(
             said(ToastMessage::ItemsTrashed { count: 3 }),
             "Moved 3 items to the Trash"
+        );
+        assert_eq!(
+            said(ToastMessage::Undone {
+                action: Action::Delete
+            }),
+            "Undid delete"
+        );
+        assert_eq!(
+            said(ToastMessage::Redone {
+                action: Action::Colour
+            }),
+            "Redid colour change"
         );
         assert_eq!(
             said(ToastMessage::ItemsMoved {

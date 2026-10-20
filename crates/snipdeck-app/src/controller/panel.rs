@@ -338,15 +338,20 @@ where
 
     fn set_item_pinned(&mut self, id: ItemId, pin: bool) {
         let now = self.clock.now();
+        let mut changes = Vec::new();
         let done = self.store.atomically(|b| {
-            let mut item = b.item(id)?;
+            changes.clear();
+            let before = b.item(id)?;
+            let mut item = before.clone();
             item.pinned = pin;
             item.updated_at = now;
-            b.update_item(&item, None)?;
-            Ok(())
+            super::history_ctl::update_recorded(b, &before, &item, &mut changes)
         });
         match done {
-            Ok(()) => self.library_changed(),
+            Ok(()) => {
+                self.record_step(crate::history::Action::Pin, changes);
+                self.library_changed();
+            }
             Err(_) => self.show_toast(failed()),
         }
     }
@@ -393,6 +398,10 @@ where
             self.show_toast(failed());
             return;
         }
+        let step = self.record_step(
+            crate::history::Action::Delete,
+            vec![crate::history::Change::Trash(vec![Trashable::Item(id)])],
+        );
         if self.refresh_panel().is_err() {
             self.show_toast(failed());
             return;
@@ -402,7 +411,7 @@ where
                 kind: ToastKind::Neutral,
                 message: ToastMessage::ItemsTrashed { count: 1 },
             },
-            vec![Trashable::Item(id)],
+            step,
         );
     }
 

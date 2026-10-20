@@ -16,11 +16,11 @@ use snipdeck_platform::{
     system_look::SystemLook,
     tray::TrayEvent,
 };
-use snipdeck_store::Trashable;
 
 mod commands_ctl;
 mod dock_ctl;
 mod editor_ctl;
+mod history_ctl;
 mod library;
 mod lock_ctl;
 mod main_ctl;
@@ -33,6 +33,7 @@ mod toast_ctl;
 mod use_ctl;
 mod views;
 
+pub use history_ctl::HistoryView;
 pub use library::Library;
 pub use lock_ctl::{MasterProblem, MasterState};
 pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameError};
@@ -125,7 +126,8 @@ struct PendingClear {
 #[derive(Debug, Clone)]
 struct Undo {
     seq: u64,
-    targets: Vec<Trashable>,
+    /// The history step the toast's button takes back.
+    step: u64,
 }
 
 struct ActiveToast {
@@ -194,6 +196,8 @@ pub struct Controller<S, C, K, T> {
     log_opener: Option<LogOpener>,
     /// What the toast on screen undoes.
     undo: Option<Undo>,
+    /// The app-wide undo and redo steps.
+    history: crate::history::History,
     /// The toast whose timer chain a window has started.
     timer_seq: u64,
     /// A sensitive item held revealed in the Main window.
@@ -327,6 +331,7 @@ where
             editor_env: editor_ctl::EditorEnv::default(),
             log_opener: None,
             undo: None,
+            history: crate::history::History::new(),
             timer_seq: 0,
             revealed: None,
             panel_revealed: None,
@@ -412,6 +417,7 @@ where
             stack: self.stack_view(),
             reduced_motion: self.look().reduce_motion,
             toast: self.toast_view(),
+            history: self.history_view(),
             board_menu: (self.menu == PanelMenu::Board).then(|| {
                 self.model
                     .boards()

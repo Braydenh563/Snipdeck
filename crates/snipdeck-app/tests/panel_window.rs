@@ -1392,3 +1392,75 @@ fn a_floating_panel_keeps_everything_as_before() {
 fn at(s: &str) -> Timestamp {
     s.parse().expect("timestamp")
 }
+
+// ---- The app-wide undo and redo ----------------------------------------------------------------
+
+#[test]
+fn ctrl_z_and_ctrl_y_take_a_delete_back_and_forward() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        slint::platform::update_timers_and_animations();
+        let before = r.titles();
+        assert!(!r.ui.get_can_undo() && !r.ui.get_can_redo());
+
+        press(r.window(), &key(Key::Delete));
+        assert_eq!(r.titles(), before[1..]);
+        assert!(r.ui.get_can_undo());
+        assert_eq!(r.ui.get_undo_tip(), "Undo delete (Ctrl+Z)");
+
+        chord(r.window(), &[Key::Control], "z");
+        assert_eq!(r.titles(), before);
+        assert!(r.ui.get_can_redo());
+        assert_eq!(r.ui.get_redo_tip(), "Redo delete (Ctrl+Y)");
+
+        chord(r.window(), &[Key::Control], "y");
+        assert_eq!(r.titles(), before[1..]);
+        chord(r.window(), &[Key::Control], "z");
+        assert_eq!(r.titles(), before);
+        chord(r.window(), &[Key::Control, Key::Shift], "Z");
+        assert_eq!(r.titles(), before[1..], "Ctrl+Shift+Z redoes too");
+    });
+}
+
+#[test]
+fn the_header_buttons_are_named_by_the_step_and_disabled_when_empty() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        slint::platform::update_timers_and_animations();
+        assert_eq!(r.ui.get_undo_tip(), "Nothing to undo");
+        assert_eq!(r.ui.get_redo_tip(), "Nothing to redo");
+        let before = r.titles();
+
+        press(r.window(), &key(Key::Delete));
+        let undo = r.button("Undo delete (Ctrl+Z)");
+        assert_eq!(undo.accessible_enabled(), Some(true));
+        undo.invoke_accessible_default_action();
+        assert_eq!(r.titles(), before);
+        let redo = r.button("Redo delete (Ctrl+Y)");
+        redo.invoke_accessible_default_action();
+        assert_eq!(r.titles(), before[1..]);
+    });
+}
+
+#[test]
+fn a_search_field_with_text_keeps_its_own_undo() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        slint::platform::update_timers_and_animations();
+        let before = r.titles();
+        press(r.window(), &key(Key::Delete));
+        assert!(r.ui.get_can_undo());
+
+        type_text(r.window(), "o");
+        chord(r.window(), &[Key::Control], "z");
+        assert!(
+            r.ui.get_can_undo(),
+            "Ctrl+Z in a field with text undoes the typing, not the delete"
+        );
+        assert!(!r.ui.get_can_redo());
+        assert_ne!(r.titles(), before);
+    });
+}

@@ -1041,11 +1041,17 @@ msgstr "还没有置顶内容"
 msgid "Nothing to paste next. Pin a snippet, or add one to this list."
 msgstr "没有可接着粘贴的内容。请置顶一个片段，或将其添加到此列表。"
 
+msgid "Nothing to redo"
+msgstr ""
+
 msgid "Nothing to restore: your library already has everything in that backup."
 msgstr "无需还原：你的资料库已包含该备份中的全部内容。"
 
 msgid "Nothing to save. Copy some text first."
 msgstr "没有可保存的内容。请先复制一些文本。"
+
+msgid "Nothing to undo"
+msgstr ""
 
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "在这些程序中复制的内容不会进入“最近”收件箱。请使用程序的文件名，例如 keepass.exe。"
@@ -1298,6 +1304,15 @@ msgstr "最近使用"
 
 msgid "Red"
 msgstr "红色"
+
+msgid "Redid {}"
+msgstr ""
+
+msgid "Redo"
+msgstr ""
+
+msgid "Redo {} (Ctrl+Y)"
+msgstr ""
 
 msgid "Reduce motion"
 msgstr "减少动画"
@@ -1817,8 +1832,14 @@ msgstr "输入命令"
 msgid "Type {} to confirm"
 msgstr "输入 {} 以确认"
 
-msgid "Undo the delete"
-msgstr "撤销删除"
+msgid "Undid {}"
+msgstr ""
+
+msgid "Undo"
+msgstr ""
+
+msgid "Undo {} (Ctrl+Z)"
+msgstr ""
 
 msgid "Unlock"
 msgstr "解锁"
@@ -1952,6 +1973,9 @@ msgstr "你的敏感片段仅由 Windows 保护，与免费版相同。"
 msgid "Your shortcuts"
 msgstr "你的快捷键"
 
+msgid "add"
+msgstr ""
+
 msgid "add create folder group"
 msgstr "添加 新建 文件夹 分组"
 
@@ -1971,8 +1995,14 @@ msgstr "剪贴板"
 msgid "clipboard save grab screenshot"
 msgstr "剪贴板 保存 抓取 截图"
 
+msgid "colour change"
+msgstr ""
+
 msgid "copy clone twice"
 msgstr "复制 克隆 两次"
+
+msgid "delete"
+msgstr ""
 
 msgid "delete remove discard"
 msgstr "删除 移除 丢弃"
@@ -1982,6 +2012,15 @@ msgstr "已删除 还原 回收站 显示"
 
 msgid "diagnose doctor problems fix"
 msgstr "诊断 检查 问题 修复"
+
+msgid "drop"
+msgstr ""
+
+msgid "duplicate"
+msgstr ""
+
+msgid "edit"
+msgstr ""
 
 msgid "everything home show"
 msgstr "全部 首页 显示"
@@ -2013,6 +2052,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "标签：{}"
 
+msgid "move"
+msgstr ""
+
 msgid "ms"
 msgstr "毫秒"
 
@@ -2022,11 +2064,17 @@ msgstr "notepad.exe"
 msgid "open toggle deck hide"
 msgstr "打开 切换 卡组 隐藏"
 
+msgid "paste"
+msgstr ""
+
 msgid "paste insert send"
 msgstr "粘贴 插入 发送"
 
 msgid "paste stack, number {}"
 msgstr "粘贴堆栈，编号 {}"
+
+msgid "pin"
+msgstr ""
 
 msgid "preferences options configure hotkeys theme backup"
 msgstr "偏好设置 选项 配置 快捷键 主题 备份"
@@ -2037,8 +2085,14 @@ msgstr "px"
 msgid "quick find paste palette"
 msgstr "快速查找 粘贴 面板"
 
+msgid "reorder"
+msgstr ""
+
 msgid "s"
 msgstr "秒"
+
+msgid "tag change"
+msgstr ""
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "教程 入门 引导 基础 学习"

@@ -264,12 +264,16 @@ where
                 let now = self.clock.now();
                 match self.store.trash(Trashable::Board(id), now) {
                     Ok(()) => {
+                        let step = self.record_step(
+                            crate::history::Action::Delete,
+                            vec![crate::history::Change::Trash(vec![Trashable::Board(id)])],
+                        );
                         self.library_changed();
                         self.show_undo_toast(
                             neutral_toast(ToastMessage::BoardTrashed {
                                 name: slot.view.name,
                             }),
-                            vec![Trashable::Board(id)],
+                            step,
                         );
                     }
                     Err(_) => self.show_toast(failed()),

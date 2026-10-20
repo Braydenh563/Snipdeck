@@ -114,6 +114,33 @@ export global ToastTexts {
     pure public function restored(count: int) -> string {
         return @tr("Restored {} item" | "Restored {} items" % count, count);
     }
+    // The words of the app-wide undo history. `kind` is the action: 0 add, 1 paste, 2 drop,
+    // 3 edit, 4 delete, 5 move, 6 reorder, 7 colour, 8 pin, 9 tag, 10 duplicate.
+    pure public function action-word(kind: int) -> string {
+        return kind == 0 ? @tr("add")
+            : kind == 1 ? @tr("paste")
+            : kind == 2 ? @tr("drop")
+            : kind == 3 ? @tr("edit")
+            : kind == 4 ? @tr("delete")
+            : kind == 5 ? @tr("move")
+            : kind == 6 ? @tr("reorder")
+            : kind == 7 ? @tr("colour change")
+            : kind == 8 ? @tr("pin")
+            : kind == 9 ? @tr("tag change")
+            : @tr("duplicate");
+    }
+    pure public function undone(action: string) -> string {
+        return @tr("Undid {}", action);
+    }
+    pure public function redone(action: string) -> string {
+        return @tr("Redid {}", action);
+    }
+    pure public function undo-tip(action: string) -> string {
+        return action == "" ? @tr("Nothing to undo") : @tr("Undo {} (Ctrl+Z)", action);
+    }
+    pure public function redo-tip(action: string) -> string {
+        return action == "" ? @tr("Nothing to redo") : @tr("Redo {} (Ctrl+Y)", action);
+    }
     pure public function items-moved(count: int, list: string) -> string {
         return @tr("Moved {} item to {}" | "Moved {} items to {}" % count, count, list);
     }

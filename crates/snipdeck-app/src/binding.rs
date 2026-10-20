@@ -587,7 +587,8 @@ where
         wire!(on_duplicate_requested, |ctl, i| ctl.duplicate_row(index(i)));
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.toast_action());
-        wire!(on_undo_requested, |ctl| ctl.main_undo());
+        wire!(on_undo_requested, |ctl| ctl.undo());
+        wire!(on_redo_requested, |ctl| ctl.redo());
         wire_effects!(on_new_item_requested, |_ctl| vec![Effect::NewItem]);
         wire_effects!(on_settings_requested, |_ctl| vec![Effect::OpenSettings]);
         {
@@ -973,6 +974,12 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         || window.get_list_menu_open() != view.list_menu.is_some()
     {
         window.set_list_menu_open(view.list_menu.is_some());
+    }
+    if differs(&|p| p.history == view.history) {
+        window.set_can_undo(view.history.undo.is_some());
+        window.set_can_redo(view.history.redo.is_some());
+        window.set_undo_tip(wording::undo_tip(window, view.history.undo).into());
+        window.set_redo_tip(wording::redo_tip(window, view.history.redo).into());
     }
     if differs(&|p| p.toast == view.toast) {
         if let Some(toast) = &view.toast {

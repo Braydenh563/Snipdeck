@@ -606,6 +606,7 @@ where
         self.revealed = None;
         self.editor = None;
         self.undo = None;
+        self.clear_history();
         // The key record may have gone (forgotten) or stayed (with its password).
         self.refresh_master();
         let _ = self.refresh_panel();
