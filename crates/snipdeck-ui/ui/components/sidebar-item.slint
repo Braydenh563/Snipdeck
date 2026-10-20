@@ -26,6 +26,8 @@ export component SidebarItem inherits Rectangle {
     in property <bool> rail: false;
     in property <bool> keyboard-focusable: true;
     in property <bool> show-focus: false;
+    // A dragged row or list hovers over this one: it would land here.
+    in property <bool> drop-target: false;
     callback clicked();
     callback context-menu-requested(length, length);
 
@@ -41,8 +43,8 @@ export component SidebarItem inherits Rectangle {
     height: max(Space.hit, Type.line-base + Space.s2);
     border-radius: Radius.md;
     background: touch.pressed ? Theme.bg-sunken : root.selected ? Theme.bg-selected : root.hovered ? Theme.bg-hover : transparent;
-    border-width: Theme.hc-border != transparent ? 1px : 0px;
-    border-color: Theme.hc-border;
+    border-width: root.drop-target ? 2px : Theme.hc-border != transparent ? 1px : 0px;
+    border-color: root.drop-target ? Theme.focus-ring : Theme.hc-border;
     forward-focus: scope;
     accessible-role: list-item;
     accessible-label: root.label;

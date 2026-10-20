@@ -242,6 +242,20 @@ export component MainWindow inherits Window {
     callback item-reorder-requested(int);
     // Alt+Up / Alt+Down in the sidebar on a list: its index in `lists`, then -1 or +1.
     callback list-reorder-requested(int, int);
+    // Drag and drop (WCAG 2.5.7 gives the keyboard alternatives above and the item menu's Move to list). The payloads are
+    // built and read by the host, and stay inside the window: a row's index, or a sidebar list's index in `lists`.
+    pure callback row-payload(int) -> data-transfer;
+    pure callback list-payload(int) -> data-transfer;
+    pure callback payload-row(data-transfer) -> int;
+    pure callback payload-list(data-transfer) -> int;
+    // Row `from` was dropped on row `onto`.
+    callback row-dropped(int, int);
+    // Row `row` was dropped on sidebar list `list`.
+    callback row-dropped-on-list(int, int);
+    // Sidebar list `from` was dropped on sidebar list `onto`.
+    callback list-dropped(int, int);
+    // Rows can be dragged into a new place: the open list is in manual order and no search is running.
+    in property <bool> rows-reorderable: false;
 
     // ---- Public -------------------------------------------------------------------------------
     // Holds row `index` in its pulled (used) state for the card's 700ms.
@@ -846,18 +860,41 @@ export component MainWindow inherits Window {
                                         background: Theme.border-subtle;
                                     }
                                 }
-                                for entry[i] in root.lists: SidebarItem {
-                                    kind: SidebarItemKind.list;
-                                    label: entry.label;
-                                    count: entry.count;
-                                    mark-color: entry.color;
-                                    icon: entry.icon;
-                                    rail: root.narrow;
-                                    selected: root.nav-selected == 4 + i;
-                                    keyboard-focusable: false;
-                                    show-focus: nav-scope.has-focus && root.nav-cursor == 4 + i;
-                                    clicked => { root.open-section(4 + i); }
-                                    context-menu-requested(x, y) => { root.open-nav-menu(4 + i, root.sidebar-w, self.absolute-position.y + y); }
+                                for entry[i] in root.lists: Rectangle {
+                                    height: side-list.height;
+                                    side-drop := DropArea {
+                                        can-drop(event) => {
+                                            (root.payload-row(event.data) >= 0 && !root.in-trash) || (root.payload-list(event.data) >= 0 && root.payload-list(event.data) != i) ? DragAction.move : DragAction.none
+                                        }
+                                        dropped(event) => {
+                                            if (root.payload-row(event.data) >= 0) {
+                                                root.row-dropped-on-list(root.payload-row(event.data), i);
+                                            } else {
+                                                root.list-dropped(root.payload-list(event.data), i);
+                                            }
+                                            return DragAction.move;
+                                        }
+
+                                        DragArea {
+                                            allow-move: true;
+                                            data: root.list-payload(i);
+
+                                            side-list := SidebarItem {
+                                                kind: SidebarItemKind.list;
+                                                label: entry.label;
+                                                count: entry.count;
+                                                mark-color: entry.color;
+                                                icon: entry.icon;
+                                                rail: root.narrow;
+                                                selected: root.nav-selected == 4 + i;
+                                                drop-target: side-drop.has-drag;
+                                                keyboard-focusable: false;
+                                                show-focus: nav-scope.has-focus && root.nav-cursor == 4 + i;
+                                                clicked => { root.open-section(4 + i); }
+                                                context-menu-requested(x, y) => { root.open-nav-menu(4 + i, root.sidebar-w, self.absolute-position.y + y); }
+                                            }
+                                        }
+                                    }
                                 }
 
                                 if !root.narrow: SidebarHeading {
@@ -1246,6 +1283,8 @@ export component MainWindow inherits Window {
 
                             for row[i] in root.list-model: Rectangle {
                                 property <bool> is-cursor: i == root.cur;
+                                // The row being dragged over this one: a drop lands after it when coming from above.
+                                property <int> row-from: -1;
                                 height: card.preferred-height + root.row-gap + (i == root.rows.length - 1 ? 2 * root.ring : 0px);
 
                                 init => {
@@ -1258,30 +1297,57 @@ export component MainWindow inherits Window {
                                     if (self.is-cursor) { root.reveal-list(self.y, self.height); }
                                 }
 
-                                card := MainCard {
-                                    x: root.ring;
-                                    y: root.ring;
-                                    width: parent.width - 2 * root.ring;
-                                    height: self.preferred-height;
-                                    variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
-                                    data: row;
-                                    use-label: root.use-label;
-                                    show-focus: i == root.cur && items-scope.has-focus;
-                                    revealed: i == root.revealed-index;
-                                    pulling: i == root.used-index;
-                                    use => {
-                                        root.cursor = i;
-                                        root.act(root.in-trash ? ItemAction.restore : ItemAction.use, i);
+                                row-drop := DropArea {
+                                    enabled: root.rows-reorderable;
+                                    can-drop(event) => {
+                                        row-from = root.payload-row(event.data);
+                                        row-from >= 0 && row-from != i ? DragAction.move : DragAction.none
                                     }
-                                    copy => { root.act(ItemAction.copy, i); }
-                                    picked(shift, control) => { root.pick(i, shift, control); }
-                                    context-menu-requested(x, y) => {
-                                        if (!row.selected) {
-                                            root.pick(i, false, false);
+                                    dropped(event) => {
+                                        root.row-dropped(root.payload-row(event.data), i);
+                                        return DragAction.move;
+                                    }
+
+                                    DragArea {
+                                        allow-move: !root.in-trash;
+                                        data: root.row-payload(i);
+
+                                        card := MainCard {
+                                            x: root.ring;
+                                            y: root.ring;
+                                            width: parent.width - 2 * root.ring;
+                                            height: self.preferred-height;
+                                            variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
+                                            data: row;
+                                            use-label: root.use-label;
+                                            show-focus: i == root.cur && items-scope.has-focus;
+                                            revealed: i == root.revealed-index;
+                                            pulling: i == root.used-index;
+                                            use => {
+                                                root.cursor = i;
+                                                root.act(root.in-trash ? ItemAction.restore : ItemAction.use, i);
+                                            }
+                                            copy => { root.act(ItemAction.copy, i); }
+                                            picked(shift, control) => { root.pick(i, shift, control); }
+                                            context-menu-requested(x, y) => {
+                                                if (!row.selected) {
+                                                    root.pick(i, false, false);
+                                                }
+                                                root.open-item-menu(i, self.absolute-position.x + x, self.absolute-position.y + y);
+                                            }
+                                            reveal-requested(on) => { root.reveal-requested(i, on); }
                                         }
-                                        root.open-item-menu(i, self.absolute-position.x + x, self.absolute-position.y + y);
                                     }
-                                    reveal-requested(on) => { root.reveal-requested(i, on); }
+                                }
+                                // The drop target: a 2px accent line where the dragged row would land: below this row when it
+                                // comes from above, above it otherwise.
+                                Rectangle {
+                                    visible: row-drop.has-drag;
+                                    x: root.ring;
+                                    y: row-from >= 0 && row-from < i ? card.y + card.height - 1px : 0px;
+                                    width: parent.width - 2 * root.ring;
+                                    height: 2px;
+                                    background: Theme.accent;
                                 }
                             }
                         }

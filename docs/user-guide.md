@@ -318,6 +318,20 @@ Importing text files, Ditto or CopyQ data has no screen in this version.
 | Item editor | `Ctrl+Enter` | Save |
 | Fill form | `Ctrl+Enter`, `Esc` | Insert, cancel |
 
+## Drag and drop
+
+Every drag has a keyboard or menu way to do the same thing.
+
+- **Reorder snippets:** in the Main window, drag a snippet onto another one in a list that is in manual
+  order. Keyboard: `Alt+Up` or `Alt+Down`.
+- **Move to another list:** drag a snippet onto a list in the Main window's sidebar, or onto a list tab in the
+  Panel. Keyboard: **Move to list** in the snippet's menu, or the list field in the editor.
+- **Reorder lists:** drag a list onto another in the sidebar. Keyboard: `Alt+Up` or `Alt+Down` on the list.
+- **Save text:** drop text from another app on the Panel to save it as a new snippet at the top of the list the
+  Panel shows. An address becomes a link. Keyboard: **+ From clipboard**.
+
+A drag inside Snipdeck never offers anything to other apps.
+
 ## Command line
 
 `Snipdeck.bat` passes extra options to the app: `--hidden` starts with the Panel hidden, `--dark` forces the
@@ -333,4 +347,4 @@ Command Prompt, with `app\snipdeck.exe` in the folder that holds `Snipdeck.bat`:
 
 Add `--data-dir <folder>` to check a library somewhere else.
 
-<!-- TODO(B11, C1, C4, B15): drag and drop, the Recent inbox, item colour labels and list icons, and the wording and accessibility pass are in other branches. Add them here when they merge. -->
+<!-- TODO(C1, B15): the Recent inbox and the wording and accessibility pass are in other branches. Add them here when they merge. -->

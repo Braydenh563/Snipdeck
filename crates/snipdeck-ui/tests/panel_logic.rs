@@ -90,6 +90,17 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_pinned_copied, |i| format!("pinned-copy:{i}"));
     hook!(on_handle_hovered, |on| format!("handle-hover:{on}"));
     hook!(on_handle_clicked, || "handle-click".to_string());
+    hook!(on_row_dropped_on_tab, |row, tab| format!(
+        "row-on-tab:{row}:{tab}"
+    ));
+    // The host's payload rides as user data; the tests use plain text of the same shape.
+    ui.on_row_payload(|i| slint::DataTransfer::from(slint::SharedString::from(format!("row:{i}"))));
+    ui.on_payload_row(|d| {
+        d.plain_text()
+            .ok()
+            .and_then(|t| t.strip_prefix("row:").and_then(|n| n.parse::<i32>().ok()))
+            .unwrap_or(-1)
+    });
     {
         let log = log.clone();
         ui.on_context_menu_requested(move |i, _, _| log.borrow_mut().push(format!("menu:{i}")));
@@ -533,6 +544,28 @@ ui_tests! {
         tab.invoke_accessible_default_action();
         assert_eq!(ui.get_current_tab(), 2);
         assert_eq!(take(&log), ["tab:2"]);
+    }
+
+    fn dragging_a_row_onto_a_tab_reports_the_drop_and_a_plain_click_still_uses_the_row() {
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let (ui, log) = start();
+        let _ = take(&log);
+        let row = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .find(|e| e.accessible_label().is_some_and(|l| l.starts_with("Thanks, received")))
+            .map(|e| centre(&e))
+            .expect("the first row");
+        let tab = centre(&find(&ui, "Code", AccessibleRole::Tab));
+        let w = ui.window();
+        w.dispatch_event(WindowEvent::PointerMoved { position: row });
+        w.dispatch_event(WindowEvent::PointerPressed { position: row, button: PointerEventButton::Left });
+        w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(row.x, row.y + 12.0) });
+        w.dispatch_event(WindowEvent::PointerMoved { position: tab });
+        w.dispatch_event(WindowEvent::PointerReleased { position: tab, button: PointerEventButton::Left });
+        settle();
+        assert_eq!(take(&log), ["row-on-tab:0:2"]);
+        press_at(&ui, row);
+        assert_eq!(take(&log), ["use:0"], "a click still uses the row");
     }
 
     fn a_list_icon_on_a_tab_does_not_change_its_name() {
