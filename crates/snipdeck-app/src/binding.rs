@@ -829,6 +829,8 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
     }
+    // Not behind `differs`: the text size is not part of the view.
+    crate::text_scale::apply(&window.global::<ui::SystemLook<'_>>());
     if differs(&|p| {
         (p.high_contrast, p.accent, p.reduced_motion)
             == (view.high_contrast, view.accent, view.reduced_motion)

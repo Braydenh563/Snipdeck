@@ -10,6 +10,18 @@ msgstr ""
 msgid ".snipdeck file"
 msgstr ".snipdeck 文件"
 
+msgid "100 %"
+msgstr ""
+
+msgid "125 %"
+msgstr ""
+
+msgid "150 %"
+msgstr ""
+
+msgid "175 %"
+msgstr ""
+
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "PNG 图片。Snipdeck 会保存自己的副本。"
 
@@ -136,8 +148,8 @@ msgstr "已备份"
 msgid "Backup of {}, {}"
 msgstr "{} 的备份（{}）"
 
-msgid "Backups"
-msgstr "备份"
+msgid "Backups and your data"
+msgstr ""
 
 msgid "Backups to keep"
 msgstr "保留的备份数"
@@ -411,6 +423,12 @@ msgstr "无法使用此片段。"
 
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "无法写入你的资料库。请检查磁盘是否有足够空间。"
+
+msgid "Ctrl+Shift+V"
+msgstr ""
+
+msgid "Ctrl+V"
+msgstr ""
 
 msgid "Current password"
 msgstr "当前密码"
@@ -773,9 +791,6 @@ msgstr[0] "已导入 {} 个片段"
 msgid "Import…"
 msgstr "导入…"
 
-msgid "In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe."
-msgstr "在这些程序中，Snipdeck 会复制而不是粘贴。请使用程序的文件名，例如 notepad.exe。"
-
 msgid "Included"
 msgstr "已包含"
 
@@ -828,6 +843,9 @@ msgstr "类型"
 
 msgid "Language"
 msgstr "语言"
+
+msgid "Last backup: {}"
+msgstr ""
 
 msgid "Leave delay"
 msgstr "离开延迟"
@@ -990,8 +1008,8 @@ msgstr "导航"
 msgid "Never keep copies from these programs"
 msgstr "从不保留这些程序中的复制内容"
 
-msgid "Never paste into"
-msgstr "从不粘贴到"
+msgid "Never paste"
+msgstr ""
 
 msgid "New board"
 msgstr "新建看板"
@@ -1029,8 +1047,8 @@ msgstr "下一个列表"
 msgid "Next scope"
 msgstr "下一个范围"
 
-msgid "No backups yet."
-msgstr "还没有备份。"
+msgid "No backup yet"
+msgstr ""
 
 msgid "No colour"
 msgstr "无颜色"
@@ -1055,6 +1073,9 @@ msgstr "没有匹配的命令"
 
 msgid "No programs yet."
 msgstr "还没有程序。"
+
+msgid "No programs yet. Every program gets Ctrl+V."
+msgstr ""
 
 msgid "No recent items"
 msgstr "没有最近的片段"
@@ -1182,6 +1203,9 @@ msgstr "打开第三方声明"
 msgid "Open the user guide"
 msgstr "打开用户指南"
 
+msgid "Open the user guide (F1)"
+msgstr ""
+
 msgid "Opens in your browser."
 msgstr "在浏览器中打开。"
 
@@ -1220,6 +1244,9 @@ msgstr "粘贴"
 
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
 msgstr "粘贴许可证密钥即可开启支持者功能。密钥只在这台电脑上验证，不会发送到任何地方。"
+
+msgid "Paste key for {}"
+msgstr ""
 
 msgid "Paste stack"
 msgstr "粘贴堆栈"
@@ -1265,6 +1292,9 @@ msgstr "粘贴到 {} · {}"
 
 msgid "Pastes the next item of the list in order."
 msgstr "按顺序粘贴列表中的下一个片段。"
+
+msgid "Pastes the next item of the list in order. Works with Supporter."
+msgstr ""
 
 msgid "Path to the file"
 msgstr "文件路径"
@@ -1340,6 +1370,9 @@ msgstr "要添加的程序"
 
 msgid "Program to leave out of Recent"
 msgstr "不纳入“最近”的程序"
+
+msgid "Programs"
+msgstr ""
 
 msgid "Prompt for a value or a choice each time you paste."
 msgstr "每次粘贴时询问值或选项。"
@@ -1472,11 +1505,11 @@ msgstr "已保存到 {}"
 msgid "Saved {} in your Documents folder"
 msgstr "已将 {} 保存到你的“文档”文件夹"
 
-msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
-msgstr "把所有看板、列表和片段保存为一个 .snipdeck 文件，放在你的“文档”文件夹中。"
+msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
+msgstr ""
 
-msgid "Saves the text on the clipboard as a new item in the list the panel shows."
-msgstr "将剪贴板中的文本作为新片段保存到面板当前显示的列表中。"
+msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows. Off until you set a shortcut."
+msgstr ""
 
 msgid "Saving…"
 msgstr "正在保存…"
@@ -1543,6 +1576,9 @@ msgstr "设置…"
 
 msgid "Shift Enter"
 msgstr "Shift Enter"
+
+msgid "Shift+Insert"
+msgstr ""
 
 msgid "Shortcuts"
 msgstr "快捷键"
@@ -1739,6 +1775,9 @@ msgstr "包含日期、时间和光标位置的模板"
 msgid "Text"
 msgstr "文本"
 
+msgid "Text size"
+msgstr ""
+
 msgid "Text you copy appears here, newest first, until you clear it or it is older than {} days."
 msgstr "你复制的文本会按最新优先显示在这里，直到你清除或超过 {} 天。"
 
@@ -1813,6 +1852,9 @@ msgstr "无法打开文件对话框。请改为输入路径。"
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "导入已提前停止，因为源内容比 Snipdeck 一次能读取的量大。"
+
+msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe."
+msgstr ""
 
 msgid "The key is valid but couldn't be saved, so Supporter will be off next time."
 msgstr "密钥有效，但无法保存，因此下次 Supporter 将关闭。"
@@ -1919,8 +1961,8 @@ msgstr "平铺视图"
 msgid "Title"
 msgstr "标题"
 
-msgid "To remove everything, use Erase library above and then delete the folder."
-msgstr "要删除所有内容，请使用上方的“删除资料库”，然后删除该文件夹。"
+msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
+msgstr ""
 
 msgid "Today's date"
 msgstr "今天的日期"
@@ -2078,11 +2120,11 @@ msgstr "Windows 不允许 Snipdeck 读取这台电脑上的剪贴板历史记录
 msgid "Windows doesn't allow {} as a shortcut."
 msgstr "Windows 不允许将 {} 用作快捷键。"
 
+msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
+msgstr ""
+
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "你将拥有 {} 个看板，而免费版仅包含 {} 个。"
-
-msgid "Your data"
-msgstr "你的数据"
 
 msgid "Your deck is empty"
 msgstr "你的卡组是空的"
@@ -2321,3 +2363,6 @@ msgstr "{}，第 {} 项（共 {} 项）"
 
 msgid "{}.{} MB"
 msgstr "{}.{} MB"
+
+msgid "{}: {}"
+msgstr ""

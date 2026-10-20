@@ -33,13 +33,16 @@ use crate::{
     accent::AccentChoice,
     binding::{Loggable, Shown, arm_toast, model, redraw_all, register_redraw, to_i32},
     controller::{
-        Controller, ImportKind, ImportPreview, ImportProblem, ImportSource, MasterState,
-        ToastPhase, ToastView,
+        Controller, HelpTopic, ImportKind, ImportPreview, ImportProblem, ImportSource,
+        MasterState, ToastPhase, ToastView,
     },
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
     main_binding::{create_window, raise, set_look},
     native_window::fit_to_screen,
-    settings::{DockEdge, DockTrigger, HotkeyAction, Hotkeys, Settings, Theme},
+    settings::{
+        DockEdge, DockTrigger, HotkeyAction, Hotkeys, ProgramPaste, ProgramRule, Settings,
+        TextSize, Theme,
+    },
     toast::{LicenceProblem, Toast, ToastKind, ToastMessage},
     wording::{self, LANGUAGE_NAMES, LANGUAGE_TAGS},
 };
@@ -90,8 +93,17 @@ pub trait SettingsHost {
     /// The program could not be started.
     fn open_url(&self, url: &str) -> Result<(), String>;
 
-    /// Where an export is saved, if the machine has a Documents folder.
+    /// Where an export is saved when the machine has no folder dialog, if it has a Documents
+    /// folder.
     fn documents_folder(&self) -> Option<PathBuf>;
+
+    /// Asks the user for the folder an export is saved in (the file gets its dated name there).
+    /// `owner` is the Settings window's native handle. The default is a machine without a
+    /// dialog, which exports to [`documents_folder`](Self::documents_folder).
+    fn pick_export_folder(&self, owner: Option<isize>) -> ExportFolder {
+        let _ = owner;
+        ExportFolder::NoDialog
+    }
 
     /// Asks the user for the file (or, for [`ImportKind::Folder`], the folder) to import.
     /// `owner` is the Settings window's native handle: it is disabled while the dialog is open.
@@ -104,6 +116,17 @@ pub trait SettingsHost {
 
     /// Reads the text entries of the Windows clipboard history. May block until Windows answers.
     fn read_clipboard_history(&self) -> HistoryRead;
+}
+
+/// What asking for the export folder came to.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ExportFolder {
+    /// The user chose this folder.
+    Chosen(PathBuf),
+    /// The user cancelled: nothing is exported.
+    Cancelled,
+    /// The machine has no folder dialog (or it could not be shown): export to Documents.
+    NoDialog,
 }
 
 /// Registers `hotkeys` with `backend`: a shortcut that is off is removed (which
@@ -180,6 +203,25 @@ impl SettingsHost for SystemHost {
 
     fn documents_folder(&self) -> Option<PathBuf> {
         crate::paths::documents_folder()
+    }
+
+    fn pick_export_folder(&self, owner: Option<isize>) -> ExportFolder {
+        #[cfg(windows)]
+        {
+            use snipdeck_platform::file_dialog::PickKind;
+            match crate::platform::file_picker().map(|picker| picker.pick(PickKind::Folder, owner))
+            {
+                Some(Ok(Some(folder))) => ExportFolder::Chosen(folder),
+                Some(Ok(None)) => ExportFolder::Cancelled,
+                Some(Err(_)) | None => ExportFolder::NoDialog,
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            // Only Windows has a file dialog.
+            let _ = owner;
+            ExportFolder::NoDialog
+        }
     }
 
     fn pick_import(&self, kind: ImportKind, owner: Option<isize>) -> Option<PathBuf> {
@@ -371,6 +413,7 @@ pub fn key_chips(value: &str) -> Vec<String> {
 pub(crate) fn try_register(
     host: &dyn SettingsHost,
     paused: bool,
+    supporter: bool,
     action: HotkeyAction,
     current: &Hotkeys,
     next: &Hotkeys,
@@ -378,12 +421,14 @@ pub(crate) fn try_register(
     if paused {
         return None;
     }
+    // Paste next is not registered on the Free plan (it stays in the settings).
+    let (current, next) = (current.registrable(supporter), next.registrable(supporter));
     let refused = host
-        .apply_hotkeys(next)
+        .apply_hotkeys(&next)
         .into_iter()
         .find(|p| p.action == action);
     if let Some(problem) = refused {
-        let _ = host.apply_hotkeys(current);
+        let _ = host.apply_hotkeys(&current);
         return Some(problem.failure);
     }
     None
@@ -568,6 +613,7 @@ struct PageView {
     look: snipdeck_platform::system_look::SystemLook,
     accent: Option<crate::accent::Accent>,
     accent_index: i32,
+    text_size_index: i32,
     hotkeys: Vec<HotkeyRow>,
     theme_index: i32,
     language_index: i32,
@@ -584,8 +630,8 @@ struct PageView {
     dock_leave_delay: i32,
     backups_keep: i32,
     clipboard_clear_secs: i32,
-    no_paste_apps: Vec<String>,
-    no_paste_error: String,
+    paste_rules: Vec<(String, i32)>,
+    paste_rule_error: String,
     no_history_apps: Vec<String>,
     no_history_error: String,
     pro: bool,
@@ -596,6 +642,7 @@ struct PageView {
     master_allowed: bool,
     has_data_folder: bool,
     backups: Vec<BackupLine>,
+    last_backup: String,
     import: ImportLines,
     toast: Option<ToastView>,
 }
@@ -604,7 +651,7 @@ struct PageView {
 #[derive(Default)]
 struct PageState {
     hotkey_conflicts: [String; 4],
-    no_paste_error: String,
+    paste_rule_error: String,
     no_history_error: String,
     licence_error: Option<LicenceProblem>,
     backups: Vec<BackupFile>,
@@ -616,6 +663,54 @@ fn accent_index(accent: AccentChoice) -> i32 {
         .iter()
         .position(|a| *a == accent)
         .map_or(0, crate::binding::to_i32)
+}
+
+/// The "Text size" choice for `size`: 0 follows Windows, then the sizes in [`TextSize::ALL`] order.
+fn text_size_index(size: TextSize) -> i32 {
+    TextSize::ALL
+        .iter()
+        .position(|s| *s == size)
+        .map_or(0, crate::binding::to_i32)
+}
+
+/// The Programs choice for `paste`: its place in [`ProgramPaste::ALL`] (Ctrl+V, Ctrl+Shift+V,
+/// Shift+Insert, Never paste).
+fn paste_choice_index(paste: ProgramPaste) -> i32 {
+    ProgramPaste::ALL
+        .iter()
+        .position(|p| *p == paste)
+        .map_or(0, crate::binding::to_i32)
+}
+
+/// The paste choice a Programs row's dropdown index names.
+fn paste_choice_of(index: i32) -> Option<ProgramPaste> {
+    usize::try_from(index)
+        .ok()
+        .and_then(|at| ProgramPaste::ALL.get(at))
+        .copied()
+}
+
+/// What a program added in Settings > Programs starts with: the key most terminals that need a
+/// different one use. The user picks the real one in the row's dropdown.
+const NEW_PROGRAM_PASTE: ProgramPaste = ProgramPaste::CtrlShiftV;
+
+/// `rules` with a rule for `typed` added (named as `with_program` words it: trimmed, lower
+/// case, no repeats, no path).
+///
+/// # Errors
+///
+/// See [`ProgramRefusal`].
+pub fn with_rule(rules: &[ProgramRule], typed: &str) -> Result<Vec<ProgramRule>, ProgramRefusal> {
+    let names: Vec<String> = rules.iter().map(|r| r.exe.clone()).collect();
+    let with = with_program(&names, typed)?;
+    let mut next = rules.to_vec();
+    if let Some(exe) = with.into_iter().last() {
+        next.push(ProgramRule {
+            exe,
+            paste: NEW_PROGRAM_PASTE,
+        });
+    }
+    Ok(next)
 }
 
 fn theme_index(theme: Theme) -> i32 {
@@ -695,6 +790,7 @@ where
         look: controller.settings_look(),
         accent: controller.accent(),
         accent_index: accent_index(settings.accent),
+        text_size_index: text_size_index(settings.text_size),
         hotkeys,
         theme_index: theme_index(settings.theme),
         language_index: language_index(&settings.language),
@@ -711,8 +807,12 @@ where
         dock_leave_delay: i32::try_from(settings.dock.leave_delay_ms).unwrap_or(400),
         backups_keep: i32::try_from(settings.backups_keep).unwrap_or(7),
         clipboard_clear_secs: i32::try_from(settings.clipboard_clear_secs).unwrap_or(30),
-        no_paste_apps: settings.no_paste_apps.clone(),
-        no_paste_error: state.no_paste_error.clone(),
+        paste_rules: settings
+            .programs
+            .iter()
+            .map(|r| (r.exe.clone(), paste_choice_index(r.paste)))
+            .collect(),
+        paste_rule_error: state.paste_rule_error.clone(),
         no_history_apps: settings.no_history_apps.clone(),
         no_history_error: state.no_history_error.clone(),
         pro: controller.tier() == snipdeck_core::Tier::Pro,
@@ -734,6 +834,11 @@ where
                 size: human_size(b.bytes),
             })
             .collect(),
+        last_backup: state
+            .backups
+            .first()
+            .map(|b| b.date.to_string())
+            .unwrap_or_default(),
         import: ImportLines::of(state.import.as_ref()),
         toast: controller.settings_toast(),
     }
@@ -913,37 +1018,79 @@ where
         current: &Hotkeys,
         next: &Hotkeys,
     ) -> Option<HotkeyFailure> {
+        let controller = self.controller.borrow();
         try_register(
             self.host.as_ref(),
-            self.controller.borrow().hotkeys_paused(),
+            controller.hotkeys_paused(),
+            controller.tier() == snipdeck_core::Tier::Pro,
             action,
             current,
             next,
         )
     }
 
-    // ---- Programs that never get a paste ---------------------------------------------------
+    /// Registers the chords in force again: the plan may have changed, and Paste next is
+    /// registered with Supporter only. Does nothing while "Pause hotkeys" is on (resuming
+    /// registers them).
+    fn apply_hotkeys_for_tier(&self) {
+        let controller = self.controller.borrow();
+        if controller.hotkeys_paused() {
+            return;
+        }
+        let supporter = controller.tier() == snipdeck_core::Tier::Pro;
+        let chords = controller.settings().hotkeys.registrable(supporter);
+        drop(controller);
+        let _ = self.host.apply_hotkeys(&chords);
+    }
 
-    fn no_paste_added(self: &Rc<Self>, typed: &str) {
-        let apps = self.controller.borrow().settings().no_paste_apps.clone();
-        match with_program(&apps, typed) {
+    // ---- Text size -----------------------------------------------------------------------------
+
+    fn text_size_chosen(self: &Rc<Self>, index: i32) {
+        let size = usize::try_from(index)
+            .ok()
+            .and_then(|at| TextSize::ALL.get(at))
+            .copied()
+            .unwrap_or_default();
+        // Before the redraw `act` runs, so every window is laid out with the new size at once.
+        crate::text_scale::configure(size);
+        self.act(|ctl| ctl.update_settings(|s| s.text_size = size));
+    }
+
+    // ---- The paste key of each program ---------------------------------------------------------
+
+    fn paste_rule_added(self: &Rc<Self>, typed: &str) {
+        let rules = self.controller.borrow().settings().programs.clone();
+        match with_rule(&rules, typed) {
             Ok(next) => {
-                self.state.borrow_mut().no_paste_error.clear();
-                self.act(|ctl| ctl.update_settings(|s| s.no_paste_apps = next));
+                self.state.borrow_mut().paste_rule_error.clear();
+                self.act(|ctl| ctl.update_settings(|s| s.programs = next));
             }
             Err(refusal) => {
-                self.state.borrow_mut().no_paste_error = self.program_refusal(&refusal);
+                self.state.borrow_mut().paste_rule_error = self.program_refusal(&refusal);
                 redraw_all();
             }
         }
     }
 
-    fn no_paste_removed(self: &Rc<Self>, index: usize) {
-        self.state.borrow_mut().no_paste_error.clear();
+    fn paste_rule_chosen(self: &Rc<Self>, index: usize, choice: i32) {
+        let Some(paste) = paste_choice_of(choice) else {
+            return;
+        };
         self.act(|ctl| {
             ctl.update_settings(|s| {
-                if index < s.no_paste_apps.len() {
-                    s.no_paste_apps.remove(index);
+                if let Some(rule) = s.programs.get_mut(index) {
+                    rule.paste = paste;
+                }
+            });
+        });
+    }
+
+    fn paste_rule_removed(self: &Rc<Self>, index: usize) {
+        self.state.borrow_mut().paste_rule_error.clear();
+        self.act(|ctl| {
+            ctl.update_settings(|s| {
+                if index < s.programs.len() {
+                    s.programs.remove(index);
                 }
             });
         });
@@ -997,6 +1144,7 @@ where
         let data_dir = self.data_dir.clone();
         let result = self.act(|ctl| ctl.apply_licence(key, data_dir.as_deref()));
         self.state.borrow_mut().licence_error = result.err();
+        self.apply_hotkeys_for_tier();
         redraw_all();
     }
 
@@ -1227,10 +1375,18 @@ where
         let Some(dir) = self.data_dir.clone() else {
             return;
         };
-        let folder = self
-            .host
-            .documents_folder()
-            .unwrap_or_else(|| dir.join("exports"));
+        let owner = self
+            .window
+            .upgrade()
+            .and_then(|w| crate::native_window::handle_of(w.window()));
+        let folder = match self.host.pick_export_folder(owner) {
+            ExportFolder::Chosen(folder) => folder,
+            ExportFolder::Cancelled => return,
+            ExportFolder::NoDialog => self
+                .host
+                .documents_folder()
+                .unwrap_or_else(|| dir.join("exports")),
+        };
         let saved = self.act(|ctl| ctl.export_library(&folder));
         if let Some(file) = saved
             && let Some(parent) = file.parent()
@@ -1321,6 +1477,7 @@ where
                     _ => Theme::System,
                 };
             })));
+        wire!(on_text_size_chosen, |core, i| core.text_size_chosen(i));
         wire!(on_accent_chosen, |core, i| core.act(|ctl| ctl
             .update_settings(|s| {
                 s.accent = usize::try_from(i)
@@ -1377,10 +1534,15 @@ where
         wire!(on_clipboard_clear_secs_chosen, |core, n| core.act(|ctl| {
             ctl.update_settings(|s| s.clipboard_clear_secs = u32::try_from(n).unwrap_or(0));
         }));
-        wire!(on_no_paste_app_added, |core, name| core
-            .no_paste_added(&name));
-        wire!(on_no_paste_app_removed, |core, i| core
-            .no_paste_removed(crate::binding::index(i)));
+        wire!(on_paste_rule_added, |core, name| core
+            .paste_rule_added(&name));
+        wire!(on_paste_rule_chosen, |core, i, choice| core
+            .paste_rule_chosen(crate::binding::index(i), choice));
+        wire!(on_paste_rule_removed, |core, i| core
+            .paste_rule_removed(crate::binding::index(i)));
+        // F1 and the Help link: the user guide, through the same effect the Panel's F1 queues.
+        wire!(on_help_requested, |core| core
+            .act(|ctl| ctl.main_open_help(HelpTopic::Guide)));
         wire!(on_no_history_app_added, |core, name| core
             .no_history_added(&name));
         wire!(on_no_history_app_removed, |core, i| core
@@ -1459,6 +1621,8 @@ fn render_import(window: &ui::SettingsPage, i: &ImportLines) {
 fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageView) {
     let differs = |same: &dyn Fn(&PageView) -> bool| previous.is_none_or(|p| !same(p));
 
+    // Not behind `differs`: the text size in force is not part of the view.
+    crate::text_scale::apply(&window.global::<ui::SystemLook<'_>>());
     if differs(&|p| p.look == view.look && p.accent == view.accent) {
         window.set_dark(view.look.dark);
         set_look(
@@ -1525,15 +1689,22 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.dock_leave_delay == view.dock_leave_delay) {
         window.set_dock_leave_delay(view.dock_leave_delay);
     }
-    if differs(&|p| p.no_paste_apps == view.no_paste_apps) {
-        window.set_no_paste_apps(model(
-            view.no_paste_apps
-                .iter()
-                .map(|a| SharedString::from(a.as_str())),
-        ));
+    if differs(&|p| p.paste_rules == view.paste_rules) {
+        window.set_paste_rules(model(view.paste_rules.iter().map(|(exe, choice)| {
+            ui::PasteRuleRow {
+                exe: exe.as_str().into(),
+                choice: *choice,
+            }
+        })));
     }
-    if differs(&|p| p.no_paste_error == view.no_paste_error) {
-        window.set_no_paste_error(view.no_paste_error.as_str().into());
+    if differs(&|p| p.paste_rule_error == view.paste_rule_error) {
+        window.set_paste_rule_error(view.paste_rule_error.as_str().into());
+    }
+    if differs(&|p| p.text_size_index == view.text_size_index) {
+        window.set_text_size_index(view.text_size_index);
+    }
+    if differs(&|p| p.last_backup == view.last_backup) {
+        window.set_last_backup(view.last_backup.as_str().into());
     }
     if differs(&|p| p.no_history_apps == view.no_history_apps) {
         window.set_no_history_apps(model(

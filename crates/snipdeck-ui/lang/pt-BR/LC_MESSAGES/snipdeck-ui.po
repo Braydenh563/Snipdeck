@@ -10,6 +10,18 @@ msgstr ""
 msgid ".snipdeck file"
 msgstr "Arquivo .snipdeck"
 
+msgid "100 %"
+msgstr ""
+
+msgid "125 %"
+msgstr ""
+
+msgid "150 %"
+msgstr ""
+
+msgid "175 %"
+msgstr ""
+
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "Uma imagem PNG. O Snipdeck guarda a própria cópia."
 
@@ -136,8 +148,8 @@ msgstr "Backup feito"
 msgid "Backup of {}, {}"
 msgstr "Backup de {}, {}"
 
-msgid "Backups"
-msgstr "Backups"
+msgid "Backups and your data"
+msgstr ""
 
 msgid "Backups to keep"
 msgstr "Backups a manter"
@@ -411,6 +423,12 @@ msgstr "Não foi possível usar este item."
 
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "Não foi possível gravar na sua biblioteca. Verifique se o disco tem espaço."
+
+msgid "Ctrl+Shift+V"
+msgstr ""
+
+msgid "Ctrl+V"
+msgstr ""
 
 msgid "Current password"
 msgstr "Senha atual"
@@ -774,9 +792,6 @@ msgstr[1] "{} itens importados"
 msgid "Import…"
 msgstr "Importar…"
 
-msgid "In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe."
-msgstr "Nestes programas, o Snipdeck copia em vez de colar. Use o nome do arquivo do programa, por exemplo notepad.exe."
-
 msgid "Included"
 msgstr "Incluído"
 
@@ -831,6 +846,9 @@ msgstr "Tipo"
 
 msgid "Language"
 msgstr "Idioma"
+
+msgid "Last backup: {}"
+msgstr ""
 
 msgid "Leave delay"
 msgstr "Atraso ao sair"
@@ -995,8 +1013,8 @@ msgstr "Navegação"
 msgid "Never keep copies from these programs"
 msgstr "Nunca guardar cópias destes programas"
 
-msgid "Never paste into"
-msgstr "Nunca colar em"
+msgid "Never paste"
+msgstr ""
 
 msgid "New board"
 msgstr "Novo quadro"
@@ -1034,8 +1052,8 @@ msgstr "Próxima lista"
 msgid "Next scope"
 msgstr "Próximo escopo"
 
-msgid "No backups yet."
-msgstr "Ainda não há backups."
+msgid "No backup yet"
+msgstr ""
 
 msgid "No colour"
 msgstr "Sem cor"
@@ -1060,6 +1078,9 @@ msgstr "Nenhum comando correspondente"
 
 msgid "No programs yet."
 msgstr "Nenhum programa ainda."
+
+msgid "No programs yet. Every program gets Ctrl+V."
+msgstr ""
 
 msgid "No recent items"
 msgstr "Nenhum trecho recente"
@@ -1187,6 +1208,9 @@ msgstr "Abrir os avisos de terceiros"
 msgid "Open the user guide"
 msgstr "Abrir o guia do usuário"
 
+msgid "Open the user guide (F1)"
+msgstr ""
+
 msgid "Opens in your browser."
 msgstr "Abre no seu navegador."
 
@@ -1225,6 +1249,9 @@ msgstr "Colar"
 
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
 msgstr "Cole uma chave de licença para ativar o Apoiador. A chave é verificada neste PC e nada é enviado a lugar nenhum."
+
+msgid "Paste key for {}"
+msgstr ""
 
 msgid "Paste stack"
 msgstr "Pilha de colagem"
@@ -1270,6 +1297,9 @@ msgstr "Cola em {} · {}"
 
 msgid "Pastes the next item of the list in order."
 msgstr "Cola o próximo trecho da lista, em ordem."
+
+msgid "Pastes the next item of the list in order. Works with Supporter."
+msgstr ""
 
 msgid "Path to the file"
 msgstr "Caminho do arquivo"
@@ -1345,6 +1375,9 @@ msgstr "Programa a adicionar"
 
 msgid "Program to leave out of Recent"
 msgstr "Programa a deixar de fora de Recentes"
+
+msgid "Programs"
+msgstr ""
 
 msgid "Prompt for a value or a choice each time you paste."
 msgstr "Pede um valor ou uma escolha sempre que você colar."
@@ -1479,11 +1512,11 @@ msgstr "Salvo em {}"
 msgid "Saved {} in your Documents folder"
 msgstr "{} salvo na sua pasta Documentos"
 
-msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
-msgstr "Salva todos os quadros, listas e trechos em um arquivo .snipdeck na sua pasta Documentos."
+msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
+msgstr ""
 
-msgid "Saves the text on the clipboard as a new item in the list the panel shows."
-msgstr "Salva o texto da área de transferência como um novo trecho na lista mostrada pelo painel."
+msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows. Off until you set a shortcut."
+msgstr ""
 
 msgid "Saving…"
 msgstr "Salvando…"
@@ -1550,6 +1583,9 @@ msgstr "Configurações…"
 
 msgid "Shift Enter"
 msgstr "Shift Enter"
+
+msgid "Shift+Insert"
+msgstr ""
 
 msgid "Shortcuts"
 msgstr "Atalhos"
@@ -1746,6 +1782,9 @@ msgstr "Modelos com data, hora e cursor"
 msgid "Text"
 msgstr "Texto"
 
+msgid "Text size"
+msgstr ""
+
 msgid "Text you copy appears here, newest first, until you clear it or it is older than {} days."
 msgstr "O texto que você copia aparece aqui, do mais novo para o mais antigo, até você limpar ou até ter mais de {} dias."
 
@@ -1820,6 +1859,9 @@ msgstr "A caixa de diálogo de arquivos não pôde ser aberta. Digite o caminho.
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "A importação parou cedo porque a origem é maior do que o Snipdeck lê de uma vez."
+
+msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe."
+msgstr ""
 
 msgid "The key is valid but couldn't be saved, so Supporter will be off next time."
 msgstr "A chave é válida, mas não pôde ser salva, então o Supporter ficará desativado na próxima vez."
@@ -1926,8 +1968,8 @@ msgstr "Exibição em blocos"
 msgid "Title"
 msgstr "Título"
 
-msgid "To remove everything, use Erase library above and then delete the folder."
-msgstr "Para remover tudo, use \"Apagar a biblioteca\" acima e depois apague a pasta."
+msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
+msgstr ""
 
 msgid "Today's date"
 msgstr "Data de hoje"
@@ -2085,11 +2127,11 @@ msgstr "O Windows não permitiu que o Snipdeck lesse o Histórico da Área de Tr
 msgid "Windows doesn't allow {} as a shortcut."
 msgstr "O Windows não permite {} como atalho."
 
+msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
+msgstr ""
+
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "Você teria {} quadros, e o plano Gratuito inclui {}."
-
-msgid "Your data"
-msgstr "Seus dados"
 
 msgid "Your deck is empty"
 msgstr "Seu deck está vazio"
@@ -2341,3 +2383,6 @@ msgstr "{}, {} de {}"
 
 msgid "{}.{} MB"
 msgstr "{},{} MB"
+
+msgid "{}: {}"
+msgstr ""

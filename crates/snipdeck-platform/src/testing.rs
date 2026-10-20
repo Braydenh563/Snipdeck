@@ -335,13 +335,18 @@ impl Tray for FakeTray {
 
 /// A [`SystemLookSource`] a test sets. Cloning shares the value.
 #[derive(Debug, Clone, Default)]
-pub struct FakeSystemLook(Arc<Mutex<SystemLook>>);
+pub struct FakeSystemLook(Arc<Mutex<SystemLook>>, Arc<Mutex<Option<u32>>>);
 
 impl FakeSystemLook {
     /// A source that reports `look`.
     #[must_use]
     pub fn new(look: SystemLook) -> Self {
-        Self(Arc::new(Mutex::new(look)))
+        Self(Arc::new(Mutex::new(look)), Arc::default())
+    }
+
+    /// Changes Windows' text size to `percent` (`None`: never changed, 100 %).
+    pub fn set_text_scale_percent(&self, percent: Option<u32>) {
+        *lock(&self.1) = percent;
     }
 
     /// Changes what Windows "says".
@@ -353,6 +358,10 @@ impl FakeSystemLook {
 impl SystemLookSource for FakeSystemLook {
     fn read(&self) -> SystemLook {
         *lock(&self.0)
+    }
+
+    fn text_scale(&self) -> f32 {
+        crate::system_look::text_scale_from_percent(*lock(&self.1))
     }
 }
 
@@ -465,5 +474,13 @@ mod tests {
         });
         assert!(look.read().dark);
         assert!(look.read().reduce_motion);
+    }
+
+    #[test]
+    fn the_fake_text_scale_follows_what_the_test_sets() {
+        let look = FakeSystemLook::default();
+        assert!((look.text_scale() - 1.0).abs() < f32::EPSILON);
+        look.clone().set_text_scale_percent(Some(150));
+        assert!((look.text_scale() - 1.5).abs() < f32::EPSILON);
     }
 }

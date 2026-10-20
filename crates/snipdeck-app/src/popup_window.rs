@@ -146,6 +146,7 @@ pub(crate) fn set_look_globals(
     reduced_motion: bool,
 ) {
     look.set_reduced_motion(reduced_motion);
+    crate::text_scale::apply(look);
     look.set_high_contrast(hc.is_some());
     if let Some(hc) = hc {
         let color = |c: Rgb| slint::Color::from_rgb_u8(c.r, c.g, c.b);

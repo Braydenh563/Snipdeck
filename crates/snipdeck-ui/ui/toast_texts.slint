@@ -164,7 +164,7 @@ export global ToastTexts {
         return @tr("Couldn't import that.");
     }
     pure public function exported(file: string) -> string {
-        return @tr("Saved {} in your Documents folder", file);
+        return @tr("Saved {}", file);
     }
     pure public function export-failed() -> string {
         return @tr("Couldn't export your library.");

@@ -168,7 +168,12 @@ fn run(args: &Args) -> Result<(), String> {
             // Read on the UI thread: the value is fresher than the one the watcher saw.
             Box::new(move || {
                 let look = Arc::clone(&look);
-                on_ui_thread(move |b| b.system_look(look.read()));
+                on_ui_thread(move |b| {
+                    // Windows' text size may have changed with it; the redraw this starts
+                    // lays every window out with the new one.
+                    snipdeck_app::text_scale::set_system(look.text_scale());
+                    b.system_look(look.read());
+                });
             })
         },
     };
@@ -209,6 +214,9 @@ fn run(args: &Args) -> Result<(), String> {
         .set_size(slint::LogicalSize::new(width, 480.0));
 
     let startup_chords = settings.hotkeys.clone();
+    // The text size, before any window draws: the setting over Windows' own.
+    snipdeck_app::text_scale::configure(settings.text_size);
+    snipdeck_app::text_scale::set_system(look.text_scale());
     let saver = settings_folder
         .clone()
         .zip(saver_baseline)
@@ -282,7 +290,14 @@ fn run(args: &Args) -> Result<(), String> {
         move || {
             controller.upgrade().map_or_else(
                 || fallback.clone(),
-                |controller| controller.borrow().settings().hotkeys.clone(),
+                |controller| {
+                    let controller = controller.borrow();
+                    // Paste next is registered with Supporter only.
+                    controller
+                        .settings()
+                        .hotkeys
+                        .registrable(controller.tier() == snipdeck_core::Tier::Pro)
+                },
             )
         }
     };
@@ -393,9 +408,11 @@ fn run(args: &Args) -> Result<(), String> {
     let frames_armed = Rc::new(Cell::new(false));
     watch_window_events(&window, binding.clone(), Rc::clone(&frames_armed));
 
+    // Paste next is registered with Supporter only (it stays in the settings otherwise).
+    let supporter_at_start = controller.borrow().tier() == snipdeck_core::Tier::Pro;
     report_hotkey_problems(&host::register_all(
         &mut **hotkeys.borrow_mut(),
-        &startup_chords,
+        &startup_chords.registrable(supporter_at_start),
     ));
 
     if args.hidden {

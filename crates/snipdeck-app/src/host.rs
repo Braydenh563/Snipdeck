@@ -346,11 +346,28 @@ mod tests {
         assert_eq!(action_of(99), None);
     }
 
+    /// Every action has a chord (Capture is off by default, see `HotkeyAction::default_chord`).
+    fn all_on() -> Hotkeys {
+        Hotkeys {
+            capture: "Ctrl+Shift+2".into(),
+            ..Hotkeys::default()
+        }
+    }
+
     #[test]
-    fn every_default_hotkey_is_registered() {
+    fn every_default_hotkey_is_registered_and_capture_stays_off_until_set() {
         let mut backend = FakeHotkeys::default();
         let problems = register_all(&mut backend, &Hotkeys::default());
         assert_eq!(problems, Vec::new());
+        assert_eq!(backend.registered.len(), 3);
+        assert!(
+            backend
+                .registered
+                .iter()
+                .all(|(id, _)| *id != id_of(HotkeyAction::Capture))
+        );
+        let mut backend = FakeHotkeys::default();
+        assert_eq!(register_all(&mut backend, &all_on()), Vec::new());
         assert_eq!(backend.registered.len(), 4);
         let toggle = backend
             .registered
@@ -366,7 +383,7 @@ mod tests {
             taken: vec!["Ctrl+Shift+Space".into()],
             ..FakeHotkeys::default()
         };
-        let problems = register_all(&mut backend, &Hotkeys::default());
+        let problems = register_all(&mut backend, &all_on());
         assert_eq!(
             problems,
             [HotkeyProblem {
@@ -398,7 +415,7 @@ mod tests {
     #[test]
     fn pausing_removes_every_hotkey_and_resuming_registers_them_again() {
         let mut backend = FakeHotkeys::default();
-        let hotkeys = Hotkeys::default();
+        let hotkeys = all_on();
         assert_eq!(register_all(&mut backend, &hotkeys), Vec::new());
         assert_eq!(unregister_all(&mut backend), 0);
         assert_eq!(backend.registered, Vec::new());
@@ -410,7 +427,7 @@ mod tests {
     #[test]
     fn resuming_registers_the_chords_in_force_now_not_the_ones_from_start_up() {
         let mut backend = FakeHotkeys::default();
-        let at_start = Hotkeys::default();
+        let at_start = all_on();
         assert_eq!(register_all(&mut backend, &at_start), Vec::new());
         assert_eq!(
             set_paused(&mut backend, true, &at_start),

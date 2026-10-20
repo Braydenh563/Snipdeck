@@ -2,7 +2,7 @@
 
 use snipdeck_core::PasteFailure;
 
-use crate::keys::{PasteKey, paste_key_for};
+use crate::keys::{PasteKey, PasteRule, builtin_paste_rules, paste_key_for};
 
 /// What the platform could see of the Target's keyboard focus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -112,8 +112,15 @@ impl CopyReason {
     }
 }
 
-/// Decides how to use an item given the Target (`None` when there is none).
+/// Decides how to use an item given the Target (`None` when there is none), pasting with the
+/// built-in paste keys. [`decide_with`] takes the user's own.
 pub fn decide(target: Option<&Target>, policy: &Policy) -> Route {
+    decide_with(target, policy, &builtin_paste_rules())
+}
+
+/// Decides how to use an item given the Target (`None` when there is none): `rules` say which
+/// key pastes into which program (Settings > Programs), `Ctrl+V` for the others.
+pub fn decide_with(target: Option<&Target>, policy: &Policy, rules: &[PasteRule]) -> Route {
     let Some(target) = target else {
         return Route::Copy(CopyReason::NoTarget);
     };
@@ -132,7 +139,7 @@ pub fn decide(target: Option<&Target>, policy: &Policy) -> Route {
         return Route::Copy(CopyReason::NothingFocused { app: app() });
     }
     Route::Paste {
-        key: paste_key_for(&target.app),
+        key: paste_key_for(&target.app, rules),
     }
 }
 
@@ -217,6 +224,34 @@ mod tests {
             decide(Some(&t), &Policy::default()),
             Route::Paste {
                 key: PasteKey::ShiftInsert
+            }
+        );
+    }
+
+    #[test]
+    fn the_users_rules_choose_the_paste_key_and_replace_the_built_in_ones() {
+        let rules = [
+            PasteRule {
+                exe: "wt.exe".into(),
+                key: PasteKey::CtrlShiftV,
+            },
+            PasteRule {
+                exe: "mintty.exe".into(),
+                key: PasteKey::CtrlV,
+            },
+        ];
+        let policy = Policy::default();
+        let paste = |app: &str| decide_with(Some(&target(app, false, Focus::Caret)), &policy, &rules);
+        assert_eq!(
+            paste("WT.exe"),
+            Route::Paste {
+                key: PasteKey::CtrlShiftV
+            }
+        );
+        assert_eq!(
+            paste("mintty.exe"),
+            Route::Paste {
+                key: PasteKey::CtrlV
             }
         );
     }
