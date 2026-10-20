@@ -255,35 +255,35 @@
       "expect": "Every window appears in the theme's background colour from its first visible moment: no white or blank frame, not even for a split second, on the first open or on later ones. In Light the first colour is the light background, not pure white. Write any window that flashed in the note (n)."
     },
     {
-      "id": "26",
+      "id": "29",
       "v1": true,
       "title": "The Panel footer is fully visible at the regular size (O45)",
       "do": "Open the Panel at its normal size (do not resize it). Look at the bottom strip. Then set Windows display scale to 125% and 150% (Settings > System > Display), sign out and in if asked, and open the Panel again each time.",
       "expect": "The bottom strip (\"Pastes into ...\" or \"Copies to clipboard\") is whole: no text or key caps cut off at the bottom or the right edge, at 100%, 125% and 150%. The long 'Picker anywhere' hint shows only when the Panel is wide. Write the scale where anything is cut off in the note (n)."
     },
     {
-      "id": "27",
+      "id": "30",
       "v1": true,
       "title": "Reset size and position (O45)",
       "do": "Drag the Panel to the other side of the screen and resize it very small. Open the Panel menu (the three dots) and choose 'Reset size and position'. Then press Ctrl+K in the Main window, type 'reset' and run 'Reset Panel size and position'. If you have two monitors, move the Panel to the second one first and check the first one's saved place is untouched.",
       "expect": "The Panel jumps back to its default size and place at once, with no Undo message. It stays there after you close and reopen it. On a second monitor only that monitor's place is forgotten."
     },
     {
-      "id": "28",
+      "id": "31",
       "v1": true,
       "title": "Add an item with the New item row (O45)",
       "do": "In the Panel click '+ New item' under the last item (also try it in an empty list). Paste some text and press Enter. Then press Ctrl+N, paste a web address and click Create. Try Shift+Enter (new line) and Esc (cancel). Click the Sensitive switch before creating once.",
       "expect": "The row is easy to see. The box opens with the cursor in it and the kind already set (Link for a web address). Enter or Create adds the item under the last one, selects it and clears the box. Shift+Enter makes a new line. Esc closes the box and keeps nothing. A Sensitive item shows hidden."
     },
     {
-      "id": "29",
+      "id": "32",
       "v1": true,
       "title": "Select several items and act on them (O45)",
       "do": "In the Panel Ctrl+click two rows, Shift+click a third, then press Ctrl+A and Shift+Down. Use the bar that appears: Move to..., Colour, Copy all, Delete. Paste after Copy all. Press Esc to clear. Hover a row and look for the three dots on it, and look at the selected row.",
       "expect": "The bar says how many are selected. Move to and Colour ask once and change all of them. Copy all pastes the texts one after another. Delete removes them with an Undo message and no question. Esc clears the selection. The three dots show on the hovered and the selected row and open the row menu."
     },
     {
-      "id": "30",
+      "id": "33",
       "v1": true,
       "title": "Show numbers (O45)",
       "do": "Open the Panel menu (three dots) and switch 'Show numbers' off, then on. With it off press Alt+1 and 1 on a row.",
