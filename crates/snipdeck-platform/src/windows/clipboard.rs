@@ -413,6 +413,7 @@ struct Formats {
     png: u32,
     drop_effect: u32,
     exclude_monitor: u32,
+    viewer_ignore: u32,
     history: u32,
     cloud: u32,
 }
@@ -429,6 +430,7 @@ impl Formats {
             png: register(w!("PNG")),
             drop_effect: register(w!("Preferred DropEffect")),
             exclude_monitor: register(w!("ExcludeClipboardContentFromMonitorProcessing")),
+            viewer_ignore: register(w!("Clipboard Viewer Ignore")),
             history: register(w!("CanIncludeInClipboardHistory")),
             cloud: register(w!("CanUploadToCloudClipboard")),
         }
@@ -837,7 +839,8 @@ fn report_change(hwnd: HWND) {
 }
 
 /// Reads who changed the clipboard and what it holds, unless the source asked to be left out
-/// (`ExcludeClipboardContentFromMonitorProcessing`, `CanIncludeInClipboardHistory` = 0): then
+/// (`ExcludeClipboardContentFromMonitorProcessing`, `Clipboard Viewer Ignore`,
+/// `CanIncludeInClipboardHistory` = 0, all read with the clipboard open): then
 /// the text is never read. Our own writes are reported as `own` and not read either.
 fn observe_change(hwnd: HWND) -> ClipboardChange {
     let formats = Formats::register();
@@ -853,26 +856,13 @@ fn observe_change(hwnd: HWND) -> ClipboardChange {
         source_app: owner.and_then(super::target::window_exe_name),
         ..ClipboardChange::default()
     };
-    // SAFETY: no preconditions; a format id of 0 is not asked about.
-    let monitor_marker = formats.exclude_monitor != 0
-        && unsafe { IsClipboardFormatAvailable(formats.exclude_monitor) }.is_ok();
-    if monitor_marker {
-        change.excluded_format = true;
-        return change;
-    }
     let Some(_open) = OpenGuard::open(hwnd, READ_OPEN_BUDGET) else {
         return change;
     };
-    let history = if formats.history == 0 {
-        None
-    } else {
-        // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
-        unsafe { GetClipboardData(formats.history) }
-            .ok()
-            .and_then(|handle| read_global(HGLOBAL(handle.0), 16))
-            .and_then(|bytes| clipboard_watch::dword(&bytes))
-    };
-    if clipboard_watch::excluded_by_markers(false, history) {
+    // The markers are read with the clipboard open, and before any text is copied: a password
+    // manager can set them after a cheap check made before the open (which may retry for a
+    // while) and the content must not be taken in that gap. Nothing is read before this point.
+    if clipboard_watch::excluded_by_markers(read_markers(&formats)) {
         change.excluded_format = true;
         return change;
     }
@@ -887,6 +877,28 @@ fn observe_change(hwnd: HWND) -> ClipboardChange {
         }
     }
     change
+}
+
+/// Reads every "keep me out of history" marker. The clipboard must be open by this thread.
+fn read_markers(formats: &Formats) -> clipboard_watch::Markers {
+    let present = |format: u32| {
+        // SAFETY: no preconditions; a format id of 0 is not asked about.
+        format != 0 && unsafe { IsClipboardFormatAvailable(format) }.is_ok()
+    };
+    let can_include_in_history = if formats.history == 0 {
+        None
+    } else {
+        // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
+        unsafe { GetClipboardData(formats.history) }
+            .ok()
+            .and_then(|handle| read_global(HGLOBAL(handle.0), 16))
+            .and_then(|bytes| clipboard_watch::dword(&bytes))
+    };
+    clipboard_watch::Markers {
+        exclude_from_monitoring: present(formats.exclude_monitor),
+        viewer_ignore: present(formats.viewer_ignore),
+        can_include_in_history,
+    }
 }
 
 fn owner_hwnd() -> Option<HWND> {
