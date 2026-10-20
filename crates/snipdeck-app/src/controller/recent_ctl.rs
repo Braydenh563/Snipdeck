@@ -84,6 +84,11 @@ where
         if self.library_locked() {
             return;
         }
+        // A master password step is deriving its key elsewhere: making an OS-only key ring now
+        // would make that step's own install fail. This copy is dropped.
+        if self.master_busy().is_some() {
+            return;
+        }
         let settings = self.recent_settings();
         // The inbox is sealed with the library key like Sensitive items: it is made on the
         // first copy kept (no password asked), and with no key to seal with nothing is kept.

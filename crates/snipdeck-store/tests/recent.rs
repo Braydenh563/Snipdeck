@@ -295,7 +295,60 @@ mod at_rest {
             rusqlite::params![ta, second],
         )
         .unwrap();
-        assert!(s.recent().is_err());
+        // Neither swapped row opens (each is skipped, so no text from the wrong row appears).
+        assert_eq!(s.recent().unwrap().len(), 0);
+    }
+
+    fn insert_damaged_plain_row(conn: &Connection, tag: u8, copied_at: i64) {
+        conn.execute(
+            "INSERT INTO recent_entries (hash, text, source_app, copied_at, encrypted)
+             VALUES (?1, ?2, NULL, ?3, 0)",
+            rusqlite::params![vec![tag; 32], vec![0xFF_u8, 0xFE, 0xFD], copied_at],
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn a_row_that_cannot_be_sealed_is_deleted_and_does_not_block_the_unlock() {
+        let p = provider();
+        let kept = marker("kept");
+        let dir = tempfile::tempdir().unwrap();
+        {
+            let mut s = Store::open(dir.path()).unwrap();
+            s.add_recent(&kept, None, at(1)).unwrap();
+            insert_damaged_plain_row(&raw(dir.path()), 7, 5);
+            // Unreadable while plain, but the readable rows still list.
+            assert_eq!(texts(&s), std::slice::from_ref(&kept));
+        }
+        let mut s = Store::open(dir.path()).unwrap();
+        s.create_key_ring(&ring(&p), None).unwrap();
+        assert!(!s.has_plain_recent().unwrap());
+        assert_eq!(texts(&s), std::slice::from_ref(&kept));
+        let rows: i64 = raw(dir.path())
+            .query_row("SELECT count(*) FROM recent_entries", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(rows, 1, "the damaged row was deleted");
+        drop(s);
+        let mut s = Store::open(dir.path()).unwrap();
+        s.unlock_key_ring(&ring(&p), None).unwrap();
+        assert_eq!(texts(&s), [kept]);
+    }
+
+    #[test]
+    fn a_sealed_row_that_will_not_open_is_skipped_not_fatal() {
+        let p = provider();
+        let dir = tempfile::tempdir().unwrap();
+        let mut s = Store::open(dir.path()).unwrap();
+        s.create_key_ring(&ring(&p), None).unwrap();
+        s.add_recent("first", None, at(1)).unwrap();
+        let bad = s.add_recent("second", None, at(2)).unwrap();
+        raw(dir.path())
+            .execute(
+                "UPDATE recent_entries SET text = ?1 WHERE id = ?2",
+                rusqlite::params![vec![1_u8; 40], bad],
+            )
+            .unwrap();
+        assert_eq!(texts(&s), ["first"]);
     }
 
     /// An old database: the version-4 schema with the plaintext Recent table.

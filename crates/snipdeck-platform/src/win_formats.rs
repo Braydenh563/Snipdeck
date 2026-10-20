@@ -144,6 +144,30 @@ pub fn os_random() -> std::io::Result<[u8; 16]> {
     Ok(bytes)
 }
 
+/// The most recently modified paste folder of ours under `root` (ties broken by name), if any.
+/// The clipboard or a snapshot about to be restored may still point into it, so a paste keeps it.
+pub fn newest_paste_dir(root: &std::path::Path) -> Option<std::path::PathBuf> {
+    let mut best: Option<(std::time::SystemTime, std::path::PathBuf)> = None;
+    for entry in std::fs::read_dir(root).ok()?.flatten() {
+        let ours = entry.file_name().to_str().is_some_and(is_paste_dir_name);
+        let Ok(kind) = entry.file_type() else {
+            continue;
+        };
+        if !ours || !kind.is_dir() {
+            continue;
+        }
+        let modified = entry
+            .metadata()
+            .and_then(|meta| meta.modified())
+            .unwrap_or(std::time::UNIX_EPOCH);
+        let candidate = (modified, entry.path());
+        if best.as_ref().is_none_or(|current| candidate > *current) {
+            best = Some(candidate);
+        }
+    }
+    best.map(|(_, path)| path)
+}
+
 /// Removes every paste folder of ours under `root` except `keep` (best effort: a file still open
 /// stays until a later call). Returns how many folders were removed. Other names are never
 /// touched.
@@ -534,9 +558,38 @@ mod tests {
         assert!(!old.exists() && !legacy.exists());
         assert!(keep.is_dir() && other.is_dir() && file.is_file());
 
-        assert_eq!(remove_paste_dirs(root.path(), None), 1, "the exit cleanup");
+        assert_eq!(
+            remove_paste_dirs(root.path(), None),
+            1,
+            "the next-start cleanup"
+        );
         assert!(!keep.exists() && other.is_dir());
         assert_eq!(remove_paste_dirs(&root.path().join("missing"), None), 0);
+    }
+
+    #[test]
+    fn the_newest_paste_folder_is_the_one_a_paste_keeps() {
+        let root = tempfile::tempdir().unwrap();
+        assert_eq!(newest_paste_dir(root.path()), None);
+        let old = claim_paste_dir(root.path(), || Ok([1; 16])).unwrap();
+        let new = claim_paste_dir(root.path(), || Ok([2; 16])).unwrap();
+        let other = root.path().join("newer-but-not-ours");
+        std::fs::create_dir(&other).unwrap();
+        let t = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_000_000);
+        let set = |dir: &std::path::Path, secs: u64| {
+            std::fs::File::open(dir)
+                .unwrap()
+                .set_modified(t + std::time::Duration::from_secs(secs))
+                .unwrap();
+        };
+        set(&old, 0);
+        set(&new, 10);
+        set(&other, 20);
+        assert_eq!(newest_paste_dir(root.path()), Some(new.clone()));
+        // The paste sequence: keep the newest, drop the rest, then claim a fresh one.
+        let keep = newest_paste_dir(root.path());
+        assert_eq!(remove_paste_dirs(root.path(), keep.as_deref()), 1);
+        assert!(new.is_dir() && !old.exists() && other.is_dir());
     }
 
     fn encode_png(width: u32, height: u32, color: png::ColorType, data: &[u8]) -> Vec<u8> {

@@ -109,6 +109,9 @@ pub(crate) fn migrate(
             supported: latest,
         });
     }
+    if backup && current > 0 {
+        scrub_older_backups(path, current);
+    }
     if current == latest {
         return Ok(Outcome {
             from: current,
@@ -197,16 +200,44 @@ fn write_backup(conn: &Connection, path: &Path, from: u32) -> Result<()> {
     let target = target.to_string_lossy().into_owned();
     conn.execute("VACUUM INTO ?1", [&target])?;
     if from < 5 {
-        scrub_recent(&target)?;
+        scrub_or_delete(Path::new(&target));
     }
     Ok(())
 }
 
+/// The first schema version whose Recent text is sealed; earlier copies hold it plain.
+const SEALED_RECENT_SINCE: u32 = 5;
+
+/// Scrubs the Recent inbox of the rollback copies earlier upgrades left (`pre-v1` to `pre-v4`):
+/// those hold plain text too. Runs at every open that has a backup name to look for, and does
+/// nothing for a copy that is not there or has no entries left.
+fn scrub_older_backups(path: &Path, current: u32) {
+    for from in 1..SEALED_RECENT_SINCE.min(current + 1) {
+        let mut name = path.as_os_str().to_owned();
+        name.push(format!(".pre-v{from}.bak"));
+        let copy = std::path::PathBuf::from(name);
+        if copy.is_file() {
+            scrub_or_delete(&copy);
+        }
+    }
+}
+
+/// Scrubs the Recent inbox of a backup; if that fails (a file held by antivirus, a damaged copy)
+/// the backup is deleted instead, because a plain copy is worse than none and a failed scrub
+/// must not stop the library opening.
+fn scrub_or_delete(backup: &Path) {
+    if scrub_recent(&backup.to_string_lossy()).is_err() {
+        let _ = std::fs::remove_file(backup);
+    }
+}
+
 /// Empties the Recent inbox in a backup: its text was plain before schema version 5, and a
-/// rollback copy is not a reason to keep it. Best effort on a table that is not there (older
-/// schemas have none); a file that cannot be opened or rewritten is an error.
+/// rollback copy is not a reason to keep it. Nothing to do for a table that is not there (older
+/// schemas have none) or is empty; a file that cannot be opened or rewritten is an error.
 fn scrub_recent(backup: &str) -> Result<()> {
     let copy = Connection::open(backup)?;
+    // No -wal or -journal file: the old pages must not pass through a file that is only deleted.
+    copy.pragma_update(None, "journal_mode", "MEMORY")?;
     copy.pragma_update(None, "secure_delete", "ON")?;
     let has_table: bool = copy.query_row(
         "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'recent_entries')",
@@ -214,7 +245,11 @@ fn scrub_recent(backup: &str) -> Result<()> {
         |r| r.get(0),
     )?;
     if has_table {
-        copy.execute_batch("DELETE FROM recent_entries; VACUUM;")?;
+        let entries: i64 =
+            copy.query_row("SELECT count(*) FROM recent_entries", [], |r| r.get(0))?;
+        if entries > 0 {
+            copy.execute_batch("DELETE FROM recent_entries; VACUUM;")?;
+        }
     }
     Ok(())
 }
@@ -479,6 +514,65 @@ mod tests {
             backup.prepare("SELECT colour FROM boards").is_err(),
             "the copy predates the change"
         );
+    }
+
+    fn plain_copy_with_one_entry(path: &Path) {
+        let conn = Connection::open(path).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE recent_entries (text TEXT);
+             INSERT INTO recent_entries VALUES ('left over');",
+        )
+        .unwrap();
+    }
+
+    fn entries(path: &Path) -> i64 {
+        Connection::open(path)
+            .unwrap()
+            .query_row("SELECT count(*) FROM recent_entries", [], |r| r.get(0))
+            .unwrap()
+    }
+
+    #[test]
+    fn older_rollback_copies_lose_their_plain_recent_entries_and_a_broken_one_is_deleted() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("snipdeck.db");
+        let mut conn = Connection::open(&path).unwrap();
+        migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
+        let v3 = dir.path().join("snipdeck.db.pre-v3.bak");
+        let v4 = dir.path().join("snipdeck.db.pre-v4.bak");
+        plain_copy_with_one_entry(&v3);
+        std::fs::write(&v4, b"not a database, and held by nobody").unwrap();
+
+        // A library already at the newest version still cleans the copies of earlier upgrades.
+        migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
+        assert_eq!(entries(&v3), 0, "scrubbed");
+        assert!(!v4.exists(), "a copy that cannot be scrubbed is deleted");
+        assert_eq!(version(&conn), 5, "and the open went on");
+    }
+
+    #[test]
+    fn a_scrubbed_copy_uses_no_journal_file_and_a_failed_scrub_does_not_fail_the_open() {
+        let dir = tempfile::tempdir().unwrap();
+        let copy = dir.path().join("copy.bak");
+        plain_copy_with_one_entry(&copy);
+        scrub_recent(&copy.to_string_lossy()).unwrap();
+        assert_eq!(entries(&copy), 0);
+        let leftovers: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name())
+            .collect();
+        assert_eq!(
+            leftovers.len(),
+            1,
+            "no -wal or -journal left: {leftovers:?}"
+        );
+
+        let broken = dir.path().join("broken.bak");
+        std::fs::write(&broken, b"garbage garbage garbage garbage").unwrap();
+        assert!(scrub_recent(&broken.to_string_lossy()).is_err());
+        scrub_or_delete(&broken);
+        assert!(!broken.exists());
     }
 
     /// A real file written by the released version-1 schema (see `tests/fixture.rs`).

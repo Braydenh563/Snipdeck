@@ -316,6 +316,46 @@ fn a_first_password_on_a_library_without_a_key_makes_the_key_off_the_controller(
 }
 
 #[test]
+fn a_copy_while_the_first_password_is_derived_does_not_make_a_key_and_the_set_succeeds() {
+    use snipdeck_app::recent::ClipboardObservation;
+    let data = tempfile::tempdir().expect("dir");
+    let provider = SharedProvider::new();
+    let clock = FixedClock::new(t0());
+    let store = Store::open(data.path()).expect("store");
+    let mut ctl = Controller::new(
+        store,
+        Services {
+            clipboard: FakeClipboard::default(),
+            keyboard: FakeKeyboard::default(),
+            timing: FakeTiming::default(),
+        },
+        Box::new(FakeTargets::new(Some(demo::target()))),
+        Box::new(clock),
+        Settings {
+            recent_history: true,
+            ..Settings::default()
+        },
+        Entitlements::new(Tier::Pro),
+    )
+    .expect("controller");
+    ctl.set_key_provider(Box::new(provider));
+    ctl.set_kdf_params(KdfParams::insecure_for_tests(64, 1, 1).expect("cheap params"));
+    let job = ctl
+        .begin_set_master_password(password(), password())
+        .expect("checked");
+    assert_eq!(job.op(), MasterOp::Set { exists: false });
+    ctl.on_clipboard_change(&ClipboardObservation {
+        text: Some("copied while the key is derived".to_owned()),
+        source_app: Some("notepad.exe".to_owned()),
+        ..ClipboardObservation::default()
+    });
+    assert_eq!(ctl.finish_master(run_elsewhere(job)), Ok(()));
+    assert_eq!(ctl.master_password_state(), MasterState::Set);
+    assert!(!ctl.library_locked());
+    assert!(ctl.recent_entries().is_empty(), "that copy was dropped");
+}
+
+#[test]
 fn a_wrong_password_comes_back_from_the_job_and_frees_the_controller() {
     let mut r = with_password(Tier::Pro).restart(Tier::Pro);
     let job = r

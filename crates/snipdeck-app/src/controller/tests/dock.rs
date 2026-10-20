@@ -233,6 +233,15 @@ fn a_paste_from_the_panel_collapses_it_and_a_copy_does_not() {
     );
     assert!(w.ctl.view().dock_collapsed);
 
+    // A paste whose clipboard restore failed still pasted: the Panel collapses.
+    let mut w = docked(DockTrigger::Hover, DockEdge::Right);
+    assert_eq!(
+        w.ctl
+            .dock_after_use(&UseResult::Done(UseOutcome::PastedNotRestored)),
+        place(handle(DockEdge::Right))
+    );
+    assert!(w.ctl.view().dock_collapsed);
+
     assert_eq!(w.ctl.dock_after_use(&UseResult::Failed), Vec::new());
     assert_eq!(w.ctl.dock_after_use(&UseResult::NeedsAnswers), Vec::new());
 }

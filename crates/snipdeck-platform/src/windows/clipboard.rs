@@ -39,8 +39,8 @@
 //! rendering (as soon as ownership is lost, on `WM_DESTROYCLIPBOARD`), snapshots, decoded images,
 //! text read back, and `HGLOBAL`s that Windows refused. Not covered: the caller's
 //! [`crate::payload::Payload`] (the pipeline clones it; its owner drops it), memory handed to
-//! Windows, and pasted files on disk (a random folder per paste under `%TEMP%\\Snipdeck`, removed at the next
-//! paste and on a clean exit; deleted, not overwritten). Nothing here
+//! Windows, and pasted files on disk (a random folder per paste under `%TEMP%\\Snipdeck`; the previous one is kept for the
+//! clipboard that may point into it, older ones go at the next paste, all at the next start; deleted, not overwritten). Nothing here
 //! logs content. A private payload carries the markers on every write, kept copies included.
 //!
 //! # When a restore is allowed (sequence numbers)
@@ -208,6 +208,8 @@ impl WinClipboard {
     /// [`ServiceError`] if the thread or the window cannot be created.
     pub fn new() -> Result<Self, ServiceError> {
         let formats = Formats::register();
+        // Folders left by an earlier run: the clipboard they were offered on is long stale.
+        remove_paste_files();
         let (jobs, job_queue) = mpsc::channel::<Job>();
         let (ready_tx, ready) = mpsc::channel();
         let (exited_tx, exited) = mpsc::channel();
@@ -391,7 +393,8 @@ impl Drop for WinClipboard {
         // available after we exit) and WM_DESTROY, which ends the message loop.
         // SAFETY: as in `call`.
         let _ = unsafe { PostMessageW(Some(self.hwnd()), WM_CLOSE, WPARAM(0), LPARAM(0)) };
-        remove_paste_files();
+        // The paste folders stay: a persistent CF_HDROP on the clipboard may point into one. The
+        // next start removes them (see `WinClipboard::new`).
         // A thread stuck in another app's render is left behind rather than hanging the caller.
         match self.exited.recv_timeout(SHUTDOWN_WAIT) {
             Ok(()) | Err(RecvTimeoutError::Disconnected) => {
@@ -543,8 +546,9 @@ fn prepare(payload: &Payload, formats: &Formats) -> Result<Vec<Entry>, Error> {
 }
 
 /// Writes `files` into a fresh, randomly named `%TEMP%\Snipdeck\paste-<random>\` and returns
-/// their UTF-16 paths. Every older paste folder is removed first (best effort: a file still open
-/// stays until a later paste or the clean exit, see [`remove_paste_files`]).
+/// their UTF-16 paths. The previous folder is kept, because the clipboard (or a snapshot about to
+/// be restored) may still point into it; every older one is removed first (best effort: a file
+/// still open stays until a later paste or the next start, see [`remove_paste_files`]).
 fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
     let io = |error: std::io::Error| {
         Error::Clipboard(format!(
@@ -560,7 +564,8 @@ fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
     }
     let root = std::env::temp_dir().join("Snipdeck");
     fs::create_dir_all(&root).map_err(io)?;
-    win_formats::remove_paste_dirs(&root, None);
+    let previous = win_formats::newest_paste_dir(&root);
+    win_formats::remove_paste_dirs(&root, previous.as_deref());
     let dir = win_formats::claim_paste_dir(&root, win_formats::os_random).map_err(io)?;
     let mut paths = Vec::with_capacity(files.len());
     for file in files {
@@ -576,8 +581,9 @@ fn write_paste_files(files: &[FilePayload]) -> Result<Vec<Vec<u16>>, Error> {
     Ok(paths)
 }
 
-/// Removes the pasted-file folders on a clean exit, so decrypted bytes do not outlive the app.
-/// Best effort; a file another app still has open stays.
+/// Removes every pasted-file folder at the next start (not on exit: a persistent `CF_HDROP` may
+/// still point into one), so decrypted bytes do not outlive the next run. Best effort; a file
+/// another app still has open stays.
 fn remove_paste_files() {
     win_formats::remove_paste_dirs(&std::env::temp_dir().join("Snipdeck"), None);
 }
@@ -1383,7 +1389,7 @@ mod tests {
 
     #[test]
     #[ignore = "uses the real Windows clipboard"]
-    fn paste_folders_keep_only_the_newest_and_exit_removes_it() {
+    fn paste_folders_keep_the_previous_and_the_next_start_removes_them() {
         let _lock = CLIPBOARD.lock().unwrap_or_else(PoisonError::into_inner);
         let mut clipboard = WinClipboard::new().unwrap();
         let files = |name: &str| {
@@ -1406,9 +1412,15 @@ mod tests {
                     .is_some_and(win_formats::is_paste_dir_name)
             })
             .collect();
-        assert_eq!(ours.len(), 1);
-        assert!(ours[0].path().join("c.txt").is_file());
+        assert_eq!(ours.len(), 2, "the previous folder and the newest");
+        assert!(ours.iter().any(|e| e.path().join("c.txt").is_file()));
+        assert!(ours.iter().any(|e| e.path().join("b.txt").is_file()));
         drop(clipboard);
-        assert!(!ours[0].path().exists(), "removed on a clean exit");
+        assert!(
+            ours.iter().all(|e| e.path().exists()),
+            "a persistent CF_HDROP may still point into them on exit"
+        );
+        let _next_start = WinClipboard::new().unwrap();
+        assert!(ours.iter().all(|e| !e.path().exists()), "removed at start");
     }
 }

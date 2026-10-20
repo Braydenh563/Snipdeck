@@ -181,8 +181,9 @@ fn rows(conn: &Connection, key: Option<&DataKey>) -> Result<Vec<RecentEntry>> {
             ))
         })?
         .collect::<rusqlite::Result<Vec<Raw>>>()?;
-    raw.into_iter()
-        .map(|(id, hash, text, app, at, encrypted)| {
+    let mut entries = Vec::with_capacity(raw.len());
+    for (id, hash, text, app, at, encrypted) in raw {
+        let opened = (|| {
             let (text, source_app) = if encrypted {
                 let key = key.ok_or(Error::EncryptionLocked)?;
                 (
@@ -192,14 +193,22 @@ fn rows(conn: &Connection, key: Option<&DataKey>) -> Result<Vec<RecentEntry>> {
             } else {
                 (plain_text(text)?, app.map(plain_text).transpose()?)
             };
-            Ok(RecentEntry {
+            Ok::<_, Error>(RecentEntry {
                 id,
                 text,
                 source_app,
                 copied_at: from_nanos(at)?,
             })
-        })
-        .collect()
+        })();
+        match opened {
+            Ok(entry) => entries.push(entry),
+            // Locked is not damage: the whole list is unavailable, not one row.
+            Err(Error::EncryptionLocked) => return Err(Error::EncryptionLocked),
+            // One damaged row must not hide the inbox: it is skipped (and left for pruning).
+            Err(_) => {}
+        }
+    }
+    Ok(entries)
 }
 
 /// Whether any row is still plain text.
@@ -211,28 +220,39 @@ pub(crate) fn has_plain(conn: &Connection) -> Result<bool> {
     )?)
 }
 
-/// Seals every plain row with `key` (and re-keys its duplicate hash). Returns how many.
+/// Seals every plain row with `key` (and re-keys its duplicate hash). Returns how many. A row
+/// that cannot be sealed is deleted (not counted).
 /// Idempotent: sealed rows are not touched.
 pub(crate) fn encrypt_plain(conn: &Connection, key: &DataKey) -> Result<usize> {
     let plain: Vec<(i64, Vec<u8>, Option<Vec<u8>>)> = conn
         .prepare("SELECT id, text, source_app FROM recent_entries WHERE encrypted = 0")?
         .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
         .collect::<rusqlite::Result<_>>()?;
-    let count = plain.len();
+    let mut sealed_rows = 0;
     for (id, text, app) in plain {
-        let text = plain_text(text)?;
-        let new_hash = hash(&text, Some(key));
-        let sealed = seal(key, &new_hash, Slot::Detached, &text)?;
-        let app = app
-            .map(|a| seal(key, &new_hash, APP_SLOT, &plain_text(a)?))
-            .transpose()?;
-        conn.execute(
-            "UPDATE recent_entries SET hash = ?1, text = ?2, source_app = ?3, encrypted = 1
-             WHERE id = ?4",
-            params![&new_hash[..], sealed, app, id],
-        )?;
+        let sealed = (|| {
+            let text = plain_text(text)?;
+            let new_hash = hash(&text, Some(key));
+            let sealed = seal(key, &new_hash, Slot::Detached, &text)?;
+            let app = app
+                .map(|a| seal(key, &new_hash, APP_SLOT, &plain_text(a)?))
+                .transpose()?;
+            conn.execute(
+                "UPDATE recent_entries SET hash = ?1, text = ?2, source_app = ?3, encrypted = 1
+                 WHERE id = ?4",
+                params![&new_hash[..], sealed, app, id],
+            )?;
+            Ok::<_, Error>(())
+        })();
+        if sealed.is_ok() {
+            sealed_rows += 1;
+        } else {
+            // A convenience row that cannot be sealed (damaged text, a clash) is deleted rather
+            // than left plain or allowed to keep the library locked.
+            conn.execute("DELETE FROM recent_entries WHERE id = ?1", params![id])?;
+        }
     }
-    Ok(count)
+    Ok(sealed_rows)
 }
 
 impl RecentRepo for Store {

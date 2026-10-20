@@ -180,7 +180,6 @@ fn read_list(
     Ok(Some(list))
 }
 
-/// Reads one file into an item, or warns and returns `None`.
 /// Why [`open_without_links`] did not hand back a file.
 #[derive(Debug)]
 enum OpenRefusal {
@@ -189,21 +188,21 @@ enum OpenRefusal {
     Io(std::io::Error),
 }
 
-/// Whether `meta` describes a symbolic link or, on Windows, any reparse point (junction,
-/// mount point, cloud placeholder).
+/// Whether a reparse tag redirects names elsewhere, so the file is not the one the path names:
+/// the name-surrogate bit (`0x2000_0000`), set for symbolic links (`0xA000000C`) and mount
+/// points / junctions (`0xA0000003`). Not set for cloud-sync placeholders (`0x9000001A`, ...)
+/// or deduplicated files (`0x80000013`), which are real files and are imported.
+#[cfg(test)]
+const fn is_name_surrogate_tag(tag: u32) -> bool {
+    tag & 0x2000_0000 != 0
+}
+
+/// Whether `meta` describes a link that redirects the path: a symbolic link or, on Windows, a
+/// mount point. This is exactly `FileType::is_symlink`, which on Windows is true only for a
+/// reparse point whose tag has the name-surrogate bit (see [`is_name_surrogate_tag`]); other
+/// reparse points (cloud-sync placeholders, dedup) are ordinary files and are not refused.
 fn is_link(meta: &fs::Metadata) -> bool {
-    if meta.file_type().is_symlink() {
-        return true;
-    }
-    #[cfg(windows)]
-    {
-        use std::os::windows::fs::MetadataExt;
-        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
-        if meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-            return true;
-        }
-    }
-    false
+    meta.file_type().is_symlink()
 }
 
 /// Opens a regular file without following a link. The listing used `file_type()`, which does not
@@ -233,6 +232,7 @@ fn open_without_links(path: &Path) -> core::result::Result<File, OpenRefusal> {
     Ok(file)
 }
 
+/// Reads one file into an item, or warns and returns `None`.
 fn read_file(
     state: &mut Reader,
     path: &Path,
@@ -357,6 +357,17 @@ mod tests {
             open_without_links(&dir.path().join("none")),
             Err(OpenRefusal::Io(_))
         ));
+    }
+
+    #[test]
+    fn only_name_surrogate_reparse_tags_are_links() {
+        assert!(is_name_surrogate_tag(0xA000_000C), "symbolic link");
+        assert!(is_name_surrogate_tag(0xA000_0003), "mount point");
+        for cloud in [0x9000_001A, 0x9000_601A, 0x9000_701A, 0x9000_F01A] {
+            assert!(!is_name_surrogate_tag(cloud), "OneDrive {cloud:#x}");
+        }
+        assert!(!is_name_surrogate_tag(0x8000_0013), "dedup");
+        assert!(!is_name_surrogate_tag(0), "not a reparse point");
     }
 
     #[cfg(unix)]
