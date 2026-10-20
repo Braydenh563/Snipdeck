@@ -184,30 +184,27 @@ pub fn verify_licence(token: &str, key: &VerifyingKey) -> Result<Licence, Licenc
 
 /// Verifies `token` against `key` and returns what it entitles the user to.
 ///
-/// `now` is unused in format v1 (licences never expire) and exists so callers are already
-/// passing the time when a revocation list arrives.
+/// Format v1 licences never expire, so no clock is involved.
 ///
 /// # Errors
 ///
 /// See [`LicenceError`].
-pub fn verify(
-    token: &str,
-    key: &VerifyingKey,
-    _now: Timestamp,
-) -> Result<Entitlements, LicenceError> {
+pub fn verify(token: &str, key: &VerifyingKey) -> Result<Entitlements, LicenceError> {
     verify_licence(token, key).map(|licence| licence.entitlements())
 }
 
 /// Like [`verify`], against the public key compiled into this build ([`LICENCE_PUBLIC_KEY`]).
+/// `_now` is ignored; it stays only so the app's existing calls compile, and goes when they
+/// are updated.
 ///
 /// # Errors
 ///
 /// See [`LicenceError`]; also [`LicenceError::Malformed`] if the compiled-in key is not a
 /// valid curve point, which a unit test rules out for every build.
-pub fn verify_embedded(token: &str, now: Timestamp) -> Result<Entitlements, LicenceError> {
+pub fn verify_embedded(token: &str, _now: Timestamp) -> Result<Entitlements, LicenceError> {
     let key = VerifyingKey::from_bytes(&LICENCE_PUBLIC_KEY)
         .map_err(|_| LicenceError::Malformed("compiled-in public key is invalid"))?;
-    verify(token, &key, now)
+    verify(token, &key)
 }
 
 /// Accepts `SNIP1`; reports `SNIP<n>` for other numbers as an unsupported version and
@@ -269,7 +266,7 @@ mod tests {
 
     #[test]
     fn valid_token_grants_pro_with_every_feature() {
-        let entitlements = verify(&valid_token(), &dev_key(), NOW).unwrap();
+        let entitlements = verify(&valid_token(), &dev_key()).unwrap();
         assert_eq!(entitlements.tier(), Tier::Pro);
         for &feature in Feature::ALL {
             assert!(entitlements.allows(feature));
