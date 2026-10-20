@@ -754,3 +754,76 @@ fn a_failed_key_setup_leaves_no_envelope_files_behind() {
     assert!(s.create_key_ring(&ring(&p), None).is_err());
     assert_eq!(content_files(dir.path()).len(), before);
 }
+
+#[test]
+fn a_record_for_another_key_is_refused_and_the_old_one_stays() {
+    let p = provider();
+    let mut s = store();
+    let b = board(&mut s, "b");
+    let list = list(&mut s, b.id, "l");
+    s.create_key_ring(&ring(&p), Some(common::pw("pw")))
+        .unwrap();
+    let it = secret_item(list.id, "bank");
+    s.insert_item(&it, &text_formats("kept"), Placement::Last)
+        .unwrap();
+    let before = s.key_record().unwrap().unwrap();
+
+    // A record (and key) made for some other library.
+    let (other_key, other_record) = ring(&p).create(Some(common::pw("pw"))).unwrap();
+    for locked in [false, true] {
+        if locked {
+            s.lock_key_ring();
+        }
+        assert!(matches!(
+            s.replace_key_record_checked(&other_record, &other_key),
+            Err(Error::Invalid(_))
+        ));
+        assert_eq!(
+            s.key_record().unwrap().unwrap().as_bytes(),
+            before.as_bytes()
+        );
+    }
+    assert_eq!(s.previous_key_record().unwrap(), None);
+}
+
+#[test]
+fn a_record_for_the_same_key_replaces_and_keeps_the_previous_one() {
+    let p = provider();
+    let mut s = store();
+    let b = board(&mut s, "b");
+    let list = list(&mut s, b.id, "l");
+    s.create_key_ring(&ring(&p), Some(common::pw("one")))
+        .unwrap();
+    let it = secret_item(list.id, "bank");
+    s.insert_item(&it, &text_formats("kept"), Placement::Last)
+        .unwrap();
+    let old = s.key_record().unwrap().unwrap();
+
+    for locked in [false, true] {
+        let current = s.key_record().unwrap().unwrap();
+        let (pw_from, pw_to) = if locked {
+            ("two", "three")
+        } else {
+            ("one", "two")
+        };
+        let (key, record) = ring(&p)
+            .rekey(&current, Some(common::pw(pw_from)), Some(common::pw(pw_to)))
+            .unwrap();
+        if locked {
+            s.lock_key_ring();
+        }
+        s.replace_key_record_checked(&record, &key).unwrap();
+        assert_eq!(
+            s.key_record().unwrap().unwrap().as_bytes(),
+            record.as_bytes()
+        );
+        assert_eq!(
+            s.previous_key_record().unwrap().unwrap().as_bytes(),
+            current.as_bytes()
+        );
+    }
+    assert_ne!(old.as_bytes(), s.key_record().unwrap().unwrap().as_bytes());
+    s.unlock_key_ring(&ring(&p), Some(common::pw("three")))
+        .unwrap();
+    assert_eq!(s.formats(it.id).unwrap(), text_formats("kept"));
+}

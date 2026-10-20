@@ -180,6 +180,13 @@ ALTER TABLE lists ADD COLUMN icon TEXT
         ('folder', 'star', 'heart', 'briefcase', 'house', 'user', 'envelope-simple', 'chat-circle', 'phone', 'calendar-blank', 'shopping-cart', 'credit-card', 'code', 'terminal-window', 'book-open', 'lightbulb', 'flag', 'bookmark-simple', 'globe', 'map-pin', 'camera', 'music-note', 'wrench', 'rocket-launch'));
 ";
 
+/// Version 6: the key record a replacement overwrote, kept until the next one (review B6), so
+/// a wrong replacement can be undone by hand.
+pub(crate) const V6: &str = r"
+ALTER TABLE key_ring ADD COLUMN previous BLOB
+    CHECK (previous IS NULL OR (length(previous) > 6 AND substr(previous, 1, 6) = CAST('SNKEY1' AS BLOB)));
+";
+
 #[cfg(test)]
 mod tests {
     use rusqlite::{Connection, params};

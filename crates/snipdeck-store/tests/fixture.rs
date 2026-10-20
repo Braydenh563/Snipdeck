@@ -101,7 +101,7 @@ fn open_fixture() -> (tempfile::TempDir, Store) {
 #[test]
 fn a_version_1_database_opens_and_reads_back() {
     let (_dir, s) = open_fixture();
-    assert_eq!(s.schema_version().unwrap(), 5);
+    assert_eq!(s.schema_version().unwrap(), 6);
     let boards = s.boards().unwrap();
     assert_eq!(boards.len(), 1);
     assert_eq!(
