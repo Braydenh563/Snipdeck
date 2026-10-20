@@ -1209,7 +1209,7 @@ fn edit_and_rename_on_the_selected_row_ask_for_the_quick_editor() {
 const HANDLE_LABEL: &str = "Snipdeck handle, press the Panel hotkey to open";
 
 /// The Panel on the first monitor, 40 px from its left edge, docked there through the kebab's
-/// "Dock to the nearest edge" row, with the dock trigger set to `trigger`.
+/// "Dock to the left edge" row, with the dock trigger set to `trigger`.
 fn docked_rig(trigger: DockTrigger) -> Rig {
     let r = rig();
     r.ctl
@@ -1226,7 +1226,7 @@ fn docked_rig(trigger: DockTrigger) -> Rig {
         },
     );
     open_menu(&r);
-    click(r.window(), &menu_row(&r, "Dock to the nearest edge"));
+    click(r.window(), &menu_row(&r, "Dock to the left edge"));
     assert_eq!(r.ctl.borrow().dock_edge(), Some(DockEdge::Left));
     r
 }
