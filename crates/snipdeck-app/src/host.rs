@@ -65,6 +65,9 @@ pub trait ClipboardText {
     /// The clipboard's sequence number, which changes whenever its contents do; `None` when it
     /// cannot be read. Covers content that is not text (HTML, images, files).
     fn sequence_number(&mut self) -> Option<u32>;
+    /// The sequence number read right after this clipboard's latest write (not now): the
+    /// reference for "nothing has touched the clipboard since our write". `None` before a write.
+    fn written_sequence(&mut self) -> Option<u32>;
     /// Empties the clipboard, whatever formats it holds, if its sequence number is still
     /// `sequence`. Whether it did.
     fn clear_if_sequence(&mut self, sequence: u32) -> bool;
@@ -81,6 +84,9 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
     fn sequence_number(&mut self) -> Option<u32> {
         Self::sequence_number(self)
     }
+    fn written_sequence(&mut self) -> Option<u32> {
+        Self::written_sequence(self)
+    }
     fn clear_if_sequence(&mut self, sequence: u32) -> bool {
         Self::clear_if_sequence(self, sequence)
     }
@@ -90,13 +96,14 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
 /// last copied), so a test seeds it by pushing a payload onto `written`.
 impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
     fn read_text(&mut self) -> Option<String> {
+        self.text_reads += 1;
         self.written.last()?.data().iter().find_map(|d| match d {
             snipdeck_platform::payload::Data::Text(text) => Some(text.clone()),
             _ => None,
         })
     }
     fn clear_if_text(&mut self, text: &str) -> bool {
-        if self.read_text().as_deref() != Some(text) {
+        if self.read_text().as_deref() != Some(text) || self.busy_for_clear() {
             return false;
         }
         self.written.clear();
@@ -107,8 +114,11 @@ impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
     fn sequence_number(&mut self) -> Option<u32> {
         Some(self.sequence)
     }
+    fn written_sequence(&mut self) -> Option<u32> {
+        self.write_sequence
+    }
     fn clear_if_sequence(&mut self, sequence: u32) -> bool {
-        if self.sequence != sequence {
+        if self.sequence != sequence || self.busy_for_clear() {
             return false;
         }
         self.written.clear();

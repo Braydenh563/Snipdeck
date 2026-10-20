@@ -241,6 +241,9 @@ pub enum ToastMessage {
     NotOpened,
     /// "Couldn't save a draft of what you typed."
     DraftNotSaved,
+    /// A move, reorder or other change to the library that the store refused, for a cause the
+    /// error names: "Couldn't make that change: the disk is full. ..."
+    ChangeFailed(Cause),
 }
 
 /// A toast: a style and a message.

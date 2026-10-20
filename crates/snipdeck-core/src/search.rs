@@ -91,7 +91,8 @@ pub struct SearchIndex {
 }
 
 fn last_used_of(item: &Item) -> i64 {
-    item.last_used_at.map_or(i64::MIN, crate::Timestamp::as_second)
+    item.last_used_at
+        .map_or(i64::MIN, crate::Timestamp::as_second)
 }
 
 fn truncated(text: &str, max_chars: usize) -> String {

@@ -12,8 +12,8 @@ use snipdeck_platform::{
 };
 
 use super::{
-    ClipboardDigest, Controller, FillSubmission, Library, PendingClear, REFOCUS_WAIT, StackView,
-    UseResult, failed, neutral,
+    CLIPBOARD_CLEAR_ATTEMPTS, CLIPBOARD_CLEAR_RETRY, ClipboardDigest, Controller, FillSubmission,
+    Library, PendingClear, REFOCUS_WAIT, StackView, UseResult, failed, neutral,
 };
 use crate::{
     capture::{self, Captured},
@@ -346,11 +346,12 @@ where
             now: self.clock.now(),
             entitlements: self.entitlements,
             answers,
-            // Only a template can say `{clipboard}`: other items never read what the user copied.
-            clipboard_text: if self
-                .store
-                .item(item)
-                .is_ok_and(|i| i.kind == snipdeck_core::ItemKind::Template)
+            // Only a template that says `{clipboard}` reads what the user copied (A22).
+            clipboard_text: if usecase::template_source(&self.store, item)
+                .ok()
+                .flatten()
+                .and_then(|(_, src)| snipdeck_core::template::Template::parse(&src).ok())
+                .is_some_and(|t| t.uses_clipboard())
             {
                 self.services.clipboard.read_text()
             } else {
@@ -366,6 +367,9 @@ where
         };
         match usecase::use_item(&mut self.store, &mut env, &request) {
             Ok(used) => {
+                if let Some(line) = used.count_failed_line() {
+                    crate::trace!("{line}");
+                }
                 self.note_activity();
                 self.queue.used(item);
                 self.schedule_clipboard_clear(item, used.outcome);
@@ -413,11 +417,14 @@ where
             .clipboard
             .read_text()
             .map(|text| ClipboardDigest::of(&text));
-        let sequence = self.services.clipboard.sequence_number();
+        // The sequence number right after OUR write, not now: anything that changed the
+        // clipboard in between must not be mistaken for our content (A7).
+        let sequence = self.services.clipboard.written_sequence();
         self.clipboard_clear = (digest.is_some() || sequence.is_some()).then_some(PendingClear {
             due,
             digest,
             sequence,
+            attempts: 0,
         });
     }
 
@@ -438,20 +445,32 @@ where
         if self.clock.now() < pending.due {
             return;
         }
-        let Some(pending) = self.clipboard_clear.take() else {
+        let Some(mut pending) = self.clipboard_clear.take() else {
             return;
         };
+        let mut ours = false;
+        let mut cleared = false;
         if let Some(digest) = &pending.digest
             && let Some(text) = self.services.clipboard.read_text()
             && digest.matches(&text)
         {
-            self.services.clipboard.clear_if_text(&text);
-            return;
+            ours = true;
+            cleared = self.services.clipboard.clear_if_text(&text);
+        } else if let Some(sequence) = pending.sequence {
+            // Not text, or the text could not be read: empty it entirely, but only if nothing
+            // has touched the clipboard since our write.
+            ours = self.services.clipboard.sequence_number() == Some(sequence);
+            cleared = ours && self.services.clipboard.clear_if_sequence(sequence);
         }
-        // Not text, or the text could not be read: empty it entirely, but only if nothing has
-        // touched the clipboard since our write.
-        if let Some(sequence) = pending.sequence {
-            self.services.clipboard.clear_if_sequence(sequence);
+        // Still ours but not cleared: the clipboard was busy. Try again shortly (A6).
+        if ours
+            && !cleared
+            && pending.attempts + 1 < CLIPBOARD_CLEAR_ATTEMPTS
+            && let Ok(due) = self.clock.now().checked_add(CLIPBOARD_CLEAR_RETRY)
+        {
+            pending.attempts += 1;
+            pending.due = due;
+            self.clipboard_clear = Some(pending);
         }
     }
 }

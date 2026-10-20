@@ -31,6 +31,27 @@ pub struct FakeClipboard {
     pub restore_result: Option<Result<bool, Error>>,
     /// The clipboard sequence number: it increases with every write and every clear.
     pub sequence: u32,
+    /// How many times the text on the clipboard was read (`ClipboardText::read_text`).
+    pub text_reads: u32,
+    /// The sequence number right after the latest write.
+    pub write_sequence: Option<u32>,
+    /// How many clears fail with "busy" before one works (the clipboard is open elsewhere).
+    pub clear_busy: u32,
+    /// How many `write_confirmed` checks say "not yet" before one says yes.
+    pub unconfirmed_polls: u32,
+    /// `write_confirmed` never says yes (the write did not take).
+    pub never_confirm: bool,
+}
+
+impl FakeClipboard {
+    /// Whether this clear attempt finds the clipboard busy (uses up one of `clear_busy`).
+    pub fn busy_for_clear(&mut self) -> bool {
+        if self.clear_busy == 0 {
+            return false;
+        }
+        self.clear_busy -= 1;
+        true
+    }
 }
 
 impl Clipboard for FakeClipboard {
@@ -50,6 +71,7 @@ impl Clipboard for FakeClipboard {
         }
         self.written.push(payload.clone());
         self.sequence += 1;
+        self.write_sequence = Some(self.sequence);
         self.log.push(format!("transient:{}", payload.data().len()));
         Ok(())
     }
@@ -59,9 +81,20 @@ impl Clipboard for FakeClipboard {
         }
         self.written.push(payload.clone());
         self.sequence += 1;
+        self.write_sequence = Some(self.sequence);
         self.log
             .push(format!("persistent:{}", payload.data().len()));
         Ok(())
+    }
+    fn write_confirmed(&mut self, (): &()) -> bool {
+        if self.never_confirm {
+            return false;
+        }
+        if self.unconfirmed_polls > 0 {
+            self.unconfirmed_polls -= 1;
+            return false;
+        }
+        true
     }
     fn render_requested(&mut self, (): &()) -> bool {
         self.polls += 1;

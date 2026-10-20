@@ -245,13 +245,14 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   Panel open. The other choices fold it into a thin strip, and the Panel shortcut opens it too. **Hover delay**
   (0 to 2000 ms, default 150) is how long the pointer rests on the strip. **Leave delay** (0 to 5000 ms, default
   400) is how long it stays off the Panel before it folds.
+- **Privacy.** **Keep a Recent inbox of what you copy** and the programs it never keeps copies from. **Clear the
+  clipboard after copying a sensitive item** sets the seconds (30 by default, `0`
+  never clears it). **Master password** sets, changes or removes the password (Supporter). Below them is a
+  short summary of what is stored and where.
 - **Programs.** One row per program, by file name, such as `windowsterminal.exe`, with the key Snipdeck presses to
   paste there: **Ctrl+V**, **Ctrl+Shift+V**, **Shift+Insert**, or **Never paste** (Snipdeck copies instead).
   Programs not listed get Ctrl+V. The list starts with the terminals known to need another key (PuTTY, mintty,
   KiTTY, Alacritty, WezTerm); type a file name and press **Add** to add a program, and the cross removes it.
-- **Licence.** Shows your plan. **Get Supporter…** opens a dialog with the price and a Free and Supporter
-  table. To turn on Supporter, paste your key (it starts with `SNIP1.`) and press **Activate**. See
-  [Free and Supporter](#free-and-supporter) and [`licensing.md`](licensing.md).
 - **Backups and your data.** Snipdeck backs up once a day and keeps the newest ones: set **Backups to keep** from
   1 to 60 (default 7). The line above the list says when the last backup was made. **Restore** adds back what is
   missing and never removes anything. **Back up now** makes one on demand. **Open data folder** and **Open backups
@@ -259,10 +260,9 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   `Snipdeck-library-20261018.snipdeck`. **Erase library** deletes every board, list, item and backup after
   you type `DELETE`. Your settings and licence stay. Tick **Also forget the encryption key** only if you do not
   need encrypted items in old exports.
-- **Privacy.** **Keep a Recent inbox of what you copy** and the programs it never keeps copies from. **Clear the
-  clipboard after copying a sensitive item** sets the seconds (30 by default, `0`
-  never clears it). **Master password** sets, changes or removes the password (Supporter). Below them is a
-  short summary of what is stored and where.
+- **Licence.** Shows your plan. **Get Supporter…** opens a dialog with the price and a Free and Supporter
+  table. To turn on Supporter, paste your key (it starts with `SNIP1.`) and press **Activate**. See
+  [Free and Supporter](#free-and-supporter) and [`licensing.md`](licensing.md).
 
 The page lists its groups in this order: Shortcuts, Appearance, Panel, Privacy, Programs, Licence, Backups and
 your data. Press `F1` or choose **Help** at the bottom of the page to open this guide.

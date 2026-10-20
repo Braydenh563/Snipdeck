@@ -238,3 +238,38 @@ fn the_dark_theme_setting_reaches_the_view() {
     };
     assert!(world_with(None, settings).ctl.view().dark);
 }
+
+#[test]
+fn an_error_toast_holds_longer_than_a_neutral_one() {
+    let mut w = world();
+    w.ctl.show_toast(Toast {
+        kind: ToastKind::Danger,
+        message: ToastMessage::NotSaved,
+    });
+    let seq = w.ctl.view().toast.expect("toast").seq;
+    assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_ERROR_HOLD));
+    assert!(TOAST_ERROR_HOLD >= TOAST_HOLD * 4);
+    // Under the pointer it stays, and after the pointer leaves it gets a fresh error hold.
+    w.ctl.toast_hover(true);
+    assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_HOVER_RECHECK));
+    w.ctl.toast_hover(false);
+    assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_ERROR_HOLD));
+    assert_eq!(w.ctl.toast_tick(seq), Some(TOAST_EXIT));
+}
+
+#[test]
+fn a_refused_move_or_reorder_names_its_cause() {
+    use std::io::{Error as Io, ErrorKind};
+    let toast = change_failed(&snipdeck_store::Error::Io(Io::from(ErrorKind::StorageFull)));
+    assert_eq!(
+        (toast.kind, toast.message),
+        (
+            ToastKind::Danger,
+            ToastMessage::ChangeFailed(crate::failure::Cause::DiskFull)
+        )
+    );
+    assert_eq!(
+        change_failed(&snipdeck_store::Error::Corrupt("x".into())).message,
+        ToastMessage::ChangeFailed(crate::failure::Cause::Other)
+    );
+}

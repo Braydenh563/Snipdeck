@@ -144,6 +144,8 @@ pub struct WinClipboard {
     rendered: Arc<AtomicU64>,
     /// The latest snapshot, while its holder keeps it: the fallback for a refused write.
     latest_snapshot: Weak<SnapshotData>,
+    /// The clipboard sequence number read on the clipboard thread right after the latest write.
+    written_sequence: Option<u32>,
     thread: Option<JoinHandle<()>>,
     exited: Receiver<()>,
 }
@@ -229,6 +231,7 @@ impl WinClipboard {
                 jobs,
                 rendered,
                 latest_snapshot: Weak::new(),
+                written_sequence: None,
                 thread: Some(thread),
                 exited,
             }),
@@ -334,7 +337,21 @@ impl WinClipboard {
             .delayed
             .then(|| self.latest_snapshot.upgrade())
             .flatten();
-        self.call(move || write_job(entries, mode, formats, fallback))?
+        let (generation, sequence) = self.call(move || {
+            write_job(entries, mode, formats, fallback).map(|generation| {
+                // SAFETY: no preconditions. Read here, on the clipboard thread and straight
+                // after the write, so a later change by someone else is never mistaken for ours.
+                (generation, unsafe { GetClipboardSequenceNumber() })
+            })
+        })??;
+        self.written_sequence = Some(sequence);
+        Ok(generation)
+    }
+
+    /// The clipboard sequence number right after the latest write of this clipboard, or `None`
+    /// before any write.
+    pub fn written_sequence(&self) -> Option<u32> {
+        self.written_sequence
     }
 }
 
@@ -373,6 +390,21 @@ impl Clipboard for WinClipboard {
             markers: payload.is_private(),
         };
         self.write(payload, mode).map(|_| ())
+    }
+
+    /// Whether `written` is the current write and this window still owns the clipboard.
+    fn write_confirmed(&mut self, written: &Written) -> bool {
+        let generation = written.generation;
+        self.call(move || {
+            let Some(hwnd) = owner_hwnd() else {
+                return false;
+            };
+            // SAFETY: no preconditions.
+            let owner = unsafe { GetClipboardOwner() }.ok();
+            owner == Some(hwnd)
+                && with_owner(|owner| owner.ledger.generation() == generation) == Some(true)
+        })
+        .unwrap_or(false)
     }
 
     /// Whether anyone asked for a format of `written`. Any reader counts, not only the Target:

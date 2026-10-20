@@ -1,9 +1,11 @@
 # hub-small
 ## Done
-- Step 1: merged uxb (c3f59e4) then uxa (622d930; uxa tip ef1dac9 was 21 min old); conflicts resolved (main_ctl hunks moved to main_ctl/items.rs + lists.rs, toast_texts indices 65-68 / VARIANTS 69, item-card Copy+Use buttons with more-reserve covering both, deck_logic takes uxb test, user-guide merged). i18n extract + codemap run.
-- Step 2 (uncommitted at time of writing): app_menu_text 4th arg None; taskbar: None in settings_window, picker_window, panel_window, fill_window Monitor literals.
-- Step 3 (uncommitted): set_paste_rules in Controller::new and update_settings; test a_program_rule_in_settings_decides_the_paste_key in controller/tests/use_paste.rs.
+- Step 1 merges (uxb, uxa final 0ec9cfe); conflicts resolved.
+- Step 2 compile fixes (menu_form_texts, Monitor taskbar: None in settings/picker/panel/fill tests).
+- Step 3 paste rules patch + test.
+- Step 5: U6 (controller.rs on_foreground_changed), U8 panel_pinned, A6 retry, A7 written_sequence, F2 TOAST_ERROR_HOLD 10 s, A22 uses_clipboard, A23 count_failed_line trace, organise-failure cause (ChangeFailed). U13 Licence after Backups.
+## Skipped
+- U9 (undo until next change + Ctrl+Z, needs reverse ops for move/reorder and keys in two windows: > 150 lines).
+- A25 (lazy index after first show: PanelModel/IndexCache refactor, unmeasured).
 ## Next
-- Build/test (never compiled after the merges), goldens, step 5 items, step 6, step 7.
-## Blocked
-- Disk full (1.3G free, other agents' target dirs /tmp/target-m7, -o52, -m7-o53 are in use): cargo failed with ENOSPC on accesskit_consumer. Nothing compiled since the merge.
+- goldens (step 4), translations (61 msgids x locales), UX-C (O30 minimal, O26, O31).

@@ -238,3 +238,26 @@ fn the_target_is_read_when_the_picker_opens_and_kept_while_it_is_open() {
     w.ctl.on_target_changed();
     assert!(matches!(w.ctl.view().footer, Footer::PastesInto { .. }));
 }
+
+#[test]
+fn the_picker_closes_when_the_user_switches_to_another_app_and_does_not_steal_the_focus() {
+    let mut w = world();
+    w.ctl.open_picker();
+    // The Picker taking the foreground itself leaves the Target as it was: it stays.
+    w.ctl.on_foreground_changed();
+    assert!(w.ctl.picker().is_some(), "same Target: still open");
+    let refocused = w.targets.refocus_count();
+    w.targets.set(Some(Target {
+        app: "chrome.exe".into(),
+        title: "Docs".into(),
+        elevated: false,
+        focus: Focus::Caret,
+    }));
+    w.ctl.on_foreground_changed();
+    assert!(w.ctl.picker().is_none(), "another app: closed");
+    assert_eq!(
+        w.targets.refocus_count(),
+        refocused,
+        "the focus is left where the user put it"
+    );
+}

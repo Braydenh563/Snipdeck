@@ -849,3 +849,22 @@ proptest! {
         }
     }
 }
+
+#[test]
+fn only_a_clipboard_placeholder_uses_the_clipboard() {
+    assert!(
+        Template::parse("a {clipboard} b")
+            .expect("parses")
+            .uses_clipboard()
+    );
+    assert!(
+        !Template::parse("{date} {cursor}")
+            .expect("parses")
+            .uses_clipboard()
+    );
+    assert!(
+        !Template::parse("{{clipboard}}")
+            .expect("parses")
+            .uses_clipboard()
+    );
+}

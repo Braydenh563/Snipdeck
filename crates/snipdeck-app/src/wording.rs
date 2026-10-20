@@ -222,6 +222,7 @@ where
         ToastMessage::NotSaved => t.invoke_not_saved(),
         ToastMessage::NotOpened => t.invoke_not_opened(),
         ToastMessage::DraftNotSaved => t.invoke_draft_not_saved(),
+        ToastMessage::ChangeFailed(cause) => t.invoke_change_failed(cause.code()),
     };
     text.into()
 }

@@ -232,6 +232,19 @@
       "title": "Stray marks in text: send a crop",
       "do": "Open the main window on All items and look at a list chip such as Snippets, then open an empty list to see This list is empty. If you see a stray dot or mark over or next to any letter, press Win+Shift+S, draw a tight box around the mark and the word, and paste the crop into your report together with the window name and your display scale (Settings > System > Display > Scale, for example 125%).",
       "expect": "Normally there is no mark. The developers cannot reproduce one at 100% or 225% scale on their machine, so the crop plus the scale is what lets them find the cause."
+    },
+    {
+      "id": "26",
+      "v1": true,
+      "launch": {
+        "args": [
+          "--data-dir",
+          "spikes-results\\m3-data"
+        ]
+      },
+      "title": "First paste after a cold start is the right item",
+      "do": "Close Snipdeck completely (tray icon, Quit), then start it again. Before doing anything else, copy the word OLDCLIP in Notepad (so it is the newest thing on your clipboard and at the top of Win+V). Click into an empty Notepad, then open the Snipdeck Panel and, as the very first action, click an item whose text is not OLDCLIP. Do this once right after start and once more after hiding and showing the Panel.",
+      "expect": "The item you clicked is pasted both times, never OLDCLIP. If the clipboard cannot take the item in time, nothing is pasted and a toast says the clipboard was busy; pressing the item again works. Report any case where OLDCLIP (or any other earlier clipboard text) is pasted instead."
     }
   ]
 }

@@ -374,3 +374,14 @@ fn hiding_the_icon_makes_close_quit() {
     tray.hide().expect("hide");
     assert_eq!(t.close(), [Effect::Quit]);
 }
+
+#[test]
+fn the_pin_is_remembered_in_the_settings_and_restored() {
+    let mut w = world_with(Some(outlook()), Settings::default());
+    assert!(w.ctl.view().on_top, "pinned to begin with");
+    w.ctl.set_on_top(false);
+    assert!(!w.ctl.settings().panel_pinned);
+    let saved = w.ctl.settings().clone();
+    let w = world_with(Some(outlook()), saved);
+    assert!(!w.ctl.view().on_top, "a later start keeps it unpinned");
+}

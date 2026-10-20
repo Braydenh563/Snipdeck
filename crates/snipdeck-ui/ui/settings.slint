@@ -898,63 +898,6 @@ export component SettingsPage inherits Window {
                 }
 
                 FormSection {
-                    title: @tr("Licence");
-                    SettingRow {
-                        title: root.pro ? @tr("Snipdeck Supporter") : @tr("Free plan");
-                        description: root.pro
-                            ? @tr("Every Supporter feature is on. Thank you.")
-                            : @tr("Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere.");
-                    }
-                    if !root.pro: SettingRow {
-                        title: @tr("Get Supporter");
-                        description: @tr("Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included.");
-                        Button {
-                            text: @tr("Get Supporter…");
-                            focus-request: root.supporter-focus;
-                            enabled: !root.supporter-open;
-                            clicked => { root.supporter-open = true; }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                    }
-                    if !root.pro: HorizontalLayout {
-                        spacing: Space.s2;
-                        licence-key := TextField {
-                            text <=> root.licence-text;
-                            horizontal-stretch: 1;
-                            label: @tr("Licence key");
-                            placeholder: @tr("SNIP1.");
-                            error: root.licence-error;
-                            monospace: true;
-                            accepted(t) => { root.submit-licence(); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                        VerticalLayout {
-                            alignment: start;
-                            Button {
-                                text: @tr("Activate");
-                                variant: ButtonVariant.primary;
-                                clicked => { root.submit-licence(); }
-                                changed has-focus => {
-                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                                }
-                            }
-                        }
-                    }
-                    Text {
-                        text: @tr("Free is fully usable. Supporter pays for convenience and supports the app.");
-                        color: Theme.text-secondary;
-                        font-family: Fonts.sans;
-                        font-size: Type.sm;
-                        wrap: word-wrap;
-                    }
-                    PlanTable { }
-                }
-
-                FormSection {
                     title: @tr("Backups and your data");
                     Text {
                         text: @tr("Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything.", root.backups-keep);
@@ -1340,6 +1283,63 @@ export component SettingsPage inherits Window {
                             }
                         }
                     }
+                }
+
+                FormSection {
+                    title: @tr("Licence");
+                    SettingRow {
+                        title: root.pro ? @tr("Snipdeck Supporter") : @tr("Free plan");
+                        description: root.pro
+                            ? @tr("Every Supporter feature is on. Thank you.")
+                            : @tr("Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere.");
+                    }
+                    if !root.pro: SettingRow {
+                        title: @tr("Get Supporter");
+                        description: @tr("Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included.");
+                        Button {
+                            text: @tr("Get Supporter…");
+                            focus-request: root.supporter-focus;
+                            enabled: !root.supporter-open;
+                            clicked => { root.supporter-open = true; }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if !root.pro: HorizontalLayout {
+                        spacing: Space.s2;
+                        licence-key := TextField {
+                            text <=> root.licence-text;
+                            horizontal-stretch: 1;
+                            label: @tr("Licence key");
+                            placeholder: @tr("SNIP1.");
+                            error: root.licence-error;
+                            monospace: true;
+                            accepted(t) => { root.submit-licence(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                        VerticalLayout {
+                            alignment: start;
+                            Button {
+                                text: @tr("Activate");
+                                variant: ButtonVariant.primary;
+                                clicked => { root.submit-licence(); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                    }
+                    Text {
+                        text: @tr("Free is fully usable. Supporter pays for convenience and supports the app.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                    }
+                    PlanTable { }
                 }
                 HorizontalLayout {
                     alignment: end;

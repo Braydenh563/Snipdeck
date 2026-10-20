@@ -4,7 +4,9 @@ use snipdeck_core::{Feature, Item, ItemId, Name, Placement, Tag};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
 
-use super::super::{Controller, Library, Toast, ToastKind, ToastMessage, UseResult, failed};
+use super::super::{
+    Controller, Library, Toast, ToastKind, ToastMessage, UseResult, change_failed, failed,
+};
 use super::{MainAction, TagRenameError, neutral_toast, restore_failed};
 use crate::{
     host::ClipboardText,
@@ -187,7 +189,7 @@ where
     pub(super) fn finish(&mut self, done: &snipdeck_store::Result<()>) {
         match done {
             Ok(()) => self.library_changed(),
-            Err(_) => self.show_toast(failed()),
+            Err(e) => self.show_toast(change_failed(e)),
         }
     }
 
@@ -225,7 +227,7 @@ where
                     list: name,
                 }));
             }
-            Err(_) => self.show_toast(failed()),
+            Err(e) => self.show_toast(change_failed(&e)),
         }
     }
 

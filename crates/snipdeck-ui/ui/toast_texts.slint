@@ -280,6 +280,19 @@ export global ToastTexts {
     pure public function not-saved() -> string {
         return @tr("Couldn't save this item. Nothing was changed.");
     }
+    // A move or reorder the store refused. Causes as for `use-failed`.
+    pure public function change-failed(cause: int) -> string {
+        if (cause == 1) {
+            return @tr("Couldn't make that change: the disk is full. Free up some space, then try again.");
+        }
+        if (cause == 2) {
+            return @tr("Couldn't make that change: your library file is in use by another program. Close that program, then try again.");
+        }
+        if (cause == 3) {
+            return @tr("Couldn't make that change: your library is locked. Unlock it, then try again.");
+        }
+        return @tr("Couldn't make that change. Try again, or restart Snipdeck if it keeps happening.");
+    }
     pure public function not-opened() -> string {
         return @tr("Couldn't open this item.");
     }

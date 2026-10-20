@@ -523,6 +523,11 @@ impl Template {
         self.prompts.clone()
     }
 
+    /// Whether the template says `{clipboard}`: only then does a use need to read the clipboard.
+    pub fn uses_clipboard(&self) -> bool {
+        self.parts.iter().any(|p| matches!(p, Part::Clipboard))
+    }
+
     /// Whether using this template needs `feature`: only [`Feature::PromptedFields`], and only
     /// if it has a `{field}` or `{choice}`.
     pub fn requires(&self, feature: Feature) -> bool {

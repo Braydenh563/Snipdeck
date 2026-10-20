@@ -94,10 +94,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::UseFailed(_) => 66,
         ToastMessage::DailyBackupFailed(_) => 67,
         ToastMessage::TrashPurgeFailed => 68,
+        ToastMessage::ChangeFailed(_) => 69,
     }
 }
 
-const VARIANTS: usize = 69;
+const VARIANTS: usize = 70;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -105,6 +106,7 @@ fn s(text: &str) -> String {
 
 /// One message per variant, with the awkward arguments (no app name, a count of one, a count of
 /// none) as extra entries.
+#[allow(clippy::too_many_lines, reason = "one line per message variant")]
 fn samples() -> Vec<ToastMessage> {
     use ToastMessage as M;
     vec![
@@ -202,6 +204,7 @@ fn samples() -> Vec<ToastMessage> {
         M::UseFailed(Cause::DiskFull),
         M::DailyBackupFailed(Cause::InUse),
         M::TrashPurgeFailed,
+        M::ChangeFailed(Cause::Other),
         M::BackupRestored { items: 0 },
         M::BackupRestored { items: 1 },
         M::Imported { items: 0 },
@@ -320,8 +323,9 @@ fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
             Cause::NotArchive,
             Cause::TooNew,
         ];
-        let failures: [fn(Cause) -> ToastMessage; 6] = [
+        let failures: [fn(Cause) -> ToastMessage; 7] = [
             ToastMessage::UseFailed,
+            ToastMessage::ChangeFailed,
             ToastMessage::BackupFailed,
             ToastMessage::DailyBackupFailed,
             ToastMessage::RestoreFailed,

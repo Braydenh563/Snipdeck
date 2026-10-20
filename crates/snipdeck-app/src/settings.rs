@@ -512,6 +512,8 @@ pub struct Settings {
     /// An unpinned Panel hides when another app takes the foreground. A pinned Panel and the
     /// Main window never hide this way.
     pub panel_hide_on_blur: bool,
+    /// The Panel's pin is on (always on top): remembered between runs.
+    pub panel_pinned: bool,
     /// The one-time "Snipdeck is still running" toast has been shown (the first time the Panel
     /// hid itself by the close button or by losing focus).
     pub hide_hint_shown: bool,
@@ -563,6 +565,7 @@ impl Default for Settings {
             close_to_tray: true,
             panel_in_taskbar: false,
             panel_hide_on_blur: true,
+            panel_pinned: true,
             hide_hint_shown: false,
             panel_width: PANEL_WIDTH_DEFAULT,
             backups_keep: BACKUPS_KEEP_DEFAULT,
@@ -643,6 +646,7 @@ impl Settings {
         field!(close_to_tray);
         field!(panel_in_taskbar);
         field!(panel_hide_on_blur);
+        field!(panel_pinned);
         field!(hide_hint_shown);
         field!(panel_width);
         field!(backups_keep);
@@ -1306,6 +1310,7 @@ mod tests {
         let settings = Settings {
             panel_in_taskbar: true,
             panel_hide_on_blur: false,
+            panel_pinned: false,
             hide_hint_shown: true,
             ..Settings::default()
         };
