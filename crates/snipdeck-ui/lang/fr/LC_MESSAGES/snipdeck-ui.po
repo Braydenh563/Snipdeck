@@ -100,6 +100,9 @@ msgstr "Retour"
 msgid "Back up now"
 msgstr "Sauvegarder maintenant"
 
+msgid "Backed up"
+msgstr ""
+
 msgid "Backup of {}, {}"
 msgstr "Sauvegarde du {}, {}"
 
@@ -271,6 +274,21 @@ msgstr "Contenu"
 msgid "Control Enter"
 msgstr "Ctrl Enter"
 
+msgid "Copied"
+msgstr ""
+
+msgid "Copied. Nothing in {} can take text right now."
+msgstr ""
+
+msgid "Copied. Pasting into {} is turned off."
+msgstr ""
+
+msgid "Copied. The window you were using went away."
+msgstr ""
+
+msgid "Copied. {} runs as administrator, so Snipdeck can't paste into it."
+msgstr ""
+
 msgid "Copies to clipboard"
 msgstr "Copie dans le presse-papiers"
 
@@ -296,6 +314,60 @@ msgid "Copy the result"
 msgstr ""
 
 msgid "CopyQ export"
+msgstr ""
+
+msgid "Couldn't change the Windows start-up entry."
+msgstr ""
+
+msgid "Couldn't erase everything. Quit Snipdeck and try again."
+msgstr ""
+
+msgid "Couldn't export your library."
+msgstr ""
+
+msgid "Couldn't import that."
+msgstr ""
+
+msgid "Couldn't make a backup."
+msgstr ""
+
+msgid "Couldn't open that window."
+msgstr ""
+
+msgid "Couldn't open the encryption key. Nothing was saved."
+msgstr ""
+
+msgid "Couldn't open the folder."
+msgstr ""
+
+msgid "Couldn't open the log folder."
+msgstr ""
+
+msgid "Couldn't open this item."
+msgstr ""
+
+msgid "Couldn't open your email app."
+msgstr ""
+
+msgid "Couldn't reach the clipboard. Another app may be using it."
+msgstr ""
+
+msgid "Couldn't restore that backup."
+msgstr ""
+
+msgid "Couldn't save a draft of what you typed."
+msgstr ""
+
+msgid "Couldn't save this item. Nothing was changed."
+msgstr ""
+
+msgid "Couldn't save your settings. Snipdeck will try again."
+msgstr ""
+
+msgid "Couldn't use this item."
+msgstr ""
+
+msgid "Couldn't write to your library. Check that the disk has room."
 msgstr ""
 
 msgid "Current password"
@@ -352,8 +424,17 @@ msgstr "Supprimer cette liste ?"
 msgid "Delete this tag?"
 msgstr "Supprimer cette étiquette ?"
 
+msgid "Deleted board “{}”"
+msgstr ""
+
+msgid "Deleted for good"
+msgstr ""
+
 msgid "Deleted items stay here for {} days before they are removed."
 msgstr "Les extraits supprimés restent ici {} jours avant d'être retirés."
+
+msgid "Deleted list “{}”"
+msgstr ""
 
 msgid "Deletes every board, list, item and backup on this PC. This cannot be undone."
 msgstr "Supprime tous les tableaux, listes, extraits et sauvegardes de ce PC. Cette action est irréversible."
@@ -380,6 +461,12 @@ msgid "Done"
 msgstr "Terminé"
 
 msgid "Duplicate"
+msgstr ""
+
+msgid "Duplicate selected item"
+msgstr ""
+
+msgid "Duplicate the item"
 msgstr ""
 
 msgid "Edit"
@@ -623,6 +710,9 @@ msgstr ""
 msgid "Import into your library, see a preview first"
 msgstr ""
 
+msgid "Imported {} item"
+msgstr ""
+
 msgid "Import…"
 msgstr ""
 
@@ -692,6 +782,9 @@ msgstr "Allonger le délai de survol"
 msgid "Lengthen the leave delay"
 msgstr "Allonger le délai de sortie"
 
+msgid "Library unlocked."
+msgstr ""
+
 msgid "Licence"
 msgstr "Licence"
 
@@ -752,6 +845,21 @@ msgstr "Manuel"
 msgid "Master password"
 msgstr ""
 
+msgid "Master password changed."
+msgstr ""
+
+msgid "Master password changed. Snipdeck couldn't open the library just now. Unlock it with the new password."
+msgstr ""
+
+msgid "Master password removed."
+msgstr ""
+
+msgid "Master password removed. Snipdeck couldn't open the library just now. Restart Snipdeck to use your sensitive items."
+msgstr ""
+
+msgid "Master password set."
+msgstr ""
+
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
 
@@ -787,6 +895,12 @@ msgstr "Déplacer vers la liste"
 
 msgid "Move to list…"
 msgstr "Déplacer vers la liste…"
+
+msgid "Moved {} item to the Trash"
+msgstr ""
+
+msgid "Moved {} item to {}"
+msgstr ""
 
 msgid "Navigation"
 msgstr "Navigation"
@@ -895,6 +1009,15 @@ msgstr "Aucun extrait épinglé ne correspond à « {} »."
 
 msgid "Nothing pinned yet"
 msgstr "Rien d'épinglé pour le moment"
+
+msgid "Nothing to paste next. Pin a snippet, or add one to this list."
+msgstr ""
+
+msgid "Nothing to restore: your library already has everything in that backup."
+msgstr ""
+
+msgid "Nothing to save. Copy some text first."
+msgstr ""
 
 msgid "OK"
 msgstr "OK"
@@ -1024,6 +1147,15 @@ msgid "Paste the result"
 msgstr ""
 
 msgid "Paste with a click, or search at your caret."
+msgstr ""
+
+msgid "Paste your licence key first."
+msgstr ""
+
+msgid "Pasted"
+msgstr ""
+
+msgid "Pasted into {}"
 msgstr ""
 
 msgid "Pastes into {}"
@@ -1173,6 +1305,12 @@ msgstr "Restaurer la sauvegarde du {}"
 msgid "Restored the changes you had not saved."
 msgstr "Les modifications non enregistrées ont été rétablies."
 
+msgid "Restored {} item"
+msgstr ""
+
+msgid "Restored {} item from the backup"
+msgstr ""
+
 msgid "Results"
 msgstr "Résultats"
 
@@ -1209,11 +1347,20 @@ msgstr ""
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr "Enregistrez votre premier extrait, ou copiez quelque chose et enregistrez-le depuis le presse-papiers."
 
+msgid "Saved to {}"
+msgstr ""
+
+msgid "Saved {} in your Documents folder"
+msgstr ""
+
 msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
 msgstr "Enregistre tous les tableaux, listes et extraits dans un seul fichier .snipdeck, dans votre dossier Documents."
 
 msgid "Saves the text on the clipboard as a new item in the list the panel shows."
 msgstr "Enregistre le texte du presse-papiers comme nouvel extrait dans la liste affichée par le panneau."
+
+msgid "Saving…"
+msgstr ""
 
 msgid "Scope"
 msgstr "Portée"
@@ -1278,6 +1425,9 @@ msgstr "Shift Enter"
 msgid "Shortcuts"
 msgstr "Raccourcis"
 
+msgid "Shortcuts are unavailable, so {} is not active. Restart Snipdeck to try again."
+msgstr ""
+
 msgid "Shorten the hover delay"
 msgstr "Raccourcir le délai de survol"
 
@@ -1321,10 +1471,19 @@ msgstr "Snipdeck (raccourcis en pause)"
 msgid "Snipdeck Supporter"
 msgstr "Snipdeck Supporter"
 
+msgid "Snipdeck Supporter is on. Thank you."
+msgstr ""
+
 msgid "Snipdeck can't protect a key on this PC, so a master password is not available."
 msgstr ""
 
+msgid "Snipdeck closed unexpectedly last time. Open the log?"
+msgstr ""
+
 msgid "Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again."
+msgstr ""
+
+msgid "Snipdeck found a problem in your library. Export a copy to be safe."
 msgstr ""
 
 msgid "Snipdeck handle, press the Panel hotkey to open"
@@ -1332,6 +1491,12 @@ msgstr "Poignée de Snipdeck, appuyez sur le raccourci du panneau pour ouvrir"
 
 msgid "Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."
 msgstr "Snipdeck n’a ni compte, ni serveur, ni télémétrie, et n’ouvre aucun port réseau. Rien de ce que vous enregistrez ne quitte ce PC."
+
+msgid "Snipdeck is still running. Click the tray icon to bring the panel back."
+msgstr ""
+
+msgid "Snipdeck is still running. Press {} or click the tray icon to bring the panel back."
+msgstr ""
 
 msgid "Snipdeck keeps its own copy of the file."
 msgstr "Snipdeck garde sa propre copie du fichier."
@@ -1429,7 +1594,34 @@ msgstr "Texte"
 msgid "Text you copy shows up here for a week. Save the useful ones to a list."
 msgstr ""
 
+msgid "That app"
+msgstr ""
+
+msgid "That is not a Snipdeck licence key. A key starts with SNIP1."
+msgstr ""
+
+msgid "That key is not for Snipdeck Supporter."
+msgstr ""
+
+msgid "That key needs a newer Snipdeck. Update and try again."
+msgstr ""
+
+msgid "That licence key is not valid. Check that you copied all of it."
+msgstr ""
+
+msgid "That list was deleted. Choose another list."
+msgstr ""
+
 msgid "That password is not right. Try again."
+msgstr ""
+
+msgid "That text is too large to save."
+msgstr ""
+
+msgid "That was the last one. Paste next starts again from the first."
+msgstr ""
+
+msgid "The Free plan includes 5 boards. Supporter adds unlimited boards."
 msgstr ""
 
 msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
@@ -1439,6 +1631,9 @@ msgid "The Trash is empty"
 msgstr "La corbeille est vide"
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
+msgstr ""
+
+msgid "The key is valid but couldn't be saved, so Supporter will be off next time."
 msgstr ""
 
 msgid "The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again."
@@ -1483,6 +1678,9 @@ msgstr ""
 msgid "Theme"
 msgstr "Thème"
 
+msgid "There is no list to save into. Add a list first."
+msgstr ""
+
 msgid "Third-party notices"
 msgstr "Mentions des tiers"
 
@@ -1501,8 +1699,17 @@ msgstr "Ce champ est obligatoire"
 msgid "This file was made by a newer Snipdeck (format {}), so anything this version does not know was left out."
 msgstr ""
 
+msgid "This item uses a Supporter feature."
+msgstr ""
+
+msgid "This item was deleted. Nothing was saved."
+msgstr ""
+
 msgid "This list is empty"
 msgstr "Cette liste est vide"
+
+msgid "This template can't be read. Open it to fix it."
+msgstr ""
 
 msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
 msgstr "Ce texte est {}. Tout contenu de plus de 16 Ko s'ouvre ici en lecture seule, et les 16 premiers Ko sont affichés."
@@ -1558,7 +1765,16 @@ msgstr ""
 msgid "Unlock Snipdeck"
 msgstr ""
 
+msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
+msgstr ""
+
+msgid "Unlock your library to use this item."
+msgstr ""
+
 msgid "Unlock your sensitive items"
+msgstr ""
+
+msgid "Unlocking…"
 msgstr ""
 
 msgid "Unlock…"
@@ -1651,6 +1867,12 @@ msgstr "Votre deck est vide"
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "Votre bibliothèque est dans un seul dossier, %LOCALAPPDATA%\\Snipdeck : snipdeck.db (tableaux, listes, extraits, étiquettes et la Corbeille), blobs (images, fichiers et textes longs), settings.json, votre clé de licence, les sauvegardes (autant que vous choisissez d’en garder) et les journaux."
 
+msgid "Your library locked after a while. The sensitive item you were editing was closed without saving."
+msgstr ""
+
+msgid "Your library was erased."
+msgstr ""
+
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr ""
 
@@ -1669,10 +1891,13 @@ msgstr ""
 msgid "change modify rename"
 msgstr ""
 
-msgid "clipboard duplicate"
+msgid "clipboard"
 msgstr ""
 
 msgid "clipboard save grab screenshot"
+msgstr ""
+
+msgid "copy clone twice"
 msgstr ""
 
 msgid "delete remove discard"
@@ -1775,6 +2000,9 @@ msgstr "{} (Supporter)"
 msgid "{} already in your library, skipped"
 msgstr ""
 
+msgid "{} can't be used as a shortcut. Choose another in Settings."
+msgstr ""
+
 msgid "{} could not be read and was skipped."
 msgstr ""
 
@@ -1797,6 +2025,9 @@ msgid "{} is empty and was skipped."
 msgstr ""
 
 msgid "{} is not valid UTF-8, so characters that could not be read were replaced."
+msgstr ""
+
+msgid "{} is used by another app. Choose another in Settings."
 msgstr ""
 
 msgid "{} is {}, over the 5 MB limit for text, and was skipped."

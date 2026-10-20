@@ -3,8 +3,10 @@
 //! The controller decides when the prompt is wanted ([`Controller::request_unlock`], which
 //! queues [`Effect::OpenUnlock`](crate::controller::Effect::OpenUnlock)); the host opens the
 //! window through [`UnlockUi::open`]. The window reports the typed password once, through
-//! `submitted`: it goes straight to [`Controller::unlock_with_password`] and the field is emptied
-//! whatever the answer, so the password is not kept in the window between tries.
+//! `submitted`: it goes straight to [`Controller::begin_unlock_with_password`] and the field is
+//! emptied whatever the answer, so the password is not kept in the window between tries. The key
+//! derivation then runs where [`crate::master_job::offload`] says, and the window shows it is
+//! waiting until [`Controller::finish_master`] has the outcome.
 
 use std::{
     cell::RefCell,
@@ -150,17 +152,60 @@ where
         window.set_password(slint::SharedString::new());
         // Cleared before the answer is set, so a repeated error is announced again.
         window.set_problem(ui::MasterProblem::None);
-        let result = self.controller.borrow_mut().unlock_with_password(password);
-        match result {
-            Ok(()) => {
-                let _ = window.hide();
-                redraw_all();
+        let begun = self
+            .controller
+            .borrow_mut()
+            .begin_unlock_with_password(password);
+        match begun {
+            Ok(Some(job)) => {
+                // The key derivation takes a moment on purpose: the window waits, on another
+                // thread in the app, and `finished` carries on from here.
+                window.set_busy(true);
+                let core = Rc::clone(self);
+                crate::master_job::offload().run(job, Box::new(move |done| core.finished(done)));
             }
-            Err(problem) => {
-                window.set_problem(slint_problem(problem));
-                window.set_focus_request(window.get_focus_request() + 1);
-            }
+            Ok(None) => Self::opened(&window),
+            Err(problem) => Self::refused(&window, problem),
         }
+    }
+
+    /// The outcome of the key derivation `submitted` started.
+    fn finished(self: &Rc<Self>, done: crate::master_job::MasterDone) {
+        let (current, idle) = {
+            let ctl = self.controller.borrow();
+            (ctl.master_current(&done), ctl.master_busy().is_none())
+        };
+        if !current {
+            // The window was closed or the library locked again while the password was being
+            // checked: the answer is dropped (with its key) and the window only stops waiting.
+            drop(done);
+            if let Some(window) = self.window.upgrade()
+                && idle
+            {
+                window.set_busy(false);
+            }
+            return;
+        }
+        let result = self.controller.borrow_mut().finish_master(done);
+        let Some(window) = self.window.upgrade() else {
+            redraw_all();
+            return;
+        };
+        window.set_busy(false);
+        match result {
+            Ok(()) => Self::opened(&window),
+            Err(problem) => Self::refused(&window, problem),
+        }
+    }
+
+    fn opened(window: &ui::UnlockWindow) {
+        let _ = window.hide();
+        redraw_all();
+    }
+
+    fn refused(window: &ui::UnlockWindow, problem: MasterProblem) {
+        window.set_problem(slint_problem(problem));
+        window.set_focus_request(window.get_focus_request() + 1);
     }
 
     fn cancelled(self: &Rc<Self>) {

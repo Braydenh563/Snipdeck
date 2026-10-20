@@ -391,6 +391,69 @@ fn changing_the_master_password_keeps_items_readable() {
 }
 
 #[test]
+fn the_slow_half_of_a_master_password_step_can_run_on_another_thread() {
+    let p = std::sync::Arc::new(provider());
+    let mut s = store();
+    let b = board(&mut s, "b");
+    let l = list(&mut s, b.id, "l");
+    let it = secret_item(l.id, "x");
+
+    // Set: the key and record are made off the store's thread, then installed.
+    let (key, record) = {
+        let p = p.clone();
+        std::thread::spawn(move || ring(&p).create(Some("one")).unwrap())
+            .join()
+            .unwrap()
+    };
+    s.install_key_ring(key, &record).unwrap();
+    assert!(s.is_unlocked());
+    s.insert_item(&it, &text_formats("kept"), Placement::Last)
+        .unwrap();
+    assert!(matches!(
+        s.install_key_ring(provider_key(&p), &record),
+        Err(Error::AlreadyExists { .. })
+    ));
+
+    // Change: the record is rebuilt off-thread from a copy, then written.
+    let old = s.key_record().unwrap().unwrap();
+    let (key, record) = {
+        let p = p.clone();
+        std::thread::spawn(move || ring(&p).rekey(&old, Some("one"), Some("two")).unwrap())
+            .join()
+            .unwrap()
+    };
+    s.replace_key_record(&record).unwrap();
+    s.open_with_key(key).unwrap();
+    s.lock_key_ring();
+
+    // Unlock: the key is derived off-thread, then handed over.
+    let stored = s.key_record().unwrap().unwrap();
+    let key = {
+        let p = p.clone();
+        std::thread::spawn(move || ring(&p).unlock(&stored, Some("two")).unwrap())
+            .join()
+            .unwrap()
+    };
+    s.open_with_key(key).unwrap();
+    assert_eq!(s.formats(it.id).unwrap(), text_formats("kept"));
+}
+
+fn provider_key(p: &MemoryKeyProvider) -> snipdeck_store::crypto::DataKey {
+    ring(p).create(None).unwrap().0
+}
+
+#[test]
+fn replacing_a_key_record_needs_a_key_ring() {
+    let p = provider();
+    let mut s = store();
+    let record = ring(&p).create(None).unwrap().1;
+    assert!(matches!(
+        s.replace_key_record(&record),
+        Err(Error::NotFound { .. })
+    ));
+}
+
+#[test]
 fn an_envelope_copied_to_another_item_does_not_decrypt() {
     let p = provider();
     let (dir, mut s, l) = on_disk();
@@ -626,4 +689,27 @@ fn a_wrong_current_password_changes_nothing_and_the_old_one_still_works() {
     assert!(s.has_master_password(&ring(&p)).unwrap());
     s.lock_key_ring();
     s.unlock_key_ring(&ring(&p), Some("old")).unwrap();
+}
+
+#[test]
+fn a_rekeyed_record_opens_with_the_new_password_while_the_old_record_still_opens_with_the_old() {
+    // A password change writes the new record over the old one only after this holds, so a
+    // wrong write cannot lock the user out: the record handed back is good before it is stored.
+    let p = provider();
+    let ring = ring(&p);
+    let (_, old) = ring.create(Some("one")).unwrap();
+    let (key, new) = ring.rekey(&old, Some("one"), Some("two")).unwrap();
+    assert!(
+        ring.unlock(&new, Some("two")).is_ok(),
+        "the new record opens"
+    );
+    assert!(
+        ring.unlock(&new, Some("one")).is_err(),
+        "and only with the new password"
+    );
+    assert!(
+        ring.unlock(&old, Some("one")).is_ok(),
+        "the old record is untouched"
+    );
+    drop(key);
 }

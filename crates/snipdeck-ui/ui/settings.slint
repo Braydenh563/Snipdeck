@@ -137,6 +137,8 @@ export component SettingsPage inherits Window {
     in property <int> master-min-length: 8;
     // What the host found wrong with the last attempt; the host clears it when the form closes.
     in-out property <MasterProblem> master-problem: MasterProblem.none;
+    // The host is working out the key for the submitted form; the form waits.
+    in property <bool> master-busy: false;
     // Which form is open under the row. The host sets it back to `closed` after a change worked.
     in-out property <MasterMode> master-mode: MasterMode.closed;
     // Go up to put the focus on the form's first field, and back on the row's button when the form closes.
@@ -1118,6 +1120,7 @@ export component SettingsPage inherits Window {
                     if root.master-mode != MasterMode.closed: MasterPasswordForm {
                         mode: root.master-mode;
                         problem: root.master-problem;
+                        busy: root.master-busy;
                         min-length: root.master-min-length;
                         focus-request: root.master-form-focus;
                         strength(p) => { return root.master-strength(p); }

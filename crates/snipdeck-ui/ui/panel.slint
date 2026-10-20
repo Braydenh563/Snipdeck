@@ -15,6 +15,7 @@
 //   Ctrl+Tab        next list, Ctrl+Shift+Tab previous; Ctrl+F focuses and selects the search
 //   Menu, Shift+F10 context menu of the selected row (on the focused kebab button: the Panel menu)
 //   Ctrl+K          all commands (the Main window's palette); Ctrl+/ the keyboard shortcuts; F1 the user guide
+//   Ctrl+D          duplicate the selected row
 //   Ctrl+E, F2      edit / rename the selected row (also a double-click on a row edits it)
 //   Delete          delete the selected row while the search is empty (with a query it edits the text)
 //   Esc             closes an open menu; else clears the search; with nothing to clear, asks the host to hide the Panel
@@ -235,6 +236,8 @@ export component PanelWindow inherits Window {
     // Quick edit of row `index`: Ctrl+E or a double-click, F2, Delete (SPEC 5.1). A double-click has
     // already used the row once (the first click); the host decides what the second means.
     callback edit-requested(int);
+    // Ctrl+D on row `index`: a copy of the item right after it.
+    callback duplicate-requested(int);
     callback rename-requested(int);
     callback delete-requested(int);
     // Pointer down on a resize grip: the host starts the OS resize from that edge or corner.
@@ -655,6 +658,10 @@ export component PanelWindow inherits Window {
                     }
                     if ((event.text == "e" || event.text == "E") && root.sel >= 0 && !root.recent-open) {
                         root.edit-requested(root.sel);
+                        return accept;
+                    }
+                    if ((event.text == "d" || event.text == "D") && root.sel >= 0 && !root.recent-open) {
+                        root.duplicate-requested(root.sel);
                         return accept;
                     }
                     return reject;

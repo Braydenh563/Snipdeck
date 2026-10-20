@@ -12,7 +12,7 @@
 //   sidebar   Up / Down / Home / End move, Enter or Space opens the view, Menu or Shift+F10 the context menu,
 //             Alt+Up / Alt+Down move a list (`list-reorder-requested`)
 //   items     Up / Down (Left / Right in tiles) move and select, Shift extends, Ctrl+Space toggles, Ctrl+A all,
-//             Enter uses, Shift+Enter copies, F2 or Ctrl+E edits, Ctrl+P pins, Delete deletes, Esc clears
+//             Enter uses, Shift+Enter copies, F2 or Ctrl+E edits, Ctrl+D duplicates, Ctrl+P pins, Delete deletes, Esc clears
 //             the selection, Menu or Shift+F10 the context menu, hold Space reveals a sensitive item,
 //             Alt+Up / Alt+Down move the row within its list (`item-reorder-requested`)
 //   anywhere  Ctrl+F or / search, Ctrl+N new item, Ctrl+K (or Ctrl+Shift+P) the command palette, Ctrl+, Settings,
@@ -530,7 +530,7 @@ export component MainWindow inherits Window {
         { text: @tr("Copy"), icon: Icons.copy, shortcut: "Shift+Enter", disabled: root.multi },
         { separator: true },
         { text: @tr("Edit"), icon: Icons.pencil-simple, shortcut: "Ctrl+E", disabled: root.multi },
-        { text: @tr("Duplicate"), icon: Icons.stack },
+        { text: @tr("Duplicate"), icon: Icons.files, shortcut: "Ctrl+D" },
         { text: root.rows[root.item-menu-index].pinned && !root.multi ? @tr("Unpin") : @tr("Pin"), icon: Icons.push-pin, shortcut: "Ctrl+P" },
         { text: @tr("Move to list…"), icon: Icons.folder },
         { text: @tr("Tags…"), icon: Icons.tag },
@@ -1189,6 +1189,10 @@ export component MainWindow inherits Window {
                                 }
                                 if (!root.in-trash && (event.text == "p" || event.text == "P")) {
                                     root.act(ItemAction.pin, root.cur);
+                                    return accept;
+                                }
+                                if (!root.in-trash && (event.text == "d" || event.text == "D")) {
+                                    root.act(ItemAction.duplicate, root.cur);
                                     return accept;
                                 }
                                 return reject;

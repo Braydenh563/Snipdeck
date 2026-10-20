@@ -85,6 +85,7 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_app_menu_dismissed, || "app-dismissed".to_string());
     hook!(on_edit_requested, |i| format!("edit:{i}"));
     hook!(on_rename_requested, |i| format!("rename:{i}"));
+    hook!(on_duplicate_requested, |i| format!("duplicate:{i}"));
     hook!(on_delete_requested, |i| format!("delete:{i}"));
     hook!(on_resize_requested, |edge| format!("resize:{edge:?}"));
     hook!(on_pinned_copied, |i| format!("pinned-copy:{i}"));
@@ -1200,6 +1201,8 @@ ui_tests! {
         take(&log);
         chord(ui.window(), &[Key::Control], "e");
         assert_eq!(take(&log), ["edit:1"]);
+        chord(ui.window(), &[Key::Control], "d");
+        assert_eq!(take(&log), ["duplicate:1"]);
         press(ui.window(), &key(Key::F2));
         assert_eq!(take(&log), ["rename:1"]);
         press(ui.window(), &key(Key::Delete));
@@ -1429,6 +1432,8 @@ ui_tests! {
         press(ui.window(), &key(Key::Delete));
         press(ui.window(), &key(Key::F2));
         press(ui.window(), "1");
+        chord(ui.window(), &[Key::Control], "e");
+        chord(ui.window(), &[Key::Control], "d");
         settle();
         // The digit is search text only with a query; here it must not use an item either.
         let seen = take(&log);
@@ -1436,7 +1441,7 @@ ui_tests! {
         assert!(seen.contains(&"rdel:1".to_string()), "{seen:?}");
         for line in &seen {
             assert!(
-                !line.starts_with("use:") && !line.starts_with("delete:") && !line.starts_with("rename:") && !line.starts_with("quick:") && !line.starts_with("move:"),
+                !line.starts_with("use:") && !line.starts_with("edit:") && !line.starts_with("duplicate:") && !line.starts_with("delete:") && !line.starts_with("rename:") && !line.starts_with("quick:") && !line.starts_with("move:"),
                 "an item shortcut fired in the Recent list: {line}"
             );
         }

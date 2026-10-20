@@ -578,6 +578,7 @@ where
         wire!(on_app_menu_dismissed, |ctl| ctl.close_app_menu());
         wire_effects!(on_edit_requested, |ctl, i| ctl.edit_row(index(i)));
         wire_effects!(on_rename_requested, |ctl, i| ctl.rename_row(index(i)));
+        wire!(on_duplicate_requested, |ctl, i| ctl.duplicate_row(index(i)));
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.toast_action());
         wire!(on_undo_requested, |ctl| ctl.main_undo());
@@ -965,7 +966,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                     ToastPhase::Hold => ui::ToastPhase::Hold,
                     ToastPhase::Exit => ui::ToastPhase::Exit,
                 });
-                window.set_toast_text(wording::toast_text(&toast.message).into());
+                window.set_toast_text(wording::toast_text(window, &toast.message).into());
             }
         } else {
             window.set_toast_text(SharedString::new());

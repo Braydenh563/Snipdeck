@@ -12,7 +12,7 @@
 //!
 //! Nothing here logs or traces item text, a path or a title.
 
-use std::{collections::BTreeSet, path::PathBuf, rc::Rc};
+use std::{collections::BTreeSet, path::PathBuf, rc::Rc, sync::Arc};
 
 use snipdeck_core::{
     Feature, Format, Formats, Item, ItemId, ItemKind, ListId, Name, Placement, Tag, TagId,
@@ -43,7 +43,7 @@ pub(super) struct EditorEnv {
     /// Where drafts go (none in the demo, which has no data folder).
     drafts: Option<Drafts>,
     /// Wraps the library key (DPAPI on Windows).
-    pub(super) keys: Option<Box<dyn KeyProvider>>,
+    pub(super) keys: Option<Arc<dyn KeyProvider>>,
     /// The file dialog. Shared so the window can ask it without holding the controller: the
     /// dialog runs its own message loop, and the controller must be free meanwhile.
     picker: Option<Rc<dyn FilePicker>>,
@@ -170,7 +170,7 @@ where
 
     /// Wraps the library's encryption key with `provider` (DPAPI on Windows).
     pub fn set_key_provider(&mut self, provider: Box<dyn KeyProvider>) {
-        self.editor_env.keys = Some(provider);
+        self.editor_env.keys = Some(Arc::from(provider));
     }
 
     /// Lets the item editor open a file dialog with `picker`.

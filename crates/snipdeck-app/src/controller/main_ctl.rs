@@ -426,11 +426,17 @@ where
 
     /// Each item again, directly after itself: same title, content, tags and flags; pinned off and
     /// use history cleared, like a new item.
-    fn duplicate(&mut self, items: &[ItemId]) {
+    /// A sensitive item behind a locked library is not copied: the unlock window is asked for and
+    /// the toast says why nothing was done, like a copy of the whole library.
+    pub(super) fn duplicate(&mut self, items: &[ItemId]) {
         let now = self.clock.now();
+        let locked = self.library_locked();
         let done = self.store.atomically(|b| {
             for id in items {
                 let original = b.item(*id)?;
+                if locked && original.sensitive {
+                    return Err(snipdeck_store::Error::EncryptionLocked);
+                }
                 let formats = b.formats(*id)?;
                 let mut copy =
                     Item::new(original.list_id, original.title.clone(), original.kind, now);
@@ -444,6 +450,14 @@ where
             }
             Ok(())
         });
+        if matches!(done, Err(snipdeck_store::Error::EncryptionLocked)) {
+            self.request_unlock();
+            self.show_toast(Toast {
+                kind: ToastKind::Neutral,
+                message: ToastMessage::UnlockFirst,
+            });
+            return;
+        }
         self.finish(&done);
     }
 

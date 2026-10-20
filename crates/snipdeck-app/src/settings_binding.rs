@@ -36,7 +36,7 @@ use crate::{
     main_binding::{create_window, raise, set_look},
     native_window::fit_to_screen,
     settings::{DockEdge, DockTrigger, HotkeyAction, Hotkeys, Settings, Theme},
-    toast::{Toast, ToastKind, ToastMessage},
+    toast::{LicenceProblem, Toast, ToastKind, ToastMessage},
     wording::{self, LANGUAGE_NAMES, LANGUAGE_TAGS},
 };
 
@@ -515,7 +515,7 @@ struct PageView {
     no_paste_apps: Vec<String>,
     no_paste_error: String,
     pro: bool,
-    licence_error: String,
+    licence_error: Option<LicenceProblem>,
     /// 0 = no key protection on this machine, 1 = no master password, 2 = one is set.
     master_state: i32,
     master_locked: bool,
@@ -531,7 +531,7 @@ struct PageView {
 struct PageState {
     hotkey_conflicts: [String; 4],
     no_paste_error: String,
-    licence_error: String,
+    licence_error: Option<LicenceProblem>,
     backups: Vec<BackupFile>,
     import: Option<PendingImport>,
 }
@@ -639,7 +639,7 @@ where
         no_paste_apps: settings.no_paste_apps.clone(),
         no_paste_error: state.no_paste_error.clone(),
         pro: controller.tier() == snipdeck_core::Tier::Pro,
-        licence_error: state.licence_error.clone(),
+        licence_error: state.licence_error,
         master_state: match controller.master_password_state() {
             MasterState::Unavailable => 0,
             MasterState::NotSet => 1,
@@ -881,10 +881,7 @@ where
     fn licence_submitted(self: &Rc<Self>, key: &str) {
         let data_dir = self.data_dir.clone();
         let result = self.act(|ctl| ctl.apply_licence(key, data_dir.as_deref()));
-        self.state.borrow_mut().licence_error = result
-            .err()
-            .map(|p| wording::licence_problem_text(p).to_owned())
-            .unwrap_or_default();
+        self.state.borrow_mut().licence_error = result.err();
         redraw_all();
     }
 
@@ -898,16 +895,55 @@ where
         new: &str,
         again: &str,
     ) {
-        let result = self.act(|ctl| match mode {
-            ui::MasterMode::Set => ctl.set_master_password(new, again),
-            ui::MasterMode::Change => ctl.change_master_password(current, new, again),
-            ui::MasterMode::Remove => ctl.remove_master_password(current),
-            ui::MasterMode::Closed => Ok(()),
+        let begun = self.act(|ctl| match mode {
+            ui::MasterMode::Set => ctl.begin_set_master_password(new, again).map(Some),
+            ui::MasterMode::Change => ctl
+                .begin_change_master_password(current, new, again)
+                .map(Some),
+            ui::MasterMode::Remove => ctl.begin_remove_master_password(current).map(Some),
+            ui::MasterMode::Closed => Ok(None),
         });
         let Some(window) = self.window.upgrade() else {
             return;
         };
         // Cleared first, so the same refusal twice in a row is announced twice.
+        window.set_master_problem(ui::MasterProblem::None);
+        match begun {
+            Ok(Some(job)) => {
+                // The key derivation takes a moment on purpose: the form waits, on another thread
+                // in the app, and `master_finished` carries on from here.
+                window.set_master_busy(true);
+                let core = Rc::clone(self);
+                crate::master_job::offload()
+                    .run(job, Box::new(move |done| core.master_finished(done)));
+            }
+            Ok(None) => window.invoke_close_master(),
+            Err(problem) => {
+                window.set_master_problem(crate::unlock_binding::slint_problem(problem));
+            }
+        }
+    }
+
+    /// The outcome of the key derivation `master_submitted` started: applies it and tells the form.
+    fn master_finished(self: &Rc<Self>, done: crate::master_job::MasterDone) {
+        let (current, idle) =
+            self.act(|ctl| (ctl.master_current(&done), ctl.master_busy().is_none()));
+        if !current {
+            // The library was locked while the key was being derived: nothing is applied (the
+            // controller drops the outcome), and the form stops waiting unless a newer step runs.
+            drop(done);
+            if let Some(window) = self.window.upgrade()
+                && idle
+            {
+                window.set_master_busy(false);
+            }
+            return;
+        }
+        let result = self.act(|ctl| ctl.finish_master(done));
+        let Some(window) = self.window.upgrade() else {
+            return;
+        };
+        window.set_master_busy(false);
         window.set_master_problem(ui::MasterProblem::None);
         match result {
             Ok(()) => window.invoke_close_master(),
@@ -1338,7 +1374,12 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
         window.set_pro(view.pro);
     }
     if differs(&|p| p.licence_error == view.licence_error) {
-        window.set_licence_error(view.licence_error.as_str().into());
+        window.set_licence_error(
+            view.licence_error
+                .map(|problem| wording::licence_problem_text(window, problem))
+                .unwrap_or_default()
+                .into(),
+        );
     }
     if differs(&|p| p.master_state == view.master_state) {
         window.set_master_state(view.master_state);
@@ -1373,7 +1414,7 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
                 ToastPhase::Hold => ui::ToastPhase::Hold,
                 ToastPhase::Exit => ui::ToastPhase::Exit,
             });
-            window.set_toast_text(wording::toast_text(&toast.message).into());
+            window.set_toast_text(wording::toast_text(window, &toast.message).into());
         } else {
             window.set_toast_text(SharedString::new());
             window.set_toast_phase(ui::ToastPhase::Exit);

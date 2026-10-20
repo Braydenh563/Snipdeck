@@ -77,6 +77,8 @@ pub enum ItemMenuEntry {
         /// The item is marked now (the row reads "Remove from paste stack").
         marked: bool,
     },
+    /// Put a copy of the item right after it.
+    Duplicate,
     /// Move the item to the Trash, with an Undo toast.
     Trash,
     /// A line between groups.
@@ -190,6 +192,7 @@ where
             ItemMenuEntry::Copy,
             ItemMenuEntry::Separator,
             ItemMenuEntry::Edit,
+            ItemMenuEntry::Duplicate,
             ItemMenuEntry::Pin { pinned },
             ItemMenuEntry::Stack {
                 marked: self.stack.contains(&id),
@@ -242,6 +245,10 @@ where
                 Vec::new()
             }
             ItemMenuEntry::Edit => vec![Effect::EditItem(id)],
+            ItemMenuEntry::Duplicate => {
+                self.duplicate(&[id]);
+                Vec::new()
+            }
             ItemMenuEntry::Pin { pinned } => {
                 self.set_item_pinned(id, !pinned);
                 Vec::new()
@@ -328,6 +335,13 @@ where
             .map(Effect::EditItem)
             .into_iter()
             .collect()
+    }
+
+    /// Ctrl+D on row `index`: a copy of the item right after it.
+    pub fn duplicate_row(&mut self, index: usize) {
+        if let Some(id) = self.row_id(index) {
+            self.duplicate(&[id]);
+        }
     }
 
     /// F2 on row `index`. The Panel has no inline title field, so this opens the same editor.
