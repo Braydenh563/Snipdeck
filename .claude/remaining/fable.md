@@ -22,3 +22,30 @@
 ## Blocked
 - controller.rs edits until D5 merges.
 - Windows runtime behaviour: everything in snipdeck-platform/src/windows, A1, A5 key injection, A17, A21.
+
+## Owner's extra checks (word for word, added at the hub's request; each is checked and either fixed, ticketed with an id, or marked blocked with the reason)
+- O1 "Can you make sure there are no small missing key features or functions users would expect but that aren't there?" -> the product/UX audit (U1-U21); its "checked, works" list closes the rest.
+- O2 "Make sure the app is properly optimised with no high complexity or constant redraws etc." -> A8-A10, A25, U12 (redraws and index rebuilds); idle cost checked (dock tick and 6 h job only).
+- O3 "there are no bugs, no security flaws" -> B1-B13, A1-A7, A14-A23, I4/I5 closure; checked-clean lists in fable-analysis.md.
+- O4 "the architecture is the best shape and design etc it can be" -> A11, A13, A27, B13 (after D5).
+- O5 "There is proper information architecture, maximal and best ui especially UX design and structure and function across the app." -> U13 settings order, U14 help reach, U16 naming, DESIGN.md checks (F-items).
+- O6 "Best usability, learnability, efficiency, easy navigation." -> U1, U5, U7, U14, U17, U21.
+- O7 "Maximised user satisfaction when using the app, it doesn't negatively affect the user or any other applications or anything else in any way" -> U4, U19 (hotkeys other apps own), A22 (clipboard read only when needed), A6/A7 (clipboard clear).
+- O8 "it has proper ui and ux design following principles like CARP (contrast, alignment, repetition, proximity etc) and more." -> F-items (WCAG/contrast checked clean), the kebab slot fix (F6), U18.
+- O9 "Proper accessibility." -> U2 text size, F2 toast hold, F3/F5 text-scale, WCAG checks in fable-analysis.md.
+- O10 "Learnability is a big thing." -> U14, U21, first-hide toast and tour (checked).
+- O11 "not losing any data or work" -> B1, A2-A4, A14, A15, U3, U9.
+- O12 "not having a hard time trying to use it or figure out how to use it" -> U14, U21, U10 (error toasts say what to do).
+- O13 "like moving windows around as they block my other work or it taking up too much space on my screen etc." -> dock settings checked (edge, delays, width); U8 pinned state persisted.
+- O14 "like is there a feature for me to be able to alt tab to it?? Users might prefer to access it that way." -> exists: Settings "Show Snipdeck in the taskbar" (Alt+Tab entry); U21 tells the user in the tour.
+- O15 "What makes an application truly professional and refined is all the small things usually overlooked but that add up." -> the Low lists (A14-A27, B7-B13, F5-F6, U16-U21).
+- O16 "if I can't trust the app in it's reliability" -> B1, U3, A3, A17.
+- O17 "how it can be used (can't be too overcomplicated)" -> U13, U16.
+- O18 "must protect data and not negatively affect the user" -> B3-B6, A18-A21, A6/A7.
+- O19 "must be easily accessible and dismissable" -> U1, U6, Esc paths checked in every window.
+- O20 "must be customisable in function for to the user's preferences" -> U11 per-program paste key, U2 text size, hotkeys/dock/theme checked.
+- O21 "be able to easily and very fast flick it open and closed and quickly make changes" -> U1 (keys work after the hotkey), U5, A25 (cold start).
+- O22 "like can I easily edit list items from the small panel?? I should be able to." -> exists: Ctrl+E, F2, the row menu (Panel quick edit); U7 removes the double-click that pasted first.
+- O23 "Can you yourself audit some key areas to make sure opus and sonnet audit agents haven't missed anything?? Or like give them really really detailed instructions on exactly what to look for." -> done: the paste pipeline and clipboard restore, idle lock against open editors, dismiss and focus return, draft persistence (no new defect; U1 confirmed from the audit); each agent brief names the lines to verify.
+- O24 "Are you using haiku to be more token saving and efficient?" -> Haiku for translations and docs; Sonnet for fixes; this session for judgement calls and merges.
+- Blocked: Windows runtime behaviour (every `[unverified]` item) until the owner runs the Windows test script.
