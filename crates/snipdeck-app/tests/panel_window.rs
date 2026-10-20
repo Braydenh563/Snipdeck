@@ -837,7 +837,7 @@ fn click_at(window: &slint::Window, position: slint::LogicalPosition) {
     slint::platform::update_timers_and_animations();
 }
 
-const MENU_ROWS: [&str; 12] = [
+const MENU_ROWS: [&str; 14] = [
     "Open Snipdeck",
     "All commands\u{2026}",
     "New snippet",
@@ -845,6 +845,8 @@ const MENU_ROWS: [&str; 12] = [
     "Settings\u{2026}",
     "Dock to the nearest edge",
     "Pause hotkeys",
+    "Show numbers",
+    "Reset size and position",
     "Troubleshoot\u{2026}",
     "User guide",
     "Keyboard shortcuts",

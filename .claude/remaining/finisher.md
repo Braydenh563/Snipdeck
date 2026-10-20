@@ -1,4 +1,4 @@
 # finisher
-done: 1 (hub-o45 merged)
-next: 2 hub-o47, 3 hub-finish-ui, 4 hub-small (5ce79cf ready), 5 undock size bug, 6 TagManager height, 7 full tests + i18n
+done: 1 (editor_window, menu_form_texts, panel_window tests updated to O45 behaviour)
+next: 2 hub-small, 3 hub-o36, 4 hub-finish-ui, 5 hub-o47, 6 undock size, 7 TagManager height, 8 i18n, 9 full
 blocked: none

@@ -54,7 +54,7 @@ fn every_menu_row_has_words_except_the_separators() {
             item_menu_label(&w, ItemMenuEntry::Pin { pinned: true }),
             "Unpin"
         );
-        assert_eq!(item_menu_label(&w, ItemMenuEntry::Trash), "Move to Trash");
+        assert_eq!(item_menu_label(&w, ItemMenuEntry::Trash), "Delete");
         assert_eq!(item_menu_label(&w, ItemMenuEntry::Separator), "");
         assert_eq!(
             board_menu_text(&w, &BoardMenuEntry::Delete { enabled: true }),

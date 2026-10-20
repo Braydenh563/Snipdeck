@@ -91,6 +91,8 @@ fn rig_at(data: &Path, tier: Tier, provider: &SharedProvider) -> Rig {
     .expect("controller");
     ctl.set_drafts(snipdeck_app::drafts::Drafts::in_data_dir(data));
     ctl.set_key_provider(Box::new(provider.clone()));
+    // These tests drive Kind, Title, Tags and Privacy, which sit under "More options".
+    ctl.set_editor_more_open(true);
     let ctl = Rc::new(RefCell::new(ctl));
     let panel = PanelWindow::new().expect("panel");
     panel
@@ -248,10 +250,12 @@ fn new_snippet_in_the_kebab_opens_an_empty_editor_that_saves_text_from_the_keybo
             Some("Email replies")
         );
 
-        // The title has the focus; Tab moves to the text.
+        // The title has the focus; a click moves to the text (Tags and Colour sit between them).
         type_text(ed.window(), "Sign-off");
-        press(ed.window(), &key(Key::Tab));
-        settle();
+        click(
+            ed.window(),
+            &find(&ed, "Content", AccessibleRole::TextInput),
+        );
         type_text(ed.window(), "Kind regards,");
         assert_eq!(ed.get_item_title(), "Sign-off");
         assert!(ed.get_dirty());
@@ -438,7 +442,10 @@ fn what_is_typed_is_saved_as_a_draft_every_two_seconds_and_restored_after_a_rest
             menu(&r, "New snippet");
             let ed = r.ed();
             type_text(ed.window(), "Half a thought");
-            press(ed.window(), &key(Key::Tab));
+            click(
+                ed.window(),
+                &find(&ed, "Content", AccessibleRole::TextInput),
+            );
             type_text(ed.window(), "unfinished body");
             assert_eq!(ed.get_content(), "unfinished body");
             assert!(
@@ -780,8 +787,10 @@ fn text_over_16_kb_opens_in_a_read_only_viewer_and_saving_keeps_it_whole() {
         // Typing into the viewer changes nothing; the title is still editable.
         let shown = ed.get_content();
         ed.invoke_focus_title();
-        press(ed.window(), &key(Key::Tab));
-        settle();
+        click(
+            ed.window(),
+            &find(&ed, "Content", AccessibleRole::TextInput),
+        );
         type_text(ed.window(), "typed into the viewer");
         assert_eq!(ed.get_content(), shown, "read-only");
         ed.set_item_title("Giant, renamed".into());
