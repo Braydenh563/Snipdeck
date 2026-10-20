@@ -650,9 +650,14 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
     use slint::winit_030::{EventResult, winit::event::WindowEvent};
     let tracing = snipdeck_app::trace::enabled();
     let mut cursor = (0.0, 0.0);
+    let mut repaint = snipdeck_app::repaint::Watch::new();
     window
         .window()
         .on_winit_window_event(move |slint_window, event| {
+            // O39: ask for a frame when Windows may have dropped the window's pixels.
+            if repaint.on_signal(snipdeck_app::repaint::signal_of(event)) {
+                slint_window.request_redraw();
+            }
             let moved = matches!(event, WindowEvent::Moved(_));
             if (moved || matches!(event, WindowEvent::Resized(_))) && armed.get() {
                 // winit's own numbers: Slint has not seen this event yet.

@@ -510,7 +510,7 @@ fn the_draft_timer_runs_only_after_an_edit_and_quitting_writes_a_final_draft() {
         assert!(r.draft_files().is_empty(), "no edit, no timer");
         // Typing arms one shot; quitting before it fires still writes the draft.
         type_text(ed.window(), "x");
-        assert!(r.draft_files().is_empty());
+        assert_eq!(r.draft_files(), Vec::<String>::new());
         r.editor.flush_draft();
         assert_eq!(r.draft_files(), ["new.json"], "the final draft on quit");
     });

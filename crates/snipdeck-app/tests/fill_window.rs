@@ -103,6 +103,7 @@ fn rig_on(store: Store) -> Rig {
         move |e| log.borrow_mut().push(*e),
     );
     let popups = Rc::new(FakePopups::one(Monitor {
+        taskbar: None,
         id: Monitor::id_of("DISPLAY1", 1920, 1080),
         work_area: Rect {
             x: 0,
