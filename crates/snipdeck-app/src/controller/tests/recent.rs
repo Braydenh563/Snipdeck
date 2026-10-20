@@ -151,6 +151,10 @@ fn the_view_lists_entries_newest_first_with_the_lists_to_save_to() {
     w.clock.set(at("2026-10-17T10:35:00Z"));
     w.ctl.on_clipboard_change(&copied("beta"));
     w.clock.set(at("2026-10-17T10:40:00Z"));
+    // A closed inbox lists nothing (and decrypts nothing); the clock tab opens it.
+    let closed = w.ctl.view().recent.expect("on");
+    assert!(closed.rows.is_empty() && closed.targets.is_empty());
+    w.ctl.set_recent_open(true);
     let recent = w.ctl.view().recent.expect("on");
     let rows: Vec<_> = recent
         .rows
@@ -169,6 +173,7 @@ fn the_search_box_narrows_the_recent_list_and_rows_act_on_what_is_shown() {
     w.ctl.on_clipboard_change(&copied("alpha one"));
     w.ctl.on_clipboard_change(&copied("beta two"));
     w.ctl.set_query("beta");
+    w.ctl.set_recent_open(true);
     let recent = w.ctl.view().recent.expect("on");
     assert_eq!(recent.rows.len(), 1);
     // Row 0 of the narrowed list is "beta two": saving it saves that text.
@@ -198,6 +203,7 @@ fn clicking_an_entry_puts_its_text_on_the_clipboard_and_deleting_removes_it() {
 fn actions_follow_the_entry_id_when_the_list_shifts_under_an_open_menu() {
     let mut w = recent_world();
     w.ctl.on_clipboard_change(&copied("original"));
+    w.ctl.set_recent_open(true);
     let id = w.ctl.view().recent.expect("on").rows[0].id;
     // The menu is open on "original"; a new copy pushes it down a row.
     w.ctl.on_clipboard_change(&copied("newcomer"));

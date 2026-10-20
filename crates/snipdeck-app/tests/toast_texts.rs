@@ -89,10 +89,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::NotOpened => 62,
         ToastMessage::DraftNotSaved => 63,
         ToastMessage::ItemPlaced { .. } => 64,
+        ToastMessage::TaskbarEdge => 65,
     }
 }
 
-const VARIANTS: usize = 65;
+const VARIANTS: usize = 66;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -198,6 +199,7 @@ fn samples() -> Vec<ToastMessage> {
         M::BackupRestored { items: 1 },
         M::Imported { items: 0 },
         M::Imported { items: 1 },
+        M::TaskbarEdge,
     ]
 }
 

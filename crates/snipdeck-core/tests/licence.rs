@@ -91,7 +91,7 @@ fn release_builds_never_embed_the_development_key() {
 
 #[test]
 fn minimal_vector_verifies_as_pro() {
-    let entitlements = verify(MINIMAL_TOKEN, &verifying_key(), NOW).unwrap();
+    let entitlements = verify(MINIMAL_TOKEN, &verifying_key()).unwrap();
     assert_eq!(entitlements.tier(), Tier::Pro);
     let licence = verify_licence(MINIMAL_TOKEN, &verifying_key()).unwrap();
     assert_eq!(licence.order(), "ORD-1001");
@@ -132,7 +132,7 @@ fn vectors_verify_against_the_compiled_in_key_only_in_a_development_build() {
 fn vectors_do_not_verify_under_another_key() {
     let stranger = SigningKey::from_bytes(&other_seed(9)).verifying_key();
     assert_eq!(
-        verify(MINIMAL_TOKEN, &stranger, NOW),
+        verify(MINIMAL_TOKEN, &stranger),
         Err(LicenceError::BadSignature)
     );
 }

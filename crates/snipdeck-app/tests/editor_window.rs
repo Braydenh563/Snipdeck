@@ -469,6 +469,25 @@ fn what_is_typed_is_saved_as_a_draft_every_two_seconds_and_restored_after_a_rest
 }
 
 #[test]
+fn the_draft_timer_runs_only_after_an_edit_and_quitting_writes_a_final_draft() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New snippet");
+        let ed = r.ed();
+        // Fields set without an edit gesture arm nothing: no timer, so no draft.
+        ed.set_content("set by the host".into());
+        wait(AUTOSAVE_EVERY);
+        wait(AUTOSAVE_EVERY);
+        assert!(r.draft_files().is_empty(), "no edit, no timer");
+        // Typing arms one shot; quitting before it fires still writes the draft.
+        type_text(ed.window(), "x");
+        assert_eq!(r.draft_files(), Vec::<String>::new());
+        r.editor.flush_draft();
+        assert_eq!(r.draft_files(), ["new.json"], "the final draft on quit");
+    });
+}
+
+#[test]
 fn a_draft_that_is_typed_back_to_the_start_is_removed() {
     on_ui_thread(|| {
         let r = rig();

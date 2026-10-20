@@ -340,9 +340,27 @@ impl Blobs {
 
     /// Whether the stored file holds exactly `bytes` (a stored blob of the right length whose
     /// content differs is damaged and must be rewritten).
+    ///
+    /// The length is checked first, from metadata alone. The name being the content hash is not
+    /// enough to skip the comparison: the file may have been damaged without changing its
+    /// length, and a put of the same bytes is what repairs that. The content is then compared
+    /// in chunks, stopping at the first difference, so no second full copy is held in memory.
     fn holds_exactly(&self, blob: &BlobRef, bytes: &[u8]) -> bool {
-        self.has(blob, bytes.len() as u64)
-            && fs::read(self.file_path(blob)).is_ok_and(|stored| stored == bytes)
+        const CHUNK: usize = 64 * 1024;
+        if !self.has(blob, bytes.len() as u64) {
+            return false;
+        }
+        let Ok(mut file) = fs::File::open(self.file_path(blob)) else {
+            return false;
+        };
+        let mut buf = vec![0_u8; CHUNK.min(bytes.len())];
+        for expected in bytes.chunks(CHUNK) {
+            let got = &mut buf[..expected.len()];
+            if file.read_exact(got).is_err() || got != expected {
+                return false;
+            }
+        }
+        true
     }
 
     /// Whether the stored blob starts with `prefix` (reads only that many bytes).
@@ -398,8 +416,9 @@ impl Blobs {
         }
     }
 
-    /// Every finished blob and every leftover temp file. Files that are neither are ignored.
-    pub(crate) fn list(&self) -> Result<(Vec<StoredBlob>, Vec<Leftover>)> {
+    /// Every finished blob and every leftover temp file, and how many folders or files could
+    /// not be read and were skipped. Files that are neither blobs nor leftovers are ignored.
+    pub(crate) fn list(&self) -> Result<(Vec<StoredBlob>, Vec<Leftover>, usize)> {
         let root = match &self.backing {
             Backing::Memory(map) => {
                 let blobs = map
@@ -410,27 +429,43 @@ impl Blobs {
                         modified: SystemTime::UNIX_EPOCH,
                     })
                     .collect();
-                return Ok((blobs, Vec::new()));
+                return Ok((blobs, Vec::new(), 0));
             }
             Backing::Disk { root } => root,
         };
         let mut blobs = Vec::new();
         let mut leftovers = Vec::new();
+        let mut skipped = 0_usize;
         let top = match fs::read_dir(root) {
             Ok(top) => top,
-            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok((blobs, leftovers)),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok((blobs, leftovers, 0)),
             Err(e) => return Err(e.into()),
         };
+        // One unreadable folder or file is counted and skipped, so it does not stop the sweep
+        // of the rest.
         for shard in top {
-            let shard = shard?;
+            let Ok(shard) = shard else {
+                skipped += 1;
+                continue;
+            };
             let shard_name = shard.file_name().to_string_lossy().into_owned();
-            if shard_name.len() != 2 || !shard.file_type()?.is_dir() {
+            if shard_name.len() != 2 || !shard.file_type().is_ok_and(|t| t.is_dir()) {
                 continue;
             }
-            for entry in fs::read_dir(shard.path())? {
-                let entry = entry?;
+            let Ok(entries) = fs::read_dir(shard.path()) else {
+                skipped += 1;
+                continue;
+            };
+            for entry in entries {
+                let Ok(entry) = entry else {
+                    skipped += 1;
+                    continue;
+                };
                 let name = entry.file_name().to_string_lossy().into_owned();
-                let meta = entry.metadata()?;
+                let Ok(meta) = entry.metadata() else {
+                    skipped += 1;
+                    continue;
+                };
                 if !meta.is_file() {
                     continue;
                 }
@@ -449,7 +484,7 @@ impl Blobs {
                 }
             }
         }
-        Ok((blobs, leftovers))
+        Ok((blobs, leftovers, skipped))
     }
 
     /// Where `blob` lives on disk; `None` for the in-memory store.
@@ -488,13 +523,8 @@ impl Blobs {
             return Err(io::Error::other("blob path has no folder").into());
         };
         fs::create_dir_all(folder)?;
-        let temp = folder.join(format!(
-            "{TEMP_PREFIX}{}-{}",
-            std::process::id(),
-            COUNTER.fetch_add(1, Ordering::Relaxed)
-        ));
+        let (mut file, temp) = create_temp(folder, || COUNTER.fetch_add(1, Ordering::Relaxed))?;
         let written = (|| -> io::Result<()> {
-            let mut file = fs::File::create(&temp)?;
             file.write_all(bytes)?;
             file.sync_all()?;
             drop(file);
@@ -506,6 +536,24 @@ impl Blobs {
         }
         sync_folder(folder);
         Ok(())
+    }
+}
+
+/// Creates a new temp file in `folder`, named after the process and the next `counter` value.
+/// The file must not exist yet (`create_new`): a name someone else planted, even a link, is
+/// never written through, and the next counter value is tried instead.
+fn create_temp(folder: &Path, mut counter: impl FnMut() -> u64) -> io::Result<(fs::File, PathBuf)> {
+    loop {
+        let temp = folder.join(format!("{TEMP_PREFIX}{}-{}", std::process::id(), counter()));
+        match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temp)
+        {
+            Ok(file) => return Ok((file, temp)),
+            Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(e) => return Err(e),
+        }
     }
 }
 
@@ -683,6 +731,25 @@ mod tests {
         ));
         assert_eq!(blobs.put(big(5)).unwrap(), content);
         assert_eq!(blobs.read(&content).unwrap().as_ref(), big(5).as_slice());
+    }
+
+    /// The chunked comparison sees damage past the first chunk and in a short final chunk.
+    #[test]
+    fn putting_again_repairs_damage_in_a_later_chunk() {
+        let (_dir, mut blobs) = blobs();
+        let body: Vec<u8> = (0..150_000_u32).map(|n| (n % 251) as u8).collect();
+        let content = blobs.put(body.clone()).unwrap();
+        let Content::Blob { blob, .. } = &content else {
+            panic!()
+        };
+        let path = blobs.path_of(blob).unwrap();
+        for at in [70_000, body.len() - 1] {
+            let mut bytes = std::fs::read(&path).unwrap();
+            bytes[at] ^= 0xFF;
+            std::fs::write(&path, bytes).unwrap();
+            assert_eq!(blobs.put(body.clone()).unwrap(), content);
+            assert_eq!(blobs.read(&content).unwrap().as_ref(), body.as_slice());
+        }
     }
 
     #[test]
@@ -868,7 +935,8 @@ mod tests {
         std::fs::write(&stray, b"half").unwrap();
         std::fs::write(dir.path().join("blobs").join("README.txt"), b"not ours").unwrap();
 
-        let (found, leftovers) = blobs.list().unwrap();
+        let (found, leftovers, skipped) = blobs.list().unwrap();
+        assert_eq!(skipped, 0);
         assert_eq!(found.len(), 1);
         assert_eq!((found[0].blob, found[0].len), (blob, len));
         assert_eq!(leftovers.len(), 1);
@@ -876,9 +944,55 @@ mod tests {
     }
 
     #[test]
+    fn a_planted_temp_name_is_skipped_not_written_through() {
+        let dir = tempfile::tempdir().unwrap();
+        let planted = dir
+            .path()
+            .join(format!("{TEMP_PREFIX}{}-7", std::process::id()));
+        std::fs::write(&planted, b"planted").unwrap();
+        let mut next = 7_u64;
+        let (_file, temp) = create_temp(dir.path(), || {
+            next += 1;
+            next - 1
+        })
+        .unwrap();
+        assert_ne!(temp, planted);
+        assert!(temp.ends_with(format!("{TEMP_PREFIX}{}-8", std::process::id())));
+        assert_eq!(std::fs::read(&planted).unwrap(), b"planted");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_unreadable_shard_is_skipped_and_counted() {
+        use std::os::unix::fs::PermissionsExt;
+        let (dir, mut blobs) = blobs();
+        let good = blobs.put(big(1)).unwrap();
+        let hex = {
+            let Content::Blob { blob, .. } = &good else {
+                panic!()
+            };
+            blob.to_string()
+        };
+        // A second shard folder that cannot be listed.
+        let other = if &hex[..2] == "aa" { "bb" } else { "aa" };
+        let locked = dir.path().join("blobs").join(other);
+        std::fs::create_dir_all(&locked).unwrap();
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o000)).unwrap();
+        let readable = std::fs::read_dir(&locked).is_ok();
+        let listed = blobs.list();
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755)).unwrap();
+        if readable {
+            return; // running as root: the permission bits do not apply
+        }
+        let (found, _, skipped) = listed.unwrap();
+        assert_eq!((found.len(), skipped), (1, 1));
+    }
+
+    #[test]
     fn listing_a_store_that_never_wrote_a_blob_is_empty() {
         let (_dir, blobs) = blobs();
-        let (found, leftovers) = blobs.list().unwrap();
+        let (found, leftovers, skipped) = blobs.list().unwrap();
+        assert_eq!(skipped, 0);
         assert!(found.is_empty() && leftovers.is_empty());
     }
 

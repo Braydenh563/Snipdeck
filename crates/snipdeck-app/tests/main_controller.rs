@@ -1662,10 +1662,11 @@ fn the_real_jobs_back_up_purge_and_check_the_library_on_the_injected_clock() {
     ctl.main_action(MainAction::Delete, 0);
     assert_eq!(ctl.main_screen().counts.trash, 1);
 
-    // 31 days later, on the first run after a start: the entry is purged and a backup exists.
+    // 31 days later, on the first run after a start: the entry is purged, a backup exists and
+    // the blobs are swept (four outcomes: backup, purge, sweep, check).
     clock.set("2026-11-17T10:31:00Z".parse().unwrap());
     let mut m = Maintenance::new(dir.path(), Box::new(clock.clone()));
-    assert_eq!(maintenance::run(&mut m, &mut ctl), 3);
+    assert_eq!(maintenance::run(&mut m, &mut ctl), 4);
     assert_eq!(ctl.main_screen().counts.trash, 0);
     let backups = snipdeck_portable::backup::list_backups(dir.path()).unwrap();
     assert_eq!(backups.len(), 1);

@@ -11,6 +11,7 @@ use crate::{
     frame::{Edge, Rect},
     panel::{Footer, Row, Tab, UseLabel},
     picker::{self, Scope},
+    settings::DockEdge,
     toast::{ToastKind, ToastMessage},
 };
 
@@ -192,6 +193,11 @@ pub struct View {
     pub dock_vertical: bool,
     /// The Panel is docked to an edge (the kebab offers to undock it).
     pub docked: bool,
+    /// The edge the kebab's "Dock" row would dock a floating Panel to (`None` while docked or
+    /// before the monitor is known): the row names it.
+    pub dock_target: Option<DockEdge>,
+    /// The edge a drag under way would dock to if released now; the Panel marks that edge.
+    pub dock_preview: Option<DockEdge>,
     /// Dark theme: the `theme` setting, or Windows' app mode when it is `system`.
     pub dark: bool,
     /// The high-contrast colours while a Windows high-contrast theme is on (it overrides the

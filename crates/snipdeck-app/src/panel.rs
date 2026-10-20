@@ -5,7 +5,11 @@
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
+<<<<<<< HEAD
 use crate::{index_cache::IndexCache, main_window::SelectMode};
+=======
+use crate::index_cache::{IndexCache, Snapshot};
+>>>>>>> origin/claude/compassionate-pascal-pod8ux
 use snipdeck_core::{
     Board, BoardId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
     ListSort, search::SearchIndex,
@@ -96,7 +100,8 @@ pub struct PanelModel {
     lists: Vec<List>,
     list: Option<ListId>,
     items: Vec<Item>,
-    all: Vec<Item>,
+    /// Every item, the boards and the index, as read when the library last changed.
+    all: Rc<Snapshot>,
     list_labels: HashMap<ListId, ListLabel>,
     index: Rc<SearchIndex>,
     cache: IndexCache,
@@ -118,6 +123,7 @@ impl PanelModel {
     /// # Errors
     ///
     /// Any store error.
+    #[cfg(test)]
     pub fn load<S>(
         store: &S,
         board: Option<BoardId>,
@@ -129,9 +135,9 @@ impl PanelModel {
         Self::load_cached(store, board, list, &IndexCache::new())
     }
 
-    /// Like [`PanelModel::load`], taking the search index from `cache` (built only when the
-    /// library changed since it was last built). The model keeps a handle on `cache` for its
-    /// own reloads.
+    /// Loads the Panel for `board` and `list` (the first of each when `None` or no longer
+    /// present), reading the library through `cache` (read again only when the library changed
+    /// since). The model keeps a handle on `cache` for its own reloads.
     ///
     /// # Errors
     ///
@@ -145,14 +151,14 @@ impl PanelModel {
     where
         S: BoardRepo + ListRepo + ItemRepo + TagRepo,
     {
-        let boards = store.boards()?;
+        let snapshot = cache.snapshot(store)?;
+        let boards: Vec<Board> = snapshot.boards.iter().map(|(b, _)| b.clone()).collect();
         let board = board
             .filter(|id| boards.iter().any(|b| b.id == *id))
             .or_else(|| boards.first().map(|b| b.id));
-        let lists = match board {
-            Some(id) => store.lists(id)?,
-            None => Vec::new(),
-        };
+        let lists = board
+            .and_then(|id| snapshot.boards.iter().find(|(b, _)| b.id == id))
+            .map_or_else(Vec::new, |(_, lists)| lists.clone());
         let list = list
             .filter(|id| lists.iter().any(|l| l.id == *id))
             .or_else(|| lists.first().map(|l| l.id));
@@ -160,27 +166,28 @@ impl PanelModel {
             Some(id) => store.items(id)?,
             None => Vec::new(),
         };
-        let all = store.all_items()?;
-        let index = cache.index(store, &all)?;
-        let mut list_labels = HashMap::new();
-        for b in &boards {
-            for l in store.lists(b.id)? {
-                list_labels.insert(
+        let list_labels = snapshot
+            .boards
+            .iter()
+            .flat_map(|(_, lists)| lists)
+            .map(|l| {
+                (
                     l.id,
                     ListLabel {
                         name: l.name.as_str().to_owned(),
                         accent: l.accent,
                     },
-                );
-            }
-        }
+                )
+            })
+            .collect();
+        let index = Rc::clone(&snapshot.index);
         Ok(Self {
             boards,
             board,
             lists,
             list,
             items,
-            all,
+            all: snapshot,
             list_labels,
             index,
             cache: cache.clone(),
@@ -325,6 +332,7 @@ impl PanelModel {
     pub fn pinned(&self) -> Vec<Row> {
         let in_board: Vec<ListId> = self.lists.iter().map(|l| l.id).collect();
         self.all
+            .all
             .iter()
             .filter(|i| i.pinned && in_board.contains(&i.list_id))
             .map(|i| self.row(i, 0, false))
@@ -338,7 +346,7 @@ impl PanelModel {
             self.index
                 .query(&self.query, SEARCH_LIMIT)
                 .iter()
-                .filter_map(|hit| self.all.iter().find(|i| i.id == hit.id))
+                .filter_map(|hit| self.all.all.iter().find(|i| i.id == hit.id))
                 .collect()
         } else {
             self.list_items()

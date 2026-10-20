@@ -255,7 +255,7 @@ where
         };
         let ring = super::super::lock_ctl::ring_on(provider, self.lock.kdf);
         // A master password is never typed here: a library that has one stays locked until the
-        // unlock window opens it ([`Controller::unlock_with_password`]).
+        // unlock window opens it (`begin_unlock_with_password`).
         if exists {
             self.store.unlock_key_ring(&ring, None)
         } else {

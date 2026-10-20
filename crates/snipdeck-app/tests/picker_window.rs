@@ -61,6 +61,7 @@ fn now() -> Timestamp {
 
 fn monitor(scale: f32) -> Monitor {
     Monitor {
+        taskbar: None,
         id: Monitor::id_of("DISPLAY1", 1920, 1080),
         work_area: Rect {
             x: 0,

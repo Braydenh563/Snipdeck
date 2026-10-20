@@ -21,6 +21,7 @@ fn display() -> crate::frame::Monitor {
             w: 1920,
             h: 1040,
         },
+        taskbar: None,
         scale: 1.0,
     }
 }
@@ -333,6 +334,7 @@ fn each_monitor_keeps_its_own_place_and_restoring_uses_the_one_it_is_on() {
             w: 1280,
             h: 984,
         },
+        taskbar: None,
         scale: 1.0,
     };
     let on_first = Rect {

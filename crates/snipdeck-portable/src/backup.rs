@@ -132,7 +132,7 @@ pub fn run_if_due<L: Library>(
     };
     let report = export_to_path(lib, now.timestamp(), &options, &path)?;
 
-    let (pruned, prune_failed) = prune(&dir, &name, keep.max(1));
+    let (pruned, prune_failed) = prune(&dir, &name, keep.max(1), now.date());
     Ok(BackupOutcome::Created {
         path,
         report,
@@ -187,7 +187,9 @@ fn is_stale_part(name: &str) -> bool {
 
 /// Deletes backups beyond the newest `keep` (the file just written, `current`, counts and is
 /// never deleted) and stale partial files. Returns what was deleted and what could not be.
-fn prune(dir: &Path, current: &str, keep: usize) -> (Vec<PathBuf>, Vec<PathBuf>) {
+/// A file dated after `today` (a clock that was once wrong, or a copied file) is not ranked: it
+/// would otherwise hold a slot for ever. It is not deleted either.
+fn prune(dir: &Path, current: &str, keep: usize, today: Date) -> (Vec<PathBuf>, Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return (Vec::new(), Vec::new());
     };
@@ -201,7 +203,9 @@ fn prune(dir: &Path, current: &str, keep: usize) -> (Vec<PathBuf>, Vec<PathBuf>)
             continue;
         }
         if let Some(file) = as_backup(&entry) {
-            others.push(file);
+            if file.date <= today {
+                others.push(file);
+            }
         } else if is_stale_part(&name) && entry.file_type().is_ok_and(|t| t.is_file()) {
             stale.push(entry.path());
         }

@@ -14,7 +14,8 @@
 //! Nothing here logs or returns content in an error: failures are `io::Error`s about files.
 
 use std::{
-    fs, io,
+    fs,
+    io::{self, Write as _},
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -175,7 +176,10 @@ impl Drafts {
         let bytes = serde_json::to_vec(draft).map_err(io::Error::other)?;
         let path = self.path(key);
         let side = path.with_extension("json.tmp");
-        fs::write(&side, bytes)?;
+        // Flushed to disk before the rename can make it visible, as the settings file is.
+        let mut file = fs::File::create(&side)?;
+        file.write_all(&bytes).and_then(|()| file.sync_all())?;
+        drop(file);
         fs::rename(&side, &path)
     }
 

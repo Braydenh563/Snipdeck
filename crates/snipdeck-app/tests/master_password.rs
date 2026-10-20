@@ -30,7 +30,7 @@ use snipdeck_store::{ItemRepo, Store, crypto::KdfParams};
 
 #[path = "support/mod.rs"]
 mod support;
-use support::{SharedProvider, assert_no_plaintext};
+use support::{MasterSteps as _, SharedProvider, assert_no_plaintext};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 
@@ -897,6 +897,52 @@ fn a_plain_editor_stays_open_through_the_lock() {
     r.advance(IDLE_LOCK);
     assert!(r.ctl.lock_if_idle());
     assert!(r.ctl.item_editor_open(), "nothing secret in it");
+}
+
+#[test]
+fn erasing_the_library_closes_the_item_editor_and_forgets_the_old_index() {
+    let mut r = rig(Tier::Pro);
+    let before = r.ctl.view().rows.len();
+    assert!(before > 0, "the demo library has rows");
+    r.ctl.open_new_item(Origin::Main);
+    assert!(r.ctl.item_editor_open());
+    assert!(r.ctl.erase_library(r.data.path(), false));
+    assert!(
+        !r.ctl.item_editor_open(),
+        "the editor of the old library is closed"
+    );
+    r.ctl.set_query("a");
+    assert_eq!(
+        r.ctl.view().rows.len(),
+        0,
+        "a search must not find items of the erased library"
+    );
+}
+
+#[test]
+fn the_recent_gate_is_closed_right_after_unlocking_a_library_with_a_password() {
+    use snipdeck_platform::clipboard_watch::WatchGate;
+    let r = with_password(Tier::Pro);
+    let Rig {
+        ctl,
+        clock,
+        provider,
+        data,
+        ..
+    } = r;
+    drop(ctl);
+    let mut ctl = start(Tier::Pro, &provider, data.path(), &clock);
+    assert!(
+        ctl.library_locked(),
+        "a password is set: locked after a restart"
+    );
+    ctl.update_settings(|s| s.recent_history = true);
+    let gate = WatchGate::new();
+    ctl.set_recent_gate(gate.clone());
+    gate.set(true);
+    ctl.unlock_library();
+    assert!(ctl.library_locked());
+    assert!(!gate.is_open(), "locked: the listener reads nothing");
 }
 
 #[test]

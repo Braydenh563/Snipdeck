@@ -409,6 +409,7 @@ export component PickerWindow inherits Window {
                     visible: root.rows.length > 0;
 
                     for row[i] in root.rows: ItemCard {
+                        has-menu: false;
                         height: root.row-h;
                         variant: ItemCardVariant.compact;
                         kind: row.kind;

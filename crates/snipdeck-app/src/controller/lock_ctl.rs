@@ -255,73 +255,6 @@ where
         }
     }
 
-    /// Opens the library with the master password typed in the unlock window. On success the
-    /// window is done and the Panel shows the sensitive items again; a wrong password changes
-    /// nothing and the window stays for another try. Waits for the key derivation: a window
-    /// uses [`begin_unlock_with_password`](Self::begin_unlock_with_password) instead.
-    ///
-    /// # Errors
-    ///
-    /// [`MasterProblem::CurrentEmpty`], [`MasterProblem::WrongPassword`],
-    /// [`MasterProblem::Unavailable`] or [`MasterProblem::Failed`].
-    pub fn unlock_with_password(&mut self, password: &str) -> Result<(), MasterProblem> {
-        let job = self.begin_unlock_with_password(password)?;
-        self.finish_inline(job)
-    }
-
-    /// Sets a master password on a library that has none (a Supporter feature). Makes the key if
-    /// there is none yet, which encrypts any sensitive item still stored as plain text. The
-    /// library stays open for this session. Waits for the key derivation: a window uses
-    /// [`begin_set_master_password`](Self::begin_set_master_password) instead.
-    ///
-    /// # Errors
-    ///
-    /// [`MasterProblem::SupporterOnly`] on Free, [`MasterProblem::Unavailable`] without key
-    /// protection, [`MasterProblem::TooShort`], [`MasterProblem::Mismatch`], or
-    /// [`MasterProblem::Failed`] (a password is already set, or the store refused).
-    pub fn set_master_password(&mut self, new: &str, again: &str) -> Result<(), MasterProblem> {
-        let job = self.begin_set_master_password(new, again)?;
-        self.finish_inline(Some(job))
-    }
-
-    /// Changes the master password. `current` must be the one set. Waits for the key
-    /// derivation: a window uses [`begin_change_master_password`](Self::begin_change_master_password)
-    /// instead.
-    ///
-    /// # Errors
-    ///
-    /// [`MasterProblem::CurrentEmpty`], [`MasterProblem::WrongPassword`],
-    /// [`MasterProblem::TooShort`], [`MasterProblem::Mismatch`], [`MasterProblem::Unavailable`]
-    /// or [`MasterProblem::Failed`] (none is set, or the store refused). Nothing changes on error.
-    pub fn change_master_password(
-        &mut self,
-        current: &str,
-        new: &str,
-        again: &str,
-    ) -> Result<(), MasterProblem> {
-        let job = self.begin_change_master_password(current, new, again)?;
-        self.finish_inline(Some(job))
-    }
-
-    /// Removes the master password. `current` must be the one set. The key stays wrapped by the
-    /// OS, as on the Free plan, and no item is re-encrypted. Waits for the key derivation: a
-    /// window uses [`begin_remove_master_password`](Self::begin_remove_master_password) instead.
-    ///
-    /// # Errors
-    ///
-    /// As [`change_master_password`](Self::change_master_password), minus the new password's.
-    pub fn remove_master_password(&mut self, current: &str) -> Result<(), MasterProblem> {
-        let job = self.begin_remove_master_password(current)?;
-        self.finish_inline(Some(job))
-    }
-
-    fn finish_inline(&mut self, job: Option<MasterJob>) -> Result<(), MasterProblem> {
-        match job {
-            Some(job) => self.finish_master(job.run()),
-            None => Ok(()),
-        }
-    }
-
     // ---- Steps in three parts ------------------------------------------------------------------
     //
     // `begin_*` checks and gathers (fast), the job derives keys (slow, `MasterJob::run`, anywhere),
@@ -355,14 +288,14 @@ where
         job.stamped(self.lock.generation)
     }
 
-    /// The first part of [`unlock_with_password`](Self::unlock_with_password). `Ok(None)`: the
+    /// The first part of unlocking with the master password. `Ok(None)`: the
     /// library is open already, so there is nothing to derive.
     ///
     /// # Errors
     ///
-    /// As [`unlock_with_password`](Self::unlock_with_password), except a wrong password, which
-    /// only [`finish_master`](Self::finish_master) can tell; [`MasterProblem::Failed`] while
-    /// another step is running.
+    /// [`MasterProblem::CurrentEmpty`], [`MasterProblem::Unavailable`] or
+    /// [`MasterProblem::Failed`] (another step is running). A wrong password only
+    /// [`finish_master`](Self::finish_master) can tell.
     pub fn begin_unlock_with_password(
         &mut self,
         password: &str,
@@ -381,12 +314,14 @@ where
         Ok(Some(self.start(job)))
     }
 
-    /// The first part of [`set_master_password`](Self::set_master_password).
+    /// The first part of setting a master password.
     ///
     /// # Errors
     ///
-    /// As [`set_master_password`](Self::set_master_password); [`MasterProblem::Failed`] while
-    /// another step is running.
+    /// [`MasterProblem::SupporterOnly`] on Free, [`MasterProblem::Unavailable`] without key
+    /// protection, [`MasterProblem::TooShort`], [`MasterProblem::Mismatch`], or
+    /// [`MasterProblem::Failed`] (a password is already set, the store refused, or another step
+    /// is running).
     pub fn begin_set_master_password(
         &mut self,
         new: &str,
@@ -423,13 +358,14 @@ where
         Ok(self.start(job))
     }
 
-    /// The first part of [`change_master_password`](Self::change_master_password).
+    /// The first part of changing the master password.
     ///
     /// # Errors
     ///
-    /// As [`change_master_password`](Self::change_master_password), except a wrong current
-    /// password, which only [`finish_master`](Self::finish_master) can tell;
-    /// [`MasterProblem::Failed`] while another step is running.
+    /// [`MasterProblem::CurrentEmpty`], [`MasterProblem::TooShort`], [`MasterProblem::Mismatch`],
+    /// [`MasterProblem::Unavailable`] or [`MasterProblem::Failed`] (none is set, or another step
+    /// is running). A wrong current password only [`finish_master`](Self::finish_master) can
+    /// tell.
     pub fn begin_change_master_password(
         &mut self,
         current: &str,
@@ -451,13 +387,13 @@ where
         Ok(self.start(job))
     }
 
-    /// The first part of [`remove_master_password`](Self::remove_master_password).
+    /// The first part of removing the master password.
     ///
     /// # Errors
     ///
-    /// As [`remove_master_password`](Self::remove_master_password), except a wrong current
-    /// password, which only [`finish_master`](Self::finish_master) can tell;
-    /// [`MasterProblem::Failed`] while another step is running.
+    /// [`MasterProblem::CurrentEmpty`], [`MasterProblem::Unavailable`] or
+    /// [`MasterProblem::Failed`] (none is set, or another step is running). A wrong current
+    /// password only [`finish_master`](Self::finish_master) can tell.
     pub fn begin_remove_master_password(
         &mut self,
         current: &str,
@@ -646,6 +582,7 @@ where
         // A change or removal still being derived must not reopen what is being locked.
         self.invalidate_master();
         self.store.lock_key_ring();
+        self.index_cache.forget_recent();
         self.revealed = None;
         self.panel_revealed = None;
         self.sync_recent_gate();

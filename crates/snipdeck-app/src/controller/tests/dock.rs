@@ -9,6 +9,7 @@ use crate::{
     dock::{DockEvent, TICK},
     frame,
     settings::{DockEdge, DockSettings, DockTrigger},
+    toast::ToastMessage,
 };
 
 /// The frame the Panel has floating before it is docked.
@@ -411,6 +412,7 @@ fn each_monitor_remembers_its_own_edge() {
             w: 1280,
             h: 984,
         },
+        taskbar: None,
         scale: 1.0,
     };
     let there = Rect {
@@ -471,4 +473,97 @@ fn dock_settings_changes_are_written_with_the_other_settings() {
     });
     assert_eq!(w.ctl.settings().dock.trigger, DockTrigger::Both);
     assert_eq!(w.ctl.settings().dock.hover_delay_ms, 2000, "clamped");
+}
+
+/// `display()` with the taskbar on `edge`.
+fn taskbar_display(edge: DockEdge) -> frame::Monitor {
+    frame::Monitor {
+        taskbar: Some(edge),
+        ..display()
+    }
+}
+
+#[test]
+fn the_kebab_names_the_nearest_edge_and_never_the_taskbars() {
+    let mut w = floating(DockTrigger::Both);
+    // O32: lower middle, a little left of centre, over a bottom taskbar. The bottom is the
+    // nearest edge but the taskbar's: the row offers the left edge and docks there, once.
+    let lower_middle = Rect {
+        x: 200,
+        y: 740,
+        w: 320,
+        h: 300,
+    };
+    w.ctl
+        .frame_changed(&taskbar_display(DockEdge::Bottom), lower_middle);
+    assert_eq!(w.ctl.dock_target(), Some(DockEdge::Left));
+    assert_eq!(w.ctl.view().dock_target, Some(DockEdge::Left));
+    let row = APP_MENU
+        .iter()
+        .position(|e| *e == AppMenuEntry::Dock)
+        .expect("in menu");
+    w.ctl.open_app_menu();
+    assert_eq!(w.ctl.choose_app_menu(row), place(open_rect(DockEdge::Left)));
+    assert_eq!(w.ctl.dock_edge(), Some(DockEdge::Left));
+    assert_eq!(w.ctl.view().dock_target, None, "docked: the row undocks");
+    // Without a taskbar the same place docks to the bottom.
+    w.ctl.dock_to(None);
+    w.ctl.take_pending();
+    w.ctl.frame_changed(&display(), lower_middle);
+    assert_eq!(w.ctl.dock_target(), Some(DockEdge::Bottom));
+}
+
+#[test]
+fn docking_to_the_taskbar_edge_is_refused_with_a_toast() {
+    let mut w = floating(DockTrigger::Both);
+    w.ctl
+        .frame_changed(&taskbar_display(DockEdge::Bottom), FLOATING);
+    w.ctl.dock_to(Some(DockEdge::Bottom));
+    assert_eq!(w.ctl.dock_edge(), None);
+    assert_eq!(w.ctl.take_pending(), Vec::new());
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::TaskbarEdge
+    );
+    w.ctl.dock_to(Some(DockEdge::Top));
+    assert_eq!(w.ctl.dock_edge(), Some(DockEdge::Top));
+}
+
+#[test]
+fn a_drag_released_near_an_allowed_edge_docks_there_and_near_the_taskbar_does_not() {
+    let mut w = floating(DockTrigger::Both);
+    let m = taskbar_display(DockEdge::Bottom);
+    w.ctl.frame_changed(&m, FLOATING);
+    // A move that is not a drag (a restore) previews nothing, and settling changes nothing.
+    let near_right = Rect { x: 1590, ..FLOATING };
+    w.ctl.frame_moved(&m, near_right);
+    assert_eq!(w.ctl.view().dock_preview, None);
+    assert_eq!(w.ctl.frame_settled(&m, near_right), Vec::new());
+    assert_eq!(w.ctl.dock_edge(), None);
+
+    // A drag: the preview follows the frame, and the drop docks to the previewed edge.
+    assert_eq!(w.ctl.drag(), [Effect::DragWindow]);
+    w.ctl.frame_moved(&m, Rect { x: 900, ..FLOATING });
+    assert_eq!(w.ctl.view().dock_preview, None, "away from every edge");
+    w.ctl.frame_moved(&m, near_right);
+    assert_eq!(w.ctl.view().dock_preview, Some(DockEdge::Right));
+    assert_eq!(
+        w.ctl.frame_settled(&m, near_right),
+        place(open_rect(DockEdge::Right))
+    );
+    assert_eq!(w.ctl.dock_edge(), Some(DockEdge::Right));
+    assert_eq!(w.ctl.view().dock_preview, None);
+
+    // Dragged off again and dropped at the bottom, over the taskbar: it stays floating.
+    assert_eq!(w.ctl.drag(), [Effect::DragWindow]);
+    let near_bottom = Rect {
+        x: 800,
+        y: 535,
+        ..FLOATING
+    };
+    w.ctl.frame_moved(&m, near_bottom);
+    assert_eq!(w.ctl.dock_edge(), None, "the first move of a drag undocks");
+    assert_eq!(w.ctl.view().dock_preview, None);
+    assert_eq!(w.ctl.frame_settled(&m, near_bottom), Vec::new());
+    assert_eq!(w.ctl.dock_edge(), None);
 }

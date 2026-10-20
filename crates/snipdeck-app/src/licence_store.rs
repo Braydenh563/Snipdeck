@@ -3,7 +3,11 @@
 //! (`snipdeck_core::licence`) every time Snipdeck starts, so the file is never trusted: a missing,
 //! damaged or foreign key simply means the Free plan.
 
-use std::{fs, io, path::Path};
+use std::{
+    fs,
+    io::{self, Read as _, Write as _},
+    path::Path,
+};
 
 use snipdeck_core::{
     Entitlements, Timestamp,
@@ -12,13 +16,26 @@ use snipdeck_core::{
 
 use crate::toast::LicenceProblem;
 
+/// The most a licence key file may weigh: a key is a few hundred characters, so a bigger file
+/// is not one (and is not read whole into memory).
+pub const MAX_TOKEN_BYTES: u64 = 16 * 1024;
+
 /// The file's name in the data folder.
 pub const FILE: &str = "licence.key";
 
 /// The key text saved in `folder`, if there is a readable one.
 #[must_use]
 pub fn read(folder: &Path) -> Option<String> {
-    let text = fs::read_to_string(folder.join(FILE)).ok()?;
+    let file = fs::File::open(folder.join(FILE)).ok()?;
+    let mut bytes = Vec::new();
+    // One byte over the cap tells a file that is too big from one that is exactly the cap.
+    file.take(MAX_TOKEN_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > MAX_TOKEN_BYTES {
+        return None;
+    }
+    let text = String::from_utf8(bytes).ok()?;
     let text = text.trim();
     (!text.is_empty()).then(|| text.to_owned())
 }
@@ -31,12 +48,17 @@ pub fn read(folder: &Path) -> Option<String> {
 /// The file could not be written.
 pub fn write(folder: &Path, token: &str) -> io::Result<()> {
     let target = folder.join(FILE);
-    let part = folder.join(format!("{FILE}.part"));
     fs::create_dir_all(folder)?;
-    fs::write(&part, token.trim())?;
-    fs::rename(&part, &target).inspect_err(|_| {
-        let _ = fs::remove_file(&part);
-    })
+    let (mut file, part) = crate::settings_store::create_temp(folder, FILE)?;
+    file.write_all(token.trim().as_bytes())
+        .and_then(|()| file.sync_all())
+        .and_then(|()| {
+            drop(file);
+            fs::rename(&part, &target)
+        })
+        .inspect_err(|_| {
+            let _ = fs::remove_file(&part);
+        })
 }
 
 /// What the saved key entitles the user to: Supporter for a good key, Free for none or a bad one.
@@ -100,6 +122,21 @@ mod tests {
     }
 
     #[test]
+    fn a_key_file_over_the_cap_is_not_read() {
+        let dir = tempfile::tempdir().expect("dir");
+        let big = "A".repeat(usize::try_from(MAX_TOKEN_BYTES).unwrap() + 1);
+        fs::write(dir.path().join(FILE), &big).expect("write");
+        assert_eq!(read(dir.path()), None, "one byte over");
+        let exact = "A".repeat(usize::try_from(MAX_TOKEN_BYTES).unwrap());
+        fs::write(dir.path().join(FILE), &exact).expect("write");
+        assert_eq!(
+            read(dir.path()).as_deref(),
+            Some(exact.as_str()),
+            "at the cap"
+        );
+    }
+
+    #[test]
     fn a_saved_good_key_is_pro_on_the_next_start() {
         let Some(key) = good_key() else { return };
         let dir = tempfile::tempdir().expect("dir");
@@ -107,7 +144,9 @@ mod tests {
         assert_eq!(read(dir.path()).as_deref(), Some(key.as_str()));
         assert_eq!(entitlements(dir.path(), now()).tier(), Tier::Pro);
         assert!(
-            !dir.path().join(format!("{FILE}.part")).exists(),
+            fs::read_dir(dir.path())
+                .unwrap()
+                .all(|e| e.unwrap().file_name() == FILE),
             "no leftover"
         );
     }

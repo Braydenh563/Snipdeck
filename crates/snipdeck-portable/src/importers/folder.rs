@@ -65,7 +65,18 @@ pub fn import_folder<L: Library>(
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
-        let (files, _) = list(&dir, &mut report)?;
+        // One unreadable subfolder is a warning, like an unreadable file; the rest still import.
+        let files = match list(&dir, &mut report) {
+            Ok((files, _)) => files,
+            Err(Error::File { source, .. }) => {
+                report.warn(Warning::Unreadable {
+                    name: label,
+                    reason: source.to_string(),
+                });
+                continue;
+            }
+            Err(e) => return Err(e),
+        };
         let list_name = board_name(&label, "Notes")?;
         lists.extend(read_list(
             &mut state,

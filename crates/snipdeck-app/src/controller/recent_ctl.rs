@@ -110,10 +110,18 @@ where
     /// switched-off inbox shows nothing.
     #[must_use]
     pub fn recent_entries(&self) -> Vec<RecentEntry> {
+        self.recent_shared().to_vec()
+    }
+
+    /// [`Controller::recent_entries`] without copying: read from the store only when it was
+    /// written since the last call.
+    fn recent_shared(&self) -> std::rc::Rc<Vec<RecentEntry>> {
         if !self.settings.recent_history || self.library_locked() {
-            return Vec::new();
+            // Nothing decrypted is kept while the inbox is hidden.
+            self.index_cache.forget_recent();
+            return std::rc::Rc::default();
         }
-        self.store.recent().unwrap_or_default()
+        self.index_cache.recent(&self.store)
     }
 
     /// "Save to…": saves entry `id` into the `target`th list of [`RecentView::targets`].
@@ -126,31 +134,43 @@ where
     /// What the Panel shows for the inbox; `None` while it is off.
     pub(super) fn recent_view(&self) -> Option<RecentView> {
         if !self.settings.recent_history {
+            self.index_cache.forget_recent();
             return None;
         }
         let now = self.clock.now();
-        Some(RecentView {
-            open: self.session.recent_open,
-            paused: self.session.history_paused,
-            locked: self.library_locked(),
-            rows: self
-                .recent_entries()
+        // The Panel lists the rows and the "Save to…" targets only while the clock tab is
+        // open: a closed inbox decrypts nothing and asks the store for no lists.
+        let open = self.session.recent_open;
+        let (rows, targets) = if open {
+            let rows = self
+                .recent_shared()
                 .iter()
                 .filter(|e| matches_query(&e.text, self.model.query()))
                 .map(|e| row_view(e, now))
-                .collect(),
-            targets: self.save_targets(),
+                .collect();
+            (rows, self.save_targets())
+        } else {
+            (Vec::new(), Vec::new())
+        };
+        Some(RecentView {
+            open,
+            paused: self.session.history_paused,
+            locked: self.library_locked(),
+            rows,
+            targets,
         })
     }
 
     /// The lists "Save to…" offers: every list, labelled with its board's name when there are
     /// several boards.
     pub(super) fn save_targets(&self) -> Vec<SaveTarget> {
-        let boards = self.store.boards().unwrap_or_default();
-        let several = boards.len() > 1;
+        let Ok(snapshot) = self.index_cache.snapshot(&self.store) else {
+            return Vec::new();
+        };
+        let several = snapshot.boards.len() > 1;
         let mut targets = Vec::new();
-        for board in &boards {
-            for list in self.store.lists(board.id).unwrap_or_default() {
+        for (board, lists) in &snapshot.boards {
+            for list in lists {
                 let label = if several {
                     format!("{} \u{203a} {}", board.name.as_str(), list.name.as_str())
                 } else {

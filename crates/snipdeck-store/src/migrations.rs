@@ -19,7 +19,7 @@ pub(crate) const APPLICATION_ID: i32 = 0x534E_444B;
 /// One forward step of the schema.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Migration {
-    /// The version the database is at after this step; versions are 1, 2, 3, 4 without gaps.
+    /// The version the database is at after this step; versions are 1, 2, 3, 4, 5, 6 without gaps.
     pub version: u32,
     /// Short description, for error messages.
     pub name: &'static str,
@@ -59,6 +59,12 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         version: 5,
         name: "recent inbox encrypted at rest",
         sql: crate::recent::V5,
+        post: None,
+    },
+    Migration {
+        version: 6,
+        name: "previous key record kept on replacement",
+        sql: schema::V6,
         post: None,
     },
 ];
@@ -187,20 +193,41 @@ fn run_steps(conn: &mut Connection, migrations: &[Migration], current: u32) -> R
     Ok(())
 }
 
-/// Copies the database to `<file>.pre-v<from>.bak`, replacing an older copy.
+/// Copies the database to `<file>.pre-v<from>.bak`, replacing an older copy. The new copy is
+/// written beside it and renamed over the old one, so a failed copy leaves the old one.
 fn write_backup(conn: &Connection, path: &Path, from: u32) -> Result<()> {
     let mut name = path.as_os_str().to_owned();
     name.push(format!(".pre-v{from}.bak"));
     let target = std::path::PathBuf::from(name);
-    match std::fs::remove_file(&target) {
+    let mut temp_name = target.as_os_str().to_owned();
+    temp_name.push(".tmp");
+    let temp = std::path::PathBuf::from(temp_name);
+    // `VACUUM INTO` needs a file that does not exist; this one is ours, from an earlier crash.
+    match std::fs::remove_file(&temp) {
         Ok(()) => {}
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
         Err(e) => return Err(e.into()),
     }
-    let target = target.to_string_lossy().into_owned();
-    conn.execute("VACUUM INTO ?1", [&target])?;
+    let copied = conn
+        .execute("VACUUM INTO ?1", [&temp.to_string_lossy().into_owned()])
+        .map_err(Error::from);
+    if let Err(e) = copied {
+        let _ = std::fs::remove_file(&temp);
+        return Err(e);
+    }
     if from < 5 {
-        scrub_or_delete(Path::new(&target));
+        scrub_or_delete(&temp);
+    }
+    if !temp.exists() {
+        // Deleted because it could not be scrubbed: the old copy is just as plain, so it goes too.
+        return match std::fs::remove_file(&target) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.into()),
+            _ => Ok(()),
+        };
+    }
+    if let Err(e) = std::fs::rename(&temp, &target) {
+        let _ = std::fs::remove_file(&temp);
+        return Err(e.into());
     }
     Ok(())
 }
@@ -260,14 +287,14 @@ mod tests {
     use rusqlite::params;
 
     const NEXT_ADD_COLUMN: Migration = Migration {
-        version: 6,
+        version: 7,
         name: "add boards.colour",
         sql: "ALTER TABLE boards ADD COLUMN colour TEXT;",
         post: None,
     };
 
     const NEXT_BROKEN: Migration = Migration {
-        version: 6,
+        version: 7,
         name: "broken",
         sql: "ALTER TABLE boards ADD COLUMN colour TEXT; THIS IS NOT SQL;",
         post: None,
@@ -338,8 +365,8 @@ mod tests {
 
         let all = with_next(NEXT_ADD_COLUMN);
         let outcome = migrate(&mut conn, &all, Path::new(":memory:"), false).unwrap();
-        assert_eq!(outcome, Outcome { from: 5, to: 6 });
-        assert_eq!(version(&conn), 6);
+        assert_eq!(outcome, Outcome { from: 6, to: 7 });
+        assert_eq!(version(&conn), 7);
         let (name, colour): (String, Option<String>) = conn
             .query_row("SELECT name, colour FROM boards", [], |r| {
                 Ok((r.get(0)?, r.get(1)?))
@@ -365,7 +392,7 @@ mod tests {
             matches!(
                 err,
                 Error::Migration {
-                    version: 6,
+                    version: 7,
                     name: "broken",
                     source: Some(_),
                     ..
@@ -377,7 +404,7 @@ mod tests {
             std::error::Error::source(&err).is_some(),
             "the cause is kept"
         );
-        assert_eq!(version(&conn), 5);
+        assert_eq!(version(&conn), 6);
         // The half-applied ALTER TABLE was undone, and the data is intact.
         assert!(conn.prepare("SELECT colour FROM boards").is_err());
         let boards: i64 = conn
@@ -395,7 +422,7 @@ mod tests {
         let mut conn = fresh();
         migrate(&mut conn, MIGRATIONS, Path::new(":memory:"), false).unwrap();
         let dangling = Migration {
-            version: 6,
+            version: 7,
             name: "orphan a list",
             sql: "INSERT INTO lists (id, board_id, name, list_view, list_sort, rank, created_at, updated_at)
                   VALUES (zeroblob(16), zeroblob(16), 'L', 'compact', 'manual', 1, 0, 0);",
@@ -409,10 +436,10 @@ mod tests {
         )
         .unwrap_err();
         assert!(
-            matches!(err, Error::Migration { version: 6, .. }),
+            matches!(err, Error::Migration { version: 7, .. }),
             "{err:?}"
         );
-        assert_eq!(version(&conn), 5);
+        assert_eq!(version(&conn), 6);
     }
 
     #[test]
@@ -428,8 +455,8 @@ mod tests {
             matches!(
                 err,
                 Error::SchemaTooNew {
-                    found: 6,
-                    supported: 5
+                    found: 7,
+                    supported: 6
                 }
             ),
             "{err:?}"
@@ -439,7 +466,7 @@ mod tests {
             message.contains("newer Snipdeck") && message.contains("update"),
             "{message}"
         );
-        assert_eq!(version(&conn), 6);
+        assert_eq!(version(&conn), 7);
     }
 
     #[test]
@@ -473,10 +500,10 @@ mod tests {
                 outcome,
                 Outcome {
                     from: u32::try_from(start).unwrap(),
-                    to: 5
+                    to: 6
                 }
             );
-            assert_eq!(version(&conn), 5);
+            assert_eq!(version(&conn), 6);
             for sql in [
                 "SELECT label FROM items",
                 "SELECT icon FROM lists",
@@ -498,14 +525,14 @@ mod tests {
         let mut conn = Connection::open(&path).unwrap();
         migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
         assert!(
-            !dir.path().join("snipdeck.db.pre-v5.bak").exists(),
+            !dir.path().join("snipdeck.db.pre-v6.bak").exists(),
             "nothing to back up on creation"
         );
         insert_board(&conn);
 
         migrate(&mut conn, &with_next(NEXT_ADD_COLUMN), &path, true).unwrap();
-        let backup = Connection::open(dir.path().join("snipdeck.db.pre-v5.bak")).unwrap();
-        assert_eq!(version(&backup), 5);
+        let backup = Connection::open(dir.path().join("snipdeck.db.pre-v6.bak")).unwrap();
+        assert_eq!(version(&backup), 6);
         let boards: i64 = backup
             .query_row("SELECT count(*) FROM boards", [], |r| r.get(0))
             .unwrap();
@@ -547,7 +574,7 @@ mod tests {
         migrate(&mut conn, MIGRATIONS, &path, true).unwrap();
         assert_eq!(entries(&v3), 0, "scrubbed");
         assert!(!v4.exists(), "a copy that cannot be scrubbed is deleted");
-        assert_eq!(version(&conn), 5, "and the open went on");
+        assert_eq!(version(&conn), 6, "and the open went on");
     }
 
     #[test]
@@ -575,6 +602,26 @@ mod tests {
         assert!(!broken.exists());
     }
 
+    #[test]
+    fn a_failed_backup_keeps_the_previous_rollback_copy() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("snipdeck.db");
+        let conn = Connection::open(&path).unwrap();
+        conn.execute_batch("CREATE TABLE t (x); PRAGMA user_version = 6;")
+            .unwrap();
+        let old = dir.path().join("snipdeck.db.pre-v6.bak");
+        std::fs::write(&old, b"the previous copy").unwrap();
+        // A directory sits where the new copy is built, so the copy cannot be made.
+        std::fs::create_dir(dir.path().join("snipdeck.db.pre-v6.bak.tmp")).unwrap();
+        assert!(write_backup(&conn, &path, 6).is_err());
+        assert_eq!(std::fs::read(&old).unwrap(), b"the previous copy");
+
+        std::fs::remove_dir(dir.path().join("snipdeck.db.pre-v6.bak.tmp")).unwrap();
+        write_backup(&conn, &path, 6).unwrap();
+        assert_eq!(version(&Connection::open(&old).unwrap()), 6);
+        assert!(!dir.path().join("snipdeck.db.pre-v6.bak.tmp").exists());
+    }
+
     /// A real file written by the released version-1 schema (see `tests/fixture.rs`).
     const V1_FIXTURE: &[u8] = include_bytes!("../tests/fixtures/v1.db");
 
@@ -589,7 +636,7 @@ mod tests {
         // A table rebuild, the migration shape that needs foreign keys off: widen the
         // `list_view` check by copying `lists` into a new table.
         let rebuild = Migration {
-            version: 6,
+            version: 7,
             name: "rebuild lists",
             sql: "CREATE TABLE lists_new (
                       id BLOB NOT NULL PRIMARY KEY CHECK (length(id) = 16),
@@ -623,7 +670,7 @@ mod tests {
         let before = counts(&conn);
         assert_eq!(before, [1, 1, 3, 4, 1, 1]);
         let outcome = migrate(&mut conn, &with_next(rebuild), &path, true).unwrap();
-        assert_eq!(outcome, Outcome { from: 1, to: 6 });
+        assert_eq!(outcome, Outcome { from: 1, to: 7 });
         assert_eq!(counts(&conn), before);
         let items_still_reference_the_list: i64 = conn
             .query_row(

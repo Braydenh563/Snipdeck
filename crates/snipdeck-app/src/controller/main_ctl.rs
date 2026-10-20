@@ -414,3 +414,21 @@ fn restore_failed(error: &snipdeck_store::Error) -> Toast {
         failed()
     }
 }
+
+impl<C, K, T> Controller<snipdeck_store::Store, C, K, T>
+where
+    C: Clipboard + ClipboardText,
+    K: Keyboard,
+    T: Timing,
+{
+    /// Sweeps blob files nothing uses that are older than `grace` (the daily maintenance job).
+    /// Returns how many files went.
+    ///
+    /// # Errors
+    ///
+    /// The store failing to read.
+    pub fn sweep_blobs(&mut self, grace: std::time::Duration) -> snipdeck_store::Result<usize> {
+        let report = self.store.gc_blobs(grace)?;
+        Ok(report.blobs + report.leftovers)
+    }
+}
