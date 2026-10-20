@@ -8,7 +8,7 @@
 use std::{collections::BTreeMap, time::Duration};
 
 use snipdeck_core::{
-    BoardId, Entitlements, Feature, ItemId, ListId, Timestamp, UseMode, UseOutcome,
+    BoardId, Entitlements, Feature, ItemId, ListId, Placement, Timestamp, UseMode, UseOutcome,
     template::{Locale, Template, TimeZone},
 };
 use snipdeck_platform::{
@@ -1130,6 +1130,33 @@ where
         }
     }
 
+    /// Row `row` of the Panel was dropped on tab `tab`: the item goes to the end of that list.
+    pub fn panel_drop_on_tab(&mut self, row: usize, tab: usize) {
+        let Some(item) = self.model.rows().get(row).map(|r| r.id) else {
+            return;
+        };
+        let Some(target) = self.model.tabs().into_iter().nth(tab) else {
+            return;
+        };
+        if self.store.item(item).is_ok_and(|i| i.list_id == target.id) {
+            return;
+        }
+        match self.store.move_item(item, target.id, Placement::Last) {
+            Ok(()) => {
+                self.library_changed();
+                if self.refresh_panel().is_err() {
+                    self.show_toast(failed());
+                    return;
+                }
+                self.show_toast(neutral(ToastMessage::ItemsMoved {
+                    count: 1,
+                    list: target.name,
+                }));
+            }
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
     /// Enter or a click on row `index`: uses it with `mode`.
     pub fn activate_row(&mut self, index: usize, mode: UseMode) -> UseResult {
         let Some(id) = self.model.rows().get(index).map(|r| r.id) else {
@@ -1365,15 +1392,19 @@ where
     /// default list (the list the Panel shows), and says so in a toast.
     pub fn quick_capture(&mut self) {
         let text = self.services.clipboard.read_text();
+        self.save_text(text.as_deref());
+    }
+
+    /// Text dropped on the Panel: saved like a capture, at the top of the list the Panel shows.
+    pub fn panel_drop_text(&mut self, text: &str) {
+        self.save_text(Some(text));
+    }
+
+    fn save_text(&mut self, text: Option<&str>) {
         let current = self.model.list().map(|l| l.id);
         let toast = match capture::default_list(&self.store, current) {
             Ok(Some(list)) => {
-                match capture::capture_text(
-                    &mut self.store,
-                    &list,
-                    text.as_deref(),
-                    self.clock.now(),
-                ) {
+                match capture::capture_text(&mut self.store, &list, text, self.clock.now()) {
                     Ok(Captured::Saved { list, .. }) => {
                         if self.refresh_panel().is_err() {
                             self.show_toast(failed());

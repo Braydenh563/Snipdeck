@@ -28,7 +28,7 @@ use snipdeck_ui as ui;
 use crate::{
     accent::Accent,
     binding::{
-        Loggable, Shown, arm_toast, extension_of, index, item_kind_of, model, redraw_all,
+        Loggable, Payload, Shown, arm_toast, extension_of, index, item_kind_of, model, redraw_all,
         register_redraw, to_i32,
     },
     controller::{
@@ -36,7 +36,7 @@ use crate::{
     },
     host::ClipboardText,
     item_editor::Origin,
-    main_window::{EditorKind, EditorView, Section, SelectMode, ViewMode},
+    main_window::{EditorKind, EditorView, Key, Section, SelectMode, ViewMode},
     native_window::{
         fit_logical, fit_to_screen, place_of, place_over_owner, restore_place, size_before_show,
     },
@@ -640,6 +640,59 @@ where
             .main_reorder_items(isize::try_from(d).unwrap_or(0)));
         wire!(on_list_reorder_requested, |ctl, i, d| ctl
             .main_reorder_list(index(i), isize::try_from(d).unwrap_or(0)));
+        wire!(on_row_dropped, |ctl, from, onto| ctl
+            .main_drop_row(index(from), index(onto)));
+        wire!(on_row_dropped_on_list, |ctl, row, list| ctl
+            .main_drop_on_list(index(row), index(list)));
+        wire!(on_list_dropped, |ctl, from, onto| ctl
+            .main_drop_list(index(from), index(onto)));
+        {
+            let core = Rc::clone(&core);
+            window.on_row_payload(move |row| {
+                core.shown
+                    .borrow()
+                    .as_ref()
+                    .and_then(|s| s.rows.get(index(row)))
+                    .and_then(|r| match r.key {
+                        Key::Item(id) => Some(Payload::Item(id)),
+                        _ => None,
+                    })
+                    .map_or_else(slint::DataTransfer::default, Payload::into_transfer)
+            });
+        }
+        {
+            let core = Rc::clone(&core);
+            window.on_list_payload(move |list| {
+                core.shown
+                    .borrow()
+                    .as_ref()
+                    .and_then(|s| s.lists.get(index(list)))
+                    .map_or_else(slint::DataTransfer::default, |l| {
+                        Payload::List(l.id).into_transfer()
+                    })
+            });
+        }
+        {
+            let core = Rc::clone(&core);
+            window.on_payload_row(move |data| match Payload::of(&data) {
+                Some(Payload::Item(id)) => core.shown.borrow().as_ref().map_or(-1, |s| {
+                    s.rows
+                        .iter()
+                        .position(|r| r.key == Key::Item(id))
+                        .map_or(-1, to_i32)
+                }),
+                _ => -1,
+            });
+        }
+        {
+            let core = Rc::clone(&core);
+            window.on_payload_list(move |data| match Payload::of(&data) {
+                Some(Payload::List(id)) => core.shown.borrow().as_ref().map_or(-1, |s| {
+                    s.lists.iter().position(|l| l.id == id).map_or(-1, to_i32)
+                }),
+                _ => -1,
+            });
+        }
         wire_title_bar(window);
         wire!(on_new_item_requested, |ctl| ctl.open_new_item(Origin::Main));
         {
@@ -1011,6 +1064,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     if window.get_query().as_str() != screen.query {
         window.set_query(screen.query.as_str().into());
     }
+    window.set_rows_reorderable(screen.reorderable);
     if window.get_cursor() != to_i32(screen.cursor) {
         window.set_cursor(to_i32(screen.cursor));
     }

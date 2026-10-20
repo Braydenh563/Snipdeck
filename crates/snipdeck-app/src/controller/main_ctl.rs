@@ -115,7 +115,7 @@ pub struct TagChoice {
 #[derive(Debug, Clone, PartialEq)]
 #[allow(
     clippy::struct_excessive_bools,
-    reason = "one field per switch the window shows; they are independent flags, not a state"
+    reason = "one field per thing the window shows; they are independent flags, not a state"
 )]
 pub struct MainScreen {
     /// Dark theme.
@@ -161,6 +161,8 @@ pub struct MainScreen {
     pub query: String,
     /// The keyboard cursor.
     pub cursor: usize,
+    /// Rows can be dragged into a new place: the open list is in manual order and no search is running.
+    pub reorderable: bool,
     /// The rows.
     pub rows: Vec<Row>,
     /// How many rows are selected.
@@ -261,6 +263,7 @@ where
             label_filter: self.main.label_filter(),
             query: self.main.query().to_owned(),
             cursor: self.main.cursor(),
+            reorderable: self.main.reorderable(),
             selected_count: self.main.selected_count(),
             rows,
             use_label: self.model.use_label(),
@@ -820,7 +823,7 @@ where
         let Some(from) = order.iter().position(|i| *i == id) else {
             return;
         };
-        let Some((to, placement)) = reorder(&order, from, delta) else {
+        let Some((_, placement)) = reorder(&order, from, delta) else {
             return;
         };
         let done = self.store.move_item(id, list, placement);
@@ -828,7 +831,15 @@ where
         self.finish(&done);
         if moved {
             self.main_fresh();
-            self.main.set_cursor(to);
+            self.follow_moved_row(id);
+        }
+    }
+
+    /// Puts the cursor on item `id` among the rows now shown (a label filter can hide some of the
+    /// list, so its place in the list is not its row).
+    fn follow_moved_row(&mut self, id: ItemId) {
+        if let Some(at) = self.main.keys().iter().position(|k| *k == Key::Item(id)) {
+            self.main.set_cursor(at);
         }
     }
 
@@ -858,7 +869,7 @@ where
         let Some(delta) = b.checked_signed_diff(a) else {
             return;
         };
-        let Some((to, placement)) = reorder(&order, a, delta) else {
+        let Some((_, placement)) = reorder(&order, a, delta) else {
             return;
         };
         let done = self.store.move_item(moved, list, placement);
@@ -866,13 +877,16 @@ where
         self.finish(&done);
         if moved_ok {
             self.main_fresh();
-            self.main.set_cursor(to);
+            self.follow_moved_row(moved);
         }
     }
 
     /// A drag of row `row` ended on list `list` of the sidebar: the item goes to the end of it.
     pub fn main_drop_on_list(&mut self, row: usize, list: usize) {
         self.main_fresh();
+        if self.main.section() == Section::Trash {
+            return;
+        }
         let Some(Key::Item(id)) = self.main.keys().get(row).copied() else {
             return;
         };
