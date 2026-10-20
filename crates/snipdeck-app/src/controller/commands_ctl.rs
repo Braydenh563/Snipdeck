@@ -48,6 +48,9 @@ where
             Command::CopyItem => {
                 self.main_action(MainAction::Copy, cursor);
             }
+            Command::DuplicateItem => {
+                self.main_action(MainAction::Duplicate, cursor);
+            }
             Command::EditItem => {
                 self.main_action(MainAction::Edit, cursor);
             }

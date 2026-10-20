@@ -29,10 +29,10 @@ use super::key::DataKey;
 ///   only.
 /// * **Zeroize** every intermediate copy of `key` and of the unwrapped result; return the
 ///   result in [`Zeroizing`].
-/// * **Thread safety:** methods take `&self`; implementations should be `Send + Sync` so the
-///   app can share one behind an `Arc`.
+/// * **Thread safety:** methods take `&self`; implementations are `Send + Sync` so the app can
+///   share one behind an `Arc` and run a master password's slow key derivation on another thread.
 /// * Wrapping the same key twice may (and normally does) give different blobs.
-pub trait KeyProvider {
+pub trait KeyProvider: Send + Sync {
     /// Protects `key` for the current user and returns an opaque blob to store.
     ///
     /// # Errors

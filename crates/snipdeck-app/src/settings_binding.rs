@@ -36,7 +36,7 @@ use crate::{
     main_binding::{create_window, raise, set_look},
     native_window::fit_to_screen,
     settings::{DockEdge, DockTrigger, HotkeyAction, Hotkeys, Settings, Theme},
-    toast::{Toast, ToastKind, ToastMessage},
+    toast::{LicenceProblem, Toast, ToastKind, ToastMessage},
     wording::{self, LANGUAGE_NAMES, LANGUAGE_TAGS},
 };
 
@@ -255,32 +255,47 @@ pub fn without_hotkey(current: &Hotkeys, action: HotkeyAction) -> Hotkeys {
     next
 }
 
-/// Why a program name was not added to "Never paste into".
+/// The longest program file name the lists take.
+pub const MAX_PROGRAM_NAME: usize = 64;
+/// The most programs one list holds.
+pub const MAX_PROGRAMS: usize = 100;
+
+/// Why a program name was not added to "Never paste into" or "Never keep copies from".
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NoPasteRefusal {
+pub enum ProgramRefusal {
     /// Nothing was typed.
     Empty,
     /// A path, not a file name.
     HasPath,
     /// Already in the list (the list ignores case).
     Listed(String),
+    /// Longer than [`MAX_PROGRAM_NAME`] characters.
+    TooLong,
+    /// The list already holds [`MAX_PROGRAMS`].
+    Full,
 }
 
 /// `apps` with `typed` added, in the form the list keeps (trimmed, lower case).
 ///
 /// # Errors
 ///
-/// See [`NoPasteRefusal`].
-pub fn with_no_paste_app(apps: &[String], typed: &str) -> Result<Vec<String>, NoPasteRefusal> {
+/// See [`ProgramRefusal`].
+pub fn with_program(apps: &[String], typed: &str) -> Result<Vec<String>, ProgramRefusal> {
     let name = typed.trim().to_ascii_lowercase();
     if name.is_empty() {
-        return Err(NoPasteRefusal::Empty);
+        return Err(ProgramRefusal::Empty);
     }
     if name.contains(['/', '\\', ':']) {
-        return Err(NoPasteRefusal::HasPath);
+        return Err(ProgramRefusal::HasPath);
+    }
+    if name.chars().count() > MAX_PROGRAM_NAME {
+        return Err(ProgramRefusal::TooLong);
     }
     if apps.contains(&name) {
-        return Err(NoPasteRefusal::Listed(name));
+        return Err(ProgramRefusal::Listed(name));
+    }
+    if apps.len() >= MAX_PROGRAMS {
+        return Err(ProgramRefusal::Full);
     }
     let mut next = apps.to_vec();
     next.push(name);
@@ -403,11 +418,15 @@ pub(crate) fn hotkey_refusal_text(refusal: HotkeyRefusal, combo: &str) -> String
     }
 }
 
-fn no_paste_refusal_text(refusal: &NoPasteRefusal) -> String {
+fn program_refusal_text(refusal: &ProgramRefusal) -> String {
     match refusal {
-        NoPasteRefusal::Empty => String::new(),
-        NoPasteRefusal::HasPath => "Use just the program's file name, like notepad.exe.".into(),
-        NoPasteRefusal::Listed(name) => format!("{name} is already in the list."),
+        ProgramRefusal::Empty => String::new(),
+        ProgramRefusal::HasPath => "Use just the program's file name, like notepad.exe.".into(),
+        ProgramRefusal::Listed(name) => format!("{name} is already in the list."),
+        ProgramRefusal::TooLong => {
+            format!("Program names are at most {MAX_PROGRAM_NAME} characters.")
+        }
+        ProgramRefusal::Full => format!("The list holds at most {MAX_PROGRAMS} programs."),
     }
 }
 
@@ -514,8 +533,10 @@ struct PageView {
     clipboard_clear_secs: i32,
     no_paste_apps: Vec<String>,
     no_paste_error: String,
+    no_history_apps: Vec<String>,
+    no_history_error: String,
     pro: bool,
-    licence_error: String,
+    licence_error: Option<LicenceProblem>,
     /// 0 = no key protection on this machine, 1 = no master password, 2 = one is set.
     master_state: i32,
     master_locked: bool,
@@ -531,7 +552,8 @@ struct PageView {
 struct PageState {
     hotkey_conflicts: [String; 4],
     no_paste_error: String,
-    licence_error: String,
+    no_history_error: String,
+    licence_error: Option<LicenceProblem>,
     backups: Vec<BackupFile>,
     import: Option<PendingImport>,
 }
@@ -638,8 +660,10 @@ where
         clipboard_clear_secs: i32::try_from(settings.clipboard_clear_secs).unwrap_or(30),
         no_paste_apps: settings.no_paste_apps.clone(),
         no_paste_error: state.no_paste_error.clone(),
+        no_history_apps: settings.no_history_apps.clone(),
+        no_history_error: state.no_history_error.clone(),
         pro: controller.tier() == snipdeck_core::Tier::Pro,
-        licence_error: state.licence_error.clone(),
+        licence_error: state.licence_error,
         master_state: match controller.master_password_state() {
             MasterState::Unavailable => 0,
             MasterState::NotSet => 1,
@@ -838,13 +862,13 @@ where
 
     fn no_paste_added(self: &Rc<Self>, typed: &str) {
         let apps = self.controller.borrow().settings().no_paste_apps.clone();
-        match with_no_paste_app(&apps, typed) {
+        match with_program(&apps, typed) {
             Ok(next) => {
                 self.state.borrow_mut().no_paste_error.clear();
                 self.act(|ctl| ctl.update_settings(|s| s.no_paste_apps = next));
             }
             Err(refusal) => {
-                self.state.borrow_mut().no_paste_error = no_paste_refusal_text(&refusal);
+                self.state.borrow_mut().no_paste_error = program_refusal_text(&refusal);
                 redraw_all();
             }
         }
@@ -856,6 +880,33 @@ where
             ctl.update_settings(|s| {
                 if index < s.no_paste_apps.len() {
                     s.no_paste_apps.remove(index);
+                }
+            });
+        });
+    }
+
+    // ---- Programs the Recent inbox never keeps copies from -------------------------------------
+
+    fn no_history_added(self: &Rc<Self>, typed: &str) {
+        let apps = self.controller.borrow().settings().no_history_apps.clone();
+        match with_program(&apps, typed) {
+            Ok(next) => {
+                self.state.borrow_mut().no_history_error.clear();
+                self.act(|ctl| ctl.update_settings(|s| s.no_history_apps = next));
+            }
+            Err(refusal) => {
+                self.state.borrow_mut().no_history_error = program_refusal_text(&refusal);
+                redraw_all();
+            }
+        }
+    }
+
+    fn no_history_removed(self: &Rc<Self>, index: usize) {
+        self.state.borrow_mut().no_history_error.clear();
+        self.act(|ctl| {
+            ctl.update_settings(|s| {
+                if index < s.no_history_apps.len() {
+                    s.no_history_apps.remove(index);
                 }
             });
         });
@@ -881,10 +932,7 @@ where
     fn licence_submitted(self: &Rc<Self>, key: &str) {
         let data_dir = self.data_dir.clone();
         let result = self.act(|ctl| ctl.apply_licence(key, data_dir.as_deref()));
-        self.state.borrow_mut().licence_error = result
-            .err()
-            .map(|p| wording::licence_problem_text(p).to_owned())
-            .unwrap_or_default();
+        self.state.borrow_mut().licence_error = result.err();
         redraw_all();
     }
 
@@ -898,16 +946,55 @@ where
         new: &str,
         again: &str,
     ) {
-        let result = self.act(|ctl| match mode {
-            ui::MasterMode::Set => ctl.set_master_password(new, again),
-            ui::MasterMode::Change => ctl.change_master_password(current, new, again),
-            ui::MasterMode::Remove => ctl.remove_master_password(current),
-            ui::MasterMode::Closed => Ok(()),
+        let begun = self.act(|ctl| match mode {
+            ui::MasterMode::Set => ctl.begin_set_master_password(new, again).map(Some),
+            ui::MasterMode::Change => ctl
+                .begin_change_master_password(current, new, again)
+                .map(Some),
+            ui::MasterMode::Remove => ctl.begin_remove_master_password(current).map(Some),
+            ui::MasterMode::Closed => Ok(None),
         });
         let Some(window) = self.window.upgrade() else {
             return;
         };
         // Cleared first, so the same refusal twice in a row is announced twice.
+        window.set_master_problem(ui::MasterProblem::None);
+        match begun {
+            Ok(Some(job)) => {
+                // The key derivation takes a moment on purpose: the form waits, on another thread
+                // in the app, and `master_finished` carries on from here.
+                window.set_master_busy(true);
+                let core = Rc::clone(self);
+                crate::master_job::offload()
+                    .run(job, Box::new(move |done| core.master_finished(done)));
+            }
+            Ok(None) => window.invoke_close_master(),
+            Err(problem) => {
+                window.set_master_problem(crate::unlock_binding::slint_problem(problem));
+            }
+        }
+    }
+
+    /// The outcome of the key derivation `master_submitted` started: applies it and tells the form.
+    fn master_finished(self: &Rc<Self>, done: crate::master_job::MasterDone) {
+        let (current, idle) =
+            self.act(|ctl| (ctl.master_current(&done), ctl.master_busy().is_none()));
+        if !current {
+            // The library was locked while the key was being derived: nothing is applied (the
+            // controller drops the outcome), and the form stops waiting unless a newer step runs.
+            drop(done);
+            if let Some(window) = self.window.upgrade()
+                && idle
+            {
+                window.set_master_busy(false);
+            }
+            return;
+        }
+        let result = self.act(|ctl| ctl.finish_master(done));
+        let Some(window) = self.window.upgrade() else {
+            return;
+        };
+        window.set_master_busy(false);
         window.set_master_problem(ui::MasterProblem::None);
         match result {
             Ok(()) => window.invoke_close_master(),
@@ -1188,6 +1275,10 @@ where
             .no_paste_added(&name));
         wire!(on_no_paste_app_removed, |core, i| core
             .no_paste_removed(crate::binding::index(i)));
+        wire!(on_no_history_app_added, |core, name| core
+            .no_history_added(&name));
+        wire!(on_no_history_app_removed, |core, i| core
+            .no_history_removed(crate::binding::index(i)));
         wire!(on_licence_submitted, |core, key| core
             .licence_submitted(&key));
         {
@@ -1299,6 +1390,8 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.recent_history == view.recent_history) {
         window.set_recent_history(view.recent_history);
+        window.set_recent_max_entries(crate::recent::max_entries_count());
+        window.set_recent_max_days(crate::recent::max_age_days());
     }
     if differs(&|p| p.backups_keep == view.backups_keep) {
         window.set_backups_keep(view.backups_keep);
@@ -1334,11 +1427,26 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.no_paste_error == view.no_paste_error) {
         window.set_no_paste_error(view.no_paste_error.as_str().into());
     }
+    if differs(&|p| p.no_history_apps == view.no_history_apps) {
+        window.set_no_history_apps(model(
+            view.no_history_apps
+                .iter()
+                .map(|a| SharedString::from(a.as_str())),
+        ));
+    }
+    if differs(&|p| p.no_history_error == view.no_history_error) {
+        window.set_no_history_error(view.no_history_error.as_str().into());
+    }
     if differs(&|p| p.pro == view.pro) {
         window.set_pro(view.pro);
     }
     if differs(&|p| p.licence_error == view.licence_error) {
-        window.set_licence_error(view.licence_error.as_str().into());
+        window.set_licence_error(
+            view.licence_error
+                .map(|problem| wording::licence_problem_text(window, problem))
+                .unwrap_or_default()
+                .into(),
+        );
     }
     if differs(&|p| p.master_state == view.master_state) {
         window.set_master_state(view.master_state);
@@ -1373,7 +1481,7 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
                 ToastPhase::Hold => ui::ToastPhase::Hold,
                 ToastPhase::Exit => ui::ToastPhase::Exit,
             });
-            window.set_toast_text(wording::toast_text(&toast.message).into());
+            window.set_toast_text(wording::toast_text(window, &toast.message).into());
         } else {
             window.set_toast_text(SharedString::new());
             window.set_toast_phase(ui::ToastPhase::Exit);
@@ -1586,21 +1694,45 @@ mod tests {
     #[test]
     fn program_names_are_trimmed_lower_cased_and_not_repeated() {
         let none: Vec<String> = Vec::new();
-        let one = with_no_paste_app(&none, "  KeePass.EXE ").unwrap();
+        let one = with_program(&none, "  KeePass.EXE ").unwrap();
         assert_eq!(one, ["keepass.exe"]);
         assert_eq!(
-            with_no_paste_app(&one, "keepass.exe"),
-            Err(NoPasteRefusal::Listed("keepass.exe".into()))
+            with_program(&one, "keepass.exe"),
+            Err(ProgramRefusal::Listed("keepass.exe".into()))
         );
-        assert_eq!(with_no_paste_app(&one, "  "), Err(NoPasteRefusal::Empty));
+        assert_eq!(with_program(&one, "  "), Err(ProgramRefusal::Empty));
         assert_eq!(
-            with_no_paste_app(&one, r"C:\Program Files\KeePass\keepass.exe"),
-            Err(NoPasteRefusal::HasPath)
+            with_program(&one, r"C:\Program Files\KeePass\keepass.exe"),
+            Err(ProgramRefusal::HasPath)
         );
         assert_eq!(
-            with_no_paste_app(&one, "putty.exe").unwrap(),
+            with_program(&one, "putty.exe").unwrap(),
             ["keepass.exe", "putty.exe"]
         );
+    }
+
+    #[test]
+    fn a_program_list_has_a_sane_name_length_and_count() {
+        let long = "a".repeat(MAX_PROGRAM_NAME + 1);
+        assert_eq!(with_program(&[], &long), Err(ProgramRefusal::TooLong));
+        let longest = "b".repeat(MAX_PROGRAM_NAME);
+        assert_eq!(
+            with_program(&[], &longest).unwrap(),
+            std::slice::from_ref(&longest)
+        );
+        let full: Vec<String> = (0..MAX_PROGRAMS).map(|i| format!("app{i}.exe")).collect();
+        assert_eq!(
+            with_program(&full, "one-more.exe"),
+            Err(ProgramRefusal::Full)
+        );
+        // A repeat is reported as a repeat, even in a full list.
+        assert_eq!(
+            with_program(&full, "APP3.exe"),
+            Err(ProgramRefusal::Listed("app3.exe".into()))
+        );
+        for refusal in [ProgramRefusal::TooLong, ProgramRefusal::Full] {
+            assert_ne!(program_refusal_text(&refusal), "");
+        }
     }
 
     #[test]

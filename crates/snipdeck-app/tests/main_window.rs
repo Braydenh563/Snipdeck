@@ -36,7 +36,7 @@ use snipdeck_platform::{
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
     tray::TrayEvent,
 };
-use snipdeck_store::{BoardRepo, ItemRepo, Store, TagRepo, TrashRepo};
+use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, Store, TagRepo, TrashRepo};
 use snipdeck_ui::{ItemAction, MainSection, MainView, MainWindow, PanelWindow, SelectMode};
 
 #[path = "support/mod.rs"]
@@ -1171,5 +1171,95 @@ fn the_palette_does_not_open_over_a_menu() {
             !r.ui.get_palette_open(),
             "a menu is open: the same rule as Ctrl+K"
         );
+    });
+}
+
+#[test]
+fn the_recent_section_lists_what_was_copied_and_its_buttons_reach_the_controller() {
+    on_ui_thread(|| {
+        let r = rig();
+        {
+            let mut ctl = r.ctl.borrow_mut();
+            ctl.update_settings(|s| s.recent_history = true);
+            for text in ["first copy", "second copy"] {
+                ctl.on_clipboard_change(&snipdeck_app::recent::ClipboardObservation {
+                    text: Some(text.to_owned()),
+                    source_app: Some("notepad.exe".to_owned()),
+                    ..Default::default()
+                });
+            }
+        }
+        r.binding.redraw();
+        assert_eq!(r.ui.get_count_recent(), 2, "the sidebar count is real");
+        assert_eq!(
+            r.ui.get_recent_rows().row_count(),
+            0,
+            "rows only in the section"
+        );
+        r.ui.invoke_section_selected(MainSection::Recent, 0);
+        let rows = r.ui.get_recent_rows();
+        let previews: Vec<_> = rows.iter().map(|e| e.preview.to_string()).collect();
+        assert_eq!(previews, ["second copy", "first copy"]);
+        assert_eq!(rows.row_data(0).unwrap().app, "Notepad");
+        assert!(
+            r.ui.get_recent_targets().row_count() > 0,
+            "lists to save to"
+        );
+
+        let id_of = |i: usize| rows.row_data(i).unwrap().id;
+        r.ui.invoke_recent_copied(id_of(1));
+        assert_eq!(r.ctl.borrow().services().clipboard.written.len(), 1);
+        let saved_before: usize = {
+            let ctl = r.ctl.borrow();
+            ctl.store()
+                .boards()
+                .unwrap()
+                .iter()
+                .flat_map(|b| ctl.store().lists(b.id).unwrap())
+                .map(|l| ctl.store().items(l.id).unwrap().len())
+                .sum()
+        };
+        r.ui.invoke_recent_saved(id_of(0), 0);
+        assert!(!r.ui.get_toast_text().is_empty(), "saving says so");
+        {
+            let ctl = r.ctl.borrow();
+            let all: Vec<String> = ctl
+                .store()
+                .boards()
+                .unwrap()
+                .iter()
+                .flat_map(|b| ctl.store().lists(b.id).unwrap())
+                .flat_map(|l| ctl.store().items(l.id).unwrap())
+                .map(|i| i.preview.clone())
+                .collect();
+            assert_eq!(all.len(), saved_before + 1, "an item was created");
+            assert!(
+                all.iter().any(|p| p == "second copy"),
+                "with the entry's text: {all:?}"
+            );
+        }
+        r.ui.invoke_recent_deleted(id_of(0));
+        assert_eq!(r.ui.get_recent_rows().row_count(), 1);
+        assert_eq!(r.ui.get_count_recent(), 1);
+        r.ui.invoke_recent_cleared();
+        assert_eq!(r.ui.get_recent_rows().row_count(), 0);
+        assert_eq!(r.ui.get_count_recent(), 0);
+    });
+}
+
+#[test]
+fn the_history_switch_in_the_welcome_tour_turns_the_inbox_on_and_off() {
+    on_ui_thread(|| {
+        let r = rig();
+        let tour = OnboardingUi::new(&r.ctl, Rc::new(NoHost));
+        r.ui.invoke_command_requested(Command::Tour.id());
+        let window = tour.window().expect("created");
+        assert!(!window.get_recent_history(), "off by default");
+        assert!(!r.ctl.borrow().settings().recent_history);
+        window.invoke_recent_history_toggled(true);
+        assert!(r.ctl.borrow().settings().recent_history);
+        assert!(window.get_recent_history());
+        window.invoke_recent_history_toggled(false);
+        assert!(!r.ctl.borrow().settings().recent_history);
     });
 }

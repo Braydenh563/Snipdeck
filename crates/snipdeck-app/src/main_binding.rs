@@ -7,7 +7,7 @@
 //! every bound window is redrawn from the controller (see `binding::redraw_all`).
 //!
 //! Every control in the window is wired. "New item" and Edit open the item editor, which has
-//! its own window ([`editor_binding`](crate::editor_binding)); the Recent inbox has no data yet.
+//! its own window ([`editor_binding`](crate::editor_binding)); the Recent section lists the inbox's entries.
 
 use std::{
     cell::{Cell, RefCell},
@@ -558,6 +558,13 @@ where
         wire!(on_select_all_requested, |ctl| ctl.main_select_all());
         wire!(on_clear_selection_requested, |ctl| ctl
             .main_clear_selection());
+        wire!(on_recent_copied, |ctl, id| ctl.recent_copy(i64::from(id)));
+        wire!(on_recent_deleted, |ctl, id| ctl
+            .recent_delete(i64::from(id)));
+        wire!(on_recent_saved, |ctl, id, target| ctl
+            .recent_promote_to(i64::from(id), index(target)));
+        wire!(on_recent_cleared, |ctl| ctl.recent_clear());
+        wire!(on_recent_unlock_requested, |ctl| ctl.request_unlock());
         wire!(on_item_action, |ctl, action, i| ctl
             .main_action(action_of(action), index(i)));
         wire!(on_move_chosen, |ctl, i| ctl.main_move_to(index(i)));
@@ -996,8 +1003,33 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
             checked: t.checked,
         })));
     }
+    if window.get_recent_locked() != screen.recent_locked {
+        window.set_recent_locked(screen.recent_locked);
+    }
+    if window.get_recent_days() != crate::recent::max_age_days() {
+        window.set_recent_days(crate::recent::max_age_days());
+    }
     if window.get_recent_on() != screen.recent_on {
         window.set_recent_on(screen.recent_on);
+    }
+    if differs(&|p| p.recent_rows == screen.recent_rows) {
+        window.set_recent_rows(model(screen.recent_rows.iter().map(|r| ui::RecentRow {
+            id: i32::try_from(r.id).unwrap_or(i32::MAX),
+            preview: r.preview.as_str().into(),
+            app: r.app.as_str().into(),
+            age_minutes: i32::try_from(r.age_minutes).unwrap_or(i32::MAX),
+        })));
+    }
+    if differs(&|p| p.recent_targets == screen.recent_targets && p.dark == screen.dark) {
+        window.set_recent_targets(model(screen.recent_targets.iter().map(|t| {
+            ui::ChoiceEntry {
+                label: t.label.as_str().into(),
+                count: 0,
+                color: list_color(t.accent, screen.dark),
+                icon: slint::Image::default(),
+                checked: false,
+            }
+        })));
     }
     if differs(&|p| p.counts == screen.counts) {
         window.set_count_all(to_i32(screen.counts.all));
@@ -1049,7 +1081,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
                 ToastPhase::Exit => ui::ToastPhase::Exit,
             });
             window.set_toast_undo_label(wording::toast_button_text(toast).into());
-            window.set_toast_text(wording::toast_text(&toast.message).into());
+            window.set_toast_text(wording::toast_text(window, &toast.message).into());
         } else {
             window.set_toast_text(SharedString::new());
             window.set_toast_undo_label(SharedString::new());

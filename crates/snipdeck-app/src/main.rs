@@ -36,6 +36,7 @@ use snipdeck_app::{
     host, key_provider,
     main_binding::{self, MainUi},
     maintenance::{self, Maintenance},
+    master_job,
     onboarding_binding::OnboardingUi,
     picker_binding::{AnchorMemory, PickerUi},
     platform::{self, Callbacks, Host, Start},
@@ -55,6 +56,26 @@ thread_local! {
     /// The binding, for events that arrive from other threads and are handed to this one.
     static BINDING: RefCell<Option<Binding>> = const { RefCell::new(None) };
 }
+
+/// Applies the newest "Pause history" state to the tray; if the tray is borrowed right now, tries
+/// again on the next turn of the event loop (the state read then is the newest one).
+fn apply_tray_history(tray: &TrayCell, latest: &Rc<Cell<(bool, bool)>>) {
+    if let Ok(mut guard) = tray.try_borrow_mut() {
+        if let Some(tray) = guard.as_mut()
+            && let Err(e) = tray.set_history(latest.get().0, latest.get().1)
+        {
+            eprintln!("snipdeck: cannot update the tray's history entry: {e}");
+        }
+    } else {
+        let (tray, latest) = (Rc::clone(tray), Rc::clone(latest));
+        slint::Timer::single_shot(std::time::Duration::ZERO, move || {
+            apply_tray_history(&tray, &latest);
+        });
+    }
+}
+
+/// The tray the host shares (none off Windows or when it failed to start).
+type TrayCell = Rc<RefCell<Option<Box<dyn snipdeck_platform::tray::Tray>>>>;
 
 fn main() -> ExitCode {
     // First, so that a panic anywhere after this leaves a report (the data folder is told to the
@@ -213,6 +234,9 @@ fn run(args: &Args) -> Result<(), String> {
         if let Some(provider) = key_provider::provider() {
             controller.set_key_provider(provider);
         }
+        // Argon2id takes a moment on purpose: a master password step works its key out on a
+        // worker thread, and the window waits with a status instead of freezing.
+        master_job::set_offload(Rc::new(master_job::Threads));
         if let Some(picker) = platform::file_picker() {
             controller.set_file_picker(picker);
         }
@@ -226,6 +250,17 @@ fn run(args: &Args) -> Result<(), String> {
     // (off Windows, or it failed to start) or while no icon is there, closing the Panel quits.
     let tray = Rc::new(RefCell::new(tray));
     show_tray(&mut tray.borrow_mut(), &window);
+    // "Pause history" is in the tray menu while clipboard history is on, checked while paused.
+    // The sink can run while the tray is borrowed by an effect: the newest state is then kept
+    // and applied on the next turn of the event loop, so an update is never dropped.
+    controller.borrow_mut().set_tray_history_sink({
+        let tray = Rc::clone(&tray);
+        let latest = Rc::new(Cell::new((false, false)));
+        move |available, paused| {
+            latest.set((available, paused));
+            apply_tray_history(&tray, &latest);
+        }
+    });
 
     let hotkeys = Rc::new(RefCell::new(hotkeys));
     // Resuming after "Pause hotkeys" registers the chords in force then, not the launch ones.

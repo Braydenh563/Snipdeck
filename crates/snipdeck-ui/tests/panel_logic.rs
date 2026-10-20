@@ -85,6 +85,7 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_app_menu_dismissed, || "app-dismissed".to_string());
     hook!(on_edit_requested, |i| format!("edit:{i}"));
     hook!(on_rename_requested, |i| format!("rename:{i}"));
+    hook!(on_duplicate_requested, |i| format!("duplicate:{i}"));
     hook!(on_delete_requested, |i| format!("delete:{i}"));
     hook!(on_resize_requested, |edge| format!("resize:{edge:?}"));
     hook!(on_pinned_copied, |i| format!("pinned-copy:{i}"));
@@ -1230,6 +1231,8 @@ ui_tests! {
         take(&log);
         chord(ui.window(), &[Key::Control], "e");
         assert_eq!(take(&log), ["edit:1"]);
+        chord(ui.window(), &[Key::Control], "d");
+        assert_eq!(take(&log), ["duplicate:1"]);
         press(ui.window(), &key(Key::F2));
         assert_eq!(take(&log), ["rename:1"]);
         press(ui.window(), &key(Key::Delete));
@@ -1410,8 +1413,8 @@ ui_tests! {
         });
         ui.set_recent_available(true);
         ui.set_recent_rows(ModelRc::new(VecModel::from(vec![
-            RecentRow { preview: "first copy".into(), app: "Notepad".into(), age_minutes: 3 },
-            RecentRow { preview: "second copy".into(), app: "".into(), age_minutes: 0 },
+            RecentRow { id: 0, preview: "first copy".into(), app: "Notepad".into(), age_minutes: 3 },
+            RecentRow { id: 2, preview: "second copy".into(), app: "".into(), age_minutes: 0 },
         ])));
         settle();
         let list_rows = rows(&ui).len();
@@ -1443,8 +1446,8 @@ ui_tests! {
         ui.on_recent_deleted(move |i| removed.borrow_mut().push(format!("rdel:{i}")));
         ui.set_recent_available(true);
         ui.set_recent_rows(ModelRc::new(VecModel::from(vec![
-            RecentRow { preview: "one".into(), app: "".into(), age_minutes: 1 },
-            RecentRow { preview: "two".into(), app: "".into(), age_minutes: 2 },
+            RecentRow { id: 1, preview: "one".into(), app: "".into(), age_minutes: 1 },
+            RecentRow { id: 2, preview: "two".into(), app: "".into(), age_minutes: 2 },
         ])));
         press_at(&ui, centre(&find(&ui, "Recent", AccessibleRole::Tab)));
         settle();
@@ -1459,14 +1462,16 @@ ui_tests! {
         press(ui.window(), &key(Key::Delete));
         press(ui.window(), &key(Key::F2));
         press(ui.window(), "1");
+        chord(ui.window(), &[Key::Control], "e");
+        chord(ui.window(), &[Key::Control], "d");
         settle();
         // The digit is search text only with a query; here it must not use an item either.
         let seen = take(&log);
-        assert!(seen.contains(&"rcopy:1".to_string()), "{seen:?}");
-        assert!(seen.contains(&"rdel:1".to_string()), "{seen:?}");
+        assert!(seen.contains(&"rcopy:2".to_string()), "{seen:?}");
+        assert!(seen.contains(&"rdel:2".to_string()), "{seen:?}");
         for line in &seen {
             assert!(
-                !line.starts_with("use:") && !line.starts_with("delete:") && !line.starts_with("rename:") && !line.starts_with("quick:") && !line.starts_with("move:"),
+                !line.starts_with("use:") && !line.starts_with("edit:") && !line.starts_with("duplicate:") && !line.starts_with("delete:") && !line.starts_with("rename:") && !line.starts_with("quick:") && !line.starts_with("move:"),
                 "an item shortcut fired in the Recent list: {line}"
             );
         }

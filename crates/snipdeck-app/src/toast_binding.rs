@@ -216,6 +216,6 @@ fn render(window: &ui::ToastWindow, previous: Option<&Shown>, view: &View, toast
             ToastPhase::Hold => ui::ToastPhase::Hold,
             ToastPhase::Exit => ui::ToastPhase::Exit,
         });
-        window.set_text(wording::toast_text(&toast.message).into());
+        window.set_text(wording::toast_text(window, &toast.message).into());
     }
 }

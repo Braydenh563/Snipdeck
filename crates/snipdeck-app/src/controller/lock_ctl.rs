@@ -16,18 +16,16 @@
 //!   at start-up, so a tray app that starts with Windows does not greet the user with a dialog.
 //! * The library locks again after [`IDLE_LOCK`] without use, by the controller's clock.
 
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use snipdeck_core::{Feature, Timestamp};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
-use snipdeck_store::{
-    Error,
-    crypto::{CryptoError, KdfParams, KeyProvider, KeyRing},
-};
+use snipdeck_store::crypto::{CryptoError, KdfParams, KeyProvider, KeyRecord, KeyRing};
 
 use super::{Controller, Effect, Library, Toast, ToastKind, ToastMessage};
 use crate::{
     host::ClipboardText,
+    master_job::{MasterDone, MasterJob, MasterOp},
     master_password::{self, IDLE_LOCK, NewProblem},
 };
 
@@ -84,6 +82,11 @@ pub(super) struct LockState {
     active_at: Timestamp,
     /// The unlock window is open.
     prompt: bool,
+    /// A step whose key derivation is running elsewhere ([`MasterJob`]); no other starts.
+    busy: Option<MasterOp>,
+    /// Counts the times a running step was given up on (the library locked, or the unlock
+    /// window closed): an outcome stamped with an older count is dropped.
+    generation: u64,
     /// Cost of Argon2id for a new password; `None` is [`KdfParams::DEFAULT`]. Tests make it cheap.
     pub(super) kdf: Option<KdfParams>,
 }
@@ -95,6 +98,8 @@ impl LockState {
             unreadable: false,
             active_at: now,
             prompt: false,
+            busy: None,
+            generation: 0,
             kdf: None,
         }
     }
@@ -109,10 +114,10 @@ pub(super) fn ring_on(provider: &dyn KeyProvider, kdf: Option<KdfParams>) -> Key
     }
 }
 
-fn problem_of(error: &Error) -> MasterProblem {
+fn problem_of_crypto(error: &CryptoError) -> MasterProblem {
     match error {
-        Error::Crypto(CryptoError::WrongPassword) => MasterProblem::WrongPassword,
-        Error::Crypto(CryptoError::EmptyPassword) => MasterProblem::CurrentEmpty,
+        CryptoError::WrongPassword => MasterProblem::WrongPassword,
+        CryptoError::EmptyPassword => MasterProblem::CurrentEmpty,
         _ => MasterProblem::Failed,
     }
 }
@@ -244,41 +249,30 @@ where
     /// The user closed the unlock window without a password. The library stays locked.
     pub fn cancel_unlock(&mut self) {
         self.lock.prompt = false;
+        // A password already being checked must not open the library after the user said no.
+        if self.lock.busy == Some(MasterOp::Unlock) {
+            self.invalidate_master();
+        }
     }
 
     /// Opens the library with the master password typed in the unlock window. On success the
     /// window is done and the Panel shows the sensitive items again; a wrong password changes
-    /// nothing and the window stays for another try.
+    /// nothing and the window stays for another try. Waits for the key derivation: a window
+    /// uses [`begin_unlock_with_password`](Self::begin_unlock_with_password) instead.
     ///
     /// # Errors
     ///
     /// [`MasterProblem::CurrentEmpty`], [`MasterProblem::WrongPassword`],
     /// [`MasterProblem::Unavailable`] or [`MasterProblem::Failed`].
     pub fn unlock_with_password(&mut self, password: &str) -> Result<(), MasterProblem> {
-        if self.store.is_unlocked() {
-            self.lock.prompt = false;
-            return Ok(());
-        }
-        if password.is_empty() {
-            return Err(MasterProblem::CurrentEmpty);
-        }
-        let Some(provider) = self.editor_env.keys.as_deref() else {
-            return Err(MasterProblem::Unavailable);
-        };
-        let ring = ring_on(provider, self.lock.kdf);
-        self.store
-            .unlock_key_ring(&ring, Some(password))
-            .map_err(|e| problem_of(&e))?;
-        self.lock.prompt = false;
-        self.note_activity();
-        self.show_toast(neutral(ToastMessage::Unlocked));
-        let _ = self.refresh_panel();
-        Ok(())
+        let job = self.begin_unlock_with_password(password)?;
+        self.finish_inline(job)
     }
 
     /// Sets a master password on a library that has none (a Supporter feature). Makes the key if
     /// there is none yet, which encrypts any sensitive item still stored as plain text. The
-    /// library stays open for this session.
+    /// library stays open for this session. Waits for the key derivation: a window uses
+    /// [`begin_set_master_password`](Self::begin_set_master_password) instead.
     ///
     /// # Errors
     ///
@@ -286,37 +280,13 @@ where
     /// protection, [`MasterProblem::TooShort`], [`MasterProblem::Mismatch`], or
     /// [`MasterProblem::Failed`] (a password is already set, or the store refused).
     pub fn set_master_password(&mut self, new: &str, again: &str) -> Result<(), MasterProblem> {
-        if !self.master_password_allowed() {
-            return Err(MasterProblem::SupporterOnly);
-        }
-        if self.editor_env.keys.is_none() {
-            return Err(MasterProblem::Unavailable);
-        }
-        if self.lock.set || self.lock.unreadable {
-            return Err(MasterProblem::Failed);
-        }
-        master_password::check_new(new, again).map_err(MasterProblem::from)?;
-        let exists = self
-            .store
-            .key_ring_exists()
-            .map_err(|_| MasterProblem::Failed)?;
-        let done = if exists {
-            // Opens the key when it is not open yet, then wraps it under the password.
-            self.ensure_key(false).and_then(|()| {
-                self.with_ring(|store, ring| store.change_master_password(ring, None, Some(new)))
-            })
-        } else {
-            self.with_ring(|store, ring| store.create_key_ring(ring, Some(new)))
-        };
-        done.map_err(|_| MasterProblem::Failed)?;
-        self.lock.set = true;
-        self.note_activity();
-        self.show_toast(neutral(ToastMessage::MasterPasswordSet));
-        let _ = self.refresh_panel();
-        Ok(())
+        let job = self.begin_set_master_password(new, again)?;
+        self.finish_inline(Some(job))
     }
 
-    /// Changes the master password. `current` must be the one set.
+    /// Changes the master password. `current` must be the one set. Waits for the key
+    /// derivation: a window uses [`begin_change_master_password`](Self::begin_change_master_password)
+    /// instead.
     ///
     /// # Errors
     ///
@@ -329,86 +299,317 @@ where
         new: &str,
         again: &str,
     ) -> Result<(), MasterProblem> {
-        self.check_can_change(current)?;
-        master_password::check_new(new, again).map_err(MasterProblem::from)?;
-        self.with_ring(|store, ring| store.change_master_password(ring, Some(current), Some(new)))
-            .map_err(|e| problem_of(&e))?;
-        // The password is changed for good from here. The user just proved the old one, so the
-        // library opens if it was locked; if that fails the change still stands and the toast
-        // says the library is locked.
-        let reopened = self.open_after_change(Some(new));
-        self.note_activity();
-        self.show_toast(neutral(if reopened.is_ok() {
-            ToastMessage::MasterPasswordChanged
-        } else {
-            ToastMessage::MasterPasswordChangedNotOpen
-        }));
-        Ok(())
+        let job = self.begin_change_master_password(current, new, again)?;
+        self.finish_inline(Some(job))
     }
 
     /// Removes the master password. `current` must be the one set. The key stays wrapped by the
-    /// OS, as on the Free plan, and no item is re-encrypted.
+    /// OS, as on the Free plan, and no item is re-encrypted. Waits for the key derivation: a
+    /// window uses [`begin_remove_master_password`](Self::begin_remove_master_password) instead.
     ///
     /// # Errors
     ///
     /// As [`change_master_password`](Self::change_master_password), minus the new password's.
     pub fn remove_master_password(&mut self, current: &str) -> Result<(), MasterProblem> {
-        self.check_can_change(current)?;
-        self.with_ring(|store, ring| store.change_master_password(ring, Some(current), None))
-            .map_err(|e| problem_of(&e))?;
-        // The record is OS-only from here, so there is no password to ask for, whether or not
-        // the key opens now.
-        self.lock.set = false;
-        self.lock.prompt = false;
-        let reopened = self.open_after_change(None);
-        self.note_activity();
-        self.show_toast(neutral(if reopened.is_ok() {
-            ToastMessage::MasterPasswordRemoved
+        let job = self.begin_remove_master_password(current)?;
+        self.finish_inline(Some(job))
+    }
+
+    fn finish_inline(&mut self, job: Option<MasterJob>) -> Result<(), MasterProblem> {
+        match job {
+            Some(job) => self.finish_master(job.run()),
+            None => Ok(()),
+        }
+    }
+
+    // ---- Steps in three parts ------------------------------------------------------------------
+    //
+    // `begin_*` checks and gathers (fast), the job derives keys (slow, `MasterJob::run`, anywhere),
+    // and `finish_master` applies the outcome (fast). Until `finish_master` or `abort_master`
+    // the controller is busy and refuses another step, and nothing else about the password
+    // changes.
+
+    /// The step running elsewhere, if any. The windows show it and disable their buttons.
+    #[must_use]
+    pub fn master_busy(&self) -> Option<MasterOp> {
+        self.lock.busy
+    }
+
+    /// Whether `done` is the outcome of the step that is running now. It is not when the library
+    /// was locked, or the unlock window closed, while the key was being derived: the window then
+    /// only stops waiting, and [`finish_master`](Self::finish_master) would drop it anyway.
+    #[must_use]
+    pub fn master_current(&self, done: &MasterDone) -> bool {
+        self.lock.busy.is_some() && done.generation == self.lock.generation
+    }
+
+    /// Gives up on the running step: its outcome, when it comes, is dropped with its key.
+    fn invalidate_master(&mut self) {
+        self.lock.generation = self.lock.generation.wrapping_add(1);
+        self.lock.busy = None;
+    }
+
+    /// Marks the step as running and stamps the job so a stale outcome can be told.
+    fn start(&mut self, job: MasterJob) -> MasterJob {
+        self.lock.busy = Some(job.op());
+        job.stamped(self.lock.generation)
+    }
+
+    /// The first part of [`unlock_with_password`](Self::unlock_with_password). `Ok(None)`: the
+    /// library is open already, so there is nothing to derive.
+    ///
+    /// # Errors
+    ///
+    /// As [`unlock_with_password`](Self::unlock_with_password), except a wrong password, which
+    /// only [`finish_master`](Self::finish_master) can tell; [`MasterProblem::Failed`] while
+    /// another step is running.
+    pub fn begin_unlock_with_password(
+        &mut self,
+        password: &str,
+    ) -> Result<Option<MasterJob>, MasterProblem> {
+        self.check_idle()?;
+        if self.store.is_unlocked() {
+            self.lock.prompt = false;
+            return Ok(None);
+        }
+        if password.is_empty() {
+            return Err(MasterProblem::CurrentEmpty);
+        }
+        let provider = self.provider()?;
+        let record = self.stored_record()?;
+        let job = MasterJob::unlock(record, password, provider, self.lock.kdf);
+        Ok(Some(self.start(job)))
+    }
+
+    /// The first part of [`set_master_password`](Self::set_master_password).
+    ///
+    /// # Errors
+    ///
+    /// As [`set_master_password`](Self::set_master_password); [`MasterProblem::Failed`] while
+    /// another step is running.
+    pub fn begin_set_master_password(
+        &mut self,
+        new: &str,
+        again: &str,
+    ) -> Result<MasterJob, MasterProblem> {
+        self.check_idle()?;
+        if !self.master_password_allowed() {
+            return Err(MasterProblem::SupporterOnly);
+        }
+        let provider = self.provider()?;
+        if self.lock.set || self.lock.unreadable {
+            return Err(MasterProblem::Failed);
+        }
+        master_password::check_new(new, again).map_err(MasterProblem::from)?;
+        let exists = self
+            .store
+            .key_ring_exists()
+            .map_err(|_| MasterProblem::Failed)?;
+        let job = if exists {
+            // Opens the key when it is not open yet (no password is set, so this is quick), then
+            // wraps it under the new password.
+            let record = self.stored_record()?;
+            MasterJob::rekey(
+                MasterOp::Set { exists },
+                record,
+                None,
+                Some(new),
+                provider,
+                self.lock.kdf,
+            )
         } else {
-            ToastMessage::MasterPasswordRemovedNotOpen
-        }));
-        let _ = self.refresh_panel();
+            MasterJob::create(new, provider, self.lock.kdf)
+        };
+        Ok(self.start(job))
+    }
+
+    /// The first part of [`change_master_password`](Self::change_master_password).
+    ///
+    /// # Errors
+    ///
+    /// As [`change_master_password`](Self::change_master_password), except a wrong current
+    /// password, which only [`finish_master`](Self::finish_master) can tell;
+    /// [`MasterProblem::Failed`] while another step is running.
+    pub fn begin_change_master_password(
+        &mut self,
+        current: &str,
+        new: &str,
+        again: &str,
+    ) -> Result<MasterJob, MasterProblem> {
+        self.check_idle()?;
+        let provider = self.check_can_change(current)?;
+        master_password::check_new(new, again).map_err(MasterProblem::from)?;
+        let record = self.stored_record()?;
+        let job = MasterJob::rekey(
+            MasterOp::Change,
+            record,
+            Some(current),
+            Some(new),
+            provider,
+            self.lock.kdf,
+        );
+        Ok(self.start(job))
+    }
+
+    /// The first part of [`remove_master_password`](Self::remove_master_password).
+    ///
+    /// # Errors
+    ///
+    /// As [`remove_master_password`](Self::remove_master_password), except a wrong current
+    /// password, which only [`finish_master`](Self::finish_master) can tell;
+    /// [`MasterProblem::Failed`] while another step is running.
+    pub fn begin_remove_master_password(
+        &mut self,
+        current: &str,
+    ) -> Result<MasterJob, MasterProblem> {
+        self.check_idle()?;
+        let provider = self.check_can_change(current)?;
+        let record = self.stored_record()?;
+        let job = MasterJob::rekey(
+            MasterOp::Remove,
+            record,
+            Some(current),
+            None,
+            provider,
+            self.lock.kdf,
+        );
+        Ok(self.start(job))
+    }
+
+    /// Applies the outcome of a [`MasterJob`]: stores the new record, opens the library, and tells
+    /// the user. Frees the controller whatever the outcome.
+    ///
+    /// # Errors
+    ///
+    /// [`MasterProblem::WrongPassword`] for an unlock, change or removal with the wrong
+    /// password; [`MasterProblem::Failed`] for anything else that went wrong. Nothing changed.
+    pub fn finish_master(&mut self, done: MasterDone) -> Result<(), MasterProblem> {
+        if !self.master_current(&done) {
+            // Locked or cancelled meanwhile: nothing is applied and the key is wiped on drop.
+            return Err(MasterProblem::Failed);
+        }
+        self.lock.busy = None;
+        let op = done.op;
+        let (key, record) = done.outcome.map_err(|e| match op {
+            // A first password has no "current" to get wrong.
+            MasterOp::Set { .. } => MasterProblem::Failed,
+            _ => problem_of_crypto(&e),
+        })?;
+        match (op, record) {
+            (MasterOp::Unlock, _) => {
+                self.store
+                    .open_with_key(key)
+                    .map_err(|_| MasterProblem::Failed)?;
+                self.lock.prompt = false;
+                self.note_activity();
+                self.sync_recent_gate();
+                self.show_toast(neutral(ToastMessage::Unlocked));
+                let _ = self.refresh_panel();
+                Ok(())
+            }
+            (MasterOp::Set { exists }, Some(record)) => {
+                if exists {
+                    self.store
+                        .replace_key_record(&record)
+                        .map_err(|_| MasterProblem::Failed)?;
+                    // The password is set for good from here, whether or not the library
+                    // opens now: a retry must ask for it, not offer to set it again.
+                    self.lock.set = true;
+                    self.store
+                        .open_with_key(key)
+                        .map_err(|_| MasterProblem::Failed)?;
+                } else {
+                    self.store
+                        .install_key_ring(key, &record)
+                        .map_err(|_| MasterProblem::Failed)?;
+                    self.lock.set = true;
+                }
+                self.note_activity();
+                self.show_toast(neutral(ToastMessage::MasterPasswordSet));
+                let _ = self.refresh_panel();
+                Ok(())
+            }
+            (MasterOp::Change, Some(record)) => {
+                self.store
+                    .replace_key_record(&record)
+                    .map_err(|_| MasterProblem::Failed)?;
+                // The password is changed for good from here. The user just proved the old one,
+                // so the library opens if it was locked; if that fails the change still stands
+                // and the toast says the library is locked.
+                let reopened = self.open_after_change(key);
+                self.note_activity();
+                self.show_toast(neutral(if reopened {
+                    ToastMessage::MasterPasswordChanged
+                } else {
+                    ToastMessage::MasterPasswordChangedNotOpen
+                }));
+                Ok(())
+            }
+            (MasterOp::Remove, Some(record)) => {
+                self.store
+                    .replace_key_record(&record)
+                    .map_err(|_| MasterProblem::Failed)?;
+                // The record is OS-only from here, so there is no password to ask for, whether
+                // or not the key opens now.
+                self.lock.set = false;
+                self.lock.prompt = false;
+                let reopened = self.open_after_change(key);
+                self.note_activity();
+                self.show_toast(neutral(if reopened {
+                    ToastMessage::MasterPasswordRemoved
+                } else {
+                    ToastMessage::MasterPasswordRemovedNotOpen
+                }));
+                let _ = self.refresh_panel();
+                Ok(())
+            }
+            (MasterOp::Set { .. } | MasterOp::Change | MasterOp::Remove, None) => {
+                Err(MasterProblem::Failed)
+            }
+        }
+    }
+
+    fn check_idle(&self) -> Result<(), MasterProblem> {
+        if self.lock.busy.is_some() {
+            return Err(MasterProblem::Failed);
+        }
         Ok(())
     }
 
-    fn check_can_change(&self, current: &str) -> Result<(), MasterProblem> {
-        if self.editor_env.keys.is_none() {
-            return Err(MasterProblem::Unavailable);
+    fn provider(&self) -> Result<Arc<dyn KeyProvider>, MasterProblem> {
+        self.editor_env
+            .keys
+            .clone()
+            .ok_or(MasterProblem::Unavailable)
+    }
+
+    fn stored_record(&self) -> Result<KeyRecord, MasterProblem> {
+        match self.store.key_record() {
+            Ok(Some(record)) => Ok(record),
+            _ => Err(MasterProblem::Failed),
         }
+    }
+
+    /// The checks every change or removal starts with. Gives the key protection to use.
+    fn check_can_change(&self, current: &str) -> Result<Arc<dyn KeyProvider>, MasterProblem> {
+        let provider = self.provider()?;
         if !self.lock.set {
             return Err(MasterProblem::Failed);
         }
         if current.is_empty() {
             return Err(MasterProblem::CurrentEmpty);
         }
-        Ok(())
+        Ok(provider)
     }
 
-    /// After a change that proved the password, opens the key if it is still locked.
-    fn open_after_change(&mut self, password: Option<&str>) -> Result<(), MasterProblem> {
-        if self.store.is_unlocked() {
-            return Ok(());
+    /// After a change that proved the password, opens the key if it is still locked. `false` when
+    /// the store would not.
+    fn open_after_change(&mut self, key: snipdeck_store::crypto::DataKey) -> bool {
+        if self.store.open_with_key(key).is_err() {
+            return false;
         }
-        self.with_ring(|store, ring| store.unlock_key_ring(ring, password))
-            .map_err(|_| MasterProblem::Failed)?;
         self.lock.prompt = false;
-        Ok(())
-    }
-
-    /// Runs `f` on the library with the key ring of this machine.
-    fn with_ring<R>(
-        &mut self,
-        f: impl FnOnce(&mut S, &KeyRing<'_>) -> snipdeck_store::Result<R>,
-    ) -> snipdeck_store::Result<R> {
-        let Some(provider) = self.editor_env.keys.as_deref() else {
-            return Err(Error::Crypto(CryptoError::Provider(
-                snipdeck_store::crypto::KeyProviderError::Unavailable(
-                    "no key protection on this machine".to_owned(),
-                ),
-            )));
-        };
-        let ring = ring_on(provider, self.lock.kdf);
-        f(&mut self.store, &ring)
+        true
     }
 
     // ---- The idle lock -------------------------------------------------------------------------
@@ -442,9 +643,12 @@ where
         if !self.lock.set {
             return;
         }
+        // A change or removal still being derived must not reopen what is being locked.
+        self.invalidate_master();
         self.store.lock_key_ring();
         self.revealed = None;
         self.panel_revealed = None;
+        self.sync_recent_gate();
         // An open editor of a sensitive item holds its text in the window: it closes, unsaved.
         if self.close_sensitive_item_editor() {
             self.show_toast(neutral(ToastMessage::LockedEditorClosed));

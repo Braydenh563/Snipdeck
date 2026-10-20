@@ -227,6 +227,7 @@ ui_tests! {
         press_key(&ui, Key::F2);
         chord(ui.window(), &[Key::Control], "e");
         chord(ui.window(), &[Key::Control], "p");
+        chord(ui.window(), &[Key::Control], "d");
         press_key(&ui, Key::Delete);
         assert_eq!(
             take(&log),
@@ -236,9 +237,19 @@ ui_tests! {
                 "action:Edit:1",
                 "action:Edit:1",
                 "action:Pin:1",
+                "action:Duplicate:1",
                 "action:Delete:1"
             ]
         );
+    }
+
+    fn ctrl_d_duplicates_nothing_in_the_trash() {
+        let (ui, log) = start();
+        ui.set_section(MainSection::Trash);
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "d");
+        assert_eq!(take(&log), Vec::<String>::new());
     }
 
     fn escape_clears_a_selection_and_does_nothing_without_one() {
@@ -1116,5 +1127,70 @@ ui_tests! {
         fixture::set_rows(&ui, Vec::new());
         settle();
         find(&ui, "Press Ctrl+N to add a snippet, or Ctrl+K to see every command.", AccessibleRole::Text);
+    }
+
+    fn the_recent_list_is_one_tab_stop_with_a_roving_active_row() {
+        let (ui, log) = start();
+        let hook = |name: &'static str| {
+            let log = log.clone();
+            move |i: i32| log.borrow_mut().push(format!("{name}:{i}"))
+        };
+        ui.on_recent_copied(hook("copy"));
+        ui.on_recent_deleted(hook("delete"));
+        {
+            let log = log.clone();
+            ui.on_recent_saved(move |r, t| log.borrow_mut().push(format!("save:{r}:{t}")));
+        }
+        let entry = |id: i32, text: &str| snipdeck_ui::RecentRow { id, preview: text.into(), app: "".into(), age_minutes: 1 };
+        ui.set_recent_on(true);
+        ui.set_recent_rows(ModelRc::new(VecModel::from(vec![entry(10, "one"), entry(20, "two"), entry(30, "three")])));
+        ui.set_section(MainSection::Recent);
+        ui.invoke_focus_items();
+        settle();
+        take(&log);
+        press_key(&ui, Key::Return);
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::Return);
+        press_key(&ui, Key::Home);
+        press_key(&ui, Key::End);
+        chord(ui.window(), &[Key::Control], &key(Key::Delete));
+        press_key(&ui, Key::Delete);
+        press_key(&ui, Key::Home);
+        press_key(&ui, Key::RightArrow);
+        assert_eq!(take(&log), ["copy:10", "copy:30", "delete:30"]);
+        let chooser = ElementHandle::find_by_accessible_label(&ui, "Save to…").count();
+        assert!(chooser > 0, "Right arrow opens the Save to… chooser");
+    }
+
+    fn clearing_the_recent_history_asks_first_and_the_locked_list_offers_the_unlock() {
+        let (ui, log) = start();
+        {
+            let cleared = log.clone();
+            ui.on_recent_cleared(move || cleared.borrow_mut().push("cleared".to_string()));
+            let unlock = log.clone();
+            ui.on_recent_unlock_requested(move || unlock.borrow_mut().push("unlock".to_string()));
+        }
+        let entry = |id: i32| snipdeck_ui::RecentRow { id, preview: "one".into(), app: "".into(), age_minutes: 1 };
+        ui.set_recent_on(true);
+        ui.set_recent_rows(ModelRc::new(VecModel::from(vec![entry(1), entry(2)])));
+        ui.set_section(MainSection::Recent);
+        settle();
+        take(&log);
+        find(&ui, "Clear recent history", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_confirm_open());
+        assert_eq!(take(&log), Vec::<String>::new(), "one click clears nothing");
+        find(&ui, "Clear history", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["cleared"]);
+
+        ui.set_recent_rows(ModelRc::new(VecModel::from(Vec::<snipdeck_ui::RecentRow>::new())));
+        ui.set_recent_locked(true);
+        fixture::set_rows(&ui, Vec::new());
+        settle();
+        assert!(ElementHandle::find_by_accessible_label(&ui, "Recent copies are locked").next().is_some());
+        find(&ui, "Unlock", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["unlock"]);
     }
 }

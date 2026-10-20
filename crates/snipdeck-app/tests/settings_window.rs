@@ -223,7 +223,7 @@ impl Rig {
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
-        let cases: [Case; 15] = [
+        let cases: [Case; 16] = [
             (
                 "theme",
                 |r| r.ui.invoke_theme_chosen(2),
@@ -273,6 +273,11 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
                 "a program added",
                 |r| r.ui.invoke_no_paste_app_added("KeePass.EXE".into()),
                 |s| s.no_paste_apps == ["keepass.exe"],
+            ),
+            (
+                "an app left out of Recent",
+                |r| r.ui.invoke_no_history_app_added(" KeePass.EXE ".into()),
+                |s| s.no_history_apps == ["keepass.exe"],
             ),
             (
                 "a shortcut recorded",
@@ -345,6 +350,72 @@ fn removing_a_program_is_written_too_and_a_repeat_is_refused_in_words() {
         );
         r.advance(500);
         assert_eq!(load_settings(r.dir.path()).no_paste_apps, ["putty.exe"]);
+    });
+}
+
+#[test]
+fn an_app_added_in_settings_is_no_longer_captured_end_to_end() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_recent_history_toggled(true);
+        let copy_from = |app: &str| {
+            r.ctl
+                .borrow_mut()
+                .on_clipboard_change(&snipdeck_app::recent::ClipboardObservation {
+                    text: Some(format!("from {app}")),
+                    source_app: Some(app.to_owned()),
+                    ..Default::default()
+                });
+        };
+        copy_from("KeePass.exe");
+        assert_eq!(
+            r.ctl.borrow().recent_entries().len(),
+            1,
+            "captured before it is excluded"
+        );
+        r.ui.invoke_no_history_app_added("keepass.exe".into());
+        copy_from("KeePass.exe");
+        copy_from("notepad.exe");
+        let texts: Vec<_> = r
+            .ctl
+            .borrow()
+            .recent_entries()
+            .into_iter()
+            .map(|e| e.text)
+            .collect();
+        assert_eq!(
+            texts,
+            ["from notepad.exe", "from KeePass.exe"],
+            "the excluded app is not captured again"
+        );
+    });
+}
+
+#[test]
+fn the_apps_left_out_of_recent_are_a_list_with_add_remove_and_words_for_a_refusal() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_no_history_app_added("keepass.exe".into());
+        r.ui.invoke_no_history_app_added("Putty.exe".into());
+        assert_eq!(r.ui.get_no_history_apps().row_count(), 2);
+        r.ui.invoke_no_history_app_added("KEEPASS.exe".into());
+        assert_eq!(
+            r.ui.get_no_history_error(),
+            "keepass.exe is already in the list."
+        );
+        assert_eq!(r.ui.get_no_history_apps().row_count(), 2, "not added twice");
+        // The other list is untouched, and an empty field says nothing.
+        assert_eq!(r.ui.get_no_paste_apps().row_count(), 0);
+        r.ui.invoke_no_history_app_added("C:\\x\\y.exe".into());
+        assert_eq!(
+            r.ui.get_no_history_error(),
+            "Use just the program's file name, like notepad.exe."
+        );
+        r.ui.invoke_no_history_app_removed(0);
+        assert_eq!(r.ui.get_no_history_error(), "");
+        r.ui.invoke_no_history_app_removed(9);
+        r.advance(500);
+        assert_eq!(load_settings(r.dir.path()).no_history_apps, ["putty.exe"]);
     });
 }
 
@@ -722,7 +793,7 @@ fn a_bad_licence_key_is_rejected_with_a_toast_that_says_what_is_wrong() {
         for (name, key, problem) in cases {
             let r = rig();
             r.ui.invoke_licence_submitted(key.as_str().into());
-            let expected = wording::licence_problem_text(problem);
+            let expected = wording::licence_problem_text(&r.ui, problem);
             assert_eq!(r.ui.get_toast_text(), expected, "{name}: the toast");
             assert_eq!(r.ui.get_toast_kind(), ToastKind::Danger, "{name}");
             assert_eq!(
@@ -1786,6 +1857,109 @@ fn a_supporter_sets_a_master_password_through_the_form() {
         );
         element(&r.ui, "Change\u{2026}", AccessibleRole::Button);
         element(&r.ui, "Remove\u{2026}", AccessibleRole::Button);
+    });
+}
+
+#[test]
+fn while_the_password_is_saved_the_form_says_so_and_waits() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        let held = support::Deferred::default();
+        let _inline_again = held.install();
+        click(&r, "Set password\u{2026}");
+        type_in(&r, "New password", PASSWORD);
+        type_in(&r, "Repeat the new password", PASSWORD);
+        click(&r, "Set password");
+        assert_eq!(held.held(), 1, "the work was handed off");
+        assert!(r.ui.get_master_busy());
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Set);
+        assert_eq!(r.ctl.borrow().master_password_state(), MasterState::NotSet);
+
+        let status = element(&r.ui, "Saving\u{2026}", AccessibleRole::Text);
+        assert_eq!(
+            status.accessible_live_region(),
+            Some(i_slint_backend_testing::AccessibleLiveness::Polite)
+        );
+        let submit = ElementHandle::find_by_accessible_label(&r.ui, "Set password")
+            .find(|e| e.accessible_role() == Some(AccessibleRole::Button))
+            .expect("the submit button");
+        assert_eq!(submit.accessible_enabled(), Some(false));
+        assert_eq!(
+            element(&r.ui, "Cancel", AccessibleRole::Button).accessible_enabled(),
+            Some(false)
+        );
+        click(&r, "Set password");
+        assert_eq!(held.held(), 1, "a second press starts nothing");
+        for label in ["New password", "Repeat the new password"] {
+            assert_eq!(
+                element(&r.ui, label, AccessibleRole::TextInput).accessible_read_only(),
+                Some(true),
+                "{label} cannot be edited while the key is worked out"
+            );
+        }
+
+        held.release();
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_master_busy());
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Closed);
+        assert_eq!(r.ctl.borrow().master_password_state(), MasterState::Set);
+    });
+}
+
+#[test]
+fn locking_while_the_password_is_saved_stops_the_form_waiting_and_changes_nothing() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        r.ctl
+            .borrow_mut()
+            .set_master_password(PASSWORD, PASSWORD)
+            .expect("a password to change");
+        r.binding.redraw();
+        slint::platform::update_timers_and_animations();
+        let held = support::Deferred::default();
+        let _inline_again = held.install();
+        click(&r, "Change\u{2026}");
+        type_in(&r, "Current password", PASSWORD);
+        type_in(&r, "New password", "another long phrase");
+        type_in(&r, "Repeat the new password", "another long phrase");
+        click(&r, "Change password");
+        assert!(r.ui.get_master_busy());
+
+        r.ctl.borrow_mut().lock_now();
+        held.release();
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_master_busy(), "the form stops waiting");
+        assert_eq!(
+            r.ui.get_master_mode(),
+            snipdeck_ui::MasterMode::Change,
+            "and stays open: nothing was applied"
+        );
+        assert!(r.ctl.borrow().library_locked());
+        assert_eq!(r.ui.get_master_problem(), snipdeck_ui::MasterProblem::None);
+    });
+}
+
+#[test]
+fn a_wrong_current_password_found_in_the_background_keeps_the_form_open() {
+    on_ui_thread(|| {
+        let r = master_rig(Tier::Pro);
+        r.ctl
+            .borrow_mut()
+            .set_master_password(PASSWORD, PASSWORD)
+            .expect("set");
+        r.binding.redraw();
+        let held = support::Deferred::default();
+        let _inline_again = held.install();
+        click(&r, "Remove\u{2026}");
+        type_in(&r, "Current password", "not the password");
+        click(&r, "Remove password");
+        assert!(r.ui.get_master_busy());
+        held.release();
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_master_busy());
+        assert_eq!(r.ui.get_master_mode(), snipdeck_ui::MasterMode::Remove);
+        assert_eq!(texts(&r, "That password is not right. Try again."), 1);
+        assert_eq!(r.ctl.borrow().master_password_state(), MasterState::Set);
     });
 }
 

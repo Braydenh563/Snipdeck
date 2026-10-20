@@ -29,7 +29,7 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 - [x] B15 [S] Wording and a11y leftovers: Help glyph, "Delete for good" everywhere, list-bullets icon, live regions on status texts, HC selected-state tokens, tooltips on every icon button and rail item, German segmented widths, menu Tab dismisses, Pin/Unpin label, Move to Trash button variant, radio arrow keys, dock handle hit area, tab tooltips, Panel row focus ring (`.claude/remaining/ux-audit-2026-10-19.md`).
 
 ## C. Wave 4: the deferred features, now in v1
-- [ ] C1 [S] Recent inbox (SPEC 5.6): opt-in, off by default, last 200 entries or 7 days, excludes sensitive/password sources and Windows "exclude from history" formats; Promote to a list; clock tab in the Panel; sidebar entry.
+- [x] C1 [S] Recent inbox (SPEC 5.6): opt-in, off by default, last 200 entries or 7 days, excludes sensitive/password sources and Windows "exclude from history" formats; Promote to a list; clock tab in the Panel; sidebar entry.
 - [x] C2 [S] Paste stack (Pro, SPEC 5.1): multi-select, Start stack, queue shown in the Panel, Paste next advances.
 - [x] C3 [S] Master password (Pro, SPEC 5.7): Argon2id, unlock per session and idle timeout, change and remove, recovery warning. (`controller/lock_ctl.rs`, `unlock_binding.rs`, `master_password.slint`; Windows behaviour unverified.)
 - [x] C4 [S] Item colour label (8 DESIGN swatches, 4 px bar, filter chip) and list icon (curated set).
