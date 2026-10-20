@@ -12,8 +12,12 @@ Branch `claude/v1-fable-uxa` (worktree /tmp/fable-uxa). Not pushed.
 - U3 settings half: "Last backup: <date>" / "No backup yet".
 - U14 settings half: F1 + "Help" button in Settings.
 
-## Next
-- Run fmt, clippy, doc, full tests, i18n check, codemap; commit.
+## Queue (scope cut by the lead; nothing below is started except where noted)
+- Verify the ui tests I edited: `cargo test -p snipdeck-ui --test editors --test editors_logic --test i18n` (fixtures moved to `paste_rules`; new tests `each_program_has_a_paste_key...`, `the_text_size_row_reports...`, `the_backups_section_says...`, `help_is_one_button_or_f1_away`). Not run to the end: the shared disk filled during the build. Edits are written; expect small fixes at most.
+- Settings goldens (`settings-demo-light`, `settings-conflict-narrow-light`, any dark/recording ones in `tests/editors.rs`) changed (new Text size row, Programs table, section order). Regenerate with the repo's golden update command and review the diff; pixel counts not measured.
+- Run clippy `-D warnings`, `RUSTDOCFLAGS="-D warnings" cargo doc`, `cargo test --workspace --locked -j 2` (fails today at `deck_logic::deck_behaviour` "nothing is hovered or focused": item-card/kebab, not touched here, its test changed in the hub tip 761d12e), then `python3 scripts/codemap.py`.
+- F1 in Settings needs keyboard focus inside the window (test Tabs first). If a freshly opened Settings has no focus, add `forward-focus: scope;` on the window in settings.slint and measure with the running app.
+- Optional: add a "Text size" line to the Help window diagnostics (`help_binding.rs`).
 
 ## Blocked (controller.rs)
 Per-program paste keys are stored, shown and tested up to `PanelModel::set_paste_rules` (src/panel.rs) but the

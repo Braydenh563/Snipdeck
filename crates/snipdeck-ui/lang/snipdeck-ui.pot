@@ -2005,7 +2005,7 @@ msgid "Saved to {}"
 msgstr ""
 
 #: ui/toast_texts.slint:167
-msgid "Saved {} in your Documents folder"
+msgid "Saved {}"
 msgstr ""
 
 #: ui/settings.slint:1076

@@ -1509,8 +1509,8 @@ msgstr "Speichere deinen ersten Textbaustein oder kopiere etwas und speichere es
 msgid "Saved to {}"
 msgstr "Gespeichert in {}"
 
-msgid "Saved {} in your Documents folder"
-msgstr "{} im Ordner „Dokumente“ gespeichert"
+msgid "Saved {}"
+msgstr ""
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr ""

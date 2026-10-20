@@ -1509,8 +1509,8 @@ msgstr "Guarda tu primer fragmento o copia algo y guárdalo desde el portapapele
 msgid "Saved to {}"
 msgstr "Guardado en {}"
 
-msgid "Saved {} in your Documents folder"
-msgstr "Guardado {} en tu carpeta Documentos"
+msgid "Saved {}"
+msgstr ""
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr ""

@@ -66,10 +66,16 @@ mod tests {
         set_system(1.5);
         assert!((current() - 1.5).abs() < 1e-6);
         configure(TextSize::P125);
-        assert!((current() - 1.25).abs() < 1e-6, "a fixed size ignores Windows");
+        assert!(
+            (current() - 1.25).abs() < 1e-6,
+            "a fixed size ignores Windows"
+        );
         configure(TextSize::System);
         set_system(7.0);
-        assert!((current() - 2.25).abs() < 1e-6, "held to the supported range");
+        assert!(
+            (current() - 2.25).abs() < 1e-6,
+            "held to the supported range"
+        );
         set_system(1.0);
     }
 }

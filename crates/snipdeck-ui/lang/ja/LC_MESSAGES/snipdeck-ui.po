@@ -1502,8 +1502,8 @@ msgstr "最初のスニペットを保存するか、何かをコピーしてク
 msgid "Saved to {}"
 msgstr "{} に保存しました"
 
-msgid "Saved {} in your Documents folder"
-msgstr "ドキュメントフォルダーに {} を保存しました"
+msgid "Saved {}"
+msgstr ""
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr ""

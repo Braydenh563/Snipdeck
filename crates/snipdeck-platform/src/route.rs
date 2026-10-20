@@ -241,7 +241,8 @@ mod tests {
             },
         ];
         let policy = Policy::default();
-        let paste = |app: &str| decide_with(Some(&target(app, false, Focus::Caret)), &policy, &rules);
+        let paste =
+            |app: &str| decide_with(Some(&target(app, false, Focus::Caret)), &policy, &rules);
         assert_eq!(
             paste("WT.exe"),
             Route::Paste {

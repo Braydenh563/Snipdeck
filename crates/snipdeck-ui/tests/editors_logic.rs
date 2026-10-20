@@ -204,7 +204,7 @@ fn settings() -> (SettingsPage, Log) {
     hook!(on_paste_rule_removed, |i| format!("app-:{i}"));
     hook!(on_paste_rule_chosen, |i, c| format!("paste:{i}:{c}"));
     hook!(on_text_size_chosen, |i| format!("size:{i}"));
-    hook!(on_help_requested, | | "help".to_string());
+    hook!(on_help_requested, || "help".to_string());
     hook!(on_no_history_app_added, |n| format!("hist+:{n}"));
     hook!(on_no_history_app_removed, |i| format!("hist-:{i}"));
     hook!(on_licence_submitted, |k| format!("licence:{k}"));

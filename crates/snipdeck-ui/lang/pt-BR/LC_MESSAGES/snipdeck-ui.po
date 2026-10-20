@@ -1509,8 +1509,8 @@ msgstr "Salve seu primeiro trecho ou copie algo e salve-o a partir da área de t
 msgid "Saved to {}"
 msgstr "Salvo em {}"
 
-msgid "Saved {} in your Documents folder"
-msgstr "{} salvo na sua pasta Documentos"
+msgid "Saved {}"
+msgstr ""
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr ""

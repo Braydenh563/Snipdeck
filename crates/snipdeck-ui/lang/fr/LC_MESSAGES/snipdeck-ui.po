@@ -1509,8 +1509,8 @@ msgstr "Enregistrez votre premier extrait, ou copiez quelque chose et enregistre
 msgid "Saved to {}"
 msgstr "Enregistré dans {}"
 
-msgid "Saved {} in your Documents folder"
-msgstr "{} enregistré dans votre dossier Documents"
+msgid "Saved {}"
+msgstr ""
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr ""

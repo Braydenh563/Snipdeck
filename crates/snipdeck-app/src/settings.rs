@@ -291,7 +291,12 @@ pub enum ProgramPaste {
 
 impl ProgramPaste {
     /// Every choice, in the order Settings lists them.
-    pub const ALL: [Self; 4] = [Self::CtrlV, Self::CtrlShiftV, Self::ShiftInsert, Self::Never];
+    pub const ALL: [Self; 4] = [
+        Self::CtrlV,
+        Self::CtrlShiftV,
+        Self::ShiftInsert,
+        Self::Never,
+    ];
 
     /// The key to press, or `None` for [`Never`](Self::Never).
     #[must_use]
@@ -1182,10 +1187,7 @@ mod tests {
         // The current format: rules in `programs`.
         let full = Settings {
             theme: Theme::Dark,
-            programs: names
-                .iter()
-                .map(|n| rule(n, ProgramPaste::Never))
-                .collect(),
+            programs: names.iter().map(|n| rule(n, ProgramPaste::Never)).collect(),
             ..Settings::default()
         }
         .to_json();
@@ -1215,7 +1217,11 @@ mod tests {
                 .count();
             assert_eq!(settings.no_paste_apps, names[..whole], "cut at {cut}");
             assert_eq!(
-                settings.programs.iter().filter(|r| r.paste == ProgramPaste::Never).count(),
+                settings
+                    .programs
+                    .iter()
+                    .filter(|r| r.paste == ProgramPaste::Never)
+                    .count(),
                 whole,
                 "cut at {cut}"
             );
@@ -1336,7 +1342,10 @@ mod tests {
     #[test]
     fn paste_next_is_registered_only_with_supporter() {
         let chords = Settings::default().hotkeys;
-        assert!(chords.chord(HotkeyAction::PasteNext).is_some(), "it stays in the settings");
+        assert!(
+            chords.chord(HotkeyAction::PasteNext).is_some(),
+            "it stays in the settings"
+        );
         let free = chords.registrable(false);
         assert!(free.chord(HotkeyAction::PasteNext).is_none());
         assert_eq!(free.toggle_panel, chords.toggle_panel);
@@ -1366,7 +1375,11 @@ mod tests {
             };
             assert_eq!(Settings::from_json(&settings.to_json()).text_size, size);
         }
-        assert!(Settings::default().to_json().contains("\"text_size\": \"system\""));
+        assert!(
+            Settings::default()
+                .to_json()
+                .contains("\"text_size\": \"system\"")
+        );
         // An unknown value keeps the other fields and gives the default.
         let odd = Settings::from_json(r#"{"text_size":"huge","theme":"dark"}"#);
         assert_eq!(odd.text_size, TextSize::System);
@@ -1427,8 +1440,11 @@ mod tests {
         assert_eq!(old.no_paste_apps, ["mintty.exe", "keepass.exe"]);
         assert_eq!(old.theme, Theme::Dark);
         // The rest of the built-in table is still there.
-        assert!(old.programs.iter().any(|r| r.exe == "putty.exe"
-            && r.paste == ProgramPaste::ShiftInsert));
+        assert!(
+            old.programs
+                .iter()
+                .any(|r| r.exe == "putty.exe" && r.paste == ProgramPaste::ShiftInsert)
+        );
         // And saving writes rules only: the old key is gone for good.
         let saved = old.to_json();
         assert!(!saved.contains("no_paste_apps"));

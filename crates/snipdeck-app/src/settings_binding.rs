@@ -33,8 +33,8 @@ use crate::{
     accent::AccentChoice,
     binding::{Loggable, Shown, arm_toast, model, redraw_all, register_redraw, to_i32},
     controller::{
-        Controller, HelpTopic, ImportKind, ImportPreview, ImportProblem, ImportSource,
-        MasterState, ToastPhase, ToastView,
+        Controller, HelpTopic, ImportKind, ImportPreview, ImportProblem, ImportSource, MasterState,
+        ToastPhase, ToastView,
     },
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
     main_binding::{create_window, raise, set_look},
