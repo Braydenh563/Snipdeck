@@ -184,6 +184,19 @@ where
         self.pending.push(Effect::PlaceWindow(place));
     }
 
+    /// "Reset size and position": forgets what was remembered for the Panel's current monitor (and
+    /// only that one, edge included) and places the Panel at the default frame there. Nothing is
+    /// done before the Panel's monitor is known. No Undo toast: it is a plain reset.
+    pub fn reset_panel_geometry(&mut self) -> Vec<Effect> {
+        let Some(monitor) = self.monitor.clone() else {
+            return Vec::new();
+        };
+        self.dock = DockState::Expanded;
+        self.update_settings(|s| s.panel_geometry.retain(|g| g.monitor_id != monitor.id));
+        let place = frame::clamp(self.open_frame(&monitor), &monitor);
+        vec![Effect::PlaceWindow(place)]
+    }
+
     /// The kebab's dock row: docks a floating Panel to the edge nearest to it, or undocks.
     pub fn dock_toggle(&mut self) {
         let Some(monitor) = self.monitor.clone() else {

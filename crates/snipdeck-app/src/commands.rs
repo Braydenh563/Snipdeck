@@ -63,11 +63,13 @@ pub enum Command {
     GoRecent,
     /// Open the Trash.
     GoTrash,
+    /// Forget the Panel's remembered size and position on its monitor and put it back to the default.
+    ResetPanel,
 }
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 26] = [
+    pub const ALL: [Self; 27] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
@@ -94,6 +96,7 @@ impl Command {
         Self::GoPinned,
         Self::GoRecent,
         Self::GoTrash,
+        Self::ResetPanel,
     ];
 
     /// The command with palette id `id`.

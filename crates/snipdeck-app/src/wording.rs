@@ -324,6 +324,7 @@ pub const fn app_menu_text(entry: crate::controller::AppMenuEntry) -> &'static s
         AppMenuEntry::Dock => "Dock to the nearest edge",
         AppMenuEntry::PauseHotkeys => "Pause hotkeys",
         AppMenuEntry::ShowNumbers => "Show numbers",
+        AppMenuEntry::ResetGeometry => "Reset size and position",
         AppMenuEntry::Separator => "",
         AppMenuEntry::Troubleshoot => "Troubleshoot\u{2026}",
         AppMenuEntry::UserGuide => "User guide",

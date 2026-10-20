@@ -330,3 +330,67 @@ fn more_options_is_remembered_in_the_settings() {
     w.ctl.open_new_item(Origin::Panel);
     assert!(w.ctl.item_editor_view().expect("editor").more_open);
 }
+
+#[test]
+fn reset_size_and_position_clears_the_stored_geometry_of_this_monitor_only() {
+    use crate::frame::{Monitor, Rect};
+    let mut w = world();
+    let first = Monitor {
+        id: Monitor::id_of("DISPLAY1", 1920, 1080),
+        work_area: Rect {
+            x: 0,
+            y: 0,
+            w: 1920,
+            h: 1040,
+        },
+        scale: 1.0,
+    };
+    let second = Monitor {
+        id: Monitor::id_of("DISPLAY2", 1280, 1024),
+        work_area: Rect {
+            x: 1920,
+            y: 0,
+            w: 1280,
+            h: 984,
+        },
+        scale: 1.0,
+    };
+    w.ctl.frame_changed(
+        &second,
+        Rect {
+            x: 2000,
+            y: 30,
+            w: 450,
+            h: 700,
+        },
+    );
+    w.ctl.frame_changed(
+        &first,
+        Rect {
+            x: 10,
+            y: 20,
+            w: 300,
+            h: 500,
+        },
+    );
+    let index = crate::controller::APP_MENU
+        .iter()
+        .position(|e| *e == crate::controller::AppMenuEntry::ResetGeometry)
+        .expect("the kebab has the row");
+    w.ctl.open_app_menu();
+    let effects = w.ctl.choose_app_menu(index);
+    assert!(matches!(effects.as_slice(), [Effect::PlaceWindow(_)]));
+    let ids: Vec<_> = w
+        .ctl
+        .settings()
+        .panel_geometry
+        .iter()
+        .map(|g| g.monitor_id.clone())
+        .collect();
+    assert_eq!(
+        ids,
+        [second.id.clone()],
+        "only the current monitor's entry is gone"
+    );
+    assert!(w.ctl.view().toast.is_none(), "no Undo toast");
+}

@@ -1034,7 +1034,9 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
         } else {
             wording::app_menu_text(entry).into()
         },
-        icon: if entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused {
+        icon: if (entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused)
+            || (entry == AppMenuEntry::ShowNumbers && view.show_numbers)
+        {
             check.clone()
         } else {
             slint::Image::default()
