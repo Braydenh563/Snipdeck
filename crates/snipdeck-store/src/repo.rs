@@ -81,11 +81,17 @@ pub trait ItemRepo {
     /// It counts every row SQLite changed through this handle (boards, lists, items, tags,
     /// the trash, the search tables), in a [`Store`](crate::Store) and in a
     /// [`Batch`](crate::Batch) alike. It never decreases, and it is not undone by a rollback,
-    /// so a failed write can at worst cost one needless refresh. Reads leave it alone. It is
-    /// only comparable with values from the same open handle (it starts at a small number on
-    /// every open) and says nothing about writes by another process, which the single-writer
+    /// so a failed write can at worst cost one needless refresh. Reads leave it alone. A counted use ([`ItemRepo::record_use`]) and every write to the Recent inbox are left
+    /// out: they change nothing the search index covers. [`Store::recent_revision`] counts
+    /// those too. It is only comparable with values from the same open handle (it starts at a
+    /// small number on every open) and says nothing about writes by another process, which the single-writer
     /// lock rules out.
     fn change_counter(&self) -> u64;
+
+    /// A number that grows whenever a use is counted ([`ItemRepo::record_use`]): the one
+    /// write [`ItemRepo::change_counter`] ignores that still changes what an item list shows
+    /// (`use_count`, `last_used_at`). A cache of items pairs the two.
+    fn usage_counter(&self) -> u64;
 
     /// One live item, without content.
     fn item(&self, id: ItemId) -> Result<Item>;

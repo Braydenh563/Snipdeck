@@ -1,5 +1,6 @@
 //! [`Store`]: the SQLite database plus the blob folder, behind every repository trait.
 
+use std::cell::Cell;
 use std::collections::HashSet;
 use std::fs::{self, File, OpenOptions, TryLockError};
 use std::path::{Path, PathBuf};
@@ -39,8 +40,20 @@ pub struct Store {
     pub(crate) blobs: Blobs,
     /// The unlocked data key, when the key ring is unlocked (see `keys.rs`).
     pub(crate) key: Option<DataKey>,
+    /// Rows changed by "quiet" writes (a use counted, the Recent inbox), which are not part
+    /// of [`ItemRepo::change_counter`](crate::ItemRepo::change_counter).
+    pub(crate) quiet: Quiet,
     // Last, so the database is closed before the lock is released.
     _lock: Option<File>,
+}
+
+/// Counts of rows changed by writes that do not move `change_counter`.
+#[derive(Debug, Default)]
+pub(crate) struct Quiet {
+    /// Every quiet write: counted uses and the Recent inbox.
+    pub all: Cell<u64>,
+    /// Counted uses alone.
+    pub uses: Cell<u64>,
 }
 
 impl core::fmt::Debug for Store {
@@ -100,6 +113,7 @@ impl Store {
             conn,
             blobs: Blobs::on_disk(folder.join(BLOB_DIR)),
             key: None,
+            quiet: Quiet::default(),
             _lock: Some(lock),
         })
     }
@@ -114,6 +128,7 @@ impl Store {
             conn,
             blobs: Blobs::in_memory(),
             key: None,
+            quiet: Quiet::default(),
             _lock: None,
         })
     }

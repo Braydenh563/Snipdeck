@@ -30,7 +30,7 @@ use snipdeck_store::{ItemRepo, Store, crypto::KdfParams};
 
 #[path = "support/mod.rs"]
 mod support;
-use support::{SharedProvider, assert_no_plaintext};
+use support::{MasterSteps as _, SharedProvider, assert_no_plaintext};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 

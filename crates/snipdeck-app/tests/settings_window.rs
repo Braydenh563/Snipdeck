@@ -57,7 +57,7 @@ use snipdeck_ui::{SettingsPage, ToastKind};
 
 #[path = "support/mod.rs"]
 mod support;
-use support::{SharedProvider, key, on_ui_thread, press};
+use support::{MasterSteps as _, SharedProvider, key, on_ui_thread, press};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 type Bound = SettingsBinding<FakeClipboard, FakeKeyboard, FakeTiming>;

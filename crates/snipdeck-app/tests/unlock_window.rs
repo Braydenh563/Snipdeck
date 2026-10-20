@@ -33,7 +33,7 @@ use snipdeck_ui::UnlockWindow;
 
 #[path = "support/mod.rs"]
 mod support;
-use support::{Deferred, key, on_ui_thread, press, type_text};
+use support::{Deferred, MasterSteps as _, key, on_ui_thread, press, type_text};
 
 type Ctl = Controller<Store, FakeClipboard, FakeKeyboard, FakeTiming>;
 

@@ -120,7 +120,7 @@ fn a_cached_panel_load_does_no_index_work() {
 fn search_finds_its_item_in_a_large_library() {
     let store = library(2_000);
     let cache = IndexCache::new();
-    let index = cache.index(&store, &store.all_items().unwrap()).unwrap();
+    let index = std::rc::Rc::clone(&cache.snapshot(&store).unwrap().index);
     assert_eq!(index.len(), 2_000);
     let hits = index.query("number 1999", 20);
     hits.first().expect("the item is found");
@@ -143,7 +143,7 @@ fn measure_search_and_panel_load_budgets() {
         "panel load, {LIBRARY} items: cold {cold_ms:.1} ms (builds the index), warm {warm_ms:.1} ms (budget {PANEL_BUDGET_MS} ms)"
     );
 
-    let index = cache.index(&store, &store.all_items().unwrap()).unwrap();
+    let index = std::rc::Rc::clone(&cache.snapshot(&store).unwrap().index);
     let mut worst: f64 = 0.0;
     for q in [
         "snippet",

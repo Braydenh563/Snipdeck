@@ -102,14 +102,14 @@ fn entries_are_not_library_items_and_are_not_searchable() {
 }
 
 #[test]
-fn reading_leaves_the_change_counter_alone_and_writing_moves_it() {
+fn reading_leaves_the_revisions_alone_and_writing_moves_the_recent_one() {
     let mut s = store();
     s.add_recent("a", None, at(1)).unwrap();
-    let before = s.change_counter();
+    let before = s.recent_revision();
     s.recent().unwrap();
-    assert_eq!(s.change_counter(), before);
+    assert_eq!(s.recent_revision(), before);
     s.add_recent("b", None, at(2)).unwrap();
-    assert!(s.change_counter() > before);
+    assert!(s.recent_revision() > before);
 }
 
 #[test]
