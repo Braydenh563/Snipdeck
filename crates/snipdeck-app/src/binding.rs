@@ -520,11 +520,13 @@ where
         wire!(on_selection_moved, |ctl, delta| ctl
             .move_selection(isize::try_from(delta).unwrap_or(0)));
         wire!(on_tab_selected, |ctl, i| ctl.select_tab(index(i)));
+        wire!(on_recent_unlock_requested, |ctl| ctl.request_unlock());
         wire!(on_recent_toggled, |ctl, open| ctl.set_recent_open(open));
-        wire!(on_recent_copied, |ctl, i| ctl.recent_copy_at(index(i)));
-        wire!(on_recent_deleted, |ctl, i| ctl.recent_delete_at(index(i)));
-        wire!(on_recent_saved, |ctl, i, target| ctl
-            .recent_promote_at(index(i), index(target)));
+        wire!(on_recent_copied, |ctl, id| ctl.recent_copy(i64::from(id)));
+        wire!(on_recent_deleted, |ctl, id| ctl
+            .recent_delete(i64::from(id)));
+        wire!(on_recent_saved, |ctl, id, target| ctl
+            .recent_promote_to(i64::from(id), index(target)));
         wire_effects!(on_pinned_used, |ctl, i| {
             let used = ctl.activate_pinned(index(i), UseMode::Paste);
             ctl.dock_after_use(&used)
@@ -775,6 +777,13 @@ fn render_recent(window: &ui::PanelWindow, previous: Option<&View>, view: &View)
     if window.get_recent_available() != available {
         window.set_recent_available(available);
     }
+    let locked = view.recent.as_ref().is_some_and(|r| r.locked);
+    if window.get_recent_locked() != locked {
+        window.set_recent_locked(locked);
+    }
+    if window.get_recent_days() != crate::recent::max_age_days() {
+        window.set_recent_days(crate::recent::max_age_days());
+    }
     let paused = view.recent.as_ref().is_some_and(|r| r.paused);
     if window.get_recent_paused() != paused {
         window.set_recent_paused(paused);
@@ -784,6 +793,7 @@ fn render_recent(window: &ui::PanelWindow, previous: Option<&View>, view: &View)
             (r.rows.as_slice(), r.targets.as_slice())
         });
         window.set_recent_rows(model(rows.iter().map(|r| ui::RecentRow {
+            id: i32::try_from(r.id).unwrap_or(i32::MAX),
             preview: r.preview.as_str().into(),
             app: r.app.as_str().into(),
             age_minutes: i32::try_from(r.age_minutes).unwrap_or(i32::MAX),

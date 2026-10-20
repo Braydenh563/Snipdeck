@@ -67,6 +67,9 @@ msgstr "Todos"
 msgid "All items"
 msgstr "Todos os trechos"
 
+msgid "All {} recent copies are removed. This can't be undone."
+msgstr ""
+
 msgid "Also forget the encryption key"
 msgstr "Esquecer também a chave de criptografia"
 
@@ -196,7 +199,13 @@ msgstr ""
 msgid "Clear filter"
 msgstr ""
 
+msgid "Clear history"
+msgstr ""
+
 msgid "Clear recent history"
+msgstr ""
+
+msgid "Clear recent history?"
 msgstr ""
 
 msgid "Clear search"
@@ -227,6 +236,9 @@ msgid "Clip {}"
 msgstr ""
 
 msgid "Clipboard clear time"
+msgstr ""
+
+msgid "Clipboard history"
 msgstr ""
 
 msgid "Close"
@@ -904,6 +916,9 @@ msgstr ""
 msgid "Navigation"
 msgstr "Navegação"
 
+msgid "Never keep copies from these programs"
+msgstr ""
+
 msgid "Never paste into"
 msgstr "Nunca colar em"
 
@@ -1018,17 +1033,23 @@ msgstr ""
 msgid "Nothing to save. Copy some text first."
 msgstr ""
 
+msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
+msgstr ""
+
 msgid "OK"
 msgstr "OK"
 
 msgid "Off"
 msgstr "Desativado"
 
-msgid "Off by default. Keeps the text you copy, for the last 200 copies or 7 days, whichever is fewer, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
+msgid "Off by default. Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr ""
 
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "«Desativado» mantém aberto um painel acoplado. Caso contrário, ele recolhe em uma faixa fina, e o atalho do painel também o abre."
+
+msgid "Off unless you turn it on. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
+msgstr ""
 
 msgid "One hotkey turns copied text into an item."
 msgstr ""
@@ -1067,9 +1088,6 @@ msgid "Open the Microsoft Store page"
 msgstr "Abrir a página da Microsoft Store"
 
 msgid "Open the Picker at your cursor"
-msgstr ""
-
-msgid "Open the clock tab at the left of the Panel's tabs to see what you copied and save it to a list."
 msgstr ""
 
 msgid "Open the picker"
@@ -1168,6 +1186,9 @@ msgstr "Cola o próximo trecho da lista, em ordem."
 msgid "Path to the file"
 msgstr "Caminho do arquivo"
 
+msgid "Pause history"
+msgstr ""
+
 msgid "Pause hotkeys"
 msgstr "Pausar atalhos"
 
@@ -1228,6 +1249,9 @@ msgstr "Problema"
 msgid "Program to add"
 msgstr "Programa a adicionar"
 
+msgid "Program to leave out of Recent"
+msgstr ""
+
 msgid "Prompt for a value or a choice each time you paste."
 msgstr ""
 
@@ -1249,7 +1273,7 @@ msgstr "Recentes"
 msgid "Recent copies"
 msgstr ""
 
-msgid "Recent copies are in the Panel"
+msgid "Recent copies are locked"
 msgstr ""
 
 msgid "Recent entry actions"
@@ -1588,7 +1612,10 @@ msgstr ""
 msgid "Text"
 msgstr "Texto"
 
-msgid "Text you copy shows up here for a week. Save the useful ones to a list."
+msgid "Text you copy appears here, newest first, until you clear it or it is older than {} days."
+msgstr ""
+
+msgid "Text you copy shows up here for {} days. Save the useful ones to a list."
 msgstr ""
 
 msgid "That app"
@@ -1763,6 +1790,9 @@ msgid "Unlock Snipdeck"
 msgstr ""
 
 msgid "Unlock your library first, so your sensitive items are included. Nothing was done."
+msgstr ""
+
+msgid "Unlock your library to see recent copies. Nothing is collected while it is locked."
 msgstr ""
 
 msgid "Unlock your library to use this item."

@@ -1383,8 +1383,8 @@ ui_tests! {
         });
         ui.set_recent_available(true);
         ui.set_recent_rows(ModelRc::new(VecModel::from(vec![
-            RecentRow { preview: "first copy".into(), app: "Notepad".into(), age_minutes: 3 },
-            RecentRow { preview: "second copy".into(), app: "".into(), age_minutes: 0 },
+            RecentRow { id: 0, preview: "first copy".into(), app: "Notepad".into(), age_minutes: 3 },
+            RecentRow { id: 2, preview: "second copy".into(), app: "".into(), age_minutes: 0 },
         ])));
         settle();
         let list_rows = rows(&ui).len();
@@ -1416,8 +1416,8 @@ ui_tests! {
         ui.on_recent_deleted(move |i| removed.borrow_mut().push(format!("rdel:{i}")));
         ui.set_recent_available(true);
         ui.set_recent_rows(ModelRc::new(VecModel::from(vec![
-            RecentRow { preview: "one".into(), app: "".into(), age_minutes: 1 },
-            RecentRow { preview: "two".into(), app: "".into(), age_minutes: 2 },
+            RecentRow { id: 1, preview: "one".into(), app: "".into(), age_minutes: 1 },
+            RecentRow { id: 2, preview: "two".into(), app: "".into(), age_minutes: 2 },
         ])));
         press_at(&ui, centre(&find(&ui, "Recent", AccessibleRole::Tab)));
         settle();
@@ -1437,8 +1437,8 @@ ui_tests! {
         settle();
         // The digit is search text only with a query; here it must not use an item either.
         let seen = take(&log);
-        assert!(seen.contains(&"rcopy:1".to_string()), "{seen:?}");
-        assert!(seen.contains(&"rdel:1".to_string()), "{seen:?}");
+        assert!(seen.contains(&"rcopy:2".to_string()), "{seen:?}");
+        assert!(seen.contains(&"rdel:2".to_string()), "{seen:?}");
         for line in &seen {
             assert!(
                 !line.starts_with("use:") && !line.starts_with("edit:") && !line.starts_with("duplicate:") && !line.starts_with("delete:") && !line.starts_with("rename:") && !line.starts_with("quick:") && !line.starts_with("move:"),

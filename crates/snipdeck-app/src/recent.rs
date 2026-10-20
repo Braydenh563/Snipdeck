@@ -21,6 +21,18 @@ pub const DEFAULT_MAX_ENTRIES: usize = 200;
 /// Default retention in days.
 pub const DEFAULT_MAX_AGE_DAYS: u64 = 7;
 
+/// How long entries are kept, in days, as the windows' texts take it.
+#[must_use]
+pub fn max_age_days() -> i32 {
+    i32::try_from(DEFAULT_MAX_AGE_DAYS).unwrap_or(i32::MAX)
+}
+
+/// How many entries are kept, as the windows' texts take it.
+#[must_use]
+pub fn max_entries_count() -> i32 {
+    i32::try_from(DEFAULT_MAX_ENTRIES).unwrap_or(i32::MAX)
+}
+
 /// The settings the policy reads. `Default` is the shipped default: off.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecentSettings {
@@ -227,6 +239,8 @@ pub struct RecentView {
     pub open: bool,
     /// Collecting is paused from the tray.
     pub paused: bool,
+    /// The library is locked behind a master password: no rows until it is unlocked.
+    pub locked: bool,
     /// The entries, newest first.
     pub rows: Vec<RecentRowView>,
     /// The lists "Save to…" offers.

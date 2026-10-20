@@ -155,6 +155,10 @@ fn onboarding(step: i32) -> (OnboardingWindow, Log) {
     }
     {
         let log = log.clone();
+        ui.on_recent_history_toggled(move |on| log.borrow_mut().push(format!("history:{on}")));
+    }
+    {
+        let log = log.clone();
         ui.on_panel_in_taskbar_toggled(move |on| log.borrow_mut().push(format!("taskbar:{on}")));
     }
     (ui, log)
@@ -198,6 +202,8 @@ fn settings() -> (SettingsPage, Log) {
     hook!(on_backups_keep_chosen, |n| format!("keep:{n}"));
     hook!(on_no_paste_app_added, |n| format!("app+:{n}"));
     hook!(on_no_paste_app_removed, |i| format!("app-:{i}"));
+    hook!(on_no_history_app_added, |n| format!("hist+:{n}"));
+    hook!(on_no_history_app_removed, |i| format!("hist-:{i}"));
     hook!(on_licence_submitted, |k| format!("licence:{k}"));
     hook!(on_backup_restore_requested, |i| format!("restore:{i}"));
     hook!(on_erase_confirmed, |t, forget| format!(
@@ -1042,12 +1048,43 @@ ui_tests! {
         assert_eq!(take(&log), ["app+:notepad.exe"]);
         assert_eq!(field.accessible_value().as_deref(), Some(""));
 
+        // Two lists have an Add button: the Recent one comes first on the page, this one after it.
+        let adds = all(&ui, "Add", AccessibleRole::Button);
+        assert_eq!(adds.len(), 2, "one per program list");
         type_text(ui.window(), "calc.exe");
-        find(&ui, "Add", AccessibleRole::Button).invoke_accessible_default_action();
+        adds[1].invoke_accessible_default_action();
         assert_eq!(take(&log), ["app+:calc.exe"]);
         // An empty field adds nothing.
-        find(&ui, "Add", AccessibleRole::Button).invoke_accessible_default_action();
+        adds[1].invoke_accessible_default_action();
         assert_eq!(take(&log), Vec::<String>::new());
+    }
+
+    fn programs_left_out_of_recent_can_be_added_and_removed_with_labelled_buttons() {
+        let (ui, log) = settings();
+        ui.set_no_history_apps(slint::ModelRc::new(slint::VecModel::from(vec![
+            "keepass.exe".into(),
+            "bitwarden.exe".into(),
+        ])));
+        settle();
+        let _ = find(&ui, "keepass.exe", AccessibleRole::ListItem);
+        let remove = find(&ui, "Remove bitwarden.exe from the list", AccessibleRole::Button);
+        assert!(remove.size().width >= 24.0 && remove.size().height >= 24.0, "target size");
+        remove.invoke_accessible_default_action();
+        assert_eq!(take(&log), ["hist-:1"]);
+
+        let field = find(&ui, "Program to leave out of Recent", AccessibleRole::TextInput);
+        click(&field);
+        type_text(ui.window(), "putty.exe");
+        press(ui.window(), "\n");
+        settle();
+        assert_eq!(take(&log), ["hist+:putty.exe"]);
+        assert_eq!(field.accessible_value().as_deref(), Some(""));
+        // An empty field adds nothing, and the refusal the host writes is spoken.
+        all(&ui, "Add", AccessibleRole::Button)[0].invoke_accessible_default_action();
+        assert_eq!(take(&log), Vec::<String>::new());
+        ui.set_no_history_error("putty.exe is already in the list.".into());
+        settle();
+        let _ = find(&ui, "putty.exe is already in the list.", AccessibleRole::Text);
     }
 
     fn the_licence_backup_and_data_sections_report_their_gestures() {
@@ -1331,6 +1368,24 @@ ui_tests! {
         ui.set_notice("Could not change the start-up entry.".into());
         settle();
         let _ = find(&ui, "Could not change the start-up entry.", AccessibleRole::Text);
+    }
+
+    fn the_history_opt_in_is_off_by_default_reaches_the_host_and_fits_the_window() {
+        let (ui, log) = onboarding(3);
+        assert!(!ui.get_recent_history(), "history is off until it is chosen");
+        let history = find(&ui, "Keep a Recent inbox of what you copy", AccessibleRole::Switch);
+        assert_eq!(history.accessible_checked(), Some(false));
+        history.invoke_accessible_default_action();
+        assert_eq!(take(&log), ["history:true"]);
+        // The host can put the value back.
+        ui.set_recent_history(false);
+        settle();
+        assert_eq!(history.accessible_checked(), Some(false));
+        // The switch is inside the window at the size it opens at, and a comfortable target.
+        let bottom = history.absolute_position().y + history.size().height;
+        let window = ui.window().size().to_logical(ui.window().scale_factor());
+        assert!(bottom <= window.height, "below the fold: {bottom} of {}", window.height);
+        assert!(history.size().height >= 24.0 && history.size().width >= 24.0);
     }
 
     fn help_rows_are_labelled_with_their_status_and_the_fix_buttons_call_back() {
