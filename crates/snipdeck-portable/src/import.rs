@@ -29,8 +29,8 @@ use snipdeck_store::name_key;
 
 use crate::archive::{ITEMS, MANIFEST, SafeArchive};
 use crate::dto::{
-    ENCRYPTION, FORMAT_NAME, FormatDto, Header, ItemDto, ItemsDoc, ListDto, MAJOR, MINOR, Manifest,
-    TagDto,
+    ENCRYPTION, FORMAT_NAME, FormatDto, Header, ItemDto, ItemsDoc, ItemsParseError, ListDto, MAJOR,
+    MINOR, Manifest, TagDto, parse_items_doc,
 };
 use crate::error::{Error, Result};
 use crate::importers::{MEMORY_BUDGET, truncate_chars};
@@ -210,8 +210,14 @@ pub fn import_archive<L: Library, R: Read + Seek>(
     let mut report = ImportReport::default();
 
     let manifest = read_manifest(&archive.read_manifest()?, &mut report)?;
-    let doc: ItemsDoc = serde_json::from_slice(&archive.read_items()?)
-        .map_err(|e| Error::malformed(ITEMS, e.to_string()))?;
+    let doc: ItemsDoc =
+        parse_items_doc(&archive.read_items()?, options.limits.max_items).map_err(|e| match e {
+            ItemsParseError::TooManyItems => Error::LimitExceeded {
+                what: "item count",
+                limit: options.limits.max_items as u64,
+            },
+            ItemsParseError::Malformed(reason) => Error::malformed(ITEMS, reason),
+        })?;
 
     let name = board_name(
         options.board_name.as_deref().unwrap_or(source_name),
