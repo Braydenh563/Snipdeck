@@ -589,6 +589,8 @@ export component MainWindow inherits Window {
         { text: @tr("Edit"), icon: Icons.pencil-simple, shortcut: "Ctrl+E", disabled: root.multi },
         { text: @tr("Duplicate"), icon: Icons.files, shortcut: "Ctrl+D" },
         { text: root.rows[root.item-menu-index].pinned && !root.multi ? @tr("Unpin") : @tr("Pin"), icon: Icons.push-pin, shortcut: "Ctrl+P" },
+        { text: @tr("Move up"), icon: Icons.caret-up, shortcut: "Alt+Up", disabled: root.multi || !root.rows-reorderable || root.item-menu-index <= 0 },
+        { text: @tr("Move down"), icon: Icons.caret-down, shortcut: "Alt+Down", disabled: root.multi || !root.rows-reorderable || root.item-menu-index >= root.rows.length - 1 },
         { text: @tr("Move to list…"), icon: Icons.folder },
         { text: @tr("Tags…"), icon: Icons.tag },
         { separator: true },
@@ -610,11 +612,14 @@ export component MainWindow inherits Window {
             root.act(ItemAction.duplicate, index);
         } else if (i == 5) {
             root.act(ItemAction.pin, index);
-        } else if (i == 6) {
+        } else if (i == 6 || i == 7) {
+            root.cursor = index;
+            root.item-reorder-requested(i == 6 ? -1 : 1);
+        } else if (i == 8) {
             root.act(ItemAction.move, index);
-        } else if (i == 7) {
-            root.act(ItemAction.tag, index);
         } else if (i == 9) {
+            root.act(ItemAction.tag, index);
+        } else if (i == 11) {
             root.act(ItemAction.delete, index);
         }
         if (!root.chooser-open && !root.confirm-shown) {

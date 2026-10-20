@@ -820,32 +820,22 @@ where
         self.finish(&done);
     }
 
-    /// Alt+Up / Alt+Down in the item area: moves the row at the cursor within its list. Only
-    /// a list in manual order can be arranged by hand.
+    /// Alt+Up / Alt+Down or the item menu's Move up / Move down: moves the row at the cursor one
+    /// row among the rows shown (a label filter can hide some of the list), like dropping it on
+    /// that row, and says where it went. Only a list in manual order can be arranged by hand, and
+    /// a multi-selection is not moved.
     pub fn main_reorder_items(&mut self, delta: isize) {
         self.main_fresh();
-        if !self.main.reorderable() {
+        if self.main.selected_count() > 1 {
             return;
         }
-        let Some(list) = self.main.open_list().map(|l| l.id) else {
+        let from = self.main.cursor();
+        let Some(onto) = from.checked_add_signed(delta) else {
             return;
         };
-        let Some(Key::Item(id)) = self.main.keys().get(self.main.cursor()).copied() else {
-            return;
-        };
-        let order = self.main.manual_order(list);
-        let Some(from) = order.iter().position(|i| *i == id) else {
-            return;
-        };
-        let Some((_, placement)) = reorder(&order, from, delta) else {
-            return;
-        };
-        let done = self.store.move_item(id, list, placement);
-        let moved = done.is_ok();
-        self.finish(&done);
-        if moved {
-            self.main_fresh();
-            self.follow_moved_row(id);
+        self.main_drop_row(from, onto);
+        if self.main.reorderable() && onto < self.main.keys().len() && self.main.cursor() == onto {
+            self.announce_placed(onto + 1, self.main.keys().len());
         }
     }
 

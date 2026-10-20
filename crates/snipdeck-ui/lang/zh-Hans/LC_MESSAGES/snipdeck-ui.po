@@ -886,6 +886,9 @@ msgstr "最常用"
 msgid "Move"
 msgstr "移动"
 
+msgid "Move down"
+msgstr "下移"
+
 msgid "Move selected item to Trash"
 msgstr "将所选片段移到回收站"
 
@@ -909,6 +912,12 @@ msgstr "移动到列表"
 
 msgid "Move to list…"
 msgstr "移动到列表…"
+
+msgid "Move up"
+msgstr "上移"
+
+msgid "Moved to position {} of {}"
+msgstr "已移到第 {} 位，共 {} 项"
 
 msgid "Moved {} item to the Trash"
 msgid_plural "Moved {} items to the Trash"
@@ -1508,6 +1517,12 @@ msgstr "Snipdeck 无法在此电脑上保护密钥，因此无法使用主密码
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "Snipdeck 上次意外关闭。要打开日志吗？"
 
+msgid "Snipdeck couldn't open that. Check that it still exists."
+msgstr "Snipdeck 无法打开该文件。请检查它是否仍然存在。"
+
+msgid "Snipdeck couldn't read that folder."
+msgstr "Snipdeck 无法读取该文件夹。"
+
 msgid "Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again."
 msgstr "Snipdeck 无法读取你的加密密钥，因此现在无法设置或更改主密码。请重启 Snipdeck 再试。"
 
@@ -1628,8 +1643,20 @@ msgstr "你复制的文本会在这里保留 {} 天。把有用的保存到列�
 msgid "That app"
 msgstr "该应用"
 
+msgid "That file is from a newer Snipdeck. Update Snipdeck to import it."
+msgstr "该文件来自较新版本的 Snipdeck。请更新 Snipdeck 后再导入。"
+
 msgid "That is not a Snipdeck licence key. A key starts with SNIP1."
 msgstr "这不是 Snipdeck 许可证密钥。密钥以 SNIP1 开头。"
+
+msgid "That isn't a CopyQ export."
+msgstr "这不是 CopyQ 导出文件。"
+
+msgid "That isn't a Ditto database."
+msgstr "这不是 Ditto 数据库。"
+
+msgid "That isn't a Snipdeck file, or it is damaged."
+msgstr "这不是 Snipdeck 文件，或者文件已损坏。"
 
 msgid "That key is not for Snipdeck Supporter."
 msgstr "该密钥不适用于 Snipdeck Supporter。"
@@ -1660,6 +1687,9 @@ msgstr "免费版包含 {} 个看板。此操作将超出上限，需要 Support
 
 msgid "The Trash is empty"
 msgstr "回收站为空"
+
+msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
+msgstr "剪贴板历史记录中还没有文本。请先复制一些文本，然后重试。"
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "导入已提前停止，因为源内容比 Snipdeck 一次能读取的量大。"
@@ -1888,6 +1918,15 @@ msgstr "Windows 强调色"
 
 msgid "Windows accent follows your Windows personalisation."
 msgstr "Windows 强调色跟随你的 Windows 个性化设置。"
+
+msgid "Windows clipboard history"
+msgstr "剪贴板历史记录"
+
+msgid "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again."
+msgstr "剪贴板历史记录已关闭。请在 Windows 设置 > 系统 > 剪贴板 中将其开启，复制一些文本，然后重试。"
+
+msgid "Windows did not let Snipdeck read the clipboard history on this PC."
+msgstr "Windows 不允许 Snipdeck 读取这台电脑上的剪贴板历史记录。"
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "你将拥有 {} 个看板，而免费版仅包含 {} 个。"

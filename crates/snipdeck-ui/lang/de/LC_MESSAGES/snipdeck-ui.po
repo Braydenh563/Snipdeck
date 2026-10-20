@@ -889,6 +889,9 @@ msgstr "Am häufigsten verwendet"
 msgid "Move"
 msgstr "Verschieben"
 
+msgid "Move down"
+msgstr "Nach unten"
+
 msgid "Move selected item to Trash"
 msgstr "Ausgewählten Textbaustein in den Papierkorb verschieben"
 
@@ -912,6 +915,12 @@ msgstr "In Liste verschieben"
 
 msgid "Move to list…"
 msgstr "In Liste verschieben…"
+
+msgid "Move up"
+msgstr "Nach oben"
+
+msgid "Moved to position {} of {}"
+msgstr "Verschoben auf Position {} von {}"
 
 msgid "Moved {} item to the Trash"
 msgid_plural "Moved {} items to the Trash"
@@ -1515,6 +1524,12 @@ msgstr "Snipdeck kann auf diesem PC keinen Schlüssel schützen, daher ist kein 
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "Snipdeck wurde beim letzten Mal unerwartet beendet. Protokoll öffnen?"
 
+msgid "Snipdeck couldn't open that. Check that it still exists."
+msgstr "Snipdeck konnte das nicht öffnen. Prüfe, ob es noch vorhanden ist."
+
+msgid "Snipdeck couldn't read that folder."
+msgstr "Snipdeck konnte diesen Ordner nicht lesen."
+
 msgid "Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again."
 msgstr "Snipdeck konnte deinen Verschlüsselungsschlüssel nicht lesen, daher kann das Hauptpasswort gerade nicht festgelegt oder geändert werden. Starte Snipdeck neu, um es erneut zu versuchen."
 
@@ -1635,8 +1650,20 @@ msgstr "Kopierter Text wird hier {} Tage angezeigt. Speichere die nützlichen in
 msgid "That app"
 msgstr "Diese App"
 
+msgid "That file is from a newer Snipdeck. Update Snipdeck to import it."
+msgstr "Diese Datei stammt aus einer neueren Version von Snipdeck. Aktualisiere Snipdeck, um sie zu importieren."
+
 msgid "That is not a Snipdeck licence key. A key starts with SNIP1."
 msgstr "Das ist kein Snipdeck-Lizenzschlüssel. Ein Schlüssel beginnt mit SNIP1."
+
+msgid "That isn't a CopyQ export."
+msgstr "Das ist kein CopyQ-Export."
+
+msgid "That isn't a Ditto database."
+msgstr "Das ist keine Ditto-Datenbank."
+
+msgid "That isn't a Snipdeck file, or it is damaged."
+msgstr "Das ist keine Snipdeck-Datei, oder sie ist beschädigt."
 
 msgid "That key is not for Snipdeck Supporter."
 msgstr "Dieser Schlüssel gilt nicht für Snipdeck Supporter."
@@ -1667,6 +1694,9 @@ msgstr "Der Kostenlos-Tarif umfasst {} Boards. Damit würdest du darüber hinaus
 
 msgid "The Trash is empty"
 msgstr "Der Papierkorb ist leer"
+
+msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
+msgstr "Der Zwischenablageverlauf enthält noch keinen Text. Kopiere etwas Text und versuche es dann erneut."
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "Der Import wurde früh abgebrochen, weil die Quelle größer ist, als Snipdeck auf einmal einlesen kann."
@@ -1895,6 +1925,15 @@ msgstr "Windows-Akzent"
 
 msgid "Windows accent follows your Windows personalisation."
 msgstr "Der Windows-Akzent folgt deiner Windows-Personalisierung."
+
+msgid "Windows clipboard history"
+msgstr "Zwischenablageverlauf"
+
+msgid "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again."
+msgstr "Der Zwischenablageverlauf ist ausgeschaltet. Schalte ihn unter Windows-Einstellungen > System > Zwischenablage ein, kopiere etwas Text und versuche es dann erneut."
+
+msgid "Windows did not let Snipdeck read the clipboard history on this PC."
+msgstr "Windows hat Snipdeck nicht erlaubt, den Zwischenablageverlauf auf diesem PC zu lesen."
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "Du hättest {} Boards, der Kostenlos-Tarif umfasst aber {}."

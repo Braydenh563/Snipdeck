@@ -45,6 +45,7 @@ use snipdeck_core::{
     },
 };
 use snipdeck_platform::{
+    clipboard_history::{ClipboardHistoryEntry, HistoryRead},
     testing::{FakeClipboard, FakeKeyboard, FakeTiming},
     tray::TrayEvent,
 };
@@ -83,6 +84,8 @@ struct FakeHost {
     documents: RefCell<Option<PathBuf>>,
     /// What the import dialog answers, once.
     import_pick: RefCell<Option<PathBuf>>,
+    /// What the Windows clipboard history holds; unset reads as "turned off".
+    history: RefCell<Option<HistoryRead>>,
 }
 
 impl SettingsHost for FakeHost {
@@ -122,6 +125,17 @@ impl SettingsHost for FakeHost {
         _owner: Option<isize>,
     ) -> Option<PathBuf> {
         self.import_pick.borrow_mut().take()
+    }
+
+    fn clipboard_history_supported(&self) -> bool {
+        true
+    }
+
+    fn read_clipboard_history(&self) -> HistoryRead {
+        self.history
+            .borrow()
+            .clone()
+            .unwrap_or(HistoryRead::HistoryDisabled)
     }
 }
 
@@ -2096,5 +2110,119 @@ fn a_locked_library_offers_unlock_in_the_row_and_asks_for_the_prompt() {
         let mut ctl = r.ctl.borrow_mut();
         assert!(ctl.unlock_prompt_open());
         assert!(ctl.take_pending().contains(&Effect::OpenUnlock));
+    });
+}
+
+// ---- Import: the Windows clipboard history -------------------------------------------------
+
+fn history_entries(texts: &[&str]) -> HistoryRead {
+    HistoryRead::Entries(
+        texts
+            .iter()
+            .map(|t| ClipboardHistoryEntry {
+                text: (*t).to_owned(),
+                timestamp: None,
+            })
+            .collect(),
+    )
+}
+
+#[test]
+fn the_clipboard_history_is_offered_and_imported_through_the_same_preview() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            Store::open_in_memory().unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            true,
+        );
+        assert!(r.ui.get_import_history_available());
+        *r.host.history.borrow_mut() = Some(history_entries(&["from Win+V", "and another", "   "]));
+
+        r.ui.invoke_import_source_chosen(4);
+        assert!(r.ui.get_import_open());
+        assert_eq!(
+            r.ui.get_import_title(),
+            "Import from Windows clipboard history"
+        );
+        assert_eq!(r.ui.get_import_confirm_label(), "Import");
+        assert_eq!(r.ui.get_import_items(), 2);
+        assert_eq!(r.ui.get_import_problem(), "");
+        assert_eq!(
+            r.ui.get_import_warnings().row_count(),
+            1,
+            "the blank entry is listed as left out"
+        );
+        assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 0);
+
+        r.ui.invoke_import_confirmed();
+        assert!(!r.ui.get_import_open());
+        assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 2);
+        assert_eq!(r.ui.get_toast_text(), "Imported 2 items");
+    });
+}
+
+#[test]
+fn a_history_that_is_off_empty_or_refused_says_so_without_an_error_toast() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            Store::open_in_memory().unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            true,
+        );
+        let cases = [
+            (
+                None,
+                "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again.",
+            ),
+            (
+                Some(history_entries(&[])),
+                "The Windows clipboard history has no text in it yet. Copy some text, then try again.",
+            ),
+            (
+                Some(HistoryRead::AccessDenied),
+                "Windows did not let Snipdeck read the clipboard history on this PC.",
+            ),
+            (
+                Some(HistoryRead::Unsupported),
+                "Windows did not let Snipdeck read the clipboard history on this PC.",
+            ),
+        ];
+        for (read, sentence) in cases {
+            *r.host.history.borrow_mut() = read;
+            r.ui.invoke_import_source_chosen(4);
+            assert!(r.ui.get_import_open(), "{sentence}");
+            assert_eq!(r.ui.get_import_problem(), sentence);
+            assert_eq!(r.ui.get_import_items(), 0);
+            // Confirming a problem writes nothing, and no toast reports an error.
+            r.ui.invoke_import_confirmed();
+            assert!(!r.ui.get_import_open());
+            assert_eq!(r.ctl.borrow().store().all_items().unwrap().len(), 0);
+            assert_eq!(r.ui.get_toast_text(), "");
+        }
+    });
+}
+
+#[test]
+fn the_import_problems_follow_the_selected_language() {
+    on_ui_thread(|| {
+        let r = rig_on(
+            Store::open_in_memory().unwrap(),
+            Tier::Pro,
+            tempfile::tempdir().unwrap(),
+            true,
+        );
+        let english = {
+            r.ui.invoke_import_source_chosen(4);
+            r.ui.get_import_problem()
+        };
+        r.ui.invoke_import_cancelled();
+        slint::select_bundled_translation("de").unwrap();
+        r.ui.invoke_import_source_chosen(4);
+        let german = r.ui.get_import_problem();
+        slint::select_bundled_translation("").unwrap();
+        assert_ne!(german, english, "the sentence is translated");
+        assert!(!german.is_empty());
     });
 }

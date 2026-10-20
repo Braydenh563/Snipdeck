@@ -9,7 +9,10 @@
     reason = "test code: a failure is a failed test"
 )]
 
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+};
 
 use i_slint_backend_testing::{AccessibleRole, ElementHandle};
 use slint::{ComponentHandle, platform::Key};
@@ -268,7 +271,7 @@ fn a_wrong_password_found_in_the_background_frees_the_window_for_another_try() {
 }
 
 /// The real worker-thread offload, then the event loop stops once the outcome has been applied.
-struct ThenQuit;
+struct ThenQuit(Rc<Cell<bool>>);
 
 impl snipdeck_app::master_job::Offload for ThenQuit {
     fn run(
@@ -276,10 +279,12 @@ impl snipdeck_app::master_job::Offload for ThenQuit {
         job: snipdeck_app::master_job::MasterJob,
         finish: snipdeck_app::master_job::Finish,
     ) {
+        let applied = Rc::clone(&self.0);
         snipdeck_app::master_job::Threads.run(
             job,
             Box::new(move |done| {
                 finish(done);
+                applied.set(true);
                 slint::quit_event_loop().expect("the loop is running");
             }),
         );
@@ -290,11 +295,19 @@ impl snipdeck_app::master_job::Offload for ThenQuit {
 fn a_worker_thread_hands_the_outcome_back_through_the_event_loop() {
     on_ui_thread(|| {
         let r = rig();
-        snipdeck_app::master_job::set_offload(Rc::new(ThenQuit));
+        let applied = Rc::new(Cell::new(false));
+        snipdeck_app::master_job::set_offload(Rc::new(ThenQuit(Rc::clone(&applied))));
         type_text(r.ui.window(), password());
         press(r.ui.window(), "\n");
         assert!(r.ui.get_busy(), "the work left the UI thread");
-        slint::run_event_loop().expect("event loop");
+        // Earlier tests on this thread hid their last window outside a running loop, and Slint
+        // queued a quit for each; those end a run early, so run again until the answer is in.
+        for _ in 0..64 {
+            slint::run_event_loop().expect("event loop");
+            if applied.get() {
+                break;
+            }
+        }
         snipdeck_app::master_job::set_offload(Rc::new(snipdeck_app::master_job::Inline));
         assert!(!r.ui.get_busy(), "the worker's answer arrived");
         assert!(!r.ctl.borrow().library_locked());

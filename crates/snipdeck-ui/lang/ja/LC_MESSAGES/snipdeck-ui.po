@@ -886,6 +886,9 @@ msgstr "よく使う順"
 msgid "Move"
 msgstr "移動"
 
+msgid "Move down"
+msgstr "下へ移動"
+
 msgid "Move selected item to Trash"
 msgstr "選択したスニペットをゴミ箱へ移動"
 
@@ -909,6 +912,12 @@ msgstr "リストに移動"
 
 msgid "Move to list…"
 msgstr "リストに移動…"
+
+msgid "Move up"
+msgstr "上へ移動"
+
+msgid "Moved to position {} of {}"
+msgstr "{}番目に移動しました（全{}件）"
 
 msgid "Moved {} item to the Trash"
 msgid_plural "Moved {} items to the Trash"
@@ -1508,6 +1517,12 @@ msgstr "Snipdeck はこの PC でキーを保護できないため、マスタ�
 msgid "Snipdeck closed unexpectedly last time. Open the log?"
 msgstr "Snipdeck は前回、予期せず終了しました。ログを開きますか？"
 
+msgid "Snipdeck couldn't open that. Check that it still exists."
+msgstr "Snipdeck でそのファイルを開けませんでした。まだ存在するか確認してください。"
+
+msgid "Snipdeck couldn't read that folder."
+msgstr "Snipdeck でそのフォルダーを読み取れませんでした。"
+
 msgid "Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again."
 msgstr "Snipdeck は暗号化キーを読み込めなかったため、今はマスターパスワードを設定・変更できません。Snipdeck を再起動して、もう一度お試しください。"
 
@@ -1628,8 +1643,20 @@ msgstr "コピーしたテキストはここに{}日間表示されます。役�
 msgid "That app"
 msgstr "そのアプリ"
 
+msgid "That file is from a newer Snipdeck. Update Snipdeck to import it."
+msgstr "このファイルは新しいバージョンの Snipdeck で作成されています。インポートするには Snipdeck を更新してください。"
+
 msgid "That is not a Snipdeck licence key. A key starts with SNIP1."
 msgstr "Snipdeck のライセンスキーではありません。キーは SNIP1 で始まります。"
+
+msgid "That isn't a CopyQ export."
+msgstr "CopyQ のエクスポートファイルではありません。"
+
+msgid "That isn't a Ditto database."
+msgstr "Ditto のデータベースではありません。"
+
+msgid "That isn't a Snipdeck file, or it is damaged."
+msgstr "Snipdeck のファイルではないか、破損しています。"
 
 msgid "That key is not for Snipdeck Supporter."
 msgstr "そのキーは Snipdeck Supporter 用ではありません。"
@@ -1660,6 +1687,9 @@ msgstr "無料プランには {} 個のボードが含まれます。これを�
 
 msgid "The Trash is empty"
 msgstr "ゴミ箱は空です"
+
+msgid "The Windows clipboard history has no text in it yet. Copy some text, then try again."
+msgstr "クリップボードの履歴にはまだテキストがありません。テキストをコピーしてから、もう一度お試しください。"
 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "取り込み元が Snipdeck が一度に読み込める量より大きいため、取り込みを途中で停止しました。"
@@ -1888,6 +1918,15 @@ msgstr "Windows のアクセント"
 
 msgid "Windows accent follows your Windows personalisation."
 msgstr "Windows のパーソナライズ設定に従います。"
+
+msgid "Windows clipboard history"
+msgstr "クリップボードの履歴"
+
+msgid "Windows clipboard history is turned off. Turn it on in Windows Settings > System > Clipboard, copy some text, then try again."
+msgstr "クリップボードの履歴はオフになっています。Windows の設定 > システム > クリップボード でオンにして、テキストをコピーしてから、もう一度お試しください。"
+
+msgid "Windows did not let Snipdeck read the clipboard history on this PC."
+msgstr "Windows により、この PC で Snipdeck がクリップボードの履歴を読み取ることが許可されていません。"
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "取り込むと {} 個のボードになりますが、無料プランには {} 個まで含まれます。"

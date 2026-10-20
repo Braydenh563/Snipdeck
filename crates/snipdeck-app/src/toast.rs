@@ -154,6 +154,13 @@ pub enum ToastMessage {
         /// The list they went to.
         list: String,
     },
+    /// "Moved to position 2 of 7": says where a keyboard or menu move put the item.
+    ItemPlaced {
+        /// Its place in the list, from 1.
+        position: usize,
+        /// How many items the list has.
+        total: usize,
+    },
     /// "Deleted for good".
     DeletedForever {
         /// How many Trash entries went.
