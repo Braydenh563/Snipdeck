@@ -1629,6 +1629,12 @@ impl SettingsUi {
                         data_dir.clone(),
                         Rc::clone(&host),
                     );
+                    let weak = window.as_weak();
+                    crate::ownership::register_closer(crate::ownership::Win::Settings, move || {
+                        if let Some(w) = weak.upgrade() {
+                            let _ = w.hide();
+                        }
+                    });
                     *slot = Some((window, binding));
                 }
                 let Some((window, binding)) = slot.as_ref() else {
@@ -1636,6 +1642,7 @@ impl SettingsUi {
                 };
                 crate::native_window::place_over_owner(window.window());
                 window.show()?;
+                crate::ownership::opened(crate::ownership::Win::Settings);
                 fit_to_screen(window.window());
                 // The page was hidden, so it skipped the redraws; draw it now that it is up.
                 binding.redraw();

@@ -320,6 +320,13 @@ where
                 let _ = w.hide();
             }
         });
+        // Closes with the window it was opened from.
+        let weak = w.as_weak();
+        crate::ownership::register_closer(crate::ownership::Win::TagManager, move || {
+            if let Some(w) = weak.upgrade() {
+                let _ = w.hide();
+            }
+        });
         *self.tag_manager.borrow_mut() = Some(w.clone_strong());
         Some(w)
     }
@@ -336,6 +343,7 @@ where
         window.invoke_finish_rename();
         place_over_owner(window.window());
         let _ = window.show();
+        crate::ownership::opened(crate::ownership::Win::TagManager);
         fit_to_screen(window.window());
         raise(window.window());
     }
@@ -369,6 +377,7 @@ where
                     size_to_content(window.window(), || window.get_wanted_height());
                     place_over_owner(window.window());
                     let _ = window.show();
+                    crate::ownership::opened(crate::ownership::Win::ListEditor);
                     fit_to_screen(window.window());
                     // Shown again after a close, the window would stay behind the Main
                     // window (it was created un-activated): bring it up.
@@ -391,6 +400,7 @@ where
                     size_to_content(window.window(), || window.get_wanted_height());
                     place_over_owner(window.window());
                     let _ = window.show();
+                    crate::ownership::opened(crate::ownership::Win::BoardEditor);
                     fit_to_screen(window.window());
                     // Shown again after a close, the window would stay behind the Main
                     // window (it was created un-activated): bring it up.
@@ -431,6 +441,18 @@ where
             core.act(Controller::main_editor_close);
             CloseRequestResponse::HideWindow
         });
+        let (core, weak) = (Rc::clone(self), w.as_weak());
+        crate::ownership::register_closer(crate::ownership::Win::ListEditor, move || {
+            if let Some(w) = weak.upgrade() {
+                let (name, accent, icon, sort) = (
+                    w.get_name(),
+                    accent_of(w.get_accent()),
+                    icon_of(w.get_icon_index()),
+                    sort_of(w.get_sort_index()),
+                );
+                core.act(|ctl| ctl.main_editor_park(name.as_str(), accent, icon, sort));
+            }
+        });
         self.editors.borrow_mut().list = Some(w.clone_strong());
         Some(w)
     }
@@ -458,6 +480,15 @@ where
         w.window().on_close_requested(move || {
             core.act(Controller::main_editor_close);
             CloseRequestResponse::HideWindow
+        });
+        let (core, weak) = (Rc::clone(self), w.as_weak());
+        crate::ownership::register_closer(crate::ownership::Win::BoardEditor, move || {
+            if let Some(w) = weak.upgrade() {
+                let name = w.get_name();
+                core.act(|ctl| {
+                    ctl.main_editor_park(name.as_str(), None, None, ListSort::Manual);
+                });
+            }
         });
         self.editors.borrow_mut().board = Some(w.clone_strong());
         Some(w)
@@ -707,6 +738,15 @@ where
                 crate::trace!("main window close requested: quit {quit}");
                 if quit {
                     let _ = slint::quit_event_loop();
+                } else {
+                    // Closing Main closes what was opened from it (O53): its own menus and
+                    // dialogs, then the windows it opened. The Panel's stay.
+                    if let Some(window) = core.window.upgrade() {
+                        window.invoke_dismiss_overlays();
+                    }
+                    core.controller.borrow_mut().main_board_menu_close();
+                    crate::ownership::owner_closed(crate::ownership::Win::Main);
+                    redraw_all();
                 }
                 CloseRequestResponse::HideWindow
             });

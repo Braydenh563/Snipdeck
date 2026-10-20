@@ -675,6 +675,36 @@ fn a_cancelled_editor_changes_nothing() {
 }
 
 #[test]
+fn a_parked_list_editor_closes_and_comes_back_with_its_typed_fields() {
+    let mut ctl = pro();
+    let index = list_index(&ctl.main_screen(), "Addresses");
+    ctl.main_edit_list(index);
+    ctl.main_editor_park("Places (typed)", None, None, ListSort::RecentlyUsed);
+    assert!(ctl.main_screen().editor.is_none());
+    ctl.main_edit_list(index);
+    let editor = ctl.main_screen().editor.expect("editor");
+    assert_eq!(editor.name, "Places (typed)");
+    assert_eq!((editor.accent, editor.sort), (None, ListSort::RecentlyUsed));
+    // Cancelling forgets them: the next open shows the saved list.
+    ctl.main_editor_close();
+    ctl.main_edit_list(index);
+    assert_eq!(ctl.main_screen().editor.expect("editor").name, "Addresses");
+}
+
+#[test]
+fn a_parked_editor_with_nothing_typed_leaves_no_draft() {
+    let mut ctl = pro();
+    let index = list_index(&ctl.main_screen(), "Addresses");
+    ctl.main_edit_list(index);
+    let editor = ctl.main_screen().editor.expect("editor");
+    ctl.main_editor_park(&editor.name, editor.accent, editor.icon, editor.sort);
+    ctl.main_edit_list(index);
+    ctl.main_editor_save("Renamed", None, None, ListSort::Manual);
+    ctl.main_edit_list(index);
+    assert_eq!(ctl.main_screen().editor.expect("editor").name, "Renamed");
+}
+
+#[test]
 fn editing_a_list_renames_recolours_and_re_sorts_it() {
     let mut ctl = pro();
     let screen = ctl.main_screen();

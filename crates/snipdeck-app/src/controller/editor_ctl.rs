@@ -399,6 +399,18 @@ where
         }
     }
 
+    /// The window that opened the editor closed: the editor closes without asking and keeps what
+    /// was typed as its draft (the same draft the two-second tick writes), so opening the item
+    /// again restores it. A sensitive item's text is never kept.
+    pub fn item_editor_park(&mut self, input: &EditorInput) {
+        self.item_editor_autosave(input);
+        if let Some(slot) = self.item_editor.take()
+            && slot.sensitive()
+        {
+            self.clear_draft(slot.draft_key());
+        }
+    }
+
     /// Delete on an existing item: it moves to the Trash with an Undo toast, and the editor
     /// closes.
     pub fn item_editor_delete(&mut self) {

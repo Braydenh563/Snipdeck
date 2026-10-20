@@ -35,6 +35,7 @@ pub mod master_job;
 pub mod master_password;
 pub mod native_window;
 pub mod onboarding_binding;
+pub mod ownership;
 pub mod palette;
 pub mod panel;
 pub mod paste_next;

@@ -278,6 +278,8 @@ where
                 }
                 Effect::HidePanel => {
                     let _ = window.hide();
+                    // What was opened from the Panel closes with it (O53).
+                    crate::ownership::owner_closed(crate::ownership::Win::Panel);
                 }
                 // The item editor is its own window; the controller opens it and every bound
                 // window (the editor's included) is redrawn from it.

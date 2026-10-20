@@ -185,6 +185,9 @@ pub struct Controller<S, C, K, T> {
     /// The list or board editor, while one is open.
     editor: Option<main_ctl::EditorSlot>,
     editor_seq: u64,
+    /// List and board editors closed with the window that opened them: what was typed in each,
+    /// for the next time it opens (this app session only).
+    parked_editors: Vec<(main_ctl::EditorTarget, crate::main_window::EditorView)>,
     /// The item editor, while one is open.
     item_editor: Option<editor_ctl::ItemEditorSlot>,
     item_editor_seq: u64,
@@ -322,6 +325,7 @@ where
             main: MainModel::new(),
             editor: None,
             editor_seq: 0,
+            parked_editors: Vec::new(),
             item_editor: None,
             item_editor_seq: 0,
             editor_env: editor_ctl::EditorEnv::default(),

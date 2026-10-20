@@ -157,6 +157,14 @@ where
     pub(super) fn open_editor(&mut self, target: EditorTarget, mut view: EditorView) {
         self.editor_seq += 1;
         view.seq = self.editor_seq;
+        // Fields typed before the owner window closed come back.
+        if let Some(at) = self.parked_editors.iter().position(|(t, _)| *t == target) {
+            let (_, typed) = self.parked_editors.remove(at);
+            view.name = typed.name;
+            view.accent = typed.accent;
+            view.icon = typed.icon;
+            view.sort = typed.sort;
+        }
         self.editor = Some(EditorSlot { view, target });
     }
 
@@ -282,6 +290,32 @@ where
     /// The editor was cancelled or closed.
     pub fn main_editor_close(&mut self) {
         self.editor = None;
+    }
+
+    /// The window that opened the editor closed: the editor closes without asking and keeps the
+    /// fields as typed (for the rest of the app session), so opening the same one again finds
+    /// them. Fields equal to what the editor opened with are not kept.
+    pub fn main_editor_park(
+        &mut self,
+        name: &str,
+        accent: Option<ListAccent>,
+        icon: Option<ListIcon>,
+        sort: ListSort,
+    ) {
+        let Some(slot) = self.editor.take() else {
+            return;
+        };
+        self.parked_editors.retain(|(t, _)| *t != slot.target);
+        let v = &slot.view;
+        if (v.name.as_str(), v.accent, v.icon, v.sort) == (name, accent, icon, sort) {
+            return;
+        }
+        let mut typed = slot.view;
+        name.clone_into(&mut typed.name);
+        typed.accent = accent;
+        typed.icon = icon;
+        typed.sort = sort;
+        self.parked_editors.push((slot.target, typed));
     }
 
     /// The user edited a field of the editor: a refusal no longer applies.

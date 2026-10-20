@@ -1242,6 +1242,31 @@ fn a_draft_comes_back_when_the_editor_is_opened_again() {
 }
 
 #[test]
+fn parking_an_editor_closes_it_and_keeps_its_draft_for_the_next_open() {
+    let mut r = pro();
+    let id = id_of(&r.ctl, "Office");
+    r.ctl.open_item_editor(id);
+    let v = view(&r.ctl);
+    let edited = EditorInput {
+        content: "Level 9 (unsaved)".into(),
+        ..v.fields.clone()
+    };
+    // The owner window closed: the typed text is kept and no question is asked.
+    r.ctl.item_editor_park(&edited);
+    assert!(!r.ctl.item_editor_open());
+    assert_eq!(draft_files(r.dir.path()), [format!("{id}.json")]);
+    r.ctl.open_item_editor(id);
+    let back = view(&r.ctl);
+    assert!(back.restored);
+    assert_eq!(back.fields.content, "Level 9 (unsaved)");
+    assert_eq!(
+        text_of(&r.ctl, id),
+        "Level 4, 100 St Georges Terrace, Perth WA 6000",
+        "nothing was saved"
+    );
+}
+
+#[test]
 fn discarding_removes_the_draft_and_an_edit_draft_belongs_to_its_item() {
     let mut r = pro();
     let id = id_of(&r.ctl, "Office");
