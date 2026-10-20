@@ -66,4 +66,6 @@
 
 ## scale follow-up (branch claude/v1-wave3b-scale, off #21 head)
 - Done in code (WIP, goldens not yet regenerated/read): (1) switch/checkbox/radio/swatch/tag glyphs/text-field icons scale with text-scale; (2) picker footer keeps Close when narrow; (3) tab bar caret buttons when tabs overflow (reuse "Scroll left/right" strings); (4) status line shows item count only (selection still announced); (5) Main cards drop the empty number gutter (`numbered: false`).
-- Next: run ui tests, fix panel pinned-strip "Scroll right" ambiguity if any, regenerate goldens, read light+dark of changed, reviewer, gate --staged, PR, report to hub.
+- DONE: all five items in code, goldens regenerated and read, reviewer findings fixed, gate and full ui tests green; PR opened. (Was: fix panel pinned-strip "Scroll right" ambiguity if any, regenerate goldens, read light+dark of changed, reviewer, gate --staged, PR, report to hub.
+
+Note: assert_golden tolerates <0.1% pixel diffs, so tiny changes (1px lines) are not rewritten by UPDATE_GOLDEN; delete the PNG to force it.

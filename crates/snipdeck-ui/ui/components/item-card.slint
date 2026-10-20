@@ -712,7 +712,7 @@ export component ItemCard inherits Rectangle {
                 return accept;
             }
             if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
-                root.context-menu-requested(root.gutter-w, root.height);
+                root.context-menu-requested(max(root.gutter-w, Space.s6), root.height);
                 return accept;
             }
             // Keyboard reveal: hold Space (a sensitive item only).

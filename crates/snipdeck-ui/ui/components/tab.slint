@@ -254,11 +254,13 @@ export component ListTabBar inherits Rectangle {
     }
 
     // Scrolls so that the tab [x, x + w) is fully visible.
+    // The caret patches cover this much of each end while there are tabs beyond it, so a tab is brought in clear of them.
+    property <length> patch-w: Space.hit-min + 2 * Space.s1;
     function reveal(x: length, w: length) {
-        if (x + flick.content-x < 0px) {
-            flick.content-x = -x;
-        } else if (x + w + flick.content-x > flick.width) {
-            flick.content-x = min(0px, flick.width - x - w);
+        if (x + flick.content-x < root.patch-w) {
+            flick.content-x = min(0px, root.patch-w - x);
+        } else if (x + w + flick.content-x > flick.width - root.patch-w) {
+            flick.content-x = min(0px, max(flick.width - flick.content-width, flick.width - root.patch-w - x - w));
         }
     }
 
@@ -402,8 +404,11 @@ export component ListTabBar inherits Rectangle {
     // that has more tabs to reveal. No room is reserved for them, so a bar that fits shows none.
     if root.can-left: Rectangle {
         x: 0px;
-        width: Space.hit-min * SystemLook.text-scale + 2 * Space.s1;
+        width: root.patch-w;
+        height: root.height - 2px;
         background: Theme.bg-app;
+        // Blocks the tab under the patch from taking the pointer.
+        TouchArea {}
     }
     if root.can-left: IconButton {
         icon: Icons.caret-left;
@@ -416,8 +421,11 @@ export component ListTabBar inherits Rectangle {
     }
     if root.can-right: Rectangle {
         x: flick.width - self.width;
-        width: Space.hit-min * SystemLook.text-scale + 2 * Space.s1;
+        width: root.patch-w;
+        height: root.height - 2px;
         background: Theme.bg-app;
+        // Blocks the tab under the patch from taking the pointer.
+        TouchArea {}
     }
     if root.can-right: IconButton {
         icon: Icons.caret-right;
