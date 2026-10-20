@@ -8,8 +8,7 @@
 // focus):
 //   type            filters; a printable key typed while another control has focus moves into the search
 //   Up / Down       move the selection (PageUp / PageDown a page); Enter uses it, Shift+Enter copies only
-//   1-9             use the Nth row while the search is empty (digits are text once a query exists);
-//                   Alt+1-9 always uses the Nth row
+//   Alt+1-9         use the Nth row, whatever the search holds (bare digits are always search text)
 //   Tab             next scope (All, This board, Pinned), Shift+Tab previous
 //   Ctrl+E          asks the host to edit the selected snippet
 //   Esc             asks the host to close the Picker
@@ -25,7 +24,7 @@ import { Tag } from "components/tag.slint";
 import { KeyCombo } from "components/keycap.slint";
 
 // One result, as `snipdeck-app` resolves it across boards. The breadcrumb is `board-name / list-name`; the
-// quick-use number is the row's position (1-9 for the first nine); `masked-preview` stands in for a
+// quick-use number is the row's position (1-9 for the first nine, used with Alt+N); `masked-preview` stands in for a
 // sensitive item's preview.
 export struct PickerRow {
     kind: ItemKind,
@@ -97,12 +96,14 @@ export component PickerWindow inherits Window {
     callback row-activated(int);
     // Shift+Enter or Shift+click: copy only.
     callback row-copied(int);
-    // Digit 1-9 pressed (the app resolves it against the rows it sent).
+    // Alt+1-9 pressed (the app resolves it against the rows it sent).
     callback quick-use(int);
     callback selection-moved(int);
     // Ctrl+E on row `index`.
     callback edit-requested(int);
     callback close-requested();
+    // F1: the user guide.
+    callback help-requested();
 
     // ---- Public -------------------------------------------------------------------------------
     // The window height that fits the current content: search, scopes, up to nine rows (or the empty
@@ -290,13 +291,17 @@ export component PickerWindow inherits Window {
             if (event.modifiers.meta || search.composing) {
                 return reject;
             }
-            // Alt+digit is quick-use whatever the query holds.
+            // Alt+digit is quick-use whatever the query holds; a bare digit is always search text.
             if (event.modifiers.alt) {
                 if (!event.modifiers.shift && root.digit(event.text) > 0) {
                     root.quick(root.digit(event.text));
                     return accept;
                 }
                 return reject;
+            }
+            if (event.text == Key.F1) {
+                root.help-requested();
+                return accept;
             }
             if (event.text == Key.Escape) {
                 root.close-requested();
@@ -328,11 +333,6 @@ export component PickerWindow inherits Window {
             }
             if (event.text == Key.Return) {
                 root.use-selected(event.modifiers.shift);
-                return accept;
-            }
-            // Digits are quick-use only while there is no query; with one they are search text.
-            if (!root.searching && !event.modifiers.shift && root.digit(event.text) > 0) {
-                root.quick(root.digit(event.text));
                 return accept;
             }
             if (!search.has-focus && event.text != " " && root.printable(event.text)) {
@@ -478,6 +478,11 @@ export component PickerWindow inherits Window {
                         keys: ["Shift", "↵"];
                         key-label: @tr("Shift Enter");
                         text: @tr("Copy");
+                    }
+                    if !root.narrow: Hint {
+                        keys: ["Alt", "1-9"];
+                        key-label: @tr("Alt 1 to 9");
+                        text: @tr("Use result N");
                     }
                     if !root.narrow: Hint {
                         keys: ["Tab"];

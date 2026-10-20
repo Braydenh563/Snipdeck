@@ -472,7 +472,9 @@ where
 
     /// The controller cuts at its own clock's `now - TRASH_DAYS`, the same moment as `_cutoff`.
     fn purge_trash(&mut self, _cutoff: Timestamp) -> Result<usize, String> {
-        Ok(self.controller.purge_expired_trash())
+        self.controller
+            .purge_expired_trash()
+            .map_err(|e| e.to_string())
     }
 
     fn gc_blobs(&mut self) -> Result<usize, String> {

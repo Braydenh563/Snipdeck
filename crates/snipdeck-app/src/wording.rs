@@ -370,10 +370,11 @@ pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'st
         ItemMenuEntry::Copy => "Shift+Enter",
         ItemMenuEntry::Edit => "Ctrl+E",
         ItemMenuEntry::Duplicate => "Ctrl+D",
+        ItemMenuEntry::Pin { .. } => "Ctrl+P",
         ItemMenuEntry::Trash => "Del",
         ItemMenuEntry::MoveUp { .. } => "Alt+Up",
         ItemMenuEntry::MoveDown { .. } => "Alt+Down",
-        ItemMenuEntry::Pin { .. } | ItemMenuEntry::Stack { .. } | ItemMenuEntry::Separator => "",
+        ItemMenuEntry::Stack { .. } | ItemMenuEntry::Separator => "",
     }
 }
 

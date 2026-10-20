@@ -18,8 +18,10 @@ This guide says what the app is built to do.
   The **Picker** searches every board at your caret. The **Main window** is where you organise everything.
 - The **tray icon** keeps Snipdeck running. A left click shows or hides the Panel. A double-click opens the
   Main window. The right-click menu has Open Panel, Open Snipdeck, Pause hotkeys and Quit.
-- The **target** is the app you were typing in. When you click an item, Snipdeck pastes into the target. The
-  Panel never takes the focus away from it.
+- The **target** is the app you were typing in. When you click an item, Snipdeck pastes into the target. A
+  click on an item never takes the focus away from it. When you open the Panel with its hotkey, the tray icon or
+  by starting Snipdeck again, it takes the keyboard so you can type to search, and gives it back to the target
+  when it closes. Resting the pointer on a docked Panel's edge opens it without taking the keyboard.
 
 ## Add a snippet
 
@@ -81,7 +83,7 @@ sensitive. A sensitive item:
 | Click an item in the Panel | Pastes it into the target |
 | `Shift`+click, or `Shift+Enter` | Copies only, and does not paste |
 | `Enter` on the selected row | Same as a click |
-| Press `1` to `9` (search box empty) | Uses the row with that number |
+| Press `Alt+1` to `Alt+9` | Uses the row with that number (digits without `Alt` are search text) |
 | Click a pinned chip | Uses that item |
 | Picker: type, then `Enter` | Pastes the first match |
 
@@ -97,7 +99,7 @@ and the start of the content.
 
 - `Up`, `Down`, `PageUp`, `PageDown` move. `Enter` pastes. `Shift+Enter` copies.
 - `Tab` and `Shift+Tab` change where it searches: **All**, **This board** or **Pinned**.
-- `1` to `9` use that row while the box is empty. `Alt+1` to `Alt+9` work at any time.
+- `Alt+1` to `Alt+9` use that row, whatever the box holds. Digits without `Alt` are typed into the search.
 - `Ctrl+E` edits the selected item. `Esc` closes the Picker.
 
 ### Paste next (Supporter)
@@ -325,7 +327,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Anywhere | `Ctrl+Alt+V` | Paste next, or the next item of a paste stack (Supporter) |
 | Panel | `Up`, `Down`, `PageUp`, `PageDown` | Move the selection |
 | Panel | `Enter`, `Shift+Enter` | Use, or copy only |
-| Panel | `1` to `9` | Use that row (search box empty) |
+| Panel | `Alt+1` to `Alt+9` | Use that row (digits without `Alt` are search text) |
 | Panel | `Ctrl+Tab`, `Ctrl+Shift+Tab` | Next or previous list |
 | Panel | `Ctrl+F` | Focus the search box |
 | Panel | `Ctrl+D` | Duplicate |
@@ -336,6 +338,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Ctrl+W` | Hide the Panel |
 | Panel | `Ctrl+Z` | Undo the delete (search box empty) |
 | Panel | `Ctrl+E`, `F2` | Edit the selected item |
+| Panel | `Ctrl+P` | Pin or unpin the selected item |
 | Panel | `Delete` | Move the selected item to the Trash (not while searching) |
 | Panel | `Menu`, `Shift+F10` | Open the item menu |
 | Panel | `Esc` | Clear the search; with nothing to clear, hide the Panel |

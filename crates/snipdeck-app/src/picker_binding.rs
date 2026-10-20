@@ -22,7 +22,7 @@ use crate::{
     binding::{
         MASKED_PREVIEW, extension_of, index, item_kind_of, model, redraw_all, register_redraw,
     },
-    controller::{Controller, Library, PickerView, View},
+    controller::{Controller, HelpTopic, Library, PickerView, View},
     frame::Rect,
     host::ClipboardText,
     palette::list_color,
@@ -201,6 +201,8 @@ where
             .act(|ctl| ctl.picker_edit(index(i))));
         wire!(on_close_requested, |core| core
             .act(Controller::close_picker));
+        wire!(on_help_requested, |core| core
+            .act(|ctl| ctl.main_open_help(HelpTopic::Guide)));
     }
 }
 

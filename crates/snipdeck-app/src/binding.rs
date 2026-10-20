@@ -613,6 +613,7 @@ where
         wire_effects!(on_edit_requested, |ctl, i| ctl.edit_row(index(i)));
         wire_effects!(on_rename_requested, |ctl, i| ctl.rename_row(index(i)));
         wire!(on_duplicate_requested, |ctl, i| ctl.duplicate_row(index(i)));
+        wire!(on_pin_requested, |ctl, i| ctl.pin_row(index(i)));
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.toast_action());
         wire!(on_undo_requested, |ctl| ctl.main_undo());
@@ -919,18 +920,26 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             && p.stack.as_ref().map(|s| &s.items) == view.stack.as_ref().map(|s| &s.items)
     }) {
         let marked = view.stack.as_ref().map_or(&[][..], |s| s.items.as_slice());
-        window.set_rows(model(view.rows.iter().enumerate().map(|(i, r)| {
-            let mut row = panel_row(r, view.dark);
-            row.stack_position = marked
-                .iter()
-                .position(|id| *id == r.id)
-                .map_or(0, |at| to_i32(at + 1));
-            // The one sensitive row held revealed: the controller put its text in the preview.
-            if view.revealed == Some(i) {
-                row.preview = r.preview.as_str().into();
-            }
-            row
-        })));
+        let rows = view
+            .rows
+            .iter()
+            .enumerate()
+            .map(|(i, r)| {
+                let mut row = panel_row(r, view.dark);
+                row.stack_position = marked
+                    .iter()
+                    .position(|id| *id == r.id)
+                    .map_or(0, |at| to_i32(at + 1));
+                // The one sensitive row held revealed: the controller put its text in the preview.
+                if view.revealed == Some(i) {
+                    row.preview = r.preview.as_str().into();
+                }
+                row
+            })
+            .collect();
+        if let Some(fresh) = refreshed_model(&window.get_rows(), rows) {
+            window.set_rows(fresh);
+        }
     }
     render_recent(window, previous, view);
     let revealed = view.revealed.map_or(-1, to_i32);
@@ -1057,6 +1066,27 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
 
 pub(crate) fn model<T: Clone + 'static>(items: impl Iterator<Item = T>) -> ModelRc<T> {
     ModelRc::new(VecModel::from(items.collect::<Vec<_>>()))
+}
+
+/// Brings the model a window already shows up to date with `rows`. The same number of rows
+/// changes only the rows that differ, so a selection or pin change does not rebuild the list (a
+/// rebuilt model resets the list's scroll position and focus). Anything else, or a model that is
+/// not ours, gets a fresh model back to set.
+pub(crate) fn refreshed_model<T: Clone + PartialEq + 'static>(
+    current: &ModelRc<T>,
+    rows: Vec<T>,
+) -> Option<ModelRc<T>> {
+    if current.row_count() == rows.len()
+        && let Some(vec) = current.as_any().downcast_ref::<VecModel<T>>()
+    {
+        for (i, row) in rows.into_iter().enumerate() {
+            if vec.row_data(i).as_ref() != Some(&row) {
+                vec.set_row_data(i, row);
+            }
+        }
+        return None;
+    }
+    Some(ModelRc::new(VecModel::from(rows)))
 }
 
 pub(crate) fn to_i32(n: usize) -> i32 {

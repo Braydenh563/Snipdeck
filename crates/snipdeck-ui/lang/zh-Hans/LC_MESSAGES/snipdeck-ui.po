@@ -94,6 +94,12 @@ msgstr "将删除全部 {} 条最近复制的内容。此操作无法撤销。"
 msgid "Also forget the encryption key"
 msgstr "同时忘记加密密钥"
 
+msgid "Alt 1 to 9"
+msgstr ""
+
+msgid "Alt+{}"
+msgstr ""
+
 msgid "Amber"
 msgstr "琥珀色"
 
@@ -351,6 +357,9 @@ msgstr "复制该片段"
 
 msgid "Copy the result"
 msgstr "复制结果"
+
+msgid "Copy without pasting"
+msgstr ""
 
 msgid "CopyQ export"
 msgstr "CopyQ 导出"
@@ -1082,9 +1091,6 @@ msgstr "{} 的新名称"
 
 msgid "New password"
 msgstr "新密码"
-
-msgid "New snippet"
-msgstr "新建片段"
 
 msgid "New tag"
 msgstr "新建标签"
@@ -1910,6 +1916,9 @@ msgstr "超过此数量后，最旧的备份会被删除。"
 msgid "The panel"
 msgstr "面板"
 
+msgid "The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back."
+msgstr ""
+
 msgid "The picker"
 msgstr "选择器"
 
@@ -2074,6 +2083,9 @@ msgstr "至少使用 {} 个字符。"
 
 msgid "Use just the program's file name, like notepad.exe."
 msgstr "只需填写程序的文件名，例如 notepad.exe。"
+
+msgid "Use result N"
+msgstr ""
 
 msgid "Use selected item"
 msgstr "使用所选片段"

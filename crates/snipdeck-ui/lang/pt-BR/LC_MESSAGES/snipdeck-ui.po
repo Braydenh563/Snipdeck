@@ -94,6 +94,12 @@ msgstr "Todas as {} cópias recentes serão removidas. Isso não pode ser desfei
 msgid "Also forget the encryption key"
 msgstr "Esquecer também a chave de criptografia"
 
+msgid "Alt 1 to 9"
+msgstr ""
+
+msgid "Alt+{}"
+msgstr ""
+
 msgid "Amber"
 msgstr "Âmbar"
 
@@ -351,6 +357,9 @@ msgstr "Copiar o item"
 
 msgid "Copy the result"
 msgstr "Copiar o resultado"
+
+msgid "Copy without pasting"
+msgstr ""
 
 msgid "CopyQ export"
 msgstr "Exportação do CopyQ"
@@ -1087,9 +1096,6 @@ msgstr "Novo nome para {}"
 
 msgid "New password"
 msgstr "Nova senha"
-
-msgid "New snippet"
-msgstr "Novo trecho"
 
 msgid "New tag"
 msgstr "Nova etiqueta"
@@ -1917,6 +1923,9 @@ msgstr "As mais antigas são excluídas quando houver mais do que este número."
 msgid "The panel"
 msgstr "O painel"
 
+msgid "The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back."
+msgstr ""
+
 msgid "The picker"
 msgstr "O seletor"
 
@@ -2081,6 +2090,9 @@ msgstr "Use pelo menos {} caracteres."
 
 msgid "Use just the program's file name, like notepad.exe."
 msgstr "Use apenas o nome do arquivo do programa, como notepad.exe."
+
+msgid "Use result N"
+msgstr ""
 
 msgid "Use selected item"
 msgstr "Usar item selecionado"

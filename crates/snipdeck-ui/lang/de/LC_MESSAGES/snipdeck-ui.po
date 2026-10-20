@@ -94,6 +94,12 @@ msgstr "Alle {} zuletzt kopierten Einträge werden entfernt. Das lässt sich nic
 msgid "Also forget the encryption key"
 msgstr "Auch den Verschlüsselungsschlüssel vergessen"
 
+msgid "Alt 1 to 9"
+msgstr ""
+
+msgid "Alt+{}"
+msgstr ""
+
 msgid "Amber"
 msgstr "Bernstein"
 
@@ -351,6 +357,9 @@ msgstr "Textbaustein kopieren"
 
 msgid "Copy the result"
 msgstr "Ergebnis kopieren"
+
+msgid "Copy without pasting"
+msgstr ""
 
 msgid "CopyQ export"
 msgstr "CopyQ-Export"
@@ -1087,9 +1096,6 @@ msgstr "Neuer Name für {}"
 
 msgid "New password"
 msgstr "Neues Passwort"
-
-msgid "New snippet"
-msgstr "Neuer Textbaustein"
 
 msgid "New tag"
 msgstr "Neues Schlagwort"
@@ -1917,6 +1923,9 @@ msgstr "Die ältesten werden gelöscht, sobald es mehr als diese Anzahl gibt."
 msgid "The panel"
 msgstr "Das Panel"
 
+msgid "The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back."
+msgstr ""
+
 msgid "The picker"
 msgstr "Die Auswahl"
 
@@ -2081,6 +2090,9 @@ msgstr "Verwende mindestens {} Zeichen."
 
 msgid "Use just the program's file name, like notepad.exe."
 msgstr "Verwende nur den Dateinamen des Programms, z. B. notepad.exe."
+
+msgid "Use result N"
+msgstr ""
 
 msgid "Use selected item"
 msgstr "Ausgewählten Textbaustein verwenden"

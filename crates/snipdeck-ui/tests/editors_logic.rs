@@ -1307,12 +1307,20 @@ ui_tests! {
         }
     }
 
-    fn escape_is_skip_on_every_step() {
+    fn escape_goes_back_a_step_and_skips_only_on_the_first() {
         for step in 0..4 {
             let (ui, log) = onboarding(step);
             press_key(&ui, Key::Escape);
-            assert_eq!(take(&log), ["skip"], "step {step}");
+            let expected = if step == 0 { "skip" } else { "back" };
+            assert_eq!(take(&log), [expected], "step {step}");
         }
+    }
+
+    fn the_panel_step_says_the_panel_is_not_in_alt_tab_by_default() {
+        let (ui, _) = onboarding(2);
+        let row = find(&ui, "Show Snipdeck in the taskbar", AccessibleRole::Groupbox);
+        let said = row.accessible_description().expect("description");
+        assert!(said.contains("taskbar") && said.contains("Alt+Tab"), "{said}");
     }
 
     fn each_step_shows_its_own_content() {

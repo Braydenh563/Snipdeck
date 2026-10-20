@@ -17,7 +17,7 @@ use i_slint_backend_testing::{AccessibleRole, ElementHandle};
 use slint::{ComponentHandle, Model, platform::Key};
 use snipdeck_app::{
     binding::Binding,
-    controller::{Controller, Services},
+    controller::{Controller, Effect, HelpTopic, Services},
     demo,
     drafts::AUTOSAVE_EVERY,
     editor_binding::EditorBinding,
@@ -41,6 +41,7 @@ struct Rig {
     ctl: Rc<RefCell<Ctl>>,
     editor: EditorBinding<Store, FakeClipboard, FakeKeyboard, FakeTiming>,
     _binding: Binding,
+    effects: Rc<RefCell<Vec<Effect>>>,
     /// The data folder.
     data: std::path::PathBuf,
     /// Holds a temporary data folder up for the life of the rig.
@@ -96,11 +97,13 @@ fn rig_at(data: &Path, tier: Tier, provider: &SharedProvider) -> Rig {
     panel
         .window()
         .set_size(slint::LogicalSize::new(320.0, 480.0));
+    let effects: Rc<RefCell<Vec<Effect>>> = Rc::default();
+    let log = Rc::clone(&effects);
     let binding = Controller::bind(
         &ctl,
         &panel,
         std::rc::Rc::new(snipdeck_app::placement::NoPopups),
-        |_| {},
+        move |e| log.borrow_mut().push(*e),
     );
     let editor = Controller::bind_item_editor(&ctl);
     panel.show().expect("show");
@@ -110,6 +113,7 @@ fn rig_at(data: &Path, tier: Tier, provider: &SharedProvider) -> Rig {
         ctl,
         editor,
         _binding: binding,
+        effects,
         data: data.to_owned(),
         guard: None,
     }
@@ -241,7 +245,7 @@ fn new_snippet_in_the_kebab_opens_an_empty_editor_that_saves_text_from_the_keybo
             "nothing is made until it is needed"
         );
         let before = r.item_count();
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         assert!(ed.get_is_new());
         assert_eq!(ed.get_item_title(), "");
@@ -364,17 +368,37 @@ fn ctrl_n_and_edit_in_the_main_window_open_the_editor() {
 // ---- Cancel, discard, keep editing -------------------------------------------------------------
 
 #[test]
+fn f1_opens_the_user_guide_and_keeps_the_editor_and_its_draft() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        type_text(ed.window(), "draft title");
+        let before = r.effects.borrow().len();
+        press(ed.window(), &key(Key::F1));
+        settle();
+        assert_eq!(
+            r.effects.borrow()[before..],
+            [Effect::OpenHelp(HelpTopic::Guide)]
+        );
+        assert!(r.editor_shown());
+        assert_eq!(ed.get_item_title(), "draft title");
+        assert!(!ed.get_discard_open());
+    });
+}
+
+#[test]
 fn escape_on_an_untouched_editor_closes_it_and_with_changes_asks_before_discarding() {
     on_ui_thread(|| {
         let r = rig();
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         press(ed.window(), &key(Key::Escape));
         settle();
         assert!(!r.editor_shown(), "nothing changed: closed at once");
         assert!(!r.ctl.borrow().item_editor_open());
 
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         type_text(ed.window(), "draft title");
         press(ed.window(), &key(Key::Escape));
@@ -407,7 +431,7 @@ fn escape_on_an_untouched_editor_closes_it_and_with_changes_asks_before_discardi
 fn the_window_close_button_asks_when_something_changed_and_closes_when_not() {
     on_ui_thread(|| {
         let r = rig();
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         type_text(ed.window(), "x");
         ed.window()
@@ -419,7 +443,7 @@ fn the_window_close_button_asks_when_something_changed_and_closes_when_not() {
         settle();
         assert!(!r.ctl.borrow().item_editor_open());
 
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         ed.window()
             .dispatch_event(slint::platform::WindowEvent::CloseRequested);
@@ -440,7 +464,7 @@ fn what_is_typed_is_saved_as_a_draft_every_two_seconds_and_restored_after_a_rest
         let provider = SharedProvider::new();
         {
             let r = rig_at(data.path(), Tier::Pro, &provider);
-            menu(&r, "New snippet");
+            menu(&r, "New item");
             let ed = r.ed();
             type_text(ed.window(), "Half a thought");
             press(ed.window(), &key(Key::Tab));
@@ -455,7 +479,7 @@ fn what_is_typed_is_saved_as_a_draft_every_two_seconds_and_restored_after_a_rest
             // The app dies here, with the editor neither saved nor discarded.
         }
         let r = rig_at(data.path(), Tier::Pro, &provider);
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         assert_eq!(ed.get_item_title(), "Half a thought");
         assert_eq!(ed.get_content(), "unfinished body");
@@ -477,7 +501,7 @@ fn what_is_typed_is_saved_as_a_draft_every_two_seconds_and_restored_after_a_rest
 fn a_draft_that_is_typed_back_to_the_start_is_removed() {
     on_ui_thread(|| {
         let r = rig();
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         type_text(ed.window(), "a");
         wait(AUTOSAVE_EVERY);
@@ -494,7 +518,7 @@ fn a_draft_that_is_typed_back_to_the_start_is_removed() {
 fn the_kind_switch_offers_six_kinds_for_a_new_item_and_four_for_an_existing_one() {
     on_ui_thread(|| {
         let r = rig();
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         for label in ["Text", "Code", "Link", "Template", "Image", "File"] {
             let _ = find(&ed, label, AccessibleRole::RadioButton);
@@ -515,7 +539,7 @@ fn the_kind_switch_offers_six_kinds_for_a_new_item_and_four_for_an_existing_one(
 fn a_link_without_a_scheme_is_refused_inline_and_a_good_one_saves() {
     on_ui_thread(|| {
         let r = rig();
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         click(ed.window(), &find(&ed, "Link", AccessibleRole::RadioButton));
         assert_eq!(ed.get_kind_index(), 2);
@@ -557,7 +581,7 @@ fn a_new_file_item_asks_for_a_path_and_saves_a_copy() {
         let files = tempfile::tempdir().expect("dir");
         let path = files.path().join("notes.txt");
         fs::write(&path, b"file body").expect("write");
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         click(ed.window(), &find(&ed, "File", AccessibleRole::RadioButton));
         assert_eq!(ed.get_kind_index(), 5);
@@ -588,7 +612,7 @@ fn a_new_file_item_asks_for_a_path_and_saves_a_copy() {
 fn a_path_that_is_not_a_file_is_refused_with_the_reason() {
     on_ui_thread(|| {
         let r = rig();
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         click(
             ed.window(),
@@ -617,7 +641,7 @@ fn browse_fills_the_path_from_the_file_dialog() {
         r.ctl.borrow_mut().set_file_picker(Box::new(
             snipdeck_platform::file_dialog::FakeFilePicker::answering(Ok(Some(path.clone()))),
         ));
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         click(
             ed.window(),
@@ -637,7 +661,7 @@ fn browse_fills_the_path_from_the_file_dialog() {
 fn a_sensitive_item_made_in_the_window_is_stored_encrypted_and_never_drafted() {
     on_ui_thread(|| {
         let r = rig();
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         type_text(ed.window(), "Vault");
         ed.set_content("WINDOW-NEEDLE-4411".into());
@@ -669,7 +693,7 @@ fn a_sensitive_item_made_in_the_window_is_stored_encrypted_and_never_drafted() {
 fn a_free_user_sees_prompted_fields_refused_with_the_pro_toast() {
     on_ui_thread(|| {
         let r = rig_tier(Tier::Free);
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         assert!(!ed.get_prompted_available());
         click(
@@ -705,7 +729,7 @@ fn a_free_user_sees_prompted_fields_refused_with_the_pro_toast() {
         save(&ed);
         assert!(!r.editor_shown());
         let sensitive_help = {
-            menu(&r, "New snippet");
+            menu(&r, "New item");
             let ed = r.ed();
             find(&ed, "Sensitive item", AccessibleRole::Switch)
                 .accessible_description()
@@ -795,7 +819,7 @@ fn text_over_16_kb_opens_in_a_read_only_viewer_and_saving_keeps_it_whole() {
 fn the_editor_fields_have_roles_labels_and_big_enough_targets() {
     on_ui_thread(|| {
         let r = rig();
-        menu(&r, "New snippet");
+        menu(&r, "New item");
         let ed = r.ed();
         ed.window().set_size(slint::LogicalSize::new(640.0, 2000.0));
         for kind in 0..=5 {

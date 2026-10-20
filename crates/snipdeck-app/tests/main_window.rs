@@ -317,6 +317,24 @@ fn typing_in_the_search_box_searches_every_board() {
 // ---- Selection and item actions --------------------------------------------------------------
 
 #[test]
+fn a_selection_change_updates_the_rows_in_place_instead_of_rebuilding_the_model() {
+    on_ui_thread(|| {
+        let r = rig();
+        // A handle to the model the list shows now: it only sees the change if the model is kept.
+        let held = r.ui.get_rows();
+        let count = held.row_count();
+        assert!(count > 4);
+        r.ui.invoke_select_requested(1, SelectMode::Replace);
+        r.ui.invoke_select_requested(3, SelectMode::Extend);
+        let selected: Vec<bool> = held.iter().map(|row| row.selected).collect();
+        assert_eq!(&selected[..5], [false, true, true, true, false]);
+        assert_eq!(held.row_count(), count);
+        r.ui.invoke_clear_selection_requested();
+        assert!(held.iter().all(|row| !row.selected));
+    });
+}
+
+#[test]
 fn clicks_and_keys_build_the_selection() {
     on_ui_thread(|| {
         let r = rig();

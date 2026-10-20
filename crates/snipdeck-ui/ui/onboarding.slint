@@ -3,7 +3,7 @@
 // edge, taskbar, hide on blur) and Start-up (start with Windows, keep running in the tray).
 //
 // Like Settings, every choice applies at once: the page reports it as a callback and the host stores it. The host owns
-// `step`; Back, Next and Skip are callbacks. Skip is on every step and Esc is Skip. Closing the window skips too.
+// `step`; Back, Next and Skip are callbacks. Skip is on every step; Esc is Back, and Skip on the first step. Closing the window skips too.
 // Keyboard: Tab / Shift+Tab move between the controls of the step; a shortcut recorder starts on Enter or Space.
 import { Theme, Type, Space, Radius, Fonts, Palette, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
@@ -132,7 +132,12 @@ export component OnboardingWindow inherits Window {
     scope := FocusScope {
         key-pressed(event) => {
             if (event.text == Key.Escape) {
-                root.skip-requested();
+                // Esc backs out one step; only the first step has nothing before it, so there it skips.
+                if (root.step > 0) {
+                    root.back-requested();
+                } else {
+                    root.skip-requested();
+                }
                 return accept;
             }
             return reject;
@@ -245,7 +250,7 @@ export component OnboardingWindow inherits Window {
                     }
                     SettingRow {
                         title: @tr("Show Snipdeck in the taskbar");
-                        description: @tr("Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back.");
+                        description: @tr("The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back.");
                         Toggle {
                             a11y-label: @tr("Show Snipdeck in the taskbar");
                             checked <=> root.panel-in-taskbar;

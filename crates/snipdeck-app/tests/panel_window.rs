@@ -386,11 +386,11 @@ fn typing_in_the_search_filters_the_rows() {
 }
 
 #[test]
-fn pressing_3_pastes_the_third_item_and_counts_the_use() {
+fn alt_3_pastes_the_third_item_and_counts_the_use() {
     on_ui_thread(|| {
         let r = rig();
         assert_eq!(r.uses(2), 0);
-        press(r.window(), "3");
+        chord(r.window(), &[Key::Alt], "3");
         {
             let ctl = r.ctl.borrow();
             let services = ctl.services();
@@ -612,7 +612,7 @@ fn the_board_menu_lists_boards_and_switches() {
 fn a_template_that_needs_answers_opens_the_fill_form_and_changes_nothing() {
     on_ui_thread(|| {
         let r = rig();
-        press(r.window(), "2");
+        chord(r.window(), &[Key::Alt], "2");
         assert_eq!(r.ui.get_toast_text(), "");
         assert_eq!(r.uses(1), 0);
         let ctl = r.ctl.borrow();
@@ -625,7 +625,7 @@ fn a_template_that_needs_answers_opens_the_fill_form_and_changes_nothing() {
 fn the_toast_walks_through_its_phases_on_mock_time_and_then_goes() {
     on_ui_thread(|| {
         let r = rig();
-        press(r.window(), "1");
+        chord(r.window(), &[Key::Alt], "1");
         assert_eq!(r.ui.get_toast_text(), "Pasted into Outlook");
         assert_eq!(r.ui.get_toast_phase(), snipdeck_ui::ToastPhase::Enter);
         i_slint_backend_testing::mock_elapsed_time(TOAST_ENTER);
@@ -774,6 +774,29 @@ fn reduced_motion_reaches_the_window_from_windows_or_the_setting() {
 }
 
 #[test]
+fn ctrl_p_pins_the_selected_row_and_unpins_it_again_and_the_menu_row_shows_the_key() {
+    on_ui_thread(|| {
+        let r = rig();
+        let id: ItemId = r.ctl.borrow().model().rows()[0].id;
+        let pinned = |r: &Rig| r.ctl.borrow().store().item(id).expect("item").pinned;
+        let before = pinned(&r);
+        chord(r.window(), &[Key::Control], "p");
+        assert_eq!(pinned(&r), !before, "Ctrl+P toggles the selected row");
+        chord(r.window(), &[Key::Control], "p");
+        assert_eq!(pinned(&r), before, "and toggles it back");
+
+        r.ui.invoke_context_menu_requested(0, 10.0, 10.0);
+        assert!(r.ui.get_item_menu_open());
+        let entries = r.ui.get_item_menu_entries();
+        let pin = entries
+            .iter()
+            .find(|row| row.text.starts_with("Pin") || row.text.starts_with("Unpin"))
+            .expect("a Pin row in the item menu");
+        assert_eq!(pin.shortcut, "Ctrl+P");
+    });
+}
+
+#[test]
 fn an_explicit_theme_ignores_windows_dark_mode() {
     on_ui_thread(|| {
         let r = rig();
@@ -848,7 +871,7 @@ fn click_at(window: &slint::Window, position: slint::LogicalPosition) {
 const MENU_ROWS: [&str; 11] = [
     "Open Snipdeck",
     "All commands\u{2026}",
-    "New snippet",
+    "New item",
     "Settings\u{2026}",
     "Dock to the nearest edge",
     "Pause hotkeys",
@@ -997,7 +1020,7 @@ fn open_snipdeck_help_and_new_snippet_reach_the_host() {
         let r = rig();
         for label in [
             "Open Snipdeck",
-            "New snippet",
+            "New item",
             "Troubleshoot\u{2026}",
             "User guide",
             "About Snipdeck",
@@ -1424,7 +1447,7 @@ fn a_paste_from_a_docked_panel_collapses_it() {
     on_ui_thread(|| {
         let r = docked_rig(DockTrigger::Both);
         r.effects.borrow_mut().clear();
-        press(r.window(), "3");
+        chord(r.window(), &[Key::Alt], "3");
         assert_eq!(r.uses(2), 1, "the third item was pasted");
         assert_eq!(*r.effects.borrow(), [Effect::PlaceWindow(STRIP)]);
         assert!(r.ui.get_dock_collapsed());
@@ -1447,7 +1470,7 @@ fn a_floating_panel_keeps_everything_as_before() {
                 h: 480,
             },
         );
-        press(r.window(), "3");
+        chord(r.window(), &[Key::Alt], "3");
         assert!(!r.ui.get_dock_collapsed());
         assert_eq!(*r.effects.borrow(), []);
         r.binding.hotkey(HotkeyAction::TogglePanel);

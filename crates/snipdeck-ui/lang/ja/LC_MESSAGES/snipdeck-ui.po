@@ -94,6 +94,12 @@ msgstr "{}件の最近のコピーを削除します。元に戻せません。"
 msgid "Also forget the encryption key"
 msgstr "暗号化キーも削除する"
 
+msgid "Alt 1 to 9"
+msgstr ""
+
+msgid "Alt+{}"
+msgstr ""
+
 msgid "Amber"
 msgstr "アンバー"
 
@@ -351,6 +357,9 @@ msgstr "スニペットをコピー"
 
 msgid "Copy the result"
 msgstr "結果をコピー"
+
+msgid "Copy without pasting"
+msgstr ""
 
 msgid "CopyQ export"
 msgstr "CopyQ エクスポート"
@@ -1082,9 +1091,6 @@ msgstr "{} の新しい名前"
 
 msgid "New password"
 msgstr "新しいパスワード"
-
-msgid "New snippet"
-msgstr "新しいスニペット"
 
 msgid "New tag"
 msgstr "新しいタグ"
@@ -1910,6 +1916,9 @@ msgstr "この数を超えると、古いものから削除されます。"
 msgid "The panel"
 msgstr "パネル"
 
+msgid "The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back."
+msgstr ""
+
 msgid "The picker"
 msgstr "ピッカー"
 
@@ -2074,6 +2083,9 @@ msgstr "{}文字以上にしてください。"
 
 msgid "Use just the program's file name, like notepad.exe."
 msgstr "notepad.exe のように、プログラムのファイル名だけを入力してください。"
+
+msgid "Use result N"
+msgstr ""
 
 msgid "Use selected item"
 msgstr "選択したスニペットを使用"

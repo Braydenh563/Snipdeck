@@ -593,10 +593,10 @@ fn the_trash_keeps_things_thirty_days_by_the_injected_clock() {
     let (mut ctl, clock) = rig(Tier::Pro);
     ctl.main_action(MainAction::Delete, 0);
     clock.set("2026-11-15T10:30:00Z".parse().unwrap()); // 29 days later
-    assert_eq!(ctl.purge_expired_trash(), 0);
+    assert_eq!(ctl.purge_expired_trash().expect("purge"), 0);
     assert_eq!(ctl.main_screen().counts.trash, 1);
     clock.set("2026-11-17T10:31:00Z".parse().unwrap()); // 31 days later
-    assert_eq!(ctl.purge_expired_trash(), 1);
+    assert_eq!(ctl.purge_expired_trash().expect("purge"), 1);
     assert_eq!(ctl.main_screen().counts.trash, 0);
 }
 

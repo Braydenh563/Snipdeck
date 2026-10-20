@@ -16,7 +16,7 @@ use i_slint_backend_testing::{AccessibleRole, ElementHandle};
 use slint::{ComponentHandle, Model, platform::Key};
 use snipdeck_app::{
     binding::Binding,
-    controller::{Controller, Effect, Services},
+    controller::{Controller, Effect, HelpTopic, Services},
     demo,
     fill_binding::FillUi,
     frame::{Monitor, Rect},
@@ -47,6 +47,7 @@ struct Rig {
     panel: PanelWindow,
     ctl: Rc<RefCell<Ctl>>,
     binding: Binding,
+    effects: Rc<RefCell<Vec<Effect>>>,
     targets: FakeTargets,
     popups: Rc<FakePopups>,
     picker: PickerUi,
@@ -113,11 +114,13 @@ fn rig_at(scale: f32) -> Rig {
     let ctl = Rc::new(RefCell::new(ctl));
     let _ = ctl.borrow_mut().on_tray(TrayEvent::IconPresent(true));
     let panel = PanelWindow::new().expect("panel");
+    let effects: Rc<RefCell<Vec<Effect>>> = Rc::default();
+    let log = Rc::clone(&effects);
     let binding = Controller::bind(
         &ctl,
         &panel,
         std::rc::Rc::new(snipdeck_app::placement::NoPopups),
-        |_| {},
+        move |e| log.borrow_mut().push(*e),
     );
     let popups = Rc::new(FakePopups::one(monitor(scale)));
     popups.cursor.set(Some((900, 600)));
@@ -132,6 +135,7 @@ fn rig_at(scale: f32) -> Rig {
         panel,
         ctl,
         binding,
+        effects,
         targets,
         popups,
         picker,
@@ -360,6 +364,19 @@ fn escape_closes_the_picker_and_the_target_gets_the_focus_back() {
         // And pressed a second time while open it closes it.
         r.binding.hotkey(HotkeyAction::Picker);
         assert!(!w.window().is_visible());
+    });
+}
+
+#[test]
+fn f1_opens_the_user_guide_and_leaves_the_picker_open() {
+    on_ui_thread(|| {
+        let r = rig();
+        let w = r.open();
+        type_text(w.window(), "out");
+        press(w.window(), &key(Key::F1));
+        assert_eq!(*r.effects.borrow(), [Effect::OpenHelp(HelpTopic::Guide)]);
+        assert!(w.window().is_visible(), "help does not close the Picker");
+        assert_eq!(w.get_query(), "out", "F1 is not search text");
     });
 }
 
