@@ -41,7 +41,9 @@ jobs:
       tag: ${{ steps.resolve.outputs.tag }}
       version: ${{ steps.resolve.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Resolve from the tag push or the manual input
         id: resolve
         # The typed version reaches the script as an environment variable, never spliced
@@ -70,7 +72,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Extract the changelog entry for this version
         id: changelog
         env:
@@ -88,7 +92,7 @@ jobs:
           DELIM="notes_$(date +%s%N)"
           { echo "notes<<$DELIM"; echo "$NOTES"; echo "$DELIM"; } >> "$GITHUB_OUTPUT"
       - name: Create the release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ needs.resolve-version.outputs.tag }}
           # Only used on the manual route, where the tag does not exist yet.
@@ -96,21 +100,21 @@ jobs:
           body: ${{ steps.changelog.outputs.notes }}
           generate_release_notes: ${{ steps.changelog.outputs.notes == '' }}
 
-  windows-portable:
-    name: Windows portable zip
-    # After github-release: this job adds assets to the release that job created.
+  # Build and publish are split (security-v1.md M3): the build runs every dependency's
+  # build.rs with a read-only token that is not kept in .git/config; the publish job
+  # holds the write and attestation permissions and runs no repository code.
+  windows-build:
+    name: Windows portable zip (build)
     needs: [resolve-version, github-release]
     runs-on: windows-latest
     timeout-minutes: 60
     permissions:
-      contents: write
-      # Provenance: `gh attestation verify <zip> --repo Braydenh563/Snipdeck`.
-      id-token: write
-      attestations: write
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ needs.resolve-version.outputs.tag }}
+          persist-credentials: false
       - run: rustup toolchain install stable --profile minimal
       - name: Build (release profile, production licence key)
         shell: pwsh
@@ -149,14 +153,38 @@ jobs:
           $exe = Get-Item dist\$name\app\snipdeck.exe
           $zip = Get-Item dist\$name.zip
           "### $name`n| File | MB |`n|---|---|`n| snipdeck.exe | $([math]::Round($exe.Length / 1MB, 2)) |`n| zip | $([math]::Round($zip.Length / 1MB, 2)) |`n`nSHA-256: ``$hash``" >> $env:GITHUB_STEP_SUMMARY
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          subject-path: ${{ env.ZIP }}
+          name: windows-portable
+          path: |
+            ${{ env.ZIP }}
+            ${{ env.SUM }}
+          if-no-files-found: error
+          retention-days: 1
+
+  windows-publish:
+    name: Windows portable zip (attest and upload)
+    needs: [resolve-version, windows-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      # Provenance: `gh attestation verify <zip> --repo Braydenh563/Snipdeck`.
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: windows-portable
+          path: dist
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: dist/*.zip
       - name: Upload to the release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ needs.resolve-version.outputs.tag }}
           files: |
-            ${{ env.ZIP }}
-            ${{ env.SUM }}
+            dist/*.zip
+            dist/*.sha256
           fail_on_unmatched_files: true
