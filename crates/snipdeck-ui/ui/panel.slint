@@ -919,6 +919,8 @@ export component PanelWindow inherits Window {
                         current <=> root.current-tab;
                         label: @tr("Lists");
                         add-label: @tr("Add list");
+                        scroll-left-label: @tr("Scroll left");
+                        scroll-right-label: @tr("Scroll right");
                         menu-hint: @tr("Right-click or press Menu for list actions");
                         // The "+" is the last 28px of the bar.
                         changed add-active => { root.tip-set(self.add-label, self.absolute-position.x + self.width - Space.hit / 2, self.absolute-position.y + self.height, self.add-active); }

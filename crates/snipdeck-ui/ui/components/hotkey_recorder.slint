@@ -1,4 +1,4 @@
-import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { Theme, Type, Radius, Space, Motion, Fonts, SystemLook } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 import { FieldError } from "text_field.slint";
@@ -205,8 +205,8 @@ export component HotkeyRecorder inherits VerticalLayout {
                 accessible-role: none;
             }
             if root.clear-visible: Rectangle {
-                width: Space.hit-min;
-                height: Space.hit-min;
+                width: Space.hit-min * SystemLook.text-scale;
+                height: Space.hit-min * SystemLook.text-scale;
                 y: (parent.height - self.height) / 2;
                 border-radius: Radius.sm;
                 background: clear-touch.pressed ? Theme.bg-sunken : clear-touch.has-hover ? Theme.bg-hover : transparent;
@@ -216,6 +216,7 @@ export component HotkeyRecorder inherits VerticalLayout {
 
                 Icon {
                     source: Icons.x;
+                    size: Space.s4 * SystemLook.text-scale;
                     tint: clear-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
                     x: (parent.width - self.width) / 2;
                     y: (parent.height - self.height) / 2;

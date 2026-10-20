@@ -127,6 +127,8 @@ export component ItemCard inherits Rectangle {
     in property <ItemKind> kind: ItemKind.text;
     // Quick-use number: 1-9 shown, 0 (none) and 10+ leave the gutter empty.
     in property <int> number: 0;
+    // False where nothing is ever numbered (the Main window): the gutter and its rule are left out.
+    in property <bool> numbered: true;
     in property <string> title;
     in property <string> preview;
     // Sensitive items show this (e.g. "•••• •••• 7f3a") until revealed.
@@ -233,8 +235,8 @@ export component ItemCard inherits Rectangle {
     property <length> glyph-group-w: root.has-glyph ? root.glyph-size + (root.has-ext ? Space.s1 + m-ext.preferred-width : 0px) : 0px;
 
     // Geometry shared by the variants.
-    property <length> gutter-w: root.tile ? 0px : Space.s6;
-    property <length> rule-w: root.tile ? 0px : 1px;
+    property <length> gutter-w: root.tile || !root.numbered ? 0px : Space.s6;
+    property <length> rule-w: root.tile || !root.numbered ? 0px : 1px;
     property <length> pad-x: root.tile ? Space.s3 : Space.s2;
     property <length> pad-y: root.compact ? 0px : root.tile ? Space.s3 : Space.s2;
     property <length> content-x: root.gutter-w + root.rule-w + root.pad-x;
@@ -409,7 +411,7 @@ export component ItemCard inherits Rectangle {
         }
 
         // Number gutter and the index-card rule (compact and comfortable; tiles number inline).
-        if !root.tile: ItemGutter {
+        if !root.tile && root.numbered: ItemGutter {
             x: 0;
             number: root.number;
             checked: root.lifted;
@@ -418,7 +420,7 @@ export component ItemCard inherits Rectangle {
             row-h: root.title-h;
             height: parent.height;
         }
-        if !root.tile: Rectangle {
+        if !root.tile && root.numbered: Rectangle {
             x: root.gutter-w;
             width: root.rule-w;
             background: Theme.border-subtle;
@@ -710,7 +712,7 @@ export component ItemCard inherits Rectangle {
                 return accept;
             }
             if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
-                root.context-menu-requested(root.gutter-w, root.height);
+                root.context-menu-requested(max(root.gutter-w, Space.s6), root.height);
                 return accept;
             }
             // Keyboard reveal: hold Space (a sensitive item only).

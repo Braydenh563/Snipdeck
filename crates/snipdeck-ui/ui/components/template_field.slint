@@ -1,4 +1,4 @@
-import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { SystemLook, Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 import { TextField, FieldError } from "text_field.slint";
@@ -103,6 +103,7 @@ export component TemplateField inherits FocusScope {
             alignment: start;
             Icon {
                 source: Icons.brackets-curly;
+                size: Space.s4 * SystemLook.text-scale;
                 tint: Theme.accent-text;
                 y: (Type.line-sm - self.height) / 2;
             }

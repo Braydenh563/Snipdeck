@@ -13,7 +13,7 @@
 //
 // Colour names and kind order are the host's mapping to its enums; they are listed next to each property.
 import { ListView } from "std-widgets.slint";
-import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue } from "theme.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, Palette, ListHue, SystemLook } from "theme.slint";
 import { Icons } from "icons.slint";
 import { ListIcons } from "list-icons.slint";
 import { Icon } from "components/icon.slint";
@@ -120,8 +120,8 @@ component NoColour inherits Rectangle {
     in property <bool> show-focus: false;
     callback clicked();
 
-    width: Space.hit;
-    height: Space.hit;
+    width: Space.hit * SystemLook.text-scale;
+    height: Space.hit * SystemLook.text-scale;
     accessible-role: radio-button;
     accessible-label: root.label;
     accessible-checkable: true;
@@ -137,7 +137,7 @@ component NoColour inherits Rectangle {
     Rectangle {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: touch.has-hover || touch.pressed ? 22px : 20px;
+        width: (touch.has-hover || touch.pressed ? 22px : 20px) * SystemLook.text-scale;
         height: self.width;
         border-radius: Radius.sm;
         border-width: 1px;
@@ -146,7 +146,7 @@ component NoColour inherits Rectangle {
         animate width { duration: Motion.instant; easing: Motion.out; }
         Icon {
             source: Icons.x;
-            size: 12px;
+            size: 12px * SystemLook.text-scale;
             tint: Theme.text-secondary;
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
@@ -185,7 +185,7 @@ component ColourPicker inherits Rectangle {
         }
     }
 
-    height: Space.hit;
+    height: Space.hit * SystemLook.text-scale;
     forward-focus: scope;
     accessible-role: radio-group;
     accessible-label: root.label;
@@ -778,8 +778,8 @@ component IconCell inherits Rectangle {
     in property <bool> show-focus: false;
     callback clicked();
 
-    width: Space.hit;
-    height: Space.hit;
+    width: Space.hit * SystemLook.text-scale;
+    height: Space.hit * SystemLook.text-scale;
     accessible-role: radio-button;
     accessible-label: root.label;
     accessible-checkable: true;
@@ -795,13 +795,13 @@ component IconCell inherits Rectangle {
     Rectangle {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: 22px;
-        height: 22px;
+        width: 22px * SystemLook.text-scale;
+        height: 22px * SystemLook.text-scale;
         border-radius: Radius.sm;
         background: touch.pressed ? Theme.bg-sunken : touch.has-hover ? Theme.bg-hover : root.selected ? Theme.bg-selected : transparent;
         Icon {
             source: root.source;
-            size: 16px;
+            size: 16px * SystemLook.text-scale;
             tint: root.selected ? Theme.text-on-selected : Theme.text-secondary;
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
@@ -839,7 +839,7 @@ component IconPicker inherits Rectangle {
         }
     }
 
-    height: 3 * Space.hit + 2 * Space.s1;
+    height: 3 * Space.hit * SystemLook.text-scale + 2 * Space.s1;
     forward-focus: scope;
     accessible-role: radio-group;
     accessible-label: root.label;
@@ -853,8 +853,8 @@ component IconPicker inherits Rectangle {
             for col in root.columns: Rectangle {
                 // 0 is "no icon"; 1 to 24 are the icons.
                 property <int> cell: row * root.columns + col;
-                width: Space.hit;
-                height: Space.hit;
+                width: Space.hit * SystemLook.text-scale;
+                height: Space.hit * SystemLook.text-scale;
                 if cell == 0: NoColour {
                     label: root.none-label;
                     selected: root.icon == -1;
