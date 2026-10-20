@@ -181,6 +181,58 @@ fn read_list(
 }
 
 /// Reads one file into an item, or warns and returns `None`.
+/// Why [`open_without_links`] did not hand back a file.
+#[derive(Debug)]
+enum OpenRefusal {
+    /// The path is, or has become, a link (symbolic link or reparse point).
+    Link,
+    Io(std::io::Error),
+}
+
+/// Whether `meta` describes a symbolic link or, on Windows, any reparse point (junction,
+/// mount point, cloud placeholder).
+fn is_link(meta: &fs::Metadata) -> bool {
+    if meta.file_type().is_symlink() {
+        return true;
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
+        if meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+            return true;
+        }
+    }
+    false
+}
+
+/// Opens a regular file without following a link. The listing used `file_type()`, which does not
+/// follow links, but the open by path does, so a file swapped for a link in between would be
+/// read from wherever it points. The path is checked with `symlink_metadata`, opened, and the
+/// open handle must be the same file (same device and inode on Unix) and not a link.
+fn open_without_links(path: &Path) -> core::result::Result<File, OpenRefusal> {
+    let before = fs::symlink_metadata(path).map_err(OpenRefusal::Io)?;
+    if is_link(&before) {
+        return Err(OpenRefusal::Link);
+    }
+    if !before.is_file() {
+        return Err(OpenRefusal::Io(std::io::Error::other("not a regular file")));
+    }
+    let file = File::open(path).map_err(OpenRefusal::Io)?;
+    let after = file.metadata().map_err(OpenRefusal::Io)?;
+    if is_link(&after) {
+        return Err(OpenRefusal::Link);
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        if (before.dev(), before.ino()) != (after.dev(), after.ino()) {
+            return Err(OpenRefusal::Link);
+        }
+    }
+    Ok(file)
+}
+
 fn read_file(
     state: &mut Reader,
     path: &Path,
@@ -198,9 +250,14 @@ fn read_file(
         });
     };
 
-    let file = match File::open(path) {
+    let file = match open_without_links(path) {
         Ok(f) => f,
-        Err(e) => {
+        Err(OpenRefusal::Link) => {
+            report.items_skipped += 1;
+            report.warn(Warning::SymlinkSkipped { name });
+            return None;
+        }
+        Err(OpenRefusal::Io(e)) => {
             unreadable(e.to_string());
             return None;
         }
@@ -275,4 +332,43 @@ fn read_file(
         title = title_from(&text);
     }
     Some(PlanItem::text(title, text, now))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_regular_file_opens() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("a.txt");
+        fs::write(&path, "x").unwrap();
+        assert!(open_without_links(&path).is_ok());
+    }
+
+    #[test]
+    fn a_directory_or_missing_path_is_an_io_refusal() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(matches!(
+            open_without_links(dir.path()),
+            Err(OpenRefusal::Io(_))
+        ));
+        assert!(matches!(
+            open_without_links(&dir.path().join("none")),
+            Err(OpenRefusal::Io(_))
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symbolic_link_is_refused_not_followed() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("secret.txt");
+        fs::write(&target, "TOP SECRET").unwrap();
+        let link = dir.path().join("link.txt");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        assert!(matches!(open_without_links(&link), Err(OpenRefusal::Link)));
+        // The target itself is still fine.
+        assert!(open_without_links(&target).is_ok());
+    }
 }
