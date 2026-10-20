@@ -449,6 +449,20 @@ ui_tests! {
         assert_eq!(take(&log), Vec::<String>::new(), "tiles stay put in a sorted list");
     }
 
+    fn alt_up_and_alt_down_ask_to_move_the_cursor_row_in_the_list_and_in_the_tile_grid() {
+        let (ui, log) = start();
+        for view in [MainView::Comfortable, MainView::Compact, MainView::Tile] {
+            ui.set_view(view);
+            settle();
+            take(&log);
+            chord(ui.window(), &[Key::Alt], &key(Key::DownArrow));
+            chord(ui.window(), &[Key::Alt], &key(Key::UpArrow));
+            assert_eq!(take(&log), ["reorder:1", "reorder:-1"], "{view:?}");
+            press_key(&ui, Key::DownArrow);
+            assert!(take(&log).iter().all(|l| !l.starts_with("reorder")), "{view:?}: a plain arrow only moves");
+        }
+    }
+
     fn the_item_menu_offers_move_up_and_down_and_disables_them_at_the_ends() {
         let (ui, log) = start();
         let rows = i32::try_from(ui.get_rows().row_count()).expect("rows");
