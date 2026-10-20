@@ -29,6 +29,8 @@ mod panel;
 mod panel_ctl;
 mod recent_ctl;
 mod settings_ctl;
+#[cfg(test)]
+mod tests;
 mod toast_ctl;
 mod use_ctl;
 mod views;

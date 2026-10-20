@@ -12,7 +12,7 @@ fn row_titles(w: &World) -> Vec<String> {
     w.ctl.view().rows.iter().map(|r| r.title.clone()).collect()
 }
 
-fn display() -> crate::frame::Monitor {
+pub(super) fn display() -> crate::frame::Monitor {
     crate::frame::Monitor {
         id: crate::frame::Monitor::id_of("DISPLAY1", 1920, 1080),
         work_area: Rect {

@@ -85,7 +85,7 @@ fn a_fake_source_drives_the_look_through_a_change() {
 
 // ---- Settings are saved ------------------------------------------------------------------
 
-fn saving_world(dir: &std::path::Path) -> World {
+pub(super) fn saving_world(dir: &std::path::Path) -> World {
     let mut w = world();
     let saver = SettingsSaver::new(
         Box::new(crate::settings_store::FileSink::new(dir)),

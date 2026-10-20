@@ -96,7 +96,7 @@ fn a_template_fills_clipboard_from_what_the_user_copied() {
     );
 }
 
-fn make_sensitive(w: &mut World, id: ItemId) {
+pub(super) fn make_sensitive(w: &mut World, id: ItemId) {
     let mut item = w.ctl.store.item(id).expect("item");
     item.sensitive = true;
     item.preview.clear();
