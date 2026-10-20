@@ -7,7 +7,7 @@ Goal: ship v1 by the morning. Branch `claude/compassionate-pascal-pod8ux`, PR #5
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
-- 2026-10-20 hub: [D] No double-click action on item cards in the Main window in v1: docs/SPEC.md and DESIGN.md name none (the Panel's double-click-to-edit and the tab/title double-clicks stay). Enter, Ctrl+E and the menu are the ways to use and edit.
+- 2026-10-20 hub: [D] No double-click action on item cards in the Main window in v1: docs/SPEC.md and DESIGN.md name none (the Panel's double-click-to-edit, in code only, and the tab and tray double-clicks stay). Enter, Ctrl+E and the menu are the ways to use and edit.
 - 2026-10-20 hub: [D] File and image drops are out of v1 (B11). Reason: dropped files need path, size and permission handling and image import is outside the v1 scope; text drops and in-app drags ship.
 - 2026-10-19 Recent (PR #12 review) [D] While the library is locked, the Recent lists (Main and Panel) show "Recent copies are locked" with an Unlock action, nothing is listed and capture is paused (listener gate closed, controller ignores changes). Reason: the entries are clipboard text that may hold secrets; a locked library must not expose or grow them.
 - 2026-10-19 Recent [D] "Clear recent history" in the Main window asks for confirmation (the list/board-delete dialog, kind 5). Reason: one click deleted up to 200 entries with no undo.
