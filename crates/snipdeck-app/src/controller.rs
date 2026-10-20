@@ -45,7 +45,7 @@ use crate::{
     fill::{self, FillModel},
     frame::{Edge, Monitor, Rect},
     host::{ClipboardText, Clock, TargetSource},
-    main_window::MainModel,
+    main_window::{MainModel, reorder},
     panel::{Footer, PanelModel, Row, Tab, UseLabel},
     paste_next::{self, PasteQueue},
     picker::{self, PickerModel, Scope},
@@ -427,6 +427,8 @@ pub struct View {
     pub footer: Footer,
     /// What a click does.
     pub use_label: UseLabel,
+    /// Whether a drag can rearrange the rows (manual order, no search).
+    pub rows_reorderable: bool,
     /// Keep on top (the pin button's state).
     pub on_top: bool,
     /// Whether the window is topmost now: pinned, and no Snipdeck window of the regular kind
@@ -752,6 +754,7 @@ where
             selected: self.model.selected_position().unwrap_or(0),
             footer: self.model.footer(),
             use_label: self.model.use_label(),
+            rows_reorderable: self.model.reorderable(),
             on_top: self.on_top,
             topmost: self.on_top && !self.own_window_active,
             dock_collapsed: self.dock.is_collapsed(),
@@ -1178,6 +1181,47 @@ where
                     count: 1,
                     list: target.name,
                 }));
+            }
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
+    /// A drag of Panel row `from` ended on row `onto`: the item takes that row's place. Like the
+    /// Main window, only a list in manual order, with no search running, can be arranged.
+    pub fn panel_drop_row(&mut self, from: usize, onto: usize) {
+        if !self.model.reorderable() {
+            return;
+        }
+        let rows = self.model.rows();
+        let (Some(moved), Some(target)) =
+            (rows.get(from).map(|r| r.id), rows.get(onto).map(|r| r.id))
+        else {
+            return;
+        };
+        let Some(list) = self.model.list().map(|l| l.id) else {
+            return;
+        };
+        let order = self.model.manual_order();
+        let (Some(a), Some(b)) = (
+            order.iter().position(|i| *i == moved),
+            order.iter().position(|i| *i == target),
+        ) else {
+            return;
+        };
+        let Some(delta) = b.checked_signed_diff(a) else {
+            return;
+        };
+        let Some((_, placement)) = reorder(&order, a, delta) else {
+            return;
+        };
+        match self.store.move_item(moved, list, placement) {
+            Ok(()) => {
+                self.library_changed();
+                if self.refresh_panel().is_err() {
+                    self.show_toast(failed());
+                    return;
+                }
+                self.model.select_item(moved);
             }
             Err(_) => self.show_toast(failed()),
         }

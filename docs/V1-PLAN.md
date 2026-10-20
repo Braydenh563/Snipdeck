@@ -22,7 +22,7 @@ list wins. Rungs as below (H Haiku, S Sonnet, O Opus, F the one Fable pass).
 - [~] B8 [S] Shortcuts: Ctrl+N, Ctrl+Shift+N, Ctrl+F, Ctrl+D, Ctrl+W, Ctrl+, (where not already in A3).
 - [x] B9 [S] Tray double-click opens the Main window.
 - [x] B10 [S] Reduced-motion setting (and follow Windows "Animation effects").
-- [~] B11 [S] Drag and drop: reorder items and lists; drop items on a list tab to move; drop files/text on the Panel to create. Merged in PR #14: Main rows and lists, Panel tabs, text drops. File and image drops are out of v1. Panel reorder and tile drag are on 3b.
+- [~] B11 [S] Drag and drop: reorder items and lists; drop items on a list tab to move; drop files/text on the Panel to create. Merged in PR #14: Main rows and lists, Panel tabs, text drops. PR #16 merged Panel row reorder and Main tile drag (reorder, drop on a sidebar list). Open: Move up/down menu items and Alt+Up/Down (WCAG 2.5.7) on 3b. [D] File and image drops are out of v1: dropped files need path and permission handling and the image import path is not in the v1 scope; text drops stay.
 - [x] B12 [S] Perf: cached per-board index on the store change counter; budget tests (search < 16 ms / 10k, Panel load < 50 ms); release size and idle RAM printed by the Windows build.
 - [x] B13 [S] CLI: `--check-db`, `--troubleshoot`.
 - [x] B14 [S] Sensitive clipboard clear: keep the copy-only clear, add the setting (30 s, 0 = off); SPEC 5.7 updated to match.
