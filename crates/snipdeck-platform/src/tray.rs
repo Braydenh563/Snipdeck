@@ -26,6 +26,8 @@ pub enum TrayEntry {
     OpenPanel,
     /// Show the main window.
     OpenSnipdeck,
+    /// Start a screenshot: the snipping overlay opens and the Panel steps aside.
+    TakeScreenshot,
     /// Switch the global hotkeys off or on (a check mark shows when they are off).
     PauseHotkeys,
     /// Stop or resume collecting the Recent inbox (a check mark shows while it is paused). Only
@@ -37,9 +39,10 @@ pub enum TrayEntry {
 
 impl TrayEntry {
     /// Every entry, in menu order.
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::OpenPanel,
         Self::OpenSnipdeck,
+        Self::TakeScreenshot,
         Self::PauseHotkeys,
         Self::PauseHistory,
         Self::Quit,
@@ -51,6 +54,7 @@ impl TrayEntry {
         match self {
             Self::OpenPanel => "Open Panel",
             Self::OpenSnipdeck => "Open Snipdeck",
+            Self::TakeScreenshot => "Take screenshot",
             Self::PauseHotkeys => "Pause hotkeys",
             Self::PauseHistory => "Pause history",
             Self::Quit => "Quit",
@@ -66,6 +70,7 @@ impl TrayEntry {
             Self::PauseHotkeys => 3,
             Self::Quit => 4,
             Self::PauseHistory => 5,
+            Self::TakeScreenshot => 6,
         }
     }
 
@@ -85,6 +90,8 @@ pub struct TrayLabels {
     pub open_panel: String,
     /// [`TrayEntry::OpenSnipdeck`].
     pub open_snipdeck: String,
+    /// [`TrayEntry::TakeScreenshot`].
+    pub take_screenshot: String,
     /// [`TrayEntry::PauseHotkeys`].
     pub pause_hotkeys: String,
     /// [`TrayEntry::PauseHistory`].
@@ -101,6 +108,7 @@ impl Default for TrayLabels {
         Self {
             open_panel: english(TrayEntry::OpenPanel),
             open_snipdeck: english(TrayEntry::OpenSnipdeck),
+            take_screenshot: english(TrayEntry::TakeScreenshot),
             pause_hotkeys: english(TrayEntry::PauseHotkeys),
             pause_history: english(TrayEntry::PauseHistory),
             quit: english(TrayEntry::Quit),
@@ -116,6 +124,7 @@ impl TrayLabels {
         match entry {
             TrayEntry::OpenPanel => &self.open_panel,
             TrayEntry::OpenSnipdeck => &self.open_snipdeck,
+            TrayEntry::TakeScreenshot => &self.take_screenshot,
             TrayEntry::PauseHotkeys => &self.pause_hotkeys,
             TrayEntry::PauseHistory => &self.pause_history,
             TrayEntry::Quit => &self.quit,
@@ -132,6 +141,8 @@ pub enum TrayEvent {
     OpenPanel,
     /// "Open Snipdeck", or a double click on the icon.
     OpenSnipdeck,
+    /// "Take screenshot".
+    TakeScreenshot,
     /// "Pause hotkeys" was toggled; `true` = the hotkeys should now be off.
     HotkeysPaused(bool),
     /// "Pause history" was toggled; `true` = collecting should now be paused.
@@ -441,6 +452,7 @@ impl TrayModel {
         match entry {
             TrayEntry::OpenPanel => TrayEvent::OpenPanel,
             TrayEntry::OpenSnipdeck => TrayEvent::OpenSnipdeck,
+            TrayEntry::TakeScreenshot => TrayEvent::TakeScreenshot,
             TrayEntry::PauseHotkeys => {
                 self.hotkeys_paused = !self.hotkeys_paused;
                 TrayEvent::HotkeysPaused(self.hotkeys_paused)
@@ -528,7 +540,14 @@ mod tests {
             .collect();
         assert_eq!(
             labels,
-            ["Open Panel", "Open Snipdeck", "Pause hotkeys", "-", "Quit"]
+            [
+                "Open Panel",
+                "Open Snipdeck",
+                "Take screenshot",
+                "Pause hotkeys",
+                "-",
+                "Quit"
+            ]
         );
         assert!(
             lines
@@ -563,7 +582,7 @@ mod tests {
         let labels = menu_labels(&mut m);
         let at = labels.iter().position(|(l, _)| l == "Pause history");
         // Right after "Pause hotkeys", before "Quit".
-        assert_eq!(at, Some(3));
+        assert_eq!(at, Some(4));
         assert_eq!(labels.last().map(|(l, _)| l.as_str()), Some("Quit"));
         assert!(labels.iter().all(|(_, checked)| !checked));
         m.set_history(false, false);
@@ -631,6 +650,7 @@ mod tests {
         m.set_labels(TrayLabels {
             open_panel: "Panel öffnen".into(),
             open_snipdeck: "Snipdeck öffnen".into(),
+            take_screenshot: "Bildschirmfoto aufnehmen".into(),
             pause_hotkeys: "Tastenkürzel pausieren".into(),
             pause_history: "Verlauf pausieren".into(),
             quit: "Beenden".into(),
@@ -651,6 +671,7 @@ mod tests {
             [
                 "Panel öffnen",
                 "Snipdeck öffnen",
+                "Bildschirmfoto aufnehmen",
                 "Tastenkürzel pausieren",
                 "Beenden"
             ]
@@ -696,6 +717,7 @@ mod tests {
         let mut m = model();
         assert_eq!(m.pick(TrayEntry::OpenPanel), TrayEvent::OpenPanel);
         assert_eq!(m.pick(TrayEntry::OpenSnipdeck), TrayEvent::OpenSnipdeck);
+        assert_eq!(m.pick(TrayEntry::TakeScreenshot), TrayEvent::TakeScreenshot);
         assert_eq!(m.pick(TrayEntry::Quit), TrayEvent::Quit);
     }
 

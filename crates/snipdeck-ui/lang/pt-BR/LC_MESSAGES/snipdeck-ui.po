@@ -376,6 +376,9 @@ msgstr "Não foi possível salvar este item. Nada foi alterado."
 msgid "Couldn't save your settings. Snipdeck will try again."
 msgstr "Não foi possível salvar suas configurações. O Snipdeck tentará de novo."
 
+msgid "Couldn't start the screenshot tool."
+msgstr "Não foi possível iniciar a ferramenta de captura."
+
 msgid "Couldn't use this item."
 msgstr "Não foi possível usar este item."
 
@@ -759,6 +762,9 @@ msgstr[1] "Suas listas e {n} itens serão movidos para a Lixeira. Você pode res
 
 msgid "Just now"
 msgstr "Agora mesmo"
+
+msgid "Keep Panel visible during screenshots"
+msgstr "Manter o painel visível durante as capturas"
 
 msgid "Keep a Recent inbox of what you copy"
 msgstr "Manter uma caixa de Recentes com o que você copia"
@@ -1620,6 +1626,12 @@ msgstr "Etiquetas"
 msgid "Tags…"
 msgstr "Etiquetas…"
 
+msgid "Take screenshot"
+msgstr "Capturar tela"
+
+msgid "Take screenshot hides the panel until the picture is taken. Turn this on to leave it on screen."
+msgstr "“Capturar tela” oculta o painel até a imagem ser capturada. Ative para deixá-lo na tela."
+
 msgid "Takes effect the next time Snipdeck starts."
 msgstr "Entra em vigor na próxima vez que o Snipdeck for iniciado."
 
@@ -2047,6 +2059,9 @@ msgstr "busca rápida encontrar colar paleta"
 
 msgid "s"
 msgstr "s"
+
+msgid "snip snipping capture screen picture image"
+msgstr "recorte captura tela imagem foto"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "tutorial introdução integração básico aprender"

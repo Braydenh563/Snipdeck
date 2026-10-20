@@ -376,6 +376,9 @@ msgstr "Impossible d'enregistrer cet extrait. Rien n'a été modifié."
 msgid "Couldn't save your settings. Snipdeck will try again."
 msgstr "Impossible d'enregistrer vos paramètres. Snipdeck va réessayer."
 
+msgid "Couldn't start the screenshot tool."
+msgstr "Impossible de lancer l'outil de capture d'écran."
+
 msgid "Couldn't use this item."
 msgstr "Impossible d'utiliser cet extrait."
 
@@ -759,6 +762,9 @@ msgstr[1] "Ses listes et {n} extraits seront déplacés dans la corbeille. Vous 
 
 msgid "Just now"
 msgstr "À l'instant"
+
+msgid "Keep Panel visible during screenshots"
+msgstr "Garder le panneau visible pendant les captures"
 
 msgid "Keep a Recent inbox of what you copy"
 msgstr "Garder une boîte Récents de ce que vous copiez"
@@ -1620,6 +1626,12 @@ msgstr "Étiquettes"
 msgid "Tags…"
 msgstr "Étiquettes…"
 
+msgid "Take screenshot"
+msgstr "Faire une capture d'écran"
+
+msgid "Take screenshot hides the panel until the picture is taken. Turn this on to leave it on screen."
+msgstr "« Faire une capture d'écran » masque le panneau jusqu'à ce que l'image soit prise. Activez cette option pour le laisser affiché."
+
 msgid "Takes effect the next time Snipdeck starts."
 msgstr "Prend effet au prochain démarrage de Snipdeck."
 
@@ -2047,6 +2059,9 @@ msgstr "recherche rapide trouver coller palette"
 
 msgid "s"
 msgstr "s"
+
+msgid "snip snipping capture screen picture image"
+msgstr "capture découpe écran image copie d'écran"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "tutoriel introduction démarrage bases apprendre"

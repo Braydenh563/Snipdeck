@@ -28,6 +28,7 @@ mod onboarding_ctl;
 mod panel;
 mod panel_ctl;
 mod recent_ctl;
+mod screen_clip_ctl;
 mod settings_ctl;
 mod toast_ctl;
 mod use_ctl;
@@ -223,6 +224,9 @@ pub struct Controller<S, C, K, T> {
     /// Told whether clipboard history is on and whether it is paused, for the tray menu's
     /// "Pause history" entry (see `recent_ctl.rs`).
     tray_history: Option<recent_ctl::HistorySink>,
+    /// "Take screenshot": the timing (pure) and the machine it runs on (see `screen_clip_ctl.rs`).
+    screen_clip: crate::screen_clip::ScreenClipFlow,
+    screen_clip_host: Option<Box<dyn crate::screen_clip::ScreenClipHost>>,
 }
 
 /// Opens the folder of the crash reports in the file manager.
@@ -342,6 +346,8 @@ where
             lock: lock_ctl::LockState::new(shown_at),
             recent_gate: None,
             tray_history: None,
+            screen_clip: crate::screen_clip::ScreenClipFlow::new(),
+            screen_clip_host: None,
         })
     }
 
@@ -634,6 +640,7 @@ where
                 self.set_recent_paused(paused);
                 Vec::new()
             }
+            TrayEvent::TakeScreenshot => self.take_screenshot(),
             TrayEvent::Quit => vec![Effect::Quit],
             TrayEvent::IconPresent(present) => {
                 // With an icon in the notification area closing the Panel hides it (when
@@ -681,6 +688,8 @@ where
         self.visible
             && !self.on_top
             && self.settings.panel_hide_on_blur
+            // The snipping overlay takes the foreground itself; a Panel kept on screen for it stays.
+            && !self.screen_clip.waiting()
             // The Picker and the fill form take the foreground themselves.
             && self.picker.is_none()
             && self.fill.is_none()

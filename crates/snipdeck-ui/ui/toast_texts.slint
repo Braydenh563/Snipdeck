@@ -208,6 +208,9 @@ export global ToastTexts {
     pure public function draft-not-saved() -> string {
         return @tr("Couldn't save a draft of what you typed.");
     }
+    pure public function screenshot-failed() -> string {
+        return @tr("Couldn't start the screenshot tool.");
+    }
 
     // Why a licence key was refused: the toast, and the line under the key field.
     pure public function licence-empty() -> string {

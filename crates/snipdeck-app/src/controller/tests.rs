@@ -21,6 +21,7 @@ mod menus_frame;
 mod onboarding;
 mod picker;
 mod recent;
+mod screen_clip;
 mod toasts;
 mod tray;
 mod use_paste;

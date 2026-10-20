@@ -36,6 +36,8 @@ pub enum AppMenuEntry {
     Commands,
     /// Make a new snippet.
     NewSnippet,
+    /// Take a screenshot: the Panel steps aside while the snipping overlay is up.
+    Screenshot,
     /// Open Settings.
     Settings,
     /// Dock the Panel to the edge nearest to it, or undock it when it is docked (the row's
@@ -110,10 +112,11 @@ pub const LIST_MENU: [ListMenuEntry; 2] = [ListMenuEntry::Edit, ListMenuEntry::D
 
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
 /// `Menu` has no sub-menus.
-pub const APP_MENU: [AppMenuEntry; 12] = [
+pub const APP_MENU: [AppMenuEntry; 13] = [
     AppMenuEntry::Open,
     AppMenuEntry::Commands,
     AppMenuEntry::NewSnippet,
+    AppMenuEntry::Screenshot,
     AppMenuEntry::Settings,
     AppMenuEntry::Dock,
     AppMenuEntry::PauseHotkeys,
@@ -160,6 +163,7 @@ where
             AppMenuEntry::Open => vec![Effect::OpenMainWindow],
             AppMenuEntry::Commands => vec![Effect::OpenCommands],
             AppMenuEntry::NewSnippet => vec![Effect::NewItem],
+            AppMenuEntry::Screenshot => self.take_screenshot(),
             AppMenuEntry::Settings => vec![Effect::OpenSettings],
             AppMenuEntry::Dock => {
                 self.dock_toggle();

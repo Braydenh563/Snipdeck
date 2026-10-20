@@ -208,6 +208,8 @@ struct Core<S, C, K, T> {
     idle_timer: Cell<bool>,
     /// Sends the dock its ticks while a hover or leave delay runs.
     dock_timer: slint::Timer,
+    /// Looks at the clipboard while "Take screenshot" waits for its picture.
+    screen_clip_timer: slint::Timer,
 }
 
 impl<S, C, K, T> Core<S, C, K, T>
@@ -239,6 +241,7 @@ where
                 clipboard_timer: Cell::new(false),
                 idle_timer: Cell::new(false),
                 dock_timer: slint::Timer::default(),
+                screen_clip_timer: slint::Timer::default(),
             }
         });
         register_redraw(&core.redraw);
@@ -325,6 +328,7 @@ where
             self.apply(&pending);
         }
         self.arm_dock();
+        self.arm_screen_clip();
         if let Some(toast) = &view.toast
             && self.controller.borrow_mut().claim_toast_timer(toast.seq)
         {
@@ -356,6 +360,29 @@ where
                 });
         } else {
             self.dock_timer.stop();
+        }
+    }
+
+    /// Runs the screenshot timer while "Take screenshot" waits for its picture, and only then:
+    /// each tick looks at the clipboard and brings the Panel back when the picture is there.
+    fn arm_screen_clip(self: &Rc<Self>) {
+        let needed = self.controller.borrow().screen_clip_waiting();
+        if needed == self.screen_clip_timer.running() {
+            return;
+        }
+        if needed {
+            let core = Rc::downgrade(self);
+            self.screen_clip_timer.start(
+                slint::TimerMode::Repeated,
+                crate::screen_clip::POLL,
+                move || {
+                    if let Some(core) = core.upgrade() {
+                        core.act_effects(Controller::screen_clip_tick);
+                    }
+                },
+            );
+        } else {
+            self.screen_clip_timer.stop();
         }
     }
 

@@ -23,6 +23,8 @@ pub enum Command {
     OpenPicker,
     /// Quick capture.
     QuickCapture,
+    /// Take a screenshot with the Windows snipping overlay.
+    TakeScreenshot,
     /// Open Settings.
     Settings,
     /// Open the user guide.
@@ -67,13 +69,14 @@ pub enum Command {
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 26] = [
+    pub const ALL: [Self; 27] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
         Self::ShowPanel,
         Self::OpenPicker,
         Self::QuickCapture,
+        Self::TakeScreenshot,
         Self::Settings,
         Self::UserGuide,
         Self::Tour,
@@ -321,6 +324,7 @@ mod tests {
             ("Show Panel", "open toggle"),
             ("Open Picker", "quick find paste"),
             ("Quick capture", "clipboard save"),
+            ("Take screenshot", "snip capture screen picture"),
             ("Settings", "preferences hotkeys"),
             ("User guide", "help docs"),
             ("Welcome tour", "tutorial intro"),
@@ -441,6 +445,17 @@ mod tests {
             labels(&found),
             ["Move selected item to Trash", "Go to Trash"]
         );
+    }
+
+    #[test]
+    fn take_screenshot_is_found_by_its_name_and_a_synonym() {
+        let hotkeys = Hotkeys::default();
+        let by_name = entries(&texts(), &ctx(&hotkeys), "screenshot");
+        assert_eq!(labels(&by_name), ["Take screenshot"]);
+        let by_synonym = entries(&texts(), &ctx(&hotkeys), "picture");
+        assert_eq!(labels(&by_synonym), ["Take screenshot"]);
+        assert_eq!(by_name[0].command, Command::TakeScreenshot);
+        assert!(by_name[0].keys.is_empty(), "it has no shortcut");
     }
 
     #[test]

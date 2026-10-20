@@ -376,6 +376,9 @@ msgstr "Dieser Textbaustein konnte nicht gespeichert werden. Nichts wurde geänd
 msgid "Couldn't save your settings. Snipdeck will try again."
 msgstr "Deine Einstellungen konnten nicht gespeichert werden. Snipdeck versucht es erneut."
 
+msgid "Couldn't start the screenshot tool."
+msgstr "Das Screenshot-Werkzeug konnte nicht gestartet werden."
+
 msgid "Couldn't use this item."
 msgstr "Dieser Textbaustein konnte nicht verwendet werden."
 
@@ -759,6 +762,9 @@ msgstr[1] "Seine Listen und {n} Textbausteine werden in den Papierkorb verschobe
 
 msgid "Just now"
 msgstr "Gerade eben"
+
+msgid "Keep Panel visible during screenshots"
+msgstr "Panel bei Screenshots sichtbar lassen"
 
 msgid "Keep a Recent inbox of what you copy"
 msgstr "Einen Posteingang „Zuletzt“ für Kopiertes führen"
@@ -1620,6 +1626,12 @@ msgstr "Schlagwörter"
 msgid "Tags…"
 msgstr "Schlagwörter…"
 
+msgid "Take screenshot"
+msgstr "Bildschirmfoto aufnehmen"
+
+msgid "Take screenshot hides the panel until the picture is taken. Turn this on to leave it on screen."
+msgstr "„Bildschirmfoto aufnehmen“ blendet das Panel aus, bis das Bild aufgenommen ist. Einschalten, damit es sichtbar bleibt."
+
 msgid "Takes effect the next time Snipdeck starts."
 msgstr "Wird beim nächsten Start von Snipdeck wirksam."
 
@@ -2047,6 +2059,9 @@ msgstr "schnell finden einfügen Palette"
 
 msgid "s"
 msgstr "s"
+
+msgid "snip snipping capture screen picture image"
+msgstr "ausschnitt snipping aufnahme bildschirm bild screenshot"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "Tutorial Einführung Einstieg Grundlagen lernen"

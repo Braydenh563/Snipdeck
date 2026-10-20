@@ -27,6 +27,7 @@ pub fn tray_labels(window: &PanelWindow) -> TrayLabels {
     TrayLabels {
         open_panel: texts.get_open_panel().into(),
         open_snipdeck: texts.get_open_snipdeck().into(),
+        take_screenshot: texts.get_take_screenshot().into(),
         pause_hotkeys: texts.get_pause_hotkeys().into(),
         pause_history: texts.get_pause_history().into(),
         quit: texts.get_quit().into(),
@@ -214,6 +215,7 @@ where
         ToastMessage::NotSaved => t.invoke_not_saved(),
         ToastMessage::NotOpened => t.invoke_not_opened(),
         ToastMessage::DraftNotSaved => t.invoke_draft_not_saved(),
+        ToastMessage::ScreenshotFailed => t.invoke_screenshot_failed(),
     };
     text.into()
 }
@@ -320,6 +322,7 @@ pub const fn app_menu_text(entry: crate::controller::AppMenuEntry) -> &'static s
         AppMenuEntry::Open => "Open Snipdeck",
         AppMenuEntry::Commands => "All commands\u{2026}",
         AppMenuEntry::NewSnippet => "New snippet",
+        AppMenuEntry::Screenshot => "Take screenshot",
         AppMenuEntry::Settings => "Settings\u{2026}",
         AppMenuEntry::Dock => "Dock to the nearest edge",
         AppMenuEntry::PauseHotkeys => "Pause hotkeys",
