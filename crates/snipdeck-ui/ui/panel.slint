@@ -114,7 +114,8 @@ export component PanelWindow inherits Window {
     // A collapsed dock is a strip a few pixels thick: the Panel's minimum size does not apply.
     min-width: root.dock-collapsed ? 0px : 260px;
     max-width: 480px;
-    min-height: root.dock-collapsed ? 0px : 240px;
+    // Header, a few rows and the footer always fit: the footer is never pushed out of the window.
+    min-height: root.dock-collapsed ? 0px : max(240px, root.header-h + max(Space.s8, Type.line-sm + Space.s3) + 3 * Space.hit);
     preferred-width: 320px;
     preferred-height: 480px;
 
@@ -392,9 +393,13 @@ export component PanelWindow inherits Window {
     }
 
     property <bool> narrow: false;
+    // The Picker hint (caps plus words) is the widest: it needs room beside the route hint and a
+    // readable target name, so it shows only on a wide Panel (never at the 320px default).
+    property <bool> wide: false;
     property <float> text-scale: SystemLook.text-scale;
     function update-narrow() {
         root.narrow = root.width < 300px * root.text-scale;
+        root.wide = root.width >= 440px * root.text-scale;
     }
 
     init => {
@@ -1306,7 +1311,7 @@ export component PanelWindow inherits Window {
                             }
                         }
                         // The Picker's hotkey, as the user set it: a hint that it works anywhere, not only here.
-                        if !root.narrow && root.picker-keys.length > 0: HorizontalLayout {
+                        if !root.narrow && root.wide && root.picker-keys.length > 0: HorizontalLayout {
                             spacing: Space.s1;
                             Rectangle {
                                 width: picker-caps.min-width;

@@ -423,6 +423,8 @@ ui_tests! {
 
     fn the_footer_names_the_pickers_configured_hotkey_only_when_there_is_one() {
         let (ui, _log) = start();
+        ui.window().set_size(slint::LogicalSize::new(460.0, 480.0));
+        settle();
         let hint = |ui: &PanelWindow| all(ui, "Control Shift Space", AccessibleRole::Text).len();
         assert_eq!(hint(&ui), 0, "no chord set, no hint");
         ui.set_picker_keys(ModelRc::new(VecModel::from(
@@ -712,6 +714,40 @@ ui_tests! {
         settle();
         assert!(!missing(&ui, "Copies to clipboard", AccessibleRole::Text));
         assert!(missing(&ui, "Pastes into Outlook", AccessibleRole::Text));
+    }
+
+    fn the_footer_sits_fully_inside_the_window_at_the_default_size_for_every_scale() {
+        use slint::platform::WindowEvent;
+        let (ui, _log) = start();
+        ui.set_picker_keys(ModelRc::new(VecModel::from(
+            ["Ctrl", "Alt", "Space"].map(slint::SharedString::from).to_vec(),
+        )));
+        ui.set_picker_spoken("Control Alt Space".into());
+        for scale in [1.0_f32, 1.25, 1.5] {
+            for text in [1.0_f32, 1.5, 2.25] {
+                ui.window()
+                    .dispatch_event(WindowEvent::ScaleFactorChanged { scale_factor: scale });
+                ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(text);
+                settle();
+                ui.window().set_size(slint::PhysicalSize::new((320.0 * scale) as u32, (480.0 * scale) as u32));
+                settle();
+                // The testing backend reports element boxes in the window's own (physical) pixels.
+                let phys = ui.window().size();
+                let win = slint::LogicalSize::new(phys.width as f32, phys.height as f32);
+                let footer = find(&ui, "Pastes into Outlook · New message", AccessibleRole::Text);
+                let (pos, size) = (footer.absolute_position(), footer.size());
+                let ctx = format!("scale {scale}, text {text}");
+                assert!(pos.x >= -0.5 && pos.x + size.width <= win.width + 0.5, "{ctx}: footer inside horizontally {pos:?} {size:?} {win:?}");
+                assert!(pos.y >= 0.0 && pos.y + size.height <= win.height + 0.5, "{ctx}: footer inside vertically");
+                for label in ["Shift Enter", "Control Alt Space"] {
+                    for hint in all(&ui, label, AccessibleRole::Text) {
+                        let (p, z) = (hint.absolute_position(), hint.size());
+                        assert!(p.x + z.width <= win.width + 0.5, "{ctx}: {label} not clipped");
+                    }
+                }
+            }
+        }
+        ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(1.0);
     }
 
     fn the_selected_row_shows_paste_or_copy_and_no_other_row_does() {
