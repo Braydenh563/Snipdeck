@@ -526,6 +526,7 @@ fn the_welcome_tour_docks_the_panel_from_its_position_step() {
         assert_eq!(tour.get_dock_edge_index(), 0, "floating to begin with");
         // Docking needs to know where the Panel is.
         let monitor = Monitor {
+            taskbar: None,
             id: Monitor::id_of("DISPLAY1", 1920, 1080),
             work_area: Rect {
                 x: 0,
@@ -533,7 +534,6 @@ fn the_welcome_tour_docks_the_panel_from_its_position_step() {
                 w: 1920,
                 h: 1040,
             },
-            taskbar: None,
             scale: 1.0,
         };
         let floating = Rect {
@@ -559,6 +559,7 @@ fn choosing_an_edge_docks_the_panel_there_and_floating_lets_it_go() {
     on_ui_thread(|| {
         let r = rig();
         let monitor = Monitor {
+            taskbar: None,
             id: Monitor::id_of("DISPLAY1", 1920, 1080),
             work_area: Rect {
                 x: 0,
@@ -566,7 +567,6 @@ fn choosing_an_edge_docks_the_panel_there_and_floating_lets_it_go() {
                 w: 1920,
                 h: 1040,
             },
-            taskbar: None,
             scale: 1.0,
         };
         let floating = Rect {

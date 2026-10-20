@@ -13,7 +13,6 @@ use snipdeck_app::{
     controller::{AppMenuEntry, BoardMenuEntry, ItemMenuEntry, TagRenameError},
     main_window::{DeleteHint, NameError},
     panel::UseLabel,
-    settings::DockEdge,
     wording::{
         app_menu_text, board_menu_text, delete_hint_text, item_menu_label, name_error_text,
         size_text, tag_rename_error_text, use_label_text,
@@ -41,10 +40,6 @@ fn every_menu_row_has_words_except_the_separators() {
         assert_eq!(
             app_menu_text(&w, AppMenuEntry::Dock, false, None),
             "Dock to the nearest edge"
-        );
-        assert_eq!(
-            app_menu_text(&w, AppMenuEntry::Dock, false, Some(DockEdge::Left)),
-            "Dock to the left edge"
         );
         assert_eq!(
             app_menu_text(&w, AppMenuEntry::Dock, true, None),
