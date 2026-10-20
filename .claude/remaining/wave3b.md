@@ -44,3 +44,9 @@
 ## Update (B11 review)
 - Independent review fixed: drop line below the target when dragging down; rows can be dragged to a sidebar list from any view but Trash; cursor follows the dragged row under a label filter; payloads carry item/list ids (not row indexes); text payload no longer copied on empty text.
 - Known/left: dragging one row of a multi-row selection moves only that row (the Move to list chooser moves the selection); the Panel's alternative to dropping on a tab is the editor's list field (Edit in the item menu), there is no Move to entry in the Panel menu.
+
+## dnd2 (branch claude/v1-wave3b-dnd2)
+- Done: Panel row reorder by drag (`panel_drop_row`, `rows_reorderable`), Main tile drag (reorder and sidebar drop, reuses `main_drop_row`/`main_drop_on_list`), [D] file/image drops out of v1 recorded.
+- Next: independent review, PR into the release branch, report to hub.
+- Unverified on Windows: drag feel and drop indicators in the Panel and tiles. The Panel has no keyboard reorder; Alt+Up/Down in the Main window is the alternative.
+- Review follow-ups: fixed reorderable flag update, selection follows the moved Panel row, sorted/search tests. Left: Move up/down entries in the item menus and Alt+Up/Down in the Panel (WCAG 2.5.7), tile click/menu tests.

@@ -408,6 +408,46 @@ ui_tests! {
         assert!(take(&log).iter().any(|l| l.starts_with("select:")), "a click still picks the card");
     }
 
+    fn dragging_a_tile_onto_a_tile_or_a_sidebar_list_reports_the_drop() {
+        let (ui, log) = start();
+        ui.set_view(MainView::Tile);
+        settle();
+        let _ = take(&log);
+        let centre_of = |e: &ElementHandle| {
+            let (p, s) = (e.absolute_position(), e.size());
+            slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0)
+        };
+        let drag = |from: slint::LogicalPosition, to: slint::LogicalPosition| {
+            use slint::platform::{PointerEventButton, WindowEvent};
+            let w = ui.window();
+            w.dispatch_event(WindowEvent::PointerMoved { position: from });
+            w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+            w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(from.x + 12.0, from.y) });
+            w.dispatch_event(WindowEvent::PointerMoved { position: to });
+            w.dispatch_event(WindowEvent::PointerReleased { position: to, button: PointerEventButton::Left });
+            settle();
+        };
+        let card = |title: &str| {
+            by_role(&ui, AccessibleRole::ListItem)
+                .into_iter()
+                .find(|e| e.accessible_label().is_some_and(|l| l.starts_with(title)))
+                .unwrap_or_else(|| panic!("no tile {title}"))
+        };
+        let tile0 = centre_of(&card("Thanks, received"));
+        let tile2 = centre_of(&card("Retry helper"));
+        drag(tile0, tile2);
+        assert_eq!(take(&log), ["row-dropped:0:2"], "tile onto tile");
+
+        let code = centre_of(&find(&ui, "Code", AccessibleRole::ListItem));
+        drag(tile0, code);
+        assert_eq!(take(&log), ["row-on-list:0:2"], "tile onto a sidebar list");
+
+        ui.set_rows_reorderable(false);
+        settle();
+        drag(tile0, tile2);
+        assert_eq!(take(&log), Vec::<String>::new(), "tiles stay put in a sorted list");
+    }
+
     fn pin_reads_unpin_for_a_pinned_item() {
         let (ui, _log) = start();
         for _ in 0..3 {

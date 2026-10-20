@@ -75,6 +75,21 @@ Windows PC.
   and again after 15 minutes without use. There is no recovery if you forget it.
 - **Supporter**: pay what you want from A$5 (suggested A$8), one time. **Get Supporter…** in Settings, and a
   Free and Supporter table that shows what each plan has.
+- **Import** in Settings ▸ Your data: a `.snipdeck` file, a Ditto database, a CopyQ export or a folder of `.txt`
+  and `.md` files. A preview says what will be added, what is already there and what will be left out, and why.
+  Restoring a backup shows the same preview.
+- **Recent inbox**, off by default: the text you copy, for the last 200 copies and 7 days, in the Main window's
+  sidebar and a clock tab in the Panel. **Save to…** puts a copy in a list. Sensitive items, password managers
+  and programs on your exclude list are skipped. **Pause history** in the tray and **Clear recent history**
+  in Settings stop or empty it. It is also offered in the welcome tour.
+- **Colour labels** (eight colours, with a filter) on items, and an **icon** for each list.
+- Drag and drop in the Main window: reorder items and lists, and drop an item on a list to move it. In the
+  Panel, drop an item on a list tab to move it, or drop text on the Panel to save it as a new item.
+- `Ctrl+D` duplicates the selected item in the Main window and the Panel, and **Duplicate selected item** is in
+  the command palette.
+- Messages such as "Copied" and "Pasted into …" follow the language you chose.
+- Screen-reader and keyboard polish: tooltips and names on every icon button and rail item, status texts that
+  are announced, arrow keys in radio groups, `Tab` closes a menu, and a clear focus ring on Panel rows.
 - `--check-db` checks the library for damage and exits. `--troubleshoot` prints the Troubleshoot report and exits.
 
 ### Changed
@@ -90,6 +105,9 @@ Windows PC.
   pinned. Both can be changed under **Window behaviour**.
 - Settings now fits the screen. The Item editor, Settings and Main window open as normal windows with
   their own taskbar buttons.
+- "Delete for good" is the wording everywhere an item is removed for good, and the item menu says **Pin** or
+  **Unpin** to match the item.
+- Searching a large library stays quick, and typing a master password no longer freezes the window.
 - The icon-fetching "website icons" setting is gone. Snipdeck never goes online, so icons are packaged.
 
 ### Fixed
