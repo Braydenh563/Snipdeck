@@ -86,6 +86,7 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_edit_requested, |i| format!("edit:{i}"));
     hook!(on_rename_requested, |i| format!("rename:{i}"));
     hook!(on_duplicate_requested, |i| format!("duplicate:{i}"));
+    hook!(on_pin_requested, |i| format!("pin:{i}"));
     hook!(on_delete_requested, |i| format!("delete:{i}"));
     hook!(on_resize_requested, |edge| format!("resize:{edge:?}"));
     hook!(on_pinned_copied, |i| format!("pinned-copy:{i}"));
@@ -458,19 +459,26 @@ ui_tests! {
         assert!(take(&log).is_empty(), "no callbacks fired");
     }
 
-    fn digits_use_the_nth_row_only_while_the_search_is_empty() {
+    fn alt_digits_use_the_nth_row_and_bare_digits_are_always_search_text() {
         let (ui, log) = start();
-        press(ui.window(), "3");
+        chord(ui.window(), &[Key::Alt], "3");
         assert_eq!(take(&log), ["quick:3"]);
         assert_eq!(ui.get_selected_index(), 2, "the used row becomes the selection");
-        assert_eq!(ui.get_query(), "", "the digit is not search text");
+        assert_eq!(ui.get_query(), "", "Alt+digit is not search text");
 
-        press(ui.window(), "9");
+        chord(ui.window(), &[Key::Alt], "9");
         assert!(take(&log).is_empty(), "six rows: there is no ninth");
 
-        type_text(ui.window(), "a3");
-        assert_eq!(ui.get_query(), "a3", "with a query, digits are text");
-        assert_eq!(take(&log), ["query:a", "query:a3"]);
+        // A bare digit, even with an empty search, filters: typing "2024" must never paste row 2.
+        type_text(ui.window(), "2024");
+        assert_eq!(ui.get_query(), "2024", "digits are text");
+        let seen = take(&log);
+        assert_eq!(seen, ["query:2", "query:20", "query:202", "query:2024"]);
+
+        // Alt+digit still works with a query.
+        chord(ui.window(), &[Key::Alt], "1");
+        assert_eq!(take(&log), ["quick:1"]);
+        assert_eq!(ui.get_query(), "2024");
     }
 
     fn a_click_on_a_row_uses_it() {
@@ -1248,6 +1256,8 @@ ui_tests! {
         assert_eq!(take(&log), ["edit:1"]);
         chord(ui.window(), &[Key::Control], "d");
         assert_eq!(take(&log), ["duplicate:1"]);
+        chord(ui.window(), &[Key::Control], "p");
+        assert_eq!(take(&log), ["pin:1"]);
         press(ui.window(), &key(Key::F2));
         assert_eq!(take(&log), ["rename:1"]);
         press(ui.window(), &key(Key::Delete));
@@ -1279,7 +1289,7 @@ ui_tests! {
         assert_eq!(take(&log), Vec::<String>::new(), "no rows, nothing to edit");
     }
 
-    fn a_double_click_on_a_row_asks_to_edit_it() {
+    fn a_double_click_on_a_row_never_asks_to_edit_it() {
         let (ui, log) = start();
         let at = centre(&rows(&ui)[2]);
         move_to(&ui, at);
@@ -1293,13 +1303,10 @@ ui_tests! {
                 button: PointerEventButton::Left,
             });
         }
+        // The first click used the row; the second adds nothing. Ctrl+E, F2 and the menu edit.
         let seen = take(&log);
-        assert!(seen.iter().any(|l| l == "edit:2"), "{seen:?}");
-        assert_eq!(seen.iter().filter(|l| l.starts_with("edit")).count(), 1);
-        // A single click alone never edits.
-        press_at(&ui, centre(&rows(&ui)[3]));
-        mock_elapsed_time(Duration::from_secs(2));
-        assert!(take(&log).iter().all(|l| !l.starts_with("edit")));
+        assert!(seen.iter().any(|l| l == "use:2"), "{seen:?}");
+        assert!(seen.iter().all(|l| !l.starts_with("edit")), "{seen:?}");
     }
 
     // ---- Pinned strip scrolling ------------------------------------------------------------------------
@@ -1479,6 +1486,7 @@ ui_tests! {
         press(ui.window(), "1");
         chord(ui.window(), &[Key::Control], "e");
         chord(ui.window(), &[Key::Control], "d");
+        chord(ui.window(), &[Key::Control], "p");
         settle();
         // The digit is search text only with a query; here it must not use an item either.
         let seen = take(&log);
@@ -1486,7 +1494,7 @@ ui_tests! {
         assert!(seen.contains(&"rdel:2".to_string()), "{seen:?}");
         for line in &seen {
             assert!(
-                !line.starts_with("use:") && !line.starts_with("edit:") && !line.starts_with("duplicate:") && !line.starts_with("delete:") && !line.starts_with("rename:") && !line.starts_with("quick:") && !line.starts_with("move:"),
+                !line.starts_with("use:") && !line.starts_with("edit:") && !line.starts_with("duplicate:") && !line.starts_with("pin:") && !line.starts_with("delete:") && !line.starts_with("rename:") && !line.starts_with("quick:") && !line.starts_with("move:"),
                 "an item shortcut fired in the Recent list: {line}"
             );
         }

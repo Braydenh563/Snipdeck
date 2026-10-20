@@ -94,6 +94,12 @@ msgstr "将删除全部 {} 条最近复制的内容。此操作无法撤销。"
 msgid "Also forget the encryption key"
 msgstr "同时忘记加密密钥"
 
+msgid "Alt 1 to 9"
+msgstr ""
+
+msgid "Alt+{}"
+msgstr ""
+
 msgid "Amber"
 msgstr "琥珀色"
 
@@ -352,23 +358,74 @@ msgstr "复制该片段"
 msgid "Copy the result"
 msgstr "复制结果"
 
+msgid "Copy without pasting"
+msgstr ""
+
 msgid "CopyQ export"
 msgstr "CopyQ 导出"
 
 msgid "Couldn't change the Windows start-up entry."
 msgstr "无法更改 Windows 开机启动项。"
 
+msgid "Couldn't clear old items out of the Trash. Check the disk has room, then restart Snipdeck to try again."
+msgstr ""
+
 msgid "Couldn't erase everything. Quit Snipdeck and try again."
 msgstr "无法全部删除。请退出 Snipdeck 后重试。"
 
-msgid "Couldn't export your library."
-msgstr "无法导出你的资料库。"
+msgid "Couldn't export your library. Check the disk has room, then try again."
+msgstr ""
+
+msgid "Couldn't export your library: it is locked. Unlock it, then try again."
+msgstr ""
+
+msgid "Couldn't export your library: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't export your library: the folder can't be written to. Check it isn't read-only or in use, then try again."
+msgstr ""
 
 msgid "Couldn't import that."
 msgstr "无法导入该内容。"
 
-msgid "Couldn't make a backup."
-msgstr "无法创建备份。"
+msgid "Couldn't import that. Choose the file again, or try another one."
+msgstr ""
+
+msgid "Couldn't import that: it isn't a file Snipdeck can read, or it is damaged. Choose a .snipdeck export."
+msgstr ""
+
+msgid "Couldn't import that: it was made by a newer Snipdeck. Update Snipdeck, then try again."
+msgstr ""
+
+msgid "Couldn't import that: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't import that: the file is in use by another program or can't be read. Close the program using it, then try again."
+msgstr ""
+
+msgid "Couldn't import that: your library is locked. Unlock it, then try again."
+msgstr ""
+
+msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make a backup: the disk is full. Free up some space, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make a backup: your library is locked. Unlock it, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make today's backup: the disk is full. Free up some space, then use Back up now in Settings."
+msgstr ""
 
 msgid "Couldn't open that window."
 msgstr "无法打开该窗口。"
@@ -394,8 +451,23 @@ msgstr "无法访问剪贴板。可能有其他应用正在使用它。"
 msgid "Couldn't rename the tag."
 msgstr "无法重命名标签。"
 
-msgid "Couldn't restore that backup."
-msgstr "无法还原该备份。"
+msgid "Couldn't restore that backup. Choose another backup, or try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: a file is in use by another program. Close it, then try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: it isn't a Snipdeck backup, or it is damaged. Choose another backup."
+msgstr ""
+
+msgid "Couldn't restore that backup: it was made by a newer Snipdeck. Update Snipdeck, then try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: your library is locked. Unlock it, then try again."
+msgstr ""
 
 msgid "Couldn't save a draft of what you typed."
 msgstr "无法保存你输入内容的草稿。"
@@ -406,8 +478,17 @@ msgstr "无法保存此片段。未做任何更改。"
 msgid "Couldn't save your settings. Snipdeck will try again."
 msgstr "无法保存你的设置。Snipdeck 将再次尝试。"
 
-msgid "Couldn't use this item."
-msgstr "无法使用此片段。"
+msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
+msgstr ""
+
+msgid "Couldn't use this item: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't use this item: your library file is in use by another program. Close that program, then try again."
+msgstr ""
+
+msgid "Couldn't use this item: your library is locked. Unlock it, then try again."
+msgstr ""
 
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "无法写入你的资料库。请检查磁盘是否有足够空间。"
@@ -1022,9 +1103,6 @@ msgstr "{} 的新名称"
 
 msgid "New password"
 msgstr "新密码"
-
-msgid "New snippet"
-msgstr "新建片段"
 
 msgid "New tag"
 msgstr "新建标签"
@@ -1850,6 +1928,9 @@ msgstr "超过此数量后，最旧的备份会被删除。"
 msgid "The panel"
 msgstr "面板"
 
+msgid "The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back."
+msgstr ""
+
 msgid "The picker"
 msgstr "选择器"
 
@@ -2017,6 +2098,9 @@ msgstr "至少使用 {} 个字符。"
 
 msgid "Use just the program's file name, like notepad.exe."
 msgstr "只需填写程序的文件名，例如 notepad.exe。"
+
+msgid "Use result N"
+msgstr ""
 
 msgid "Use selected item"
 msgstr "使用所选片段"

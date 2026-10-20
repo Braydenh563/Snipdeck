@@ -17,6 +17,7 @@ pub mod dock;
 pub mod doctor;
 pub mod drafts;
 pub mod editor_binding;
+pub mod failure;
 pub mod fill;
 pub mod fill_binding;
 pub mod frame;

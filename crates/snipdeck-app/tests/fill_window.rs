@@ -16,7 +16,7 @@ use i_slint_backend_testing::{AccessibleRole, ElementHandle};
 use slint::{ComponentHandle, Model, platform::Key};
 use snipdeck_app::{
     binding::Binding,
-    controller::{Controller, Effect, Services},
+    controller::{Controller, Effect, HelpTopic, Services},
     demo,
     fill_binding::FillUi,
     frame::{Monitor, Rect},
@@ -96,7 +96,12 @@ fn rig_on(store: Store) -> Rig {
     let panel = PanelWindow::new().expect("panel");
     let effects: Rc<RefCell<Vec<Effect>>> = Rc::default();
     let log = Rc::clone(&effects);
-    let binding = Controller::bind(&ctl, &panel, move |e| log.borrow_mut().push(*e));
+    let binding = Controller::bind(
+        &ctl,
+        &panel,
+        std::rc::Rc::new(snipdeck_app::placement::NoPopups),
+        move |e| log.borrow_mut().push(*e),
+    );
     let popups = Rc::new(FakePopups::one(Monitor {
         id: Monitor::id_of("DISPLAY1", 1920, 1080),
         work_area: Rect {
@@ -330,6 +335,23 @@ fn escape_closes_the_form_and_the_target_gets_the_focus_back() {
         );
         assert_eq!(r.ctl.borrow().services().keyboard.sent.len(), 0);
         assert_eq!(r.ctl.borrow().services().clipboard.written.len(), 0);
+    });
+}
+
+#[test]
+fn f1_opens_the_user_guide_and_keeps_the_form_and_its_answers() {
+    on_ui_thread(|| {
+        let r = rig();
+        let (_, form) = r.open_form(false);
+        type_text(form.window(), "Alice");
+        let before = r.effects.borrow().len();
+        press(form.window(), &key(Key::F1));
+        assert_eq!(
+            r.effects.borrow()[before..],
+            [Effect::OpenHelp(HelpTopic::Guide)]
+        );
+        assert!(form.window().is_visible());
+        assert_eq!(form.get_fields().row_data(0).expect("field").value, "Alice");
     });
 }
 

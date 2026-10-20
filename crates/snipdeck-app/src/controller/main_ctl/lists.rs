@@ -9,6 +9,7 @@ use super::super::{
 };
 use super::{BoardMenuEntry, neutral_toast};
 use crate::{
+    failure::Cause,
     host::ClipboardText,
     list_text,
     main_window::{Key, Section, reorder},
@@ -44,29 +45,34 @@ where
         self.main_fresh();
         let list = self.main.lists().get(index)?;
         let (id, name) = (list.id, list.name.as_str().to_owned());
-        let written = self.store.items(id).ok().and_then(|items| {
-            let entries: Vec<_> = items
-                .iter()
-                .filter(|item| !item.sensitive)
-                .filter_map(|item| {
-                    let text = usecase::item_text(&self.store, item.id).ok()??;
-                    Some(list_text::Entry {
-                        title: item.title.clone(),
-                        text,
+        let written = self
+            .store
+            .items(id)
+            .map_err(|e| Cause::of_store(&e))
+            .and_then(|items| {
+                let entries: Vec<_> = items
+                    .iter()
+                    .filter(|item| !item.sensitive)
+                    .filter_map(|item| {
+                        let text = usecase::item_text(&self.store, item.id).ok()??;
+                        Some(list_text::Entry {
+                            title: item.title.clone(),
+                            text,
+                        })
                     })
-                })
-                .collect();
-            let date = self
-                .clock
-                .now()
-                .to_zoned(jiff::tz::TimeZone::system())
-                .date();
-            let path = list_text::path(folder, &name, date);
-            std::fs::create_dir_all(folder).ok()?;
-            std::fs::write(&path, list_text::render(&name, &entries)).ok()?;
-            Some(path)
-        });
-        if let Some(path) = &written {
+                    .collect();
+                let date = self
+                    .clock
+                    .now()
+                    .to_zoned(jiff::tz::TimeZone::system())
+                    .date();
+                let path = list_text::path(folder, &name, date);
+                std::fs::create_dir_all(folder).map_err(|e| Cause::of_io(&e))?;
+                std::fs::write(&path, list_text::render(&name, &entries))
+                    .map_err(|e| Cause::of_io(&e))?;
+                Ok(path)
+            });
+        if let Ok(path) = &written {
             let file = path
                 .file_name()
                 .map(|n| n.to_string_lossy().into_owned())
@@ -76,12 +82,13 @@ where
                 message: ToastMessage::Exported { file },
             });
         } else {
+            let cause = written.as_ref().err().copied().unwrap_or(Cause::Other);
             self.show_toast(Toast {
                 kind: ToastKind::Danger,
-                message: ToastMessage::ExportFailed,
+                message: ToastMessage::ExportFailed(cause),
             });
         }
-        written
+        written.ok()
     }
 
     pub(super) fn trash_list(&mut self, id: ListId, name: String) {

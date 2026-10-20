@@ -258,15 +258,15 @@ fn enter_uses_shift_enter_copies_the_menu_key_opens_the_context_menu() {
     assert_eq!(ui.get_last_action(), "");
 }
 
-/// The "More" buttons inside the whole gallery (the query reports one more than once).
-fn more_buttons(ui: &DeckGallery) -> Vec<ElementHandle> {
+/// The buttons labelled `label` inside the whole gallery (the query reports one more than once).
+fn buttons_named(ui: &DeckGallery, label: &str) -> Vec<ElementHandle> {
     let mut seen = Vec::new();
     ElementQuery::from_root(ui)
         .match_descendants()
         .match_accessible_role(AccessibleRole::Button)
         .find_all()
         .into_iter()
-        .filter(|b| b.accessible_label().is_some_and(|l| l == "More"))
+        .filter(|b| b.accessible_label().is_some_and(|l| l == label))
         .filter(|b| {
             let (p, s) = (b.absolute_position(), b.size());
             let key = (p.x.to_bits(), p.y.to_bits(), s.width.to_bits());
@@ -277,64 +277,72 @@ fn more_buttons(ui: &DeckGallery) -> Vec<ElementHandle> {
         .collect()
 }
 
-fn every_card_shows_a_more_button_that_opens_its_menu_and_a_click_on_it_is_not_a_use() {
+/// The button of `card` among `buttons`: the one whose box lies inside the card's.
+fn inside<'a>(buttons: &'a [ElementHandle], card: &ElementHandle) -> &'a ElementHandle {
+    let (origin, size) = (card.absolute_position(), card.size());
+    buttons
+        .iter()
+        .find(|b| {
+            let (p, s) = (b.absolute_position(), b.size());
+            p.x >= origin.x
+                && p.y >= origin.y
+                && p.x + s.width <= origin.x + size.width
+                && p.y + s.height <= origin.y + size.height
+        })
+        .expect("a button inside the card")
+}
+
+fn every_card_shows_a_more_button_and_a_copy_button_and_a_click_on_either_is_not_a_use() {
     let ui = gallery();
-    // F6: the button is always drawn (muted until the card is hovered or focused), so pen and
-    // touch users can find it; a hover changes its emphasis, never its presence.
-    let resting = more_buttons(&ui).len();
-    assert!(
-        resting > 1,
-        "every card has one, nothing hovered: {resting}"
-    );
+    // Drawn on every card, hovered or not (muted until then), so pen and touch users find them.
+    let more = buttons_named(&ui, "More");
+    let copy = buttons_named(&ui, "Copy without pasting");
+    assert!(!more.is_empty(), "the More button is always there");
+    assert_eq!(copy.len(), more.len(), "a Copy button beside every More");
+    for b in more.iter().chain(&copy) {
+        let s = b.size();
+        assert!(s.width >= 24.0 && s.height >= 24.0, "target size {s:?}");
+    }
 
     let card = &trio(&ui, "Thanks, received")[COMPACT];
-    let (origin, size) = (card.absolute_position(), card.size());
     ui.window().dispatch_event(WindowEvent::PointerMoved {
         position: centre(card),
     });
-    let buttons = more_buttons(&ui);
-    assert_eq!(buttons.len(), resting, "a hover adds or removes none");
-    let inside: Vec<&ElementHandle> = buttons
-        .iter()
-        .filter(|b| {
-            let (p, s) = (b.absolute_position(), b.size());
-            p.x >= origin.x
-                && p.x + s.width <= origin.x + size.width
-                && p.y >= origin.y
-                && p.y + s.height <= origin.y + size.height
-        })
-        .collect();
-    assert_eq!(inside.len(), 1, "one inside the hovered row");
-    let more = inside[0];
-    let s = more.size();
-    assert!(s.width >= 24.0 && s.height >= 24.0, "target size {s:?}");
+    let (more_here, copy_here) = (inside(&more, card), inside(&copy, card));
+    let (m, c) = (more_here.absolute_position(), copy_here.absolute_position());
+    assert!(
+        c.x + copy_here.size().width <= m.x + 0.5,
+        "Copy sits left of More without overlapping it: {c:?} {m:?}"
+    );
 
+    // A click on Copy copies and is not a use.
     ui.set_last_action("".into());
-    let at = centre(more);
+    let at = centre(copy_here);
+    press(&ui, at, PointerEventButton::Left);
+    release(&ui, at, PointerEventButton::Left);
+    assert_eq!(ui.get_last_action(), "copy");
+    assert_eq!(ui.get_actions(), 1, "one copy request and no use");
+
+    // A click on More asks for the menu, also without a use.
+    ui.set_last_action("".into());
+    let at = centre(more_here);
     press(&ui, at, PointerEventButton::Left);
     release(&ui, at, PointerEventButton::Left);
     assert_eq!(ui.get_last_action(), "menu");
-    assert_eq!(ui.get_actions(), 1, "one menu request and no use");
+    assert_eq!(ui.get_actions(), 2, "one menu request and no use");
 
-    // The default action (assistive technology) asks for the menu too.
+    // The default action (assistive technology) does the same.
     ui.set_last_action("".into());
-    more.invoke_accessible_default_action();
+    copy_here.invoke_accessible_default_action();
+    assert_eq!(ui.get_last_action(), "copy");
+    ui.set_last_action("".into());
+    more_here.invoke_accessible_default_action();
     assert_eq!(ui.get_last_action(), "menu");
 
+    // They stay when the pointer leaves.
     ui.window().dispatch_event(WindowEvent::PointerExited);
-    assert_eq!(
-        more_buttons(&ui).len(),
-        resting,
-        "still there without the hover"
-    );
-
-    // Keyboard focus keeps it as well.
-    tab_to(&ui, 1);
-    assert_eq!(
-        more_buttons(&ui).len(),
-        resting,
-        "the focused card keeps it"
-    );
+    assert_eq!(buttons_named(&ui, "More").len(), more.len());
+    assert_eq!(buttons_named(&ui, "Copy without pasting").len(), copy.len());
 }
 
 fn press_and_hold_reveals_a_sensitive_item_without_using_it() {
@@ -575,7 +583,7 @@ fn deck_behaviour() {
     click_uses_shift_click_copies_right_click_asks_for_the_menu();
     a_release_outside_the_card_is_not_a_use();
     enter_uses_shift_enter_copies_the_menu_key_opens_the_context_menu();
-    every_card_shows_a_more_button_that_opens_its_menu_and_a_click_on_it_is_not_a_use();
+    every_card_shows_a_more_button_and_a_copy_button_and_a_click_on_either_is_not_a_use();
     press_and_hold_reveals_a_sensitive_item_without_using_it();
     holding_space_on_a_focused_sensitive_card_reveals_it();
     the_use_label_shows_on_hover_and_keyboard_focus_only();

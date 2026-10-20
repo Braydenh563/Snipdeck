@@ -344,15 +344,19 @@ where
 
     /// Deletes what has been in the Trash longer than [`TRASH_DAYS`](crate::main_window::TRASH_DAYS)
     /// (the host calls this at start-up). Returns how many entries went.
-    pub fn purge_expired_trash(&mut self) -> usize {
+    ///
+    /// # Errors
+    ///
+    /// Why the Trash could not be purged (the maintenance run tells the user).
+    pub fn purge_expired_trash(&mut self) -> Result<usize, snipdeck_store::Error> {
         let Some(cutoff) = self.trash_cutoff(i64::from(crate::main_window::TRASH_DAYS)) else {
-            return 0;
+            return Ok(0);
         };
-        let purged = self.store.purge(cutoff).unwrap_or(0);
+        let purged = self.store.purge(cutoff)?;
         if purged > 0 {
             self.library_changed();
         }
-        purged
+        Ok(purged)
     }
 
     pub(super) fn trash_cutoff(&self, days: i64) -> Option<snipdeck_core::Timestamp> {

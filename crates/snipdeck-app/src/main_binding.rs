@@ -423,6 +423,8 @@ where
                 core.act(|ctl| ctl.main_editor_save(name.as_str(), accent, icon, sort));
             }
         });
+        let help = Rc::clone(self);
+        w.on_help_requested(move || help.act(|ctl| ctl.main_open_help(HelpTopic::Guide)));
         self.wire_editor_common(
             |f| w.on_cancel_requested(f),
             |f| w.on_delete_confirmed(f),
@@ -451,6 +453,8 @@ where
                 core.act(|ctl| ctl.main_editor_save(name.as_str(), None, None, ListSort::Manual));
             }
         });
+        let help = Rc::clone(self);
+        w.on_help_requested(move || help.act(|ctl| ctl.main_open_help(HelpTopic::Guide)));
         self.wire_editor_common(
             |f| w.on_cancel_requested(f),
             |f| w.on_delete_confirmed(f),
@@ -1047,7 +1051,14 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         window.set_count_trash(to_i32(screen.counts.trash));
     }
     if differs(&|p| p.rows == screen.rows && p.dark == screen.dark) {
-        window.set_rows(model(screen.rows.iter().map(|r| main_row(r, screen.dark))));
+        let rows = screen
+            .rows
+            .iter()
+            .map(|r| main_row(r, screen.dark))
+            .collect();
+        if let Some(fresh) = crate::binding::refreshed_model(&window.get_rows(), rows) {
+            window.set_rows(fresh);
+        }
     }
     if window.get_selected_count() != to_i32(screen.selected_count) {
         window.set_selected_count(to_i32(screen.selected_count));

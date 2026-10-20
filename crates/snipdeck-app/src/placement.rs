@@ -84,6 +84,9 @@ pub trait PopupHost {
     /// Takes the keyboard for the popup (the Picker is typed into at once). `false` if there
     /// is no window or Windows refused; the user can still click into it.
     fn activate(&self, window: &slint::Window) -> bool;
+    /// Gives the keyboard back to the Target, if the Panel or a popup still holds it (the
+    /// user has not moved to another app). The Panel calls it as it hides.
+    fn release(&self);
     /// The mouse position, physical pixels.
     fn cursor(&self) -> Option<(i32, i32)>;
     /// The monitor under a point (the nearest one outside them all).
@@ -181,6 +184,7 @@ impl PopupHost for NoPopups {
     fn activate(&self, _window: &slint::Window) -> bool {
         false
     }
+    fn release(&self) {}
     fn cursor(&self) -> Option<(i32, i32)> {
         None
     }
@@ -197,7 +201,8 @@ pub struct FakePopups {
     pub cursor: Cell<Option<(i32, i32)>>,
     /// The monitors; a point outside them all gets the first.
     pub monitors: RefCell<Vec<Monitor>>,
-    /// What the popups asked of the machine, in order: `"attach"` and `"activate"`.
+    /// What the popups asked of the machine, in order: `"attach"`, `"activate"` and
+    /// `"release"`.
     pub calls: RefCell<Vec<&'static str>>,
 }
 
@@ -220,6 +225,10 @@ impl PopupHost for FakePopups {
     fn activate(&self, _window: &slint::Window) -> bool {
         self.calls.borrow_mut().push("activate");
         true
+    }
+
+    fn release(&self) {
+        self.calls.borrow_mut().push("release");
     }
 
     fn cursor(&self) -> Option<(i32, i32)> {

@@ -19,7 +19,7 @@ use snipdeck_ui as ui;
 use crate::{
     accent::Accent,
     binding::{index, model, redraw_all, register_redraw},
-    controller::{Controller, FillView, Library, View},
+    controller::{Controller, FillView, HelpTopic, Library, View},
     fill::{Field, FieldKind},
     frame::Rect,
     host::ClipboardText,
@@ -192,6 +192,8 @@ where
             core.submit(&values);
         });
         wire!(on_cancelled, |core| core.act(Controller::cancel_fill));
+        wire!(on_help_requested, |core| core
+            .act(|ctl| ctl.main_open_help(HelpTopic::Guide)));
         wire!(on_drag_requested, |core| core.shell.drag());
     }
 }

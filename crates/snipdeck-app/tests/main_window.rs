@@ -317,6 +317,24 @@ fn typing_in_the_search_box_searches_every_board() {
 // ---- Selection and item actions --------------------------------------------------------------
 
 #[test]
+fn a_selection_change_updates_the_rows_in_place_instead_of_rebuilding_the_model() {
+    on_ui_thread(|| {
+        let r = rig();
+        // A handle to the model the list shows now: it only sees the change if the model is kept.
+        let held = r.ui.get_rows();
+        let count = held.row_count();
+        assert!(count > 4);
+        r.ui.invoke_select_requested(1, SelectMode::Replace);
+        r.ui.invoke_select_requested(3, SelectMode::Extend);
+        let selected: Vec<bool> = held.iter().map(|row| row.selected).collect();
+        assert_eq!(&selected[..5], [false, true, true, true, false]);
+        assert_eq!(held.row_count(), count);
+        r.ui.invoke_clear_selection_requested();
+        assert!(held.iter().all(|row| !row.selected));
+    });
+}
+
+#[test]
 fn clicks_and_keys_build_the_selection() {
     on_ui_thread(|| {
         let r = rig();
@@ -467,7 +485,12 @@ fn the_panel_and_the_main_window_share_one_toast_and_one_timer() {
     on_ui_thread(|| {
         let ctl = controller(Tier::Pro);
         let panel = PanelWindow::new().expect("panel");
-        let _panel_binding: Binding = Controller::bind(&ctl, &panel, |_| {});
+        let _panel_binding: Binding = Controller::bind(
+            &ctl,
+            &panel,
+            std::rc::Rc::new(snipdeck_app::placement::NoPopups),
+            |_| {},
+        );
         panel.show().unwrap();
         let ui = MainWindow::new().expect("main");
         let _binding = Controller::bind_main(&ctl, &ui);

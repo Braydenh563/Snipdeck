@@ -94,6 +94,12 @@ msgstr "Se eliminan las {} copias recientes. Esto no se puede deshacer."
 msgid "Also forget the encryption key"
 msgstr "Olvidar también la clave de cifrado"
 
+msgid "Alt 1 to 9"
+msgstr ""
+
+msgid "Alt+{}"
+msgstr ""
+
 msgid "Amber"
 msgstr "Ámbar"
 
@@ -352,23 +358,74 @@ msgstr "Copia el elemento"
 msgid "Copy the result"
 msgstr "Copia el resultado"
 
+msgid "Copy without pasting"
+msgstr ""
+
 msgid "CopyQ export"
 msgstr "Exportación de CopyQ"
 
 msgid "Couldn't change the Windows start-up entry."
 msgstr "No se pudo cambiar la entrada de inicio de Windows."
 
+msgid "Couldn't clear old items out of the Trash. Check the disk has room, then restart Snipdeck to try again."
+msgstr ""
+
 msgid "Couldn't erase everything. Quit Snipdeck and try again."
 msgstr "No se pudo borrar todo. Cierra Snipdeck e inténtalo de nuevo."
 
-msgid "Couldn't export your library."
-msgstr "No se pudo exportar tu biblioteca."
+msgid "Couldn't export your library. Check the disk has room, then try again."
+msgstr ""
+
+msgid "Couldn't export your library: it is locked. Unlock it, then try again."
+msgstr ""
+
+msgid "Couldn't export your library: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't export your library: the folder can't be written to. Check it isn't read-only or in use, then try again."
+msgstr ""
 
 msgid "Couldn't import that."
 msgstr "No se pudo importar eso."
 
-msgid "Couldn't make a backup."
-msgstr "No se pudo hacer una copia de seguridad."
+msgid "Couldn't import that. Choose the file again, or try another one."
+msgstr ""
+
+msgid "Couldn't import that: it isn't a file Snipdeck can read, or it is damaged. Choose a .snipdeck export."
+msgstr ""
+
+msgid "Couldn't import that: it was made by a newer Snipdeck. Update Snipdeck, then try again."
+msgstr ""
+
+msgid "Couldn't import that: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't import that: the file is in use by another program or can't be read. Close the program using it, then try again."
+msgstr ""
+
+msgid "Couldn't import that: your library is locked. Unlock it, then try again."
+msgstr ""
+
+msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make a backup: the disk is full. Free up some space, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make a backup: your library is locked. Unlock it, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make today's backup: the disk is full. Free up some space, then use Back up now in Settings."
+msgstr ""
 
 msgid "Couldn't open that window."
 msgstr "No se pudo abrir esa ventana."
@@ -394,8 +451,23 @@ msgstr "No se pudo acceder al portapapeles. Puede que otra aplicación lo esté 
 msgid "Couldn't rename the tag."
 msgstr "No se pudo renombrar la etiqueta."
 
-msgid "Couldn't restore that backup."
-msgstr "No se pudo restaurar esa copia de seguridad."
+msgid "Couldn't restore that backup. Choose another backup, or try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: a file is in use by another program. Close it, then try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: it isn't a Snipdeck backup, or it is damaged. Choose another backup."
+msgstr ""
+
+msgid "Couldn't restore that backup: it was made by a newer Snipdeck. Update Snipdeck, then try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: your library is locked. Unlock it, then try again."
+msgstr ""
 
 msgid "Couldn't save a draft of what you typed."
 msgstr "No se pudo guardar un borrador de lo que escribiste."
@@ -406,8 +478,17 @@ msgstr "No se pudo guardar este elemento. No se cambió nada."
 msgid "Couldn't save your settings. Snipdeck will try again."
 msgstr "No se pudieron guardar tus ajustes. Snipdeck lo intentará de nuevo."
 
-msgid "Couldn't use this item."
-msgstr "No se pudo usar este elemento."
+msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
+msgstr ""
+
+msgid "Couldn't use this item: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't use this item: your library file is in use by another program. Close that program, then try again."
+msgstr ""
+
+msgid "Couldn't use this item: your library is locked. Unlock it, then try again."
+msgstr ""
 
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "No se pudo escribir en tu biblioteca. Comprueba que el disco tenga espacio."
@@ -1027,9 +1108,6 @@ msgstr "Nuevo nombre para {}"
 
 msgid "New password"
 msgstr "Nueva contraseña"
-
-msgid "New snippet"
-msgstr "Nuevo fragmento"
 
 msgid "New tag"
 msgstr "Nueva etiqueta"
@@ -1857,6 +1935,9 @@ msgstr "Las más antiguas se eliminan cuando hay más que este número."
 msgid "The panel"
 msgstr "El panel"
 
+msgid "The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back."
+msgstr ""
+
 msgid "The picker"
 msgstr "El selector"
 
@@ -2024,6 +2105,9 @@ msgstr "Usa al menos {} caracteres."
 
 msgid "Use just the program's file name, like notepad.exe."
 msgstr "Usa solo el nombre de archivo del programa, por ejemplo notepad.exe."
+
+msgid "Use result N"
+msgstr ""
 
 msgid "Use selected item"
 msgstr "Usar el elemento seleccionado"

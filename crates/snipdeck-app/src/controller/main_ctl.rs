@@ -16,6 +16,7 @@ use snipdeck_platform::{
 
 use super::{Controller, Library, Toast, ToastKind, ToastMessage, ToastView, failed};
 use crate::{
+    failure::Cause,
     host::ClipboardText,
     main_window::{
         Counts, EditorView, Key, LabelChip, NameError, Row, Section, SelectMode, SideList, SideTag,

@@ -34,6 +34,7 @@ use snipdeck_store::Store;
 use crate::{
     controller::Controller,
     crash,
+    failure::Cause,
     host::{ClipboardText, Clock},
     main_window::TRASH_DAYS,
     toast::{Toast, ToastKind, ToastMessage},
@@ -131,7 +132,7 @@ pub trait Jobs {
     /// # Errors
     ///
     /// A message for the log.
-    fn backup(&mut self, now: &Zoned) -> Result<BackupResult, String>;
+    fn backup(&mut self, now: &Zoned) -> Result<BackupResult, JobError>;
 
     /// Deletes the Trash entries trashed before `cutoff`; returns how many.
     ///
@@ -156,6 +157,41 @@ pub trait Jobs {
     fn check_integrity(&mut self) -> Result<Vec<String>, String>;
 }
 
+/// Why a job failed: the cause the person can act on, and the words for the log.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JobError {
+    /// What the error comes down to (a full disk, a file in use, a locked library, ...).
+    pub cause: Cause,
+    /// The error's own words, for the diagnostic log.
+    pub detail: String,
+}
+
+impl JobError {
+    /// A failure whose cause is not known.
+    #[must_use]
+    pub fn other(detail: impl Into<String>) -> Self {
+        Self {
+            cause: Cause::Other,
+            detail: detail.into(),
+        }
+    }
+
+    /// The backup waits for the library to be unlocked.
+    #[must_use]
+    pub fn deferred() -> Self {
+        Self {
+            cause: Cause::Locked,
+            detail: LOCKED_MESSAGE.to_owned(),
+        }
+    }
+}
+
+impl std::fmt::Display for JobError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.detail)
+    }
+}
+
 /// What a [`Maintenance::tick`] found, for [`Controller::report_maintenance`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MaintenanceOutcome {
@@ -165,7 +201,7 @@ pub enum MaintenanceOutcome {
         pruned: usize,
     },
     /// The backup could not be made; it is tried again at the next run.
-    BackupFailed(String),
+    BackupFailed(JobError),
     /// The Trash purge finished.
     TrashPurged {
         /// How many entries were deleted for good.
@@ -191,8 +227,10 @@ pub enum MaintenanceOutcome {
 }
 
 impl MaintenanceOutcome {
-    /// The toast to show for this outcome, if it deserves one. Only a damaged library and a
-    /// crash do; routine results are only logged.
+    /// The toast to show for this outcome, if it deserves one: a damaged library, a crash, and a
+    /// backup or Trash purge that failed (nobody would otherwise know). A backup that waits
+    /// for the library to be unlocked is expected and stays quiet; other routine results are only
+    /// logged.
     #[must_use]
     pub fn into_toast(self) -> Option<Toast> {
         match self {
@@ -203,6 +241,18 @@ impl MaintenanceOutcome {
             Self::CrashedLastTime => Some(Toast {
                 kind: ToastKind::Neutral,
                 message: ToastMessage::CrashedLastTime,
+            }),
+            Self::BackupFailed(JobError {
+                cause: Cause::Locked,
+                ..
+            }) => None,
+            Self::BackupFailed(JobError { cause, .. }) => Some(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::DailyBackupFailed(cause),
+            }),
+            Self::TrashPurgeFailed(_) => Some(Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::TrashPurgeFailed,
             }),
             _ => None,
         }
@@ -360,9 +410,9 @@ const LOCKED_MESSAGE: &str = "library locked, backup deferred";
 
 /// `Err` when the library has a key ring that is locked: a backup now would leave out its
 /// sensitive items.
-fn deferred_while_locked(key_ring_exists: bool, unlocked: bool) -> Result<(), String> {
+fn deferred_while_locked(key_ring_exists: bool, unlocked: bool) -> Result<(), JobError> {
     if key_ring_exists && !unlocked {
-        Err(LOCKED_MESSAGE.to_owned())
+        Err(JobError::deferred())
     } else {
         Ok(())
     }
@@ -390,14 +440,17 @@ where
     K: Keyboard,
     T: Timing,
 {
-    fn backup(&mut self, now: &Zoned) -> Result<BackupResult, String> {
+    fn backup(&mut self, now: &Zoned) -> Result<BackupResult, JobError> {
         let store = self.controller.store();
         // A library with a key ring that is locked (idle timeout) would export without its
         // sensitive items; such a backup would also count as today's and push the last complete
         // one out of the newest 7. Defer instead: the failure leaves `last_backup` alone, so the
         // next tick tries again, and the unlock makes it complete.
         deferred_while_locked(
-            store.key_ring_exists().map_err(|e| e.to_string())?,
+            store.key_ring_exists().map_err(|e| JobError {
+                cause: Cause::of_store(&e),
+                detail: e.to_string(),
+            })?,
             store.is_unlocked(),
         )?;
         // Encrypted with the library's key when it has one; a library with no key ring has no
@@ -410,13 +463,18 @@ where
                 pruned: pruned.len(),
             }),
             Ok(BackupOutcome::NotDue { .. }) => Ok(BackupResult::NotDue),
-            Err(e) => Err(e.to_string()),
+            Err(e) => Err(JobError {
+                cause: Cause::of_portable(&e),
+                detail: e.to_string(),
+            }),
         }
     }
 
     /// The controller cuts at its own clock's `now - TRASH_DAYS`, the same moment as `_cutoff`.
     fn purge_trash(&mut self, _cutoff: Timestamp) -> Result<usize, String> {
-        Ok(self.controller.purge_expired_trash())
+        self.controller
+            .purge_expired_trash()
+            .map_err(|e| e.to_string())
     }
 
     fn gc_blobs(&mut self) -> Result<usize, String> {
@@ -479,7 +537,7 @@ mod tests {
         assert!(deferred_while_locked(true, true).is_ok(), "unlocked");
         assert_eq!(
             deferred_while_locked(true, false),
-            Err(LOCKED_MESSAGE.to_owned())
+            Err(JobError::deferred())
         );
 
         // The scheduler side: a deferred backup keeps `last_backup` unset, so it is due again
@@ -487,11 +545,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let (mut m, clock) = rig(dir.path());
         let mut jobs = FakeJobs {
-            backup_result: Some(Err(LOCKED_MESSAGE.to_owned())),
+            backup_result: Some(Err(JobError::deferred())),
             ..FakeJobs::default()
         };
         let out = m.tick(&mut jobs);
-        assert!(out.contains(&MaintenanceOutcome::BackupFailed(LOCKED_MESSAGE.to_owned())));
+        assert!(out.contains(&MaintenanceOutcome::BackupFailed(JobError::deferred())));
         assert_eq!(m.state().last_backup, None);
         jobs.backup_result = None;
         clock.set(at(t0() + 60));
@@ -507,13 +565,13 @@ mod tests {
         checks: usize,
         sweeps: usize,
         gc_result: Option<Result<usize, String>>,
-        backup_result: Option<Result<BackupResult, String>>,
+        backup_result: Option<Result<BackupResult, JobError>>,
         purge_result: Option<Result<usize, String>>,
         integrity_result: Option<Result<Vec<String>, String>>,
     }
 
     impl Jobs for FakeJobs {
-        fn backup(&mut self, now: &Zoned) -> Result<BackupResult, String> {
+        fn backup(&mut self, now: &Zoned) -> Result<BackupResult, JobError> {
             self.backups.push(now.timestamp());
             self.backup_result
                 .clone()
@@ -654,7 +712,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let (mut m, clock) = rig(dir.path());
         let mut jobs = FakeJobs {
-            backup_result: Some(Err("disk full".into())),
+            backup_result: Some(Err(JobError::other("disk full"))),
             purge_result: Some(Err("locked".into())),
             gc_result: Some(Err("in use".into())),
             integrity_result: Some(Err("busy".into())),
@@ -664,7 +722,7 @@ mod tests {
         assert_eq!(
             out,
             [
-                MaintenanceOutcome::BackupFailed("disk full".into()),
+                MaintenanceOutcome::BackupFailed(JobError::other("disk full")),
                 MaintenanceOutcome::TrashPurgeFailed("locked".into()),
                 MaintenanceOutcome::BlobSweepFailed("in use".into()),
                 MaintenanceOutcome::IntegrityFailed("busy".into()),
@@ -691,6 +749,30 @@ mod tests {
     }
 
     #[test]
+    fn a_failed_backup_or_trash_purge_is_a_danger_toast_naming_the_cause() {
+        let danger = |message| Toast {
+            kind: ToastKind::Danger,
+            message,
+        };
+        let full = JobError {
+            cause: Cause::DiskFull,
+            detail: "file system error: no space".into(),
+        };
+        assert_eq!(
+            MaintenanceOutcome::BackupFailed(full).into_toast(),
+            Some(danger(ToastMessage::DailyBackupFailed(Cause::DiskFull)))
+        );
+        assert_eq!(
+            MaintenanceOutcome::BackupFailed(JobError::other("x")).into_toast(),
+            Some(danger(ToastMessage::DailyBackupFailed(Cause::Other)))
+        );
+        assert_eq!(
+            MaintenanceOutcome::TrashPurgeFailed("x".into()).into_toast(),
+            Some(danger(ToastMessage::TrashPurgeFailed))
+        );
+    }
+
+    #[test]
     fn problems_become_a_danger_toast_and_a_clean_check_does_not() {
         let problems = MaintenanceOutcome::IntegrityProblems(vec!["x".into()]);
         let toast = problems.clone().into_toast().expect("a toast");
@@ -699,7 +781,7 @@ mod tests {
         for quiet in [
             MaintenanceOutcome::IntegrityOk,
             MaintenanceOutcome::BackupCreated { pruned: 1 },
-            MaintenanceOutcome::BackupFailed("x".into()),
+            MaintenanceOutcome::BackupFailed(JobError::deferred()),
             MaintenanceOutcome::TrashPurged { count: 3 },
             MaintenanceOutcome::BlobsSwept { count: 2 },
             MaintenanceOutcome::BlobSweepFailed("x".into()),

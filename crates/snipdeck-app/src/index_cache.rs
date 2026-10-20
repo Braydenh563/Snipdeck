@@ -61,8 +61,8 @@ impl IndexCache {
 
     /// The library snapshot, reused when the store has not been written since it was read.
     ///
-    /// A counted use changes `use_count` and `last_used_at` but nothing the index covers: it
-    /// re-reads the items and keeps the index.
+    /// A counted use changes `use_count` and `last_used_at`, which the index keeps only as
+    /// tie-breakers: it re-reads the items and keeps the index, refreshing those two.
     ///
     /// # Errors
     ///
@@ -89,7 +89,12 @@ impl IndexCache {
             let state = self.0.borrow();
             (state.built_at == Some(counter)).then(|| Rc::clone(&state.snapshot.index))
         };
-        let (index, built) = if let Some(index) = reuse {
+        let (index, built) = if let Some(mut index) = reuse {
+            // A counted use changes only the tie-breakers (use count, last use): bring them up
+            // to date, copying the index only when one did change.
+            if !index.usage_is_current(&all) {
+                Rc::make_mut(&mut index).refresh_usage(&all);
+            }
             (index, false)
         } else {
             let tag_names: HashMap<_, _> = store
@@ -222,7 +227,7 @@ mod tests {
     }
 
     #[test]
-    fn a_counted_use_and_a_system_copy_keep_the_index_but_a_use_rereads_the_items() {
+    fn a_counted_use_and_a_system_copy_do_not_rebuild_the_index_but_a_use_rereads_the_items() {
         let (mut s, l) = seeded();
         add(&mut s, l, "alpha");
         let cache = IndexCache::new();
@@ -237,11 +242,11 @@ mod tests {
         s.record_use(id, at()).unwrap();
         let after_use = cache.snapshot(&s).unwrap();
         assert_eq!(after_use.all[0].use_count, 1, "the use shows");
-        assert!(
-            Rc::ptr_eq(&first.index, &after_use.index),
-            "the index is kept"
-        );
+        // Nothing searched changed, so the index is not rebuilt; its tie-breakers (use count and
+        // last use) are brought up to date, and the snapshot the Panel still holds keeps its own.
         assert_eq!(cache.rebuilds(), 1);
+        assert!(after_use.index.usage_is_current(&after_use.all));
+        assert!(!first.index.usage_is_current(&after_use.all));
     }
 
     /// A store that counts how often the Recent list is read.
