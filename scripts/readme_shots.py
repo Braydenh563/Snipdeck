@@ -5,6 +5,7 @@ Render first (any test failures from the 2x scale are expected and ignored):
 
     SNIPDECK_SHOT_SCALE=2 SNIPDECK_SHOTS_DIR=/tmp/shots \\
         cargo test -p snipdeck-ui --no-fail-fast -- --test-threads=4
+    pip install pillow pyoxipng
     python3 scripts/readme_shots.py /tmp/shots
 
 Each shot gets rounded corners, a hairline border and a soft shadow on a transparent
@@ -12,9 +13,11 @@ background, so it sits well on GitHub's light and dark pages. The hero image com
 Main window with the Panel and the Picker in front of it.
 """
 
+import io
 import sys
 from pathlib import Path
 
+import oxipng  # pip install pyoxipng
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 OUT = Path(__file__).resolve().parent.parent / "docs" / "images"
@@ -30,8 +33,6 @@ SHOTS = {
     "fill": "fill",
     "editor": "item-editor-text",
     "settings": "settings",
-    "help": "help-troubleshoot",
-    "tags": "tag-manager",
 }
 
 
@@ -87,10 +88,11 @@ def hero(src: Path, theme: str) -> Image.Image | None:
 
 
 def save(im: Image.Image, path: Path) -> None:
-    # Halve the 2x canvas for the hero only when it is very wide; keep the rest crisp at 2x.
-    im = im.quantize(colors=256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
-    im.save(path, optimize=True)
-    print(f"{path.relative_to(OUT.parent.parent)}  {Image.open(path).size}")
+    # Lossless: a 256-colour palette flattens the light theme's selection tint into the page.
+    buf = io.BytesIO()
+    im.save(buf, "PNG")
+    path.write_bytes(oxipng.optimize_from_memory(buf.getvalue(), level=4))
+    print(f"{path.relative_to(OUT.parent.parent)}  {im.size}  {path.stat().st_size // 1024} KB")
 
 
 def main() -> int:
