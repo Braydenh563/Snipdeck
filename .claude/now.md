@@ -7,6 +7,7 @@ Goal: ship v1 by the morning. Branch `claude/compassionate-pascal-pod8ux`, PR #5
 Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 
 ## Decisions
+- 2026-10-20 11:05 owner: "push groups to 1.1 but do the rest pls". O46 groups -> v1.1 (reverses hold-v1-for-groups). Fable order: O33/O32 push, O39 Panel, O52, O53, O44+O45 (no groups), O47, O49, O50, O48, O40, O41, visual pass, O30, O27. Stop line 87% unchanged.
 - 2026-10-20 Supporter contact email = brayden.hoyle@outlook.com (owner supplied, replaces placeholder; public in app/README/site).
 - 2026-10-20: Weekly stop line raised from 84-85% to 87% (owner: "Go to 87% usage if you need it but I hope not"). Wrap-up at 87%: Morning summary with done, cut short, every remaining item.
 - 2026-10-20: Windows Hello quick unlock ships in v1.1, on top of the master password (so Supporter, like the master password). Hello must protect the key, not only gate the UI; the password stays required after a restart and every N days. No passkeys or TOTP authenticator: offline, they add steps but no security. Owner: "1.1".
