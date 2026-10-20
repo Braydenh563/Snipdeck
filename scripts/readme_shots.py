@@ -65,8 +65,10 @@ def framed(im: Image.Image, dark: bool) -> Image.Image:
 
 
 def trim_settings(im: Image.Image) -> Image.Image:
-    # The Settings render is tall; show the top, which holds the everyday options.
-    return im.crop((0, 0, im.width, min(im.height, int(im.width * 1.15))))
+    # The Settings render is tall; show the top, which holds the everyday options. The cut
+    # (1300px at 2x) sits in the gap between the Panel width row and Window behaviour, so no
+    # row is clipped.
+    return im.crop((0, 0, im.width, min(im.height, 1300)))
 
 
 def hero(src: Path, theme: str) -> Image.Image | None:
