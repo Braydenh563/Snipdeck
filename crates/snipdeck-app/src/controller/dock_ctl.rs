@@ -8,12 +8,13 @@
 use snipdeck_core::UseOutcome;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 
-use super::{Controller, Effect, Library, PanelMenu, UseResult};
+use super::{Controller, Effect, Library, PanelMenu, UseResult, neutral};
 use crate::{
     dock::{DockAction, DockEvent, DockState},
     frame::{self, Monitor, Rect},
     host::ClipboardText,
     settings::{DockEdge, DockSettings, DockTrigger, PanelGeometry},
+    toast::ToastMessage,
 };
 
 /// The height a Panel starts with when nothing was stored for its monitor (logical pixels).
@@ -170,6 +171,11 @@ where
         let Some(monitor) = self.monitor.clone() else {
             return;
         };
+        if edge.is_some() && edge == monitor.taskbar {
+            // The taskbar owns that edge: a Panel put there would sit under it (O32).
+            self.show_toast(neutral(ToastMessage::TaskbarEdge));
+            return;
+        }
         let base = self.open_frame(&monitor);
         let place = match edge {
             Some(edge) => {
@@ -184,17 +190,48 @@ where
         self.pending.push(Effect::PlaceWindow(place));
     }
 
-    /// The kebab's dock row: docks a floating Panel to the edge nearest to it, or undocks.
+    /// The edge the kebab's dock row would dock a floating Panel to: the nearest one that is
+    /// not the taskbar's. `None` while docked or before the monitor is known.
+    #[must_use]
+    pub fn dock_target(&self) -> Option<DockEdge> {
+        let monitor = self.monitor.as_ref()?;
+        if self.dock_edge().is_some() {
+            return None;
+        }
+        Some(frame::nearest_dock_edge(
+            self.open_frame(monitor),
+            monitor.work_area,
+            monitor.taskbar,
+        ))
+    }
+
+    /// The kebab's dock row: docks a floating Panel to [`Self::dock_target`], or undocks.
     pub fn dock_toggle(&mut self) {
-        let Some(monitor) = self.monitor.clone() else {
-            return;
-        };
         if self.dock_edge().is_some() {
             self.dock_to(None);
-        } else {
-            let edge = frame::nearest_edge(self.open_frame(&monitor), monitor.work_area);
+        } else if let Some(edge) = self.dock_target() {
             self.dock_to(Some(edge));
         }
+    }
+
+    /// The Panel stopped moving after a drag (`frame_moved` went quiet): a drag released near
+    /// an allowed edge ([`frame::dock_preview`]) docks there. Nothing happens after a move that
+    /// was not a drag (a restore, a placement), so a Panel kept near an edge stays floating.
+    pub fn frame_settled(&mut self, monitor: &Monitor, frame: Rect) -> Vec<Effect> {
+        if !std::mem::take(&mut self.dragging) {
+            return Vec::new();
+        }
+        self.monitor = Some(monitor.clone());
+        let preview = self.dock_preview.take();
+        if preview.is_some()
+            && self.dock_edge().is_none()
+            && preview
+                == frame::dock_preview(frame, monitor.work_area, monitor.taskbar, monitor.scale)
+        {
+            self.dock_to(preview);
+            return self.take_pending();
+        }
+        Vec::new()
     }
 
     /// Placements queued by a change that did not come from the Panel window (the Settings

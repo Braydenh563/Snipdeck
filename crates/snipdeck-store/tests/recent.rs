@@ -102,14 +102,14 @@ fn entries_are_not_library_items_and_are_not_searchable() {
 }
 
 #[test]
-fn reading_leaves_the_change_counter_alone_and_writing_moves_it() {
+fn reading_leaves_the_revisions_alone_and_writing_moves_the_recent_one() {
     let mut s = store();
     s.add_recent("a", None, at(1)).unwrap();
-    let before = s.change_counter();
+    let before = s.recent_revision();
     s.recent().unwrap();
-    assert_eq!(s.change_counter(), before);
+    assert_eq!(s.recent_revision(), before);
     s.add_recent("b", None, at(2)).unwrap();
-    assert!(s.change_counter() > before);
+    assert!(s.recent_revision() > before);
 }
 
 #[test]
@@ -376,6 +376,7 @@ mod at_rest {
                 copied_at INTEGER NOT NULL
              ) STRICT;
              CREATE INDEX recent_entries_newest ON recent_entries (copied_at DESC, id DESC);
+             ALTER TABLE key_ring DROP COLUMN previous;
              PRAGMA user_version = 4;",
         )
         .unwrap();
@@ -404,7 +405,7 @@ mod at_rest {
         // Opened with no key: the rows are kept and readable, flagged plain.
         {
             let s = Store::open(dir.path()).unwrap();
-            assert_eq!(s.schema_version().unwrap(), 5);
+            assert_eq!(s.schema_version().unwrap(), 6);
             assert_eq!(texts(&s), [m2.clone(), m1.clone()]);
             assert!(s.has_plain_recent().unwrap());
         }

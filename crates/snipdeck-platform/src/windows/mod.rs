@@ -11,6 +11,7 @@
 //! | [`hotkey`] | Global hotkeys on a dedicated thread |
 //! | [`autostart`] | Start with Windows (`HKCU\...\Run`) |
 //! | [`single_instance`] | One running instance; a second launch signals the first |
+//! | [`console`] | Attach to the parent's console so `--help` and `--check-db` can print |
 //! | [`dpi`] | Per-monitor DPI awareness for windows created before the UI toolkit's |
 //! | [`dpapi`] | `CryptProtectData` wrappers for the sensitive-items key |
 //! | [`tray`] | `WinTray`: [`crate::tray::Tray`] via `Shell_NotifyIconW` (v4), menu, `TaskbarCreated` |
@@ -23,6 +24,7 @@
 pub mod autostart;
 pub mod clipboard;
 pub mod clipboard_history;
+pub mod console;
 pub mod dpapi;
 pub mod dpi;
 pub mod file_dialog;

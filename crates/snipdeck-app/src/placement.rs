@@ -259,6 +259,7 @@ mod tests {
         Monitor {
             id: Monitor::id_of("DISPLAY1", 1920, 1080),
             work_area: AREA,
+            taskbar: None,
             scale,
         }
     }

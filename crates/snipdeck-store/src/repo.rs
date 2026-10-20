@@ -81,14 +81,37 @@ pub trait ItemRepo {
     /// It counts every row SQLite changed through this handle (boards, lists, items, tags,
     /// the trash, the search tables), in a [`Store`](crate::Store) and in a
     /// [`Batch`](crate::Batch) alike. It never decreases, and it is not undone by a rollback,
-    /// so a failed write can at worst cost one needless refresh. Reads leave it alone. It is
-    /// only comparable with values from the same open handle (it starts at a small number on
-    /// every open) and says nothing about writes by another process, which the single-writer
+    /// so a failed write can at worst cost one needless refresh. Reads leave it alone. A counted use ([`ItemRepo::record_use`]) and every write to the Recent inbox are left
+    /// out: they change nothing the search index covers. [`RecentRepo::recent_revision`](crate::RecentRepo::recent_revision) counts
+    /// those too. It is only comparable with values from the same open handle (it starts at a
+    /// small number on every open) and says nothing about writes by another process, which the single-writer
     /// lock rules out.
     fn change_counter(&self) -> u64;
 
+    /// A number that grows whenever a use is counted ([`ItemRepo::record_use`]): the one
+    /// write [`ItemRepo::change_counter`] ignores that still changes what an item list shows
+    /// (`use_count`, `last_used_at`). A cache of items pairs the two.
+    fn usage_counter(&self) -> u64;
+
     /// One live item, without content.
     fn item(&self, id: ItemId) -> Result<Item>;
+
+    /// The stored content of every live item that is not stored encrypted, as
+    /// `(item, formats)`, read in one pass over the tables instead of one
+    /// [`formats`](Self::formats) call per item. Encrypted items are left out, so nothing is
+    /// decrypted; an item with no stored format rows is left out too.
+    ///
+    /// The default asks item by item (and leaves out every sensitive item); [`Store`](crate::Store) and [`Batch`](crate::Batch) read
+    /// the tables directly.
+    fn plain_formats(&self) -> Result<Vec<(ItemId, Formats)>> {
+        let mut out = Vec::new();
+        for item in self.all_items()? {
+            if !item.sensitive {
+                out.push((item.id, self.formats(item.id)?));
+            }
+        }
+        Ok(out)
+    }
 
     /// The item's content, for using, editing or exporting it; decrypted if it is stored
     /// encrypted. Decrypted payloads too large to be inline are held in memory only and are

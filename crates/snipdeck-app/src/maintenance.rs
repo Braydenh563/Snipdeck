@@ -44,6 +44,11 @@ pub const FIRST_DELAY: Duration = Duration::from_secs(2);
 /// How often the host runs [`Maintenance::tick`], and how long a backup or purge waits for the
 /// next one.
 pub const INTERVAL: Duration = Duration::from_hours(6);
+/// How often orphaned blob files are swept.
+pub const GC_INTERVAL: Duration = Duration::from_hours(24);
+/// A blob file younger than this is left alone by the sweep: it may be written but not yet
+/// attached to an item.
+pub const GC_GRACE: Duration = Duration::from_hours(1);
 /// How often the integrity check runs.
 pub const INTEGRITY_INTERVAL: Duration = Duration::from_hours(7 * 24);
 /// The file in the data folder that remembers the last runs.
@@ -57,6 +62,8 @@ pub struct State {
     pub last_backup: Option<i64>,
     /// Unix seconds of the last Trash purge.
     pub last_purge: Option<i64>,
+    /// Unix seconds of the last blob sweep.
+    pub last_gc: Option<i64>,
     /// Unix seconds of the last integrity check.
     pub last_integrity: Option<i64>,
     /// File name of the newest crash report the user has been told about.
@@ -82,11 +89,11 @@ impl State {
     /// The file cannot be written.
     pub fn save(&self, data_dir: &Path) -> io::Result<()> {
         let text = serde_json::to_string_pretty(self).map_err(io::Error::other)?;
-        let temp = data_dir.join(format!("{STATE_FILE}.tmp"));
-        let written = fs::File::create(&temp).and_then(|mut file| {
-            file.write_all(text.as_bytes())?;
-            file.sync_all()
-        });
+        let (mut file, temp) = crate::settings_store::create_temp(data_dir, STATE_FILE)?;
+        let written = file
+            .write_all(text.as_bytes())
+            .and_then(|()| file.sync_all());
+        drop(file);
         match written.and_then(|()| fs::rename(&temp, data_dir.join(STATE_FILE))) {
             Ok(()) => Ok(()),
             Err(e) => {
@@ -133,6 +140,14 @@ pub trait Jobs {
     /// A message for the log.
     fn purge_trash(&mut self, cutoff: Timestamp) -> Result<usize, String>;
 
+    /// Sweeps blob files nothing uses (leftovers of interrupted writes) older than
+    /// [`GC_GRACE`]; returns how many files went.
+    ///
+    /// # Errors
+    ///
+    /// A message for the log.
+    fn gc_blobs(&mut self) -> Result<usize, String>;
+
     /// Checks the library; returns one line per problem (empty when healthy).
     ///
     /// # Errors
@@ -158,6 +173,13 @@ pub enum MaintenanceOutcome {
     },
     /// The purge failed.
     TrashPurgeFailed(String),
+    /// The blob sweep finished.
+    BlobsSwept {
+        /// How many unused blob files and leftovers were deleted.
+        count: usize,
+    },
+    /// The sweep failed.
+    BlobSweepFailed(String),
     /// The integrity check found nothing wrong.
     IntegrityOk,
     /// The integrity check found these problems.
@@ -195,6 +217,8 @@ impl MaintenanceOutcome {
             Self::BackupFailed(e) => format!("backup failed: {e}"),
             Self::TrashPurged { count } => format!("{count} expired Trash entries deleted"),
             Self::TrashPurgeFailed(e) => format!("Trash purge failed: {e}"),
+            Self::BlobsSwept { count } => format!("{count} unused blob files deleted"),
+            Self::BlobSweepFailed(e) => format!("blob sweep failed: {e}"),
             Self::IntegrityOk => "integrity check: ok".to_owned(),
             Self::IntegrityProblems(problems) => {
                 format!(
@@ -287,6 +311,17 @@ impl Maintenance {
                     outcomes.push(MaintenanceOutcome::TrashPurged { count });
                 }
                 Err(e) => outcomes.push(MaintenanceOutcome::TrashPurgeFailed(e)),
+            }
+        }
+
+        if is_due(self.state.last_gc, seconds, GC_INTERVAL) {
+            match jobs.gc_blobs() {
+                Ok(count) => {
+                    self.state.last_gc = Some(seconds);
+                    changed = true;
+                    outcomes.push(MaintenanceOutcome::BlobsSwept { count });
+                }
+                Err(e) => outcomes.push(MaintenanceOutcome::BlobSweepFailed(e)),
             }
         }
 
@@ -384,6 +419,12 @@ where
         Ok(self.controller.purge_expired_trash())
     }
 
+    fn gc_blobs(&mut self) -> Result<usize, String> {
+        self.controller
+            .sweep_blobs(GC_GRACE)
+            .map_err(|e| e.to_string())
+    }
+
     fn check_integrity(&mut self) -> Result<Vec<String>, String> {
         self.controller
             .store()
@@ -464,6 +505,8 @@ mod tests {
         backups: Vec<Timestamp>,
         purges: Vec<Timestamp>,
         checks: usize,
+        sweeps: usize,
+        gc_result: Option<Result<usize, String>>,
         backup_result: Option<Result<BackupResult, String>>,
         purge_result: Option<Result<usize, String>>,
         integrity_result: Option<Result<Vec<String>, String>>,
@@ -479,6 +522,10 @@ mod tests {
         fn purge_trash(&mut self, cutoff: Timestamp) -> Result<usize, String> {
             self.purges.push(cutoff);
             self.purge_result.clone().unwrap_or(Ok(0))
+        }
+        fn gc_blobs(&mut self) -> Result<usize, String> {
+            self.sweeps += 1;
+            self.gc_result.clone().unwrap_or(Ok(0))
         }
         fn check_integrity(&mut self) -> Result<Vec<String>, String> {
             self.checks += 1;
@@ -504,6 +551,7 @@ mod tests {
             [
                 MaintenanceOutcome::BackupCreated { pruned: 0 },
                 MaintenanceOutcome::TrashPurged { count: 0 },
+                MaintenanceOutcome::BlobsSwept { count: 0 },
                 MaintenanceOutcome::IntegrityOk,
             ]
         );
@@ -539,6 +587,26 @@ mod tests {
         assert_eq!((jobs.backups.len(), jobs.purges.len()), (2, 2), "{out:?}");
         assert_eq!(jobs.backups[1], at(t0() + 6 * HOUR));
         assert_eq!(jobs.checks, 1, "the integrity check is weekly");
+    }
+
+    #[test]
+    fn blobs_are_swept_daily_to_the_second() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut m, clock) = rig(dir.path());
+        let mut jobs = FakeJobs::default();
+        m.tick(&mut jobs);
+        assert_eq!(jobs.sweeps, 1);
+        clock.set(at(t0() + DAY - 1));
+        m.tick(&mut jobs);
+        assert_eq!(jobs.sweeps, 1, "one second early");
+        clock.set(at(t0() + DAY));
+        let out = m.tick(&mut jobs);
+        assert_eq!(jobs.sweeps, 2);
+        assert!(out.contains(&MaintenanceOutcome::BlobsSwept { count: 0 }));
+        assert_eq!(
+            MaintenanceOutcome::BlobsSwept { count: 2 }.log_line(),
+            "2 unused blob files deleted"
+        );
     }
 
     #[test]
@@ -588,6 +656,7 @@ mod tests {
         let mut jobs = FakeJobs {
             backup_result: Some(Err("disk full".into())),
             purge_result: Some(Err("locked".into())),
+            gc_result: Some(Err("in use".into())),
             integrity_result: Some(Err("busy".into())),
             ..FakeJobs::default()
         };
@@ -597,6 +666,7 @@ mod tests {
             [
                 MaintenanceOutcome::BackupFailed("disk full".into()),
                 MaintenanceOutcome::TrashPurgeFailed("locked".into()),
+                MaintenanceOutcome::BlobSweepFailed("in use".into()),
                 MaintenanceOutcome::IntegrityFailed("busy".into()),
             ]
         );
@@ -606,11 +676,17 @@ mod tests {
         clock.set(at(t0() + 1));
         jobs.backup_result = None;
         jobs.purge_result = None;
+        jobs.gc_result = None;
         jobs.integrity_result = None;
         m.tick(&mut jobs);
         assert_eq!(
-            (jobs.backups.len(), jobs.purges.len(), jobs.checks),
-            (2, 2, 2)
+            (
+                jobs.backups.len(),
+                jobs.purges.len(),
+                jobs.sweeps,
+                jobs.checks
+            ),
+            (2, 2, 2, 2)
         );
     }
 
@@ -625,6 +701,8 @@ mod tests {
             MaintenanceOutcome::BackupCreated { pruned: 1 },
             MaintenanceOutcome::BackupFailed("x".into()),
             MaintenanceOutcome::TrashPurged { count: 3 },
+            MaintenanceOutcome::BlobsSwept { count: 2 },
+            MaintenanceOutcome::BlobSweepFailed("x".into()),
         ] {
             assert_ne!(quiet.log_line(), "");
             assert_eq!(quiet.clone().into_toast(), None, "{quiet:?}");
@@ -651,11 +729,19 @@ mod tests {
             State {
                 last_backup: Some(t0()),
                 last_purge: Some(t0()),
+                last_gc: Some(t0()),
                 last_integrity: Some(t0()),
                 crash_acknowledged: None,
             }
         );
-        assert!(!dir.path().join("maintenance.json.tmp").exists());
+        assert!(
+            fs::read_dir(dir.path()).unwrap().all(|e| !e
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .ends_with(".tmp")),
+            "no temporary file is left"
+        );
 
         // A new process an hour later: nothing is due.
         clock.set(at(t0() + HOUR));

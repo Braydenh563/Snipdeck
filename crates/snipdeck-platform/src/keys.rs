@@ -57,6 +57,9 @@ pub enum Key {
     V,
     /// The `Insert` key (an extended key on Windows).
     Insert,
+    /// The `Left` arrow (an extended key on Windows), pressed to move the caret back after a
+    /// paste (`{cursor}`).
+    Left,
     /// An unassigned virtual key, pressed and released while `Alt` or `Win` is held so that
     /// releasing it does not open a menu bar or the Start menu.
     Mask,

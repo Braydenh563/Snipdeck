@@ -98,6 +98,8 @@ pub enum ToastMessage {
     NoListToSave,
     /// "Nothing to paste next. Pin a snippet, or add one to this list."
     NothingToPasteNext,
+    /// "The taskbar is on that edge. Pick another edge, or move the taskbar."
+    TaskbarEdge,
     /// "That was the last one. Paste next starts again from the first."
     PasteNextFinished,
     /// "{chord} is used by another app. Choose another in Settings."

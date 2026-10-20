@@ -1,0 +1,101 @@
+// The words of the Panel's menus and the Main window's use button. Rust picks the row (an
+// `AppMenuEntry`, an `ItemMenuEntry`, a `BoardMenuEntry`) and calls these functions
+// (`snipdeck_app::wording`) to get the words in the language selected for the UI. One function per
+// row. Rust keeps no English.
+export global MenuTexts {
+    // The kebab menu.
+    pure public function app-open() -> string {
+        return @tr("Open Snipdeck");
+    }
+    pure public function app-commands() -> string {
+        return @tr("All commands…");
+    }
+    pure public function app-new-snippet() -> string {
+        return @tr("New snippet");
+    }
+    pure public function app-settings() -> string {
+        return @tr("Settings…");
+    }
+    pure public function app-dock() -> string {
+        return @tr("Dock to the nearest edge");
+    }
+    pure public function app-dock-left() -> string {
+        return @tr("Dock to the left edge");
+    }
+    pure public function app-dock-right() -> string {
+        return @tr("Dock to the right edge");
+    }
+    pure public function app-dock-top() -> string {
+        return @tr("Dock to the top edge");
+    }
+    pure public function app-dock-bottom() -> string {
+        return @tr("Dock to the bottom edge");
+    }
+    pure public function app-undock() -> string {
+        return @tr("Undock the panel");
+    }
+    pure public function app-pause-hotkeys() -> string {
+        return @tr("Pause hotkeys");
+    }
+    pure public function app-troubleshoot() -> string {
+        return @tr("Troubleshoot…");
+    }
+    pure public function app-user-guide() -> string {
+        return @tr("User guide");
+    }
+    pure public function app-shortcuts() -> string {
+        return @tr("Keyboard shortcuts");
+    }
+    pure public function app-about() -> string {
+        return @tr("About Snipdeck");
+    }
+    pure public function app-quit() -> string {
+        return @tr("Quit");
+    }
+
+    // The item menu.
+    pure public function item-use() -> string {
+        return @tr("Use");
+    }
+    pure public function item-copy() -> string {
+        return @tr("Copy");
+    }
+    pure public function item-edit() -> string {
+        return @tr("Edit…");
+    }
+    pure public function item-duplicate() -> string {
+        return @tr("Duplicate");
+    }
+    pure public function item-pin() -> string {
+        return @tr("Pin");
+    }
+    pure public function item-unpin() -> string {
+        return @tr("Unpin");
+    }
+    pure public function item-stack-add() -> string {
+        return @tr("Add to paste stack");
+    }
+    pure public function item-stack-remove() -> string {
+        return @tr("Remove from paste stack");
+    }
+    pure public function item-trash() -> string {
+        return @tr("Move to Trash");
+    }
+
+    // The board menu.
+    pure public function board-new() -> string {
+        return @tr("New board…");
+    }
+    pure public function board-rename() -> string {
+        return @tr("Rename board…");
+    }
+    pure public function board-move-up() -> string {
+        return @tr("Move board up");
+    }
+    pure public function board-move-down() -> string {
+        return @tr("Move board down");
+    }
+    pure public function board-delete() -> string {
+        return @tr("Delete board…");
+    }
+}

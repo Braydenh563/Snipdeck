@@ -233,3 +233,78 @@ pub fn dev_seed() -> [u8; 32] {
 pub fn derived_seed(tag: u8) -> [u8; 32] {
     std::array::from_fn(|i| u8::try_from(i).unwrap().wrapping_mul(31).wrapping_add(tag))
 }
+
+/// The master-password steps in one call, for tests: `begin_*`, then the job's `run` (what the
+/// worker thread does), then `finish_master`.
+pub trait MasterSteps {
+    fn unlock_with_password(
+        &mut self,
+        password: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem>;
+    fn set_master_password(
+        &mut self,
+        new: &str,
+        again: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem>;
+    fn change_master_password(
+        &mut self,
+        current: &str,
+        new: &str,
+        again: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem>;
+    fn remove_master_password(
+        &mut self,
+        current: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem>;
+}
+
+type Ctl = snipdeck_app::controller::Controller<
+    snipdeck_store::Store,
+    snipdeck_platform::testing::FakeClipboard,
+    snipdeck_platform::testing::FakeKeyboard,
+    snipdeck_platform::testing::FakeTiming,
+>;
+
+fn finish(
+    ctl: &mut Ctl,
+    job: Option<snipdeck_app::master_job::MasterJob>,
+) -> Result<(), snipdeck_app::controller::MasterProblem> {
+    match job {
+        Some(job) => ctl.finish_master(job.run()),
+        None => Ok(()),
+    }
+}
+
+impl MasterSteps for Ctl {
+    fn unlock_with_password(
+        &mut self,
+        password: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem> {
+        let job = self.begin_unlock_with_password(password)?;
+        finish(self, job)
+    }
+    fn set_master_password(
+        &mut self,
+        new: &str,
+        again: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem> {
+        let job = self.begin_set_master_password(new, again)?;
+        finish(self, Some(job))
+    }
+    fn change_master_password(
+        &mut self,
+        current: &str,
+        new: &str,
+        again: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem> {
+        let job = self.begin_change_master_password(current, new, again)?;
+        finish(self, Some(job))
+    }
+    fn remove_master_password(
+        &mut self,
+        current: &str,
+    ) -> Result<(), snipdeck_app::controller::MasterProblem> {
+        let job = self.begin_remove_master_password(current)?;
+        finish(self, Some(job))
+    }
+}

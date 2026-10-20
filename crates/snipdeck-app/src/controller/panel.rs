@@ -444,7 +444,12 @@ where
     /// cross, and answering every `Moved` could loop on rounding. The place is fitted when it
     /// is restored ([`Self::placement`]) and when the Panel is next resized.
     pub fn frame_moved(&mut self, monitor: &Monitor, frame: Rect) -> Vec<Effect> {
-        self.remember_frame(monitor, frame, false)
+        let effects = self.remember_frame(monitor, frame, false);
+        // Only a drag previews a dock: a restore or a placement near an edge must not.
+        self.dock_preview = (self.dragging && self.dock_edge().is_none())
+            .then(|| frame::dock_preview(frame, monitor.work_area, monitor.taskbar, monitor.scale))
+            .flatten();
+        effects
     }
 
     fn remember_frame(

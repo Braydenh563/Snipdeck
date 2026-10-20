@@ -85,6 +85,7 @@ impl PickerModel {
     /// # Errors
     ///
     /// Any store error.
+    #[cfg(test)]
     pub fn load<S>(store: &S, board: Option<BoardId>) -> snipdeck_store::Result<Self>
     where
         S: BoardRepo + ListRepo + ItemRepo + TagRepo,
@@ -92,8 +93,9 @@ impl PickerModel {
         Self::load_cached(store, board, &IndexCache::new())
     }
 
-    /// Like [`PickerModel::load`], taking the search index from `cache` (built only when the
-    /// library changed since it was last built).
+    /// Reads the whole library through `cache` (read again only when the library changed since).
+    /// `board` is the board the Panel shows, for the "This board" scope. Starts with an empty
+    /// query, the All scope and the first row selected.
     ///
     /// # Errors
     ///
@@ -106,18 +108,17 @@ impl PickerModel {
     where
         S: BoardRepo + ListRepo + ItemRepo + TagRepo,
     {
-        let all = store.all_items()?;
-        let index = cache.index(store, &all)?;
-        let mut by_list: HashMap<ListId, Vec<Item>> = HashMap::new();
-        for item in all {
+        let snapshot = cache.snapshot(store)?;
+        let mut by_list: HashMap<ListId, Vec<&Item>> = HashMap::new();
+        for item in &snapshot.all {
             by_list.entry(item.list_id).or_default().push(item);
         }
         let mut places = Vec::new();
-        for b in store.boards()? {
-            for l in store.lists(b.id)? {
+        for (b, lists) in &snapshot.boards {
+            for l in lists {
                 for item in by_list.remove(&l.id).unwrap_or_default() {
                     places.push(Place {
-                        item,
+                        item: item.clone(),
                         board: b.id,
                         board_name: b.name.as_str().to_owned(),
                         list_name: l.name.as_str().to_owned(),
@@ -126,6 +127,7 @@ impl PickerModel {
                 }
             }
         }
+        let index = Rc::clone(&snapshot.index);
         let mut model = Self {
             places,
             index,

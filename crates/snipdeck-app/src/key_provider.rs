@@ -28,9 +28,30 @@ impl KeyProvider for Dpapi {
         wrapped: &[u8],
     ) -> Result<snipdeck_store::crypto::Zeroizing<Vec<u8>>, snipdeck_store::crypto::KeyProviderError>
     {
-        // Any failure of the OS call means "this user cannot open it" (`docs/crypto.md`).
-        snipdeck_platform::windows::dpapi::unprotect(wrapped, ENTROPY)
-            .map_err(|_| snipdeck_store::crypto::KeyProviderError::Rejected)
+        snipdeck_platform::windows::dpapi::unprotect(wrapped, ENTROPY).map_err(|e| unwrap_error(&e))
+    }
+}
+
+/// `ERROR_INVALID_DATA`: what `CryptUnprotectData` reports for a blob it cannot open as this user
+/// (another user or machine, other entropy, truncated or modified).
+#[cfg(any(windows, test))]
+const ERROR_INVALID_DATA: u32 = 13;
+/// `NTE_BAD_DATA`, the same verdict from the cryptographic layer.
+#[cfg(any(windows, test))]
+const NTE_BAD_DATA: u32 = 0x8009_0005;
+
+/// How a failed DPAPI unwrap is told to the store: a blob that does not open as this user is
+/// `Rejected` (the user is told the key is not theirs); any other failure of the OS call, or an
+/// input DPAPI cannot take, is `Unavailable` (the key may well be fine; try again later).
+/// Unverified on Windows (Fable v1 sweep A21): the codes are the documented ones.
+#[cfg(any(windows, test))]
+fn unwrap_error(
+    error: &snipdeck_platform::error::Error,
+) -> snipdeck_store::crypto::KeyProviderError {
+    use snipdeck_store::crypto::KeyProviderError;
+    match error.code() {
+        Some(ERROR_INVALID_DATA | NTE_BAD_DATA) => KeyProviderError::Rejected,
+        _ => KeyProviderError::Unavailable(error.to_string()),
     }
 }
 
@@ -44,6 +65,35 @@ pub fn provider() -> Option<Box<dyn KeyProvider>> {
     #[cfg(not(windows))]
     {
         None
+    }
+}
+
+#[cfg(test)]
+mod map_tests {
+    use snipdeck_platform::error::Error;
+    use snipdeck_store::crypto::KeyProviderError;
+
+    use super::unwrap_error;
+
+    #[test]
+    fn a_blob_that_does_not_open_is_rejected_and_other_failures_are_unavailable() {
+        let os = |code| Error::Os {
+            op: "CryptUnprotectData",
+            code,
+        };
+        assert!(matches!(unwrap_error(&os(13)), KeyProviderError::Rejected));
+        assert!(matches!(
+            unwrap_error(&os(0x8009_0005)),
+            KeyProviderError::Rejected
+        ));
+        assert!(matches!(
+            unwrap_error(&os(8)),
+            KeyProviderError::Unavailable(_)
+        ));
+        assert!(matches!(
+            unwrap_error(&Error::Unavailable("empty DPAPI blob")),
+            KeyProviderError::Unavailable(_)
+        ));
     }
 }
 

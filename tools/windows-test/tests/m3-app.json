@@ -215,12 +215,33 @@
     {
       "id": "23",
       "v1": true,
+      "title": "Dock from the lower middle of the screen",
+      "do": "Set Dock to = Floating. Drag the Panel so it sits in the lower middle of the screen, just above the taskbar and a little left of centre. Open the Panel's three-dots menu and read its dock row, then choose it. Choose the row again to undock.",
+      "expect": "The row reads Dock to the left edge (Dock to the right edge when the Panel is right of centre), never the bottom edge where the taskbar is. Choosing it moves the Panel once to that edge, full height, with no flicker and no snap back to floating. The second choice (Undock the panel) gives the floating Panel back where it was."
+    },
+    {
+      "id": "24",
+      "v1": true,
+      "title": "Drag the Panel to a screen edge to dock it",
+      "do": "With the Panel floating, drag it by its header until its right side is within about 16 px of the right edge of the screen, hold still for a moment, then release. Then drag it down until its bottom is next to the taskbar and release there. Finally, in Settings > Panel dock, pick Bottom edge.",
+      "expect": "Near the right edge a thin accent strip shows along the Panel's right side; about a quarter of a second after you stop moving, the Panel docks to the right edge. Next to the taskbar no strip shows and the Panel stays floating where you dropped it. Picking Bottom edge in Settings shows the message The taskbar is on that edge and the Panel stays floating."
+    },
+    {
+      "id": "25",
+      "v1": true,
+      "title": "Stray marks in text: send a crop",
+      "do": "Open the main window on All items and look at a list chip such as Snippets, then open an empty list to see This list is empty. If you see a stray dot or mark over or next to any letter, press Win+Shift+S, draw a tight box around the mark and the word, and paste the crop into your report together with the window name and your display scale (Settings > System > Display > Scale, for example 125%).",
+      "expect": "Normally there is no mark. The developers cannot reproduce one at 100% or 225% scale on their machine, so the crop plus the scale is what lets them find the cause."
+    },
+    {
+      "id": "26",
+      "v1": true,
       "title": "No see-through window after Alt+Tab or restore (O39)",
       "do": "Open the Main window and the Panel next to a busy window (for example Notepad with text). Press Alt+Tab to switch away from Main and back to it 20 times, then do the same with the Panel 20 times. Then minimise Main and restore it from the taskbar 5 times. Look at the whole window each time, not only the title bar.",
       "expect": "At no point is any part of the Main window or the Panel see-through: the client area always shows the Snipdeck background and content, never the windows behind it, and never only the border and title bar. Write the step and the count in the note (n) if you ever saw it."
     },
     {
-      "id": "24",
+      "id": "27",
       "v1": true,
       "title": "Closing Main closes what it opened (O53)",
       "do": "Open the Main window. From it open Settings, the Troubleshoot window, the Tag manager and an item editor (type a few new words in the item's text, do not save), then a list editor (change its name, do not save). Also open the command palette (Ctrl+K). Close the Main window with its X button. Then open Main again from the tray, open the same item and the same list for editing. Next open the Panel, open Settings and an item editor from the Panel, and close Main: they must stay. Then close the Panel with its X button.",

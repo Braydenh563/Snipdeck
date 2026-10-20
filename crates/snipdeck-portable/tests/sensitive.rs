@@ -18,7 +18,7 @@ use std::io::Cursor;
 use common::*;
 use snipdeck_core::{FileEntry, Format, Formats, Item, ItemKind, Placement};
 use snipdeck_portable::{
-    BoardLayout, Error, ExportOptions, ImportOptions, KeySource, SensitivePolicy, Warning,
+    BoardLayout, Error, ExportOptions, ImportOptions, KeySource, Limits, SensitivePolicy, Warning,
     import_archive,
 };
 use snipdeck_store::crypto::DataKey;
@@ -310,6 +310,60 @@ fn encrypted_payloads_need_the_manifest_to_say_so() {
     let mut fresh = store();
     let err = import_archive(&mut fresh, Cursor::new(&edited), "x", at(1), &keep()).unwrap_err();
     assert!(matches!(err, Error::Malformed { .. }), "{err}");
+}
+
+#[test]
+fn many_items_pointing_at_one_big_encrypted_asset_hit_the_read_budget() {
+    let key = DataKey::generate().unwrap();
+    let mut s = store();
+    let b = board(&mut s, "B");
+    let l = list(&mut s, b.id, "L");
+    let big = "x".repeat(60_000);
+    for (title, secret) in [
+        ("one", big.as_str()),
+        ("two", "tiny-2"),
+        ("three", "tiny-3"),
+    ] {
+        let mut item = Item::new(l.id, title.to_owned(), ItemKind::Text, at(1));
+        item.sensitive = true;
+        s.insert_item(&item, &text_formats(secret), Placement::Last)
+            .unwrap();
+    }
+    let bytes = export_bytes(
+        &s,
+        &ExportOptions {
+            sensitive: SensitivePolicy::Encrypt(&key),
+            ..ExportOptions::default()
+        },
+    );
+    let pointed = edit_json(&bytes, "items.json", |doc| {
+        let items = &mut doc["boards"][0]["lists"][0]["items"];
+        let first = items[0]["formats"][0].clone();
+        items[1]["formats"][0] = first.clone();
+        items[2]["formats"][0] = first;
+    });
+    // The archive holds about 60 KB; reading the big asset three times costs about 180 KB.
+    let opts = ImportOptions {
+        key: KeySource::Given(&key),
+        limits: Limits {
+            max_total_bytes: 100_000,
+            ..Limits::default()
+        },
+        ..keep()
+    };
+    let mut fresh = store();
+    let err = import_archive(&mut fresh, Cursor::new(&pointed), "x", at(1), &opts).unwrap_err();
+    assert!(
+        matches!(
+            err,
+            Error::LimitExceeded {
+                what: "encrypted asset bytes read",
+                ..
+            }
+        ),
+        "{err:?}"
+    );
+    assert_eq!(fresh.all_items().unwrap().len(), 0);
 }
 
 #[test]
