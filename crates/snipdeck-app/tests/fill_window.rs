@@ -105,6 +105,7 @@ fn rig_on(store: Store) -> Rig {
             w: 1920,
             h: 1040,
         },
+        taskbar: None,
         scale: 1.0,
     }));
     popups.cursor.set(Some((900, 600)));

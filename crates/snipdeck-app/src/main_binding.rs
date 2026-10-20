@@ -739,10 +739,19 @@ fn watch_place<S, C, K, T>(
 {
     use slint::winit_030::{EventResult, winit::event::WindowEvent};
     let controller = Rc::downgrade(controller);
+    // O39: Windows can drop the window's pixels (Alt+Tab, restore); redraw all of it then.
+    let weak = window.as_weak();
+    let mut watch = crate::repaint::Watch::new();
     window
         .window()
         .on_winit_window_event(move |slint_window, event| {
             crate::native_window::note_window_event(slint_window, event);
+            if watch.on_signal(crate::repaint::signal_of(event))
+                && let Some(w) = weak.upgrade()
+            {
+                w.set_repaint_flip(!w.get_repaint_flip());
+                slint_window.request_redraw();
+            }
             if matches!(event, WindowEvent::Moved(_) | WindowEvent::Resized(_))
                 && let Some(controller) = controller.upgrade()
                 && let Ok(mut controller) = controller.try_borrow_mut()

@@ -68,6 +68,7 @@ fn monitor(scale: f32) -> Monitor {
             w: 1920,
             h: 1040,
         },
+        taskbar: None,
         scale,
     }
 }

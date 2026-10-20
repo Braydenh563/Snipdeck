@@ -1002,6 +1002,7 @@ fn display() -> Monitor {
             w: 1920,
             h: 1040,
         },
+        taskbar: None,
         scale: 1.0,
     }
 }
