@@ -551,7 +551,7 @@ msgid "Dark"
 msgstr "Dunkel"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
-msgstr ""
+msgstr "Datenbank neu aufgebaut: {} Textbausteine wiederhergestellt, {} geborgen."
 
 msgid "Date and time in a format you choose"
 msgstr "Datum und Uhrzeit in einem Format deiner Wahl"
@@ -1557,13 +1557,13 @@ msgid "Quit"
 msgstr "Beenden"
 
 msgid "Rebuild"
-msgstr ""
+msgstr "Neu aufbauen"
 
 msgid "Rebuild from backup…"
-msgstr ""
+msgstr "Aus Sicherung neu aufbauen…"
 
 msgid "Rebuild from the newest backup?"
-msgstr ""
+msgstr "Aus der neuesten Sicherung neu aufbauen?"
 
 msgid "Recent"
 msgstr "Zuletzt verwendet"
@@ -2089,7 +2089,7 @@ msgid "The list holds at most {} programs."
 msgstr "Die Liste enthält höchstens {} Programme."
 
 msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
-msgstr ""
+msgstr "Die neueste Sicherung stammt vom {} und enthält {} Textbausteine auf {} Boards. Deine aktuelle Datenbank wird beiseitegelegt, nicht gelöscht. Nach dieser Sicherung hinzugefügte Textbausteine werden, soweit lesbar, geborgen."
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "Die ältesten werden gelöscht, sobald es mehr als diese Anzahl gibt."
