@@ -1331,7 +1331,9 @@ export component TagManager inherits Window {
     min-width: 360px;
     min-height: 280px;
     preferred-width: 440px;
-    preferred-height: 520px;
+    // Fits its content (the intro, one row per tag, the Close row), at most 520px; a long list scrolls.
+    out property <length> wanted-height: min(520px, max(280px, 2 * Space.s4 + 2 * Space.s3 + intro.preferred-height + max(root.tags.length, 2) * root.row-h + 2px + close-row.preferred-height));
+    preferred-height: root.wanted-height;
 
     in property <bool> dark: false;
     // label = name, count = items with the tag.
@@ -1384,7 +1386,7 @@ export component TagManager inherits Window {
             padding: Space.s4;
             spacing: Space.s3;
 
-            Text {
+            intro := Text {
                 text: @tr("Rename or delete tags. Deleting a tag removes it from its items; the items stay.");
                 color: Theme.text-secondary;
                 font-family: Fonts.sans;
@@ -1501,7 +1503,7 @@ export component TagManager inherits Window {
                 }
             }
 
-            HorizontalLayout {
+            close-row := HorizontalLayout {
                 alignment: end;
                 Button {
                     text: @tr("Close");

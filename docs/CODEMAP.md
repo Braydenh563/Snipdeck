@@ -546,48 +546,6 @@ main_empty_trash | crates/snipdeck-app/src/controller/main_ctl/items.rs:371
 purge_expired_trash | crates/snipdeck-app/src/controller/main_ctl/items.rs:394
 trash_cutoff | crates/snipdeck-app/src/controller/main_ctl/items.rs:405
 
-### crates/snipdeck-app/src/controller/main_ctl/items.rs
-
-impl Controller<S, C, K, T> | crates/snipdeck-app/src/controller/main_ctl/items.rs:18
-main_action | crates/snipdeck-app/src/controller/main_ctl/items.rs:28
-pin | crates/snipdeck-app/src/controller/main_ctl/items.rs:66
-duplicate | crates/snipdeck-app/src/controller/main_ctl/items.rs:93
-trash_items | crates/snipdeck-app/src/controller/main_ctl/items.rs:135
-restore | crates/snipdeck-app/src/controller/main_ctl/items.rs:163
-delete_forever | crates/snipdeck-app/src/controller/main_ctl/items.rs:183
-board_limit | crates/snipdeck-app/src/controller/main_ctl/items.rs:202
-finish | crates/snipdeck-app/src/controller/main_ctl/items.rs:208
-main_move_to | crates/snipdeck-app/src/controller/main_ctl/items.rs:216
-main_toggle_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:257
-main_window_closed | crates/snipdeck-app/src/controller/main_ctl/items.rs:300
-main_rename_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:312
-main_delete_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:334
-main_undo | crates/snipdeck-app/src/controller/main_ctl/items.rs:346
-main_empty_trash | crates/snipdeck-app/src/controller/main_ctl/items.rs:371
-purge_expired_trash | crates/snipdeck-app/src/controller/main_ctl/items.rs:394
-trash_cutoff | crates/snipdeck-app/src/controller/main_ctl/items.rs:405
-
-### crates/snipdeck-app/src/controller/main_ctl/items.rs
-
-impl Controller<S, C, K, T> | crates/snipdeck-app/src/controller/main_ctl/items.rs:18
-main_action | crates/snipdeck-app/src/controller/main_ctl/items.rs:28
-pin | crates/snipdeck-app/src/controller/main_ctl/items.rs:66
-duplicate | crates/snipdeck-app/src/controller/main_ctl/items.rs:93
-trash_items | crates/snipdeck-app/src/controller/main_ctl/items.rs:135
-restore | crates/snipdeck-app/src/controller/main_ctl/items.rs:163
-delete_forever | crates/snipdeck-app/src/controller/main_ctl/items.rs:183
-board_limit | crates/snipdeck-app/src/controller/main_ctl/items.rs:202
-finish | crates/snipdeck-app/src/controller/main_ctl/items.rs:208
-main_move_to | crates/snipdeck-app/src/controller/main_ctl/items.rs:216
-main_toggle_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:257
-main_window_closed | crates/snipdeck-app/src/controller/main_ctl/items.rs:300
-main_rename_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:312
-main_delete_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:334
-main_undo | crates/snipdeck-app/src/controller/main_ctl/items.rs:346
-main_empty_trash | crates/snipdeck-app/src/controller/main_ctl/items.rs:371
-purge_expired_trash | crates/snipdeck-app/src/controller/main_ctl/items.rs:394
-trash_cutoff | crates/snipdeck-app/src/controller/main_ctl/items.rs:405
-
 ### crates/snipdeck-app/src/controller/main_ctl/lists.rs
 
 impl Controller<S, C, K, T> | crates/snipdeck-app/src/controller/main_ctl/lists.rs:20
@@ -6198,8 +6156,6 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/crash_hook.rs` | 1 |
 | `crates/snipdeck-app/tests/editor_controller.rs` | 42 |
 | `crates/snipdeck-app/tests/editor_window.rs` | 19 |
-| `crates/snipdeck-app/tests/editor_window.rs` | 19 |
-| `crates/snipdeck-app/tests/editor_window.rs` | 19 |
 | `crates/snipdeck-app/tests/fill_window.rs` | 10 |
 | `crates/snipdeck-app/tests/history.rs` | 14 |
 | `crates/snipdeck-app/tests/import_preview.rs` | 13 |
@@ -6213,8 +6169,6 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/screenshot.rs` | 2 |
 | `crates/snipdeck-app/tests/settings_window.rs` | 62 |
 | `crates/snipdeck-app/tests/support/mod.rs` | 0 |
-| `crates/snipdeck-app/tests/toast_texts.rs` | 5 |
-| `crates/snipdeck-app/tests/toast_texts.rs` | 5 |
 | `crates/snipdeck-app/tests/toast_texts.rs` | 5 |
 | `crates/snipdeck-app/tests/unlock_window.rs` | 9 |
 | `crates/snipdeck-core/src/board.rs` (inline) | 1 |

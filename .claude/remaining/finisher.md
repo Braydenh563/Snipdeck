@@ -1,4 +1,4 @@
 # finisher
-done: 1 (4725a87), 6 undock restores pre-dock size (2c2863c; PanelGeometry.pre_dock; drag-off sends PlaceWindow mid-drag: Windows behaviour unverified), 2 hub-small merged
-next: 3 hub-o36, 4 hub-finish-ui, 5 hub-o47, 7 TagManager height, 8 i18n (63 untranslated per locale after hub-small; translate once at the end), 9 full
+done: 1 (4725a87), 6 undock pre-dock size (2c2863c; drag-off PlaceWindow mid-drag unverified on Windows), 2 hub-small (8d29836), 3/4/5 merged (hub-o36, hub-finish-ui, o47-merge-wip) + 7 TagManager wanted-height + picker Copy-icon overlap fix (copy-button only with has-menu) + undo/redo default tips
+next: 9 i18n fill from /home/user/i18n-map.json, full workspace test, gate --full
 blocked: none
