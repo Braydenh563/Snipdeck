@@ -176,6 +176,8 @@ pub struct MainScreen {
     pub revealed: Option<usize>,
     /// The toast, if one is showing.
     pub toast: Option<ToastView>,
+    /// What the Undo and Redo buttons would do.
+    pub history: super::HistoryView,
     /// The list or board editor, while one is open.
     pub editor: Option<EditorView>,
     /// The Show/hide Panel hotkey as the user would press it ("Ctrl+Alt+Space"); empty while it is off.
@@ -273,6 +275,7 @@ where
             use_label: self.model.use_label(),
             revealed,
             toast: self.toast_view(),
+            history: self.history_view(),
             editor: self.editor.as_ref().map(|e| e.view.clone()),
             panel_hotkey: self
                 .settings
@@ -401,7 +404,7 @@ fn neutral_toast(message: ToastMessage) -> Toast {
 }
 
 /// The toast for a restore that failed: a board past the Free limit says so.
-fn restore_failed(error: &snipdeck_store::Error) -> Toast {
+pub(super) fn restore_failed(error: &snipdeck_store::Error) -> Toast {
     if matches!(
         error,
         snipdeck_store::Error::Core(snipdeck_core::Error::ProRequired(_))

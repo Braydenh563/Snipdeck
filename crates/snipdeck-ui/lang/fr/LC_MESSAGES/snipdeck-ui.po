@@ -1166,11 +1166,17 @@ msgstr "Rien d'épinglé pour le moment"
 msgid "Nothing to paste next. Pin a snippet, or add one to this list."
 msgstr "Rien à coller ensuite. Épinglez un extrait ou ajoutez-en un à cette liste."
 
+msgid "Nothing to redo"
+msgstr ""
+
 msgid "Nothing to restore: your library already has everything in that backup."
 msgstr "Rien à restaurer : votre bibliothèque contient déjà tout ce qui se trouve dans cette sauvegarde."
 
 msgid "Nothing to save. Copy some text first."
 msgstr "Rien à enregistrer. Copiez d'abord du texte."
+
+msgid "Nothing to undo"
+msgstr ""
 
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "Rien de ce que vous copiez dans ces programmes n'arrive dans la boîte Récents. Utilisez le nom de fichier du programme, par exemple keepass.exe."
@@ -1435,6 +1441,15 @@ msgstr "Utilisés récemment"
 
 msgid "Red"
 msgstr "Rouge"
+
+msgid "Redid {}"
+msgstr ""
+
+msgid "Redo"
+msgstr ""
+
+msgid "Redo {} (Ctrl+Y)"
+msgstr ""
 
 msgid "Reduce motion"
 msgstr "Réduire les animations"
@@ -2046,8 +2061,14 @@ msgstr "Saisissez une commande"
 msgid "Type {} to confirm"
 msgstr "Saisissez {} pour confirmer"
 
-msgid "Undo the delete"
-msgstr "Annuler la suppression"
+msgid "Undid {}"
+msgstr ""
+
+msgid "Undo"
+msgstr ""
+
+msgid "Undo {} (Ctrl+Z)"
+msgstr ""
 
 msgid "Undock the panel"
 msgstr "Détacher le panneau"
@@ -2193,6 +2214,9 @@ msgstr "Vos extraits sensibles seront protégés par Windows seul, comme dans l'
 msgid "Your shortcuts"
 msgstr "Vos raccourcis"
 
+msgid "add"
+msgstr ""
+
 msgid "add create folder group"
 msgstr "ajouter créer dossier groupe"
 
@@ -2213,8 +2237,14 @@ msgstr "presse-papiers"
 msgid "clipboard save grab screenshot"
 msgstr "presse-papiers enregistrer capturer copie d'écran"
 
+msgid "colour change"
+msgstr ""
+
 msgid "copy clone twice"
 msgstr "copier cloner dupliquer"
+
+msgid "delete"
+msgstr ""
 
 msgid "delete remove discard"
 msgstr "supprimer retirer jeter"
@@ -2224,6 +2254,15 @@ msgstr "supprimé restaurer corbeille afficher"
 
 msgid "diagnose doctor problems fix"
 msgstr "diagnostiquer problèmes réparer"
+
+msgid "drop"
+msgstr ""
+
+msgid "duplicate"
+msgstr ""
+
+msgid "edit"
+msgstr ""
 
 msgid "everything home show"
 msgstr "tout accueil afficher"
@@ -2255,6 +2294,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "libellé : {}"
 
+msgid "move"
+msgstr ""
+
 msgid "ms"
 msgstr "ms"
 
@@ -2264,11 +2306,17 @@ msgstr "notepad.exe"
 msgid "open toggle deck hide"
 msgstr "ouvrir basculer deck masquer"
 
+msgid "paste"
+msgstr ""
+
 msgid "paste insert send"
 msgstr "coller insérer envoyer"
 
 msgid "paste stack, number {}"
 msgstr "coller pile, numéro {}"
+
+msgid "pin"
+msgstr ""
 
 msgid "preferences options configure hotkeys theme backup"
 msgstr "préférences options configurer raccourcis thème sauvegarde"
@@ -2279,11 +2327,17 @@ msgstr "px"
 msgid "quick find paste palette"
 msgstr "recherche rapide trouver coller palette"
 
+msgid "reorder"
+msgstr ""
+
 msgid "s"
 msgstr "s"
 
 msgid "snip snipping capture screen picture image"
 msgstr "capture découpe écran image copie d'écran"
+
+msgid "tag change"
+msgstr ""
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "tutoriel introduction démarrage bases apprendre"

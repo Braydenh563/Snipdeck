@@ -261,6 +261,12 @@ where
             self.show_toast(failed());
             return;
         }
+        let step = self.record_step(
+            crate::history::Action::Delete,
+            vec![crate::history::Change::Trash(
+                ids.iter().map(|id| Trashable::Item(*id)).collect(),
+            )],
+        );
         if self.refresh_panel().is_err() {
             self.show_toast(failed());
             return;
@@ -270,7 +276,7 @@ where
                 kind: ToastKind::Neutral,
                 message: ToastMessage::ItemsTrashed { count: ids.len() },
             },
-            ids.iter().map(|id| Trashable::Item(*id)).collect(),
+            step,
         );
     }
 }

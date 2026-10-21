@@ -1166,11 +1166,17 @@ msgstr "Nada fixado ainda"
 msgid "Nothing to paste next. Pin a snippet, or add one to this list."
 msgstr "Nada para colar em seguida. Fixe um trecho ou adicione um a esta lista."
 
+msgid "Nothing to redo"
+msgstr ""
+
 msgid "Nothing to restore: your library already has everything in that backup."
 msgstr "Nada a restaurar: sua biblioteca já tem tudo que está nesse backup."
 
 msgid "Nothing to save. Copy some text first."
 msgstr "Nada a salvar. Copie algum texto primeiro."
+
+msgid "Nothing to undo"
+msgstr ""
 
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "Nada que você copiar nestes programas chega à caixa de Recentes. Use o nome do arquivo do programa, por exemplo keepass.exe."
@@ -1435,6 +1441,15 @@ msgstr "Usados recentemente"
 
 msgid "Red"
 msgstr "Vermelho"
+
+msgid "Redid {}"
+msgstr ""
+
+msgid "Redo"
+msgstr ""
+
+msgid "Redo {} (Ctrl+Y)"
+msgstr ""
 
 msgid "Reduce motion"
 msgstr "Reduzir movimento"
@@ -2046,8 +2061,14 @@ msgstr "Digite um comando"
 msgid "Type {} to confirm"
 msgstr "Digite {} para confirmar"
 
-msgid "Undo the delete"
-msgstr "Desfazer a exclusão"
+msgid "Undid {}"
+msgstr ""
+
+msgid "Undo"
+msgstr ""
+
+msgid "Undo {} (Ctrl+Z)"
+msgstr ""
 
 msgid "Undock the panel"
 msgstr "Desencaixar o painel"
@@ -2193,6 +2214,9 @@ msgstr "Seus itens sensíveis serão protegidos somente pelo Windows, como no pl
 msgid "Your shortcuts"
 msgstr "Seus atalhos"
 
+msgid "add"
+msgstr ""
+
 msgid "add create folder group"
 msgstr "adicionar criar pasta grupo"
 
@@ -2213,8 +2237,14 @@ msgstr "área de transferência"
 msgid "clipboard save grab screenshot"
 msgstr "área de transferência salvar capturar captura de tela"
 
+msgid "colour change"
+msgstr ""
+
 msgid "copy clone twice"
 msgstr "copiar clonar duplicar"
+
+msgid "delete"
+msgstr ""
 
 msgid "delete remove discard"
 msgstr "excluir remover descartar"
@@ -2224,6 +2254,15 @@ msgstr "excluídos restaurar lixeira mostrar"
 
 msgid "diagnose doctor problems fix"
 msgstr "diagnosticar médico problemas corrigir"
+
+msgid "drop"
+msgstr ""
+
+msgid "duplicate"
+msgstr ""
+
+msgid "edit"
+msgstr ""
 
 msgid "everything home show"
 msgstr "tudo início mostrar"
@@ -2255,6 +2294,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "rótulo: {}"
 
+msgid "move"
+msgstr ""
+
 msgid "ms"
 msgstr "ms"
 
@@ -2264,11 +2306,17 @@ msgstr "notepad.exe"
 msgid "open toggle deck hide"
 msgstr "abrir alternar deck ocultar"
 
+msgid "paste"
+msgstr ""
+
 msgid "paste insert send"
 msgstr "colar inserir enviar"
 
 msgid "paste stack, number {}"
 msgstr "pilha de colagem, número {}"
+
+msgid "pin"
+msgstr ""
 
 msgid "preferences options configure hotkeys theme backup"
 msgstr "preferências opções configurar atalhos tema backup"
@@ -2279,11 +2327,17 @@ msgstr "px"
 msgid "quick find paste palette"
 msgstr "busca rápida encontrar colar paleta"
 
+msgid "reorder"
+msgstr ""
+
 msgid "s"
 msgstr "s"
 
 msgid "snip snipping capture screen picture image"
 msgstr "recorte captura tela imagem foto"
+
+msgid "tag change"
+msgstr ""
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "tutorial introdução integração básico aprender"

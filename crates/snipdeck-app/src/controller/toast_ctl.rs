@@ -3,7 +3,6 @@
 use std::time::Duration;
 
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
-use snipdeck_store::Trashable;
 
 use super::{
     ActiveToast, Controller, Effect, Library, TOAST_EXIT, TOAST_HOLD, TOAST_HOVER_RECHECK,
@@ -57,16 +56,15 @@ where
         }
     }
 
-    /// Shows `toast` with an Undo button that brings `targets` back from the Trash
-    /// ([`main_undo`](Self::main_undo)). The toast stays for 5 s; a newer toast takes the
-    /// button away (what was deleted is still in the Trash).
-    pub fn show_undo_toast(&mut self, toast: Toast, targets: Vec<Trashable>) {
+    /// Shows `toast` with an Undo button that takes back history step `step`
+    /// ([`main_undo`](Self::main_undo)); no step, no button. The toast stays for 5 s; a newer
+    /// toast takes the button away (Ctrl+Z still takes the step back).
+    pub fn show_undo_toast(&mut self, toast: Toast, step: Option<u64>) {
         self.show_toast(toast);
-        self.undo = Some(Undo {
+        self.undo = step.map(|step| Undo {
             seq: self.toast_seq,
-            targets,
-            adds: false,
-            edit: None,
+            step: Some(step),
+            adds: None,
         });
     }
 
@@ -76,9 +74,8 @@ where
         self.show_toast(toast);
         self.undo = Some(Undo {
             seq: self.toast_seq,
-            targets: vec![snipdeck_store::Trashable::Item(id)],
-            adds: true,
-            edit: Some(id),
+            step: None,
+            adds: Some(id),
         });
     }
 
@@ -91,7 +88,7 @@ where
             return Vec::new();
         }
         self.toast = None;
-        undo.edit.map(Effect::EditItem).into_iter().collect()
+        undo.adds.map(Effect::EditItem).into_iter().collect()
     }
 
     /// The toast's button: "Open log" on the crash toast (opens the reports folder and closes

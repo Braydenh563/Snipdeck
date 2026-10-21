@@ -610,6 +610,7 @@ where
         self.item_editor_cancel();
         self.queue.reset();
         self.index_cache.reset();
+        self.clear_history();
         // The key record may have gone (forgotten) or stayed (with its password).
         self.refresh_master();
         let _ = self.refresh_panel();

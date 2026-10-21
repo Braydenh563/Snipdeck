@@ -258,8 +258,15 @@ export component MainWindow inherits Window {
     callback board-delete-dismissed();
     callback toast-undo();
     callback toast-hover-changed(hovered: bool);
-    // Ctrl+Z: undo the delete the toast offers to undo.
+    // Ctrl+Z / the Undo button: take back the latest step of the app-wide history.
     callback undo-requested();
+    // Ctrl+Y, Ctrl+Shift+Z / the Redo button.
+    callback redo-requested();
+    // The history buttons: enabled while there is a step, named by what it would do ("Undo delete (Ctrl+Z)").
+    in property <bool> can-undo;
+    in property <bool> can-redo;
+    in property <string> undo-tip;
+    in property <string> redo-tip;
     // Pointer down on an empty part of the title bar: the host starts the OS window drag.
     callback drag-requested();
     callback title-double-clicked();
@@ -772,6 +779,10 @@ export component MainWindow inherits Window {
                     root.undo-requested();
                     return accept;
                 }
+                if ((((event.text == "z" || event.text == "Z") && event.modifiers.shift) || event.text == "y" || event.text == "Y") && !search.has-focus) {
+                    root.redo-requested();
+                    return accept;
+                }
             }
             if (event.text == Key.F1) {
                 root.help-requested(HelpPage.guide);
@@ -1111,6 +1122,24 @@ export component MainWindow inherits Window {
                                 clicked => { root.panel-requested(); }
                             }
                             Rectangle { width: Space.s2; }
+                            undo-button := IconButton {
+                                scaled: true;
+                                icon: Icons.arrow-counter-clockwise;
+                                tooltip: root.undo-tip;
+                                own-tooltip: true;
+                                enabled: root.can-undo;
+                                y: (parent.height - self.height) / 2;
+                                clicked => { root.undo-requested(); }
+                            }
+                            redo-button := IconButton {
+                                scaled: true;
+                                icon: Icons.arrow-clockwise;
+                                tooltip: root.redo-tip;
+                                own-tooltip: true;
+                                enabled: root.can-redo;
+                                y: (parent.height - self.height) / 2;
+                                clicked => { root.redo-requested(); }
+                            }
                             commands-button := IconButton {
                                 scaled: true;
                                 icon: Icons.keyboard;

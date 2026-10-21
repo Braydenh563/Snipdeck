@@ -629,7 +629,8 @@ where
         wire!(on_board_delete_dismissed, |ctl| ctl
             .main_board_delete_cancel());
         wire!(on_toast_undo, |ctl| ctl.toast_action());
-        wire!(on_undo_requested, |ctl| ctl.main_undo());
+        wire!(on_undo_requested, |ctl| ctl.undo());
+        wire!(on_redo_requested, |ctl| ctl.redo());
         {
             let core = Rc::clone(&core);
             window.on_toast_hover_changed(move |on| core.controller.borrow_mut().toast_hover(on));
@@ -1137,6 +1138,12 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     window.set_rows_reorderable(screen.reorderable);
     if window.get_cursor() != to_i32(screen.cursor) {
         window.set_cursor(to_i32(screen.cursor));
+    }
+    if differs(&|p| p.history == screen.history) {
+        window.set_can_undo(screen.history.undo.is_some());
+        window.set_can_redo(screen.history.redo.is_some());
+        window.set_undo_tip(wording::undo_tip(window, screen.history.undo).into());
+        window.set_redo_tip(wording::redo_tip(window, screen.history.redo).into());
     }
     if differs(&|p| p.toast == screen.toast) {
         if let Some(toast) = &screen.toast {

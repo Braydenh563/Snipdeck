@@ -151,8 +151,16 @@ where
         if self.store.item(item).is_ok_and(|i| i.list_id == target.id) {
             return;
         }
-        match self.store.move_item(item, target.id, Placement::Last) {
+        let mut changes = Vec::new();
+        match super::history_ctl::move_recorded(
+            &mut self.store,
+            item,
+            target.id,
+            Placement::Last,
+            &mut changes,
+        ) {
             Ok(()) => {
+                self.record_step(crate::history::Action::Move, changes);
                 self.library_changed();
                 if self.refresh_panel().is_err() {
                     self.show_toast(failed());
@@ -230,8 +238,16 @@ where
         let Some((to, placement)) = reorder(&order, a, delta) else {
             return;
         };
-        match self.store.move_item(moved, list, placement) {
+        let mut changes = Vec::new();
+        match super::history_ctl::move_recorded(
+            &mut self.store,
+            moved,
+            list,
+            placement,
+            &mut changes,
+        ) {
             Ok(()) => {
+                self.record_step(crate::history::Action::Reorder, changes);
                 self.library_changed();
                 if self.refresh_panel().is_err() {
                     self.show_toast(failed());
