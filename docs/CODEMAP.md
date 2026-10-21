@@ -751,19 +751,19 @@ backup_options | crates/snipdeck-app/src/controller/settings_ctl.rs:360
 backup_now | crates/snipdeck-app/src/controller/settings_ctl.rs:373
 restore_backup | crates/snipdeck-app/src/controller/settings_ctl.rs:406
 rebuild_from_backup | crates/snipdeck-app/src/controller/settings_ctl.rs:440
-sensitive_count | crates/snipdeck-app/src/controller/settings_ctl.rs:517
-swap_in_rebuilt | crates/snipdeck-app/src/controller/settings_ctl.rs:526
-reopen_original | crates/snipdeck-app/src/controller/settings_ctl.rs:607
-import_report | crates/snipdeck-app/src/controller/settings_ctl.rs:626
-preview_import | crates/snipdeck-app/src/controller/settings_ctl.rs:652
-preview_restore | crates/snipdeck-app/src/controller/settings_ctl.rs:665
-preview_as | crates/snipdeck-app/src/controller/settings_ctl.rs:670
-apply_import | crates/snipdeck-app/src/controller/settings_ctl.rs:707
-export_library | crates/snipdeck-app/src/controller/settings_ctl.rs:738
-erase_library | crates/snipdeck-app/src/controller/settings_ctl.rs:773
-Carry | crates/snipdeck-app/src/controller/settings_ctl.rs:830
-Swap | crates/snipdeck-app/src/controller/settings_ctl.rs:837
-move_db_files | crates/snipdeck-app/src/controller/settings_ctl.rs:844
+sensitive_count | crates/snipdeck-app/src/controller/settings_ctl.rs:513
+swap_in_rebuilt | crates/snipdeck-app/src/controller/settings_ctl.rs:522
+reopen_original | crates/snipdeck-app/src/controller/settings_ctl.rs:603
+import_report | crates/snipdeck-app/src/controller/settings_ctl.rs:622
+preview_import | crates/snipdeck-app/src/controller/settings_ctl.rs:648
+preview_restore | crates/snipdeck-app/src/controller/settings_ctl.rs:661
+preview_as | crates/snipdeck-app/src/controller/settings_ctl.rs:666
+apply_import | crates/snipdeck-app/src/controller/settings_ctl.rs:703
+export_library | crates/snipdeck-app/src/controller/settings_ctl.rs:734
+erase_library | crates/snipdeck-app/src/controller/settings_ctl.rs:769
+Carry | crates/snipdeck-app/src/controller/settings_ctl.rs:826
+Swap | crates/snipdeck-app/src/controller/settings_ctl.rs:833
+move_db_files | crates/snipdeck-app/src/controller/settings_ctl.rs:840
 
 ### crates/snipdeck-app/src/controller/tests.rs
 
