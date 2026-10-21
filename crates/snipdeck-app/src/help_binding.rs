@@ -30,7 +30,7 @@ use crate::{
     doctor::{self, Check, DoctorHost, Fix, ReportInfo, Status},
     host::ClipboardText,
     main_binding::{create_window, raise, set_look},
-    native_window::fit_to_screen,
+    native_window::fit_when_settled,
     settings::HotkeyAction,
     settings_binding::action_name,
     toast::{ToastKind, ToastMessage},
@@ -675,7 +675,7 @@ impl HelpUi {
                 crate::native_window::place_over_owner(window.window());
                 window.show()?;
                 crate::ownership::opened(crate::ownership::Win::Help);
-                fit_to_screen(window.window());
+                fit_when_settled(window);
                 // The checks are fresh every time the window comes up.
                 binding.refresh();
                 raise(window.window());

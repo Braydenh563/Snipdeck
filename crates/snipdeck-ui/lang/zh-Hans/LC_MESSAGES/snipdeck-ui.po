@@ -922,6 +922,9 @@ msgstr "如果忘记此密码，敏感片段将再也无法打开。Snipdeck 无
 msgid "Image"
 msgstr "图片"
 
+msgid "Images can't be pasted here. Save the picture as a PNG and add it as an Image item."
+msgstr "此处无法粘贴图片。请将图片保存为 PNG，并将其添加为图片项目。"
+
 msgid "Import"
 msgstr "导入"
 

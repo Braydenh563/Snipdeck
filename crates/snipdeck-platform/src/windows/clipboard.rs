@@ -252,6 +252,19 @@ impl WinClipboard {
         self.call(read_text_job).ok().flatten()
     }
 
+    /// Whether the clipboard holds a picture (`CF_DIB`, `CF_DIBV5` or `CF_BITMAP`). Reads
+    /// nothing, so it needs no open clipboard.
+    pub fn has_image(&mut self) -> bool {
+        use windows::Win32::System::DataExchange::IsClipboardFormatAvailable;
+        use windows::Win32::System::Ole::{CF_BITMAP, CF_DIB, CF_DIBV5};
+        [CF_DIB.0, CF_DIBV5.0, CF_BITMAP.0]
+            .into_iter()
+            .any(|format| {
+                // SAFETY: no preconditions.
+                unsafe { IsClipboardFormatAvailable(u32::from(format)) }.is_ok()
+            })
+    }
+
     /// Reports every clipboard change to `sink` (on the clipboard thread) while `gate` is open.
     /// While the gate is closed nothing is read. Replaces an earlier listener.
     pub fn watch(&self, gate: WatchGate, sink: ChangeSink) {

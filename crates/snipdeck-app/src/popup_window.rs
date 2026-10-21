@@ -28,6 +28,9 @@ pub(crate) struct Shell<W: ComponentHandle + 'static> {
     keyboard: bool,
 }
 
+/// How long a popup waits before asking for the keyboard again after Windows refused.
+const ACTIVATE_RETRY: Duration = Duration::from_millis(80);
+
 impl<W: ComponentHandle + 'static> Shell<W> {
     pub(crate) fn new(host: Rc<dyn PopupHost>, keyboard: bool) -> Rc<Self> {
         Rc::new(Self {
@@ -98,6 +101,20 @@ impl<W: ComponentHandle + 'static> Shell<W> {
             if this.open.get() && this.keyboard {
                 let taken = this.host.activate(window.window());
                 crate::trace!("popup takes the keyboard: {taken}");
+                if !taken {
+                    // Windows refused (a foreground lock still running): try again shortly, so
+                    // Esc reaches the popup instead of leaving it stuck on screen.
+                    let this = Rc::downgrade(&this);
+                    slint::Timer::single_shot(ACTIVATE_RETRY, move || {
+                        if let Some(this) = this.upgrade()
+                            && this.open.get()
+                            && let Some(window) = this.window()
+                        {
+                            let taken = this.host.activate(window.window());
+                            crate::trace!("popup takes the keyboard (retry): {taken}");
+                        }
+                    });
+                }
             }
         });
         Ok(())

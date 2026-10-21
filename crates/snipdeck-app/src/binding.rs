@@ -278,6 +278,7 @@ where
             match effect {
                 Effect::ShowPanel => {
                     // A failure to show leaves the Panel hidden; the next hotkey tries again.
+                    window.window().set_minimized(false);
                     let shown = window.show();
                     crate::trace!(
                         "show panel: {shown:?}, visible now {}",
@@ -731,6 +732,14 @@ where
                 let core = Rc::clone(&core);
                 Rc::new(move |action| {
                     crate::trace!("hotkey {action:?}");
+                    if action == HotkeyAction::TogglePanel
+                        && let Some(window) = core.window.upgrade()
+                        && (!window.window().is_visible() || window.window().is_minimized())
+                    {
+                        // The controller may still think the Panel is up (minimised from
+                        // its taskbar button): the press must show it, not hide it.
+                        core.controller.borrow_mut().panel_window_gone();
+                    }
                     core.act_effects(|ctl| ctl.on_hotkey(action));
                 })
             },

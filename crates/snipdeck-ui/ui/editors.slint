@@ -310,6 +310,9 @@ export component ItemEditor inherits Window {
     callback edited();
     // The Browse button next to the path of a new Image or File item.
     callback browse-requested();
+    // Ctrl+V: the host answers true when it handled the paste itself (a picture on the clipboard,
+    // which a text field cannot take, is told so with a toast) and the field must not paste.
+    callback paste-requested() -> bool;
 
     public function mark-clean() { root.dirty = false; }
     // The host restored a draft: the fields differ from what is saved, so leaving asks first.
@@ -383,6 +386,9 @@ export component ItemEditor inherits Window {
         capture-key-pressed(event) => {
             if (event.text == "\n" && event.modifiers.control && !root.discard-open) {
                 root.try-save();
+                return accept;
+            }
+            if ((event.text == "v" || event.text == "V") && event.modifiers.control && !event.modifiers.alt && root.paste-requested()) {
                 return accept;
             }
             return reject;

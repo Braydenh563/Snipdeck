@@ -112,6 +112,17 @@ export component PickerWindow inherits Window {
     out property <length> content-height: main.preferred-height;
     out property <length> scroll-y: list.content-y;
     out property <bool> search-focused: search.has-focus;
+    // The window lost the keyboard after having it (a click on another window): like any popup it
+    // closes. Never having had it (Windows refused to activate it) closes nothing.
+    property <bool> had-focus: false;
+    changed search-focused => {
+        if (root.search-focused) {
+            root.had-focus = true;
+        } else if (root.had-focus) {
+            root.had-focus = false;
+            root.close-requested();
+        }
+    }
     // Holds row `index` in its pulled (used) state for the card's 700ms (keyboard use; a click pulls itself).
     public function mark-used(index: int) {
         root.used-index = index;

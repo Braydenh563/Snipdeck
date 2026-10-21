@@ -22,6 +22,17 @@ where
 {
     // ---- Toasts ------------------------------------------------------------------------------
 
+    /// Ctrl+V in a text field: when the clipboard holds a picture and no text, says so with a
+    /// toast (the field cannot take a picture) and returns `true` so the paste is swallowed
+    /// instead of failing silently. With any text on it the normal paste goes ahead (`false`).
+    pub fn refuse_pasted_image(&mut self) -> bool {
+        if self.services.clipboard.read_text().is_some() || !self.services.clipboard.has_image() {
+            return false;
+        }
+        self.show_toast(neutral(ToastMessage::ImageNotPasteable));
+        true
+    }
+
     /// Shows `toast`, replacing the one on screen. The host then calls
     /// [`toast_tick`](Self::toast_tick) after [`TOAST_ENTER`](crate::controller::TOAST_ENTER) and follows the delays it returns.
     pub fn show_toast(&mut self, toast: Toast) {

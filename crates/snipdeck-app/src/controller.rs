@@ -641,6 +641,18 @@ where
         vec![Effect::ShowPanel]
     }
 
+    /// The Panel's window is not on screen although the controller thinks it is (it was
+    /// minimised from its taskbar button, or showing it failed): marks it hidden, so the next
+    /// toggle shows it instead of "hiding" a window nobody can see.
+    pub fn panel_window_gone(&mut self) {
+        if self.visible {
+            self.visible = false;
+            self.blur_hide = false;
+            self.panel_revealed = None;
+            self.menu = PanelMenu::None;
+        }
+    }
+
     /// A second launch of the app: shows a hidden Panel, and opens the Main window when the
     /// Panel is already up (the user ran Snipdeck again because they wanted something more).
     pub fn second_launch(&mut self) -> Vec<Effect> {

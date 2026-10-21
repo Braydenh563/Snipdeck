@@ -181,7 +181,7 @@ where
         crate::native_window::place_over_owner(window.window());
         let _ = window.show();
         crate::ownership::opened(crate::ownership::Win::ItemEditor);
-        crate::native_window::fit_to_screen(window.window());
+        crate::native_window::fit_when_settled(&window);
         window.invoke_focus_title();
         if view.restored {
             window.invoke_mark_dirty();
@@ -310,6 +310,11 @@ where
             core.controller.borrow_mut().item_editor_edited();
             core.arm_autosave();
             core.sync();
+        });
+        let core = Rc::downgrade(self);
+        w.on_paste_requested(move || {
+            core.upgrade()
+                .is_some_and(|core| core.act(Controller::refuse_pasted_image))
         });
         let core = Rc::downgrade(self);
         let weak = w.as_weak();

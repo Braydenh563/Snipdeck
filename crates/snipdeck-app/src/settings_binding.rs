@@ -38,7 +38,7 @@ use crate::{
     },
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
     main_binding::{create_window, raise, set_look},
-    native_window::fit_to_screen,
+    native_window::fit_when_settled,
     settings::{
         DockEdge, DockTrigger, HotkeyAction, Hotkeys, ProgramPaste, ProgramRule, Settings,
         TextSize, Theme,
@@ -1851,7 +1851,7 @@ impl SettingsUi {
                 crate::native_window::place_over_owner(window.window());
                 window.show()?;
                 crate::ownership::opened(crate::ownership::Win::Settings);
-                fit_to_screen(window.window());
+                fit_when_settled(window);
                 // The page was hidden, so it skipped the redraws; draw it now that it is up.
                 binding.redraw();
                 raise(window.window());

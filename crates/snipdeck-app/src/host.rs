@@ -59,6 +59,8 @@ impl Clock for FixedClock {
 pub trait ClipboardText {
     /// The clipboard's text, or `None` when it holds none or stays busy. Writes nothing.
     fn read_text(&mut self) -> Option<String>;
+    /// Whether the clipboard holds a picture (a screenshot, say).
+    fn has_image(&mut self) -> bool;
     /// Empties the clipboard if it still holds exactly `text` (so something the user copied
     /// since is never lost). Whether it was cleared.
     fn clear_if_text(&mut self, text: &str) -> bool;
@@ -77,6 +79,9 @@ pub trait ClipboardText {
 impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
     fn read_text(&mut self) -> Option<String> {
         Self::read_text(self)
+    }
+    fn has_image(&mut self) -> bool {
+        Self::has_image(self)
     }
     fn clear_if_text(&mut self, text: &str) -> bool {
         Self::clear_if_text(self, text)
@@ -100,6 +105,13 @@ impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
         self.written.last()?.data().iter().find_map(|d| match d {
             snipdeck_platform::payload::Data::Text(text) => Some(text.clone()),
             _ => None,
+        })
+    }
+    fn has_image(&mut self) -> bool {
+        self.written.last().is_some_and(|p| {
+            p.data()
+                .iter()
+                .any(|d| matches!(d, snipdeck_platform::payload::Data::Png(_)))
         })
     }
     fn clear_if_text(&mut self, text: &str) -> bool {

@@ -273,3 +273,27 @@ fn a_refused_move_or_reorder_names_its_cause() {
         ToastMessage::ChangeFailed(crate::failure::Cause::Other)
     );
 }
+
+#[test]
+fn pasting_a_picture_into_a_text_field_says_so_instead_of_doing_nothing() {
+    use snipdeck_platform::payload::{Data, Payload};
+    let mut w = world();
+    let png = Payload::new(vec![Data::Png(vec![1, 2, 3])]).expect("payload");
+    w.ctl.services.clipboard.written.push(png);
+    assert!(w.ctl.refuse_pasted_image());
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::ImageNotPasteable
+    );
+}
+
+#[test]
+fn pasting_text_into_a_text_field_is_left_to_the_field() {
+    use snipdeck_platform::payload::{Data, Payload};
+    let mut w = world();
+    assert!(!w.ctl.refuse_pasted_image(), "an empty clipboard: no toast");
+    let text = Payload::new(vec![Data::Text("hi".into())]).expect("payload");
+    w.ctl.services.clipboard.written.push(text);
+    assert!(!w.ctl.refuse_pasted_image());
+    assert!(w.ctl.view().toast.is_none());
+}

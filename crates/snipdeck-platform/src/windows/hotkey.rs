@@ -282,6 +282,11 @@ fn do_register(
     if id > MAX_ID || chord.validate().is_err() {
         return Err(HotkeyError::Invalid);
     }
+    // Settings changes re-apply every chord: one already in place stays untouched instead of
+    // being freed and registered again (a failure in between lost the hotkey).
+    if registered.get(&id) == Some(&chord) {
+        return Ok(());
+    }
     let previous = registered.remove(&id);
     if previous.is_some() {
         // Free the id (and the old chord) first: the same chord again must succeed.

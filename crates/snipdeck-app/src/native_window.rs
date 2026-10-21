@@ -246,6 +246,21 @@ pub fn fit_to_screen(window: &slint::Window) {
     });
 }
 
+/// [`fit_to_screen`] right after `show()`, and once more a moment later: the window's final
+/// size (its minimum, the monitor's scale) is applied by the event loop after the show, so a
+/// window that fitted at first can reach past the screen edge a few milliseconds on.
+pub fn fit_when_settled<T: slint::ComponentHandle + 'static>(component: &T) {
+    fit_to_screen(component.window());
+    let weak = component.as_weak();
+    slint::Timer::single_shot(FIT_SETTLE, move || {
+        if let Some(component) = weak.upgrade() {
+            fit_to_screen(component.window());
+        }
+    });
+}
+
+const FIT_SETTLE: std::time::Duration = std::time::Duration::from_millis(120);
+
 // ---- Opening a secondary window near the one it was opened from --------------------------------
 
 /// A window the others open over: the Main window or the Panel.

@@ -922,6 +922,9 @@ msgstr "このパスワードを忘れると、機密スニペットは二度と
 msgid "Image"
 msgstr "画像"
 
+msgid "Images can't be pasted here. Save the picture as a PNG and add it as an Image item."
+msgstr "ここには画像を貼り付けられません。画像を PNG として保存し、画像アイテムとして追加してください。"
+
 msgid "Import"
 msgstr "取り込み"
 

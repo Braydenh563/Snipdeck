@@ -922,6 +922,9 @@ msgstr "Si vous oubliez ce mot de passe, vos extraits sensibles ne pourront plus
 msgid "Image"
 msgstr "Image"
 
+msgid "Images can't be pasted here. Save the picture as a PNG and add it as an Image item."
+msgstr "Les images ne peuvent pas être collées ici. Enregistrez l'image en PNG et ajoutez-la comme élément Image."
+
 msgid "Import"
 msgstr "Importer"
 
