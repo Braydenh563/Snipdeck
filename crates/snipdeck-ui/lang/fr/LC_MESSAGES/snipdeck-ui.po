@@ -551,7 +551,7 @@ msgid "Dark"
 msgstr "Sombre"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
-msgstr ""
+msgstr "Base de données reconstruite : {} extraits restaurés, {} récupérés."
 
 msgid "Date and time in a format you choose"
 msgstr "Date et heure dans le format de votre choix"
@@ -1557,13 +1557,13 @@ msgid "Quit"
 msgstr "Quitter"
 
 msgid "Rebuild"
-msgstr ""
+msgstr "Reconstruire"
 
 msgid "Rebuild from backup…"
-msgstr ""
+msgstr "Reconstruire depuis une sauvegarde…"
 
 msgid "Rebuild from the newest backup?"
-msgstr ""
+msgstr "Reconstruire à partir de la sauvegarde la plus récente ?"
 
 msgid "Recent"
 msgstr "Récents"
@@ -2089,7 +2089,7 @@ msgid "The list holds at most {} programs."
 msgstr "La liste contient au maximum {} programmes."
 
 msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
-msgstr ""
+msgstr "La sauvegarde la plus récente date du {} et contient {} extraits sur {} tableaux. Votre base de données actuelle est mise de côté, pas supprimée. Les extraits ajoutés après cette sauvegarde sont récupérés là où ils peuvent être lus."
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "Les plus anciennes sont supprimées au-delà de ce nombre."
