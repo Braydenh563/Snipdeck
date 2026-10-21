@@ -211,7 +211,17 @@ where
         ToastMessage::DatabaseRebuilt {
             restored,
             recovered,
-        } => t.invoke_database_rebuilt(count(*restored), count(*recovered)),
+            kept,
+            unreadable,
+            missing_sensitive,
+        } => t.invoke_database_rebuilt(
+            count(*restored),
+            count(*recovered),
+            kept.into(),
+            *unreadable,
+            count(*missing_sensitive),
+        ),
+        ToastMessage::RebuildNeedsRestart => t.invoke_rebuild_needs_restart(),
         ToastMessage::Imported { items } => t.invoke_imported(count(*items)),
         ToastMessage::ImportFailed(cause) => t.invoke_import_failed(cause.code()),
         ToastMessage::Exported { file } => t.invoke_exported(file.into()),

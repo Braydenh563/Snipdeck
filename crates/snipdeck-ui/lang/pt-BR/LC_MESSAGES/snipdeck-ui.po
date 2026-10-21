@@ -481,6 +481,9 @@ msgstr "Não foi possível acessar a área de transferência. Outro aplicativo p
 msgid "Couldn't rename the tag."
 msgstr "Não foi possível renomear a etiqueta."
 
+msgid "Couldn't reopen your library. Restart Snipdeck. Your files have not been changed."
+msgstr "Não foi possível reabrir sua biblioteca. Reinicie o Snipdeck. Seus arquivos não foram alterados."
+
 msgid "Couldn't restore that backup. Choose another backup, or try again."
 msgstr "Não foi possível restaurar esse backup. Escolha outro backup ou tente novamente."
 
@@ -552,6 +555,9 @@ msgstr "Escuro"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
 msgstr "Banco de dados reconstruído: {} trechos restaurados, {} recuperados."
+
+msgid "Database rebuilt: {} items restored. Newer items could not be read."
+msgstr "Banco de dados reconstruído: {} trechos restaurados. Não foi possível ler os trechos mais recentes."
 
 msgid "Date and time in a format you choose"
 msgstr "Data e hora no formato escolhido"
@@ -2373,6 +2379,9 @@ msgstr "Sua biblioteca foi bloqueada depois de um tempo. O item sensível que vo
 msgid "Your library was erased."
 msgstr "Sua biblioteca foi apagada."
 
+msgid "Your old database is kept as {}."
+msgstr "Seu banco de dados antigo foi mantido como {}."
+
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "Seus itens sensíveis serão protegidos somente pelo Windows, como no plano Gratuito."
 
@@ -2644,6 +2653,11 @@ msgid "{} sensitive item was left out when this file was made."
 msgid_plural "{} sensitive items were left out when this file was made."
 msgstr[0] "{} item sensível foi deixado de fora quando este arquivo foi criado."
 msgstr[1] "{} itens sensíveis foram deixados de fora quando este arquivo foi criado."
+
+msgid "{} sensitive item was not in the backup."
+msgid_plural "{} sensitive items were not in the backup."
+msgstr[0] "{} trecho sensível não estava no backup."
+msgstr[1] "{} trechos sensíveis não estavam no backup."
 
 msgid "{}, {} of {}"
 msgstr "{}, {} de {}"

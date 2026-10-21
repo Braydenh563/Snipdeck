@@ -40,6 +40,12 @@ impl DataKey {
         Some(Self(key))
     }
 
+    /// A second copy of this key, copied straight into its own zeroizing buffer. Only for moving
+    /// a library to a new database file with the key it already holds ([`Store::duplicate_data_key`](crate::Store::duplicate_data_key)).
+    pub(crate) fn duplicate(&self) -> Option<Self> {
+        Self::from_slice(&self.0[..])
+    }
+
     #[cfg(test)]
     pub(super) fn from_bytes(bytes: [u8; KEY_LEN]) -> Self {
         Self(Zeroizing::new(bytes))

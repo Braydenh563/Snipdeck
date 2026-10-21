@@ -211,13 +211,21 @@ pub enum ToastMessage {
     },
     /// "Couldn't restore that backup: ..."
     RestoreFailed(Cause),
-    /// "Database rebuilt: 5 items restored, 2 recovered."
+    /// "Database rebuilt: 5 items restored, 2 recovered. Your old database is kept as ...".
     DatabaseRebuilt {
         /// Items the backup brought back.
         restored: usize,
         /// Items read out of the damaged database that the backup did not hold.
         recovered: usize,
+        /// The file name the old database was kept under.
+        kept: String,
+        /// The damaged database could not be read at all, so newer items were not recovered.
+        unreadable: bool,
+        /// Sensitive items the old library held that the new one does not.
+        missing_sensitive: usize,
     },
+    /// "Couldn't reopen your library. Restart Snipdeck; your files are untouched."
+    RebuildNeedsRestart,
     /// "Imported 5 items".
     Imported {
         /// Items added.

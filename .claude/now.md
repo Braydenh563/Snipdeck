@@ -17,6 +17,12 @@ v1.0.1: compact dock + dock grips (U22/O28), O54 sidebar resize, O49/O50 header 
 v1.0.1 add (owner 2026-10-21, VS Code-style autocomplete screenshot; "a bit of both honestly, they can go in the later versions"): search-box suggestion dropdown in Picker/Panel/Main search. v1.1 add: system-wide suggest-as-you-type dropdown at the caret (with trigger expansion; opt-in, per-app exclusions, Sensitive hidden).
 v1.1 (owner "sure" 2026-10-21, from competitor review): optional typed-trigger expansion (off by default; honour Sensitive + never-paste list), placeholders {clipboard} {cursor} (A5) {uuid} + date math {date+7d}, paste transforms (plain text, case, trim, md->text), importers (TextExpander, Espanso YAML, PhraseExpress, Beeftext), richer fill-ins (optional sections, multi-line, date picker). Later: local AI paste action (opt-in, local only), folder sync, per-app rules, share a board, CLI get/paste. Plus existing v1.1: O46 groups, tips window, rich paste, multi-panel, O56 launcher, Hello unlock, colour picker, H3/P2/B3/S7.
 
+## v1.0.1 (from the review of Rebuild from backup, 3f1f5cb)
+
+- The fresh database shares the blob folder with the set-aside one: a later blob sweep from the new library can remove blobs the damaged database still points at. Give the damaged copy its own blob dir, or skip sweeping while a `snipdeck.damaged-*` file exists.
+- Close the old connection with a WAL checkpoint (or copy the -wal with the db) so the set-aside file is self-contained.
+- The renames are not atomic as a set: a crash between the db and its -wal/-shm moves leaves a half-moved library. Write a small marker file first and finish or undo the move at the next start.
+
 ## Decisions
 - 2026-10-20 owner: "go with your suggestion" (budget at 87%): O54 stays in v1 (Sonnet, after O47 merges). O49/O50 -> v1.0.1 (reverses "including O49"); reason: needs O45+O47 merged first and would push past the 93% ceiling.
 - 2026-10-20 11:30 owner: "use Opus 5.5 medium for O52, O45, O47". Those three on Opus medium; everything else Sonnet. Queue after the O41/O48 agent: O52+O39 Panel wiring (Opus), O53, O45+O44 (Opus), O47 (Opus), O49, O50, O40, O36/O30/O27, visual pass.

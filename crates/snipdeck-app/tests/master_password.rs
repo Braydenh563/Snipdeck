@@ -1181,3 +1181,58 @@ fn rebuilding_from_a_backup_refuses_while_the_library_is_locked() {
         });
     assert!(!damaged, "nothing was set aside");
 }
+
+// ---- Rebuild from backup keeps an encrypted library ------------------------------------------
+
+#[test]
+fn rebuilding_an_encrypted_library_keeps_its_sensitive_items_readable() {
+    let mut r = rig(Tier::Pro);
+    assert!(r.ctl.backup_now(r.data.path()));
+    let backup = snipdeck_portable::backup::list_backups(r.data.path())
+        .expect("list")
+        .first()
+        .expect("a backup")
+        .path
+        .clone();
+
+    assert!(r.ctl.rebuild_from_backup(r.data.path(), &backup));
+
+    let Some(ToastMessage::DatabaseRebuilt {
+        missing_sensitive, ..
+    }) = r.toast()
+    else {
+        panic!("a rebuilt toast, got {:?}", r.toast());
+    };
+    assert_eq!(missing_sensitive, 0, "nothing sensitive was left behind");
+    let vault = r
+        .ctl
+        .store()
+        .all_items()
+        .expect("items")
+        .into_iter()
+        .find(|i| i.title == "Vault code")
+        .expect("the sensitive item came back");
+    assert_eq!(
+        snipdeck_app::usecase::item_text(r.ctl.store(), vault.id)
+            .expect("readable")
+            .as_deref(),
+        Some(SECRET)
+    );
+    assert!(r.ctl.store().is_unlocked(), "still open for this session");
+    // And it survives a restart: the fresh database holds the same key record.
+    let r = r.restart(Tier::Pro);
+    let vault = r
+        .ctl
+        .store()
+        .all_items()
+        .expect("items")
+        .into_iter()
+        .find(|i| i.title == "Vault code")
+        .expect("still there");
+    assert_eq!(
+        snipdeck_app::usecase::item_text(r.ctl.store(), vault.id)
+            .expect("readable")
+            .as_deref(),
+        Some(SECRET)
+    );
+}

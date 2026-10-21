@@ -328,6 +328,12 @@ impl Store {
         self.key.as_ref()
     }
 
+    /// A second copy of the unlocked data key, for a library that is moved to a new database
+    /// file ("Rebuild from backup") and must open it with the same key. `None` while locked.
+    pub fn duplicate_data_key(&self) -> Option<DataKey> {
+        self.key.as_ref().and_then(DataKey::duplicate)
+    }
+
     /// Holds `bytes` for a new sensitive item without writing them to disk: small payloads
     /// are inline as usual, larger ones stay in memory until the item they are attached to is
     /// written (encrypted, or as plain text if the item is not sensitive after all). Use it

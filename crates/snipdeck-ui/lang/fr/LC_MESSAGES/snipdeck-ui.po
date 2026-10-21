@@ -481,6 +481,9 @@ msgstr "Impossible d'accéder au presse-papiers. Une autre application l'utilise
 msgid "Couldn't rename the tag."
 msgstr "Impossible de renommer l'étiquette."
 
+msgid "Couldn't reopen your library. Restart Snipdeck. Your files have not been changed."
+msgstr "Impossible de rouvrir votre bibliothèque. Redémarrez Snipdeck. Vos fichiers n'ont pas été modifiés."
+
 msgid "Couldn't restore that backup. Choose another backup, or try again."
 msgstr "Impossible de restaurer cette sauvegarde. Choisissez-en une autre, ou réessayez."
 
@@ -552,6 +555,9 @@ msgstr "Sombre"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
 msgstr "Base de données reconstruite : {} extraits restaurés, {} récupérés."
+
+msgid "Database rebuilt: {} items restored. Newer items could not be read."
+msgstr "Base de données reconstruite : {} extraits restaurés. Les extraits plus récents n'ont pas pu être lus."
 
 msgid "Date and time in a format you choose"
 msgstr "Date et heure dans le format de votre choix"
@@ -2373,6 +2379,9 @@ msgstr "Votre bibliothèque s'est verrouillée après un moment. L'extrait sensi
 msgid "Your library was erased."
 msgstr "Votre bibliothèque a été effacée."
 
+msgid "Your old database is kept as {}."
+msgstr "Votre ancienne base de données est conservée sous le nom {}."
+
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "Vos extraits sensibles seront protégés par Windows seul, comme dans l'offre gratuite."
 
@@ -2644,6 +2653,11 @@ msgid "{} sensitive item was left out when this file was made."
 msgid_plural "{} sensitive items were left out when this file was made."
 msgstr[0] "{} extrait sensible a été laissé de côté à la création de ce fichier."
 msgstr[1] "{} extraits sensibles ont été laissés de côté à la création de ce fichier."
+
+msgid "{} sensitive item was not in the backup."
+msgid_plural "{} sensitive items were not in the backup."
+msgstr[0] "{} extrait sensible ne figurait pas dans la sauvegarde."
+msgstr[1] "{} extraits sensibles ne figuraient pas dans la sauvegarde."
 
 msgid "{}, {} of {}"
 msgstr "{}, {} sur {}"

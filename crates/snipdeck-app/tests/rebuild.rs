@@ -105,6 +105,9 @@ fn rebuilding_restores_the_backup_recovers_newer_items_and_keeps_the_damaged_fil
     let Some(ToastMessage::DatabaseRebuilt {
         restored,
         recovered,
+        kept,
+        unreadable,
+        missing_sensitive,
     }) = ctl.view().toast.map(|t| t.message)
     else {
         panic!("a rebuilt toast");
@@ -115,8 +118,16 @@ fn rebuilding_restores_the_backup_recovers_newer_items_and_keeps_the_damaged_fil
         "only the newer item came from the damaged file"
     );
     assert_eq!(after.len(), restored + recovered);
-    let kept = damaged_files(dir.path());
-    assert_eq!(kept.len(), 1, "the damaged file is set aside: {kept:?}");
+    assert_eq!(
+        damaged_files(dir.path()),
+        vec![kept],
+        "the toast names the kept file"
+    );
+    assert!(!unreadable);
+    assert_eq!(
+        missing_sensitive, 1,
+        "the demo's plain-text sensitive item is in no backup, and the toast says so"
+    );
     assert!(dir.path().join("snipdeck.db").exists(), "a fresh database");
 }
 
@@ -136,4 +147,28 @@ fn a_failure_before_the_swap_leaves_the_original_in_place() {
         ctl.view().toast.expect("an error toast").message,
         ToastMessage::RestoreFailed(_)
     ));
+}
+
+#[test]
+fn after_a_rebuild_search_and_the_picker_read_the_new_store_not_the_old_one() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut ctl = start(dir.path());
+    assert!(ctl.backup_now(dir.path()));
+    let backup = newest_backup(dir.path());
+    // Warm the cache with the old library, which holds an item no backup can carry.
+    ctl.open_picker();
+    ctl.picker_query("Server password");
+    let before = ctl.picker().expect("picker").rows().len();
+    assert_eq!(before, 1, "the old library has it");
+    ctl.close_picker();
+
+    assert!(ctl.rebuild_from_backup(dir.path(), &backup));
+
+    ctl.open_picker();
+    ctl.picker_query("Server password");
+    assert_eq!(
+        ctl.picker().expect("picker").rows().len(),
+        0,
+        "a stale cache would still show the old library's item"
+    );
 }

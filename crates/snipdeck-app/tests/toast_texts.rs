@@ -100,10 +100,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::Undone { .. } => 71,
         ToastMessage::Redone { .. } => 72,
         ToastMessage::DatabaseRebuilt { .. } => 73,
+        ToastMessage::RebuildNeedsRestart => 74,
     }
 }
 
-const VARIANTS: usize = 74;
+const VARIANTS: usize = 75;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -176,7 +177,11 @@ fn samples() -> Vec<ToastMessage> {
         M::DatabaseRebuilt {
             restored: 5,
             recovered: 2,
+            kept: s("snipdeck.damaged-20261017-1030.db"),
+            unreadable: false,
+            missing_sensitive: 1,
         },
+        M::RebuildNeedsRestart,
         M::Imported { items: 5 },
         M::ImportFailed(Cause::TooNew),
         M::Exported {
@@ -273,6 +278,21 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(
             said(ToastMessage::ItemsTrashed { count: 3 }),
             "Moved 3 items to the Trash"
+        );
+        let rebuilt = |recovered, unreadable, missing_sensitive| ToastMessage::DatabaseRebuilt {
+            restored: 5,
+            recovered,
+            kept: s("old.db"),
+            unreadable,
+            missing_sensitive,
+        };
+        assert_eq!(
+            said(rebuilt(2, false, 0)),
+            "Database rebuilt: 5 items restored, 2 recovered. Your old database is kept as old.db."
+        );
+        assert_eq!(
+            said(rebuilt(0, true, 1)),
+            "Database rebuilt: 5 items restored. Newer items could not be read. Your old database is kept as old.db. 1 sensitive item was not in the backup."
         );
         assert_eq!(
             said(ToastMessage::Undone {

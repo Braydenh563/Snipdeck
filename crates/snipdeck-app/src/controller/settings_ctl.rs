@@ -20,7 +20,10 @@ use snipdeck_portable::{
     export_to_path, import_archive_path, import_copyq_json, import_ditto, import_entries,
     import_folder,
 };
-use snipdeck_store::Store;
+use snipdeck_store::{
+    ItemRepo, Store,
+    crypto::{DataKey, KeyRecord},
+};
 
 use super::{Controller, Toast, ToastKind, ToastMessage};
 use crate::{failure::Cause, host::ClipboardText, licence_store, starter, toast::LicenceProblem};
@@ -431,6 +434,9 @@ where
     /// (with its `-wal` and `-shm`), opens a fresh one, restores `backup_file` into it and then
     /// merges what the old database could still be read for. Nothing is deleted. Any failure
     /// puts the original back and changes nothing. Returns whether it worked.
+    ///
+    /// An encrypted library keeps its key: the fresh database gets the same key record and is
+    /// opened with the key already in memory, so sensitive items survive the rebuild.
     pub fn rebuild_from_backup(&mut self, data_dir: &Path, backup_file: &Path) -> bool {
         if self.copy_blocked_by_lock() {
             return false;
@@ -439,10 +445,27 @@ where
             ctl.show_toast(danger(ToastMessage::RestoreFailed(Cause::Other)));
             false
         };
-        // The key ring lives in the file being set aside; a fresh database would not hold it.
-        if matches!(self.store.key_ring_exists(), Ok(true)) {
+        // A key ring that cannot be read is a corrupt one: refuse rather than lose the key.
+        let Ok(record) = self.store.key_record() else {
             return failed(self);
-        }
+        };
+        let carry = match record {
+            None => None,
+            Some(record) => {
+                // One copy of the key for the fresh database, one to reopen the original with.
+                let (Some(for_fresh), Some(for_original)) = (
+                    self.store.duplicate_data_key(),
+                    self.store.duplicate_data_key(),
+                ) else {
+                    return failed(self);
+                };
+                Some(Carry {
+                    record,
+                    for_fresh,
+                    for_original,
+                })
+            }
+        };
         // The backup must be readable before anything is touched.
         if self.preview_restore(backup_file).is_err() {
             return failed(self);
@@ -451,33 +474,58 @@ where
         let now = self.clock.now();
         let salvage = data_dir.join("snipdeck.salvage.snipdeck");
         let salvaged = export_to_path(&self.store, now, &self.backup_options(), &salvage).is_ok();
-        let outcome = self.swap_in_rebuilt(data_dir, backup_file, salvaged.then_some(&salvage));
+        let sensitive_before = self.sensitive_count();
+        let outcome =
+            self.swap_in_rebuilt(data_dir, backup_file, salvaged.then_some(&salvage), carry);
         let _ = fs::remove_file(&salvage);
         match outcome {
-            Some((restored, recovered)) => {
+            Ok((restored, recovered, kept)) => {
                 self.history = crate::history::History::new();
+                // The new store counts its changes from zero: nothing read from the old one may
+                // be served again (search, the panel and the Recent list).
+                self.index_cache.reset();
                 self.library_changed();
+                let _ = self.refresh_panel();
+                let missing_sensitive = sensitive_before.saturating_sub(self.sensitive_count());
                 self.show_toast(Toast {
                     kind: ToastKind::Success,
                     message: ToastMessage::DatabaseRebuilt {
                         restored,
                         recovered,
+                        kept,
+                        unreadable: !salvaged,
+                        missing_sensitive,
                     },
                 });
                 true
             }
-            None => failed(self),
+            Err(Swap::RolledBack) => failed(self),
+            Err(Swap::Stuck) => {
+                // The running library is an empty one in memory and the files on disk are
+                // untouched: the one safe thing to ask for is a restart.
+                self.show_toast(danger(ToastMessage::RebuildNeedsRestart));
+                false
+            }
         }
     }
 
-    /// The swap itself: `Some((restored, recovered))` once the fresh database holds the backup,
-    /// `None` with the original database back in place and open when any step failed.
+    /// How many sensitive items the open library holds (0 when it cannot be read).
+    fn sensitive_count(&self) -> usize {
+        self.store
+            .all_items()
+            .map_or(0, |items| items.iter().filter(|i| i.sensitive).count())
+    }
+
+    /// The swap itself: `Ok((restored, recovered, kept file name))` once the fresh database
+    /// holds the backup. `Err(Swap::RolledBack)` with the original database back in place and
+    /// open when any step failed; `Err(Swap::Stuck)` when even reopening the original failed.
     fn swap_in_rebuilt(
         &mut self,
         data_dir: &Path,
         backup_file: &Path,
         salvage: Option<&Path>,
-    ) -> Option<(usize, usize)> {
+        carry: Option<Carry>,
+    ) -> Result<(usize, usize, String), Swap> {
         let stamp = self
             .clock
             .now()
@@ -491,16 +539,30 @@ where
                     format!("snipdeck.damaged-{stamp}-{n}")
                 }
             })
-            .find(|stem| !data_dir.join(format!("{stem}.db")).exists())?;
+            .find(|stem| !data_dir.join(format!("{stem}.db")).exists())
+            .ok_or(Swap::RolledBack)?;
+        let kept = format!("{damaged}.db");
+        let (key_record, fresh_key, original_key) = match carry {
+            Some(Carry {
+                record,
+                for_fresh,
+                for_original,
+            }) => (Some(record), Some(for_fresh), Some(for_original)),
+            None => (None, None, None),
+        };
         // Close the store (its lock and connection) by putting a throwaway one in its place.
-        let placeholder = Store::open_in_memory().ok()?;
+        let placeholder = Store::open_in_memory().map_err(|_| Swap::RolledBack)?;
         drop(std::mem::replace(&mut self.store, placeholder));
-        let moved = move_db_files(data_dir, "snipdeck.db", &format!("{damaged}.db"));
-        if !moved {
-            self.reopen_original(data_dir);
-            return None;
+        if !move_db_files(data_dir, "snipdeck.db", &kept) {
+            return Err(self.reopen_original(data_dir, original_key));
         }
-        let rebuilt = Store::open(data_dir).ok().and_then(|fresh| {
+        let rebuilt = Store::open(data_dir).ok().and_then(|mut fresh| {
+            // The key goes in before anything is imported, so the backup and the salvage keep
+            // their sensitive items (KeySource::Library).
+            if let (Some(record), Some(key)) = (&key_record, fresh_key) {
+                fresh.restore_key_record(record).ok()?;
+                fresh.open_with_key(key).ok()?;
+            }
             self.store = fresh;
             self.import_report(
                 &ImportSource::Snipdeck(backup_file.to_path_buf()),
@@ -517,9 +579,8 @@ where
             for suffix in ["", "-wal", "-shm"] {
                 let _ = fs::remove_file(data_dir.join(format!("snipdeck.db{suffix}")));
             }
-            move_db_files(data_dir, &format!("{damaged}.db"), "snipdeck.db");
-            self.reopen_original(data_dir);
-            return None;
+            move_db_files(data_dir, &kept, "snipdeck.db");
+            return Err(self.reopen_original(data_dir, original_key));
         };
         let recovered = salvage
             .and_then(|file| {
@@ -531,12 +592,27 @@ where
                 .ok()
             })
             .map_or(0, |r| r.items_added);
-        Some((report.items_added, recovered))
+        Ok((report.items_added, recovered, kept))
     }
 
-    fn reopen_original(&mut self, data_dir: &Path) {
-        if let Ok(original) = Store::open(data_dir) {
-            self.store = original;
+    /// Opens the original database again after a failed swap, with its key if it had one.
+    /// `Swap::RolledBack` when it is back; `Swap::Stuck` when it would not open, in which case
+    /// the running library stays the empty in-memory one until Snipdeck restarts. (Opening a
+    /// database the swap itself just closed cannot be made to fail in a test without a fault
+    /// injected into `Store::open`, so this path is covered by review only.)
+    fn reopen_original(&mut self, data_dir: &Path, key: Option<DataKey>) -> Swap {
+        let reopened = Store::open(data_dir).ok().and_then(|mut original| {
+            if let Some(key) = key {
+                original.open_with_key(key).ok()?;
+            }
+            Some(original)
+        });
+        match reopened {
+            Some(original) => {
+                self.store = original;
+                Swap::RolledBack
+            }
+            None => Swap::Stuck,
         }
     }
 
@@ -746,6 +822,21 @@ where
 
 /// Renames `from` and its `-wal` and `-shm` in `dir` to `to` (and the same suffixes). All or
 /// nothing: on a failure what was moved is moved back and `false` is returned.
+/// The key material an encrypted library carries over to its rebuilt database.
+struct Carry {
+    record: KeyRecord,
+    for_fresh: DataKey,
+    for_original: DataKey,
+}
+
+/// Why a rebuild did not complete.
+enum Swap {
+    /// The original database is back and open.
+    RolledBack,
+    /// The original would not reopen either: only a restart can recover.
+    Stuck,
+}
+
 fn move_db_files(dir: &Path, from: &str, to: &str) -> bool {
     let mut done: Vec<&str> = Vec::new();
     for suffix in ["", "-wal", "-shm"] {

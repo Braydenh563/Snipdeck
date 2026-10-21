@@ -481,6 +481,9 @@ msgstr "Auf die Zwischenablage kann nicht zugegriffen werden. Eine andere App ve
 msgid "Couldn't rename the tag."
 msgstr "Das Schlagwort konnte nicht umbenannt werden."
 
+msgid "Couldn't reopen your library. Restart Snipdeck. Your files have not been changed."
+msgstr "Deine Bibliothek konnte nicht wieder geöffnet werden. Starte Snipdeck neu. Deine Dateien wurden nicht verändert."
+
 msgid "Couldn't restore that backup. Choose another backup, or try again."
 msgstr "Die Sicherung konnte nicht wiederhergestellt werden. Wähle eine andere Sicherung oder versuche es erneut."
 
@@ -552,6 +555,9 @@ msgstr "Dunkel"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
 msgstr "Datenbank neu aufgebaut: {} Textbausteine wiederhergestellt, {} geborgen."
+
+msgid "Database rebuilt: {} items restored. Newer items could not be read."
+msgstr "Datenbank neu aufgebaut: {} Textbausteine wiederhergestellt. Neuere Textbausteine konnten nicht gelesen werden."
 
 msgid "Date and time in a format you choose"
 msgstr "Datum und Uhrzeit in einem Format deiner Wahl"
@@ -2373,6 +2379,9 @@ msgstr "Deine Bibliothek wurde nach einiger Zeit gesperrt. Der vertrauliche Text
 msgid "Your library was erased."
 msgstr "Deine Bibliothek wurde gelöscht."
 
+msgid "Your old database is kept as {}."
+msgstr "Deine alte Datenbank bleibt als {} erhalten."
+
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "Deine vertraulichen Textbausteine werden nur durch Windows geschützt, wie im Kostenlos-Tarif."
 
@@ -2644,6 +2653,11 @@ msgid "{} sensitive item was left out when this file was made."
 msgid_plural "{} sensitive items were left out when this file was made."
 msgstr[0] "{} vertraulicher Textbaustein wurde beim Erstellen dieser Datei weggelassen."
 msgstr[1] "{} vertrauliche Textbausteine wurden beim Erstellen dieser Datei weggelassen."
+
+msgid "{} sensitive item was not in the backup."
+msgid_plural "{} sensitive items were not in the backup."
+msgstr[0] "{} vertraulicher Textbaustein war nicht in der Sicherung."
+msgstr[1] "{} vertrauliche Textbausteine waren nicht in der Sicherung."
 
 msgid "{}, {} of {}"
 msgstr "{}, {} von {}"

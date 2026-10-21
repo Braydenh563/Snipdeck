@@ -481,6 +481,9 @@ msgstr "クリップボードにアクセスできませんでした。別のア
 msgid "Couldn't rename the tag."
 msgstr "タグの名前を変更できませんでした。"
 
+msgid "Couldn't reopen your library. Restart Snipdeck. Your files have not been changed."
+msgstr "ライブラリを再び開けませんでした。Snipdeck を再起動してください。ファイルは変更されていません。"
+
 msgid "Couldn't restore that backup. Choose another backup, or try again."
 msgstr "バックアップを復元できませんでした。別のバックアップを選ぶか、もう一度お試しください。"
 
@@ -552,6 +555,9 @@ msgstr "ダーク"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
 msgstr "データベースを再構築しました。{} 件を復元、{} 件を回復しました。"
+
+msgid "Database rebuilt: {} items restored. Newer items could not be read."
+msgstr "データベースを再構築しました。{} 件を復元しました。新しい項目は読み取れませんでした。"
 
 msgid "Date and time in a format you choose"
 msgstr "任意の形式の日付と時刻"
@@ -2366,6 +2372,9 @@ msgstr "しばらくするとライブラリがロックされました。編集
 msgid "Your library was erased."
 msgstr "ライブラリを削除しました。"
 
+msgid "Your old database is kept as {}."
+msgstr "以前のデータベースは {} として残してあります。"
+
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "無料プランと同様に、機密スニペットは Windows の保護のみで守られます。"
 
@@ -2624,6 +2633,10 @@ msgstr[0] "このライブラリにないキーで暗号化された機密スニ
 msgid "{} sensitive item was left out when this file was made."
 msgid_plural "{} sensitive items were left out when this file was made."
 msgstr[0] "このファイルの作成時に、機密スニペット {} 件は除外されました。"
+
+msgid "{} sensitive item was not in the backup."
+msgid_plural "{} sensitive items were not in the backup."
+msgstr[0] "機密項目 {} 件がバックアップに含まれていませんでした。"
 
 msgid "{}, {} of {}"
 msgstr "{}、{} / {}"

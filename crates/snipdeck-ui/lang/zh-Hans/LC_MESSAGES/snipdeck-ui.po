@@ -481,6 +481,9 @@ msgstr "无法访问剪贴板。可能有其他应用正在使用它。"
 msgid "Couldn't rename the tag."
 msgstr "无法重命名标签。"
 
+msgid "Couldn't reopen your library. Restart Snipdeck. Your files have not been changed."
+msgstr "无法重新打开你的库。请重启 Snipdeck。你的文件没有被改动。"
+
 msgid "Couldn't restore that backup. Choose another backup, or try again."
 msgstr "无法还原该备份。请选择其他备份，或重试。"
 
@@ -552,6 +555,9 @@ msgstr "深色"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
 msgstr "数据库已重建：已还原 {} 项，已恢复 {} 项。"
+
+msgid "Database rebuilt: {} items restored. Newer items could not be read."
+msgstr "数据库已重建：已还原 {} 项。无法读取较新的项目。"
 
 msgid "Date and time in a format you choose"
 msgstr "以你选择的格式显示日期和时间"
@@ -2366,6 +2372,9 @@ msgstr "资料库在一段时间后自动锁定。你正在编辑的敏感片段
 msgid "Your library was erased."
 msgstr "资料库已删除。"
 
+msgid "Your old database is kept as {}."
+msgstr "旧数据库已保留为 {}。"
+
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "你的敏感片段仅由 Windows 保护，与免费版相同。"
 
@@ -2624,6 +2633,10 @@ msgstr[0] "{} 个敏感片段使用本资料库没有的密钥加密，已跳过
 msgid "{} sensitive item was left out when this file was made."
 msgid_plural "{} sensitive items were left out when this file was made."
 msgstr[0] "创建此文件时，已省略 {} 个敏感片段。"
+
+msgid "{} sensitive item was not in the backup."
+msgid_plural "{} sensitive items were not in the backup."
+msgstr[0] "备份中不包含 {} 项敏感项目。"
 
 msgid "{}, {} of {}"
 msgstr "{}，第 {} 项（共 {} 项）"

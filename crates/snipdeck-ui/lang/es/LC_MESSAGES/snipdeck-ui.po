@@ -481,6 +481,9 @@ msgstr "No se pudo acceder al portapapeles. Puede que otra aplicación lo esté 
 msgid "Couldn't rename the tag."
 msgstr "No se pudo renombrar la etiqueta."
 
+msgid "Couldn't reopen your library. Restart Snipdeck. Your files have not been changed."
+msgstr "No se pudo reabrir tu biblioteca. Reinicia Snipdeck. Tus archivos no han cambiado."
+
 msgid "Couldn't restore that backup. Choose another backup, or try again."
 msgstr "No se pudo restaurar esa copia. Elige otra copia o inténtalo de nuevo."
 
@@ -552,6 +555,9 @@ msgstr "Oscuro"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
 msgstr "Base de datos reconstruida: {} elementos restaurados, {} recuperados."
+
+msgid "Database rebuilt: {} items restored. Newer items could not be read."
+msgstr "Base de datos reconstruida: {} elementos restaurados. No se pudieron leer los elementos más recientes."
 
 msgid "Date and time in a format you choose"
 msgstr "Fecha y hora en el formato que elijas"
@@ -2373,6 +2379,9 @@ msgstr "Tu biblioteca se bloqueó tras un rato. El fragmento sensible que editab
 msgid "Your library was erased."
 msgstr "Tu biblioteca se borró."
 
+msgid "Your old database is kept as {}."
+msgstr "Tu base de datos anterior se conserva como {}."
+
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "Tus fragmentos sensibles estarán protegidos solo por Windows, como en el plan Gratis."
 
@@ -2644,6 +2653,11 @@ msgid "{} sensitive item was left out when this file was made."
 msgid_plural "{} sensitive items were left out when this file was made."
 msgstr[0] "{} fragmento sensible se omitió al crear este archivo."
 msgstr[1] "{} fragmentos sensibles se omitieron al crear este archivo."
+
+msgid "{} sensitive item was not in the backup."
+msgid_plural "{} sensitive items were not in the backup."
+msgstr[0] "Falta {} elemento sensible en la copia de seguridad."
+msgstr[1] "Faltan {} elementos sensibles en la copia de seguridad."
 
 msgid "{}, {} of {}"
 msgstr "{}, {} de {}"
