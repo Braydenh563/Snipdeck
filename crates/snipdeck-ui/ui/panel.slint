@@ -1170,6 +1170,7 @@ export component PanelWindow inherits Window {
                                 stack-position: row.stack-position;
                                 selected: root.marked-count > 0 ? row.marked : i == root.sel;
                                 use-label: root.use-label;
+                                use-copies: !root.pastes;
                                 masked-hint: @tr("Hidden. Hold Space to reveal.");
                                 show-use-label: i == root.sel && root.marked-count == 0;
                                 revealed: i == root.revealed-index;
@@ -1274,6 +1275,7 @@ export component PanelWindow inherits Window {
                                     list-color: transparent;
                                     selected: i == root.rsel;
                                     use-label: @tr("Copy");
+                                    use-copies: true;
                                     show-use-label: i == root.rsel;
                                     keyboard-focusable: false;
                                     use => {
@@ -1327,7 +1329,7 @@ export component PanelWindow inherits Window {
                         }
                     }
 
-                    if root.rows.length == 0 && !root.loading && !root.recent-open: EmptyState {
+                    if root.rows.length == 0 && !root.loading && !root.recent-open && !(quick.expanded && !root.no-lists && !root.searching): EmptyState {
                         x: Space.s2;
                         width: parent.width - 2 * Space.s2;
                         height: parent.height - (root.no-lists || root.searching ? 0px : quick.box-h + Space.s1);

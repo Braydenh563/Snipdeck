@@ -591,6 +591,18 @@ ui_tests! {
         assert_eq!(take(&log), ["more:false"]);
     }
 
+    fn the_editor_wants_a_shorter_window_with_more_options_closed_and_never_past_700() {
+        let (ui, _log) = item_editor();
+        ui.set_more_open(false);
+        settle();
+        let closed = ui.get_fit_height();
+        ui.set_more_open(true);
+        settle();
+        let open = ui.get_fit_height();
+        assert!(closed < open, "closed {closed} should be shorter than open {open}");
+        assert!(open <= 700.0 && closed >= 380.0, "closed {closed}, open {open}");
+    }
+
     fn with_more_options_closed_the_editor_starts_in_the_content() {
         let (ui, _log) = item_editor();
         ui.set_more_open(false);

@@ -180,7 +180,7 @@ export component Segmented inherits Rectangle {
 
     HorizontalLayout {
         padding: Space.s0-5;
-        spacing: Space.s0-5;
+        spacing: Space.s1;
         for option[i] in root.options: Rectangle {
             horizontal-stretch: 1;
             min-width: Space.hit-min;
@@ -198,6 +198,14 @@ export component Segmented inherits Rectangle {
             accessible-action-default => { root.move(i); }
             animate background { duration: Motion.instant; easing: Motion.out; }
 
+            // A hairline between neighbours, so the options read as separate choices, not one phrase.
+            if i < root.options.length - 1 && i != root.current && i + 1 != root.current: Rectangle {
+                x: parent.width + (Space.s1 - 1px) / 2;
+                y: parent.height * 0.25;
+                width: 1px;
+                height: parent.height * 0.5;
+                background: Theme.border-strong;
+            }
             Text {
                 text: option;
                 color: Theme.text-primary;

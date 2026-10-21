@@ -249,6 +249,10 @@ export component ItemEditor inherits Window {
     // Opens at the height of its form (More options closed), up to 700 px; the form scrolls past that.
     preferred-height: min(700px, max(380px, form.preferred-height + footer.height));
 
+    // The height the window wants for its form as it is now (More options open or closed), up to 700 px.
+    // The host sets the window to it on open and on each toggle, cut to the screen's work area.
+    out property <length> fit-height: min(700px, max(380px, form.preferred-height + footer.height));
+
     in property <bool> dark: false;
     in property <bool> is-new: false;
     // 0 text, 1 code, 2 link, 3 template, 4 image, 5 file.

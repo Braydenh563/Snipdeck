@@ -1786,6 +1786,7 @@ export component MainWindow inherits Window {
                                         list-name: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
                                         list-color: transparent;
                                         use-label: @tr("Copy");
+                                        use-copies: true;
                                         use => {
                                             root.recent-cursor = i;
                                             root.recent-copied(entry.id);
