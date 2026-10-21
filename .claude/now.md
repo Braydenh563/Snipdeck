@@ -10,8 +10,10 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 1. Finisher agent: fix editor_window CI red (7a094e6), merge hub-o47, hub-finish-ui (+goldens), hub-small (5ce79cf, untested), undock restores size, TagManager height, full tests, translations.
 2. O36 scrollbars agent (claude/hub-o36) -> merge after finisher.
 3. Sonnet reviewer (bugs/security) + ux-auditor on merged release; fix high/medium.
-4. Ship prep: gate --full both toolchains, version 1.0.0, CHANGELOG [1.0.0], PR #5 title/body, HANDOVER morning summary, retro.
+3a. Owner gate (2026-10-21, verbatim): "I want you to notify me and wait before stage 9 though as thats when Ill do my own testing." Owner also decides whether step 3 runs (usage).
+4. Ship prep (owner: "update all the documentation and readme as well as ay screenshots out of date. also in that step update the pr title and description. and when it comes to shipping give me the full guide on anyhting"): all docs + README + site, regenerate stale screenshots, README "Coming next" section (no versions/dates), fix README:180 (Recent inbox IS encrypted since PR #23), gate --full both toolchains, version 1.0.0, CHANGELOG [1.0.0], PR #5 title/body, HANDOVER summary, full shipping guide for the owner, retro.
 v1.0.1: compact dock + dock grips (U22/O28), O54 sidebar resize, O49/O50 header select/delete, O47 a-c (paste/drop create, Ctrl+C), Main quick-add, multi-row drag, toast Edit button, UX-C (O30/O26/O31), U9, A25.
+v1.1 (owner "sure" 2026-10-21, from competitor review): optional typed-trigger expansion (off by default; honour Sensitive + never-paste list), placeholders {clipboard} {cursor} (A5) {uuid} + date math {date+7d}, paste transforms (plain text, case, trim, md->text), importers (TextExpander, Espanso YAML, PhraseExpress, Beeftext), richer fill-ins (optional sections, multi-line, date picker). Later: local AI paste action (opt-in, local only), folder sync, per-app rules, share a board, CLI get/paste. Plus existing v1.1: O46 groups, tips window, rich paste, multi-panel, O56 launcher, Hello unlock, colour picker, H3/P2/B3/S7.
 
 ## Decisions
 - 2026-10-20 owner: "go with your suggestion" (budget at 87%): O54 stays in v1 (Sonnet, after O47 merges). O49/O50 -> v1.0.1 (reverses "including O49"); reason: needs O45+O47 merged first and would push past the 93% ceiling.
