@@ -1278,11 +1278,17 @@ msgstr "ピン留めはまだありません"
 msgid "Nothing to paste next. Pin a snippet, or add one to this list."
 msgstr "次に貼り付けるものがありません。スニペットをピン留めするか、このリストに追加してください。"
 
+msgid "Nothing to redo"
+msgstr ""
+
 msgid "Nothing to restore: your library already has everything in that backup."
 msgstr "復元するものがありません。ライブラリにはそのバックアップの内容がすでにすべてあります。"
 
 msgid "Nothing to save. Copy some text first."
 msgstr "保存するものがありません。先にテキストをコピーしてください。"
+
+msgid "Nothing to undo"
+msgstr ""
 
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "これらのプログラムでコピーした内容は「最近」の受信箱に入りません。プログラムのファイル名を使ってください（例: keepass.exe）。"
@@ -1559,6 +1565,15 @@ msgstr "最近使ったもの"
 
 msgid "Red"
 msgstr "赤"
+
+msgid "Redid {}"
+msgstr ""
+
+msgid "Redo"
+msgstr ""
+
+msgid "Redo {} (Ctrl+Y)"
+msgstr ""
 
 msgid "Reduce motion"
 msgstr "動きを減らす"
@@ -2180,8 +2195,14 @@ msgstr "コマンドを入力"
 msgid "Type {} to confirm"
 msgstr "確認のため {} と入力"
 
-msgid "Undo the delete"
-msgstr "削除を元に戻す"
+msgid "Undid {}"
+msgstr ""
+
+msgid "Undo"
+msgstr ""
+
+msgid "Undo {} (Ctrl+Z)"
+msgstr ""
 
 msgid "Undock the panel"
 msgstr "パネルの固定を解除"
@@ -2330,6 +2351,9 @@ msgstr "無料プランと同様に、機密スニペットは Windows の保護
 msgid "Your shortcuts"
 msgstr "ショートカット設定"
 
+msgid "add"
+msgstr ""
+
 msgid "add create folder group"
 msgstr "追加 作成 フォルダー グループ"
 
@@ -2349,8 +2373,14 @@ msgstr "クリップボード"
 msgid "clipboard save grab screenshot"
 msgstr "クリップボード 保存 取得 スクリーンショット"
 
+msgid "colour change"
+msgstr ""
+
 msgid "copy clone twice"
 msgstr "コピー 複製"
+
+msgid "delete"
+msgstr ""
 
 msgid "delete remove discard"
 msgstr "削除 除去 破棄"
@@ -2360,6 +2390,15 @@ msgstr "削除済み 復元 ゴミ箱 表示"
 
 msgid "diagnose doctor problems fix"
 msgstr "診断 問題 修正"
+
+msgid "drop"
+msgstr ""
+
+msgid "duplicate"
+msgstr ""
+
+msgid "edit"
+msgstr ""
 
 msgid "everything home show"
 msgstr "すべて ホーム 表示"
@@ -2391,6 +2430,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "ラベル: {}"
 
+msgid "move"
+msgstr ""
+
 msgid "ms"
 msgstr "ms"
 
@@ -2400,11 +2442,17 @@ msgstr "notepad.exe"
 msgid "open toggle deck hide"
 msgstr "開く 切り替え デッキ 隠す"
 
+msgid "paste"
+msgstr ""
+
 msgid "paste insert send"
 msgstr "貼り付け 挿入 送信"
 
 msgid "paste stack, number {}"
 msgstr "貼り付けスタック、番号 {}"
+
+msgid "pin"
+msgstr ""
 
 msgid "preferences options configure hotkeys theme backup"
 msgstr "設定 オプション 構成 ホットキー テーマ バックアップ"
@@ -2415,11 +2463,17 @@ msgstr "px"
 msgid "quick find paste palette"
 msgstr "クイック 検索 貼り付け パレット"
 
+msgid "reorder"
+msgstr ""
+
 msgid "s"
 msgstr "秒"
 
 msgid "snip snipping capture screen picture image"
 msgstr "切り取り スクリーンショット 画面 画像 キャプチャ"
+
+msgid "tag change"
+msgstr ""
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "チュートリアル 入門 基本 学ぶ"

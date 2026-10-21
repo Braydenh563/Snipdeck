@@ -1283,11 +1283,17 @@ msgstr "Aún no hay nada fijado"
 msgid "Nothing to paste next. Pin a snippet, or add one to this list."
 msgstr "Nada que pegar a continuación. Fija un fragmento o añade uno a esta lista."
 
+msgid "Nothing to redo"
+msgstr ""
+
 msgid "Nothing to restore: your library already has everything in that backup."
 msgstr "Nada que restaurar: tu biblioteca ya tiene todo lo de esa copia de seguridad."
 
 msgid "Nothing to save. Copy some text first."
 msgstr "Nada que guardar. Copia primero algo de texto."
+
+msgid "Nothing to undo"
+msgstr ""
 
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "Lo que copies en estos programas no llega a la bandeja Recientes. Usa el nombre de archivo del programa, por ejemplo keepass.exe."
@@ -1564,6 +1570,15 @@ msgstr "Usados recientemente"
 
 msgid "Red"
 msgstr "Rojo"
+
+msgid "Redid {}"
+msgstr ""
+
+msgid "Redo"
+msgstr ""
+
+msgid "Redo {} (Ctrl+Y)"
+msgstr ""
 
 msgid "Reduce motion"
 msgstr "Reducir animaciones"
@@ -2187,8 +2202,14 @@ msgstr "Escribe un comando"
 msgid "Type {} to confirm"
 msgstr "Escribe {} para confirmar"
 
-msgid "Undo the delete"
-msgstr "Deshacer la eliminación"
+msgid "Undid {}"
+msgstr ""
+
+msgid "Undo"
+msgstr ""
+
+msgid "Undo {} (Ctrl+Z)"
+msgstr ""
 
 msgid "Undock the panel"
 msgstr "Desacoplar el panel"
@@ -2337,6 +2358,9 @@ msgstr "Tus fragmentos sensibles estarán protegidos solo por Windows, como en e
 msgid "Your shortcuts"
 msgstr "Tus atajos"
 
+msgid "add"
+msgstr ""
+
 msgid "add create folder group"
 msgstr "añadir crear carpeta grupo"
 
@@ -2357,8 +2381,14 @@ msgstr "portapapeles"
 msgid "clipboard save grab screenshot"
 msgstr "portapapeles guardar capturar captura de pantalla"
 
+msgid "colour change"
+msgstr ""
+
 msgid "copy clone twice"
 msgstr "copiar clonar duplicar"
+
+msgid "delete"
+msgstr ""
 
 msgid "delete remove discard"
 msgstr "eliminar quitar descartar"
@@ -2368,6 +2398,15 @@ msgstr "eliminados restaurar papelera mostrar"
 
 msgid "diagnose doctor problems fix"
 msgstr "diagnosticar problemas arreglar"
+
+msgid "drop"
+msgstr ""
+
+msgid "duplicate"
+msgstr ""
+
+msgid "edit"
+msgstr ""
 
 msgid "everything home show"
 msgstr "todo inicio mostrar"
@@ -2399,6 +2438,9 @@ msgstr "https://example.com"
 msgid "label: {}"
 msgstr "etiqueta: {}"
 
+msgid "move"
+msgstr ""
+
 msgid "ms"
 msgstr "ms"
 
@@ -2408,11 +2450,17 @@ msgstr "notepad.exe"
 msgid "open toggle deck hide"
 msgstr "abrir alternar deck ocultar"
 
+msgid "paste"
+msgstr ""
+
 msgid "paste insert send"
 msgstr "pegar enviar"
 
 msgid "paste stack, number {}"
 msgstr "pila de pegado, número {}"
+
+msgid "pin"
+msgstr ""
 
 msgid "preferences options configure hotkeys theme backup"
 msgstr "preferencias opciones configurar atajos tema copia de seguridad"
@@ -2423,11 +2471,17 @@ msgstr "px"
 msgid "quick find paste palette"
 msgstr "rápido buscar pegar paleta"
 
+msgid "reorder"
+msgstr ""
+
 msgid "s"
 msgstr "s"
 
 msgid "snip snipping capture screen picture image"
 msgstr "recorte recortes captura pantalla imagen foto"
+
+msgid "tag change"
+msgstr ""
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "tutorial introducción inicio básico aprender"

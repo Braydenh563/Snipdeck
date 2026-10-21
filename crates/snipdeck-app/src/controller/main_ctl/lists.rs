@@ -1,5 +1,6 @@
 //! Lists and boards: creating, moving, renaming, reordering and deleting.
 
+use super::super::history_ctl::move_recorded;
 use snipdeck_core::{BoardId, ItemId, ListId, Placement};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::Trashable;
@@ -96,10 +97,11 @@ where
         match self.store.trash(Trashable::List(id), now) {
             Ok(()) => {
                 self.library_changed();
-                self.show_undo_toast(
-                    neutral_toast(ToastMessage::ListTrashed { name }),
-                    vec![Trashable::List(id)],
+                let step = self.record_step(
+                    crate::history::Action::Delete,
+                    vec![crate::history::Change::Trash(vec![Trashable::List(id)])],
                 );
+                self.show_undo_toast(neutral_toast(ToastMessage::ListTrashed { name }), step);
             }
             Err(_) => self.show_toast(failed()),
         }
@@ -175,8 +177,12 @@ where
         let Some((_, placement)) = reorder(&order, a, delta) else {
             return;
         };
-        let done = self.store.move_item(moved, list, placement);
+        let mut changes = Vec::new();
+        let done = move_recorded(&mut self.store, moved, list, placement, &mut changes);
         let moved_ok = done.is_ok();
+        if moved_ok {
+            self.record_step(crate::history::Action::Reorder, changes);
+        }
         self.finish(&done);
         if moved_ok {
             self.main_fresh();
@@ -200,8 +206,10 @@ where
         if self.main.item(id).is_none_or(|i| i.list_id == target) {
             return;
         }
-        match self.store.move_item(id, target, Placement::Last) {
+        let mut changes = Vec::new();
+        match move_recorded(&mut self.store, id, target, Placement::Last, &mut changes) {
             Ok(()) => {
+                self.record_step(crate::history::Action::Move, changes);
                 self.library_changed();
                 self.show_toast(neutral_toast(ToastMessage::ItemsMoved {
                     count: 1,

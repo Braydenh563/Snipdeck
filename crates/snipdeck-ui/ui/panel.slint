@@ -308,8 +308,15 @@ export component PanelWindow inherits Window {
     callback pin-toggled(bool);
     callback toast-undo();
     callback toast-hover-changed(hovered: bool);
-    // Ctrl+Z: undo the delete the toast offers to undo.
+    // Ctrl+Z / the Undo button: take back the latest step of the app-wide history.
     callback undo-requested();
+    // Ctrl+Y, Ctrl+Shift+Z / the Redo button.
+    callback redo-requested();
+    // The history buttons: enabled while there is a step, named by what it would do ("Undo delete (Ctrl+Z)").
+    in property <bool> can-undo;
+    in property <bool> can-redo;
+    in property <string> undo-tip;
+    in property <string> redo-tip;
     callback close-requested();
     // Pointer down on the header: the host starts the OS window drag.
     callback drag-requested();
@@ -739,9 +746,13 @@ export component PanelWindow inherits Window {
                         root.close-requested();
                         return accept;
                     }
-                    // Typed text in the search field undoes itself; with an empty field Ctrl+Z is the toast's Undo.
+                    // Typed text in the search field undoes itself; with an empty field Ctrl+Z is the history's Undo.
                     if ((event.text == "z" || event.text == "Z") && !event.modifiers.shift && root.query == "") {
                         root.undo-requested();
+                        return accept;
+                    }
+                    if ((((event.text == "z" || event.text == "Z") && event.modifiers.shift) || event.text == "y" || event.text == "Y") && root.query == "") {
+                        root.redo-requested();
                         return accept;
                     }
                     if (event.text == "/") {
@@ -940,6 +951,24 @@ export component PanelWindow inherits Window {
                             menu-requested => { root.board-menu-requested(); }
                         }
                         Rectangle { horizontal-stretch: 1; }
+                        undo-button := IconButton {
+                            icon: Icons.arrow-counter-clockwise;
+                            tooltip: root.undo-tip;
+                            enabled: root.can-undo;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.undo-requested(); }
+                            changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                            changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                        }
+                        redo-button := IconButton {
+                            icon: Icons.arrow-clockwise;
+                            tooltip: root.redo-tip;
+                            enabled: root.can-redo;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.redo-requested(); }
+                            changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                            changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                        }
                         // Always-on-top toggle: the Phosphor pushpin (owner preferred it to the flat tack); its
                         // tooltip and checked state say "Keep panel on top".
                         pin := IconButton {

@@ -211,6 +211,8 @@ pub struct View {
     pub reduced_motion: bool,
     /// The toast, if one is showing.
     pub toast: Option<ToastView>,
+    /// What the Undo and Redo buttons would do.
+    pub history: super::HistoryView,
     /// The board menu's entries while it is open.
     pub board_menu: Option<Vec<String>>,
     /// The kebab menu's rows while it is open ([`APP_MENU`](crate::controller::APP_MENU)).

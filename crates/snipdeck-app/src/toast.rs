@@ -153,6 +153,16 @@ pub enum ToastMessage {
         /// How many Trash entries came back.
         count: usize,
     },
+    /// "Undid delete": the history took a step back.
+    Undone {
+        /// What was taken back.
+        action: crate::history::Action,
+    },
+    /// "Redid delete": the history brought a step back.
+    Redone {
+        /// What was brought back.
+        action: crate::history::Action,
+    },
     /// "Moved 2 items to Code".
     ItemsMoved {
         /// How many.

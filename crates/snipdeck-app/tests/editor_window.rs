@@ -86,7 +86,11 @@ fn rig_at(data: &Path, tier: Tier, provider: &SharedProvider) -> Rig {
         },
         Box::new(FakeTargets::new(Some(demo::target()))),
         Box::new(FixedClock::new(now())),
-        Settings::default(),
+        // "More options" open: the tests drive Kind, Title, Colour, Tags and Privacy too.
+        Settings {
+            editor_more_open: true,
+            ..Settings::default()
+        },
         Entitlements::new(tier),
     )
     .expect("controller");

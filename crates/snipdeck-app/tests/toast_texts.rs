@@ -11,6 +11,7 @@
 
 use snipdeck_app::{
     failure::Cause,
+    history::Action,
     toast::{LicenceProblem, ToastMessage},
     wording::{licence_problem_text, toast_text},
 };
@@ -96,10 +97,12 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::TrashPurgeFailed => 68,
         ToastMessage::ChangeFailed(_) => 69,
         ToastMessage::ScreenshotFailed => 70,
+        ToastMessage::Undone { .. } => 71,
+        ToastMessage::Redone { .. } => 72,
     }
 }
 
-const VARIANTS: usize = 71;
+const VARIANTS: usize = 73;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -192,6 +195,12 @@ fn samples() -> Vec<ToastMessage> {
             position: 2,
             total: 7,
         },
+        M::Undone {
+            action: Action::Delete,
+        },
+        M::Redone {
+            action: Action::Move,
+        },
         // The same messages with the other shapes of their arguments.
         M::Pasted { app: String::new() },
         M::CopiedElevated { app: String::new() },
@@ -259,6 +268,18 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(
             said(ToastMessage::ItemsTrashed { count: 3 }),
             "Moved 3 items to the Trash"
+        );
+        assert_eq!(
+            said(ToastMessage::Undone {
+                action: Action::Delete
+            }),
+            "Undid delete"
+        );
+        assert_eq!(
+            said(ToastMessage::Redone {
+                action: Action::Colour
+            }),
+            "Redid colour change"
         );
         assert_eq!(
             said(ToastMessage::ItemsMoved {
