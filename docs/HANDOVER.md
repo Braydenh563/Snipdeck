@@ -3,7 +3,7 @@
 The owner tested on Windows and is "not comfortable releasing this as the official release yet": the app needs
 reliability and UX work first. PR #5 (`claude/compassionate-pascal-pod8ux`) stays OPEN; work continues there.
 Do not merge, tag or run `release.yml`. Version and CHANGELOG already say 1.0.0; keep them, but fix the CHANGELOG
-date at the real release. Weekly usage reached ~96% on 2026-10-21; the limit resets 2026-10-24T07:00Z.
+date at the real release. The owner capped this session at 96% weekly usage; the limit resets 2026-10-24T07:00Z.
 
 ## Read first in the next session
 1. `docs/reviews/owner-test-2026-10-21.md`: the owner's test notes, verbatim.
