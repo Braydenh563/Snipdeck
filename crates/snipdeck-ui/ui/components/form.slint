@@ -47,6 +47,10 @@ export component FormField inherits VerticalLayout {
 export component FormScroll inherits Rectangle {
     in-out property <length> content-height <=> flick.content-height;
     in-out property <length> content-width <=> flick.content-width;
+    // The viewport's width: the surface less a right gutter (the overlay bar's idle strip and a step), so
+    // nothing renders under the scrollbar. Hosts set `content-width: self.viewport-width`.
+    out property <length> viewport-width: flick.width;
+    property <length> gutter: Space.s2 + Space.s1;
 
     public function reveal(top: length, h: length) {
         if (top < 0px) {
@@ -57,7 +61,9 @@ export component FormScroll inherits Rectangle {
     }
 
     flick := Flickable {
-        width: parent.width;
+        x: 0px;
+        y: 0px;
+        width: parent.width - root.gutter;
         height: parent.height;
         @children
     }

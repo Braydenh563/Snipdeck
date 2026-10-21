@@ -407,10 +407,11 @@ export component ItemEditor inherits Window {
             flick := FormScroll {
                 vertical-stretch: 1;
                 content-height: form.preferred-height;
-                content-width: self.width;
+                content-width: self.viewport-width;
 
                 form := VerticalLayout {
-                    width: flick.width;
+                    x: 0px;
+                    width: flick.viewport-width;
                     padding: Space.s4;
                     spacing: Space.s4;
                     alignment: start;
@@ -1077,10 +1078,11 @@ component EntityEditorBody inherits Rectangle {
             flick := FormScroll {
                 vertical-stretch: 1;
                 content-height: form.preferred-height;
-                content-width: self.width;
+                content-width: self.viewport-width;
 
                 form := VerticalLayout {
-                    width: flick.width;
+                    x: 0px;
+                    width: flick.viewport-width;
                     padding: Space.s4;
                     spacing: Space.s4;
                     alignment: start;

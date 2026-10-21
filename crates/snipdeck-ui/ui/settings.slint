@@ -488,10 +488,11 @@ export component SettingsPage inherits Window {
 
         page := FormScroll {
             content-height: body.preferred-height;
-            content-width: self.width;
+            content-width: self.viewport-width;
 
             body := VerticalLayout {
-                width: page.width;
+                x: 0px;
+                width: page.viewport-width;
                 padding: Space.s4;
                 spacing: Space.s6;
                 alignment: start;

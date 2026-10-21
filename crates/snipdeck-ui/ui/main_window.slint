@@ -332,6 +332,8 @@ export component MainWindow inherits Window {
     property <int> used-index: -1;
     property <bool> narrow: false;
     property <float> text-scale: SystemLook.text-scale;
+    // One height for every toolbar control (the standard Button height).
+    property <length> ctl-h: max(Space.hit * SystemLook.text-scale, Type.line-base + Space.s2);
     property <length> bar-h: max(Space.s8 + Space.s3, Type.line-base + Space.s2 + Space.s3);
     property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : 232px + (root.text-scale - 1) * 96px;
     property <length> pad: Space.s4;
@@ -1135,159 +1137,147 @@ export component MainWindow inherits Window {
                             }
                         }
                         Rectangle { horizontal-stretch: 1; }
-                        HorizontalLayout {
-                            spacing: 0px;
+                        VerticalLayout {
                             horizontal-stretch: 0;
                             alignment: center;
-                            panel-show := IconButton {
-                                scaled: true;
-                                icon: Icons.sidebar-simple;
-                                tooltip: root.panel-visible
-                                    ? (root.panel-hotkey == "" ? @tr("Hide Panel") : @tr("Hide Panel ({})", root.panel-hotkey))
-                                    : (root.panel-hotkey == "" ? @tr("Show Panel") : @tr("Show Panel ({})", root.panel-hotkey));
-                                active: root.panel-visible;
-                                own-tooltip: true;
-                                clicked => { root.panel-requested(); }
-                            }
-                            Rectangle {
-                                width: Space.s2 + 1px + Space.s2;
-                                Rectangle {
-                                    x: Space.s2;
-                                    width: 1px;
-                                    height: Space.s4 * SystemLook.text-scale;
-                                    y: (parent.height - self.height) / 2;
-                                    background: Theme.border-subtle;
-                                }
-                            }
+                            padding-right: Space.s1;
                             HorizontalLayout {
-                                spacing: Space.s0-5;
-                                undo-button := IconButton {
+                                spacing: 0px;
+                                panel-show := IconButton {
                                     scaled: true;
-                                    icon: Icons.arrow-counter-clockwise;
-                                    tooltip: root.undo-tip;
+                                    side-override: root.ctl-h;
+                                    icon: Icons.sidebar-simple;
+                                    tooltip: root.panel-visible
+                                        ? (root.panel-hotkey == "" ? @tr("Hide Panel") : @tr("Hide Panel ({})", root.panel-hotkey))
+                                        : (root.panel-hotkey == "" ? @tr("Show Panel") : @tr("Show Panel ({})", root.panel-hotkey));
+                                    active: root.panel-visible;
                                     own-tooltip: true;
-                                    enabled: root.can-undo;
-                                    clicked => { root.undo-requested(); }
+                                    clicked => { root.panel-requested(); }
                                 }
-                                redo-button := IconButton {
+                                Rectangle {
+                                    width: Space.s3;
+                                    height: root.ctl-h;
+                                    Rectangle {
+                                        width: 1px;
+                                        height: root.ctl-h * 0.6;
+                                        x: (parent.width - self.width) / 2;
+                                        y: (parent.height - self.height) / 2;
+                                        background: Theme.border-subtle;
+                                    }
+                                }
+                                HorizontalLayout {
+                                    spacing: Space.s1;
+                                    undo-button := IconButton {
+                                        scaled: true;
+                                        side-override: root.ctl-h;
+                                        icon: Icons.arrow-counter-clockwise;
+                                        tooltip: root.undo-tip;
+                                        own-tooltip: true;
+                                        enabled: root.can-undo;
+                                        clicked => { root.undo-requested(); }
+                                    }
+                                    redo-button := IconButton {
+                                        scaled: true;
+                                        side-override: root.ctl-h;
+                                        icon: Icons.arrow-clockwise;
+                                        tooltip: root.redo-tip;
+                                        own-tooltip: true;
+                                        enabled: root.can-redo;
+                                        clicked => { root.redo-requested(); }
+                                    }
+                                }
+                                Rectangle {
+                                    width: Space.s3;
+                                    height: root.ctl-h;
+                                    Rectangle {
+                                        width: 1px;
+                                        height: root.ctl-h * 0.6;
+                                        x: (parent.width - self.width) / 2;
+                                        y: (parent.height - self.height) / 2;
+                                        background: Theme.border-subtle;
+                                    }
+                                }
+                                commands-button := IconButton {
                                     scaled: true;
-                                    icon: Icons.arrow-clockwise;
-                                    tooltip: root.redo-tip;
-                                    own-tooltip: true;
-                                    enabled: root.can-redo;
-                                    clicked => { root.redo-requested(); }
+                                    side-override: root.ctl-h;
+                                    icon: Icons.keyboard;
+                                    tooltip: @tr("Commands (Ctrl+K)");
+                                    clicked => { root.open-palette(); }
                                 }
-                            }
-                            Rectangle {
-                                width: Space.s2 + 1px + Space.s2;
                                 Rectangle {
-                                    x: Space.s2;
-                                    width: 1px;
-                                    height: Space.s4 * SystemLook.text-scale;
-                                    y: (parent.height - self.height) / 2;
-                                    background: Theme.border-subtle;
+                                    width: Space.s3;
+                                    height: root.ctl-h;
+                                    Rectangle {
+                                        width: 1px;
+                                        height: root.ctl-h * 0.6;
+                                        x: (parent.width - self.width) / 2;
+                                        y: (parent.height - self.height) / 2;
+                                        background: Theme.border-subtle;
+                                    }
                                 }
-                            }
-                            commands-button := IconButton {
-                                scaled: true;
-                                icon: Icons.keyboard;
-                                tooltip: @tr("Commands (Ctrl+K)");
-                                clicked => { root.open-palette(); }
-                            }
-                            Rectangle {
-                                width: Space.s2 + 1px + Space.s2;
-                                Rectangle {
-                                    x: Space.s2;
-                                    width: 1px;
-                                    height: Space.s4 * SystemLook.text-scale;
-                                    y: (parent.height - self.height) / 2;
-                                    background: Theme.border-subtle;
+                                segmented := Rectangle {
+                                    width: seg-row.preferred-width;
+                                    height: root.ctl-h;
+                                    background: Theme.bg-surface;
+                                    border-width: 1px;
+                                    border-color: Theme.border-subtle;
+                                    border-radius: Radius.md + Space.s0-5;
+                                    seg-row := HorizontalLayout {
+                                        padding: Space.s0-5;
+                                        spacing: Space.s0-5;
+                                view-comfortable := IconButton {
+                                    scaled: true;
+                                    side-override: root.ctl-h - 2 * Space.s0-5;
+                                    icon: Icons.rows;
+                                    tooltip: @tr("Comfortable view");
+                                    active: root.view == MainView.comfortable;
+                                    accessible-checkable: true;
+                                    accessible-checked: root.view == MainView.comfortable;
+                                    clicked => {
+                                        root.view = MainView.comfortable;
+                                        root.view-changed(MainView.comfortable);
+                                    }
                                 }
-                            }
-                            segmented := Rectangle {
-                                width: seg-row.preferred-width + 2 * Space.s0-5;
-                                height: seg-row.preferred-height + 2 * Space.s0-5;
-                                background: Theme.bg-surface;
-                                border-width: 1px;
-                                border-color: Theme.border-subtle;
-                                border-radius: Radius.md + Space.s0-5;
-                                seg-row := HorizontalLayout {
-                                    x: Space.s0-5;
-                                    y: Space.s0-5;
-                                    spacing: Space.s0-5;
-                            view-comfortable := IconButton {
-                                scaled: true;
-                                icon: Icons.rows;
-                                tooltip: @tr("Comfortable view");
-                                active: root.view == MainView.comfortable;
-                                accessible-checkable: true;
-                                accessible-checked: root.view == MainView.comfortable;
-                                clicked => {
-                                    root.view = MainView.comfortable;
-                                    root.view-changed(MainView.comfortable);
+                                view-compact := IconButton {
+                                    scaled: true;
+                                    side-override: root.ctl-h - 2 * Space.s0-5;
+                                    icon: Icons.list-bullets;
+                                    tooltip: @tr("Compact view");
+                                    active: root.view == MainView.compact;
+                                    accessible-checkable: true;
+                                    accessible-checked: root.view == MainView.compact;
+                                    clicked => {
+                                        root.view = MainView.compact;
+                                        root.view-changed(MainView.compact);
+                                    }
                                 }
-                            }
-                            view-compact := IconButton {
-                                scaled: true;
-                                icon: Icons.list-bullets;
-                                tooltip: @tr("Compact view");
-                                active: root.view == MainView.compact;
-                                accessible-checkable: true;
-                                accessible-checked: root.view == MainView.compact;
-                                clicked => {
-                                    root.view = MainView.compact;
-                                    root.view-changed(MainView.compact);
+                                view-tile := IconButton {
+                                    scaled: true;
+                                    side-override: root.ctl-h - 2 * Space.s0-5;
+                                    icon: Icons.squares-four;
+                                    tooltip: @tr("Tile view");
+                                    active: root.view == MainView.tile;
+                                    accessible-checkable: true;
+                                    accessible-checked: root.view == MainView.tile;
+                                    clicked => {
+                                        root.view = MainView.tile;
+                                        root.view-changed(MainView.tile);
+                                    }
                                 }
-                            }
-                            view-tile := IconButton {
-                                scaled: true;
-                                icon: Icons.squares-four;
-                                tooltip: @tr("Tile view");
-                                active: root.view == MainView.tile;
-                                accessible-checkable: true;
-                                accessible-checked: root.view == MainView.tile;
-                                clicked => {
-                                    root.view = MainView.tile;
-                                    root.view-changed(MainView.tile);
+                                    }
                                 }
-                            }
-                                }
-                            Rectangle {
-                                visible: root.view == MainView.comfortable;
-                                width: Space.s3 * SystemLook.text-scale;
-                                height: Space.s0-5;
-                                x: seg-row.x + view-comfortable.x + (view-comfortable.width - self.width) / 2;
-                                y: parent.height - Space.s0-5 - 2px;
-                                border-radius: 1px;
-                                background: Theme.accent-text;
-                            }
-                            Rectangle {
-                                visible: root.view == MainView.compact;
-                                width: Space.s3 * SystemLook.text-scale;
-                                height: Space.s0-5;
-                                x: seg-row.x + view-compact.x + (view-compact.width - self.width) / 2;
-                                y: parent.height - Space.s0-5 - 2px;
-                                border-radius: 1px;
-                                background: Theme.accent-text;
-                            }
-                            Rectangle {
-                                visible: root.view == MainView.tile;
-                                width: Space.s3 * SystemLook.text-scale;
-                                height: Space.s0-5;
-                                x: seg-row.x + view-tile.x + (view-tile.width - self.width) / 2;
-                                y: parent.height - Space.s0-5 - 2px;
-                                border-radius: 1px;
-                                background: Theme.accent-text;
-                            }
                             }
                         }
-                        Button {
+                        VerticalLayout {
                             horizontal-stretch: 0;
-                            variant: ButtonVariant.primary;
-                            icon: Icons.plus;
-                            text: @tr("New item");
-                            y: (parent.height - self.height) / 2;
-                            clicked => { root.new-item-requested(); }
+                            alignment: center;
+                            Button {
+                                horizontal-stretch: 0;
+                                variant: ButtonVariant.primary;
+                                icon: Icons.plus;
+                                text: @tr("New item");
+                                clicked => { root.new-item-requested(); }
+                            }
                         }
                     }
                 }

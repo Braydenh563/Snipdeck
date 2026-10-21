@@ -22,6 +22,8 @@ export component IconButton inherits Rectangle {
     // Grows with the Windows text size (`SystemLook.text-scale`), like text and Button do. Off by default so
     // the panel and the galleries keep their sizes.
     in property <bool> scaled: false;
+    // A side set by the host (a toolbar that gives every control one height); 0 keeps the size's own.
+    in property <length> side-override: 0px;
     // The button shows its own `tooltip` below itself after 500ms of hover or keyboard focus (DESIGN.md §4).
     // Off where the window already shows one for it (the Panel header, the Main window toolbar).
     in property <bool> own-tooltip: false;
@@ -30,7 +32,7 @@ export component IconButton inherits Rectangle {
     callback clicked();
 
     property <float> k: root.scaled ? SystemLook.text-scale : 1.0;
-    property <length> side: (root.size == IconButtonSize.sm ? Space.hit-min : Space.hit) * root.k;
+    property <length> side: root.side-override > 0px ? root.side-override : (root.size == IconButtonSize.sm ? Space.hit-min : Space.hit) * root.k;
     property <bool> tip-wanted: root.own-tooltip && (root.has-hover || root.has-focus);
     property <bool> tip-open: false;
     changed tip-wanted => {

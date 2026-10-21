@@ -120,10 +120,11 @@ export component HelpWindow inherits Window {
 
             if root.tab == 0: FormScroll {
                 content-height: shoot.preferred-height;
-                content-width: self.width;
+                content-width: self.viewport-width;
 
                 shoot := VerticalLayout {
-                    width: parent.width;
+                    x: 0px;
+                    width: parent.viewport-width;
                     spacing: Space.s4;
                     alignment: start;
 
@@ -241,10 +242,11 @@ export component HelpWindow inherits Window {
 
             if root.tab == 2: FormScroll {
                 content-height: sheet.preferred-height;
-                content-width: self.width;
+                content-width: self.viewport-width;
 
                 sheet := ShortcutsSheet {
-                    width: parent.width;
+                    x: 0px;
+                    width: parent.viewport-width;
                     panel-keys: root.panel-keys;
                     picker-keys: root.picker-keys;
                     capture-keys: root.capture-keys;
@@ -258,10 +260,11 @@ export component HelpWindow inherits Window {
 
             if root.tab == 1: FormScroll {
                 content-height: about.preferred-height;
-                content-width: self.width;
+                content-width: self.viewport-width;
 
                 about := VerticalLayout {
-                    width: parent.width;
+                    x: 0px;
+                    width: parent.viewport-width;
                     spacing: Space.s4;
                     alignment: start;
 
