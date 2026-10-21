@@ -1,6 +1,7 @@
 import { SystemLook, Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
+import { OverlayScrollbar } from "scrollbar.slint";
 
 // Inline error under a field: icon plus text, so the state is not carried by colour alone (DESIGN.md §7).
 export component FieldError inherits HorizontalLayout {
@@ -243,6 +244,14 @@ export component TextField inherits VerticalLayout {
                                 return reject;
                             }
                         }
+                    }
+
+                    OverlayScrollbar {
+                        enabled: !root.single-line;
+                        content-y: flick.content-y;
+                        content-height: flick.content-height;
+                        visible-height: flick.height;
+                        scroll-to(y) => { flick.content-y = y; }
                     }
 
                     // Width of the composition as drawn, same font as the input.

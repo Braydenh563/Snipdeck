@@ -3,6 +3,7 @@ import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 import { StateColor } from "state-color.slint";
 import { FieldError } from "text_field.slint";
+import { OverlayScrollbar } from "scrollbar.slint";
 
 // Form building blocks for the editors and the settings page (DESIGN.md §4). Every control here is one tab stop
 // with arrow keys inside it, has a hover, pressed, disabled and keyboard-focus state, an accessible role and label,
@@ -40,16 +41,31 @@ export component FormField inherits VerticalLayout {
     if root.error != "": FieldError { text: root.error; }
 }
 
-// The page of a form: a Flickable that can bring a control into view. Controls call `reveal` when they gain the
-// keyboard focus (Slint does not scroll to the focus by itself); `top` is the control's y relative to the top of
-// the visible area (`control.absolute-position.y - page.absolute-position.y`).
-export component FormScroll inherits Flickable {
+// The page of a form: a Flickable under an overlay scrollbar that can bring a control into view. Controls call
+// `reveal` when they gain the keyboard focus (Slint does not scroll to the focus by itself); `top` is the control's y
+// relative to the top of the visible area (`control.absolute-position.y - page.absolute-position.y`).
+export component FormScroll inherits Rectangle {
+    in-out property <length> content-height <=> flick.content-height;
+    in-out property <length> content-width <=> flick.content-width;
+
     public function reveal(top: length, h: length) {
         if (top < 0px) {
-            root.content-y = min(0px, root.content-y - top);
+            flick.content-y = min(0px, flick.content-y - top);
         } else if (top + h > root.height) {
-            root.content-y = max(root.height - root.content-height, root.content-y - (top + h - root.height));
+            flick.content-y = max(root.height - flick.content-height, flick.content-y - (top + h - root.height));
         }
+    }
+
+    flick := Flickable {
+        width: parent.width;
+        height: parent.height;
+        @children
+    }
+    OverlayScrollbar {
+        content-y: flick.content-y;
+        content-height: flick.content-height;
+        visible-height: flick.height;
+        scroll-to(y) => { flick.content-y = y; }
     }
 }
 

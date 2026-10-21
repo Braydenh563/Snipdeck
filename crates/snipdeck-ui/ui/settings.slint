@@ -20,6 +20,7 @@ import { Dialog } from "components/dialog.slint";
 import { PlanTable } from "components/plan-table.slint";
 import { ImportTexts } from "import_texts.slint";
 import { MasterPasswordForm, MasterMode, MasterProblem } from "master_password.slint";
+import { OverlayScrollbar } from "components/scrollbar.slint";
 import { FormField, FormScroll, FormSection, SettingRow, Segmented, SelectField, NumberStepper } from "components/form.slint";
 
 // One global shortcut as the page shows it. The order of `SettingsPage.hotkeys` is fixed: show or hide the panel,
@@ -1394,12 +1395,23 @@ export component SettingsPage inherits Window {
         VerticalLayout {
             horizontal-stretch: 1;
             spacing: Space.s3;
-            plan-flick := Flickable {
-                // Short windows scroll the table instead of pushing the buttons off the screen.
+            Rectangle {
                 height: min(table.preferred-height, max(Space.s12 * 2, root.height - Space.s12 * 6));
-                content-width: self.width;
-                content-height: table.preferred-height;
-                table := PlanTable { width: plan-flick.content-width; }
+                // Short windows scroll the table instead of pushing the buttons off the screen.
+                plan-flick := Flickable {
+                    width: parent.width;
+                    height: parent.height;
+                    content-width: self.width;
+                    content-height: table.preferred-height;
+                    table := PlanTable { width: plan-flick.content-width; }
+                }
+
+                OverlayScrollbar {
+                    content-y: plan-flick.content-y;
+                    content-height: plan-flick.content-height;
+                    visible-height: plan-flick.height;
+                    scroll-to(y) => { plan-flick.content-y = y; }
+                }
             }
             HorizontalLayout {
                 spacing: Space.s2;

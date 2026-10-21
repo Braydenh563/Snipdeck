@@ -6206,6 +6206,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/repaint.rs` | 4 |
 | `crates/snipdeck-ui/tests/review_fixes_logic.rs` | 1 |
 | `crates/snipdeck-ui/tests/review_fixes_pixels.rs` | 5 |
+| `crates/snipdeck-ui/tests/scrollbar.rs` | 7 |
 | `crates/snipdeck-ui/tests/support/editor_fixture.rs` | 0 |
 | `crates/snipdeck-ui/tests/support/fill_fixture.rs` | 0 |
 | `crates/snipdeck-ui/tests/support/main_fixture.rs` | 0 |
