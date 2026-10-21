@@ -4515,7 +4515,7 @@ dependencies = [
 
 [[package]]
 name = "snipdeck-app"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "blake3",
  "i-slint-backend-testing",
@@ -4537,7 +4537,7 @@ dependencies = [
 
 [[package]]
 name = "snipdeck-core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64",
  "ed25519-dalek",
@@ -4553,7 +4553,7 @@ dependencies = [
 
 [[package]]
 name = "snipdeck-licence-issuer"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "base64",
  "getrandom 0.4.3",
@@ -4564,7 +4564,7 @@ dependencies = [
 
 [[package]]
 name = "snipdeck-platform"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "getrandom 0.4.3",
  "png",
@@ -4577,7 +4577,7 @@ dependencies = [
 
 [[package]]
 name = "snipdeck-portable"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "blake3",
  "jiff",
@@ -4593,7 +4593,7 @@ dependencies = [
 
 [[package]]
 name = "snipdeck-store"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "argon2",
  "blake3",
@@ -4612,7 +4612,7 @@ dependencies = [
 
 [[package]]
 name = "snipdeck-ui"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "i-slint-backend-testing",
  "i-slint-common",
