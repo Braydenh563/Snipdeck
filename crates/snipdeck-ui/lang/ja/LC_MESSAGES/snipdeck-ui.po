@@ -551,7 +551,7 @@ msgid "Dark"
 msgstr "ダーク"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
-msgstr ""
+msgstr "データベースを再構築しました。{} 件を復元、{} 件を回復しました。"
 
 msgid "Date and time in a format you choose"
 msgstr "任意の形式の日付と時刻"
@@ -1552,13 +1552,13 @@ msgid "Quit"
 msgstr "終了"
 
 msgid "Rebuild"
-msgstr ""
+msgstr "再構築"
 
 msgid "Rebuild from backup…"
-msgstr ""
+msgstr "バックアップから再構築…"
 
 msgid "Rebuild from the newest backup?"
-msgstr ""
+msgstr "最新のバックアップから再構築しますか？"
 
 msgid "Recent"
 msgstr "最近"
@@ -2082,7 +2082,7 @@ msgid "The list holds at most {} programs."
 msgstr "リストには最大 {} 個のプログラムを登録できます。"
 
 msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
-msgstr ""
+msgstr "最新のバックアップは {} のもので、{} 個のボードに {} 件のアイテムがあります。現在のデータベースは削除されず、別に保管されます。このバックアップ以降に追加したアイテムは、読み取れるものを回復します。"
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "この数を超えると、古いものから削除されます。"
