@@ -25,7 +25,7 @@ folders; readers must accept both and may ignore folder entries.
 {
   "format": "snipdeck-archive",
   "format_version": "1.0",
-  "app_version": "0.1.0",
+  "app_version": "1.0.0",
   "created_at": "2027-01-15T08:01:40Z",
   "counts": { "boards": 2, "lists": 5, "items": 6, "tags": 2, "assets": 9 },
   "encryption": "SNENC2",

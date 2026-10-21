@@ -25,7 +25,7 @@ the master password is a Supporter feature.
 - **Pay what you want, from A$5.** The suggested price is A$8. You pay once, and every 1.x update is
   included.
 - **Open Settings and choose Get Supporter…** It shows the price and an **Email me** button, which opens a
-  message to the author in your email app, to ask for a key. <!-- TODO(G2): the address is a placeholder until the owner supplies it. -->
+  message to brayden.hoyle@outlook.com in your email app, to ask for a key.
 - **Can't afford it?** Ask for a key and say so. No questions.
 - **Turn it on.** Paste the key under **Licence** in Settings and press **Activate**. The key is checked on
   your PC. Nothing is sent anywhere, and Snipdeck never goes online to check it.
