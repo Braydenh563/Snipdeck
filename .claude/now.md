@@ -177,3 +177,25 @@ v1.1 (owner "sure" 2026-10-21, from competitor review): optional typed-trigger e
 - 2026-10-20 owner: "also docking it to an edge takes up soo much of the screen. I want the option for it to be full height still but I mainly want it to stay the same height but be like the microsoft pc manager toolbar. but u said thats for next version right?" -> Decision: U22 parts 2-3 (compact dock keeps own size + "full edge" setting, along remembered) into v1 via the merge agent; snap-to-edge and fade stay v1.1.
 - 2026-10-20 owner idea: "could there maybe a subtle icon that can chill in the corner of the screen and which is changable in position as well as draggable and unintrusive but that the user can like click to open the panel?? idk is that a good idea?" -> v1.1 candidate (O56 floating launcher, off by default; hides in full-screen apps); v1 covers it with the collapsed compact dock handle + tray + hotkey.
 - 2026-10-20 owner (PC Manager screenshots): "also if it is docked to an edge, the edge facing the rest of the screen and its corners shouls still be adjustable in whight and size with that adjust bar like with the pc manager" -> added to compact dock scope (merge agent): inner edge + corners + ends resizable, grip pill drags along the edge, remembered per monitor/edge.
+
+### Owner V1 test notes, 2026-10-21 (owner upload V1_Test.docx; local copy .claude/inputs/v1-test*, git-ignored)
+Triage (v1 = fix before ship; .0.1 / 1.1 = later):
+- v1 T1 Render glitches on Windows: transparent patches / grey box after opening About, dragging the Panel, opening Edit; hidden parts of a dragged-on-screen Tags window stay transparent (img 2,3,6,7,10). Likely one cause (window resize/redraw with transparency or Mica).
+- v1 T2 Ctrl+Alt+Space stopped showing the Panel mid-session.
+- v1 T3 Hotkey should toggle (press again hides the Panel); Esc / click-away hide is too fiddly ("annoying to access and dismiss").
+- v1 T4 Quick-add footer links too close: read as one sentence (img 4).
+- v1 T5 Child windows (Tags, Edit) open partly off-screen next to a big Main window: clamp to the work area, centre when no room (img 9).
+- v1 T6 Edit window far too tall: collapse "More options" by default, grow on expand, always fit the screen (img 19, 20).
+- v1 T7 Command palette scrollbar covers items (img 13, 14).
+- v1 T8 Two copy buttons on a row (img 16).
+- v1 T9 Pasting a screenshot into a new snippet does nothing, no error shown.
+- v1 T10 Dock: covers a third of the screen, bottom invisible (img 15).
+- v1 T11 OneNote: paste target not recognised, then later recognised (img 17, 18).
+- v1 T12 Visual clash (img 8); combobox keeps its focus border after click-away (img 12).
+- v1 T13 Settings scroll feels laggy.
+- .0.1 Quick add: second "Add and keep open" button.
+- .0.1 Troubleshooter: show "Last checked <date time>", update on re-check.
+- .0.1 Delete backups (img 11).
+- .0.1 Alt+Tab to the Panel (conflicts with the no-activate design; needs a setting).
+- 1.1 Dock as a collapsed edge bar that expands on hover, at the Panel's own size.
+- 1.1 Drag a snippet from the Panel into another app with a drop caret.
