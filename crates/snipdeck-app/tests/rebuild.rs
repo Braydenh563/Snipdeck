@@ -130,7 +130,7 @@ fn a_failure_before_the_swap_leaves_the_original_in_place() {
     assert!(!ctl.rebuild_from_backup(dir.path(), &missing));
 
     assert_eq!(titles(&ctl), before, "nothing changed");
-    assert!(damaged_files(dir.path()).is_empty());
+    assert_eq!(damaged_files(dir.path()), Vec::<String>::new());
     assert!(dir.path().join("snipdeck.db").exists());
     assert!(matches!(
         ctl.view().toast.expect("an error toast").message,
