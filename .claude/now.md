@@ -198,4 +198,5 @@ Triage (v1 = fix before ship; .0.1 / 1.1 = later):
 - .0.1 Delete backups (img 11).
 - .0.1 Alt+Tab to the Panel (conflicts with the no-activate design; needs a setting).
 - 1.1 Dock as a collapsed edge bar that expands on hover, at the Panel's own size.
+- 1.1 Dock to a corner and switch corners quickly (owner, 2026-10-21).
 - 1.1 Drag a snippet from the Panel into another app with a drop caret.
