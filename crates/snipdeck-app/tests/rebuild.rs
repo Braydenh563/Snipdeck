@@ -72,7 +72,10 @@ fn damaged_files(dir: &Path) -> Vec<String> {
         .expect("dir")
         .flatten()
         .filter_map(|e| e.file_name().into_string().ok())
-        .filter(|n| n.starts_with("snipdeck.damaged-") && n.ends_with(".db"))
+        .filter(|n| {
+            n.starts_with("snipdeck.damaged-")
+                && Path::new(n).extension().is_some_and(|e| e == "db")
+        })
         .collect()
 }
 
