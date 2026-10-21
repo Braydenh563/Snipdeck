@@ -1,6 +1,7 @@
 //! Searching, tabs, the board menu, the toggle hotkey and the Picker.
 
 use super::*;
+use crate::controller::BoardMenuEntry;
 
 #[test]
 fn searching_filters_rows_across_lists_and_resets_the_selection() {
@@ -38,7 +39,19 @@ fn picking_a_tab_shows_that_list_and_ends_the_search() {
 fn the_board_menu_lists_boards_and_choosing_one_closes_it() {
     let mut w = world();
     w.ctl.open_board_menu();
-    assert_eq!(w.ctl.view().board_menu, Some(vec!["Work".to_owned()]));
+    assert_eq!(
+        w.ctl.view().board_menu,
+        Some(vec![
+            BoardMenuEntry::Board {
+                name: "Work".to_owned(),
+                current: true,
+            },
+            BoardMenuEntry::Separator,
+            BoardMenuEntry::New,
+            BoardMenuEntry::Rename,
+            BoardMenuEntry::Delete { enabled: false },
+        ])
+    );
     w.ctl.choose_board(0);
     assert_eq!(w.ctl.view().board_menu, None);
     w.ctl.open_board_menu();

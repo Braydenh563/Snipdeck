@@ -251,8 +251,13 @@ fn a_first_run_on_an_empty_library_has_a_board_and_working_controls() {
         click(r.window(), &r.button(&switcher));
         assert_eq!(
             r.ui.get_board_menu_entries().row_count(),
-            1,
-            "the board menu lists the starter board"
+            1 + 1 + 3,
+            "the board menu lists the starter board, a divider and three actions"
+        );
+        let delete = r.ui.get_board_menu_entries().row_data(4).unwrap();
+        assert!(
+            delete.destructive && delete.disabled,
+            "the last board stays"
         );
         click(
             r.window(),
@@ -626,7 +631,16 @@ fn the_board_menu_lists_boards_and_switches() {
         let r = rig();
         r.button("Board: Work").invoke_accessible_default_action();
         assert!(r.ui.get_board_menu_open());
-        assert_eq!(r.ui.get_board_menu_entries().row_count(), 2);
+        let entries = r.ui.get_board_menu_entries();
+        assert_eq!(
+            entries.row_count(),
+            2 + 1 + 3,
+            "boards, a divider, 3 actions"
+        );
+        assert!(entries.row_data(2).unwrap().separator);
+        assert!(!entries.row_data(3).unwrap().separator);
+        let delete = entries.row_data(5).unwrap();
+        assert!(delete.destructive && !delete.disabled);
         r.ui.invoke_focus_search();
         r.ui.invoke_board_menu_activated(1);
         slint::platform::update_timers_and_animations();
