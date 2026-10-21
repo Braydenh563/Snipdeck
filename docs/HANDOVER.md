@@ -49,8 +49,15 @@ motion with no thinking; editing and management live in the Main window.
 ## Fix branches (2026-10-21, Sonnet agents; check their state, they may be partial)
 - `claude/owner-test-ctl`: hotkeys (2), Picker dismissal, toggle, child-window clamping, screenshot-paste
   message, Reset-position bug, render-glitch and OneNote investigation.
-- `claude/owner-test-ui`: quick-add spacing, Edit height, palette scrollbar, two copy buttons, combobox focus,
-  shortcuts button, shorter ⋯ menu, shortcuts search, Ctrl+Shift+P pin.
+- `claude/owner-test-ui` (WIP ab6b277, NOT merged, never built to a result): items 1-5 coded: quick-add
+  Text/Link/Template segmented control spaced with dividers; Editor `fit-height` sized on open and on More options
+  (test `the_editor_wants_a_shorter_window_with_more_options_closed_and_never_past_700`, not run); palette list
+  reserves the scrollbar strip; row hides the Copy icon when the use label is "Copy" (`use-copies`; Main's "Use"
+  label case not covered); empty state hidden while quick-add is open (image8); Settings click-away clears focus
+  (ComboBox ring unmeasured). 30 goldens regenerated but not reviewed. Next: build, run tests, LOOK at the goldens,
+  gate, clippy 1.99.1, review, merge. Not started: Panel shortcuts button (current bindings), shorter ⋯ menu
+  (Help/View submenus or capped height), search box in the shortcuts list, Ctrl+Shift+P for the keep-open pin.
+  Details: `.claude/remaining/owner-test-ui.md` on that branch.
 - `claude/o47-abc-wip`: unbuilt paste/drop-to-create and Ctrl+C on items (v1.0.1). Keep.
 
 ## v1.0.1 (from `.claude/now.md`)
