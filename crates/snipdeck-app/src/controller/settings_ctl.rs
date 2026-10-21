@@ -427,6 +427,119 @@ where
         worked
     }
 
+    /// "Rebuild from backup…": sets the damaged database aside as `snipdeck.damaged-<stamp>.db`
+    /// (with its `-wal` and `-shm`), opens a fresh one, restores `backup_file` into it and then
+    /// merges what the old database could still be read for. Nothing is deleted. Any failure
+    /// puts the original back and changes nothing. Returns whether it worked.
+    pub fn rebuild_from_backup(&mut self, data_dir: &Path, backup_file: &Path) -> bool {
+        if self.copy_blocked_by_lock() {
+            return false;
+        }
+        let failed = |ctl: &mut Self| {
+            ctl.show_toast(danger(ToastMessage::RestoreFailed(Cause::Other)));
+            false
+        };
+        // The key ring lives in the file being set aside; a fresh database would not hold it.
+        if matches!(self.store.key_ring_exists(), Ok(true)) {
+            return failed(self);
+        }
+        // The backup must be readable before anything is touched.
+        if self.preview_restore(backup_file).is_err() {
+            return failed(self);
+        }
+        // Best effort: what the damaged database can still give up, as a temporary archive.
+        let now = self.clock.now();
+        let salvage = data_dir.join("snipdeck.salvage.snipdeck");
+        let salvaged = export_to_path(&self.store, now, &self.backup_options(), &salvage).is_ok();
+        let outcome = self.swap_in_rebuilt(data_dir, backup_file, salvaged.then_some(&salvage));
+        let _ = fs::remove_file(&salvage);
+        match outcome {
+            Some((restored, recovered)) => {
+                self.history = crate::history::History::new();
+                self.library_changed();
+                self.show_toast(Toast {
+                    kind: ToastKind::Success,
+                    message: ToastMessage::DatabaseRebuilt {
+                        restored,
+                        recovered,
+                    },
+                });
+                true
+            }
+            None => failed(self),
+        }
+    }
+
+    /// The swap itself: `Some((restored, recovered))` once the fresh database holds the backup,
+    /// `None` with the original database back in place and open when any step failed.
+    fn swap_in_rebuilt(
+        &mut self,
+        data_dir: &Path,
+        backup_file: &Path,
+        salvage: Option<&Path>,
+    ) -> Option<(usize, usize)> {
+        let stamp = self
+            .clock
+            .now()
+            .to_zoned(TimeZone::system())
+            .strftime("%Y%m%d-%H%M");
+        let damaged = (0..100)
+            .map(|n| {
+                if n == 0 {
+                    format!("snipdeck.damaged-{stamp}")
+                } else {
+                    format!("snipdeck.damaged-{stamp}-{n}")
+                }
+            })
+            .find(|stem| !data_dir.join(format!("{stem}.db")).exists())?;
+        // Close the store (its lock and connection) by putting a throwaway one in its place.
+        let placeholder = Store::open_in_memory().ok()?;
+        drop(std::mem::replace(&mut self.store, placeholder));
+        let moved = move_db_files(data_dir, "snipdeck.db", &format!("{damaged}.db"));
+        if !moved {
+            self.reopen_original(data_dir);
+            return None;
+        }
+        let rebuilt = Store::open(data_dir).ok().and_then(|fresh| {
+            self.store = fresh;
+            self.import_report(
+                &ImportSource::Snipdeck(backup_file.to_path_buf()),
+                BoardLayout::KeepBoards,
+                false,
+            )
+            .ok()
+        });
+        let Some(report) = rebuilt else {
+            // Back out: drop the fresh database and put the original back.
+            if let Ok(throwaway) = Store::open_in_memory() {
+                drop(std::mem::replace(&mut self.store, throwaway));
+            }
+            for suffix in ["", "-wal", "-shm"] {
+                let _ = fs::remove_file(data_dir.join(format!("snipdeck.db{suffix}")));
+            }
+            move_db_files(data_dir, &format!("{damaged}.db"), "snipdeck.db");
+            self.reopen_original(data_dir);
+            return None;
+        };
+        let recovered = salvage
+            .and_then(|file| {
+                self.import_report(
+                    &ImportSource::Snipdeck(file.to_path_buf()),
+                    BoardLayout::KeepBoards,
+                    false,
+                )
+                .ok()
+            })
+            .map_or(0, |r| r.items_added);
+        Some((report.items_added, recovered))
+    }
+
+    fn reopen_original(&mut self, data_dir: &Path) {
+        if let Ok(original) = Store::open(data_dir) {
+            self.store = original;
+        }
+    }
+
     /// The importer options every Settings import uses: duplicates are skipped, a `.snipdeck`
     /// lands as `layout` says (one new board for an import, its own boards for a restore), encrypted items open with the library's own key, and a Free library
     /// stays within its board limit.
@@ -629,4 +742,27 @@ where
         });
         erased
     }
+}
+
+/// Renames `from` and its `-wal` and `-shm` in `dir` to `to` (and the same suffixes). All or
+/// nothing: on a failure what was moved is moved back and `false` is returned.
+fn move_db_files(dir: &Path, from: &str, to: &str) -> bool {
+    let mut done: Vec<&str> = Vec::new();
+    for suffix in ["", "-wal", "-shm"] {
+        let source = dir.join(format!("{from}{suffix}"));
+        if !source.exists() {
+            continue;
+        }
+        if fs::rename(&source, dir.join(format!("{to}{suffix}"))).is_err() {
+            for undo in done {
+                let _ = fs::rename(
+                    dir.join(format!("{to}{undo}")),
+                    dir.join(format!("{from}{undo}")),
+                );
+            }
+            return false;
+        }
+        done.push(suffix);
+    }
+    true
 }

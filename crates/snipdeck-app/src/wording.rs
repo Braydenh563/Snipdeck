@@ -208,6 +208,10 @@ where
         ToastMessage::TrashPurgeFailed => t.invoke_trash_purge_failed(),
         ToastMessage::BackupRestored { items } => t.invoke_backup_restored(count(*items)),
         ToastMessage::RestoreFailed(cause) => t.invoke_restore_failed(cause.code()),
+        ToastMessage::DatabaseRebuilt {
+            restored,
+            recovered,
+        } => t.invoke_database_rebuilt(count(*restored), count(*recovered)),
         ToastMessage::Imported { items } => t.invoke_imported(count(*items)),
         ToastMessage::ImportFailed(cause) => t.invoke_import_failed(cause.code()),
         ToastMessage::Exported { file } => t.invoke_exported(file.into()),

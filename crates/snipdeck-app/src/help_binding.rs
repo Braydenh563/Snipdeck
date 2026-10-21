@@ -419,8 +419,59 @@ where
             }
             Some(Fix::OpenSettings) => crate::settings_binding::request_open(),
             Some(Fix::OpenLogsFolder) => self.open_logs_folder(),
+            Some(Fix::OpenDataFolder) => {
+                if let Some(dir) = self.data_dir.clone() {
+                    self.open_folder(&dir);
+                }
+            }
+            Some(Fix::RebuildFromBackup) => self.ask_rebuild(),
             None => {}
         }
+        redraw_all();
+    }
+
+    /// Opens the rebuild confirmation, naming the newest backup (date, items, boards).
+    fn ask_rebuild(self: &Rc<Self>) {
+        let (Some(dir), Some(window)) = (self.data_dir.clone(), self.window.upgrade()) else {
+            return;
+        };
+        let newest = backup::list_backups(&dir)
+            .ok()
+            .and_then(|found| found.into_iter().next());
+        let preview = newest.as_ref().and_then(|file| {
+            self.controller
+                .borrow_mut()
+                .preview_restore(&file.path)
+                .ok()
+                .map(|p| (file.date.to_string(), p))
+        });
+        let Some((date, preview)) = preview else {
+            self.danger_toast(ToastMessage::RestoreFailed(crate::failure::Cause::Other));
+            return;
+        };
+        window.set_rebuild_date(date.into());
+        window.set_rebuild_items(i32::try_from(preview.items).unwrap_or(i32::MAX));
+        window.set_rebuild_boards(i32::try_from(preview.boards).unwrap_or(i32::MAX));
+        window.set_rebuild_open(true);
+    }
+
+    fn rebuild(self: &Rc<Self>) {
+        if let Some(window) = self.window.upgrade() {
+            window.set_rebuild_open(false);
+        }
+        let Some(dir) = self.data_dir.clone() else {
+            return;
+        };
+        let Some(file) = backup::list_backups(&dir)
+            .ok()
+            .and_then(|found| found.into_iter().next())
+        else {
+            return;
+        };
+        self.controller
+            .borrow_mut()
+            .rebuild_from_backup(&dir, &file.path);
+        self.run_checks();
         redraw_all();
     }
 
@@ -514,6 +565,12 @@ where
             redraw_all();
         });
         wire!(on_fix_requested, |core, fix| core.fix(fix));
+        wire!(on_rebuild_confirmed, |core| core.rebuild());
+        wire!(on_rebuild_dismissed, |core| {
+            if let Some(window) = core.window.upgrade() {
+                window.set_rebuild_open(false);
+            }
+        });
         wire!(on_open_data_folder_requested, |core| {
             if let Some(dir) = core.data_dir.clone() {
                 core.open_folder(&dir);

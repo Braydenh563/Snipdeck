@@ -550,6 +550,9 @@ msgstr "毎日のバックアップ、シンプルな zip エクスポート、�
 msgid "Dark"
 msgstr "ダーク"
 
+msgid "Database rebuilt: {} items restored, {} recovered."
+msgstr ""
+
 msgid "Date and time in a format you choose"
 msgstr "任意の形式の日付と時刻"
 
@@ -1548,6 +1551,15 @@ msgstr "クリップボードをクイックキャプチャ"
 msgid "Quit"
 msgstr "終了"
 
+msgid "Rebuild"
+msgstr ""
+
+msgid "Rebuild from backup…"
+msgstr ""
+
+msgid "Rebuild from the newest backup?"
+msgstr ""
+
 msgid "Recent"
 msgstr "最近"
 
@@ -2068,6 +2080,9 @@ msgstr "リストとその{}件のスニペットはゴミ箱に移動します�
 
 msgid "The list holds at most {} programs."
 msgstr "リストには最大 {} 個のプログラムを登録できます。"
+
+msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
+msgstr ""
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "この数を超えると、古いものから削除されます。"

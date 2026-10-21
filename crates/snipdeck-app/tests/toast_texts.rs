@@ -99,10 +99,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::ScreenshotFailed => 70,
         ToastMessage::Undone { .. } => 71,
         ToastMessage::Redone { .. } => 72,
+        ToastMessage::DatabaseRebuilt { .. } => 73,
     }
 }
 
-const VARIANTS: usize = 73;
+const VARIANTS: usize = 74;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -172,6 +173,10 @@ fn samples() -> Vec<ToastMessage> {
         M::BackupFailed(Cause::Other),
         M::BackupRestored { items: 5 },
         M::RestoreFailed(Cause::NotArchive),
+        M::DatabaseRebuilt {
+            restored: 5,
+            recovered: 2,
+        },
         M::Imported { items: 5 },
         M::ImportFailed(Cause::TooNew),
         M::Exported {

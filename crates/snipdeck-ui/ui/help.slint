@@ -10,6 +10,7 @@ import { Icons } from "icons.slint";
 import { Icon } from "components/icon.slint";
 import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
 import { Toast, ToastKind, ToastPhase } from "components/feedback.slint";
+import { Dialog, DialogVariant } from "components/dialog.slint";
 import { FormScroll, FormSection, SettingRow, Segmented } from "components/form.slint";
 import { ShortcutsSheet } from "components/shortcuts-sheet.slint";
 
@@ -64,6 +65,13 @@ export component HelpWindow inherits Window {
 
     callback check-again-requested();
     callback fix-requested(fix: int);
+    // "Rebuild from backup…": the host opens the confirmation with the newest backup's facts and acts on the answer.
+    in property <bool> rebuild-open: false;
+    in property <string> rebuild-date;
+    in property <int> rebuild-items;
+    in property <int> rebuild-boards;
+    callback rebuild-confirmed();
+    callback rebuild-dismissed();
     callback open-data-folder-requested();
     callback open-logs-folder-requested();
     callback copy-report-requested();
@@ -88,7 +96,8 @@ export component HelpWindow inherits Window {
         return status == 0 ? Theme.success-fg : (status == 1 ? Theme.warning-fg : Theme.danger-fg);
     }
     pure function fix-text(fix: int) -> string {
-        return fix == 1 ? @tr("Back up now") : (fix == 2 ? @tr("Open Settings") : @tr("Open logs folder"));
+        return fix == 1 ? @tr("Back up now") : (fix == 2 ? @tr("Open Settings")
+            : (fix == 4 ? @tr("Rebuild from backup…") : (fix == 5 ? @tr("Open data folder") : @tr("Open logs folder"))));
     }
 
     // The window opens with the focus on its key scope, so Esc closes it before any Tab.
@@ -369,6 +378,22 @@ export component HelpWindow inherits Window {
                     }
                 }
             }
+        }
+    }
+
+    Dialog {
+        open: root.rebuild-open;
+        title: @tr("Rebuild from the newest backup?");
+        body: @tr("The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read.", root.rebuild-date, root.rebuild-items, root.rebuild-boards);
+        dismissed => { root.rebuild-dismissed(); }
+        Button {
+            text: @tr("Cancel");
+            clicked => { root.rebuild-dismissed(); }
+        }
+        Button {
+            variant: ButtonVariant.primary;
+            text: @tr("Rebuild");
+            clicked => { root.rebuild-confirmed(); }
         }
     }
 

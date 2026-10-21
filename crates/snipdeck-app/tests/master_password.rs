@@ -1156,3 +1156,28 @@ fn while_locked_recent_is_hidden_and_collects_nothing_until_unlocked() {
     );
     assert!(!r.ctl.view().recent.expect("on").locked);
 }
+
+#[test]
+fn rebuilding_from_a_backup_refuses_while_the_library_is_locked() {
+    let mut r = with_password(Tier::Pro);
+    assert!(r.ctl.backup_now(r.data.path()));
+    let backup = snipdeck_portable::backup::list_backups(r.data.path())
+        .expect("list")
+        .first()
+        .expect("a backup")
+        .path
+        .clone();
+    r.ctl.lock_now();
+    assert!(!r.ctl.rebuild_from_backup(r.data.path(), &backup));
+    assert!(r.ctl.library_locked());
+    assert!(r.data.path().join("snipdeck.db").exists());
+    let damaged = std::fs::read_dir(r.data.path())
+        .expect("dir")
+        .flatten()
+        .any(|e| {
+            e.file_name()
+                .to_string_lossy()
+                .starts_with("snipdeck.damaged-")
+        });
+    assert!(!damaged, "nothing was set aside");
+}

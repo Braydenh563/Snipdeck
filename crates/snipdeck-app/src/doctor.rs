@@ -63,6 +63,10 @@ pub enum Fix {
     OpenSettings,
     /// Opens the folder with the crash reports.
     OpenLogsFolder,
+    /// Sets the damaged database aside and restores the newest backup (after a confirmation).
+    RebuildFromBackup,
+    /// Opens the data folder.
+    OpenDataFolder,
 }
 
 impl Fix {
@@ -73,6 +77,8 @@ impl Fix {
             Self::BackUpNow => 1,
             Self::OpenSettings => 2,
             Self::OpenLogsFolder => 3,
+            Self::RebuildFromBackup => 4,
+            Self::OpenDataFolder => 5,
         }
     }
 
@@ -83,6 +89,8 @@ impl Fix {
             1 => Some(Self::BackUpNow),
             2 => Some(Self::OpenSettings),
             3 => Some(Self::OpenLogsFolder),
+            4 => Some(Self::RebuildFromBackup),
+            5 => Some(Self::OpenDataFolder),
             _ => None,
         }
     }
@@ -194,7 +202,7 @@ fn data_folder(host: &dyn DoctorHost) -> Check {
             label,
             Status::Fail,
             format!("Snipdeck cannot write to its data folder: {e}"),
-            None,
+            Some(Fix::OpenDataFolder),
         );
     }
     match host.free_bytes() {
@@ -205,7 +213,7 @@ fn data_folder(host: &dyn DoctorHost) -> Check {
                 "Writable, but only {} MB are free on its drive.",
                 free / (1024 * 1024)
             ),
-            None,
+            Some(Fix::OpenDataFolder),
         ),
         _ => check(label, Status::Ok, "Writable, with room to spare.", None),
     }
@@ -213,12 +221,18 @@ fn data_folder(host: &dyn DoctorHost) -> Check {
 
 fn database(host: &dyn DoctorHost) -> Check {
     let label = LABELS[1];
+    // A damaged database can be rebuilt from the newest backup; with none, the folder is the way out.
+    let fix = if host.backup_dates().is_ok_and(|dates| !dates.is_empty()) {
+        Fix::RebuildFromBackup
+    } else {
+        Fix::OpenDataFolder
+    };
     match host.integrity() {
         Err(e) => check(
             label,
             Status::Fail,
             format!("The integrity check could not run: {e}"),
-            None,
+            Some(fix),
         ),
         Ok(problems) if problems.is_empty() => check(
             label,
@@ -234,7 +248,7 @@ fn database(host: &dyn DoctorHost) -> Check {
                 problems.len(),
                 problems[0]
             ),
-            None,
+            Some(fix),
         ),
     }
 }
@@ -561,6 +575,47 @@ mod tests {
     }
 
     #[test]
+    fn a_damaged_database_offers_a_rebuild_with_a_backup_and_the_folder_without() {
+        let damaged = |backups| {
+            only(
+                &Fake {
+                    integrity: Ok(vec!["row 3 missing".into()]),
+                    backups,
+                    ..Fake::default()
+                },
+                "Database",
+            )
+        };
+        assert_eq!(
+            damaged(Ok(vec![Date::constant(2026, 10, 18)])).fix,
+            Some(Fix::RebuildFromBackup)
+        );
+        assert_eq!(damaged(Ok(Vec::new())).fix, Some(Fix::OpenDataFolder));
+        assert_eq!(damaged(Err("x".into())).fix, Some(Fix::OpenDataFolder));
+        assert_eq!(only(&Fake::default(), "Database").fix, None);
+    }
+
+    #[test]
+    fn data_folder_problems_offer_the_folder() {
+        let fail = only(
+            &Fake {
+                writable: Err("read-only".into()),
+                ..Fake::default()
+            },
+            "Data folder",
+        );
+        assert_eq!(fail.fix, Some(Fix::OpenDataFolder));
+        let low = only(
+            &Fake {
+                free: Some(50 * 1024 * 1024),
+                ..Fake::default()
+            },
+            "Data folder",
+        );
+        assert_eq!(low.fix, Some(Fix::OpenDataFolder));
+    }
+
+    #[test]
     fn backups_warn_when_missing_or_stale_and_offer_a_backup() {
         let none = only(
             &Fake {
@@ -703,7 +758,13 @@ mod tests {
 
     #[test]
     fn fix_codes_round_trip() {
-        for fix in [Fix::BackUpNow, Fix::OpenSettings, Fix::OpenLogsFolder] {
+        for fix in [
+            Fix::BackUpNow,
+            Fix::OpenSettings,
+            Fix::OpenLogsFolder,
+            Fix::RebuildFromBackup,
+            Fix::OpenDataFolder,
+        ] {
             assert_eq!(Fix::from_code(fix.code()), Some(fix));
         }
         assert_eq!(Fix::from_code(0), None);

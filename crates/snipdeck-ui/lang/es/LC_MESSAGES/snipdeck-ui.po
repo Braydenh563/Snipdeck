@@ -550,6 +550,9 @@ msgstr "Copias de seguridad diarias, exportación zip sencilla y el tema que eli
 msgid "Dark"
 msgstr "Oscuro"
 
+msgid "Database rebuilt: {} items restored, {} recovered."
+msgstr ""
+
 msgid "Date and time in a format you choose"
 msgstr "Fecha y hora en el formato que elijas"
 
@@ -1553,6 +1556,15 @@ msgstr "Captura rápida del portapapeles"
 msgid "Quit"
 msgstr "Salir"
 
+msgid "Rebuild"
+msgstr ""
+
+msgid "Rebuild from backup…"
+msgstr ""
+
+msgid "Rebuild from the newest backup?"
+msgstr ""
+
 msgid "Recent"
 msgstr "Recientes"
 
@@ -2075,6 +2087,9 @@ msgstr "La lista y sus {} fragmentos se mueven a la papelera. Puedes restaurarlo
 
 msgid "The list holds at most {} programs."
 msgstr "La lista admite como máximo {} programas."
+
+msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
+msgstr ""
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "Las más antiguas se eliminan cuando hay más que este número."

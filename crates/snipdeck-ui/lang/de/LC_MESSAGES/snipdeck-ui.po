@@ -550,6 +550,9 @@ msgstr "Tägliche Sicherungen, ein einfacher ZIP-Export und die Wahl des Designs
 msgid "Dark"
 msgstr "Dunkel"
 
+msgid "Database rebuilt: {} items restored, {} recovered."
+msgstr ""
+
 msgid "Date and time in a format you choose"
 msgstr "Datum und Uhrzeit in einem Format deiner Wahl"
 
@@ -1553,6 +1556,15 @@ msgstr "Zwischenablage schnell erfassen"
 msgid "Quit"
 msgstr "Beenden"
 
+msgid "Rebuild"
+msgstr ""
+
+msgid "Rebuild from backup…"
+msgstr ""
+
+msgid "Rebuild from the newest backup?"
+msgstr ""
+
 msgid "Recent"
 msgstr "Zuletzt verwendet"
 
@@ -2075,6 +2087,9 @@ msgstr "Die Liste und ihre {} Textbausteine werden in den Papierkorb verschoben.
 
 msgid "The list holds at most {} programs."
 msgstr "Die Liste enthält höchstens {} Programme."
+
+msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
+msgstr ""
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "Die ältesten werden gelöscht, sobald es mehr als diese Anzahl gibt."

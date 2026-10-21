@@ -211,6 +211,13 @@ pub enum ToastMessage {
     },
     /// "Couldn't restore that backup: ..."
     RestoreFailed(Cause),
+    /// "Database rebuilt: 5 items restored, 2 recovered."
+    DatabaseRebuilt {
+        /// Items the backup brought back.
+        restored: usize,
+        /// Items read out of the damaged database that the backup did not hold.
+        recovered: usize,
+    },
     /// "Imported 5 items".
     Imported {
         /// Items added.

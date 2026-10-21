@@ -220,6 +220,9 @@ export global ToastTexts {
     pure public function backup-restored(items: int) -> string {
         return items == 0 ? @tr("Nothing to restore: your library already has everything in that backup.") : @tr("Restored {} item from the backup" | "Restored {} items from the backup" % items, items);
     }
+    pure public function database-rebuilt(restored: int, recovered: int) -> string {
+        return @tr("Database rebuilt: {} items restored, {} recovered.", restored, recovered);
+    }
     pure public function restore-failed(cause: int) -> string {
         if (cause == 1) {
             return @tr("Couldn't restore that backup: the disk is full. Free up some space, then try again.");

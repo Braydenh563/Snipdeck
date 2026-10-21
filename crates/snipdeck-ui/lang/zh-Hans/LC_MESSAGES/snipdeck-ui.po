@@ -550,6 +550,9 @@ msgstr "每日备份、普通 zip 导出，以及你选择的主题。"
 msgid "Dark"
 msgstr "深色"
 
+msgid "Database rebuilt: {} items restored, {} recovered."
+msgstr ""
+
 msgid "Date and time in a format you choose"
 msgstr "以你选择的格式显示日期和时间"
 
@@ -1548,6 +1551,15 @@ msgstr "快速捕获剪贴板"
 msgid "Quit"
 msgstr "退出"
 
+msgid "Rebuild"
+msgstr ""
+
+msgid "Rebuild from backup…"
+msgstr ""
+
+msgid "Rebuild from the newest backup?"
+msgstr ""
+
 msgid "Recent"
 msgstr "最近"
 
@@ -2068,6 +2080,9 @@ msgstr "该列表及其中的 {} 个片段将移至回收站。你可以在 {} �
 
 msgid "The list holds at most {} programs."
 msgstr "列表最多可包含 {} 个程序。"
+
+msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
+msgstr ""
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "超过此数量后，最旧的备份会被删除。"
