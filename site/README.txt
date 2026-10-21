@@ -1,6 +1,6 @@
 Snipdeck project site (static, no build step, no JavaScript, no external requests)
 
-Publish: GitHub Pages, deploy from the site/ folder. Preview: cd site && python3 -m http.server
+Publish: GitHub Pages, through a Pages workflow that uploads site/ as the artifact (Pages itself only serves / or /docs). Preview: cd site && python3 -m http.server
 
 The Supporter address is in 2 mailto links in index.html; keep it the same as SUPPORTER_EMAIL in crates/snipdeck-app/src/settings_binding.rs.
 Free vs Supporter table: one <tr> per feature in #compare. Check it against crates/snipdeck-core/src/entitlements.rs.

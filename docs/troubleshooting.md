@@ -104,6 +104,10 @@ and a backtrace. It never holds your snippets, and nothing is sent anywhere. You
 **"Snipdeck found a problem in your library".** A weekly check found something wrong. Export a copy first
 (Settings, **Your data**, **Export library**), then restore from a backup if items are missing.
 
+**The database is damaged.** In Help, **Troubleshoot** shows a failed library check with **Rebuild from backup…**.
+It sets the old database file aside (it stays in the data folder) and recovers the items it can read. Run
+`app\snipdeck.exe --check-db` first if you want to see the result without changing anything.
+
 **Restore a backup.** In Settings, **Backups**, press **Restore** next to a date. This adds back what is
 missing and never removes anything, so it is safe. Snipdeck keeps the newest 7 daily backups in the
 `backups` folder of the data folder.

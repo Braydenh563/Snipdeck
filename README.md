@@ -22,8 +22,8 @@
 ---
 
 > [!NOTE]
-> Snipdeck 1.0 is not released yet. It is tested on Linux, and its Windows behaviour has had limited checks on
-> a real PC, so expect rough edges.
+> Snipdeck 1.0.0 is released. It is not code-signed, so Windows SmartScreen asks you to confirm the first
+> start (More info, then Run anyway).
 
 ## What it is
 
@@ -35,12 +35,15 @@ You arrange the deck yourself: boards hold lists, lists hold items. It is not a 
 
 ## Install
 
-1. Download `snipdeck-<version>-windows-x64.zip` from [Releases](https://github.com/Braydenh563/Snipdeck/releases/latest)
+1. Download `snipdeck-v<version>-windows-x64.zip` from [Releases](https://github.com/Braydenh563/Snipdeck/releases/latest)
    and unzip it.
 2. Double-click `Snipdeck.bat`.
 
 The first start downloads the app once and checks it. After that Snipdeck starts straight away, offline. You
 do not need Rust, Visual Studio or git.
+
+The download is not code-signed. If Windows says it protected your PC, choose More info, then Run anyway.
+Check the download against the `.sha256` file on the release page.
 
 You need Windows 10 (1903 or newer) or Windows 11, 64-bit.
 
@@ -177,7 +180,7 @@ Icons and fonts are packaged with the app. Your library stays on your PC in `%LO
 
 - The library, large content, settings, backups and crash logs are all in that one folder.
 - Crash logs are never sent anywhere and do not quote your snippets.
-- The Recent inbox is off until you turn it on. Its entries stay on this PC and are not encrypted.
+- The Recent inbox is off until you turn it on. Its entries stay on this PC and are encrypted on disk like Sensitive items. Backups and exports leave it out.
 - **Export:** Settings, Your data, Export library saves one `.snipdeck` file (a zip with JSON).
 - **Remove everything:** quit Snipdeck, then delete the folder.
 
@@ -191,6 +194,22 @@ Supporter is pay what you want, from A$5 (suggested A$8), one time, with every 1
 boards, templates that ask for values, a master password for your encrypted items and paste next, and it
 supports the project. Encryption on disk is free for everyone. If you cannot afford it, ask for a key. Enter a key under **Licence** in Settings. Nothing nags you.
 See [`docs/licensing.md`](docs/licensing.md).
+
+## Coming next
+
+Snipdeck is built in the open and these are planned, in no promised order.
+
+- A compact dock, so the Panel can sit as a slim bar with drag grips.
+- Drag the sidebar wider or narrower, and drag several rows at once.
+- Select-and-delete from the Main window header, and paste or drop text to create an item.
+- Groups inside a list.
+- Optional typed shortcuts that expand into a snippet (off by default, and never in programs on your no-paste list).
+- More placeholders such as `{uuid}` and date maths like `{date+7d}`, plus paste transforms (plain text, change
+  case, trim).
+- Import from TextExpander, Espanso, PhraseExpress and Beeftext.
+- Windows Hello quick unlock, and a colour picker with an eyedropper.
+
+Have an idea? Open an issue.
 
 ## Help and contributing
 

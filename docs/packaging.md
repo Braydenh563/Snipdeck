@@ -21,7 +21,7 @@ The manifest template and the logo script are in [`packaging/msix/`](../packagin
 | What | Value |
 |---|---|
 | Executable | `target\release\snipdeck-app.exe`, shipped as `snipdeck.exe` (the workflow renames it) |
-| Version | `0.1.0` in `Cargo.toml`. MSIX needs four parts: `0.1.0.0` |
+| Version | `1.0.0` in `Cargo.toml`. MSIX needs four parts: `1.0.0.0` |
 | Icon sources | `assets/logo/snipdeck-icon.svg` (vector), `assets/logo/snipdeck.ico` (embedded in the exe) |
 | Start with Windows | Settings toggle, runs `snipdeck.exe --hidden` (`settings_binding.rs`) |
 | Licence | GPL-3.0-only, repository `https://github.com/Braydenh563/Snipdeck` |
@@ -32,7 +32,7 @@ The manifest template and the logo script are in [`packaging/msix/`](../packagin
 |---|---|---|
 | `Identity Name` | the name Partner Center reserves, for example `YourPublisher.Snipdeck` | Copy it from Partner Center (Product identity). Do not invent it. |
 | `Identity Publisher` | `CN=...` from Partner Center | Must match exactly. For a sideload test build, use the subject of your test certificate. |
-| `Identity Version` | `0.1.0.0` | Raise it for every upload. The last part is reserved for the Store: keep it `0`. |
+| `Identity Version` | `1.0.0.0` | Raise it for every upload. The last part is reserved for the Store: keep it `0`. |
 | `Identity ProcessorArchitecture` | `x64` | The only target built today. |
 | `Properties DisplayName` | `Snipdeck` | |
 | `Properties PublisherDisplayName` | your Partner Center publisher name | |

@@ -128,9 +128,10 @@ marks before you start. On the Free plan, Start stack tells you it is a Supporte
 Use the Main window. The sidebar lists **All items**, **Pinned**, your lists, your tags and the **Trash**. The
 toolbar searches (`Ctrl+F` or `/`) and switches between the compact, comfortable and tile views.
 
-- **Boards.** Open the board name at the top of the sidebar or the Panel. The menu lists your boards and can
-  create, rename, move up or down, and delete a board. Deleting a board moves its lists and items to the
-  Trash.
+- **Boards.** Open the board name at the top of the sidebar or the Panel. The menu lists your boards. In the
+  Panel it has **New board**, **Rename board** and **Delete board** for the board you are on, so you can manage
+  boards without opening the Main window. The Main window can also move a board up or down. Deleting a board
+  moves its lists and items to the Trash, and **Undo** brings it back. The Free plan stops at 5 boards.
 - **Lists.** Add a list with **Add list** in the sidebar, or the **+** tab in the Panel. **Edit list** sets the name, a colour and the sort: manual, most
   used or recently used. Move a list with `Alt+Up` or `Alt+Down` while it is selected in the sidebar.
 - **Order of items.** Select a row and press `Alt+Up` or `Alt+Down`, in the Main window or the Panel, or choose **Move up** / **Move down** in the snippet's menu.
@@ -206,7 +207,18 @@ The Recent inbox keeps the text you copy in other programs, so you can find it a
 ## Help and the welcome tour
 
 Press `F1` or open **Help** in the Main window to see the Help window. **Troubleshoot** is a checklist that finds
-common problems, and **About** shows the version. The welcome tour runs on the first start. To see it again,
+common problems, and **About** shows the version. A row that finds a problem has a button that fixes it or
+shows you where:
+
+- **Back up now** makes a backup at once (for a missing or old backup).
+- **Open Settings** opens Settings at the page that holds the setting (for example a hotkey Windows refused).
+- **Open logs folder** opens the folder with the crash reports.
+- **Rebuild from backup…** appears when the database is damaged. After you confirm, Snipdeck sets the old file
+  aside (it is kept, not deleted) and recovers the items it can read into a new one. Check your items
+  afterwards.
+- **Open data folder** opens `%LOCALAPPDATA%\Snipdeck` in Explorer.
+
+The welcome tour runs on the first start. To see it again,
 use **Show the welcome tour again** in Help or the link in About.
 
 When the Panel hides for the first time, a message tells you Snipdeck is still running and how to bring it

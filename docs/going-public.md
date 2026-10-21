@@ -61,7 +61,7 @@ Owner checklist for making the Snipdeck repository public. Do it in this order. 
 - [ ] Gate passes: `scripts/gate.sh --full`, `cargo deny check`, and the Windows job is green.
 - [ ] The owner has run the Windows checks listed in `docs/HANDOVER.md` and `tools/windows-test/`. Unverified
       behaviour stays marked "unverified" until then.
-- [ ] Move the `[Unreleased] (1.0.0)` changelog heading to `[1.0.0] - date`. Bump every version site.
+- [x] The changelog heading is `[1.0.0] - 2026-10-21`. Bump every version site (release.yml refuses a mismatch with Cargo.toml).
 - [ ] Tag `v1.0.0` on a merged commit of `main`. The Windows build workflow makes the release zip with its
       SHA-256 and attaches it to the GitHub Release.
 - [ ] Download the zip from the release page, check the SHA-256, and run it on a clean Windows PC.

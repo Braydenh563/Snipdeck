@@ -1,3 +1,31 @@
+# State: 1.0.0 ready to ship (2026-10-21)
+
+Docs, README, CHANGELOG `[1.0.0] - 2026-10-21` and the site are updated for the first release. The release branch
+`claude/compassionate-pascal-pod8ux` is PR #5. Everything below this section is history.
+
+## Next steps (the owner's)
+1. Merge PR #5 (never merged by an agent).
+2. Run `release.yml` with version `1.0.0` (it refuses a version that differs from `Cargo.toml`). It makes
+   `snipdeck-v1.0.0-windows-x64.zip` and its `.sha256`.
+3. Windows test: `Test Snipdeck on Windows.bat` (see `tools/windows-test/`). Behaviour stays "unverified" until then.
+4. Add the release SHA-256 to `tools/launcher/release-sha256.txt` if the launcher needs it.
+5. Make the repository public (`docs/going-public.md`).
+6. Add the Pages workflow for `site/` (Pages only serves `/` or `/docs`, so it needs a workflow).
+
+## v1.0.1 (from `.claude/now.md`)
+Compact dock and dock grips (U22/O28), sidebar resize (O54), header select and delete (O49/O50), paste or drop
+to create an item and Ctrl+C (O47 a-c), Main quick-add, multi-row drag, toast Edit button, UX-C (O30/O26/O31),
+U9, A25. Search-box suggestion dropdown in Picker, Panel and Main.
+
+## v1.1
+Optional typed-trigger expansion (off by default; honours Sensitive and the never-paste list), placeholders
+`{uuid}` and date maths, paste transforms, importers (TextExpander, Espanso, PhraseExpress, Beeftext), richer
+fill-ins, system-wide suggest-as-you-type at the caret (opt-in), groups inside a list (O46), tips window, rich
+paste, multi-panel, O56 launcher, Windows Hello unlock, colour picker with eyedropper. Later: local AI paste
+action (opt-in), folder sync, per-app rules, share a board, CLI get/paste.
+
+---
+
 # Now (2026-10-19 13:15, away mode on, stop at 80% weekly usage)
 Goal: ship v1 (`docs/V1-PLAN.md` "V1 ship list" is the queue; `.claude/work-order.md` continue mode; decisions in `.claude/now.md`). Branch `claude/compassionate-pascal-pod8ux`, PR #5 (never merge). Repo public: CI (3-5 min) is the main test runner; local cargo only targeted, `/tmp/target-main`, at most two cargo users (4 cores).
 
