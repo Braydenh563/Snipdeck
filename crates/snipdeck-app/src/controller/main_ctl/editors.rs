@@ -93,6 +93,42 @@ where
         self.open_editor(EditorTarget::List(list.id), view);
     }
 
+    /// The Panel's "New board…": the same editor as the Main window's.
+    pub(in super::super) fn panel_new_board(&mut self) {
+        self.main_fresh();
+        self.new_board();
+    }
+
+    /// The Panel's "Rename board…": the board editor for the board the Panel shows.
+    pub(in super::super) fn panel_edit_board(&mut self, id: BoardId) {
+        self.main_fresh();
+        let Ok(board) = self.store.board(id) else {
+            self.show_toast(failed());
+            return;
+        };
+        let can_delete = self.main.boards().len() > 1;
+        let item_count = self.store.lists(id).map_or(0, |lists| {
+            lists
+                .iter()
+                .map(|l| self.store.items(l.id).map_or(0, |items| items.len()))
+                .sum()
+        });
+        let view = EditorView {
+            seq: 0,
+            kind: EditorKind::Board,
+            is_new: false,
+            name: board.name.as_str().to_owned(),
+            accent: None,
+            icon: None,
+            sort: ListSort::Manual,
+            item_count,
+            can_delete,
+            delete_hint: (!can_delete).then_some(DeleteHint::LastBoard),
+            name_error: None,
+        };
+        self.open_editor(EditorTarget::Board(id), view);
+    }
+
     /// The board editor for a new board, or the board-limit toast on Free.
     pub(super) fn new_board(&mut self) {
         if !self.entitlements.can_create_board(self.main.boards().len()) {
@@ -268,7 +304,7 @@ where
 
     /// Moves board `id` (named `name`) with its lists and items to the Trash, with an Undo
     /// toast.
-    pub(super) fn trash_board(&mut self, id: BoardId, name: String) {
+    pub(in super::super) fn trash_board(&mut self, id: BoardId, name: String) {
         let now = self.clock.now();
         match self.store.trash(Trashable::Board(id), now) {
             Ok(()) => {

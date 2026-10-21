@@ -195,6 +195,15 @@ export component HelpWindow inherits Window {
                                 background: Theme.border-subtle;
                             }
                         }
+                        HorizontalLayout {
+                            padding-top: Space.s2;
+                            alignment: start;
+                            Button {
+                                text: @tr("Check again");
+                                variant: ButtonVariant.primary;
+                                clicked => { root.check-again-requested(); }
+                            }
+                        }
                     }
 
                     FormSection {
@@ -204,19 +213,9 @@ export component HelpWindow inherits Window {
                             spacing: Space.s2;
                             alignment: start;
                             Button {
-                                text: @tr("Check again");
-                                variant: ButtonVariant.primary;
-                                clicked => { root.check-again-requested(); }
-                            }
-                            Button {
                                 text: @tr("Copy diagnostic report");
                                 clicked => { root.copy-report-requested(); }
                             }
-                        }
-                        HorizontalLayout {
-                            padding-top: Space.s2;
-                            spacing: Space.s2;
-                            alignment: start;
                             Button {
                                 text: @tr("Open data folder");
                                 enabled: root.has-data-folder;

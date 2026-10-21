@@ -5,7 +5,10 @@ use std::time::Duration;
 use snipdeck_core::{BoardId, ItemId, Placement, UseMode};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 
-use super::{Controller, Library, PanelMenu, UseResult, failed, neutral, policy_of};
+use super::{
+    BoardDeleteView, BoardMenuEntry, Controller, Effect, Library, PanelMenu, UseResult, failed,
+    neutral, policy_of,
+};
 use crate::{
     host::ClipboardText,
     main_window::reorder,
@@ -300,13 +303,99 @@ where
         }
     }
 
-    /// The user chose board `index` in the menu.
-    pub fn choose_board(&mut self, index: usize) {
+    /// The board menu's rows: the boards, a divider, then New, Rename and Delete (off for the last board).
+    pub(super) fn panel_board_menu_entries(&self) -> Vec<BoardMenuEntry> {
+        let current = self.model.board();
+        let boards = self.model.boards();
+        let mut entries: Vec<BoardMenuEntry> = boards
+            .iter()
+            .map(|b| BoardMenuEntry::Board {
+                name: b.name.as_str().to_owned(),
+                current: Some(b.id) == current,
+            })
+            .collect();
+        entries.push(BoardMenuEntry::Separator);
+        entries.push(BoardMenuEntry::New);
+        entries.push(BoardMenuEntry::Rename);
+        entries.push(BoardMenuEntry::Delete {
+            enabled: boards.len() > 1,
+        });
+        entries
+    }
+
+    /// The user chose row `index` of the board menu: a board to switch to, or an action. New and
+    /// Rename open the board editor (its own window, shared with the Main window); Delete only
+    /// asks, and [`confirm_board_delete`](Self::confirm_board_delete) moves the board to the Trash.
+    pub fn choose_board(&mut self, index: usize) -> Vec<Effect> {
         self.menu = PanelMenu::None;
-        let Some(id) = self.model.boards().get(index).map(|b| b.id) else {
+        let Some(entry) = self.panel_board_menu_entries().into_iter().nth(index) else {
+            return Vec::new();
+        };
+        match entry {
+            BoardMenuEntry::Board { .. } => {
+                if let Some(id) = self.model.boards().get(index).map(|b| b.id) {
+                    self.switch_board(id);
+                }
+                Vec::new()
+            }
+            BoardMenuEntry::New => {
+                self.panel_new_board();
+                vec![Effect::OpenListEditor]
+            }
+            BoardMenuEntry::Rename => {
+                if let Some(id) = self.model.board() {
+                    self.panel_edit_board(id);
+                    vec![Effect::OpenListEditor]
+                } else {
+                    Vec::new()
+                }
+            }
+            BoardMenuEntry::Delete { enabled: true } => {
+                if let Some(id) = self.model.board() {
+                    self.menu = PanelMenu::DeleteBoard(id);
+                }
+                Vec::new()
+            }
+            _ => Vec::new(),
+        }
+    }
+
+    /// The board delete confirmation's view while it asks.
+    pub(super) fn board_delete_view(&self) -> Option<BoardDeleteView> {
+        let PanelMenu::DeleteBoard(id) = self.menu else {
+            return None;
+        };
+        let board = self.store.board(id).ok()?;
+        let count = self.store.lists(id).ok()?.iter().fold(0, |n, l| {
+            n + self.store.items(l.id).map_or(0, |items| items.len())
+        });
+        Some(BoardDeleteView {
+            name: board.name.as_str().to_owned(),
+            count,
+        })
+    }
+
+    /// "Delete board" in the Panel's confirmation: the board, its lists and their items move to
+    /// the Trash, with an Undo toast.
+    pub fn confirm_board_delete(&mut self) {
+        let PanelMenu::DeleteBoard(id) = self.menu else {
             return;
         };
-        self.switch_board(id);
+        self.menu = PanelMenu::None;
+        match self.store.board(id) {
+            Ok(board) if self.model.boards().len() > 1 => {
+                self.trash_board(id, board.name.as_str().to_owned());
+            }
+            Ok(_) => {}
+            Err(_) => self.show_toast(failed()),
+        }
+    }
+
+    /// Cancel, Esc or a click on the scrim: the confirmation closes and the board stays.
+    pub fn cancel_board_delete(&mut self) {
+        if matches!(self.menu, PanelMenu::DeleteBoard(_)) {
+            self.menu = PanelMenu::None;
+        }
     }
 
     /// The `+` tab and the "New list" button of an empty board: adds a list to the shown board

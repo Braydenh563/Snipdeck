@@ -1138,6 +1138,7 @@ export component MainWindow inherits Window {
                         HorizontalLayout {
                             spacing: 0px;
                             horizontal-stretch: 0;
+                            alignment: center;
                             panel-show := IconButton {
                                 scaled: true;
                                 icon: Icons.sidebar-simple;
@@ -1146,35 +1147,74 @@ export component MainWindow inherits Window {
                                     : (root.panel-hotkey == "" ? @tr("Show Panel") : @tr("Show Panel ({})", root.panel-hotkey));
                                 active: root.panel-visible;
                                 own-tooltip: true;
-                                y: (parent.height - self.height) / 2;
                                 clicked => { root.panel-requested(); }
                             }
-                            Rectangle { width: Space.s2; }
-                            undo-button := IconButton {
-                                scaled: true;
-                                icon: Icons.arrow-counter-clockwise;
-                                tooltip: root.undo-tip;
-                                own-tooltip: true;
-                                enabled: root.can-undo;
-                                y: (parent.height - self.height) / 2;
-                                clicked => { root.undo-requested(); }
+                            Rectangle {
+                                width: Space.s2 + 1px + Space.s2;
+                                Rectangle {
+                                    x: Space.s2;
+                                    width: 1px;
+                                    height: Space.s4 * SystemLook.text-scale;
+                                    y: (parent.height - self.height) / 2;
+                                    background: Theme.border-subtle;
+                                }
                             }
-                            redo-button := IconButton {
-                                scaled: true;
-                                icon: Icons.arrow-clockwise;
-                                tooltip: root.redo-tip;
-                                own-tooltip: true;
-                                enabled: root.can-redo;
-                                y: (parent.height - self.height) / 2;
-                                clicked => { root.redo-requested(); }
+                            HorizontalLayout {
+                                spacing: Space.s0-5;
+                                undo-button := IconButton {
+                                    scaled: true;
+                                    icon: Icons.arrow-counter-clockwise;
+                                    tooltip: root.undo-tip;
+                                    own-tooltip: true;
+                                    enabled: root.can-undo;
+                                    clicked => { root.undo-requested(); }
+                                }
+                                redo-button := IconButton {
+                                    scaled: true;
+                                    icon: Icons.arrow-clockwise;
+                                    tooltip: root.redo-tip;
+                                    own-tooltip: true;
+                                    enabled: root.can-redo;
+                                    clicked => { root.redo-requested(); }
+                                }
+                            }
+                            Rectangle {
+                                width: Space.s2 + 1px + Space.s2;
+                                Rectangle {
+                                    x: Space.s2;
+                                    width: 1px;
+                                    height: Space.s4 * SystemLook.text-scale;
+                                    y: (parent.height - self.height) / 2;
+                                    background: Theme.border-subtle;
+                                }
                             }
                             commands-button := IconButton {
                                 scaled: true;
                                 icon: Icons.keyboard;
                                 tooltip: @tr("Commands (Ctrl+K)");
-                                y: (parent.height - self.height) / 2;
                                 clicked => { root.open-palette(); }
                             }
+                            Rectangle {
+                                width: Space.s2 + 1px + Space.s2;
+                                Rectangle {
+                                    x: Space.s2;
+                                    width: 1px;
+                                    height: Space.s4 * SystemLook.text-scale;
+                                    y: (parent.height - self.height) / 2;
+                                    background: Theme.border-subtle;
+                                }
+                            }
+                            segmented := Rectangle {
+                                width: seg-row.preferred-width + 2 * Space.s0-5;
+                                height: seg-row.preferred-height + 2 * Space.s0-5;
+                                background: Theme.bg-surface;
+                                border-width: 1px;
+                                border-color: Theme.border-subtle;
+                                border-radius: Radius.md + Space.s0-5;
+                                seg-row := HorizontalLayout {
+                                    x: Space.s0-5;
+                                    y: Space.s0-5;
+                                    spacing: Space.s0-5;
                             view-comfortable := IconButton {
                                 scaled: true;
                                 icon: Icons.rows;
@@ -1182,7 +1222,6 @@ export component MainWindow inherits Window {
                                 active: root.view == MainView.comfortable;
                                 accessible-checkable: true;
                                 accessible-checked: root.view == MainView.comfortable;
-                                y: (parent.height - self.height) / 2;
                                 clicked => {
                                     root.view = MainView.comfortable;
                                     root.view-changed(MainView.comfortable);
@@ -1195,7 +1234,6 @@ export component MainWindow inherits Window {
                                 active: root.view == MainView.compact;
                                 accessible-checkable: true;
                                 accessible-checked: root.view == MainView.compact;
-                                y: (parent.height - self.height) / 2;
                                 clicked => {
                                     root.view = MainView.compact;
                                     root.view-changed(MainView.compact);
@@ -1208,11 +1246,39 @@ export component MainWindow inherits Window {
                                 active: root.view == MainView.tile;
                                 accessible-checkable: true;
                                 accessible-checked: root.view == MainView.tile;
-                                y: (parent.height - self.height) / 2;
                                 clicked => {
                                     root.view = MainView.tile;
                                     root.view-changed(MainView.tile);
                                 }
+                            }
+                                }
+                            Rectangle {
+                                visible: root.view == MainView.comfortable;
+                                width: Space.s3 * SystemLook.text-scale;
+                                height: Space.s0-5;
+                                x: seg-row.x + view-comfortable.x + (view-comfortable.width - self.width) / 2;
+                                y: parent.height - Space.s0-5 - 2px;
+                                border-radius: 1px;
+                                background: Theme.accent-text;
+                            }
+                            Rectangle {
+                                visible: root.view == MainView.compact;
+                                width: Space.s3 * SystemLook.text-scale;
+                                height: Space.s0-5;
+                                x: seg-row.x + view-compact.x + (view-compact.width - self.width) / 2;
+                                y: parent.height - Space.s0-5 - 2px;
+                                border-radius: 1px;
+                                background: Theme.accent-text;
+                            }
+                            Rectangle {
+                                visible: root.view == MainView.tile;
+                                width: Space.s3 * SystemLook.text-scale;
+                                height: Space.s0-5;
+                                x: seg-row.x + view-tile.x + (view-tile.width - self.width) / 2;
+                                y: parent.height - Space.s0-5 - 2px;
+                                border-radius: 1px;
+                                background: Theme.accent-text;
+                            }
                             }
                         }
                         Button {

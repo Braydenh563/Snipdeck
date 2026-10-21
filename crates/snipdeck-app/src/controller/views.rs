@@ -214,7 +214,7 @@ pub struct View {
     /// What the Undo and Redo buttons would do.
     pub history: super::HistoryView,
     /// The board menu's entries while it is open.
-    pub board_menu: Option<Vec<String>>,
+    pub board_menu: Option<Vec<super::BoardMenuEntry>>,
     /// The kebab menu's rows while it is open ([`APP_MENU`](crate::controller::APP_MENU)).
     pub app_menu: Option<Vec<AppMenuEntry>>,
     /// The context menu of a card or pinned chip while it is open.
@@ -230,6 +230,8 @@ pub struct View {
     /// The list menu's "Delete list…" confirmation while it asks (the Panel draws it; no
     /// editor opens).
     pub list_delete: Option<ListDeleteView>,
+    /// The board menu's delete confirmation while it asks.
+    pub board_delete: Option<BoardDeleteView>,
     /// "Pause hotkeys" is on (its menu row is checked).
     pub hotkeys_paused: bool,
     /// The Picker's configured hotkey as text ("Ctrl+Shift+Space"), empty while it is off: the
@@ -266,6 +268,15 @@ pub struct ChooseEntry {
 pub struct ChooseMenu {
     /// The rows, in order.
     pub entries: Vec<ChooseEntry>,
+}
+
+/// The Panel's confirmation before a board goes to the Trash.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BoardDeleteView {
+    /// The board's name.
+    pub name: String,
+    /// How many items move to the Trash with it.
+    pub count: usize,
 }
 
 /// The Panel's confirmation before a list goes to the Trash.

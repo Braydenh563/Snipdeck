@@ -45,8 +45,8 @@ pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, Lis
 pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
 pub use views::{
-    ChooseEntry, ChooseLabel, ChooseMenu, Effect, FillSubmission, FillView, ListDeleteView,
-    PickerView, StackView, ToastPhase, ToastView, UseResult, View,
+    BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, Effect, FillSubmission, FillView,
+    ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
 };
 
 use crate::{
@@ -288,6 +288,8 @@ enum PanelMenu {
     List(ListId),
     /// The list menu's delete confirmation, asking about this list.
     DeleteList(ListId),
+    /// The board menu's delete confirmation, asking about this board.
+    DeleteBoard(BoardId),
 }
 
 /// Facts about the running app that are not settings and not on screen.
@@ -474,13 +476,7 @@ where
             reduced_motion: self.look().reduce_motion,
             toast: self.toast_view(),
             history: self.history_view(),
-            board_menu: (self.menu == PanelMenu::Board).then(|| {
-                self.model
-                    .boards()
-                    .iter()
-                    .map(|b| b.name.as_str().to_owned())
-                    .collect()
-            }),
+            board_menu: (self.menu == PanelMenu::Board).then(|| self.panel_board_menu_entries()),
             app_menu: (self.menu == PanelMenu::App).then(|| APP_MENU.to_vec()),
             item_menu: match self.menu {
                 PanelMenu::Item(id) => Some(self.item_menu_entries(id)),
@@ -491,6 +487,7 @@ where
             show_numbers: self.settings.show_numbers,
             list_menu: matches!(self.menu, PanelMenu::List(_)).then(|| LIST_MENU.to_vec()),
             list_delete: self.list_delete_view(),
+            board_delete: self.board_delete_view(),
             hotkeys_paused: self.session.hotkeys_paused,
             picker_chord: crate::commands::chord_text(&self.settings.hotkeys, HotkeyAction::Picker)
                 .unwrap_or_default(),

@@ -1888,3 +1888,83 @@ fn duplicating_a_labelled_item_keeps_its_label() {
         .count();
     assert_eq!(labelled, 2, "the copy carries the label");
 }
+
+// ---- The Panel's board menu --------------------------------------------------------------------
+
+#[test]
+fn the_panel_board_menu_ends_with_new_rename_and_delete() {
+    use snipdeck_app::controller::BoardMenuEntry;
+    let mut ctl = pro();
+    ctl.open_board_menu();
+    let menu = ctl.view().board_menu.expect("menu open");
+    let boards = ctl.store().boards().unwrap().len();
+    assert_eq!(
+        menu.len(),
+        boards + 1 + 3,
+        "boards, a divider, three actions"
+    );
+    assert_eq!(
+        menu[boards..],
+        [
+            BoardMenuEntry::Separator,
+            BoardMenuEntry::New,
+            BoardMenuEntry::Rename,
+            BoardMenuEntry::Delete { enabled: true },
+        ]
+    );
+}
+
+#[test]
+fn the_panel_new_board_entry_opens_the_board_editor() {
+    let mut ctl = pro();
+    ctl.open_board_menu();
+    let new = ctl.view().board_menu.unwrap().len() - 4;
+    let effects = ctl.choose_board(new + 1);
+    assert!(effects.contains(&Effect::OpenListEditor));
+    assert!(ctl.view().board_menu.is_none(), "the menu closes");
+    let editor = ctl.main_screen().editor.expect("board editor");
+    assert_eq!(editor.kind, EditorKind::Board);
+    assert!(editor.is_new);
+}
+
+#[test]
+fn the_panel_rename_entry_opens_the_editor_for_the_shown_board() {
+    let mut ctl = pro();
+    ctl.open_board_menu();
+    let rename = ctl.view().board_menu.unwrap().len() - 2;
+    let name = ctl.view().board_name;
+    let effects = ctl.choose_board(rename);
+    assert!(effects.contains(&Effect::OpenListEditor));
+    let editor = ctl.main_screen().editor.expect("board editor");
+    assert_eq!(editor.kind, EditorKind::Board);
+    assert!(!editor.is_new);
+    assert_eq!(editor.name, name);
+}
+
+#[test]
+fn the_panel_delete_entry_asks_then_trashes_and_is_off_for_the_last_board() {
+    use snipdeck_app::controller::BoardMenuEntry;
+    let mut ctl = pro();
+    ctl.open_board_menu();
+    let delete = ctl.view().board_menu.unwrap().len() - 1;
+    ctl.choose_board(delete);
+    let ask = ctl.view().board_delete.expect("asks first");
+    assert_eq!(ask.name, ctl.view().board_name);
+    assert_eq!(ctl.store().boards().unwrap().len(), 2);
+    ctl.cancel_board_delete();
+    assert!(ctl.view().board_delete.is_none());
+    ctl.open_board_menu();
+    ctl.choose_board(delete);
+    ctl.confirm_board_delete();
+    assert!(ctl.view().board_delete.is_none());
+    assert_eq!(ctl.store().boards().unwrap().len(), 1);
+
+    ctl.open_board_menu();
+    let menu = ctl.view().board_menu.unwrap();
+    assert_eq!(
+        menu.last(),
+        Some(&BoardMenuEntry::Delete { enabled: false })
+    );
+    ctl.choose_board(menu.len() - 1);
+    assert!(ctl.view().board_delete.is_none(), "the entry is off");
+}

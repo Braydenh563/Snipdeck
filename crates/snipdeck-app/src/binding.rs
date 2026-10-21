@@ -21,7 +21,8 @@ use snipdeck_ui as ui;
 
 use crate::{
     controller::{
-        AppMenuEntry, Controller, Effect, HelpTopic, ItemMenuEntry, Library, ToastPhase, View,
+        AppMenuEntry, BoardMenuEntry, Controller, Effect, HelpTopic, ItemMenuEntry, Library,
+        ToastPhase, View,
     },
     dock::DockEvent,
     frame::{Edge, Monitor, Rect},
@@ -598,7 +599,9 @@ where
         wire!(on_pinned_copied, |ctl, i| ctl
             .activate_pinned(index(i), UseMode::Copy));
         wire!(on_board_menu_requested, |ctl| ctl.open_board_menu());
-        wire!(on_board_menu_activated, |ctl, i| ctl.choose_board(index(i)));
+        wire_effects!(on_board_menu_activated, |ctl, i| ctl.choose_board(index(i)));
+        wire!(on_board_delete_confirmed, |ctl| ctl.confirm_board_delete());
+        wire!(on_board_delete_dismissed, |ctl| ctl.cancel_board_delete());
         wire!(on_board_menu_dismissed, |ctl| ctl.close_board_menu());
         wire!(on_pin_toggled, |ctl, on| ctl.set_on_top(on));
         wire!(on_add_list_requested, |ctl| ctl.add_list());
@@ -1082,8 +1085,11 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         window.set_target_title(title.into());
     }
     if differs(&|p| p.board_menu == view.board_menu) {
-        let entries = view.board_menu.iter().flatten().map(|name| ui::MenuEntry {
-            text: name.as_str().into(),
+        let entries = view.board_menu.iter().flatten().map(|entry| ui::MenuEntry {
+            text: wording::board_menu_text(window, entry).into(),
+            separator: matches!(entry, BoardMenuEntry::Separator),
+            destructive: matches!(entry, BoardMenuEntry::Delete { .. }),
+            disabled: matches!(entry, BoardMenuEntry::Delete { enabled: false }),
             ..Default::default()
         });
         window.set_board_menu_entries(model(entries));
@@ -1167,6 +1173,15 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             window.set_list_delete_count(i32::try_from(ask.count).unwrap_or(i32::MAX));
         }
         window.set_list_delete_open(view.list_delete.is_some());
+    }
+    if differs(&|p| p.board_delete == view.board_delete)
+        || window.get_board_delete_open() != view.board_delete.is_some()
+    {
+        if let Some(ask) = &view.board_delete {
+            window.set_board_delete_name(ask.name.as_str().into());
+            window.set_board_delete_count(i32::try_from(ask.count).unwrap_or(i32::MAX));
+        }
+        window.set_board_delete_open(view.board_delete.is_some());
     }
     if differs(&|p| p.history == view.history) {
         window.set_can_undo(view.history.undo.is_some());
