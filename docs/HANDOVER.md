@@ -47,8 +47,17 @@ motion with no thinking; editing and management live in the Main window.
     (docs, screenshots, PR body, shipping guide; see `.claude/now.md` "Owner test gate" and ship-prep scope).
 
 ## Fix branches (2026-10-21, Sonnet agents; check their state, they may be partial)
-- `claude/owner-test-ctl`: hotkeys (2), Picker dismissal, toggle, child-window clamping, screenshot-paste
-  message, Reset-position bug, render-glitch and OneNote investigation.
+- `claude/owner-test-ctl` (f1f5d5e, NOT merged; 7 targeted tests pass, gate/clippy/1.99.1 never completed):
+  stale "Panel visible" while minimised/hidden made the hotkey hide instead of show (`panel_window_gone()`,
+  test); unchanged chord re-register is a no-op; child windows re-fit 120 ms after show (`fit_when_settled`, all
+  7 open sites); Ctrl+V of an image in the editor shows a translated toast; Picker retries activation after
+  80 ms and closes on focus loss; Reset size/position insets 48 px so it no longer snaps to the dock.
+  Open: why Ctrl+Alt+Space / Ctrl+Shift+2 / Ctrl+Alt+V all failed on the owner's PC (note: paste-next is
+  Supporter-only by design; say so in the UI instead of doing nothing); only the first failed registration
+  toasts, no Settings row error; render glitches (E) and OneNote (F) not investigated; Panel list overlap after
+  resize not looked at. Details: `.claude/remaining/owner-test-ctl.md` on that branch.
+- Next session, first step: merge both fix branches into the release branch, build, run all tests, LOOK at
+  the regenerated goldens, gate, clippy stable + 1.99.1, reviewer, then owner retest on Windows.
 - `claude/owner-test-ui` (WIP ab6b277, NOT merged, never built to a result): items 1-5 coded: quick-add
   Text/Link/Template segmented control spaced with dividers; Editor `fit-height` sized on open and on More options
   (test `the_editor_wants_a_shorter_window_with_more_options_closed_and_never_past_700`, not run); palette list
