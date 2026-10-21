@@ -551,7 +551,7 @@ msgid "Dark"
 msgstr "深色"
 
 msgid "Database rebuilt: {} items restored, {} recovered."
-msgstr ""
+msgstr "数据库已重建：已还原 {} 项，已恢复 {} 项。"
 
 msgid "Date and time in a format you choose"
 msgstr "以你选择的格式显示日期和时间"
@@ -1552,13 +1552,13 @@ msgid "Quit"
 msgstr "退出"
 
 msgid "Rebuild"
-msgstr ""
+msgstr "重建"
 
 msgid "Rebuild from backup…"
-msgstr ""
+msgstr "从备份重建…"
 
 msgid "Rebuild from the newest backup?"
-msgstr ""
+msgstr "从最新备份重建？"
 
 msgid "Recent"
 msgstr "最近"
@@ -2082,7 +2082,7 @@ msgid "The list holds at most {} programs."
 msgstr "列表最多可包含 {} 个程序。"
 
 msgid "The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read."
-msgstr ""
+msgstr "最新备份来自 {}，包含 {} 个看板上的 {} 项内容。当前数据库会被另行保存，不会被删除。此备份之后添加的内容，能读取的会被恢复。"
 
 msgid "The oldest ones are deleted once there are more than this."
 msgstr "超过此数量后，最旧的备份会被删除。"
