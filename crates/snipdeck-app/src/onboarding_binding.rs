@@ -199,8 +199,21 @@ where
                 return;
             }
         };
-        let paused = self.controller.borrow().hotkeys_paused();
-        if let Some(failure) = try_register(self.host.as_ref(), paused, action, &current, &next) {
+        let (paused, supporter) = {
+            let controller = self.controller.borrow();
+            (
+                controller.hotkeys_paused(),
+                controller.tier() == snipdeck_core::Tier::Pro,
+            )
+        };
+        if let Some(failure) = try_register(
+            self.host.as_ref(),
+            paused,
+            supporter,
+            action,
+            &current,
+            &next,
+        ) {
             self.refuse_hotkey(index, HotkeyRefusal::Refused(failure), combo);
             redraw_all();
             return;
@@ -215,9 +228,22 @@ where
         };
         let current = self.controller.borrow().settings().hotkeys.clone();
         let next = without_hotkey(&current, action);
-        let paused = self.controller.borrow().hotkeys_paused();
+        let (paused, supporter) = {
+            let controller = self.controller.borrow();
+            (
+                controller.hotkeys_paused(),
+                controller.tier() == snipdeck_core::Tier::Pro,
+            )
+        };
         // Taking a shortcut away cannot clash; a service that is down is not the user's problem here.
-        let _ = try_register(self.host.as_ref(), paused, action, &current, &next);
+        let _ = try_register(
+            self.host.as_ref(),
+            paused,
+            supporter,
+            action,
+            &current,
+            &next,
+        );
         self.set_conflict(index, String::new());
         self.act(|ctl| ctl.update_settings(|s| s.hotkeys = next));
     }

@@ -96,8 +96,22 @@ export global ToastTexts {
     pure public function panel-hidden(chord: string) -> string {
         return chord == "" ? @tr("Snipdeck is still running. Click the tray icon to bring the panel back.") : @tr("Snipdeck is still running. Press {} or click the tray icon to bring the panel back.", chord);
     }
+    // Used when the cause is not known; `use-failed` names one that is. Causes: 1 disk full, 2 file in
+    // use, 3 library locked, 4 not a Snipdeck archive, 5 made by a newer Snipdeck.
     pure public function failed() -> string {
-        return @tr("Couldn't use this item.");
+        return @tr("Couldn't use this item. Try again, or restart Snipdeck if it keeps happening.");
+    }
+    pure public function use-failed(cause: int) -> string {
+        if (cause == 1) {
+            return @tr("Couldn't use this item: the disk is full. Free up some space, then try again.");
+        }
+        if (cause == 2) {
+            return @tr("Couldn't use this item: your library file is in use by another program. Close that program, then try again.");
+        }
+        if (cause == 3) {
+            return @tr("Couldn't use this item: your library is locked. Unlock it, then try again.");
+        }
+        return @tr("Couldn't use this item. Try again, or restart Snipdeck if it keeps happening.");
     }
     pure public function window-not-shown() -> string {
         return @tr("Couldn't open that window.");
@@ -151,26 +165,87 @@ export global ToastTexts {
     pure public function backup-made() -> string {
         return @tr("Backed up");
     }
-    pure public function backup-failed() -> string {
-        return @tr("Couldn't make a backup.");
+    pure public function backup-failed(cause: int) -> string {
+        if (cause == 1) {
+            return @tr("Couldn't make a backup: the disk is full. Free up some space, then use Back up now in Settings.");
+        }
+        if (cause == 2) {
+            return @tr("Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings.");
+        }
+        if (cause == 3) {
+            return @tr("Couldn't make a backup: your library is locked. Unlock it, then use Back up now in Settings.");
+        }
+        return @tr("Couldn't make a backup. Check the disk has room, then use Back up now in Settings.");
+    }
+    // The daily run, not asked for by the user.
+    pure public function daily-backup-failed(cause: int) -> string {
+        if (cause == 1) {
+            return @tr("Couldn't make today's backup: the disk is full. Free up some space, then use Back up now in Settings.");
+        }
+        if (cause == 2) {
+            return @tr("Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings.");
+        }
+        return @tr("Couldn't make today's backup. Check the disk has room, then use Back up now in Settings.");
+    }
+    pure public function trash-purge-failed() -> string {
+        return @tr("Couldn't clear old items out of the Trash. Check the disk has room, then restart Snipdeck to try again.");
     }
     pure public function backup-restored(items: int) -> string {
         return items == 0 ? @tr("Nothing to restore: your library already has everything in that backup.") : @tr("Restored {} item from the backup" | "Restored {} items from the backup" % items, items);
     }
-    pure public function restore-failed() -> string {
-        return @tr("Couldn't restore that backup.");
+    pure public function restore-failed(cause: int) -> string {
+        if (cause == 1) {
+            return @tr("Couldn't restore that backup: the disk is full. Free up some space, then try again.");
+        }
+        if (cause == 2) {
+            return @tr("Couldn't restore that backup: a file is in use by another program. Close it, then try again.");
+        }
+        if (cause == 3) {
+            return @tr("Couldn't restore that backup: your library is locked. Unlock it, then try again.");
+        }
+        if (cause == 4) {
+            return @tr("Couldn't restore that backup: it isn't a Snipdeck backup, or it is damaged. Choose another backup.");
+        }
+        if (cause == 5) {
+            return @tr("Couldn't restore that backup: it was made by a newer Snipdeck. Update Snipdeck, then try again.");
+        }
+        return @tr("Couldn't restore that backup. Choose another backup, or try again.");
     }
     pure public function imported(items: int) -> string {
         return items == 0 ? @tr("Nothing new to import.") : @tr("Imported {} item" | "Imported {} items" % items, items);
     }
-    pure public function import-failed() -> string {
-        return @tr("Couldn't import that.");
+    pure public function import-failed(cause: int) -> string {
+        if (cause == 1) {
+            return @tr("Couldn't import that: the disk is full. Free up some space, then try again.");
+        }
+        if (cause == 2) {
+            return @tr("Couldn't import that: the file is in use by another program or can't be read. Close the program using it, then try again.");
+        }
+        if (cause == 3) {
+            return @tr("Couldn't import that: your library is locked. Unlock it, then try again.");
+        }
+        if (cause == 4) {
+            return @tr("Couldn't import that: it isn't a file Snipdeck can read, or it is damaged. Choose a .snipdeck export.");
+        }
+        if (cause == 5) {
+            return @tr("Couldn't import that: it was made by a newer Snipdeck. Update Snipdeck, then try again.");
+        }
+        return @tr("Couldn't import that. Choose the file again, or try another one.");
     }
     pure public function exported(file: string) -> string {
-        return @tr("Saved {} in your Documents folder", file);
+        return @tr("Saved {}", file);
     }
-    pure public function export-failed() -> string {
-        return @tr("Couldn't export your library.");
+    pure public function export-failed(cause: int) -> string {
+        if (cause == 1) {
+            return @tr("Couldn't export your library: the disk is full. Free up some space, then try again.");
+        }
+        if (cause == 2) {
+            return @tr("Couldn't export your library: the folder can't be written to. Check it isn't read-only or in use, then try again.");
+        }
+        if (cause == 3) {
+            return @tr("Couldn't export your library: it is locked. Unlock it, then try again.");
+        }
+        return @tr("Couldn't export your library. Check the disk has room, then try again.");
     }
     pure public function library-erased() -> string {
         return @tr("Your library was erased.");
@@ -204,6 +279,19 @@ export global ToastTexts {
     }
     pure public function not-saved() -> string {
         return @tr("Couldn't save this item. Nothing was changed.");
+    }
+    // A move or reorder the store refused. Causes as for `use-failed`.
+    pure public function change-failed(cause: int) -> string {
+        if (cause == 1) {
+            return @tr("Couldn't make that change: the disk is full. Free up some space, then try again.");
+        }
+        if (cause == 2) {
+            return @tr("Couldn't make that change: your library file is in use by another program. Close that program, then try again.");
+        }
+        if (cause == 3) {
+            return @tr("Couldn't make that change: your library is locked. Unlock it, then try again.");
+        }
+        return @tr("Couldn't make that change. Try again, or restart Snipdeck if it keeps happening.");
     }
     pure public function not-opened() -> string {
         return @tr("Couldn't open this item.");

@@ -71,6 +71,8 @@ export component TemplateFillWindow inherits Window {
     // Every required field is filled and the user asked to insert: the fields with their answers.
     callback submitted(fields: [FormField]);
     callback cancelled();
+    // F1: the user guide.
+    callback help-requested();
     // Pointer down on the header: the host starts the OS window drag.
     callback drag-requested();
 
@@ -135,6 +137,10 @@ export component TemplateFillWindow inherits Window {
 
     scope-keys := FocusScope {
         capture-key-pressed(event) => {
+            if (event.text == Key.F1) {
+                root.help-requested();
+                return accept;
+            }
             if (event.text == Key.Escape) {
                 root.cancelled();
                 return accept;

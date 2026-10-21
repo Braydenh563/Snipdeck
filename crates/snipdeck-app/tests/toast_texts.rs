@@ -10,6 +10,7 @@
 )]
 
 use snipdeck_app::{
+    failure::Cause,
     toast::{LicenceProblem, ToastMessage},
     wording::{licence_problem_text, toast_text},
 };
@@ -68,13 +69,13 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::LicenceAccepted => 41,
         ToastMessage::LicenceRejected(_) => 42,
         ToastMessage::BackupMade => 43,
-        ToastMessage::BackupFailed => 44,
+        ToastMessage::BackupFailed(_) => 44,
         ToastMessage::BackupRestored { .. } => 45,
-        ToastMessage::RestoreFailed => 46,
+        ToastMessage::RestoreFailed(_) => 46,
         ToastMessage::Imported { .. } => 47,
-        ToastMessage::ImportFailed => 48,
+        ToastMessage::ImportFailed(_) => 48,
         ToastMessage::Exported { .. } => 49,
-        ToastMessage::ExportFailed => 50,
+        ToastMessage::ExportFailed(_) => 50,
         ToastMessage::LibraryErased => 51,
         ToastMessage::EraseFailed => 52,
         ToastMessage::FolderNotOpened => 53,
@@ -90,11 +91,15 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::DraftNotSaved => 63,
         ToastMessage::ItemPlaced { .. } => 64,
         ToastMessage::TaskbarEdge => 65,
-        ToastMessage::ScreenshotFailed => 66,
+        ToastMessage::UseFailed(_) => 66,
+        ToastMessage::DailyBackupFailed(_) => 67,
+        ToastMessage::TrashPurgeFailed => 68,
+        ToastMessage::ChangeFailed(_) => 69,
+        ToastMessage::ScreenshotFailed => 70,
     }
 }
 
-const VARIANTS: usize = 67;
+const VARIANTS: usize = 71;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -102,6 +107,7 @@ fn s(text: &str) -> String {
 
 /// One message per variant, with the awkward arguments (no app name, a count of one, a count of
 /// none) as extra entries.
+#[allow(clippy::too_many_lines, reason = "one line per message variant")]
 fn samples() -> Vec<ToastMessage> {
     use ToastMessage as M;
     vec![
@@ -160,15 +166,15 @@ fn samples() -> Vec<ToastMessage> {
         M::LicenceAccepted,
         M::LicenceRejected(LicenceProblem::BadSignature),
         M::BackupMade,
-        M::BackupFailed,
+        M::BackupFailed(Cause::Other),
         M::BackupRestored { items: 5 },
-        M::RestoreFailed,
+        M::RestoreFailed(Cause::NotArchive),
         M::Imported { items: 5 },
-        M::ImportFailed,
+        M::ImportFailed(Cause::TooNew),
         M::Exported {
             file: s("snipdeck.zip"),
         },
-        M::ExportFailed,
+        M::ExportFailed(Cause::Locked),
         M::LibraryErased,
         M::EraseFailed,
         M::FolderNotOpened,
@@ -196,6 +202,10 @@ fn samples() -> Vec<ToastMessage> {
             count: 1,
             list: s("Code"),
         },
+        M::UseFailed(Cause::DiskFull),
+        M::DailyBackupFailed(Cause::InUse),
+        M::TrashPurgeFailed,
+        M::ChangeFailed(Cause::Other),
         M::BackupRestored { items: 0 },
         M::BackupRestored { items: 1 },
         M::Imported { items: 0 },
@@ -291,6 +301,59 @@ fn what_a_toast_carries_reaches_its_sentence() {
             })
             .starts_with("Ctrl+Alt+Space")
         );
+    });
+}
+
+#[test]
+fn a_failure_toast_names_its_cause_and_ends_with_what_to_do() {
+    on_ui_thread(|| {
+        let ui = ui();
+        let said = |m: ToastMessage| toast_text(&ui, &m);
+        assert_eq!(
+            said(ToastMessage::DailyBackupFailed(Cause::Other)),
+            "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
+        );
+        assert_eq!(
+            said(ToastMessage::UseFailed(Cause::DiskFull)),
+            "Couldn't use this item: the disk is full. Free up some space, then try again."
+        );
+        let causes = [
+            Cause::Other,
+            Cause::DiskFull,
+            Cause::InUse,
+            Cause::Locked,
+            Cause::NotArchive,
+            Cause::TooNew,
+        ];
+        let failures: [fn(Cause) -> ToastMessage; 7] = [
+            ToastMessage::UseFailed,
+            ToastMessage::ChangeFailed,
+            ToastMessage::BackupFailed,
+            ToastMessage::DailyBackupFailed,
+            ToastMessage::RestoreFailed,
+            ToastMessage::ImportFailed,
+            ToastMessage::ExportFailed,
+        ];
+        for make in failures {
+            let mut texts = Vec::new();
+            for cause in causes {
+                let text = said(make(cause));
+                assert!(text.starts_with("Couldn't "), "{text}");
+                assert!(
+                    text.ends_with('.') && !text.ends_with(".."),
+                    "ends with the action: {text}"
+                );
+                texts.push(text);
+            }
+            // The unknown cause has its own plain sentence, and a cause the error names is
+            // never reworded as the unknown one.
+            assert_ne!(texts[1], texts[0], "{texts:?}");
+            assert_ne!(texts[2], texts[0], "{texts:?}");
+        }
+        assert!(
+            said(ToastMessage::ImportFailed(Cause::NotArchive)).contains("isn't a file Snipdeck")
+        );
+        assert!(said(ToastMessage::ImportFailed(Cause::TooNew)).contains("newer Snipdeck"));
     });
 }
 

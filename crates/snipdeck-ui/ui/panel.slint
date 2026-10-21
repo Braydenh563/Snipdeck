@@ -11,12 +11,13 @@
 // control has focus):
 //   type            filters; a printable key typed while another control has focus moves into the search
 //   Up / Down       move the selection (PageUp / PageDown a page); Enter uses it, Shift+Enter copies
-//   1-9             use the Nth row while the search is empty (digits are text once a query exists)
+//   Alt+1-9         use the Nth row, whatever the search holds (bare digits are always search text)
 //   Ctrl+Tab        next list, Ctrl+Shift+Tab previous; Ctrl+F focuses and selects the search
 //   Menu, Shift+F10 context menu of the selected row (on the focused kebab button: the Panel menu)
 //   Ctrl+K          all commands (the Main window's palette); Ctrl+/ the keyboard shortcuts; F1 the user guide
 //   Ctrl+D          duplicate the selected row
-//   Ctrl+E, F2      edit / rename the selected row (also a double-click on a row edits it)
+//   Ctrl+P          pin or unpin the selected row
+//   Ctrl+E, F2      edit / rename the selected row (a row has no double-click action: the first click already used it)
 //   Delete          delete the selected row while the search is empty (with a query it edits the text)
 //   Esc             closes an open menu; else clears the search; with nothing to clear, asks the host to hide the Panel
 //
@@ -44,7 +45,7 @@ import { DockHandle } from "components/dock-handle.slint";
 import { QuickAdd } from "components/quick-add.slint";
 
 // One row of the list, as `snipdeck-app`'s `Row`. The quick-use number is the row's position
-// (1-9 for the first nine); `masked-preview` stands in for a sensitive item's preview.
+// (1-9 for the first nine, used with Alt+N); `masked-preview` stands in for a sensitive item's preview.
 export struct PanelRow {
     kind: ItemKind,
     title: string,
@@ -223,7 +224,7 @@ export component PanelWindow inherits Window {
     callback row-activated(int);
     // Shift+Enter or Shift+click: copy only.
     callback row-copied(int);
-    // Digit 1-9 pressed on an empty search (the app resolves it with `PanelModel::quick_use`).
+    // Alt+1-9 pressed (the app resolves it with `PanelModel::quick_use`).
     callback quick-use(int);
     callback selection-moved(int);
     callback context-menu-requested(int, length, length);
@@ -292,11 +293,13 @@ export component PanelWindow inherits Window {
     // The list delete confirmation: "Delete list", or Cancel / Esc / a click on the scrim.
     callback list-delete-confirmed();
     callback list-delete-dismissed();
-    // Quick edit of row `index`: Ctrl+E or a double-click, F2, Delete (SPEC 5.1). A double-click has
-    // already used the row once (the first click); the host decides what the second means.
+    // Quick edit of row `index`: Ctrl+E, F2 or the item menu (SPEC 5.1). A double-click does nothing extra: the
+    // first click already used the row.
     callback edit-requested(int);
     // Ctrl+D on row `index`: a copy of the item right after it.
     callback duplicate-requested(int);
+    // Ctrl+P on row `index`: pins the item, or unpins it when it is pinned (the Main window's key too).
+    callback pin-requested(int);
     callback rename-requested(int);
     callback delete-requested(int);
     // Pointer down on a resize grip: the host starts the OS resize from that edge or corner.
@@ -327,6 +330,13 @@ export component PanelWindow inherits Window {
     // Scroll offset of the list (<= 0), for tests and for the app to persist.
     out property <length> scroll-y: list.content-y;
     out property <bool> search-focused: search.has-focus;
+    // The search box took the focus (a click into it): the host gives the window the keyboard.
+    callback search-focus-gained();
+    changed search-focused => {
+        if (root.search-focused) {
+            root.search-focus-gained();
+        }
+    }
     // The text of the tooltip on screen (empty = none), for tests and assistive checks.
     out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open && !root.list-delete-open ? root.tip : "";
 
@@ -745,12 +755,21 @@ export component PanelWindow inherits Window {
                         root.duplicate-requested(root.sel);
                         return accept;
                     }
+                    if ((event.text == "p" || event.text == "P") && root.sel >= 0 && !root.recent-open) {
+                        root.pin-requested(root.sel);
+                        return accept;
+                    }
                     return reject;
                 }
                 if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !switcher.has-focus && !root.recent-open && root.rows-reorderable
                     && (event.text == Key.UpArrow || event.text == Key.DownArrow)) {
                     // The keyboard way to arrange rows (WCAG 2.5.7 for the drag); a sorted list or a search leaves the key alone.
                     root.item-reorder-requested(event.text == Key.UpArrow ? -1 : 1);
+                    return accept;
+                }
+                // Alt+1-9 uses the Nth row whatever the query holds; a bare digit is always search text.
+                if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !event.modifiers.meta && !root.recent-open && root.digit(event.text) > 0) {
+                    root.quick(root.digit(event.text));
                     return accept;
                 }
                 if (event.modifiers.alt || event.modifiers.meta || search.composing) {
@@ -872,11 +891,6 @@ export component PanelWindow inherits Window {
                         root.held-reveal = true;
                         root.reveal-requested(root.sel, true);
                     }
-                    return accept;
-                }
-                // Digits are quick-use only while there is no query; with one they are search text.
-                if (!root.searching && !event.modifiers.shift && root.digit(event.text) > 0 && !root.recent-open) {
-                    root.quick(root.digit(event.text));
                     return accept;
                 }
                 if (!search.has-focus && event.text != " " && root.printable(event.text)) {
@@ -1128,10 +1142,6 @@ export component PanelWindow inherits Window {
                                 copy => {
                                     root.selected-index = i;
                                     root.row-copied(i);
-                                }
-                                double-clicked => {
-                                    root.selected-index = i;
-                                    root.edit-requested(i);
                                 }
                                 context-menu-requested(x, y) => {
                                     root.item-menu-x = self.absolute-position.x + x;

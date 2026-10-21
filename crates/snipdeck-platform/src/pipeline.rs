@@ -21,6 +21,9 @@ pub const POLL_INTERVAL: Duration = Duration::from_millis(10);
 /// After the first request, time for the Target to read its remaining formats before restore.
 pub const SETTLE: Duration = Duration::from_millis(50);
 
+/// How often to check that our write is on the clipboard before the paste key goes out.
+pub const CONFIRM_ATTEMPTS: u32 = 10;
+
 /// The clipboard operations the pipeline needs.
 pub trait Clipboard {
     /// A copy of what was on the clipboard before the paste.
@@ -48,6 +51,10 @@ pub trait Clipboard {
     ///
     /// [`Error::Clipboard`] if the clipboard cannot be opened or written.
     fn write_persistent(&mut self, payload: &Payload) -> Result<(), Error>;
+    /// Whether `written` is the clipboard's content now: our write has completed and we still
+    /// own the clipboard. The paste key is sent only once this is true, so a Target that reads
+    /// early never gets the previous content.
+    fn write_confirmed(&mut self, written: &Self::Written) -> bool;
     /// Whether the Target has asked for the data written as `written`.
     fn render_requested(&mut self, written: &Self::Written) -> bool;
     /// Puts `snapshot` back unless the clipboard changed since `written`; `false` if it changed.
@@ -172,6 +179,21 @@ fn paste<C: Clipboard, K: Keyboard, T: Timing>(
     // the item was left on the clipboard so a sensitive item can still be cleared later.
     let snapshot = env.clipboard.snapshot().ok();
     let written = env.clipboard.write_transient(payload)?;
+    // No paste key until our write is confirmed to be the clipboard's content: a Ctrl+V that
+    // lands first would paste whatever was copied before (the item on top of the history).
+    let mut confirmed = false;
+    for _ in 0..CONFIRM_ATTEMPTS {
+        if env.clipboard.write_confirmed(&written) {
+            confirmed = true;
+            break;
+        }
+        env.timing.sleep(POLL_INTERVAL);
+    }
+    if !confirmed {
+        return Err(Error::Clipboard(
+            "the clipboard did not take the item".into(),
+        ));
+    }
 
     let events = paste_sequence(env.keyboard.held_modifiers(), key);
     if env.keyboard.send(&events).is_err() {
@@ -261,6 +283,36 @@ mod tests {
         assert_eq!(w.clipboard.log, ["snapshot", "transient:2", "restore"]);
         assert_eq!(w.keyboard.sent.len(), 1);
         assert_eq!(w.timing.slept.last(), Some(&SETTLE));
+    }
+
+    #[test]
+    fn no_paste_key_goes_out_until_our_write_is_confirmed() {
+        // A write that takes a moment to land: the keys wait for it, then the paste is normal.
+        let mut slow = World::new();
+        slow.clipboard.unconfirmed_polls = 3;
+        assert_eq!(slow.run(UseMode::Paste, &PASTE), Ok(UseOutcome::Pasted));
+        assert_eq!(slow.keyboard.sent.len(), 1);
+        assert!(
+            slow.timing
+                .slept
+                .iter()
+                .filter(|d| **d == POLL_INTERVAL)
+                .count()
+                >= 3,
+            "waited for the write: {:?}",
+            slow.timing.slept
+        );
+
+        // A write that never lands: nothing is injected (the Target would paste the previous
+        // clipboard content) and the use fails.
+        let mut lost = World::new();
+        lost.clipboard.never_confirm = true;
+        assert!(matches!(
+            lost.run(UseMode::Paste, &PASTE),
+            Err(Error::Clipboard(_))
+        ));
+        assert!(lost.keyboard.sent.is_empty(), "no stale paste");
+        assert!(!lost.clipboard.log.iter().any(|l| l == "restore"));
     }
 
     #[test]

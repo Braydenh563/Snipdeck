@@ -98,6 +98,10 @@ mod imp {
                 .is_some_and(|hwnd| self.0.begin_text_entry_in(hwnd))
         }
 
+        fn release(&self) {
+            self.0.end_text_entry();
+        }
+
         fn cursor(&self) -> Option<(i32, i32)> {
             screen::cursor_position()
         }

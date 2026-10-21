@@ -243,68 +243,81 @@
     {
       "id": "27",
       "v1": true,
+      "launch": {
+        "args": [
+          "--data-dir",
+          "spikes-results\\m3-data"
+        ]
+      },
+      "title": "First paste after a cold start is the right item",
+      "do": "Close Snipdeck completely (tray icon, Quit), then start it again. Before doing anything else, copy the word OLDCLIP in Notepad (so it is the newest thing on your clipboard and at the top of Win+V). Click into an empty Notepad, then open the Snipdeck Panel and, as the very first action, click an item whose text is not OLDCLIP. Do this once right after start and once more after hiding and showing the Panel.",
+      "expect": "The item you clicked is pasted both times, never OLDCLIP. If the clipboard cannot take the item in time, nothing is pasted and a toast says the clipboard was busy; pressing the item again works. Report any case where OLDCLIP (or any other earlier clipboard text) is pasted instead."
+    },
+    {
+      "id": "28",
+      "v1": true,
       "title": "Delete on a list or board shows only the confirmation (O52)",
       "do": "In the Panel right-click a list tab and choose 'Delete list...'. Wait 3 seconds, then press Cancel. Do it again with the tab's Menu key (or Shift+F10) and press Esc. Then in the Main window open the board menu (click the board name) and choose 'Delete board...', wait 3 seconds and press Cancel.",
       "expect": "Each time only the delete confirmation appears, inside the Panel or the Main window. No list editor or board editor window opens, before or after it, and nothing flashes behind it. Cancel and Esc close it and the list or board is still there. With only one board, 'Delete board...' is greyed out."
     },
     {
-      "id": "28",
+      "id": "29",
       "v1": true,
       "title": "No white flash when a window opens (O52)",
       "do": "Set Settings > Theme to Dark. Open each of these three times, closing it between: the list editor (Panel: right-click a tab, 'Edit list...'), the item editor (double-click a row), Settings, Troubleshoot (Panel kebab menu), the board editor (Main: board menu, 'Rename board...'), and the Move chooser (Main: right-click a row, Move to...). Watch each window as it appears. Then set Theme to Light and open the list editor and Settings again.",
       "expect": "Every window appears in the theme's background colour from its first visible moment: no white or blank frame, not even for a split second, on the first open or on later ones. In Light the first colour is the light background, not pure white. Write any window that flashed in the note (n)."
     },
     {
-      "id": "29",
+      "id": "30",
       "v1": true,
       "title": "Windows open beside the window they came from (O41)",
       "do": "Put the Panel on the left of the screen with free space to its right. Open Settings from the Panel menu, close it, then open Troubleshoot and the item editor (New snippet). Then drag the Panel to the far right edge of the screen and open Settings again. Then drag the Panel to the middle of a small or 150 percent scaled screen so there is no room on either side, and open Settings once more. Finally open Settings from the Main window while the Main window is maximised.",
       "expect": "With room to its right, each window opens just right of the Panel with a small even gap (about 8 px at 100 percent, scaled on other displays), lined up with the Panel's top, fully on the screen and clear of the taskbar. At the right edge it opens on the left of the Panel instead. With no room at the sides it opens below or above the Panel, or covers as little of it as it can. Over a maximised Main window it opens centred. It never opens half off screen or under the taskbar."
     },
     {
-      "id": "30",
+      "id": "31",
       "v1": true,
       "title": "Take screenshot from the Panel, the tray and the palette (O48)",
       "do": "Open Paint. Open the Panel menu and choose Take screenshot. Drag a rectangle over part of the screen with the snipping overlay, then paste into Paint with Ctrl+V. Repeat from the tray icon menu (Take screenshot) and from the command palette (type screenshot). Then turn on Settings > Keep Panel visible during screenshots and repeat once. Then start a screenshot, press Esc on the overlay without taking one, and wait a minute.",
       "expect": "On choosing Take screenshot the Panel disappears at once, so it is not in front of the snipping overlay, and the overlay appears. When the snip is taken the clipboard holds the picture and the Panel is shown again within about half a second, without taking focus from the app in front. With the setting on, the Panel stays on screen during the snip. After Esc the Panel returns on its own after about 60 seconds. If the overlay cannot start, the Panel is shown at once with a toast saying so. No snippet is added by itself."
     },
     {
-      "id": "31",
+      "id": "32",
       "v1": true,
       "title": "Closing Main closes what it opened (O53)",
       "do": "Open the Main window. From it open Settings, the Troubleshoot window, the Tag manager and an item editor (type a few new words in the item's text, do not save), then a list editor (change its name, do not save). Also open the command palette (Ctrl+K). Close the Main window with its X button. Then open Main again from the tray, open the same item and the same list for editing. Next open the Panel, open Settings and an item editor from the Panel, and close Main: they must stay. Then close the Panel with its X button.",
       "expect": "Closing Main closes Settings, Troubleshoot, the Tag manager, both editors and the palette together with it, with no question asked. Main opens again with no palette. The item editor and the list editor come back with the words you typed (the item editor says the draft was restored). Closing Main does not close the windows opened from the Panel. Closing the Panel then closes Settings and the editor opened from it. Write which window stayed open, if any, in the note (n)."
     },
     {
-      "id": "32",
+      "id": "33",
       "v1": true,
       "title": "The Panel footer is fully visible at the regular size (O45)",
       "do": "Open the Panel at its normal size (do not resize it). Look at the bottom strip. Then set Windows display scale to 125% and 150% (Settings > System > Display), sign out and in if asked, and open the Panel again each time.",
       "expect": "The bottom strip (\\"
     },
     {
-      "id": "33",
+      "id": "34",
       "v1": true,
       "title": "Reset size and position (O45)",
       "do": "Drag the Panel to the other side of the screen and resize it very small. Open the Panel menu (the three dots) and choose 'Reset size and position'. Then press Ctrl+K in the Main window, type 'reset' and run 'Reset Panel size and position'. If you have two monitors, move the Panel to the second one first and check the first one's saved place is untouched.",
       "expect": "The Panel jumps back to its default size and place at once, with no Undo message. It stays there after you close and reopen it. On a second monitor only that monitor's place is forgotten."
     },
     {
-      "id": "34",
+      "id": "35",
       "v1": true,
       "title": "Add an item with the New item row (O45)",
       "do": "In the Panel click '+ New item' under the last item (also try it in an empty list). Paste some text and press Enter. Then press Ctrl+N, paste a web address and click Create. Try Shift+Enter (new line) and Esc (cancel). Click the Sensitive switch before creating once.",
       "expect": "The row is easy to see. The box opens with the cursor in it and the kind already set (Link for a web address). Enter or Create adds the item under the last one, selects it and clears the box. Shift+Enter makes a new line. Esc closes the box and keeps nothing. A Sensitive item shows hidden."
     },
     {
-      "id": "35",
+      "id": "36",
       "v1": true,
       "title": "Select several items and act on them (O45)",
       "do": "In the Panel Ctrl+click two rows, Shift+click a third, then press Ctrl+A and Shift+Down. Use the bar that appears: Move to..., Colour, Copy all, Delete. Paste after Copy all. Press Esc to clear. Hover a row and look for the three dots on it, and look at the selected row.",
       "expect": "The bar says how many are selected. Move to and Colour ask once and change all of them. Copy all pastes the texts one after another. Delete removes them with an Undo message and no question. Esc clears the selection. The three dots show on the hovered and the selected row and open the row menu."
     },
     {
-      "id": "36",
+      "id": "37",
       "v1": true,
       "title": "Show numbers (O45)",
       "do": "Open the Panel menu (three dots) and switch 'Show numbers' off, then on. With it off press Alt+1 and 1 on a row.",

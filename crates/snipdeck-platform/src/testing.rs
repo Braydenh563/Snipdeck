@@ -31,6 +31,27 @@ pub struct FakeClipboard {
     pub restore_result: Option<Result<bool, Error>>,
     /// The clipboard sequence number: it increases with every write and every clear.
     pub sequence: u32,
+    /// How many times the text on the clipboard was read (`ClipboardText::read_text`).
+    pub text_reads: u32,
+    /// The sequence number right after the latest write.
+    pub write_sequence: Option<u32>,
+    /// How many clears fail with "busy" before one works (the clipboard is open elsewhere).
+    pub clear_busy: u32,
+    /// How many `write_confirmed` checks say "not yet" before one says yes.
+    pub unconfirmed_polls: u32,
+    /// `write_confirmed` never says yes (the write did not take).
+    pub never_confirm: bool,
+}
+
+impl FakeClipboard {
+    /// Whether this clear attempt finds the clipboard busy (uses up one of `clear_busy`).
+    pub fn busy_for_clear(&mut self) -> bool {
+        if self.clear_busy == 0 {
+            return false;
+        }
+        self.clear_busy -= 1;
+        true
+    }
 }
 
 impl Clipboard for FakeClipboard {
@@ -50,6 +71,7 @@ impl Clipboard for FakeClipboard {
         }
         self.written.push(payload.clone());
         self.sequence += 1;
+        self.write_sequence = Some(self.sequence);
         self.log.push(format!("transient:{}", payload.data().len()));
         Ok(())
     }
@@ -59,9 +81,20 @@ impl Clipboard for FakeClipboard {
         }
         self.written.push(payload.clone());
         self.sequence += 1;
+        self.write_sequence = Some(self.sequence);
         self.log
             .push(format!("persistent:{}", payload.data().len()));
         Ok(())
+    }
+    fn write_confirmed(&mut self, (): &()) -> bool {
+        if self.never_confirm {
+            return false;
+        }
+        if self.unconfirmed_polls > 0 {
+            self.unconfirmed_polls -= 1;
+            return false;
+        }
+        true
     }
     fn render_requested(&mut self, (): &()) -> bool {
         self.polls += 1;
@@ -335,13 +368,18 @@ impl Tray for FakeTray {
 
 /// A [`SystemLookSource`] a test sets. Cloning shares the value.
 #[derive(Debug, Clone, Default)]
-pub struct FakeSystemLook(Arc<Mutex<SystemLook>>);
+pub struct FakeSystemLook(Arc<Mutex<SystemLook>>, Arc<Mutex<Option<u32>>>);
 
 impl FakeSystemLook {
     /// A source that reports `look`.
     #[must_use]
     pub fn new(look: SystemLook) -> Self {
-        Self(Arc::new(Mutex::new(look)))
+        Self(Arc::new(Mutex::new(look)), Arc::default())
+    }
+
+    /// Changes Windows' text size to `percent` (`None`: never changed, 100 %).
+    pub fn set_text_scale_percent(&self, percent: Option<u32>) {
+        *lock(&self.1) = percent;
     }
 
     /// Changes what Windows "says".
@@ -353,6 +391,10 @@ impl FakeSystemLook {
 impl SystemLookSource for FakeSystemLook {
     fn read(&self) -> SystemLook {
         *lock(&self.0)
+    }
+
+    fn text_scale(&self) -> f32 {
+        crate::system_look::text_scale_from_percent(*lock(&self.1))
     }
 }
 
@@ -465,5 +507,13 @@ mod tests {
         });
         assert!(look.read().dark);
         assert!(look.read().reduce_motion);
+    }
+
+    #[test]
+    fn the_fake_text_scale_follows_what_the_test_sets() {
+        let look = FakeSystemLook::default();
+        assert!((look.text_scale() - 1.0).abs() < f32::EPSILON);
+        look.clone().set_text_scale_percent(Some(150));
+        assert!((look.text_scale() - 1.5).abs() < f32::EPSILON);
     }
 }

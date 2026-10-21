@@ -10,6 +10,18 @@ msgstr ""
 msgid ".snipdeck file"
 msgstr ".snipdeck-Datei"
 
+msgid "100 %"
+msgstr ""
+
+msgid "125 %"
+msgstr ""
+
+msgid "150 %"
+msgstr ""
+
+msgid "175 %"
+msgstr ""
+
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "Ein PNG-Bild. Snipdeck behält eine eigene Kopie."
 
@@ -97,6 +109,12 @@ msgstr "Alle {} zuletzt kopierten Einträge werden entfernt. Das lässt sich nic
 msgid "Also forget the encryption key"
 msgstr "Auch den Verschlüsselungsschlüssel vergessen"
 
+msgid "Alt 1 to 9"
+msgstr ""
+
+msgid "Alt+{}"
+msgstr ""
+
 msgid "Amber"
 msgstr "Bernstein"
 
@@ -139,8 +157,8 @@ msgstr "Gesichert"
 msgid "Backup of {}, {}"
 msgstr "Sicherung vom {}, {}"
 
-msgid "Backups"
-msgstr "Sicherungen"
+msgid "Backups and your data"
+msgstr ""
 
 msgid "Backups to keep"
 msgstr "Zu behaltende Sicherungen"
@@ -358,23 +376,86 @@ msgstr "Textbaustein kopieren"
 msgid "Copy the result"
 msgstr "Ergebnis kopieren"
 
+msgid "Copy without pasting"
+msgstr ""
+
 msgid "CopyQ export"
 msgstr "CopyQ-Export"
 
 msgid "Couldn't change the Windows start-up entry."
 msgstr "Der Windows-Starteintrag konnte nicht geändert werden."
 
+msgid "Couldn't clear old items out of the Trash. Check the disk has room, then restart Snipdeck to try again."
+msgstr ""
+
 msgid "Couldn't erase everything. Quit Snipdeck and try again."
 msgstr "Alles konnte nicht gelöscht werden. Beende Snipdeck und versuche es erneut."
 
-msgid "Couldn't export your library."
-msgstr "Deine Bibliothek konnte nicht exportiert werden."
+msgid "Couldn't export your library. Check the disk has room, then try again."
+msgstr ""
+
+msgid "Couldn't export your library: it is locked. Unlock it, then try again."
+msgstr ""
+
+msgid "Couldn't export your library: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't export your library: the folder can't be written to. Check it isn't read-only or in use, then try again."
+msgstr ""
 
 msgid "Couldn't import that."
 msgstr "Das konnte nicht importiert werden."
 
-msgid "Couldn't make a backup."
-msgstr "Es konnte keine Sicherung erstellt werden."
+msgid "Couldn't import that. Choose the file again, or try another one."
+msgstr ""
+
+msgid "Couldn't import that: it isn't a file Snipdeck can read, or it is damaged. Choose a .snipdeck export."
+msgstr ""
+
+msgid "Couldn't import that: it was made by a newer Snipdeck. Update Snipdeck, then try again."
+msgstr ""
+
+msgid "Couldn't import that: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't import that: the file is in use by another program or can't be read. Close the program using it, then try again."
+msgstr ""
+
+msgid "Couldn't import that: your library is locked. Unlock it, then try again."
+msgstr ""
+
+msgid "Couldn't make a backup. Check the disk has room, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make a backup: the disk is full. Free up some space, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make a backup: your library is locked. Unlock it, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make that change. Try again, or restart Snipdeck if it keeps happening."
+msgstr ""
+
+msgid "Couldn't make that change: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't make that change: your library file is in use by another program. Close that program, then try again."
+msgstr ""
+
+msgid "Couldn't make that change: your library is locked. Unlock it, then try again."
+msgstr ""
+
+msgid "Couldn't make today's backup. Check the disk has room, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings."
+msgstr ""
+
+msgid "Couldn't make today's backup: the disk is full. Free up some space, then use Back up now in Settings."
+msgstr ""
 
 msgid "Couldn't open that window."
 msgstr "Dieses Fenster konnte nicht geöffnet werden."
@@ -400,8 +481,23 @@ msgstr "Auf die Zwischenablage kann nicht zugegriffen werden. Eine andere App ve
 msgid "Couldn't rename the tag."
 msgstr "Das Schlagwort konnte nicht umbenannt werden."
 
-msgid "Couldn't restore that backup."
-msgstr "Diese Sicherung konnte nicht wiederhergestellt werden."
+msgid "Couldn't restore that backup. Choose another backup, or try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: a file is in use by another program. Close it, then try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: it isn't a Snipdeck backup, or it is damaged. Choose another backup."
+msgstr ""
+
+msgid "Couldn't restore that backup: it was made by a newer Snipdeck. Update Snipdeck, then try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't restore that backup: your library is locked. Unlock it, then try again."
+msgstr ""
 
 msgid "Couldn't save a draft of what you typed."
 msgstr "Ein Entwurf deiner Eingabe konnte nicht gespeichert werden."
@@ -415,8 +511,17 @@ msgstr "Deine Einstellungen konnten nicht gespeichert werden. Snipdeck versucht 
 msgid "Couldn't start the screenshot tool."
 msgstr "Das Screenshot-Werkzeug konnte nicht gestartet werden."
 
-msgid "Couldn't use this item."
-msgstr "Dieser Textbaustein konnte nicht verwendet werden."
+msgid "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening."
+msgstr ""
+
+msgid "Couldn't use this item: the disk is full. Free up some space, then try again."
+msgstr ""
+
+msgid "Couldn't use this item: your library file is in use by another program. Close that program, then try again."
+msgstr ""
+
+msgid "Couldn't use this item: your library is locked. Unlock it, then try again."
+msgstr ""
 
 msgid "Couldn't write to your library. Check that the disk has room."
 msgstr "In deine Bibliothek konnte nicht geschrieben werden. Prüfe, ob auf dem Datenträger Platz ist."
@@ -429,6 +534,12 @@ msgstr "Erstellen (Enter)"
 
 msgid "Create item"
 msgstr "Element erstellen"
+
+msgid "Ctrl+Shift+V"
+msgstr ""
+
+msgid "Ctrl+V"
+msgstr ""
 
 msgid "Current password"
 msgstr "Aktuelles Passwort"
@@ -757,6 +868,12 @@ msgstr "Verborgen. Halte die Leertaste gedrückt, um es anzuzeigen."
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr "Verborgen. Öffne es im Panel, um es anzuzeigen."
 
+msgid "Hide Panel"
+msgstr ""
+
+msgid "Hide Panel ({})"
+msgstr ""
+
 msgid "Hide kind, title, colour, tags and privacy"
 msgstr "Art, Titel, Farbe, Tags und Datenschutz ausblenden"
 
@@ -815,9 +932,6 @@ msgstr[1] "{} Textbausteine importiert"
 
 msgid "Import…"
 msgstr "Importieren…"
-
-msgid "In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe."
-msgstr "In diesen Programmen kopiert Snipdeck, statt einzufügen. Verwende den Dateinamen des Programms, z. B. notepad.exe."
 
 msgid "Included"
 msgstr "Enthalten"
@@ -879,6 +993,9 @@ msgstr "Art"
 
 msgid "Language"
 msgstr "Sprache"
+
+msgid "Last backup: {}"
+msgstr ""
 
 msgid "Leave delay"
 msgstr "Verzögerung beim Verlassen"
@@ -1049,8 +1166,8 @@ msgstr "Navigation"
 msgid "Never keep copies from these programs"
 msgstr "Nie Kopien aus diesen Programmen speichern"
 
-msgid "Never paste into"
-msgstr "Niemals einfügen in"
+msgid "Never paste"
+msgstr ""
 
 msgid "New board"
 msgstr "Neues Board"
@@ -1073,9 +1190,6 @@ msgstr "Neuer Name für {}"
 msgid "New password"
 msgstr "Neues Passwort"
 
-msgid "New snippet"
-msgstr "Neuer Textbaustein"
-
 msgid "New tag"
 msgstr "Neues Schlagwort"
 
@@ -1091,8 +1205,8 @@ msgstr "Nächste Liste"
 msgid "Next scope"
 msgstr "Nächster Bereich"
 
-msgid "No backups yet."
-msgstr "Noch keine Sicherungen."
+msgid "No backup yet"
+msgstr ""
 
 msgid "No colour"
 msgstr "Keine Farbe"
@@ -1117,6 +1231,9 @@ msgstr "Kein passender Befehl"
 
 msgid "No programs yet."
 msgstr "Noch keine Programme."
+
+msgid "No programs yet. Every program gets Ctrl+V."
+msgstr ""
 
 msgid "No recent items"
 msgstr "Keine neuen Textbausteine"
@@ -1244,6 +1361,9 @@ msgstr "Hinweise zu Drittanbietern öffnen"
 msgid "Open the user guide"
 msgstr "Benutzerhandbuch öffnen"
 
+msgid "Open the user guide (F1)"
+msgstr ""
+
 msgid "Opens in your browser."
 msgstr "Öffnet sich in deinem Browser."
 
@@ -1282,6 +1402,9 @@ msgstr "Einfügen"
 
 msgid "Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere."
 msgstr "Füge einen Lizenzschlüssel ein, um Unterstützer einzuschalten. Der Schlüssel wird auf diesem PC geprüft und nichts wird irgendwohin gesendet."
+
+msgid "Paste key for {}"
+msgstr ""
 
 msgid "Paste stack"
 msgstr "Einfügestapel"
@@ -1327,6 +1450,9 @@ msgstr "Einfügen in {} · {}"
 
 msgid "Pastes the next item of the list in order."
 msgstr "Fügt den nächsten Textbaustein der Liste der Reihe nach ein."
+
+msgid "Pastes the next item of the list in order. Works with Supporter."
+msgstr ""
 
 msgid "Path to the file"
 msgstr "Pfad zur Datei"
@@ -1402,6 +1528,9 @@ msgstr "Hinzuzufügendes Programm"
 
 msgid "Program to leave out of Recent"
 msgstr "Programm, das nicht unter „Zuletzt“ erscheinen soll"
+
+msgid "Programs"
+msgstr ""
 
 msgid "Prompt for a value or a choice each time you paste."
 msgstr "Bei jedem Einfügen nach einem Wert oder einer Auswahl fragen."
@@ -1542,14 +1671,14 @@ msgstr "Speichere deinen ersten Textbaustein oder kopiere etwas und speichere es
 msgid "Saved to {}"
 msgstr "Gespeichert in {}"
 
-msgid "Saved {} in your Documents folder"
-msgstr "{} im Ordner „Dokumente“ gespeichert"
+msgid "Saved {}"
+msgstr ""
 
-msgid "Saves every board, list and item as one .snipdeck file in your Documents folder."
-msgstr "Speichert alle Boards, Listen und Textbausteine als eine .snipdeck-Datei in deinem Ordner Dokumente."
+msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
+msgstr ""
 
-msgid "Saves the text on the clipboard as a new item in the list the panel shows."
-msgstr "Speichert den Text der Zwischenablage als neuen Textbaustein in der Liste, die das Panel zeigt."
+msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows. Off until you set a shortcut."
+msgstr ""
 
 msgid "Saving…"
 msgstr "Wird gespeichert…"
@@ -1619,6 +1748,9 @@ msgstr "Einstellungen…"
 
 msgid "Shift Enter"
 msgstr "Shift Enter"
+
+msgid "Shift+Insert"
+msgstr ""
 
 msgid "Shortcuts"
 msgstr "Tastenkürzel"
@@ -1827,6 +1959,9 @@ msgstr "Vorlagen mit Datum, Uhrzeit und Cursor"
 msgid "Text"
 msgstr "Text"
 
+msgid "Text size"
+msgstr ""
+
 msgid "Text you copy appears here, newest first, until you clear it or it is older than {} days."
 msgstr "Kopierter Text erscheint hier, der neueste zuerst, bis du ihn löschst oder er älter als {} Tage ist."
 
@@ -1902,6 +2037,9 @@ msgstr "Der Dateidialog konnte nicht geöffnet werden. Gib stattdessen den Pfad 
 msgid "The import stopped early because the source is bigger than Snipdeck reads in one go."
 msgstr "Der Import wurde früh abgebrochen, weil die Quelle größer ist, als Snipdeck auf einmal einlesen kann."
 
+msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe."
+msgstr ""
+
 msgid "The key is valid but couldn't be saved, so Supporter will be off next time."
 msgstr "Der Schlüssel ist gültig, konnte aber nicht gespeichert werden. Supporter ist daher beim nächsten Mal aus."
 
@@ -1925,6 +2063,9 @@ msgstr "Die ältesten werden gelöscht, sobald es mehr als diese Anzahl gibt."
 
 msgid "The panel"
 msgstr "Das Panel"
+
+msgid "The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back."
+msgstr ""
 
 msgid "The picker"
 msgstr "Die Auswahl"
@@ -2010,8 +2151,8 @@ msgstr "Kachelansicht"
 msgid "Title"
 msgstr "Titel"
 
-msgid "To remove everything, use Erase library above and then delete the folder."
-msgstr "Um alles zu entfernen, nutze oben „Bibliothek löschen“ und lösche danach den Ordner."
+msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
+msgstr ""
 
 msgid "Today's date"
 msgstr "Heutiges Datum"
@@ -2094,6 +2235,9 @@ msgstr "Verwende mindestens {} Zeichen."
 msgid "Use just the program's file name, like notepad.exe."
 msgstr "Verwende nur den Dateinamen des Programms, z. B. notepad.exe."
 
+msgid "Use result N"
+msgstr ""
+
 msgid "Use selected item"
 msgstr "Ausgewählten Textbaustein verwenden"
 
@@ -2169,11 +2313,11 @@ msgstr "Windows hat Snipdeck nicht erlaubt, den Zwischenablageverlauf auf diesem
 msgid "Windows doesn't allow {} as a shortcut."
 msgstr "Windows erlaubt {} nicht als Tastenkürzel."
 
+msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
+msgstr ""
+
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "Du hättest {} Boards, der Kostenlos-Tarif umfasst aber {}."
-
-msgid "Your data"
-msgstr "Deine Daten"
 
 msgid "Your deck is empty"
 msgstr "Dein Deck ist leer"
@@ -2431,3 +2575,6 @@ msgstr "{}, {} von {}"
 
 msgid "{}.{} MB"
 msgstr "{},{} MB"
+
+msgid "{}: {}"
+msgstr ""

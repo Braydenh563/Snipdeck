@@ -29,7 +29,7 @@ use snipdeck_ui as ui;
 
 use crate::{
     binding::{index, model, redraw_all, register_redraw, to_i32},
-    controller::{Controller, Library},
+    controller::{Controller, HelpTopic, Library},
     drafts::AUTOSAVE_EVERY,
     host::ClipboardText,
     item_editor::{EditorInput, EditorProblem, ItemEditorView, kind_at, kind_index},
@@ -265,6 +265,12 @@ where
             };
             crate::trace!("callback editor cancel-requested");
             core.act(Controller::item_editor_cancel);
+        });
+        let core = Rc::downgrade(self);
+        w.on_help_requested(move || {
+            if let Some(core) = core.upgrade() {
+                core.act(|ctl| ctl.main_open_help(HelpTopic::Guide));
+            }
         });
         let core = Rc::downgrade(self);
         w.on_delete_requested(move || {

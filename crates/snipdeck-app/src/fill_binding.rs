@@ -19,7 +19,7 @@ use snipdeck_ui as ui;
 use crate::{
     accent::Accent,
     binding::{index, model, redraw_all, register_redraw},
-    controller::{Controller, FillView, Library, View},
+    controller::{Controller, FillView, HelpTopic, Library, View},
     fill::{Field, FieldKind},
     frame::Rect,
     host::ClipboardText,
@@ -192,6 +192,8 @@ where
             core.submit(&values);
         });
         wire!(on_cancelled, |core| core.act(Controller::cancel_fill));
+        wire!(on_help_requested, |core| core
+            .act(|ctl| ctl.main_open_help(HelpTopic::Guide)));
         wire!(on_drag_requested, |core| core.shell.drag());
     }
 }
@@ -295,6 +297,8 @@ fn render(
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
     }
+    // Not behind `differs`: the text size is not part of the view.
+    crate::text_scale::apply(&window.global::<ui::SystemLook<'_>>());
     if differs(&|p| {
         (p.high_contrast, p.accent, p.reduced_motion)
             == (view.high_contrast, view.accent, view.reduced_motion)

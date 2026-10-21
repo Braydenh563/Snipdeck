@@ -56,6 +56,16 @@ pub struct Used {
     pub count_failed: Option<String>,
 }
 
+impl Used {
+    /// The diagnostic line for a use that worked but could not be counted (`SNIPDECK_LOG=1`).
+    #[must_use]
+    pub fn count_failed_line(&self) -> Option<String> {
+        self.count_failed
+            .as_ref()
+            .map(|why| format!("use not counted: {why}"))
+    }
+}
+
 /// Why a use did not happen.
 #[derive(Debug, thiserror::Error)]
 pub enum UseError {
@@ -462,9 +472,14 @@ mod tests {
             used.count_failed
         );
         assert_eq!(w.store.item(id).expect("item").use_count, 0, "not counted");
+        assert!(
+            used.count_failed_line()
+                .is_some_and(|l| l.starts_with("use not counted:") && l.contains("disk full"))
+        );
         // A normal use reports nothing.
         let ok = w.run(&request).expect("used");
         assert_eq!(ok.count_failed, None);
+        assert_eq!(ok.count_failed_line(), None);
     }
 
     #[test]

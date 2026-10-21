@@ -65,6 +65,9 @@ pub trait ClipboardText {
     /// The clipboard's sequence number, which changes whenever its contents do; `None` when it
     /// cannot be read. Covers content that is not text (HTML, images, files).
     fn sequence_number(&mut self) -> Option<u32>;
+    /// The sequence number read right after this clipboard's latest write (not now): the
+    /// reference for "nothing has touched the clipboard since our write". `None` before a write.
+    fn written_sequence(&mut self) -> Option<u32>;
     /// Empties the clipboard, whatever formats it holds, if its sequence number is still
     /// `sequence`. Whether it did.
     fn clear_if_sequence(&mut self, sequence: u32) -> bool;
@@ -81,6 +84,9 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
     fn sequence_number(&mut self) -> Option<u32> {
         Self::sequence_number(self)
     }
+    fn written_sequence(&mut self) -> Option<u32> {
+        Self::written_sequence(self)
+    }
     fn clear_if_sequence(&mut self, sequence: u32) -> bool {
         Self::clear_if_sequence(self, sequence)
     }
@@ -90,13 +96,14 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
 /// last copied), so a test seeds it by pushing a payload onto `written`.
 impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
     fn read_text(&mut self) -> Option<String> {
+        self.text_reads += 1;
         self.written.last()?.data().iter().find_map(|d| match d {
             snipdeck_platform::payload::Data::Text(text) => Some(text.clone()),
             _ => None,
         })
     }
     fn clear_if_text(&mut self, text: &str) -> bool {
-        if self.read_text().as_deref() != Some(text) {
+        if self.read_text().as_deref() != Some(text) || self.busy_for_clear() {
             return false;
         }
         self.written.clear();
@@ -107,8 +114,11 @@ impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
     fn sequence_number(&mut self) -> Option<u32> {
         Some(self.sequence)
     }
+    fn written_sequence(&mut self) -> Option<u32> {
+        self.write_sequence
+    }
     fn clear_if_sequence(&mut self, sequence: u32) -> bool {
-        if self.sequence != sequence {
+        if self.sequence != sequence || self.busy_for_clear() {
             return false;
         }
         self.written.clear();
@@ -346,11 +356,28 @@ mod tests {
         assert_eq!(action_of(99), None);
     }
 
+    /// Every action has a chord (Capture is off by default, see `HotkeyAction::default_chord`).
+    fn all_on() -> Hotkeys {
+        Hotkeys {
+            capture: "Ctrl+Shift+2".into(),
+            ..Hotkeys::default()
+        }
+    }
+
     #[test]
-    fn every_default_hotkey_is_registered() {
+    fn every_default_hotkey_is_registered_and_capture_stays_off_until_set() {
         let mut backend = FakeHotkeys::default();
         let problems = register_all(&mut backend, &Hotkeys::default());
         assert_eq!(problems, Vec::new());
+        assert_eq!(backend.registered.len(), 3);
+        assert!(
+            backend
+                .registered
+                .iter()
+                .all(|(id, _)| *id != id_of(HotkeyAction::Capture))
+        );
+        let mut backend = FakeHotkeys::default();
+        assert_eq!(register_all(&mut backend, &all_on()), Vec::new());
         assert_eq!(backend.registered.len(), 4);
         let toggle = backend
             .registered
@@ -366,7 +393,7 @@ mod tests {
             taken: vec!["Ctrl+Shift+Space".into()],
             ..FakeHotkeys::default()
         };
-        let problems = register_all(&mut backend, &Hotkeys::default());
+        let problems = register_all(&mut backend, &all_on());
         assert_eq!(
             problems,
             [HotkeyProblem {
@@ -398,7 +425,7 @@ mod tests {
     #[test]
     fn pausing_removes_every_hotkey_and_resuming_registers_them_again() {
         let mut backend = FakeHotkeys::default();
-        let hotkeys = Hotkeys::default();
+        let hotkeys = all_on();
         assert_eq!(register_all(&mut backend, &hotkeys), Vec::new());
         assert_eq!(unregister_all(&mut backend), 0);
         assert_eq!(backend.registered, Vec::new());
@@ -410,7 +437,7 @@ mod tests {
     #[test]
     fn resuming_registers_the_chords_in_force_now_not_the_ones_from_start_up() {
         let mut backend = FakeHotkeys::default();
-        let at_start = Hotkeys::default();
+        let at_start = all_on();
         assert_eq!(register_all(&mut backend, &at_start), Vec::new());
         assert_eq!(
             set_paused(&mut backend, true, &at_start),

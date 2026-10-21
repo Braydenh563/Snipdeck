@@ -426,3 +426,180 @@ fn a_free_user_is_told_about_pro_instead_of_being_asked() {
         )
     );
 }
+
+#[test]
+fn a_program_rule_in_settings_decides_the_paste_key() {
+    use crate::settings::{ProgramPaste, ProgramRule};
+    use snipdeck_platform::keys::Modifier;
+    let wt = Target {
+        app: "wt.exe".into(),
+        title: "PowerShell".into(),
+        elevated: false,
+        focus: Focus::Caret,
+    };
+    let rule = || ProgramRule {
+        exe: "wt.exe".into(),
+        paste: ProgramPaste::CtrlShiftV,
+    };
+    let shift_down = KeyEvent {
+        key: Key::Modifier(Modifier::Shift),
+        down: true,
+    };
+
+    // A rule changed while running (Settings > Programs).
+    let mut w = world_with(Some(wt.clone()), Settings::default());
+    w.ctl.activate_row(0, UseMode::Paste);
+    assert!(
+        !w.ctl.services().keyboard.sent[0].contains(&shift_down),
+        "Ctrl+V by default: {:?}",
+        w.ctl.services().keyboard.sent
+    );
+    w.ctl.update_settings(|s| s.programs.push(rule()));
+    w.ctl.activate_row(0, UseMode::Paste);
+    let sent = &w.ctl.services().keyboard.sent;
+    assert!(
+        sent[1].contains(&shift_down),
+        "Ctrl+Shift+V after the rule: {sent:?}"
+    );
+
+    // A rule already in the settings file at start.
+    let mut settings = Settings::default();
+    settings.programs.push(rule());
+    let mut w = world_with(Some(wt), settings);
+    w.ctl.activate_row(0, UseMode::Paste);
+    assert!(w.ctl.services().keyboard.sent[0].contains(&shift_down));
+}
+
+#[test]
+fn a_template_reads_the_clipboard_only_when_it_says_clipboard() {
+    let mut w = build(Opts {
+        clipboard: Some("private"),
+        ..Opts::default()
+    });
+    let list = w.ctl.model.list().expect("list").id;
+    let plain = add(
+        &mut w.ctl.store,
+        list,
+        ItemKind::Template,
+        "Plain",
+        "Hello {cursor}",
+    );
+    let echo = add(
+        &mut w.ctl.store,
+        list,
+        ItemKind::Template,
+        "Echo",
+        "Got: {clipboard}",
+    );
+    let before = w.ctl.services.clipboard.text_reads;
+    w.ctl.use_item(plain, UseMode::Copy);
+    assert_eq!(
+        w.ctl.services.clipboard.text_reads, before,
+        "no {{clipboard}}, no read"
+    );
+    w.ctl.use_item(echo, UseMode::Copy);
+    assert_eq!(w.ctl.services.clipboard.text_reads, before + 1);
+}
+
+#[test]
+fn a_busy_clipboard_is_tried_again_until_the_secret_is_gone() {
+    let mut w = world();
+    let id = w.ids[0];
+    make_sensitive(&mut w, id);
+    w.ctl.activate_row(0, UseMode::Copy);
+    w.ctl.services.clipboard.clear_busy = 2;
+    w.clock.set(at("2026-10-17T10:30:30Z"));
+    w.ctl.clear_clipboard_if_due();
+    assert_eq!(
+        w.ctl.services.clipboard.written.len(),
+        1,
+        "busy: still there"
+    );
+    assert_eq!(
+        w.ctl.clipboard_clear_wait(),
+        Some(CLIPBOARD_CLEAR_RETRY),
+        "re-armed, not dropped"
+    );
+    w.clock.set(at("2026-10-17T10:30:31Z"));
+    w.ctl.clear_clipboard_if_due();
+    assert_eq!(w.ctl.services.clipboard.written.len(), 1, "busy again");
+    w.clock.set(at("2026-10-17T10:30:32Z"));
+    w.ctl.clear_clipboard_if_due();
+    assert!(w.ctl.services.clipboard.written.is_empty(), "cleared");
+    assert_eq!(w.ctl.clipboard_clear_wait(), None, "done");
+}
+
+#[test]
+fn a_clipboard_that_stays_busy_is_given_up_on() {
+    let mut w = world();
+    let id = w.ids[0];
+    make_sensitive(&mut w, id);
+    w.ctl.activate_row(0, UseMode::Copy);
+    w.ctl.services.clipboard.clear_busy = u32::MAX;
+    let mut now = at("2026-10-17T10:30:30Z");
+    for _ in 0..CLIPBOARD_CLEAR_ATTEMPTS {
+        w.clock.set(now);
+        w.ctl.clear_clipboard_if_due();
+        now = now.checked_add(Duration::from_secs(1)).expect("later");
+    }
+    assert_eq!(w.ctl.clipboard_clear_wait(), None, "no timer left running");
+}
+
+#[test]
+fn the_clear_compares_with_the_sequence_at_our_write_not_at_the_arming() {
+    use snipdeck_platform::payload::{Data, Payload};
+    let mut w = world();
+    let id = w.ids[0];
+    make_sensitive(&mut w, id);
+    w.ctl.activate_row(0, UseMode::Copy);
+    let at_write = w.ctl.services.clipboard.write_sequence;
+    // Something else copied after our write and before the timer was armed would move the
+    // current number; the pending clear keeps the number from our write.
+    assert_eq!(
+        w.ctl.clipboard_clear.as_ref().expect("armed").sequence,
+        at_write
+    );
+    w.ctl.services.clipboard.written.clear();
+    w.ctl
+        .services
+        .clipboard
+        .written
+        .push(Payload::new(vec![Data::Png(vec![9])]).expect("payload"));
+    w.ctl.services.clipboard.sequence += 1;
+    w.clock.set(at("2026-10-17T10:30:30Z"));
+    w.ctl.clear_clipboard_if_due();
+    assert_eq!(w.ctl.services.clipboard.written.len(), 1, "left alone");
+}
+
+#[test]
+fn a_first_paste_whose_write_is_not_on_the_clipboard_injects_nothing_and_says_so() {
+    let mut w = world();
+    w.ctl.services.clipboard.never_confirm = true;
+    assert_eq!(w.ctl.activate_row(0, UseMode::Paste), UseResult::Failed);
+    assert!(
+        w.ctl.services().keyboard.sent.is_empty(),
+        "no Ctrl+V with stale clipboard content: {:?}",
+        w.ctl.services().keyboard.sent
+    );
+    assert_eq!(uses(&w, w.ids[0]), 0, "not counted as a use");
+    let toast = w.ctl.view().toast.expect("toast");
+    assert_eq!(
+        (toast.kind, toast.message),
+        (ToastKind::Danger, ToastMessage::ClipboardBusy)
+    );
+}
+
+#[test]
+fn a_write_that_lands_late_still_pastes_the_right_item() {
+    let mut w = world();
+    w.ctl.services.clipboard.unconfirmed_polls = 4;
+    assert_eq!(
+        w.ctl.activate_row(1, UseMode::Paste),
+        UseResult::Done(UseOutcome::Pasted)
+    );
+    assert_eq!(
+        w.ctl.services().clipboard.written[0].data(),
+        [Data::Text("second".into())]
+    );
+    assert_eq!(w.ctl.services().keyboard.sent.len(), 1);
+}

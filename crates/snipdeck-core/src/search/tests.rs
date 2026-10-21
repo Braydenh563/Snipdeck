@@ -142,6 +142,70 @@ fn equal_scores_keep_the_given_order() {
     assert_eq!(ids, items.iter().map(|i| i.id).collect::<Vec<_>>());
 }
 
+fn used(mut item: Item, count: u32, last: Option<&str>) -> Item {
+    item.use_count = count;
+    item.last_used_at = last.map(|at| at.parse().unwrap());
+    item
+}
+
+#[test]
+fn equal_scores_go_to_the_more_used_item_then_to_the_one_used_last() {
+    let items = vec![
+        item("Reply", ""),
+        used(item("Reply", ""), 2, Some("2026-10-01T09:00:00Z")),
+        used(item("Reply", ""), 9, Some("2026-09-01T09:00:00Z")),
+        used(item("Reply", ""), 2, Some("2026-10-10T09:00:00Z")),
+        item("Reply", ""),
+    ];
+    let index = SearchIndex::new(&items);
+    let ids: Vec<_> = index.query("reply", 10).iter().map(|h| h.id).collect();
+    // Nine uses first; the two with two uses by last use; the unused two in the user's order.
+    let want = [2, 3, 1, 0, 4].map(|i| items[i].id);
+    assert_eq!(ids, want);
+}
+
+#[test]
+fn use_never_beats_a_better_match_and_decides_a_cut_at_the_limit() {
+    let items = vec![
+        used(
+            item("Reply to customer", ""),
+            50,
+            Some("2026-10-10T09:00:00Z"),
+        ),
+        item("Reply", ""),
+        used(item("Reply", ""), 3, None),
+        item("Reply", ""),
+    ];
+    let index = SearchIndex::new(&items);
+    let hits = index.query("reply", 10);
+    let exact_first = hits.iter().position(|h| h.id == items[0].id).unwrap();
+    assert!(
+        hits[..exact_first]
+            .iter()
+            .all(|h| h.score > hits[exact_first].score),
+        "a heavily used worse match stays behind every better one"
+    );
+    // Cut to two: the used one of the three equal titles survives the cut.
+    let two: Vec<_> = index.query("reply", 2).iter().map(|h| h.id).collect();
+    assert!(two.contains(&items[2].id), "{two:?}");
+}
+
+#[test]
+fn a_counted_use_reorders_a_tie_without_rebuilding_the_index() {
+    let mut items: Vec<Item> = (0..3).map(|_| item("Reply", "")).collect();
+    let mut index = SearchIndex::new(&items);
+    assert_eq!(index.query("reply", 1)[0].id, items[0].id);
+    items[2] = used(items[2].clone(), 1, Some("2026-10-18T09:00:00Z"));
+    assert!(index.refresh_usage(&items));
+    assert!(!index.refresh_usage(&items), "nothing more to change");
+    assert_eq!(index.query("reply", 1)[0].id, items[2].id);
+    assert_eq!(
+        index.query("", 1)[0].id,
+        items[0].id,
+        "a blank query keeps the list order"
+    );
+}
+
 #[test]
 fn content_matching_covers_only_the_first_64_characters() {
     let inside = item("A", &format!("{}needle", "x".repeat(58)));

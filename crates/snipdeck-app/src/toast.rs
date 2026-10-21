@@ -4,7 +4,7 @@
 use snipdeck_core::{Feature, UseOutcome};
 use snipdeck_platform::route::{CopyReason, Route};
 
-use crate::{panel::friendly_app_name, usecase::UseError};
+use crate::{failure::Cause, panel::friendly_app_name, usecase::UseError};
 
 /// How the toast is styled (DESIGN.md §4 Toast).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -123,8 +123,12 @@ pub enum ToastMessage {
         /// The Panel hotkey, or `None` when it is switched off.
         chord: Option<String>,
     },
-    /// "Couldn't use this item."
+    /// "Couldn't use this item. Try again, or restart Snipdeck if it keeps happening." (the
+    /// cause is not known)
     Failed,
+    /// A use that failed for a cause the error names: "Couldn't use this item: the disk is full.
+    /// Free up some space, then try again."
+    UseFailed(Cause),
     /// "Couldn't open that window." (the Picker or the fill form could not be shown)
     WindowNotShown,
     /// "Couldn't save your settings. Snipdeck will try again."
@@ -183,29 +187,34 @@ pub enum ToastMessage {
     LicenceRejected(LicenceProblem),
     /// "Backed up".
     BackupMade,
-    /// "Couldn't make a backup."
-    BackupFailed,
+    /// "Couldn't make a backup: the disk is full. ..." (a backup the user asked for)
+    BackupFailed(Cause),
+    /// "Couldn't make today's backup. Check the disk has room, then use Back up now in
+    /// Settings." (the daily run)
+    DailyBackupFailed(Cause),
+    /// "Couldn't clear old items out of the Trash. ..." (the daily run)
+    TrashPurgeFailed,
     /// "Restored 5 items from the backup" (or: nothing was missing).
     BackupRestored {
         /// Items added back.
         items: usize,
     },
-    /// "Couldn't restore that backup."
-    RestoreFailed,
+    /// "Couldn't restore that backup: ..."
+    RestoreFailed(Cause),
     /// "Imported 5 items".
     Imported {
         /// Items added.
         items: usize,
     },
-    /// "Couldn't import that."
-    ImportFailed,
+    /// "Couldn't import that: ..."
+    ImportFailed(Cause),
     /// "Saved {file} in {folder}": an export.
     Exported {
         /// The file's name.
         file: String,
     },
-    /// "Couldn't export your library."
-    ExportFailed,
+    /// "Couldn't export your library: ..."
+    ExportFailed(Cause),
     /// "Your library was erased."
     LibraryErased,
     /// "Couldn't erase everything. Quit Snipdeck and try again."
@@ -232,6 +241,9 @@ pub enum ToastMessage {
     NotOpened,
     /// "Couldn't save a draft of what you typed."
     DraftNotSaved,
+    /// A move, reorder or other change to the library that the store refused, for a cause the
+    /// error names: "Couldn't make that change: the disk is full. ..."
+    ChangeFailed(Cause),
     /// "Couldn't start the screenshot tool." (Take screenshot)
     ScreenshotFailed,
 }
@@ -300,8 +312,12 @@ pub fn after_error(error: &UseError) -> Toast {
             ToastMessage::TemplateBroken
         }
         UseError::Store(Store::EncryptionLocked) => ToastMessage::Locked,
+        UseError::Store(e) => match Cause::of_store(e) {
+            Cause::Other => ToastMessage::Failed,
+            cause => ToastMessage::UseFailed(cause),
+        },
         // A template that needs answers opens the fill form instead of reaching a toast.
-        UseError::Store(_) | UseError::NeedsAnswers(_) => ToastMessage::Failed,
+        UseError::NeedsAnswers(_) => ToastMessage::Failed,
     };
     Toast {
         kind: ToastKind::Danger,
@@ -430,6 +446,27 @@ mod tests {
         assert_eq!(
             after_error(&UseError::NotText).message,
             ToastMessage::TemplateBroken
+        );
+    }
+
+    #[test]
+    fn a_store_failure_is_worded_by_its_cause_when_the_error_names_one() {
+        use std::io::{Error as Io, ErrorKind};
+        let store = |e| after_error(&UseError::Store(e)).message;
+        assert_eq!(
+            store(snipdeck_store::Error::Io(Io::from(ErrorKind::StorageFull))),
+            ToastMessage::UseFailed(Cause::DiskFull)
+        );
+        assert_eq!(
+            store(snipdeck_store::Error::Io(Io::from(
+                ErrorKind::PermissionDenied
+            ))),
+            ToastMessage::UseFailed(Cause::InUse)
+        );
+        assert_eq!(
+            store(snipdeck_store::Error::Corrupt("x".into())),
+            ToastMessage::Failed,
+            "a cause the code cannot tell apart is not invented"
         );
     }
 }

@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use snipdeck_platform::chord::{Chord, Conflict, conflicts};
+use snipdeck_platform::keys::{BUILTIN_PASTE_KEYS, PasteKey};
 
 /// The settings file format version.
 pub const VERSION: u32 = 1;
@@ -194,13 +195,14 @@ impl HotkeyAction {
         Self::PasteNext,
     ];
 
-    /// The default chord (SPEC §5).
+    /// The default chord (SPEC §5). Empty means off: Capture saves the clipboard text without
+    /// asking, so it only works once the user has chosen a chord (SPEC 5.5).
     #[must_use]
     pub const fn default_chord(self) -> &'static str {
         match self {
             Self::TogglePanel => "Ctrl+Alt+Space",
             Self::Picker => "Ctrl+Shift+Space",
-            Self::Capture => "Ctrl+Shift+2",
+            Self::Capture => "",
             Self::PasteNext => "Ctrl+Alt+V",
         }
     }
@@ -217,6 +219,147 @@ pub enum Theme {
     Light,
     /// Always dark.
     Dark,
+}
+
+/// The text size Snipdeck uses (Settings > Appearance), WCAG 1.4.4.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum TextSize {
+    /// Follow Windows' "Text size" (Settings > Accessibility).
+    #[default]
+    #[serde(rename = "system")]
+    System,
+    /// 100 %.
+    #[serde(rename = "100")]
+    P100,
+    /// 125 %.
+    #[serde(rename = "125")]
+    P125,
+    /// 150 %.
+    #[serde(rename = "150")]
+    P150,
+    /// 175 %.
+    #[serde(rename = "175")]
+    P175,
+}
+
+/// The smallest and largest text scale the UI is laid out for (Windows allows 100 % to 225 %).
+pub const TEXT_SCALE: std::ops::RangeInclusive<f32> = 1.0..=2.25;
+
+impl TextSize {
+    /// Every choice, in the order Settings lists them.
+    pub const ALL: [Self; 5] = [Self::System, Self::P100, Self::P125, Self::P150, Self::P175];
+
+    /// The fixed percentage, or `None` for "follow Windows".
+    #[must_use]
+    pub const fn percent(self) -> Option<u32> {
+        match self {
+            Self::System => None,
+            Self::P100 => Some(100),
+            Self::P125 => Some(125),
+            Self::P150 => Some(150),
+            Self::P175 => Some(175),
+        }
+    }
+
+    /// The scale factor the UI uses: the fixed percentage, or `system` (Windows' text scale)
+    /// for "System". Always inside [`TEXT_SCALE`], and 1.0 for a value that is not a number.
+    #[must_use]
+    pub fn scale(self, system: f32) -> f32 {
+        #[allow(
+            clippy::cast_precision_loss,
+            reason = "a percentage up to 175 is exact in an f32"
+        )]
+        let wanted = self.percent().map_or(system, |p| p as f32 / 100.0);
+        if wanted.is_nan() {
+            1.0
+        } else {
+            wanted.clamp(*TEXT_SCALE.start(), *TEXT_SCALE.end())
+        }
+    }
+}
+
+/// What Snipdeck presses to paste into one program, or "never paste there".
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ProgramPaste {
+    /// `Ctrl+V`: nearly every program.
+    #[default]
+    CtrlV,
+    /// `Ctrl+Shift+V`: terminals that keep `Ctrl+V` for themselves.
+    CtrlShiftV,
+    /// `Shift+Insert`: terminals that do not accept `Ctrl+V`.
+    ShiftInsert,
+    /// Never paste: the item is copied instead.
+    Never,
+}
+
+impl ProgramPaste {
+    /// Every choice, in the order Settings lists them.
+    pub const ALL: [Self; 4] = [
+        Self::CtrlV,
+        Self::CtrlShiftV,
+        Self::ShiftInsert,
+        Self::Never,
+    ];
+
+    /// The key to press, or `None` for [`Never`](Self::Never).
+    #[must_use]
+    pub const fn key(self) -> Option<PasteKey> {
+        match self {
+            Self::CtrlV => Some(PasteKey::CtrlV),
+            Self::CtrlShiftV => Some(PasteKey::CtrlShiftV),
+            Self::ShiftInsert => Some(PasteKey::ShiftInsert),
+            Self::Never => None,
+        }
+    }
+
+    const fn of_key(key: PasteKey) -> Self {
+        match key {
+            PasteKey::CtrlV => Self::CtrlV,
+            PasteKey::CtrlShiftV => Self::CtrlShiftV,
+            PasteKey::ShiftInsert => Self::ShiftInsert,
+        }
+    }
+}
+
+/// How Snipdeck pastes into one program (Settings > Programs).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProgramRule {
+    /// The executable file name, lower case (`windowsterminal.exe`).
+    pub exe: String,
+    /// What to press there.
+    pub paste: ProgramPaste,
+}
+
+/// The rules a new settings file starts with: the programs known to need another paste key.
+fn builtin_program_rules() -> Vec<ProgramRule> {
+    BUILTIN_PASTE_KEYS
+        .iter()
+        .map(|&(exe, key)| ProgramRule {
+            exe: exe.to_owned(),
+            paste: ProgramPaste::of_key(key),
+        })
+        .collect()
+}
+
+/// Reads the `programs` list element by element: one bad entry must not drop the rest, or a
+/// "never paste" rule could be lost and auto-paste would go into a program the user excluded.
+fn programs_from_value(value: &serde_json::Value) -> Option<Vec<ProgramRule>> {
+    let items = value.as_array()?;
+    Some(
+        items
+            .iter()
+            .filter_map(|v| serde_json::from_value(v.clone()).ok())
+            .collect(),
+    )
+}
+
+fn lenient_programs<'de, D>(deserializer: D) -> Result<Vec<ProgramRule>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(programs_from_value(&value).unwrap_or_else(builtin_program_rules))
 }
 
 /// Hotkeys as typed text (`Ctrl+Shift+Space`); empty means off.
@@ -254,6 +397,18 @@ impl Hotkeys {
         }
     }
 
+    /// The chords to register with Windows. Paste next works with Supporter, so without it its
+    /// chord stays in the settings but is not registered: `Ctrl+Alt+V` is Paste Special in Word
+    /// and Excel and a Free user would only get an upsell.
+    #[must_use]
+    pub fn registrable(&self, supporter: bool) -> Self {
+        let mut chords = self.clone();
+        if !supporter {
+            chords.paste_next.clear();
+        }
+        chords
+    }
+
     /// The configured chord for `action`: `None` when it is off or not a valid chord.
     #[must_use]
     pub fn chord(&self, action: HotkeyAction) -> Option<Chord> {
@@ -267,20 +422,22 @@ impl Hotkeys {
     }
 }
 
-/// The names in the `no_paste_apps` list of a settings file that is not valid JSON, read up to
-/// the point where the text stops making sense (a file cut short keeps the names before the cut).
-fn salvage_no_paste_apps(text: &str) -> Vec<String> {
-    let Some(key) = text.find("\"no_paste_apps\"") else {
+/// The values of the array stored under `key` in a settings file that is not valid JSON, read
+/// up to the point where the text stops making sense (a file cut short keeps the values before
+/// the cut).
+fn salvage_array(text: &str, key: &str) -> Vec<serde_json::Value> {
+    let quoted = format!("\"{key}\"");
+    let Some(at) = text.find(&quoted) else {
         return Vec::new();
     };
-    let rest = text[key + "\"no_paste_apps\"".len()..].trim_start();
+    let rest = text[at + quoted.len()..].trim_start();
     let Some(rest) = rest.strip_prefix(':') else {
         return Vec::new();
     };
     let Some(mut rest) = rest.trim_start().strip_prefix('[') else {
         return Vec::new();
     };
-    let mut apps = Vec::new();
+    let mut values = Vec::new();
     loop {
         rest = rest.trim_start_matches(|c: char| c.is_whitespace() || c == ',');
         if rest.is_empty() || rest.starts_with(']') {
@@ -291,12 +448,22 @@ fn salvage_no_paste_apps(text: &str) -> Vec<String> {
             break;
         };
         let used = stream.byte_offset();
-        if let serde_json::Value::String(name) = value {
-            apps.push(name);
-        }
+        values.push(value);
         rest = &rest[used..];
     }
-    apps
+    values
+}
+
+/// The "never paste" programs of a settings file that is not valid JSON: both the current
+/// `programs` rules and the `no_paste_apps` names an older version wrote.
+fn salvage_no_paste(text: &str) -> (Vec<ProgramRule>, Vec<String>) {
+    let rules = programs_from_value(&serde_json::Value::Array(salvage_array(text, "programs")))
+        .unwrap_or_default();
+    let names = salvage_array(text, "no_paste_apps")
+        .into_iter()
+        .filter_map(|v| v.as_str().map(str::to_owned))
+        .collect();
+    (rules, names)
 }
 
 /// Where the Main window sat when it was last moved or resized, in physical pixels in desktop
@@ -349,6 +516,8 @@ pub struct Settings {
     /// An unpinned Panel hides when another app takes the foreground. A pinned Panel and the
     /// Main window never hide this way.
     pub panel_hide_on_blur: bool,
+    /// The Panel's pin is on (always on top): remembered between runs.
+    pub panel_pinned: bool,
     /// "Take screenshot" leaves the Panel on screen while the snipping overlay is up. Off
     /// (the default): the Panel hides until the picture is taken, so it is not in front of
     /// the overlay.
@@ -362,6 +531,8 @@ pub struct Settings {
     pub backups_keep: u32,
     /// Animations are off even when Windows' "Animation effects" is on.
     pub reduce_motion: bool,
+    /// The text size: follow Windows, or a fixed percentage (WCAG 1.4.4).
+    pub text_size: TextSize,
     /// Seconds after copying a sensitive item before the clipboard is cleared (0 = never).
     pub clipboard_clear_secs: u32,
     /// Where the Panel sat on each monitor it was moved or resized on; wins over `panel_width`
@@ -369,7 +540,15 @@ pub struct Settings {
     pub panel_geometry: Vec<PanelGeometry>,
     /// Where the Main window was left; absent until it has been moved or resized.
     pub main_window: Option<WindowPlace>,
-    /// Executable names that never receive an auto-paste (lower case).
+    /// How Snipdeck pastes into each program, lower-case executable name first: the paste key,
+    /// or "never paste" (SPEC §5.8). A program with no rule gets `Ctrl+V`. A new file starts
+    /// with the programs known to need another key.
+    #[serde(deserialize_with = "lenient_programs")]
+    pub programs: Vec<ProgramRule>,
+    /// The programs whose rule is [`ProgramPaste::Never`], derived by [`Settings::sanitize`]
+    /// and never written. Older files wrote this list: it is read once, folded into
+    /// `programs` on load, and then only mirrors them for the code that routes a paste.
+    #[serde(skip_serializing)]
     pub no_paste_apps: Vec<String>,
     /// The Recent inbox is on: Snipdeck keeps the text you copy (SPEC 5.6). Off by default.
     pub recent_history: bool,
@@ -398,14 +577,17 @@ impl Default for Settings {
             close_to_tray: true,
             panel_in_taskbar: false,
             panel_hide_on_blur: true,
+            panel_pinned: true,
             screenshot_keep_panel: false,
             hide_hint_shown: false,
             panel_width: PANEL_WIDTH_DEFAULT,
             backups_keep: BACKUPS_KEEP_DEFAULT,
             reduce_motion: false,
+            text_size: TextSize::System,
             clipboard_clear_secs: CLIPBOARD_CLEAR_SECS_DEFAULT,
             panel_geometry: Vec::new(),
             main_window: None,
+            programs: builtin_program_rules(),
             no_paste_apps: Vec::new(),
             recent_history: false,
             no_history_apps: Vec::new(),
@@ -438,12 +620,20 @@ impl Settings {
             })
             .unwrap_or_else(|_| {
                 // Not JSON (a truncated write, say). The exclusion list is a safety setting:
-                // keep the names that can still be read rather than pasting into every app.
+                // keep the rules and names that can still be read rather than pasting into
+                // every app.
+                let (rules, names) = salvage_no_paste(text);
                 Self {
-                    no_paste_apps: salvage_no_paste_apps(text),
+                    programs: if rules.is_empty() {
+                        builtin_program_rules()
+                    } else {
+                        rules
+                    },
+                    no_paste_apps: names,
                     ..Self::default()
                 }
             });
+        settings.fold_legacy_no_paste();
         settings.sanitize();
         settings
     }
@@ -471,14 +661,19 @@ impl Settings {
         field!(close_to_tray);
         field!(panel_in_taskbar);
         field!(panel_hide_on_blur);
+        field!(panel_pinned);
         field!(screenshot_keep_panel);
         field!(hide_hint_shown);
         field!(panel_width);
         field!(backups_keep);
         field!(reduce_motion);
+        field!(text_size);
         field!(clipboard_clear_secs);
         field!(panel_geometry);
         field!(main_window);
+        if let Some(rules) = map.get("programs").and_then(programs_from_value) {
+            settings.programs = rules;
+        }
         // Element by element: one bad entry must not drop the whole list, or auto-paste would
         // go into the apps the user excluded.
         match map.get("no_paste_apps") {
@@ -498,6 +693,28 @@ impl Settings {
         field!(editor_more_open);
         field!(show_numbers);
         settings
+    }
+
+    /// Turns the names an older file kept in `no_paste_apps` into "never paste" rules. Only on
+    /// load: afterwards the field is a mirror of `programs`.
+    fn fold_legacy_no_paste(&mut self) {
+        for name in std::mem::take(&mut self.no_paste_apps) {
+            let exe = name.trim().to_ascii_lowercase();
+            if exe.is_empty() {
+                continue;
+            }
+            match self
+                .programs
+                .iter_mut()
+                .find(|r| r.exe.trim().eq_ignore_ascii_case(&exe))
+            {
+                Some(rule) => rule.paste = ProgramPaste::Never,
+                None => self.programs.push(ProgramRule {
+                    exe,
+                    paste: ProgramPaste::Never,
+                }),
+            }
+        }
     }
 
     /// The settings as pretty JSON.
@@ -531,13 +748,7 @@ impl Settings {
                 && (WindowPlace::MIN_SIDE..=PANEL_SIDE_LIMIT).contains(&p.h)
         });
         self.dock.sanitize();
-        let mut seen = std::collections::BTreeSet::new();
-        self.no_paste_apps = self
-            .no_paste_apps
-            .iter()
-            .map(|a| a.trim().to_ascii_lowercase())
-            .filter(|a| !a.is_empty() && seen.insert(a.clone()))
-            .collect();
+        self.sanitize_programs();
         let mut seen = std::collections::BTreeSet::new();
         self.no_history_apps = self
             .no_history_apps
@@ -560,6 +771,49 @@ impl Settings {
                 self.hotkeys.slot(action).clear();
             }
         }
+    }
+
+    /// One rule per program: names trimmed and lower-cased, blanks dropped, and a program named
+    /// twice keeps its first place, with "never paste" winning (it is the safe choice).
+    fn sanitize_programs(&mut self) {
+        let mut kept: Vec<ProgramRule> = Vec::new();
+        for rule in std::mem::take(&mut self.programs) {
+            let exe = rule.exe.trim().to_ascii_lowercase();
+            if exe.is_empty() {
+                continue;
+            }
+            if let Some(first) = kept.iter_mut().find(|k| k.exe == exe) {
+                if rule.paste == ProgramPaste::Never {
+                    first.paste = ProgramPaste::Never;
+                }
+            } else {
+                kept.push(ProgramRule {
+                    exe,
+                    paste: rule.paste,
+                });
+            }
+        }
+        self.no_paste_apps = kept
+            .iter()
+            .filter(|r| r.paste == ProgramPaste::Never)
+            .map(|r| r.exe.clone())
+            .collect();
+        self.programs = kept;
+    }
+
+    /// The paste keys for the programs that have one (not the "never paste" ones), for the
+    /// code that decides how to paste.
+    #[must_use]
+    pub fn paste_rules(&self) -> Vec<snipdeck_platform::keys::PasteRule> {
+        self.programs
+            .iter()
+            .filter_map(|r| {
+                r.paste.key().map(|key| snipdeck_platform::keys::PasteRule {
+                    exe: r.exe.clone(),
+                    key,
+                })
+            })
+            .collect()
     }
 
     /// Keeps one usable entry per monitor, the newest last, and at most
@@ -605,11 +859,23 @@ impl Settings {
 mod tests {
     use super::*;
 
+    fn rule(exe: &str, paste: ProgramPaste) -> ProgramRule {
+        ProgramRule {
+            exe: exe.into(),
+            paste,
+        }
+    }
+
     #[test]
     fn defaults_are_valid_and_conflict_free() {
         let settings = Settings::default();
         for action in HotkeyAction::ALL {
-            assert!(settings.hotkeys.chord(action).is_some(), "{action:?}");
+            // Capture is off until the user picks a chord (SPEC 5.5).
+            assert_eq!(
+                settings.hotkeys.chord(action).is_some(),
+                action != HotkeyAction::Capture,
+                "{action:?}"
+            );
         }
         assert_eq!(settings.hotkey_conflicts(), Vec::new());
         let mut sanitised = settings.clone();
@@ -622,6 +888,11 @@ mod tests {
         let settings = Settings {
             theme: Theme::Dark,
             language: "pt-BR".into(),
+            text_size: TextSize::P150,
+            programs: vec![
+                rule("keepass.exe", ProgramPaste::Never),
+                rule("wt.exe", ProgramPaste::CtrlShiftV),
+            ],
             no_paste_apps: vec!["keepass.exe".into()],
             ..Settings::default()
         };
@@ -869,7 +1140,8 @@ mod tests {
         let settings = Settings::from_json(
             r#"{"no_paste_apps":[" KeePass.EXE ","keepass.exe","","Putty.exe"]}"#,
         );
-        assert_eq!(settings.no_paste_apps, ["keepass.exe", "putty.exe"]);
+        // putty.exe is in the built-in table, so its rule turns to Never in place; keepass.exe is added after it.
+        assert_eq!(settings.no_paste_apps, ["putty.exe", "keepass.exe"]);
     }
 
     /// Security review 2, finding 9: one bad element must not empty the exclusion list, or
@@ -903,35 +1175,47 @@ mod tests {
         );
     }
 
-    #[test]
-    fn a_truncated_file_keeps_the_excluded_apps_it_still_has() {
-        let full = Settings {
-            theme: Theme::Dark,
-            no_paste_apps: vec![
-                "keepass.exe".into(),
-                "1password.exe".into(),
-                "putty.exe".into(),
-            ],
-            ..Settings::default()
-        }
-        .to_json();
-        let start = full.find("\"no_paste_apps\"").unwrap();
-        let end = full.find("putty.exe").unwrap();
-        // Cut anywhere inside the list: every whole name before the cut survives, a cut name
-        // does not.
-        let all = ["keepass.exe", "1password.exe", "putty.exe"];
+    /// Cut `full` anywhere inside the array stored under `key`: every whole element before the
+    /// cut survives, a cut one does not.
+    fn assert_cuts_keep_whole_elements(
+        full: &str,
+        key: &str,
+        names: [&str; 3],
+        kept: impl Fn(&Settings) -> Vec<String>,
+    ) {
+        let start = full.find(&format!("\"{key}\"")).unwrap();
+        let end = full.rfind(names[2]).unwrap();
         for cut in start..=end + 4 {
             let settings = Settings::from_json(&full[..cut]);
-            let kept: Vec<&str> = settings.no_paste_apps.iter().map(String::as_str).collect();
-            let whole = all
+            let whole = names
                 .iter()
                 .filter(|name| {
                     let at = full.find(&format!("\"{name}\"")).unwrap();
                     at + name.len() + 2 <= cut
                 })
                 .count();
-            assert_eq!(kept, all[..whole], "cut at {cut}");
+            // The element may be followed by more fields (a rule is an object); it is whole
+            // once its closing brace is inside the cut.
+            let got = kept(&settings);
+            assert!(
+                got.len() >= whole.saturating_sub(1) && got.len() <= whole,
+                "cut at {cut}: {got:?} with {whole} whole"
+            );
+            assert_eq!(got, names[..got.len()], "cut at {cut}");
         }
+    }
+
+    #[test]
+    fn a_truncated_file_keeps_the_excluded_apps_it_still_has() {
+        let names = ["keepass.exe", "1password.exe", "putty.exe"];
+        // The current format: rules in `programs`.
+        let full = Settings {
+            theme: Theme::Dark,
+            programs: names.iter().map(|n| rule(n, ProgramPaste::Never)).collect(),
+            ..Settings::default()
+        }
+        .to_json();
+        assert_cuts_keep_whole_elements(&full, "programs", names, |s| s.no_paste_apps.clone());
         let cut = &full[..full.find("putty.exe").unwrap() - 1];
         assert_eq!(
             Settings::from_json(cut).no_paste_apps,
@@ -939,9 +1223,33 @@ mod tests {
         );
         // Cut before the list starts: nothing to keep.
         assert_eq!(
-            Settings::from_json(&full[..start]).no_paste_apps,
+            Settings::from_json(&full[..full.find("\"programs\"").unwrap()]).no_paste_apps,
             Vec::<String>::new()
         );
+    }
+
+    #[test]
+    fn a_truncated_old_file_keeps_the_names_of_its_no_paste_list() {
+        let full = r#"{"theme":"dark","no_paste_apps":["keepass.exe","1password.exe","putty.exe"],"autostart":true}"#;
+        let names = ["keepass.exe", "1password.exe", "putty.exe"];
+        let start = full.find("\"no_paste_apps\"").unwrap();
+        for cut in start..=full.find("putty.exe").unwrap() + 4 {
+            let settings = Settings::from_json(&full[..cut]);
+            let whole = names
+                .iter()
+                .filter(|name| full.find(&format!("\"{name}\"")).unwrap() + name.len() + 2 <= cut)
+                .count();
+            assert_eq!(settings.no_paste_apps, names[..whole], "cut at {cut}");
+            assert_eq!(
+                settings
+                    .programs
+                    .iter()
+                    .filter(|r| r.paste == ProgramPaste::Never)
+                    .count(),
+                whole,
+                "cut at {cut}"
+            );
+        }
     }
 
     #[test]
@@ -1023,6 +1331,7 @@ mod tests {
         let settings = Settings {
             panel_in_taskbar: true,
             panel_hide_on_blur: false,
+            panel_pinned: false,
             screenshot_keep_panel: true,
             hide_hint_shown: true,
             ..Settings::default()
@@ -1055,5 +1364,147 @@ mod tests {
         assert_eq!(settings.hotkeys.toggle_panel, "Ctrl+Shift+Space");
         assert_eq!(settings.hotkeys.picker, "");
         assert_eq!(settings.hotkey_conflicts(), Vec::new());
+    }
+
+    #[test]
+    fn paste_next_is_registered_only_with_supporter() {
+        let chords = Settings::default().hotkeys;
+        assert!(
+            chords.chord(HotkeyAction::PasteNext).is_some(),
+            "it stays in the settings"
+        );
+        let free = chords.registrable(false);
+        assert!(free.chord(HotkeyAction::PasteNext).is_none());
+        assert_eq!(free.toggle_panel, chords.toggle_panel);
+        assert_eq!(free.picker, chords.picker);
+        assert_eq!(chords.registrable(true), chords);
+    }
+
+    #[test]
+    fn capture_is_off_until_the_user_picks_a_chord() {
+        assert_eq!(HotkeyAction::Capture.default_chord(), "");
+        assert_eq!(Settings::default().hotkeys.capture, "");
+        // A chord chosen earlier stays.
+        let old = Settings::from_json(r#"{"hotkeys":{"capture":"Ctrl+Shift+2"}}"#);
+        assert_eq!(old.hotkeys.capture, "Ctrl+Shift+2");
+        // A missing one is off, not the old default.
+        assert_eq!(Settings::from_json("{}").hotkeys.capture, "");
+    }
+
+    #[test]
+    fn the_text_size_defaults_to_the_system_one_and_round_trips() {
+        assert_eq!(Settings::default().text_size, TextSize::System);
+        assert_eq!(Settings::from_json("{}").text_size, TextSize::System);
+        for size in TextSize::ALL {
+            let settings = Settings {
+                text_size: size,
+                ..Settings::default()
+            };
+            assert_eq!(Settings::from_json(&settings.to_json()).text_size, size);
+        }
+        assert!(
+            Settings::default()
+                .to_json()
+                .contains("\"text_size\": \"system\"")
+        );
+        // An unknown value keeps the other fields and gives the default.
+        let odd = Settings::from_json(r#"{"text_size":"huge","theme":"dark"}"#);
+        assert_eq!(odd.text_size, TextSize::System);
+        assert_eq!(odd.theme, Theme::Dark);
+    }
+
+    #[test]
+    fn the_text_scale_is_the_fixed_percentage_or_windows_and_always_in_range() {
+        let near = |a: f32, b: f32| (a - b).abs() < 1e-6;
+        assert!(near(TextSize::P100.scale(2.0), 1.0));
+        assert!(near(TextSize::P125.scale(1.0), 1.25));
+        assert!(near(TextSize::P150.scale(1.0), 1.5));
+        assert!(near(TextSize::P175.scale(1.0), 1.75));
+        assert!(near(TextSize::System.scale(1.0), 1.0));
+        assert!(near(TextSize::System.scale(1.5), 1.5));
+        // Windows' value is held to 1.0 ..= 2.25, whatever it says.
+        assert!(near(TextSize::System.scale(0.2), 1.0));
+        assert!(near(TextSize::System.scale(9.0), 2.25));
+        assert!(near(TextSize::System.scale(f32::NAN), 1.0));
+        assert!(near(TextSize::System.scale(f32::INFINITY), 2.25));
+    }
+
+    #[test]
+    fn a_new_file_starts_with_the_terminals_that_need_another_paste_key() {
+        let settings = Settings::default();
+        let find = |exe: &str| {
+            settings
+                .programs
+                .iter()
+                .find(|r| r.exe == exe)
+                .map(|r| r.paste)
+        };
+        assert_eq!(find("mintty.exe"), Some(ProgramPaste::ShiftInsert));
+        assert_eq!(find("alacritty.exe"), Some(ProgramPaste::CtrlShiftV));
+        assert_eq!(find("notepad.exe"), None);
+        assert_eq!(settings.no_paste_apps.len(), 0);
+        // Those rules are what pastes: ShiftInsert for mintty.
+        let rules = settings.paste_rules();
+        assert_eq!(
+            snipdeck_platform::keys::paste_key_for("MinTTY.exe", &rules),
+            PasteKey::ShiftInsert
+        );
+    }
+
+    #[test]
+    fn an_old_file_with_a_no_paste_list_loads_into_never_paste_rules() {
+        let old = Settings::from_json(
+            r#"{"theme":"dark","no_paste_apps":[" KeePass.EXE ","mintty.exe","keepass.exe"]}"#,
+        );
+        let never: Vec<&str> = old
+            .programs
+            .iter()
+            .filter(|r| r.paste == ProgramPaste::Never)
+            .map(|r| r.exe.as_str())
+            .collect();
+        // An excluded program that already had a key keeps its place and becomes "never".
+        assert_eq!(never, ["mintty.exe", "keepass.exe"]);
+        assert_eq!(old.no_paste_apps, ["mintty.exe", "keepass.exe"]);
+        assert_eq!(old.theme, Theme::Dark);
+        // The rest of the built-in table is still there.
+        assert!(
+            old.programs
+                .iter()
+                .any(|r| r.exe == "putty.exe" && r.paste == ProgramPaste::ShiftInsert)
+        );
+        // And saving writes rules only: the old key is gone for good.
+        let saved = old.to_json();
+        assert!(!saved.contains("no_paste_apps"));
+        assert_eq!(Settings::from_json(&saved), old);
+    }
+
+    #[test]
+    fn rules_are_normalised_and_a_bad_one_keeps_the_rest() {
+        let settings = Settings::from_json(
+            r#"{"programs":[
+                {"exe":" WT.EXE ","paste":"ctrl-shift-v"},
+                {"exe":"wt.exe","paste":"never"},
+                {"exe":"","paste":"ctrl-v"},
+                {"exe":"zed.exe","paste":"flip"},
+                5,
+                {"exe":"nvim.exe","paste":"shift-insert"}
+            ]}"#,
+        );
+        // A program named twice keeps its first place; "never" wins.
+        assert_eq!(
+            settings.programs,
+            [
+                rule("wt.exe", ProgramPaste::Never),
+                rule("nvim.exe", ProgramPaste::ShiftInsert)
+            ]
+        );
+        assert_eq!(settings.no_paste_apps, ["wt.exe"]);
+        // Removing every row is a choice: no built-in rules come back.
+        assert_eq!(Settings::from_json(r#"{"programs":[]}"#).programs, []);
+        // A list of the wrong shape gives the starting rules.
+        assert_eq!(
+            Settings::from_json(r#"{"programs":7}"#).programs,
+            Settings::default().programs
+        );
     }
 }

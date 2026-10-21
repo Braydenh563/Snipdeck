@@ -6,8 +6,8 @@ use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::Trashable;
 
 use super::{
-    ActiveToast, Controller, Effect, Library, TOAST_EXIT, TOAST_HOLD, TOAST_HOVER_RECHECK,
-    TOAST_HOVER_RECHECKS, TOAST_UNDO_HOLD, ToastPhase, Undo, neutral,
+    ActiveToast, Controller, Effect, Library, TOAST_ERROR_HOLD, TOAST_EXIT, TOAST_HOLD,
+    TOAST_HOVER_RECHECK, TOAST_HOVER_RECHECKS, TOAST_UNDO_HOLD, ToastPhase, Undo, neutral,
 };
 use crate::{
     host::ClipboardText,
@@ -154,6 +154,8 @@ where
                 active.phase = ToastPhase::Hold;
                 if self.undo.as_ref().is_some_and(|u| u.seq == seq) {
                     Some(TOAST_UNDO_HOLD)
+                } else if active.toast.kind == ToastKind::Danger {
+                    Some(TOAST_ERROR_HOLD)
                 } else {
                     Some(TOAST_HOLD)
                 }
@@ -167,7 +169,11 @@ where
             {
                 // The pointer left while the hold was extended: a fresh hold, once.
                 active.extended = u32::MAX;
-                Some(TOAST_HOLD)
+                Some(if active.toast.kind == ToastKind::Danger {
+                    TOAST_ERROR_HOLD
+                } else {
+                    TOAST_HOLD
+                })
             }
             ToastPhase::Hold => {
                 active.phase = ToastPhase::Exit;

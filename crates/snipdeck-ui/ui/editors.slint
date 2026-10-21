@@ -298,6 +298,8 @@ export component ItemEditor inherits Window {
     callback save-requested();
     // Leaving without saving; sent after the user confirmed discarding changes, or at once when nothing changed.
     callback cancel-requested();
+    // F1: the user guide.
+    callback help-requested();
     callback delete-requested();
     callback tag-toggled(index: int);
     // A new tag name was entered; the host creates it and adds it to `tags` (ticked).
@@ -384,6 +386,10 @@ export component ItemEditor inherits Window {
             return reject;
         }
         key-pressed(event) => {
+            if (event.text == Key.F1) {
+                root.help-requested();
+                return accept;
+            }
             if (event.text == Key.Escape && !root.discard-open) {
                 if (root.tags-open) {
                     root.tags-open = false;
@@ -984,6 +990,8 @@ component EntityEditorBody inherits Rectangle {
 
     callback save-requested();
     callback cancel-requested();
+    // F1: the user guide.
+    callback help-requested();
     // Sent after the user confirmed in the dialog.
     callback delete-confirmed();
     callback edited();
@@ -1052,6 +1060,10 @@ component EntityEditorBody inherits Rectangle {
             return reject;
         }
         key-pressed(event) => {
+            if (event.text == Key.F1) {
+                root.help-requested();
+                return accept;
+            }
             if (event.text == Key.Escape && !root.discard-open && !root.delete-open) {
                 root.request-cancel();
                 return accept;
@@ -1228,6 +1240,8 @@ export component ListEditor inherits Window {
 
     callback save-requested();
     callback cancel-requested();
+    // F1: the user guide.
+    callback help-requested();
     callback delete-confirmed();
     callback edited();
 
@@ -1244,6 +1258,7 @@ export component ListEditor inherits Window {
         delete-body: @tr("{n} item will move to Trash with it. You can restore them for 30 days." | "{n} items will move to Trash with it. You can restore them for 30 days." % root.item-count);
         save-requested => { root.save-requested(); }
         cancel-requested => { root.cancel-requested(); }
+        help-requested => { root.help-requested(); }
         delete-confirmed => { root.delete-confirmed(); }
         edited => { root.edited(); }
     }
@@ -1281,6 +1296,8 @@ export component BoardEditor inherits Window {
 
     callback save-requested();
     callback cancel-requested();
+    // F1: the user guide.
+    callback help-requested();
     callback delete-confirmed();
     callback edited();
 
@@ -1296,6 +1313,7 @@ export component BoardEditor inherits Window {
         delete-body: @tr("Its lists and {n} item will move to Trash. You can restore them for 30 days." | "Its lists and {n} items will move to Trash. You can restore them for 30 days." % root.item-count);
         save-requested => { root.save-requested(); }
         cancel-requested => { root.cancel-requested(); }
+        help-requested => { root.help-requested(); }
         delete-confirmed => { root.delete-confirmed(); }
         edited => { root.edited(); }
     }

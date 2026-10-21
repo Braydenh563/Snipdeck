@@ -1,5 +1,5 @@
 // The Settings page of the Main window (SPEC §5, snipdeck-core `Settings`): the four global shortcuts, theme,
-// language, start with Windows, close to tray, panel width and apps the panel never pastes into.
+// language, text size, start with Windows, close to tray, panel width and the paste key of each program.
 //
 // Every change applies at once (no Save button): the page reports it as a callback and the host stores it and, if it
 // cannot be applied (a shortcut another program owns), writes the reason back (`hotkeys[i].conflict`) or the old
@@ -37,6 +37,13 @@ export struct HotkeySetting {
 export struct BackupRow {
     date: string,
     size: string,
+}
+
+// One program's paste rule: its file name and what Snipdeck presses there. `choice` is 0 Ctrl+V, 1 Ctrl+Shift+V,
+// 2 Shift+Insert, 3 Never paste (copy instead).
+export struct PasteRuleRow {
+    exe: string,
+    choice: int,
 }
 
 // A list of program file names with a remove button on each row and a field to add one (the programs Snipdeck never
@@ -128,6 +135,109 @@ component ProgramList inherits VerticalLayout {
     }
 }
 
+// The paste key of each program: a row per program (file name, the key to press or "Never paste", remove) and a field
+// to add one. The host trims, lower-cases and refuses repeats; `error` says why an add was refused.
+component PasteRuleList inherits VerticalLayout {
+    in property <[PasteRuleRow]> rules;
+    in property <string> error;
+    callback added(name: string);
+    callback chosen(index: int, choice: int);
+    callback removed(index: int);
+    // A control inside took the keyboard focus at this place: the page scrolls it into view.
+    callback reveal(y: length, h: length);
+    spacing: Space.s2;
+
+    property <[string]> choices: [@tr("Ctrl+V"), @tr("Ctrl+Shift+V"), @tr("Shift+Insert"), @tr("Never paste")];
+
+    function add-program() {
+        if (new-program.text != "") {
+            root.added(new-program.text);
+            new-program.text = "";
+        }
+    }
+
+    if root.rules.length == 0: Text {
+        text: @tr("No programs yet. Every program gets Ctrl+V.");
+        color: Theme.text-secondary;
+        font-family: Fonts.sans;
+        font-size: Type.base;
+        wrap: word-wrap;
+        accessible-role: none;
+    }
+    for rule[i] in root.rules: Rectangle {
+        accessible-role: list-item;
+        accessible-label: @tr("{}: {}", rule.exe, root.choices[rule.choice]);
+        Rectangle {
+            y: parent.height - 1px;
+            height: 1px;
+            background: Theme.border-subtle;
+        }
+        HorizontalLayout {
+            spacing: Space.s2;
+            padding-bottom: Space.s2;
+            Text {
+                horizontal-stretch: 1;
+                min-width: 0px;
+                text: rule.exe;
+                color: Theme.text-primary;
+                font-family: Fonts.mono;
+                font-size: Type.base;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+            VerticalLayout {
+                alignment: start;
+                SelectField {
+                    width: 150px * SystemLook.text-scale;
+                    label: @tr("Paste key for {}", rule.exe);
+                    options: root.choices;
+                    current: rule.choice;
+                    chosen(c) => { root.chosen(i, c); }
+                    changed has-focus => {
+                        if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); }
+                    }
+                }
+            }
+            VerticalLayout {
+                alignment: start;
+                IconButton {
+                    icon: Icons.x;
+                    tooltip: @tr("Remove {} from the list", rule.exe);
+                    own-tooltip: true;
+                    clicked => { root.removed(i); }
+                    changed has-focus => {
+                        if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); }
+                    }
+                }
+            }
+        }
+    }
+    HorizontalLayout {
+        spacing: Space.s2;
+        new-program := TextField {
+            horizontal-stretch: 1;
+            label: @tr("Program to add");
+            placeholder: @tr("notepad.exe");
+            error: root.error;
+            accepted(t) => { root.add-program(); }
+            changed has-focus => {
+                if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); }
+            }
+        }
+        VerticalLayout {
+            alignment: start;
+            Button {
+                text: @tr("Add");
+                clicked => { root.add-program(); }
+                changed has-focus => {
+                    if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); }
+                }
+            }
+        }
+    }
+}
+
 export component SettingsPage inherits Window {
     title: @tr("Settings");
     background: Theme.bg-app;
@@ -145,6 +255,8 @@ export component SettingsPage inherits Window {
     // 0 follow Windows, 1 light, 2 dark.
     in property <int> theme-index: 0;
     in property <int> accent-index: 0;
+    // 0 follow Windows, then 100, 125, 150 and 175 %.
+    in property <int> text-size-index: 0;
     // Native language names ("English", ...), the first being "Follow Windows" if the host offers it.
     in property <[string]> languages;
     in property <int> language-index: 0;
@@ -175,10 +287,10 @@ export component SettingsPage inherits Window {
     // Seconds before a copied sensitive item is cleared from the clipboard; 0 = never.
     in property <int> clipboard-clear-secs: 30;
     in property <int> clipboard-clear-secs-max: 600;
-    // Program names the panel never pastes into ("keepass.exe").
-    in property <[string]> no-paste-apps;
-    // Set by the host when `no-paste-app-added` was refused ("Already in the list").
-    in property <string> no-paste-error;
+    // The paste key of each program ("keepass.exe": never paste, "mintty.exe": Shift+Insert).
+    in property <[PasteRuleRow]> paste-rules;
+    // Set by the host when `paste-rule-added` was refused ("Already in the list").
+    in property <string> paste-rule-error;
     // The programs the Recent inbox never keeps copies from, and why the last add was refused.
     in property <[string]> no-history-apps;
     in property <string> no-history-error;
@@ -190,6 +302,8 @@ export component SettingsPage inherits Window {
     in property <bool> has-data-folder: true;
     // The daily backups, newest first.
     in property <[BackupRow]> backups;
+    // The date of the newest backup, already in words ("17 Oct 2026"); empty when there is none.
+    in property <string> last-backup;
     // The toast the host is showing (the page is a window of its own, so it shows the shared toast too).
     in property <string> toast-text;
     in property <ToastKind> toast-kind: ToastKind.neutral;
@@ -255,6 +369,7 @@ export component SettingsPage inherits Window {
     callback hotkey-cleared(index: int);
     callback theme-chosen(index: int);
     callback accent-chosen(index: int);
+    callback text-size-chosen(index: int);
     callback language-chosen(index: int);
     callback autostart-toggled(on: bool);
     callback close-to-tray-toggled(on: bool);
@@ -271,8 +386,9 @@ export component SettingsPage inherits Window {
     callback dock-leave-delay-chosen(ms: int);
     callback backups-keep-chosen(count: int);
     callback clipboard-clear-secs-chosen(secs: int);
-    callback no-paste-app-added(name: string);
-    callback no-paste-app-removed(index: int);
+    callback paste-rule-added(name: string);
+    callback paste-rule-chosen(index: int, choice: int);
+    callback paste-rule-removed(index: int);
     callback no-history-app-added(name: string);
     callback no-history-app-removed(index: int);
     callback licence-submitted(key: string);
@@ -296,6 +412,8 @@ export component SettingsPage inherits Window {
     // The host checks `typed` again: only the exact word erases.
     callback erase-confirmed(typed: string, forget-key: bool);
     callback close-requested();
+    // F1 or the Help link: the user guide.
+    callback help-requested();
 
     property <[string]> hotkey-names: [
         @tr("Show or hide the panel"),
@@ -306,8 +424,8 @@ export component SettingsPage inherits Window {
     property <[string]> hotkey-help: [
         @tr("Brings the panel up beside the app you are working in."),
         @tr("Search every board and paste without opening the window."),
-        @tr("Saves the text on the clipboard as a new item in the list the panel shows."),
-        @tr("Pastes the next item of the list in order."),
+        @tr("Saves the text that is on the clipboard when you press it as a new item in the list the panel shows. Off until you set a shortcut."),
+        root.pro ? @tr("Pastes the next item of the list in order.") : @tr("Pastes the next item of the list in order. Works with Supporter."),
     ];
 
     function reveal-field(y: length, h: length) {
@@ -350,6 +468,10 @@ export component SettingsPage inherits Window {
 
     scope := FocusScope {
         key-pressed(event) => {
+            if (event.text == Key.F1) {
+                root.help-requested();
+                return accept;
+            }
             if (event.text == Key.Escape) {
                 if (root.import-open) {
                     root.import-cancelled();
@@ -435,6 +557,20 @@ export component SettingsPage inherits Window {
                         }
                     }
                     SettingRow {
+                        title: @tr("Text size");
+                        description: @tr("Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead.");
+                        SelectField {
+                            width: 200px * SystemLook.text-scale;
+                            label: @tr("Text size");
+                            options: [@tr("Windows"), @tr("100 %"), @tr("125 %"), @tr("150 %"), @tr("175 %")];
+                            current: root.text-size-index;
+                            chosen(i) => { root.text-size-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
                         title: @tr("Language");
                         description: @tr("Takes effect the next time Snipdeck starts.");
                         SelectField {
@@ -481,7 +617,7 @@ export component SettingsPage inherits Window {
                 }
 
                 FormSection {
-                    title: @tr("Window behaviour");
+                    title: @tr("Panel");
                     SettingRow {
                         title: @tr("Show Snipdeck in the taskbar");
                         description: @tr("Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back.");
@@ -542,63 +678,6 @@ export component SettingsPage inherits Window {
                             }
                         }
                     }
-                }
-
-                FormSection {
-                    title: @tr("Recent");
-                    SettingRow {
-                        title: @tr("Keep a Recent inbox of what you copy");
-                        description: @tr("Off by default. Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept.", root.recent-max-entries, root.recent-max-days);
-                        Toggle {
-                            a11y-label: @tr("Keep a Recent inbox of what you copy");
-                            checked <=> root.recent-history;
-                            toggled(on) => { root.recent-history-toggled(on); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                    }
-                    SettingRow {
-                        title: @tr("Clear recent history");
-                        description: @tr("Deletes everything in the Recent inbox now.");
-                        Button {
-                            text: @tr("Clear recent history");
-                            variant: ButtonVariant.ghost;
-                            clicked => { root.recent-history-cleared(); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                    }
-                    Text {
-                        text: @tr("Never keep copies from these programs");
-                        color: Theme.text-primary;
-                        font-family: Fonts.sans;
-                        font-size: Type.base;
-                        font-weight: Type.semibold;
-                        accessible-role: none;
-                    }
-                    Text {
-                        text: @tr("Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe.");
-                        color: Theme.text-secondary;
-                        font-family: Fonts.sans;
-                        font-size: Type.sm;
-                        wrap: word-wrap;
-                        accessible-role: none;
-                    }
-                    ProgramList {
-                        apps: root.no-history-apps;
-                        error: root.no-history-error;
-                        empty-text: @tr("No programs yet.");
-                        field-label: @tr("Program to leave out of Recent");
-                        added(name) => { root.no-history-app-added(name); }
-                        removed(i) => { root.no-history-app-removed(i); }
-                        reveal(y, h) => { root.reveal-field(y, h); }
-                    }
-                }
-
-                FormSection {
-                    title: @tr("Panel dock");
                     SettingRow {
                         title: @tr("Dock to");
                         description: @tr("Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere.");
@@ -666,9 +745,41 @@ export component SettingsPage inherits Window {
                 }
 
                 FormSection {
-                    title: @tr("Never paste into");
+                    title: @tr("Privacy");
+                    SettingRow {
+                        title: @tr("Keep a Recent inbox of what you copy");
+                        description: @tr("Off by default. Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept.", root.recent-max-entries, root.recent-max-days);
+                        Toggle {
+                            a11y-label: @tr("Keep a Recent inbox of what you copy");
+                            checked <=> root.recent-history;
+                            toggled(on) => { root.recent-history-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Clear recent history");
+                        description: @tr("Deletes everything in the Recent inbox now.");
+                        Button {
+                            text: @tr("Clear recent history");
+                            variant: ButtonVariant.ghost;
+                            clicked => { root.recent-history-cleared(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
                     Text {
-                        text: @tr("In these programs Snipdeck copies instead of pasting. Use the program's file name, for example notepad.exe.");
+                        text: @tr("Never keep copies from these programs");
+                        color: Theme.text-primary;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        font-weight: Type.semibold;
+                        accessible-role: none;
+                    }
+                    Text {
+                        text: @tr("Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe.");
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.sm;
@@ -676,75 +787,132 @@ export component SettingsPage inherits Window {
                         accessible-role: none;
                     }
                     ProgramList {
-                        apps: root.no-paste-apps;
-                        error: root.no-paste-error;
+                        apps: root.no-history-apps;
+                        error: root.no-history-error;
                         empty-text: @tr("No programs yet.");
-                        field-label: @tr("Program to add");
-                        added(name) => { root.no-paste-app-added(name); }
-                        removed(i) => { root.no-paste-app-removed(i); }
+                        field-label: @tr("Program to leave out of Recent");
+                        added(name) => { root.no-history-app-added(name); }
+                        removed(i) => { root.no-history-app-removed(i); }
                         reveal(y, h) => { root.reveal-field(y, h); }
                     }
-                }
-
-                FormSection {
-                    title: @tr("Licence");
                     SettingRow {
-                        title: root.pro ? @tr("Snipdeck Supporter") : @tr("Free plan");
-                        description: root.pro
-                            ? @tr("Every Supporter feature is on. Thank you.")
-                            : @tr("Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere.");
-                    }
-                    if !root.pro: SettingRow {
-                        title: @tr("Get Supporter");
-                        description: @tr("Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included.");
-                        Button {
-                            text: @tr("Get Supporter…");
-                            focus-request: root.supporter-focus;
-                            enabled: !root.supporter-open;
-                            clicked => { root.supporter-open = true; }
+                        title: @tr("Clear the clipboard after copying a sensitive item");
+                        description: @tr("Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead.");
+                        NumberStepper {
+                            label: @tr("Clipboard clear time");
+                            decrease-label: @tr("Clear the clipboard sooner");
+                            increase-label: @tr("Clear the clipboard later");
+                            unit: @tr("s");
+                            min: 0;
+                            max: root.clipboard-clear-secs-max;
+                            step: 5;
+                            value: root.clipboard-clear-secs;
+                            stepped(v) => { root.clipboard-clear-secs-chosen(v); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
                         }
                     }
-                    if !root.pro: HorizontalLayout {
-                        spacing: Space.s2;
-                        licence-key := TextField {
-                            text <=> root.licence-text;
-                            horizontal-stretch: 1;
-                            label: @tr("Licence key");
-                            placeholder: @tr("SNIP1.");
-                            error: root.licence-error;
-                            monospace: true;
-                            accepted(t) => { root.submit-licence(); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                    SettingRow {
+                        title: @tr("Master password");
+                        description: root.master-state == 0
+                            ? @tr("Snipdeck can't protect a key on this PC, so a master password is not available.")
+                            : root.master-state == 3
+                            ? @tr("Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again.")
+                            : root.master-state == 2
+                            ? (root.master-locked
+                                ? @tr("A master password is on and your sensitive items are locked.")
+                                : @tr("A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes))
+                            : root.master-allowed
+                            ? @tr("Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes)
+                            : @tr("A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes);
+                        HorizontalLayout {
+                            spacing: Space.s2;
+                            if root.master-state != 2: Button {
+                                text: @tr("Set password…");
+                                focus-request: root.master-focus;
+                                enabled: root.master-allowed && root.master-state == 1 && root.master-mode == MasterMode.closed;
+                                clicked => { root.open-master(MasterMode.set); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
                             }
-                        }
-                        VerticalLayout {
-                            alignment: start;
-                            Button {
-                                text: @tr("Activate");
-                                variant: ButtonVariant.primary;
-                                clicked => { root.submit-licence(); }
+                            if root.master-state == 2 && root.master-locked: Button {
+                                text: @tr("Unlock…");
+                                clicked => { root.master-unlock-requested(); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            if root.master-state == 2: Button {
+                                text: @tr("Change…");
+                                focus-request: root.master-focus;
+                                enabled: root.master-mode == MasterMode.closed;
+                                clicked => { root.open-master(MasterMode.change); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            if root.master-state == 2: Button {
+                                text: @tr("Remove…");
+                                enabled: root.master-mode == MasterMode.closed;
+                                clicked => { root.open-master(MasterMode.remove); }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                                 }
                             }
                         }
                     }
-                    Text {
-                        text: @tr("Free is fully usable. Supporter pays for convenience and supports the app.");
+                    if root.master-mode != MasterMode.closed: MasterPasswordForm {
+                        mode: root.master-mode;
+                        problem: root.master-problem;
+                        busy: root.master-busy;
+                        min-length: root.master-min-length;
+                        focus-request: root.master-form-focus;
+                        strength(p) => { return root.master-strength(p); }
+                        revealed(y, h) => { root.reveal-field(y, h); }
+                        submitted(c, n, a) => { root.master-submitted(root.master-mode, c, n, a); }
+                        cancelled => { root.close-master(); }
+                    }
+                    for line in [
+                        @tr("Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."),
+                        @tr("Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."),
+                        @tr("Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."),
+                        @tr("Snipdeck never connects to the internet: every icon and font it shows is packaged with it."),
+                        @tr("Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."),
+                        @tr("To remove everything, use Erase library under Backups and your data, then delete the folder."),
+                    ]: Text {
+                        text: line;
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.sm;
                         wrap: word-wrap;
+                        accessible-role: none;
                     }
-                    PlanTable { }
                 }
 
                 FormSection {
-                    title: @tr("Backups");
+                    title: @tr("Programs");
+                    Text {
+                        text: @tr("The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: none;
+                    }
+                    PasteRuleList {
+                        rules: root.paste-rules;
+                        error: root.paste-rule-error;
+                        added(name) => { root.paste-rule-added(name); }
+                        chosen(i, c) => { root.paste-rule-chosen(i, c); }
+                        removed(i) => { root.paste-rule-removed(i); }
+                        reveal(y, h) => { root.reveal-field(y, h); }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Backups and your data");
                     Text {
                         text: @tr("Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything.", root.backups-keep);
                         color: Theme.text-secondary;
@@ -778,12 +946,11 @@ export component SettingsPage inherits Window {
                         wrap: word-wrap;
                         accessible-role: none;
                     }
-                    if root.has-data-folder && root.backups.length == 0: Text {
-                        text: @tr("No backups yet.");
+                    if root.has-data-folder: Text {
+                        text: root.last-backup != "" ? @tr("Last backup: {}", root.last-backup) : @tr("No backup yet");
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.base;
-                        accessible-role: none;
                     }
                     for backup[i] in root.backups: Rectangle {
                         height: max(Space.hit + Space.s2, Type.line-base + Space.s3);
@@ -860,13 +1027,9 @@ export component SettingsPage inherits Window {
                             }
                         }
                     }
-                }
-
-                FormSection {
-                    title: @tr("Your data");
                     SettingRow {
                         title: @tr("Export library");
-                        description: @tr("Saves every board, list and item as one .snipdeck file in your Documents folder.");
+                        description: @tr("Saves every board, list and item as one .snipdeck file in a folder you choose.");
                         Button {
                             text: @tr("Export library");
                             enabled: root.has-data-folder;
@@ -1137,100 +1300,71 @@ export component SettingsPage inherits Window {
                 }
 
                 FormSection {
-                    title: @tr("Privacy");
+                    title: @tr("Licence");
                     SettingRow {
-                        title: @tr("Clear the clipboard after copying a sensitive item");
-                        description: @tr("Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead.");
-                        NumberStepper {
-                            label: @tr("Clipboard clear time");
-                            decrease-label: @tr("Clear the clipboard sooner");
-                            increase-label: @tr("Clear the clipboard later");
-                            unit: @tr("s");
-                            min: 0;
-                            max: root.clipboard-clear-secs-max;
-                            step: 5;
-                            value: root.clipboard-clear-secs;
-                            stepped(v) => { root.clipboard-clear-secs-chosen(v); }
+                        title: root.pro ? @tr("Snipdeck Supporter") : @tr("Free plan");
+                        description: root.pro
+                            ? @tr("Every Supporter feature is on. Thank you.")
+                            : @tr("Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere.");
+                    }
+                    if !root.pro: SettingRow {
+                        title: @tr("Get Supporter");
+                        description: @tr("Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included.");
+                        Button {
+                            text: @tr("Get Supporter…");
+                            focus-request: root.supporter-focus;
+                            enabled: !root.supporter-open;
+                            clicked => { root.supporter-open = true; }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
                         }
                     }
-                    SettingRow {
-                        title: @tr("Master password");
-                        description: root.master-state == 0
-                            ? @tr("Snipdeck can't protect a key on this PC, so a master password is not available.")
-                            : root.master-state == 3
-                            ? @tr("Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again.")
-                            : root.master-state == 2
-                            ? (root.master-locked
-                                ? @tr("A master password is on and your sensitive items are locked.")
-                                : @tr("A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes))
-                            : root.master-allowed
-                            ? @tr("Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes)
-                            : @tr("A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes);
-                        HorizontalLayout {
-                            spacing: Space.s2;
-                            if root.master-state != 2: Button {
-                                text: @tr("Set password…");
-                                focus-request: root.master-focus;
-                                enabled: root.master-allowed && root.master-state == 1 && root.master-mode == MasterMode.closed;
-                                clicked => { root.open-master(MasterMode.set); }
-                                changed has-focus => {
-                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                                }
+                    if !root.pro: HorizontalLayout {
+                        spacing: Space.s2;
+                        licence-key := TextField {
+                            text <=> root.licence-text;
+                            horizontal-stretch: 1;
+                            label: @tr("Licence key");
+                            placeholder: @tr("SNIP1.");
+                            error: root.licence-error;
+                            monospace: true;
+                            accepted(t) => { root.submit-licence(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
-                            if root.master-state == 2 && root.master-locked: Button {
-                                text: @tr("Unlock…");
-                                clicked => { root.master-unlock-requested(); }
-                                changed has-focus => {
-                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                                }
-                            }
-                            if root.master-state == 2: Button {
-                                text: @tr("Change…");
-                                focus-request: root.master-focus;
-                                enabled: root.master-mode == MasterMode.closed;
-                                clicked => { root.open-master(MasterMode.change); }
-                                changed has-focus => {
-                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                                }
-                            }
-                            if root.master-state == 2: Button {
-                                text: @tr("Remove…");
-                                enabled: root.master-mode == MasterMode.closed;
-                                clicked => { root.open-master(MasterMode.remove); }
+                        }
+                        VerticalLayout {
+                            alignment: start;
+                            Button {
+                                text: @tr("Activate");
+                                variant: ButtonVariant.primary;
+                                clicked => { root.submit-licence(); }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                                 }
                             }
                         }
                     }
-                    if root.master-mode != MasterMode.closed: MasterPasswordForm {
-                        mode: root.master-mode;
-                        problem: root.master-problem;
-                        busy: root.master-busy;
-                        min-length: root.master-min-length;
-                        focus-request: root.master-form-focus;
-                        strength(p) => { return root.master-strength(p); }
-                        revealed(y, h) => { root.reveal-field(y, h); }
-                        submitted(c, n, a) => { root.master-submitted(root.master-mode, c, n, a); }
-                        cancelled => { root.close-master(); }
-                    }
-                    for line in [
-                        @tr("Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."),
-                        @tr("Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."),
-                        @tr("Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."),
-                        @tr("Snipdeck never connects to the internet: every icon and font it shows is packaged with it."),
-                        @tr("Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."),
-                        @tr("To remove everything, use Erase library above and then delete the folder."),
-                    ]: Text {
-                        text: line;
+                    Text {
+                        text: @tr("Free is fully usable. Supporter pays for convenience and supports the app.");
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.sm;
                         wrap: word-wrap;
-                        accessible-role: none;
+                    }
+                    PlanTable { }
+                }
+                HorizontalLayout {
+                    alignment: end;
+                    Button {
+                        text: @tr("Help");
+                        variant: ButtonVariant.ghost;
+                        a11y-label: @tr("Open the user guide (F1)");
+                        clicked => { root.help-requested(); }
+                        changed has-focus => {
+                            if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                        }
                     }
                 }
             }

@@ -74,6 +74,9 @@ pub const BLUR_GRACE: Duration = Duration::from_millis(400);
 pub const TOAST_ENTER: Duration = Duration::from_millis(120);
 /// A settled toast stays this long (`Toast.hold-duration`, DESIGN.md §4).
 pub const TOAST_HOLD: Duration = Duration::from_millis(2500);
+/// A settled error toast stays this long (WCAG 2.2.1: a message the user must read and act on
+/// is not gone after 2.5 s; hover and focus extend it further).
+pub const TOAST_ERROR_HOLD: Duration = Duration::from_secs(10);
 /// An undoable toast (a delete) settles for this long, so that it is on screen for 5 s with its
 /// fade-in (SPEC §5.7a).
 pub const TOAST_UNDO_HOLD: Duration = Duration::from_millis(4880);
@@ -125,7 +128,14 @@ struct PendingClear {
     /// The clipboard sequence number right after our write. Covers every format (HTML, images,
     /// files): the clipboard is emptied only if nothing has changed it since.
     sequence: Option<u32>,
+    /// How many times the clear has been tried and found the clipboard busy (A6).
+    attempts: u8,
 }
+
+/// A clear that finds the clipboard busy is tried again after this long ...
+pub const CLIPBOARD_CLEAR_RETRY: Duration = Duration::from_millis(500);
+/// ... at most this many times, so a clipboard that stays busy cannot keep a timer alive.
+pub const CLIPBOARD_CLEAR_ATTEMPTS: u8 = 6;
 
 /// What pressing Undo on the toast `seq` brings back from the Trash.
 #[derive(Debug, Clone)]
@@ -329,8 +339,10 @@ where
         let index_cache = crate::index_cache::IndexCache::new();
         let mut model = PanelModel::load_cached(&store, None, None, &index_cache)?;
         model.set_policy(policy_of(&settings));
+        model.set_paste_rules(settings.paste_rules());
         model.set_target(target.current());
         let shown_at = clock.now();
+        let pinned = settings.panel_pinned;
         Ok(Self {
             store,
             services,
@@ -344,7 +356,7 @@ where
             entitlements,
             visible: true,
             shown_at,
-            on_top: true,
+            on_top: pinned,
             own_window_active: false,
             blur_hide: false,
             toast: None,
@@ -731,6 +743,17 @@ where
         // A held reveal ends with the focus: the key release goes to the window that has the
         // focus now (Alt+Tab away from the Panel), so it never arrives here.
         self.panel_revealed = None;
+        // The user went to another app while the Picker or the fill form was open: they are
+        // dismissed like any popup, without taking the focus back from where the user went (U6).
+        if (self.picker.is_some() || self.fill.is_some())
+            && self
+                .target
+                .current()
+                .is_some_and(|now| self.model.target() != Some(&now))
+        {
+            self.picker = None;
+            self.fill = None;
+        }
         self.on_target_changed();
         if self.hides_on_blur() {
             let effects = self.hide_with_hint();
@@ -763,6 +786,14 @@ fn neutral(message: ToastMessage) -> Toast {
     Toast {
         kind: ToastKind::Neutral,
         message,
+    }
+}
+
+/// The toast for a move, reorder or other change the store refused: it names the cause.
+fn change_failed(error: &snipdeck_store::Error) -> Toast {
+    Toast {
+        kind: ToastKind::Danger,
+        message: ToastMessage::ChangeFailed(crate::failure::Cause::of_store(error)),
     }
 }
 

@@ -13,7 +13,10 @@ use snipdeck_core::{
     Board, BoardId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
     ListSort, search::SearchIndex,
 };
-use snipdeck_platform::route::{Policy, Route, Target, decide};
+use snipdeck_platform::{
+    keys::{PasteRule, builtin_paste_rules},
+    route::{Policy, Route, Target, decide_with},
+};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo};
 
 /// How many search results the Panel shows.
@@ -113,6 +116,9 @@ pub struct PanelModel {
     anchor: Option<ItemId>,
     target: Option<Target>,
     policy: Policy,
+    /// The paste key of each program (Settings > Programs). Until the controller sets them
+    /// ([`set_paste_rules`](Self::set_paste_rules)) the built-in ones.
+    paste_rules: Vec<PasteRule>,
 }
 
 impl PanelModel {
@@ -196,6 +202,7 @@ impl PanelModel {
             anchor: None,
             target: None,
             policy: Policy::default(),
+            paste_rules: builtin_paste_rules(),
         })
     }
 
@@ -556,10 +563,16 @@ impl PanelModel {
         self.policy = policy;
     }
 
+    /// Sets the paste key of each program (`Settings::paste_rules`); programs without one get
+    /// `Ctrl+V`.
+    pub fn set_paste_rules(&mut self, rules: Vec<PasteRule>) {
+        self.paste_rules = rules;
+    }
+
     /// What a click would do now.
     #[must_use]
     pub fn route(&self) -> Route {
-        decide(self.target.as_ref(), &self.policy)
+        decide_with(self.target.as_ref(), &self.policy, &self.paste_rules)
     }
 
     /// "Paste" when a click pastes, "Copy" otherwise.
@@ -816,6 +829,27 @@ mod tests {
             no_paste_apps: vec!["outlook.exe".into()],
         });
         assert_eq!(model.footer(), Footer::Copies);
+    }
+
+    #[test]
+    fn a_programs_own_paste_key_decides_the_route() {
+        use snipdeck_platform::keys::PasteKey;
+        let f = fixture();
+        let mut model = PanelModel::load(&f.store, None, None).expect("model");
+        model.set_target(Some(target("wt.exe", Focus::Caret)));
+        let key = |model: &PanelModel| match model.route() {
+            Route::Paste { key } => Some(key),
+            Route::Copy(_) => None,
+        };
+        assert_eq!(key(&model), Some(PasteKey::CtrlV), "nothing says otherwise");
+        model.set_paste_rules(vec![PasteRule {
+            exe: "WT.exe".into(),
+            key: PasteKey::CtrlShiftV,
+        }]);
+        assert_eq!(key(&model), Some(PasteKey::CtrlShiftV));
+        // The built-in terminals are rules in the settings, not a second table.
+        model.set_target(Some(target("mintty.exe", Focus::Caret)));
+        assert_eq!(key(&model), Some(PasteKey::CtrlV));
     }
 
     #[test]

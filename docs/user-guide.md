@@ -18,8 +18,10 @@ This guide says what the app is built to do.
   The **Picker** searches every board at your caret. The **Main window** is where you organise everything.
 - The **tray icon** keeps Snipdeck running. A left click shows or hides the Panel. A double-click opens the
   Main window. The right-click menu has Open Panel, Open Snipdeck, Pause hotkeys and Quit.
-- The **target** is the app you were typing in. When you click an item, Snipdeck pastes into the target. The
-  Panel never takes the focus away from it.
+- The **target** is the app you were typing in. When you click an item, Snipdeck pastes into the target. A
+  click on an item never takes the focus away from it. When you open the Panel with its hotkey, the tray icon or
+  by starting Snipdeck again, it takes the keyboard so you can type to search, and gives it back to the target
+  when it closes. Resting the pointer on a docked Panel's edge opens it without taking the keyboard.
 
 ## Add a snippet
 
@@ -38,8 +40,10 @@ goes into the list you were looking at.
 
 The editor shows a banner if it restored changes you had not saved. Text over 16 KB opens read-only.
 
-**Save text from the clipboard.** Copy something, then press `Ctrl+Shift+2` (or **Save from clipboard** in an
-empty Panel). The text becomes a new item at the top of the current list. Text over 5 MB is refused.
+**Save text from the clipboard.** Copy something, then use **Save from clipboard** in an empty Panel. The text
+becomes a new item at the top of the current list. Text over 5 MB is refused. The Capture shortcut does the same
+from anywhere, saving whatever text is on the clipboard when you press it; it is off until you set a shortcut in
+Settings, **Shortcuts**.
 
 ### Templates
 
@@ -81,7 +85,7 @@ sensitive. A sensitive item:
 | Click an item in the Panel | Pastes it into the target |
 | `Shift`+click, or `Shift+Enter` | Copies only, and does not paste |
 | `Enter` on the selected row | Same as a click |
-| Press `1` to `9` (search box empty) | Uses the row with that number |
+| Press `Alt+1` to `Alt+9` | Uses the row with that number (digits without `Alt` are search text) |
 | Click a pinned chip | Uses that item |
 | Picker: type, then `Enter` | Pastes the first match |
 | Main window: click a row | Selects it (`Ctrl`+click and `Shift`+click extend the selection) |
@@ -99,7 +103,7 @@ and the start of the content.
 
 - `Up`, `Down`, `PageUp`, `PageDown` move. `Enter` pastes. `Shift+Enter` copies.
 - `Tab` and `Shift+Tab` change where it searches: **All**, **This board** or **Pinned**.
-- `1` to `9` use that row while the box is empty. `Alt+1` to `Alt+9` work at any time.
+- `Alt+1` to `Alt+9` use that row, whatever the box holds. Digits without `Alt` are typed into the search.
 - `Ctrl+E` edits the selected item. `Esc` closes the Picker.
 
 ### Paste next (Supporter)
@@ -218,9 +222,14 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
 - **Appearance.** **Theme** is Windows, Light or Dark. **Language** offers English, Español, Deutsch,
   Français, Português (Brasil), 日本語 and 简体中文, and takes effect the next time Snipdeck starts.
   **Accent colour** is Blue (the default), Teal, Green, Amber, Rose, Violet or Windows accent, which follows your
-  Windows colour and is adjusted so text stays readable. **Reduce motion** turns off sliding and fading. It is
-  also off when Windows has **Animation effects** off. **Panel width** is 260 to 480 pixels. You can also drag
-  the Panel's edges.
+  Windows colour and is adjusted so text stays readable. **Text size** is Windows (the default, it follows
+  Settings > Accessibility > Text size in Windows) or a fixed 100, 125, 150 or 175 %. **Reduce motion** turns off
+  sliding and fading. It is also off when Windows has **Animation effects** off. **Panel width** is 260 to 480
+  pixels. You can also drag the Panel's edges.
+- **Panel.** **Show Snipdeck in the taskbar** gives the Panel a taskbar button (off by default).
+  **Hide the panel when it loses focus** hides an unpinned Panel when you switch to another app (on by default).
+  **Start with Windows** starts Snipdeck hidden in the tray when you sign in. **Keep running in the tray when the
+  window closes** is on by default. Turn it off and closing the Panel or the Main window quits Snipdeck.
 - **Panel dock.** **Dock to** fixes the Panel against Floating, Left edge, Right edge, Top edge or Bottom edge
   of the monitor it is on. The edge the taskbar is on is never used. You can also drag the Panel by its header
   to within a few pixels of an edge: a strip marks the edge, and the Panel docks there when you let go. The
@@ -228,24 +237,27 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   Panel open. The other choices fold it into a thin strip, and the Panel shortcut opens it too. **Hover delay**
   (0 to 2000 ms, default 150) is how long the pointer rests on the strip. **Leave delay** (0 to 5000 ms, default
   400) is how long it stays off the Panel before it folds.
-- **Window behaviour.** **Show Snipdeck in the taskbar** gives the Panel a taskbar button (off by default).
-  **Hide the panel when it loses focus** hides an unpinned Panel when you switch to another app (on by default).
-  **Start with Windows** starts Snipdeck hidden in the tray when you sign in. **Keep running in the tray when the
-  window closes** is on by default. Turn it off and closing the Panel or the Main window quits Snipdeck.
-- **Never paste into.** Program file names, such as `notepad.exe`. Snipdeck copies instead of pasting there.
-- **Licence.** Shows your plan. **Get Supporter…** opens a dialog with the price and a Free and Supporter
-  table. To turn on Supporter, paste your key (it starts with `SNIP1.`) and press **Activate**. See
-  [Free and Supporter](#free-and-supporter) and [`licensing.md`](licensing.md).
-- **Backups.** Snipdeck backs up once a day and keeps the newest ones: set **Backups to keep** from 1 to 60
-  (default 7). **Restore** adds back what is missing and
-  never removes anything. **Back up now** makes one on demand. **Open data folder** and **Open backups folder** open them.
-- **Your data.** **Export library** saves one `.snipdeck` file in your Documents folder, named like
+- **Privacy.** **Keep a Recent inbox of what you copy** and the programs it never keeps copies from. **Clear the
+  clipboard after copying a sensitive item** sets the seconds (30 by default, `0`
+  never clears it). **Master password** sets, changes or removes the password (Supporter). Below them is a
+  short summary of what is stored and where.
+- **Programs.** One row per program, by file name, such as `windowsterminal.exe`, with the key Snipdeck presses to
+  paste there: **Ctrl+V**, **Ctrl+Shift+V**, **Shift+Insert**, or **Never paste** (Snipdeck copies instead).
+  Programs not listed get Ctrl+V. The list starts with the terminals known to need another key (PuTTY, mintty,
+  KiTTY, Alacritty, WezTerm); type a file name and press **Add** to add a program, and the cross removes it.
+- **Backups and your data.** Snipdeck backs up once a day and keeps the newest ones: set **Backups to keep** from
+  1 to 60 (default 7). The line above the list says when the last backup was made. **Restore** adds back what is
+  missing and never removes anything. **Back up now** makes one on demand. **Open data folder** and **Open backups
+  folder** open them. **Export library** asks for a folder and saves one `.snipdeck` file there, named like
   `Snipdeck-library-20261018.snipdeck`. **Erase library** deletes every board, list, item and backup after
   you type `DELETE`. Your settings and licence stay. Tick **Also forget the encryption key** only if you do not
   need encrypted items in old exports.
-- **Privacy.** **Clear the clipboard after copying a sensitive item** sets the seconds (30 by default, `0`
-  never clears it). **Master password** sets, changes or removes the password (Supporter). Below them is a
-  short summary of what is stored and where.
+- **Licence.** Shows your plan. **Get Supporter…** opens a dialog with the price and a Free and Supporter
+  table. To turn on Supporter, paste your key (it starts with `SNIP1.`) and press **Activate**. See
+  [Free and Supporter](#free-and-supporter) and [`licensing.md`](licensing.md).
+
+The page lists its groups in this order: Shortcuts, Appearance, Panel, Privacy, Programs, Licence, Backups and
+your data. Press `F1` or choose **Help** at the bottom of the page to open this guide.
 
 ## Master password (Supporter)
 
@@ -325,11 +337,11 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 |---|---|---|
 | Anywhere | `Ctrl+Alt+Space` | Show or hide the Panel |
 | Anywhere | `Ctrl+Shift+Space` | Open the Picker |
-| Anywhere | `Ctrl+Shift+2` | Save the clipboard text as a new item |
-| Anywhere | `Ctrl+Alt+V` | Paste next, or the next item of a paste stack (Supporter) |
+| Anywhere | none until you set one | Save the clipboard text as a new item (Capture) |
+| Anywhere | `Ctrl+Alt+V` | Paste next, or the next item of a paste stack (Supporter; not registered on the Free plan) |
 | Panel | `Up`, `Down`, `PageUp`, `PageDown` | Move the selection |
 | Panel | `Enter`, `Shift+Enter` | Use, or copy only |
-| Panel | `1` to `9` | Use that row (search box empty) |
+| Panel | `Alt+1` to `Alt+9` | Use that row (digits without `Alt` are search text) |
 | Panel | `Ctrl+Tab`, `Ctrl+Shift+Tab` | Next or previous list |
 | Panel | `Ctrl+F` | Focus the search box |
 | Panel | `Ctrl+D` | Duplicate |
@@ -340,6 +352,7 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 | Panel | `Ctrl+W` | Hide the Panel |
 | Panel | `Ctrl+Z` | Undo the delete (search box empty) |
 | Panel | `Ctrl+E`, `F2` | Edit the selected item |
+| Panel | `Ctrl+P` | Pin or unpin the selected item |
 | Panel | `Delete` | Move the selected item to the Trash (not while searching) |
 | Panel | `Menu`, `Shift+F10` | Open the item menu |
 | Panel | `Esc` | Clear the search; with nothing to clear, hide the Panel |

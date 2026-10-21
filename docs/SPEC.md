@@ -99,7 +99,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - **Image**: crop, rotate/flip, resize/scale, **redact** (blur / solid box). Non-destructive until save.
 
 ### 5.5 Capture & OCR
-- Hotkey (default `Ctrl+Shift+2`) → Snipdeck's own region-select overlay (multi-monitor, DPI-aware). **Not built yet:** v1.0's capture hotkey saves the text on the clipboard as a new item in the list the Panel shows (off until a chord is set), and Settings says so.
+- Hotkey (off until the user sets a chord; no default) → Snipdeck's own region-select overlay (multi-monitor, DPI-aware). **Not built yet:** v1.0's capture hotkey saves the text on the clipboard as a new item in the list the Panel shows (off until a chord is set), and Settings says so.
 - After selection an **action bar** appears at the selection: **Copy text** (one-off OCR, nothing stored) · **Save text** · **Save image** · **Save both**, plus a list picker (default: active list).
 - Text actions open a small **review popover** with the OCR result, editable before copying/saving.
 - OCR engine: **Windows.Media.Ocr** by default (zero bundle cost); optional **RapidOCR pack**

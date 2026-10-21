@@ -195,7 +195,7 @@ Not verifiable here (stays unverified until the owner runs the wizard on Windows
 - App shell (2026-10-18): `Controller::on_tray`, `set_system_look`, `update_settings`, `close`; `Binding::tray` / `system_look`;
   `Host` has `tray`, `warnings`, `keep_alive` (was `guard`). Wizard: `tools/windows-test/tests/m3-app.json`.
 - Decisions: ADR-0008 (OS caption buttons on the main window, own chrome on the panel, Win32 tray in the platform crate).
-  Default hotkeys: Ctrl+Alt+Space toggles the Panel (new, not in SPEC), Ctrl+Shift+Space Picker, Ctrl+Shift+2 capture, Ctrl+Alt+V paste next.
+  Default hotkeys: Ctrl+Alt+Space toggles the Panel (new, not in SPEC), Ctrl+Shift+Space Picker, capture (no default chord, off until set), Ctrl+Alt+V paste next (registered with Supporter only).
 - CI note: Slint pulls `fontique` -> `yeslogic-fontconfig-sys`; `snipdeck-ui` enables `i-slint-common/fontconfig-dlopen` so CI needs no
   `libfontconfig-dev`. Debug `target/` for snipdeck-ui is about 4 GB: keep few copies, `rm -rf` old ones.
 

@@ -29,6 +29,7 @@ use crate::{
     item_editor::Origin,
     palette::list_color,
     panel::{Footer, Row, Tab},
+    placement::PopupHost,
     settings::HotkeyAction,
     wording,
 };
@@ -196,6 +197,8 @@ impl Binding {
 struct Core<S, C, K, T> {
     controller: Rc<RefCell<Controller<S, C, K, T>>>,
     window: slint::Weak<ui::PanelWindow>,
+    /// What the Panel asks of the machine: the keyboard for text entry, and to give it back.
+    host: Rc<dyn PopupHost>,
     on_effect: Box<dyn Fn(&Effect)>,
     /// What the window shows now, so a redraw sets only what changed (re-setting the rows
     /// model would reset the list's scroll position on every toast tick).
@@ -225,6 +228,7 @@ where
     fn new(
         controller: &Rc<RefCell<Controller<S, C, K, T>>>,
         window: &ui::PanelWindow,
+        host: Rc<dyn PopupHost>,
         on_effect: Box<dyn Fn(&Effect)>,
     ) -> Rc<Self> {
         let core = Rc::new_cyclic(|weak: &Weak<Self>| {
@@ -232,6 +236,7 @@ where
             Self {
                 controller: Rc::clone(controller),
                 window: window.as_weak(),
+                host,
                 on_effect,
                 shown: RefCell::new(None),
                 redraw: Rc::new(move || {
@@ -280,8 +285,15 @@ where
                     // A hidden Panel comes back where it was in the stack, behind the app in
                     // use; and one that is "shown" already (a second Open Panel) may be buried.
                     crate::native_window::raise(&window);
+                    // Shown on purpose (the hotkey, the tray, a second launch): the user types
+                    // next, so the Panel takes the keyboard. A dock-hover reveal never comes
+                    // here, so the pointer passing over the edge steals nothing.
+                    self.activate_soon();
                 }
                 Effect::HidePanel => {
+                    // Back to the Target first, while the Panel still holds the foreground:
+                    // hiding it first would leave the choice of the next window to Windows.
+                    self.host.release();
                     let _ = window.hide();
                     // What was opened from the Panel closes with it (O53), unless the Panel only
                     // lost the focus (to one of those windows, most likely).
@@ -319,6 +331,21 @@ where
             }
             (self.on_effect)(effect);
         }
+    }
+
+    /// Takes the keyboard for the Panel once the event loop has run (a `--hidden` start has no
+    /// native window until then). The host remembers the Target before it takes the foreground,
+    /// so the Panel itself is never the Target.
+    fn activate_soon(&self) {
+        let (weak, host) = (self.window.clone(), Rc::clone(&self.host));
+        slint::Timer::single_shot(std::time::Duration::ZERO, move || {
+            if let Some(window) = weak.upgrade()
+                && window.window().is_visible()
+            {
+                let taken = host.activate(window.window());
+                crate::trace!("panel takes the keyboard: {taken}");
+            }
+        });
     }
 
     /// Copies the controller's view into the window and keeps the toast timer running.
@@ -483,9 +510,10 @@ where
     pub fn bind(
         this: &Rc<RefCell<Self>>,
         window: &ui::PanelWindow,
+        host: Rc<dyn PopupHost>,
         on_effect: impl Fn(&Effect) + 'static,
     ) -> Binding {
-        let core = Core::new(this, window, Box::new(on_effect));
+        let core = Core::new(this, window, host, Box::new(on_effect));
         core.sync();
         {
             // Where the other windows open over the Panel, while it is shown.
@@ -655,6 +683,7 @@ where
         wire_effects!(on_edit_requested, |ctl, i| ctl.edit_row(index(i)));
         wire_effects!(on_rename_requested, |ctl, i| ctl.rename_row(index(i)));
         wire!(on_duplicate_requested, |ctl, i| ctl.duplicate_row(index(i)));
+        wire!(on_pin_requested, |ctl, i| ctl.pin_row(index(i)));
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.toast_action());
         wire!(on_undo_requested, |ctl| ctl.main_undo());
@@ -671,6 +700,16 @@ where
             .dock_event(DockEvent::HandleClick));
         wire_effects!(on_panel_hovered, |ctl, on| ctl
             .dock_event(DockEvent::PanelHover(on)));
+        // A click into the search box is input to this process, so Windows lets the Panel take
+        // the keyboard for it (the window never activates on a click by itself).
+        {
+            let core = Rc::clone(&core);
+            window.on_search_focus_gained(move || {
+                if let Some(window) = core.window.upgrade() {
+                    let _ = core.host.activate(window.window());
+                }
+            });
+        }
         wire_effects!(on_close_requested, |ctl| ctl.close());
         // An OS close (Alt+F4, WM_CLOSE) goes the same way as the close button: the controller
         // decides between hiding to the tray and quitting, and keeps `visible` in step.
@@ -928,6 +967,8 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.dark == view.dark) {
         window.set_dark(view.dark);
     }
+    // Not behind `differs`: the text size is not part of the view.
+    crate::text_scale::apply(&window.global::<ui::SystemLook<'_>>());
     if differs(&|p| (p.dark, p.high_contrast) == (view.dark, view.high_contrast)) {
         crate::native_window::set_erase_colour(window.window(), window_colour(window, view));
     }
@@ -986,18 +1027,26 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             && p.stack.as_ref().map(|s| &s.items) == view.stack.as_ref().map(|s| &s.items)
     }) {
         let marked = view.stack.as_ref().map_or(&[][..], |s| s.items.as_slice());
-        window.set_rows(model(view.rows.iter().enumerate().map(|(i, r)| {
-            let mut row = panel_row(r, view.dark);
-            row.stack_position = marked
-                .iter()
-                .position(|id| *id == r.id)
-                .map_or(0, |at| to_i32(at + 1));
-            // The one sensitive row held revealed: the controller put its text in the preview.
-            if view.revealed == Some(i) {
-                row.preview = r.preview.as_str().into();
-            }
-            row
-        })));
+        let rows = view
+            .rows
+            .iter()
+            .enumerate()
+            .map(|(i, r)| {
+                let mut row = panel_row(r, view.dark);
+                row.stack_position = marked
+                    .iter()
+                    .position(|id| *id == r.id)
+                    .map_or(0, |at| to_i32(at + 1));
+                // The one sensitive row held revealed: the controller put its text in the preview.
+                if view.revealed == Some(i) {
+                    row.preview = r.preview.as_str().into();
+                }
+                row
+            })
+            .collect();
+        if let Some(fresh) = refreshed_model(&window.get_rows(), rows) {
+            window.set_rows(fresh);
+        }
     }
     render_recent(window, previous, view);
     let revealed = view.revealed.map_or(-1, to_i32);
@@ -1165,6 +1214,27 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
 
 pub(crate) fn model<T: Clone + 'static>(items: impl Iterator<Item = T>) -> ModelRc<T> {
     ModelRc::new(VecModel::from(items.collect::<Vec<_>>()))
+}
+
+/// Brings the model a window already shows up to date with `rows`. The same number of rows
+/// changes only the rows that differ, so a selection or pin change does not rebuild the list (a
+/// rebuilt model resets the list's scroll position and focus). Anything else, or a model that is
+/// not ours, gets a fresh model back to set.
+pub(crate) fn refreshed_model<T: Clone + PartialEq + 'static>(
+    current: &ModelRc<T>,
+    rows: Vec<T>,
+) -> Option<ModelRc<T>> {
+    if current.row_count() == rows.len()
+        && let Some(vec) = current.as_any().downcast_ref::<VecModel<T>>()
+    {
+        for (i, row) in rows.into_iter().enumerate() {
+            if vec.row_data(i).as_ref() != Some(&row) {
+                vec.set_row_data(i, row);
+            }
+        }
+        return None;
+    }
+    Some(ModelRc::new(VecModel::from(rows)))
 }
 
 pub(crate) fn to_i32(n: usize) -> i32 {

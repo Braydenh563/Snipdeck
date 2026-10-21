@@ -182,6 +182,7 @@ where
             t.invoke_panel_hidden(chord.as_deref().unwrap_or_default().into())
         }
         ToastMessage::Failed => t.invoke_failed(),
+        ToastMessage::UseFailed(cause) => t.invoke_use_failed(cause.code()),
         ToastMessage::WindowNotShown => t.invoke_window_not_shown(),
         ToastMessage::SettingsNotSaved => t.invoke_settings_not_saved(),
         ToastMessage::ItemsTrashed { count: n } => t.invoke_items_trashed(count(*n)),
@@ -200,13 +201,15 @@ where
         ToastMessage::LicenceAccepted => t.invoke_licence_accepted(),
         ToastMessage::LicenceRejected(problem) => return licence_problem_text(window, *problem),
         ToastMessage::BackupMade => t.invoke_backup_made(),
-        ToastMessage::BackupFailed => t.invoke_backup_failed(),
+        ToastMessage::BackupFailed(cause) => t.invoke_backup_failed(cause.code()),
+        ToastMessage::DailyBackupFailed(cause) => t.invoke_daily_backup_failed(cause.code()),
+        ToastMessage::TrashPurgeFailed => t.invoke_trash_purge_failed(),
         ToastMessage::BackupRestored { items } => t.invoke_backup_restored(count(*items)),
-        ToastMessage::RestoreFailed => t.invoke_restore_failed(),
+        ToastMessage::RestoreFailed(cause) => t.invoke_restore_failed(cause.code()),
         ToastMessage::Imported { items } => t.invoke_imported(count(*items)),
-        ToastMessage::ImportFailed => t.invoke_import_failed(),
+        ToastMessage::ImportFailed(cause) => t.invoke_import_failed(cause.code()),
         ToastMessage::Exported { file } => t.invoke_exported(file.into()),
-        ToastMessage::ExportFailed => t.invoke_export_failed(),
+        ToastMessage::ExportFailed(cause) => t.invoke_export_failed(cause.code()),
         ToastMessage::LibraryErased => t.invoke_library_erased(),
         ToastMessage::EraseFailed => t.invoke_erase_failed(),
         ToastMessage::FolderNotOpened => t.invoke_folder_not_opened(),
@@ -220,6 +223,7 @@ where
         ToastMessage::NotSaved => t.invoke_not_saved(),
         ToastMessage::NotOpened => t.invoke_not_opened(),
         ToastMessage::DraftNotSaved => t.invoke_draft_not_saved(),
+        ToastMessage::ChangeFailed(cause) => t.invoke_change_failed(cause.code()),
         ToastMessage::ScreenshotFailed => t.invoke_screenshot_failed(),
     };
     text.into()
@@ -381,11 +385,11 @@ pub const fn item_menu_shortcut(entry: crate::controller::ItemMenuEntry) -> &'st
         ItemMenuEntry::Copy => "Shift+Enter",
         ItemMenuEntry::Edit => "Ctrl+E",
         ItemMenuEntry::Duplicate => "Ctrl+D",
+        ItemMenuEntry::Pin { .. } => "Ctrl+P",
         ItemMenuEntry::Trash => "Del",
         ItemMenuEntry::MoveUp { .. } => "Alt+Up",
         ItemMenuEntry::MoveDown { .. } => "Alt+Down",
-        ItemMenuEntry::Pin { .. }
-        | ItemMenuEntry::Stack { .. }
+        ItemMenuEntry::Stack { .. }
         | ItemMenuEntry::MoveTo
         | ItemMenuEntry::Colour
         | ItemMenuEntry::Sensitive { .. }

@@ -19,6 +19,7 @@ use snipdeck_app::{
     demo,
     frame::{Edge, Monitor, Rect},
     host::{Clock, FakeTargets, FixedClock},
+    placement::FakePopups,
     settings::{DockEdge, DockTrigger, HotkeyAction, Settings, Theme},
     settings_store::{FileSink, SettingsSaver},
 };
@@ -47,6 +48,8 @@ struct Rig {
     targets: FakeTargets,
     clock: FixedClock,
     effects: Rc<RefCell<Vec<Effect>>>,
+    /// What the Panel asked of the machine (`activate`, `release`).
+    host: Rc<FakePopups>,
 }
 
 fn now() -> Timestamp {
@@ -107,7 +110,8 @@ fn rig_on(store: Store, tray: bool, clipboard: Vec<snipdeck_platform::payload::P
     let ui = PanelWindow::new().expect("panel");
     let effects: Rc<RefCell<Vec<Effect>>> = Rc::default();
     let log = Rc::clone(&effects);
-    let binding = Controller::bind(&ctl, &ui, move |e| log.borrow_mut().push(*e));
+    let host = Rc::new(FakePopups::default());
+    let binding = Controller::bind(&ctl, &ui, host.clone(), move |e| log.borrow_mut().push(*e));
     ui.show().expect("show");
     slint::platform::update_timers_and_animations();
     Rig {
@@ -117,6 +121,7 @@ fn rig_on(store: Store, tray: bool, clipboard: Vec<snipdeck_platform::payload::P
         targets,
         clock,
         effects,
+        host,
     }
 }
 
@@ -409,11 +414,11 @@ fn typing_in_the_search_filters_the_rows() {
 }
 
 #[test]
-fn pressing_3_pastes_the_third_item_and_counts_the_use() {
+fn alt_3_pastes_the_third_item_and_counts_the_use() {
     on_ui_thread(|| {
         let r = rig();
         assert_eq!(r.uses(2), 0);
-        press(r.window(), "3");
+        chord(r.window(), &[Key::Alt], "3");
         {
             let ctl = r.ctl.borrow();
             let services = ctl.services();
@@ -514,6 +519,61 @@ fn the_toggle_hotkey_hides_and_shows_the_panel() {
     });
 }
 
+/// What the Panel has asked of the machine so far, the event loop having run once.
+fn asked(r: &Rig) -> Vec<&'static str> {
+    slint::platform::update_timers_and_animations();
+    r.host.calls.borrow().clone()
+}
+
+#[test]
+fn a_panel_shown_by_the_hotkey_the_tray_or_a_second_launch_takes_the_keyboard() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.binding.hotkey(HotkeyAction::TogglePanel);
+        assert_eq!(asked(&r), ["release"], "hiding gives the keyboard back");
+        r.host.calls.borrow_mut().clear();
+        r.binding.hotkey(HotkeyAction::TogglePanel);
+        assert_eq!(asked(&r), ["activate"], "the hotkey");
+        r.binding.tray(TrayEvent::TogglePanel);
+        r.host.calls.borrow_mut().clear();
+        r.binding.tray(TrayEvent::TogglePanel);
+        assert_eq!(asked(&r), ["activate"], "the tray");
+        r.binding.hotkey(HotkeyAction::TogglePanel);
+        r.host.calls.borrow_mut().clear();
+        r.binding.show();
+        assert_eq!(asked(&r), ["activate"], "a second launch");
+    });
+}
+
+#[test]
+fn escape_hands_the_keyboard_back_before_the_panel_hides() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.host.calls.borrow_mut().clear();
+        press(r.window(), &key(Key::Escape));
+        assert!(!r.window().is_visible());
+        assert_eq!(asked(&r), ["release"]);
+    });
+}
+
+#[test]
+fn a_click_into_the_search_box_takes_the_keyboard() {
+    on_ui_thread(|| {
+        let r = rig();
+        // The window loses the keyboard (another app in front) and the user clicks back into
+        // the box: it is focused again, and the host is asked for the keyboard.
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(false));
+        assert!(!r.ui.get_search_focused());
+        asked(&r);
+        r.host.calls.borrow_mut().clear();
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(true));
+        assert!(r.ui.get_search_focused());
+        assert_eq!(asked(&r), ["activate"]);
+    });
+}
+
 #[test]
 fn a_second_launch_shows_a_hidden_panel() {
     on_ui_thread(|| {
@@ -580,7 +640,7 @@ fn the_board_menu_lists_boards_and_switches() {
 fn a_template_that_needs_answers_opens_the_fill_form_and_changes_nothing() {
     on_ui_thread(|| {
         let r = rig();
-        press(r.window(), "2");
+        chord(r.window(), &[Key::Alt], "2");
         assert_eq!(r.ui.get_toast_text(), "");
         assert_eq!(r.uses(1), 0);
         let ctl = r.ctl.borrow();
@@ -593,7 +653,7 @@ fn a_template_that_needs_answers_opens_the_fill_form_and_changes_nothing() {
 fn the_toast_walks_through_its_phases_on_mock_time_and_then_goes() {
     on_ui_thread(|| {
         let r = rig();
-        press(r.window(), "1");
+        chord(r.window(), &[Key::Alt], "1");
         assert_eq!(r.ui.get_toast_text(), "Pasted into Outlook");
         assert_eq!(r.ui.get_toast_phase(), snipdeck_ui::ToastPhase::Enter);
         i_slint_backend_testing::mock_elapsed_time(TOAST_ENTER);
@@ -742,6 +802,29 @@ fn reduced_motion_reaches_the_window_from_windows_or_the_setting() {
 }
 
 #[test]
+fn ctrl_p_pins_the_selected_row_and_unpins_it_again_and_the_menu_row_shows_the_key() {
+    on_ui_thread(|| {
+        let r = rig();
+        let id: ItemId = r.ctl.borrow().model().rows()[0].id;
+        let pinned = |r: &Rig| r.ctl.borrow().store().item(id).expect("item").pinned;
+        let before = pinned(&r);
+        chord(r.window(), &[Key::Control], "p");
+        assert_eq!(pinned(&r), !before, "Ctrl+P toggles the selected row");
+        chord(r.window(), &[Key::Control], "p");
+        assert_eq!(pinned(&r), before, "and toggles it back");
+
+        r.ui.invoke_context_menu_requested(0, 10.0, 10.0);
+        assert!(r.ui.get_item_menu_open());
+        let entries = r.ui.get_item_menu_entries();
+        let pin = entries
+            .iter()
+            .find(|row| row.text.starts_with("Pin") || row.text.starts_with("Unpin"))
+            .expect("a Pin row in the item menu");
+        assert_eq!(pin.shortcut, "Ctrl+P");
+    });
+}
+
+#[test]
 fn an_explicit_theme_ignores_windows_dark_mode() {
     on_ui_thread(|| {
         let r = rig();
@@ -840,7 +923,7 @@ fn click_at(window: &slint::Window, position: slint::LogicalPosition) {
 const MENU_ROWS: [&str; 14] = [
     "Open Snipdeck",
     "All commands\u{2026}",
-    "New snippet",
+    "New item",
     "Take screenshot",
     "Settings\u{2026}",
     "Dock to the nearest edge",
@@ -992,7 +1075,7 @@ fn open_snipdeck_help_and_new_snippet_reach_the_host() {
         let r = rig();
         for label in [
             "Open Snipdeck",
-            "New snippet",
+            "New item",
             "Troubleshoot\u{2026}",
             "User guide",
             "About Snipdeck",
@@ -1303,6 +1386,8 @@ fn resting_the_pointer_on_the_handle_opens_the_panel_after_the_hover_delay() {
         let r = docked_rig(DockTrigger::Hover);
         r.binding.hotkey(HotkeyAction::TogglePanel);
         r.effects.borrow_mut().clear();
+        asked(&r);
+        r.host.calls.borrow_mut().clear();
         let at_handle = centre(&handle(&r));
         r.window()
             .dispatch_event(slint::platform::WindowEvent::PointerMoved {
@@ -1317,6 +1402,10 @@ fn resting_the_pointer_on_the_handle_opens_the_panel_after_the_hover_delay() {
         assert_eq!(*r.effects.borrow(), [Effect::PlaceWindow(OPEN)]);
         assert_eq!(size(&r), (OPEN.w, OPEN.h));
         assert!(!r.ui.get_dock_collapsed());
+        assert!(
+            !asked(&r).contains(&"activate"),
+            "a pointer passing over the edge never takes the keyboard"
+        );
         assert!(
             !r.ctl.borrow().dock_needs_tick(),
             "the timer stops when idle"
@@ -1416,7 +1505,7 @@ fn a_paste_from_a_docked_panel_collapses_it() {
     on_ui_thread(|| {
         let r = docked_rig(DockTrigger::Both);
         r.effects.borrow_mut().clear();
-        press(r.window(), "3");
+        chord(r.window(), &[Key::Alt], "3");
         assert_eq!(r.uses(2), 1, "the third item was pasted");
         assert_eq!(*r.effects.borrow(), [Effect::PlaceWindow(STRIP)]);
         assert!(r.ui.get_dock_collapsed());
@@ -1439,7 +1528,7 @@ fn a_floating_panel_keeps_everything_as_before() {
                 h: 480,
             },
         );
-        press(r.window(), "3");
+        chord(r.window(), &[Key::Alt], "3");
         assert!(!r.ui.get_dock_collapsed());
         assert_eq!(*r.effects.borrow(), []);
         r.binding.hotkey(HotkeyAction::TogglePanel);

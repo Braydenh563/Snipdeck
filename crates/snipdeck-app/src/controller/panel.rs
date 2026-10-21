@@ -480,6 +480,14 @@ where
         }
     }
 
+    /// Ctrl+P on row `index`: pins the item, or unpins it when it is pinned.
+    pub fn pin_row(&mut self, index: usize) {
+        if let Some(id) = self.row_id(index) {
+            let pinned = self.menu_row(id).is_some_and(|r| r.pinned);
+            self.set_item_pinned(id, !pinned);
+        }
+    }
+
     /// F2 on row `index`. The Panel has no inline title field, so this opens the same editor.
     pub fn rename_row(&mut self, index: usize) -> Vec<Effect> {
         self.edit_row(index)

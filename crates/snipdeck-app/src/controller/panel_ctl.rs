@@ -35,6 +35,7 @@ where
         }
         self.settings = next;
         self.model.set_policy(policy_of(&self.settings));
+        self.model.set_paste_rules(self.settings.paste_rules());
         let now = self.clock.now();
         if let Some(saver) = &mut self.saver {
             saver.changed(&self.settings, now);
@@ -95,9 +96,10 @@ where
         self.saver.as_mut().map_or(Ok(()), SettingsSaver::flush)
     }
 
-    /// The pin button: keep the Panel on top or not.
+    /// The pin button: keep the Panel on top or not. Remembered in the settings (U8).
     pub fn set_on_top(&mut self, on_top: bool) {
         self.on_top = on_top;
+        self.update_settings(|s| s.panel_pinned = on_top);
     }
 
     /// Sets the words a new list's and a new board's editor name starts from ("New list" gives
