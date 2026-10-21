@@ -246,7 +246,8 @@ export component ItemEditor inherits Window {
     min-width: 420px;
     min-height: 380px;
     preferred-width: 560px;
-    preferred-height: 700px;
+    // Opens at the height of its form (More options closed), up to 700 px; the form scrolls past that.
+    preferred-height: min(700px, max(380px, form.preferred-height + footer.height));
 
     in property <bool> dark: false;
     in property <bool> is-new: false;
@@ -776,7 +777,7 @@ export component ItemEditor inherits Window {
                 }
             }
 
-            EditorFooter {
+            footer := EditorFooter {
                 show-delete: !root.is-new;
                 delete-label: @tr("Move to Trash");
                 cancel-label: @tr("Cancel");
