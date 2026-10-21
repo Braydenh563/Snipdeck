@@ -723,6 +723,8 @@ export component ItemCard inherits Rectangle {
     // Always present, muted until the card is hovered or focused. It fires `copy` (the Shift+click) and never
     // `use` or `pull`, so it is not a use of the card. Not a Tab stop: Shift+Enter copies from the keyboard.
     copy-button := Rectangle {
+        // Only where the kebab is: without a menu no trailing slot is reserved and the icon would sit on the label.
+        visible: root.has-menu;
         width: root.more-side;
         height: root.more-side;
         x: more.x - self.width;

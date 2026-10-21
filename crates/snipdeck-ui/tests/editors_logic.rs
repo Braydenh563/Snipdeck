@@ -878,6 +878,22 @@ ui_tests! {
 
     // ---- Tag management ----------------------------------------------------------------------
 
+    fn the_tag_manager_asks_for_the_height_of_its_content_up_to_520() {
+        let ui = TagManager::new().expect("tag manager");
+        ui.set_tags(ModelRc::default());
+        settle();
+        let none = ui.get_wanted_height();
+        fixture::tag_manager(&ui);
+        settle();
+        let some = ui.get_wanted_height();
+        ui.set_tags(ModelRc::new(VecModel::from(vec![snipdeck_ui::ChoiceEntry::default(); 60])));
+        settle();
+        let many = ui.get_wanted_height();
+        assert!(none >= 280.0, "never below the minimum: {none}");
+        assert!(some > none && some < 520.0, "a few tags fit: {none} {some}");
+        assert!((many - 520.0).abs() < 0.01, "a long list is capped: {many}");
+    }
+
     fn tags_rename_with_enter_and_cancel_with_escape() {
         let ui = TagManager::new().expect("tag manager");
         fixture::tag_manager(&ui);

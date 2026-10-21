@@ -170,7 +170,7 @@ msgstr ""
 msgid "Appearance"
 msgstr ""
 
-#: ui/editors.slint:1471
+#: ui/editors.slint:1473
 msgid "Apply the new name"
 msgstr ""
 
@@ -262,7 +262,7 @@ msgstr ""
 msgid "Built on"
 msgstr ""
 
-#: ui/components/quick-add.slint:163 ui/editors.slint:783 ui/editors.slint:1159 ui/editors.slint:1197 ui/editors.slint:1523 ui/main_window.slint:2162 ui/main_window.slint:2184 ui/master_password.slint:256 ui/master_password.slint:372 ui/panel.slint:1638 ui/settings.slint:1206 ui/settings.slint:1280 ui/template_fill.slint:311
+#: ui/components/quick-add.slint:163 ui/editors.slint:783 ui/editors.slint:1159 ui/editors.slint:1197 ui/editors.slint:1525 ui/main_window.slint:2162 ui/main_window.slint:2184 ui/master_password.slint:256 ui/master_password.slint:372 ui/panel.slint:1638 ui/settings.slint:1206 ui/settings.slint:1280 ui/template_fill.slint:311
 msgid "Cancel"
 msgstr ""
 
@@ -382,7 +382,7 @@ msgstr ""
 msgid "Clipboard history"
 msgstr ""
 
-#: ui/components/shortcuts-sheet.slint:141 ui/components/shortcuts-sheet.slint:147 ui/editors.slint:1507 ui/picker.slint:507 ui/settings.slint:1206 ui/settings.slint:1420 ui/template_fill.slint:192
+#: ui/components/shortcuts-sheet.slint:141 ui/components/shortcuts-sheet.slint:147 ui/editors.slint:1509 ui/picker.slint:507 ui/settings.slint:1206 ui/settings.slint:1420 ui/template_fill.slint:192
 msgid "Close"
 msgstr ""
 
@@ -498,7 +498,7 @@ msgstr ""
 msgid "Copy the result"
 msgstr ""
 
-#: ui/components/item-card.slint:733
+#: ui/components/item-card.slint:735
 msgid "Copy without pasting"
 msgstr ""
 
@@ -774,11 +774,11 @@ msgstr ""
 msgid "Delete list…"
 msgstr ""
 
-#: ui/editors.slint:1527 ui/main_window.slint:506
+#: ui/editors.slint:1529 ui/main_window.slint:506
 msgid "Delete tag"
 msgstr ""
 
-#: ui/editors.slint:1486
+#: ui/editors.slint:1488
 msgid "Delete tag {}"
 msgstr ""
 
@@ -798,7 +798,7 @@ msgstr ""
 msgid "Delete this list?"
 msgstr ""
 
-#: ui/editors.slint:1518
+#: ui/editors.slint:1520
 msgid "Delete this tag?"
 msgstr ""
 
@@ -1252,7 +1252,7 @@ msgstr ""
 msgid "Insert {}"
 msgstr ""
 
-#: ui/editors.slint:1519
+#: ui/editors.slint:1521
 msgid "It is removed from {n} item. The item stays."
 msgid_plural "It is removed from {n} items. The items stay."
 msgstr[0] ""
@@ -1572,7 +1572,7 @@ msgstr ""
 msgid "New list"
 msgstr ""
 
-#: ui/editors.slint:1459
+#: ui/editors.slint:1461
 msgid "New name for {}"
 msgstr ""
 
@@ -1660,7 +1660,7 @@ msgstr ""
 msgid "No tags yet. Add one below."
 msgstr ""
 
-#: ui/editors.slint:1407
+#: ui/editors.slint:1409
 msgid "No tags yet. Add tags to an item and they appear here."
 msgstr ""
 
@@ -2096,6 +2096,10 @@ msgstr ""
 msgid "Redo"
 msgstr ""
 
+#: ui/main_window.slint:272 ui/panel.slint:319
+msgid "Redo last change"
+msgstr ""
+
 #: ui/toast_texts.slint:159
 msgid "Redo {} (Ctrl+Y)"
 msgstr ""
@@ -2136,11 +2140,11 @@ msgstr ""
 msgid "Rename board…"
 msgstr ""
 
-#: ui/editors.slint:1388
+#: ui/editors.slint:1390
 msgid "Rename or delete tags. Deleting a tag removes it from its items; the items stay."
 msgstr ""
 
-#: ui/editors.slint:1471
+#: ui/editors.slint:1473
 msgid "Rename tag {}"
 msgstr ""
 
@@ -2580,7 +2584,7 @@ msgstr ""
 msgid "Tag a snippet to see it here."
 msgstr ""
 
-#: ui/editors.slint:674 ui/editors.slint:723 ui/editors.slint:1329 ui/editors.slint:1420 ui/main_window.slint:1010 ui/main_window.slint:2116
+#: ui/editors.slint:674 ui/editors.slint:723 ui/editors.slint:1329 ui/editors.slint:1422 ui/main_window.slint:1010 ui/main_window.slint:2116
 msgid "Tags"
 msgstr ""
 
@@ -2934,6 +2938,10 @@ msgstr ""
 
 #: ui/components/shortcuts-sheet.slint:103 ui/components/shortcuts-sheet.slint:126
 msgid "Undo"
+msgstr ""
+
+#: ui/main_window.slint:271 ui/panel.slint:318
+msgid "Undo last change"
 msgstr ""
 
 #: ui/toast_texts.slint:156
@@ -3334,7 +3342,7 @@ msgstr ""
 msgid "window geometry default restore move resize cut off"
 msgstr ""
 
-#: ui/editors.slint:1425 ui/editors.slint:1448 ui/main_window.slint:1285 ui/main_window.slint:1939
+#: ui/editors.slint:1427 ui/editors.slint:1450 ui/main_window.slint:1285 ui/main_window.slint:1939
 msgid "{n} item"
 msgid_plural "{n} items"
 msgstr[0] ""
