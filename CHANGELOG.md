@@ -138,7 +138,7 @@ Internal milestones, kept for reference.
   the S3 measurements.
 
 **Earlier, fixed**
-- Findings of the Opus reviews of M1 (29 in core and store), the M3 security review, the M3 component review
+- Findings of the independent reviews of M1 (29 in core and store), the M3 security review, the M3 component review
   and the Win32 tray review are fixed or tracked; see [`docs/reviews/`](docs/reviews/).
 - `Cargo.toml` `repository` points at `github.com/Braydenh563/Snipdeck` (the project was renamed from Backpack).
 
