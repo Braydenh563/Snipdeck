@@ -456,6 +456,8 @@ function Build-Spike($SpikeDef, [int]$N = 1, [int]$Of = 1) {
         Say "  Building the app, part $N of ${Of}: $(Get-FriendlyName $SpikeDef)" White
         Say-Wrapped 'The first time takes about 5-10 minutes. Lines will scroll past, and a "still building" note appears every 30 seconds. Nothing is stuck.' 2 Gray
         Say-Wrapped '(If the window ever stops moving for good, click into it and press Enter: Windows pauses a window while text in it is selected.)' 2 DarkGray
+        $buildLog = Join-Path $OutRoot ("build-{0}-{1}.log" -f $SpikeDef.id, (Get-Date -Format 'yyyyMMdd-HHmmss'))
+        Say-Wrapped "Ctrl+C here no longer stops the build. The full build output is saved to $buildLog, so there is no need to copy it from this window." 2 DarkGray
         $started = Get-Date
         $code = -1
         Push-Location $dir
@@ -468,12 +470,29 @@ function Build-Spike($SpikeDef, [int]$N = 1, [int]$Of = 1) {
                 $env:SNIPDECK_LICENCE_PUBLIC_KEY = 'Zr5+Myx6RTMyvZ0Kf32wVfXF7xoGraZtmLOftoEMRzo='
                 $env:SNIPDECK_ALLOW_TEST_LICENCE_KEY = '1'
             }
-            $proc = Start-Process -FilePath 'cargo' -ArgumentList @('build', '--release') -NoNewWindow -PassThru
+            # Cargo runs in its own hidden console, so Ctrl+C pressed here (often meant as copy) cannot
+            # cancel it. Its progress goes to $buildLog, which is echoed here as it grows.
+            $null = New-Item -ItemType Directory -Force -Path $OutRoot
+            $outLog = "$buildLog.out"
+            $proc = Start-Process -FilePath 'cargo' -ArgumentList @('build', '--release', '--color', 'never') -WindowStyle Hidden -PassThru -RedirectStandardError $buildLog -RedirectStandardOutput $outLog
             $null = $proc.Handle   # keeps the exit code readable after the process ends
-            while (-not $proc.WaitForExit(30000)) {
-                $mins = [int][Math]::Floor(((Get-Date) - $started).TotalMinutes)
-                Say "  ... still building (about $mins min so far, this is normal)" Gray
-            }
+            $reader = $null
+            $beat = Get-Date
+            try {
+                while ($true) {
+                    $done = $proc.WaitForExit(1000)
+                    if (-not $reader -and (Test-Path -LiteralPath $buildLog)) {
+                        $reader = New-Object IO.StreamReader([IO.File]::Open($buildLog, 'Open', 'Read', 'ReadWrite'))
+                    }
+                    if ($reader) { while ($null -ne ($l = $reader.ReadLine())) { Say "  $l" Gray } }
+                    if ($done) { break }
+                    if (((Get-Date) - $beat).TotalSeconds -ge 30) {
+                        $beat = Get-Date
+                        $mins = [int][Math]::Floor(((Get-Date) - $started).TotalMinutes)
+                        Say "  ... still building (about $mins min so far, this is normal)" Gray
+                    }
+                }
+            } finally { if ($reader) { $reader.Dispose() } }
             $code = $proc.ExitCode
         } catch {
             Say "  Could not start the build: $($_.Exception.Message)" Red
@@ -481,7 +500,7 @@ function Build-Spike($SpikeDef, [int]$N = 1, [int]$Of = 1) {
         } finally { Pop-Location }
         if ($code -eq 0) { Say '  Build finished.' Green; return $true }
         Write-WizardLog "build failed for $($SpikeDef.id), exit code $code"
-        Say "  The build did not finish (exit code $code). Scroll up to see why." Red
+        Say "  The build did not finish (exit code $code). Scroll up to see why, or open $buildLog." Red
         Say '  If the message mentions link.exe or Visual Studio, the C++ Build Tools are not set up yet.' Gray
         $c = Read-Choice '  R = try again   S = skip this part   Q = stop  > ' 'rsq'
         if ($c -eq 'r') { continue }
