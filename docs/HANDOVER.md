@@ -1,16 +1,53 @@
-# State: 1.0.0 ready to ship (2026-10-21)
+# State: NOT ready to release (2026-10-21, owner decision)
 
-Docs, README, CHANGELOG `[1.0.0] - 2026-10-21` and the site are updated for the first release. The release branch
-`claude/compassionate-pascal-pod8ux` is PR #5. Everything below this section is history.
+The owner tested on Windows and is "not comfortable releasing this as the official release yet": the app needs
+reliability and UX work first. PR #5 (`claude/compassionate-pascal-pod8ux`) stays OPEN; work continues there.
+Do not merge, tag or run `release.yml`. Version and CHANGELOG already say 1.0.0; keep them, but fix the CHANGELOG
+date at the real release. Weekly usage reached ~96% on 2026-10-21; the limit resets 2026-10-24T07:00Z.
 
-## Next steps (the owner's)
-1. Merge PR #5 (never merged by an agent).
-2. Run `release.yml` with version `1.0.0` (it refuses a version that differs from `Cargo.toml`). It makes
-   `snipdeck-v1.0.0-windows-x64.zip` and its `.sha256`.
-3. Windows test: `Test Snipdeck on Windows.bat` (see `tools/windows-test/`). Behaviour stays "unverified" until then.
-4. Add the release SHA-256 to `tools/launcher/release-sha256.txt` if the launcher needs it.
-5. Make the repository public (`docs/going-public.md`).
-6. Add the Pages workflow for `site/` (Pages only serves `/` or `/docs`, so it needs a workflow).
+## Read first in the next session
+1. `docs/reviews/owner-test-2026-10-21.md`: the owner's test notes, verbatim.
+2. `.claude/now.md` Inbox, entries dated 2026-10-21: the triage (T1-T13 for v1), every request and the
+   owner's verdict, word for word.
+3. Fix-agent branches from 2026-10-21 (see "Fix branches" below): review, merge into the release branch, gate.
+
+## Owner's verdict (verbatim, 2026-10-21)
+"it just needs a lot of visual refining and fixing and ui/ux upgrades and making more reliable to use. right now
+it is annoying to access, annoying to hide or get rid of or move or resize. it visually glitches every second it
+can get, there are a lot of lacking messages and confirmation, and the layout and buttons some places and how to
+use it are still a bit unintuitive and I dont want to ahve to rememer command hotkeys, they should be boosts to
+make thinsg that you can already do faster, not an actual feature. I should be able to do each thing easily well
+and properly and still quite fast without it"
+
+## Next milestone: reliability and UX (before 1.0)
+1. Render glitches on Windows (transparent patches, grey boxes when opening About/Edit, dragging the Panel,
+   windows dragged back on screen stay transparent): find the root cause with a Windows diagnostic the owner runs;
+   CI cannot see it.
+2. Global hotkeys: owner reports only Ctrl+Shift+Space works; Ctrl+Alt+Space stops showing the Panel; hotkey
+   must toggle (press again hides). A failed registration must be shown, never swallowed.
+3. Picker: Esc and click-away do not close it (only picking an item does). Placement option relative to the
+   caret (below/right/above/left), never covering the typed or next line; caret detection in Chrome/Electron/
+   OneNote.
+4. Panel: easy show/hide/move/resize; "Reset size and position" then drag made it full-height and broke the list
+   layout; ⋯ menu taller than the Panel; quick-add links read as one sentence; shortcuts visible from the Panel;
+   Ctrl+Shift+P for the keep-open pin.
+5. Child windows (Tags, Edit) never off-screen; Edit window sized to content, More options collapsed.
+6. Feedback: every action confirms or explains failure (e.g. pasting a screenshot into a new item did nothing).
+7. Every hotkey action has a visible control; shortcuts list and command palette searchable.
+8. Theme (System/Light/Dark) in the Main View menu and command palette; row density Compact/Comfortable.
+9. Dock: covers a third of the screen with its bottom invisible; v1.1 wants a collapsed edge bar that expands on
+   hover, and corner docking with quick switching.
+10. Settings scroll feels laggy; command palette scrollbar covers items; two copy buttons; combobox keeps focus
+    border; OneNote target detection flaky.
+11. Then: ux-auditor + blind-tester on the build, reviewer on the diff, owner Windows retest, then ship prep
+    (docs, screenshots, PR body, shipping guide; see `.claude/now.md` "Owner test gate" and ship-prep scope).
+
+## Fix branches (2026-10-21, Sonnet agents; check their state, they may be partial)
+- `claude/owner-test-ctl`: hotkeys (2), Picker dismissal, toggle, child-window clamping, screenshot-paste
+  message, Reset-position bug, render-glitch and OneNote investigation.
+- `claude/owner-test-ui`: quick-add spacing, Edit height, palette scrollbar, two copy buttons, combobox focus,
+  shortcuts button, shorter ⋯ menu, shortcuts search, Ctrl+Shift+P pin.
+- `claude/o47-abc-wip`: unbuilt paste/drop-to-create and Ctrl+C on items (v1.0.1). Keep.
 
 ## v1.0.1 (from `.claude/now.md`)
 Compact dock and dock grips (U22/O28), sidebar resize (O54), header select and delete (O49/O50), paste or drop
