@@ -753,17 +753,17 @@ restore_backup | crates/snipdeck-app/src/controller/settings_ctl.rs:406
 rebuild_from_backup | crates/snipdeck-app/src/controller/settings_ctl.rs:440
 sensitive_count | crates/snipdeck-app/src/controller/settings_ctl.rs:513
 swap_in_rebuilt | crates/snipdeck-app/src/controller/settings_ctl.rs:522
-reopen_original | crates/snipdeck-app/src/controller/settings_ctl.rs:603
-import_report | crates/snipdeck-app/src/controller/settings_ctl.rs:622
-preview_import | crates/snipdeck-app/src/controller/settings_ctl.rs:648
-preview_restore | crates/snipdeck-app/src/controller/settings_ctl.rs:661
-preview_as | crates/snipdeck-app/src/controller/settings_ctl.rs:666
-apply_import | crates/snipdeck-app/src/controller/settings_ctl.rs:703
-export_library | crates/snipdeck-app/src/controller/settings_ctl.rs:734
-erase_library | crates/snipdeck-app/src/controller/settings_ctl.rs:769
-Carry | crates/snipdeck-app/src/controller/settings_ctl.rs:826
-Swap | crates/snipdeck-app/src/controller/settings_ctl.rs:833
-move_db_files | crates/snipdeck-app/src/controller/settings_ctl.rs:840
+reopen_original | crates/snipdeck-app/src/controller/settings_ctl.rs:605
+import_report | crates/snipdeck-app/src/controller/settings_ctl.rs:629
+preview_import | crates/snipdeck-app/src/controller/settings_ctl.rs:655
+preview_restore | crates/snipdeck-app/src/controller/settings_ctl.rs:668
+preview_as | crates/snipdeck-app/src/controller/settings_ctl.rs:673
+apply_import | crates/snipdeck-app/src/controller/settings_ctl.rs:710
+export_library | crates/snipdeck-app/src/controller/settings_ctl.rs:741
+erase_library | crates/snipdeck-app/src/controller/settings_ctl.rs:776
+Carry | crates/snipdeck-app/src/controller/settings_ctl.rs:833
+Swap | crates/snipdeck-app/src/controller/settings_ctl.rs:840
+move_db_files | crates/snipdeck-app/src/controller/settings_ctl.rs:847
 
 ### crates/snipdeck-app/src/controller/tests.rs
 
@@ -5303,9 +5303,9 @@ replace_key_record | crates/snipdeck-store/src/keys.rs:301
 lock_key_ring | crates/snipdeck-store/src/keys.rs:316
 is_unlocked | crates/snipdeck-store/src/keys.rs:322
 data_key | crates/snipdeck-store/src/keys.rs:327
-duplicate_data_key | crates/snipdeck-store/src/keys.rs:333
-put_sensitive | crates/snipdeck-store/src/keys.rs:342
-seal_and_unlock | crates/snipdeck-store/src/keys.rs:346
+duplicate_data_key | crates/snipdeck-store/src/keys.rs:334
+put_sensitive | crates/snipdeck-store/src/keys.rs:343
+seal_and_unlock | crates/snipdeck-store/src/keys.rs:347
 
 ### crates/snipdeck-store/src/lib.rs
 

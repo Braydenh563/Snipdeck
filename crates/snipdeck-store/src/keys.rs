@@ -330,6 +330,7 @@ impl Store {
 
     /// A second copy of the unlocked data key, for a library that is moved to a new database
     /// file ("Rebuild from backup") and must open it with the same key. `None` while locked.
+    #[doc(hidden)]
     pub fn duplicate_data_key(&self) -> Option<DataKey> {
         self.key.as_ref().and_then(DataKey::duplicate)
     }

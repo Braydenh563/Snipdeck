@@ -579,7 +579,9 @@ where
             for suffix in ["", "-wal", "-shm"] {
                 let _ = fs::remove_file(data_dir.join(format!("snipdeck.db{suffix}")));
             }
-            move_db_files(data_dir, &kept, "snipdeck.db");
+            if !move_db_files(data_dir, &kept, "snipdeck.db") {
+                return Err(Swap::Stuck);
+            }
             return Err(self.reopen_original(data_dir, original_key));
         };
         let recovered = salvage
@@ -601,6 +603,11 @@ where
     /// database the swap itself just closed cannot be made to fail in a test without a fault
     /// injected into `Store::open`, so this path is covered by review only.)
     fn reopen_original(&mut self, data_dir: &Path, key: Option<DataKey>) -> Swap {
+        // A missing file means the original could not be moved back: `Store::open` would make
+        // an empty library in its place, so stay stuck rather than install that one.
+        if !data_dir.join("snipdeck.db").exists() {
+            return Swap::Stuck;
+        }
         let reopened = Store::open(data_dir).ok().and_then(|mut original| {
             if let Some(key) = key {
                 original.open_with_key(key).ok()?;
