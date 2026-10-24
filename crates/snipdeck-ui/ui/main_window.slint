@@ -188,6 +188,8 @@ export component MainWindow inherits Window {
     in property <bool> loading: false;
     // The label of the card's use button and the menu's first entry ("Use"; "Copy" while nothing can be pasted into).
     in property <string> use-label: @tr("Use");
+    // The use label copies (no paste target), so a card hides its separate Copy icon while the label shows.
+    in property <bool> use-copies: false;
     // The sensitive row held revealed by the app (-1 = none).
     in property <int> revealed-index: -1;
     in property <int> trash-days: 30;
@@ -1546,6 +1548,7 @@ export component MainWindow inherits Window {
                                             variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
                                             data: row;
                                             use-label: root.use-label;
+                                            use-copies: root.use-copies && !root.in-trash;
                                             show-focus: i == root.cur && items-scope.has-focus;
                                             revealed: i == root.revealed-index;
                                             pulling: i == root.used-index;
@@ -1653,6 +1656,7 @@ export component MainWindow inherits Window {
                                         variant: ItemCardVariant.tile;
                                         data: root.rows[root.tile-index(r, c)];
                                         use-label: root.use-label;
+                                        use-copies: root.use-copies && !root.in-trash;
                                         show-focus: root.tile-index(r, c) == root.cur && items-scope.has-focus;
                                         revealed: root.tile-index(r, c) == root.revealed-index;
                                         pulling: root.tile-index(r, c) == root.used-index;

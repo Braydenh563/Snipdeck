@@ -102,7 +102,11 @@ export component PickerWindow inherits Window {
     callback selection-moved(int);
     // Ctrl+E on row `index`.
     callback edit-requested(int);
+    // Esc: the user closed the Picker; the keyboard goes back to the window it came from.
     callback close-requested();
+    // The window lost the keyboard to another window the user clicked: close it and leave the
+    // focus where they put it.
+    callback dismissed();
     // F1: the user guide.
     callback help-requested();
 
@@ -120,7 +124,7 @@ export component PickerWindow inherits Window {
             root.had-focus = true;
         } else if (root.had-focus) {
             root.had-focus = false;
-            root.close-requested();
+            root.dismissed();
         }
     }
     // Holds row `index` in its pulled (used) state for the card's 700ms (keyboard use; a click pulls itself).

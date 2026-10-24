@@ -1133,6 +1133,7 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     }
     if differs(&|p| p.use_label == screen.use_label) {
         window.set_use_label(wording::use_label_text(window, screen.use_label).into());
+        window.set_use_copies(screen.use_label == crate::panel::UseLabel::Copy);
     }
     let revealed = screen.revealed.map_or(-1, to_i32);
     if window.get_revealed_index() != revealed {

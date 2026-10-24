@@ -207,8 +207,7 @@ pub fn size_before_show(window: &slint::Window, wanted: (f32, f32)) {
 /// Sets a regular window's height to `wanted_h` logical pixels, cut to the work area, keeping its
 /// width. For a window whose content grows or shrinks (the item editor's More options).
 pub fn set_height_fitted(window: &slint::Window, wanted_h: f32) {
-    let scale = window.scale_factor();
-    let width = window.size().to_logical(scale).width;
+    let width = window.size().to_logical(window.scale_factor()).width;
     let (_, h) = fit_logical((width, wanted_h));
     window.set_size(slint::LogicalSize::new(width, h));
 }
