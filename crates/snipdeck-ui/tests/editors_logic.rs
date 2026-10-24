@@ -254,6 +254,21 @@ ui_tests! {
         assert_eq!(find(&ui, "Title", AccessibleRole::TextInput).accessible_value().as_deref(), Some("Thanks, received!"));
     }
 
+    fn ctrl_v_asks_the_host_to_paste_whatever_text_the_key_reports() {
+        for reported in ["v", "V", "\u{16}"] {
+            let (ui, log) = item_editor();
+            {
+                let log = log.clone();
+                ui.on_paste_requested(move || {
+                    log.borrow_mut().push("paste".into());
+                    true
+                });
+            }
+            chord(ui.window(), &[Key::Control], reported);
+            assert_eq!(take(&log), ["paste"], "Ctrl+V reported as {reported:?}");
+        }
+    }
+
     fn ctrl_enter_saves_a_valid_item_and_an_empty_one_shows_what_is_missing() {
         let (ui, log) = item_editor();
         chord(ui.window(), &[Key::Control], "\n");

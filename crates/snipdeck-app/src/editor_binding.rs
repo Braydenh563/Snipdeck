@@ -37,6 +37,21 @@ use crate::{
     native_window, wording,
 };
 
+/// The editor's width, logical pixels (the window's preferred width in editors.slint).
+const EDITOR_WIDTH: f32 = 560.0;
+
+/// Records `now` as the shown state of More options; true when it differs from the last one.
+fn more_changed(last: &Cell<bool>, now: bool) -> bool {
+    last.replace(now) != now
+}
+
+/// Sizes the shown window to its content again (More options opened or closed) and keeps it on
+/// the work area: it grows with the extra fields and shrinks back, never past the screen.
+fn refit(window: &ui::ItemEditor) {
+    crate::native_window::set_height_fitted(window.window(), window.get_fit_height());
+    crate::native_window::fit_when_settled(window);
+}
+
 struct EditorCore<S, C, K, T> {
     controller: Rc<RefCell<Controller<S, C, K, T>>>,
     window: RefCell<Option<ui::ItemEditor>>,
@@ -47,6 +62,8 @@ struct EditorCore<S, C, K, T> {
     /// The tag chips the window shows now: its model is only replaced when they change, so a
     /// keystroke does not reset an open tag list.
     tags_shown: RefCell<Vec<(String, bool)>>,
+    /// Whether the window showed the extra fields (More options) at the last height fit.
+    more_shown: Cell<bool>,
     /// Asks for a draft while an editor is open.
     autosave: slint::Timer,
     /// Redraws this window (registered with `binding::register_redraw`).
@@ -112,6 +129,7 @@ where
                 seq: Cell::new(0),
                 raise: Cell::new(0),
                 tags_shown: RefCell::new(Vec::new()),
+                more_shown: Cell::new(false),
                 autosave: slint::Timer::default(),
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
@@ -137,6 +155,12 @@ where
         let result = f(&mut self.controller.borrow_mut());
         redraw_all();
         result
+    }
+
+    /// The More options toggle changed the window's content: remember that and refit.
+    fn refit_toggled(&self, window: &ui::ItemEditor) {
+        more_changed(&self.more_shown, window.get_more_shown());
+        refit(window);
     }
 
     /// Shows, updates or hides the window to match the controller.
@@ -169,6 +193,10 @@ where
         }
         apply_state(&window, &view);
         if !fresh {
+            // A refusal under More options opens it without the toggle: fit the window to it.
+            if more_changed(&self.more_shown, window.get_more_shown()) {
+                refit(&window);
+            }
             if view.raise != self.raise.get() {
                 self.raise.set(view.raise);
                 bring_to_front(&window);
@@ -178,7 +206,12 @@ where
         self.seq.set(view.seq);
         self.raise.set(view.raise);
         fill(&window, &view);
-        crate::native_window::set_height_fitted(window.window(), window.get_fit_height());
+        // Explicit width and height: the window does not exist yet, so its own size may read 0.
+        crate::native_window::size_before_show(
+            window.window(),
+            (EDITOR_WIDTH, window.get_fit_height()),
+        );
+        self.more_shown.set(window.get_more_shown());
         crate::native_window::place_over_owner(window.window());
         let _ = window.show();
         crate::ownership::opened(crate::ownership::Win::ItemEditor);
@@ -232,7 +265,7 @@ where
         }
         let w = create_window(ui::ItemEditor::new).ok()?;
         // The window's preferred size (editors.slint), cut to the screen before the first show.
-        crate::native_window::size_before_show(w.window(), (560.0, 700.0));
+        crate::native_window::size_before_show(w.window(), (EDITOR_WIDTH, 700.0));
         self.wire(&w);
         // Closes with the window it was opened from, keeping what was typed as its draft.
         let (core, weak) = (Rc::downgrade(self), w.as_weak());
@@ -301,9 +334,8 @@ where
             let Some(core) = core.upgrade() else {
                 return;
             };
-            // The window grows with the extra fields and shrinks back (never past the work area).
             if let Some(w) = weak.upgrade() {
-                crate::native_window::set_height_fitted(w.window(), w.get_fit_height());
+                core.refit_toggled(&w);
             }
             core.act(|ctl| ctl.set_editor_more_open(open));
         });
@@ -467,4 +499,18 @@ fn bring_to_front(w: &ui::ItemEditor) {
     let _ = w
         .window()
         .with_winit_window(slint::winit_030::winit::window::Window::focus_window);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn more_options_opened_by_a_refusal_counts_as_a_change_once() {
+        let last = Cell::new(false);
+        assert!(!more_changed(&last, false), "nothing changed");
+        assert!(more_changed(&last, true), "a title error opened it");
+        assert!(!more_changed(&last, true), "the same state is not a change");
+        assert!(more_changed(&last, false), "closing is a change");
+    }
 }
