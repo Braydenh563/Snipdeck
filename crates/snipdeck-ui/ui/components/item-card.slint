@@ -677,7 +677,7 @@ export component ItemCard inherits Rectangle {
     // After `touch`, so a click on it is its own and never a use. Compact rows keep the use label to its
     // right; the other variants put it in the top-right corner.
     more := Rectangle {
-        visible: root.has-menu && !(root.use-copies && root.label-visible);
+        visible: root.has-menu;
         width: root.more-side;
         height: root.more-side;
         x: root.width - root.pad-x - self.width;
@@ -726,7 +726,8 @@ export component ItemCard inherits Rectangle {
     // `use` or `pull`, so it is not a use of the card. Not a Tab stop: Shift+Enter copies from the keyboard.
     copy-button := Rectangle {
         // Only where the kebab is: without a menu no trailing slot is reserved and the icon would sit on the label.
-        visible: root.has-menu;
+        // Hidden while a use label that itself copies shows, so the row has one copy button.
+        visible: root.has-menu && !(root.use-copies && root.label-visible);
         width: root.more-side;
         height: root.more-side;
         x: more.x - self.width;
