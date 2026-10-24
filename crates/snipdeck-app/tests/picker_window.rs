@@ -196,9 +196,9 @@ fn the_hotkey_opens_the_picker_below_the_caret_and_the_window_is_registered() {
         let w = r.open();
         assert!(w.window().is_visible());
         assert!(!r.panel.window().is_visible() || !r.ctl.borrow().visible());
-        // 560 wide at 100 %, 4 px under the caret's bottom (200 + 20).
+        // 560 wide at 100 %, one caret line (20 px) under the caret's bottom (200 + 20).
         let at = r.picker.placed().expect("it was placed");
-        assert_eq!((at.x, at.y, at.w), (400, 224, 560), "below the caret");
+        assert_eq!((at.x, at.y, at.w), (400, 240, 560), "below the caret");
         assert_eq!(
             *r.popups.calls.borrow(),
             ["attach", "activate"],
@@ -223,8 +223,8 @@ fn the_picker_flips_above_a_caret_near_the_bottom_and_falls_back_to_the_mouse() 
         assert_eq!(at.x, 400);
         assert_eq!(
             i64::from(at.y) + i64::from(at.h),
-            980 - 4,
-            "its bottom edge is 4 px above the caret"
+            980 - 20,
+            "its bottom edge is one caret line (20 px) above the caret"
         );
         press(w.window(), &key(Key::Escape));
 
@@ -245,7 +245,11 @@ fn at_150_percent_the_window_and_its_gap_scale() {
         let r = rig_at(1.5);
         let _ = r.open();
         let at = r.picker.placed().expect("it was placed");
-        assert_eq!((at.x, at.y), (400, 226), "gap 6 px under 220");
+        assert_eq!(
+            (at.x, at.y),
+            (400, 240),
+            "one caret line (20 px, more than the 6 px gap) under 220"
+        );
         assert_eq!(at.w, 840, "560 logical x 1.5");
     });
 }

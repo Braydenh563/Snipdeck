@@ -186,9 +186,9 @@ fn a_prompted_template_chosen_in_the_picker_opens_the_form_where_the_picker_was(
         assert_eq!(labels, ["Name", "Number"]);
         assert!(form.get_fields().iter().all(|f| f.required));
         assert_eq!(form.get_submit_label(), "Insert");
-        // Below the caret the Picker had; 440 logical wide.
+        // One caret line below the caret the Picker had; 440 logical wide.
         let at = r.fill.placed().expect("it was placed");
-        assert_eq!((at.x, at.y, at.w), (400, 224, 440));
+        assert_eq!((at.x, at.y, at.w), (400, 240, 440));
         assert_eq!(
             r.popups
                 .calls
@@ -214,7 +214,7 @@ fn the_form_follows_the_picker_even_when_the_caret_can_no_longer_be_read() {
         press(picker.window(), &key(Key::Return));
         let _ = r.fill.window().expect("form");
         let at = r.fill.placed().expect("it was placed");
-        assert_eq!((at.x, at.y), (400, 224), "where the Picker was");
+        assert_eq!((at.x, at.y), (400, 240), "where the Picker was");
     });
 }
 

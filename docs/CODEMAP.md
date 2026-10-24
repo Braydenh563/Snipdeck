@@ -473,14 +473,14 @@ begin_set_master_password | crates/snipdeck-app/src/controller/lock_ctl.rs:325
 begin_change_master_password | crates/snipdeck-app/src/controller/lock_ctl.rs:369
 begin_remove_master_password | crates/snipdeck-app/src/controller/lock_ctl.rs:397
 finish_master | crates/snipdeck-app/src/controller/lock_ctl.rs:422
-check_idle | crates/snipdeck-app/src/controller/lock_ctl.rs:508
-provider | crates/snipdeck-app/src/controller/lock_ctl.rs:515
-stored_record | crates/snipdeck-app/src/controller/lock_ctl.rs:522
-check_can_change | crates/snipdeck-app/src/controller/lock_ctl.rs:530
-open_after_change | crates/snipdeck-app/src/controller/lock_ctl.rs:543
-idle_lock_wait | crates/snipdeck-app/src/controller/lock_ctl.rs:556
-lock_if_idle | crates/snipdeck-app/src/controller/lock_ctl.rs:565
-lock_now | crates/snipdeck-app/src/controller/lock_ctl.rs:578
+check_idle | crates/snipdeck-app/src/controller/lock_ctl.rs:509
+provider | crates/snipdeck-app/src/controller/lock_ctl.rs:516
+stored_record | crates/snipdeck-app/src/controller/lock_ctl.rs:523
+check_can_change | crates/snipdeck-app/src/controller/lock_ctl.rs:531
+open_after_change | crates/snipdeck-app/src/controller/lock_ctl.rs:544
+idle_lock_wait | crates/snipdeck-app/src/controller/lock_ctl.rs:557
+lock_if_idle | crates/snipdeck-app/src/controller/lock_ctl.rs:566
+lock_now | crates/snipdeck-app/src/controller/lock_ctl.rs:579
 
 ### crates/snipdeck-app/src/controller/main_ctl.rs
 

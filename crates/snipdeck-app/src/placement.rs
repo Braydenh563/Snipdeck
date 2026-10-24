@@ -49,7 +49,7 @@ impl Anchor {
 /// area, and when neither fits it takes the Below placement. A window larger than the area is
 /// cut to it.
 #[must_use]
-pub fn place(size: (u32, u32), anchor: Anchor, area: Rect, gap: u32, side: PickerSide) -> Rect {
+pub fn place(size: (u32, u32), anchor: Anchor, area: Rect, gap: u32, pick: PickerSide) -> Rect {
     let w = size.0.min(area.w);
     let h = size.1.min(area.h);
     let gap = i64::from(gap);
@@ -65,12 +65,12 @@ pub fn place(size: (u32, u32), anchor: Anchor, area: Rect, gap: u32, side: Picke
         ),
         Anchor::Point(x, y) => (i64::from(x), i64::from(x), i64::from(y), i64::from(y)),
     };
-    if matches!(anchor, Anchor::Caret(_)) && matches!(side, PickerSide::Right | PickerSide::Left) {
+    if matches!(anchor, Anchor::Caret(_)) && matches!(pick, PickerSide::Right | PickerSide::Left) {
         let after = right + gap;
         let before = left - gap - wide;
         let fits_after = after + wide <= area_right;
         let fits_before = before >= area_left;
-        let (first, second) = if side == PickerSide::Right {
+        let (first, second) = if pick == PickerSide::Right {
             ((after, fits_after), (before, fits_before))
         } else {
             ((before, fits_before), (after, fits_after))
@@ -94,7 +94,7 @@ pub fn place(size: (u32, u32), anchor: Anchor, area: Rect, gap: u32, side: Picke
     let above = top - clear - high;
     let fits_below = below + high <= area_bottom;
     let fits_above = above >= area_top;
-    let y = match (side, fits_below, fits_above) {
+    let y = match (pick, fits_below, fits_above) {
         (PickerSide::Above, _, true) | (_, false, true) => above,
         _ => below,
     };
@@ -139,7 +139,7 @@ pub fn place_popup(
     host: &dyn PopupHost,
     caret: Option<ScreenRect>,
     logical: (f32, f32),
-    side: PickerSide,
+    pick: PickerSide,
 ) -> Option<(Rect, Anchor)> {
     let anchor = if let Some(c) = caret {
         Anchor::Caret(Rect {
@@ -152,7 +152,7 @@ pub fn place_popup(
         let (x, y) = host.cursor()?;
         Anchor::Point(x, y)
     };
-    let frame = place_at(host, anchor, logical, side)?;
+    let frame = place_at(host, anchor, logical, pick)?;
     Some((frame, anchor))
 }
 
@@ -162,7 +162,7 @@ pub fn place_at(
     host: &dyn PopupHost,
     anchor: Anchor,
     logical: (f32, f32),
-    side: PickerSide,
+    pick: PickerSide,
 ) -> Option<Rect> {
     let (x, y) = anchor.point();
     let monitor = host.monitor_at(x, y)?;
@@ -176,7 +176,7 @@ pub fn place_at(
         anchor,
         monitor.work_area,
         physical(GAP, scale),
-        side,
+        pick,
     ))
 }
 
@@ -492,8 +492,8 @@ mod tests {
 
     // ---- The chosen side ---------------------------------------------------------------------
 
-    fn at_side(anchor: Anchor, area: Rect, side: PickerSide) -> Rect {
-        place(SIZE, anchor, area, 4, side)
+    fn at_side(anchor: Anchor, area: Rect, pick: PickerSide) -> Rect {
+        place(SIZE, anchor, area, 4, pick)
     }
 
     #[test]
@@ -595,11 +595,11 @@ mod tests {
 
     #[test]
     fn a_mouse_anchor_keeps_below_and_above_whatever_the_side() {
-        for side in [PickerSide::Right, PickerSide::Left, PickerSide::Below] {
+        for pick in [PickerSide::Right, PickerSide::Left, PickerSide::Below] {
             assert_eq!(
-                at_side(Anchor::Point(700, 500), AREA, side),
+                at_side(Anchor::Point(700, 500), AREA, pick),
                 rect(700, 504, 560, 300),
-                "{side:?}"
+                "{pick:?}"
             );
         }
         assert_eq!(
@@ -633,7 +633,7 @@ mod tests {
 
     #[test]
     fn no_side_covers_the_caret_when_there_is_room() {
-        for side in [
+        for pick in [
             PickerSide::Below,
             PickerSide::Above,
             PickerSide::Right,
@@ -641,7 +641,7 @@ mod tests {
         ] {
             for (x, y) in [(10, 10), (900, 500), (1800, 300), (700, 1000), (1900, 1000)] {
                 let c = rect(x, y, 2, 20);
-                let f = place(SIZE, Anchor::Caret(c), AREA, 4, side);
+                let f = place(SIZE, Anchor::Caret(c), AREA, 4, pick);
                 let overlaps = |a: Rect, b: Rect| {
                     i64::from(a.x) < i64::from(b.x) + i64::from(b.w)
                         && i64::from(b.x) < i64::from(a.x) + i64::from(a.w)
@@ -650,14 +650,14 @@ mod tests {
                 };
                 assert!(
                     !overlaps(f, c),
-                    "{side:?} at ({x}, {y}) covers the caret: {f:?}"
+                    "{pick:?} at ({x}, {y}) covers the caret: {f:?}"
                 );
                 assert!(
                     f.x >= 0
                         && f.y >= 0
                         && i64::from(f.x) + i64::from(f.w) <= 1920
                         && i64::from(f.y) + i64::from(f.h) <= 1040,
-                    "{side:?} at ({x}, {y}) leaves the area: {f:?}"
+                    "{pick:?} at ({x}, {y}) leaves the area: {f:?}"
                 );
             }
         }

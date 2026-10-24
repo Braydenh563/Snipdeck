@@ -248,15 +248,12 @@ where
 
     /// Deletes every entry ("Clear recent history"); returns how many went.
     pub fn recent_clear(&mut self) -> usize {
-        match self.store.clear_recent() {
-            Ok(removed) => {
-                self.show_toast(success(ToastMessage::RecentCleared));
-                removed
-            }
-            Err(_) => {
-                self.show_toast(failed());
-                0
-            }
+        if let Ok(removed) = self.store.clear_recent() {
+            self.show_toast(success(ToastMessage::RecentCleared));
+            removed
+        } else {
+            self.show_toast(failed());
+            0
         }
     }
 
