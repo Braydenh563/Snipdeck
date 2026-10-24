@@ -5,6 +5,24 @@ reliability and UX work first. PR #5 (`claude/compassionate-pascal-pod8ux`) stay
 Do not merge, tag or run `release.yml`. Version and CHANGELOG already say 1.0.0; keep them, but fix the CHANGELOG
 date at the real release. The owner capped this session at 96% weekly usage; the limit resets 2026-10-24T07:00Z.
 
+## Session 2026-10-24 (owner away, autonomous; resume here)
+- Owner order: 1 merge fix branches + verify; 2 Panel redesign: owner picks from mock-ups BEFORE building
+  (canvas https://claude.ai/artifact/QV7HBDp4a1bGCRX5BRLgde: A Spotlight search-first, B Deck cards, C Flyout
+  quiet list with visible Paste/Copy/Edit and a New/Shortcuts/Keep open/Open deck bar); 3 milestone below;
+  4 ux-auditor + blind-tester; 5 ship prep only after owner go. Never merge/tag/release.
+- Done: owner-test-ctl + owner-test-ui merged (595f503); goldens diffed old vs new and looked at: separators OK;
+  regression fixed: use-copies hid the row's ⋯ menu instead of the Copy icon (0095d64).
+- Reviewer findings on the merge (to fix): editor More-options toggle grows past the screen bottom (call
+  fit_to_screen after set_height_fitted; also resize when title/privacy error opens More); set_height_fitted
+  before first show may read width 0 (use size_before_show); Picker click-away close calls target.refocus()
+  and steals focus back from the window the user clicked (skip refocus on focus-loss close); Ctrl+V test uses
+  event.text == "v" (may be "\u{16}" on winit); Main lists other than Recent lack use-copies; tests missing for
+  fit_when_settled / picker focus close / hotkey no-op.
+- Diag agent (Opus) on branch claude/compassionate-pascal-pod8ux in /home/user/Snipdeck: SNIPDECK_DIAG render
+  logging, tools/windows-test/diag-render.ps1, every hotkey failure reported, Paste next Supporter toast;
+  analysis in docs/reviews/render-glitch-analysis.md. Lead works in worktree /home/user/wt-lead (branch lead),
+  own target /tmp/target-lead; build snipdeck-ui with -j1 or -j2 (-j4 OOM-kills rustc). Rust 1.99.1 installed.
+
 ## Read first in the next session
 1. `docs/reviews/owner-test-2026-10-21.md`: the owner's test notes, verbatim.
 2. `.claude/now.md` Inbox, entries dated 2026-10-21: the triage (T1-T13 for v1), every request and the
