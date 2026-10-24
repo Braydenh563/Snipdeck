@@ -8,8 +8,13 @@
   tier-change re-register no longer swallowed; Free Paste next row note; PasteStack toast wording;
   3 strings translated in 6 locales.
 
+- Verified: targeted Linux tests pass; Windows cross clippy -D warnings clean (stub C compiler
+  for sqlite, check only); gate --staged green.
+
 ## Next
-- Targeted Linux tests (settings_window, toast_texts, lib, ui repaint), Windows cross clippy.
+- Owner runs tools/windows-test/diag-render.ps1, sends Desktop\Snipdeck-diag-<date>.txt.
+- Per the result table in docs/reviews/render-glitch-analysis.md: make the fix permanent.
+- Not done: cargo +1.99.1, full workspace tests, Windows build/link, welcome-tour hotkey rows.
 
 ## Blocked
 - Windows-only behaviour unverified until the owner runs diag-render.ps1.
