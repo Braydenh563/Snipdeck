@@ -47,6 +47,9 @@ date at the real release. The owner capped this session at 96% weekly usage; the
   Panel; Ctrl+Shift+P gives no toast. One Sonnet agent is doing items A Alt+Tab label + Target test, B PickerSide,
   C Dock work area, D those review fixes (commits on this branch, not pushed; remaining file
   .claude/remaining/night-items.md). Next session: check that file, gate --changed, push, tick work-order items.
+- Night log 3: committed A f1952a3 Alt+Tab, B 9a24536 Picker side, C 6070260 Dock, D 3a9a2ba review fixes,
+  E bf86bae+208709e feedback confirmations (docs/reviews/feedback-audit.md), f819551 clippy 1.99.1 + picker/fill
+  tests, 29705ec goldens. Gate + push pending. Windows-only to test: Alt+Tab Target, Dock work-area memory.
 
 - To wire in the Panel build (after the redesign is approved): the row density setting. It is labelled "Main list
   density" now (Settings, View menu, palette) because the Panel does not read it: `panel.slint` `compact-rows` is
