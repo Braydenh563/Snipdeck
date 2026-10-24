@@ -14,3 +14,4 @@ date | item | type | rung | rework | note
 2026-10-19 | CI: settings goldens after the website-icons row removal | fix | fable | 0 | 
 2026-10-24 | Panel D v2/v3 mock-ups | design | opus | 1 | 
 2026-10-24 | Non-Panel UX: shortcut search, Ctrl+Shift+P, theme, density, audit, palette | feature | sonnet | 0 | 
+2026-10-24 | Reviewer on non-Panel UX diff: 3 findings sent to implementer (shortcut gaps, Panel density no-op, pin toast) | review | sonnet | 1 | 
