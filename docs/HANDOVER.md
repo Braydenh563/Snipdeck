@@ -23,6 +23,18 @@ date at the real release. The owner capped this session at 96% weekly usage; the
   analysis in docs/reviews/render-glitch-analysis.md. Lead works in worktree /home/user/wt-lead (branch lead),
   own target /tmp/target-lead; build snipdeck-ui with -j1 or -j2 (-j4 OOM-kills rustc). Rust 1.99.1 installed.
 
+- Away queue (2026-10-24 night, owner asleep; one line per finished item below):
+  1. Answer artifact comments (crushed text, type logos).
+  2. Panel design v2: real design pass on D (icons per type/favicons, two-line rows that never crush the
+     title, states: rest/hover/keyboard/search/empty/no target), critique by an independent agent, publish
+     for the owner's morning pick. Do NOT build the Panel before approval.
+  3. Non-Panel UX agent (shortcuts search, Ctrl+Shift+P, theme switch, density, shortcut audit, palette): gate, push.
+  4. Alt+Tab to the Panel as a setting (Windows-only; owner tests).
+  5. Picker placement setting relative to the caret (below/right/above/left, auto-flip).
+  6. Dock fixes (covers a third of the screen, bottom invisible).
+  7. Feedback audit: every action confirms or explains failure.
+  8. Show/hide/move/resize predictability (Reset size then drag broke the list layout).
+
 ## Read first in the next session
 1. `docs/reviews/owner-test-2026-10-21.md`: the owner's test notes, verbatim.
 2. `.claude/now.md` Inbox, entries dated 2026-10-21: the triage (T1-T13 for v1), every request and the
