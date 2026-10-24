@@ -10,3 +10,5 @@
 
 ## Blocked
 nothing
+
+E status: committed (bf86bae, 208709e). Gate + clippy 1.99.1 running. Pre-existing unrelated failures: fill_window(2), picker_window(3), snipdeck-ui editors goldens(5, stale settings text).
