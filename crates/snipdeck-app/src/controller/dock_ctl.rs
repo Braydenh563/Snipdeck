@@ -18,7 +18,7 @@ use crate::{
 };
 
 /// The height a Panel starts with when nothing was stored for its monitor (logical pixels).
-const DEFAULT_HEIGHT: u32 = 480;
+pub(super) const DEFAULT_HEIGHT: u32 = 480;
 
 impl<S, C, K, T> Controller<S, C, K, T>
 where
@@ -118,12 +118,17 @@ where
         let Some(edge) = geometry.edge else {
             return Vec::new();
         };
-        let open = frame::docked_rect(
+        // A frame stored as full height (a side dock's, or one an older version saved for a
+        // top or bottom dock) is not the height of a top or bottom dock.
+        let size = frame::dock_size(
             edge,
-            monitor.work_area,
             (geometry.w, geometry.h),
+            geometry.pre_dock,
+            monitor.work_area,
             monitor.scale,
+            DEFAULT_HEIGHT,
         );
+        let open = frame::docked_rect(edge, monitor.work_area, size, monitor.scale);
         let rect = if collapsed {
             frame::handle_rect(edge, monitor.work_area, open.along(edge), monitor.scale)
         } else {
@@ -190,7 +195,15 @@ where
         }
         let place = match edge {
             Some(edge) => {
-                frame::docked_rect(edge, monitor.work_area, (base.w, base.h), monitor.scale)
+                let size = frame::dock_size(
+                    edge,
+                    (base.w, base.h),
+                    earlier,
+                    monitor.work_area,
+                    monitor.scale,
+                    DEFAULT_HEIGHT,
+                );
+                frame::docked_rect(edge, monitor.work_area, size, monitor.scale)
             }
             None => frame::clamp(base, &monitor),
         };

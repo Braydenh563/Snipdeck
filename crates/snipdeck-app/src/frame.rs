@@ -265,6 +265,69 @@ pub fn docked_rect(edge: DockEdge, work_area: Rect, size: (u32, u32), scale: f32
     }
 }
 
+/// The size (width, height) a Panel brings to a dock on `edge`, from the `size` it has now (or
+/// has stored), the `pre_dock` size it had before it was docked and a `default_height`
+/// (logical pixels).
+///
+/// A Panel docked left or right is as tall as the work area, so its frame is no guide to the
+/// height of a top or bottom dock: taken as it is, that dock would cover the whole screen with
+/// its bottom out of reach. A full-height size on a top or bottom edge therefore falls back to
+/// the size before docking, or to the default height when that was full height too. A left or
+/// right dock ignores the height anyway.
+#[must_use]
+pub fn dock_size(
+    edge: DockEdge,
+    size: (u32, u32),
+    pre_dock: Option<(u32, u32)>,
+    work_area: Rect,
+    scale: f32,
+    default_height: u32,
+) -> (u32, u32) {
+    // Within a pixel or two of the work area's height: a side dock's frame (or rounding of one).
+    let full = |h: u32| h.saturating_add(2) >= work_area.h;
+    if edge.vertical() || !full(size.1) {
+        return size;
+    }
+    let height = pre_dock
+        .map(|(_, h)| h)
+        .filter(|h| !full(*h))
+        .unwrap_or_else(|| scaled(default_height, scale).min(work_area.h / 2));
+    (size.0, height)
+}
+
+/// The work area last read for each monitor: the system sometimes fails to answer, and the
+/// whole monitor is the wrong stand-in (a Panel docked to its bottom edge then ends under the
+/// taskbar, out of reach).
+#[derive(Debug, Default)]
+pub struct WorkAreaMemory {
+    known: Vec<(String, Rect)>,
+}
+
+impl WorkAreaMemory {
+    /// The work area of monitor `id`: the `read` one when it is usable (it is remembered), else
+    /// the last good one for that monitor, else `fallback` (what the host can offer when it can
+    /// never read one; `None` means "no placement now").
+    pub fn resolve(
+        &mut self,
+        id: &str,
+        read: Option<Rect>,
+        fallback: Option<Rect>,
+    ) -> Option<Rect> {
+        if let Some(area) = read.filter(|r| r.w > 0 && r.h > 0) {
+            match self.known.iter_mut().find(|(known, _)| known == id) {
+                Some((_, last)) => *last = area,
+                None => self.known.push((id.to_owned(), area)),
+            }
+            return Some(area);
+        }
+        self.known
+            .iter()
+            .find(|(known, _)| known == id)
+            .map(|(_, area)| *area)
+            .or(fallback)
+    }
+}
+
 /// `frame` lies against `edge` of `work_area`, to within two pixels (rounding at a fractional
 /// scale): a docked Panel that still is.
 #[must_use]
@@ -765,6 +828,142 @@ mod tests {
             docked_rect(DockEdge::Bottom, tiny, (320, 480), 1.0),
             at(10, 20, 200, 200)
         );
+    }
+
+    /// Work areas as Windows reports them with the taskbar on each edge, on a 1920 x 1080
+    /// monitor, one with a negative origin (left of the primary one) and a small one.
+    fn work_areas() -> [Rect; 6] {
+        [
+            at(0, 0, 1920, 1040),
+            at(0, 40, 1920, 1040),
+            at(60, 0, 1860, 1080),
+            at(0, 0, 1860, 1080),
+            at(-1920, 0, 1920, 1040),
+            at(-1280, -200, 1280, 664),
+        ]
+    }
+
+    fn inside_area(frame: Rect, area: Rect) -> bool {
+        let (x, y) = (i64::from(frame.x), i64::from(frame.y));
+        x >= i64::from(area.x)
+            && y >= i64::from(area.y)
+            && x + i64::from(frame.w) <= i64::from(area.x) + i64::from(area.w)
+            && y + i64::from(frame.h) <= i64::from(area.y) + i64::from(area.h)
+    }
+
+    #[test]
+    fn a_docked_frame_never_passes_the_work_area_bottom_or_right() {
+        // The taskbar inset is what makes a whole-monitor frame wrong: 1080 against 1040.
+        for work in work_areas() {
+            for scale in [1.0, 1.5, 2.0] {
+                for size in [(320, 480), (320, 1080), (9000, 9000), (10, 10), (480, 1040)] {
+                    for edge in DockEdge::ALL {
+                        let open = docked_rect(edge, work, size, scale);
+                        assert!(
+                            inside_area(open, work),
+                            "{edge:?} {size:?} at {scale} in {work:?}: {open:?}"
+                        );
+                        let handle = handle_rect(edge, work, open.along(edge), scale);
+                        assert!(inside_area(handle, work), "{edge:?} handle {handle:?}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_bottom_dock_ends_on_the_taskbar_and_not_on_the_monitor_edge() {
+        let work = at(0, 0, 1920, 1040);
+        let docked = docked_rect(DockEdge::Bottom, work, (320, 480), 1.0);
+        assert_eq!(i64::from(docked.y) + i64::from(docked.h), 1040);
+        let right = docked_rect(DockEdge::Right, at(0, 0, 1860, 1080), (320, 480), 1.0);
+        assert_eq!(i64::from(right.x) + i64::from(right.w), 1860);
+    }
+
+    #[test]
+    fn a_top_or_bottom_dock_never_reuses_a_full_height_frame_from_a_side_dock() {
+        let work = area();
+        // A Panel docked left or right is as tall as the work area; its stored frame says so.
+        let from_side = (320, 1040);
+        for edge in [DockEdge::Top, DockEdge::Bottom] {
+            // The size it had before docking comes back.
+            assert_eq!(
+                dock_size(edge, from_side, Some((340, 500)), work, 1.0, 480),
+                (320, 500),
+                "{edge:?}"
+            );
+            // Without one it starts at the default height, scaled.
+            assert_eq!(dock_size(edge, from_side, None, work, 1.0, 480), (320, 480));
+            // At 150 % the work area is 1.5 times larger in pixels, and so is the default.
+            let big = at(0, 0, 2880, 1560);
+            assert_eq!(
+                dock_size(edge, (480, 1560), None, big, 1.5, 480),
+                (480, 720)
+            );
+            // A pre-dock size that was itself full height is no use either.
+            assert_eq!(
+                dock_size(edge, from_side, Some((320, 1040)), work, 1.0, 480),
+                (320, 480)
+            );
+            let rect = docked_rect(
+                edge,
+                work,
+                dock_size(edge, from_side, None, work, 1.0, 480),
+                1.0,
+            );
+            assert!(rect.h < work.h, "{edge:?}: {rect:?}");
+        }
+    }
+
+    #[test]
+    fn the_dock_size_leaves_everything_else_alone() {
+        let work = area();
+        // A side dock ignores the height anyway.
+        for edge in [DockEdge::Left, DockEdge::Right] {
+            assert_eq!(
+                dock_size(edge, (320, 1040), Some((300, 500)), work, 1.0, 480),
+                (320, 1040)
+            );
+        }
+        // A floating Panel of ordinary height keeps it for a top or bottom dock.
+        assert_eq!(
+            dock_size(
+                DockEdge::Bottom,
+                (320, 600),
+                Some((300, 500)),
+                work,
+                1.0,
+                480
+            ),
+            (320, 600)
+        );
+        // A work area shorter than the default height still gets a frame that fits.
+        let low = at(0, 0, 1000, 300);
+        let (_, h) = dock_size(DockEdge::Top, (320, 300), None, low, 1.0, 480);
+        assert!(h <= 300);
+    }
+
+    #[test]
+    fn the_work_area_is_remembered_when_the_system_cannot_be_read() {
+        let mut memory = WorkAreaMemory::default();
+        let taskbar = at(0, 0, 1920, 1040);
+        let whole = at(0, 0, 1920, 1080);
+        // Read: used and kept.
+        assert_eq!(memory.resolve("a", Some(taskbar), None), Some(taskbar));
+        // The read fails: the last good one, never the whole monitor.
+        assert_eq!(memory.resolve("a", None, None), Some(taskbar));
+        assert_eq!(memory.resolve("a", None, Some(whole)), Some(taskbar));
+        // A degenerate read counts as a failure.
+        assert_eq!(
+            memory.resolve("a", Some(at(0, 0, 0, 1040)), None),
+            Some(taskbar)
+        );
+        // A newer good read replaces it; other monitors are separate.
+        let moved = at(0, 40, 1920, 1040);
+        assert_eq!(memory.resolve("a", Some(moved), None), Some(moved));
+        assert_eq!(memory.resolve("b", None, None), None, "nothing known: skip");
+        // Where the host cannot tell at all (the dev build), the fallback is used.
+        assert_eq!(memory.resolve("b", None, Some(whole)), Some(whole));
     }
 
     #[test]

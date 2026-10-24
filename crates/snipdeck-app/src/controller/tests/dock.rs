@@ -624,3 +624,51 @@ fn reset_size_and_position_floats_the_panel_clear_of_every_edge() {
         "{rect:?} must not be in dock snap range on {area:?}"
     );
 }
+
+#[test]
+fn moving_a_side_dock_to_the_bottom_does_not_bring_the_full_height_along() {
+    let mut w = docked(DockTrigger::Off, DockEdge::Left);
+    let work = display().work_area;
+    assert_eq!(
+        w.ctl.settings().panel_geometry[0].h,
+        work.h,
+        "a side dock is stored full height"
+    );
+    w.ctl.dock_to(Some(DockEdge::Bottom));
+    let pending = w.ctl.take_pending();
+    let [Effect::PlaceWindow(rect)] = pending.as_slice() else {
+        panic!("one placement")
+    };
+    assert_eq!(rect.h, FLOATING.h, "the height it had before docking");
+    assert_eq!(
+        i64::from(rect.y) + i64::from(rect.h),
+        i64::from(work.y) + i64::from(work.h),
+        "flush with the bottom of the work area"
+    );
+    // Shown again later, a stored frame of the same kind still gives the same height.
+    assert_eq!(w.ctl.placement(&display()).map(|r| r.h), Some(FLOATING.h));
+}
+
+#[test]
+fn a_stored_bottom_dock_that_was_saved_full_height_reopens_at_the_panel_height() {
+    // What an older version could leave in settings.json: edge Bottom, full height, no pre_dock.
+    let mut w = floating(DockTrigger::Off);
+    let work = display().work_area;
+    w.ctl.update_settings(|s| {
+        s.remember_panel_geometry(
+            Rect {
+                x: 600,
+                y: work.y,
+                w: 320,
+                h: work.h,
+            }
+            .geometry(&display(), Some(DockEdge::Bottom)),
+        );
+    });
+    let rect = w.ctl.placement(&display()).expect("a stored frame");
+    assert_eq!(rect.h, 480, "the default height, not the whole screen");
+    assert_eq!(
+        i64::from(rect.y) + i64::from(rect.h),
+        i64::from(work.y) + i64::from(work.h)
+    );
+}

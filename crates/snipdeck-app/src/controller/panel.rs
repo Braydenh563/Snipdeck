@@ -619,7 +619,17 @@ where
     pub fn placement(&self, monitor: &Monitor) -> Option<Rect> {
         let g = self.stored_geometry(monitor)?;
         Some(match g.edge {
-            Some(edge) => frame::docked_rect(edge, monitor.work_area, (g.w, g.h), monitor.scale),
+            Some(edge) => {
+                let size = frame::dock_size(
+                    edge,
+                    (g.w, g.h),
+                    g.pre_dock,
+                    monitor.work_area,
+                    monitor.scale,
+                    super::dock_ctl::DEFAULT_HEIGHT,
+                );
+                frame::docked_rect(edge, monitor.work_area, size, monitor.scale)
+            }
             None => frame::clamp(Rect::of(g), monitor),
         })
     }

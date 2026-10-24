@@ -126,6 +126,12 @@ fn work_area_of(_window: &winit::window::Window) -> Option<Rect> {
     None
 }
 
+thread_local! {
+    /// The work area last read per monitor (UI thread).
+    static WORK_AREAS: std::cell::RefCell<frame::WorkAreaMemory> =
+        std::cell::RefCell::new(frame::WorkAreaMemory::default());
+}
+
 /// The monitor `window` is on, with the area a window may use (without the taskbar on
 /// Windows; the whole monitor where the host cannot tell).
 #[must_use]
@@ -143,9 +149,19 @@ pub fn monitor_of(window: &winit::window::Window) -> Option<Monitor> {
         w: size.width,
         h: size.height,
     };
-    let work_area = work_area_of(window).unwrap_or(whole);
+    let id = Monitor::id_of(&monitor.name().unwrap_or_default(), size.width, size.height);
+    // The system sometimes fails to answer. The whole monitor is the wrong stand-in on Windows
+    // (a docked Panel would reach under the taskbar): keep the last good work area, and with
+    // none yet place nothing. Off Windows nothing can be read, so the whole monitor it is.
+    let work_area = WORK_AREAS.with(|memory| {
+        memory.borrow_mut().resolve(
+            &id,
+            work_area_of(window),
+            cfg!(not(windows)).then_some(whole),
+        )
+    })?;
     Some(Monitor {
-        id: Monitor::id_of(&monitor.name().unwrap_or_default(), size.width, size.height),
+        id,
         work_area,
         taskbar: frame::taskbar_edge(whole, work_area),
         scale,
