@@ -193,6 +193,8 @@ export component ItemCard inherits Rectangle {
     in property <bool> selected: false;
     // "Paste" when a target is known, otherwise "Copy"; the card adds the Enter glyph. Shown on hover or keyboard focus.
     in property <string> use-label;
+    // The use label itself copies (no paste target): the separate Copy icon is hidden while the label shows, so the row has one copy button.
+    in property <bool> use-copies: false;
     // Forces the use label visible (tests and galleries; hover cannot be forced headlessly).
     in property <bool> show-use-label: false;
     // Forces a sensitive item revealed (the app's own "show" toggle). Press-and-hold also reveals.
@@ -675,7 +677,7 @@ export component ItemCard inherits Rectangle {
     // After `touch`, so a click on it is its own and never a use. Compact rows keep the use label to its
     // right; the other variants put it in the top-right corner.
     more := Rectangle {
-        visible: root.has-menu;
+        visible: root.has-menu && !(root.use-copies && root.label-visible);
         width: root.more-side;
         height: root.more-side;
         x: root.width - root.pad-x - self.width;

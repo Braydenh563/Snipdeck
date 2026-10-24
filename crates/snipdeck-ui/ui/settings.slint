@@ -490,6 +490,15 @@ export component SettingsPage inherits Window {
             content-height: body.preferred-height;
             content-width: self.viewport-width;
 
+            // A click on empty space takes the focus off a field (a ComboBox keeps its ring otherwise).
+            TouchArea {
+                x: 0px;
+                y: 0px;
+                width: page.viewport-width;
+                height: max(body.preferred-height, page.height);
+                clicked => { scope.focus(); }
+            }
+
             body := VerticalLayout {
                 x: 0px;
                 width: page.viewport-width;

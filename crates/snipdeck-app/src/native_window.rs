@@ -204,6 +204,15 @@ pub fn size_before_show(window: &slint::Window, wanted: (f32, f32)) {
     window.set_size(slint::LogicalSize::new(w, h));
 }
 
+/// Sets a regular window's height to `wanted_h` logical pixels, cut to the work area, keeping its
+/// width. For a window whose content grows or shrinks (the item editor's More options).
+pub fn set_height_fitted(window: &slint::Window, wanted_h: f32) {
+    let scale = window.scale_factor();
+    let width = window.size().width as f32 / scale;
+    let (_, h) = fit_logical((width, wanted_h));
+    window.set_size(slint::LogicalSize::new(width, h));
+}
+
 /// Keeps a shown regular window (Main, Settings, an editor) inside its monitor's work area:
 /// one that opened taller or wider than the screen, or under the taskbar, is cut to the area
 /// and moved onto it. Call it right after `show()`; nothing happens without a native window.

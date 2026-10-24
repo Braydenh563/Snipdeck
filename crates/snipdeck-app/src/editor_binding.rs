@@ -178,6 +178,7 @@ where
         self.seq.set(view.seq);
         self.raise.set(view.raise);
         fill(&window, &view);
+        crate::native_window::set_height_fitted(window.window(), window.get_fit_height());
         crate::native_window::place_over_owner(window.window());
         let _ = window.show();
         crate::ownership::opened(crate::ownership::Win::ItemEditor);
@@ -295,10 +296,15 @@ where
             core.act(|ctl| ctl.item_editor_tag_added(name.as_str()));
         });
         let core = Rc::downgrade(self);
+        let weak = w.as_weak();
         w.on_more_toggled(move |open| {
             let Some(core) = core.upgrade() else {
                 return;
             };
+            // The window grows with the extra fields and shrinks back (never past the work area).
+            if let Some(w) = weak.upgrade() {
+                crate::native_window::set_height_fitted(w.window(), w.get_fit_height());
+            }
             core.act(|ctl| ctl.set_editor_more_open(open));
         });
         let core = Rc::downgrade(self);
