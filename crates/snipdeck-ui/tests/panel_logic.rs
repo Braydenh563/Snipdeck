@@ -832,6 +832,29 @@ ui_tests! {
         assert_eq!(find(&ui, "Keep panel on top", AccessibleRole::Button).accessible_checked(), Some(false));
     }
 
+    fn ctrl_shift_p_toggles_keep_on_top_like_the_pin_button_and_does_not_pin_the_row() {
+        let (ui, log) = start();
+        press(ui.window(), &key(Key::DownArrow));
+        take(&log);
+        assert!(ui.get_on_top(), "the Panel is on top by default");
+        chord(ui.window(), &[Key::Control, Key::Shift], "P");
+        assert!(!ui.get_on_top());
+        assert_eq!(take(&log), ["pin:false"], "the pin button's callback, not the row's");
+        assert_eq!(
+            find(&ui, "Keep panel on top", AccessibleRole::Button).accessible_checked(),
+            Some(false),
+            "the button shows the new state"
+        );
+        chord(ui.window(), &[Key::Control, Key::Shift], "P");
+        assert!(ui.get_on_top());
+        assert_eq!(take(&log), ["pin:true"]);
+        assert_eq!(ui.get_query(), "", "the key does not type");
+        // Ctrl+P alone still pins the selected row and leaves the keep-on-top state alone.
+        chord(ui.window(), &[Key::Control], "p");
+        assert_eq!(take(&log), ["pin:1"]);
+        assert!(ui.get_on_top());
+    }
+
     fn the_board_menu_opens_activates_and_closes_with_escape_without_closing_the_panel() {
         let (ui, log) = start();
         let switcher = find(&ui, "Board: Work", AccessibleRole::Button);
