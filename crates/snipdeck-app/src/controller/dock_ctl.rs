@@ -152,9 +152,12 @@ where
                     reason = "a small positive pixel count, rounded"
                 )]
                 let px = |logical: u32| (f64::from(logical) * scale).round() as u32;
+                // Off every edge: flush with the corner it would be in snap range of the
+                // dock, and a drag from there would end up docked and stretched.
+                let inset = i32::try_from(px(crate::frame::DOCK_SNAP * 3)).unwrap_or(0);
                 Rect {
-                    x: monitor.work_area.x,
-                    y: monitor.work_area.y,
+                    x: monitor.work_area.x.saturating_add(inset),
+                    y: monitor.work_area.y.saturating_add(inset),
                     w: px(self.settings.panel_width),
                     h: px(DEFAULT_HEIGHT),
                 }

@@ -226,6 +226,9 @@ pub enum ToastMessage {
     },
     /// "Couldn't reopen your library. Restart Snipdeck; your files are untouched."
     RebuildNeedsRestart,
+    /// "Images can't be pasted here. Save the picture as a PNG and add it as an Image item." (Ctrl+V
+    /// in the item editor with a picture on the clipboard)
+    ImageNotPasteable,
     /// "Imported 5 items".
     Imported {
         /// Items added.

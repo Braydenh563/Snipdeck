@@ -608,3 +608,19 @@ fn a_drag_released_near_an_allowed_edge_docks_there_and_near_the_taskbar_does_no
     assert_eq!(w.ctl.frame_settled(&m, near_bottom), Vec::new());
     assert_eq!(w.ctl.dock_edge(), None);
 }
+
+#[test]
+fn reset_size_and_position_floats_the_panel_clear_of_every_edge() {
+    let mut w = docked(DockTrigger::Both, DockEdge::Left);
+    let effects = w.ctl.reset_panel_geometry();
+    let [Effect::PlaceWindow(rect)] = effects.as_slice() else {
+        panic!("one placement, got {effects:?}");
+    };
+    let area = display().work_area;
+    assert_eq!(w.ctl.dock_edge(), None, "the reset forgets the edge");
+    assert_eq!(
+        frame::dock_preview(*rect, area, None, 1.0),
+        None,
+        "{rect:?} must not be in dock snap range on {area:?}"
+    );
+}

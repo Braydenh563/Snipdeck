@@ -922,6 +922,9 @@ msgstr "Si olvidas esta contraseña, tus fragmentos sensibles no se podrán abri
 msgid "Image"
 msgstr "Imagen"
 
+msgid "Images can't be pasted here. Save the picture as a PNG and add it as an Image item."
+msgstr "Aquí no se pueden pegar imágenes. Guarda la imagen como PNG y añádela como elemento de imagen."
+
 msgid "Import"
 msgstr "Importar"
 

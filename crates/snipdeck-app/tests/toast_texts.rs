@@ -101,10 +101,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::Redone { .. } => 72,
         ToastMessage::DatabaseRebuilt { .. } => 73,
         ToastMessage::RebuildNeedsRestart => 74,
+        ToastMessage::ImageNotPasteable => 75,
     }
 }
 
-const VARIANTS: usize = 75;
+const VARIANTS: usize = 76;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -182,6 +183,7 @@ fn samples() -> Vec<ToastMessage> {
             missing_sensitive: 1,
         },
         M::RebuildNeedsRestart,
+        M::ImageNotPasteable,
         M::Imported { items: 5 },
         M::ImportFailed(Cause::TooNew),
         M::Exported {

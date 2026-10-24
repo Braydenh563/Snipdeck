@@ -225,6 +225,9 @@ export global ToastTexts {
             + " " + @tr("Your old database is kept as {}.", kept)
             + (missing-sensitive == 0 ? "" : " " + @tr("{} sensitive item was not in the backup." | "{} sensitive items were not in the backup." % missing-sensitive, missing-sensitive));
     }
+    pure public function image-not-pasteable() -> string {
+        return @tr("Images can't be pasted here. Save the picture as a PNG and add it as an Image item.");
+    }
     pure public function rebuild-needs-restart() -> string {
         return @tr("Couldn't reopen your library. Restart Snipdeck. Your files have not been changed.");
     }

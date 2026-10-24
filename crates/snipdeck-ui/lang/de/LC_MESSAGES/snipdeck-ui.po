@@ -922,6 +922,9 @@ msgstr "Wenn du dieses Passwort vergisst, lassen sich deine vertraulichen Textba
 msgid "Image"
 msgstr "Bild"
 
+msgid "Images can't be pasted here. Save the picture as a PNG and add it as an Image item."
+msgstr "Bilder können hier nicht eingefügt werden. Speichere das Bild als PNG und füge es als Bild-Element hinzu."
+
 msgid "Import"
 msgstr "Importieren"
 

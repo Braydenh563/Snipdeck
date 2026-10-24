@@ -25,6 +25,23 @@ fn the_tray_toggles_the_panel_and_open_panel_always_shows_it() {
 }
 
 #[test]
+fn a_panel_whose_window_is_gone_is_shown_by_the_next_toggle_not_hidden() {
+    let mut w = world();
+    assert!(w.ctl.visible());
+    w.ctl.panel_window_gone();
+    assert!(!w.ctl.visible());
+    assert_eq!(
+        w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+        [Effect::ShowPanel]
+    );
+    // Shown for real: the next press hides it (the toggle).
+    assert_eq!(
+        w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+        [Effect::HidePanel]
+    );
+}
+
+#[test]
 fn the_tray_menu_opens_snipdeck_and_quits() {
     let mut w = world();
     assert_eq!(

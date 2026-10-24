@@ -38,7 +38,7 @@ use crate::{
     item_editor::Origin,
     main_window::{EditorKind, EditorView, Key, Section, SelectMode, ViewMode},
     native_window::{
-        fit_logical, fit_to_screen, place_of, place_over_owner, restore_place, size_before_show,
+        fit_logical, fit_when_settled, place_of, place_over_owner, restore_place, size_before_show,
     },
     palette::list_color,
     popup_window::set_look_globals,
@@ -346,7 +346,7 @@ where
         place_over_owner(window.window());
         let _ = window.show();
         crate::ownership::opened(crate::ownership::Win::TagManager);
-        fit_to_screen(window.window());
+        fit_when_settled(&window);
         raise(window.window());
     }
 
@@ -380,7 +380,7 @@ where
                     place_over_owner(window.window());
                     let _ = window.show();
                     crate::ownership::opened(crate::ownership::Win::ListEditor);
-                    fit_to_screen(window.window());
+                    fit_when_settled(&window);
                     // Shown again after a close, the window would stay behind the Main
                     // window (it was created un-activated): bring it up.
                     raise(window.window());
@@ -403,7 +403,7 @@ where
                     place_over_owner(window.window());
                     let _ = window.show();
                     crate::ownership::opened(crate::ownership::Win::BoardEditor);
-                    fit_to_screen(window.window());
+                    fit_when_settled(&window);
                     // Shown again after a close, the window would stay behind the Main
                     // window (it was created un-activated): bring it up.
                     raise(window.window());
@@ -915,7 +915,7 @@ impl MainUi {
                     }
                     watch_place(window, &controller);
                 }
-                fit_to_screen(window.window());
+                fit_when_settled(window);
                 raise(window.window());
                 Ok(())
             })

@@ -23,7 +23,7 @@ use crate::{
     controller::{Controller, MasterProblem},
     host::ClipboardText,
     main_binding::{create_window, raise, set_look},
-    native_window::fit_to_screen,
+    native_window::fit_when_settled,
 };
 
 /// The Slint word for `problem`.
@@ -281,7 +281,7 @@ impl UnlockUi {
             binding.prepare();
             crate::native_window::place_over_owner(window.window());
             window.show()?;
-            fit_to_screen(window.window());
+            fit_when_settled(window);
             raise(window.window());
             Ok(())
         });
