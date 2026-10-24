@@ -42,6 +42,11 @@ date at the real release. The owner capped this session at 96% weekly usage; the
   placement.rs:270+; Dock: frame.rs:233 docked_rect, likely cause native_window.rs:146 work_area_of().unwrap_or(whole)
   (whole monitor when the Win32 read fails, taskbar None) -> keep last known work area; pure test bottom never past
   the work area.
+- Night log 2: D v3 published (canvas v9). Reviewer on non-Panel UX diff 7460282..b0c4d49: shortcuts list misses
+  Panel keys (Ctrl+A, F2, Shift+F10, PgUp/PgDn, Ctrl+Shift+Tab, F1, Shift+arrows); Row density is a no-op in the
+  Panel; Ctrl+Shift+P gives no toast. One Sonnet agent is doing items A Alt+Tab label + Target test, B PickerSide,
+  C Dock work area, D those review fixes (commits on this branch, not pushed; remaining file
+  .claude/remaining/night-items.md). Next session: check that file, gate --changed, push, tick work-order items.
 
 ## Read first in the next session
 1. `docs/reviews/owner-test-2026-10-21.md`: the owner's test notes, verbatim.
