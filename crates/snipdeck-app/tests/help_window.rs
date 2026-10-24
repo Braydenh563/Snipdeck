@@ -202,7 +202,7 @@ fn typing_in_the_search_box_filters_by_action_name_or_chord() {
         assert!(!found.contains(&"New list".to_owned()), "{found:?}");
 
         r.ui.invoke_shortcut_query_changed("nothing like this".into());
-        assert!(r.titles().is_empty());
+        assert_eq!(r.titles(), Vec::<String>::new());
 
         r.ui.invoke_shortcut_query_changed(String::new().into());
         assert_eq!(

@@ -536,7 +536,7 @@ mod tests {
         );
         let dark = entries(&texts(), &c, "dark");
         assert_eq!(dark.first().map(|e| e.command), Some(Command::ThemeDark));
-        assert!(dark[0].keys.is_empty());
+        assert_eq!(dark[0].keys, Vec::<String>::new());
         assert!(!Command::ThemeLight.needs_item());
         // Offered with no item under the cursor and in the Trash.
         let mut c = ctx(&hotkeys);

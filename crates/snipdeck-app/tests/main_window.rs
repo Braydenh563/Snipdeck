@@ -1299,7 +1299,7 @@ fn the_palette_search_filters_the_real_commands_by_name_synonym_and_new_words() 
             assert!(found.len() < all, "{query:?} narrows the list");
         }
         r.ui.invoke_palette_query_changed("zzzz".into());
-        assert!(labels(&r).is_empty());
+        assert_eq!(labels(&r), Vec::<String>::new());
         r.ui.invoke_palette_query_changed("".into());
         assert_eq!(
             labels(&r).len(),
