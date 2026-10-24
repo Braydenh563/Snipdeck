@@ -439,7 +439,8 @@ where
                 self.lock.prompt = false;
                 self.note_activity();
                 self.sync_recent_gate();
-                self.show_toast(neutral(ToastMessage::Unlocked));
+                // Unlocking answers the "locked" error on screen, so it replaces it.
+                self.put_toast(neutral(ToastMessage::Unlocked));
                 self.refresh_or_notice("unlocking");
                 Ok(())
             }

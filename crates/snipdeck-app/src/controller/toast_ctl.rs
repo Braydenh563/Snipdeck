@@ -50,7 +50,7 @@ where
     }
 
     /// Puts `toast` in the slot whatever is there (a toast with a button is never dropped).
-    fn put_toast(&mut self, toast: Toast) {
+    pub(super) fn put_toast(&mut self, toast: Toast) {
         // A locked sensitive item behind a master password asks for it, as well as saying so.
         if toast.message == ToastMessage::Locked {
             self.request_unlock();
