@@ -1,4 +1,4 @@
-//! Encryption of sensitive items at rest (SPEC §5.7, Pro).
+//! Encryption of sensitive items at rest (SPEC §5.7, Supporter).
 //!
 //! # Key hierarchy
 //!
@@ -43,3 +43,5 @@ pub(crate) const fn envelope_magic() -> &'static [u8; 6] {
     envelope::magic()
 }
 pub use provider::KeyProvider;
+/// The buffer type a [`KeyProvider`] returns, so a provider outside this crate can name it.
+pub use zeroize::Zeroizing;

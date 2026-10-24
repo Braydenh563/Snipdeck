@@ -32,6 +32,12 @@ fn parse_hex(text: &str) -> Option<[u8; 3]> {
     Some([byte(0)?, byte(2)?, byte(4)?])
 }
 
+/// A palette primitive by name (`teal-600`).
+#[must_use]
+pub fn primitive(name: &str) -> Option<[u8; 3]> {
+    PRIMITIVES.get(name).copied()
+}
+
 /// The colour of a list's accent: step 600 on light, step 400 on dark. A list without an accent
 /// is slate.
 #[must_use]

@@ -74,19 +74,36 @@ pub fn capture_text<L: Library>(
     text: Option<&str>,
     now: Timestamp,
 ) -> snipdeck_store::Result<Captured> {
+    let kind = text.map_or(ItemKind::Text, kind_of);
+    capture_as(library, list, text, kind, Placement::First, now)
+}
+
+/// Saves `text` as a new item of `kind` in `list`, at `at`. Blank text saves nothing.
+///
+/// # Errors
+///
+/// Any store error; nothing is saved then.
+pub fn capture_as<L: Library>(
+    library: &mut L,
+    list: &Destination,
+    text: Option<&str>,
+    kind: ItemKind,
+    at: Placement<ItemId>,
+    now: Timestamp,
+) -> snipdeck_store::Result<Captured> {
     let Some(text) = text.filter(|t| !t.trim().is_empty()) else {
         return Ok(Captured::Empty);
     };
     if text.len() > MAX_TEXT_BYTES {
         return Ok(Captured::TooLarge);
     }
-    let mut item = Item::new(list.id, String::new(), kind_of(text), now);
+    let mut item = Item::new(list.id, String::new(), kind, now);
     item.preview = Item::preview_of(text, false);
     let id = item.id;
     library.atomically(|batch| {
         let content = batch.put(text.as_bytes().to_vec())?;
         let formats = Formats::new(vec![Format::Text(content)])?;
-        batch.insert_item(&item, &formats, Placement::First)
+        batch.insert_item(&item, &formats, at)
     })?;
     Ok(Captured::Saved {
         item: id,
@@ -94,7 +111,34 @@ pub fn capture_text<L: Library>(
     })
 }
 
-fn kind_of(text: &str) -> ItemKind {
+/// The kind the quick-add box preselects for `text`: a lone web address is a link, text with a
+/// placeholder such as `{date}` or `{field:Name}` that parses is a template, anything else is text.
+#[must_use]
+pub fn detect_kind(text: &str) -> ItemKind {
+    let kind = kind_of(text);
+    if kind != ItemKind::Text {
+        return kind;
+    }
+    let has_placeholder = [
+        "{date",
+        "{time",
+        "{clipboard}",
+        "{cursor}",
+        "{field:",
+        "{choice:",
+    ]
+    .iter()
+    .any(|p| text.contains(p));
+    if has_placeholder && snipdeck_core::template::Template::parse(text).is_ok() {
+        ItemKind::Template
+    } else {
+        ItemKind::Text
+    }
+}
+
+/// A lone `http(s)` address is a link, anything else text.
+#[must_use]
+pub fn kind_of(text: &str) -> ItemKind {
     let t = text.trim();
     let web = t.starts_with("http://") || t.starts_with("https://");
     if web && !t.contains(char::is_whitespace) && t.len() > "https://".len() {

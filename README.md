@@ -2,165 +2,218 @@
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/logo/snipdeck-logo-dark.svg"><img src="assets/logo/snipdeck-logo-light.svg" alt="Snipdeck" height="88"></picture>
 
-**Your reusable snippets, one click from any app.**
+<i>Your snippets, one click from any app</i>
 
-A sticky-note-style snippet deck for Windows: keep what you paste all the time on a small panel at the edge of the screen, click, and it lands in the app you were typing in.
+**Keep the text, links, templates, images and files you paste every day on a small panel at the edge of your screen. Click one and it lands where you were typing.**
+
+[Download](https://github.com/Braydenh563/Snipdeck/releases/latest) ·
+[Install](#install) ·
+[Tour](#a-quick-tour) ·
+[Hotkeys](#hotkeys) ·
+[User guide](docs/user-guide.md)
 
 [![CI](https://github.com/Braydenh563/Snipdeck/actions/workflows/ci.yml/badge.svg)](https://github.com/Braydenh563/Snipdeck/actions/workflows/ci.yml)
-![Status: work in progress](https://img.shields.io/badge/status-work%20in%20progress-orange)
-![Platform: Windows first](https://img.shields.io/badge/platform-Windows%20first-2870D4)
-![Rust](https://img.shields.io/badge/rust-2024-b7410e)
-[![Licence: GPL-3.0-only](https://img.shields.io/badge/licence-GPL--3.0--only-2ea44f)](LICENSE)
+![Platform: Windows](https://img.shields.io/badge/platform-Windows-2870D4)
 
-[What works today](#what-works-today) · [Quick start](#quick-start) · [User guide](docs/user-guide.md) · [Roadmap](docs/PLAN.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/hero-dark.png"><img src="docs/images/hero-light.png" alt="The Main window, with the Panel docked on the right and the Picker open over an app" width="900"></picture>
 
 </div>
 
+---
+
 > [!NOTE]
-> **Work in progress, not released.** There is no installer and no stable build. The library engine
-> (data model, storage, templates, encryption, import/export) is built and tested on Linux CI. The Panel
-> runs as a demo. The Picker, the Main window, the editors and the template fill form are not usable in
-> the app yet. Everything that touches Windows (paste, hotkeys, tray, DPI, IME) is written but **has not
-> been verified on a real Windows machine** beyond what [`docs/spikes/`](docs/spikes/README.md) records.
+> Snipdeck 1.0.0 is released. It is not code-signed, so Windows SmartScreen asks you to confirm the first
+> start (More info, then Run anyway).
 
 ## What it is
 
-Clipboard-history tools bury the things you reuse in noise, and text expanders need memorised
-abbreviations. Snipdeck is a curated deck: boards, lists and items you arrange yourself, shown in a small
-always-on-top panel at the edge of the screen. Click an item and it is pasted into the app you were
-using, without the panel taking focus away from it. Product behaviour is specified in
-[`docs/SPEC.md`](docs/SPEC.md); the look in [`DESIGN.md`](DESIGN.md).
+Snipdeck is a snippet deck for Windows. The Panel sits at the edge of your screen and never takes the focus
+from the app you are typing in, so a click pastes straight into it. The Picker opens a search box at your
+caret when your hands are on the keyboard.
 
-Windows 10 (1903+) and 11 first. Rust and [Slint](https://slint.dev), software renderer. macOS and
-Linux builds are not planned for v1.
+You arrange the deck yourself: boards hold lists, lists hold items. It is not a clipboard history.
 
-## Screenshots
+## Install
 
-These are the UI golden images that the test suite renders headlessly with Slint's software
-renderer (`crates/snipdeck-ui/tests/golden/`), with seeded demo data. They are not captured from a
-Windows desktop.
+1. Download `snipdeck-v<version>-windows-x64.zip` from [Releases](https://github.com/Braydenh563/Snipdeck/releases/latest)
+   and unzip it.
+2. Double-click `Snipdeck.bat`.
 
-| Panel, light | Panel, dark |
+The first start downloads the app once and checks it. After that Snipdeck starts straight away, offline. You
+do not need Rust, Visual Studio or git.
+
+The download is not code-signed. If Windows says it protected your PC, choose More info, then Run anyway.
+Check the download against the `.sha256` file on the release page.
+
+You need Windows 10 (1903 or newer) or Windows 11, 64-bit.
+
+<details>
+<summary>Launcher commands, and how to uninstall</summary>
+
+Type these as `Snipdeck.bat <command>`, or double-click the matching file in `tools\launcher\commands`.
+
+| Command | What it does |
 |---|---|
-| ![The Panel in the light theme](docs/images/panel-light.png) | ![The Panel in the dark theme](docs/images/panel-dark.png) |
+| `update` | Downloads the newest release. Your library is kept. |
+| `reinstall` | Installs the app again. The old copy stays if the download fails. |
+| `backup`, `restore` | Zip your library to `Documents\Snipdeck-backups`, or put a backup back. |
+| `doctor` | Checks this PC and your data and writes a report you can send. |
+| `logs` | Shows the newest launcher log. |
+| `uninstall` | Removes the app and keeps your library. Add `--data` to erase the library too. |
+| `help` | Lists every command and option. |
 
-| Picker, light | Picker, dark |
+More in [`tools/launcher/README.md`](tools/launcher/README.md).
+</details>
+
+## Features
+
+- **Panel.** A small always-on-top window with your current board. It can dock to a screen edge and fold
+  into a thin strip. Lists show as tabs, and pinned items sit in a strip under them.
+- **Picker.** A search box at your text caret. It searches every board. Type, press <kbd>Enter</kbd>, done.
+- **Main window.** Boards, lists, tags, Pinned and Trash. Compact, comfortable and tile views, search,
+  multi-select, drag and drop, and keyboard reordering. A command palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>) lists
+  every action.
+- **Six kinds of item.** Text, code, link, template, image and file.
+- **Templates.** Insert `{date}`, `{time}` or your own date format. Supporter adds fields and choices that ask you
+  for a value each time.
+- **Quick capture.** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>2</kbd> to save the clipboard text as a new item.
+- **Recent inbox.** Off by default. Keeps what you copy for 7 days (last 200 copies), skips password managers and
+  Sensitive items, and lets you save a copy to a list.
+- **Import.** Bring in a `.snipdeck` file, a Ditto database, a CopyQ export or a folder of `.txt` and `.md`
+  files, after a preview of what it adds.
+- **Colour labels and list icons.** Eight label colours with a filter, and an icon for each list.
+- **Sensitive items.** Hidden in lists, kept out of Windows clipboard history, and encrypted on disk.
+- **Safe to change.** Deleted things stay in the Trash for 30 days, with Undo. Daily backups are automatic.
+- **Your way.** Light, dark or Windows theme, an accent colour, seven languages, and hotkeys you can change.
+
+## A quick tour
+
+Rendered from the app's own interface, in light or dark to match your GitHub theme.
+
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/panel-dark.png"><img src="docs/images/panel-light.png" alt="The Panel docked at the screen edge, with list tabs, pinned items and a list of snippets" width="380"></picture>
+  <br><sub><b>The Panel</b>: your board on the edge of the screen. Click an item and it pastes where you were typing.</sub>
+</p>
+
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/picker-dark.png"><img src="docs/images/picker-light.png" alt="The Picker search box with results from every board" width="620"></picture>
+  <br><sub><b>The Picker</b>: a search box at your caret. Type a few letters and press <kbd>Enter</kbd>.</sub>
+</p>
+
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/main-dark.png"><img src="docs/images/main-light.png" alt="The Main window with the sidebar and a list of items" width="900"></picture>
+  <br><sub><b>The Main window</b>: boards, lists and tags, with search, multi-select and keyboard reordering.</sub>
+</p>
+
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/fill-dark.png"><img src="docs/images/fill-light.png" alt="The template fill form with a live preview" width="480"></picture>
+  <br><sub><b>Template fill</b>: a template asks for its fields and shows the result as you type.</sub>
+</p>
+
+<details>
+<summary><b>More screenshots</b>: tile view, item editor and Settings</summary>
+
+<br>
+
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/main-tile-dark.png"><img src="docs/images/main-tile-light.png" alt="The Main window in tile view" width="900"></picture>
+  <br><sub><b>Tile view</b>: the same items as cards, handy for images and files.</sub>
+</p>
+
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/editor-dark.png"><img src="docs/images/editor-light.png" alt="The item editor on a text item" width="620"></picture>
+  <br><sub><b>Item editor</b>: text, code, links, templates, images and files, with a sensitive switch.</sub>
+</p>
+
+<p align="center">
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/settings-dark.png"><img src="docs/images/settings-light.png" alt="The Settings window" width="700"></picture>
+  <br><sub><b>Settings</b>: hotkeys, theme, language, dock edge, backups and privacy on one page.</sub>
+</p>
+
+</details>
+
+## Hotkeys
+
+| Hotkey | Action |
 |---|---|
-| ![The Picker in the light theme](docs/images/picker-light.png) | ![The Picker in the dark theme](docs/images/picker-dark.png) |
+| <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Space</kbd> | Show or hide the Panel |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> | Open the Picker |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>2</kbd> | Save the clipboard text as a new item |
+| <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> | Paste the next pinned item or list item (Supporter) |
 
-The Picker window exists and is tested, but the app does not open it yet.
+Change any of them in Settings. If another program owns a hotkey, Snipdeck says so and the rest keep working.
 
-## What works today
+<details>
+<summary>More keys</summary>
 
-"Tested" means automated tests run in CI on Linux. "Unverified" means the code exists and compiles
-for Windows but nobody has run it on Windows.
+| Where | Keys | Action |
+|---|---|---|
+| Panel, Main window | <kbd>Enter</kbd>, <kbd>Shift</kbd>+<kbd>Enter</kbd> | Paste, or copy only |
+| Panel, Picker | <kbd>1</kbd> to <kbd>9</kbd> | Use that row while the search box is empty |
+| Panel, Main window | <kbd>Ctrl</kbd>+<kbd>E</kbd> or <kbd>F2</kbd> | Edit the selected item |
+| Panel, Main window | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Search |
+| Picker | <kbd>Tab</kbd> | Switch between All, This board and Pinned |
+| Main window | <kbd>Ctrl</kbd>+<kbd>N</kbd> | New item |
+| Panel, Main window | <kbd>Ctrl</kbd>+<kbd>D</kbd> | Duplicate the selected item |
+| Main window | <kbd>Ctrl</kbd>+<kbd>P</kbd> | Pin or unpin |
+| Main window | <kbd>Alt</kbd>+<kbd>Up</kbd>, <kbd>Alt</kbd>+<kbd>Down</kbd> | Move an item or list |
+| Editor, fill form | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> | Save, or insert |
 
-### Working now
+The full list is in the [user guide](docs/user-guide.md#keyboard-reference).
+</details>
 
-| Area | State |
-|---|---|
-| Domain model: boards, lists, items, formats (text, HTML, RTF, PNG, files), tags | Tested |
-| Template engine: `{date}`, `{time}`, `{datetime:FORMAT}`, `{clipboard}`, `{cursor}`; prompted `{field:...}` and `{choice:...}` (Pro) | Tested |
-| In-memory fuzzy search over title, tags and the first 64 characters (`nucleo`) | Tested |
-| SQLite store: migrations, FTS5 search, blob store, ordering, trash, single-writer lock | Tested |
-| Encryption of sensitive items (XChaCha20-Poly1305, optional Argon2id master password) | Tested; no UI yet; the Windows DPAPI key binding is unverified |
-| `.snipdeck` export/import, folder / Ditto / CopyQ-JSON importers, daily backups | Tested at library level; no UI yet |
-| Offline Ed25519 licence verification | Tested; not wired into the app |
-| Windows platform layer: clipboard with delayed rendering, paste, Target tracking, global hotkeys, tray, autostart, single instance | Written; **unverified on Windows** |
-| UI component library, Panel, Picker and template fill windows, light and dark, translation catalogues for 7 locales (incomplete; missing strings show in English) | Golden-image and accessibility-tree tests; looks unverified on Windows |
-| Panel in the app (`--demo`): search, arrow and number keys, use / copy, list tabs, board switcher, pinned strip, toasts | Headless window tests; Windows behaviour unverified |
+<details>
+<summary>If the Panel is hidden</summary>
 
-What the demo does not do: it cannot add, edit or delete items, there is no Settings window, and the
-Picker, quick capture and paste-next hotkeys are registered but do nothing. On Linux the demo uses a
-fake clipboard and a pretend target window, so nothing is really pasted. On Windows it uses the real
-services (unverified).
+Closing the Panel hides it to the tray and Snipdeck keeps running. Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Space</kbd>,
+left-click the tray icon, or right-click it and choose **Open Panel**. Starting Snipdeck a second time also
+brings the running copy forward.
+</details>
 
-### Planned
+## Privacy
 
-Not started unless noted. Order follows [`docs/PLAN.md`](docs/PLAN.md).
+Snipdeck works fully offline. It has no account, no server and no telemetry, and it opens no network port.
+Icons and fonts are packaged with the app. Your library stays on your PC in `%LOCALAPPDATA%\Snipdeck`.
 
-- Picker wired to its hotkey; template fill form wired to the Panel and Picker (windows exist, M4)
-- Main window (sidebar, item list, detail), editors for text and images, Trash and import/export screens (M4)
-- Screen capture with OCR, opt-in Recent (clipboard history) inbox, sensitive-item UI, paste stack,
-  floating lists, licence entry, onboarding, Settings window (M5)
-- Installer (MSIX and MSI), signing, updater, winget manifest, performance and accessibility audits (M6)
-- Windows clipboard history importer; the CopyQ binary `.cpq` export (see
-  [`docs/PLAN.md`](docs/PLAN.md) "M1 known gaps")
-- macOS and Linux are out of scope for v1.
+<details>
+<summary>What is stored, and how to export or remove it</summary>
 
-## Quick start
+- The library, large content, settings, backups and crash logs are all in that one folder.
+- Crash logs are never sent anywhere and do not quote your snippets.
+- The Recent inbox is off until you turn it on. Its entries stay on this PC and are encrypted on disk like Sensitive items. Backups and exports leave it out.
+- **Export:** Settings, Your data, Export library saves one `.snipdeck` file (a zip with JSON).
+- **Remove everything:** quit Snipdeck, then delete the folder.
 
-You need Rust (the repo pins stable through `rust-toolchain.toml`). On Windows, also the Visual Studio
-C++ Build Tools. The first build compiles SQLite and Slint and is slow; `target/` grows to several GB.
+Details: [`docs/privacy.md`](docs/privacy.md).
+</details>
 
-```sh
-git clone https://github.com/Braydenh563/Snipdeck
-cd Snipdeck
+## Free and Supporter
 
-# Try the Panel on a seeded in-memory library (nothing is saved).
-cargo run -p snipdeck-app -- --demo          # Windows: double-click run-snipdeck-demo.bat
-cargo run -p snipdeck-app -- --demo --dark   # dark theme
-cargo run -p snipdeck-app -- --screenshot panel.png   # render to a PNG; needs no display
+Snipdeck is free software under [GPL-3.0-only](LICENSE). Free covers everyday use with up to 5 boards.
+Supporter is pay what you want, from A$5 (suggested A$8), one time, with every 1.x update. It adds more
+boards, templates that ask for values, a master password for your encrypted items and paste next, and it
+supports the project. Encryption on disk is free for everyone. If you cannot afford it, ask for a key. Enter a key under **Licence** in Settings. Nothing nags you.
+See [`docs/licensing.md`](docs/licensing.md).
 
-# Tests and checks.
-cargo test --workspace --locked
-scripts/gate.sh            # fmt, clippy, docs, code map and translation checks
-scripts/gate.sh --full     # the same plus the whole test suite
-```
+## Coming next
 
-`cargo run` without `--demo` opens the real library in `%LOCALAPPDATA%\Snipdeck` (elsewhere
-`$XDG_DATA_HOME/snipdeck` or `~/.local/share/snipdeck`), but there is nothing in the app to put items
-into it yet. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full developer workflow and
-[`docs/troubleshooting.md`](docs/troubleshooting.md) if something does not build or run.
+Snipdeck is built in the open and these are planned, in no promised order.
 
-To test Windows behaviour, run `run-windows-tests.bat`: a wizard that builds the app, walks you through
-the manual steps and writes a summary ([`tools/windows-test`](tools/windows-test/README.md)).
+- A compact dock, so the Panel can sit as a slim bar with drag grips.
+- Drag the sidebar wider or narrower, and drag several rows at once.
+- Select-and-delete from the Main window header, and paste or drop text to create an item.
+- Groups inside a list.
+- Optional typed shortcuts that expand into a snippet (off by default, and never in programs on your no-paste list).
+- More placeholders such as `{uuid}` and date maths like `{date+7d}`, plus paste transforms (plain text, change
+  case, trim).
+- Import from TextExpander, Espanso, PhraseExpress and Beeftext.
+- Windows Hello quick unlock, and a colour picker with an eyedropper.
 
-## Project layout
+Have an idea? Open an issue.
 
-| Path | What |
-|---|---|
-| `crates/snipdeck-core` | Domain types, template engine, fuzzy search, entitlements, licence verification. Pure: no I/O, no OS calls. |
-| `crates/snipdeck-store` | SQLite store, migrations, blob store, FTS5, trash, encryption at rest. |
-| `crates/snipdeck-portable` | `.snipdeck` archives, importers (folder, Ditto, CopyQ JSON), daily backups. |
-| `crates/snipdeck-platform` | Clipboard, keyboard, hotkeys, Target tracking, tray, DPAPI, autostart, single instance. Traits, fakes and the Windows backend. The only crate that writes `unsafe` code (Slint's generated code aside). |
-| `crates/snipdeck-ui` | Slint design tokens, components, Panel / Picker / fill-form windows, translations, headless test harness. |
-| `crates/snipdeck-app` | The binary: controller, use cases, settings, view-models, tray and hotkey wiring. |
-| `design/` | Colour palette source and generator. |
-| `tools/windows-test/` | The Windows test wizard and its manual and automated steps. |
-| `spikes/` | Throwaway M0 prototypes, outside the workspace. |
-| `docs/` | Specification, plan, ADRs, format and storage docs, reviews. Index: [`docs/README.md`](docs/README.md). |
+## Help and contributing
 
-## Privacy and security
-
-- **Local-first.** Your library is a SQLite file and a blob folder on your disk. No account, no server, no
-  network port, no telemetry. The only setting that could make a network call (site icons for links)
-  is off by default.
-- **Open data.** Export is a plain zip with JSON ([`docs/format.md`](docs/format.md)).
-- **Sensitive items** are masked in the UI and excluded from history. In the Pro tier they are also
-  encrypted at rest with a key wrapped by Windows DPAPI and optionally a master password
-  ([`docs/crypto.md`](docs/crypto.md)). Titles, tags and search text are not encrypted. The
-  encryption has not been tested on Windows.
-- **Licence keys** are verified offline; there is no phone-home ([`docs/licensing.md`](docs/licensing.md)).
-
-To report a vulnerability, see [`SECURITY.md`](SECURITY.md).
-
-## Documentation
-
-[`docs/README.md`](docs/README.md) indexes everything. Start with
-[`docs/user-guide.md`](docs/user-guide.md) (what the app does and which parts exist yet),
-[`docs/development.md`](docs/development.md) (code tour and test strategy),
-[`docs/SPEC.md`](docs/SPEC.md) and [`docs/PLAN.md`](docs/PLAN.md).
-Handover notes for the current state are in [`docs/HANDOVER.md`](docs/HANDOVER.md);
-history is in [`CHANGELOG.md`](CHANGELOG.md).
-
-## Contributing
-
-Issues and pull requests are welcome; read [`CONTRIBUTING.md`](CONTRIBUTING.md) first. Everyone taking part
-follows the [Code of Conduct](CODE_OF_CONDUCT.md).
-
-## Licence
-
-[GPL-3.0-only](LICENSE). A Pro tier is unlocked by an offline licence key
-([ADR-0005](docs/adr/0005-licensing-and-pro.md)); the source of every feature is in this repository.
-Contributors sign a CLA so the project can offer other licences later.
+- Something wrong? Start with [Troubleshooting](docs/troubleshooting.md), or run `Snipdeck.bat doctor`.
+- Build from source, run the tests and send a change: [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- What changed: [`CHANGELOG.md`](CHANGELOG.md). Report a vulnerability as [`SECURITY.md`](SECURITY.md) describes.
+- Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).

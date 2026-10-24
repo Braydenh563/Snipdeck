@@ -12,20 +12,32 @@ publish.workspace = true
 snipdeck-core.workspace = true
 # `testing`: the fakes are the dev platform behind `--demo` and `--screenshot` off Windows.
 snipdeck-platform = { path = "../snipdeck-platform", features = ["testing"] }
+snipdeck-portable = { path = "../snipdeck-portable" }
 snipdeck-store = { path = "../snipdeck-store" }
 snipdeck-ui = { path = "../snipdeck-ui" }
 # The winit backend with the software renderer is the real window. `unstable-winit-030` lets the
 # app create the Panel un-activated and reach its HWND (ADR-0003, ADR-0008).
 slint = { workspace = true, features = ["backend-winit", "raw-window-handle-06", "unstable-winit-030"] }
+jiff.workspace = true
 png.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+# `licence-issuer`: the signer, so a test can mint a key the development public key accepts.
+snipdeck-core = { workspace = true, features = ["licence-issuer"] }
+# `testing`: the in-memory key provider, to give a library an encryption key.
+snipdeck-store = { path = "../snipdeck-store", features = ["testing"] }
 # Slint's headless platform for the window tests (one process per test file).
 i-slint-backend-testing = "=1.18.1"
 tempfile.workspace = true
+blake3.workspace = true
+# A Ditto database fixture for the import preview test.
+rusqlite.workspace = true
 
 [lints]
 workspace = true
+
+[build-dependencies]
+winresource = "0.1.34"

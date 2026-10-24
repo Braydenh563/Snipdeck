@@ -170,7 +170,7 @@ mod tests {
             len: 1 << 20,
         };
         assert_eq!(blob.len(), 1 << 20);
-        assert!(Content::Inline(Inline::new(Vec::new()).unwrap()).is_empty());
+        assert_eq!(Content::Inline(Inline::new(Vec::new()).unwrap()).len(), 0);
     }
 
     #[test]

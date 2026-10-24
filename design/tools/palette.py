@@ -88,7 +88,7 @@ THEMES = {
     "text.on-accent": "neutral-0",
     "ink.default": "neutral-850", "ink.hover": "neutral-700", "ink.pressed": "neutral-600", "text.on-ink": "neutral-0",
     "accent.default": "blue-600", "accent.hover": "blue-700", "accent.pressed": "blue-800",
-    "accent.text": "blue-700", "accent.subtle": "blue-100", "focus.ring": "blue-500",
+    "accent.text": "blue-700", "accent.subtle": "blue-100", "focus.ring": "blue-600",
     "success.fg": "green-700", "success.bg": "green-100",
     "warning.fg": "amber-800", "warning.bg": "amber-100",
     "danger.fg": "red-700", "danger.bg": "red-100", "danger.solid": "red-600",
@@ -147,13 +147,25 @@ for theme, m in THEMES.items():
         ok = r >= mn
         fails += not ok
         out.append(f"| {label}: `{fg}` on `{bg}` | {r:.2f} | {mn} | {'✓' if ok else '✗'} |")
-# list accents: 3px edge vs surface must be >=3:1 (UI component) in both themes
+# list accents: the edge vs surface must be >=3:1 (UI component) in both themes. The 4px item label bar (the
+# eight non-rose hues) also sits on a hovered and on a selected card, so it is checked on those fills too.
 out += ["\n## List accent edges (UI ≥ 3:1)\n", "| Accent | Light (600 on surface) | Dark (400 on surface) |", "|---|---|---|"]
 for name in HUES:
     lr = contrast(rgbmap[f"{name}-600"], rgbmap[THEMES['light']['bg.surface']])
     dr = contrast(rgbmap[f"{name}-400"], rgbmap[THEMES['dark']['bg.surface']])
     fails += (lr < 3) + (dr < 3)
     out.append(f"| {name} | {lr:.2f} {'✓' if lr>=3 else '✗'} | {dr:.2f} {'✓' if dr>=3 else '✗'} |")
+out += ["\n## Item label bar on hovered and selected cards (UI ≥ 3:1)\n", "| Label | Light hover | Light selected | Dark hover | Dark selected |", "|---|---|---|---|---|"]
+for name in HUES:
+    if name == "rose":
+        continue  # no item label uses rose
+    cells = []
+    for theme, step in (("light", 600), ("dark", 400)):
+        for fill in ("bg.hover", "bg.selected"):
+            r = contrast(rgbmap[f"{name}-{step}"], rgbmap[THEMES[theme][fill]])
+            fails += r < 3
+            cells.append(f"{r:.2f} {'✓' if r >= 3 else '✗'}")
+    out.append(f"| {name} | " + " | ".join(cells) + " |")
 print("\n".join(out))
 print(f"\nFAILURES: {fails}")
 root = pathlib.Path(__file__).resolve().parents[1]

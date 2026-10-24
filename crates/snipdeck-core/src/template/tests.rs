@@ -303,6 +303,24 @@ fn reusing_a_name_for_a_different_prompt_is_an_error() {
     );
 }
 
+#[test]
+fn more_than_sixteen_distinct_prompts_is_an_error_but_a_reused_name_is_not() {
+    let many = |n: usize| {
+        (0..n).fold(String::new(), |mut out, i| {
+            out.push_str("{field:F");
+            out.push_str(&i.to_string());
+            out.push('}');
+            out
+        })
+    };
+    assert!(Template::parse(&many(16)).is_ok());
+    assert_eq!(
+        parse_err(&many(17)).kind,
+        TemplateErrorKind::TooManyPrompts { max: 16 }
+    );
+    assert!(Template::parse(&format!("{} {{field:F0}}", many(16))).is_ok());
+}
+
 // ---- entitlements --------------------------------------------------------------------
 
 #[test]
@@ -585,7 +603,7 @@ fn render_checked_enforces_the_entitlement_that_render_does_not() {
     let t = Template::parse("Hi {field:Name|there}").unwrap();
     let a = BTreeMap::new();
     let ctx = RenderContext::new(now(), &a);
-    // `render` is the unchecked primitive: it resolves Pro prompts for anyone.
+    // `render` is the unchecked primitive: it resolves Supporter prompts for anyone.
     assert_eq!(t.render(&ctx).text, "Hi there");
     assert_eq!(
         t.render_checked(&Entitlements::new(Tier::Free), &ctx),
@@ -821,7 +839,32 @@ proptest! {
                 let unique: std::collections::BTreeSet<_> = names.iter().collect();
                 prop_assert_eq!(unique.len(), names.len());
             }
-            Err(e) => prop_assert!(matches!(e.kind, TemplateErrorKind::ConflictingPrompt { .. }), "{e}"),
+            Err(e) => prop_assert!(
+                matches!(
+                    e.kind,
+                    TemplateErrorKind::ConflictingPrompt { .. } | TemplateErrorKind::TooManyPrompts { .. }
+                ),
+                "{e}"
+            ),
         }
     }
+}
+
+#[test]
+fn only_a_clipboard_placeholder_uses_the_clipboard() {
+    assert!(
+        Template::parse("a {clipboard} b")
+            .expect("parses")
+            .uses_clipboard()
+    );
+    assert!(
+        !Template::parse("{date} {cursor}")
+            .expect("parses")
+            .uses_clipboard()
+    );
+    assert!(
+        !Template::parse("{{clipboard}}")
+            .expect("parses")
+            .uses_clipboard()
+    );
 }

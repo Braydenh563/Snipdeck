@@ -9,6 +9,7 @@
 use std::sync::Arc;
 
 use snipdeck_platform::{
+    clipboard_watch::{ClipboardChange, WatchGate},
     system_look::SystemLookSource,
     tray::{Tray, TrayEvent},
 };
@@ -30,6 +31,7 @@ mod imp {
             clipboard::WinClipboard,
             hotkey::{HotkeyError, HotkeyService},
             keyboard::WinKeyboard,
+            screen,
             single_instance::{Acquired, SingleInstance},
             system_look::{SystemLookWatcher, WinSystemLook},
             target::TargetTracker,
@@ -40,10 +42,12 @@ mod imp {
 
     use std::sync::Arc;
 
-    use super::{Callbacks, Host, Start};
+    use super::{Callbacks, Host, Start, WatchGate};
     use crate::{
         controller::Services,
+        frame::{Monitor, Rect},
         host::{HotkeyBackend, HotkeyFailure, TargetSource, action_of},
+        placement::PopupHost,
     };
     use snipdeck_platform::{chord::Chord, system_look::SystemLookSource};
 
@@ -69,13 +73,68 @@ mod imp {
         fn refocus(&self) -> bool {
             self.0.refocus_target()
         }
+
+        fn caret(&self) -> Option<snipdeck_platform::route::ScreenRect> {
+            self.0.caret()
+        }
+    }
+
+    /// The Picker, the fill form and the toast window on the real machine.
+    struct Popups(Rc<TargetTracker>);
+
+    impl PopupHost for Popups {
+        fn attach(&self, window: &slint::Window) {
+            let Some(hwnd) = crate::native_window::handle_of(window) else {
+                return;
+            };
+            self.0.register_popup(hwnd);
+            // Popups never get a taskbar button. False means Windows refused the subclass; the
+            // window then activates on click.
+            let _ = window_style::install_panel_style(hwnd, false);
+        }
+
+        fn activate(&self, window: &slint::Window) -> bool {
+            crate::native_window::handle_of(window)
+                .is_some_and(|hwnd| self.0.begin_text_entry_in(hwnd))
+        }
+
+        fn release(&self) {
+            self.0.end_text_entry();
+        }
+
+        fn cursor(&self) -> Option<(i32, i32)> {
+            screen::cursor_position()
+        }
+
+        fn monitor_at(&self, x: i32, y: i32) -> Option<Monitor> {
+            let facts = screen::monitor_at(x, y)?;
+            let area = |r: snipdeck_platform::route::ScreenRect| Rect {
+                x: r.x,
+                y: r.y,
+                w: r.w,
+                h: r.h,
+            };
+            Some(Monitor {
+                id: Monitor::id_of("monitor", facts.bounds.w, facts.bounds.h),
+                work_area: area(facts.work_area),
+                taskbar: None,
+                scale: facts.scale,
+            })
+        }
     }
 
     struct Hotkeys(HotkeyService);
 
     impl HotkeyBackend for Hotkeys {
         fn register(&mut self, id: u32, chord: Chord) -> Result<(), HotkeyFailure> {
-            self.0.register(id, chord).map_err(|e| match e {
+            let result = self.0.register(id, chord);
+            // Every result, with Windows' own reason (`InUse` is ERROR_HOTKEY_ALREADY_REGISTERED,
+            // 1409; `Os` carries the GetLastError code), for the SNIPDECK_LOG / DIAG log.
+            crate::trace!(
+                "hotkey register id={id} ({:?}) chord={chord}: {result:?}",
+                crate::host::action_of(id)
+            );
+            result.map_err(|e| match e {
                 HotkeyError::InUse => HotkeyFailure::InUse,
                 HotkeyError::Invalid => HotkeyFailure::Invalid,
                 HotkeyError::Os(_) | HotkeyError::Stopped => HotkeyFailure::Unavailable,
@@ -83,9 +142,12 @@ mod imp {
         }
 
         fn unregister(&mut self, id: u32) -> Result<(), HotkeyFailure> {
-            self.0
-                .unregister(id)
-                .map_err(|_| HotkeyFailure::Unavailable)
+            let result = self.0.unregister(id);
+            crate::trace!(
+                "hotkey unregister id={id} ({:?}): {result:?}",
+                crate::host::action_of(id)
+            );
+            result.map_err(|_| HotkeyFailure::Unavailable)
         }
     }
 
@@ -96,6 +158,7 @@ mod imp {
             on_target_changed,
             on_tray,
             on_look_changed,
+            on_clipboard_change,
         } = callbacks;
         // Before any window exists: the tray's window, menu and icon are made ahead of the UI
         // toolkit, which would otherwise be too late to make the process DPI aware.
@@ -109,6 +172,10 @@ mod imp {
             }
         }
         let clipboard = WinClipboard::new().map_err(|e| format!("clipboard service: {e}"))?;
+        // The Recent inbox's listener (UNVERIFIED on Windows). It reads nothing until the
+        // controller opens the gate, which it does only for an opted-in, unpaused inbox.
+        let recent_gate = WatchGate::new();
+        clipboard.watch(recent_gate.clone(), on_clipboard_change);
         let hotkeys = HotkeyService::start(move |id| {
             if let Some(action) = action_of(id) {
                 on_hotkey(action);
@@ -117,6 +184,7 @@ mod imp {
         .map_err(|e| format!("hotkey service: {e}"))?;
         let tracker = Rc::new(TargetTracker::install(on_target_changed));
         let panel_tracker = Rc::clone(&tracker);
+        let popup_tracker = Rc::clone(&tracker);
 
         // The tray and the colour-mode watcher are conveniences: without them the app still
         // runs (closing the Panel then quits, and the theme is read once), so a failure to
@@ -141,12 +209,14 @@ mod imp {
             },
             target: Box::new(Tracker(tracker)),
             hotkeys: Box::new(Hotkeys(hotkeys)),
-            attach_panel: Box::new(move |hwnd| {
+            attach_panel: Box::new(move |hwnd, in_taskbar| {
                 panel_tracker.set_panel(hwnd);
                 // False means Windows refused the subclass; the panel then activates on click.
-                let _ = window_style::install_panel_style(hwnd);
+                let _ = window_style::install_panel_style(hwnd, in_taskbar);
             }),
+            popups: Rc::new(Popups(popup_tracker)),
             tray,
+            recent_gate,
             warnings,
             keep_alive,
         })))
@@ -162,7 +232,7 @@ mod imp {
         testing::{FakeClipboard, FakeKeyboard, FakeSystemLook, FakeTiming},
     };
 
-    use super::{Callbacks, Host, Start};
+    use super::{Callbacks, Host, Start, WatchGate};
     use crate::{
         controller::Services,
         host::{FakeHotkeys, FakeTargets},
@@ -190,6 +260,7 @@ mod imp {
             callbacks.on_target_changed,
             callbacks.on_tray,
             callbacks.on_look_changed,
+            callbacks.on_clipboard_change,
         );
         Ok(Start::Run(Box::new(Host {
             services: Services {
@@ -202,9 +273,11 @@ mod imp {
             },
             target: Box::new(FakeTargets::new(Some(crate::demo::target()))),
             hotkeys: Box::new(FakeHotkeys::default()),
-            attach_panel: Box::new(|_| {}),
+            attach_panel: Box::new(|_, _| {}),
+            popups: std::rc::Rc::new(crate::placement::NoPopups),
             // No tray off Windows: closing the Panel quits the dev build.
             tray: None,
+            recent_gate: WatchGate::new(),
             warnings: Vec::new(),
             keep_alive: Vec::new(),
         })))
@@ -218,6 +291,30 @@ pub use imp::{Clipboard, Keyboard, Timing};
 #[must_use]
 pub fn system_look() -> Arc<dyn SystemLookSource> {
     imp::system_look()
+}
+
+/// Lets a GUI-subsystem build print to the terminal that started it (`--help`, `--check-db`,
+/// usage errors). Nothing happens off Windows, where the binary has a console already.
+/// Unverified on Windows (Fable v1 sweep A1).
+pub fn attach_parent_console() {
+    #[cfg(windows)]
+    snipdeck_platform::windows::console::attach_parent_console();
+}
+
+/// The file dialog of this machine: the Windows Open dialog; none elsewhere (the item editor then
+/// offers only its path field).
+#[must_use]
+pub fn file_picker() -> Option<Box<dyn snipdeck_platform::file_dialog::FilePicker>> {
+    #[cfg(windows)]
+    {
+        Some(Box::new(
+            snipdeck_platform::windows::file_dialog::WinFilePicker,
+        ))
+    }
+    #[cfg(not(windows))]
+    {
+        None
+    }
 }
 
 /// The single-instance name (`Local\Snipdeck-<id>`, see `snipdeck_platform::instance_names`).
@@ -237,6 +334,8 @@ pub struct Callbacks {
     /// Windows' light / dark or high-contrast state may have changed (watcher thread); read
     /// [`system_look`] on the UI thread.
     pub on_look_changed: Box<dyn Fn() + Send>,
+    /// The clipboard changed and the Recent inbox is listening (clipboard thread).
+    pub on_clipboard_change: Box<dyn Fn(ClipboardChange) + Send>,
 }
 
 /// The platform services the app runs on.
@@ -247,11 +346,17 @@ pub struct Host {
     pub target: Box<dyn TargetSource>,
     /// Registers the global hotkeys.
     pub hotkeys: Box<dyn HotkeyBackend>,
-    /// Call with the Panel's native window handle once the window exists: the Target tracker
-    /// then ignores it and it becomes a non-activating tool window.
-    pub attach_panel: Box<dyn Fn(isize)>,
+    /// Call with the Panel's native window handle once the window exists, and whether it has a
+    /// taskbar button (the `panel_in_taskbar` setting): the Target tracker then ignores it and
+    /// it becomes a non-activating window.
+    pub attach_panel: Box<dyn Fn(isize, bool)>,
+    /// What the Picker, the fill form and the toast window ask of the machine: their handles
+    /// registered, the keyboard taken, the mouse and the monitors read.
+    pub popups: std::rc::Rc<dyn crate::placement::PopupHost>,
     /// The notification-area icon, if one could be created (never off Windows). Not yet shown.
     pub tray: Option<Box<dyn Tray>>,
+    /// Switches the clipboard listener of the Recent inbox on and off.
+    pub recent_gate: WatchGate,
     /// Services that failed to start but are not essential: print them.
     pub warnings: Vec<String>,
     /// Kept alive for the life of the process (the single-instance claim, the colour-mode
@@ -295,15 +400,16 @@ mod tests {
             on_target_changed: Box::new(|| {}),
             on_tray: Box::new(|_| {}),
             on_look_changed: Box::new(|| {}),
+            on_clipboard_change: Box::new(|_| {}),
         };
         let Ok(Start::Run(host)) = connect(callbacks, true) else {
             panic!("the dev host always starts")
         };
         assert_eq!(host.target.current(), Some(crate::demo::target()));
-        assert!(host.keep_alive.is_empty());
+        assert_eq!(host.keep_alive.len(), 0);
         assert!(host.tray.is_none(), "no tray off Windows");
         assert_eq!(host.warnings, Vec::<String>::new());
         assert!(!system_look().read().dark);
-        (host.attach_panel)(0);
+        (host.attach_panel)(0, false);
     }
 }

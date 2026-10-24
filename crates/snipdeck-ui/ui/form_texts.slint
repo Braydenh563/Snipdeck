@@ -1,0 +1,173 @@
+// The sentences the editors, the tag manager and the Settings page show about a refusal, a size or
+// an attachment. Rust decides which refusal it is and calls these functions
+// (`snipdeck_app::wording`, `snipdeck_app::settings_binding`); a name, a limit or a count is an
+// argument. Rust keeps no English.
+export global FormTexts {
+    // A name (item, list, board, tag).
+    pure public function name-empty() -> string {
+        return @tr("Give it a name.");
+    }
+    pure public function name-too-long(max: int) -> string {
+        return @tr("Names can have at most {} characters.", max);
+    }
+    pure public function name-control-char() -> string {
+        return @tr("Names can't contain line breaks or control characters.");
+    }
+    pure public function tag-exists() -> string {
+        return @tr("A tag with that name already exists.");
+    }
+    pure public function tag-rename-failed() -> string {
+        return @tr("Couldn't rename the tag.");
+    }
+    pure public function last-board() -> string {
+        return @tr("This is your only board. Add another before deleting it.");
+    }
+
+    // Sizes.
+    pure public function size-bytes(bytes: int) -> string {
+        return @tr("{} byte" | "{} bytes" % bytes, bytes);
+    }
+    pure public function size-kb(kb: int) -> string {
+        return @tr("{} KB", kb);
+    }
+    pure public function size-mb(whole: int, tenth: int) -> string {
+        return @tr("{}.{} MB", whole, tenth);
+    }
+
+    // An attachment.
+    pure public function attachment-picture() -> string {
+        return @tr("Picture");
+    }
+    pure public function attachment-and-more(name: string, more: int) -> string {
+        return @tr("{} and {} more", name, more);
+    }
+    pure public function attachment-image-dimensions(width: int, height: int, size: string) -> string {
+        return @tr("PNG, {} × {}, {}", width, height, size);
+    }
+    pure public function attachment-image(size: string) -> string {
+        return @tr("PNG, {}", size);
+    }
+    pure public function attachment-files(files: int, size: string) -> string {
+        return @tr("{} file, {} in all" | "{} files, {} in all" % files, files, size);
+    }
+
+    // The item editor.
+    pure public function title-too-long(max: int) -> string {
+        return @tr("A title can have at most {} characters.", max);
+    }
+    pure public function title-control-char() -> string {
+        return @tr("A title can't contain line breaks or control characters.");
+    }
+    pure public function content-empty() -> string {
+        return @tr("Add some text, or cancel.");
+    }
+    pure public function content-too-long(max-kb: int) -> string {
+        return @tr("This text is over {} KB, the most that can be edited here. Shorten it, or keep it in a file.", max-kb);
+    }
+    pure public function link-needs-scheme() -> string {
+        return @tr("A link needs a scheme such as https://");
+    }
+    pure public function link-has-space() -> string {
+        return @tr("A link can't contain spaces or line breaks.");
+    }
+    pure public function template-unreadable(why: string) -> string {
+        return @tr("This template can't be read: {}.", why);
+    }
+    pure public function needs-supporter() -> string {
+        return @tr("Fields that ask for a value are a Supporter feature. Remove them to save.");
+    }
+    pure public function source-empty() -> string {
+        return @tr("Choose a file, or cancel.");
+    }
+    pure public function source-missing() -> string {
+        return @tr("There is no file at that path.");
+    }
+    pure public function source-not-a-file() -> string {
+        return @tr("That path is a folder, not a file.");
+    }
+    pure public function source-unreadable() -> string {
+        return @tr("Snipdeck can't read that file. It may be in use or protected.");
+    }
+    pure public function source-too-large(max-mb: int) -> string {
+        return @tr("That file is over {} MB, the most an item can hold.", max-mb);
+    }
+    pure public function source-empty-file() -> string {
+        return @tr("That file is empty.");
+    }
+    pure public function source-not-png() -> string {
+        return @tr("An Image item holds a PNG picture. Choose a PNG file, or add this one as a File.");
+    }
+    pure public function source-bad-name() -> string {
+        return @tr("Snipdeck can't keep a file with that name. Rename the file and try again.");
+    }
+    pure public function save-locked() -> string {
+        return @tr("Unlock your library to save this item.");
+    }
+    pure public function save-key-unavailable() -> string {
+        return @tr("Snipdeck couldn't open the encryption key, so nothing was saved.");
+    }
+    pure public function save-item-gone() -> string {
+        return @tr("This item was deleted, so nothing was saved.");
+    }
+    pure public function save-list-gone() -> string {
+        return @tr("That list was deleted. Choose another list.");
+    }
+    pure public function save-storage() -> string {
+        return @tr("Snipdeck couldn't write to your library. Check that the disk has room.");
+    }
+    pure public function save-other() -> string {
+        return @tr("Snipdeck couldn't save this item. Nothing was changed.");
+    }
+    pure public function draft-not-saved() -> string {
+        return @tr("Snipdeck couldn't save a draft of what you typed.");
+    }
+    pure public function browse-failed() -> string {
+        return @tr("The file dialog couldn't open. Type the path instead.");
+    }
+
+    // The Settings page and the welcome tour: shortcuts.
+    pure public function action-toggle-panel() -> string {
+        return @tr("Show or hide the panel");
+    }
+    pure public function action-picker() -> string {
+        return @tr("Open the picker");
+    }
+    pure public function action-capture() -> string {
+        return @tr("Save the clipboard as an item");
+    }
+    pure public function action-paste-next() -> string {
+        return @tr("Paste the next item");
+    }
+    pure public function hotkey-not-a-shortcut() -> string {
+        return @tr("That combination can't be used as a shortcut.");
+    }
+    pure public function hotkey-used-by(combo: string, action: string) -> string {
+        return @tr("{} is already used for “{}”.", combo, action);
+    }
+    pure public function hotkey-in-use(combo: string) -> string {
+        return @tr("Another program already uses {}.", combo);
+    }
+    pure public function hotkey-invalid(combo: string) -> string {
+        return @tr("Windows doesn't allow {} as a shortcut.", combo);
+    }
+    pure public function hotkey-supporter-only() -> string {
+        return @tr("Paste next is a Supporter feature, so this shortcut does nothing on the Free plan.");
+    }
+    pure public function hotkey-unavailable() -> string {
+        return @tr("Shortcuts are not available right now. Try again in a moment.");
+    }
+
+    // The Settings page: programs lists.
+    pure public function program-has-path() -> string {
+        return @tr("Use just the program's file name, like notepad.exe.");
+    }
+    pure public function program-listed(name: string) -> string {
+        return @tr("{} is already in the list.", name);
+    }
+    pure public function program-too-long(max: int) -> string {
+        return @tr("Program names are at most {} characters.", max);
+    }
+    pure public function program-full(max: int) -> string {
+        return @tr("The list holds at most {} programs.", max);
+    }
+}

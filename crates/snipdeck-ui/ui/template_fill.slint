@@ -58,7 +58,8 @@ export component TemplateFillWindow inherits Window {
     // The rendered result for the current answers (the host re-renders on `answer-changed`).
     in property <string> preview;
     // The submit button: "Insert" when the form ends in a paste, "Copy" when it ends in a copy.
-    in property <string> submit-label: @tr("Insert");
+    in property <bool> copies: false;
+    in property <string> submit-label: root.copies ? @tr("Copy") : @tr("Insert");
 
     // ---- State both ways ----------------------------------------------------------------------
     // The prompts and the answers so far; the form writes `value` and `choice-index` as the user fills it.
@@ -70,6 +71,8 @@ export component TemplateFillWindow inherits Window {
     // Every required field is filled and the user asked to insert: the fields with their answers.
     callback submitted(fields: [FormField]);
     callback cancelled();
+    // F1: the user guide.
+    callback help-requested();
     // Pointer down on the header: the host starts the OS window drag.
     callback drag-requested();
 
@@ -134,6 +137,10 @@ export component TemplateFillWindow inherits Window {
 
     scope-keys := FocusScope {
         capture-key-pressed(event) => {
+            if (event.text == Key.F1) {
+                root.help-requested();
+                return accept;
+            }
             if (event.text == Key.Escape) {
                 root.cancelled();
                 return accept;
@@ -183,6 +190,7 @@ export component TemplateFillWindow inherits Window {
                     IconButton {
                         icon: Icons.x;
                         tooltip: @tr("Close");
+                        own-tooltip: true;
                         y: (parent.height - self.height) / 2;
                         clicked => { root.cancelled(); }
                     }

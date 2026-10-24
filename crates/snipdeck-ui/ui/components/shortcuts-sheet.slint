@@ -1,0 +1,94 @@
+import { Theme, Type, Space, Fonts, SystemLook } from "../theme.slint";
+import { KeyCombo } from "keycap.slint";
+import { FormSection } from "form.slint";
+
+// One line of the sheet: what it does on the left, the key caps on the right, a hairline below.
+// `keys` empty reads "Off" (a global hotkey with no chord). `spoken` is what assistive technology reads.
+component ShortcutLine inherits Rectangle {
+    in property <string> title;
+    in property <[string]> keys;
+    in property <string> spoken;
+
+    min-height: max(Space.hit * SystemLook.text-scale + Space.s1, Type.line-base + Space.s2);
+    accessible-role: groupbox;
+    accessible-label: root.title;
+    accessible-description: root.keys.length > 0 ? root.spoken : @tr("Off");
+
+    HorizontalLayout {
+        padding-top: Space.s1;
+        padding-bottom: Space.s1;
+        spacing: Space.s4;
+        Text {
+            horizontal-stretch: 1;
+            min-width: 0px;
+            text: root.title;
+            color: Theme.text-primary;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            vertical-alignment: center;
+            wrap: word-wrap;
+            accessible-role: none;
+        }
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 0;
+            if root.keys.length > 0: KeyCombo {
+                keys: root.keys;
+                label: root.spoken;
+            }
+            if root.keys.length == 0: Text {
+                text: @tr("Off");
+                color: Theme.text-secondary;
+                font-family: Fonts.sans;
+                font-size: Type.sm;
+                accessible-role: none;
+            }
+        }
+    }
+    Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        background: Theme.border-subtle;
+    }
+}
+
+// One line of a group, as the app hands it over: the title, the key caps ("Ctrl", "Shift", "N") and the spoken form.
+export struct ShortcutLineData {
+    title: string,
+    keys: [string],
+    spoken: string,
+}
+
+// One group (Anywhere in Windows, Main window, Panel, Picker, Editors) with the lines that match the search.
+// `note` is a hint under the lines ("Change these in Settings."), empty for none.
+export struct ShortcutGroup {
+    title: string,
+    note: string,
+    lines: [ShortcutLineData],
+}
+
+// The keyboard shortcuts, grouped. The app owns the rows (it fills the global hotkeys from the settings, groups
+// the lines and filters them for the search box); this draws them. Every row is a key that exists; the key names
+// are not translated (they are the names on the keyboard).
+export component ShortcutsSheet inherits VerticalLayout {
+    in property <[ShortcutGroup]> groups;
+
+    spacing: Space.s4;
+    alignment: start;
+
+    for group in root.groups: FormSection {
+        title: group.title;
+        for line in group.lines: ShortcutLine {
+            title: line.title;
+            keys: line.keys;
+            spoken: line.spoken;
+        }
+        if group.note != "": Text {
+            text: group.note;
+            color: Theme.text-secondary;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            accessible-role: text;
+        }
+    }
+}

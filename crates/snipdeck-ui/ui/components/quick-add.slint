@@ -1,0 +1,181 @@
+// The quick-add row shared by the Panel and the Main window (O45): a text-labelled "+ New item" row that
+// opens an inline multi-line box. Paste or type, then Enter (or [Create]) saves; Shift+Enter is a newline,
+// Esc cancels. Below the box sit optional choices: the kind (auto-detected and preselected until the user
+// picks one) and a Sensitive switch. Nothing is asked of the user: untouched, the item is simply created.
+import { Theme, Type, Space, Radius, Fonts, SystemLook } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { TextField } from "text_field.slint";
+import { Segmented } from "form.slint";
+import { Toggle } from "choice.slint";
+import { Button, ButtonVariant, ButtonSize } from "button.slint";
+
+export component QuickAdd inherits Rectangle {
+    // The box is open.
+    in-out property <bool> expanded: false;
+    // Counts up to open the box and focus it (Ctrl+N).
+    in property <int> open-request: 0;
+    // The list the item goes to, for the row's spoken label.
+    in property <string> list-name;
+    // 0 = Text, 1 = Link, 2 = Template: what the text looks like. The host implements it (`capture::detect_kind`).
+    pure callback detect-kind(string) -> int;
+    // Enter or [Create]: text, kind (0 Text, 1 Link, 2 Template), sensitive.
+    callback create(string, int, bool);
+    // Ctrl+Shift+N inside the box: the full editor, prefilled with the text.
+    callback full-editor(string);
+    callback cancelled();
+
+    out property <string> text: field.text;
+    out property <length> box-h: root.expanded ? col.preferred-height + 2 * Space.s1 : Space.hit;
+    property <bool> kind-touched: false;
+    property <int> chosen-kind: 0;
+    property <int> auto-kind: root.detect-kind(field.text);
+    property <int> kind: root.kind-touched ? root.chosen-kind : root.auto-kind;
+    property <bool> sensitive: false;
+    property <int> local-n: 0;
+    function open() {
+        root.expanded = true;
+        root.local-n += 1;
+    }
+
+    height: root.box-h;
+    accessible-role: none;
+
+    public function reset() {
+        field.text = "";
+        root.kind-touched = false;
+        root.sensitive = false;
+    }
+    function submit() {
+        if (field.text != "") {
+            root.create(field.text, root.kind, root.sensitive);
+            root.reset();
+            root.local-n += 1;
+        }
+    }
+    changed open-request => {
+        if (root.open-request > 0) {
+            root.expanded = true;
+        }
+    }
+
+    // ---- Collapsed: the "+ New item" row ----------------------------------------------------------
+    if !root.expanded: add-row := Rectangle {
+        height: Space.hit;
+        border-radius: Radius.md;
+        background: add-touch.has-hover ? Theme.bg-hover : transparent;
+        border-width: add-scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        accessible-role: button;
+        accessible-label: @tr("New item in {}", root.list-name);
+        accessible-action-default => { root.open(); }
+
+        add-scope := FocusScope {
+            key-pressed(event) => {
+                if (event.text == Key.Return || event.text == " ") {
+                    root.open();
+                    return accept;
+                }
+                return reject;
+            }
+            add-touch := TouchArea {
+                clicked => { root.open(); }
+                mouse-cursor: pointer;
+            }
+        }
+        HorizontalLayout {
+            padding-left: Space.s3;
+            padding-right: Space.s3;
+            spacing: Space.s2;
+            alignment: start;
+            Text {
+                text: "+";
+                font-family: Fonts.sans;
+                font-size: Type.lg;
+                color: Theme.accent;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+            Text {
+                text: @tr("New item");
+                font-family: Fonts.sans;
+                font-size: Type.base;
+                font-weight: Type.medium;
+                color: Theme.accent;
+                vertical-alignment: center;
+                accessible-role: none;
+            }
+        }
+    }
+
+    // ---- Expanded: the box, the choices, Create ---------------------------------------------------
+    composer := FocusScope {
+        visible: root.expanded;
+        enabled: root.expanded;
+        capture-key-pressed(event) => {
+            if (event.text == Key.Escape) {
+                root.reset();
+                root.expanded = false;
+                root.cancelled();
+                return accept;
+            }
+            if (event.text == Key.Return && event.modifiers.control && event.modifiers.shift) {
+                root.full-editor(field.text);
+                return accept;
+            }
+            if (event.text == Key.Return && !event.modifiers.shift) {
+                root.submit();
+                return accept;
+            }
+            return reject;
+        }
+        col := VerticalLayout {
+            spacing: Space.s2;
+            padding: Space.s1;
+            field := TextField {
+                single-line: false;
+                min-lines: 3;
+                max-lines: 6;
+                placeholder: @tr("Add a snippet… (Enter to save)");
+                label: @tr("New item");
+                focus-request: root.open-request + root.local-n;
+            }
+            HorizontalLayout {
+                spacing: Space.s2;
+                alignment: space-between;
+                Segmented {
+                    options: [@tr("Text"), @tr("Link"), @tr("Template")];
+                    current: root.kind;
+                    label: @tr("Kind");
+                    chosen(index) => {
+                        root.kind-touched = true;
+                        root.chosen-kind = index;
+                    }
+                }
+                Toggle {
+                    text: @tr("Sensitive");
+                    checked <=> root.sensitive;
+                }
+            }
+            HorizontalLayout {
+                spacing: Space.s2;
+                alignment: end;
+                Button {
+                    text: @tr("Cancel");
+                    variant: ButtonVariant.ghost;
+                    clicked => {
+                        root.reset();
+                        root.expanded = false;
+                        root.cancelled();
+                    }
+                }
+                Button {
+                    text: @tr("Create");
+                    variant: ButtonVariant.primary;
+                    a11y-label: @tr("Create item");
+                    tooltip: @tr("Create (Enter)");
+                    clicked => { root.submit(); }
+                }
+            }
+        }
+    }
+}

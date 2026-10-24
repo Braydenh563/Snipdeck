@@ -9,7 +9,7 @@ use crate::{
     payload::Payload,
     pipeline::{Clipboard, Error, Keyboard, Timing},
     system_look::{SystemLook, SystemLookSource},
-    tray::{Gesture, MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayModel},
+    tray::{Gesture, MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayLabels, TrayModel},
 };
 
 /// A clipboard that records what the pipeline does to it.
@@ -29,6 +29,29 @@ pub struct FakeClipboard {
     pub fail_write: bool,
     /// What `restore` returns.
     pub restore_result: Option<Result<bool, Error>>,
+    /// The clipboard sequence number: it increases with every write and every clear.
+    pub sequence: u32,
+    /// How many times the text on the clipboard was read (`ClipboardText::read_text`).
+    pub text_reads: u32,
+    /// The sequence number right after the latest write.
+    pub write_sequence: Option<u32>,
+    /// How many clears fail with "busy" before one works (the clipboard is open elsewhere).
+    pub clear_busy: u32,
+    /// How many `write_confirmed` checks say "not yet" before one says yes.
+    pub unconfirmed_polls: u32,
+    /// `write_confirmed` never says yes (the write did not take).
+    pub never_confirm: bool,
+}
+
+impl FakeClipboard {
+    /// Whether this clear attempt finds the clipboard busy (uses up one of `clear_busy`).
+    pub fn busy_for_clear(&mut self) -> bool {
+        if self.clear_busy == 0 {
+            return false;
+        }
+        self.clear_busy -= 1;
+        true
+    }
 }
 
 impl Clipboard for FakeClipboard {
@@ -47,6 +70,8 @@ impl Clipboard for FakeClipboard {
             return Err(Error::Clipboard("busy".into()));
         }
         self.written.push(payload.clone());
+        self.sequence += 1;
+        self.write_sequence = Some(self.sequence);
         self.log.push(format!("transient:{}", payload.data().len()));
         Ok(())
     }
@@ -55,9 +80,21 @@ impl Clipboard for FakeClipboard {
             return Err(Error::Clipboard("busy".into()));
         }
         self.written.push(payload.clone());
+        self.sequence += 1;
+        self.write_sequence = Some(self.sequence);
         self.log
             .push(format!("persistent:{}", payload.data().len()));
         Ok(())
+    }
+    fn write_confirmed(&mut self, (): &()) -> bool {
+        if self.never_confirm {
+            return false;
+        }
+        if self.unconfirmed_polls > 0 {
+            self.unconfirmed_polls -= 1;
+            return false;
+        }
+        true
     }
     fn render_requested(&mut self, (): &()) -> bool {
         self.polls += 1;
@@ -191,7 +228,7 @@ impl FakeTray {
     }
 
     /// What the backend did, in order (`show`, `hide`, `tooltip:<text>`, `paused:<bool>`,
-    /// `readd`).
+    /// `labels:<open panel text>`, `readd`).
     #[must_use]
     pub fn log(&self) -> Vec<String> {
         lock(&self.state).log.clone()
@@ -213,6 +250,11 @@ impl FakeTray {
     /// The user left-clicks the icon.
     pub fn left_click(&self) {
         let _ = self.gesture(Gesture::Select);
+    }
+
+    /// The user double-clicks the icon.
+    pub fn double_click(&self) {
+        let _ = self.gesture(Gesture::DoubleSelect);
     }
 
     /// The user right-clicks the icon and the menu opens; returns it. Nothing is chosen until
@@ -308,17 +350,36 @@ impl Tray for FakeTray {
         state.log.push(format!("paused:{paused}"));
         Ok(())
     }
+
+    fn set_history(&mut self, available: bool, paused: bool) -> Result<(), ServiceError> {
+        let mut state = lock(&self.state);
+        state.model.set_history(available, paused);
+        state.log.push(format!("history:{available}:{paused}"));
+        Ok(())
+    }
+
+    fn set_labels(&mut self, labels: TrayLabels) -> Result<(), ServiceError> {
+        let mut state = lock(&self.state);
+        state.log.push(format!("labels:{}", labels.open_panel));
+        state.model.set_labels(labels);
+        Ok(())
+    }
 }
 
 /// A [`SystemLookSource`] a test sets. Cloning shares the value.
 #[derive(Debug, Clone, Default)]
-pub struct FakeSystemLook(Arc<Mutex<SystemLook>>);
+pub struct FakeSystemLook(Arc<Mutex<SystemLook>>, Arc<Mutex<Option<u32>>>);
 
 impl FakeSystemLook {
     /// A source that reports `look`.
     #[must_use]
     pub fn new(look: SystemLook) -> Self {
-        Self(Arc::new(Mutex::new(look)))
+        Self(Arc::new(Mutex::new(look)), Arc::default())
+    }
+
+    /// Changes Windows' text size to `percent` (`None`: never changed, 100 %).
+    pub fn set_text_scale_percent(&self, percent: Option<u32>) {
+        *lock(&self.1) = percent;
     }
 
     /// Changes what Windows "says".
@@ -330,6 +391,10 @@ impl FakeSystemLook {
 impl SystemLookSource for FakeSystemLook {
     fn read(&self) -> SystemLook {
         *lock(&self.0)
+    }
+
+    fn text_scale(&self) -> f32 {
+        crate::system_look::text_scale_from_percent(*lock(&self.1))
     }
 }
 
@@ -371,6 +436,15 @@ mod tests {
         assert!(tray.hotkeys_paused());
         tray.pick(TrayEntry::Quit);
         assert_eq!(rx.try_recv(), Ok(TrayEvent::Quit));
+    }
+
+    #[test]
+    fn a_double_click_asks_for_the_main_window() {
+        let (mut tray, rx) = tray();
+        tray.show().unwrap();
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::IconPresent(true)));
+        tray.double_click();
+        assert_eq!(rx.try_recv(), Ok(TrayEvent::OpenSnipdeck));
     }
 
     #[test]
@@ -428,7 +502,18 @@ mod tests {
         handle.set(SystemLook {
             dark: true,
             high_contrast: None,
+            accent: None,
+            reduce_motion: true,
         });
         assert!(look.read().dark);
+        assert!(look.read().reduce_motion);
+    }
+
+    #[test]
+    fn the_fake_text_scale_follows_what_the_test_sets() {
+        let look = FakeSystemLook::default();
+        assert!((look.text_scale() - 1.0).abs() < f32::EPSILON);
+        look.clone().set_text_scale_percent(Some(150));
+        assert!((look.text_scale() - 1.5).abs() < f32::EPSILON);
     }
 }

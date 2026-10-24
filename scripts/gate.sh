@@ -31,7 +31,7 @@ some_tests() {
   # Rust tests are inline (#[cfg(test)]) or in crates/*/tests/*.rs; run the owning crates.
   local crates="" f c
   for f in "$@"; do
-    c="$(echo "$f" | sed -n 's#^crates/\([^/]*\)/.*#\1#p')"
+    c="$(echo "$f" | sed -n 's#^\(crates\|tools\)/\([^/]*\)/.*#\2#p')"
     [ -n "$c" ] && case " $crates " in *" $c "*) ;; *) crates="$crates $c" ;; esac
   done
   local args=""; for c in $crates; do args="$args -p $c"; done
@@ -80,6 +80,7 @@ fi
 
 if [ -f scripts/codemap.py ]; then step codemap python3 scripts/codemap.py --check; fi
 if [ -f scripts/i18n.py ]; then step i18n python3 scripts/i18n.py check; fi
+if [ -f scripts/test_i18n.py ]; then step i18n-tests python3 scripts/test_i18n.py; fi
 echo "ran: ${ran[*]:-none}"
 echo "failed: ${failed[*]:-none}"
 echo "skipped: ${skipped[*]:-none}"

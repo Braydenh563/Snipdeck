@@ -8,8 +8,7 @@
 // focus):
 //   type            filters; a printable key typed while another control has focus moves into the search
 //   Up / Down       move the selection (PageUp / PageDown a page); Enter uses it, Shift+Enter copies only
-//   1-9             use the Nth row while the search is empty (digits are text once a query exists);
-//                   Alt+1-9 always uses the Nth row
+//   Alt+1-9         use the Nth row, whatever the search holds (bare digits are always search text)
 //   Tab             next scope (All, This board, Pinned), Shift+Tab previous
 //   Ctrl+E          asks the host to edit the selected snippet
 //   Esc             asks the host to close the Picker
@@ -22,10 +21,11 @@ import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint"
 import { SearchField } from "components/text_field.slint";
 import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
 import { Tag } from "components/tag.slint";
+import { OverlayScrollbar } from "components/scrollbar.slint";
 import { KeyCombo } from "components/keycap.slint";
 
 // One result, as `snipdeck-app` resolves it across boards. The breadcrumb is `board-name / list-name`; the
-// quick-use number is the row's position (1-9 for the first nine); `masked-preview` stands in for a
+// quick-use number is the row's position (1-9 for the first nine, used with Alt+N); `masked-preview` stands in for a
 // sensitive item's preview.
 export struct PickerRow {
     kind: ItemKind,
@@ -97,12 +97,18 @@ export component PickerWindow inherits Window {
     callback row-activated(int);
     // Shift+Enter or Shift+click: copy only.
     callback row-copied(int);
-    // Digit 1-9 pressed (the app resolves it against the rows it sent).
+    // Alt+1-9 pressed (the app resolves it against the rows it sent).
     callback quick-use(int);
     callback selection-moved(int);
     // Ctrl+E on row `index`.
     callback edit-requested(int);
+    // Esc: the user closed the Picker; the keyboard goes back to the window it came from.
     callback close-requested();
+    // The window lost the keyboard to another window the user clicked: close it and leave the
+    // focus where they put it.
+    callback dismissed();
+    // F1: the user guide.
+    callback help-requested();
 
     // ---- Public -------------------------------------------------------------------------------
     // The window height that fits the current content: search, scopes, up to nine rows (or the empty
@@ -110,6 +116,17 @@ export component PickerWindow inherits Window {
     out property <length> content-height: main.preferred-height;
     out property <length> scroll-y: list.content-y;
     out property <bool> search-focused: search.has-focus;
+    // The window lost the keyboard after having it (a click on another window): like any popup it
+    // closes. Never having had it (Windows refused to activate it) closes nothing.
+    property <bool> had-focus: false;
+    changed search-focused => {
+        if (root.search-focused) {
+            root.had-focus = true;
+        } else if (root.had-focus) {
+            root.had-focus = false;
+            root.dismissed();
+        }
+    }
     // Holds row `index` in its pulled (used) state for the card's 700ms (keyboard use; a click pulls itself).
     public function mark-used(index: int) {
         root.used-index = index;
@@ -142,7 +159,8 @@ export component PickerWindow inherits Window {
     property <length> body-h: root.rows.length == 0 ? root.empty-h : root.list-h + 2 * Space.s1;
     property <int> page-rows: max(1, min(root.rows.length, root.max-rows) - 1);
 
-    // The footer drops its secondary hints when the window is narrow for the text size. Set from `changed`
+    // The footer drops its secondary hints (Copy, Scope) when the window is narrow for the text size; the use and
+    // Close hints stay, so the way in and the way out are always shown. Set from `changed`
     // handlers, not bound to `root.width`: a window's width follows its layout (see the Panel).
     property <bool> narrow: false;
     property <float> text-scale: SystemLook.text-scale;
@@ -289,13 +307,17 @@ export component PickerWindow inherits Window {
             if (event.modifiers.meta || search.composing) {
                 return reject;
             }
-            // Alt+digit is quick-use whatever the query holds.
+            // Alt+digit is quick-use whatever the query holds; a bare digit is always search text.
             if (event.modifiers.alt) {
                 if (!event.modifiers.shift && root.digit(event.text) > 0) {
                     root.quick(root.digit(event.text));
                     return accept;
                 }
                 return reject;
+            }
+            if (event.text == Key.F1) {
+                root.help-requested();
+                return accept;
             }
             if (event.text == Key.Escape) {
                 root.close-requested();
@@ -327,11 +349,6 @@ export component PickerWindow inherits Window {
             }
             if (event.text == Key.Return) {
                 root.use-selected(event.modifiers.shift);
-                return accept;
-            }
-            // Digits are quick-use only while there is no query; with one they are search text.
-            if (!root.searching && !event.modifiers.shift && root.digit(event.text) > 0) {
-                root.quick(root.digit(event.text));
                 return accept;
             }
             if (!search.has-focus && event.text != " " && root.printable(event.text)) {
@@ -408,6 +425,7 @@ export component PickerWindow inherits Window {
                     visible: root.rows.length > 0;
 
                     for row[i] in root.rows: ItemCard {
+                        has-menu: false;
                         height: root.row-h;
                         variant: ItemCardVariant.compact;
                         kind: row.kind;
@@ -421,6 +439,7 @@ export component PickerWindow inherits Window {
                         list-name: row.board-name != "" ? row.board-name + " / " + row.list-name : row.list-name;
                         list-color: row.list-color;
                         selected: i == root.sel;
+                        show-focus: i == root.sel;
                         use-label: "";
                         masked-hint: @tr("Hidden. Open it in the Panel to reveal.");
                         pulling: i == root.used-index;
@@ -434,6 +453,16 @@ export component PickerWindow inherits Window {
                             root.row-copied(i);
                         }
                     }
+                }
+
+                list-bar := OverlayScrollbar {
+                    y: list.y;
+                    height: list.height;
+                    content-y: list.content-y;
+                    content-height: list.content-height;
+                    visible-height: list.height;
+                    enabled: list.visible;
+                    scroll-to(y) => { list.content-y = y; }
                 }
 
                 if root.rows.length == 0: EmptyState {
@@ -478,11 +507,16 @@ export component PickerWindow inherits Window {
                         text: @tr("Copy");
                     }
                     if !root.narrow: Hint {
+                        keys: ["Alt", "1-9"];
+                        key-label: @tr("Alt 1 to 9");
+                        text: @tr("Use result N");
+                    }
+                    if !root.narrow: Hint {
                         keys: ["Tab"];
                         key-label: @tr("Tab");
                         text: @tr("Scope");
                     }
-                    if !root.narrow: Hint {
+                    Hint {
                         keys: ["Esc"];
                         key-label: @tr("Escape");
                         text: @tr("Close");

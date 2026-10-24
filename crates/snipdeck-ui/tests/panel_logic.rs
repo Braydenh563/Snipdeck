@@ -8,12 +8,23 @@
     clippy::panic,
     reason = "test code: a failure is a failed test"
 )]
+#![allow(
+    clippy::cast_precision_loss,
+    reason = "pixel sizes and chip counts are far below f32 precision"
+)]
 
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, time::Duration};
 
-use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery, ElementRoot};
-use slint::{ComponentHandle, ModelRc, VecModel, platform::Key};
-use snipdeck_ui::{PanelView, PanelWindow, ToastKind};
+use i_slint_backend_testing::{
+    AccessibleRole, ElementHandle, ElementQuery, ElementRoot, mock_elapsed_time,
+};
+use slint::{
+    ComponentHandle, LogicalPosition, ModelRc, VecModel,
+    platform::{Key, PointerEventButton, WindowEvent},
+};
+use snipdeck_ui::{
+    ChoiceEntry, PanelView, PanelWindow, PinnedItem, RecentRow, ResizeEdge, ToastKind,
+};
 
 #[path = "support/mod.rs"]
 mod support;
@@ -49,7 +60,13 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_quick_use, |n| format!("quick:{n}"));
     hook!(on_selection_moved, |d| format!("move:{d}"));
     hook!(on_tab_selected, |i| format!("tab:{i}"));
+    hook!(on_list_menu_requested, |i| format!("list-menu:{i}"));
+    hook!(on_list_edit_requested, |i| format!("list-edit:{i}"));
+    hook!(on_reveal_requested, |i, on| format!("reveal:{i}:{on}"));
     hook!(on_close_requested, || "close".to_string());
+    hook!(on_help_requested, || "help".to_string());
+    hook!(on_commands_requested, || "commands".to_string());
+    hook!(on_shortcuts_requested, || "shortcuts".to_string());
     hook!(on_drag_requested, || "drag".to_string());
     hook!(on_pin_toggled, |on| format!("pin:{on}"));
     hook!(on_add_list_requested, || "add-list".to_string());
@@ -59,6 +76,52 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_board_menu_dismissed, || "board-dismissed".to_string());
     hook!(on_pinned_used, |i| format!("pinned:{i}"));
     hook!(on_toast_undo, || "undo".to_string());
+    hook!(on_undo_requested, || "ctrl-z".to_string());
+    hook!(on_new_item_requested, || "new".to_string());
+    hook!(on_row_picked, |i, shift, ctrl| format!(
+        "picked:{i}:{shift}:{ctrl}"
+    ));
+    hook!(on_select_all_requested, || "select-all".to_string());
+    hook!(on_selection_extended, |d| format!("extend:{d}"));
+    hook!(on_selection_cleared, || "clear-selection".to_string());
+    hook!(on_bulk_move_requested, || "bulk-move".to_string());
+    hook!(on_bulk_colour_requested, || "bulk-colour".to_string());
+    hook!(on_bulk_delete_requested, || "bulk-delete".to_string());
+    hook!(on_bulk_copy_requested, || "bulk-copy".to_string());
+    hook!(on_quick_add_requested, |t, k, s| format!(
+        "quick-add:{t}:{k}:{s}"
+    ));
+    hook!(on_quick_add_full, |t| format!("quick-add-full:{t}"));
+    ui.on_detect_kind(|t| i32::from(t.starts_with("http")));
+    hook!(on_settings_requested, || "settings".to_string());
+    hook!(on_toast_hover_changed, |h| format!("hover:{h}"));
+    hook!(on_app_menu_requested, || "app-menu".to_string());
+    hook!(on_app_menu_activated, |i| format!("app:{i}"));
+    hook!(on_app_menu_dismissed, || "app-dismissed".to_string());
+    hook!(on_edit_requested, |i| format!("edit:{i}"));
+    hook!(on_rename_requested, |i| format!("rename:{i}"));
+    hook!(on_duplicate_requested, |i| format!("duplicate:{i}"));
+    hook!(on_pin_requested, |i| format!("pin:{i}"));
+    hook!(on_delete_requested, |i| format!("delete:{i}"));
+    hook!(on_resize_requested, |edge| format!("resize:{edge:?}"));
+    hook!(on_pinned_copied, |i| format!("pinned-copy:{i}"));
+    hook!(on_handle_hovered, |on| format!("handle-hover:{on}"));
+    hook!(on_handle_clicked, || "handle-click".to_string());
+    hook!(on_item_reorder_requested, |d| format!("item-reorder:{d}"));
+    hook!(on_row_dropped, |from, onto| format!(
+        "row-drop:{from}:{onto}"
+    ));
+    hook!(on_row_dropped_on_tab, |row, tab| format!(
+        "row-on-tab:{row}:{tab}"
+    ));
+    // The host's payload rides as user data; the tests use plain text of the same shape.
+    ui.on_row_payload(|i| slint::DataTransfer::from(slint::SharedString::from(format!("row:{i}"))));
+    ui.on_payload_row(|d| {
+        d.plain_text()
+            .ok()
+            .and_then(|t| t.strip_prefix("row:").and_then(|n| n.parse::<i32>().ok()))
+            .unwrap_or(-1)
+    });
     {
         let log = log.clone();
         ui.on_context_menu_requested(move |i, _, _| log.borrow_mut().push(format!("menu:{i}")));
@@ -120,6 +183,90 @@ fn rows(ui: &PanelWindow) -> Vec<ElementHandle> {
     by_role(ui, AccessibleRole::ListItem)
 }
 
+// ---- Pointer helpers ---------------------------------------------------------------------------
+
+fn centre(e: &ElementHandle) -> LogicalPosition {
+    let (p, s) = (e.absolute_position(), e.size());
+    LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0)
+}
+
+fn move_to(ui: &PanelWindow, at: LogicalPosition) {
+    ui.window()
+        .dispatch_event(WindowEvent::PointerMoved { position: at });
+}
+
+fn press_at(ui: &PanelWindow, at: LogicalPosition) {
+    move_to(ui, at);
+    ui.window().dispatch_event(WindowEvent::PointerPressed {
+        position: at,
+        button: PointerEventButton::Left,
+    });
+    ui.window().dispatch_event(WindowEvent::PointerReleased {
+        position: at,
+        button: PointerEventButton::Left,
+    });
+}
+
+fn click_row_with(ui: &PanelWindow, row: usize, modifiers: &[Key]) {
+    let at = centre(&rows(ui)[row]);
+    for m in modifiers {
+        ui.window().dispatch_event(WindowEvent::KeyPressed {
+            text: char::from(*m).to_string().into(),
+        });
+    }
+    press_at(ui, at);
+    for m in modifiers.iter().rev() {
+        ui.window().dispatch_event(WindowEvent::KeyReleased {
+            text: char::from(*m).to_string().into(),
+        });
+    }
+}
+
+fn scroll_at(ui: &PanelWindow, at: LogicalPosition, dx: f32, dy: f32) {
+    move_to(ui, at);
+    ui.window().dispatch_event(WindowEvent::PointerScrolled {
+        position: at,
+        delta_x: dx,
+        delta_y: dy,
+    });
+}
+
+fn wait(ms: u64) {
+    mock_elapsed_time(Duration::from_millis(ms));
+    settle();
+}
+
+/// An empty part of the body (no control under it, no tooltip anchor): the bottom, clear of the footer text.
+fn away(ui: &PanelWindow) -> LogicalPosition {
+    let size = ui.window().size();
+    LogicalPosition::new(size.width as f32 / 2.0, size.height as f32 - 16.0)
+}
+
+fn set_pinned(ui: &PanelWindow, items: Vec<PinnedItem>) {
+    ui.set_pinned(ModelRc::new(VecModel::from(items)));
+    settle();
+}
+
+/// How far the pinned row is scrolled (>= 0), worked out from the first "Pinned NN" chip still in view
+/// (chips that scrolled out of the strip leave the accessibility tree). Chips are equally wide; the first
+/// one sits 12px in (8px panel padding, 4px row margin) with a 4px gap between chips.
+fn pinned_scroll(ui: &PanelWindow) -> f32 {
+    let chip = by_role(ui, AccessibleRole::Button)
+        .into_iter()
+        .filter_map(|e| {
+            let n: usize = e
+                .accessible_label()?
+                .strip_prefix("Pinned ")?
+                .parse()
+                .ok()?;
+            Some((n, e))
+        })
+        .min_by_key(|(n, _)| *n)
+        .expect("a pinned chip in view");
+    let (n, e) = chip;
+    12.0 + (n - 1) as f32 * (e.size().width + 4.0) - e.absolute_position().x
+}
+
 /// Same shape as `inputs_logic`: Slint's testing platform is process-wide and bound to one thread.
 macro_rules! ui_tests {
     ($(fn $name:ident() $body:block)*) => {
@@ -169,6 +316,46 @@ ui_tests! {
         press(ui.window(), " ");
         assert_eq!(ui.get_query(), "");
         assert!(take(&log).is_empty(), "no callbacks fired");
+    }
+
+    fn holding_space_on_the_selected_sensitive_row_reveals_it_and_releasing_hides_it() {
+        let (ui, log) = start();
+        ui.set_selected_index(4);
+        settle();
+        take(&log);
+        ui.window().dispatch_event(WindowEvent::KeyPressed { text: " ".into() });
+        ui.window().dispatch_event(WindowEvent::KeyPressed { text: " ".into() });
+        assert_eq!(take(&log), ["reveal:4:true"], "a key repeat does not ask twice");
+        assert_eq!(ui.get_query(), "", "the space is not typed into the search");
+        ui.window().dispatch_event(WindowEvent::KeyReleased { text: " ".into() });
+        assert_eq!(take(&log), ["reveal:4:false"]);
+    }
+
+    fn a_reveal_the_host_ended_without_a_key_release_can_be_started_again() {
+        // Alt+Tab while Space is held: the release never arrives, the host sets the index to -1.
+        let (ui, log) = start();
+        ui.set_selected_index(4);
+        settle();
+        take(&log);
+        ui.window().dispatch_event(WindowEvent::KeyPressed { text: " ".into() });
+        assert_eq!(take(&log), ["reveal:4:true"]);
+        ui.set_revealed_index(4);
+        settle();
+        ui.set_revealed_index(-1);
+        settle();
+        ui.window().dispatch_event(WindowEvent::KeyPressed { text: " ".into() });
+        assert_eq!(take(&log), ["reveal:4:true"], "held-reveal was reset, so Space asks again");
+    }
+
+    fn space_on_a_plain_selected_row_does_not_reveal() {
+        let (ui, log) = start();
+        ui.set_selected_index(0);
+        settle();
+        take(&log);
+        press(ui.window(), " ");
+        // Not a reveal: with the search focused, Space is a text key, so the search reports " " (the host reads a
+        // blank query as no query, `Panel::is_searching`).
+        assert_eq!(take(&log), ["query: "], "no reveal for a plain row; the space is search text");
     }
 
     fn escape_clears_the_search_first_and_then_asks_to_close() {
@@ -229,6 +416,178 @@ ui_tests! {
             .is_some_and(|l| l.starts_with("Invoice reminder")));
     }
 
+    fn f1_asks_for_the_user_guide() {
+        let (ui, log) = start();
+        take(&log);
+        press(ui.window(), &key(Key::F1));
+        assert_eq!(take(&log), ["help"]);
+    }
+
+    fn ctrl_k_asks_for_the_commands_and_ctrl_slash_for_the_shortcuts() {
+        let (ui, log) = start();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "k");
+        assert_eq!(take(&log), ["commands"]);
+        chord(ui.window(), &[Key::Control], "/");
+        assert_eq!(take(&log), ["shortcuts"]);
+    }
+
+    fn the_new_list_close_settings_and_undo_shortcuts_report_what_was_asked() {
+        let (ui, log) = start();
+        take(&log);
+        chord(ui.window(), &[Key::Control, Key::Shift], "N");
+        assert_eq!(take(&log), ["quick-add-full:"], "the full editor, prefilled with the box");
+        chord(ui.window(), &[Key::Control], ",");
+        assert_eq!(take(&log), ["settings"]);
+        chord(ui.window(), &[Key::Control], "w");
+        assert_eq!(take(&log), ["close"]);
+        chord(ui.window(), &[Key::Control], "z");
+        assert_eq!(take(&log), ["ctrl-z"]);
+        type_text(ui.window(), "inv");
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "z");
+        assert!(!take(&log).contains(&"ctrl-z".to_string()), "typed text undoes itself");
+    }
+
+    // ---- Selection, bulk bar, quick add (O45) ------------------------------------------------------
+
+    fn ctrl_click_on_a_row_picks_it_instead_of_using_it() {
+        let (ui, log) = start();
+        take(&log);
+        click_row_with(&ui, 1, &[Key::Control]);
+        assert_eq!(take(&log), ["picked:1:false:true"]);
+    }
+
+    fn shift_click_still_copies_until_a_selection_exists_then_it_extends() {
+        let (ui, log) = start();
+        take(&log);
+        click_row_with(&ui, 1, &[Key::Shift]);
+        assert_eq!(take(&log), ["copy:1"]);
+        ui.set_marked_count(1);
+        settle();
+        click_row_with(&ui, 2, &[Key::Shift]);
+        assert_eq!(take(&log), ["picked:2:true:false"]);
+    }
+
+    fn a_plain_click_picks_while_rows_are_selected_and_uses_nothing() {
+        let (ui, log) = start();
+        ui.set_marked_count(2);
+        settle();
+        take(&log);
+        click_row_with(&ui, 0, &[]);
+        assert_eq!(take(&log), ["picked:0:false:false"]);
+    }
+
+    fn ctrl_a_selects_all_but_not_while_a_query_is_typed() {
+        let (ui, log) = start();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "a");
+        assert_eq!(take(&log), ["select-all"]);
+        ui.set_query("inv".into());
+        settle();
+        chord(ui.window(), &[Key::Control], "a");
+        assert!(!take(&log).contains(&"select-all".to_string()), "Ctrl+A is the search field's with a query");
+    }
+
+    fn shift_arrows_extend_the_selection() {
+        let (ui, log) = start();
+        take(&log);
+        chord(ui.window(), &[Key::Shift], &key(Key::DownArrow));
+        assert_eq!(take(&log), ["extend:1"]);
+        chord(ui.window(), &[Key::Shift], &key(Key::UpArrow));
+        assert_eq!(take(&log), ["extend:-1"]);
+    }
+
+    fn escape_clears_a_selection_and_delete_removes_all_of_it() {
+        let (ui, log) = start();
+        ui.set_marked_count(2);
+        settle();
+        take(&log);
+        press(ui.window(), &key(Key::Delete));
+        assert_eq!(take(&log), ["bulk-delete"], "one call for the whole selection, no confirm");
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["clear-selection"]);
+    }
+
+    fn the_bulk_bar_names_the_count_and_each_button_reports_its_action() {
+        let (ui, log) = start();
+        assert!(missing(&ui, "2 selected", AccessibleRole::Groupbox), "no bar without a selection");
+        ui.set_marked_count(2);
+        settle();
+        assert!(!missing(&ui, "2 selected", AccessibleRole::Groupbox));
+        take(&log);
+        for (label, line) in [
+            ("Move to…", "bulk-move"),
+            ("Colour", "bulk-colour"),
+            ("Copy all", "bulk-copy"),
+            ("Delete", "bulk-delete"),
+            ("Clear selection", "clear-selection"),
+        ] {
+            find(&ui, label, AccessibleRole::Button).invoke_accessible_default_action();
+            assert_eq!(take(&log), [line], "{label}");
+        }
+    }
+
+    fn the_selected_row_keeps_its_more_button_without_hover() {
+        let (ui, _log) = start();
+        // The kebab plus one ⋯ per row (always drawn, so the selected row has it without a hover).
+        assert_eq!(
+            all(&ui, "More", AccessibleRole::Button).len(),
+            rows(&ui).len() + 1
+        );
+    }
+
+    fn the_new_item_row_opens_a_box_that_enter_saves_and_shift_enter_extends() {
+        let (ui, log) = start();
+        ui.set_add_list_name("Work".into());
+        settle();
+        assert!(!missing(&ui, "New item in Work", AccessibleRole::Button), "a labelled row under the items");
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        take(&log);
+        type_text(ui.window(), "hello");
+        chord(ui.window(), &[Key::Shift], &key(Key::Return));
+        type_text(ui.window(), "world");
+        press(ui.window(), &key(Key::Return));
+        assert_eq!(take(&log), ["quick-add:hello\nworld:0:false"]);
+    }
+
+    fn quick_add_preselects_link_for_a_url_and_create_and_escape_work() {
+        let (ui, log) = start();
+        ui.set_add_list_name("Work".into());
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        type_text(ui.window(), "https://example.com");
+        take(&log);
+        find(&ui, "Create item", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["quick-add:https://example.com:1:false"]);
+        type_text(ui.window(), "x");
+        press(ui.window(), &key(Key::Escape));
+        settle();
+        assert!(!missing(&ui, "New item in Work", AccessibleRole::Button), "Esc folds the box back to the row");
+    }
+
+    fn the_footer_names_the_pickers_configured_hotkey_only_when_there_is_one() {
+        let (ui, _log) = start();
+        ui.window().set_size(slint::LogicalSize::new(460.0, 480.0));
+        settle();
+        let hint = |ui: &PanelWindow| all(ui, "Control Shift Space", AccessibleRole::Text).len();
+        assert_eq!(hint(&ui), 0, "no chord set, no hint");
+        ui.set_picker_keys(ModelRc::new(VecModel::from(
+            ["Ctrl", "Shift", "Space"].map(slint::SharedString::from).to_vec(),
+        )));
+        ui.set_picker_spoken("Control Shift Space".into());
+        assert_eq!(hint(&ui), 1, "the caps are spoken as the chord");
+        assert_eq!(
+            all(&ui, "Picker anywhere", AccessibleRole::Text).len(),
+            1,
+            "the words beside the caps are read too"
+        );
+        ui.set_picker_keys(ModelRc::new(VecModel::from(Vec::<slint::SharedString>::new())));
+        assert_eq!(hint(&ui), 0, "switching the hotkey off removes the hint");
+    }
+
     fn enter_uses_the_selected_row_and_shift_enter_only_copies() {
         let (ui, log) = start();
         press(ui.window(), &key(Key::DownArrow));
@@ -248,19 +607,26 @@ ui_tests! {
         assert!(take(&log).is_empty(), "no callbacks fired");
     }
 
-    fn digits_use_the_nth_row_only_while_the_search_is_empty() {
+    fn alt_digits_use_the_nth_row_and_bare_digits_are_always_search_text() {
         let (ui, log) = start();
-        press(ui.window(), "3");
+        chord(ui.window(), &[Key::Alt], "3");
         assert_eq!(take(&log), ["quick:3"]);
         assert_eq!(ui.get_selected_index(), 2, "the used row becomes the selection");
-        assert_eq!(ui.get_query(), "", "the digit is not search text");
+        assert_eq!(ui.get_query(), "", "Alt+digit is not search text");
 
-        press(ui.window(), "9");
+        chord(ui.window(), &[Key::Alt], "9");
         assert!(take(&log).is_empty(), "six rows: there is no ninth");
 
-        type_text(ui.window(), "a3");
-        assert_eq!(ui.get_query(), "a3", "with a query, digits are text");
-        assert_eq!(take(&log), ["query:a", "query:a3"]);
+        // A bare digit, even with an empty search, filters: typing "2024" must never paste row 2.
+        type_text(ui.window(), "2024");
+        assert_eq!(ui.get_query(), "2024", "digits are text");
+        let seen = take(&log);
+        assert_eq!(seen, ["query:2", "query:20", "query:202", "query:2024"]);
+
+        // Alt+digit still works with a query.
+        chord(ui.window(), &[Key::Alt], "1");
+        assert_eq!(take(&log), ["quick:1"]);
+        assert_eq!(ui.get_query(), "2024");
     }
 
     fn a_click_on_a_row_uses_it() {
@@ -341,6 +707,104 @@ ui_tests! {
         assert_eq!(take(&log), ["tab:2"]);
     }
 
+    fn dragging_a_row_onto_a_tab_reports_the_drop_and_a_plain_click_still_uses_the_row() {
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let (ui, log) = start();
+        let _ = take(&log);
+        let row = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .find(|e| e.accessible_label().is_some_and(|l| l.starts_with("Thanks, received")))
+            .map(|e| centre(&e))
+            .expect("the first row");
+        let tab = centre(&find(&ui, "Code", AccessibleRole::Tab));
+        let w = ui.window();
+        w.dispatch_event(WindowEvent::PointerMoved { position: row });
+        w.dispatch_event(WindowEvent::PointerPressed { position: row, button: PointerEventButton::Left });
+        w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(row.x, row.y + 12.0) });
+        w.dispatch_event(WindowEvent::PointerMoved { position: tab });
+        w.dispatch_event(WindowEvent::PointerReleased { position: tab, button: PointerEventButton::Left });
+        settle();
+        assert_eq!(take(&log), ["row-on-tab:0:2"]);
+        press_at(&ui, row);
+        assert_eq!(take(&log), ["use:0"], "a click still uses the row");
+    }
+
+    fn dragging_a_row_onto_another_row_reports_the_drop_only_while_rows_can_be_arranged() {
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let (ui, log) = start();
+        let rows: Vec<_> = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .map(|e| centre(&e))
+            .collect();
+        assert!(rows.len() >= 3, "the fixture shows rows");
+        let (from, onto) = (rows[0], rows[2]);
+        let drag = |ui: &PanelWindow| {
+            let w = ui.window();
+            w.dispatch_event(WindowEvent::PointerMoved { position: from });
+            w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+            w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(from.x, from.y + 12.0) });
+            w.dispatch_event(WindowEvent::PointerMoved { position: onto });
+            w.dispatch_event(WindowEvent::PointerReleased { position: onto, button: PointerEventButton::Left });
+            settle();
+        };
+        let _ = take(&log);
+        ui.set_rows_reorderable(false);
+        drag(&ui);
+        assert!(take(&log).is_empty(), "a sorted list or a search takes no drop");
+        ui.set_rows_reorderable(true);
+        drag(&ui);
+        assert_eq!(take(&log), ["row-drop:0:2"]);
+    }
+
+    fn alt_up_and_alt_down_ask_to_move_the_selected_row_and_plain_arrows_only_select() {
+        let (ui, log) = start();
+        let _ = take(&log);
+        ui.set_rows_reorderable(false);
+        chord(ui.window(), &[Key::Alt], &key(Key::DownArrow));
+        assert!(take(&log).is_empty(), "a sorted list or a search leaves the key alone");
+        ui.set_rows_reorderable(true);
+        chord(ui.window(), &[Key::Alt], &key(Key::DownArrow));
+        chord(ui.window(), &[Key::Alt], &key(Key::UpArrow));
+        assert_eq!(take(&log), ["item-reorder:1", "item-reorder:-1"]);
+        press(ui.window(), &key(Key::DownArrow));
+        assert!(take(&log).iter().all(|l| !l.starts_with("item-reorder")));
+    }
+
+    fn a_list_icon_on_a_tab_does_not_change_its_name() {
+        use slint::{Global, Model};
+        let (ui, _log) = start();
+        let icons = snipdeck_ui::ListIcons::get(&ui).get_all();
+        assert_eq!(icons.row_count(), 24);
+        let mut tabs: Vec<snipdeck_ui::TabItem> = ui.get_tabs().iter().collect();
+        tabs[2].icon = icons.row_data(12).expect("the code icon");
+        ui.set_tabs(slint::ModelRc::new(slint::VecModel::from(tabs)));
+        slint::platform::update_timers_and_animations();
+        let tab = find(&ui, "Code", AccessibleRole::Tab);
+        assert_eq!(tab.accessible_label().as_deref(), Some("Code"));
+        assert!(tab.size().height >= 24.0);
+    }
+
+    fn right_clicking_a_tab_asks_for_its_list_menu_and_the_tab_says_it_has_one() {
+        let (ui, log) = start();
+        let tab = find(&ui, "Code", AccessibleRole::Tab);
+        assert_eq!(
+            tab.accessible_description().as_deref(),
+            Some("Right-click or press Menu for list actions")
+        );
+        let at = centre(&tab);
+        move_to(&ui, at);
+        ui.window().dispatch_event(WindowEvent::PointerPressed {
+            position: at,
+            button: PointerEventButton::Right,
+        });
+        ui.window().dispatch_event(WindowEvent::PointerReleased {
+            position: at,
+            button: PointerEventButton::Right,
+        });
+        assert_eq!(take(&log), ["list-menu:2"], "no selection change either");
+        assert_eq!(ui.get_current_tab(), 0);
+    }
+
     // ---- Header --------------------------------------------------------------------------------
 
     fn pressing_the_header_starts_a_window_drag_but_pressing_a_button_does_not() {
@@ -353,19 +817,42 @@ ui_tests! {
         w.dispatch_event(WindowEvent::PointerReleased { position: at, button: PointerEventButton::Left });
         assert_eq!(take(&log), ["drag"]);
 
-        find(&ui, "Close panel", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
+        find(&ui, "Close panel (Esc)", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
         assert_eq!(take(&log), ["close"], "the close button is not a drag handle");
     }
 
     fn the_pin_button_toggles_keep_on_top() {
         let (ui, log) = start();
-        let pin = find(&ui, "Keep on top", AccessibleRole::Button);
+        let pin = find(&ui, "Keep panel on top", AccessibleRole::Button);
         assert_eq!(pin.accessible_checkable(), Some(true));
         assert_eq!(pin.accessible_checked(), Some(true), "the Panel is on top by default");
         pin.invoke_accessible_default_action();
         assert!(!ui.get_on_top());
         assert_eq!(take(&log), ["pin:false"]);
-        assert_eq!(find(&ui, "Keep on top", AccessibleRole::Button).accessible_checked(), Some(false));
+        assert_eq!(find(&ui, "Keep panel on top", AccessibleRole::Button).accessible_checked(), Some(false));
+    }
+
+    fn ctrl_shift_p_toggles_keep_on_top_like_the_pin_button_and_does_not_pin_the_row() {
+        let (ui, log) = start();
+        press(ui.window(), &key(Key::DownArrow));
+        take(&log);
+        assert!(ui.get_on_top(), "the Panel is on top by default");
+        chord(ui.window(), &[Key::Control, Key::Shift], "P");
+        assert!(!ui.get_on_top());
+        assert_eq!(take(&log), ["pin:false"], "the pin button's callback, not the row's");
+        assert_eq!(
+            find(&ui, "Keep panel on top", AccessibleRole::Button).accessible_checked(),
+            Some(false),
+            "the button shows the new state"
+        );
+        chord(ui.window(), &[Key::Control, Key::Shift], "P");
+        assert!(ui.get_on_top());
+        assert_eq!(take(&log), ["pin:true"]);
+        assert_eq!(ui.get_query(), "", "the key does not type");
+        // Ctrl+P alone still pins the selected row and leaves the keep-on-top state alone.
+        chord(ui.window(), &[Key::Control], "p");
+        assert_eq!(take(&log), ["pin:1"]);
+        assert!(ui.get_on_top());
     }
 
     fn the_board_menu_opens_activates_and_closes_with_escape_without_closing_the_panel() {
@@ -406,10 +893,52 @@ ui_tests! {
         assert!(missing(&ui, "Pastes into Outlook", AccessibleRole::Text));
     }
 
+    fn the_footer_sits_fully_inside_the_window_at_the_default_size_for_every_scale() {
+        use slint::platform::WindowEvent;
+        let (ui, _log) = start();
+        ui.set_picker_keys(ModelRc::new(VecModel::from(
+            ["Ctrl", "Alt", "Space"].map(slint::SharedString::from).to_vec(),
+        )));
+        ui.set_picker_spoken("Control Alt Space".into());
+        for (scale, w_px, h_px) in [(1.0_f32, 320_u32, 480_u32), (1.25, 400, 600), (1.5, 480, 720)] {
+            for text in [1.0_f32, 1.5, 2.25] {
+                ui.window()
+                    .dispatch_event(WindowEvent::ScaleFactorChanged { scale_factor: scale });
+                ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(text);
+                settle();
+                ui.window().set_size(slint::PhysicalSize::new(w_px, h_px));
+                settle();
+                // The testing backend reports element boxes in the window's own (physical) pixels.
+                let phys = ui.window().size();
+                let px = |n: u32| f32::from(u16::try_from(n).unwrap_or(u16::MAX));
+                let win = slint::LogicalSize::new(px(phys.width), px(phys.height));
+                let footer = find(&ui, "Pastes into Outlook · New message", AccessibleRole::Text);
+                let (pos, size) = (footer.absolute_position(), footer.size());
+                let ctx = format!("scale {scale}, text {text}");
+                assert!(pos.x >= -0.5 && pos.x + size.width <= win.width + 0.5, "{ctx}: footer inside horizontally {pos:?} {size:?} {win:?}");
+                assert!(pos.y >= 0.0 && pos.y + size.height <= win.height + 0.5, "{ctx}: footer inside vertically");
+                for label in ["Shift Enter", "Control Alt Space"] {
+                    for hint in all(&ui, label, AccessibleRole::Text) {
+                        let (p, z) = (hint.absolute_position(), hint.size());
+                        assert!(p.x + z.width <= win.width + 0.5, "{ctx}: {label} not clipped");
+                    }
+                }
+            }
+        }
+        ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(1.0);
+    }
+
     fn the_selected_row_shows_paste_or_copy_and_no_other_row_does() {
         let (ui, _log) = start();
+        // The use button is named after its row: "Paste <title>" / "Copy <title>" (O33).
         let shown = |label: &str| {
-            ElementHandle::find_by_accessible_label(&ui, label)
+            by_role(&ui, AccessibleRole::Button)
+                .into_iter()
+                .filter(|e| {
+                    e.accessible_label()
+                        // "Copy without pasting" is the always-present copy icon, not the use button.
+                        .is_some_and(|l| l.starts_with(&format!("{label} ")) && l != "Copy without pasting")
+                })
                 .filter(|e| e.computed_opacity() > 0.9)
                 .count()
         };
@@ -471,6 +1000,18 @@ ui_tests! {
         assert!(missing(&ui, "Save from clipboard", AccessibleRole::Button));
     }
 
+    fn the_empty_state_is_announced_when_a_search_comes_up_empty() {
+        use i_slint_backend_testing::AccessibleLiveness;
+        let (ui, _log) = start();
+        fixture::set_rows(&ui, Vec::new());
+        ui.set_query("zzz".into());
+        settle();
+        assert_eq!(
+            find(&ui, "No matches", AccessibleRole::Text).accessible_live_region(),
+            Some(AccessibleLiveness::Polite)
+        );
+    }
+
     fn a_board_with_no_lists_offers_a_new_list() {
         let (ui, log) = start();
         fixture::set_rows(&ui, Vec::new());
@@ -511,12 +1052,38 @@ ui_tests! {
         assert!(missing(&ui, "Copied", AccessibleRole::Text));
     }
 
+    fn the_pointer_on_a_toast_or_its_undo_button_reports_hover() {
+        let (ui, log) = start();
+        ui.set_toast_text("Deleted".into());
+        ui.set_toast_undo_label("Undo".into());
+        settle();
+        take(&log);
+        let centre = |e: &ElementHandle| {
+            let (p, s) = (e.absolute_position(), e.size());
+            slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0)
+        };
+        let text_at = centre(&find(&ui, "Deleted", AccessibleRole::Text));
+        let button_at = centre(&find(&ui, "Undo", AccessibleRole::Button));
+        let away = slint::LogicalPosition::new(2.0, 2.0);
+        let w = ui.window();
+        w.dispatch_event(slint::platform::WindowEvent::PointerMoved { position: text_at });
+        settle();
+        assert_eq!(take(&log), ["hover:true"]);
+        w.dispatch_event(slint::platform::WindowEvent::PointerMoved { position: button_at });
+        settle();
+        let seen = take(&log);
+        assert!(!seen.contains(&"hover:false".to_string()), "the button is still the toast: {seen:?} {text_at:?} {button_at:?}");
+        w.dispatch_event(slint::platform::WindowEvent::PointerMoved { position: away });
+        settle();
+        assert_eq!(take(&log).last().map(String::as_str), Some("hover:false"));
+    }
+
     // ---- Accessibility and hit targets -----------------------------------------------------------
 
     fn every_control_has_a_role_and_a_label() {
         let (ui, _log) = start();
-        let _ = find(&ui, "Close panel", AccessibleRole::Button);
-        let _ = find(&ui, "Keep on top", AccessibleRole::Button);
+        let _ = find(&ui, "Close panel (Esc)", AccessibleRole::Button);
+        let _ = find(&ui, "Keep panel on top", AccessibleRole::Button);
         let _ = find(&ui, "Board: Work", AccessibleRole::Button);
         let search = find(&ui, "Search snippets", AccessibleRole::TextInput);
         assert_eq!(search.accessible_placeholder_text().as_deref(), Some("Search snippets"));
@@ -587,5 +1154,581 @@ ui_tests! {
             }
         }
         assert!(checked >= 15, "checked {checked} targets");
+    }
+
+    // ---- Kebab menu ---------------------------------------------------------------------------------
+
+    fn the_kebab_button_asks_the_host_for_the_app_menu_and_the_host_draws_it_under_the_header() {
+        let (ui, log) = start();
+        let kebab = find(&ui, "More", AccessibleRole::Button);
+        assert!(kebab.size().width >= MIN_HIT && kebab.size().height >= MIN_HIT);
+        // Between the pin and the close button.
+        let pin = find(&ui, "Keep panel on top", AccessibleRole::Button).absolute_position().x;
+        let close = find(&ui, "Close panel (Esc)", AccessibleRole::Button).absolute_position().x;
+        assert!(pin < kebab.absolute_position().x && kebab.absolute_position().x < close);
+
+        assert!(missing(&ui, "Panel menu", AccessibleRole::List), "closed by default");
+        kebab.invoke_accessible_default_action();
+        assert_eq!(take(&log), ["app-menu"], "the host decides; the Panel does not open it itself");
+        assert!(!ui.get_app_menu_open());
+
+        ui.set_app_menu_open(true);
+        settle();
+        let menu = find(&ui, "Panel menu", AccessibleRole::List);
+        // Right-aligned under the button, clamped inside the window.
+        let (mp, ms) = (menu.absolute_position(), menu.size());
+        let kebab = find(&ui, "More", AccessibleRole::Button);
+        let kebab_right = kebab.absolute_position().x + kebab.size().width;
+        let window = ui.window().size();
+        assert!(mp.x >= 0.0 && mp.x + ms.width <= window.width as f32, "inside the window: {mp:?} {ms:?}");
+        assert!(mp.y >= kebab.absolute_position().y + kebab.size().height - 8.0, "below the button");
+        assert!(
+            (mp.x + ms.width - kebab_right).abs() <= 0.5,
+            "right edge is the kebab's: menu {} kebab {kebab_right}",
+            mp.x + ms.width
+        );
+
+        find(&ui, "Settings", AccessibleRole::ListItem).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["app:1"]);
+    }
+
+    fn the_app_menu_takes_the_keyboard_and_escape_closes_it_without_closing_the_panel() {
+        let (ui, log) = start();
+        ui.set_app_menu_open(true);
+        settle();
+        press(ui.window(), &key(Key::DownArrow));
+        press(ui.window(), &key(Key::DownArrow));
+        press(ui.window(), &key(Key::Return));
+        assert_eq!(take(&log), ["app:1"], "focus is in the menu: two Downs and Enter pick the second row");
+        assert_eq!(ui.get_selected_index(), 0, "the list selection did not move");
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["app-dismissed"], "Esc closes the menu, not the Panel");
+
+        ui.set_app_menu_open(false);
+        settle();
+        assert!(ui.get_search_focused(), "focus returns to the search field");
+        type_text(ui.window(), "x");
+        assert_eq!(ui.get_query(), "x", "typing works again");
+    }
+
+    fn clicking_outside_the_app_menu_dismisses_it_and_the_click_goes_no_further() {
+        let (ui, log) = start();
+        ui.set_app_menu_open(true);
+        settle();
+        // Right of the menu (it ends at the kebab), over a row.
+        let y = centre(&rows(&ui)[0]).y;
+        let w = ui.window().size().width as f32;
+        press_at(&ui, LogicalPosition::new(w - 12.0, y));
+        assert_eq!(take(&log), ["app-dismissed"], "the scrim eats the click: no use");
+    }
+
+    fn shift_f10_or_the_menu_key_on_the_focused_kebab_opens_the_app_menu() {
+        for opener in [Key::Menu, Key::F10] {
+            let (ui, log) = start();
+            let mut opened = false;
+            // Tab walks the header controls; the kebab is among the first few stops.
+            for _ in 0..14 {
+                press(ui.window(), &key(Key::Tab));
+                if opener == Key::F10 {
+                    chord(ui.window(), &[Key::Shift], &key(Key::F10));
+                } else {
+                    press(ui.window(), &key(Key::Menu));
+                }
+                let seen = take(&log);
+                if seen.iter().any(|l| l == "app-menu") {
+                    assert_eq!(seen, ["app-menu"], "only the app menu, not a row's menu");
+                    opened = true;
+                    break;
+                }
+            }
+            assert!(opened, "{opener:?} on the kebab never asked for the menu");
+        }
+    }
+
+    // ---- Tooltips ----------------------------------------------------------------------------------
+
+    fn an_icon_button_shows_its_tooltip_after_500ms_of_hover_and_not_before() {
+        let (ui, _log) = start();
+        let kebab = find(&ui, "More", AccessibleRole::Button);
+        assert_eq!(ui.get_tooltip_shown(), "");
+        move_to(&ui, centre(&kebab));
+        wait(499);
+        assert_eq!(ui.get_tooltip_shown(), "", "not yet");
+        wait(2);
+        assert_eq!(ui.get_tooltip_shown(), "More");
+        // The pointer leaves: it goes.
+        move_to(&ui, away(&ui));
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "");
+    }
+
+    fn moving_from_one_icon_button_to_another_swaps_the_tooltip_instantly() {
+        let (ui, _log) = start();
+        let kebab = find(&ui, "More", AccessibleRole::Button);
+        let pin = find(&ui, "Keep panel on top", AccessibleRole::Button);
+        let close = find(&ui, "Close panel (Esc)", AccessibleRole::Button);
+        move_to(&ui, centre(&kebab));
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "More");
+        move_to(&ui, centre(&pin));
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "Keep panel on top", "no second 500ms wait");
+        move_to(&ui, centre(&close));
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "Close panel (Esc)");
+        // After a rest the next one waits again.
+        move_to(&ui, away(&ui));
+        wait(1000);
+        move_to(&ui, centre(&kebab));
+        wait(100);
+        assert_eq!(ui.get_tooltip_shown(), "");
+        wait(450);
+        assert_eq!(ui.get_tooltip_shown(), "More");
+    }
+
+    fn every_icon_only_control_in_the_panel_has_a_tooltip() {
+        let (ui, _log) = start();
+        set_pinned(&ui, fixture::pinned_n(12));
+        let hover = |label: &str| {
+            move_to(&ui, away(&ui));
+            wait(1000);
+            let target = find(&ui, label, AccessibleRole::Button);
+            move_to(&ui, centre(&target));
+            wait(501);
+            assert_eq!(ui.get_tooltip_shown(), label, "tooltip of {label:?}");
+        };
+        for label in ["More", "Keep panel on top", "Close panel (Esc)", "Add list", "Scroll right"] {
+            hover(label);
+        }
+        // The left caret only exists once the row has been scrolled.
+        press_at(&ui, centre(&find(&ui, "Scroll right", AccessibleRole::Button)));
+        settle();
+        hover("Scroll left");
+    }
+
+    fn a_tooltip_hides_while_a_menu_is_open() {
+        let (ui, _log) = start();
+        let kebab = find(&ui, "More", AccessibleRole::Button);
+        move_to(&ui, centre(&kebab));
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "More");
+        ui.set_app_menu_open(true);
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "", "the menu is the label now");
+    }
+
+    // ---- Resize grips ------------------------------------------------------------------------------
+
+    fn a_press_on_an_edge_or_corner_asks_the_host_to_resize_and_never_starts_a_drag() {
+        let (ui, log) = start();
+        let size = ui.window().size();
+        let (w, h) = (size.width as f32, size.height as f32);
+        let cases = [
+            (2.0, h / 2.0, "Left"),
+            (w - 2.0, h / 2.0, "Right"),
+            (w / 2.0, 2.0, "Top"),
+            (w / 2.0, h - 2.0, "Bottom"),
+            (2.0, 2.0, "TopLeft"),
+            (w - 2.0, 2.0, "TopRight"),
+            (2.0, h - 2.0, "BottomLeft"),
+            (w - 2.0, h - 2.0, "BottomRight"),
+        ];
+        for (x, y, edge) in cases {
+            press_at(&ui, LogicalPosition::new(x, y));
+            assert_eq!(take(&log), [format!("resize:{edge}")], "press at ({x}, {y})");
+        }
+        // The enum is the public contract.
+        let _ = [
+            ResizeEdge::Left,
+            ResizeEdge::Right,
+            ResizeEdge::Top,
+            ResizeEdge::Bottom,
+            ResizeEdge::TopLeft,
+            ResizeEdge::TopRight,
+            ResizeEdge::BottomLeft,
+            ResizeEdge::BottomRight,
+        ];
+        // The header body still drags.
+        press_at(&ui, LogicalPosition::new(170.0, 20.0));
+        assert_eq!(take(&log), ["drag"]);
+    }
+
+    // ---- The edge dock ---------------------------------------------------------------------------
+
+    fn the_open_panel_reports_the_pointer_over_any_part_of_it_once_and_swallows_no_click() {
+        let (ui, log) = start();
+        // Not hooked by `start`: every pointer move in the other tests would report it.
+        let hovers: Log = Rc::default();
+        {
+            let hovers = hovers.clone();
+            ui.on_panel_hovered(move |on| hovers.borrow_mut().push(format!("panel-hover:{on}")));
+        }
+        let row = rows(&ui).into_iter().next().expect("a row");
+        let kebab = find(&ui, "More", AccessibleRole::Button);
+        // A row, the header's kebab button, an edge grip, and the list again: always inside.
+        let grip = LogicalPosition::new(2.0, ui.window().size().height as f32 / 2.0);
+        for at in [centre(&row), centre(&kebab), grip, centre(&row)] {
+            move_to(&ui, at);
+        }
+        assert_eq!(take(&hovers), ["panel-hover:true"], "reported on entering, not on every move");
+        assert_eq!(take(&log), [] as [String; 0]);
+        // Clicks still reach the controls under the hover area.
+        press_at(&ui, centre(&row));
+        assert_eq!(take(&log), ["use:0"]);
+        ui.window().dispatch_event(WindowEvent::PointerExited);
+        assert_eq!(take(&hovers), ["panel-hover:false"]);
+    }
+
+    fn moving_the_pointer_from_the_more_button_onto_its_open_menu_keeps_the_pointer_over_the_panel() {
+        let (ui, log) = start();
+        let hovers: Log = Rc::default();
+        {
+            let hovers = hovers.clone();
+            ui.on_panel_hovered(move |on| hovers.borrow_mut().push(format!("panel-hover:{on}")));
+        }
+        let kebab = find(&ui, "More", AccessibleRole::Button);
+        move_to(&ui, centre(&kebab));
+        ui.set_app_menu_open(true);
+        settle();
+        let menu = find(&ui, "Panel menu", AccessibleRole::List);
+        for item in all(&ui, "Settings", AccessibleRole::ListItem) {
+            move_to(&ui, centre(&item));
+        }
+        move_to(&ui, centre(&menu));
+        assert!(ui.get_app_menu_open(), "the menu stays open under the pointer");
+        assert_eq!(take(&hovers), ["panel-hover:true"], "never reported as left");
+        assert_eq!(take(&log), [] as [String; 0], "no dismissal from hovering");
+    }
+
+    fn a_collapsed_panel_is_one_named_handle_that_reports_hover_and_click() {
+        let (ui, log) = start();
+        let row_at = centre(&rows(&ui).into_iter().next().expect("a row"));
+        ui.set_dock_collapsed(true);
+        settle();
+        let name = "Snipdeck handle, press the Panel hotkey to open";
+        let handle = find(&ui, name, AccessibleRole::Button);
+        let (size, at) = (handle.size(), handle.absolute_position());
+        let window = ui.window().size().to_logical(ui.window().scale_factor());
+        assert_eq!((at.x, at.y), (0.0, 0.0));
+        assert_eq!((size.width, size.height), (window.width, window.height), "the whole window");
+
+        move_to(&ui, centre(&handle));
+        assert_eq!(take(&log), ["handle-hover:true"]);
+        ui.window().dispatch_event(WindowEvent::PointerExited);
+        assert_eq!(take(&log), ["handle-hover:false"]);
+
+        press_at(&ui, centre(&handle));
+        assert_eq!(take(&log), ["handle-hover:true", "handle-click"]);
+        // What is under the handle is out of reach, pointer and keyboard.
+        ui.window().dispatch_event(WindowEvent::PointerExited);
+        take(&log);
+        press_at(&ui, row_at);
+        assert_eq!(take(&log), ["handle-hover:true", "handle-click"], "the row was not used");
+        handle.invoke_accessible_default_action();
+        assert_eq!(take(&log), ["handle-click"]);
+
+        ui.set_dock_collapsed(false);
+        settle();
+        assert!(missing(&ui, name, AccessibleRole::Button), "the handle goes when the panel opens");
+    }
+
+    fn the_grips_are_above_the_header_but_do_not_steal_clicks_just_inside_the_edge() {
+        let (ui, log) = start();
+        // 10px in from the left edge is still the row (rows start 8px in).
+        let row = rows(&ui)[0].clone();
+        let y = centre(&row).y;
+        press_at(&ui, LogicalPosition::new(10.0, y));
+        assert_eq!(take(&log), ["use:0"], "a click 10px inside the edge reaches the row");
+        let w = ui.window().size().width as f32;
+        press_at(&ui, LogicalPosition::new(w - 10.0, y));
+        assert_eq!(take(&log), ["use:0"], "and on the right side");
+        // The header buttons next to the top-right corner still work.
+        find(&ui, "Close panel (Esc)", AccessibleRole::Button).mock_single_click(PointerEventButton::Left);
+        assert_eq!(take(&log), ["close"]);
+        // A press on the top edge over the header is a resize, not a drag.
+        press_at(&ui, LogicalPosition::new(120.0, 1.0));
+        assert_eq!(take(&log), ["resize:Top"]);
+    }
+
+    fn a_resize_grip_works_while_a_menu_is_open() {
+        let (ui, log) = start();
+        ui.set_app_menu_open(true);
+        settle();
+        let h = ui.window().size().height as f32;
+        press_at(&ui, LogicalPosition::new(2.0, h / 2.0));
+        assert_eq!(take(&log), ["resize:Left"]);
+    }
+
+    // ---- Quick edit hooks ----------------------------------------------------------------------------
+
+    fn ctrl_e_edits_f2_renames_and_delete_deletes_the_selected_row() {
+        let (ui, log) = start();
+        press(ui.window(), &key(Key::DownArrow));
+        take(&log);
+        chord(ui.window(), &[Key::Control], "e");
+        assert_eq!(take(&log), ["edit:1"]);
+        chord(ui.window(), &[Key::Control], "d");
+        assert_eq!(take(&log), ["duplicate:1"]);
+        chord(ui.window(), &[Key::Control], "p");
+        assert_eq!(take(&log), ["pin:1"]);
+        press(ui.window(), &key(Key::F2));
+        assert_eq!(take(&log), ["rename:1"]);
+        press(ui.window(), &key(Key::Delete));
+        assert_eq!(take(&log), ["delete:1"]);
+        assert_eq!(ui.get_query(), "", "none of them types");
+    }
+
+    fn delete_edits_the_search_text_once_there_is_a_query_and_the_hooks_need_a_row() {
+        let (ui, log) = start();
+        type_text(ui.window(), "th");
+        take(&log);
+        press(ui.window(), &key(Key::Delete));
+        assert!(
+            take(&log).iter().all(|l| !l.starts_with("delete")),
+            "Delete is a text key while searching"
+        );
+        // Ctrl+E and F2 still work on the first match.
+        chord(ui.window(), &[Key::Control], "e");
+        assert_eq!(take(&log), ["edit:0"]);
+        press(ui.window(), &key(Key::F2));
+        assert_eq!(take(&log), ["rename:0"]);
+
+        let (ui, log) = start();
+        fixture::set_rows(&ui, Vec::new());
+        settle();
+        chord(ui.window(), &[Key::Control], "e");
+        press(ui.window(), &key(Key::F2));
+        press(ui.window(), &key(Key::Delete));
+        assert_eq!(take(&log), Vec::<String>::new(), "no rows, nothing to edit");
+    }
+
+    fn a_double_click_on_a_row_never_asks_to_edit_it() {
+        let (ui, log) = start();
+        let at = centre(&rows(&ui)[2]);
+        move_to(&ui, at);
+        for _ in 0..2 {
+            ui.window().dispatch_event(WindowEvent::PointerPressed {
+                position: at,
+                button: PointerEventButton::Left,
+            });
+            ui.window().dispatch_event(WindowEvent::PointerReleased {
+                position: at,
+                button: PointerEventButton::Left,
+            });
+        }
+        // The first click used the row; the second adds nothing. Ctrl+E, F2 and the menu edit.
+        let seen = take(&log);
+        assert!(seen.iter().any(|l| l == "use:2"), "{seen:?}");
+        assert!(seen.iter().all(|l| !l.starts_with("edit")), "{seen:?}");
+    }
+
+    // ---- Pinned strip scrolling ------------------------------------------------------------------------
+
+    fn a_pinned_strip_that_fits_shows_no_scroll_buttons() {
+        let (ui, _log) = start();
+        set_pinned(&ui, fixture::pinned_n(2));
+        assert!(missing(&ui, "Scroll left", AccessibleRole::Button));
+        assert!(missing(&ui, "Scroll right", AccessibleRole::Button));
+    }
+
+    fn the_mouse_wheel_and_shift_wheel_scroll_an_overflowing_strip_sideways() {
+        let (ui, _log) = start();
+        set_pinned(&ui, fixture::pinned_n(12));
+        assert!(pinned_scroll(&ui).abs() < 0.5, "starts at the first chip");
+        let on_chip = centre(&find(&ui, "Pinned 02", AccessibleRole::Button));
+
+        // A vertical wheel notch over a chip scrolls the row to the left (later chips come into view).
+        scroll_at(&ui, on_chip, 0.0, -60.0);
+        settle();
+        let after_wheel = pinned_scroll(&ui);
+        assert!(after_wheel > 20.0, "wheel moved the row: {after_wheel}");
+
+        // Shift+wheel does the same; so does a native horizontal delta.
+        let shift = char::from(Key::Shift).to_string();
+        ui.window().dispatch_event(WindowEvent::KeyPressed {
+            text: shift.clone().into(),
+        });
+        scroll_at(&ui, on_chip, 0.0, -60.0);
+        ui.window().dispatch_event(WindowEvent::KeyReleased { text: shift.into() });
+        settle();
+        let after_shift = pinned_scroll(&ui);
+        assert!(after_shift > after_wheel + 20.0, "shift+wheel: {after_wheel} -> {after_shift}");
+        scroll_at(&ui, on_chip, -60.0, 0.0);
+        settle();
+        assert!(pinned_scroll(&ui) > after_shift + 20.0, "horizontal delta");
+
+        // Wheel up goes back, and never past the start.
+        for _ in 0..20 {
+            scroll_at(&ui, on_chip, 0.0, 120.0);
+        }
+        settle();
+        assert!(pinned_scroll(&ui).abs() < 0.5, "clamped at the start");
+        // And a long wheel down stops at the last chip.
+        for _ in 0..40 {
+            scroll_at(&ui, on_chip, 0.0, -120.0);
+        }
+        settle();
+        let last = find(&ui, "Pinned 12", AccessibleRole::Button);
+        let w = ui.window().size().width as f32;
+        assert!(last.absolute_position().x + last.size().width <= w - 8.0 + 0.5, "last chip fully in view");
+    }
+
+    fn scroll_buttons_float_at_the_ends_that_have_more_chips_and_page_through_the_strip() {
+        let (ui, log) = start();
+        set_pinned(&ui, fixture::pinned_n(12));
+        // At the start there is nothing to the left.
+        assert!(missing(&ui, "Scroll left", AccessibleRole::Button));
+        let right = find(&ui, "Scroll right", AccessibleRole::Button);
+        assert!(right.size().width >= MIN_HIT && right.size().height >= MIN_HIT);
+        assert!(right.absolute_position().x + right.size().width <= ui.window().size().width as f32 - 8.0 + 0.5);
+
+        press_at(&ui, centre(&right));
+        settle();
+        let paged = pinned_scroll(&ui);
+        assert!(paged > 100.0, "Scroll right paged the row: {paged}");
+        let left = find(&ui, "Scroll left", AccessibleRole::Button);
+        assert!(left.size().width >= MIN_HIT && left.size().height >= MIN_HIT);
+        assert!(left.absolute_position().x < right.absolute_position().x);
+        assert_eq!(take(&log), Vec::<String>::new(), "a caret button is not a chip");
+
+        // Page right until the end: the right caret goes, the last chip is fully visible.
+        for _ in 0..12 {
+            if missing(&ui, "Scroll right", AccessibleRole::Button) {
+                break;
+            }
+            press_at(&ui, centre(&find(&ui, "Scroll right", AccessibleRole::Button)));
+            settle();
+        }
+        assert!(missing(&ui, "Scroll right", AccessibleRole::Button), "at the end");
+        let last = find(&ui, "Pinned 12", AccessibleRole::Button);
+        assert!(last.absolute_position().x + last.size().width <= ui.window().size().width as f32 - 8.0 + 0.5);
+
+        // And back to the start.
+        for _ in 0..12 {
+            if missing(&ui, "Scroll left", AccessibleRole::Button) {
+                break;
+            }
+            press_at(&ui, centre(&find(&ui, "Scroll left", AccessibleRole::Button)));
+            settle();
+        }
+        assert!(missing(&ui, "Scroll left", AccessibleRole::Button));
+        assert!(pinned_scroll(&ui).abs() < 0.5);
+    }
+
+    fn a_chip_in_an_overflowing_strip_still_uses_on_click() {
+        let (ui, log) = start();
+        set_pinned(&ui, fixture::pinned_n(12));
+        press_at(&ui, centre(&find(&ui, "Pinned 02", AccessibleRole::Button)));
+        assert_eq!(take(&log), ["pinned:1"]);
+    }
+
+    // ---- The Recent inbox -----------------------------------------------------------------------
+
+    fn the_clock_tab_exists_only_while_history_is_on() {
+        let (ui, _log) = start();
+        assert!(missing(&ui, "Recent", AccessibleRole::Tab), "off by default: no clock tab");
+        ui.set_recent_available(true);
+        settle();
+        let tab = find(&ui, "Recent", AccessibleRole::Tab);
+        let first_list_tab = by_role(&ui, AccessibleRole::Tab)
+            .into_iter()
+            .filter(|t| t.accessible_label().as_deref() != Some("Recent"))
+            .map(|t| t.absolute_position().x)
+            .fold(f32::MAX, f32::min);
+        assert!(tab.absolute_position().x < first_list_tab, "the clock is at the far left");
+        assert!(tab.size().width >= MIN_HIT && tab.size().height >= MIN_HIT);
+    }
+
+    fn choosing_the_clock_tab_shows_the_entries_and_a_list_tab_goes_back() {
+        let (ui, log) = start();
+        let (rec, rec_log) = (ui.as_weak(), log.clone());
+        ui.on_recent_toggled(move |open| {
+            let _ = &rec;
+            rec_log.borrow_mut().push(format!("recent:{open}"));
+        });
+        ui.set_recent_available(true);
+        ui.set_recent_rows(ModelRc::new(VecModel::from(vec![
+            RecentRow { id: 0, preview: "first copy".into(), app: "Notepad".into(), age_minutes: 3 },
+            RecentRow { id: 2, preview: "second copy".into(), app: "".into(), age_minutes: 0 },
+        ])));
+        settle();
+        let list_rows = rows(&ui).len();
+        press_at(&ui, centre(&find(&ui, "Recent", AccessibleRole::Tab)));
+        settle();
+        assert!(ui.get_recent_open());
+        assert_eq!(take(&log), ["recent:true"]);
+        assert!(rows(&ui).len() != list_rows || list_rows == 0, "the entries replaced the list rows");
+        assert!(!all(&ui, "Recent copies", AccessibleRole::List).is_empty(), "the Recent list is labelled");
+
+        // A list tab leaves the inbox and reports the tab.
+        let tabs = by_role(&ui, AccessibleRole::Tab);
+        let list_tab = tabs
+            .iter()
+            .find(|t| t.accessible_label().as_deref() != Some("Recent"))
+            .expect("a list tab");
+        press_at(&ui, centre(list_tab));
+        settle();
+        assert!(!ui.get_recent_open());
+        let seen = take(&log);
+        assert!(seen.contains(&"recent:false".to_string()), "{seen:?}");
+        assert!(seen.iter().any(|l| l.starts_with("tab:")), "{seen:?}");
+    }
+
+    fn the_recent_list_has_its_own_keys_and_none_of_the_item_shortcuts_fire() {
+        let (ui, log) = start();
+        let (copied, removed) = (log.clone(), log.clone());
+        ui.on_recent_copied(move |i| copied.borrow_mut().push(format!("rcopy:{i}")));
+        ui.on_recent_deleted(move |i| removed.borrow_mut().push(format!("rdel:{i}")));
+        ui.set_recent_available(true);
+        ui.set_recent_rows(ModelRc::new(VecModel::from(vec![
+            RecentRow { id: 1, preview: "one".into(), app: "".into(), age_minutes: 1 },
+            RecentRow { id: 2, preview: "two".into(), app: "".into(), age_minutes: 2 },
+        ])));
+        press_at(&ui, centre(&find(&ui, "Recent", AccessibleRole::Tab)));
+        settle();
+        take(&log);
+
+        press(ui.window(), &key(Key::DownArrow));
+        assert_eq!(ui.get_recent_selected(), 1);
+        assert_eq!(ui.get_selected_index(), 0, "the item selection did not move");
+        press(ui.window(), &key(Key::DownArrow));
+        assert_eq!(ui.get_recent_selected(), 1, "clamped at the last entry");
+        press(ui.window(), &key(Key::Return));
+        press(ui.window(), &key(Key::Delete));
+        press(ui.window(), &key(Key::F2));
+        press(ui.window(), "1");
+        chord(ui.window(), &[Key::Control], "e");
+        chord(ui.window(), &[Key::Control], "d");
+        chord(ui.window(), &[Key::Control], "p");
+        settle();
+        // The digit is search text only with a query; here it must not use an item either.
+        let seen = take(&log);
+        assert!(seen.contains(&"rcopy:2".to_string()), "{seen:?}");
+        assert!(seen.contains(&"rdel:2".to_string()), "{seen:?}");
+        for line in &seen {
+            assert!(
+                !line.starts_with("use:") && !line.starts_with("edit:") && !line.starts_with("duplicate:") && !line.starts_with("pin:") && !line.starts_with("delete:") && !line.starts_with("rename:") && !line.starts_with("quick:") && !line.starts_with("move:"),
+                "an item shortcut fired in the Recent list: {line}"
+            );
+        }
+    }
+
+    fn the_empty_recent_list_says_why_and_the_menu_offers_save_to() {
+        let (ui, _log) = start();
+        ui.set_recent_available(true);
+        ui.set_recent_targets(ModelRc::new(VecModel::from(vec![ChoiceEntry {
+            label: "Replies".into(),
+            count: 0,
+            color: slint::Color::default(),
+            icon: slint::Image::default(),
+            checked: false,
+        }])));
+        press_at(&ui, centre(&find(&ui, "Recent", AccessibleRole::Tab)));
+        settle();
+        assert!(!all(&ui, "Nothing copied yet", AccessibleRole::Text).is_empty()
+            || ElementHandle::find_by_accessible_label(&ui, "Nothing copied yet").next().is_some());
+        ui.set_recent_paused(true);
+        settle();
+        assert!(ElementHandle::find_by_accessible_label(&ui, "History is paused").next().is_some());
     }
 }

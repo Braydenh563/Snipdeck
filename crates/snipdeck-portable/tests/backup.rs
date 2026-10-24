@@ -20,12 +20,32 @@ use jiff::Zoned;
 use jiff::civil::date;
 use jiff::tz::{Offset, TimeZone};
 use snipdeck_core::{Format, Formats, Item, ItemKind, Placement};
-use snipdeck_portable::KeySource;
 use snipdeck_portable::backup::{
-    BackupOutcome, DEFAULT_KEEP, file_name, list_backups, parse_file_name, restore, run_if_due,
+    BackupOutcome, DEFAULT_KEEP, file_name, list_backups, parse_file_name, run_if_due,
+};
+use snipdeck_portable::{
+    BoardLayout, ImportOptions, ImportReport, KeySource, MergeStrategy, import_archive_path,
 };
 use snipdeck_store::crypto::DataKey;
 use snipdeck_store::{ItemRepo, Store};
+
+/// A restore: the shared import path, keeping the backup's boards and skipping what exists.
+fn restore(
+    lib: &mut Store,
+    backup: &std::path::Path,
+    now: snipdeck_core::Timestamp,
+    key: KeySource<'_>,
+    max_boards: Option<usize>,
+) -> snipdeck_portable::Result<ImportReport> {
+    let options = ImportOptions {
+        layout: BoardLayout::KeepBoards,
+        merge: MergeStrategy::SkipDuplicates,
+        key,
+        max_boards,
+        ..ImportOptions::default()
+    };
+    import_archive_path(lib, backup, now, &options)
+}
 
 fn zone(hours: i8) -> TimeZone {
     TimeZone::fixed(Offset::from_hours(hours).unwrap())
@@ -153,7 +173,7 @@ fn only_the_newest_keep_backups_survive() {
         else {
             panic!()
         };
-        assert!(prune_failed.is_empty());
+        assert_eq!(prune_failed.len(), 0);
         assert_eq!(pruned.len(), usize::from(day > 3), "day {day}");
     }
     assert_eq!(
@@ -162,6 +182,31 @@ fn only_the_newest_keep_backups_survive() {
             "snipdeck-backup-20261008.snipdeck",
             "snipdeck-backup-20261009.snipdeck",
             "snipdeck-backup-20261010.snipdeck",
+        ]
+    );
+}
+
+#[test]
+fn a_future_dated_file_does_not_hold_a_keep_slot() {
+    let dir = tempfile::tempdir().unwrap();
+    let s = sample_store();
+    let backups = dir.path().join("backups");
+    fs::create_dir_all(&backups).unwrap();
+    for name in [
+        "snipdeck-backup-20990101.snipdeck",
+        "snipdeck-backup-20261001.snipdeck",
+        "snipdeck-backup-20261002.snipdeck",
+    ] {
+        fs::write(backups.join(name), b"old").unwrap();
+    }
+    run_if_due(&s, dir.path(), &local(2026, 10, 3, 12, 0, 0), 2, None).unwrap();
+    // Two kept by date (the new one and the 2nd); the 1st goes; the future one is left alone.
+    assert_eq!(
+        names(dir.path()),
+        [
+            "snipdeck-backup-20261002.snipdeck",
+            "snipdeck-backup-20261003.snipdeck",
+            "snipdeck-backup-20990101.snipdeck",
         ]
     );
 }
@@ -444,7 +489,7 @@ fn restore_refuses_to_go_past_the_board_limit_and_changes_nothing() {
 #[test]
 fn listing_backups_is_newest_first_and_empty_without_a_folder() {
     let dir = tempfile::tempdir().unwrap();
-    assert!(list_backups(dir.path()).unwrap().is_empty());
+    assert_eq!(list_backups(dir.path()).unwrap().len(), 0);
     let s = sample_store();
     for day in [3, 1, 2] {
         run_if_due(&s, dir.path(), &local(2026, 10, day, 12, 0, 0), 7, None).unwrap();

@@ -282,10 +282,22 @@ fn do_register(
     if id > MAX_ID || chord.validate().is_err() {
         return Err(HotkeyError::Invalid);
     }
+    // Settings changes re-apply every chord: one already in place stays untouched instead of
+    // being freed and registered again (a failure in between lost the hotkey).
+    if registered.get(&id) == Some(&chord) {
+        return Ok(());
+    }
     let previous = registered.remove(&id);
     if previous.is_some() {
         // Free the id (and the old chord) first: the same chord again must succeed.
-        unregister_raw(id)?;
+        // Unverified on Windows (Fable v1 sweep A17): if freeing fails the hotkey is still
+        // registered, so it stays in the table.
+        if let Err(e) = unregister_raw(id) {
+            if let Some(old) = previous {
+                registered.insert(id, old);
+            }
+            return Err(e);
+        }
     }
     match register_raw(id, chord) {
         Ok(()) => {

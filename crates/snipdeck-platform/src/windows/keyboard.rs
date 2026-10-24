@@ -12,7 +12,7 @@
 use windows::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBD_EVENT_FLAGS, KEYBDINPUT,
     KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, SendInput, VIRTUAL_KEY, VK_INSERT, VK_LCONTROL,
-    VK_LMENU, VK_LSHIFT, VK_LWIN, VK_RCONTROL, VK_RMENU, VK_RSHIFT, VK_RWIN, VK_V,
+    VK_LEFT, VK_LMENU, VK_LSHIFT, VK_LWIN, VK_RCONTROL, VK_RMENU, VK_RSHIFT, VK_RWIN, VK_V,
 };
 
 use crate::keys::{KeyEvent, Modifiers};
@@ -31,6 +31,8 @@ const _: () = {
     assert!(win_logic::VK_RWIN == VK_RWIN.0);
     assert!(win_logic::VK_V == VK_V.0);
     assert!(win_logic::VK_INSERT == VK_INSERT.0);
+    // Unverified on Windows (Fable v1 sweep A5).
+    assert!(win_logic::VK_LEFT == VK_LEFT.0);
 };
 
 /// [`Keyboard`] on the real keyboard. Stateless; cheap to create.

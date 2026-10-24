@@ -6,7 +6,10 @@
 use std::{cell::Cell, cell::RefCell, rc::Rc};
 
 use snipdeck_core::Timestamp;
-use snipdeck_platform::{chord::Chord, route::Target};
+use snipdeck_platform::{
+    chord::Chord,
+    route::{ScreenRect, Target},
+};
 
 use crate::settings::HotkeyAction;
 
@@ -56,6 +59,20 @@ impl Clock for FixedClock {
 pub trait ClipboardText {
     /// The clipboard's text, or `None` when it holds none or stays busy. Writes nothing.
     fn read_text(&mut self) -> Option<String>;
+    /// Whether the clipboard holds a picture (a screenshot, say).
+    fn has_image(&mut self) -> bool;
+    /// Empties the clipboard if it still holds exactly `text` (so something the user copied
+    /// since is never lost). Whether it was cleared.
+    fn clear_if_text(&mut self, text: &str) -> bool;
+    /// The clipboard's sequence number, which changes whenever its contents do; `None` when it
+    /// cannot be read. Covers content that is not text (HTML, images, files).
+    fn sequence_number(&mut self) -> Option<u32>;
+    /// The sequence number read right after this clipboard's latest write (not now): the
+    /// reference for "nothing has touched the clipboard since our write". `None` before a write.
+    fn written_sequence(&mut self) -> Option<u32>;
+    /// Empties the clipboard, whatever formats it holds, if its sequence number is still
+    /// `sequence`. Whether it did.
+    fn clear_if_sequence(&mut self, sequence: u32) -> bool;
 }
 
 #[cfg(windows)]
@@ -63,16 +80,63 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
     fn read_text(&mut self) -> Option<String> {
         Self::read_text(self)
     }
+    fn has_image(&mut self) -> bool {
+        Self::has_image(self)
+    }
+    fn clear_if_text(&mut self, text: &str) -> bool {
+        Self::clear_if_text(self, text)
+    }
+    fn sequence_number(&mut self) -> Option<u32> {
+        Self::sequence_number(self)
+    }
+    fn written_sequence(&mut self) -> Option<u32> {
+        Self::written_sequence(self)
+    }
+    fn clear_if_sequence(&mut self, sequence: u32) -> bool {
+        Self::clear_if_sequence(self, sequence)
+    }
 }
 
 /// The fake clipboard "holds" what was last written to it (as a real one holds what the user
 /// last copied), so a test seeds it by pushing a payload onto `written`.
 impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
     fn read_text(&mut self) -> Option<String> {
+        self.text_reads += 1;
         self.written.last()?.data().iter().find_map(|d| match d {
             snipdeck_platform::payload::Data::Text(text) => Some(text.clone()),
             _ => None,
         })
+    }
+    fn has_image(&mut self) -> bool {
+        self.written.last().is_some_and(|p| {
+            p.data()
+                .iter()
+                .any(|d| matches!(d, snipdeck_platform::payload::Data::Png(_)))
+        })
+    }
+    fn clear_if_text(&mut self, text: &str) -> bool {
+        if self.read_text().as_deref() != Some(text) || self.busy_for_clear() {
+            return false;
+        }
+        self.written.clear();
+        self.sequence += 1;
+        self.log.push("clear".into());
+        true
+    }
+    fn sequence_number(&mut self) -> Option<u32> {
+        Some(self.sequence)
+    }
+    fn written_sequence(&mut self) -> Option<u32> {
+        self.write_sequence
+    }
+    fn clear_if_sequence(&mut self, sequence: u32) -> bool {
+        if self.sequence != sequence || self.busy_for_clear() {
+            return false;
+        }
+        self.written.clear();
+        self.sequence += 1;
+        self.log.push("clear".into());
+        true
     }
 }
 
@@ -84,6 +148,12 @@ pub trait TargetSource {
     /// Makes the Target the foreground window again so injected keys reach it (the panel may
     /// have activated itself for text entry). `false` if there is no Target or Windows refused.
     fn refocus(&self) -> bool;
+    /// Where the Target's text caret is on the screen, in physical pixels, if it has a system
+    /// caret. Read before a popup takes the foreground. `None` (the default) means "unknown":
+    /// the Picker then opens at the mouse.
+    fn caret(&self) -> Option<ScreenRect> {
+        None
+    }
 }
 
 /// A scripted Target. Cloning shares the state, so a test keeps a handle after handing the
@@ -92,6 +162,7 @@ pub trait TargetSource {
 pub struct FakeTargets {
     current: Rc<RefCell<Option<Target>>>,
     refocused: Rc<Cell<u32>>,
+    caret: Rc<Cell<Option<ScreenRect>>>,
 }
 
 impl FakeTargets {
@@ -101,7 +172,13 @@ impl FakeTargets {
         Self {
             current: Rc::new(RefCell::new(target)),
             refocused: Rc::default(),
+            caret: Rc::default(),
         }
+    }
+
+    /// Sets where the Target's caret is (`None`: it has none).
+    pub fn set_caret(&self, caret: Option<ScreenRect>) {
+        self.caret.set(caret);
     }
 
     /// Changes the Target, as the user switching windows would.
@@ -124,6 +201,10 @@ impl TargetSource for FakeTargets {
     fn refocus(&self) -> bool {
         self.refocused.set(self.refocused.get() + 1);
         self.current.borrow().is_some()
+    }
+
+    fn caret(&self) -> Option<ScreenRect> {
+        self.caret.get()
     }
 }
 
@@ -287,11 +368,28 @@ mod tests {
         assert_eq!(action_of(99), None);
     }
 
+    /// Every action has a chord (Capture is off by default, see `HotkeyAction::default_chord`).
+    fn all_on() -> Hotkeys {
+        Hotkeys {
+            capture: "Ctrl+Shift+2".into(),
+            ..Hotkeys::default()
+        }
+    }
+
     #[test]
-    fn every_default_hotkey_is_registered() {
+    fn every_default_hotkey_is_registered_and_capture_stays_off_until_set() {
         let mut backend = FakeHotkeys::default();
         let problems = register_all(&mut backend, &Hotkeys::default());
         assert_eq!(problems, Vec::new());
+        assert_eq!(backend.registered.len(), 3);
+        assert!(
+            backend
+                .registered
+                .iter()
+                .all(|(id, _)| *id != id_of(HotkeyAction::Capture))
+        );
+        let mut backend = FakeHotkeys::default();
+        assert_eq!(register_all(&mut backend, &all_on()), Vec::new());
         assert_eq!(backend.registered.len(), 4);
         let toggle = backend
             .registered
@@ -307,7 +405,7 @@ mod tests {
             taken: vec!["Ctrl+Shift+Space".into()],
             ..FakeHotkeys::default()
         };
-        let problems = register_all(&mut backend, &Hotkeys::default());
+        let problems = register_all(&mut backend, &all_on());
         assert_eq!(
             problems,
             [HotkeyProblem {
@@ -339,7 +437,7 @@ mod tests {
     #[test]
     fn pausing_removes_every_hotkey_and_resuming_registers_them_again() {
         let mut backend = FakeHotkeys::default();
-        let hotkeys = Hotkeys::default();
+        let hotkeys = all_on();
         assert_eq!(register_all(&mut backend, &hotkeys), Vec::new());
         assert_eq!(unregister_all(&mut backend), 0);
         assert_eq!(backend.registered, Vec::new());
@@ -351,7 +449,7 @@ mod tests {
     #[test]
     fn resuming_registers_the_chords_in_force_now_not_the_ones_from_start_up() {
         let mut backend = FakeHotkeys::default();
-        let at_start = Hotkeys::default();
+        let at_start = all_on();
         assert_eq!(register_all(&mut backend, &at_start), Vec::new());
         assert_eq!(
             set_paused(&mut backend, true, &at_start),

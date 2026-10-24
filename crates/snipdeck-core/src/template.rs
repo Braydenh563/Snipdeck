@@ -8,10 +8,10 @@
 //! # Which render method to call
 //!
 //! The app should use [`Template::render_checked`]: it enforces the user's [`Entitlements`]
-//! (prompted fields are Pro) and the output size limit, [`MAX_RENDERED_BYTES`], and reports
+//! (prompted fields are Supporter) and the output size limit, [`MAX_RENDERED_BYTES`], and reports
 //! both as a [`RenderError`]. [`Template::try_render`] does the size check only, for callers
 //! that have verified the entitlement themselves. [`Template::render`] is the unchecked
-//! primitive: it resolves Pro placeholders for anyone and, when the output would be over
+//! primitive: it resolves Supporter placeholders for anyone and, when the output would be over
 //! the limit, cuts it there instead of failing.
 //!
 //! # Syntax
@@ -23,8 +23,8 @@
 //! | `{datetime:FORMAT}` | Free | the date and time formatted by `FORMAT`, see below |
 //! | `{clipboard}` | Free | the clipboard text the caller supplied, or nothing |
 //! | `{cursor}` | Free | nothing; marks where the caret should land, see [`Rendered::cursor_from_end`] |
-//! | `{field:Name}` / `{field:Name\|default}` | Pro | the answer to a text prompt |
-//! | `{choice:Name\|a\|b\|c}` | Pro | the answer to a pick-one prompt |
+//! | `{field:Name}` / `{field:Name\|default}` | Supporter | the answer to a text prompt |
+//! | `{choice:Name\|a\|b\|c}` | Supporter | the answer to a pick-one prompt |
 //!
 //! `{{` and `}}` produce literal braces ([`escape`] does this for arbitrary text). Any other
 //! use of a brace is a [`TemplateError`] with the byte span of the problem: an unknown
@@ -78,6 +78,10 @@ mod tests;
 /// SPEC §5.4 caps inline editing at 16 KB and the viewer at 5 MB; a pasted result larger than
 /// this is a mistake, not a use case.
 pub const MAX_RENDERED_BYTES: usize = 16 * 1024 * 1024;
+
+/// The most distinct prompts (fields and choices) one template may have: the fill form
+/// validates and lists this many, so a template with more is refused when it is parsed.
+pub const MAX_PROMPTS: usize = 16;
 
 /// Placeholder keywords, for hints in error messages.
 const KEYWORDS: [&str; 7] = [
@@ -339,6 +343,11 @@ pub enum TemplateErrorKind {
         /// The name.
         name: String,
     },
+    /// More than [`MAX_PROMPTS`] distinct prompts.
+    TooManyPrompts {
+        /// The limit, [`MAX_PROMPTS`].
+        max: usize,
+    },
     /// A `%x` in a `{datetime:…}` format that is not in the supported set.
     UnknownFormatSpecifier {
         /// The character after the `%`.
@@ -404,6 +413,10 @@ impl fmt::Display for TemplateErrorKind {
                 "`{name}` is used for two different prompts; use the same kind and options \
                  each time, or pick another name"
             ),
+            Self::TooManyPrompts { max } => write!(
+                f,
+                "a template can ask for at most {max} different fields or choices"
+            ),
             Self::UnknownFormatSpecifier { specifier } => write!(
                 f,
                 "unknown date format `%{specifier}`; supported: \
@@ -414,7 +427,7 @@ impl fmt::Display for TemplateErrorKind {
 }
 
 /// Why a template could not be rendered. Both cases leave the template and context as they
-/// were; show the user a message (or the Pro upsell) and let them try again.
+/// were; show the user a message (or the Supporter upsell) and let them try again.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum RenderError {
     /// The result would be longer than [`MAX_RENDERED_BYTES`].
@@ -423,8 +436,8 @@ pub enum RenderError {
         /// The limit, [`MAX_RENDERED_BYTES`].
         limit: usize,
     },
-    /// The template needs a Pro feature the entitlements do not include.
-    #[error("`{0}` needs Snipdeck Pro")]
+    /// The template needs a Supporter feature the entitlements do not include.
+    #[error("`{0}` needs Snipdeck Supporter")]
     ProRequired(Feature),
 }
 
@@ -510,13 +523,18 @@ impl Template {
         self.prompts.clone()
     }
 
+    /// Whether the template says `{clipboard}`: only then does a use need to read the clipboard.
+    pub fn uses_clipboard(&self) -> bool {
+        self.parts.iter().any(|p| matches!(p, Part::Clipboard))
+    }
+
     /// Whether using this template needs `feature`: only [`Feature::PromptedFields`], and only
     /// if it has a `{field}` or `{choice}`.
     pub fn requires(&self, feature: Feature) -> bool {
         match feature {
             Feature::PromptedFields => !self.prompts.is_empty(),
             Feature::UnlimitedBoards
-            | Feature::SensitiveEncryption
+            | Feature::MasterPassword
             | Feature::FloatingLists
             | Feature::PasteStack => false,
         }
@@ -544,7 +562,7 @@ impl Template {
     /// option. An answer is used as given, even if empty or not among a choice's options.
     ///
     /// This resolves `{field}` and `{choice}` for any tier, so a caller that forgets
-    /// [`Template::check`] gives Free users a Pro feature. If the output would exceed
+    /// [`Template::check`] gives Free users a Supporter feature. If the output would exceed
     /// [`MAX_RENDERED_BYTES`] it is cut at that length (on a character boundary) rather than
     /// grown without bound; [`Template::try_render`] reports that instead.
     pub fn render(&self, ctx: &RenderContext<'_>) -> Rendered {
@@ -778,6 +796,9 @@ impl Parser {
     ) -> Result<usize, TemplateError> {
         let Some(&index) = self.prompt_index.get(name) else {
             let index = self.prompts.len();
+            if index >= MAX_PROMPTS {
+                return err(span, TemplateErrorKind::TooManyPrompts { max: MAX_PROMPTS });
+            }
             self.prompt_index.insert(name.to_owned(), index);
             self.prompts.push(Prompt {
                 name: name.to_owned(),

@@ -57,6 +57,7 @@ fn an_item_round_trips_every_field() {
     it.tags = BTreeSet::from([tag.id]);
     it.pinned = true;
     it.always_plain = true;
+    it.label = Some(snipdeck_core::ItemLabel::Violet);
     it.use_count = 42;
     it.last_used_at = Some(Timestamp::new(1_800_000_123, 456_789_012).unwrap());
     it.source_app = Some("Outlook".to_owned());
@@ -75,7 +76,7 @@ fn unused_optional_fields_stay_none() {
     let it = item(&mut s, l.id, "plain", "x");
     let back = s.item(it.id).unwrap();
     assert_eq!((back.last_used_at, back.source_app.clone()), (None, None));
-    assert!(back.tags.is_empty());
+    assert_eq!(back.tags.len(), 0);
 }
 
 #[test]
@@ -175,7 +176,7 @@ fn an_unknown_tag_on_an_item_is_refused_and_nothing_is_written() {
         matches!(err, Err(Error::NotFound { entity: "tag", .. })),
         "{err:?}"
     );
-    assert!(s.items(l.id).unwrap().is_empty());
+    assert_eq!(s.items(l.id).unwrap().len(), 0);
     assert_healthy(&s);
 }
 
@@ -355,7 +356,7 @@ fn tags_on_items_are_replaced_by_update_and_removed_with_the_tag() {
     assert_eq!(s.item(it.id).unwrap().tags, BTreeSet::from([blue.id]));
 
     s.delete_tag(blue.id).unwrap();
-    assert!(s.item(it.id).unwrap().tags.is_empty());
+    assert_eq!(s.item(it.id).unwrap().tags.len(), 0);
     assert_eq!(s.all_items().unwrap()[0].tags.len(), 0);
     assert_healthy(&s);
 }
@@ -470,7 +471,7 @@ fn a_failed_blob_delete_after_purge_still_reports_the_count() {
     block_deletion(dir.path(), &b);
     s.trash(Trashable::Item(x.id), at(1)).unwrap();
     assert_eq!(s.purge(at(2)).unwrap(), 1);
-    assert!(s.trashed().unwrap().is_empty());
+    assert_eq!(s.trashed().unwrap().len(), 0);
 }
 
 /// Review L11: a metadata-only edit neither reads the content nor loses it from the index, even

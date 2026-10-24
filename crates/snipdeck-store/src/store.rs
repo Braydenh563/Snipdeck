@@ -1,5 +1,6 @@
 //! [`Store`]: the SQLite database plus the blob folder, behind every repository trait.
 
+use std::cell::Cell;
 use std::collections::HashSet;
 use std::fs::{self, File, OpenOptions, TryLockError};
 use std::path::{Path, PathBuf};
@@ -9,7 +10,7 @@ use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior};
 use snipdeck_core::BlobRef;
 
 use crate::blobs::Blobs;
-use crate::codec::is_valid_name;
+use crate::codec::{blob_refs, is_valid_name};
 use crate::crypto::DataKey;
 use crate::migrations::{self, MIGRATIONS};
 use crate::{Error, Result};
@@ -39,8 +40,20 @@ pub struct Store {
     pub(crate) blobs: Blobs,
     /// The unlocked data key, when the key ring is unlocked (see `keys.rs`).
     pub(crate) key: Option<DataKey>,
+    /// Rows changed by "quiet" writes (a use counted, the Recent inbox), which are not part
+    /// of [`ItemRepo::change_counter`](crate::ItemRepo::change_counter).
+    pub(crate) quiet: Quiet,
     // Last, so the database is closed before the lock is released.
     _lock: Option<File>,
+}
+
+/// Counts of rows changed by writes that do not move `change_counter`.
+#[derive(Debug, Default)]
+pub(crate) struct Quiet {
+    /// Every quiet write: counted uses and the Recent inbox.
+    pub all: Cell<u64>,
+    /// Counted uses alone.
+    pub uses: Cell<u64>,
 }
 
 impl core::fmt::Debug for Store {
@@ -63,8 +76,8 @@ pub struct GcReport {
     pub bytes: u64,
     /// Temporary files left by interrupted writes.
     pub leftovers: usize,
-    /// Files that could not be deleted (for example held open by another program); the next
-    /// sweep tries again.
+    /// Files that could not be deleted (for example held open by another program) and folders
+    /// or files that could not be read; the next sweep tries again.
     pub failed: usize,
 }
 
@@ -86,6 +99,10 @@ impl Store {
         secure_delete(&conn)?;
         let outcome = migrations::migrate(&mut conn, MIGRATIONS, &db_path, true)?;
         configure(&conn)?;
+        if outcome.from != outcome.to {
+            // Pages of a dropped table (the plain Recent inbox, version 5) may sit in the log.
+            checkpoint(&conn);
+        }
         if outcome.from == 1 {
             // Version 1 ran without `secure_delete`, so freed pages may still hold old
             // content: rewrite the file once. Best effort, the migration itself has committed.
@@ -96,6 +113,7 @@ impl Store {
             conn,
             blobs: Blobs::on_disk(folder.join(BLOB_DIR)),
             key: None,
+            quiet: Quiet::default(),
             _lock: Some(lock),
         })
     }
@@ -110,6 +128,7 @@ impl Store {
             conn,
             blobs: Blobs::in_memory(),
             key: None,
+            quiet: Quiet::default(),
             _lock: None,
         })
     }
@@ -129,24 +148,21 @@ impl Store {
     /// blob that [`BlobStore::put`](crate::BlobStore::put) has written but the caller has not
     /// yet attached to an item (`put` refreshes the age of a blob it finds already stored).
     pub fn gc_blobs(&mut self, grace: Duration) -> Result<GcReport> {
-        let mut referenced = HashSet::new();
-        let mut stmt = self.conn.prepare(
+        let referenced: HashSet<BlobRef> = blob_refs(
+            &self.conn,
             "SELECT blob_hash FROM item_formats WHERE blob_hash IS NOT NULL
              UNION SELECT blob_hash FROM item_files WHERE blob_hash IS NOT NULL",
-        )?;
-        for hash in stmt.query_map([], |r| r.get::<_, Vec<u8>>(0))? {
-            let hash: [u8; 32] = hash?
-                .try_into()
-                .map_err(|_| Error::Corrupt("a blob hash is not 32 bytes".to_owned()))?;
-            referenced.insert(BlobRef::from_bytes(hash));
-        }
-        drop(stmt);
+            [],
+        )?
+        .into_iter()
+        .collect();
 
         let now = SystemTime::now();
         let old_enough =
             |modified: SystemTime| now.duration_since(modified).is_ok_and(|age| age >= grace);
         let mut report = GcReport::default();
-        let (blobs, leftovers) = self.blobs.list()?;
+        let (blobs, leftovers, unreadable) = self.blobs.list()?;
+        report.failed += unreadable;
         // A file that cannot be deleted now is counted and left for the next sweep, so one
         // locked file does not stop the rest (review M4).
         for stored in blobs {
@@ -447,8 +463,11 @@ fn configure(conn: &Connection) -> Result<()> {
     // The result row (the mode actually in effect) is `memory` for in-memory databases and
     // may be `delete` on file systems without shared memory; both still work, just slower.
     conn.pragma_update_and_check(None, "journal_mode", "WAL", |r| r.get::<_, String>(0))?;
-    // With WAL, NORMAL cannot corrupt the database; a power cut may lose the last commit.
-    conn.pragma_update(None, "synchronous", "NORMAL")?;
+    // FULL: the WAL is synced at every commit. With NORMAL a power cut could lose the last
+    // commit while the blob files that commit released (`Store::finish`) are already unlinked, so
+    // the surviving row would point at a missing blob. Writes are rare and small, so the extra
+    // fsync per commit is cheap.
+    conn.pragma_update(None, "synchronous", "FULL")?;
     conn.pragma_update(None, "foreign_keys", true)?;
     Ok(())
 }

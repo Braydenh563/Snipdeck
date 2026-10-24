@@ -1,0 +1,422 @@
+// The Help window (V1-PLAN step 7b): Troubleshoot (the doctor's checks and the data tools) and About (version,
+// licence, links). One regular window, opened from the Panel menu, the Main window and the crash toast.
+//
+// The host fills `checks` (it runs the checks; this file only draws them), opens folders and links, and copies the
+// diagnostic report. Nothing is fetched from the network: the update link opens the releases page in the browser.
+//
+// Keyboard: Tab / Shift+Tab move through the buttons; the two tabs are one tab stop with arrow keys. Esc closes.
+import { Theme, Type, Space, Radius, Fonts, Palette, SystemLook } from "theme.slint";
+import { Icons } from "icons.slint";
+import { Icon } from "components/icon.slint";
+import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
+import { Toast, ToastKind, ToastPhase } from "components/feedback.slint";
+import { Dialog, DialogVariant } from "components/dialog.slint";
+import { FormScroll, FormSection, SettingRow, Segmented } from "components/form.slint";
+import { ShortcutsSheet, ShortcutGroup, ShortcutLineData } from "components/shortcuts-sheet.slint";
+import { SearchField } from "components/text_field.slint";
+import { ShortcutTexts } from "shortcut_texts.slint";
+
+export { ShortcutGroup, ShortcutLineData }
+
+// One line of the Troubleshoot list, already in words (the doctor's English; see snipdeck-app `doctor`).
+export struct HelpCheck {
+    label: string,
+    detail: string,
+    // 0 fine, 1 warning, 2 problem.
+    status: int,
+    // The button next to it: 0 none, 1 back up now, 2 open Settings, 3 open the logs folder.
+    fix: int,
+}
+
+export component HelpWindow inherits Window {
+    title: @tr("Help");
+    background: Theme.bg-app;
+    min-width: 420px;
+    min-height: 360px;
+    preferred-width: root.wanted-width;
+    preferred-height: root.wanted-height;
+
+    // The size the window opens at; the host cuts it to the screen before the window exists.
+    out property <length> wanted-width: 600px;
+    out property <length> wanted-height: 640px;
+
+    in property <bool> dark: false;
+    // 0 Troubleshoot, 1 About, 2 Shortcuts.
+    in-out property <int> tab: 0;
+    in property <[HelpCheck]> checks;
+    // The Shortcuts tab: the groups of lines that match the search box (the host builds them: it holds the
+    // configured global hotkeys and the filter), and the box's text.
+    in property <[ShortcutGroup]> shortcut-groups;
+    in-out property <string> shortcut-query;
+    callback shortcut-query-changed(string);
+    // False in the demo, which has no data folder.
+    in property <bool> has-data-folder: true;
+    in property <string> version: "0.1.0";
+    in property <string> build-date;
+    // Whether the Supporter plan is active; the page names the plan.
+    in property <bool> supporter: false;
+    in property <string> source-url;
+    // The Microsoft Store link and the third-party notices are hidden until the host has them.
+    in property <bool> show-store-link: false;
+    in property <bool> has-notices: false;
+    in property <string> toast-text;
+    in property <ToastKind> toast-kind: ToastKind.neutral;
+    in property <ToastPhase> toast-phase: ToastPhase.hold;
+
+    callback check-again-requested();
+    callback fix-requested(fix: int);
+    // "Rebuild from backup…": the host opens the confirmation with the newest backup's facts and acts on the answer.
+    in property <bool> rebuild-open: false;
+    in property <string> rebuild-date;
+    in property <int> rebuild-items;
+    in property <int> rebuild-boards;
+    callback rebuild-confirmed();
+    callback rebuild-dismissed();
+    callback open-data-folder-requested();
+    callback open-logs-folder-requested();
+    callback copy-report-requested();
+    callback guide-requested();
+    callback tour-requested();
+    callback source-requested();
+    callback releases-requested();
+    callback store-requested();
+    callback notices-requested();
+    callback close-requested();
+
+    // How many checks are not fine, for the summary line.
+    in property <int> problems: 0;
+
+    pure function status-word(status: int) -> string {
+        return status == 0 ? @tr("OK") : (status == 1 ? @tr("Warning") : @tr("Problem"));
+    }
+    pure function status-icon(status: int) -> image {
+        return status == 0 ? Icons.check-circle : (status == 1 ? Icons.warning : Icons.x-circle);
+    }
+    pure function status-color(status: int) -> color {
+        return status == 0 ? Theme.success-fg : (status == 1 ? Theme.warning-fg : Theme.danger-fg);
+    }
+    pure function fix-text(fix: int) -> string {
+        return fix == 1 ? @tr("Back up now") : (fix == 2 ? @tr("Open Settings")
+            : (fix == 4 ? @tr("Rebuild from backup…") : (fix == 5 ? @tr("Open data folder") : @tr("Open logs folder"))));
+    }
+
+    // The window opens with the focus on its key scope, so Esc closes it before any Tab.
+    init => {
+        Palette.dark = root.dark;
+        scope.focus();
+    }
+    changed dark => { Palette.dark = root.dark; }
+
+    scope := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.Escape) {
+                root.close-requested();
+                return accept;
+            }
+            return reject;
+        }
+
+        VerticalLayout {
+            padding: Space.s4;
+            spacing: Space.s4;
+
+            Segmented {
+                label: @tr("Help sections");
+                options: [@tr("Troubleshoot"), @tr("About"), @tr("Shortcuts")];
+                current: root.tab;
+                chosen(i) => { root.tab = i; }
+            }
+
+            if root.tab == 0: FormScroll {
+                content-height: shoot.preferred-height;
+                content-width: self.viewport-width;
+
+                shoot := VerticalLayout {
+                    x: 0px;
+                    width: parent.viewport-width;
+                    spacing: Space.s4;
+                    alignment: start;
+
+                    Text {
+                        text: root.problems == 0
+                            ? @tr("Everything checks out.")
+                            : @tr("{} of the checks need a look.", root.problems);
+                        color: Theme.text-primary;
+                        font-family: Fonts.sans;
+                        font-size: Type.md;
+                        font-weight: Type.semibold;
+                        wrap: word-wrap;
+                        accessible-role: text;
+                    }
+
+                    FormSection {
+                        title: @tr("Checks");
+                        for c in root.checks: Rectangle {
+                            min-height: max(Space.hit * SystemLook.text-scale + 2 * Space.s2, row.preferred-height);
+                            accessible-role: groupbox;
+                            accessible-label: c.label + ": " + root.status-word(c.status);
+                            accessible-description: c.detail;
+
+                            row := HorizontalLayout {
+                                padding-top: Space.s2;
+                                padding-bottom: Space.s2;
+                                spacing: Space.s3;
+                                VerticalLayout {
+                                    alignment: center;
+                                    Icon {
+                                        size: 18px * SystemLook.text-scale;
+                                        source: root.status-icon(c.status);
+                                        tint: root.status-color(c.status);
+                                    }
+                                }
+                                VerticalLayout {
+                                    horizontal-stretch: 1;
+                                    min-width: 0px;
+                                    alignment: center;
+                                    spacing: Space.s0-5;
+                                    Text {
+                                        text: c.label;
+                                        color: Theme.text-primary;
+                                        font-family: Fonts.sans;
+                                        font-size: Type.base;
+                                        accessible-role: none;
+                                    }
+                                    Text {
+                                        text: c.detail;
+                                        color: Theme.text-secondary;
+                                        font-family: Fonts.sans;
+                                        font-size: Type.sm;
+                                        wrap: word-wrap;
+                                        accessible-role: none;
+                                    }
+                                }
+                                if c.fix != 0: VerticalLayout {
+                                    horizontal-stretch: 0;
+                                    alignment: center;
+                                    Button {
+                                        text: root.fix-text(c.fix);
+                                        clicked => { root.fix-requested(c.fix); }
+                                    }
+                                }
+                            }
+                            Rectangle {
+                                y: parent.height - 1px;
+                                height: 1px;
+                                background: Theme.border-subtle;
+                            }
+                        }
+                        HorizontalLayout {
+                            padding-top: Space.s2;
+                            alignment: start;
+                            Button {
+                                text: @tr("Check again");
+                                variant: ButtonVariant.primary;
+                                clicked => { root.check-again-requested(); }
+                            }
+                        }
+                    }
+
+                    FormSection {
+                        title: @tr("Tools");
+                        HorizontalLayout {
+                            padding-top: Space.s2;
+                            spacing: Space.s2;
+                            alignment: start;
+                            Button {
+                                text: @tr("Copy diagnostic report");
+                                clicked => { root.copy-report-requested(); }
+                            }
+                            Button {
+                                text: @tr("Open data folder");
+                                enabled: root.has-data-folder;
+                                clicked => { root.open-data-folder-requested(); }
+                            }
+                            Button {
+                                text: @tr("Open logs folder");
+                                enabled: root.has-data-folder;
+                                clicked => { root.open-logs-folder-requested(); }
+                            }
+                        }
+                        Text {
+                            text: @tr("The report holds versions and settings switches, never your items.");
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            wrap: word-wrap;
+                            accessible-role: none;
+                        }
+                    }
+                }
+            }
+
+            if root.tab == 2: SearchField {
+                text <=> root.shortcut-query;
+                placeholder: ShortcutTexts.search-placeholder;
+                label: ShortcutTexts.search-label;
+                clear-label: @tr("Clear search");
+                init => { self.focus(); }
+                edited(text) => { root.shortcut-query-changed(text); }
+            }
+
+            if root.tab == 2: FormScroll {
+                content-height: sheet.preferred-height;
+                content-width: self.viewport-width;
+
+                sheet := ShortcutsSheet {
+                    x: 0px;
+                    width: parent.viewport-width;
+                    groups: root.shortcut-groups;
+                }
+                if root.shortcut-groups.length == 0: Text {
+                    y: Space.s4;
+                    width: parent.viewport-width;
+                    text: ShortcutTexts.nothing-found;
+                    color: Theme.text-secondary;
+                    font-family: Fonts.sans;
+                    font-size: Type.base;
+                    horizontal-alignment: center;
+                    accessible-role: text;
+                    accessible-live-region: polite;
+                }
+            }
+
+            if root.tab == 1: FormScroll {
+                content-height: about.preferred-height;
+                content-width: self.viewport-width;
+
+                about := VerticalLayout {
+                    x: 0px;
+                    width: parent.viewport-width;
+                    spacing: Space.s4;
+                    alignment: start;
+
+                    Text {
+                        text: "Snipdeck";
+                        color: Theme.text-primary;
+                        font-family: Fonts.sans;
+                        font-size: Type.lg;
+                        font-weight: Type.semibold;
+                        accessible-role: text;
+                    }
+
+                    FormSection {
+                        title: @tr("This copy");
+                        SettingRow {
+                            title: @tr("Version");
+                            Text {
+                                text: root.version;
+                                color: Theme.text-primary;
+                                font-family: Fonts.sans;
+                                font-size: Type.base;
+                                accessible-role: text;
+                            }
+                        }
+                        if root.build-date != "": SettingRow {
+                            title: @tr("Built on");
+                            Text {
+                                text: root.build-date;
+                                color: Theme.text-primary;
+                                font-family: Fonts.sans;
+                                font-size: Type.base;
+                                accessible-role: text;
+                            }
+                        }
+                        SettingRow {
+                            title: @tr("Licence");
+                            Text {
+                                text: root.supporter ? @tr("Supporter") : @tr("Free");
+                                color: Theme.text-primary;
+                                font-family: Fonts.sans;
+                                font-size: Type.base;
+                                accessible-role: text;
+                            }
+                        }
+                    }
+
+                    FormSection {
+                        title: @tr("Links");
+                        SettingRow {
+                            title: @tr("User guide");
+                            description: @tr("Opens in your browser.");
+                            Button {
+                                text: @tr("Open");
+                                a11y-label: @tr("Open the user guide");
+                                clicked => { root.guide-requested(); }
+                            }
+                        }
+                        SettingRow {
+                            title: @tr("Welcome tour");
+                            description: @tr("Walk through the basics again.");
+                            Button {
+                                text: @tr("Show");
+                                a11y-label: @tr("Show the welcome tour again");
+                                clicked => { root.tour-requested(); }
+                            }
+                        }
+                        SettingRow {
+                            title: @tr("Source code");
+                            description: root.source-url;
+                            Button {
+                                text: @tr("Open");
+                                a11y-label: @tr("Open the source code");
+                                clicked => { root.source-requested(); }
+                            }
+                        }
+                        SettingRow {
+                            title: @tr("Check for updates");
+                            description: @tr("Snipdeck never checks by itself. This opens the releases page in your browser.");
+                            Button {
+                                text: @tr("Open");
+                                a11y-label: @tr("Open the releases page");
+                                clicked => { root.releases-requested(); }
+                            }
+                        }
+                        if root.show-store-link: SettingRow {
+                            title: @tr("Microsoft Store");
+                            Button {
+                                text: @tr("Open");
+                                a11y-label: @tr("Open the Microsoft Store page");
+                                clicked => { root.store-requested(); }
+                            }
+                        }
+                        if root.has-notices: SettingRow {
+                            title: @tr("Third-party notices");
+                            description: @tr("The licences of the libraries Snipdeck is built from.");
+                            Button {
+                                text: @tr("Open");
+                                a11y-label: @tr("Open the third-party notices");
+                                clicked => { root.notices-requested(); }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Dialog {
+        open: root.rebuild-open;
+        title: @tr("Rebuild from the newest backup?");
+        body: @tr("The newest backup is from {} and holds {} items on {} boards. Your current database is set aside, not deleted. Items added after this backup are recovered where they can be read.", root.rebuild-date, root.rebuild-items, root.rebuild-boards);
+        dismissed => { root.rebuild-dismissed(); }
+        Button {
+            text: @tr("Cancel");
+            clicked => { root.rebuild-dismissed(); }
+        }
+        Button {
+            variant: ButtonVariant.primary;
+            text: @tr("Rebuild");
+            clicked => { root.rebuild-confirmed(); }
+        }
+    }
+
+    if root.toast-text != "": Toast {
+        text: root.toast-text;
+        kind: root.toast-kind;
+        phase: root.toast-phase;
+        width: min(self.preferred-width, root.width - 2 * Space.s4);
+        height: self.preferred-height;
+        x: (root.width - self.width) / 2;
+        y: root.height - self.height - Space.s4;
+    }
+}

@@ -23,7 +23,7 @@ fn opening_a_new_folder_creates_the_database_and_lock() {
     let store = Store::open(&folder).unwrap();
     assert!(folder.join("snipdeck.db").is_file());
     assert!(folder.join("snipdeck.lock").is_file());
-    assert_eq!(store.schema_version().unwrap(), 2);
+    assert_eq!(store.schema_version().unwrap(), 6);
 }
 
 #[test]
@@ -32,6 +32,9 @@ fn the_database_is_in_wal_mode_with_foreign_keys_on() {
     let store = Store::open(dir.path()).unwrap();
     assert_eq!(store.pragma_text("journal_mode").unwrap(), "wal");
     assert_eq!(store.pragma_text("foreign_keys").unwrap(), "1");
+    // FULL (2): a commit that released a blob file must survive a power cut, or the surviving
+    // row would point at a deleted blob (Fable v1 sweep, B1).
+    assert_eq!(store.pragma_text("synchronous").unwrap(), "2");
     // WAL is persistent: a plain connection sees it too.
     let raw = Connection::open(dir.path().join("snipdeck.db")).unwrap();
     let mode: String = raw
@@ -79,8 +82,8 @@ fn in_memory_stores_are_independent() {
     let mut a = store();
     let b = store();
     board(&mut a, "only in a");
-    assert!(board_names(&b).is_empty());
-    assert_eq!(a.schema_version().unwrap(), 2);
+    assert_eq!(board_names(&b).len(), 0);
+    assert_eq!(a.schema_version().unwrap(), 6);
 }
 
 #[test]
@@ -98,7 +101,7 @@ fn a_database_from_a_newer_snipdeck_is_refused_and_left_alone() {
             err,
             Error::SchemaTooNew {
                 found: 99,
-                supported: 2
+                supported: 6
             }
         ),
         "{err:?}"

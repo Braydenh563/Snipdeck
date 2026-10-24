@@ -6,3 +6,11 @@ date | item | type | rung | rework | note
 2026-10-18 | M3 Panel window + snipdeck-app controller/bin skeleton | feature | sonnet | 1 | 
 2026-10-18 | Opus security review 2 (9 findings) | security | opus | 0 | 
 2026-10-18 | Win32 tray review: 13 findings fixed | bug | sonnet | 0 | 
+2026-10-18 | Merge step 9 tray | merge | sonnet | 0 | 
+2026-10-18 | Merge step 6 maintenance | merge | sonnet | 1 | 
+2026-10-18 | Step 4 Panel binding (kebab, resize, quick edit) | feature | sonnet | 0 | 
+2026-10-18 | Step 7 Settings window | feature | sonnet | 0 | 
+2026-10-18 | Security review fixes 1-11,13 | fix | sonnet | 0 | 
+2026-10-19 | CI: settings goldens after the website-icons row removal | fix | fable | 0 | 
+2026-10-24 | Panel D v2/v3 mock-ups | design | opus | 1 | 
+2026-10-24 | Non-Panel UX: shortcut search, Ctrl+Shift+P, theme, density, audit, palette | feature | sonnet | 0 | 

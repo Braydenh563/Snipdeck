@@ -1,5 +1,5 @@
 //! What the user's tier unlocks (SPEC §6). Pure data: the licence module turns a verified
-//! licence key into [`Entitlements`]; the UI asks them before offering a Pro action.
+//! licence key into [`Entitlements`]; the UI asks them before offering a Supporter action.
 
 use crate::Error;
 
@@ -8,7 +8,8 @@ use crate::Error;
 pub enum Tier {
     /// No licence key.
     Free,
-    /// A valid Pro licence key.
+    /// A valid Supporter licence key. (The identifier and the key's `tier` field keep the old name
+    /// "Pro"; the app calls the tier Supporter.)
     Pro,
 }
 
@@ -19,8 +20,9 @@ keyed_enum! {
         UnlimitedBoards = "unlimited-boards",
         /// Prompted template placeholders: `{field:…}` and `{choice:…}`.
         PromptedFields = "prompted-fields",
-        /// Encrypting sensitive items at rest, optionally behind a master password.
-        SensitiveEncryption = "sensitive-encryption",
+        /// Locking encrypted items behind a master password. Encrypting sensitive items on disk is
+        /// free for everyone: it is security, not convenience.
+        MasterPassword = "master-password",
         /// Detaching a list into its own floating panel.
         FloatingLists = "floating-lists",
         /// Queueing items and pasting them one by one with the Paste next hotkey.
@@ -30,7 +32,7 @@ keyed_enum! {
 
 /// What the current user may do.
 ///
-/// Losing Pro never hides or deletes data: a Free user with more boards than the limit keeps
+/// Losing Supporter never hides or deletes data: a Free user with more boards than the limit keeps
 /// them all and only can't create more.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Entitlements {
@@ -39,7 +41,7 @@ pub struct Entitlements {
 
 impl Entitlements {
     /// How many boards a Free user can create.
-    pub const FREE_BOARD_LIMIT: usize = 3;
+    pub const FREE_BOARD_LIMIT: usize = 5;
 
     /// The entitlements of `tier`.
     pub const fn new(tier: Tier) -> Self {
@@ -55,11 +57,11 @@ impl Entitlements {
     pub const fn allows(self, feature: Feature) -> bool {
         match self.tier {
             Tier::Pro => true,
-            // Every `Feature` is Pro-only today; list them so a new one is a deliberate choice.
+            // Every `Feature` is Supporter-only today; list them so a new one is a deliberate choice.
             Tier::Free => match feature {
                 Feature::UnlimitedBoards
                 | Feature::PromptedFields
-                | Feature::SensitiveEncryption
+                | Feature::MasterPassword
                 | Feature::FloatingLists
                 | Feature::PasteStack => false,
             },
@@ -120,10 +122,11 @@ mod tests {
     }
 
     #[test]
-    fn free_can_create_three_boards() {
+    fn free_can_create_five_boards() {
+        assert_eq!(Entitlements::FREE_BOARD_LIMIT, 5);
         assert!(FREE.can_create_board(0));
-        assert!(FREE.can_create_board(2));
-        assert!(!FREE.can_create_board(3));
+        assert!(FREE.can_create_board(4));
+        assert!(!FREE.can_create_board(5));
         assert!(!FREE.can_create_board(7));
         assert!(PRO.can_create_board(1000));
     }

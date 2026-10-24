@@ -1,0 +1,1458 @@
+// The Settings page of the Main window (SPEC §5, snipdeck-core `Settings`): the four global shortcuts, theme,
+// language, text size, start with Windows, close to tray, panel width and the paste key of each program.
+//
+// Every change applies at once (no Save button): the page reports it as a callback and the host stores it and, if it
+// cannot be applied (a shortcut another program owns), writes the reason back (`hotkeys[i].conflict`) or the old
+// value. Switches and the stepper use two-way bindings, so the host can also put a value back by setting the
+// property.
+//
+// Keyboard: Tab / Shift+Tab move between settings (the page scrolls to the focused one); each group of choices is
+// one tab stop with arrow keys. A shortcut recorder starts on Enter or Space and ends on Esc. Esc closes the page.
+import { Theme, Type, Space, Radius, Motion, Fonts, Palette, SystemLook } from "theme.slint";
+import { Icons } from "icons.slint";
+import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
+import { Toast, ToastKind, ToastPhase } from "components/feedback.slint";
+import { IconButton, IconButtonSize } from "components/icon-button.slint";
+import { TextField } from "components/text_field.slint";
+import { Toggle } from "components/choice.slint";
+import { HotkeyRecorder } from "components/hotkey_recorder.slint";
+import { Dialog } from "components/dialog.slint";
+import { PlanTable } from "components/plan-table.slint";
+import { ImportTexts } from "import_texts.slint";
+import { MasterPasswordForm, MasterMode, MasterProblem } from "master_password.slint";
+import { OverlayScrollbar } from "components/scrollbar.slint";
+import { FormField, FormScroll, FormSection, SettingRow, Segmented, SelectField, NumberStepper } from "components/form.slint";
+
+// One global shortcut as the page shows it. The order of `SettingsPage.hotkeys` is fixed: show or hide the panel,
+// open the picker, capture, paste next.
+export struct HotkeySetting {
+    // One chip per key ("Ctrl", "Alt", "V"); empty when not set.
+    keys: [string],
+    // The same, as one string for assistive technology ("Ctrl+Alt+V").
+    value: string,
+    // Non-empty when the recorded combination could not be registered; the message says why and who owns it.
+    conflict: string,
+}
+
+// One backup file in the list: the day it was made and how big it is, both already in words.
+export struct BackupRow {
+    date: string,
+    size: string,
+}
+
+// One program's paste rule: its file name and what Snipdeck presses there. `choice` is 0 Ctrl+V, 1 Ctrl+Shift+V,
+// 2 Shift+Insert, 3 Never paste (copy instead).
+export struct PasteRuleRow {
+    exe: string,
+    choice: int,
+}
+
+// A list of program file names with a remove button on each row and a field to add one (the programs Snipdeck never
+// pastes into, and the ones the Recent inbox never keeps copies from). The host trims, lower-cases and refuses
+// repeats; `error` says why an add was refused.
+component ProgramList inherits VerticalLayout {
+    in property <[string]> apps;
+    in property <string> error;
+    in property <string> empty-text;
+    in property <string> field-label;
+    callback added(name: string);
+    callback removed(index: int);
+    // A control inside took the keyboard focus at this place: the page scrolls it into view.
+    callback reveal(y: length, h: length);
+    spacing: Space.s2;
+
+    function add-app() {
+        if (new-app.text != "") {
+            root.added(new-app.text);
+            new-app.text = "";
+        }
+    }
+
+    if root.apps.length == 0: Text {
+        text: root.empty-text;
+        color: Theme.text-secondary;
+        font-family: Fonts.sans;
+        font-size: Type.base;
+        accessible-role: none;
+    }
+    for app[i] in root.apps: Rectangle {
+        height: max(Space.hit + Space.s2, Type.line-base + Space.s3);
+        accessible-role: list-item;
+        accessible-label: app;
+        Rectangle {
+            y: parent.height - 1px;
+            height: 1px;
+            background: Theme.border-subtle;
+        }
+        HorizontalLayout {
+            spacing: Space.s2;
+            Text {
+                horizontal-stretch: 1;
+                min-width: 0px;
+                text: app;
+                color: Theme.text-primary;
+                font-family: Fonts.mono;
+                font-size: Type.base;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+            VerticalLayout {
+                alignment: center;
+                IconButton {
+                    icon: Icons.x;
+                    tooltip: @tr("Remove {} from the list", app);
+                    own-tooltip: true;
+                    clicked => { root.removed(i); }
+                    changed has-focus => {
+                        if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); }
+                    }
+                }
+            }
+        }
+    }
+    HorizontalLayout {
+        spacing: Space.s2;
+        new-app := TextField {
+            horizontal-stretch: 1;
+            label: root.field-label;
+            placeholder: @tr("notepad.exe");
+            error: root.error;
+            accepted(t) => { root.add-app(); }
+            changed has-focus => {
+                if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); }
+            }
+        }
+        VerticalLayout {
+            alignment: start;
+            Button {
+                text: @tr("Add");
+                clicked => { root.add-app(); }
+                changed has-focus => {
+                    if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); }
+                }
+            }
+        }
+    }
+}
+
+// The paste key of each program: a row per program (file name, the key to press or "Never paste", remove) and a field
+// to add one. The host trims, lower-cases and refuses repeats; `error` says why an add was refused.
+component PasteRuleList inherits VerticalLayout {
+    in property <[PasteRuleRow]> rules;
+    in property <string> error;
+    callback added(name: string);
+    callback chosen(index: int, choice: int);
+    callback removed(index: int);
+    // A control inside took the keyboard focus at this place: the page scrolls it into view.
+    callback reveal(y: length, h: length);
+    spacing: Space.s2;
+
+    property <[string]> choices: [@tr("Ctrl+V"), @tr("Ctrl+Shift+V"), @tr("Shift+Insert"), @tr("Never paste")];
+
+    function add-program() {
+        if (new-program.text != "") {
+            root.added(new-program.text);
+            new-program.text = "";
+        }
+    }
+
+    if root.rules.length == 0: Text {
+        text: @tr("No programs yet. Every program gets Ctrl+V.");
+        color: Theme.text-secondary;
+        font-family: Fonts.sans;
+        font-size: Type.base;
+        wrap: word-wrap;
+        accessible-role: none;
+    }
+    for rule[i] in root.rules: Rectangle {
+        accessible-role: list-item;
+        accessible-label: @tr("{}: {}", rule.exe, root.choices[rule.choice]);
+        Rectangle {
+            y: parent.height - 1px;
+            height: 1px;
+            background: Theme.border-subtle;
+        }
+        HorizontalLayout {
+            spacing: Space.s2;
+            padding-bottom: Space.s2;
+            Text {
+                horizontal-stretch: 1;
+                min-width: 0px;
+                text: rule.exe;
+                color: Theme.text-primary;
+                font-family: Fonts.mono;
+                font-size: Type.base;
+                vertical-alignment: center;
+                overflow: elide;
+                accessible-role: none;
+            }
+            VerticalLayout {
+                alignment: start;
+                SelectField {
+                    width: 150px * SystemLook.text-scale;
+                    label: @tr("Paste key for {}", rule.exe);
+                    options: root.choices;
+                    current: rule.choice;
+                    chosen(c) => { root.chosen(i, c); }
+                    changed has-focus => {
+                        if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); }
+                    }
+                }
+            }
+            VerticalLayout {
+                alignment: start;
+                IconButton {
+                    icon: Icons.x;
+                    tooltip: @tr("Remove {} from the list", rule.exe);
+                    own-tooltip: true;
+                    clicked => { root.removed(i); }
+                    changed has-focus => {
+                        if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); }
+                    }
+                }
+            }
+        }
+    }
+    HorizontalLayout {
+        spacing: Space.s2;
+        new-program := TextField {
+            horizontal-stretch: 1;
+            label: @tr("Program to add");
+            placeholder: @tr("notepad.exe");
+            error: root.error;
+            accepted(t) => { root.add-program(); }
+            changed has-focus => {
+                if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); }
+            }
+        }
+        VerticalLayout {
+            alignment: start;
+            Button {
+                text: @tr("Add");
+                clicked => { root.add-program(); }
+                changed has-focus => {
+                    if (self.has-focus) { root.reveal(self.absolute-position.y, self.height); }
+                }
+            }
+        }
+    }
+}
+
+export component SettingsPage inherits Window {
+    title: @tr("Settings");
+    background: Theme.bg-app;
+    min-width: 420px;
+    min-height: 360px;
+    preferred-width: root.wanted-width;
+    preferred-height: root.wanted-height;
+
+    // The size the window opens at; the host cuts it to the screen before the window exists.
+    out property <length> wanted-width: 640px;
+    out property <length> wanted-height: 760px;
+
+    in property <bool> dark: false;
+    in property <[HotkeySetting]> hotkeys;
+    // 0 follow Windows, 1 light, 2 dark.
+    in property <int> theme-index: 0;
+    // 0 comfortable, 1 compact (the order of the Row density segments).
+    in property <int> row-density-index: 0;
+    in property <int> accent-index: 0;
+    // 0 follow Windows, then 100, 125, 150 and 175 %.
+    in property <int> text-size-index: 0;
+    // Native language names ("English", ...), the first being "Follow Windows" if the host offers it.
+    in property <[string]> languages;
+    in property <int> language-index: 0;
+    in-out property <bool> autostart: false;
+    in-out property <bool> close-to-tray: true;
+    in-out property <bool> panel-in-taskbar: false;
+    in-out property <bool> panel-hide-on-blur: true;
+    in-out property <bool> screenshot-keep-panel: false;
+    in-out property <bool> recent-history: false;
+    // How many copies and how many days the history keeps (the description names them).
+    in property <int> recent-max-entries: 200;
+    in property <int> recent-max-days: 7;
+    in-out property <bool> reduce-motion: false;
+    in property <int> panel-width: 320;
+    in property <int> panel-width-min: 260;
+    in property <int> panel-width-max: 480;
+    // The edge dock: the edge (0 = floating, then left, right, top, bottom), what opens a collapsed panel
+    // (0 off, 1 hover, 2 click, 3 both) and the two delays in milliseconds.
+    in property <int> dock-edge-index: 0;
+    in property <int> dock-trigger-index: 0;
+    in property <int> dock-hover-delay: 150;
+    in property <int> dock-hover-delay-max: 2000;
+    in property <int> dock-leave-delay: 400;
+    in property <int> dock-leave-delay-max: 5000;
+    in property <int> backups-keep: 7;
+    in property <int> backups-keep-min: 1;
+    in property <int> backups-keep-max: 60;
+    // Seconds before a copied sensitive item is cleared from the clipboard; 0 = never.
+    in property <int> clipboard-clear-secs: 30;
+    in property <int> clipboard-clear-secs-max: 600;
+    // The paste key of each program ("keepass.exe": never paste, "mintty.exe": Shift+Insert).
+    in property <[PasteRuleRow]> paste-rules;
+    // Set by the host when `paste-rule-added` was refused ("Already in the list").
+    in property <string> paste-rule-error;
+    // The programs the Recent inbox never keeps copies from, and why the last add was refused.
+    in property <[string]> no-history-apps;
+    in property <string> no-history-error;
+    // Whether this library is Supporter (a valid licence key, or the demo).
+    in property <bool> pro: false;
+    // Set by the host when `licence-submitted` was refused; the same words as the toast.
+    in property <string> licence-error;
+    // False in the demo, which has no data folder: backups and the data tools are off.
+    in property <bool> has-data-folder: true;
+    // The daily backups, newest first.
+    in property <[BackupRow]> backups;
+    // The date of the newest backup, already in words ("17 Oct 2026"); empty when there is none.
+    in property <string> last-backup;
+    // The toast the host is showing (the page is a window of its own, so it shows the shared toast too).
+    in property <string> toast-text;
+    in property <ToastKind> toast-kind: ToastKind.neutral;
+    in property <ToastPhase> toast-phase: ToastPhase.hold;
+    // The "Get Supporter" dialog (price, what each plan includes, the email button) is open.
+    in-out property <bool> supporter-open: false;
+    // The "Erase library" confirmation is open.
+    in-out property <bool> erase-open: false;
+    // The import preview (also used by Restore): what the import would do, worked out before anything is written.
+    in property <bool> import-open: false;
+    // What is being imported: the file or folder name (or the backup's date when `import-restore`). The title
+    // ("Import from notes.snipdeck") and the confirm button's words ("Import" / "Restore") follow from them.
+    in property <string> import-name;
+    in property <bool> import-restore: false;
+    out property <string> import-title: root.import-restore ? @tr("Restore the backup of {}", root.import-name) : @tr("Import from {}", root.import-name);
+    out property <string> import-confirm-label: root.import-restore ? @tr("Restore") : @tr("Import");
+    // The Free plan's board limit, set by the host from the entitlements.
+    in property <int> free-board-limit: 0;
+    // Non-empty when the source could not be read; the preview then only offers Close.
+    in property <string> import-problem;
+    // The Windows clipboard history is offered as an import source (Windows only).
+    in property <bool> import-history-available: false;
+    in property <int> import-boards: 0;
+    in property <int> import-lists: 0;
+    in property <int> import-items: 0;
+    in property <int> import-duplicates: 0;
+    // The Free plan's board limit would be passed.
+    in property <bool> import-blocked: false;
+    // What will not be imported, already worded, and how many more there were.
+    in property <[string]> import-warnings;
+    in property <int> import-warnings-more: 0;
+    // What is typed in the licence field, in the erase confirmation, and its key switch.
+    in-out property <string> licence-text;
+    in-out property <string> erase-text;
+    in-out property <bool> forget-key: false;
+    property <int> erase-focus: 0;
+    // The master password (SPEC 5.7). `master-state`: 0 = this PC cannot protect a key, 1 = none set, 2 = set, 3 = the key could not be read.
+    in property <int> master-state: 1;
+    // A password is set and the sensitive items are locked now.
+    in property <bool> master-locked: false;
+    // This plan may set a master password (Supporter).
+    in property <bool> master-allowed: false;
+    in property <int> master-idle-minutes: 15;
+    in property <int> master-min-length: 8;
+    // What the host found wrong with the last attempt; the host clears it when the form closes.
+    in-out property <MasterProblem> master-problem: MasterProblem.none;
+    // The host is working out the key for the submitted form; the form waits.
+    in property <bool> master-busy: false;
+    // Which form is open under the row. The host sets it back to `closed` after a change worked.
+    in-out property <MasterMode> master-mode: MasterMode.closed;
+    // Go up to put the focus on the form's first field, and back on the row's button when the form closes.
+    property <int> master-form-focus: 0;
+    property <int> master-focus: 0;
+    // The four sources are shown (after "Import…") and none is chosen yet.
+    property <bool> import-choosing: false;
+    // Goes up when the Get Supporter dialog closes: its button takes the focus back.
+    property <int> supporter-focus: 0;
+    // What the confirmation must be typed as, exactly.
+    out property <string> erase-word: "DELETE";
+
+    // `index` is the position in `hotkeys`.
+    callback hotkey-recorded(index: int, combo: string);
+    callback hotkey-cleared(index: int);
+    callback theme-chosen(index: int);
+    callback row-density-chosen(index: int);
+    callback accent-chosen(index: int);
+    callback text-size-chosen(index: int);
+    callback language-chosen(index: int);
+    callback autostart-toggled(on: bool);
+    callback close-to-tray-toggled(on: bool);
+    callback recent-history-toggled(on: bool);
+    callback recent-history-cleared();
+    callback panel-in-taskbar-toggled(on: bool);
+    callback panel-hide-on-blur-toggled(on: bool);
+    callback screenshot-keep-panel-toggled(on: bool);
+    callback reduce-motion-toggled(on: bool);
+    callback panel-width-chosen(width: int);
+    callback dock-edge-chosen(index: int);
+    callback dock-trigger-chosen(index: int);
+    callback dock-hover-delay-chosen(ms: int);
+    callback dock-leave-delay-chosen(ms: int);
+    callback backups-keep-chosen(count: int);
+    callback clipboard-clear-secs-chosen(secs: int);
+    callback paste-rule-added(name: string);
+    callback paste-rule-chosen(index: int, choice: int);
+    callback paste-rule-removed(index: int);
+    callback no-history-app-added(name: string);
+    callback no-history-app-removed(index: int);
+    callback licence-submitted(key: string);
+    // How strong the host finds a typed new password: 0 weak .. 3 strong. Pure: the page calls it as the user types.
+    pure callback master-strength(password: string) -> int;
+    // The form's action. The passwords exist only in this call; the host never stores them.
+    callback master-submitted(mode: MasterMode, current: string, new: string, again: string);
+    callback master-unlock-requested();
+    // "Email me" in the Get Supporter dialog: the host opens the email app (a mailto: link).
+    callback supporter-requested();
+    callback backup-now-requested();
+    callback backup-restore-requested(index: int);
+    callback open-data-folder-requested();
+    callback open-backups-folder-requested();
+    callback export-requested();
+    // The "Import..." choices: 0 a .snipdeck file, 1 a Ditto database, 2 a CopyQ export, 3 a folder of text files.
+    // The host asks for the file, works out the preview and sets the import-* properties below.
+    callback import-source-chosen(kind: int);
+    callback import-confirmed();
+    callback import-cancelled();
+    // The host checks `typed` again: only the exact word erases.
+    callback erase-confirmed(typed: string, forget-key: bool);
+    callback close-requested();
+    // F1 or the Help link: the user guide.
+    callback help-requested();
+
+    property <[string]> hotkey-names: [
+        @tr("Show or hide the panel"),
+        @tr("Open the picker"),
+        @tr("Save the clipboard as an item"),
+        @tr("Paste the next item"),
+    ];
+    property <[string]> hotkey-help: [
+        @tr("Brings the panel up beside the app you are working in."),
+        @tr("Search every board and paste without opening the window."),
+        @tr("Saves the text that is on the clipboard when you press it as a new item in the list the panel shows. Off until you set a shortcut."),
+        root.pro ? @tr("Pastes the next item of the list in order.") : @tr("Pastes the next item of the list in order. Works with Supporter."),
+    ];
+
+    function reveal-field(y: length, h: length) {
+        page.reveal(y - page.absolute-position.y, h);
+    }
+
+    // The first entry of the language list, which the host cannot translate itself.
+    public pure function follow-windows-text() -> string {
+        return @tr("Follow Windows");
+    }
+
+    function close-erase() {
+        root.erase-open = false;
+        root.erase-text = "";
+        root.forget-key = false;
+    }
+
+    function open-master(mode: MasterMode) {
+        root.master-problem = MasterProblem.none;
+        root.master-mode = mode;
+        root.master-form-focus += 1;
+    }
+
+    // Also the host's way to close the form once a change worked.
+    public function close-master() {
+        root.master-mode = MasterMode.closed;
+        root.master-problem = MasterProblem.none;
+        // The button that opened the form is back, and takes the focus (WCAG 2.4.3).
+        root.master-focus += 1;
+    }
+
+    function submit-licence() {
+        if (root.licence-text != "") {
+            root.licence-submitted(root.licence-text);
+        }
+    }
+
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    scope := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.F1) {
+                root.help-requested();
+                return accept;
+            }
+            if (event.text == Key.Escape) {
+                if (root.import-open) {
+                    root.import-cancelled();
+                } else if (root.import-choosing) {
+                    root.import-choosing = false;
+                } else {
+                    root.close-requested();
+                }
+                return accept;
+            }
+            return reject;
+        }
+
+        page := FormScroll {
+            content-height: body.preferred-height;
+            content-width: self.viewport-width;
+
+            // A click on empty space takes the focus off a field (a ComboBox keeps its ring otherwise).
+            TouchArea {
+                x: 0px;
+                y: 0px;
+                width: page.viewport-width;
+                height: max(body.preferred-height, page.height);
+                clicked => { scope.focus(); }
+            }
+
+            body := VerticalLayout {
+                x: 0px;
+                width: page.viewport-width;
+                padding: Space.s4;
+                spacing: Space.s6;
+                alignment: start;
+
+                Text {
+                    text: @tr("Changes apply at once.");
+                    color: Theme.text-secondary;
+                    font-family: Fonts.sans;
+                    font-size: Type.sm;
+                    accessible-role: none;
+                }
+
+                FormSection {
+                    title: @tr("Shortcuts");
+                    for hk[i] in root.hotkeys: SettingRow {
+                        title: root.hotkey-names[i];
+                        description: root.hotkey-help[i];
+                        HotkeyRecorder {
+                            width: 220px * SystemLook.text-scale;
+                            label: root.hotkey-names[i];
+                            keys: hk.keys;
+                            value: hk.value;
+                            conflict: hk.conflict;
+                            empty-text: @tr("Not set");
+                            recording-text: @tr("Press the new shortcut");
+                            clear-label: @tr("Clear the shortcut for {}", root.hotkey-names[i]);
+                            recorded(combo) => { root.hotkey-recorded(i, combo); }
+                            cleared => { root.hotkey-cleared(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Appearance");
+                    SettingRow {
+                        title: @tr("Theme");
+                        description: @tr("Follow Windows switches with your system setting.");
+                        Segmented {
+                            width: 260px * SystemLook.text-scale;
+                            label: @tr("Theme");
+                            options: [@tr("Windows"), @tr("Light"), @tr("Dark")];
+                            current: root.theme-index;
+                            chosen(i) => { root.theme-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Row density");
+                        description: @tr("How tall the item rows are in the Main window. Compact shows one line per item.");
+                        Segmented {
+                            width: 260px * SystemLook.text-scale;
+                            label: @tr("Row density");
+                            options: [@tr("Comfortable"), @tr("Compact")];
+                            current: root.row-density-index;
+                            chosen(i) => { root.row-density-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Accent colour");
+                        description: @tr("Windows accent follows your Windows personalisation.");
+                        SelectField {
+                            width: 200px * SystemLook.text-scale;
+                            label: @tr("Accent colour");
+                            options: [@tr("Blue"), @tr("Teal"), @tr("Green"), @tr("Amber"), @tr("Rose"), @tr("Violet"), @tr("Windows accent")];
+                            current: root.accent-index;
+                            chosen(i) => { root.accent-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Text size");
+                        description: @tr("Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead.");
+                        SelectField {
+                            width: 200px * SystemLook.text-scale;
+                            label: @tr("Text size");
+                            options: [@tr("Windows"), @tr("100 %"), @tr("125 %"), @tr("150 %"), @tr("175 %")];
+                            current: root.text-size-index;
+                            chosen(i) => { root.text-size-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Language");
+                        description: @tr("Takes effect the next time Snipdeck starts.");
+                        SelectField {
+                            width: 200px * SystemLook.text-scale;
+                            label: @tr("Language");
+                            options: root.languages;
+                            current: root.language-index;
+                            chosen(i) => { root.language-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Reduce motion");
+                        description: @tr("Turns off sliding and fading in Snipdeck. It is also off when Windows has Animation effects off.");
+                        Toggle {
+                            a11y-label: @tr("Reduce motion");
+                            checked <=> root.reduce-motion;
+                            toggled(on) => { root.reduce-motion-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Panel width");
+                        description: @tr("How wide the panel opens, from {} to {} pixels.", root.panel-width-min, root.panel-width-max);
+                        NumberStepper {
+                            label: @tr("Panel width");
+                            decrease-label: @tr("Make the panel narrower");
+                            increase-label: @tr("Make the panel wider");
+                            unit: @tr("px");
+                            min: root.panel-width-min;
+                            max: root.panel-width-max;
+                            step: 10;
+                            value: root.panel-width;
+                            stepped(v) => { root.panel-width-chosen(v); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Panel");
+                    SettingRow {
+                        title: @tr("Show Snipdeck in the taskbar");
+                        description: @tr("Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back.");
+                        Toggle {
+                            a11y-label: @tr("Show Snipdeck in the taskbar");
+                            checked <=> root.panel-in-taskbar;
+                            toggled(on) => { root.panel-in-taskbar-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Hide the panel when it loses focus");
+                        description: @tr("When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays.");
+                        Toggle {
+                            a11y-label: @tr("Hide the panel when it loses focus");
+                            checked <=> root.panel-hide-on-blur;
+                            toggled(on) => { root.panel-hide-on-blur-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Keep Panel visible during screenshots");
+                        description: @tr("Take screenshot hides the panel until the picture is taken. Turn this on to leave it on screen.");
+                        Toggle {
+                            a11y-label: @tr("Keep Panel visible during screenshots");
+                            checked <=> root.screenshot-keep-panel;
+                            toggled(on) => { root.screenshot-keep-panel-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Start with Windows");
+                        description: @tr("Snipdeck waits in the tray so the shortcuts work after you sign in.");
+                        Toggle {
+                            a11y-label: @tr("Start with Windows");
+                            checked <=> root.autostart;
+                            toggled(on) => { root.autostart-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Keep running in the tray when the window closes");
+                        description: @tr("Turn this off and closing the Panel or the Main window quits Snipdeck.");
+                        Toggle {
+                            a11y-label: @tr("Keep running in the tray when the window closes");
+                            checked <=> root.close-to-tray;
+                            toggled(on) => { root.close-to-tray-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Dock to");
+                        description: @tr("Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere.");
+                        SelectField {
+                            width: 200px * SystemLook.text-scale;
+                            label: @tr("Dock to");
+                            options: [@tr("Floating"), @tr("Left edge"), @tr("Right edge"), @tr("Top edge"), @tr("Bottom edge")];
+                            current: root.dock-edge-index;
+                            chosen(i) => { root.dock-edge-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Open a docked panel by");
+                        description: @tr("Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too.");
+                        Segmented {
+                            width: 360px * SystemLook.text-scale;
+                            label: @tr("Open a docked panel by");
+                            options: [@tr("Off"), @tr("Hover"), @tr("Click"), @tr("Hover and click")];
+                            current: root.dock-trigger-index;
+                            chosen(i) => { root.dock-trigger-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Hover delay");
+                        description: @tr("How long the pointer rests on the strip before the panel opens, from 0 to {} milliseconds.", root.dock-hover-delay-max);
+                        NumberStepper {
+                            label: @tr("Hover delay");
+                            decrease-label: @tr("Shorten the hover delay");
+                            increase-label: @tr("Lengthen the hover delay");
+                            unit: @tr("ms");
+                            min: 0;
+                            max: root.dock-hover-delay-max;
+                            step: 50;
+                            value: root.dock-hover-delay;
+                            stepped(v) => { root.dock-hover-delay-chosen(v); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Leave delay");
+                        description: @tr("How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds.", root.dock-leave-delay-max);
+                        NumberStepper {
+                            label: @tr("Leave delay");
+                            decrease-label: @tr("Shorten the leave delay");
+                            increase-label: @tr("Lengthen the leave delay");
+                            unit: @tr("ms");
+                            min: 0;
+                            max: root.dock-leave-delay-max;
+                            step: 100;
+                            value: root.dock-leave-delay;
+                            stepped(v) => { root.dock-leave-delay-chosen(v); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Privacy");
+                    SettingRow {
+                        title: @tr("Keep a Recent inbox of what you copy");
+                        description: @tr("Off by default. Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept.", root.recent-max-entries, root.recent-max-days);
+                        Toggle {
+                            a11y-label: @tr("Keep a Recent inbox of what you copy");
+                            checked <=> root.recent-history;
+                            toggled(on) => { root.recent-history-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Clear recent history");
+                        description: @tr("Deletes everything in the Recent inbox now.");
+                        Button {
+                            text: @tr("Clear recent history");
+                            variant: ButtonVariant.ghost;
+                            clicked => { root.recent-history-cleared(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    Text {
+                        text: @tr("Never keep copies from these programs");
+                        color: Theme.text-primary;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        font-weight: Type.semibold;
+                        accessible-role: none;
+                    }
+                    Text {
+                        text: @tr("Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: none;
+                    }
+                    ProgramList {
+                        apps: root.no-history-apps;
+                        error: root.no-history-error;
+                        empty-text: @tr("No programs yet.");
+                        field-label: @tr("Program to leave out of Recent");
+                        added(name) => { root.no-history-app-added(name); }
+                        removed(i) => { root.no-history-app-removed(i); }
+                        reveal(y, h) => { root.reveal-field(y, h); }
+                    }
+                    SettingRow {
+                        title: @tr("Clear the clipboard after copying a sensitive item");
+                        description: @tr("Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead.");
+                        NumberStepper {
+                            label: @tr("Clipboard clear time");
+                            decrease-label: @tr("Clear the clipboard sooner");
+                            increase-label: @tr("Clear the clipboard later");
+                            unit: @tr("s");
+                            min: 0;
+                            max: root.clipboard-clear-secs-max;
+                            step: 5;
+                            value: root.clipboard-clear-secs;
+                            stepped(v) => { root.clipboard-clear-secs-chosen(v); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Master password");
+                        description: root.master-state == 0
+                            ? @tr("Snipdeck can't protect a key on this PC, so a master password is not available.")
+                            : root.master-state == 3
+                            ? @tr("Snipdeck couldn't read your encryption key, so the master password can't be set or changed right now. Restart Snipdeck to try again.")
+                            : root.master-state == 2
+                            ? (root.master-locked
+                                ? @tr("A master password is on and your sensitive items are locked.")
+                                : @tr("A master password is on. Snipdeck asks for it when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes))
+                            : root.master-allowed
+                            ? @tr("Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes)
+                            : @tr("A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use.", root.master-idle-minutes);
+                        HorizontalLayout {
+                            spacing: Space.s2;
+                            if root.master-state != 2: Button {
+                                text: @tr("Set password…");
+                                focus-request: root.master-focus;
+                                enabled: root.master-allowed && root.master-state == 1 && root.master-mode == MasterMode.closed;
+                                clicked => { root.open-master(MasterMode.set); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            if root.master-state == 2 && root.master-locked: Button {
+                                text: @tr("Unlock…");
+                                clicked => { root.master-unlock-requested(); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            if root.master-state == 2: Button {
+                                text: @tr("Change…");
+                                focus-request: root.master-focus;
+                                enabled: root.master-mode == MasterMode.closed;
+                                clicked => { root.open-master(MasterMode.change); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            if root.master-state == 2: Button {
+                                text: @tr("Remove…");
+                                enabled: root.master-mode == MasterMode.closed;
+                                clicked => { root.open-master(MasterMode.remove); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                    }
+                    if root.master-mode != MasterMode.closed: MasterPasswordForm {
+                        mode: root.master-mode;
+                        problem: root.master-problem;
+                        busy: root.master-busy;
+                        min-length: root.master-min-length;
+                        focus-request: root.master-form-focus;
+                        strength(p) => { return root.master-strength(p); }
+                        revealed(y, h) => { root.reveal-field(y, h); }
+                        submitted(c, n, a) => { root.master-submitted(root.master-mode, c, n, a); }
+                        cancelled => { root.close-master(); }
+                    }
+                    for line in [
+                        @tr("Snipdeck has no account, no server and no telemetry, and it opens no network port. Nothing you save leaves this PC."),
+                        @tr("Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."),
+                        @tr("Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."),
+                        @tr("Snipdeck never connects to the internet: every icon and font it shows is packaged with it."),
+                        @tr("Outside that folder Snipdeck writes only the Windows start-up entry (if you turn it on) and the clipboard when you use an item."),
+                        @tr("To remove everything, use Erase library under Backups and your data, then delete the folder."),
+                    ]: Text {
+                        text: line;
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: none;
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Programs");
+                    Text {
+                        text: @tr("The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: none;
+                    }
+                    PasteRuleList {
+                        rules: root.paste-rules;
+                        error: root.paste-rule-error;
+                        added(name) => { root.paste-rule-added(name); }
+                        chosen(i, c) => { root.paste-rule-chosen(i, c); }
+                        removed(i) => { root.paste-rule-removed(i); }
+                        reveal(y, h) => { root.reveal-field(y, h); }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Backups and your data");
+                    Text {
+                        text: @tr("Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything.", root.backups-keep);
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                        accessible-role: AccessibleRole.text;
+                    }
+                    SettingRow {
+                        title: @tr("Backups to keep");
+                        description: @tr("The oldest ones are deleted once there are more than this.");
+                        NumberStepper {
+                            label: @tr("Backups to keep");
+                            decrease-label: @tr("Keep fewer backups");
+                            increase-label: @tr("Keep more backups");
+                            min: root.backups-keep-min;
+                            max: root.backups-keep-max;
+                            step: 1;
+                            value: root.backups-keep;
+                            stepped(v) => { root.backups-keep-chosen(v); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if !root.has-data-folder: Text {
+                        text: @tr("This demo keeps nothing on disk, so there are no backups.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        wrap: word-wrap;
+                        accessible-role: none;
+                    }
+                    if root.has-data-folder: Text {
+                        text: root.last-backup != "" ? @tr("Last backup: {}", root.last-backup) : @tr("No backup yet");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                    }
+                    for backup[i] in root.backups: Rectangle {
+                        height: max(Space.hit + Space.s2, Type.line-base + Space.s3);
+                        accessible-role: list-item;
+                        accessible-label: @tr("Backup of {}, {}", backup.date, backup.size);
+                        Rectangle {
+                            y: parent.height - 1px;
+                            height: 1px;
+                            background: Theme.border-subtle;
+                        }
+                        HorizontalLayout {
+                            spacing: Space.s2;
+                            Text {
+                                horizontal-stretch: 1;
+                                min-width: 0px;
+                                text: backup.date;
+                                color: Theme.text-primary;
+                                font-family: Fonts.sans;
+                                font-size: Type.base;
+                                vertical-alignment: center;
+                                overflow: elide;
+                                accessible-role: none;
+                            }
+                            Text {
+                                text: backup.size;
+                                color: Theme.text-secondary;
+                                font-family: Fonts.sans;
+                                font-size: Type.sm;
+                                vertical-alignment: center;
+                                accessible-role: none;
+                            }
+                            VerticalLayout {
+                                alignment: center;
+                                Button {
+                                    text: @tr("Restore");
+                                    icon: Icons.arrow-counter-clockwise;
+                                    variant: ButtonVariant.ghost;
+                                    a11y-label: @tr("Restore the backup of {}", backup.date);
+                                    clicked => { root.backup-restore-requested(i); }
+                                    changed has-focus => {
+                                        if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    HorizontalLayout {
+                        spacing: Space.s2;
+                        alignment: start;
+                        Button {
+                            text: @tr("Back up now");
+                            enabled: root.has-data-folder;
+                            clicked => { root.backup-now-requested(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                        Button {
+                            text: @tr("Open data folder");
+                            icon: Icons.folder;
+                            enabled: root.has-data-folder;
+                            clicked => { root.open-data-folder-requested(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                        Button {
+                            text: @tr("Open backups folder");
+                            icon: Icons.folder;
+                            enabled: root.has-data-folder;
+                            clicked => { root.open-backups-folder-requested(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Export library");
+                        description: @tr("Saves every board, list and item as one .snipdeck file in a folder you choose.");
+                        Button {
+                            text: @tr("Export library");
+                            enabled: root.has-data-folder;
+                            clicked => { root.export-requested(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Import");
+                        description: @tr("Bring in items from a Snipdeck file or another clipboard manager. You see what will be added before anything is written.");
+                        Button {
+                            text: @tr("Import…");
+                            enabled: root.has-data-folder && !root.import-open;
+                            a11y-label: @tr("Import into your library, see a preview first");
+                            clicked => { root.import-choosing = !root.import-choosing; }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if root.import-choosing && !root.import-open: VerticalLayout {
+                        spacing: Space.s2;
+                        accessible-role: groupbox;
+                        accessible-label: @tr("Choose what to import");
+                        for choice[i] in [
+                            @tr(".snipdeck file"),
+                            @tr("Ditto database"),
+                            @tr("CopyQ export"),
+                            @tr("Folder of .txt and .md files"),
+                        ]: HorizontalLayout {
+                            alignment: start;
+                            Button {
+                                text: choice;
+                                a11y-label: @tr("Import from: {}", choice);
+                                clicked => {
+                                    root.import-choosing = false;
+                                    root.import-source-chosen(i);
+                                }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                        if root.import-history-available: HorizontalLayout {
+                            alignment: start;
+                            Button {
+                                text: ImportTexts.history-name();
+                                a11y-label: @tr("Import from: {}", ImportTexts.history-name());
+                                clicked => {
+                                    root.import-choosing = false;
+                                    root.import-source-chosen(4);
+                                }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                    }
+                    if root.import-open: VerticalLayout {
+                        spacing: Space.s2;
+                        padding-top: Space.s2;
+                        accessible-role: groupbox;
+                        accessible-label: root.import-title;
+                        // Once laid out: focus the first button and scroll the preview into view
+                        // (the file dialog that opened it took the focus away; a Restore button
+                        // opens it from further up the page).
+                        Timer {
+                            interval: 1ms;
+                            running: true;
+                            triggered => {
+                                self.running = false;
+                                import-first.take-focus();
+                                root.reveal-field(import-first.absolute-position.y, import-first.height);
+                            }
+                        }
+                        Text {
+                            text: root.import-title;
+                            color: Theme.text-primary;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            font-weight: Type.semibold;
+                            wrap: word-wrap;
+                            accessible-role: none;
+                        }
+                        if root.import-problem != "": Text {
+                            text: root.import-problem;
+                            color: Theme.danger-fg;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            wrap: word-wrap;
+                            accessible-role: text;
+                            accessible-label: root.import-problem;
+                        }
+                        if root.import-problem == "" && root.import-blocked: Text {
+                            text: @tr("The Free plan includes {} boards. This would go over that, so it needs Supporter.", root.free-board-limit);
+                            color: Theme.danger-fg;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            wrap: word-wrap;
+                            accessible-role: text;
+                            accessible-label: self.text;
+                        }
+                        if root.import-problem == "" && root.import-items > 0: Text {
+                            text: @tr("{} item in {} list will be added" | "{} items in {} lists will be added" % root.import-items, root.import-items, root.import-lists);
+                            color: Theme.text-primary;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            wrap: word-wrap;
+                            accessible-role: text;
+                            accessible-label: self.text;
+                        }
+                        if root.import-problem == "" && root.import-boards > 0: Text {
+                            text: @tr("{} new board will be made" | "{} new boards will be made" % root.import-boards, root.import-boards);
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            wrap: word-wrap;
+                            accessible-role: text;
+                            accessible-label: self.text;
+                        }
+                        if root.import-problem == "" && root.import-duplicates > 0: Text {
+                            text: @tr("{} already in your library, skipped" | "{} already in your library, skipped" % root.import-duplicates, root.import-duplicates);
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            wrap: word-wrap;
+                            accessible-role: text;
+                            accessible-label: self.text;
+                        }
+                        if root.import-problem == "" && root.import-items == 0 && root.import-boards == 0: Text {
+                            text: @tr("Nothing new to import.");
+                            color: Theme.text-secondary;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            accessible-role: text;
+                            accessible-label: self.text;
+                        }
+                        if root.import-warnings.length > 0: VerticalLayout {
+                            spacing: Space.s1;
+                            accessible-role: groupbox;
+                            accessible-label: @tr("Will not be imported");
+                            Text {
+                                text: @tr("Will not be imported");
+                                color: Theme.text-primary;
+                                font-family: Fonts.sans;
+                                font-size: Type.sm;
+                                font-weight: Type.semibold;
+                                accessible-role: none;
+                            }
+                            for line in root.import-warnings: Text {
+                                text: line;
+                                color: Theme.text-secondary;
+                                font-family: Fonts.sans;
+                                font-size: Type.sm;
+                                wrap: word-wrap;
+                                accessible-role: text;
+                                accessible-label: line;
+                            }
+                            if root.import-warnings-more > 0: Text {
+                                text: @tr("and {} more" | "and {} more" % root.import-warnings-more, root.import-warnings-more);
+                                color: Theme.text-secondary;
+                                font-family: Fonts.sans;
+                                font-size: Type.sm;
+                                accessible-role: none;
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: Space.s2;
+                            alignment: end;
+                            import-first := Button {
+                                text: root.import-problem != "" ? @tr("Close") : @tr("Cancel");
+                                clicked => { root.import-cancelled(); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            if root.import-problem == "": Button {
+                                text: root.import-confirm-label;
+                                variant: ButtonVariant.primary;
+                                enabled: !root.import-blocked && (root.import-items > 0 || root.import-boards > 0);
+                                clicked => { root.import-confirmed(); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Erase library");
+                        description: @tr("Deletes every board, list, item and backup on this PC. This cannot be undone.");
+                        Button {
+                            text: @tr("Erase library…");
+                            icon: Icons.trash;
+                            variant: ButtonVariant.danger;
+                            enabled: root.has-data-folder && !root.erase-open;
+                            clicked => { root.erase-open = true; root.erase-focus += 1; }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if root.erase-open: VerticalLayout {
+                        spacing: Space.s2;
+                        padding-top: Space.s2;
+                        accessible-role: groupbox;
+                        accessible-label: @tr("Erase library");
+                        Text {
+                            text: @tr("Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay.");
+                            color: Theme.text-primary;
+                            font-family: Fonts.sans;
+                            font-size: Type.base;
+                            wrap: word-wrap;
+                            accessible-role: none;
+                        }
+                        SettingRow {
+                            title: @tr("Also forget the encryption key");
+                            description: @tr("The key opens the encrypted items in exports you saved earlier. If you forget it, those items can never be opened again.");
+                            Toggle {
+                                checked <=> root.forget-key;
+                                a11y-label: @tr("Also forget the encryption key");
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                        erase-typed := TextField {
+                            text <=> root.erase-text;
+                            focus-request: root.erase-focus;
+                            label: @tr("Type {} to confirm", root.erase-word);
+                            placeholder: root.erase-word;
+                            accepted(t) => {
+                                if (t == root.erase-word) {
+                                    root.erase-confirmed(t, root.forget-key);
+                                    root.close-erase();
+                                }
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                        HorizontalLayout {
+                            spacing: Space.s2;
+                            alignment: end;
+                            Button {
+                                text: @tr("Cancel");
+                                clicked => { root.close-erase(); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            Button {
+                                text: @tr("Erase everything");
+                                icon: Icons.trash;
+                                variant: ButtonVariant.danger;
+                                enabled: root.erase-text == root.erase-word;
+                                clicked => {
+                                    root.erase-confirmed(root.erase-text, root.forget-key);
+                                    root.close-erase();
+                                }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                FormSection {
+                    title: @tr("Licence");
+                    SettingRow {
+                        title: root.pro ? @tr("Snipdeck Supporter") : @tr("Free plan");
+                        description: root.pro
+                            ? @tr("Every Supporter feature is on. Thank you.")
+                            : @tr("Paste a licence key to turn on Supporter. The key is checked on this PC and nothing is sent anywhere.");
+                    }
+                    if !root.pro: SettingRow {
+                        title: @tr("Get Supporter");
+                        description: @tr("Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included.");
+                        Button {
+                            text: @tr("Get Supporter…");
+                            focus-request: root.supporter-focus;
+                            enabled: !root.supporter-open;
+                            clicked => { root.supporter-open = true; }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    if !root.pro: HorizontalLayout {
+                        spacing: Space.s2;
+                        licence-key := TextField {
+                            text <=> root.licence-text;
+                            horizontal-stretch: 1;
+                            label: @tr("Licence key");
+                            placeholder: @tr("SNIP1.");
+                            error: root.licence-error;
+                            monospace: true;
+                            accepted(t) => { root.submit-licence(); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                        VerticalLayout {
+                            alignment: start;
+                            Button {
+                                text: @tr("Activate");
+                                variant: ButtonVariant.primary;
+                                clicked => { root.submit-licence(); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                        }
+                    }
+                    Text {
+                        text: @tr("Free is fully usable. Supporter pays for convenience and supports the app.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        wrap: word-wrap;
+                    }
+                    PlanTable { }
+                }
+                HorizontalLayout {
+                    alignment: end;
+                    Button {
+                        text: @tr("Help");
+                        variant: ButtonVariant.ghost;
+                        a11y-label: @tr("Open the user guide (F1)");
+                        clicked => { root.help-requested(); }
+                        changed has-focus => {
+                            if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if root.toast-text != "": Toast {
+        text: root.toast-text;
+        kind: root.toast-kind;
+        phase: root.toast-phase;
+        width: min(self.preferred-width, root.width - 2 * Space.s4);
+        height: self.preferred-height;
+        x: (root.width - self.width) / 2;
+        y: root.height - self.height - Space.s4;
+    }
+
+    // Last, so it sits on top and traps the pointer.
+    Dialog {
+        title: @tr("Get Supporter");
+        body: @tr("Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions.");
+        open: root.supporter-open;
+        fill: true;
+        dismissed => { root.supporter-open = false; }
+        // The button is off while the dialog is open, so the focus has to come back to it (WCAG 2.4.3).
+        closed => { root.supporter-focus += 1; }
+        accepted => { root.supporter-requested(); root.supporter-open = false; }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: Space.s3;
+            Rectangle {
+                height: min(table.preferred-height, max(Space.s12 * 2, root.height - Space.s12 * 6));
+                // Short windows scroll the table instead of pushing the buttons off the screen.
+                plan-flick := Flickable {
+                    width: parent.width;
+                    height: parent.height;
+                    content-width: self.width;
+                    content-height: table.preferred-height;
+                    table := PlanTable { width: plan-flick.content-width; }
+                }
+
+                OverlayScrollbar {
+                    content-y: plan-flick.content-y;
+                    content-height: plan-flick.content-height;
+                    visible-height: plan-flick.height;
+                    scroll-to(y) => { plan-flick.content-y = y; }
+                }
+            }
+            HorizontalLayout {
+                spacing: Space.s2;
+                alignment: end;
+                Button {
+                    text: @tr("Close");
+                    clicked => { root.supporter-open = false; }
+                }
+                Button {
+                    text: @tr("Email me");
+                    variant: ButtonVariant.primary;
+                    clicked => { root.supporter-requested(); root.supporter-open = false; }
+                }
+            }
+        }
+    }
+}

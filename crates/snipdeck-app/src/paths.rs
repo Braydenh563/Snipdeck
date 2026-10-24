@@ -9,6 +9,17 @@ pub const SETTINGS_FILE: &str = "settings.json";
 /// Where a settings file that could not be read as it stands is set aside.
 pub const BAD_FILE: &str = "settings.json.bad";
 
+/// The user's Documents folder, where exports go (not checked to exist).
+#[must_use]
+pub fn documents_folder() -> Option<PathBuf> {
+    let home = if cfg!(windows) {
+        std::env::var_os("USERPROFILE")
+    } else {
+        std::env::var_os("HOME")
+    }?;
+    Some(PathBuf::from(home).join("Documents"))
+}
+
 /// The data folder: `%LOCALAPPDATA%\Snipdeck` on Windows (the database must not roam),
 /// `$XDG_DATA_HOME/snipdeck` or `~/.local/share/snipdeck` elsewhere. `env` reads an
 /// environment variable; `windows` says which rule applies.
@@ -134,7 +145,29 @@ pub fn write_salvaged(folder: &Path, loaded: &Loaded) -> std::io::Result<()> {
     Ok(())
 }
 
-/// The settings from `folder`, without the outcome (for callers that never write them back).
+/// Whether this run writes settings changes back: not under `--dark` (a one-run override that
+/// must stay out of the user's file) and not when the file could not be read or set aside.
+/// Drafts, the daily backup and Settings "Back up now" do not depend on it.
+#[must_use]
+pub fn saves_settings(dark_override: bool, loaded: &Loaded) -> bool {
+    !dark_override && loaded.may_save()
+}
+
+/// What the settings saver should take as "on disk now": the loaded settings, except when a
+/// damaged file was set aside and writing the salvaged copy failed. Then no file exists, so the
+/// baseline is the defaults a fresh launch would read, and the first change (or the first poll
+/// with the salvaged values in use) writes the file.
+#[must_use]
+pub fn saver_baseline(loaded: &Loaded, salvage_written: bool) -> Settings {
+    if loaded.outcome == LoadOutcome::SetAside && !salvage_written {
+        Settings::default()
+    } else {
+        loaded.settings.clone()
+    }
+}
+
+/// The settings from `folder`, without the outcome (for tests of code that never writes them back).
+#[cfg(test)]
 #[must_use]
 pub fn load_settings(folder: &Path) -> Settings {
     read_settings(folder).settings
@@ -180,15 +213,15 @@ mod tests {
     fn settings_load_tolerantly() {
         let temp = tempfile::tempdir().expect("tempdir");
         let dir = temp.path().to_path_buf();
-        assert_eq!(load_settings(&dir), Settings::default(), "no file");
+        assert_eq!(read_settings(&dir).settings, Settings::default(), "no file");
         std::fs::write(dir.join(SETTINGS_FILE), "{ not json").expect("write");
-        assert_eq!(load_settings(&dir), Settings::default(), "garbage");
+        assert_eq!(read_settings(&dir).settings, Settings::default(), "garbage");
         std::fs::write(
             dir.join(SETTINGS_FILE),
             r#"{"panel_width": 400, "theme": 7}"#,
         )
         .expect("write");
-        let settings = load_settings(&dir);
+        let settings = read_settings(&dir).settings;
         assert_eq!(settings.panel_width, 400, "the good field is kept");
         assert_eq!(
             settings.theme,
@@ -198,12 +231,47 @@ mod tests {
     }
 
     #[test]
+    fn dark_and_an_untouchable_file_stop_only_the_settings_saver() {
+        let loaded = |outcome| Loaded {
+            settings: Settings::default(),
+            outcome,
+        };
+        assert!(saves_settings(false, &loaded(LoadOutcome::Read)));
+        assert!(saves_settings(false, &loaded(LoadOutcome::Missing)));
+        assert!(!saves_settings(true, &loaded(LoadOutcome::Read)));
+        assert!(!saves_settings(false, &loaded(LoadOutcome::Untouchable)));
+    }
+
+    #[test]
+    fn a_failed_salvage_write_starts_the_saver_from_the_defaults() {
+        let salvaged = Settings {
+            no_paste_apps: vec!["keepass.exe".to_owned()],
+            ..Settings::default()
+        };
+        let loaded = Loaded {
+            settings: salvaged.clone(),
+            outcome: LoadOutcome::SetAside,
+        };
+        assert_eq!(saver_baseline(&loaded, true), salvaged, "the file holds it");
+        assert_eq!(
+            saver_baseline(&loaded, false),
+            Settings::default(),
+            "no file: the saver must write the salvaged values"
+        );
+        let read = Loaded {
+            outcome: LoadOutcome::Read,
+            ..loaded
+        };
+        assert_eq!(saver_baseline(&read, false), salvaged);
+    }
+
+    #[test]
     fn a_damaged_file_is_set_aside_as_bad_and_what_parses_is_kept() {
         let temp = tempfile::tempdir().expect("tempdir");
         let dir = temp.path();
         let cut = r#"{"panel_width": 400, "no_paste_apps": ["keepass.exe", "bank"#;
         std::fs::write(dir.join(SETTINGS_FILE), cut).expect("write");
-        let settings = load_settings(dir);
+        let settings = read_settings(dir).settings;
         assert_eq!(
             settings.no_paste_apps,
             ["keepass.exe"],
@@ -217,7 +285,7 @@ mod tests {
 
         // A second damaged file replaces the first .bad.
         std::fs::write(dir.join(SETTINGS_FILE), "{ nope").expect("write");
-        let _ = load_settings(dir);
+        let _ = read_settings(dir).settings;
         assert_eq!(
             std::fs::read_to_string(dir.join(BAD_FILE)).expect("bad"),
             "{ nope"
@@ -284,12 +352,12 @@ mod tests {
         let temp = tempfile::tempdir().expect("tempdir");
         let dir = temp.path();
         std::fs::write(dir.join(SETTINGS_FILE), r#"{"theme": 7}"#).expect("write");
-        let _ = load_settings(dir);
+        let _ = read_settings(dir).settings;
         assert!(dir.join(BAD_FILE).exists());
 
         std::fs::remove_file(dir.join(BAD_FILE)).expect("remove");
         std::fs::write(dir.join(SETTINGS_FILE), r#"{"panel_width": 9999}"#).expect("write");
-        assert_eq!(load_settings(dir).panel_width, 480, "clamped");
+        assert_eq!(read_settings(dir).settings.panel_width, 480, "clamped");
         assert!(dir.join(SETTINGS_FILE).exists());
         assert!(!dir.join(BAD_FILE).exists());
     }
@@ -298,9 +366,9 @@ mod tests {
     fn a_good_or_missing_file_makes_no_bad_file() {
         let temp = tempfile::tempdir().expect("tempdir");
         let dir = temp.path();
-        let _ = load_settings(dir);
+        let _ = read_settings(dir).settings;
         std::fs::write(dir.join(SETTINGS_FILE), Settings::default().to_json()).expect("write");
-        let _ = load_settings(dir);
+        let _ = read_settings(dir).settings;
         assert!(!dir.join(BAD_FILE).exists());
     }
 

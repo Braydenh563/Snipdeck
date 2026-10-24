@@ -13,6 +13,8 @@ export component EmptyState inherits VerticalLayout {
     in property <string> heading;
     in property <string> body;
     in property <string> action-text;
+    // An optional line under the button naming the key that does the same ("Press Ctrl+N to add a snippet").
+    in property <string> hint;
     callback action();
 
     padding: Space.s6;
@@ -22,8 +24,8 @@ export component EmptyState inherits VerticalLayout {
     HorizontalLayout {
         alignment: center;
         Icon {
-            source: root.kind == EmptyStateKind.list ? Icons.stack
-                : root.kind == EmptyStateKind.board ? Icons.squares-four
+            source: root.kind == EmptyStateKind.list ? Icons.rows
+                : root.kind == EmptyStateKind.board ? Icons.stack
                 : root.kind == EmptyStateKind.search ? Icons.magnifying-glass
                 : Icons.tray;
             size: Space.s8;
@@ -31,6 +33,7 @@ export component EmptyState inherits VerticalLayout {
         }
     }
     Text {
+        accessible-live-region: polite;
         text: root.heading;
         color: Theme.text-primary;
         font-family: Fonts.sans;
@@ -54,5 +57,13 @@ export component EmptyState inherits VerticalLayout {
             variant: ButtonVariant.primary;
             clicked => { root.action(); }
         }
+    }
+    if root.hint != "": Text {
+        text: root.hint;
+        color: Theme.text-secondary;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        horizontal-alignment: center;
+        wrap: word-wrap;
     }
 }

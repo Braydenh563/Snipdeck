@@ -1,0 +1,32 @@
+import { Icons } from "icons.slint";
+
+// The 24 list icons in the order of snipdeck-core `ListIcon::ALL`; the app turns a list's icon into an index here.
+// A list's icon is only an aid to the eye: its name is always shown and is the accessible name.
+export global ListIcons {
+    out property <[image]> all: [
+        Icons.folder,
+        Icons.star,
+        Icons.heart,
+        Icons.briefcase,
+        Icons.house,
+        Icons.user,
+        Icons.envelope-simple,
+        Icons.chat-circle,
+        Icons.phone,
+        Icons.calendar-blank,
+        Icons.shopping-cart,
+        Icons.credit-card,
+        Icons.code,
+        Icons.terminal-window,
+        Icons.book-open,
+        Icons.lightbulb,
+        Icons.flag,
+        Icons.bookmark-simple,
+        Icons.globe,
+        Icons.map-pin,
+        Icons.camera,
+        Icons.music-note,
+        Icons.wrench,
+        Icons.rocket-launch,
+    ];
+}

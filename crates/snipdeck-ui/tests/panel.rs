@@ -123,6 +123,60 @@ fn panel_copy_route_with_a_toast_in_dark() {
     assert_golden("panel-copy-toast-dark", &render(&h));
 }
 
+#[test]
+fn panel_with_the_app_menu_open() {
+    for (dark, name) in [
+        (false, "panel-app-menu-light"),
+        (true, "panel-app-menu-dark"),
+    ] {
+        let h = panel(SIZE, dark);
+        h.component.set_app_menu_open(true);
+        assert_golden(name, &render(&h));
+    }
+}
+
+#[test]
+fn panel_with_an_overflowing_pinned_strip_shows_scroll_buttons_not_a_fade() {
+    let h = panel(SIZE, false);
+    h.component
+        .set_pinned(ModelRc::new(VecModel::from(fixture::pinned_n(12))));
+    assert_golden("panel-pinned-overflow-light", &render(&h));
+}
+
+/// Hover the close button (the last 28px square in the header, 8px from the right edge) and look under it.
+/// One Harness per test: the frozen clock restarts at zero with each one.
+fn tooltip_under_the_close_button(dark: bool, ink: [u8; 3]) {
+    use slint::{LogicalPosition, platform::WindowEvent};
+    let h = panel(SIZE, dark);
+    let _ = render(&h);
+    let at = LogicalPosition::new(298.0, 18.0); // 320 - 8 - 14: the close button's centre
+    h.component
+        .window()
+        .dispatch_event(WindowEvent::PointerMoved { position: at });
+    h.advance(std::time::Duration::from_millis(600));
+    h.advance(std::time::Duration::from_millis(200));
+    let f = render(&h);
+    // Below the button (bottom edge 32), a 4px gap, then the tooltip body; its right edge is clamped 8px
+    // from the window.
+    assert_eq!(f.pixel(SIZE.0 - 12, 44), ink, "tooltip body (dark={dark})");
+    let app = if dark { APP_DARK } else { APP_LIGHT };
+    assert_eq!(
+        f.pixel(SIZE.0 - 3, 44),
+        app,
+        "clear of the window edge (dark={dark})"
+    );
+}
+
+#[test]
+fn a_hovered_header_button_shows_an_ink_tooltip_under_it_inside_the_window_light() {
+    tooltip_under_the_close_button(false, [0x17, 0x16, 0x13]);
+}
+
+#[test]
+fn a_hovered_header_button_shows_an_ink_tooltip_under_it_inside_the_window_dark() {
+    tooltip_under_the_close_button(true, [0xEB, 0xE9, 0xE7]);
+}
+
 // ---- Measurements ----------------------------------------------------------------------------
 
 // Layout of the populated Panel at 320 wide (ui/panel.slint): header 40, search 28 + 8 below, tab bar 32,
@@ -222,4 +276,83 @@ fn rows_are_28px_with_a_gutter_rule_and_the_selected_row_has_an_accent_border() 
             "gutter rule at y={y}"
         );
     }
+}
+
+// ---- The collapsed dock handle (DESIGN.md §5 Panel: a 6px tab in the list's accent colour) ----------
+
+const ON_ACCENT_LIGHT: [u8; 3] = [0xFB, 0xFA, 0xF7];
+
+fn handle(size: (u32, u32), vertical: bool) -> Harness<PanelWindow> {
+    let h = panel(size, false);
+    h.component.set_dock_vertical(vertical);
+    h.component.set_dock_collapsed(true);
+    h
+}
+
+#[test]
+fn a_vertical_handle_is_the_accent_colour_with_a_three_dot_grabber_in_the_middle() {
+    let (w, hgt) = (6, 480);
+    let h = handle((w, hgt), true);
+    let f = render(&h);
+    // Edge to edge, no outline and none of the panel behind it.
+    for (x, y) in [(0, 0), (5, 0), (0, 479), (5, 479), (2, 100), (3, 300)] {
+        assert_eq!(f.pixel(x, y), ACCENT, "strip at ({x}, {y})");
+    }
+    // Three 2px dots, 2px apart, centred: the group is 10px tall, so y 235-236, 239-240 and 243-244.
+    for (y, dot) in [
+        (235, true),
+        (236, true),
+        (237, false),
+        (238, false),
+        (240, true),
+        (244, true),
+        (245, false),
+    ] {
+        let wanted = if dot { ON_ACCENT_LIGHT } else { ACCENT };
+        assert_eq!(f.pixel(2, y), wanted, "x=2 y={y}");
+        assert_eq!(f.pixel(3, y), wanted, "x=3 y={y}");
+    }
+    assert_eq!(f.pixel(1, 240), ACCENT, "the dot is 2px wide, centred");
+    assert_eq!(f.pixel(4, 240), ACCENT, "the dot is 2px wide, centred");
+}
+
+#[test]
+fn a_horizontal_handle_runs_its_dots_along_the_strip() {
+    let h = handle((480, 6), false);
+    let f = render(&h);
+    assert_eq!(f.pixel(0, 0), ACCENT);
+    assert_eq!(f.pixel(479, 5), ACCENT);
+    for (x, dot) in [
+        (235, true),
+        (236, true),
+        (238, false),
+        (240, true),
+        (244, true),
+        (245, false),
+    ] {
+        let wanted = if dot { ON_ACCENT_LIGHT } else { ACCENT };
+        assert_eq!(f.pixel(x, 2), wanted, "x={x} y=2");
+        assert_eq!(f.pixel(x, 3), wanted, "x={x} y=3");
+    }
+}
+
+#[test]
+fn the_handle_wears_the_list_colour_unless_high_contrast_is_on() {
+    let teal = slint::Color::from_rgb_u8(0x04, 0x84, 0x84);
+    let h = handle((6, 480), true);
+    h.component.set_dock_list_color(teal);
+    h.component.set_dock_has_list_color(true);
+    assert_eq!(render(&h).pixel(0, 100), [0x04, 0x84, 0x84]);
+
+    h.component.set_dock_has_list_color(false);
+    assert_eq!(render(&h).pixel(0, 100), ACCENT, "no accent: the theme's");
+
+    h.component.set_dock_has_list_color(true);
+    let look = h.component.global::<SystemLook<'_>>();
+    look.set_high_contrast(true);
+    assert_ne!(
+        render(&h).pixel(0, 100),
+        [0x04, 0x84, 0x84],
+        "high contrast keeps the system colours"
+    );
 }

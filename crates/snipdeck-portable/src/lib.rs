@@ -4,7 +4,8 @@
 //! * [`export_to_writer`] / [`export_to_path`] write a library as a `.snipdeck` zip;
 //!   [`import_archive`] / [`import_archive_path`] read one. The format is specified in
 //!   `docs/format.md`.
-//! * [`import_folder`], [`import_ditto`] and [`import_copyq_json`] import other sources and
+//! * [`import_folder`], [`import_ditto`], [`import_copyq_json`] and [`import_entries`] (a clipboard
+//!   history already read into [`HistoryEntry`] values) import other sources and
 //!   return the same [`ImportReport`].
 //! * [`backup`] writes one backup per local day and prunes old ones; restoring is an import.
 //!
@@ -49,7 +50,9 @@ pub use export::{ExportOptions, ExportReport, SensitivePolicy, export_to_path, e
 pub use import::{
     BoardLayout, ImportOptions, KeySource, MergeStrategy, import_archive, import_archive_path,
 };
-pub use importers::{MEMORY_BUDGET, import_copyq_json, import_ditto, import_folder};
+pub use importers::{
+    HistoryEntry, MEMORY_BUDGET, import_copyq_json, import_ditto, import_entries, import_folder,
+};
 pub use limits::{Limits, TEXT_LIMIT};
 pub use plan::Library;
 pub use report::{ImportReport, MAX_WARNINGS, Warning};

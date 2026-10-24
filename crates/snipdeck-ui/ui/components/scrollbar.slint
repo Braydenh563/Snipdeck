@@ -1,0 +1,87 @@
+import { Theme, Space, Radius, Motion } from "../theme.slint";
+
+// A thin vertical scrollbar laid over the right edge of a scrollable surface (a ListView or a Flickable), in the
+// Windows 11 overlay style: a 3px thumb at rest that grows to 6px, with a 24px hit strip, under the pointer. It
+// is drawn only while the content is taller than the viewport, never reflows the content (place it as a sibling
+// after the surface, with the parent's width and the surface's `y` and `height`), and never fades out.
+// The surface's own wheel handling is untouched: the bar passes scroll events through.
+// The bar only reports where it wants the content (`scroll-to`); the surface applies it, so a surface whose
+// `content-y` is driven by its own code (a highlighted row kept in view) stays in control. No accessible role and
+// no focus stop: the keyboard already scrolls every surface and Slint has no scrollbar role.
+export component OverlayScrollbar inherits Rectangle {
+    // The surface's `content-y` (0 or negative), `content-height` and `visible-height`.
+    in property <length> content-y;
+    in property <length> content-height;
+    in property <length> visible-height;
+    // Off while the surface is hidden (its content height is stale then).
+    in property <bool> enabled: true;
+    callback scroll-to(length);
+
+    out property <bool> shown: root.content-height > root.visible-height + 0.5px;
+    out property <length> thumb-h: min(root.track, max(Space.hit-min, root.track * root.visible-height / max(root.content-height, 1px)));
+    out property <length> thumb-y: Space.s0-5 + (root.track - root.thumb-h) * root.fraction;
+    out property <bool> active: touch.has-hover || root.dragging;
+
+    property <length> track: root.height - 2 * Space.s0-5;
+    property <length> max-scroll: max(0px, root.content-height - root.visible-height);
+    property <float> fraction: root.max-scroll > 0px ? min(1.0, max(0.0, -root.content-y / root.max-scroll)) : 0.0;
+    property <bool> dragging: false;
+    property <length> grab-mouse;
+    property <length> grab-y;
+
+    // Idle: a strip as narrow as the thumb's margin, clear of the row buttons; hovered or dragged: the 24px target.
+    out property <length> strip-w: root.active ? Space.hit-min : Space.s2;
+    // Fills its parent (like any child Rectangle); only the strip at the right edge takes pointer events.
+    visible: root.shown && root.enabled;
+
+    function bound(y: length) -> length {
+        return min(0px, max(-root.max-scroll, y));
+    }
+
+    // The hover track: a faint well behind the thumb.
+    Rectangle {
+        x: root.width - root.strip-w;
+        width: root.strip-w;
+        background: Theme.bg-hover;
+        border-radius: Radius.sm;
+        opacity: root.active ? 1 : 0;
+        animate opacity { duration: Motion.fade; }
+    }
+
+    Rectangle {
+        x: root.width - self.width - Space.s1;
+        y: root.thumb-y;
+        width: root.active ? 6px : 3px;
+        height: root.thumb-h;
+        border-radius: self.width / 2;
+        background: root.dragging ? Theme.text-primary : touch.has-hover ? Theme.text-secondary : Theme.text-tertiary;
+        animate width { duration: Motion.quick; easing: Motion.out; }
+        animate background { duration: Motion.fade; }
+    }
+
+    touch := TouchArea {
+        x: root.width - root.strip-w;
+        width: root.strip-w;
+        animate x, width { duration: Motion.quick; easing: Motion.out; }
+        pointer-event(e) => {
+            if (e.button == PointerEventButton.left && e.kind == PointerEventKind.down) {
+                if (self.mouse-y >= root.thumb-y && self.mouse-y <= root.thumb-y + root.thumb-h) {
+                    root.dragging = true;
+                    root.grab-mouse = self.mouse-y;
+                    root.grab-y = root.content-y;
+                } else if (self.mouse-y < root.thumb-y) {
+                    root.scroll-to(root.bound(root.content-y + root.visible-height));
+                } else {
+                    root.scroll-to(root.bound(root.content-y - root.visible-height));
+                }
+            } else if (e.kind == PointerEventKind.up || e.kind == PointerEventKind.cancel) {
+                root.dragging = false;
+            }
+        }
+        moved => {
+            if (root.dragging && root.track > root.thumb-h) {
+                root.scroll-to(root.bound(root.grab-y - (self.mouse-y - root.grab-mouse) * root.max-scroll / (root.track - root.thumb-h)));
+            }
+        }
+    }
+}

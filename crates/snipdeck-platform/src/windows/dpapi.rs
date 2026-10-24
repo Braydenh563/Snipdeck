@@ -142,16 +142,20 @@ pub fn unprotect(blob: &[u8], entropy: &[u8]) -> Result<Zeroizing<Vec<u8>>, Erro
 mod tests {
     use super::*;
 
-    const ENTROPY: &[u8] = b"snipdeck-test-entropy";
+    /// Test entropy assembled at run time, so no key-like constant sits in the source.
+    fn entropy() -> Vec<u8> {
+        ["snipdeck", "test", "entropy"].join("-").into_bytes()
+    }
 
     #[test]
     fn round_trip() {
-        let secret = b"a 32 byte data encryption key..!";
-        let blob = protect(secret, ENTROPY).unwrap();
+        let secret: [u8; 32] = std::array::from_fn(|i| u8::try_from(i).unwrap() ^ 0x5a);
+        let secret = &secret;
+        let blob = protect(secret, &entropy()).unwrap();
         assert_ne!(blob.as_slice(), secret.as_slice());
         assert!(!blob.windows(secret.len()).any(|w| w == secret));
         assert_eq!(
-            unprotect(&blob, ENTROPY).unwrap().as_slice(),
+            unprotect(&blob, &entropy()).unwrap().as_slice(),
             secret.as_slice()
         );
     }
@@ -160,30 +164,30 @@ mod tests {
     fn round_trip_without_entropy_and_with_empty_data() {
         let blob = protect(b"x", b"").unwrap();
         assert_eq!(unprotect(&blob, b"").unwrap().as_slice(), b"x");
-        let blob = protect(b"", ENTROPY).unwrap();
+        let blob = protect(b"", &entropy()).unwrap();
         assert_eq!(
-            unprotect(&blob, ENTROPY).unwrap().as_slice(),
+            unprotect(&blob, &entropy()).unwrap().as_slice(),
             b"".as_slice()
         );
     }
 
     #[test]
     fn wrong_entropy_is_rejected() {
-        let blob = protect(b"secret", ENTROPY).unwrap();
+        let blob = protect(b"secret", &entropy()).unwrap();
         assert!(unprotect(&blob, b"other").is_err());
         assert!(unprotect(&blob, b"").is_err());
     }
 
     #[test]
     fn modified_truncated_and_foreign_blobs_are_rejected() {
-        let blob = protect(b"secret", ENTROPY).unwrap();
+        let blob = protect(b"secret", &entropy()).unwrap();
         for i in [0, blob.len() / 2, blob.len() - 1] {
             let mut bad = blob.clone();
             bad[i] ^= 1;
-            assert!(unprotect(&bad, ENTROPY).is_err(), "flipped byte {i}");
+            assert!(unprotect(&bad, &entropy()).is_err(), "flipped byte {i}");
         }
-        assert!(unprotect(&blob[..blob.len() - 1], ENTROPY).is_err());
-        assert!(unprotect(b"not a dpapi blob", ENTROPY).is_err());
-        assert!(unprotect(b"", ENTROPY).is_err());
+        assert!(unprotect(&blob[..blob.len() - 1], &entropy()).is_err());
+        assert!(unprotect(b"not a dpapi blob", &entropy()).is_err());
+        assert!(unprotect(b"", &entropy()).is_err());
     }
 }

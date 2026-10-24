@@ -1,6 +1,7 @@
 import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
+import { IconButton, IconButtonSize } from "icon-button.slint";
 
 export struct PinnedItem {
     title: string,
@@ -118,26 +119,56 @@ component PinnedChip inherits Rectangle {
 }
 
 // DESIGN.md §4 PinnedStrip: pinned items as small chips in one horizontally scrolling row.
-// Click uses the item (Shift+click copies). When the chips do not fit, the row scrolls (wheel,
-// drag, or by moving keyboard focus from chip to chip).
+// Click uses the item (Shift+click copies). When the chips do not fit, the row scrolls: the mouse
+// wheel (a vertical notch or Shift+wheel both move it sideways), a drag or touch flick, keyboard focus
+// moving from chip to chip, and a caret button at each end (no gradient fades, DESIGN.md §7).
 export component PinnedStrip inherits Rectangle {
     in property <[PinnedItem]> items;
+    // Accessible names and tooltips of the two caret buttons (the app translates them).
+    in property <string> scroll-left-label;
+    in property <string> scroll-right-label;
     callback use(int);
     callback copy(int);
     callback context-menu-requested(int, length, length);
+    // A caret button gained or lost the pointer or keyboard focus: its tooltip text, the centre x and the
+    // bottom y in window coordinates, and whether it is now active (the host owns the tooltip timing).
+    callback tip(string, length, length, bool);
 
     // Chips elide beyond this width.
     property <length> chip-max-w: Type.base * 12;
     // Room for the focus ring above and below the 24px chips.
     property <length> ring: Space.s1;
+    // The chips do not fit between the strip's edges.
+    out property <bool> overflowing: row.preferred-width + 2 * Space.s1 > root.width;
+    // More chips lie out of view to the left / right: the matching caret button shows.
+    property <bool> can-left: flick.content-x < -1px;
+    property <bool> can-right: flick.content-x > flick.width - flick.content-width + 1px;
 
     // How far the row is scrolled to the left, for tests and for the app to show scroll hints.
     out property <length> scroll-x: -flick.content-x;
 
+    // Moves the row by `dx` (negative = later chips come into view), clamped to its ends.
+    function scroll-by(dx: length) {
+        flick.content-x = min(0px, max(flick.width - flick.content-width, flick.content-x + dx));
+    }
+
     height: max(Space.hit-min, Type.line-sm + Space.s2) + 2 * root.ring;
     clip: true;
 
+    // Behind the chips: turns the wheel into sideways scrolling. A vertical notch and Shift+wheel arrive
+    // as `delta-y`, a horizontal wheel or trackpad as `delta-x`; either moves the row.
+    TouchArea {
+        scroll-event(event) => {
+            root.scroll-by(event.delta-x + event.delta-y);
+            accept
+        }
+    }
+
+    // Placed by hand, not in a layout: a layout here would make the strip's size constraints depend on
+    // `can-left` / `can-right` (which depend on the width): a binding loop through the Panel's layout.
     flick := Flickable {
+        width: root.width;
+        height: root.height;
         content-width: max(self.width, row.preferred-width + 2 * Space.s1);
         content-height: self.height;
 
@@ -168,6 +199,51 @@ export component PinnedStrip inherits Rectangle {
                     }
                 }
             }
+        }
+    }
+
+    // The carets float over the ends of the row on a solid patch (never a fade), and only on the side
+    // that has more chips to reveal. No room is reserved for them, so a row that fits shows none.
+    if root.can-left: Rectangle {
+        x: 0px;
+        width: Space.hit-min + 2 * Space.s1;
+        background: Theme.bg-app;
+    }
+    if root.can-left: left := IconButton {
+        icon: Icons.caret-left;
+        tooltip: root.scroll-left-label;
+        size: IconButtonSize.sm;
+        x: Space.s1;
+        y: (parent.height - self.height) / 2;
+        clicked => { root.scroll-by(flick.width * 0.75); }
+        changed has-hover => { root.tip(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+        changed has-focus => { root.tip(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+    }
+    if root.can-right: Rectangle {
+        x: parent.width - self.width;
+        width: Space.hit-min + 2 * Space.s1;
+        background: Theme.bg-app;
+    }
+    if root.can-right: right := IconButton {
+        icon: Icons.caret-right;
+        tooltip: root.scroll-right-label;
+        size: IconButtonSize.sm;
+        x: parent.width - Space.s1 - self.width;
+        y: (parent.height - self.height) / 2;
+        clicked => { root.scroll-by(-flick.width * 0.75); }
+        changed has-hover => { root.tip(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+        changed has-focus => { root.tip(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+    }
+
+    // A caret that disappears under the pointer (the end was reached) can no longer report that it left.
+    changed can-left => {
+        if (!root.can-left) {
+            root.tip(root.scroll-left-label, 0px, 0px, false);
+        }
+    }
+    changed can-right => {
+        if (!root.can-right) {
+            root.tip(root.scroll-right-label, 0px, 0px, false);
         }
     }
 }

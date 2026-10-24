@@ -4,7 +4,7 @@ Inputs: [`SPEC.md`](SPEC.md), [`../DESIGN.md`](../DESIGN.md), [`adr/`](adr/), [`
 
 **Verification labels.** **[L]** verified automatically in cloud CI (Linux). **[W]** needs a Windows run:
 CI builds the Windows artifact and compiles it, but a human must run the Windows test wizard
-(`run-windows-tests.bat`). Every milestone that touches Windows adds its steps to `tools/windows-test/tests/`
+(`Test Snipdeck on Windows.bat`). Every milestone that touches Windows adds its steps to `tools/windows-test/tests/`
 so the owner runs one wizard, once per milestone, instead of reading instructions.
 
 **Agents.** Opus: architecture, contracts, unsafe/Win32 code, reviews. Sonnet: feature implementation per crate.
@@ -19,7 +19,7 @@ runs on every PR before merge.
 | **M2** | Windows platform layer | `snipdeck-platform` Windows implementation: multi-format clipboard read/write/listener with delayed rendering, global hotkeys, foreground/Target tracking with UIA fallback and paste-key table, paste pipeline, tray, autostart, single instance | Compiles **[L]**; behaviour **[W]** (wizard steps S1 test script + new) |
 | **M3** | UI foundation + Panel | `tokens.slint` generated from `design/tokens/palette.json`, component library, software-renderer setup, non-activating Panel with ListView, i18n scaffolding (`@tr`, 7 locales extracted), CJK fallback | Screenshot tests **[L]** (software renderer under Xvfb); focus/IME/DPI **[W]** |
 | **M4** | Picker + Main window + Editors | Hotkey Picker, 3-pane Main window, text editor (16 KB cap + rope viewer), image editor (crop/rotate/resize/redact), template fill form, Trash, import/export UI | **[L]** logic and screenshots; interaction **[W]** |
-| **M5** | Capture, History, Sensitive, Pro | Snip overlay, OCR trait + Windows OCR (+ optional RapidOCR pack), Recent inbox, sensitive items (mask, auto-clear, encryption + master password), paste stack, floating lists, licence UI, onboarding, settings, daily backups, crash log | Logic **[L]**; capture/OCR/hotkeys **[W]** |
+| **M5** | Capture, History, Sensitive, Supporter | Snip overlay, OCR trait + Windows OCR (+ optional RapidOCR pack), Recent inbox, sensitive items (mask, auto-clear, encryption + master password), paste stack, floating lists, licence UI, onboarding, settings, daily backups, crash log | Logic **[L]**; capture/OCR/hotkeys **[W]** |
 | **M6** | Release | MSIX + MSI packaging, SignPath signing, updater, winget manifest, Store listing assets, perf CI (budgets from SPEC §9), accessibility audit (Narrator, contrast, keyboard), docs site/README, CLA bot | Packaging **[L]**; install, perf on real hardware, a11y **[W]** |
 
 ## M1 detail (starts now)
@@ -30,7 +30,7 @@ runs on every PR before merge.
    as the contract the other crates build on.
 2. **`snipdeck-core` logic (Sonnet, TDD).** Template parser/renderer (`{date}`, `{time}`, `{datetime:FMT}`,
    `{clipboard}`, `{cursor}`; prompted `{field:Name}`, `{field:Name|default}`, `{choice:Name|a|b}` behind an entitlement check),
-   fuzzy search index (title + tags + 64 chars, `nucleo`), Free/Pro entitlement rules (3 boards, prompted fields,
+   fuzzy search index (title + tags + 64 chars, `nucleo`), Free/Supporter entitlement rules (5 boards, prompted fields,
    floating lists, paste stack, sensitive encryption).
 3. **`snipdeck-store` (Sonnet, TDD).** Schema and migrations, repositories behind traits, content-addressed blob
    store, FTS5 search, trash with 30-day purge, ordering, `.snipdeck` export/import, Ditto/CopyQ/text-folder importers (fixtures by Haiku),

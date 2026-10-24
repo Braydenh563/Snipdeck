@@ -2,7 +2,7 @@
 // `components.slint` so no unused-export warnings fire; only globals the Rust side sets and the
 // gallery windows (rendered by the screenshot tests) are exported.
 import { Button } from "components.slint";
-export { SystemLook, Palette } from "theme.slint";
+export { SystemLook, Palette, Fonts, AccentSteps } from "theme.slint";
 
 export { ButtonGallery } from "gallery/buttons.slint";
 export { I18nProbe } from "gallery/i18n_probe.slint";
@@ -14,9 +14,30 @@ export { InputsGallery, TabsGallery, FormGallery, DialogGallery, EmptyStateGalle
 
 export { DeckGallery, DeckScaleGallery, DeckPartsGallery, DeckCjkProbe } from "gallery/deck.slint";
 export { ReviewProbe } from "gallery/review_probe.slint";
+export { ScrollbarGallery } from "gallery/scroll.slint";
 import { ItemCard, DeckEdge, PinnedStrip, SidebarItem, BoardSwitcher } from "components.slint";
 
-export { PanelWindow, PanelRow, PanelView } from "panel.slint";
+export { PanelWindow, PanelRow, PanelView, ResizeEdge } from "panel.slint";
+export { TrayTexts } from "tray_texts.slint";
+export { ImportTexts } from "import_texts.slint";
+export { ToastTexts } from "toast_texts.slint";
+export { MenuTexts } from "menu_texts.slint";
+export { FormTexts } from "form_texts.slint";
+export { Icons } from "icons.slint";
+export { ListIcons } from "list-icons.slint";
 export { ItemKind, ItemCardVariant, ToastKind, ToastPhase, MenuEntry, PinnedItem } from "components.slint";
+
+export { CommandTexts, CommandText } from "command_texts.slint";
+export { PlanTexts, PlanRow } from "components.slint";
+export { MainWindow, MainRow, LabelChipEntry, MainSection, MainView, SelectMode, ItemAction, HelpPage, ChoiceEntry, PaletteRow } from "main_window.slint";
+
+export { ItemEditor, ListEditor, BoardEditor, TagManager } from "editors.slint";
+export { SettingsPage, HotkeySetting, BackupRow } from "settings.slint";
+export { HelpWindow, HelpCheck, ShortcutGroup, ShortcutLineData } from "help.slint";
+export { ShortcutTexts } from "shortcut_texts.slint";
+export { OnboardingWindow } from "onboarding.slint";
+export { UnlockWindow, MasterProblem, MasterMode, MasterTexts } from "master_password.slint";
+export { FormControlsGallery } from "gallery/forms.slint";
 export { PickerWindow, PickerRow, PickerScope } from "picker.slint";
 export { TemplateFillWindow, FormField } from "template_fill.slint";
+export { ToastWindow } from "toast_window.slint";
