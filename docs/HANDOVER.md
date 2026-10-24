@@ -24,6 +24,8 @@ Product goal (owner, verbatim 2026-10-21): "it needs to be a really handy and qu
 a lot of thought into using, is should be a quick flick open and close app and then with the occasional edit and
 management in the larger window". Judge every change by it: the Panel/Picker open, paste and close in one quick
 motion with no thinking; editing and management live in the Main window.
+Owner, 2026-10-24: "i dont like the small panel design". Redesign the Panel before polishing it: propose 2-3
+directions (mock-ups or goldens) and let the owner pick before building.
 1. Render glitches on Windows (transparent patches, grey boxes when opening About/Edit, dragging the Panel,
    windows dragged back on screen stay transparent): find the root cause with a Windows diagnostic the owner runs;
    CI cannot see it.
