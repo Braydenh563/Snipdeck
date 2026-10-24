@@ -225,6 +225,9 @@ pub struct View {
     pub marked_count: usize,
     /// The rows show their 1 to 9 numbers (the `show_numbers` setting).
     pub show_numbers: bool,
+    /// The rows are compact (the `row_density` setting). The Panel does not draw rows by it yet;
+    /// the property is here for its redesign to read.
+    pub compact_rows: bool,
     /// The context menu of a list tab while it is open ([`LIST_MENU`](crate::controller::LIST_MENU)).
     pub list_menu: Option<Vec<ListMenuEntry>>,
     /// The list menu's "Delete list…" confirmation while it asks (the Panel draws it; no

@@ -159,6 +159,61 @@ fn choosing_a_theme_applies_it_toasts_it_and_writes_it_after_the_quiet_time() {
 }
 
 #[test]
+fn row_density_is_a_setting_the_main_lists_and_the_panel_view_follow() {
+    let temp = tempfile::tempdir().expect("dir");
+    let mut w = saving_world(temp.path());
+    assert_eq!(w.ctl.main_screen().view_mode, ViewMode::Comfortable);
+    assert!(
+        !w.ctl.view().compact_rows,
+        "comfortable until told otherwise"
+    );
+
+    w.ctl.set_row_density(RowDensity::Compact);
+    assert_eq!(w.ctl.settings().row_density, RowDensity::Compact);
+    assert_eq!(
+        w.ctl.main_screen().view_mode,
+        ViewMode::Compact,
+        "applied at once"
+    );
+    assert!(w.ctl.view().compact_rows, "the Panel can read it later");
+    w.clock.set(at("2026-10-17T10:30:00.5Z"));
+    w.ctl.save_settings_if_due();
+    assert_eq!(
+        crate::paths::load_settings(temp.path()).row_density,
+        RowDensity::Compact,
+        "saved after the quiet time"
+    );
+
+    // The row-style buttons of the Main toolbar are the same setting.
+    w.ctl.main_set_view(ViewMode::Comfortable);
+    assert_eq!(w.ctl.settings().row_density, RowDensity::Comfortable);
+    // Tiles are a different layout, not a density: the setting stays and the lists come back to it.
+    w.ctl.main_set_view(ViewMode::Compact);
+    w.ctl.main_set_view(ViewMode::Tile);
+    assert_eq!(w.ctl.settings().row_density, RowDensity::Compact);
+    assert_eq!(w.ctl.main_screen().view_mode, ViewMode::Tile);
+    w.ctl.set_row_density(RowDensity::Comfortable);
+    assert_eq!(
+        w.ctl.main_screen().view_mode,
+        ViewMode::Comfortable,
+        "choosing a density shows the list at that density"
+    );
+}
+
+#[test]
+fn the_main_window_starts_in_the_saved_row_density() {
+    let w = world_with(
+        None,
+        Settings {
+            row_density: RowDensity::Compact,
+            ..Settings::default()
+        },
+    );
+    let mut ctl = w.ctl;
+    assert_eq!(ctl.main_screen().view_mode, ViewMode::Compact);
+}
+
+#[test]
 fn several_quick_changes_make_one_write_and_flush_writes_at_once() {
     let temp = tempfile::tempdir().expect("dir");
     let mut w = saving_world(temp.path());

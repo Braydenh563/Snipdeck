@@ -310,6 +310,9 @@ msgstr "Color"
 msgid "Colour label"
 msgstr "Etiqueta de color"
 
+msgid "Comfortable"
+msgstr "Cómoda"
+
 msgid "Comfortable view"
 msgstr "Vista cómoda"
 
@@ -324,6 +327,9 @@ msgstr "Comandos (Ctrl+K)"
 
 msgid "Commands in the Main window"
 msgstr "Comandos en la ventana principal"
+
+msgid "Compact"
+msgstr "Compacta"
 
 msgid "Compact view"
 msgstr "Vista compacta"
@@ -910,6 +916,9 @@ msgstr "Cuánto tiempo descansa el puntero sobre la franja antes de que se abra 
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr "Cuánto tiempo permanece el puntero fuera del panel abierto antes de que se pliegue, de 0 a {} milisegundos."
 
+msgid "How tall the item rows are in the Main window. Compact shows one line per item."
+msgstr "Altura de las filas de elementos en la ventana principal. En compacta, cada elemento ocupa una línea."
+
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Ancho con el que se abre el panel, de {} a {} píxeles."
 
@@ -1436,6 +1445,9 @@ msgstr "Pegar siguiente y la pila de pegado son funciones de Colaborador."
 msgid "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
 msgstr "Pegar siguiente es una función de Colaborador, así que este atajo no hace nada en el plan gratuito."
 
+msgid "Paste next item"
+msgstr "Pegar el siguiente elemento"
+
 msgid "Paste stack"
 msgstr "Pila de pegado"
 
@@ -1695,6 +1707,15 @@ msgstr "Clic derecho o tecla Menú para ver las acciones de la lista"
 msgid "Rose"
 msgstr "Rosa"
 
+msgid "Row density"
+msgstr "Densidad de filas"
+
+msgid "Row density: Comfortable"
+msgstr "Densidad de filas: cómoda"
+
+msgid "Row density: Compact"
+msgstr "Densidad de filas: compacta"
+
 msgid "SNIP1."
 msgstr "SNIP1."
 
@@ -1769,6 +1790,9 @@ msgstr "Buscar en los atajos de teclado"
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "Segundos antes de que un fragmento sensible copiado se borre del portapapeles, si desde entonces no se ha copiado nada más. 0 nunca lo borra. Al pegar se restaura tu propio portapapeles."
+
+msgid "Select all items"
+msgstr "Seleccionar todos los elementos"
 
 msgid "Select every item"
 msgstr "Selecciona todos los elementos"
@@ -2483,6 +2507,9 @@ msgstr "duplicar"
 msgid "edit"
 msgstr "editar"
 
+msgid "every mark choose all"
+msgstr "todos marcar elegir seleccionar"
+
 msgid "everything home show"
 msgstr "todo inicio mostrar"
 
@@ -2555,6 +2582,9 @@ msgstr "s"
 msgid "snip snipping capture screen picture image"
 msgstr "recorte recortes captura pantalla imagen foto"
 
+msgid "stack queue sequence following paste"
+msgstr "pila cola secuencia siguiente pegar"
+
 msgid "tag change"
 msgstr "cambio de etiqueta"
 
@@ -2570,14 +2600,14 @@ msgstr "hasta {}"
 msgid "version licence update"
 msgstr "versión licencia actualización"
 
-msgid "view mode layout cards switch"
-msgstr "modo de vista diseño tarjetas cambiar"
+msgid "view mode layout cards rows height spacing switch"
+msgstr "vista modo diseño tarjetas filas altura espacio cambiar"
 
 msgid "view mode layout grid switch"
 msgstr "modo de vista diseño cuadrícula cambiar"
 
-msgid "view mode layout list dense switch"
-msgstr "modo de vista diseño lista compacta cambiar"
+msgid "view mode layout list dense rows height spacing switch"
+msgstr "vista modo diseño lista denso filas altura espacio cambiar"
 
 msgid "window geometry default restore move resize cut off"
 msgstr "ventana geometría predeterminado restaurar mover tamaño cortado"

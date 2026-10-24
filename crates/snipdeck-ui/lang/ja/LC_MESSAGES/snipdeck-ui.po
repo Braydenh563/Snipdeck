@@ -310,6 +310,9 @@ msgstr "色"
 msgid "Colour label"
 msgstr "カラーラベル"
 
+msgid "Comfortable"
+msgstr "ゆったり"
+
 msgid "Comfortable view"
 msgstr "ゆったり表示"
 
@@ -324,6 +327,9 @@ msgstr "コマンド (Ctrl+K)"
 
 msgid "Commands in the Main window"
 msgstr "メインウィンドウのコマンド"
+
+msgid "Compact"
+msgstr "コンパクト"
 
 msgid "Compact view"
 msgstr "コンパクト表示"
@@ -910,6 +916,9 @@ msgstr "ポインターが帯の上にとどまってからパネルが開くま
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr "ポインターが開いたパネルから外れてからパネルがたたまれるまでの時間（0〜{}ミリ秒）。"
 
+msgid "How tall the item rows are in the Main window. Compact shows one line per item."
+msgstr "メインウィンドウでの項目の行の高さです。コンパクトでは1項目を1行で表示します。"
+
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "パネルを開く幅（{}〜{}ピクセル）。"
 
@@ -1431,6 +1440,9 @@ msgstr "「次を貼り付け」と貼り付けスタックは Supporter の機�
 msgid "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
 msgstr "「次を貼り付け」は Supporter の機能のため、無料プランではこのショートカットは何もしません。"
 
+msgid "Paste next item"
+msgstr "次の項目を貼り付け"
+
 msgid "Paste stack"
 msgstr "貼り付けスタック"
 
@@ -1688,6 +1700,15 @@ msgstr "右クリックまたはメニューキーでリストの操作を表示
 msgid "Rose"
 msgstr "ローズ"
 
+msgid "Row density"
+msgstr "行の密度"
+
+msgid "Row density: Comfortable"
+msgstr "行の密度: ゆったり"
+
+msgid "Row density: Compact"
+msgstr "行の密度: コンパクト"
+
 msgid "SNIP1."
 msgstr "SNIP1."
 
@@ -1762,6 +1783,9 @@ msgstr "キーボードショートカットを検索"
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "機密スニペットをコピーしてから、その後他に何もコピーされなければ、クリップボードから消去されるまでの秒数。0 にすると消去しません。貼り付けると、代わりにご自身のクリップボードの内容が復元されます。"
+
+msgid "Select all items"
+msgstr "すべての項目を選択"
 
 msgid "Select every item"
 msgstr "すべてのスニペットを選択"
@@ -2475,6 +2499,9 @@ msgstr "複製"
 msgid "edit"
 msgstr "編集"
 
+msgid "every mark choose all"
+msgstr "すべて 選択 マーク"
+
 msgid "everything home show"
 msgstr "すべて ホーム 表示"
 
@@ -2547,6 +2574,9 @@ msgstr "秒"
 msgid "snip snipping capture screen picture image"
 msgstr "切り取り スクリーンショット 画面 画像 キャプチャ"
 
+msgid "stack queue sequence following paste"
+msgstr "スタック キュー 順番 次 貼り付け"
+
 msgid "tag change"
 msgstr "タグの変更"
 
@@ -2562,14 +2592,14 @@ msgstr "最大 {}"
 msgid "version licence update"
 msgstr "バージョン ライセンス アップデート"
 
-msgid "view mode layout cards switch"
-msgstr "表示モード レイアウト カード 切り替え"
+msgid "view mode layout cards rows height spacing switch"
+msgstr "表示 モード レイアウト カード 行 高さ 間隔 切り替え"
 
 msgid "view mode layout grid switch"
 msgstr "表示モード レイアウト グリッド 切り替え"
 
-msgid "view mode layout list dense switch"
-msgstr "表示モード レイアウト リスト 切り替え"
+msgid "view mode layout list dense rows height spacing switch"
+msgstr "表示 モード レイアウト リスト 密 行 高さ 間隔 切り替え"
 
 msgid "window geometry default restore move resize cut off"
 msgstr "ウィンドウ ジオメトリ 既定 復元 移動 サイズ 切れる"

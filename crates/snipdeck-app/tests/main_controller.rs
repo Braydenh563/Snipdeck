@@ -1793,8 +1793,12 @@ fn palette_navigation_and_view_commands_change_the_main_screen() {
     assert_eq!(ctl.main_screen().section, Section::All);
     ctl.run_command(Command::ViewTile, 0);
     assert_eq!(ctl.main_screen().view_mode, ViewMode::Tile);
-    ctl.run_command(Command::ViewCompact, 0);
+    ctl.run_command(Command::DensityCompact, 0);
     assert_eq!(ctl.main_screen().view_mode, ViewMode::Compact);
+    ctl.main_clear_selection();
+    ctl.run_command(Command::SelectAll, 0);
+    let screen = ctl.main_screen();
+    assert_eq!(screen.selected_count, screen.rows.len(), "Select all items");
 }
 
 #[test]

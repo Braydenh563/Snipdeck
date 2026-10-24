@@ -33,7 +33,8 @@ use snipdeck_app::{
     main_binding::MainUi,
     paths::read_settings,
     settings::{
-        DockEdge, DockTrigger, HotkeyAction, Hotkeys, ProgramPaste, Settings, TextSize, Theme,
+        DockEdge, DockTrigger, HotkeyAction, Hotkeys, ProgramPaste, RowDensity, Settings, TextSize,
+        Theme,
     },
     settings_binding::{
         self, ExportFolder, SettingsBinding, SettingsHost, SettingsUi, request_open,
@@ -256,11 +257,16 @@ impl Rig {
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
-        let cases: [Case; 18] = [
+        let cases: [Case; 19] = [
             (
                 "theme",
                 |r| r.ui.invoke_theme_chosen(2),
                 |s| s.theme == Theme::Dark,
+            ),
+            (
+                "row density",
+                |r| r.ui.invoke_row_density_chosen(1),
+                |s| s.row_density == RowDensity::Compact,
             ),
             (
                 "text size",
@@ -583,6 +589,20 @@ fn the_accent_applies_at_once_and_blue_keeps_the_built_in_palette() {
             r.ctl.borrow().settings().accent,
             snipdeck_app::accent::AccentChoice::Blue
         );
+    });
+}
+
+#[test]
+fn the_row_density_row_sets_the_setting_and_shows_what_is_stored() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(r.ui.get_row_density_index(), 0, "comfortable by default");
+        r.ui.invoke_row_density_chosen(1);
+        assert_eq!(r.ctl.borrow().settings().row_density, RowDensity::Compact);
+        assert_eq!(r.ui.get_row_density_index(), 1);
+        assert!(r.ctl.borrow().view().compact_rows, "the Panel can read it");
+        r.ui.invoke_row_density_chosen(0);
+        assert_eq!(r.ui.get_row_density_index(), 0);
     });
 }
 

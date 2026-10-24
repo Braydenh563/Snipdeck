@@ -956,6 +956,23 @@ ui_tests! {
         assert_eq!(take(&log), ["theme:2"]);
     }
 
+    fn the_view_menu_has_the_two_row_densities_like_the_toolbar_buttons() {
+        let (ui, log) = start();
+        assert_eq!(ui.get_view(), MainView::Comfortable);
+        for (label, view, logged) in [
+            ("Row density: Compact", MainView::Compact, "view:Compact"),
+            ("Row density: Comfortable", MainView::Comfortable, "view:Comfortable"),
+        ] {
+            find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
+            settle();
+            find(&ui, label, AccessibleRole::ListItem).invoke_accessible_default_action();
+            settle();
+            assert!(!ui.get_menu_open(), "choosing a density closes the menu");
+            assert_eq!(ui.get_view(), view);
+            assert_eq!(take(&log), [logged]);
+        }
+    }
+
     fn ctrl_n_and_the_buttons_report_what_was_asked() {
         let (ui, log) = start();
         chord(ui.window(), &[Key::Control], "n");

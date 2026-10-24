@@ -1169,6 +1169,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     );
     window.set_marked_count(to_i32(view.marked_count));
     window.set_show_numbers(view.show_numbers);
+    window.set_compact_rows(view.compact_rows);
     if differs(&|p| p.list_menu == view.list_menu)
         || window.get_list_menu_open() != view.list_menu.is_some()
     {

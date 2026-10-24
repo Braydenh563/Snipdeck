@@ -250,6 +250,9 @@ export component PanelWindow inherits Window {
     // ---- Selection (O45): Ctrl+click, Shift+click, Ctrl+A, Shift+Up/Down; the bulk bar acts on it ----
     in property <int> marked-count: 0;
     in property <bool> show-numbers: true;
+    // The row density setting (Settings > Appearance). Nothing here draws rows by it yet: the
+    // Panel redesign reads it.
+    in property <bool> compact-rows: false;
     callback row-picked(int, bool, bool);
     callback select-all-requested();
     callback selection-extended(int);

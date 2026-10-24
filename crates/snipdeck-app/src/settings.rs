@@ -221,6 +221,18 @@ pub enum Theme {
     Dark,
 }
 
+/// How tall the item rows are (Settings > Appearance, the Main window's View menu, the command
+/// palette). The Main lists follow it now; the Panel reads it once its redesign lands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum RowDensity {
+    /// Two or three preview lines per row.
+    #[default]
+    Comfortable,
+    /// One line per row.
+    Compact,
+}
+
 /// The text size Snipdeck uses (Settings > Appearance), WCAG 1.4.4.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum TextSize {
@@ -563,6 +575,8 @@ pub struct Settings {
     pub editor_more_open: bool,
     /// The Panel's rows show their 1 to 9 quick-use numbers (the keys work either way).
     pub show_numbers: bool,
+    /// How tall the item rows are: comfortable (preview lines) or compact (one line).
+    pub row_density: RowDensity,
 }
 
 impl Default for Settings {
@@ -595,6 +609,7 @@ impl Default for Settings {
             onboarded: false,
             editor_more_open: false,
             show_numbers: true,
+            row_density: RowDensity::Comfortable,
         }
     }
 }
@@ -692,6 +707,7 @@ impl Settings {
         field!(onboarded);
         field!(editor_more_open);
         field!(show_numbers);
+        field!(row_density);
         settings
     }
 
@@ -1506,5 +1522,29 @@ mod tests {
             Settings::from_json(r#"{"programs":7}"#).programs,
             Settings::default().programs
         );
+    }
+
+    #[test]
+    fn row_density_is_comfortable_by_default_and_round_trips() {
+        assert_eq!(
+            Settings::from_json("{}").row_density,
+            RowDensity::Comfortable
+        );
+        assert_eq!(
+            Settings::from_json(r#"{"row_density":"compact"}"#).row_density,
+            RowDensity::Compact
+        );
+        // A word we do not know keeps the default and leaves the other settings alone.
+        let bad = Settings::from_json(r#"{"row_density":"tiny","theme":"dark"}"#);
+        assert_eq!(
+            (bad.row_density, bad.theme),
+            (RowDensity::Comfortable, Theme::Dark)
+        );
+        let compact = Settings {
+            row_density: RowDensity::Compact,
+            ..Settings::default()
+        };
+        let back = Settings::from_json(&serde_json::to_string(&compact).unwrap());
+        assert_eq!(back.row_density, RowDensity::Compact);
     }
 }

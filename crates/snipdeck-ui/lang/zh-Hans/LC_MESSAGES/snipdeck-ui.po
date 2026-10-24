@@ -310,6 +310,9 @@ msgstr "颜色"
 msgid "Colour label"
 msgstr "颜色标签"
 
+msgid "Comfortable"
+msgstr "舒适"
+
 msgid "Comfortable view"
 msgstr "舒适视图"
 
@@ -324,6 +327,9 @@ msgstr "命令（Ctrl+K）"
 
 msgid "Commands in the Main window"
 msgstr "主窗口中的命令"
+
+msgid "Compact"
+msgstr "紧凑"
 
 msgid "Compact view"
 msgstr "紧凑视图"
@@ -910,6 +916,9 @@ msgstr "指针停在细条上多久后面板展开，范围为 0 至 {} 毫秒�
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr "指针离开已展开的面板多久后面板收起，范围为 0 至 {} 毫秒。"
 
+msgid "How tall the item rows are in the Main window. Compact shows one line per item."
+msgstr "主窗口中项目行的高度。紧凑模式下每个项目占一行。"
+
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "面板展开的宽度，范围为 {} 至 {} 像素。"
 
@@ -1431,6 +1440,9 @@ msgstr "“粘贴下一个”和粘贴队列是 Supporter 功能。"
 msgid "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
 msgstr "“粘贴下一个”是 Supporter 功能，因此在免费版中此快捷键不起作用。"
 
+msgid "Paste next item"
+msgstr "粘贴下一个项目"
+
 msgid "Paste stack"
 msgstr "粘贴堆栈"
 
@@ -1688,6 +1700,15 @@ msgstr "右键单击或按菜单键查看列表操作"
 msgid "Rose"
 msgstr "玫瑰色"
 
+msgid "Row density"
+msgstr "行密度"
+
+msgid "Row density: Comfortable"
+msgstr "行密度:舒适"
+
+msgid "Row density: Compact"
+msgstr "行密度:紧凑"
+
 msgid "SNIP1."
 msgstr "SNIP1."
 
@@ -1762,6 +1783,9 @@ msgstr "搜索键盘快捷键"
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "复制敏感片段后，若期间未复制其他内容，则在此秒数后从剪贴板清除。设为 0 则永不清除。粘贴时会改为恢复你原本的剪贴板内容。"
+
+msgid "Select all items"
+msgstr "选择所有项目"
 
 msgid "Select every item"
 msgstr "选择所有片段"
@@ -2475,6 +2499,9 @@ msgstr "复制"
 msgid "edit"
 msgstr "编辑"
 
+msgid "every mark choose all"
+msgstr "全部 标记 选择 全选"
+
 msgid "everything home show"
 msgstr "全部 首页 显示"
 
@@ -2547,6 +2574,9 @@ msgstr "秒"
 msgid "snip snipping capture screen picture image"
 msgstr "截取 截图 屏幕 图片 图像"
 
+msgid "stack queue sequence following paste"
+msgstr "堆栈 队列 顺序 下一个 粘贴"
+
 msgid "tag change"
 msgstr "标签更改"
 
@@ -2562,14 +2592,14 @@ msgstr "最多 {} 个"
 msgid "version licence update"
 msgstr "版本 许可证 更新"
 
-msgid "view mode layout cards switch"
-msgstr "视图模式 布局 卡片 切换"
+msgid "view mode layout cards rows height spacing switch"
+msgstr "视图 模式 布局 卡片 行 高度 间距 切换"
 
 msgid "view mode layout grid switch"
 msgstr "视图模式 布局 网格 切换"
 
-msgid "view mode layout list dense switch"
-msgstr "视图模式 布局 列表 紧凑 切换"
+msgid "view mode layout list dense rows height spacing switch"
+msgstr "视图 模式 布局 列表 紧密 行 高度 间距 切换"
 
 msgid "window geometry default restore move resize cut off"
 msgstr "窗口 几何 默认 恢复 移动 大小 被截断"

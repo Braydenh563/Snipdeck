@@ -23,6 +23,8 @@ pub enum Command {
     OpenPicker,
     /// Quick capture.
     QuickCapture,
+    /// Paste the next item of the paste stack (or of the pinned items or the open list).
+    PasteNext,
     /// Take a screenshot with the Windows snipping overlay.
     TakeScreenshot,
     /// Open Settings.
@@ -37,10 +39,10 @@ pub enum Command {
     Troubleshoot,
     /// Open About.
     About,
-    /// Comfortable rows.
-    ViewComfortable,
-    /// Compact rows.
-    ViewCompact,
+    /// Comfortable rows (the row density setting).
+    DensityComfortable,
+    /// Compact rows (the row density setting).
+    DensityCompact,
     /// Tiles.
     ViewTile,
     /// Follow the Windows light or dark setting.
@@ -63,6 +65,8 @@ pub enum Command {
     UnpinItem,
     /// Move the item under the cursor to the Trash.
     TrashItem,
+    /// Select every item in the open list.
+    SelectAll,
     /// Open All items.
     GoAll,
     /// Open Pinned.
@@ -77,13 +81,14 @@ pub enum Command {
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 31] = [
+    pub const ALL: [Self; 33] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
         Self::ShowPanel,
         Self::OpenPicker,
         Self::QuickCapture,
+        Self::PasteNext,
         Self::TakeScreenshot,
         Self::Settings,
         Self::UserGuide,
@@ -91,8 +96,8 @@ impl Command {
         Self::Shortcuts,
         Self::Troubleshoot,
         Self::About,
-        Self::ViewComfortable,
-        Self::ViewCompact,
+        Self::DensityComfortable,
+        Self::DensityCompact,
         Self::ViewTile,
         Self::ThemeSystem,
         Self::ThemeLight,
@@ -104,6 +109,7 @@ impl Command {
         Self::PinItem,
         Self::UnpinItem,
         Self::TrashItem,
+        Self::SelectAll,
         Self::GoAll,
         Self::GoPinned,
         Self::GoRecent,
@@ -146,9 +152,11 @@ impl Command {
             Self::EditItem => "Ctrl+E",
             Self::PinItem | Self::UnpinItem => "Ctrl+P",
             Self::TrashItem => "Del",
+            Self::SelectAll => "Ctrl+A",
             Self::ShowPanel => return chord_text(hotkeys, HotkeyAction::TogglePanel),
             Self::OpenPicker => return chord_text(hotkeys, HotkeyAction::Picker),
             Self::QuickCapture => return chord_text(hotkeys, HotkeyAction::Capture),
+            Self::PasteNext => return chord_text(hotkeys, HotkeyAction::PasteNext),
             _ => return None,
         };
         Some(fixed.to_owned())
@@ -337,6 +345,7 @@ mod tests {
             ("Show Panel", "open toggle"),
             ("Open Picker", "quick find paste"),
             ("Quick capture", "clipboard save"),
+            ("Paste next item", "stack queue"),
             ("Take screenshot", "snip capture screen picture"),
             ("Settings", "preferences hotkeys"),
             ("User guide", "help docs"),
@@ -344,8 +353,8 @@ mod tests {
             ("Keyboard shortcuts", "hotkeys keys cheat sheet"),
             ("Troubleshoot…", "diagnose"),
             ("About Snipdeck", "version"),
-            ("Comfortable view", "view mode"),
-            ("Compact view", "view mode"),
+            ("Row density: Comfortable", "view mode"),
+            ("Row density: Compact", "view mode"),
             ("Tile view", "view mode"),
             ("Theme: System", "appearance colour dark light"),
             ("Theme: Light", "appearance colour bright"),
@@ -357,6 +366,7 @@ mod tests {
             ("Pin selected item", "favourite"),
             ("Unpin selected item", "favourite"),
             ("Move selected item to Trash", "delete"),
+            ("Select all items", "every mark"),
             ("Go to All items", "everything"),
             ("Go to Pinned", "favourites"),
             ("Go to Recent", "history"),
@@ -454,7 +464,8 @@ mod tests {
         let found = entries(&texts(), &ctx(&hotkeys), "view");
         assert_eq!(
             found.first().map(|e| e.label.as_str()),
-            Some("Comfortable view")
+            Some("Tile view"),
+            "the name match leads; the density commands reach \"view\" through their synonyms"
         );
         let found = entries(&texts(), &ctx(&hotkeys), "trash");
         assert_eq!(
@@ -532,6 +543,26 @@ mod tests {
         c.has_item = false;
         c.in_trash = true;
         assert!(labels(&entries(&texts(), &c, "theme")).contains(&"Theme: Dark"));
+    }
+
+    #[test]
+    fn paste_next_and_select_all_are_in_the_palette_with_their_keys() {
+        let hotkeys = Hotkeys::default();
+        let c = ctx(&hotkeys);
+        let next = entries(&texts(), &c, "paste next");
+        assert_eq!(next.first().map(|e| e.command), Some(Command::PasteNext));
+        assert_eq!(
+            Command::PasteNext.shortcut(&hotkeys).as_deref(),
+            chord_text(&hotkeys, HotkeyAction::PasteNext).as_deref(),
+            "the chord follows Settings"
+        );
+        let all = entries(&texts(), &c, "select all");
+        assert_eq!(all.first().map(|e| e.command), Some(Command::SelectAll));
+        assert_eq!(all[0].keys, ["Ctrl", "A"]);
+        assert!(
+            !Command::SelectAll.needs_item(),
+            "it works on an empty cursor too"
+        );
     }
 
     #[test]

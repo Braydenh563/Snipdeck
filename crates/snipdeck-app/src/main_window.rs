@@ -16,6 +16,7 @@ use snipdeck_core::{
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable};
 
 use crate::panel::ListLabel;
+use crate::settings::RowDensity;
 
 /// How many days the Trash keeps things (SPEC §5.7a).
 pub const TRASH_DAYS: u32 = 30;
@@ -84,6 +85,27 @@ pub enum ViewMode {
     Compact,
     /// A grid of tiles.
     Tile,
+}
+
+impl From<RowDensity> for ViewMode {
+    fn from(density: RowDensity) -> Self {
+        match density {
+            RowDensity::Comfortable => Self::Comfortable,
+            RowDensity::Compact => Self::Compact,
+        }
+    }
+}
+
+impl ViewMode {
+    /// The density this style is, or `None` for tiles (a different layout, not a row height).
+    #[must_use]
+    pub const fn density(self) -> Option<RowDensity> {
+        match self {
+            Self::Comfortable => Some(RowDensity::Comfortable),
+            Self::Compact => Some(RowDensity::Compact),
+            Self::Tile => None,
+        }
+    }
 }
 
 /// How a click or key changes the selection.

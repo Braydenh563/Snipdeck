@@ -310,6 +310,9 @@ msgstr "Cor"
 msgid "Colour label"
 msgstr "Rótulo de cor"
 
+msgid "Comfortable"
+msgstr "Confortável"
+
 msgid "Comfortable view"
 msgstr "Exibição confortável"
 
@@ -324,6 +327,9 @@ msgstr "Comandos (Ctrl+K)"
 
 msgid "Commands in the Main window"
 msgstr "Comandos na janela principal"
+
+msgid "Compact"
+msgstr "Compacta"
 
 msgid "Compact view"
 msgstr "Exibição compacta"
@@ -910,6 +916,9 @@ msgstr "Quanto tempo o ponteiro fica sobre a faixa antes de o painel abrir, de 0
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr "Quanto tempo o ponteiro fica fora do painel aberto antes de ele recolher, de 0 a {} milissegundos."
 
+msgid "How tall the item rows are in the Main window. Compact shows one line per item."
+msgstr "Altura das linhas de itens na janela principal. No modo compacto, cada item ocupa uma linha."
+
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Largura em que o painel abre, de {} a {} pixels."
 
@@ -1436,6 +1445,9 @@ msgstr "Colar próximo e a pilha de colagem são recursos do Supporter."
 msgid "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
 msgstr "Colar próximo é um recurso do Supporter, então este atalho não faz nada no plano gratuito."
 
+msgid "Paste next item"
+msgstr "Colar o próximo item"
+
 msgid "Paste stack"
 msgstr "Pilha de colagem"
 
@@ -1695,6 +1707,15 @@ msgstr "Clique com o botão direito ou pressione Menu para ver as ações da lis
 msgid "Rose"
 msgstr "Rosa"
 
+msgid "Row density"
+msgstr "Densidade das linhas"
+
+msgid "Row density: Comfortable"
+msgstr "Densidade das linhas: confortável"
+
+msgid "Row density: Compact"
+msgstr "Densidade das linhas: compacta"
+
 msgid "SNIP1."
 msgstr "SNIP1."
 
@@ -1769,6 +1790,9 @@ msgstr "Pesquisar nos atalhos de teclado"
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "Segundos até que um item sensível copiado seja limpo da área de transferência, se nada mais tiver sido copiado desde então. 0 nunca o limpa. Ao colar, sua própria área de transferência é restaurada."
+
+msgid "Select all items"
+msgstr "Selecionar todos os itens"
 
 msgid "Select every item"
 msgstr "Selecionar todos os itens"
@@ -2483,6 +2507,9 @@ msgstr "duplicar"
 msgid "edit"
 msgstr "editar"
 
+msgid "every mark choose all"
+msgstr "todos marcar escolher selecionar"
+
 msgid "everything home show"
 msgstr "tudo início mostrar"
 
@@ -2555,6 +2582,9 @@ msgstr "s"
 msgid "snip snipping capture screen picture image"
 msgstr "recorte captura tela imagem foto"
 
+msgid "stack queue sequence following paste"
+msgstr "pilha fila sequência próximo colar"
+
 msgid "tag change"
 msgstr "mudança de etiqueta"
 
@@ -2570,14 +2600,14 @@ msgstr "até {}"
 msgid "version licence update"
 msgstr "versão licença atualização"
 
-msgid "view mode layout cards switch"
-msgstr "modo de exibição layout cartões alternar"
+msgid "view mode layout cards rows height spacing switch"
+msgstr "exibição modo layout cartões linhas altura espaçamento alternar"
 
 msgid "view mode layout grid switch"
 msgstr "modo de exibição layout grade alternar"
 
-msgid "view mode layout list dense switch"
-msgstr "modo de exibição layout lista compacta alternar"
+msgid "view mode layout list dense rows height spacing switch"
+msgstr "exibição modo layout lista denso linhas altura espaçamento alternar"
 
 msgid "window geometry default restore move resize cut off"
 msgstr "janela geometria padrão restaurar mover tamanho cortado"

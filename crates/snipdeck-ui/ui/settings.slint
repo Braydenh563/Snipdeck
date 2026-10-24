@@ -255,6 +255,8 @@ export component SettingsPage inherits Window {
     in property <[HotkeySetting]> hotkeys;
     // 0 follow Windows, 1 light, 2 dark.
     in property <int> theme-index: 0;
+    // 0 comfortable, 1 compact (the order of the Row density segments).
+    in property <int> row-density-index: 0;
     in property <int> accent-index: 0;
     // 0 follow Windows, then 100, 125, 150 and 175 %.
     in property <int> text-size-index: 0;
@@ -369,6 +371,7 @@ export component SettingsPage inherits Window {
     callback hotkey-recorded(index: int, combo: string);
     callback hotkey-cleared(index: int);
     callback theme-chosen(index: int);
+    callback row-density-chosen(index: int);
     callback accent-chosen(index: int);
     callback text-size-chosen(index: int);
     callback language-chosen(index: int);
@@ -548,6 +551,20 @@ export component SettingsPage inherits Window {
                             options: [@tr("Windows"), @tr("Light"), @tr("Dark")];
                             current: root.theme-index;
                             chosen(i) => { root.theme-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Row density");
+                        description: @tr("How tall the item rows are in the Main window. Compact shows one line per item.");
+                        Segmented {
+                            width: 260px * SystemLook.text-scale;
+                            label: @tr("Row density");
+                            options: [@tr("Comfortable"), @tr("Compact")];
+                            current: root.row-density-index;
+                            chosen(i) => { root.row-density-chosen(i); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

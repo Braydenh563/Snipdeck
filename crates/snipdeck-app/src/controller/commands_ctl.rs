@@ -11,7 +11,7 @@ use crate::{
     host::ClipboardText,
     item_editor::Origin,
     main_window::{Section, ViewMode},
-    settings::Theme,
+    settings::{RowDensity, Theme},
 };
 
 impl<S, C, K, T> Controller<S, C, K, T>
@@ -35,6 +35,10 @@ where
             Command::ShowPanel => self.main_toggle_panel(),
             Command::OpenPicker => self.open_picker(),
             Command::QuickCapture => self.quick_capture(),
+            Command::PasteNext => {
+                self.paste_next();
+            }
+            Command::SelectAll => self.main_select_all(),
             Command::TakeScreenshot => {
                 let effects = self.take_screenshot();
                 self.pending.extend(effects);
@@ -44,8 +48,8 @@ where
             Command::Shortcuts => self.main_open_help(HelpTopic::Shortcuts),
             Command::Troubleshoot => self.main_open_help(HelpTopic::Troubleshoot),
             Command::About => self.main_open_help(HelpTopic::About),
-            Command::ViewComfortable => self.main_set_view(ViewMode::Comfortable),
-            Command::ViewCompact => self.main_set_view(ViewMode::Compact),
+            Command::DensityComfortable => self.set_row_density(RowDensity::Comfortable),
+            Command::DensityCompact => self.set_row_density(RowDensity::Compact),
             Command::ViewTile => self.main_set_view(ViewMode::Tile),
             Command::ThemeSystem => self.choose_theme(Theme::System),
             Command::ThemeLight => self.choose_theme(Theme::Light),

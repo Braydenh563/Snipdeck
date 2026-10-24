@@ -79,6 +79,18 @@ fn quick_capture_without_any_list_says_so() {
 }
 
 #[test]
+fn the_palette_paste_next_command_walks_the_stack_like_the_hotkey() {
+    use crate::commands::Command;
+    let mut w = world();
+    w.ctl.toggle_stack_mark(w.ids[2]);
+    w.ctl.toggle_stack_mark(w.ids[0]);
+    w.ctl.start_stack();
+    w.ctl.run_command(Command::PasteNext, 0);
+    w.ctl.run_command(Command::PasteNext, 0);
+    assert_eq!(pasted(&w), ["third", "first"]);
+}
+
+#[test]
 fn a_marked_stack_is_pasted_in_the_order_it_was_marked_and_then_ends() {
     let mut w = world();
     w.ctl.toggle_stack_mark(w.ids[2]);

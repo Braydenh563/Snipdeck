@@ -412,6 +412,7 @@ mod tests {
                 crate::commands::Command::ShowPanel
                     | crate::commands::Command::OpenPicker
                     | crate::commands::Command::QuickCapture
+                    | crate::commands::Command::PasteNext
             );
             if global {
                 continue;

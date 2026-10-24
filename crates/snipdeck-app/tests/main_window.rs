@@ -1120,6 +1120,41 @@ fn the_view_menu_and_the_palette_switch_the_theme_and_a_toast_says_so() {
 }
 
 #[test]
+fn the_view_menu_and_the_palette_set_the_row_density_the_settings_page_shares() {
+    use snipdeck_app::settings::RowDensity;
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(r.ui.get_view(), MainView::Comfortable);
+
+        r.button("View").invoke_accessible_default_action();
+        slint::platform::update_timers_and_animations();
+        element(&r.ui, "Row density: Compact", AccessibleRole::ListItem)
+            .invoke_accessible_default_action();
+        slint::platform::update_timers_and_animations();
+        assert_eq!(r.ui.get_view(), MainView::Compact);
+        assert_eq!(
+            r.ctl.borrow().settings().row_density,
+            RowDensity::Compact,
+            "the View menu writes the setting"
+        );
+
+        r.ui.invoke_command_requested(Command::DensityComfortable.id());
+        assert_eq!(r.ui.get_view(), MainView::Comfortable);
+        assert_eq!(
+            r.ctl.borrow().settings().row_density,
+            RowDensity::Comfortable
+        );
+
+        // From tiles, the palette brings the list back at the chosen density.
+        r.ui.invoke_command_requested(Command::ViewTile.id());
+        assert_eq!(r.ui.get_view(), MainView::Tile);
+        r.ui.invoke_command_requested(Command::DensityCompact.id());
+        assert_eq!(r.ui.get_view(), MainView::Compact);
+        assert_eq!(r.ctl.borrow().settings().row_density, RowDensity::Compact);
+    });
+}
+
+#[test]
 fn the_command_texts_have_one_entry_per_command() {
     on_ui_thread(|| {
         let r = rig();
@@ -1139,7 +1174,7 @@ fn a_palette_id_runs_the_command_it_names() {
         assert_eq!(r.ui.get_section(), MainSection::Trash);
         r.ui.invoke_command_requested(Command::GoAll.id());
         assert_eq!(r.ui.get_section(), MainSection::All);
-        r.ui.invoke_command_requested(Command::ViewCompact.id());
+        r.ui.invoke_command_requested(Command::DensityCompact.id());
         assert_eq!(r.ui.get_view(), MainView::Compact);
         r.ui.invoke_command_requested(Command::ViewTile.id());
         assert_eq!(r.ui.get_view(), MainView::Tile);

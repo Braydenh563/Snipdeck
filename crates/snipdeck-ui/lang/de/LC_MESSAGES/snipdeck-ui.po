@@ -310,6 +310,9 @@ msgstr "Farbe"
 msgid "Colour label"
 msgstr "Farbmarkierung"
 
+msgid "Comfortable"
+msgstr "Komfortabel"
+
 msgid "Comfortable view"
 msgstr "Komfortable Ansicht"
 
@@ -324,6 +327,9 @@ msgstr "Befehle (Ctrl+K)"
 
 msgid "Commands in the Main window"
 msgstr "Befehle im Hauptfenster"
+
+msgid "Compact"
+msgstr "Kompakt"
 
 msgid "Compact view"
 msgstr "Kompakte Ansicht"
@@ -910,6 +916,9 @@ msgstr "Wie lange der Zeiger auf dem Streifen ruht, bevor sich das Panel öffnet
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr "Wie lange der Zeiger vom geöffneten Panel entfernt bleibt, bevor es sich einklappt, von 0 bis {} Millisekunden."
 
+msgid "How tall the item rows are in the Main window. Compact shows one line per item."
+msgstr "Wie hoch die Zeilen im Hauptfenster sind. Kompakt zeigt eine Zeile pro Eintrag."
+
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Wie breit sich das Panel öffnet, von {} bis {} Pixel."
 
@@ -1436,6 +1445,9 @@ msgstr "„Als Nächstes einfügen“ und der Einfügestapel sind Supporter-Funk
 msgid "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
 msgstr "„Als Nächstes einfügen“ ist eine Supporter-Funktion, daher bewirkt dieses Tastenkürzel im kostenlosen Tarif nichts."
 
+msgid "Paste next item"
+msgstr "Nächsten Eintrag einfügen"
+
 msgid "Paste stack"
 msgstr "Einfügestapel"
 
@@ -1695,6 +1707,15 @@ msgstr "Rechtsklick oder Menütaste für Listenaktionen"
 msgid "Rose"
 msgstr "Rosé"
 
+msgid "Row density"
+msgstr "Zeilendichte"
+
+msgid "Row density: Comfortable"
+msgstr "Zeilendichte: komfortabel"
+
+msgid "Row density: Compact"
+msgstr "Zeilendichte: kompakt"
+
 msgid "SNIP1."
 msgstr "SNIP1."
 
@@ -1769,6 +1790,9 @@ msgstr "Tastaturkurzbefehle durchsuchen"
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "Sekunden, bevor ein kopierter vertraulicher Textbaustein aus der Zwischenablage gelöscht wird, sofern danach nichts anderes kopiert wurde. 0 löscht ihn nie. Beim Einfügen wird stattdessen deine eigene Zwischenablage wiederhergestellt."
+
+msgid "Select all items"
+msgstr "Alle Einträge auswählen"
 
 msgid "Select every item"
 msgstr "Alle Textbausteine auswählen"
@@ -2483,6 +2507,9 @@ msgstr "Duplizieren"
 msgid "edit"
 msgstr "Bearbeiten"
 
+msgid "every mark choose all"
+msgstr "alle markieren auswählen"
+
 msgid "everything home show"
 msgstr "alles Start anzeigen"
 
@@ -2555,6 +2582,9 @@ msgstr "s"
 msgid "snip snipping capture screen picture image"
 msgstr "ausschnitt snipping aufnahme bildschirm bild screenshot"
 
+msgid "stack queue sequence following paste"
+msgstr "stapel warteschlange reihenfolge nächster einfügen"
+
 msgid "tag change"
 msgstr "Tag-Änderung"
 
@@ -2570,14 +2600,14 @@ msgstr "bis zu {}"
 msgid "version licence update"
 msgstr "Version Lizenz Update"
 
-msgid "view mode layout cards switch"
-msgstr "Ansicht Layout Karten umschalten"
+msgid "view mode layout cards rows height spacing switch"
+msgstr "ansicht modus layout karten zeilen höhe abstand wechseln"
 
 msgid "view mode layout grid switch"
 msgstr "Ansicht Layout Raster umschalten"
 
-msgid "view mode layout list dense switch"
-msgstr "Ansicht Layout Liste kompakt umschalten"
+msgid "view mode layout list dense rows height spacing switch"
+msgstr "ansicht modus layout liste dicht zeilen höhe abstand wechseln"
 
 msgid "window geometry default restore move resize cut off"
 msgstr "Fenster Geometrie Standard wiederherstellen verschieben Größe abgeschnitten"

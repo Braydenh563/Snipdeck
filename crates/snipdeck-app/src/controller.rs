@@ -55,11 +55,11 @@ use crate::{
     fill::FillModel,
     frame::Monitor,
     host::{ClipboardText, Clock, TargetSource},
-    main_window::MainModel,
+    main_window::{MainModel, ViewMode},
     panel::PanelModel,
     paste_next::PasteQueue,
     picker::PickerModel,
-    settings::{DockEdge, HotkeyAction, Settings, Theme},
+    settings::{DockEdge, HotkeyAction, RowDensity, Settings, Theme},
     settings_store::SettingsSaver,
     toast::{Toast, ToastKind, ToastMessage},
     usecase::{self},
@@ -349,6 +349,8 @@ where
         model.set_target(target.current());
         let shown_at = clock.now();
         let pinned = settings.panel_pinned;
+        let mut main = MainModel::new();
+        main.set_view_mode(ViewMode::from(settings.row_density));
         Ok(Self {
             store,
             services,
@@ -375,7 +377,7 @@ where
             stack_running: false,
             menu: PanelMenu::None,
             menu_targets: Vec::new(),
-            main: MainModel::new(),
+            main,
             editor: None,
             editor_seq: 0,
             board_delete: None,
@@ -488,6 +490,7 @@ where
             choose_menu: self.choose_menu_view(),
             marked_count: self.model.marked_count(),
             show_numbers: self.settings.show_numbers,
+            compact_rows: self.settings.row_density == RowDensity::Compact,
             list_menu: matches!(self.menu, PanelMenu::List(_)).then(|| LIST_MENU.to_vec()),
             list_delete: self.list_delete_view(),
             board_delete: self.board_delete_view(),

@@ -22,7 +22,7 @@ use crate::{
         ViewMode,
     },
     panel::UseLabel,
-    settings::{HotkeyAction, Theme},
+    settings::{HotkeyAction, RowDensity, Theme},
     usecase,
 };
 
@@ -362,8 +362,19 @@ where
     }
 
     /// The row style changed.
+    /// A list style is also the saved row density; tiles are not a density and change no setting.
     pub fn main_set_view(&mut self, view: ViewMode) {
         self.main.set_view_mode(view);
+        if let Some(density) = view.density() {
+            self.update_settings(|s| s.row_density = density);
+        }
+    }
+
+    /// The row density was chosen (Settings > Appearance, the View menu, the command palette): it
+    /// is saved, and the Main window shows the list at that density, leaving tiles if they were on.
+    pub fn set_row_density(&mut self, density: RowDensity) {
+        self.update_settings(|s| s.row_density = density);
+        self.main.set_view_mode(ViewMode::from(density));
     }
 
     /// A click or key on row `index`.

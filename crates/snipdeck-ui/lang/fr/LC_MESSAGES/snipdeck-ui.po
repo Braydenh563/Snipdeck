@@ -310,6 +310,9 @@ msgstr "Couleur"
 msgid "Colour label"
 msgstr "Libellé de couleur"
 
+msgid "Comfortable"
+msgstr "Confortable"
+
 msgid "Comfortable view"
 msgstr "Affichage confortable"
 
@@ -324,6 +327,9 @@ msgstr "Commandes (Ctrl+K)"
 
 msgid "Commands in the Main window"
 msgstr "Commandes dans la fenêtre principale"
+
+msgid "Compact"
+msgstr "Compact"
 
 msgid "Compact view"
 msgstr "Affichage compact"
@@ -910,6 +916,9 @@ msgstr "Durée pendant laquelle le pointeur reste sur la bande avant l'ouverture
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr "Durée pendant laquelle le pointeur reste hors du panneau ouvert avant qu'il ne se replie, de 0 à {} millisecondes."
 
+msgid "How tall the item rows are in the Main window. Compact shows one line per item."
+msgstr "Hauteur des lignes d’éléments dans la fenêtre principale. En compact, chaque élément tient sur une ligne."
+
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Largeur d'ouverture du panneau, de {} à {} pixels."
 
@@ -1436,6 +1445,9 @@ msgstr "Coller le suivant et la pile de collage sont des fonctions Supporter."
 msgid "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
 msgstr "Coller le suivant est une fonction Supporter : ce raccourci ne fait rien avec l’offre gratuite."
 
+msgid "Paste next item"
+msgstr "Coller l’élément suivant"
+
 msgid "Paste stack"
 msgstr "Coller la pile"
 
@@ -1695,6 +1707,15 @@ msgstr "Clic droit ou touche Menu pour les actions de la liste"
 msgid "Rose"
 msgstr "Rose"
 
+msgid "Row density"
+msgstr "Densité des lignes"
+
+msgid "Row density: Comfortable"
+msgstr "Densité des lignes : confortable"
+
+msgid "Row density: Compact"
+msgstr "Densité des lignes : compacte"
+
 msgid "SNIP1."
 msgstr "SNIP1."
 
@@ -1769,6 +1790,9 @@ msgstr "Rechercher dans les raccourcis clavier"
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "Secondes avant que l'extrait sensible copié ne soit vidé du presse-papiers, si rien d'autre n'a été copié depuis. 0 ne le vide jamais. Le collage restaure à la place votre propre presse-papiers."
+
+msgid "Select all items"
+msgstr "Sélectionner tous les éléments"
 
 msgid "Select every item"
 msgstr "Sélectionner tous les extraits"
@@ -2483,6 +2507,9 @@ msgstr "duplication"
 msgid "edit"
 msgstr "modification"
 
+msgid "every mark choose all"
+msgstr "tous marquer choisir sélectionner"
+
 msgid "everything home show"
 msgstr "tout accueil afficher"
 
@@ -2555,6 +2582,9 @@ msgstr "s"
 msgid "snip snipping capture screen picture image"
 msgstr "capture découpe écran image copie d'écran"
 
+msgid "stack queue sequence following paste"
+msgstr "pile file séquence suivant coller"
+
 msgid "tag change"
 msgstr "changement d'étiquette"
 
@@ -2570,14 +2600,14 @@ msgstr "jusqu'à {}"
 msgid "version licence update"
 msgstr "version licence mise à jour"
 
-msgid "view mode layout cards switch"
-msgstr "mode affichage disposition cartes changer"
+msgid "view mode layout cards rows height spacing switch"
+msgstr "affichage mode disposition cartes lignes hauteur espacement basculer"
 
 msgid "view mode layout grid switch"
 msgstr "mode affichage disposition grille changer"
 
-msgid "view mode layout list dense switch"
-msgstr "mode affichage disposition liste dense changer"
+msgid "view mode layout list dense rows height spacing switch"
+msgstr "affichage mode disposition liste dense lignes hauteur espacement basculer"
 
 msgid "window geometry default restore move resize cut off"
 msgstr "fenêtre géométrie défaut restaurer déplacer taille coupé"
