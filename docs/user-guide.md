@@ -99,7 +99,9 @@ a message tells you why. The Panel footer always says where a click will go: "Pa
 ### The Picker
 
 Press `Ctrl+Shift+Space`. A small search window opens at your caret. Type to filter. It matches titles, tags
-and the start of the content.
+and the start of the content. It opens one line below your caret, so it covers neither the line you are typing
+nor the next one. **Settings, Panel, Picker position** moves it above, to the right or to the left of the caret;
+it switches to the opposite side when there is no room. Where an app shows no caret it opens at the mouse.
 
 - `Up`, `Down`, `PageUp`, `PageDown` move. `Enter` pastes. `Shift+Enter` copies.
 - `Tab` and `Shift+Tab` change where it searches: **All**, **This board** or **Pinned**.

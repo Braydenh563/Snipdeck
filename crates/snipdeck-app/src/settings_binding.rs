@@ -40,8 +40,8 @@ use crate::{
     main_binding::{create_window, raise, set_look},
     native_window::fit_when_settled,
     settings::{
-        DockEdge, DockTrigger, HotkeyAction, Hotkeys, ProgramPaste, ProgramRule, RowDensity,
-        Settings, TextSize, Theme,
+        DockEdge, DockTrigger, HotkeyAction, Hotkeys, PickerSide, ProgramPaste, ProgramRule,
+        RowDensity, Settings, TextSize, Theme,
     },
     toast::{LicenceProblem, Toast, ToastKind, ToastMessage},
     wording::{self, LANGUAGE_NAMES, LANGUAGE_TAGS},
@@ -642,6 +642,7 @@ struct PageView {
     hotkeys: Vec<HotkeyRow>,
     theme_index: i32,
     row_density_index: i32,
+    picker_side_index: i32,
     language_index: i32,
     autostart: bool,
     close_to_tray: bool,
@@ -834,6 +835,12 @@ where
         hotkeys,
         theme_index: theme_index(settings.theme),
         row_density_index: i32::from(settings.row_density == RowDensity::Compact),
+        picker_side_index: match settings.picker_side {
+            PickerSide::Below => 0,
+            PickerSide::Above => 1,
+            PickerSide::Right => 2,
+            PickerSide::Left => 3,
+        },
         language_index: language_index(&settings.language),
         autostart: settings.autostart,
         close_to_tray: settings.close_to_tray,
@@ -1535,6 +1542,15 @@ where
             } else {
                 RowDensity::Comfortable
             })));
+        wire!(on_picker_side_chosen, |core, i| core.act(|ctl| ctl
+            .update_settings(|s| {
+                s.picker_side = match i {
+                    1 => PickerSide::Above,
+                    2 => PickerSide::Right,
+                    3 => PickerSide::Left,
+                    _ => PickerSide::Below,
+                };
+            })));
         wire!(on_text_size_chosen, |core, i| core.text_size_chosen(i));
         wire!(on_accent_chosen, |core, i| core.act(|ctl| ctl
             .update_settings(|s| {
@@ -1709,6 +1725,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.theme_index == view.theme_index) {
         window.set_theme_index(view.theme_index);
+    }
+    if differs(&|p| p.picker_side_index == view.picker_side_index) {
+        window.set_picker_side_index(view.picker_side_index);
     }
     if differs(&|p| p.row_density_index == view.row_density_index) {
         window.set_row_density_index(view.row_density_index);

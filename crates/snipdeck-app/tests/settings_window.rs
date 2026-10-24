@@ -33,8 +33,8 @@ use snipdeck_app::{
     main_binding::MainUi,
     paths::read_settings,
     settings::{
-        DockEdge, DockTrigger, HotkeyAction, Hotkeys, ProgramPaste, RowDensity, Settings, TextSize,
-        Theme,
+        DockEdge, DockTrigger, HotkeyAction, Hotkeys, PickerSide, ProgramPaste, RowDensity,
+        Settings, TextSize, Theme,
     },
     settings_binding::{
         self, ExportFolder, SettingsBinding, SettingsHost, SettingsUi, request_open,
@@ -257,7 +257,7 @@ impl Rig {
 fn each_toggle_writes_settings_json_after_the_quiet_time() {
     on_ui_thread(|| {
         type Case = (&'static str, fn(&Rig), fn(&Settings) -> bool);
-        let cases: [Case; 19] = [
+        let cases: [Case; 20] = [
             (
                 "theme",
                 |r| r.ui.invoke_theme_chosen(2),
@@ -267,6 +267,11 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
                 "row density",
                 |r| r.ui.invoke_row_density_chosen(1),
                 |s| s.row_density == RowDensity::Compact,
+            ),
+            (
+                "picker side",
+                |r| r.ui.invoke_picker_side_chosen(2),
+                |s| s.picker_side == PickerSide::Right,
             ),
             (
                 "text size",
@@ -603,6 +608,27 @@ fn the_row_density_row_sets_the_setting_and_shows_what_is_stored() {
         assert!(r.ctl.borrow().view().compact_rows, "the Panel can read it");
         r.ui.invoke_row_density_chosen(0);
         assert_eq!(r.ui.get_row_density_index(), 0);
+    });
+}
+
+#[test]
+fn the_picker_side_row_sets_the_setting_and_shows_what_is_stored() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(r.ui.get_picker_side_index(), 0, "below by default");
+        for (index, side) in [
+            (1, PickerSide::Above),
+            (2, PickerSide::Right),
+            (3, PickerSide::Left),
+            (0, PickerSide::Below),
+        ] {
+            r.ui.invoke_picker_side_chosen(index);
+            assert_eq!(r.ctl.borrow().settings().picker_side, side);
+            assert_eq!(r.ui.get_picker_side_index(), index);
+        }
+        // An index outside the segments leaves the default.
+        r.ui.invoke_picker_side_chosen(9);
+        assert_eq!(r.ctl.borrow().settings().picker_side, PickerSide::Below);
     });
 }
 

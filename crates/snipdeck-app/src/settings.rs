@@ -233,6 +233,23 @@ pub enum RowDensity {
     Compact,
 }
 
+/// Which side of the Target's text caret the Picker (and the fill form) opens on (Settings >
+/// Panel). When it does not fit there, it opens on the opposite side; see
+/// [`placement::place`](crate::placement::place).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PickerSide {
+    /// Under the caret's line, one line clear of it.
+    #[default]
+    Below,
+    /// Over the caret's line, one line clear of it.
+    Above,
+    /// To the right of the caret.
+    Right,
+    /// To the left of the caret.
+    Left,
+}
+
 /// The text size Snipdeck uses (Settings > Appearance), WCAG 1.4.4.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum TextSize {
@@ -577,6 +594,8 @@ pub struct Settings {
     pub show_numbers: bool,
     /// How tall the item rows are: comfortable (preview lines) or compact (one line).
     pub row_density: RowDensity,
+    /// Which side of the caret the Picker opens on.
+    pub picker_side: PickerSide,
 }
 
 impl Default for Settings {
@@ -610,6 +629,7 @@ impl Default for Settings {
             editor_more_open: false,
             show_numbers: true,
             row_density: RowDensity::Comfortable,
+            picker_side: PickerSide::Below,
         }
     }
 }
@@ -708,6 +728,7 @@ impl Settings {
         field!(editor_more_open);
         field!(show_numbers);
         field!(row_density);
+        field!(picker_side);
         settings
     }
 
@@ -1546,5 +1567,34 @@ mod tests {
         };
         let back = Settings::from_json(&serde_json::to_string(&compact).unwrap());
         assert_eq!(back.row_density, RowDensity::Compact);
+    }
+
+    #[test]
+    fn the_picker_side_is_below_by_default_and_old_files_load() {
+        assert_eq!(Settings::from_json("{}").picker_side, PickerSide::Below);
+        let old = Settings::from_json(r#"{"theme":"dark","row_density":"compact"}"#);
+        assert_eq!(old.picker_side, PickerSide::Below);
+        assert_eq!(old.theme, Theme::Dark);
+        for (word, side) in [
+            ("below", PickerSide::Below),
+            ("above", PickerSide::Above),
+            ("right", PickerSide::Right),
+            ("left", PickerSide::Left),
+        ] {
+            let text = format!(r#"{{"picker_side":"{word}"}}"#);
+            assert_eq!(Settings::from_json(&text).picker_side, side, "{word}");
+        }
+        // A word we do not know keeps the default and leaves the other settings alone.
+        let bad = Settings::from_json(r#"{"picker_side":"diagonal","theme":"dark"}"#);
+        assert_eq!(
+            (bad.picker_side, bad.theme),
+            (PickerSide::Below, Theme::Dark)
+        );
+        let right = Settings {
+            picker_side: PickerSide::Right,
+            ..Settings::default()
+        };
+        let back = Settings::from_json(&serde_json::to_string(&right).unwrap());
+        assert_eq!(back.picker_side, PickerSide::Right);
     }
 }

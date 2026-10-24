@@ -64,6 +64,9 @@ msgstr "バージョン情報"
 msgid "About Snipdeck"
 msgstr "Snipdeck について"
 
+msgid "Above"
+msgstr "上"
+
 msgid "Accent colour"
 msgstr "アクセントカラー"
 
@@ -165,6 +168,9 @@ msgstr "保持するバックアップ数"
 
 msgid "Backups, export, light and dark, 7 languages"
 msgstr "バックアップ、エクスポート、ライト／ダークテーマ、7言語"
+
+msgid "Below"
+msgstr "下"
 
 msgid "Blue"
 msgstr "青"
@@ -847,7 +853,6 @@ msgstr "ボードに名前を付けてください。"
 msgid "Give the list a name."
 msgstr "リストに名前を付けてください。"
 
-#, fuzzy
 msgid "Gives the Panel a taskbar button and an Alt+Tab entry while it is on screen. Pasting still goes to the app you were in before. Off keeps it out of both; the tray icon and the Panel shortcut still bring it back."
 msgstr "パネルが表示されている間、タスクバーのボタンと Alt+Tab の項目を表示します。貼り付けは、直前に使っていたアプリに入ります。オフにすると両方に表示されません。トレイアイコンとパネルのショートカットからは引き続き表示できます。"
 
@@ -1021,6 +1026,9 @@ msgstr "前回のバックアップ: {}"
 
 msgid "Leave delay"
 msgstr "離れたときの待ち時間"
+
+msgid "Left"
+msgstr "左"
 
 msgid "Left edge"
 msgstr "左端"
@@ -1513,6 +1521,9 @@ msgstr "ピッカー"
 msgid "Picker anywhere"
 msgstr "どこでもピッカー"
 
+msgid "Picker position"
+msgstr "ピッカーの位置"
+
 msgid "Picture"
 msgstr "画像"
 
@@ -1692,6 +1703,9 @@ msgstr "検索結果"
 msgid "Resume it from the tray icon, then copy some text."
 msgstr "トレイアイコンから再開してから、テキストをコピーしてください。"
 
+msgid "Right"
+msgstr "右"
+
 msgid "Right edge"
 msgstr "右端"
 
@@ -1863,7 +1877,6 @@ msgstr "パネルの表示／非表示"
 msgid "Show or hide the panel"
 msgstr "パネルを表示または非表示"
 
-#, fuzzy
 msgid "Show the Panel in the taskbar and Alt+Tab"
 msgstr "パネルをタスクバーと Alt+Tab に表示"
 
@@ -2101,7 +2114,6 @@ msgstr "無料プランには5つのボードが含まれます。Supporter で�
 msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
 msgstr "無料プランには {} 個のボードが含まれます。これを超えるため、Supporter が必要です。"
 
-#, fuzzy
 msgid "The Panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the Panel shortcut to bring it back. Pasting still goes to the app you were in before."
 msgstr "オンにしない限り、パネルはタスクバーにも Alt+Tab にも表示されません。トレイアイコンかパネルのショートカットで呼び戻してください。貼り付けは、直前に使っていたアプリに入ります。"
 
@@ -2389,6 +2401,9 @@ msgstr "パネルの位置"
 
 msgid "Where the text cursor lands after pasting"
 msgstr "貼り付け後のテキストカーソルの位置"
+
+msgid "Which side of your text cursor the Picker opens on. It moves to the opposite side when there is no room, and opens below the mouse when the app has no text cursor Snipdeck can see."
+msgstr "テキストカーソルのどちら側にピッカーを開くかを選びます。余白がないときは反対側に開き、Snipdeck が見えるテキストカーソルがないアプリではマウスの下に開きます。"
 
 msgid "Will not be imported"
 msgstr "取り込まれません"

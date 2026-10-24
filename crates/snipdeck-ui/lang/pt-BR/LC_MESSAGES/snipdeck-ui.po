@@ -64,6 +64,9 @@ msgstr "Sobre"
 msgid "About Snipdeck"
 msgstr "Sobre o Snipdeck"
 
+msgid "Above"
+msgstr "Acima"
+
 msgid "Accent colour"
 msgstr "Cor de destaque"
 
@@ -165,6 +168,9 @@ msgstr "Backups a manter"
 
 msgid "Backups, export, light and dark, 7 languages"
 msgstr "Backups, exportação, tema claro e escuro, 7 idiomas"
+
+msgid "Below"
+msgstr "Abaixo"
 
 msgid "Blue"
 msgstr "Azul"
@@ -847,7 +853,6 @@ msgstr "Dê um nome ao quadro."
 msgid "Give the list a name."
 msgstr "Dê um nome à lista."
 
-#, fuzzy
 msgid "Gives the Panel a taskbar button and an Alt+Tab entry while it is on screen. Pasting still goes to the app you were in before. Off keeps it out of both; the tray icon and the Panel shortcut still bring it back."
 msgstr "Dá ao Painel um botão na barra de tarefas e uma entrada no Alt+Tab enquanto ele estiver na tela. Colar continua indo para o app em que você estava antes. Desligado, ele fica fora dos dois; o ícone da bandeja e o atalho do Painel ainda o trazem de volta."
 
@@ -1024,6 +1029,9 @@ msgstr "Último backup: {}"
 
 msgid "Leave delay"
 msgstr "Atraso ao sair"
+
+msgid "Left"
+msgstr "Esquerda"
 
 msgid "Left edge"
 msgstr "Borda esquerda"
@@ -1518,6 +1526,9 @@ msgstr "Seletor"
 msgid "Picker anywhere"
 msgstr "Seletor em qualquer lugar"
 
+msgid "Picker position"
+msgstr "Posição do seletor"
+
 msgid "Picture"
 msgstr "Imagem"
 
@@ -1699,6 +1710,9 @@ msgstr "Resultados"
 msgid "Resume it from the tray icon, then copy some text."
 msgstr "Retome-o pelo ícone na bandeja e copie algum texto."
 
+msgid "Right"
+msgstr "Direita"
+
 msgid "Right edge"
 msgstr "Borda direita"
 
@@ -1870,7 +1884,6 @@ msgstr "Mostrar ou ocultar o painel"
 msgid "Show or hide the panel"
 msgstr "Mostrar ou ocultar o painel"
 
-#, fuzzy
 msgid "Show the Panel in the taskbar and Alt+Tab"
 msgstr "Mostrar o Painel na barra de tarefas e no Alt+Tab"
 
@@ -2108,7 +2121,6 @@ msgstr "O plano Gratuito inclui 5 quadros. O Supporter adiciona quadros ilimitad
 msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
 msgstr "O plano Gratuito inclui {} quadros. Isso ultrapassaria o limite, então é preciso o Supporter."
 
-#, fuzzy
 msgid "The Panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the Panel shortcut to bring it back. Pasting still goes to the app you were in before."
 msgstr "O Painel fica fora da barra de tarefas e do Alt+Tab, a menos que você ative isto; use o ícone da bandeja ou o atalho do Painel para trazê-lo de volta. Colar continua indo para o app em que você estava antes."
 
@@ -2396,6 +2408,9 @@ msgstr "Onde o painel fica"
 
 msgid "Where the text cursor lands after pasting"
 msgstr "Onde o cursor de texto fica após colar"
+
+msgid "Which side of your text cursor the Picker opens on. It moves to the opposite side when there is no room, and opens below the mouse when the app has no text cursor Snipdeck can see."
+msgstr "Em que lado do cursor de texto o seletor abre. Ele vai para o lado oposto quando não há espaço e abre abaixo do mouse quando o app não tem um cursor de texto que o Snipdeck consiga ver."
 
 msgid "Will not be imported"
 msgstr "Não será importado"

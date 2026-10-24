@@ -257,6 +257,8 @@ export component SettingsPage inherits Window {
     in property <int> theme-index: 0;
     // 0 comfortable, 1 compact (the order of the Row density segments).
     in property <int> row-density-index: 0;
+    // 0 below, 1 above, 2 right, 3 left (the order of the Picker position segments).
+    in property <int> picker-side-index: 0;
     in property <int> accent-index: 0;
     // 0 follow Windows, then 100, 125, 150 and 175 %.
     in property <int> text-size-index: 0;
@@ -372,6 +374,7 @@ export component SettingsPage inherits Window {
     callback hotkey-cleared(index: int);
     callback theme-chosen(index: int);
     callback row-density-chosen(index: int);
+    callback picker-side-chosen(index: int);
     callback accent-chosen(index: int);
     callback text-size-chosen(index: int);
     callback language-chosen(index: int);
@@ -653,6 +656,20 @@ export component SettingsPage inherits Window {
                             a11y-label: @tr("Show the Panel in the taskbar and Alt+Tab");
                             checked <=> root.panel-in-taskbar;
                             toggled(on) => { root.panel-in-taskbar-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Picker position");
+                        description: @tr("Which side of your text cursor the Picker opens on. It moves to the opposite side when there is no room, and opens below the mouse when the app has no text cursor Snipdeck can see.");
+                        Segmented {
+                            width: 320px * SystemLook.text-scale;
+                            label: @tr("Picker position");
+                            options: [@tr("Below"), @tr("Above"), @tr("Right"), @tr("Left")];
+                            current: root.picker-side-index;
+                            chosen(i) => { root.picker-side-chosen(i); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

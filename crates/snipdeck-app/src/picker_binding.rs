@@ -114,19 +114,20 @@ where
             picker: picker.clone(),
         });
         let size = (PICKER_WIDTH, window.get_content_height());
+        let side = self.controller.borrow().settings().picker_side;
         if self.shell.is_open() {
             // The list grew or shrank: keep the window where it is relative to the caret.
             if size != self.size.get() {
                 let frame = self
                     .anchor
                     .get()
-                    .and_then(|anchor| placement::place_at(&*self.host, anchor, size));
+                    .and_then(|anchor| placement::place_at(&*self.host, anchor, size, side));
                 self.shell.place(&window, frame, size);
             }
         } else {
             // The Target still has the keyboard: read its caret now.
             let caret = self.controller.borrow().target_caret();
-            let placed = placement::place_popup(&*self.host, caret, size);
+            let placed = placement::place_popup(&*self.host, caret, size, side);
             self.anchor.set(placed.map(|(_, anchor)| anchor));
             if let Err(e) = self.shell.show(&window, placed.map(|(f, _)| f), size) {
                 crate::trace!("cannot show the Picker: {e}");

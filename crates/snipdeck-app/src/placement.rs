@@ -1,6 +1,7 @@
-//! Where the Picker and the fill form open (SPEC 5.2): just below the Target's text caret,
-//! flipped above it when it would leave the work area, at the mouse when the Target has no
-//! caret, and always inside the monitor's work area. [`place`] is plain arithmetic on
+//! Where the Picker and the fill form open (SPEC 5.2): on the side of the Target's text caret the
+//! user chose (below by default, one line clear of it), flipped to the opposite side when it would
+//! leave the work area, at the mouse when the Target has no caret, and always inside the
+//! monitor's work area. [`place`] is plain arithmetic on
 //! rectangles in physical pixels, so the rules run under test; [`place_popup`] adds the
 //! machine ([`PopupHost`]) and the logical-to-physical scale.
 
@@ -9,6 +10,7 @@ use std::cell::{Cell, RefCell};
 use snipdeck_platform::route::ScreenRect;
 
 use crate::frame::{Monitor, Rect};
+use crate::settings::PickerSide;
 
 /// Logical pixels between the caret (or the mouse) and the window.
 pub const GAP: f32 = 4.0;
@@ -33,35 +35,71 @@ impl Anchor {
     }
 }
 
-/// The frame of a `size` window (physical pixels) opened at `anchor`, `gap` pixels away, inside
-/// `area`. Below the anchor if it fits there, else above it; if it fits neither way the window
-/// is pushed up against the edge of the area. A window larger than the area is cut to it.
+/// The frame of a `size` window (physical pixels) opened at `anchor`, inside `area`, on the
+/// `side` of the anchor the user chose, `gap` pixels away.
+///
+/// Below or Above (and always for a mouse anchor, which has no line to keep clear): the window
+/// sits at least one line of the caret (its height, never less than `gap`) away, so it covers
+/// neither the caret's line nor the line after (below) or before (above) it. It goes on the
+/// chosen side if it fits there, else on the other one; if it fits neither way it is pushed up
+/// against the edge of the area.
+///
+/// Right or Left: the window starts at the caret's right edge, or ends at its left edge, with
+/// its top at the caret's top. It flips to the other side when the chosen one would leave the
+/// area, and when neither fits it takes the Below placement. A window larger than the area is
+/// cut to it.
 #[must_use]
-pub fn place(size: (u32, u32), anchor: Anchor, area: Rect, gap: u32) -> Rect {
+pub fn place(size: (u32, u32), anchor: Anchor, area: Rect, gap: u32, side: PickerSide) -> Rect {
     let w = size.0.min(area.w);
     let h = size.1.min(area.h);
-    let (left, top, bottom) = match anchor {
+    let gap = i64::from(gap);
+    let (area_left, area_top) = (i64::from(area.x), i64::from(area.y));
+    let (area_right, area_bottom) = (area_left + i64::from(area.w), area_top + i64::from(area.h));
+    let (wide, high) = (i64::from(w), i64::from(h));
+    let (left, right, top, bottom) = match anchor {
         Anchor::Caret(r) => (
             i64::from(r.x),
+            i64::from(r.x) + i64::from(r.w),
             i64::from(r.y),
             i64::from(r.y) + i64::from(r.h),
         ),
-        Anchor::Point(x, y) => (i64::from(x), i64::from(y), i64::from(y)),
+        Anchor::Point(x, y) => (i64::from(x), i64::from(x), i64::from(y), i64::from(y)),
     };
-    let gap = i64::from(gap);
-    let area_top = i64::from(area.y);
-    let area_bottom = area_top + i64::from(area.h);
-    let below = bottom + gap;
-    let above = top - gap - i64::from(h);
-    let y = if below + i64::from(h) <= area_bottom {
-        below
-    } else if above >= area_top {
-        above
-    } else {
-        below
+    if matches!(anchor, Anchor::Caret(_)) && matches!(side, PickerSide::Right | PickerSide::Left) {
+        let after = right + gap;
+        let before = left - gap - wide;
+        let fits_after = after + wide <= area_right;
+        let fits_before = before >= area_left;
+        let (first, second) = if side == PickerSide::Right {
+            ((after, fits_after), (before, fits_before))
+        } else {
+            ((before, fits_before), (after, fits_after))
+        };
+        let x = [first, second]
+            .into_iter()
+            .find_map(|(x, fits)| fits.then_some(x));
+        if let Some(x) = x {
+            return Rect {
+                x: inside(x, w, area_left, area.w),
+                y: inside(top, h, area_top, area.h),
+                w,
+                h,
+            };
+        }
+    }
+    // One line of the caret between it and the window, so neither the typed line nor its
+    // neighbour is covered.
+    let clear = gap.max(bottom - top);
+    let below = bottom + clear;
+    let above = top - clear - high;
+    let fits_below = below + high <= area_bottom;
+    let fits_above = above >= area_top;
+    let y = match (side, fits_below, fits_above) {
+        (PickerSide::Above, _, true) | (_, false, true) => above,
+        _ => below,
     };
     Rect {
-        x: inside(left, w, i64::from(area.x), area.w),
+        x: inside(left, w, area_left, area.w),
         y: inside(y, h, area_top, area.h),
         w,
         h,
@@ -101,6 +139,7 @@ pub fn place_popup(
     host: &dyn PopupHost,
     caret: Option<ScreenRect>,
     logical: (f32, f32),
+    side: PickerSide,
 ) -> Option<(Rect, Anchor)> {
     let anchor = if let Some(c) = caret {
         Anchor::Caret(Rect {
@@ -113,13 +152,18 @@ pub fn place_popup(
         let (x, y) = host.cursor()?;
         Anchor::Point(x, y)
     };
-    let frame = place_at(host, anchor, logical)?;
+    let frame = place_at(host, anchor, logical, side)?;
     Some((frame, anchor))
 }
 
 /// [`place_popup`] for an anchor already known.
 #[must_use]
-pub fn place_at(host: &dyn PopupHost, anchor: Anchor, logical: (f32, f32)) -> Option<Rect> {
+pub fn place_at(
+    host: &dyn PopupHost,
+    anchor: Anchor,
+    logical: (f32, f32),
+    side: PickerSide,
+) -> Option<Rect> {
     let (x, y) = anchor.point();
     let monitor = host.monitor_at(x, y)?;
     let scale = if monitor.scale.is_finite() && monitor.scale > 0.0 {
@@ -132,6 +176,7 @@ pub fn place_at(host: &dyn PopupHost, anchor: Anchor, logical: (f32, f32)) -> Op
         anchor,
         monitor.work_area,
         physical(GAP, scale),
+        side,
     ))
 }
 
@@ -276,36 +321,43 @@ mod tests {
     #[test]
     fn it_opens_below_the_caret() {
         assert_eq!(
-            place(SIZE, caret(400, 200), AREA, 4),
-            rect(400, 224, 560, 300)
+            place(SIZE, caret(400, 200), AREA, 4, PickerSide::Below),
+            rect(400, 240, 560, 300)
         );
     }
 
     #[test]
     fn it_flips_above_the_caret_when_below_would_leave_the_work_area() {
-        // The caret is 20 px high at y 900: below would end at 1224 > 1040.
+        // The caret is 20 px high at y 900: below would end at 1240 > 1040. Above keeps a line
+        // (20 px) clear of the caret too: 900 - 20 - 300.
         assert_eq!(
-            place(SIZE, caret(400, 900), AREA, 4),
-            rect(400, 596, 560, 300)
+            place(SIZE, caret(400, 900), AREA, 4, PickerSide::Below),
+            rect(400, 580, 560, 300)
         );
     }
 
     #[test]
     fn it_stays_below_when_it_just_fits() {
-        // 716 + 4 + 20 = 740 .. 1040 exactly.
-        assert_eq!(place(SIZE, caret(10, 716), AREA, 4).y, 740);
+        // 700 + 20 (the caret) + 20 (one line clear) = 740 .. 1040 exactly.
+        assert_eq!(
+            place(SIZE, caret(10, 700), AREA, 4, PickerSide::Below).y,
+            740
+        );
         // One pixel more and it flips.
-        assert_eq!(place(SIZE, caret(10, 717), AREA, 4).y, 717 - 4 - 300);
+        assert_eq!(
+            place(SIZE, caret(10, 701), AREA, 4, PickerSide::Below).y,
+            701 - 20 - 300
+        );
     }
 
     #[test]
     fn with_no_caret_it_opens_at_the_mouse() {
         assert_eq!(
-            place(SIZE, Anchor::Point(700, 500), AREA, 4),
+            place(SIZE, Anchor::Point(700, 500), AREA, 4, PickerSide::Below),
             rect(700, 504, 560, 300)
         );
         assert_eq!(
-            place(SIZE, Anchor::Point(700, 900), AREA, 4),
+            place(SIZE, Anchor::Point(700, 900), AREA, 4, PickerSide::Below),
             rect(700, 596, 560, 300),
             "the mouse flips too"
         );
@@ -314,33 +366,45 @@ mod tests {
     #[test]
     fn it_is_clamped_into_the_work_area() {
         // Too far right: shifted left so the right edge is the area's.
-        assert_eq!(place(SIZE, caret(1900, 100), AREA, 4).x, 1360);
+        assert_eq!(
+            place(SIZE, caret(1900, 100), AREA, 4, PickerSide::Below).x,
+            1360
+        );
         // Off the left edge of the area.
-        assert_eq!(place(SIZE, caret(-50, 100), AREA, 4).x, 0);
+        assert_eq!(
+            place(SIZE, caret(-50, 100), AREA, 4, PickerSide::Below).x,
+            0
+        );
         // Caret above the area: pushed down to the top.
-        assert_eq!(place(SIZE, Anchor::Point(100, -200), AREA, 4).y, 0);
+        assert_eq!(
+            place(SIZE, Anchor::Point(100, -200), AREA, 4, PickerSide::Below).y,
+            0
+        );
     }
 
     #[test]
     fn when_it_fits_neither_side_it_is_pushed_against_the_edge() {
         let area = rect(0, 0, 1920, 400);
         // 300 high in a 400 high area, the caret in the middle: neither 224+300 nor above fits.
-        let frame = place(SIZE, caret(10, 190), area, 4);
+        let frame = place(SIZE, caret(10, 190), area, 4, PickerSide::Below);
         assert_eq!(frame.y, 100, "pushed up against the bottom edge");
     }
 
     #[test]
     fn a_window_larger_than_the_area_is_cut_to_it() {
         let area = rect(100, 50, 400, 200);
-        assert_eq!(place((900, 900), caret(0, 0), area, 4), area);
+        assert_eq!(
+            place((900, 900), caret(0, 0), area, 4, PickerSide::Below),
+            area
+        );
     }
 
     #[test]
     fn a_second_monitor_with_a_negative_origin_is_respected() {
         let left = rect(-1920, 0, 1920, 1040);
         assert_eq!(
-            place(SIZE, caret(-100, 200), left, 4),
-            rect(-560, 224, 560, 300)
+            place(SIZE, caret(-100, 200), left, 4, PickerSide::Below),
+            rect(-560, 240, 560, 300)
         );
     }
 
@@ -353,22 +417,29 @@ mod tests {
             w: 3,
             h: 30,
         };
-        // 560 x 300 logical is 840 x 450 physical; the 4 px gap is 6.
-        let (frame, anchor) = place_popup(&host, Some(c), (560.0, 300.0)).expect("placed");
-        assert_eq!(frame, rect(400, 236, 840, 450));
+        // 560 x 300 logical is 840 x 450 physical; the 4 px gap is 6, so the 30 px caret line
+        // (one line clear) decides.
+        let (frame, anchor) =
+            place_popup(&host, Some(c), (560.0, 300.0), PickerSide::Below).expect("placed");
+        assert_eq!(frame, rect(400, 260, 840, 450));
         assert_eq!(anchor, Anchor::Caret(rect(400, 200, 3, 30)));
-        // Flipping uses the physical height: 450 + 6 above y 700.
+        // Flipping uses the physical height: 450 + 30 above y 700.
         let low = ScreenRect { y: 700, ..c };
-        let (frame, _) = place_popup(&host, Some(low), (560.0, 300.0)).expect("placed");
-        assert_eq!(frame.y, 700 - 6 - 450);
+        let (frame, _) =
+            place_popup(&host, Some(low), (560.0, 300.0), PickerSide::Below).expect("placed");
+        assert_eq!(frame.y, 700 - 30 - 450);
     }
 
     #[test]
     fn with_no_caret_and_no_mouse_nothing_is_placed() {
         let host = FakePopups::one(monitor(1.0));
-        assert_eq!(place_popup(&host, None, (560.0, 300.0)), None);
+        assert_eq!(
+            place_popup(&host, None, (560.0, 300.0), PickerSide::Below),
+            None
+        );
         host.cursor.set(Some((50, 60)));
-        let (frame, anchor) = place_popup(&host, None, (560.0, 300.0)).expect("placed");
+        let (frame, anchor) =
+            place_popup(&host, None, (560.0, 300.0), PickerSide::Below).expect("placed");
         assert_eq!(anchor, Anchor::Point(50, 60));
         assert_eq!(frame, rect(50, 64, 560, 300));
     }
@@ -401,7 +472,8 @@ mod tests {
                     w: 1,
                     h: 1
                 }),
-                (1.0, 1.0)
+                (1.0, 1.0),
+                PickerSide::Below
             ),
             None
         );
@@ -412,8 +484,182 @@ mod tests {
         for scale in [0.0, -1.0, f32::NAN] {
             let host = FakePopups::one(monitor(scale));
             host.cursor.set(Some((0, 0)));
-            let (frame, _) = place_popup(&host, None, (100.0, 50.0)).expect("placed");
+            let (frame, _) =
+                place_popup(&host, None, (100.0, 50.0), PickerSide::Below).expect("placed");
             assert_eq!((frame.w, frame.h), (100, 50));
+        }
+    }
+
+    // ---- The chosen side ---------------------------------------------------------------------
+
+    fn at_side(anchor: Anchor, area: Rect, side: PickerSide) -> Rect {
+        place(SIZE, anchor, area, 4, side)
+    }
+
+    #[test]
+    fn below_and_above_keep_one_line_clear_of_the_caret() {
+        // The caret line is y 300..320. The next line (320..340) and the one before (280..300)
+        // stay uncovered.
+        let below = at_side(caret(400, 300), AREA, PickerSide::Below);
+        assert_eq!(below.y, 340, "starts after the next line");
+        let above = at_side(caret(400, 600), AREA, PickerSide::Above);
+        assert_eq!(above.y + 300, 600 - 20, "ends before the previous line");
+        // A caret too small for the gap still gets the gap.
+        let thin = Anchor::Caret(rect(400, 300, 2, 2));
+        assert_eq!(at_side(thin, AREA, PickerSide::Below).y, 302 + 4);
+    }
+
+    #[test]
+    fn above_opens_above_and_flips_below_at_the_top_edge() {
+        assert_eq!(
+            at_side(caret(400, 600), AREA, PickerSide::Above),
+            rect(400, 280, 560, 300)
+        );
+        // 100 - 20 - 300 < 0: flips below, one line clear.
+        assert_eq!(
+            at_side(caret(400, 100), AREA, PickerSide::Above),
+            rect(400, 140, 560, 300)
+        );
+    }
+
+    #[test]
+    fn right_starts_after_the_caret_and_lines_up_with_its_top() {
+        assert_eq!(
+            at_side(caret(400, 200), AREA, PickerSide::Right),
+            rect(406, 200, 560, 300),
+            "400 + 2 (caret width) + 4"
+        );
+        // Low on the screen it stays beside the caret and is pushed up into the area.
+        assert_eq!(
+            at_side(caret(400, 900), AREA, PickerSide::Right),
+            rect(406, 740, 560, 300)
+        );
+    }
+
+    #[test]
+    fn left_ends_before_the_caret() {
+        assert_eq!(
+            at_side(caret(800, 200), AREA, PickerSide::Left),
+            rect(236, 200, 560, 300),
+            "800 - 4 - 560"
+        );
+    }
+
+    #[test]
+    fn right_flips_left_at_the_right_edge_and_left_flips_right_at_the_left_edge() {
+        // 1500 + 2 + 4 + 560 = 2066 > 1920.
+        assert_eq!(
+            at_side(caret(1500, 200), AREA, PickerSide::Right),
+            rect(936, 200, 560, 300),
+            "1500 - 4 - 560"
+        );
+        // 400 - 4 - 560 < 0.
+        assert_eq!(
+            at_side(caret(400, 200), AREA, PickerSide::Left),
+            rect(406, 200, 560, 300)
+        );
+    }
+
+    #[test]
+    fn when_neither_horizontal_side_fits_it_goes_below_inside_the_area() {
+        let narrow = rect(0, 0, 700, 1040);
+        assert_eq!(
+            at_side(caret(300, 200), narrow, PickerSide::Right),
+            rect(140, 240, 560, 300),
+            "below the caret, pushed left into the area"
+        );
+        assert_eq!(
+            at_side(caret(300, 200), narrow, PickerSide::Left),
+            rect(140, 240, 560, 300)
+        );
+    }
+
+    #[test]
+    fn the_sides_work_on_a_monitor_left_of_the_primary_one() {
+        let left = rect(-1920, 0, 1920, 1040);
+        // Right of the caret would end at 466 > 0 (the area's right edge): flips left.
+        assert_eq!(
+            at_side(caret(-100, 200), left, PickerSide::Right),
+            rect(-664, 200, 560, 300)
+        );
+        assert_eq!(
+            at_side(caret(-1000, 200), left, PickerSide::Right),
+            rect(-994, 200, 560, 300)
+        );
+        // Left of a caret near the monitor's left edge flips right.
+        assert_eq!(
+            at_side(caret(-1800, 200), left, PickerSide::Left),
+            rect(-1794, 200, 560, 300)
+        );
+    }
+
+    #[test]
+    fn a_mouse_anchor_keeps_below_and_above_whatever_the_side() {
+        for side in [PickerSide::Right, PickerSide::Left, PickerSide::Below] {
+            assert_eq!(
+                at_side(Anchor::Point(700, 500), AREA, side),
+                rect(700, 504, 560, 300),
+                "{side:?}"
+            );
+        }
+        assert_eq!(
+            at_side(Anchor::Point(700, 500), AREA, PickerSide::Above),
+            rect(700, 196, 560, 300),
+            "500 - 4 - 300"
+        );
+    }
+
+    #[test]
+    fn the_sides_scale_with_the_monitor_at_150_percent() {
+        let host = FakePopups::one(monitor(1.5));
+        let c = ScreenRect {
+            x: 400,
+            y: 200,
+            w: 3,
+            h: 30,
+        };
+        // 840 x 450 physical, gap 6.
+        let right = place_popup(&host, Some(c), (560.0, 300.0), PickerSide::Right).expect("placed");
+        assert_eq!(right.0, rect(409, 200, 840, 450), "400 + 3 + 6");
+        let left_of = ScreenRect { x: 1000, ..c };
+        let left =
+            place_popup(&host, Some(left_of), (560.0, 300.0), PickerSide::Left).expect("placed");
+        assert_eq!(left.0, rect(154, 200, 840, 450), "1000 - 6 - 840");
+        let above = ScreenRect { y: 700, ..c };
+        let above =
+            place_popup(&host, Some(above), (560.0, 300.0), PickerSide::Above).expect("placed");
+        assert_eq!(above.0.y, 700 - 30 - 450);
+    }
+
+    #[test]
+    fn no_side_covers_the_caret_when_there_is_room() {
+        for side in [
+            PickerSide::Below,
+            PickerSide::Above,
+            PickerSide::Right,
+            PickerSide::Left,
+        ] {
+            for (x, y) in [(10, 10), (900, 500), (1800, 300), (700, 1000), (1900, 1000)] {
+                let c = rect(x, y, 2, 20);
+                let f = place(SIZE, Anchor::Caret(c), AREA, 4, side);
+                let overlaps = |a: Rect, b: Rect| {
+                    i64::from(a.x) < i64::from(b.x) + i64::from(b.w)
+                        && i64::from(b.x) < i64::from(a.x) + i64::from(a.w)
+                        && i64::from(a.y) < i64::from(b.y) + i64::from(b.h)
+                        && i64::from(b.y) < i64::from(a.y) + i64::from(a.h)
+                };
+                assert!(
+                    !overlaps(f, c),
+                    "{side:?} at ({x}, {y}) covers the caret: {f:?}"
+                );
+                assert!(
+                    f.x >= 0
+                        && f.y >= 0
+                        && i64::from(f.x) + i64::from(f.w) <= 1920
+                        && i64::from(f.y) + i64::from(f.h) <= 1040,
+                    "{side:?} at ({x}, {y}) leaves the area: {f:?}"
+                );
+            }
         }
     }
 }
