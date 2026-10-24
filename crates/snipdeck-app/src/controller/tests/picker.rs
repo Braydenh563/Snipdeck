@@ -235,6 +235,24 @@ fn escape_closes_the_picker_and_hands_the_focus_back_once() {
 }
 
 #[test]
+fn clicking_away_dismisses_the_picker_without_taking_the_focus_back() {
+    let mut w = world();
+    w.ctl.on_hotkey(HotkeyAction::Picker);
+    let refocused = w.targets.refocus_count();
+    w.ctl.dismiss_picker();
+    assert!(w.ctl.view().picker.is_none());
+    assert_eq!(
+        w.targets.refocus_count(),
+        refocused,
+        "the window the user clicked keeps the focus"
+    );
+    // Nothing open: nothing to do, and still no refocus.
+    w.ctl.dismiss_picker();
+    assert_eq!(w.targets.refocus_count(), refocused);
+    assert_eq!(uses(&w, w.ids[0]), 0);
+}
+
+#[test]
 fn the_target_is_read_when_the_picker_opens_and_kept_while_it_is_open() {
     let mut w = world();
     // The user moved to a window with nothing to paste into; the controller has not heard.

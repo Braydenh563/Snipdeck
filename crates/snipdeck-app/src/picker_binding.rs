@@ -201,6 +201,7 @@ where
             .act(|ctl| ctl.picker_edit(index(i))));
         wire!(on_close_requested, |core| core
             .act(Controller::close_picker));
+        wire!(on_dismissed, |core| core.act(Controller::dismiss_picker));
         wire!(on_help_requested, |core| core
             .act(|ctl| ctl.main_open_help(HelpTopic::Guide)));
     }

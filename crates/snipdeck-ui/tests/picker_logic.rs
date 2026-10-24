@@ -51,6 +51,7 @@ fn start() -> (PickerWindow, Log) {
     hook!(on_selection_moved, |d| format!("move:{d}"));
     hook!(on_edit_requested, |i| format!("edit:{i}"));
     hook!(on_close_requested, || "close".to_string());
+    hook!(on_dismissed, || "dismissed".to_string());
     (ui, log)
 }
 
@@ -150,6 +151,22 @@ ui_tests! {
         press(ui.window(), &key(Key::Escape));
         assert_eq!(take(&log), ["close"], "Esc dismisses; it does not clear first");
         assert_eq!(ui.get_query(), "ab", "the host decides what a re-summon shows");
+    }
+
+    fn losing_the_keyboard_to_another_window_dismisses_without_the_escape_close() {
+        let (ui, log) = start();
+        // Start from a window that has no keyboard, then give it the keyboard as Windows does.
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(false));
+        settle();
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(true));
+        ui.invoke_focus_search();
+        settle();
+        assert!(ui.get_search_focused());
+        take(&log);
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(false));
+        settle();
+        assert!(!ui.get_search_focused(), "an inactive window holds no keyboard focus");
+        assert_eq!(take(&log), ["dismissed"], "click-away must not ask for a refocusing close");
     }
 
     fn reset_gives_a_fresh_picker_for_the_next_summon() {

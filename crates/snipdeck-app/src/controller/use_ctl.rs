@@ -62,6 +62,13 @@ where
         }
     }
 
+    /// Closes the Picker because the user clicked another window: that window has the focus
+    /// now, so the Target is not refocused (it would take the focus back from where they
+    /// clicked).
+    pub fn dismiss_picker(&mut self) {
+        self.picker = None;
+    }
+
     /// The Picker, while it is open.
     #[must_use]
     pub fn picker(&self) -> Option<&PickerModel> {
