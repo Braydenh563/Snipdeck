@@ -5,7 +5,7 @@
 use slint::{Color, Image, ModelRc, Rgba8Pixel, SharedPixelBuffer, SharedString, VecModel};
 use snipdeck_ui::{
     BackupRow, ChoiceEntry, HelpCheck, HelpWindow, HotkeySetting, ItemEditor, ListEditor,
-    OnboardingWindow, PasteRuleRow, SettingsPage, TagManager,
+    OnboardingWindow, PasteRuleRow, SettingsPage, ShortcutGroup, ShortcutLineData, TagManager,
 };
 
 pub fn strings(items: &[&str]) -> ModelRc<SharedString> {
@@ -166,6 +166,40 @@ pub fn help(ui: &HelpWindow) {
     ui.set_build_date("2026-10-19".into());
     ui.set_supporter(false);
     ui.set_source_url("https://github.com/Braydenh563/Snipdeck".into());
+}
+
+/// A group of the Shortcuts tab with one line per `(title, keys)`.
+pub fn shortcut_group(title: &str, note: &str, lines: &[(&str, &[&str])]) -> ShortcutGroup {
+    ShortcutGroup {
+        title: title.into(),
+        note: note.into(),
+        lines: ModelRc::new(VecModel::from(
+            lines
+                .iter()
+                .map(|(title, keys)| ShortcutLineData {
+                    title: (*title).into(),
+                    keys: strings(keys),
+                    spoken: keys.join("+").into(),
+                })
+                .collect::<Vec<_>>(),
+        )),
+    }
+}
+
+/// The Shortcuts tab with a global group (and its note) and a Main window group.
+pub fn shortcuts(ui: &HelpWindow) {
+    ui.set_shortcut_groups(ModelRc::new(VecModel::from(vec![
+        shortcut_group(
+            "Anywhere in Windows",
+            "Change these in Settings.",
+            &[("Show or hide the Panel", &["Ctrl", "Alt", "Space"])],
+        ),
+        shortcut_group(
+            "Main window",
+            "",
+            &[("New item", &["Ctrl", "N"]), ("Search", &["Ctrl", "F"])],
+        ),
+    ])));
 }
 
 /// The welcome tour on `step` (0 to 3), with the defaults of a first run.

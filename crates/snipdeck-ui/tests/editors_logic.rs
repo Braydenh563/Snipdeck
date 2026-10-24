@@ -1611,6 +1611,7 @@ ui_tests! {
     fn the_shortcuts_tab_says_where_to_change_the_global_keys_to_a_screen_reader() {
         let ui = HelpWindow::new().expect("help");
         fixture::help(&ui);
+        fixture::shortcuts(&ui);
         ui.set_tab(2);
         ui.window().set_size(slint::LogicalSize::new(600.0, 900.0));
         ui.show().expect("show");
@@ -1619,5 +1620,59 @@ ui_tests! {
             .filter(|e| e.accessible_role() == Some(AccessibleRole::Text))
             .collect();
         assert_eq!(note.len(), 1, "the line under the global keys is exposed as text");
+        assert_eq!(
+            all(&ui, "New item", AccessibleRole::Groupbox).len(),
+            1,
+            "a line of a group the host sent is drawn"
+        );
+    }
+
+    fn the_shortcuts_tab_has_a_search_box_that_reports_each_edit_and_has_the_focus() {
+        let ui = HelpWindow::new().expect("help");
+        fixture::help(&ui);
+        fixture::shortcuts(&ui);
+        ui.set_tab(2);
+        ui.window().set_size(slint::LogicalSize::new(600.0, 900.0));
+        ui.show().expect("show");
+        settle();
+        let log: Log = Rc::default();
+        {
+            let log = log.clone();
+            ui.on_shortcut_query_changed(move |q| log.borrow_mut().push(format!("query:{q}")));
+        }
+        // The box has the keyboard when the tab opens: typing goes into it without a click.
+        type_text(ui.window(), "ctrl");
+        settle();
+        assert_eq!(ui.get_shortcut_query(), "ctrl");
+        assert_eq!(take(&log).last().map(String::as_str), Some("query:ctrl"));
+        // Esc clears the text first (and reports it); a second Esc closes the window.
+        let closes: Log = Rc::default();
+        {
+            let closes = closes.clone();
+            ui.on_close_requested(move || closes.borrow_mut().push("close".into()));
+        }
+        press_key(&ui, Key::Escape);
+        assert_eq!(ui.get_shortcut_query(), "");
+        assert_eq!(take(&log).last().map(String::as_str), Some("query:"));
+        assert!(closes.borrow().is_empty(), "the first Esc only clears");
+        press_key(&ui, Key::Escape);
+        assert_eq!(*closes.borrow(), ["close"]);
+    }
+
+    fn the_shortcuts_tab_says_when_nothing_matches() {
+        let ui = HelpWindow::new().expect("help");
+        fixture::help(&ui);
+        ui.set_tab(2);
+        ui.window().set_size(slint::LogicalSize::new(600.0, 900.0));
+        ui.show().expect("show");
+        settle();
+        assert_eq!(
+            all(&ui, "No shortcut matches", AccessibleRole::Text).len(),
+            1,
+            "an empty list explains itself"
+        );
+        fixture::shortcuts(&ui);
+        settle();
+        assert!(missing(&ui, "No shortcut matches", AccessibleRole::Text));
     }
 }

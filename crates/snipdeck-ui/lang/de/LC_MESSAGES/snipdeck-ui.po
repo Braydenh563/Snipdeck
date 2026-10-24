@@ -997,6 +997,9 @@ msgstr "Panel immer im Vordergrund halten"
 msgid "Keep running in the tray when the window closes"
 msgstr "Beim Schließen des Fensters im Infobereich weiterlaufen"
 
+msgid "Keep the Panel on top (pin)"
+msgstr "Panel im Vordergrund halten (anheften)"
+
 msgid "Keyboard shortcuts"
 msgstr "Tastenkürzel"
 
@@ -1249,6 +1252,9 @@ msgstr "Noch keine Programme. Jedes Programm verwendet Ctrl+V."
 
 msgid "No recent items"
 msgstr "Keine neuen Textbausteine"
+
+msgid "No shortcut matches"
+msgstr "Kein Kurzbefehl passt"
 
 msgid "No snippets yet"
 msgstr "Noch keine Textbausteine"
@@ -1752,8 +1758,14 @@ msgstr "Suchen in"
 msgid "Search results"
 msgstr "Suchergebnisse"
 
+msgid "Search shortcuts"
+msgstr "Kurzbefehle suchen"
+
 msgid "Search snippets"
 msgstr "Textbausteine suchen"
+
+msgid "Search the keyboard shortcuts"
+msgstr "Tastaturkurzbefehle durchsuchen"
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "Sekunden, bevor ein kopierter vertraulicher Textbaustein aus der Zwischenablage gelöscht wird, sofern danach nichts anderes kopiert wurde. 0 löscht ihn nie. Beim Einfügen wird stattdessen deine eigene Zwischenablage wiederhergestellt."

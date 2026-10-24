@@ -997,6 +997,9 @@ msgstr "Garder le panneau au premier plan"
 msgid "Keep running in the tray when the window closes"
 msgstr "Continuer à s'exécuter dans la zone de notification à la fermeture de la fenêtre"
 
+msgid "Keep the Panel on top (pin)"
+msgstr "Garder le panneau au premier plan (épingler)"
+
 msgid "Keyboard shortcuts"
 msgstr "Raccourcis clavier"
 
@@ -1249,6 +1252,9 @@ msgstr "Aucun programme pour le moment. Tous les programmes utilisent Ctrl+V."
 
 msgid "No recent items"
 msgstr "Aucun extrait récent"
+
+msgid "No shortcut matches"
+msgstr "Aucun raccourci ne correspond"
 
 msgid "No snippets yet"
 msgstr "Aucun extrait pour le moment"
@@ -1752,8 +1758,14 @@ msgstr "Rechercher dans"
 msgid "Search results"
 msgstr "Résultats de recherche"
 
+msgid "Search shortcuts"
+msgstr "Rechercher un raccourci"
+
 msgid "Search snippets"
 msgstr "Rechercher des extraits"
+
+msgid "Search the keyboard shortcuts"
+msgstr "Rechercher dans les raccourcis clavier"
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "Secondes avant que l'extrait sensible copié ne soit vidé du presse-papiers, si rien d'autre n'a été copié depuis. 0 ne le vide jamais. Le collage restaure à la place votre propre presse-papiers."

@@ -994,6 +994,9 @@ msgstr "面板保持在最前"
 msgid "Keep running in the tray when the window closes"
 msgstr "关闭窗口时继续在通知区域运行"
 
+msgid "Keep the Panel on top (pin)"
+msgstr "保持面板置顶(固定)"
+
 msgid "Keyboard shortcuts"
 msgstr "键盘快捷键"
 
@@ -1244,6 +1247,9 @@ msgstr "还没有程序。所有程序都使用 Ctrl+V。"
 
 msgid "No recent items"
 msgstr "没有最近的片段"
+
+msgid "No shortcut matches"
+msgstr "没有匹配的快捷键"
 
 msgid "No snippets yet"
 msgstr "还没有片段"
@@ -1745,8 +1751,14 @@ msgstr "搜索范围"
 msgid "Search results"
 msgstr "搜索结果"
 
+msgid "Search shortcuts"
+msgstr "搜索快捷键"
+
 msgid "Search snippets"
 msgstr "搜索片段"
+
+msgid "Search the keyboard shortcuts"
+msgstr "搜索键盘快捷键"
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "复制敏感片段后，若期间未复制其他内容，则在此秒数后从剪贴板清除。设为 0 则永不清除。粘贴时会改为恢复你原本的剪贴板内容。"

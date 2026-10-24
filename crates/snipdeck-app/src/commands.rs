@@ -209,6 +209,7 @@ pub fn spoken(shortcut: &str) -> String {
             "Ctrl" => "Control",
             "↵" => "Enter",
             "Del" => "Delete",
+            "Esc" => "Escape",
             "+" => "Plus",
             "," => "Comma",
             "/" => "Slash",
@@ -510,5 +511,6 @@ mod tests {
         assert_eq!(caps("F1"), ["F1"]);
         assert_eq!(spoken("Ctrl+/"), "Control Slash");
         assert_eq!(spoken("Del"), "Delete");
+        assert_eq!(spoken("Esc"), "Escape");
     }
 }

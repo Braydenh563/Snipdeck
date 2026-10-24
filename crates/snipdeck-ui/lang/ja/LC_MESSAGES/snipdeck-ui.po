@@ -994,6 +994,9 @@ msgstr "パネルを手前に表示"
 msgid "Keep running in the tray when the window closes"
 msgstr "ウィンドウを閉じても通知領域で実行を続ける"
 
+msgid "Keep the Panel on top (pin)"
+msgstr "パネルを常に手前に表示(ピン留め)"
+
 msgid "Keyboard shortcuts"
 msgstr "キーボードショートカット"
 
@@ -1244,6 +1247,9 @@ msgstr "まだプログラムがありません。すべてのプログラムで
 
 msgid "No recent items"
 msgstr "最近のスニペットはありません"
+
+msgid "No shortcut matches"
+msgstr "一致するショートカットはありません"
 
 msgid "No snippets yet"
 msgstr "スニペットはまだありません"
@@ -1745,8 +1751,14 @@ msgstr "検索対象"
 msgid "Search results"
 msgstr "検索結果"
 
+msgid "Search shortcuts"
+msgstr "ショートカットを検索"
+
 msgid "Search snippets"
 msgstr "スニペットを検索"
+
+msgid "Search the keyboard shortcuts"
+msgstr "キーボードショートカットを検索"
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "機密スニペットをコピーしてから、その後他に何もコピーされなければ、クリップボードから消去されるまでの秒数。0 にすると消去しません。貼り付けると、代わりにご自身のクリップボードの内容が復元されます。"

@@ -52,98 +52,43 @@ component ShortcutLine inherits Rectangle {
     }
 }
 
-// The keyboard shortcuts, grouped: the global hotkeys (the chords the user set, handed in as caps with their
-// spoken forms), then the Main window, the Panel, the Picker and the editors. Every row is a key that exists;
-// the key names are not translated (they are the names on the keyboard).
+// One line of a group, as the app hands it over: the title, the key caps ("Ctrl", "Shift", "N") and the spoken form.
+export struct ShortcutLineData {
+    title: string,
+    keys: [string],
+    spoken: string,
+}
+
+// One group (Anywhere in Windows, Main window, Panel, Picker, Editors) with the lines that match the search.
+// `note` is a hint under the lines ("Change these in Settings."), empty for none.
+export struct ShortcutGroup {
+    title: string,
+    note: string,
+    lines: [ShortcutLineData],
+}
+
+// The keyboard shortcuts, grouped. The app owns the rows (it fills the global hotkeys from the settings, groups
+// the lines and filters them for the search box); this draws them. Every row is a key that exists; the key names
+// are not translated (they are the names on the keyboard).
 export component ShortcutsSheet inherits VerticalLayout {
-    // The configured chords of Show or hide the Panel, Open the Picker, Quick capture and Paste next, as caps.
-    in property <[string]> panel-keys;
-    in property <[string]> picker-keys;
-    in property <[string]> capture-keys;
-    in property <[string]> paste-next-keys;
-    in property <string> panel-spoken;
-    in property <string> picker-spoken;
-    in property <string> capture-spoken;
-    in property <string> paste-next-spoken;
+    in property <[ShortcutGroup]> groups;
 
     spacing: Space.s4;
     alignment: start;
 
-    FormSection {
-        title: @tr("Anywhere in Windows");
-        ShortcutLine { title: @tr("Show or hide the Panel"); keys: root.panel-keys; spoken: root.panel-spoken; }
-        ShortcutLine { title: @tr("Open the Picker at your cursor"); keys: root.picker-keys; spoken: root.picker-spoken; }
-        ShortcutLine { title: @tr("Quick capture the clipboard"); keys: root.capture-keys; spoken: root.capture-spoken; }
-        ShortcutLine { title: @tr("Paste the next item of a stack"); keys: root.paste-next-keys; spoken: root.paste-next-spoken; }
-        Text {
-            text: @tr("Change these in Settings.");
+    for group in root.groups: FormSection {
+        title: group.title;
+        for line in group.lines: ShortcutLine {
+            title: line.title;
+            keys: line.keys;
+            spoken: line.spoken;
+        }
+        if group.note != "": Text {
+            text: group.note;
             color: Theme.text-secondary;
             font-family: Fonts.sans;
             font-size: Type.sm;
             accessible-role: text;
         }
-    }
-
-    FormSection {
-        title: @tr("Main window");
-        ShortcutLine { title: @tr("Command palette (every action)"); keys: ["Ctrl", "K"]; spoken: "Ctrl+K"; }
-        ShortcutLine { title: @tr("New item"); keys: ["Ctrl", "N"]; spoken: "Ctrl+N"; }
-        ShortcutLine { title: @tr("New list"); keys: ["Ctrl", "Shift", "N"]; spoken: "Ctrl+Shift+N"; }
-        ShortcutLine { title: @tr("Search"); keys: ["Ctrl", "F"]; spoken: "Ctrl+F"; }
-        ShortcutLine { title: @tr("Settings"); keys: ["Ctrl", ","]; spoken: "Ctrl+,"; }
-        ShortcutLine { title: @tr("Keyboard shortcuts"); keys: ["Ctrl", "/"]; spoken: "Ctrl+/"; }
-        ShortcutLine { title: @tr("User guide"); keys: ["F1"]; spoken: "F1"; }
-        ShortcutLine { title: @tr("Use the item"); keys: ["↵"]; spoken: "Enter"; }
-        ShortcutLine { title: @tr("Copy the item"); keys: ["Shift", "↵"]; spoken: "Shift+Enter"; }
-        ShortcutLine { title: @tr("Edit the item"); keys: ["Ctrl", "E"]; spoken: "Ctrl+E"; }
-        ShortcutLine { title: @tr("Duplicate the item"); keys: ["Ctrl", "D"]; spoken: "Ctrl+D"; }
-        ShortcutLine { title: @tr("Pin or unpin the item"); keys: ["Ctrl", "P"]; spoken: "Ctrl+P"; }
-        ShortcutLine { title: @tr("Move the item to the Trash"); keys: ["Del"]; spoken: "Delete"; }
-        ShortcutLine { title: @tr("Select every item"); keys: ["Ctrl", "A"]; spoken: "Ctrl+A"; }
-        ShortcutLine { title: @tr("Undo"); keys: ["Ctrl", "Z"]; spoken: "Ctrl+Z"; }
-        ShortcutLine { title: @tr("Redo"); keys: ["Ctrl", "Y"]; spoken: "Ctrl+Y"; }
-        ShortcutLine { title: @tr("Close the window"); keys: ["Ctrl", "W"]; spoken: "Ctrl+W"; }
-        ShortcutLine { title: @tr("Move the item up or down its list"); keys: ["Alt", "Up", "Down"]; spoken: "Alt+Up or Alt+Down"; }
-    }
-
-    FormSection {
-        title: @tr("Panel");
-        ShortcutLine { title: @tr("Filter as you type"); keys: ["A-Z"]; spoken: "Type"; }
-        ShortcutLine { title: @tr("Move through the items"); keys: ["Up", "Down"]; spoken: "Up or Down"; }
-        ShortcutLine { title: @tr("Use the item"); keys: ["↵"]; spoken: "Enter"; }
-        ShortcutLine { title: @tr("Copy the item"); keys: ["Shift", "↵"]; spoken: "Shift+Enter"; }
-        ShortcutLine { title: @tr("Move the item up or down its list"); keys: ["Alt", "Up", "Down"]; spoken: "Alt+Up or Alt+Down"; }
-        ShortcutLine { title: @tr("Use the Nth item"); keys: ["Alt", "1-9"]; spoken: "Alt+1 to 9"; }
-        ShortcutLine { title: @tr("Next list"); keys: ["Ctrl", "Tab"]; spoken: "Ctrl+Tab"; }
-        ShortcutLine { title: @tr("Search"); keys: ["Ctrl", "F"]; spoken: "Ctrl+F"; }
-        ShortcutLine { title: @tr("Edit the item"); keys: ["Ctrl", "E"]; spoken: "Ctrl+E"; }
-        ShortcutLine { title: @tr("Duplicate the item"); keys: ["Ctrl", "D"]; spoken: "Ctrl+D"; }
-        ShortcutLine { title: @tr("Pin or unpin the item"); keys: ["Ctrl", "P"]; spoken: "Ctrl+P"; }
-        ShortcutLine { title: @tr("Commands in the Main window"); keys: ["Ctrl", "K"]; spoken: "Ctrl+K"; }
-        ShortcutLine { title: @tr("New item"); keys: ["Ctrl", "N"]; spoken: "Ctrl+N"; }
-        ShortcutLine { title: @tr("New list"); keys: ["Ctrl", "Shift", "N"]; spoken: "Ctrl+Shift+N"; }
-        ShortcutLine { title: @tr("Settings"); keys: ["Ctrl", ","]; spoken: "Ctrl+,"; }
-        ShortcutLine { title: @tr("Undo"); keys: ["Ctrl", "Z"]; spoken: "Ctrl+Z"; }
-        ShortcutLine { title: @tr("Redo"); keys: ["Ctrl", "Y"]; spoken: "Ctrl+Y"; }
-        ShortcutLine { title: @tr("Hide the Panel"); keys: ["Ctrl", "W"]; spoken: "Ctrl+W"; }
-        ShortcutLine { title: @tr("Keyboard shortcuts"); keys: ["Ctrl", "/"]; spoken: "Ctrl+/"; }
-        ShortcutLine { title: @tr("Clear the search, then close"); keys: ["Esc"]; spoken: "Escape"; }
-    }
-
-    FormSection {
-        title: @tr("Picker");
-        ShortcutLine { title: @tr("Move through the results"); keys: ["Up", "Down"]; spoken: "Up or Down"; }
-        ShortcutLine { title: @tr("Paste the result"); keys: ["↵"]; spoken: "Enter"; }
-        ShortcutLine { title: @tr("Copy the result"); keys: ["Shift", "↵"]; spoken: "Shift+Enter"; }
-        ShortcutLine { title: @tr("Paste the Nth result"); keys: ["Alt", "1-9"]; spoken: "Alt+1 to 9"; }
-        ShortcutLine { title: @tr("Next scope"); keys: ["Tab"]; spoken: "Tab"; }
-        ShortcutLine { title: @tr("Edit the result"); keys: ["Ctrl", "E"]; spoken: "Ctrl+E"; }
-        ShortcutLine { title: @tr("Close"); keys: ["Esc"]; spoken: "Escape"; }
-    }
-
-    FormSection {
-        title: @tr("Editors");
-        ShortcutLine { title: @tr("Save"); keys: ["Ctrl", "↵"]; spoken: "Ctrl+Enter"; }
-        ShortcutLine { title: @tr("Close"); keys: ["Esc"]; spoken: "Escape"; }
     }
 }

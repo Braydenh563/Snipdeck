@@ -16,7 +16,7 @@ use std::{
 };
 
 use jiff::civil::Date;
-use slint::{ComponentHandle, SharedString};
+use slint::{ComponentHandle, Global, Model, SharedString};
 use snipdeck_core::Tier;
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_portable::backup;
@@ -31,8 +31,9 @@ use crate::{
     host::ClipboardText,
     main_binding::{create_window, raise, set_look},
     native_window::fit_when_settled,
-    settings::HotkeyAction,
+    settings::{HotkeyAction, Hotkeys},
     settings_binding::action_name,
+    shortcuts::{self, Scope},
     toast::{ToastKind, ToastMessage},
     wording,
 };
@@ -270,6 +271,11 @@ struct HelpCore<C, K, T> {
     data_dir: Option<PathBuf>,
     host: Rc<dyn HelpHost>,
     checks: RefCell<Vec<Check>>,
+    /// What the Shortcuts tab's search box holds.
+    shortcut_query: RefCell<String>,
+    /// The Shortcuts tab as last drawn, so a redraw that changes nothing leaves the list (and its
+    /// scroll position) alone.
+    shortcuts_shown: RefCell<Vec<shortcuts::Group>>,
     /// Redraws this window (registered with `binding::register_redraw`).
     redraw: Rc<dyn Fn()>,
 }
@@ -293,6 +299,17 @@ where
         *self.checks.borrow_mut() = found;
     }
 
+    /// Draws the Shortcuts tab: the groups of lines that answer the search box, the four global
+    /// hotkeys as the settings have them.
+    fn sync_shortcuts(&self, window: &ui::HelpWindow, hotkeys: &Hotkeys) {
+        let groups = shortcut_groups(window, hotkeys, &self.shortcut_query.borrow());
+        if *self.shortcuts_shown.borrow() == groups {
+            return;
+        }
+        window.set_shortcut_groups(model(groups.iter().map(|g| ui_group(window, g))));
+        *self.shortcuts_shown.borrow_mut() = groups;
+    }
+
     fn sync(self: &Rc<Self>) {
         let Some(window) = self.window.upgrade() else {
             return;
@@ -302,20 +319,7 @@ where
         }
         let (look, accent, tier, toast): (_, _, _, Option<ToastView>) = {
             let controller = self.controller.borrow();
-            let hotkeys = &controller.settings().hotkeys;
-            let strings = |keys: Vec<String>| model(keys.iter().map(|k| k.as_str().into()));
-            let (keys, spoken) = crate::commands::chord_caps(hotkeys, HotkeyAction::TogglePanel);
-            window.set_panel_keys(strings(keys));
-            window.set_panel_spoken(spoken.into());
-            let (keys, spoken) = crate::commands::chord_caps(hotkeys, HotkeyAction::Picker);
-            window.set_picker_keys(strings(keys));
-            window.set_picker_spoken(spoken.into());
-            let (keys, spoken) = crate::commands::chord_caps(hotkeys, HotkeyAction::Capture);
-            window.set_capture_keys(strings(keys));
-            window.set_capture_spoken(spoken.into());
-            let (keys, spoken) = crate::commands::chord_caps(hotkeys, HotkeyAction::PasteNext);
-            window.set_paste_next_keys(strings(keys));
-            window.set_paste_next_spoken(spoken.into());
+            self.sync_shortcuts(&window, &controller.settings().hotkeys);
             (
                 controller.settings_look(),
                 controller.accent(),
@@ -542,6 +546,8 @@ where
                 data_dir,
                 host,
                 checks: RefCell::new(Vec::new()),
+                shortcut_query: RefCell::default(),
+                shortcuts_shown: RefCell::default(),
                 redraw: Rc::new(move || {
                     if let Some(core) = weak.upgrade() {
                         core.sync();
@@ -565,6 +571,17 @@ where
             redraw_all();
         });
         wire!(on_fix_requested, |core, fix| core.fix(fix));
+        {
+            let weak = Rc::downgrade(&core);
+            window.on_shortcut_query_changed(move |query| {
+                if let Some(core) = weak.upgrade() {
+                    query
+                        .as_str()
+                        .clone_into(&mut core.shortcut_query.borrow_mut());
+                    core.sync();
+                }
+            });
+        }
         wire!(on_rebuild_confirmed, |core| core.rebuild());
         wire!(on_rebuild_dismissed, |core| {
             if let Some(window) = core.window.upgrade() {
@@ -610,6 +627,46 @@ where
     pub fn refresh(&self) {
         self.core.run_checks();
         self.core.sync();
+    }
+}
+
+// ---- The Shortcuts tab ---------------------------------------------------------------------------
+
+/// The shortcuts list for `query` with the words of the language selected for the UI now.
+#[must_use]
+pub fn shortcut_groups(
+    window: &ui::HelpWindow,
+    hotkeys: &Hotkeys,
+    query: &str,
+) -> Vec<shortcuts::Group> {
+    let titles: Vec<String> = ui::ShortcutTexts::get(window)
+        .get_titles()
+        .iter()
+        .map(|t| t.to_string())
+        .collect();
+    shortcuts::groups(&titles, hotkeys, query)
+}
+
+/// One group as the window draws it: the scope's name, and the note under the global hotkeys.
+fn ui_group(window: &ui::HelpWindow, group: &shortcuts::Group) -> ui::ShortcutGroup {
+    let words = ui::ShortcutTexts::get(window);
+    let title = Scope::ALL
+        .iter()
+        .position(|s| *s == group.scope)
+        .and_then(|i| words.get_scopes().row_data(i))
+        .unwrap_or_default();
+    ui::ShortcutGroup {
+        title,
+        note: if group.scope == Scope::Anywhere {
+            words.get_global_note()
+        } else {
+            SharedString::new()
+        },
+        lines: model(group.lines.iter().map(|line| ui::ShortcutLineData {
+            title: line.title.as_str().into(),
+            keys: model(line.keys.iter().map(|k| k.as_str().into())),
+            spoken: line.spoken.as_str().into(),
+        })),
     }
 }
 

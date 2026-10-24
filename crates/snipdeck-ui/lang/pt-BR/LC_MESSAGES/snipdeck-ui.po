@@ -997,6 +997,9 @@ msgstr "Manter o painel no topo"
 msgid "Keep running in the tray when the window closes"
 msgstr "Continuar em execução na bandeja ao fechar a janela"
 
+msgid "Keep the Panel on top (pin)"
+msgstr "Manter o painel por cima (fixar)"
+
 msgid "Keyboard shortcuts"
 msgstr "Atalhos de teclado"
 
@@ -1249,6 +1252,9 @@ msgstr "Nenhum programa ainda. Todo programa usa Ctrl+V."
 
 msgid "No recent items"
 msgstr "Nenhum trecho recente"
+
+msgid "No shortcut matches"
+msgstr "Nenhum atalho corresponde"
 
 msgid "No snippets yet"
 msgstr "Nenhum trecho ainda"
@@ -1752,8 +1758,14 @@ msgstr "Pesquisar em"
 msgid "Search results"
 msgstr "Resultados da pesquisa"
 
+msgid "Search shortcuts"
+msgstr "Pesquisar atalhos"
+
 msgid "Search snippets"
 msgstr "Pesquisar trechos"
+
+msgid "Search the keyboard shortcuts"
+msgstr "Pesquisar nos atalhos de teclado"
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "Segundos até que um item sensível copiado seja limpo da área de transferência, se nada mais tiver sido copiado desde então. 0 nunca o limpa. Ao colar, sua própria área de transferência é restaurada."

@@ -12,7 +12,11 @@ import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
 import { Toast, ToastKind, ToastPhase } from "components/feedback.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
 import { FormScroll, FormSection, SettingRow, Segmented } from "components/form.slint";
-import { ShortcutsSheet } from "components/shortcuts-sheet.slint";
+import { ShortcutsSheet, ShortcutGroup, ShortcutLineData } from "components/shortcuts-sheet.slint";
+import { SearchField } from "components/text_field.slint";
+import { ShortcutTexts } from "shortcut_texts.slint";
+
+export { ShortcutGroup, ShortcutLineData }
 
 // One line of the Troubleshoot list, already in words (the doctor's English; see snipdeck-app `doctor`).
 export struct HelpCheck {
@@ -40,15 +44,11 @@ export component HelpWindow inherits Window {
     // 0 Troubleshoot, 1 About, 2 Shortcuts.
     in-out property <int> tab: 0;
     in property <[HelpCheck]> checks;
-    // The configured global hotkeys as key caps, and spoken, for the Shortcuts tab (empty = the hotkey is off).
-    in property <[string]> panel-keys;
-    in property <[string]> picker-keys;
-    in property <[string]> capture-keys;
-    in property <[string]> paste-next-keys;
-    in property <string> panel-spoken;
-    in property <string> picker-spoken;
-    in property <string> capture-spoken;
-    in property <string> paste-next-spoken;
+    // The Shortcuts tab: the groups of lines that match the search box (the host builds them: it holds the
+    // configured global hotkeys and the filter), and the box's text.
+    in property <[ShortcutGroup]> shortcut-groups;
+    in-out property <string> shortcut-query;
+    callback shortcut-query-changed(string);
     // False in the demo, which has no data folder.
     in property <bool> has-data-folder: true;
     in property <string> version: "0.1.0";
@@ -249,6 +249,15 @@ export component HelpWindow inherits Window {
                 }
             }
 
+            if root.tab == 2: SearchField {
+                text <=> root.shortcut-query;
+                placeholder: ShortcutTexts.search-placeholder;
+                label: ShortcutTexts.search-label;
+                clear-label: @tr("Clear search");
+                init => { self.focus(); }
+                edited(text) => { root.shortcut-query-changed(text); }
+            }
+
             if root.tab == 2: FormScroll {
                 content-height: sheet.preferred-height;
                 content-width: self.viewport-width;
@@ -256,14 +265,18 @@ export component HelpWindow inherits Window {
                 sheet := ShortcutsSheet {
                     x: 0px;
                     width: parent.viewport-width;
-                    panel-keys: root.panel-keys;
-                    picker-keys: root.picker-keys;
-                    capture-keys: root.capture-keys;
-                    paste-next-keys: root.paste-next-keys;
-                    panel-spoken: root.panel-spoken;
-                    picker-spoken: root.picker-spoken;
-                    capture-spoken: root.capture-spoken;
-                    paste-next-spoken: root.paste-next-spoken;
+                    groups: root.shortcut-groups;
+                }
+                if root.shortcut-groups.length == 0: Text {
+                    y: Space.s4;
+                    width: parent.viewport-width;
+                    text: ShortcutTexts.nothing-found;
+                    color: Theme.text-secondary;
+                    font-family: Fonts.sans;
+                    font-size: Type.base;
+                    horizontal-alignment: center;
+                    accessible-role: text;
+                    accessible-live-region: polite;
                 }
             }
 
