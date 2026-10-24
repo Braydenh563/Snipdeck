@@ -6293,7 +6293,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/history.rs` | 14 |
 | `crates/snipdeck-app/tests/import_preview.rs` | 13 |
 | `crates/snipdeck-app/tests/main_controller.rs` | 87 |
-| `crates/snipdeck-app/tests/main_window.rs` | 47 |
+| `crates/snipdeck-app/tests/main_window.rs` | 48 |
 | `crates/snipdeck-app/tests/master_password.rs` | 48 |
 | `crates/snipdeck-app/tests/menu_form_texts.rs` | 3 |
 | `crates/snipdeck-app/tests/panel_window.rs` | 58 |

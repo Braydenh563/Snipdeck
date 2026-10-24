@@ -1272,6 +1272,44 @@ fn opening_the_palette_fills_every_command_and_never_refills_an_open_one() {
 }
 
 #[test]
+fn the_palette_search_filters_the_real_commands_by_name_synonym_and_new_words() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_open_palette();
+        let labels = |r: &Rig| -> Vec<String> {
+            let rows = r.ui.get_palette_rows();
+            (0..rows.row_count())
+                .map(|i| rows.row_data(i).unwrap().label.to_string())
+                .collect()
+        };
+        let all = labels(&r).len();
+        for (query, expected) in [
+            ("density", "Row density: Compact"),
+            ("compact", "Row density: Compact"),
+            ("dark", "Theme: Dark"),
+            ("paste next", "Paste next item"),
+            ("select all", "Select all items"),
+        ] {
+            r.ui.invoke_palette_query_changed(query.into());
+            let found = labels(&r);
+            assert!(
+                found.iter().any(|l| l == expected),
+                "{query:?} finds {expected:?}: {found:?}"
+            );
+            assert!(found.len() < all, "{query:?} narrows the list");
+        }
+        r.ui.invoke_palette_query_changed("zzzz".into());
+        assert!(labels(&r).is_empty());
+        r.ui.invoke_palette_query_changed("".into());
+        assert_eq!(
+            labels(&r).len(),
+            all,
+            "an empty query lists everything again"
+        );
+    });
+}
+
+#[test]
 fn the_palette_does_not_open_over_a_menu() {
     on_ui_thread(|| {
         let r = rig();

@@ -1226,6 +1226,50 @@ ui_tests! {
         assert_eq!(live_status(&ui), "0 found");
     }
 
+    fn a_long_palette_list_keeps_its_rows_clear_of_the_scrollbar_strip() {
+        let (ui, _log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        let labels: Vec<String> = (0..24).map(|i| format!("Command number {i}")).collect();
+        let many: Vec<(i32, &str, &[&str])> = labels
+            .iter()
+            .enumerate()
+            .map(|(i, l)| (i32::try_from(i).unwrap(), l.as_str(), &["Ctrl", "K"][..]))
+            .collect();
+        let right = |e: &ElementHandle| e.absolute_position().x + e.size().width;
+        let field = find(&ui, "Commands", AccessibleRole::TextInput);
+        let strip = 24.0; // Space.hit-min
+
+        // Few rows fit, no scrollbar: the rows use the full width the search field has.
+        palette_rows(&ui, &SAMPLE);
+        let row = find(&ui, "New item", AccessibleRole::ListItem);
+        assert!(
+            right(&row) >= right(&field) - 0.5,
+            "no strip is reserved while nothing scrolls: row {} field {}",
+            right(&row),
+            right(&field)
+        );
+
+        // More rows than the list shows: the scrollbar owns the strip at the right edge, on the first row
+        // and on the last (the highlight wraps to it with Up).
+        palette_rows(&ui, &many);
+        let first = find(&ui, "Command number 0", AccessibleRole::ListItem);
+        assert!(
+            right(&first) <= right(&field) - strip + 0.5,
+            "the first row ends before the scrollbar strip: row {} field {}",
+            right(&first),
+            right(&field)
+        );
+        assert!(
+            (first.absolute_position().x - field.absolute_position().x).abs() <= 0.5,
+            "and it starts at the field's left edge, not centred in what is left"
+        );
+        press_key(&ui, Key::UpArrow);
+        settle();
+        let last = find(&ui, "Command number 23", AccessibleRole::ListItem);
+        assert_eq!(last.accessible_item_selected(), Some(true), "Up wrapped to the last row");
+        assert!(right(&last) <= right(&field) - strip + 0.5, "the last row too");
+    }
+
     fn arrows_move_the_highlight_wrapping_and_enter_runs_the_command_and_gives_focus_back() {
         let (ui, log) = start();
         chord(ui.window(), &[Key::Control], "k");

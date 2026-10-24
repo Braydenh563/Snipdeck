@@ -171,6 +171,9 @@ export component CommandPalette inherits Rectangle {
                     changed n => { plist.content-y = self.follow; }
 
                     plist := Flickable {
+                        // Pinned to the left edge: an unset `x` would centre the narrowed list, leaving the
+                        // scrollbar's strip half over the rows' right ends.
+                        x: 0px;
                         // Leaves the scrollbar's strip free while the list scrolls, so no text or key sits under it.
                         width: parent.width - (root.rows.length * root.row-h > parent.height + 0.5px ? Space.hit-min : 0px);
                         height: parent.height;
