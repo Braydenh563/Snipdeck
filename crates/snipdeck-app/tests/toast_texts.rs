@@ -375,8 +375,8 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(said(ToastMessage::ThemeSet(Theme::Light)), "Theme: Light");
         assert_eq!(said(ToastMessage::ThemeSet(Theme::Dark)), "Theme: Dark");
         assert_eq!(said(ToastMessage::PanelOnTop(true)), "Panel stays open");
-        assert_eq!(said(ToastMessage::Pinned(true)), "Pinned");
-        assert_eq!(said(ToastMessage::Pinned(false)), "Unpinned");
+        assert_eq!(said(ToastMessage::Pinned(true)), "Item pinned");
+        assert_eq!(said(ToastMessage::Pinned(false)), "Item unpinned");
         assert_eq!(said(ToastMessage::Duplicated), "Duplicated");
         assert_eq!(said(ToastMessage::ListAdded), "List added");
         assert_eq!(said(ToastMessage::ListSaved), "List saved");

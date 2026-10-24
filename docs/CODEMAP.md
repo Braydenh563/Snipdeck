@@ -714,9 +714,9 @@ set_recent_open | crates/snipdeck-app/src/controller/recent_ctl.rs:214
 recent_copy | crates/snipdeck-app/src/controller/recent_ctl.rs:220
 recent_delete | crates/snipdeck-app/src/controller/recent_ctl.rs:242
 recent_clear | crates/snipdeck-app/src/controller/recent_ctl.rs:250
-recent_promote | crates/snipdeck-app/src/controller/recent_ctl.rs:265
-matches_query | crates/snipdeck-app/src/controller/recent_ctl.rs:300
-failed | crates/snipdeck-app/src/controller/recent_ctl.rs:307
+recent_promote | crates/snipdeck-app/src/controller/recent_ctl.rs:262
+matches_query | crates/snipdeck-app/src/controller/recent_ctl.rs:297
+failed | crates/snipdeck-app/src/controller/recent_ctl.rs:304
 
 ### crates/snipdeck-app/src/controller/screen_clip_ctl.rs
 
