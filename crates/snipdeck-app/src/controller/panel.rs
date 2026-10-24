@@ -6,11 +6,12 @@ use snipdeck_core::{ItemId, UseMode};
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::ItemRepo;
 
-use super::{Controller, Effect, Library, ListDeleteView, PanelMenu, UseResult, failed};
+use super::{Controller, Effect, Library, ListDeleteView, PanelMenu, UseResult, failed, success};
 use crate::{
     frame::{self, Edge, Monitor, Rect},
     host::ClipboardText,
     settings::PanelGeometry,
+    toast::ToastMessage,
 };
 
 /// A page the Help entries open.
@@ -459,6 +460,7 @@ where
             Ok(()) => {
                 self.record_step(crate::history::Action::Pin, changes);
                 self.library_changed();
+                self.show_toast(success(ToastMessage::Pinned(pin)));
             }
             Err(_) => self.show_toast(failed()),
         }

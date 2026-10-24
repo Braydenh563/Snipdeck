@@ -353,7 +353,7 @@ where
             Err(problem) => self.show_toast(danger(ToastMessage::LicenceRejected(problem))),
         }
         // Supporter lifts the Free caps the windows show.
-        let _ = self.refresh_panel();
+        self.refresh_or_notice("a licence change");
         result
     }
 
@@ -414,13 +414,14 @@ where
         let worked = restored.is_ok();
         match restored {
             Ok(report) => {
-                let _ = self.refresh_panel();
                 self.show_toast(Toast {
                     kind: ToastKind::Success,
                     message: ToastMessage::BackupRestored {
                         items: report.items_added,
                     },
                 });
+                // After the toast: a failed refresh says the list is stale, which matters more.
+                self.refresh_or_notice("a restore");
             }
             Err(snipdeck_portable::Error::Core(snipdeck_core::Error::ProRequired(_))) => {
                 self.show_toast(danger(ToastMessage::BoardLimit));
@@ -485,7 +486,6 @@ where
                 // be served again (search, the panel and the Recent list).
                 self.index_cache.reset();
                 self.library_changed();
-                let _ = self.refresh_panel();
                 let missing_sensitive = sensitive_before.saturating_sub(self.sensitive_count());
                 self.show_toast(Toast {
                     kind: ToastKind::Success,
@@ -497,6 +497,7 @@ where
                         missing_sensitive,
                     },
                 });
+                self.refresh_or_notice("a rebuild");
                 true
             }
             Err(Swap::RolledBack) => failed(self),
@@ -715,13 +716,13 @@ where
         }
         match self.import_report(source, BoardLayout::SingleBoard, false) {
             Ok(report) => {
-                let _ = self.refresh_panel();
                 self.show_toast(Toast {
                     kind: ToastKind::Success,
                     message: ToastMessage::Imported {
                         items: report.items_added,
                     },
                 });
+                self.refresh_or_notice("an import");
                 true
             }
             Err(e) if is_board_limit(&e) => {
@@ -814,7 +815,6 @@ where
         self.clear_history();
         // The key record may have gone (forgotten) or stayed (with its password).
         self.refresh_master();
-        let _ = self.refresh_panel();
         self.show_toast(if erased {
             Toast {
                 kind: ToastKind::Success,
@@ -823,6 +823,7 @@ where
         } else {
             danger(ToastMessage::EraseFailed)
         });
+        self.refresh_or_notice("erasing the library");
         erased
     }
 }

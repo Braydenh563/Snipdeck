@@ -820,6 +820,14 @@ fn neutral(message: ToastMessage) -> Toast {
     }
 }
 
+/// A short confirmation of something the user did.
+fn success(message: ToastMessage) -> Toast {
+    Toast {
+        kind: ToastKind::Success,
+        message,
+    }
+}
+
 /// The toast for a move, reorder or other change the store refused: it names the cause.
 fn change_failed(error: &snipdeck_store::Error) -> Toast {
     Toast {

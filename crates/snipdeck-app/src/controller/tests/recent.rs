@@ -15,7 +15,7 @@ fn on() -> Settings {
 
 /// The inbox on, with key protection (the test provider stands in for DPAPI): the inbox is
 /// sealed with the library key, so nothing is kept without one.
-fn recent_world() -> World {
+pub(super) fn recent_world() -> World {
     let mut w = world_with(None, on());
     w.ctl.set_key_provider(Box::new(
         snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
@@ -23,7 +23,7 @@ fn recent_world() -> World {
     w
 }
 
-fn copied(text: &str) -> ClipboardObservation {
+pub(super) fn copied(text: &str) -> ClipboardObservation {
     ClipboardObservation {
         text: Some(text.to_owned()),
         source_app: Some("notepad.exe".to_owned()),

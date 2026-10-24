@@ -1972,3 +1972,57 @@ fn the_panel_delete_entry_asks_then_trashes_and_is_off_for_the_last_board() {
     ctl.choose_board(menu.len() - 1);
     assert!(ctl.view().board_delete.is_none(), "the entry is off");
 }
+
+fn toast_message(ctl: &mut Ctl) -> Option<ToastMessage> {
+    ctl.main_screen().toast.map(|t| t.message)
+}
+
+#[test]
+fn pin_duplicate_and_drag_reorder_confirm_in_the_main_window() {
+    let mut ctl = pro();
+    let screen = ctl.main_screen();
+    let at = row_of(&screen, "Out of office");
+    ctl.main_action(MainAction::Pin, at);
+    let screen = ctl.main_screen();
+    let at = row_of(&screen, "Out of office");
+    assert!(screen.rows[at].pinned);
+    assert_eq!(toast_message(&mut ctl), Some(ToastMessage::Pinned(true)));
+    ctl.main_action(MainAction::Pin, at);
+    assert_eq!(toast_message(&mut ctl), Some(ToastMessage::Pinned(false)));
+    ctl.main_action(MainAction::Duplicate, at);
+    assert_eq!(toast_message(&mut ctl), Some(ToastMessage::Duplicated));
+}
+
+#[test]
+fn dragging_a_row_in_manual_order_announces_where_it_went() {
+    let mut ctl = pro();
+    open_list(&mut ctl, "Email replies");
+    ctl.main_drop_row(0, 1);
+    assert!(
+        matches!(
+            toast_message(&mut ctl),
+            Some(ToastMessage::ItemPlaced { position: 2, .. })
+        ),
+        "{:?}",
+        toast_message(&mut ctl)
+    );
+}
+
+#[test]
+fn saving_a_new_list_or_board_from_the_editor_says_so() {
+    let mut ctl = pro();
+    ctl.main_new_list();
+    ctl.main_editor_save("Fresh list", None, None, ListSort::Manual);
+    assert_eq!(toast_message(&mut ctl), Some(ToastMessage::ListSaved));
+    ctl.main_board_menu_open();
+    let new = ctl
+        .main_screen()
+        .board_menu
+        .unwrap()
+        .iter()
+        .position(|e| *e == snipdeck_app::controller::BoardMenuEntry::New)
+        .unwrap();
+    ctl.main_board_menu_activate(new);
+    ctl.main_editor_save("Fresh board", None, None, ListSort::Manual);
+    assert_eq!(toast_message(&mut ctl), Some(ToastMessage::BoardSaved));
+}

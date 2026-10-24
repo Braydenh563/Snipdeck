@@ -357,6 +357,37 @@ export global ToastTexts {
         return on ? @tr("Panel stays open") : @tr("Panel closes when you click away");
     }
 
+    // Confirmations of small actions.
+    pure public function pinned(on: bool) -> string {
+        return on ? @tr("Item pinned") : @tr("Item unpinned");
+    }
+    pure public function duplicated() -> string {
+        return @tr("Duplicated");
+    }
+    pure public function list-added() -> string {
+        return @tr("List added");
+    }
+    pure public function list-saved() -> string {
+        return @tr("List saved");
+    }
+    pure public function board-saved() -> string {
+        return @tr("Board saved");
+    }
+    pure public function recent-deleted() -> string {
+        return @tr("Removed from Recent");
+    }
+    pure public function recent-cleared() -> string {
+        return @tr("Recent history cleared");
+    }
+    // The Panel was docked (1 left, 2 right, 3 top, 4 bottom) or floated (0).
+    pure public function dock-set(edge: int) -> string {
+        return edge == 1 ? @tr("Panel docked to the left edge") : (edge == 2 ? @tr("Panel docked to the right edge") : (edge == 3 ? @tr("Panel docked to the top edge") : (edge == 4 ? @tr("Panel docked to the bottom edge") : @tr("Panel floats again"))));
+    }
+    // A change worked but the list on screen could not be read again.
+    pure public function not-refreshed() -> string {
+        return @tr("Couldn't refresh the list on screen. Close and reopen the window to see the change.");
+    }
+
     // Why a licence key was refused: the toast, and the line under the key field.
     pure public function licence-empty() -> string {
         return @tr("Paste your licence key first.");

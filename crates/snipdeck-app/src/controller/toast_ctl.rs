@@ -33,9 +33,24 @@ where
         true
     }
 
-    /// Shows `toast`, replacing the one on screen. The host then calls
-    /// [`toast_tick`](Self::toast_tick) after [`TOAST_ENTER`](crate::controller::TOAST_ENTER) and follows the delays it returns.
+    /// Shows `toast`, replacing the one on screen, except that a confirmation
+    /// ([`Toast::is_confirmation`]) leaves an error toast that is still showing (not yet leaving)
+    /// alone: there is one slot, and the error says something the user has not read yet. The
+    /// host then calls [`toast_tick`](Self::toast_tick) after
+    /// [`TOAST_ENTER`](crate::controller::TOAST_ENTER) and follows the delays it returns.
     pub fn show_toast(&mut self, toast: Toast) {
+        let error_showing = self
+            .toast
+            .as_ref()
+            .is_some_and(|t| t.toast.kind == ToastKind::Danger && t.phase != ToastPhase::Exit);
+        if error_showing && toast.is_confirmation() {
+            return;
+        }
+        self.put_toast(toast);
+    }
+
+    /// Puts `toast` in the slot whatever is there (a toast with a button is never dropped).
+    fn put_toast(&mut self, toast: Toast) {
         // A locked sensitive item behind a master password asks for it, as well as saying so.
         if toast.message == ToastMessage::Locked {
             self.request_unlock();
@@ -71,7 +86,7 @@ where
     /// ([`main_undo`](Self::main_undo)); no step, no button. The toast stays for 5 s; a newer
     /// toast takes the button away (Ctrl+Z still takes the step back).
     pub fn show_undo_toast(&mut self, toast: Toast, step: Option<u64>) {
-        self.show_toast(toast);
+        self.put_toast(toast);
         self.undo = step.map(|step| Undo {
             seq: self.toast_seq,
             step: Some(step),
@@ -82,7 +97,7 @@ where
     /// Shows `toast` ("Saved to …") for the new item `id`, with an Undo button that moves it to
     /// the Trash and an Edit button that opens it in the editor.
     pub fn show_saved_toast(&mut self, toast: Toast, id: snipdeck_core::ItemId) {
-        self.show_toast(toast);
+        self.put_toast(toast);
         self.undo = Some(Undo {
             seq: self.toast_seq,
             step: None,

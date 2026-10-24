@@ -7,7 +7,7 @@ use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
 
 use super::super::history_ctl::{item_targets, move_recorded, update_recorded};
 use super::super::{
-    Controller, Library, Toast, ToastKind, ToastMessage, UseResult, change_failed, failed,
+    Controller, Library, Toast, ToastKind, ToastMessage, UseResult, change_failed, failed, success,
 };
 use super::{MainAction, TagRenameError, neutral_toast, restore_failed};
 use crate::{
@@ -84,6 +84,9 @@ where
             self.record_step(Action::Pin, changes);
         }
         self.finish(&done);
+        if done.is_ok() {
+            self.show_toast(success(ToastMessage::Pinned(pin)));
+        }
     }
 
     /// Each item again, directly after itself: same title, content, tags and flags; pinned off and
@@ -130,6 +133,9 @@ where
             return;
         }
         self.finish(&done);
+        if done.is_ok() && !made.is_empty() {
+            self.show_toast(success(ToastMessage::Duplicated));
+        }
     }
 
     pub(in super::super) fn trash_items(&mut self, items: &[ItemId]) {

@@ -75,7 +75,7 @@ impl From<NewProblem> for MasterProblem {
 #[derive(Debug)]
 pub(super) struct LockState {
     /// The stored key needs a password (read from the key record, refreshed by every change).
-    set: bool,
+    pub(super) set: bool,
     /// The key record could not be read at the last look, so `set` is not known.
     unreadable: bool,
     /// The last time the user used the library; the idle lock counts from here.
@@ -440,7 +440,7 @@ where
                 self.note_activity();
                 self.sync_recent_gate();
                 self.show_toast(neutral(ToastMessage::Unlocked));
-                let _ = self.refresh_panel();
+                self.refresh_or_notice("unlocking");
                 Ok(())
             }
             (MasterOp::Set { exists }, Some(record)) => {
@@ -462,7 +462,7 @@ where
                 }
                 self.note_activity();
                 self.show_toast(neutral(ToastMessage::MasterPasswordSet));
-                let _ = self.refresh_panel();
+                self.refresh_or_notice("setting a master password");
                 Ok(())
             }
             (MasterOp::Change, Some(record)) => {
@@ -496,7 +496,7 @@ where
                 } else {
                     ToastMessage::MasterPasswordRemovedNotOpen
                 }));
-                let _ = self.refresh_panel();
+                self.refresh_or_notice("removing the master password");
                 Ok(())
             }
             (MasterOp::Set { .. } | MasterOp::Change | MasterOp::Remove, None) => {
@@ -590,6 +590,6 @@ where
         if self.close_sensitive_item_editor() {
             self.show_toast(neutral(ToastMessage::LockedEditorClosed));
         }
-        let _ = self.refresh_panel();
+        self.refresh_or_notice("locking");
     }
 }

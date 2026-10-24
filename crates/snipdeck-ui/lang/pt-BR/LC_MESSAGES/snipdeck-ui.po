@@ -178,6 +178,9 @@ msgstr "Azul"
 msgid "Board name"
 msgstr "Nome do quadro"
 
+msgid "Board saved"
+msgstr "Quadro salvo"
+
 msgid "Board: {}"
 msgstr "Quadro: {}"
 
@@ -490,6 +493,9 @@ msgstr "Não foi possível abrir seu aplicativo de e-mail."
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr "Não foi possível acessar a área de transferência. Outro aplicativo pode estar usando-a."
 
+msgid "Couldn't refresh the list on screen. Close and reopen the window to see the change."
+msgstr "Não foi possível atualizar a lista na tela. Feche e reabra a janela para ver a alteração."
+
 msgid "Couldn't rename the tag."
 msgstr "Não foi possível renomear a etiqueta."
 
@@ -684,6 +690,9 @@ msgstr "Duplicar item selecionado"
 
 msgid "Duplicate the item"
 msgstr "Duplicar o item"
+
+msgid "Duplicated"
+msgstr "Duplicado"
 
 msgid "Edit"
 msgstr "Editar"
@@ -977,6 +986,12 @@ msgstr[1] "É removido de {n} itens. Os itens permanecem."
 msgid "Item actions"
 msgstr "Ações de trechos"
 
+msgid "Item pinned"
+msgstr "Item fixado"
+
+msgid "Item unpinned"
+msgstr "Item desafixado"
+
 msgid "Items are removed after {} days."
 msgstr "Os trechos são removidos após {} dias."
 
@@ -1069,8 +1084,14 @@ msgstr "Lista"
 msgid "List actions"
 msgstr "Ações da lista"
 
+msgid "List added"
+msgstr "Lista adicionada"
+
 msgid "List name"
 msgstr "Nome da lista"
+
+msgid "List saved"
+msgstr "Lista salva"
 
 msgid "Lists"
 msgstr "Listas"
@@ -1454,6 +1475,21 @@ msgstr "O Painel fecha ao clicar fora"
 msgid "Panel dock"
 msgstr "Acoplamento do painel"
 
+msgid "Panel docked to the bottom edge"
+msgstr "Painel encaixado na borda inferior"
+
+msgid "Panel docked to the left edge"
+msgstr "Painel encaixado na borda esquerda"
+
+msgid "Panel docked to the right edge"
+msgstr "Painel encaixado na borda direita"
+
+msgid "Panel docked to the top edge"
+msgstr "Painel encaixado na borda superior"
+
+msgid "Panel floats again"
+msgstr "O painel voltou a flutuar"
+
 msgid "Panel menu"
 msgstr "Menu do painel"
 
@@ -1649,6 +1685,9 @@ msgstr "As cópias recentes estão bloqueadas"
 msgid "Recent entry actions"
 msgstr "Ações de entradas recentes"
 
+msgid "Recent history cleared"
+msgstr "Histórico recente limpo"
+
 msgid "Recently used"
 msgstr "Usados recentemente"
 
@@ -1687,6 +1726,9 @@ msgstr "Remover a etiqueta {}"
 
 msgid "Remove {} from the list"
 msgstr "Remover {} da lista"
+
+msgid "Removed from Recent"
+msgstr "Removido de Recentes"
 
 msgid "Remove…"
 msgstr "Remover…"

@@ -178,6 +178,9 @@ msgstr "Blau"
 msgid "Board name"
 msgstr "Name des Boards"
 
+msgid "Board saved"
+msgstr "Board gespeichert"
+
 msgid "Board: {}"
 msgstr "Board: {}"
 
@@ -490,6 +493,9 @@ msgstr "Deine E-Mail-App konnte nicht geöffnet werden."
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr "Auf die Zwischenablage kann nicht zugegriffen werden. Eine andere App verwendet sie vielleicht."
 
+msgid "Couldn't refresh the list on screen. Close and reopen the window to see the change."
+msgstr "Die Liste auf dem Bildschirm konnte nicht aktualisiert werden. Schließe das Fenster und öffne es erneut, um die Änderung zu sehen."
+
 msgid "Couldn't rename the tag."
 msgstr "Das Schlagwort konnte nicht umbenannt werden."
 
@@ -684,6 +690,9 @@ msgstr "Ausgewählten Textbaustein duplizieren"
 
 msgid "Duplicate the item"
 msgstr "Textbaustein duplizieren"
+
+msgid "Duplicated"
+msgstr "Dupliziert"
 
 msgid "Edit"
 msgstr "Bearbeiten"
@@ -977,6 +986,12 @@ msgstr[1] "Es wird aus {n} Textbausteinen entfernt. Die Textbausteine bleiben er
 msgid "Item actions"
 msgstr "Aktionen für Textbausteine"
 
+msgid "Item pinned"
+msgstr "Eintrag angeheftet"
+
+msgid "Item unpinned"
+msgstr "Eintrag nicht mehr angeheftet"
+
 msgid "Items are removed after {} days."
 msgstr "Textbausteine werden nach {} Tagen entfernt."
 
@@ -1069,8 +1084,14 @@ msgstr "Liste"
 msgid "List actions"
 msgstr "Listenaktionen"
 
+msgid "List added"
+msgstr "Liste hinzugefügt"
+
 msgid "List name"
 msgstr "Listenname"
+
+msgid "List saved"
+msgstr "Liste gespeichert"
 
 msgid "Lists"
 msgstr "Listen"
@@ -1454,6 +1475,21 @@ msgstr "Das Panel schließt sich bei einem Klick daneben"
 msgid "Panel dock"
 msgstr "Panel andocken"
 
+msgid "Panel docked to the bottom edge"
+msgstr "Panel am unteren Rand angedockt"
+
+msgid "Panel docked to the left edge"
+msgstr "Panel am linken Rand angedockt"
+
+msgid "Panel docked to the right edge"
+msgstr "Panel am rechten Rand angedockt"
+
+msgid "Panel docked to the top edge"
+msgstr "Panel am oberen Rand angedockt"
+
+msgid "Panel floats again"
+msgstr "Panel schwebt wieder frei"
+
 msgid "Panel menu"
 msgstr "Panel-Menü"
 
@@ -1649,6 +1685,9 @@ msgstr "Zuletzt kopierte Einträge sind gesperrt"
 msgid "Recent entry actions"
 msgstr "Aktionen für Zuletzt Kopiertes"
 
+msgid "Recent history cleared"
+msgstr "Verlauf „Zuletzt“ gelöscht"
+
 msgid "Recently used"
 msgstr "Kürzlich verwendet"
 
@@ -1687,6 +1726,9 @@ msgstr "Schlagwort {} entfernen"
 
 msgid "Remove {} from the list"
 msgstr "{} aus der Liste entfernen"
+
+msgid "Removed from Recent"
+msgstr "Aus „Zuletzt“ entfernt"
 
 msgid "Remove…"
 msgstr "Entfernen…"

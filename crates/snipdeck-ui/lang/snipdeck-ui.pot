@@ -234,6 +234,10 @@ msgstr ""
 msgid "Board name"
 msgstr ""
 
+#: ui/toast_texts.slint:374
+msgid "Board saved"
+msgstr ""
+
 #: ui/main_window.slint:840 ui/main_window.slint:847 ui/panel.slint:973
 msgid "Board: {}"
 msgstr ""
@@ -650,6 +654,10 @@ msgstr ""
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr ""
 
+#: ui/toast_texts.slint:388
+msgid "Couldn't refresh the list on screen. Close and reopen the window to see the change."
+msgstr ""
+
 #: ui/form_texts.slint:20
 msgid "Couldn't rename the tag."
 msgstr ""
@@ -908,6 +916,10 @@ msgstr ""
 
 #: ui/shortcut_texts.slint:33 ui/shortcut_texts.slint:57
 msgid "Duplicate the item"
+msgstr ""
+
+#: ui/toast_texts.slint:365
+msgid "Duplicated"
 msgstr ""
 
 #: ui/main_window.slint:633
@@ -1298,6 +1310,14 @@ msgstr[1] ""
 msgid "Item actions"
 msgstr ""
 
+#: ui/toast_texts.slint:362
+msgid "Item pinned"
+msgstr ""
+
+#: ui/toast_texts.slint:362
+msgid "Item unpinned"
+msgstr ""
+
 #: ui/main_window.slint:2019
 msgid "Items are removed after {} days."
 msgstr ""
@@ -1420,8 +1440,16 @@ msgstr ""
 msgid "List actions"
 msgstr ""
 
+#: ui/toast_texts.slint:368
+msgid "List added"
+msgstr ""
+
 #: ui/editors.slint:1267
 msgid "List name"
+msgstr ""
+
+#: ui/toast_texts.slint:371
+msgid "List saved"
 msgstr ""
 
 #: ui/main_window.slint:965 ui/panel.slint:1069
@@ -1932,6 +1960,26 @@ msgstr ""
 msgid "Panel dock"
 msgstr ""
 
+#: ui/toast_texts.slint:384
+msgid "Panel docked to the bottom edge"
+msgstr ""
+
+#: ui/toast_texts.slint:384
+msgid "Panel docked to the left edge"
+msgstr ""
+
+#: ui/toast_texts.slint:384
+msgid "Panel docked to the right edge"
+msgstr ""
+
+#: ui/toast_texts.slint:384
+msgid "Panel docked to the top edge"
+msgstr ""
+
+#: ui/toast_texts.slint:384
+msgid "Panel floats again"
+msgstr ""
+
 #: ui/panel.slint:1573
 msgid "Panel menu"
 msgstr ""
@@ -2004,7 +2052,7 @@ msgstr ""
 msgid "Paste with a click, or search at your caret."
 msgstr ""
 
-#: ui/toast_texts.slint:362
+#: ui/toast_texts.slint:393
 msgid "Paste your licence key first."
 msgstr ""
 
@@ -2192,6 +2240,10 @@ msgstr ""
 msgid "Recent entry actions"
 msgstr ""
 
+#: ui/toast_texts.slint:380
+msgid "Recent history cleared"
+msgstr ""
+
 #: ui/editors.slint:1151
 msgid "Recently used"
 msgstr ""
@@ -2242,6 +2294,10 @@ msgstr ""
 
 #: ui/settings.slint:104 ui/settings.slint:207
 msgid "Remove {} from the list"
+msgstr ""
+
+#: ui/toast_texts.slint:377
+msgid "Removed from Recent"
 msgstr ""
 
 #: ui/settings.slint:902
@@ -2796,7 +2852,7 @@ msgstr ""
 msgid "That file is over {} MB, the most an item can hold."
 msgstr ""
 
-#: ui/toast_texts.slint:365
+#: ui/toast_texts.slint:396
 msgid "That is not a Snipdeck licence key. A key starts with SNIP1."
 msgstr ""
 
@@ -2812,15 +2868,15 @@ msgstr ""
 msgid "That isn't a Snipdeck file, or it is damaged."
 msgstr ""
 
-#: ui/toast_texts.slint:374
+#: ui/toast_texts.slint:405
 msgid "That key is not for Snipdeck Supporter."
 msgstr ""
 
-#: ui/toast_texts.slint:371
+#: ui/toast_texts.slint:402
 msgid "That key needs a newer Snipdeck. Update and try again."
 msgstr ""
 
-#: ui/toast_texts.slint:368
+#: ui/toast_texts.slint:399
 msgid "That licence key is not valid. Check that you copied all of it."
 msgstr ""
 
@@ -2876,7 +2932,7 @@ msgstr ""
 msgid "The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe."
 msgstr ""
 
-#: ui/toast_texts.slint:377
+#: ui/toast_texts.slint:408
 msgid "The key is valid but couldn't be saved, so Supporter will be off next time."
 msgstr ""
 

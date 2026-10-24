@@ -178,6 +178,9 @@ msgstr "Azul"
 msgid "Board name"
 msgstr "Nombre del tablero"
 
+msgid "Board saved"
+msgstr "Tablero guardado"
+
 msgid "Board: {}"
 msgstr "Tablero: {}"
 
@@ -490,6 +493,9 @@ msgstr "No se pudo abrir tu aplicación de correo."
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr "No se pudo acceder al portapapeles. Puede que otra aplicación lo esté usando."
 
+msgid "Couldn't refresh the list on screen. Close and reopen the window to see the change."
+msgstr "No se pudo actualizar la lista en pantalla. Cierra y vuelve a abrir la ventana para ver el cambio."
+
 msgid "Couldn't rename the tag."
 msgstr "No se pudo renombrar la etiqueta."
 
@@ -684,6 +690,9 @@ msgstr "Duplicar el elemento seleccionado"
 
 msgid "Duplicate the item"
 msgstr "Duplica el elemento"
+
+msgid "Duplicated"
+msgstr "Duplicado"
 
 msgid "Edit"
 msgstr "Editar"
@@ -977,6 +986,12 @@ msgstr[1] "Se quita de {n} elementos. Los elementos se conservan."
 msgid "Item actions"
 msgstr "Acciones de fragmentos"
 
+msgid "Item pinned"
+msgstr "Elemento fijado"
+
+msgid "Item unpinned"
+msgstr "Elemento desfijado"
+
 msgid "Items are removed after {} days."
 msgstr "Los fragmentos se eliminan tras {} días."
 
@@ -1069,8 +1084,14 @@ msgstr "Lista"
 msgid "List actions"
 msgstr "Acciones de la lista"
 
+msgid "List added"
+msgstr "Lista añadida"
+
 msgid "List name"
 msgstr "Nombre de la lista"
+
+msgid "List saved"
+msgstr "Lista guardada"
 
 msgid "Lists"
 msgstr "Listas"
@@ -1454,6 +1475,21 @@ msgstr "El Panel se cierra al hacer clic fuera"
 msgid "Panel dock"
 msgstr "Acoplado del panel"
 
+msgid "Panel docked to the bottom edge"
+msgstr "Panel acoplado al borde inferior"
+
+msgid "Panel docked to the left edge"
+msgstr "Panel acoplado al borde izquierdo"
+
+msgid "Panel docked to the right edge"
+msgstr "Panel acoplado al borde derecho"
+
+msgid "Panel docked to the top edge"
+msgstr "Panel acoplado al borde superior"
+
+msgid "Panel floats again"
+msgstr "El panel vuelve a flotar"
+
 msgid "Panel menu"
 msgstr "Menú del panel"
 
@@ -1649,6 +1685,9 @@ msgstr "Las copias recientes están bloqueadas"
 msgid "Recent entry actions"
 msgstr "Acciones de entradas recientes"
 
+msgid "Recent history cleared"
+msgstr "Historial reciente borrado"
+
 msgid "Recently used"
 msgstr "Usados recientemente"
 
@@ -1687,6 +1726,9 @@ msgstr "Quitar la etiqueta {}"
 
 msgid "Remove {} from the list"
 msgstr "Quitar {} de la lista"
+
+msgid "Removed from Recent"
+msgstr "Quitado de Recientes"
 
 msgid "Remove…"
 msgstr "Quitar…"

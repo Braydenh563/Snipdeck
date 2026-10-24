@@ -12,7 +12,7 @@
 use snipdeck_app::{
     failure::Cause,
     history::Action,
-    settings::Theme,
+    settings::{DockEdge, Theme},
     toast::{LicenceProblem, ToastMessage},
     wording::{licence_problem_text, toast_text},
 };
@@ -106,10 +106,19 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::HotkeysFailed { .. } => 76,
         ToastMessage::ThemeSet(_) => 77,
         ToastMessage::PanelOnTop(_) => 78,
+        ToastMessage::Pinned(_) => 79,
+        ToastMessage::Duplicated => 80,
+        ToastMessage::ListAdded => 81,
+        ToastMessage::ListSaved => 82,
+        ToastMessage::BoardSaved => 83,
+        ToastMessage::RecentDeleted => 84,
+        ToastMessage::RecentCleared => 85,
+        ToastMessage::DockSet(_) => 86,
+        ToastMessage::NotRefreshed => 87,
     }
 }
 
-const VARIANTS: usize = 79;
+const VARIANTS: usize = 88;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -246,6 +255,20 @@ fn samples() -> Vec<ToastMessage> {
         M::ThemeSet(Theme::Dark),
         M::PanelOnTop(true),
         M::PanelOnTop(false),
+        M::Pinned(true),
+        M::Pinned(false),
+        M::Duplicated,
+        M::ListAdded,
+        M::ListSaved,
+        M::BoardSaved,
+        M::RecentDeleted,
+        M::RecentCleared,
+        M::DockSet(None),
+        M::DockSet(Some(DockEdge::Left)),
+        M::DockSet(Some(DockEdge::Right)),
+        M::DockSet(Some(DockEdge::Top)),
+        M::DockSet(Some(DockEdge::Bottom)),
+        M::NotRefreshed,
     ]
 }
 
@@ -352,6 +375,23 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(said(ToastMessage::ThemeSet(Theme::Light)), "Theme: Light");
         assert_eq!(said(ToastMessage::ThemeSet(Theme::Dark)), "Theme: Dark");
         assert_eq!(said(ToastMessage::PanelOnTop(true)), "Panel stays open");
+        assert_eq!(said(ToastMessage::Pinned(true)), "Pinned");
+        assert_eq!(said(ToastMessage::Pinned(false)), "Unpinned");
+        assert_eq!(said(ToastMessage::Duplicated), "Duplicated");
+        assert_eq!(said(ToastMessage::ListAdded), "List added");
+        assert_eq!(said(ToastMessage::ListSaved), "List saved");
+        assert_eq!(said(ToastMessage::BoardSaved), "Board saved");
+        assert_eq!(said(ToastMessage::RecentDeleted), "Removed from Recent");
+        assert_eq!(said(ToastMessage::RecentCleared), "Recent history cleared");
+        assert_eq!(said(ToastMessage::DockSet(None)), "Panel floats again");
+        assert_eq!(
+            said(ToastMessage::DockSet(Some(DockEdge::Left))),
+            "Panel docked to the left edge"
+        );
+        assert_eq!(
+            said(ToastMessage::DockSet(Some(DockEdge::Bottom))),
+            "Panel docked to the bottom edge"
+        );
         assert_eq!(
             said(ToastMessage::PanelOnTop(false)),
             "Panel closes when you click away"

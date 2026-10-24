@@ -250,6 +250,21 @@ where
             Theme::Dark => 2,
         }),
         ToastMessage::PanelOnTop(on) => t.invoke_panel_on_top(*on),
+        ToastMessage::Pinned(on) => t.invoke_pinned(*on),
+        ToastMessage::Duplicated => t.invoke_duplicated(),
+        ToastMessage::ListAdded => t.invoke_list_added(),
+        ToastMessage::ListSaved => t.invoke_list_saved(),
+        ToastMessage::BoardSaved => t.invoke_board_saved(),
+        ToastMessage::RecentDeleted => t.invoke_recent_deleted(),
+        ToastMessage::RecentCleared => t.invoke_recent_cleared(),
+        ToastMessage::DockSet(edge) => t.invoke_dock_set(match edge {
+            None => 0,
+            Some(DockEdge::Left) => 1,
+            Some(DockEdge::Right) => 2,
+            Some(DockEdge::Top) => 3,
+            Some(DockEdge::Bottom) => 4,
+        }),
+        ToastMessage::NotRefreshed => t.invoke_not_refreshed(),
     };
     text.into()
 }

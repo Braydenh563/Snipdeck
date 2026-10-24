@@ -251,8 +251,7 @@ where
         match saved {
             Ok(Captured::Saved { item, list }) => {
                 self.library_changed();
-                if self.refresh_panel().is_err() {
-                    self.show_toast(failed());
+                if !self.refresh_or_notice("adding an item") {
                     return true;
                 }
                 self.model.select_item(item);
@@ -286,9 +285,8 @@ where
             Ok(Some(list)) => {
                 match capture::capture_text(&mut self.store, &list, text, self.clock.now()) {
                     Ok(Captured::Saved { list, .. }) => {
-                        if self.refresh_panel().is_err() {
-                            self.show_toast(failed());
-                        }
+                        // Saved is saved: a refresh that fails is only logged.
+                        self.refresh_logged("a quick save");
                         Toast {
                             kind: ToastKind::Success,
                             message: ToastMessage::Saved { list },
@@ -455,9 +453,8 @@ where
                     &route,
                     pasted_into.as_deref(),
                 ));
-                if self.refresh_panel().is_err() {
-                    self.show_toast(failed());
-                }
+                // The paste worked: a refresh that fails must not turn that into "failed".
+                self.refresh_logged("a paste");
                 UseResult::Done(used.outcome)
             }
             Err(UseError::NeedsAnswers(_)) => match self.open_fill(item, mode) {

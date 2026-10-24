@@ -123,7 +123,7 @@ where
 
     /// Alt+Up / Alt+Down or the item menu's Move up / Move down: moves the row at the cursor one
     /// row among the rows shown (a label filter can hide some of the list), like dropping it on
-    /// that row, and says where it went. Only a list in manual order can be arranged by hand, and
+    /// that row. Only a list in manual order can be arranged by hand, and
     /// a multi-selection is not moved.
     pub fn main_reorder_items(&mut self, delta: isize) {
         self.main_fresh();
@@ -135,9 +135,6 @@ where
             return;
         };
         self.main_drop_row(from, onto);
-        if self.main.reorderable() && onto < self.main.keys().len() && self.main.cursor() == onto {
-            self.announce_placed(onto + 1, self.main.keys().len());
-        }
     }
 
     /// Puts the cursor on item `id` among the rows now shown (a label filter can hide some of the
@@ -148,8 +145,9 @@ where
         }
     }
 
-    /// A drag of row `from` ended on row `onto`: the item takes that row's place. Like
-    /// Alt+Up / Alt+Down, only a list in manual order can be arranged by hand.
+    /// A drag of row `from` ended on row `onto`: the item takes that row's place and a toast says
+    /// which place that is. Like Alt+Up / Alt+Down, only a list in manual order can be arranged
+    /// by hand.
     pub fn main_drop_row(&mut self, from: usize, onto: usize) {
         self.main_fresh();
         if !self.main.reorderable() {
@@ -187,6 +185,7 @@ where
         if moved_ok {
             self.main_fresh();
             self.follow_moved_row(moved);
+            self.announce_placed(self.main.cursor() + 1, self.main.keys().len());
         }
     }
 

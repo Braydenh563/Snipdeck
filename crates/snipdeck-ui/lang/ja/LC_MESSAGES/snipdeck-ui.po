@@ -178,6 +178,9 @@ msgstr "青"
 msgid "Board name"
 msgstr "ボード名"
 
+msgid "Board saved"
+msgstr "ボードを保存しました"
+
 msgid "Board: {}"
 msgstr "ボード: {}"
 
@@ -490,6 +493,9 @@ msgstr "メールアプリを開けませんでした。"
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr "クリップボードにアクセスできませんでした。別のアプリが使用中の可能性があります。"
 
+msgid "Couldn't refresh the list on screen. Close and reopen the window to see the change."
+msgstr "画面の一覧を更新できませんでした。変更を確認するには、ウィンドウを閉じてもう一度開いてください。"
+
 msgid "Couldn't rename the tag."
 msgstr "タグの名前を変更できませんでした。"
 
@@ -684,6 +690,9 @@ msgstr "選択したスニペットを複製"
 
 msgid "Duplicate the item"
 msgstr "スニペットを複製"
+
+msgid "Duplicated"
+msgstr "複製しました"
 
 msgid "Edit"
 msgstr "編集"
@@ -975,6 +984,12 @@ msgstr[0] "{n} 件のスニペットから削除されます。スニペット�
 msgid "Item actions"
 msgstr "スニペットの操作"
 
+msgid "Item pinned"
+msgstr "ピン留めしました"
+
+msgid "Item unpinned"
+msgstr "ピン留めを外しました"
+
 msgid "Items are removed after {} days."
 msgstr "スニペットは{}日後に削除されます。"
 
@@ -1066,8 +1081,14 @@ msgstr "リスト"
 msgid "List actions"
 msgstr "リストの操作"
 
+msgid "List added"
+msgstr "リストを追加しました"
+
 msgid "List name"
 msgstr "リスト名"
+
+msgid "List saved"
+msgstr "リストを保存しました"
 
 msgid "Lists"
 msgstr "リスト"
@@ -1449,6 +1470,21 @@ msgstr "ほかをクリックするとパネルが閉じます"
 msgid "Panel dock"
 msgstr "パネルの固定"
 
+msgid "Panel docked to the bottom edge"
+msgstr "パネルを下端にドッキングしました"
+
+msgid "Panel docked to the left edge"
+msgstr "パネルを左端にドッキングしました"
+
+msgid "Panel docked to the right edge"
+msgstr "パネルを右端にドッキングしました"
+
+msgid "Panel docked to the top edge"
+msgstr "パネルを上端にドッキングしました"
+
+msgid "Panel floats again"
+msgstr "パネルのドッキングを解除しました"
+
 msgid "Panel menu"
 msgstr "パネルメニュー"
 
@@ -1644,6 +1680,9 @@ msgstr "最近のコピーはロックされています"
 msgid "Recent entry actions"
 msgstr "最近の項目の操作"
 
+msgid "Recent history cleared"
+msgstr "最近の履歴を消去しました"
+
 msgid "Recently used"
 msgstr "最近使ったもの"
 
@@ -1682,6 +1721,9 @@ msgstr "タグ {} を削除"
 
 msgid "Remove {} from the list"
 msgstr "リストから {} を削除"
+
+msgid "Removed from Recent"
+msgstr "最近から削除しました"
 
 msgid "Remove…"
 msgstr "削除…"

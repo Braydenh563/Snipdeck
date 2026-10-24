@@ -178,6 +178,9 @@ msgstr "Bleu"
 msgid "Board name"
 msgstr "Nom du tableau"
 
+msgid "Board saved"
+msgstr "Tableau enregistré"
+
 msgid "Board: {}"
 msgstr "Tableau : {}"
 
@@ -490,6 +493,9 @@ msgstr "Impossible d'ouvrir votre application de messagerie."
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr "Impossible d'accéder au presse-papiers. Une autre application l'utilise peut-être."
 
+msgid "Couldn't refresh the list on screen. Close and reopen the window to see the change."
+msgstr "Impossible d'actualiser la liste à l'écran. Fermez puis rouvrez la fenêtre pour voir la modification."
+
 msgid "Couldn't rename the tag."
 msgstr "Impossible de renommer l'étiquette."
 
@@ -684,6 +690,9 @@ msgstr "Dupliquer l'extrait sélectionné"
 
 msgid "Duplicate the item"
 msgstr "Dupliquer l'extrait"
+
+msgid "Duplicated"
+msgstr "Dupliqué"
 
 msgid "Edit"
 msgstr "Modifier"
@@ -977,6 +986,12 @@ msgstr[1] "Il est retiré de {n} extraits. Les extraits restent."
 msgid "Item actions"
 msgstr "Actions sur les extraits"
 
+msgid "Item pinned"
+msgstr "Élément épinglé"
+
+msgid "Item unpinned"
+msgstr "Élément désépinglé"
+
 msgid "Items are removed after {} days."
 msgstr "Les extraits sont supprimés après {} jours."
 
@@ -1069,8 +1084,14 @@ msgstr "Liste"
 msgid "List actions"
 msgstr "Actions de la liste"
 
+msgid "List added"
+msgstr "Liste ajoutée"
+
 msgid "List name"
 msgstr "Nom de la liste"
+
+msgid "List saved"
+msgstr "Liste enregistrée"
 
 msgid "Lists"
 msgstr "Listes"
@@ -1454,6 +1475,21 @@ msgstr "Le Panneau se ferme quand vous cliquez ailleurs"
 msgid "Panel dock"
 msgstr "Ancrage du panneau"
 
+msgid "Panel docked to the bottom edge"
+msgstr "Panneau ancré en bas"
+
+msgid "Panel docked to the left edge"
+msgstr "Panneau ancré à gauche"
+
+msgid "Panel docked to the right edge"
+msgstr "Panneau ancré à droite"
+
+msgid "Panel docked to the top edge"
+msgstr "Panneau ancré en haut"
+
+msgid "Panel floats again"
+msgstr "Le panneau flotte de nouveau"
+
 msgid "Panel menu"
 msgstr "Menu du panneau"
 
@@ -1649,6 +1685,9 @@ msgstr "Les copies récentes sont verrouillées"
 msgid "Recent entry actions"
 msgstr "Actions sur les entrées récentes"
 
+msgid "Recent history cleared"
+msgstr "Historique récent effacé"
+
 msgid "Recently used"
 msgstr "Utilisés récemment"
 
@@ -1687,6 +1726,9 @@ msgstr "Retirer l'étiquette {}"
 
 msgid "Remove {} from the list"
 msgstr "Retirer {} de la liste"
+
+msgid "Removed from Recent"
+msgstr "Retiré des récents"
 
 msgid "Remove…"
 msgstr "Supprimer…"

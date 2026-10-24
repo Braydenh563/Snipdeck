@@ -11,7 +11,7 @@ use snipdeck_platform::{
 };
 use snipdeck_store::RecentEntry;
 
-use super::{Controller, Library, Toast, ToastKind, ToastMessage};
+use super::{Controller, Library, Toast, ToastKind, ToastMessage, success};
 use crate::{
     capture::{self, Captured},
     host::ClipboardText,
@@ -240,17 +240,24 @@ where
 
     /// Deletes one entry.
     pub fn recent_delete(&mut self, id: i64) {
-        if self.store.delete_recent(id).is_err() {
-            self.show_toast(failed());
+        match self.store.delete_recent(id) {
+            Ok(()) => self.show_toast(success(ToastMessage::RecentDeleted)),
+            Err(_) => self.show_toast(failed()),
         }
     }
 
     /// Deletes every entry ("Clear recent history"); returns how many went.
     pub fn recent_clear(&mut self) -> usize {
-        self.store.clear_recent().unwrap_or_else(|_| {
-            self.show_toast(failed());
-            0
-        })
+        match self.store.clear_recent() {
+            Ok(removed) => {
+                self.show_toast(success(ToastMessage::RecentCleared));
+                removed
+            }
+            Err(_) => {
+                self.show_toast(failed());
+                0
+            }
+        }
     }
 
     /// Saves the entry as a new item at the top of `list` ("Save to…"), and says so. The entry

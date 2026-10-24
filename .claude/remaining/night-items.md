@@ -1,13 +1,12 @@
-# Night items A-D (agent: Sonnet, branch claude/compassionate-pascal-pod8ux)
+# Night items A-E (agent: Sonnet, branch claude/compassionate-pascal-pod8ux)
 
 ## Done
-- A (in progress): win_logic.rs is_task_switcher_class + next_target + tests; target.rs note_foreground uses them.
+- A f1952a3, B 9a24536, C 6070260, D 3a9a2ba committed.
+- E code written (toast variants, slot rule, refresh_or_notice, confirmations, i18n); tests running.
 
 ## Next
-- A: settings relabel (settings.slint, onboarding.slint, 6 po + pot, editors_logic tests, docs), controller test, commit.
-- B: PickerSide (settings.rs, settings.slint row, placement.rs place()), tests, commit.
-- C: native_window.rs work_area_of keep last good; frame.rs tests, commit.
-- D (added by coordinator): shortcuts CATALOGUE gaps + header test; relabel row density as Main list density + HANDOVER note; Ctrl+Shift+P toast + palette "Keep Panel open".
+- E: fix failing tests from the new toasts, goldens only if changed (look at crops), commit.
+- Then gate --changed, cargo +1.99.1 clippy, A-E report via SubagentHandback.
 
 ## Blocked
 nothing

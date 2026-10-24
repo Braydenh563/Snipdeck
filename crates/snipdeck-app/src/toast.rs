@@ -4,7 +4,12 @@
 use snipdeck_core::{Feature, UseOutcome};
 use snipdeck_platform::route::{CopyReason, Route};
 
-use crate::{failure::Cause, panel::friendly_app_name, settings::Theme, usecase::UseError};
+use crate::{
+    failure::Cause,
+    panel::friendly_app_name,
+    settings::{DockEdge, Theme},
+    usecase::UseError,
+};
 
 /// How the toast is styled (DESIGN.md §4 Toast).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -285,6 +290,42 @@ pub enum ToastMessage {
     /// "Panel stays open" (`true`: on top) or "Panel closes when you click away": the Panel's pin
     /// was switched from its button, Ctrl+Shift+P or the palette.
     PanelOnTop(bool),
+    /// "Pinned" (`true`) or "Unpinned": the pin of an item, in the Panel or the Main window.
+    Pinned(bool),
+    /// "Duplicated".
+    Duplicated,
+    /// "List added": the Panel's `+` tab.
+    ListAdded,
+    /// "List saved": the list editor.
+    ListSaved,
+    /// "Board saved": the board editor.
+    BoardSaved,
+    /// "Removed from Recent".
+    RecentDeleted,
+    /// "Recent history cleared".
+    RecentCleared,
+    /// "Panel docked to the left edge" (and the others), or `None`: "Panel floats again".
+    DockSet(Option<DockEdge>),
+    /// "Couldn't refresh the view": the change worked, but the list on screen could not be read
+    /// again and may be out of date.
+    NotRefreshed,
+}
+
+impl Toast {
+    /// A confirmation of something the user did (a success, or a setting changed), as opposed to
+    /// a message that explains a refusal or a failure. While an error toast is still on screen a
+    /// confirmation does not replace it.
+    #[must_use]
+    pub const fn is_confirmation(&self) -> bool {
+        matches!(self.kind, ToastKind::Success)
+            || matches!(
+                self.message,
+                ToastMessage::ThemeSet(_)
+                    | ToastMessage::PanelOnTop(_)
+                    | ToastMessage::DockSet(_)
+                    | ToastMessage::ItemPlaced { .. }
+            )
+    }
 }
 
 /// A toast: a style and a message.

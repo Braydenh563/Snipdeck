@@ -217,6 +217,7 @@ where
             });
         });
         self.pending.push(Effect::PlaceWindow(place));
+        self.show_toast(neutral(ToastMessage::DockSet(edge)));
     }
 
     /// "Reset size and position": forgets what was remembered for the Panel's current monitor (and

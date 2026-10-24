@@ -17,6 +17,12 @@ use crate::{
     toast::{Toast, ToastKind, ToastMessage},
 };
 
+#[cfg(test)]
+thread_local! {
+    /// Makes [`refresh_panel`](Controller::refresh_panel) fail, to test what each caller does then.
+    pub(super) static FAIL_REFRESH: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 impl<S, C, K, T> Controller<S, C, K, T>
 where
     S: Library,
@@ -216,7 +222,7 @@ where
         let Some(delta) = b.checked_signed_diff(a) else {
             return;
         };
-        self.panel_place(moved, delta, false);
+        self.panel_move_item(moved, delta);
     }
 
     /// Alt+Up / Alt+Down in the Panel: moves the selected row one place.
@@ -224,11 +230,6 @@ where
         if let Some(id) = self.model.selected() {
             self.panel_move_item(id, delta);
         }
-    }
-
-    /// Moves item `id` by `delta` places in the shown list and says where it went.
-    pub(crate) fn panel_move_item(&mut self, id: ItemId, delta: isize) {
-        self.panel_place(id, delta, true);
     }
 
     /// Whether item `id` can move by `delta` places in the shown list: it is in manual order,
@@ -244,9 +245,9 @@ where
             .is_some_and(|at| reorder(&order, at, delta).is_some())
     }
 
-    /// Moves `moved` by `delta` places, keeps it selected and, when `announce`, raises a toast
-    /// with its new place.
-    pub(super) fn panel_place(&mut self, moved: ItemId, delta: isize, announce: bool) {
+    /// Moves item `moved` by `delta` places in the shown list, keeps it selected and says where
+    /// it went (the keys and a drag alike).
+    pub(crate) fn panel_move_item(&mut self, moved: ItemId, delta: isize) {
         if !self.model.reorderable() {
             return;
         }
@@ -276,9 +277,7 @@ where
                     return;
                 }
                 self.model.select_item(moved);
-                if announce {
-                    self.announce_placed(to + 1, order.len());
-                }
+                self.announce_placed(to + 1, order.len());
             }
             Err(_) => self.show_toast(failed()),
         }
@@ -425,15 +424,49 @@ where
             self.model.select_board(&self.store, board)?;
             self.model.select_list(&self.store, list)
         });
-        if shown.is_err() {
-            self.show_toast(failed());
+        match shown {
+            Ok(()) => self.show_toast(super::success(ToastMessage::ListAdded)),
+            Err(_) => self.show_toast(failed()),
         }
     }
 
     /// Reads the library again into the Panel (and tells the Main window to).
     pub(super) fn refresh_panel(&mut self) -> snipdeck_store::Result<()> {
         self.main.mark_stale();
+        #[cfg(test)]
+        if FAIL_REFRESH.get() {
+            return Err(snipdeck_store::Error::NotFound {
+                entity: "list",
+                id: "a test".into(),
+            });
+        }
         self.model.refresh(&self.store)
+    }
+
+    /// [`refresh_panel`](Self::refresh_panel) for a change that has already worked (a lock, an
+    /// import, a setting): a failure is logged and the user is told that the list on screen may
+    /// be out of date, instead of the failure going unseen. Returns whether the refresh worked.
+    /// `what` names the caller in the log.
+    pub(super) fn refresh_or_notice(&mut self, what: &str) -> bool {
+        match self.refresh_panel() {
+            Ok(()) => true,
+            Err(error) => {
+                crate::trace!("refresh after {what} failed: {error}");
+                self.show_toast(Toast {
+                    kind: ToastKind::Danger,
+                    message: ToastMessage::NotRefreshed,
+                });
+                false
+            }
+        }
+    }
+
+    /// Like [`refresh_or_notice`](Self::refresh_or_notice) but only logs: the caller has a
+    /// success of its own to show, and the next refresh puts the rows right.
+    pub(super) fn refresh_logged(&mut self, what: &str) {
+        if let Err(error) = self.refresh_panel() {
+            crate::trace!("refresh after {what} failed: {error}");
+        }
     }
 
     pub(super) fn switch_board(&mut self, board: BoardId) {

@@ -344,3 +344,186 @@ fn pasting_text_into_a_text_field_is_left_to_the_field() {
     assert!(!w.ctl.refuse_pasted_image());
     assert!(w.ctl.view().toast.is_none());
 }
+
+// ---- The single toast slot and the notices around it ---------------------------------------
+
+use super::recent::{copied, recent_world};
+use crate::controller::panel_ctl::FAIL_REFRESH;
+
+fn shown(w: &World) -> Option<ToastMessage> {
+    w.ctl.view().toast.map(|t| t.message)
+}
+
+fn success(message: ToastMessage) -> Toast {
+    Toast {
+        kind: ToastKind::Success,
+        message,
+    }
+}
+
+#[test]
+fn a_success_does_not_replace_an_error_that_is_still_showing() {
+    let mut w = world();
+    w.ctl.show_toast(failed());
+    w.ctl.show_toast(success(ToastMessage::Duplicated));
+    assert_eq!(shown(&w), Some(ToastMessage::Failed));
+    // The same for the settings and reorder confirmations.
+    w.ctl.show_toast(neutral(ToastMessage::PanelOnTop(true)));
+    w.ctl.show_toast(neutral(ToastMessage::ItemPlaced {
+        position: 1,
+        total: 2,
+    }));
+    assert_eq!(shown(&w), Some(ToastMessage::Failed));
+    // A message that explains something to the user still shows, and an error replaces an error.
+    w.ctl.show_toast(neutral(ToastMessage::NothingToSave));
+    assert_eq!(shown(&w), Some(ToastMessage::NothingToSave));
+    w.ctl.show_toast(failed());
+    w.ctl.show_toast(Toast {
+        kind: ToastKind::Danger,
+        message: ToastMessage::StorageFailed,
+    });
+    assert_eq!(shown(&w), Some(ToastMessage::StorageFailed));
+}
+
+#[test]
+fn a_success_shows_once_the_error_has_started_to_leave_or_is_gone() {
+    let mut w = world();
+    w.ctl.show_toast(failed());
+    let seq = w.ctl.view().toast.expect("toast").seq;
+    // Enter -> Hold -> Exit.
+    w.ctl.toast_tick(seq);
+    w.ctl.toast_tick(seq);
+    w.ctl.show_toast(success(ToastMessage::Duplicated));
+    assert_eq!(shown(&w), Some(ToastMessage::Duplicated));
+    // A success replaces a success.
+    w.ctl.show_toast(success(ToastMessage::ListSaved));
+    assert_eq!(shown(&w), Some(ToastMessage::ListSaved));
+}
+
+#[test]
+fn a_toast_with_an_undo_button_always_shows() {
+    let mut w = world();
+    w.ctl.show_toast(failed());
+    w.ctl
+        .show_undo_toast(success(ToastMessage::ItemsTrashed { count: 1 }), Some(7));
+    assert_eq!(shown(&w), Some(ToastMessage::ItemsTrashed { count: 1 }));
+}
+
+#[test]
+fn a_failed_refresh_after_a_paste_keeps_the_success() {
+    let mut w = world();
+    FAIL_REFRESH.set(true);
+    let result = w.ctl.activate_row(0, UseMode::Paste);
+    FAIL_REFRESH.set(false);
+    assert_eq!(result, UseResult::Done(UseOutcome::Pasted));
+    assert_eq!(
+        shown(&w),
+        Some(ToastMessage::Pasted {
+            app: "Outlook".into()
+        }),
+        "the paste worked; the refresh error is only logged"
+    );
+}
+
+#[test]
+fn a_failed_refresh_after_a_quick_save_keeps_the_saved_toast() {
+    let mut w = world();
+    FAIL_REFRESH.set(true);
+    w.ctl.save_text(Some("something to keep"));
+    FAIL_REFRESH.set(false);
+    assert!(matches!(shown(&w), Some(ToastMessage::Saved { .. })));
+}
+
+#[test]
+fn a_refresh_that_fails_after_a_change_says_the_view_is_stale() {
+    let mut w = world();
+    assert!(w.ctl.refresh_or_notice("a test"));
+    assert_eq!(shown(&w), None);
+    FAIL_REFRESH.set(true);
+    assert!(!w.ctl.refresh_or_notice("a test"));
+    FAIL_REFRESH.set(false);
+    assert_eq!(shown(&w), Some(ToastMessage::NotRefreshed));
+    assert_eq!(w.ctl.view().toast.map(|t| t.kind), Some(ToastKind::Danger));
+}
+
+#[test]
+fn locking_the_library_with_a_failed_refresh_says_the_view_is_stale() {
+    let mut w = world();
+    w.ctl.lock.set = true;
+    FAIL_REFRESH.set(true);
+    w.ctl.lock_now();
+    FAIL_REFRESH.set(false);
+    assert_eq!(shown(&w), Some(ToastMessage::NotRefreshed));
+}
+
+// ---- Confirmations (feedback audit gaps 1-6) -------------------------------------------------
+
+#[test]
+fn pinning_and_unpinning_in_the_panel_say_so() {
+    let mut w = world();
+    w.ctl.pin_row(0);
+    assert_eq!(shown(&w), Some(ToastMessage::Pinned(true)));
+    assert_eq!(w.ctl.view().toast.map(|t| t.kind), Some(ToastKind::Success));
+    w.ctl.pin_row(0);
+    assert_eq!(shown(&w), Some(ToastMessage::Pinned(false)));
+}
+
+#[test]
+fn duplicating_in_the_panel_says_so() {
+    let mut w = world();
+    w.ctl.duplicate_row(0);
+    assert_eq!(shown(&w), Some(ToastMessage::Duplicated));
+}
+
+#[test]
+fn a_panel_drag_reorder_announces_the_new_place_like_the_keyboard_does() {
+    let mut w = world();
+    w.ctl.panel_drop_row(0, 2);
+    assert_eq!(
+        shown(&w),
+        Some(ToastMessage::ItemPlaced {
+            position: 3,
+            total: 4
+        })
+    );
+}
+
+#[test]
+fn adding_a_list_with_the_plus_tab_says_so() {
+    let mut w = world();
+    w.ctl.add_list();
+    assert_eq!(shown(&w), Some(ToastMessage::ListAdded));
+}
+
+#[test]
+fn deleting_and_clearing_recent_entries_say_so() {
+    let mut w = recent_world();
+    w.ctl.on_clipboard_change(&copied("a"));
+    w.ctl.on_clipboard_change(&copied("b"));
+    let first = w.ctl.recent_entries()[0].id;
+    w.ctl.recent_delete(first);
+    assert_eq!(shown(&w), Some(ToastMessage::RecentDeleted));
+    assert_eq!(w.ctl.recent_clear(), 1);
+    assert_eq!(shown(&w), Some(ToastMessage::RecentCleared));
+}
+
+#[test]
+fn docking_and_floating_again_say_which() {
+    let mut w = world();
+    w.ctl.frame_changed(
+        &display(),
+        Rect {
+            x: 600,
+            y: 100,
+            w: 320,
+            h: 500,
+        },
+    );
+    w.ctl.dock_to(Some(crate::settings::DockEdge::Left));
+    assert_eq!(
+        shown(&w),
+        Some(ToastMessage::DockSet(Some(crate::settings::DockEdge::Left)))
+    );
+    w.ctl.dock_to(None);
+    assert_eq!(shown(&w), Some(ToastMessage::DockSet(None)));
+}

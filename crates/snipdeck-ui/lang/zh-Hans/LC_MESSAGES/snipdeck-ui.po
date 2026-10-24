@@ -178,6 +178,9 @@ msgstr "蓝色"
 msgid "Board name"
 msgstr "看板名称"
 
+msgid "Board saved"
+msgstr "看板已保存"
+
 msgid "Board: {}"
 msgstr "看板：{}"
 
@@ -490,6 +493,9 @@ msgstr "无法打开你的邮件应用。"
 msgid "Couldn't reach the clipboard. Another app may be using it."
 msgstr "无法访问剪贴板。可能有其他应用正在使用它。"
 
+msgid "Couldn't refresh the list on screen. Close and reopen the window to see the change."
+msgstr "无法刷新屏幕上的列表。请关闭并重新打开窗口以查看更改。"
+
 msgid "Couldn't rename the tag."
 msgstr "无法重命名标签。"
 
@@ -684,6 +690,9 @@ msgstr "为所选片段创建副本"
 
 msgid "Duplicate the item"
 msgstr "为该片段创建副本"
+
+msgid "Duplicated"
+msgstr "已复制"
 
 msgid "Edit"
 msgstr "编辑"
@@ -975,6 +984,12 @@ msgstr[0] "将从 {n} 个片段中移除。片段本身保留。"
 msgid "Item actions"
 msgstr "片段操作"
 
+msgid "Item pinned"
+msgstr "已固定"
+
+msgid "Item unpinned"
+msgstr "已取消固定"
+
 msgid "Items are removed after {} days."
 msgstr "片段将在 {} 天后移除。"
 
@@ -1066,8 +1081,14 @@ msgstr "列表"
 msgid "List actions"
 msgstr "列表操作"
 
+msgid "List added"
+msgstr "已添加列表"
+
 msgid "List name"
 msgstr "列表名称"
+
+msgid "List saved"
+msgstr "列表已保存"
 
 msgid "Lists"
 msgstr "列表"
@@ -1449,6 +1470,21 @@ msgstr "点击别处时面板会关闭"
 msgid "Panel dock"
 msgstr "面板停靠"
 
+msgid "Panel docked to the bottom edge"
+msgstr "面板已停靠到底边"
+
+msgid "Panel docked to the left edge"
+msgstr "面板已停靠到左边"
+
+msgid "Panel docked to the right edge"
+msgstr "面板已停靠到右边"
+
+msgid "Panel docked to the top edge"
+msgstr "面板已停靠到顶边"
+
+msgid "Panel floats again"
+msgstr "面板已恢复浮动"
+
 msgid "Panel menu"
 msgstr "面板菜单"
 
@@ -1644,6 +1680,9 @@ msgstr "最近复制的内容已锁定"
 msgid "Recent entry actions"
 msgstr "最近条目操作"
 
+msgid "Recent history cleared"
+msgstr "已清除最近记录"
+
 msgid "Recently used"
 msgstr "最近使用"
 
@@ -1682,6 +1721,9 @@ msgstr "移除标签 {}"
 
 msgid "Remove {} from the list"
 msgstr "从列表中移除 {}"
+
+msgid "Removed from Recent"
+msgstr "已从“最近”中移除"
 
 msgid "Remove…"
 msgstr "移除…"

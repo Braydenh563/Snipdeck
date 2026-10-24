@@ -4,7 +4,7 @@ use snipdeck_core::{BoardId, ListAccent, ListIcon, ListId, ListSort, Name, Place
 use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::Trashable;
 
-use super::super::{Controller, Library, Toast, ToastKind, ToastMessage, failed};
+use super::super::{Controller, Library, Toast, ToastKind, ToastMessage, failed, success};
 use super::{EditorSlot, EditorTarget, Opened, neutral_toast};
 use crate::{
     host::ClipboardText,
@@ -237,6 +237,10 @@ where
                     Some(Opened::Board(id)) => self.open_board(id),
                     None => {}
                 }
+                self.show_toast(success(match target {
+                    EditorTarget::NewBoard | EditorTarget::Board(_) => ToastMessage::BoardSaved,
+                    EditorTarget::NewList(_) | EditorTarget::List(_) => ToastMessage::ListSaved,
+                }));
             }
             Err(_) => self.show_toast(failed()),
         }
