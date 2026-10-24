@@ -117,6 +117,12 @@ pub enum ToastMessage {
         /// The chord that could not be registered.
         chord: String,
     },
+    /// "These shortcuts are not working: {chords}. Settings > Shortcuts says why." (more than one
+    /// hotkey could not be registered)
+    HotkeysFailed {
+        /// The chords, joined with ", ".
+        chords: String,
+    },
     /// "Snipdeck is still running. Press {chord} or click the tray icon to bring the panel back."
     /// (shown once, the first time the Panel hides itself)
     PanelHidden {

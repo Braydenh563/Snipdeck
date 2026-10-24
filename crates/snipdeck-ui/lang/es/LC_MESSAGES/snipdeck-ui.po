@@ -1424,6 +1424,12 @@ msgstr "Pega una clave de licencia para activar Colaborador. La clave se comprue
 msgid "Paste key for {}"
 msgstr "Tecla de pegado para {}"
 
+msgid "Paste next and the paste stack are Supporter features."
+msgstr "Pegar siguiente y la pila de pegado son funciones de Colaborador."
+
+msgid "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
+msgstr "Pegar siguiente es una función de Colaborador, así que este atajo no hace nada en el plan gratuito."
+
 msgid "Paste stack"
 msgstr "Pila de pegado"
 
@@ -2141,6 +2147,9 @@ msgstr "No hay ningún archivo en esa ruta."
 
 msgid "There is no list to save into. Add a list first."
 msgstr "No hay ninguna lista donde guardar. Añade primero una lista."
+
+msgid "These shortcuts are not working: {}. Settings > Shortcuts says why."
+msgstr "Estos atajos no funcionan: {}. Configuración > Atajos indica por qué."
 
 msgid "Third-party notices"
 msgstr "Avisos de terceros"

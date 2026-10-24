@@ -135,22 +135,35 @@ where
         true
     }
 
-    /// Reports hotkeys that could not be registered (the first one is shown).
+    /// Reports the hotkeys that could not be registered: one is worded by why it failed, several
+    /// are named together. All of them are kept for the Settings rows ([`Self::hotkey_problem`]);
+    /// an empty list (everything registered) forgets the earlier ones.
     pub fn report_hotkey_problems(&mut self, problems: &[crate::host::HotkeyProblem]) {
-        if let Some(problem) = problems.first() {
-            let chord = problem.chord.clone();
-            let message = match problem.failure {
-                crate::host::HotkeyFailure::InUse => ToastMessage::HotkeyInUse { chord },
-                crate::host::HotkeyFailure::Invalid => ToastMessage::HotkeyInvalid { chord },
-                crate::host::HotkeyFailure::Unavailable => {
-                    ToastMessage::HotkeyUnavailable { chord }
+        self.hotkey_problems = problems.to_vec();
+        let message = match problems {
+            [] => return,
+            [problem] => {
+                let chord = problem.chord.clone();
+                match problem.failure {
+                    crate::host::HotkeyFailure::InUse => ToastMessage::HotkeyInUse { chord },
+                    crate::host::HotkeyFailure::Invalid => ToastMessage::HotkeyInvalid { chord },
+                    crate::host::HotkeyFailure::Unavailable => {
+                        ToastMessage::HotkeyUnavailable { chord }
+                    }
                 }
-            };
-            self.show_toast(Toast {
-                kind: ToastKind::Danger,
-                message,
-            });
-        }
+            }
+            several => ToastMessage::HotkeysFailed {
+                chords: several
+                    .iter()
+                    .map(|p| p.chord.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            },
+        };
+        self.show_toast(Toast {
+            kind: ToastKind::Danger,
+            message,
+        });
     }
 
     /// Advances toast `seq` to its next phase. Returns how long to wait before ticking again,

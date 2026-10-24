@@ -13,7 +13,7 @@ use snipdeck_ui::{
     FormTexts, ImportTexts, MenuTexts, PanelWindow, SettingsPage, ToastTexts, TrayTexts,
 };
 
-use snipdeck_core::{ItemKind, ItemLabel, ListIcon};
+use snipdeck_core::{Feature, ItemKind, ItemLabel, ListIcon};
 
 use crate::{
     item_editor::{AttachmentView, EditorProblem, SaveFailure},
@@ -157,6 +157,7 @@ where
         ToastMessage::CopiedExcluded { app } => t.invoke_copied_excluded(app.into()),
         ToastMessage::CopiedTargetGone => t.invoke_copied_target_gone(),
         ToastMessage::ClipboardBusy => t.invoke_clipboard_busy(),
+        ToastMessage::NeedsPro(Feature::PasteStack) => t.invoke_needs_pro_paste_stack(),
         ToastMessage::NeedsPro(_) => t.invoke_needs_pro(),
         ToastMessage::TemplateBroken => t.invoke_template_broken(),
         ToastMessage::Locked => t.invoke_locked(),
@@ -178,6 +179,7 @@ where
         ToastMessage::HotkeyInUse { chord } => t.invoke_hotkey_in_use(chord.into()),
         ToastMessage::HotkeyInvalid { chord } => t.invoke_hotkey_invalid(chord.into()),
         ToastMessage::HotkeyUnavailable { chord } => t.invoke_hotkey_unavailable(chord.into()),
+        ToastMessage::HotkeysFailed { chords } => t.invoke_hotkeys_failed(chords.into()),
         ToastMessage::PanelHidden { chord } => {
             t.invoke_panel_hidden(chord.as_deref().unwrap_or_default().into())
         }

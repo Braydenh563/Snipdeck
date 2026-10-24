@@ -1419,6 +1419,12 @@ msgstr "粘贴许可证密钥即可开启支持者功能。密钥只在这台电
 msgid "Paste key for {}"
 msgstr "{} 的粘贴键"
 
+msgid "Paste next and the paste stack are Supporter features."
+msgstr "“粘贴下一个”和粘贴队列是 Supporter 功能。"
+
+msgid "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
+msgstr "“粘贴下一个”是 Supporter 功能，因此在免费版中此快捷键不起作用。"
+
 msgid "Paste stack"
 msgstr "粘贴堆栈"
 
@@ -2134,6 +2140,9 @@ msgstr "该路径下没有文件。"
 
 msgid "There is no list to save into. Add a list first."
 msgstr "没有可保存到的列表。请先添加列表。"
+
+msgid "These shortcuts are not working: {}. Settings > Shortcuts says why."
+msgstr "以下快捷键无法使用：{}。原因见 设置 > 快捷键。"
 
 msgid "Third-party notices"
 msgstr "第三方声明"

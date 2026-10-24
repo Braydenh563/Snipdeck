@@ -13,6 +13,7 @@ pub mod commands;
 pub mod controller;
 pub mod crash;
 pub mod demo;
+pub mod diag;
 pub mod dock;
 pub mod doctor;
 pub mod drafts;

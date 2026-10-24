@@ -129,6 +129,18 @@ the `theme` setting, and that a damaged `settings.json` is kept as `settings.jso
 steps. Writing settings has no step yet: nothing in the app changes a setting until the Settings window exists (M4).
 Nothing here has run on Windows.
 
+## Render and shortcut diagnostic (`diag-render.ps1`)
+
+A separate, short run (about 10 minutes) for the render glitches and the shortcuts
+(`docs/reviews/render-glitch-analysis.md`). From the repo folder, in a normal PowerShell window:
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\windows-test\diag-render.ps1
+
+It closes a running Snipdeck, builds, starts Snipdeck twice (`SNIPDECK_DIAG=render`, then `render,fix`, both
+with `SNIPDECK_LOG=1`) on the wizard's library (`spikes-results\m3-data`, else `spikes-results\diag\data`),
+prints numbered steps with a y/n question each, and writes one file, `Desktop\Snipdeck-diag-<date>.txt`.
+`-NoBuild` skips the build; `-DataDir <folder>` picks another library.
+
 ## Where things are saved
 
 `spikes-results\current\` (git-ignored): `results.md` (full report), `paste-back.md`, `paste-back-oneline.txt` (what goes

@@ -175,6 +175,8 @@ pub struct Controller<S, C, K, T> {
     /// (if the clipboard still holds exactly that text). Only a keyed hash of the text is kept,
     /// so the secret does not sit in memory for the wait.
     clipboard_clear: Option<PendingClear>,
+    /// The global hotkeys the last registration could not set up, for the Settings rows.
+    hotkey_problems: Vec<crate::host::HotkeyProblem>,
     model: PanelModel,
     /// The search index shared by the Panel and the Picker, rebuilt only after a write.
     index_cache: crate::index_cache::IndexCache,
@@ -391,6 +393,7 @@ where
             new_list_base: crate::starter::NEW_LIST.to_owned(),
             new_board_base: crate::starter::NEW_BOARD.to_owned(),
             session: Session::default(),
+            hotkey_problems: Vec::new(),
             saver: None,
             dock: DockState::default(),
             monitor: None,
@@ -557,6 +560,18 @@ where
             accent: self.os_look.accent,
             reduce_motion: self.os_look.reduce_motion || self.settings.reduce_motion,
         }
+    }
+
+    /// Why the global hotkey for `action` is not working, if the last registration failed for it.
+    #[must_use]
+    pub fn hotkey_problem(&self, action: HotkeyAction) -> Option<&crate::host::HotkeyProblem> {
+        self.hotkey_problems.iter().find(|p| p.action == action)
+    }
+
+    /// The hotkey for `action` was registered again and works (a new chord from Settings, or
+    /// cleared).
+    pub fn clear_hotkey_problem(&mut self, action: HotkeyAction) {
+        self.hotkey_problems.retain(|p| p.action != action);
     }
 
     /// Whether "Pause hotkeys" is on.

@@ -815,6 +815,71 @@ fn a_shortcut_another_program_owns_is_refused_and_the_old_ones_stay_registered()
 }
 
 #[test]
+fn a_shortcut_that_failed_to_register_at_start_says_why_on_its_row_until_it_is_changed() {
+    use snipdeck_app::host::HotkeyFailure;
+    on_ui_thread(|| {
+        let r = rig();
+        r.ctl.borrow_mut().report_hotkey_problems(&[
+            HotkeyProblem {
+                action: HotkeyAction::TogglePanel,
+                chord: "Ctrl+Alt+Space".into(),
+                failure: HotkeyFailure::InUse,
+            },
+            HotkeyProblem {
+                action: HotkeyAction::Picker,
+                chord: "Ctrl+Shift+Space".into(),
+                failure: HotkeyFailure::Unavailable,
+            },
+        ]);
+        r.binding.redraw();
+        let conflict = |i: usize| r.ui.get_hotkeys().row_data(i).unwrap().conflict;
+        assert_eq!(conflict(0), "Another program already uses Ctrl+Alt+Space.");
+        assert_eq!(
+            conflict(1),
+            "Shortcuts are not available right now. Try again in a moment."
+        );
+        // A chord that registers clears the row and the problem the controller kept.
+        r.ui.invoke_hotkey_recorded(0, "Ctrl+Alt+K".into());
+        assert_eq!(conflict(0), "");
+        assert_eq!(
+            r.ctl.borrow().hotkey_problem(HotkeyAction::TogglePanel),
+            None
+        );
+        assert!(
+            r.ctl
+                .borrow()
+                .hotkey_problem(HotkeyAction::Picker)
+                .is_some()
+        );
+    });
+}
+
+#[test]
+fn on_the_free_plan_the_paste_next_row_says_it_is_a_supporter_feature() {
+    on_ui_thread(|| {
+        let r = rig();
+        let paste_next = HotkeyAction::ALL
+            .iter()
+            .position(|a| *a == HotkeyAction::PasteNext)
+            .unwrap();
+        assert_eq!(
+            r.ui.get_hotkeys().row_data(paste_next).unwrap().conflict,
+            "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
+        );
+        let pro = rig_on(
+            demo::store(now()).expect("demo"),
+            Tier::Pro,
+            tempfile::tempdir().expect("dir"),
+            true,
+        );
+        assert_eq!(
+            pro.ui.get_hotkeys().row_data(paste_next).unwrap().conflict,
+            ""
+        );
+    });
+}
+
+#[test]
 fn while_the_hotkeys_are_paused_nothing_is_registered_but_the_choice_is_kept() {
     on_ui_thread(|| {
         let r = rig();
@@ -2528,7 +2593,11 @@ fn paste_next_is_registered_with_supporter_only_and_the_chord_stays_in_the_setti
             3,
             "the Panel, the Picker and Capture are registered"
         );
-        assert_eq!(free.ui.get_hotkeys().row_data(3).unwrap().conflict, "");
+        // The row says why the chord does nothing (it used to stay silent).
+        assert_eq!(
+            free.ui.get_hotkeys().row_data(3).unwrap().conflict,
+            "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
+        );
 
         // Supporter: the same chord is registered.
         let pro = rig_on(

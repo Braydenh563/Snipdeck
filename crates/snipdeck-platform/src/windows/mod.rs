@@ -8,6 +8,7 @@
 //! | [`target`] | Foreground tracking, UIPI check, caret / UI Automation focus probe |
 //! | [`window_style`] | Non-activating panel style and its `WM_STYLECHANGING` subclass |
 //! | [`erase`] | The theme colour a window shows before its first frame |
+//! | [`paint_diag`] | `SNIPDECK_DIAG=render`: paint, erase, move and DWM facts for a log |
 //! | [`screen`] | Mouse position and the work area and scale of the monitor under a point |
 //! | [`hotkey`] | Global hotkeys on a dedicated thread |
 //! | [`autostart`] | Start with Windows (`HKCU\...\Run`) |
@@ -33,6 +34,7 @@ pub mod file_dialog;
 mod hidden_window;
 pub mod hotkey;
 pub mod keyboard;
+pub mod paint_diag;
 pub mod screen;
 pub mod single_instance;
 pub mod system_look;

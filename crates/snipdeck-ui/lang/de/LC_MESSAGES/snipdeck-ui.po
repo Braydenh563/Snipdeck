@@ -1424,6 +1424,12 @@ msgstr "Füge einen Lizenzschlüssel ein, um Unterstützer einzuschalten. Der Sc
 msgid "Paste key for {}"
 msgstr "Einfügetaste für {}"
 
+msgid "Paste next and the paste stack are Supporter features."
+msgstr "„Als Nächstes einfügen“ und der Einfügestapel sind Supporter-Funktionen."
+
+msgid "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
+msgstr "„Als Nächstes einfügen“ ist eine Supporter-Funktion, daher bewirkt dieses Tastenkürzel im kostenlosen Tarif nichts."
+
 msgid "Paste stack"
 msgstr "Einfügestapel"
 
@@ -2141,6 +2147,9 @@ msgstr "Unter diesem Pfad gibt es keine Datei."
 
 msgid "There is no list to save into. Add a list first."
 msgstr "Es gibt keine Liste zum Speichern. Füge zuerst eine Liste hinzu."
+
+msgid "These shortcuts are not working: {}. Settings > Shortcuts says why."
+msgstr "Diese Tastenkürzel funktionieren nicht: {}. Unter Einstellungen > Tastenkürzel steht, warum."
 
 msgid "Third-party notices"
 msgstr "Hinweise zu Drittanbietern"

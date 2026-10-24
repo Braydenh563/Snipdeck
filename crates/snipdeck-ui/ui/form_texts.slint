@@ -150,6 +150,9 @@ export global FormTexts {
     pure public function hotkey-invalid(combo: string) -> string {
         return @tr("Windows doesn't allow {} as a shortcut.", combo);
     }
+    pure public function hotkey-supporter-only() -> string {
+        return @tr("Paste next is a Supporter feature, so this shortcut does nothing on the Free plan.");
+    }
     pure public function hotkey-unavailable() -> string {
         return @tr("Shortcuts are not available right now. Try again in a moment.");
     }

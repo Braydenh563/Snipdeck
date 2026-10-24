@@ -127,7 +127,14 @@ mod imp {
 
     impl HotkeyBackend for Hotkeys {
         fn register(&mut self, id: u32, chord: Chord) -> Result<(), HotkeyFailure> {
-            self.0.register(id, chord).map_err(|e| match e {
+            let result = self.0.register(id, chord);
+            // Every result, with Windows' own reason (`InUse` is ERROR_HOTKEY_ALREADY_REGISTERED,
+            // 1409; `Os` carries the GetLastError code), for the SNIPDECK_LOG / DIAG log.
+            crate::trace!(
+                "hotkey register id={id} ({:?}) chord={chord}: {result:?}",
+                crate::host::action_of(id)
+            );
+            result.map_err(|e| match e {
                 HotkeyError::InUse => HotkeyFailure::InUse,
                 HotkeyError::Invalid => HotkeyFailure::Invalid,
                 HotkeyError::Os(_) | HotkeyError::Stopped => HotkeyFailure::Unavailable,
@@ -135,9 +142,12 @@ mod imp {
         }
 
         fn unregister(&mut self, id: u32) -> Result<(), HotkeyFailure> {
-            self.0
-                .unregister(id)
-                .map_err(|_| HotkeyFailure::Unavailable)
+            let result = self.0.unregister(id);
+            crate::trace!(
+                "hotkey unregister id={id} ({:?}): {result:?}",
+                crate::host::action_of(id)
+            );
+            result.map_err(|_| HotkeyFailure::Unavailable)
         }
     }
 

@@ -1419,6 +1419,12 @@ msgstr "ライセンスキーを貼り付けるとサポーターが有効にな
 msgid "Paste key for {}"
 msgstr "{} の貼り付けキー"
 
+msgid "Paste next and the paste stack are Supporter features."
+msgstr "「次を貼り付け」と貼り付けスタックは Supporter の機能です。"
+
+msgid "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
+msgstr "「次を貼り付け」は Supporter の機能のため、無料プランではこのショートカットは何もしません。"
+
 msgid "Paste stack"
 msgstr "貼り付けスタック"
 
@@ -2134,6 +2140,9 @@ msgstr "そのパスにファイルがありません。"
 
 msgid "There is no list to save into. Add a list first."
 msgstr "保存先のリストがありません。先にリストを追加してください。"
+
+msgid "These shortcuts are not working: {}. Settings > Shortcuts says why."
+msgstr "次のショートカットが動作していません: {}。理由は 設定 > ショートカット で確認できます。"
 
 msgid "Third-party notices"
 msgstr "サードパーティの通知"

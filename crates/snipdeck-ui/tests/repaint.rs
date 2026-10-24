@@ -12,7 +12,7 @@
 )]
 
 use slint::ComponentHandle;
-use snipdeck_ui::{MainWindow, PanelWindow, testing::Harness};
+use snipdeck_ui::{HelpWindow, MainWindow, PanelWindow, TagManager, testing::Harness};
 
 /// Draws until nothing is dirty, as the backend does between events.
 fn settle<C: ComponentHandle>(h: &Harness<C>) {
@@ -42,6 +42,24 @@ fn an_idle_main_window_presents_nothing_and_the_flip_repaints_all_of_it() {
         Some(u64::from(w) * u64::from(h)),
         "flipping back repaints all again"
     );
+}
+
+/// The child windows have no `repaint-flip`: `damage::whole_window` must redraw any of them
+/// whole when Windows invalidated part of it (dragged back on screen, uncovered).
+#[test]
+fn whole_window_damage_repaints_all_of_a_child_window_that_has_no_flip() {
+    let (w, h) = (420_u32, 520_u32);
+    let tags = Harness::new(TagManager::new, w, h);
+    settle(&tags);
+    assert_eq!(tags.damaged_area(), None, "idle: no frame is presented");
+    snipdeck_ui::damage::whole_window(tags.component.window());
+    assert_eq!(tags.damaged_area(), Some(u64::from(w) * u64::from(h)));
+    settle(&tags);
+
+    let help = Harness::new(HelpWindow::new, w, h);
+    settle(&help);
+    snipdeck_ui::damage::whole_window(help.component.window());
+    assert_eq!(help.damaged_area(), Some(u64::from(w) * u64::from(h)));
 }
 
 #[test]

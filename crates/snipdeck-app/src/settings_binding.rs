@@ -506,6 +506,22 @@ where
     .into()
 }
 
+/// The words for a row's [`RowNote`]; empty for none.
+fn note_text<C>(window: &C, note: Option<RowNote>, combo: &str) -> String
+where
+    for<'a> ui::FormTexts<'a>: slint::Global<'a, C>,
+{
+    match note {
+        None => String::new(),
+        Some(RowNote::SupporterOnly) => ui::FormTexts::get(window)
+            .invoke_hotkey_supporter_only()
+            .into(),
+        Some(RowNote::Failed(failure)) => {
+            hotkey_refusal_text(window, HotkeyRefusal::Refused(failure), combo)
+        }
+    }
+}
+
 fn program_refusal_text<C>(window: &C, refusal: &ProgramRefusal) -> String
 where
     for<'a> ui::FormTexts<'a>: slint::Global<'a, C>,
@@ -532,6 +548,17 @@ struct HotkeyRow {
     keys: Vec<String>,
     value: String,
     conflict: String,
+    /// Shown when `conflict` is empty: why the chord in force does nothing.
+    note: Option<RowNote>,
+}
+
+/// Why a stored shortcut does nothing, shown on its Settings row.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RowNote {
+    /// Windows refused it at the last registration (start-up, resume, plan change).
+    Failed(HotkeyFailure),
+    /// Paste next on the Free plan: kept in the settings, never registered.
+    SupporterOnly,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -778,10 +805,23 @@ where
                 HotkeyAction::Capture => &settings.hotkeys.capture,
                 HotkeyAction::PasteNext => &settings.hotkeys.paste_next,
             };
+            let supporter = controller.tier() == snipdeck_core::Tier::Pro;
+            let note = if value.is_empty() {
+                None
+            } else if action == HotkeyAction::PasteNext && !supporter {
+                Some(RowNote::SupporterOnly)
+            } else if controller.hotkeys_paused() {
+                None
+            } else {
+                controller
+                    .hotkey_problem(action)
+                    .map(|p| RowNote::Failed(p.failure))
+            };
             HotkeyRow {
                 keys: key_chips(value),
                 value: value.clone(),
                 conflict: state.hotkey_conflicts[i].clone(),
+                note,
             }
         })
         .collect();
@@ -996,7 +1036,10 @@ where
             return;
         }
         self.set_conflict(index, String::new());
-        self.act(|ctl| ctl.update_settings(|s| s.hotkeys = next));
+        self.act(|ctl| {
+            ctl.clear_hotkey_problem(action);
+            ctl.update_settings(|s| s.hotkeys = next);
+        });
     }
 
     fn hotkey_cleared(self: &Rc<Self>, index: usize) {
@@ -1008,7 +1051,10 @@ where
         // Taking a shortcut away cannot clash; a service that is down is not the user's problem here.
         let _ = self.try_register(action, &current, &next);
         self.set_conflict(index, String::new());
-        self.act(|ctl| ctl.update_settings(|s| s.hotkeys = next));
+        self.act(|ctl| {
+            ctl.clear_hotkey_problem(action);
+            ctl.update_settings(|s| s.hotkeys = next);
+        });
     }
 
     /// See [`try_register`].
@@ -1040,7 +1086,12 @@ where
         let supporter = controller.tier() == snipdeck_core::Tier::Pro;
         let chords = controller.settings().hotkeys.registrable(supporter);
         drop(controller);
-        let _ = self.host.apply_hotkeys(&chords);
+        // A refusal here (Paste next taken by another app once Supporter is on) is reported like
+        // one at start-up, never dropped.
+        let problems = self.host.apply_hotkeys(&chords);
+        self.controller
+            .borrow_mut()
+            .report_hotkey_problems(&problems);
     }
 
     // ---- Text size -----------------------------------------------------------------------------
@@ -1642,7 +1693,11 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
         window.set_hotkeys(model(view.hotkeys.iter().map(|h| ui::HotkeySetting {
             keys: model(h.keys.iter().map(|k| SharedString::from(k.as_str()))),
             value: h.value.as_str().into(),
-            conflict: h.conflict.as_str().into(),
+            conflict: if h.conflict.is_empty() {
+                note_text(window, h.note, &h.value).into()
+            } else {
+                h.conflict.as_str().into()
+            },
         })));
     }
     if differs(&|p| p.theme_index == view.theme_index) {

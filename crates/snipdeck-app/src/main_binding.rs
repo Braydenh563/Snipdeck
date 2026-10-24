@@ -77,7 +77,8 @@ pub fn create_window<T: ComponentHandle>(
     make: impl FnOnce() -> Result<T, slint::PlatformError>,
 ) -> Result<T, slint::PlatformError> {
     let window = RegularWindow::create(make)?;
-    crate::native_window::track_focus(window.window());
+    let name = std::any::type_name::<T>();
+    crate::native_window::track_focus(window.window(), name.rsplit("::").next().unwrap_or(name));
     Ok(window)
 }
 
@@ -794,7 +795,7 @@ fn watch_place<S, C, K, T>(
     window
         .window()
         .on_winit_window_event(move |slint_window, event| {
-            crate::native_window::note_window_event(slint_window, event);
+            crate::native_window::note_window_event("MainWindow", slint_window, event);
             if watch.on_signal(crate::repaint::signal_of(event))
                 && let Some(w) = weak.upgrade()
             {

@@ -32,6 +32,9 @@ export global ToastTexts {
     pure public function needs-pro() -> string {
         return @tr("This item uses a Supporter feature.");
     }
+    pure public function needs-pro-paste-stack() -> string {
+        return @tr("Paste next and the paste stack are Supporter features.");
+    }
     pure public function template-broken() -> string {
         return @tr("This template can't be read. Open it to fix it.");
     }
@@ -91,6 +94,10 @@ export global ToastTexts {
     }
     pure public function hotkey-unavailable(chord: string) -> string {
         return @tr("Shortcuts are unavailable, so {} is not active. Restart Snipdeck to try again.", chord);
+    }
+    // `chords`: two or more shortcuts joined with ", ".
+    pure public function hotkeys-failed(chords: string) -> string {
+        return @tr("These shortcuts are not working: {}. Settings > Shortcuts says why.", chords);
     }
     // `chord` is empty when the Panel hotkey is switched off.
     pure public function panel-hidden(chord: string) -> string {

@@ -206,6 +206,53 @@ fn hotkey_problems_show_a_toast_naming_the_chord() {
 }
 
 #[test]
+fn every_failed_hotkey_is_named_in_the_toast_and_kept_for_settings() {
+    use crate::host::{HotkeyFailure, HotkeyProblem};
+    let mut w = world();
+    let problem = |action, chord: &str, failure| HotkeyProblem {
+        action,
+        chord: chord.into(),
+        failure,
+    };
+    w.ctl.report_hotkey_problems(&[
+        problem(
+            HotkeyAction::TogglePanel,
+            "Ctrl+Alt+Space",
+            HotkeyFailure::InUse,
+        ),
+        problem(
+            HotkeyAction::PasteNext,
+            "Ctrl+Alt+V",
+            HotkeyFailure::Invalid,
+        ),
+    ]);
+    let toast = w.ctl.view().toast.expect("toast");
+    assert_eq!(toast.kind, ToastKind::Danger);
+    assert_eq!(
+        toast.message,
+        ToastMessage::HotkeysFailed {
+            chords: "Ctrl+Alt+Space, Ctrl+Alt+V".into()
+        }
+    );
+    assert_eq!(
+        w.ctl
+            .hotkey_problem(HotkeyAction::TogglePanel)
+            .map(|p| p.failure),
+        Some(HotkeyFailure::InUse)
+    );
+    assert_eq!(
+        w.ctl
+            .hotkey_problem(HotkeyAction::PasteNext)
+            .map(|p| p.failure),
+        Some(HotkeyFailure::Invalid)
+    );
+    assert_eq!(w.ctl.hotkey_problem(HotkeyAction::Picker), None);
+    // A later registration that works for everything forgets them.
+    w.ctl.report_hotkey_problems(&[]);
+    assert_eq!(w.ctl.hotkey_problem(HotkeyAction::TogglePanel), None);
+}
+
+#[test]
 fn a_hotkey_problem_is_worded_by_why_it_failed() {
     use crate::host::{HotkeyFailure, HotkeyProblem};
     let mut w = world();

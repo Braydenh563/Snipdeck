@@ -1424,6 +1424,12 @@ msgstr "Collez une clé de licence pour activer Supporter. La clé est vérifié
 msgid "Paste key for {}"
 msgstr "Touche de collage pour {}"
 
+msgid "Paste next and the paste stack are Supporter features."
+msgstr "Coller le suivant et la pile de collage sont des fonctions Supporter."
+
+msgid "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
+msgstr "Coller le suivant est une fonction Supporter : ce raccourci ne fait rien avec l’offre gratuite."
+
 msgid "Paste stack"
 msgstr "Coller la pile"
 
@@ -2141,6 +2147,9 @@ msgstr "Aucun fichier à ce chemin."
 
 msgid "There is no list to save into. Add a list first."
 msgstr "Il n'existe aucune liste où enregistrer. Ajoutez d'abord une liste."
+
+msgid "These shortcuts are not working: {}. Settings > Shortcuts says why."
+msgstr "Ces raccourcis ne fonctionnent pas : {}. Paramètres > Raccourcis indique pourquoi."
 
 msgid "Third-party notices"
 msgstr "Mentions des tiers"

@@ -102,10 +102,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::DatabaseRebuilt { .. } => 73,
         ToastMessage::RebuildNeedsRestart => 74,
         ToastMessage::ImageNotPasteable => 75,
+        ToastMessage::HotkeysFailed { .. } => 76,
     }
 }
 
-const VARIANTS: usize = 76;
+const VARIANTS: usize = 77;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -150,6 +151,10 @@ fn samples() -> Vec<ToastMessage> {
         M::HotkeyUnavailable {
             chord: s("Ctrl+Alt+Space"),
         },
+        M::HotkeysFailed {
+            chords: s("Ctrl+Alt+Space, Ctrl+Alt+V"),
+        },
+        M::NeedsPro(Feature::PasteStack),
         M::PanelHidden {
             chord: Some(s("Ctrl+Shift+Space")),
         },
@@ -348,6 +353,16 @@ fn what_a_toast_carries_reaches_its_sentence() {
                 chord: s("Ctrl+Alt+Space")
             })
             .starts_with("Ctrl+Alt+Space")
+        );
+        assert_eq!(
+            said(ToastMessage::HotkeysFailed {
+                chords: s("Ctrl+Alt+Space, Ctrl+Alt+V")
+            }),
+            "These shortcuts are not working: Ctrl+Alt+Space, Ctrl+Alt+V. Settings > Shortcuts says why."
+        );
+        assert_eq!(
+            said(ToastMessage::NeedsPro(Feature::PasteStack)),
+            "Paste next and the paste stack are Supporter features."
         );
     });
 }

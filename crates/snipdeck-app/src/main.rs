@@ -181,6 +181,8 @@ fn run(args: &Args) -> Result<(), String> {
     // (without one `invoke_from_event_loop` fails and the event, e.g. a second launch's show
     // request, would be lost).
     select_backend()?;
+    // `SNIPDECK_DIAG=render`: the paint hooks go on this (the UI) thread before any window.
+    snipdeck_app::diag::start();
     let host = match platform::connect(callbacks, !args.demo)? {
         Start::Run(host) => *host,
         Start::AlreadyRunning => return Ok(()),
@@ -415,6 +417,15 @@ fn run(args: &Args) -> Result<(), String> {
 
     // Paste next is registered with Supporter only (it stays in the settings otherwise).
     let supporter_at_start = controller.borrow().tier() == snipdeck_core::Tier::Pro;
+    snipdeck_app::trace!(
+        "hotkeys at start: supporter={supporter_at_start} toggle_panel={:?} picker={:?} \
+         capture={:?} paste_next={:?} (paste next is registered with Supporter only; an empty \
+         chord is off)",
+        startup_chords.toggle_panel,
+        startup_chords.picker,
+        startup_chords.capture,
+        startup_chords.paste_next
+    );
     report_hotkey_problems(&host::register_all(
         &mut **hotkeys.borrow_mut(),
         &startup_chords.registrable(supporter_at_start),
@@ -660,6 +671,7 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
     window
         .window()
         .on_winit_window_event(move |slint_window, event| {
+            snipdeck_app::diag::window_event("panel", slint_window, event);
             // O39: Windows may have dropped the window's pixels (Alt+Tab, restore): damage all of
             // it, as the Main window does, so the next frame is drawn whole.
             if repaint.on_signal(snipdeck_app::repaint::signal_of(event)) {

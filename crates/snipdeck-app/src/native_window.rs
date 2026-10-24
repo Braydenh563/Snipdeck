@@ -470,7 +470,9 @@ pub fn on_own_window_active(report: impl Fn(bool) + 'static) {
 
 /// Feeds a winit window event of a regular window to the focus tracking. Every regular window
 /// does this; the Main window, which handles its own events, calls it from there.
-pub fn note_window_event(window: &slint::Window, event: &winit::event::WindowEvent) {
+/// `name` says which window it is in the `SNIPDECK_DIAG` log.
+pub fn note_window_event(name: &str, window: &slint::Window, event: &winit::event::WindowEvent) {
+    crate::diag::window_event(name, window, event);
     if matches!(event, winit::event::WindowEvent::Resized(_)) {
         paint_before_first_frame(window);
     }
@@ -490,11 +492,11 @@ pub fn note_window_event(window: &slint::Window, event: &winit::event::WindowEve
     });
 }
 
-/// Starts following the focus of a regular window.
-pub fn track_focus(window: &slint::Window) {
+/// Starts following the focus of a regular window; `name` is for the `SNIPDECK_DIAG` log.
+pub fn track_focus(window: &slint::Window, name: &'static str) {
     use slint::winit_030::EventResult;
-    window.on_winit_window_event(|slint_window, event| {
-        note_window_event(slint_window, event);
+    window.on_winit_window_event(move |slint_window, event| {
+        note_window_event(name, slint_window, event);
         EventResult::Propagate
     });
 }

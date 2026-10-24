@@ -1424,6 +1424,12 @@ msgstr "Cole uma chave de licença para ativar o Apoiador. A chave é verificada
 msgid "Paste key for {}"
 msgstr "Tecla de colagem para {}"
 
+msgid "Paste next and the paste stack are Supporter features."
+msgstr "Colar próximo e a pilha de colagem são recursos do Supporter."
+
+msgid "Paste next is a Supporter feature, so this shortcut does nothing on the Free plan."
+msgstr "Colar próximo é um recurso do Supporter, então este atalho não faz nada no plano gratuito."
+
 msgid "Paste stack"
 msgstr "Pilha de colagem"
 
@@ -2141,6 +2147,9 @@ msgstr "Não há nenhum arquivo nesse caminho."
 
 msgid "There is no list to save into. Add a list first."
 msgstr "Não há lista para salvar. Adicione uma lista primeiro."
+
+msgid "These shortcuts are not working: {}. Settings > Shortcuts says why."
+msgstr "Estes atalhos não estão funcionando: {}. Configurações > Atalhos mostra o motivo."
 
 msgid "Third-party notices"
 msgstr "Avisos de terceiros"
