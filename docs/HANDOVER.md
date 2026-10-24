@@ -34,6 +34,14 @@ date at the real release. The owner capped this session at 96% weekly usage; the
   6. Dock fixes (covers a third of the screen, bottom invisible).
   7. Feedback audit: every action confirms or explains failure.
   8. Show/hide/move/resize predictability (Reset size then drag broke the list layout).
+- Night log: D v2 published on the canvas (12 states light+dark, 3 variants); owner comments answered and resolved;
+  ux-auditor critique running. Scout (for items 4-6): Alt+Tab already exists as settings.rs:525 panel_in_taskbar
+  ("Show Snipdeck in the taskbar", APPWINDOW vs TOOLWINDOW, win_logic.rs:206) -> relabel to name Alt+Tab and test
+  that the paste Target stays the previous app; Picker placement: placement.rs:40 place() only below/above, caret
+  from GetGUIThreadInfo (target.rs:371) -> add PickerSide enum + left/right branch with flip/clamp, tests in
+  placement.rs:270+; Dock: frame.rs:233 docked_rect, likely cause native_window.rs:146 work_area_of().unwrap_or(whole)
+  (whole monitor when the Win32 read fails, taskbar None) -> keep last known work area; pure test bottom never past
+  the work area.
 
 ## Read first in the next session
 1. `docs/reviews/owner-test-2026-10-21.md`: the owner's test notes, verbatim.
