@@ -922,8 +922,8 @@ msgstr "Cuánto tiempo descansa el puntero sobre la franja antes de que se abra 
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr "Cuánto tiempo permanece el puntero fuera del panel abierto antes de que se pliegue, de 0 a {} milisegundos."
 
-msgid "How tall the item rows are in the Main window. Compact shows one line per item."
-msgstr "Altura de las filas de elementos en la ventana principal. En compacta, cada elemento ocupa una línea."
+msgid "How tall the item rows are in the Main window lists. Compact shows one line per item. The Panel keeps its own row height for now."
+msgstr "Altura de las filas de elementos en las listas de la ventana principal. Compacto muestra una línea por elemento. El Panel mantiene por ahora su propia altura de fila."
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Ancho con el que se abre el panel, de {} a {} píxeles."
@@ -990,6 +990,9 @@ msgstr "Sus listas y {} elementos pasan a la papelera. Puedes restaurarlos duran
 
 msgid "Just now"
 msgstr "Justo ahora"
+
+msgid "Keep Panel open"
+msgstr "Mantener el Panel abierto"
 
 msgid "Keep Panel visible during screenshots"
 msgstr "Mantener el panel visible durante las capturas"
@@ -1084,6 +1087,15 @@ msgstr "Protege tus elementos cifrados con una contraseña que elijas."
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Los registros solo se escriben cuando Snipdeck se cierra por un error, no contienen el contenido de los fragmentos y no se envían a ningún sitio."
 
+msgid "Main list density"
+msgstr "Densidad de las listas principales"
+
+msgid "Main list density: Comfortable"
+msgstr "Densidad de las listas principales: cómoda"
+
+msgid "Main list density: Compact"
+msgstr "Densidad de las listas principales: compacta"
+
 msgid "Main window"
 msgstr "Ventana principal"
 
@@ -1134,6 +1146,9 @@ msgstr "Más usados"
 
 msgid "Move"
 msgstr "Mover"
+
+msgid "Move a page at a time"
+msgstr "Mover una página a la vez"
 
 msgid "Move board down"
 msgstr "Bajar tablero"
@@ -1388,6 +1403,9 @@ msgstr "Abrir la página de Microsoft Store"
 msgid "Open the Picker at your cursor"
 msgstr "Abre el selector en el cursor"
 
+msgid "Open the item's menu"
+msgstr "Abrir el menú del elemento"
+
 msgid "Open the picker"
 msgstr "Abrir el selector"
 
@@ -1430,11 +1448,17 @@ msgstr "Panel"
 msgid "Panel and Picker"
 msgstr "Panel y selector"
 
+msgid "Panel closes when you click away"
+msgstr "El Panel se cierra al hacer clic fuera"
+
 msgid "Panel dock"
 msgstr "Acoplado del panel"
 
 msgid "Panel menu"
 msgstr "Menú del panel"
+
+msgid "Panel stays open"
+msgstr "El Panel permanece abierto"
 
 msgid "Panel width"
 msgstr "Ancho del panel"
@@ -1568,6 +1592,9 @@ msgstr "Pulsa el nuevo atajo"
 msgid "Preview"
 msgstr "Vista previa"
 
+msgid "Previous list"
+msgstr "Lista anterior"
+
 msgid "Privacy"
 msgstr "Privacidad"
 
@@ -1673,6 +1700,9 @@ msgstr "Cambia el nombre o elimina etiquetas. Al eliminar una etiqueta, se quita
 msgid "Rename tag {}"
 msgstr "Renombrar la etiqueta {}"
 
+msgid "Rename the item"
+msgstr "Renombrar el elemento"
+
 msgid "Repeat the new password"
 msgstr "Repite la nueva contraseña"
 
@@ -1721,15 +1751,6 @@ msgstr "Clic derecho o tecla Menú para ver las acciones de la lista"
 
 msgid "Rose"
 msgstr "Rosa"
-
-msgid "Row density"
-msgstr "Densidad de filas"
-
-msgid "Row density: Comfortable"
-msgstr "Densidad de filas: cómoda"
-
-msgid "Row density: Compact"
-msgstr "Densidad de filas: compacta"
 
 msgid "SNIP1."
 msgstr "SNIP1."
@@ -1811,6 +1832,9 @@ msgstr "Seleccionar todos los elementos"
 
 msgid "Select every item"
 msgstr "Selecciona todos los elementos"
+
+msgid "Select several items"
+msgstr "Seleccionar varios elementos"
 
 msgid "Sensitive"
 msgstr "Confidencial"
@@ -2581,6 +2605,9 @@ msgstr "pila de pegado, número {}"
 
 msgid "pin"
 msgstr "fijar"
+
+msgid "pin always on top stay hide click away blur"
+msgstr "fijar siempre encima permanecer ocultar clic fuera"
 
 msgid "preferences options configure hotkeys theme backup"
 msgstr "preferencias opciones configurar atajos tema copia de seguridad"

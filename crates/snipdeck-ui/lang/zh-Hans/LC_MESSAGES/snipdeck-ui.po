@@ -922,8 +922,8 @@ msgstr "指针停在细条上多久后面板展开，范围为 0 至 {} 毫秒�
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr "指针离开已展开的面板多久后面板收起，范围为 0 至 {} 毫秒。"
 
-msgid "How tall the item rows are in the Main window. Compact shows one line per item."
-msgstr "主窗口中项目行的高度。紧凑模式下每个项目占一行。"
+msgid "How tall the item rows are in the Main window lists. Compact shows one line per item. The Panel keeps its own row height for now."
+msgstr "主窗口列表中项目行的高度。紧凑模式每个项目显示一行。面板暂时保持自己的行高。"
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "面板展开的宽度，范围为 {} 至 {} 像素。"
@@ -987,6 +987,9 @@ msgstr "它的列表和 {} 个项目将移到回收站。你可以在 {} 天内�
 
 msgid "Just now"
 msgstr "刚刚"
+
+msgid "Keep Panel open"
+msgstr "保持面板打开"
 
 msgid "Keep Panel visible during screenshots"
 msgstr "截图时保持面板可见"
@@ -1081,6 +1084,15 @@ msgstr "用你设定的密码锁定加密片段。"
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会发送到任何地方。"
 
+msgid "Main list density"
+msgstr "主列表密度"
+
+msgid "Main list density: Comfortable"
+msgstr "主列表密度：舒适"
+
+msgid "Main list density: Compact"
+msgstr "主列表密度：紧凑"
+
 msgid "Main window"
 msgstr "主窗口"
 
@@ -1131,6 +1143,9 @@ msgstr "最常用"
 
 msgid "Move"
 msgstr "移动"
+
+msgid "Move a page at a time"
+msgstr "按页移动"
 
 msgid "Move board down"
 msgstr "将看板下移"
@@ -1383,6 +1398,9 @@ msgstr "打开 Microsoft Store 页面"
 msgid "Open the Picker at your cursor"
 msgstr "在光标处打开选择器"
 
+msgid "Open the item's menu"
+msgstr "打开项目菜单"
+
 msgid "Open the picker"
 msgstr "打开选择器"
 
@@ -1425,11 +1443,17 @@ msgstr "面板"
 msgid "Panel and Picker"
 msgstr "面板和选择器"
 
+msgid "Panel closes when you click away"
+msgstr "点击别处时面板会关闭"
+
 msgid "Panel dock"
 msgstr "面板停靠"
 
 msgid "Panel menu"
 msgstr "面板菜单"
+
+msgid "Panel stays open"
+msgstr "面板保持打开"
 
 msgid "Panel width"
 msgstr "面板宽度"
@@ -1563,6 +1587,9 @@ msgstr "按下新的快捷键"
 msgid "Preview"
 msgstr "预览"
 
+msgid "Previous list"
+msgstr "上一个列表"
+
 msgid "Privacy"
 msgstr "隐私"
 
@@ -1668,6 +1695,9 @@ msgstr "重命名或删除标签。删除标签会将其从片段中移除，片
 msgid "Rename tag {}"
 msgstr "重命名标签 {}"
 
+msgid "Rename the item"
+msgstr "重命名项目"
+
 msgid "Repeat the new password"
 msgstr "再次输入新密码"
 
@@ -1714,15 +1744,6 @@ msgstr "右键单击或按菜单键查看列表操作"
 
 msgid "Rose"
 msgstr "玫瑰色"
-
-msgid "Row density"
-msgstr "行密度"
-
-msgid "Row density: Comfortable"
-msgstr "行密度:舒适"
-
-msgid "Row density: Compact"
-msgstr "行密度:紧凑"
 
 msgid "SNIP1."
 msgstr "SNIP1."
@@ -1804,6 +1825,9 @@ msgstr "选择所有项目"
 
 msgid "Select every item"
 msgstr "选择所有片段"
+
+msgid "Select several items"
+msgstr "选择多个项目"
 
 msgid "Sensitive"
 msgstr "敏感"
@@ -2573,6 +2597,9 @@ msgstr "粘贴堆栈，编号 {}"
 
 msgid "pin"
 msgstr "固定"
+
+msgid "pin always on top stay hide click away blur"
+msgstr "固定 置顶 保持 隐藏 点击别处"
 
 msgid "preferences options configure hotkeys theme backup"
 msgstr "偏好设置 选项 配置 快捷键 主题 备份"

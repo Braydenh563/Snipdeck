@@ -255,7 +255,7 @@ export component SettingsPage inherits Window {
     in property <[HotkeySetting]> hotkeys;
     // 0 follow Windows, 1 light, 2 dark.
     in property <int> theme-index: 0;
-    // 0 comfortable, 1 compact (the order of the Row density segments).
+    // 0 comfortable, 1 compact (the order of the Main list density segments). The Main window lists only.
     in property <int> row-density-index: 0;
     // 0 below, 1 above, 2 right, 3 left (the order of the Picker position segments).
     in property <int> picker-side-index: 0;
@@ -560,11 +560,11 @@ export component SettingsPage inherits Window {
                         }
                     }
                     SettingRow {
-                        title: @tr("Row density");
-                        description: @tr("How tall the item rows are in the Main window. Compact shows one line per item.");
+                        title: @tr("Main list density");
+                        description: @tr("How tall the item rows are in the Main window lists. Compact shows one line per item. The Panel keeps its own row height for now.");
                         Segmented {
                             width: 260px * SystemLook.text-scale;
-                            label: @tr("Row density");
+                            label: @tr("Main list density");
                             options: [@tr("Comfortable"), @tr("Compact")];
                             current: root.row-density-index;
                             chosen(i) => { root.row-density-chosen(i); }

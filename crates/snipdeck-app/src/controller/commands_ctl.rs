@@ -76,6 +76,10 @@ where
             Command::GoPinned => self.main_open(Section::Pinned),
             Command::GoRecent => self.main_open(Section::Recent),
             Command::GoTrash => self.main_open(Section::Trash),
+            Command::KeepPanelOpen => {
+                let on_top = !self.on_top;
+                self.choose_on_top(on_top);
+            }
             Command::ResetPanel => {
                 let placed = self.reset_panel_geometry();
                 self.pending.extend(placed);

@@ -105,10 +105,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::ImageNotPasteable => 75,
         ToastMessage::HotkeysFailed { .. } => 76,
         ToastMessage::ThemeSet(_) => 77,
+        ToastMessage::PanelOnTop(_) => 78,
     }
 }
 
-const VARIANTS: usize = 78;
+const VARIANTS: usize = 79;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -243,6 +244,8 @@ fn samples() -> Vec<ToastMessage> {
         M::ThemeSet(Theme::System),
         M::ThemeSet(Theme::Light),
         M::ThemeSet(Theme::Dark),
+        M::PanelOnTop(true),
+        M::PanelOnTop(false),
     ]
 }
 
@@ -348,6 +351,11 @@ fn what_a_toast_carries_reaches_its_sentence() {
         assert_eq!(said(ToastMessage::ThemeSet(Theme::System)), "Theme: System");
         assert_eq!(said(ToastMessage::ThemeSet(Theme::Light)), "Theme: Light");
         assert_eq!(said(ToastMessage::ThemeSet(Theme::Dark)), "Theme: Dark");
+        assert_eq!(said(ToastMessage::PanelOnTop(true)), "Panel stays open");
+        assert_eq!(
+            said(ToastMessage::PanelOnTop(false)),
+            "Panel closes when you click away"
+        );
         assert_eq!(
             said(ToastMessage::Imported { items: 0 }),
             "Nothing new to import."

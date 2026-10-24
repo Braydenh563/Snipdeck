@@ -87,7 +87,7 @@ use Scope::{Editors, Main, Panel, Picker};
 
 /// Every shortcut, in the order of `ShortcutTexts.titles` (a test in `tests/help_window.rs` checks the
 /// length) and grouped by scope in the order of [`Scope::ALL`].
-pub const CATALOGUE: [Shortcut; 52] = [
+pub const CATALOGUE: [Shortcut; 60] = [
     // Anywhere in Windows.
     global(HotkeyAction::TogglePanel),
     global(HotkeyAction::Picker),
@@ -115,16 +115,23 @@ pub const CATALOGUE: [Shortcut; 52] = [
     // Panel.
     custom(Panel, &["A-Z"], "Type"),
     custom(Panel, &["Up", "Down"], "Up or Down"),
+    custom(Panel, &["PgUp", "PgDn"], "PageUp or PageDown"),
     row(Panel, "Enter"),
     row(Panel, "Shift+Enter"),
     custom(Panel, &["Alt", "Up", "Down"], "Alt+Up or Alt+Down"),
     custom(Panel, &["Alt", "1-9"], "Alt+1 to 9"),
+    custom(Panel, &["Shift", "Up", "Down"], "Shift+Up or Shift+Down"),
+    row(Panel, "Ctrl+A"),
     row(Panel, "Ctrl+Tab"),
+    row(Panel, "Ctrl+Shift+Tab"),
     row(Panel, "Ctrl+F"),
+    custom(Panel, &["Shift", "F10"], "Shift+F10 or the Menu key"),
     row(Panel, "Ctrl+E"),
+    row(Panel, "F2"),
     row(Panel, "Ctrl+D"),
     row(Panel, "Ctrl+P"),
     row(Panel, "Ctrl+Shift+P"),
+    row(Panel, "Del"),
     row(Panel, "Ctrl+K"),
     row(Panel, "Ctrl+N"),
     row(Panel, "Ctrl+Shift+N"),
@@ -133,6 +140,7 @@ pub const CATALOGUE: [Shortcut; 52] = [
     row(Panel, "Ctrl+Y"),
     row(Panel, "Ctrl+W"),
     row(Panel, "Ctrl+/"),
+    row(Panel, "F1"),
     row(Panel, "Esc"),
     // Picker.
     custom(Picker, &["Up", "Down"], "Up or Down"),
@@ -424,6 +432,99 @@ mod tests {
                         && matches!(s.keys, Keys::Chord(c) if c == chord)),
                 "{command:?} ({chord}) is in the shortcuts list"
             );
+        }
+    }
+
+    /// How a key named in the Panel's header comment is listed in the catalogue.
+    enum Listed {
+        /// A row with this chord.
+        Chord(&'static str),
+        /// A custom row with this spoken form.
+        Spoken(&'static str),
+    }
+
+    /// Every key the header comment of `panel.slint` names, and the Panel row that lists it. The
+    /// header is read from the source: a key added there without a row here fails the test.
+    const PANEL_KEYS: &[(&str, Listed)] = &[
+        ("Up", Listed::Spoken("Up or Down")),
+        ("Down", Listed::Spoken("Up or Down")),
+        ("PageUp", Listed::Spoken("PageUp or PageDown")),
+        ("PageDown", Listed::Spoken("PageUp or PageDown")),
+        ("Enter", Listed::Chord("Enter")),
+        ("Shift+Enter", Listed::Chord("Shift+Enter")),
+        ("Alt+1-9", Listed::Spoken("Alt+1 to 9")),
+        ("Ctrl+Tab", Listed::Chord("Ctrl+Tab")),
+        ("Ctrl+Shift+Tab", Listed::Chord("Ctrl+Shift+Tab")),
+        ("Ctrl+F", Listed::Chord("Ctrl+F")),
+        ("Menu", Listed::Spoken("Shift+F10 or the Menu key")),
+        ("Shift+F10", Listed::Spoken("Shift+F10 or the Menu key")),
+        ("Ctrl+K", Listed::Chord("Ctrl+K")),
+        ("Ctrl+/", Listed::Chord("Ctrl+/")),
+        ("F1", Listed::Chord("F1")),
+        ("Ctrl+D", Listed::Chord("Ctrl+D")),
+        ("Ctrl+P", Listed::Chord("Ctrl+P")),
+        ("Ctrl+Shift+P", Listed::Chord("Ctrl+Shift+P")),
+        ("Ctrl+E", Listed::Chord("Ctrl+E")),
+        ("F2", Listed::Chord("F2")),
+        ("Delete", Listed::Chord("Del")),
+        ("Esc", Listed::Chord("Esc")),
+        ("Ctrl+A", Listed::Chord("Ctrl+A")),
+        ("Shift+Up", Listed::Spoken("Shift+Up or Shift+Down")),
+        ("Shift+Down", Listed::Spoken("Shift+Up or Shift+Down")),
+    ];
+
+    /// The keys named in the "Keyboard" block of the Panel's header comment: the words that are
+    /// chords (contain a `+`) or key names.
+    fn header_keys() -> Vec<String> {
+        const NAMES: &[&str] = &[
+            "Up", "Down", "PageUp", "PageDown", "Enter", "Esc", "Delete", "Menu", "F1", "F2",
+        ];
+        let source = include_str!("../../snipdeck-ui/ui/panel.slint");
+        let block: Vec<&str> = source
+            .lines()
+            .take_while(|l| l.starts_with("//"))
+            .skip_while(|l| !l.starts_with("// Keyboard"))
+            .take_while(|l| !l.starts_with("// Tooltips"))
+            .collect();
+        assert!(block.len() > 10, "the header's keyboard block was found");
+        let mut keys = Vec::new();
+        for line in block {
+            for word in line.trim_start_matches('/').split_whitespace() {
+                let word = word.trim_matches(|c| matches!(c, ',' | ';' | '(' | ')' | ':'));
+                if (word.contains('+') && word.len() > 1 || NAMES.contains(&word))
+                    && !keys.iter().any(|k| k == word)
+                {
+                    keys.push(word.to_owned());
+                }
+            }
+        }
+        keys
+    }
+
+    #[test]
+    fn every_key_in_the_panels_header_comment_has_a_row_in_the_list() {
+        let keys = header_keys();
+        for key in &keys {
+            assert!(
+                PANEL_KEYS.iter().any(|(k, _)| k == key),
+                "the header names {key}, which this test does not know: add it to PANEL_KEYS \
+                 and to the shortcuts list"
+            );
+        }
+        for (key, listed) in PANEL_KEYS {
+            assert!(
+                keys.iter().any(|k| k == key),
+                "{key} is no longer in the Panel's header comment"
+            );
+            let found = CATALOGUE.iter().any(|s| {
+                s.scope == Scope::Panel
+                    && match (listed, s.keys) {
+                        (Listed::Chord(c), Keys::Chord(row)) => *c == row,
+                        (Listed::Spoken(w), Keys::Custom { spoken, .. }) => *w == spoken,
+                        _ => false,
+                    }
+            });
+            assert!(found, "{key} has no row under Panel in the shortcuts list");
         }
     }
 }

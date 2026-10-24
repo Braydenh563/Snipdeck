@@ -15,6 +15,7 @@
 //   Ctrl+Tab        next list, Ctrl+Shift+Tab previous; Ctrl+F focuses and selects the search
 //   Menu, Shift+F10 context menu of the selected row (on the focused kebab button: the Panel menu)
 //   Ctrl+K          all commands (the Main window's palette); Ctrl+/ the keyboard shortcuts; F1 the user guide
+//   Ctrl+A          select every row; Shift+Up, Shift+Down extend the selection
 //   Ctrl+D          duplicate the selected row
 //   Ctrl+P          pin or unpin the selected row
 //   Ctrl+Shift+P    keep the Panel on top or not (the pin button in the header)
@@ -250,8 +251,8 @@ export component PanelWindow inherits Window {
     // ---- Selection (O45): Ctrl+click, Shift+click, Ctrl+A, Shift+Up/Down; the bulk bar acts on it ----
     in property <int> marked-count: 0;
     in property <bool> show-numbers: true;
-    // The row density setting (Settings > Appearance). Nothing here draws rows by it yet: the
-    // Panel redesign reads it.
+    // The row density setting (Settings > Appearance, labelled "Main list density"). Nothing here draws
+    // rows by it yet: to be wired in the Panel build after the redesign.
     in property <bool> compact-rows: false;
     callback row-picked(int, bool, bool);
     callback select-all-requested();

@@ -77,11 +77,13 @@ pub enum Command {
     GoTrash,
     /// Forget the Panel's remembered size and position on its monitor and put it back to the default.
     ResetPanel,
+    /// Keep the Panel open (on top) or let it close when the user clicks away: switches the pin.
+    KeepPanelOpen,
 }
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 33] = [
+    pub const ALL: [Self; 34] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
@@ -115,6 +117,7 @@ impl Command {
         Self::GoRecent,
         Self::GoTrash,
         Self::ResetPanel,
+        Self::KeepPanelOpen,
     ];
 
     /// The command with palette id `id`.
@@ -353,8 +356,8 @@ mod tests {
             ("Keyboard shortcuts", "hotkeys keys cheat sheet"),
             ("Troubleshoot…", "diagnose"),
             ("About Snipdeck", "version"),
-            ("Row density: Comfortable", "view mode"),
-            ("Row density: Compact", "view mode"),
+            ("Main list density: Comfortable", "view mode"),
+            ("Main list density: Compact", "view mode"),
             ("Tile view", "view mode"),
             ("Theme: System", "appearance colour dark light"),
             ("Theme: Light", "appearance colour bright"),

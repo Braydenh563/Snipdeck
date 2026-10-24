@@ -177,8 +177,8 @@ restart Snipdeck to try again.
   remembered per monitor.
 - The size limits follow the display scale of the monitor the Panel is on.
 - A docked Panel's edge, the strip's hit area and the taskbar buttons have not been tested on Windows either.
-- The Panel's area is the whole monitor, not the area without the taskbar, so it can sit under the taskbar.
-  Move it up if that happens.
+- The Panel stays inside the area without the taskbar. If Windows does not report that area, Snipdeck keeps the
+  last one it read and places nothing until it has one. Reset the Panel's size and position if it looks wrong.
 - Scaling, resizing and moving between monitors with different scales have not been tested on Windows. If
   text is blurry, cut off or the wrong size, report it with your scale setting for each monitor.
 

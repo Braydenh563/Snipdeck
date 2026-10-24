@@ -960,8 +960,8 @@ ui_tests! {
         let (ui, log) = start();
         assert_eq!(ui.get_view(), MainView::Comfortable);
         for (label, view, logged) in [
-            ("Row density: Compact", MainView::Compact, "view:Compact"),
-            ("Row density: Comfortable", MainView::Comfortable, "view:Comfortable"),
+            ("Main list density: Compact", MainView::Compact, "view:Compact"),
+            ("Main list density: Comfortable", MainView::Comfortable, "view:Comfortable"),
         ] {
             find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
             settle();

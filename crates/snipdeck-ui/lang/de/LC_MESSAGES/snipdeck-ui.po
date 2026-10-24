@@ -922,8 +922,8 @@ msgstr "Wie lange der Zeiger auf dem Streifen ruht, bevor sich das Panel öffnet
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr "Wie lange der Zeiger vom geöffneten Panel entfernt bleibt, bevor es sich einklappt, von 0 bis {} Millisekunden."
 
-msgid "How tall the item rows are in the Main window. Compact shows one line per item."
-msgstr "Wie hoch die Zeilen im Hauptfenster sind. Kompakt zeigt eine Zeile pro Eintrag."
+msgid "How tall the item rows are in the Main window lists. Compact shows one line per item. The Panel keeps its own row height for now."
+msgstr "Wie hoch die Zeilen in den Listen des Hauptfensters sind. Kompakt zeigt eine Zeile pro Eintrag. Das Panel behält vorerst seine eigene Zeilenhöhe."
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Wie breit sich das Panel öffnet, von {} bis {} Pixel."
@@ -990,6 +990,9 @@ msgstr "Seine Listen und {} Elemente kommen in den Papierkorb. Du kannst sie {} 
 
 msgid "Just now"
 msgstr "Gerade eben"
+
+msgid "Keep Panel open"
+msgstr "Panel offen halten"
 
 msgid "Keep Panel visible during screenshots"
 msgstr "Panel bei Screenshots sichtbar lassen"
@@ -1084,6 +1087,15 @@ msgstr "Sperre deine verschlüsselten Textbausteine hinter einem Passwort deiner
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Protokolle werden nur geschrieben, wenn Snipdeck abstürzt, enthalten keine Inhalte von Textbausteinen und werden nirgendwohin gesendet."
 
+msgid "Main list density"
+msgstr "Dichte der Hauptlisten"
+
+msgid "Main list density: Comfortable"
+msgstr "Dichte der Hauptlisten: Komfortabel"
+
+msgid "Main list density: Compact"
+msgstr "Dichte der Hauptlisten: Kompakt"
+
 msgid "Main window"
 msgstr "Hauptfenster"
 
@@ -1134,6 +1146,9 @@ msgstr "Am häufigsten verwendet"
 
 msgid "Move"
 msgstr "Verschieben"
+
+msgid "Move a page at a time"
+msgstr "Seitenweise bewegen"
 
 msgid "Move board down"
 msgstr "Board nach unten verschieben"
@@ -1388,6 +1403,9 @@ msgstr "Seite im Microsoft Store öffnen"
 msgid "Open the Picker at your cursor"
 msgstr "Die Auswahl an deiner Cursorposition öffnen"
 
+msgid "Open the item's menu"
+msgstr "Menü des Eintrags öffnen"
+
 msgid "Open the picker"
 msgstr "Auswahl öffnen"
 
@@ -1430,11 +1448,17 @@ msgstr "Panel"
 msgid "Panel and Picker"
 msgstr "Panel und Auswahl"
 
+msgid "Panel closes when you click away"
+msgstr "Das Panel schließt sich bei einem Klick daneben"
+
 msgid "Panel dock"
 msgstr "Panel andocken"
 
 msgid "Panel menu"
 msgstr "Panel-Menü"
+
+msgid "Panel stays open"
+msgstr "Das Panel bleibt offen"
 
 msgid "Panel width"
 msgstr "Panelbreite"
@@ -1568,6 +1592,9 @@ msgstr "Neues Tastenkürzel drücken"
 msgid "Preview"
 msgstr "Vorschau"
 
+msgid "Previous list"
+msgstr "Vorherige Liste"
+
 msgid "Privacy"
 msgstr "Datenschutz"
 
@@ -1673,6 +1700,9 @@ msgstr "Schlagwörter umbenennen oder löschen. Beim Löschen eines Schlagworts 
 msgid "Rename tag {}"
 msgstr "Schlagwort {} umbenennen"
 
+msgid "Rename the item"
+msgstr "Eintrag umbenennen"
+
 msgid "Repeat the new password"
 msgstr "Neues Passwort wiederholen"
 
@@ -1721,15 +1751,6 @@ msgstr "Rechtsklick oder Menütaste für Listenaktionen"
 
 msgid "Rose"
 msgstr "Rosé"
-
-msgid "Row density"
-msgstr "Zeilendichte"
-
-msgid "Row density: Comfortable"
-msgstr "Zeilendichte: komfortabel"
-
-msgid "Row density: Compact"
-msgstr "Zeilendichte: kompakt"
 
 msgid "SNIP1."
 msgstr "SNIP1."
@@ -1811,6 +1832,9 @@ msgstr "Alle Einträge auswählen"
 
 msgid "Select every item"
 msgstr "Alle Textbausteine auswählen"
+
+msgid "Select several items"
+msgstr "Mehrere Einträge auswählen"
 
 msgid "Sensitive"
 msgstr "Vertraulich"
@@ -2581,6 +2605,9 @@ msgstr "Einfügestapel, Nummer {}"
 
 msgid "pin"
 msgstr "Anheften"
+
+msgid "pin always on top stay hide click away blur"
+msgstr "anheften immer oben bleiben ausblenden klick daneben"
 
 msgid "preferences options configure hotkeys theme backup"
 msgstr "Einstellungen Optionen konfigurieren Tastenkürzel Design Sicherung"

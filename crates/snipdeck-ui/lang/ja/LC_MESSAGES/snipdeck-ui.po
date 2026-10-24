@@ -922,8 +922,8 @@ msgstr "ポインターが帯の上にとどまってからパネルが開くま
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr "ポインターが開いたパネルから外れてからパネルがたたまれるまでの時間（0〜{}ミリ秒）。"
 
-msgid "How tall the item rows are in the Main window. Compact shows one line per item."
-msgstr "メインウィンドウでの項目の行の高さです。コンパクトでは1項目を1行で表示します。"
+msgid "How tall the item rows are in the Main window lists. Compact shows one line per item. The Panel keeps its own row height for now."
+msgstr "メインウィンドウのリストで項目の行の高さを選びます。コンパクトは1項目1行です。パネルは今のところ独自の行の高さのままです。"
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "パネルを開く幅（{}〜{}ピクセル）。"
@@ -987,6 +987,9 @@ msgstr "このボードのリストと{}件の項目がごみ箱に移動しま�
 
 msgid "Just now"
 msgstr "たった今"
+
+msgid "Keep Panel open"
+msgstr "パネルを開いたままにする"
 
 msgid "Keep Panel visible during screenshots"
 msgstr "スクリーンショット中もパネルを表示したままにする"
@@ -1081,6 +1084,15 @@ msgstr "暗号化したスニペットを、選んだパスワードでロック
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "ログはSnipdeckが異常終了したときだけ書き込まれ、スニペットの内容は含まれず、どこにも送信されません。"
 
+msgid "Main list density"
+msgstr "メインリストの密度"
+
+msgid "Main list density: Comfortable"
+msgstr "メインリストの密度: ゆったり"
+
+msgid "Main list density: Compact"
+msgstr "メインリストの密度: コンパクト"
+
 msgid "Main window"
 msgstr "メインウィンドウ"
 
@@ -1131,6 +1143,9 @@ msgstr "よく使う順"
 
 msgid "Move"
 msgstr "移動"
+
+msgid "Move a page at a time"
+msgstr "1ページずつ移動"
 
 msgid "Move board down"
 msgstr "ボードを下へ移動"
@@ -1383,6 +1398,9 @@ msgstr "Microsoft Store のページを開く"
 msgid "Open the Picker at your cursor"
 msgstr "カーソル位置でピッカーを開く"
 
+msgid "Open the item's menu"
+msgstr "項目のメニューを開く"
+
 msgid "Open the picker"
 msgstr "ピッカーを開く"
 
@@ -1425,11 +1443,17 @@ msgstr "パネル"
 msgid "Panel and Picker"
 msgstr "パネルとピッカー"
 
+msgid "Panel closes when you click away"
+msgstr "ほかをクリックするとパネルが閉じます"
+
 msgid "Panel dock"
 msgstr "パネルの固定"
 
 msgid "Panel menu"
 msgstr "パネルメニュー"
+
+msgid "Panel stays open"
+msgstr "パネルは開いたままです"
 
 msgid "Panel width"
 msgstr "パネルの幅"
@@ -1563,6 +1587,9 @@ msgstr "新しいショートカットを押してください"
 msgid "Preview"
 msgstr "プレビュー"
 
+msgid "Previous list"
+msgstr "前のリスト"
+
 msgid "Privacy"
 msgstr "プライバシー"
 
@@ -1668,6 +1695,9 @@ msgstr "タグの名前を変更または削除します。タグを削除して
 msgid "Rename tag {}"
 msgstr "タグ {} の名前を変更"
 
+msgid "Rename the item"
+msgstr "項目の名前を変更"
+
 msgid "Repeat the new password"
 msgstr "新しいパスワードを再入力"
 
@@ -1714,15 +1744,6 @@ msgstr "右クリックまたはメニューキーでリストの操作を表示
 
 msgid "Rose"
 msgstr "ローズ"
-
-msgid "Row density"
-msgstr "行の密度"
-
-msgid "Row density: Comfortable"
-msgstr "行の密度: ゆったり"
-
-msgid "Row density: Compact"
-msgstr "行の密度: コンパクト"
 
 msgid "SNIP1."
 msgstr "SNIP1."
@@ -1804,6 +1825,9 @@ msgstr "すべての項目を選択"
 
 msgid "Select every item"
 msgstr "すべてのスニペットを選択"
+
+msgid "Select several items"
+msgstr "複数の項目を選択"
 
 msgid "Sensitive"
 msgstr "機密"
@@ -2573,6 +2597,9 @@ msgstr "貼り付けスタック、番号 {}"
 
 msgid "pin"
 msgstr "ピン留め"
+
+msgid "pin always on top stay hide click away blur"
+msgstr "ピン 常に手前 残す 隠す 外をクリック"
 
 msgid "preferences options configure hotkeys theme backup"
 msgstr "設定 オプション 構成 ホットキー テーマ バックアップ"

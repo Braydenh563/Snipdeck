@@ -1128,8 +1128,12 @@ fn the_view_menu_and_the_palette_set_the_row_density_the_settings_page_shares() 
 
         r.button("View").invoke_accessible_default_action();
         slint::platform::update_timers_and_animations();
-        element(&r.ui, "Row density: Compact", AccessibleRole::ListItem)
-            .invoke_accessible_default_action();
+        element(
+            &r.ui,
+            "Main list density: Compact",
+            AccessibleRole::ListItem,
+        )
+        .invoke_accessible_default_action();
         slint::platform::update_timers_and_animations();
         assert_eq!(r.ui.get_view(), MainView::Compact);
         assert_eq!(
@@ -1284,8 +1288,8 @@ fn the_palette_search_filters_the_real_commands_by_name_synonym_and_new_words() 
         };
         let all = labels(&r).len();
         for (query, expected) in [
-            ("density", "Row density: Compact"),
-            ("compact", "Row density: Compact"),
+            ("density", "Main list density: Compact"),
+            ("compact", "Main list density: Compact"),
             ("dark", "Theme: Dark"),
             ("paste next", "Paste next item"),
             ("select all", "Select all items"),

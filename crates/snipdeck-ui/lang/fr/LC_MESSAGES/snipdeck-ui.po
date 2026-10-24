@@ -922,8 +922,8 @@ msgstr "Durée pendant laquelle le pointeur reste sur la bande avant l'ouverture
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr "Durée pendant laquelle le pointeur reste hors du panneau ouvert avant qu'il ne se replie, de 0 à {} millisecondes."
 
-msgid "How tall the item rows are in the Main window. Compact shows one line per item."
-msgstr "Hauteur des lignes d’éléments dans la fenêtre principale. En compact, chaque élément tient sur une ligne."
+msgid "How tall the item rows are in the Main window lists. Compact shows one line per item. The Panel keeps its own row height for now."
+msgstr "Hauteur des lignes dans les listes de la fenêtre principale. Compact affiche une ligne par élément. Le Panneau garde pour l'instant sa propre hauteur de ligne."
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Largeur d'ouverture du panneau, de {} à {} pixels."
@@ -990,6 +990,9 @@ msgstr "Ses listes et {} éléments vont à la corbeille. Vous pouvez les restau
 
 msgid "Just now"
 msgstr "À l'instant"
+
+msgid "Keep Panel open"
+msgstr "Garder le Panneau ouvert"
 
 msgid "Keep Panel visible during screenshots"
 msgstr "Garder le panneau visible pendant les captures"
@@ -1084,6 +1087,15 @@ msgstr "Verrouillez vos extraits chiffrés derrière un mot de passe de votre ch
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Les journaux ne sont écrits que si Snipdeck plante, ne contiennent aucun extrait et ne sont envoyés nulle part."
 
+msgid "Main list density"
+msgstr "Densité des listes principales"
+
+msgid "Main list density: Comfortable"
+msgstr "Densité des listes principales : confortable"
+
+msgid "Main list density: Compact"
+msgstr "Densité des listes principales : compacte"
+
 msgid "Main window"
 msgstr "Fenêtre principale"
 
@@ -1134,6 +1146,9 @@ msgstr "Les plus utilisés"
 
 msgid "Move"
 msgstr "Déplacer"
+
+msgid "Move a page at a time"
+msgstr "Se déplacer d'une page à la fois"
 
 msgid "Move board down"
 msgstr "Descendre le tableau"
@@ -1388,6 +1403,9 @@ msgstr "Ouvrir la page du Microsoft Store"
 msgid "Open the Picker at your cursor"
 msgstr "Ouvrir le sélecteur au niveau du curseur"
 
+msgid "Open the item's menu"
+msgstr "Ouvrir le menu de l'élément"
+
 msgid "Open the picker"
 msgstr "Ouvrir le sélecteur"
 
@@ -1430,11 +1448,17 @@ msgstr "Panneau"
 msgid "Panel and Picker"
 msgstr "Panneau et sélecteur"
 
+msgid "Panel closes when you click away"
+msgstr "Le Panneau se ferme quand vous cliquez ailleurs"
+
 msgid "Panel dock"
 msgstr "Ancrage du panneau"
 
 msgid "Panel menu"
 msgstr "Menu du panneau"
+
+msgid "Panel stays open"
+msgstr "Le Panneau reste ouvert"
 
 msgid "Panel width"
 msgstr "Largeur du panneau"
@@ -1568,6 +1592,9 @@ msgstr "Appuyez sur le nouveau raccourci"
 msgid "Preview"
 msgstr "Aperçu"
 
+msgid "Previous list"
+msgstr "Liste précédente"
+
 msgid "Privacy"
 msgstr "Confidentialité"
 
@@ -1673,6 +1700,9 @@ msgstr "Renommez ou supprimez des étiquettes. Supprimer une étiquette la retir
 msgid "Rename tag {}"
 msgstr "Renommer l'étiquette {}"
 
+msgid "Rename the item"
+msgstr "Renommer l'élément"
+
 msgid "Repeat the new password"
 msgstr "Répétez le nouveau mot de passe"
 
@@ -1721,15 +1751,6 @@ msgstr "Clic droit ou touche Menu pour les actions de la liste"
 
 msgid "Rose"
 msgstr "Rose"
-
-msgid "Row density"
-msgstr "Densité des lignes"
-
-msgid "Row density: Comfortable"
-msgstr "Densité des lignes : confortable"
-
-msgid "Row density: Compact"
-msgstr "Densité des lignes : compacte"
 
 msgid "SNIP1."
 msgstr "SNIP1."
@@ -1811,6 +1832,9 @@ msgstr "Sélectionner tous les éléments"
 
 msgid "Select every item"
 msgstr "Sélectionner tous les extraits"
+
+msgid "Select several items"
+msgstr "Sélectionner plusieurs éléments"
 
 msgid "Sensitive"
 msgstr "Confidentiel"
@@ -2581,6 +2605,9 @@ msgstr "coller pile, numéro {}"
 
 msgid "pin"
 msgstr "épinglage"
+
+msgid "pin always on top stay hide click away blur"
+msgstr "épingler toujours au premier plan rester masquer clic ailleurs"
 
 msgid "preferences options configure hotkeys theme backup"
 msgstr "préférences options configurer raccourcis thème sauvegarde"

@@ -112,6 +112,16 @@ where
         self.update_settings(|s| s.panel_pinned = on_top);
     }
 
+    /// The user switched the pin (the button, Ctrl+Shift+P, the palette): [`set_on_top`](Self::set_on_top)
+    /// and a toast saying what the Panel does now. Nothing happens when it is already so.
+    pub fn choose_on_top(&mut self, on_top: bool) {
+        if self.on_top == on_top {
+            return;
+        }
+        self.set_on_top(on_top);
+        self.show_toast(neutral(ToastMessage::PanelOnTop(on_top)));
+    }
+
     /// Sets the words a new list's and a new board's editor name starts from ("New list" gives
     /// "New list 1"), translated by the window layer: the controller has no `@tr`.
     pub fn set_new_name_bases(&mut self, list: &str, board: &str) {

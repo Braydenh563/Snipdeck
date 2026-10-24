@@ -604,7 +604,7 @@ where
         wire!(on_board_delete_confirmed, |ctl| ctl.confirm_board_delete());
         wire!(on_board_delete_dismissed, |ctl| ctl.cancel_board_delete());
         wire!(on_board_menu_dismissed, |ctl| ctl.close_board_menu());
-        wire!(on_pin_toggled, |ctl, on| ctl.set_on_top(on));
+        wire!(on_pin_toggled, |ctl, on| ctl.choose_on_top(on));
         wire!(on_add_list_requested, |ctl| ctl.add_list());
         wire!(on_add_from_clipboard, |ctl| ctl.quick_capture());
         wire!(on_row_picked, |ctl, i, shift, ctrl| ctl.panel_mark(

@@ -282,6 +282,9 @@ pub enum ToastMessage {
     ScreenshotFailed,
     /// "Theme: Dark": the theme was switched from a menu, the palette or Settings.
     ThemeSet(Theme),
+    /// "Panel stays open" (`true`: on top) or "Panel closes when you click away": the Panel's pin
+    /// was switched from its button, Ctrl+Shift+P or the palette.
+    PanelOnTop(bool),
 }
 
 /// A toast: a style and a message.

@@ -922,8 +922,8 @@ msgstr "Quanto tempo o ponteiro fica sobre a faixa antes de o painel abrir, de 0
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr "Quanto tempo o ponteiro fica fora do painel aberto antes de ele recolher, de 0 a {} milissegundos."
 
-msgid "How tall the item rows are in the Main window. Compact shows one line per item."
-msgstr "Altura das linhas de itens na janela principal. No modo compacto, cada item ocupa uma linha."
+msgid "How tall the item rows are in the Main window lists. Compact shows one line per item. The Panel keeps its own row height for now."
+msgstr "Altura das linhas de itens nas listas da janela principal. Compacto mostra uma linha por item. O Painel mantém por enquanto a própria altura de linha."
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Largura em que o painel abre, de {} a {} pixels."
@@ -990,6 +990,9 @@ msgstr "Suas listas e {} itens vão para a lixeira. Você pode restaurá-los por
 
 msgid "Just now"
 msgstr "Agora mesmo"
+
+msgid "Keep Panel open"
+msgstr "Manter o Painel aberto"
 
 msgid "Keep Panel visible during screenshots"
 msgstr "Manter o painel visível durante as capturas"
@@ -1084,6 +1087,15 @@ msgstr "Bloqueie seus itens criptografados com uma senha que você escolher."
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Os registros só são gravados quando o Snipdeck fecha de forma inesperada, não têm o conteúdo dos trechos e nunca são enviados a lugar nenhum."
 
+msgid "Main list density"
+msgstr "Densidade das listas principais"
+
+msgid "Main list density: Comfortable"
+msgstr "Densidade das listas principais: confortável"
+
+msgid "Main list density: Compact"
+msgstr "Densidade das listas principais: compacta"
+
 msgid "Main window"
 msgstr "Janela principal"
 
@@ -1134,6 +1146,9 @@ msgstr "Mais usados"
 
 msgid "Move"
 msgstr "Mover"
+
+msgid "Move a page at a time"
+msgstr "Mover uma página por vez"
 
 msgid "Move board down"
 msgstr "Mover quadro para baixo"
@@ -1388,6 +1403,9 @@ msgstr "Abrir a página da Microsoft Store"
 msgid "Open the Picker at your cursor"
 msgstr "Abrir o seletor no cursor"
 
+msgid "Open the item's menu"
+msgstr "Abrir o menu do item"
+
 msgid "Open the picker"
 msgstr "Abrir o seletor"
 
@@ -1430,11 +1448,17 @@ msgstr "Painel"
 msgid "Panel and Picker"
 msgstr "Painel e seletor"
 
+msgid "Panel closes when you click away"
+msgstr "O Painel fecha ao clicar fora"
+
 msgid "Panel dock"
 msgstr "Acoplamento do painel"
 
 msgid "Panel menu"
 msgstr "Menu do painel"
+
+msgid "Panel stays open"
+msgstr "O Painel permanece aberto"
 
 msgid "Panel width"
 msgstr "Largura do painel"
@@ -1568,6 +1592,9 @@ msgstr "Pressione o novo atalho"
 msgid "Preview"
 msgstr "Pré-visualização"
 
+msgid "Previous list"
+msgstr "Lista anterior"
+
 msgid "Privacy"
 msgstr "Privacidade"
 
@@ -1673,6 +1700,9 @@ msgstr "Renomeie ou exclua etiquetas. Excluir uma etiqueta a remove dos seus tre
 msgid "Rename tag {}"
 msgstr "Renomear a etiqueta {}"
 
+msgid "Rename the item"
+msgstr "Renomear o item"
+
 msgid "Repeat the new password"
 msgstr "Repita a nova senha"
 
@@ -1721,15 +1751,6 @@ msgstr "Clique com o botão direito ou pressione Menu para ver as ações da lis
 
 msgid "Rose"
 msgstr "Rosa"
-
-msgid "Row density"
-msgstr "Densidade das linhas"
-
-msgid "Row density: Comfortable"
-msgstr "Densidade das linhas: confortável"
-
-msgid "Row density: Compact"
-msgstr "Densidade das linhas: compacta"
 
 msgid "SNIP1."
 msgstr "SNIP1."
@@ -1811,6 +1832,9 @@ msgstr "Selecionar todos os itens"
 
 msgid "Select every item"
 msgstr "Selecionar todos os itens"
+
+msgid "Select several items"
+msgstr "Selecionar vários itens"
 
 msgid "Sensitive"
 msgstr "Sensível"
@@ -2581,6 +2605,9 @@ msgstr "pilha de colagem, número {}"
 
 msgid "pin"
 msgstr "fixar"
+
+msgid "pin always on top stay hide click away blur"
+msgstr "fixar sempre no topo permanecer ocultar clicar fora"
 
 msgid "preferences options configure hotkeys theme backup"
 msgstr "preferências opções configurar atalhos tema backup"

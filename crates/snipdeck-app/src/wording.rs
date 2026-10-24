@@ -249,6 +249,7 @@ where
             Theme::Light => 1,
             Theme::Dark => 2,
         }),
+        ToastMessage::PanelOnTop(on) => t.invoke_panel_on_top(*on),
     };
     text.into()
 }

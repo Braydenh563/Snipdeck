@@ -48,6 +48,10 @@ date at the real release. The owner capped this session at 96% weekly usage; the
   C Dock work area, D those review fixes (commits on this branch, not pushed; remaining file
   .claude/remaining/night-items.md). Next session: check that file, gate --changed, push, tick work-order items.
 
+- To wire in the Panel build (after the redesign is approved): the row density setting. It is labelled "Main list
+  density" now (Settings, View menu, palette) because the Panel does not read it: `panel.slint` `compact-rows` is
+  never used. When the Panel reads it, rename the label back to "Row density".
+
 ## Read first in the next session
 1. `docs/reviews/owner-test-2026-10-21.md`: the owner's test notes, verbatim.
 2. `.claude/now.md` Inbox, entries dated 2026-10-21: the triage (T1-T13 for v1), every request and the

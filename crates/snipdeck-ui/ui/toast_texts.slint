@@ -352,6 +352,11 @@ export global ToastTexts {
         return theme == 1 ? @tr("Theme: Light") : (theme == 2 ? @tr("Theme: Dark") : @tr("Theme: System"));
     }
 
+    // The Panel's pin was switched (Ctrl+Shift+P, the pin button, the palette).
+    pure public function panel-on-top(on: bool) -> string {
+        return on ? @tr("Panel stays open") : @tr("Panel closes when you click away");
+    }
+
     // Why a licence key was refused: the toast, and the line under the key field.
     pure public function licence-empty() -> string {
         return @tr("Paste your licence key first.");

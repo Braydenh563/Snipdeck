@@ -280,3 +280,43 @@ fn a_failed_write_toasts_once_and_succeeds_when_the_disk_does() {
     );
     assert!(w.ctl.flush_settings().is_err());
 }
+
+#[test]
+fn switching_the_pin_says_what_the_panel_does_now() {
+    let mut w = world();
+    assert!(w.ctl.view().on_top, "pinned by default");
+    w.ctl.choose_on_top(false);
+    assert!(!w.ctl.view().on_top);
+    assert!(!w.ctl.settings().panel_pinned);
+    assert_eq!(
+        w.ctl.view().toast.map(|t| t.message),
+        Some(ToastMessage::PanelOnTop(false))
+    );
+    w.ctl.choose_on_top(true);
+    assert_eq!(
+        w.ctl.view().toast.map(|t| t.message),
+        Some(ToastMessage::PanelOnTop(true))
+    );
+    // The same state again says nothing new.
+    w.ctl.show_toast(neutral(ToastMessage::Copied));
+    w.ctl.choose_on_top(true);
+    assert_eq!(
+        w.ctl.view().toast.map(|t| t.message),
+        Some(ToastMessage::Copied)
+    );
+}
+
+#[test]
+fn the_palette_command_keep_panel_open_switches_the_pin_both_ways() {
+    let mut w = world();
+    w.ctl
+        .run_command(crate::commands::Command::KeepPanelOpen, 0);
+    assert!(!w.ctl.view().on_top);
+    assert_eq!(
+        w.ctl.view().toast.map(|t| t.message),
+        Some(ToastMessage::PanelOnTop(false))
+    );
+    w.ctl
+        .run_command(crate::commands::Command::KeepPanelOpen, 0);
+    assert!(w.ctl.view().on_top);
+}

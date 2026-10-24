@@ -190,8 +190,12 @@ fn typing_in_the_search_box_filters_by_action_name_or_chord() {
     on_ui_thread(|| {
         let r = rig(Settings::default());
         r.ui.invoke_shortcut_query_changed("trash".into());
-        assert_eq!(r.titles(), ["Move the item to the Trash"]);
-        assert_eq!(r.shown().len(), 1, "groups without a match are gone");
+        // The Main window and, since the Panel's Delete key is listed, the Panel.
+        assert_eq!(
+            r.titles(),
+            ["Move the item to the Trash", "Move the item to the Trash"]
+        );
+        assert_eq!(r.shown().len(), 2, "groups without a match are gone");
 
         r.ui.invoke_shortcut_query_changed("ctrl+shift+p".into());
         let found = r.titles();

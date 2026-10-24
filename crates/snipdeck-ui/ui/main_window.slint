@@ -2209,8 +2209,8 @@ export component MainWindow inherits Window {
             { text: @tr("Theme: Light"), icon: root.theme-index == 1 ? Icons.check : root.no-icon },
             { text: @tr("Theme: Dark"), icon: root.theme-index == 2 ? Icons.check : root.no-icon },
             { separator: true },
-            { text: @tr("Row density: Comfortable"), icon: root.view == MainView.comfortable ? Icons.check : root.no-icon },
-            { text: @tr("Row density: Compact"), icon: root.view == MainView.compact ? Icons.check : root.no-icon },
+            { text: @tr("Main list density: Comfortable"), icon: root.view == MainView.comfortable ? Icons.check : root.no-icon },
+            { text: @tr("Main list density: Compact"), icon: root.view == MainView.compact ? Icons.check : root.no-icon },
         ];
         label: @tr("View");
         init => {
