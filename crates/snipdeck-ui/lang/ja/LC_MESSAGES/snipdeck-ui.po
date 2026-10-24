@@ -2147,6 +2147,15 @@ msgstr "2つのパスワードが一致しません。"
 msgid "Theme"
 msgstr "テーマ"
 
+msgid "Theme: Dark"
+msgstr "テーマ: ダーク"
+
+msgid "Theme: Light"
+msgstr "テーマ: ライト"
+
+msgid "Theme: System"
+msgstr "テーマ: システム"
+
 msgid "There is no file at that path."
 msgstr "そのパスにファイルがありません。"
 
@@ -2318,6 +2327,9 @@ msgstr "ユーザーガイド"
 msgid "Version"
 msgstr "バージョン"
 
+msgid "View"
+msgstr "表示"
+
 msgid "Violet"
 msgstr "バイオレット"
 
@@ -2417,6 +2429,15 @@ msgstr "追加 作成 スニペット メモ 書く"
 msgid "and {} more"
 msgid_plural "and {} more"
 msgstr[0] "ほか {} 件"
+
+msgid "appearance colour bright day"
+msgstr "外観 色 明るい 昼"
+
+msgid "appearance colour dark light follow windows"
+msgstr "外観 色 ダーク ライト Windows に従う"
+
+msgid "appearance colour night"
+msgstr "外観 色 夜"
 
 msgid "change modify rename"
 msgstr "変更 編集 名前変更"

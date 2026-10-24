@@ -17,7 +17,7 @@ use snipdeck_core::{Feature, ItemKind, ItemLabel, ListIcon};
 
 use crate::{
     item_editor::{AttachmentView, EditorProblem, SaveFailure},
-    settings::DockEdge,
+    settings::{DockEdge, Theme},
     toast::{LicenceProblem, ToastMessage},
 };
 
@@ -244,6 +244,11 @@ where
         ToastMessage::DraftNotSaved => t.invoke_draft_not_saved(),
         ToastMessage::ChangeFailed(cause) => t.invoke_change_failed(cause.code()),
         ToastMessage::ScreenshotFailed => t.invoke_screenshot_failed(),
+        ToastMessage::ThemeSet(theme) => t.invoke_theme_set(match theme {
+            Theme::System => 0,
+            Theme::Light => 1,
+            Theme::Dark => 2,
+        }),
     };
     text.into()
 }

@@ -1520,14 +1520,13 @@ where
             .hotkey_recorded(crate::binding::index(i), &combo));
         wire!(on_hotkey_cleared, |core, i| core
             .hotkey_cleared(crate::binding::index(i)));
-        wire!(on_theme_chosen, |core, i| core.act(|ctl| ctl
-            .update_settings(|s| {
-                s.theme = match i {
-                    1 => Theme::Light,
-                    2 => Theme::Dark,
-                    _ => Theme::System,
-                };
-            })));
+        wire!(on_theme_chosen, |core, i| core.act(|ctl| ctl.choose_theme(
+            match i {
+                1 => Theme::Light,
+                2 => Theme::Dark,
+                _ => Theme::System,
+            }
+        )));
         wire!(on_text_size_chosen, |core, i| core.text_size_chosen(i));
         wire!(on_accent_chosen, |core, i| core.act(|ctl| ctl
             .update_settings(|s| {

@@ -1092,6 +1092,34 @@ impl SettingsHost for NoHost {
 }
 
 #[test]
+fn the_view_menu_and_the_palette_switch_the_theme_and_a_toast_says_so() {
+    use snipdeck_app::settings::Theme;
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(r.ui.get_theme_index(), 0, "the default follows Windows");
+
+        r.button("View").invoke_accessible_default_action();
+        slint::platform::update_timers_and_animations();
+        element(&r.ui, "Theme: Dark", AccessibleRole::ListItem).invoke_accessible_default_action();
+        slint::platform::update_timers_and_animations();
+        assert_eq!(r.ctl.borrow().settings().theme, Theme::Dark);
+        assert_eq!(r.ui.get_theme_index(), 2);
+        assert!(r.ui.get_dark(), "the window follows the setting at once");
+        assert_eq!(r.ui.get_toast_text(), "Theme: Dark");
+
+        r.ui.invoke_command_requested(Command::ThemeLight.id());
+        assert_eq!(r.ctl.borrow().settings().theme, Theme::Light);
+        assert_eq!(r.ui.get_theme_index(), 1);
+        assert!(!r.ui.get_dark());
+        assert_eq!(r.ui.get_toast_text(), "Theme: Light");
+
+        r.ui.invoke_command_requested(Command::ThemeSystem.id());
+        assert_eq!(r.ctl.borrow().settings().theme, Theme::System);
+        assert_eq!(r.ui.get_toast_text(), "Theme: System");
+    });
+}
+
+#[test]
 fn the_command_texts_have_one_entry_per_command() {
     on_ui_thread(|| {
         let r = rig();

@@ -1,6 +1,7 @@
 //! The OS theme and the settings writes.
 
 use super::*;
+use crate::toast::ToastMessage;
 
 // ---- The OS theme ------------------------------------------------------------------------
 
@@ -131,6 +132,30 @@ fn a_setting_is_written_after_the_quiet_time_by_the_injected_clock() {
     w.ctl.save_settings_if_due();
     assert_eq!(crate::paths::load_settings(temp.path()).theme, Theme::Dark);
     assert_eq!(w.ctl.settings_wait(), None);
+}
+
+#[test]
+fn choosing_a_theme_applies_it_toasts_it_and_writes_it_after_the_quiet_time() {
+    let temp = tempfile::tempdir().expect("dir");
+    let mut w = saving_world(temp.path());
+    for theme in [Theme::Dark, Theme::Light, Theme::System] {
+        w.ctl.choose_theme(theme);
+        assert_eq!(w.ctl.settings().theme, theme);
+        assert_eq!(
+            w.ctl.view().toast.map(|t| t.message),
+            Some(ToastMessage::ThemeSet(theme)),
+            "a toast says which theme is on"
+        );
+    }
+    w.ctl.choose_theme(Theme::Dark);
+    assert!(w.ctl.view().dark, "applied at once");
+    w.clock.set(at("2026-10-17T10:30:00.5Z"));
+    w.ctl.save_settings_if_due();
+    assert_eq!(
+        crate::paths::load_settings(temp.path()).theme,
+        Theme::Dark,
+        "the same setting as Settings > Appearance, saved"
+    );
 }
 
 #[test]

@@ -63,6 +63,13 @@ where
         self.update_settings(|s| s.theme = theme);
     }
 
+    /// The user picked a theme (the Main window's View menu, the command palette, Settings): the
+    /// setting changes, is saved after the quiet time, and a toast says which theme is on.
+    pub fn choose_theme(&mut self, theme: Theme) {
+        self.set_theme(theme);
+        self.show_toast(neutral(ToastMessage::ThemeSet(theme)));
+    }
+
     /// How long until a changed setting is due to be written, if one waits. The host arms a
     /// timer for this and then calls [`save_settings_if_due`](Self::save_settings_if_due).
     #[must_use]

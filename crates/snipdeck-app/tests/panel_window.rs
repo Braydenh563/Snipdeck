@@ -492,9 +492,15 @@ fn ctrl_shift_p_flips_keep_on_top_in_the_controller_and_the_saved_setting() {
         let r = rig();
         assert!(r.ctl.borrow().view().on_top);
         chord(r.window(), &[Key::Control, Key::Shift], "P");
-        assert!(!r.ctl.borrow().view().on_top, "the key reached the controller");
+        assert!(
+            !r.ctl.borrow().view().on_top,
+            "the key reached the controller"
+        );
         assert!(!r.ui.get_on_top());
-        assert!(!r.ctl.borrow().settings().panel_pinned, "and it is remembered");
+        assert!(
+            !r.ctl.borrow().settings().panel_pinned,
+            "and it is remembered"
+        );
         chord(r.window(), &[Key::Control, Key::Shift], "P");
         assert!(r.ctl.borrow().view().on_top);
         assert!(r.ctl.borrow().settings().panel_pinned);

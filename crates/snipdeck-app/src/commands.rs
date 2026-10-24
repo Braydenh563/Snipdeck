@@ -43,6 +43,12 @@ pub enum Command {
     ViewCompact,
     /// Tiles.
     ViewTile,
+    /// Follow the Windows light or dark setting.
+    ThemeSystem,
+    /// Always light.
+    ThemeLight,
+    /// Always dark.
+    ThemeDark,
     /// Use the item under the cursor.
     UseItem,
     /// Copy the item under the cursor.
@@ -71,7 +77,7 @@ pub enum Command {
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 28] = [
+    pub const ALL: [Self; 31] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
@@ -88,6 +94,9 @@ impl Command {
         Self::ViewComfortable,
         Self::ViewCompact,
         Self::ViewTile,
+        Self::ThemeSystem,
+        Self::ThemeLight,
+        Self::ThemeDark,
         Self::UseItem,
         Self::CopyItem,
         Self::DuplicateItem,
@@ -338,6 +347,9 @@ mod tests {
             ("Comfortable view", "view mode"),
             ("Compact view", "view mode"),
             ("Tile view", "view mode"),
+            ("Theme: System", "appearance colour dark light"),
+            ("Theme: Light", "appearance colour bright"),
+            ("Theme: Dark", "appearance colour night"),
             ("Use selected item", "paste"),
             ("Copy selected item", "clipboard"),
             ("Duplicate selected item", "copy clone"),
@@ -501,6 +513,25 @@ mod tests {
             Command::NewList.shortcut(&hotkeys).as_deref(),
             Some("Ctrl+Shift+N")
         );
+    }
+
+    #[test]
+    fn the_theme_commands_are_found_by_theme_dark_and_light_and_have_no_shortcut() {
+        let hotkeys = Hotkeys::default();
+        let c = ctx(&hotkeys);
+        assert_eq!(
+            labels(&entries(&texts(), &c, "theme")),
+            ["Theme: System", "Theme: Light", "Theme: Dark"]
+        );
+        let dark = entries(&texts(), &c, "dark");
+        assert_eq!(dark.first().map(|e| e.command), Some(Command::ThemeDark));
+        assert!(dark[0].keys.is_empty());
+        assert!(!Command::ThemeLight.needs_item());
+        // Offered with no item under the cursor and in the Trash.
+        let mut c = ctx(&hotkeys);
+        c.has_item = false;
+        c.in_trash = true;
+        assert!(labels(&entries(&texts(), &c, "theme")).contains(&"Theme: Dark"));
     }
 
     #[test]

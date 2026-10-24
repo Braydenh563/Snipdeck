@@ -2147,6 +2147,15 @@ msgstr "两次输入的密码不一致。"
 msgid "Theme"
 msgstr "主题"
 
+msgid "Theme: Dark"
+msgstr "主题:深色"
+
+msgid "Theme: Light"
+msgstr "主题:浅色"
+
+msgid "Theme: System"
+msgstr "主题:跟随系统"
+
 msgid "There is no file at that path."
 msgstr "该路径下没有文件。"
 
@@ -2318,6 +2327,9 @@ msgstr "用户指南"
 msgid "Version"
 msgstr "版本"
 
+msgid "View"
+msgstr "视图"
+
 msgid "Violet"
 msgstr "紫罗兰色"
 
@@ -2417,6 +2429,15 @@ msgstr "添加 新建 片段 笔记 写入"
 msgid "and {} more"
 msgid_plural "and {} more"
 msgstr[0] "以及另外 {} 项"
+
+msgid "appearance colour bright day"
+msgstr "外观 颜色 明亮 白天"
+
+msgid "appearance colour dark light follow windows"
+msgstr "外观 颜色 深色 浅色 跟随 windows"
+
+msgid "appearance colour night"
+msgstr "外观 颜色 夜间"
 
 msgid "change modify rename"
 msgstr "更改 修改 重命名"

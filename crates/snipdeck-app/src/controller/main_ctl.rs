@@ -22,7 +22,7 @@ use crate::{
         ViewMode,
     },
     panel::UseLabel,
-    settings::HotkeyAction,
+    settings::{HotkeyAction, Theme},
     usecase,
 };
 
@@ -156,6 +156,8 @@ pub struct MainScreen {
     pub section_index: usize,
     /// The row style.
     pub view_mode: ViewMode,
+    /// The theme setting (the View menu marks the one in force).
+    pub theme: Theme,
     /// The chips of the colour-label filter row.
     pub label_chips: Vec<LabelChip>,
     /// The colour label the rows are filtered by.
@@ -268,6 +270,7 @@ where
             section: self.main.section(),
             section_index: self.main.section_index(),
             view_mode: self.main.view_mode(),
+            theme: self.settings.theme,
             label_chips: self.main.label_chips(),
             label_filter: self.main.label_filter(),
             query: self.main.query().to_owned(),

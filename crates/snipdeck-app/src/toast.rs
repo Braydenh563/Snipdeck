@@ -4,7 +4,7 @@
 use snipdeck_core::{Feature, UseOutcome};
 use snipdeck_platform::route::{CopyReason, Route};
 
-use crate::{failure::Cause, panel::friendly_app_name, usecase::UseError};
+use crate::{failure::Cause, panel::friendly_app_name, settings::Theme, usecase::UseError};
 
 /// How the toast is styled (DESIGN.md §4 Toast).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -280,6 +280,8 @@ pub enum ToastMessage {
     ChangeFailed(Cause),
     /// "Couldn't start the screenshot tool." (Take screenshot)
     ScreenshotFailed,
+    /// "Theme: Dark": the theme was switched from a menu, the palette or Settings.
+    ThemeSet(Theme),
 }
 
 /// A toast: a style and a message.

@@ -2154,6 +2154,15 @@ msgstr "Las dos contraseñas no son iguales."
 msgid "Theme"
 msgstr "Tema"
 
+msgid "Theme: Dark"
+msgstr "Tema: oscuro"
+
+msgid "Theme: Light"
+msgstr "Tema: claro"
+
+msgid "Theme: System"
+msgstr "Tema: sistema"
+
 msgid "There is no file at that path."
 msgstr "No hay ningún archivo en esa ruta."
 
@@ -2325,6 +2334,9 @@ msgstr "Guía del usuario"
 msgid "Version"
 msgstr "Versión"
 
+msgid "View"
+msgstr "Vista"
+
 msgid "Violet"
 msgstr "Violeta"
 
@@ -2425,6 +2437,15 @@ msgid "and {} more"
 msgid_plural "and {} more"
 msgstr[0] "y {} más"
 msgstr[1] "y {} más"
+
+msgid "appearance colour bright day"
+msgstr "apariencia color brillante día"
+
+msgid "appearance colour dark light follow windows"
+msgstr "apariencia color oscuro claro seguir windows"
+
+msgid "appearance colour night"
+msgstr "apariencia color noche"
 
 msgid "change modify rename"
 msgstr "cambiar modificar renombrar"

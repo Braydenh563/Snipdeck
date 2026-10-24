@@ -42,6 +42,7 @@ use crate::{
     },
     palette::list_color,
     popup_window::set_look_globals,
+    settings::Theme,
     wording,
 };
 
@@ -594,6 +595,7 @@ where
         wire!(on_label_filter_requested, |ctl, i| ctl
             .main_set_label_filter(crate::binding::label_of(i)));
         wire!(on_view_changed, |ctl, v| ctl.main_set_view(view_of(v)));
+        wire!(on_theme_chosen, |ctl, i| ctl.choose_theme(theme_of(i)));
         wire!(on_select_requested, |ctl, i, mode| ctl
             .main_select(index(i), select_mode(mode)));
         wire!(on_select_all_requested, |ctl| ctl.main_select_all());
@@ -1150,6 +1152,10 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
     if window.get_view() != view {
         window.set_view(view);
     }
+    let theme = theme_index(screen.theme);
+    if window.get_theme_index() != theme {
+        window.set_theme_index(theme);
+    }
     if window.get_query().as_str() != screen.query {
         window.set_query(screen.query.as_str().into());
     }
@@ -1388,6 +1394,24 @@ fn section_of(screen: &MainScreen, kind: ui::MainSection, i: usize) -> Option<Se
         ui::MainSection::Trash => Some(Section::Trash),
         ui::MainSection::List => screen.lists.get(i).map(|l| Section::List(l.id)),
         ui::MainSection::Tag => screen.tags.get(i).map(|t| Section::Tag(t.id)),
+    }
+}
+
+/// The View menu's index of `theme` (the order of its rows).
+fn theme_index(theme: Theme) -> i32 {
+    match theme {
+        Theme::System => 0,
+        Theme::Light => 1,
+        Theme::Dark => 2,
+    }
+}
+
+/// The theme the View menu's row `index` names.
+fn theme_of(index: i32) -> Theme {
+    match index {
+        1 => Theme::Light,
+        2 => Theme::Dark,
+        _ => Theme::System,
     }
 }
 

@@ -11,6 +11,7 @@ use crate::{
     host::ClipboardText,
     item_editor::Origin,
     main_window::{Section, ViewMode},
+    settings::Theme,
 };
 
 impl<S, C, K, T> Controller<S, C, K, T>
@@ -46,6 +47,9 @@ where
             Command::ViewComfortable => self.main_set_view(ViewMode::Comfortable),
             Command::ViewCompact => self.main_set_view(ViewMode::Compact),
             Command::ViewTile => self.main_set_view(ViewMode::Tile),
+            Command::ThemeSystem => self.choose_theme(Theme::System),
+            Command::ThemeLight => self.choose_theme(Theme::Light),
+            Command::ThemeDark => self.choose_theme(Theme::Dark),
             Command::UseItem => {
                 self.main_action(MainAction::Use, cursor);
             }

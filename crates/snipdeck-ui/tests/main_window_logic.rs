@@ -130,6 +130,7 @@ fn start() -> (MainWindow, Log) {
     hook!(on_query_changed, |q| format!("query:{q}"));
     hook!(on_section_selected, |s, i| format!("section:{s:?}:{i}"));
     hook!(on_view_changed, |v| format!("view:{v:?}"));
+    hook!(on_theme_chosen, |i| format!("theme:{i}"));
     hook!(on_new_item_requested, || "new".to_string());
     hook!(on_select_requested, |i, m| format!("select:{i}:{m:?}"));
     hook!(on_select_all_requested, || "select-all".to_string());
@@ -714,7 +715,8 @@ ui_tests! {
 
     fn the_sidebar_is_one_tab_stop_with_arrows_home_end_and_enter() {
         let (ui, log) = start();
-        for _ in 0..12 {
+        // Back through the toolbar's controls (one stop each) to the sidebar.
+        for _ in 0..16 {
             if ui.get_sidebar_focused() {
                 break;
             }
@@ -928,6 +930,30 @@ ui_tests! {
         }
         press_key(&ui, Key::F1);
         assert_eq!(take(&log), ["help:Guide"]);
+    }
+
+    fn the_view_button_opens_a_theme_menu_whose_rows_report_their_index_and_esc_closes_it() {
+        let (ui, log) = start();
+        for (label, index) in [("Theme: System", 0), ("Theme: Light", 1), ("Theme: Dark", 2)] {
+            find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
+            settle();
+            assert!(ui.get_menu_open(), "the View menu is open");
+            find(&ui, label, AccessibleRole::ListItem).invoke_accessible_default_action();
+            settle();
+            assert!(!ui.get_menu_open(), "choosing a theme closes the menu");
+            assert_eq!(take(&log), [format!("theme:{index}")]);
+        }
+        find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        press_key(&ui, Key::Escape);
+        assert!(!ui.get_menu_open(), "Esc closes the menu");
+        assert!(take(&log).is_empty(), "and chooses nothing");
+        // The row of the theme in force has the keyboard, so Enter keeps it.
+        ui.set_theme_index(2);
+        find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        press_key(&ui, Key::Return);
+        assert_eq!(take(&log), ["theme:2"]);
     }
 
     fn ctrl_n_and_the_buttons_report_what_was_asked() {

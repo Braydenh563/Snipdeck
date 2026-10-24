@@ -12,6 +12,7 @@
 use snipdeck_app::{
     failure::Cause,
     history::Action,
+    settings::Theme,
     toast::{LicenceProblem, ToastMessage},
     wording::{licence_problem_text, toast_text},
 };
@@ -103,10 +104,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::RebuildNeedsRestart => 74,
         ToastMessage::ImageNotPasteable => 75,
         ToastMessage::HotkeysFailed { .. } => 76,
+        ToastMessage::ThemeSet(_) => 77,
     }
 }
 
-const VARIANTS: usize = 77;
+const VARIANTS: usize = 78;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -238,6 +240,9 @@ fn samples() -> Vec<ToastMessage> {
         M::Imported { items: 1 },
         M::TaskbarEdge,
         M::ScreenshotFailed,
+        M::ThemeSet(Theme::System),
+        M::ThemeSet(Theme::Light),
+        M::ThemeSet(Theme::Dark),
     ]
 }
 
@@ -336,6 +341,9 @@ fn what_a_toast_carries_reaches_its_sentence() {
             "Nothing to restore: your library already has everything in that backup."
         );
         assert_eq!(said(ToastMessage::Imported { items: 1 }), "Imported 1 item");
+        assert_eq!(said(ToastMessage::ThemeSet(Theme::System)), "Theme: System");
+        assert_eq!(said(ToastMessage::ThemeSet(Theme::Light)), "Theme: Light");
+        assert_eq!(said(ToastMessage::ThemeSet(Theme::Dark)), "Theme: Dark");
         assert_eq!(
             said(ToastMessage::Imported { items: 0 }),
             "Nothing new to import."

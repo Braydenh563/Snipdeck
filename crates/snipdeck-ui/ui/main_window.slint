@@ -213,6 +213,9 @@ export component MainWindow inherits Window {
     callback query-changed(string);
     callback section-selected(MainSection, int);
     callback view-changed(MainView);
+    // The View menu's theme rows (0 System, 1 Light, 2 Dark): the host changes the setting and says so in a toast.
+    in property <int> theme-index: 0;
+    callback theme-chosen(index: int);
     // A label chip was chosen (0 to 7); -1 clears the filter. Choosing the active chip again also clears it.
     callback label-filter-requested(int);
     callback new-item-requested();
@@ -328,7 +331,7 @@ export component MainWindow inherits Window {
     out property <bool> rail: root.narrow;
     out property <int> columns: root.cols;
     out property <bool> confirm-open: root.confirm-shown;
-    out property <bool> menu-open: item-menu-open || nav-menu-open || chooser-open || help-menu-open || recent-menu-open || recent-save-open;
+    out property <bool> menu-open: item-menu-open || nav-menu-open || chooser-open || help-menu-open || view-menu-open || recent-menu-open || recent-save-open;
 
     // ---- Internals ----------------------------------------------------------------------------
     property <int> used-index: -1;
@@ -356,6 +359,9 @@ export component MainWindow inherits Window {
     property <int> item-menu-index: 0;
     property <bool> nav-menu-open: false;
     property <bool> help-menu-open: false;
+    property <bool> view-menu-open: false;
+    // An empty image: a menu row without a check mark keeps its icon column.
+    property <image> no-icon;
     property <length> nav-menu-x: 0px;
     property <length> nav-menu-y: 0px;
     property <int> nav-menu-flat: 0;
@@ -384,7 +390,7 @@ export component MainWindow inherits Window {
     property <int> confirm-kind: 0;
     property <int> confirm-target: 0;
     property <bool> confirm-shown: false;
-    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.board-delete-open || root.palette-open;
+    property <bool> overlay-open: root.recent-menu-open || root.recent-save-open || root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.chooser-open || root.board-menu-open || root.confirm-shown || root.board-delete-open || root.palette-open;
 
     init => {
         Palette.dark = root.dark;
@@ -579,6 +585,12 @@ export component MainWindow inherits Window {
         root.help-menu-open = true;
     }
 
+    function open-view-menu() {
+        root.close-menus();
+        root.nav-origin = false;
+        root.view-menu-open = true;
+    }
+
     function open-recent-menu(row: int, x: length, y: length) {
         root.nav-origin = false;
         root.recent-menu-row = row;
@@ -605,6 +617,7 @@ export component MainWindow inherits Window {
         root.item-menu-open = false;
         root.nav-menu-open = false;
         root.help-menu-open = false;
+        root.view-menu-open = false;
         root.chooser-open = false;
         root.restore-focus();
     }
@@ -1205,6 +1218,26 @@ export component MainWindow inherits Window {
                                     icon: Icons.keyboard;
                                     tooltip: @tr("Commands (Ctrl+K)");
                                     clicked => { root.open-palette(); }
+                                }
+                                Rectangle {
+                                    width: Space.s3;
+                                    height: root.ctl-h;
+                                    Rectangle {
+                                        width: 1px;
+                                        height: root.ctl-h * 0.6;
+                                        x: (parent.width - self.width) / 2;
+                                        y: (parent.height - self.height) / 2;
+                                        background: Theme.border-subtle;
+                                    }
+                                }
+                                view-button := IconButton {
+                                    scaled: true;
+                                    side-override: root.ctl-h;
+                                    icon: Icons.eye;
+                                    tooltip: @tr("View");
+                                    own-tooltip: true;
+                                    active: root.view-menu-open;
+                                    clicked => { root.open-view-menu(); }
                                 }
                                 Rectangle {
                                     width: Space.s3;
@@ -2062,7 +2095,7 @@ export component MainWindow inherits Window {
         dismissed => { root.board-menu-dismissed(); }
     }
 
-    if root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.chooser-open || root.recent-menu-open || root.recent-save-open: TouchArea {
+    if root.item-menu-open || root.nav-menu-open || root.help-menu-open || root.view-menu-open || root.chooser-open || root.recent-menu-open || root.recent-save-open: TouchArea {
         pointer-event(event) => {
             if (event.kind == PointerEventKind.down) {
                 root.close-menus();
@@ -2165,6 +2198,26 @@ export component MainWindow inherits Window {
             } else {
                 root.help-requested(HelpPage.shortcuts);
             }
+        }
+        dismissed => { root.close-menus(); }
+    }
+    if root.view-menu-open: Menu {
+        x: max(0px, min(view-button.absolute-position.x, root.width - self.width - Space.s2));
+        y: root.bar-h - Space.s1;
+        entries: [
+            { text: @tr("Theme: System"), icon: root.theme-index == 0 ? Icons.check : root.no-icon },
+            { text: @tr("Theme: Light"), icon: root.theme-index == 1 ? Icons.check : root.no-icon },
+            { text: @tr("Theme: Dark"), icon: root.theme-index == 2 ? Icons.check : root.no-icon },
+        ];
+        label: @tr("View");
+        init => {
+            self.current = root.theme-index;
+            self.focus-menu();
+        }
+        activated(i) => {
+            root.close-menus();
+            // The row order is the `entries` list above.
+            root.theme-chosen(i);
         }
         dismissed => { root.close-menus(); }
     }
