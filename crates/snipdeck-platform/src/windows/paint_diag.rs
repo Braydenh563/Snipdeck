@@ -74,8 +74,8 @@ pub fn install(log_fn: LogFn) -> bool {
         )
     };
     let (get, call) = (
-        get.map(|h| h.0 as isize).unwrap_or(0),
-        call.map(|h| h.0 as isize).unwrap_or(0),
+        get.map_or(0, |h| h.0 as isize),
+        call.map_or(0, |h| h.0 as isize),
     );
     HOOKS.with(|h| h.set((get, call)));
     log(&format!(
