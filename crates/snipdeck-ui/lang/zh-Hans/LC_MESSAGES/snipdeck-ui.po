@@ -847,8 +847,9 @@ msgstr "请为看板命名。"
 msgid "Give the list a name."
 msgstr "请为列表命名。"
 
-msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
-msgstr "为面板提供任务栏按钮。关闭后，面板不会出现在任务栏和 Alt+Tab 中；仍可通过通知区域图标和面板快捷键唤回。"
+#, fuzzy
+msgid "Gives the Panel a taskbar button and an Alt+Tab entry while it is on screen. Pasting still goes to the app you were in before. Off keeps it out of both; the tray icon and the Panel shortcut still bring it back."
+msgstr "面板在屏幕上时，为它显示任务栏按钮和 Alt+Tab 条目。粘贴仍会进入你之前所在的应用。关闭后两处都不显示；仍可通过托盘图标和面板快捷键调出。"
 
 msgid "Go to All items"
 msgstr "前往“所有片段”"
@@ -1850,9 +1851,6 @@ msgstr "显示面板"
 msgid "Show Panel ({})"
 msgstr "显示面板（{}）"
 
-msgid "Show Snipdeck in the taskbar"
-msgstr "在任务栏中显示 Snipdeck"
-
 msgid "Show kind, title, colour, tags and privacy"
 msgstr "显示类型、标题、颜色、标签和隐私"
 
@@ -1864,6 +1862,10 @@ msgstr "显示或隐藏面板"
 
 msgid "Show or hide the panel"
 msgstr "显示或隐藏面板"
+
+#, fuzzy
+msgid "Show the Panel in the taskbar and Alt+Tab"
+msgstr "在任务栏和 Alt+Tab 中显示面板"
 
 msgid "Show the welcome tour again"
 msgstr "再次显示欢迎导览"
@@ -2099,6 +2101,10 @@ msgstr "免费版包含 5 个看板。Supporter 可添加无限个看板。"
 msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
 msgstr "免费版包含 {} 个看板。此操作将超出上限，需要 Supporter。"
 
+#, fuzzy
+msgid "The Panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the Panel shortcut to bring it back. Pasting still goes to the app you were in before."
+msgstr "除非你打开此项，否则面板不会出现在任务栏和 Alt+Tab 中；请用托盘图标或面板快捷键调出。粘贴仍会进入你之前所在的应用。"
+
 msgid "The Trash is empty"
 msgstr "回收站为空"
 
@@ -2140,9 +2146,6 @@ msgstr "超过此数量后，最旧的备份会被删除。"
 
 msgid "The panel"
 msgstr "面板"
-
-msgid "The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back."
-msgstr "除非开启此项，面板不会出现在任务栏和 Alt+Tab 中，请使用托盘图标或面板快捷键将其唤回。"
 
 msgid "The picker"
 msgstr "选择器"

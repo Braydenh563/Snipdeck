@@ -847,8 +847,9 @@ msgstr "Dê um nome ao quadro."
 msgid "Give the list a name."
 msgstr "Dê um nome à lista."
 
-msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
-msgstr "Dá ao painel um botão na barra de tarefas. Desativado, ele fica fora da barra de tarefas e do Alt+Tab; o ícone da bandeja e o atalho do painel continuam trazendo-o de volta."
+#, fuzzy
+msgid "Gives the Panel a taskbar button and an Alt+Tab entry while it is on screen. Pasting still goes to the app you were in before. Off keeps it out of both; the tray icon and the Panel shortcut still bring it back."
+msgstr "Dá ao Painel um botão na barra de tarefas e uma entrada no Alt+Tab enquanto ele estiver na tela. Colar continua indo para o app em que você estava antes. Desligado, ele fica fora dos dois; o ícone da bandeja e o atalho do Painel ainda o trazem de volta."
 
 msgid "Go to All items"
 msgstr "Ir para Todos os itens"
@@ -1857,9 +1858,6 @@ msgstr "Mostrar painel"
 msgid "Show Panel ({})"
 msgstr "Mostrar painel ({})"
 
-msgid "Show Snipdeck in the taskbar"
-msgstr "Mostrar o Snipdeck na barra de tarefas"
-
 msgid "Show kind, title, colour, tags and privacy"
 msgstr "Mostrar tipo, título, cor, tags e privacidade"
 
@@ -1871,6 +1869,10 @@ msgstr "Mostrar ou ocultar o painel"
 
 msgid "Show or hide the panel"
 msgstr "Mostrar ou ocultar o painel"
+
+#, fuzzy
+msgid "Show the Panel in the taskbar and Alt+Tab"
+msgstr "Mostrar o Painel na barra de tarefas e no Alt+Tab"
 
 msgid "Show the welcome tour again"
 msgstr "Mostrar o tour de boas-vindas novamente"
@@ -2106,6 +2108,10 @@ msgstr "O plano Gratuito inclui 5 quadros. O Supporter adiciona quadros ilimitad
 msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
 msgstr "O plano Gratuito inclui {} quadros. Isso ultrapassaria o limite, então é preciso o Supporter."
 
+#, fuzzy
+msgid "The Panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the Panel shortcut to bring it back. Pasting still goes to the app you were in before."
+msgstr "O Painel fica fora da barra de tarefas e do Alt+Tab, a menos que você ative isto; use o ícone da bandeja ou o atalho do Painel para trazê-lo de volta. Colar continua indo para o app em que você estava antes."
+
 msgid "The Trash is empty"
 msgstr "A lixeira está vazia"
 
@@ -2147,9 +2153,6 @@ msgstr "As mais antigas são excluídas quando houver mais do que este número."
 
 msgid "The panel"
 msgstr "O painel"
-
-msgid "The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back."
-msgstr "O painel fica fora da barra de tarefas e do Alt+Tab, a menos que você ative isto; use o ícone da bandeja ou o atalho do painel para trazê-lo de volta."
 
 msgid "The picker"
 msgstr "O seletor"

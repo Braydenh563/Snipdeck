@@ -1127,7 +1127,7 @@ msgid "Give the list a name."
 msgstr ""
 
 #: ui/settings.slint:651
-msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
+msgid "Gives the Panel a taskbar button and an Alt+Tab entry while it is on screen. Pasting still goes to the app you were in before. Off keeps it out of both; the tray icon and the Panel shortcut still bring it back."
 msgstr ""
 
 #: ui/command_texts.slint:43
@@ -1660,7 +1660,7 @@ msgstr ""
 msgid "No matches"
 msgstr ""
 
-#: ui/components/command-palette.slint:199
+#: ui/components/command-palette.slint:202
 msgid "No matching command"
 msgstr ""
 
@@ -2468,10 +2468,6 @@ msgstr ""
 msgid "Show Panel ({})"
 msgstr ""
 
-#: ui/onboarding.slint:252 ui/onboarding.slint:255 ui/settings.slint:650 ui/settings.slint:653
-msgid "Show Snipdeck in the taskbar"
-msgstr ""
-
 #: ui/editors.slint:601
 msgid "Show kind, title, colour, tags and privacy"
 msgstr ""
@@ -2486,6 +2482,10 @@ msgstr ""
 
 #: ui/form_texts.slint:130 ui/onboarding.slint:118 ui/settings.slint:423
 msgid "Show or hide the panel"
+msgstr ""
+
+#: ui/onboarding.slint:252 ui/onboarding.slint:255 ui/settings.slint:650 ui/settings.slint:653
+msgid "Show the Panel in the taskbar and Alt+Tab"
 msgstr ""
 
 #: ui/help.slint:352
@@ -2800,6 +2800,10 @@ msgstr ""
 msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
 msgstr ""
 
+#: ui/onboarding.slint:253
+msgid "The Panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the Panel shortcut to bring it back. Pasting still goes to the app you were in before."
+msgstr ""
+
 #: ui/main_window.slint:1867 ui/toast_texts.slint:185
 msgid "The Trash is empty"
 msgstr ""
@@ -2854,10 +2858,6 @@ msgstr ""
 
 #: ui/onboarding.slint:195
 msgid "The panel"
-msgstr ""
-
-#: ui/onboarding.slint:253
-msgid "The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back."
 msgstr ""
 
 #: ui/onboarding.slint:200

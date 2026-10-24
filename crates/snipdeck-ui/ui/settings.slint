@@ -647,10 +647,10 @@ export component SettingsPage inherits Window {
                 FormSection {
                     title: @tr("Panel");
                     SettingRow {
-                        title: @tr("Show Snipdeck in the taskbar");
-                        description: @tr("Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back.");
+                        title: @tr("Show the Panel in the taskbar and Alt+Tab");
+                        description: @tr("Gives the Panel a taskbar button and an Alt+Tab entry while it is on screen. Pasting still goes to the app you were in before. Off keeps it out of both; the tray icon and the Panel shortcut still bring it back.");
                         Toggle {
-                            a11y-label: @tr("Show Snipdeck in the taskbar");
+                            a11y-label: @tr("Show the Panel in the taskbar and Alt+Tab");
                             checked <=> root.panel-in-taskbar;
                             toggled(on) => { root.panel-in-taskbar-toggled(on); }
                             changed has-focus => {

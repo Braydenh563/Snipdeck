@@ -51,7 +51,7 @@ hotkeys may be paused: choose **Pause hotkeys** in the tray menu to switch them 
 icon, closing the Panel quits Snipdeck, so start it again with `Snipdeck.bat`. Starting a second copy also
 brings the running one forward.
 
-**The Panel is not in the taskbar or Alt+Tab.** That is the default. Turn on **Show Snipdeck in the taskbar**
+**The Panel is not in the taskbar or Alt+Tab.** That is the default. Turn on **Show the Panel in the taskbar and Alt+Tab**
 under Settings, **Panel**.
 
 **The Panel hides when I click another app.** **Hide the panel when it loses focus** is on by default. Pin the

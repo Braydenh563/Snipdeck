@@ -847,8 +847,9 @@ msgstr "Donnez un nom au tableau."
 msgid "Give the list a name."
 msgstr "Donnez un nom à la liste."
 
-msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
-msgstr "Donne au panneau un bouton dans la barre des tâches. Désactivé, il reste hors de la barre des tâches et d'Alt+Tab ; l'icône de la zone de notification et le raccourci du panneau le ramènent toujours."
+#, fuzzy
+msgid "Gives the Panel a taskbar button and an Alt+Tab entry while it is on screen. Pasting still goes to the app you were in before. Off keeps it out of both; the tray icon and the Panel shortcut still bring it back."
+msgstr "Donne au Panneau un bouton dans la barre des tâches et une entrée dans Alt+Tab tant qu'il est affiché. Le collage va toujours dans l'application où vous étiez avant. Désactivé, il reste absent des deux ; l'icône de la zone de notification et le raccourci du Panneau le ramènent quand même."
 
 msgid "Go to All items"
 msgstr "Aller à Tous les extraits"
@@ -1857,9 +1858,6 @@ msgstr "Afficher le panneau"
 msgid "Show Panel ({})"
 msgstr "Afficher le panneau ({})"
 
-msgid "Show Snipdeck in the taskbar"
-msgstr "Afficher Snipdeck dans la barre des tâches"
-
 msgid "Show kind, title, colour, tags and privacy"
 msgstr "Afficher le type, le titre, la couleur, les étiquettes et la confidentialité"
 
@@ -1871,6 +1869,10 @@ msgstr "Afficher ou masquer le panneau"
 
 msgid "Show or hide the panel"
 msgstr "Afficher ou masquer le panneau"
+
+#, fuzzy
+msgid "Show the Panel in the taskbar and Alt+Tab"
+msgstr "Afficher le Panneau dans la barre des tâches et dans Alt+Tab"
 
 msgid "Show the welcome tour again"
 msgstr "Afficher à nouveau la visite de bienvenue"
@@ -2106,6 +2108,10 @@ msgstr "L'offre gratuite comprend 5 tableaux. Supporter ajoute des tableaux illi
 msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
 msgstr "L'offre gratuite comprend {} tableaux. Cela dépasserait cette limite : il faut donc Supporter."
 
+#, fuzzy
+msgid "The Panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the Panel shortcut to bring it back. Pasting still goes to the app you were in before."
+msgstr "Le Panneau reste hors de la barre des tâches et d'Alt+Tab sauf si vous l'activez ; utilisez l'icône de la zone de notification ou le raccourci du Panneau pour le ramener. Le collage va toujours dans l'application où vous étiez avant."
+
 msgid "The Trash is empty"
 msgstr "La corbeille est vide"
 
@@ -2147,9 +2153,6 @@ msgstr "Les plus anciennes sont supprimées au-delà de ce nombre."
 
 msgid "The panel"
 msgstr "Le panneau"
-
-msgid "The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back."
-msgstr "Le panneau reste hors de la barre des tâches et d'Alt+Tab tant que vous n'activez pas cette option ; utilisez l'icône de la zone de notification ou le raccourci du panneau pour le rouvrir."
 
 msgid "The picker"
 msgstr "Le sélecteur"

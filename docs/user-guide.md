@@ -238,7 +238,7 @@ Open Settings from the Panel menu or the Main window. Changes apply at once and 
   Settings > Accessibility > Text size in Windows) or a fixed 100, 125, 150 or 175 %. **Reduce motion** turns off
   sliding and fading. It is also off when Windows has **Animation effects** off. **Panel width** is 260 to 480
   pixels. You can also drag the Panel's edges.
-- **Panel.** **Show Snipdeck in the taskbar** gives the Panel a taskbar button (off by default).
+- **Panel.** **Show the Panel in the taskbar and Alt+Tab** gives the Panel a taskbar button and an Alt+Tab entry while it is on screen (off by default). A paste from a Panel reached with Alt+Tab still goes to the app you were in before.
   **Hide the panel when it loses focus** hides an unpinned Panel when you switch to another app (on by default).
   **Start with Windows** starts Snipdeck hidden in the tray when you sign in. **Keep running in the tray when the
   window closes** is on by default. Turn it off and closing the Panel or the Main window quits Snipdeck.

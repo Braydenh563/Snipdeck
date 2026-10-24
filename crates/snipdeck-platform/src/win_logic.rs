@@ -192,6 +192,51 @@ pub fn is_shell_surface_class(class: &str) -> bool {
     SHELL_CLASSES.iter().any(|c| c.eq_ignore_ascii_case(class))
 }
 
+/// Window classes of the Alt+Tab switcher and Task View. Explorer shows one of them as the
+/// foreground window while the user picks a window, then destroys it: as a Target it would be
+/// gone by the time the user pastes, so Alt+Tab to the Panel would leave nothing to paste into.
+const SWITCHER_CLASSES: &[&str] = &[
+    "MultitaskingViewFrame",
+    "XamlExplorerHostIslandWindow",
+    "TaskSwitcherWnd",
+    "TaskSwitcherOverlayWnd",
+    "ForegroundStaging",
+];
+
+/// Whether a window of this class (case-insensitive) is the Alt+Tab switcher or Task View, which
+/// is neither a Target nor a reason to forget the Target.
+pub fn is_task_switcher_class(class: &str) -> bool {
+    SWITCHER_CLASSES
+        .iter()
+        .any(|c| c.eq_ignore_ascii_case(class))
+}
+
+/// What kind of window just became the foreground window, for the Target tracker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ForegroundKind {
+    /// The Panel, a Snipdeck popup or any window of this process.
+    Own,
+    /// The Alt+Tab switcher or Task View.
+    Switcher,
+    /// The desktop or a taskbar surface.
+    Shell,
+    /// Any other application window.
+    Foreign,
+}
+
+/// The Target (a window handle value, 0 for none) after `hwnd` became the foreground window: the
+/// last foreign window the user was in. Snipdeck's own windows and the Alt+Tab switcher leave it
+/// alone, the desktop and taskbar clear it (keys injected there go nowhere useful), and any other
+/// window becomes it.
+#[must_use]
+pub const fn next_target(current: isize, hwnd: isize, kind: ForegroundKind) -> isize {
+    match kind {
+        ForegroundKind::Own | ForegroundKind::Switcher => current,
+        ForegroundKind::Shell => 0,
+        ForegroundKind::Foreign => hwnd,
+    }
+}
+
 /// `WS_EX_NOACTIVATE`.
 pub const WS_EX_NOACTIVATE: u32 = 0x0800_0000;
 /// `WS_EX_TOOLWINDOW`.
@@ -512,6 +557,46 @@ mod tests {
         ] {
             assert!(!is_shell_surface_class(class), "{class}");
         }
+    }
+
+    #[test]
+    fn the_alt_tab_switcher_is_not_a_target() {
+        for class in [
+            "MultitaskingViewFrame",
+            "multitaskingviewframe",
+            "XamlExplorerHostIslandWindow",
+            "TaskSwitcherWnd",
+            "TaskSwitcherOverlayWnd",
+            "ForegroundStaging",
+        ] {
+            assert!(is_task_switcher_class(class), "{class}");
+        }
+        for class in ["Notepad", "Shell_TrayWnd", "Chrome_WidgetWin_1", ""] {
+            assert!(!is_task_switcher_class(class), "{class}");
+        }
+    }
+
+    #[test]
+    fn alt_tabbing_to_the_panel_keeps_the_app_the_user_came_from_as_the_target() {
+        use ForegroundKind::{Foreign, Own, Shell, Switcher};
+        const OUTLOOK: isize = 0x10;
+        const SWITCHER: isize = 0x20;
+        const PANEL: isize = 0x30;
+        const BROWSER: isize = 0x40;
+        // Outlook in front; Alt+Tab opens the switcher (a foreground window of Explorer's),
+        // then the Panel is picked: Outlook stays the Target the whole way.
+        let mut target = next_target(0, OUTLOOK, Foreign);
+        assert_eq!(target, OUTLOOK);
+        target = next_target(target, SWITCHER, Switcher);
+        assert_eq!(target, OUTLOOK, "the switcher is no Target");
+        target = next_target(target, PANEL, Own);
+        assert_eq!(target, OUTLOOK, "the Panel is no Target");
+        // Alt+Tab on to another app: that one is the Target now.
+        target = next_target(target, SWITCHER, Switcher);
+        target = next_target(target, BROWSER, Foreign);
+        assert_eq!(target, BROWSER);
+        // A click on the desktop or taskbar means there is none.
+        assert_eq!(next_target(target, 0x50, Shell), 0);
     }
 
     #[test]

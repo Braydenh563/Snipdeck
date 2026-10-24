@@ -62,7 +62,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 use windows::core::{BOOL, Owned, PWSTR};
 
 use crate::route::{Focus, ScreenRect, Target};
-use crate::win_logic::{self, ElementFacts};
+use crate::win_logic::{self, ElementFacts, ForegroundKind};
 
 /// How long UI Automation may take to connect to the Target's process, in milliseconds.
 pub const UIA_CONNECTION_TIMEOUT_MS: u32 = 250;
@@ -128,18 +128,24 @@ impl Inner {
         pid == unsafe { GetCurrentProcessId() }
     }
 
-    /// Records `hwnd` as the Target if it is a foreign window. A desktop or taskbar surface is
-    /// not a Target, and as the foreground window it means there is none (injected keys would go
-    /// to it), so it clears the Target. Returns whether the Target changed.
+    /// Records `hwnd` as the Target if it is a foreign window ([`win_logic::next_target`]). Our
+    /// own windows and the Alt+Tab switcher leave the Target alone, so a Panel reached with
+    /// Alt+Tab still pastes into the app the user came from; a desktop or taskbar surface clears
+    /// it (injected keys would go to it). Returns whether the Target changed.
     fn note_foreground(&self, hwnd: HWND) -> bool {
-        if hwnd.is_invalid() || self.is_own(hwnd) {
+        if hwnd.is_invalid() {
             return false;
         }
-        let new = if is_shell_surface(hwnd) {
-            0
+        let kind = if self.is_own(hwnd) {
+            ForegroundKind::Own
+        } else if is_shell_surface(hwnd) {
+            ForegroundKind::Shell
+        } else if is_task_switcher(hwnd) {
+            ForegroundKind::Switcher
         } else {
-            hwnd.0 as isize
+            ForegroundKind::Foreign
         };
+        let new = win_logic::next_target(self.target.get(), hwnd.0 as isize, kind);
         let changed = self.target.replace(new) != new;
         if changed && let Ok(mut entry) = self.entry.try_borrow_mut() {
             *entry = Entry::Inactive;
@@ -164,6 +170,17 @@ impl Inner {
         // A panic must not unwind out of the hook callback (it would abort the process).
         let _ = catch_unwind(AssertUnwindSafe(|| (self.on_change)()));
     }
+}
+
+/// Whether `hwnd` is the Alt+Tab switcher or Task View (see [`win_logic::is_task_switcher_class`]).
+fn is_task_switcher(hwnd: HWND) -> bool {
+    let mut class = [0u16; 256];
+    // SAFETY: the slice is writable for its whole length; a stale handle makes the call return 0.
+    let length = unsafe { GetClassNameW(hwnd, &mut class) };
+    let length = usize::try_from(length).unwrap_or(0);
+    class
+        .get(..length)
+        .is_some_and(|name| win_logic::is_task_switcher_class(&String::from_utf16_lossy(name)))
 }
 
 /// Whether `hwnd` is the desktop, the shell window or a taskbar / tray surface (see

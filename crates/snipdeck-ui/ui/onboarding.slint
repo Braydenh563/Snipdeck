@@ -249,10 +249,10 @@ export component OnboardingWindow inherits Window {
                         }
                     }
                     SettingRow {
-                        title: @tr("Show Snipdeck in the taskbar");
-                        description: @tr("The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back.");
+                        title: @tr("Show the Panel in the taskbar and Alt+Tab");
+                        description: @tr("The Panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the Panel shortcut to bring it back. Pasting still goes to the app you were in before.");
                         Toggle {
-                            a11y-label: @tr("Show Snipdeck in the taskbar");
+                            a11y-label: @tr("Show the Panel in the taskbar and Alt+Tab");
                             checked <=> root.panel-in-taskbar;
                             toggled(on) => { root.panel-in-taskbar-toggled(on); }
                         }

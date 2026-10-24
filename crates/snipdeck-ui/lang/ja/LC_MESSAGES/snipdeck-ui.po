@@ -847,8 +847,9 @@ msgstr "ボードに名前を付けてください。"
 msgid "Give the list a name."
 msgstr "リストに名前を付けてください。"
 
-msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
-msgstr "パネルにタスクバーのボタンを表示します。オフにすると、タスクバーと Alt+Tab には表示されません。通知領域のアイコンとパネルのショートカットからは引き続き呼び出せます。"
+#, fuzzy
+msgid "Gives the Panel a taskbar button and an Alt+Tab entry while it is on screen. Pasting still goes to the app you were in before. Off keeps it out of both; the tray icon and the Panel shortcut still bring it back."
+msgstr "パネルが表示されている間、タスクバーのボタンと Alt+Tab の項目を表示します。貼り付けは、直前に使っていたアプリに入ります。オフにすると両方に表示されません。トレイアイコンとパネルのショートカットからは引き続き表示できます。"
 
 msgid "Go to All items"
 msgstr "すべてのスニペットへ移動"
@@ -1850,9 +1851,6 @@ msgstr "パネルを表示"
 msgid "Show Panel ({})"
 msgstr "パネルを表示 ({})"
 
-msgid "Show Snipdeck in the taskbar"
-msgstr "Snipdeck をタスクバーに表示する"
-
 msgid "Show kind, title, colour, tags and privacy"
 msgstr "種類、タイトル、色、タグ、プライバシーを表示"
 
@@ -1864,6 +1862,10 @@ msgstr "パネルの表示／非表示"
 
 msgid "Show or hide the panel"
 msgstr "パネルを表示または非表示"
+
+#, fuzzy
+msgid "Show the Panel in the taskbar and Alt+Tab"
+msgstr "パネルをタスクバーと Alt+Tab に表示"
 
 msgid "Show the welcome tour again"
 msgstr "ウェルカムツアーをもう一度表示"
@@ -2099,6 +2101,10 @@ msgstr "無料プランには5つのボードが含まれます。Supporter で�
 msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
 msgstr "無料プランには {} 個のボードが含まれます。これを超えるため、Supporter が必要です。"
 
+#, fuzzy
+msgid "The Panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the Panel shortcut to bring it back. Pasting still goes to the app you were in before."
+msgstr "オンにしない限り、パネルはタスクバーにも Alt+Tab にも表示されません。トレイアイコンかパネルのショートカットで呼び戻してください。貼り付けは、直前に使っていたアプリに入ります。"
+
 msgid "The Trash is empty"
 msgstr "ゴミ箱は空です"
 
@@ -2140,9 +2146,6 @@ msgstr "この数を超えると、古いものから削除されます。"
 
 msgid "The panel"
 msgstr "パネル"
-
-msgid "The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back."
-msgstr "オンにしない限り、パネルはタスクバーと Alt+Tab に表示されません。戻すには、トレイアイコンかパネルのショートカットを使ってください。"
 
 msgid "The picker"
 msgstr "ピッカー"

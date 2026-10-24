@@ -402,3 +402,63 @@ fn the_pin_is_remembered_in_the_settings_and_restored() {
     let w = world_with(Some(outlook()), saved);
     assert!(!w.ctl.view().on_top, "a later start keeps it unpinned");
 }
+
+// ---- Alt+Tab to the Panel ------------------------------------------------------------------
+
+/// The Panel is on screen with a taskbar button and the user reaches it with Alt+Tab. The
+/// tracker leaves the Target alone when the Panel (or the switcher) takes the foreground, so the
+/// source still answers with the app the user came from.
+#[test]
+fn a_panel_reached_with_alt_tab_still_pastes_into_the_app_before_it() {
+    let mut w = unpinned_world(Settings {
+        panel_in_taskbar: true,
+        panel_hide_on_blur: false,
+        ..Settings::default()
+    });
+    // Alt+Tab: the switcher and then the Panel take the foreground; neither is a Target.
+    assert_eq!(w.ctl.on_foreground_changed(), []);
+    assert_eq!(w.ctl.on_foreground_changed(), []);
+    assert!(w.ctl.visible(), "Alt+Tab does not hide the Panel");
+    assert_eq!(
+        w.ctl.view().footer,
+        Footer::PastesInto {
+            app: "Outlook".into(),
+            title: "New message".into()
+        }
+    );
+    assert_eq!(
+        w.ctl.activate_row(0, UseMode::Paste),
+        UseResult::Done(UseOutcome::Pasted)
+    );
+    assert_eq!(w.targets.refocus_count(), 1, "the keys go to Outlook");
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::Pasted {
+            app: "Outlook".into()
+        }
+    );
+}
+
+/// Esc, the close button and the hotkey all end in a hide, and the host hands the focus back to
+/// the Target while the Panel still holds it (`Effect::HidePanel`), however the Panel got it.
+#[test]
+fn esc_and_the_hotkey_hide_a_panel_that_alt_tab_activated() {
+    let mut w = unpinned_world(Settings {
+        panel_in_taskbar: true,
+        panel_hide_on_blur: false,
+        ..Settings::default()
+    });
+    assert_eq!(w.ctl.on_foreground_changed(), []);
+    assert_eq!(
+        w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+        [Effect::HidePanel]
+    );
+    assert!(!w.ctl.visible());
+    assert_eq!(
+        w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+        [Effect::ShowPanel]
+    );
+    assert_eq!(w.ctl.on_foreground_changed(), []);
+    assert_eq!(w.ctl.hide(), [Effect::HidePanel], "Esc");
+    assert!(!w.ctl.visible());
+}

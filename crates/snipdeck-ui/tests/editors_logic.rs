@@ -1078,7 +1078,7 @@ ui_tests! {
         let tray = find(&ui, "Keep running in the tray when the window closes", AccessibleRole::Switch);
         tray.invoke_accessible_default_action();
         assert_eq!(take(&log), ["tray:false"]);
-        let taskbar = find(&ui, "Show Snipdeck in the taskbar", AccessibleRole::Switch);
+        let taskbar = find(&ui, "Show the Panel in the taskbar and Alt+Tab", AccessibleRole::Switch);
         assert_eq!(taskbar.accessible_checked(), Some(false), "off by default");
         taskbar.invoke_accessible_default_action();
         assert_eq!(take(&log), ["taskbar:true"]);
@@ -1466,7 +1466,7 @@ ui_tests! {
 
     fn the_panel_step_says_the_panel_is_not_in_alt_tab_by_default() {
         let (ui, _) = onboarding(2);
-        let row = find(&ui, "Show Snipdeck in the taskbar", AccessibleRole::Groupbox);
+        let row = find(&ui, "Show the Panel in the taskbar and Alt+Tab", AccessibleRole::Groupbox);
         let said = row.accessible_description().expect("description");
         assert!(said.contains("taskbar") && said.contains("Alt+Tab"), "{said}");
     }
@@ -1483,7 +1483,7 @@ ui_tests! {
         ui.set_step(2);
         settle();
         let _ = find(&ui, "Dock to", AccessibleRole::Combobox);
-        let _ = find(&ui, "Show Snipdeck in the taskbar", AccessibleRole::Switch);
+        let _ = find(&ui, "Show the Panel in the taskbar and Alt+Tab", AccessibleRole::Switch);
         ui.set_step(3);
         settle();
         let _ = find(&ui, "Start with Windows", AccessibleRole::Switch);
@@ -1508,7 +1508,7 @@ ui_tests! {
         settle();
         find(&ui, "Left edge", AccessibleRole::ListItem).invoke_accessible_default_action();
         assert_eq!(take(&log), ["dock:1"]);
-        find(&ui, "Show Snipdeck in the taskbar", AccessibleRole::Switch).invoke_accessible_default_action();
+        find(&ui, "Show the Panel in the taskbar and Alt+Tab", AccessibleRole::Switch).invoke_accessible_default_action();
         assert_eq!(take(&log), ["taskbar:true"]);
 
         ui.set_step(3);

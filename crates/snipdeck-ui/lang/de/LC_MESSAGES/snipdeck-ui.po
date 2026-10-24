@@ -847,8 +847,9 @@ msgstr "Gib dem Board einen Namen."
 msgid "Give the list a name."
 msgstr "Gib der Liste einen Namen."
 
-msgid "Gives the panel a taskbar button. Off keeps it out of the taskbar and Alt+Tab; the tray icon and the panel shortcut still bring it back."
-msgstr "Gibt dem Panel eine Schaltfläche in der Taskleiste. Ausgeschaltet bleibt es aus Taskleiste und Alt+Tab heraus; das Symbol im Infobereich und der Panel-Shortcut holen es weiterhin zurück."
+#, fuzzy
+msgid "Gives the Panel a taskbar button and an Alt+Tab entry while it is on screen. Pasting still goes to the app you were in before. Off keeps it out of both; the tray icon and the Panel shortcut still bring it back."
+msgstr "Gibt dem Panel eine Schaltfläche in der Taskleiste und einen Alt+Tab-Eintrag, solange es sichtbar ist. Eingefügt wird weiterhin in die App, in der du vorher warst. Ausgeschaltet bleibt es aus beiden heraus; das Tray-Symbol und das Panel-Kürzel holen es trotzdem zurück."
 
 msgid "Go to All items"
 msgstr "Zu Alle Textbausteine wechseln"
@@ -1857,9 +1858,6 @@ msgstr "Panel anzeigen"
 msgid "Show Panel ({})"
 msgstr "Panel anzeigen ({})"
 
-msgid "Show Snipdeck in the taskbar"
-msgstr "Snipdeck in der Taskleiste anzeigen"
-
 msgid "Show kind, title, colour, tags and privacy"
 msgstr "Art, Titel, Farbe, Tags und Datenschutz anzeigen"
 
@@ -1871,6 +1869,10 @@ msgstr "Panel anzeigen oder ausblenden"
 
 msgid "Show or hide the panel"
 msgstr "Panel anzeigen oder ausblenden"
+
+#, fuzzy
+msgid "Show the Panel in the taskbar and Alt+Tab"
+msgstr "Panel in der Taskleiste und bei Alt+Tab anzeigen"
 
 msgid "Show the welcome tour again"
 msgstr "Willkommenstour erneut anzeigen"
@@ -2106,6 +2108,10 @@ msgstr "Der Kostenlos-Tarif umfasst 5 Boards. Supporter fügt unbegrenzte Boards
 msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
 msgstr "Der Kostenlos-Tarif umfasst {} Boards. Damit würdest du darüber hinausgehen, daher ist Supporter nötig."
 
+#, fuzzy
+msgid "The Panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the Panel shortcut to bring it back. Pasting still goes to the app you were in before."
+msgstr "Das Panel bleibt aus der Taskleiste und aus Alt+Tab heraus, solange du das nicht einschaltest; hole es mit dem Tray-Symbol oder dem Panel-Kürzel zurück. Eingefügt wird weiterhin in die App, in der du vorher warst."
+
 msgid "The Trash is empty"
 msgstr "Der Papierkorb ist leer"
 
@@ -2147,9 +2153,6 @@ msgstr "Die ältesten werden gelöscht, sobald es mehr als diese Anzahl gibt."
 
 msgid "The panel"
 msgstr "Das Panel"
-
-msgid "The panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the panel shortcut to bring it back."
-msgstr "Das Panel bleibt aus der Taskleiste und von Alt+Tab fern, solange du dies nicht aktivierst. Nutze das Tray-Symbol oder das Panel-Tastenkürzel, um es zurückzuholen."
 
 msgid "The picker"
 msgstr "Die Auswahl"
