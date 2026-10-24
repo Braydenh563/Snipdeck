@@ -270,6 +270,10 @@ fn every_toast_message_has_words() {
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "one table of sentences, a row per toast"
+)]
 fn what_a_toast_carries_reaches_its_sentence() {
     on_ui_thread(|| {
         let ui = ui();
