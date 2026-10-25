@@ -196,7 +196,7 @@ impl HotkeyAction {
     ];
 
     /// The default chord for a new install (SPEC §5; `docs/reviews/default-chords.md` says why
-    /// none uses Ctrl+Alt, which is AltGr on many layouts). Empty means off: Capture saves the
+    /// none uses Ctrl+Alt, which is `AltGr` on many layouts). Empty means off: Capture saves the
     /// clipboard text without asking, so it only works once the user has chosen a chord
     /// (SPEC 5.5).
     #[must_use]
