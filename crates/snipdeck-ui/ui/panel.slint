@@ -675,6 +675,9 @@ export component PanelWindow inherits Window {
             root.query = "";
             root.query-changed("");
         }
+        if (search.has-focus) {
+            root.focus-typing();
+        }
         root.selected-index = 0;
         list.content-y = 0px;
         root.tab-selected(index);

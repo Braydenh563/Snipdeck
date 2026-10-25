@@ -42,6 +42,8 @@ fn start() -> (PanelWindow, Log) {
     let ui = PanelWindow::new().expect("panel");
     fixture::populate(&ui);
     ui.show().expect("show");
+    // The design size: tall enough for the chrome (header, tabs, pins, footer) and all six fixture rows.
+    ui.window().set_size(slint::LogicalSize::new(320.0, 560.0));
     slint::platform::update_timers_and_animations();
     let log: Log = Rc::default();
     macro_rules! hook {
@@ -64,6 +66,7 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_list_edit_requested, |i| format!("list-edit:{i}"));
     hook!(on_reveal_requested, |i, on| format!("reveal:{i}:{on}"));
     hook!(on_close_requested, || "close".to_string());
+    hook!(on_open_requested, || "open".to_string());
     hook!(on_help_requested, || "help".to_string());
     hook!(on_commands_requested, || "commands".to_string());
     hook!(on_shortcuts_requested, || "shortcuts".to_string());
@@ -186,7 +189,6 @@ fn rows(ui: &PanelWindow) -> Vec<ElementHandle> {
 /// A Panel in the quiet List layout (Panel v2 row): comfortable rows, 320 wide.
 fn start_quiet() -> (PanelWindow, Log) {
     let (ui, log) = start();
-    ui.window().set_size(slint::LogicalSize::new(320.0, 560.0));
     ui.set_layout(PanelLayout::List);
     settle();
     (ui, log)
@@ -263,34 +265,14 @@ fn wait(ms: u64) {
 }
 
 /// An empty part of the body (no control under it, no tooltip anchor): the bottom, clear of the footer text.
-fn away(ui: &PanelWindow) -> LogicalPosition {
-    let size = ui.window().size();
-    LogicalPosition::new(size.width as f32 / 2.0, size.height as f32 - 16.0)
+fn away(_ui: &PanelWindow) -> LogicalPosition {
+    // Empty header space between the board picker and the search button: a drag region, no tooltip, no hover.
+    LogicalPosition::new(92.0, 20.0)
 }
 
 fn set_pinned(ui: &PanelWindow, items: Vec<PinnedItem>) {
     ui.set_pinned(ModelRc::new(VecModel::from(items)));
     settle();
-}
-
-/// How far the pinned row is scrolled (>= 0), worked out from the first "Pinned NN" chip still in view
-/// (chips that scrolled out of the strip leave the accessibility tree). Chips are equally wide; the first
-/// one sits 12px in (8px panel padding, 4px row margin) with a 4px gap between chips.
-fn pinned_scroll(ui: &PanelWindow) -> f32 {
-    let chip = by_role(ui, AccessibleRole::Button)
-        .into_iter()
-        .filter_map(|e| {
-            let n: usize = e
-                .accessible_label()?
-                .strip_prefix("Pinned ")?
-                .parse()
-                .ok()?;
-            Some((n, e))
-        })
-        .min_by_key(|(n, _)| *n)
-        .expect("a pinned chip in view");
-    let (n, e) = chip;
-    12.0 + (n - 1) as f32 * (e.size().width + 4.0) - e.absolute_position().x
 }
 
 /// Same shape as `inputs_logic`: Slint's testing platform is process-wide and bound to one thread.
@@ -341,7 +323,10 @@ ui_tests! {
         take(&log);
         press(ui.window(), " ");
         assert_eq!(ui.get_query(), "");
-        assert!(take(&log).is_empty(), "no callbacks fired");
+        assert!(
+            take(&log).iter().all(|l| !l.starts_with("query:")),
+            "the space went to the focused control, not into the search"
+        );
     }
 
     fn holding_space_on_the_selected_sensitive_row_reveals_it_and_releasing_hides_it() {
@@ -379,9 +364,9 @@ ui_tests! {
         settle();
         take(&log);
         press(ui.window(), " ");
-        // Not a reveal: with the search focused, Space is a text key, so the search reports " " (the host reads a
-        // blank query as no query, `Panel::is_searching`).
-        assert_eq!(take(&log), ["query: "], "no reveal for a plain row; the space is search text");
+        // Not a reveal, and the collapsed search does not start with a blank: Space does nothing at rest.
+        assert_eq!(take(&log), Vec::<String>::new(), "no reveal for a plain row; no search opened by a space");
+        assert!(!ui.get_search_focused() || ui.get_query() == "");
     }
 
     fn escape_clears_the_search_first_and_then_asks_to_close() {
@@ -557,11 +542,9 @@ ui_tests! {
 
     fn the_selected_row_keeps_its_more_button_without_hover() {
         let (ui, _log) = start();
-        // The kebab plus one ⋯ per row (always drawn, so the selected row has it without a hover).
-        assert_eq!(
-            all(&ui, "More", AccessibleRole::Button).len(),
-            rows(&ui).len() + 1
-        );
+        // The kebab plus the ⋯ of the selected row only: the quiet rows draw their actions on the selected or
+        // hovered row (spec 2.5), so the others have none.
+        assert_eq!(all(&ui, "More", AccessibleRole::Button).len(), 2);
     }
 
     fn the_new_item_row_opens_a_box_that_enter_saves_and_shift_enter_extends() {
@@ -661,7 +644,7 @@ ui_tests! {
         fixture::set_rows(&ui, fixture::numbered_rows(30));
         // A query instantiates the visible rows (the ListView creates only what it shows).
         let visible = rows(&ui).len();
-        assert!((10..30).contains(&visible), "virtualised: {visible} of 30 rows exist");
+        assert!((6..30).contains(&visible), "virtualised: {visible} of 30 rows exist");
         assert!(ui.get_scroll_y().abs() < f32::EPSILON);
 
         ui.set_selected_index(25);
@@ -818,7 +801,7 @@ ui_tests! {
         let (ui, log) = start();
         let w = ui.window();
         // Empty header space between the board switcher and the buttons.
-        let at = LogicalPosition::new(170.0, 10.0);
+        let at = LogicalPosition::new(92.0, 10.0);
         w.dispatch_event(WindowEvent::PointerPressed { position: at, button: PointerEventButton::Left });
         w.dispatch_event(WindowEvent::PointerReleased { position: at, button: PointerEventButton::Left });
         assert_eq!(take(&log), ["drag"]);
@@ -933,26 +916,23 @@ ui_tests! {
         ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(1.0);
     }
 
-    fn the_selected_row_shows_paste_or_copy_and_no_other_row_does() {
+    fn no_row_has_a_paste_or_copy_use_button_the_footer_says_where_a_click_goes() {
         let (ui, _log) = start();
-        // The use button is named after its row: "Paste <title>" / "Copy <title>" (O33).
-        let shown = |label: &str| {
-            by_role(&ui, AccessibleRole::Button)
+        let use_buttons = |ui: &PanelWindow| {
+            by_role(ui, AccessibleRole::Button)
                 .into_iter()
                 .filter(|e| {
-                    e.accessible_label()
-                        // "Copy without pasting" is the always-present copy icon, not the use button.
-                        .is_some_and(|l| l.starts_with(&format!("{label} ")) && l != "Copy without pasting")
+                    e.accessible_label().is_some_and(|l| {
+                        (l.starts_with("Paste ") || l.starts_with("Copy ")) && l != "Copy without pasting"
+                    })
                 })
-                .filter(|e| e.computed_opacity() > 0.9)
                 .count()
         };
-        assert_eq!(shown("Paste"), 1);
-        assert_eq!(shown("Copy"), 0);
+        assert_eq!(use_buttons(&ui), 0, "the row click is Paste: no ghost button (spec 1.3)");
         ui.set_target_name("".into());
         settle();
-        assert_eq!(shown("Copy"), 1);
-        assert_eq!(shown("Paste"), 0);
+        assert_eq!(use_buttons(&ui), 0);
+        assert!(!missing(&ui, "No target: click copies", AccessibleRole::Text));
     }
 
     // ---- CJK (measured, never a golden: system fallback fonts differ per machine) -----------------
@@ -1151,9 +1131,12 @@ ui_tests! {
         fixture::set_rows(&ui, Vec::new());
         ui.set_query("zzz".into());
         settle();
-        assert!(!missing(&ui, "No matches", AccessibleRole::Text));
-        assert!(!missing(&ui, "Nothing on this board matches “zzz”.", AccessibleRole::Text));
+        assert!(!missing(&ui, "Nothing matches \u{201c}zzz\u{201d}", AccessibleRole::Text));
+        assert!(!missing(&ui, "Searched every board and list.", AccessibleRole::Text));
         assert!(missing(&ui, "Save from clipboard", AccessibleRole::Button));
+        // The one action makes the query a note in the shown list; the quiet one leaves the search.
+        assert!(!missing(&ui, "Create “zzz”", AccessibleRole::Button));
+        assert!(!missing(&ui, "Clear search", AccessibleRole::Button));
     }
 
     fn the_empty_state_is_announced_when_a_search_comes_up_empty() {
@@ -1163,7 +1146,7 @@ ui_tests! {
         ui.set_query("zzz".into());
         settle();
         assert_eq!(
-            find(&ui, "No matches", AccessibleRole::Text).accessible_live_region(),
+            find(&ui, "Nothing matches \u{201c}zzz\u{201d}", AccessibleRole::Text).accessible_live_region(),
             Some(AccessibleLiveness::Polite)
         );
     }
@@ -1241,8 +1224,9 @@ ui_tests! {
         let _ = find(&ui, "Close panel (Esc)", AccessibleRole::Button);
         let _ = find(&ui, "Keep panel on top", AccessibleRole::Button);
         let _ = find(&ui, "Board: Work", AccessibleRole::Button);
-        let search = find(&ui, "Search snippets", AccessibleRole::TextInput);
-        assert_eq!(search.accessible_placeholder_text().as_deref(), Some("Search snippets"));
+        let _ = find(&ui, "Search (Ctrl+F)", AccessibleRole::Button);
+        let _ = find(&ui, "New", AccessibleRole::Button);
+        let _ = find(&ui, "Open Snipdeck", AccessibleRole::Button);
         let _ = find(&ui, "Lists", AccessibleRole::TabList);
         for name in ["Email replies", "Addresses", "Code"] {
             let _ = find(&ui, name, AccessibleRole::Tab);
@@ -1250,7 +1234,7 @@ ui_tests! {
         let _ = find(&ui, "Add list", AccessibleRole::Button);
         let _ = find(&ui, "Snippets", AccessibleRole::List);
         let _ = find(&ui, "Pinned snippets", AccessibleRole::List);
-        for name in ["Thanks, received", "Home address", "Retry helper"] {
+        for name in ["Thanks, received", "Home address", "+1 more"] {
             let _ = find(&ui, name, AccessibleRole::Button);
         }
         // Every button and row has a non-empty name.
@@ -1270,17 +1254,86 @@ ui_tests! {
         assert!(labels.iter().any(|l| l.starts_with("Thanks, received, Thanks for sending")));
         assert!(labels.iter().any(|l| l == "Server password"), "{labels:?}");
         assert!(labels.iter().all(|l| !l.contains("hunter2")));
+        // The search field joins the tree once it is open, with the close button beside it.
+        chord(ui.window(), &[Key::Control], "f");
+        settle();
+        let search = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        assert_eq!(search.accessible_placeholder_text().as_deref(), Some("Search snippets"));
+        let _ = find(&ui, "Close search", AccessibleRole::Button);
     }
 
-    fn the_clear_button_appears_with_text_and_is_labelled() {
+    fn close_search_clears_the_query_and_collapses_the_block() {
         let (ui, log) = start();
-        assert!(missing(&ui, "Clear search", AccessibleRole::Button));
+        assert!(missing(&ui, "Close search", AccessibleRole::Button));
         type_text(ui.window(), "a");
         settle();
+        assert_eq!(ui.get_query(), "a", "a typed character opens the search and lands in it");
+        assert!(missing(&ui, "Lists", AccessibleRole::TabList), "the block replaces the tabs");
+        assert!(missing(&ui, "Pinned snippets", AccessibleRole::List), "and the pinned strip");
+        take(&log);
+        find(&ui, "Close search", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(ui.get_query(), "");
+        assert_eq!(take(&log), ["query:"]);
+        assert!(missing(&ui, "Close search", AccessibleRole::Button));
+        let _ = find(&ui, "Lists", AccessibleRole::TabList);
+        let _ = find(&ui, "Pinned snippets", AccessibleRole::List);
+        // The keyboard still types into the search afterwards.
+        type_text(ui.window(), "b");
+        assert_eq!(ui.get_query(), "b");
+    }
+
+    fn search_always_keeps_the_tabs_and_pins_and_has_no_close_button_only_a_clear_one() {
+        let (ui, log) = start();
+        ui.set_search_always(true);
+        settle();
+        assert!(missing(&ui, "Clear search", AccessibleRole::Button), "nothing to clear yet");
+        let _ = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        type_text(ui.window(), "a");
+        settle();
+        assert!(missing(&ui, "Close search", AccessibleRole::Button), "the strip never goes away");
+        let _ = find(&ui, "Lists", AccessibleRole::TabList);
+        let _ = find(&ui, "Pinned snippets", AccessibleRole::List);
         take(&log);
         find(&ui, "Clear search", AccessibleRole::Button).invoke_accessible_default_action();
         assert_eq!(ui.get_query(), "");
         assert_eq!(take(&log), ["query:"]);
+    }
+
+    fn escape_leaves_a_menu_then_the_search_then_the_panel() {
+        let (ui, log) = start();
+        type_text(ui.window(), "ab");
+        ui.set_app_menu_open(true);
+        settle();
+        take(&log);
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["app-dismissed"], "the menu goes first and the query stays");
+        assert_eq!(ui.get_query(), "ab");
+        ui.set_app_menu_open(false);
+        settle();
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["query:"], "then the search");
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["close"], "then the Panel");
+        // An opened but empty search collapses on Esc as well.
+        chord(ui.window(), &[Key::Control], "f");
+        settle();
+        let _ = find(&ui, "Close search", AccessibleRole::Button);
+        take(&log);
+        press(ui.window(), &key(Key::Escape));
+        settle();
+        assert!(missing(&ui, "Close search", AccessibleRole::Button));
+        assert!(!take(&log).contains(&"close".to_string()), "that Esc only closed the search");
+    }
+
+    fn the_search_button_and_ctrl_f_open_the_search_with_its_text_selected() {
+        let (ui, _log) = start();
+        find(&ui, "Search (Ctrl+F)", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_search_focused());
+        let _ = find(&ui, "Close search", AccessibleRole::Button);
+        type_text(ui.window(), "q");
+        assert_eq!(ui.get_query(), "q");
     }
 
     fn every_target_is_at_least_24px_in_both_directions() {
@@ -1453,13 +1506,9 @@ ui_tests! {
             wait(501);
             assert_eq!(ui.get_tooltip_shown(), label, "tooltip of {label:?}");
         };
-        for label in ["More", "Keep panel on top", "Close panel (Esc)", "Add list", "Scroll right"] {
+        for label in ["More", "Keep panel on top", "Close panel (Esc)", "Add list", "Search (Ctrl+F)"] {
             hover(label);
         }
-        // The left caret only exists once the row has been scrolled.
-        press_at(&ui, centre(&find(&ui, "Scroll right", AccessibleRole::Button)));
-        settle();
-        hover("Scroll left");
     }
 
     fn a_tooltip_hides_while_a_menu_is_open() {
@@ -1505,7 +1554,7 @@ ui_tests! {
             ResizeEdge::BottomRight,
         ];
         // The header body still drags.
-        press_at(&ui, LogicalPosition::new(170.0, 20.0));
+        press_at(&ui, LogicalPosition::new(92.0, 20.0));
         assert_eq!(take(&log), ["drag"]);
     }
 
@@ -1680,95 +1729,44 @@ ui_tests! {
 
     // ---- Pinned strip scrolling ------------------------------------------------------------------------
 
-    fn a_pinned_strip_that_fits_shows_no_scroll_buttons() {
+    fn a_pinned_strip_that_fits_shows_no_more_button() {
         let (ui, _log) = start();
         set_pinned(&ui, fixture::pinned_n(2));
-        assert!(missing(&ui, "Scroll left", AccessibleRole::Button));
-        assert!(missing(&ui, "Scroll right", AccessibleRole::Button));
+        let more = by_role(&ui, AccessibleRole::Button)
+            .into_iter()
+            .filter(|e| e.accessible_label().is_some_and(|l| l.ends_with(" more")))
+            .count();
+        assert_eq!(more, 0);
+        let _ = find(&ui, "Pinned 01", AccessibleRole::Button);
+        let _ = find(&ui, "Pinned 02", AccessibleRole::Button);
     }
 
-    fn the_mouse_wheel_and_shift_wheel_scroll_an_overflowing_strip_sideways() {
-        let (ui, _log) = start();
-        set_pinned(&ui, fixture::pinned_n(12));
-        assert!(pinned_scroll(&ui).abs() < 0.5, "starts at the first chip");
-        let on_chip = centre(&find(&ui, "Pinned 02", AccessibleRole::Button));
-
-        // A vertical wheel notch over a chip scrolls the row to the left (later chips come into view).
-        scroll_at(&ui, on_chip, 0.0, -60.0);
-        settle();
-        let after_wheel = pinned_scroll(&ui);
-        assert!(after_wheel > 20.0, "wheel moved the row: {after_wheel}");
-
-        // Shift+wheel does the same; so does a native horizontal delta.
-        let shift = char::from(Key::Shift).to_string();
-        ui.window().dispatch_event(WindowEvent::KeyPressed {
-            text: shift.clone().into(),
-        });
-        scroll_at(&ui, on_chip, 0.0, -60.0);
-        ui.window().dispatch_event(WindowEvent::KeyReleased { text: shift.into() });
-        settle();
-        let after_shift = pinned_scroll(&ui);
-        assert!(after_shift > after_wheel + 20.0, "shift+wheel: {after_wheel} -> {after_shift}");
-        scroll_at(&ui, on_chip, -60.0, 0.0);
-        settle();
-        assert!(pinned_scroll(&ui) > after_shift + 20.0, "horizontal delta");
-
-        // Wheel up goes back, and never past the start.
-        for _ in 0..20 {
-            scroll_at(&ui, on_chip, 0.0, 120.0);
-        }
-        settle();
-        assert!(pinned_scroll(&ui).abs() < 0.5, "clamped at the start");
-        // And a long wheel down stops at the last chip.
-        for _ in 0..40 {
-            scroll_at(&ui, on_chip, 0.0, -120.0);
-        }
-        settle();
-        let last = find(&ui, "Pinned 12", AccessibleRole::Button);
-        let w = ui.window().size().width as f32;
-        assert!(last.absolute_position().x + last.size().width <= w - 8.0 + 0.5, "last chip fully in view");
-    }
-
-    fn scroll_buttons_float_at_the_ends_that_have_more_chips_and_page_through_the_strip() {
+    fn an_overflowing_strip_shows_two_chips_and_a_plus_n_more_menu_of_the_rest() {
         let (ui, log) = start();
         set_pinned(&ui, fixture::pinned_n(12));
-        // At the start there is nothing to the left.
-        assert!(missing(&ui, "Scroll left", AccessibleRole::Button));
-        let right = find(&ui, "Scroll right", AccessibleRole::Button);
-        assert!(right.size().width >= MIN_HIT && right.size().height >= MIN_HIT);
-        assert!(right.absolute_position().x + right.size().width <= ui.window().size().width as f32 - 8.0 + 0.5);
-
-        press_at(&ui, centre(&right));
+        let _ = find(&ui, "Pinned 01", AccessibleRole::Button);
+        let _ = find(&ui, "Pinned 02", AccessibleRole::Button);
+        assert!(missing(&ui, "Pinned 03", AccessibleRole::Button), "two chips only");
+        let more = find(&ui, "+10 more", AccessibleRole::Button);
+        assert!(more.size().width >= MIN_HIT && more.size().height >= MIN_HIT);
+        assert!(more.absolute_position().x + more.size().width <= ui.window().size().width as f32 - 4.0 + 0.5);
+        ui.set_pinned_more_entries(ModelRc::new(VecModel::from(
+            (3..=12)
+                .map(|i| snipdeck_ui::MenuEntry {
+                    text: format!("Pinned {i:02}").into(),
+                    ..Default::default()
+                })
+                .collect::<Vec<_>>(),
+        )));
+        press_at(&ui, centre(&more));
         settle();
-        let paged = pinned_scroll(&ui);
-        assert!(paged > 100.0, "Scroll right paged the row: {paged}");
-        let left = find(&ui, "Scroll left", AccessibleRole::Button);
-        assert!(left.size().width >= MIN_HIT && left.size().height >= MIN_HIT);
-        assert!(left.absolute_position().x < right.absolute_position().x);
-        assert_eq!(take(&log), Vec::<String>::new(), "a caret button is not a chip");
-
-        // Page right until the end: the right caret goes, the last chip is fully visible.
-        for _ in 0..12 {
-            if missing(&ui, "Scroll right", AccessibleRole::Button) {
-                break;
-            }
-            press_at(&ui, centre(&find(&ui, "Scroll right", AccessibleRole::Button)));
-            settle();
-        }
-        assert!(missing(&ui, "Scroll right", AccessibleRole::Button), "at the end");
-        let last = find(&ui, "Pinned 12", AccessibleRole::Button);
-        assert!(last.absolute_position().x + last.size().width <= ui.window().size().width as f32 - 8.0 + 0.5);
-
-        // And back to the start.
-        for _ in 0..12 {
-            if missing(&ui, "Scroll left", AccessibleRole::Button) {
-                break;
-            }
-            press_at(&ui, centre(&find(&ui, "Scroll left", AccessibleRole::Button)));
-            settle();
-        }
-        assert!(missing(&ui, "Scroll left", AccessibleRole::Button));
-        assert!(pinned_scroll(&ui).abs() < 0.5);
+        assert_eq!(take(&log), Vec::<String>::new(), "opening the menu uses nothing");
+        let menu = find(&ui, "More pinned snippets", AccessibleRole::List);
+        assert!(menu.size().width > 0.0);
+        let row = find(&ui, "Pinned 05", AccessibleRole::ListItem);
+        row.invoke_accessible_default_action();
+        assert_eq!(take(&log), ["pinned:4"], "row i of the menu is pinned item i + 2");
+        assert!(missing(&ui, "More pinned snippets", AccessibleRole::List), "choosing closes it");
     }
 
     fn a_chip_in_an_overflowing_strip_still_uses_on_click() {
