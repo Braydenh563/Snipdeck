@@ -211,3 +211,6 @@ Triage (v1 = fix before ship; .0.1 / 1.1 = later):
   -> Proposed: hold 1.0 for a reliability + UX milestone after the Oct 24 reset (render glitches root cause measured on Windows; show/hide/move/resize; feedback messages audit; every hotkey action has a visible control; searchable shortcuts). Search box sent to the UI agent now.
 - 2026-10-21 owner: quick light/dark/system toggle outside Settings? adjustable row height in Panel and Main? -> UX milestone: theme in Main View menu + command palette ("Theme: System/Light/Dark"); row density presets Compact/Comfortable (Settings > Appearance + View menu), not free drag.
 - 2026-10-21 owner: Picker placement option relative to the caret (below / right / above / left), never covering the line being typed or the next line. -> UX milestone: verify caret detection on Windows (Chrome/Electron/OneNote via UIA, else mouse fallback), add placement preference with auto-flip at screen edges.
+
+- Decision 2026-10-25: Picker Right/Left sides stay beside the caret, top-aligned, and may cover the rest of the caret line (reviewer finding 4). Reason: that is the point of choosing a side; Below/Above keep the line clear.
+- Decision 2026-10-25: toast rule is "latest wins across actions; within one operation the error or notice shows last" (replaces "drop confirmations behind a Danger toast", which hid a successful retry).
