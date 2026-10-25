@@ -220,3 +220,4 @@ Triage (v1 = fix before ship; .0.1 / 1.1 = later):
 - Decision 2026-10-25: coordinator commits use `git commit -- <path>` (only that path), never a bare commit while an agent has staged files. Reason: a ledger commit swept an agent's staged slice-3 files (9625ddc).
 - 2026-10-26 owner: "how much of everything do you have left?? is the app polished? what do I run and how?" -> answered in chat.
 - 2026-10-26 owner: "can the app handle anything that can go in my clipboard?" -> answered (items: text, HTML, RTF, images, files; Recent captures text only); placed: work-order item "Recent captures images, files, rich text".
+- 2026-10-26 owner: "does the panel's design theme and aethetic get used for the larger window and other popup windows if they are applicable as well?" -> placed: work-order item "Carry the Panel v2 look to Main, Picker, palette, editors, menus".
