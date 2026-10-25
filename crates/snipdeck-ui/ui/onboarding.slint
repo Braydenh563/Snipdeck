@@ -93,7 +93,7 @@ export component OnboardingWindow inherits Window {
     in-out property <bool> panel-hide-on-blur: true;
     in-out property <bool> autostart: false;
     in-out property <bool> close-to-tray: true;
-    // Clipboard history (the Recent inbox): off until the person turns it on here or in Settings.
+    // Clipboard history (the Recent inbox): on for a new install; the person can turn it off here or in Settings.
     in-out property <bool> recent-history: true;
     // How many copies and how many days the history keeps (the description names them).
     in property <int> recent-max-entries: 200;
@@ -288,7 +288,7 @@ export component OnboardingWindow inherits Window {
                     title: @tr("Clipboard history");
                     SettingRow {
                         title: @tr("Keep a Recent inbox of what you copy");
-                        description: @tr("Off unless you turn it on. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings.", root.recent-max-entries, root.recent-max-days);
+                        description: @tr("On unless you turn it off here. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings.", root.recent-max-entries, root.recent-max-days);
                         Toggle {
                             a11y-label: @tr("Keep a Recent inbox of what you copy");
                             checked <=> root.recent-history;

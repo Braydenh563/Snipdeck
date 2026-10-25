@@ -1428,8 +1428,8 @@ msgstr "初期設定はオフです。コピーしたテキストを、最新の
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "「オフ」にすると、固定したパネルは開いたままになります。それ以外では細い帯にたたまれ、パネルのショートカットでも開けます。"
 
-msgid "Off unless you turn it on. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
-msgstr "オンにするまではオフです。コピーしたテキストを、このコンピューターのみに、最新の{}件または{}日分（どちらか先に達した方）保存します。パスワードマネージャーのパスワードと機密のスニペットは保存されません。設定でいつでもオフにしたり消去したりできます。"
+msgid "On unless you turn it off here. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
+msgstr ""
 
 msgid "One hotkey turns copied text into an item."
 msgstr "ホットキー1つで、コピーしたテキストをスニペットにできます。"

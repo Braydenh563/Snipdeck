@@ -1433,8 +1433,8 @@ msgstr "Desativado por padrão. Guarda o texto que você copia, das últimas {} 
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "«Desativado» mantém aberto um painel acoplado. Caso contrário, ele recolhe em uma faixa fina, e o atalho do painel também o abre."
 
-msgid "Off unless you turn it on. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
-msgstr "Desativado até você ativar. Guarda o texto que você copia, só neste computador, das últimas {} cópias ou {} dias, o que vier primeiro. Senhas de gerenciadores de senhas e trechos sensíveis nunca são guardados. Você pode desativar ou limpar a qualquer momento em Configurações."
+msgid "On unless you turn it off here. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
+msgstr ""
 
 msgid "One hotkey turns copied text into an item."
 msgstr "Um atalho transforma o texto copiado em um item."

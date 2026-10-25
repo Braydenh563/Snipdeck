@@ -1428,8 +1428,8 @@ msgstr "默认关闭。保留你复制的文本，最多保留最近 {} 条或 {
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "选择“关闭”则已停靠的面板保持展开。否则它会收成一条细条，面板快捷键同样可以将其展开。"
 
-msgid "Off unless you turn it on. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
-msgstr "开启前默认关闭。仅在本机保留你复制的文本，最多保留最近 {} 条或 {} 天（以先到者为准）。来自密码管理器的密码和敏感片段永远不会保留。你可以随时在设置中关闭或清除。"
+msgid "On unless you turn it off here. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
+msgstr ""
 
 msgid "One hotkey turns copied text into an item."
 msgstr "一个快捷键即可将复制的文本变为片段。"

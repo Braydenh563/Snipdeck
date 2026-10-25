@@ -1433,8 +1433,8 @@ msgstr "Désactivé par défaut. Conserve le texte que vous copiez, pour les {} 
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "« Désactivé » laisse un panneau ancré ouvert. Sinon, il se replie en une fine bande, et le raccourci du panneau l'ouvre aussi."
 
-msgid "Off unless you turn it on. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
-msgstr "Désactivé tant que vous ne l'activez pas. Conserve le texte que vous copiez, sur cet ordinateur uniquement, pour les {} dernières copies ou {} jours, selon la première limite atteinte. Les mots de passe des gestionnaires de mots de passe et les extraits sensibles ne sont jamais conservés. Vous pouvez le désactiver ou l'effacer à tout moment dans Paramètres."
+msgid "On unless you turn it off here. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
+msgstr ""
 
 msgid "One hotkey turns copied text into an item."
 msgstr "Un raccourci transforme le texte copié en extrait."

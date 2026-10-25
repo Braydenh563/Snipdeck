@@ -1526,17 +1526,17 @@ ui_tests! {
         let _ = find(&ui, "Could not change the start-up entry.", AccessibleRole::Text);
     }
 
-    fn the_history_opt_in_is_off_by_default_reaches_the_host_and_fits_the_window() {
+    fn the_history_switch_is_on_by_default_reaches_the_host_and_fits_the_window() {
         let (ui, log) = onboarding(3);
-        assert!(!ui.get_recent_history(), "history is off until it is chosen");
+        assert!(ui.get_recent_history(), "history is on for a new install");
         let history = find(&ui, "Keep a Recent inbox of what you copy", AccessibleRole::Switch);
-        assert_eq!(history.accessible_checked(), Some(false));
+        assert_eq!(history.accessible_checked(), Some(true));
         history.invoke_accessible_default_action();
-        assert_eq!(take(&log), ["history:true"]);
+        assert_eq!(take(&log), ["history:false"]);
         // The host can put the value back.
-        ui.set_recent_history(false);
+        ui.set_recent_history(true);
         settle();
-        assert_eq!(history.accessible_checked(), Some(false));
+        assert_eq!(history.accessible_checked(), Some(true));
         // The switch is inside the window at the size it opens at, and a comfortable target.
         let bottom = history.absolute_position().y + history.size().height;
         let window = ui.window().size().to_logical(ui.window().scale_factor());
