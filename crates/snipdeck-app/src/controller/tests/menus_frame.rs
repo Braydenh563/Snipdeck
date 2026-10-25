@@ -360,7 +360,15 @@ fn each_monitor_keeps_its_own_place_and_restoring_uses_the_one_it_is_on() {
         id: "DISPLAY3 800x600".into(),
         ..first
     };
-    assert_eq!(w.ctl.restore_frame(&third), Vec::new(), "nothing stored");
+    // A monitor the Panel was never left on (the old one is gone): the newest place, brought
+    // inside this work area at the size it had.
+    assert_eq!(
+        w.ctl.restore_frame(&third),
+        [Effect::PlaceWindow(Rect {
+            x: 1470,
+            ..on_second
+        })]
+    );
 }
 
 #[test]

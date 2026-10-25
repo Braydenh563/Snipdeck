@@ -41,6 +41,7 @@ mod menus_frame;
 mod onboarding;
 mod panel_select;
 mod picker;
+mod predictable;
 mod recent;
 mod screen_clip;
 mod toasts;

@@ -562,8 +562,9 @@ where
         frame: Rect,
         clamp_position: bool,
     ) -> Vec<Effect> {
-        if frame.w == 0 || frame.h == 0 {
-            // Minimised or not yet laid out: not a place the user chose.
+        if frame.w == 0 || frame.h == 0 || frame::is_parked(frame) {
+            // Minimised (Windows parks it far off screen), or not yet laid out: not a place
+            // the user chose, and storing it would change the size the Panel comes back with.
             return Vec::new();
         }
         if self.dock_collapsed() {
@@ -616,10 +617,23 @@ where
     }
 
     /// Where the Panel was last put on `monitor`, fitted to it (it may have changed size). A
-    /// docked Panel is placed flush with its edge.
+    /// docked Panel is placed flush with its edge. A monitor the Panel was never left on (the
+    /// one it was on is gone, or changed resolution) gets the newest place stored anywhere,
+    /// at its floating size and brought inside this monitor's work area.
     #[must_use]
     pub fn placement(&self, monitor: &Monitor) -> Option<Rect> {
-        let g = self.stored_geometry(monitor)?;
+        let Some(g) = self.stored_geometry(monitor) else {
+            let last = self.settings.panel_geometry.last()?;
+            let (w, h) = last.pre_dock.unwrap_or((last.w, last.h));
+            return Some(frame::clamp(
+                Rect {
+                    w,
+                    h,
+                    ..Rect::of(last)
+                },
+                monitor,
+            ));
+        };
         Some(match g.edge {
             Some(edge) => {
                 let size = frame::dock_size(

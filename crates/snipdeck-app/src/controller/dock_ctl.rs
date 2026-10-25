@@ -228,6 +228,10 @@ where
             return Vec::new();
         };
         self.dock = DockState::Expanded;
+        // A gesture in flight ends here: its flags must not dock or resize the placement.
+        self.drag_started = false;
+        self.dragging = false;
+        self.dock_preview = None;
         self.update_settings(|s| s.panel_geometry.retain(|g| g.monitor_id != monitor.id));
         let place = frame::clamp(self.open_frame(&monitor), &monitor);
         vec![Effect::PlaceWindow(place)]

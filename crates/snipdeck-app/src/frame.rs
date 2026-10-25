@@ -144,6 +144,13 @@ fn scaled(logical: u32, scale: f32) -> u32 {
     pixels
 }
 
+/// Whether `frame` is where Windows parks a minimised window (around -32000 on both axes):
+/// not a place anyone chose, and no size worth keeping.
+#[must_use]
+pub fn is_parked(frame: Rect) -> bool {
+    frame.x <= -30000 || frame.y <= -30000
+}
+
 /// Puts `frame` where the Panel may be on `monitor`: width within 260 to 480 logical pixels,
 /// height from the minimum to the work area's, and the whole frame inside the work area (a
 /// frame that cannot fit is cut to the work area).
@@ -602,6 +609,19 @@ mod tests {
 
     fn at(x: i32, y: i32, w: u32, h: u32) -> Rect {
         Rect { x, y, w, h }
+    }
+
+    #[test]
+    fn only_the_minimised_parking_spot_counts_as_parked() {
+        let at = |x, y| Rect {
+            x,
+            y,
+            w: 160,
+            h: 28,
+        };
+        assert!(is_parked(at(-32000, -32000)));
+        assert!(!is_parked(at(-300, 10)), "partly off screen is a place");
+        assert!(!is_parked(at(1700, 900)));
     }
 
     #[test]

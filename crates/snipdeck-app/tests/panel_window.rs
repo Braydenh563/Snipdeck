@@ -1278,8 +1278,8 @@ fn showing_the_panel_puts_it_where_the_user_left_it_on_that_monitor() {
         r.binding.restore_frame(&other);
         assert_eq!(
             *r.effects.borrow(),
-            [],
-            "nothing stored for another monitor"
+            [Effect::PlaceWindow(kept)],
+            "another monitor with no entry gets the newest place, fitted to it"
         );
     });
 }
@@ -1644,5 +1644,49 @@ fn a_search_field_with_text_keeps_its_own_undo() {
         );
         assert!(!r.ui.get_can_redo());
         assert_ne!(r.titles(), before);
+    });
+}
+
+#[test]
+fn the_list_follows_the_window_size_after_a_reset_and_a_resize() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.window().set_size(slint::LogicalSize::new(320.0, 300.0));
+        slint::platform::update_timers_and_animations();
+        for _ in 0..40 {
+            press(r.window(), &key(Key::DownArrow));
+            slint::platform::update_timers_and_animations();
+        }
+        assert!(r.ui.get_scroll_y() < 0.0, "scrolled down in a short window");
+
+        // Reset size and position: the window is placed at the default frame, taller than the
+        // list, and the list must not stay scrolled past its end.
+        let m = display();
+        r.binding.frame_changed(
+            &m,
+            Rect {
+                x: 100,
+                y: 100,
+                w: 320,
+                h: 300,
+            },
+        );
+        let effects = r.ctl.borrow_mut().reset_panel_geometry();
+        let [Effect::PlaceWindow(default)] = effects.as_slice() else {
+            panic!("one placement, got {effects:?}");
+        };
+        r.window()
+            .set_size(slint::PhysicalSize::new(default.w, default.h.max(900)));
+        slint::platform::update_timers_and_animations();
+        assert_eq!(r.ui.get_scroll_y(), 0.0, "everything fits: no scroll");
+
+        // A drag-resize to a short window afterwards scrolls to the selection, inside the list.
+        let short = Rect { h: 300, ..*default };
+        r.binding.frame_changed(&m, short);
+        r.window()
+            .set_size(slint::PhysicalSize::new(short.w, short.h));
+        slint::platform::update_timers_and_animations();
+        assert!(r.ui.get_scroll_y() <= 0.0);
+        assert_eq!(r.ctl.borrow().placement(&m), Some(short));
     });
 }
