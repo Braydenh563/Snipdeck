@@ -12,6 +12,7 @@
 //   type            filters; a printable key typed while another control has focus moves into the search
 //   Up / Down       move the selection (PageUp / PageDown a page); Enter uses it, Shift+Enter copies
 //   Alt+1-9         use the Nth row, whatever the search holds (bare digits are always search text)
+//   Space (held)    reveals the selected sensitive row while it is held (the eye on the row does the same by hand)
 //   Ctrl+Tab        next list, Ctrl+Shift+Tab previous; Ctrl+F expands, focuses and selects the search
 //   Menu, Shift+F10 context menu of the selected row (on the focused kebab button: the Panel menu)
 //   Ctrl+K          all commands (the Main window's palette); Ctrl+/ the keyboard shortcuts; F1 the user guide
@@ -461,6 +462,17 @@ export component PanelWindow inherits Window {
             }
         }
     }
+    // The tooltip text a row put up (empty when none is from a row). A row that is deleted, replaced or scrolled away
+    // while the pointer rests on it never reports the pointer leaving, so the tip is closed when the rows change.
+    property <string> row-tip-text: "";
+    function row-tips-close() {
+        if (root.row-tip-text != "") {
+            root.tip-set(root.row-tip-text, 0px, 0px, false);
+            root.row-tip-text = "";
+        }
+    }
+    changed rows => { root.row-tips-close(); }
+    changed scroll-y => { root.row-tips-close(); }
     tip-timer := Timer {
         interval: tooltip.show-delay;
         running: false;
@@ -1472,7 +1484,10 @@ export component PanelWindow inherits Window {
                                     root.selected-index = i;
                                     root.edit-requested(i);
                                 }
-                                tip(text, cx, bottom, on) => { root.tip-set(text, cx, bottom, on); }
+                                tip(text, cx, bottom, on) => {
+                                    root.tip-set(text, cx, bottom, on);
+                                    root.row-tip-text = on ? text : "";
+                                }
                                 reveal-requested(on) => { root.reveal-requested(i, on); }
                             }
                             }

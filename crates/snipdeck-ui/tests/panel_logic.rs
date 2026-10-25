@@ -1336,33 +1336,172 @@ ui_tests! {
         assert_eq!(ui.get_query(), "q");
     }
 
-    fn every_target_is_at_least_24px_in_both_directions() {
+    fn every_target_is_at_least_24px_in_both_directions_in_every_state() {
+        // Every clickable the accessibility tree names, in each state the goldens show (spec 6: hit targets).
+        let walk = |ui: &PanelWindow, state: &str, row_min: f32| -> usize {
+            let mut checked = 0;
+            for role in [
+                AccessibleRole::Button,
+                AccessibleRole::Tab,
+                AccessibleRole::TextInput,
+                AccessibleRole::ListItem,
+            ] {
+                for e in by_role(ui, role) {
+                    let s = e.size();
+                    let min = if role == AccessibleRole::ListItem { row_min } else { MIN_HIT };
+                    assert!(
+                        s.width >= min && s.height >= min,
+                        "{state}: {role:?} {:?} is {}x{}",
+                        e.accessible_label(),
+                        s.width,
+                        s.height
+                    );
+                    checked += 1;
+                }
+            }
+            checked
+        };
         let (ui, _log) = start();
+        assert!(walk(&ui, "rest", 32.0) >= 15, "rest");
+        set_pinned(&ui, fixture::pinned_n(12));
+        assert!(walk(&ui, "pinned overflow", 32.0) >= 15);
         fixture::set_rows(&ui, fixture::numbered_rows(12));
         type_text(ui.window(), "a");
         ui.set_toast_text("Copied".into());
         ui.set_toast_undo_label("Undo".into());
         settle();
-        let mut checked = 0;
-        for role in [
-            AccessibleRole::Button,
-            AccessibleRole::Tab,
-            AccessibleRole::TextInput,
-            AccessibleRole::ListItem,
-        ] {
-            for e in by_role(&ui, role) {
-                let s = e.size();
-                assert!(
-                    s.width >= MIN_HIT && s.height >= MIN_HIT,
-                    "{role:?} {:?} is {}x{}",
-                    e.accessible_label(),
-                    s.width,
-                    s.height
-                );
-                checked += 1;
-            }
-        }
-        assert!(checked >= 15, "checked {checked} targets");
+        assert!(walk(&ui, "search with a toast", 32.0) >= 10);
+        ui.set_toast_text("".into());
+        ui.set_search_always(true);
+        settle();
+        walk(&ui, "search always", 32.0);
+        // The empty states.
+        fixture::set_rows(&ui, Vec::new());
+        settle();
+        assert!(walk(&ui, "no results", 32.0) >= 5);
+        ui.set_query("".into());
+        settle();
+        walk(&ui, "empty list", 32.0);
+        // A narrow window shows the icon-only New and Open Snipdeck.
+        ui.window().set_size(slint::LogicalSize::new(280.0, 560.0));
+        settle();
+        walk(&ui, "280 wide", 32.0);
+        // The menus: rows are 24 at the least.
+        ui.window().set_size(slint::LogicalSize::new(320.0, 560.0));
+        settle();
+        find(&ui, "New", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        walk(&ui, "New menu", 24.0);
+    }
+
+    // ---- Chrome (Panel v2 spec 2.1-2.8) --------------------------------------------------------------
+
+    fn the_chrome_at_rest_is_104_tall_without_pins_and_140_with() {
+        let (ui, _log) = start();
+        let height = ui.window().size().height as f32;
+        let deck_top = |ui: &PanelWindow| {
+            let tabs = find(ui, "Lists", AccessibleRole::TabList);
+            let strip = by_role(ui, AccessibleRole::List)
+                .into_iter()
+                .find(|e| e.accessible_label().as_deref() == Some("Pinned snippets"));
+            (tabs.absolute_position().y, strip.map(|e| (e.absolute_position().y, e.size().height)))
+        };
+        let footer = find(&ui, "Pastes into Outlook · New message", AccessibleRole::Text);
+        assert!((footer.size().height - 32.0).abs() < 0.5, "footer 32 tall: {}", footer.size().height);
+        let (tabs_y, strip) = deck_top(&ui);
+        assert!((tabs_y - 40.0).abs() < 0.5, "header is 40 tall: tabs start at {tabs_y}");
+        let (strip_y, strip_h) = strip.expect("pinned strip");
+        assert!((strip_y - 72.0).abs() < 0.5 && (strip_h - 36.0).abs() < 0.5, "tabs 32 then pins 36: {strip_y} {strip_h}");
+        let with_pins = 40.0 + 32.0 + strip_h + footer.size().height;
+        assert!((with_pins - 140.0).abs() < 0.5);
+        set_pinned(&ui, Vec::new());
+        assert!(missing(&ui, "Pinned snippets", AccessibleRole::List));
+        let list = find(&ui, "Snippets", AccessibleRole::List);
+        // Header 40 + tabs 32 above the list; 32 of footer below it (the list ends above the footer).
+        assert!(list.absolute_position().y >= 72.0 && list.absolute_position().y < 72.0 + 40.0, "list starts under the tabs: {}", list.absolute_position().y);
+        assert!(footer.absolute_position().y + footer.size().height <= height + 0.5);
+        assert!((40.0 + 32.0 + footer.size().height - 104.0).abs() < 0.5);
+    }
+
+    fn open_snipdeck_is_a_footer_button_that_goes_icon_only_below_300px() {
+        let (ui, log) = start();
+        let open = find(&ui, "Open Snipdeck", AccessibleRole::Button);
+        assert!(open.size().width > 100.0, "words at 320: {}", open.size().width);
+        open.invoke_accessible_default_action();
+        assert_eq!(take(&log), ["open"]);
+        ui.window().set_size(slint::LogicalSize::new(280.0, 560.0));
+        settle();
+        let open = find(&ui, "Open Snipdeck", AccessibleRole::Button);
+        assert!(open.size().width <= 40.0, "icon only at 280: {}", open.size().width);
+        assert!(open.size().width >= MIN_HIT && open.size().height >= MIN_HIT);
+    }
+
+    fn the_new_button_opens_a_menu_of_save_from_clipboard_new_note_and_new_list() {
+        let (ui, log) = start();
+        let entries = |ui: &PanelWindow| {
+            ["Save from clipboard", "New note", "New list"]
+                .map(|l| (l, all(ui, l, AccessibleRole::ListItem).len()))
+        };
+        assert_eq!(entries(&ui).map(|e| e.1), [0, 0, 0]);
+        find(&ui, "New", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(entries(&ui).map(|e| e.1), [1, 1, 1]);
+        find(&ui, "Save from clipboard", AccessibleRole::ListItem).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["add-from-clipboard"]);
+        assert_eq!(entries(&ui).map(|e| e.1), [0, 0, 0], "choosing closes the menu");
+        find(&ui, "New", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        find(&ui, "New list", AccessibleRole::ListItem).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["add-list"]);
+        // Esc closes the menu without closing the Panel.
+        find(&ui, "New", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(entries(&ui).map(|e| e.1), [0, 0, 0]);
+        assert!(take(&log).is_empty());
+    }
+
+    fn enter_with_no_matches_creates_a_note_from_the_query() {
+        let (ui, log) = start();
+        fixture::set_rows(&ui, Vec::new());
+        type_text(ui.window(), "zzz");
+        settle();
+        take(&log);
+        press(ui.window(), &key(Key::Return));
+        let lines = take(&log);
+        assert!(lines.contains(&"quick-add:zzz:0:false".to_string()), "{lines:?}");
+    }
+
+    // ---- Reviewer notes on slices 1-3 -----------------------------------------------------------------
+
+    fn the_sensitive_eye_can_be_activated_without_a_pointer() {
+        let (ui, log) = start();
+        // Assistive technology: the eye is a named button whose default action reveals; the keyboard's own way
+        // is holding Space on the selected row (see `holding_space_on_the_selected_sensitive_row...`).
+        take(&log);
+        let eye = row_button(&ui, 4, "Hold to reveal").expect("the eye");
+        eye.invoke_accessible_default_action();
+        assert_eq!(take(&log), ["reveal:4:true"]);
+    }
+
+    fn a_tooltip_from_a_row_closes_when_the_rows_change_or_scroll() {
+        let (ui, _log) = start();
+        let row = rows(&ui)[2].clone();
+        move_to(&ui, centre(&row));
+        wait(900);
+        let shown = ui.get_tooltip_shown().to_string();
+        assert!(!shown.is_empty(), "the row's tooltip is up after a rest");
+        // The hovered row goes (deleted): the pointer never leaves it, yet the tip must not outlive it.
+        fixture::set_rows(&ui, fixture::numbered_rows(1));
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "", "closed when the row model changed");
+        // And a header tooltip is not touched by a row change.
+        move_to(&ui, centre(&find(&ui, "More", AccessibleRole::Button)));
+        wait(600);
+        assert_eq!(ui.get_tooltip_shown(), "More");
+        fixture::set_rows(&ui, fixture::numbered_rows(2));
+        settle();
+        assert_eq!(ui.get_tooltip_shown(), "More");
     }
 
     // ---- Kebab menu ---------------------------------------------------------------------------------

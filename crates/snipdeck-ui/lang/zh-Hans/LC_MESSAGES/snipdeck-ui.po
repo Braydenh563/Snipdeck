@@ -7,6 +7,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+msgid "+{} more"
+msgstr ""
+
 msgid ".snipdeck file"
 msgstr ".snipdeck 文件"
 
@@ -33,9 +36,6 @@ msgstr "链接不能包含空格或换行。"
 
 msgid "A link needs a scheme such as https://"
 msgstr "链接需要包含协议，例如 https://"
-
-msgid "A list keeps related snippets together, like replies or addresses."
-msgstr "列表可以把相关的片段放在一起，例如回复或地址。"
 
 msgid "A master password is on and your sensitive items are locked."
 msgstr "已开启主密码，敏感片段已锁定。"
@@ -96,6 +96,9 @@ msgstr "添加到粘贴堆栈"
 
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "在 Windows 自身保护之上，为你的敏感片段添加密码。首次使用敏感片段时要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。"
+
+msgid "Adds a text snippet to {}"
+msgstr ""
 
 msgid "All"
 msgstr "全部"
@@ -289,6 +292,9 @@ msgstr "清除 {} 的快捷键"
 msgid "Click"
 msgstr "点击"
 
+msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
+msgstr ""
+
 msgid "Click to copy."
 msgstr "点击复制。"
 
@@ -309,6 +315,9 @@ msgstr "关闭"
 
 msgid "Close panel (Esc)"
 msgstr "关闭面板 (Esc)"
+
+msgid "Close search"
+msgstr ""
 
 msgid "Close the tag list"
 msgstr "关闭标签列表"
@@ -370,9 +379,6 @@ msgstr "已复制。你正在使用的窗口已关闭。"
 msgid "Copied. {} runs as administrator, so Snipdeck can't paste into it."
 msgstr "已复制。{} 以管理员身份运行，Snipdeck 无法粘贴到其中。"
 
-msgid "Copies to clipboard"
-msgstr "复制到剪贴板"
-
 msgid "Copy"
 msgstr "复制"
 
@@ -388,8 +394,8 @@ msgstr "复制所选片段"
 msgid "Copy something, then save it from the Panel."
 msgstr "先复制一些内容，然后在面板中保存。"
 
-msgid "Copy something, then save it here from the clipboard."
-msgstr "先复制一些内容，然后从剪贴板保存到这里。"
+msgid "Copy something, then save it here."
+msgstr ""
 
 msgid "Copy the item"
 msgstr "复制该片段"
@@ -561,6 +567,9 @@ msgstr "创建(Enter)"
 
 msgid "Create item"
 msgstr "创建项目"
+
+msgid "Create “{}”"
+msgstr ""
 
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
@@ -751,6 +760,9 @@ msgstr "结束堆栈"
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Enter creates “{}”"
+msgstr ""
+
 msgid "Enter your master password to use the sensitive items in your library. Your other items are always available."
 msgstr "输入主密码以使用资料库中的敏感片段。其他片段始终可用。"
 
@@ -924,6 +936,9 @@ msgstr "历史记录已暂停"
 
 msgid "Hold to reveal"
 msgstr "按住以显示"
+
+msgid "Hold to reveal a hidden item"
+msgstr ""
 
 msgid "Hover"
 msgstr "悬停"
@@ -1102,6 +1117,9 @@ msgstr "列表"
 msgid "Lists and items"
 msgstr "列表和片段"
 
+msgid "Lists hold your snippets."
+msgstr ""
+
 msgid "Loading"
 msgstr "正在加载"
 
@@ -1164,6 +1182,9 @@ msgstr "更多"
 
 msgid "More options"
 msgstr "更多选项"
+
+msgid "More pinned snippets"
+msgstr ""
 
 msgid "Most used"
 msgstr "最常用"
@@ -1239,6 +1260,9 @@ msgstr "从不保留这些程序中的复制内容"
 msgid "Never paste"
 msgstr "从不粘贴"
 
+msgid "New"
+msgstr ""
+
 msgid "New board"
 msgstr "新建看板"
 
@@ -1256,6 +1280,9 @@ msgstr "新建列表"
 
 msgid "New name for {}"
 msgstr "{} 的新名称"
+
+msgid "New note"
+msgstr ""
 
 msgid "New password"
 msgstr "新密码"
@@ -1296,6 +1323,9 @@ msgstr "还没有列表"
 msgid "No matches"
 msgstr "没有匹配项"
 
+msgid "No matches in all boards"
+msgstr ""
+
 msgid "No matching command"
 msgstr "没有匹配的命令"
 
@@ -1326,6 +1356,12 @@ msgstr "还没有标签。请在下方添加。"
 msgid "No tags yet. Add tags to an item and they appear here."
 msgstr "还没有标签。为片段添加标签后，将显示在这里。"
 
+msgid "No target:"
+msgstr ""
+
+msgid "No target: click copies"
+msgstr ""
+
 msgid "Not included"
 msgstr "未包含"
 
@@ -1334,6 +1370,9 @@ msgstr "未设置"
 
 msgid "Nothing copied yet"
 msgstr "尚未复制任何内容"
+
+msgid "Nothing matches “{}”"
+msgstr ""
 
 msgid "Nothing matches “{}”."
 msgstr "没有与“{}”匹配的内容。"
@@ -1554,6 +1593,9 @@ msgstr "已粘贴"
 msgid "Pasted into {}"
 msgstr "已粘贴到 {}"
 
+msgid "Pastes into"
+msgstr ""
+
 msgid "Pastes into {}"
 msgstr "粘贴到 {}"
 
@@ -1583,9 +1625,6 @@ msgstr "可自定价格，最低 A$5，建议 A$8。一次性付费，包括所�
 
 msgid "Picker"
 msgstr "选择器"
-
-msgid "Picker anywhere"
-msgstr "任意位置的选择器"
 
 msgid "Picker position"
 msgstr "选择器位置"
@@ -1844,6 +1883,9 @@ msgstr "向右滚动"
 msgid "Search"
 msgstr "搜索"
 
+msgid "Search (Ctrl+F)"
+msgstr ""
+
 msgid "Search all snippets"
 msgstr "搜索所有片段"
 
@@ -1864,6 +1906,9 @@ msgstr "搜索片段"
 
 msgid "Search the keyboard shortcuts"
 msgstr "搜索键盘快捷键"
+
+msgid "Searched every board and list."
+msgstr ""
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "复制敏感片段后，若期间未复制其他内容，则在此秒数后从剪贴板清除。设为 0 则永不清除。粘贴时会改为恢复你原本的剪贴板内容。"
@@ -2559,6 +2604,9 @@ msgstr "外观 颜色 夜间"
 msgid "change modify rename"
 msgstr "更改 修改 重命名"
 
+msgid "click copies"
+msgstr ""
+
 msgid "clipboard"
 msgstr "剪贴板"
 
@@ -2570,6 +2618,9 @@ msgstr "颜色更改"
 
 msgid "copy clone twice"
 msgstr "复制 克隆 两次"
+
+msgid "creates"
+msgstr ""
 
 msgid "delete"
 msgstr "删除"
@@ -2776,6 +2827,10 @@ msgstr[0] "将添加 {} 个片段，共 {} 个列表"
 msgid "{} item that is not text (a picture or file) was skipped."
 msgid_plural "{} items that are not text (pictures or files) were skipped."
 msgstr[0] "{} 项不是文本（图片或文件），已跳过。"
+
+msgid "{} match in all boards"
+msgid_plural "{} matches in all boards"
+msgstr[0] ""
 
 msgid "{} min ago"
 msgstr "{} 分钟前"

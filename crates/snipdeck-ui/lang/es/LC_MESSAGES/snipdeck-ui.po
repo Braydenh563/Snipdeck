@@ -7,6 +7,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "+{} more"
+msgstr ""
+
 msgid ".snipdeck file"
 msgstr "Archivo .snipdeck"
 
@@ -33,9 +36,6 @@ msgstr "Un enlace no puede contener espacios ni saltos de línea."
 
 msgid "A link needs a scheme such as https://"
 msgstr "Un enlace necesita un esquema, como https://"
-
-msgid "A list keeps related snippets together, like replies or addresses."
-msgstr "Una lista agrupa fragmentos relacionados, como respuestas o direcciones."
 
 msgid "A master password is on and your sensitive items are locked."
 msgstr "La contraseña maestra está activada y tus fragmentos sensibles están bloqueados."
@@ -96,6 +96,9 @@ msgstr "Añadir a la pila de pegado"
 
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "Añade una contraseña además de la protección de Windows para tus fragmentos sensibles. Se pide la primera vez que usas un fragmento sensible y de nuevo tras {} minutos sin usarlo."
+
+msgid "Adds a text snippet to {}"
+msgstr ""
 
 msgid "All"
 msgstr "Todos"
@@ -289,6 +292,9 @@ msgstr "Borrar el atajo de {}"
 msgid "Click"
 msgstr "Clic"
 
+msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
+msgstr ""
+
 msgid "Click to copy."
 msgstr "Clic para copiar."
 
@@ -309,6 +315,9 @@ msgstr "Cerrar"
 
 msgid "Close panel (Esc)"
 msgstr "Cerrar panel (Esc)"
+
+msgid "Close search"
+msgstr ""
 
 msgid "Close the tag list"
 msgstr "Cerrar la lista de etiquetas"
@@ -370,9 +379,6 @@ msgstr "Copiado. La ventana que usabas ya no está."
 msgid "Copied. {} runs as administrator, so Snipdeck can't paste into it."
 msgstr "Copiado. {} se ejecuta como administrador, así que Snipdeck no puede pegar en él."
 
-msgid "Copies to clipboard"
-msgstr "Se copia al portapapeles"
-
 msgid "Copy"
 msgstr "Copiar"
 
@@ -388,8 +394,8 @@ msgstr "Copiar el elemento seleccionado"
 msgid "Copy something, then save it from the Panel."
 msgstr "Copia algo y luego guárdalo desde el panel."
 
-msgid "Copy something, then save it here from the clipboard."
-msgstr "Copia algo y luego guárdalo aquí desde el portapapeles."
+msgid "Copy something, then save it here."
+msgstr ""
 
 msgid "Copy the item"
 msgstr "Copia el elemento"
@@ -561,6 +567,9 @@ msgstr "Crear (Intro)"
 
 msgid "Create item"
 msgstr "Crear elemento"
+
+msgid "Create “{}”"
+msgstr ""
 
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
@@ -751,6 +760,9 @@ msgstr "Terminar pila"
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Enter creates “{}”"
+msgstr ""
+
 msgid "Enter your master password to use the sensitive items in your library. Your other items are always available."
 msgstr "Introduce tu contraseña maestra para usar los fragmentos sensibles de tu biblioteca. Tus demás elementos siempre están disponibles."
 
@@ -924,6 +936,9 @@ msgstr "El historial está en pausa"
 
 msgid "Hold to reveal"
 msgstr "Mantén pulsado para mostrar"
+
+msgid "Hold to reveal a hidden item"
+msgstr ""
 
 msgid "Hover"
 msgstr "Pasar el puntero"
@@ -1105,6 +1120,9 @@ msgstr "Listas"
 msgid "Lists and items"
 msgstr "Listas y elementos"
 
+msgid "Lists hold your snippets."
+msgstr ""
+
 msgid "Loading"
 msgstr "Cargando"
 
@@ -1167,6 +1185,9 @@ msgstr "Más"
 
 msgid "More options"
 msgstr "Más opciones"
+
+msgid "More pinned snippets"
+msgstr ""
 
 msgid "Most used"
 msgstr "Más usados"
@@ -1244,6 +1265,9 @@ msgstr "No guardar nunca copias de estos programas"
 msgid "Never paste"
 msgstr "No pegar nunca"
 
+msgid "New"
+msgstr ""
+
 msgid "New board"
 msgstr "Nuevo tablero"
 
@@ -1261,6 +1285,9 @@ msgstr "Nueva lista"
 
 msgid "New name for {}"
 msgstr "Nuevo nombre para {}"
+
+msgid "New note"
+msgstr ""
 
 msgid "New password"
 msgstr "Nueva contraseña"
@@ -1301,6 +1328,9 @@ msgstr "Aún no hay listas"
 msgid "No matches"
 msgstr "Sin coincidencias"
 
+msgid "No matches in all boards"
+msgstr ""
+
 msgid "No matching command"
 msgstr "Ningún comando coincide"
 
@@ -1331,6 +1361,12 @@ msgstr "Aún no hay etiquetas. Añade una abajo."
 msgid "No tags yet. Add tags to an item and they appear here."
 msgstr "Aún no hay etiquetas. Añade etiquetas a un fragmento y aparecerán aquí."
 
+msgid "No target:"
+msgstr ""
+
+msgid "No target: click copies"
+msgstr ""
+
 msgid "Not included"
 msgstr "No incluido"
 
@@ -1339,6 +1375,9 @@ msgstr "Sin definir"
 
 msgid "Nothing copied yet"
 msgstr "Todavía no se ha copiado nada"
+
+msgid "Nothing matches “{}”"
+msgstr ""
 
 msgid "Nothing matches “{}”."
 msgstr "Nada coincide con “{}”."
@@ -1559,6 +1598,9 @@ msgstr "Pegado"
 msgid "Pasted into {}"
 msgstr "Pegado en {}"
 
+msgid "Pastes into"
+msgstr ""
+
 msgid "Pastes into {}"
 msgstr "Pega en {}"
 
@@ -1588,9 +1630,6 @@ msgstr "Paga lo que quieras desde A$5, sugerido A$8. Pago único, e incluye toda
 
 msgid "Picker"
 msgstr "Selector"
-
-msgid "Picker anywhere"
-msgstr "Selector en cualquier parte"
 
 msgid "Picker position"
 msgstr "Posición del selector"
@@ -1851,6 +1890,9 @@ msgstr "Desplazar a la derecha"
 msgid "Search"
 msgstr "Buscar"
 
+msgid "Search (Ctrl+F)"
+msgstr ""
+
 msgid "Search all snippets"
 msgstr "Buscar en todos los fragmentos"
 
@@ -1871,6 +1913,9 @@ msgstr "Buscar fragmentos"
 
 msgid "Search the keyboard shortcuts"
 msgstr "Buscar en los atajos de teclado"
+
+msgid "Searched every board and list."
+msgstr ""
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "Segundos antes de que un fragmento sensible copiado se borre del portapapeles, si desde entonces no se ha copiado nada más. 0 nunca lo borra. Al pegar se restaura tu propio portapapeles."
@@ -2567,6 +2612,9 @@ msgstr "apariencia color noche"
 msgid "change modify rename"
 msgstr "cambiar modificar renombrar"
 
+msgid "click copies"
+msgstr ""
+
 msgid "clipboard"
 msgstr "portapapeles"
 
@@ -2578,6 +2626,9 @@ msgstr "cambio de color"
 
 msgid "copy clone twice"
 msgstr "copiar clonar duplicar"
+
+msgid "creates"
+msgstr ""
 
 msgid "delete"
 msgstr "eliminar"
@@ -2792,6 +2843,11 @@ msgid "{} item that is not text (a picture or file) was skipped."
 msgid_plural "{} items that are not text (pictures or files) were skipped."
 msgstr[0] "Se omitió {} elemento que no es texto (una imagen o un archivo)."
 msgstr[1] "Se omitieron {} elementos que no son texto (imágenes o archivos)."
+
+msgid "{} match in all boards"
+msgid_plural "{} matches in all boards"
+msgstr[0] ""
+msgstr[1] ""
 
 msgid "{} min ago"
 msgstr "hace {} min"

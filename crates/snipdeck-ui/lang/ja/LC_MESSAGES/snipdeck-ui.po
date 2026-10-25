@@ -7,6 +7,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
+msgid "+{} more"
+msgstr ""
+
 msgid ".snipdeck file"
 msgstr ".snipdeck ファイル"
 
@@ -33,9 +36,6 @@ msgstr "リンクに空白や改行を含めることはできません。"
 
 msgid "A link needs a scheme such as https://"
 msgstr "リンクには https:// のようなスキームが必要です"
-
-msgid "A list keeps related snippets together, like replies or addresses."
-msgstr "リストには、返信文や住所など関連するスニペットをまとめておけます。"
 
 msgid "A master password is on and your sensitive items are locked."
 msgstr "マスターパスワードが有効で、機密スニペットはロックされています。"
@@ -96,6 +96,9 @@ msgstr "貼り付けスタックに追加"
 
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "機密スニペットを Windows の保護に加えてパスワードで守ります。機密スニペットを初めて使うときと、{}分間使わなかった後に入力を求めます。"
+
+msgid "Adds a text snippet to {}"
+msgstr ""
 
 msgid "All"
 msgstr "すべて"
@@ -289,6 +292,9 @@ msgstr "{} のショートカットを消去"
 msgid "Click"
 msgstr "クリック"
 
+msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
+msgstr ""
+
 msgid "Click to copy."
 msgstr "クリックでコピー。"
 
@@ -309,6 +315,9 @@ msgstr "閉じる"
 
 msgid "Close panel (Esc)"
 msgstr "パネルを閉じる (Esc)"
+
+msgid "Close search"
+msgstr ""
 
 msgid "Close the tag list"
 msgstr "タグ一覧を閉じる"
@@ -370,9 +379,6 @@ msgstr "コピーしました。使用中だったウィンドウは閉じられ
 msgid "Copied. {} runs as administrator, so Snipdeck can't paste into it."
 msgstr "コピーしました。{}は管理者として実行されているため、Snipdeck は貼り付けできません。"
 
-msgid "Copies to clipboard"
-msgstr "クリップボードにコピーされます"
-
 msgid "Copy"
 msgstr "コピー"
 
@@ -388,8 +394,8 @@ msgstr "選択したスニペットをコピー"
 msgid "Copy something, then save it from the Panel."
 msgstr "何かをコピーしてから、パネルで保存できます。"
 
-msgid "Copy something, then save it here from the clipboard."
-msgstr "何かをコピーしてから、クリップボードからここに保存できます。"
+msgid "Copy something, then save it here."
+msgstr ""
 
 msgid "Copy the item"
 msgstr "スニペットをコピー"
@@ -561,6 +567,9 @@ msgstr "作成 (Enter)"
 
 msgid "Create item"
 msgstr "項目を作成"
+
+msgid "Create “{}”"
+msgstr ""
 
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
@@ -751,6 +760,9 @@ msgstr "スタックを終了"
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Enter creates “{}”"
+msgstr ""
+
 msgid "Enter your master password to use the sensitive items in your library. Your other items are always available."
 msgstr "ライブラリの機密スニペットを使うには、マスターパスワードを入力してください。それ以外のスニペットは常に使えます。"
 
@@ -924,6 +936,9 @@ msgstr "履歴は一時停止中です"
 
 msgid "Hold to reveal"
 msgstr "長押しで表示"
+
+msgid "Hold to reveal a hidden item"
+msgstr ""
 
 msgid "Hover"
 msgstr "ポイント"
@@ -1102,6 +1117,9 @@ msgstr "リスト"
 msgid "Lists and items"
 msgstr "リストとスニペット"
 
+msgid "Lists hold your snippets."
+msgstr ""
+
 msgid "Loading"
 msgstr "読み込み中"
 
@@ -1164,6 +1182,9 @@ msgstr "その他"
 
 msgid "More options"
 msgstr "その他のオプション"
+
+msgid "More pinned snippets"
+msgstr ""
 
 msgid "Most used"
 msgstr "よく使う順"
@@ -1239,6 +1260,9 @@ msgstr "これらのプログラムからのコピーは保存しない"
 msgid "Never paste"
 msgstr "貼り付けない"
 
+msgid "New"
+msgstr ""
+
 msgid "New board"
 msgstr "新しいボード"
 
@@ -1256,6 +1280,9 @@ msgstr "新しいリスト"
 
 msgid "New name for {}"
 msgstr "{} の新しい名前"
+
+msgid "New note"
+msgstr ""
 
 msgid "New password"
 msgstr "新しいパスワード"
@@ -1296,6 +1323,9 @@ msgstr "リストはまだありません"
 msgid "No matches"
 msgstr "一致する項目がありません"
 
+msgid "No matches in all boards"
+msgstr ""
+
 msgid "No matching command"
 msgstr "一致するコマンドがありません"
 
@@ -1326,6 +1356,12 @@ msgstr "まだタグがありません。下から追加してください。"
 msgid "No tags yet. Add tags to an item and they appear here."
 msgstr "まだタグがありません。スニペットにタグを追加すると、ここに表示されます。"
 
+msgid "No target:"
+msgstr ""
+
+msgid "No target: click copies"
+msgstr ""
+
 msgid "Not included"
 msgstr "含まれない"
 
@@ -1334,6 +1370,9 @@ msgstr "未設定"
 
 msgid "Nothing copied yet"
 msgstr "まだコピーされたものはありません"
+
+msgid "Nothing matches “{}”"
+msgstr ""
 
 msgid "Nothing matches “{}”."
 msgstr "「{}」に一致するものはありません。"
@@ -1554,6 +1593,9 @@ msgstr "貼り付けました"
 msgid "Pasted into {}"
 msgstr "{} に貼り付けました"
 
+msgid "Pastes into"
+msgstr ""
+
 msgid "Pastes into {}"
 msgstr "{} に貼り付け"
 
@@ -1583,9 +1625,6 @@ msgstr "A$5から、お好きな金額でお支払いください（推奨はA$8
 
 msgid "Picker"
 msgstr "ピッカー"
-
-msgid "Picker anywhere"
-msgstr "どこでもピッカー"
 
 msgid "Picker position"
 msgstr "ピッカーの位置"
@@ -1844,6 +1883,9 @@ msgstr "右へスクロール"
 msgid "Search"
 msgstr "検索"
 
+msgid "Search (Ctrl+F)"
+msgstr ""
+
 msgid "Search all snippets"
 msgstr "すべてのスニペットを検索"
 
@@ -1864,6 +1906,9 @@ msgstr "スニペットを検索"
 
 msgid "Search the keyboard shortcuts"
 msgstr "キーボードショートカットを検索"
+
+msgid "Searched every board and list."
+msgstr ""
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "機密スニペットをコピーしてから、その後他に何もコピーされなければ、クリップボードから消去されるまでの秒数。0 にすると消去しません。貼り付けると、代わりにご自身のクリップボードの内容が復元されます。"
@@ -2559,6 +2604,9 @@ msgstr "外観 色 夜"
 msgid "change modify rename"
 msgstr "変更 編集 名前変更"
 
+msgid "click copies"
+msgstr ""
+
 msgid "clipboard"
 msgstr "クリップボード"
 
@@ -2570,6 +2618,9 @@ msgstr "色の変更"
 
 msgid "copy clone twice"
 msgstr "コピー 複製"
+
+msgid "creates"
+msgstr ""
 
 msgid "delete"
 msgstr "削除"
@@ -2776,6 +2827,10 @@ msgstr[0] "{} 件のスニペットを {} 個のリストに追加します"
 msgid "{} item that is not text (a picture or file) was skipped."
 msgid_plural "{} items that are not text (pictures or files) were skipped."
 msgstr[0] "テキスト以外（画像やファイル）の {} 件のスニペットはスキップされました。"
+
+msgid "{} match in all boards"
+msgid_plural "{} matches in all boards"
+msgstr[0] ""
 
 msgid "{} min ago"
 msgstr "{}分前"

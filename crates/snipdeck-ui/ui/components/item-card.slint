@@ -966,6 +966,9 @@ export component ItemCard inherits Rectangle {
         height: Space.s8;
         accessible-role: button;
         accessible-label: @tr("Hold to reveal");
+        // Assistive technology activates it: the preview shows (a second activation hides it again). The keyboard's
+        // way is holding Space on the selected row, which the Panel handles.
+        accessible-action-default => { root.reveal-requested(!root.shown); }
         Rectangle {
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;

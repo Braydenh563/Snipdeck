@@ -120,6 +120,7 @@ pub const CATALOGUE: [Shortcut; 60] = [
     row(Panel, "Shift+Enter"),
     custom(Panel, &["Alt", "Up", "Down"], "Alt+Up or Alt+Down"),
     custom(Panel, &["Alt", "1-9"], "Alt+1 to 9"),
+    custom(Panel, &["Space"], "Hold Space"),
     custom(Panel, &["Shift", "Up", "Down"], "Shift+Up or Shift+Down"),
     row(Panel, "Ctrl+A"),
     row(Panel, "Ctrl+Tab"),

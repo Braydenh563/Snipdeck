@@ -7,6 +7,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "+{} more"
+msgstr ""
+
 msgid ".snipdeck file"
 msgstr ".snipdeck-Datei"
 
@@ -33,9 +36,6 @@ msgstr "Ein Link darf keine Leerzeichen oder Zeilenumbrüche enthalten."
 
 msgid "A link needs a scheme such as https://"
 msgstr "Ein Link braucht ein Schema wie https://"
-
-msgid "A list keeps related snippets together, like replies or addresses."
-msgstr "Eine Liste hält zusammengehörige Textbausteine beisammen, etwa Antworten oder Adressen."
 
 msgid "A master password is on and your sensitive items are locked."
 msgstr "Ein Hauptpasswort ist aktiv und deine vertraulichen Textbausteine sind gesperrt."
@@ -96,6 +96,9 @@ msgstr "Zum Einfügestapel hinzufügen"
 
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "Fügt ein Passwort zum Windows-Schutz für deine vertraulichen Textbausteine hinzu. Wird beim ersten Verwenden eines vertraulichen Textbausteins und erneut nach {} Minuten ohne Nutzung abgefragt."
+
+msgid "Adds a text snippet to {}"
+msgstr ""
 
 msgid "All"
 msgstr "Alle"
@@ -289,6 +292,9 @@ msgstr "Tastenkürzel für {} entfernen"
 msgid "Click"
 msgstr "Klick"
 
+msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
+msgstr ""
+
 msgid "Click to copy."
 msgstr "Klicken zum Kopieren."
 
@@ -309,6 +315,9 @@ msgstr "Schließen"
 
 msgid "Close panel (Esc)"
 msgstr "Panel schließen (Esc)"
+
+msgid "Close search"
+msgstr ""
 
 msgid "Close the tag list"
 msgstr "Schlagwortliste schließen"
@@ -370,9 +379,6 @@ msgstr "Kopiert. Das Fenster, das du verwendet hast, ist nicht mehr da."
 msgid "Copied. {} runs as administrator, so Snipdeck can't paste into it."
 msgstr "Kopiert. {} läuft als Administrator, daher kann Snipdeck dort nicht einfügen."
 
-msgid "Copies to clipboard"
-msgstr "Wird in die Zwischenablage kopiert"
-
 msgid "Copy"
 msgstr "Kopieren"
 
@@ -388,8 +394,8 @@ msgstr "Ausgewählten Textbaustein kopieren"
 msgid "Copy something, then save it from the Panel."
 msgstr "Kopiere etwas und speichere es dann im Panel."
 
-msgid "Copy something, then save it here from the clipboard."
-msgstr "Kopiere etwas und speichere es dann hier aus der Zwischenablage."
+msgid "Copy something, then save it here."
+msgstr ""
 
 msgid "Copy the item"
 msgstr "Textbaustein kopieren"
@@ -561,6 +567,9 @@ msgstr "Erstellen (Enter)"
 
 msgid "Create item"
 msgstr "Element erstellen"
+
+msgid "Create “{}”"
+msgstr ""
 
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
@@ -751,6 +760,9 @@ msgstr "Stapel beenden"
 msgid "Enter"
 msgstr "Enter"
 
+msgid "Enter creates “{}”"
+msgstr ""
+
 msgid "Enter your master password to use the sensitive items in your library. Your other items are always available."
 msgstr "Gib dein Hauptpasswort ein, um die vertraulichen Textbausteine in deiner Bibliothek zu verwenden. Deine übrigen Textbausteine sind immer verfügbar."
 
@@ -924,6 +936,9 @@ msgstr "Verlauf ist pausiert"
 
 msgid "Hold to reveal"
 msgstr "Gedrückt halten zum Anzeigen"
+
+msgid "Hold to reveal a hidden item"
+msgstr ""
 
 msgid "Hover"
 msgstr "Darüberfahren"
@@ -1105,6 +1120,9 @@ msgstr "Listen"
 msgid "Lists and items"
 msgstr "Listen und Textbausteine"
 
+msgid "Lists hold your snippets."
+msgstr ""
+
 msgid "Loading"
 msgstr "Wird geladen"
 
@@ -1167,6 +1185,9 @@ msgstr "Mehr"
 
 msgid "More options"
 msgstr "Weitere Optionen"
+
+msgid "More pinned snippets"
+msgstr ""
 
 msgid "Most used"
 msgstr "Am häufigsten verwendet"
@@ -1244,6 +1265,9 @@ msgstr "Nie Kopien aus diesen Programmen speichern"
 msgid "Never paste"
 msgstr "Nie einfügen"
 
+msgid "New"
+msgstr ""
+
 msgid "New board"
 msgstr "Neues Board"
 
@@ -1261,6 +1285,9 @@ msgstr "Neue Liste"
 
 msgid "New name for {}"
 msgstr "Neuer Name für {}"
+
+msgid "New note"
+msgstr ""
 
 msgid "New password"
 msgstr "Neues Passwort"
@@ -1301,6 +1328,9 @@ msgstr "Noch keine Listen"
 msgid "No matches"
 msgstr "Keine Treffer"
 
+msgid "No matches in all boards"
+msgstr ""
+
 msgid "No matching command"
 msgstr "Kein passender Befehl"
 
@@ -1331,6 +1361,12 @@ msgstr "Noch keine Schlagwörter. Füge unten eines hinzu."
 msgid "No tags yet. Add tags to an item and they appear here."
 msgstr "Noch keine Schlagwörter. Füge einem Textbaustein Schlagwörter hinzu, dann erscheinen sie hier."
 
+msgid "No target:"
+msgstr ""
+
+msgid "No target: click copies"
+msgstr ""
+
 msgid "Not included"
 msgstr "Nicht enthalten"
 
@@ -1339,6 +1375,9 @@ msgstr "Nicht festgelegt"
 
 msgid "Nothing copied yet"
 msgstr "Noch nichts kopiert"
+
+msgid "Nothing matches “{}”"
+msgstr ""
 
 msgid "Nothing matches “{}”."
 msgstr "Nichts passt zu „{}“."
@@ -1559,6 +1598,9 @@ msgstr "Eingefügt"
 msgid "Pasted into {}"
 msgstr "In {} eingefügt"
 
+msgid "Pastes into"
+msgstr ""
+
 msgid "Pastes into {}"
 msgstr "Einfügen in {}"
 
@@ -1588,9 +1630,6 @@ msgstr "Zahle, was du möchtest, ab A$5, empfohlen sind A$8. Einmalig, und jedes
 
 msgid "Picker"
 msgstr "Auswahl"
-
-msgid "Picker anywhere"
-msgstr "Auswahl überall"
 
 msgid "Picker position"
 msgstr "Position der Auswahl"
@@ -1851,6 +1890,9 @@ msgstr "Nach rechts scrollen"
 msgid "Search"
 msgstr "Suche"
 
+msgid "Search (Ctrl+F)"
+msgstr ""
+
 msgid "Search all snippets"
 msgstr "Alle Textbausteine durchsuchen"
 
@@ -1871,6 +1913,9 @@ msgstr "Textbausteine suchen"
 
 msgid "Search the keyboard shortcuts"
 msgstr "Tastaturkurzbefehle durchsuchen"
+
+msgid "Searched every board and list."
+msgstr ""
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "Sekunden, bevor ein kopierter vertraulicher Textbaustein aus der Zwischenablage gelöscht wird, sofern danach nichts anderes kopiert wurde. 0 löscht ihn nie. Beim Einfügen wird stattdessen deine eigene Zwischenablage wiederhergestellt."
@@ -2567,6 +2612,9 @@ msgstr "Aussehen Farbe Nacht"
 msgid "change modify rename"
 msgstr "ändern bearbeiten umbenennen"
 
+msgid "click copies"
+msgstr ""
+
 msgid "clipboard"
 msgstr "Zwischenablage"
 
@@ -2578,6 +2626,9 @@ msgstr "Farbänderung"
 
 msgid "copy clone twice"
 msgstr "kopieren klonen zweimal"
+
+msgid "creates"
+msgstr ""
 
 msgid "delete"
 msgstr "Löschen"
@@ -2792,6 +2843,11 @@ msgid "{} item that is not text (a picture or file) was skipped."
 msgid_plural "{} items that are not text (pictures or files) were skipped."
 msgstr[0] "{} Textbaustein, der kein Text ist (ein Bild oder eine Datei), wurde übersprungen."
 msgstr[1] "{} Textbausteine, die kein Text sind (Bilder oder Dateien), wurden übersprungen."
+
+msgid "{} match in all boards"
+msgid_plural "{} matches in all boards"
+msgstr[0] ""
+msgstr[1] ""
 
 msgid "{} min ago"
 msgstr "vor {} Min."
