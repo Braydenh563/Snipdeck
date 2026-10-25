@@ -20,3 +20,4 @@ date | item | type | rung | rework | note
 2026-10-24 | Dock: last good work area, no full-height top/bottom dock | bug | sonnet | 0 | 
 2026-10-24 | Review fixes: Panel keys in shortcuts, density label, keep-open toast | ui | sonnet | 0 | 
 2026-10-25 | Feedback audit: confirmations + error toasts (rework: unlock toast, picker/fill tests mislabelled pre-existing) | ui | sonnet | 2 | 
+2026-10-25 | Panel v2 spec: D v3 default, List/Cards/Compact, search, lists menu, opening options | design | opus | 0 | 
