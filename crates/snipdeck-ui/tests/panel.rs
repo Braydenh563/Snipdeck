@@ -76,15 +76,15 @@ fn panel_row_hover_light() {
     let f = render(&h);
     // Row stride: a 56px row and the 6px gap of the comfortable list.
     let top = first_y_of(&f, 150, SELECTED_LIGHT).expect("the selected row is drawn");
-    let hover_y = top + 2 * 62 + 28;
+    let hover_y = u16::try_from(top + 2 * 62 + 28).unwrap();
     h.component
         .window()
         .dispatch_event(slint::platform::WindowEvent::PointerMoved {
-            position: slint::LogicalPosition::new(150.0, hover_y as f32),
+            position: slint::LogicalPosition::new(150.0, f32::from(hover_y)),
         });
     let f = render(&h);
     assert_eq!(
-        f.pixel(150, hover_y - 20),
+        f.pixel(150, u32::from(hover_y) - 20),
         HOVER_LIGHT,
         "the hovered row is filled with bg.hover"
     );
