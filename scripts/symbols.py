@@ -596,8 +596,59 @@ def check_art(m: dict, blob: bytes) -> list[str]:
 # --------------------------------------------------------------------------- art (slice 2)
 
 
+ART_PX = (48, 40)  # preferred size first; the smaller one is used only if the first is over budget
+ART_COLOURS = 128  # palette size after quantisation (alpha kept in the palette)
+
+
+def art_svg(icons: dict, name: str, hflip: bool, px: int) -> bytes:
+    """One Fluent icon as a standalone svg of px by px."""
+    body = icons["icons"][name]["body"]
+    if hflip:
+        body = f'<g transform="translate(32 0) scale(-1 1)">{body}</g>'
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="{px}" height="{px}">{body}</svg>'
+    ).encode()
+
+
+def pack_art(pngs: list[bytes], px: int) -> bytes:
+    """emoji48.bin: b"SDE1", u16 px, u32 count, count x (u32 offset, u32 length), then the PNGs.
+
+    Entry i is the PNG of row i of emoji.tsv. All integers little-endian.
+    """
+    head = 10 + 8 * len(pngs)
+    out = bytearray(b"SDE1" + px.to_bytes(2, "little") + len(pngs).to_bytes(4, "little"))
+    off = head
+    for p in pngs:
+        out += off.to_bytes(4, "little") + len(p).to_bytes(4, "little")
+        off += len(p)
+    for p in pngs:
+        out += p
+    return bytes(out)
+
+
 def render_art(inputs: dict, kept_seqs: list[str]):  # pragma: no cover - needs cairosvg and Pillow
-    raise SystemExit("art rendering is not built yet")
+    """Rasterises Fluent Flat to palette PNGs. Returns (emoji48.bin bytes, manifest "art" entry)."""
+    try:
+        import cairosvg
+        from PIL import Image
+    except ImportError as e:
+        raise SystemExit(f"--art needs cairosvg and Pillow (pip install cairosvg pillow): {e}")
+    icons, art = inputs["fluent_icons"], inputs["art_map"]
+    for px in ART_PX:
+        pngs = []
+        for seq in kept_seqs:
+            name, flip = art[strip_fe0f(seq)]
+            raw = cairosvg.svg2png(bytestring=art_svg(icons, name, flip, px), output_width=px, output_height=px)
+            im = Image.open(io.BytesIO(raw)).convert("RGBA")
+            im = im.quantize(colors=ART_COLOURS, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
+            buf = io.BytesIO()
+            im.save(buf, "PNG", optimize=True)
+            pngs.append(buf.getvalue())
+        blob = pack_art(pngs, px)
+        if len(blob) <= ART_BUDGET:
+            return blob, {"px": px, "count": len(pngs), "bytes": len(blob), "colours": ART_COLOURS, "style": "Fluent Emoji Flat"}
+        print(f"art at {px} px is {len(blob)} bytes (> {ART_BUDGET}); trying the next size", file=sys.stderr)
+    raise SystemExit("emoji art is over budget at every size")
 
 
 # --------------------------------------------------------------------------- main

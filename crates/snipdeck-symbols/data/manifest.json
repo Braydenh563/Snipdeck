@@ -1718,10 +1718,21 @@
    "group": "Flags"
   }
  ],
+ "art": {
+  "px": 48,
+  "count": 1595,
+  "bytes": 1553996,
+  "colours": 128,
+  "style": "Fluent Emoji Flat"
+ },
  "files": {
   "emoji.tsv.z": {
    "bytes": 35353,
    "sha256": "45d9df5a6fcb821c134e7040de048a64a5fbd8cadf7d016edeeaff82e6f66b50"
+  },
+  "emoji48.bin": {
+   "bytes": 1553996,
+   "sha256": "bac818bccd97fb1aba6132a2192ab366e636894490d1a35e9f616ce78ea859f7"
   },
   "icons.bin.z": {
    "bytes": 213342,

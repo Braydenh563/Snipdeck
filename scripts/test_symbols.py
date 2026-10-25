@@ -252,6 +252,34 @@ class Build(unittest.TestCase):
         self.assertEqual(first, "263a-fe0f")
 
 
+class Art(unittest.TestCase):
+    PNG = b"\x89PNG\r\n\x1a\n" + b"x" * 20
+
+    def test_pack_layout(self):
+        blob = symbols.pack_art([self.PNG, self.PNG + b"yy"], 48)
+        self.assertEqual(blob[:4], b"SDE1")
+        self.assertEqual(int.from_bytes(blob[4:6], "little"), 48)
+        self.assertEqual(int.from_bytes(blob[6:10], "little"), 2)
+        off1 = int.from_bytes(blob[18:22], "little")
+        ln1 = int.from_bytes(blob[22:26], "little")
+        self.assertEqual(off1, 10 + 16 + len(self.PNG))
+        self.assertEqual(blob[off1 : off1 + ln1], self.PNG + b"yy")
+
+    def test_check_accepts_good_and_rejects_damaged(self):
+        m = {"art": {"px": 48, "count": 2}}
+        blob = symbols.pack_art([self.PNG, self.PNG], 48)
+        self.assertEqual(symbols.check_art(m, blob), [])
+        self.assertTrue(symbols.check_art(m, blob[:-5]))  # entry runs past the end
+        self.assertTrue(symbols.check_art({"art": {"px": 40, "count": 2}}, blob))  # header differs
+        self.assertTrue(symbols.check_art(m, b"NOPE" + blob[4:]))
+
+    def test_flipped_art_is_mirrored_in_the_svg(self):
+        icons = {"icons": {"a": {"body": "<path/>"}}}
+        self.assertNotIn("scale(-1 1)", symbols.art_svg(icons, "a", False, 48).decode())
+        self.assertIn("scale(-1 1)", symbols.art_svg(icons, "a", True, 48).decode())
+        self.assertIn('width="48"', symbols.art_svg(icons, "a", False, 48).decode())
+
+
 class Notices(unittest.TestCase):
     def test_every_section_carries_its_licence(self):
         text = symbols.build_notices({"unicode": "UNICODE LICENSE V3 text", "fluent": "MIT Microsoft", "phosphor": "MIT Phosphor"})
