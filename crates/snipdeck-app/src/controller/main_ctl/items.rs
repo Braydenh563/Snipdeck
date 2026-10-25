@@ -197,17 +197,14 @@ where
             }
             Ok(())
         });
-        match done {
-            Ok(()) => {
-                self.show_toast(neutral_toast(ToastMessage::DeletedForever {
-                    count: targets.len(),
-                }));
-                self.library_changed();
-            }
-            Err(_) => {
-                self.show_toast(failed());
-                self.refresh_logged("a failed delete");
-            }
+        if done.is_ok() {
+            self.show_toast(neutral_toast(ToastMessage::DeletedForever {
+                count: targets.len(),
+            }));
+            self.library_changed();
+        } else {
+            self.show_toast(failed());
+            self.refresh_logged("a failed delete");
         }
     }
 

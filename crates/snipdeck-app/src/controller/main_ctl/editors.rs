@@ -230,6 +230,9 @@ where
         match self.write_editor(target, name, accent, icon, sort, now) {
             Ok(opened) => {
                 self.editor = None;
+                // Read again below (`library_changed`, after the toast); the window needs
+                // the new list or board before that.
+                self.main.mark_stale();
                 self.main_fresh();
                 match opened {
                     Some(Opened::List(id)) => self.main.open(Section::List(id)),
