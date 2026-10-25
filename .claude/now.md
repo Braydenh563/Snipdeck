@@ -218,3 +218,5 @@ Triage (v1 = fix before ship; .0.1 / 1.1 = later):
 - 2026-10-25 owner: "maybe make various design layouts togglable or different layout options and access methods to be picked in settings??" -> placed: Panel spec includes layout + access options in Settings.
 - Decision 2026-10-25: owner delegated the Panel design pick. Build D v3 (B+C hybrid, search expands like A, one click pastes) as the default layout, with Settings options for layout variants and access methods (spec first, docs/reviews/panel-v2-spec.md). Reason: owner order above.
 - Decision 2026-10-25: coordinator commits use `git commit -- <path>` (only that path), never a bare commit while an agent has staged files. Reason: a ledger commit swept an agent's staged slice-3 files (9625ddc).
+- 2026-10-26 owner: "how much of everything do you have left?? is the app polished? what do I run and how?" -> answered in chat.
+- 2026-10-26 owner: "can the app handle anything that can go in my clipboard?" -> answered (items: text, HTML, RTF, images, files; Recent captures text only); placed: work-order item "Recent captures images, files, rich text".
