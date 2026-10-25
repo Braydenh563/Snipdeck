@@ -22,3 +22,4 @@ date | item | type | rung | rework | note
 2026-10-25 | Feedback audit: confirmations + error toasts (rework: unlock toast, picker/fill tests mislabelled pre-existing) | ui | sonnet | 2 | 
 2026-10-25 | Panel v2 spec: D v3 default, List/Cards/Compact, search, lists menu, opening options | design | opus | 0 | 
 2026-10-25 | Show/hide/move/resize predictability (vanished monitor, parked frames, Reset ends drag) | bug | sonnet | 0 | 
+2026-10-25 | Review fixes F: toast latest-wins, refresh notice last, palette label, Picker docs | bug | sonnet | 1 | 
