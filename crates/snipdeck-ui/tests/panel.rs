@@ -128,12 +128,14 @@ fn panel_empty_list_and_no_results_and_no_lists() {
     fixture::set_rows(&h.component, Vec::new());
     assert_golden("panel-empty-light", &render(&h));
 
+    h.component.set_add_list_name("Email replies".into());
     h.component.set_query("zzz".into());
     assert_golden("panel-no-results-light", &render(&h));
     drop(h);
 
     let dark = panel(SIZE, true);
     fixture::set_rows(&dark.component, Vec::new());
+    dark.component.set_add_list_name("Email replies".into());
     dark.component.set_query("zzz".into());
     assert_golden("panel-no-results-dark", &render(&dark));
     drop(dark);
@@ -168,8 +170,8 @@ fn panel_with_many_rows_scrolled_shows_both_deck_edges() {
     h.component.set_selected_index(15);
     let frame = render(&h);
     assert!(
-        h.component.get_scroll_y() < -100.0 && h.component.get_scroll_y() > -280.0,
-        "scrolled mid-list, both edges showing: {}",
+        h.component.get_scroll_y() < -100.0 && h.component.get_scroll_y() > -1100.0,
+        "scrolled mid-list (the deck fades into both edges): {}",
         h.component.get_scroll_y()
     );
     assert_golden("panel-scrolled-light", &frame);
@@ -311,6 +313,112 @@ fn panel_undo_toast_in_dark() {
     assert_golden("panel-undo-toast-dark", &f);
 }
 
+// ---- Keyboard focus ---------------------------------------------------------------------------
+
+const FOCUS_RING: [u8; 3] = [0x28, 0x70, 0xD4];
+
+/// Key press and release into the Panel's window, as the platform sends them.
+fn tap(h: &Harness<PanelWindow>, key: slint::platform::Key) {
+    use slint::platform::WindowEvent;
+    let text: slint::SharedString = key.into();
+    h.component
+        .window()
+        .dispatch_event(WindowEvent::KeyPressed { text: text.clone() });
+    h.component
+        .window()
+        .dispatch_event(WindowEvent::KeyReleased { text });
+}
+
+/// Focus-ring coloured pixels within `reach` px outside the box (x, y, w, h).
+fn ring_pixels(f: &Frame, (x, y, w, h): (u32, u32, u32, u32), reach: u32) -> usize {
+    let mut n = 0;
+    for py in y.saturating_sub(reach)..(y + h + reach).min(SIZE.1) {
+        for px in x.saturating_sub(reach)..(x + w + reach).min(SIZE.0) {
+            let inside = px >= x && px < x + w && py >= y && py < y + h;
+            if !inside && f.pixel(px, py) == FOCUS_RING {
+                n += 1;
+            }
+        }
+    }
+    n
+}
+
+#[test]
+fn focus_ring_only_on_keyboard_focus() {
+    use slint::{
+        LogicalPosition,
+        platform::{PointerEventButton, WindowEvent},
+    };
+    let h = panel(SIZE, false);
+    let w = h.component.window();
+    w.dispatch_event(WindowEvent::WindowActiveChanged(true));
+    // The keep-on-top button: 32 square at x 216, y 4 (measured from the accessibility tree).
+    let pin = (216, 4, 32, 32);
+    assert_eq!(ring_pixels(&render(&h), pin, 4), 0, "no ring at rest");
+
+    // A pointer click gives the button the focus but draws no ring.
+    let at = LogicalPosition::new(232.0, 20.0);
+    w.dispatch_event(WindowEvent::PointerMoved { position: at });
+    w.dispatch_event(WindowEvent::PointerPressed {
+        position: at,
+        button: PointerEventButton::Left,
+    });
+    w.dispatch_event(WindowEvent::PointerReleased {
+        position: at,
+        button: PointerEventButton::Left,
+    });
+    w.dispatch_event(WindowEvent::PointerMoved {
+        position: LogicalPosition::new(92.0, 20.0),
+    });
+    assert_eq!(
+        ring_pixels(&render(&h), pin, 4),
+        0,
+        "a click leaves no focus ring"
+    );
+
+    // Tab to it: the ring shows.
+    let mut seen = false;
+    for _ in 0..12 {
+        tap(&h, slint::platform::Key::Tab);
+        if ring_pixels(&render(&h), pin, 4) > 0 {
+            seen = true;
+            break;
+        }
+    }
+    assert!(
+        seen,
+        "Tab reaches the keep-on-top button and draws its ring"
+    );
+}
+
+#[test]
+fn panel_focus_ring_on_a_list_tab_from_the_keyboard() {
+    use slint::platform::{Key, WindowEvent};
+    let h = panel(SIZE, false);
+    h.component
+        .window()
+        .dispatch_event(WindowEvent::WindowActiveChanged(true));
+    let _ = render(&h);
+    // Header: board, search, New, keep on top, More, close; then the list tabs.
+    for _ in 0..7 {
+        tap(&h, Key::Tab);
+    }
+    let f = render(&h);
+    // The ring sits above the selected tab's underline and never covers it: the tab row is y 40..72, its underline the
+    // last 2px (y 70, 71) in the accent colour, the ring just above it.
+    let rows: Vec<u32> = (41..70)
+        .filter(|&y| (4..300).any(|x| f.pixel(x, y) == FOCUS_RING))
+        .collect();
+    assert!(!rows.is_empty(), "a focus ring is drawn on the tab row");
+    // The selected tab's underline is its list colour (teal-600).
+    assert_eq!(
+        f.pixel(30, 71),
+        [0x04, 0x84, 0x84],
+        "the underline stays whole"
+    );
+    assert_golden("panel-focus-tab-light", &f);
+}
+
 /// Hover the close button (the last 28px square in the header, 8px from the right edge) and look under it.
 /// One Harness per test: the frozen clock restarts at zero with each one.
 fn tooltip_under_the_close_button(dark: bool, ink: [u8; 3]) {
@@ -364,13 +472,13 @@ fn the_window_is_outlined_with_a_1px_default_border_and_solid_app_chrome() {
             assert_eq!(f.pixel(x, y), outline, "outline at ({x},{y}) dark={dark}");
         }
         assert_eq!(
-            f.pixel(1, 200),
+            f.pixel(1, HEADER_H / 2),
             app,
             "chrome inside the outline (dark={dark})"
         );
-        // Header: nothing but the app background between the switcher and the buttons.
+        // Header: nothing but the app background between the board picker and the search button.
         assert_eq!(
-            f.pixel(160, HEADER_H / 2),
+            f.pixel(92, HEADER_H / 2),
             app,
             "header is chrome (dark={dark})"
         );
