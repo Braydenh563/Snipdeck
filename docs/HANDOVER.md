@@ -55,6 +55,7 @@ date at the real release. The owner capped this session at 96% weekly usage; the
   Settings: spec docs/reviews/panel-v2-spec.md (ea63898). Queue = .claude/work-order.md (review fixes F, Panel v2
   slices 1-9, v1.0.1, v1.1, final polish).
 - Night log 5: 3a90219..b22aa7a pushed (gate OK). Panel v2 slice 1 4e58caf, slice 2 c2cc6b4; slice 3 (list row) in progress.
+- Night log 6: slices 1-3 pushed (fc7f382, gate OK, reviewer: no blockers). Slice 4 WIP 04dbdb9; slices 5-6 next.
 
 - To wire in the Panel build (after the redesign is approved): the row density setting. It is labelled "Main list
   density" now (Settings, View menu, palette) because the Panel does not read it: `panel.slint` `compact-rows` is
