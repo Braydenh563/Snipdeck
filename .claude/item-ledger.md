@@ -26,3 +26,4 @@ date | item | type | rung | rework | note
 2026-10-25 | Panel v2 slice 1: tokens + docs | design | sonnet | 0 | 
 2026-10-25 | Panel v2 slice 2: settings model | feature | sonnet | 0 | 
 2026-10-25 | Panel v2 slice 3: quiet List row | ui | sonnet | 0 | 
+2026-10-25 | Panel v2 slice 4: header, search, footer, chrome | ui | sonnet | 0 | 
