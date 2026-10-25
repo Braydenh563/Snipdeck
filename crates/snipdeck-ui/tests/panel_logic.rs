@@ -1449,7 +1449,7 @@ ui_tests! {
         settle();
         press(ui.window(), &key(Key::Escape));
         assert_eq!(entries(&ui).map(|e| e.1), [0, 0, 0]);
-        assert!(take(&log).is_empty());
+        assert_eq!(take(&log), Vec::<String>::new());
     }
 
     fn enter_with_no_matches_creates_a_note_from_the_query() {
