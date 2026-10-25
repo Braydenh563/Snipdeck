@@ -96,12 +96,12 @@ where
         let now = self.clock.now();
         match self.store.trash(Trashable::List(id), now) {
             Ok(()) => {
-                self.library_changed();
                 let step = self.record_step(
                     crate::history::Action::Delete,
                     vec![crate::history::Change::Trash(vec![Trashable::List(id)])],
                 );
                 self.show_undo_toast(neutral_toast(ToastMessage::ListTrashed { name }), step);
+                self.library_changed();
             }
             Err(_) => self.show_toast(failed()),
         }
@@ -118,7 +118,7 @@ where
             return;
         };
         let done = self.store.move_list(order[index], board, placement);
-        self.finish(&done);
+        self.finish(&done, None);
     }
 
     /// Alt+Up / Alt+Down or the item menu's Move up / Move down: moves the row at the cursor one
@@ -181,7 +181,7 @@ where
         if moved_ok {
             self.record_step(crate::history::Action::Reorder, changes);
         }
-        self.finish(&done);
+        self.finish(&done, None);
         if moved_ok {
             self.main_fresh();
             self.follow_moved_row(moved);
@@ -209,11 +209,11 @@ where
         match move_recorded(&mut self.store, id, target, Placement::Last, &mut changes) {
             Ok(()) => {
                 self.record_step(crate::history::Action::Move, changes);
-                self.library_changed();
                 self.show_toast(neutral_toast(ToastMessage::ItemsMoved {
                     count: 1,
                     list: name,
                 }));
+                self.library_changed();
             }
             Err(_) => self.show_toast(failed()),
         }
@@ -363,6 +363,6 @@ where
             return;
         };
         let done = self.store.move_board(order[from], placement);
-        self.finish(&done);
+        self.finish(&done, None);
     }
 }

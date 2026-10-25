@@ -1006,8 +1006,8 @@ msgstr "Sus listas y {} elementos pasan a la papelera. Puedes restaurarlos duran
 msgid "Just now"
 msgstr "Justo ahora"
 
-msgid "Keep Panel open"
-msgstr "Mantener el Panel abierto"
+msgid "Toggle keep Panel open"
+msgstr "Alternar mantener el Panel abierto"
 
 msgid "Keep Panel visible during screenshots"
 msgstr "Mantener el panel visible durante las capturas"

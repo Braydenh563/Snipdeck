@@ -230,7 +230,6 @@ where
         match self.write_editor(target, name, accent, icon, sort, now) {
             Ok(opened) => {
                 self.editor = None;
-                self.library_changed();
                 self.main_fresh();
                 match opened {
                     Some(Opened::List(id)) => self.main.open(Section::List(id)),
@@ -241,6 +240,7 @@ where
                     EditorTarget::NewBoard | EditorTarget::Board(_) => ToastMessage::BoardSaved,
                     EditorTarget::NewList(_) | EditorTarget::List(_) => ToastMessage::ListSaved,
                 }));
+                self.library_changed();
             }
             Err(_) => self.show_toast(failed()),
         }
@@ -316,8 +316,8 @@ where
                     crate::history::Action::Delete,
                     vec![crate::history::Change::Trash(vec![Trashable::Board(id)])],
                 );
-                self.library_changed();
                 self.show_undo_toast(neutral_toast(ToastMessage::BoardTrashed { name }), step);
+                self.library_changed();
             }
             Err(_) => self.show_toast(failed()),
         }

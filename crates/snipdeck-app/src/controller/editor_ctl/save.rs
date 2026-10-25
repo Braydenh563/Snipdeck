@@ -39,11 +39,11 @@ where
         match self.save_item(&mut slot, input) {
             Ok(list) => {
                 self.clear_draft(slot.draft_key());
-                self.library_changed();
                 self.show_toast(Toast {
                     kind: ToastKind::Success,
                     message: ToastMessage::Saved { list },
                 });
+                self.library_changed();
             }
             Err(()) => self.item_editor = Some(slot),
         }

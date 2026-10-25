@@ -197,7 +197,6 @@ where
             }
             Ok(())
         });
-        self.library_changed();
         match done {
             Ok(()) => {
                 let message = restored_count(&step).map_or(
@@ -211,8 +210,12 @@ where
                     kind: ToastKind::Success,
                     message,
                 });
+                self.library_changed();
             }
-            Err(error) => self.show_toast(super::main_ctl::restore_failed(&error)),
+            Err(error) => {
+                self.show_toast(super::main_ctl::restore_failed(&error));
+                self.refresh_logged("a failed undo");
+            }
         }
     }
 }

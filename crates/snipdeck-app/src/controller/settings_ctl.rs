@@ -352,8 +352,12 @@ where
             }),
             Err(problem) => self.show_toast(danger(ToastMessage::LicenceRejected(problem))),
         }
-        // Supporter lifts the Free caps the windows show.
-        self.refresh_or_notice("a licence change");
+        // Supporter lifts the Free caps the windows show. The real error stays on screen.
+        if result.is_ok() {
+            self.refresh_or_notice("a licence change");
+        } else {
+            self.refresh_logged("a licence change");
+        }
         result
     }
 
@@ -485,7 +489,6 @@ where
                 // The new store counts its changes from zero: nothing read from the old one may
                 // be served again (search, the panel and the Recent list).
                 self.index_cache.reset();
-                self.library_changed();
                 let missing_sensitive = sensitive_before.saturating_sub(self.sensitive_count());
                 self.show_toast(Toast {
                     kind: ToastKind::Success,
@@ -823,7 +826,11 @@ where
         } else {
             danger(ToastMessage::EraseFailed)
         });
-        self.refresh_or_notice("erasing the library");
+        if erased {
+            self.refresh_or_notice("erasing the library");
+        } else {
+            self.refresh_logged("erasing the library");
+        }
         erased
     }
 }

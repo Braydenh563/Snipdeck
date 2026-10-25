@@ -327,12 +327,11 @@ where
             .collect()
     }
 
-    /// The library changed: the Main window reads it again and the Panel follows.
-    pub(super) fn library_changed(&mut self) {
-        self.main.mark_stale();
-        if self.model.refresh(&self.store).is_err() {
-            self.show_toast(failed());
-        }
+    /// The library changed: the Main window reads it again and the Panel follows. When the
+    /// Panel cannot be read again the "couldn't refresh" notice is shown, so call this AFTER the
+    /// operation's own toast: the success first, the notice last. Returns whether it worked.
+    pub(super) fn library_changed(&mut self) -> bool {
+        self.refresh_or_notice("a library change")
     }
 
     // ---- Navigation, search, selection ---------------------------------------------------------

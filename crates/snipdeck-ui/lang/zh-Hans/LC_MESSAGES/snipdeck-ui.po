@@ -1003,8 +1003,8 @@ msgstr "它的列表和 {} 个项目将移到回收站。你可以在 {} 天内�
 msgid "Just now"
 msgstr "刚刚"
 
-msgid "Keep Panel open"
-msgstr "保持面板打开"
+msgid "Toggle keep Panel open"
+msgstr "切换保持面板打开"
 
 msgid "Keep Panel visible during screenshots"
 msgstr "截图时保持面板可见"

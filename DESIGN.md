@@ -258,7 +258,7 @@ Every icon-only control has a tooltip and an accessible label with the same word
 
 ### Picker
 - 560 wide, up to 9 visible rows plus the search field (44px tall).
-- Anchored below the caret. If there's no room, it flips above. If there's no caret, it opens at the mouse.
+- Placed by the Picker setting (Below, Above, Right or Left of the caret; Below by default), one line clear of the caret so it covers neither the caret's line nor the next. If the chosen side has no room it flips to the opposite side, and the result is clamped to the work area. Right and Left keep the Picker beside the caret, top-aligned with it, and may cover the rest of that line. With no caret it opens at the mouse.
 
 ### Main window (3-pane)
 | Zone | Width | Content |

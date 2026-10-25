@@ -311,23 +311,6 @@ pub enum ToastMessage {
     NotRefreshed,
 }
 
-impl Toast {
-    /// A confirmation of something the user did (a success, or a setting changed), as opposed to
-    /// a message that explains a refusal or a failure. While an error toast is still on screen a
-    /// confirmation does not replace it.
-    #[must_use]
-    pub const fn is_confirmation(&self) -> bool {
-        matches!(self.kind, ToastKind::Success)
-            || matches!(
-                self.message,
-                ToastMessage::ThemeSet(_)
-                    | ToastMessage::PanelOnTop(_)
-                    | ToastMessage::DockSet(_)
-                    | ToastMessage::ItemPlaced { .. }
-            )
-    }
-}
-
 /// A toast: a style and a message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Toast {

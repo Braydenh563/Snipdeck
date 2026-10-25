@@ -362,42 +362,58 @@ fn success(message: ToastMessage) -> Toast {
 }
 
 #[test]
-fn a_success_does_not_replace_an_error_that_is_still_showing() {
+fn the_latest_toast_wins_across_actions() {
     let mut w = world();
+    // A paste failed, the retry worked: the user sees "Pasted", not the old error.
     w.ctl.show_toast(failed());
-    w.ctl.show_toast(success(ToastMessage::Duplicated));
-    assert_eq!(shown(&w), Some(ToastMessage::Failed));
-    // The same for the settings and reorder confirmations.
-    w.ctl.show_toast(neutral(ToastMessage::PanelOnTop(true)));
-    w.ctl.show_toast(neutral(ToastMessage::ItemPlaced {
-        position: 1,
-        total: 2,
+    w.ctl.show_toast(success(ToastMessage::Pasted {
+        app: "Outlook".into(),
     }));
-    assert_eq!(shown(&w), Some(ToastMessage::Failed));
-    // A message that explains something to the user still shows, and an error replaces an error.
-    w.ctl.show_toast(neutral(ToastMessage::NothingToSave));
-    assert_eq!(shown(&w), Some(ToastMessage::NothingToSave));
+    assert_eq!(
+        shown(&w),
+        Some(ToastMessage::Pasted {
+            app: "Outlook".into()
+        })
+    );
+    // Settings and reorder confirmations replace an error too.
     w.ctl.show_toast(failed());
-    w.ctl.show_toast(Toast {
-        kind: ToastKind::Danger,
-        message: ToastMessage::StorageFailed,
-    });
-    assert_eq!(shown(&w), Some(ToastMessage::StorageFailed));
+    w.ctl.show_toast(neutral(ToastMessage::PanelOnTop(true)));
+    assert_eq!(shown(&w), Some(ToastMessage::PanelOnTop(true)));
+    // An error replaces a success.
+    w.ctl.show_toast(failed());
+    assert_eq!(shown(&w), Some(ToastMessage::Failed));
 }
 
 #[test]
-fn a_success_shows_once_the_error_has_started_to_leave_or_is_gone() {
+fn a_retry_that_works_replaces_the_error_of_the_failed_try() {
     let mut w = world();
     w.ctl.show_toast(failed());
-    let seq = w.ctl.view().toast.expect("toast").seq;
-    // Enter -> Hold -> Exit.
-    w.ctl.toast_tick(seq);
-    w.ctl.toast_tick(seq);
-    w.ctl.show_toast(success(ToastMessage::Duplicated));
-    assert_eq!(shown(&w), Some(ToastMessage::Duplicated));
-    // A success replaces a success.
-    w.ctl.show_toast(success(ToastMessage::ListSaved));
-    assert_eq!(shown(&w), Some(ToastMessage::ListSaved));
+    let before = w.ctl.view().toast.expect("toast").seq;
+    let result = w.ctl.activate_row(0, UseMode::Paste);
+    assert_eq!(result, UseResult::Done(UseOutcome::Pasted));
+    let now = w.ctl.view().toast.expect("toast");
+    assert_ne!(now.seq, before, "a new toast");
+    assert!(matches!(now.message, ToastMessage::Pasted { .. }));
+}
+
+#[test]
+fn an_operation_whose_refresh_fails_ends_with_the_not_refreshed_notice() {
+    for which in 0..3 {
+        let mut w = world();
+        let id = w.ids[0];
+        FAIL_REFRESH.set(true);
+        match which {
+            0 => w.ctl.pin_row(0),
+            1 => w.ctl.duplicate_row(0),
+            _ => w.ctl.trash_items(&[id]),
+        }
+        FAIL_REFRESH.set(false);
+        assert_eq!(
+            shown(&w),
+            Some(ToastMessage::NotRefreshed),
+            "action {which}: the change worked, so its success comes first and the notice last"
+        );
+    }
 }
 
 #[test]

@@ -83,10 +83,7 @@ where
         if done.is_ok() {
             self.record_step(Action::Pin, changes);
         }
-        self.finish(&done);
-        if done.is_ok() {
-            self.show_toast(success(ToastMessage::Pinned(pin)));
-        }
+        self.finish(&done, Some(success(ToastMessage::Pinned(pin))));
     }
 
     /// Each item again, directly after itself: same title, content, tags and flags; pinned off and
@@ -132,10 +129,10 @@ where
             });
             return;
         }
-        self.finish(&done);
-        if done.is_ok() && !made.is_empty() {
-            self.show_toast(success(ToastMessage::Duplicated));
-        }
+        self.finish(
+            &done,
+            (!made.is_empty()).then(|| success(ToastMessage::Duplicated)),
+        );
     }
 
     pub(in super::super) fn trash_items(&mut self, items: &[ItemId]) {
@@ -151,7 +148,6 @@ where
         });
         if done.is_ok() {
             let step = self.record_step(Action::Delete, vec![Change::Trash(item_targets(items))]);
-            self.library_changed();
             self.show_undo_toast(
                 Toast {
                     kind: ToastKind::Neutral,
@@ -159,6 +155,7 @@ where
                 },
                 step,
             );
+            self.library_changed();
         } else {
             self.show_toast(failed());
         }
@@ -174,15 +171,20 @@ where
             }
             Ok(())
         });
-        self.library_changed();
         match done {
-            Ok(()) => self.show_toast(Toast {
-                kind: ToastKind::Success,
-                message: ToastMessage::Restored {
-                    count: targets.len(),
-                },
-            }),
-            Err(error) => self.show_toast(restore_failed(&error)),
+            Ok(()) => {
+                self.show_toast(Toast {
+                    kind: ToastKind::Success,
+                    message: ToastMessage::Restored {
+                        count: targets.len(),
+                    },
+                });
+                self.library_changed();
+            }
+            Err(error) => {
+                self.show_toast(restore_failed(&error));
+                self.refresh_logged("a failed restore");
+            }
         }
     }
 
@@ -195,12 +197,17 @@ where
             }
             Ok(())
         });
-        self.library_changed();
         match done {
-            Ok(()) => self.show_toast(neutral_toast(ToastMessage::DeletedForever {
-                count: targets.len(),
-            })),
-            Err(_) => self.show_toast(failed()),
+            Ok(()) => {
+                self.show_toast(neutral_toast(ToastMessage::DeletedForever {
+                    count: targets.len(),
+                }));
+                self.library_changed();
+            }
+            Err(_) => {
+                self.show_toast(failed());
+                self.refresh_logged("a failed delete");
+            }
         }
     }
 
@@ -210,10 +217,20 @@ where
             .then_some(snipdeck_core::Entitlements::FREE_BOARD_LIMIT)
     }
 
-    /// Ends an action: a failure is a toast, a success is a changed library.
-    pub(super) fn finish(&mut self, done: &snipdeck_store::Result<()>) {
+    /// Ends an action: a failure is a toast; a success shows `confirmation` (if any) and then
+    /// reads the library again, so a refresh that fails has the last word.
+    pub(super) fn finish(
+        &mut self,
+        done: &snipdeck_store::Result<()>,
+        confirmation: Option<Toast>,
+    ) {
         match done {
-            Ok(()) => self.library_changed(),
+            Ok(()) => {
+                if let Some(toast) = confirmation {
+                    self.show_toast(toast);
+                }
+                self.library_changed();
+            }
             Err(e) => self.show_toast(change_failed(e)),
         }
     }
@@ -249,11 +266,11 @@ where
         match done {
             Ok(()) => {
                 self.record_step(Action::Move, changes);
-                self.library_changed();
                 self.show_toast(neutral_toast(ToastMessage::ItemsMoved {
                     count: items.len(),
                     list: name,
                 }));
+                self.library_changed();
             }
             Err(e) => self.show_toast(change_failed(&e)),
         }
@@ -296,7 +313,7 @@ where
         if done.is_ok() {
             self.record_step(Action::Tag, changes);
         }
-        self.finish(&done);
+        self.finish(&done, None);
     }
 
     /// The Main window's close button. Returns whether Snipdeck should quit with it: when
@@ -343,7 +360,7 @@ where
             return;
         };
         let done = self.store.delete_tag(tag);
-        self.finish(&done);
+        self.finish(&done, None);
     }
 
     // ---- The Trash and Undo --------------------------------------------------------------------
@@ -361,9 +378,11 @@ where
             let now = self.clock.now();
             let done = self.store.atomically(|b| b.trash(Trashable::Item(id), now));
             self.toast = None;
-            self.library_changed();
-            if done.is_err() || self.refresh_panel().is_err() {
+            if done.is_err() {
                 self.show_toast(failed());
+                self.refresh_logged("a failed undo");
+            } else {
+                self.library_changed();
             }
             return;
         }
@@ -384,8 +403,8 @@ where
             .unwrap_or(cutoff);
         match self.store.purge(cutoff) {
             Ok(_) => {
-                self.library_changed();
                 self.show_toast(neutral_toast(ToastMessage::TrashEmptied));
+                self.library_changed();
             }
             Err(_) => self.show_toast(failed()),
         }

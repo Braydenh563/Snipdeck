@@ -1337,7 +1337,7 @@ msgid "Just now"
 msgstr ""
 
 #: ui/command_texts.slint:48
-msgid "Keep Panel open"
+msgid "Toggle keep Panel open"
 msgstr ""
 
 #: ui/settings.slint:691 ui/settings.slint:694

@@ -250,8 +250,7 @@ where
         );
         match saved {
             Ok(Captured::Saved { item, list }) => {
-                self.library_changed();
-                if !self.refresh_or_notice("adding an item") {
+                if !self.library_changed() {
                     return true;
                 }
                 self.model.select_item(item);

@@ -143,15 +143,11 @@ where
         });
         match done {
             Ok(()) => {
-                self.library_changed();
-                if self.refresh_panel().is_err() {
-                    self.show_toast(failed());
-                    return;
-                }
                 self.show_toast(neutral(ToastMessage::ItemsMoved {
                     count: movable.len(),
                     list: name,
                 }));
+                self.library_changed();
             }
             Err(_) => self.show_toast(failed()),
         }
@@ -172,9 +168,6 @@ where
         match done {
             Ok(()) => {
                 self.library_changed();
-                if self.refresh_panel().is_err() {
-                    self.show_toast(failed());
-                }
             }
             Err(_) => self.show_toast(failed()),
         }

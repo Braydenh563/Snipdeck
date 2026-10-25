@@ -459,8 +459,8 @@ where
         match done {
             Ok(()) => {
                 self.record_step(crate::history::Action::Pin, changes);
-                self.library_changed();
                 self.show_toast(success(ToastMessage::Pinned(pin)));
+                self.library_changed();
             }
             Err(_) => self.show_toast(failed()),
         }

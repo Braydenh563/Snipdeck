@@ -1003,8 +1003,8 @@ msgstr "このボードのリストと{}件の項目がごみ箱に移動しま�
 msgid "Just now"
 msgstr "たった今"
 
-msgid "Keep Panel open"
-msgstr "パネルを開いたままにする"
+msgid "Toggle keep Panel open"
+msgstr "パネルを開いたままにする（切り替え）"
 
 msgid "Keep Panel visible during screenshots"
 msgstr "スクリーンショット中もパネルを表示したままにする"

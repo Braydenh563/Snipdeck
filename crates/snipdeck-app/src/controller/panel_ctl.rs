@@ -189,15 +189,11 @@ where
         ) {
             Ok(()) => {
                 self.record_step(crate::history::Action::Move, changes);
-                self.library_changed();
-                if self.refresh_panel().is_err() {
-                    self.show_toast(failed());
-                    return;
-                }
                 self.show_toast(neutral(ToastMessage::ItemsMoved {
                     count: 1,
                     list: target.name,
                 }));
+                self.library_changed();
             }
             Err(_) => self.show_toast(failed()),
         }
@@ -271,9 +267,7 @@ where
         ) {
             Ok(()) => {
                 self.record_step(crate::history::Action::Reorder, changes);
-                self.library_changed();
-                if self.refresh_panel().is_err() {
-                    self.show_toast(failed());
+                if !self.library_changed() {
                     return;
                 }
                 self.model.select_item(moved);

@@ -1006,8 +1006,8 @@ msgstr "Seine Listen und {} Elemente kommen in den Papierkorb. Du kannst sie {} 
 msgid "Just now"
 msgstr "Gerade eben"
 
-msgid "Keep Panel open"
-msgstr "Panel offen halten"
+msgid "Toggle keep Panel open"
+msgstr "Panel offen halten umschalten"
 
 msgid "Keep Panel visible during screenshots"
 msgstr "Panel bei Screenshots sichtbar lassen"
