@@ -1336,10 +1336,6 @@ msgstr ""
 msgid "Just now"
 msgstr ""
 
-#: ui/command_texts.slint:48
-msgid "Toggle keep Panel open"
-msgstr ""
-
 #: ui/settings.slint:691 ui/settings.slint:694
 msgid "Keep Panel visible during screenshots"
 msgstr ""
@@ -3102,6 +3098,10 @@ msgstr ""
 
 #: ui/editors.slint:350
 msgid "Today's date"
+msgstr ""
+
+#: ui/command_texts.slint:48
+msgid "Toggle keep Panel open"
 msgstr ""
 
 #: ui/help.slint:220

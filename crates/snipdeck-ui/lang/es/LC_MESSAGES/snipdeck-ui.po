@@ -1006,9 +1006,6 @@ msgstr "Sus listas y {} elementos pasan a la papelera. Puedes restaurarlos duran
 msgid "Just now"
 msgstr "Justo ahora"
 
-msgid "Toggle keep Panel open"
-msgstr "Alternar mantener el Panel abierto"
-
 msgid "Keep Panel visible during screenshots"
 msgstr "Mantener el panel visible durante las capturas"
 
@@ -2333,6 +2330,9 @@ msgstr "Para eliminarlo todo, usa Borrar la biblioteca en Copias de seguridad y 
 
 msgid "Today's date"
 msgstr "Fecha de hoy"
+
+msgid "Toggle keep Panel open"
+msgstr "Alternar mantener el Panel abierto"
 
 msgid "Tools"
 msgstr "Herramientas"

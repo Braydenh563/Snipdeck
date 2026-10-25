@@ -1006,9 +1006,6 @@ msgstr "Suas listas e {} itens vão para a lixeira. Você pode restaurá-los por
 msgid "Just now"
 msgstr "Agora mesmo"
 
-msgid "Toggle keep Panel open"
-msgstr "Alternar manter o Painel aberto"
-
 msgid "Keep Panel visible during screenshots"
 msgstr "Manter o painel visível durante as capturas"
 
@@ -2333,6 +2330,9 @@ msgstr "Para remover tudo, use Apagar a biblioteca em Backups e seus dados e dep
 
 msgid "Today's date"
 msgstr "Data de hoje"
+
+msgid "Toggle keep Panel open"
+msgstr "Alternar manter o Painel aberto"
 
 msgid "Tools"
 msgstr "Ferramentas"

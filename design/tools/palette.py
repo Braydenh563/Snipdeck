@@ -1,8 +1,11 @@
 """Generate Snipdeck colour primitives from OKLCH and verify WCAG contrast.
 
-Usage: python3 design/tools/palette.py  -> prints markdown tables + writes design/tokens/palette.json
+Usage: python3 design/tools/palette.py          -> prints markdown tables + writes design/tokens/palette.json
+       python3 design/tools/palette.py --check  -> writes nothing; exits 1 on a failed contrast check or when
+                                                   design/tokens/palette.json is not what this file generates
+(`cargo test -p snipdeck-app palette` repeats the new-token contrast checks from the JSON, so CI runs them.)
 """
-import json, math, pathlib
+import json, math, pathlib, sys
 
 def oklch_to_srgb(L, C, h):
     a, b = C * math.cos(math.radians(h)), C * math.sin(math.radians(h))
@@ -110,6 +113,18 @@ THEMES = {
   },
 }
 
+# Item kinds (Panel v2 type tile): kind.<k>.tile / kind.<k>.glyph, one hue each. Light: step 200 tile with a 700 glyph;
+# dark: step 900 tile with a 300 glyph (the D v3 mock's quiet-row values).
+KIND_HUE = {"text": "amber", "template": "violet", "code": "slate", "link": "teal",
+            "sensitive": "rose", "image": "green", "file": "orange"}
+for _k, _hue in KIND_HUE.items():
+    THEMES["light"][f"kind.{_k}.tile"], THEMES["light"][f"kind.{_k}.glyph"] = f"{_hue}-200", f"{_hue}-700"
+    THEMES["dark"][f"kind.{_k}.tile"], THEMES["dark"][f"kind.{_k}.glyph"] = f"{_hue}-900", f"{_hue}-300"
+# Search match mark (Panel v2): a span behind the matched text, no underline. Light blue-300 rather than the mock's
+# blue-200 (1.16:1 against bg.selected; the check below wants 1.3:1).
+THEMES["light"].update({"search.mark": "blue-300", "search.mark-text": "neutral-850", "toast.action": "blue-300"})
+THEMES["dark"].update({"search.mark": "blue-800", "search.mark-text": "neutral-0", "toast.action": "blue-700"})
+
 CHECKS = [  # (fg, bg, min, label)
   ("text.primary", "bg.surface", 7.0, "body text"),
   ("text.primary", "bg.app", 7.0, "body text on app bg"),
@@ -134,7 +149,12 @@ CHECKS = [  # (fg, bg, min, label)
   ("danger.fg", "bg.surface", 4.5, "danger text"),
   ("info.fg", "info.bg", 4.5, "info"),
   ("text.on-accent", "danger.solid", 4.5, "destructive button"),
-]
+  ("search.mark-text", "search.mark", 4.5, "matched text on the search mark"),
+  ("search.mark", "bg.selected", 1.3, "search mark vs selected row (mark stays visible)"),
+  ("search.mark", "bg.surface", 1.3, "search mark vs list surface"),
+  ("search.mark", "bg.hover", 1.3, "search mark vs hovered row"),
+  ("toast.action", "ink.default", 4.5, "toast action label on ink"),
+] + [(f"kind.{k}.glyph", f"kind.{k}.tile", 4.5, f"{k} glyph on its type tile") for k in KIND_HUE]
 
 out = ["## Primitives\n", "| Token | Hex | OKLCH |", "|---|---|---|"]
 for k, (L, C, h) in prims.items():
@@ -169,9 +189,16 @@ for name in HUES:
 print("\n".join(out))
 print(f"\nFAILURES: {fails}")
 root = pathlib.Path(__file__).resolve().parents[1]
-(root / "tokens").mkdir(exist_ok=True)
-(root / "tokens" / "palette.json").write_text(json.dumps({
+generated = json.dumps({
     "primitives": hexmap,
     "themes": {t: {k: hexmap[v] for k, v in m.items()} for t, m in THEMES.items()},
     "semantic_refs": THEMES,
-}, indent=2))
+}, indent=2)
+target = root / "tokens" / "palette.json"
+if "--check" in sys.argv[1:]:
+    stale = not target.exists() or target.read_text() != generated
+    if stale:
+        print("design/tokens/palette.json is stale: run python3 design/tools/palette.py and commit it")
+    sys.exit(1 if fails or stale else 0)
+(root / "tokens").mkdir(exist_ok=True)
+target.write_text(generated)

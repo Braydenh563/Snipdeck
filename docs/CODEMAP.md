@@ -2121,6 +2121,12 @@ light_uses_step_600_and_dark_step_400 | crates/snipdeck-app/src/palette.rs:59
 every_accent_resolves_from_the_palette_file | crates/snipdeck-app/src/palette.rs:71
 no_accent_is_slate | crates/snipdeck-app/src/palette.rs:94
 hex_parsing_rejects_junk | crates/snipdeck-app/src/palette.rs:102
+theme_colour | crates/snipdeck-app/src/palette.rs:113
+luminance | crates/snipdeck-app/src/palette.rs:121
+contrast | crates/snipdeck-app/src/palette.rs:133
+type_tile_glyphs_read_on_their_tile_in_both_themes | crates/snipdeck-app/src/palette.rs:142
+search_mark_is_readable_and_stays_visible_on_every_row_fill | crates/snipdeck-app/src/palette.rs:164
+toast_action_reads_on_the_ink_fill | crates/snipdeck-app/src/palette.rs:176
 
 ### crates/snipdeck-app/src/panel.rs
 
@@ -5767,12 +5773,12 @@ assert_golden | crates/snipdeck-ui/src/testing.rs:272
 
 ### design/tools/palette.py
 
-oklch_to_srgb | design/tools/palette.py:7
-in_gamut | design/tools/palette.py:21
-fit | design/tools/palette.py:32
-hexs | design/tools/palette.py:37
-lum | design/tools/palette.py:39
-contrast | design/tools/palette.py:46
+oklch_to_srgb | design/tools/palette.py:10
+in_gamut | design/tools/palette.py:24
+fit | design/tools/palette.py:35
+hexs | design/tools/palette.py:40
+lum | design/tools/palette.py:42
+contrast | design/tools/palette.py:49
 
 ### scripts/codemap.py
 
@@ -6302,7 +6308,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/src/master_password.rs` (inline) | 5 |
 | `crates/snipdeck-app/src/native_window.rs` (inline) | 2 |
 | `crates/snipdeck-app/src/ownership.rs` (inline) | 8 |
-| `crates/snipdeck-app/src/palette.rs` (inline) | 4 |
+| `crates/snipdeck-app/src/palette.rs` (inline) | 7 |
 | `crates/snipdeck-app/src/panel.rs` (inline) | 19 |
 | `crates/snipdeck-app/src/paste_next.rs` (inline) | 5 |
 | `crates/snipdeck-app/src/paths.rs` (inline) | 15 |

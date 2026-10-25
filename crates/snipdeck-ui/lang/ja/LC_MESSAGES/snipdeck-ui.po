@@ -1003,9 +1003,6 @@ msgstr "このボードのリストと{}件の項目がごみ箱に移動しま�
 msgid "Just now"
 msgstr "たった今"
 
-msgid "Toggle keep Panel open"
-msgstr "パネルを開いたままにする（切り替え）"
-
 msgid "Keep Panel visible during screenshots"
 msgstr "スクリーンショット中もパネルを表示したままにする"
 
@@ -2326,6 +2323,9 @@ msgstr "すべて削除するには、「バックアップとデータ」の「
 
 msgid "Today's date"
 msgstr "今日の日付"
+
+msgid "Toggle keep Panel open"
+msgstr "パネルを開いたままにする（切り替え）"
 
 msgid "Tools"
 msgstr "ツール"

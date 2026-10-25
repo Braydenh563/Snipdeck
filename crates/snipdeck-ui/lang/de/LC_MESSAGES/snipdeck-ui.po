@@ -1006,9 +1006,6 @@ msgstr "Seine Listen und {} Elemente kommen in den Papierkorb. Du kannst sie {} 
 msgid "Just now"
 msgstr "Gerade eben"
 
-msgid "Toggle keep Panel open"
-msgstr "Panel offen halten umschalten"
-
 msgid "Keep Panel visible during screenshots"
 msgstr "Panel bei Screenshots sichtbar lassen"
 
@@ -2333,6 +2330,9 @@ msgstr "Zum Entfernen von allem nutze Bibliothek löschen unter Sicherungen und 
 
 msgid "Today's date"
 msgstr "Heutiges Datum"
+
+msgid "Toggle keep Panel open"
+msgstr "Panel offen halten umschalten"
 
 msgid "Tools"
 msgstr "Werkzeuge"

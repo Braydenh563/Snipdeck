@@ -1006,9 +1006,6 @@ msgstr "Ses listes et {} éléments vont à la corbeille. Vous pouvez les restau
 msgid "Just now"
 msgstr "À l'instant"
 
-msgid "Toggle keep Panel open"
-msgstr "Basculer Garder le Panneau ouvert"
-
 msgid "Keep Panel visible during screenshots"
 msgstr "Garder le panneau visible pendant les captures"
 
@@ -2333,6 +2330,9 @@ msgstr "Pour tout supprimer, utilisez Effacer la bibliothèque sous Sauvegardes 
 
 msgid "Today's date"
 msgstr "Date du jour"
+
+msgid "Toggle keep Panel open"
+msgstr "Basculer Garder le Panneau ouvert"
 
 msgid "Tools"
 msgstr "Outils"

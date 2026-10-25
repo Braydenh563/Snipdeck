@@ -1003,9 +1003,6 @@ msgstr "它的列表和 {} 个项目将移到回收站。你可以在 {} 天内�
 msgid "Just now"
 msgstr "刚刚"
 
-msgid "Toggle keep Panel open"
-msgstr "切换保持面板打开"
-
 msgid "Keep Panel visible during screenshots"
 msgstr "截图时保持面板可见"
 
@@ -2326,6 +2323,9 @@ msgstr "要删除全部内容，请使用“备份与你的数据”下的“删
 
 msgid "Today's date"
 msgstr "今天的日期"
+
+msgid "Toggle keep Panel open"
+msgstr "切换保持面板打开"
 
 msgid "Tools"
 msgstr "工具"
