@@ -39,6 +39,7 @@ import { PinnedStrip, PinnedItem } from "components/pinned-strip.slint";
 import { BoardSwitcher } from "components/board-switcher.slint";
 import { ListTabBar, TabItem, ClockTab } from "components/tab.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
+import { ListsMenu } from "components/lists-menu.slint";
 import { SearchField } from "components/text_field.slint";
 import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
 import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind, Tooltip } from "components/feedback.slint";
@@ -411,6 +412,9 @@ export component PanelWindow inherits Window {
         }
     }
     property <bool> no-lists: root.tabs.length == 0;
+    // The Menu switcher (spec 3) names the list in the header: "Board · List" (Recent while that view is open).
+    property <string> switcher-list: !root.lists-in-menu ? "" : root.recent-open ? @tr("Recent") : root.tabs[root.current-tab].text;
+
     property <int> sel: root.rows.length == 0 ? -1 : min(max(root.selected-index, 0), root.rows.length - 1);
     property <int> used-index: -1;
     // The Recent list's selection, clamped, and its menus (the row they act on, and where the menu goes).
@@ -460,7 +464,11 @@ export component PanelWindow inherits Window {
             >= (root.eff-layout == PanelLayout.cards ? 1 : 2) * root.layout-row-h + root.row-gap;
     }
     changed height => { root.update-pins(); }
-    changed lists-in-menu => { root.update-pins(); }
+    // A list tab no longer holds focus once the tab row goes (Menu switcher); the strip may fit differently.
+    changed lists-in-menu => {
+        root.tabs-focused = false;
+        root.update-pins();
+    }
     property <length> avg-row-h: root.rows.length == 0 ? Space.hit : max(Space.hit, list.content-height / root.rows.length);
     property <int> page-rows: max(1, floor(list.height / root.avg-row-h) - 1);
 
@@ -1112,17 +1120,19 @@ export component PanelWindow inherits Window {
                         padding-bottom: Space.s1;
                         spacing: Space.s0-5;
                         switcher := BoardSwitcher {
-                            horizontal-stretch: 0;
+                            // With a list name beside the board the picker takes the room the spacer would leave.
+                            horizontal-stretch: root.lists-in-menu ? 1 : 0;
                             min-h: Space.s8;
                             // The board's name elides, never below about six characters.
                             min-width: 69px;
                             board-name: root.board-name;
+                            list-name: root.switcher-list;
                             menu-open: root.board-menu-open;
-                            a11y-label: @tr("Board: {}", root.board-name);
+                            a11y-label: root.switcher-list == "" ? @tr("Board: {}", root.board-name) : @tr("Board: {}, list: {}", root.board-name, root.switcher-list);
                             y: (parent.height - self.height) / 2;
                             menu-requested => { root.board-menu-requested(); }
                         }
-                        Rectangle { horizontal-stretch: 1; }
+                        Rectangle { horizontal-stretch: root.lists-in-menu ? 0 : 1; }
                         search-button := IconButton {
                             icon: Icons.magnifying-glass;
                             size: IconButtonSize.sm;
@@ -1371,7 +1381,7 @@ export component PanelWindow inherits Window {
                 }
 
                 // ---- Lists ----------------------------------------------------------------------------
-                if !root.search-block: HorizontalLayout {
+                if !root.search-block && !root.lists-in-menu: HorizontalLayout {
                     padding-left: Space.s2;
                     padding-right: Space.s1;
                     spacing: Space.s0-5;
@@ -2000,7 +2010,7 @@ export component PanelWindow inherits Window {
         if root.board-menu-open: TouchArea {
             clicked => { root.board-menu-dismissed(); }
         }
-        if root.board-menu-open: Menu {
+        if root.board-menu-open && !root.lists-in-menu: Menu {
             x: Space.s2;
             y: root.header-h - Space.s1;
             entries: root.board-menu-entries;
@@ -2008,6 +2018,39 @@ export component PanelWindow inherits Window {
             icons: false;
             init => { self.focus-menu(); }
             activated(i) => { root.board-menu-activated(i); }
+            dismissed => { root.board-menu-dismissed(); }
+        }
+        // The Menu switcher: boards, then this board's lists, then New list (the tab row is not drawn).
+        if root.board-menu-open && root.lists-in-menu: ListsMenu {
+            x: Space.s2;
+            y: root.header-h - Space.s1;
+            width: min(260px, root.width - 2 * Space.s2);
+            menu-max-height: root.height - root.header-h - Space.s8;
+            boards: root.board-menu-entries;
+            lists: root.tabs;
+            current-list: root.current-tab;
+            recent-available: root.recent-available;
+            recent-open: root.recent-open;
+            recent-label: @tr("Recent");
+            new-list-label: @tr("New list");
+            label: @tr("Boards and lists");
+            init => {
+                self.current = root.recent-open ? 0 : root.recent-available ? 1 + root.board-menu-entries.length + root.current-tab : root.board-menu-entries.length + root.current-tab;
+                self.focus-menu();
+            }
+            board-chosen(i) => { root.board-menu-activated(i); }
+            list-chosen(i) => {
+                root.board-menu-dismissed();
+                root.pick-tab(i);
+            }
+            recent-chosen => {
+                root.board-menu-dismissed();
+                root.open-recent();
+            }
+            new-list-chosen => {
+                root.board-menu-dismissed();
+                root.add-list-requested();
+            }
             dismissed => { root.board-menu-dismissed(); }
         }
 

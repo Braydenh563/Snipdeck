@@ -169,6 +169,16 @@ fn panel_compact_and_cards_layouts() {
     }
 }
 
+/// The Menu switcher (Panel v2 spec 3): no tab row, "Board · List" in the header, and its menu open.
+#[test]
+fn panel_with_the_menu_switcher_closed_and_open() {
+    let h = panel(SIZE, false);
+    h.component.set_lists_in_menu(true);
+    assert_golden("panel-lists-menu-light", &render(&h));
+    h.component.set_board_menu_open(true);
+    assert_golden("panel-lists-menu-open-light", &render(&h));
+}
+
 #[test]
 fn panel_long_titles_in_both_layouts() {
     for (view, name) in [

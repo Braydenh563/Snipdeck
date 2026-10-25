@@ -6,6 +6,9 @@ import { Icon } from "icon.slint";
 // asks for the menu (`menu-requested`); the app owns the Menu and positions it under this control.
 export component BoardSwitcher inherits Rectangle {
     in property <string> board-name;
+    // The Menu switcher (Panel v2 spec 3) reads "Board · List": the current list's name, secondary, after the board's. Both
+    // elide; the list keeps about five characters. Empty = just the board.
+    in property <string> list-name;
     // True while the app's menu is open (pressed look, `accessible-expanded`).
     in property <bool> menu-open: false;
     // Spoken label; defaults to the board name. The app translates e.g. "Board: Work".
@@ -16,6 +19,19 @@ export component BoardSwitcher inherits Rectangle {
     callback menu-requested();
 
     property <bool> hovered: touch.has-hover;
+    m-board := Text {
+        visible: false;
+        text: root.board-name;
+        font-family: Fonts.sans;
+        font-size: Type.md;
+        font-weight: Type.medium;
+    }
+    m-list := Text {
+        visible: false;
+        text: root.list-name;
+        font-family: Fonts.sans;
+        font-size: Type.md;
+    }
 
     min-width: Space.hit;
     height: max(root.min-h, Type.line-base + Space.s2);
@@ -35,12 +51,15 @@ export component BoardSwitcher inherits Rectangle {
     animate background { duration: Motion.instant; easing: Motion.out; }
 
     HorizontalLayout {
-        padding-left: Space.s2;
-        padding-right: Space.s2;
-        spacing: Space.s1;
+        // Tighter with a list name beside the board: the picker has about 100px at 320 and needs both names and the caret.
+        padding-left: root.list-name == "" ? Space.s2 : Space.s1 + Space.s0-5;
+        padding-right: root.list-name == "" ? Space.s2 : Space.s1;
+        spacing: root.list-name == "" ? Space.s1 : Space.s0-5;
+        alignment: root.list-name == "" ? LayoutAlignment.stretch : LayoutAlignment.start;
         Text {
-            horizontal-stretch: 1;
-            min-width: 0px;
+            horizontal-stretch: root.list-name == "" ? 1 : 0;
+            // With a list beside it the board keeps about three characters, the list about five (the picker has ~105px at 320).
+            min-width: root.list-name == "" ? 0px : min(m-board.preferred-width, Type.md * 2);
             text: root.board-name;
             font-family: Fonts.sans;
             font-size: Type.md;
@@ -48,6 +67,25 @@ export component BoardSwitcher inherits Rectangle {
             color: Theme.text-primary;
             vertical-alignment: center;
             overflow: elide;
+        }
+        if root.list-name != "": Text {
+            text: "·";
+            font-family: Fonts.sans;
+            font-size: Type.md;
+            color: Theme.text-tertiary;
+            vertical-alignment: center;
+            accessible-role: AccessibleRole.none;
+        }
+        if root.list-name != "": Text {
+            horizontal-stretch: 0;
+            min-width: min(m-list.preferred-width, Type.md * 2.4);
+            text: root.list-name;
+            font-family: Fonts.sans;
+            font-size: Type.md;
+            color: Theme.text-secondary;
+            vertical-alignment: center;
+            overflow: elide;
+            accessible-role: AccessibleRole.none;
         }
         Rectangle {
             width: Space.s4 * SystemLook.text-scale;

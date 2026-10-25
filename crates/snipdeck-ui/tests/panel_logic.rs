@@ -1376,6 +1376,139 @@ ui_tests! {
         }
     }
 
+    // ---- The Menu switcher (Panel v2 spec 3) ---------------------------------------------------------------------
+
+    fn the_menu_switcher_drops_the_tab_row_and_names_the_list_in_the_header() {
+        let (ui, _log) = start();
+        let list_top = |ui: &PanelWindow| find(ui, "Snippets", AccessibleRole::List).absolute_position().y;
+        let before = list_top(&ui);
+        assert!(!missing(&ui, "Lists", AccessibleRole::TabList));
+        ui.set_lists_in_menu(true);
+        settle();
+        assert!(missing(&ui, "Lists", AccessibleRole::TabList), "no tab row");
+        assert!((before - list_top(&ui) - 32.0).abs() < 0.5, "the list moved up by the tab row's 32: {before} then {}", list_top(&ui));
+        let picker = find(&ui, "Board: Work, list: Email replies", AccessibleRole::Button);
+        assert!(picker.size().width >= 69.0 - 0.5);
+        let board = all(&ui, "Work", AccessibleRole::Text).into_iter().find(|t| t.absolute_position().y < 40.0).expect("the board name");
+        assert!(board.size().width >= 20.0, "the board keeps about three characters beside the list: {}", board.size().width);
+        ui.set_current_tab(1);
+        settle();
+        assert!(!missing(&ui, "Board: Work, list: Addresses", AccessibleRole::Button), "the picker follows the current list");
+        ui.set_lists_in_menu(false);
+        settle();
+        assert!(!missing(&ui, "Lists", AccessibleRole::TabList), "back to tabs");
+        assert!(!missing(&ui, "Board: Work", AccessibleRole::Button));
+    }
+
+    fn the_menu_switchers_picker_truncates_both_names_and_keeps_the_board_and_the_list_readable() {
+        let (ui, _log) = start();
+        ui.set_lists_in_menu(true);
+        ui.window().set_size(slint::LogicalSize::new(260.0, 560.0));
+        ui.set_board_name("A board with a really long name".into());
+        ui.set_tabs(ModelRc::new(VecModel::from(vec![snipdeck_ui::TabItem {
+            text: "Quarterly planning notes".into(),
+            accent: fixture::TEAL_600,
+            icon: slint::Image::default(),
+        }])));
+        settle();
+        let picker = by_role(&ui, AccessibleRole::Button)
+            .into_iter()
+            .find(|b| b.accessible_label().is_some_and(|l| l.starts_with("Board: ")))
+            .expect("the picker");
+        let (p, sz) = (picker.absolute_position(), picker.size());
+        assert!(sz.width >= 69.0 - 0.5, "{}", sz.width);
+        // The search button is the next control: the picker ends before it.
+        let search = find(&ui, "Search (Ctrl+F)", AccessibleRole::Button);
+        assert!(p.x + sz.width <= search.absolute_position().x + 0.5, "the picker stays left of Search");
+    }
+
+    fn the_menu_switcher_lists_boards_then_lists_then_new_list_and_each_row_acts() {
+        let (ui, log) = start();
+        ui.set_lists_in_menu(true);
+        settle();
+        take(&log);
+        find(&ui, "Board: Work, list: Email replies", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["board-menu"]);
+        ui.set_board_menu_open(true);
+        settle();
+        let _menu = find(&ui, "Boards and lists", AccessibleRole::List);
+        let names = ["Work", "Personal", "Email replies", "Addresses", "Code", "New list"];
+        let mut ys = Vec::new();
+        for n in names {
+            let item = all(&ui, n, AccessibleRole::ListItem)
+                .into_iter()
+                .find(|i| i.absolute_position().y < 200.0)
+                .unwrap_or_else(|| panic!("no menu row {n}"));
+            ys.push(item.absolute_position().y);
+        }
+        assert!(ys.windows(2).all(|w| w[0] < w[1]), "boards, then lists, then New list, top to bottom: {ys:?}");
+        find(&ui, "Personal", AccessibleRole::ListItem).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["board:1"]);
+        find(&ui, "Addresses", AccessibleRole::ListItem).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["board-dismissed", "tab:1"]);
+        ui.set_board_menu_open(true);
+        settle();
+        take(&log);
+        find(&ui, "New list", AccessibleRole::ListItem).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["board-dismissed", "add-list"]);
+    }
+
+    fn the_menu_switchers_menu_has_the_keyboard_and_escape_closes_it_not_the_panel() {
+        let (ui, log) = start();
+        ui.set_lists_in_menu(true);
+        ui.set_board_menu_open(true);
+        settle();
+        take(&log);
+        // The current list (Email replies) is highlighted; Down moves to Addresses and Enter picks it.
+        press(ui.window(), &key(Key::DownArrow));
+        press(ui.window(), &key(Key::Return));
+        assert_eq!(take(&log), ["board-dismissed", "tab:1"]);
+        ui.set_board_menu_open(true);
+        settle();
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["board-dismissed"], "Esc closes the menu, not the Panel");
+    }
+
+    fn the_recent_entry_leads_the_menu_switcher_while_history_is_on() {
+        let (ui, log) = start();
+        ui.set_lists_in_menu(true);
+        ui.set_recent_available(true);
+        ui.set_board_menu_open(true);
+        settle();
+        take(&log);
+        let recent = all(&ui, "Recent", AccessibleRole::ListItem)
+            .into_iter()
+            .find(|i| i.absolute_position().y < 120.0)
+            .expect("Recent is the first row");
+        let work = all(&ui, "Work", AccessibleRole::ListItem).into_iter().find(|i| i.absolute_position().y < 200.0).expect("Work");
+        assert!(recent.absolute_position().y < work.absolute_position().y, "Recent comes before the boards");
+        recent.invoke_accessible_default_action();
+        assert!(ui.get_recent_open(), "Recent opens");
+        assert!(!missing(&ui, "Board: Work, list: Recent", AccessibleRole::Button), "the picker says Recent");
+    }
+
+    fn ctrl_tab_still_cycles_the_lists_with_the_menu_switcher() {
+        let (ui, log) = start();
+        ui.set_lists_in_menu(true);
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        assert_eq!(ui.get_current_tab(), 1);
+        assert_eq!(take(&log), ["tab:1"]);
+        chord(ui.window(), &[Key::Control, Key::Shift], &key(Key::Backtab));
+        assert_eq!(ui.get_current_tab(), 0);
+    }
+
+    fn the_smallest_window_loses_the_tab_rows_32_with_the_menu_switcher() {
+        let (ui, _log) = start();
+        ui.set_lists_in_menu(true);
+        assert!((ui.get_min_h() - 264.0).abs() < 0.5, "List: {}", ui.get_min_h());
+        ui.set_layout(PanelLayout::Compact);
+        assert!((ui.get_min_h() - 240.0).abs() < 0.5, "Compact never goes under 240: {}", ui.get_min_h());
+        ui.set_layout(PanelLayout::Cards);
+        assert!((ui.get_min_h() - 240.0).abs() < 0.5, "Cards: {}", ui.get_min_h());
+    }
+
     // ---- Empty states ----------------------------------------------------------------------------
 
     fn an_empty_list_teaches_how_to_fill_it_with_one_action() {
