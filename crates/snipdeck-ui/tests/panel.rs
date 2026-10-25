@@ -147,6 +147,28 @@ fn panel_empty_list_and_no_results_and_no_lists() {
     assert_golden("panel-no-lists-light", &render(&none));
 }
 
+/// The Compact and Cards layouts at rest (Panel v2 spec 3): the second row selected, the first and the fourth idle.
+#[test]
+fn panel_compact_and_cards_layouts() {
+    for (layout, size, dark, name) in [
+        (PanelLayout::Compact, SIZE, false, "panel-compact-light"),
+        (PanelLayout::Compact, SIZE, true, "panel-compact-dark"),
+        (PanelLayout::Cards, SIZE, false, "panel-cards-light"),
+        (PanelLayout::Cards, SIZE, true, "panel-cards-dark"),
+        (
+            PanelLayout::Cards,
+            (280, 560),
+            false,
+            "panel-cards-280-light",
+        ),
+    ] {
+        let h = panel(size, dark);
+        h.component.set_layout(layout);
+        h.component.set_selected_index(1);
+        assert_golden(name, &render(&h));
+    }
+}
+
 #[test]
 fn panel_long_titles_in_both_layouts() {
     for (view, name) in [

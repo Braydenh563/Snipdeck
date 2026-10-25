@@ -1106,6 +1106,276 @@ ui_tests! {
         assert!((x2 - 50.0).abs() < 0.5, "without numbers the column starts at {x2}");
     }
 
+    // ---- Compact and Cards (Panel v2 spec 3) ---------------------------------------------------------------------
+
+    fn compact_rows_are_36_tall_with_a_24px_tile_and_the_preview_on_the_title_line() {
+        let (ui, _log) = start();
+        ui.set_layout(PanelLayout::Compact);
+        settle();
+        let list = rows(&ui);
+        assert_eq!(list.len(), 6);
+        for (i, r) in list.iter().enumerate() {
+            assert!((r.size().height - 36.0).abs() < 0.5, "row {i} is {} tall", r.size().height);
+            if i > 0 {
+                let pitch = r.absolute_position().y - list[i - 1].absolute_position().y;
+                assert!((pitch - 36.0).abs() < 0.5, "rows touch (gap 0): pitch {pitch}");
+            }
+        }
+        let r = &list[3];
+        let (top, h) = (r.absolute_position().y, r.size().height);
+        let inside = |e: &ElementHandle| e.absolute_position().y >= top - 0.5 && e.absolute_position().y < top + h;
+        let kind_box = all(&ui, "Link", AccessibleRole::Image).into_iter().find(|t| inside(t)).expect("the Link tile");
+        assert_eq!((kind_box.size().width, kind_box.size().height), (24.0, 24.0));
+        assert!((kind_box.absolute_position().x - r.absolute_position().x - 28.0).abs() < 0.5, "8 padding, 16 number, 4 gap");
+        assert!((kind_box.absolute_position().y - top - 6.0).abs() < 0.5, "centred in 36: {}", kind_box.absolute_position().y - top);
+        let title = all(&ui, "Design spec", AccessibleRole::Text).into_iter().find(|t| inside(t)).expect("title");
+        let preview = all(&ui, "figma.com/file/snipdeck-index-deck", AccessibleRole::Text).into_iter().find(|t| inside(t)).expect("preview");
+        assert!(preview.absolute_position().x >= title.absolute_position().x + title.size().width + 7.5, "the preview follows the title on its line");
+        let (ty, py) = (title.absolute_position().y + title.size().height / 2.0, preview.absolute_position().y + preview.size().height / 2.0);
+        assert!((ty - py).abs() < 1.0, "one line: title centre {ty}, preview centre {py}");
+    }
+
+    fn compact_hover_actions_take_the_previews_room_before_the_titles() {
+        let (ui, _log) = start();
+        ui.set_layout(PanelLayout::Compact);
+        settle();
+        let measure = |ui: &PanelWindow| {
+            let r = &rows(ui)[3];
+            let (top, h) = (r.absolute_position().y, r.size().height);
+            let inside = |e: &ElementHandle| e.absolute_position().y >= top - 0.5 && e.absolute_position().y < top + h;
+            let title = all(ui, "Design spec", AccessibleRole::Text).into_iter().find(|t| inside(t)).expect("title");
+            let preview = all(ui, "figma.com/file/snipdeck-index-deck", AccessibleRole::Text).into_iter().find(|t| inside(t)).expect("preview");
+            (title.size().width, title.absolute_position().x, preview.size().width)
+        };
+        let idle = measure(&ui);
+        move_to(&ui, centre(&rows(&ui)[3]));
+        settle();
+        let hovered = measure(&ui);
+        assert_eq!((hovered.0, hovered.1), (idle.0, idle.1), "a short title keeps its width and place");
+        assert!(hovered.2 < idle.2, "the preview gave way: {} then {}", idle.2, hovered.2);
+        for label in ["Copy", "Edit", "More"] {
+            assert!(row_button(&ui, 3, label).is_some(), "{label} on the hovered Compact row");
+        }
+    }
+
+    fn compact_keeps_twelve_characters_of_a_long_title_at_260_wide_with_the_actions_up() {
+        let (ui, _log) = start();
+        ui.window().set_size(slint::LogicalSize::new(260.0, 560.0));
+        fixture::set_rows(&ui, fixture::awkward_rows());
+        ui.set_layout(PanelLayout::Compact);
+        settle();
+        move_to(&ui, centre(&rows(&ui)[0]));
+        settle();
+        let r = &rows(&ui)[0];
+        let top = r.absolute_position().y;
+        let title = all(&ui, "A very long snippet title that keeps going well past the width of the panel", AccessibleRole::Text)
+            .into_iter()
+            .find(|t| t.absolute_position().y >= top - 0.5 && t.absolute_position().y < top + r.size().height)
+            .expect("the long title");
+        // Twelve Latin characters at 13px are about 7 em: 91px.
+        assert!(title.size().width >= 91.0 - 0.5, "title is {} wide", title.size().width);
+        let more = row_button(&ui, 0, "More").expect("More");
+        assert!(title.absolute_position().x + title.size().width <= more.absolute_position().x + 0.5, "the title ends before the actions");
+    }
+
+    fn compact_drops_edit_in_a_narrow_panel_but_keeps_copy_and_more() {
+        let (ui, _log) = start();
+        ui.set_layout(PanelLayout::Compact);
+        settle();
+        for label in ["Copy", "Edit", "More"] {
+            assert!(row_button(&ui, 0, label).is_some(), "{label} at 320");
+        }
+        ui.window().set_size(slint::LogicalSize::new(280.0, 560.0));
+        settle();
+        assert!(row_button(&ui, 0, "Edit").is_none(), "Edit is in More below 300");
+        assert!(row_button(&ui, 0, "Copy").is_some() && row_button(&ui, 0, "More").is_some());
+    }
+
+    fn compact_search_rows_are_52_tall_with_a_where_line_under_the_title() {
+        let (ui, _log) = start();
+        fixture::set_rows(&ui, fixture::awkward_rows());
+        ui.set_layout(PanelLayout::Compact);
+        settle();
+        let list = rows(&ui);
+        assert!((list[2].size().height - 52.0).abs() < 0.5, "a row with a where line is 52: {}", list[2].size().height);
+        assert!((list[1].size().height - 36.0).abs() < 0.5, "a row without one stays 36");
+        let r = &list[2];
+        let top = r.absolute_position().y;
+        let where_line = all(&ui, "Work and projects", AccessibleRole::Text)
+            .into_iter()
+            .find(|t| t.absolute_position().y >= top && t.absolute_position().y < top + r.size().height)
+            .expect("the where line");
+        assert!(where_line.absolute_position().y - top >= 26.0, "under the title line: {}", where_line.absolute_position().y - top);
+    }
+
+    fn cards_are_149_by_96_in_two_columns_at_320_and_one_column_at_280() {
+        let (ui, _log) = start();
+        ui.set_layout(PanelLayout::Cards);
+        settle();
+        let list = rows(&ui);
+        assert_eq!(list.len(), 6);
+        for (i, r) in list.iter().enumerate() {
+            assert_eq!((r.size().width, r.size().height), (149.0, 96.0), "card {i}");
+        }
+        let (a, b, c) = (list[0].absolute_position(), list[1].absolute_position(), list[2].absolute_position());
+        assert!((a.y - b.y).abs() < 0.5, "cards 0 and 1 share a row");
+        assert!((b.x - a.x - (149.0 + 6.0)).abs() < 0.5, "6px between the columns: {}", b.x - a.x);
+        assert!((c.x - a.x).abs() < 0.5 && (c.y - a.y - (96.0 + 6.0)).abs() < 0.5, "the third card starts the next row: {c:?}");
+        ui.window().set_size(slint::LogicalSize::new(280.0, 560.0));
+        settle();
+        let list = rows(&ui);
+        assert!((list[0].size().width - 264.0).abs() < 0.5, "one column at 280: {}", list[0].size().width);
+        assert!(list[1].absolute_position().y > list[0].absolute_position().y + 90.0);
+        assert!((list[1].absolute_position().x - list[0].absolute_position().x).abs() < 0.5);
+    }
+
+    fn cards_arrow_keys_move_by_row_and_left_right_by_one_tile() {
+        let (ui, log) = start();
+        ui.set_layout(PanelLayout::Cards);
+        settle();
+        take(&log);
+        press(ui.window(), &key(Key::DownArrow));
+        assert_eq!(take(&log), ["move:2"], "Down is one row of two tiles");
+        assert_eq!(ui.get_selected_index(), 2);
+        press(ui.window(), &key(Key::RightArrow));
+        assert_eq!(take(&log), ["move:1"]);
+        press(ui.window(), &key(Key::LeftArrow));
+        assert_eq!(take(&log), ["move:-1"]);
+        press(ui.window(), &key(Key::UpArrow));
+        assert_eq!(take(&log), ["move:-2"]);
+        assert_eq!(ui.get_selected_index(), 0);
+        press(ui.window(), &key(Key::LeftArrow));
+        assert!(take(&log).is_empty(), "already at the first tile");
+        // With a query the field owns Left and Right, and the rows are List rows.
+        type_text(ui.window(), "a");
+        settle();
+        take(&log);
+        press(ui.window(), &key(Key::LeftArrow));
+        press(ui.window(), &key(Key::RightArrow));
+        assert!(take(&log).is_empty(), "Left and Right edit the query");
+        let r = &rows(&ui)[0];
+        assert!(r.size().width > 250.0, "searching shows List rows: {}", r.size().width);
+    }
+
+    fn left_and_right_do_nothing_to_the_selection_in_the_list_layout() {
+        let (ui, log) = start();
+        take(&log);
+        press(ui.window(), &key(Key::RightArrow));
+        assert_eq!(take(&log), Vec::<String>::new());
+    }
+
+    fn the_title_keeps_its_width_when_a_cards_actions_show() {
+        let (ui, _log) = start();
+        ui.set_layout(PanelLayout::Cards);
+        settle();
+        let measure = |ui: &PanelWindow| {
+            let r = &rows(ui)[3];
+            let top = r.absolute_position().y;
+            let t = all(ui, "Design spec", AccessibleRole::Text)
+                .into_iter()
+                .find(|t| t.absolute_position().y >= top && t.absolute_position().y < top + r.size().height)
+                .expect("title");
+            (t.size().width, t.absolute_position().x, t.absolute_position().y)
+        };
+        let idle = measure(&ui);
+        move_to(&ui, centre(&rows(&ui)[3]));
+        settle();
+        assert_eq!(measure(&ui), idle, "hovering a card does not move or crush the title");
+        // The actions sit bottom-right, over the last preview line, never on the title line.
+        let r = &rows(&ui)[3];
+        for label in ["Copy", "Edit", "More"] {
+            let b = row_button(&ui, 3, label).unwrap_or_else(|| panic!("{label}"));
+            let (dy, h) = (b.absolute_position().y - r.absolute_position().y, b.size().height);
+            assert!(dy >= 60.0 && dy + h <= 96.0 + 0.5, "{label}: y {dy}..{}", dy + h);
+            assert!(b.size().width >= 28.0 - 0.5 && h >= 28.0 - 0.5, "{label} hit box {}x{h}", b.size().width);
+        }
+    }
+
+    fn a_card_has_a_24px_tile_and_its_number_at_the_top() {
+        let (ui, _log) = start();
+        ui.set_layout(PanelLayout::Cards);
+        settle();
+        let r = &rows(&ui)[1];
+        let top = r.absolute_position();
+        let tile = all(&ui, "Template", AccessibleRole::Image)
+            .into_iter()
+            .find(|t| t.absolute_position().y >= top.y && t.absolute_position().y < top.y + 96.0)
+            .expect("the Template tile");
+        assert_eq!((tile.size().width, tile.size().height), (24.0, 24.0));
+        assert!((tile.absolute_position().x - top.x - 8.0).abs() < 0.5 && (tile.absolute_position().y - top.y - 8.0).abs() < 0.5, "tile at 8,8");
+        let number = all(&ui, "Alt+2", AccessibleRole::Text)
+            .into_iter()
+            .find(|t| t.absolute_position().y >= top.y && t.absolute_position().y < top.y + 96.0)
+            .expect("the number");
+        assert!(number.absolute_position().y - top.y < 32.0, "the number is in the top row");
+        assert!(number.absolute_position().x + number.size().width <= top.x + 149.0 - 8.0 + 0.5);
+    }
+
+    fn the_smallest_window_depends_on_the_layout_and_the_lists_switcher() {
+        let (ui, _log) = start();
+        let min = |ui: &PanelWindow| ui.get_min_h();
+        assert!((min(&ui) - 296.0).abs() < 0.5, "List: {}", min(&ui));
+        ui.set_layout(PanelLayout::Compact);
+        assert!((min(&ui) - 240.0).abs() < 0.5, "Compact: {}", min(&ui));
+        ui.set_layout(PanelLayout::Cards);
+        assert!((min(&ui) - 240.0).abs() < 0.5, "Cards: {}", min(&ui));
+        ui.set_layout(PanelLayout::List);
+        assert!((min(&ui) - 296.0).abs() < 0.5);
+    }
+
+    fn every_layout_reports_a_row_tooltip_and_closes_it_when_the_rows_change() {
+        for layout in [PanelLayout::List, PanelLayout::Compact, PanelLayout::Cards] {
+            let (ui, _log) = start();
+            ui.set_layout(layout);
+            settle();
+            let row = rows(&ui)[2].clone();
+            move_to(&ui, centre(&row));
+            wait(900);
+            assert!(!ui.get_tooltip_shown().is_empty(), "{layout:?}: the row's tooltip is up after a rest");
+            fixture::set_rows(&ui, fixture::numbered_rows(1));
+            settle();
+            assert_eq!(ui.get_tooltip_shown(), "", "{layout:?}: closed when the rows changed");
+        }
+    }
+
+    fn a_click_pastes_once_in_every_layout_and_an_action_click_never_pastes() {
+        for layout in [PanelLayout::Compact, PanelLayout::Cards] {
+            let (ui, log) = start();
+            ui.set_layout(layout);
+            settle();
+            take(&log);
+            click_row_with(&ui, 2, &[]);
+            assert_eq!(take(&log), ["use:2"], "{layout:?}");
+            click_row_with(&ui, 2, &[Key::Shift]);
+            assert_eq!(take(&log), ["copy:2"], "{layout:?}");
+            let copy = row_button(&ui, 2, "Copy").expect("Copy on the selected row");
+            click_at(&ui, centre(&copy));
+            assert_eq!(take(&log), ["copy:2"], "{layout:?}: Copy only copies");
+            let more = row_button(&ui, 2, "More").expect("More");
+            click_at(&ui, centre(&more));
+            assert_eq!(take(&log), ["menu:2"], "{layout:?}: More only opens the menu");
+        }
+    }
+
+    fn the_sensitive_eye_stays_visible_in_compact_and_cards() {
+        for layout in [PanelLayout::Compact, PanelLayout::Cards] {
+            let (ui, log) = start();
+            ui.set_layout(layout);
+            settle();
+            let eye = row_button(&ui, 4, "Hold to reveal").unwrap_or_else(|| panic!("{layout:?}: the eye"));
+            assert!(eye.size().width >= 28.0 - 0.5 && eye.size().height >= 28.0 - 0.5);
+            take(&log);
+            let at = centre(&eye);
+            move_to(&ui, at);
+            ui.window().dispatch_event(WindowEvent::PointerPressed { position: at, button: PointerEventButton::Left });
+            settle();
+            assert_eq!(take(&log), ["reveal:4:true"], "{layout:?}");
+            ui.window().dispatch_event(WindowEvent::PointerReleased { position: at, button: PointerEventButton::Left });
+            settle();
+            assert_eq!(take(&log), ["reveal:4:false"], "{layout:?}: released, and the row was not used");
+        }
+    }
+
     // ---- Empty states ----------------------------------------------------------------------------
 
     fn an_empty_list_teaches_how_to_fill_it_with_one_action() {

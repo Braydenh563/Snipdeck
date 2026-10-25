@@ -169,8 +169,10 @@ component RowAction inherits Rectangle {
     callback clicked();
     // The pointer (or focus) came or went: the card turns it into a tooltip request.
     callback tip(bool);
-    width: Space.s8;
-    height: Space.s8;
+    // The hit box: 32 in a row, 28 in a card (the glyph button inside is 28 either way).
+    in property <length> box: Space.s8;
+    width: root.box;
+    height: root.box;
     visible: root.shown;
     changed hovered => { root.tip(root.hovered); }
 
@@ -264,9 +266,13 @@ export component ItemCard inherits Rectangle {
     in property <bool> show-focus: false;
     // False where no row menu exists (the Picker): no kebab is drawn and its slot is not kept.
     in property <bool> has-menu: true;
-    // The quiet row of Panel v2 (comfortable variant only; DESIGN.md §4 ItemCard anatomy): a 32px type tile, a transparent
-    // resting fill, no Paste button, and Copy / Edit / More on the preview line. The Main window and the Picker leave it off.
+    // The quiet row of Panel v2 (DESIGN.md §4 ItemCard anatomy; spec 2.5 and 3): a type tile, no Paste button, and Copy / Edit /
+    // More as hover actions. It has three shapes picked by `variant`: comfortable = the List row (56, tile 32, actions on the
+    // preview line), compact = the Compact row (36, tile 24, preview inline, actions at the right end), tile = a Card
+    // (149 x 96, tile 24 and number on top, actions bottom-right). The Main window and the Picker leave it off.
     in property <bool> quiet: false;
+    // Quiet row: the Edit action is offered (the Compact row in a narrow Panel leaves it to the More menu).
+    in property <bool> edit-action: true;
     // Quiet row: the Copy action is offered (there is a paste target; without one the click already copies).
     in property <bool> copy-action: true;
     // Forces the quiet row's actions visible (the selected row; tests and galleries, as hover cannot be forced headlessly).
@@ -309,11 +315,16 @@ export component ItemCard inherits Rectangle {
     property <bool> tile: root.variant == ItemCardVariant.tile;
     property <bool> sensitive: root.kind == ItemKind.sensitive;
     property <bool> is-image: root.kind == ItemKind.image;
-    // The quiet row applies to the comfortable variant.
+    // The quiet row: `qr` List, `qc` Compact, `qt` Card; `q` is any of them.
+    property <bool> q: root.quiet;
     property <bool> qr: root.quiet && root.comfortable;
+    property <bool> qc: root.quiet && root.compact;
+    property <bool> qt: root.quiet && root.tile;
 
     property <bool> pulled: false;
     property <bool> lifted: root.pulling || root.pulled;
+    // The deeper shadow: a pulled card, and a hovered Card (spec 3: "Hover = depth 2").
+    property <bool> deep: root.lift-visual || (root.qt && root.hovered);
     property <bool> lift-visual: root.lifted && !SystemLook.reduced-motion;
     property <bool> held-reveal: false;
     property <bool> reveal-armed: false;
@@ -330,18 +341,18 @@ export component ItemCard inherits Rectangle {
     property <length> more-side: Space.hit-min;
     // The trailing slot every variant keeps for the Copy button and the kebab: the list and use labels sit left of it, and the
     // title and preview never run under it.
-    property <length> more-reserve: root.has-menu && !root.qr ? 2 * root.more-side + 2 * Space.s1 : 0px;
+    property <length> more-reserve: root.has-menu && !root.q ? 2 * root.more-side + 2 * Space.s1 : 0px;
     property <bool> focused: scope.has-focus || root.show-focus;
     // A compact row's hint gives way when it would push the title under its 12-character floor
     // (large text scale in a narrow panel); the hint is also in the Panel's footer.
     property <bool> use-label-fits: !root.compact || root.row-w - root.use-w - Space.s2 >= root.min-title-w;
-    property <bool> label-visible: !root.qr && root.use-label != "" && root.use-label-fits && (root.hovered || root.focused || root.show-use-label);
+    property <bool> label-visible: !root.q && root.use-label != "" && root.use-label-fits && (root.hovered || root.focused || root.show-use-label);
     property <bool> mono-preview: root.kind == ItemKind.code || root.kind == ItemKind.link || root.sensitive;
     // The Panel's quiet row shows twelve dots and no trailing characters: it is always on top and visible in screen shares.
-    property <string> shown-preview: root.sensitive && !root.shown ? (root.qr ? "••••••••••••" : root.masked-preview) : root.preview;
+    property <string> shown-preview: root.sensitive && !root.shown ? (root.q ? "••••••••••••" : root.masked-preview) : root.preview;
 
     // Leading glyph: none for plain text; images show the thumbnail instead (a small glyph in a compact row).
-    property <bool> has-glyph: !root.qr && root.kind != ItemKind.text && (!root.is-image || root.compact);
+    property <bool> has-glyph: !root.q && root.kind != ItemKind.text && (!root.is-image || root.compact);
     property <image> glyph: root.kind == ItemKind.text ? Icons.text-t
         : root.kind == ItemKind.template ? Icons.brackets-curly
         : root.kind == ItemKind.code ? Icons.code
@@ -352,7 +363,7 @@ export component ItemCard inherits Rectangle {
     property <color> glyph-tint: root.kind == ItemKind.template
         ? (root.selected ? Theme.accent-on-selected : Theme.accent-text)
         : (root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary);
-    property <bool> has-ext: !root.qr && root.kind == ItemKind.file && root.extension != "";
+    property <bool> has-ext: !root.q && root.kind == ItemKind.file && root.extension != "";
     // The quiet row's type tile (DESIGN.md §4 "Item type tiles"). The name is the tile's tooltip and accessible name.
     property <color> kind-tile: root.kind == ItemKind.text ? Theme.kind-text-tile
         : root.kind == ItemKind.template ? Theme.kind-template-tile
@@ -380,15 +391,16 @@ export component ItemCard inherits Rectangle {
 
     // Geometry shared by the variants.
     // The quiet row's number cell is 16px plus a 4px gap, and it has no index-card rule.
-    property <length> gutter-w: root.tile || !root.numbered ? 0px : root.qr ? Space.s5 : Space.s6;
-    property <length> rule-w: root.tile || !root.numbered || root.qr ? 0px : 1px;
-    property <length> pad-x: root.tile ? Space.s3 : Space.s2;
+    property <length> gutter-w: root.tile || !root.numbered ? 0px : root.q ? Space.s5 : Space.s6;
+    property <length> rule-w: root.tile || !root.numbered || root.q ? 0px : 1px;
+    property <length> pad-x: root.qt ? Space.s2 : root.tile ? Space.s3 : Space.s2;
     property <length> pad-y: root.compact ? 0px : root.tile ? Space.s3 : Space.s2;
     property <length> content-x: root.gutter-w + root.rule-w + root.pad-x;
-    property <length> pad-r: root.qr ? Space.s1 : root.pad-x;
+    property <length> pad-r: root.q && !root.qt ? Space.s1 : root.pad-x;
     property <length> content-w: max(0px, root.width - root.content-x - root.pad-r - root.more-reserve);
-    // Space taken left of the title in the compact and comfortable rows (the quiet row: a 32px tile and a 10px gap).
-    property <length> lead-w: root.qr ? Space.s8 + 10px : root.comfortable && root.is-image ? root.thumb-w + Space.s2 : root.has-glyph && !root.tile ? root.glyph-group-w + Space.s2 : 0px;
+    // Space taken left of the title in the compact and comfortable rows (the quiet List row: a 32px tile and a 10px gap; the
+    // quiet Compact row: a 24px tile and an 8px gap).
+    property <length> lead-w: root.qr ? Space.s8 + 10px : root.qc ? Space.s6 + Space.s2 : root.comfortable && root.is-image ? root.thumb-w + Space.s2 : root.has-glyph && !root.tile ? root.glyph-group-w + Space.s2 : 0px;
     // DESIGN.md §8: the title never truncates below 12 characters; the preview gives way first. Twelve Latin
     // characters are about 7 em; twelve CJK characters are 12 em, so the floor follows the title's own average
     // character width when that is larger.
@@ -401,19 +413,20 @@ export component ItemCard inherits Rectangle {
     property <length> list-mark-w: (Space.s1 + Space.s0-5) * SystemLook.text-scale + Space.s1;
     // The list label takes what the title leaves (never below ~8 characters), and never so much
     // that the title would drop under its 12-character floor.
-    property <length> list-w: root.list-name == "" || root.qr ? 0px : min(m-list.preferred-width + root.list-mark-w,
+    property <length> list-w: root.list-name == "" || root.q ? 0px : min(m-list.preferred-width + root.list-mark-w,
         min(max(0px, root.row-w - root.min-title-w - root.label-gap),
             max(root.row-w - m-title.preferred-width - root.label-gap, Type.xs * 8)));
     property <length> list-reserve: root.list-w > 0px ? root.list-w + root.label-gap : 0px;
     property <length> use-w: m-use.preferred-width + Space.s1 + Type.sm + 2 * Space.s2;
     // A compact row has one trailing slot: the use label replaces the list label while it shows.
-    property <length> trail-reserve: root.compact && root.label-visible ? root.use-w + root.label-gap : root.list-reserve;
+    // The quiet Compact row gives its trailing controls (actions, eye, stack mark) the room the preview would take, then the title's.
+    property <length> trail-reserve: root.qc ? root.qr-preview-reserve : root.compact && root.label-visible ? root.use-w + root.label-gap : root.list-reserve;
     property <length> title-avail: max(0px, root.row-w - root.trail-reserve);
     property <length> title-w: min(m-title.preferred-width, max(root.title-avail, root.min-title-w));
 
     property <length> title-h: Type.line-base;
     property <length> top-h: max(root.glyph-size, Type.line-xs);
-    property <int> preview-lines: root.qr ? 1 : root.comfortable ? 2 : root.is-image ? 1 : 3;
+    property <int> preview-lines: root.qt ? root.qt-prev-lines : root.qr ? 1 : root.comfortable ? 2 : root.is-image ? 1 : 3;
     property <length> preview-x: root.tile ? root.pad-x : root.content-x + root.lead-w;
     property <length> preview-w: root.qr ? max(0px, root.row-w - root.qr-preview-reserve) : root.tile ? max(0px, root.width - 2 * root.pad-x) : root.compact ? max(0px, root.title-avail - root.title-w - Space.s2) : root.row-w;
     property <length> preview-h: root.shown-preview == "" ? 0px : min(m-preview.preferred-height, root.preview-lines * Type.line-sm);
@@ -423,32 +436,45 @@ export component ItemCard inherits Rectangle {
     property <string> described: root.sensitive && !root.shown && root.masked-hint != "" ? root.masked-hint : root.list-name;
     property <[ListHue]> label-hues: [ListHue.blue, ListHue.teal, ListHue.green, ListHue.amber, ListHue.orange, ListHue.red, ListHue.violet, ListHue.slate];
 
-    // ---- Quiet row geometry (all of it at 100 % text size: title line 20 at y 4, preview band 32 under it, row 56) ----
+    // ---- Quiet row geometry (all of it at 100 % text size) ----
+    // List: title line 20 at y 4, preview band 32 under it, row 56. Compact: row 36 (52 with a where line), tile 24, the title and
+    // the preview on one line. Card: 149 x 96, tile 24 and the number on top, title from y 32, preview in what is left.
+    property <length> q-box: root.qt ? Space.hit : Space.s8;
+    property <length> q-tile-size: root.qr ? Space.s8 : Space.s6;
     property <length> qr-title-y: Space.s1;
     property <length> qr-band-y: root.qr-title-y + root.title-h;
     // The preview line's hit row: the actions are 32px boxes centred in it, never on the title line.
     property <length> qr-band-h: max(Space.s8, Type.line-sm + Space.s2);
-    // A search result also says where it lives: a 16px "Board · List" line under the preview (68 tall in all).
-    property <bool> qr-where: root.qr && root.list-name != "";
+    // A search result also says where it lives: a 16px "Board · List" line under the preview (68 tall in all; 52 in Compact).
+    property <bool> qr-where: (root.qr || root.qc) && root.list-name != "";
     property <length> qr-h: max(56px, root.qr-band-y + root.qr-band-h) + (root.qr-where ? Space.s3 : 0px);
-    property <length> qr-right: root.width - root.pad-r;
-    property <length> qr-eye-w: root.sensitive ? Space.s8 : 0px;
+    property <length> qc-h: root.qr-where ? max(52px, 2 * Space.s2 + root.title-h + Type.line-xs) : max(Space.s8 + Space.s1, root.title-h + 2 * Space.s2);
+    property <length> qc-title-y: root.qr-where ? Space.s2 : (root.qc-h - root.title-h) / 2;
+    property <length> qt-title-y: Space.s2 + Space.s6;
+    property <length> qt-h: max(96px, root.qt-title-y + 2 * Type.line-base + Type.line-sm + Space.s2);
+    property <length> qt-prev-y: root.qt-title-y + root.tile-title-h;
+    property <int> qt-prev-lines: max(0, min(2, floor((root.qt-h - Space.s2 - root.qt-prev-y) / Type.line-sm)));
+    // The title line's top in the List and Compact rows (the match mark sits behind it).
+    property <length> q-title-y: root.qc ? root.qc-title-y : root.qr-title-y;
+    property <length> qr-right: root.qt ? root.width - Space.s1 : root.width - root.pad-r;
+    property <length> qr-eye-w: root.sensitive ? root.q-box : 0px;
     // The action group, right-aligned and left of the eye: Copy (with a target), Edit, More.
-    property <length> qr-actions-w: (root.copy-action ? 3 : 2) * Space.s8;
-    property <bool> qr-actions-shown: root.qr && root.has-menu && !root.pick-mode && (root.hovered || root.show-actions || root.focused);
+    property <length> qr-actions-w: ((root.copy-action ? 1 : 0) + (root.edit-action ? 1 : 0) + 1) * root.q-box;
+    property <bool> qr-actions-shown: root.q && root.has-menu && !root.pick-mode && (root.hovered || root.show-actions || root.focused);
     property <length> qr-stack-w: root.stack-position > 0 ? 36px + Space.s1 : 0px;
     property <length> qr-trail-w: root.qr-eye-w + (root.qr-actions-shown ? root.qr-actions-w : 0px) + root.qr-stack-w;
-    // The preview gives way to the trailing controls (and keeps 6px clear of them); the title never does.
+    // The preview gives way to the trailing controls (and keeps 6px clear of them); the title never does (Compact: only
+    // past the preview, and never below its 12-character floor).
     property <length> qr-preview-reserve: root.qr-trail-w > 0px ? root.qr-trail-w + 6px : 0px;
-    property <length> tile-x: root.content-x;
-    property <length> tile-y: (root.card-h - Space.s8) / 2;
+    property <length> tile-x: root.qt ? Space.s2 : root.content-x;
+    property <length> tile-y: root.qt ? Space.s2 : (root.card-h - root.q-tile-size) / 2;
     // The pointer is on the type tile: the row's tooltip gives way to the kind's name.
-    property <bool> over-tile: root.qr && touch.has-hover && touch.mouse-x >= root.tile-x && touch.mouse-x < root.tile-x + Space.s8
-        && touch.mouse-y >= root.tile-y && touch.mouse-y < root.tile-y + Space.s8;
-    property <string> tip-text: root.qr && touch.has-hover && !root.pick-mode ? (root.over-tile ? root.kind-name : root.row-tip) : "";
+    property <bool> over-tile: root.q && touch.has-hover && touch.mouse-x >= root.tile-x && touch.mouse-x < root.tile-x + root.q-tile-size
+        && touch.mouse-y >= root.tile-y && touch.mouse-y < root.tile-y + root.q-tile-size;
+    property <string> tip-text: root.q && touch.has-hover && !root.pick-mode ? (root.over-tile ? root.kind-name : root.row-tip) : "";
     changed tip-text => {
-        root.tip(root.tip-text, root.absolute-position.x + (root.over-tile ? root.tile-x + Space.s8 / 2 : root.width / 2),
-            root.absolute-position.y + (root.over-tile ? root.tile-y + Space.s8 : root.height), root.tip-text != "");
+        root.tip(root.tip-text, root.absolute-position.x + (root.over-tile ? root.tile-x + root.q-tile-size / 2 : root.width / 2),
+            root.absolute-position.y + (root.over-tile ? root.tile-y + root.q-tile-size : root.height), root.tip-text != "");
     }
 
     property <length> compact-h: max(Space.hit, Type.line-base + Space.s1);
@@ -459,19 +485,19 @@ export component ItemCard inherits Rectangle {
         + Space.s1 + root.label-h;
 
     // A resting compact row is a ruled line; it becomes a rounded card while hovered, selected, focused or lifted.
-    property <length> row-radius: !root.compact || root.selected || root.hovered || root.focused || root.lift-visual ? Radius.lg : 0px;
+    property <length> row-radius: root.qc ? Radius.md : !root.compact || root.selected || root.hovered || root.focused || root.lift-visual ? Radius.lg : 0px;
     property <color> fill: touch.pressed ? Theme.bg-sunken
         : root.selected ? Theme.bg-selected
         : root.lift-visual ? Theme.bg-overlay
-        : root.hovered ? Theme.bg-hover
-        : root.qr ? transparent
+        : root.hovered && !root.qt ? Theme.bg-hover
+        : root.qr || root.qc ? transparent
         : Theme.bg-surface;
 
     // Rows and cards are exactly as tall as their content; tiles may grow so a grid row stays even.
-    property <length> card-h: root.compact ? root.compact-h : root.qr ? root.qr-h : root.comfortable ? root.comfortable-h : root.tile-h;
+    property <length> card-h: root.qc ? root.qc-h : root.qt ? root.qt-h : root.compact ? root.compact-h : root.qr ? root.qr-h : root.comfortable ? root.comfortable-h : root.tile-h;
     preferred-height: root.card-h;
     min-height: root.card-h;
-    max-height: root.tile ? 10000px : root.card-h;
+    max-height: root.tile && !root.qt ? 10000px : root.card-h;
     forward-focus: scope;
     accessible-role: list-item;
     accessible-label: root.sensitive && !root.shown ? root.title
@@ -555,9 +581,9 @@ export component ItemCard inherits Rectangle {
         y: root.lift-visual ? -CardDepth.lift : 0px;
         width: parent.width;
         height: parent.height;
-        shadow: root.lift-visual ? Theme.shadow-2 : root.compact || root.qr ? transparent : Theme.shadow-1;
-        offset-y: root.lift-visual ? CardDepth.offset-2 : CardDepth.offset-1;
-        blur: root.lift-visual ? CardDepth.blur-2 : CardDepth.blur-1;
+        shadow: root.deep ? Theme.shadow-2 : root.compact || root.qr ? transparent : Theme.shadow-1;
+        offset-y: root.deep ? CardDepth.offset-2 : CardDepth.offset-1;
+        blur: root.deep ? CardDepth.blur-2 : CardDepth.blur-1;
         corner: Radius.lg;
         animate y { duration: root.lifted ? Motion.quick : Motion.settle; easing: root.lifted ? Motion.out : Motion.in-out; }
         animate offset-y { duration: root.lifted ? Motion.quick : Motion.settle; easing: root.lifted ? Motion.out : Motion.in-out; }
@@ -572,7 +598,7 @@ export component ItemCard inherits Rectangle {
         height: parent.height;
         background: root.fill;
         border-radius: root.row-radius;
-        border-width: ((root.compact && !root.selected) || root.qr) && Theme.hc-border == transparent ? 0px : 1px;
+        border-width: ((root.compact && !root.selected) || root.qr || root.qc) && Theme.hc-border == transparent ? 0px : 1px;
         border-color: root.selected ? Theme.accent : Theme.border-subtle;
 
         animate y { duration: root.lifted ? Motion.quick : Motion.settle; easing: root.lifted ? Motion.out : Motion.in-out; }
@@ -580,32 +606,55 @@ export component ItemCard inherits Rectangle {
         // The colour label: a 4px rounded bar inside the left edge, never a fill. In high contrast it takes the
         // text colour (the label's name is in the description and the editor).
         if root.has-label: Rectangle {
-            x: root.qr ? 0px : 1px;
-            y: root.qr ? Space.s2 : Space.s1;
+            x: root.q ? 0px : 1px;
+            y: root.q ? Space.s2 : Space.s1;
             width: Space.s1;
-            height: parent.height - 2 * (root.qr ? Space.s2 : Space.s1);
+            height: parent.height - 2 * (root.q ? Space.s2 : Space.s1);
             border-radius: Radius.sm / 2;
             background: Theme.hc-border != transparent ? Theme.text-primary : ListAccent.color(root.label-hues[root.label]);
         }
 
         // Number gutter and the index-card rule (compact and comfortable; tiles number inline).
         if !root.tile && root.numbered: ItemGutter {
-            x: root.qr ? root.pad-x : 0px;
-            cell-w: root.qr ? Space.s4 : Space.s6;
+            x: root.q ? root.pad-x : 0px;
+            cell-w: root.q ? Space.s4 : Space.s6;
             number: root.number;
             checked: root.lifted;
             selected: root.selected;
             // The quiet row centres the number on the tile.
-            row-y: root.qr ? 0px : root.compact ? (parent.height - root.title-h) / 2 : root.pad-y;
-            row-h: root.qr ? parent.height : root.title-h;
+            row-y: root.q ? 0px : root.compact ? (parent.height - root.title-h) / 2 : root.pad-y;
+            row-h: root.q ? parent.height : root.title-h;
             height: parent.height;
         }
-        if !root.tile && root.numbered && !root.qr: Rectangle {
+        if !root.tile && root.numbered && !root.q: Rectangle {
             x: root.gutter-w;
             width: root.rule-w;
             background: Theme.border-subtle;
         }
-        if root.tile: Rectangle {
+        // The quiet Card: the number (or the check) at the top right, level with the tile.
+        if root.qt && root.numbered: Rectangle {
+            x: root.width - root.pad-x - Space.s4;
+            y: root.tile-y;
+            width: Space.s4;
+            height: root.q-tile-size;
+            if !root.lifted && root.number >= 1 && root.number <= 9: Text {
+                text: "\{root.number}";
+                accessible-label: @tr("Alt+{}", root.number);
+                font-family: Fonts.mono;
+                font-size: Type.xs;
+                color: root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+            }
+            if root.lifted: Icon {
+                source: Icons.check;
+                tint: root.selected ? Theme.accent-on-selected : Theme.accent-text;
+                size: Space.s3 * SystemLook.text-scale;
+                x: parent.width - self.width;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+        if root.tile && !root.qt: Rectangle {
             x: root.pad-x;
             y: root.pad-y;
             width: root.glyph-size;
@@ -650,11 +699,11 @@ export component ItemCard inherits Rectangle {
         }
 
         // Thumbnail (images): 56x36 radius 4 beside the text; full width in a tile.
-        if root.is-image && !root.compact: Rectangle {
-            x: root.tile ? root.pad-x : root.content-x;
-            y: root.tile ? root.pad-y + root.top-h + Space.s2 : root.qr ? root.tile-y : root.pad-y;
-            width: root.tile ? max(0px, root.width - 2 * root.pad-x) : root.qr ? Space.s8 : root.thumb-w;
-            height: root.tile ? root.tile-thumb-h : root.qr ? Space.s8 : root.thumb-h;
+        if root.is-image && (root.q || !root.compact): Rectangle {
+            x: root.q ? root.tile-x : root.tile ? root.pad-x : root.content-x;
+            y: root.q ? root.tile-y : root.tile ? root.pad-y + root.top-h + Space.s2 : root.pad-y;
+            width: root.q ? root.q-tile-size : root.tile ? max(0px, root.width - 2 * root.pad-x) : root.thumb-w;
+            height: root.q ? root.q-tile-size : root.tile ? root.tile-thumb-h : root.thumb-h;
             border-radius: root.qr ? Radius.md : Radius.sm;
             clip: true;
             background: Theme.bg-sunken;
@@ -683,12 +732,12 @@ export component ItemCard inherits Rectangle {
         }
 
         // Quiet row: the type tile (images use the crop above instead).
-        if root.qr && !root.is-image: Rectangle {
+        if root.q && !root.is-image: Rectangle {
             x: root.tile-x;
             y: root.tile-y;
-            width: Space.s8;
-            height: Space.s8;
-            border-radius: Radius.md;
+            width: root.q-tile-size;
+            height: root.q-tile-size;
+            border-radius: root.qr ? Radius.md : Radius.sm;
             background: root.kind-tile;
             border-width: Theme.hc-border != transparent ? 1px : 0px;
             border-color: Theme.hc-border;
@@ -720,9 +769,9 @@ export component ItemCard inherits Rectangle {
             font-weight: Type.medium;
             wrap: no-wrap;
         }
-        if root.qr && root.mark-text != "" && root.mark-before.character-count < 200: Rectangle {
+        if (root.qr || root.qc) && root.mark-text != "" && root.mark-before.character-count < 200: Rectangle {
             x: root.content-x + root.lead-w + min(m-mark-before.preferred-width, root.title-w);
-            y: root.qr-title-y;
+            y: root.q-title-y;
             width: max(0px, min(m-mark.preferred-width, root.title-w - m-mark-before.preferred-width));
             height: root.title-h;
             border-radius: 3px;
@@ -732,7 +781,9 @@ export component ItemCard inherits Rectangle {
         // Title.
         Text {
             x: root.tile ? root.pad-x : root.content-x + root.lead-w;
-            y: root.compact ? (parent.height - self.height) / 2
+            y: root.qc ? root.qc-title-y
+                : root.qt ? root.qt-title-y
+                : root.compact ? (parent.height - self.height) / 2
                 : root.tile ? root.pad-y + root.top-h + (root.is-image ? Space.s2 + root.tile-thumb-h : 0px) + Space.s1
                 : root.qr ? root.qr-title-y
                 : root.pad-y;
@@ -750,9 +801,11 @@ export component ItemCard inherits Rectangle {
 
         // Preview (secondary colour; mono for code, links and sensitive items).
         Text {
-            visible: root.shown-preview != "" && (!root.compact || root.preview-w >= Type.sm * 4);
+            visible: root.shown-preview != "" && (!root.compact || root.preview-w >= (root.qc ? 48px : Type.sm * 4)) && (!root.qt || root.qt-prev-lines > 0);
             x: root.compact ? root.content-x + root.lead-w + root.title-w + Space.s2 : root.preview-x;
-            y: root.compact ? (parent.height - self.height) / 2
+            y: root.qc ? root.qc-title-y + (root.title-h - Type.line-sm) / 2
+                : root.qt ? root.qt-prev-y
+                : root.compact ? (parent.height - self.height) / 2
                 : root.tile ? root.pad-y + root.top-h + (root.is-image ? Space.s2 + root.tile-thumb-h : 0px) + Space.s1 + root.tile-title-h + Space.s1
                 : root.qr ? root.qr-band-y + (root.qr-band-h - self.height) / 2
                 : root.pad-y + root.title-h + Space.s1;
@@ -774,19 +827,28 @@ export component ItemCard inherits Rectangle {
             name: root.list-name;
             mark: root.list-color;
             text-w: m-list.preferred-width;
-            max-w: root.qr ? root.row-w : root.tile ? max(0px, root.width - 2 * root.pad-x - root.more-reserve - 2 * Space.s4 - Space.s2) : root.list-w;
-            x: root.qr ? root.content-x + root.lead-w : parent.width - root.pad-r - root.more-reserve - self.width;
+            max-w: root.qr || root.qc ? root.row-w : root.qt ? 0px : root.tile ? max(0px, root.width - 2 * root.pad-x - root.more-reserve - 2 * Space.s4 - Space.s2) : root.list-w;
+            x: root.qr || root.qc ? root.content-x + root.lead-w : parent.width - root.pad-r - root.more-reserve - self.width;
             y: root.qr ? root.qr-band-y + (root.qr-band-h + Type.line-sm) / 2
+                : root.qc ? root.qc-title-y + root.title-h
                 : root.compact ? (parent.height - self.height) / 2
                 : root.tile ? root.pad-y + (root.top-h - self.height) / 2
                 : root.pad-y + (root.title-h - self.height) / 2;
         }
 
         // Hairline between compact rows (the fill separates hovered, selected and lifted rows).
-        if root.compact && root.row-radius == 0px: Rectangle {
+        if root.compact && !root.qc && root.row-radius == 0px: Rectangle {
             x: 0;
             y: parent.height - 1px;
             width: parent.width - self.x;
+            height: 1px;
+            background: Theme.border-subtle;
+        }
+        // The quiet Compact row's divider: 1px `border.subtle`, inset 8, only at rest (a hovered or selected row is a fill).
+        if root.qc && !root.selected && !root.hovered && !root.focused && !root.lift-visual: Rectangle {
+            x: Space.s2;
+            y: parent.height - 1px;
+            width: max(0px, parent.width - 2 * Space.s2);
             height: 1px;
             background: Theme.border-subtle;
         }
@@ -799,7 +861,7 @@ export component ItemCard inherits Rectangle {
             height: parent.height + (root.compact || root.qr ? 0px : 8px);
             border-width: root.focused ? 2px : 0px;
             border-color: Theme.focus-ring;
-            border-radius: root.compact || root.qr ? Radius.lg : Radius.lg + 2px;
+            border-radius: root.qc ? Radius.md : root.compact || root.qr ? Radius.lg : Radius.lg + 2px;
             background: transparent;
         }
     }
@@ -852,7 +914,7 @@ export component ItemCard inherits Rectangle {
     // After `touch`, so a click on it is its own and never a use. Compact rows keep the use label to its
     // right; the other variants put it in the top-right corner.
     more := Rectangle {
-        visible: root.has-menu && !root.qr;
+        visible: root.has-menu && !root.q;
         width: root.more-side;
         height: root.more-side;
         x: root.width - root.pad-x - self.width;
@@ -881,7 +943,7 @@ export component ItemCard inherits Rectangle {
     // After `touch` like More: a click on it uses the item (O33) and never only selects it in `pick-mode`.
     use-btn := UseLabel {
         selected: root.selected;
-        text: root.qr ? "" : root.use-label;
+        text: root.q ? "" : root.use-label;
         item-title: root.title;
         shown: root.label-visible;
         backing: root.fill;
@@ -902,7 +964,7 @@ export component ItemCard inherits Rectangle {
     copy-button := Rectangle {
         // Only where the kebab is: without a menu no trailing slot is reserved and the icon would sit on the label.
         // Hidden while a use label that itself copies shows, so the row has one copy button.
-        visible: root.has-menu && !root.qr && !(root.use-copies && root.label-visible);
+        visible: root.has-menu && !root.q && !(root.use-copies && root.label-visible);
         width: root.more-side;
         height: root.more-side;
         x: more.x - self.width;
@@ -930,9 +992,18 @@ export component ItemCard inherits Rectangle {
     // ---- Quiet row: Copy, Edit and More on the preview line, and the sensitive eye ---------------------
     // After `touch`, so a click on any of them is its own and never a use. They show on hover and on the selected row
     // (`show-actions`) and are not Tab stops: Shift+Enter, Ctrl+E and the Menu key reach the same actions.
-    property <length> act-y: root.qr-band-y;
+    property <length> act-y: root.qt ? root.qt-h - Space.s1 - root.q-box : root.qc ? root.qc-title-y + (root.title-h - root.q-box) / 2 : root.qr-band-y;
+    // The Card's actions sit over its last preview line: a solid fill behind them (no fade), the card's own.
+    if root.qt && root.qr-actions-shown: Rectangle {
+        x: root.qr-right - root.qr-eye-w - root.qr-actions-w;
+        y: root.act-y + Space.s1;
+        width: root.qr-actions-w;
+        height: root.q-box - Space.s1;
+        background: root.fill;
+    }
     act-more := RowAction {
         shown: root.qr-actions-shown;
+        box: root.q-box;
         icon: Icons.dots-three;
         label: @tr("More");
         x: root.qr-right - root.qr-eye-w - self.width;
@@ -941,7 +1012,8 @@ export component ItemCard inherits Rectangle {
         tip(on) => { root.tip(self.label, root.absolute-position.x + self.x + self.width / 2, root.absolute-position.y + self.y + self.height, on); }
     }
     act-edit := RowAction {
-        shown: root.qr-actions-shown;
+        shown: root.qr-actions-shown && root.edit-action;
+        box: root.q-box;
         icon: Icons.pencil-simple;
         label: @tr("Edit");
         x: act-more.x - self.width;
@@ -951,19 +1023,20 @@ export component ItemCard inherits Rectangle {
     }
     act-copy := RowAction {
         shown: root.qr-actions-shown && root.copy-action;
+        box: root.q-box;
         icon: Icons.copy;
         label: @tr("Copy");
-        x: act-edit.x - self.width;
+        x: act-more.x - (root.edit-action ? act-edit.width : 0px) - self.width;
         y: root.act-y;
         clicked => { root.copy(); }
         tip(on) => { root.tip(self.label, root.absolute-position.x + self.x + self.width / 2, root.absolute-position.y + self.y + self.height, on); }
     }
     // The eye (a sensitive item): always at the right end of the preview line, press and hold to reveal.
-    if root.qr && root.sensitive: Rectangle {
+    if root.q && root.sensitive: Rectangle {
         x: root.qr-right - self.width;
         y: root.act-y;
-        width: Space.s8;
-        height: Space.s8;
+        width: root.q-box;
+        height: root.q-box;
         accessible-role: button;
         accessible-label: @tr("Hold to reveal");
         // Assistive technology activates it: the preview shows (a second activation hides it again). The keyboard's
@@ -1004,11 +1077,16 @@ export component ItemCard inherits Rectangle {
 
     // ---- Paste stack mark: the stack glyph and the item's place, left of Copy --------------------
     if root.stack-position > 0: Rectangle {
-        width: root.qr ? 36px : stack-mark-row.preferred-width + 2 * Space.s1;
+        width: root.q ? 36px : stack-mark-row.preferred-width + 2 * Space.s1;
         height: root.more-side;
-        // Quiet row: on the preview line, left of the actions (or at the right end while they are hidden).
-        x: root.qr ? root.qr-right - root.qr-eye-w - (root.qr-actions-shown ? root.qr-actions-w : 0px) - self.width : copy-button.x - self.width - Space.s1;
-        y: root.qr ? root.qr-band-y + (root.qr-band-h - self.height) / 2 : more.y;
+        // Quiet row: on the preview line, left of the actions (or at the right end while they are hidden); in Compact level
+        // with the title; on a Card in the top row, left of the number.
+        x: root.qt ? root.width - root.pad-x - Space.s4 - Space.s1 - self.width
+            : root.q ? root.qr-right - root.qr-eye-w - (root.qr-actions-shown ? root.qr-actions-w : 0px) - self.width
+            : copy-button.x - self.width - Space.s1;
+        y: root.qt ? root.tile-y + (root.q-tile-size - self.height) / 2
+            : root.qc ? (root.card-h - self.height) / 2
+            : root.qr ? root.qr-band-y + (root.qr-band-h - self.height) / 2 : more.y;
         border-radius: Radius.md;
         background: Theme.accent-subtle;
         stack-mark-row := HorizontalLayout {

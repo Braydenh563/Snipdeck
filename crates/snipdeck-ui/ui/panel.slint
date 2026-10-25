@@ -10,7 +10,8 @@
 // Keyboard (all handled in `capture-key-pressed` on the window's FocusScope, so they work whichever
 // control has focus):
 //   type            filters; a printable key typed while another control has focus moves into the search
-//   Up / Down       move the selection (PageUp / PageDown a page); Enter uses it, Shift+Enter copies
+//   Up / Down       move the selection (PageUp / PageDown a page; Cards: one row of tiles); Enter uses it, Shift+Enter copies
+//   Left / Right    Cards only, with an empty search: one tile back or on
 //   Alt+1-9         use the Nth row, whatever the search holds (bare digits are always search text)
 //   Space (held)    reveals the selected sensitive row while it is held (the eye on the row does the same by hand)
 //   Ctrl+Tab        next list, Ctrl+Shift+Tab previous; Ctrl+F expands, focuses and selects the search
@@ -126,7 +127,7 @@ export component PanelWindow inherits Window {
     min-width: root.dock-collapsed ? 0px : 260px;
     max-width: 480px;
     // Header, a few rows and the footer always fit: the footer is never pushed out of the window.
-    min-height: root.dock-collapsed ? 0px : max(240px, root.header-h + max(Space.s8, Type.line-sm + Space.s3) + 3 * Space.hit);
+    min-height: root.dock-collapsed ? 0px : root.min-h;
     preferred-width: 320px;
     preferred-height: 480px;
 
@@ -423,7 +424,43 @@ export component PanelWindow inherits Window {
     property <length> recent-menu-y: 0px;
     property <length> header-h: max(Space.s8 + Space.s2, max(Space.hit, Type.line-base + Space.s2) + Space.s2);
     property <length> edge-h: 10px;
-    property <length> row-gap: root.layout == PanelLayout.compact ? 0px : Space.s1 + Space.s0-5;
+    // The layout the rows are drawn in: Cards give way to List rows while a query is typed (a match says where it lives, which
+    // needs the width).
+    property <PanelLayout> eff-layout: root.layout == PanelLayout.cards && root.searching ? PanelLayout.list : root.layout;
+    property <length> row-gap: root.eff-layout == PanelLayout.compact ? 0px : Space.s1 + Space.s0-5;
+    // Cards: 2 columns from 288px wide, 1 below (set from `changed` handlers: the window's width follows its layout).
+    property <int> cols: 1;
+    function update-cols() {
+        root.cols = root.eff-layout == PanelLayout.cards && root.width >= 288px ? 2 : 1;
+    }
+    property <length> col-gap: Space.s1 + Space.s0-5;
+    // Rows (Cards: pairs of tiles) in the list, and how many tiles group `g` holds.
+    property <int> row-groups: floor((root.rows.length + root.cols - 1) / root.cols);
+    pure function group-cells(g: int) -> int {
+        return min(root.cols, root.rows.length - g * root.cols);
+    }
+    // Spec 2.12 and 3: a layout's row height and the gap between its rows, the tabs' height (none with the Menu switcher),
+    // and the smallest window.
+    pure function row-h-of(l: PanelLayout) -> length {
+        return l == PanelLayout.compact ? Space.s8 + Space.s1 : l == PanelLayout.cards ? 96px : 56px;
+    }
+    property <length> layout-row-h: root.row-h-of(root.eff-layout);
+    property <length> tabs-h: root.lists-in-menu ? 0px : Space.s8;
+    property <length> footer-h: max(Space.s8, Type.line-sm + Space.s3);
+    // Three rows (one row of tiles in Cards) between the header and the footer, 8 clear above and below; never under 240.
+    out property <length> min-h: max(240px, root.header-h + root.tabs-h + Space.s2
+        + (root.layout == PanelLayout.cards ? 1 : 3) * root.row-h-of(root.layout)
+        + (root.layout == PanelLayout.list ? 2 * Space.s1 : 0px)
+        + Space.s2 + root.footer-h);
+    // The pinned strip (36) goes when the list under it would show fewer than two rows (one row of tiles in Cards).
+    // Set by update-pins() from `changed` handlers (reading `root.height` in a binding would loop with the layout).
+    property <bool> pins-fit: true;
+    function update-pins() {
+        root.pins-fit = root.height - root.header-h - root.tabs-h - Space.s8 - Space.s1 - root.footer-h - Space.s2
+            >= (root.eff-layout == PanelLayout.cards ? 1 : 2) * root.layout-row-h + root.row-gap;
+    }
+    changed height => { root.update-pins(); }
+    changed lists-in-menu => { root.update-pins(); }
     property <length> avg-row-h: root.rows.length == 0 ? Space.hit : max(Space.hit, list.content-height / root.rows.length);
     property <int> page-rows: max(1, floor(list.height / root.avg-row-h) - 1);
 
@@ -494,6 +531,12 @@ export component PanelWindow inherits Window {
     property <float> text-scale: SystemLook.text-scale;
     function update-narrow() {
         root.narrow = root.width < 300px * root.text-scale;
+        root.update-cols();
+        root.update-pins();
+    }
+    changed eff-layout => {
+        root.update-cols();
+        root.update-pins();
     }
 
     init => {
@@ -969,13 +1012,25 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                 }
-                if (!switcher.has-focus && !root.recent-open) {
-                    if (event.text == Key.DownArrow) {
+                // Cards, search empty: Left and Right step one tile (Up and Down a whole row of tiles).
+                if (root.eff-layout == PanelLayout.cards && root.search-focused && !root.searching && !root.recent-open
+                    && !event.modifiers.control && !event.modifiers.alt && !event.modifiers.shift) {
+                    if (event.text == Key.RightArrow) {
                         root.move-selection(1);
                         return accept;
                     }
-                    if (event.text == Key.UpArrow) {
+                    if (event.text == Key.LeftArrow) {
                         root.move-selection(-1);
+                        return accept;
+                    }
+                }
+                if (!switcher.has-focus && !root.recent-open) {
+                    if (event.text == Key.DownArrow) {
+                        root.move-selection(root.cols);
+                        return accept;
+                    }
+                    if (event.text == Key.UpArrow) {
+                        root.move-selection(-root.cols);
                         return accept;
                     }
                     if (event.text == Key.PageDown) {
@@ -1357,7 +1412,7 @@ export component PanelWindow inherits Window {
                     }
                 }
 
-                if root.pinned.length > 0 && !root.search-block && !root.recent-open: strip := PinnedStrip {
+                if root.pinned.length > 0 && !root.search-block && !root.recent-open && root.pins-fit: strip := PinnedStrip {
                     items: root.pinned;
                     more-label: @tr("+{} more", root.pinned.length - 2);
                     accessible-role: AccessibleRole.list;
@@ -1395,112 +1450,133 @@ export component PanelWindow inherits Window {
                         accessible-label: @tr("Snippets");
                         visible: root.rows.length > 0 && !root.recent-open;
 
-                        for row[i] in root.rows: Rectangle {
-                            property <bool> is-selected: i == root.sel;
-                            height: card.preferred-height + root.row-gap + (i == root.rows.length - 1 ? 2 * Space.s1 : 0px);
+                        // Rows come in groups: one row each, or (Cards) a row of two tiles. Every layout draws its rows with this one
+                        // ItemCard, so a row's tooltip, drag and actions are the same in all of them.
+                        for g in root.row-groups: Rectangle {
+                            property <int> first: g * root.cols;
+                            property <bool> has-sel: root.sel >= self.first && root.sel < self.first + root.cols;
+                            height: grp.preferred-height + root.row-gap + (g == root.row-groups - 1 ? 2 * Space.s1 : 0px);
 
                             init => {
-                                if (self.is-selected) { root.reveal(self.y, self.height); }
+                                if (self.has-sel) { root.reveal(self.y, self.height); }
                             }
-                            changed is-selected => {
-                                if (self.is-selected) { root.reveal(self.y, self.height); }
+                            changed has-sel => {
+                                if (self.has-sel) { root.reveal(self.y, self.height); }
                             }
                             changed y => {
-                                if (self.is-selected) { root.reveal(self.y, self.height); }
+                                if (self.has-sel) { root.reveal(self.y, self.height); }
                             }
 
-                            // The row being dragged over this one: a drop lands after it when coming from above.
-                            property <int> row-from: -1;
-
-                            row-drop := DropArea {
-                                enabled: root.rows-reorderable;
-                                can-drop(event) => {
-                                    row-from = root.payload-row(event.data);
-                                    row-from >= 0 && row-from != i ? DragAction.move : DragAction.none
-                                }
-                                dropped(event) => {
-                                    root.row-dropped(root.payload-row(event.data), i);
-                                    return DragAction.move;
-                                }
-
-                            DragArea {
-                                allow-move: !root.searching && !root.recent-open;
-                                data: root.row-payload(i);
-
-                            card := ItemCard {
+                            grp := HorizontalLayout {
                                 x: Space.s1;
                                 y: Space.s1;
                                 width: parent.width - 2 * Space.s1;
                                 height: self.preferred-height;
-                                variant: root.layout == PanelLayout.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
-                                quiet: true;
-                                copy-action: root.pastes;
-                                show-actions: i == root.sel && root.marked-count == 0;
-                                row-tip: root.pastes ? @tr("Click to paste into {}. Shift+click copies.", root.target-name) : @tr("Click to copy.");
-                                kind: row.kind;
-                                number: i < 9 ? i + 1 : 0;
-                                numbered: root.show-numbers;
-                                pick-mode: root.marked-count > 0;
-                                modifier-picks: true;
-                                show-focus: root.marked-count > 0 && i == root.sel;
-                                title: row.title;
-                                mark-before: row.mark-before;
-                                mark-text: row.mark-text;
-                                preview: row.preview;
-                                masked-preview: row.masked-preview;
-                                extension: row.extension;
-                                image: row.image;
-                                list-name: row.list-name;
-                                list-color: row.list-color;
-                                label: row.label;
-                                label-name: row.label-name;
-                                stack-position: row.stack-position;
-                                selected: root.marked-count > 0 ? row.marked : i == root.sel;
-                                use-label: root.use-label;
-                                use-copies: !root.pastes;
-                                masked-hint: @tr("Hidden. Hold Space to reveal.");
-                                show-use-label: i == root.sel && root.marked-count == 0;
-                                revealed: i == root.revealed-index;
-                                pulling: i == root.used-index;
-                                keyboard-focusable: false;
-                                picked(shift, ctrl) => {
-                                    root.selected-index = i;
-                                    root.row-picked(i, shift, ctrl);
+                                spacing: root.col-gap;
+                                for c in root.group-cells(g): cell := Rectangle {
+                                    property <int> i: g * root.cols + c;
+                                    property <PanelRow> item: root.rows[self.i];
+                                    horizontal-stretch: 1;
+                                    preferred-height: card.preferred-height;
+                                    min-height: card.preferred-height;
+
+                                    // The row being dragged over this one: a drop lands after it when coming from above.
+                                    property <int> row-from: -1;
+
+                                    row-drop := DropArea {
+                                        enabled: root.rows-reorderable;
+                                        can-drop(event) => {
+                                            row-from = root.payload-row(event.data);
+                                            row-from >= 0 && row-from != i ? DragAction.move : DragAction.none
+                                        }
+                                        dropped(event) => {
+                                            root.row-dropped(root.payload-row(event.data), i);
+                                            return DragAction.move;
+                                        }
+
+                                        DragArea {
+                                            allow-move: !root.searching && !root.recent-open;
+                                            data: root.row-payload(i);
+
+                                            card := ItemCard {
+                                                x: 0px;
+                                                y: 0px;
+                                                width: parent.width;
+                                                height: self.preferred-height;
+                                                variant: root.eff-layout == PanelLayout.compact ? ItemCardVariant.compact : root.eff-layout == PanelLayout.cards ? ItemCardVariant.tile : ItemCardVariant.comfortable;
+                                                edit-action: !(root.layout == PanelLayout.compact && root.narrow);
+                                                quiet: true;
+                                                copy-action: root.pastes;
+                                                show-actions: i == root.sel && root.marked-count == 0;
+                                                row-tip: root.pastes ? @tr("Click to paste into {}. Shift+click copies.", root.target-name) : @tr("Click to copy.");
+                                                kind: item.kind;
+                                                number: i < 9 ? i + 1 : 0;
+                                                numbered: root.show-numbers;
+                                                pick-mode: root.marked-count > 0;
+                                                modifier-picks: true;
+                                                show-focus: root.marked-count > 0 && i == root.sel;
+                                                title: item.title;
+                                                mark-before: item.mark-before;
+                                                mark-text: item.mark-text;
+                                                preview: item.preview;
+                                                masked-preview: item.masked-preview;
+                                                extension: item.extension;
+                                                image: item.image;
+                                                list-name: item.list-name;
+                                                list-color: item.list-color;
+                                                label: item.label;
+                                                label-name: item.label-name;
+                                                stack-position: item.stack-position;
+                                                selected: root.marked-count > 0 ? item.marked : i == root.sel;
+                                                use-label: root.use-label;
+                                                use-copies: !root.pastes;
+                                                masked-hint: @tr("Hidden. Hold Space to reveal.");
+                                                show-use-label: i == root.sel && root.marked-count == 0;
+                                                revealed: i == root.revealed-index;
+                                                pulling: i == root.used-index;
+                                                keyboard-focusable: false;
+                                                picked(shift, ctrl) => {
+                                                    root.selected-index = i;
+                                                    root.row-picked(i, shift, ctrl);
+                                                }
+                                                use => {
+                                                    root.selected-index = i;
+                                                    root.row-activated(i);
+                                                }
+                                                copy => {
+                                                    root.selected-index = i;
+                                                    root.row-copied(i);
+                                                }
+                                                context-menu-requested(x, y) => {
+                                                    root.item-menu-x = self.absolute-position.x + x;
+                                                    root.item-menu-y = self.absolute-position.y + y;
+                                                    root.context-menu-requested(i, x, y);
+                                                }
+                                                edit => {
+                                                    root.selected-index = i;
+                                                    root.edit-requested(i);
+                                                }
+                                                tip(text, cx, bottom, on) => {
+                                                    root.tip-set(text, cx, bottom, on);
+                                                    root.row-tip-text = on ? text : "";
+                                                }
+                                                reveal-requested(on) => { root.reveal-requested(i, on); }
+                                            }
+                                        }
+                                    }
+                                    // The drop target: a 2px accent line where the dragged row would land: below this row when it
+                                    // comes from above, above it otherwise (Cards: a vertical line at the tile's side).
+                                    Rectangle {
+                                        visible: row-drop.has-drag;
+                                        x: root.cols > 1 ? (row-from >= 0 && row-from < i ? parent.width - 1px : -1px) : 0px;
+                                        y: root.cols > 1 ? 0px : row-from >= 0 && row-from < i ? card.y + card.height - 1px : 0px;
+                                        width: root.cols > 1 ? 2px : parent.width;
+                                        height: root.cols > 1 ? parent.height : 2px;
+                                        background: Theme.accent;
+                                    }
                                 }
-                                use => {
-                                    root.selected-index = i;
-                                    root.row-activated(i);
-                                }
-                                copy => {
-                                    root.selected-index = i;
-                                    root.row-copied(i);
-                                }
-                                context-menu-requested(x, y) => {
-                                    root.item-menu-x = self.absolute-position.x + x;
-                                    root.item-menu-y = self.absolute-position.y + y;
-                                    root.context-menu-requested(i, x, y);
-                                }
-                                edit => {
-                                    root.selected-index = i;
-                                    root.edit-requested(i);
-                                }
-                                tip(text, cx, bottom, on) => {
-                                    root.tip-set(text, cx, bottom, on);
-                                    root.row-tip-text = on ? text : "";
-                                }
-                                reveal-requested(on) => { root.reveal-requested(i, on); }
-                            }
-                            }
-                            }
-                            // The drop target: a 2px accent line where the dragged row would land: below this row when it
-                            // comes from above, above it otherwise.
-                            Rectangle {
-                                visible: row-drop.has-drag;
-                                x: Space.s1;
-                                y: row-from >= 0 && row-from < i ? card.y + card.height - 1px : 0px;
-                                width: parent.width - 2 * Space.s1;
-                                height: 2px;
-                                background: Theme.accent;
+                                // A short last row of tiles keeps the column width.
+                                if root.group-cells(g) < root.cols: Rectangle { horizontal-stretch: 1; }
                             }
                         }
                     }
@@ -1621,7 +1697,7 @@ export component PanelWindow inherits Window {
                         for n in [0, 1, 2, 3, 4, 5]: Skeleton {
                             kind: SkeletonKind.row;
                             // The layout's row height (spec 2.7).
-                            height: root.layout == PanelLayout.compact ? 36px : 56px + root.row-gap;
+                            height: root.layout-row-h + root.row-gap;
                             label: n == 0 ? @tr("Loading") : "";
                         }
                     }
