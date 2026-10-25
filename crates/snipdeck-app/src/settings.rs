@@ -250,6 +250,67 @@ pub enum PickerSide {
     Left,
 }
 
+/// How the Panel lays its items out (Settings > Panel > Panel layout). One global choice, not per
+/// list: a layout that changes when you switch tabs is a surprise in a two-second window. (The
+/// store keeps each list's `ListView`; the Panel neither reads nor writes it.)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PanelLayout {
+    /// Two-line rows with a type tile (the default).
+    #[default]
+    List,
+    /// Two columns of cards.
+    Cards,
+    /// One-line rows with the preview inline.
+    Compact,
+}
+
+/// When the Panel's search field is on screen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PanelSearch {
+    /// Only the header icon; typing, Ctrl+F or the icon expands it.
+    #[default]
+    OnType,
+    /// A field under the header at all times.
+    Always,
+}
+
+/// Where the Panel's lists are switched: a tab row, or a menu on the board picker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PanelSwitcher {
+    /// A row of tabs under the header.
+    #[default]
+    Tabs,
+    /// A menu opened from the header's board picker.
+    Menu,
+}
+
+/// What a left click on the tray icon opens (Settings > Panel > Opening the Panel).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TrayClick {
+    /// The Panel.
+    #[default]
+    Panel,
+    /// The Main window.
+    Main,
+}
+
+/// Where a floating Panel opens when the hotkey shows it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PanelOpenAt {
+    /// Where it was left.
+    #[default]
+    Last,
+    /// At the mouse pointer.
+    Mouse,
+    /// At the Target's text cursor; falls back to the mouse when there is none.
+    Caret,
+}
+
 /// The text size Snipdeck uses (Settings > Appearance), WCAG 1.4.4.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum TextSize {
@@ -596,6 +657,21 @@ pub struct Settings {
     pub row_density: RowDensity,
     /// Which side of the caret the Picker opens on.
     pub picker_side: PickerSide,
+    /// The Panel's layout: List, Cards or Compact (one setting for every list).
+    pub panel_layout: PanelLayout,
+    /// When the Panel's search field shows.
+    pub panel_search: PanelSearch,
+    /// Whether the Panel switches lists with tabs or a menu.
+    pub panel_switcher: PanelSwitcher,
+    /// What a left click on the tray icon opens.
+    pub tray_click: TrayClick,
+    /// Where a floating Panel opens (ignored while it is docked).
+    pub panel_open_at: PanelOpenAt,
+    /// The Panel hides after a paste or copy, pinned or not.
+    pub panel_hide_after_use: bool,
+    /// With "Start with Windows": show the Panel at sign-in instead of staying in the tray. Kept
+    /// when autostart is off; [`Settings::starts_visible`] says whether it takes effect.
+    pub panel_start_visible: bool,
 }
 
 impl Default for Settings {
@@ -630,6 +706,13 @@ impl Default for Settings {
             show_numbers: true,
             row_density: RowDensity::Comfortable,
             picker_side: PickerSide::Below,
+            panel_layout: PanelLayout::List,
+            panel_search: PanelSearch::OnType,
+            panel_switcher: PanelSwitcher::Tabs,
+            tray_click: TrayClick::Panel,
+            panel_open_at: PanelOpenAt::Last,
+            panel_hide_after_use: false,
+            panel_start_visible: false,
         }
     }
 }
@@ -641,6 +724,13 @@ impl Settings {
     #[must_use]
     pub const fn tour_due(&self, library_is_empty: bool) -> bool {
         !self.onboarded && library_is_empty
+    }
+
+    /// Whether Snipdeck shows the Panel (instead of staying in the tray) when Windows starts it:
+    /// "Show the Panel" only has an effect together with "Start with Windows".
+    #[must_use]
+    pub const fn starts_visible(&self) -> bool {
+        self.autostart && self.panel_start_visible
     }
 
     /// Reads settings from JSON. Never fails: text that is not JSON gives the defaults, and a
@@ -729,6 +819,13 @@ impl Settings {
         field!(show_numbers);
         field!(row_density);
         field!(picker_side);
+        field!(panel_layout);
+        field!(panel_search);
+        field!(panel_switcher);
+        field!(tray_click);
+        field!(panel_open_at);
+        field!(panel_hide_after_use);
+        field!(panel_start_visible);
         settings
     }
 
@@ -1596,5 +1693,161 @@ mod tests {
         };
         let back = Settings::from_json(&serde_json::to_string(&right).unwrap());
         assert_eq!(back.picker_side, PickerSide::Right);
+    }
+
+    #[test]
+    fn the_panel_v2_settings_default_to_the_documented_values() {
+        let d = Settings::default();
+        assert_eq!(
+            (
+                d.panel_layout,
+                d.panel_search,
+                d.panel_switcher,
+                d.tray_click,
+                d.panel_open_at,
+                d.panel_hide_after_use,
+                d.panel_start_visible,
+            ),
+            (
+                PanelLayout::List,
+                PanelSearch::OnType,
+                PanelSwitcher::Tabs,
+                TrayClick::Panel,
+                PanelOpenAt::Last,
+                false,
+                false,
+            )
+        );
+        assert_eq!(Settings::from_json("{}"), d);
+    }
+
+    #[test]
+    fn the_panel_v2_settings_round_trip_with_kebab_case_words() {
+        let set = Settings {
+            panel_layout: PanelLayout::Cards,
+            panel_search: PanelSearch::Always,
+            panel_switcher: PanelSwitcher::Menu,
+            tray_click: TrayClick::Main,
+            panel_open_at: PanelOpenAt::Caret,
+            panel_hide_after_use: true,
+            panel_start_visible: true,
+            ..Settings::default()
+        };
+        let json = set.to_json();
+        for word in [
+            r#""panel_layout": "cards""#,
+            r#""panel_search": "always""#,
+            r#""panel_switcher": "menu""#,
+            r#""tray_click": "main""#,
+            r#""panel_open_at": "caret""#,
+            r#""panel_hide_after_use": true"#,
+            r#""panel_start_visible": true"#,
+        ] {
+            assert!(json.contains(word), "{word} in {json}");
+        }
+        assert_eq!(Settings::from_json(&json), set);
+        for (word, layout) in [
+            ("list", PanelLayout::List),
+            ("cards", PanelLayout::Cards),
+            ("compact", PanelLayout::Compact),
+        ] {
+            let text = format!(r#"{{"panel_layout":"{word}"}}"#);
+            assert_eq!(Settings::from_json(&text).panel_layout, layout, "{word}");
+        }
+        for (word, at) in [
+            ("last", PanelOpenAt::Last),
+            ("mouse", PanelOpenAt::Mouse),
+            ("caret", PanelOpenAt::Caret),
+        ] {
+            let text = format!(r#"{{"panel_open_at":"{word}"}}"#);
+            assert_eq!(Settings::from_json(&text).panel_open_at, at, "{word}");
+        }
+    }
+
+    #[test]
+    fn a_version_one_file_without_the_panel_v2_fields_loads_the_defaults_and_keeps_the_rest() {
+        let old = Settings::from_json(
+            r#"{"version":1,"theme":"dark","picker_side":"right","show_numbers":false,"panel_width":400}"#,
+        );
+        let d = Settings::default();
+        assert_eq!(
+            (
+                old.theme,
+                old.picker_side,
+                old.show_numbers,
+                old.panel_width
+            ),
+            (Theme::Dark, PickerSide::Right, false, 400)
+        );
+        assert_eq!(
+            (old.panel_layout, old.panel_search, old.panel_switcher),
+            (d.panel_layout, d.panel_search, d.panel_switcher)
+        );
+        assert_eq!(
+            (
+                old.tray_click,
+                old.panel_open_at,
+                old.panel_hide_after_use,
+                old.panel_start_visible,
+            ),
+            (d.tray_click, d.panel_open_at, false, false)
+        );
+        assert_eq!(old.version, VERSION);
+        assert_eq!(
+            VERSION, 1,
+            "the new fields are additive: the format stays at version 1"
+        );
+    }
+
+    #[test]
+    fn an_unknown_panel_v2_word_falls_back_to_that_default_and_keeps_the_rest() {
+        let bad = Settings::from_json(
+            r#"{"panel_layout":"grid","panel_search":"sometimes","panel_switcher":"dropdown","tray_click":"both","panel_open_at":"centre","panel_hide_after_use":"yes","theme":"dark","panel_start_visible":true}"#,
+        );
+        let d = Settings::default();
+        assert_eq!(
+            (
+                bad.panel_layout,
+                bad.panel_search,
+                bad.panel_switcher,
+                bad.tray_click,
+                bad.panel_open_at,
+                bad.panel_hide_after_use,
+            ),
+            (
+                d.panel_layout,
+                d.panel_search,
+                d.panel_switcher,
+                d.tray_click,
+                d.panel_open_at,
+                false,
+            )
+        );
+        assert_eq!(bad.theme, Theme::Dark);
+        assert!(
+            bad.panel_start_visible,
+            "a good field next to bad ones is kept"
+        );
+    }
+
+    #[test]
+    fn showing_the_panel_at_sign_in_needs_start_with_windows() {
+        let mut s = Settings {
+            panel_start_visible: true,
+            ..Settings::default()
+        };
+        assert!(!s.starts_visible(), "no autostart, no effect");
+        s.autostart = true;
+        assert!(s.starts_visible());
+        s.panel_start_visible = false;
+        assert!(!s.starts_visible());
+        // Turning autostart off does not forget the choice.
+        let kept = Settings {
+            autostart: false,
+            panel_start_visible: true,
+            ..Settings::default()
+        };
+        let back = Settings::from_json(&kept.to_json());
+        assert!(back.panel_start_visible);
     }
 }

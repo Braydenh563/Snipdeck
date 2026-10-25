@@ -157,6 +157,15 @@ mod tests {
         assert_keys_round_trip(ListSort::ALL, ListSort::key);
     }
 
+    /// Panel v2 made the layout a global setting, but the store keeps each list's `view` as
+    /// persisted data: its words must not change under existing libraries.
+    #[test]
+    fn list_view_keeps_its_stored_words() {
+        assert_eq!(ListView::Compact.key(), "compact");
+        assert_eq!(ListView::Comfortable.key(), "comfortable");
+        assert_eq!(ListView::ALL.len(), 2);
+    }
+
     #[test]
     fn there_are_nine_list_accents() {
         assert_eq!(ListAccent::ALL.len(), 9);
