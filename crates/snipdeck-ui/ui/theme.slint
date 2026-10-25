@@ -154,6 +154,22 @@ export global Theme {
     out property <color> danger-solid: hc ? SystemLook.hc-window-text : Palette.danger-solid;
     out property <color> info-fg: hc ? SystemLook.hc-window-text : Palette.info-fg;
     out property <color> info-bg: hc ? SystemLook.hc-window : Palette.info-bg;
+    // Item type tiles (DESIGN.md §4 "Item type tiles"): the tile fill and the glyph drawn on it. High contrast
+    // draws no fill (the tile keeps a window-text outline) and a window-text glyph.
+    out property <color> kind-text-tile: hc ? SystemLook.hc-window : Palette.kind-text-tile;
+    out property <color> kind-text-glyph: hc ? SystemLook.hc-window-text : Palette.kind-text-glyph;
+    out property <color> kind-template-tile: hc ? SystemLook.hc-window : Palette.kind-template-tile;
+    out property <color> kind-template-glyph: hc ? SystemLook.hc-window-text : Palette.kind-template-glyph;
+    out property <color> kind-code-tile: hc ? SystemLook.hc-window : Palette.kind-code-tile;
+    out property <color> kind-code-glyph: hc ? SystemLook.hc-window-text : Palette.kind-code-glyph;
+    out property <color> kind-link-tile: hc ? SystemLook.hc-window : Palette.kind-link-tile;
+    out property <color> kind-link-glyph: hc ? SystemLook.hc-window-text : Palette.kind-link-glyph;
+    out property <color> kind-sensitive-tile: hc ? SystemLook.hc-window : Palette.kind-sensitive-tile;
+    out property <color> kind-sensitive-glyph: hc ? SystemLook.hc-window-text : Palette.kind-sensitive-glyph;
+    out property <color> kind-image-tile: hc ? SystemLook.hc-window : Palette.kind-image-tile;
+    out property <color> kind-image-glyph: hc ? SystemLook.hc-window-text : Palette.kind-image-glyph;
+    out property <color> kind-file-tile: hc ? SystemLook.hc-window : Palette.kind-file-tile;
+    out property <color> kind-file-glyph: hc ? SystemLook.hc-window-text : Palette.kind-file-glyph;
     // DESIGN.md §6 shadows, tinted with the warm neutral and never pure black. Level 1 (card,
     // `0 1px 2px` neutral-850 @ 6%) is tone only in dark; level 2 (lifted, `0 4px 12px` neutral-850
     // @ 10% in light, `0 4px 16px` black @ 40% in dark). High contrast draws no shadow at all.

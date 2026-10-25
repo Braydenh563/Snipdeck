@@ -289,6 +289,12 @@ msgstr "清除 {} 的快捷键"
 msgid "Click"
 msgstr "点击"
 
+msgid "Click to copy."
+msgstr "点击复制。"
+
+msgid "Click to paste into {}. Shift+click copies."
+msgstr "点击粘贴到 {}。Shift+点击为复制。"
+
 msgid "Clip {}"
 msgstr "剪贴 {}"
 
@@ -915,6 +921,9 @@ msgstr "失去焦点时隐藏面板"
 
 msgid "History is paused"
 msgstr "历史记录已暂停"
+
+msgid "Hold to reveal"
+msgstr "按住以显示"
 
 msgid "Hover"
 msgstr "悬停"

@@ -289,6 +289,12 @@ msgstr "{} のショートカットを消去"
 msgid "Click"
 msgstr "クリック"
 
+msgid "Click to copy."
+msgstr "クリックでコピー。"
+
+msgid "Click to paste into {}. Shift+click copies."
+msgstr "クリックで{}に貼り付け。Shift+クリックでコピー。"
+
 msgid "Clip {}"
 msgstr "クリップ {}"
 
@@ -915,6 +921,9 @@ msgstr "フォーカスを失ったらパネルを隠す"
 
 msgid "History is paused"
 msgstr "履歴は一時停止中です"
+
+msgid "Hold to reveal"
+msgstr "長押しで表示"
 
 msgid "Hover"
 msgstr "ポイント"

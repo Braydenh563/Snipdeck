@@ -1112,6 +1112,8 @@ export component PanelWindow inherits Window {
                     vertical-stretch: 1;
                     min-height: Space.s12;
                     clip: true;
+                    // The quiet List rows are transparent: the list sits on `bg.surface` (DESIGN.md §4 ItemCard anatomy).
+                    background: root.view == PanelView.comfortable ? Theme.bg-surface : transparent;
 
                     // Inset by the focus ring's reach (4px) so the viewport never clips the ring of the selected card.
                     list := ListView {
@@ -1162,6 +1164,10 @@ export component PanelWindow inherits Window {
                                 width: parent.width - 2 * Space.s1;
                                 height: self.preferred-height;
                                 variant: root.view == PanelView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
+                                quiet: true;
+                                copy-action: root.pastes;
+                                show-actions: i == root.sel && root.marked-count == 0;
+                                row-tip: root.pastes ? @tr("Click to paste into {}. Shift+click copies.", root.target-name) : @tr("Click to copy.");
                                 kind: row.kind;
                                 number: i < 9 ? i + 1 : 0;
                                 numbered: root.show-numbers;
@@ -1203,6 +1209,11 @@ export component PanelWindow inherits Window {
                                     root.item-menu-y = self.absolute-position.y + y;
                                     root.context-menu-requested(i, x, y);
                                 }
+                                edit => {
+                                    root.selected-index = i;
+                                    root.edit-requested(i);
+                                }
+                                tip(text, cx, bottom, on) => { root.tip-set(text, cx, bottom, on); }
                                 reveal-requested(on) => { root.reveal-requested(i, on); }
                             }
                             }

@@ -289,6 +289,12 @@ msgstr "Effacer le raccourci de {}"
 msgid "Click"
 msgstr "Clic"
 
+msgid "Click to copy."
+msgstr "Cliquez pour copier."
+
+msgid "Click to paste into {}. Shift+click copies."
+msgstr "Cliquez pour coller dans {}. Maj+clic copie."
+
 msgid "Clip {}"
 msgstr "Clip {}"
 
@@ -915,6 +921,9 @@ msgstr "Masquer le panneau quand il perd le focus"
 
 msgid "History is paused"
 msgstr "L'historique est suspendu"
+
+msgid "Hold to reveal"
+msgstr "Maintenir pour afficher"
 
 msgid "Hover"
 msgstr "Survol"

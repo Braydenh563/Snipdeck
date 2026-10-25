@@ -289,6 +289,12 @@ msgstr "Borrar el atajo de {}"
 msgid "Click"
 msgstr "Clic"
 
+msgid "Click to copy."
+msgstr "Clic para copiar."
+
+msgid "Click to paste into {}. Shift+click copies."
+msgstr "Clic para pegar en {}. Mayús+clic copia."
+
 msgid "Clip {}"
 msgstr "Clip {}"
 
@@ -915,6 +921,9 @@ msgstr "Ocultar el panel al perder el foco"
 
 msgid "History is paused"
 msgstr "El historial está en pausa"
+
+msgid "Hold to reveal"
+msgstr "Mantén pulsado para mostrar"
 
 msgid "Hover"
 msgstr "Pasar el puntero"

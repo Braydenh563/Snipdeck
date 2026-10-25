@@ -23,3 +23,5 @@ date | item | type | rung | rework | note
 2026-10-25 | Panel v2 spec: D v3 default, List/Cards/Compact, search, lists menu, opening options | design | opus | 0 | 
 2026-10-25 | Show/hide/move/resize predictability (vanished monitor, parked frames, Reset ends drag) | bug | sonnet | 0 | 
 2026-10-25 | Review fixes F: toast latest-wins, refresh notice last, palette label, Picker docs | bug | sonnet | 1 | 
+2026-10-25 | Panel v2 slice 1: tokens + docs | design | sonnet | 0 | 
+2026-10-25 | Panel v2 slice 2: settings model | feature | sonnet | 0 | 

@@ -289,6 +289,12 @@ msgstr "Limpar o atalho de {}"
 msgid "Click"
 msgstr "Clique"
 
+msgid "Click to copy."
+msgstr "Clique para copiar."
+
+msgid "Click to paste into {}. Shift+click copies."
+msgstr "Clique para colar em {}. Shift+clique copia."
+
 msgid "Clip {}"
 msgstr "Trecho {}"
 
@@ -915,6 +921,9 @@ msgstr "Ocultar o painel ao perder o foco"
 
 msgid "History is paused"
 msgstr "O histórico está pausado"
+
+msgid "Hold to reveal"
+msgstr "Mantenha pressionado para revelar"
 
 msgid "Hover"
 msgstr "Passar o mouse"

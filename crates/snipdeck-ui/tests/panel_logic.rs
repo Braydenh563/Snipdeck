@@ -183,6 +183,32 @@ fn rows(ui: &PanelWindow) -> Vec<ElementHandle> {
     by_role(ui, AccessibleRole::ListItem)
 }
 
+/// A Panel in the quiet List layout (Panel v2 row): comfortable rows, 320 wide.
+fn start_quiet() -> (PanelWindow, Log) {
+    let (ui, log) = start();
+    ui.window().set_size(slint::LogicalSize::new(320.0, 560.0));
+    ui.set_view(PanelView::Comfortable);
+    settle();
+    (ui, log)
+}
+
+/// The visible button `label` inside row `row`, if there is one.
+fn row_button(ui: &PanelWindow, row: usize, label: &str) -> Option<ElementHandle> {
+    let r = &rows(ui)[row];
+    let (rp, rs) = (r.absolute_position(), r.size());
+    all(ui, label, AccessibleRole::Button)
+        .into_iter()
+        .find(|b| {
+            let (p, s) = (b.absolute_position(), b.size());
+            p.y >= rp.y - 0.5 && p.y + s.height <= rp.y + rs.height + 0.5 && p.x >= rp.x - 0.5
+        })
+}
+
+fn click_at(ui: &PanelWindow, at: LogicalPosition) {
+    press_at(ui, at);
+    settle();
+}
+
 // ---- Pointer helpers ---------------------------------------------------------------------------
 
 fn centre(e: &ElementHandle) -> LogicalPosition {
@@ -977,6 +1003,157 @@ ui_tests! {
                 );
             }
         }
+    }
+
+    // ---- The quiet List row (Panel v2 spec 2.5) -----------------------------------------------------------------
+
+    fn row_click_pastes_once_and_shift_click_copies() {
+        let (ui, log) = start_quiet();
+        take(&log);
+        click_row_with(&ui, 2, &[]);
+        assert_eq!(take(&log), ["use:2"], "one click, one paste, no expand state");
+        click_row_with(&ui, 2, &[Key::Shift]);
+        assert_eq!(take(&log), ["copy:2"]);
+    }
+
+    fn action_click_does_not_paste() {
+        let (ui, log) = start_quiet();
+        // Row 0 is selected, so its actions show without a hover.
+        take(&log);
+        let copy = row_button(&ui, 0, "Copy").expect("Copy on the selected row");
+        click_at(&ui, centre(&copy));
+        assert_eq!(take(&log), ["copy:0"], "Copy copies and never pastes");
+        let edit = row_button(&ui, 0, "Edit").expect("Edit on the selected row");
+        click_at(&ui, centre(&edit));
+        assert_eq!(take(&log), ["edit:0"], "Edit only edits");
+        let more = row_button(&ui, 0, "More").expect("More on the selected row");
+        click_at(&ui, centre(&more));
+        assert_eq!(take(&log), ["menu:0"], "More only opens the row menu");
+    }
+
+    fn actions_show_on_hover_and_on_the_selected_row_only() {
+        let (ui, _log) = start_quiet();
+        assert!(row_button(&ui, 0, "Edit").is_some(), "the selected row");
+        assert!(row_button(&ui, 3, "Edit").is_none(), "an idle row has no actions");
+        move_to(&ui, centre(&rows(&ui)[3]));
+        settle();
+        for label in ["Copy", "Edit", "More"] {
+            assert!(row_button(&ui, 3, label).is_some(), "{label} on the hovered row");
+        }
+    }
+
+    fn the_title_keeps_its_width_when_the_actions_show() {
+        let (ui, _log) = start_quiet();
+        let title = |ui: &PanelWindow| {
+            let r = &rows(ui)[3];
+            let t = all(ui, "Design spec", AccessibleRole::Text)
+                .into_iter()
+                .find(|t| t.absolute_position().y >= r.absolute_position().y && t.absolute_position().y < r.absolute_position().y + r.size().height)
+                .expect("the title text of row 3");
+            (t.size().width, t.absolute_position().x)
+        };
+        let idle = title(&ui);
+        move_to(&ui, centre(&rows(&ui)[3]));
+        settle();
+        assert_eq!(title(&ui), idle, "hovering the row does not move or crush the title");
+    }
+
+    fn actions_sit_on_the_preview_line_and_never_on_the_title_line() {
+        let (ui, _log) = start_quiet();
+        let r = &rows(&ui)[0];
+        let (top, h) = (r.absolute_position().y, r.size().height);
+        assert!((h - 56.0).abs() < 0.5, "a List row is 56 tall, got {h}");
+        // Title line: y 4 to 24 inside the row. The preview line's hit row: 24 to 56.
+        for label in ["Copy", "Edit", "More"] {
+            let b = row_button(&ui, 0, label).expect(label);
+            let (y, bh) = (b.absolute_position().y - top, b.size().height);
+            assert!(y >= 24.0 - 0.5 && y + bh <= 56.0 + 0.5, "{label}: y {y}..{} not inside the preview line 24..56", y + bh);
+            assert!(bh >= 32.0 - 0.5 && b.size().width >= 32.0 - 0.5, "{label} has a 32px hit box");
+        }
+    }
+
+    fn copy_action_is_hidden_without_a_target() {
+        let (ui, _log) = start_quiet();
+        assert!(row_button(&ui, 0, "Copy").is_some());
+        ui.set_target_name("".into());
+        settle();
+        assert!(row_button(&ui, 0, "Copy").is_none(), "the click already copies");
+        assert!(row_button(&ui, 0, "Edit").is_some() && row_button(&ui, 0, "More").is_some());
+    }
+
+    fn the_sensitive_eye_is_always_visible_and_holds_to_reveal_without_using_the_row() {
+        let (ui, log) = start_quiet();
+        // Row 4 is the sensitive one: neither selected nor hovered.
+        let eye = row_button(&ui, 4, "Hold to reveal").expect("the eye is always there");
+        assert!(eye.size().width >= 32.0 - 0.5 && eye.size().height >= 32.0 - 0.5);
+        take(&log);
+        let at = centre(&eye);
+        move_to(&ui, at);
+        ui.window().dispatch_event(WindowEvent::PointerPressed { position: at, button: PointerEventButton::Left });
+        settle();
+        assert_eq!(take(&log), ["reveal:4:true"]);
+        ui.window().dispatch_event(WindowEvent::PointerReleased { position: at, button: PointerEventButton::Left });
+        settle();
+        assert_eq!(take(&log), ["reveal:4:false"], "released: hidden again, and the row was not used");
+        // Selected: the actions sit left of the eye, not on top of it.
+        ui.set_selected_index(4);
+        settle();
+        let eye = row_button(&ui, 4, "Hold to reveal").expect("eye");
+        let more = row_button(&ui, 4, "More").expect("More");
+        assert!(more.absolute_position().x + more.size().width <= eye.absolute_position().x + 0.5);
+    }
+
+    fn a_masked_preview_has_no_trailing_characters() {
+        let (ui, _log) = start_quiet();
+        let r = &rows(&ui)[4];
+        let label = r.accessible_label().expect("row label").to_string();
+        assert!(!label.contains("7f3a"), "{label}");
+        assert!(!label.contains("hunter2"), "the secret is not spoken: {label}");
+        let dots = "••••••••••••";
+        let found = all(&ui, dots, AccessibleRole::Text);
+        assert!(!found.is_empty(), "twelve dots and nothing else");
+        assert!(all(&ui, "•••• •••• 7f3a", AccessibleRole::Text).is_empty());
+    }
+
+    fn every_kind_has_a_named_type_tile_of_32_by_32() {
+        let (ui, _log) = start_quiet();
+        for (i, kind) in ["Text", "Template", "Code", "Link", "Sensitive", "File"].into_iter().enumerate() {
+            let r = &rows(&ui)[i];
+            let tile = all(&ui, kind, AccessibleRole::Image)
+                .into_iter()
+                .find(|t| {
+                    let y = t.absolute_position().y;
+                    y >= r.absolute_position().y && y < r.absolute_position().y + r.size().height
+                })
+                .unwrap_or_else(|| panic!("no tile named {kind} in row {i}"));
+            assert_eq!((tile.size().width, tile.size().height), (32.0, 32.0), "{kind}");
+            let dx = tile.absolute_position().x - r.absolute_position().x;
+            assert!((dx - 28.0).abs() < 0.5, "{kind}: tile at x {dx}: 8 padding, 16 number, 4 gap");
+        }
+    }
+
+    fn the_text_column_is_230_wide_at_320_and_gains_20_without_numbers() {
+        let (ui, _log) = start_quiet();
+        let r = &rows(&ui)[0];
+        let rw = r.size().width;
+        // List padding 8 on each side of the 320 window.
+        assert!((rw - 304.0).abs() < 0.5, "row {rw} wide");
+        let col = |ui: &PanelWindow| {
+            let row_y = rows(ui)[0].absolute_position().y;
+            // The pinned strip repeats the title above the list: take the one inside the row.
+            let t = all(ui, "Thanks, received", AccessibleRole::Text)
+                .into_iter()
+                .find(|t| t.absolute_position().y >= row_y)
+                .expect("title");
+            (t.absolute_position().x - rows(ui)[0].absolute_position().x, t.size().width)
+        };
+        let (x, w) = col(&ui);
+        assert!((x - 70.0).abs() < 0.5, "text column starts at x {x} (8 + 16 + 4 + 32 + 10)");
+        assert!(w <= 230.5, "title width {w}");
+        ui.set_show_numbers(false);
+        settle();
+        let (x2, _) = col(&ui);
+        assert!((x2 - 50.0).abs() < 0.5, "without numbers the column starts at {x2}");
     }
 
     // ---- Empty states ----------------------------------------------------------------------------

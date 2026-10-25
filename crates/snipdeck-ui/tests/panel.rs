@@ -39,18 +39,82 @@ fn render(h: &Harness<PanelWindow>) -> Frame {
     h.render_settled()
 }
 
+/// The List layout's row (Panel v2): the default `view` stays compact until the layout setting replaces it.
+fn list_panel(size: (u32, u32), dark: bool) -> Harness<PanelWindow> {
+    let h = panel(size, dark);
+    h.component.set_view(PanelView::Comfortable);
+    h
+}
+
 #[test]
 fn panel_light() {
-    let h = panel(SIZE, false);
+    let h = list_panel(SIZE, false);
     h.component.set_selected_index(1);
     assert_golden("panel-light", &render(&h));
 }
 
 #[test]
 fn panel_dark() {
-    let h = panel(SIZE, true);
+    let h = list_panel(SIZE, true);
     h.component.set_selected_index(1);
     assert_golden("panel-dark", &render(&h));
+}
+
+/// Top y of the first run of `colour` down column `x`.
+fn first_y_of(f: &Frame, x: u32, colour: [u8; 3]) -> Option<u32> {
+    (0..SIZE.1).find(|&y| f.pixel(x, y) == colour)
+}
+
+const SELECTED_LIGHT: [u8; 3] = [0xEB, 0xF2, 0xFE];
+const HOVER_LIGHT: [u8; 3] = [0xEB, 0xE9, 0xE7];
+const SELECTED_DARK: [u8; 3] = [0x05, 0x30, 0x6A];
+
+#[test]
+fn panel_row_hover_light() {
+    let h = list_panel(SIZE, false);
+    h.component.set_selected_index(1);
+    let f = render(&h);
+    // Row stride: a 56px row and the 6px gap of the comfortable list.
+    let top = first_y_of(&f, 150, SELECTED_LIGHT).expect("the selected row is drawn");
+    let hover_y = top + 2 * 62 + 28;
+    h.component
+        .window()
+        .dispatch_event(slint::platform::WindowEvent::PointerMoved {
+            position: slint::LogicalPosition::new(150.0, hover_y as f32),
+        });
+    let f = render(&h);
+    assert_eq!(
+        f.pixel(150, hover_y - 20),
+        HOVER_LIGHT,
+        "the hovered row is filled with bg.hover"
+    );
+    assert_eq!(
+        f.pixel(150, top + 62 + 50),
+        [0xFB, 0xFA, 0xF7],
+        "an idle row stays on the surface"
+    );
+    assert_golden("panel-row-hover-light", &f);
+}
+
+#[test]
+fn panel_row_selected_sensitive_dark() {
+    let h = list_panel(SIZE, true);
+    h.component.set_selected_index(4);
+    let f = render(&h);
+    assert!(
+        first_y_of(&f, 150, SELECTED_DARK).is_some(),
+        "the sensitive row is selected"
+    );
+    assert_golden("panel-row-selected-sensitive-dark", &f);
+}
+
+#[test]
+fn panel_no_target_light() {
+    let h = list_panel(SIZE, false);
+    h.component.set_target_name("".into());
+    h.component.set_target_title("".into());
+    h.component.set_selected_index(1);
+    assert_golden("panel-no-target-light", &render(&h));
 }
 
 #[test]

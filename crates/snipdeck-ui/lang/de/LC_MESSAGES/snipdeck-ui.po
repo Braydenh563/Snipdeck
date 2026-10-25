@@ -289,6 +289,12 @@ msgstr "Tastenkürzel für {} entfernen"
 msgid "Click"
 msgstr "Klick"
 
+msgid "Click to copy."
+msgstr "Klicken zum Kopieren."
+
+msgid "Click to paste into {}. Shift+click copies."
+msgstr "Klicken fügt in {} ein. Umschalt+Klick kopiert."
+
 msgid "Clip {}"
 msgstr "Clip {}"
 
@@ -915,6 +921,9 @@ msgstr "Panel ausblenden, wenn es den Fokus verliert"
 
 msgid "History is paused"
 msgstr "Verlauf ist pausiert"
+
+msgid "Hold to reveal"
+msgstr "Gedrückt halten zum Anzeigen"
 
 msgid "Hover"
 msgstr "Darüberfahren"
