@@ -453,6 +453,8 @@ mod tests {
         ("Enter", Listed::Chord("Enter")),
         ("Shift+Enter", Listed::Chord("Shift+Enter")),
         ("Alt+1-9", Listed::Spoken("Alt+1 to 9")),
+        ("Alt+Up", Listed::Spoken("Alt+Up or Alt+Down")),
+        ("Alt+Down", Listed::Spoken("Alt+Up or Alt+Down")),
         ("Ctrl+Tab", Listed::Chord("Ctrl+Tab")),
         ("Ctrl+Shift+Tab", Listed::Chord("Ctrl+Shift+Tab")),
         ("Ctrl+F", Listed::Chord("Ctrl+F")),

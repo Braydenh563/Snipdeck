@@ -410,7 +410,10 @@ fn typing_in_the_search_filters_the_rows() {
         type_text(r.window(), "retry");
         assert_eq!(r.ui.get_query(), "retry");
         assert_eq!(r.titles()[0], "Retry helper", "search spans lists");
-        assert_eq!(r.ui.get_rows().row_data(0).expect("row").list_name, "Code");
+        assert_eq!(
+            r.ui.get_rows().row_data(0).expect("row").list_name,
+            "Work · Code"
+        );
         press(r.window(), &key(Key::Escape));
         assert_eq!(r.ui.get_query(), "", "Esc clears the search first");
         assert_eq!(r.ui.get_rows().row_count(), 6);
@@ -1000,7 +1003,11 @@ fn the_kebab_menu_is_a_list_of_the_expected_rows_with_a_name_and_positions() {
                 Some(MENU_ROWS.len()),
                 "{label}"
             );
-            assert_eq!(row.accessible_enabled(), Some(true), "{label}");
+            assert_eq!(
+                row.accessible_enabled(),
+                Some(!label.starts_with("Nothing to")),
+                "{label}: Undo and Redo are really disabled while there is nothing to take back"
+            );
         }
     });
 }
