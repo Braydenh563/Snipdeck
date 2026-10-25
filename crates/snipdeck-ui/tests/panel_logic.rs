@@ -250,15 +250,6 @@ fn click_row_with(ui: &PanelWindow, row: usize, modifiers: &[Key]) {
     }
 }
 
-fn scroll_at(ui: &PanelWindow, at: LogicalPosition, dx: f32, dy: f32) {
-    move_to(ui, at);
-    ui.window().dispatch_event(WindowEvent::PointerScrolled {
-        position: at,
-        delta_x: dx,
-        delta_y: dy,
-    });
-}
-
 fn wait(ms: u64) {
     mock_elapsed_time(Duration::from_millis(ms));
     settle();

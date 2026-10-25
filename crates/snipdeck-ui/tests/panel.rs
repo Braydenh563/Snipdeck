@@ -255,17 +255,17 @@ fn a_search_match_is_a_filled_span_not_an_underline() {
     h.component.set_query("re".into());
     h.component.set_selected_index(2);
     let f = render(&h);
-    // Palette: search.mark light is blue-300.
-    const MARK: [u8; 3] = [0xAB, 0xCD, 0xFE];
     let top = HEADER_H + 72;
     let (mut filled, mut lines) = (0, 0);
     for y in top..top + 30 {
-        let run = (8..312).filter(|&x| f.pixel(x, y) == MARK).count();
+        let run = (8..312)
+            .filter(|&x| f.pixel(x, y) == SEARCH_MARK_LIGHT)
+            .count();
         if run > 6 {
             filled += 1;
         }
         // An underline would be a thin full-width-of-the-word run on one row only.
-        if run > 6 && (f.pixel(0, y) == MARK) {
+        if run > 6 && (f.pixel(0, y) == SEARCH_MARK_LIGHT) {
             lines += 1;
         }
     }
@@ -316,6 +316,8 @@ fn panel_undo_toast_in_dark() {
 // ---- Keyboard focus ---------------------------------------------------------------------------
 
 const FOCUS_RING: [u8; 3] = [0x28, 0x70, 0xD4];
+/// Palette `search.mark`, light: blue-300.
+const SEARCH_MARK_LIGHT: [u8; 3] = [0xAB, 0xCD, 0xFE];
 
 /// Key press and release into the Panel's window, as the platform sends them.
 fn tap(h: &Harness<PanelWindow>, key: slint::platform::Key) {
@@ -329,18 +331,19 @@ fn tap(h: &Harness<PanelWindow>, key: slint::platform::Key) {
         .dispatch_event(WindowEvent::KeyReleased { text });
 }
 
-/// Focus-ring coloured pixels within `reach` px outside the box (x, y, w, h).
-fn ring_pixels(f: &Frame, (x, y, w, h): (u32, u32, u32, u32), reach: u32) -> usize {
-    let mut n = 0;
-    for py in y.saturating_sub(reach)..(y + h + reach).min(SIZE.1) {
-        for px in x.saturating_sub(reach)..(x + w + reach).min(SIZE.0) {
-            let inside = px >= x && px < x + w && py >= y && py < y + h;
-            if !inside && f.pixel(px, py) == FOCUS_RING {
-                n += 1;
+/// Focus-ring coloured pixels within `reach` px outside the box `(left, top, width, height)`.
+fn ring_pixels(frame: &Frame, bounds: (u32, u32, u32, u32), reach: u32) -> usize {
+    let (left, top, width, height) = bounds;
+    let mut count = 0;
+    for row in top.saturating_sub(reach)..(top + height + reach).min(SIZE.1) {
+        for col in left.saturating_sub(reach)..(left + width + reach).min(SIZE.0) {
+            let inside = col >= left && col < left + width && row >= top && row < top + height;
+            if !inside && frame.pixel(col, row) == FOCUS_RING {
+                count += 1;
             }
         }
     }
-    n
+    count
 }
 
 #[test]

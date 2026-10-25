@@ -406,7 +406,6 @@ pub fn app_menu_text(
     use crate::controller::AppMenuEntry;
     let t = MenuTexts::get(window);
     match entry {
-        AppMenuEntry::Undo | AppMenuEntry::Redo => return String::new(),
         AppMenuEntry::Open => t.invoke_app_open(),
         AppMenuEntry::Commands => t.invoke_app_commands(),
         AppMenuEntry::NewSnippet => t.invoke_app_new_snippet(),
@@ -423,7 +422,7 @@ pub fn app_menu_text(
         AppMenuEntry::PauseHotkeys => t.invoke_app_pause_hotkeys(),
         AppMenuEntry::ShowNumbers => t.invoke_app_show_numbers(),
         AppMenuEntry::ResetGeometry => t.invoke_app_reset_geometry(),
-        AppMenuEntry::Separator => return String::new(),
+        AppMenuEntry::Undo | AppMenuEntry::Redo | AppMenuEntry::Separator => return String::new(),
         AppMenuEntry::Troubleshoot => t.invoke_app_troubleshoot(),
         AppMenuEntry::UserGuide => t.invoke_app_user_guide(),
         AppMenuEntry::Shortcuts => t.invoke_app_shortcuts(),

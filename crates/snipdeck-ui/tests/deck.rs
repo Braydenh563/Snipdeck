@@ -281,30 +281,30 @@ fn deck_edges_are_two_4px_card_edges_inset_6_and_12px() {
         h.component.set_dark(dark);
         let f = h.render();
         let col = |y: u32| f.pixel(170, y);
-        // Bottom edge, 232..242: the near edge at 232..236 and the far edge at 238..242.
-        assert_eq!(col(232), border, "near edge top (dark={dark})");
-        assert_eq!(col(233), surface);
-        assert_eq!(col(234), surface);
-        assert_eq!(col(235), border, "near edge bottom");
-        assert_eq!(col(236), app, "gap between the edges");
-        assert_eq!(col(237), app);
-        assert_eq!(col(238), border, "far edge top");
-        assert_eq!(col(241), border, "far edge bottom");
-        assert_eq!(col(242), app, "nothing below the 10px component");
+        // Bottom edge, 236..246: the near edge at 236..240 and the far edge at 242..246.
+        assert_eq!(col(236), border, "near edge top (dark={dark})");
+        assert_eq!(col(237), surface);
+        assert_eq!(col(238), surface);
+        assert_eq!(col(239), border, "near edge bottom");
+        assert_eq!(col(240), app, "gap between the edges");
+        assert_eq!(col(241), app);
+        assert_eq!(col(242), border, "far edge top");
+        assert_eq!(col(245), border, "far edge bottom");
+        assert_eq!(col(246), app, "nothing below the 10px component");
         // Insets: 6px for the near edge, 12px for the far one.
-        assert_eq!(f.pixel(21, 233), app);
-        assert_eq!(f.pixel(22, 233), border, "near edge starts 6px in");
-        assert_eq!(f.pixel(27, 239), app);
-        assert_eq!(f.pixel(28, 239), border, "far edge starts 12px in");
-        // Top edge, 278..288: mirrored, the far edge first.
-        assert_eq!(col(278), border, "top variant: far edge top");
-        assert_eq!(col(281), border);
-        assert_eq!(col(282), app);
-        assert_eq!(col(284), border, "top variant: near edge top");
-        assert_eq!(col(287), border);
-        assert_eq!(f.pixel(27, 280), app);
-        assert_eq!(f.pixel(28, 280), border);
-        assert_eq!(f.pixel(21, 286), app);
-        assert_eq!(f.pixel(22, 286), border);
+        assert_eq!(f.pixel(21, 237), app);
+        assert_eq!(f.pixel(22, 237), border, "near edge starts 6px in");
+        assert_eq!(f.pixel(27, 243), app);
+        assert_eq!(f.pixel(28, 243), border, "far edge starts 12px in");
+        // Top edge, 282..292: mirrored, the far edge first.
+        assert_eq!(col(282), border, "top variant: far edge top");
+        assert_eq!(col(285), border);
+        assert_eq!(col(286), app);
+        assert_eq!(col(288), border, "top variant: near edge top");
+        assert_eq!(col(291), border);
+        assert_eq!(f.pixel(27, 284), app);
+        assert_eq!(f.pixel(28, 284), border);
+        assert_eq!(f.pixel(21, 290), app);
+        assert_eq!(f.pixel(22, 290), border);
     }
 }

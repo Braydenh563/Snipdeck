@@ -140,7 +140,7 @@ fn title_mark(title: &str, query: &str) -> Option<(String, String)> {
         return None;
     }
     let chars: Vec<char> = title.chars().collect();
-    let at = (0..chars.len().checked_sub(wanted.len())? + 1).find(|&i| {
+    let at = (0..=chars.len().checked_sub(wanted.len())?).find(|&i| {
         chars[i..i + wanted.len()]
             .iter()
             .zip(&wanted)
