@@ -4613,6 +4613,15 @@ dependencies = [
 [[package]]
 name = "snipdeck-symbols"
 version = "1.0.0"
+dependencies = [
+ "miniz_oxide 0.8.9",
+ "png",
+ "resvg",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "unicode-normalization",
+]
 
 [[package]]
 name = "snipdeck-ui"

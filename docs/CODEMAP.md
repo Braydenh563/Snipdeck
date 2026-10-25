@@ -5711,22 +5711,23 @@ ArtPack | crates/snipdeck-symbols/src/art.rs:14
 le32 | crates/snipdeck-symbols/src/art.rs:20
 impl ArtPack | crates/snipdeck-symbols/src/art.rs:25
 none | crates/snipdeck-symbols/src/art.rs:28
-parse | crates/snipdeck-symbols/src/art.rs:36
-px | crates/snipdeck-symbols/src/art.rs:52
-len | crates/snipdeck-symbols/src/art.rs:58
-is_empty | crates/snipdeck-symbols/src/art.rs:64
-png | crates/snipdeck-symbols/src/art.rs:70
-rgba | crates/snipdeck-symbols/src/art.rs:81
-decode_png | crates/snipdeck-symbols/src/art.rs:91
-resample | crates/snipdeck-symbols/src/art.rs:115
-impl Catalog | crates/snipdeck-symbols/src/art.rs:158
-art | crates/snipdeck-symbols/src/art.rs:162
-ArtCache | crates/snipdeck-symbols/src/art.rs:172
-impl ArtCache | crates/snipdeck-symbols/src/art.rs:178
-new | crates/snipdeck-symbols/src/art.rs:181
-len | crates/snipdeck-symbols/src/art.rs:187
-is_empty | crates/snipdeck-symbols/src/art.rs:193
-get | crates/snipdeck-symbols/src/art.rs:198
+parse | crates/snipdeck-symbols/src/art.rs:40
+px | crates/snipdeck-symbols/src/art.rs:63
+len | crates/snipdeck-symbols/src/art.rs:69
+is_empty | crates/snipdeck-symbols/src/art.rs:75
+png | crates/snipdeck-symbols/src/art.rs:81
+rgba | crates/snipdeck-symbols/src/art.rs:92
+decode_png | crates/snipdeck-symbols/src/art.rs:102
+resample | crates/snipdeck-symbols/src/art.rs:141
+impl Catalog | crates/snipdeck-symbols/src/art.rs:184
+art | crates/snipdeck-symbols/src/art.rs:188
+Cell | crates/snipdeck-symbols/src/art.rs:197
+ArtCache | crates/snipdeck-symbols/src/art.rs:200
+impl ArtCache | crates/snipdeck-symbols/src/art.rs:206
+new | crates/snipdeck-symbols/src/art.rs:209
+len | crates/snipdeck-symbols/src/art.rs:219
+is_empty | crates/snipdeck-symbols/src/art.rs:225
+get | crates/snipdeck-symbols/src/art.rs:230
 
 ### crates/snipdeck-symbols/src/catalog.rs
 
@@ -5741,39 +5742,39 @@ from_key | crates/snipdeck-symbols/src/catalog.rs:75
 Lang | crates/snipdeck-symbols/src/catalog.rs:91
 impl Lang | crates/snipdeck-symbols/src/catalog.rs:108
 from_tag | crates/snipdeck-symbols/src/catalog.rs:111
-slot | crates/snipdeck-symbols/src/catalog.rs:124
-Symbol | crates/snipdeck-symbols/src/catalog.rs:139
-impl Symbol | crates/snipdeck-symbols/src/catalog.rs:157
-icon_markup | crates/snipdeck-symbols/src/catalog.rs:159
-View | crates/snipdeck-symbols/src/catalog.rs:166
-impl View | crates/snipdeck-symbols/src/catalog.rs:173
-new | crates/snipdeck-symbols/src/catalog.rs:174
-LangEntry | crates/snipdeck-symbols/src/catalog.rs:185
-LangNames | crates/snipdeck-symbols/src/catalog.rs:191
-Catalog | crates/snipdeck-symbols/src/catalog.rs:196
-CATALOG | crates/snipdeck-symbols/src/catalog.rs:207
-INITS | crates/snipdeck-symbols/src/catalog.rs:208
-catalog_init_count | crates/snipdeck-symbols/src/catalog.rs:212
-bad | crates/snipdeck-symbols/src/catalog.rs:216
-humanise | crates/snipdeck-symbols/src/catalog.rs:220
-split_list | crates/snipdeck-symbols/src/catalog.rs:224
-impl Catalog | crates/snipdeck-symbols/src/catalog.rs:228
-get | crates/snipdeck-symbols/src/catalog.rs:231
-empty | crates/snipdeck-symbols/src/catalog.rs:240
-build | crates/snipdeck-symbols/src/catalog.rs:257
-len | crates/snipdeck-symbols/src/catalog.rs:342
-is_empty | crates/snipdeck-symbols/src/catalog.rs:348
-symbols | crates/snipdeck-symbols/src/catalog.rs:354
-symbol | crates/snipdeck-symbols/src/catalog.rs:360
-index_of | crates/snipdeck-symbols/src/catalog.rs:366
-get_symbol | crates/snipdeck-symbols/src/catalog.rs:372
-range | crates/snipdeck-symbols/src/catalog.rs:378
-icon_categories | crates/snipdeck-symbols/src/catalog.rs:388
-view | crates/snipdeck-symbols/src/catalog.rs:392
-art_pack | crates/snipdeck-symbols/src/catalog.rs:396
-lang_names | crates/snipdeck-symbols/src/catalog.rs:401
-load_names | crates/snipdeck-symbols/src/catalog.rs:406
-display_name | crates/snipdeck-symbols/src/catalog.rs:425
+slot | crates/snipdeck-symbols/src/catalog.rs:130
+Symbol | crates/snipdeck-symbols/src/catalog.rs:145
+impl Symbol | crates/snipdeck-symbols/src/catalog.rs:163
+icon_markup | crates/snipdeck-symbols/src/catalog.rs:165
+View | crates/snipdeck-symbols/src/catalog.rs:172
+impl View | crates/snipdeck-symbols/src/catalog.rs:179
+new | crates/snipdeck-symbols/src/catalog.rs:180
+LangEntry | crates/snipdeck-symbols/src/catalog.rs:196
+LangNames | crates/snipdeck-symbols/src/catalog.rs:202
+Catalog | crates/snipdeck-symbols/src/catalog.rs:207
+CATALOG | crates/snipdeck-symbols/src/catalog.rs:218
+INITS | crates/snipdeck-symbols/src/catalog.rs:219
+catalog_init_count | crates/snipdeck-symbols/src/catalog.rs:223
+bad | crates/snipdeck-symbols/src/catalog.rs:227
+humanise | crates/snipdeck-symbols/src/catalog.rs:231
+split_list | crates/snipdeck-symbols/src/catalog.rs:235
+impl Catalog | crates/snipdeck-symbols/src/catalog.rs:242
+get | crates/snipdeck-symbols/src/catalog.rs:245
+empty | crates/snipdeck-symbols/src/catalog.rs:254
+build | crates/snipdeck-symbols/src/catalog.rs:271
+len | crates/snipdeck-symbols/src/catalog.rs:366
+is_empty | crates/snipdeck-symbols/src/catalog.rs:372
+symbols | crates/snipdeck-symbols/src/catalog.rs:378
+symbol | crates/snipdeck-symbols/src/catalog.rs:384
+index_of | crates/snipdeck-symbols/src/catalog.rs:390
+get_symbol | crates/snipdeck-symbols/src/catalog.rs:396
+range | crates/snipdeck-symbols/src/catalog.rs:402
+icon_categories | crates/snipdeck-symbols/src/catalog.rs:412
+view | crates/snipdeck-symbols/src/catalog.rs:416
+art_pack | crates/snipdeck-symbols/src/catalog.rs:420
+lang_names | crates/snipdeck-symbols/src/catalog.rs:425
+load_names | crates/snipdeck-symbols/src/catalog.rs:430
+display_name | crates/snipdeck-symbols/src/catalog.rs:454
 
 ### crates/snipdeck-symbols/src/data.rs
 
@@ -5784,7 +5785,7 @@ ICONS | crates/snipdeck-symbols/src/data.rs:15
 ART | crates/snipdeck-symbols/src/data.rs:16
 NAMES | crates/snipdeck-symbols/src/data.rs:18
 rows | crates/snipdeck-symbols/src/data.rs:28
-seq_to_string | crates/snipdeck-symbols/src/data.rs:37
+seq_to_string | crates/snipdeck-symbols/src/data.rs:45
 
 ### crates/snipdeck-symbols/src/fold.rs
 
@@ -5795,10 +5796,10 @@ words | crates/snipdeck-symbols/src/fold.rs:21
 
 OPEN | crates/snipdeck-symbols/src/icon.rs:5
 body | crates/snipdeck-symbols/src/icon.rs:8
-impl Catalog | crates/snipdeck-symbols/src/icon.rs:12
-markup | crates/snipdeck-symbols/src/icon.rs:13
-icon_svg | crates/snipdeck-symbols/src/icon.rs:22
-icon_png | crates/snipdeck-symbols/src/icon.rs:29
+impl Catalog | crates/snipdeck-symbols/src/icon.rs:16
+markup | crates/snipdeck-symbols/src/icon.rs:17
+icon_svg | crates/snipdeck-symbols/src/icon.rs:26
+icon_png | crates/snipdeck-symbols/src/icon.rs:40
 
 ### crates/snipdeck-symbols/src/lib.rs
 
@@ -5821,7 +5822,7 @@ push | crates/snipdeck-symbols/src/recents.rs:33
 list | crates/snipdeck-symbols/src/recents.rs:41
 used_at | crates/snipdeck-symbols/src/recents.rs:51
 from_saved | crates/snipdeck-symbols/src/recents.rs:58
-to_saved | crates/snipdeck-symbols/src/recents.rs:74
+to_saved | crates/snipdeck-symbols/src/recents.rs:76
 
 ### crates/snipdeck-symbols/src/search.rs
 
@@ -5830,8 +5831,8 @@ Hit | crates/snipdeck-symbols/src/search.rs:34
 rank_view | crates/snipdeck-symbols/src/search.rs:41
 plain | crates/snipdeck-symbols/src/search.rs:63
 search | crates/snipdeck-symbols/src/search.rs:69
-impl Catalog | crates/snipdeck-symbols/src/search.rs:105
-search | crates/snipdeck-symbols/src/search.rs:108
+impl Catalog | crates/snipdeck-symbols/src/search.rs:117
+search | crates/snipdeck-symbols/src/search.rs:120
 
 ### crates/snipdeck-ui/build.rs
 
