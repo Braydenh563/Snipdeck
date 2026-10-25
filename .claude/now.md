@@ -229,3 +229,5 @@ Triage (v1 = fix before ship; .0.1 / 1.1 = later):
 - Decision 2026-10-26: cut from v1.1: colour picker/eyedropper, multi-panel, O56 launcher, image editing. Reason: keep the tool small (audit); owner delegated.
 - Decision 2026-10-26: Linux/macOS stay out of 1.0 (the paste, hotkey and clipboard layers are Win32); a port is post-1.0. Reason: size and risk before release.
 - 2026-10-26 owner: "alright please work autonomously over night, Im gooing to skeep so impress me." -> away mode; queue = work-order.md
+- 2026-10-26 owner: "that agent has beenrunning for 9 hours" -> stopped it (slices 5-6 committed; last ~4 h spent re-running full gates on the shared -j1 target).
+- Decision 2026-10-26: agents run only the targeted tests of the crate/test files they touch and commit per item; the coordinator runs one full gate per push. Agent time box 2 h, then hand back. Reason: full gates take ~1 h under contention; the 9-hour agent produced nothing for 4 h.
