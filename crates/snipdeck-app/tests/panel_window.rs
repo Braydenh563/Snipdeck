@@ -1678,7 +1678,10 @@ fn the_list_follows_the_window_size_after_a_reset_and_a_resize() {
         r.window()
             .set_size(slint::PhysicalSize::new(default.w, default.h.max(900)));
         slint::platform::update_timers_and_animations();
-        assert!(r.ui.get_scroll_y().abs() < 0.5, "everything fits: no scroll");
+        assert!(
+            r.ui.get_scroll_y().abs() < 0.5,
+            "everything fits: no scroll"
+        );
 
         // A drag-resize to a short window afterwards scrolls to the selection, inside the list.
         let short = Rect { h: 300, ..*default };
