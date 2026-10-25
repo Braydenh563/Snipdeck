@@ -6,7 +6,7 @@ Do not merge, tag or run `release.yml`. Version and CHANGELOG already say 1.0.0;
 date at the real release. The owner capped this session at 96% weekly usage; the limit resets 2026-10-24T07:00Z.
 
 ## Now (2026-10-26 night 2, owner asleep, away mode)
-Branch `claude/compassionate-pascal-pod8ux`. Queue = `.claude/work-order.md` (16 open). Panel v2 slices 1-5 done; agent on slice 6 (Menu switcher) + 6b audit items (`.claude/remaining/panel-v2.md`). Then slices 7-9, defaults (Recent on, non-AltGr chords), Symbols library (spec first), audit quick wins, carry the look to other windows, v1.0.1, v1.1 trimmed. Decisions in `.claude/now.md`. Never merge/release.
+Symbols slices 1-3 pushed (726efc8, workspace tests green on HEAD). Branch `claude/compassionate-pascal-pod8ux`. Queue = `.claude/work-order.md` (16 open). Panel v2 slices 1-5 done; agent on slice 6 (Menu switcher) + 6b audit items (`.claude/remaining/panel-v2.md`). Then slices 7-9, defaults (Recent on, non-AltGr chords), Symbols library (spec first), audit quick wins, carry the look to other windows, v1.0.1, v1.1 trimmed. Decisions in `.claude/now.md`. Never merge/release.
 
 ## Session 2026-10-24 (owner away, autonomous; resume here)
 - Owner order: 1 merge fix branches + verify; 2 Panel redesign: owner picks from mock-ups BEFORE building
