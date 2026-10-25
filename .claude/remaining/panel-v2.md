@@ -9,7 +9,12 @@ Step 0 (slice 4 verified, `GATE_BASE=origin/claude/compassionate-pascal-pod8ux s
   crates/snipdeck-ui/tests/panel_logic.rs:1452 (`assert!(take(&log).is_empty())`, no message). Everything else is clean (run with --keep-going).
   Fix = `assert_eq!(take(&log), Vec::<String>::new())`; verified clean under 1.99.1 on a worktree; committed next as its own commit
   committed as 80d018c (gate --staged green). Slice 4 is pushable on 1.99.1 from 80d018c.
-Slice 5 (Compact + Cards) done in its commit: logic tests green (panel_logic 111), goldens panel-compact/cards light+dark,
+Slice 5 committed as 48b03a0. Gate `GATE_BASE=ccb7164 scripts/gate.sh --changed` (run in a clean worktree /tmp/wt-s5, the main tree
+  carries the symbols agent's uncommitted files and a Cargo.lock that does not match HEAD):
+  ran: fast-checks ok changed-tests ok codemap ok i18n ok i18n-tests ok
+  failed: none
+  skipped: none
+Slice 5 (Compact + Cards) content: logic tests green (panel_logic 111), goldens panel-compact/cards light+dark,
   panel-cards-280-light, panel-awkward-compact-light regenerated; no other golden changed.
 Next: slice 6 (Menu switcher, goldens panel-lists-menu-light and -open-light; merge the two `changed lists-in-menu` handlers),
   then slice 6b from docs/reviews/ux-gap-audit.md section 5 (coordinator request), tests first:
