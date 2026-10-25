@@ -344,11 +344,21 @@ export component PanelWindow inherits Window {
         used-timer.running = true;
     }
     public function focus-search() {
-        search.focus();
+        root.focus-typing();
+    }
+    // Where typing lands when nothing else holds the focus: the search field while it shows, else `rest` (a field
+    // that is collapsed away is "not visible" to Slint and would lose the keys, so the focus waits in `rest` and the
+    // first character opens the search and moves into it).
+    function focus-typing() {
+        if (root.search-shown) {
+            search.focus();
+        } else {
+            rest.focus();
+        }
     }
     // Scroll offset of the list (<= 0), for tests and for the app to persist.
     out property <length> scroll-y: list.content-y;
-    out property <bool> search-focused: search.has-focus;
+    out property <bool> search-focused: search.has-focus || rest.has-focus;
     // The search box took the focus (a click into it): the host gives the window the keyboard.
     callback search-focus-gained();
     changed search-focused => {
@@ -477,7 +487,7 @@ export component PanelWindow inherits Window {
     init => {
         Palette.dark = root.dark;
         root.update-narrow();
-        search.focus();
+        root.focus-typing();
     }
     changed dark => {
         Palette.dark = root.dark;
@@ -485,42 +495,42 @@ export component PanelWindow inherits Window {
     // A closed menu leaves no focused control behind: typing goes to the search again.
     changed app-menu-open => {
         if (!root.app-menu-open) {
-            search.focus();
+            root.focus-typing();
         }
     }
     changed new-menu-open => {
         if (!root.new-menu-open) {
-            search.focus();
+            root.focus-typing();
         }
     }
     changed pinned-menu-open => {
         if (!root.pinned-menu-open) {
-            search.focus();
+            root.focus-typing();
         }
     }
     changed item-menu-open => {
         if (!root.item-menu-open) {
-            search.focus();
+            root.focus-typing();
         }
     }
     changed list-menu-open => {
         if (!root.list-menu-open && !root.list-delete-open) {
-            search.focus();
+            root.focus-typing();
         }
     }
     changed list-delete-open => {
         if (!root.list-delete-open) {
-            search.focus();
+            root.focus-typing();
         }
     }
     changed board-delete-open => {
         if (!root.board-delete-open) {
-            search.focus();
+            root.focus-typing();
         }
     }
     changed board-menu-open => {
         if (!root.board-menu-open && !root.board-delete-open) {
-            search.focus();
+            root.focus-typing();
         }
     }
     changed width => {
@@ -683,7 +693,7 @@ export component PanelWindow inherits Window {
         root.selected-index = 0;
         list.content-y = 0px;
         root.query-changed("");
-        search.focus();
+        root.focus-typing();
     }
 
     // The header icon and Ctrl+F: expands the search (a no-op when it is always shown) and selects its text.
@@ -746,7 +756,7 @@ export component PanelWindow inherits Window {
             }
 
         scope := FocusScope {
-            forward-focus: search;
+            forward-focus: rest;
 
             capture-key-pressed(event) => {
                 if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.board-delete-open || root.new-menu-open || root.pinned-menu-open) {
@@ -907,7 +917,7 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                 }
-                if (root.recent-open && search.has-focus && root.rsel >= 0) {
+                if (root.recent-open && root.search-focused && root.rsel >= 0) {
                     if (event.text == Key.Return) {
                         root.recent-copied(root.recent-rows[root.rsel].id);
                         return accept;
@@ -962,7 +972,7 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                 }
-                if (search.has-focus && !root.recent-open) {
+                if (root.search-focused && !root.recent-open) {
                     if (event.text == Key.Return) {
                         if (root.sel < 0 && root.searching) {
                             root.create-from-query();
@@ -981,7 +991,7 @@ export component PanelWindow inherits Window {
                 // Hold Space on the selected sensitive row reveals it (the cards are not
                 // focusable, so their own Space handling never sees the key). With a query,
                 // Space is a text key of the search field.
-                if (search.has-focus && event.text == " " && !root.searching && root.sel >= 0 && root.sel < root.rows.length && root.rows[root.sel].kind == ItemKind.sensitive && !root.recent-open) {
+                if (root.search-focused && event.text == " " && !root.searching && root.sel >= 0 && root.sel < root.rows.length && root.rows[root.sel].kind == ItemKind.sensitive && !root.recent-open) {
                     if (!root.held-reveal) {
                         root.held-reveal = true;
                         root.reveal-requested(root.sel, true);
@@ -1002,6 +1012,12 @@ export component PanelWindow inherits Window {
                     return accept;
                 }
                 return reject;
+            }
+
+            // Where the focus waits while the search is collapsed (see `focus-typing`); it must not sit under a clip.
+            rest := FocusScope {
+                width: 0px;
+                height: 0px;
             }
 
             VerticalLayout {
@@ -1167,11 +1183,11 @@ export component PanelWindow inherits Window {
                 }
 
                 // ---- Search (spec 2.3): nothing until used, an expanded block that replaces the tabs and the pinned
-                // strip, or (Settings) a 44px strip that stays. The field lives here in every state, so typing always
-                // reaches it; collapsed it has no size at all (not a clip: Slint drops key events for an item that is
-                // clipped away, and the focused field must keep receiving them).
+                // strip, or (Settings) a 44px strip that stays. Collapsed, the field is clipped to nothing and the
+                // focus waits in `rest`; the first typed character opens the search.
                 Rectangle {
                     height: root.search-h;
+                    clip: true;
 
                     if root.search-block: Rectangle {
                         y: parent.height - 1px;
@@ -1179,31 +1195,21 @@ export component PanelWindow inherits Window {
                         background: Theme.border-subtle;
                     }
 
-                    // Collapsed, the field is a 1px transparent clip: a field with no area at all is not "visible" to Slint
-                    // and would lose the keys (and the focus it is given at start).
-                    search-clip := Rectangle {
-                        x: 0px;
-                        y: 0px;
-                        width: root.search-shown ? parent.width : 1px;
-                        height: root.search-shown ? parent.height : 1px;
-                        clip: true;
-                        opacity: root.search-shown ? 1 : 0;
-                        search := SearchField {
-                            x: root.search-shown ? Space.s2 : 0px;
-                            y: root.search-block ? Space.s2 : root.search-shown ? Space.s1 : 0px;
-                            width: max(0px, root.width - 2 * Space.s2 - (root.search-block ? close-search.width + Space.s1 + Space.s0-5 : 0px));
-                            height: self.box-height;
-                            min-box-h: Space.s8 + Space.s1;
-                            clearable: root.search-always;
-                            placeholder: @tr("Search snippets");
-                            label: @tr("Search snippets");
-                            clear-label: @tr("Clear search");
-                            edited(text) => {
-                                root.search-user = true;
-                                root.selected-index = 0;
-                                list.content-y = 0px;
-                                root.query-changed(text);
-                            }
+                    search := SearchField {
+                        x: Space.s2;
+                        y: root.search-block ? Space.s2 : Space.s1;
+                        width: max(0px, parent.width - 2 * Space.s2 - (root.search-block ? close-search.width + Space.s1 + Space.s0-5 : 0px));
+                        height: self.box-height;
+                        min-box-h: Space.s8 + Space.s1;
+                        clearable: root.search-always;
+                        placeholder: @tr("Search snippets");
+                        label: @tr("Search snippets");
+                        clear-label: @tr("Clear search");
+                        edited(text) => {
+                            root.search-user = true;
+                            root.selected-index = 0;
+                            list.content-y = 0px;
+                            root.query-changed(text);
                         }
                     }
 
@@ -1492,7 +1498,7 @@ export component PanelWindow inherits Window {
                         detect-kind(t) => { root.detect-kind(t) }
                         create(t, k, s) => { root.quick-add-requested(t, k, s); }
                         full-editor(t) => { root.quick-add-full(t); }
-                        cancelled => { search.focus(); }
+                        cancelled => { root.focus-typing(); }
                     }
 
                     list-bar := OverlayScrollbar {
