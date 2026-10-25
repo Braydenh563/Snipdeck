@@ -228,3 +228,4 @@ Triage (v1 = fix before ship; .0.1 / 1.1 = later):
 - Decision 2026-10-26: new installs get default chords without Ctrl+Alt (AltGr clash); existing settings untouched; pick chords that clash with no common app or Windows shortcut, documented with sources. Reason: AltGr layouts; owner delegated.
 - Decision 2026-10-26: cut from v1.1: colour picker/eyedropper, multi-panel, O56 launcher, image editing. Reason: keep the tool small (audit); owner delegated.
 - Decision 2026-10-26: Linux/macOS stay out of 1.0 (the paste, hotkey and clipboard layers are Win32); a port is post-1.0. Reason: size and risk before release.
+- 2026-10-26 owner: "alright please work autonomously over night, Im gooing to skeep so impress me." -> away mode; queue = work-order.md
