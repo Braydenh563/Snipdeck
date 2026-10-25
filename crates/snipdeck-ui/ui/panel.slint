@@ -368,6 +368,7 @@ export component PanelWindow inherits Window {
     // `search-always` shows a 44px strip under the header instead and leaves them.
     property <bool> search-user: false;
     property <bool> search-block: !root.search-always && (root.search-user || root.searching);
+    property <bool> search-shown: root.search-always || root.search-block;
     property <length> search-status-h: max(Space.s5, Type.line-sm + Space.s1);
     property <length> search-h: root.search-always ? search.box-height + Space.s2
         : root.search-block ? Space.s2 + search.box-height + Space.s1 + root.search-status-h + Space.s1 : 0px;
@@ -1167,10 +1168,10 @@ export component PanelWindow inherits Window {
 
                 // ---- Search (spec 2.3): nothing until used, an expanded block that replaces the tabs and the pinned
                 // strip, or (Settings) a 44px strip that stays. The field lives here in every state, so typing always
-                // reaches it; collapsed it is clipped to no height.
+                // reaches it; collapsed it has no size at all (not a clip: Slint drops key events for an item that is
+                // clipped away, and the focused field must keep receiving them).
                 Rectangle {
                     height: root.search-h;
-                    clip: true;
 
                     if root.search-block: Rectangle {
                         y: parent.height - 1px;
@@ -1178,21 +1179,31 @@ export component PanelWindow inherits Window {
                         background: Theme.border-subtle;
                     }
 
-                    search := SearchField {
-                        x: Space.s2;
-                        y: root.search-block ? Space.s2 : Space.s1;
-                        width: max(0px, parent.width - 2 * Space.s2 - (root.search-block ? close-search.width + Space.s1 + Space.s0-5 : 0px));
-                        height: self.box-height;
-                        min-box-h: Space.s8 + Space.s1;
-                        clearable: root.search-always;
-                        placeholder: @tr("Search snippets");
-                        label: @tr("Search snippets");
-                        clear-label: @tr("Clear search");
-                        edited(text) => {
-                            root.search-user = true;
-                            root.selected-index = 0;
-                            list.content-y = 0px;
-                            root.query-changed(text);
+                    // Collapsed, the field is a 1px transparent clip: a field with no area at all is not "visible" to Slint
+                    // and would lose the keys (and the focus it is given at start).
+                    search-clip := Rectangle {
+                        x: 0px;
+                        y: 0px;
+                        width: root.search-shown ? parent.width : 1px;
+                        height: root.search-shown ? parent.height : 1px;
+                        clip: true;
+                        opacity: root.search-shown ? 1 : 0;
+                        search := SearchField {
+                            x: root.search-shown ? Space.s2 : 0px;
+                            y: root.search-block ? Space.s2 : root.search-shown ? Space.s1 : 0px;
+                            width: max(0px, root.width - 2 * Space.s2 - (root.search-block ? close-search.width + Space.s1 + Space.s0-5 : 0px));
+                            height: self.box-height;
+                            min-box-h: Space.s8 + Space.s1;
+                            clearable: root.search-always;
+                            placeholder: @tr("Search snippets");
+                            label: @tr("Search snippets");
+                            clear-label: @tr("Clear search");
+                            edited(text) => {
+                                root.search-user = true;
+                                root.selected-index = 0;
+                                list.content-y = 0px;
+                                root.query-changed(text);
+                            }
                         }
                     }
 
