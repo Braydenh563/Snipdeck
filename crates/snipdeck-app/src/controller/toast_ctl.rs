@@ -36,7 +36,7 @@ where
     /// Shows `toast`, replacing the one on screen: the latest toast wins, whatever action it
     /// belongs to (a retry that works must not hide behind the error of the try before it).
     /// Within one operation the success comes first and a notice about it
-    /// ([`refresh_or_notice`](Self::refresh_or_notice)) last. The host then calls
+    /// (`refresh_or_notice`) last. The host then calls
     /// [`toast_tick`](Self::toast_tick) after [`TOAST_ENTER`](crate::controller::TOAST_ENTER)
     /// and follows the delays it returns.
     pub fn show_toast(&mut self, toast: Toast) {

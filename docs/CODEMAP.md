@@ -527,12 +527,12 @@ new_board | crates/snipdeck-app/src/controller/main_ctl/editors.rs:133
 edit_board | crates/snipdeck-app/src/controller/main_ctl/editors.rs:163
 open_editor | crates/snipdeck-app/src/controller/main_ctl/editors.rs:184
 main_editor_save | crates/snipdeck-app/src/controller/main_ctl/editors.rs:200
-write_editor | crates/snipdeck-app/src/controller/main_ctl/editors.rs:250
-main_editor_delete | crates/snipdeck-app/src/controller/main_ctl/editors.rs:295
-trash_board | crates/snipdeck-app/src/controller/main_ctl/editors.rs:311
-main_editor_close | crates/snipdeck-app/src/controller/main_ctl/editors.rs:327
-main_editor_park | crates/snipdeck-app/src/controller/main_ctl/editors.rs:334
-main_editor_edited | crates/snipdeck-app/src/controller/main_ctl/editors.rs:358
+write_editor | crates/snipdeck-app/src/controller/main_ctl/editors.rs:253
+main_editor_delete | crates/snipdeck-app/src/controller/main_ctl/editors.rs:298
+trash_board | crates/snipdeck-app/src/controller/main_ctl/editors.rs:314
+main_editor_close | crates/snipdeck-app/src/controller/main_ctl/editors.rs:330
+main_editor_park | crates/snipdeck-app/src/controller/main_ctl/editors.rs:337
+main_editor_edited | crates/snipdeck-app/src/controller/main_ctl/editors.rs:361
 
 ### crates/snipdeck-app/src/controller/main_ctl/items.rs
 
@@ -543,17 +543,17 @@ duplicate | crates/snipdeck-app/src/controller/main_ctl/items.rs:93
 trash_items | crates/snipdeck-app/src/controller/main_ctl/items.rs:138
 restore | crates/snipdeck-app/src/controller/main_ctl/items.rs:166
 delete_forever | crates/snipdeck-app/src/controller/main_ctl/items.rs:191
-board_limit | crates/snipdeck-app/src/controller/main_ctl/items.rs:215
-finish | crates/snipdeck-app/src/controller/main_ctl/items.rs:222
-main_move_to | crates/snipdeck-app/src/controller/main_ctl/items.rs:239
-main_toggle_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:280
-main_window_closed | crates/snipdeck-app/src/controller/main_ctl/items.rs:323
-main_rename_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:335
-main_delete_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:357
-main_undo | crates/snipdeck-app/src/controller/main_ctl/items.rs:369
-main_empty_trash | crates/snipdeck-app/src/controller/main_ctl/items.rs:396
-purge_expired_trash | crates/snipdeck-app/src/controller/main_ctl/items.rs:419
-trash_cutoff | crates/snipdeck-app/src/controller/main_ctl/items.rs:430
+board_limit | crates/snipdeck-app/src/controller/main_ctl/items.rs:212
+finish | crates/snipdeck-app/src/controller/main_ctl/items.rs:219
+main_move_to | crates/snipdeck-app/src/controller/main_ctl/items.rs:236
+main_toggle_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:277
+main_window_closed | crates/snipdeck-app/src/controller/main_ctl/items.rs:320
+main_rename_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:332
+main_delete_tag | crates/snipdeck-app/src/controller/main_ctl/items.rs:354
+main_undo | crates/snipdeck-app/src/controller/main_ctl/items.rs:366
+main_empty_trash | crates/snipdeck-app/src/controller/main_ctl/items.rs:393
+purge_expired_trash | crates/snipdeck-app/src/controller/main_ctl/items.rs:416
+trash_cutoff | crates/snipdeck-app/src/controller/main_ctl/items.rs:427
 
 ### crates/snipdeck-app/src/controller/main_ctl/lists.rs
 
