@@ -305,8 +305,8 @@ fn each_toggle_writes_settings_json_after_the_quiet_time() {
             ),
             (
                 "keep a Recent inbox",
-                |r| r.ui.invoke_recent_history_toggled(true),
-                |s| s.recent_history,
+                |r| r.ui.invoke_recent_history_toggled(false),
+                |s| !s.recent_history,
             ),
             (
                 "backups to keep",
@@ -867,7 +867,7 @@ fn a_shortcut_that_failed_to_register_at_start_says_why_on_its_row_until_it_is_c
         r.ctl.borrow_mut().report_hotkey_problems(&[
             HotkeyProblem {
                 action: HotkeyAction::TogglePanel,
-                chord: "Ctrl+Alt+Space".into(),
+                chord: "Ctrl+Shift+Y".into(),
                 failure: HotkeyFailure::InUse,
             },
             HotkeyProblem {
@@ -878,7 +878,7 @@ fn a_shortcut_that_failed_to_register_at_start_says_why_on_its_row_until_it_is_c
         ]);
         r.binding.redraw();
         let conflict = |i: usize| r.ui.get_hotkeys().row_data(i).unwrap().conflict;
-        assert_eq!(conflict(0), "Another program already uses Ctrl+Alt+Space.");
+        assert_eq!(conflict(0), "Another program already uses Ctrl+Shift+Y.");
         assert_eq!(
             conflict(1),
             "Shortcuts are not available right now. Try again in a moment."
@@ -1928,13 +1928,15 @@ fn each_import_choice_asks_for_its_own_dialog() {
 }
 
 #[test]
-fn the_recent_inbox_is_off_until_chosen_and_its_clear_button_empties_it() {
+fn the_recent_inbox_is_on_for_a_new_install_can_be_switched_off_and_its_clear_button_empties_it() {
     on_ui_thread(|| {
         let r = rig();
-        assert!(!r.ui.get_recent_history(), "off by default");
+        assert!(r.ui.get_recent_history(), "on for a new install");
         r.ctl.borrow_mut().set_key_provider(Box::new(
             snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
         ));
+        r.ui.invoke_recent_history_toggled(false);
+        assert!(!r.ctl.borrow().settings().recent_history);
         r.ui.invoke_recent_history_toggled(true);
         assert!(r.ctl.borrow().settings().recent_history);
         r.ctl
