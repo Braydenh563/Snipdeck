@@ -218,8 +218,6 @@ export component DeckPartsGallery inherits Window {
     // What was clicked last, e.g. "pinned:2", "sidebar:Work", "board-menu".
     in-out property <string> last;
     in-out property <int> events: 0;
-    // How far the pinned strip has scrolled (keyboard focus scrolls a chip into view).
-    out property <length> strip-scroll: strip.scroll-x;
     width: 640px;
     height: 600px;
     background: Theme.bg-app;
@@ -263,8 +261,13 @@ export component DeckPartsGallery inherits Window {
                 }
             }
             Caption { text: "Pinned strip"; }
-            strip := PinnedStrip {
+            PinnedStrip {
                 items: root.pinned;
+                more-label: "+\{root.pinned.length - 2} more";
+                more-clicked => {
+                    root.last = "pinned-more";
+                    root.events += 1;
+                }
                 use(i) => {
                     root.last = "pinned:\{i}";
                     root.events += 1;

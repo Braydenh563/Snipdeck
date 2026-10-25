@@ -690,6 +690,7 @@ where
         wire!(on_pin_requested, |ctl, i| ctl.pin_row(index(i)));
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.toast_action());
+        wire_effects!(on_open_requested, |ctl| ctl.open_main_window());
         wire!(on_undo_requested, |ctl| ctl.undo());
         wire!(on_redo_requested, |ctl| ctl.redo());
         wire_effects!(on_new_item_requested, |_ctl| vec![Effect::NewItem]);
@@ -1032,6 +1033,12 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| p.pinned == view.pinned) {
         window.set_pinned(model(view.pinned.iter().map(|r| ui::PinnedItem {
             title: r.title.as_str().into(),
+            kind: item_kind(r),
+        })));
+        // The pinned items past the strip's two chips, for its "+N more" menu.
+        window.set_pinned_more_entries(model(view.pinned.iter().skip(2).map(|r| ui::MenuEntry {
+            text: r.title.as_str().into(),
+            ..Default::default()
         })));
     }
     if differs(&|p| {
@@ -1104,20 +1111,11 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         window.set_board_menu_entries(model(entries));
         window.set_board_menu_open(view.board_menu.is_some());
     }
-    if differs(&|p| p.picker_chord == view.picker_chord) {
-        let (keys, spoken) = if view.picker_chord.is_empty() {
-            (Vec::new(), String::new())
-        } else {
-            (
-                crate::commands::caps(&view.picker_chord),
-                crate::commands::spoken(&view.picker_chord),
-            )
-        };
-        window.set_picker_keys(model(keys.iter().map(|k| k.as_str().into())));
-        window.set_picker_spoken(spoken.into());
-    }
-    if differs(&|p| p.app_menu == view.app_menu && p.hotkeys_paused == view.hotkeys_paused)
-        || window.get_app_menu_open() != view.app_menu.is_some()
+    if differs(&|p| {
+        p.app_menu == view.app_menu
+            && p.hotkeys_paused == view.hotkeys_paused
+            && p.history == view.history
+    }) || window.get_app_menu_open() != view.app_menu.is_some()
     {
         render_app_menu(window, view);
     }
@@ -1169,7 +1167,13 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     );
     window.set_marked_count(to_i32(view.marked_count));
     window.set_show_numbers(view.show_numbers);
-    window.set_compact_rows(view.compact_rows);
+    window.set_layout(match view.layout {
+        crate::settings::PanelLayout::List => ui::PanelLayout::List,
+        crate::settings::PanelLayout::Cards => ui::PanelLayout::Cards,
+        crate::settings::PanelLayout::Compact => ui::PanelLayout::Compact,
+    });
+    window.set_search_always(view.search_always);
+    window.set_lists_in_menu(view.lists_in_menu);
     if differs(&|p| p.list_menu == view.list_menu)
         || window.get_list_menu_open() != view.list_menu.is_some()
     {
@@ -1192,12 +1196,6 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
             window.set_board_delete_count(i32::try_from(ask.count).unwrap_or(i32::MAX));
         }
         window.set_board_delete_open(view.board_delete.is_some());
-    }
-    if differs(&|p| p.history == view.history) {
-        window.set_can_undo(view.history.undo.is_some());
-        window.set_can_redo(view.history.redo.is_some());
-        window.set_undo_tip(wording::undo_tip(window, view.history.undo).into());
-        window.set_redo_tip(wording::redo_tip(window, view.history.redo).into());
     }
     if differs(&|p| p.toast == view.toast) {
         if let Some(toast) = &view.toast {
@@ -1228,7 +1226,13 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
 fn render_app_menu(window: &ui::PanelWindow, view: &View) {
     let check = window.global::<ui::Icons<'_>>().get_check();
     let entries = view.app_menu.iter().flatten().map(|&entry| ui::MenuEntry {
-        text: wording::app_menu_text(window, entry, view.docked, view.dock_target).into(),
+        text: match entry {
+            AppMenuEntry::Undo => wording::undo_tip(window, view.history.undo).into(),
+            AppMenuEntry::Redo => wording::redo_tip(window, view.history.redo).into(),
+            _ => wording::app_menu_text(window, entry, view.docked, view.dock_target).into(),
+        },
+        disabled: (entry == AppMenuEntry::Undo && view.history.undo.is_none())
+            || (entry == AppMenuEntry::Redo && view.history.redo.is_none()),
         icon: if (entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused)
             || (entry == AppMenuEntry::ShowNumbers && view.show_numbers)
         {
@@ -1325,12 +1329,25 @@ pub const MASKED_PREVIEW: &str = "••••••••";
 pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
     let (list_name, list_color) = row.list.as_ref().map_or_else(
         || (SharedString::new(), slint::Color::default()),
-        |label| (label.name.as_str().into(), list_color(label.accent, dark)),
+        |label| {
+            let name = if label.board.is_empty() {
+                label.name.clone()
+            } else {
+                format!("{} · {}", label.board, label.name)
+            };
+            (name.as_str().into(), list_color(label.accent, dark))
+        },
+    );
+    let (mark_before, mark_text) = row.title_mark.as_ref().map_or_else(
+        || (SharedString::new(), SharedString::new()),
+        |(before, found)| (before.as_str().into(), found.as_str().into()),
     );
     let (label, label_name) = label_fields(row.label);
     ui::PanelRow {
         kind: item_kind(row),
         title: row.title.as_str().into(),
+        mark_before,
+        mark_text,
         // Never rely on the store keeping a sensitive preview empty.
         preview: if row.sensitive {
             SharedString::new()
@@ -1426,6 +1443,7 @@ mod tests {
             title: "Title".into(),
             preview: preview.into(),
             list: None,
+            title_mark: None,
             pinned: false,
             label: None,
             marked: false,
@@ -1478,6 +1496,7 @@ mod tests {
     fn a_mixed_view_row_carries_its_list_name_and_colour() {
         let mut r = row(ItemKind::Text, false, "x");
         r.list = Some(ListLabel {
+            board: String::new(),
             name: "Links".into(),
             accent: Some(ListAccent::Violet),
         });

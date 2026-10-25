@@ -139,6 +139,10 @@ export global Theme {
     out property <color> ink-hover: hc ? SystemLook.hc-highlight : Palette.ink-hover;
     out property <color> ink-pressed: hc ? SystemLook.hc-highlight : Palette.ink-pressed;
     out property <color> text-on-ink: hc ? SystemLook.hc-window : Palette.text-on-ink;
+    // Panel v2: the search match mark (a span behind the match, never an underline) and the toast's action text on ink.
+    out property <color> search-mark: hc ? SystemLook.hc-highlight : Palette.search-mark;
+    out property <color> search-mark-text: hc ? SystemLook.hc-highlight-text : Palette.search-mark-text;
+    out property <color> toast-action: hc ? SystemLook.hc-window : Palette.toast-action;
     out property <color> accent: hc ? SystemLook.hc-highlight : custom ? steps.default : Palette.accent-default;
     out property <color> accent-hover: hc ? SystemLook.hc-highlight : custom ? steps.hover : Palette.accent-hover;
     out property <color> accent-pressed: hc ? SystemLook.hc-highlight : custom ? steps.pressed : Palette.accent-pressed;

@@ -1,4 +1,4 @@
-import { Theme, Type, Space, Fonts } from "../theme.slint";
+import { Theme, Type, Space, Fonts, Radius } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
 import { Button, ButtonVariant } from "button.slint";
@@ -15,13 +15,41 @@ export component EmptyState inherits VerticalLayout {
     in property <string> action-text;
     // An optional line under the button naming the key that does the same ("Press Ctrl+N to add a snippet").
     in property <string> hint;
+    // Panel v2 spec 2.7: a 40px glyph tile, a `type.md` heading, an outline button (36) and an optional ghost
+    // button under it; `caption` explains what the action will do.
+    in property <bool> quiet: false;
+    in property <string> caption;
+    in property <string> secondary-text;
     callback action();
+    callback secondary();
 
-    padding: Space.s6;
-    spacing: Space.s3;
+    padding-left: Space.s6;
+    padding-right: Space.s6;
+    padding-top: Space.s6;
+    padding-bottom: root.quiet ? Space.s12 : Space.s6;
+    spacing: root.quiet ? Space.s2 : Space.s3;
     alignment: center;
 
-    HorizontalLayout {
+    if root.quiet: HorizontalLayout {
+        alignment: center;
+        Rectangle {
+            width: Space.s8 + Space.s2;
+            height: Space.s8 + Space.s2;
+            border-radius: Radius.lg;
+            background: Theme.bg-hover;
+            Icon {
+                source: root.kind == EmptyStateKind.list ? Icons.rows
+                    : root.kind == EmptyStateKind.board ? Icons.stack
+                    : root.kind == EmptyStateKind.search ? Icons.magnifying-glass
+                    : Icons.tray;
+                size: Space.s5;
+                tint: Theme.text-secondary;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+    }
+    if !root.quiet: HorizontalLayout {
         alignment: center;
         Icon {
             source: root.kind == EmptyStateKind.list ? Icons.rows
@@ -37,7 +65,7 @@ export component EmptyState inherits VerticalLayout {
         text: root.heading;
         color: Theme.text-primary;
         font-family: Fonts.sans;
-        font-size: Type.xl;
+        font-size: root.quiet ? Type.md : Type.xl;
         font-weight: Type.semibold;
         horizontal-alignment: center;
         wrap: word-wrap;
@@ -46,16 +74,38 @@ export component EmptyState inherits VerticalLayout {
         text: root.body;
         color: Theme.text-secondary;
         font-family: Fonts.sans;
-        font-size: Type.base;
+        font-size: root.quiet ? Type.sm : Type.base;
         horizontal-alignment: center;
         wrap: word-wrap;
     }
     if root.action-text != "": HorizontalLayout {
         alignment: center;
-        Button {
+        if !root.quiet: Button {
             text: root.action-text;
             variant: ButtonVariant.primary;
             clicked => { root.action(); }
+        }
+        if root.quiet: Button {
+            text: root.action-text;
+            variant: ButtonVariant.secondary;
+            height: Space.s8 + Space.s1;
+            clicked => { root.action(); }
+        }
+    }
+    if root.caption != "": Text {
+        text: root.caption;
+        color: Theme.text-secondary;
+        font-family: Fonts.sans;
+        font-size: Type.sm;
+        horizontal-alignment: center;
+        wrap: word-wrap;
+    }
+    if root.secondary-text != "": HorizontalLayout {
+        alignment: center;
+        Button {
+            text: root.secondary-text;
+            variant: ButtonVariant.ghost;
+            clicked => { root.secondary(); }
         }
     }
     if root.hint != "": Text {

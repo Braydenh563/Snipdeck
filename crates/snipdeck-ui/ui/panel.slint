@@ -1,7 +1,7 @@
 // The Panel window (DESIGN.md §5 Panel, ADR-0003, ADR-0008): the compact always-on-top deck the user
-// pastes from. It never takes the OS caption: it draws its own header with a drag region, a pin
-// (keep on top), a kebab menu and a close button, and its keyboard focus lives in the search field so
-// typing always filters. Data comes in as plain structs and models that mirror `snipdeck-app`'s
+// pastes from. It never takes the OS caption: it draws its own header (Panel v2 spec 2.1: board picker, drag
+// region, search, New, keep on top, More, close), and its keyboard focus lives in the search field (collapsed to
+// nothing until it is used, or always shown) so typing always filters. Data comes in as plain structs and models that mirror `snipdeck-app`'s
 // `PanelModel` (rows, tabs, footer, use label); every gesture leaves as a callback. Nothing here talks
 // to the OS: not the window drag (`drag-requested`), nor the resize (`resize-requested`, fired by
 // invisible 6px grips on the four edges and corners), nor the menus (drawn inside the Panel, filled and
@@ -12,7 +12,7 @@
 //   type            filters; a printable key typed while another control has focus moves into the search
 //   Up / Down       move the selection (PageUp / PageDown a page); Enter uses it, Shift+Enter copies
 //   Alt+1-9         use the Nth row, whatever the search holds (bare digits are always search text)
-//   Ctrl+Tab        next list, Ctrl+Shift+Tab previous; Ctrl+F focuses and selects the search
+//   Ctrl+Tab        next list, Ctrl+Shift+Tab previous; Ctrl+F expands, focuses and selects the search
 //   Menu, Shift+F10 context menu of the selected row (on the focused kebab button: the Panel menu)
 //   Ctrl+K          all commands (the Main window's palette); Ctrl+/ the keyboard shortcuts; F1 the user guide
 //   Ctrl+A          select every row; Shift+Up, Shift+Down extend the selection
@@ -21,13 +21,15 @@
 //   Ctrl+Shift+P    keep the Panel on top or not (the pin button in the header)
 //   Ctrl+E, F2      edit / rename the selected row (a row has no double-click action: the first click already used it)
 //   Delete          delete the selected row while the search is empty (with a query it edits the text)
-//   Esc             closes an open menu; else clears the search; with nothing to clear, asks the host to hide the Panel
+//   Alt+Up, Alt+Down  move the selected row up or down (a list in manual order, no search)
+//   Esc             closes an open menu; else clears the search and collapses it; with nothing to clear, asks the host to hide the Panel
 //
 // Tooltips: every icon-only control reports hover and keyboard focus here; the Panel shows one
 // `Tooltip` after 500ms, and swaps it instantly while the pointer moves between controls.
 import { ListView } from "std-widgets.slint";
-import { Theme, Type, Space, Radius, Fonts, SystemLook, Palette } from "theme.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette } from "theme.slint";
 import { Icons } from "icons.slint";
+import { Icon } from "components/icon.slint";
 import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
 import { DeckEdge, DeckEdgePosition } from "components/deck-edge.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
@@ -42,8 +44,8 @@ import { Menu, MenuEntry } from "components/menu.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
 import { RepaintNudge } from "components/repaint.slint";
 import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
-import { IconButton } from "components/icon-button.slint";
-import { Keycap, KeyCombo } from "components/keycap.slint";
+import { IconButton, IconButtonSize } from "components/icon-button.slint";
+import { Keycap } from "components/keycap.slint";
 import { DockHandle } from "components/dock-handle.slint";
 import { QuickAdd } from "components/quick-add.slint";
 
@@ -52,6 +54,9 @@ import { QuickAdd } from "components/quick-add.slint";
 export struct PanelRow {
     kind: ItemKind,
     title: string,
+    // The first search match in the title: the text before it and the match (both empty = no match to mark).
+    mark-before: string,
+    mark-text: string,
     preview: string,
     masked-preview: string,
     extension: string,
@@ -88,8 +93,8 @@ export global RecentText {
     }
 }
 
-// Per-list view choice (SPEC 5.1): one-line rows or cards with a two-line preview.
-export enum PanelView { compact, comfortable }
+// The Panel's layout (Settings > Panel > Layout, Panel v2 spec 3): one global choice, not per list.
+export enum PanelLayout { list, cards, compact }
 
 // The window edge or corner a resize grip sits on; the host starts the OS resize from it.
 export enum ResizeEdge { left, right, top, bottom, top-left, top-right, bottom-left, bottom-right }
@@ -145,7 +150,11 @@ export component PanelWindow inherits Window {
     // The lists "Save to…" offers.
     in property <[ChoiceEntry]> recent-targets;
     in-out property <int> recent-selected: 0;
-    in property <PanelView> view: PanelView.compact;
+    in property <PanelLayout> layout: PanelLayout.list;
+    // Settings > Panel: the search field is always shown (else it opens when typed into), and the lists are chosen
+    // from a menu in the header instead of a tab row.
+    in property <bool> search-always: false;
+    in property <bool> lists-in-menu: false;
     // True while the app is loading: skeleton rows replace the empty state.
     in property <bool> loading: false;
     // The sensitive row held revealed by the app (-1 = none).
@@ -251,9 +260,6 @@ export component PanelWindow inherits Window {
     // ---- Selection (O45): Ctrl+click, Shift+click, Ctrl+A, Shift+Up/Down; the bulk bar acts on it ----
     in property <int> marked-count: 0;
     in property <bool> show-numbers: true;
-    // The row density setting (Settings > Appearance, labelled "Main list density"). Nothing here draws
-    // rows by it yet: to be wired in the Panel build after the redesign.
-    in property <bool> compact-rows: false;
     callback row-picked(int, bool, bool);
     callback select-all-requested();
     callback selection-extended(int);
@@ -281,9 +287,6 @@ export component PanelWindow inherits Window {
     callback commands-requested();
     // Ctrl+/: the keyboard shortcuts.
     callback shortcuts-requested();
-    // The configured Picker hotkey as key caps and spoken, for the footer hint (empty = the hotkey is off).
-    in property <[string]> picker-keys;
-    in property <string> picker-spoken;
     callback app-menu-activated(int);
     callback app-menu-dismissed();
     // The paste stack (SPEC 5.1): items marked from the item menu, then "Start stack" makes Paste next walk them.
@@ -319,15 +322,12 @@ export component PanelWindow inherits Window {
     callback pin-toggled(bool);
     callback toast-undo();
     callback toast-hover-changed(hovered: bool);
-    // Ctrl+Z / the Undo button: take back the latest step of the app-wide history.
+    // Ctrl+Z: take back the latest step of the app-wide history (the More menu has the button).
     callback undo-requested();
-    // Ctrl+Y, Ctrl+Shift+Z / the Redo button.
+    // Ctrl+Y, Ctrl+Shift+Z.
     callback redo-requested();
-    // The history buttons: enabled while there is a step, named by what it would do ("Undo delete (Ctrl+Z)").
-    in property <bool> can-undo;
-    in property <bool> can-redo;
-    in property <string> undo-tip: @tr("Undo last change");
-    in property <string> redo-tip: @tr("Redo last change");
+    // The footer's "Open Snipdeck" button.
+    callback open-requested();
     callback close-requested();
     // Pointer down on the header: the host starts the OS window drag.
     callback drag-requested();
@@ -357,12 +357,37 @@ export component PanelWindow inherits Window {
         }
     }
     // The text of the tooltip on screen (empty = none), for tests and assistive checks.
-    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open && !root.list-delete-open && !root.board-delete-open ? root.tip : "";
+    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open && !root.list-delete-open && !root.board-delete-open && !root.new-menu-open && !root.pinned-menu-open ? root.tip : "";
 
     // ---- Internals ----------------------------------------------------------------------------
     property <bool> pastes: root.target-name != "";
     property <string> use-label: root.pastes ? @tr("Paste") : @tr("Copy");
     property <bool> searching: root.query != "";
+    // The search was opened (the header icon, Ctrl+F, a typed character) and not closed again. With a query it is
+    // open whatever this says. `search-block` is the expanded block that replaces the tabs and the pinned strip;
+    // `search-always` shows a 44px strip under the header instead and leaves them.
+    property <bool> search-user: false;
+    property <bool> search-block: !root.search-always && (root.search-user || root.searching);
+    property <length> search-status-h: max(Space.s5, Type.line-sm + Space.s1);
+    property <length> search-h: root.search-always ? search.box-height + Space.s2
+        : root.search-block ? Space.s2 + search.box-height + Space.s1 + root.search-status-h + Space.s1 : 0px;
+    // The header's New menu (Save from clipboard, New note, New list).
+    property <bool> new-menu-open: false;
+    // A list tab holds the keyboard focus (the tab row is not always there, so it reports itself).
+    property <bool> tabs-focused: false;
+    changed search-block => {
+        root.tabs-focused = false;
+    }
+    // The pinned strip's "+N more" menu: the pinned items past the two chips.
+    property <bool> pinned-menu-open: false;
+    property <length> pinned-menu-y: 0px;
+    // The pinned items past the two chips, named for the menu (the host fills it; activating row i uses pinned item i + 2).
+    in property <[MenuEntry]> pinned-more-entries;
+    property <[MenuEntry]> new-menu-entries: [
+        { text: @tr("Save from clipboard"), icon: Icons.clipboard },
+        { text: @tr("New note"), icon: Icons.pencil-simple, shortcut: "Ctrl+N" },
+        { text: @tr("New list"), icon: Icons.plus },
+    ];
     // Space is held down to reveal the selected sensitive row.
     property <bool> held-reveal: false;
     // The host hid the text again without a key release (the window lost the focus while Space was
@@ -386,7 +411,7 @@ export component PanelWindow inherits Window {
     property <length> recent-menu-y: 0px;
     property <length> header-h: max(Space.s8 + Space.s2, max(Space.hit, Type.line-base + Space.s2) + Space.s2);
     property <length> edge-h: 10px;
-    property <length> row-gap: root.view == PanelView.comfortable ? Space.s1 + Space.s0-5 : 0px;
+    property <length> row-gap: root.layout == PanelLayout.compact ? 0px : Space.s1 + Space.s0-5;
     property <length> avg-row-h: root.rows.length == 0 ? Space.hit : max(Space.hit, list.content-height / root.rows.length);
     property <int> page-rows: max(1, floor(list.height / root.avg-row-h) - 1);
 
@@ -443,13 +468,9 @@ export component PanelWindow inherits Window {
     }
 
     property <bool> narrow: false;
-    // The Picker hint (caps plus words) is the widest: it needs room beside the route hint and a
-    // readable target name, so it shows only on a wide Panel (never at the 320px default).
-    property <bool> wide: false;
     property <float> text-scale: SystemLook.text-scale;
     function update-narrow() {
         root.narrow = root.width < 300px * root.text-scale;
-        root.wide = root.width >= 440px * root.text-scale;
     }
 
     init => {
@@ -463,6 +484,16 @@ export component PanelWindow inherits Window {
     // A closed menu leaves no focused control behind: typing goes to the search again.
     changed app-menu-open => {
         if (!root.app-menu-open) {
+            search.focus();
+        }
+    }
+    changed new-menu-open => {
+        if (!root.new-menu-open) {
+            search.focus();
+        }
+    }
+    changed pinned-menu-open => {
+        if (!root.pinned-menu-open) {
             search.focus();
         }
     }
@@ -627,7 +658,8 @@ export component PanelWindow inherits Window {
     function pick-tab(index: int) {
         root.close-recent();
         root.current-tab = index;
-        // A list switch leaves the board-wide search.
+        // A list switch leaves the search.
+        root.search-user = false;
         if (root.query != "") {
             root.query = "";
             root.query-changed("");
@@ -643,15 +675,36 @@ export component PanelWindow inherits Window {
         }
     }
 
+    // Esc and the Close button: clears the query and collapses the search in one step.
     function clear-query() {
+        root.search-user = false;
         root.query = "";
         root.selected-index = 0;
         list.content-y = 0px;
         root.query-changed("");
+        search.focus();
+    }
+
+    // The header icon and Ctrl+F: expands the search (a no-op when it is always shown) and selects its text.
+    function open-search() {
+        root.search-user = true;
+        search.focus();
+        search.select-all();
+    }
+
+    // The empty search's "Create" action (and Enter): the query becomes a new text snippet in the shown list.
+    function create-from-query() {
+        if (root.query == "") {
+            return;
+        }
+        let text = root.query;
+        root.clear-query();
+        root.quick-add-requested(text, root.detect-kind(text), false);
     }
 
     // Moves a typed character into the search field when another control has focus.
     function type-into-search(text: string) {
+        root.search-user = true;
         search.focus();
         root.query = root.query + text;
         // Past the end clamps to the end of the text.
@@ -695,9 +748,11 @@ export component PanelWindow inherits Window {
             forward-focus: search;
 
             capture-key-pressed(event) => {
-                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.board-delete-open) {
+                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.board-delete-open || root.new-menu-open || root.pinned-menu-open) {
                     // The menu (or the confirmation) owns the keyboard; Esc closes it.
                     if (event.text == Key.Escape) {
+                        root.new-menu-open = false;
+                        root.pinned-menu-open = false;
                         if (root.list-delete-open) {
                             root.list-delete-dismissed();
                         }
@@ -741,8 +796,7 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                     if (event.text == "f" || event.text == "F") {
-                        search.focus();
-                        search.select-all();
+                        root.open-search();
                         return accept;
                     }
                     if (event.text == "k" || event.text == "K") {
@@ -820,7 +874,7 @@ export component PanelWindow inherits Window {
                     return accept;
                 }
                 if (event.text == Key.Escape) {
-                    if (root.searching) {
+                    if (root.searching || root.search-user) {
                         root.clear-query();
                     } else if (root.stack-visible) {
                         root.stack-ended();
@@ -866,7 +920,7 @@ export component PanelWindow inherits Window {
                         return accept;
                     }
                 }
-                if (event.text == Key.F2 && root.sel >= 0 && !tab-bar.has-focus && !root.recent-open) {
+                if (event.text == Key.F2 && root.sel >= 0 && !root.tabs-focused && !root.recent-open) {
                     root.rename-requested(root.sel);
                     return accept;
                 }
@@ -909,7 +963,11 @@ export component PanelWindow inherits Window {
                 }
                 if (search.has-focus && !root.recent-open) {
                     if (event.text == Key.Return) {
-                        root.use-selected(event.modifiers.shift);
+                        if (root.sel < 0 && root.searching) {
+                            root.create-from-query();
+                        } else {
+                            root.use-selected(event.modifiers.shift);
+                        }
                         return accept;
                     }
                     if ((event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) && root.sel >= 0) {
@@ -946,7 +1004,7 @@ export component PanelWindow inherits Window {
             }
 
             VerticalLayout {
-                // ---- Header: board switcher, drag region, keep-on-top, close ----------------------
+                // ---- Header (40): board picker, drag region, search, New, keep on top, More, close ----------
                 Rectangle {
                     height: root.header-h;
 
@@ -962,12 +1020,15 @@ export component PanelWindow inherits Window {
 
                     HorizontalLayout {
                         padding-left: Space.s2;
-                        padding-right: Space.s2;
+                        padding-right: Space.s1;
                         padding-top: Space.s1;
                         padding-bottom: Space.s1;
-                        spacing: Space.s1;
+                        spacing: Space.s0-5;
                         switcher := BoardSwitcher {
                             horizontal-stretch: 0;
+                            min-h: Space.s8;
+                            // The board's name elides, never below about six characters.
+                            min-width: 69px;
                             board-name: root.board-name;
                             menu-open: root.board-menu-open;
                             a11y-label: @tr("Board: {}", root.board-name);
@@ -975,28 +1036,100 @@ export component PanelWindow inherits Window {
                             menu-requested => { root.board-menu-requested(); }
                         }
                         Rectangle { horizontal-stretch: 1; }
-                        undo-button := IconButton {
-                            icon: Icons.arrow-counter-clockwise;
-                            tooltip: root.undo-tip;
-                            enabled: root.can-undo;
+                        search-button := IconButton {
+                            icon: Icons.magnifying-glass;
+                            size: IconButtonSize.sm;
+                            side-override: Space.s8;
+                            tooltip: @tr("Search (Ctrl+F)");
                             y: (parent.height - self.height) / 2;
-                            clicked => { root.undo-requested(); }
+                            clicked => { root.open-search(); }
                             changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
                             changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
                         }
-                        redo-button := IconButton {
-                            icon: Icons.arrow-clockwise;
-                            tooltip: root.redo-tip;
-                            enabled: root.can-redo;
+                        // New: a menu of ways to add (Save from clipboard, New note, New list). Icon only below 300px.
+                        new-button := Rectangle {
+                            property <bool> tip-on: new-touch.has-hover || new-scope.has-focus;
+                            out property <bool> has-focus: new-scope.has-focus;
+                            width: root.narrow ? Space.s8 : new-row.preferred-width;
+                            height: Space.s8;
                             y: (parent.height - self.height) / 2;
-                            clicked => { root.redo-requested(); }
-                            changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
-                            changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                            border-radius: Radius.md;
+                            background: new-touch.pressed ? Theme.bg-sunken : new-touch.has-hover || root.new-menu-open ? Theme.bg-hover : transparent;
+                            forward-focus: new-scope;
+                            accessible-role: button;
+                            accessible-label: @tr("New");
+                            accessible-expandable: true;
+                            accessible-expanded: root.new-menu-open;
+                            accessible-action-default => { root.new-menu-open = true; }
+                            animate background { duration: Motion.instant; easing: Motion.out; }
+                            changed tip-on => {
+                                if (root.narrow) {
+                                    root.tip-set(@tr("New"), self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.tip-on);
+                                }
+                            }
+
+                            new-row := HorizontalLayout {
+                                padding-left: root.narrow ? 0px : Space.s1 + Space.s0-5;
+                                padding-right: root.narrow ? 0px : Space.s2;
+                                spacing: Space.s1;
+                                alignment: center;
+                                Icon {
+                                    source: Icons.plus;
+                                    tint: Theme.text-primary;
+                                    size: Space.s4 * SystemLook.text-scale;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                                if !root.narrow: Text {
+                                    text: @tr("New");
+                                    font-family: Fonts.sans;
+                                    font-size: Type.base;
+                                    font-weight: Type.medium;
+                                    color: Theme.text-primary;
+                                    vertical-alignment: center;
+                                    accessible-role: none;
+                                }
+                            }
+                            Rectangle {
+                                x: -4px;
+                                y: -4px;
+                                width: parent.width + 8px;
+                                height: parent.height + 8px;
+                                border-width: new-scope.has-focus ? 2px : 0px;
+                                border-color: Theme.focus-ring;
+                                border-radius: Radius.md + 2px;
+                                background: transparent;
+                            }
+                            new-touch := TouchArea {
+                                clicked => { root.new-menu-open = true; }
+                            }
+                            new-scope := FocusScope {
+                                focus-on-click: false;
+                                key-pressed(event) => {
+                                    if (event.text == Key.Return || event.text == " " || event.text == Key.DownArrow) {
+                                        root.new-menu-open = true;
+                                        return accept;
+                                    }
+                                    return reject;
+                                }
+                            }
+                        }
+                        // 1x16 divider between the adding controls and the window controls.
+                        Rectangle {
+                            width: Space.s2 + 1px;
+                            Rectangle {
+                                x: Space.s1;
+                                y: (parent.height - self.height) / 2;
+                                width: 1px;
+                                height: Space.s4;
+                                background: Theme.border-default;
+                            }
                         }
                         // Always-on-top toggle: the Phosphor pushpin (owner preferred it to the flat tack); its
                         // tooltip and checked state say "Keep panel on top".
                         pin := IconButton {
                             icon: Icons.push-pin;
+                            size: IconButtonSize.sm;
+                            side-override: Space.s8;
                             tooltip: @tr("Keep panel on top");
                             active: root.on-top;
                             accessible-checkable: true;
@@ -1011,6 +1144,8 @@ export component PanelWindow inherits Window {
                         }
                         kebab := IconButton {
                             icon: Icons.dots-three;
+                            size: IconButtonSize.sm;
+                            side-override: Space.s8;
                             tooltip: @tr("More");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.app-menu-requested(); }
@@ -1019,6 +1154,8 @@ export component PanelWindow inherits Window {
                         }
                         close := IconButton {
                             icon: Icons.x;
+                            size: IconButtonSize.sm;
+                            side-override: Space.s8;
                             tooltip: @tr("Close panel (Esc)");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.close-requested(); }
@@ -1028,27 +1165,128 @@ export component PanelWindow inherits Window {
                     }
                 }
 
-                // ---- Search -------------------------------------------------------------------------
-                HorizontalLayout {
-                    padding-left: Space.s2;
-                    padding-right: Space.s2;
-                    padding-bottom: Space.s2;
+                // ---- Search (spec 2.3): nothing until used, an expanded block that replaces the tabs and the pinned
+                // strip, or (Settings) a 44px strip that stays. The field lives here in every state, so typing always
+                // reaches it; collapsed it is clipped to no height.
+                Rectangle {
+                    height: root.search-h;
+                    clip: true;
+
+                    if root.search-block: Rectangle {
+                        y: parent.height - 1px;
+                        height: 1px;
+                        background: Theme.border-subtle;
+                    }
+
                     search := SearchField {
+                        x: Space.s2;
+                        y: root.search-block ? Space.s2 : Space.s1;
+                        width: max(0px, parent.width - 2 * Space.s2 - (root.search-block ? close-search.width + Space.s1 + Space.s0-5 : 0px));
+                        height: self.box-height;
+                        min-box-h: Space.s8 + Space.s1;
+                        clearable: root.search-always;
                         placeholder: @tr("Search snippets");
                         label: @tr("Search snippets");
                         clear-label: @tr("Clear search");
                         edited(text) => {
+                            root.search-user = true;
                             root.selected-index = 0;
                             list.content-y = 0px;
                             root.query-changed(text);
                         }
                     }
+
+                    close-search := Rectangle {
+                        visible: root.search-block;
+                        x: parent.width - self.width - Space.s2;
+                        y: Space.s2;
+                        width: close-row.preferred-width;
+                        height: search.box-height;
+                        border-radius: Radius.md;
+                        border-width: 1px;
+                        border-color: Theme.border-strong;
+                        background: close-touch.pressed ? Theme.bg-sunken : close-touch.has-hover ? Theme.bg-hover : transparent;
+                        forward-focus: close-scope;
+                        accessible-role: button;
+                        accessible-label: @tr("Close search");
+                        accessible-action-default => { root.clear-query(); }
+
+                        close-row := HorizontalLayout {
+                            padding-left: Space.s2 + Space.s0-5;
+                            padding-right: Space.s2 + Space.s0-5;
+                            spacing: Space.s1 + Space.s0-5;
+                            alignment: center;
+                            Icon {
+                                source: Icons.x;
+                                tint: Theme.text-primary;
+                                size: Space.s4 * SystemLook.text-scale;
+                                y: (parent.height - self.height) / 2;
+                            }
+                            Text {
+                                text: @tr("Close");
+                                font-family: Fonts.sans;
+                                font-size: Type.base;
+                                font-weight: Type.medium;
+                                color: Theme.text-primary;
+                                vertical-alignment: center;
+                                accessible-role: none;
+                            }
+                            Rectangle {
+                                width: esc-cap.min-width;
+                                esc-cap := Keycap {
+                                    text: "Esc";
+                                    strong: true;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                            }
+                        }
+                        Rectangle {
+                            x: -4px;
+                            y: -4px;
+                            width: parent.width + 8px;
+                            height: parent.height + 8px;
+                            border-width: close-scope.has-focus ? 2px : 0px;
+                            border-color: Theme.focus-ring;
+                            border-radius: Radius.md + 2px;
+                            background: transparent;
+                        }
+                        close-touch := TouchArea {
+                            clicked => { root.clear-query(); }
+                        }
+                        close-scope := FocusScope {
+                            focus-on-click: false;
+                            key-pressed(event) => {
+                                if (event.text == Key.Return || event.text == " ") {
+                                    root.clear-query();
+                                    return accept;
+                                }
+                                return reject;
+                            }
+                        }
+                    }
+
+                    // The status line (a live region): how many matches, or that there are none.
+                    if root.search-block: Text {
+                        x: Space.s2;
+                        y: Space.s2 + search.box-height + Space.s1;
+                        width: max(0px, parent.width - 2 * Space.s2);
+                        height: root.search-status-h;
+                        text: root.rows.length == 0 ? @tr("No matches in all boards")
+                            : @tr("{} match in all boards" | "{} matches in all boards" % root.rows.length, root.rows.length);
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        color: Theme.text-secondary;
+                        vertical-alignment: center;
+                        overflow: elide;
+                        accessible-role: AccessibleRole.text;
+                        accessible-live-region: polite;
+                    }
                 }
 
                 // ---- Lists ----------------------------------------------------------------------------
-                HorizontalLayout {
+                if !root.search-block: HorizontalLayout {
                     padding-left: Space.s2;
-                    padding-right: Space.s2;
+                    padding-right: Space.s1;
                     spacing: Space.s0-5;
                     // The Recent inbox, at the far left, while history is on.
                     if root.recent-available: clock-tab := ClockTab {
@@ -1063,6 +1301,7 @@ export component PanelWindow inherits Window {
                         }
                     }
                     tab-bar := ListTabBar {
+                        changed has-focus => { root.tabs-focused = self.has-focus; }
                         none-selected: root.recent-open;
                         tabs: root.tabs;
                         current <=> root.current-tab;
@@ -1086,24 +1325,22 @@ export component PanelWindow inherits Window {
                     }
                 }
 
-                if root.pinned.length > 0 && !root.searching && !root.recent-open: HorizontalLayout {
-                    padding-left: Space.s2;
-                    padding-right: Space.s2;
-                    strip := PinnedStrip {
-                        items: root.pinned;
-                        accessible-role: AccessibleRole.list;
-                        accessible-label: @tr("Pinned snippets");
-                        scroll-left-label: @tr("Scroll left");
-                        scroll-right-label: @tr("Scroll right");
-                        tip(text, cx, bottom, on) => { root.tip-set(text, cx, bottom, on); }
-                        use(i) => { root.pinned-used(i); }
-                        copy(i) => { root.pinned-copied(i); }
-                        context-menu-requested(i, x, y) => {
-                            // `x` is within the chip: the menu opens under the strip's left end.
-                            root.item-menu-x = self.absolute-position.x + Space.s2;
-                            root.item-menu-y = self.absolute-position.y + self.height;
-                            root.pinned-context-menu-requested(i, x, y);
-                        }
+                if root.pinned.length > 0 && !root.search-block && !root.recent-open: strip := PinnedStrip {
+                    items: root.pinned;
+                    more-label: @tr("+{} more", root.pinned.length - 2);
+                    accessible-role: AccessibleRole.list;
+                    accessible-label: @tr("Pinned snippets");
+                    use(i) => { root.pinned-used(i); }
+                    copy(i) => { root.pinned-copied(i); }
+                    context-menu-requested(i, x, y) => {
+                        // `x` is within the chip: the menu opens under the strip's left end.
+                        root.item-menu-x = self.absolute-position.x + Space.s2;
+                        root.item-menu-y = self.absolute-position.y + self.height;
+                        root.pinned-context-menu-requested(i, x, y);
+                    }
+                    more-clicked => {
+                        root.pinned-menu-y = self.absolute-position.y + self.height;
+                        root.pinned-menu-open = true;
                     }
                 }
 
@@ -1113,7 +1350,7 @@ export component PanelWindow inherits Window {
                     min-height: Space.s12;
                     clip: true;
                     // The quiet List rows are transparent: the list sits on `bg.surface` (DESIGN.md §4 ItemCard anatomy).
-                    background: root.view == PanelView.comfortable ? Theme.bg-surface : transparent;
+                    background: Theme.bg-surface;
 
                     // Inset by the focus ring's reach (4px) so the viewport never clips the ring of the selected card.
                     list := ListView {
@@ -1163,7 +1400,7 @@ export component PanelWindow inherits Window {
                                 y: Space.s1;
                                 width: parent.width - 2 * Space.s1;
                                 height: self.preferred-height;
-                                variant: root.view == PanelView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
+                                variant: root.layout == PanelLayout.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
                                 quiet: true;
                                 copy-action: root.pastes;
                                 show-actions: i == root.sel && root.marked-count == 0;
@@ -1175,6 +1412,8 @@ export component PanelWindow inherits Window {
                                 modifier-picks: true;
                                 show-focus: root.marked-count > 0 && i == root.sel;
                                 title: row.title;
+                                mark-before: row.mark-before;
+                                mark-text: row.mark-text;
                                 preview: row.preview;
                                 masked-preview: row.masked-preview;
                                 extension: row.extension;
@@ -1289,7 +1528,7 @@ export component PanelWindow inherits Window {
                                     y: Space.s1;
                                     width: parent.width - 2 * Space.s1;
                                     height: self.preferred-height;
-                                    variant: root.view == PanelView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
+                                    variant: root.layout == PanelLayout.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
                                     kind: ItemKind.text;
                                     preview: entry.preview;
                                     list-name: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
@@ -1346,26 +1585,40 @@ export component PanelWindow inherits Window {
                         alignment: start;
                         for n in [0, 1, 2, 3, 4, 5]: Skeleton {
                             kind: SkeletonKind.row;
+                            // The layout's row height (spec 2.7).
+                            height: root.layout == PanelLayout.compact ? 36px : 56px + root.row-gap;
                             label: n == 0 ? @tr("Loading") : "";
                         }
                     }
 
                     if root.rows.length == 0 && !root.loading && !root.recent-open && !(quick.expanded && !root.no-lists && !root.searching): EmptyState {
+                        quiet: true;
                         x: Space.s2;
                         width: parent.width - 2 * Space.s2;
                         height: parent.height - (root.no-lists || root.searching ? 0px : quick.box-h + Space.s1);
                         kind: root.no-lists ? EmptyStateKind.board : root.searching ? EmptyStateKind.search : EmptyStateKind.list;
                         heading: root.no-lists ? @tr("No lists yet")
-                            : root.searching ? @tr("No matches") : @tr("This list is empty");
-                        body: root.no-lists ? @tr("A list keeps related snippets together, like replies or addresses.")
-                            : root.searching ? @tr("Nothing on this board matches “{}”.", root.query)
-                            : @tr("Copy something, then save it here from the clipboard.");
-                        action-text: root.no-lists ? @tr("New list") : root.searching ? "" : @tr("Save from clipboard");
+                            : root.searching ? @tr("Nothing matches “{}”", root.query) : @tr("This list is empty");
+                        body: root.no-lists ? @tr("Lists hold your snippets.")
+                            : root.searching ? @tr("Searched every board and list.")
+                            : @tr("Copy something, then save it here.");
+                        action-text: root.no-lists ? @tr("New list") : root.searching ? @tr("Create “{}”", root.query) : @tr("Save from clipboard");
+                        caption: root.searching && !root.no-lists ? @tr("Adds a text snippet to {}", root.add-list-name) : "";
+                        secondary-text: root.no-lists ? "" : root.searching ? @tr("Clear search") : @tr("New note");
                         action => {
                             if (root.no-lists) {
                                 root.add-list-requested();
+                            } else if (root.searching) {
+                                root.create-from-query();
                             } else {
                                 root.add-from-clipboard();
+                            }
+                        }
+                        secondary => {
+                            if (root.searching) {
+                                root.clear-query();
+                            } else {
+                                root.quick-add-request += 1;
                             }
                         }
                     }
@@ -1375,9 +1628,10 @@ export component PanelWindow inherits Window {
                         kind: root.toast-kind;
                         phase: root.toast-phase;
                         undo-label: root.toast-undo-label;
-                        width: min(self.preferred-width, parent.width - 2 * Space.s2);
+                        ink: true;
+                        width: max(0px, parent.width - 2 * Space.s3);
                         height: self.preferred-height;
-                        x: (parent.width - self.width) / 2;
+                        x: Space.s3;
                         y: parent.height - self.height - Space.s2;
                         undo => { root.toast-undo(); }
                         hover-changed(h) => { root.toast-hover-changed(h); }
@@ -1386,7 +1640,7 @@ export component PanelWindow inherits Window {
 
                 // ---- Bulk bar: shown while rows are selected ----------------------------------------------
                 if root.marked-count > 0 && !root.recent-open: Rectangle {
-                    height: max(Space.s8, Space.hit + Space.s1);
+                    height: max(Space.s8 + Space.s2, Space.hit + Space.s3);
                     background: Theme.accent-subtle;
                     accessible-role: AccessibleRole.groupbox;
                     accessible-label: @tr("{} selected", root.marked-count);
@@ -1445,7 +1699,7 @@ export component PanelWindow inherits Window {
 
                 // ---- Paste stack: the marked items, and Start / End ---------------------------------------
                 if root.stack-visible: Rectangle {
-                    height: max(Space.s8, Type.line-sm + Space.s3);
+                    height: max(Space.s8 + Space.s2, Type.line-sm + Space.s3);
                     background: Theme.accent-subtle;
                     accessible-role: AccessibleRole.text;
                     accessible-label: root.stack-running
@@ -1483,13 +1737,15 @@ export component PanelWindow inherits Window {
                     }
                 }
 
-                // ---- Target footer (DESIGN.md §5): always shows where a click goes -----------------------
-                Rectangle {
+                // ---- Target footer (spec 2.6): where a click goes, and the way back to the Main window. The paste stack
+                // and the selection bar take its slot while they show.
+                if !root.stack-visible && !(root.marked-count > 0 && !root.recent-open): footer := Rectangle {
                     height: max(Space.s8, Type.line-sm + Space.s3);
                     accessible-role: AccessibleRole.text;
-                    accessible-label: root.pastes
+                    accessible-label: root.rows.length == 0 && root.searching ? @tr("Enter creates “{}”", root.query)
+                        : root.pastes
                         ? (root.target-title != "" ? @tr("Pastes into {} · {}", root.target-name, root.target-title) : @tr("Pastes into {}", root.target-name))
-                        : @tr("Copies to clipboard");
+                        : @tr("No target: click copies");
 
                     Rectangle {
                         y: 0;
@@ -1497,59 +1753,130 @@ export component PanelWindow inherits Window {
                         background: Theme.border-subtle;
                     }
                     HorizontalLayout {
-                        padding-left: Space.s3;
-                        padding-right: Space.s3;
+                        padding-left: Space.s2;
+                        padding-right: Space.s1;
                         spacing: Space.s2;
-                        Text {
+                        // Left: the route. The tooltip says how to paste and how to copy.
+                        status := Rectangle {
                             horizontal-stretch: 1;
-                            text: root.pastes
-                                ? (root.target-title != "" ? @tr("Pastes into {} · {}", root.target-name, root.target-title) : @tr("Pastes into {}", root.target-name))
-                                : @tr("Copies to clipboard");
-                            font-family: Fonts.sans;
-                            font-size: Type.sm;
-                            color: Theme.text-secondary;
-                            vertical-alignment: center;
-                            overflow: elide;
-                            accessible-role: AccessibleRole.none;
-                        }
-                        // Route hints: Enter uses, and Shift+Enter always copies. Hidden when the Panel is narrow.
-                        if !root.narrow: HorizontalLayout {
-                            spacing: Space.s1;
-                            Rectangle {
-                                width: hint-keys.min-width;
-                                hint-keys := KeyCombo {
-                                    keys: root.pastes ? ["Shift", "↵"] : ["↵"];
-                                    label: root.pastes ? @tr("Shift Enter") : @tr("Enter");
-                                    y: (parent.height - self.height) / 2;
+                            min-width: 0px;
+                            property <string> how: @tr("Click or Enter pastes. Shift+click or Shift+Enter copies.");
+                            status-touch := TouchArea {
+                                mouse-cursor: MouseCursor.default;
+                                changed has-hover => {
+                                    root.tip-set(status.how, self.absolute-position.x + Space.s6, self.absolute-position.y - tooltip.preferred-height - Space.s2, self.has-hover && !(root.rows.length == 0 && root.searching));
                                 }
                             }
-                            Text {
-                                text: @tr("Copy");
-                                font-family: Fonts.sans;
-                                font-size: Type.sm;
-                                color: Theme.text-secondary;
-                                vertical-alignment: center;
-                                accessible-role: AccessibleRole.none;
-                            }
-                        }
-                        // The Picker's hotkey, as the user set it: a hint that it works anywhere, not only here.
-                        if !root.narrow && root.wide && root.picker-keys.length > 0: HorizontalLayout {
-                            spacing: Space.s1;
-                            Rectangle {
-                                width: picker-caps.min-width;
-                                picker-caps := KeyCombo {
-                                    keys: root.picker-keys;
-                                    label: root.picker-spoken;
+                            HorizontalLayout {
+                                spacing: Space.s1 + Space.s0-5;
+                                alignment: start;
+                                if root.rows.length == 0 && root.searching: Rectangle {
+                                    width: enter-cap.min-width;
+                                    enter-cap := Keycap {
+                                        text: "↵";
+                                        strong: true;
+                                        y: (parent.height - self.height) / 2;
+                                    }
+                                }
+                                if !(root.rows.length == 0 && root.searching): Icon {
+                                    source: root.pastes ? Icons.arrow-bend-down-left : Icons.clipboard;
+                                    tint: Theme.text-secondary;
+                                    size: Space.s4 * SystemLook.text-scale;
                                     y: (parent.height - self.height) / 2;
                                 }
+                                Text {
+                                    text: root.rows.length == 0 && root.searching ? @tr("creates") : root.pastes ? @tr("Pastes into") : @tr("No target:");
+                                    font-family: Fonts.sans;
+                                    font-size: Type.sm;
+                                    color: Theme.text-secondary;
+                                    vertical-alignment: center;
+                                    overflow: elide;
+                                    accessible-role: AccessibleRole.none;
+                                }
+                                Text {
+                                    horizontal-stretch: 1;
+                                    min-width: 0px;
+                                    text: root.rows.length == 0 && root.searching ? "“" + root.query + "”" : root.pastes ? root.target-name : @tr("click copies");
+                                    font-family: Fonts.sans;
+                                    font-size: Type.sm;
+                                    font-weight: Type.medium;
+                                    color: Theme.text-primary;
+                                    vertical-alignment: center;
+                                    overflow: elide;
+                                    accessible-role: AccessibleRole.none;
+                                }
                             }
-                            Text {
-                                text: @tr("Picker anywhere");
-                                font-family: Fonts.sans;
-                                font-size: Type.sm;
-                                color: Theme.text-secondary;
-                                vertical-alignment: center;
-                                accessible-role: AccessibleRole.text;
+                        }
+                        Rectangle {
+                            width: Space.s1 + 1px;
+                            Rectangle {
+                                x: 0px;
+                                y: (parent.height - self.height) / 2;
+                                width: 1px;
+                                height: Space.s4;
+                                background: Theme.border-default;
+                            }
+                        }
+                        // Right: "Open Snipdeck", icon only below 300px.
+                        open-button := Rectangle {
+                            property <bool> tip-on: open-touch.has-hover || open-scope.has-focus;
+                            width: root.narrow ? Space.hit : open-row.preferred-width;
+                            height: Space.hit;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: Radius.md;
+                            background: open-touch.pressed ? Theme.bg-sunken : open-touch.has-hover ? Theme.bg-hover : transparent;
+                            forward-focus: open-scope;
+                            accessible-role: button;
+                            accessible-label: @tr("Open Snipdeck");
+                            accessible-action-default => { root.open-requested(); }
+                            animate background { duration: Motion.instant; easing: Motion.out; }
+                            changed tip-on => {
+                                if (root.narrow) {
+                                    root.tip-set(@tr("Open Snipdeck"), self.absolute-position.x + self.width / 2, self.absolute-position.y - tooltip.preferred-height - Space.s2, self.tip-on);
+                                }
+                            }
+                            open-row := HorizontalLayout {
+                                padding-left: root.narrow ? 0px : Space.s2;
+                                padding-right: root.narrow ? 0px : Space.s2;
+                                spacing: Space.s1 + Space.s0-5;
+                                alignment: center;
+                                Icon {
+                                    source: Icons.sidebar-simple;
+                                    tint: Theme.text-primary;
+                                    size: Space.s4 * SystemLook.text-scale;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                                if !root.narrow: Text {
+                                    text: @tr("Open Snipdeck");
+                                    font-family: Fonts.sans;
+                                    font-size: Type.sm;
+                                    color: Theme.text-primary;
+                                    vertical-alignment: center;
+                                    accessible-role: none;
+                                }
+                            }
+                            Rectangle {
+                                x: -4px;
+                                y: -4px;
+                                width: parent.width + 8px;
+                                height: parent.height + 8px;
+                                border-width: open-scope.has-focus ? 2px : 0px;
+                                border-color: Theme.focus-ring;
+                                border-radius: Radius.md + 2px;
+                                background: transparent;
+                            }
+                            open-touch := TouchArea {
+                                clicked => { root.open-requested(); }
+                            }
+                            open-scope := FocusScope {
+                                focus-on-click: false;
+                                key-pressed(event) => {
+                                    if (event.text == Key.Return || event.text == " ") {
+                                        root.open-requested();
+                                        return accept;
+                                    }
+                                    return reject;
+                                }
                             }
                         }
                     }
@@ -1585,6 +1912,47 @@ export component PanelWindow inherits Window {
             init => { self.focus-menu(); }
             activated(i) => { root.app-menu-activated(i); }
             dismissed => { root.app-menu-dismissed(); }
+        }
+
+        // ---- The New menu (header): under the button, kept inside the window.
+        if root.new-menu-open: TouchArea {
+            clicked => { root.new-menu-open = false; }
+        }
+        if root.new-menu-open: Menu {
+            x: min(max(Space.s2, new-button.absolute-position.x), root.width - self.width - Space.s2);
+            y: root.header-h - Space.s1;
+            entries: root.new-menu-entries;
+            label: @tr("New");
+            init => { self.focus-menu(); }
+            activated(i) => {
+                root.new-menu-open = false;
+                if (i == 0) {
+                    root.add-from-clipboard();
+                } else if (i == 1) {
+                    root.quick-add-request += 1;
+                } else {
+                    root.add-list-requested();
+                }
+            }
+            dismissed => { root.new-menu-open = false; }
+        }
+
+        // ---- The pinned strip's "+N more" menu: the pinned items past the two chips; a choice uses that item.
+        if root.pinned-menu-open: TouchArea {
+            clicked => { root.pinned-menu-open = false; }
+        }
+        if root.pinned-menu-open: Menu {
+            x: root.width - self.width - Space.s2;
+            y: root.pinned-menu-y - Space.s1;
+            entries: root.pinned-more-entries;
+            label: @tr("More pinned snippets");
+            icons: false;
+            init => { self.focus-menu(); }
+            activated(i) => {
+                root.pinned-menu-open = false;
+                root.pinned-used(i + 2);
+            }
+            dismissed => { root.pinned-menu-open = false; }
         }
 
         // ---- The item menu (right-click, Menu key, Shift+F10 on a card or chip): at the pointer, kept inside the window.

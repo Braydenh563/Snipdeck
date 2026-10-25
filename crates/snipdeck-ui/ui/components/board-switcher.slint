@@ -10,13 +10,15 @@ export component BoardSwitcher inherits Rectangle {
     in property <bool> menu-open: false;
     // Spoken label; defaults to the board name. The app translates e.g. "Board: Work".
     in property <string> a11y-label;
+    // The Panel's header is 40 tall with 32px controls (Panel v2 spec 2.1); the board picker shrinks, its name elides.
+    in property <length> min-h: Space.hit;
     out property <bool> has-focus: scope.has-focus;
     callback menu-requested();
 
     property <bool> hovered: touch.has-hover;
 
     min-width: Space.hit;
-    height: max(Space.hit, Type.line-base + Space.s2);
+    height: max(root.min-h, Type.line-base + Space.s2);
     background: touch.pressed || root.menu-open ? Theme.bg-sunken : root.hovered ? Theme.bg-hover : transparent;
     border-radius: Radius.md;
     border-width: Theme.hc-border != transparent ? 1px : 0px;
@@ -37,6 +39,8 @@ export component BoardSwitcher inherits Rectangle {
         padding-right: Space.s2;
         spacing: Space.s1;
         Text {
+            horizontal-stretch: 1;
+            min-width: 0px;
             text: root.board-name;
             font-family: Fonts.sans;
             font-size: Type.md;

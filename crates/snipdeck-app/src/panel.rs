@@ -39,6 +39,8 @@ pub struct Row {
     pub preview: String,
     /// In mixed views (search): the list the item lives in.
     pub list: Option<ListLabel>,
+    /// In a search: the first match of the query in the title, as the text before it and the match.
+    pub title_mark: Option<(String, String)>,
     /// Shown in the pinned strip too.
     pub pinned: bool,
     /// The item's colour label.
@@ -50,6 +52,8 @@ pub struct Row {
 /// A list's name and accent, shown on rows in mixed views.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ListLabel {
+    /// The name of the board the list is on (search results say "Board · List").
+    pub board: String,
     /// The list's name.
     pub name: String,
     /// Its colour, if it has one.
@@ -121,6 +125,33 @@ pub struct PanelModel {
     paste_rules: Vec<PasteRule>,
 }
 
+/// The first case-insensitive match of `query` in `title`: the text before it and the match, as typed in the title.
+/// `None` for an empty query or when only other fields (preview, tags) matched.
+fn title_mark(title: &str, query: &str) -> Option<(String, String)> {
+    let fold = |c: char| {
+        let mut lower = c.to_lowercase();
+        match (lower.next(), lower.next()) {
+            (Some(one), None) => one,
+            _ => c,
+        }
+    };
+    let wanted: Vec<char> = query.trim().chars().map(fold).collect();
+    if wanted.is_empty() {
+        return None;
+    }
+    let chars: Vec<char> = title.chars().collect();
+    let at = (0..chars.len().checked_sub(wanted.len())? + 1).find(|&i| {
+        chars[i..i + wanted.len()]
+            .iter()
+            .zip(&wanted)
+            .all(|(c, w)| fold(*c) == *w)
+    })?;
+    Some((
+        chars[..at].iter().collect(),
+        chars[at..at + wanted.len()].iter().collect(),
+    ))
+}
+
 impl PanelModel {
     /// Loads the Panel for `board` and `list` (the first of each when `None` or no longer
     /// present).
@@ -174,11 +205,12 @@ impl PanelModel {
         let list_labels = snapshot
             .boards
             .iter()
-            .flat_map(|(_, lists)| lists)
-            .map(|l| {
+            .flat_map(|(b, lists)| lists.iter().map(move |l| (b, l)))
+            .map(|(b, l)| {
                 (
                     l.id,
                     ListLabel {
+                        board: b.name.as_str().to_owned(),
                         name: l.name.as_str().to_owned(),
                         accent: l.accent,
                     },
@@ -391,6 +423,11 @@ impl PanelModel {
         } else {
             item.title.clone()
         };
+        let title_mark = if mixed {
+            title_mark(&title, &self.query)
+        } else {
+            None
+        };
         Row {
             id: item.id,
             number: u8::try_from(position + 1)
@@ -401,6 +438,7 @@ impl PanelModel {
             sensitive: item.sensitive,
             title,
             preview: item.preview.clone(),
+            title_mark,
             list: mixed
                 .then(|| self.list_labels.get(&item.list_id).cloned())
                 .flatten(),
@@ -744,9 +782,34 @@ mod tests {
             rows[0].list.as_ref().map(|l| l.name.as_str()),
             Some("Links")
         );
+        assert_eq!(
+            rows[0].title_mark,
+            Some((String::new(), "Docs".into())),
+            "the match in the title is marked, in the title's own case"
+        );
+        assert!(
+            rows[0].list.as_ref().is_some_and(|l| !l.board.is_empty()),
+            "a result says which board it lives on"
+        );
         model.set_query("   ");
         assert!(!model.searching());
-        assert!(model.rows().iter().all(|r| r.list.is_none()));
+        assert!(
+            model
+                .rows()
+                .iter()
+                .all(|r| r.list.is_none() && r.title_mark.is_none())
+        );
+    }
+
+    #[test]
+    fn the_title_mark_splits_before_and_match_and_ignores_case() {
+        assert_eq!(
+            title_mark("Q3 Report final", "report"),
+            Some(("Q3 ".into(), "Report".into()))
+        );
+        assert_eq!(title_mark("Thanks", "xyz"), None);
+        assert_eq!(title_mark("Thanks", ""), None);
+        assert_eq!(title_mark("ab", "abc"), None);
     }
 
     #[test]

@@ -1,6 +1,7 @@
 //! The OS theme and the settings writes.
 
 use super::*;
+use crate::settings::RowDensity;
 use crate::toast::ToastMessage;
 
 // ---- The OS theme ------------------------------------------------------------------------
@@ -159,14 +160,10 @@ fn choosing_a_theme_applies_it_toasts_it_and_writes_it_after_the_quiet_time() {
 }
 
 #[test]
-fn row_density_is_a_setting_the_main_lists_and_the_panel_view_follow() {
+fn row_density_is_a_setting_the_main_lists_follow_and_the_panel_ignores() {
     let temp = tempfile::tempdir().expect("dir");
     let mut w = saving_world(temp.path());
     assert_eq!(w.ctl.main_screen().view_mode, ViewMode::Comfortable);
-    assert!(
-        !w.ctl.view().compact_rows,
-        "comfortable until told otherwise"
-    );
 
     w.ctl.set_row_density(RowDensity::Compact);
     assert_eq!(w.ctl.settings().row_density, RowDensity::Compact);
@@ -175,7 +172,11 @@ fn row_density_is_a_setting_the_main_lists_and_the_panel_view_follow() {
         ViewMode::Compact,
         "applied at once"
     );
-    assert!(w.ctl.view().compact_rows, "the Panel can read it later");
+    assert_eq!(
+        w.ctl.view().layout,
+        crate::settings::PanelLayout::List,
+        "the Panel's rows follow the Panel layout, not the Main list density"
+    );
     w.clock.set(at("2026-10-17T10:30:00.5Z"));
     w.ctl.save_settings_if_due();
     assert_eq!(
@@ -319,4 +320,26 @@ fn the_palette_command_keep_panel_open_switches_the_pin_both_ways() {
     w.ctl
         .run_command(crate::commands::Command::KeepPanelOpen, 0);
     assert!(w.ctl.view().on_top);
+}
+
+#[test]
+fn layout_setting_reaches_panel() {
+    let temp = tempfile::tempdir().expect("dir");
+    let mut w = saving_world(temp.path());
+    let view = w.ctl.view();
+    assert_eq!(
+        (view.layout, view.search_always, view.lists_in_menu),
+        (crate::settings::PanelLayout::List, false, false),
+        "List, search on typing and tabs are the defaults"
+    );
+    w.ctl.update_settings(|s| {
+        s.panel_layout = crate::settings::PanelLayout::Cards;
+        s.panel_search = crate::settings::PanelSearch::Always;
+        s.panel_switcher = crate::settings::PanelSwitcher::Menu;
+    });
+    let view = w.ctl.view();
+    assert_eq!(
+        (view.layout, view.search_always, view.lists_in_menu),
+        (crate::settings::PanelLayout::Cards, true, true)
+    );
 }

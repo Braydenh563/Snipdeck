@@ -64,6 +64,8 @@ export component TextField inherits VerticalLayout {
     // A host that cannot name the field (one of a repeated set) uses this instead of `focus()`. A field created
     // while it is above 0 takes focus when it appears.
     in property <int> focus-request: 0;
+    // Panel v2 search: a taller single-line box (36px) than the 28px form field.
+    in property <length> min-box-h: 0px;
 
     out property <bool> has-focus: input.has-focus;
     out property <bool> composing: input.preedit-text != "" || root.show-composing;
@@ -151,7 +153,7 @@ export component TextField inherits VerticalLayout {
 
     box := Rectangle {
         height: root.single-line
-            ? max(Space.hit, root.line-h + 2 * root.pad-y)
+            ? max(Space.hit, root.line-h + 2 * root.pad-y, root.min-box-h)
             : min(max(input.preferred-height, root.min-lines * root.line-h), root.max-lines * root.line-h) + 2 * root.pad-y;
         background: !root.enabled ? Theme.bg-sunken : root.composing ? Theme.accent-subtle : Theme.bg-surface;
         border-radius: Radius.md;

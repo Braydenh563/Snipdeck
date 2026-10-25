@@ -384,6 +384,7 @@ impl MainModel {
                 list_labels.insert(
                     l.id,
                     ListLabel {
+                        board: String::new(),
                         name: l.name.as_str().to_owned(),
                         accent: l.accent,
                     },

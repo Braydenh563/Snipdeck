@@ -955,7 +955,9 @@ fn click_at(window: &slint::Window, position: slint::LogicalPosition) {
     slint::platform::update_timers_and_animations();
 }
 
-const MENU_ROWS: [&str; 14] = [
+const MENU_ROWS: [&str; 16] = [
+    "Nothing to undo",
+    "Nothing to redo",
     "Open Snipdeck",
     "All commands\u{2026}",
     "New item",
@@ -1138,7 +1140,7 @@ fn pause_hotkeys_is_checked_while_paused() {
         open_menu(&r);
         let checked = |r: &Rig| {
             r.ui.get_app_menu_entries()
-                .row_data(6)
+                .row_data(9)
                 .expect("the Pause row")
                 .icon
                 .size()
@@ -1584,17 +1586,15 @@ fn ctrl_z_and_ctrl_y_take_a_delete_back_and_forward() {
         r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
         slint::platform::update_timers_and_animations();
         let before = r.titles();
-        assert!(!r.ui.get_can_undo() && !r.ui.get_can_redo());
+        assert!(r.ctl.borrow().view().history.undo.is_none());
 
         press(r.window(), &key(Key::Delete));
         assert_eq!(r.titles(), before[1..]);
-        assert!(r.ui.get_can_undo());
-        assert_eq!(r.ui.get_undo_tip(), "Undo delete (Ctrl+Z)");
+        assert!(r.ctl.borrow().view().history.undo.is_some());
 
         chord(r.window(), &[Key::Control], "z");
         assert_eq!(r.titles(), before);
-        assert!(r.ui.get_can_redo());
-        assert_eq!(r.ui.get_redo_tip(), "Redo delete (Ctrl+Y)");
+        assert!(r.ctl.borrow().view().history.redo.is_some());
 
         chord(r.window(), &[Key::Control], "y");
         assert_eq!(r.titles(), before[1..]);
@@ -1606,22 +1606,32 @@ fn ctrl_z_and_ctrl_y_take_a_delete_back_and_forward() {
 }
 
 #[test]
-fn the_header_buttons_are_named_by_the_step_and_disabled_when_empty() {
+fn the_more_menu_names_undo_and_redo_by_the_step_and_disables_them_when_empty() {
     on_ui_thread(|| {
         let r = rig();
-        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
-        slint::platform::update_timers_and_animations();
-        assert_eq!(r.ui.get_undo_tip(), "Nothing to undo");
-        assert_eq!(r.ui.get_redo_tip(), "Nothing to redo");
+        open_menu(&r);
         let before = r.titles();
+        for (label, i) in [("Nothing to undo", 0), ("Nothing to redo", 1)] {
+            assert_eq!(
+                menu_row(&r, label).accessible_enabled(),
+                Some(false),
+                "{label} is really disabled"
+            );
+            assert!(r.ui.get_app_menu_entries().row_data(i).unwrap().disabled);
+        }
+        click(r.window(), &r.button("More"));
+        assert!(!r.ui.get_app_menu_open());
 
         press(r.window(), &key(Key::Delete));
-        let undo = r.button("Undo delete (Ctrl+Z)");
+        click(r.window(), &r.button("More"));
+        let undo = menu_row(&r, "Undo delete (Ctrl+Z)");
         assert_eq!(undo.accessible_enabled(), Some(true));
-        undo.invoke_accessible_default_action();
+        click(r.window(), &undo);
         assert_eq!(r.titles(), before);
-        let redo = r.button("Redo delete (Ctrl+Y)");
-        redo.invoke_accessible_default_action();
+        assert!(!r.ui.get_app_menu_open(), "choosing a row closes the menu");
+
+        click(r.window(), &r.button("More"));
+        click(r.window(), &menu_row(&r, "Redo delete (Ctrl+Y)"));
         assert_eq!(r.titles(), before[1..]);
     });
 }
@@ -1634,15 +1644,15 @@ fn a_search_field_with_text_keeps_its_own_undo() {
         slint::platform::update_timers_and_animations();
         let before = r.titles();
         press(r.window(), &key(Key::Delete));
-        assert!(r.ui.get_can_undo());
+        assert!(r.ctl.borrow().view().history.undo.is_some());
 
         type_text(r.window(), "o");
         chord(r.window(), &[Key::Control], "z");
         assert!(
-            r.ui.get_can_undo(),
+            r.ctl.borrow().view().history.undo.is_some(),
             "Ctrl+Z in a field with text undoes the typing, not the delete"
         );
-        assert!(!r.ui.get_can_redo());
+        assert!(r.ctl.borrow().view().history.redo.is_none());
         assert_ne!(r.titles(), before);
     });
 }

@@ -218,6 +218,10 @@ export component ItemCard inherits Rectangle {
     // False where nothing is ever numbered (the Main window): the gutter and its rule are left out.
     in property <bool> numbered: true;
     in property <string> title;
+    // Search (Panel v2 spec 2.3): the first match in the title, as the text before it and the match itself. A span
+    // of `search.mark` is drawn behind the match (never an underline). Both empty = no mark.
+    in property <string> mark-before;
+    in property <string> mark-text;
     in property <string> preview;
     // Sensitive items show this (e.g. "•••• •••• 7f3a") until revealed.
     in property <string> masked-preview;
@@ -397,7 +401,7 @@ export component ItemCard inherits Rectangle {
     property <length> list-mark-w: (Space.s1 + Space.s0-5) * SystemLook.text-scale + Space.s1;
     // The list label takes what the title leaves (never below ~8 characters), and never so much
     // that the title would drop under its 12-character floor.
-    property <length> list-w: root.list-name == "" ? 0px : min(m-list.preferred-width + root.list-mark-w,
+    property <length> list-w: root.list-name == "" || root.qr ? 0px : min(m-list.preferred-width + root.list-mark-w,
         min(max(0px, root.row-w - root.min-title-w - root.label-gap),
             max(root.row-w - m-title.preferred-width - root.label-gap, Type.xs * 8)));
     property <length> list-reserve: root.list-w > 0px ? root.list-w + root.label-gap : 0px;
@@ -424,7 +428,9 @@ export component ItemCard inherits Rectangle {
     property <length> qr-band-y: root.qr-title-y + root.title-h;
     // The preview line's hit row: the actions are 32px boxes centred in it, never on the title line.
     property <length> qr-band-h: max(Space.s8, Type.line-sm + Space.s2);
-    property <length> qr-h: max(56px, root.qr-band-y + root.qr-band-h);
+    // A search result also says where it lives: a 16px "Board · List" line under the preview (68 tall in all).
+    property <bool> qr-where: root.qr && root.list-name != "";
+    property <length> qr-h: max(56px, root.qr-band-y + root.qr-band-h) + (root.qr-where ? Space.s3 : 0px);
     property <length> qr-right: root.width - root.pad-r;
     property <length> qr-eye-w: root.sensitive ? Space.s8 : 0px;
     // The action group, right-aligned and left of the eye: Copy (with a target), Edit, More.
@@ -697,6 +703,32 @@ export component ItemCard inherits Rectangle {
             }
         }
 
+        // The search match in the title: a span behind it, sized by the same font the title is drawn in.
+        m-mark-before := Text {
+            visible: false;
+            text: root.mark-before;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            font-weight: Type.medium;
+            wrap: no-wrap;
+        }
+        m-mark := Text {
+            visible: false;
+            text: root.mark-text;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            font-weight: Type.medium;
+            wrap: no-wrap;
+        }
+        if root.qr && root.mark-text != "" && root.mark-before.character-count < 200: Rectangle {
+            x: root.content-x + root.lead-w + min(m-mark-before.preferred-width, root.title-w);
+            y: root.qr-title-y;
+            width: max(0px, min(m-mark.preferred-width, root.title-w - m-mark-before.preferred-width));
+            height: root.title-h;
+            border-radius: 3px;
+            background: Theme.search-mark;
+        }
+
         // Title.
         Text {
             x: root.tile ? root.pad-x : root.content-x + root.lead-w;
@@ -742,11 +774,11 @@ export component ItemCard inherits Rectangle {
             name: root.list-name;
             mark: root.list-color;
             text-w: m-list.preferred-width;
-            max-w: root.tile ? max(0px, root.width - 2 * root.pad-x - root.more-reserve - 2 * Space.s4 - Space.s2) : root.list-w;
-            x: parent.width - root.pad-r - root.more-reserve - self.width;
-            y: root.compact ? (parent.height - self.height) / 2
+            max-w: root.qr ? root.row-w : root.tile ? max(0px, root.width - 2 * root.pad-x - root.more-reserve - 2 * Space.s4 - Space.s2) : root.list-w;
+            x: root.qr ? root.content-x + root.lead-w : parent.width - root.pad-r - root.more-reserve - self.width;
+            y: root.qr ? root.qr-band-y + (root.qr-band-h + Type.line-sm) / 2
+                : root.compact ? (parent.height - self.height) / 2
                 : root.tile ? root.pad-y + (root.top-h - self.height) / 2
-                : root.qr ? root.qr-title-y + (root.title-h - self.height) / 2
                 : root.pad-y + (root.title-h - self.height) / 2;
         }
 

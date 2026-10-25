@@ -31,6 +31,10 @@ pub enum HelpTopic {
 /// index in [`APP_MENU`] is the index the window reports.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppMenuEntry {
+    /// Take back the latest step of the history (Ctrl+Z); disabled while there is none.
+    Undo,
+    /// Redo the step taken back (Ctrl+Y); disabled while there is none.
+    Redo,
     /// Open the Main window.
     Open,
     /// Open the Main window on its command palette ("All commands…", Ctrl+K).
@@ -128,7 +132,10 @@ pub const LIST_MENU: [ListMenuEntry; 2] = [ListMenuEntry::Edit, ListMenuEntry::D
 
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
 /// `Menu` has no sub-menus.
-pub const APP_MENU: [AppMenuEntry; 16] = [
+pub const APP_MENU: [AppMenuEntry; 19] = [
+    AppMenuEntry::Undo,
+    AppMenuEntry::Redo,
+    AppMenuEntry::Separator,
     AppMenuEntry::Open,
     AppMenuEntry::Commands,
     AppMenuEntry::NewSnippet,
@@ -168,6 +175,12 @@ where
         }
     }
 
+    /// The footer's "Open Snipdeck" button: the Main window.
+    pub fn open_main_window(&mut self) -> Vec<Effect> {
+        self.menu = PanelMenu::None;
+        vec![Effect::OpenMainWindow]
+    }
+
     /// The user chose row `index` of [`APP_MENU`]. The menu closes (a line stays open).
     pub fn choose_app_menu(&mut self, index: usize) -> Vec<Effect> {
         let Some(entry) = APP_MENU.get(index).copied() else {
@@ -179,6 +192,14 @@ where
         }
         self.menu = PanelMenu::None;
         match entry {
+            AppMenuEntry::Undo => {
+                self.undo();
+                Vec::new()
+            }
+            AppMenuEntry::Redo => {
+                self.redo();
+                Vec::new()
+            }
             AppMenuEntry::Open => vec![Effect::OpenMainWindow],
             AppMenuEntry::Commands => vec![Effect::OpenCommands],
             AppMenuEntry::NewSnippet => vec![Effect::NewItem],

@@ -605,7 +605,6 @@ fn the_row_density_row_sets_the_setting_and_shows_what_is_stored() {
         r.ui.invoke_row_density_chosen(1);
         assert_eq!(r.ctl.borrow().settings().row_density, RowDensity::Compact);
         assert_eq!(r.ui.get_row_density_index(), 1);
-        assert!(r.ctl.borrow().view().compact_rows, "the Panel can read it");
         r.ui.invoke_row_density_chosen(0);
         assert_eq!(r.ui.get_row_density_index(), 0);
     });

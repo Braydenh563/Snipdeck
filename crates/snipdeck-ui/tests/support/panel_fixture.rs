@@ -143,6 +143,7 @@ pub fn pinned() -> Vec<PinnedItem> {
     ["Thanks, received", "Home address", "Retry helper"]
         .map(|title| PinnedItem {
             title: title.into(),
+            kind: ItemKind::Text,
         })
         .to_vec()
 }
@@ -152,6 +153,7 @@ pub fn pinned_n(n: usize) -> Vec<PinnedItem> {
     (1..=n)
         .map(|i| PinnedItem {
             title: format!("Pinned {i:02}").into(),
+            kind: ItemKind::Text,
         })
         .collect()
 }

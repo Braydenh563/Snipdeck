@@ -8,7 +8,7 @@
 
 use slint::{ComponentHandle, ModelRc, VecModel};
 use snipdeck_ui::{
-    PanelView, PanelWindow, SystemLook, ToastKind,
+    PanelLayout, PanelWindow, SystemLook, ToastKind,
     testing::{Frame, Harness, assert_golden},
 };
 
@@ -20,7 +20,6 @@ const SIZE: (u32, u32) = (320, 560);
 // Palette values from design/tokens/palette.json.
 const APP_LIGHT: [u8; 3] = [0xF5, 0xF3, 0xF1];
 const APP_DARK: [u8; 3] = [0x11, 0x0F, 0x0D];
-const SURFACE_LIGHT: [u8; 3] = [0xFB, 0xFA, 0xF7];
 const BORDER_SUBTLE_LIGHT: [u8; 3] = [0xDE, 0xDC, 0xD8];
 const BORDER_SUBTLE_DARK: [u8; 3] = [0x20, 0x1E, 0x1B];
 const BORDER_DEFAULT_LIGHT: [u8; 3] = [0xC6, 0xC4, 0xC0];
@@ -39,11 +38,9 @@ fn render(h: &Harness<PanelWindow>) -> Frame {
     h.render_settled()
 }
 
-/// The List layout's row (Panel v2): the default `view` stays compact until the layout setting replaces it.
+/// The shipped Panel: the List layout is the default.
 fn list_panel(size: (u32, u32), dark: bool) -> Harness<PanelWindow> {
-    let h = panel(size, dark);
-    h.component.set_view(PanelView::Comfortable);
-    h
+    panel(size, dark)
 }
 
 #[test]
@@ -149,14 +146,14 @@ fn panel_empty_list_and_no_results_and_no_lists() {
 }
 
 #[test]
-fn panel_long_titles_in_both_views() {
+fn panel_long_titles_in_both_layouts() {
     for (view, name) in [
-        (PanelView::Compact, "panel-awkward-compact-light"),
-        (PanelView::Comfortable, "panel-awkward-comfortable-light"),
+        (PanelLayout::Compact, "panel-awkward-compact-light"),
+        (PanelLayout::List, "panel-awkward-comfortable-light"),
     ] {
         let h = panel((300, 480), false);
         fixture::set_rows(&h.component, fixture::awkward_rows());
-        h.component.set_view(view);
+        h.component.set_layout(view);
         h.component.set_query("w".into());
         assert_golden(name, &render(&h));
     }
@@ -207,13 +204,120 @@ fn panel_with_an_overflowing_pinned_strip_shows_scroll_buttons_not_a_fade() {
     assert_golden("panel-pinned-overflow-light", &render(&h));
 }
 
+/// Search results as the app hands them over: every board is searched, each row says where it lives, and the match
+/// in the title is marked.
+fn search_rows() -> Vec<snipdeck_ui::PanelRow> {
+    let mut rows = fixture::sample_rows();
+    rows.truncate(3);
+    for (row, (before, found, list)) in rows.iter_mut().zip([
+        ("Thanks, ", "re", "Work · Email replies"),
+        ("Invoice ", "re", "Work · Email replies"),
+        ("Retry helper", "", "Home · Code"),
+    ]) {
+        row.mark_before = before.into();
+        row.mark_text = found.into();
+        row.list_name = list.into();
+        row.list_color = fixture::TEAL_600;
+    }
+    rows
+}
+
+#[test]
+fn panel_search_expanded_replaces_the_tabs_and_pins_and_marks_matches() {
+    for (dark, name) in [(false, "panel-search-light"), (true, "panel-search-dark")] {
+        let h = panel(SIZE, dark);
+        fixture::set_rows(&h.component, search_rows());
+        h.component.set_query("re".into());
+        h.component.set_selected_index(0);
+        let f = render(&h);
+        // Header 40, then the 72px search block; the list starts right under it (no tab row, no pinned strip).
+        let hairline = if dark {
+            BORDER_SUBTLE_DARK
+        } else {
+            BORDER_SUBTLE_LIGHT
+        };
+        assert_eq!(
+            f.pixel(160, HEADER_H + 72 - 1),
+            hairline,
+            "the block's bottom hairline sits at y={} (dark={dark})",
+            HEADER_H + 71
+        );
+        assert_golden(name, &f);
+    }
+}
+
+#[test]
+fn a_search_match_is_a_filled_span_not_an_underline() {
+    let h = panel(SIZE, false);
+    fixture::set_rows(&h.component, search_rows());
+    h.component.set_query("re".into());
+    h.component.set_selected_index(2);
+    let f = render(&h);
+    // Palette: search.mark light is blue-300.
+    const MARK: [u8; 3] = [0xAB, 0xCD, 0xFE];
+    let top = HEADER_H + 72;
+    let (mut filled, mut lines) = (0, 0);
+    for y in top..top + 30 {
+        let run = (8..312).filter(|&x| f.pixel(x, y) == MARK).count();
+        if run > 6 {
+            filled += 1;
+        }
+        // An underline would be a thin full-width-of-the-word run on one row only.
+        if run > 6 && (f.pixel(0, y) == MARK) {
+            lines += 1;
+        }
+    }
+    assert!(
+        filled >= 12,
+        "the span is a block at least 12px tall behind the match: {filled}"
+    );
+    assert_eq!(lines, 0);
+}
+
+#[test]
+fn panel_search_always_shows_a_44px_strip_and_keeps_tabs_and_pins() {
+    let h = panel(SIZE, false);
+    h.component.set_search_always(true);
+    let f = render(&h);
+    // Tabs bottom hairline sits under the 44px strip, header 40 + strip 44 + tabs 32.
+    assert_eq!(
+        f.pixel(160, HEADER_H + 44 + 32 - 1),
+        BORDER_SUBTLE_LIGHT,
+        "tab row follows the strip"
+    );
+    assert_golden("panel-search-always-light", &f);
+}
+
+#[test]
+fn panel_undo_toast_in_dark() {
+    let h = panel(SIZE, true);
+    h.component
+        .set_toast_text("Moved “Q3 report” to Addresses".into());
+    h.component.set_toast_undo_label("Undo".into());
+    h.component.set_toast_kind(ToastKind::Neutral);
+    let f = render(&h);
+    // The ink toast: 40 tall, inset 12 from both sides, 8 above the footer. Dark ink is the light neutral.
+    let (left, y) = (12 + 2, SIZE.1 - FOOTER_H - 8 - 20);
+    assert_eq!(
+        f.pixel(left, y),
+        [0xEB, 0xE9, 0xE7],
+        "ink fill at the toast's left inset"
+    );
+    assert_ne!(
+        f.pixel(8, y),
+        [0xEB, 0xE9, 0xE7],
+        "nothing left of the 12px inset"
+    );
+    assert_golden("panel-undo-toast-dark", &f);
+}
+
 /// Hover the close button (the last 28px square in the header, 8px from the right edge) and look under it.
 /// One Harness per test: the frozen clock restarts at zero with each one.
 fn tooltip_under_the_close_button(dark: bool, ink: [u8; 3]) {
     use slint::{LogicalPosition, platform::WindowEvent};
     let h = panel(SIZE, dark);
     let _ = render(&h);
-    let at = LogicalPosition::new(298.0, 18.0); // 320 - 8 - 14: the close button's centre
+    let at = LogicalPosition::new(300.0, 20.0); // 320 - 4 - 16: the 32px close button's centre
     h.component
         .window()
         .dispatch_event(WindowEvent::PointerMoved { position: at });
@@ -243,15 +347,9 @@ fn a_hovered_header_button_shows_an_ink_tooltip_under_it_inside_the_window_dark(
 
 // ---- Measurements ----------------------------------------------------------------------------
 
-// Layout of the populated Panel at 320 wide (ui/panel.slint): header 40, search 28 + 8 below, tab bar 32,
-// pinned strip 24 + 2 x 4, then the list 4px in, 8px from each side; the footer is the last 32px.
+// Layout of the populated Panel at 320 wide (ui/panel.slint, spec 2.1-2.6): header 40, tabs 32, pinned strip 36,
+// then the list; the footer is the last 32px. The search is collapsed to nothing until it is used.
 const HEADER_H: u32 = 40;
-const SEARCH_H: u32 = 36;
-const TABS_H: u32 = 32;
-const PINNED_H: u32 = 32;
-const LIST_TOP: u32 = HEADER_H + SEARCH_H + TABS_H + PINNED_H + 4;
-const LIST_X: u32 = 8;
-const ROW_H: u32 = 28;
 const FOOTER_H: u32 = 32;
 
 #[test]
@@ -300,44 +398,6 @@ fn the_footer_is_32px_with_a_subtle_hairline_on_top() {
             f.pixel(x, top - 1),
             hairline,
             "and not above it (dark={dark})"
-        );
-    }
-}
-
-#[test]
-fn rows_are_28px_with_a_gutter_rule_and_the_selected_row_has_an_accent_border() {
-    let h = panel(SIZE, false);
-    h.component.set_selected_index(1);
-    let f = render(&h);
-    let (top, bottom) = (LIST_TOP + ROW_H, LIST_TOP + 2 * ROW_H - 1);
-    // Selected row: a 1px accent outline exactly one row tall, inset 8px from the window.
-    for (x, y, what) in [
-        (100, top, "top edge"),
-        (100, bottom, "bottom edge"),
-        (LIST_X, top + ROW_H / 2, "left edge"),
-    ] {
-        assert_eq!(f.pixel(x, y), ACCENT, "selected row {what}");
-    }
-    assert_ne!(f.pixel(100, top - 1), ACCENT, "nothing above the outline");
-    assert_ne!(
-        f.pixel(100, bottom + 1),
-        ACCENT,
-        "nothing below the outline"
-    );
-    // Unselected rows are plain surface with no outline.
-    assert_eq!(f.pixel(200, LIST_TOP + 4), SURFACE_LIGHT, "first row fill");
-    assert_ne!(
-        f.pixel(LIST_X, LIST_TOP + 14),
-        ACCENT,
-        "first row has no outline"
-    );
-    // The gutter rule: a subtle 1px line 24px in, on selected and unselected rows alike.
-    let rule = LIST_X + 24;
-    for y in [LIST_TOP + 14, top + 14] {
-        assert_eq!(
-            f.pixel(rule, y),
-            BORDER_SUBTLE_LIGHT,
-            "gutter rule at y={y}"
         );
     }
 }

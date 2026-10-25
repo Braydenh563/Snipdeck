@@ -417,6 +417,22 @@ fn an_operation_whose_refresh_fails_ends_with_the_not_refreshed_notice() {
 }
 
 #[test]
+fn a_keyboard_reorder_whose_refresh_fails_ends_with_the_not_refreshed_notice() {
+    let mut w = world();
+    // A first move works and says where the row went; the second one's refresh fails.
+    w.ctl.panel_move_selected(1);
+    assert!(matches!(shown(&w), Some(ToastMessage::ItemPlaced { .. })));
+    FAIL_REFRESH.set(true);
+    w.ctl.panel_move_selected(1);
+    FAIL_REFRESH.set(false);
+    assert_eq!(
+        shown(&w),
+        Some(ToastMessage::NotRefreshed),
+        "the move worked but the list on screen is stale: never \"moved to position N\""
+    );
+}
+
+#[test]
 fn a_toast_with_an_undo_button_always_shows() {
     let mut w = world();
     w.ctl.show_toast(failed());

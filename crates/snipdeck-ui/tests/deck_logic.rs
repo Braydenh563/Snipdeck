@@ -492,26 +492,13 @@ fn deck_parts_report_clicks_menus_and_have_accessible_names() {
     });
     assert_eq!(ui.get_last(), "sidebar-menu:Recent");
 
-    // Keyboard focus walks the chips and scrolls the last, partly hidden one into view.
-    assert_eq!(ui.get_strip_scroll(), 0.0, "strip starts unscrolled");
-    for _ in 0..9 {
-        ui.window().dispatch_event(WindowEvent::KeyPressed {
-            text: Key::Tab.into(),
-        });
-        ui.window().dispatch_event(WindowEvent::KeyReleased {
-            text: Key::Tab.into(),
-        });
-    }
-    assert!(
-        ui.get_strip_scroll() > 0.0,
-        "focusing the last chip scrolls the strip: {}",
-        ui.get_strip_scroll()
-    );
-    // Enter on the focused chip uses it.
-    ui.window().dispatch_event(WindowEvent::KeyPressed {
-        text: Key::Return.into(),
-    });
-    assert_eq!(ui.get_last(), "pinned:6");
+    // Past two chips the strip says how many are left, as a button that asks the host for them.
+    let more = ElementHandle::find_by_accessible_label(&ui, "+5 more")
+        .find(|e| e.accessible_role() == Some(AccessibleRole::Button))
+        .expect("the +N more button");
+    assert!(more.size().height >= 24.0 && more.size().width >= 24.0);
+    more.invoke_accessible_default_action();
+    assert_eq!(ui.get_last(), "pinned-more");
 }
 
 fn at_225_percent_text_the_rows_grow_and_stay_hittable() {

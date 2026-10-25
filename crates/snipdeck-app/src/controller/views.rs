@@ -225,9 +225,12 @@ pub struct View {
     pub marked_count: usize,
     /// The rows show their 1 to 9 numbers (the `show_numbers` setting).
     pub show_numbers: bool,
-    /// The rows are compact (the `row_density` setting). The Panel does not draw rows by it yet;
-    /// the property is here for its redesign to read.
-    pub compact_rows: bool,
+    /// The Panel's layout (Settings > Panel > Layout).
+    pub layout: crate::settings::PanelLayout,
+    /// The search field is always shown (Settings > Panel > Search field).
+    pub search_always: bool,
+    /// The lists are chosen from a menu, not a tab row (Settings > Panel > Lists).
+    pub lists_in_menu: bool,
     /// The context menu of a list tab while it is open ([`LIST_MENU`](crate::controller::LIST_MENU)).
     pub list_menu: Option<Vec<ListMenuEntry>>,
     /// The list menu's "Delete list…" confirmation while it asks (the Panel draws it; no
@@ -237,9 +240,6 @@ pub struct View {
     pub board_delete: Option<BoardDeleteView>,
     /// "Pause hotkeys" is on (its menu row is checked).
     pub hotkeys_paused: bool,
-    /// The Picker's configured hotkey as text ("Ctrl+Shift+Space"), empty while it is off: the
-    /// Panel's footer names it so the user learns it works anywhere.
-    pub picker_chord: String,
     /// The Picker, while it is open.
     pub picker: Option<PickerView>,
     /// The template fill form, while it is open.

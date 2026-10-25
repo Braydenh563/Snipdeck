@@ -23,7 +23,7 @@ use slint::{
     platform::{Key, PointerEventButton, WindowEvent},
 };
 use snipdeck_ui::{
-    ChoiceEntry, PanelView, PanelWindow, PinnedItem, RecentRow, ResizeEdge, ToastKind,
+    ChoiceEntry, PanelLayout, PanelWindow, PinnedItem, RecentRow, ResizeEdge, ToastKind,
 };
 
 #[path = "support/mod.rs"]
@@ -187,7 +187,7 @@ fn rows(ui: &PanelWindow) -> Vec<ElementHandle> {
 fn start_quiet() -> (PanelWindow, Log) {
     let (ui, log) = start();
     ui.window().set_size(slint::LogicalSize::new(320.0, 560.0));
-    ui.set_view(PanelView::Comfortable);
+    ui.set_layout(PanelLayout::List);
     settle();
     (ui, log)
 }
@@ -594,26 +594,6 @@ ui_tests! {
         assert!(!missing(&ui, "New item in Work", AccessibleRole::Button), "Esc folds the box back to the row");
     }
 
-    fn the_footer_names_the_pickers_configured_hotkey_only_when_there_is_one() {
-        let (ui, _log) = start();
-        ui.window().set_size(slint::LogicalSize::new(460.0, 480.0));
-        settle();
-        let hint = |ui: &PanelWindow| all(ui, "Control Shift Space", AccessibleRole::Text).len();
-        assert_eq!(hint(&ui), 0, "no chord set, no hint");
-        ui.set_picker_keys(ModelRc::new(VecModel::from(
-            ["Ctrl", "Shift", "Space"].map(slint::SharedString::from).to_vec(),
-        )));
-        ui.set_picker_spoken("Control Shift Space".into());
-        assert_eq!(hint(&ui), 1, "the caps are spoken as the chord");
-        assert_eq!(
-            all(&ui, "Picker anywhere", AccessibleRole::Text).len(),
-            1,
-            "the words beside the caps are read too"
-        );
-        ui.set_picker_keys(ModelRc::new(VecModel::from(Vec::<slint::SharedString>::new())));
-        assert_eq!(hint(&ui), 0, "switching the hotkey off removes the hint");
-    }
-
     fn enter_uses_the_selected_row_and_shift_enter_only_copies() {
         let (ui, log) = start();
         press(ui.window(), &key(Key::DownArrow));
@@ -915,17 +895,18 @@ ui_tests! {
         assert!(!missing(&ui, "Pastes into Outlook", AccessibleRole::Text));
         ui.set_target_name("".into());
         settle();
-        assert!(!missing(&ui, "Copies to clipboard", AccessibleRole::Text));
+        assert!(!missing(&ui, "No target: click copies", AccessibleRole::Text));
         assert!(missing(&ui, "Pastes into Outlook", AccessibleRole::Text));
+        // A search with no match: the footer says Enter creates the item from the query.
+        fixture::set_rows(&ui, Vec::new());
+        ui.set_query("invoice no. 7".into());
+        settle();
+        assert!(!missing(&ui, "Enter creates \u{201c}invoice no. 7\u{201d}", AccessibleRole::Text));
     }
 
     fn the_footer_sits_fully_inside_the_window_at_the_default_size_for_every_scale() {
         use slint::platform::WindowEvent;
         let (ui, _log) = start();
-        ui.set_picker_keys(ModelRc::new(VecModel::from(
-            ["Ctrl", "Alt", "Space"].map(slint::SharedString::from).to_vec(),
-        )));
-        ui.set_picker_spoken("Control Alt Space".into());
         for (scale, w_px, h_px) in [(1.0_f32, 320_u32, 480_u32), (1.25, 400, 600), (1.5, 480, 720)] {
             for text in [1.0_f32, 1.5, 2.25] {
                 ui.window()
@@ -943,12 +924,10 @@ ui_tests! {
                 let ctx = format!("scale {scale}, text {text}");
                 assert!(pos.x >= -0.5 && pos.x + size.width <= win.width + 0.5, "{ctx}: footer inside horizontally {pos:?} {size:?} {win:?}");
                 assert!(pos.y >= 0.0 && pos.y + size.height <= win.height + 0.5, "{ctx}: footer inside vertically");
-                for label in ["Shift Enter", "Control Alt Space"] {
-                    for hint in all(&ui, label, AccessibleRole::Text) {
-                        let (p, z) = (hint.absolute_position(), hint.size());
-                        assert!(p.x + z.width <= win.width + 0.5, "{ctx}: {label} not clipped");
-                    }
-                }
+                let open = find(&ui, "Open Snipdeck", AccessibleRole::Button);
+                let (p, z) = (open.absolute_position(), open.size());
+                assert!(p.x + z.width <= win.width + 0.5, "{ctx}: Open Snipdeck not clipped");
+                assert!(p.y + z.height <= win.height + 0.5, "{ctx}: Open Snipdeck inside vertically");
             }
         }
         ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(1.0);
@@ -978,11 +957,11 @@ ui_tests! {
 
     // ---- CJK (measured, never a golden: system fallback fonts differ per machine) -----------------
 
-    fn cjk_rows_stay_hittable_inside_the_panel_in_both_views() {
+    fn cjk_rows_stay_hittable_inside_the_panel_in_every_layout() {
         let (ui, _log) = start();
         fixture::set_rows(&ui, fixture::cjk_rows());
-        for view in [PanelView::Compact, PanelView::Comfortable] {
-            ui.set_view(view);
+        for view in [PanelLayout::List, PanelLayout::Compact, PanelLayout::Cards] {
+            ui.set_layout(view);
             settle();
             let list = rows(&ui);
             assert_eq!(list.len(), 3, "{view:?}: three CJK rows");

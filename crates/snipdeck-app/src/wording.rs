@@ -406,6 +406,7 @@ pub fn app_menu_text(
     use crate::controller::AppMenuEntry;
     let t = MenuTexts::get(window);
     match entry {
+        AppMenuEntry::Undo | AppMenuEntry::Redo => return String::new(),
         AppMenuEntry::Open => t.invoke_app_open(),
         AppMenuEntry::Commands => t.invoke_app_commands(),
         AppMenuEntry::NewSnippet => t.invoke_app_new_snippet(),

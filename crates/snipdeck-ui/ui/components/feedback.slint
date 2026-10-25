@@ -22,6 +22,8 @@ export component Toast inherits Rectangle {
     in property <ToastPhase> phase: ToastPhase.hold;
     // Label of the Undo button, translated by the host. Empty hides the button.
     in property <string> undo-label;
+    // Panel v2 spec 2.8: the ink toast (40 tall, `ink.default` fill, `text.on-ink`, the action in `toast.action`).
+    in property <bool> ink: false;
     // DESIGN.md §4: the host keeps a toast in `hold` for this long.
     out property <duration> hold-duration: 2500ms;
     callback undo();
@@ -34,14 +36,16 @@ export component Toast inherits Rectangle {
     property <bool> over: area.has-hover || root.button-focus;
     changed over => { root.hover-changed(root.over); }
 
-    property <color> fg: root.kind == ToastKind.success ? Theme.success-fg
+    property <color> fg: root.ink ? Theme.text-on-ink
+        : root.kind == ToastKind.success ? Theme.success-fg
         : root.kind == ToastKind.danger ? Theme.danger-fg : Theme.text-primary;
 
-    min-width: 160px;
-    background: root.kind == ToastKind.success ? Theme.success-bg
+    min-width: root.ink ? 0px : 160px;
+    background: root.ink ? Theme.ink
+        : root.kind == ToastKind.success ? Theme.success-bg
         : root.kind == ToastKind.danger ? Theme.danger-bg : Theme.bg-overlay;
     border-radius: Radius.lg;
-    border-width: 1px;
+    border-width: root.ink ? 0px : 1px;
     border-color: root.kind == ToastKind.neutral ? Theme.border-default : root.fg.with-alpha(0.35);
     opacity: root.phase == ToastPhase.exit ? 0.0 : 1.0;
     accessible-role: AccessibleRole.text;
@@ -51,14 +55,14 @@ export component Toast inherits Rectangle {
     animate opacity { duration: root.phase == ToastPhase.exit ? Motion.fade : Motion.quick; easing: Motion.out; }
 
     preferred-width: row.preferred-width;
-    preferred-height: row.preferred-height;
+    preferred-height: root.ink ? Space.s8 + Space.s2 : row.preferred-height;
 
     area := TouchArea {
         row := HorizontalLayout {
             padding-left: Space.s3;
             padding-right: root.undo-label != "" ? Space.s1 : Space.s3;
-            padding-top: Space.s2;
-            padding-bottom: Space.s2;
+            padding-top: root.ink ? 0px : Space.s2;
+            padding-bottom: root.ink ? 0px : Space.s2;
             spacing: Space.s2;
             Rectangle {
                 width: 16px;
@@ -73,12 +77,54 @@ export component Toast inherits Rectangle {
                 text: root.text;
                 color: root.fg;
                 font-family: Fonts.sans;
-                font-size: Type.base;
+                font-size: root.ink ? Type.sm : Type.base;
                 vertical-alignment: center;
-                wrap: word-wrap;
+                wrap: root.ink ? TextWrap.no-wrap : TextWrap.word-wrap;
                 overflow: elide;
             }
-            if root.undo-label != "": Button {
+            if root.undo-label != "" && root.ink: Rectangle {
+                width: ink-action.preferred-width + 2 * Space.s2 + Space.s0-5;
+                height: Space.s6 + Space.s1;
+                y: (parent.height - self.height) / 2;
+                border-radius: Radius.md;
+                background: ink-touch.pressed ? Theme.ink-pressed : ink-touch.has-hover ? Theme.ink-hover : transparent;
+                forward-focus: ink-scope;
+                accessible-role: button;
+                accessible-label: root.undo-label;
+                accessible-action-default => { root.undo(); }
+                changed ink-focus => { root.button-focus = self.ink-focus; }
+                property <bool> ink-focus: ink-scope.has-focus;
+                ink-action := Text {
+                    x: Space.s2 + Space.s0-5 / 2;
+                    width: self.preferred-width;
+                    height: parent.height;
+                    text: root.undo-label;
+                    color: Theme.toast-action;
+                    font-family: Fonts.sans;
+                    font-size: Type.sm;
+                    font-weight: Type.medium;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+                Rectangle {
+                    border-width: ink-scope.has-focus ? 2px : 0px;
+                    border-color: Theme.toast-action;
+                    border-radius: Radius.md;
+                    background: transparent;
+                }
+                ink-touch := TouchArea { clicked => { root.undo(); } }
+                ink-scope := FocusScope {
+                    focus-on-click: false;
+                    key-pressed(event) => {
+                        if (event.text == " " || event.text == "\n") {
+                            root.undo();
+                            return accept;
+                        }
+                        return reject;
+                    }
+                }
+            }
+            if root.undo-label != "" && !root.ink: Button {
                 text: root.undo-label;
                 variant: ButtonVariant.ghost;
                 size: ButtonSize.sm;
