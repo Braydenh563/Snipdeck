@@ -50,6 +50,10 @@ date at the real release. The owner capped this session at 96% weekly usage; the
 - Night log 3: committed A f1952a3 Alt+Tab, B 9a24536 Picker side, C 6070260 Dock, D 3a9a2ba review fixes,
   E bf86bae+208709e feedback confirmations (docs/reviews/feedback-audit.md), f819551 clippy 1.99.1 + picker/fill
   tests, 29705ec goldens. Gate + push pending. Windows-only to test: Alt+Tab Target, Dock work-area memory.
+- Night log 4: pushed through 2f.. (gate OK). dc6df43 predictability (vanished monitor, parked frames, Reset ends
+  drag). Owner 2026-10-25 delegated the Panel pick and asked for v1.0.1 + v1.1 now and layout/access options in
+  Settings: spec docs/reviews/panel-v2-spec.md (ea63898). Queue = .claude/work-order.md (review fixes F, Panel v2
+  slices 1-9, v1.0.1, v1.1, final polish).
 
 - To wire in the Panel build (after the redesign is approved): the row density setting. It is labelled "Main list
   density" now (Settings, View menu, palette) because the Panel does not read it: `panel.slint` `compact-rows` is
