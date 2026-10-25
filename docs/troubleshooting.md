@@ -45,7 +45,7 @@ folder, wait and run the command again.
 ## The Panel and hotkeys
 
 **I cannot see the Panel.** It is probably hidden, not gone. Closing the Panel (or `Esc` with an empty
-search) hides it to the tray. Press `Ctrl+Alt+Space`, left-click the Snipdeck icon in the notification area
+search) hides it to the tray. Press `Ctrl+Shift+Y`, left-click the Snipdeck icon in the notification area
 (it may be under the `^` arrow), or right-click it and choose **Open Panel**. If none of that works, the
 hotkeys may be paused: choose **Pause hotkeys** in the tray menu to switch them back on. If there is no tray
 icon, closing the Panel quits Snipdeck, so start it again with `Snipdeck.bat`. Starting a second copy also
@@ -67,7 +67,7 @@ under Settings, **Panel dock**.
 **A sensitive item shows no text.** Lists hide it. Hold `Space` on its row in the Main window to reveal it.
 
 **The Panel opens off screen or on the wrong monitor.** Snipdeck remembers the Panel's size and place for each
-monitor and keeps it inside the monitor. After you unplug a monitor, press `Ctrl+Alt+Space` once. If it is
+monitor and keeps it inside the monitor. After you unplug a monitor, press `Ctrl+Shift+Y` once. If it is
 still out of reach, quit from the tray and start Snipdeck again.
 
 **A toast says a hotkey "is used by another app".** Another program already owns that combination, so
@@ -82,8 +82,8 @@ Settings, **Shortcuts**: an empty field means the hotkey is off.
 target runs as administrator, or when the program is set to **Never paste** under Settings, **Programs**. The message says
 which. The Panel footer shows where a click will go.
 
-**Ctrl+Alt+V does nothing, or pastes in Word's Paste Special.** Paste next is a Supporter feature, so on the Free
-plan Snipdeck does not register `Ctrl+Alt+V` and other programs keep it. Enter a key in Settings, **Licence**.
+**Ctrl+Shift+U does nothing (or an old Ctrl+Alt+V pastes in Word's Paste Special).** Paste next is a Supporter feature, so on the Free
+plan Snipdeck does not register the Paste next chord and other programs keep it (installs from before 1.1 may still have `Ctrl+Alt+V`; change it in Settings, **Shortcuts**). Enter a key in Settings, **Licence**.
 
 **Text does not paste in my terminal.** Some terminals need another paste key. Settings, **Programs**, lists a row
 per program: add the program's file name and pick **Ctrl+Shift+V** or **Shift+Insert**.

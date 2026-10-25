@@ -187,8 +187,14 @@ msgstr "Tablero guardado"
 msgid "Board: {}"
 msgstr "Tablero: {}"
 
+msgid "Board: {}, list: {}"
+msgstr ""
+
 msgid "Boards"
 msgstr "Tableros"
+
+msgid "Boards and lists"
+msgstr ""
 
 msgid "Bottom edge"
 msgstr "Borde inferior"

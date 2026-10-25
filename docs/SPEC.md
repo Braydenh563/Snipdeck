@@ -16,7 +16,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 2. **Never steal focus.** Using the panel must not disturb the app the user is typing in.
 3. **Native, light, instant.** No web runtime, no server, no network port. Strict perf budget (§9).
 4. **Local-first & private.** No account, no telemetry, data on disk in an open format.
-5. **Library first, history second.** Curated items are the product; clipboard history is an opt-in inbox.
+5. **Library first, history second.** Curated items are the product; clipboard history is a local inbox, on for new installs and off with one switch.
 
 ## 3. Platforms
 
@@ -39,7 +39,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 | **Tag** | Free-form label across Boards; filterable. |
 | **Pinned** | Item shown in the panel's favourites strip, above list order. |
 | **Sensitive** | Item that is masked and excluded from history; its clipboard copy is cleared after N s (default 30, Settings > Privacy); encrypted at rest (all tiers). |
-| **Recent inbox** | Opt-in clipboard history. Last 200 entries or 7 days (configurable). Promote → List. |
+| **Recent inbox** | Clipboard history (on for new installs; Settings and the welcome tour turn it off). Last 200 entries or 7 days (configurable). Promote → List. |
 | **Panel** | Small dockable, always-on-top, non-activating window showing a Board (lists as tabs). |
 | **Floating list** | A List detached from the Panel into its own mini-panel (Supporter). |
 | **Picker** | Hotkey-summoned, keyboard-first popup at the cursor: type to filter, Enter to paste. |
@@ -76,7 +76,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - **Paste** = write item to clipboard → paste key into Target → **restore the previous clipboard**. A fixed 300 ms wait is only the fallback: the primary signal is **delayed rendering** (the item's formats are rendered on demand and the previous clipboard is restored once the target has asked for them, with a 2 s cap), because slow targets such as Remote Desktop may otherwise receive the old content (M0 S1). **(unverified)**
 - **Copy** (`Shift+click`, `Shift+Enter`, or no Target) = item stays on the clipboard.
 - **Paste as plain text:** `Alt+click` / `Alt+Enter`; per-item "always paste as plain text" option.
-- **Paste stack (Supporter):** multi-select items → "Start stack". The panel shows the queue; the global **Paste next** hotkey (default `Ctrl+Alt+V`) pastes the head and advances. `Ctrl+V` is never hooked. `Esc` in the panel or finishing the queue ends the stack.
+- **Paste stack (Supporter):** multi-select items → "Start stack". The panel shows the queue; the global **Paste next** hotkey (default `Ctrl+Shift+U`) pastes the head and advances. `Ctrl+V` is never hooked. `Esc` in the panel or finishing the queue ends the stack.
 - Elevated targets (UIPI) and failures fall back to Copy with an explaining toast ("Couldn't paste into Task Manager (runs as admin). Copied instead.").
 
 ### 5.2 Picker
@@ -106,7 +106,8 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - OCR engine: **Windows.Media.Ocr** by default (zero bundle cost); optional **RapidOCR pack**
   (ONNX, downloaded on demand) for messy layouts / unsupported languages (ADR-0004).
 
-### 5.6 Recent inbox (opt-in, off by default)
+### 5.6 Recent inbox (on for new installs, one switch to turn off)
+- On by default for a **new install** only; a settings file from an older build that does not name `recent_history` keeps it off. The welcome tour (step 4) says so and has the switch. Default chords for a new install: Show/hide Panel `Ctrl+Shift+Y`, Picker `Ctrl+Shift+Space`, Paste next `Ctrl+Shift+U`, none use Ctrl+Alt (AltGr on many layouts; `docs/reviews/default-chords.md`); an existing file keeps its chords.
 - Listens to clipboard changes; dedupes; skips sources that set
   `ExcludeClipboardContentFromMonitorProcessing` / `CanIncludeInClipboardHistory=0` (password managers),
   excluded apps, and Sensitive items.

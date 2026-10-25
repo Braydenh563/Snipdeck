@@ -110,7 +110,7 @@ it switches to the opposite side when there is no room. Where an app shows no ca
 
 ### Paste next (Supporter)
 
-`Ctrl+Alt+V` pastes the next item of the pinned strip (or, with nothing pinned, of the list you are looking
+`Ctrl+Shift+U` pastes the next item of the pinned strip (or, with nothing pinned, of the list you are looking
 at), one per press. After the last one, a message says so and the next press starts again.
 
 ### Paste stack (Supporter)
@@ -120,7 +120,7 @@ A paste stack is a queue you choose yourself.
 1. In the Panel, open an item's menu and choose **Add to paste stack**. Do this for each item. The Panel
    shows how many are marked. Choose **Remove from paste stack** to take one out.
 2. Press **Start stack** in the strip that appears.
-3. Press `Ctrl+Alt+V` once for each item. The strip shows "2 of 5 · next: Title".
+3. Press `Ctrl+Shift+U` once for each item. The strip shows "2 of 5 · next: Title".
 
 `Esc` in the Panel, the **End stack** button, or pasting the last item ends the stack. **Clear** drops the
 marks before you start. On the Free plan, Start stack tells you it is a Supporter feature.
@@ -187,10 +187,10 @@ only if the Free plan has room for it.
 
 ## Recent
 
-The Recent inbox keeps the text you copy in other programs, so you can find it again. It is **off by default**.
+The Recent inbox keeps the text you copy in other programs, so you can find it again. It is **on by default for a new install** (an install that existed before keeps its choice). Passwords from password managers and Sensitive items are never kept.
 
-- **Turn it on.** Settings ▸ **Recent** ▸ **Keep a Recent inbox of what you copy**, or the **Clipboard history**
-  step of the welcome tour. Nothing is collected before that.
+- **Turn it off (or on).** Settings ▸ **Recent** ▸ **Keep a Recent inbox of what you copy**, or the **Clipboard
+  history** step of the welcome tour. Nothing is collected while it is off.
 - **Where it shows.** A **Recent** entry in the Main window's sidebar, and a clock tab in the Panel. The newest
   copy is first, with the program it came from. Click a row to copy it. The menu (right-click, `Menu` or
   `Shift+F10`) has **Copy**, **Save to…** (put it in a list as a normal item) and **Remove from Recent**.
@@ -349,10 +349,10 @@ the history on under Windows Settings ▸ System ▸ Clipboard. For what you cop
 
 | Where | Keys | Action |
 |---|---|---|
-| Anywhere | `Ctrl+Alt+Space` | Show or hide the Panel |
+| Anywhere | `Ctrl+Shift+Y` | Show or hide the Panel |
 | Anywhere | `Ctrl+Shift+Space` | Open the Picker |
 | Anywhere | none until you set one | Save the clipboard text as a new item (Capture) |
-| Anywhere | `Ctrl+Alt+V` | Paste next, or the next item of a paste stack (Supporter; not registered on the Free plan) |
+| Anywhere | `Ctrl+Shift+U` | Paste next, or the next item of a paste stack (Supporter; not registered on the Free plan) |
 | Panel | `Up`, `Down`, `PageUp`, `PageDown` | Move the selection |
 | Panel | `Enter`, `Shift+Enter` | Use, or copy only |
 | Panel | `Alt+1` to `Alt+9` | Use that row (digits without `Alt` are search text) |

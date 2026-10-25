@@ -195,15 +195,28 @@ impl HotkeyAction {
         Self::PasteNext,
     ];
 
-    /// The default chord (SPEC §5). Empty means off: Capture saves the clipboard text without
-    /// asking, so it only works once the user has chosen a chord (SPEC 5.5).
+    /// The default chord for a new install (SPEC §5; `docs/reviews/default-chords.md` says why
+    /// none uses Ctrl+Alt, which is AltGr on many layouts). Empty means off: Capture saves the
+    /// clipboard text without asking, so it only works once the user has chosen a chord
+    /// (SPEC 5.5).
     #[must_use]
     pub const fn default_chord(self) -> &'static str {
         match self {
-            Self::TogglePanel => "Ctrl+Alt+Space",
+            Self::TogglePanel => "Ctrl+Shift+Y",
             Self::Picker => "Ctrl+Shift+Space",
             Self::Capture => "",
+            Self::PasteNext => "Ctrl+Shift+U",
+        }
+    }
+
+    /// The chord a settings file written before the Ctrl+Alt-free defaults gets for an action it
+    /// does not mention, so an existing install keeps what it had.
+    #[must_use]
+    const fn legacy_chord(self) -> &'static str {
+        match self {
+            Self::TogglePanel => "Ctrl+Alt+Space",
             Self::PasteNext => "Ctrl+Alt+V",
+            Self::Picker | Self::Capture => self.default_chord(),
         }
     }
 }
@@ -640,7 +653,8 @@ pub struct Settings {
     /// `programs` on load, and then only mirrors them for the code that routes a paste.
     #[serde(skip_serializing)]
     pub no_paste_apps: Vec<String>,
-    /// The Recent inbox is on: Snipdeck keeps the text you copy (SPEC 5.6). Off by default.
+    /// The Recent inbox is on: Snipdeck keeps the text you copy (SPEC 5.6). On for a new install;
+    /// a settings file without the key keeps it off ([`Settings::from_json`]).
     pub recent_history: bool,
     /// Executable names that are never kept in the Recent inbox (lower case).
     pub no_history_apps: Vec<String>,
@@ -698,7 +712,7 @@ impl Default for Settings {
             main_window: None,
             programs: builtin_program_rules(),
             no_paste_apps: Vec::new(),
-            recent_history: false,
+            recent_history: true,
             no_history_apps: Vec::new(),
             dock: DockSettings::default(),
             onboarded: false,
@@ -758,9 +772,34 @@ impl Settings {
                     ..Self::default()
                 }
             });
+        settings.keep_legacy_defaults(serde_json::from_str(text).ok().as_ref());
         settings.fold_legacy_no_paste();
         settings.sanitize();
         settings
+    }
+
+    /// A settings file is an existing install, so what it does not say keeps the value that
+    /// install had before the new-install defaults changed (Recent off, the Ctrl+Alt chords).
+    /// Only a missing file gets [`Settings::default`] as it stands.
+    fn keep_legacy_defaults(&mut self, value: Option<&serde_json::Value>) {
+        let map = value.and_then(serde_json::Value::as_object);
+        if !map.is_some_and(|m| m.contains_key("recent_history")) {
+            self.recent_history = false;
+        }
+        let saved = map
+            .and_then(|m| m.get("hotkeys"))
+            .and_then(serde_json::Value::as_object);
+        for action in HotkeyAction::ALL {
+            let key = match action {
+                HotkeyAction::TogglePanel => "toggle_panel",
+                HotkeyAction::Picker => "picker",
+                HotkeyAction::Capture => "capture",
+                HotkeyAction::PasteNext => "paste_next",
+            };
+            if !saved.is_some_and(|h| h.contains_key(key)) {
+                *self.hotkeys.slot(action) = action.legacy_chord().into();
+            }
+        }
     }
 
     fn from_fields(value: &serde_json::Value) -> Self {
@@ -1070,10 +1109,23 @@ mod tests {
     }
 
     #[test]
-    fn garbage_gives_the_defaults() {
+    fn garbage_gives_the_defaults_of_an_existing_install() {
+        let existing = Settings::from_json("{}");
         for text in ["", "not json", "[]", "null", "42"] {
-            assert_eq!(Settings::from_json(text), Settings::default(), "{text:?}");
+            assert_eq!(Settings::from_json(text), existing, "{text:?}");
         }
+        assert_eq!(
+            existing,
+            Settings {
+                recent_history: false,
+                hotkeys: Hotkeys {
+                    toggle_panel: "Ctrl+Alt+Space".into(),
+                    paste_next: "Ctrl+Alt+V".into(),
+                    ..Hotkeys::default()
+                },
+                ..Settings::default()
+            }
+        );
     }
 
     #[test]
@@ -1083,6 +1135,44 @@ mod tests {
         assert_eq!(settings.theme, Theme::Dark);
         assert!(settings.autostart);
         assert_eq!(settings.panel_width, PANEL_WIDTH_DEFAULT);
+    }
+
+    #[test]
+    fn new_installs_avoid_ctrl_alt_and_existing_files_keep_their_chords() {
+        let fresh = Hotkeys::default();
+        for action in HotkeyAction::ALL {
+            let chord = action.default_chord();
+            assert!(
+                !chord.contains("Alt"),
+                "{action:?} default {chord} must not use Alt (Ctrl+Alt is AltGr)"
+            );
+            assert!(
+                chord.is_empty() || chord.parse::<Chord>().is_ok(),
+                "{chord}"
+            );
+        }
+        assert_eq!(fresh.toggle_panel, "Ctrl+Shift+Y");
+        assert_eq!(fresh.paste_next, "Ctrl+Shift+U");
+        let old = Settings::from_json("{}").hotkeys;
+        assert_eq!(old.toggle_panel, "Ctrl+Alt+Space");
+        assert_eq!(old.paste_next, "Ctrl+Alt+V");
+        assert_eq!(old.picker, "Ctrl+Shift+Space");
+        let partial =
+            Settings::from_json(r#"{"hotkeys":{"toggle_panel":"Ctrl+Shift+F1"}}"#).hotkeys;
+        assert_eq!(partial.toggle_panel, "Ctrl+Shift+F1");
+        assert_eq!(
+            partial.paste_next, "Ctrl+Alt+V",
+            "a missing key keeps the old default"
+        );
+        let cleared = Settings::from_json(
+            r#"{"hotkeys":{"toggle_panel":"","picker":"","capture":"","paste_next":""}}"#,
+        )
+        .hotkeys;
+        assert_eq!(cleared.toggle_panel, "", "off stays off");
+        assert_eq!(
+            Settings::from_json(&Settings::default().to_json()),
+            Settings::default()
+        );
     }
 
     #[test]
@@ -1254,9 +1344,15 @@ mod tests {
     }
 
     #[test]
-    fn the_recent_inbox_is_off_by_default_and_its_exclusions_are_normalised() {
-        assert!(!Settings::default().recent_history);
-        assert!(!Settings::from_json("{}").recent_history);
+    fn the_recent_inbox_is_on_for_a_new_install_and_off_for_a_file_that_never_said() {
+        assert!(Settings::default().recent_history, "new install");
+        assert!(!Settings::from_json("{}").recent_history, "existing file");
+        assert!(
+            !Settings::from_json("{ not json").recent_history,
+            "damaged file"
+        );
+        assert!(!Settings::from_json(r#"{"version":1,"theme":"dark"}"#).recent_history);
+        assert!(!Settings::from_json(r#"{"recent_history":false}"#).recent_history);
         let s = Settings::from_json(
             r#"{"recent_history":true,"no_history_apps":[" KeePass.EXE ","keepass.exe",""]}"#,
         );
@@ -1718,7 +1814,11 @@ mod tests {
                 false,
             )
         );
-        assert_eq!(Settings::from_json("{}"), d);
+        assert_eq!(
+            Settings::from_json(&d.to_json()),
+            d,
+            "a file that names every setting reads back as it was"
+        );
     }
 
     #[test]

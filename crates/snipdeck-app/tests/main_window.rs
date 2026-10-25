@@ -1406,18 +1406,18 @@ fn the_recent_section_lists_what_was_copied_and_its_buttons_reach_the_controller
 }
 
 #[test]
-fn the_history_switch_in_the_welcome_tour_turns_the_inbox_on_and_off() {
+fn the_history_switch_in_the_welcome_tour_turns_the_inbox_off_and_on() {
     on_ui_thread(|| {
         let r = rig();
         let tour = OnboardingUi::new(&r.ctl, Rc::new(NoHost));
         r.ui.invoke_command_requested(Command::Tour.id());
         let window = tour.window().expect("created");
-        assert!(!window.get_recent_history(), "off by default");
-        assert!(!r.ctl.borrow().settings().recent_history);
-        window.invoke_recent_history_toggled(true);
+        assert!(window.get_recent_history(), "on for a new install");
         assert!(r.ctl.borrow().settings().recent_history);
-        assert!(window.get_recent_history());
         window.invoke_recent_history_toggled(false);
         assert!(!r.ctl.borrow().settings().recent_history);
+        assert!(!window.get_recent_history());
+        window.invoke_recent_history_toggled(true);
+        assert!(r.ctl.borrow().settings().recent_history);
     });
 }

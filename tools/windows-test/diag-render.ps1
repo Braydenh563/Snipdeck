@@ -163,7 +163,7 @@ function Stop-App($Run) {
 }
 
 function Render-Steps($Run) {
-    Step $Run 1 'Open the Panel (Ctrl+Alt+Space or click the tray icon). With the Panel open, open About Snipdeck (Panel menu or tray menu). Wait 3 seconds.' 'Did About (or the Panel) show transparent patches or a grey box?'
+    Step $Run 1 'Open the Panel (Ctrl+Shift+Y or click the tray icon). With the Panel open, open About Snipdeck (Panel menu or tray menu). Wait 3 seconds.' 'Did About (or the Panel) show transparent patches or a grey box?'
     Step $Run 2 'Close About. With the Panel open, open Edit on any item. Wait 3 seconds.' 'Did the Edit window or the Panel show transparent patches or a grey box?'
     Step $Run 3 'Close Edit. Drag the Panel around for about 5 seconds, also half off the right edge of the screen and back.' 'Did a part of the Panel go transparent, even briefly?'
     Step $Run 4 'Open the Main window, open the Tags window. Drag the Tags window so half of it is off the bottom or right of the screen, let go, then drag it fully back on screen.' 'Did the part that was off screen stay transparent or empty?'
@@ -174,9 +174,9 @@ Say ''
 Say 'Step 4. Run A: logging only (no fix). Snipdeck starts now. Do each numbered thing, then answer here.' Cyan
 $a = Run-App 'render' 'runA'
 Say '  Shortcuts first (focus Notepad or any text field before each one):' White
-Step $a 1 'Press Ctrl+Alt+Space. Press it again.' 'Did the Panel appear the first time and hide the second time?'
+Step $a 1 'Press Ctrl+Shift+Y. Press it again.' 'Did the Panel appear the first time and hide the second time?'
 Step $a 2 'Press Ctrl+Shift+Space, then Esc.' 'Did the Picker appear?'
-Step $a 3 'In Notepad, press Ctrl+Alt+V.' 'Did Snipdeck paste something or show a message?'
+Step $a 3 'In Notepad, press Ctrl+Shift+U.' 'Did Snipdeck paste something or show a message?'
 Step $a 4 'Press Ctrl+Shift+2 (only if you set it in Settings > Shortcuts; else answer s).' 'Did Snipdeck save the clipboard or show a message?'
 Step $a 5 'Open Settings > Shortcuts and look at each row.' 'Does any row show a red message? (type the gist in the next question)'
 $why = Read-Host '     If a row shows a message, type what it says (or press Enter)'

@@ -396,7 +396,7 @@ mod tests {
             .iter()
             .find(|(id, _)| *id == id_of(HotkeyAction::TogglePanel))
             .expect("toggle registered");
-        assert_eq!(toggle.1.to_string(), "Ctrl+Alt+Space");
+        assert_eq!(toggle.1.to_string(), "Ctrl+Shift+Y");
     }
 
     #[test]
@@ -481,7 +481,7 @@ mod tests {
         let mut backend = FakeHotkeys::default();
         let hotkeys = Hotkeys::default();
         let _ = set_paused(&mut backend, true, &hotkeys);
-        backend.taken.push("Ctrl+Alt+Space".into());
+        backend.taken.push("Ctrl+Shift+Y".into());
         let report = set_paused(&mut backend, false, &hotkeys);
         assert_eq!(report.problems.len(), 1);
         assert_eq!(report.problems[0].action, HotkeyAction::TogglePanel);

@@ -187,8 +187,14 @@ msgstr "看板已保存"
 msgid "Board: {}"
 msgstr "看板：{}"
 
+msgid "Board: {}, list: {}"
+msgstr ""
+
 msgid "Boards"
 msgstr "看板"
+
+msgid "Boards and lists"
+msgstr ""
 
 msgid "Bottom edge"
 msgstr "底边"

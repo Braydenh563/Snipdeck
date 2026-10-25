@@ -187,8 +187,14 @@ msgstr "Quadro salvo"
 msgid "Board: {}"
 msgstr "Quadro: {}"
 
+msgid "Board: {}, list: {}"
+msgstr ""
+
 msgid "Boards"
 msgstr "Quadros"
+
+msgid "Boards and lists"
+msgstr ""
 
 msgid "Bottom edge"
 msgstr "Borda inferior"

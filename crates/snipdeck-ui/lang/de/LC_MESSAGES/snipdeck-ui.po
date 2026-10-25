@@ -187,8 +187,14 @@ msgstr "Board gespeichert"
 msgid "Board: {}"
 msgstr "Board: {}"
 
+msgid "Board: {}, list: {}"
+msgstr ""
+
 msgid "Boards"
 msgstr "Boards"
+
+msgid "Boards and lists"
+msgstr ""
 
 msgid "Bottom edge"
 msgstr "Unterer Rand"

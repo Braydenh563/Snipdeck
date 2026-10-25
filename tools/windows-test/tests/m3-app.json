@@ -37,7 +37,7 @@
       "gate": true,
       "title": "Left click toggles the Panel without taking focus",
       "do": "Click into Notepad and type a letter. Left-click the tray icon once: the Panel should hide. Left-click it again: the Panel shows. Look at the Panel's title area and at Notepad's title bar. Click the icon twice quickly.",
-      "expect": "One click = one change (hide, then show): never hide-then-show from one click. The Panel does not become the active window (Notepad's title bar stays the 'active' colour while the Panel shows). Clicking the tray icon itself makes the taskbar the foreground window, so typing needs a click back into Notepad first: that is Windows' behaviour, not a failure; the Panel must only never take the focus from Notepad on its own (hotkey Ctrl+Alt+Space instead of a tray click: the next letter still goes into Notepad). Two quick clicks end where they began. The Panel does not appear in Alt+Tab."
+      "expect": "One click = one change (hide, then show): never hide-then-show from one click. The Panel does not become the active window (Notepad's title bar stays the 'active' colour while the Panel shows). Clicking the tray icon itself makes the taskbar the foreground window, so typing needs a click back into Notepad first: that is Windows' behaviour, not a failure; the Panel must only never take the focus from Notepad on its own (hotkey Ctrl+Shift+Y instead of a tray click: the next letter still goes into Notepad). Two quick clicks end where they began. The Panel does not appear in Alt+Tab."
     },
     {
       "id": "3",
@@ -59,8 +59,8 @@
       "v1": true,
       "gate": true,
       "title": "Pause hotkeys",
-      "do": "With the Panel shown, press Ctrl+Alt+Space (it should hide the Panel; press it again to show). Right-click the tray icon and choose 'Pause hotkeys'. Press Ctrl+Alt+Space. Open the menu again and look at 'Pause hotkeys'. Choose it again. Press Ctrl+Alt+Space.",
-      "expect": "While paused: Ctrl+Alt+Space does nothing, and 'Pause hotkeys' shows a check mark in the menu. After choosing it again: the check is gone and Ctrl+Alt+Space toggles the Panel again. The tray left click works the whole time. The log shows no 'cannot register' line after resuming (if it does, another app took the chord while paused: record it)."
+      "do": "With the Panel shown, press Ctrl+Shift+Y (it should hide the Panel; press it again to show). Right-click the tray icon and choose 'Pause hotkeys'. Press Ctrl+Shift+Y. Open the menu again and look at 'Pause hotkeys'. Choose it again. Press Ctrl+Shift+Y.",
+      "expect": "While paused: Ctrl+Shift+Y does nothing, and 'Pause hotkeys' shows a check mark in the menu. After choosing it again: the check is gone and Ctrl+Shift+Y toggles the Panel again. The tray left click works the whole time. The log shows no 'cannot register' line after resuming (if it does, another app took the chord while paused: record it)."
     },
     {
       "id": "6",

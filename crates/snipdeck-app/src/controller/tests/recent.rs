@@ -1,4 +1,4 @@
-//! The Recent inbox through the controller: off by default, what a clipboard change does with
+//! The Recent inbox through the controller: on for a new install, off after an opt-out, what a clipboard change does with
 //! the opt-in, pause, and promoting to a list. The clock is the fixed one the other controller
 //! tests use.
 
@@ -11,6 +11,17 @@ fn on() -> Settings {
         no_history_apps: vec!["keepass.exe".to_owned()],
         ..Settings::default()
     }
+}
+
+/// A world whose user switched Recent off (a new install has it on).
+fn off_world() -> World {
+    world_with(
+        None,
+        Settings {
+            recent_history: false,
+            ..Settings::default()
+        },
+    )
 }
 
 /// The inbox on, with key protection (the test provider stands in for DPAPI): the inbox is
@@ -121,9 +132,9 @@ fn delete_and_clear_remove_entries() {
 fn the_listener_gate_follows_the_opt_in_and_the_pause() {
     use snipdeck_platform::clipboard_watch::WatchGate;
     let gate = WatchGate::new();
-    let mut w = world();
+    let mut w = off_world();
     w.ctl.set_recent_gate(gate.clone());
-    assert!(!gate.is_open(), "off by default: nothing is read");
+    assert!(!gate.is_open(), "switched off: nothing is read");
     w.ctl.update_settings(|s| s.recent_history = true);
     assert!(gate.is_open());
     w.ctl.set_recent_paused(true);
@@ -136,7 +147,7 @@ fn the_listener_gate_follows_the_opt_in_and_the_pause() {
 
 #[test]
 fn the_view_has_no_recent_part_until_the_opt_in() {
-    let w = world();
+    let w = off_world();
     assert!(w.ctl.view().recent.is_none());
     let w = recent_world();
     let recent = w.ctl.view().recent.expect("on");
@@ -221,7 +232,7 @@ fn actions_follow_the_entry_id_when_the_list_shifts_under_an_open_menu() {
 
 #[test]
 fn the_clock_tab_cannot_open_while_history_is_off() {
-    let mut w = world();
+    let mut w = off_world();
     w.ctl.set_recent_open(true);
     w.ctl.update_settings(|s| s.recent_history = true);
     assert!(!w.ctl.view().recent.expect("on").open);
@@ -305,12 +316,12 @@ fn the_main_window_clear_empties_recent_and_off_shows_nothing() {
 fn the_tray_menu_is_told_when_history_is_on_and_when_it_is_paused() {
     use std::{cell::RefCell, rc::Rc};
     let seen: Rc<RefCell<Vec<(bool, bool)>>> = Rc::default();
-    let mut w = world();
+    let mut w = off_world();
     w.ctl.set_tray_history_sink({
         let seen = Rc::clone(&seen);
         move |available, paused| seen.borrow_mut().push((available, paused))
     });
-    // Told at once: off by default, so no entry.
+    // Told at once: switched off, so no entry.
     assert_eq!(seen.borrow().last(), Some(&(false, false)));
     w.ctl.update_settings(|s| s.recent_history = true);
     assert_eq!(seen.borrow().last(), Some(&(true, false)));

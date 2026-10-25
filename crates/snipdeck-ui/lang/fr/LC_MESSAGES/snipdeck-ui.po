@@ -187,8 +187,14 @@ msgstr "Tableau enregistré"
 msgid "Board: {}"
 msgstr "Tableau : {}"
 
+msgid "Board: {}, list: {}"
+msgstr ""
+
 msgid "Boards"
 msgstr "Tableaux"
+
+msgid "Boards and lists"
+msgstr ""
 
 msgid "Bottom edge"
 msgstr "Bord inférieur"

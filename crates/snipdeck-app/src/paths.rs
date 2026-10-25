@@ -215,7 +215,12 @@ mod tests {
         let dir = temp.path().to_path_buf();
         assert_eq!(read_settings(&dir).settings, Settings::default(), "no file");
         std::fs::write(dir.join(SETTINGS_FILE), "{ not json").expect("write");
-        assert_eq!(read_settings(&dir).settings, Settings::default(), "garbage");
+        let damaged = read_settings(&dir).settings;
+        assert!(
+            !damaged.recent_history,
+            "a damaged file is an existing install"
+        );
+        assert_eq!(damaged.hotkeys.toggle_panel, "Ctrl+Alt+Space");
         std::fs::write(
             dir.join(SETTINGS_FILE),
             r#"{"panel_width": 400, "theme": 7}"#,
