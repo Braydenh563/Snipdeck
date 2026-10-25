@@ -1,0 +1,12 @@
+[package]
+name = "snipdeck-symbols"
+description = "Snipdeck symbols library: emoji, kaomoji and icon catalog, search, recents, art and icon rendering. No UI."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

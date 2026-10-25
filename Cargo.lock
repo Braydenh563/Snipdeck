@@ -4611,6 +4611,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "snipdeck-symbols"
+version = "1.0.0"
+
+[[package]]
 name = "snipdeck-ui"
 version = "1.0.0"
 dependencies = [

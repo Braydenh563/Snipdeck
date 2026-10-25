@@ -1,0 +1,1759 @@
+{
+ "emoji_version": "18.0",
+ "cldr_version": "49.0.0",
+ "sources": {
+  "emoji-test": "8f3735cda1f92a779d78af67cf86066bb1f07143dc22f2ac29394d9bc57ab21a",
+  "cldr-annotations-en": "6b6b6e0e5f211bc31cf3fa39f385d80dea6cd19ee19bbc6db9071fce3ae5d360",
+  "cldr-derived-en": "7aad034f689cb6553f8d7366bfee8c4ea2818c7776907bc5118aab575223dea3",
+  "cldr-annotations-de": "4cf155867afb33b66b935edaac882e316c9c96a675e9c4a39af35c07f382d87c",
+  "cldr-derived-de": "f16e90bd7b197dbfa40ffc42ca284e01e4e614bd4f1c7874b67e244056699fb7",
+  "cldr-annotations-es": "f4149459f74207b235e673f62f5671c06ac97ae53f2c1d100e1eae40e54c5306",
+  "cldr-derived-es": "d504c1a0db44fd17431b61bc4bcf07cf26ff1159d7d9fff9b7164736016bffd7",
+  "cldr-annotations-fr": "8448e38ec2e5a377dbaa0b9a552b46cb1d1674c972208836ab5ab52311600f1d",
+  "cldr-derived-fr": "3d059cc0b6fd6b9f47f600b5e55e1c2940a42eafc554f346e1e23362bfb7a9b5",
+  "cldr-annotations-ja": "e42dacabf2eee0aab36c168c995efeaf8add896f8940c5ee86a809d85c2816e7",
+  "cldr-derived-ja": "3d83cf7e4093f7fe77055dc21b1a3a65cd8f48a0249127552d58d3b058dbe4cd",
+  "cldr-annotations-pt": "a64a01f9906ec754487d4d903caa6fb62ee9613047a1c8cfd1c82a0216f0df5e",
+  "cldr-derived-pt": "61e65e2bde4519835701c58382d8ca531216ad4fa1d8bc3804577a5d9f4a01f1",
+  "cldr-annotations-zh": "7d49968f977021fefe6ceea2613e0313de5ea416d8f3c0a8fe3032c9b7f2ebfb",
+  "cldr-derived-zh": "1b86f6dd0b295e64efddaf6028151b6c5c95616b8c98c15f5727cff2b2429d48",
+  "licence-unicode": "220ba0e1c43b99530d2d5bdb892a99dca0989414f51ab695ecd90163eaa1ec3b",
+  "fluent-npm": "7d064769dee690815f823bc5bcc511d957198caf9f5edd8dd9c1aa48a6aeb175",
+  "licence-fluent": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383",
+  "phosphor-npm": "313332be6190b724da24107addd781799b48bf76b13963f24501112ffe1baadd"
+ },
+ "counts": {
+  "emoji": 1595,
+  "kaomoji": 341,
+  "icons": 1512,
+  "emoji_groups": {
+   "Smileys & Emotion": 168,
+   "People & Body": 343,
+   "Animals & Nature": 158,
+   "Food & Drink": 130,
+   "Travel & Places": 218,
+   "Activities": 85,
+   "Objects": 262,
+   "Symbols": 223,
+   "Flags": 8
+  },
+  "names_missing_en": 0,
+  "names_missing": {
+   "de": 0,
+   "es": 0,
+   "fr": 0,
+   "ja": 0,
+   "pt": 0,
+   "zh": 0
+  }
+ },
+ "emoji_groups": [
+  "Smileys & Emotion",
+  "People & Body",
+  "Animals & Nature",
+  "Food & Drink",
+  "Travel & Places",
+  "Activities",
+  "Objects",
+  "Symbols",
+  "Flags"
+ ],
+ "kaomoji_groups": [
+  "joy",
+  "love",
+  "sad",
+  "angry",
+  "surprise",
+  "shrug",
+  "greet",
+  "sorry",
+  "animals",
+  "actions"
+ ],
+ "coverage": {
+  "emoji_test_default_tone": 1923,
+  "with_fluent_art": 1595,
+  "without_fluent_art": 328,
+  "skin_tone_variants_skipped": 2040
+ },
+ "dropped": [
+  {
+   "seq": "1faeb",
+   "name": "cracking face",
+   "group": "Smileys & Emotion"
+  },
+  {
+   "seq": "1fae9",
+   "name": "face with bags under eyes",
+   "group": "Smileys & Emotion"
+  },
+  {
+   "seq": "1faea",
+   "name": "distorted face",
+   "group": "Smileys & Emotion"
+  },
+  {
+   "seq": "1faef",
+   "name": "fight cloud",
+   "group": "Smileys & Emotion"
+  },
+  {
+   "seq": "1faf9",
+   "name": "leftwards thumb sign",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1fafa",
+   "name": "rightwards thumb sign",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1fac8",
+   "name": "hairy creature",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f9d1-200d-1fa70",
+   "name": "ballet dancer",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f9d1-200d-1f91d-200d-1f9d1",
+   "name": "people holding hands",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f46d",
+   "name": "women holding hands",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f46b",
+   "name": "woman and man holding hands",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f46c",
+   "name": "men holding hands",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f48f",
+   "name": "kiss",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-2764-fe0f-200d-1f48b-200d-1f468",
+   "name": "kiss: woman, man",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-2764-fe0f-200d-1f48b-200d-1f468",
+   "name": "kiss: man, man",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-2764-fe0f-200d-1f48b-200d-1f469",
+   "name": "kiss: woman, woman",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f491",
+   "name": "couple with heart",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-2764-fe0f-200d-1f468",
+   "name": "couple with heart: woman, man",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-2764-fe0f-200d-1f468",
+   "name": "couple with heart: man, man",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-2764-fe0f-200d-1f469",
+   "name": "couple with heart: woman, woman",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f469-200d-1f466",
+   "name": "family: man, woman, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f469-200d-1f467",
+   "name": "family: man, woman, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f469-200d-1f467-200d-1f466",
+   "name": "family: man, woman, girl, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f469-200d-1f466-200d-1f466",
+   "name": "family: man, woman, boy, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f469-200d-1f467-200d-1f467",
+   "name": "family: man, woman, girl, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f468-200d-1f466",
+   "name": "family: man, man, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f468-200d-1f467",
+   "name": "family: man, man, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f468-200d-1f467-200d-1f466",
+   "name": "family: man, man, girl, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f468-200d-1f466-200d-1f466",
+   "name": "family: man, man, boy, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f468-200d-1f467-200d-1f467",
+   "name": "family: man, man, girl, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f469-200d-1f466",
+   "name": "family: woman, woman, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f469-200d-1f467",
+   "name": "family: woman, woman, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f469-200d-1f467-200d-1f466",
+   "name": "family: woman, woman, girl, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f469-200d-1f466-200d-1f466",
+   "name": "family: woman, woman, boy, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f469-200d-1f467-200d-1f467",
+   "name": "family: woman, woman, girl, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f466",
+   "name": "family: man, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f466-200d-1f466",
+   "name": "family: man, boy, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f467",
+   "name": "family: man, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f467-200d-1f466",
+   "name": "family: man, girl, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f468-200d-1f467-200d-1f467",
+   "name": "family: man, girl, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f466",
+   "name": "family: woman, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f466-200d-1f466",
+   "name": "family: woman, boy, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f467",
+   "name": "family: woman, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f467-200d-1f466",
+   "name": "family: woman, girl, boy",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f469-200d-1f467-200d-1f467",
+   "name": "family: woman, girl, girl",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f46a",
+   "name": "family",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f9d1-200d-1f9d1-200d-1f9d2",
+   "name": "family: adult, adult, child",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f9d1-200d-1f9d1-200d-1f9d2-200d-1f9d2",
+   "name": "family: adult, adult, child, child",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f9d1-200d-1f9d2",
+   "name": "family: adult, child",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1f9d1-200d-1f9d2-200d-1f9d2",
+   "name": "family: adult, child, child",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1fac6",
+   "name": "fingerprint",
+   "group": "People & Body"
+  },
+  {
+   "seq": "1facd",
+   "name": "orca",
+   "group": "Animals & Nature"
+  },
+  {
+   "seq": "1facc",
+   "name": "monarch butterfly",
+   "group": "Animals & Nature"
+  },
+  {
+   "seq": "1fabe",
+   "name": "leafless tree",
+   "group": "Animals & Nature"
+  },
+  {
+   "seq": "1fadd",
+   "name": "pickle",
+   "group": "Food & Drink"
+  },
+  {
+   "seq": "1fadc",
+   "name": "root vegetable",
+   "group": "Food & Drink"
+  },
+  {
+   "seq": "1f6d8",
+   "name": "landslide",
+   "group": "Travel & Places"
+  },
+  {
+   "seq": "1f6d9",
+   "name": "lighthouse",
+   "group": "Travel & Places"
+  },
+  {
+   "seq": "1fa8b",
+   "name": "meteor",
+   "group": "Travel & Places"
+  },
+  {
+   "seq": "1fa8a",
+   "name": "trombone",
+   "group": "Objects"
+  },
+  {
+   "seq": "1fa89",
+   "name": "harp",
+   "group": "Objects"
+  },
+  {
+   "seq": "1fa8e",
+   "name": "treasure chest",
+   "group": "Objects"
+  },
+  {
+   "seq": "1fa8c",
+   "name": "eraser",
+   "group": "Objects"
+  },
+  {
+   "seq": "1fa8d",
+   "name": "net with handle",
+   "group": "Objects"
+  },
+  {
+   "seq": "1fa8f",
+   "name": "shovel",
+   "group": "Objects"
+  },
+  {
+   "seq": "1fadf",
+   "name": "splatter",
+   "group": "Symbols"
+  },
+  {
+   "seq": "1f1e6-1f1e8",
+   "name": "flag: Ascension Island",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1e9",
+   "name": "flag: Andorra",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1ea",
+   "name": "flag: United Arab Emirates",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1eb",
+   "name": "flag: Afghanistan",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1ec",
+   "name": "flag: Antigua & Barbuda",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1ee",
+   "name": "flag: Anguilla",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1f1",
+   "name": "flag: Albania",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1f2",
+   "name": "flag: Armenia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1f4",
+   "name": "flag: Angola",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1f6",
+   "name": "flag: Antarctica",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1f7",
+   "name": "flag: Argentina",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1f8",
+   "name": "flag: American Samoa",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1f9",
+   "name": "flag: Austria",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1fa",
+   "name": "flag: Australia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1fc",
+   "name": "flag: Aruba",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1fd",
+   "name": "flag: Åland Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e6-1f1ff",
+   "name": "flag: Azerbaijan",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1e6",
+   "name": "flag: Bosnia & Herzegovina",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1e7",
+   "name": "flag: Barbados",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1e9",
+   "name": "flag: Bangladesh",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1ea",
+   "name": "flag: Belgium",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1eb",
+   "name": "flag: Burkina Faso",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1ec",
+   "name": "flag: Bulgaria",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1ed",
+   "name": "flag: Bahrain",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1ee",
+   "name": "flag: Burundi",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1ef",
+   "name": "flag: Benin",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1f1",
+   "name": "flag: St. Barthélemy",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1f2",
+   "name": "flag: Bermuda",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1f3",
+   "name": "flag: Brunei",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1f4",
+   "name": "flag: Bolivia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1f6",
+   "name": "flag: Caribbean Netherlands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1f7",
+   "name": "flag: Brazil",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1f8",
+   "name": "flag: Bahamas",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1f9",
+   "name": "flag: Bhutan",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1fb",
+   "name": "flag: Bouvet Island",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1fc",
+   "name": "flag: Botswana",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1fe",
+   "name": "flag: Belarus",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e7-1f1ff",
+   "name": "flag: Belize",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1e6",
+   "name": "flag: Canada",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1e8",
+   "name": "flag: Cocos (Keeling) Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1e9",
+   "name": "flag: Congo - Kinshasa",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1eb",
+   "name": "flag: Central African Republic",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1ec",
+   "name": "flag: Congo - Brazzaville",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1ed",
+   "name": "flag: Switzerland",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1ee",
+   "name": "flag: Côte d’Ivoire",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1f0",
+   "name": "flag: Cook Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1f1",
+   "name": "flag: Chile",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1f2",
+   "name": "flag: Cameroon",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1f3",
+   "name": "flag: China",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1f4",
+   "name": "flag: Colombia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1f5",
+   "name": "flag: Clipperton Island",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1f6",
+   "name": "flag: Sark",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1f7",
+   "name": "flag: Costa Rica",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1fa",
+   "name": "flag: Cuba",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1fb",
+   "name": "flag: Cape Verde",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1fc",
+   "name": "flag: Curaçao",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1fd",
+   "name": "flag: Christmas Island",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1fe",
+   "name": "flag: Cyprus",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e8-1f1ff",
+   "name": "flag: Czechia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e9-1f1ea",
+   "name": "flag: Germany",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e9-1f1ec",
+   "name": "flag: Diego Garcia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e9-1f1ef",
+   "name": "flag: Djibouti",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e9-1f1f0",
+   "name": "flag: Denmark",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e9-1f1f2",
+   "name": "flag: Dominica",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e9-1f1f4",
+   "name": "flag: Dominican Republic",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1e9-1f1ff",
+   "name": "flag: Algeria",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ea-1f1e6",
+   "name": "flag: Ceuta & Melilla",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ea-1f1e8",
+   "name": "flag: Ecuador",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ea-1f1ea",
+   "name": "flag: Estonia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ea-1f1ec",
+   "name": "flag: Egypt",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ea-1f1ed",
+   "name": "flag: Western Sahara",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ea-1f1f7",
+   "name": "flag: Eritrea",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ea-1f1f8",
+   "name": "flag: Spain",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ea-1f1f9",
+   "name": "flag: Ethiopia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ea-1f1fa",
+   "name": "flag: European Union",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1eb-1f1ee",
+   "name": "flag: Finland",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1eb-1f1ef",
+   "name": "flag: Fiji",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1eb-1f1f0",
+   "name": "flag: Falkland Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1eb-1f1f2",
+   "name": "flag: Micronesia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1eb-1f1f4",
+   "name": "flag: Faroe Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1eb-1f1f7",
+   "name": "flag: France",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1e6",
+   "name": "flag: Gabon",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1e7",
+   "name": "flag: United Kingdom",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1e9",
+   "name": "flag: Grenada",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1ea",
+   "name": "flag: Georgia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1eb",
+   "name": "flag: French Guiana",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1ec",
+   "name": "flag: Guernsey",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1ed",
+   "name": "flag: Ghana",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1ee",
+   "name": "flag: Gibraltar",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1f1",
+   "name": "flag: Greenland",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1f2",
+   "name": "flag: Gambia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1f3",
+   "name": "flag: Guinea",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1f5",
+   "name": "flag: Guadeloupe",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1f6",
+   "name": "flag: Equatorial Guinea",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1f7",
+   "name": "flag: Greece",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1f8",
+   "name": "flag: South Georgia & South Sandwich Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1f9",
+   "name": "flag: Guatemala",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1fa",
+   "name": "flag: Guam",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1fc",
+   "name": "flag: Guinea-Bissau",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ec-1f1fe",
+   "name": "flag: Guyana",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ed-1f1f0",
+   "name": "flag: Hong Kong SAR China",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ed-1f1f2",
+   "name": "flag: Heard Island & McDonald Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ed-1f1f3",
+   "name": "flag: Honduras",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ed-1f1f7",
+   "name": "flag: Croatia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ed-1f1f9",
+   "name": "flag: Haiti",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ed-1f1fa",
+   "name": "flag: Hungary",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ee-1f1e8",
+   "name": "flag: Canary Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ee-1f1e9",
+   "name": "flag: Indonesia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ee-1f1ea",
+   "name": "flag: Ireland",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ee-1f1f1",
+   "name": "flag: Israel",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ee-1f1f2",
+   "name": "flag: Isle of Man",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ee-1f1f3",
+   "name": "flag: India",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ee-1f1f4",
+   "name": "flag: British Indian Ocean Territory",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ee-1f1f6",
+   "name": "flag: Iraq",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ee-1f1f7",
+   "name": "flag: Iran",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ee-1f1f8",
+   "name": "flag: Iceland",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ee-1f1f9",
+   "name": "flag: Italy",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ef-1f1ea",
+   "name": "flag: Jersey",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ef-1f1f2",
+   "name": "flag: Jamaica",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ef-1f1f4",
+   "name": "flag: Jordan",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ef-1f1f5",
+   "name": "flag: Japan",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f0-1f1ea",
+   "name": "flag: Kenya",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f0-1f1ec",
+   "name": "flag: Kyrgyzstan",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f0-1f1ed",
+   "name": "flag: Cambodia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f0-1f1ee",
+   "name": "flag: Kiribati",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f0-1f1f2",
+   "name": "flag: Comoros",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f0-1f1f3",
+   "name": "flag: St. Kitts & Nevis",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f0-1f1f5",
+   "name": "flag: North Korea",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f0-1f1f7",
+   "name": "flag: South Korea",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f0-1f1fc",
+   "name": "flag: Kuwait",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f0-1f1fe",
+   "name": "flag: Cayman Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f0-1f1ff",
+   "name": "flag: Kazakhstan",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f1-1f1e6",
+   "name": "flag: Laos",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f1-1f1e7",
+   "name": "flag: Lebanon",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f1-1f1e8",
+   "name": "flag: St. Lucia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f1-1f1ee",
+   "name": "flag: Liechtenstein",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f1-1f1f0",
+   "name": "flag: Sri Lanka",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f1-1f1f7",
+   "name": "flag: Liberia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f1-1f1f8",
+   "name": "flag: Lesotho",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f1-1f1f9",
+   "name": "flag: Lithuania",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f1-1f1fa",
+   "name": "flag: Luxembourg",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f1-1f1fb",
+   "name": "flag: Latvia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f1-1f1fe",
+   "name": "flag: Libya",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1e6",
+   "name": "flag: Morocco",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1e8",
+   "name": "flag: Monaco",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1e9",
+   "name": "flag: Moldova",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1ea",
+   "name": "flag: Montenegro",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1eb",
+   "name": "flag: St. Martin",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1ec",
+   "name": "flag: Madagascar",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1ed",
+   "name": "flag: Marshall Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1f0",
+   "name": "flag: North Macedonia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1f1",
+   "name": "flag: Mali",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1f2",
+   "name": "flag: Myanmar (Burma)",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1f3",
+   "name": "flag: Mongolia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1f4",
+   "name": "flag: Macao SAR China",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1f5",
+   "name": "flag: Northern Mariana Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1f6",
+   "name": "flag: Martinique",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1f7",
+   "name": "flag: Mauritania",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1f8",
+   "name": "flag: Montserrat",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1f9",
+   "name": "flag: Malta",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1fa",
+   "name": "flag: Mauritius",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1fb",
+   "name": "flag: Maldives",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1fc",
+   "name": "flag: Malawi",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1fd",
+   "name": "flag: Mexico",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1fe",
+   "name": "flag: Malaysia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f2-1f1ff",
+   "name": "flag: Mozambique",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f3-1f1e6",
+   "name": "flag: Namibia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f3-1f1e8",
+   "name": "flag: New Caledonia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f3-1f1ea",
+   "name": "flag: Niger",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f3-1f1eb",
+   "name": "flag: Norfolk Island",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f3-1f1ec",
+   "name": "flag: Nigeria",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f3-1f1ee",
+   "name": "flag: Nicaragua",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f3-1f1f1",
+   "name": "flag: Netherlands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f3-1f1f4",
+   "name": "flag: Norway",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f3-1f1f5",
+   "name": "flag: Nepal",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f3-1f1f7",
+   "name": "flag: Nauru",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f3-1f1fa",
+   "name": "flag: Niue",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f3-1f1ff",
+   "name": "flag: New Zealand",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f4-1f1f2",
+   "name": "flag: Oman",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f5-1f1e6",
+   "name": "flag: Panama",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f5-1f1ea",
+   "name": "flag: Peru",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f5-1f1eb",
+   "name": "flag: French Polynesia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f5-1f1ec",
+   "name": "flag: Papua New Guinea",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f5-1f1ed",
+   "name": "flag: Philippines",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f5-1f1f0",
+   "name": "flag: Pakistan",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f5-1f1f1",
+   "name": "flag: Poland",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f5-1f1f2",
+   "name": "flag: St. Pierre & Miquelon",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f5-1f1f3",
+   "name": "flag: Pitcairn Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f5-1f1f7",
+   "name": "flag: Puerto Rico",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f5-1f1f8",
+   "name": "flag: Palestinian Territories",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f5-1f1f9",
+   "name": "flag: Portugal",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f5-1f1fc",
+   "name": "flag: Palau",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f5-1f1fe",
+   "name": "flag: Paraguay",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f6-1f1e6",
+   "name": "flag: Qatar",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f7-1f1ea",
+   "name": "flag: Réunion",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f7-1f1f4",
+   "name": "flag: Romania",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f7-1f1f8",
+   "name": "flag: Serbia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f7-1f1fa",
+   "name": "flag: Russia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f7-1f1fc",
+   "name": "flag: Rwanda",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1e6",
+   "name": "flag: Saudi Arabia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1e7",
+   "name": "flag: Solomon Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1e8",
+   "name": "flag: Seychelles",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1e9",
+   "name": "flag: Sudan",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1ea",
+   "name": "flag: Sweden",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1ec",
+   "name": "flag: Singapore",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1ed",
+   "name": "flag: St. Helena, Ascension & Tristan da Cunha",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1ee",
+   "name": "flag: Slovenia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1ef",
+   "name": "flag: Svalbard & Jan Mayen",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1f0",
+   "name": "flag: Slovakia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1f1",
+   "name": "flag: Sierra Leone",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1f2",
+   "name": "flag: San Marino",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1f3",
+   "name": "flag: Senegal",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1f4",
+   "name": "flag: Somalia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1f7",
+   "name": "flag: Suriname",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1f8",
+   "name": "flag: South Sudan",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1f9",
+   "name": "flag: São Tomé & Príncipe",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1fb",
+   "name": "flag: El Salvador",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1fd",
+   "name": "flag: Sint Maarten",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1fe",
+   "name": "flag: Syria",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f8-1f1ff",
+   "name": "flag: Eswatini",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1e6",
+   "name": "flag: Tristan da Cunha",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1e8",
+   "name": "flag: Turks & Caicos Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1e9",
+   "name": "flag: Chad",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1eb",
+   "name": "flag: French Southern and Antarctic Lands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1ec",
+   "name": "flag: Togo",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1ed",
+   "name": "flag: Thailand",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1ef",
+   "name": "flag: Tajikistan",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1f0",
+   "name": "flag: Tokelau",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1f1",
+   "name": "flag: Timor-Leste",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1f2",
+   "name": "flag: Turkmenistan",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1f3",
+   "name": "flag: Tunisia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1f4",
+   "name": "flag: Tonga",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1f7",
+   "name": "flag: Türkiye",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1f9",
+   "name": "flag: Trinidad & Tobago",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1fb",
+   "name": "flag: Tuvalu",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1fc",
+   "name": "flag: Taiwan",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1f9-1f1ff",
+   "name": "flag: Tanzania",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fa-1f1e6",
+   "name": "flag: Ukraine",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fa-1f1ec",
+   "name": "flag: Uganda",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fa-1f1f2",
+   "name": "flag: U.S. Outlying Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fa-1f1f3",
+   "name": "flag: United Nations",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fa-1f1f8",
+   "name": "flag: United States",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fa-1f1fe",
+   "name": "flag: Uruguay",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fa-1f1ff",
+   "name": "flag: Uzbekistan",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fb-1f1e6",
+   "name": "flag: Vatican City",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fb-1f1e8",
+   "name": "flag: St. Vincent & Grenadines",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fb-1f1ea",
+   "name": "flag: Venezuela",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fb-1f1ec",
+   "name": "flag: British Virgin Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fb-1f1ee",
+   "name": "flag: U.S. Virgin Islands",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fb-1f1f3",
+   "name": "flag: Vietnam",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fb-1f1fa",
+   "name": "flag: Vanuatu",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fc-1f1eb",
+   "name": "flag: Wallis & Futuna",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fc-1f1f8",
+   "name": "flag: Samoa",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fd-1f1f0",
+   "name": "flag: Kosovo",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fe-1f1ea",
+   "name": "flag: Yemen",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1fe-1f1f9",
+   "name": "flag: Mayotte",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ff-1f1e6",
+   "name": "flag: South Africa",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ff-1f1f2",
+   "name": "flag: Zambia",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f1ff-1f1fc",
+   "name": "flag: Zimbabwe",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f3f4-e0067-e0062-e0065-e006e-e0067-e007f",
+   "name": "flag: England",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f3f4-e0067-e0062-e0073-e0063-e0074-e007f",
+   "name": "flag: Scotland",
+   "group": "Flags"
+  },
+  {
+   "seq": "1f3f4-e0067-e0062-e0077-e006c-e0073-e007f",
+   "name": "flag: Wales",
+   "group": "Flags"
+  }
+ ],
+ "files": {
+  "emoji.tsv.z": {
+   "bytes": 35353,
+   "sha256": "45d9df5a6fcb821c134e7040de048a64a5fbd8cadf7d016edeeaff82e6f66b50"
+  },
+  "icons.bin.z": {
+   "bytes": 213342,
+   "sha256": "4cb07c49843a0c9a8e68150d5c0b4a01e5d407f63e7ecd2f45956c61e2484242"
+  },
+  "kaomoji.tsv.z": {
+   "bytes": 7398,
+   "sha256": "dd6553db2bf6cc156a238cccfb2babae378809061e1426b60b36e68b1d95c988"
+  },
+  "names-de.tsv.z": {
+   "bytes": 36706,
+   "sha256": "06599f827be9f8cae3b090aca1f1198760a82b506799f8b1398e1b575300f2cb"
+  },
+  "names-es.tsv.z": {
+   "bytes": 27384,
+   "sha256": "61a0726c7d902bd24ce79dccf1b426edc9e05e2644c9f3c1432e670a184526da"
+  },
+  "names-fr.tsv.z": {
+   "bytes": 37075,
+   "sha256": "d67bd2822f5ec7e014f305011cd17a6f64b4c3b70c2be1fea1e05ba2db706a1f"
+  },
+  "names-ja.tsv.z": {
+   "bytes": 33879,
+   "sha256": "c072b5a6d367785f75519aa79ff497707d2d9bb3b938eddb5364f76f94f8f271"
+  },
+  "names-pt.tsv.z": {
+   "bytes": 36177,
+   "sha256": "af1db032e6ed965927abc8cb0a97dc3f19e714475b20d28927a243bae1013c94"
+  },
+  "names-zh.tsv.z": {
+   "bytes": 36478,
+   "sha256": "1bf00a2d42d2dd89cd233a4bfc0c040c7f37a75f36a06b0d393065826f78bcc2"
+  }
+ }
+}

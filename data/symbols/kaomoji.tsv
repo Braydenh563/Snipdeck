@@ -1,0 +1,346 @@
+# Snipdeck kaomoji: hand-written for this repository (GPL-3.0-only, like the app).
+# Columns (tab-separated): id, group, text, tags (comma-separated, 2 to 5, English).
+# Groups: joy love sad angry surprise shrug greet sorry animals actions.
+# Texts are pasted exactly as written. Keep ids stable: they are saved in users' recents.
+# Validated by scripts/symbols.py (unique ids and texts, group names, tag counts).
+joy-smile	joy	(^_^)	smile,happy,content
+joy-grin	joy	(^▽^)	grin,happy,open mouth
+joy-beam	joy	(＾◡＾)	smile,beam,gentle
+joy-cheer	joy	＼(^o^)／	cheer,hooray,arms up,yay
+joy-hooray	joy	\(≧▽≦)/	hooray,excited,celebrate
+joy-sparkle	joy	(๑˃ᴗ˂)ﻭ	sparkle,cute,happy,cheer
+joy-eyes-closed	joy	(´▽`)	content,relaxed,pleased
+joy-blush-smile	joy	(⌒‿⌒)	smile,warm,pleased
+joy-giggle	joy	(≧◡≦)	giggle,happy,sweet
+joy-laugh	joy	(＾▽＾)	laugh,happy,grin
+joy-lol	joy	(^o^)	laugh,open mouth,happy
+joy-xd	joy	(≧∀≦)	laugh,xd,hilarious
+joy-tears-of-joy	joy	(´∀｀)	laugh,mellow,happy
+joy-hahaha	joy	ヽ(°〇°)ﾉ	shout,laugh,loud,excited
+joy-sing	joy	♪(´▽｀)	sing,music,happy,humming
+joy-dance	joy	♪┏(・o･)┛♪	dance,music,party
+joy-dance-two	joy	┏(＾0＾)┛┗(＾0＾)┓	dance,party,duo,music
+joy-party	joy	(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧	party,sparkles,magic,celebrate
+joy-confetti	joy	٩(◕‿◕)۶	celebrate,hands up,excited
+joy-thumbs-up	joy	(•̀ᴗ•́)و	thumbs up,confident,good
+joy-proud	joy	(￣ω￣)	proud,smug,content
+joy-star-eyes	joy	(★‿★)	star eyes,wow,amazed,love
+joy-wink	joy	(^_~)	wink,playful,flirt
+joy-wink-star	joy	(｡•̀ᴗ-)✧	wink,sparkle,cute
+joy-tongue	joy	(＾ｰ^)ノ	playful,wave,silly
+joy-silly	joy	(^ε^)	silly,kiss face,playful
+joy-peace	joy	(^‿^)v	peace,victory,smile
+joy-victory	joy	ヽ(・∀・)ﾉ	victory,hooray,cheerful
+joy-bounce	joy	ヾ(＾∇＾)	bounce,happy,cheerful
+joy-chill	joy	(ᵔᴥᵔ)	chill,cute,relaxed
+joy-relieved	joy	(´ー｀)	relieved,calm,sigh
+love-heart-eyes	love	(♥ω♥)	love,heart eyes,adore
+love-heart-smile	love	(◍•ᴗ•◍)❤	love,heart,sweet
+love-kiss	love	(^3^)	kiss,love,smooch
+love-kiss-heart	love	(´,,•ω•,,)♡	kiss,love,cute,heart
+love-blow-kiss	love	(˘³˘)♥	kiss,love,blow kiss
+love-hug	love	(つ≧▽≦)つ	hug,embrace,love
+love-big-hug	love	⊂((・▽・))⊃	hug,embrace,cuddle
+love-hug-me	love	(づ｡◕‿‿◕｡)づ	hug,cuddle,reach out
+love-cuddle	love	(っ˘ω˘ς)	cuddle,cozy,sleepy,sweet
+love-blush	love	(⁄ ⁄>⁄ ▽ ⁄<⁄ ⁄)	blush,shy,embarrassed
+love-shy-smile	love	(*^‿^*)	shy,smile,blush
+love-flustered	love	(〃´∀｀〃)	blush,flustered,happy
+love-in-love	love	(♡´▽`♡)	in love,happy,hearts
+love-hearts-around	love	♡＼(￣▽￣)／♡	hearts,love,joy,dance
+love-adore	love	(*¯︶¯*)	adore,content,peaceful
+love-sweet	love	(´• ω •`)♡	sweet,tender,love,cute
+love-bouquet	love	(´∀`)♡	love,pleased,sweet
+love-flower	love	(◕‿◕✿)	flower,cute,gentle
+love-give-flower	love	(◠‿◠)✿	flower,gift,gentle
+love-gift-heart	love	(•‿•)ﾉ♡	gift,heart,offer
+love-wedding	love	(•◡•)/♡	love,wave,sweet
+love-couple	love	(´｡• ᵕ •｡`) ♡	couple,love,sweet
+love-sleepy-love	love	(´-ω-`)♡	love,sleepy,soft
+love-heart-hands	love	(ﾉ´з`)ノ♡	love,kiss,blow kiss
+love-bear-hug	love	ʕっ•ᴥ•ʔっ	hug,bear,cuddle
+love-squish	love	(*≧ω≦)	squish,happy,adore
+love-secret-crush	love	(・・ )♡	crush,shy,secret
+love-lovestruck	love	(๑>◡<๑)	lovestruck,cute,happy
+love-warm	love	(｡♥‿♥｡)	warm,love,smitten
+love-aww	love	(◡‿◡✿)	aww,gentle,flower
+love-forever	love	(♥‿♥)	forever,love,heart
+love-handholding	love	(⌒_⌒;)つ	hold,hand,care
+sad-cry	sad	(T_T)	cry,sad,tears
+sad-sob	sad	(ToT)	sob,cry,tears,sad
+sad-tears	sad	(;_;)	tears,sad,crying
+sad-waterfall	sad	(╥﹏╥)	waterfall,tears,crying,sad
+sad-weeping	sad	(ಥ﹏ಥ)	weeping,sad,heartbroken
+sad-wail	sad	(个_个)	wail,cry,loud
+sad-down	sad	(´；ω；`)	down,tears,sad
+sad-blue	sad	(._.)	blue,sad,quiet
+sad-frown	sad	(︶︹︶)	frown,sad,unhappy
+sad-pout	sad	(´･_･`)	pout,sad,sulk
+sad-lonely	sad	(つω`｡)	lonely,sad,hiding
+sad-sulk	sad	(´-﹏-`；)	sulk,sad,worried
+sad-drooping	sad	(._. )	drooping,sad,tired
+sad-gloomy	sad	(-_-;)	gloomy,tired,nervous
+sad-heartbroken	sad	(┳Д┳)	heartbroken,sob,devastated
+sad-broken	sad	(T⌓T)	broken,tears,sad
+sad-sniffle	sad	(｡•́︿•̀｡)	sniffle,sad,worried
+sad-rain	sad	(｡•́︿•̀｡)☂	rain,sad,gloomy
+sad-sigh	sad	(−_−)	sigh,tired,meh
+sad-exhausted	sad	(×_×)	exhausted,dead,done
+sad-defeated	sad	orz	defeated,despair,kneel
+sad-despair	sad	_(:3」∠)_	despair,collapse,lazy,flop
+sad-crumble	sad	(ノ_<。)	crumble,cry,wipe tears
+sad-ugly-cry	sad	(ノДT)	ugly cry,sob,tears
+sad-mourn	sad	(´；Д；`)	mourn,sob,sad
+sad-wipe	sad	(つд⊂)	wipe tears,cry,sad
+sad-comfort	sad	(;ω;)	comfort,sad,tears
+sad-hurt	sad	(>_<)	hurt,pain,ouch
+sad-ouch	sad	(>﹏<)	ouch,pain,wince
+sad-big-sad	sad	｡･ﾟﾟ*(>д<)*ﾟﾟ･｡	crying,wailing,tears,sad
+sad-miss-you	sad	(´･ω･`)	miss you,sad,wistful
+sad-wistful	sad	(◞‸◟)	wistful,pensive,sad
+angry-mad	angry	(｀Д´)	mad,angry,grr
+angry-rage	angry	(╬ಠ益ಠ)	rage,furious,angry
+angry-furious	angry	(ノಠ益ಠ)ノ	furious,rage,yell
+angry-grr	angry	(`皿´＃)	grr,angry,steam
+angry-fume	angry	(＃｀Д´)	fume,angry,mad
+angry-steam	angry	ヽ(`Д´)ﾉ	steam,angry,yelling
+angry-glare	angry	(¬_¬)	glare,annoyed,side eye
+angry-side-eye	angry	(￢_￢)	side eye,suspicious,glare
+angry-stare	angry	(ಠ_ಠ)	stare,disapproval,judging
+angry-unamused	angry	(눈_눈)	unamused,stare,annoyed
+angry-grumpy	angry	(｀へ´)	grumpy,annoyed,mad
+angry-pout	angry	(｀ε´)	pout,sulk,mad
+angry-huff	angry	(｡`ω´｡)	huff,annoyed,pout
+angry-cheeks	angry	(＃`ε´)	puffed cheeks,annoyed,angry
+angry-tsk	angry	(¬‿¬)	tsk,smug,annoyed
+angry-punch	angry	(ง'̀-'́)ง	punch,fight,ready
+angry-fight	angry	(ง •̀_•́)ง	fight,ready,challenge
+angry-boxing	angry	(ᕗ ͜ʖ ᕗ)	boxing,challenge,fight
+angry-shake-fist	angry	(ノ｀Д´)ノ	shake fist,angry,yell
+angry-bang	angry	(╯°□°)╯	bang,angry,smash
+angry-rant	angry	＼(`Д´)／	rant,yell,angry
+angry-volcano	angry	(凸ಠ益ಠ)凸	furious,volcano,rude
+angry-annoyed	angry	(；一_一)	annoyed,tired,irritated
+angry-irritated	angry	(－‸ლ)	irritated,facepalm,tired
+angry-boiling	angry	୧(๑•̀⌄•́๑)૭	determined,boiling,fight
+angry-snarl	angry	(`⌓´)	snarl,grr,mad
+angry-hmph	angry	(￣^￣)	hmph,proud,annoyed
+angry-bored-glare	angry	(‿ˠ‿)	smirk,glare,plotting
+angry-vengeful	angry	(¬‿¬ )	vengeful,smirk,plotting
+angry-fed-up	angry	(；￣Д￣)	fed up,done,tired
+angry-seething	angry	(҂◡_◡)	seething,determined,angry
+surprise-wow	surprise	(°o°)	wow,surprised,open mouth
+surprise-gasp	surprise	(°ロ°)	gasp,shock,surprised
+surprise-shock	surprise	Σ(°△°;)︴	shock,horror,pale
+surprise-stunned	surprise	(⊙_⊙)	stunned,wide eyes,staring
+surprise-big-eyes	surprise	(◎_◎)	wide eyes,surprised,staring
+surprise-eyes-pop	surprise	(⊙o⊙)	eyes pop,amazed,shock
+surprise-oh	surprise	(・o・)	oh,surprised,small
+surprise-whoa	surprise	(；ﾟДﾟ)	whoa,shock,startled
+surprise-scream	surprise	Σ(ﾟДﾟ)	scream,shock,horror
+surprise-horror	surprise	(ﾟДﾟ;)	horror,scared,shock
+surprise-ghost	surprise	(ﾟ∀ﾟ)ｱﾋｬ	surprise,laugh,crazy
+surprise-startled	surprise	∑(O_O;)	startled,jump,shock
+surprise-flinch	surprise	(;°Д°)	flinch,scared,startled
+surprise-disbelief	surprise	(ʘ‿ʘ)	disbelief,wide eyes,amazed
+surprise-mind-blown	surprise	(ﾉ⊙ロ⊙)ﾉ	mind blown,amazed,shock
+surprise-bubbling	surprise	(๑•́ ₃ •̀๑)	surprised,sweet,hmm
+surprise-amazed	surprise	(☆ο☆)	amazed,star eyes,wow
+surprise-sparkle-wow	surprise	(✧ω✧)	wow,sparkle,amazed
+surprise-gleam	surprise	(☆▽☆)	gleam,star eyes,wow
+surprise-confused	surprise	(・・?)	confused,puzzled,question
+surprise-puzzled	surprise	(・_・?)	puzzled,huh,question
+surprise-huh	surprise	(°~°)?	huh,confused,question
+surprise-hmm	surprise	(・ω・)?	hmm,thinking,question
+surprise-dizzy	surprise	(@_@)	dizzy,hypnotized,confused
+surprise-spiral	surprise	(＠_＠;)	dizzy,spiral,confused
+surprise-faint	surprise	(+_+)	faint,dizzy,knocked out
+surprise-speechless	surprise	(-_-;)・・・	speechless,awkward,sweat
+surprise-sweat-drop	surprise	(^_^;)	sweat drop,nervous,awkward
+surprise-nervous	surprise	(；・∀・)	nervous,awkward,uneasy
+surprise-eep	surprise	(。□。)	eep,gasp,startled
+surprise-jaw-drop	surprise	(ﾟoﾟ;;)	jaw drop,awe,shock
+shrug-classic	shrug	¯\_(ツ)_/¯	shrug,whatever,idk,dunno
+shrug-shy	shrug	¯\(°_o)/¯	shrug,confused,idk
+shrug-meh	shrug	¯\_(ʘ_ʘ)_/¯	shrug,meh,idk
+shrug-tilted	shrug	┐(´д`)┌	shrug,sigh,whatever
+shrug-sigh	shrug	┐(￣ヘ￣)┌	shrug,sigh,give up
+shrug-oh-well	shrug	┐('～`；)┌	shrug,oh well,helpless
+shrug-helpless	shrug	┐(´～`)┌	helpless,shrug,shake head
+shrug-clueless	shrug	┐(‘ー`)┌	clueless,shrug,whatever
+shrug-dunno	shrug	(・_・ヾ	dunno,confused,scratch head
+shrug-scratch	shrug	(・・；)ゞ	scratch head,confused,nervous
+shrug-shrug-two	shrug	ヽ(ー_ー )ノ	shrug,hands up,meh
+shrug-hands-up	shrug	ヽ(´ー｀)ノ	hands up,calm,whatever
+shrug-calm	shrug	(｀ー´)	calm,shrug,fine
+shrug-fine	shrug	(￣ー￣)	fine,okay,meh
+shrug-whatever	shrug	(￢‿￢ )	whatever,meh,suspicious
+shrug-unbothered	shrug	(¬_¬ )	unbothered,meh,side eye
+shrug-flat	shrug	(-_-)	flat,neutral,unbothered
+shrug-deadpan	shrug	(._.)ゞ	deadpan,neutral,dull
+shrug-blank	shrug	(・_・)	blank,neutral,straight face
+shrug-poker	shrug	( ･_･)	poker face,neutral,blank
+shrug-neutral	shrug	(・ー・)	neutral,straight,indifferent
+shrug-ellipsis	shrug	(・・・)	ellipsis,silence,awkward
+shrug-tumbleweed	shrug	(　´_ゝ`)	tumbleweed,bored,smug
+shrug-bored	shrug	(－ω－)	bored,sleepy,meh
+shrug-yawn	shrug	(´ρ`)	yawn,tired,bored
+shrug-mellow	shrug	(´～`)	mellow,chill,shrug
+shrug-maybe	shrug	(￣～￣;)	maybe,hmm,uncertain
+shrug-unsure	shrug	(・へ・)	unsure,doubt,hmm
+shrug-doubt	shrug	(¬з¬)	doubt,skeptical,hmm
+shrug-skeptical	shrug	(눈_눈 )	skeptical,doubt,unconvinced
+shrug-thinking	shrug	(￣ω￣;)	thinking,hmm,pondering
+shrug-eh	shrug	(ー_ー;)	eh,meh,awkward
+greet-hello	greet	(＾∇＾)ノ	hello,hi,wave
+greet-wave	greet	(^_^)/	wave,hi,hello
+greet-wave-two	greet	( ´ ▽ ` )ﾉ	wave,hello,friendly
+greet-hi	greet	(・ω・)ノ	hi,hello,wave
+greet-hey	greet	ヾ(・ω・)ノ	hey,hello,wave
+greet-bye	greet	(´• ω •`)ﾉ	bye,goodbye,wave
+greet-bye-bye	greet	ヾ(＾-＾)ノ	bye bye,goodbye,wave
+greet-see-you	greet	(^-^)ゞ	see you,salute,goodbye
+greet-salute	greet	(｀・ω・´)ゞ	salute,yes sir,respect
+greet-salute-two	greet	ヾ(｡･ω･｡)ゞ	salute,greeting,respect
+greet-bow	greet	m(_ _)m	bow,thanks,respect,please
+greet-bow-deep	greet	orz=3	bow,deep,apology,thanks
+greet-thanks	greet	(*^^*)ゞ	thanks,grateful,nod
+greet-thank-you	greet	(´▽`ʃ♡ƪ)	thank you,sweet,grateful
+greet-good-morning	greet	(๑˃̵ᴗ˂̵)و	good morning,energetic,hello
+greet-good-night	greet	(－ω－) zzZ	good night,sleep,zzz
+greet-sleepy-night	greet	(-.-)Zzz...	sleep,night,zzz
+greet-morning-yawn	greet	(´〜｀*) ｱﾌｧ	morning,yawn,sleepy
+greet-welcome	greet	(*´▽`*)ノ	welcome,hello,warm
+greet-welcome-back	greet	ヽ(*⌒▽⌒*)ﾉ	welcome back,cheer,hello
+greet-nice-to-meet	greet	(＾ー＾)ノ	nice to meet you,hello,friendly
+greet-cheers	greet	(＾∀＾)ノ□	cheers,toast,drink
+greet-toast	greet	(^o^)ノ□	toast,cheers,drink
+greet-high-five	greet	(ノ^o^)ノ ヽ(^o^ヽ)	high five,celebrate,friends
+greet-fist-bump	greet	(ᗒᗩᗕ)ᕗ	fist bump,solidarity,cheers
+greet-okay	greet	(｀・ω・´)b	ok,thumbs up,good
+greet-nod	greet	(´･ω･`)ゞ	nod,agree,yes
+greet-yes	greet	(＾ω＾)b	yes,agree,thumbs up
+greet-no	greet	(×ω×)	no,refuse,cross
+greet-please	greet	(人 •͈ᴗ•͈)	please,beg,pray
+greet-pray	greet	(⁎˃ᆺ˂)	please,pray,hope
+sorry-bow	sorry	m(_ _;)m	sorry,bow,apology
+sorry-deep-bow	sorry	m(;_;)m	sorry,deep bow,apology,tears
+sorry-apologize	sorry	(´；ω；`)ゞ	apologize,sorry,tears
+sorry-forgive-me	sorry	(人´∀`)	forgive me,please,sorry
+sorry-oops	sorry	(>人<;)	oops,sorry,please
+sorry-oops-two	sorry	(^_^;)ゞ	oops,sorry,sweat
+sorry-my-bad	sorry	(ノд`)	my bad,oops,sorry
+sorry-sheepish	sorry	(*ﾉω･*)	sheepish,shy,sorry
+sorry-embarrassed	sorry	(〃ω〃)	embarrassed,shy,blush
+sorry-hide	sorry	(/ω＼)	hide,shy,embarrassed
+sorry-hide-face	sorry	(⁄ ⁄•⁄ω⁄•⁄ ⁄)	hide face,embarrassed,shy
+sorry-peek	sorry	(・Д・)ノ	peek,sorry,hello
+sorry-guilty	sorry	(._.;)	guilty,sorry,nervous
+sorry-ashamed	sorry	(ーー;)	ashamed,guilty,sweat
+sorry-regret	sorry	(´Д`)	regret,sorry,sigh
+sorry-mea-culpa	sorry	(-_-;)ゞ	sorry,mea culpa,tired
+sorry-forgive	sorry	(・人・)	forgive,pray,please
+sorry-beg	sorry	(*ノω<*)	beg,please,sorry
+sorry-beg-tears	sorry	(ノ_ヽ)	beg,tears,sorry
+sorry-hold-on	sorry	(;一_一)	hold on,sorry,wait
+sorry-wait	sorry	(´∩｀。)	wait,sorry,please
+sorry-excuse	sorry	(；^ω^)	excuse,sorry,nervous
+sorry-nervous-laugh	sorry	(ﾉ∀`)	nervous laugh,oops,sorry
+sorry-bad-timing	sorry	(´-ω-`;)	bad timing,sorry,awkward
+sorry-sorry-hug	sorry	(つ﹏<。)	sorry,hug,tears
+sorry-apology-gift	sorry	(｡•́︿•̀｡)ゞ	apology,sorry,sad
+sorry-tiny-sorry	sorry	(⸝⸝•﹏•⸝⸝)	tiny sorry,shy,small
+sorry-i-tried	sorry	(´･_･`)ゞ	i tried,sorry,sigh
+sorry-promise	sorry	(｀・ω・´)ゞ✧	promise,sorry,determined
+sorry-make-up	sorry	(＾～＾;)ゞ	make up,sorry,hopeful
+animals-cat	animals	(=^･ω･^=)	cat,kitty,neko
+animals-cat-two	animals	(=^･^=)	cat,kitty,face
+animals-cat-grin	animals	(=①ω①=)	cat,eyes,cute
+animals-cat-paw	animals	ฅ^•ﻌ•^ฅ	cat,paws,cute
+animals-cat-lazy	animals	(=ↀωↀ=)	cat,sparkle eyes,pet
+animals-cat-sleep	animals	(=￣ω￣=)	cat,sleepy,calm
+animals-cat-smug	animals	(=｀ω´=)	cat,smug,annoyed
+animals-cat-surprised	animals	(=ΦｪΦ=)	cat,surprised,round eyes
+animals-cat-kiss	animals	(=^･_･^=)ﾉ	cat,wave,hello
+animals-cat-loaf	animals	(=ﾟωﾟ)ﾉ	cat,wave,hello
+animals-dog	animals	U^ェ^U	dog,puppy,face
+animals-dog-two	animals	∪･ω･∪	dog,puppy,sweet
+animals-dog-happy	animals	＼(U・ᴥ・U)／	dog,happy,cheer
+animals-bear	animals	ʕ•ᴥ•ʔ	bear,cute,face
+animals-bear-two	animals	ʕ´•ᴥ•`ʔ	bear,sweet,face
+animals-bear-hug	animals	ʕ っ•ᴥ•ʔっ	bear,hug,cuddle
+animals-bunny	animals	(・x・)	bunny,rabbit,face
+animals-bunny-two	animals	(\(\	bunny,rabbit,ears
+animals-bunny-ears	animals	(\_/)	bunny,rabbit,ears
+animals-bunny-hop	animals	(｡･ω･｡)ﾉ♡	bunny,hop,cute
+animals-mouse	animals	~(‾▿‾)~	mouse,wiggle,silly
+animals-pig	animals	(´(00)`)	pig,snout,face
+animals-pig-two	animals	(￣(エ)￣)	pig,bear,face
+animals-owl	animals	(◉Θ◉)	owl,round eyes,bird
+animals-owl-two	animals	{•̃_•̃}	owl,wise,bird
+animals-bird	animals	(・θ・)	bird,beak,tweet
+animals-bird-two	animals	＜(・ω・)＞	bird,flap,tweet
+animals-penguin	animals	(•ө•)	penguin,beak,cute
+animals-penguin-waddle	animals	<(°)>	penguin,waddle,bird
+animals-fish	animals	>°)))彡	fish,swim,sea
+animals-fish-two	animals	><(((°>	fish,swim,sea
+animals-whale	animals	∪^∪≈≈	whale,sea,spout
+animals-crab	animals	(\/)(°,,,°)(\/)	crab,claws,sea
+animals-frog	animals	@(-.-)@	frog,eyes,pond
+animals-frog-two	animals	(°ᴥ°)	frog,round eyes,cute
+animals-monkey	animals	(°^°)	monkey,face,hands
+animals-monkey-hear	animals	(⊙ω⊙)	monkey,wide eyes,curious
+animals-sheep	animals	@( * O * )@	sheep,wool,fluffy
+animals-cow	animals	(__)(oo)	cow,moo,face
+animals-bat	animals	/\^._.^/\	bat,wings,spooky
+animals-spider	animals	/╲/\╭(ᴼ ᴥ ᴼ)╮/\╱\	spider,legs,spooky
+animals-snail	animals	@_/	snail,slow,shell
+animals-snake	animals	~~~~~(°_°)	snake,hiss,slither
+animals-chick	animals	(•̀ᴗ•́)ʻ	chick,tweet,cute
+actions-table-flip	actions	(╯°□°）╯︵ ┻━┻	table flip,angry,rage,flip
+actions-table-flip-two	actions	(ノಠ益ಠ)ノ彡┻━┻	table flip,furious,rage
+actions-table-put-back	actions	┬─┬ ノ( ゜-゜ノ)	table,put back,calm down
+actions-table-restore	actions	┬─┬ノ( º _ ºノ)	table,restore,sorry
+actions-double-flip	actions	┻━┻ ︵ヽ(`Д´)ﾉ︵ ┻━┻	double table flip,rage,flip
+actions-flip-everything	actions	(ノ°ロ°)ノ︵ ┻━┻	table flip,shock,flip
+actions-throw	actions	(ﾉ-_-)ﾉ~┻━┻	throw,table,annoyed
+actions-facepalm-two	actions	(눈‸눈)	facepalm,tired,disbelief
+actions-facepalm-three	actions	(ー_ー)!!	facepalm,oh no,disbelief
+actions-magic	actions	(∩｀-´)⊃━☆ﾟ.*･｡ﾟ	magic,wand,sparkles
+actions-wizard	actions	(ﾉ･ω･)ﾉ･ﾟ✧	magic,spell,sparkles
+actions-shoot	actions	(☞ﾟヮﾟ)☞	point,finger gun,you
+actions-point	actions	☜(ﾟヮﾟ☜)	point,that way,you
+actions-finger-gun	actions	(＾ω＾)☞	point,finger gun,hey
+actions-run	actions	ε=ε=ε=┌(;*´Д`)ﾉ	run,escape,hurry
+actions-run-away	actions	ε=ε=ε=(~￣▽￣)~	run away,sneak,quick
+actions-sneak	actions	(￣▽￣)ノ┈┈┈┈	sneak,peek,wave
+actions-dash	actions	=͟͟͞͞(((((ง•̀_•́)ง	dash,rush,run
+actions-sleep	actions	(－.－)...zzz	sleep,zzz,tired
+actions-sleepy	actions	(-ω-)zzZ	sleepy,zzz,nap
+actions-nap	actions	(´-ω-`)zzz	nap,sleep,cozy
+actions-coffee	actions	c(￣▽￣)□	coffee,drink,tea
+actions-tea	actions	(＾▽＾)っ旦	tea,cup,drink
+actions-cheers-mug	actions	(^_^)_旦~~	tea,coffee,cup,steam
+actions-eat	actions	ヽ(*^▽^*)ﾉ◯	eat,rice ball,yum
+actions-noodle	actions	(っ´ω`)ﾉ(╥ω╥)	eat,noodles,share
+actions-write	actions	φ(．．)	write,note,pen
+actions-notes	actions	φ(゜▽゜*)♪	write,notes,music
+actions-study	actions	(￣ω￣;)φ	study,write,work
+actions-typing	actions	(ﾟдﾟ)ｶﾀｶﾀ	typing,keyboard,work
+actions-working	actions	(•̀ᴗ•́)و ̑̑	working,determined,go
+actions-lets-go	actions	٩(ˊᗜˋ*)و	lets go,determined,energy
+actions-fighting	actions	ヽ(`ー´)ﾉ	fighting,determined,go
+actions-ganbare	actions	(ง •̀ω•́)ง✧	ganbare,keep going,good luck
+actions-good-luck	actions	(ง'̀ω'́)ง	good luck,fight,go
+actions-peek	actions	┌(・。・)┘♪	peek,dance,music
+actions-guitar	actions	♪～(´ε｀ )	whistle,music,hum
+actions-whistle	actions	(´ε｀ )♪	whistle,hum,chill
+actions-gaming	actions	(╯✧▽✧)╯	gaming,excited,go
+actions-celebrate-win	actions	٩(ˊᗜˋ)و★	win,trophy,victory
+actions-mic-drop	actions	(•_•) ( •_•)>⌐■-■ (⌐■_■)	mic drop,sunglasses,deal with it
+actions-deal-with-it	actions	(⌐■_■)	sunglasses,cool,deal with it
+actions-cool	actions	(▀̿Ĺ̯▀̿ ̿)	sunglasses,cool,smug
+actions-shades-on	actions	(•_•)>⌐■-■	sunglasses,put on,cool
+actions-stars-fall	actions	(*´∀`)ﾉ★	star,wish,sparkle
+actions-wish	actions	(人 •͈ᴗ•͈)☆	wish,star,hope
+actions-shy-wave	actions	(⁄ ⁄>⁄▽⁄<⁄ ⁄)ﾉ	shy,wave,blush

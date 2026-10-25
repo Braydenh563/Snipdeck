@@ -5852,6 +5852,37 @@ hero | scripts/readme_shots.py:74
 save | scripts/readme_shots.py:92
 main | scripts/readme_shots.py:100
 
+### scripts/symbols.py
+
+deflate | scripts/symbols.py:72
+inflate | scripts/symbols.py:78
+sha256 | scripts/symbols.py:82
+clean | scripts/symbols.py:86
+seq_chars | scripts/symbols.py:91
+strip_fe0f | scripts/symbols.py:95
+parse_emoji_test | scripts/symbols.py:106
+parse_cldr | scripts/symbols.py:143
+cldr_lookup | scripts/symbols.py:152
+parse_phosphor_catalog | scripts/symbols.py:161
+icon_payload | scripts/symbols.py:185
+parse_kaomoji | scripts/symbols.py:195
+fluent_art_map | scripts/symbols.py:227
+slug | scripts/symbols.py:240
+add_name_matches | scripts/symbols.py:245
+build_text | scripts/symbols.py:267
+build_notices | scripts/symbols.py:389
+load_lock | scripts/symbols.py:399
+fetch | scripts/symbols.py:403
+tar_members | scripts/symbols.py:425
+gather | scripts/symbols.py:435
+generate | scripts/symbols.py:472
+report | scripts/symbols.py:493
+check | scripts/symbols.py:518
+check_art | scripts/symbols.py:573
+render_art | scripts/symbols.py:599
+pin | scripts/symbols.py:606
+main | scripts/symbols.py:616
+
 ### spikes/s1-noactivate/src/main.rs
 
 platform | spikes/s1-noactivate/src/main.rs:4
@@ -6481,6 +6512,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-ui/tests/support/picker_fixture.rs` | 0 |
 | `crates/snipdeck-ui/tests/tray_texts.rs` | 1 |
 | `scripts/test_i18n.py` | 16 |
+| `scripts/test_symbols.py` | 21 |
 | `spikes/s3-longtext/src/viewer.rs` (inline) | 1 |
 | `spikes/s4-mica/src/appearance.rs` (inline) | 8 |
 | `tools/snipdeck-licence-issuer/src/cli.rs` (inline) | 4 |
