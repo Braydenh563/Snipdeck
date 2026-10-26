@@ -40,3 +40,11 @@ Next: (2) search marks in the preview and "tag: name" when only a tag matched: n
   (Hit score tier >> 24 == Tag), Row.preview_mark/tag_hit, PanelRow props, item-card preview mark span like the title one (qr/qc), @tr("tag: {}").
   Also not done: "Paste stack" row in the Panel menu; Panel menu golden fixture is a shorter list than APP_MENU.
   An_unpinned_panel_hides test failed once in a multi-filter run (passes alone); re-check for flakiness.
+
+Slice 6b items 2 and 13 finished (agent, later session): 2706bb3 (search marks the preview match; "tag: <name>" when only a tag matched; Hit.tag,
+  Row.preview_mark/tag_hit, PanelRow preview-before/preview-match/tag-hit; sensitive rows never; goldens panel-search-light/dark regenerated;
+  the new "tag: {}" msgid is untranslated in the 6 locales, English fallback) and 0d93401 (row More glyph dots-three-bold + text-secondary:
+  2.07:1 -> 5.81:1 light, 6.05:1 dark on the deck card; deck goldens pass within tolerance, not regenerated; Panel's quiet rows use RowAction, text-primary, unchanged).
+  Tests run: snipdeck-core search, snipdeck-app panel::/binding::, snipdeck-ui panel/deck/main_window/panel_logic: green.
+  Clippy 1.99.1 on core/app/ui: only errors are in settings_binding.rs (other agent's WIP: too_many_lines page_view, collapsible_if, semicolon at 1646); ui test targets not reached.
+Still open: Paste stack row in the Panel menu; Panel menu golden fixture shorter than APP_MENU; the copy action glyph in comfortable cards is still text-tertiary.
