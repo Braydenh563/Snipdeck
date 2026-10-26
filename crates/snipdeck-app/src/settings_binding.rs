@@ -1672,7 +1672,7 @@ where
                 };
             })));
         wire!(on_panel_hide_after_use_chosen, |core, i| core.act(|ctl| {
-            ctl.update_settings(|s| s.panel_hide_after_use = i != 1)
+            ctl.update_settings(|s| s.panel_hide_after_use = i != 1);
         }));
         wire!(on_panel_start_visible_chosen, |core, i| core
             .panel_start_visible_chosen(i));
