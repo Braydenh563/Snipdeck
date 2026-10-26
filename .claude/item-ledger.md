@@ -28,3 +28,6 @@ date | item | type | rung | rework | note
 2026-10-25 | Panel v2 slice 3: quiet List row | ui | sonnet | 0 | 
 2026-10-25 | Panel v2 slice 4: header, search, footer, chrome | ui | sonnet | 0 | 
 2026-10-25 | Symbols slices 1-3 (data, art, crate) | feature | sonnet | 0 | 
+2026-10-26 | New-install defaults (Recent on, chords, unpinned, hide-after-use) | feature | sonnet | 2 | 
+2026-10-26 | Symbols slice 4 controller | feature | sonnet | 1 | 
+2026-10-26 | Panel v2 slices 5-6 + 6b items 1,3,4 | ui | sonnet | 0 | 
