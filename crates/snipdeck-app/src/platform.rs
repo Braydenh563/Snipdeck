@@ -77,6 +77,14 @@ mod imp {
         fn caret(&self) -> Option<snipdeck_platform::route::ScreenRect> {
             self.0.caret()
         }
+
+        fn cursor(&self) -> Option<(i32, i32)> {
+            screen::cursor_position()
+        }
+
+        fn monitor_at(&self, x: i32, y: i32) -> Option<Monitor> {
+            monitor_under(x, y)
+        }
     }
 
     /// The Picker, the fill form and the toast window on the real machine.
@@ -107,20 +115,25 @@ mod imp {
         }
 
         fn monitor_at(&self, x: i32, y: i32) -> Option<Monitor> {
-            let facts = screen::monitor_at(x, y)?;
-            let area = |r: snipdeck_platform::route::ScreenRect| Rect {
-                x: r.x,
-                y: r.y,
-                w: r.w,
-                h: r.h,
-            };
-            Some(Monitor {
-                id: Monitor::id_of("monitor", facts.bounds.w, facts.bounds.h),
-                work_area: area(facts.work_area),
-                taskbar: None,
-                scale: facts.scale,
-            })
+            monitor_under(x, y)
         }
+    }
+
+    /// The monitor under a physical point (the nearest one outside them all).
+    fn monitor_under(x: i32, y: i32) -> Option<Monitor> {
+        let facts = screen::monitor_at(x, y)?;
+        let area = |r: snipdeck_platform::route::ScreenRect| Rect {
+            x: r.x,
+            y: r.y,
+            w: r.w,
+            h: r.h,
+        };
+        Some(Monitor {
+            id: Monitor::id_of("monitor", facts.bounds.w, facts.bounds.h),
+            work_area: area(facts.work_area),
+            taskbar: None,
+            scale: facts.scale,
+        })
     }
 
     struct Hotkeys(HotkeyService);

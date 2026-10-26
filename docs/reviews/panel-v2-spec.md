@@ -234,7 +234,7 @@ their hue marks, then New list. Recent becomes the Chooser's first entry.
 
 ## 4. Settings > Panel > "Opening the Panel"
 
-Reused, unchanged: Panel shortcut (`hotkeys.toggle_panel`, Ctrl+Alt+Space) and Picker shortcut
+Reused, unchanged: Panel shortcut (`hotkeys.toggle_panel`, Ctrl+Shift+Y for new installs, see docs/reviews/default-chords.md) and Picker shortcut
 (`hotkeys.picker`, Ctrl+Shift+Space): "what the hotkey opens" is already two chords, so no new setting;
 Alt+Tab / taskbar (`panel_in_taskbar`); Hide when it loses focus (`panel_hide_on_blur`); Dock edge and
 reveal (`dock`, `panel_geometry.edge`); Start with Windows (`autostart`); Picker side (`picker_side`).

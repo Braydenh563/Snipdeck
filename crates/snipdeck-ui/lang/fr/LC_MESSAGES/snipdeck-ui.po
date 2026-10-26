@@ -28,8 +28,14 @@ msgstr "175 %"
 msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "Une image PNG. Snipdeck en garde sa propre copie."
 
+msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one folds back to its edge."
+msgstr ""
+
 msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "Fonction Supporter. Ajoute un mot de passe à la protection de Windows pour vos extraits sensibles. Demandé lors de la première utilisation d'un extrait sensible, puis de nouveau après {} minutes sans utilisation."
+
+msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
+msgstr ""
 
 msgid "A link can't contain spaces or line breaks."
 msgstr "Un lien ne peut pas contenir d'espaces ni de sauts de ligne."
@@ -100,6 +106,9 @@ msgstr "Ajoute un mot de passe à la protection de Windows pour vos extraits sen
 msgid "Adds a text snippet to {}"
 msgstr ""
 
+msgid "After a paste or copy"
+msgstr ""
+
 msgid "All"
 msgstr "Tous"
 
@@ -121,6 +130,9 @@ msgstr "Alt 1 à 9"
 msgid "Alt+{}"
 msgstr "Alt+{}"
 
+msgid "Always shown"
+msgstr ""
+
 msgid "Amber"
 msgstr "Ambre"
 
@@ -136,6 +148,9 @@ msgstr "Partout dans Windows"
 msgid "Appearance"
 msgstr "Apparence"
 
+msgid "Appears when you type"
+msgstr ""
+
 msgid "Apply the new name"
 msgstr "Appliquer le nouveau nom"
 
@@ -150,6 +165,12 @@ msgstr "Vous demande de choisir une option"
 
 msgid "At least {} characters. A few unrelated words make a good password."
 msgstr "Au moins {} caractères. Quelques mots sans rapport font un bon mot de passe."
+
+msgid "At the mouse"
+msgstr ""
+
+msgid "At the text cursor"
+msgstr ""
 
 msgid "Back"
 msgstr "Retour"
@@ -222,6 +243,9 @@ msgstr "Annuler"
 
 msgid "Captured items keep their kind."
 msgstr "Les extraits capturés gardent leur type."
+
+msgid "Cards"
+msgstr ""
 
 msgid "Change master password"
 msgstr "Modifier le mot de passe principal"
@@ -766,7 +790,7 @@ msgstr "Terminer la pile"
 msgid "Enter"
 msgstr "Enter"
 
-msgid "Enter creates “{}”"
+msgid "Enter creates “{}” in {}"
 msgstr ""
 
 msgid "Enter your master password to use the sensitive items in your library. Your other items are always available."
@@ -964,6 +988,9 @@ msgstr "Durée pendant laquelle le pointeur reste hors du panneau ouvert avant q
 msgid "How tall the item rows are in the Main window lists. Compact shows one line per item. The Panel keeps its own row height for now."
 msgstr "Hauteur des lignes dans les listes de la fenêtre principale. Compact affiche une ligne par élément. Le Panneau garde pour l'instant sa propre hauteur de ligne."
 
+msgid "How the Panel lists your snippets: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
+msgstr ""
+
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Largeur d'ouverture du panneau, de {} à {} pixels."
 
@@ -1060,6 +1087,9 @@ msgstr "Continuer à s'exécuter dans la zone de notification à la fermeture de
 msgid "Keep the Panel on top (pin)"
 msgstr "Garder le panneau au premier plan (épingler)"
 
+msgid "Keep the Panel open"
+msgstr ""
+
 msgid "Keyboard shortcuts"
 msgstr "Raccourcis clavier"
 
@@ -1071,6 +1101,9 @@ msgstr "Langue"
 
 msgid "Last backup: {}"
 msgstr "Dernière sauvegarde : {}"
+
+msgid "Layout"
+msgstr ""
 
 msgid "Leave delay"
 msgstr "Délai de sortie"
@@ -1182,6 +1215,9 @@ msgstr "Mot de passe principal supprimé. Snipdeck n'a pas pu ouvrir la biblioth
 
 msgid "Master password set."
 msgstr "Mot de passe principal défini."
+
+msgid "Menu"
+msgstr ""
 
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
@@ -1421,6 +1457,9 @@ msgstr "Rien à annuler"
 msgid "Nothing you copy in these programs reaches the Recent inbox. Use the program's file name, for example keepass.exe."
 msgstr "Rien de ce que vous copiez dans ces programmes n'arrive dans la boîte Récents. Utilisez le nom de fichier du programme, par exemple keepass.exe."
 
+msgid "Numbers the first nine rows so pressing 1 to 9 uses that snippet."
+msgstr ""
+
 msgid "OK"
 msgstr "OK"
 
@@ -1441,6 +1480,9 @@ msgstr "Un raccourci transforme le texte copié en extrait."
 
 msgid "Only text, code, link and template items can be sensitive."
 msgstr "Seuls les extraits de texte, de code, de lien et de modèle peuvent être sensibles."
+
+msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
+msgstr ""
 
 msgid "Open"
 msgstr "Ouvrir"
@@ -1496,6 +1538,9 @@ msgstr "Ouvrir le guide de l'utilisateur"
 msgid "Open the user guide (F1)"
 msgstr "Ouvrir le guide d'utilisation (F1)"
 
+msgid "Opening the Panel"
+msgstr ""
+
 msgid "Opens in your browser."
 msgstr "S'ouvre dans votre navigateur."
 
@@ -1541,8 +1586,14 @@ msgstr "Panneau ancré en haut"
 msgid "Panel floats again"
 msgstr "Le panneau flotte de nouveau"
 
+msgid "Panel layout"
+msgstr ""
+
 msgid "Panel menu"
 msgstr "Menu du panneau"
+
+msgid "Panel opens"
+msgstr ""
 
 msgid "Panel stays open"
 msgstr "Le Panneau reste ouvert"
@@ -1711,6 +1762,9 @@ msgstr "Capture rapide"
 
 msgid "Quick capture the clipboard"
 msgstr "Capturer rapidement le presse-papiers"
+
+msgid "Quick-use numbers"
+msgstr ""
 
 msgid "Quit"
 msgstr "Quitter"
@@ -1905,6 +1959,9 @@ msgstr "Rechercher dans tous les extraits"
 msgid "Search every board and paste without opening the window."
 msgstr "Recherchez dans tous les tableaux et collez sans ouvrir la fenêtre."
 
+msgid "Search field"
+msgstr ""
+
 msgid "Search in"
 msgstr "Rechercher dans"
 
@@ -2006,6 +2063,9 @@ msgstr "Afficher ou masquer le panneau"
 
 msgid "Show or hide the panel"
 msgstr "Afficher ou masquer le panneau"
+
+msgid "Show the Panel"
+msgstr ""
 
 msgid "Show the Panel in the taskbar and Alt+Tab"
 msgstr "Afficher le Panneau dans la barre des tâches et dans Alt+Tab"
@@ -2118,6 +2178,9 @@ msgstr "Démarrer avec Windows"
 msgid "Start-up"
 msgstr "Démarrage"
 
+msgid "Stay in the tray"
+msgstr ""
+
 msgid "Step {} of {}"
 msgstr "Étape {} sur {}"
 
@@ -2138,6 +2201,12 @@ msgstr "Supporter"
 
 msgid "Tab"
 msgstr "Tab"
+
+msgid "Tabs"
+msgstr ""
+
+msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your snippets."
+msgstr ""
 
 msgid "Tag"
 msgstr "Étiquettes"
@@ -2403,6 +2472,9 @@ msgstr "Bord supérieur"
 msgid "Trash"
 msgstr "Corbeille"
 
+msgid "Tray icon click opens"
+msgstr ""
+
 msgid "Troubleshoot"
 msgstr "Dépannage"
 
@@ -2517,6 +2589,9 @@ msgstr "Bienvenue dans Snipdeck"
 msgid "Welcome tour"
 msgstr "Visite de bienvenue"
 
+msgid "What a click on the Snipdeck icon in the tray opens. The tray menu still has both."
+msgstr ""
+
 msgid "What is on the clipboard"
 msgstr "Ce qui se trouve dans le presse-papiers"
 
@@ -2526,14 +2601,26 @@ msgstr "Les modifications n'ont pas été enregistrées."
 msgid "What you changed in this item has not been saved."
 msgstr "Les modifications de cet extrait n'ont pas été enregistrées."
 
+msgid "When Windows starts"
+msgstr ""
+
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "Quand l'épingle est désactivée, le panneau se masque dès que tu passes à une autre application. Un panneau épinglé reste."
+
+msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
+msgstr ""
 
 msgid "Where the panel sits"
 msgstr "Où se place le panneau"
 
 msgid "Where the text cursor lands after pasting"
 msgstr "Où le curseur de texte se place après le collage"
+
+msgid "Where you left it"
+msgstr ""
+
+msgid "Whether the search field takes a row at the top all the time, or appears when you start typing."
+msgstr ""
 
 msgid "Which side of your text cursor the Picker opens on. It moves to the opposite side when there is no room, and opens below the mouse when the app has no text cursor Snipdeck can see."
 msgstr "Le côté du curseur de texte où s'ouvre le sélecteur. Il passe du côté opposé s'il n'y a pas de place, et s'ouvre sous la souris quand l'application n'a pas de curseur de texte que Snipdeck puisse voir."
@@ -2632,9 +2719,6 @@ msgstr "changement de couleur"
 
 msgid "copy clone twice"
 msgstr "copier cloner dupliquer"
-
-msgid "creates"
-msgstr ""
 
 msgid "delete"
 msgstr "suppression"

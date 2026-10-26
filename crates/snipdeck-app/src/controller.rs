@@ -60,7 +60,7 @@ use crate::{
     panel::PanelModel,
     paste_next::PasteQueue,
     picker::PickerModel,
-    settings::{DockEdge, HotkeyAction, Settings, Theme},
+    settings::{DockEdge, HotkeyAction, Settings, Theme, TrayClick},
     settings_store::SettingsSaver,
     toast::{Toast, ToastKind, ToastMessage},
     usecase::{self},
@@ -302,6 +302,9 @@ struct Session {
     /// A real tray icon is in the notification area now (from `TrayEvent::IconPresent`):
     /// closing the Panel may hide it.
     tray_available: bool,
+    /// Where the next `restore_frame` opens the Panel ("Panel opens": at the mouse or the text
+    /// cursor), read by [`show`](Self::show) and used once.
+    open_anchor: Option<crate::placement::Anchor>,
     /// "Pause hotkeys" is on.
     hotkeys_paused: bool,
     /// "Pause history" is on: the Recent inbox collects nothing until Snipdeck restarts.
@@ -653,6 +656,11 @@ where
     /// first, while it still has the focus.
     pub fn show(&mut self) -> Vec<Effect> {
         self.on_target_changed();
+        // Read the caret and the mouse now, while the Target still has the keyboard; a Panel
+        // that is already up is not moved.
+        if !self.visible {
+            self.session.open_anchor = self.open_anchor_now();
+        }
         self.visible = true;
         // A Panel shown again is open: the host places it from the stored frame.
         self.dock = DockState::Expanded;
@@ -728,6 +736,10 @@ where
     /// The user did something to the tray icon.
     pub fn on_tray(&mut self, event: TrayEvent) -> Vec<Effect> {
         match event {
+            // "Tray icon click opens": the Main window leaves the Panel as it is.
+            TrayEvent::TogglePanel if self.settings.tray_click == TrayClick::Main => {
+                vec![Effect::OpenMainWindow]
+            }
             TrayEvent::TogglePanel if self.visible => self.hide(),
             TrayEvent::TogglePanel | TrayEvent::OpenPanel => self.show(),
             TrayEvent::OpenSnipdeck => vec![Effect::OpenMainWindow],

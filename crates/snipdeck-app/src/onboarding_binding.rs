@@ -251,7 +251,8 @@ where
     // ---- Start with Windows ----------------------------------------------------------------
 
     fn autostart_toggled(self: &Rc<Self>, on: bool) {
-        match self.host.set_autostart(on) {
+        let hidden = !self.controller.borrow().settings().panel_start_visible;
+        match self.host.set_autostart(on, hidden) {
             Ok(()) => {
                 self.autostart_failed.set(false);
                 self.act(|ctl| ctl.update_settings(|s| s.autostart = on));

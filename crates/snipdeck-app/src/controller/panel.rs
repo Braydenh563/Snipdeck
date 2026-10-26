@@ -672,7 +672,15 @@ where
     }
 
     /// The Panel is about to be shown on `monitor`: put it where the user left it there.
+    ///
+    /// A [`show`](Self::show) that read an anchor ("Panel opens" at the mouse or the text
+    /// cursor) places it there instead, once.
     pub fn restore_frame(&mut self, monitor: &Monitor) -> Vec<Effect> {
+        if let Some(anchor) = self.session.open_anchor.take() {
+            let (on, frame) = self.frame_at(anchor, monitor);
+            self.monitor = Some(on);
+            return vec![Effect::PlaceWindow(frame)];
+        }
         self.monitor = Some(monitor.clone());
         self.dock_resync();
         self.placement(monitor)

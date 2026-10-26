@@ -80,6 +80,8 @@ fn now() -> Timestamp {
 struct FakeHost {
     hotkeys: RefCell<FakeHotkeys>,
     autostart: Cell<Option<bool>>,
+    /// Whether the last autostart entry carries `--hidden`.
+    autostart_hidden: Cell<Option<bool>>,
     autostart_fails: Cell<bool>,
     /// The last "Panel taskbar button" the page asked for.
     taskbar: Cell<Option<bool>>,
@@ -102,11 +104,12 @@ impl SettingsHost for FakeHost {
         settings_binding::apply_hotkeys(&mut *self.hotkeys.borrow_mut(), hotkeys)
     }
 
-    fn set_autostart(&self, on: bool) -> Result<(), String> {
+    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), String> {
         if self.autostart_fails.get() {
             return Err("the registry said no".into());
         }
         self.autostart.set(Some(on));
+        self.autostart_hidden.set(Some(hidden));
         Ok(())
     }
 
@@ -201,7 +204,7 @@ fn rig_on(store: Store, tier: Tier, dir: tempfile::TempDir, with_data_dir: bool)
     *host.documents.borrow_mut() = Some(dir.path().join("Documents"));
     let ui = SettingsPage::new().expect("settings page");
     // Tall, so the whole page is on screen.
-    ui.window().set_size(slint::LogicalSize::new(640.0, 4000.0));
+    ui.window().set_size(slint::LogicalSize::new(640.0, 6000.0));
     let data_dir = with_data_dir.then(|| dir.path().to_owned());
     let host_dyn: Rc<dyn SettingsHost> = Rc::clone(&host) as Rc<dyn SettingsHost>;
     let binding = Controller::bind_settings(&ctl, &ui, data_dir, host_dyn);
@@ -1445,7 +1448,7 @@ fn the_erase_button_stays_off_until_the_word_is_typed() {
         // The page scrolls, and the accessibility queries only see what is inside the window:
         // make it tall enough for the whole confirmation (the Licence section has the plan table).
         r.ui.window()
-            .set_size(slint::LogicalSize::new(640.0, 4000.0));
+            .set_size(slint::LogicalSize::new(640.0, 6000.0));
         assert!(!r.ui.get_erase_open());
         element(&r.ui, "Erase library\u{2026}", AccessibleRole::Button)
             .invoke_accessible_default_action();
@@ -2686,5 +2689,156 @@ fn a_licence_key_registers_paste_next_at_once() {
             registered(),
             "Supporter registers the chord kept in the settings"
         );
+    });
+}
+
+// ---- Panel layout and Opening the Panel (panel-v2 slices 7 and 8) --------------------------
+
+#[test]
+fn panel_layout_group_shows_the_settings_and_writes_each_choice() {
+    use snipdeck_app::settings::{PanelLayout, PanelSearch, PanelSwitcher};
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(r.ui.get_panel_layout_index(), 0, "List");
+        assert_eq!(r.ui.get_panel_search_index(), 0, "appears when you type");
+        assert_eq!(r.ui.get_panel_switcher_index(), 0, "Tabs");
+        assert!(r.ui.get_show_numbers(), "quick-use numbers on");
+
+        r.ui.invoke_panel_layout_chosen(1);
+        assert_eq!(r.ctl.borrow().settings().panel_layout, PanelLayout::Cards);
+        r.ui.invoke_panel_layout_chosen(2);
+        assert_eq!(r.ctl.borrow().settings().panel_layout, PanelLayout::Compact);
+        assert_eq!(r.ui.get_panel_layout_index(), 2);
+        r.ui.invoke_panel_search_chosen(1);
+        assert_eq!(r.ctl.borrow().settings().panel_search, PanelSearch::Always);
+        assert_eq!(r.ui.get_panel_search_index(), 1);
+        r.ui.invoke_panel_switcher_chosen(1);
+        assert_eq!(
+            r.ctl.borrow().settings().panel_switcher,
+            PanelSwitcher::Menu
+        );
+        assert_eq!(r.ui.get_panel_switcher_index(), 1);
+        r.ui.invoke_show_numbers_toggled(false);
+        assert!(!r.ctl.borrow().settings().show_numbers);
+        assert!(!r.ui.get_show_numbers());
+    });
+}
+
+#[test]
+fn opening_the_panel_group_writes_each_choice() {
+    use snipdeck_app::settings::{PanelOpenAt, TrayClick};
+    on_ui_thread(|| {
+        let r = rig();
+        assert_eq!(r.ui.get_tray_click_index(), 0, "Panel");
+        assert_eq!(r.ui.get_panel_open_at_index(), 0, "where you left it");
+        assert_eq!(
+            r.ui.get_panel_hide_after_use_index(),
+            0,
+            "hide: the new-install default"
+        );
+        assert_eq!(r.ui.get_panel_start_visible_index(), 0, "stay in the tray");
+
+        r.ui.invoke_tray_click_chosen(1);
+        assert_eq!(r.ctl.borrow().settings().tray_click, TrayClick::Main);
+        assert_eq!(r.ui.get_tray_click_index(), 1);
+        r.ui.invoke_panel_open_at_chosen(2);
+        assert_eq!(r.ctl.borrow().settings().panel_open_at, PanelOpenAt::Caret);
+        r.ui.invoke_panel_open_at_chosen(1);
+        assert_eq!(r.ctl.borrow().settings().panel_open_at, PanelOpenAt::Mouse);
+        assert_eq!(r.ui.get_panel_open_at_index(), 1);
+        r.ui.invoke_panel_hide_after_use_chosen(1);
+        assert!(!r.ctl.borrow().settings().panel_hide_after_use);
+        assert_eq!(r.ui.get_panel_hide_after_use_index(), 1, "keep it open");
+        r.ui.invoke_panel_hide_after_use_chosen(0);
+        assert!(r.ctl.borrow().settings().panel_hide_after_use);
+    });
+}
+
+#[test]
+fn show_the_panel_at_start_needs_start_with_windows_and_changes_the_hidden_flag() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(
+            !r.ui.get_panel_start_visible_enabled(),
+            "off while Start with Windows is off"
+        );
+        r.ui.invoke_panel_start_visible_chosen(1);
+        assert!(r.ctl.borrow().settings().panel_start_visible, "remembered");
+        assert_eq!(r.host.autostart.get(), None, "no entry to rewrite yet");
+
+        r.ui.invoke_autostart_toggled(true);
+        assert_eq!(
+            r.host.autostart_hidden.get(),
+            Some(false),
+            "shows the Panel: no --hidden"
+        );
+        assert!(r.ui.get_panel_start_visible_enabled());
+
+        r.ui.invoke_panel_start_visible_chosen(0);
+        assert_eq!(r.host.autostart.get(), Some(true));
+        assert_eq!(
+            r.host.autostart_hidden.get(),
+            Some(true),
+            "back to --hidden"
+        );
+        assert!(!r.ctl.borrow().settings().panel_start_visible);
+    });
+}
+
+#[test]
+fn a_failed_autostart_rewrite_keeps_the_start_choice_and_says_so() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_autostart_toggled(true);
+        r.host.autostart_fails.set(true);
+        r.ui.invoke_panel_start_visible_chosen(1);
+        assert!(
+            !r.ctl.borrow().settings().panel_start_visible,
+            "not changed when the entry could not be"
+        );
+        assert_eq!(
+            r.ui.get_panel_start_visible_index(),
+            0,
+            "the control went back"
+        );
+    });
+}
+
+#[test]
+fn where_the_panel_opens_is_off_while_it_is_docked() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(
+            r.ui.get_panel_open_at_enabled(),
+            "a floating Panel can be placed"
+        );
+        let monitor = Monitor {
+            taskbar: None,
+            id: Monitor::id_of("DISPLAY1", 1920, 1080),
+            work_area: Rect {
+                x: 0,
+                y: 0,
+                w: 1920,
+                h: 1040,
+            },
+            scale: 1.0,
+        };
+        r.ctl.borrow_mut().frame_changed(
+            &monitor,
+            Rect {
+                x: 600,
+                y: 100,
+                w: 320,
+                h: 480,
+            },
+        );
+        r.ui.invoke_dock_edge_chosen(1);
+        assert!(r.ctl.borrow().dock_edge().is_some());
+        assert!(
+            !r.ui.get_panel_open_at_enabled(),
+            "docked: the edge decides"
+        );
+        r.ui.invoke_dock_edge_chosen(0);
+        assert!(r.ui.get_panel_open_at_enabled());
     });
 }

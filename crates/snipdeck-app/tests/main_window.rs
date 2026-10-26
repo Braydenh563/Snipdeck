@@ -1056,7 +1056,7 @@ impl SettingsHost for NoHost {
         Vec::new()
     }
 
-    fn set_autostart(&self, _on: bool) -> Result<(), String> {
+    fn set_autostart(&self, _on: bool, _hidden: bool) -> Result<(), String> {
         Ok(())
     }
 

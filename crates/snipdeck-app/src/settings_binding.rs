@@ -40,8 +40,9 @@ use crate::{
     main_binding::{create_window, raise, set_look},
     native_window::fit_when_settled,
     settings::{
-        DockEdge, DockTrigger, HotkeyAction, Hotkeys, PickerSide, ProgramPaste, ProgramRule,
-        RowDensity, Settings, TextSize, Theme,
+        DockEdge, DockTrigger, HotkeyAction, Hotkeys, PanelLayout, PanelOpenAt, PanelSearch,
+        PanelSwitcher, PickerSide, ProgramPaste, ProgramRule, RowDensity, Settings, TextSize,
+        Theme, TrayClick,
     },
     toast::{LicenceProblem, Toast, ToastKind, ToastMessage},
     wording::{self, LANGUAGE_NAMES, LANGUAGE_TAGS},
@@ -72,7 +73,7 @@ pub trait SettingsHost {
     /// # Errors
     ///
     /// Why it could not be changed.
-    fn set_autostart(&self, on: bool) -> Result<(), String>;
+    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), String>;
 
     /// Gives the Panel a taskbar button, or takes it away, while the app runs.
     fn set_panel_in_taskbar(&self, on: bool);
@@ -172,17 +173,21 @@ impl SettingsHost for SystemHost {
         apply_hotkeys(&mut **self.hotkeys.borrow_mut(), hotkeys)
     }
 
-    fn set_autostart(&self, on: bool) -> Result<(), String> {
+    fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), String> {
         #[cfg(windows)]
         {
             let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-            snipdeck_platform::windows::autostart::set_enabled(&exe, "--hidden", on)
-                .map_err(|e| e.to_string())
+            snipdeck_platform::windows::autostart::set_enabled(
+                &exe,
+                if hidden { "--hidden" } else { "" },
+                on,
+            )
+            .map_err(|e| e.to_string())
         }
         #[cfg(not(windows))]
         {
             // Only Windows has the entry; elsewhere the setting is just remembered.
-            let _ = on;
+            let _ = (on, hidden);
             Ok(())
         }
     }
@@ -643,6 +648,15 @@ struct PageView {
     theme_index: i32,
     row_density_index: i32,
     picker_side_index: i32,
+    panel_layout_index: i32,
+    panel_search_index: i32,
+    panel_switcher_index: i32,
+    show_numbers: bool,
+    tray_click_index: i32,
+    panel_open_at_index: i32,
+    panel_open_at_enabled: bool,
+    panel_hide_after_use_index: i32,
+    panel_start_visible_index: i32,
     language_index: i32,
     autostart: bool,
     close_to_tray: bool,
@@ -841,6 +855,24 @@ where
             PickerSide::Right => 2,
             PickerSide::Left => 3,
         },
+        panel_layout_index: match settings.panel_layout {
+            PanelLayout::List => 0,
+            PanelLayout::Cards => 1,
+            PanelLayout::Compact => 2,
+        },
+        panel_search_index: i32::from(settings.panel_search == PanelSearch::Always),
+        panel_switcher_index: i32::from(settings.panel_switcher == PanelSwitcher::Menu),
+        show_numbers: settings.show_numbers,
+        tray_click_index: i32::from(settings.tray_click == TrayClick::Main),
+        panel_open_at_index: match settings.panel_open_at {
+            PanelOpenAt::Last => 0,
+            PanelOpenAt::Mouse => 1,
+            PanelOpenAt::Caret => 2,
+        },
+        // A docked Panel opens at its edge: the choice has nothing to say there.
+        panel_open_at_enabled: controller.dock_edge().is_none(),
+        panel_hide_after_use_index: i32::from(!settings.panel_hide_after_use),
+        panel_start_visible_index: i32::from(settings.panel_start_visible),
         language_index: language_index(&settings.language),
         autostart: settings.autostart,
         close_to_tray: settings.close_to_tray,
@@ -1185,8 +1217,25 @@ where
 
     // ---- Start with Windows ----------------------------------------------------------------
 
+    /// "When Windows starts": Stay in the tray (0) or Show the Panel (1). The entry in the
+    /// registry carries `--hidden` for the first, so with "Start with Windows" on it is
+    /// rewritten; if that fails nothing changes.
+    fn panel_start_visible_chosen(self: &Rc<Self>, index: i32) {
+        let visible = index == 1;
+        if self.controller.borrow().settings().autostart {
+            if let Err(error) = self.host.set_autostart(true, !visible) {
+                crate::trace!("autostart rewrite: {error}");
+                self.toast(ToastKind::Danger, ToastMessage::AutostartFailed);
+                self.force_redraw();
+                return;
+            }
+        }
+        self.act(|ctl| ctl.update_settings(|s| s.panel_start_visible = visible));
+    }
+
     fn autostart_toggled(self: &Rc<Self>, on: bool) {
-        match self.host.set_autostart(on) {
+        let hidden = !self.controller.borrow().settings().panel_start_visible;
+        match self.host.set_autostart(on, hidden) {
             Ok(()) => {
                 self.act(|ctl| ctl.update_settings(|s| s.autostart = on));
             }
@@ -1551,6 +1600,53 @@ where
                     _ => PickerSide::Below,
                 };
             })));
+        wire!(on_panel_layout_chosen, |core, i| core.act(|ctl| ctl
+            .update_settings(|s| {
+                s.panel_layout = match i {
+                    1 => PanelLayout::Cards,
+                    2 => PanelLayout::Compact,
+                    _ => PanelLayout::List,
+                };
+            })));
+        wire!(on_panel_search_chosen, |core, i| core.act(|ctl| ctl
+            .update_settings(|s| {
+                s.panel_search = if i == 1 {
+                    PanelSearch::Always
+                } else {
+                    PanelSearch::OnType
+                };
+            })));
+        wire!(on_panel_switcher_chosen, |core, i| core.act(|ctl| ctl
+            .update_settings(|s| {
+                s.panel_switcher = if i == 1 {
+                    PanelSwitcher::Menu
+                } else {
+                    PanelSwitcher::Tabs
+                };
+            })));
+        wire!(on_show_numbers_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.show_numbers = on)));
+        wire!(on_tray_click_chosen, |core, i| core.act(|ctl| ctl
+            .update_settings(|s| {
+                s.tray_click = if i == 1 {
+                    TrayClick::Main
+                } else {
+                    TrayClick::Panel
+                };
+            })));
+        wire!(on_panel_open_at_chosen, |core, i| core.act(|ctl| ctl
+            .update_settings(|s| {
+                s.panel_open_at = match i {
+                    1 => PanelOpenAt::Mouse,
+                    2 => PanelOpenAt::Caret,
+                    _ => PanelOpenAt::Last,
+                };
+            })));
+        wire!(on_panel_hide_after_use_chosen, |core, i| core.act(|ctl| {
+            ctl.update_settings(|s| s.panel_hide_after_use = i != 1)
+        }));
+        wire!(on_panel_start_visible_chosen, |core, i| core
+            .panel_start_visible_chosen(i));
         wire!(on_text_size_chosen, |core, i| core.text_size_chosen(i));
         wire!(on_accent_chosen, |core, i| core.act(|ctl| ctl
             .update_settings(|s| {
@@ -1729,6 +1825,35 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     if differs(&|p| p.picker_side_index == view.picker_side_index) {
         window.set_picker_side_index(view.picker_side_index);
     }
+    if differs(&|p| p.panel_layout_index == view.panel_layout_index) {
+        window.set_panel_layout_index(view.panel_layout_index);
+    }
+    if differs(&|p| p.panel_search_index == view.panel_search_index) {
+        window.set_panel_search_index(view.panel_search_index);
+    }
+    if differs(&|p| p.panel_switcher_index == view.panel_switcher_index) {
+        window.set_panel_switcher_index(view.panel_switcher_index);
+    }
+    if differs(&|p| p.show_numbers == view.show_numbers) {
+        window.set_show_numbers(view.show_numbers);
+    }
+    if differs(&|p| p.tray_click_index == view.tray_click_index) {
+        window.set_tray_click_index(view.tray_click_index);
+    }
+    if differs(&|p| p.panel_open_at_index == view.panel_open_at_index) {
+        window.set_panel_open_at_index(view.panel_open_at_index);
+    }
+    if differs(&|p| p.panel_open_at_enabled == view.panel_open_at_enabled) {
+        window.set_panel_open_at_enabled(view.panel_open_at_enabled);
+    }
+    if differs(&|p| p.panel_hide_after_use_index == view.panel_hide_after_use_index) {
+        window.set_panel_hide_after_use_index(view.panel_hide_after_use_index);
+    }
+    if differs(&|p| p.panel_start_visible_index == view.panel_start_visible_index) {
+        window.set_panel_start_visible_index(view.panel_start_visible_index);
+    }
+    // Only a Start with Windows entry has a command line to change.
+    window.set_panel_start_visible_enabled(view.autostart);
     if differs(&|p| p.row_density_index == view.row_density_index) {
         window.set_row_density_index(view.row_density_index);
     }

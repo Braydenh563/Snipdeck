@@ -297,6 +297,51 @@ fn settings_page_light_dark_and_scaled() {
     assert_golden("settings-scale-light", &render(&h));
 }
 
+/// The rows of `frame` from physical `top` for `height` (the page is rendered whole, tall, and the
+/// golden shows the two Panel groups only).
+fn rows(frame: &Frame, top: u32, height: u32) -> Frame {
+    let row = frame.width as usize * 3;
+    let from = top as usize * row;
+    Frame {
+        width: frame.width,
+        height,
+        rgb: frame.rgb[from..from + height as usize * row].to_vec(),
+    }
+}
+
+/// Where the "Panel layout" group starts in the tall render and how tall it and "Opening the
+/// Panel" are together with the rows between (the existing "Panel" group).
+const PANEL_GROUPS: (u32, u32) = (800, 1480);
+
+#[test]
+fn settings_page_panel_layout_and_opening_groups() {
+    let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
+    fixture::settings(&h.component);
+    h.component.set_panel_layout_index(1);
+    h.component.set_panel_search_index(1);
+    h.component.set_panel_open_at_index(2);
+    h.component.set_panel_start_visible_enabled(false);
+    assert_golden(
+        "settings-panel-layout-light",
+        &rows(&render(&h), PANEL_GROUPS.0, PANEL_GROUPS.1),
+    );
+    drop(h);
+
+    let h = Harness::new(SettingsPage::new, SETTINGS.0, 2400);
+    h.component.set_dark(true);
+    fixture::settings(&h.component);
+    h.component.set_theme_index(2);
+    h.component.set_panel_switcher_index(1);
+    h.component.set_tray_click_index(1);
+    h.component.set_panel_open_at_enabled(false);
+    h.component.set_panel_start_visible_enabled(true);
+    h.component.set_panel_start_visible_index(1);
+    assert_golden(
+        "settings-panel-layout-dark",
+        &rows(&render(&h), PANEL_GROUPS.0, PANEL_GROUPS.1),
+    );
+}
+
 #[test]
 fn settings_page_licence_backups_data_and_privacy() {
     // Tall enough for every section.

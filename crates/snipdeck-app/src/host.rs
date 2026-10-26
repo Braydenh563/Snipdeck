@@ -154,6 +154,15 @@ pub trait TargetSource {
     fn caret(&self) -> Option<ScreenRect> {
         None
     }
+    /// The mouse position in physical pixels, if it can be read. `None` (the default) leaves
+    /// the Panel where it was.
+    fn cursor(&self) -> Option<(i32, i32)> {
+        None
+    }
+    /// The monitor under a physical point, if the host can tell.
+    fn monitor_at(&self, _x: i32, _y: i32) -> Option<crate::frame::Monitor> {
+        None
+    }
 }
 
 /// A scripted Target. Cloning shares the state, so a test keeps a handle after handing the
@@ -163,6 +172,7 @@ pub struct FakeTargets {
     current: Rc<RefCell<Option<Target>>>,
     refocused: Rc<Cell<u32>>,
     caret: Rc<Cell<Option<ScreenRect>>>,
+    cursor: Rc<Cell<Option<(i32, i32)>>>,
 }
 
 impl FakeTargets {
@@ -173,12 +183,18 @@ impl FakeTargets {
             current: Rc::new(RefCell::new(target)),
             refocused: Rc::default(),
             caret: Rc::default(),
+            cursor: Rc::default(),
         }
     }
 
     /// Sets where the Target's caret is (`None`: it has none).
     pub fn set_caret(&self, caret: Option<ScreenRect>) {
         self.caret.set(caret);
+    }
+
+    /// Sets where the mouse is (`None`: it cannot be read).
+    pub fn set_cursor(&self, cursor: Option<(i32, i32)>) {
+        self.cursor.set(cursor);
     }
 
     /// Changes the Target, as the user switching windows would.
@@ -205,6 +221,10 @@ impl TargetSource for FakeTargets {
 
     fn caret(&self) -> Option<ScreenRect> {
         self.caret.get()
+    }
+
+    fn cursor(&self) -> Option<(i32, i32)> {
+        self.cursor.get()
     }
 }
 

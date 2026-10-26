@@ -156,6 +156,65 @@ where
         vec![Effect::PlaceWindow(rect)]
     }
 
+    /// Where a floating Panel is about to open: "Panel opens" at the mouse or at the text cursor
+    /// (the caret, else the mouse). `None` for "where you left it", a docked Panel, or when
+    /// neither can be read.
+    pub(super) fn open_anchor_now(&self) -> Option<crate::placement::Anchor> {
+        use crate::{placement::Anchor, settings::PanelOpenAt};
+        if self.settings.panel_open_at == PanelOpenAt::Last || self.dock_edge().is_some() {
+            return None;
+        }
+        let caret = (self.settings.panel_open_at == PanelOpenAt::Caret)
+            .then(|| self.target.caret())
+            .flatten();
+        if let Some(c) = caret {
+            return Some(Anchor::Caret(Rect {
+                x: c.x,
+                y: c.y,
+                w: c.w,
+                h: c.h,
+            }));
+        }
+        let (x, y) = self.target.cursor()?;
+        Some(Anchor::Point(x, y))
+    }
+
+    /// The frame the Panel takes at `anchor`, on the monitor under it (else `fallback`): its own
+    /// size, [`placement::place`](crate::placement::place) for the position.
+    pub(super) fn frame_at(
+        &self,
+        anchor: crate::placement::Anchor,
+        fallback: &Monitor,
+    ) -> (Monitor, Rect) {
+        let (x, y) = anchor.point();
+        let monitor = self
+            .target
+            .monitor_at(x, y)
+            .unwrap_or_else(|| fallback.clone());
+        // The size it has on the monitor it was last on: the one under the anchor may be a
+        // monitor it never was on.
+        let size = self.open_frame(fallback);
+        let scale = if monitor.scale.is_finite() && monitor.scale > 0.0 {
+            monitor.scale
+        } else {
+            1.0
+        };
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "a few pixels, rounded up and never negative"
+        )]
+        let gap = (crate::placement::GAP * scale).ceil() as u32;
+        let frame = crate::placement::place(
+            (size.w, size.h),
+            anchor,
+            monitor.work_area,
+            gap,
+            self.settings.picker_side,
+        );
+        (monitor, frame)
+    }
+
     /// Settings or the edge changed: with the dock off a collapsed Panel opens at once.
     pub(super) fn dock_resync(&mut self) {
         let config = self.dock_config();
@@ -166,7 +225,7 @@ where
     }
 
     /// Where the Panel is on `monitor` when it is open: what was stored, else a default.
-    fn open_frame(&self, monitor: &Monitor) -> Rect {
+    pub(super) fn open_frame(&self, monitor: &Monitor) -> Rect {
         self.stored_geometry(monitor).map_or_else(
             || {
                 let scale = f64::from(monitor.scale.max(0.1));
