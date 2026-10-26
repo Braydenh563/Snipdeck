@@ -48,3 +48,15 @@ Slice 6b items 2 and 13 finished (agent, later session): 2706bb3 (search marks t
   Tests run: snipdeck-core search, snipdeck-app panel::/binding::, snipdeck-ui panel/deck/main_window/panel_logic: green.
   Clippy 1.99.1 on core/app/ui: only errors are in settings_binding.rs (other agent's WIP: too_many_lines page_view, collapsible_if, semicolon at 1646); ui test targets not reached.
 Still open: Paste stack row in the Panel menu; Panel menu golden fixture shorter than APP_MENU; the copy action glyph in comfortable cards is still text-tertiary.
+
+Slices 7 and 8 (agent, this session): committed (WIP commit with code + .po, then goldens commit).
+  7: groups "Panel layout" (new FormSection before "Panel") and "Opening the Panel" (new, after "Panel": tray click, panel opens,
+  after paste/copy, when Windows starts). Reused rows (shortcuts, taskbar, blur, autostart, picker side, dock) were NOT moved into
+  the new group (would reshuffle existing goldens): decide. Goldens settings-panel-layout-light/-dark new (crop of a tall render);
+  settings-light/-dark/-scale/-full-*/-demo/-recording changed only by the scrollbar thumb and the new rows; narrow-conflict by a 3x40 px thumb sliver.
+  Page test window is now 6000 tall (the page outgrew 4000).
+  8: tray_click (on_tray TogglePanel -> OpenMainWindow), panel_open_at (TargetSource::cursor/monitor_at; Controller::show reads the anchor,
+  restore_frame places once; none when docked), start-visible (SettingsHost::set_autostart(on, hidden): "--hidden" unless panel_start_visible;
+  re-written when the choice changes with autostart on). Spec 4 shortcut text fixed (Ctrl+Shift+Y).
+  Unverified: Windows Tracker::cursor/monitor_at (monitor id there is "monitor"-based, size is taken from the Panel's current monitor);
+  registry rewrite; real placement. .po files carry the other agent's strings too (extract regenerates all).
