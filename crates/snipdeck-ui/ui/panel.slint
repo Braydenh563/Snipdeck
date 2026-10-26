@@ -1593,7 +1593,8 @@ export component PanelWindow inherits Window {
 
                     // The "+ New item" row: directly under the last item (or at the bottom of a short or empty list).
                     quick := QuickAdd {
-                        visible: !root.recent-open && !root.loading && !root.searching && !root.no-lists;
+                        // An empty list shows its empty state's two create actions instead; "New note" opens the box.
+                        visible: !root.recent-open && !root.loading && !root.searching && !root.no-lists && (root.rows.length > 0 || self.expanded);
                         x: Space.s2;
                         width: parent.width - 2 * Space.s2;
                         y: min(parent.height - self.box-h - Space.s1, root.rows.length == 0 ? parent.height : list.content-height + Space.s1);
@@ -1716,7 +1717,7 @@ export component PanelWindow inherits Window {
                         quiet: true;
                         x: Space.s2;
                         width: parent.width - 2 * Space.s2;
-                        height: parent.height - (root.no-lists || root.searching ? 0px : quick.box-h + Space.s1);
+                        height: parent.height;
                         kind: root.no-lists ? EmptyStateKind.board : root.searching ? EmptyStateKind.search : EmptyStateKind.list;
                         heading: root.no-lists ? @tr("No lists yet")
                             : root.searching ? @tr("Nothing matches “{}”", root.query) : @tr("This list is empty");

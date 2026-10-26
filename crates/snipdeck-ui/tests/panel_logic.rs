@@ -1520,6 +1520,29 @@ ui_tests! {
         assert_eq!(take(&log), ["add-from-clipboard"]);
     }
 
+    fn an_empty_list_hides_the_new_item_row_while_its_state_offers_the_two_create_actions() {
+        let (ui, log) = start();
+        ui.set_add_list_name("Work".into());
+        fixture::set_rows(&ui, Vec::new());
+        settle();
+        assert!(missing(&ui, "New item in Work", AccessibleRole::Button), "no second create row under the empty state");
+        assert!(!missing(&ui, "Save from clipboard", AccessibleRole::Button));
+        // The quiet action opens the box where the row would be; Enter saves what was typed.
+        find(&ui, "New note", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        take(&log);
+        type_text(ui.window(), "hello");
+        press(ui.window(), &key(Key::Return));
+        assert_eq!(take(&log), ["quick-add:hello:0:false"]);
+    }
+
+    fn a_list_with_items_keeps_the_new_item_row() {
+        let (ui, _log) = start();
+        ui.set_add_list_name("Work".into());
+        settle();
+        assert!(!missing(&ui, "New item in Work", AccessibleRole::Button));
+    }
+
     fn no_results_names_the_query_and_offers_no_action() {
         let (ui, _log) = start();
         fixture::set_rows(&ui, Vec::new());
