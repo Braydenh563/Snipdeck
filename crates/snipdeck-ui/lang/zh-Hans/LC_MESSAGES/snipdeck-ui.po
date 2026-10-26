@@ -2733,6 +2733,9 @@ msgstr "堆栈 队列 顺序 下一个 粘贴"
 msgid "tag change"
 msgstr "标签更改"
 
+msgid "tag: {}"
+msgstr ""
+
 msgid "tutorial intro onboarding basics learn"
 msgstr "教程 入门 引导 基础 学习"
 

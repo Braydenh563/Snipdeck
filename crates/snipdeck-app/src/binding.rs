@@ -1346,6 +1346,8 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         || (SharedString::new(), SharedString::new()),
         |(before, found)| (before.as_str().into(), found.as_str().into()),
     );
+    // The windowed first line replaces the preview only for a marked row; a sensitive row never has one.
+    let marked = row.preview_mark.as_ref().filter(|_| !row.sensitive);
     let (label, label_name) = label_fields(row.label);
     ui::PanelRow {
         kind: item_kind(row),
@@ -1355,9 +1357,20 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         // Never rely on the store keeping a sensitive preview empty.
         preview: if row.sensitive {
             SharedString::new()
+        } else if let Some((before, found, after)) = marked {
+            format!("{before}{found}{after}").into()
         } else {
             row.preview.as_str().into()
         },
+        preview_before: marked
+            .map_or_else(SharedString::new, |(before, ..)| before.as_str().into()),
+        preview_match: marked.map_or_else(SharedString::new, |(_, found, _)| found.as_str().into()),
+        tag_hit: row
+            .tag_hit
+            .as_deref()
+            .filter(|_| !row.sensitive)
+            .unwrap_or_default()
+            .into(),
         masked_preview: if row.sensitive {
             MASKED_PREVIEW.into()
         } else {
@@ -1448,6 +1461,8 @@ mod tests {
             preview: preview.into(),
             list: None,
             title_mark: None,
+            preview_mark: None,
+            tag_hit: None,
             pinned: false,
             label: None,
             marked: false,
@@ -1460,6 +1475,34 @@ mod tests {
         assert_eq!(mapped.kind, ui::ItemKind::Sensitive);
         assert_eq!(mapped.masked_preview.as_str(), MASKED_PREVIEW);
         assert_eq!(mapped.preview.as_str(), "");
+    }
+
+    #[test]
+    fn a_sensitive_row_never_carries_a_preview_mark_or_a_tag_hit() {
+        let mut sensitive = row(ItemKind::Text, true, "hunter2");
+        sensitive.preview_mark = Some((String::new(), "hunter".into(), "2".into()));
+        sensitive.tag_hit = Some("login".into());
+        let mapped = panel_row(&sensitive, false);
+        assert_eq!(
+            (
+                mapped.preview.as_str(),
+                mapped.preview_before.as_str(),
+                mapped.preview_match.as_str(),
+                mapped.tag_hit.as_str()
+            ),
+            ("", "", "", "")
+        );
+        let mut plain = row(ItemKind::Text, false, "say hello now");
+        plain.preview_mark = Some(("say ".into(), "hello".into(), " now".into()));
+        let mapped = panel_row(&plain, false);
+        assert_eq!(
+            (
+                mapped.preview.as_str(),
+                mapped.preview_before.as_str(),
+                mapped.preview_match.as_str()
+            ),
+            ("say hello now", "say ", "hello")
+        );
     }
 
     #[test]

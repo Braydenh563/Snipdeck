@@ -61,6 +61,10 @@ export struct PanelRow {
     mark-before: string,
     mark-text: string,
     preview: string,
+    // The match in the preview's first line (`preview` is then that line, cut around it) and the tag that matched.
+    preview-before: string,
+    preview-match: string,
+    tag-hit: string,
     masked-preview: string,
     extension: string,
     // Mixed views (search): the list the row lives in, with its colour.
@@ -1529,6 +1533,9 @@ export component PanelWindow inherits Window {
                                                 mark-before: item.mark-before;
                                                 mark-text: item.mark-text;
                                                 preview: item.preview;
+                                                preview-before: item.preview-before;
+                                                preview-match: item.preview-match;
+                                                tag-hit: item.tag-hit;
                                                 masked-preview: item.masked-preview;
                                                 extension: item.extension;
                                                 image: item.image;

@@ -2741,6 +2741,9 @@ msgstr "pile file séquence suivant coller"
 msgid "tag change"
 msgstr "changement d'étiquette"
 
+msgid "tag: {}"
+msgstr ""
+
 msgid "tutorial intro onboarding basics learn"
 msgstr "tutoriel introduction démarrage bases apprendre"
 

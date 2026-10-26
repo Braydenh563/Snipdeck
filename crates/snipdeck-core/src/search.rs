@@ -61,6 +61,9 @@ pub struct Hit {
     /// Which characters of the title matched, as sorted character (not byte) positions, for
     /// highlighting. Empty if the match was on a tag or the content, or for an empty query.
     pub title_indices: Vec<u32>,
+    /// The name of the best matching tag when the match was on a tag (not the title). `None`
+    /// for a title or content match, or for an empty query.
+    pub tag: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -238,6 +241,7 @@ impl SearchIndex {
                     id: entry.id,
                     score: 0,
                     title_indices: Vec::new(),
+                    tag: None,
                 })
                 .collect();
         }
@@ -287,10 +291,26 @@ impl SearchIndex {
                     title_indices.sort_unstable();
                     title_indices.dedup();
                 }
+                let tag = (score >> TIER_SHIFT == Tier::Tag as u32)
+                    .then(|| {
+                        let mut buf = Vec::new();
+                        entry
+                            .tags
+                            .iter()
+                            .filter_map(|tag| {
+                                pattern
+                                    .score(Utf32Str::new(tag, &mut buf), &mut matcher)
+                                    .map(|s| (s, tag))
+                            })
+                            .max_by_key(|(s, _)| *s)
+                            .map(|(_, tag)| tag.clone())
+                    })
+                    .flatten();
                 Some(Hit {
                     id: entry.id,
                     score,
                     title_indices,
+                    tag,
                 })
             })
             .collect()

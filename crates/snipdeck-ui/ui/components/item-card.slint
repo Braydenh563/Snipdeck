@@ -225,6 +225,13 @@ export component ItemCard inherits Rectangle {
     in property <string> mark-before;
     in property <string> mark-text;
     in property <string> preview;
+    // Search: the match in the preview's first line, as the text before it and the match. `preview` is then that
+    // line cut to a window around the match. Never drawn for a sensitive item (the app does not send it either).
+    in property <string> preview-before;
+    in property <string> preview-match;
+    // Search: the name of the tag that matched when the title and the preview show no match; the preview line
+    // then reads "tag: <name>". Ignored for a sensitive item.
+    in property <string> tag-hit;
     // Sensitive items show this (e.g. "•••• •••• 7f3a") until revealed.
     in property <string> masked-preview;
     // Spoken while a sensitive item is masked, e.g. "Hidden. Hold Space to reveal." (the app translates it).
@@ -347,9 +354,9 @@ export component ItemCard inherits Rectangle {
     // (large text scale in a narrow panel); the hint is also in the Panel's footer.
     property <bool> use-label-fits: !root.compact || root.row-w - root.use-w - Space.s2 >= root.min-title-w;
     property <bool> label-visible: !root.q && root.use-label != "" && root.use-label-fits && (root.hovered || root.focused || root.show-use-label);
-    property <bool> mono-preview: root.kind == ItemKind.code || root.kind == ItemKind.link || root.sensitive;
+    property <bool> mono-preview: (root.kind == ItemKind.code || root.kind == ItemKind.link || root.sensitive) && root.tag-hit == "";
     // The Panel's quiet row shows twelve dots and no trailing characters: it is always on top and visible in screen shares.
-    property <string> shown-preview: root.sensitive && !root.shown ? (root.q ? "••••••••••••" : root.masked-preview) : root.preview;
+    property <string> shown-preview: root.sensitive && !root.shown ? (root.q ? "••••••••••••" : root.masked-preview) : root.tag-hit != "" ? @tr("tag: {}", root.tag-hit) : root.preview;
 
     // Leading glyph: none for plain text; images show the thumbnail instead (a small glyph in a compact row).
     property <bool> has-glyph: !root.q && root.kind != ItemKind.text && (!root.is-image || root.compact);
@@ -427,6 +434,16 @@ export component ItemCard inherits Rectangle {
     property <length> title-h: Type.line-base;
     property <length> top-h: max(root.glyph-size, Type.line-xs);
     property <int> preview-lines: root.qt ? root.qt-prev-lines : root.qr ? 1 : root.comfortable ? 2 : root.is-image ? 1 : 3;
+    property <length> preview-text-x: root.compact ? root.content-x + root.lead-w + root.title-w + Space.s2 : root.preview-x;
+    property <length> preview-text-y: root.qc ? root.qc-title-y + (root.title-h - Type.line-sm) / 2
+        : root.qt ? root.qt-prev-y
+        : root.compact ? (root.height - Type.line-sm) / 2
+        : root.tile ? root.pad-y + root.top-h + (root.is-image ? Space.s2 + root.tile-thumb-h : 0px) + Space.s1 + root.tile-title-h + Space.s1
+        : root.qr ? root.qr-band-y + (root.qr-band-h - Type.line-sm) / 2
+        : root.pad-y + root.title-h + Space.s1;
+    // The preview match is marked only when it sits in the first line, whole, and the line is the real preview.
+    property <bool> preview-marked: root.preview-match != "" && !root.sensitive && root.tag-hit == ""
+        && m-prev-before.preferred-width + m-prev-match.preferred-width <= root.preview-w;
     property <length> preview-x: root.tile ? root.pad-x : root.content-x + root.lead-w;
     property <length> preview-w: root.qr ? max(0px, root.row-w - root.qr-preview-reserve) : root.tile ? max(0px, root.width - 2 * root.pad-x) : root.compact ? max(0px, root.title-avail - root.title-w - Space.s2) : root.row-w;
     property <length> preview-h: root.shown-preview == "" ? 0px : min(m-preview.preferred-height, root.preview-lines * Type.line-sm);
@@ -536,6 +553,20 @@ export component ItemCard inherits Rectangle {
         font-family: root.mono-preview ? Fonts.mono : Fonts.sans;
         font-size: Type.sm;
         wrap: word-wrap;
+    }
+    m-prev-before := Text {
+        visible: false;
+        text: root.preview-before;
+        font-family: root.mono-preview ? Fonts.mono : Fonts.sans;
+        font-size: Type.sm;
+        wrap: no-wrap;
+    }
+    m-prev-match := Text {
+        visible: false;
+        text: root.preview-match;
+        font-family: root.mono-preview ? Fonts.mono : Fonts.sans;
+        font-size: Type.sm;
+        wrap: no-wrap;
     }
     m-list := Text {
         visible: false;
@@ -799,16 +830,21 @@ export component ItemCard inherits Rectangle {
             overflow: elide;
         }
 
+        // The search match in the preview: a span behind it, like the title's.
+        if root.preview-marked && root.shown-preview != "" && (!root.compact || root.preview-w >= (root.qc ? 48px : Type.sm * 4)) && (!root.qt || root.qt-prev-lines > 0): Rectangle {
+            x: root.preview-text-x + m-prev-before.preferred-width;
+            y: root.preview-text-y;
+            width: m-prev-match.preferred-width;
+            height: Type.line-sm;
+            border-radius: 3px;
+            background: Theme.search-mark;
+        }
+
         // Preview (secondary colour; mono for code, links and sensitive items).
         Text {
             visible: root.shown-preview != "" && (!root.compact || root.preview-w >= (root.qc ? 48px : Type.sm * 4)) && (!root.qt || root.qt-prev-lines > 0);
-            x: root.compact ? root.content-x + root.lead-w + root.title-w + Space.s2 : root.preview-x;
-            y: root.qc ? root.qc-title-y + (root.title-h - Type.line-sm) / 2
-                : root.qt ? root.qt-prev-y
-                : root.compact ? (parent.height - self.height) / 2
-                : root.tile ? root.pad-y + root.top-h + (root.is-image ? Space.s2 + root.tile-thumb-h : 0px) + Space.s1 + root.tile-title-h + Space.s1
-                : root.qr ? root.qr-band-y + (root.qr-band-h - self.height) / 2
-                : root.pad-y + root.title-h + Space.s1;
+            x: root.preview-text-x;
+            y: root.preview-text-y;
             width: root.preview-w;
             height: root.compact || root.qr ? Type.line-sm : root.preview-h;
             text: root.shown-preview;

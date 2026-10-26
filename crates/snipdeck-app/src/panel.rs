@@ -41,6 +41,13 @@ pub struct Row {
     pub list: Option<ListLabel>,
     /// In a search: the first match of the query in the title, as the text before it and the match.
     pub title_mark: Option<(String, String)>,
+    /// In a search: the first match of the query in the first line of the preview, as the text
+    /// before it, the match and the text after it (the line is cut to a window around the match).
+    /// Never set for a sensitive item.
+    pub preview_mark: Option<(String, String, String)>,
+    /// In a search: the name of the tag that matched, when the title and the preview did not
+    /// show the match. Never set for a sensitive item.
+    pub tag_hit: Option<String>,
     /// Shown in the pinned strip too.
     pub pinned: bool,
     /// The item's colour label.
@@ -150,6 +157,28 @@ fn title_mark(title: &str, query: &str) -> Option<(String, String)> {
         chars[..at].iter().collect(),
         chars[at..at + wanted.len()].iter().collect(),
     ))
+}
+
+/// How many characters of the preview may precede a mark; more are cut and replaced by an ellipsis so the match stays in view.
+const PREVIEW_LEAD: usize = 12;
+
+/// The first case-insensitive match of `query` in the first line of `preview`: the text before
+/// it (cut to its last [`PREVIEW_LEAD`] characters after an ellipsis), the match and the rest of the line.
+fn preview_mark(preview: &str, query: &str) -> Option<(String, String, String)> {
+    let line = preview.lines().next()?;
+    let (before, found) = title_mark(line, query)?;
+    let after: String = line
+        .chars()
+        .skip(before.chars().count() + found.chars().count())
+        .collect();
+    let lead = before.chars().count();
+    let before = if lead > PREVIEW_LEAD {
+        let tail: String = before.chars().skip(lead - PREVIEW_LEAD).collect();
+        format!("\u{2026}{tail}")
+    } else {
+        before
+    };
+    Some((before, found, after))
 }
 
 impl PanelModel {
@@ -373,27 +402,30 @@ impl PanelModel {
             .all
             .iter()
             .filter(|i| i.pinned && in_board.contains(&i.list_id))
-            .map(|i| self.row(i, 0, false))
+            .map(|i| self.row(i, 0, false, None))
             .collect()
     }
 
     /// The rows to show: the search results, or the shown list in its sort order.
     #[must_use]
     pub fn rows(&self) -> Vec<Row> {
-        let items: Vec<&Item> = if self.searching() {
-            self.index
-                .query(&self.query, SEARCH_LIMIT)
-                .iter()
-                .filter_map(|hit| self.all.all.iter().find(|i| i.id == hit.id))
-                .collect()
-        } else {
-            self.list_items()
-        };
-        let mixed = self.searching();
-        items
-            .into_iter()
+        if !self.searching() {
+            return self
+                .list_items()
+                .into_iter()
+                .enumerate()
+                .map(|(n, item)| self.row(item, n, false, None))
+                .collect();
+        }
+        self.index
+            .query(&self.query, SEARCH_LIMIT)
+            .iter()
+            .filter_map(|hit| {
+                let item = self.all.all.iter().find(|i| i.id == hit.id)?;
+                Some((item, hit.tag.as_deref()))
+            })
             .enumerate()
-            .map(|(n, item)| self.row(item, n, mixed))
+            .map(|(n, (item, tag))| self.row(item, n, true, tag))
             .collect()
     }
 
@@ -417,7 +449,7 @@ impl PanelModel {
         self.list_items().iter().map(|i| i.id).collect()
     }
 
-    fn row(&self, item: &Item, position: usize, mixed: bool) -> Row {
+    fn row(&self, item: &Item, position: usize, mixed: bool, hit_tag: Option<&str>) -> Row {
         let title = if item.title.trim().is_empty() {
             item.preview.lines().next().unwrap_or_default().to_owned()
         } else {
@@ -428,6 +460,12 @@ impl PanelModel {
         } else {
             None
         };
+        let preview_mark = (mixed && !item.sensitive)
+            .then(|| preview_mark(&item.preview, &self.query))
+            .flatten();
+        let tag_hit = hit_tag
+            .filter(|_| !item.sensitive && title_mark.is_none() && preview_mark.is_none())
+            .map(str::to_owned);
         Row {
             id: item.id,
             number: u8::try_from(position + 1)
@@ -439,6 +477,8 @@ impl PanelModel {
             title,
             preview: item.preview.clone(),
             title_mark,
+            preview_mark,
+            tag_hit,
             list: mixed
                 .then(|| self.list_labels.get(&item.list_id).cloned())
                 .flatten(),
@@ -657,7 +697,7 @@ pub fn friendly_app_name(exe: &str) -> String {
 mod tests {
     use super::*;
     use crate::controller::Library as _;
-    use snipdeck_core::{Content, Format, Formats, Inline, Name, Placement, Timestamp};
+    use snipdeck_core::{Content, Format, Formats, Inline, Name, Placement, Tag, Timestamp};
     use snipdeck_platform::route::Focus;
     use snipdeck_store::Store;
     use snipdeck_store::TrashRepo as _;
@@ -798,6 +838,70 @@ mod tests {
                 .rows()
                 .iter()
                 .all(|r| r.list.is_none() && r.title_mark.is_none())
+        );
+    }
+
+    #[test]
+    fn a_search_marks_the_preview_and_names_a_tag_only_when_just_the_tag_matched() {
+        let mut f = fixture();
+        let both = add_to(
+            &mut f,
+            Which::Replies,
+            "Greeting",
+            "Hello, Invoice 7 is due",
+        );
+        let tagged = add_to(&mut f, Which::Replies, "Other", "nothing here");
+        let secret = add_to(&mut f, Which::Replies, "Key", "Invoice secret");
+        let tag = Tag::new(Name::new("invoice").expect("name"));
+        f.store.insert_tag(&tag).expect("tag");
+        for id in [tagged, secret] {
+            let mut item = f.store.item(id).expect("item");
+            item.tags.insert(tag.id);
+            if id == secret {
+                item.sensitive = true;
+                item.preview.clear();
+            }
+            f.store.update_item(&item, None).expect("update");
+        }
+        let mut model = PanelModel::load(&f.store, None, None).expect("model");
+        model.set_query("invoice");
+        let rows = model.rows();
+        let row = |id| rows.iter().find(|r| r.id == id).expect("row");
+        assert_eq!(
+            row(both).preview_mark,
+            Some(("Hello, ".into(), "Invoice".into(), " 7 is due".into()))
+        );
+        assert_eq!(row(both).tag_hit, None);
+        assert_eq!(row(tagged).preview_mark, None);
+        assert_eq!(row(tagged).tag_hit.as_deref(), Some("invoice"));
+        assert_eq!(
+            row(secret).preview_mark,
+            None,
+            "a sensitive row shows no mark"
+        );
+        assert_eq!(row(secret).tag_hit, None, "nor the tag that matched");
+        model.set_query("");
+        assert!(
+            model
+                .rows()
+                .iter()
+                .all(|r| r.preview_mark.is_none() && r.tag_hit.is_none())
+        );
+    }
+
+    #[test]
+    fn the_preview_mark_cuts_a_long_lead_and_reads_only_the_first_line() {
+        assert_eq!(
+            preview_mark("first line\nsecond has Needle", "needle"),
+            None
+        );
+        assert_eq!(
+            preview_mark("a long run of words before the Needle here", "needle"),
+            Some((
+                "\u{2026} before the ".into(),
+                "Needle".into(),
+                " here".into()
+            ))
         );
     }
 

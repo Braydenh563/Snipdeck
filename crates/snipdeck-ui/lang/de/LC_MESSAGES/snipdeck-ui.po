@@ -2741,6 +2741,9 @@ msgstr "stapel warteschlange reihenfolge nächster einfügen"
 msgid "tag change"
 msgstr "Tag-Änderung"
 
+msgid "tag: {}"
+msgstr ""
+
 msgid "tutorial intro onboarding basics learn"
 msgstr "Tutorial Einführung Einstieg Grundlagen lernen"
 

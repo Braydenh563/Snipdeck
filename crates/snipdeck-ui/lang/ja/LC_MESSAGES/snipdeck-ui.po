@@ -2733,6 +2733,9 @@ msgstr "スタック キュー 順番 次 貼り付け"
 msgid "tag change"
 msgstr "タグの変更"
 
+msgid "tag: {}"
+msgstr ""
+
 msgid "tutorial intro onboarding basics learn"
 msgstr "チュートリアル 入門 基本 学ぶ"
 

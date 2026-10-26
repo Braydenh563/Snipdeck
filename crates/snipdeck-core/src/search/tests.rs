@@ -135,6 +135,20 @@ fn tag_hits_have_no_title_indices() {
 }
 
 #[test]
+fn a_tag_hit_names_the_matching_tag_and_other_hits_name_none() {
+    let tagged = item("Alpha", "");
+    let titled = item("Urgent note", "");
+    let mut index = SearchIndex::default();
+    index.upsert_with_tags(&tagged, ["billing", "urgent"]);
+    index.upsert_with_tags(&titled, ["urgent"]);
+    let hits = index.query("urgent", 10);
+    let tag_of = |id| hits.iter().find(|h| h.id == id).map(|h| h.tag.clone());
+    assert_eq!(tag_of(tagged.id), Some(Some("urgent".to_owned())));
+    assert_eq!(tag_of(titled.id), Some(None), "a title match names no tag");
+    assert!(index.query("", 10).iter().all(|h| h.tag.is_none()));
+}
+
+#[test]
 fn equal_scores_keep_the_given_order() {
     let items: Vec<Item> = (0..5).map(|_| item("Reply", "")).collect();
     let index = SearchIndex::new(&items);

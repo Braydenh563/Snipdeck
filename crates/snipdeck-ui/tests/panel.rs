@@ -253,6 +253,11 @@ fn search_rows() -> Vec<snipdeck_ui::PanelRow> {
         row.list_name = list.into();
         row.list_color = fixture::TEAL_600;
     }
+    // The first row also matches in its preview (cut around the match); the third only through a tag.
+    rows[0].preview = "\u{2026}ver. I'll review it today and get back to you.".into();
+    rows[0].preview_before = "\u{2026}ver. I'll ".into();
+    rows[0].preview_match = "re".into();
+    rows[2].tag_hit = "regex".into();
     rows
 }
 
@@ -313,6 +318,40 @@ fn the_header_more_glyph_reads_at_3_to_1_against_the_header() {
             "dark={dark}: the darkest glyph pixel is {best:.2}:1 against the header"
         );
     }
+}
+
+#[test]
+fn a_search_marks_the_preview_match_and_a_tag_hit_reads_tag_name() {
+    let h = panel(SIZE, false);
+    fixture::set_rows(&h.component, search_rows());
+    h.component.set_query("re".into());
+    h.component.set_selected_index(2);
+    let f = render(&h);
+    let top = HEADER_H + 72;
+    let row_h: u32 = 74;
+    let marked_in = |row: u32| {
+        (top + row * row_h..top + (row + 1) * row_h)
+            .filter(|&y| (8..312).any(|x| f.pixel(x, y) == SEARCH_MARK_LIGHT))
+            .count()
+    };
+    // Title mark (row 0 has both): taller than the preview span alone, so compare against row 2, which has neither.
+    assert_eq!(marked_in(2), 0, "a tag hit marks nothing");
+    assert!(
+        marked_in(0) > 14,
+        "row 0 marks the title and the preview match"
+    );
+    let mut quiet = search_rows();
+    quiet[0].preview_match = "".into();
+    quiet[0].preview_before = "".into();
+    fixture::set_rows(&h.component, quiet);
+    let without = render(&h);
+    let title_only = (top..top + row_h)
+        .filter(|&y| (8..312).any(|x| without.pixel(x, y) == SEARCH_MARK_LIGHT))
+        .count();
+    assert!(
+        marked_in(0) > title_only,
+        "the preview adds a span of its own"
+    );
 }
 
 #[test]

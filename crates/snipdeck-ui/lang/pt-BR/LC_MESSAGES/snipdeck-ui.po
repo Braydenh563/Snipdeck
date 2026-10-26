@@ -2741,6 +2741,9 @@ msgstr "pilha fila sequência próximo colar"
 msgid "tag change"
 msgstr "mudança de etiqueta"
 
+msgid "tag: {}"
+msgstr ""
+
 msgid "tutorial intro onboarding basics learn"
 msgstr "tutorial introdução integração básico aprender"
 
