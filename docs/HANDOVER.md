@@ -5,8 +5,10 @@ reliability and UX work first. PR #5 (`claude/compassionate-pascal-pod8ux`) stay
 Do not merge, tag or run `release.yml`. Version and CHANGELOG already say 1.0.0; keep them, but fix the CHANGELOG
 date at the real release. The owner capped this session at 96% weekly usage; the limit resets 2026-10-24T07:00Z.
 
-## Now (2026-10-26 night 2, owner asleep, away mode)
-Symbols slices 1-3 pushed (726efc8, workspace tests green on HEAD). Branch `claude/compassionate-pascal-pod8ux`. Queue = `.claude/work-order.md` (16 open). Panel v2 slices 1-5 done; agent on slice 6 (Menu switcher) + 6b audit items (`.claude/remaining/panel-v2.md`). Then slices 7-9, defaults (Recent on, non-AltGr chords), Symbols library (spec first), audit quick wins, carry the look to other windows, v1.0.1, v1.1 trimmed. Decisions in `.claude/now.md`. Never merge/release.
+## Now (2026-10-26 late, session ended at the context ceiling)
+Testable build 290a263 on `claude/compassionate-pascal-pod8ux`: workspace tests (92 suites), fmt, clippy 1.99.1, doc all clean. Owner told how to test (Quick check: `Test Snipdeck on Windows.bat`, press 1; `run-tests.ps1 -SelfTest` first).
+Done: Panel v2 slices 1-8 + UX-audit fixes, defaults split (`Settings::new_install`), Symbols slices 1-4 (data, crate, recents, save dialog, `symbol_ctl`), Windows Quick check.
+Next, in order: (1) settings-group merge (agent a85f4da5 WIP may sit uncommitted in the tree: settings goldens, editors.rs, settings_window.rs; verify, open goldens, commit); (2) Panel v2 leftovers in `.claude/remaining/panel-v2.md` "Not done / open", then ux-auditor, tick the item; (3) Symbols slices 5-7 (`docs/reviews/symbols-spec.md`); (4) the rest of `.claude/work-order.md`. Agents: 2-hour box, targeted tests, coordinator runs one full check per push. Decisions in `.claude/now.md`. Never merge/release.
 Owner-only (hook blocks CI edits): release.yml:147 and release-build.yml:49 must also copy `THIRD_PARTY_NOTICES.md` into the zip (MIT/Unicode notices for the bundled emoji, icons, CLDR data); CI step `python3 scripts/symbols.py --check` (see `.claude/remaining/symbols.md`).
 
 ## Session 2026-10-24 (owner away, autonomous; resume here)
