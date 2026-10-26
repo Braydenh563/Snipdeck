@@ -31,3 +31,12 @@ Deviations so far: search.mark light = blue-300 (spec blue-200 is 1.16:1 vs bg.s
 
   Slice 5: Cards use List rows while a query is typed; List row gap stays 6 (spec says 4; min-h uses the spec's 4);
   Cards title starts at y=32 and the preview shows 0-2 lines depending on the title's lines.
+
+Slice 6b (agent, this session): committed 3a0a932 (1: hide after use, `Controller::after_use`; unpinned only, pinned stays, so with
+  panel_pinned default true a new install must unpin; spec 4 note updated), 1f13dd6 (3: empty list hides the New item row),
+  8ab4ff8 (4: menu order Undo, Redo, Dock, Shortcuts, Commands, Settings, then the rest; bold kebab dots-three-bold, 2.50:1 -> 5.47:1 light, 6.33:1 dark;
+  row More in item-card still uses the pale dots-three).
+Next: (2) search marks in the preview and "tag: name" when only a tag matched: needs core `SearchIndex` to name the matched tag
+  (Hit score tier >> 24 == Tag), Row.preview_mark/tag_hit, PanelRow props, item-card preview mark span like the title one (qr/qc), @tr("tag: {}").
+  Also not done: "Paste stack" row in the Panel menu; Panel menu golden fixture is a shorter list than APP_MENU.
+  An_unpinned_panel_hides test failed once in a multi-filter run (passes alone); re-check for flakiness.
