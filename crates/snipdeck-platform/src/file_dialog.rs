@@ -45,7 +45,38 @@ impl PickKind {
     }
 }
 
-/// Lets the user choose one existing file.
+/// What kind of file the Save dialog writes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SaveKind {
+    /// An SVG drawing (`.svg`).
+    Svg,
+    /// A PNG picture (`.png`).
+    Png,
+}
+
+impl SaveKind {
+    /// The extension without the dot, which the dialog adds to a name typed without one.
+    #[must_use]
+    pub const fn extension(self) -> &'static str {
+        match self {
+            Self::Svg => "svg",
+            Self::Png => "png",
+        }
+    }
+
+    /// The `(label, pattern)` choices of the dialog's file-type list: the kind's own, then
+    /// "All files".
+    #[cfg(any(windows, test))]
+    pub(crate) const fn filters(self) -> &'static [(&'static str, &'static str)] {
+        const ALL: (&str, &str) = ("All files", "*.*");
+        match self {
+            Self::Svg => &[("SVG drawings", "*.svg"), ALL],
+            Self::Png => &[("PNG pictures", "*.png"), ALL],
+        }
+    }
+}
+
+/// Lets the user choose one existing file, or the name of a file to write.
 pub trait FilePicker {
     /// Shows the dialog and waits. `owner` is the native handle of the window the dialog
     /// belongs to (it is disabled meanwhile), if known.
@@ -56,6 +87,22 @@ pub trait FilePicker {
     ///
     /// The dialog could not be shown. It carries the call name and code, never a path.
     fn pick(&self, kind: PickKind, owner: Option<isize>) -> Result<Option<PathBuf>, Error>;
+
+    /// Shows the Save dialog with `suggested` (a file name, with or without the extension) filled
+    /// in and waits. The dialog asks before replacing a file. It writes nothing itself: the
+    /// caller writes the file at the path returned.
+    ///
+    /// Returns `Ok(None)` when the user cancelled.
+    ///
+    /// # Errors
+    ///
+    /// The dialog could not be shown. It carries the call name and code, never a path.
+    fn save(
+        &self,
+        kind: SaveKind,
+        suggested: &str,
+        owner: Option<isize>,
+    ) -> Result<Option<PathBuf>, Error>;
 }
 
 /// The Win32 filter string: `(label, pattern)` pairs, each part and the whole ended by a NUL.
@@ -103,6 +150,8 @@ pub struct FakeFilePicker {
 struct FakeState {
     answers: std::collections::VecDeque<Result<Option<PathBuf>, Error>>,
     asked: Vec<(PickKind, Option<isize>)>,
+    save_answers: std::collections::VecDeque<Result<Option<PathBuf>, Error>>,
+    save_asked: Vec<(SaveKind, String, Option<isize>)>,
 }
 
 #[cfg(any(test, feature = "testing"))]
@@ -120,6 +169,23 @@ impl FakeFilePicker {
         if let Ok(mut state) = self.state.lock() {
             state.answers.push_back(answer);
         }
+    }
+
+    /// Adds an answer to the end of the script for [`FilePicker::save`] (later saves get
+    /// "cancelled" once it runs out).
+    pub fn push_save(&self, answer: Result<Option<PathBuf>, Error>) {
+        if let Ok(mut state) = self.state.lock() {
+            state.save_answers.push_back(answer);
+        }
+    }
+
+    /// What [`FilePicker::save`] was asked so far (kind, suggested name, owner), oldest first.
+    #[must_use]
+    pub fn asked_save(&self) -> Vec<(SaveKind, String, Option<isize>)> {
+        self.state
+            .lock()
+            .map(|s| s.save_asked.clone())
+            .unwrap_or_default()
     }
 
     /// What the picker was asked so far, oldest first.
@@ -141,6 +207,19 @@ impl FilePicker for FakeFilePicker {
         state.asked.push((kind, owner));
         state.answers.pop_front().unwrap_or(Ok(None))
     }
+
+    fn save(
+        &self,
+        kind: SaveKind,
+        suggested: &str,
+        owner: Option<isize>,
+    ) -> Result<Option<PathBuf>, Error> {
+        let Ok(mut state) = self.state.lock() else {
+            return Err(Error::Unavailable("the fake file picker is poisoned"));
+        };
+        state.save_asked.push((kind, suggested.to_owned(), owner));
+        state.save_answers.pop_front().unwrap_or(Ok(None))
+    }
 }
 
 #[cfg(test)]
@@ -158,6 +237,47 @@ mod tests {
         assert_eq!(patterns(PickKind::Ditto), ["*.db", "*.*"]);
         assert_eq!(patterns(PickKind::CopyQ), ["*.json", "*.*"]);
         assert_eq!(PickKind::Folder.filters(), []);
+    }
+
+    #[test]
+    fn a_save_kind_offers_its_own_extension_first_and_all_files_last() {
+        let patterns = |k: SaveKind| -> Vec<&'static str> {
+            k.filters().iter().map(|(_, pattern)| *pattern).collect()
+        };
+        assert_eq!(patterns(SaveKind::Svg), ["*.svg", "*.*"]);
+        assert_eq!(patterns(SaveKind::Png), ["*.png", "*.*"]);
+        assert_eq!(
+            (SaveKind::Svg.extension(), SaveKind::Png.extension()),
+            ("svg", "png")
+        );
+    }
+
+    #[test]
+    fn the_fake_saves_in_order_then_cancels_and_remembers_the_asks() {
+        let picker = FakeFilePicker::default();
+        picker.push_save(Ok(Some(PathBuf::from("out.png"))));
+        picker.push_save(Err(Error::Unavailable("no dialog")));
+        assert_eq!(
+            picker.save(SaveKind::Png, "trash", Some(3)),
+            Ok(Some(PathBuf::from("out.png")))
+        );
+        assert_eq!(
+            picker.save(SaveKind::Svg, "trash", None),
+            Err(Error::Unavailable("no dialog"))
+        );
+        assert_eq!(picker.save(SaveKind::Svg, "x", None), Ok(None));
+        assert_eq!(
+            picker.asked_save(),
+            [
+                (SaveKind::Png, "trash".to_owned(), Some(3)),
+                (SaveKind::Svg, "trash".to_owned(), None),
+                (SaveKind::Svg, "x".to_owned(), None)
+            ]
+        );
+        assert!(
+            picker.asked().is_empty(),
+            "pick and save are separate scripts"
+        );
     }
 
     #[test]
