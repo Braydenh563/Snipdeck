@@ -308,3 +308,39 @@ fn deck_edges_are_two_4px_card_edges_inset_6_and_12px() {
         assert_eq!(f.pixel(22, 290), border);
     }
 }
+
+/// WCAG relative luminance of an sRGB colour.
+fn luminance(c: [u8; 3]) -> f64 {
+    let lin = |v: u8| {
+        let v = f64::from(v) / 255.0;
+        if v <= 0.03928 {
+            v / 12.92
+        } else {
+            ((v + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2])
+}
+
+fn contrast(a: [u8; 3], b: [u8; 3]) -> f64 {
+    let (la, lb) = (luminance(a), luminance(b));
+    (la.max(lb) + 0.05) / (la.min(lb) + 0.05)
+}
+
+#[test]
+fn the_row_more_glyph_reads_at_3_to_1_against_the_card() {
+    for (dark, surface) in [(false, LIGHT_SURFACE), (true, DARK_SURFACE)] {
+        let h = Harness::new(DeckGallery::new, GALLERY.0, GALLERY.1);
+        h.component.set_dark(dark);
+        let frame = h.render();
+        // The first comfortable card is 320 wide; the More button sits in its top-right corner.
+        let best = (COMFORTABLE_X + 282..COMFORTABLE_X + 302)
+            .flat_map(|x| (COMFORTABLE_TOP + 10..COMFORTABLE_TOP + 30).map(move |y| (x, y)))
+            .map(|(x, y)| contrast(frame.pixel(x, y), surface))
+            .fold(0.0_f64, f64::max);
+        assert!(
+            best >= 3.0,
+            "dark={dark}: the darkest More glyph pixel is {best:.2}:1 against the card"
+        );
+    }
+}

@@ -962,9 +962,10 @@ export component ItemCard inherits Rectangle {
         accessible-action-default => { root.context-menu-requested(self.x, self.y + self.height); }
 
         Icon {
-            source: Icons.dots-three;
+            // The header's bold glyph at its resting colour (5.47:1 light, 6.33:1 dark); the pale tertiary dots were 2:1.
+            source: Icons.dots-three-bold;
             size: 16px;
-            tint: root.more-hover ? Theme.text-primary : (root.more-emphasised ? Theme.text-secondary : Theme.text-tertiary);
+            tint: root.more-hover ? Theme.text-primary : Theme.text-secondary;
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
         }
