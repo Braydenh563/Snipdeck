@@ -641,8 +641,10 @@ fn a_pinned_panel_stays_after_a_use() {
 
 #[test]
 fn the_setting_off_keeps_the_panel_open_and_a_failed_use_never_hides() {
-    let mut settings = Settings::default();
-    settings.panel_hide_after_use = false;
+    let settings = Settings {
+        panel_hide_after_use: false,
+        ..Settings::default()
+    };
     let mut w = world_with(Some(outlook()), settings);
     w.ctl.set_on_top(false);
     let used = w.ctl.activate_row(0, UseMode::Paste);

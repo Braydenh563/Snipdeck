@@ -280,6 +280,41 @@ fn panel_search_expanded_replaces_the_tabs_and_pins_and_marks_matches() {
     }
 }
 
+/// WCAG relative luminance of an sRGB colour.
+fn luminance(c: [u8; 3]) -> f64 {
+    let lin = |v: u8| {
+        let v = f64::from(v) / 255.0;
+        if v <= 0.03928 {
+            v / 12.92
+        } else {
+            ((v + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2])
+}
+
+fn contrast(a: [u8; 3], b: [u8; 3]) -> f64 {
+    let (la, lb) = (luminance(a), luminance(b));
+    (la.max(lb) + 0.05) / (la.min(lb) + 0.05)
+}
+
+#[test]
+fn the_header_more_glyph_reads_at_3_to_1_against_the_header() {
+    for (dark, bg) in [(false, APP_LIGHT), (true, APP_DARK)] {
+        let h = panel(SIZE, dark);
+        let f = render(&h);
+        // The kebab button spans x 254..278 in the 320 wide header; its glyph is three dots.
+        let best = (256..278)
+            .flat_map(|x| (8..32).map(move |y| (x, y)))
+            .map(|(x, y)| contrast(f.pixel(x, y), bg))
+            .fold(0.0_f64, f64::max);
+        assert!(
+            best >= 3.0,
+            "dark={dark}: the darkest glyph pixel is {best:.2}:1 against the header"
+        );
+    }
+}
+
 #[test]
 fn a_search_match_is_a_filled_span_not_an_underline() {
     let h = panel(SIZE, false);
