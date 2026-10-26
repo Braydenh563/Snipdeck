@@ -175,6 +175,7 @@ fn panel_with_the_menu_switcher_closed_and_open() {
     let h = panel(SIZE, false);
     h.component.set_lists_in_menu(true);
     assert_golden("panel-lists-menu-light", &render(&h));
+    h.component.set_recent_available(true);
     h.component.set_board_menu_open(true);
     assert_golden("panel-lists-menu-open-light", &render(&h));
 }
@@ -719,7 +720,10 @@ fn keep_on_top_on_wears_a_visible_accent_outline() {
         let on_frame = render(&on);
         let ring = header_pixels_of(&on_frame, ACCENT) - off;
         assert!(ring >= 80, "dark={dark}: only {ring} outline pixels");
-        assert!(contrast(ACCENT, bg) >= 3.0, "dark={dark}: outline vs header");
+        assert!(
+            contrast(ACCENT, bg) >= 3.0,
+            "dark={dark}: outline vs header"
+        );
     }
 }
 
@@ -734,9 +738,153 @@ fn the_selected_row_wears_a_two_px_accent_bar_on_its_left_edge() {
         let top = first_y_of(&f, 150, fill).expect("the selected row is drawn");
         let mid = top + 28;
         let bar: Vec<u32> = (0..12).filter(|&x| f.pixel(x, mid) == ACCENT).collect();
-        assert_eq!(bar.len(), 2, "dark={dark}: accent pixels at {bar:?} on y {mid}");
+        assert_eq!(
+            bar.len(),
+            2,
+            "dark={dark}: accent pixels at {bar:?} on y {mid}"
+        );
         // An idle row has no bar.
         let idle = top + 62 + 28;
-        assert!((0..12).all(|x| f.pixel(x, idle) != ACCENT), "dark={dark}: idle row");
+        assert!(
+            (0..12).all(|x| f.pixel(x, idle) != ACCENT),
+            "dark={dark}: idle row"
+        );
     }
+}
+
+/// Audit 4: "+ New item" is drawn in accent.text (4.5:1 on both themes), never the 3.76:1 accent fill.
+#[test]
+fn the_new_item_row_reads_in_accent_text() {
+    for (dark, text) in [(false, [0x19, 0x5A, 0xB3]), (true, [0xAB, 0xCD, 0xFE])] {
+        let h = list_panel(SIZE, dark);
+        h.component.set_selected_index(0);
+        let f = render(&h);
+        let count = |c: [u8; 3]| {
+            (8..120)
+                .flat_map(|x| (490..526).map(move |y| (x, y)))
+                .filter(|&(x, y)| f.pixel(x, y) == c)
+                .count()
+        };
+        assert!(
+            count(text) >= 30,
+            "dark={dark}: accent.text pixels {}",
+            count(text)
+        );
+        assert_eq!(
+            count(ACCENT),
+            0,
+            "dark={dark}: the accent fill colour must not be used for the text"
+        );
+    }
+}
+
+/// Where the focus ring shows after a Tab: a band of the Panel (header, tab row, pinned strip, footer), with the
+/// ring's mean x in the header. `-` when the focus is somewhere that draws no ring in these bands (the list).
+fn ring_stop(f: &Frame) -> String {
+    let bands: [(&str, u32, u32); 4] =
+        [("H", 0, 40), ("T", 41, 70), ("P", 72, 108), ("F", 529, 560)];
+    for (name, y0, y1) in bands {
+        let xs: Vec<u32> = (0..SIZE.0)
+            .filter(|&x| (y0..y1).any(|y| f.pixel(x, y) == FOCUS_RING))
+            .collect();
+        if xs.len() > 20 {
+            return if name == "H" {
+                format!(
+                    "H{}",
+                    xs.iter().sum::<u32>() / u32::try_from(xs.len()).unwrap() / 40
+                )
+            } else {
+                name.to_string()
+            };
+        }
+    }
+    "-".to_string()
+}
+
+/// Spec 2.11: Tab visits the header controls, the tab row (one stop), the pinned strip (one stop), the list and the
+/// footer, then wraps.
+#[test]
+fn focus_order_matches_spec() {
+    use slint::platform::{Key, WindowEvent};
+    let h = panel(SIZE, false);
+    // The "on" outline of the keep-on-top button is the ring's colour: leave it off.
+    h.component.set_on_top(false);
+    h.component
+        .window()
+        .dispatch_event(WindowEvent::WindowActiveChanged(true));
+    let _ = render(&h);
+    let mut seen = Vec::new();
+    for _ in 0..24 {
+        tap(&h, Key::Tab);
+        h.component.window().request_redraw();
+        seen.push(ring_stop(&render(&h)));
+    }
+    eprintln!("stops: {seen:?}");
+    let cycle = seen
+        .iter()
+        .skip(1)
+        .position(|s| *s == seen[0])
+        .map(|p| p + 1)
+        .unwrap_or(0);
+    assert!(cycle > 0, "Tab wraps: {seen:?}");
+    let one: Vec<&String> = seen[..cycle].iter().collect();
+    let count = |p: &str| one.iter().filter(|s| s.starts_with(p)).count();
+    assert_eq!(count("T"), 1, "the tab row is one stop: {seen:?}");
+    assert_eq!(count("P"), 1, "the pinned strip is one stop: {seen:?}");
+    assert_eq!(
+        count("F"),
+        1,
+        "the footer's Open Snipdeck is one stop: {seen:?}"
+    );
+    assert_eq!(
+        count("H"),
+        6,
+        "board, search, New, keep on top, More, close: {seen:?}"
+    );
+    assert!(cycle <= 10, "no extra stops: {seen:?}");
+}
+
+/// Audit 11: the search field shows the 2px focus ring while it holds the focus with a query typed.
+#[test]
+fn the_search_field_with_a_query_wears_the_focus_ring() {
+    use slint::platform::WindowEvent;
+    let h = panel(SIZE, false);
+    h.component
+        .window()
+        .dispatch_event(WindowEvent::WindowActiveChanged(true));
+    fixture::set_rows(&h.component, search_rows());
+    // Type "re" as the keyboard does: the characters pull the focus into the field.
+    for ch in ["r", "e"] {
+        let text: slint::SharedString = ch.into();
+        h.component
+            .window()
+            .dispatch_event(WindowEvent::KeyPressed { text: text.clone() });
+        h.component
+            .window()
+            .dispatch_event(WindowEvent::KeyReleased { text });
+    }
+    assert_eq!(h.component.get_query(), "re");
+    h.component.window().request_redraw();
+    let f = render(&h);
+    let ring = (4..200)
+        .flat_map(|x| (44..90).map(move |y| (x, y)))
+        .filter(|&(x, y)| f.pixel(x, y) == FOCUS_RING)
+        .count();
+    assert!(ring > 100, "ring pixels around the field: {ring}");
+}
+
+/// The minimum width (260): the board picker keeps its room and nothing clips (spec 2.12).
+#[test]
+fn panel_at_the_260px_minimum_width() {
+    let h = panel((260, 560), false);
+    h.component.set_selected_index(1);
+    assert_golden("panel-260-light", &render(&h));
+}
+
+/// The minimum height of the List layout (spec 2.12: 296): three rows and the chrome, no pinned strip squeezed in.
+#[test]
+fn panel_at_the_list_layouts_minimum_height() {
+    let h = panel((320, 296), false);
+    h.component.set_selected_index(0);
+    assert_golden("panel-min-height-light", &render(&h));
 }

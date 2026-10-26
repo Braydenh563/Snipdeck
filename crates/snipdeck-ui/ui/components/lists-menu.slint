@@ -18,6 +18,11 @@ export component ListsMenu inherits Rectangle {
     in property <bool> recent-open: false;
     in property <string> recent-label;
     in property <string> new-list-label;
+    // Group headers ("Boards", "Lists"): the two groups are named, not just separated.
+    in property <string> boards-label;
+    in property <string> lists-label;
+    // The board on show, ticked among the boards (by name).
+    in property <string> current-board;
     // Spoken name of the menu.
     in property <string> label;
     // The tallest it grows before it scrolls.
@@ -144,6 +149,22 @@ export component ListsMenu inherits Rectangle {
                     background: Theme.border-subtle;
                 }
             }
+            if root.boards-label != "": Rectangle {
+                height: Type.line-xs + Space.s1;
+                Text {
+                    x: Space.s2;
+                    width: parent.width - 2 * Space.s2;
+                    height: parent.height;
+                    text: root.boards-label;
+                    font-family: Fonts.sans;
+                    font-size: Type.xs;
+                    font-weight: Type.medium;
+                    color: Theme.text-secondary;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    accessible-role: AccessibleRole.none;
+                }
+            }
             for entry[i] in root.boards: Rectangle {
                 height: entry.separator ? root.sep-h : root.row-h;
                 if entry.separator: Rectangle {
@@ -164,6 +185,13 @@ export component ListsMenu inherits Rectangle {
                     pointer-entered => { root.current = root.r + i; }
                     activated => { root.activate(root.r + i); }
                 }
+                // The board on show is ticked, like the current list.
+                if !entry.separator && entry.text == root.current-board: Icon {
+                    source: Icons.check;
+                    tint: Theme.accent-text;
+                    x: parent.width - Space.s2 - self.width;
+                    y: (parent.height - self.height) / 2;
+                }
             }
             if root.b > 0: Rectangle {
                 height: root.sep-h;
@@ -171,6 +199,22 @@ export component ListsMenu inherits Rectangle {
                     y: (parent.height - self.height) / 2;
                     height: 1px;
                     background: Theme.border-subtle;
+                }
+            }
+            if root.lists-label != "": Rectangle {
+                height: Type.line-xs + Space.s1;
+                Text {
+                    x: Space.s2;
+                    width: parent.width - 2 * Space.s2;
+                    height: parent.height;
+                    text: root.lists-label;
+                    font-family: Fonts.sans;
+                    font-size: Type.xs;
+                    font-weight: Type.medium;
+                    color: Theme.text-secondary;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    accessible-role: AccessibleRole.none;
                 }
             }
             for tab[i] in root.lists: Rectangle {

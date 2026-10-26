@@ -24,6 +24,8 @@ export component IconButton inherits Rectangle {
     in property <bool> scaled: false;
     // A side set by the host (a toolbar that gives every control one height); 0 keeps the size's own.
     in property <length> side-override: 0px;
+    // Multiplies the glyph only (the Panel header grows its glyphs with its own 32px boxes at large text sizes).
+    in property <float> glyph-scale: 1.0;
     // The button shows its own `tooltip` below itself after 500ms of hover or keyboard focus (DESIGN.md §4).
     // Off where the window already shows one for it (the Panel header, the Main window toolbar).
     in property <bool> own-tooltip: false;
@@ -74,7 +76,7 @@ export component IconButton inherits Rectangle {
 
     Icon {
         source: root.icon;
-        size: (root.size == IconButtonSize.sm ? 16px : 20px) * root.k;
+        size: (root.size == IconButtonSize.sm ? 16px : 20px) * root.k * root.glyph-scale;
         tint: root.active ? Theme.accent-text : root.hovered || root.pressed ? Theme.text-primary : Theme.text-secondary;
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;

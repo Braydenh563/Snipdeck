@@ -67,8 +67,9 @@ export component Tab inherits Rectangle {
     animate background { duration: Motion.instant; easing: Motion.out; }
 
     HorizontalLayout {
-        padding-left: Space.s3;
-        padding-right: Space.s3;
+        // 7 in: the first label (box x8, 1px glyph inset) starts at x16, the Panel header's left edge (audit 14).
+        padding-left: Space.s2 - 1px;
+        padding-right: Space.s2;
         padding-bottom: Space.s0-5;
         alignment: center;
         spacing: Space.s1;

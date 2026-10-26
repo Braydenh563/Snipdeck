@@ -417,6 +417,11 @@ export component PanelWindow inherits Window {
     }
     property <bool> no-lists: root.tabs.length == 0;
     // The Menu switcher (spec 3) names the list in the header: "Board · List" (Recent while that view is open).
+    // "New" is icon-only below 300px and with the Menu switcher, which needs the room for "Board · List" (6+ characters each).
+    // How far the header's boxes and glyphs follow the Windows text size: the header is 40 at 100 % and grows with its text,
+    // but 32px boxes with the glyph at the full 2.25 would not fit it, so they stop at 1.5 (audit 5).
+    property <float> chrome-k: min(SystemLook.text-scale, 1.5);
+    property <bool> new-icon-only: root.narrow || root.lists-in-menu;
     property <string> switcher-list: !root.lists-in-menu ? "" : root.recent-open ? @tr("Recent") : root.tabs[root.current-tab].text;
 
     property <int> sel: root.rows.length == 0 ? -1 : min(max(root.selected-index, 0), root.rows.length - 1);
@@ -1140,7 +1145,8 @@ export component PanelWindow inherits Window {
                         search-button := IconButton {
                             icon: Icons.magnifying-glass;
                             size: IconButtonSize.sm;
-                            side-override: Space.s8;
+                            side-override: Space.s8 * root.chrome-k;
+                            glyph-scale: root.chrome-k;
                             tooltip: @tr("Search (Ctrl+F)");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.open-search(); }
@@ -1151,8 +1157,8 @@ export component PanelWindow inherits Window {
                         new-button := Rectangle {
                             property <bool> tip-on: new-touch.has-hover || new-scope.has-focus;
                             out property <bool> has-focus: new-scope.has-focus;
-                            width: root.narrow ? Space.s8 : new-row.preferred-width;
-                            height: Space.s8;
+                            width: root.new-icon-only ? Space.s8 * root.chrome-k : new-row.preferred-width;
+                            height: Space.s8 * root.chrome-k;
                             y: (parent.height - self.height) / 2;
                             border-radius: Radius.md;
                             background: new-touch.pressed ? Theme.bg-sunken : new-touch.has-hover || root.new-menu-open ? Theme.bg-hover : transparent;
@@ -1164,23 +1170,23 @@ export component PanelWindow inherits Window {
                             accessible-action-default => { root.new-menu-open = true; }
                             animate background { duration: Motion.instant; easing: Motion.out; }
                             changed tip-on => {
-                                if (root.narrow) {
+                                if (root.new-icon-only) {
                                     root.tip-set(@tr("New"), self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.tip-on);
                                 }
                             }
 
                             new-row := HorizontalLayout {
-                                padding-left: root.narrow ? 0px : Space.s1 + Space.s0-5;
-                                padding-right: root.narrow ? 0px : Space.s2;
+                                padding-left: root.new-icon-only ? 0px : Space.s1 + Space.s0-5;
+                                padding-right: root.new-icon-only ? 0px : Space.s2;
                                 spacing: Space.s1;
                                 alignment: center;
                                 Icon {
                                     source: Icons.plus;
                                     tint: Theme.text-primary;
-                                    size: Space.s4 * SystemLook.text-scale;
+                                    size: Space.s4 * root.chrome-k;
                                     y: (parent.height - self.height) / 2;
                                 }
-                                if !root.narrow: Text {
+                                if !root.new-icon-only: Text {
                                     text: @tr("New");
                                     font-family: Fonts.sans;
                                     font-size: Type.base;
@@ -1230,7 +1236,8 @@ export component PanelWindow inherits Window {
                         pin := IconButton {
                             icon: Icons.push-pin;
                             size: IconButtonSize.sm;
-                            side-override: Space.s8;
+                            side-override: Space.s8 * root.chrome-k;
+                            glyph-scale: root.chrome-k;
                             tooltip: @tr("Keep panel on top");
                             active: root.on-top;
                             accessible-checkable: true;
@@ -1246,7 +1253,8 @@ export component PanelWindow inherits Window {
                         kebab := IconButton {
                             icon: Icons.dots-three-bold;
                             size: IconButtonSize.sm;
-                            side-override: Space.s8;
+                            side-override: Space.s8 * root.chrome-k;
+                            glyph-scale: root.chrome-k;
                             tooltip: @tr("More");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.app-menu-requested(); }
@@ -1256,7 +1264,8 @@ export component PanelWindow inherits Window {
                         close := IconButton {
                             icon: Icons.x;
                             size: IconButtonSize.sm;
-                            side-override: Space.s8;
+                            side-override: Space.s8 * root.chrome-k;
+                            glyph-scale: root.chrome-k;
                             tooltip: @tr("Close panel (Esc)");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.close-requested(); }
@@ -1631,8 +1640,16 @@ export component PanelWindow inherits Window {
                     if root.rows.length > 0 && !root.recent-open && list.content-height + list.content-y > list.height + 1px: DeckEdge {
                         position: DeckEdgePosition.bottom;
                         x: Space.s2;
-                        y: parent.height - self.height;
+                        y: list.height - self.height;
                         width: parent.width - 2 * Space.s2;
+                    }
+                    // The list scrolls above the "+ New item" row: a hairline marks where it ends once the rows overflow.
+                    if quick.visible && root.rows.length > 0 && !root.recent-open && list.content-height > list.height: Rectangle {
+                        x: Space.s2;
+                        y: list.height;
+                        width: parent.width - 2 * Space.s2;
+                        height: 1px;
+                        background: Theme.border-subtle;
                     }
 
                     // ---- The Recent inbox: what was copied lately; click copies, "Save to…" keeps it in a list --------
@@ -1871,7 +1888,7 @@ export component PanelWindow inherits Window {
                 if !root.stack-visible && !(root.marked-count > 0 && !root.recent-open): footer := Rectangle {
                     height: max(Space.s8, Type.line-sm + Space.s3);
                     accessible-role: AccessibleRole.text;
-                    accessible-label: root.rows.length == 0 && root.searching ? @tr("Enter creates “{}”", root.query)
+                    accessible-label: root.rows.length == 0 && root.searching ? @tr("Enter creates “{}” in {}", root.query, root.add-list-name)
                         : root.pastes
                         ? (root.target-title != "" ? @tr("Pastes into {} · {}", root.target-name, root.target-title) : @tr("Pastes into {}", root.target-name))
                         : @tr("No target: click copies");
@@ -1882,7 +1899,7 @@ export component PanelWindow inherits Window {
                         background: Theme.border-subtle;
                     }
                     HorizontalLayout {
-                        padding-left: Space.s2;
+                        padding-left: Space.s4 - 1px;
                         padding-right: Space.s1;
                         spacing: Space.s2;
                         // Left: the route. The tooltip says how to paste and how to copy.
@@ -1899,22 +1916,17 @@ export component PanelWindow inherits Window {
                             HorizontalLayout {
                                 spacing: Space.s1 + Space.s0-5;
                                 alignment: start;
-                                if root.rows.length == 0 && root.searching: Rectangle {
-                                    width: enter-cap.min-width;
-                                    enter-cap := Keycap {
-                                        text: "↵";
-                                        strong: true;
-                                        y: (parent.height - self.height) / 2;
-                                    }
-                                }
                                 if !(root.rows.length == 0 && root.searching): Icon {
                                     source: root.pastes ? Icons.arrow-bend-down-left : Icons.clipboard;
                                     tint: Theme.text-secondary;
                                     size: Space.s4 * SystemLook.text-scale;
                                     y: (parent.height - self.height) / 2;
                                 }
-                                Text {
-                                    text: root.rows.length == 0 && root.searching ? @tr("creates") : root.pastes ? @tr("Pastes into") : @tr("No target:");
+                                // No results: the footer says what Enter does (spec 2.6): one translatable sentence.
+                                if root.rows.length == 0 && root.searching: Text {
+                                    horizontal-stretch: 1;
+                                    min-width: 0px;
+                                    text: @tr("Enter creates “{}” in {}", root.query, root.add-list-name);
                                     font-family: Fonts.sans;
                                     font-size: Type.sm;
                                     color: Theme.text-secondary;
@@ -1922,10 +1934,19 @@ export component PanelWindow inherits Window {
                                     overflow: elide;
                                     accessible-role: AccessibleRole.none;
                                 }
-                                Text {
+                                if !(root.rows.length == 0 && root.searching): Text {
+                                    text: root.pastes ? @tr("Pastes into") : @tr("No target:");
+                                    font-family: Fonts.sans;
+                                    font-size: Type.sm;
+                                    color: Theme.text-secondary;
+                                    vertical-alignment: center;
+                                    overflow: elide;
+                                    accessible-role: AccessibleRole.none;
+                                }
+                                if !(root.rows.length == 0 && root.searching): Text {
                                     horizontal-stretch: 1;
                                     min-width: 0px;
-                                    text: root.rows.length == 0 && root.searching ? "“" + root.query + "”" : root.pastes ? root.target-name : @tr("click copies");
+                                    text: root.pastes ? root.target-name : @tr("click copies");
                                     font-family: Fonts.sans;
                                     font-size: Type.sm;
                                     font-weight: Type.medium;
@@ -2041,6 +2062,9 @@ export component PanelWindow inherits Window {
             recent-open: root.recent-open;
             recent-label: @tr("Recent");
             new-list-label: @tr("New list");
+            boards-label: @tr("Boards");
+            lists-label: @tr("Lists");
+            current-board: root.board-name;
             label: @tr("Boards and lists");
             init => {
                 self.current = root.recent-open ? 0 : root.recent-available ? 1 + root.board-menu-entries.length + root.current-tab : root.board-menu-entries.length + root.current-tab;

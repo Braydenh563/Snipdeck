@@ -1753,7 +1753,7 @@ ui_tests! {
         assert_eq!(ui.get_query(), "q");
     }
 
-    fn every_target_is_at_least_24px_in_both_directions_in_every_state() {
+    fn hit_targets_at_least_24() {
         // Every clickable the accessibility tree names, in each state the goldens show (spec 6: hit targets).
         let walk = |ui: &PanelWindow, state: &str, row_min: f32| -> usize {
             let mut checked = 0;
@@ -2330,6 +2330,26 @@ ui_tests! {
         set_pinned(&ui, fixture::pinned_n(12));
         press_at(&ui, centre(&find(&ui, "Pinned 02", AccessibleRole::Button)));
         assert_eq!(take(&log), ["pinned:1"]);
+    }
+
+    fn the_pinned_strip_is_one_tab_stop_and_arrows_move_inside_it() {
+        let (ui, log) = start();
+        set_pinned(&ui, fixture::pinned_n(12));
+        // Board, search, New, keep on top, More, close, the tab row, then the strip: its first chip.
+        for _ in 0..8 {
+            press(ui.window(), &key(Key::Tab));
+        }
+        press(ui.window(), &key(Key::Return));
+        assert_eq!(take(&log), ["pinned:0"]);
+        press(ui.window(), &key(Key::RightArrow));
+        chord(ui.window(), &[Key::Shift], &key(Key::Return));
+        assert_eq!(take(&log), ["pinned-copy:1"], "Right moved to the second chip");
+        press(ui.window(), &key(Key::RightArrow));
+        press(ui.window(), &key(Key::RightArrow));
+        press(ui.window(), &key(Key::Return));
+        settle();
+        assert_eq!(take(&log), Vec::<String>::new(), "the third stop is +N more: it opens the menu, uses nothing");
+        let _ = find(&ui, "More pinned snippets", AccessibleRole::List);
     }
 
     // ---- The Recent inbox -----------------------------------------------------------------------

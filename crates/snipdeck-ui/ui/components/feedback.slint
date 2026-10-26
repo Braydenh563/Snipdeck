@@ -82,8 +82,11 @@ export component Toast inherits Rectangle {
                 wrap: root.ink ? TextWrap.no-wrap : TextWrap.word-wrap;
                 overflow: elide;
             }
+            // The wrapper takes the layout's full height so the button inside centres on the message (a layout ignores `y`).
             if root.undo-label != "" && root.ink: Rectangle {
-                width: ink-action.preferred-width + 2 * Space.s2 + Space.s0-5;
+              width: ink-action.preferred-width + 2 * Space.s2 + Space.s0-5;
+              ink-btn := Rectangle {
+                width: parent.width;
                 height: Space.s6 + Space.s1;
                 y: (parent.height - self.height) / 2;
                 border-radius: Radius.md;
@@ -123,6 +126,7 @@ export component Toast inherits Rectangle {
                         return reject;
                     }
                 }
+              }
             }
             if root.undo-label != "" && !root.ink: Button {
                 text: root.undo-label;

@@ -7,7 +7,7 @@ import { StateColor } from "state-color.slint";
 export enum ItemKind { text, template, code, link, image, file, sensitive }
 export enum ItemCardVariant { compact, comfortable, tile }
 
-// The quick-use number cell (DESIGN.md §4 "Number gutter"): 1-9 in mono `type.xs` tertiary; 0 and 10+
+// The quick-use number cell (DESIGN.md §4 "Number gutter"): 1-9 in mono `type.xs` secondary; 0 and 10+
 // leave it empty. While the card is pulled the number becomes a check in `accent-text`.
 component ItemGutter inherits Rectangle {
     in property <int> number;
@@ -32,7 +32,8 @@ component ItemGutter inherits Rectangle {
         accessible-label: @tr("Alt+{}", root.number);
         font-family: Fonts.mono;
         font-size: Type.xs;
-        color: root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary;
+        // text.secondary at rest; on the selected row primary (secondary is 4.2:1 on the dark fill).
+        color: root.selected ? Theme.text-on-selected : Theme.text-secondary;
         horizontal-alignment: center;
         vertical-alignment: center;
     }
@@ -445,7 +446,7 @@ export component ItemCard inherits Rectangle {
     property <bool> preview-marked: root.preview-match != "" && !root.sensitive && root.tag-hit == ""
         && m-prev-before.preferred-width + m-prev-match.preferred-width <= root.preview-w;
     property <length> preview-x: root.tile ? root.pad-x : root.content-x + root.lead-w;
-    property <length> preview-w: root.qr ? max(0px, root.row-w - root.qr-preview-reserve) : root.tile ? max(0px, root.width - 2 * root.pad-x) : root.compact ? max(0px, root.title-avail - root.title-w - Space.s2) : root.row-w;
+    property <length> preview-w: root.qr ? max(0px, root.row-w - root.qr-preview-reserve) : root.qt && root.qr-actions-shown ? max(0px, root.qr-right - root.qr-eye-w - root.qr-actions-w - Space.s1 - Space.s0-5 - root.pad-x) : root.tile ? max(0px, root.width - 2 * root.pad-x) : root.compact ? max(0px, root.title-avail - root.title-w - Space.s2) : root.row-w;
     property <length> preview-h: root.shown-preview == "" ? 0px : min(m-preview.preferred-height, root.preview-lines * Type.line-sm);
     property <length> tile-title-h: min(m-title-wrap.preferred-height, 2 * Type.line-base);
     property <length> label-h: Type.line-sm + Space.s1;
@@ -860,7 +861,7 @@ export component ItemCard inherits Rectangle {
             text: root.shown-preview;
             font-family: root.mono-preview ? Fonts.mono : Fonts.sans;
             font-size: Type.sm;
-            color: root.selected ? Theme.text-on-selected : Theme.text-secondary;
+            color: root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary;
             vertical-alignment: top;
             wrap: root.compact || root.qr ? no-wrap : word-wrap;
             overflow: elide;

@@ -58,8 +58,8 @@ export component BoardSwitcher inherits Rectangle {
         alignment: root.list-name == "" ? LayoutAlignment.stretch : LayoutAlignment.start;
         Text {
             horizontal-stretch: root.list-name == "" ? 1 : 0;
-            // With a list beside it the board keeps about three characters, the list about five (the picker has ~105px at 320).
-            min-width: root.list-name == "" ? 0px : min(m-board.preferred-width, Type.md * 2);
+            // With a list beside it both keep about six characters (the picker has ~135px at 320 with New icon-only).
+            min-width: root.list-name == "" ? 0px : min(m-board.preferred-width, Type.md * 3.4);
             text: root.board-name;
             font-family: Fonts.sans;
             font-size: Type.md;
@@ -78,7 +78,7 @@ export component BoardSwitcher inherits Rectangle {
         }
         if root.list-name != "": Text {
             horizontal-stretch: 0;
-            min-width: min(m-list.preferred-width, Type.md * 2.4);
+            min-width: min(m-list.preferred-width, Type.md * 3.4);
             text: root.list-name;
             font-family: Fonts.sans;
             font-size: Type.md;
