@@ -686,6 +686,8 @@ pub struct Settings {
     /// With "Start with Windows": show the Panel at sign-in instead of staying in the tray. Kept
     /// when autostart is off; [`Settings::starts_visible`] says whether it takes effect.
     pub panel_start_visible: bool,
+    /// The symbols the user used last, newest first, at most 24 (the Symbols tab's Recent strip).
+    pub symbols_recent: Vec<snipdeck_symbols::RecentEntry>,
 }
 
 impl Default for Settings {
@@ -727,6 +729,7 @@ impl Default for Settings {
             panel_open_at: PanelOpenAt::Last,
             panel_hide_after_use: false,
             panel_start_visible: false,
+            symbols_recent: Vec::new(),
         }
     }
 }
@@ -863,6 +866,7 @@ impl Settings {
         field!(panel_switcher);
         field!(tray_click);
         field!(panel_open_at);
+        field!(symbols_recent);
         field!(panel_hide_after_use);
         field!(panel_start_visible);
         settings

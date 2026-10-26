@@ -4529,6 +4529,7 @@ dependencies = [
  "snipdeck-platform",
  "snipdeck-portable",
  "snipdeck-store",
+ "snipdeck-symbols",
  "snipdeck-ui",
  "tempfile",
  "thiserror 2.0.21",
