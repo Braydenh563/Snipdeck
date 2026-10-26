@@ -645,6 +645,16 @@ export component ItemCard inherits Rectangle {
             background: Theme.hc-border != transparent ? Theme.text-primary : ListAccent.color(root.label-hues[root.label]);
         }
 
+        // The selected quiet row (the Enter target): a 2px accent bar on the left edge; its fill alone is 1.08:1 in light.
+        if root.selected && root.q: Rectangle {
+            x: 0px;
+            y: Space.s1;
+            width: 2px;
+            height: parent.height - 2 * Space.s1;
+            border-radius: 1px;
+            background: Theme.accent;
+        }
+
         // Number gutter and the index-card rule (compact and comfortable; tiles number inline).
         if !root.tile && root.numbered: ItemGutter {
             x: root.q ? root.pad-x : 0px;

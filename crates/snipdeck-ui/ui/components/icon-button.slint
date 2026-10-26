@@ -60,8 +60,9 @@ export component IconButton inherits Rectangle {
         ? (root.pressed ? StateColor.deep() : root.hovered ? StateColor.pressed() : root.active ? Theme.bg-selected : Theme.bg-hover)
         : (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : root.active ? Theme.bg-selected : transparent);
     border-radius: Radius.md;
-    border-width: Theme.hc-border != transparent ? 1px : 0px;
-    border-color: Theme.hc-border;
+    // A toggled-on button is outlined in the accent (>= 3:1 against the header; its fill alone is 1.02:1).
+    border-width: Theme.hc-border != transparent || root.active ? 1px : 0px;
+    border-color: Theme.hc-border != transparent ? Theme.hc-border : Theme.accent;
     opacity: root.enabled ? 1.0 : 0.45;
     forward-focus: scope;
     accessible-role: button;
@@ -74,7 +75,7 @@ export component IconButton inherits Rectangle {
     Icon {
         source: root.icon;
         size: (root.size == IconButtonSize.sm ? 16px : 20px) * root.k;
-        tint: root.hovered || root.pressed || root.active ? Theme.text-primary : Theme.text-secondary;
+        tint: root.active ? Theme.accent-text : root.hovered || root.pressed ? Theme.text-primary : Theme.text-secondary;
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
     }

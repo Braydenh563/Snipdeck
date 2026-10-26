@@ -697,3 +697,46 @@ fn the_handle_wears_the_list_colour_unless_high_contrast_is_on() {
         "high contrast keeps the system colours"
     );
 }
+
+/// Pixels of exactly `colour` in the header band (y < 40).
+fn header_pixels_of(f: &Frame, colour: [u8; 3]) -> usize {
+    (0..320)
+        .flat_map(|x| (0..40).map(move |y| (x, y)))
+        .filter(|&(x, y)| f.pixel(x, y) == colour)
+        .count()
+}
+
+/// Audit 1: the keep-on-top "on" state used to be a fill 1.02:1 against the header and a primary glyph.
+/// It now wears a 1px accent outline (>= 3:1 against the header) and an accent-text glyph.
+#[test]
+fn keep_on_top_on_wears_a_visible_accent_outline() {
+    for (dark, bg) in [(false, APP_LIGHT), (true, APP_DARK)] {
+        let off = panel(SIZE, dark);
+        off.component.set_on_top(false);
+        let off = header_pixels_of(&render(&off), ACCENT);
+        let on = panel(SIZE, dark);
+        on.component.set_on_top(true);
+        let on_frame = render(&on);
+        let ring = header_pixels_of(&on_frame, ACCENT) - off;
+        assert!(ring >= 80, "dark={dark}: only {ring} outline pixels");
+        assert!(contrast(ACCENT, bg) >= 3.0, "dark={dark}: outline vs header");
+    }
+}
+
+/// Audit 3: the selected row's fill is 1.08:1 (light) and 1.41:1 (dark) against the list, so the Enter target
+/// also wears a 2px accent bar on its left edge.
+#[test]
+fn the_selected_row_wears_a_two_px_accent_bar_on_its_left_edge() {
+    for (dark, fill) in [(false, SELECTED_LIGHT), (true, SELECTED_DARK)] {
+        let h = list_panel(SIZE, dark);
+        h.component.set_selected_index(1);
+        let f = render(&h);
+        let top = first_y_of(&f, 150, fill).expect("the selected row is drawn");
+        let mid = top + 28;
+        let bar: Vec<u32> = (0..12).filter(|&x| f.pixel(x, mid) == ACCENT).collect();
+        assert_eq!(bar.len(), 2, "dark={dark}: accent pixels at {bar:?} on y {mid}");
+        // An idle row has no bar.
+        let idle = top + 62 + 28;
+        assert!((0..12).all(|x| f.pixel(x, idle) != ACCENT), "dark={dark}: idle row");
+    }
+}
