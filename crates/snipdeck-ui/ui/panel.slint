@@ -1615,6 +1615,7 @@ export component PanelWindow inherits Window {
                         width: parent.width - 2 * Space.s2;
                         y: min(parent.height - self.box-h - Space.s1, root.rows.length == 0 ? parent.height : list.content-height + Space.s1);
                         list-name: root.add-list-name;
+                        tab-stop: false;
                         open-request: root.quick-add-request;
                         detect-kind(t) => { root.detect-kind(t) }
                         create(t, k, s) => { root.quick-add-requested(t, k, s); }

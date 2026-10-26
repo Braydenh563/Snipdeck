@@ -791,7 +791,7 @@ msgid "Enter"
 msgstr "Enter"
 
 msgid "Enter creates “{}” in {}"
-msgstr ""
+msgstr "Entrée crée « {} » dans {}"
 
 msgid "Enter your master password to use the sensitive items in your library. Your other items are always available."
 msgstr "Saisissez votre mot de passe principal pour utiliser les extraits sensibles de votre bibliothèque. Vos autres extraits restent toujours disponibles."

@@ -16,6 +16,8 @@ export component QuickAdd inherits Rectangle {
     in property <int> open-request: 0;
     // The list the item goes to, for the row's spoken label.
     in property <string> list-name;
+    // The collapsed row is a Tab stop. The Panel's order (spec 2.11) has none: Ctrl+N opens the box there.
+    in property <bool> tab-stop: true;
     // 0 = Text, 1 = Link, 2 = Template: what the text looks like. The host implements it (`capture::detect_kind`).
     pure callback detect-kind(string) -> int;
     // Enter or [Create]: text, kind (0 Text, 1 Link, 2 Template), sensitive.
@@ -70,6 +72,7 @@ export component QuickAdd inherits Rectangle {
         accessible-action-default => { root.open(); }
 
         add-scope := FocusScope {
+            enabled: root.tab-stop;
             key-pressed(event) => {
                 if (event.text == Key.Return || event.text == " ") {
                     root.open();

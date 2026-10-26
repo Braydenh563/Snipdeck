@@ -874,8 +874,13 @@ ui_tests! {
         // A search with no match: the footer says Enter creates the item from the query.
         fixture::set_rows(&ui, Vec::new());
         ui.set_query("invoice no. 7".into());
+        ui.set_add_list_name("Email replies".into());
         settle();
-        assert!(!missing(&ui, "Enter creates \u{201c}invoice no. 7\u{201d}", AccessibleRole::Text));
+        assert!(!missing(
+            &ui,
+            "Enter creates \u{201c}invoice no. 7\u{201d} in Email replies",
+            AccessibleRole::Text
+        ));
     }
 
     fn the_footer_sits_fully_inside_the_window_at_the_default_size_for_every_scale() {
@@ -1437,7 +1442,7 @@ ui_tests! {
         for n in names {
             let item = all(&ui, n, AccessibleRole::ListItem)
                 .into_iter()
-                .find(|i| i.absolute_position().y < 200.0)
+                .find(|i| i.absolute_position().y < 300.0)
                 .unwrap_or_else(|| panic!("no menu row {n}"));
             ys.push(item.absolute_position().y);
         }

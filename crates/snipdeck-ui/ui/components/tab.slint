@@ -389,6 +389,8 @@ export component ListTabBar inherits Rectangle {
                 background: transparent;
             }
             add-scope := FocusScope {
+                // Not a Tab stop: the tab row is one stop (spec 2.11); the "+" is the mouse's, New > New list the keyboard's.
+                enabled: false;
                 focus-on-click: false;
                 key-pressed(event) => {
                     if (event.text == " " || event.text == "\n") {

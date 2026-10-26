@@ -791,7 +791,7 @@ msgid "Enter"
 msgstr "Enter"
 
 msgid "Enter creates “{}” in {}"
-msgstr ""
+msgstr "Enter で「{}」を {} に作成"
 
 msgid "Enter your master password to use the sensitive items in your library. Your other items are always available."
 msgstr "ライブラリの機密スニペットを使うには、マスターパスワードを入力してください。それ以外のスニペットは常に使えます。"
