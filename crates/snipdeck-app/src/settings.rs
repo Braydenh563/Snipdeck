@@ -516,7 +516,7 @@ impl Hotkeys {
             (HotkeyAction::PasteNext, "paste_next"),
         ] {
             if let Some(text) = map.get(key).and_then(serde_json::Value::as_str) {
-                *hotkeys.slot(action) = text.to_owned();
+                text.clone_into(hotkeys.slot(action));
             }
         }
         Some(hotkeys)
