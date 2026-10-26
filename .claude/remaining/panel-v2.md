@@ -61,3 +61,14 @@ Slices 7 and 8 (agent, this session): committed (WIP commit with code + .po, the
   Unverified: Windows Tracker::cursor/monitor_at (monitor id there is "monitor"-based, size is taken from the Panel's current monitor);
   registry rewrite; real placement. .po files carry the other agent's strings too (extract regenerates all).
 Coordinator queue (2026-10-26): Settings: merge the old "Panel" group into "Opening the Panel" per spec §4 (taskbar, hide on blur, keep visible in screenshots, start with Windows, keep running in tray, dock to, open docked by, hover/leave delay, picker position), so Panel settings are two groups, not three; fixture in editors.rs sets panel_start_visible_enabled to match autostart in the golden; regenerate and open settings goldens.
+
+UX audit pass (agent, panel-v2-ux-audit.md): done 1 (IconButton active = 1px accent outline + accent-text glyph; also outlines the Main window's active icon buttons), 3 (2px accent bar on the selected quiet row),
+  4 (QuickAdd accent.text 6.47:1 light / 11.11 dark; bottom DeckEdge above it; hairline when rows overflow), 2 (New icon-only in Menu mode; board and list each keep ~6 chars),
+  6 (Cards: preview narrowed 6px clear of the actions so it elides; selected preview text.secondary 4.63:1 dark), 7 (toast Undo centred, 1.5px off the message centre),
+  15 (numbers already text.secondary; selected row now text.primary, was 4.22:1), 14 (tab label, "+ New item" and footer glyph start at x16),
+  13 (footer "Enter creates “q” in <list>", translated), 8 (pinned strip one Tab stop, Left/Right inside; tab-row "+" and QuickAdd are no Tab stops in the Panel; tests focus_order_matches_spec, hit_targets_at_least_24 (renamed), strip test),
+  12 (ListsMenu: "Boards"/"Lists" headers, tick on the current board; golden shows Recent), 11 (verified by test the_search_field_with_a_query_wears_the_focus_ring),
+  5 (header glyphs and boxes scale to 1.25 at most), 10 (goldens panel-260-light, panel-min-height-light), 9 (all panel goldens regenerated; deck-light/dark, main-bulk/rail, picker-*, primitives-* too).
+Not done / open: focus order still has two ring-less stops (the list, plus one unidentified; the test allows <= 11); 225%: chips still show one letter, tabs clip (the tab row scrolls by design), number gutter not moved to x16;
+  golden tolerance not tightened; no ux-auditor review; clippy 1.99.1 and fmt not re-run after the last edits.
+  225% at 360px wide: the board name now elides to W... (header buttons grew to 40px); the real window is wider at that size, unverified.

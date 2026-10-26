@@ -419,8 +419,8 @@ export component PanelWindow inherits Window {
     // The Menu switcher (spec 3) names the list in the header: "Board · List" (Recent while that view is open).
     // "New" is icon-only below 300px and with the Menu switcher, which needs the room for "Board · List" (6+ characters each).
     // How far the header's boxes and glyphs follow the Windows text size: the header is 40 at 100 % and grows with its text,
-    // but 32px boxes with the glyph at the full 2.25 would not fit it, so they stop at 1.5 (audit 5).
-    property <float> chrome-k: min(SystemLook.text-scale, 1.5);
+    // but 32px boxes with the glyph at the full 2.25 would not fit it, so they stop at 1.25 (audit 5).
+    property <float> chrome-k: min(SystemLook.text-scale, 1.25);
     property <bool> new-icon-only: root.narrow || root.lists-in-menu;
     property <string> switcher-list: !root.lists-in-menu ? "" : root.recent-open ? @tr("Recent") : root.tabs[root.current-tab].text;
 
