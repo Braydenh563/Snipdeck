@@ -34,6 +34,7 @@ use picker::pasted;
 use tray::with_tray;
 use use_paste::make_sensitive;
 
+mod access;
 mod capture_stack;
 mod dock;
 mod look_settings;
