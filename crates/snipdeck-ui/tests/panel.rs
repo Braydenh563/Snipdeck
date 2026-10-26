@@ -791,7 +791,7 @@ fn ring_stop(f: &Frame) -> String {
             return if name == "H" {
                 format!(
                     "H{}",
-                    xs.iter().sum::<u32>() / u32::try_from(xs.len()).unwrap() / 40
+                    xs.iter().sum::<u32>() / xs.iter().map(|_| 1u32).sum::<u32>() / 40
                 )
             } else {
                 name.to_string()
@@ -819,17 +819,16 @@ fn focus_order_matches_spec() {
         h.component.window().request_redraw();
         seen.push(ring_stop(&render(&h)));
     }
-    eprintln!("stops: {seen:?}");
     let cycle = seen
         .iter()
         .skip(1)
         .position(|s| *s == seen[0])
-        .map(|p| p + 1)
-        .unwrap_or(0);
+        .map_or(0, |p| p + 1);
     assert!(cycle > 0, "Tab wraps: {seen:?}");
     let one: Vec<&String> = seen[..cycle].iter().collect();
     let count = |p: &str| one.iter().filter(|s| s.starts_with(p)).count();
-    assert_eq!(count("T"), 1, "the tab row is one stop: {seen:?}");
+    // The tab row is one stop (arrows inside) and the add-list "+" the next: it must stay keyboard-reachable (WCAG 2.1.1).
+    assert_eq!(count("T"), 2, "the tab row and its + button: {seen:?}");
     assert_eq!(count("P"), 1, "the pinned strip is one stop: {seen:?}");
     assert_eq!(
         count("F"),
@@ -843,7 +842,7 @@ fn focus_order_matches_spec() {
     );
     // Two stops draw no ring in these bands: the list (the window's `rest` scope) and one not yet identified (open item in
     // .claude/remaining/panel-v2.md). The spec counts one.
-    assert!(cycle <= 11, "no further stops: {seen:?}");
+    assert!(cycle <= 12, "no further stops: {seen:?}");
 }
 
 /// Audit 11: the search field shows the 2px focus ring while it holds the focus with a query typed.

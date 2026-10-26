@@ -2340,8 +2340,8 @@ ui_tests! {
     fn the_pinned_strip_is_one_tab_stop_and_arrows_move_inside_it() {
         let (ui, log) = start();
         set_pinned(&ui, fixture::pinned_n(12));
-        // Board, search, New, keep on top, More, close, the tab row, then the strip: its first chip.
-        for _ in 0..8 {
+        // Board, search, New, keep on top, More, close, the tab row, its + button, then the strip: its first chip.
+        for _ in 0..9 {
             press(ui.window(), &key(Key::Tab));
         }
         press(ui.window(), &key(Key::Return));

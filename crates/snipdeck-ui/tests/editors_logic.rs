@@ -188,7 +188,7 @@ fn settings() -> (SettingsPage, Log) {
     let ui = SettingsPage::new().expect("settings");
     fixture::settings(&ui);
     // Tall enough that the whole page (with the plan table in Licence) is on screen: the testing backend only lists what is visible.
-    ui.window().set_size(slint::LogicalSize::new(640.0, 4000.0));
+    ui.window().set_size(slint::LogicalSize::new(640.0, 6000.0));
     ui.show().expect("show");
     settle();
     let log: Log = Rc::default();
