@@ -115,7 +115,7 @@ where
         self.copy_symbol_data(id, Data::Text(svg))
     }
 
-    /// "Copy PNG": the icon as a [`ICON_COPY_PX`] picture in `rgba` (the text colour of the
+    /// "Copy PNG": the icon as a `ICON_COPY_PX` picture in `rgba` (the text colour of the
     /// theme in force), transparent behind. `false` for anything that is not an icon, or when
     /// the clipboard is busy.
     pub fn copy_icon_png(&mut self, id: &SymbolId, rgba: [u8; 4]) -> bool {
