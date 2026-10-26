@@ -728,28 +728,48 @@ export component SettingsPage inherits Window {
                 }
 
                 FormSection {
-                    title: @tr("Panel");
+                FormSection {
+                    title: @tr("Opening the Panel");
                     SettingRow {
-                        title: @tr("Show the Panel in the taskbar and Alt+Tab");
-                        description: @tr("Gives the Panel a taskbar button and an Alt+Tab entry while it is on screen. Pasting still goes to the app you were in before. Off keeps it out of both; the tray icon and the Panel shortcut still bring it back.");
-                        Toggle {
-                            a11y-label: @tr("Show the Panel in the taskbar and Alt+Tab");
-                            checked <=> root.panel-in-taskbar;
-                            toggled(on) => { root.panel-in-taskbar-toggled(on); }
+                        title: @tr("Tray icon click opens");
+                        description: @tr("What a click on the Snipdeck icon in the tray opens. The tray menu still has both.");
+                        Segmented {
+                            width: 260px * SystemLook.text-scale;
+                            label: @tr("Tray icon click opens");
+                            options: [@tr("Panel"), @tr("Main window")];
+                            current: root.tray-click-index;
+                            chosen(i) => { root.tray-click-chosen(i); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
                         }
                     }
                     SettingRow {
-                        title: @tr("Picker position");
-                        description: @tr("Which side of your text cursor the Picker opens on. It moves to the opposite side when there is no room, and opens below the mouse when the app has no text cursor Snipdeck can see.");
+                        title: @tr("Panel opens");
+                        description: root.panel-open-at-enabled
+                            ? @tr("Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none.")
+                            : @tr("A docked Panel opens at its edge. Set Dock to Floating to choose where it opens.");
+                        SelectField {
+                            width: 240px * SystemLook.text-scale;
+                            label: @tr("Panel opens");
+                            options: [@tr("Where you left it"), @tr("At the mouse"), @tr("At the text cursor")];
+                            enabled: root.panel-open-at-enabled;
+                            current: root.panel-open-at-index;
+                            chosen(i) => { root.panel-open-at-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("After a paste or copy");
+                        description: @tr("A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one folds back to its edge.");
                         Segmented {
                             width: 320px * SystemLook.text-scale;
-                            label: @tr("Picker position");
-                            options: [@tr("Below"), @tr("Above"), @tr("Right"), @tr("Left")];
-                            current: root.picker-side-index;
-                            chosen(i) => { root.picker-side-chosen(i); }
+                            label: @tr("After a paste or copy");
+                            options: [@tr("Hide the Panel"), @tr("Keep the Panel open")];
+                            current: root.panel-hide-after-use-index;
+                            chosen(i) => { root.panel-hide-after-use-chosen(i); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
@@ -768,36 +788,24 @@ export component SettingsPage inherits Window {
                         }
                     }
                     SettingRow {
+                        title: @tr("Show the Panel in the taskbar and Alt+Tab");
+                        description: @tr("Gives the Panel a taskbar button and an Alt+Tab entry while it is on screen. Pasting still goes to the app you were in before. Off keeps it out of both; the tray icon and the Panel shortcut still bring it back.");
+                        Toggle {
+                            a11y-label: @tr("Show the Panel in the taskbar and Alt+Tab");
+                            checked <=> root.panel-in-taskbar;
+                            toggled(on) => { root.panel-in-taskbar-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
                         title: @tr("Keep Panel visible during screenshots");
                         description: @tr("Take screenshot hides the panel until the picture is taken. Turn this on to leave it on screen.");
                         Toggle {
                             a11y-label: @tr("Keep Panel visible during screenshots");
                             checked <=> root.screenshot-keep-panel;
                             toggled(on) => { root.screenshot-keep-panel-toggled(on); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                    }
-                    SettingRow {
-                        title: @tr("Start with Windows");
-                        description: @tr("Snipdeck waits in the tray so the shortcuts work after you sign in.");
-                        Toggle {
-                            a11y-label: @tr("Start with Windows");
-                            checked <=> root.autostart;
-                            toggled(on) => { root.autostart-toggled(on); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                    }
-                    SettingRow {
-                        title: @tr("Keep running in the tray when the window closes");
-                        description: @tr("Turn this off and closing the Panel or the Main window quits Snipdeck.");
-                        Toggle {
-                            a11y-label: @tr("Keep running in the tray when the window closes");
-                            checked <=> root.close-to-tray;
-                            toggled(on) => { root.close-to-tray-toggled(on); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
@@ -868,49 +876,27 @@ export component SettingsPage inherits Window {
                         }
                     }
                 }
-
-                FormSection {
-                    title: @tr("Opening the Panel");
                     SettingRow {
-                        title: @tr("Tray icon click opens");
-                        description: @tr("What a click on the Snipdeck icon in the tray opens. The tray menu still has both.");
-                        Segmented {
-                            width: 260px * SystemLook.text-scale;
-                            label: @tr("Tray icon click opens");
-                            options: [@tr("Panel"), @tr("Main window")];
-                            current: root.tray-click-index;
-                            chosen(i) => { root.tray-click-chosen(i); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                    }
-                    SettingRow {
-                        title: @tr("Panel opens");
-                        description: root.panel-open-at-enabled
-                            ? @tr("Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none.")
-                            : @tr("A docked Panel opens at its edge. Set Dock to Floating to choose where it opens.");
-                        SelectField {
-                            width: 240px * SystemLook.text-scale;
-                            label: @tr("Panel opens");
-                            options: [@tr("Where you left it"), @tr("At the mouse"), @tr("At the text cursor")];
-                            enabled: root.panel-open-at-enabled;
-                            current: root.panel-open-at-index;
-                            chosen(i) => { root.panel-open-at-chosen(i); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                    }
-                    SettingRow {
-                        title: @tr("After a paste or copy");
-                        description: @tr("A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one folds back to its edge.");
+                        title: @tr("Picker position");
+                        description: @tr("Which side of your text cursor the Picker opens on. It moves to the opposite side when there is no room, and opens below the mouse when the app has no text cursor Snipdeck can see.");
                         Segmented {
                             width: 320px * SystemLook.text-scale;
-                            label: @tr("After a paste or copy");
-                            options: [@tr("Hide the Panel"), @tr("Keep the Panel open")];
-                            current: root.panel-hide-after-use-index;
-                            chosen(i) => { root.panel-hide-after-use-chosen(i); }
+                            label: @tr("Picker position");
+                            options: [@tr("Below"), @tr("Above"), @tr("Right"), @tr("Left")];
+                            current: root.picker-side-index;
+                            chosen(i) => { root.picker-side-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Start with Windows");
+                        description: @tr("Snipdeck waits in the tray so the shortcuts work after you sign in.");
+                        Toggle {
+                            a11y-label: @tr("Start with Windows");
+                            checked <=> root.autostart;
+                            toggled(on) => { root.autostart-toggled(on); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }
@@ -926,6 +912,18 @@ export component SettingsPage inherits Window {
                             enabled: root.panel-start-visible-enabled;
                             current: root.panel-start-visible-index;
                             chosen(i) => { root.panel-start-visible-chosen(i); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Keep running in the tray when the window closes");
+                        description: @tr("Turn this off and closing the Panel or the Main window quits Snipdeck.");
+                        Toggle {
+                            a11y-label: @tr("Keep running in the tray when the window closes");
+                            checked <=> root.close-to-tray;
+                            toggled(on) => { root.close-to-tray-toggled(on); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

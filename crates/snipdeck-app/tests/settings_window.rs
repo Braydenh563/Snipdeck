@@ -478,7 +478,8 @@ fn the_programs_section_is_where_the_page_says_and_each_row_has_a_paste_key_drop
         let order = [
             "Shortcuts",
             "Appearance",
-            "Panel",
+            "Panel layout",
+            "Opening the Panel",
             "Privacy",
             "Programs",
             "Backups and your data",

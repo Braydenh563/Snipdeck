@@ -280,6 +280,7 @@ fn tag_manager_rows_renaming_and_deleting() {
 fn settings_page_light_dark_and_scaled() {
     let h = Harness::new(SettingsPage::new, SETTINGS.0, SETTINGS.1);
     fixture::settings(&h.component);
+    h.component.set_panel_start_visible_enabled(true); // follows autostart
     assert_golden("settings-light", &render(&h));
     drop(h);
 
@@ -288,12 +289,14 @@ fn settings_page_light_dark_and_scaled() {
     fixture::settings(&h.component);
     h.component.set_theme_index(2);
     h.component.set_autostart(false);
+    h.component.set_panel_start_visible_enabled(false); // follows autostart
     assert_golden("settings-dark", &render(&h));
     drop(h);
 
     let h = Harness::new(SettingsPage::new, 1200, 1800);
     fixture::settings(&h.component);
     h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.set_panel_start_visible_enabled(true);
     assert_golden("settings-scale-light", &render(&h));
 }
 
@@ -310,7 +313,7 @@ fn rows(frame: &Frame, top: u32, height: u32) -> Frame {
 }
 
 /// Where the "Panel layout" group starts in the tall render and how tall it and "Opening the
-/// Panel" are together with the rows between (the existing "Panel" group).
+/// Panel" are together.
 const PANEL_GROUPS: (u32, u32) = (800, 1480);
 
 #[test]
@@ -320,7 +323,7 @@ fn settings_page_panel_layout_and_opening_groups() {
     h.component.set_panel_layout_index(1);
     h.component.set_panel_search_index(1);
     h.component.set_panel_open_at_index(2);
-    h.component.set_panel_start_visible_enabled(false);
+    h.component.set_panel_start_visible_enabled(true); // autostart is on in the fixture
     assert_golden(
         "settings-panel-layout-light",
         &rows(&render(&h), PANEL_GROUPS.0, PANEL_GROUPS.1),
