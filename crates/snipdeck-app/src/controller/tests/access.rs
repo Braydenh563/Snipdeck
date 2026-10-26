@@ -3,8 +3,8 @@
 
 use super::*;
 use crate::{
-    placement::{self, Anchor},
-    settings::{DockEdge, PanelOpenAt, PickerSide, TrayClick},
+    placement::Anchor,
+    settings::{DockEdge, PanelOpenAt, TrayClick},
 };
 
 const FLOATING: Rect = Rect {
@@ -26,17 +26,6 @@ fn opening_at(open_at: PanelOpenAt) -> World {
     assert_eq!(w.ctl.frame_changed(&display(), FLOATING), Vec::new());
     w.ctl.hide();
     w
-}
-
-/// The frame a Panel of the stored size gets at `anchor` on `display()`.
-fn at_anchor(anchor: Anchor) -> Rect {
-    placement::place(
-        (FLOATING.w, FLOATING.h),
-        anchor,
-        display().work_area,
-        placement::GAP as u32,
-        PickerSide::Below,
-    )
 }
 
 #[test]
@@ -75,12 +64,17 @@ fn at_the_mouse_places_the_panel_by_the_pointer() {
     let mut w = opening_at(PanelOpenAt::Mouse);
     w.targets.set_cursor(Some((900, 300)));
     w.ctl.show();
-    let expected = at_anchor(Anchor::Point(900, 300));
+    // 4 px below the pointer (the gap), at its x: the 320x500 stored size fits there.
+    let expected = Rect {
+        x: 900,
+        y: 304,
+        w: 320,
+        h: 500,
+    };
     assert_eq!(
         w.ctl.restore_frame(&display()),
         [Effect::PlaceWindow(expected)]
     );
-    assert!(expected.x == 900 && expected.y > 300, "{expected:?}");
 }
 
 #[test]
@@ -122,15 +116,14 @@ fn at_the_text_cursor_uses_the_caret_and_falls_back_to_the_mouse() {
     };
     w.targets.set_caret(Some(caret));
     w.ctl.show();
-    let at_caret = Anchor::Caret(Rect {
-        x: caret.x,
-        y: caret.y,
-        w: caret.w,
-        h: caret.h,
-    });
     assert_eq!(
         w.ctl.restore_frame(&display()),
-        [Effect::PlaceWindow(at_anchor(at_caret))]
+        [Effect::PlaceWindow(Rect {
+            x: 400,
+            y: 336, // the caret's bottom (318) and one line (18) more
+            w: 320,
+            h: 500
+        })]
     );
 
     w.ctl.hide();
@@ -138,7 +131,12 @@ fn at_the_text_cursor_uses_the_caret_and_falls_back_to_the_mouse() {
     w.ctl.show();
     assert_eq!(
         w.ctl.restore_frame(&display()),
-        [Effect::PlaceWindow(at_anchor(Anchor::Point(900, 700)))],
+        [Effect::PlaceWindow(Rect {
+            x: 900,
+            y: 196, // no room below (704 + 500 > 1040): above, 4 px clear
+            w: 320,
+            h: 500
+        })],
         "no caret: the mouse"
     );
 }
@@ -186,4 +184,126 @@ fn showing_a_panel_that_is_already_up_does_not_move_it() {
         [Effect::PlaceWindow(FLOATING)],
         "the tray's Open Panel on a visible Panel keeps it where it is"
     );
+}
+
+fn monitor(
+    name: &str,
+    work_area: Rect,
+    scale: f32,
+    taskbar: Option<DockEdge>,
+) -> crate::frame::Monitor {
+    crate::frame::Monitor {
+        id: crate::frame::Monitor::id_of(name, work_area.w, work_area.h),
+        work_area,
+        taskbar,
+        scale,
+    }
+}
+
+#[test]
+fn a_pointer_on_another_monitor_places_the_panel_there_at_that_monitors_scale() {
+    let mut w = opening_at(PanelOpenAt::Mouse);
+    let second = monitor(
+        "DISPLAY2",
+        Rect {
+            x: 1920,
+            y: 0,
+            w: 1280,
+            h: 1400,
+        },
+        2.0,
+        None,
+    );
+    w.targets.add_monitor(second);
+    w.targets.set_cursor(Some((2500, 300)));
+    w.ctl.show();
+    // 320x500 at scale 1.0 is 640x1000 at 2.0; the gap is 8 px there.
+    assert_eq!(
+        w.ctl.restore_frame(&display()),
+        [Effect::PlaceWindow(Rect {
+            x: 2500,
+            y: 308,
+            w: 640,
+            h: 1000
+        })]
+    );
+}
+
+#[test]
+fn a_monitor_left_of_the_primary_has_negative_coordinates_and_holds_the_panel() {
+    let mut w = opening_at(PanelOpenAt::Mouse);
+    w.targets.add_monitor(monitor(
+        "DISPLAY2",
+        Rect {
+            x: -1280,
+            y: 0,
+            w: 1280,
+            h: 984,
+        },
+        1.0,
+        None,
+    ));
+    w.targets.set_cursor(Some((-300, 200)));
+    w.ctl.show();
+    assert_eq!(
+        w.ctl.restore_frame(&display()),
+        [Effect::PlaceWindow(Rect {
+            x: -320, // pulled in from -300: the right edge stops at the monitor's (0)
+            y: 204,
+            w: 320,
+            h: 500
+        })]
+    );
+}
+
+#[test]
+fn a_dock_edge_set_after_an_anchored_open_is_kept_for_that_monitor() {
+    let mut w = opening_at(PanelOpenAt::Mouse);
+    let second = monitor(
+        "DISPLAY2",
+        Rect {
+            x: 1920,
+            y: 0,
+            w: 1280,
+            h: 984,
+        },
+        1.0,
+        Some(DockEdge::Bottom),
+    );
+    w.targets.add_monitor(second.clone());
+    w.targets.set_cursor(Some((2500, 300)));
+    w.ctl.show();
+    w.ctl.restore_frame(&display());
+    // The Panel is on the second monitor now, with its taskbar known: it never docks there.
+    w.ctl.dock_to(Some(DockEdge::Bottom));
+    assert_eq!(w.ctl.take_pending(), Vec::new(), "not onto the taskbar");
+    w.ctl.dock_to(Some(DockEdge::Left));
+    let docked = w.ctl.take_pending();
+    assert!(
+        matches!(docked.as_slice(), [Effect::PlaceWindow(_)]),
+        "{docked:?}"
+    );
+
+    w.ctl.hide();
+    w.ctl.show();
+    assert_eq!(
+        w.ctl.restore_frame(&second),
+        docked,
+        "the second monitor opens docked where it was"
+    );
+}
+
+#[test]
+fn a_window_that_cannot_name_its_monitor_still_gets_the_anchor_once() {
+    let mut w = opening_at(PanelOpenAt::Mouse);
+    w.targets.set_cursor(Some((900, 300)));
+    w.ctl.show();
+    let at = Rect {
+        x: 900,
+        y: 304,
+        w: 320,
+        h: 500,
+    };
+    assert_eq!(w.ctl.restore_anchor(), [Effect::PlaceWindow(at)]);
+    assert_eq!(w.ctl.restore_anchor(), Vec::new(), "used once");
 }

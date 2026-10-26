@@ -49,6 +49,32 @@ impl Monitor {
     pub fn id_of(name: &str, w: u32, h: u32) -> String {
         format!("{name} {w}x{h}")
     }
+
+    /// The monitor called `name` that covers `bounds`, of which a window may use `work_area`:
+    /// the one place the id and the taskbar edge are worked out, so the monitor found under a
+    /// window and the one found under a point are the same monitor to the stored frames.
+    #[must_use]
+    pub fn on(name: &str, bounds: Rect, work_area: Rect, scale: f32) -> Self {
+        Self {
+            id: Self::id_of(name, bounds.w, bounds.h),
+            work_area,
+            taskbar: taskbar_edge(bounds, work_area),
+            scale,
+        }
+    }
+}
+
+impl Monitor {
+    /// Whether the physical point is inside the work area.
+    #[must_use]
+    pub fn holds(&self, x: i32, y: i32) -> bool {
+        let (x, y) = (i64::from(x), i64::from(y));
+        let a = self.work_area;
+        x >= i64::from(a.x)
+            && x < i64::from(a.x) + i64::from(a.w)
+            && y >= i64::from(a.y)
+            && y < i64::from(a.y) + i64::from(a.h)
+    }
 }
 
 /// Which edge or corner of the Panel the user pulled.
@@ -592,6 +618,22 @@ fn inside(start: i32, len: u32, low: i32, span: u32) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_monitor_is_named_and_its_taskbar_found_in_one_place() {
+        let bounds = Rect {
+            x: -1920,
+            y: 0,
+            w: 1920,
+            h: 1080,
+        };
+        let work = Rect { h: 1040, ..bounds };
+        let m = Monitor::on("DISPLAY2", bounds, work, 1.25);
+        assert_eq!(m.id, Monitor::id_of("DISPLAY2", 1920, 1080));
+        assert_eq!(m.taskbar, Some(DockEdge::Bottom));
+        assert!(m.holds(-1, 1039) && m.holds(-1920, 0));
+        assert!(!m.holds(0, 0) && !m.holds(-1, 1040) && !m.holds(-1921, 5));
+    }
 
     fn monitor(scale: f32) -> Monitor {
         Monitor {

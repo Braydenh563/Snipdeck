@@ -193,11 +193,22 @@ where
             .unwrap_or_else(|| fallback.clone());
         // The size it has on the monitor it was last on: the one under the anchor may be a
         // monitor it never was on.
-        let size = self.open_frame(fallback);
-        let scale = if monitor.scale.is_finite() && monitor.scale > 0.0 {
-            monitor.scale
-        } else {
-            1.0
+        let sized = self.open_frame(fallback);
+        let valid = |s: f32| if s.is_finite() && s > 0.0 { s } else { 1.0 };
+        let scale = valid(monitor.scale);
+        // That size is in the old monitor's physical pixels: the same logical size on the new
+        // monitor is a different number of them.
+        let ratio = f64::from(scale) / f64::from(valid(fallback.scale));
+        #[allow(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "a window length in pixels, rounded and never negative"
+        )]
+        let convert = |px: u32| (f64::from(px) * ratio).round() as u32;
+        let size = Rect {
+            w: convert(sized.w),
+            h: convert(sized.h),
+            ..sized
         };
         #[allow(
             clippy::cast_possible_truncation,

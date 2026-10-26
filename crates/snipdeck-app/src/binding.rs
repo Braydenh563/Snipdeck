@@ -116,6 +116,7 @@ pub struct Binding {
     frame_changed: Rc<FrameFn>,
     frame_moved: Rc<FrameFn>,
     restore_frame: Rc<MonitorFn>,
+    restore_anchor: Rc<dyn Fn()>,
 }
 
 impl std::fmt::Debug for Binding {
@@ -192,6 +193,12 @@ impl Binding {
     /// The Panel is shown on `monitor`: put it where the user left it there, if they did.
     pub fn restore_frame(&self, monitor: &Monitor) {
         (self.restore_frame)(monitor);
+    }
+
+    /// The Panel is shown but its window cannot say what monitor it is on (the first show of a
+    /// `--hidden` start): place it at the mouse or the text cursor, if the user asked for that.
+    pub fn restore_anchor(&self) {
+        (self.restore_anchor)();
     }
 }
 
@@ -835,6 +842,10 @@ where
                     crate::trace!("restore frame");
                     core.act_effects(|ctl| ctl.restore_frame(monitor));
                 })
+            },
+            restore_anchor: {
+                let core = Rc::clone(&core);
+                Rc::new(move || core.act_effects(Controller::restore_anchor))
             },
         }
     }

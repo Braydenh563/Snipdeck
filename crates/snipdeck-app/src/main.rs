@@ -655,6 +655,10 @@ fn restore_frame(window: &PanelWindow) {
         .flatten()
     {
         with_binding(|b| b.restore_frame(&monitor));
+    } else {
+        // The first show after a `--hidden` start: the window cannot say where it is yet, but
+        // "Panel opens" at the mouse or the text cursor needs no monitor of its own.
+        with_binding(Binding::restore_anchor);
     }
 }
 

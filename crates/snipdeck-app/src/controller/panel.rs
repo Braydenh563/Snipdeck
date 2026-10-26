@@ -671,15 +671,33 @@ where
         })
     }
 
+    /// Places the Panel at the anchor a [`show`](Self::show) read, once; nothing when it read
+    /// none. For a first show whose window cannot say what monitor it is on yet (a `--hidden`
+    /// start): the anchor needs no monitor of the window's, only the last known one for the size.
+    pub fn restore_anchor(&mut self) -> Vec<Effect> {
+        let Some(anchor) = self.session.open_anchor.take() else {
+            return Vec::new();
+        };
+        let (x, y) = anchor.point();
+        let Some(fallback) = self
+            .monitor
+            .clone()
+            .or_else(|| self.target.monitor_at(x, y))
+        else {
+            return Vec::new();
+        };
+        let (on, frame) = self.frame_at(anchor, &fallback);
+        self.monitor = Some(on);
+        vec![Effect::PlaceWindow(frame)]
+    }
+
     /// The Panel is about to be shown on `monitor`: put it where the user left it there.
     ///
     /// A [`show`](Self::show) that read an anchor ("Panel opens" at the mouse or the text
     /// cursor) places it there instead, once.
     pub fn restore_frame(&mut self, monitor: &Monitor) -> Vec<Effect> {
-        if let Some(anchor) = self.session.open_anchor.take() {
-            let (on, frame) = self.frame_at(anchor, monitor);
-            self.monitor = Some(on);
-            return vec![Effect::PlaceWindow(frame)];
+        if self.session.open_anchor.is_some() {
+            return self.restore_anchor();
         }
         self.monitor = Some(monitor.clone());
         self.dock_resync();

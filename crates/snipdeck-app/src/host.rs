@@ -173,6 +173,7 @@ pub struct FakeTargets {
     refocused: Rc<Cell<u32>>,
     caret: Rc<Cell<Option<ScreenRect>>>,
     cursor: Rc<Cell<Option<(i32, i32)>>>,
+    monitors: Rc<RefCell<Vec<crate::frame::Monitor>>>,
 }
 
 impl FakeTargets {
@@ -184,7 +185,14 @@ impl FakeTargets {
             refocused: Rc::default(),
             caret: Rc::default(),
             cursor: Rc::default(),
+            monitors: Rc::default(),
         }
+    }
+
+    /// Adds a monitor [`monitor_at`](TargetSource::monitor_at) can find (none: the host cannot
+    /// tell, as before).
+    pub fn add_monitor(&self, monitor: crate::frame::Monitor) {
+        self.monitors.borrow_mut().push(monitor);
     }
 
     /// Sets where the Target's caret is (`None`: it has none).
@@ -225,6 +233,14 @@ impl TargetSource for FakeTargets {
 
     fn cursor(&self) -> Option<(i32, i32)> {
         self.cursor.get()
+    }
+
+    fn monitor_at(&self, x: i32, y: i32) -> Option<crate::frame::Monitor> {
+        self.monitors
+            .borrow()
+            .iter()
+            .find(|m| m.holds(x, y))
+            .cloned()
     }
 }
 

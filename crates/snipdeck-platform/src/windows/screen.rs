@@ -8,7 +8,7 @@
 
 use windows::Win32::Foundation::{POINT, RECT};
 use windows::Win32::Graphics::Gdi::{
-    GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromPoint,
+    GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MONITORINFOEXW, MonitorFromPoint,
 };
 use windows::Win32::System::DataExchange::{
     GetClipboardSequenceNumber, IsClipboardFormatAvailable,
@@ -20,8 +20,10 @@ use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
 use crate::route::ScreenRect;
 
 /// What is known of one monitor.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MonitorFacts {
+    /// The device name, as winit reports a monitor's name (`\\.\DISPLAY1`).
+    pub device: String,
     /// The whole monitor.
     pub bounds: ScreenRect,
     /// The part of it that the taskbar and docked bars leave free.
@@ -61,14 +63,21 @@ pub fn clipboard_picture_state() -> (u32, bool) {
 pub fn monitor_at(x: i32, y: i32) -> Option<MonitorFacts> {
     // SAFETY: plain call; `MONITOR_DEFAULTTONEAREST` never returns a null handle.
     let monitor = unsafe { MonitorFromPoint(POINT { x, y }, MONITOR_DEFAULTTONEAREST) };
-    let mut info = MONITORINFO {
-        cbSize: u32::try_from(size_of::<MONITORINFO>()).ok()?,
+    let mut info = MONITORINFOEXW {
+        monitorInfo: MONITORINFO {
+            cbSize: u32::try_from(size_of::<MONITORINFOEXW>()).ok()?,
+            ..Default::default()
+        },
         ..Default::default()
     };
-    // SAFETY: `info` is initialised with its size, as the call requires, and outlives the call.
-    if !unsafe { GetMonitorInfoW(monitor, &raw mut info) }.as_bool() {
+    // SAFETY: `info` is initialised with its size, as the call requires (a MONITORINFOEXW starts
+    // with a MONITORINFO), and outlives the call.
+    if !unsafe { GetMonitorInfoW(monitor, (&raw mut info).cast::<MONITORINFO>()) }.as_bool() {
         return None;
     }
+    let device_len = info.szDevice.iter().position(|c| *c == 0).unwrap_or(0);
+    let device = String::from_utf16_lossy(&info.szDevice[..device_len]);
+    let info = info.monitorInfo;
     let (mut dpi_x, mut dpi_y) = (96_u32, 96_u32);
     // SAFETY: both out-parameters are valid and outlive the call; a failure leaves 96 DPI.
     let _ = unsafe { GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &raw mut dpi_x, &raw mut dpi_y) };
@@ -78,6 +87,7 @@ pub fn monitor_at(x: i32, y: i32) -> Option<MonitorFacts> {
     )]
     let scale = dpi_x.max(1) as f32 / 96.0;
     Some(MonitorFacts {
+        device,
         bounds: rect(info.rcMonitor)?,
         work_area: rect(info.rcWork)?,
         scale,

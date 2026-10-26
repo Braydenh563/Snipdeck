@@ -160,12 +160,12 @@ pub fn monitor_of(window: &winit::window::Window) -> Option<Monitor> {
             cfg!(not(windows)).then_some(whole),
         )
     })?;
-    Some(Monitor {
-        id,
+    Some(Monitor::on(
+        &monitor.name().unwrap_or_default(),
+        whole,
         work_area,
-        taskbar: frame::taskbar_edge(whole, work_area),
         scale,
-    })
+    ))
 }
 
 /// The monitor the mouse pointer is on, for sizing a window before it exists. Windows only.
