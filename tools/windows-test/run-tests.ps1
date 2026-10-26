@@ -1292,7 +1292,7 @@ try {
             if ($plan.mode -eq 'qc') { if (-not $NoAuto) { $plan.auto = Ask-AutoOptIn $true } else { $plan.auto = $false } }
         } else {
             Say-Wrapped 'Press Enter to start the recommended "v1 check" (the steps needed before v1 can ship).' 2 White
-            Say-Wrapped "Or press K for the Quick check ($qcTime: only what changed lately), A for advanced options, or Q to quit." 2 Gray
+            Say-Wrapped "Or press K for the Quick check (${qcTime}: only what changed lately), A for advanced options, or Q to quit." 2 Gray
             $c = Read-Choice '  > ' 'gakq' 'g'
             if ($c -eq 'q') { Say '  Okay, nothing was changed.' Gray; exit 0 }
             if ($c -eq 'a') { $plan = Read-AdvancedPlan $spikes $plan }
