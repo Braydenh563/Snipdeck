@@ -87,7 +87,8 @@ fn decode(bytes: &[u8]) -> String {
     }
 }
 
-/// Reads the settings from `folder`. A missing file gives the defaults, and a damaged one keeps
+/// Reads the settings from `folder`. A missing file gives the new-install settings
+/// ([`Settings::new_install`]); an unreadable one gives the legacy defaults, and a damaged one keeps
 /// whatever parses ([`Settings::from_json`] never fails).
 ///
 /// A file that does not parse as it stands (not JSON, cut short, a field of the wrong type) is
@@ -102,7 +103,7 @@ pub fn read_settings(folder: &Path) -> Loaded {
         Ok(bytes) => bytes,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             return Loaded {
-                settings: Settings::default(),
+                settings: Settings::new_install(),
                 outcome: LoadOutcome::Missing,
             };
         }
@@ -155,12 +156,12 @@ pub fn saves_settings(dark_override: bool, loaded: &Loaded) -> bool {
 
 /// What the settings saver should take as "on disk now": the loaded settings, except when a
 /// damaged file was set aside and writing the salvaged copy failed. Then no file exists, so the
-/// baseline is the defaults a fresh launch would read, and the first change (or the first poll
+/// baseline is the new-install settings a fresh launch would read, and the first change (or the first poll
 /// with the salvaged values in use) writes the file.
 #[must_use]
 pub fn saver_baseline(loaded: &Loaded, salvage_written: bool) -> Settings {
     if loaded.outcome == LoadOutcome::SetAside && !salvage_written {
-        Settings::default()
+        Settings::new_install()
     } else {
         loaded.settings.clone()
     }
@@ -213,7 +214,11 @@ mod tests {
     fn settings_load_tolerantly() {
         let temp = tempfile::tempdir().expect("tempdir");
         let dir = temp.path().to_path_buf();
-        assert_eq!(read_settings(&dir).settings, Settings::default(), "no file");
+        assert_eq!(
+            read_settings(&dir).settings,
+            Settings::new_install(),
+            "no file"
+        );
         std::fs::write(dir.join(SETTINGS_FILE), "{ not json").expect("write");
         let damaged = read_settings(&dir).settings;
         assert!(
@@ -260,7 +265,7 @@ mod tests {
         assert_eq!(saver_baseline(&loaded, true), salvaged, "the file holds it");
         assert_eq!(
             saver_baseline(&loaded, false),
-            Settings::default(),
+            Settings::new_install(),
             "no file: the saver must write the salvaged values"
         );
         let read = Loaded {
@@ -435,6 +440,22 @@ mod tests {
         assert_eq!(loaded.outcome, LoadOutcome::Untouchable);
         assert!(!loaded.may_save());
         assert_eq!(loaded.settings, Settings::default());
+        // Legacy values, not the new-install ones: a user who left Recent off stays off.
+        assert!(!loaded.settings.recent_history);
+        assert!(!loaded.settings.panel_hide_after_use);
+        assert_eq!(loaded.settings.hotkeys.toggle_panel, "Ctrl+Alt+Space");
+        assert_eq!(loaded.settings.hotkeys.paste_next, "Ctrl+Alt+V");
+    }
+
+    #[test]
+    fn only_a_missing_file_gets_the_new_install_settings() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let dir = temp.path();
+        let fresh = read_settings(dir).settings;
+        assert!(fresh.recent_history && fresh.panel_hide_after_use);
+        assert_eq!(fresh.hotkeys.toggle_panel, "Ctrl+Shift+Y");
+        std::fs::write(dir.join(SETTINGS_FILE), "{}").expect("write");
+        assert_eq!(read_settings(dir).settings, Settings::default());
     }
 
     #[test]

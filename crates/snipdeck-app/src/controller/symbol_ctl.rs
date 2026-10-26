@@ -36,6 +36,8 @@ pub enum IconExport {
     Png {
         /// Width and height in pixels (the menu offers 24, 32, 48, 64, 128, 256).
         px: u32,
+        /// The text colour of the theme in force, as `copy_icon_png` takes it.
+        rgba: [u8; 4],
     },
 }
 
@@ -51,9 +53,6 @@ pub enum SaveOutcome {
     /// The dialog or the write failed (a toast says so); the symbol was not used.
     Failed,
 }
-
-/// The colour a saved or copied PNG icon is drawn in when the caller has none to give: near black.
-pub const ICON_INK: [u8; 4] = [0x1B, 0x1B, 0x1B, 0xFF];
 
 impl<S, C, K, T> Controller<S, C, K, T>
 where
@@ -144,7 +143,7 @@ where
         let catalog = Catalog::get();
         let (kind, bytes) = match export {
             IconExport::Svg => (SaveKind::Svg, catalog.icon_svg(id).map(String::into_bytes)),
-            IconExport::Png { px } => (SaveKind::Png, catalog.icon_png(id, px, ICON_INK)),
+            IconExport::Png { px, rgba } => (SaveKind::Png, catalog.icon_png(id, px, rgba)),
         };
         let Some(bytes) = bytes else {
             return SaveOutcome::Failed;

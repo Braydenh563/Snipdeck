@@ -28,7 +28,7 @@ fn first_run(settings: Settings) -> Ctl {
 
 #[test]
 fn the_tour_is_due_on_an_empty_library_that_has_not_seen_it() {
-    assert!(first_run(Settings::default()).tour_due());
+    assert!(first_run(Settings::new_install()).tour_due());
 }
 
 #[test]
@@ -62,7 +62,7 @@ fn showing_the_tour_again_starts_at_the_welcome() {
 
 #[test]
 fn next_and_back_walk_the_four_steps_and_stop_at_the_first() {
-    let mut ctl = first_run(Settings::default());
+    let mut ctl = first_run(Settings::new_install());
     ctl.show_welcome_tour();
     ctl.tour_back();
     assert_eq!(ctl.tour_step(), Some(TourStep::Welcome));
@@ -77,7 +77,7 @@ fn next_and_back_walk_the_four_steps_and_stop_at_the_first() {
 
 #[test]
 fn next_on_the_last_step_finishes_and_records_it() {
-    let mut ctl = first_run(Settings::default());
+    let mut ctl = first_run(Settings::new_install());
     ctl.show_welcome_tour();
     for _ in 0..3 {
         ctl.tour_next();
@@ -92,7 +92,7 @@ fn next_on_the_last_step_finishes_and_records_it() {
 #[test]
 fn skip_on_every_step_ends_the_tour_and_keeps_the_earlier_choices() {
     for steps in 0..TourStep::ALL.len() {
-        let mut ctl = first_run(Settings::default());
+        let mut ctl = first_run(Settings::new_install());
         ctl.show_welcome_tour();
         for _ in 0..steps {
             ctl.tour_next();
@@ -109,7 +109,7 @@ fn skip_on_every_step_ends_the_tour_and_keeps_the_earlier_choices() {
 
 #[test]
 fn next_and_skip_do_nothing_harmful_when_no_tour_runs() {
-    let mut ctl = first_run(Settings::default());
+    let mut ctl = first_run(Settings::new_install());
     ctl.tour_next();
     ctl.tour_back();
     assert_eq!(ctl.tour_step(), None);

@@ -106,7 +106,7 @@ impl Default for Opts {
     fn default() -> Self {
         Self {
             target: Some(outlook()),
-            settings: Settings::default(),
+            settings: Settings::new_install(),
             tier: Tier::Pro,
             pinned: Vec::new(),
             clipboard: None,
@@ -204,7 +204,7 @@ fn build(opts: Opts) -> World {
 }
 
 fn world() -> World {
-    world_with(Some(outlook()), Settings::default())
+    world_with(Some(outlook()), Settings::new_install())
 }
 
 fn uses(w: &World, id: ItemId) -> u32 {

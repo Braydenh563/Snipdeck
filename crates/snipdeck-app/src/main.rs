@@ -765,7 +765,7 @@ fn open_library(args: &Args) -> Result<Library, String> {
     if args.demo {
         let settings = Settings {
             theme: if args.dark { Theme::Dark } else { Theme::Light },
-            ..Settings::default()
+            ..Settings::new_install()
         };
         let store = demo::store(now).map_err(|e| format!("demo library: {e}"))?;
         snipdeck_app::trace!("demo library");

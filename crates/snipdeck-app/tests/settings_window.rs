@@ -180,7 +180,7 @@ fn controller_on(store: Store, tier: Tier, clock: &FixedClock) -> Rc<RefCell<Ctl
             },
             Box::new(FakeTargets::new(Some(demo::target()))),
             Box::new(clock.clone()),
-            Settings::default(),
+            Settings::new_install(),
             Entitlements::new(tier),
         )
         .expect("controller"),
@@ -192,7 +192,7 @@ fn rig_on(store: Store, tier: Tier, dir: tempfile::TempDir, with_data_dir: bool)
     let ctl = controller_on(store, tier, &clock);
     ctl.borrow_mut().set_settings_saver(SettingsSaver::new(
         Box::new(FileSink::new(dir.path())),
-        Settings::default(),
+        Settings::new_install(),
     ));
     // The text size is process-wide state on this thread: every page starts from "System".
     snipdeck_app::text_scale::configure(TextSize::System);
@@ -807,7 +807,7 @@ fn a_shortcut_another_program_owns_is_refused_and_the_old_ones_stay_registered()
         // The shortcuts registered at start: all four are set.
         let initial = Hotkeys {
             capture: "Ctrl+Shift+2".into(),
-            ..Hotkeys::default()
+            ..Hotkeys::new_install()
         };
         r.ctl
             .borrow_mut()

@@ -220,10 +220,23 @@ fn save_as_png_writes_a_png_of_the_chosen_size() {
     let mut w = world();
     let picker = with_picker(&mut w, Some(target.clone()));
     let icon = first_of(Kind::Icon);
-    let result = w.ctl.save_icon(&icon, IconExport::Png { px: 128 }, None);
+    let result = w.ctl.save_icon(
+        &icon,
+        IconExport::Png {
+            px: 128,
+            rgba: [200, 10, 10, 255],
+        },
+        None,
+    );
     assert_eq!(result, SaveOutcome::Saved(target.clone()));
-    let (size, _) = decode(&std::fs::read(&target).expect("file"));
+    let (size, pixels) = decode(&std::fs::read(&target).expect("file"));
     assert_eq!(size, (128, 128));
+    assert!(
+        pixels
+            .chunks(4)
+            .any(|p| p[3] > 0 && p[0] == 200 && p[1] == 10),
+        "some opaque pixel has the given text colour, not a fixed one"
+    );
     assert_eq!(picker.asked_save()[0].0, SaveKind::Png);
 }
 
@@ -315,4 +328,30 @@ fn recents_round_trip_through_the_settings_file_and_drop_unknown_ids() {
         },
     );
     assert_eq!(w2.ctl.symbol_recents(None), [emoji()]);
+}
+
+/// Snipdeck's own clipboard writes are marked as own by the clipboard owner window (every write
+/// through the `Clipboard` trait, `clipboard_watch::ClipboardChange::own`), so the Recent inbox
+/// skips them. Symbols must use the same write calls as a snippet, not a path of their own.
+#[test]
+fn symbol_pastes_and_icon_copies_write_the_clipboard_like_a_snippet_does() {
+    let mut w = world();
+    let item = w.ids[0];
+    w.ctl.use_item(item, UseMode::Paste);
+    let snippet_log = w.ctl.services().clipboard.log.clone();
+    let mut w = world();
+    w.ctl.use_symbol(&emoji(), UseMode::Paste);
+    let strip = |log: &[String]| -> Vec<String> {
+        log.iter()
+            .map(|l| l.split(':').next().unwrap_or("").to_owned())
+            .collect()
+    };
+    assert_eq!(strip(&w.ctl.services().clipboard.log), strip(&snippet_log));
+
+    let mut w = world();
+    w.ctl.use_symbol(&emoji(), UseMode::Copy);
+    assert_eq!(strip(&w.ctl.services().clipboard.log), ["persistent"]);
+    let mut w = world();
+    assert!(w.ctl.copy_icon_svg(&first_of(Kind::Icon)));
+    assert_eq!(strip(&w.ctl.services().clipboard.log), ["persistent"]);
 }

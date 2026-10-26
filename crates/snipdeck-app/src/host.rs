@@ -372,14 +372,14 @@ mod tests {
     fn all_on() -> Hotkeys {
         Hotkeys {
             capture: "Ctrl+Shift+2".into(),
-            ..Hotkeys::default()
+            ..Hotkeys::new_install()
         }
     }
 
     #[test]
     fn every_default_hotkey_is_registered_and_capture_stays_off_until_set() {
         let mut backend = FakeHotkeys::default();
-        let problems = register_all(&mut backend, &Hotkeys::default());
+        let problems = register_all(&mut backend, &Hotkeys::new_install());
         assert_eq!(problems, Vec::new());
         assert_eq!(backend.registered.len(), 3);
         assert!(
@@ -422,7 +422,7 @@ mod tests {
         let mut backend = FakeHotkeys::default();
         let hotkeys = Hotkeys {
             capture: String::new(),
-            ..Hotkeys::default()
+            ..Hotkeys::new_install()
         };
         assert_eq!(register_all(&mut backend, &hotkeys), Vec::new());
         assert_eq!(backend.registered.len(), 3);
@@ -461,7 +461,7 @@ mod tests {
         let now = Hotkeys {
             picker: "Ctrl+Alt+P".into(),
             capture: String::new(),
-            ..Hotkeys::default()
+            ..Hotkeys::new_install()
         };
         assert_eq!(
             set_paused(&mut backend, false, &now),
@@ -479,7 +479,7 @@ mod tests {
     #[test]
     fn resuming_reports_a_chord_another_app_took_while_paused() {
         let mut backend = FakeHotkeys::default();
-        let hotkeys = Hotkeys::default();
+        let hotkeys = Hotkeys::new_install();
         let _ = set_paused(&mut backend, true, &hotkeys);
         backend.taken.push("Ctrl+Shift+Y".into());
         let report = set_paused(&mut backend, false, &hotkeys);

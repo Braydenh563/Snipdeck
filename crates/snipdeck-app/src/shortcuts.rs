@@ -365,7 +365,7 @@ mod tests {
         let hotkeys = Hotkeys {
             toggle_panel: "Ctrl+Alt+Space".into(),
             capture: String::new(),
-            ..Hotkeys::default()
+            ..Hotkeys::new_install()
         };
         let all = groups_of(&catalogue, &titles, &hotkeys, "");
         let anywhere = &all[0];
@@ -381,7 +381,7 @@ mod tests {
     #[test]
     fn a_group_with_no_matching_line_is_left_out() {
         let (catalogue, titles) = fixture();
-        let groups = groups_of(&catalogue, &titles, &Hotkeys::default(), "trash");
+        let groups = groups_of(&catalogue, &titles, &Hotkeys::new_install(), "trash");
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].scope, Scope::Main);
     }
@@ -411,7 +411,7 @@ mod tests {
 
     #[test]
     fn the_main_window_keys_match_the_commands_that_have_a_shortcut() {
-        let hotkeys = Hotkeys::default();
+        let hotkeys = Hotkeys::new_install();
         for command in crate::commands::Command::ALL {
             let Some(chord) = command.shortcut(&hotkeys) else {
                 continue;

@@ -2030,7 +2030,7 @@ mod tests {
 
     #[test]
     fn a_new_shortcut_replaces_only_its_own_action() {
-        let current = Hotkeys::default();
+        let current = Hotkeys::new_install();
         let next = with_hotkey(&current, HotkeyAction::Capture, "ctrl+alt+k").expect("free");
         assert_eq!(next.capture, "Ctrl+Alt+K");
         assert_eq!(next.picker, current.picker);
@@ -2039,7 +2039,7 @@ mod tests {
 
     #[test]
     fn a_shortcut_another_action_has_is_refused_and_names_that_action() {
-        let current = Hotkeys::default();
+        let current = Hotkeys::new_install();
         let taken = current.picker.clone();
         assert_eq!(
             with_hotkey(&current, HotkeyAction::Capture, &taken),
@@ -2053,7 +2053,7 @@ mod tests {
     fn text_that_is_not_a_shortcut_is_refused() {
         for combo in ["", "Ctrl+", "Hyper+Q", "K"] {
             assert_eq!(
-                with_hotkey(&Hotkeys::default(), HotkeyAction::Capture, combo),
+                with_hotkey(&Hotkeys::new_install(), HotkeyAction::Capture, combo),
                 Err(HotkeyRefusal::NotAShortcut),
                 "{combo:?}"
             );
@@ -2066,7 +2066,7 @@ mod tests {
         // Capture has no chord until the user sets one.
         let all = Hotkeys {
             capture: "Ctrl+Alt+C".into(),
-            ..Hotkeys::default()
+            ..Hotkeys::new_install()
         };
         assert_eq!(apply_hotkeys(&mut backend, &all), Vec::new());
         assert_eq!(backend.registered.len(), 4);
@@ -2084,7 +2084,8 @@ mod tests {
             taken: vec!["Ctrl+Alt+K".into()],
             ..FakeHotkeys::default()
         };
-        let next = with_hotkey(&Hotkeys::default(), HotkeyAction::Capture, "Ctrl+Alt+K").unwrap();
+        let next =
+            with_hotkey(&Hotkeys::new_install(), HotkeyAction::Capture, "Ctrl+Alt+K").unwrap();
         let problems = apply_hotkeys(&mut backend, &next);
         assert_eq!(problems.len(), 1);
         assert_eq!(problems[0].action, HotkeyAction::Capture);

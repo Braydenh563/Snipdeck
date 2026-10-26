@@ -406,7 +406,7 @@ mod tests {
 
     #[test]
     fn an_empty_query_lists_what_applies_in_catalogue_order() {
-        let hotkeys = Hotkeys::default();
+        let hotkeys = Hotkeys::new_install();
         let found = entries(&texts(), &ctx(&hotkeys), "");
         assert_eq!(found.first().map(|e| e.label.as_str()), Some("New item"));
         assert!(labels(&found).contains(&"Pin selected item"));
@@ -415,7 +415,7 @@ mod tests {
 
     #[test]
     fn item_commands_follow_the_cursor_and_the_trash() {
-        let hotkeys = Hotkeys::default();
+        let hotkeys = Hotkeys::new_install();
         let mut c = ctx(&hotkeys);
         c.item_pinned = true;
         let pinned = entries(&texts(), &c, "pin");
@@ -430,7 +430,7 @@ mod tests {
 
     #[test]
     fn duplicate_is_offered_for_an_item_outside_the_trash_and_has_ctrl_d() {
-        let hotkeys = Hotkeys::default();
+        let hotkeys = Hotkeys::new_install();
         let mut c = ctx(&hotkeys);
         assert!(labels(&entries(&texts(), &c, "")).contains(&"Duplicate selected item"));
         assert_eq!(
@@ -447,7 +447,7 @@ mod tests {
 
     #[test]
     fn the_filter_matches_names_and_synonyms_ignoring_case() {
-        let hotkeys = Hotkeys::default();
+        let hotkeys = Hotkeys::new_install();
         let c = ctx(&hotkeys);
         assert_eq!(
             labels(&entries(&texts(), &c, "ADD"))[..2],
@@ -460,7 +460,7 @@ mod tests {
 
     #[test]
     fn a_name_match_outranks_a_synonym_match() {
-        let hotkeys = Hotkeys::default();
+        let hotkeys = Hotkeys::new_install();
         let found = entries(&texts(), &ctx(&hotkeys), "hotkeys");
         // Both reach it through synonyms: catalogue order breaks the tie.
         assert_eq!(labels(&found), ["Settings", "Keyboard shortcuts"]);
@@ -479,7 +479,7 @@ mod tests {
 
     #[test]
     fn take_screenshot_is_found_by_its_name_and_a_synonym() {
-        let hotkeys = Hotkeys::default();
+        let hotkeys = Hotkeys::new_install();
         let by_name = entries(&texts(), &ctx(&hotkeys), "screenshot");
         assert_eq!(labels(&by_name), ["Take screenshot"]);
         let by_synonym = entries(&texts(), &ctx(&hotkeys), "picture");
@@ -490,7 +490,7 @@ mod tests {
 
     #[test]
     fn every_word_of_the_query_must_match() {
-        let hotkeys = Hotkeys::default();
+        let hotkeys = Hotkeys::new_install();
         let c = ctx(&hotkeys);
         assert_eq!(labels(&entries(&texts(), &c, "new list")), ["New list"]);
         assert_eq!(entries(&texts(), &c, "new zzz"), Vec::new());
@@ -501,7 +501,7 @@ mod tests {
         let hotkeys = Hotkeys {
             picker: "Ctrl+Alt+K".into(),
             capture: String::new(),
-            ..Hotkeys::default()
+            ..Hotkeys::new_install()
         };
         let found = entries(&texts(), &ctx(&hotkeys), "");
         let find = |label: &str| found.iter().find(|e| e.label == label).cloned();
@@ -518,7 +518,7 @@ mod tests {
 
     #[test]
     fn new_list_and_new_item_have_their_own_chords() {
-        let hotkeys = Hotkeys::default();
+        let hotkeys = Hotkeys::new_install();
         assert_eq!(
             Command::NewItem.shortcut(&hotkeys).as_deref(),
             Some("Ctrl+N")
@@ -531,7 +531,7 @@ mod tests {
 
     #[test]
     fn the_theme_commands_are_found_by_theme_dark_and_light_and_have_no_shortcut() {
-        let hotkeys = Hotkeys::default();
+        let hotkeys = Hotkeys::new_install();
         let c = ctx(&hotkeys);
         assert_eq!(
             labels(&entries(&texts(), &c, "theme")),
@@ -550,7 +550,7 @@ mod tests {
 
     #[test]
     fn paste_next_and_select_all_are_in_the_palette_with_their_keys() {
-        let hotkeys = Hotkeys::default();
+        let hotkeys = Hotkeys::new_install();
         let c = ctx(&hotkeys);
         let next = entries(&texts(), &c, "paste next");
         assert_eq!(next.first().map(|e| e.command), Some(Command::PasteNext));

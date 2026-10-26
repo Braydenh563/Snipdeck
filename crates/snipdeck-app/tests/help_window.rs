@@ -168,7 +168,7 @@ fn the_global_hotkeys_show_the_chords_in_the_settings() {
             hotkeys: Hotkeys {
                 toggle_panel: "Ctrl+Alt+K".into(),
                 capture: String::new(),
-                ..Hotkeys::default()
+                ..Hotkeys::new_install()
             },
             ..Settings::default()
         });

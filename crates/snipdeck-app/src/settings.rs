@@ -195,7 +195,7 @@ impl HotkeyAction {
         Self::PasteNext,
     ];
 
-    /// The default chord for a new install (SPEC §5; `docs/reviews/default-chords.md` says why
+    /// The chord of a new install (SPEC §5; `docs/reviews/default-chords.md` says why
     /// none uses Ctrl+Alt, which is `AltGr` on many layouts). Empty means off: Capture saves the
     /// clipboard text without asking, so it only works once the user has chosen a chord
     /// (SPEC 5.5).
@@ -209,8 +209,8 @@ impl HotkeyAction {
         }
     }
 
-    /// The chord a settings file written before the Ctrl+Alt-free defaults gets for an action it
-    /// does not mention, so an existing install keeps what it had.
+    /// The chord an install had before the Ctrl+Alt-free defaults: what an action gets when its
+    /// setting is missing or unusable, so an existing install keeps what it had.
     #[must_use]
     const fn legacy_chord(self) -> &'static str {
         match self {
@@ -480,7 +480,22 @@ pub struct Hotkeys {
 }
 
 impl Default for Hotkeys {
+    /// The chords an install had before the Ctrl+Alt-free defaults: what a file that says
+    /// nothing, or says something unusable, gets. A new install uses [`Hotkeys::new_install`].
     fn default() -> Self {
+        Self {
+            toggle_panel: HotkeyAction::TogglePanel.legacy_chord().into(),
+            picker: HotkeyAction::Picker.legacy_chord().into(),
+            capture: HotkeyAction::Capture.legacy_chord().into(),
+            paste_next: HotkeyAction::PasteNext.legacy_chord().into(),
+        }
+    }
+}
+
+impl Hotkeys {
+    /// The chords of a new install ([`HotkeyAction::default_chord`]).
+    #[must_use]
+    pub fn new_install() -> Self {
         Self {
             toggle_panel: HotkeyAction::TogglePanel.default_chord().into(),
             picker: HotkeyAction::Picker.default_chord().into(),
@@ -488,9 +503,25 @@ impl Default for Hotkeys {
             paste_next: HotkeyAction::PasteNext.default_chord().into(),
         }
     }
-}
 
-impl Hotkeys {
+    /// Reads a `hotkeys` object one chord at a time: a missing or non-text chord gets its
+    /// legacy chord and the others are kept. `None` when `value` is not an object.
+    fn from_value(value: &serde_json::Value) -> Option<Self> {
+        let map = value.as_object()?;
+        let mut hotkeys = Self::default();
+        for (action, key) in [
+            (HotkeyAction::TogglePanel, "toggle_panel"),
+            (HotkeyAction::Picker, "picker"),
+            (HotkeyAction::Capture, "capture"),
+            (HotkeyAction::PasteNext, "paste_next"),
+        ] {
+            if let Some(text) = map.get(key).and_then(serde_json::Value::as_str) {
+                *hotkeys.slot(action) = text.to_owned();
+            }
+        }
+        Some(hotkeys)
+    }
+
     pub(crate) fn slot(&mut self, action: HotkeyAction) -> &mut String {
         match action {
             HotkeyAction::TogglePanel => &mut self.toggle_panel,
@@ -653,8 +684,9 @@ pub struct Settings {
     /// `programs` on load, and then only mirrors them for the code that routes a paste.
     #[serde(skip_serializing)]
     pub no_paste_apps: Vec<String>,
-    /// The Recent inbox is on: Snipdeck keeps the text you copy (SPEC 5.6). On for a new install;
-    /// a settings file without the key keeps it off ([`Settings::from_json`]).
+    /// The Recent inbox is on: Snipdeck keeps the text you copy (SPEC 5.6). On for a new install
+    /// ([`Settings::new_install`]); off in [`Settings::default`] and for any file that does not
+    /// say true.
     pub recent_history: bool,
     /// Executable names that are never kept in the Recent inbox (lower case).
     pub no_history_apps: Vec<String>,
@@ -681,8 +713,9 @@ pub struct Settings {
     pub tray_click: TrayClick,
     /// Where a floating Panel opens (ignored while it is docked).
     pub panel_open_at: PanelOpenAt,
-    /// A floating Panel that is not pinned hides after a paste or copy. On for a new install; a settings
-    /// file without the key keeps off.
+    /// A floating Panel that is not pinned hides after a paste or copy. On for a new install
+    /// ([`Settings::new_install`]); off in [`Settings::default`] and for any file that does not
+    /// say true.
     pub panel_hide_after_use: bool,
     /// With "Start with Windows": show the Panel at sign-in instead of staying in the tray. Kept
     /// when autostart is off; [`Settings::starts_visible`] says whether it takes effect.
@@ -692,6 +725,9 @@ pub struct Settings {
 }
 
 impl Default for Settings {
+    /// The values an install had before the new-install defaults: what every fallback uses (a
+    /// field a file leaves out or gets wrong, a damaged or unreadable file). Only a missing file
+    /// gets [`Settings::new_install`], so nobody's Recent inbox or chords change by accident.
     fn default() -> Self {
         Self {
             version: VERSION,
@@ -715,7 +751,7 @@ impl Default for Settings {
             main_window: None,
             programs: builtin_program_rules(),
             no_paste_apps: Vec::new(),
-            recent_history: true,
+            recent_history: false,
             no_history_apps: Vec::new(),
             dock: DockSettings::default(),
             onboarded: false,
@@ -728,7 +764,7 @@ impl Default for Settings {
             panel_switcher: PanelSwitcher::Tabs,
             tray_click: TrayClick::Panel,
             panel_open_at: PanelOpenAt::Last,
-            panel_hide_after_use: true,
+            panel_hide_after_use: false,
             panel_start_visible: false,
             symbols_recent: Vec::new(),
         }
@@ -736,6 +772,18 @@ impl Default for Settings {
 }
 
 impl Settings {
+    /// The settings of a new install, used only where there is no settings file: Recent on, the
+    /// Ctrl+Alt-free chords, and the Panel hiding after a paste or copy.
+    #[must_use]
+    pub fn new_install() -> Self {
+        Self {
+            hotkeys: Hotkeys::new_install(),
+            recent_history: true,
+            panel_hide_after_use: true,
+            ..Self::default()
+        }
+    }
+
     /// Whether the welcome tour opens by itself: it has not been seen and the library is empty.
     /// A settings file from before the tour has no `onboarded` field, so a library that already
     /// holds items counts as onboarded.
@@ -776,37 +824,9 @@ impl Settings {
                     ..Self::default()
                 }
             });
-        settings.keep_legacy_defaults(serde_json::from_str(text).ok().as_ref());
         settings.fold_legacy_no_paste();
         settings.sanitize();
         settings
-    }
-
-    /// A settings file is an existing install, so what it does not say keeps the value that
-    /// install had before the new-install defaults changed (Recent off, the Ctrl+Alt chords).
-    /// Only a missing file gets [`Settings::default`] as it stands.
-    fn keep_legacy_defaults(&mut self, value: Option<&serde_json::Value>) {
-        let map = value.and_then(serde_json::Value::as_object);
-        if !map.is_some_and(|m| m.contains_key("recent_history")) {
-            self.recent_history = false;
-        }
-        if !map.is_some_and(|m| m.contains_key("panel_hide_after_use")) {
-            self.panel_hide_after_use = false;
-        }
-        let saved = map
-            .and_then(|m| m.get("hotkeys"))
-            .and_then(serde_json::Value::as_object);
-        for action in HotkeyAction::ALL {
-            let key = match action {
-                HotkeyAction::TogglePanel => "toggle_panel",
-                HotkeyAction::Picker => "picker",
-                HotkeyAction::Capture => "capture",
-                HotkeyAction::PasteNext => "paste_next",
-            };
-            if !saved.is_some_and(|h| h.contains_key(key)) {
-                *self.hotkeys.slot(action) = action.legacy_chord().into();
-            }
-        }
     }
 
     fn from_fields(value: &serde_json::Value) -> Self {
@@ -824,7 +844,9 @@ impl Settings {
                 }
             };
         }
-        field!(hotkeys);
+        if let Some(hotkeys) = map.get("hotkeys").and_then(Hotkeys::from_value) {
+            settings.hotkeys = hotkeys;
+        }
         field!(theme);
         field!(accent);
         field!(language);
@@ -944,7 +966,7 @@ impl Settings {
             } else if let Ok(chord) = slot.parse::<Chord>() {
                 *slot = chord.to_string();
             } else {
-                *slot = action.default_chord().into();
+                *slot = action.legacy_chord().into();
             }
         }
         for conflict in self.hotkey_conflicts() {
@@ -1122,18 +1144,74 @@ mod tests {
         for text in ["", "not json", "[]", "null", "42"] {
             assert_eq!(Settings::from_json(text), existing, "{text:?}");
         }
+        assert_eq!(existing, Settings::default());
+        assert!(!existing.recent_history && !existing.panel_hide_after_use);
+        assert_eq!(existing.hotkeys.toggle_panel, "Ctrl+Alt+Space");
+        assert_eq!(existing.hotkeys.paste_next, "Ctrl+Alt+V");
+    }
+
+    #[test]
+    fn new_install_holds_the_new_values_and_default_the_legacy_ones() {
+        let new = Settings::new_install();
+        assert!(new.recent_history && new.panel_hide_after_use);
+        assert_eq!(new.hotkeys, Hotkeys::new_install());
+        let old = Settings::default();
+        assert!(!old.recent_history && !old.panel_hide_after_use);
+        assert_eq!(old.hotkeys.toggle_panel, "Ctrl+Alt+Space");
+        // Nothing else differs.
         assert_eq!(
-            existing,
             Settings {
+                hotkeys: Hotkeys::default(),
                 recent_history: false,
                 panel_hide_after_use: false,
-                hotkeys: Hotkeys {
-                    toggle_panel: "Ctrl+Alt+Space".into(),
-                    paste_next: "Ctrl+Alt+V".into(),
-                    ..Hotkeys::default()
-                },
-                ..Settings::default()
-            }
+                ..new
+            },
+            old
+        );
+    }
+
+    #[test]
+    fn a_wrong_typed_privacy_setting_is_the_legacy_value() {
+        for text in [
+            r#"{"recent_history":null}"#,
+            r#"{"recent_history":"yes"}"#,
+            r#"{"recent_history":1}"#,
+        ] {
+            assert!(!Settings::from_json(text).recent_history, "{text}");
+        }
+        for text in [
+            r#"{"panel_hide_after_use":null}"#,
+            r#"{"panel_hide_after_use":"true"}"#,
+            r#"{"panel_hide_after_use":0}"#,
+        ] {
+            assert!(!Settings::from_json(text).panel_hide_after_use, "{text}");
+        }
+    }
+
+    #[test]
+    fn one_bad_hotkey_gets_its_legacy_chord_and_the_valid_ones_survive() {
+        let s = Settings::from_json(
+            r#"{"hotkeys":{"toggle_panel":"Ctrl+Shift+F1","paste_next":5,"picker":null}}"#,
+        )
+        .hotkeys;
+        assert_eq!(s.toggle_panel, "Ctrl+Shift+F1", "the valid one is kept");
+        assert_eq!(
+            s.paste_next, "Ctrl+Alt+V",
+            "a wrong type is the legacy chord"
+        );
+        assert_eq!(s.picker, "Ctrl+Shift+Space");
+        assert_eq!(s.capture, "");
+        // An unparsable chord text also falls back to the legacy chord, not the new one.
+        let s = Settings::from_json(
+            r#"{"hotkeys":{"toggle_panel":"Ctrl+Nope","picker":"Ctrl+Shift+F2"}}"#,
+        )
+        .hotkeys;
+        assert_eq!(s.toggle_panel, "Ctrl+Alt+Space");
+        assert_eq!(s.picker, "Ctrl+Shift+F2");
+        // Not an object at all.
+        assert_eq!(
+            Settings::from_json(r#"{"hotkeys":7}"#).hotkeys,
+            Hotkeys::default()
         );
     }
 
@@ -1148,7 +1226,7 @@ mod tests {
 
     #[test]
     fn new_installs_avoid_ctrl_alt_and_existing_files_keep_their_chords() {
-        let fresh = Hotkeys::default();
+        let fresh = Hotkeys::new_install();
         for action in HotkeyAction::ALL {
             let chord = action.default_chord();
             assert!(
@@ -1354,7 +1432,7 @@ mod tests {
 
     #[test]
     fn hide_after_use_is_on_for_a_new_install_and_off_for_a_file_that_never_said() {
-        assert!(Settings::default().panel_hide_after_use, "new install");
+        assert!(Settings::new_install().panel_hide_after_use, "new install");
         assert!(!Settings::from_json("{}").panel_hide_after_use);
         assert!(!Settings::from_json("{ not json").panel_hide_after_use);
         assert!(!Settings::from_json(r#"{"version":1,"theme":"dark"}"#).panel_hide_after_use);
@@ -1370,7 +1448,7 @@ mod tests {
 
     #[test]
     fn the_recent_inbox_is_on_for_a_new_install_and_off_for_a_file_that_never_said() {
-        assert!(Settings::default().recent_history, "new install");
+        assert!(Settings::new_install().recent_history, "new install");
         assert!(!Settings::from_json("{}").recent_history, "existing file");
         assert!(
             !Settings::from_json("{ not json").recent_history,
@@ -1623,7 +1701,7 @@ mod tests {
 
     #[test]
     fn paste_next_is_registered_only_with_supporter() {
-        let chords = Settings::default().hotkeys;
+        let chords = Settings::new_install().hotkeys;
         assert!(
             chords.chord(HotkeyAction::PasteNext).is_some(),
             "it stays in the settings"
@@ -1638,7 +1716,7 @@ mod tests {
     #[test]
     fn capture_is_off_until_the_user_picks_a_chord() {
         assert_eq!(HotkeyAction::Capture.default_chord(), "");
-        assert_eq!(Settings::default().hotkeys.capture, "");
+        assert_eq!(Settings::new_install().hotkeys.capture, "");
         // A chord chosen earlier stays.
         let old = Settings::from_json(r#"{"hotkeys":{"capture":"Ctrl+Shift+2"}}"#);
         assert_eq!(old.hotkeys.capture, "Ctrl+Shift+2");
@@ -1818,7 +1896,7 @@ mod tests {
 
     #[test]
     fn the_panel_v2_settings_default_to_the_documented_values() {
-        let d = Settings::default();
+        let d = Settings::new_install();
         assert_eq!(
             (
                 d.panel_layout,
