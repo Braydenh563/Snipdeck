@@ -75,6 +75,10 @@ pub trait SettingsHost {
     /// Why it could not be changed.
     fn set_autostart(&self, on: bool, hidden: bool) -> Result<(), String>;
 
+    /// Whether the "Start with Windows" entry exists now (the user may have deleted it outside
+    /// Snipdeck). Where there is no such entry the setting is only remembered, so it reads `true`.
+    fn autostart_registered(&self) -> bool;
+
     /// Gives the Panel a taskbar button, or takes it away, while the app runs.
     fn set_panel_in_taskbar(&self, on: bool);
 
@@ -189,6 +193,17 @@ impl SettingsHost for SystemHost {
             // Only Windows has the entry; elsewhere the setting is just remembered.
             let _ = (on, hidden);
             Ok(())
+        }
+    }
+
+    fn autostart_registered(&self) -> bool {
+        #[cfg(windows)]
+        {
+            snipdeck_platform::windows::autostart::is_enabled()
+        }
+        #[cfg(not(windows))]
+        {
+            true
         }
     }
 
@@ -800,18 +815,17 @@ fn language_index(tag: &str) -> i32 {
         .map_or(0, |i| to_i32(i + 1))
 }
 
-fn page_view<C, K, T>(
+fn hotkey_rows<C, K, T>(
     controller: &Controller<Store, C, K, T>,
     state: &PageState,
-    has_data_folder: bool,
-) -> PageView
+) -> Vec<HotkeyRow>
 where
     C: Clipboard + ClipboardText,
     K: Keyboard,
     T: Timing,
 {
     let settings: &Settings = controller.settings();
-    let hotkeys = HotkeyAction::ALL
+    HotkeyAction::ALL
         .into_iter()
         .enumerate()
         .map(|(i, action)| {
@@ -840,7 +854,21 @@ where
                 note,
             }
         })
-        .collect();
+        .collect()
+}
+
+fn page_view<C, K, T>(
+    controller: &Controller<Store, C, K, T>,
+    state: &PageState,
+    has_data_folder: bool,
+) -> PageView
+where
+    C: Clipboard + ClipboardText,
+    K: Keyboard,
+    T: Timing,
+{
+    let settings: &Settings = controller.settings();
+    let hotkeys = hotkey_rows(controller, state);
     PageView {
         look: controller.settings_look(),
         accent: controller.accent(),
@@ -1219,16 +1247,17 @@ where
 
     /// "When Windows starts": Stay in the tray (0) or Show the Panel (1). The entry in the
     /// registry carries `--hidden` for the first, so with "Start with Windows" on it is
-    /// rewritten; if that fails nothing changes.
+    /// rewritten, unless the user deleted it outside Snipdeck (then the choice is only stored, so
+    /// it is not brought back); if the rewrite fails nothing changes.
     fn panel_start_visible_chosen(self: &Rc<Self>, index: i32) {
         let visible = index == 1;
-        if self.controller.borrow().settings().autostart {
-            if let Err(error) = self.host.set_autostart(true, !visible) {
-                crate::trace!("autostart rewrite: {error}");
-                self.toast(ToastKind::Danger, ToastMessage::AutostartFailed);
-                self.force_redraw();
-                return;
-            }
+        let rewrite =
+            self.controller.borrow().settings().autostart && self.host.autostart_registered();
+        if rewrite && let Err(error) = self.host.set_autostart(true, !visible) {
+            crate::trace!("autostart rewrite: {error}");
+            self.toast(ToastKind::Danger, ToastMessage::AutostartFailed);
+            self.force_redraw();
+            return;
         }
         self.act(|ctl| ctl.update_settings(|s| s.panel_start_visible = visible));
     }

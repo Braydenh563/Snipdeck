@@ -113,6 +113,10 @@ impl SettingsHost for FakeHost {
         Ok(())
     }
 
+    fn autostart_registered(&self) -> bool {
+        self.autostart.get() == Some(true)
+    }
+
     fn set_panel_in_taskbar(&self, on: bool) {
         self.taskbar.set(Some(on));
     }
@@ -2791,6 +2795,8 @@ fn a_failed_autostart_rewrite_keeps_the_start_choice_and_says_so() {
         let r = rig();
         r.ui.invoke_autostart_toggled(true);
         r.host.autostart_fails.set(true);
+        // The user picked "Show the Panel": the control already reads 1 when the callback runs.
+        r.ui.set_panel_start_visible_index(1);
         r.ui.invoke_panel_start_visible_chosen(1);
         assert!(
             !r.ctl.borrow().settings().panel_start_visible,
@@ -2801,6 +2807,23 @@ fn a_failed_autostart_rewrite_keeps_the_start_choice_and_says_so() {
             0,
             "the control went back"
         );
+    });
+}
+
+#[test]
+fn the_start_choice_does_not_bring_back_a_run_entry_deleted_outside_snipdeck() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_autostart_toggled(true);
+        // Removed in the registry editor or Task Manager: the setting still says on.
+        r.host.autostart.set(Some(false));
+        r.ui.invoke_panel_start_visible_chosen(1);
+        assert_eq!(
+            r.host.autostart.get(),
+            Some(false),
+            "the entry stays deleted"
+        );
+        assert!(r.ctl.borrow().settings().panel_start_visible, "remembered");
     });
 }
 

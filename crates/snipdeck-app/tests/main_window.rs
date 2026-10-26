@@ -1060,6 +1060,10 @@ impl SettingsHost for NoHost {
         Ok(())
     }
 
+    fn autostart_registered(&self) -> bool {
+        false
+    }
+
     fn set_panel_in_taskbar(&self, _on: bool) {}
 
     fn open_folder(&self, _folder: &Path) -> Result<(), String> {
