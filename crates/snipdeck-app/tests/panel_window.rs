@@ -961,18 +961,18 @@ fn click_at(window: &slint::Window, position: slint::LogicalPosition) {
 const MENU_ROWS: [&str; 16] = [
     "Nothing to undo",
     "Nothing to redo",
-    "Open Snipdeck",
+    "Dock to the nearest edge",
+    "Keyboard shortcuts",
     "All commands\u{2026}",
+    "Settings\u{2026}",
+    "Open Snipdeck",
     "New item",
     "Take screenshot",
-    "Settings\u{2026}",
-    "Dock to the nearest edge",
     "Pause hotkeys",
     "Show numbers",
     "Reset size and position",
     "Troubleshoot\u{2026}",
     "User guide",
-    "Keyboard shortcuts",
     "About Snipdeck",
     "Quit",
 ];
@@ -1145,9 +1145,14 @@ fn pause_hotkeys_is_checked_while_paused() {
     on_ui_thread(|| {
         let r = rig();
         open_menu(&r);
+        // The model index counts the separators, so it is looked up rather than written down.
+        let pause_row = snipdeck_app::controller::APP_MENU
+            .iter()
+            .position(|e| *e == snipdeck_app::controller::AppMenuEntry::PauseHotkeys)
+            .expect("Pause hotkeys is in the menu");
         let checked = |r: &Rig| {
             r.ui.get_app_menu_entries()
-                .row_data(9)
+                .row_data(pause_row)
                 .expect("the Pause row")
                 .icon
                 .size()

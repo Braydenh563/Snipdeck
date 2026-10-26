@@ -1716,7 +1716,8 @@ fn the_real_jobs_back_up_purge_and_check_the_library_on_the_injected_clock() {
 fn the_main_window_can_show_the_panel_again_and_names_its_hotkey() {
     use snipdeck_app::controller::Effect;
     let (mut ctl, _) = rig(Tier::Pro);
-    assert_eq!(ctl.main_screen().panel_hotkey, "Ctrl+Shift+Y");
+    // The rig's settings stand for an existing install, which keeps the older chord.
+    assert_eq!(ctl.main_screen().panel_hotkey, "Ctrl+Alt+Space");
     // The Panel was closed: "Show Panel" asks the host to show it, as the tray does.
     drop(ctl.hide());
     assert!(!ctl.visible());

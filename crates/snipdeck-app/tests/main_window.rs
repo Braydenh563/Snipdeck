@@ -1412,12 +1412,14 @@ fn the_history_switch_in_the_welcome_tour_turns_the_inbox_off_and_on() {
         let tour = OnboardingUi::new(&r.ctl, Rc::new(NoHost));
         r.ui.invoke_command_requested(Command::Tour.id());
         let window = tour.window().expect("created");
-        assert!(window.get_recent_history(), "on for a new install");
+        // The rig stands for an existing install (history off); the switch shows the setting.
+        assert!(!r.ctl.borrow().settings().recent_history);
+        assert!(!window.get_recent_history(), "the switch shows the setting");
+        window.invoke_recent_history_toggled(true);
         assert!(r.ctl.borrow().settings().recent_history);
+        assert!(window.get_recent_history());
         window.invoke_recent_history_toggled(false);
         assert!(!r.ctl.borrow().settings().recent_history);
         assert!(!window.get_recent_history());
-        window.invoke_recent_history_toggled(true);
-        assert!(r.ctl.borrow().settings().recent_history);
     });
 }
