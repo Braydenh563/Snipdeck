@@ -1,0 +1,44 @@
+// The toast window (DESIGN.md §4 Toast): a toast needs somewhere to show while the Panel is hidden, as it is
+// after the Picker pastes or the capture hotkey saves. It is only the toast, sized to it, with no frame; the host
+// keeps it non-activating, puts it at the bottom of the screen and shows it while a toast is up and nothing else
+// of Snipdeck shows toasts. The Toast owns its look and its fade; the host drives `phase` like the Panel's.
+import { Theme, Palette } from "theme.slint";
+import { Toast, ToastKind, ToastPhase } from "components/feedback.slint";
+
+export component ToastWindow inherits Window {
+    title: @tr("Snipdeck");
+    no-frame: true;
+    always-on-top: true;
+    background: Theme.bg-overlay;
+    preferred-width: root.content-width;
+    preferred-height: root.content-height;
+
+    in property <bool> dark: false;
+    in property <string> text;
+    in property <ToastKind> kind: ToastKind.neutral;
+    in property <ToastPhase> phase: ToastPhase.hold;
+    in property <string> undo-label;
+    callback undo();
+    callback hover-changed(hovered: bool);
+    // The size that fits the toast; the host sizes and places the window from it.
+    out property <length> content-width: min(toast.preferred-width, 480px);
+    out property <length> content-height: toast.preferred-height;
+
+    init => {
+        Palette.dark = root.dark;
+    }
+    changed dark => {
+        Palette.dark = root.dark;
+    }
+
+    toast := Toast {
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        kind: root.kind;
+        phase: root.phase;
+        undo-label: root.undo-label;
+        undo => { root.undo(); }
+        hover-changed(h) => { root.hover-changed(h); }
+    }
+}

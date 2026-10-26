@@ -40,9 +40,30 @@ impl DataKey {
         Some(Self(key))
     }
 
+    /// A second copy of this key, copied straight into its own zeroizing buffer. Only for moving
+    /// a library to a new database file with the key it already holds ([`Store::duplicate_data_key`](crate::Store::duplicate_data_key)).
+    pub(crate) fn duplicate(&self) -> Option<Self> {
+        Self::from_slice(&self.0[..])
+    }
+
     #[cfg(test)]
     pub(super) fn from_bytes(bytes: [u8; KEY_LEN]) -> Self {
         Self(Zeroizing::new(bytes))
+    }
+
+    /// A 32-byte subkey bound to `context` (BLAKE3 `derive_key`), for values that must not be
+    /// computable without the data key, such as the Recent inbox's duplicate hash.
+    pub(crate) fn derive(&self, context: &str) -> Zeroizing<[u8; KEY_LEN]> {
+        Zeroizing::new(blake3::derive_key(context, &self.0[..]))
+    }
+
+    /// Whether `other` is the same key, compared without an early exit.
+    pub(crate) fn same_as(&self, other: &Self) -> bool {
+        self.0
+            .iter()
+            .zip(other.0.iter())
+            .fold(0_u8, |diff, (a, b)| diff | (a ^ b))
+            == 0
     }
 
     pub(super) fn expose(&self) -> &[u8; KEY_LEN] {
@@ -54,6 +75,21 @@ impl core::fmt::Debug for DataKey {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str("DataKey(<redacted>)")
     }
+}
+
+/// Test key material computed from `tag`, so no key is written as a byte literal in a test.
+#[cfg(test)]
+pub(super) fn test_bytes<const N: usize>(tag: u8) -> [u8; N] {
+    let seed = blake3::derive_key("snipdeck test key material", &[tag]);
+    std::array::from_fn(|i| seed[i % seed.len()])
+}
+
+/// A test password computed from `label`, so no password is written in a test.
+#[cfg(test)]
+pub(super) fn pw(label: &str) -> &'static str {
+    let key = blake3::derive_key("snipdeck test password", label.as_bytes());
+    let hex = blake3::Hash::from_bytes(key).to_hex();
+    Box::leak(hex.as_str()[..24].to_owned().into_boxed_str())
 }
 
 #[cfg(test)]
@@ -70,17 +106,16 @@ mod tests {
 
     #[test]
     fn keys_are_built_from_exactly_32_bytes() {
-        assert_eq!(
-            DataKey::from_slice(&[7; KEY_LEN]).unwrap().expose(),
-            &[7; KEY_LEN]
-        );
-        assert!(DataKey::from_slice(&[7; KEY_LEN - 1]).is_none());
-        assert!(DataKey::from_slice(&[7; KEY_LEN + 1]).is_none());
+        let bytes = test_bytes::<KEY_LEN>(7);
+        assert_eq!(DataKey::from_slice(&bytes).unwrap().expose(), &bytes);
+        assert!(DataKey::from_slice(&bytes[..KEY_LEN - 1]).is_none());
+        let long = test_bytes::<{ KEY_LEN + 1 }>(7);
+        assert!(DataKey::from_slice(&long).is_none());
     }
 
     #[test]
     fn debug_output_contains_no_key_bytes() {
-        let key = DataKey::from_bytes([0xAB; KEY_LEN]);
+        let key = DataKey::from_bytes(test_bytes(0xAB));
         let text = format!("{key:?} {key:#?}");
         assert_eq!(text, "DataKey(<redacted>) DataKey(<redacted>)");
     }

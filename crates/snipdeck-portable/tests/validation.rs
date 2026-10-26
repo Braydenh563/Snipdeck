@@ -19,7 +19,7 @@ use serde_json::{Value, json};
 use snipdeck_portable::{
     BoardLayout, Error, ExportOptions, ImportOptions, Warning, import_archive,
 };
-use snipdeck_store::Store;
+use snipdeck_store::{ItemRepo, Store};
 
 fn valid() -> Vec<u8> {
     export_bytes(&sample_store(), &ExportOptions::default())
@@ -350,6 +350,12 @@ fn unknown_keys_are_refused() {
     }));
     assert!(matches!(e, Error::Malformed { .. }), "{e}");
     let e = rejected(&items_edit(|d| {
+        d["boards"][0]["lists"][0]["icon"] = json!("sparkle");
+    }));
+    assert!(matches!(e, Error::Malformed { .. }), "{e}");
+    let e = rejected(&items_edit(|d| first_item(d)["label"] = json!("plaid")));
+    assert!(matches!(e, Error::Malformed { .. }), "{e}");
+    let e = rejected(&items_edit(|d| {
         d["boards"][0]["lists"][0]["view"] = json!("huge");
     }));
     assert!(matches!(e, Error::Malformed { .. }), "{e}");
@@ -602,4 +608,29 @@ fn unreferenced_assets_are_a_warning() {
             .warnings
             .contains(&Warning::UnreferencedAssets { count: 1 })
     );
+}
+
+#[test]
+fn an_oversized_title_and_source_app_are_cut_with_a_warning() {
+    let bytes = items_edit(|doc| {
+        let item = &mut doc["boards"][0]["lists"][0]["items"][0];
+        item["title"] = json!("é".repeat(5000));
+        item["source_app"] = json!("a".repeat(5000));
+    });
+    let mut s = target();
+    let report = import_archive(&mut s, Cursor::new(&bytes), "x", at(1), &opts()).unwrap();
+    assert!(
+        warnings(&report).iter().any(|w| w.contains("was cut")),
+        "{:?}",
+        report.warnings
+    );
+    let long: Vec<_> = s
+        .all_items()
+        .unwrap()
+        .into_iter()
+        .filter(|i| i.title.starts_with('é'))
+        .collect();
+    assert_eq!(long.len(), 1);
+    assert_eq!(long[0].title.chars().count(), 1000);
+    assert_eq!(long[0].source_app.as_deref().map(str::len), Some(256));
 }

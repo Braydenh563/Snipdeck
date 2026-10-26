@@ -1,0 +1,70 @@
+name: Windows build
+
+# Dev build of the portable zip (HANDOVER 9c): development licence key, debug profile, on every
+# push to main and on demand, kept as an Actions artifact. Releases are built by release.yml.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  portable:
+    name: Portable zip (dev)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      # Build provenance: anyone can check a download came from this workflow with
+      # `gh attestation verify <zip> --repo Braydenh563/Snipdeck`.
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install stable --profile minimal
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Build
+        shell: pwsh
+        run: |
+          cargo build -p snipdeck-app --locked
+          if ($LASTEXITCODE -ne 0) { throw "cargo build exited $LASTEXITCODE" }
+          $exe = "target\debug\snipdeck-app.exe"
+          $name = "snipdeck-dev-$('${{ github.sha }}'.Substring(0, 7))-windows-x64"
+          # Layout = what Snipdeck.bat expects next to it: the exe in app\, the launcher in tools\launcher.
+          # Double-clicking either Snipdeck.bat or app\snipdeck.exe works; the bat adds update, backup,
+          # restore and uninstall.
+          New-Item -ItemType Directory -Force dist\$name\app, dist\$name\tools | Out-Null
+          Copy-Item $exe dist\$name\app\snipdeck.exe
+          Copy-Item Snipdeck.bat dist\$name\
+          Copy-Item tools\launcher dist\$name\tools\launcher -Recurse
+          Copy-Item README.md, LICENSE*, docs\user-guide.md dist\$name\ -ErrorAction SilentlyContinue
+          Compress-Archive -Path dist\$name\* -DestinationPath dist\$name.zip
+          $hash = (Get-FileHash dist\$name.zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  $name.zip" | Set-Content dist\$name.zip.sha256
+          "ZIP=dist\$name.zip" >> $env:GITHUB_ENV
+          "SUM=dist\$name.zip.sha256" >> $env:GITHUB_ENV
+      - name: Size report
+        shell: pwsh
+        run: |
+          $zip = Get-Item $env:ZIP
+          $exe = Get-ChildItem dist -Recurse -Filter snipdeck.exe | Select-Object -First 1
+          "### Build size`n| File | MB |`n|---|---|`n| $($exe.Name) | $([math]::Round($exe.Length / 1MB, 2)) |`n| $($zip.Name) | $([math]::Round($zip.Length / 1MB, 2)) |" >> $env:GITHUB_STEP_SUMMARY
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: ${{ env.ZIP }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: snipdeck-windows-x64
+          path: |
+            ${{ env.ZIP }}
+            ${{ env.SUM }}
+          if-no-files-found: error

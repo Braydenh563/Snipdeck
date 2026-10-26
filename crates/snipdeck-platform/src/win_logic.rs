@@ -28,6 +28,8 @@ pub const VK_RWIN: u16 = 0x5C;
 pub const VK_V: u16 = 0x56;
 /// `VK_INSERT`.
 pub const VK_INSERT: u16 = 0x2D;
+/// `VK_LEFT`.
+pub const VK_LEFT: u16 = 0x25;
 /// The unassigned virtual key (0xE8) used to mask a lone `Alt` / `Win` release.
 pub const VK_MASK: u16 = 0xE8;
 
@@ -67,6 +69,8 @@ pub const fn key_to_vk(key: Key) -> VirtualKey {
         Key::Modifier(modifier) => modifier_variants(modifier)[0],
         Key::V => plain(VK_V),
         Key::Insert => extended(VK_INSERT),
+        // Unverified on Windows (Fable v1 sweep A5): the arrow keys are extended keys.
+        Key::Left => extended(VK_LEFT),
         Key::Mask => plain(VK_MASK),
     }
 }
@@ -188,6 +192,51 @@ pub fn is_shell_surface_class(class: &str) -> bool {
     SHELL_CLASSES.iter().any(|c| c.eq_ignore_ascii_case(class))
 }
 
+/// Window classes of the Alt+Tab switcher and Task View. Explorer shows one of them as the
+/// foreground window while the user picks a window, then destroys it: as a Target it would be
+/// gone by the time the user pastes, so Alt+Tab to the Panel would leave nothing to paste into.
+const SWITCHER_CLASSES: &[&str] = &[
+    "MultitaskingViewFrame",
+    "XamlExplorerHostIslandWindow",
+    "TaskSwitcherWnd",
+    "TaskSwitcherOverlayWnd",
+    "ForegroundStaging",
+];
+
+/// Whether a window of this class (case-insensitive) is the Alt+Tab switcher or Task View, which
+/// is neither a Target nor a reason to forget the Target.
+pub fn is_task_switcher_class(class: &str) -> bool {
+    SWITCHER_CLASSES
+        .iter()
+        .any(|c| c.eq_ignore_ascii_case(class))
+}
+
+/// What kind of window just became the foreground window, for the Target tracker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ForegroundKind {
+    /// The Panel, a Snipdeck popup or any window of this process.
+    Own,
+    /// The Alt+Tab switcher or Task View.
+    Switcher,
+    /// The desktop or a taskbar surface.
+    Shell,
+    /// Any other application window.
+    Foreign,
+}
+
+/// The Target (a window handle value, 0 for none) after `hwnd` became the foreground window: the
+/// last foreign window the user was in. Snipdeck's own windows and the Alt+Tab switcher leave it
+/// alone, the desktop and taskbar clear it (keys injected there go nowhere useful), and any other
+/// window becomes it.
+#[must_use]
+pub const fn next_target(current: isize, hwnd: isize, kind: ForegroundKind) -> isize {
+    match kind {
+        ForegroundKind::Own | ForegroundKind::Switcher => current,
+        ForegroundKind::Shell => 0,
+        ForegroundKind::Foreign => hwnd,
+    }
+}
+
 /// `WS_EX_NOACTIVATE`.
 pub const WS_EX_NOACTIVATE: u32 = 0x0800_0000;
 /// `WS_EX_TOOLWINDOW`.
@@ -195,11 +244,41 @@ pub const WS_EX_TOOLWINDOW: u32 = 0x0000_0080;
 /// `WS_EX_APPWINDOW`.
 pub const WS_EX_APPWINDOW: u32 = 0x0004_0000;
 
-/// The extended style the panel must have: never activated by a click, no taskbar button, no
-/// Alt+Tab entry. winit adds `WS_EX_APPWINDOW` to top-level windows, which would override
-/// `WS_EX_TOOLWINDOW`, so it is stripped.
-pub const fn panel_ex_style(style: u32) -> u32 {
-    (style | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) & !WS_EX_APPWINDOW
+/// The extended style the panel must have: never activated by a click. Without a taskbar
+/// button (`in_taskbar` false) it is also a tool window with no Alt+Tab entry, and
+/// `WS_EX_APPWINDOW` is stripped (winit adds it to top-level windows, and it would override
+/// `WS_EX_TOOLWINDOW`). With one it is an app window and not a tool window.
+pub const fn panel_ex_style(style: u32, in_taskbar: bool) -> u32 {
+    if in_taskbar {
+        (style | WS_EX_NOACTIVATE | WS_EX_APPWINDOW) & !WS_EX_TOOLWINDOW
+    } else {
+        (style | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) & !WS_EX_APPWINDOW
+    }
+}
+
+/// One `SetWindowPos` z-order step of [`raise_steps`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ZStep {
+    /// `HWND_TOPMOST`: above every non-topmost window.
+    Topmost,
+    /// `HWND_NOTOPMOST`: leave the topmost band, staying at the top of the normal windows.
+    NotTopmost,
+}
+
+/// The z-order steps that bring a window to the front without activating it.
+///
+/// `ShowWindow` on a hidden non-activating window (the Panel) keeps the place the window had in
+/// the stack when it was hidden, which is behind whatever the user used since, and a process that
+/// is not in the foreground cannot just `SetForegroundWindow` its way to the top. Moving the
+/// window to the topmost band and back needs no activation. A window the user pinned on top
+/// (`was_topmost`) stays there: only the first step runs.
+#[must_use]
+pub const fn raise_steps(was_topmost: bool) -> &'static [ZStep] {
+    if was_topmost {
+        &[ZStep::Topmost]
+    } else {
+        &[ZStep::Topmost, ZStep::NotTopmost]
+    }
 }
 
 /// Which Rust type owns each window class name in this process.
@@ -257,6 +336,7 @@ mod tests {
     fn keys_map_to_the_documented_virtual_keys() {
         assert_eq!(key_to_vk(Key::V), plain(0x56));
         assert_eq!(key_to_vk(Key::Insert), extended(0x2D));
+        assert_eq!(key_to_vk(Key::Left), extended(0x25));
         assert_eq!(key_to_vk(Key::Mask), plain(0xE8));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Ctrl)), plain(0xA2));
         assert_eq!(key_to_vk(Key::Modifier(Modifier::Shift)), plain(0xA0));
@@ -480,12 +560,81 @@ mod tests {
     }
 
     #[test]
+    fn the_alt_tab_switcher_is_not_a_target() {
+        for class in [
+            "MultitaskingViewFrame",
+            "multitaskingviewframe",
+            "XamlExplorerHostIslandWindow",
+            "TaskSwitcherWnd",
+            "TaskSwitcherOverlayWnd",
+            "ForegroundStaging",
+        ] {
+            assert!(is_task_switcher_class(class), "{class}");
+        }
+        for class in ["Notepad", "Shell_TrayWnd", "Chrome_WidgetWin_1", ""] {
+            assert!(!is_task_switcher_class(class), "{class}");
+        }
+    }
+
+    #[test]
+    fn alt_tabbing_to_the_panel_keeps_the_app_the_user_came_from_as_the_target() {
+        use ForegroundKind::{Foreign, Own, Shell, Switcher};
+        const OUTLOOK: isize = 0x10;
+        const SWITCHER: isize = 0x20;
+        const PANEL: isize = 0x30;
+        const BROWSER: isize = 0x40;
+        // Outlook in front; Alt+Tab opens the switcher (a foreground window of Explorer's),
+        // then the Panel is picked: Outlook stays the Target the whole way.
+        let mut target = next_target(0, OUTLOOK, Foreign);
+        assert_eq!(target, OUTLOOK);
+        target = next_target(target, SWITCHER, Switcher);
+        assert_eq!(target, OUTLOOK, "the switcher is no Target");
+        target = next_target(target, PANEL, Own);
+        assert_eq!(target, OUTLOOK, "the Panel is no Target");
+        // Alt+Tab on to another app: that one is the Target now.
+        target = next_target(target, SWITCHER, Switcher);
+        target = next_target(target, BROWSER, Foreign);
+        assert_eq!(target, BROWSER);
+        // A click on the desktop or taskbar means there is none.
+        assert_eq!(next_target(target, 0x50, Shell), 0);
+    }
+
+    #[test]
+    fn raising_the_panel_goes_through_the_topmost_band_unless_it_is_pinned_there() {
+        assert_eq!(raise_steps(false), [ZStep::Topmost, ZStep::NotTopmost]);
+        assert_eq!(
+            raise_steps(true),
+            [ZStep::Topmost],
+            "a pinned Panel stays on top"
+        );
+    }
+
+    #[test]
     fn panel_style_is_noactivate_toolwindow_and_not_appwindow() {
-        let style = panel_ex_style(WS_EX_APPWINDOW | 0x1);
+        let style = panel_ex_style(WS_EX_APPWINDOW | 0x1, false);
         assert_ne!(style & WS_EX_NOACTIVATE, 0);
         assert_ne!(style & WS_EX_TOOLWINDOW, 0);
         assert_eq!(style & WS_EX_APPWINDOW, 0);
         assert_eq!(style & 0x1, 0x1, "other bits are kept");
-        assert_eq!(panel_ex_style(style), style, "idempotent");
+        assert_eq!(panel_ex_style(style, false), style, "idempotent");
+    }
+
+    #[test]
+    fn panel_style_with_taskbar_has_appwindow_and_no_toolwindow() {
+        let style = panel_ex_style(WS_EX_TOOLWINDOW | 0x1, true);
+        assert_ne!(
+            style & WS_EX_NOACTIVATE,
+            0,
+            "a click still never activates it"
+        );
+        assert_ne!(style & WS_EX_APPWINDOW, 0);
+        assert_eq!(style & WS_EX_TOOLWINDOW, 0);
+        assert_eq!(style & 0x1, 0x1, "other bits are kept");
+        assert_eq!(panel_ex_style(style, true), style, "idempotent");
+        // Turning it off again gives the tool window back.
+        assert_eq!(
+            panel_ex_style(style, false) & (WS_EX_TOOLWINDOW | WS_EX_APPWINDOW),
+            WS_EX_TOOLWINDOW
+        );
     }
 }

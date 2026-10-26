@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snipdeck, a snippet deck for Windows</title>
+<meta name="description" content="Snipdeck keeps the text you paste all the time on a small panel at the edge of your screen. Click an item and it lands in the app you were typing in. Free, open source, works offline.">
+<!-- Nothing on this page may load from another site. The policy below makes the browser enforce that. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; font-src 'self'; script-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<link rel="preload" href="fonts/IBMPlexSans-Regular.woff2" as="font" type="font/woff2" crossorigin>
+</head>
+<body>
+
+<!--
+  The Supporter address appears in 2 mailto: links in the #supporter section ("Get Supporter" and
+  "Email me"); it is the same one as SUPPORTER_EMAIL in crates/snipdeck-app/src/settings_binding.rs.
+
+  Editing the Free vs Supporter table: one <tr> per feature in #compare. Copy a row, change the name,
+  the one-line description and the two marks (use the #i-check or #i-x symbol, keep the sr-only word).
+  Source of truth for what is Supporter-only: crates/snipdeck-core/src/entitlements.rs (Feature enum).
+-->
+
+<svg class="sr-only" aria-hidden="true" focusable="false" width="0" height="0">
+  <!-- Phosphor Icons (Regular), MIT licence. Icons are inline, so the page makes no image requests for them. -->
+  <symbol id="i-check" viewBox="0 0 256 256"><path fill="currentColor" d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 256 256"><path fill="currentColor" d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.34a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+  <symbol id="i-download" viewBox="0 0 256 256"><path fill="currentColor" d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 256 256"><path fill="currentColor" d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48Zm-96,85.15L52.57,64H203.43ZM98.71,128,40,181.81V74.19Zm11.84,10.85,12,11.05a8,8,0,0,0,10.82,0l12-11.05,58,53.15H52.57ZM157.29,128,216,74.18V181.82Z"/></symbol>
+</svg>
+
+<a class="skip-link" href="#main">Skip to main content</a>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="favicon.svg" alt="" width="32" height="32"><span>Snipdeck</span></a>
+    <nav class="site-nav" aria-label="Page sections">
+      <ul>
+        <li><a href="#what">What it is</a></li>
+        <li><a href="#tour">Tour</a></li>
+        <li><a href="#hotkeys">Hotkeys</a></li>
+        <li><a href="#privacy">Privacy</a></li>
+        <li><a href="#supporter">Supporter</a></li>
+        <li><a href="#install">Install</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <div class="wrap">
+      <h1 id="hero-title">Your reusable snippets, one click from any app.</h1>
+      <p class="lead">A small panel at the edge of your screen holds what you paste all the time. Click an item and it lands in the app you were typing in.</p>
+      <div class="hero-actions">
+        <a class="button" href="https://github.com/Braydenh563/Snipdeck/releases/latest">
+          <svg class="mark" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
+          Download for Windows
+        </a>
+        <a href="https://github.com/Braydenh563/Snipdeck">Source on GitHub</a>
+      </div>
+      <p class="hero-meta">Windows 10 (1903 or newer) and 11, 64-bit. Free, GPL-3.0. Version 1.0 is being finished: Windows testing is limited, so expect rough edges.</p>
+      <div class="hero-shot">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="img/hero-dark.png">
+          <img src="img/hero-light.png" width="1272" height="808" alt="The Snipdeck Main window, with the Panel docked on the right and the Picker open over another app">
+        </picture>
+      </div>
+    </div>
+  </section>
+
+  <section id="what" aria-labelledby="what-title">
+    <div class="wrap">
+      <h2 id="what-title">What it is</h2>
+      <div class="prose">
+        <p>Snipdeck is a snippet deck. You arrange it yourself: boards hold lists, and lists hold items such as text, code, links, templates, images and files.</p>
+        <p>The Panel never takes focus from the app you are typing in, so a click pastes straight into it. The Picker opens a search box at your caret when your hands are on the keyboard.</p>
+        <p>It is not a clipboard history. It keeps only what you chose to keep.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="tour" aria-labelledby="tour-title">
+    <div class="wrap">
+      <h2 id="tour-title">A short tour</h2>
+      <p class="muted small">These pictures are rendered by the app's own test suite with sample data.</p>
+      <ol class="steps" role="list">
+
+        <li class="step">
+          <div class="step-text">
+            <span class="step-num">1</span>
+            <h3>The Panel</h3>
+            <p>Lists are tabs, pinned items sit in a strip under them, and the footer says where a click will go. Click an item, or press <kbd>1</kbd> to <kbd>9</kbd>.</p>
+          </div>
+          <figure>
+            <picture>
+              <source media="(prefers-color-scheme: dark)" srcset="img/panel-dark.png">
+              <img src="img/panel-light.png" width="368" height="608" loading="lazy" decoding="async" alt="The Panel: a narrow window with a search box, tabs for Email replies, Addresses and Code, pinned chips, and six numbered snippets. The second row is selected and shows a Paste button.">
+            </picture>
+          </figure>
+        </li>
+
+        <li class="step">
+          <div class="step-text">
+            <span class="step-num">2</span>
+            <h3>The Picker</h3>
+            <p>Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd>, type a few letters, press <kbd>Enter</kbd>. It searches titles, tags and the start of each item, across every board or just this one.</p>
+          </div>
+          <figure>
+            <picture>
+              <source media="(prefers-color-scheme: dark)" srcset="img/picker-dark.png">
+              <img src="img/picker-light.png" width="608" height="360" loading="lazy" decoding="async" alt="The Picker: a wide search box above a list of seven snippets, each with its board and list on the right, and scope buttons for All, This board and Pinned.">
+            </picture>
+          </figure>
+        </li>
+
+        <li class="step">
+          <div class="step-text">
+            <span class="step-num">3</span>
+            <h3>Templates that ask</h3>
+            <p>Placeholders such as the date, the time and the cursor position work in Free. A template can also ask you for a name, a choice or a due date each time. It shows a preview before it pastes. Asking is a Supporter feature.</p>
+          </div>
+          <figure>
+            <picture>
+              <source media="(prefers-color-scheme: dark)" srcset="img/fill-dark.png">
+              <img src="img/fill-light.png" width="488" height="712" loading="lazy" decoding="async" alt="The Fill in template window for an invoice reminder, with fields for Name, Company, Tone, Due date and Notes, and a preview of the finished text above Cancel and Insert buttons.">
+            </picture>
+          </figure>
+        </li>
+
+        <li class="step">
+          <div class="step-text">
+            <span class="step-num">4</span>
+            <h3>The Main window</h3>
+            <p>This is where you organise: boards, lists, tags, pins, the Trash with undo, and views from compact to tiles.</p>
+          </div>
+          <figure>
+            <picture>
+              <source media="(prefers-color-scheme: dark)" srcset="img/main-dark.png">
+              <img src="img/main-light.png" width="1088" height="688" loading="lazy" decoding="async" alt="The Main window: a sidebar with All items, Pinned, Recent, Trash, three coloured lists and tags, and a list of eight snippets of different kinds.">
+            </picture>
+          </figure>
+        </li>
+
+      </ol>
+    </div>
+  </section>
+
+  <section id="hotkeys" aria-labelledby="hotkeys-title">
+    <div class="wrap">
+      <h2 id="hotkeys-title">Hotkeys</h2>
+      <p class="muted small">You can change the four global hotkeys in Settings.</p>
+      <div class="table-block">
+        <table>
+          <caption>Anywhere in Windows</caption>
+          <thead><tr><th scope="col">Keys</th><th scope="col">What it does</th></tr></thead>
+          <tbody>
+            <tr><td class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>Space</kbd></td><td>Show or hide the Panel</td></tr>
+            <tr><td class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Space</kbd></td><td>Open the Picker at your caret</td></tr>
+            <tr><td class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>2</kbd></td><td>Save the clipboard text as a new item</td></tr>
+            <tr><td class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>V</kbd></td><td>Paste the next item in the stack <span class="tag">Supporter</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-block">
+        <table>
+          <caption>In the Panel</caption>
+          <thead><tr><th scope="col">Keys</th><th scope="col">What it does</th></tr></thead>
+          <tbody>
+            <tr><td class="keys"><kbd>Enter</kbd></td><td>Use the selected item: paste, or copy if no app is the target</td></tr>
+            <tr><td class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>Enter</kbd></td><td>Copy only, never paste</td></tr>
+            <tr><td class="keys"><kbd>1</kbd> to <kbd>9</kbd></td><td>Use that row (when the search box is empty)</td></tr>
+            <tr><td class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Tab</kbd></td><td>Next list</td></tr>
+            <tr><td class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></td><td>Search</td></tr>
+            <tr><td class="keys"><kbd>Esc</kbd></td><td>Clear the search, then hide the Panel</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="privacy" aria-labelledby="privacy-title">
+    <div class="wrap">
+      <h2 id="privacy-title">Privacy</h2>
+      <div class="prose">
+        <p>Snipdeck works offline. There is no account, no server, no telemetry and no network port. Its fonts and icons are packaged with it.</p>
+      </div>
+      <ul class="plain-list">
+        <li>Your library is a folder on your PC: <code>%LOCALAPPDATA%\Snipdeck</code>. Delete the folder and everything is gone.</li>
+        <li>Export is a zip file with plain JSON, so other tools can read it.</li>
+        <li>Items you mark sensitive are masked on screen and kept out of Windows clipboard history. Both plans encrypt them on disk; Supporter adds a master password.</li>
+        <li>The only download is the launcher fetching the app the first time you start it.</li>
+        <li>This website uses no cookies, no analytics and nothing from other sites.</li>
+      </ul>
+      <p class="small mt-4"><a href="https://github.com/Braydenh563/Snipdeck/blob/main/docs/privacy.md">What is stored, and how to remove it</a></p>
+    </div>
+  </section>
+
+  <section id="supporter" aria-labelledby="supporter-title">
+    <div class="wrap">
+      <h2 id="supporter-title">Free and Supporter</h2>
+      <div class="supporter-grid">
+        <div class="prose">
+          <p>Free is fully usable, with up to 5 boards. Supporter pays for convenience and supports the app. Nothing nags you: no pop-ups, timers or reminders.</p>
+          <p>Snipdeck is open source under GPL-3.0, and the source is on GitHub.</p>
+        </div>
+        <div class="card">
+          <p class="price">Pay what you want, from A$5<small>Suggested A$8. One-time. All 1.x updates.</small></p>
+          <ul class="facts">
+            <li><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span>One payment, no subscription.</span></li>
+            <li><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span>Every 1.x update is included.</span></li>
+          </ul>
+          <div class="supporter-actions">
+            <a class="button button-quiet" href="mailto:brayden.hoyle@outlook.com">
+              <svg class="mark" aria-hidden="true" focusable="false"><use href="#i-mail"/></svg>
+              Get Supporter
+            </a>
+          </div>
+          <p class="free-key small">Can't afford it? <a href="mailto:brayden.hoyle@outlook.com">Email me</a> and I'll send a key, no questions.</p>
+        </div>
+      </div>
+
+      <div class="table-block" id="compare">
+        <table>
+          <caption>What each tier includes</caption>
+          <thead>
+            <tr>
+              <th scope="col">Feature</th>
+              <th scope="col" class="tier">Free</th>
+              <th scope="col" class="tier">Supporter</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Boards<span class="desc">Separate workspaces, such as Work and Personal.</span></th>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included, </span><span class="note">up to 5</span></td>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included, </span><span class="note">unlimited</span></td>
+            </tr>
+            <tr>
+              <th scope="row">Lists and items<span class="desc">As many as you like, of every kind.</span></th>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+            </tr>
+            <tr>
+              <th scope="row">Panel and Picker<span class="desc">Paste with a click, or search at your caret.</span></th>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+            </tr>
+            <tr>
+              <th scope="row">Save from the clipboard<span class="desc">One hotkey turns copied text into an item.</span></th>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+            </tr>
+            <tr>
+              <th scope="row">Dock to a screen edge<span class="desc">Fold the Panel into a thin strip.</span></th>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+            </tr>
+            <tr>
+              <th scope="row">Templates with date, time and cursor<span class="desc">Fixed placeholders filled in when you paste.</span></th>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+            </tr>
+            <tr>
+              <th scope="row">Sensitive items, masked<span class="desc">Hidden on screen and kept out of clipboard history.</span></th>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+            </tr>
+            <tr>
+              <th scope="row">Encryption on disk<span class="desc">Sensitive items are encrypted on disk, on every plan.</span></th>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+            </tr>
+            <tr>
+              <th scope="row">Backups, export, light and dark, 7 languages<span class="desc">Daily backups, a plain zip export, and your choice of theme.</span></th>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+            </tr>
+            <tr>
+              <th scope="row">Templates that ask<span class="desc">Prompt for a value or a choice each time you paste.</span></th>
+              <td class="tier"><svg class="mark mark-no" aria-hidden="true" focusable="false"><use href="#i-x"/></svg><span class="sr-only">Not included</span></td>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+            </tr>
+            <tr>
+              <th scope="row">Master password<span class="desc">Lock your encrypted items behind a password you choose.</span></th>
+              <td class="tier"><svg class="mark mark-no" aria-hidden="true" focusable="false"><use href="#i-x"/></svg><span class="sr-only">Not included</span></td>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+            </tr>
+            <tr>
+              <th scope="row">Paste stack<span class="desc">Queue several items, then paste them one per hotkey press.</span></th>
+              <td class="tier"><svg class="mark mark-no" aria-hidden="true" focusable="false"><use href="#i-x"/></svg><span class="sr-only">Not included</span></td>
+              <td class="tier"><svg class="mark mark-yes" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><span class="sr-only">Included</span></td>
+            </tr>
+            <!--
+              Plan items not gated in entitlements.rs today, so not listed: Recent inbox (C1), item colour labels (C4),
+              accent colour (C5), floating lists (in the Feature enum, not on the V1 ship list).
+              Add a row above when one is confirmed as Supporter-only.
+            -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="install" aria-labelledby="install-title">
+    <div class="wrap">
+      <h2 id="install-title">Install</h2>
+      <ol class="install">
+        <li>Download <code>snipdeck-v&lt;version&gt;-windows-x64.zip</code> from the <a href="https://github.com/Braydenh563/Snipdeck/releases/latest">latest release</a> and unzip it.</li>
+        <li>Double-click <code>Snipdeck.bat</code>.</li>
+        <li>The first start downloads the app once and checks it. After that, Snipdeck starts straight away, offline.</li>
+      </ol>
+      <p class="muted small mt-4">You need Windows 10 (1903 or newer) or Windows 11, 64-bit. You do not need Rust, Visual Studio or git. To remove it, run <code>Snipdeck.bat uninstall</code>: your library is kept.</p>
+      <p class="mt-6"><a class="button" href="https://github.com/Braydenh563/Snipdeck/releases/latest">
+        <svg class="mark" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
+        Download for Windows
+      </a></p>
+    </div>
+  </section>
+
+  <section id="faq" aria-labelledby="faq-title">
+    <div class="wrap">
+      <h2 id="faq-title">Questions</h2>
+      <div class="faq">
+        <div>
+          <h3>Do I need an account or the internet?</h3>
+          <p>No account, and no internet once it is installed. Snipdeck makes no network requests of its own.</p>
+        </div>
+        <div>
+          <h3>Will it paste into every app?</h3>
+          <p>Nearly. In a password box, a program running as administrator, or an app on your "never paste into" list, it copies instead and tells you why.</p>
+        </div>
+        <div>
+          <h3>Is there a Mac or Linux version?</h3>
+          <p>No. Snipdeck is for Windows 10 and 11, and other systems are not planned for version 1.</p>
+        </div>
+        <div>
+          <h3>Can I take my snippets with me?</h3>
+          <p>Yes. Settings, Your data, Export library saves one file: a zip with JSON.</p>
+        </div>
+        <div>
+          <h3>What happens to my boards if I stay on Free?</h3>
+          <p>You keep every board you have. You just cannot add more than 5.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <ul>
+      <li><a href="https://github.com/Braydenh563/Snipdeck">Source on GitHub</a></li>
+      <li><a href="https://github.com/Braydenh563/Snipdeck/blob/main/LICENSE">GPL-3.0 licence</a></li>
+      <li><a href="#privacy">Privacy</a></li>
+      <li><a href="https://github.com/Braydenh563/Snipdeck/blob/main/docs/user-guide.md">User guide</a></li>
+      <li><a href="https://github.com/Braydenh563/Snipdeck/releases/latest">Releases</a></li>
+    </ul>
+    <p>Snipdeck is free software under the GNU General Public License, version 3. Set in IBM Plex (SIL Open Font License) and Phosphor icons (MIT).</p>
+  </div>
+</footer>
+
+</body>
+</html>

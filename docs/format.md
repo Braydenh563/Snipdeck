@@ -25,7 +25,7 @@ folders; readers must accept both and may ignore folder entries.
 {
   "format": "snipdeck-archive",
   "format_version": "1.0",
-  "app_version": "0.1.0",
+  "app_version": "1.0.0",
   "created_at": "2027-01-15T08:01:40Z",
   "counts": { "boards": 2, "lists": 5, "items": 6, "tags": 2, "assets": 9 },
   "encryption": "SNENC2",
@@ -101,11 +101,13 @@ duplicates; **an importer assigns new ids** to everything it creates.
 | board, list | `name` | string | Same rule. |
 | board, list, item | `created_at`, `updated_at` | RFC 3339 string | Between the years 1677 and 2262 (storage limit). Fractional seconds allowed, offsets other than `Z` allowed. |
 | list | `accent` | string or absent | `blue teal green amber orange red rose violet slate`. |
+| list | `icon` | string or absent | Added in 1.1. One of the 24 icon keys: `folder star heart briefcase house user envelope-simple chat-circle phone calendar-blank shopping-cart credit-card code terminal-window book-open lightbulb flag bookmark-simple globe map-pin camera music-note wrench rocket-launch`. |
 | list | `view` | string | `compact` or `comfortable`. |
 | list | `sort` | string | `manual`, `most-used` or `recently-used`. |
 | item | `title` | string | May be empty. |
 | item | `kind` | string | `text template code link image file`. Describes content; sensitivity is separate. |
 | item | `pinned`, `sensitive`, `always_plain` | boolean, default `false` | |
+| item | `label` | string or absent | Added in 1.1. The colour label: `blue teal green amber orange red violet slate`. |
 | item | `use_count` | integer 0 to 4 294 967 295, default 0 | |
 | item | `last_used_at` | RFC 3339 string or absent | |
 | item | `source_app` | string or absent | The app the content was captured from. |

@@ -1,6 +1,6 @@
 //! The command line: a handful of flags, parsed by hand (no dependency for five flags).
 
-use std::path::PathBuf;
+use std::{ffi::OsString, path::PathBuf};
 
 /// What the command line asked for.
 #[allow(
@@ -19,6 +19,10 @@ pub struct Args {
     pub data_dir: Option<PathBuf>,
     /// Render the demo Panel to this PNG and exit.
     pub screenshot: Option<PathBuf>,
+    /// Run the library's integrity check, print the result and exit.
+    pub check_db: bool,
+    /// Print the Troubleshoot report and exit.
+    pub troubleshoot: bool,
     /// Print the usage and exit.
     pub help: bool,
 }
@@ -43,6 +47,8 @@ Usage: snipdeck-app [options]
   --dark                 use the dark theme
   --hidden               start with the Panel hidden
   --data-dir <folder>    keep the library in <folder>
+  --check-db             check the library for damage and exit (0 healthy, 1 problems, 2 not run)
+  --troubleshoot         print the Troubleshoot report and exit (close Snipdeck first)
   --help                 show this text
 ";
 
@@ -51,14 +57,16 @@ Usage: snipdeck-app [options]
 /// # Errors
 ///
 /// See [`ArgError`].
-pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Args, ArgError> {
+pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, ArgError> {
     let mut parsed = Args::default();
     let mut args = args.into_iter();
     while let Some(arg) = args.next() {
-        match arg.as_str() {
+        match arg.to_str().unwrap_or_default() {
             "--demo" => parsed.demo = true,
             "--hidden" => parsed.hidden = true,
             "--dark" => parsed.dark = true,
+            "--check-db" => parsed.check_db = true,
+            "--troubleshoot" => parsed.troubleshoot = true,
             "--help" | "-h" => parsed.help = true,
             "--data-dir" => {
                 let value = args.next().ok_or(ArgError::MissingValue("--data-dir"))?;
@@ -69,7 +77,7 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Args, ArgError> {
                 parsed.screenshot = Some(value.into());
                 parsed.demo = true;
             }
-            _ => return Err(ArgError::Unknown(arg)),
+            _ => return Err(ArgError::Unknown(arg.to_string_lossy().into_owned())),
         }
     }
     Ok(parsed)
@@ -80,7 +88,7 @@ mod tests {
     use super::*;
 
     fn parse_all(args: &[&str]) -> Result<Args, ArgError> {
-        parse(args.iter().map(|a| (*a).to_owned()))
+        parse(args.iter().map(OsString::from))
     }
 
     #[test]
@@ -94,6 +102,22 @@ mod tests {
             parse_all(&["--demo", "--dark", "--hidden", "--data-dir", "C:\\Snip"]).expect("args");
         assert!(args.demo && args.dark && args.hidden);
         assert_eq!(args.data_dir, Some(PathBuf::from("C:\\Snip")));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_data_dir_that_is_not_utf8_is_kept_not_a_panic() {
+        use std::os::unix::ffi::OsStringExt;
+        let folder = OsString::from_vec(vec![b'/', 0xff, b'x']);
+        let args = parse(["--data-dir".into(), folder.clone()]).expect("args");
+        assert_eq!(args.data_dir, Some(PathBuf::from(folder)));
+    }
+
+    #[test]
+    fn the_check_flags_are_read() {
+        let args = parse_all(&["--check-db", "--troubleshoot"]).expect("args");
+        assert!(args.check_db && args.troubleshoot);
+        assert!(!parse_all(&[]).expect("args").check_db);
     }
 
     #[test]

@@ -18,8 +18,11 @@
 
 pub mod cf_html;
 pub mod chord;
+pub mod clipboard_history;
+pub mod clipboard_watch;
 pub mod command_line;
 pub mod error;
+pub mod file_dialog;
 pub mod instance_names;
 pub mod keys;
 pub mod payload;

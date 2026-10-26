@@ -238,7 +238,7 @@ fn under_reduced_motion_a_pulled_card_does_not_move_but_still_shows_the_check() 
 #[test]
 fn keyboard_focus_draws_a_2px_ring_and_nothing_else_does() {
     use slint::platform::{Key, WindowEvent};
-    for (dark, ring) in [(false, [0x43, 0x8A, 0xF1]), (true, [0x74, 0xAC, 0xFF])] {
+    for (dark, ring) in [(false, [0x28, 0x70, 0xD4]), (true, [0x74, 0xAC, 0xFF])] {
         let h = Harness::new(DeckGallery::new, GALLERY.0, GALLERY.1);
         h.component.set_dark(dark);
         let before = h.render();
@@ -281,30 +281,66 @@ fn deck_edges_are_two_4px_card_edges_inset_6_and_12px() {
         h.component.set_dark(dark);
         let f = h.render();
         let col = |y: u32| f.pixel(170, y);
-        // Bottom edge, 232..242: the near edge at 232..236 and the far edge at 238..242.
-        assert_eq!(col(232), border, "near edge top (dark={dark})");
-        assert_eq!(col(233), surface);
-        assert_eq!(col(234), surface);
-        assert_eq!(col(235), border, "near edge bottom");
-        assert_eq!(col(236), app, "gap between the edges");
-        assert_eq!(col(237), app);
-        assert_eq!(col(238), border, "far edge top");
-        assert_eq!(col(241), border, "far edge bottom");
-        assert_eq!(col(242), app, "nothing below the 10px component");
+        // Bottom edge, 236..246: the near edge at 236..240 and the far edge at 242..246.
+        assert_eq!(col(236), border, "near edge top (dark={dark})");
+        assert_eq!(col(237), surface);
+        assert_eq!(col(238), surface);
+        assert_eq!(col(239), border, "near edge bottom");
+        assert_eq!(col(240), app, "gap between the edges");
+        assert_eq!(col(241), app);
+        assert_eq!(col(242), border, "far edge top");
+        assert_eq!(col(245), border, "far edge bottom");
+        assert_eq!(col(246), app, "nothing below the 10px component");
         // Insets: 6px for the near edge, 12px for the far one.
-        assert_eq!(f.pixel(21, 233), app);
-        assert_eq!(f.pixel(22, 233), border, "near edge starts 6px in");
-        assert_eq!(f.pixel(27, 239), app);
-        assert_eq!(f.pixel(28, 239), border, "far edge starts 12px in");
-        // Top edge, 278..288: mirrored, the far edge first.
-        assert_eq!(col(278), border, "top variant: far edge top");
-        assert_eq!(col(281), border);
-        assert_eq!(col(282), app);
-        assert_eq!(col(284), border, "top variant: near edge top");
-        assert_eq!(col(287), border);
-        assert_eq!(f.pixel(27, 280), app);
-        assert_eq!(f.pixel(28, 280), border);
-        assert_eq!(f.pixel(21, 286), app);
-        assert_eq!(f.pixel(22, 286), border);
+        assert_eq!(f.pixel(21, 237), app);
+        assert_eq!(f.pixel(22, 237), border, "near edge starts 6px in");
+        assert_eq!(f.pixel(27, 243), app);
+        assert_eq!(f.pixel(28, 243), border, "far edge starts 12px in");
+        // Top edge, 282..292: mirrored, the far edge first.
+        assert_eq!(col(282), border, "top variant: far edge top");
+        assert_eq!(col(285), border);
+        assert_eq!(col(286), app);
+        assert_eq!(col(288), border, "top variant: near edge top");
+        assert_eq!(col(291), border);
+        assert_eq!(f.pixel(27, 284), app);
+        assert_eq!(f.pixel(28, 284), border);
+        assert_eq!(f.pixel(21, 290), app);
+        assert_eq!(f.pixel(22, 290), border);
+    }
+}
+
+/// WCAG relative luminance of an sRGB colour.
+fn luminance(c: [u8; 3]) -> f64 {
+    let lin = |v: u8| {
+        let v = f64::from(v) / 255.0;
+        if v <= 0.03928 {
+            v / 12.92
+        } else {
+            ((v + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2])
+}
+
+fn contrast(a: [u8; 3], b: [u8; 3]) -> f64 {
+    let (la, lb) = (luminance(a), luminance(b));
+    (la.max(lb) + 0.05) / (la.min(lb) + 0.05)
+}
+
+#[test]
+fn the_row_more_glyph_reads_at_3_to_1_against_the_card() {
+    for (dark, surface) in [(false, LIGHT_SURFACE), (true, DARK_SURFACE)] {
+        let h = Harness::new(DeckGallery::new, GALLERY.0, GALLERY.1);
+        h.component.set_dark(dark);
+        let frame = h.render();
+        // The first comfortable card is 320 wide; the More button sits in its top-right corner.
+        let best = (COMFORTABLE_X + 282..COMFORTABLE_X + 302)
+            .flat_map(|x| (COMFORTABLE_TOP + 10..COMFORTABLE_TOP + 30).map(move |y| (x, y)))
+            .map(|(x, y)| contrast(frame.pixel(x, y), surface))
+            .fold(0.0_f64, f64::max);
+        assert!(
+            best >= 3.0,
+            "dark={dark}: the darkest More glyph pixel is {best:.2}:1 against the card"
+        );
     }
 }

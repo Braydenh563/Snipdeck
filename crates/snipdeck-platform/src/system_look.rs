@@ -64,6 +64,10 @@ pub struct SystemLook {
     pub dark: bool,
     /// A high-contrast theme is on, with its colours. Wins over everything else.
     pub high_contrast: Option<HighContrast>,
+    /// The colour Windows uses as its accent, when it can be read.
+    pub accent: Option<Rgb>,
+    /// Windows' "Animation effects" is off (Settings > Accessibility > Visual effects).
+    pub reduce_motion: bool,
 }
 
 /// Reads the current [`SystemLook`]. Cheap enough to call on every change notification, and
@@ -71,6 +75,22 @@ pub struct SystemLook {
 pub trait SystemLookSource: Send + Sync {
     /// The look now. A value that cannot be read gives the light default.
     fn read(&self) -> SystemLook;
+
+    /// Windows' "Text size" (Settings > Accessibility) as a factor, `1.0 ..= 2.25`; 1.0 when
+    /// it is not set or cannot be read. Read apart from [`read`](Self::read) because the app
+    /// combines it with its own text size setting.
+    fn text_scale(&self) -> f32 {
+        1.0
+    }
+}
+
+/// Windows' text size factor from the `TextScaleFactor` value (a DWORD percentage, 100 to 225;
+/// absent when the text size was never changed), as a multiplier. Anything outside that range
+/// is held to it.
+#[must_use]
+pub fn text_scale_from_percent(percent: Option<u32>) -> f32 {
+    let percent = percent.unwrap_or(100).clamp(100, 225);
+    f32::from(u16::try_from(percent).unwrap_or(100)) / 100.0
 }
 
 // Window messages and `SPI_*` codes that can change the look. Written out so the filter is
@@ -83,9 +103,15 @@ pub const WM_SETTINGCHANGE: u32 = 0x001A;
 pub const WM_THEMECHANGED: u32 = 0x031A;
 /// `SPI_SETHIGHCONTRAST`.
 pub const SPI_SETHIGHCONTRAST: usize = 0x0043;
+/// `SPI_SETCLIENTAREAANIMATION`: "Animation effects" was switched.
+pub const SPI_SETCLIENTAREAANIMATION: usize = 0x1043;
 /// The `lParam` string Windows sends with `WM_SETTINGCHANGE` when the app or system colour mode
 /// changes.
 pub const IMMERSIVE_COLOR_SET: &str = "ImmersiveColorSet";
+/// The `lParam` string of the `WM_SETTINGCHANGE` that is meant to announce a new text size.
+/// **Unverified on Windows**: if Windows words it differently the app follows the new size at
+/// its next start.
+pub const TEXT_SCALE_FACTOR: &str = "TextScaleFactor";
 
 /// Whether a window message can have changed the look, so the source should be read again.
 ///
@@ -98,7 +124,10 @@ pub fn message_may_change_look(message: u32, wparam: usize, setting_area: Option
     match message {
         WM_SYSCOLORCHANGE | WM_THEMECHANGED => true,
         WM_SETTINGCHANGE => {
-            wparam == SPI_SETHIGHCONTRAST || setting_area == Some(IMMERSIVE_COLOR_SET)
+            wparam == SPI_SETHIGHCONTRAST
+                || wparam == SPI_SETCLIENTAREAANIMATION
+                || setting_area == Some(IMMERSIVE_COLOR_SET)
+                || setting_area == Some(TEXT_SCALE_FACTOR)
         }
         _ => false,
     }
@@ -115,9 +144,10 @@ mod tests {
     }
 
     #[test]
-    fn the_default_look_is_light_with_no_high_contrast() {
+    fn the_default_look_is_light_with_no_high_contrast_and_full_motion() {
         let look = SystemLook::default();
         assert!(!look.dark);
+        assert!(!look.reduce_motion);
         assert_eq!(look.high_contrast, None);
     }
 
@@ -133,6 +163,11 @@ mod tests {
             SPI_SETHIGHCONTRAST,
             None
         ));
+        assert!(message_may_change_look(
+            WM_SETTINGCHANGE,
+            SPI_SETCLIENTAREAANIMATION,
+            None
+        ));
         assert!(message_may_change_look(WM_THEMECHANGED, 0, None));
         assert!(message_may_change_look(WM_SYSCOLORCHANGE, 0, None));
         // Other settings: wallpaper (0x14), the Environment area, a bare WM_SETTINGCHANGE.
@@ -144,5 +179,25 @@ mod tests {
         ));
         assert!(!message_may_change_look(WM_SETTINGCHANGE, 0, None));
         assert!(!message_may_change_look(0x0001, 0, None));
+    }
+
+    #[test]
+    fn the_windows_text_size_is_a_factor_between_one_and_two_and_a_quarter() {
+        assert!((text_scale_from_percent(None) - 1.0).abs() < f32::EPSILON);
+        assert!((text_scale_from_percent(Some(100)) - 1.0).abs() < f32::EPSILON);
+        assert!((text_scale_from_percent(Some(150)) - 1.5).abs() < f32::EPSILON);
+        assert!((text_scale_from_percent(Some(225)) - 2.25).abs() < f32::EPSILON);
+        // A hand-edited or future value is held to the range.
+        assert!((text_scale_from_percent(Some(0)) - 1.0).abs() < f32::EPSILON);
+        assert!((text_scale_from_percent(Some(9000)) - 2.25).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn a_text_size_change_asks_for_a_new_read() {
+        assert!(message_may_change_look(
+            WM_SETTINGCHANGE,
+            0,
+            Some(TEXT_SCALE_FACTOR)
+        ));
     }
 }

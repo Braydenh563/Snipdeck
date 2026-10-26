@@ -1,6 +1,7 @@
-import { Theme, Radius, Space, Motion } from "../theme.slint";
+import { Theme, Radius, Space, Motion, SystemLook } from "../theme.slint";
 import { Icon } from "icon.slint";
 import { StateColor } from "state-color.slint";
+import { Tooltip } from "feedback.slint";
 
 export enum IconButtonVariant { ghost, subtle }
 export enum IconButtonSize { sm, md }
@@ -18,11 +19,40 @@ export component IconButton inherits Rectangle {
     in property <bool> enabled: true;
     // Toggle-style buttons (pin, preview) show an "on" state with a selected fill.
     in property <bool> active: false;
+    // Grows with the Windows text size (`SystemLook.text-scale`), like text and Button do. Off by default so
+    // the panel and the galleries keep their sizes.
+    in property <bool> scaled: false;
+    // A side set by the host (a toolbar that gives every control one height); 0 keeps the size's own.
+    in property <length> side-override: 0px;
+    // Multiplies the glyph only (the Panel header grows its glyphs with its own 32px boxes at large text sizes).
+    in property <float> glyph-scale: 1.0;
+    // The button shows its own `tooltip` below itself after 500ms of hover or keyboard focus (DESIGN.md §4).
+    // Off where the window already shows one for it (the Panel header, the Main window toolbar).
+    in property <bool> own-tooltip: false;
     out property <bool> has-hover: touch.has-hover && root.enabled;
     out property <bool> has-focus: scope.has-focus;
     callback clicked();
 
-    property <length> side: root.size == IconButtonSize.sm ? Space.hit-min : Space.hit;
+    property <float> k: root.scaled ? SystemLook.text-scale : 1.0;
+    property <length> side: root.side-override > 0px ? root.side-override : (root.size == IconButtonSize.sm ? Space.hit-min : Space.hit) * root.k;
+    property <bool> tip-wanted: root.own-tooltip && (root.has-hover || root.has-focus);
+    property <bool> tip-open: false;
+    changed tip-wanted => {
+        if (!root.tip-wanted) {
+            root.tip-open = false;
+            tip-timer.running = false;
+        } else {
+            tip-timer.running = true;
+        }
+    }
+    tip-timer := Timer {
+        interval: 500ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.tip-open = root.tip-wanted;
+        }
+    }
     property <bool> pressed: touch.pressed && root.enabled;
     property <bool> hovered: touch.has-hover && root.enabled;
 
@@ -32,8 +62,9 @@ export component IconButton inherits Rectangle {
         ? (root.pressed ? StateColor.deep() : root.hovered ? StateColor.pressed() : root.active ? Theme.bg-selected : Theme.bg-hover)
         : (root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : root.active ? Theme.bg-selected : transparent);
     border-radius: Radius.md;
-    border-width: Theme.hc-border != transparent ? 1px : 0px;
-    border-color: Theme.hc-border;
+    // A toggled-on button is outlined in the accent (>= 3:1 against the header; its fill alone is 1.02:1).
+    border-width: Theme.hc-border != transparent || root.active ? 1px : 0px;
+    border-color: Theme.hc-border != transparent ? Theme.hc-border : Theme.accent;
     opacity: root.enabled ? 1.0 : 0.45;
     forward-focus: scope;
     accessible-role: button;
@@ -45,8 +76,8 @@ export component IconButton inherits Rectangle {
 
     Icon {
         source: root.icon;
-        size: root.size == IconButtonSize.sm ? 16px : 20px;
-        tint: root.hovered || root.pressed || root.active ? Theme.text-primary : Theme.text-secondary;
+        size: (root.size == IconButtonSize.sm ? 16px : 20px) * root.k * root.glyph-scale;
+        tint: root.active ? Theme.accent-text : root.hovered || root.pressed ? Theme.text-primary : Theme.text-secondary;
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
     }
@@ -78,5 +109,14 @@ export component IconButton inherits Rectangle {
             }
             return reject;
         }
+    }
+
+    if root.tip-open: Tooltip {
+        text: root.tooltip;
+        open: true;
+        x: min(0px, root.side - self.preferred-width);
+        y: root.height + Space.s1;
+        width: self.preferred-width;
+        height: self.preferred-height;
     }
 }

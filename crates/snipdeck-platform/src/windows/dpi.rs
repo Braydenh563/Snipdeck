@@ -17,7 +17,7 @@ use windows::Win32::UI::HiDpi::{
     DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, GetDpiForSystem, GetSystemMetricsForDpi,
     SetProcessDpiAwarenessContext, SetThreadDpiAwarenessContext,
 };
-use windows::Win32::UI::WindowsAndMessaging::{SM_CXSMICON, SM_CYSMICON};
+use windows::Win32::UI::WindowsAndMessaging::{SM_CXICON, SM_CXSMICON, SM_CYICON, SM_CYSMICON};
 
 /// Makes the process per-monitor-v2 DPI aware. Call once, before any window exists.
 ///
@@ -52,9 +52,42 @@ pub(super) fn small_icon_size() -> (i32, i32) {
     }
 }
 
+/// The id of the application icon in the executable's resources (`build.rs` embeds
+/// `assets/logo/snipdeck.ico` as resource 1). The tray and every regular window's icon load it.
+pub const APP_ICON_RESOURCE: u16 = 1;
+
+/// The sizes, in pixels at the system DPI, of the small (title bar) and large (taskbar,
+/// Alt+Tab) window icons: `((cx, cy), (cx, cy))`. Asking the icon resource for exactly these
+/// sizes picks the crisp mark of the `.ico` instead of a stretched one.
+#[must_use]
+pub fn window_icon_sizes() -> ((u32, u32), (u32, u32)) {
+    let positive = |n: i32, floor: u32| u32::try_from(n).unwrap_or(0).max(floor);
+    // SAFETY: plain queries with no preconditions; `GetDpiForSystem` gives 96 on failure.
+    unsafe {
+        let dpi = GetDpiForSystem();
+        (
+            (
+                positive(GetSystemMetricsForDpi(SM_CXSMICON, dpi), 16),
+                positive(GetSystemMetricsForDpi(SM_CYSMICON, dpi), 16),
+            ),
+            (
+                positive(GetSystemMetricsForDpi(SM_CXICON, dpi), 32),
+                positive(GetSystemMetricsForDpi(SM_CYICON, dpi), 32),
+            ),
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_window_icons_are_at_least_sixteen_and_thirty_two_pixels() {
+        let (small, large) = window_icon_sizes();
+        assert!(small.0 >= 16 && small.1 >= 16, "{small:?}");
+        assert!(large.0 >= 32 && large.1 >= 32, "{large:?}");
+    }
 
     #[test]
     fn the_small_icon_is_at_least_sixteen_pixels() {

@@ -1,32 +1,41 @@
 import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
+import { ItemKind } from "item-card.slint";
 
 export struct PinnedItem {
     title: string,
+    kind: ItemKind,
 }
 
-// One tag-style chip. 24px tall (the minimum hit target); the title elides at `max-w`.
+// One pinned chip (Panel v2 spec 2.4): 28 tall, radius 6, `bg.hover` fill, the type glyph (16) and the title in
+// `type.sm`; the title elides at `max-w`. One click uses the item (Shift+click copies).
 component PinnedChip inherits Rectangle {
     in property <string> title;
+    in property <ItemKind> kind: ItemKind.text;
     in property <length> max-w;
+    // The strip's one Tab stop is on this chip (it draws the ring; chips have no focus of their own).
+    in property <bool> ring: false;
     callback use();
     callback copy();
     callback context-menu-requested(length, length);
-    // Keyboard focus arrived: the chip's x and width inside the row, so the strip can scroll it into view.
-    callback focus-arrived(length, length);
 
-    property <bool> focused: scope.has-focus;
-    property <length> icon-size: Space.s3 * SystemLook.text-scale;
-    property <length> natural-w: Space.s2 + root.icon-size + Space.s1 + m-title.preferred-width + Space.s2;
+    property <length> icon-size: Space.s4 * SystemLook.text-scale;
+    property <length> natural-w: Space.s2 + root.icon-size + Space.s1 + Space.s0-5 + m-title.preferred-width + Space.s2;
+    property <image> glyph: root.kind == ItemKind.text ? Icons.text-t
+        : root.kind == ItemKind.template ? Icons.brackets-curly
+        : root.kind == ItemKind.code ? Icons.code
+        : root.kind == ItemKind.link ? Icons.link
+        : root.kind == ItemKind.image ? Icons.image
+        : root.kind == ItemKind.file ? Icons.file
+        : Icons.lock;
 
     width: min(root.natural-w, root.max-w);
-    height: max(Space.hit-min, Type.line-sm + Space.s2);
-    background: touch.pressed ? Theme.bg-sunken : touch.has-hover ? Theme.bg-hover : Theme.bg-surface;
-    border-width: 1px;
-    border-color: Theme.border-subtle;
-    border-radius: Radius.sm;
-    forward-focus: scope;
+    height: max(Space.s6 + Space.s1, Type.line-sm + Space.s3);
+    background: touch.pressed ? Theme.bg-sunken : touch.has-hover ? Theme.bg-overlay-hover : Theme.bg-hover;
+    border-radius: Radius.md;
+    border-width: Theme.hc-border != transparent ? 1px : 0px;
+    border-color: Theme.hc-border;
     accessible-role: button;
     accessible-label: root.title;
     accessible-action-default => {
@@ -34,12 +43,6 @@ component PinnedChip inherits Rectangle {
     }
 
     animate background { duration: Motion.instant; easing: Motion.out; }
-
-    changed focused => {
-        if (root.focused) {
-            root.focus-arrived(root.x, root.width);
-        }
-    }
 
     m-title := Text {
         visible: false;
@@ -49,14 +52,14 @@ component PinnedChip inherits Rectangle {
     }
 
     Icon {
-        source: Icons.push-pin;
-        tint: Theme.text-tertiary;
+        source: root.glyph;
+        tint: Theme.text-secondary;
         size: root.icon-size;
         x: Space.s2;
         y: (parent.height - self.height) / 2;
     }
     Text {
-        x: Space.s2 + root.icon-size + Space.s1;
+        x: Space.s2 + root.icon-size + Space.s1 + Space.s0-5;
         width: max(0px, parent.width - self.x - Space.s2);
         height: parent.height;
         text: root.title;
@@ -73,9 +76,9 @@ component PinnedChip inherits Rectangle {
         y: -4px;
         width: parent.width + 8px;
         height: parent.height + 8px;
-        border-width: scope.has-focus ? 2px : 0px;
+        border-width: root.ring ? 2px : 0px;
         border-color: Theme.focus-ring;
-        border-radius: Radius.sm + 2px;
+        border-radius: Radius.md + 2px;
         background: transparent;
     }
 
@@ -96,78 +99,128 @@ component PinnedChip inherits Rectangle {
             }
         }
     }
+}
+
+// DESIGN.md §4 PinnedStrip (Panel v2 spec 2.4): up to two chips, then a visible "+N more" text button that asks the
+// host to list the rest. No scrolling, no fade. 36 tall, 8px in on the left and 4px on the right.
+export component PinnedStrip inherits Rectangle {
+    in property <[PinnedItem]> items;
+    // "+{} more" in the app's words.
+    in property <string> more-label;
+    callback use(int);
+    callback copy(int);
+    callback context-menu-requested(int, length, length);
+    callback more-clicked();
+    // One Tab stop (spec 2.11): Left and Right move over the chips and "+N more" inside it, Enter or Space uses, Shift+Enter
+    // copies, the Menu key opens the item's menu.
+    out property <bool> has-focus: scope.has-focus;
+
+    property <int> max-chips: 2;
+    property <int> shown: min(root.items.length, root.max-chips);
+    property <bool> has-more: root.items.length > root.max-chips;
+    // The stop on show: a chip, or (past the chips) the more button.
+    property <int> at: 0;
+    property <int> cur: min(root.at, root.has-more ? root.shown : root.shown - 1);
+    forward-focus: scope;
+    property <length> gap: Space.s1 + Space.s0-5;
+    // What the chips share: the width less both paddings, the gaps between neighbours and the more button.
+    property <length> chip-w: max(0px, (root.width - Space.s3 - (root.items.length > root.max-chips ? more.width + root.gap : 0px) - max(root.shown - 1, 0) * root.gap) / max(root.shown, 1));
+
+    height: Space.s8 + Space.s1;
+
+    // Placed by hand, not in a layout: the chips' widths follow this strip's, and a layout would feed its height
+    // back into the Panel's column.
+    if root.items.length > 0: Rectangle {
+    chip0 := PinnedChip {
+        title: root.items[0].title;
+        kind: root.items[0].kind;
+        max-w: root.chip-w;
+        ring: scope.has-focus && root.cur == 0;
+        x: Space.s2;
+        y: (root.height - self.height) / 2;
+        use => { root.use(0); }
+        copy => { root.copy(0); }
+        context-menu-requested(x, y) => { root.context-menu-requested(0, x, y); }
+    }
+    if root.items.length > 1: chip1 := PinnedChip {
+        title: root.items[1].title;
+        kind: root.items[1].kind;
+        max-w: root.chip-w;
+        ring: scope.has-focus && root.cur == 1;
+        x: Space.s2 + chip0.width + root.gap;
+        y: (root.height - self.height) / 2;
+        use => { root.use(1); }
+        copy => { root.copy(1); }
+        context-menu-requested(x, y) => { root.context-menu-requested(1, x, y); }
+    }
+    }
+
+    more := Rectangle {
+        visible: root.has-more;
+        width: more-text.preferred-width + 2 * Space.s2;
+        height: Space.s6 + Space.s1;
+        x: root.width - self.width - Space.s1;
+        y: (root.height - self.height) / 2;
+        border-radius: Radius.md;
+        background: more-touch.pressed ? Theme.bg-sunken : more-touch.has-hover ? Theme.bg-hover : transparent;
+        accessible-role: button;
+        accessible-label: root.more-label;
+        accessible-expandable: true;
+        accessible-action-default => { root.more-clicked(); }
+
+        more-text := Text {
+            x: Space.s2;
+            width: self.preferred-width;
+            height: parent.height;
+            text: root.more-label;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            font-weight: Type.medium;
+            color: Theme.accent-text;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Rectangle {
+            x: -4px;
+            y: -4px;
+            width: parent.width + 8px;
+            height: parent.height + 8px;
+            border-width: scope.has-focus && root.cur == root.shown ? 2px : 0px;
+            border-color: Theme.focus-ring;
+            border-radius: Radius.md + 2px;
+            background: transparent;
+        }
+        more-touch := TouchArea {
+            clicked => { root.more-clicked(); }
+        }
+    }
 
     scope := FocusScope {
         focus-on-click: false;
         key-pressed(event) => {
+            if (event.text == Key.RightArrow) {
+                root.at = min(root.cur + 1, root.has-more ? root.shown : root.shown - 1);
+                return accept;
+            }
+            if (event.text == Key.LeftArrow) {
+                root.at = max(root.cur - 1, 0);
+                return accept;
+            }
             if (event.text == Key.Return || event.text == " ") {
-                if (event.modifiers.shift) {
-                    root.copy();
+                if (root.cur >= root.shown) {
+                    root.more-clicked();
+                } else if (event.modifiers.shift) {
+                    root.copy(root.cur);
                 } else {
-                    root.use();
+                    root.use(root.cur);
                 }
                 return accept;
             }
-            if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
-                root.context-menu-requested(0px, root.height);
+            if (root.cur < root.shown && (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10))) {
+                root.context-menu-requested(root.cur, 0px, root.height);
                 return accept;
             }
             return reject;
-        }
-    }
-}
-
-// DESIGN.md §4 PinnedStrip: pinned items as small chips in one horizontally scrolling row.
-// Click uses the item (Shift+click copies). When the chips do not fit, the row scrolls (wheel,
-// drag, or by moving keyboard focus from chip to chip).
-export component PinnedStrip inherits Rectangle {
-    in property <[PinnedItem]> items;
-    callback use(int);
-    callback copy(int);
-    callback context-menu-requested(int, length, length);
-
-    // Chips elide beyond this width.
-    property <length> chip-max-w: Type.base * 12;
-    // Room for the focus ring above and below the 24px chips.
-    property <length> ring: Space.s1;
-
-    // How far the row is scrolled to the left, for tests and for the app to show scroll hints.
-    out property <length> scroll-x: -flick.content-x;
-
-    height: max(Space.hit-min, Type.line-sm + Space.s2) + 2 * root.ring;
-    clip: true;
-
-    flick := Flickable {
-        content-width: max(self.width, row.preferred-width + 2 * Space.s1);
-        content-height: self.height;
-
-        row := HorizontalLayout {
-            x: Space.s1;
-            y: root.ring;
-            height: max(Space.hit-min, Type.line-sm + Space.s2);
-            spacing: Space.s1;
-            alignment: start;
-            for item[i] in root.items: PinnedChip {
-                title: item.title;
-                max-w: root.chip-max-w;
-                use => {
-                    root.use(i);
-                }
-                copy => {
-                    root.copy(i);
-                }
-                context-menu-requested(x, y) => {
-                    root.context-menu-requested(i, x, y);
-                }
-                focus-arrived(x, w) => {
-                    // Keep the focused chip fully inside the strip, with the row's 4px margin.
-                    if (x + Space.s1 + flick.content-x < 0) {
-                        flick.content-x = -(x + Space.s1) + Space.s1;
-                    } else if (x + w + 2 * Space.s1 + flick.content-x > flick.width) {
-                        flick.content-x = flick.width - (x + w + 2 * Space.s1);
-                    }
-                }
-            }
         }
     }
 }

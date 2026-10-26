@@ -124,14 +124,17 @@ pub fn tabs() -> Vec<TabItem> {
         TabItem {
             text: "Email replies".into(),
             accent: TEAL_600,
+            icon: slint::Image::default(),
         },
         TabItem {
             text: "Addresses".into(),
             accent: AMBER_600,
+            icon: slint::Image::default(),
         },
         TabItem {
             text: "Code".into(),
             accent: VIOLET_600,
+            icon: slint::Image::default(),
         },
     ]
 }
@@ -140,8 +143,39 @@ pub fn pinned() -> Vec<PinnedItem> {
     ["Thanks, received", "Home address", "Retry helper"]
         .map(|title| PinnedItem {
             title: title.into(),
+            kind: ItemKind::Text,
         })
         .to_vec()
+}
+
+/// `n` pinned chips titled "Pinned 01", "Pinned 02", ...
+pub fn pinned_n(n: usize) -> Vec<PinnedItem> {
+    (1..=n)
+        .map(|i| PinnedItem {
+            title: format!("Pinned {i:02}").into(),
+            kind: ItemKind::Text,
+        })
+        .collect()
+}
+
+/// The Panel's kebab menu as the app fills it: two actions, a separator, then the rest.
+pub fn app_menu() -> Vec<MenuEntry> {
+    let entry = |text: &str, shortcut: &str| MenuEntry {
+        text: text.into(),
+        shortcut: shortcut.into(),
+        ..Default::default()
+    };
+    vec![
+        entry("Open Snipdeck", ""),
+        entry("Settings", "Ctrl+,"),
+        MenuEntry {
+            separator: true,
+            ..Default::default()
+        },
+        entry("Pause hotkeys", ""),
+        entry("Help", "F1"),
+        entry("Quit", ""),
+    ]
 }
 
 pub fn board_menu() -> Vec<MenuEntry> {
@@ -163,6 +197,7 @@ pub fn populate(ui: &PanelWindow) {
     ui.set_tabs(ModelRc::new(VecModel::from(tabs())));
     ui.set_pinned(ModelRc::new(VecModel::from(pinned())));
     ui.set_board_menu_entries(ModelRc::new(VecModel::from(board_menu())));
+    ui.set_app_menu_entries(ModelRc::new(VecModel::from(app_menu())));
     set_rows(ui, sample_rows());
     ui.set_target_name("Outlook".into());
     ui.set_target_title("New message".into());

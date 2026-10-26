@@ -88,6 +88,7 @@ pub struct Harness<C: ComponentHandle> {
     /// The component under test.
     pub component: C,
     window: Rc<MinimalSoftwareWindow>,
+    kept: RefCell<Option<SharedPixelBuffer<Rgb8Pixel>>>,
 }
 
 impl<C: ComponentHandle> Harness<C> {
@@ -102,9 +103,23 @@ impl<C: ComponentHandle> Harness<C> {
         let window = WINDOW
             .with(|w| w.borrow().clone())
             .expect("platform created a window");
-        window.set_size(PhysicalSize::new(width, height));
+        // `SNIPDECK_SHOT_SCALE` renders at a display scale (README screenshots); the goldens are 1x.
+        let scale = shot_scale();
+        if (scale - 1.0).abs() > f32::EPSILON {
+            window.dispatch_event(slint::platform::WindowEvent::ScaleFactorChanged {
+                scale_factor: scale,
+            });
+        }
+        window.set_size(PhysicalSize::new(
+            scaled(width, scale),
+            scaled(height, scale),
+        ));
         component.show().expect("showing the window");
-        Self { component, window }
+        Self {
+            component,
+            window,
+            kept: RefCell::new(None),
+        }
     }
 
     /// Moves the frozen clock forward and runs timers and animations.
@@ -141,6 +156,34 @@ impl<C: ComponentHandle> Harness<C> {
         frame
     }
 
+    /// Draws the way the Windows backend does: into one buffer that is kept, repainting only what
+    /// changed since the last call. Returns the number of pixels the renderer redrew, or `None`
+    /// when nothing was dirty (the backend then presents no frame). The first call draws all.
+    ///
+    /// Use it on its own, not mixed with [`Harness::render`].
+    pub fn damaged_area(&self) -> Option<u64> {
+        let size = self.window.size();
+        let first = self.kept.borrow().is_none();
+        let mut kept = self.kept.borrow_mut();
+        let buffer = kept
+            .get_or_insert_with(|| SharedPixelBuffer::<Rgb8Pixel>::new(size.width, size.height));
+        let mut area = None;
+        self.window.draw_if_needed(|renderer| {
+            renderer.set_repaint_buffer_type(if first {
+                RepaintBufferType::NewBuffer
+            } else {
+                RepaintBufferType::ReusedBuffer
+            });
+            let region = renderer.render(buffer.make_mut_slice(), size.width as usize);
+            let (w, h) = (
+                region.bounding_box_size().width,
+                region.bounding_box_size().height,
+            );
+            area = Some(u64::from(w) * u64::from(h));
+        });
+        area
+    }
+
     fn try_render(&self) -> Option<Frame> {
         let size = self.window.size();
         let mut buffer = SharedPixelBuffer::<Rgb8Pixel>::new(size.width, size.height);
@@ -160,6 +203,25 @@ impl<C: ComponentHandle> Harness<C> {
             }
         })
     }
+}
+
+/// The display scale from `SNIPDECK_SHOT_SCALE` (1 when unset or not a number from 1 to 4).
+fn shot_scale() -> f32 {
+    std::env::var("SNIPDECK_SHOT_SCALE")
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok())
+        .filter(|s| (1.0..=4.0).contains(s))
+        .unwrap_or(1.0)
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    reason = "window sizes are small positive pixel counts"
+)]
+fn scaled(px: u32, scale: f32) -> u32 {
+    (px as f32 * scale).round() as u32
 }
 
 fn golden_dir() -> PathBuf {
@@ -208,6 +270,11 @@ fn read_png(path: &Path) -> Option<Frame> {
 /// # Panics
 /// On a mismatch or a missing golden (run with `UPDATE_GOLDEN=1` to create it).
 pub fn assert_golden(name: &str, frame: &Frame) {
+    // `SNIPDECK_SHOTS_DIR` collects every render there (README screenshots) instead of comparing.
+    if let Some(dir) = std::env::var_os("SNIPDECK_SHOTS_DIR") {
+        write_png(&Path::new(&dir).join(format!("{name}.png")), frame);
+        return;
+    }
     let path = golden_dir().join(format!("{name}.png"));
     if std::env::var_os("UPDATE_GOLDEN").is_some() {
         write_png(&path, frame);

@@ -9,10 +9,12 @@
 mod copyq;
 mod ditto;
 mod folder;
+mod history;
 
 pub use copyq::import_copyq_json;
 pub use ditto::import_ditto;
 pub use folder::import_folder;
+pub use history::{HistoryEntry, import_entries};
 
 use crate::report::{ImportReport, Warning};
 
@@ -53,7 +55,7 @@ fn collapse(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-fn truncate_chars(text: &str, max: usize) -> String {
+pub(crate) fn truncate_chars(text: &str, max: usize) -> String {
     match text.char_indices().nth(max) {
         Some((end, _)) => text[..end].to_owned(),
         None => text.to_owned(),

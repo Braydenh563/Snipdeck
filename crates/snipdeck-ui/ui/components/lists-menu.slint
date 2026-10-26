@@ -1,0 +1,266 @@
+import { Theme, Type, Radius, Space, Fonts } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+import { MenuItem, MenuEntry } from "menu.slint";
+import { TabItem } from "tab.slint";
+
+// The Panel's Menu switcher (Panel v2 spec 3, Settings > Panel > Lists = Menu): the tab row is gone, and the header's board
+// picker opens this surface instead. Rows, top to bottom: Recent (while history is on), the boards the host offers, the
+// board's lists (each with its colour mark, the current one ticked), then "New list". Same surface and keys as Menu: Up and
+// Down move through the enabled rows (wrapping), Home and End jump, Enter or Space picks, Esc asks the host to close it.
+// The host places it and closes it.
+export component ListsMenu inherits Rectangle {
+    in property <[MenuEntry]> boards;
+    in property <[TabItem]> lists;
+    // The current list (ticked); none while Recent is the open view.
+    in property <int> current-list: 0;
+    in property <bool> recent-available: false;
+    in property <bool> recent-open: false;
+    in property <string> recent-label;
+    in property <string> new-list-label;
+    // Group headers ("Boards", "Lists"): the two groups are named, not just separated.
+    in property <string> boards-label;
+    in property <string> lists-label;
+    // The board on show, ticked among the boards (by name).
+    in property <string> current-board;
+    // Spoken name of the menu.
+    in property <string> label;
+    // The tallest it grows before it scrolls.
+    in property <length> menu-max-height: 360px;
+    // The highlighted row (-1 = none), counted over all rows: Recent, boards, lists, New list.
+    in-out property <int> current: -1;
+    callback recent-chosen();
+    callback board-chosen(int);
+    callback list-chosen(int);
+    callback new-list-chosen();
+    callback dismissed();
+
+    public function focus-menu() {
+        scope.focus();
+    }
+
+    property <int> r: root.recent-available ? 1 : 0;
+    property <int> b: root.boards.length;
+    property <int> l: root.lists.length;
+    property <int> total: root.r + root.b + root.l + 1;
+    property <length> row-h: max(Space.hit, Type.line-base + Space.s2);
+    property <length> sep-h: Space.s2 + 1px;
+
+    pure function selectable(i: int) -> bool {
+        if (i < 0 || i >= root.total) {
+            return false;
+        }
+        if (i >= root.r && i < root.r + root.b) {
+            return !root.boards[i - root.r].separator && !root.boards[i - root.r].disabled;
+        }
+        return true;
+    }
+    // First selectable row after `from` in direction `dir` (+1 or -1), or -1 (a menu has at most two separators in a row).
+    pure function find(from: int, dir: int) -> int {
+        if (root.selectable(from + dir)) { return from + dir; }
+        if (root.selectable(from + 2 * dir)) { return from + 2 * dir; }
+        if (root.selectable(from + 3 * dir)) { return from + 3 * dir; }
+        return -1;
+    }
+    function move(dir: int) {
+        let ahead = root.find(root.current, dir);
+        let wrapped = root.find(dir > 0 ? -1 : root.total, dir);
+        let target = ahead >= 0 ? ahead : wrapped;
+        if (target >= 0) {
+            root.current = target;
+        }
+    }
+    function activate(i: int) {
+        if (!root.selectable(i)) {
+            return;
+        }
+        if (i < root.r) {
+            root.recent-chosen();
+        } else if (i < root.r + root.b) {
+            root.board-chosen(i - root.r);
+        } else if (i < root.r + root.b + root.l) {
+            root.list-chosen(i - root.r - root.b);
+        } else {
+            root.new-list-chosen();
+        }
+    }
+
+    height: min(root.menu-max-height, lay.preferred-height);
+    background: Theme.bg-overlay;
+    border-radius: Radius.lg;
+    border-width: 1px;
+    border-color: Theme.border-default;
+    clip: true;
+    accessible-role: list;
+    accessible-label: root.label;
+    forward-focus: scope;
+
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == Key.DownArrow) {
+                root.move(1);
+                return accept;
+            }
+            if (event.text == Key.UpArrow) {
+                root.move(-1);
+                return accept;
+            }
+            if (event.text == Key.Home) {
+                root.current = root.find(-1, 1);
+                return accept;
+            }
+            if (event.text == Key.End) {
+                root.current = root.find(root.total, -1);
+                return accept;
+            }
+            if (event.text == Key.Return || event.text == " ") {
+                root.activate(root.current);
+                return accept;
+            }
+            if (event.text == Key.Escape) {
+                root.dismissed();
+                return accept;
+            }
+            return reject;
+        }
+    }
+
+    Flickable {
+        content-height: lay.preferred-height;
+        interactive: false;
+        lay := VerticalLayout {
+            padding: Space.s1;
+            alignment: start;
+            if root.recent-available: MenuItem {
+                text: root.recent-label;
+                icon: Icons.clock;
+                current: root.current == 0;
+                index: 0;
+                count: root.total;
+                pointer-entered => { root.current = 0; }
+                activated => { root.activate(0); }
+            }
+            if root.recent-available: Rectangle {
+                height: root.sep-h;
+                Rectangle {
+                    y: (parent.height - self.height) / 2;
+                    height: 1px;
+                    background: Theme.border-subtle;
+                }
+            }
+            if root.boards-label != "": Rectangle {
+                height: Type.line-xs + Space.s1;
+                Text {
+                    x: Space.s2;
+                    width: parent.width - 2 * Space.s2;
+                    height: parent.height;
+                    text: root.boards-label;
+                    font-family: Fonts.sans;
+                    font-size: Type.xs;
+                    font-weight: Type.medium;
+                    color: Theme.text-secondary;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    accessible-role: AccessibleRole.none;
+                }
+            }
+            for entry[i] in root.boards: Rectangle {
+                height: entry.separator ? root.sep-h : root.row-h;
+                if entry.separator: Rectangle {
+                    y: (parent.height - self.height) / 2;
+                    height: 1px;
+                    background: Theme.border-subtle;
+                }
+                if !entry.separator: MenuItem {
+                    text: entry.text;
+                    icon: entry.icon;
+                    shortcut: entry.shortcut;
+                    destructive: entry.destructive;
+                    disabled: entry.disabled;
+                    current: root.current == root.r + i;
+                    reserve-icon: true;
+                    index: root.r + i;
+                    count: root.total;
+                    pointer-entered => { root.current = root.r + i; }
+                    activated => { root.activate(root.r + i); }
+                }
+                // The board on show is ticked, like the current list.
+                if !entry.separator && entry.text == root.current-board: Icon {
+                    source: Icons.check;
+                    tint: Theme.accent-text;
+                    x: parent.width - Space.s2 - self.width;
+                    y: (parent.height - self.height) / 2;
+                }
+            }
+            if root.b > 0: Rectangle {
+                height: root.sep-h;
+                Rectangle {
+                    y: (parent.height - self.height) / 2;
+                    height: 1px;
+                    background: Theme.border-subtle;
+                }
+            }
+            if root.lists-label != "": Rectangle {
+                height: Type.line-xs + Space.s1;
+                Text {
+                    x: Space.s2;
+                    width: parent.width - 2 * Space.s2;
+                    height: parent.height;
+                    text: root.lists-label;
+                    font-family: Fonts.sans;
+                    font-size: Type.xs;
+                    font-weight: Type.medium;
+                    color: Theme.text-secondary;
+                    vertical-alignment: center;
+                    overflow: elide;
+                    accessible-role: AccessibleRole.none;
+                }
+            }
+            for tab[i] in root.lists: Rectangle {
+                height: root.row-h;
+                MenuItem {
+                    text: tab.text;
+                    current: root.current == root.r + root.b + i;
+                    reserve-icon: true;
+                    index: root.r + root.b + i;
+                    count: root.total;
+                    pointer-entered => { root.current = root.r + root.b + i; }
+                    activated => { root.activate(root.r + root.b + i); }
+                }
+                // The list's colour mark in the icon column (colour is on the mark only, never behind text).
+                Rectangle {
+                    x: Space.s2 + (16px - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                    width: Space.s2;
+                    height: Space.s2;
+                    background: tab.accent;
+                }
+                // The current list is ticked.
+                if i == root.current-list && !root.recent-open: Icon {
+                    source: Icons.check;
+                    tint: Theme.accent-text;
+                    x: parent.width - Space.s2 - self.width;
+                    y: (parent.height - self.height) / 2;
+                }
+            }
+            Rectangle {
+                height: root.sep-h;
+                Rectangle {
+                    y: (parent.height - self.height) / 2;
+                    height: 1px;
+                    background: Theme.border-subtle;
+                }
+            }
+            MenuItem {
+                text: root.new-list-label;
+                icon: Icons.plus;
+                current: root.current == root.total - 1;
+                index: root.total - 1;
+                count: root.total;
+                pointer-entered => { root.current = root.total - 1; }
+                activated => { root.activate(root.total - 1); }
+            }
+        }
+    }
+}

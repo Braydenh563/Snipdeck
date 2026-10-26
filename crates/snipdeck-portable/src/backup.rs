@@ -16,21 +16,18 @@
 //! * **Sensitive items** are encrypted with the key given, or left out of the backup when there
 //!   is none; never written in plain text. A Free-tier library has no key, so its sensitive
 //!   items are not in its backups; the data folder holds them in the database itself.
-//! * **Restore** is an ordinary import: [`restore`].
+//! * **Restore** is an ordinary import ([`crate::import_archive_path`] with `BoardLayout::KeepBoards`).
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use jiff::Zoned;
 use jiff::civil::Date;
-use snipdeck_core::Timestamp;
 use snipdeck_store::crypto::DataKey;
 
 use crate::error::{Error, Result};
 use crate::export::{ExportOptions, ExportReport, SensitivePolicy, export_to_path};
-use crate::import::{BoardLayout, ImportOptions, KeySource, MergeStrategy, import_archive_path};
 use crate::plan::Library;
-use crate::report::ImportReport;
 
 /// How many backups to keep by default (SPEC §5.7a).
 pub const DEFAULT_KEEP: usize = 7;
@@ -135,7 +132,7 @@ pub fn run_if_due<L: Library>(
     };
     let report = export_to_path(lib, now.timestamp(), &options, &path)?;
 
-    let (pruned, prune_failed) = prune(&dir, &name, keep.max(1));
+    let (pruned, prune_failed) = prune(&dir, &name, keep.max(1), now.date());
     Ok(BackupOutcome::Created {
         path,
         report,
@@ -166,35 +163,6 @@ pub fn list_backups(data_dir: &Path) -> Result<Vec<BackupFile>> {
     Ok(found)
 }
 
-/// Restores a backup: an import that recreates the backup's boards under their own names, with
-/// new ids, skipping items whose content is already in the library (so restoring over an intact
-/// library adds nothing). Pass a `key` to restore encrypted sensitive items;
-/// [`KeySource::Library`] uses the library's own unlocked key.
-///
-/// `max_boards` is the most live boards the library may hold afterwards (the Free tier's 3;
-/// `None` on Pro), as [`ImportOptions::max_boards`]: a restore that would go past it is refused
-/// and changes nothing.
-///
-/// # Errors
-///
-/// As [`import_archive_path`]; `ProRequired(UnlimitedBoards)` past `max_boards`.
-pub fn restore<L: Library>(
-    lib: &mut L,
-    backup: &Path,
-    now: Timestamp,
-    key: KeySource<'_>,
-    max_boards: Option<usize>,
-) -> Result<ImportReport> {
-    let options = ImportOptions {
-        layout: BoardLayout::KeepBoards,
-        merge: MergeStrategy::SkipDuplicates,
-        key,
-        max_boards,
-        ..ImportOptions::default()
-    };
-    import_archive_path(lib, backup, now, &options)
-}
-
 /// A directory entry as a backup file, if (and only if) it is a regular file with an exact
 /// backup name. `DirEntry::file_type` does not follow symbolic links, so a link is never one.
 fn as_backup(entry: &fs::DirEntry) -> Option<BackupFile> {
@@ -219,7 +187,9 @@ fn is_stale_part(name: &str) -> bool {
 
 /// Deletes backups beyond the newest `keep` (the file just written, `current`, counts and is
 /// never deleted) and stale partial files. Returns what was deleted and what could not be.
-fn prune(dir: &Path, current: &str, keep: usize) -> (Vec<PathBuf>, Vec<PathBuf>) {
+/// A file dated after `today` (a clock that was once wrong, or a copied file) is not ranked: it
+/// would otherwise hold a slot for ever. It is not deleted either.
+fn prune(dir: &Path, current: &str, keep: usize, today: Date) -> (Vec<PathBuf>, Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return (Vec::new(), Vec::new());
     };
@@ -233,7 +203,9 @@ fn prune(dir: &Path, current: &str, keep: usize) -> (Vec<PathBuf>, Vec<PathBuf>)
             continue;
         }
         if let Some(file) = as_backup(&entry) {
-            others.push(file);
+            if file.date <= today {
+                others.push(file);
+            }
         } else if is_stale_part(&name) && entry.file_type().is_ok_and(|t| t.is_file()) {
             stale.push(entry.path());
         }

@@ -1,0 +1,1414 @@
+//! Behaviour of the Main window through Slint's testing backend: keyboard flows in the sidebar and the item area,
+//! selection (with the real `selection` binding), the context menu, the bulk-action bar, confirmations, search,
+//! the icon rail, accessibility roles and labels, and hit targets. Time is mocked, never the real clock.
+
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::panic,
+    reason = "test code: a failure is a failed test"
+)]
+
+use std::{cell::RefCell, rc::Rc};
+
+use i_slint_backend_testing::{
+    AccessibleLiveness, AccessibleRole, ElementHandle, ElementQuery, ElementRoot,
+};
+use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel, platform::Key};
+use snipdeck_ui::{Fonts, MainSection, MainView, MainWindow, PaletteRow, selection};
+
+#[path = "support/mod.rs"]
+mod support;
+use support::{chord, key, on_ui_thread, press, type_text};
+
+#[path = "support/main_fixture.rs"]
+mod fixture;
+
+const MIN_HIT: f32 = 24.0;
+
+type Log = Rc<RefCell<Vec<String>>>;
+
+fn take(log: &Log) -> Vec<String> {
+    std::mem::take(&mut *log.borrow_mut())
+}
+
+fn settle() {
+    slint::platform::update_timers_and_animations();
+}
+
+fn all(root: &impl ElementRoot, label: &str, role: AccessibleRole) -> Vec<ElementHandle> {
+    ElementHandle::find_by_accessible_label(root, label)
+        .filter(|e| e.accessible_role() == Some(role))
+        .collect()
+}
+
+fn find(root: &impl ElementRoot, label: &str, role: AccessibleRole) -> ElementHandle {
+    all(root, label, role)
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| panic!("no {role:?} labelled {label:?}"))
+}
+
+/// The last match: an overlay is drawn after (so it comes after) the sidebar entry of the same name.
+fn find_top(root: &impl ElementRoot, label: &str, role: AccessibleRole) -> ElementHandle {
+    all(root, label, role)
+        .into_iter()
+        .last()
+        .unwrap_or_else(|| panic!("no {role:?} labelled {label:?}"))
+}
+
+fn missing(root: &impl ElementRoot, label: &str, role: AccessibleRole) -> bool {
+    all(root, label, role).is_empty()
+}
+
+fn by_role(root: &impl ElementRoot, role: AccessibleRole) -> Vec<ElementHandle> {
+    let mut seen = Vec::new();
+    ElementQuery::from_root(root)
+        .match_descendants()
+        .match_accessible_role(role)
+        .find_all()
+        .into_iter()
+        .filter(|e| {
+            let (p, s) = (e.absolute_position(), e.size());
+            let k = (
+                p.x.to_bits(),
+                p.y.to_bits(),
+                s.width.to_bits(),
+                s.height.to_bits(),
+                e.accessible_label().map(|l| l.to_string()),
+            );
+            let fresh = !seen.contains(&k);
+            seen.push(k);
+            fresh
+        })
+        .collect()
+}
+
+fn press_at_centre(ui: &MainWindow, at: slint::LogicalPosition) {
+    use slint::platform::{PointerEventButton, WindowEvent};
+    let w = ui.window();
+    w.dispatch_event(WindowEvent::PointerMoved { position: at });
+    w.dispatch_event(WindowEvent::PointerPressed {
+        position: at,
+        button: PointerEventButton::Left,
+    });
+    w.dispatch_event(WindowEvent::PointerReleased {
+        position: at,
+        button: PointerEventButton::Left,
+    });
+    settle();
+}
+
+fn press_key(ui: &MainWindow, k: Key) {
+    press(ui.window(), &key(k));
+    settle();
+}
+
+fn shift(ui: &MainWindow, k: Key) {
+    chord(ui.window(), &[Key::Shift], &key(k));
+    settle();
+}
+
+/// A populated window whose callbacks append a line to the returned log. Focus starts on the item area.
+fn start() -> (MainWindow, Log) {
+    let ui = MainWindow::new().expect("main window");
+    fixture::populate(&ui);
+    ui.window().set_size(slint::LogicalSize::new(1040.0, 640.0));
+    ui.show().expect("show");
+    settle();
+    let log: Log = Rc::default();
+    macro_rules! hook {
+        ($on:ident, || $line:expr) => {{
+            let log = log.clone();
+            ui.$on(move || log.borrow_mut().push($line));
+        }};
+        ($on:ident, |$($arg:ident),+| $line:expr) => {{
+            let log = log.clone();
+            ui.$on(move |$($arg),*| log.borrow_mut().push($line));
+        }};
+    }
+    hook!(on_query_changed, |q| format!("query:{q}"));
+    hook!(on_section_selected, |s, i| format!("section:{s:?}:{i}"));
+    hook!(on_view_changed, |v| format!("view:{v:?}"));
+    hook!(on_theme_chosen, |i| format!("theme:{i}"));
+    hook!(on_new_item_requested, || "new".to_string());
+    hook!(on_select_requested, |i, m| format!("select:{i}:{m:?}"));
+    hook!(on_select_all_requested, || "select-all".to_string());
+    hook!(on_clear_selection_requested, || "clear".to_string());
+    hook!(on_item_action, |a, i| format!("action:{a:?}:{i}"));
+    hook!(on_item_reorder_requested, |d| format!("reorder:{d}"));
+    hook!(on_move_chosen, |i| format!("move:{i}"));
+    hook!(on_tag_toggled, |i, on| format!("tag:{i}:{on}"));
+    hook!(on_reveal_requested, |i, on| format!("reveal:{i}:{on}"));
+    hook!(on_settings_requested, || "settings".to_string());
+    hook!(on_add_list_requested, || "add-list".to_string());
+    hook!(on_close_requested, || "close".to_string());
+    hook!(on_undo_requested, || "undo".to_string());
+    hook!(on_help_requested, |page| format!("help:{page:?}"));
+    hook!(on_panel_requested, || "panel".to_string());
+    hook!(on_list_edit_requested, |i| format!("list-edit:{i}"));
+    hook!(on_list_delete_confirmed, |i| format!("list-delete:{i}"));
+    hook!(on_tag_delete_confirmed, |i| format!("tag-delete:{i}"));
+    hook!(on_empty_trash_confirmed, || "empty-trash".to_string());
+    hook!(on_manage_tags_requested, || "manage-tags".to_string());
+    hook!(on_palette_opened, || "palette-opened".to_string());
+    hook!(on_palette_query_changed, |q| format!("palette-query:{q}"));
+    hook!(on_command_requested, |id| format!("command:{id}"));
+    hook!(on_row_dropped, |from, onto| format!(
+        "row-dropped:{from}:{onto}"
+    ));
+    hook!(on_row_dropped_on_list, |row, list| format!(
+        "row-on-list:{row}:{list}"
+    ));
+    hook!(on_list_dropped, |from, onto| format!(
+        "list-dropped:{from}:{onto}"
+    ));
+    // The host's payloads ride as user data; the tests use plain text of the same shape.
+    ui.on_row_payload(|i| slint::DataTransfer::from(SharedString::from(format!("row:{i}"))));
+    ui.on_list_payload(|i| slint::DataTransfer::from(SharedString::from(format!("list:{i}"))));
+    let index_of = |data: &slint::DataTransfer, prefix: &str| {
+        data.plain_text()
+            .ok()
+            .and_then(|t| t.strip_prefix(prefix).and_then(|n| n.parse::<i32>().ok()))
+            .unwrap_or(-1)
+    };
+    ui.on_payload_row(move |d| index_of(&d, "row:"));
+    ui.on_payload_list(move |d| index_of(&d, "list:"));
+    ui.set_rows_reorderable(true);
+    ui.invoke_focus_items();
+    settle();
+    (ui, log)
+}
+
+macro_rules! ui_tests {
+    ($(fn $name:ident() $body:block)*) => {
+        $(
+            #[test]
+            fn $name() {
+                on_ui_thread(|| $body);
+            }
+        )*
+    };
+}
+
+ui_tests! {
+    // ---- Item area: keyboard -------------------------------------------------------------------
+
+    fn the_item_area_is_one_tab_stop_and_arrows_move_the_cursor_and_report_the_selection() {
+        let (ui, log) = start();
+        assert!(ui.get_items_focused());
+        press_key(&ui, Key::DownArrow);
+        assert_eq!(ui.get_cursor(), 1);
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::UpArrow);
+        assert_eq!(take(&log), ["select:1:Replace", "select:2:Replace", "select:1:Replace"]);
+
+        shift(&ui, Key::DownArrow);
+        assert_eq!(take(&log), ["select:2:Extend"]);
+        chord(ui.window(), &[Key::Control], " ");
+        assert_eq!(take(&log), ["select:2:Toggle"]);
+        chord(ui.window(), &[Key::Control], "a");
+        assert_eq!(take(&log), ["select-all"]);
+
+        press_key(&ui, Key::End);
+        assert_eq!(ui.get_cursor(), 7);
+        press_key(&ui, Key::DownArrow);
+        assert_eq!(ui.get_cursor(), 7, "the last row stops");
+        press_key(&ui, Key::Home);
+        assert_eq!(ui.get_cursor(), 0);
+        press_key(&ui, Key::UpArrow);
+        assert_eq!(ui.get_cursor(), 0, "the first row stops");
+    }
+
+    fn enter_uses_shift_enter_copies_and_shortcuts_edit_pin_and_delete() {
+        let (ui, log) = start();
+        press_key(&ui, Key::DownArrow);
+        take(&log);
+        press_key(&ui, Key::Return);
+        shift(&ui, Key::Return);
+        press_key(&ui, Key::F2);
+        chord(ui.window(), &[Key::Control], "e");
+        chord(ui.window(), &[Key::Control], "p");
+        chord(ui.window(), &[Key::Control], "d");
+        press_key(&ui, Key::Delete);
+        assert_eq!(
+            take(&log),
+            [
+                "action:Use:1",
+                "action:Copy:1",
+                "action:Edit:1",
+                "action:Edit:1",
+                "action:Pin:1",
+                "action:Duplicate:1",
+                "action:Delete:1"
+            ]
+        );
+    }
+
+    fn ctrl_d_duplicates_nothing_in_the_trash() {
+        let (ui, log) = start();
+        ui.set_section(MainSection::Trash);
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "d");
+        assert_eq!(take(&log), Vec::<String>::new());
+    }
+
+    fn escape_clears_a_selection_and_does_nothing_without_one() {
+        let (ui, log) = start();
+        press_key(&ui, Key::Escape);
+        assert_eq!(take(&log), Vec::<String>::new());
+        ui.set_selected_count(2);
+        settle();
+        press_key(&ui, Key::Escape);
+        assert_eq!(take(&log), ["clear"]);
+    }
+
+    fn holding_space_on_a_sensitive_item_reveals_it_until_release() {
+        let (ui, log) = start();
+        for _ in 0..6 {
+            press_key(&ui, Key::DownArrow);
+        }
+        take(&log);
+        // `press` sends press and release; the pair is a reveal and a hide.
+        press(ui.window(), " ");
+        assert_eq!(take(&log), ["reveal:6:true", "reveal:6:false"]);
+        press_key(&ui, Key::UpArrow);
+        take(&log);
+        press(ui.window(), " ");
+        assert!(take(&log).is_empty(), "Space on an ordinary item does nothing");
+    }
+
+    fn the_trash_restores_with_enter_and_deletes_for_good_only_after_asking() {
+        let (ui, log) = start();
+        ui.set_section(MainSection::Trash);
+        settle();
+        press_key(&ui, Key::Return);
+        assert_eq!(take(&log), ["action:Restore:0"]);
+
+        press_key(&ui, Key::Delete);
+        assert!(ui.get_confirm_open());
+        assert!(take(&log).is_empty(), "nothing is deleted before the answer");
+        let dialog = find(&ui, "Delete for good?", AccessibleRole::Groupbox);
+        assert_eq!(
+            dialog.accessible_description().as_deref(),
+            Some("The selected items are deleted for good. This can't be undone.")
+        );
+        press_key(&ui, Key::Return);
+        assert!(ui.get_confirm_open(), "Enter is not the destructive default");
+        press_key(&ui, Key::Escape);
+        assert!(!ui.get_confirm_open());
+        assert_eq!(take(&log), Vec::<String>::new());
+
+        press_key(&ui, Key::Delete);
+        find(&ui, "Delete for good", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["action:DeleteForever:0"]);
+        assert!(!ui.get_confirm_open());
+        // Edit and Pin are not offered in the Trash.
+        press_key(&ui, Key::F2);
+        chord(ui.window(), &[Key::Control], "p");
+        assert_eq!(take(&log), Vec::<String>::new());
+    }
+
+    // ---- Context menu, move and tag ------------------------------------------------------------
+
+    fn the_menu_key_opens_the_context_menu_and_move_to_list_opens_a_chooser() {
+        let (ui, log) = start();
+        press_key(&ui, Key::DownArrow);
+        take(&log);
+        press_key(&ui, Key::Menu);
+        assert!(ui.get_menu_open());
+        for label in ["Use", "Copy", "Edit", "Duplicate", "Pin", "Move to list…", "Tags…", "Move to Trash"] {
+            let _ = find(&ui, label, AccessibleRole::ListItem);
+        }
+        find(&ui, "Duplicate", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["action:Duplicate:1"]);
+        press_key(&ui, Key::Menu);
+        press_key(&ui, Key::Escape);
+        assert!(!ui.get_menu_open());
+        assert!(ui.get_items_focused(), "focus returns to the items");
+
+        press_key(&ui, Key::Menu);
+        find(&ui, "Move to list…", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["action:Move:1"]);
+        assert!(ui.get_menu_open(), "the chooser is open");
+        let _ = find(&ui, "Move to list", AccessibleRole::List);
+        find_top(&ui, "Addresses", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["move:1"]);
+        assert!(!ui.get_menu_open(), "choosing a list closes it");
+    }
+
+    fn the_tag_chooser_stays_open_and_ticks_each_tag() {
+        let (ui, log) = start();
+        // The host fills the choices (with what the selection already has) before it opens the chooser.
+        ui.set_tag_choices(slint::ModelRc::new(VecModel::from(fixture::tags())));
+        press_key(&ui, Key::Menu);
+        find(&ui, "Tags…", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        take(&log);
+        let chooser = find(&ui, "Tags", AccessibleRole::List);
+        assert!(chooser.size().height >= MIN_HIT);
+        let billing = all(&ui, "billing", AccessibleRole::ListItem)
+            .into_iter()
+            .find(|e| e.accessible_checkable() == Some(true))
+            .expect("the chooser lists billing as a checkable entry");
+        billing.invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["tag:0:true"]);
+        assert!(ui.get_menu_open(), "multi-select stays open");
+        press_key(&ui, Key::Escape);
+        assert!(!ui.get_menu_open());
+    }
+
+    fn dragging_a_row_onto_a_row_a_list_or_a_list_onto_a_list_reports_the_drop() {
+        let (ui, log) = start();
+        let _ = take(&log);
+        let centre_of = |e: &ElementHandle| {
+            let (p, s) = (e.absolute_position(), e.size());
+            slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0)
+        };
+        let drag = |from: slint::LogicalPosition, to: slint::LogicalPosition| {
+            use slint::platform::{PointerEventButton, WindowEvent};
+            let w = ui.window();
+            w.dispatch_event(WindowEvent::PointerMoved { position: from });
+            w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+            w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(from.x, from.y + 12.0) });
+            w.dispatch_event(WindowEvent::PointerMoved { position: to });
+            w.dispatch_event(WindowEvent::PointerReleased { position: to, button: PointerEventButton::Left });
+            settle();
+        };
+
+        let card = |title: &str| {
+            by_role(&ui, AccessibleRole::ListItem)
+                .into_iter()
+                .find(|e| e.accessible_label().is_some_and(|l| l.starts_with(title)))
+                .unwrap_or_else(|| panic!("no card {title}"))
+        };
+        let row0 = centre_of(&card("Thanks, received"));
+        let row2 = centre_of(&card("Retry helper"));
+        drag(row0, row2);
+        assert_eq!(take(&log), ["row-dropped:0:2"], "row onto row");
+
+        let code = centre_of(&find(&ui, "Code", AccessibleRole::ListItem));
+        drag(row0, code);
+        assert_eq!(take(&log), ["row-on-list:0:2"], "row onto a sidebar list");
+
+        let email = centre_of(&find(&ui, "Email replies", AccessibleRole::ListItem));
+        drag(code, email);
+        assert_eq!(take(&log), ["list-dropped:2:0"], "list onto list");
+
+        // While a list is dragged over another, a 2px line marks the slot it would take: below the
+        // target when it comes from above, above it when it comes from below. Nothing before or after.
+        let lines = || {
+            ElementQuery::from_root(&ui)
+                .match_id("MainWindow::list-drop-line")
+                .find_all()
+        };
+        let hover = |from: slint::LogicalPosition, to: slint::LogicalPosition, release: bool| {
+            use slint::platform::{PointerEventButton, WindowEvent};
+            let w = ui.window();
+            w.dispatch_event(WindowEvent::PointerMoved { position: from });
+            w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+            w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(from.x, from.y + 12.0) });
+            w.dispatch_event(WindowEvent::PointerMoved { position: to });
+            settle();
+            // Measured before the release: the line goes with the drop and its handle with it.
+            let found: Vec<(slint::LogicalPosition, slint::LogicalSize)> = lines()
+                .iter()
+                .map(|l| (l.absolute_position(), l.size()))
+                .collect();
+            if release {
+                w.dispatch_event(WindowEvent::PointerReleased { position: to, button: PointerEventButton::Left });
+                settle();
+            }
+            found
+        };
+        assert!(lines().is_empty(), "no line when nothing is dragged");
+        let email_item = find(&ui, "Email replies", AccessibleRole::ListItem);
+        let code_item = find(&ui, "Code", AccessibleRole::ListItem);
+        // Code is below Email replies: dragging it up puts the line above Email replies.
+        let found = hover(centre_of(&code_item), centre_of(&email_item), true);
+        assert_eq!(found.len(), 1, "one line while a list is over another");
+        let (line, target) = (&found[0], &email_item);
+        assert!(line.1.height <= 2.5 && line.1.height >= 1.5, "2px: {:?}", line.1);
+        assert!(
+            (line.0.y - target.absolute_position().y).abs() <= 1.5,
+            "above the target when coming from below: {:?} {:?}",
+            line.0,
+            target.absolute_position()
+        );
+        let _ = take(&log);
+        assert!(lines().is_empty(), "the line goes with the drop");
+        // And from above: Email replies dragged onto Code puts it below Code.
+        let found = hover(centre_of(&email_item), centre_of(&code_item), true);
+        assert_eq!(found.len(), 1);
+        let bottom = code_item.absolute_position().y + code_item.size().height;
+        assert!(
+            (found[0].0.y + found[0].1.height - bottom).abs() <= 1.5,
+            "below the target when coming from above"
+        );
+        let _ = take(&log);
+
+        ui.set_rows_reorderable(false);
+        settle();
+        drag(row0, row2);
+        assert_eq!(take(&log), Vec::<String>::new(), "rows stay put in a sorted list");
+
+        // A plain click still uses the card: the drag layer must not swallow it.
+        press_at_centre(&ui, row0);
+        assert!(take(&log).iter().any(|l| l.starts_with("select:")), "a click still picks the card");
+    }
+
+    fn dragging_a_tile_onto_a_tile_or_a_sidebar_list_reports_the_drop() {
+        let (ui, log) = start();
+        ui.set_view(MainView::Tile);
+        settle();
+        let _ = take(&log);
+        let centre_of = |e: &ElementHandle| {
+            let (p, s) = (e.absolute_position(), e.size());
+            slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0)
+        };
+        let drag = |from: slint::LogicalPosition, to: slint::LogicalPosition| {
+            use slint::platform::{PointerEventButton, WindowEvent};
+            let w = ui.window();
+            w.dispatch_event(WindowEvent::PointerMoved { position: from });
+            w.dispatch_event(WindowEvent::PointerPressed { position: from, button: PointerEventButton::Left });
+            w.dispatch_event(WindowEvent::PointerMoved { position: slint::LogicalPosition::new(from.x + 12.0, from.y) });
+            w.dispatch_event(WindowEvent::PointerMoved { position: to });
+            w.dispatch_event(WindowEvent::PointerReleased { position: to, button: PointerEventButton::Left });
+            settle();
+        };
+        let card = |title: &str| {
+            by_role(&ui, AccessibleRole::ListItem)
+                .into_iter()
+                .find(|e| e.accessible_label().is_some_and(|l| l.starts_with(title)))
+                .unwrap_or_else(|| panic!("no tile {title}"))
+        };
+        let tile0 = centre_of(&card("Thanks, received"));
+        let tile2 = centre_of(&card("Retry helper"));
+        drag(tile0, tile2);
+        assert_eq!(take(&log), ["row-dropped:0:2"], "tile onto tile");
+
+        let code = centre_of(&find(&ui, "Code", AccessibleRole::ListItem));
+        drag(tile0, code);
+        assert_eq!(take(&log), ["row-on-list:0:2"], "tile onto a sidebar list");
+
+        ui.set_rows_reorderable(false);
+        settle();
+        drag(tile0, tile2);
+        assert_eq!(take(&log), Vec::<String>::new(), "tiles stay put in a sorted list");
+    }
+
+    fn alt_up_and_alt_down_ask_to_move_the_cursor_row_in_the_list_and_in_the_tile_grid() {
+        let (ui, log) = start();
+        for view in [MainView::Comfortable, MainView::Compact, MainView::Tile] {
+            ui.set_view(view);
+            settle();
+            take(&log);
+            chord(ui.window(), &[Key::Alt], &key(Key::DownArrow));
+            chord(ui.window(), &[Key::Alt], &key(Key::UpArrow));
+            assert_eq!(take(&log), ["reorder:1", "reorder:-1"], "{view:?}");
+            press_key(&ui, Key::DownArrow);
+            assert!(take(&log).iter().all(|l| !l.starts_with("reorder")), "{view:?}: a plain arrow only moves");
+        }
+    }
+
+    fn the_item_menu_offers_move_up_and_down_and_disables_them_at_the_ends() {
+        let (ui, log) = start();
+        let rows = i32::try_from(ui.get_rows().row_count()).expect("rows");
+        press_key(&ui, Key::Menu);
+        assert_eq!(find(&ui, "Move up", AccessibleRole::ListItem).accessible_enabled(), Some(false), "first row");
+        assert_eq!(find(&ui, "Move down", AccessibleRole::ListItem).accessible_enabled(), Some(true));
+        take(&log);
+        find(&ui, "Move down", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["reorder:1"]);
+        assert!(!ui.get_menu_open());
+
+        press_key(&ui, Key::End);
+        assert_eq!(ui.get_cursor(), rows - 1);
+        press_key(&ui, Key::Menu);
+        assert_eq!(find(&ui, "Move down", AccessibleRole::ListItem).accessible_enabled(), Some(false), "last row");
+        assert_eq!(find(&ui, "Move up", AccessibleRole::ListItem).accessible_enabled(), Some(true));
+        take(&log);
+        find(&ui, "Move up", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["reorder:-1"]);
+
+        ui.set_rows_reorderable(false);
+        settle();
+        press_key(&ui, Key::Menu);
+        assert_eq!(find(&ui, "Move up", AccessibleRole::ListItem).accessible_enabled(), Some(false), "sorted list");
+        assert_eq!(find(&ui, "Move down", AccessibleRole::ListItem).accessible_enabled(), Some(false));
+    }
+
+    fn a_tile_click_and_right_click_still_work_under_the_drag_layer() {
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let (ui, log) = start();
+        ui.set_view(MainView::Tile);
+        settle();
+        let tile = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .find(|e| e.accessible_label().is_some_and(|l| l.starts_with("Retry helper")))
+            .map(|e| {
+                let (p, s) = (e.absolute_position(), e.size());
+                slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0)
+            })
+            .expect("a tile");
+        take(&log);
+        press_at_centre(&ui, tile);
+        assert!(take(&log).iter().any(|l| l.starts_with("select:")), "a click picks the tile");
+
+        let w = ui.window();
+        w.dispatch_event(WindowEvent::PointerMoved { position: tile });
+        w.dispatch_event(WindowEvent::PointerPressed { position: tile, button: PointerEventButton::Right });
+        w.dispatch_event(WindowEvent::PointerReleased { position: tile, button: PointerEventButton::Right });
+        settle();
+        assert!(ui.get_menu_open(), "a right-click opens the item menu");
+        let _ = find(&ui, "Move down", AccessibleRole::ListItem);
+    }
+
+    fn pin_reads_unpin_for_a_pinned_item() {
+        let (ui, _log) = start();
+        for _ in 0..3 {
+            press_key(&ui, Key::DownArrow);
+        }
+        press_key(&ui, Key::Menu);
+        assert!(missing(&ui, "Pin", AccessibleRole::ListItem), "the Design spec row is pinned");
+        let _ = find(&ui, "Unpin", AccessibleRole::ListItem);
+    }
+
+    // ---- Colour labels ---------------------------------------------------------------------------
+
+    fn a_colour_label_is_named_in_the_cards_description_and_never_colour_alone() {
+        let (ui, _log) = start();
+        let mut plain = fixture::row(snipdeck_ui::ItemKind::Text, "Plain", "");
+        plain.label = 0;
+        // A label index without its name draws and says nothing.
+        let mut labelled = fixture::row(snipdeck_ui::ItemKind::Text, "Tagged", "");
+        labelled.label = 1;
+        labelled.label_name = "Teal".into();
+        let mut mixed = fixture::row(snipdeck_ui::ItemKind::Text, "In a list", "");
+        mixed.label = 7;
+        mixed.label_name = "Slate".into();
+        mixed.list_name = "Work".into();
+        ui.set_rows(slint::ModelRc::new(VecModel::from(vec![plain, labelled, mixed])));
+        settle();
+        let description = |title: &str| find(&ui, title, AccessibleRole::ListItem).accessible_description().map(|d| d.to_string());
+        assert_eq!(description("Plain").as_deref(), Some(""));
+        assert_eq!(description("Tagged").as_deref(), Some("label: Teal"));
+        assert_eq!(description("In a list").as_deref(), Some("Work, label: Slate"));
+    }
+
+    fn the_label_filter_row_names_each_colour_and_a_chosen_chip_clears_on_a_second_choice() {
+        use snipdeck_ui::LabelChipEntry;
+        let (ui, _log) = start();
+        let asked: Rc<RefCell<Vec<i32>>> = Rc::default();
+        {
+            let asked = asked.clone();
+            ui.on_label_filter_requested(move |i| asked.borrow_mut().push(i));
+        }
+        assert!(missing(&ui, "Teal", AccessibleRole::Button), "no labels, no row");
+        ui.set_label_chips(slint::ModelRc::new(VecModel::from(vec![
+            LabelChipEntry { label: 1, name: "Teal".into(), count: 2 },
+            LabelChipEntry { label: 3, name: "Amber".into(), count: 1 },
+        ])));
+        settle();
+        for name in ["Teal", "Amber"] {
+            let chip = find(&ui, name, AccessibleRole::Button);
+            let s = chip.size();
+            assert!(s.height >= MIN_HIT && s.width >= MIN_HIT, "{name}");
+            assert_eq!(chip.accessible_checked(), Some(false));
+        }
+        assert_eq!(find(&ui, "Teal", AccessibleRole::Button).accessible_value().as_deref(), Some("2"));
+        assert!(missing(&ui, "Clear filter", AccessibleRole::Button), "nothing to clear yet");
+
+        find(&ui, "Teal", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(*asked.borrow(), [1]);
+        // The host applies it.
+        ui.set_label_filter(1);
+        settle();
+        assert_eq!(find(&ui, "Teal", AccessibleRole::Button).accessible_checked(), Some(true));
+        assert_eq!(find(&ui, "Amber", AccessibleRole::Button).accessible_checked(), Some(false));
+        find(&ui, "Teal", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(*asked.borrow(), [1, -1], "choosing the active chip again clears");
+        find(&ui, "Clear filter", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(*asked.borrow(), [1, -1, -1]);
+    }
+
+    // ---- Selection with the real binding ---------------------------------------------------------
+
+    fn shift_arrows_select_a_range_and_the_bulk_bar_appears() {
+        let (ui, _log) = start();
+        let rows: Rc<VecModel<_>> = Rc::new(VecModel::from(fixture::sample_rows()));
+        ui.set_rows(slint::ModelRc::from(rows.clone()));
+        let sel = selection::bind(&ui, &rows);
+        settle();
+
+        assert!(missing(&ui, "2 selected", AccessibleRole::Groupbox));
+        press_key(&ui, Key::DownArrow);
+        shift(&ui, Key::DownArrow);
+        shift(&ui, Key::DownArrow);
+        assert_eq!(ui.get_selected_count(), 3);
+        assert_eq!(sel.borrow().len(), 3);
+        let flags: Vec<bool> = (0..rows.row_count()).map(|i| rows.row_data(i).unwrap().selected).collect();
+        assert_eq!(flags, [false, true, true, true, false, false, false, false]);
+        let _ = find(&ui, "3 selected", AccessibleRole::Groupbox);
+        for label in ["Move", "Tag", "Pin", "Move to Trash", "Clear selection"] {
+            let b = find(&ui, label, AccessibleRole::Button);
+            assert!(b.size().height >= MIN_HIT && b.size().width >= MIN_HIT, "{label}");
+        }
+        // The context menu on several rows disables what only works on one.
+        press_key(&ui, Key::Menu);
+        assert_eq!(find(&ui, "Use", AccessibleRole::ListItem).accessible_enabled(), Some(false));
+        assert_eq!(find(&ui, "Edit", AccessibleRole::ListItem).accessible_enabled(), Some(false));
+        assert_eq!(find(&ui, "Move to Trash", AccessibleRole::ListItem).accessible_enabled(), Some(true));
+        press_key(&ui, Key::Escape);
+
+        chord(ui.window(), &[Key::Control], "a");
+        assert_eq!(ui.get_selected_count(), 8);
+        press_key(&ui, Key::Escape);
+        assert_eq!(ui.get_selected_count(), 0);
+        assert!(missing(&ui, "8 selected", AccessibleRole::Groupbox));
+    }
+
+    fn the_bulk_bar_acts_on_the_selection() {
+        let (ui, log) = start();
+        ui.set_selected_count(2);
+        settle();
+        take(&log);
+        find(&ui, "Move to Trash", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["action:Delete:0"]);
+        find(&ui, "Clear selection", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["clear"]);
+        ui.set_section(MainSection::Trash);
+        settle();
+        assert!(missing(&ui, "Move", AccessibleRole::Button));
+        let _ = find(&ui, "Restore", AccessibleRole::Button);
+        find(&ui, "Delete for good…", AccessibleRole::Button).invoke_accessible_default_action();
+        assert!(ui.get_confirm_open());
+    }
+
+    fn the_trash_context_menu_says_delete_for_good_like_the_button_and_the_dialog() {
+        let (ui, _log) = start();
+        ui.set_section(MainSection::Trash);
+        settle();
+        press_key(&ui, Key::Menu);
+        assert!(ui.get_menu_open());
+        let _ = find(&ui, "Delete for good…", AccessibleRole::ListItem);
+        assert!(missing(&ui, "Delete forever…", AccessibleRole::ListItem));
+    }
+
+    fn the_status_line_is_a_polite_live_region() {
+        use i_slint_backend_testing::AccessibleLiveness;
+        let (ui, _log) = start();
+        ui.set_selected_count(2);
+        settle();
+        let status = find(&ui, "2 selected", AccessibleRole::Text);
+        assert_eq!(status.accessible_live_region(), Some(AccessibleLiveness::Polite));
+    }
+
+    // ---- Sidebar -----------------------------------------------------------------------------------
+
+    fn the_sidebar_is_one_tab_stop_with_arrows_home_end_and_enter() {
+        let (ui, log) = start();
+        // Back through the toolbar's controls (one stop each) to the sidebar.
+        for _ in 0..16 {
+            if ui.get_sidebar_focused() {
+                break;
+            }
+            press_key(&ui, Key::Backtab);
+        }
+        assert!(ui.get_sidebar_focused(), "Shift+Tab reaches the sidebar");
+        take(&log);
+        for _ in 0..4 {
+            press_key(&ui, Key::DownArrow);
+        }
+        press_key(&ui, Key::Return);
+        assert_eq!(take(&log), ["section:List:0"]);
+        assert_eq!(ui.get_section(), MainSection::List);
+        assert_eq!(ui.get_section_index(), 0);
+
+        press_key(&ui, Key::End);
+        press_key(&ui, Key::Return);
+        assert_eq!(take(&log), ["section:Tag:2"]);
+        press_key(&ui, Key::Home);
+        press_key(&ui, Key::Return);
+        assert_eq!(take(&log), ["section:All:0"]);
+        press_key(&ui, Key::UpArrow);
+        press_key(&ui, Key::Return);
+        assert_eq!(take(&log), ["section:All:0"], "the first entry stops");
+    }
+
+    fn the_sidebar_names_every_entry_and_marks_the_open_view() {
+        let (ui, _log) = start();
+        let _ = find(&ui, "Navigation", AccessibleRole::List);
+        for label in ["All items", "Pinned", "Recent", "Trash"] {
+            let _ = find(&ui, label, AccessibleRole::ListItem);
+        }
+        for label in ["Email replies", "Addresses", "Code", "billing", "meeting", "sql"] {
+            let _ = find(&ui, label, AccessibleRole::ListItem);
+        }
+        // Every entry sits below the board switcher, one under the other, none scrolled out of the pane.
+        let ys: Vec<f32> = ["All items", "Pinned", "Recent", "Trash", "Email replies", "billing"]
+            .iter()
+            .map(|l| find(&ui, l, AccessibleRole::ListItem).absolute_position().y)
+            .collect();
+        assert!(ys[0] >= 44.0, "All items starts at y={ys:?}");
+        assert!(ys.windows(2).all(|w| w[1] >= w[0] + 28.0), "sidebar rows overlap: {ys:?}");
+        assert_eq!(find(&ui, "All items", AccessibleRole::ListItem).accessible_item_selected(), Some(true));
+        ui.set_section(MainSection::Trash);
+        settle();
+        assert_eq!(find(&ui, "Trash", AccessibleRole::ListItem).accessible_item_selected(), Some(true));
+        assert_eq!(find(&ui, "All items", AccessibleRole::ListItem).accessible_item_selected(), Some(false));
+    }
+
+    fn a_list_context_menu_edits_or_asks_before_deleting() {
+        let (ui, log) = start();
+        for _ in 0..12 {
+            if ui.get_sidebar_focused() {
+                break;
+            }
+            press_key(&ui, Key::Backtab);
+        }
+        for _ in 0..4 {
+            press_key(&ui, Key::DownArrow);
+        }
+        take(&log);
+        press_key(&ui, Key::Menu);
+        assert!(ui.get_menu_open());
+        find(&ui, "Edit list…", AccessibleRole::ListItem).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["list-edit:0"]);
+        assert!(ui.get_sidebar_focused(), "the keys return to the sidebar");
+
+        press_key(&ui, Key::Menu);
+        find(&ui, "Delete list…", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_confirm_open());
+        let dialog = find(&ui, "Delete list “Email replies”?", AccessibleRole::Groupbox);
+        assert_eq!(
+            dialog.accessible_description().as_deref(),
+            Some("The list and its 24 items move to the Trash. You can restore them for 30 days.")
+        );
+        press_key(&ui, Key::Escape);
+        assert!(!ui.get_confirm_open());
+        assert_eq!(take(&log), Vec::<String>::new());
+
+        press_key(&ui, Key::Menu);
+        find(&ui, "Delete list…", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        find(&ui, "Delete list", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["list-delete:0"]);
+    }
+
+    fn a_context_menu_is_as_wide_as_its_rows_not_the_window() {
+        let (ui, _log) = start();
+        for _ in 0..12 {
+            if ui.get_sidebar_focused() {
+                break;
+            }
+            press_key(&ui, Key::Backtab);
+        }
+        for _ in 0..4 {
+            press_key(&ui, Key::DownArrow);
+        }
+        press_key(&ui, Key::Menu);
+        let menu = find(&ui, "Actions", AccessibleRole::List);
+        let size = menu.size();
+        assert!(
+            (180.0..=320.0).contains(&size.width),
+            "the list menu is {}px wide",
+            size.width
+        );
+        let window = ui.window().size().to_logical(ui.window().scale_factor());
+        let right = menu.absolute_position().x + size.width;
+        assert!(right <= window.width, "the menu ends at {right}px of {}", window.width);
+    }
+
+    fn the_toolbar_and_the_help_menu_can_show_the_panel() {
+        let (ui, log) = start();
+        // Without a hotkey the tooltip is plain; with one it names it.
+        find(&ui, "Show Panel", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["panel"]);
+        ui.set_panel_hotkey("Ctrl+Alt+Space".into());
+        settle();
+        find(&ui, "Show Panel (Ctrl+Alt+Space)", AccessibleRole::Button)
+            .invoke_accessible_default_action();
+        assert_eq!(take(&log), ["panel"]);
+
+        // While the Panel is showing, the button offers to hide it.
+        ui.set_panel_visible(true);
+        settle();
+        find(&ui, "Hide Panel (Ctrl+Alt+Space)", AccessibleRole::Button)
+            .invoke_accessible_default_action();
+        assert_eq!(take(&log), ["panel"]);
+        ui.set_panel_visible(false);
+        settle();
+
+        find(&ui, "Help", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Show Panel", AccessibleRole::ListItem).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["panel"]);
+    }
+
+    fn a_tag_and_the_trash_have_their_own_confirmations() {
+        let (ui, log) = start();
+        for _ in 0..12 {
+            if ui.get_sidebar_focused() {
+                break;
+            }
+            press_key(&ui, Key::Backtab);
+        }
+        press_key(&ui, Key::End);
+        take(&log);
+        press_key(&ui, Key::Menu);
+        find(&ui, "Manage tags…", AccessibleRole::ListItem).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["manage-tags"]);
+        press_key(&ui, Key::Menu);
+        find(&ui, "Delete tag…", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        let _ = find(&ui, "Delete tag “sql”?", AccessibleRole::Groupbox);
+        find(&ui, "Delete tag", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["tag-delete:2"]);
+
+        // Trash: the context menu on the Trash entry empties it, after asking.
+        press_key(&ui, Key::Home);
+        for _ in 0..3 {
+            press_key(&ui, Key::DownArrow);
+        }
+        press_key(&ui, Key::Menu);
+        find(&ui, "Empty Trash…", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        let _ = find(&ui, "Empty the Trash?", AccessibleRole::Groupbox);
+        assert_eq!(take(&log), Vec::<String>::new());
+        find(&ui, "Empty Trash", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["empty-trash"]);
+    }
+
+    // ---- Toolbar -----------------------------------------------------------------------------------
+
+    fn search_takes_ctrl_f_and_slash_reports_edits_and_clears() {
+        let (ui, log) = start();
+        assert!(!ui.get_search_focused());
+        chord(ui.window(), &[Key::Control], "f");
+        assert!(ui.get_search_focused());
+        type_text(ui.window(), "inv");
+        settle();
+        assert_eq!(ui.get_query(), "inv");
+        assert_eq!(take(&log), ["query:i", "query:in", "query:inv"]);
+        let field = find(&ui, "Search snippets", AccessibleRole::TextInput);
+        assert_eq!(field.accessible_value().as_deref(), Some("inv"));
+        find(&ui, "Clear search", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(ui.get_query(), "");
+        assert_eq!(take(&log), ["query:"]);
+
+        ui.invoke_focus_items();
+        settle();
+        press(ui.window(), "/");
+        settle();
+        assert!(ui.get_search_focused(), "/ moves to the search");
+        assert_eq!(ui.get_query(), "", "and is not typed into it");
+    }
+
+    fn the_help_button_opens_a_menu_of_four_pages_and_f1_asks_for_the_guide() {
+        let (ui, log) = start();
+        for (label, topic) in [
+            ("Troubleshoot…", "Troubleshoot"),
+            ("User guide", "Guide"),
+            ("About Snipdeck", "About"),
+            ("Keyboard shortcuts", "Shortcuts"),
+        ] {
+            find(&ui, "Help", AccessibleRole::Button).invoke_accessible_default_action();
+            settle();
+            assert!(ui.get_menu_open(), "the Help menu is open");
+            find(&ui, label, AccessibleRole::ListItem).invoke_accessible_default_action();
+            settle();
+            assert!(!ui.get_menu_open(), "choosing a page closes the menu");
+            assert_eq!(take(&log), [format!("help:{topic}")]);
+        }
+        press_key(&ui, Key::F1);
+        assert_eq!(take(&log), ["help:Guide"]);
+    }
+
+    fn the_view_button_opens_a_theme_menu_whose_rows_report_their_index_and_esc_closes_it() {
+        let (ui, log) = start();
+        for (label, index) in [("Theme: System", 0), ("Theme: Light", 1), ("Theme: Dark", 2)] {
+            find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
+            settle();
+            assert!(ui.get_menu_open(), "the View menu is open");
+            find(&ui, label, AccessibleRole::ListItem).invoke_accessible_default_action();
+            settle();
+            assert!(!ui.get_menu_open(), "choosing a theme closes the menu");
+            assert_eq!(take(&log), [format!("theme:{index}")]);
+        }
+        find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        press_key(&ui, Key::Escape);
+        assert!(!ui.get_menu_open(), "Esc closes the menu");
+        assert!(take(&log).is_empty(), "and chooses nothing");
+        // The row of the theme in force has the keyboard, so Enter keeps it.
+        ui.set_theme_index(2);
+        find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        press_key(&ui, Key::Return);
+        assert_eq!(take(&log), ["theme:2"]);
+    }
+
+    fn the_view_menu_has_the_two_row_densities_like_the_toolbar_buttons() {
+        let (ui, log) = start();
+        assert_eq!(ui.get_view(), MainView::Comfortable);
+        for (label, view, logged) in [
+            ("Main list density: Compact", MainView::Compact, "view:Compact"),
+            ("Main list density: Comfortable", MainView::Comfortable, "view:Comfortable"),
+        ] {
+            find(&ui, "View", AccessibleRole::Button).invoke_accessible_default_action();
+            settle();
+            find(&ui, label, AccessibleRole::ListItem).invoke_accessible_default_action();
+            settle();
+            assert!(!ui.get_menu_open(), "choosing a density closes the menu");
+            assert_eq!(ui.get_view(), view);
+            assert_eq!(take(&log), [logged]);
+        }
+    }
+
+    fn ctrl_n_and_the_buttons_report_what_was_asked() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], "n");
+        assert_eq!(take(&log), ["new"]);
+        find(&ui, "New item", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["new"]);
+        find(&ui, "Settings", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["settings"]);
+
+        let comfortable = find(&ui, "Comfortable view", AccessibleRole::Button);
+        assert_eq!(comfortable.accessible_checked(), Some(true));
+        find(&ui, "Compact view", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(ui.get_view(), MainView::Compact);
+        assert_eq!(take(&log), ["view:Compact"]);
+        assert_eq!(find(&ui, "Compact view", AccessibleRole::Button).accessible_checked(), Some(true));
+        find(&ui, "Tile view", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(ui.get_view(), MainView::Tile);
+        assert!(ui.get_columns() >= 1);
+        // Tiles move across and down.
+        ui.invoke_focus_items();
+        settle();
+        take(&log);
+        press_key(&ui, Key::RightArrow);
+        assert_eq!(take(&log), ["select:1:Replace"]);
+        press_key(&ui, Key::DownArrow);
+        let cols = ui.get_columns();
+        assert_eq!(take(&log), [format!("select:{}:Replace", (1 + cols).min(7))]);
+    }
+
+    fn ctrl_shift_n_adds_a_list_ctrl_w_closes_and_ctrl_comma_opens_settings() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control, Key::Shift], "N");
+        assert_eq!(take(&log), ["add-list"], "not a new item");
+        chord(ui.window(), &[Key::Control], "w");
+        assert_eq!(take(&log), ["close"]);
+        chord(ui.window(), &[Key::Control], ",");
+        assert_eq!(take(&log), ["settings"]);
+    }
+
+    fn ctrl_z_undoes_unless_the_search_field_is_being_typed_in() {
+        let (ui, log) = start();
+        ui.invoke_focus_items();
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "z");
+        assert_eq!(take(&log), ["undo"]);
+        chord(ui.window(), &[Key::Control], "f");
+        take(&log);
+        chord(ui.window(), &[Key::Control], "z");
+        assert_eq!(take(&log), Vec::<String>::new(), "the field undoes its own typing");
+    }
+
+    fn the_board_button_names_the_board_and_asks_for_the_menu() {
+        let (ui, _log) = start();
+        let board = find(&ui, "Board: Work", AccessibleRole::Button);
+        assert!(board.size().height >= MIN_HIT);
+    }
+
+    // ---- States ------------------------------------------------------------------------------------
+
+    fn the_sidebar_collapses_to_a_rail_below_720px_and_keeps_its_names() {
+        let (ui, _log) = start();
+        assert!(!ui.get_rail());
+        ui.window().set_size(slint::LogicalSize::new(640.0, 520.0));
+        settle();
+        assert!(ui.get_rail());
+        for label in ["All items", "Pinned", "Email replies", "billing"] {
+            let e = find(&ui, label, AccessibleRole::ListItem);
+            assert!(e.size().width >= MIN_HIT && e.size().height >= MIN_HIT, "{label}");
+        }
+        let _ = find(&ui, "Board: Work", AccessibleRole::Button);
+        ui.window().set_size(slint::LogicalSize::new(760.0, 520.0));
+        settle();
+        assert!(!ui.get_rail());
+    }
+
+    fn an_empty_trash_has_nothing_to_empty() {
+        let (ui, _log) = start();
+        fixture::set_rows(&ui, Vec::new());
+        ui.set_section(MainSection::Trash);
+        settle();
+        assert!(missing(&ui, "Empty Trash…", AccessibleRole::Button), "nothing to empty");
+    }
+
+    fn the_trash_offers_to_empty_itself_when_it_has_items() {
+        let (ui, log) = start();
+        ui.set_section(MainSection::Trash);
+        settle();
+        find(&ui, "Empty Trash…", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_confirm_open());
+        find(&ui, "Empty Trash", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["empty-trash"]);
+    }
+
+    // ---- Accessibility and targets ---------------------------------------------------------------------
+
+    fn rows_read_as_title_and_preview_and_never_leak_a_secret() {
+        let (ui, _log) = start();
+        let labels: Vec<String> = by_role(&ui, AccessibleRole::ListItem)
+            .iter()
+            .filter_map(|r| r.accessible_label().map(|l| l.to_string()))
+            .collect();
+        assert!(labels.iter().any(|l| l.starts_with("Thanks, received")), "{labels:?}");
+        assert!(labels.iter().all(|l| !l.contains("hunter2")), "{labels:?}");
+        let _ = find(&ui, "Snippets", AccessibleRole::List);
+    }
+
+    fn every_control_has_a_role_a_label_and_a_big_enough_target() {
+        let (ui, _log) = start();
+        ui.set_selected_count(2);
+        ui.set_toast_text("Deleted 2 items".into());
+        ui.set_toast_undo_label("Undo".into());
+        settle();
+        let mut checked = 0;
+        for role in [
+            AccessibleRole::Button,
+            AccessibleRole::TextInput,
+            AccessibleRole::ListItem,
+        ] {
+            for e in by_role(&ui, role) {
+                let s = e.size();
+                assert!(
+                    e.accessible_label().is_some_and(|l| !l.is_empty()),
+                    "an unlabelled {role:?}"
+                );
+                assert!(
+                    s.width >= MIN_HIT && s.height >= MIN_HIT,
+                    "{role:?} {:?} is {}x{}",
+                    e.accessible_label(),
+                    s.width,
+                    s.height
+                );
+                checked += 1;
+            }
+        }
+        assert!(checked >= 20, "checked {checked} targets");
+    }
+
+    fn the_cjk_family_is_one_global_with_plex_as_the_default() {
+        let (ui, _log) = start();
+        let fonts = ui.global::<Fonts<'_>>();
+        assert_eq!(fonts.get_sans(), "IBM Plex Sans");
+        assert_eq!(fonts.get_mono(), "IBM Plex Mono");
+        fonts.set_cjk_family("IPAGothic".into());
+        assert_eq!(fonts.get_sans(), "IPAGothic");
+        assert_eq!(fonts.get_mono(), "IBM Plex Mono", "code and keycaps never change");
+        fonts.set_cjk_family("".into());
+        assert_eq!(fonts.get_sans(), "IBM Plex Sans");
+    }
+}
+
+// ---- Command palette and shortcut hints ------------------------------------------------------------
+
+/// What the palette's polite live region says now.
+fn live_status(ui: &MainWindow) -> String {
+    let live: Vec<ElementHandle> = by_role(ui, AccessibleRole::Text)
+        .into_iter()
+        .filter(|e| e.accessible_live_region() == Some(AccessibleLiveness::Polite))
+        // Not the status line along the window's bottom edge, which is a live region of its own.
+        .filter(|e| {
+            e.absolute_position().y + e.size().height
+                < f32::from(u16::try_from(ui.window().size().height).unwrap_or(u16::MAX))
+                    / ui.window().scale_factor()
+                    - 1.0
+        })
+        .collect();
+    assert_eq!(live.len(), 1, "one polite live region in the palette");
+    live[0].accessible_label().expect("a label").to_string()
+}
+
+/// Sets the rows the host would send: `(id, label, keys)`.
+fn palette_rows(ui: &MainWindow, rows: &[(i32, &str, &[&str])]) {
+    let rows: Vec<PaletteRow> = rows
+        .iter()
+        .map(|(id, label, keys)| PaletteRow {
+            id: *id,
+            label: (*label).into(),
+            keys: ModelRc::new(VecModel::from(
+                keys.iter()
+                    .map(|k| (*k).into())
+                    .collect::<Vec<SharedString>>(),
+            )),
+            spoken: keys.join(" ").into(),
+        })
+        .collect();
+    ui.set_palette_rows(ModelRc::new(VecModel::from(rows)));
+    settle();
+}
+
+const SAMPLE: [(i32, &str, &[&str]); 3] = [
+    (0, "New item", &["Ctrl", "N"]),
+    (2, "Search", &["Ctrl", "F"]),
+    (9, "Keyboard shortcuts", &["Ctrl", "/"]),
+];
+
+ui_tests! {
+    fn ctrl_k_ctrl_shift_p_and_the_toolbar_button_open_the_palette_and_ask_for_rows() {
+        let (ui, log) = start();
+        assert!(!ui.get_palette_open());
+        chord(ui.window(), &[Key::Control], "k");
+        settle();
+        assert!(ui.get_palette_open());
+        assert_eq!(take(&log), ["palette-opened"]);
+        press_key(&ui, Key::Escape);
+        assert!(!ui.get_palette_open());
+
+        chord(ui.window(), &[Key::Control, Key::Shift], "P");
+        settle();
+        assert!(ui.get_palette_open(), "Ctrl+Shift+P opens it too");
+        press_key(&ui, Key::Escape);
+        take(&log);
+
+        find(&ui, "Commands (Ctrl+K)", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_palette_open(), "the toolbar button opens it");
+        assert_eq!(take(&log), ["palette-opened"]);
+    }
+
+    fn the_palette_lists_commands_as_list_items_with_their_shortcuts_spoken() {
+        let (ui, _log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        palette_rows(&ui, &SAMPLE);
+        let list = by_role(&ui, AccessibleRole::List);
+        assert!(!list.is_empty());
+        let item = find(&ui, "New item", AccessibleRole::ListItem);
+        assert_eq!(item.accessible_description().as_deref(), Some("Ctrl N"));
+        assert_eq!(item.accessible_item_index(), Some(0));
+        assert_eq!(item.accessible_item_count(), Some(3));
+        assert_eq!(item.accessible_item_selected(), Some(true), "the first row is highlighted");
+        assert_eq!(find(&ui, "Search", AccessibleRole::ListItem).accessible_item_selected(), Some(false));
+        assert_eq!(live_status(&ui), "New item, 1 of 3", "the live footer names the highlighted row and its place");
+    }
+
+    fn typing_reports_the_query_and_the_hosts_rows_replace_the_list() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        palette_rows(&ui, &SAMPLE);
+        take(&log);
+        type_text(ui.window(), "se");
+        settle();
+        assert_eq!(take(&log), ["palette-query:s", "palette-query:se"]);
+        palette_rows(&ui, &[SAMPLE[1]]);
+        assert!(missing(&ui, "New item", AccessibleRole::ListItem));
+        find(&ui, "Search", AccessibleRole::ListItem);
+        assert_eq!(live_status(&ui), "Search, 1 of 1");
+        palette_rows(&ui, &[]);
+        find(&ui, "No matching command", AccessibleRole::Text);
+        assert_eq!(live_status(&ui), "0 found");
+    }
+
+    fn a_long_palette_list_keeps_its_rows_clear_of_the_scrollbar_strip() {
+        let (ui, _log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        let labels: Vec<String> = (0..24).map(|i| format!("Command number {i}")).collect();
+        let many: Vec<(i32, &str, &[&str])> = labels
+            .iter()
+            .enumerate()
+            .map(|(i, l)| (i32::try_from(i).unwrap(), l.as_str(), &["Ctrl", "K"][..]))
+            .collect();
+        let right = |e: &ElementHandle| e.absolute_position().x + e.size().width;
+        let field = find(&ui, "Commands", AccessibleRole::TextInput);
+        let strip = 24.0; // Space.hit-min
+
+        // Few rows fit, no scrollbar: the rows use the full width the search field has.
+        palette_rows(&ui, &SAMPLE);
+        let row = find(&ui, "New item", AccessibleRole::ListItem);
+        assert!(
+            right(&row) >= right(&field) - 0.5,
+            "no strip is reserved while nothing scrolls: row {} field {}",
+            right(&row),
+            right(&field)
+        );
+
+        // More rows than the list shows: the scrollbar owns the strip at the right edge, on the first row
+        // and on the last (the highlight wraps to it with Up).
+        palette_rows(&ui, &many);
+        let first = find(&ui, "Command number 0", AccessibleRole::ListItem);
+        assert!(
+            right(&first) <= right(&field) - strip + 0.5,
+            "the first row ends before the scrollbar strip: row {} field {}",
+            right(&first),
+            right(&field)
+        );
+        assert!(
+            (first.absolute_position().x - field.absolute_position().x).abs() <= 0.5,
+            "and it starts at the field's left edge, not centred in what is left"
+        );
+        press_key(&ui, Key::UpArrow);
+        settle();
+        let last = find(&ui, "Command number 23", AccessibleRole::ListItem);
+        assert_eq!(last.accessible_item_selected(), Some(true), "Up wrapped to the last row");
+        assert!(right(&last) <= right(&field) - strip + 0.5, "the last row too");
+    }
+
+    fn arrows_move_the_highlight_wrapping_and_enter_runs_the_command_and_gives_focus_back() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        palette_rows(&ui, &SAMPLE);
+        take(&log);
+        press_key(&ui, Key::DownArrow);
+        assert_eq!(find(&ui, "Search", AccessibleRole::ListItem).accessible_item_selected(), Some(true));
+        assert_eq!(live_status(&ui), "Search, 2 of 3", "the live region follows the highlight");
+        press_key(&ui, Key::UpArrow);
+        press_key(&ui, Key::UpArrow);
+        assert_eq!(
+            find(&ui, "Keyboard shortcuts", AccessibleRole::ListItem).accessible_item_selected(),
+            Some(true),
+            "Up from the first row wraps to the last"
+        );
+        press_key(&ui, Key::Return);
+        assert_eq!(take(&log), ["command:9"], "the id of the highlighted row, not its position");
+        assert!(!ui.get_palette_open());
+        assert!(ui.get_items_focused(), "the keyboard is back on the items");
+    }
+
+    fn clicking_a_row_runs_it_and_escape_closes_without_running() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        palette_rows(&ui, &SAMPLE);
+        take(&log);
+        press_key(&ui, Key::Escape);
+        assert!(!ui.get_palette_open());
+        assert!(ui.get_items_focused(), "Escape returns the focus");
+        assert_eq!(take(&log), Vec::<String>::new());
+
+        chord(ui.window(), &[Key::Control], "k");
+        palette_rows(&ui, &SAMPLE);
+        take(&log);
+        find(&ui, "Search", AccessibleRole::ListItem).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["command:2"]);
+        assert!(!ui.get_palette_open());
+    }
+
+    fn the_palette_swallows_the_windows_other_shortcuts_while_it_is_open() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        palette_rows(&ui, &SAMPLE);
+        take(&log);
+        chord(ui.window(), &[Key::Control], "n");
+        settle();
+        assert!(!take(&log).contains(&"new".to_string()), "Ctrl+N does not add an item behind the palette");
+    }
+
+    fn ctrl_comma_and_ctrl_slash_open_settings_and_the_shortcuts_sheet() {
+        let (ui, log) = start();
+        chord(ui.window(), &[Key::Control], ",");
+        assert_eq!(take(&log), ["settings"]);
+        chord(ui.window(), &[Key::Control], "/");
+        assert_eq!(take(&log), ["help:Shortcuts"]);
+        assert!(!ui.get_search_focused(), "Ctrl+/ is not the bare / that opens the search");
+    }
+
+    fn the_help_menu_lists_the_shortcuts_with_their_keys() {
+        let (ui, log) = start();
+        find(&ui, "Help", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        let row = find(&ui, "Keyboard shortcuts", AccessibleRole::ListItem);
+        assert_eq!(row.accessible_description().as_deref(), Some("Ctrl+/"));
+        row.invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["help:Shortcuts"]);
+    }
+
+    fn an_empty_deck_names_the_keys_that_help() {
+        let (ui, _log) = start();
+        fixture::set_rows(&ui, Vec::new());
+        settle();
+        find(&ui, "Press Ctrl+N to add a snippet, or Ctrl+K to see every command.", AccessibleRole::Text);
+    }
+
+    fn the_recent_list_is_one_tab_stop_with_a_roving_active_row() {
+        let (ui, log) = start();
+        let hook = |name: &'static str| {
+            let log = log.clone();
+            move |i: i32| log.borrow_mut().push(format!("{name}:{i}"))
+        };
+        ui.on_recent_copied(hook("copy"));
+        ui.on_recent_deleted(hook("delete"));
+        {
+            let log = log.clone();
+            ui.on_recent_saved(move |r, t| log.borrow_mut().push(format!("save:{r}:{t}")));
+        }
+        let entry = |id: i32, text: &str| snipdeck_ui::RecentRow { id, preview: text.into(), app: "".into(), age_minutes: 1 };
+        ui.set_recent_on(true);
+        ui.set_recent_rows(ModelRc::new(VecModel::from(vec![entry(10, "one"), entry(20, "two"), entry(30, "three")])));
+        ui.set_section(MainSection::Recent);
+        ui.invoke_focus_items();
+        settle();
+        take(&log);
+        press_key(&ui, Key::Return);
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::DownArrow);
+        press_key(&ui, Key::Return);
+        press_key(&ui, Key::Home);
+        press_key(&ui, Key::End);
+        chord(ui.window(), &[Key::Control], &key(Key::Delete));
+        press_key(&ui, Key::Delete);
+        press_key(&ui, Key::Home);
+        press_key(&ui, Key::RightArrow);
+        assert_eq!(take(&log), ["copy:10", "copy:30", "delete:30"]);
+        let chooser = ElementHandle::find_by_accessible_label(&ui, "Save to…").count();
+        assert!(chooser > 0, "Right arrow opens the Save to… chooser");
+    }
+
+    fn clearing_the_recent_history_asks_first_and_the_locked_list_offers_the_unlock() {
+        let (ui, log) = start();
+        {
+            let cleared = log.clone();
+            ui.on_recent_cleared(move || cleared.borrow_mut().push("cleared".to_string()));
+            let unlock = log.clone();
+            ui.on_recent_unlock_requested(move || unlock.borrow_mut().push("unlock".to_string()));
+        }
+        let entry = |id: i32| snipdeck_ui::RecentRow { id, preview: "one".into(), app: "".into(), age_minutes: 1 };
+        ui.set_recent_on(true);
+        ui.set_recent_rows(ModelRc::new(VecModel::from(vec![entry(1), entry(2)])));
+        ui.set_section(MainSection::Recent);
+        settle();
+        take(&log);
+        find(&ui, "Clear recent history", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_confirm_open());
+        assert_eq!(take(&log), Vec::<String>::new(), "one click clears nothing");
+        find(&ui, "Clear history", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["cleared"]);
+
+        ui.set_recent_rows(ModelRc::new(VecModel::from(Vec::<snipdeck_ui::RecentRow>::new())));
+        ui.set_recent_locked(true);
+        fixture::set_rows(&ui, Vec::new());
+        settle();
+        assert!(ElementHandle::find_by_accessible_label(&ui, "Recent copies are locked").next().is_some());
+        find(&ui, "Unlock", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["unlock"]);
+    }
+}

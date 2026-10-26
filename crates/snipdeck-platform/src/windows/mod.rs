@@ -3,12 +3,17 @@
 //! | Module | Provides |
 //! |---|---|
 //! | [`clipboard`] | `WinClipboard`: [`crate::pipeline::Clipboard`] with delayed rendering |
+//! | [`clipboard_history`] | Text entries of the Win+V clipboard history (`WinRT`) |
 //! | [`keyboard`] | `WinKeyboard`: [`crate::pipeline::Keyboard`] via `SendInput` |
 //! | [`target`] | Foreground tracking, UIPI check, caret / UI Automation focus probe |
 //! | [`window_style`] | Non-activating panel style and its `WM_STYLECHANGING` subclass |
+//! | [`erase`] | The theme colour a window shows before its first frame |
+//! | [`paint_diag`] | `SNIPDECK_DIAG=render`: paint, erase, move and DWM facts for a log |
+//! | [`screen`] | Mouse position and the work area and scale of the monitor under a point |
 //! | [`hotkey`] | Global hotkeys on a dedicated thread |
 //! | [`autostart`] | Start with Windows (`HKCU\...\Run`) |
 //! | [`single_instance`] | One running instance; a second launch signals the first |
+//! | [`console`] | Attach to the parent's console so `--help` and `--check-db` can print |
 //! | [`dpi`] | Per-monitor DPI awareness for windows created before the UI toolkit's |
 //! | [`dpapi`] | `CryptProtectData` wrappers for the sensitive-items key |
 //! | [`tray`] | `WinTray`: [`crate::tray::Tray`] via `Shell_NotifyIconW` (v4), menu, `TaskbarCreated` |
@@ -20,11 +25,17 @@
 
 pub mod autostart;
 pub mod clipboard;
+pub mod clipboard_history;
+pub mod console;
 pub mod dpapi;
 pub mod dpi;
+pub mod erase;
+pub mod file_dialog;
 mod hidden_window;
 pub mod hotkey;
 pub mod keyboard;
+pub mod paint_diag;
+pub mod screen;
 pub mod single_instance;
 pub mod system_look;
 pub mod target;

@@ -15,7 +15,7 @@ use snipdeck_core::{
 use crate::blobs::{BlobMark, Blobs};
 use crate::crypto::DataKey;
 use crate::items::Written;
-use crate::store::begin;
+use crate::store::{Quiet, begin};
 use crate::{
     BlobStore, BoardRepo, Error, ItemRepo, ListRepo, Result, Store, TagRepo, TrashEntry, TrashRepo,
     Trashable, boards, items, tags, trash,
@@ -34,6 +34,7 @@ pub(crate) struct Reader<'a> {
     pub conn: &'a Connection,
     pub blobs: &'a Blobs,
     pub key: Option<&'a DataKey>,
+    pub quiet: &'a Quiet,
 }
 
 /// Work that follows a commit and never fails the commit (review M4): blob bookkeeping,
@@ -103,6 +104,7 @@ impl Access for Store {
             conn: &self.conn,
             blobs: &self.blobs,
             key: self.key.as_ref(),
+            quiet: &self.quiet,
         }
     }
 
@@ -117,6 +119,7 @@ impl Access for Batch<'_> {
             conn: &self.tx,
             blobs: &*self.guard.blobs,
             key: self.key,
+            quiet: self.quiet,
         }
     }
 
@@ -198,6 +201,7 @@ pub struct Batch<'a> {
     tx: Transaction<'a>,
     guard: BlobGuard<'a>,
     key: Option<&'a DataKey>,
+    quiet: &'a Quiet,
     post: Post,
     /// A failed step could not be undone: the transaction must not commit.
     poisoned: bool,
@@ -232,6 +236,7 @@ impl Store {
                     mark: Some(mark),
                 },
                 key: self.key.as_ref(),
+                quiet: &self.quiet,
                 post: Post::default(),
                 poisoned: false,
             };
@@ -366,7 +371,7 @@ impl Store {
     /// Restoring a list or item inside a trashed board revives the board too, so the Free
     /// board limit cannot be bypassed by trashing a board, creating another and restoring the
     /// first. Storage stays free of entitlements: the app passes the limit
-    /// (`Some(Entitlements::FREE_BOARD_LIMIT)` on Free, `None` on Pro). Over the limit it fails
+    /// (`Some(Entitlements::FREE_BOARD_LIMIT)` on Free, `None` on Supporter). Over the limit it fails
     /// with `Error::Core(ProRequired(Feature::UnlimitedBoards))`, the upsell path, and changes
     /// nothing.
     ///
@@ -443,6 +448,19 @@ macro_rules! repo_impls {
                 items::all_items(self.reader().conn)
             }
 
+            fn plain_formats(&self) -> Result<Vec<(ItemId, Formats)>> {
+                items::plain_formats(self.reader().conn)
+            }
+
+            fn change_counter(&self) -> u64 {
+                let r = self.reader();
+                r.conn.total_changes().saturating_sub(r.quiet.all.get())
+            }
+
+            fn usage_counter(&self) -> u64 {
+                self.reader().quiet.uses.get()
+            }
+
             fn item(&self, id: ItemId) -> Result<Item> {
                 items::item(self.reader().conn, id)
             }
@@ -470,7 +488,13 @@ macro_rules! repo_impls {
             }
 
             fn record_use(&mut self, id: ItemId, at: Timestamp) -> Result<()> {
-                self.writer(|cx| items::record_use(cx, id, at))
+                let before = self.reader().conn.total_changes();
+                let done = self.writer(|cx| items::record_use(cx, id, at));
+                let r = self.reader();
+                let delta = r.conn.total_changes() - before;
+                r.quiet.all.set(r.quiet.all.get() + delta);
+                r.quiet.uses.set(r.quiet.uses.get() + delta);
+                done
             }
 
             fn search(&self, query: &str, limit: usize) -> Result<Vec<ItemId>> {
@@ -512,6 +536,10 @@ macro_rules! repo_impls {
 
             fn purge(&mut self, cutoff: Timestamp) -> Result<usize> {
                 self.writer(|cx| trash::purge(cx, cutoff))
+            }
+
+            fn purge_entry(&mut self, target: Trashable) -> Result<()> {
+                self.writer(|cx| trash::purge_entry(cx, target))
             }
         }
     };

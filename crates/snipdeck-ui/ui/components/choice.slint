@@ -1,4 +1,4 @@
-import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
+import { SystemLook, Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
 import { Icon } from "icon.slint";
 import { StateColor } from "state-color.slint";
 import { Icons } from "../icons.slint";
@@ -16,15 +16,16 @@ export component Toggle inherits Rectangle {
     // Spoken label when there is no visible text.
     in property <string> a11y-label;
     in property <bool> enabled: true;
+    out property <bool> has-focus: scope.has-focus;
     callback toggled(bool);
 
     property <bool> pressed: touch.pressed && root.enabled;
     property <bool> hovered: touch.has-hover && root.enabled;
-    property <length> track-w: 36px;
-    property <length> track-h: 20px;
-    property <length> knob: 14px;
+    property <length> track-w: 36px * SystemLook.text-scale;
+    property <length> track-h: 20px * SystemLook.text-scale;
+    property <length> knob: 14px * SystemLook.text-scale;
 
-    height: max(Space.hit-min, Type.line-base + Space.s1);
+    height: max(Space.hit-min * SystemLook.text-scale, Type.line-base + Space.s1);
     min-width: root.track-w;
     forward-focus: scope;
     accessible-role: switch;
@@ -67,7 +68,7 @@ export component Toggle inherits Rectangle {
                     animate x { duration: Motion.quick; easing: Motion.out; }
                     if root.checked: Icon {
                         source: Icons.check;
-                        size: 10px;
+                        size: 10px * SystemLook.text-scale;
                         tint: Theme.accent;
                         x: (parent.width - self.width) / 2;
                         y: (parent.height - self.height) / 2;
@@ -130,8 +131,8 @@ export component Checkbox inherits Rectangle {
     property <bool> hovered: touch.has-hover && root.enabled;
     property <bool> filled: root.checked || root.mixed;
 
-    height: max(Space.hit-min, Type.line-base + Space.s1);
-    min-width: Space.hit-min;
+    height: max(Space.hit-min * SystemLook.text-scale, Type.line-base + Space.s1);
+    min-width: Space.hit-min * SystemLook.text-scale;
     forward-focus: scope;
     accessible-role: checkbox;
     accessible-label: root.a11y-label != "" ? root.a11y-label : root.text;
@@ -155,12 +156,12 @@ export component Checkbox inherits Rectangle {
         spacing: Space.s1;
         alignment: start;
         Rectangle {
-            width: Space.hit-min;
+            width: Space.hit-min * SystemLook.text-scale;
             Rectangle {
                 x: (parent.width - self.width) / 2;
                 y: (parent.height - self.height) / 2;
-                width: 16px;
-                height: 16px;
+                width: 16px * SystemLook.text-scale;
+                height: 16px * SystemLook.text-scale;
                 border-radius: Radius.sm;
                 background: root.filled
                     ? (root.pressed ? Theme.accent-pressed : root.hovered ? Theme.accent-hover : Theme.accent)
@@ -171,7 +172,7 @@ export component Checkbox inherits Rectangle {
                 animate background { duration: Motion.instant; easing: Motion.out; }
                 if root.filled: Icon {
                     source: root.mixed ? Icons.minus : Icons.check;
-                    size: 12px;
+                    size: 12px * SystemLook.text-scale;
                     tint: Theme.text-on-accent;
                     x: (parent.width - self.width) / 2;
                     y: (parent.height - self.height) / 2;
@@ -229,8 +230,8 @@ export component Radio inherits Rectangle {
     property <bool> pressed: touch.pressed && root.enabled;
     property <bool> hovered: touch.has-hover && root.enabled;
 
-    height: max(Space.hit-min, Type.line-base + Space.s1);
-    min-width: Space.hit-min;
+    height: max(Space.hit-min * SystemLook.text-scale, Type.line-base + Space.s1);
+    min-width: Space.hit-min * SystemLook.text-scale;
     forward-focus: scope;
     accessible-role: radio-button;
     accessible-label: root.a11y-label != "" ? root.a11y-label : root.text;
@@ -249,12 +250,12 @@ export component Radio inherits Rectangle {
         spacing: Space.s1;
         alignment: start;
         Rectangle {
-            width: Space.hit-min;
+            width: Space.hit-min * SystemLook.text-scale;
             Rectangle {
                 x: (parent.width - self.width) / 2;
                 y: (parent.height - self.height) / 2;
-                width: 16px;
-                height: 16px;
+                width: 16px * SystemLook.text-scale;
+                height: 16px * SystemLook.text-scale;
                 border-radius: Radius.lg;
                 background: root.pressed ? StateColor.pressed() : root.hovered ? Theme.bg-hover : Theme.bg-surface;
                 border-width: root.selected ? 2px : 1px;
@@ -264,8 +265,8 @@ export component Radio inherits Rectangle {
                 if root.selected: Rectangle {
                     x: (parent.width - self.width) / 2;
                     y: (parent.height - self.height) / 2;
-                    width: 8px;
-                    height: 8px;
+                    width: 8px * SystemLook.text-scale;
+                    height: 8px * SystemLook.text-scale;
                     border-radius: Radius.sm;
                     background: Theme.accent;
                 }

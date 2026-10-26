@@ -97,3 +97,39 @@ pub fn assert_healthy(store: &Store) {
     let problems = store.check_integrity().unwrap();
     assert!(problems.is_empty(), "integrity problems: {problems:#?}");
 }
+
+/// Every file under `dir` that can hold content: the database, the WAL and the blobs, in no
+/// particular order. Two files are left out because they hold no content and cannot be read while
+/// the store is open on Windows (error 33, a locked region): the WAL index (`*-shm`, page numbers
+/// only, byte-range locked by SQLite) and the single-writer `snipdeck.lock` (empty, exclusively
+/// locked).
+pub fn content_files(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut files = Vec::new();
+    let mut stack = vec![dir.to_owned()];
+    while let Some(next) = stack.pop() {
+        for entry in std::fs::read_dir(&next).unwrap().flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            let name = path.file_name().map(|n| n.to_string_lossy().into_owned());
+            if name
+                .as_deref()
+                .is_some_and(|n| n.ends_with("-shm") || n == "snipdeck.lock")
+            {
+                continue;
+            }
+            files.push(path);
+        }
+    }
+    files
+}
+
+/// A test password derived at run time from `label`: the same label always gives the same text, and
+/// no password is written down in the test source. Leaks a few bytes per call; tests only.
+pub fn pw(label: &str) -> &'static str {
+    let key = blake3::derive_key("snipdeck test password", label.as_bytes());
+    let hex = blake3::Hash::from_bytes(key).to_hex();
+    Box::leak(hex.as_str()[..24].to_owned().into_boxed_str())
+}

@@ -336,7 +336,7 @@ fn the_archive_is_a_zip_with_the_documented_entries() {
     }
     let manifest: serde_json::Value = serde_json::from_slice(&map["manifest.json"]).unwrap();
     assert_eq!(manifest["format"], "snipdeck-archive");
-    assert_eq!(manifest["format_version"], "1.0");
+    assert_eq!(manifest["format_version"], "1.1");
     assert_eq!(manifest["counts"]["boards"], 2);
     assert_eq!(manifest["counts"]["lists"], 5);
     assert_eq!(manifest["counts"]["items"], 6);

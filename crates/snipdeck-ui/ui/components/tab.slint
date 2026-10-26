@@ -1,12 +1,15 @@
 import { Theme, Type, Radius, Space, Motion, Fonts, SystemLook } from "../theme.slint";
 import { Icons } from "../icons.slint";
 import { Icon } from "icon.slint";
+import { IconButton, IconButtonSize } from "icon-button.slint";
 
 // One list in the panel tab bar. `accent` is the list's colour, resolved by the caller from the nine list hues
 // (step 600 in light, 400 in dark; DESIGN.md §2).
 export struct TabItem {
     text: string,
     accent: color,
+    // The list's icon, drawn before the name; an empty image is none. The name stays the accessible name.
+    icon: image,
 }
 
 // DESIGN.md §4 Tab (panel variant): an index-card divider tab. The list colour appears only as the 2px
@@ -17,12 +20,11 @@ export struct TabItem {
 export component Tab inherits Rectangle {
     in property <string> text;
     in property <color> accent;
+    in property <image> icon;
     in property <bool> selected: false;
     in property <bool> enabled: true;
     // A drag (an item being moved to this list) is hovering over the tab.
     in property <bool> drag-over: false;
-    // Whether dropping an item on this tab is accepted.
-    in property <bool> accepts-drop: true;
     // Position among the tabs, for assistive technology (0-based).
     in property <int> index: 0;
     in property <int> count: 1;
@@ -30,12 +32,19 @@ export component Tab inherits Rectangle {
     in property <bool> focus-visible: false;
     // Forced hover for galleries and screenshots.
     in property <bool> show-hover: false;
+    // Spoken after the label when the tab has a context menu ("Right-click or press Menu for list actions"); the app
+    // translates it. Empty: no menu.
+    in property <string> menu-hint;
     callback clicked();
-    // An item was dropped on the tab.
-    callback dropped();
+    // Right-click released on the tab (position inside the tab); the bar adds the Menu key and Shift+F10.
+    callback context-menu-requested(length, length);
+    callback double-clicked();
+    // A dragged item is over the tab: whether the host accepts the payload, and the drop itself.
+    pure callback drop-accepted(data-transfer) -> bool;
+    callback dropped(data-transfer);
 
     property <bool> hovered: (touch.has-hover && root.enabled) || root.show-hover;
-    property <bool> over: root.drag-over || drop.has-drag;
+    property <bool> over: root.drag-over || tab-drop.has-drag;
 
     // Grows with the text size so the label and the underline never collide.
     height: max(Space.s8, Type.line-base + Space.s3);
@@ -47,6 +56,7 @@ export component Tab inherits Rectangle {
     opacity: root.enabled ? 1.0 : 0.45;
     accessible-role: tab;
     accessible-label: root.text;
+    accessible-description: root.menu-hint;
     accessible-enabled: root.enabled;
     accessible-item-index: root.index;
     accessible-item-count: root.count;
@@ -57,10 +67,18 @@ export component Tab inherits Rectangle {
     animate background { duration: Motion.instant; easing: Motion.out; }
 
     HorizontalLayout {
-        padding-left: Space.s3;
-        padding-right: Space.s3;
+        // 7 in: the first label (box x8, 1px glyph inset) starts at x16, the Panel header's left edge (audit 14).
+        padding-left: Space.s2 - 1px;
+        padding-right: Space.s2;
         padding-bottom: Space.s0-5;
         alignment: center;
+        spacing: Space.s1;
+        if root.icon.width > 0: Icon {
+            source: root.icon;
+            size: Space.s4 * SystemLook.text-scale;
+            tint: root.selected || root.hovered ? Theme.text-primary : Theme.text-secondary;
+            y: (parent.height - self.height) / 2;
+        }
         Text {
             text: root.text;
             color: root.selected || root.hovered ? Theme.text-primary : Theme.text-secondary;
@@ -103,18 +121,76 @@ export component Tab inherits Rectangle {
         background: transparent;
     }
 
-    touch := TouchArea {
+    tab-drop := DropArea {
+        width: parent.width;
+        height: parent.height;
         enabled: root.enabled;
-        clicked => { root.clicked(); }
-    }
-
-    drop := DropArea {
-        enabled: root.enabled && root.accepts-drop;
-        can-drop(event) => { DragAction.move }
+        can-drop(event) => { root.drop-accepted(event.data) ? DragAction.move : DragAction.none }
         dropped(event) => {
-            root.dropped();
-            DragAction.move
+            root.dropped(event.data);
+            return DragAction.move;
         }
+
+        touch := TouchArea {
+            enabled: root.enabled;
+            clicked => { root.clicked(); }
+            double-clicked => { root.double-clicked(); }
+            pointer-event(event) => {
+                if (event.button == PointerEventButton.right && event.kind == PointerEventKind.up) {
+                    root.context-menu-requested(self.mouse-x, self.mouse-y);
+                }
+            }
+        }
+    }
+}
+
+// The Recent inbox's tab (SPEC 5.1, 5.6): a clock at the far left of the Panel's tab row, shown while clipboard
+// history is on. Same height, underline and focus ring as a list `Tab`; the underline uses the accent colour
+// because a clock has no list colour.
+export component ClockTab inherits Rectangle {
+    in property <string> label;
+    in property <bool> selected: false;
+    // Keyboard focus is on the tab.
+    in property <bool> focus-visible: false;
+    callback clicked();
+
+    property <bool> hovered: touch.has-hover;
+
+    height: max(Space.s8, Type.line-base + Space.s3);
+    width: Space.s8;
+    background: root.hovered && !root.selected ? Theme.bg-hover : transparent;
+    border-top-left-radius: Radius.sm;
+    border-top-right-radius: Radius.sm;
+    accessible-role: tab;
+    accessible-label: root.label;
+    accessible-item-selectable: true;
+    accessible-item-selected: root.selected;
+    accessible-action-default => { root.clicked(); }
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    Icon {
+        source: Icons.clock;
+        tint: root.selected || root.hovered ? Theme.text-primary : Theme.text-secondary;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height - Space.s0-5) / 2;
+    }
+    Rectangle {
+        x: 0px;
+        y: parent.height - Space.s0-5;
+        width: parent.width;
+        height: Space.s0-5;
+        background: root.selected ? Theme.accent : transparent;
+    }
+    Rectangle {
+        y: 0px;
+        height: parent.height - Space.s0-5;
+        border-width: root.focus-visible ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.sm;
+        background: transparent;
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
     }
 }
 
@@ -127,9 +203,16 @@ export component ListTabBar inherits Rectangle {
     in-out property <int> current: 0;
     // Index of the tab an item is being dragged over, or -1.
     in property <int> drag-over-index: -1;
+    // No list is the current one (the Recent tab is): no tab is drawn selected, and the current one can be picked again.
+    in property <bool> none-selected: false;
     // Accessible names for the bar and the add button (the app translates them).
     in property <string> label;
     in property <string> add-label;
+    // Names of the two caret buttons that scroll tabs lying out of view (the app translates them).
+    in property <string> scroll-left-label;
+    in property <string> scroll-right-label;
+    // Spoken as each tab's description when the app offers a tab menu (empty: none).
+    in property <string> menu-hint;
     // Forced states for galleries and screenshots.
     in property <int> show-hover-index: -1;
     in property <bool> show-focus: false;
@@ -137,12 +220,22 @@ export component ListTabBar inherits Rectangle {
     // The user picked tab `index` (click or keyboard). `current` is already updated.
     callback selected(index: int);
     callback add-clicked();
-    // An item was dropped on tab `index`.
-    callback dropped(index: int);
+    // An item dragged from the list was dropped on tab `index`; `drop-accepted` asks the host whether the payload is one.
+    pure callback drop-accepted(data-transfer) -> bool;
+    callback tab-dropped(index: int, data: data-transfer);
+    // Right-click, Menu or Shift+F10 on tab `index`: where to put the menu, in window coordinates.
+    callback menu-requested(index: int, x: length, y: length);
+    // Double-click or F2 on tab `index`.
+    callback edit-requested(index: int);
 
     out property <bool> has-focus: scope.has-focus;
+    // The "+" button is under the pointer or holds keyboard focus (the host shows its tooltip).
+    out property <bool> add-active: add-touch.has-hover || add-scope.has-focus;
     // Scroll offset of the tabs (<= 0).
     out property <length> scroll-x: flick.content-x;
+    // More tabs lie out of view to the left / right: the matching caret button shows.
+    property <bool> can-left: flick.content-x < -1px;
+    property <bool> can-right: flick.content-x > flick.width - flick.content-width + 1px;
 
     height: max(Space.s8, Type.line-base + Space.s3);
     background: transparent;
@@ -154,7 +247,7 @@ export component ListTabBar inherits Rectangle {
     accessible-delegate-focus: root.current;
 
     function select(index: int) {
-        if (index < 0 || index >= root.tabs.length || index == root.current) {
+        if (index < 0 || index >= root.tabs.length || (index == root.current && !root.none-selected)) {
             return;
         }
         root.current = index;
@@ -162,11 +255,13 @@ export component ListTabBar inherits Rectangle {
     }
 
     // Scrolls so that the tab [x, x + w) is fully visible.
+    // The caret patches cover this much of each end while there are tabs beyond it, so a tab is brought in clear of them.
+    property <length> patch-w: Space.hit-min + 2 * Space.s1;
     function reveal(x: length, w: length) {
-        if (x + flick.content-x < 0px) {
-            flick.content-x = -x;
-        } else if (x + w + flick.content-x > flick.width) {
-            flick.content-x = min(0px, flick.width - x - w);
+        if (x + flick.content-x < root.patch-w) {
+            flick.content-x = min(0px, root.patch-w - x);
+        } else if (x + w + flick.content-x > flick.width - root.patch-w) {
+            flick.content-x = min(0px, max(flick.width - flick.content-width, flick.width - root.patch-w - x - w));
         }
     }
 
@@ -194,6 +289,14 @@ export component ListTabBar inherits Rectangle {
             } else if (event.text == Key.End) {
                 root.select(root.tabs.length - 1);
                 return accept;
+            } else if (root.menu-hint != "" && root.current >= 0 && root.current < root.tabs.length) {
+                if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
+                    root.menu-requested(root.current, root.absolute-position.x + Space.s2, root.absolute-position.y + root.height);
+                    return accept;
+                } else if (event.text == Key.F2) {
+                    root.edit-requested(root.current);
+                    return accept;
+                }
             }
             return reject;
         }
@@ -223,14 +326,27 @@ export component ListTabBar inherits Rectangle {
                 for item[i] in root.tabs: tab := Tab {
                     text: item.text;
                     accent: item.accent;
-                    selected: i == root.current;
+                    icon: item.icon;
+                    selected: i == root.current && !root.none-selected;
                     drag-over: i == root.drag-over-index;
                     show-hover: i == root.show-hover-index;
                     index: i;
                     count: root.tabs.length;
-                    focus-visible: (scope.has-focus || root.show-focus) && i == root.current;
+                    drop-accepted(data) => { root.drop-accepted(data) }
+                    dropped(data) => { root.tab-dropped(i, data); }
+                    focus-visible: (scope.has-focus || root.show-focus) && i == root.current && !root.none-selected;
+                    menu-hint: root.menu-hint;
                     clicked => { root.select(i); }
-                    dropped => { root.dropped(i); }
+                    context-menu-requested(x, y) => {
+                        if (root.menu-hint != "") {
+                            root.menu-requested(i, self.absolute-position.x + x, self.absolute-position.y + y);
+                        }
+                    }
+                    double-clicked => {
+                        if (root.menu-hint != "") {
+                            root.edit-requested(i);
+                        }
+                    }
                     // Also on layout: at start-up the selected tab is placed after `selected` is set.
                     changed selected => {
                         if (self.selected) { root.reveal(self.x, self.width); }
@@ -273,6 +389,7 @@ export component ListTabBar inherits Rectangle {
                 background: transparent;
             }
             add-scope := FocusScope {
+                // A Tab stop right after the tab row's own (WCAG 2.1.1: the add-list button stays keyboard-reachable).
                 focus-on-click: false;
                 key-pressed(event) => {
                     if (event.text == " " || event.text == "\n") {
@@ -283,5 +400,42 @@ export component ListTabBar inherits Rectangle {
                 }
             }
         }
+    }
+
+    // The carets float over the ends of the tabs on a solid patch (never a fade, DESIGN.md §7), only on the side
+    // that has more tabs to reveal. No room is reserved for them, so a bar that fits shows none.
+    if root.can-left: Rectangle {
+        x: 0px;
+        width: root.patch-w;
+        height: root.height - 2px;
+        background: Theme.bg-app;
+        // Blocks the tab under the patch from taking the pointer.
+        TouchArea {}
+    }
+    if root.can-left: IconButton {
+        icon: Icons.caret-left;
+        tooltip: root.scroll-left-label;
+        own-tooltip: true;
+        size: IconButtonSize.sm;
+        x: Space.s1;
+        y: (parent.height - self.height) / 2;
+        clicked => { flick.content-x = min(0px, max(flick.width - flick.content-width, flick.content-x + flick.width * 0.75)); }
+    }
+    if root.can-right: Rectangle {
+        x: flick.width - self.width;
+        width: root.patch-w;
+        height: root.height - 2px;
+        background: Theme.bg-app;
+        // Blocks the tab under the patch from taking the pointer.
+        TouchArea {}
+    }
+    if root.can-right: IconButton {
+        icon: Icons.caret-right;
+        tooltip: root.scroll-right-label;
+        own-tooltip: true;
+        size: IconButtonSize.sm;
+        x: flick.width - Space.s1 - self.width;
+        y: (parent.height - self.height) / 2;
+        clicked => { flick.content-x = min(0px, max(flick.width - flick.content-width, flick.content-x - flick.width * 0.75)); }
     }
 }

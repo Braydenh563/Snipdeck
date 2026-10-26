@@ -38,8 +38,9 @@ export component MenuItem inherits Rectangle {
     height: max(Space.hit, Type.line-base + Space.s2);
     background: root.current && !root.disabled ? Theme.bg-overlay-hover : transparent;
     border-radius: Radius.sm;
-    border-width: root.current && !root.disabled && Theme.hc-border != transparent ? 1px : 0px;
-    border-color: Theme.hc-border;
+    // The highlighted row is where the keyboard is: it carries the focus ring (WCAG 2.4.7).
+    border-width: root.current && !root.disabled ? 2px : 0px;
+    border-color: Theme.focus-ring;
     opacity: root.disabled ? 0.45 : 1.0;
     accessible-role: list-item;
     accessible-label: root.text;
@@ -160,7 +161,12 @@ export component Menu inherits Rectangle {
         }
     }
 
-    min-width: 200px;
+    // Sized to its rows (label, shortcut and the fixed gaps), never to the window: at least 180px, at most 320px.
+    // A host that sets `width` itself overrides this.
+    property <length> text-w: text-measure.preferred-width;
+    property <length> key-w: key-measure.preferred-width;
+    width: min(max(180px, root.text-w + (root.key-w > 0px ? root.key-w + 2 * Space.s1 + 2px + Space.s2 : 0px)
+        + (root.icons ? 16px + Space.s2 : 0px) + 2 * Space.s2 + 2 * Space.s1 + 2px), 320px);
     height: lay.preferred-height;
     background: Theme.bg-overlay;
     border-radius: Radius.lg;
@@ -198,6 +204,27 @@ export component Menu inherits Rectangle {
                 return accept;
             }
             return reject;
+        }
+    }
+
+    // Unseen: the widest label and the widest shortcut, which a layout of zero-height texts reports.
+    text-measure := VerticalLayout {
+        visible: false;
+        for entry in root.entries: Text {
+            height: 0px;
+            text: entry.text;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+        }
+    }
+    key-measure := VerticalLayout {
+        visible: false;
+        for entry in root.entries: Text {
+            height: 0px;
+            text: entry.shortcut;
+            font-family: Fonts.mono;
+            font-size: Type.xs;
+            font-weight: Type.medium;
         }
     }
 

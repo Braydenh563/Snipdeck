@@ -169,6 +169,24 @@ INSERT INTO item_fts (item_fts, rank) VALUES ('secure-delete', 1);
 INSERT INTO item_fts (item_fts) VALUES ('optimize');
 ";
 
+/// Version 4: an item's colour label and a list's icon. Both are optional text keys, checked
+/// against the sets `snipdeck-core` defines (adding a key later is a new migration).
+pub(crate) const V4: &str = r"
+ALTER TABLE items ADD COLUMN label TEXT
+    CHECK (label IS NULL OR label IN
+        ('blue', 'teal', 'green', 'amber', 'orange', 'red', 'violet', 'slate'));
+ALTER TABLE lists ADD COLUMN icon TEXT
+    CHECK (icon IS NULL OR icon IN
+        ('folder', 'star', 'heart', 'briefcase', 'house', 'user', 'envelope-simple', 'chat-circle', 'phone', 'calendar-blank', 'shopping-cart', 'credit-card', 'code', 'terminal-window', 'book-open', 'lightbulb', 'flag', 'bookmark-simple', 'globe', 'map-pin', 'camera', 'music-note', 'wrench', 'rocket-launch'));
+";
+
+/// Version 6: the key record a replacement overwrote, kept until the next one (review B6), so
+/// a wrong replacement can be undone by hand.
+pub(crate) const V6: &str = r"
+ALTER TABLE key_ring ADD COLUMN previous BLOB
+    CHECK (previous IS NULL OR (length(previous) > 6 AND substr(previous, 1, 6) = CAST('SNKEY1' AS BLOB)));
+";
+
 #[cfg(test)]
 mod tests {
     use rusqlite::{Connection, params};

@@ -1,57 +1,138 @@
 // The Panel window (DESIGN.md §5 Panel, ADR-0003, ADR-0008): the compact always-on-top deck the user
-// pastes from. It never takes the OS caption: it draws its own header with a drag region, a pin
-// (keep on top) and a close button, and its keyboard focus lives in the search field so typing
-// always filters. Data comes in as plain structs and models that mirror `snipdeck-app`'s `PanelModel`
-// (rows, tabs, footer, use label); every gesture leaves as a callback. Nothing here talks to the OS.
+// pastes from. It never takes the OS caption: it draws its own header (Panel v2 spec 2.1: board picker, drag
+// region, search, New, keep on top, More, close), and its keyboard focus lives in the search field (collapsed to
+// nothing until it is used, or always shown) so typing always filters. Data comes in as plain structs and models that mirror `snipdeck-app`'s
+// `PanelModel` (rows, tabs, footer, use label); every gesture leaves as a callback. Nothing here talks
+// to the OS: not the window drag (`drag-requested`), nor the resize (`resize-requested`, fired by
+// invisible 6px grips on the four edges and corners), nor the menus (drawn inside the Panel, filled and
+// answered by the host).
 //
 // Keyboard (all handled in `capture-key-pressed` on the window's FocusScope, so they work whichever
 // control has focus):
 //   type            filters; a printable key typed while another control has focus moves into the search
-//   Up / Down       move the selection (PageUp / PageDown a page); Enter uses it, Shift+Enter copies
-//   1-9             use the Nth row while the search is empty (digits are text once a query exists)
-//   Ctrl+Tab        next list, Ctrl+Shift+Tab previous; Ctrl+F focuses and selects the search
-//   Menu, Shift+F10 context menu of the selected row
-//   Esc             clears the search; with nothing to clear, asks the host to hide the Panel
+//   Up / Down       move the selection (PageUp / PageDown a page; Cards: one row of tiles); Enter uses it, Shift+Enter copies
+//   Left / Right    Cards only, with an empty search: one tile back or on
+//   Alt+1-9         use the Nth row, whatever the search holds (bare digits are always search text)
+//   Space (held)    reveals the selected sensitive row while it is held (the eye on the row does the same by hand)
+//   Ctrl+Tab        next list, Ctrl+Shift+Tab previous; Ctrl+F expands, focuses and selects the search
+//   Menu, Shift+F10 context menu of the selected row (on the focused kebab button: the Panel menu)
+//   Ctrl+K          all commands (the Main window's palette); Ctrl+/ the keyboard shortcuts; F1 the user guide
+//   Ctrl+A          select every row; Shift+Up, Shift+Down extend the selection
+//   Ctrl+D          duplicate the selected row
+//   Ctrl+P          pin or unpin the selected row
+//   Ctrl+Shift+P    keep the Panel on top or not (the pin button in the header)
+//   Ctrl+E, F2      edit / rename the selected row (a row has no double-click action: the first click already used it)
+//   Delete          delete the selected row while the search is empty (with a query it edits the text)
+//   Alt+Up, Alt+Down  move the selected row up or down (a list in manual order, no search)
+//   Esc             closes an open menu; else clears the search and collapses it; with nothing to clear, asks the host to hide the Panel
+//
+// Tooltips: every icon-only control reports hover and keyboard focus here; the Panel shows one
+// `Tooltip` after 500ms, and swaps it instantly while the pointer moves between controls.
 import { ListView } from "std-widgets.slint";
-import { Theme, Type, Space, Radius, Fonts, SystemLook, Palette } from "theme.slint";
+import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette } from "theme.slint";
 import { Icons } from "icons.slint";
+import { Icon } from "components/icon.slint";
 import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
 import { DeckEdge, DeckEdgePosition } from "components/deck-edge.slint";
+import { OverlayScrollbar } from "components/scrollbar.slint";
 import { PinnedStrip, PinnedItem } from "components/pinned-strip.slint";
 import { BoardSwitcher } from "components/board-switcher.slint";
-import { ListTabBar, TabItem } from "components/tab.slint";
+import { ListTabBar, TabItem, ClockTab } from "components/tab.slint";
+import { Chooser, ChoiceEntry } from "components/chooser.slint";
+import { ListsMenu } from "components/lists-menu.slint";
 import { SearchField } from "components/text_field.slint";
 import { EmptyState, EmptyStateKind } from "components/empty_state.slint";
-import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind } from "components/feedback.slint";
+import { Toast, ToastKind, ToastPhase, Skeleton, SkeletonKind, Tooltip } from "components/feedback.slint";
 import { Menu, MenuEntry } from "components/menu.slint";
-import { IconButton } from "components/icon-button.slint";
-import { Keycap, KeyCombo } from "components/keycap.slint";
+import { Dialog, DialogVariant } from "components/dialog.slint";
+import { RepaintNudge } from "components/repaint.slint";
+import { Button, ButtonVariant, ButtonSize } from "components/button.slint";
+import { IconButton, IconButtonSize } from "components/icon-button.slint";
+import { Keycap } from "components/keycap.slint";
+import { DockHandle } from "components/dock-handle.slint";
+import { QuickAdd } from "components/quick-add.slint";
 
 // One row of the list, as `snipdeck-app`'s `Row`. The quick-use number is the row's position
-// (1-9 for the first nine); `masked-preview` stands in for a sensitive item's preview.
+// (1-9 for the first nine, used with Alt+N); `masked-preview` stands in for a sensitive item's preview.
 export struct PanelRow {
     kind: ItemKind,
     title: string,
+    // The first search match in the title: the text before it and the match (both empty = no match to mark).
+    mark-before: string,
+    mark-text: string,
     preview: string,
+    // The match in the preview's first line (`preview` is then that line, cut around it) and the tag that matched.
+    preview-before: string,
+    preview-match: string,
+    tag-hit: string,
     masked-preview: string,
     extension: string,
     // Mixed views (search): the list the row lives in, with its colour.
     list-name: string,
     list-color: color,
+    // The item's colour label (-1 none, else 0 to 7 in the order of `ItemLabel`) and its name.
+    label: int,
+    label-name: string,
     image: image,
+    // 1-based place in the paste stack; 0 = not marked.
+    stack-position: int,
+    // In the multi-selection (Ctrl+click, Shift+click, Ctrl+A).
+    marked: bool,
 }
 
-// Per-list view choice (SPEC 5.1): one-line rows or cards with a two-line preview.
-export enum PanelView { compact, comfortable }
+// One entry of the Recent inbox (SPEC 5.6), as `snipdeck-app`'s `RecentRowView`: the start of the copied text, the
+// app it came from (empty = unknown) and whole minutes since the copy.
+export struct RecentRow {
+    // The store's id of the entry: actions carry it, so a list that shifts under an open menu cannot redirect them.
+    id: int,
+    preview: string,
+    app: string,
+    age-minutes: int,
+}
+
+// The Recent entries' wording of their age, shared by the Panel and the Main window.
+export global RecentText {
+    pure public function ago(minutes: int) -> string {
+        return minutes < 1 ? @tr("Just now")
+            : minutes < 60 ? @tr("{} min ago", minutes)
+            : minutes < 1440 ? @tr("{} h ago", floor(minutes / 60))
+            : @tr("{} d ago", floor(minutes / 1440));
+    }
+}
+
+// The Panel's layout (Settings > Panel > Layout, Panel v2 spec 3): one global choice, not per list.
+export enum PanelLayout { list, cards, compact }
+
+// The window edge or corner a resize grip sits on; the host starts the OS resize from it.
+export enum ResizeEdge { left, right, top, bottom, top-left, top-right, bottom-left, bottom-right }
+
+// An invisible strip that reports a left-button press as a resize from its `edge`.
+component ResizeGrip inherits TouchArea {
+    in property <ResizeEdge> edge;
+    callback resize(ResizeEdge);
+
+    mouse-cursor: root.edge == ResizeEdge.left || root.edge == ResizeEdge.right ? MouseCursor.ew-resize
+        : root.edge == ResizeEdge.top || root.edge == ResizeEdge.bottom ? MouseCursor.ns-resize
+        : root.edge == ResizeEdge.top-right || root.edge == ResizeEdge.bottom-left ? MouseCursor.nesw-resize
+        : MouseCursor.nwse-resize;
+
+    pointer-event(event) => {
+        if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+            root.resize(root.edge);
+        }
+    }
+}
 
 export component PanelWindow inherits Window {
     title: @tr("Snipdeck");
     no-frame: true;
-    always-on-top: root.on-top;
+    always-on-top: root.topmost;
     background: Theme.bg-app;
-    min-width: 260px;
+    // A collapsed dock is a strip a few pixels thick: the Panel's minimum size does not apply.
+    min-width: root.dock-collapsed ? 0px : 260px;
     max-width: 480px;
-    min-height: 240px;
+    // Header, a few rows and the footer always fit: the footer is never pushed out of the window.
+    min-height: root.dock-collapsed ? 0px : root.min-h;
     preferred-width: 320px;
     preferred-height: 480px;
 
@@ -61,7 +142,26 @@ export component PanelWindow inherits Window {
     in property <[TabItem]> tabs;
     in property <[PinnedItem]> pinned;
     in property <[PanelRow]> rows;
-    in property <PanelView> view: PanelView.compact;
+    // The Recent inbox (SPEC 5.6): `recent-available` while clipboard history is on shows the clock tab at the far left
+    // of the tab row. `recent-open` is the clock tab being the selected one (the panel sets it; the host is told).
+    in property <bool> recent-available: false;
+    in-out property <bool> recent-open: false;
+    // The host flips it to redraw the whole window (O39, see `RepaintNudge`).
+    in-out property <bool> repaint-flip: false;
+    in property <bool> recent-paused: false;
+    // The library is locked behind a master password: the list is empty and nothing is collected until it is unlocked.
+    in property <bool> recent-locked: false;
+    // The longest the entries are kept, in days.
+    in property <int> recent-days: 7;
+    in property <[RecentRow]> recent-rows;
+    // The lists "Save to…" offers.
+    in property <[ChoiceEntry]> recent-targets;
+    in-out property <int> recent-selected: 0;
+    in property <PanelLayout> layout: PanelLayout.list;
+    // Settings > Panel: the search field is always shown (else it opens when typed into), and the lists are chosen
+    // from a menu in the header instead of a tab row.
+    in property <bool> search-always: false;
+    in property <bool> lists-in-menu: false;
     // True while the app is loading: skeleton rows replace the empty state.
     in property <bool> loading: false;
     // The sensitive row held revealed by the app (-1 = none).
@@ -72,11 +172,51 @@ export component PanelWindow inherits Window {
     // The board menu, drawn inside the Panel; the app fills it and reports its choice.
     in property <bool> board-menu-open: false;
     in property <[MenuEntry]> board-menu-entries;
+    // The kebab menu, drawn the same way: the host fills it, sets `app-menu-open` on `app-menu-requested`
+    // and clears it on `app-menu-activated` or `app-menu-dismissed`.
+    in-out property <bool> app-menu-open: false;
+    in property <[MenuEntry]> app-menu-entries;
+    // The context menu of a card or pinned chip: the host fills it on `context-menu-requested` /
+    // `pinned-context-menu-requested`; the Panel places it at the pointer (`item-menu-x`, `item-menu-y`).
+    in property <bool> item-menu-open: false;
+    in property <[MenuEntry]> item-menu-entries;
+    // The context menu of a list tab (right-click, Menu, Shift+F10, F2 or a double-click edits): the host sets
+    // `list-menu-open` on `list-menu-requested`; its rows are fixed here ("Edit list…", "Delete list…").
+    in property <bool> list-menu-open: false;
+    property <length> list-menu-x: 0px;
+    property <length> list-menu-y: 0px;
+    property <[MenuEntry]> list-menu-entries: [
+        { text: @tr("Edit list…"), icon: Icons.pencil-simple },
+        { text: @tr("Delete list…"), icon: Icons.trash, destructive: true },
+    ];
+    // The list menu's "Delete list…" confirmation (O52): the host sets `list-delete-open` after that row, and nothing
+    // else opens (no list editor). `list-delete-name` and `list-delete-count` fill its words.
+    in property <bool> list-delete-open: false;
+    // The board menu's "Delete board…" confirmation: the same words as the Main window's.
+    in property <bool> board-delete-open: false;
+    in property <string> board-delete-name;
+    in property <int> board-delete-count;
+    in property <string> list-delete-name;
+    in property <int> list-delete-count;
+    // How long the Trash keeps what is deleted (the Main window says the same).
+    in property <int> trash-days: 30;
+    property <length> item-menu-x: 0px;
+    property <length> item-menu-y: 0px;
     // Toast: empty text hides it. The app owns its timing (Toast documents the phases).
     in property <string> toast-text;
     in property <ToastKind> toast-kind: ToastKind.neutral;
     in property <ToastPhase> toast-phase: ToastPhase.hold;
     in property <string> toast-undo-label;
+
+    // The edge dock (SPEC 5.1): while `dock-collapsed` the whole window is a `DockHandle`, whose colour is the
+    // list on show (`dock-list-color`, when it has an accent) and whose grabber runs along the edge it is on.
+    in property <bool> dock-collapsed: false;
+    in property <bool> dock-vertical: true;
+    in property <bool> dock-has-list-color: false;
+    in property <color> dock-list-color: transparent;
+    // The edge a drag would dock to if released now (O32), in Settings' "Dock to" order: 0 none,
+    // 1 left, 2 right, 3 top, 4 bottom. Drawn as an accent strip along that edge.
+    in property <int> dock-preview: 0;
 
     // ---- State both ways ----------------------------------------------------------------------
     in-out property <int> current-tab: 0;
@@ -84,34 +224,125 @@ export component PanelWindow inherits Window {
     // The keyboard-selected row. The panel moves it itself and reports `selection-moved`; the app
     // writes it back (it resets to 0 when the query changes).
     in-out property <int> selected-index: 0;
-    // Keep on top (the pin button). Drives the window's `always-on-top`.
+    // Keep on top (the pin button).
     in-out property <bool> on-top: true;
+    // Whether the window is topmost now (the host: pinned, and no Snipdeck window of the regular kind is active, so
+    // the Main window can cover the Panel). Drives the window's `always-on-top`.
+    in property <bool> topmost: true;
 
     // ---- Gestures out -------------------------------------------------------------------------
     callback query-changed(string);
+    // A row dragged onto a list tab moves its item there. The host builds and reads the in-window payload (a row index).
+    pure callback row-payload(int) -> data-transfer;
+    pure callback payload-row(data-transfer) -> int;
+    callback row-dropped-on-tab(int, int);
+    callback row-dropped(int, int);
+    // Alt+Up / Alt+Down: move the selected row by -1 or +1.
+    callback item-reorder-requested(int);
+    in property <bool> rows-reorderable;
+    // Drag and drop: the host reads the text of a dropped payload (empty when it has none) and saves it as an item.
+    pure callback payload-text(data-transfer) -> string;
+    callback text-dropped(string);
     // Enter, a click, or a quick-use key used row `index`.
     callback row-activated(int);
     // Shift+Enter or Shift+click: copy only.
     callback row-copied(int);
-    // Digit 1-9 pressed on an empty search (the app resolves it with `PanelModel::quick_use`).
+    // Alt+1-9 pressed (the app resolves it with `PanelModel::quick_use`).
     callback quick-use(int);
     callback selection-moved(int);
     callback context-menu-requested(int, length, length);
     callback reveal-requested(int, bool);
     callback tab-selected(int);
+    // The clock tab was chosen (true) or left for a list tab or by closing it (false).
+    callback recent-toggled(bool);
+    // Enter or a click on entry `index`: copies its text. Remove: Delete or the menu. Saved: entry, then target.
+    callback recent-copied(int);
+    callback recent-deleted(int);
+    callback recent-saved(int, int);
+    callback recent-unlock-requested();
     callback add-list-requested();
+    callback new-item-requested();
+    callback settings-requested();
     callback add-from-clipboard();
+    // ---- Selection (O45): Ctrl+click, Shift+click, Ctrl+A, Shift+Up/Down; the bulk bar acts on it ----
+    in property <int> marked-count: 0;
+    in property <bool> show-numbers: true;
+    callback row-picked(int, bool, bool);
+    callback select-all-requested();
+    callback selection-extended(int);
+    callback selection-cleared();
+    callback bulk-move-requested();
+    callback bulk-colour-requested();
+    callback bulk-delete-requested();
+    callback bulk-copy-requested();
+    // ---- Quick add (O45): the "+ New item" row under the items ----
+    in property <string> add-list-name;
+    in-out property <int> quick-add-request: 0;
+    pure callback detect-kind(string) -> int;
+    callback quick-add-requested(string, int, bool);
+    callback quick-add-full(string);
     callback pinned-used(int);
     callback pinned-copied(int);
     callback pinned-context-menu-requested(int, length, length);
     callback board-menu-requested();
     callback board-menu-activated(int);
     callback board-menu-dismissed();
+    callback app-menu-requested();
+    // F1: the user guide.
+    callback help-requested();
+    // Ctrl+K: all commands, in the Main window's palette.
+    callback commands-requested();
+    // Ctrl+/: the keyboard shortcuts.
+    callback shortcuts-requested();
+    callback app-menu-activated(int);
+    callback app-menu-dismissed();
+    // The paste stack (SPEC 5.1): items marked from the item menu, then "Start stack" makes Paste next walk them.
+    in property <bool> stack-visible: false;
+    in property <bool> stack-running: false;
+    in property <int> stack-count: 0;
+    in property <int> stack-position: 0;
+    in property <string> stack-next-title: "";
+    callback stack-started();
+    callback stack-ended();
+    callback item-menu-activated(int);
+    callback item-menu-dismissed();
+    callback list-menu-requested(int);
+    callback list-menu-activated(int);
+    callback list-menu-dismissed();
+    callback list-edit-requested(int);
+    // The list delete confirmation: "Delete list", or Cancel / Esc / a click on the scrim.
+    callback board-delete-confirmed();
+    callback board-delete-dismissed();
+    callback list-delete-confirmed();
+    callback list-delete-dismissed();
+    // Quick edit of row `index`: Ctrl+E, F2 or the item menu (SPEC 5.1). A double-click does nothing extra: the
+    // first click already used the row.
+    callback edit-requested(int);
+    // Ctrl+D on row `index`: a copy of the item right after it.
+    callback duplicate-requested(int);
+    // Ctrl+P on row `index`: pins the item, or unpins it when it is pinned (the Main window's key too).
+    callback pin-requested(int);
+    callback rename-requested(int);
+    callback delete-requested(int);
+    // Pointer down on a resize grip: the host starts the OS resize from that edge or corner.
+    callback resize-requested(ResizeEdge);
     callback pin-toggled(bool);
     callback toast-undo();
+    callback toast-hover-changed(hovered: bool);
+    // Ctrl+Z: take back the latest step of the app-wide history (the More menu has the button).
+    callback undo-requested();
+    // Ctrl+Y, Ctrl+Shift+Z.
+    callback redo-requested();
+    // The footer's "Open Snipdeck" button.
+    callback open-requested();
     callback close-requested();
     // Pointer down on the header: the host starts the OS window drag.
     callback drag-requested();
+    // The edge dock: the pointer entered or left the collapsed handle, the handle was clicked, and the pointer
+    // entered or left the open Panel.
+    callback handle-hovered(bool);
+    callback handle-clicked();
+    callback panel-hovered(bool);
 
     // ---- Public -------------------------------------------------------------------------------
     // Holds row `index` in its pulled (used) state for the card's 700ms (keyboard use; a click pulls itself).
@@ -120,41 +351,259 @@ export component PanelWindow inherits Window {
         used-timer.running = true;
     }
     public function focus-search() {
-        search.focus();
+        root.focus-typing();
+    }
+    // Where typing lands when nothing else holds the focus: the search field while it shows, else `rest` (a field
+    // that is collapsed away is "not visible" to Slint and would lose the keys, so the focus waits in `rest` and the
+    // first character opens the search and moves into it).
+    function focus-typing() {
+        if (root.search-shown) {
+            search.focus();
+        } else {
+            rest.focus();
+        }
     }
     // Scroll offset of the list (<= 0), for tests and for the app to persist.
     out property <length> scroll-y: list.content-y;
-    out property <bool> search-focused: search.has-focus;
+    out property <bool> search-focused: search.has-focus || rest.has-focus;
+    // The search box took the focus (a click into it): the host gives the window the keyboard.
+    callback search-focus-gained();
+    changed search-focused => {
+        if (root.search-focused) {
+            root.search-focus-gained();
+        }
+    }
+    // The text of the tooltip on screen (empty = none), for tests and assistive checks.
+    out property <string> tooltip-shown: root.tip-open && !root.board-menu-open && !root.app-menu-open && !root.item-menu-open && !root.list-menu-open && !root.list-delete-open && !root.board-delete-open && !root.new-menu-open && !root.pinned-menu-open ? root.tip : "";
 
     // ---- Internals ----------------------------------------------------------------------------
     property <bool> pastes: root.target-name != "";
     property <string> use-label: root.pastes ? @tr("Paste") : @tr("Copy");
     property <bool> searching: root.query != "";
+    // The search was opened (the header icon, Ctrl+F, a typed character) and not closed again. With a query it is
+    // open whatever this says. `search-block` is the expanded block that replaces the tabs and the pinned strip;
+    // `search-always` shows a 44px strip under the header instead and leaves them.
+    property <bool> search-user: false;
+    property <bool> search-block: !root.search-always && (root.search-user || root.searching);
+    property <bool> search-shown: root.search-always || root.search-block;
+    property <length> search-status-h: max(Space.s5, Type.line-sm + Space.s1);
+    property <length> search-h: root.search-always ? search.box-height + Space.s2
+        : root.search-block ? Space.s2 + search.box-height + Space.s1 + root.search-status-h + Space.s1 : 0px;
+    // The header's New menu (Save from clipboard, New note, New list).
+    property <bool> new-menu-open: false;
+    // A list tab holds the keyboard focus (the tab row is not always there, so it reports itself).
+    property <bool> tabs-focused: false;
+    changed search-block => {
+        root.tabs-focused = false;
+    }
+    // The pinned strip's "+N more" menu: the pinned items past the two chips.
+    property <bool> pinned-menu-open: false;
+    property <length> pinned-menu-y: 0px;
+    // The pinned items past the two chips, named for the menu (the host fills it; activating row i uses pinned item i + 2).
+    in property <[MenuEntry]> pinned-more-entries;
+    property <[MenuEntry]> new-menu-entries: [
+        { text: @tr("Save from clipboard"), icon: Icons.clipboard },
+        { text: @tr("New note"), icon: Icons.pencil-simple, shortcut: "Ctrl+N" },
+        { text: @tr("New list"), icon: Icons.plus },
+    ];
+    // Space is held down to reveal the selected sensitive row.
+    property <bool> held-reveal: false;
+    // The host hid the text again without a key release (the window lost the focus while Space was
+    // held, Alt+Tab): the key is no longer held, so the next press must reveal again.
+    changed revealed-index => {
+        if (self.revealed-index < 0) {
+            self.held-reveal = false;
+        }
+    }
     property <bool> no-lists: root.tabs.length == 0;
+    // The Menu switcher (spec 3) names the list in the header: "Board · List" (Recent while that view is open).
+    // "New" is icon-only below 300px and with the Menu switcher, which needs the room for "Board · List" (6+ characters each).
+    // How far the header's boxes and glyphs follow the Windows text size: the header is 40 at 100 % and grows with its text,
+    // but 32px boxes with the glyph at the full 2.25 would not fit it, so they stop at 1.25 (audit 5).
+    property <float> chrome-k: min(SystemLook.text-scale, 1.25);
+    property <bool> new-icon-only: root.narrow || root.lists-in-menu;
+    property <string> switcher-list: !root.lists-in-menu ? "" : root.recent-open ? @tr("Recent") : root.tabs[root.current-tab].text;
+
     property <int> sel: root.rows.length == 0 ? -1 : min(max(root.selected-index, 0), root.rows.length - 1);
     property <int> used-index: -1;
+    // The Recent list's selection, clamped, and its menus (the row they act on, and where the menu goes).
+    property <int> rsel: root.recent-rows.length == 0 ? -1 : min(max(root.recent-selected, 0), root.recent-rows.length - 1);
+    property <bool> recent-menu-open: false;
+    property <bool> recent-save-open: false;
+    property <int> recent-menu-row: 0;
+    // The entry the open menu acts on, by id (the rows may shift while it is open).
+    property <int> recent-menu-id: 0;
+    property <length> recent-menu-x: 0px;
+    property <length> recent-menu-y: 0px;
     property <length> header-h: max(Space.s8 + Space.s2, max(Space.hit, Type.line-base + Space.s2) + Space.s2);
     property <length> edge-h: 10px;
-    property <length> row-gap: root.view == PanelView.comfortable ? Space.s1 + Space.s0-5 : 0px;
+    // The layout the rows are drawn in: Cards give way to List rows while a query is typed (a match says where it lives, which
+    // needs the width).
+    property <PanelLayout> eff-layout: root.layout == PanelLayout.cards && root.searching ? PanelLayout.list : root.layout;
+    property <length> row-gap: root.eff-layout == PanelLayout.compact ? 0px : Space.s1 + Space.s0-5;
+    // Cards: 2 columns from 288px wide, 1 below (set from `changed` handlers: the window's width follows its layout).
+    property <int> cols: 1;
+    function update-cols() {
+        root.cols = root.eff-layout == PanelLayout.cards && root.width >= 288px ? 2 : 1;
+    }
+    property <length> col-gap: Space.s1 + Space.s0-5;
+    // Rows (Cards: pairs of tiles) in the list, and how many tiles group `g` holds.
+    property <int> row-groups: floor((root.rows.length + root.cols - 1) / root.cols);
+    pure function group-cells(g: int) -> int {
+        return min(root.cols, root.rows.length - g * root.cols);
+    }
+    // Spec 2.12 and 3: a layout's row height and the gap between its rows, the tabs' height (none with the Menu switcher),
+    // and the smallest window.
+    pure function row-h-of(l: PanelLayout) -> length {
+        return l == PanelLayout.compact ? Space.s8 + Space.s1 : l == PanelLayout.cards ? 96px : 56px;
+    }
+    property <length> layout-row-h: root.row-h-of(root.eff-layout);
+    property <length> tabs-h: root.lists-in-menu ? 0px : Space.s8;
+    property <length> footer-h: max(Space.s8, Type.line-sm + Space.s3);
+    // Three rows (one row of tiles in Cards) between the header and the footer, 8 clear above and below; never under 240.
+    out property <length> min-h: max(240px, root.header-h + root.tabs-h + Space.s2
+        + (root.layout == PanelLayout.cards ? 1 : 3) * root.row-h-of(root.layout)
+        + (root.layout == PanelLayout.list ? 2 * Space.s1 : 0px)
+        + Space.s2 + root.footer-h);
+    // The pinned strip (36) goes when the list under it would show fewer than two rows (one row of tiles in Cards).
+    // Set by update-pins() from `changed` handlers (reading `root.height` in a binding would loop with the layout).
+    property <bool> pins-fit: true;
+    function update-pins() {
+        root.pins-fit = root.height - root.header-h - root.tabs-h - Space.s8 - Space.s1 - root.footer-h - Space.s2
+            >= (root.eff-layout == PanelLayout.cards ? 1 : 2) * root.layout-row-h + root.row-gap;
+    }
+    changed height => { root.update-pins(); }
+    // A list tab no longer holds focus once the tab row goes (Menu switcher); the strip may fit differently.
+    changed lists-in-menu => {
+        root.tabs-focused = false;
+        root.update-pins();
+    }
     property <length> avg-row-h: root.rows.length == 0 ? Space.hit : max(Space.hit, list.content-height / root.rows.length);
     property <int> page-rows: max(1, floor(list.height / root.avg-row-h) - 1);
 
     // The footer drops its route hints below 300px (more at larger text sizes). Set from `changed`
     // handlers, not bound to `root.width`: a window's width follows its layout, so reading it inside
     // the layout would be a binding loop.
+    property <length> grip: 6px;
+    property <length> grip-corner: Space.s2;
+
+    // Tooltip state (DESIGN.md §4): the control that owns it reports hover or focus through `tip-set`;
+    // the text shows after the Tooltip's `show-delay`, but at once when it was just showing another one
+    // (`tip-warm`, for a quarter second after one closes).
+    property <string> tip;
+    property <length> tip-cx;
+    property <length> tip-bottom;
+    property <bool> tip-open: false;
+    property <bool> tip-warm: false;
+    function tip-set(text: string, cx: length, bottom: length, on: bool) {
+        if (on) {
+            root.tip = text;
+            root.tip-cx = cx;
+            root.tip-bottom = bottom;
+            tip-warm-timer.running = false;
+            if (root.tip-open || root.tip-warm) {
+                tip-timer.running = false;
+                root.tip-open = true;
+            } else if (!tip-timer.running) {
+                tip-timer.running = true;
+            }
+        } else if (text == root.tip) {
+            tip-timer.running = false;
+            if (root.tip-open) {
+                root.tip-open = false;
+                root.tip-warm = true;
+                tip-warm-timer.running = true;
+            }
+        }
+    }
+    // The tooltip text a row put up (empty when none is from a row). A row that is deleted, replaced or scrolled away
+    // while the pointer rests on it never reports the pointer leaving, so the tip is closed when the rows change.
+    property <string> row-tip-text: "";
+    function row-tips-close() {
+        if (root.row-tip-text != "") {
+            root.tip-set(root.row-tip-text, 0px, 0px, false);
+            root.row-tip-text = "";
+        }
+    }
+    changed rows => { root.row-tips-close(); }
+    changed scroll-y => { root.row-tips-close(); }
+    tip-timer := Timer {
+        interval: tooltip.show-delay;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.tip-open = true;
+        }
+    }
+    tip-warm-timer := Timer {
+        interval: 250ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.tip-warm = false;
+        }
+    }
+
     property <bool> narrow: false;
     property <float> text-scale: SystemLook.text-scale;
     function update-narrow() {
         root.narrow = root.width < 300px * root.text-scale;
+        root.update-cols();
+        root.update-pins();
+    }
+    changed eff-layout => {
+        root.update-cols();
+        root.update-pins();
     }
 
     init => {
         Palette.dark = root.dark;
         root.update-narrow();
-        search.focus();
+        root.focus-typing();
     }
     changed dark => {
         Palette.dark = root.dark;
+    }
+    // A closed menu leaves no focused control behind: typing goes to the search again.
+    changed app-menu-open => {
+        if (!root.app-menu-open) {
+            root.focus-typing();
+        }
+    }
+    changed new-menu-open => {
+        if (!root.new-menu-open) {
+            root.focus-typing();
+        }
+    }
+    changed pinned-menu-open => {
+        if (!root.pinned-menu-open) {
+            root.focus-typing();
+        }
+    }
+    changed item-menu-open => {
+        if (!root.item-menu-open) {
+            root.focus-typing();
+        }
+    }
+    changed list-menu-open => {
+        if (!root.list-menu-open && !root.list-delete-open) {
+            root.focus-typing();
+        }
+    }
+    changed list-delete-open => {
+        if (!root.list-delete-open) {
+            root.focus-typing();
+        }
+    }
+    changed board-delete-open => {
+        if (!root.board-delete-open) {
+            root.focus-typing();
+        }
+    }
+    changed board-menu-open => {
+        if (!root.board-menu-open && !root.board-delete-open) {
+            root.focus-typing();
+        }
     }
     changed width => {
         root.update-narrow();
@@ -245,12 +694,61 @@ export component PanelWindow inherits Window {
         root.quick-use(n);
     }
 
+    function open-recent() {
+        if (!root.recent-available || root.recent-open) {
+            return;
+        }
+        root.recent-open = true;
+        root.recent-selected = 0;
+        root.recent-toggled(true);
+    }
+
+    function close-recent() {
+        if (!root.recent-open) {
+            return;
+        }
+        root.recent-open = false;
+        root.recent-menu-open = false;
+        root.recent-save-open = false;
+        root.recent-toggled(false);
+    }
+
+    function move-recent(delta: int) {
+        if (root.recent-rows.length > 0) {
+            root.recent-selected = min(max(root.rsel + delta, 0), root.recent-rows.length - 1);
+        }
+    }
+
+    function recent-menu-at(row: int, x: length, y: length) {
+        root.recent-menu-row = row;
+        root.recent-menu-id = root.recent-rows[row].id;
+        root.recent-menu-x = x;
+        root.recent-menu-y = y;
+        root.recent-selected = row;
+        root.recent-menu-open = true;
+    }
+
+    function recent-save-at(row: int, x: length, y: length) {
+        root.recent-menu-row = row;
+        root.recent-menu-id = root.recent-rows[row].id;
+        root.recent-menu-x = x;
+        root.recent-menu-y = y;
+        root.recent-selected = row;
+        root.recent-menu-open = false;
+        root.recent-save-open = true;
+    }
+
     function pick-tab(index: int) {
+        root.close-recent();
         root.current-tab = index;
-        // A list switch leaves the board-wide search.
+        // A list switch leaves the search.
+        root.search-user = false;
         if (root.query != "") {
             root.query = "";
             root.query-changed("");
+        }
+        if (search.has-focus) {
+            root.focus-typing();
         }
         root.selected-index = 0;
         list.content-y = 0px;
@@ -263,15 +761,36 @@ export component PanelWindow inherits Window {
         }
     }
 
+    // Esc and the Close button: clears the query and collapses the search in one step.
     function clear-query() {
+        root.search-user = false;
         root.query = "";
         root.selected-index = 0;
         list.content-y = 0px;
         root.query-changed("");
+        root.focus-typing();
+    }
+
+    // The header icon and Ctrl+F: expands the search (a no-op when it is always shown) and selects its text.
+    function open-search() {
+        root.search-user = true;
+        search.focus();
+        search.select-all();
+    }
+
+    // The empty search's "Create" action (and Enter): the query becomes a new text snippet in the shown list.
+    function create-from-query() {
+        if (root.query == "") {
+            return;
+        }
+        let text = root.query;
+        root.clear-query();
+        root.quick-add-requested(text, root.detect-kind(text), false);
     }
 
     // Moves a typed character into the search field when another control has focus.
     function type-into-search(text: string) {
+        root.search-user = true;
         search.focus();
         root.query = root.query + text;
         // Past the end clamps to the end of the text.
@@ -281,378 +800,1565 @@ export component PanelWindow inherits Window {
         root.query-changed(root.query);
     }
 
-    scope := FocusScope {
-        forward-focus: search;
-
-        capture-key-pressed(event) => {
-            if (root.board-menu-open) {
-                // The menu owns the keyboard; Esc closes it.
-                if (event.text == Key.Escape) {
-                    root.board-menu-dismissed();
-                    return accept;
-                }
-                return reject;
-            }
-            if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
-                if (event.text == Key.Tab && !event.modifiers.shift) {
-                    root.cycle-tab(1);
-                    return accept;
-                }
-                if (event.text == Key.Backtab || (event.text == Key.Tab && event.modifiers.shift)) {
-                    root.cycle-tab(-1);
-                    return accept;
-                }
-                if (event.text == "f" || event.text == "F") {
-                    search.focus();
-                    search.select-all();
-                    return accept;
-                }
-                return reject;
-            }
-            if (event.modifiers.alt || event.modifiers.meta || search.composing) {
-                return reject;
-            }
-            if (event.text == Key.Escape) {
-                if (root.searching) {
-                    root.clear-query();
-                } else {
-                    root.close-requested();
-                }
-                return accept;
-            }
-            if (!switcher.has-focus) {
-                if (event.text == Key.DownArrow) {
-                    root.move-selection(1);
-                    return accept;
-                }
-                if (event.text == Key.UpArrow) {
-                    root.move-selection(-1);
-                    return accept;
-                }
-                if (event.text == Key.PageDown) {
-                    root.move-selection(root.page-rows);
-                    return accept;
-                }
-                if (event.text == Key.PageUp) {
-                    root.move-selection(-root.page-rows);
-                    return accept;
-                }
-            }
-            if (search.has-focus) {
-                if (event.text == Key.Return) {
-                    root.use-selected(event.modifiers.shift);
-                    return accept;
-                }
-                if ((event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) && root.sel >= 0) {
-                    root.context-menu-requested(root.sel, Space.s6, Space.s8);
-                    return accept;
-                }
-            }
-            // Digits are quick-use only while there is no query; with one they are search text.
-            if (!root.searching && !event.modifiers.shift && root.digit(event.text) > 0) {
-                root.quick(root.digit(event.text));
-                return accept;
-            }
-            if (!search.has-focus && event.text != " " && root.printable(event.text)) {
-                root.type-into-search(event.text);
-                return accept;
-            }
-            return reject;
+    // History switched off (Settings) while the clock tab is open: the tab goes, so its list does too.
+    changed recent-available => {
+        if (!root.recent-available) {
+            root.recent-open = false;
+            root.recent-menu-open = false;
+            root.recent-save-open = false;
         }
+    }
 
-        VerticalLayout {
-            // ---- Header: board switcher, drag region, keep-on-top, close ----------------------
-            Rectangle {
-                height: root.header-h;
+    // O39: flipping `repaint-flip` damages the whole window (the docked strip too), so a frame Windows threw away is
+    // drawn again whole. Transparent: nothing shows.
+    RepaintNudge { flip: root.repaint-flip; }
 
-                // Behind the controls: pressing anywhere else starts the window drag.
-                TouchArea {
-                    mouse-cursor: MouseCursor.default;
-                    pointer-event(event) => {
-                        if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
-                            root.drag-requested();
-                        }
-                    }
-                }
+    // Reports the pointer being over the open Panel (anywhere in it, grips and menus included) without
+    // taking any click: a TouchArea that is an ancestor sees pointer moves before its children do and
+    // forwards them, so every control inside works as before. The edge dock collapses on its leaving.
+    panel-area := TouchArea {
+        visible: !root.dock-collapsed;
+        changed has-hover => { root.panel-hovered(self.has-hover); }
 
-                HorizontalLayout {
-                    padding-left: Space.s2;
-                    padding-right: Space.s2;
-                    padding-top: Space.s1;
-                    padding-bottom: Space.s1;
-                    spacing: Space.s1;
-                    switcher := BoardSwitcher {
-                        horizontal-stretch: 0;
-                        board-name: root.board-name;
-                        menu-open: root.board-menu-open;
-                        a11y-label: @tr("Board: {}", root.board-name);
-                        y: (parent.height - self.height) / 2;
-                        menu-requested => { root.board-menu-requested(); }
-                    }
-                    Rectangle { horizontal-stretch: 1; }
-                    pin := IconButton {
-                        icon: Icons.push-pin;
-                        tooltip: @tr("Keep on top");
-                        active: root.on-top;
-                        accessible-checkable: true;
-                        accessible-checked: root.on-top;
-                        y: (parent.height - self.height) / 2;
-                        clicked => {
-                            root.on-top = !root.on-top;
-                            root.pin-toggled(root.on-top);
-                        }
-                    }
-                    close := IconButton {
-                        icon: Icons.x;
-                        tooltip: @tr("Close panel");
-                        y: (parent.height - self.height) / 2;
-                        clicked => { root.close-requested(); }
-                    }
-                }
+        // Text dropped on the Panel is saved as a new item in the list it shows (the host reads the payload).
+        DropArea {
+            width: parent.width;
+            height: parent.height;
+            can-drop(event) => { root.payload-text(event.data) != "" ? DragAction.copy : DragAction.none }
+            dropped(event) => {
+                root.text-dropped(root.payload-text(event.data));
+                return DragAction.copy;
             }
 
-            // ---- Search -------------------------------------------------------------------------
-            HorizontalLayout {
-                padding-left: Space.s2;
-                padding-right: Space.s2;
-                padding-bottom: Space.s2;
-                search := SearchField {
-                    placeholder: @tr("Search snippets");
-                    label: @tr("Search snippets");
-                    clear-label: @tr("Clear search");
-                    edited(text) => {
-                        root.selected-index = 0;
-                        list.content-y = 0px;
-                        root.query-changed(text);
+        scope := FocusScope {
+            forward-focus: rest;
+
+            capture-key-pressed(event) => {
+                if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.board-delete-open || root.new-menu-open || root.pinned-menu-open) {
+                    // The menu (or the confirmation) owns the keyboard; Esc closes it.
+                    if (event.text == Key.Escape) {
+                        root.new-menu-open = false;
+                        root.pinned-menu-open = false;
+                        if (root.list-delete-open) {
+                            root.list-delete-dismissed();
+                        }
+                        if (root.board-delete-open) {
+                            root.board-delete-dismissed();
+                        }
+                        root.recent-menu-open = false;
+                        root.recent-save-open = false;
+                        if (root.item-menu-open) {
+                            root.item-menu-dismissed();
+                        }
+                        if (root.list-menu-open) {
+                            root.list-menu-dismissed();
+                        }
+                        if (root.app-menu-open) {
+                            root.app-menu-dismissed();
+                        }
+                        if (root.board-menu-open) {
+                            root.board-menu-dismissed();
+                        }
+                        return accept;
                     }
+                    return reject;
                 }
-            }
-
-            // ---- Lists ----------------------------------------------------------------------------
-            HorizontalLayout {
-                padding-left: Space.s2;
-                padding-right: Space.s2;
-                ListTabBar {
-                    tabs: root.tabs;
-                    current <=> root.current-tab;
-                    label: @tr("Lists");
-                    add-label: @tr("Add list");
-                    selected(index) => { root.pick-tab(index); }
-                    add-clicked => { root.add-list-requested(); }
+                // The open quick-add box owns the keyboard (Enter, Shift+Enter, Esc are its own); only Ctrl+N and
+                // Ctrl+Shift+N are the window's.
+                if (quick.expanded && !(event.modifiers.control && (event.text == "n" || event.text == "N"))) {
+                    return reject;
                 }
-            }
-
-            if root.pinned.length > 0 && !root.searching: HorizontalLayout {
-                padding-left: Space.s2;
-                padding-right: Space.s2;
-                PinnedStrip {
-                    items: root.pinned;
-                    accessible-role: AccessibleRole.list;
-                    accessible-label: @tr("Pinned snippets");
-                    use(i) => { root.pinned-used(i); }
-                    copy(i) => { root.pinned-copied(i); }
-                    context-menu-requested(i, x, y) => { root.pinned-context-menu-requested(i, x, y); }
-                }
-            }
-
-            // ---- The deck ---------------------------------------------------------------------------
-            deck := Rectangle {
-                vertical-stretch: 1;
-                min-height: Space.s12;
-                clip: true;
-
-                list := ListView {
-                    x: Space.s2;
-                    y: Space.s1;
-                    width: parent.width - 2 * Space.s2;
-                    height: parent.height - Space.s1;
-                    vertical-scrollbar-policy: ScrollBarPolicy.always-off;
-                    horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
-                    accessible-label: @tr("Snippets");
-                    visible: root.rows.length > 0;
-
-                    for row[i] in root.rows: Rectangle {
-                        property <bool> is-selected: i == root.sel;
-                        height: card.preferred-height + root.row-gap;
-
-                        init => {
-                            if (self.is-selected) { root.reveal(self.y, self.height); }
-                        }
-                        changed is-selected => {
-                            if (self.is-selected) { root.reveal(self.y, self.height); }
-                        }
-                        changed y => {
-                            if (self.is-selected) { root.reveal(self.y, self.height); }
-                        }
-
-                        card := ItemCard {
-                            x: 0;
-                            y: 0;
-                            width: parent.width;
-                            height: self.preferred-height;
-                            variant: root.view == PanelView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
-                            kind: row.kind;
-                            number: i < 9 ? i + 1 : 0;
-                            title: row.title;
-                            preview: row.preview;
-                            masked-preview: row.masked-preview;
-                            extension: row.extension;
-                            image: row.image;
-                            list-name: row.list-name;
-                            list-color: row.list-color;
-                            selected: i == root.sel;
-                            use-label: root.use-label;
-                            masked-hint: @tr("Hidden. Hold Space to reveal.");
-                            show-use-label: i == root.sel;
-                            revealed: i == root.revealed-index;
-                            pulling: i == root.used-index;
-                            keyboard-focusable: false;
-                            use => {
-                                root.selected-index = i;
-                                root.row-activated(i);
-                            }
-                            copy => {
-                                root.selected-index = i;
-                                root.row-copied(i);
-                            }
-                            context-menu-requested(x, y) => { root.context-menu-requested(i, x, y); }
-                            reveal-requested(on) => { root.reveal-requested(i, on); }
-                        }
+                if (event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta) {
+                    if ((event.text == "a" || event.text == "A") && !root.searching && !root.recent-open) {
+                        root.select-all-requested();
+                        return accept;
                     }
-                }
-
-                // More cards below (or above) the fold: two card edges, never a fade.
-                if root.rows.length > 0 && list.content-y < -1px: DeckEdge {
-                    position: DeckEdgePosition.top;
-                    x: Space.s2;
-                    y: Space.s1;
-                    width: parent.width - 2 * Space.s2;
-                }
-                if root.rows.length > 0 && list.content-height + list.content-y > list.height + 1px: DeckEdge {
-                    position: DeckEdgePosition.bottom;
-                    x: Space.s2;
-                    y: parent.height - self.height;
-                    width: parent.width - 2 * Space.s2;
-                }
-
-                if root.loading: VerticalLayout {
-                    x: Space.s2;
-                    y: Space.s1;
-                    width: parent.width - 2 * Space.s2;
-                    alignment: start;
-                    for n in [0, 1, 2, 3, 4, 5]: Skeleton {
-                        kind: SkeletonKind.row;
-                        label: n == 0 ? @tr("Loading") : "";
+                    if (event.text == Key.Tab && !event.modifiers.shift) {
+                        root.cycle-tab(1);
+                        return accept;
                     }
-                }
-
-                if root.rows.length == 0 && !root.loading: EmptyState {
-                    x: Space.s2;
-                    width: parent.width - 2 * Space.s2;
-                    height: parent.height;
-                    kind: root.no-lists ? EmptyStateKind.board : root.searching ? EmptyStateKind.search : EmptyStateKind.list;
-                    heading: root.no-lists ? @tr("No lists yet")
-                        : root.searching ? @tr("No matches") : @tr("This list is empty");
-                    body: root.no-lists ? @tr("A list keeps related snippets together, like replies or addresses.")
-                        : root.searching ? @tr("Nothing on this board matches “{}”.", root.query)
-                        : @tr("Copy something, then save it here from the clipboard.");
-                    action-text: root.no-lists ? @tr("New list") : root.searching ? "" : @tr("Save from clipboard");
-                    action => {
-                        if (root.no-lists) {
-                            root.add-list-requested();
+                    if (event.text == Key.Backtab || (event.text == Key.Tab && event.modifiers.shift)) {
+                        root.cycle-tab(-1);
+                        return accept;
+                    }
+                    if (event.text == "f" || event.text == "F") {
+                        root.open-search();
+                        return accept;
+                    }
+                    if (event.text == "k" || event.text == "K") {
+                        root.commands-requested();
+                        return accept;
+                    }
+                    if (event.text == "n" || event.text == "N") {
+                        if (event.modifiers.shift) {
+                            root.quick-add-full(quick.text);
                         } else {
-                            root.add-from-clipboard();
+                            root.quick-add-request += 1;
+                        }
+                        return accept;
+                    }
+                    if (event.text == ",") {
+                        root.settings-requested();
+                        return accept;
+                    }
+                    if ((event.text == "w" || event.text == "W") && !event.modifiers.shift) {
+                        root.close-requested();
+                        return accept;
+                    }
+                    // Typed text in the search field undoes itself; with an empty field Ctrl+Z is the history's Undo.
+                    if ((event.text == "z" || event.text == "Z") && !event.modifiers.shift && root.query == "") {
+                        root.undo-requested();
+                        return accept;
+                    }
+                    if ((((event.text == "z" || event.text == "Z") && event.modifiers.shift) || event.text == "y" || event.text == "Y") && root.query == "") {
+                        root.redo-requested();
+                        return accept;
+                    }
+                    if (event.text == "/") {
+                        root.shortcuts-requested();
+                        return accept;
+                    }
+                    if ((event.text == "e" || event.text == "E") && root.sel >= 0 && !root.recent-open) {
+                        root.edit-requested(root.sel);
+                        return accept;
+                    }
+                    if ((event.text == "d" || event.text == "D") && root.sel >= 0 && !root.recent-open) {
+                        root.duplicate-requested(root.sel);
+                        return accept;
+                    }
+                    if ((event.text == "p" || event.text == "P") && event.modifiers.shift) {
+                        root.on-top = !root.on-top;
+                        root.pin-toggled(root.on-top);
+                        return accept;
+                    }
+                    if ((event.text == "p" || event.text == "P") && root.sel >= 0 && !root.recent-open) {
+                        root.pin-requested(root.sel);
+                        return accept;
+                    }
+                    return reject;
+                }
+                if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !switcher.has-focus && !root.recent-open && root.rows-reorderable
+                    && (event.text == Key.UpArrow || event.text == Key.DownArrow)) {
+                    // The keyboard way to arrange rows (WCAG 2.5.7 for the drag); a sorted list or a search leaves the key alone.
+                    root.item-reorder-requested(event.text == Key.UpArrow ? -1 : 1);
+                    return accept;
+                }
+                // Alt+1-9 uses the Nth row whatever the query holds; a bare digit is always search text.
+                if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift && !event.modifiers.meta && !root.recent-open && root.digit(event.text) > 0) {
+                    root.quick(root.digit(event.text));
+                    return accept;
+                }
+                if (event.modifiers.alt || event.modifiers.meta || search.composing) {
+                    return reject;
+                }
+                if (event.text == Key.F1) {
+                    root.help-requested();
+                    return accept;
+                }
+                if (event.text == Key.Escape && root.marked-count > 0 && !root.recent-open) {
+                    root.selection-cleared();
+                    return accept;
+                }
+                if (event.text == Key.Escape) {
+                    if (root.searching || root.search-user) {
+                        root.clear-query();
+                    } else if (root.stack-visible) {
+                        root.stack-ended();
+                    } else {
+                        root.close-requested();
+                    }
+                    return accept;
+                }
+                if (kebab.has-focus && (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10))) {
+                    root.app-menu-requested();
+                    return accept;
+                }
+                if (root.recent-open && !switcher.has-focus) {
+                    // The Recent list has its own selection; none of the item shortcuts below apply to it.
+                    if (event.text == Key.DownArrow) {
+                        root.move-recent(1);
+                        return accept;
+                    }
+                    if (event.text == Key.UpArrow) {
+                        root.move-recent(-1);
+                        return accept;
+                    }
+                    if (event.text == Key.PageDown) {
+                        root.move-recent(root.page-rows);
+                        return accept;
+                    }
+                    if (event.text == Key.PageUp) {
+                        root.move-recent(-root.page-rows);
+                        return accept;
+                    }
+                }
+                if (root.recent-open && root.search-focused && root.rsel >= 0) {
+                    if (event.text == Key.Return) {
+                        root.recent-copied(root.recent-rows[root.rsel].id);
+                        return accept;
+                    }
+                    if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
+                        root.recent-menu-at(root.rsel, Space.s6, deck.absolute-position.y + Space.s8);
+                        return accept;
+                    }
+                    if (event.text == Key.Delete && !root.searching) {
+                        root.recent-deleted(root.recent-rows[root.rsel].id);
+                        return accept;
+                    }
+                }
+                if (event.text == Key.F2 && root.sel >= 0 && !root.tabs-focused && !root.recent-open) {
+                    root.rename-requested(root.sel);
+                    return accept;
+                }
+                // With a query, Delete is a text key of the search field.
+                if (event.text == Key.Delete && root.sel >= 0 && !root.searching && !root.recent-open) {
+                    if (root.marked-count > 0) {
+                        root.bulk-delete-requested();
+                    } else {
+                        root.delete-requested(root.sel);
+                    }
+                    return accept;
+                }
+                if (event.modifiers.shift && !root.searching && !root.recent-open && !switcher.has-focus) {
+                    if (event.text == Key.DownArrow) {
+                        root.selection-extended(1);
+                        return accept;
+                    }
+                    if (event.text == Key.UpArrow) {
+                        root.selection-extended(-1);
+                        return accept;
+                    }
+                }
+                // Cards, search empty: Left and Right step one tile (Up and Down a whole row of tiles).
+                if (root.eff-layout == PanelLayout.cards && root.search-focused && !root.searching && !root.recent-open
+                    && !event.modifiers.control && !event.modifiers.alt && !event.modifiers.shift) {
+                    if (event.text == Key.RightArrow) {
+                        root.move-selection(1);
+                        return accept;
+                    }
+                    if (event.text == Key.LeftArrow) {
+                        root.move-selection(-1);
+                        return accept;
+                    }
+                }
+                if (!switcher.has-focus && !root.recent-open) {
+                    if (event.text == Key.DownArrow) {
+                        root.move-selection(root.cols);
+                        return accept;
+                    }
+                    if (event.text == Key.UpArrow) {
+                        root.move-selection(-root.cols);
+                        return accept;
+                    }
+                    if (event.text == Key.PageDown) {
+                        root.move-selection(root.page-rows);
+                        return accept;
+                    }
+                    if (event.text == Key.PageUp) {
+                        root.move-selection(-root.page-rows);
+                        return accept;
+                    }
+                }
+                if (root.search-focused && !root.recent-open) {
+                    if (event.text == Key.Return) {
+                        if (root.sel < 0 && root.searching) {
+                            root.create-from-query();
+                        } else {
+                            root.use-selected(event.modifiers.shift);
+                        }
+                        return accept;
+                    }
+                    if ((event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) && root.sel >= 0) {
+                        root.item-menu-x = Space.s6;
+                        root.item-menu-y = deck.absolute-position.y + Space.s8;
+                        root.context-menu-requested(root.sel, Space.s6, Space.s8);
+                        return accept;
+                    }
+                }
+                // Hold Space on the selected sensitive row reveals it (the cards are not
+                // focusable, so their own Space handling never sees the key). With a query,
+                // Space is a text key of the search field.
+                if (root.search-focused && event.text == " " && !root.searching && root.sel >= 0 && root.sel < root.rows.length && root.rows[root.sel].kind == ItemKind.sensitive && !root.recent-open) {
+                    if (!root.held-reveal) {
+                        root.held-reveal = true;
+                        root.reveal-requested(root.sel, true);
+                    }
+                    return accept;
+                }
+                if (!search.has-focus && event.text != " " && root.printable(event.text)) {
+                    root.type-into-search(event.text);
+                    return accept;
+                }
+                return reject;
+            }
+
+            capture-key-released(event) => {
+                if (event.text == " " && root.held-reveal) {
+                    root.held-reveal = false;
+                    root.reveal-requested(root.sel, false);
+                    return accept;
+                }
+                return reject;
+            }
+
+            // Where the focus waits while the search is collapsed (see `focus-typing`); it must not sit under a clip.
+            rest := FocusScope {
+                width: 0px;
+                height: 0px;
+            }
+
+            VerticalLayout {
+                // ---- Header (40): board picker, drag region, search, New, keep on top, More, close ----------
+                Rectangle {
+                    height: root.header-h;
+
+                    // Behind the controls: pressing anywhere else starts the window drag.
+                    TouchArea {
+                        mouse-cursor: MouseCursor.default;
+                        pointer-event(event) => {
+                            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                                root.drag-requested();
+                            }
+                        }
+                    }
+
+                    HorizontalLayout {
+                        padding-left: Space.s2;
+                        padding-right: Space.s1;
+                        padding-top: Space.s1;
+                        padding-bottom: Space.s1;
+                        spacing: Space.s0-5;
+                        switcher := BoardSwitcher {
+                            // With a list name beside the board the picker takes the room the spacer would leave.
+                            horizontal-stretch: root.lists-in-menu ? 1 : 0;
+                            min-h: Space.s8;
+                            // The board's name elides, never below about six characters.
+                            min-width: 69px;
+                            board-name: root.board-name;
+                            list-name: root.switcher-list;
+                            menu-open: root.board-menu-open;
+                            a11y-label: root.switcher-list == "" ? @tr("Board: {}", root.board-name) : @tr("Board: {}, list: {}", root.board-name, root.switcher-list);
+                            y: (parent.height - self.height) / 2;
+                            menu-requested => { root.board-menu-requested(); }
+                        }
+                        Rectangle { horizontal-stretch: root.lists-in-menu ? 0 : 1; }
+                        search-button := IconButton {
+                            icon: Icons.magnifying-glass;
+                            size: IconButtonSize.sm;
+                            side-override: Space.s8 * root.chrome-k;
+                            glyph-scale: root.chrome-k;
+                            tooltip: @tr("Search (Ctrl+F)");
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.open-search(); }
+                            changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                            changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                        }
+                        // New: a menu of ways to add (Save from clipboard, New note, New list). Icon only below 300px.
+                        new-button := Rectangle {
+                            property <bool> tip-on: new-touch.has-hover || new-scope.has-focus;
+                            out property <bool> has-focus: new-scope.has-focus;
+                            width: root.new-icon-only ? Space.s8 * root.chrome-k : new-row.preferred-width;
+                            height: Space.s8 * root.chrome-k;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: Radius.md;
+                            background: new-touch.pressed ? Theme.bg-sunken : new-touch.has-hover || root.new-menu-open ? Theme.bg-hover : transparent;
+                            forward-focus: new-scope;
+                            accessible-role: button;
+                            accessible-label: @tr("New");
+                            accessible-expandable: true;
+                            accessible-expanded: root.new-menu-open;
+                            accessible-action-default => { root.new-menu-open = true; }
+                            animate background { duration: Motion.instant; easing: Motion.out; }
+                            changed tip-on => {
+                                if (root.new-icon-only) {
+                                    root.tip-set(@tr("New"), self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.tip-on);
+                                }
+                            }
+
+                            new-row := HorizontalLayout {
+                                padding-left: root.new-icon-only ? 0px : Space.s1 + Space.s0-5;
+                                padding-right: root.new-icon-only ? 0px : Space.s2;
+                                spacing: Space.s1;
+                                alignment: center;
+                                Icon {
+                                    source: Icons.plus;
+                                    tint: Theme.text-primary;
+                                    size: Space.s4 * root.chrome-k;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                                if !root.new-icon-only: Text {
+                                    text: @tr("New");
+                                    font-family: Fonts.sans;
+                                    font-size: Type.base;
+                                    font-weight: Type.medium;
+                                    color: Theme.text-primary;
+                                    vertical-alignment: center;
+                                    accessible-role: none;
+                                }
+                            }
+                            Rectangle {
+                                x: -4px;
+                                y: -4px;
+                                width: parent.width + 8px;
+                                height: parent.height + 8px;
+                                border-width: new-scope.has-focus ? 2px : 0px;
+                                border-color: Theme.focus-ring;
+                                border-radius: Radius.md + 2px;
+                                background: transparent;
+                            }
+                            new-touch := TouchArea {
+                                clicked => { root.new-menu-open = true; }
+                            }
+                            new-scope := FocusScope {
+                                focus-on-click: false;
+                                key-pressed(event) => {
+                                    if (event.text == Key.Return || event.text == " " || event.text == Key.DownArrow) {
+                                        root.new-menu-open = true;
+                                        return accept;
+                                    }
+                                    return reject;
+                                }
+                            }
+                        }
+                        // 1x16 divider between the adding controls and the window controls.
+                        Rectangle {
+                            width: Space.s2 + 1px;
+                            Rectangle {
+                                x: Space.s1;
+                                y: (parent.height - self.height) / 2;
+                                width: 1px;
+                                height: Space.s4;
+                                background: Theme.border-default;
+                            }
+                        }
+                        // Always-on-top toggle: the Phosphor pushpin (owner preferred it to the flat tack); its
+                        // tooltip and checked state say "Keep panel on top".
+                        pin := IconButton {
+                            icon: Icons.push-pin;
+                            size: IconButtonSize.sm;
+                            side-override: Space.s8 * root.chrome-k;
+                            glyph-scale: root.chrome-k;
+                            tooltip: @tr("Keep panel on top");
+                            active: root.on-top;
+                            accessible-checkable: true;
+                            accessible-checked: root.on-top;
+                            y: (parent.height - self.height) / 2;
+                            clicked => {
+                                root.on-top = !root.on-top;
+                                root.pin-toggled(root.on-top);
+                            }
+                            changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                            changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                        }
+                        kebab := IconButton {
+                            icon: Icons.dots-three-bold;
+                            size: IconButtonSize.sm;
+                            side-override: Space.s8 * root.chrome-k;
+                            glyph-scale: root.chrome-k;
+                            tooltip: @tr("More");
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.app-menu-requested(); }
+                            changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                            changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                        }
+                        close := IconButton {
+                            icon: Icons.x;
+                            size: IconButtonSize.sm;
+                            side-override: Space.s8 * root.chrome-k;
+                            glyph-scale: root.chrome-k;
+                            tooltip: @tr("Close panel (Esc)");
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.close-requested(); }
+                            changed has-hover => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
+                            changed has-focus => { root.tip-set(self.tooltip, self.absolute-position.x + self.width / 2, self.absolute-position.y + self.height, self.has-hover || self.has-focus); }
                         }
                     }
                 }
 
-                if root.toast-text != "": Toast {
-                    text: root.toast-text;
-                    kind: root.toast-kind;
-                    phase: root.toast-phase;
-                    undo-label: root.toast-undo-label;
-                    width: min(self.preferred-width, parent.width - 2 * Space.s2);
-                    height: self.preferred-height;
-                    x: (parent.width - self.width) / 2;
-                    y: parent.height - self.height - Space.s2;
-                    undo => { root.toast-undo(); }
-                }
-            }
-
-            // ---- Target footer (DESIGN.md §5): always shows where a click goes -----------------------
-            Rectangle {
-                height: max(Space.s8, Type.line-sm + Space.s3);
-                accessible-role: AccessibleRole.text;
-                accessible-label: root.pastes
-                    ? (root.target-title != "" ? @tr("Pastes into {} · {}", root.target-name, root.target-title) : @tr("Pastes into {}", root.target-name))
-                    : @tr("Copies to clipboard");
-
+                // ---- Search (spec 2.3): nothing until used, an expanded block that replaces the tabs and the pinned
+                // strip, or (Settings) a 44px strip that stays. Collapsed, the field is clipped to nothing and the
+                // focus waits in `rest`; the first typed character opens the search.
                 Rectangle {
-                    y: 0;
-                    height: 1px;
-                    background: Theme.border-subtle;
-                }
-                HorizontalLayout {
-                    padding-left: Space.s3;
-                    padding-right: Space.s3;
-                    spacing: Space.s2;
-                    Text {
-                        horizontal-stretch: 1;
-                        text: root.pastes
-                            ? (root.target-title != "" ? @tr("Pastes into {} · {}", root.target-name, root.target-title) : @tr("Pastes into {}", root.target-name))
-                            : @tr("Copies to clipboard");
+                    height: root.search-h;
+                    clip: true;
+
+                    if root.search-block: Rectangle {
+                        y: parent.height - 1px;
+                        height: 1px;
+                        background: Theme.border-subtle;
+                    }
+
+                    search := SearchField {
+                        x: Space.s2;
+                        y: root.search-block ? Space.s2 : Space.s1;
+                        width: max(0px, parent.width - 2 * Space.s2 - (root.search-block ? close-search.width + Space.s1 + Space.s0-5 : 0px));
+                        height: self.box-height;
+                        min-box-h: Space.s8 + Space.s1;
+                        clearable: root.search-always;
+                        placeholder: @tr("Search snippets");
+                        label: @tr("Search snippets");
+                        clear-label: @tr("Clear search");
+                        edited(text) => {
+                            root.search-user = true;
+                            root.selected-index = 0;
+                            list.content-y = 0px;
+                            root.query-changed(text);
+                        }
+                    }
+
+                    close-search := Rectangle {
+                        visible: root.search-block;
+                        x: parent.width - self.width - Space.s2;
+                        y: Space.s2;
+                        width: close-row.preferred-width;
+                        height: search.box-height;
+                        border-radius: Radius.md;
+                        border-width: 1px;
+                        border-color: Theme.border-strong;
+                        background: close-touch.pressed ? Theme.bg-sunken : close-touch.has-hover ? Theme.bg-hover : transparent;
+                        forward-focus: close-scope;
+                        accessible-role: button;
+                        accessible-label: @tr("Close search");
+                        accessible-action-default => { root.clear-query(); }
+
+                        close-row := HorizontalLayout {
+                            padding-left: Space.s2 + Space.s0-5;
+                            padding-right: Space.s2 + Space.s0-5;
+                            spacing: Space.s1 + Space.s0-5;
+                            alignment: center;
+                            Icon {
+                                source: Icons.x;
+                                tint: Theme.text-primary;
+                                size: Space.s4 * SystemLook.text-scale;
+                                y: (parent.height - self.height) / 2;
+                            }
+                            Text {
+                                text: @tr("Close");
+                                font-family: Fonts.sans;
+                                font-size: Type.base;
+                                font-weight: Type.medium;
+                                color: Theme.text-primary;
+                                vertical-alignment: center;
+                                accessible-role: none;
+                            }
+                            Rectangle {
+                                width: esc-cap.min-width;
+                                esc-cap := Keycap {
+                                    text: "Esc";
+                                    strong: true;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                            }
+                        }
+                        Rectangle {
+                            x: -4px;
+                            y: -4px;
+                            width: parent.width + 8px;
+                            height: parent.height + 8px;
+                            border-width: close-scope.has-focus ? 2px : 0px;
+                            border-color: Theme.focus-ring;
+                            border-radius: Radius.md + 2px;
+                            background: transparent;
+                        }
+                        close-touch := TouchArea {
+                            clicked => { root.clear-query(); }
+                        }
+                        close-scope := FocusScope {
+                            focus-on-click: false;
+                            key-pressed(event) => {
+                                if (event.text == Key.Return || event.text == " ") {
+                                    root.clear-query();
+                                    return accept;
+                                }
+                                return reject;
+                            }
+                        }
+                    }
+
+                    // The status line (a live region): how many matches, or that there are none.
+                    if root.search-block: Text {
+                        x: Space.s2;
+                        y: Space.s2 + search.box-height + Space.s1;
+                        width: max(0px, parent.width - 2 * Space.s2);
+                        height: root.search-status-h;
+                        text: root.rows.length == 0 ? @tr("No matches in all boards")
+                            : @tr("{} match in all boards" | "{} matches in all boards" % root.rows.length, root.rows.length);
                         font-family: Fonts.sans;
                         font-size: Type.sm;
                         color: Theme.text-secondary;
                         vertical-alignment: center;
                         overflow: elide;
-                        accessible-role: AccessibleRole.none;
+                        accessible-role: AccessibleRole.text;
+                        accessible-live-region: polite;
                     }
-                    // Route hints: Enter uses, and Shift+Enter always copies. Hidden when the Panel is narrow.
-                    if !root.narrow: HorizontalLayout {
-                        spacing: Space.s1;
-                        Rectangle {
-                            width: hint-keys.min-width;
-                            hint-keys := KeyCombo {
-                                keys: root.pastes ? ["Shift", "↵"] : ["↵"];
-                                label: root.pastes ? @tr("Shift Enter") : @tr("Enter");
-                                y: (parent.height - self.height) / 2;
+                }
+
+                // ---- Lists ----------------------------------------------------------------------------
+                if !root.search-block && !root.lists-in-menu: HorizontalLayout {
+                    padding-left: Space.s2;
+                    padding-right: Space.s1;
+                    spacing: Space.s0-5;
+                    // The Recent inbox, at the far left, while history is on.
+                    if root.recent-available: clock-tab := ClockTab {
+                        label: @tr("Recent");
+                        selected: root.recent-open;
+                        clicked => {
+                            if (root.recent-open) {
+                                root.close-recent();
+                            } else {
+                                root.open-recent();
                             }
                         }
+                    }
+                    tab-bar := ListTabBar {
+                        changed has-focus => { root.tabs-focused = self.has-focus; }
+                        none-selected: root.recent-open;
+                        tabs: root.tabs;
+                        current <=> root.current-tab;
+                        label: @tr("Lists");
+                        add-label: @tr("Add list");
+                        scroll-left-label: @tr("Scroll left");
+                        scroll-right-label: @tr("Scroll right");
+                        menu-hint: @tr("Right-click or press Menu for list actions");
+                        // The "+" is the last 28px of the bar.
+                        changed add-active => { root.tip-set(self.add-label, self.absolute-position.x + self.width - Space.hit / 2, self.absolute-position.y + self.height, self.add-active); }
+                        selected(index) => { root.pick-tab(index); }
+                        drop-accepted(data) => { root.payload-row(data) >= 0 && !root.searching }
+                        tab-dropped(index, data) => { root.row-dropped-on-tab(root.payload-row(data), index); }
+                        add-clicked => { root.add-list-requested(); }
+                        menu-requested(index, x, y) => {
+                            root.list-menu-x = x;
+                            root.list-menu-y = y;
+                            root.list-menu-requested(index);
+                        }
+                        edit-requested(index) => { root.list-edit-requested(index); }
+                    }
+                }
+
+                if root.pinned.length > 0 && !root.search-block && !root.recent-open && root.pins-fit: strip := PinnedStrip {
+                    items: root.pinned;
+                    more-label: @tr("+{} more", root.pinned.length - 2);
+                    accessible-role: AccessibleRole.list;
+                    accessible-label: @tr("Pinned snippets");
+                    use(i) => { root.pinned-used(i); }
+                    copy(i) => { root.pinned-copied(i); }
+                    context-menu-requested(i, x, y) => {
+                        // `x` is within the chip: the menu opens under the strip's left end.
+                        root.item-menu-x = self.absolute-position.x + Space.s2;
+                        root.item-menu-y = self.absolute-position.y + self.height;
+                        root.pinned-context-menu-requested(i, x, y);
+                    }
+                    more-clicked => {
+                        root.pinned-menu-y = self.absolute-position.y + self.height;
+                        root.pinned-menu-open = true;
+                    }
+                }
+
+                // ---- The deck ---------------------------------------------------------------------------
+                deck := Rectangle {
+                    vertical-stretch: 1;
+                    min-height: Space.s12;
+                    clip: true;
+                    // The quiet List rows are transparent: the list sits on `bg.surface` (DESIGN.md §4 ItemCard anatomy).
+                    background: Theme.bg-surface;
+
+                    // Inset by the focus ring's reach (4px) so the viewport never clips the ring of the selected card.
+                    list := ListView {
+                        x: Space.s2 - Space.s1;
+                        y: 0px;
+                        width: parent.width - 2 * Space.s2 + 2 * Space.s1;
+                        height: parent.height - quick.box-h - Space.s1;
+                        vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+                        horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+                        accessible-label: @tr("Snippets");
+                        visible: root.rows.length > 0 && !root.recent-open;
+
+                        // Rows come in groups: one row each, or (Cards) a row of two tiles. Every layout draws its rows with this one
+                        // ItemCard, so a row's tooltip, drag and actions are the same in all of them.
+                        for g in root.row-groups: Rectangle {
+                            property <int> first: g * root.cols;
+                            property <bool> has-sel: root.sel >= self.first && root.sel < self.first + root.cols;
+                            height: grp.preferred-height + root.row-gap + (g == root.row-groups - 1 ? 2 * Space.s1 : 0px);
+
+                            init => {
+                                if (self.has-sel) { root.reveal(self.y, self.height); }
+                            }
+                            changed has-sel => {
+                                if (self.has-sel) { root.reveal(self.y, self.height); }
+                            }
+                            changed y => {
+                                if (self.has-sel) { root.reveal(self.y, self.height); }
+                            }
+
+                            grp := HorizontalLayout {
+                                x: Space.s1;
+                                y: Space.s1;
+                                width: parent.width - 2 * Space.s1;
+                                height: self.preferred-height;
+                                spacing: root.col-gap;
+                                for c in root.group-cells(g): cell := Rectangle {
+                                    property <int> i: g * root.cols + c;
+                                    property <PanelRow> item: root.rows[self.i];
+                                    horizontal-stretch: 1;
+                                    preferred-height: card.preferred-height;
+                                    min-height: card.preferred-height;
+
+                                    // The row being dragged over this one: a drop lands after it when coming from above.
+                                    property <int> row-from: -1;
+
+                                    row-drop := DropArea {
+                                        enabled: root.rows-reorderable;
+                                        can-drop(event) => {
+                                            row-from = root.payload-row(event.data);
+                                            row-from >= 0 && row-from != i ? DragAction.move : DragAction.none
+                                        }
+                                        dropped(event) => {
+                                            root.row-dropped(root.payload-row(event.data), i);
+                                            return DragAction.move;
+                                        }
+
+                                        DragArea {
+                                            allow-move: !root.searching && !root.recent-open;
+                                            data: root.row-payload(i);
+
+                                            card := ItemCard {
+                                                x: 0px;
+                                                y: 0px;
+                                                width: parent.width;
+                                                height: self.preferred-height;
+                                                variant: root.eff-layout == PanelLayout.compact ? ItemCardVariant.compact : root.eff-layout == PanelLayout.cards ? ItemCardVariant.tile : ItemCardVariant.comfortable;
+                                                edit-action: !(root.layout == PanelLayout.compact && root.narrow);
+                                                quiet: true;
+                                                copy-action: root.pastes;
+                                                show-actions: i == root.sel && root.marked-count == 0;
+                                                row-tip: root.pastes ? @tr("Click to paste into {}. Shift+click copies.", root.target-name) : @tr("Click to copy.");
+                                                kind: item.kind;
+                                                number: i < 9 ? i + 1 : 0;
+                                                numbered: root.show-numbers;
+                                                pick-mode: root.marked-count > 0;
+                                                modifier-picks: true;
+                                                show-focus: root.marked-count > 0 && i == root.sel;
+                                                title: item.title;
+                                                mark-before: item.mark-before;
+                                                mark-text: item.mark-text;
+                                                preview: item.preview;
+                                                preview-before: item.preview-before;
+                                                preview-match: item.preview-match;
+                                                tag-hit: item.tag-hit;
+                                                masked-preview: item.masked-preview;
+                                                extension: item.extension;
+                                                image: item.image;
+                                                list-name: item.list-name;
+                                                list-color: item.list-color;
+                                                label: item.label;
+                                                label-name: item.label-name;
+                                                stack-position: item.stack-position;
+                                                selected: root.marked-count > 0 ? item.marked : i == root.sel;
+                                                use-label: root.use-label;
+                                                use-copies: !root.pastes;
+                                                masked-hint: @tr("Hidden. Hold Space to reveal.");
+                                                show-use-label: i == root.sel && root.marked-count == 0;
+                                                revealed: i == root.revealed-index;
+                                                pulling: i == root.used-index;
+                                                keyboard-focusable: false;
+                                                picked(shift, ctrl) => {
+                                                    root.selected-index = i;
+                                                    root.row-picked(i, shift, ctrl);
+                                                }
+                                                use => {
+                                                    root.selected-index = i;
+                                                    root.row-activated(i);
+                                                }
+                                                copy => {
+                                                    root.selected-index = i;
+                                                    root.row-copied(i);
+                                                }
+                                                context-menu-requested(x, y) => {
+                                                    root.item-menu-x = self.absolute-position.x + x;
+                                                    root.item-menu-y = self.absolute-position.y + y;
+                                                    root.context-menu-requested(i, x, y);
+                                                }
+                                                edit => {
+                                                    root.selected-index = i;
+                                                    root.edit-requested(i);
+                                                }
+                                                tip(text, cx, bottom, on) => {
+                                                    root.tip-set(text, cx, bottom, on);
+                                                    root.row-tip-text = on ? text : "";
+                                                }
+                                                reveal-requested(on) => { root.reveal-requested(i, on); }
+                                            }
+                                        }
+                                    }
+                                    // The drop target: a 2px accent line where the dragged row would land: below this row when it
+                                    // comes from above, above it otherwise (Cards: a vertical line at the tile's side).
+                                    Rectangle {
+                                        visible: row-drop.has-drag;
+                                        x: root.cols > 1 ? (row-from >= 0 && row-from < i ? parent.width - 1px : -1px) : 0px;
+                                        y: root.cols > 1 ? 0px : row-from >= 0 && row-from < i ? card.y + card.height - 1px : 0px;
+                                        width: root.cols > 1 ? 2px : parent.width;
+                                        height: root.cols > 1 ? parent.height : 2px;
+                                        background: Theme.accent;
+                                    }
+                                }
+                                // A short last row of tiles keeps the column width.
+                                if root.group-cells(g) < root.cols: Rectangle { horizontal-stretch: 1; }
+                            }
+                        }
+                    }
+
+                    // The "+ New item" row: directly under the last item (or at the bottom of a short or empty list).
+                    quick := QuickAdd {
+                        // An empty list shows its empty state's two create actions instead; "New note" opens the box.
+                        visible: !root.recent-open && !root.loading && !root.searching && !root.no-lists && (root.rows.length > 0 || self.expanded);
+                        x: Space.s2;
+                        width: parent.width - 2 * Space.s2;
+                        y: min(parent.height - self.box-h - Space.s1, root.rows.length == 0 ? parent.height : list.content-height + Space.s1);
+                        list-name: root.add-list-name;
+                        tab-stop: false;
+                        open-request: root.quick-add-request;
+                        detect-kind(t) => { root.detect-kind(t) }
+                        create(t, k, s) => { root.quick-add-requested(t, k, s); }
+                        full-editor(t) => { root.quick-add-full(t); }
+                        cancelled => { root.focus-typing(); }
+                    }
+
+                    list-bar := OverlayScrollbar {
+                        content-y: list.content-y;
+                        content-height: list.content-height;
+                        visible-height: list.height;
+                        enabled: list.visible;
+                        scroll-to(y) => { list.content-y = y; }
+                    }
+
+                    // More cards below (or above) the fold: two card edges, never a fade.
+                    if root.rows.length > 0 && !root.recent-open && list.content-y < -1px: DeckEdge {
+                        position: DeckEdgePosition.top;
+                        x: Space.s2;
+                        y: Space.s1;
+                        width: parent.width - 2 * Space.s2;
+                    }
+                    if root.rows.length > 0 && !root.recent-open && list.content-height + list.content-y > list.height + 1px: DeckEdge {
+                        position: DeckEdgePosition.bottom;
+                        x: Space.s2;
+                        y: list.height - self.height;
+                        width: parent.width - 2 * Space.s2;
+                    }
+                    // The list scrolls above the "+ New item" row: a hairline marks where it ends once the rows overflow.
+                    if quick.visible && root.rows.length > 0 && !root.recent-open && list.content-height > list.height: Rectangle {
+                        x: Space.s2;
+                        y: list.height;
+                        width: parent.width - 2 * Space.s2;
+                        height: 1px;
+                        background: Theme.border-subtle;
+                    }
+
+                    // ---- The Recent inbox: what was copied lately; click copies, "Save to…" keeps it in a list --------
+                    if root.recent-open: Rectangle {
+                        width: parent.width;
+                        height: parent.height;
+                        recent-list := ListView {
+                            x: Space.s2 - Space.s1;
+                            y: 0px;
+                            width: parent.width - 2 * Space.s2 + 2 * Space.s1;
+                            height: parent.height;
+                            vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+                            horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+                            accessible-label: @tr("Recent copies");
+                            visible: root.recent-rows.length > 0;
+
+                            for entry[i] in root.recent-rows: Rectangle {
+                                height: rcard.preferred-height + root.row-gap + (i == root.recent-rows.length - 1 ? 2 * Space.s1 : 0px);
+
+                                rcard := ItemCard {
+                                    x: Space.s1;
+                                    y: Space.s1;
+                                    width: parent.width - 2 * Space.s1;
+                                    height: self.preferred-height;
+                                    variant: root.layout == PanelLayout.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
+                                    kind: ItemKind.text;
+                                    preview: entry.preview;
+                                    list-name: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
+                                    list-color: transparent;
+                                    selected: i == root.rsel;
+                                    use-label: @tr("Copy");
+                                    use-copies: true;
+                                    show-use-label: i == root.rsel;
+                                    keyboard-focusable: false;
+                                    use => {
+                                        root.recent-selected = i;
+                                        root.recent-copied(entry.id);
+                                    }
+                                    copy => {
+                                        root.recent-selected = i;
+                                        root.recent-copied(entry.id);
+                                    }
+                                    double-clicked => {
+                                        root.recent-save-at(i, self.absolute-position.x + Space.s6, self.absolute-position.y + self.height);
+                                    }
+                                    context-menu-requested(x, y) => {
+                                        root.recent-menu-at(i, self.absolute-position.x + x, self.absolute-position.y + y);
+                                    }
+                                }
+                            }
+                        }
+
+                        recent-list-bar := OverlayScrollbar {
+                            content-y: recent-list.content-y;
+                            content-height: recent-list.content-height;
+                            visible-height: recent-list.height;
+                            enabled: recent-list.visible;
+                            scroll-to(y) => { recent-list.content-y = y; }
+                        }
+                        if root.recent-rows.length == 0: EmptyState {
+                            x: Space.s2;
+                            width: parent.width - 2 * Space.s2;
+                            height: parent.height;
+                            kind: EmptyStateKind.inbox;
+                            heading: root.recent-locked ? @tr("Recent copies are locked")
+                                : root.recent-paused ? @tr("History is paused") : @tr("Nothing copied yet");
+                            body: root.recent-locked ? @tr("Unlock your library to see recent copies. Nothing is collected while it is locked.")
+                                : root.recent-paused ? @tr("Resume it from the tray icon, then copy some text.")
+                                : @tr("Text you copy shows up here for {} days. Save the useful ones to a list.", root.recent-days);
+                            action-text: root.recent-locked ? @tr("Unlock") : "";
+                            action => { root.recent-unlock-requested(); }
+                        }
+                    }
+
+                    if root.loading: VerticalLayout {
+                        x: Space.s2;
+                        y: Space.s1;
+                        width: parent.width - 2 * Space.s2;
+                        alignment: start;
+                        for n in [0, 1, 2, 3, 4, 5]: Skeleton {
+                            kind: SkeletonKind.row;
+                            // The layout's row height (spec 2.7).
+                            height: root.layout-row-h + root.row-gap;
+                            label: n == 0 ? @tr("Loading") : "";
+                        }
+                    }
+
+                    if root.rows.length == 0 && !root.loading && !root.recent-open && !(quick.expanded && !root.no-lists && !root.searching): EmptyState {
+                        quiet: true;
+                        x: Space.s2;
+                        width: parent.width - 2 * Space.s2;
+                        height: parent.height;
+                        kind: root.no-lists ? EmptyStateKind.board : root.searching ? EmptyStateKind.search : EmptyStateKind.list;
+                        heading: root.no-lists ? @tr("No lists yet")
+                            : root.searching ? @tr("Nothing matches “{}”", root.query) : @tr("This list is empty");
+                        body: root.no-lists ? @tr("Lists hold your snippets.")
+                            : root.searching ? @tr("Searched every board and list.")
+                            : @tr("Copy something, then save it here.");
+                        action-text: root.no-lists ? @tr("New list") : root.searching ? @tr("Create “{}”", root.query) : @tr("Save from clipboard");
+                        caption: root.searching && !root.no-lists ? @tr("Adds a text snippet to {}", root.add-list-name) : "";
+                        secondary-text: root.no-lists ? "" : root.searching ? @tr("Clear search") : @tr("New note");
+                        action => {
+                            if (root.no-lists) {
+                                root.add-list-requested();
+                            } else if (root.searching) {
+                                root.create-from-query();
+                            } else {
+                                root.add-from-clipboard();
+                            }
+                        }
+                        secondary => {
+                            if (root.searching) {
+                                root.clear-query();
+                            } else {
+                                root.quick-add-request += 1;
+                            }
+                        }
+                    }
+
+                    if root.toast-text != "": Toast {
+                        text: root.toast-text;
+                        kind: root.toast-kind;
+                        phase: root.toast-phase;
+                        undo-label: root.toast-undo-label;
+                        ink: true;
+                        width: max(0px, parent.width - 2 * Space.s3);
+                        height: self.preferred-height;
+                        x: Space.s3;
+                        y: parent.height - self.height - Space.s2;
+                        undo => { root.toast-undo(); }
+                        hover-changed(h) => { root.toast-hover-changed(h); }
+                    }
+                }
+
+                // ---- Bulk bar: shown while rows are selected ----------------------------------------------
+                if root.marked-count > 0 && !root.recent-open: Rectangle {
+                    height: max(Space.s8 + Space.s2, Space.hit + Space.s3);
+                    background: Theme.accent-subtle;
+                    accessible-role: AccessibleRole.groupbox;
+                    accessible-label: @tr("{} selected", root.marked-count);
+                    HorizontalLayout {
+                        padding-left: Space.s3;
+                        padding-right: Space.s1;
+                        spacing: Space.s0-5;
                         Text {
-                            text: @tr("Copy");
+                            horizontal-stretch: 1;
+                            text: @tr("{} selected", root.marked-count);
                             font-family: Fonts.sans;
                             font-size: Type.sm;
-                            color: Theme.text-secondary;
+                            font-weight: Type.medium;
+                            color: Theme.text-primary;
                             vertical-alignment: center;
+                            overflow: elide;
                             accessible-role: AccessibleRole.none;
+                        }
+                        IconButton {
+                            icon: Icons.folder;
+                            tooltip: @tr("Move to…");
+                            own-tooltip: true;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.bulk-move-requested(); }
+                        }
+                        IconButton {
+                            icon: Icons.flag;
+                            tooltip: @tr("Colour");
+                            own-tooltip: true;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.bulk-colour-requested(); }
+                        }
+                        IconButton {
+                            icon: Icons.files;
+                            tooltip: @tr("Copy all");
+                            own-tooltip: true;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.bulk-copy-requested(); }
+                        }
+                        IconButton {
+                            icon: Icons.trash;
+                            tooltip: @tr("Delete");
+                            own-tooltip: true;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.bulk-delete-requested(); }
+                        }
+                        IconButton {
+                            icon: Icons.x;
+                            tooltip: @tr("Clear selection");
+                            own-tooltip: true;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.selection-cleared(); }
+                        }
+                    }
+                }
+
+                // ---- Paste stack: the marked items, and Start / End ---------------------------------------
+                if root.stack-visible: Rectangle {
+                    height: max(Space.s8 + Space.s2, Type.line-sm + Space.s3);
+                    background: Theme.accent-subtle;
+                    accessible-role: AccessibleRole.text;
+                    accessible-label: root.stack-running
+                        ? @tr("Paste stack, item {} of {}, next: {}", root.stack-position + 1, root.stack-count, root.stack-next-title)
+                        : @tr("Paste stack, {} marked", root.stack-count);
+                    HorizontalLayout {
+                        padding-left: Space.s3;
+                        padding-right: Space.s2;
+                        spacing: Space.s2;
+                        Text {
+                            horizontal-stretch: 1;
+                            text: root.stack-running
+                                ? @tr("{} of {} · next: {}", root.stack-position + 1, root.stack-count, root.stack-next-title)
+                                : @tr("Paste stack: {} marked", root.stack-count);
+                            font-family: Fonts.sans;
+                            font-size: Type.sm;
+                            color: Theme.accent-text;
+                            vertical-alignment: center;
+                            overflow: elide;
+                            accessible-role: AccessibleRole.none;
+                        }
+                        if !root.stack-running: Button {
+                            text: @tr("Start stack");
+                            size: ButtonSize.sm;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.stack-started(); }
+                        }
+                        Button {
+                            text: root.stack-running ? @tr("End stack") : @tr("Clear");
+                            variant: ButtonVariant.ghost;
+                            size: ButtonSize.sm;
+                            y: (parent.height - self.height) / 2;
+                            clicked => { root.stack-ended(); }
+                        }
+                    }
+                }
+
+                // ---- Target footer (spec 2.6): where a click goes, and the way back to the Main window. The paste stack
+                // and the selection bar take its slot while they show.
+                if !root.stack-visible && !(root.marked-count > 0 && !root.recent-open): footer := Rectangle {
+                    height: max(Space.s8, Type.line-sm + Space.s3);
+                    accessible-role: AccessibleRole.text;
+                    accessible-label: root.rows.length == 0 && root.searching ? @tr("Enter creates “{}” in {}", root.query, root.add-list-name)
+                        : root.pastes
+                        ? (root.target-title != "" ? @tr("Pastes into {} · {}", root.target-name, root.target-title) : @tr("Pastes into {}", root.target-name))
+                        : @tr("No target: click copies");
+
+                    Rectangle {
+                        y: 0;
+                        height: 1px;
+                        background: Theme.border-subtle;
+                    }
+                    HorizontalLayout {
+                        padding-left: Space.s4 - 1px;
+                        padding-right: Space.s1;
+                        spacing: Space.s2;
+                        // Left: the route. The tooltip says how to paste and how to copy.
+                        status := Rectangle {
+                            horizontal-stretch: 1;
+                            min-width: 0px;
+                            property <string> how: @tr("Click or Enter pastes. Shift+click or Shift+Enter copies.");
+                            status-touch := TouchArea {
+                                mouse-cursor: MouseCursor.default;
+                                changed has-hover => {
+                                    root.tip-set(status.how, self.absolute-position.x + Space.s6, self.absolute-position.y - tooltip.preferred-height - Space.s2, self.has-hover && !(root.rows.length == 0 && root.searching));
+                                }
+                            }
+                            HorizontalLayout {
+                                spacing: Space.s1 + Space.s0-5;
+                                alignment: start;
+                                if !(root.rows.length == 0 && root.searching): Icon {
+                                    source: root.pastes ? Icons.arrow-bend-down-left : Icons.clipboard;
+                                    tint: Theme.text-secondary;
+                                    size: Space.s4 * SystemLook.text-scale;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                                // No results: the footer says what Enter does (spec 2.6): one translatable sentence.
+                                if root.rows.length == 0 && root.searching: Text {
+                                    horizontal-stretch: 1;
+                                    min-width: 0px;
+                                    text: @tr("Enter creates “{}” in {}", root.query, root.add-list-name);
+                                    font-family: Fonts.sans;
+                                    font-size: Type.sm;
+                                    color: Theme.text-secondary;
+                                    vertical-alignment: center;
+                                    overflow: elide;
+                                    accessible-role: AccessibleRole.none;
+                                }
+                                if !(root.rows.length == 0 && root.searching): Text {
+                                    text: root.pastes ? @tr("Pastes into") : @tr("No target:");
+                                    font-family: Fonts.sans;
+                                    font-size: Type.sm;
+                                    color: Theme.text-secondary;
+                                    vertical-alignment: center;
+                                    overflow: elide;
+                                    accessible-role: AccessibleRole.none;
+                                }
+                                if !(root.rows.length == 0 && root.searching): Text {
+                                    horizontal-stretch: 1;
+                                    min-width: 0px;
+                                    text: root.pastes ? root.target-name : @tr("click copies");
+                                    font-family: Fonts.sans;
+                                    font-size: Type.sm;
+                                    font-weight: Type.medium;
+                                    color: Theme.text-primary;
+                                    vertical-alignment: center;
+                                    overflow: elide;
+                                    accessible-role: AccessibleRole.none;
+                                }
+                            }
+                        }
+                        Rectangle {
+                            width: Space.s1 + 1px;
+                            Rectangle {
+                                x: 0px;
+                                y: (parent.height - self.height) / 2;
+                                width: 1px;
+                                height: Space.s4;
+                                background: Theme.border-default;
+                            }
+                        }
+                        // Right: "Open Snipdeck", icon only below 300px.
+                        open-button := Rectangle {
+                            property <bool> tip-on: open-touch.has-hover || open-scope.has-focus;
+                            width: root.narrow ? Space.hit : open-row.preferred-width;
+                            height: Space.hit;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: Radius.md;
+                            background: open-touch.pressed ? Theme.bg-sunken : open-touch.has-hover ? Theme.bg-hover : transparent;
+                            forward-focus: open-scope;
+                            accessible-role: button;
+                            accessible-label: @tr("Open Snipdeck");
+                            accessible-action-default => { root.open-requested(); }
+                            animate background { duration: Motion.instant; easing: Motion.out; }
+                            changed tip-on => {
+                                if (root.narrow) {
+                                    root.tip-set(@tr("Open Snipdeck"), self.absolute-position.x + self.width / 2, self.absolute-position.y - tooltip.preferred-height - Space.s2, self.tip-on);
+                                }
+                            }
+                            open-row := HorizontalLayout {
+                                padding-left: root.narrow ? 0px : Space.s2;
+                                padding-right: root.narrow ? 0px : Space.s2;
+                                spacing: Space.s1 + Space.s0-5;
+                                alignment: center;
+                                Icon {
+                                    source: Icons.sidebar-simple;
+                                    tint: Theme.text-primary;
+                                    size: Space.s4 * SystemLook.text-scale;
+                                    y: (parent.height - self.height) / 2;
+                                }
+                                if !root.narrow: Text {
+                                    text: @tr("Open Snipdeck");
+                                    font-family: Fonts.sans;
+                                    font-size: Type.sm;
+                                    color: Theme.text-primary;
+                                    vertical-alignment: center;
+                                    accessible-role: none;
+                                }
+                            }
+                            Rectangle {
+                                x: -4px;
+                                y: -4px;
+                                width: parent.width + 8px;
+                                height: parent.height + 8px;
+                                border-width: open-scope.has-focus ? 2px : 0px;
+                                border-color: Theme.focus-ring;
+                                border-radius: Radius.md + 2px;
+                                background: transparent;
+                            }
+                            open-touch := TouchArea {
+                                clicked => { root.open-requested(); }
+                            }
+                            open-scope := FocusScope {
+                                focus-on-click: false;
+                                key-pressed(event) => {
+                                    if (event.text == Key.Return || event.text == " ") {
+                                        root.open-requested();
+                                        return accept;
+                                    }
+                                    return reject;
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+        }
+
+        // ---- The board menu: a scrim that dismisses on click, and the menu under the header ----------
+        if root.board-menu-open: TouchArea {
+            clicked => { root.board-menu-dismissed(); }
+        }
+        if root.board-menu-open && !root.lists-in-menu: Menu {
+            x: Space.s2;
+            y: root.header-h - Space.s1;
+            entries: root.board-menu-entries;
+            label: @tr("Boards");
+            icons: false;
+            init => { self.focus-menu(); }
+            activated(i) => { root.board-menu-activated(i); }
+            dismissed => { root.board-menu-dismissed(); }
+        }
+        // The Menu switcher: boards, then this board's lists, then New list (the tab row is not drawn).
+        if root.board-menu-open && root.lists-in-menu: ListsMenu {
+            x: Space.s2;
+            y: root.header-h - Space.s1;
+            width: min(260px, root.width - 2 * Space.s2);
+            menu-max-height: root.height - root.header-h - Space.s8;
+            boards: root.board-menu-entries;
+            lists: root.tabs;
+            current-list: root.current-tab;
+            recent-available: root.recent-available;
+            recent-open: root.recent-open;
+            recent-label: @tr("Recent");
+            new-list-label: @tr("New list");
+            boards-label: @tr("Boards");
+            lists-label: @tr("Lists");
+            current-board: root.board-name;
+            label: @tr("Boards and lists");
+            init => {
+                self.current = root.recent-open ? 0 : root.recent-available ? 1 + root.board-menu-entries.length + root.current-tab : root.board-menu-entries.length + root.current-tab;
+                self.focus-menu();
+            }
+            board-chosen(i) => { root.board-menu-activated(i); }
+            list-chosen(i) => {
+                root.board-menu-dismissed();
+                root.pick-tab(i);
+            }
+            recent-chosen => {
+                root.board-menu-dismissed();
+                root.open-recent();
+            }
+            new-list-chosen => {
+                root.board-menu-dismissed();
+                root.add-list-requested();
+            }
+            dismissed => { root.board-menu-dismissed(); }
+        }
+
+        // ---- The Panel menu (kebab): right-aligned under the button, kept inside the window --------------
+        if root.app-menu-open: TouchArea {
+            clicked => { root.app-menu-dismissed(); }
+        }
+        if root.app-menu-open: Menu {
+            x: min(max(Space.s2, kebab.absolute-position.x + kebab.width - self.width), root.width - self.width - Space.s2);
+            y: root.header-h - Space.s1;
+            entries: root.app-menu-entries;
+            label: @tr("Panel menu");
+            init => { self.focus-menu(); }
+            activated(i) => { root.app-menu-activated(i); }
+            dismissed => { root.app-menu-dismissed(); }
+        }
+
+        // ---- The New menu (header): under the button, kept inside the window.
+        if root.new-menu-open: TouchArea {
+            clicked => { root.new-menu-open = false; }
+        }
+        if root.new-menu-open: Menu {
+            x: min(max(Space.s2, new-button.absolute-position.x), root.width - self.width - Space.s2);
+            y: root.header-h - Space.s1;
+            entries: root.new-menu-entries;
+            label: @tr("New");
+            init => { self.focus-menu(); }
+            activated(i) => {
+                root.new-menu-open = false;
+                if (i == 0) {
+                    root.add-from-clipboard();
+                } else if (i == 1) {
+                    root.quick-add-request += 1;
+                } else {
+                    root.add-list-requested();
+                }
+            }
+            dismissed => { root.new-menu-open = false; }
+        }
+
+        // ---- The pinned strip's "+N more" menu: the pinned items past the two chips; a choice uses that item.
+        if root.pinned-menu-open: TouchArea {
+            clicked => { root.pinned-menu-open = false; }
+        }
+        if root.pinned-menu-open: Menu {
+            x: root.width - self.width - Space.s2;
+            y: root.pinned-menu-y - Space.s1;
+            entries: root.pinned-more-entries;
+            label: @tr("More pinned snippets");
+            icons: false;
+            init => { self.focus-menu(); }
+            activated(i) => {
+                root.pinned-menu-open = false;
+                root.pinned-used(i + 2);
+            }
+            dismissed => { root.pinned-menu-open = false; }
+        }
+
+        // ---- The item menu (right-click, Menu key, Shift+F10 on a card or chip): at the pointer, kept inside the window.
+        if root.item-menu-open: TouchArea {
+            clicked => { root.item-menu-dismissed(); }
+        }
+        if root.item-menu-open: Menu {
+            x: min(max(Space.s2, root.item-menu-x), root.width - self.width - Space.s2);
+            y: min(max(Space.s2, root.item-menu-y), root.height - self.height - Space.s2);
+            entries: root.item-menu-entries;
+            label: @tr("Item actions");
+            icons: false;
+            init => { self.focus-menu(); }
+            activated(i) => { root.item-menu-activated(i); }
+            dismissed => { root.item-menu-dismissed(); }
+        }
+
+        // ---- The list menu (right-click, Menu, Shift+F10 on a list tab): at the pointer, kept inside the window.
+        if root.list-menu-open: TouchArea {
+            clicked => { root.list-menu-dismissed(); }
+        }
+        if root.list-menu-open: Menu {
+            x: min(max(Space.s2, root.list-menu-x), root.width - self.width - Space.s2);
+            y: min(max(Space.s2, root.list-menu-y), root.height - self.height - Space.s2);
+            entries: root.list-menu-entries;
+            label: @tr("List actions");
+            init => { self.focus-menu(); }
+            activated(i) => { root.list-menu-activated(i); }
+            dismissed => { root.list-menu-dismissed(); }
+        }
+
+        // ---- The Recent entry menu (right-click, Menu, Shift+F10) and its "Save to…" chooser: at the pointer.
+        if root.recent-menu-open || root.recent-save-open: TouchArea {
+            clicked => {
+                root.recent-menu-open = false;
+                root.recent-save-open = false;
+            }
+        }
+        if root.recent-menu-open: Menu {
+            x: min(max(Space.s2, root.recent-menu-x), root.width - self.width - Space.s2);
+            y: min(max(Space.s2, root.recent-menu-y), root.height - self.height - Space.s2);
+            entries: [
+                { text: @tr("Save to…"), icon: Icons.folder },
+                { text: @tr("Copy"), icon: Icons.copy },
+                { text: @tr("Remove from Recent"), icon: Icons.trash, destructive: true },
+            ];
+            label: @tr("Recent entry actions");
+            init => { self.focus-menu(); }
+            activated(i) => {
+                root.recent-menu-open = false;
+                if (i == 0) {
+                    root.recent-save-open = true;
+                } else if (i == 1) {
+                    root.recent-copied(root.recent-menu-id);
+                } else {
+                    root.recent-deleted(root.recent-menu-id);
+                }
+            }
+            dismissed => { root.recent-menu-open = false; }
+        }
+        if root.recent-save-open: Chooser {
+            x: min(max(Space.s2, root.recent-menu-x), root.width - self.width - Space.s2);
+            y: min(max(Space.s2, root.recent-menu-y), root.height - self.height - Space.s2);
+            width: min(240px, root.width - 2 * Space.s2);
+            entries: root.recent-targets;
+            label: @tr("Save to…");
+            empty-text: @tr("No lists yet");
+            init => {
+                self.current = 0;
+                self.focus-chooser();
+            }
+            chosen(i) => {
+                root.recent-save-open = false;
+                root.recent-saved(root.recent-menu-id, i);
+            }
+            dismissed => { root.recent-save-open = false; }
+        }
+
+        // ---- The list delete confirmation: over everything but the tooltip and the grips. The only thing "Delete
+        // list…" shows; the list and its items move to the Trash with an Undo toast.
+        Dialog {
+            open: root.list-delete-open;
+            variant: DialogVariant.destructive;
+            title: @tr("Delete list “{}”?", root.list-delete-name);
+            body: @tr("The list and its {} items move to the Trash. You can restore them for {} days.", root.list-delete-count, root.trash-days);
+            dismissed => { root.list-delete-dismissed(); }
+            Button {
+                text: @tr("Cancel");
+                clicked => { root.list-delete-dismissed(); }
+            }
+            Button {
+                variant: ButtonVariant.danger;
+                text: @tr("Delete list");
+                clicked => { root.list-delete-confirmed(); }
+            }
+        }
+
+        // The board delete confirmation: the board, its lists and their items move to the Trash with an Undo toast.
+        Dialog {
+            open: root.board-delete-open;
+            variant: DialogVariant.destructive;
+            title: @tr("Delete board “{}”?", root.board-delete-name);
+            body: @tr("Its lists and {} items move to the Trash. You can restore them for {} days.", root.board-delete-count, root.trash-days);
+            dismissed => { root.board-delete-dismissed(); }
+            Button {
+                text: @tr("Cancel");
+                clicked => { root.board-delete-dismissed(); }
+            }
+            Button {
+                variant: ButtonVariant.danger;
+                text: @tr("Delete board");
+                clicked => { root.board-delete-confirmed(); }
+            }
+        }
+
+        // The tooltip of whichever icon-only control is hovered or focused, centred under it and kept
+        // inside the window. Above the menus' scrims, below nothing; it never takes pointer or focus.
+        tooltip := Tooltip {
+            text: root.tip;
+            open: root.tooltip-shown != "";
+            width: self.preferred-width;
+            height: self.preferred-height;
+            x: min(max(Space.s2, root.tip-cx - self.width / 2), root.width - self.width - Space.s2);
+            y: root.tip-bottom + Space.s1;
+        }
+
+        // ---- Resize grips: invisible, last so they sit above the header's drag area and the menus' scrims.
+        // Rows start 8px in and the header buttons 8px in from the right, so none of this overlaps a control.
+        ResizeGrip {
+            edge: ResizeEdge.left;
+            x: 0px;
+            y: root.grip-corner;
+            width: root.grip;
+            height: root.height - 2 * root.grip-corner;
+            resize(e) => { root.resize-requested(e); }
+        }
+        ResizeGrip {
+            edge: ResizeEdge.right;
+            x: root.width - root.grip;
+            y: root.grip-corner;
+            width: root.grip;
+            height: root.height - 2 * root.grip-corner;
+            resize(e) => { root.resize-requested(e); }
+        }
+        ResizeGrip {
+            edge: ResizeEdge.top;
+            x: root.grip-corner;
+            y: 0px;
+            width: root.width - 2 * root.grip-corner;
+            height: root.grip;
+            resize(e) => { root.resize-requested(e); }
+        }
+        ResizeGrip {
+            edge: ResizeEdge.bottom;
+            x: root.grip-corner;
+            y: root.height - root.grip;
+            width: root.width - 2 * root.grip-corner;
+            height: root.grip;
+            resize(e) => { root.resize-requested(e); }
+        }
+        ResizeGrip {
+            edge: ResizeEdge.top-left;
+            x: 0px;
+            y: 0px;
+            width: root.grip-corner;
+            height: root.grip-corner;
+            resize(e) => { root.resize-requested(e); }
+        }
+        ResizeGrip {
+            edge: ResizeEdge.top-right;
+            x: root.width - root.grip-corner;
+            y: 0px;
+            width: root.grip-corner;
+            height: root.grip-corner;
+            resize(e) => { root.resize-requested(e); }
+        }
+        ResizeGrip {
+            edge: ResizeEdge.bottom-left;
+            x: 0px;
+            y: root.height - root.grip-corner;
+            width: root.grip-corner;
+            height: root.grip-corner;
+            resize(e) => { root.resize-requested(e); }
+        }
+        ResizeGrip {
+            edge: ResizeEdge.bottom-right;
+            x: root.width - root.grip-corner;
+            y: root.height - root.grip-corner;
+            width: root.grip-corner;
+            height: root.grip-corner;
+            resize(e) => { root.resize-requested(e); }
+        }
+
+        // The window outline: level 3 is the OS shadow plus a 1px `border-default` (DESIGN.md §6).
+        Rectangle {
+            border-width: 1px;
+            border-color: Theme.border-default;
+            background: transparent;
+        }
     }
 
-    // ---- The board menu: a scrim that dismisses on click, and the menu under the header ----------
-    if root.board-menu-open: TouchArea {
-        clicked => { root.board-menu-dismissed(); }
-    }
-    if root.board-menu-open: Menu {
-        x: Space.s2;
-        y: root.header-h - Space.s1;
-        width: min(Space.s12 * 5, root.width - 2 * Space.s2);
-        entries: root.board-menu-entries;
-        label: @tr("Boards");
-        icons: false;
-        init => { self.focus-menu(); }
-        activated(i) => { root.board-menu-activated(i); }
-        dismissed => { root.board-menu-dismissed(); }
+    // The dock preview: an accent strip along the edge the drag would dock to.
+    if root.dock-preview > 0 && !root.dock-collapsed: Rectangle {
+        x: root.dock-preview == 2 ? root.width - self.width : 0;
+        y: root.dock-preview == 4 ? root.height - self.height : 0;
+        width: root.dock-preview <= 2 ? Space.s1 : root.width;
+        height: root.dock-preview >= 3 ? Space.s1 : root.height;
+        background: Theme.accent;
+        accessible-role: none;
     }
 
-    // The window outline: level 3 is the OS shadow plus a 1px `border-default` (DESIGN.md §6).
-    Rectangle {
-        border-width: 1px;
-        border-color: Theme.border-default;
-        background: transparent;
+    // The collapsed dock: a strip over the whole window, in the colour of the list on show.
+    if root.dock-collapsed: DockHandle {
+        width: root.width;
+        height: root.height;
+        accent: root.dock-has-list-color && !SystemLook.high-contrast ? root.dock-list-color : Theme.accent;
+        vertical: root.dock-vertical;
+        label: @tr("Snipdeck handle, press the Panel hotkey to open");
+        hovered(on) => { root.handle-hovered(on); }
+        clicked => { root.handle-clicked(); }
     }
 }

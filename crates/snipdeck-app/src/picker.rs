@@ -5,7 +5,9 @@
 //! Like the Panel, matching runs in memory over title, tags and the start of the content.
 
 use std::collections::HashMap;
+use std::rc::Rc;
 
+use crate::index_cache::IndexCache;
 use snipdeck_core::{BoardId, Item, ItemId, ItemKind, ListAccent, ListId, search::SearchIndex};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo};
 
@@ -57,7 +59,7 @@ struct Place {
 pub struct PickerModel {
     /// Every live item, in library order (board, list, manual order).
     places: Vec<Place>,
-    index: SearchIndex,
+    index: Rc<SearchIndex>,
     /// The board the Panel showed when the Picker opened (the "This board" scope).
     board: Option<BoardId>,
     query: String,
@@ -83,32 +85,40 @@ impl PickerModel {
     /// # Errors
     ///
     /// Any store error.
+    #[cfg(test)]
     pub fn load<S>(store: &S, board: Option<BoardId>) -> snipdeck_store::Result<Self>
     where
         S: BoardRepo + ListRepo + ItemRepo + TagRepo,
     {
-        let tag_names: HashMap<_, _> = store
-            .tags()?
-            .into_iter()
-            .map(|t| (t.id, t.name.as_str().to_owned()))
-            .collect();
-        let mut by_list: HashMap<ListId, Vec<Item>> = HashMap::new();
-        for item in store.all_items()? {
+        Self::load_cached(store, board, &IndexCache::new())
+    }
+
+    /// Reads the whole library through `cache` (read again only when the library changed since).
+    /// `board` is the board the Panel shows, for the "This board" scope. Starts with an empty
+    /// query, the All scope and the first row selected.
+    ///
+    /// # Errors
+    ///
+    /// Any store error.
+    pub fn load_cached<S>(
+        store: &S,
+        board: Option<BoardId>,
+        cache: &IndexCache,
+    ) -> snipdeck_store::Result<Self>
+    where
+        S: BoardRepo + ListRepo + ItemRepo + TagRepo,
+    {
+        let snapshot = cache.snapshot(store)?;
+        let mut by_list: HashMap<ListId, Vec<&Item>> = HashMap::new();
+        for item in &snapshot.all {
             by_list.entry(item.list_id).or_default().push(item);
         }
         let mut places = Vec::new();
-        let mut index = SearchIndex::default();
-        for b in store.boards()? {
-            for l in store.lists(b.id)? {
+        for (b, lists) in &snapshot.boards {
+            for l in lists {
                 for item in by_list.remove(&l.id).unwrap_or_default() {
-                    index.upsert_with_tags(
-                        &item,
-                        item.tags
-                            .iter()
-                            .filter_map(|t| tag_names.get(t).map(String::as_str)),
-                    );
                     places.push(Place {
-                        item,
+                        item: item.clone(),
                         board: b.id,
                         board_name: b.name.as_str().to_owned(),
                         list_name: l.name.as_str().to_owned(),
@@ -117,6 +127,7 @@ impl PickerModel {
                 }
             }
         }
+        let index = Rc::clone(&snapshot.index);
         let mut model = Self {
             places,
             index,

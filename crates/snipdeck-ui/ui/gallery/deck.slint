@@ -49,6 +49,7 @@ component SampleCard inherits ItemCard {
     use => { root.act("use", root.s.title); }
     copy => { root.act("copy", root.s.title); }
     context-menu-requested(x, y) => { root.act("menu", root.s.title); }
+    picked(shift, control) => { root.act("pick", root.s.title); }
     reveal-requested(on) => { root.act(on ? "reveal" : "hide", root.s.title); }
 }
 
@@ -97,6 +98,8 @@ export component DeckGallery inherits Window {
     in-out property <string> last-action;
     in-out property <string> last-title;
     in-out property <int> actions: 0;
+    // Selection mode, as the main window sets it: a click picks, the use button still uses.
+    in property <bool> pick-mode: false;
     width: 1064px;
     height: 1280px;
     background: Theme.bg-app;
@@ -115,6 +118,7 @@ export component DeckGallery inherits Window {
             for s in DeckSamples.all: SampleCard {
                 variant: ItemCardVariant.compact;
                 s: s;
+                pick-mode: root.pick-mode;
                 act(action, title) => {
                     root.last-action = action;
                     root.last-title = title;
@@ -131,6 +135,7 @@ export component DeckGallery inherits Window {
             for s in DeckSamples.all: SampleCard {
                 variant: ItemCardVariant.comfortable;
                 s: s;
+                pick-mode: root.pick-mode;
                 act(action, title) => {
                     root.last-action = action;
                     root.last-title = title;
@@ -151,6 +156,7 @@ export component DeckGallery inherits Window {
                     width: 176px;
                     variant: ItemCardVariant.tile;
                     s: s;
+                pick-mode: root.pick-mode;
                     act(action, title) => {
                         root.last-action = action;
                         root.last-title = title;
@@ -212,8 +218,6 @@ export component DeckPartsGallery inherits Window {
     // What was clicked last, e.g. "pinned:2", "sidebar:Work", "board-menu".
     in-out property <string> last;
     in-out property <int> events: 0;
-    // How far the pinned strip has scrolled (keyboard focus scrolls a chip into view).
-    out property <length> strip-scroll: strip.scroll-x;
     width: 640px;
     height: 600px;
     background: Theme.bg-app;
@@ -257,8 +261,13 @@ export component DeckPartsGallery inherits Window {
                 }
             }
             Caption { text: "Pinned strip"; }
-            strip := PinnedStrip {
+            PinnedStrip {
                 items: root.pinned;
+                more-label: "+\{root.pinned.length - 2} more";
+                more-clicked => {
+                    root.last = "pinned-more";
+                    root.events += 1;
+                }
                 use(i) => {
                     root.last = "pinned:\{i}";
                     root.events += 1;

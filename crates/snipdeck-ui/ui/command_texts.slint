@@ -1,0 +1,53 @@
+// The words of the command palette, one `CommandText` per command, in the order of `snipdeck-app`'s
+// `Command::ALL` (a test there checks the length). `words` are the synonyms the filter also matches, so
+// "add" finds New item and "hotkeys" finds Settings. The palette itself is drawn from rows the app builds
+// from these texts, because the app does the filtering and Rust cannot reach `@tr`.
+export struct CommandText {
+    label: string,
+    words: string,
+}
+
+export global CommandTexts {
+    // The names the list and board editors start with for a new one ("New list 1"): the host numbers them.
+    out property <string> new-list-name: @tr("New list");
+    out property <string> new-board-name: @tr("New board");
+    out property <[CommandText]> all: [
+        { label: @tr("New item"), words: @tr("add create snippet note write") },
+        { label: @tr("New list"), words: @tr("add create folder group") },
+        { label: @tr("Search"), words: @tr("find filter look") },
+        { label: @tr("Show Panel"), words: @tr("open toggle deck hide") },
+        { label: @tr("Open Picker"), words: @tr("quick find paste palette") },
+        { label: @tr("Quick capture"), words: @tr("clipboard save grab screenshot") },
+        { label: @tr("Paste next item"), words: @tr("stack queue sequence following paste") },
+        { label: @tr("Take screenshot"), words: @tr("snip snipping capture screen picture image") },
+        { label: @tr("Settings"), words: @tr("preferences options configure hotkeys theme backup") },
+        { label: @tr("User guide"), words: @tr("help docs manual how") },
+        { label: @tr("Welcome tour"), words: @tr("tutorial intro onboarding basics learn") },
+        { label: @tr("Keyboard shortcuts"), words: @tr("hotkeys keys cheat sheet bindings chords") },
+        { label: @tr("Troubleshoot…"), words: @tr("diagnose doctor problems fix") },
+        { label: @tr("About Snipdeck"), words: @tr("version licence update") },
+        { label: @tr("Main list density: Comfortable"), words: @tr("view mode layout cards rows height spacing switch") },
+        { label: @tr("Main list density: Compact"), words: @tr("view mode layout list dense rows height spacing switch") },
+        { label: @tr("Tile view"), words: @tr("view mode layout grid switch") },
+        { label: @tr("Theme: System"), words: @tr("appearance colour dark light follow windows") },
+        { label: @tr("Theme: Light"), words: @tr("appearance colour bright day") },
+        { label: @tr("Theme: Dark"), words: @tr("appearance colour night") },
+        { label: @tr("Use selected item"), words: @tr("paste insert send") },
+        { label: @tr("Copy selected item"), words: @tr("clipboard") },
+        { label: @tr("Duplicate selected item"), words: @tr("copy clone twice") },
+        { label: @tr("Edit selected item"), words: @tr("change modify rename") },
+        { label: @tr("Pin selected item"), words: @tr("favourite favorite keep") },
+        { label: @tr("Unpin selected item"), words: @tr("favourite favorite remove") },
+        { label: @tr("Move selected item to Trash"), words: @tr("delete remove discard") },
+        { label: @tr("Select all items"), words: @tr("every mark choose all") },
+        { label: @tr("Go to All items"), words: @tr("everything home show") },
+        { label: @tr("Go to Pinned"), words: @tr("favourites favorites show") },
+        { label: @tr("Go to Recent"), words: @tr("history clipboard show") },
+        { label: @tr("Go to Trash"), words: @tr("deleted restore bin show") },
+        { label: @tr("Reset Panel size and position"), words: @tr("window geometry default restore move resize cut off") },
+        { label: @tr("Toggle keep Panel open"), words: @tr("pin always on top stay hide click away blur") },
+    ];
+    // The palette's own words.
+    out property <string> palette-title: @tr("Commands");
+    out property <string> palette-placeholder: @tr("Type a command");
+}

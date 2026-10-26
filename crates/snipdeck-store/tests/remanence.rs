@@ -27,19 +27,11 @@ fn holds_secret(bytes: &[u8]) -> bool {
 }
 
 fn files_holding_the_secret(dir: &std::path::Path) -> Vec<String> {
-    let mut found = Vec::new();
-    let mut stack = vec![dir.to_owned()];
-    while let Some(next) = stack.pop() {
-        for entry in std::fs::read_dir(&next).unwrap().flatten() {
-            let path = entry.path();
-            if path.is_dir() {
-                stack.push(path);
-            } else if holds_secret(&std::fs::read(&path).unwrap()) {
-                found.push(path.display().to_string());
-            }
-        }
-    }
-    found
+    content_files(dir)
+        .into_iter()
+        .filter(|path| holds_secret(&std::fs::read(path).unwrap()))
+        .map(|path| path.display().to_string())
+        .collect()
 }
 
 /// Opens a store with filler items, one plain item holding the secret (text inline and a large

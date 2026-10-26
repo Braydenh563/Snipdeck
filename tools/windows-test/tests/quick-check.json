@@ -1,0 +1,151 @@
+{
+  "id": "QC",
+  "quickOnly": true,
+  "title": "Quick check: what changed lately and can only be judged on Windows",
+  "friendly": "Quick check (Panel v2, Recent, Alt+Tab, dock, render diagnostic)",
+  "note": "tools/windows-test/README.md, Quick check. Runs the real app on a new, empty test library in spikes-results\\qc-data (deleted at the start of each new run), so your own snippets are never touched.",
+  "dir": ".",
+  "exe": "snipdeck-app",
+  "captureLines": [
+    "snipdeck:",
+    "snipdeck-log"
+  ],
+  "setup": [
+    "This runs the real Snipdeck on a brand-new empty test library (spikes-results\\qc-data, wiped at the start of every new Quick check), so your own snippets and settings are never touched.",
+    "The shortcut that shows the Panel in this test is {HOTKEY}. {REAL_HOTKEY_NOTE}",
+    "Close your normal Snipdeck first (tray icon > Quit): the wizard offers to do it. Have one Notepad window open.",
+    "Some steps run by themselves: the mouse and keyboard move for a few seconds. To stop, hold Esc."
+  ],
+  "tests": [
+    {
+      "id": "1",
+      "qc": true,
+      "qcOnly": true,
+      "gate": true,
+      "launch": {
+        "args": [
+          "--data-dir",
+          "spikes-results\\qc-data"
+        ],
+        "env": {
+          "SNIPDECK_LOG": "1"
+        }
+      },
+      "auto": "Invoke-QcHotkey",
+      "minutes": 0.5,
+      "title": "Panel v2: the hotkey shows and hides the Panel",
+      "do": "Click into a Notepad window so its cursor is blinking. Press {HOTKEY} to show the Panel. Press {HOTKEY} again.",
+      "expect": "The Panel appears on the first press and goes away on the second, and the Notepad cursor keeps blinking (the Panel does not take the keyboard). {HOTKEY} is the shortcut of this test library (a new install). An older Snipdeck keeps Ctrl+Alt+Space; that is not what is tested here."
+    },
+    {
+      "id": "2",
+      "qc": true,
+      "qcOnly": true,
+      "gate": true,
+      "minutes": 1,
+      "title": "Panel v2: List, Cards and Compact",
+      "do": "Open Settings (tray icon menu > Settings, or the three dots in the Panel). Under Panel layout, set Layout to Cards. Look at the Panel. Set Layout to Compact and look again. Set it back to List.",
+      "expect": "Cards shows snippets as tiles, two per row. Compact shows tight one-line rows. List shows one row per snippet with a preview line. Each change shows in the Panel at once."
+    },
+    {
+      "id": "3",
+      "qc": true,
+      "qcOnly": true,
+      "gate": true,
+      "auto": "Invoke-QcRecent",
+      "minutes": 1,
+      "title": "Recent is on for a new install: a normal copy appears",
+      "do": "In Notepad type the word quickcheck, press Ctrl+A, then Ctrl+C. Open the Panel with {HOTKEY} and look in its Recent list for quickcheck. (Settings > Keep a Recent inbox of what you copy should already be on.)",
+      "expect": "quickcheck is listed in Recent without you turning anything on."
+    },
+    {
+      "id": "4",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 0.5,
+      "title": "Recent ignores a password manager",
+      "do": "Open a password manager on this PC (KeePass, 1Password, Bitwarden, ...) and copy a password from it. Open the Panel and look in Recent. No password manager installed: press S to skip.",
+      "expect": "The password is NOT in Recent. (The text you copied in Notepad is still there.)"
+    },
+    {
+      "id": "5",
+      "qc": true,
+      "qcOnly": true,
+      "gate": true,
+      "minutes": 1,
+      "title": "Panel v2: one click pastes, then the Panel hides",
+      "do": "Click into Notepad and put the cursor on an empty line. Open the Panel with {HOTKEY}. Click the quickcheck row once.",
+      "expect": "quickcheck is typed into Notepad at the cursor, and the Panel hides by itself right after (it is not pinned)."
+    },
+    {
+      "id": "6",
+      "qc": true,
+      "qcOnly": true,
+      "gate": true,
+      "minutes": 0.5,
+      "title": "Panel v2: pin keeps the Panel open",
+      "do": "Open the Panel with {HOTKEY}. Click the pin button in its header. Click the quickcheck row. Then click the pin button again to unpin and click the row once more.",
+      "expect": "While pinned, the Panel stays open after the paste. After unpinning, the next paste hides it again."
+    },
+    {
+      "id": "7",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 0.5,
+      "title": "Panel v2: search highlights",
+      "do": "Open the Panel with {HOTKEY}. Type quick (the search field appears when you type). Press Esc.",
+      "expect": "Rows that do not match go away, the matching letters in quickcheck are marked, and Esc clears the search."
+    },
+    {
+      "id": "8",
+      "qc": true,
+      "qcOnly": true,
+      "gate": true,
+      "minutes": 1,
+      "title": "Panel v2: the Lists menu switcher",
+      "do": "Open Settings. Under Panel layout, set Lists to Menu. Look at the Panel header, then click the board name at the top left. Set Lists back to Tabs afterwards.",
+      "expect": "With Menu, the row of list tabs is gone and the board name opens a menu that includes the lists; choosing one switches to it. Tabs brings the row back."
+    },
+    {
+      "id": "9",
+      "qc": true,
+      "qcOnly": true,
+      "gate": true,
+      "minutes": 1.5,
+      "title": "Alt+Tab: a paste goes to the window you were in before the Panel",
+      "do": "Open two Notepad windows and call them one and two (type 1 and 2 in them). In Settings turn on Show the Panel in the taskbar and Alt+Tab. Click into Notepad one. Open the Panel with {HOTKEY}. Click the Panel's taskbar button, or press Alt+Tab to it. Click the quickcheck row. Turn the setting off again if you do not want it.",
+      "expect": "quickcheck is typed in Notepad one (the window you were in before the Panel), not in Notepad two and not anywhere else."
+    },
+    {
+      "id": "10",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Dock: the Panel docks to the taskbar edge",
+      "do": "In Settings set Dock to = {EDGE_LABEL} (the edge your taskbar is on). Leave Open a docked panel by on Click. Open the Panel with {HOTKEY}.",
+      "expect": "The Panel sits against that edge, next to the taskbar and not over it. {EDGE_NOTE}"
+    },
+    {
+      "id": "11",
+      "qc": true,
+      "qcOnly": true,
+      "gate": true,
+      "auto": "Invoke-QcDockWorkArea",
+      "minutes": 0.5,
+      "title": "Dock: a docked Panel stays out of the taskbar",
+      "do": "Look at the docked Panel next to the taskbar. Then set Dock to back to Floating.",
+      "expect": "No part of the Panel covers the taskbar or goes off the screen, and its bottom row can be seen in full."
+    },
+    {
+      "id": "12",
+      "qc": true,
+      "qcOnly": true,
+      "auto": "Invoke-QcDiagnostic",
+      "autoTimeout": 900,
+      "minutes": 3,
+      "title": "Render diagnostic",
+      "do": "Answer the short yes/no questions the diagnostic asks (it opens the Panel, About, Edit and the Main window for you to look at). It needs about 3 minutes.",
+      "expect": "The diagnostic file is saved on your Desktop and its path is shown. It is recorded in the results."
+    }
+  ]
+}

@@ -1,0 +1,198 @@
+import { Theme, Type, Radius, Space, Motion, Fonts, SystemLook } from "../theme.slint";
+import { Icons } from "../icons.slint";
+import { Icon } from "icon.slint";
+import { OverlayScrollbar } from "scrollbar.slint";
+
+// One choice of a Chooser or one navigation entry of the main window's sidebar (a list or a tag): its label, an
+// optional count, the list colour (transparent = no mark) and whether it is ticked (tags on the selected items).
+export struct ChoiceEntry {
+    label: string,
+    count: int,
+    color: color,
+    // A list's icon (an empty image is none).
+    icon: image,
+    checked: bool,
+}
+
+// A floating list of choices: "Move to list" (pick one, closes) or "Tags" (`multi`: each row toggles and stays
+// open). Same surface as Menu (`bg-overlay`, 1px border, radius 8). Keyboard once the host calls `focus-chooser()`:
+// Up / Down / Home / End move, Enter or Space picks, Esc dismisses. The host places and closes it. Rows are
+// list items; in `multi` mode they are checkable and say whether they are ticked. Past 8 rows it scrolls.
+export component Chooser inherits Rectangle {
+    in property <[ChoiceEntry]> entries;
+    // Spoken name ("Move to list").
+    in property <string> label;
+    // Shown instead of rows when there are none ("No lists yet").
+    in property <string> empty-text;
+    in property <bool> multi: false;
+    in-out property <int> current: 0;
+    callback chosen(int);
+    callback dismissed();
+
+    public function focus-chooser() {
+        scope.focus();
+    }
+
+    property <length> row-h: max(Space.hit, Type.line-base + Space.s2);
+    property <int> max-rows: 8;
+    out property <int> count: root.entries.length;
+
+    function reveal(i: int) {
+        let top = i * root.row-h;
+        if (top + flick.content-y < 0px) {
+            flick.content-y = -top;
+        } else if (top + root.row-h + flick.content-y > flick.height) {
+            flick.content-y = flick.height - top - root.row-h;
+        }
+    }
+    function move(delta: int) {
+        if (root.entries.length > 0) {
+            root.current = min(max(root.current + delta, 0), root.entries.length - 1);
+            root.reveal(root.current);
+        }
+    }
+
+    min-width: 200px;
+    height: 2 * Space.s1 + (root.entries.length == 0 ? root.row-h : min(root.entries.length, root.max-rows) * root.row-h);
+    background: Theme.bg-overlay;
+    border-radius: Radius.lg;
+    border-width: 1px;
+    border-color: Theme.border-default;
+    accessible-role: list;
+    accessible-label: root.label;
+    forward-focus: scope;
+
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == Key.DownArrow) {
+                root.move(1);
+                return accept;
+            }
+            if (event.text == Key.UpArrow) {
+                root.move(-1);
+                return accept;
+            }
+            if (event.text == Key.Home) {
+                root.move(-root.entries.length);
+                return accept;
+            }
+            if (event.text == Key.End) {
+                root.move(root.entries.length);
+                return accept;
+            }
+            if ((event.text == Key.Return || event.text == " ") && root.current >= 0 && root.current < root.entries.length) {
+                root.chosen(root.current);
+                return accept;
+            }
+            if (event.text == Key.Escape) {
+                root.dismissed();
+                return accept;
+            }
+            return reject;
+        }
+    }
+
+    if root.entries.length == 0: Text {
+        x: Space.s3;
+        width: parent.width - 2 * Space.s3;
+        height: parent.height;
+        text: root.empty-text;
+        font-family: Fonts.sans;
+        font-size: Type.base;
+        color: Theme.text-secondary;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    flick := Flickable {
+        x: Space.s1;
+        y: Space.s1;
+        width: parent.width - 2 * Space.s1;
+        height: parent.height - 2 * Space.s1;
+        interactive: false;
+        content-height: root.entries.length * root.row-h;
+
+        for entry[i] in root.entries: Rectangle {
+            x: 0;
+            y: i * root.row-h;
+            width: flick.width;
+            height: root.row-h;
+            border-radius: Radius.sm;
+            background: root.current == i ? Theme.bg-overlay-hover : transparent;
+            border-width: root.current == i && scope.has-focus ? 2px : 0px;
+            border-color: Theme.focus-ring;
+            accessible-role: list-item;
+            accessible-label: entry.label;
+            accessible-checkable: root.multi;
+            accessible-checked: entry.checked;
+            accessible-item-index: i;
+            accessible-item-count: root.entries.length;
+            accessible-item-selectable: !root.multi;
+            accessible-item-selected: !root.multi && root.current == i;
+            accessible-action-default => {
+                root.chosen(i);
+            }
+
+            HorizontalLayout {
+                padding-left: Space.s2;
+                padding-right: Space.s2;
+                spacing: Space.s2;
+                Rectangle {
+                    width: Space.s4 * SystemLook.text-scale;
+                    if entry.color != transparent: Rectangle {
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                        width: Space.s2 * SystemLook.text-scale;
+                        height: self.width;
+                        background: entry.color;
+                    }
+                    if root.multi && entry.checked: Icon {
+                        source: Icons.check;
+                        tint: Theme.accent-text;
+                        size: Space.s4 * SystemLook.text-scale;
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                    }
+                }
+                Text {
+                    horizontal-stretch: 1;
+                    text: entry.label;
+                    font-family: Fonts.sans;
+                    font-size: Type.base;
+                    color: Theme.text-primary;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                if entry.count >= 0: Text {
+                    horizontal-stretch: 0;
+                    text: "\{entry.count}";
+                    font-family: Fonts.mono;
+                    font-size: Type.xs;
+                    color: Theme.text-secondary;
+                    vertical-alignment: center;
+                }
+            }
+
+            TouchArea {
+                changed has-hover => {
+                    if (self.has-hover) {
+                        root.current = i;
+                    }
+                }
+                clicked => {
+                    root.chosen(i);
+                }
+            }
+        }
+    }
+
+    OverlayScrollbar {
+        y: flick.y;
+        height: flick.height;
+        content-y: flick.content-y;
+        content-height: flick.content-height;
+        visible-height: flick.height;
+        scroll-to(y) => { flick.content-y = y; }
+    }
+}

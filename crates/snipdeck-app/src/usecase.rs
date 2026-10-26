@@ -10,6 +10,7 @@ use snipdeck_core::{
     },
 };
 use snipdeck_platform::{
+    keys::{Key, KeyEvent},
     payload::{Data, FilePayload, Payload},
     pipeline::{self, Clipboard, Env, Keyboard, Timing},
     route::Route,
@@ -38,18 +39,31 @@ pub struct UseRequest {
     pub locale: Locale,
 }
 
+/// The most Left presses sent to put the caret at `{cursor}`.
+pub const MAX_CURSOR_PRESSES: usize = 512;
+
 /// What a use did.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Used {
     /// What happened, for the toast and the card pull.
     pub outcome: UseOutcome,
-    /// For a template with `{cursor}`: how many Left-arrow presses move the caret to it.
-    /// Not yet applied by the pipeline.
+    /// For a template with `{cursor}`: how many Left-arrow presses move the caret to it. Sent
+    /// after a paste (at most [`MAX_CURSOR_PRESSES`]); a copy has no caret to move.
     pub cursor_from_end: Option<usize>,
     /// Why the use could not be counted, when the paste or copy worked but the store refused the
     /// usage update. The use is best-effort bookkeeping: failing it must not turn a paste that
     /// happened into an error (the user would retry and paste twice). The host may log it.
     pub count_failed: Option<String>,
+}
+
+impl Used {
+    /// The diagnostic line for a use that worked but could not be counted (`SNIPDECK_LOG=1`).
+    #[must_use]
+    pub fn count_failed_line(&self) -> Option<String> {
+        self.count_failed
+            .as_ref()
+            .map(|why| format!("use not counted: {why}"))
+    }
 }
 
 /// Why a use did not happen.
@@ -64,7 +78,7 @@ pub enum UseError {
     /// The item's template no longer parses.
     #[error(transparent)]
     Template(#[from] TemplateError),
-    /// The template cannot be rendered: a Pro placeholder on Free, or too large.
+    /// The template cannot be rendered: a Supporter placeholder on Free, or too large.
     #[error(transparent)]
     Render(#[from] RenderError),
     /// The template needs answers the request did not carry: show the fill form.
@@ -96,6 +110,20 @@ where
     let formats = store.formats(request.item)?;
     let (payload, cursor_from_end) = build_payload(store, &item, &formats, request)?;
     let outcome = pipeline::use_item(env, &payload, request.mode, &request.route)?;
+    if matches!(outcome, UseOutcome::Pasted | UseOutcome::PastedNotRestored)
+        && let Some(n) = cursor_from_end.filter(|n| *n > 0)
+    {
+        // The paste happened: a failed caret move is not an error. Unverified on Windows
+        // (Fable v1 sweep A5).
+        let left = |down| KeyEvent {
+            key: Key::Left,
+            down,
+        };
+        let presses: Vec<KeyEvent> = (0..n.min(MAX_CURSOR_PRESSES))
+            .flat_map(|_| [left(true), left(false)])
+            .collect();
+        let _ = env.keyboard.send(&presses);
+    }
     // The paste or copy has happened: counting it is best-effort and never an error.
     let count_failed = store
         .record_use(item.id, request.now)
@@ -124,12 +152,29 @@ pub fn template_source<S: ItemRepo + BlobStore>(
     }
     let formats = store.formats(item.id)?;
     let text = text_of(store, &formats)?.ok_or(UseError::NotText)?;
-    let title = if item.title.trim().is_empty() {
-        text.lines().next().unwrap_or_default().to_owned()
-    } else {
+    let title = if !item.title.trim().is_empty() {
         item.title
+    } else if item.sensitive {
+        // The first line of a sensitive body is never put on the screen.
+        String::new()
+    } else {
+        text.lines().next().unwrap_or_default().to_owned()
     };
     Ok(Some((title, text)))
+}
+
+/// The text of `item`, or `None` when it holds none (an image, files). For a sensitive item
+/// this reads the real text, so the caller shows it only while the user holds it revealed.
+///
+/// # Errors
+///
+/// A store error (a locked key ring for a sensitive item), or [`UseError::NotText`].
+pub fn item_text<S: ItemRepo + BlobStore>(
+    store: &S,
+    item: ItemId,
+) -> Result<Option<String>, UseError> {
+    let formats = store.formats(item)?;
+    text_of(store, &formats)
 }
 
 fn text_of<S: BlobStore>(store: &S, formats: &Formats) -> Result<Option<String>, UseError> {
@@ -351,6 +396,12 @@ mod tests {
         fn all_items(&self) -> snipdeck_store::Result<Vec<Item>> {
             self.0.all_items()
         }
+        fn change_counter(&self) -> u64 {
+            self.0.change_counter()
+        }
+        fn usage_counter(&self) -> u64 {
+            self.0.usage_counter()
+        }
         fn item(&self, id: ItemId) -> snipdeck_store::Result<Item> {
             self.0.item(id)
         }
@@ -421,9 +472,14 @@ mod tests {
             used.count_failed
         );
         assert_eq!(w.store.item(id).expect("item").use_count, 0, "not counted");
+        assert!(
+            used.count_failed_line()
+                .is_some_and(|l| l.starts_with("use not counted:") && l.contains("disk full"))
+        );
         // A normal use reports nothing.
         let ok = w.run(&request).expect("used");
         assert_eq!(ok.count_failed, None);
+        assert_eq!(ok.count_failed_line(), None);
     }
 
     #[test]
@@ -457,6 +513,32 @@ mod tests {
         };
         assert!(text.starts_with("Hi Sam, on "), "{text}");
         assert!(!text.contains('{'), "{text}");
+    }
+
+    #[test]
+    fn a_template_with_a_cursor_pastes_then_moves_the_caret_back() {
+        let mut w = World::new();
+        let id = w.add(ItemKind::Template, false, "Hi {cursor} there");
+        w.run(&World::request(id, UseMode::Paste, PASTE))
+            .expect("used");
+        let lefts: Vec<_> = w
+            .keyboard
+            .sent
+            .last()
+            .expect("sent")
+            .iter()
+            .map(|e| (e.key, e.down))
+            .collect();
+        let expected: Vec<_> = (0..6)
+            .flat_map(|_| [(Key::Left, true), (Key::Left, false)])
+            .collect();
+        assert_eq!(lefts, expected, "six Left pairs for ' there'");
+
+        let mut w = World::new();
+        let id = w.add(ItemKind::Template, false, "Hi {cursor} there");
+        let copy = World::request(id, UseMode::Copy, Route::Copy(CopyReason::NoTarget));
+        w.run(&copy).expect("used");
+        assert!(w.keyboard.sent.is_empty(), "a copy sends no keys");
     }
 
     #[test]

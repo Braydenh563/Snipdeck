@@ -6,3 +6,28 @@ date | item | type | rung | rework | note
 2026-10-18 | M3 Panel window + snipdeck-app controller/bin skeleton | feature | sonnet | 1 | 
 2026-10-18 | Opus security review 2 (9 findings) | security | opus | 0 | 
 2026-10-18 | Win32 tray review: 13 findings fixed | bug | sonnet | 0 | 
+2026-10-18 | Merge step 9 tray | merge | sonnet | 0 | 
+2026-10-18 | Merge step 6 maintenance | merge | sonnet | 1 | 
+2026-10-18 | Step 4 Panel binding (kebab, resize, quick edit) | feature | sonnet | 0 | 
+2026-10-18 | Step 7 Settings window | feature | sonnet | 0 | 
+2026-10-18 | Security review fixes 1-11,13 | fix | sonnet | 0 | 
+2026-10-19 | CI: settings goldens after the website-icons row removal | fix | fable | 0 | 
+2026-10-24 | Panel D v2/v3 mock-ups | design | opus | 1 | 
+2026-10-24 | Non-Panel UX: shortcut search, Ctrl+Shift+P, theme, density, audit, palette | feature | sonnet | 0 | 
+2026-10-24 | Reviewer on non-Panel UX diff: 3 findings sent to implementer (shortcut gaps, Panel density no-op, pin toast) | review | sonnet | 1 | 
+2026-10-24 | Alt+Tab to the Panel: label + Target kept across switcher | feature | sonnet | 0 | 
+2026-10-24 | Picker placement setting (below/above/right/left) | feature | sonnet | 0 | 
+2026-10-24 | Dock: last good work area, no full-height top/bottom dock | bug | sonnet | 0 | 
+2026-10-24 | Review fixes: Panel keys in shortcuts, density label, keep-open toast | ui | sonnet | 0 | 
+2026-10-25 | Feedback audit: confirmations + error toasts (rework: unlock toast, picker/fill tests mislabelled pre-existing) | ui | sonnet | 2 | 
+2026-10-25 | Panel v2 spec: D v3 default, List/Cards/Compact, search, lists menu, opening options | design | opus | 0 | 
+2026-10-25 | Show/hide/move/resize predictability (vanished monitor, parked frames, Reset ends drag) | bug | sonnet | 0 | 
+2026-10-25 | Review fixes F: toast latest-wins, refresh notice last, palette label, Picker docs | bug | sonnet | 1 | 
+2026-10-25 | Panel v2 slice 1: tokens + docs | design | sonnet | 0 | 
+2026-10-25 | Panel v2 slice 2: settings model | feature | sonnet | 0 | 
+2026-10-25 | Panel v2 slice 3: quiet List row | ui | sonnet | 0 | 
+2026-10-25 | Panel v2 slice 4: header, search, footer, chrome | ui | sonnet | 0 | 
+2026-10-25 | Symbols slices 1-3 (data, art, crate) | feature | sonnet | 0 | 
+2026-10-26 | New-install defaults (Recent on, chords, unpinned, hide-after-use) | feature | sonnet | 2 | 
+2026-10-26 | Symbols slice 4 controller | feature | sonnet | 1 | 
+2026-10-26 | Panel v2 slices 5-6 + 6b items 1,3,4 | ui | sonnet | 0 | 

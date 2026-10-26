@@ -8,6 +8,8 @@ import { Icon } from "icon.slint";
 export component Keycap inherits Rectangle {
     in property <string> text;
     in property <bool> active: false;
+    // Panel v2: a keycap that is the only cue for a key uses the 3:1 `border.strong` outline (spec 2.9).
+    in property <bool> strong: false;
 
     // The Enter key (U+21B5) is drawn as an icon: IBM Plex has no glyph for it, so the text character
     // would come from whichever system font the machine falls back to.
@@ -20,7 +22,7 @@ export component Keycap inherits Rectangle {
     background: root.active ? Theme.accent-subtle : Theme.bg-sunken;
     border-radius: Radius.sm;
     border-width: 1px;
-    border-color: root.active ? Theme.accent : Theme.border-default;
+    border-color: root.active ? Theme.accent : root.strong ? Theme.border-strong : Theme.border-default;
     animate background, border-color { duration: Motion.instant; easing: Motion.out; }
 
     HorizontalLayout {

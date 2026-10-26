@@ -1,0 +1,22 @@
+[package]
+name = "snipdeck-licence-issuer"
+description = "Snipdeck seller tool: generate the licence signing key, sign keys for friends, verify keys."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The `licence-issuer` feature adds the signer. Only this tool enables it; the app never does.
+snipdeck-core = { workspace = true, features = ["licence-issuer"] }
+base64.workspace = true
+getrandom.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

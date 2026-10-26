@@ -30,7 +30,8 @@ use std::ffi::c_void;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 
-use windows::Win32::Foundation::{HANDLE, HWND};
+use windows::Win32::Foundation::{HANDLE, HWND, POINT};
+use windows::Win32::Graphics::Gdi::ClientToScreen;
 use windows::Win32::Security::{
     GetSidSubAuthority, GetSidSubAuthorityCount, GetTokenInformation, TOKEN_MANDATORY_LABEL,
     TOKEN_QUERY, TokenIntegrityLevel,
@@ -60,8 +61,8 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 use windows::core::{BOOL, Owned, PWSTR};
 
-use crate::route::{Focus, Target};
-use crate::win_logic::{self, ElementFacts};
+use crate::route::{Focus, ScreenRect, Target};
+use crate::win_logic::{self, ElementFacts, ForegroundKind};
 
 /// How long UI Automation may take to connect to the Target's process, in milliseconds.
 pub const UIA_CONNECTION_TIMEOUT_MS: u32 = 250;
@@ -93,6 +94,8 @@ struct Inner {
     target: Cell<isize>,
     /// The panel window (0 until [`TargetTracker::set_panel`]).
     panel: Cell<isize>,
+    /// The Picker, the fill form and the toast window (`HWND` values): never a Target either.
+    popups: RefCell<Vec<isize>>,
     /// Target captured when the panel activated itself for text entry.
     entry: RefCell<Entry>,
     /// A UI Automation probe is running; foreground events are queued until it ends.
@@ -115,7 +118,7 @@ impl Inner {
 
     /// Whether `hwnd` belongs to this process or is the panel: never a Target.
     fn is_own(&self, hwnd: HWND) -> bool {
-        if hwnd.0 as isize == self.panel.get() {
+        if hwnd.0 as isize == self.panel.get() || self.is_popup(hwnd.0 as isize) {
             return true;
         }
         let mut pid = 0;
@@ -125,18 +128,24 @@ impl Inner {
         pid == unsafe { GetCurrentProcessId() }
     }
 
-    /// Records `hwnd` as the Target if it is a foreign window. A desktop or taskbar surface is
-    /// not a Target, and as the foreground window it means there is none (injected keys would go
-    /// to it), so it clears the Target. Returns whether the Target changed.
+    /// Records `hwnd` as the Target if it is a foreign window ([`win_logic::next_target`]). Our
+    /// own windows and the Alt+Tab switcher leave the Target alone, so a Panel reached with
+    /// Alt+Tab still pastes into the app the user came from; a desktop or taskbar surface clears
+    /// it (injected keys would go to it). Returns whether the Target changed.
     fn note_foreground(&self, hwnd: HWND) -> bool {
-        if hwnd.is_invalid() || self.is_own(hwnd) {
+        if hwnd.is_invalid() {
             return false;
         }
-        let new = if is_shell_surface(hwnd) {
-            0
+        let kind = if self.is_own(hwnd) {
+            ForegroundKind::Own
+        } else if is_shell_surface(hwnd) {
+            ForegroundKind::Shell
+        } else if is_task_switcher(hwnd) {
+            ForegroundKind::Switcher
         } else {
-            hwnd.0 as isize
+            ForegroundKind::Foreign
         };
+        let new = win_logic::next_target(self.target.get(), hwnd.0 as isize, kind);
         let changed = self.target.replace(new) != new;
         if changed && let Ok(mut entry) = self.entry.try_borrow_mut() {
             *entry = Entry::Inactive;
@@ -144,16 +153,34 @@ impl Inner {
         changed
     }
 
+    fn is_popup(&self, hwnd: isize) -> bool {
+        self.popups.try_borrow().is_ok_and(|p| p.contains(&hwnd))
+    }
+
+    /// The panel or one of the popups holds the foreground.
     fn panel_is_foreground(&self) -> bool {
-        let panel = self.panel_hwnd();
         // SAFETY: no arguments, no preconditions.
-        !panel.is_invalid() && unsafe { GetForegroundWindow() } == panel
+        let foreground = unsafe { GetForegroundWindow() };
+        let panel = self.panel_hwnd();
+        (!panel.is_invalid() && foreground == panel)
+            || (!foreground.is_invalid() && self.is_popup(foreground.0 as isize))
     }
 
     fn notify(&self) {
         // A panic must not unwind out of the hook callback (it would abort the process).
         let _ = catch_unwind(AssertUnwindSafe(|| (self.on_change)()));
     }
+}
+
+/// Whether `hwnd` is the Alt+Tab switcher or Task View (see [`win_logic::is_task_switcher_class`]).
+fn is_task_switcher(hwnd: HWND) -> bool {
+    let mut class = [0u16; 256];
+    // SAFETY: the slice is writable for its whole length; a stale handle makes the call return 0.
+    let length = unsafe { GetClassNameW(hwnd, &mut class) };
+    let length = usize::try_from(length).unwrap_or(0);
+    class
+        .get(..length)
+        .is_some_and(|name| win_logic::is_task_switcher_class(&String::from_utf16_lossy(name)))
 }
 
 /// Whether `hwnd` is the desktop, the shell window or a taskbar / tray surface (see
@@ -208,6 +235,7 @@ impl TargetTracker {
         let inner = Rc::new(Inner {
             target: Cell::new(0),
             panel: Cell::new(0),
+            popups: RefCell::new(Vec::new()),
             entry: RefCell::new(Entry::Inactive),
             probing: Cell::new(false),
             change_pending: Cell::new(false),
@@ -242,6 +270,23 @@ impl TargetTracker {
     /// soon as the window exists.
     pub fn set_panel(&self, hwnd: isize) {
         self.inner.panel.set(hwnd);
+        if self.inner.target.get() == hwnd {
+            self.inner.target.set(0);
+        }
+    }
+
+    /// Tells the tracker the window `hwnd` (`HWND` value) is one of the app's popups (the
+    /// Picker, the fill form, the toast window), so it is never the Target. Registering a
+    /// window twice is harmless.
+    pub fn register_popup(&self, hwnd: isize) {
+        if hwnd == 0 {
+            return;
+        }
+        if let Ok(mut popups) = self.inner.popups.try_borrow_mut()
+            && !popups.contains(&hwnd)
+        {
+            popups.push(hwnd);
+        }
         if self.inner.target.get() == hwnd {
             self.inner.target.set(0);
         }
@@ -282,7 +327,14 @@ impl TargetTracker {
     /// user moves to another window. Windows allows the activation because the click that
     /// focused the search box was input to this process. Returns `false` if Windows refused.
     pub fn begin_text_entry(&self) -> bool {
-        let panel = self.inner.panel_hwnd();
+        self.begin_text_entry_in(self.inner.panel.get())
+    }
+
+    /// [`begin_text_entry`](Self::begin_text_entry) for the window `hwnd` (the panel, or a popup
+    /// registered with [`register_popup`](Self::register_popup)): the Picker takes the
+    /// foreground the moment it opens so the user can type.
+    pub fn begin_text_entry_in(&self, hwnd: isize) -> bool {
+        let panel = hwnd_from(hwnd);
         if panel.is_invalid() {
             return false;
         }
@@ -327,6 +379,24 @@ impl TargetTracker {
         }
         // SAFETY: `target` is a window handle; a stale one makes the call fail.
         unsafe { SetForegroundWindow(target) }.as_bool()
+    }
+
+    /// The text caret of the Target, in screen pixels, if it has a system caret. Call it while
+    /// the Target still has the focus (before a popup takes the foreground); `None` for apps
+    /// that draw their own caret, which the caller treats as "use the mouse".
+    #[must_use]
+    pub fn caret(&self) -> Option<ScreenRect> {
+        let hwnd = self.inner.target_hwnd();
+        // SAFETY: `IsWindow` accepts any handle value.
+        if hwnd.is_invalid() || !unsafe { IsWindow(Some(hwnd)) }.as_bool() {
+            return None;
+        }
+        // SAFETY: a dead window makes the call return 0.
+        let thread = unsafe { GetWindowThreadProcessId(hwnd, None) };
+        if thread == 0 {
+            return None;
+        }
+        gui_thread_caret(thread)
     }
 
     /// Builds the [`Target`] for `hwnd`.
@@ -561,6 +631,34 @@ fn gui_thread_focus(thread: u32) -> Option<Focus> {
     }
 }
 
+/// The caret rectangle of the thread's caret window, in screen pixels.
+fn gui_thread_caret(thread: u32) -> Option<ScreenRect> {
+    let mut info = GUITHREADINFO {
+        cbSize: u32::try_from(size_of::<GUITHREADINFO>()).unwrap_or(0),
+        ..Default::default()
+    };
+    // SAFETY: `info` is initialised with its size, as the call requires, and outlives the call.
+    unsafe { GetGUIThreadInfo(thread, &raw mut info) }.ok()?;
+    if info.hwndCaret.is_invalid() {
+        return None;
+    }
+    // The rectangle is in the caret window's client coordinates.
+    let mut origin = POINT {
+        x: info.rcCaret.left,
+        y: info.rcCaret.top,
+    };
+    // SAFETY: `origin` outlives the call; a stale window makes it fail.
+    if !unsafe { ClientToScreen(info.hwndCaret, &raw mut origin) }.as_bool() {
+        return None;
+    }
+    Some(ScreenRect {
+        x: origin.x,
+        y: origin.y,
+        w: u32::try_from(info.rcCaret.right.saturating_sub(info.rcCaret.left)).unwrap_or(0),
+        h: u32::try_from(info.rcCaret.bottom.saturating_sub(info.rcCaret.top)).unwrap_or(0),
+    })
+}
+
 /// The window title, truncated to [`TITLE_UNITS`]. Never logged.
 fn window_title(hwnd: HWND) -> String {
     let mut buffer = [0u16; TITLE_UNITS];
@@ -593,6 +691,19 @@ fn process_exe_name(pid: u32) -> Option<String> {
     .ok()?;
     let path = String::from_utf16_lossy(buffer.get(..usize::try_from(length).ok()?)?);
     win_logic::exe_file_name(&path).map(str::to_owned)
+}
+
+/// The executable file name (lower case) of the process that owns window `hwnd`, for the
+/// Recent inbox's per-app exclusions.
+pub(super) fn window_exe_name(hwnd: HWND) -> Option<String> {
+    let mut pid = 0u32;
+    // SAFETY: `pid` outlives the call; for a window of another process this reads the owner
+    // the system keeps and sends no message.
+    unsafe { GetWindowThreadProcessId(hwnd, Some(&raw mut pid)) };
+    if pid == 0 {
+        return None;
+    }
+    process_exe_name(pid).map(|name| name.to_ascii_lowercase())
 }
 
 /// A handle to `pid` with query-only rights, closed on drop. `None` when Windows refuses.

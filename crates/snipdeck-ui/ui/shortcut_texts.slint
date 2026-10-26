@@ -1,0 +1,88 @@
+// The words of the keyboard shortcuts list (Help > Shortcuts): the group names and one title per shortcut,
+// in the order of `snipdeck-app`'s `shortcuts::CATALOGUE` (a test in `tests/help_window.rs` checks the length).
+// The chords are not here: they are key names, which are not translated, and the app fills the four global
+// ones from the settings. The app filters and groups the rows, because Rust cannot reach `@tr`.
+export global ShortcutTexts {
+    // In the order of `Scope::ALL`: Anywhere, Main window, Panel, Picker, Editors.
+    out property <[string]> scopes: [
+        @tr("Anywhere in Windows"),
+        @tr("Main window"),
+        @tr("Panel"),
+        @tr("Picker"),
+        @tr("Editors"),
+    ];
+    // Under the "Anywhere in Windows" group.
+    out property <string> global-note: @tr("Change these in Settings.");
+    out property <[string]> titles: [
+        // Anywhere in Windows.
+        @tr("Show or hide the Panel"),
+        @tr("Open the Picker at your cursor"),
+        @tr("Quick capture the clipboard"),
+        @tr("Paste the next item of a stack"),
+        // Main window.
+        @tr("Command palette (every action)"),
+        @tr("New item"),
+        @tr("New list"),
+        @tr("Search"),
+        @tr("Settings"),
+        @tr("Keyboard shortcuts"),
+        @tr("User guide"),
+        @tr("Use the item"),
+        @tr("Copy the item"),
+        @tr("Edit the item"),
+        @tr("Duplicate the item"),
+        @tr("Pin or unpin the item"),
+        @tr("Move the item to the Trash"),
+        @tr("Select every item"),
+        @tr("Undo"),
+        @tr("Redo"),
+        @tr("Close the window"),
+        @tr("Move the item up or down its list"),
+        // Panel.
+        @tr("Filter as you type"),
+        @tr("Move through the items"),
+        @tr("Move a page at a time"),
+        @tr("Use the item"),
+        @tr("Copy the item"),
+        @tr("Move the item up or down its list"),
+        @tr("Use the Nth item"),
+        @tr("Hold to reveal a hidden item"),
+        @tr("Select several items"),
+        @tr("Select every item"),
+        @tr("Next list"),
+        @tr("Previous list"),
+        @tr("Search"),
+        @tr("Open the item's menu"),
+        @tr("Edit the item"),
+        @tr("Rename the item"),
+        @tr("Duplicate the item"),
+        @tr("Pin or unpin the item"),
+        @tr("Keep the Panel on top (pin)"),
+        @tr("Move the item to the Trash"),
+        @tr("Commands in the Main window"),
+        @tr("New item"),
+        @tr("New list"),
+        @tr("Settings"),
+        @tr("Undo"),
+        @tr("Redo"),
+        @tr("Hide the Panel"),
+        @tr("Keyboard shortcuts"),
+        @tr("User guide"),
+        @tr("Clear the search, then close"),
+        // Picker.
+        @tr("Move through the results"),
+        @tr("Paste the result"),
+        @tr("Copy the result"),
+        @tr("Paste the Nth result"),
+        @tr("Next scope"),
+        @tr("Edit the result"),
+        @tr("Close"),
+        // Editors.
+        @tr("Save"),
+        @tr("Close"),
+    ];
+    // The search box.
+    out property <string> search-placeholder: @tr("Search shortcuts");
+    out property <string> search-label: @tr("Search the keyboard shortcuts");
+    out property <string> nothing-found: @tr("No shortcut matches");
+}

@@ -17,11 +17,17 @@ fn main() -> ExitCode {
     println!("cargo::rerun-if-changed=src/licence/key_selection.rs");
     println!("cargo::rerun-if-changed=src/licence/development_key.in");
     println!("cargo::rerun-if-env-changed={}", key_selection::ENV_VAR);
+    println!(
+        "cargo::rerun-if-env-changed={}",
+        key_selection::ALLOW_TEST_KEY_VAR
+    );
 
     let configured = env::var(key_selection::ENV_VAR).ok();
     // `PROFILE` is `release` for the release profile and every profile inheriting from it.
     let release = env::var("PROFILE").is_ok_and(|profile| profile == "release");
-    let selected = match key_selection::select(configured.as_deref(), release) {
+    let allow_test_key =
+        env::var(key_selection::ALLOW_TEST_KEY_VAR).is_ok_and(|value| value == "1");
+    let selected = match key_selection::select(configured.as_deref(), release, allow_test_key) {
         Ok(selected) => selected,
         Err(message) => {
             println!("cargo::error={message}");

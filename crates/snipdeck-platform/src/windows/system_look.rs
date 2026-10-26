@@ -25,15 +25,16 @@ use windows::Win32::Graphics::Gdi::{
 use windows::Win32::System::Registry::{HKEY_CURRENT_USER, RRF_RT_REG_DWORD, RegGetValueW};
 use windows::Win32::UI::Accessibility::{HCF_HIGHCONTRASTON, HIGHCONTRASTW};
 use windows::Win32::UI::WindowsAndMessaging::{
-    SPI_GETHIGHCONTRAST, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS, SystemParametersInfoW,
-    WM_SETTINGCHANGE,
+    SPI_GETCLIENTAREAANIMATION, SPI_GETHIGHCONTRAST, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS,
+    SystemParametersInfoW, WM_SETTINGCHANGE,
 };
-use windows::core::{PCWSTR, w};
+use windows::core::{BOOL, PCWSTR, w};
 
 use super::hidden_window::{HiddenWindow, WindowHandler};
 use crate::error::Error;
 use crate::system_look::{
     HighContrast, Rgb, SystemLook, SystemLookSource, message_may_change_look,
+    text_scale_from_percent,
 };
 
 /// Reads the live system look. Stateless, so it is `Send + Sync` and cheap to copy.
@@ -44,6 +45,10 @@ impl SystemLookSource for WinSystemLook {
     fn read(&self) -> SystemLook {
         read()
     }
+
+    fn text_scale(&self) -> f32 {
+        text_scale()
+    }
 }
 
 /// The look Windows has right now. A value that cannot be read counts as "not set": light, no
@@ -53,7 +58,49 @@ pub fn read() -> SystemLook {
     SystemLook {
         dark: apps_use_light_theme() == Some(false),
         high_contrast: high_contrast(),
+        accent: accent_color(),
+        reduce_motion: !client_area_animation(),
     }
+}
+
+/// Windows' "Text size" (Settings > Accessibility): `HKCU\Software\Microsoft\Accessibility`,
+/// DWORD `TextScaleFactor`, a percentage (100 to 225); absent until the user moves the slider,
+/// which counts as 100. **Unverified on Windows.**
+#[must_use]
+pub fn text_scale() -> f32 {
+    let mut data: u32 = 0;
+    let mut size = u32::try_from(std::mem::size_of::<u32>()).unwrap_or(4);
+    // SAFETY: as in `apps_use_light_theme`: static NUL-terminated names, valid out-pointers,
+    // `RRF_RT_REG_DWORD` limits what is written to a DWORD.
+    let code = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            w!(r"Software\Microsoft\Accessibility"),
+            w!("TextScaleFactor"),
+            RRF_RT_REG_DWORD,
+            None,
+            Some((&raw mut data).cast::<c_void>()),
+            Some(&raw mut size),
+        )
+    };
+    text_scale_from_percent((code == ERROR_SUCCESS).then_some(data))
+}
+
+/// "Animation effects" (`SPI_GETCLIENTAREAANIMATION`). An unreadable value counts as on, so a
+/// failed call never turns the animations off.
+fn client_area_animation() -> bool {
+    let mut on = BOOL(1);
+    // SAFETY: `on` is a valid `BOOL`, which is what `SPI_GETCLIENTAREAANIMATION` writes through
+    // `pvParam`; `uiparam` is unused and zero.
+    let read = unsafe {
+        SystemParametersInfoW(
+            SPI_GETCLIENTAREAANIMATION,
+            0,
+            Some((&raw mut on).cast::<c_void>()),
+            SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0),
+        )
+    };
+    read.is_err() || on.as_bool()
 }
 
 /// `AppsUseLightTheme`: `Some(true)` light, `Some(false)` dark, `None` if the value is missing.
@@ -75,6 +122,28 @@ fn apps_use_light_theme() -> Option<bool> {
         )
     };
     (code == ERROR_SUCCESS).then_some(data != 0)
+}
+
+/// The user's accent colour: `HKCU\Software\Microsoft\Windows\DWM`, DWORD `ColorizationColor`
+/// (0xAARRGGBB). `None` when the value is missing.
+fn accent_color() -> Option<Rgb> {
+    let mut data: u32 = 0;
+    let mut size = u32::try_from(std::mem::size_of::<u32>()).unwrap_or(4);
+    // SAFETY: as in `apps_use_light_theme`: static NUL-terminated names, valid out-pointers,
+    // `RRF_RT_REG_DWORD` limits what is written to a DWORD.
+    let code = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            w!(r"Software\Microsoft\Windows\DWM"),
+            w!("ColorizationColor"),
+            RRF_RT_REG_DWORD,
+            None,
+            Some((&raw mut data).cast::<c_void>()),
+            Some(&raw mut size),
+        )
+    };
+    let [_, r, g, b] = data.to_be_bytes();
+    (code == ERROR_SUCCESS).then_some(Rgb { r, g, b })
 }
 
 fn sys_color(index: SYS_COLOR_INDEX) -> Rgb {
@@ -165,7 +234,7 @@ impl WindowHandler for Watcher {
 #[cfg(test)]
 mod tests {
     use windows::Win32::UI::WindowsAndMessaging::{
-        SPI_SETHIGHCONTRAST, WM_SYSCOLORCHANGE, WM_THEMECHANGED,
+        SPI_SETCLIENTAREAANIMATION, SPI_SETHIGHCONTRAST, WM_SYSCOLORCHANGE, WM_THEMECHANGED,
     };
 
     use super::*;
@@ -177,6 +246,10 @@ mod tests {
         assert_eq!(portable::WM_THEMECHANGED, WM_THEMECHANGED);
         assert_eq!(portable::WM_SYSCOLORCHANGE, WM_SYSCOLORCHANGE);
         assert_eq!(
+            portable::SPI_SETCLIENTAREAANIMATION,
+            SPI_SETCLIENTAREAANIMATION.0 as usize
+        );
+        assert_eq!(
             portable::SPI_SETHIGHCONTRAST,
             SPI_SETHIGHCONTRAST.0 as usize
         );
@@ -186,6 +259,13 @@ mod tests {
     fn reading_the_look_does_not_fail() {
         // The value depends on the machine; this only proves the calls work and agree.
         assert_eq!(read(), WinSystemLook.read());
+    }
+
+    #[test]
+    fn the_text_scale_is_inside_the_supported_range() {
+        let scale = text_scale();
+        assert!((1.0..=2.25).contains(&scale), "{scale}");
+        assert!((WinSystemLook.text_scale() - scale).abs() < f32::EPSILON);
     }
 
     #[test]

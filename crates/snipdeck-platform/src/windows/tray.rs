@@ -10,7 +10,8 @@
 //! - **`TaskbarCreated`**: Explorer restarted and dropped every icon; the icon is added again if
 //!   it is wanted. A failed [`Tray::show`] (no taskbar yet, at logon) keeps the icon wanted, so
 //!   this also covers a start-up before Explorer. Only one attempt is made per announcement.
-//! - **Left click** (`NIN_SELECT` / `NIN_KEYSELECT`) gives [`TrayEvent::TogglePanel`].
+//! - **Left click** (`NIN_SELECT` / `NIN_KEYSELECT`) gives [`TrayEvent::TogglePanel`]; a **double
+//!   click** (`WM_LBUTTONDBLCLK`) gives [`TrayEvent::OpenSnipdeck`].
 //! - **Right click** (`WM_CONTEXTMENU`) shows a popup menu with `TrackPopupMenu` at the click
 //!   position; the chosen entry becomes a [`TrayEvent`]. The window is made foreground first and
 //!   `WM_NULL` is posted afterwards, as the menu documentation requires, otherwise the menu does
@@ -52,7 +53,7 @@ use super::dpi;
 use super::hidden_window::{HiddenWindow, WindowHandler};
 use crate::error::Error;
 use crate::tray::{
-    MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayModel, classify, decode_anchor,
+    MenuLine, Reaction, Tray, TrayEntry, TrayEvent, TrayLabels, TrayModel, classify, decode_anchor,
     decode_callback,
 };
 
@@ -72,6 +73,8 @@ enum Command {
     Hide(Reply),
     Tooltip(String, Reply),
     Paused(bool, Reply),
+    History(bool, bool, Reply),
+    Labels(TrayLabels, Reply),
 }
 
 /// The Windows tray icon. Dropping it removes the icon and stops its thread.
@@ -137,6 +140,14 @@ impl Tray for WinTray {
 
     fn set_hotkeys_paused(&mut self, paused: bool) -> Result<(), Error> {
         self.call(|reply| Command::Paused(paused, reply))
+    }
+
+    fn set_history(&mut self, available: bool, paused: bool) -> Result<(), Error> {
+        self.call(|reply| Command::History(available, paused, reply))
+    }
+
+    fn set_labels(&mut self, labels: TrayLabels) -> Result<(), Error> {
+        self.call(|reply| Command::Labels(labels, reply))
     }
 }
 
@@ -263,6 +274,18 @@ impl TrayHandler {
         )
     }
 
+    /// Shows the model's hover text on the icon, if the icon is there.
+    fn refresh_tip(&self, hwnd: HWND) -> Result<(), Error> {
+        if !self.added.get() {
+            return Ok(());
+        }
+        Self::notify(
+            "Shell_NotifyIconW(NIM_MODIFY)",
+            NIM_MODIFY,
+            &self.data(hwnd, NIF_TIP | NIF_SHOWTIP),
+        )
+    }
+
     fn serve(&self, hwnd: HWND, command: Command) {
         // A dropped reply receiver (the caller timed out) is not an error here.
         match command {
@@ -281,20 +304,21 @@ impl TrayHandler {
             }
             Command::Tooltip(text, reply) => {
                 self.model.borrow_mut().set_tooltip(&text);
-                let result = if self.added.get() {
-                    Self::notify(
-                        "Shell_NotifyIconW(NIM_MODIFY)",
-                        NIM_MODIFY,
-                        &self.data(hwnd, NIF_TIP | NIF_SHOWTIP),
-                    )
-                } else {
-                    Ok(())
-                };
-                let _ = reply.send(result);
+                let _ = reply.send(self.refresh_tip(hwnd));
             }
             Command::Paused(paused, reply) => {
                 self.model.borrow_mut().set_hotkeys_paused(paused);
+                let _ = reply.send(self.refresh_tip(hwnd));
+            }
+            Command::History(available, paused, reply) => {
+                // The menu is built from the model on every right click: nothing to redraw.
+                self.model.borrow_mut().set_history(available, paused);
                 let _ = reply.send(Ok(()));
+            }
+            Command::Labels(labels, reply) => {
+                // The menu is built from the model on every right click: nothing to redraw.
+                self.model.borrow_mut().set_labels(labels);
+                let _ = reply.send(self.refresh_tip(hwnd));
             }
         }
     }
@@ -315,6 +339,8 @@ impl TrayHandler {
             Some(Reaction::PopupMenu(lines)) => {
                 if let Some(entry) = popup_menu(hwnd, &lines, wparam.0) {
                     let event = self.model.borrow_mut().pick(entry);
+                    // The paused hover text follows the check mark.
+                    let _ = self.refresh_tip(hwnd);
                     self.emit(event);
                 }
             }
@@ -376,9 +402,16 @@ fn load_icon() -> HICON {
             unsafe { LoadImageW(module, name, IMAGE_ICON, cx, cy, LR_SHARED) }.ok()?;
         Some(HICON(handle.0))
     };
-    own.and_then(|module| load(Some(module), PCWSTR(std::ptr::without_provenance::<u16>(1))))
-        .or_else(|| load(None, IDI_APPLICATION))
-        .unwrap_or_default()
+    own.and_then(|module| {
+        load(
+            Some(module),
+            PCWSTR(std::ptr::without_provenance::<u16>(usize::from(
+                dpi::APP_ICON_RESOURCE,
+            ))),
+        )
+    })
+    .or_else(|| load(None, IDI_APPLICATION))
+    .unwrap_or_default()
 }
 
 /// Shows `lines` at the click position (`anchor`, the callback's `wParam`) and returns the entry
@@ -456,7 +489,7 @@ fn build_menu(lines: &[MenuLine]) -> Option<HMENU> {
                 label,
                 checked,
             } => {
-                let text = HSTRING::from(*label);
+                let text = HSTRING::from(label.as_str());
                 let flags = if *checked {
                     MF_STRING | MF_CHECKED
                 } else {
@@ -486,7 +519,7 @@ fn build_menu(lines: &[MenuLine]) -> Option<HMENU> {
 #[cfg(test)]
 mod tests {
     use windows::Win32::UI::Shell::NIN_SELECT;
-    use windows::Win32::UI::WindowsAndMessaging::WM_CONTEXTMENU;
+    use windows::Win32::UI::WindowsAndMessaging::{WM_CONTEXTMENU, WM_LBUTTONDBLCLK};
 
     use super::*;
 
@@ -496,6 +529,7 @@ mod tests {
         // NIN_KEYSELECT = NIN_SELECT | NINF_KEY (1).
         assert_eq!(crate::tray::NIN_KEYSELECT, NIN_SELECT | 1);
         assert_eq!(crate::tray::WM_CONTEXTMENU, WM_CONTEXTMENU);
+        assert_eq!(crate::tray::WM_LBUTTONDBLCLK, WM_LBUTTONDBLCLK);
     }
 
     #[test]

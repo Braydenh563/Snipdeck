@@ -1,0 +1,190 @@
+# Release: creates the GitHub Release for a version tag (v*) and attaches the Windows
+# portable zip, its SHA-256 and build provenance. Also runs from the Actions tab
+# (Release -> Run workflow -> "1.0.0", no leading v) for when a tag can't be pushed:
+# softprops/action-gh-release creates the tag itself when given tag_name.
+#
+# Before releasing:
+#   1. Set [workspace.package] version in Cargo.toml to the version (the job below
+#      refuses a tag that disagrees with it, so a v1.0.0 never calls itself 0.1.0).
+#   2. Rename CHANGELOG.md's "## [Unreleased] (1.0.0)" header to "## [1.0.0] - YYYY-MM-DD".
+#      The notes step matches that exact number; no match falls back to GitHub's notes.
+#   3. The SNIPDECK_LICENCE_PUBLIC_KEY repository secret is set (docs/licensing.md):
+#      a release never embeds the development key.
+# Then: git tag v1.0.0 && git push origin v1.0.0
+#
+# This replaces the tag path of release-build.yml, which keeps only the dev build on main.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. 1.0.0 (no leading v)"
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  resolve-version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Resolve from the tag push or the manual input
+        id: resolve
+        # The typed version reaches the script as an environment variable, never spliced
+        # into its text (GitHub's script-injection guidance).
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then VERSION="$INPUT_VERSION"; else VERSION="${GITHUB_REF_NAME#v}"; fi
+          if ! printf %s "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::'$VERSION' is not a version like 1.0.0"; exit 1
+          fi
+          # The tag must say what the code says: the app reports the workspace version
+          # (About, Troubleshoot report, crash log).
+          CODE=$(sed -n '/^\[workspace.package\]/,/^\[/{s/^version = "\([^"]*\)"/\1/p}' Cargo.toml)
+          if [ "$VERSION" != "$CODE" ]; then
+            echo "::error::release version $VERSION does not match [workspace.package] version $CODE in Cargo.toml"; exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+  github-release:
+    name: Create GitHub Release
+    needs: resolve-version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Extract the changelog entry for this version
+        id: changelog
+        env:
+          VERSION: ${{ needs.resolve-version.outputs.version }}
+        run: |
+          # The section under this version's header, up to the next "## ". Matched as text,
+          # so the dots in a version are not regex wildcards.
+          NOTES=$(awk -v v="$VERSION" 'index($0, "## [" v "]") == 1 || index($0, "## " v) == 1 {on = 1; next} on && /^## / {exit} on' CHANGELOG.md)
+          # A release body is capped at 125,000 characters.
+          if [ "$(printf %s "$NOTES" | wc -c)" -gt 120000 ]; then
+            NOTES="$(printf %s "$NOTES" | head -c 120000 | sed '$d')
+
+          The full list is in [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/v${VERSION}/CHANGELOG.md)."
+          fi
+          DELIM="notes_$(date +%s%N)"
+          { echo "notes<<$DELIM"; echo "$NOTES"; echo "$DELIM"; } >> "$GITHUB_OUTPUT"
+      - name: Create the release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: ${{ needs.resolve-version.outputs.tag }}
+          # Only used on the manual route, where the tag does not exist yet.
+          target_commitish: ${{ github.sha }}
+          body: ${{ steps.changelog.outputs.notes }}
+          generate_release_notes: ${{ steps.changelog.outputs.notes == '' }}
+
+  # Build and publish are split (security-v1.md M3): the build runs every dependency's
+  # build.rs with a read-only token that is not kept in .git/config; the publish job
+  # holds the write and attestation permissions and runs no repository code.
+  windows-build:
+    name: Windows portable zip (build)
+    needs: [resolve-version, github-release]
+    runs-on: windows-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.resolve-version.outputs.tag }}
+          persist-credentials: false
+      - run: rustup toolchain install stable --profile minimal
+      - name: Build (release profile, production licence key)
+        shell: pwsh
+        env:
+          SNIPDECK_LICENCE_PUBLIC_KEY: ${{ secrets.SNIPDECK_LICENCE_PUBLIC_KEY }}
+        run: |
+          if (-not $env:SNIPDECK_LICENCE_PUBLIC_KEY) { throw "SNIPDECK_LICENCE_PUBLIC_KEY secret is not set: a release cannot embed the development key (docs/licensing.md)" }
+          cargo build --release -p snipdeck-app --locked
+          if ($LASTEXITCODE -ne 0) { throw "cargo build exited $LASTEXITCODE" }
+      # Nothing ships that was never started: the built exe runs its headless library
+      # check on a fresh data folder and must exit cleanly, or the release stops here.
+      - name: Smoke test the built exe
+        shell: pwsh
+        run: |
+          $data = Join-Path $env:RUNNER_TEMP "snipdeck-smoke"
+          New-Item -ItemType Directory -Force $data | Out-Null
+          $p = Start-Process target\release\snipdeck-app.exe -ArgumentList "--check-db","--data-dir",$data -Wait -PassThru -NoNewWindow
+          if ($p.ExitCode -ne 0) { throw "snipdeck --check-db on a fresh folder exited $($p.ExitCode)" }
+      - name: Pack the zip and its SHA-256
+        shell: pwsh
+        env:
+          TAG: ${{ needs.resolve-version.outputs.tag }}
+        run: |
+          $name = "snipdeck-$env:TAG-windows-x64"
+          # Layout = what Snipdeck.bat expects: the exe in app\, the launcher in tools\launcher.
+          New-Item -ItemType Directory -Force dist\$name\app, dist\$name\tools | Out-Null
+          Copy-Item target\release\snipdeck-app.exe dist\$name\app\snipdeck.exe
+          Copy-Item Snipdeck.bat dist\$name\
+          Copy-Item tools\launcher dist\$name\tools\launcher -Recurse
+          Copy-Item README.md, LICENSE*, CHANGELOG.md, docs\user-guide.md dist\$name\ -ErrorAction SilentlyContinue
+          Compress-Archive -Path dist\$name\* -DestinationPath dist\$name.zip
+          $hash = (Get-FileHash dist\$name.zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  $name.zip" | Set-Content dist\$name.zip.sha256
+          "ZIP=dist\$name.zip" >> $env:GITHUB_ENV
+          "SUM=dist\$name.zip.sha256" >> $env:GITHUB_ENV
+          $exe = Get-Item dist\$name\app\snipdeck.exe
+          $zip = Get-Item dist\$name.zip
+          "### $name`n| File | MB |`n|---|---|`n| snipdeck.exe | $([math]::Round($exe.Length / 1MB, 2)) |`n| zip | $([math]::Round($zip.Length / 1MB, 2)) |`n`nSHA-256: ``$hash``" >> $env:GITHUB_STEP_SUMMARY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-portable
+          path: |
+            ${{ env.ZIP }}
+            ${{ env.SUM }}
+          if-no-files-found: error
+          retention-days: 1
+
+  windows-publish:
+    name: Windows portable zip (attest and upload)
+    needs: [resolve-version, windows-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      # Provenance: `gh attestation verify <zip> --repo Braydenh563/Snipdeck`.
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: windows-portable
+          path: dist
+      - uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: dist/*.zip
+      - name: Upload to the release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: ${{ needs.resolve-version.outputs.tag }}
+          files: |
+            dist/*.zip
+            dist/*.sha256
+          fail_on_unmatched_files: true

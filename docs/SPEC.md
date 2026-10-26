@@ -16,7 +16,7 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 2. **Never steal focus.** Using the panel must not disturb the app the user is typing in.
 3. **Native, light, instant.** No web runtime, no server, no network port. Strict perf budget (§9).
 4. **Local-first & private.** No account, no telemetry, data on disk in an open format.
-5. **Library first, history second.** Curated items are the product; clipboard history is an opt-in inbox.
+5. **Library first, history second.** Curated items are the product; clipboard history is a local inbox, on for new installs and off with one switch.
 
 ## 3. Platforms
 
@@ -30,18 +30,18 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 
 | Term | Meaning |
 |---|---|
-| **Board** | Top-level workspace (e.g. "Work", "Personal"). Free tier: 3 boards. |
-| **List** | Ordered collection of Items inside a Board (e.g. "Email replies"). Has optional colour accent. |
-| **Item** | One saved thing the user can paste. Has a title, one or more Formats, tags, flags. |
+| **Board** | Top-level workspace (e.g. "Work", "Personal"). Free tier: 5 boards. |
+| **List** | Ordered collection of Items inside a Board (e.g. "Email replies"). Has optional colour accent and an optional icon (one of 24 curated glyphs). |
+| **Item** | One saved thing the user can paste. Has a title, one or more Formats, tags, flags, and an optional colour label (one of 8; a 4px bar on the card, filterable in the Main window; the name is always available as text). |
 | **Format** | One clipboard representation of an Item: `text`, `html`, `rtf`, `image/png`, `files`. An Item may hold several (e.g. html + text fallback). |
 | **Template** | An Item whose text contains placeholders, resolved at use time. |
-| **Placeholder** | `{date}`, `{time}`, `{datetime:FORMAT}`, `{clipboard}`, `{cursor}` (static/free) and `{field:Name}` / `{field:Name|default}` / `{choice:Name|a|b}` (prompted/Pro). |
+| **Placeholder** | `{date}`, `{time}`, `{datetime:FORMAT}`, `{clipboard}`, `{cursor}` (static/free) and `{field:Name}` / `{field:Name|default}` / `{choice:Name|a|b}` (prompted/Supporter). |
 | **Tag** | Free-form label across Boards; filterable. |
 | **Pinned** | Item shown in the panel's favourites strip, above list order. |
-| **Sensitive** | Item that is masked, excluded from history, auto-cleared from clipboard after use; encrypted at rest (Pro). |
-| **Recent inbox** | Opt-in clipboard history. Last 200 entries or 7 days (configurable). Promote → List. |
+| **Sensitive** | Item that is masked and excluded from history; its clipboard copy is cleared after N s (default 30, Settings > Privacy); encrypted at rest (all tiers). |
+| **Recent inbox** | Clipboard history (on for new installs; Settings and the welcome tour turn it off). Last 200 entries or 7 days (configurable). Promote → List. |
 | **Panel** | Small dockable, always-on-top, non-activating window showing a Board (lists as tabs). |
-| **Floating list** | A List detached from the Panel into its own mini-panel (Pro). |
+| **Floating list** | A List detached from the Panel into its own mini-panel (Supporter). |
 | **Picker** | Hotkey-summoned, keyboard-first popup at the cursor: type to filter, Enter to paste. |
 | **Main window** | Full manager: sidebar / item list / detail editor. |
 | **Use** | Executing an Item: resolve template → write clipboard → paste or copy. |
@@ -54,33 +54,34 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - **Edge dock with reveal (owner request 2026-10-18, modelled on Microsoft PC Manager's side panel):** docked to a screen edge the Panel collapses to a slim handle/grabber strip (as in PC Manager's "toolbar" mode, horizontal on top/bottom edges and vertical on left/right) and slides out on **hover and/or click** (setting: hover, click, or both; hover delay and leave delay configurable), then collapses again when the pointer leaves or after a paste. The handle stays on top, never takes focus, shows nothing sensitive, and is reachable by keyboard (the Panel hotkey toggles it). Multi-monitor: remembers the edge per monitor. Needs a Windows spike for the hover hit-test on a non-activating always-on-top strip (appbar vs plain topmost window) before building.
 - **Auto-hide to edge**: collapses to a thin tab; reveals on hover or hotkey.
 - **Non-activating**: clicking the panel does not take focus from the Target (see ADR-0003).
-- Header: board switcher, list tabs, search, `+` menu, collapse.
-- Views: **Compact** (1-line rows) and **Comfortable** (2–3 line preview, image thumbs). Per-list choice.
+- Header: board picker, search icon, `New` menu, keep-on-top, `More` menu (Undo, Redo, Paste stack, Dock to edge, Keyboard shortcuts, Settings), close; list tabs sit on the row below (setting: tabs or a menu). Layout details: `docs/reviews/panel-v2-spec.md`.
+- Layouts: **List** (default), **Cards** and **Compact**, one global setting (Settings > Panel). It is not per list: a layout that changes when you switch tabs is a surprise in a 2-second window. The store keeps each list's `ListView` (persisted data) but the Panel neither reads nor writes it. Every row shows its type as an icon tile.
 - **Favourites strip** of pinned items at top.
 - **Click behaviour (smart)**: click → paste into Target if a text-input Target is known, else copy + toast.
-  `Shift+click` → copy only. Hover reveals explicit **Copy** / **Paste** / **⋯** buttons.
+  `Shift+click` → copy only. There is no Paste button: the row is the paste target and the footer says where it goes. Hover or selection reveals **Copy** / **Edit** / **More** on the preview line (Copy is hidden when there is no target).
 - Keys when panel focused: `1`–`9` use Nth item, arrows navigate, `Enter` use, `F2` rename, `Del` delete.
 - Add: **+ From clipboard**, `Ctrl+V` / drag-drop onto panel, **quick new note** (inline), global
   **save-selection** hotkey (copies selection under the hood, restores clipboard).
 - Reorder by drag (also `Alt+↑/↓`); per-list sort: Manual (default) / Most used / Recently used.
-- **Search:** typing while the panel is focused filters across the current board (panel and picker match **title, tags and the first 64 characters of content** in memory with `nucleo`, multi-threaded: measured 4–8 ms for 10k items against the 16 ms budget; full-content matching was 22–57 ms and is not used there. The main window's search uses SQLite FTS5 for full content) (the tab row becomes the search field; `Esc` restores). `Ctrl+F` and the search icon also work.
+- **Search:** typing while the panel is focused filters across **every board** and shows where each match lives ("Board · List"); a miss on another board used to send people to the Main window. (Panel and picker match **title, tags and the first 64 characters of content** in memory with `nucleo`, multi-threaded: measured 4–8 ms for 10k items against the 16 ms budget; full-content matching was 22–57 ms and is not used there. The main window's search uses SQLite FTS5 for full content) (the search field expands over the tab row, with a visible Close button; `Esc` clears and collapses). `Ctrl+F` and the search icon also work; a setting can keep the field always shown.
 - **Recent tab:** when history is on, a clock tab sits at the far left of the tab row. Promote an entry by dragging it to a tab or with "Save to…".
 - **Target footer:** always shows where a click will go ("Pastes into Outlook · New message" / "Copies to clipboard").
 - **Target detection (M0 S1 + a first manual run):** `GetGUIThreadInfo` finds the focused control in classic apps (Notepad verified: paste and clipboard restore worked, item absent from Win+V history) but reports nothing for OneNote and sometimes for Windows Terminal. v1 therefore adds a **UI Automation fallback** (focused element supports text input / value pattern) and a per-app **paste-key table** (Ctrl+V, Ctrl+Shift+V for terminals, Shift+Insert). When neither method finds a target the footer says "Copies to clipboard" and a click copies only. **(unverified for UIA)**
 - **First-run position:** docked to the right edge, full height minus taskbar, always-on-top, auto-hide off (changeable in onboarding).
 - **Fullscreen apps:** the panel auto-hides while a fullscreen app is in front and returns afterwards; hotkeys keep working.
 - Inline quick-edit for short text and titles; everything else opens the Editor.
-- Detach a list tab → **Floating list** (Pro).
+- Detach a list tab → **Floating list** (Supporter).
 
 ### 5.1a Use semantics (paste & clipboard)
 - **Paste** = write item to clipboard → paste key into Target → **restore the previous clipboard**. A fixed 300 ms wait is only the fallback: the primary signal is **delayed rendering** (the item's formats are rendered on demand and the previous clipboard is restored once the target has asked for them, with a 2 s cap), because slow targets such as Remote Desktop may otherwise receive the old content (M0 S1). **(unverified)**
 - **Copy** (`Shift+click`, `Shift+Enter`, or no Target) = item stays on the clipboard.
 - **Paste as plain text:** `Alt+click` / `Alt+Enter`; per-item "always paste as plain text" option.
-- **Paste stack (Pro):** multi-select items → "Start stack". The panel shows the queue; the global **Paste next** hotkey (default `Ctrl+Alt+V`) pastes the head and advances. `Ctrl+V` is never hooked. `Esc` in the panel or finishing the queue ends the stack.
+- **Paste stack (Supporter):** multi-select items → "Start stack". The panel shows the queue; the global **Paste next** hotkey (default `Ctrl+Shift+U`) pastes the head and advances. `Ctrl+V` is never hooked. `Esc` in the panel or finishing the queue ends the stack.
 - Elevated targets (UIPI) and failures fall back to Copy with an explaining toast ("Couldn't paste into Task Manager (runs as admin). Copied instead.").
 
 ### 5.2 Picker
 - Global hotkey (default `Ctrl+Shift+Space`), appears at text caret (fallback mouse) in <80 ms.
+- **Placement:** the Picker setting chooses the side of the caret: Below (default), Above, Right or Left. Below and Above leave a one-line gap, so the caret's line and the neighbouring line stay visible; Right and Left sit beside the caret, top-aligned, and may cover the rest of that line. A side without room flips to the opposite one, and the window is clamped to the monitor's work area. A mouse anchor behaves like Below.
 - Fuzzy search across all boards (title, content, tags); `Tab` scopes to board/list; `1`–`9` quick use.
 - `Enter` paste, `Shift+Enter` copy, `Ctrl+E` edit, `Esc` dismiss and restore focus.
 
@@ -99,23 +100,29 @@ that lives at the edge of the screen like a sticky note: one click and it's past
 - **Image**: crop, rotate/flip, resize/scale, **redact** (blur / solid box). Non-destructive until save.
 
 ### 5.5 Capture & OCR
-- Hotkey (default `Ctrl+Shift+2`) → Snipdeck's own region-select overlay (multi-monitor, DPI-aware).
+- Hotkey (off until the user sets a chord; no default) → Snipdeck's own region-select overlay (multi-monitor, DPI-aware). **Not built yet:** v1.0's capture hotkey saves the text on the clipboard as a new item in the list the Panel shows (off until a chord is set), and Settings says so.
 - After selection an **action bar** appears at the selection: **Copy text** (one-off OCR, nothing stored) · **Save text** · **Save image** · **Save both**, plus a list picker (default: active list).
 - Text actions open a small **review popover** with the OCR result, editable before copying/saving.
 - OCR engine: **Windows.Media.Ocr** by default (zero bundle cost); optional **RapidOCR pack**
   (ONNX, downloaded on demand) for messy layouts / unsupported languages (ADR-0004).
 
-### 5.6 Recent inbox (opt-in, off by default)
+### 5.6 Recent inbox (on for new installs, one switch to turn off)
+- On by default for a **new install** only; a settings file from an older build that does not name `recent_history` keeps it off. The welcome tour (step 4) says so and has the switch. Default chords for a new install: Show/hide Panel `Ctrl+Shift+Y`, Picker `Ctrl+Shift+Space`, Paste next `Ctrl+Shift+U`, none use Ctrl+Alt (AltGr on many layouts; `docs/reviews/default-chords.md`); an existing file keeps its chords.
 - Listens to clipboard changes; dedupes; skips sources that set
   `ExcludeClipboardContentFromMonitorProcessing` / `CanIncludeInClipboardHistory=0` (password managers),
   excluded apps, and Sensitive items.
 - Retention: 200 entries / 7 days (configurable); image entries size-capped.
+- Encrypted at rest with the Sensitive-item key (OS-wrapped, optional master password); locked = hidden and paused. Search filters after decrypt, in memory.
 - One click **promote** to a List.
 
 ### 5.7 Sensitive items
-- Free: masked `••••` (click-and-hold to reveal), excluded from history, clipboard auto-clear after N s (default 30).
-- Pro: encrypted at rest (XChaCha20-Poly1305); key wrapped by OS (DPAPI) and optionally by a
+- Free: masked `••••` (click-and-hold to reveal), excluded from history. Clipboard auto-clear: a **copy** of a sensitive item (Shift+click, no Target) is cleared from the clipboard N s later (Settings > Privacy, default 30, 0 = off) unless something else has been copied since; an auto-paste restores the previous clipboard, so it leaves nothing to clear.
+- Free and Supporter: encrypted at rest (XChaCha20-Poly1305); key wrapped by OS (DPAPI). Supporter adds an optional
   **master password** (Argon2id) → unlock prompt per session / idle timeout.
+  - Settings > Privacy sets, changes or removes it (typed twice, at least 8 characters, a strength hint in words). Setting is Supporter; changing, removing and unlocking always work, so a lapsed licence never traps a library.
+  - With a password set the library starts locked and says nothing. The unlock window opens the first time a locked sensitive item is needed (use, reveal, edit), and again after 15 minutes without use (`IDLE_LOCK`). A wrong password changes nothing and allows another try; Esc leaves it locked.
+  - Locking (idle or otherwise) also closes an open editor of a sensitive item without saving it, so no plain text stays on screen; typing in such an editor counts as use. A backup, export or restore never runs on a locked library (it would leave out or lose the sensitive items): it asks for the password instead, and the scheduled backup waits.
+  - Forgetting it loses the sensitive items for good: while a password is set the data key exists only sealed under it inside the OS-wrapped record, there is no recovery key, and the form says so before the password is set. Other items are not affected.
 
 ### 5.7a Deletion & recovery
 - Items delete instantly with a 5 s **Undo** toast; lists and boards ask for confirmation (showing the item count).
@@ -138,23 +145,26 @@ Seeds a **Getting started** list whose cards teach by doing ("Click me to paste"
 - Importers: Ditto, CopyQ, Windows clipboard history (current session), folder of `.txt`/`.md`.
 - Data folder relocatable (e.g. into OneDrive/Dropbox for DIY sync); DB is single-writer — warn on concurrent use.
 
-## 6. Free vs Pro
+## 6. Free vs Supporter
 
-| Feature | Free | Pro |
+The paid tier is called Supporter (it was Pro; internal identifiers such as `Tier::Pro` keep the old name). Pay what you want from A$5, suggested A$8, one-time, every 1.x update included; a key is free on request ("Can't afford it? Email me"). Free stays fully usable and the code is GPL-3.0: Supporter pays for convenience and supports the app.
+
+| Feature | Free | Supporter |
 |---|---|---|
-| Boards | 3 | Unlimited |
+| Boards | 5 | Unlimited |
 | Lists / items | Unlimited | Unlimited |
 | Panel, picker, capture, OCR, editors, history | ✓ | ✓ |
 | Static placeholders | ✓ | ✓ |
 | Prompted template fields (`{field}`, `{choice}`) | — | ✓ |
 | Sensitive masking + auto-clear | ✓ | ✓ |
-| Sensitive encryption + master password | — | ✓ |
+| Sensitive encryption at rest | ✓ | ✓ |
+| Master password | — | ✓ |
 | Floating (detached) lists | — | ✓ |
 | Paste stack | — | ✓ |
 
 Licence key: offline Ed25519-signed token, no phone-home (ADR-0005).
 
-**Upsell:** shown only when the user tries a Pro action (a calm sheet: what it does, price, "Enter key" / "Get Pro"), plus a subtle "Pro" section in Settings listing Pro features. No nags, banners or countdowns.
+**Upsell:** shown only when the user tries a Supporter action (a calm sheet: what it does, price, "Enter key" / "Get Supporter"; Get Supporter opens an email to the owner), plus a Free vs Supporter table in Settings > Licence (feature, one-line description, tick or cross per tier; a tick or cross is never colour alone). No nags, banners or countdowns.
 
 ## 7. Internationalisation & accessibility
 - Launch locales: **en, es, de, fr, pt-BR, ja, zh-Hans**. All strings via Slint `@tr()` / gettext `.po`.

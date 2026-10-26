@@ -1,38 +1,101 @@
-# Windows test wizard
+# Test Snipdeck on Windows
 
-Builds the M0 spike apps, launches each one with the right settings, walks you through the manual test
-steps from `docs/spikes/`, and writes up the results. You answer **p**ass / **f**ail / **s**kip.
+## Quick check (about 10 minutes)
 
-## Run it
+Double-click `Test Snipdeck on Windows.bat` and press **1**. It checks only what changed lately and can only be
+judged on Windows, on its own new empty test library (`spikes-results\qc-data`, deleted at the start of every new
+Quick check, so your snippets and settings are never touched). It offers to close a normal Snipdeck that is
+running (a second copy would just exit). The same keys as the full test: **P** worked, **F** didn't (one line about
+what happened), **S** skip. Results go to the same place and format as the full test (`results.md`,
+`paste-back.md`, the zip on your Desktop; the mode shows as `qc`). From a prompt: `.\tools\windows-test\run-tests.ps1 -Mode qc`.
 
-1. Get the repo on your Windows PC (Windows 10 1903+ or Windows 11):
-   - `git clone https://github.com/Braydenh563/Backpack` then `git checkout claude/clipboard-assistant-design-o1eool`, **or**
-   - download the ZIP of that branch from GitHub (Code > Download ZIP) and unzip it.
-2. Double-click **`run-windows-tests.bat`** in the repo root.
-   (From Git Bash or WSL: `tools/windows-test/run-tests.sh`. From PowerShell: `.\tools\windows-test\run-tests.ps1`.)
+| # | What you do | Done for you |
+|---|---|---|
+| 1 | Press the Panel shortcut: it shows and hides, Notepad keeps the cursor. The screen names the key: **Ctrl+Shift+Y** on this new test library (read from `qc-data\settings.json` when it exists); if a normal Snipdeck is installed it also says what that one uses (an older install keeps **Ctrl+Alt+Space**) | Presses it twice and watches the Panel window |
+| 2 | Settings: Layout List / Cards / Compact | - |
+| 3 | Copy `quickcheck` in Notepad: it is in Recent (Recent is on in a new install) | Types, copies and looks for it in the Panel (falls back to you if it cannot read the Panel) |
+| 4 | Copy from a password manager: not in Recent (S if none installed) | - |
+| 5 | One click on a row pastes into Notepad and the Panel hides | - |
+| 6 | Pin keeps the Panel open | - |
+| 7 | Search marks the matching letters | - |
+| 8 | Settings: Lists = Menu (board-name menu switcher) | - |
+| 9 | Show the Panel in the taskbar and Alt+Tab: the paste goes to the window you were in before | - |
+| 10-11 | Dock to the taskbar's edge (the screen says which edge); the Panel stays clear of the taskbar | Measures the Panel against the screen's work area |
+| 12 | Render diagnostic | Runs `diag-render.ps1 -Quick` (render checks only, about 3 minutes, a few yes/no questions), shows the path of the file it saves on the Desktop and puts a copy in the results zip |
 
-The wizard then:
+Steps 1, 3 and 11 are tried by the wizard first (mouse and keyboard move for a few seconds; hold Esc to stop). A
+check it cannot judge becomes the normal screen for you. The steps are in `tests\quick-check.json` (flag `qc`;
+`qcOnly` keeps them out of the other modes); the automations are in `auto\qc.ps1`. **Unverified:** none of this has
+run on Windows yet, and the automations only read the Panel by its window size and UI Automation text, so expect the
+first run to fall back to manual on some of them.
+
+The full test, unchanged, is the second choice of the same `.bat` (or press Enter in the wizard).
+
+---
+
+## Full test
+
+You do not need to read anything else on this page. Five steps:
+
+1. **Get the Snipdeck folder on your Windows PC** (Windows 10 or 11). Either download the ZIP from GitHub
+   (Code > Download ZIP), right-click it, choose **Extract All**, and open the new folder; or `git clone` it.
+2. **Double-click `Test Snipdeck on Windows.bat`** in that folder. A black window opens. If Windows says
+   "Windows protected your PC", choose **More info > Run anyway**.
+3. **Press Enter** at the welcome screen. That starts the recommended "v1 check" (about an hour). If it says
+   something is missing (Rust, Visual Studio C++ Build Tools), it tells you what, how big and how long, and
+   asks **Install now? (Y/n)**: press Enter. The first build of the apps takes 10-20 minutes; lines scroll past
+   and a "still building" note appears every 30 seconds. You can walk away.
+4. **Follow each step on screen.** Every screen has the same layout: *DO THIS* (numbered), *YOU SHOULD SEE*, then
+   **P** = it worked, **F** = it didn't, **S** = skip (and **?** for more options). Some steps run by
+   themselves: your mouse and keyboard move for a few seconds, and a 5-second countdown comes first. To stop
+   them, hold **Esc**. If you press F, type one line about what happened (or just Enter) and let it take a screenshot.
+5. **At the end** you get one file on your Desktop, `Snipdeck-test-results-<date>.zip`, Explorer opens with it
+   selected, and a short summary is on your clipboard. **Drag the file into the Claude chat** (or paste the
+   summary). Close the window when it says so.
+
+Stopped half-way, or the PC restarted? Double-click the file again and press Enter at *Continue where you left
+off?* Your earlier answers are kept.
+
+Nothing is sent anywhere by the wizard. It never commits or pushes anything unless you choose that under
+*Advanced options*.
+
+---
+
+# Details
+
+This is the reference for the people who maintain the wizard. The wizard builds the apps to check, launches each
+with the right settings, walks through the steps that need a person, and writes up the results. Entry point:
+`Test Snipdeck on Windows.bat` (repo root) -> `tools/windows-test/run-tests.ps1` (Windows PowerShell 5.1, execution
+policy bypassed for that one run). From Git Bash or WSL: `tools/windows-test/run-tests.sh`. From PowerShell:
+`.\tools\windows-test\run-tests.ps1`. A problem shows a plain message and writes `spikes-results\wizard-log.txt`.
+
+The pure logic (which steps a plan runs, time left, progress bar, resume detection, result counts, the zip name,
+numbered actions, prerequisite wording) lives in `flow.ps1` and is covered by `auto\tests\selftest.ps1`.
+
+## The flow
 
 | Stage | What it does |
 |---|---|
-| Prerequisites | Checks for Rust and the Visual Studio C++ Build Tools; offers to install them with `winget` (y/n). |
-| What to test | You pick which prototypes (S1, S2, S4, M2) and how thorough: quick (go/no-go steps only, about 20 min), standard, or full. |
-| Per prototype | Shows the setup checklist, builds it (`cargo build --release`), launches it with the right arguments and environment for each step, and relaunches automatically when a step needs different settings. |
-| Per step | Shows what to do and what you should see. Keys: `p` pass, `f` fail (asks what went wrong), `s` skip, `n` add a note, `c` screenshot (minimises the wizard, waits 5 s so you can bring the app forward), `l` view the app's console output, `r` relaunch, `b` back, `q` finish now. Optional: some steps run by themselves (see [Automation](#automation-optional)). |
-| Results | Prints a go/no-go verdict per prototype, copies a short summary to your clipboard, and saves everything to `spikes-results\current\`. Optionally zips it and commits the text report. |
+| Welcome | Four lines: what it does, how long, that the mouse may move (Esc stops it), that nothing is sent. Enter = the **v1 check**; **A** = *Advanced options*; **Q** = quit. If an unfinished run exists, the first question is *Continue where you left off? (Y/n)*. |
+| Advanced options | Thoroughness (v1 check / quick / standard / full), which parts, automatic steps on/off, the Windows 10/11 step set, and (default no) offering to send the results text to GitHub at the end. Command line: `-Mode`, `-Spike`, `-Auto`, `-NoAuto`. |
+| Getting ready | Detects Rust and the Visual Studio C++ Build Tools. If something is missing it says in plain words what, how big and how long, and asks once *Install now? (Y/n)*; it installs with `winget`. |
+| Building | Builds every part of the run up front (`cargo build --release`), with a "still building" note every 30 s. A failed build offers retry / skip / stop. |
+| Steps | Same layout on every screen (header `Step N of M - about X min left`, text progress bar, DO THIS, YOU SHOULD SEE). Keys: **P** worked, **F** didn't (asks *What happened?* and offers a screenshot), **S** skip, **?** shows the rest: **N** note, **C** screenshot, **L** the app's printed output, **R** restart the app, **K** put the clipboard text back, **B** back, **A** redo the automation, **Q** stop here. |
+| Finish | Counts (worked / didn't / skipped / not done), a plain verdict per part, then the zip on the Desktop (`Snipdeck-test-results-<date>.zip`, `-2`, `-3` if that name exists), Explorer with the file selected, the one-line summary on the clipboard. |
 
-**Afterwards:** paste the clipboard summary into the chat with Claude.
+The recommended **v1 check** is every step flagged `"v1": true` in `tests\*.json`. It covers what the owner must
+verify before v1 ships (`docs/V1-PLAN.md`, G1): the M3 app shell (tray, taskbar, close to tray, light/dark, plus the
+display-scaling, file-dialog and edge-dock steps 20-22), the M2 platform key steps plus single instance / autostart /
+hotkey conflict / quit, the S1 floating-panel key steps (focus, Alt+Tab, caret, paste), and the S2 IME key steps
+(needs Japanese, Chinese and Korean keyboards installed; press S at the start of that part to skip it). S4 (window
+look) is not in it; pick it under *Advanced options*.
+Time estimates: 1.5 minutes per manual step, 0.5 per automated step (an optional `"minutes"` field on a step
+overrides that), plus the build.
 
-If you quit half-way, run it again and answer **y** to "Resume": steps you already answered are skipped.
+## Automation
 
-Recommended order: **S1** (it decides the most), then **S2**, then **S4**; **M2** is independent of the spikes.
-
-## Automation (optional)
-
-After you pick what to test, the wizard asks once: *"Let me run the automatable steps for you? Your mouse and
-keyboard will move; don't touch them. [y/N]"* (skip the question with `-Auto` or `-NoAuto`; `-NoAuto` is the
-manual wizard exactly as before). With **y**, steps that have an `auto` field are performed and checked by the
-script; every other step is the normal manual screen.
+On by default for the v1 check (turn it off in *Advanced options* or with `-NoAuto`; `-Auto` forces it on). Steps
+that have an `auto` field are performed and checked by the script; every other step is the normal manual screen.
 
 | Spike | Automated | Stays manual, and why |
 |---|---|---|
@@ -44,7 +107,7 @@ How it decides: each automation returns **pass**, **fail** or **unsure**. *Fail*
 unambiguous evidence (the panel took the focus, the item reached clipboard history, the clipboard was not
 restored, pasted twice, a stuck modifier, black chrome next to correct cards, ...). Anything it cannot see clearly
 is *unsure* and you get the normal manual screen for that step, with what the automation observed shown in yellow
-(press `a` there to run it again). Results decided by the automation show `pass (auto)` / `fail (auto)` in
+(press `?` then `a` there to run it again). Results decided by the automation show `pass (auto)` / `fail (auto)` in
 `results.md`, with the evidence in the notes. If a step needs your eyes (corners, Alt+Tab, Win+V when history
 cannot be read), the wizard asks one y/n question; answering **n** turns it into the manual screen.
 
@@ -74,7 +137,7 @@ without Windows are listed at the end of this file.
 `tests\m2-platform.json` checks `crates/snipdeck-platform` (clipboard with delayed rendering, `SendInput`,
 Target tracking, global hotkeys, single instance, autostart, DPAPI) on a real PC. It is not a spike: the wizard
 builds `tools\windows-test\m2-harness` (a console app, no window) and the steps drive it with global hotkeys.
-Quick mode runs steps 1-6 (start-up report, Notepad paste and restore, Alt/Win held, HTML, plain paste, Copy).
+Quick mode runs steps 1-6 (start-up report, Notepad paste and restore, Alt/Win held, HTML, plain paste, Copy); the v1 check adds 15-18.
 
 | Chord | Does |
 |---|---|
@@ -101,32 +164,52 @@ the `theme` setting, and that a damaged `settings.json` is kept as `settings.jso
 steps. Writing settings has no step yet: nothing in the app changes a setting until the Settings window exists (M4).
 Nothing here has run on Windows.
 
+## Render and shortcut diagnostic (`diag-render.ps1`)
+
+A separate, short run (about 10 minutes) for the render glitches and the shortcuts
+(`docs/reviews/render-glitch-analysis.md`). From the repo folder, in a normal PowerShell window:
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\windows-test\diag-render.ps1
+
+It closes a running Snipdeck, builds, starts Snipdeck twice (`SNIPDECK_DIAG=render`, then `render,fix`, both
+with `SNIPDECK_LOG=1`) on the wizard's library (`spikes-results\m3-data`, else `spikes-results\diag\data`),
+prints numbered steps with a y/n question each, and writes one file, `Desktop\Snipdeck-diag-<date>.txt`.
+`-NoBuild` skips the build; `-DataDir <folder>` picks another library.
+
 ## Where things are saved
 
-`spikes-results\current\` (git-ignored): `results.md` (full report), `paste-back.md` (what goes on the clipboard),
-`state.json` (resume data), `screens\*.png`, and the apps' console logs. Nothing is uploaded anywhere.
+`spikes-results\current\` (git-ignored): `results.md` (full report), `paste-back.md`, `paste-back-oneline.txt` (what goes
+on the clipboard), `state.json` (resume data), `screens\*.png`, and the apps' console logs. The same folder is zipped to
+the Desktop at the end. `spikes-results\wizard-log.txt` collects problems. An older run is moved to
+`spikes-results\run-<date>` when a new one starts. Nothing is uploaded anywhere.
 
 ## Troubleshooting
 
-- **"running scripts is disabled"**: use the `.bat` launcher, which bypasses the policy for this one run.
+- **"running scripts is disabled"**: use `Test Snipdeck on Windows.bat`, which bypasses the policy for this one run.
+- **"Windows protected your PC"** when opening the `.bat` from a downloaded ZIP: More info > Run anyway.
+- **The window seems frozen during a build**: clicking inside a console window pauses it while text is selected; press Enter.
 - **Rust installed but "cargo not found"**: close the window and run the launcher again so the new PATH is picked up.
 - **Build tools install does nothing**: it needs the admin (UAC) prompt; accept it, wait for it to finish, then re-run.
-- **An app won't start**: press `l` to see its output; the wizard also prints the last lines when an app exits immediately.
+- **An app won't start**: press `?` then `l` to see its output; the wizard also prints the last lines when an app exits immediately.
+- **The wizard stops with "Something went wrong"**: the details are in `spikes-results\wizard-log.txt`.
 - **Antivirus complains about the freshly built `.exe`**: expected for unsigned local builds; allow it for the `spikes\*\target` folders.
 
 ## Adding a prototype or changing a step
 
-Each prototype is one file in `tests\*.json`; the script needs no changes.
+Each prototype is one file in `tests\*.json`; the script needs no changes. Texts the person reads (`friendly`,
+`title`, `do`, `expect`) are plain language: no spike ids, environment variables or jargon (ids show only in small grey text).
 
 ```jsonc
 {
-  "id": "S5", "title": "...", "note": "docs/spikes/S5-....md",
+  "id": "S5", "title": "...", "friendly": "Plain name shown on screen", "note": "docs/spikes/S5-....md",
   "dir": "spikes/s5-...", "exe": "s5-...",          // cargo package folder and binary name
   "setup": ["things to do before starting"],
   "captureLines": ["text to pull from the app's console into the report"],   // optional
   "tests": [{
     "id": "1", "title": "...", "do": "...", "expect": "...",
-    "gate": true,                       // part of the go/no-go decision
+    "gate": true,                       // part of the go/no-go decision (shown as "key step")
+    "v1": true,                         // part of the recommended "v1 check" (every gate step of a part in it must be flagged)
+    "minutes": 4,                       // optional: rough length for the time-left estimate (default 1.5 manual, 0.5 automated)
     "anyGroup": "mica",                 // passes if ANY step sharing this group name passes
     "optional": true,                   // skipped in quick and standard modes
     "os": "win11",                      // win11 = build 22621+, win10 = everything older; omit for both
@@ -138,8 +221,8 @@ Each prototype is one file in `tests\*.json`; the script needs no changes.
 ```
 
 Check your edits without Windows: `pwsh tools/windows-test/run-tests.ps1 -SelfTest`
-(validates every file and the verdict logic, parses every script, and runs the automation's unit tests and
-end-to-end tests against a simulated desktop). `-DryRun` fakes Windows, the build and the app so the whole
+(validates every file and the verdict logic, checks the v1 flags, parses every script, runs the flow tests
+for `flow.ps1`, and runs the automation's unit tests and end-to-end tests against a simulated desktop). `-DryRun` fakes Windows, the build and the app so the whole
 interactive flow can be exercised anywhere; with automation on it uses the simulated desktop
 (`auto\mock\primitives.mock.ps1`), so no real input is ever sent. `SNIPDECK_MOCK_FAULTS=UISettingsStale,AbortAfter=5`
 injects faults to walk the fallback paths (names are listed at the top of the mock file).
@@ -160,6 +243,24 @@ injects faults to walk the fallback paths (names are listed at the top of the mo
    needed, and add cases (healthy and faulty) to `auto\tests\selftest.ps1`.
 
 ### Windows-only assumptions (not verifiable from Linux: watch the first run)
+
+- The new wizard flow (welcome, Advanced options, resume question, up-front builds, step layout, finish screen) was
+  exercised with `-DryRun` under PowerShell 7 on Linux with typed input, and its logic by `-SelfTest`; none of it
+  has run on Windows PowerShell 5.1 or in a real console window.
+- `Start-Process cargo -NoNewWindow -PassThru` with `WaitForExit(30000)` runs the build in this console, prints a
+  "still building" note every 30 s and returns when `cargo` exits (the `mspdbsrv.exe` the linker leaves behind is not
+  waited for); `ExitCode` is readable afterwards.
+- `winget install` of `Rustlang.Rustup` and `Microsoft.VisualStudio.2022.BuildTools` finishes without further
+  questions, and `vswhere` finds the C++ workload afterwards; Rust may need a new console window to be on the PATH.
+- `[Environment]::GetFolderPath('Desktop')` is the real Desktop (also with OneDrive folder backup), `Compress-Archive`
+  can read every file in `spikes-results\current` (the app logs are closed because the app was stopped), and
+  `explorer.exe /select,"<zip>"` opens that folder with the file selected.
+- The colours stay readable in the default console (black background, from the `.bat`) and in Windows Terminal;
+  `DarkGray` is only used for small secondary text and is the weakest contrast (about 4.4:1 in Windows Terminal's
+  default scheme). Pass and fail are always shown as words, never by colour alone.
+- Step screens fit a 100-column console without horizontal scrolling and keep the whole screen above the cursor
+  readable at the default 30-line window (long steps scroll; the key line is always last).
+- `Clear-Host` between screens is fine in the legacy console host and in Windows Terminal.
 
 - SendInput clicks on the never-activating S1 panel behave like real clicks, and injected Shift/Ctrl/Alt/Win
   are seen by the panel's `GetAsyncKeyState`.

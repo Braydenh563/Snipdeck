@@ -13,8 +13,9 @@ Start with the [project README](../README.md) for status. Items below are groupe
 
 | Doc | What |
 |---|---|
-| [`SPEC.md`](SPEC.md) | The v1 product specification: features, Free vs Pro, performance budget |
+| [`SPEC.md`](SPEC.md) | The v1 product specification: features, Free vs Supporter, performance budget |
 | [`../DESIGN.md`](../DESIGN.md) | Design language: colour, type, components, layout, motion |
+| [`PERF.md`](PERF.md) | Performance budgets, what the search index caches and when, how to measure speed, binary size and idle RAM |
 | [`PLAN.md`](PLAN.md) | Milestones M1-M6, verification labels, Windows gates, risks |
 | [`HANDOVER.md`](HANDOVER.md) | Current state, open gaps, next steps (for whoever works on it next) |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | What changed |
@@ -29,6 +30,7 @@ Start with the [project README](../README.md) for status. Items below are groupe
 | [`store.md`](store.md) | Data folder, schema, migrations, search, blobs, trash |
 | [`crypto.md`](crypto.md) | Encryption of sensitive items: key hierarchy, formats, limits |
 | [`format.md`](format.md) | The `.snipdeck` archive format and the importers |
+| [`packaging.md`](packaging.md) | MSIX, Microsoft Store and code-signing steps (owner, on Windows) |
 | [`licensing.md`](licensing.md) | Licence key format, verification, build-time public key, release procedure |
 | [`CODEMAP.md`](CODEMAP.md) | Generated: where every definition and test lives |
 | [`../crates/snipdeck-ui/README.md`](../crates/snipdeck-ui/README.md) | UI crate conventions and test harness |
@@ -38,7 +40,7 @@ Start with the [project README](../README.md) for status. Items below are groupe
 
 | Doc | What |
 |---|---|
-| [`adr/`](adr/) | Architecture decision records: 0001 Rust and Slint, 0002 local-first SQLite, 0003 non-activating panel paste, 0004 OCR engines, 0005 GPL-3.0 / Pro / CLA, 0006 distribution, 0007 toolkit constraints from the M0 spikes, 0008 window chrome and tray |
+| [`adr/`](adr/) | Architecture decision records: 0001 Rust and Slint, 0002 local-first SQLite, 0003 non-activating panel paste, 0004 OCR engines, 0005 GPL-3.0 / Supporter / CLA, 0006 distribution, 0007 toolkit constraints from the M0 spikes, 0008 window chrome and tray |
 | [`spikes/`](spikes/README.md) | M0 spike findings (S1 paste, S2 IME, S3 long text, S4 Mica) and the first Windows run results |
 | [`reviews/`](reviews/) | Independent reviews: M1 core and store, M3 security, M3 UI components, M3 Win32 tray |
 

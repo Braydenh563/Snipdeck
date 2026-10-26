@@ -137,7 +137,7 @@ fn a_list_moves_to_another_board_at_the_chosen_position() {
     list(&mut s, b2.id, "q");
     s.move_list(x.id, b2.id, Placement::After(p.id)).unwrap();
     assert_eq!(list_names(&s, b2.id), ["p", "x", "q"]);
-    assert!(list_names(&s, b1.id).is_empty());
+    assert_eq!(list_names(&s, b1.id).len(), 0);
     assert_eq!(s.list(x.id).unwrap().board_id, b2.id);
     assert_healthy(&s);
 }
@@ -211,7 +211,7 @@ fn update_with_a_new_parent_moves_to_the_end_of_it() {
     moving.list_id = l2.id;
     s.update_item(&moving, None).unwrap();
     assert_eq!(titles(&s, l2.id), ["existing", "moving"]);
-    assert!(titles(&s, l1.id).is_empty());
+    assert_eq!(titles(&s, l1.id).len(), 0);
 }
 
 #[test]
@@ -327,4 +327,18 @@ fn listing_lists_of_a_missing_or_trashed_board_is_not_found() {
             ..
         })
     ));
+}
+
+#[test]
+fn a_list_icon_round_trips_and_can_be_cleared() {
+    let mut s = store();
+    let b = board(&mut s, "b");
+    let mut l = list(&mut s, b.id, "l");
+    assert_eq!(s.lists(b.id).unwrap()[0].icon, None);
+    l.icon = Some(snipdeck_core::ListIcon::RocketLaunch);
+    s.update_list(&l).unwrap();
+    assert_eq!(s.lists(b.id).unwrap()[0], l);
+    l.icon = None;
+    s.update_list(&l).unwrap();
+    assert_eq!(s.lists(b.id).unwrap()[0].icon, None);
 }

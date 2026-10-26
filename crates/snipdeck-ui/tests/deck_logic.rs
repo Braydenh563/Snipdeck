@@ -258,6 +258,93 @@ fn enter_uses_shift_enter_copies_the_menu_key_opens_the_context_menu() {
     assert_eq!(ui.get_last_action(), "");
 }
 
+/// The buttons labelled `label` inside the whole gallery (the query reports one more than once).
+fn buttons_named(ui: &DeckGallery, label: &str) -> Vec<ElementHandle> {
+    let mut seen = Vec::new();
+    ElementQuery::from_root(ui)
+        .match_descendants()
+        .match_accessible_role(AccessibleRole::Button)
+        .find_all()
+        .into_iter()
+        .filter(|b| b.accessible_label().is_some_and(|l| l == label))
+        .filter(|b| {
+            let (p, s) = (b.absolute_position(), b.size());
+            let key = (p.x.to_bits(), p.y.to_bits(), s.width.to_bits());
+            let fresh = !seen.contains(&key);
+            seen.push(key);
+            fresh
+        })
+        .collect()
+}
+
+/// The button of `card` among `buttons`: the one whose box lies inside the card's.
+fn inside<'a>(buttons: &'a [ElementHandle], card: &ElementHandle) -> &'a ElementHandle {
+    let (origin, size) = (card.absolute_position(), card.size());
+    buttons
+        .iter()
+        .find(|b| {
+            let (p, s) = (b.absolute_position(), b.size());
+            p.x >= origin.x
+                && p.y >= origin.y
+                && p.x + s.width <= origin.x + size.width
+                && p.y + s.height <= origin.y + size.height
+        })
+        .expect("a button inside the card")
+}
+
+fn every_card_shows_a_more_button_and_a_copy_button_and_a_click_on_either_is_not_a_use() {
+    let ui = gallery();
+    // Drawn on every card, hovered or not (muted until then), so pen and touch users find them.
+    let more = buttons_named(&ui, "More");
+    let copy = buttons_named(&ui, "Copy without pasting");
+    assert!(!more.is_empty(), "the More button is always there");
+    assert_eq!(copy.len(), more.len(), "a Copy button beside every More");
+    for b in more.iter().chain(&copy) {
+        let s = b.size();
+        assert!(s.width >= 24.0 && s.height >= 24.0, "target size {s:?}");
+    }
+
+    let card = &trio(&ui, "Thanks, received")[COMPACT];
+    ui.window().dispatch_event(WindowEvent::PointerMoved {
+        position: centre(card),
+    });
+    let (more_here, copy_here) = (inside(&more, card), inside(&copy, card));
+    let (m, c) = (more_here.absolute_position(), copy_here.absolute_position());
+    assert!(
+        c.x + copy_here.size().width <= m.x + 0.5,
+        "Copy sits left of More without overlapping it: {c:?} {m:?}"
+    );
+
+    // A click on Copy copies and is not a use.
+    ui.set_last_action("".into());
+    let at = centre(copy_here);
+    press(&ui, at, PointerEventButton::Left);
+    release(&ui, at, PointerEventButton::Left);
+    assert_eq!(ui.get_last_action(), "copy");
+    assert_eq!(ui.get_actions(), 1, "one copy request and no use");
+
+    // A click on More asks for the menu, also without a use.
+    ui.set_last_action("".into());
+    let at = centre(more_here);
+    press(&ui, at, PointerEventButton::Left);
+    release(&ui, at, PointerEventButton::Left);
+    assert_eq!(ui.get_last_action(), "menu");
+    assert_eq!(ui.get_actions(), 2, "one menu request and no use");
+
+    // The default action (assistive technology) does the same.
+    ui.set_last_action("".into());
+    copy_here.invoke_accessible_default_action();
+    assert_eq!(ui.get_last_action(), "copy");
+    ui.set_last_action("".into());
+    more_here.invoke_accessible_default_action();
+    assert_eq!(ui.get_last_action(), "menu");
+
+    // They stay when the pointer leaves.
+    ui.window().dispatch_event(WindowEvent::PointerExited);
+    assert_eq!(buttons_named(&ui, "More").len(), more.len());
+    assert_eq!(buttons_named(&ui, "Copy without pasting").len(), copy.len());
+}
+
 fn press_and_hold_reveals_a_sensitive_item_without_using_it() {
     let ui = gallery();
     let card = &trio(&ui, "Server password")[COMPACT];
@@ -405,26 +492,13 @@ fn deck_parts_report_clicks_menus_and_have_accessible_names() {
     });
     assert_eq!(ui.get_last(), "sidebar-menu:Recent");
 
-    // Keyboard focus walks the chips and scrolls the last, partly hidden one into view.
-    assert_eq!(ui.get_strip_scroll(), 0.0, "strip starts unscrolled");
-    for _ in 0..9 {
-        ui.window().dispatch_event(WindowEvent::KeyPressed {
-            text: Key::Tab.into(),
-        });
-        ui.window().dispatch_event(WindowEvent::KeyReleased {
-            text: Key::Tab.into(),
-        });
-    }
-    assert!(
-        ui.get_strip_scroll() > 0.0,
-        "focusing the last chip scrolls the strip: {}",
-        ui.get_strip_scroll()
-    );
-    // Enter on the focused chip uses it.
-    ui.window().dispatch_event(WindowEvent::KeyPressed {
-        text: Key::Return.into(),
-    });
-    assert_eq!(ui.get_last(), "pinned:6");
+    // Past two chips the strip says how many are left, as a button that asks the host for them.
+    let more = ElementHandle::find_by_accessible_label(&ui, "+5 more")
+        .find(|e| e.accessible_role() == Some(AccessibleRole::Button))
+        .expect("the +N more button");
+    assert!(more.size().height >= 24.0 && more.size().width >= 24.0);
+    more.invoke_accessible_default_action();
+    assert_eq!(ui.get_last(), "pinned-more");
 }
 
 fn at_225_percent_text_the_rows_grow_and_stay_hittable() {
@@ -496,10 +570,111 @@ fn deck_behaviour() {
     click_uses_shift_click_copies_right_click_asks_for_the_menu();
     a_release_outside_the_card_is_not_a_use();
     enter_uses_shift_enter_copies_the_menu_key_opens_the_context_menu();
+    every_card_shows_a_more_button_and_a_copy_button_and_a_click_on_either_is_not_a_use();
     press_and_hold_reveals_a_sensitive_item_without_using_it();
     holding_space_on_a_focused_sensitive_card_reveals_it();
     the_use_label_shows_on_hover_and_keyboard_focus_only();
     deck_parts_report_clicks_menus_and_have_accessible_names();
     at_225_percent_text_the_rows_grow_and_stay_hittable();
     cjk_cards_keep_their_height_and_stay_inside_the_column();
+    the_use_button_uses_the_item_once_and_never_only_selects_it();
+    the_use_button_is_a_button_for_assistive_technology_only_while_shown();
+}
+
+/// The use buttons ("Paste <title>") the gallery shows right now.
+fn use_buttons(ui: &DeckGallery) -> Vec<ElementHandle> {
+    ElementQuery::from_root(ui)
+        .match_descendants()
+        .match_accessible_role(AccessibleRole::Button)
+        .find_all()
+        .into_iter()
+        .filter(|b| {
+            b.accessible_label()
+                .is_some_and(|l| l.starts_with("Paste "))
+        })
+        .collect()
+}
+
+/// The use button inside `card`, once the card shows it.
+fn use_button_in(ui: &DeckGallery, card: &ElementHandle) -> ElementHandle {
+    let (p, s) = (card.absolute_position(), card.size());
+    use_buttons(ui)
+        .into_iter()
+        .find(|b| {
+            let bp = b.absolute_position();
+            bp.x >= p.x && bp.x <= p.x + s.width && bp.y >= p.y && bp.y <= p.y + s.height
+        })
+        .expect("a use button inside the card")
+}
+
+fn the_use_button_uses_the_item_once_and_never_only_selects_it() {
+    let ui = gallery();
+    // O33: in the main window (`pick-mode`) a click on the row selects it; a click on the row's
+    // "Paste" / "Copy" button must still use the item, exactly once.
+    for pick_mode in [false, true] {
+        ui.set_pick_mode(pick_mode);
+        for (variant, card) in trio(&ui, "Thanks, received").iter().enumerate() {
+            let at = centre(card);
+            ui.window()
+                .dispatch_event(WindowEvent::PointerMoved { position: at });
+            advance(120);
+            let button = use_button_in(&ui, card);
+            assert_eq!(
+                button.accessible_label().as_deref(),
+                Some("Paste Thanks, received"),
+                "named after the item, pick {pick_mode}, variant {variant}"
+            );
+            let before = ui.get_actions();
+            ui.set_last_action("".into());
+            let on_button = centre(&button);
+            press(&ui, on_button, PointerEventButton::Left);
+            advance(50);
+            release(&ui, on_button, PointerEventButton::Left);
+            assert_eq!(
+                ui.get_last_action(),
+                "use",
+                "pick {pick_mode}, variant {variant}"
+            );
+            assert_eq!(ui.get_actions(), before + 1, "exactly one gesture reported");
+            assert_eq!(ui.get_last_title(), "Thanks, received");
+
+            // The row body keeps its own meaning: a pick in selection mode, a use otherwise.
+            ui.set_last_action("".into());
+            click(&ui, card, PointerEventButton::Left);
+            assert_eq!(
+                ui.get_last_action(),
+                if pick_mode { "pick" } else { "use" },
+                "row body, pick {pick_mode}, variant {variant}"
+            );
+        }
+        ui.window().dispatch_event(WindowEvent::PointerMoved {
+            position: LogicalPosition::new(1.0, 1.0),
+        });
+        advance(120);
+    }
+}
+
+fn the_use_button_is_a_button_for_assistive_technology_only_while_shown() {
+    let ui = gallery();
+    // At rest only the sample that keeps its label (`show-label`) has a button to announce.
+    let rest = use_buttons(&ui);
+    assert!(
+        !rest.is_empty()
+            && rest
+                .iter()
+                .all(|b| b.accessible_label().as_deref() == Some("Paste Meeting follow-up")),
+        "only the row that shows its label at rest: {}",
+        rest.len()
+    );
+
+    let card = &trio(&ui, "Design spec")[COMFORTABLE];
+    ui.window().dispatch_event(WindowEvent::PointerMoved {
+        position: centre(card),
+    });
+    advance(120);
+    let button = use_button_in(&ui, card);
+    ui.set_last_action("".into());
+    button.invoke_accessible_default_action();
+    assert_eq!(ui.get_last_action(), "use");
+    assert_eq!(ui.get_last_title(), "Design spec");
 }

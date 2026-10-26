@@ -1,0 +1,410 @@
+// The sentences of every toast. The app's toasts are typed in Rust (`snipdeck_app::toast::
+// ToastMessage`), and Rust cannot reach the translation catalogs, so it calls these functions
+// (`snipdeck_app::wording::toast_text`) and gets the sentence in the language selected for the UI.
+// One function per message; a name, a chord or a count is an argument. Rust keeps no English.
+export global ToastTexts {
+    // The name of an app the toast could not name.
+    pure function app-name(app: string) -> string {
+        return app == "" ? @tr("That app") : app;
+    }
+
+    pure public function pasted(app: string) -> string {
+        return app == "" ? @tr("Pasted") : @tr("Pasted into {}", app);
+    }
+    pure public function copied() -> string {
+        return @tr("Copied");
+    }
+    pure public function copied-elevated(app: string) -> string {
+        return @tr("Copied. {} runs as administrator, so Snipdeck can't paste into it.", app-name(app));
+    }
+    pure public function copied-nothing-focused(app: string) -> string {
+        return @tr("Copied. Nothing in {} can take text right now.", app-name(app));
+    }
+    pure public function copied-excluded(app: string) -> string {
+        return @tr("Copied. Pasting into {} is turned off.", app-name(app));
+    }
+    pure public function copied-target-gone() -> string {
+        return @tr("Copied. The window you were using went away.");
+    }
+    pure public function clipboard-busy() -> string {
+        return @tr("Couldn't reach the clipboard. Another app may be using it.");
+    }
+    pure public function needs-pro() -> string {
+        return @tr("This item uses a Supporter feature.");
+    }
+    pure public function needs-pro-paste-stack() -> string {
+        return @tr("Paste next and the paste stack are Supporter features.");
+    }
+    pure public function template-broken() -> string {
+        return @tr("This template can't be read. Open it to fix it.");
+    }
+    pure public function locked() -> string {
+        return @tr("Unlock your library to use this item.");
+    }
+    pure public function unlocked() -> string {
+        return @tr("Library unlocked.");
+    }
+    pure public function master-password-set() -> string {
+        return @tr("Master password set.");
+    }
+    pure public function master-password-changed() -> string {
+        return @tr("Master password changed.");
+    }
+    pure public function master-password-removed() -> string {
+        return @tr("Master password removed.");
+    }
+    pure public function master-password-changed-not-open() -> string {
+        return @tr("Master password changed. Snipdeck couldn't open the library just now. Unlock it with the new password.");
+    }
+    pure public function master-password-removed-not-open() -> string {
+        return @tr("Master password removed. Snipdeck couldn't open the library just now. Restart Snipdeck to use your sensitive items.");
+    }
+    pure public function locked-editor-closed() -> string {
+        return @tr("Your library locked after a while. The sensitive item you were editing was closed without saving.");
+    }
+    pure public function unlock-first() -> string {
+        return @tr("Unlock your library first, so your sensitive items are included. Nothing was done.");
+    }
+    pure public function saved(list: string) -> string {
+        return @tr("Saved to {}", list);
+    }
+    pure public function nothing-to-save() -> string {
+        return @tr("Nothing to save. Copy some text first.");
+    }
+    pure public function too-large-to-save() -> string {
+        return @tr("That text is too large to save.");
+    }
+    pure public function no-list-to-save() -> string {
+        return @tr("There is no list to save into. Add a list first.");
+    }
+    pure public function nothing-to-paste-next() -> string {
+        return @tr("Nothing to paste next. Pin a snippet, or add one to this list.");
+    }
+    pure public function taskbar-edge() -> string {
+        return @tr("The taskbar is on that edge. Pick another edge, or move the taskbar.");
+    }
+    pure public function paste-next-finished() -> string {
+        return @tr("That was the last one. Paste next starts again from the first.");
+    }
+    pure public function hotkey-in-use(chord: string) -> string {
+        return @tr("{} is used by another app. Choose another in Settings.", chord);
+    }
+    pure public function hotkey-invalid(chord: string) -> string {
+        return @tr("{} can't be used as a shortcut. Choose another in Settings.", chord);
+    }
+    pure public function hotkey-unavailable(chord: string) -> string {
+        return @tr("Shortcuts are unavailable, so {} is not active. Restart Snipdeck to try again.", chord);
+    }
+    // `chords`: two or more shortcuts joined with ", ".
+    pure public function hotkeys-failed(chords: string) -> string {
+        return @tr("These shortcuts are not working: {}. Settings > Shortcuts says why.", chords);
+    }
+    // `chord` is empty when the Panel hotkey is switched off.
+    pure public function panel-hidden(chord: string) -> string {
+        return chord == "" ? @tr("Snipdeck is still running. Click the tray icon to bring the panel back.") : @tr("Snipdeck is still running. Press {} or click the tray icon to bring the panel back.", chord);
+    }
+    // Used when the cause is not known; `use-failed` names one that is. Causes: 1 disk full, 2 file in
+    // use, 3 library locked, 4 not a Snipdeck archive, 5 made by a newer Snipdeck.
+    pure public function failed() -> string {
+        return @tr("Couldn't use this item. Try again, or restart Snipdeck if it keeps happening.");
+    }
+    pure public function use-failed(cause: int) -> string {
+        if (cause == 1) {
+            return @tr("Couldn't use this item: the disk is full. Free up some space, then try again.");
+        }
+        if (cause == 2) {
+            return @tr("Couldn't use this item: your library file is in use by another program. Close that program, then try again.");
+        }
+        if (cause == 3) {
+            return @tr("Couldn't use this item: your library is locked. Unlock it, then try again.");
+        }
+        return @tr("Couldn't use this item. Try again, or restart Snipdeck if it keeps happening.");
+    }
+    pure public function window-not-shown() -> string {
+        return @tr("Couldn't open that window.");
+    }
+    pure public function settings-not-saved() -> string {
+        return @tr("Couldn't save your settings. Snipdeck will try again.");
+    }
+    pure public function items-trashed(count: int) -> string {
+        return @tr("Moved {} item to the Trash" | "Moved {} items to the Trash" % count, count);
+    }
+    pure public function list-trashed(name: string) -> string {
+        return @tr("Deleted list “{}”", name);
+    }
+    pure public function board-trashed(name: string) -> string {
+        return @tr("Deleted board “{}”", name);
+    }
+    pure public function restored(count: int) -> string {
+        return @tr("Restored {} item" | "Restored {} items" % count, count);
+    }
+    // The words of the app-wide undo history. `kind` is the action: 0 add, 1 paste, 2 drop,
+    // 3 edit, 4 delete, 5 move, 6 reorder, 7 colour, 8 pin, 9 tag, 10 duplicate.
+    pure public function action-word(kind: int) -> string {
+        return kind == 0 ? @tr("add")
+            : kind == 1 ? @tr("paste")
+            : kind == 2 ? @tr("drop")
+            : kind == 3 ? @tr("edit")
+            : kind == 4 ? @tr("delete")
+            : kind == 5 ? @tr("move")
+            : kind == 6 ? @tr("reorder")
+            : kind == 7 ? @tr("colour change")
+            : kind == 8 ? @tr("pin")
+            : kind == 9 ? @tr("tag change")
+            : @tr("duplicate");
+    }
+    pure public function undone(action: string) -> string {
+        return @tr("Undid {}", action);
+    }
+    pure public function redone(action: string) -> string {
+        return @tr("Redid {}", action);
+    }
+    pure public function undo-tip(action: string) -> string {
+        return action == "" ? @tr("Nothing to undo") : @tr("Undo {} (Ctrl+Z)", action);
+    }
+    pure public function redo-tip(action: string) -> string {
+        return action == "" ? @tr("Nothing to redo") : @tr("Redo {} (Ctrl+Y)", action);
+    }
+    pure public function items-moved(count: int, list: string) -> string {
+        return @tr("Moved {} item to {}" | "Moved {} items to {}" % count, count, list);
+    }
+    // The Panel's item menu is drawn by the host; its two move rows are translated here.
+    pure public function menu-move-up() -> string {
+        return @tr("Move up");
+    }
+    pure public function menu-move-down() -> string {
+        return @tr("Move down");
+    }
+    pure public function item-placed(position: int, total: int) -> string {
+        return @tr("Moved to position {} of {}", position, total);
+    }
+    pure public function deleted-forever() -> string {
+        return @tr("Deleted for good");
+    }
+    pure public function trash-emptied() -> string {
+        return @tr("The Trash is empty");
+    }
+    pure public function board-limit() -> string {
+        return @tr("The Free plan includes 5 boards. Supporter adds unlimited boards.");
+    }
+    pure public function library-problem() -> string {
+        return @tr("Snipdeck found a problem in your library. Export a copy to be safe.");
+    }
+    pure public function crashed-last-time() -> string {
+        return @tr("Snipdeck closed unexpectedly last time. Open the log?");
+    }
+    pure public function licence-accepted() -> string {
+        return @tr("Snipdeck Supporter is on. Thank you.");
+    }
+    pure public function backup-made() -> string {
+        return @tr("Backed up");
+    }
+    pure public function backup-failed(cause: int) -> string {
+        if (cause == 1) {
+            return @tr("Couldn't make a backup: the disk is full. Free up some space, then use Back up now in Settings.");
+        }
+        if (cause == 2) {
+            return @tr("Couldn't make a backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings.");
+        }
+        if (cause == 3) {
+            return @tr("Couldn't make a backup: your library is locked. Unlock it, then use Back up now in Settings.");
+        }
+        return @tr("Couldn't make a backup. Check the disk has room, then use Back up now in Settings.");
+    }
+    // The daily run, not asked for by the user.
+    pure public function daily-backup-failed(cause: int) -> string {
+        if (cause == 1) {
+            return @tr("Couldn't make today's backup: the disk is full. Free up some space, then use Back up now in Settings.");
+        }
+        if (cause == 2) {
+            return @tr("Couldn't make today's backup: the backup file is in use or can't be written. Close other programs using your Snipdeck folder, then use Back up now in Settings.");
+        }
+        return @tr("Couldn't make today's backup. Check the disk has room, then use Back up now in Settings.");
+    }
+    pure public function trash-purge-failed() -> string {
+        return @tr("Couldn't clear old items out of the Trash. Check the disk has room, then restart Snipdeck to try again.");
+    }
+    pure public function backup-restored(items: int) -> string {
+        return items == 0 ? @tr("Nothing to restore: your library already has everything in that backup.") : @tr("Restored {} item from the backup" | "Restored {} items from the backup" % items, items);
+    }
+    pure public function database-rebuilt(restored: int, recovered: int, kept: string, unreadable: bool, missing-sensitive: int) -> string {
+        return (unreadable ? @tr("Database rebuilt: {} items restored. Newer items could not be read.", restored) : @tr("Database rebuilt: {} items restored, {} recovered.", restored, recovered))
+            + " " + @tr("Your old database is kept as {}.", kept)
+            + (missing-sensitive == 0 ? "" : " " + @tr("{} sensitive item was not in the backup." | "{} sensitive items were not in the backup." % missing-sensitive, missing-sensitive));
+    }
+    pure public function image-not-pasteable() -> string {
+        return @tr("Images can't be pasted here. Save the picture as a PNG and add it as an Image item.");
+    }
+    pure public function rebuild-needs-restart() -> string {
+        return @tr("Couldn't reopen your library. Restart Snipdeck. Your files have not been changed.");
+    }
+    pure public function restore-failed(cause: int) -> string {
+        if (cause == 1) {
+            return @tr("Couldn't restore that backup: the disk is full. Free up some space, then try again.");
+        }
+        if (cause == 2) {
+            return @tr("Couldn't restore that backup: a file is in use by another program. Close it, then try again.");
+        }
+        if (cause == 3) {
+            return @tr("Couldn't restore that backup: your library is locked. Unlock it, then try again.");
+        }
+        if (cause == 4) {
+            return @tr("Couldn't restore that backup: it isn't a Snipdeck backup, or it is damaged. Choose another backup.");
+        }
+        if (cause == 5) {
+            return @tr("Couldn't restore that backup: it was made by a newer Snipdeck. Update Snipdeck, then try again.");
+        }
+        return @tr("Couldn't restore that backup. Choose another backup, or try again.");
+    }
+    pure public function imported(items: int) -> string {
+        return items == 0 ? @tr("Nothing new to import.") : @tr("Imported {} item" | "Imported {} items" % items, items);
+    }
+    pure public function import-failed(cause: int) -> string {
+        if (cause == 1) {
+            return @tr("Couldn't import that: the disk is full. Free up some space, then try again.");
+        }
+        if (cause == 2) {
+            return @tr("Couldn't import that: the file is in use by another program or can't be read. Close the program using it, then try again.");
+        }
+        if (cause == 3) {
+            return @tr("Couldn't import that: your library is locked. Unlock it, then try again.");
+        }
+        if (cause == 4) {
+            return @tr("Couldn't import that: it isn't a file Snipdeck can read, or it is damaged. Choose a .snipdeck export.");
+        }
+        if (cause == 5) {
+            return @tr("Couldn't import that: it was made by a newer Snipdeck. Update Snipdeck, then try again.");
+        }
+        return @tr("Couldn't import that. Choose the file again, or try another one.");
+    }
+    pure public function exported(file: string) -> string {
+        return @tr("Saved {}", file);
+    }
+    pure public function export-failed(cause: int) -> string {
+        if (cause == 1) {
+            return @tr("Couldn't export your library: the disk is full. Free up some space, then try again.");
+        }
+        if (cause == 2) {
+            return @tr("Couldn't export your library: the folder can't be written to. Check it isn't read-only or in use, then try again.");
+        }
+        if (cause == 3) {
+            return @tr("Couldn't export your library: it is locked. Unlock it, then try again.");
+        }
+        return @tr("Couldn't export your library. Check the disk has room, then try again.");
+    }
+    pure public function library-erased() -> string {
+        return @tr("Your library was erased.");
+    }
+    pure public function erase-failed() -> string {
+        return @tr("Couldn't erase everything. Quit Snipdeck and try again.");
+    }
+    pure public function folder-not-opened() -> string {
+        return @tr("Couldn't open the folder.");
+    }
+    pure public function mail-not-opened() -> string {
+        return @tr("Couldn't open your email app.");
+    }
+    pure public function autostart-failed() -> string {
+        return @tr("Couldn't change the Windows start-up entry.");
+    }
+    pure public function cannot-open-log() -> string {
+        return @tr("Couldn't open the log folder.");
+    }
+    pure public function key-unavailable() -> string {
+        return @tr("Couldn't open the encryption key. Nothing was saved.");
+    }
+    pure public function item-gone() -> string {
+        return @tr("This item was deleted. Nothing was saved.");
+    }
+    pure public function list-gone() -> string {
+        return @tr("That list was deleted. Choose another list.");
+    }
+    pure public function storage-failed() -> string {
+        return @tr("Couldn't write to your library. Check that the disk has room.");
+    }
+    pure public function not-saved() -> string {
+        return @tr("Couldn't save this item. Nothing was changed.");
+    }
+    // A move or reorder the store refused. Causes as for `use-failed`.
+    pure public function change-failed(cause: int) -> string {
+        if (cause == 1) {
+            return @tr("Couldn't make that change: the disk is full. Free up some space, then try again.");
+        }
+        if (cause == 2) {
+            return @tr("Couldn't make that change: your library file is in use by another program. Close that program, then try again.");
+        }
+        if (cause == 3) {
+            return @tr("Couldn't make that change: your library is locked. Unlock it, then try again.");
+        }
+        return @tr("Couldn't make that change. Try again, or restart Snipdeck if it keeps happening.");
+    }
+    pure public function not-opened() -> string {
+        return @tr("Couldn't open this item.");
+    }
+    pure public function draft-not-saved() -> string {
+        return @tr("Couldn't save a draft of what you typed.");
+    }
+    pure public function screenshot-failed() -> string {
+        return @tr("Couldn't start the screenshot tool.");
+    }
+    // The theme was switched (0 System, 1 Light, 2 Dark): the same words as the View menu and the palette.
+    pure public function theme-set(theme: int) -> string {
+        return theme == 1 ? @tr("Theme: Light") : (theme == 2 ? @tr("Theme: Dark") : @tr("Theme: System"));
+    }
+
+    // The Panel's pin was switched (Ctrl+Shift+P, the pin button, the palette).
+    pure public function panel-on-top(on: bool) -> string {
+        return on ? @tr("Panel stays open") : @tr("Panel closes when you click away");
+    }
+
+    // Confirmations of small actions.
+    pure public function pinned(on: bool) -> string {
+        return on ? @tr("Item pinned") : @tr("Item unpinned");
+    }
+    pure public function duplicated() -> string {
+        return @tr("Duplicated");
+    }
+    pure public function list-added() -> string {
+        return @tr("List added");
+    }
+    pure public function list-saved() -> string {
+        return @tr("List saved");
+    }
+    pure public function board-saved() -> string {
+        return @tr("Board saved");
+    }
+    pure public function recent-deleted() -> string {
+        return @tr("Removed from Recent");
+    }
+    pure public function recent-cleared() -> string {
+        return @tr("Recent history cleared");
+    }
+    // The Panel was docked (1 left, 2 right, 3 top, 4 bottom) or floated (0).
+    pure public function dock-set(edge: int) -> string {
+        return edge == 1 ? @tr("Panel docked to the left edge") : (edge == 2 ? @tr("Panel docked to the right edge") : (edge == 3 ? @tr("Panel docked to the top edge") : (edge == 4 ? @tr("Panel docked to the bottom edge") : @tr("Panel floats again"))));
+    }
+    // A change worked but the list on screen could not be read again.
+    pure public function not-refreshed() -> string {
+        return @tr("Couldn't refresh the list on screen. Close and reopen the window to see the change.");
+    }
+
+    // Why a licence key was refused: the toast, and the line under the key field.
+    pure public function licence-empty() -> string {
+        return @tr("Paste your licence key first.");
+    }
+    pure public function licence-not-a-key() -> string {
+        return @tr("That is not a Snipdeck licence key. A key starts with SNIP1.");
+    }
+    pure public function licence-bad-signature() -> string {
+        return @tr("That licence key is not valid. Check that you copied all of it.");
+    }
+    pure public function licence-newer-format() -> string {
+        return @tr("That key needs a newer Snipdeck. Update and try again.");
+    }
+    pure public function licence-wrong-tier() -> string {
+        return @tr("That key is not for Snipdeck Supporter.");
+    }
+    pure public function licence-not-saved() -> string {
+        return @tr("The key is valid but couldn't be saved, so Supporter will be off next time.");
+    }
+}

@@ -21,19 +21,19 @@ use std::str::FromStr;
 
 use snipdeck_core::Content;
 use snipdeck_core::{
-    BlobRef, BoardId, FileEntry, Format, FormatKind, Formats, Inline, ItemId, ItemKind, ListAccent,
-    ListId, ListSort, ListView, Name, TagId, Timestamp,
+    BlobRef, BoardId, FileEntry, Format, FormatKind, Formats, Inline, ItemId, ItemKind, ItemLabel,
+    ListAccent, ListIcon, ListId, ListSort, ListView, Name, TagId, Timestamp,
 };
 use snipdeck_store::crypto::{DataKey, Slot, decrypt_payload};
 use snipdeck_store::name_key;
 
 use crate::archive::{ITEMS, MANIFEST, SafeArchive};
 use crate::dto::{
-    ENCRYPTION, FORMAT_NAME, FormatDto, Header, ItemDto, ItemsDoc, ListDto, MAJOR, MINOR, Manifest,
-    TagDto,
+    ENCRYPTION, FORMAT_NAME, FormatDto, Header, ItemDto, ItemsDoc, ItemsParseError, ListDto, MAJOR,
+    MINOR, Manifest, TagDto, parse_items_doc,
 };
 use crate::error::{Error, Result};
-use crate::importers::MEMORY_BUDGET;
+use crate::importers::{MEMORY_BUDGET, truncate_chars};
 use crate::limits::{Limits, TEXT_LIMIT};
 use crate::plan::{
     AssetRef, ContentHasher, Library, Plan, PlanBoard, PlanFile, PlanFormat, PlanItem, PlanList,
@@ -97,13 +97,17 @@ pub struct ImportOptions<'k> {
     /// tier's limit). Nothing is blocked: the caller decides. Use [`ImportOptions::max_boards`]
     /// to enforce a limit.
     pub free_board_limit: Option<usize>,
-    /// The most live boards the library may hold once the import is done (the Free tier's 3).
+    /// The most live boards the library may hold once the import is done (the Free tier's 5).
     /// An import that would go past it is refused inside its transaction with
     /// `ProRequired(UnlimitedBoards)` and changes nothing; the caller passes `None` on Pro. A
     /// restore of boards the user already has cannot grow past the limit this way.
     pub max_boards: Option<usize>,
     /// Limits for reading untrusted input.
     pub limits: Limits,
+    /// Run the whole import (validation, duplicate skipping, the board limit) and report what it
+    /// would add, then roll the transaction back so the library is unchanged. This is the
+    /// preview the Settings import and Restore show before anything is written.
+    pub dry_run: bool,
 }
 
 /// A board name from a file or folder name: trimmed, control characters replaced, shortened to
@@ -127,13 +131,22 @@ pub(crate) fn finish<L: Library>(
 ) -> Result<ImportReport> {
     if options.merge == MergeStrategy::SkipDuplicates {
         let mut known = existing_hashes(lib)?;
-        report.items_skipped += plan.drop_duplicates(&mut known);
+        let dropped = plan.drop_duplicates(&mut known);
+        report.items_skipped += dropped;
+        report.duplicates_skipped += dropped;
     }
     warn_board_limit(lib, &plan, options, &mut report)?;
     let mut no_assets = |_: &AssetRef| -> Result<Vec<u8>> {
         Err(Error::malformed("import", "internal: no assets expected"))
     };
-    apply(lib, &plan, &mut no_assets, report, options.max_boards)
+    apply(
+        lib,
+        &mut plan,
+        &mut no_assets,
+        report,
+        options.max_boards,
+        options.dry_run,
+    )
 }
 
 fn warn_board_limit<L: Library>(
@@ -197,8 +210,14 @@ pub fn import_archive<L: Library, R: Read + Seek>(
     let mut report = ImportReport::default();
 
     let manifest = read_manifest(&archive.read_manifest()?, &mut report)?;
-    let doc: ItemsDoc = serde_json::from_slice(&archive.read_items()?)
-        .map_err(|e| Error::malformed(ITEMS, e.to_string()))?;
+    let doc: ItemsDoc =
+        parse_items_doc(&archive.read_items()?, options.limits.max_items).map_err(|e| match e {
+            ItemsParseError::TooManyItems => Error::LimitExceeded {
+                what: "item count",
+                limit: options.limits.max_items as u64,
+            },
+            ItemsParseError::Malformed(reason) => Error::malformed(ITEMS, reason),
+        })?;
 
     let name = board_name(
         options.board_name.as_deref().unwrap_or(source_name),
@@ -216,6 +235,12 @@ pub fn import_archive<L: Library, R: Read + Seek>(
             count: built.unreferenced,
         });
     }
+    if built.truncated > 0 {
+        report.warn(Warning::Note(format!(
+            "{} item(s) had a title or source app longer than {TITLE_CHARS} or {SOURCE_APP_CHARS} characters; it was cut",
+            built.truncated
+        )));
+    }
     if manifest.sensitive_omitted > 0 {
         report.warn(Warning::SensitiveOmittedByExport {
             count: manifest.sensitive_omitted,
@@ -229,11 +254,19 @@ pub fn import_archive<L: Library, R: Read + Seek>(
         KeySource::Given(key) => Some(key),
         KeySource::Library => lib.data_key(),
     };
-    verify(&mut archive, &mut plan, key, &mut report)?;
+    verify(
+        &mut archive,
+        &mut plan,
+        key,
+        options.limits.max_total_bytes,
+        &mut report,
+    )?;
 
     if options.merge == MergeStrategy::SkipDuplicates {
         let mut known = existing_hashes(lib)?;
-        report.items_skipped += plan.drop_duplicates(&mut known);
+        let dropped = plan.drop_duplicates(&mut known);
+        report.items_skipped += dropped;
+        report.duplicates_skipped += dropped;
     }
     warn_board_limit(lib, &plan, options, &mut report)?;
 
@@ -250,7 +283,14 @@ pub fn import_archive<L: Library, R: Read + Seek>(
         }
         Ok(bytes)
     };
-    apply(lib, &plan, &mut fetch, report, options.max_boards)
+    apply(
+        lib,
+        &mut plan,
+        &mut fetch,
+        report,
+        options.max_boards,
+        options.dry_run,
+    )
 }
 
 /// Reads `manifest.json`: checks it is a Snipdeck manifest of a readable version before looking
@@ -291,7 +331,14 @@ struct Built {
     plan: Plan,
     /// Assets in the archive that no item refers to.
     unreferenced: usize,
+    /// Items whose title or source app was cut to its cap.
+    truncated: usize,
 }
+
+/// The longest item title an archive may bring, in characters; longer ones are cut.
+const TITLE_CHARS: usize = 1000;
+/// The longest `source_app` an archive may bring, in characters; longer ones are cut.
+const SOURCE_APP_CHARS: usize = 256;
 
 /// An id in the canonical 36-character hyphenated form (`docs/format.md`); the parsers behind
 /// `FromStr` also take braces, `urn:uuid:` and unhyphenated forms, which are not the format.
@@ -384,6 +431,7 @@ fn build_plan<R: Read + Seek>(
         tag_index: HashMap::new(),
         seen_lists: HashSet::new(),
         seen_items: HashSet::new(),
+        truncated: 0,
     };
     let tags = builder.read_tags(&doc.tags)?;
     let mut plan = Plan {
@@ -430,7 +478,11 @@ fn build_plan<R: Read + Seek>(
         .asset_hashes()
         .filter(|h| !builder.referenced.contains(h))
         .count();
-    Ok(Built { plan, unreferenced })
+    Ok(Built {
+        plan,
+        unreferenced,
+        truncated: builder.truncated,
+    })
 }
 
 /// The manifest's counts must equal what the document and the zip really hold.
@@ -481,6 +533,8 @@ struct Builder<'a, R: Read + Seek> {
     tag_index: HashMap<TagId, usize>,
     seen_lists: HashSet<ListId>,
     seen_items: HashSet<ItemId>,
+    /// Items whose title or source app was cut.
+    truncated: usize,
 }
 
 impl<R: Read + Seek> Builder<'_, R> {
@@ -517,6 +571,11 @@ impl<R: Read + Seek> Builder<'_, R> {
             .as_deref()
             .map(|a| parse_key::<ListAccent>(a, "list accent"))
             .transpose()?;
+        list.icon = dto
+            .icon
+            .as_deref()
+            .map(|i| parse_key::<ListIcon>(i, "list icon"))
+            .transpose()?;
         list.view = parse_key::<ListView>(&dto.view, "list view")?;
         list.sort = parse_key::<ListSort>(&dto.sort, "list sort")?;
         for item in &dto.items {
@@ -542,6 +601,23 @@ impl<R: Read + Seek> Builder<'_, R> {
         if dto.formats.is_empty() {
             return Err(Error::malformed(ITEMS, format!("item {id} has no formats")));
         }
+        // An encrypted payload on an item that says it is not sensitive would be decrypted with
+        // the library key and stored as plain text: a tampered `items.json` could strip the flag.
+        let any_encrypted = dto.formats.iter().any(|f| {
+            f.encrypted
+                || f.files
+                    .as_deref()
+                    .is_some_and(|files| files.iter().any(|file| file.encrypted))
+        });
+        if any_encrypted && !dto.sensitive {
+            return Err(Error::malformed(
+                ITEMS,
+                format!(
+                    "item {id} (`{}`) has an encrypted payload but is not marked sensitive",
+                    crate::error::display_name(&dto.title)
+                ),
+            ));
+        }
         let mut kinds = HashSet::new();
         let mut formats = Vec::with_capacity(dto.formats.len());
         for format in &dto.formats {
@@ -555,19 +631,32 @@ impl<R: Read + Seek> Builder<'_, R> {
             formats.push(self.format(format, kind, id)?);
         }
         check_shape(&formats)?;
+        let title = truncate_chars(&dto.title, TITLE_CHARS);
+        let source_app = dto
+            .source_app
+            .as_deref()
+            .map(|s| truncate_chars(s, SOURCE_APP_CHARS));
+        if title.len() != dto.title.len() || source_app != dto.source_app {
+            self.truncated += 1;
+        }
         Ok(PlanItem {
-            title: dto.title.clone(),
+            title,
             kind: parse_key::<ItemKind>(&dto.kind, "item kind")?,
             pinned: dto.pinned,
             sensitive: dto.sensitive,
             always_plain: dto.always_plain,
+            label: dto
+                .label
+                .as_deref()
+                .map(|l| parse_key::<ItemLabel>(l, "item label"))
+                .transpose()?,
             use_count: dto.use_count,
             last_used_at: dto
                 .last_used_at
                 .as_deref()
                 .map(|t| parse_time(t, "last use"))
                 .transpose()?,
-            source_app: dto.source_app.clone(),
+            source_app,
             created_at: parse_time(&dto.created_at, "item creation")?,
             updated_at: parse_time(&dto.updated_at, "item update")?,
             tags,
@@ -733,6 +822,12 @@ struct Verified {
     plain: HashSet<(BlobRef, bool)>,
     /// Bytes of decrypted payload the plan may still hold in memory.
     decrypt_budget: u64,
+    /// Bytes of encrypted asset the checks may still read. Every reference reads and decrypts
+    /// its asset again (the envelope is bound to the item), so many items pointing at one big
+    /// asset would otherwise cost one read each without limit.
+    read_budget: u64,
+    /// The budget at the start, for the error.
+    read_budget_limit: u64,
 }
 
 /// Result of checking one asset.
@@ -754,11 +849,14 @@ fn verify<R: Read + Seek>(
     archive: &mut SafeArchive<R>,
     plan: &mut Plan,
     key: Option<&DataKey>,
+    read_limit: u64,
     report: &mut ImportReport,
 ) -> Result<()> {
     let mut verified = Verified {
         plain: HashSet::new(),
         decrypt_budget: MEMORY_BUDGET,
+        read_budget: read_limit,
+        read_budget_limit: read_limit,
     };
     let mut needs_key = 0_usize;
     for list in plan.boards.iter_mut().flat_map(|b| &mut b.lists) {
@@ -887,6 +985,13 @@ fn check_source<R: Read + Seek>(
             let Some(key) = key else {
                 return Ok(Checked::NeedsKey);
             };
+            verified.read_budget = verified
+                .read_budget
+                .checked_sub(archive.asset_size(&asset.hash).unwrap_or(0))
+                .ok_or(Error::LimitExceeded {
+                    what: "encrypted asset bytes read",
+                    limit: verified.read_budget_limit,
+                })?;
             let bytes = archive.read_asset(&asset.hash)?;
             if blake3::hash(&bytes).as_bytes() != asset.hash.as_bytes() {
                 return Err(name_mismatch());

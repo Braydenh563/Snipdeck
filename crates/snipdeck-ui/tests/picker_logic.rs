@@ -51,6 +51,7 @@ fn start() -> (PickerWindow, Log) {
     hook!(on_selection_moved, |d| format!("move:{d}"));
     hook!(on_edit_requested, |i| format!("edit:{i}"));
     hook!(on_close_requested, || "close".to_string());
+    hook!(on_dismissed, || "dismissed".to_string());
     (ui, log)
 }
 
@@ -150,6 +151,22 @@ ui_tests! {
         press(ui.window(), &key(Key::Escape));
         assert_eq!(take(&log), ["close"], "Esc dismisses; it does not clear first");
         assert_eq!(ui.get_query(), "ab", "the host decides what a re-summon shows");
+    }
+
+    fn losing_the_keyboard_to_another_window_dismisses_without_the_escape_close() {
+        let (ui, log) = start();
+        // Start from a window that has no keyboard, then give it the keyboard as Windows does.
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(false));
+        settle();
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(true));
+        ui.invoke_focus_search();
+        settle();
+        assert!(ui.get_search_focused());
+        take(&log);
+        ui.window().dispatch_event(slint::platform::WindowEvent::WindowActiveChanged(false));
+        settle();
+        assert!(!ui.get_search_focused(), "an inactive window holds no keyboard focus");
+        assert_eq!(take(&log), ["dismissed"], "click-away must not ask for a refocusing close");
     }
 
     fn reset_gives_a_fresh_picker_for_the_next_summon() {
@@ -258,19 +275,20 @@ ui_tests! {
         assert!(take(&log).is_empty(), "no callbacks fired");
     }
 
-    fn digits_use_the_nth_row_only_while_the_search_is_empty() {
+    fn alt_digits_use_the_nth_row_and_bare_digits_are_always_search_text() {
         let (ui, log) = start();
-        press(ui.window(), "3");
+        chord(ui.window(), &[Key::Alt], "3");
         assert_eq!(take(&log), ["quick:3"]);
         assert_eq!(ui.get_selected_index(), 2, "the used row becomes the selection");
-        assert_eq!(ui.get_query(), "", "the digit is not search text");
+        assert_eq!(ui.get_query(), "", "Alt+digit is not search text");
 
-        press(ui.window(), "9");
+        chord(ui.window(), &[Key::Alt], "9");
         assert!(take(&log).is_empty(), "seven rows: there is no ninth");
 
-        type_text(ui.window(), "a3");
-        assert_eq!(ui.get_query(), "a3", "with a query, digits are text");
-        assert_eq!(take(&log), ["query:a", "query:a3"]);
+        // A bare digit, even with an empty search, filters: typing "2024" must never paste row 2.
+        type_text(ui.window(), "2024");
+        assert_eq!(ui.get_query(), "2024", "digits are text");
+        assert_eq!(take(&log), ["query:2", "query:20", "query:202", "query:2024"]);
     }
 
     fn alt_digit_uses_the_nth_row_even_with_a_query() {
@@ -382,7 +400,7 @@ ui_tests! {
         fixture::set_rows(&ui, Vec::new());
         settle();
         assert!(!all(&ui, "No snippets yet", AccessibleRole::Text).is_empty());
-        assert!(rows(&ui).is_empty());
+        assert_eq!(rows(&ui).len(), 0);
 
         type_text(ui.window(), "zz");
         settle();
@@ -437,6 +455,9 @@ ui_tests! {
         assert!(!all(&ui, "Enter", AccessibleRole::Text).is_empty(), "and the key that does it");
         assert!(!all(&ui, "Shift Enter", AccessibleRole::Text).is_empty());
         assert!(!all(&ui, "Escape", AccessibleRole::Text).is_empty());
+        // Digits need Alt: the footer says so, and the number badges read as the key.
+        assert!(!all(&ui, "Alt 1 to 9", AccessibleRole::Text).is_empty(), "the footer names Alt+N");
+        assert!(!all(&ui, "Alt+1", AccessibleRole::Text).is_empty(), "the first badge reads as Alt+1");
     }
 
     fn the_footer_names_the_copy_route_when_there_is_no_target() {
