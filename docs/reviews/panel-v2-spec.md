@@ -245,7 +245,7 @@ New:
 |---|---|---|---|
 | Tray icon click opens | Panel / Main window | `tray_click: TrayClick { Panel, Main }` | `TrayModel` left-click decision becomes a parameter |
 | Panel opens | Where you left it / At the mouse / At the text cursor | `panel_open_at: PanelOpenAt { Last, Mouse, Caret }` | Caret falls back to mouse (`placement::place`, `Anchor::Caret`/`Point`, `picker_side`); disabled with an explanation while docked |
-| After a paste | Keep the Panel open / Hide the Panel | `panel_hide_after_use: bool` (false) | unpinned or pinned alike; the dock already collapses after use |
+| After a paste or copy | Hide the Panel / Keep the Panel open | `panel_hide_after_use: bool` (true for a new install; a settings file without the key keeps false) | a floating Panel that is not pinned hides after a paste or a copy (it was shown by the hotkey or the tray); a pinned Panel stays, and the dock already collapses after a paste |
 | When Windows starts | Stay in the tray / Show the Panel | `panel_start_visible: bool` (false) | only with `autostart`; drives the existing `--hidden` flag |
 
 ## 5. Build plan (each slice = one commit, tests first, `scripts/gate.sh --staged` before it)

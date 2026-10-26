@@ -603,3 +603,53 @@ fn a_write_that_lands_late_still_pastes_the_right_item() {
     );
     assert_eq!(w.ctl.services().keyboard.sent.len(), 1);
 }
+
+// ---- Hide after use -------------------------------------------------------------------------
+
+/// A world whose Panel is unpinned (a pinned one stays) and has been shown by the hotkey.
+fn unpinned_and_shown() -> World {
+    let mut w = build(Opts {
+        pinned: Vec::new(),
+        ..Opts::default()
+    });
+    w.ctl.set_on_top(false);
+    w.ctl.on_hotkey(HotkeyAction::TogglePanel);
+    w.ctl.on_hotkey(HotkeyAction::TogglePanel);
+    assert!(w.ctl.visible());
+    w
+}
+
+#[test]
+fn an_unpinned_panel_hides_after_a_paste_or_a_copy() {
+    for mode in [UseMode::Paste, UseMode::Copy] {
+        let mut w = unpinned_and_shown();
+        let used = w.ctl.activate_row(0, mode);
+        assert!(matches!(used, UseResult::Done(_)));
+        assert_eq!(w.ctl.after_use(&used), [Effect::HidePanel], "{mode:?}");
+        assert!(!w.ctl.visible());
+    }
+}
+
+#[test]
+fn a_pinned_panel_stays_after_a_use() {
+    let mut w = unpinned_and_shown();
+    w.ctl.set_on_top(true);
+    let used = w.ctl.activate_row(0, UseMode::Paste);
+    assert_eq!(w.ctl.after_use(&used), Vec::new());
+    assert!(w.ctl.visible());
+}
+
+#[test]
+fn the_setting_off_keeps_the_panel_open_and_a_failed_use_never_hides() {
+    let mut settings = Settings::default();
+    settings.panel_hide_after_use = false;
+    let mut w = world_with(Some(outlook()), settings);
+    w.ctl.set_on_top(false);
+    let used = w.ctl.activate_row(0, UseMode::Paste);
+    assert_eq!(w.ctl.after_use(&used), Vec::new());
+
+    let mut w = unpinned_and_shown();
+    assert_eq!(w.ctl.after_use(&UseResult::Failed), Vec::new());
+    assert_eq!(w.ctl.after_use(&UseResult::NeedsAnswers), Vec::new());
+    assert!(w.ctl.visible());
+}

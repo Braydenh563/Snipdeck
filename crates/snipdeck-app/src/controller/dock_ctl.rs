@@ -95,6 +95,25 @@ where
         }
     }
 
+    /// A use from the Panel ended with `result`: the Panel gets out of the way. A docked one
+    /// collapses after a paste ([`dock_after_use`](Self::dock_after_use)); a floating one that
+    /// is not pinned hides after a paste or a copy when "After a paste: hide the Panel" is on.
+    /// A pinned Panel stays, and so does one whose use did not happen.
+    pub fn after_use(&mut self, result: &UseResult) -> Vec<Effect> {
+        if self.dock_active() {
+            return self.dock_after_use(result);
+        }
+        if matches!(result, UseResult::Done(_))
+            && self.visible
+            && self.settings.panel_hide_after_use
+            && !self.on_top
+        {
+            self.hide()
+        } else {
+            Vec::new()
+        }
+    }
+
     fn dock_act(&mut self, action: DockAction) -> Vec<Effect> {
         match action {
             DockAction::None => Vec::new(),

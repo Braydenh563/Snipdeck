@@ -556,13 +556,15 @@ where
         wire!(on_query_changed, |ctl, query| ctl.set_query(query.as_str()));
         wire_effects!(on_row_activated, |ctl, i| {
             let used = ctl.activate_row(index(i), UseMode::Paste);
-            ctl.dock_after_use(&used)
+            ctl.after_use(&used)
         });
-        wire!(on_row_copied, |ctl, i| ctl
-            .activate_row(index(i), UseMode::Copy));
+        wire_effects!(on_row_copied, |ctl, i| {
+            let used = ctl.activate_row(index(i), UseMode::Copy);
+            ctl.after_use(&used)
+        });
         wire_effects!(on_quick_use, |ctl, n| {
             let used = ctl.quick_use(u8::try_from(n).unwrap_or(0));
-            ctl.dock_after_use(&used)
+            ctl.after_use(&used)
         });
         wire!(on_context_menu_requested, |ctl, i, _x, _y| ctl
             .open_item_menu(index(i), false));
@@ -595,10 +597,12 @@ where
             .recent_promote_to(i64::from(id), index(target)));
         wire_effects!(on_pinned_used, |ctl, i| {
             let used = ctl.activate_pinned(index(i), UseMode::Paste);
-            ctl.dock_after_use(&used)
+            ctl.after_use(&used)
         });
-        wire!(on_pinned_copied, |ctl, i| ctl
-            .activate_pinned(index(i), UseMode::Copy));
+        wire_effects!(on_pinned_copied, |ctl, i| {
+            let used = ctl.activate_pinned(index(i), UseMode::Copy);
+            ctl.after_use(&used)
+        });
         wire!(on_board_menu_requested, |ctl| ctl.open_board_menu());
         wire_effects!(on_board_menu_activated, |ctl, i| ctl.choose_board(index(i)));
         wire!(on_board_delete_confirmed, |ctl| ctl.confirm_board_delete());

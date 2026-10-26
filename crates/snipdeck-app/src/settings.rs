@@ -681,7 +681,8 @@ pub struct Settings {
     pub tray_click: TrayClick,
     /// Where a floating Panel opens (ignored while it is docked).
     pub panel_open_at: PanelOpenAt,
-    /// The Panel hides after a paste or copy, pinned or not.
+    /// A floating Panel that is not pinned hides after a paste or copy. On for a new install; a settings
+    /// file without the key keeps off.
     pub panel_hide_after_use: bool,
     /// With "Start with Windows": show the Panel at sign-in instead of staying in the tray. Kept
     /// when autostart is off; [`Settings::starts_visible`] says whether it takes effect.
@@ -727,7 +728,7 @@ impl Default for Settings {
             panel_switcher: PanelSwitcher::Tabs,
             tray_click: TrayClick::Panel,
             panel_open_at: PanelOpenAt::Last,
-            panel_hide_after_use: false,
+            panel_hide_after_use: true,
             panel_start_visible: false,
             symbols_recent: Vec::new(),
         }
@@ -788,6 +789,9 @@ impl Settings {
         let map = value.and_then(serde_json::Value::as_object);
         if !map.is_some_and(|m| m.contains_key("recent_history")) {
             self.recent_history = false;
+        }
+        if !map.is_some_and(|m| m.contains_key("panel_hide_after_use")) {
+            self.panel_hide_after_use = false;
         }
         let saved = map
             .and_then(|m| m.get("hotkeys"))
@@ -1122,6 +1126,7 @@ mod tests {
             existing,
             Settings {
                 recent_history: false,
+                panel_hide_after_use: false,
                 hotkeys: Hotkeys {
                     toggle_panel: "Ctrl+Alt+Space".into(),
                     paste_next: "Ctrl+Alt+V".into(),
@@ -1344,6 +1349,22 @@ mod tests {
         assert_eq!(
             settings.panel_geometry.last().expect("last").monitor_id,
             "M39"
+        );
+    }
+
+    #[test]
+    fn hide_after_use_is_on_for_a_new_install_and_off_for_a_file_that_never_said() {
+        assert!(Settings::default().panel_hide_after_use, "new install");
+        assert!(!Settings::from_json("{}").panel_hide_after_use);
+        assert!(!Settings::from_json("{ not json").panel_hide_after_use);
+        assert!(!Settings::from_json(r#"{"version":1,"theme":"dark"}"#).panel_hide_after_use);
+        assert!(
+            !Settings::from_json(r#"{"theme":5,"panel_hide_after_use":false}"#)
+                .panel_hide_after_use
+        );
+        assert!(Settings::from_json(r#"{"panel_hide_after_use":true}"#).panel_hide_after_use);
+        assert!(
+            Settings::from_json(r#"{"theme":5,"panel_hide_after_use":true}"#).panel_hide_after_use
         );
     }
 
@@ -1814,7 +1835,7 @@ mod tests {
                 PanelSwitcher::Tabs,
                 TrayClick::Panel,
                 PanelOpenAt::Last,
-                false,
+                true,
                 false,
             )
         );
@@ -1924,7 +1945,7 @@ mod tests {
                 d.panel_switcher,
                 d.tray_click,
                 d.panel_open_at,
-                false,
+                d.panel_hide_after_use,
             )
         );
         assert_eq!(bad.theme, Theme::Dark);

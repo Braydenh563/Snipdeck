@@ -345,11 +345,11 @@ where
             }
             ItemMenuEntry::Use => {
                 let used: UseResult = self.use_item(id, UseMode::Paste);
-                self.dock_after_use(&used)
+                self.after_use(&used)
             }
             ItemMenuEntry::Copy => {
-                self.use_item(id, UseMode::Copy);
-                Vec::new()
+                let used = self.use_item(id, UseMode::Copy);
+                self.after_use(&used)
             }
             ItemMenuEntry::Edit => vec![Effect::EditItem(id)],
             ItemMenuEntry::Duplicate => {
