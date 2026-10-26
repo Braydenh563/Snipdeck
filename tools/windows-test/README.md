@@ -1,5 +1,40 @@
 # Test Snipdeck on Windows
 
+## Quick check (about 10 minutes)
+
+Double-click `Test Snipdeck on Windows.bat` and press **1**. It checks only what changed lately and can only be
+judged on Windows, on its own new empty test library (`spikes-results\qc-data`, deleted at the start of every new
+Quick check, so your snippets and settings are never touched). It offers to close a normal Snipdeck that is
+running (a second copy would just exit). The same keys as the full test: **P** worked, **F** didn't (one line about
+what happened), **S** skip. Results go to the same place and format as the full test (`results.md`,
+`paste-back.md`, the zip on your Desktop; the mode shows as `qc`). From a prompt: `.\tools\windows-test\run-tests.ps1 -Mode qc`.
+
+| # | What you do | Done for you |
+|---|---|---|
+| 1 | Press the Panel shortcut: it shows and hides, Notepad keeps the cursor. The screen names the key: **Ctrl+Shift+Y** on this new test library (read from `qc-data\settings.json` when it exists); if a normal Snipdeck is installed it also says what that one uses (an older install keeps **Ctrl+Alt+Space**) | Presses it twice and watches the Panel window |
+| 2 | Settings: Layout List / Cards / Compact | - |
+| 3 | Copy `quickcheck` in Notepad: it is in Recent (Recent is on in a new install) | Types, copies and looks for it in the Panel (falls back to you if it cannot read the Panel) |
+| 4 | Copy from a password manager: not in Recent (S if none installed) | - |
+| 5 | One click on a row pastes into Notepad and the Panel hides | - |
+| 6 | Pin keeps the Panel open | - |
+| 7 | Search marks the matching letters | - |
+| 8 | Settings: Lists = Menu (board-name menu switcher) | - |
+| 9 | Show the Panel in the taskbar and Alt+Tab: the paste goes to the window you were in before | - |
+| 10-11 | Dock to the taskbar's edge (the screen says which edge); the Panel stays clear of the taskbar | Measures the Panel against the screen's work area |
+| 12 | Render diagnostic | Runs `diag-render.ps1 -Quick` (render checks only, about 3 minutes, a few yes/no questions), shows the path of the file it saves on the Desktop and puts a copy in the results zip |
+
+Steps 1, 3 and 11 are tried by the wizard first (mouse and keyboard move for a few seconds; hold Esc to stop). A
+check it cannot judge becomes the normal screen for you. The steps are in `tests\quick-check.json` (flag `qc`;
+`qcOnly` keeps them out of the other modes); the automations are in `auto\qc.ps1`. **Unverified:** none of this has
+run on Windows yet, and the automations only read the Panel by its window size and UI Automation text, so expect the
+first run to fall back to manual on some of them.
+
+The full test, unchanged, is the second choice of the same `.bat` (or press Enter in the wizard).
+
+---
+
+## Full test
+
 You do not need to read anything else on this page. Five steps:
 
 1. **Get the Snipdeck folder on your Windows PC** (Windows 10 or 11). Either download the ZIP from GitHub

@@ -10,10 +10,14 @@
   The log never holds your snippets or window titles: only window sizes, positions, Windows
   messages, shortcut results and your y/n answers.
 
+  Add -Quick for the short form the Quick check of the test wizard uses (run A render checks only, about
+  3 minutes; no shortcut questions, no run B). It also writes spikes-results\diag\last-diag-path.txt.
+
   Windows PowerShell 5.1 compatible, ASCII only.
 #>
 param(
     [switch]$NoBuild,
+    [switch]$Quick,   # the Quick check of the test wizard: run A render checks only (about 3 minutes); no shortcut questions, no run B
     [string]$DataDir = ''
 )
 
@@ -173,6 +177,7 @@ function Render-Steps($Run) {
 Say ''
 Say 'Step 4. Run A: logging only (no fix). Snipdeck starts now. Do each numbered thing, then answer here.' Cyan
 $a = Run-App 'render' 'runA'
+if (-not $Quick) {
 Say '  Shortcuts first (focus Notepad or any text field before each one):' White
 Step $a 1 'Press Ctrl+Shift+Y. Press it again.' 'Did the Panel appear the first time and hide the second time?'
 Step $a 2 'Press Ctrl+Shift+Space, then Esc.' 'Did the Picker appear?'
@@ -181,16 +186,20 @@ Step $a 4 'Press Ctrl+Shift+2 (only if you set it in Settings > Shortcuts; else 
 Step $a 5 'Open Settings > Shortcuts and look at each row.' 'Does any row show a red message? (type the gist in the next question)'
 $why = Read-Host '     If a row shows a message, type what it says (or press Enter)'
 Mark $a "settings rows say: $why"
+}
 Say ''
 Say '  Now the render checks (same Snipdeck, still running):' White
 Render-Steps $a
 Stop-App $a
 
-Say ''
-Say 'Step 5. Run B: the candidate fix switched on. Same render checks once more.' Cyan
-$b = Run-App 'render,fix' 'runB'
-Render-Steps $b
-Stop-App $b
+$b = $null
+if (-not $Quick) {
+    Say ''
+    Say 'Step 5. Run B: the candidate fix switched on. Same render checks once more.' Cyan
+    $b = Run-App 'render,fix' 'runB'
+    Render-Steps $b
+    Stop-App $b
+}
 
 # ---------------------------------------------------------------- 6. One file
 Say ''
@@ -200,6 +209,7 @@ $lines.Add("Snipdeck diagnostic $stamp")
 $lines.Add("commit: " + ((& git -C $repo rev-parse --short HEAD 2>$null) -join ''))
 foreach ($h in $header) { $lines.Add($h) }
 foreach ($run in @($a, $b)) {
+    if (-not $run) { continue }
     $lines.Add('')
     $lines.Add("==================== $($run.label) (SNIPDECK_DIAG=" + $(if ($run.label -eq 'runA') { 'render' } else { 'render,fix' }) + ") exit code $($run.proc.ExitCode)")
     # Merge the app's lines and the owner's markers by their +ms time.
@@ -221,6 +231,8 @@ foreach ($run in @($a, $b)) {
     foreach ($e in ($entries | Sort-Object ms, seq)) { $lines.Add($e.text) }
 }
 [IO.File]::WriteAllLines($outFile, $lines)
+# The test wizard reads this to show the path and to put a copy in its results zip.
+try { [IO.File]::WriteAllText((Join-Path $work 'last-diag-path.txt'), $outFile) } catch {}
 Say ''
 Say "Done. Send this one file back: $outFile" Green
 try { Start-Process explorer.exe -ArgumentList "/select,`"$outFile`"" } catch {}

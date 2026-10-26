@@ -11,6 +11,7 @@
 
 .EXAMPLE
   .\run-tests.ps1                      # the recommended "v1 check", with a few plain questions
+  .\run-tests.ps1 -Mode qc            # the Quick check: about 10 minutes, only what changed lately (tests\quick-check.json)
   .\run-tests.ps1 -Spike S1 -Mode quick
   .\run-tests.ps1 -NoAuto              # never run steps automatically (-Auto: always, no questions)
   .\run-tests.ps1 -SelfTest            # validate the test files, no Windows needed
@@ -18,7 +19,7 @@
 [CmdletBinding()]
 param(
     [string[]]$Spike,
-    [ValidateSet('v1', 'quick', 'standard', 'full')]
+    [ValidateSet('qc', 'v1', 'quick', 'standard', 'full')]
     [string]$Mode,
     [switch]$SkipPrereqs,
     [switch]$SelfTest,
@@ -702,9 +703,13 @@ function Test-HasAutoSteps($Queue, $Results) {
     return $false
 }
 
-function Ask-AutoOptIn {
+function Ask-AutoOptIn([bool]$Quick = $false) {
     Say ''
-    Say-Wrapped 'Some steps can be done and checked for you: the wizard moves the mouse, types into a scratch Notepad document, switches a Windows setting for a few seconds (always switched back) and reads what happened. A 5-second countdown comes first. To stop at any time: hold Esc, or move the mouse. Anything it cannot judge falls back to a normal step for you.' 2
+    if ($Quick) {
+        Say-Wrapped 'A few steps can be done and checked for you: the wizard presses the Panel shortcut, types into a scratch Notepad document and looks at where the Panel is. A 5-second countdown comes first. To stop at any time: hold Esc, or move the mouse. Anything it cannot judge falls back to a normal step for you.' 2
+    } else {
+        Say-Wrapped 'Some steps can be done and checked for you: the wizard moves the mouse, types into a scratch Notepad document, switches a Windows setting for a few seconds (always switched back) and reads what happened. A 5-second countdown comes first. To stop at any time: hold Esc, or move the mouse. Anything it cannot judge falls back to a normal step for you.' 2
+    }
     Say ''
     return (Ask-YesNo 'Let the wizard do those steps for you? Your mouse and keyboard will move.' $true)
 }
@@ -776,6 +781,63 @@ function Save-AutoResult([string]$Key, $Ar, $Existing) {
     Save-State
 }
 
+# ---------------------------------------------------------------- Quick check (tests\quick-check.json)
+
+# The Quick check runs the app on its own new library; deleted at the start of every new Quick check.
+function Get-QcDataDir { return (Join-Path $OutRoot 'qc-data') }
+
+# The chord that shows the Panel, read from a settings.json (see Get-PanelChordFromSettings in flow.ps1). $null = off.
+function Get-QcPanelChord([string]$SettingsPath) {
+    $exists = [bool](Test-Path -LiteralPath $SettingsPath)
+    $json = ''
+    if ($exists) { try { $json = Get-Content -Raw -LiteralPath $SettingsPath } catch { $exists = $false } }
+    return (Get-PanelChordFromSettings $json $exists)
+}
+
+# Words that step text may use: {HOTKEY}, {REAL_HOTKEY_NOTE}, {EDGE_LABEL}, {EDGE_NOTE}. Read fresh each time.
+function Get-StepVars {
+    $chord = Get-QcPanelChord (Join-Path (Get-QcDataDir) 'settings.json')
+    $vars = @{ HOTKEY = 'the Panel shortcut'; REAL_HOTKEY_NOTE = ''; EDGE_LABEL = 'Bottom edge'; EDGE_NOTE = '' }
+    if ($chord) { $vars.HOTKEY = $chord } else { $vars.HOTKEY = '(the Panel shortcut is off: turn it on under Settings > Shortcuts)' }
+    try {
+        if ($env:LOCALAPPDATA) {
+            $real = Join-Path (Join-Path $env:LOCALAPPDATA 'Snipdeck') 'settings.json'
+            if (Test-Path -LiteralPath $real) {
+                $rc = Get-QcPanelChord $real
+                if ($rc) { $vars.REAL_HOTKEY_NOTE = "Your normal Snipdeck on this PC uses $rc; the test copy has its own new library and uses the new-install shortcut." }
+            }
+        }
+    } catch { }
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        $scr = [System.Windows.Forms.Screen]::PrimaryScreen
+        $b = $scr.Bounds; $w = $scr.WorkingArea
+        $edge = Get-TaskbarEdge @{ L = $b.Left; T = $b.Top; R = $b.Right; B = $b.Bottom } @{ L = $w.Left; T = $w.Top; R = $w.Right; B = $w.Bottom }
+        if ($edge -eq 'none') {
+            $vars.EDGE_NOTE = 'Your taskbar looks hidden, so the wizard cannot tell which edge it is on: pick any edge and judge by eye.'
+        } else {
+            $vars.EDGE_LABEL = (Get-Culture).TextInfo.ToTitleCase($edge) + ' edge'
+        }
+    } catch { }
+    return $vars
+}
+
+# A normal Snipdeck running here would stop the test copy (second copy exits; the first holds the shortcuts) and lock the exe for the build.
+function Close-OtherSnipdeck {
+    if ($DryRun) { return }
+    $running = @(Get-Process -Name 'snipdeck-app', 'snipdeck' -ErrorAction SilentlyContinue)
+    if ($running.Count -eq 0) { return }
+    Say ''
+    Say-Wrapped 'Snipdeck is already running on this PC. The test copy cannot run next to it: a second copy just exits, and the first one keeps the shortcuts.' 2 Yellow
+    if (-not (Ask-YesNo 'Close it now? (Your snippets are not touched; start it again afterwards.)' $true)) {
+        Say-Wrapped 'Okay. Quit it from its tray icon (right-click > Quit) before the steps start, or the Quick check will not work.' 2 Yellow
+        return
+    }
+    foreach ($p in $running) { try { [void]$p.CloseMainWindow() } catch { } }
+    Start-Sleep -Seconds 3
+    Get-Process -Name 'snipdeck-app', 'snipdeck' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+}
+
 # ---------------------------------------------------------------- one test screen
 
 # Same header everywhere: step N of M, time left, progress bar, which part we are in (the technical id stays small and grey).
@@ -814,10 +876,11 @@ function Show-Test([int]$QIndex, $Existing, $AutoInfo = $null, [bool]$More = $fa
     Say ''
     Say '  DO THIS:' Cyan
     $n = 0
-    foreach ($action in (Split-Actions $T.do)) { $n++; Say-Hanging ("    {0}. " -f $n) $action Gray }
+    $vars = Get-StepVars
+    foreach ($action in (Split-Actions (Expand-StepText $T.do $vars))) { $n++; Say-Hanging ("    {0}. " -f $n) $action Gray }
     Say ''
     Say '  YOU SHOULD SEE:' Cyan
-    Say-Wrapped $T.expect 4 Gray
+    Say-Wrapped (Expand-StepText $T.expect $vars) 4 Gray
     Say ''
     if ($T.clipboard) { Say "  Your clipboard already holds the word '$($T.clipboard)' for this step." Green }
     if (Test-AppRunning) { Say "  The test app is open. ($($script:App.label), PID $($script:App.proc.Id))" DarkGray }
@@ -845,7 +908,8 @@ function Show-PartIntro($SpikeDef, [int]$PartNo, [int]$PartCount, [int]$StepCoun
     Say "  ($($SpikeDef.id))" DarkGray
     Say ''
     Say '  Before you start:' Cyan
-    foreach ($line in $SpikeDef.setup) { Say-Hanging '    - ' $line Gray }
+    $vars = Get-StepVars
+    foreach ($line in $SpikeDef.setup) { Say-Hanging '    - ' ((Expand-StepText $line $vars).Trim()) Gray }
     Say ''
     $c = Read-Choice '  Press Enter to start this part, or S to skip all of it > ' 'gs' 'g'
     return ($c -eq 'g')
@@ -1058,7 +1122,7 @@ if ($SelfTest) {
     $problems = Test-Definitions $spikes
     Say "Loaded $(@($spikes).Count) spike file(s)." Gray
     foreach ($s in $spikes) {
-        foreach ($m in 'v1', 'quick', 'standard', 'full') {
+        foreach ($m in 'qc', 'v1', 'quick', 'standard', 'full') {
             foreach ($os in 'win10', 'win11') {
                 $n = (Get-Applicable $s $os $m).Count
                 Say ("  {0} {1,-8} {2,-5} -> {3,2} steps" -f $s.id, $m, $os, $n) DarkGray
@@ -1067,7 +1131,8 @@ if ($SelfTest) {
     }
     # verdict logic: all pass => passed; one fail => failed; empty => incomplete
     foreach ($s in $spikes) {
-        $tests = Get-Applicable $s 'win11' 'quick'
+        $vmode = if ($s.quickOnly -eq $true) { 'qc' } else { 'quick' }
+        $tests = Get-Applicable $s 'win11' $vmode
         $res = [ordered]@{}
         $empty = Get-Verdict $s $tests $res
         foreach ($t in $tests) { $res["$($s.id):$($t.id)"] = @{ status = 'pass' } }
@@ -1169,10 +1234,17 @@ try {
     $demoIds = @(Get-PlanSpikeIds $spikes 'v1' @())
     $demoQueue = @(Get-RunQueue $spikes $demoIds 'v1' 'win11')
     $demoTime = Format-Duration (Get-MinutesLeft $demoQueue ([ordered]@{}) 0 $true)
-    Write-Banner 'Test Snipdeck on Windows'
+    $qcQueue = @(Get-RunQueue $spikes @(Get-PlanSpikeIds $spikes 'qc' @()) 'qc' 'win11')
+    $qcTime = Format-Duration (Get-MinutesLeft $qcQueue ([ordered]@{}) 0 $true)
+    Write-Banner $(if ($Mode -eq 'qc') { 'Quick check' } else { 'Test Snipdeck on Windows' })
     Say ''
-    Say-Wrapped 'This checks that Snipdeck works on this PC. The wizard builds the app, opens it, and tells you what to try.' 2 White
-    Say-Wrapped "It takes $demoTime, plus a one-time build of 10-20 minutes the first time." 2 Gray
+    if ($Mode -eq 'qc') {
+        Say-Wrapped 'This checks only what changed lately and can only be judged on Windows: the new Panel, Recent, Alt+Tab, docking and the render diagnostic.' 2 White
+        Say-Wrapped "It takes $qcTime, plus a one-time build of 10-20 minutes the first time. It uses its own empty test library, so your snippets are never touched." 2 Gray
+    } else {
+        Say-Wrapped 'This checks that Snipdeck works on this PC. The wizard builds the app, opens it, and tells you what to try.' 2 White
+        Say-Wrapped "It takes $demoTime, plus a one-time build of 10-20 minutes the first time." 2 Gray
+    }
     Say-Wrapped 'Some steps run by themselves: your mouse and keyboard may move. To stop, hold the Esc key.' 2 Gray
     Say-Wrapped 'Nothing is sent anywhere. At the end you get one results file to share.' 2 Gray
     Say ''
@@ -1216,13 +1288,18 @@ try {
             # Command-line choices: no menu.
             if ($Mode) { $plan.mode = $Mode } else { $plan.mode = 'quick' }
             if ($Spike) { $plan.spikeIds = @($Spike | ForEach-Object { $_.ToUpper() }) }
-            $plan.advanced = $true
+            $plan.advanced = ($plan.mode -ne 'qc')
+            if ($plan.mode -eq 'qc') { if (-not $NoAuto) { $plan.auto = Ask-AutoOptIn $true } else { $plan.auto = $false } }
         } else {
             Say-Wrapped 'Press Enter to start the recommended "v1 check" (the steps needed before v1 can ship).' 2 White
-            Say-Wrapped 'Or press A for advanced options, or Q to quit.' 2 Gray
-            $c = Read-Choice '  > ' 'gaq' 'g'
+            Say-Wrapped "Or press K for the Quick check ($qcTime: only what changed lately), A for advanced options, or Q to quit." 2 Gray
+            $c = Read-Choice '  > ' 'gakq' 'g'
             if ($c -eq 'q') { Say '  Okay, nothing was changed.' Gray; exit 0 }
             if ($c -eq 'a') { $plan = Read-AdvancedPlan $spikes $plan }
+            if ($c -eq 'k') {
+                $plan.mode = 'qc'
+                if (-not $NoAuto) { $plan.auto = Ask-AutoOptIn $true } else { $plan.auto = $false }
+            }
         }
         if (@($plan.spikeIds).Count -eq 0) { $plan.spikeIds = @(Get-PlanSpikeIds $spikes $plan.mode @()) }
         else { $plan.spikeIds = @(Get-PlanSpikeIds $spikes $plan.mode $plan.spikeIds) }
@@ -1249,6 +1326,12 @@ try {
     }
     $script:Queue = @(Get-RunQueue $spikes $script:State.spikes $script:State.mode $script:State.osClass)
     if (@($script:Queue).Count -eq 0) { Say '  There are no steps for this choice.' Yellow; exit 0 }
+
+    # ---- Quick check: no other Snipdeck running, and (new run) a new empty test library, so it behaves like a new install
+    if ($script:State.mode -eq 'qc') {
+        Close-OtherSnipdeck
+        if (-not $resumed -and -not $DryRun) { Remove-Item -LiteralPath (Get-QcDataDir) -Recurse -Force -ErrorAction SilentlyContinue }
+    }
 
     # ---- automatic steps (on by default for the recommended check)
     $wantAuto = ($script:State.auto -and -not $NoAuto) -or $Auto

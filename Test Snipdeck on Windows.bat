@@ -1,6 +1,8 @@
 @echo off
-rem Double-click this file to test Snipdeck on this Windows PC. It starts the test wizard
-rem (tools\windows-test\run-tests.ps1) in Windows PowerShell 5.1 and keeps this window open at the end.
+rem Double-click this file to test Snipdeck on this Windows PC. It asks Quick check (about 10 minutes) or
+rem Full test (about an hour), then starts the test wizard (tools\windows-test\run-tests.ps1) in Windows
+rem PowerShell 5.1 and keeps this window open at the end. Any argument skips the question and goes to the wizard
+rem unchanged (for example: -Mode qc, or -SelfTest).
 setlocal
 title Test Snipdeck on Windows
 cd /d "%~dp0"
@@ -8,10 +10,24 @@ set "CODE=1"
 set "PSEXE=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
 set "WIZARD=%~dp0tools\windows-test\run-tests.ps1"
 
+set "QUICK="
 if not exist "%WIZARD%" goto :nofiles
 if not exist "%PSEXE%" goto :nopowershell
 
-"%PSEXE%" -NoProfile -ExecutionPolicy Bypass -File "%WIZARD%" %*
+if not "%~1"=="" goto :run
+echo.
+echo  What do you want to do?
+echo.
+echo    1  Quick check - about 10 minutes. Only what changed lately
+echo       (the new Panel, Recent, Alt+Tab, docking, the render check).
+echo    2  Full test - about an hour. Everything.
+echo.
+choice /c 12 /n /m " Press 1 or 2: "
+if errorlevel 2 goto :run
+set "QUICK=-Mode qc"
+
+:run
+"%PSEXE%" -NoProfile -ExecutionPolicy Bypass -File "%WIZARD%" %QUICK% %*
 set "CODE=%ERRORLEVEL%"
 if "%CODE%"=="0" goto :end
 echo.

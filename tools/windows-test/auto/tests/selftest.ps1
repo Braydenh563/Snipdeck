@@ -245,7 +245,34 @@ function Invoke-FlowSelfTest($Spikes) {
     # ---- which parts and steps the v1 check contains (real test files)
     $v1Ids = Get-PlanSpikeIds $Spikes 'v1' @()
     Expect ((& $ids $v1Ids) -eq 'M2,M3,S1,S2') "v1 parts: expected M2,M3,S1,S2, got $(& $ids $v1Ids)"
-    Expect ((& $ids (Get-PlanSpikeIds $Spikes 'full' @())) -eq (& $ids ($Spikes | ForEach-Object { $_.id }))) 'full: every part'
+    Expect ((& $ids (Get-PlanSpikeIds $Spikes 'full' @())) -eq (& $ids ($Spikes | Where-Object { $_.quickOnly -ne $true } | ForEach-Object { $_.id }))) 'full: every part except the Quick check'
+    # ---- the Quick check (tests\quick-check.json) stays out of every other mode, and nothing else is in it
+    Expect ((& $ids (Get-PlanSpikeIds $Spikes 'qc' @())) -eq 'QC') "qc parts: expected QC, got $(& $ids (Get-PlanSpikeIds $Spikes 'qc' @()))"
+    foreach ($m in 'v1', 'quick', 'standard', 'full') {
+        Expect (@(Get-PlanSpikeIds $Spikes $m @()) -notcontains 'QC') "$m includes the Quick check part"
+        foreach ($s in $Spikes) {
+            if ($s.quickOnly -eq $true) { continue }
+            Expect (@(Get-RunQueue $Spikes @($s.id) $m 'win11' | Where-Object { $_.Test.qcOnly -eq $true }).Count -eq 0) "$m runs a Quick-check-only step in $($s.id)"
+        }
+    }
+    $qcq = @(Get-RunQueue $Spikes @(Get-PlanSpikeIds $Spikes 'qc' @()) 'qc' 'win11')
+    Expect ($qcq.Count -ge 8 -and @($qcq | Where-Object { $_.SpikeId -ne 'QC' }).Count -eq 0) "qc queue: $($qcq.Count) steps, only from QC"
+    Expect ((Get-MinutesLeft $qcq ([ordered]@{}) 0 $true) -le 15) 'the Quick check is meant to take about 10 minutes'
+    $qcRel = @(Get-RunQueue $Spikes @('QC') 'full' 'win11')
+    Expect ($qcRel.Count -eq 0) 'QC steps never run in the full mode'
+    # ---- Quick check helpers
+    Expect ((Get-PanelChordFromSettings '' $false) -eq 'Ctrl+Shift+Y') 'chord: no settings file = new install'
+    Expect ((Get-PanelChordFromSettings '{}' $true) -eq 'Ctrl+Alt+Space') 'chord: old settings without the key = Ctrl+Alt+Space'
+    Expect ((Get-PanelChordFromSettings '{"hotkeys":{"toggle_panel":"Ctrl+Shift+F1"}}' $true) -eq 'Ctrl+Shift+F1') 'chord: the file wins'
+    Expect ($null -eq (Get-PanelChordFromSettings '{"hotkeys":{"toggle_panel":""}}' $true)) 'chord: an empty chord means off'
+    Expect ((Get-PanelChordFromSettings 'not json' $true) -eq 'Ctrl+Alt+Space') 'chord: unreadable settings'
+    $bd = @{ L = 0; T = 0; R = 1920; B = 1080 }
+    Expect ((Get-TaskbarEdge $bd @{ L = 0; T = 0; R = 1920; B = 1040 }) -eq 'bottom') 'taskbar edge: bottom'
+    Expect ((Get-TaskbarEdge $bd @{ L = 0; T = 48; R = 1920; B = 1080 }) -eq 'top') 'taskbar edge: top'
+    Expect ((Get-TaskbarEdge $bd @{ L = 60; T = 0; R = 1920; B = 1080 }) -eq 'left') 'taskbar edge: left'
+    Expect ((Get-TaskbarEdge $bd @{ L = 0; T = 0; R = 1860; B = 1080 }) -eq 'right') 'taskbar edge: right'
+    Expect ((Get-TaskbarEdge $bd $bd) -eq 'none') 'taskbar edge: none'
+    Expect ((Expand-StepText 'Press {HOTKEY} then {OTHER}.' @{ HOTKEY = 'Ctrl+Shift+Y' }) -eq 'Press Ctrl+Shift+Y then {OTHER}.') 'step text: placeholders'
     Expect ((& $ids (Get-PlanSpikeIds $Spikes 'quick' @('s4'))) -eq 'S4') 'explicit part ids win and are case-insensitive'
     foreach ($s in $Spikes) {
         Expect ([bool]$s.friendly) "$($s.id): missing a friendly name"

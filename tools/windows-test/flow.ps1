@@ -14,6 +14,9 @@ function New-Plan {
 
 function Test-StepInMode($T, [string]$RunMode, [string]$OsClass) {
     if ($T.os -and $T.os -ne 'any' -and $T.os -ne $OsClass) { return $false }
+    # The Quick check (about 10 minutes): only steps flagged "qc": true. Those steps ("qcOnly") never run in the other modes.
+    if ($RunMode -eq 'qc') { return ($T.qc -eq $true) }
+    if ($T.qcOnly -eq $true) { return $false }
     $isGate = ($T.gate -eq $true) -or [bool]$T.anyGroup
     $isOptional = ($T.optional -eq $true)
     if ($RunMode -eq 'v1') { return ($T.v1 -eq $true) }
@@ -28,8 +31,9 @@ function Get-PlanSpikeIds($Spikes, [string]$RunMode, [string[]]$Requested = @())
     foreach ($s in $Spikes) {
         $take = $false
         if (@($Requested).Count -gt 0) { $take = (@($Requested | ForEach-Object { $_.ToUpper() }) -contains $s.id) }
+        elseif ($RunMode -eq 'qc') { $take = (@($s.tests | Where-Object { $_.qc -eq $true }).Count -gt 0) }
         elseif ($RunMode -eq 'v1') { $take = (@($s.tests | Where-Object { $_.v1 -eq $true }).Count -gt 0) }
-        else { $take = $true }
+        else { $take = ($s.quickOnly -ne $true) }
         if ($take) { $ids += $s.id }
     }
     return $ids
@@ -39,6 +43,43 @@ function Get-PlanSpikeIds($Spikes, [string]$RunMode, [string[]]$Requested = @())
 function Get-FriendlyName($SpikeDef) {
     if ($SpikeDef.friendly) { return [string]$SpikeDef.friendly }
     return [string]$SpikeDef.title
+}
+
+# ---------------------------------------------------------------- Quick check helpers (pure)
+
+# The chord that shows the Panel, from the text of a settings.json (Exists = the file is there). No file = a new
+# install (Ctrl+Shift+Y); a file without the setting = an install from before the new defaults (Ctrl+Alt+Space);
+# a chord set to "" means the shortcut is off ($null).
+function Get-PanelChordFromSettings([string]$Json, [bool]$Exists) {
+    if (-not $Exists) { return 'Ctrl+Shift+Y' }
+    $obj = $null
+    try { $obj = $Json | ConvertFrom-Json } catch { return 'Ctrl+Alt+Space' }
+    if ($obj -and $obj.hotkeys -and ($obj.hotkeys.PSObject.Properties.Name -contains 'toggle_panel') -and ($obj.hotkeys.toggle_panel -is [string])) {
+        $c = ([string]$obj.hotkeys.toggle_panel).Trim()
+        if ($c.Length -eq 0) { return $null }
+        return $c
+    }
+    return 'Ctrl+Alt+Space'
+}
+
+# Which screen edge the taskbar is on, from a monitor's full bounds and working area (@{ L; T; R; B }). 'none' = hidden or none.
+function Get-TaskbarEdge($Bounds, $Work) {
+    $t = [int]($Work.T - $Bounds.T); $l = [int]($Work.L - $Bounds.L); $r = [int]($Bounds.R - $Work.R)
+    $bottom = [int]($Bounds.B - $Work.B)
+    $best = 'none'; $size = 0
+    if ($bottom -gt $size) { $best = 'bottom'; $size = $bottom }
+    if ($t -gt $size) { $best = 'top'; $size = $t }
+    if ($l -gt $size) { $best = 'left'; $size = $l }
+    if ($r -gt $size) { $best = 'right'; $size = $r }
+    return $best
+}
+
+# Replaces {NAME} in step text with Vars[NAME] (a hashtable); an unknown name stays as it is.
+function Expand-StepText([string]$Text, $Vars) {
+    if (-not $Text -or -not $Vars) { return $Text }
+    $out = $Text
+    foreach ($k in @($Vars.Keys)) { $out = $out.Replace('{' + $k + '}', [string]$Vars[$k]) }
+    return $out
 }
 
 # ---------------------------------------------------------------- time and progress text
