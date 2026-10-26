@@ -773,13 +773,15 @@ impl Default for Settings {
 
 impl Settings {
     /// The settings of a new install, used only where there is no settings file: Recent on, the
-    /// Ctrl+Alt-free chords, and the Panel hiding after a paste or copy.
+    /// Ctrl+Alt-free chords, the Panel unpinned and hiding after a paste or copy.
     #[must_use]
     pub fn new_install() -> Self {
         Self {
             hotkeys: Hotkeys::new_install(),
             recent_history: true,
             panel_hide_after_use: true,
+            // Unpinned, or hide-after-use and hide-on-blur would never fire on a new install.
+            panel_pinned: false,
             ..Self::default()
         }
     }
@@ -1164,10 +1166,21 @@ mod tests {
                 hotkeys: Hotkeys::default(),
                 recent_history: false,
                 panel_hide_after_use: false,
+                panel_pinned: true,
                 ..new
             },
             old
         );
+    }
+
+    #[test]
+    fn a_new_install_is_unpinned_and_an_older_file_keeps_the_pin() {
+        let new = Settings::new_install();
+        assert!(!new.panel_pinned && new.panel_hide_after_use);
+        assert!(Settings::default().panel_pinned);
+        assert!(Settings::from_json("{}").panel_pinned, "missing key");
+        assert!(Settings::from_json(r#"{"panel_pinned":7}"#).panel_pinned);
+        assert!(!Settings::from_json(r#"{"panel_pinned":false}"#).panel_pinned);
     }
 
     #[test]

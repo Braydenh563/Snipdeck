@@ -28,7 +28,7 @@ fn the_first_close_of_a_session_tells_how_to_get_the_panel_back() {
     assert_eq!(
         hide_hint(&w),
         Some(ToastMessage::PanelHidden {
-            chord: Some(Settings::default().hotkeys.toggle_panel)
+            chord: Some(Settings::new_install().hotkeys.toggle_panel)
         })
     );
     assert!(
