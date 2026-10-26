@@ -60,3 +60,4 @@ Slices 7 and 8 (agent, this session): committed (WIP commit with code + .po, the
   re-written when the choice changes with autostart on). Spec 4 shortcut text fixed (Ctrl+Shift+Y).
   Unverified: Windows Tracker::cursor/monitor_at (monitor id there is "monitor"-based, size is taken from the Panel's current monitor);
   registry rewrite; real placement. .po files carry the other agent's strings too (extract regenerates all).
+Coordinator queue (2026-10-26): Settings: merge the old "Panel" group into "Opening the Panel" per spec §4 (taskbar, hide on blur, keep visible in screenshots, start with Windows, keep running in tray, dock to, open docked by, hover/leave delay, picker position), so Panel settings are two groups, not three; fixture in editors.rs sets panel_start_visible_enabled to match autostart in the golden; regenerate and open settings goldens.
