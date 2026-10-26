@@ -31,6 +31,7 @@ mod panel_select;
 mod recent_ctl;
 mod screen_clip_ctl;
 mod settings_ctl;
+mod symbol_ctl;
 #[cfg(test)]
 mod tests;
 mod toast_ctl;

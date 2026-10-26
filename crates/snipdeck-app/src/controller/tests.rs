@@ -44,6 +44,7 @@ mod picker;
 mod predictable;
 mod recent;
 mod screen_clip;
+mod symbols;
 mod toasts;
 mod tray;
 mod use_paste;

@@ -2,9 +2,10 @@
 
 ## Done
 - Slices 1, 2, 3 built and committed (see git log).
+- Slice 4 built: `symbol_ctl.rs` (use_symbol, add_symbol_to_list, copy_icon_svg/png, save_icon, symbol_recents), `Settings.symbols_recent`, `FilePicker::save` + `SaveKind` (fake + Windows IFileSaveDialog; `cargo check/clippy --target x86_64-pc-windows-msvc -p snipdeck-platform` passes with the default toolchain; dialog unrun on Windows). 17 controller tests + 2 platform tests pass.
 
 ## Next
-- Slice 4 onward: controller, UI (not mine). Run `cargo deny check` and gate.sh --full in an environment with deny; cargo-deny is not installed here.
+- Slices 5-7: UI, menus/export UI, docs. UI must: add Origin/colour (text.primary RGBA) for copy_icon_png, toast on Save as success (no ToastMessage for it yet), call save_icon with ICON sizes 24/32/48/64/128/256, offer Save as only when `file_picker()` is Some. Icons as Image items in a list (spec s3) are NOT built: add_symbol_to_list is text only (task scope). Run `cargo deny check` and gate.sh --full in an environment with deny; cargo-deny is not installed here.
 
 ## Blocked / for the owner
 - CI line (a hook refuses .github/workflows edits): add to the lint job
