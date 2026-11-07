@@ -4,10 +4,11 @@
 //! Slint-free like the rest of the controller. The policy is [`crate::recent`]; this file adds
 //! the clock, the settings and the toasts. Nothing here logs or traces clipboard text.
 
-use snipdeck_core::ListId;
+use snipdeck_core::{ListId, UseMode};
 use snipdeck_platform::{
     payload::{Data, Payload},
-    pipeline::{Clipboard, Keyboard, Timing},
+    pipeline::{self, Clipboard, Env, Keyboard, Timing},
+    route::Route,
 };
 use snipdeck_store::RecentEntry;
 
@@ -19,6 +20,7 @@ use crate::{
         self, ClipboardObservation, RecentCapture, RecentRowView, RecentSettings, RecentView,
         SaveTarget, row_view,
     },
+    toast,
 };
 
 /// What the tray menu is told: (clipboard history is on, collecting is paused).
@@ -215,8 +217,38 @@ where
         self.session.recent_open = open && self.settings.recent_history;
     }
 
-    /// A click or Enter on an entry: puts its text on the clipboard. (Pasting a Recent entry
-    /// straight into the Target is not in v1: "Save to…" first, or paste with Ctrl+V.)
+    /// A click or Enter on an entry in the Panel: pastes its text into the Target (or copies it
+    /// when `mode` is [`UseMode::Copy`], Shift+click, or the Target cannot take a paste), and says
+    /// so. Pasting is written without the history markers, so it does not re-enter the inbox.
+    pub fn recent_use(&mut self, id: i64, mode: UseMode) {
+        let Some(entry) = self.recent_entries().into_iter().find(|e| e.id == id) else {
+            return;
+        };
+        let Some(payload) = Payload::new(vec![Data::Text(entry.text)]) else {
+            self.show_toast(failed());
+            return;
+        };
+        let route = self.model.route();
+        let pasted_into = self.model.target().map(|t| t.app.clone());
+        if mode != UseMode::Copy && matches!(route, Route::Paste { .. }) && self.target.refocus() {
+            self.services.timing.sleep(super::REFOCUS_WAIT);
+        }
+        let mut env = Env {
+            clipboard: &mut self.services.clipboard,
+            keyboard: &mut self.services.keyboard,
+            timing: &mut self.services.timing,
+        };
+        let toast = match pipeline::use_item(&mut env, &payload, mode, &route) {
+            Ok(outcome) => toast::after_use(outcome, &route, pasted_into.as_deref()),
+            Err(_) => Toast {
+                kind: ToastKind::Danger,
+                message: ToastMessage::ClipboardBusy,
+            },
+        };
+        self.show_toast(toast);
+    }
+
+    /// Puts an entry's text on the clipboard (the Main window's click: it has no Target).
     pub fn recent_copy(&mut self, id: i64) {
         let Some(entry) = self.recent_entries().into_iter().find(|e| e.id == id) else {
             return;

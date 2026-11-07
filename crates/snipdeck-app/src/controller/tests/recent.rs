@@ -210,6 +210,54 @@ fn clicking_an_entry_puts_its_text_on_the_clipboard_and_deleting_removes_it() {
     w.ctl.recent_promote_to(id, 0);
 }
 
+fn recent_world_at_outlook() -> World {
+    let mut w = world_with(Some(outlook()), on());
+    w.ctl.set_key_provider(Box::new(
+        snipdeck_store::crypto::MemoryKeyProvider::new().expect("provider"),
+    ));
+    w
+}
+
+#[test]
+fn using_an_entry_pastes_it_into_the_target_and_shift_only_copies() {
+    let mut w = recent_world_at_outlook();
+    w.ctl.on_clipboard_change(&copied("paste me"));
+    let id = w.ctl.recent_entries()[0].id;
+    w.ctl.recent_use(id, UseMode::Paste);
+    let services = w.ctl.services();
+    assert_eq!(services.keyboard.sent.len(), 1, "Ctrl+V went out");
+    assert!(
+        services
+            .clipboard
+            .log
+            .iter()
+            .any(|l| l.starts_with("transient")),
+        "written without the history markers: {:?}",
+        services.clipboard.log
+    );
+    assert_eq!(services.clipboard.written.len(), 1);
+    // Shift: copy only, no key.
+    w.ctl.recent_use(id, UseMode::Copy);
+    let services = w.ctl.services();
+    assert_eq!(services.keyboard.sent.len(), 1, "no second paste");
+    assert_eq!(services.clipboard.written.len(), 2);
+    // A gone id does nothing.
+    w.ctl.recent_delete(id);
+    w.ctl.recent_use(id, UseMode::Paste);
+    assert_eq!(w.ctl.services().keyboard.sent.len(), 1);
+}
+
+#[test]
+fn using_an_entry_with_no_target_copies_it() {
+    let mut w = recent_world();
+    w.targets.set(None);
+    w.ctl.on_clipboard_change(&copied("no target"));
+    let id = w.ctl.recent_entries()[0].id;
+    w.ctl.recent_use(id, UseMode::Paste);
+    assert!(w.ctl.services().keyboard.sent.is_empty());
+    assert_eq!(w.ctl.services().clipboard.written.len(), 1);
+}
+
 #[test]
 fn actions_follow_the_entry_id_when_the_list_shifts_under_an_open_menu() {
     let mut w = recent_world();
