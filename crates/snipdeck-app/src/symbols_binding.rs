@@ -1,4 +1,4 @@
-//! The Symbols tab in the Panel window: turns [`symbols_panel::Grid`](crate::symbols_panel::Grid)
+//! The Symbols tab in the Panel window: turns [`crate::symbols_panel::Grid`]
 //! into the window's rows, keeps the selection and the picture cache. No controller here: the
 //! binding passes in the recents and the language, and runs the uses itself.
 

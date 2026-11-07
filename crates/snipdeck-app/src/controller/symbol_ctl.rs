@@ -142,13 +142,13 @@ where
     }
 
     /// First half of "Save as...": renders the file and finds the dialog. The caller then asks
-    /// [`IconSave::ask`] with the controller released (the Save dialog runs its own message loop,
+    /// `IconSave::ask` with the controller released (the Save dialog runs its own message loop,
     /// during which timers and hotkeys reach the controller) and hands the answer to
     /// [`finish_icon_save`](Self::finish_icon_save).
     ///
     /// # Errors
     ///
-    /// [`SaveOutcome::Unavailable`] when the machine has no file dialog, [`SaveOutcome::Failed`]
+    /// `SaveOutcome::Unavailable` when the machine has no file dialog, `SaveOutcome::Failed`
     /// when `id` is not an icon or cannot be rendered.
     pub fn prepare_icon_save(
         &self,
