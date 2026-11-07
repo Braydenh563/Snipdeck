@@ -958,10 +958,10 @@ fn click_at(window: &slint::Window, position: slint::LogicalPosition) {
     slint::platform::update_timers_and_animations();
 }
 
-const MENU_ROWS: [&str; 17] = [
+const MENU_ROWS: [&str; 18] = [
     "Nothing to undo",
     "Nothing to redo",
-    "Paste stack",
+    "Paste stack (mark items)",
     "Dock to the nearest edge",
     "Keyboard shortcuts",
     "All commands\u{2026}",
@@ -970,6 +970,7 @@ const MENU_ROWS: [&str; 17] = [
     "New item",
     "Take screenshot",
     "Pause hotkeys",
+    "Keep panel on top",
     "Show numbers",
     "Reset size and position",
     "Troubleshoot\u{2026}",
@@ -1006,7 +1007,7 @@ fn the_kebab_menu_is_a_list_of_the_expected_rows_with_a_name_and_positions() {
             );
             assert_eq!(
                 row.accessible_enabled(),
-                Some(!label.starts_with("Nothing to") && *label != "Paste stack"),
+                Some(!label.starts_with("Nothing to") && !label.starts_with("Paste stack")),
                 "{label}: Undo and Redo are really disabled while there is nothing to take back, \
                  Paste stack while nothing is marked"
             );
