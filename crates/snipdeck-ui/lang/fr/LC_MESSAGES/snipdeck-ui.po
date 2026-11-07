@@ -259,6 +259,9 @@ msgstr "Compilé le"
 msgid "Cancel"
 msgstr "Annuler"
 
+msgid "Cancel the test of {}"
+msgstr ""
+
 msgid "Captured items keep their kind."
 msgstr "Les extraits capturés gardent leur type."
 
@@ -330,6 +333,9 @@ msgstr "Vider le presse-papiers plus tard"
 
 msgid "Clear the clipboard sooner"
 msgstr "Vider le presse-papiers plus tôt"
+
+msgid "Clear the search"
+msgstr ""
 
 msgid "Clear the search, then close"
 msgstr "Effacer la recherche, puis fermer"
@@ -967,6 +973,9 @@ msgstr "Vert"
 msgid "Greet"
 msgstr ""
 
+msgid "Heard it. This shortcut works."
+msgstr ""
+
 msgid "Help"
 msgstr "Aide"
 
@@ -1106,6 +1115,9 @@ msgid "Its lists and {} items move to the Trash. You can restore them for {} day
 msgstr "Ses listes et {} éléments vont à la corbeille. Vous pouvez les restaurer pendant {} jours."
 
 msgid "Joy"
+msgstr ""
+
+msgid "Jump to a section"
 msgstr ""
 
 msgid "Just now"
@@ -1445,6 +1457,9 @@ msgstr "Aucun programme pour le moment. Tous les programmes utilisent Ctrl+V."
 msgid "No recent items"
 msgstr "Aucun extrait récent"
 
+msgid "No settings match"
+msgstr ""
+
 msgid "No shortcut matches"
 msgstr "Aucun raccourci ne correspond"
 
@@ -1480,6 +1495,9 @@ msgstr ""
 
 msgid "Not set"
 msgstr "Non défini"
+
+msgid "Not working"
+msgstr ""
 
 msgid "Nothing copied yet"
 msgstr "Rien n'a encore été copié"
@@ -1736,6 +1754,9 @@ msgstr "Suspendre l'historique"
 msgid "Pause hotkeys"
 msgstr "Suspendre les raccourcis"
 
+msgid "Paused"
+msgstr ""
+
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included."
 msgstr "Payez ce que vous voulez à partir de 5 A$, 8 A$ suggérés. Paiement unique, toutes les mises à jour 1.x sont incluses."
 
@@ -1790,6 +1811,9 @@ msgstr "Appuyez sur Ctrl+N pour ajouter un extrait, ou sur Ctrl+K pour voir tout
 msgid "Press the new shortcut"
 msgstr "Appuyez sur le nouveau raccourci"
 
+msgid "Press the shortcut now"
+msgstr ""
+
 msgid "Preview"
 msgstr "Aperçu"
 
@@ -1831,6 +1855,9 @@ msgstr ""
 
 msgid "Quit"
 msgstr "Quitter"
+
+msgid "Ready. Press Test to check it."
+msgstr ""
 
 msgid "Rebuild"
 msgstr "Reconstruire"
@@ -2042,6 +2069,9 @@ msgstr "Rechercher dans"
 
 msgid "Search results"
 msgstr "Résultats de recherche"
+
+msgid "Search settings"
+msgstr ""
 
 msgid "Search shortcuts"
 msgstr "Rechercher un raccourci"
@@ -2339,6 +2369,12 @@ msgstr "Modèles qui demandent une saisie"
 
 msgid "Templates with date, time and cursor"
 msgstr "Modèles avec date, heure et curseur"
+
+msgid "Test"
+msgstr ""
+
+msgid "Test {}"
+msgstr ""
 
 msgid "Text"
 msgstr "Texte"
@@ -2663,6 +2699,12 @@ msgstr "Utiliser le n-ième extrait"
 
 msgid "Use the item"
 msgstr "Utiliser l'extrait"
+
+msgid "Use {}"
+msgstr ""
+
+msgid "Use {} for {}"
+msgstr ""
 
 msgid "User guide"
 msgstr "Guide de l'utilisateur"

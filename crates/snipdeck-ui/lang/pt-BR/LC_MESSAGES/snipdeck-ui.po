@@ -259,6 +259,9 @@ msgstr "Compilado em"
 msgid "Cancel"
 msgstr "Cancelar"
 
+msgid "Cancel the test of {}"
+msgstr ""
+
 msgid "Captured items keep their kind."
 msgstr "Os trechos capturados mantêm o tipo."
 
@@ -330,6 +333,9 @@ msgstr "Limpar a área de transferência depois"
 
 msgid "Clear the clipboard sooner"
 msgstr "Limpar a área de transferência antes"
+
+msgid "Clear the search"
+msgstr ""
 
 msgid "Clear the search, then close"
 msgstr "Limpe a busca e feche"
@@ -967,6 +973,9 @@ msgstr "Verde"
 msgid "Greet"
 msgstr ""
 
+msgid "Heard it. This shortcut works."
+msgstr ""
+
 msgid "Help"
 msgstr "Ajuda"
 
@@ -1106,6 +1115,9 @@ msgid "Its lists and {} items move to the Trash. You can restore them for {} day
 msgstr "Suas listas e {} itens vão para a lixeira. Você pode restaurá-los por {} dias."
 
 msgid "Joy"
+msgstr ""
+
+msgid "Jump to a section"
 msgstr ""
 
 msgid "Just now"
@@ -1445,6 +1457,9 @@ msgstr "Nenhum programa ainda. Todo programa usa Ctrl+V."
 msgid "No recent items"
 msgstr "Nenhum trecho recente"
 
+msgid "No settings match"
+msgstr ""
+
 msgid "No shortcut matches"
 msgstr "Nenhum atalho corresponde"
 
@@ -1480,6 +1495,9 @@ msgstr ""
 
 msgid "Not set"
 msgstr "Não definido"
+
+msgid "Not working"
+msgstr ""
 
 msgid "Nothing copied yet"
 msgstr "Nada copiado ainda"
@@ -1736,6 +1754,9 @@ msgstr "Pausar histórico"
 msgid "Pause hotkeys"
 msgstr "Pausar atalhos"
 
+msgid "Paused"
+msgstr ""
+
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included."
 msgstr "Pague o quanto quiser a partir de A$ 5, sugerido A$ 8. Pagamento único, com todas as atualizações 1.x incluídas."
 
@@ -1790,6 +1811,9 @@ msgstr "Pressione Ctrl+N para adicionar um trecho ou Ctrl+K para ver todos os co
 msgid "Press the new shortcut"
 msgstr "Pressione o novo atalho"
 
+msgid "Press the shortcut now"
+msgstr ""
+
 msgid "Preview"
 msgstr "Pré-visualização"
 
@@ -1831,6 +1855,9 @@ msgstr ""
 
 msgid "Quit"
 msgstr "Sair"
+
+msgid "Ready. Press Test to check it."
+msgstr ""
 
 msgid "Rebuild"
 msgstr "Reconstruir"
@@ -2042,6 +2069,9 @@ msgstr "Pesquisar em"
 
 msgid "Search results"
 msgstr "Resultados da pesquisa"
+
+msgid "Search settings"
+msgstr ""
 
 msgid "Search shortcuts"
 msgstr "Pesquisar atalhos"
@@ -2339,6 +2369,12 @@ msgstr "Modelos que perguntam"
 
 msgid "Templates with date, time and cursor"
 msgstr "Modelos com data, hora e cursor"
+
+msgid "Test"
+msgstr ""
+
+msgid "Test {}"
+msgstr ""
 
 msgid "Text"
 msgstr "Texto"
@@ -2663,6 +2699,12 @@ msgstr "Usar o enésimo item"
 
 msgid "Use the item"
 msgstr "Usar o item"
+
+msgid "Use {}"
+msgstr ""
+
+msgid "Use {} for {}"
+msgstr ""
 
 msgid "User guide"
 msgstr "Guia do usuário"

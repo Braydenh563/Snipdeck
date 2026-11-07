@@ -259,6 +259,9 @@ msgstr "ビルド日"
 msgid "Cancel"
 msgstr "キャンセル"
 
+msgid "Cancel the test of {}"
+msgstr ""
+
 msgid "Captured items keep their kind."
 msgstr "キャプチャしたスニペットは種類を保持します。"
 
@@ -330,6 +333,9 @@ msgstr "クリップボードを消去するまでの時間を長くする"
 
 msgid "Clear the clipboard sooner"
 msgstr "クリップボードを消去するまでの時間を短くする"
+
+msgid "Clear the search"
+msgstr ""
 
 msgid "Clear the search, then close"
 msgstr "検索をクリアしてから閉じる"
@@ -967,6 +973,9 @@ msgstr "緑"
 msgid "Greet"
 msgstr ""
 
+msgid "Heard it. This shortcut works."
+msgstr ""
+
 msgid "Help"
 msgstr "ヘルプ"
 
@@ -1103,6 +1112,9 @@ msgid "Its lists and {} items move to the Trash. You can restore them for {} day
 msgstr "このボードのリストと{}件の項目がごみ箱に移動します。{}日間は復元できます。"
 
 msgid "Joy"
+msgstr ""
+
+msgid "Jump to a section"
 msgstr ""
 
 msgid "Just now"
@@ -1440,6 +1452,9 @@ msgstr "まだプログラムがありません。すべてのプログラムで
 msgid "No recent items"
 msgstr "最近のスニペットはありません"
 
+msgid "No settings match"
+msgstr ""
+
 msgid "No shortcut matches"
 msgstr "一致するショートカットはありません"
 
@@ -1475,6 +1490,9 @@ msgstr ""
 
 msgid "Not set"
 msgstr "未設定"
+
+msgid "Not working"
+msgstr ""
 
 msgid "Nothing copied yet"
 msgstr "まだコピーされたものはありません"
@@ -1731,6 +1749,9 @@ msgstr "履歴を一時停止"
 msgid "Pause hotkeys"
 msgstr "ホットキーを一時停止"
 
+msgid "Paused"
+msgstr ""
+
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included."
 msgstr "A$5から、お好きな金額でお支払いください（推奨はA$8）。買い切りで、1.x系のすべてのアップデートが含まれます。"
 
@@ -1785,6 +1806,9 @@ msgstr "Ctrl+N でスニペットを追加、Ctrl+K ですべてのコマンド�
 msgid "Press the new shortcut"
 msgstr "新しいショートカットを押してください"
 
+msgid "Press the shortcut now"
+msgstr ""
+
 msgid "Preview"
 msgstr "プレビュー"
 
@@ -1826,6 +1850,9 @@ msgstr ""
 
 msgid "Quit"
 msgstr "終了"
+
+msgid "Ready. Press Test to check it."
+msgstr ""
 
 msgid "Rebuild"
 msgstr "再構築"
@@ -2035,6 +2062,9 @@ msgstr "検索対象"
 
 msgid "Search results"
 msgstr "検索結果"
+
+msgid "Search settings"
+msgstr ""
 
 msgid "Search shortcuts"
 msgstr "ショートカットを検索"
@@ -2332,6 +2362,12 @@ msgstr "入力を求めるテンプレート"
 
 msgid "Templates with date, time and cursor"
 msgstr "日付・時刻・カーソル位置を含むテンプレート"
+
+msgid "Test"
+msgstr ""
+
+msgid "Test {}"
+msgstr ""
 
 msgid "Text"
 msgstr "テキスト"
@@ -2656,6 +2692,12 @@ msgstr "N番目のスニペットを使用"
 
 msgid "Use the item"
 msgstr "スニペットを使用"
+
+msgid "Use {}"
+msgstr ""
+
+msgid "Use {} for {}"
+msgstr ""
 
 msgid "User guide"
 msgstr "ユーザーガイド"

@@ -259,6 +259,9 @@ msgstr "构建日期"
 msgid "Cancel"
 msgstr "取消"
 
+msgid "Cancel the test of {}"
+msgstr ""
+
 msgid "Captured items keep their kind."
 msgstr "捕获的片段保留其类型。"
 
@@ -330,6 +333,9 @@ msgstr "稍后清除剪贴板"
 
 msgid "Clear the clipboard sooner"
 msgstr "尽快清除剪贴板"
+
+msgid "Clear the search"
+msgstr ""
 
 msgid "Clear the search, then close"
 msgstr "先清除搜索，然后关闭"
@@ -967,6 +973,9 @@ msgstr "绿色"
 msgid "Greet"
 msgstr ""
 
+msgid "Heard it. This shortcut works."
+msgstr ""
+
 msgid "Help"
 msgstr "帮助"
 
@@ -1103,6 +1112,9 @@ msgid "Its lists and {} items move to the Trash. You can restore them for {} day
 msgstr "它的列表和 {} 个项目将移到回收站。你可以在 {} 天内恢复。"
 
 msgid "Joy"
+msgstr ""
+
+msgid "Jump to a section"
 msgstr ""
 
 msgid "Just now"
@@ -1440,6 +1452,9 @@ msgstr "还没有程序。所有程序都使用 Ctrl+V。"
 msgid "No recent items"
 msgstr "没有最近的片段"
 
+msgid "No settings match"
+msgstr ""
+
 msgid "No shortcut matches"
 msgstr "没有匹配的快捷键"
 
@@ -1475,6 +1490,9 @@ msgstr ""
 
 msgid "Not set"
 msgstr "未设置"
+
+msgid "Not working"
+msgstr ""
 
 msgid "Nothing copied yet"
 msgstr "尚未复制任何内容"
@@ -1731,6 +1749,9 @@ msgstr "暂停历史"
 msgid "Pause hotkeys"
 msgstr "暂停热键"
 
+msgid "Paused"
+msgstr ""
+
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included."
 msgstr "可自定价格，最低 A$5，建议 A$8。一次性付费，包括所有 1.x 更新。"
 
@@ -1785,6 +1806,9 @@ msgstr "按 Ctrl+N 添加片段，或按 Ctrl+K 查看所有命令。"
 msgid "Press the new shortcut"
 msgstr "按下新的快捷键"
 
+msgid "Press the shortcut now"
+msgstr ""
+
 msgid "Preview"
 msgstr "预览"
 
@@ -1826,6 +1850,9 @@ msgstr ""
 
 msgid "Quit"
 msgstr "退出"
+
+msgid "Ready. Press Test to check it."
+msgstr ""
 
 msgid "Rebuild"
 msgstr "重建"
@@ -2035,6 +2062,9 @@ msgstr "搜索范围"
 
 msgid "Search results"
 msgstr "搜索结果"
+
+msgid "Search settings"
+msgstr ""
 
 msgid "Search shortcuts"
 msgstr "搜索快捷键"
@@ -2332,6 +2362,12 @@ msgstr "每次都会询问的模板"
 
 msgid "Templates with date, time and cursor"
 msgstr "包含日期、时间和光标位置的模板"
+
+msgid "Test"
+msgstr ""
+
+msgid "Test {}"
+msgstr ""
 
 msgid "Text"
 msgstr "文本"
@@ -2656,6 +2692,12 @@ msgstr "使用第 N 个片段"
 
 msgid "Use the item"
 msgstr "使用该片段"
+
+msgid "Use {}"
+msgstr ""
+
+msgid "Use {} for {}"
+msgstr ""
 
 msgid "User guide"
 msgstr "用户指南"

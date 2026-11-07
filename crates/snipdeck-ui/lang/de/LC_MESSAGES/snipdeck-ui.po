@@ -259,6 +259,9 @@ msgstr "Erstellt am"
 msgid "Cancel"
 msgstr "Abbrechen"
 
+msgid "Cancel the test of {}"
+msgstr ""
+
 msgid "Captured items keep their kind."
 msgstr "Erfasste Textbausteine behalten ihre Art."
 
@@ -330,6 +333,9 @@ msgstr "Zwischenablage später leeren"
 
 msgid "Clear the clipboard sooner"
 msgstr "Zwischenablage früher leeren"
+
+msgid "Clear the search"
+msgstr ""
 
 msgid "Clear the search, then close"
 msgstr "Suche leeren, dann schließen"
@@ -967,6 +973,9 @@ msgstr "Grün"
 msgid "Greet"
 msgstr ""
 
+msgid "Heard it. This shortcut works."
+msgstr ""
+
 msgid "Help"
 msgstr "Hilfe"
 
@@ -1106,6 +1115,9 @@ msgid "Its lists and {} items move to the Trash. You can restore them for {} day
 msgstr "Seine Listen und {} Elemente kommen in den Papierkorb. Du kannst sie {} Tage lang wiederherstellen."
 
 msgid "Joy"
+msgstr ""
+
+msgid "Jump to a section"
 msgstr ""
 
 msgid "Just now"
@@ -1445,6 +1457,9 @@ msgstr "Noch keine Programme. Jedes Programm verwendet Ctrl+V."
 msgid "No recent items"
 msgstr "Keine neuen Textbausteine"
 
+msgid "No settings match"
+msgstr ""
+
 msgid "No shortcut matches"
 msgstr "Kein Kurzbefehl passt"
 
@@ -1480,6 +1495,9 @@ msgstr ""
 
 msgid "Not set"
 msgstr "Nicht festgelegt"
+
+msgid "Not working"
+msgstr ""
 
 msgid "Nothing copied yet"
 msgstr "Noch nichts kopiert"
@@ -1736,6 +1754,9 @@ msgstr "Verlauf anhalten"
 msgid "Pause hotkeys"
 msgstr "Tastenkürzel pausieren"
 
+msgid "Paused"
+msgstr ""
+
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included."
 msgstr "Zahle, was du möchtest, ab A$5, empfohlen sind A$8. Einmalig, und jedes 1.x-Update ist enthalten."
 
@@ -1790,6 +1811,9 @@ msgstr "Drücke Ctrl+N, um einen Textbaustein hinzuzufügen, oder Ctrl+K, um all
 msgid "Press the new shortcut"
 msgstr "Neues Tastenkürzel drücken"
 
+msgid "Press the shortcut now"
+msgstr ""
+
 msgid "Preview"
 msgstr "Vorschau"
 
@@ -1831,6 +1855,9 @@ msgstr ""
 
 msgid "Quit"
 msgstr "Beenden"
+
+msgid "Ready. Press Test to check it."
+msgstr ""
 
 msgid "Rebuild"
 msgstr "Neu aufbauen"
@@ -2042,6 +2069,9 @@ msgstr "Suchen in"
 
 msgid "Search results"
 msgstr "Suchergebnisse"
+
+msgid "Search settings"
+msgstr ""
 
 msgid "Search shortcuts"
 msgstr "Kurzbefehle suchen"
@@ -2339,6 +2369,12 @@ msgstr "Vorlagen mit Abfrage"
 
 msgid "Templates with date, time and cursor"
 msgstr "Vorlagen mit Datum, Uhrzeit und Cursor"
+
+msgid "Test"
+msgstr ""
+
+msgid "Test {}"
+msgstr ""
 
 msgid "Text"
 msgstr "Text"
@@ -2663,6 +2699,12 @@ msgstr "Den n-ten Textbaustein verwenden"
 
 msgid "Use the item"
 msgstr "Textbaustein verwenden"
+
+msgid "Use {}"
+msgstr ""
+
+msgid "Use {} for {}"
+msgstr ""
 
 msgid "User guide"
 msgstr "Benutzerhandbuch"
