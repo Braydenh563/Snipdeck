@@ -5,10 +5,16 @@ reliability and UX work first. PR #5 (`claude/compassionate-pascal-pod8ux`) stay
 Do not merge, tag or run `release.yml`. Version and CHANGELOG already say 1.0.0; keep them, but fix the CHANGELOG
 date at the real release. The owner capped this session at 96% weekly usage; the limit resets 2026-10-24T07:00Z.
 
-## Now (2026-10-26 late, session ended at the context ceiling)
-Testable build 290a263 on `claude/compassionate-pascal-pod8ux`: workspace tests (92 suites), fmt, clippy 1.99.1, doc all clean. Owner told how to test (Quick check: `Test Snipdeck on Windows.bat`, press 1; `run-tests.ps1 -SelfTest` first).
-Done: Panel v2 slices 1-8 + UX-audit fixes, defaults split (`Settings::new_install`), Symbols slices 1-4 (data, crate, recents, save dialog, `symbol_ctl`), Windows Quick check.
-Next, in order: (1) settings-group merge (agent a85f4da5 WIP may sit uncommitted in the tree: settings goldens, editors.rs, settings_window.rs; verify, open goldens, commit); (2) Panel v2 leftovers in `.claude/remaining/panel-v2.md` "Not done / open", then ux-auditor, tick the item; (3) Symbols slices 5-7 (`docs/reviews/symbols-spec.md`); (4) the rest of `.claude/work-order.md`. Agents: 2-hour box, targeted tests, coordinator runs one full check per push. Decisions in `.claude/now.md`. Never merge/release.
+## Now (2026-11-07, hand-off to a new session; finish everything in PR #5)
+Branch `claude/compassionate-pascal-pod8ux`, PR https://github.com/braydenh563/snipdeck/pull/5 (green on 7571b79). Keep all work on this branch and PR; never merge, tag or release.
+State: Panel v2 slices 1-8 + UX-audit fixes, two Panel settings groups (22db7fa), new-install defaults (`Settings::new_install`), Symbols slices 1-4 (data, crate, recents, save dialog, `controller/symbol_ctl.rs`), Windows Quick check (parse error fixed 7571b79; owner is testing it now).
+Queue (`.claude/work-order.md`, 14 open), in order:
+1. Panel v2 leftovers (`.claude/remaining/panel-v2.md` "Not done / open"): 225% chips/tabs, Tab stops count, "Paste stack" menu row, copy glyph contrast on cards, tighter golden tolerance; then ux-auditor; tick the item.
+2. Symbols slices 5-7 (`docs/reviews/symbols-spec.md`, `.claude/remaining/symbols.md`): Panel "Symbols" tab UI, menus/export UI, reviewer on slices 4+6, docs/About link/i18n/Windows steps.
+3. UX audit quick wins (`docs/reviews/ux-gap-audit.md`).
+4. Carry the Panel v2 look to the other windows (spec addendum first).
+5. v1.0.1 items, Recent rich captures, trimmed v1.1, then Final (full gate, ux-auditor + blind-tester, docs, retro).
+Working rules learned: agents 2-hour box, targeted tests, commit per item with named paths; coordinator runs one full check per push in a clean worktree; `CARGO_BUILD_JOBS=1`, `-j1`, shared `CARGO_TARGET_DIR`; watch disk (`df`, delete `/tmp/target-*` when >90%); goldens regenerate with `UPDATE_GOLDEN=1` and must be opened; no PowerShell here, so grep `.ps1` for `"$var:` before pushing wizard edits. Decisions in `.claude/now.md`.
 Owner-only (hook blocks CI edits): release.yml:147 and release-build.yml:49 must also copy `THIRD_PARTY_NOTICES.md` into the zip (MIT/Unicode notices for the bundled emoji, icons, CLDR data); CI step `python3 scripts/symbols.py --check` (see `.claude/remaining/symbols.md`).
 
 ## Session 2026-10-24 (owner away, autonomous; resume here)
