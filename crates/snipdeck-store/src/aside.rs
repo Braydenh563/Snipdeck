@@ -52,7 +52,8 @@ enum Phase {
 struct Marker {
     aside: String,
     phase: Phase,
-    /// The fresh library's fingerprint when the rebuild finished (see [`seal`]).
+    /// Set once the rebuild succeeded (see [`seal`]): the fresh library's fingerprint, kept
+    /// for diagnosis only.
     sealed: Option<String>,
 }
 
@@ -207,8 +208,8 @@ pub fn undo_set_aside(folder: &Path, lock: &FolderLock) -> Result<()> {
     recover(folder, lock)
 }
 
-/// The rebuild succeeded: records the fresh library's fingerprint in the marker (so that a
-/// marker left behind cannot make a later start delete edits made since), then removes the
+/// The rebuild succeeded: seals the marker (so that one left behind is finished, never
+/// undone, by the next start), then removes the
 /// marker, which is the commit point, and then the salvage file.
 pub fn finish_rebuild(folder: &Path, lock: &FolderLock) -> Result<()> {
     check_lock(folder, lock)?;
@@ -262,13 +263,15 @@ pub(crate) fn recover_with(r: &mut dyn Rename, folder: &Path, lock: &FolderLock)
 
     match marker.phase {
         Phase::Moving => {}
+        Phase::Fresh if marker.sealed.is_some() => {
+            // The swap and the import succeeded; only the marker's removal failed. Finish it,
+            // whether or not the library has been written to since. Nothing is deleted.
+            fs::remove_file(&marker_path).map_err(|_| stuck())?;
+            let _ = fs::remove_file(folder.join(SALVAGE));
+            return Ok(());
+        }
         Phase::Fresh => {
             if !aside.join(NAMES[0]).is_file() {
-                return Err(stuck());
-            }
-            // A finished rebuild whose marker could not be removed: the library has been
-            // written to since, so the fresh files hold more than the archives did.
-            if marker.sealed.is_some_and(|s| s != fingerprint(folder)) {
                 return Err(stuck());
             }
             // Only data from the backup and salvage archives: deleting it loses nothing.
@@ -646,34 +649,33 @@ mod tests {
     }
 
     #[test]
-    fn a_marker_left_after_a_finished_rebuild_cannot_delete_later_edits() {
-        let dir = tempfile::tempdir().unwrap();
-        let lock = library(dir.path());
-        set_aside(dir.path(), &lock, STAMP).unwrap();
-        let mut fresh = Store::open_locked(dir.path(), lock).unwrap();
-        add(&mut fresh, "imported", None);
-        let lock = fresh.close().lock.unwrap();
-        seal(dir.path());
-        // The marker could not be removed; the user goes on and edits.
-        let mut fresh = Store::open_locked(dir.path(), lock).unwrap();
-        add(&mut fresh, "after the rebuild", None);
-        drop(fresh);
-        let before = listing(dir.path());
-        let err = Store::open(dir.path()).unwrap_err();
-        assert!(matches!(err, Error::RebuildInterrupted { .. }), "{err}");
-        assert_eq!(listing(dir.path()), before);
-    }
-
-    #[test]
-    fn a_sealed_marker_over_an_unchanged_fresh_library_is_undone() {
-        let dir = tempfile::tempdir().unwrap();
-        let lock = library(dir.path());
-        set_aside(dir.path(), &lock, STAMP).unwrap();
-        let mut fresh = Store::open_locked(dir.path(), lock).unwrap();
-        add(&mut fresh, "imported", None);
-        drop(fresh.close().lock);
-        seal(dir.path());
-        assert_eq!(titles(&Store::open(dir.path()).unwrap()), ["one", "two"]);
+    fn a_sealed_marker_is_finished_at_the_next_open_and_keeps_later_edits() {
+        for edit in [false, true] {
+            let dir = tempfile::tempdir().unwrap();
+            let lock = library(dir.path());
+            set_aside(dir.path(), &lock, STAMP).unwrap();
+            let mut fresh = Store::open_locked(dir.path(), lock).unwrap();
+            add(&mut fresh, "imported", None);
+            let lock = fresh.close().lock.unwrap();
+            seal(dir.path());
+            fs::write(dir.path().join(SALVAGE), b"x").unwrap();
+            // The marker could not be removed; the user goes on.
+            let mut fresh = Store::open_locked(dir.path(), lock).unwrap();
+            if edit {
+                add(&mut fresh, "after the rebuild", None);
+            }
+            drop(fresh);
+            let s = Store::open(dir.path()).unwrap();
+            let want: &[&str] = if edit {
+                &["after the rebuild", "imported"]
+            } else {
+                &["imported"]
+            };
+            assert_eq!(titles(&s), want, "edit={edit}");
+            assert!(!dir.path().join(MARKER).exists());
+            assert!(!dir.path().join(SALVAGE).exists());
+            assert!(dir.path().join(STAMP).join("snipdeck.db").exists());
+        }
     }
 
     #[test]
