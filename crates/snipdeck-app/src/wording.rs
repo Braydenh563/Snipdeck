@@ -266,6 +266,8 @@ where
             Some(DockEdge::Bottom) => 4,
         }),
         ToastMessage::NotRefreshed => t.invoke_not_refreshed(),
+        ToastMessage::IconNotAddable => t.invoke_icon_not_addable(),
+        ToastMessage::IconSaved { name } => t.invoke_icon_saved(name.into()),
     };
     text.into()
 }
