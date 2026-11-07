@@ -51,7 +51,8 @@ pub use import::{
     BoardLayout, ImportOptions, KeySource, MergeStrategy, import_archive, import_archive_path,
 };
 pub use importers::{
-    HistoryEntry, MEMORY_BUDGET, import_copyq_json, import_ditto, import_entries, import_folder,
+    HistoryEntry, MEMORY_BUDGET, import_beeftext, import_copyq_json, import_ditto, import_entries,
+    import_folder,
 };
 pub use limits::{Limits, TEXT_LIMIT};
 pub use plan::Library;
