@@ -14,7 +14,7 @@ started: 2026-11-07 (resumed)
 - [x] Show/hide/move/resize predictability (Reset size then drag broke list layout)
 - [x] Review fixes F (toast rule, library_changed refresh, palette label, Picker docs) + gate + push
 - [x] Panel v2 spec (Opus): D v3 default + layout options + access methods in Settings, research Win+V, Ditto, Raycast, PowerToys Run; docs/reviews/panel-v2-spec.md
-- [ ] Panel v2 build (Sonnet) from the spec, goldens looked at, reviewer + ux-auditor
+- [ ] Panel v2 build: fix audit 2 (docs/reviews/panel-v2-ux-audit-2.md items 1-7, 9; item 8 goes to the shared-look slices), then tick
 - [x] UX gap audit (Opus): docs/reviews/ux-gap-audit.md (d068c9d)
 - [x] Windows quick check: a ~10-minute wizard mode that runs every automatable step itself and asks the owner only for eye checks; one file to send back
 - [ ] UX audit quick wins (audit 2,3,5,9,11,15,18): Recent click pastes; hotkey health with press-to-test + alternatives; template chips insert at caret; onboarding Floating/Docked + Recent offer; Supporter lock badges; Settings search + jump links; Open Picker in tray
