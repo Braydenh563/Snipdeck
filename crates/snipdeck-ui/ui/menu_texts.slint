@@ -22,6 +22,10 @@ export global MenuTexts {
     pure public function app-paste-stack() -> string {
         return @tr("Paste stack");
     }
+    // The disabled row says why (audit 2, item 7): nothing is marked yet.
+    pure public function app-paste-stack-idle() -> string {
+        return @tr("Paste stack (mark items)");
+    }
     pure public function app-dock() -> string {
         return @tr("Dock to the nearest edge");
     }
@@ -42,6 +46,9 @@ export global MenuTexts {
     }
     pure public function app-pause-hotkeys() -> string {
         return @tr("Pause hotkeys");
+    }
+    pure public function app-keep-on-top() -> string {
+        return @tr("Keep panel on top");
     }
     pure public function app-show-numbers() -> string {
         return @tr("Show numbers");

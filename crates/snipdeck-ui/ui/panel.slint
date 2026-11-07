@@ -458,6 +458,11 @@ export component PanelWindow inherits Window {
     // How far the header's boxes and glyphs follow the Windows text size: the header is 40 at 100 % and grows with its text,
     // but 32px boxes with the glyph at the full 2.25 would not fit it, so they stop at 1.25 (audit 5).
     property <float> chrome-k: min(SystemLook.text-scale, 1.25);
+    // One glyph scale for the header's icons (the row actions and the eye use the same cap): the glyphs follow the text size
+    // to 1.75 inside their boxes (audit 2, item 4).
+    property <float> glyph-k: min(SystemLook.text-scale, 1.75);
+    // From 1.5 the header has no room for Keep on top as well: it moves into the More menu (audit 2, item 1).
+    out property <bool> pin-in-menu: SystemLook.text-scale >= 1.5;
     property <bool> new-icon-only: root.narrow || root.lists-in-menu;
     property <string> switcher-list: !root.lists-in-menu ? "" : root.recent-open ? @tr("Recent") : root.tabs[root.current-tab].text;
 
@@ -497,16 +502,18 @@ export component PanelWindow inherits Window {
     property <length> layout-row-h: root.row-h-of(root.eff-layout);
     property <length> tabs-h: root.lists-in-menu ? 0px : Space.s8;
     property <length> footer-h: max(Space.s8, Type.line-sm + Space.s3);
+    // The "New item" row floats over the foot of the list (audit 2, item 2): the List minimum keeps it clear of the third row.
+    property <length> quick-h: Space.hit + Space.s1;
     // Three rows (one row of tiles in Cards) between the header and the footer, 8 clear above and below; never under 240.
     out property <length> min-h: max(240px, root.header-h + root.tabs-h + Space.s2
         + (root.layout == PanelLayout.cards ? 1 : 3) * root.row-h-of(root.layout)
-        + (root.layout == PanelLayout.list ? 2 * Space.s1 : 0px)
+        + (root.layout == PanelLayout.list ? 2 * Space.s1 + root.quick-h : 0px)
         + Space.s2 + root.footer-h);
     // The pinned strip (36) goes when the list under it would show fewer than two rows (one row of tiles in Cards).
     // Set by update-pins() from `changed` handlers (reading `root.height` in a binding would loop with the layout).
     property <bool> pins-fit: true;
     function update-pins() {
-        root.pins-fit = root.height - root.header-h - root.tabs-h - Space.s8 - Space.s1 - root.footer-h - Space.s2
+        root.pins-fit = root.height - root.header-h - root.tabs-h - Space.s8 - Space.s1 - root.footer-h - Space.s2 - root.quick-h
             >= (root.eff-layout == PanelLayout.cards ? 1 : 2) * root.layout-row-h + root.row-gap;
     }
     changed height => { root.update-pins(); }
@@ -1281,8 +1288,8 @@ export component PanelWindow inherits Window {
                             // With a list name beside the board the picker takes the room the spacer would leave.
                             horizontal-stretch: root.lists-in-menu ? 1 : 0;
                             min-h: Space.s8;
-                            // The board's name elides, never below about six characters.
-                            min-width: 69px;
+                            // The board's name elides, never below about six characters (the room follows the text size).
+                            min-width: 69px * SystemLook.text-scale;
                             board-name: root.board-name;
                             list-name: root.switcher-list;
                             menu-open: root.board-menu-open;
@@ -1295,7 +1302,7 @@ export component PanelWindow inherits Window {
                             icon: Icons.magnifying-glass;
                             size: IconButtonSize.sm;
                             side-override: Space.s8 * root.chrome-k;
-                            glyph-scale: root.chrome-k;
+                            glyph-scale: root.glyph-k;
                             tooltip: @tr("Search (Ctrl+F)");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.open-search(); }
@@ -1332,7 +1339,7 @@ export component PanelWindow inherits Window {
                                 Icon {
                                     source: Icons.plus;
                                     tint: Theme.text-primary;
-                                    size: Space.s4 * root.chrome-k;
+                                    size: Space.s4 * root.glyph-k;
                                     y: (parent.height - self.height) / 2;
                                 }
                                 if !root.new-icon-only: Text {
@@ -1382,11 +1389,11 @@ export component PanelWindow inherits Window {
                         }
                         // Always-on-top toggle: the Phosphor pushpin (owner preferred it to the flat tack); its
                         // tooltip and checked state say "Keep panel on top".
-                        pin := IconButton {
+                        if !root.pin-in-menu: pin := IconButton {
                             icon: Icons.push-pin;
                             size: IconButtonSize.sm;
                             side-override: Space.s8 * root.chrome-k;
-                            glyph-scale: root.chrome-k;
+                            glyph-scale: root.glyph-k;
                             tooltip: @tr("Keep panel on top");
                             active: root.on-top;
                             accessible-checkable: true;
@@ -1403,7 +1410,7 @@ export component PanelWindow inherits Window {
                             icon: Icons.dots-three-bold;
                             size: IconButtonSize.sm;
                             side-override: Space.s8 * root.chrome-k;
-                            glyph-scale: root.chrome-k;
+                            glyph-scale: root.glyph-k;
                             tooltip: @tr("More");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.app-menu-requested(); }
@@ -1414,7 +1421,7 @@ export component PanelWindow inherits Window {
                             icon: Icons.x;
                             size: IconButtonSize.sm;
                             side-override: Space.s8 * root.chrome-k;
-                            glyph-scale: root.chrome-k;
+                            glyph-scale: root.glyph-k;
                             tooltip: @tr("Close panel (Esc)");
                             y: (parent.height - self.height) / 2;
                             clicked => { root.close-requested(); }
@@ -2111,6 +2118,28 @@ export component PanelWindow inherits Window {
                             horizontal-stretch: 1;
                             min-width: 0px;
                             property <string> how: @tr("Click or Enter pastes. Shift+click or Shift+Enter copies.");
+                            // No results: the whole sentence fits in the room (measured by `m-full`); else the list's name goes.
+                            // Set from `changed` handlers: the width follows the layout, so a binding on it would loop.
+                            property <bool> names-list: true;
+                            property <length> full-w: m-full.preferred-width;
+                            function update-names() {
+                                self.names-list = self.width - max(20px, m-cap.preferred-width + 2 * Space.s1 + 2px) - (Space.s1 + Space.s0-5) >= self.full-w;
+                            }
+                            changed width => { self.update-names(); }
+                            changed full-w => { self.update-names(); }
+                            m-full := Text {
+                                visible: false;
+                                text: @tr("creates “{}” in {}", root.query, root.add-list-name);
+                                font-family: Fonts.sans;
+                                font-size: Type.sm;
+                            }
+                            m-cap := Text {
+                                visible: false;
+                                text: "Enter";
+                                font-family: Fonts.mono;
+                                font-size: Type.xs;
+                                font-weight: Type.medium;
+                            }
                             status-touch := TouchArea {
                                 mouse-cursor: MouseCursor.default;
                                 changed has-hover => {
@@ -2137,11 +2166,20 @@ export component PanelWindow inherits Window {
                                     size: Space.s4 * SystemLook.text-scale;
                                     y: (parent.height - self.height) / 2;
                                 }
-                                // No results: the footer says what Enter does (spec 2.6): one translatable sentence.
+                                // No results: the footer says what Enter does (spec 2.6): the Enter keycap, then "creates “q” in List",
+                                // or without " in List" when that would not fit (the empty state already names the list).
+                                if root.rows.length == 0 && root.searching: Rectangle {
+                                    width: enter-cap.min-width;
+                                    enter-cap := Keycap {
+                                        text: "Enter";
+                                        strong: true;
+                                        y: (parent.height - self.height) / 2;
+                                    }
+                                }
                                 if root.rows.length == 0 && root.searching: Text {
                                     horizontal-stretch: 1;
                                     min-width: 0px;
-                                    text: @tr("Enter creates “{}” in {}", root.query, root.add-list-name);
+                                    text: status.names-list ? @tr("creates “{}” in {}", root.query, root.add-list-name) : @tr("creates “{}”", root.query);
                                     font-family: Fonts.sans;
                                     font-size: Type.sm;
                                     color: Theme.text-secondary;
@@ -2311,6 +2349,8 @@ export component PanelWindow inherits Window {
         if root.app-menu-open: Menu {
             x: min(max(Space.s2, kebab.absolute-position.x + kebab.width - self.width), root.width - self.width - Space.s2);
             y: root.header-h - Space.s1;
+            // Inside the window at any height: a taller menu scrolls.
+            menu-max-h: root.height - (root.header-h - Space.s1) - Space.s2;
             entries: root.app-menu-entries;
             label: @tr("Panel menu");
             init => { self.focus-menu(); }

@@ -12,6 +12,8 @@ export struct MenuEntry {
     destructive: bool,
     disabled: bool,
     separator: bool,
+    // Not drawn, not selectable, not counted (the host keeps the row's index stable and decides per open).
+    hidden: bool,
 }
 
 // DESIGN.md §4 MenuItem: 28px row with an optional icon, label and shortcut keycap. `current` is the
@@ -109,6 +111,8 @@ export component Menu inherits Rectangle {
     in property <bool> icons: true;
     // Highlighted row (-1 = none).
     in-out property <int> current: -1;
+    // The tallest the menu may be; a taller one scrolls (the Panel keeps it inside its window).
+    in property <length> menu-max-h: 100000px;
     callback activated(int);
     callback dismissed();
 
@@ -119,7 +123,7 @@ export component Menu inherits Rectangle {
     // Separators before row `i`. Slint has no loop, so this adds up the first 24 entries; a menu is never longer
     // than that, and an entry past the end reads as "not a separator".
     pure function separators-before(i: int) -> int {
-        return (i > 0 && root.entries[0].separator ? 1 : 0) + (i > 1 && root.entries[1].separator ? 1 : 0) + (i > 2 && root.entries[2].separator ? 1 : 0) + (i > 3 && root.entries[3].separator ? 1 : 0) + (i > 4 && root.entries[4].separator ? 1 : 0) + (i > 5 && root.entries[5].separator ? 1 : 0) + (i > 6 && root.entries[6].separator ? 1 : 0) + (i > 7 && root.entries[7].separator ? 1 : 0) + (i > 8 && root.entries[8].separator ? 1 : 0) + (i > 9 && root.entries[9].separator ? 1 : 0) + (i > 10 && root.entries[10].separator ? 1 : 0) + (i > 11 && root.entries[11].separator ? 1 : 0) + (i > 12 && root.entries[12].separator ? 1 : 0) + (i > 13 && root.entries[13].separator ? 1 : 0) + (i > 14 && root.entries[14].separator ? 1 : 0) + (i > 15 && root.entries[15].separator ? 1 : 0) + (i > 16 && root.entries[16].separator ? 1 : 0) + (i > 17 && root.entries[17].separator ? 1 : 0) + (i > 18 && root.entries[18].separator ? 1 : 0) + (i > 19 && root.entries[19].separator ? 1 : 0) + (i > 20 && root.entries[20].separator ? 1 : 0) + (i > 21 && root.entries[21].separator ? 1 : 0) + (i > 22 && root.entries[22].separator ? 1 : 0) + (i > 23 && root.entries[23].separator ? 1 : 0);
+        return (i > 0 && (root.entries[0].separator || root.entries[0].hidden) ? 1 : 0) + (i > 1 && (root.entries[1].separator || root.entries[1].hidden) ? 1 : 0) + (i > 2 && (root.entries[2].separator || root.entries[2].hidden) ? 1 : 0) + (i > 3 && (root.entries[3].separator || root.entries[3].hidden) ? 1 : 0) + (i > 4 && (root.entries[4].separator || root.entries[4].hidden) ? 1 : 0) + (i > 5 && (root.entries[5].separator || root.entries[5].hidden) ? 1 : 0) + (i > 6 && (root.entries[6].separator || root.entries[6].hidden) ? 1 : 0) + (i > 7 && (root.entries[7].separator || root.entries[7].hidden) ? 1 : 0) + (i > 8 && (root.entries[8].separator || root.entries[8].hidden) ? 1 : 0) + (i > 9 && (root.entries[9].separator || root.entries[9].hidden) ? 1 : 0) + (i > 10 && (root.entries[10].separator || root.entries[10].hidden) ? 1 : 0) + (i > 11 && (root.entries[11].separator || root.entries[11].hidden) ? 1 : 0) + (i > 12 && (root.entries[12].separator || root.entries[12].hidden) ? 1 : 0) + (i > 13 && (root.entries[13].separator || root.entries[13].hidden) ? 1 : 0) + (i > 14 && (root.entries[14].separator || root.entries[14].hidden) ? 1 : 0) + (i > 15 && (root.entries[15].separator || root.entries[15].hidden) ? 1 : 0) + (i > 16 && (root.entries[16].separator || root.entries[16].hidden) ? 1 : 0) + (i > 17 && (root.entries[17].separator || root.entries[17].hidden) ? 1 : 0) + (i > 18 && (root.entries[18].separator || root.entries[18].hidden) ? 1 : 0) + (i > 19 && (root.entries[19].separator || root.entries[19].hidden) ? 1 : 0) + (i > 20 && (root.entries[20].separator || root.entries[20].hidden) ? 1 : 0) + (i > 21 && (root.entries[21].separator || root.entries[21].hidden) ? 1 : 0) + (i > 22 && (root.entries[22].separator || root.entries[22].hidden) ? 1 : 0) + (i > 23 && (root.entries[23].separator || root.entries[23].hidden) ? 1 : 0);
     }
 
     // Position of row `i` among the actions (separators are not items), and the number of actions.
@@ -131,7 +135,7 @@ export component Menu inherits Rectangle {
     }
 
     pure function selectable(i: int) -> bool {
-        return i >= 0 && i < root.entries.length && !root.entries[i].separator && !root.entries[i].disabled;
+        return i >= 0 && i < root.entries.length && !root.entries[i].separator && !root.entries[i].hidden && !root.entries[i].disabled;
     }
 
     // First selectable row after `from` in direction `dir` (+1 or -1), or -1.
@@ -167,7 +171,7 @@ export component Menu inherits Rectangle {
     property <length> key-w: key-measure.preferred-width;
     width: min(max(180px, root.text-w + (root.key-w > 0px ? root.key-w + 2 * Space.s1 + 2px + Space.s2 : 0px)
         + (root.icons ? 16px + Space.s2 : 0px) + 2 * Space.s2 + 2 * Space.s1 + 2px), 320px);
-    height: lay.preferred-height;
+    height: min(lay.preferred-height, root.menu-max-h);
     background: Theme.bg-overlay;
     border-radius: Radius.lg;
     border-width: 1px;
@@ -228,17 +232,30 @@ export component Menu inherits Rectangle {
         }
     }
 
+    flick := Flickable {
+        content-height: lay.preferred-height;
+        content-width: self.width;
     lay := VerticalLayout {
+        width: parent.width;
+        height: self.preferred-height;
         padding: Space.s1;
         alignment: start;
         for entry[i] in root.entries: Rectangle {
-            height: entry.separator ? Space.s2 + 1px : max(Space.hit, Type.line-base + Space.s2);
+            height: entry.hidden ? 0px : entry.separator ? Space.s2 + 1px : max(Space.hit, Type.line-base + Space.s2);
+            // Keyboard moves keep the highlighted row inside a scrolled menu.
+            property <bool> cur: root.current == i;
+            changed cur => {
+                if (self.cur) {
+                    if (self.y + flick.content-y < 0px) { flick.content-y = -self.y; }
+                    if (self.y + self.height + flick.content-y > flick.height) { flick.content-y = flick.height - self.y - self.height; }
+                }
+            }
             if entry.separator: Rectangle {
                 y: (parent.height - self.height) / 2;
                 height: 1px;
                 background: Theme.border-subtle;
             }
-            if !entry.separator: MenuItem {
+            if !entry.separator && !entry.hidden: MenuItem {
                 text: entry.text;
                 icon: entry.icon;
                 shortcut: entry.shortcut;
@@ -254,3 +271,4 @@ export component Menu inherits Rectangle {
         }
     }
 }
+    }

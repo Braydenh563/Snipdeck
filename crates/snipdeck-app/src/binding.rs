@@ -1341,10 +1341,14 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
 /// the hotkeys are paused.
 fn render_app_menu(window: &ui::PanelWindow, view: &View) {
     let check = window.global::<ui::Icons<'_>>().get_check();
+    let pin_in_menu = window.get_pin_in_menu();
     let entries = view.app_menu.iter().flatten().map(|&entry| ui::MenuEntry {
         text: match entry {
             AppMenuEntry::Undo => wording::undo_tip(window, view.history.undo).into(),
             AppMenuEntry::Redo => wording::redo_tip(window, view.history.redo).into(),
+            AppMenuEntry::PasteStack if view.stack.is_none() => {
+                wording::paste_stack_idle_text(window).into()
+            }
             _ => wording::app_menu_text(window, entry, view.docked, view.dock_target).into(),
         },
         disabled: (entry == AppMenuEntry::Undo && view.history.undo.is_none())
@@ -1353,6 +1357,7 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
         icon: if (entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused)
             || (entry == AppMenuEntry::PasteStack && view.stack.as_ref().is_some_and(|s| s.running))
             || (entry == AppMenuEntry::ShowNumbers && view.show_numbers)
+            || (entry == AppMenuEntry::KeepOnTop && view.on_top)
         {
             check.clone()
         } else {
@@ -1360,6 +1365,8 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
         },
         shortcut: wording::app_menu_shortcut(entry).into(),
         separator: entry == AppMenuEntry::Separator,
+        // The header's pin is there below 150 % text: the row would only repeat it.
+        hidden: entry == AppMenuEntry::KeepOnTop && !pin_in_menu,
         ..Default::default()
     });
     window.set_app_menu_entries(model(entries));

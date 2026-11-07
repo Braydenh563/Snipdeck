@@ -961,7 +961,7 @@ fn click_at(window: &slint::Window, position: slint::LogicalPosition) {
 const MENU_ROWS: [&str; 17] = [
     "Nothing to undo",
     "Nothing to redo",
-    "Paste stack",
+    "Paste stack (mark items)",
     "Dock to the nearest edge",
     "Keyboard shortcuts",
     "All commands\u{2026}",
@@ -979,7 +979,7 @@ const MENU_ROWS: [&str; 17] = [
 ];
 
 fn open_menu(r: &Rig) {
-    r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+    r.window().set_size(slint::LogicalSize::new(320.0, 560.0));
     slint::platform::update_timers_and_animations();
     click(r.window(), &r.button("More"));
     assert!(r.ui.get_app_menu_open(), "the kebab click opened the menu");
@@ -1006,7 +1006,7 @@ fn the_kebab_menu_is_a_list_of_the_expected_rows_with_a_name_and_positions() {
             );
             assert_eq!(
                 row.accessible_enabled(),
-                Some(!label.starts_with("Nothing to") && *label != "Paste stack"),
+                Some(!label.starts_with("Nothing to") && !label.starts_with("Paste stack")),
                 "{label}: Undo and Redo are really disabled while there is nothing to take back, \
                  Paste stack while nothing is marked"
             );
@@ -1020,7 +1020,7 @@ fn the_menu_is_still_open_after_the_pointer_moves_into_it_and_away_from_the_butt
     // appears, and when I go to click it it disappears". What appeared was the tooltip.
     on_ui_thread(|| {
         let r = rig();
-        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        r.window().set_size(slint::LogicalSize::new(320.0, 560.0));
         slint::platform::update_timers_and_animations();
 
         // Hovering shows the tooltip "More" (and nothing else).

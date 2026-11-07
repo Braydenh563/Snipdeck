@@ -1319,13 +1319,70 @@ ui_tests! {
     fn the_smallest_window_depends_on_the_layout_and_the_lists_switcher() {
         let (ui, _log) = start();
         let min = |ui: &PanelWindow| ui.get_min_h();
-        assert!((min(&ui) - 296.0).abs() < 0.5, "List: {}", min(&ui));
+        // 296 plus the 32px "New item" row that floats over the foot of the list (audit 2, item 2).
+        assert!((min(&ui) - 328.0).abs() < 0.5, "List: {}", min(&ui));
         ui.set_layout(PanelLayout::Compact);
         assert!((min(&ui) - 240.0).abs() < 0.5, "Compact: {}", min(&ui));
         ui.set_layout(PanelLayout::Cards);
         assert!((min(&ui) - 240.0).abs() < 0.5, "Cards: {}", min(&ui));
         ui.set_layout(PanelLayout::List);
-        assert!((min(&ui) - 296.0).abs() < 0.5);
+        assert!((min(&ui) - 328.0).abs() < 0.5);
+    }
+
+    fn at_the_minimum_height_two_rows_show_whole_with_the_pins_and_three_without_clear_of_new_item() {
+        for (pins, wanted) in [(true, 2), (false, 3)] {
+            let (ui, _log) = start();
+            ui.set_add_list_name("Work".into());
+            if !pins {
+                set_pinned(&ui, Vec::new());
+            }
+            ui.window().set_size(slint::LogicalSize::new(320.0, ui.get_min_h()));
+            settle();
+            let add = find(&ui, "New item in Work", AccessibleRole::Button);
+            let limit = add.absolute_position().y + 0.5;
+            let whole = rows(&ui)
+                .iter()
+                .filter(|r| r.absolute_position().y + r.size().height <= limit && r.absolute_position().y >= 0.0)
+                .count();
+            assert!(whole >= wanted, "pins {pins}: {whole} whole rows above New item (wanted {wanted})");
+        }
+    }
+
+    fn the_disabled_paste_stack_row_says_why_and_the_fixture_checks_the_two_toggles() {
+        let (ui, _log) = start();
+        ui.set_app_menu_open(true);
+        settle();
+        let stack = find(&ui, "Paste stack (mark items)", AccessibleRole::ListItem);
+        assert_eq!(stack.accessible_enabled(), Some(false));
+        assert!(missing(&ui, "Keep panel on top", AccessibleRole::ListItem), "no duplicate of the header pin at 100 %");
+    }
+
+    fn the_app_menu_stays_inside_the_window_at_560_and_at_the_minimum_height() {
+        for height in [560.0_f32, 328.0] {
+            let (ui, _log) = start();
+            ui.window().set_size(slint::LogicalSize::new(320.0, height));
+            ui.set_app_menu_open(true);
+            settle();
+            let menu = find(&ui, "Panel menu", AccessibleRole::List);
+            let bottom = |e: &ElementHandle| e.absolute_position().y + e.size().height;
+            assert!(bottom(&menu) <= height + 0.5, "{height}: menu bottom {} past the window", bottom(&menu));
+            // End highlights the last row; a scrolled menu brings it in.
+            press(ui.window(), &key(Key::End));
+            settle();
+            let quit = find(&ui, "Quit", AccessibleRole::ListItem);
+            assert!(bottom(&quit) <= bottom(&menu) + 0.5 && bottom(&quit) <= height, "{height}: Quit bottom {} (menu {})", bottom(&quit), bottom(&menu));
+            assert!(quit.absolute_position().y >= menu.absolute_position().y, "{height}: Quit is not above the menu");
+        }
+    }
+
+    fn from_150_percent_keep_on_top_leaves_the_header_for_the_menu() {
+        let (ui, _log) = start();
+        assert!(!missing(&ui, "Keep panel on top", AccessibleRole::Button), "100 %: the header button");
+        assert!(!ui.get_pin_in_menu());
+        ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(1.5);
+        settle();
+        assert!(ui.get_pin_in_menu());
+        assert!(missing(&ui, "Keep panel on top", AccessibleRole::Button), "1.5: moved into More");
     }
 
     fn every_layout_reports_a_row_tooltip_and_closes_it_when_the_rows_change() {
@@ -1507,7 +1564,7 @@ ui_tests! {
     fn the_smallest_window_loses_the_tab_rows_32_with_the_menu_switcher() {
         let (ui, _log) = start();
         ui.set_lists_in_menu(true);
-        assert!((ui.get_min_h() - 264.0).abs() < 0.5, "List: {}", ui.get_min_h());
+        assert!((ui.get_min_h() - 296.0).abs() < 0.5, "List: {}", ui.get_min_h());
         ui.set_layout(PanelLayout::Compact);
         assert!((ui.get_min_h() - 240.0).abs() < 0.5, "Compact never goes under 240: {}", ui.get_min_h());
         ui.set_layout(PanelLayout::Cards);
