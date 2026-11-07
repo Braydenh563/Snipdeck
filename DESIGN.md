@@ -162,7 +162,7 @@ count; single select; choosing it again or "Clear filter" clears it).
 
 ## 4. Components
 
-Icons: **Phosphor (Regular)**, MIT licence, 16px in rows and 20px in toolbars. This is the only icon family. No emoji as icons, and no hand-drawn paths.
+Icons: **Phosphor (Regular)**, MIT licence, 16px in rows and 20px in toolbars. This is the only icon family. No emoji as icons, and no hand-drawn paths. Emoji are content in the Panel's Symbols tab, never UI chrome.
 
 **Icon vocabulary.** One meaning per glyph, one glyph per meaning; Windows (Fluent) conventions win over Android ones.
 
@@ -230,6 +230,7 @@ Every icon-only control has a tooltip and an accessible label with the same word
 | Dialog | title, body, actions | Confirm, licence, import | default · destructive |
 | PlanTable | feature + one-line description, Free and Supporter columns | Settings > Licence and the Get Supporter dialog | tick (success-fg) or cross (text-secondary) with a note ("up to 5"); each row's accessible description says "Free: Included. Supporter: Not included." so state is never colour alone |
 | EditorToolbar | IconButtons, Menu | Text transforms / image tools | text · image |
+| **Symbols cell** | glyph (emoji or icon art, 24px) or kaomoji chip text (13px) | One emoji, icon or kaomoji in the Panel's Symbols grid | emoji / icon: 40×40 hit box · kaomoji chip: 2 per row, 36px high, a wide kaomoji takes the full row; radius 6; rest (transparent) · hover (`bg-hover`) · selected (`bg-selected`) · keyboard focus (2px `focus-ring`, drawn while the search field has focus) |
 
 ### Patterns / templates
 **Panel** · **Picker** · **Main window (3-pane)** · **Text editor** · **Image editor** ·
@@ -317,6 +318,7 @@ Layering: window → cards → lifted (drag) → popovers/menus → toasts → c
 - No status dots in front of every item, and no coloured left-border cards (except the 4px item label bar the user sets themselves; never automatic, never on list colour). No decorative eyebrows or version badges in the UI.
 - Don't mix shadow grammars: no hard offsets, and no heavy shadows in dark mode.
 - Never make the panel louder than the user's app: no animated attention-seekers and no badges for unread history.
+- No emoji as UI icons: emoji appear only as Symbols-tab content, never as chrome.
 - No radii outside 4 / 6 / 8, and no font sizes outside the type scale.
 
 ## 8. Responsive (window sizing)

@@ -8,6 +8,7 @@ date at the real release. The owner capped this session at 96% weekly usage; the
 ## Now (2026-11-07, hand-off to a new session; finish everything in PR #5)
 Branch `claude/compassionate-pascal-pod8ux`, PR https://github.com/braydenh563/snipdeck/pull/5 (green on 7571b79). Keep all work on this branch and PR; never merge, tag or release.
 State: Panel v2 slices 1-8 + UX-audit fixes, two Panel settings groups (22db7fa), new-install defaults (`Settings::new_install`), Symbols slices 1-4 (data, crate, recents, save dialog, `controller/symbol_ctl.rs`), Windows Quick check (parse error fixed 7571b79; owner is testing it now).
+Symbols slice 7 docs landed (DESIGN.md, SPEC.md 5.1, Windows Quick check steps 13-18); the Save as UI, context menu and "Show Symbols tab" setting (slice 6) are not built.
 Queue (`.claude/work-order.md`, 14 open), in order:
 1. Panel v2 leftovers (`.claude/remaining/panel-v2.md` "Not done / open"): 225% chips/tabs, Tab stops count, "Paste stack" menu row, copy glyph contrast on cards, tighter golden tolerance; then ux-auditor; tick the item.
 2. Symbols slices 5-7 (`docs/reviews/symbols-spec.md`, `.claude/remaining/symbols.md`): Panel "Symbols" tab UI, menus/export UI, reviewer on slices 4+6, docs/About link/i18n/Windows steps.

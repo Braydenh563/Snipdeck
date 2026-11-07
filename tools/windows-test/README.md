@@ -21,7 +21,8 @@ what happened), **S** skip. Results go to the same place and format as the full 
 | 8 | Settings: Lists = Menu (board-name menu switcher) | - |
 | 9 | Show the Panel in the taskbar and Alt+Tab: the paste goes to the window you were in before | - |
 | 10-11 | Dock to the taskbar's edge (the screen says which edge); the Panel stays clear of the taskbar | Measures the Panel against the screen's work area |
-| 12 | Render diagnostic | Runs `diag-render.ps1 -Quick` (render checks only, about 3 minutes, a few yes/no questions), shows the path of the file it saves on the Desktop and puts a copy in the results zip |
+| 13-18 | Symbols tab: paste 😀 and 👩‍💻 into Notepad and Word; kaomoji glyphs (box-drawing, CJK); Copy PNG into Word and Paint (transparency); the Save as dialog (no menu yet, skip with S); grid sharpness at 125% and 150%; flags paste as letter pairs | - |
+| 19 | Render diagnostic | Runs `diag-render.ps1 -Quick` (render checks only, about 3 minutes, a few yes/no questions), shows the path of the file it saves on the Desktop and puts a copy in the results zip |
 
 Steps 1, 3 and 11 are tried by the wizard first (mouse and keyboard move for a few seconds; hold Esc to stop). A
 check it cannot judge becomes the normal screen for you. The steps are in `tests\quick-check.json` (flag `qc`;
