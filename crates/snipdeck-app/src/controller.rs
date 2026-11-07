@@ -311,7 +311,9 @@ struct Session {
     /// counted as heard instead of doing its job.
     hotkey_test: Option<HotkeyAction>,
     /// Which shortcuts were heard during a test, in the order of [`HotkeyAction::ALL`].
-    hotkeys_heard: [bool; 4],
+    /// A fingerprint of the chord each shortcut had when the "press it now" test heard it; a
+    /// changed chord is untested again.
+    hotkeys_heard: [Option<u64>; 4],
     /// "Pause history" is on: the Recent inbox collects nothing until Snipdeck restarts.
     history_paused: bool,
     /// The Panel's clock tab is the one selected.
@@ -597,11 +599,23 @@ where
             HotkeyHealth::Paused
         } else if let Some(problem) = self.hotkey_problem(action) {
             HotkeyHealth::Failed(problem.failure)
-        } else if self.session.hotkeys_heard[Self::heard_slot(action)] {
+        } else if self.session.hotkeys_heard[Self::heard_slot(action)]
+            == Some(Self::chord_print(chord_text(
+                &self.settings.hotkeys,
+                action,
+            )))
+        {
             HotkeyHealth::Heard
         } else {
             HotkeyHealth::Ready
         }
+    }
+
+    fn chord_print(chord: &str) -> u64 {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        chord.to_ascii_lowercase().hash(&mut hasher);
+        hasher.finish()
     }
 
     fn heard_slot(action: HotkeyAction) -> usize {
@@ -615,7 +629,7 @@ where
     /// its job (so testing the Panel shortcut does not hide the Panel, nor Capture save the
     /// clipboard). Starting a test forgets an earlier result for it.
     pub fn start_hotkey_test(&mut self, action: HotkeyAction) {
-        self.session.hotkeys_heard[Self::heard_slot(action)] = false;
+        self.session.hotkeys_heard[Self::heard_slot(action)] = None;
         self.session.hotkey_test = Some(action);
     }
 
@@ -677,7 +691,9 @@ where
         // "Press it now": the press proves the chord arrives, and does nothing else.
         if self.session.hotkey_test == Some(action) {
             self.session.hotkey_test = None;
-            self.session.hotkeys_heard[Self::heard_slot(action)] = true;
+            self.session.hotkeys_heard[Self::heard_slot(action)] = Some(Self::chord_print(
+                crate::hotkey_health::chord_text(&self.settings.hotkeys, action),
+            ));
             return Vec::new();
         }
         match action {

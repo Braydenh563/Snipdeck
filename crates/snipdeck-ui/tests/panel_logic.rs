@@ -2416,6 +2416,8 @@ ui_tests! {
         let (copied, removed) = (log.clone(), log.clone());
         ui.on_recent_copied(move |i| copied.borrow_mut().push(format!("rcopy:{i}")));
         ui.on_recent_deleted(move |i| removed.borrow_mut().push(format!("rdel:{i}")));
+        let used = log.clone();
+        ui.on_recent_used(move |i| used.borrow_mut().push(format!("ruse:{i}")));
         ui.set_recent_available(true);
         ui.set_recent_rows(ModelRc::new(VecModel::from(vec![
             RecentRow { id: 1, preview: "one".into(), app: "".into(), age_minutes: 1 },
@@ -2431,6 +2433,7 @@ ui_tests! {
         press(ui.window(), &key(Key::DownArrow));
         assert_eq!(ui.get_recent_selected(), 1, "clamped at the last entry");
         press(ui.window(), &key(Key::Return));
+        chord(ui.window(), &[Key::Shift], &key(Key::Return));
         press(ui.window(), &key(Key::Delete));
         press(ui.window(), &key(Key::F2));
         press(ui.window(), "1");
@@ -2440,7 +2443,8 @@ ui_tests! {
         settle();
         // The digit is search text only with a query; here it must not use an item either.
         let seen = take(&log);
-        assert!(seen.contains(&"rcopy:2".to_string()), "{seen:?}");
+        assert!(seen.contains(&"ruse:2".to_string()), "Enter pastes: {seen:?}");
+        assert!(seen.contains(&"rcopy:2".to_string()), "Shift+Enter copies: {seen:?}");
         assert!(seen.contains(&"rdel:2".to_string()), "{seen:?}");
         for line in &seen {
             assert!(
