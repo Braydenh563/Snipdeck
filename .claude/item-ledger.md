@@ -38,3 +38,4 @@ date | item | type | rung | rework | note
 2026-11-07 | v1.1 importers backend | feature | sonnet | 0 | 
 2026-11-07 | Symbols slice 5 Panel tab + save-as review fixes | ui | sonnet | 2 | 
 2026-11-07 | Translations of 110 new strings x6 | docs | sonnet | 0 | 
+2026-11-07 | Importer hardening H2/M7/M8 | security | sonnet | 0 | 

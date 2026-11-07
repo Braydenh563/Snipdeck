@@ -7,7 +7,7 @@ App (next builder, with Symbols slice 6):
 - M6 save extension: append the kind's extension only when missing; never rewrite an accepted name (symbol_ctl.rs:192).
 - L10 alternatives() ignores action (hotkey_health.rs:51): drop the param or use it.
 - L9 Recent default-on + preselected Yes in the tour: decided 2026-10-26 (on by default); tour wording should say "on; turn off here" -> keep, wording check.
-Portable (light agent):
+Portable (light agent): DONE 4463cca b8516b4 6aa822c
 - H2 Espanso date format injects placeholders (espanso.rs:477): refuse { or } in formats / require exactly one Datetime part; test.
 - M7 csvtable.rs:37-90 no cells-per-row cap: cap 256, skip rest; test.
 - M8 espanso.rs:97-105 no total byte budget across files; read_file uses uncapped fs::read after metadata check (:206): running budget + read_capped; test.
