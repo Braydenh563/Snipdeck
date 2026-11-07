@@ -579,13 +579,13 @@ fn a_hotkey_is_ready_until_the_test_hears_it_and_the_press_does_nothing_else() {
     w.ctl.start_hotkey_test(HotkeyAction::TogglePanel);
     assert_eq!(w.ctl.hotkey_test(), Some(HotkeyAction::TogglePanel));
     // Another shortcut is not the one asked for: it works as usual.
-    assert!(w.ctl.on_hotkey(HotkeyAction::Picker).is_empty());
+    assert_eq!(w.ctl.on_hotkey(HotkeyAction::Picker), []);
     assert_eq!(
         w.ctl.hotkey_health(HotkeyAction::TogglePanel),
         HotkeyHealth::Ready
     );
     // The asked-for one is heard and swallowed: the Panel stays.
-    assert!(w.ctl.on_hotkey(HotkeyAction::TogglePanel).is_empty());
+    assert_eq!(w.ctl.on_hotkey(HotkeyAction::TogglePanel), []);
     assert!(w.ctl.visible(), "the test press did not hide the Panel");
     assert_eq!(w.ctl.hotkey_test(), None);
     assert_eq!(
@@ -630,6 +630,6 @@ fn a_failed_or_paused_hotkey_cannot_be_heard() {
     );
     // A press queued before the pause is ignored, even during a test.
     w.ctl.start_hotkey_test(HotkeyAction::TogglePanel);
-    assert!(w.ctl.on_hotkey(HotkeyAction::TogglePanel).is_empty());
+    assert_eq!(w.ctl.on_hotkey(HotkeyAction::TogglePanel), []);
     assert_eq!(w.ctl.hotkey_test(), Some(HotkeyAction::TogglePanel));
 }

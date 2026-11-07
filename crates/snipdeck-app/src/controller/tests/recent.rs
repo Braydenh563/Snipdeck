@@ -254,7 +254,10 @@ fn using_an_entry_with_no_target_copies_it() {
     w.ctl.on_clipboard_change(&copied("no target"));
     let id = w.ctl.recent_entries()[0].id;
     w.ctl.recent_use(id, UseMode::Paste);
-    assert!(w.ctl.services().keyboard.sent.is_empty());
+    assert_eq!(
+        w.ctl.services().keyboard.sent,
+        Vec::<Vec<snipdeck_platform::keys::KeyEvent>>::new()
+    );
     assert_eq!(w.ctl.services().clipboard.written.len(), 1);
 }
 
