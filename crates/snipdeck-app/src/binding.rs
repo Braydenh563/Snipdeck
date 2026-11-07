@@ -1132,6 +1132,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     if differs(&|p| {
         p.app_menu == view.app_menu
             && p.hotkeys_paused == view.hotkeys_paused
+            && p.stack == view.stack
             && p.history == view.history
     }) || window.get_app_menu_open() != view.app_menu.is_some()
     {
@@ -1250,8 +1251,10 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
             _ => wording::app_menu_text(window, entry, view.docked, view.dock_target).into(),
         },
         disabled: (entry == AppMenuEntry::Undo && view.history.undo.is_none())
-            || (entry == AppMenuEntry::Redo && view.history.redo.is_none()),
+            || (entry == AppMenuEntry::Redo && view.history.redo.is_none())
+            || (entry == AppMenuEntry::PasteStack && view.stack.is_none()),
         icon: if (entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused)
+            || (entry == AppMenuEntry::PasteStack && view.stack.as_ref().is_some_and(|s| s.running))
             || (entry == AppMenuEntry::ShowNumbers && view.show_numbers)
         {
             check.clone()

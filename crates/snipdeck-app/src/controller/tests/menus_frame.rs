@@ -417,19 +417,20 @@ fn a_remembered_frame_is_written_after_the_quiet_time() {
 
 #[test]
 fn the_panel_menu_opens_with_the_spec_group_in_the_spec_order() {
-    // Panel v2 spec 2.1: Undo, Redo, then Dock to edge, Keyboard shortcuts, All commands, Settings.
+    // Panel v2 spec 2.1: Undo, Redo, Paste stack, Dock to edge, Keyboard shortcuts, All commands, Settings.
     // The other rows follow under their own lines.
     assert_eq!(
-        APP_MENU[..7],
+        APP_MENU[..8],
         [
             AppMenuEntry::Undo,
             AppMenuEntry::Redo,
             AppMenuEntry::Separator,
+            AppMenuEntry::PasteStack,
             AppMenuEntry::Dock,
             AppMenuEntry::Shortcuts,
             AppMenuEntry::Commands,
             AppMenuEntry::Settings,
         ]
     );
-    assert_eq!(APP_MENU[7], AppMenuEntry::Separator);
+    assert_eq!(APP_MENU[8], AppMenuEntry::Separator);
 }

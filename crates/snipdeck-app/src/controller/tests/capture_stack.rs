@@ -252,3 +252,44 @@ fn a_clipboard_that_is_busy_fails_the_paste_and_counts_nothing() {
     );
     assert_eq!(uses(&w, w.ids[0]), 0);
 }
+
+#[test]
+fn the_panel_menu_paste_stack_row_starts_and_ends_the_stack() {
+    let row = APP_MENU
+        .iter()
+        .position(|e| *e == AppMenuEntry::PasteStack)
+        .expect("in menu");
+    let mut w = world();
+    assert_eq!(
+        w.ctl.view().stack,
+        None,
+        "nothing marked: the row is disabled"
+    );
+    w.ctl.toggle_stack_mark(w.ids[0]);
+    w.ctl.open_app_menu();
+    w.ctl.choose_app_menu(row);
+    assert!(w.ctl.view().stack.expect("running").running);
+    assert_eq!(w.ctl.view().app_menu, None, "the menu closes");
+    w.ctl.open_app_menu();
+    w.ctl.choose_app_menu(row);
+    assert_eq!(w.ctl.view().stack, None, "a second choice ends it");
+}
+
+#[test]
+fn the_panel_menu_paste_stack_row_is_a_supporter_feature() {
+    let row = APP_MENU
+        .iter()
+        .position(|e| *e == AppMenuEntry::PasteStack)
+        .expect("in menu");
+    let mut w = build(Opts {
+        tier: Tier::Free,
+        ..Opts::default()
+    });
+    w.ctl.toggle_stack_mark(w.ids[0]);
+    w.ctl.choose_app_menu(row);
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::NeedsPro(Feature::PasteStack)
+    );
+    assert!(!w.ctl.view().stack.expect("marks stay").running);
+}

@@ -368,6 +368,8 @@ export component PanelWindow inherits Window {
     }
     // Scroll offset of the list (<= 0), for tests and for the app to persist.
     out property <length> scroll-y: list.content-y;
+    // Counts the Shift+Tabs that wrap round to the footer's Open Snipdeck button.
+    property <int> focus-open-ticks: 0;
     out property <bool> search-focused: search.has-focus || rest.has-focus;
     // The search box took the focus (a click into it): the host gives the window the keyboard.
     callback search-focus-gained();
@@ -835,8 +837,24 @@ export component PanelWindow inherits Window {
 
         scope := FocusScope {
             forward-focus: rest;
+            // The window's scope sits before `rest` in the Tab order, so a Tab that reached it would be a second
+            // ring-less stop. It hands the focus on in the direction of travel: forward to `rest` (the list), back to
+            // the footer's Open Snipdeck. Programmatic `focus()` is forwarded by `forward-focus` as before.
+            property <bool> tab-back: false;
+            focus-gained(reason) => {
+                if (reason == FocusReason.tab-navigation) {
+                    if (self.tab-back) {
+                        root.focus-open-ticks += 1;
+                    } else {
+                        rest.focus();
+                    }
+                }
+            }
 
             capture-key-pressed(event) => {
+                if (event.text == Key.Tab || event.text == Key.Backtab) {
+                    self.tab-back = event.text == Key.Backtab || event.modifiers.shift;
+                }
                 if (root.board-menu-open || root.app-menu-open || root.item-menu-open || root.list-menu-open || root.recent-menu-open || root.recent-save-open || root.list-delete-open || root.board-delete-open || root.new-menu-open || root.pinned-menu-open) {
                     // The menu (or the confirmation) owns the keyboard; Esc closes it.
                     if (event.text == Key.Escape) {
@@ -1980,6 +1998,9 @@ export component PanelWindow inherits Window {
                         // Right: "Open Snipdeck", icon only below 300px.
                         open-button := Rectangle {
                             property <bool> tip-on: open-touch.has-hover || open-scope.has-focus;
+                            // The window's scope sends a Shift+Tab here (see `focus-open-ticks`).
+                            property <int> focus-open-request: root.focus-open-ticks;
+                            changed focus-open-request => { open-scope.focus(); }
                             width: root.narrow ? Space.hit : open-row.preferred-width;
                             height: Space.hit;
                             y: (parent.height - self.height) / 2;

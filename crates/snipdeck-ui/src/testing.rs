@@ -265,7 +265,9 @@ fn read_png(path: &Path) -> Option<Frame> {
 /// Compares `frame` to `tests/golden/<name>.png`.
 ///
 /// Per channel up to 2 levels of difference are tolerated on up to 0.1% of pixels (text
-/// anti-aliasing across platforms).
+/// anti-aliasing across platforms). The Panel's goldens (`panel-*`) tolerate none: on this
+/// renderer they reproduce exactly, and 0.1% of a 320x560 frame (179 pixels) is more than a
+/// 16 px icon, so a wrong glyph tint would have passed.
 ///
 /// # Panics
 /// On a mismatch or a missing golden (run with `UPDATE_GOLDEN=1` to create it).
@@ -300,7 +302,11 @@ pub fn assert_golden(name: &str, frame: &Frame) {
     } else {
         usize::MAX
     };
-    let allowed = (frame.rgb.len() / 3) / 1000;
+    let allowed = if name.starts_with("panel-") {
+        0
+    } else {
+        (frame.rgb.len() / 3) / 1000
+    };
     if differing > allowed {
         write_png(&diff_dir().join(format!("{name}.png")), frame);
         panic!(

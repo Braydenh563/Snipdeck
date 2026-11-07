@@ -35,6 +35,9 @@ pub enum AppMenuEntry {
     Undo,
     /// Redo the step taken back (Ctrl+Y); disabled while there is none.
     Redo,
+    /// Start the paste stack of the marked items, or end it while it runs (checked while it
+    /// runs; disabled while nothing is marked). A Supporter feature, as everywhere.
+    PasteStack,
     /// Open the Main window.
     Open,
     /// Open the Main window on its command palette ("All commands…", Ctrl+K).
@@ -132,10 +135,11 @@ pub const LIST_MENU: [ListMenuEntry; 2] = [ListMenuEntry::Edit, ListMenuEntry::D
 
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
 /// `Menu` has no sub-menus.
-pub const APP_MENU: [AppMenuEntry; 19] = [
+pub const APP_MENU: [AppMenuEntry; 20] = [
     AppMenuEntry::Undo,
     AppMenuEntry::Redo,
     AppMenuEntry::Separator,
+    AppMenuEntry::PasteStack,
     AppMenuEntry::Dock,
     AppMenuEntry::Shortcuts,
     AppMenuEntry::Commands,
@@ -198,6 +202,14 @@ where
             }
             AppMenuEntry::Redo => {
                 self.redo();
+                Vec::new()
+            }
+            AppMenuEntry::PasteStack => {
+                if self.stack_running {
+                    self.end_stack();
+                } else {
+                    self.start_stack();
+                }
                 Vec::new()
             }
             AppMenuEntry::Open => vec![Effect::OpenMainWindow],
