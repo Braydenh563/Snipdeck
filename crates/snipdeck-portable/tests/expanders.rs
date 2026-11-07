@@ -910,8 +910,8 @@ fn espanso_date_format_cannot_inject_placeholders() {
 
 #[test]
 fn literal_braces_stay_text_in_every_expander_importer() {
-    let beef = br##"[{"name":"a","keyword":";a","snippet":"x {clipboard} {cursor} y"},
-{"name":"b","keyword":";b","snippet":"x {clipboard} #{cursor}"}]"##;
+    let beef = br#"[{"name":"a","keyword":";a","snippet":"x {clipboard} {cursor} y"},
+{"name":"b","keyword":";b","snippet":"x {clipboard} #{cursor}"}]"#;
     let (s, _) = beeftext(beef, &ImportOptions::default());
     let items = &contents(&s)[0].2;
     assert_eq!(
@@ -941,4 +941,31 @@ fn csv_a_megabyte_of_commas_is_capped_per_row_and_noted_once() {
         .filter(|n| n.contains("256 columns"))
         .count();
     assert_eq!(columns, 1);
+}
+
+#[test]
+fn espanso_folder_stops_at_a_running_byte_budget() {
+    let file = |n: usize| {
+        format!(
+            "matches:\n  - trigger: ':t{n}'\n    replace: '{}'\n",
+            "x".repeat(400)
+        )
+    };
+    let (a, b, c) = (file(1), file(2), file(3));
+    let opts = ImportOptions {
+        limits: Limits {
+            max_total_bytes: (a.len() + b.len()) as u64 + 10,
+            ..Limits::default()
+        },
+        ..ImportOptions::default()
+    };
+    let (s, report) = espanso_in(&[("a.yml", &a), ("b.yml", &b), ("c.yml", &c)], &opts);
+    let lists: Vec<String> = contents(&s).into_iter().map(|c| c.1).collect();
+    assert_eq!(lists, ["a", "b"]);
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Truncated { .. }))
+    );
 }

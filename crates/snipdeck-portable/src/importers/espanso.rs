@@ -54,8 +54,8 @@ use crate::import::ImportOptions;
 use crate::plan::Library;
 use crate::report::{ImportReport, Warning};
 
-use super::expander::{Body, Snip, Tpl, import_snips, placeholder_name};
-use super::{clean_label, decode_text, note_lossy};
+use super::expander::{Body, Snip, Tpl, import_snips, placeholder_name, read_capped};
+use super::{MEMORY_BUDGET, clean_label, decode_text, note_lossy};
 
 /// Most files read from a folder.
 const MAX_FILES: usize = 1_000;
@@ -95,13 +95,28 @@ pub fn import_espanso<L: Library>(
     };
 
     let mut snips = Vec::new();
+    // Bytes still allowed across all files, so a folder of many big files stays bounded.
+    let mut remaining = MEMORY_BUDGET.min(options.limits.max_total_bytes);
     for file in files {
         let label = list_label(&root, &file);
         if snips.len() >= options.limits.max_items {
             truncated(&mut report);
             break;
         }
-        read_file(&file, &label, options, &mut snips, &mut report);
+        if remaining == 0 {
+            report.warn(Warning::Truncated {
+                reason: "reached the import memory limit".to_owned(),
+            });
+            break;
+        }
+        read_file(
+            &file,
+            &label,
+            options,
+            &mut remaining,
+            &mut snips,
+            &mut report,
+        );
     }
     import_snips(
         lib,
@@ -183,6 +198,7 @@ fn read_file(
     path: &Path,
     label: &str,
     options: &ImportOptions<'_>,
+    remaining: &mut u64,
     snips: &mut Vec<Snip>,
     report: &mut ImportReport,
 ) {
@@ -196,24 +212,35 @@ fn read_file(
         report.warn(Warning::TooLarge { name, size });
         return;
     }
-    let bytes = match fs::read(path) {
+    if size > *remaining {
+        *remaining = 0;
+        report.warn(Warning::Truncated {
+            reason: "reached the import memory limit".to_owned(),
+        });
+        return;
+    }
+    let bytes = match read_capped(path, "an Espanso file", options) {
         Ok(b) => b,
+        Err(Error::LimitExceeded { limit, .. }) => {
+            report.items_skipped += 1;
+            report.warn(Warning::TooLarge {
+                name,
+                size: limit.saturating_add(1),
+            });
+            return;
+        }
         Err(e) => {
             report.warn(Warning::Unreadable {
                 name,
-                reason: e.kind().to_string(),
+                reason: match e {
+                    Error::File { source, .. } => source.kind().to_string(),
+                    _ => "it cannot be read".to_owned(),
+                },
             });
             return;
         }
     };
-    if bytes.len() as u64 > cap {
-        report.items_skipped += 1;
-        report.warn(Warning::TooLarge {
-            name,
-            size: bytes.len() as u64,
-        });
-        return;
-    }
+    *remaining = remaining.saturating_sub(bytes.len() as u64);
     let (text, how) = decode_text(&bytes);
     note_lossy(how, &name, report);
     let budget = Cell::new(bytes.len().saturating_mul(4).max(1 << 20));

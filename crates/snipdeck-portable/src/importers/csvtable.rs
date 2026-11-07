@@ -114,12 +114,7 @@ fn push_cell(row: &mut Vec<String>, cell: &mut String, cut: &mut bool) {
     }
 }
 
-fn end_row(
-    row: &mut Vec<String>,
-    cell: &mut String,
-    rows: &mut Vec<Vec<String>>,
-    cut: &mut bool,
-) {
+fn end_row(row: &mut Vec<String>, cell: &mut String, rows: &mut Vec<Vec<String>>, cut: &mut bool) {
     push_cell(row, cell, cut);
     let done = std::mem::take(row);
     if done.iter().any(|c| !c.trim().is_empty()) {
