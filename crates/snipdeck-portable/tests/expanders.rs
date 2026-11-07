@@ -923,3 +923,22 @@ fn literal_braces_stay_text_in_every_expander_importer() {
         e("b (;b)", ItemKind::Template, "x {{clipboard}} {cursor}")
     );
 }
+
+#[test]
+fn csv_a_megabyte_of_commas_is_capped_per_row_and_noted_once() {
+    let line = ",".repeat(1_000_000);
+    let csv = format!("Abbreviation,Content\n;a,fine\n{line}\n{line}x\n;b,ok\n");
+    let (s, report) = te(csv.as_bytes());
+    assert_eq!(
+        contents(&s)[0].2,
+        [
+            e(";a", ItemKind::Text, "fine"),
+            e(";b", ItemKind::Text, "ok")
+        ]
+    );
+    let columns = notes(&report)
+        .iter()
+        .filter(|n| n.contains("256 columns"))
+        .count();
+    assert_eq!(columns, 1);
+}
