@@ -1354,7 +1354,25 @@ ui_tests! {
         settle();
         let stack = find(&ui, "Paste stack (mark items)", AccessibleRole::ListItem);
         assert_eq!(stack.accessible_enabled(), Some(false));
-        assert!(!missing(&ui, "Keep panel on top", AccessibleRole::ListItem), "Keep on top is in the menu");
+        assert!(missing(&ui, "Keep panel on top", AccessibleRole::ListItem), "no duplicate of the header pin at 100 %");
+    }
+
+    fn the_app_menu_stays_inside_the_window_at_560_and_at_the_minimum_height() {
+        for height in [560.0_f32, 328.0] {
+            let (ui, _log) = start();
+            ui.window().set_size(slint::LogicalSize::new(320.0, height));
+            ui.set_app_menu_open(true);
+            settle();
+            let menu = find(&ui, "Panel menu", AccessibleRole::List);
+            let bottom = |e: &ElementHandle| e.absolute_position().y + e.size().height;
+            assert!(bottom(&menu) <= height + 0.5, "{height}: menu bottom {} past the window", bottom(&menu));
+            // End highlights the last row; a scrolled menu brings it in.
+            press(ui.window(), &key(Key::End));
+            settle();
+            let quit = find(&ui, "Quit", AccessibleRole::ListItem);
+            assert!(bottom(&quit) <= bottom(&menu) + 0.5 && bottom(&quit) <= height, "{height}: Quit bottom {} (menu {})", bottom(&quit), bottom(&menu));
+            assert!(quit.absolute_position().y >= menu.absolute_position().y, "{height}: Quit is not above the menu");
+        }
     }
 
     fn from_150_percent_keep_on_top_leaves_the_header_for_the_menu() {

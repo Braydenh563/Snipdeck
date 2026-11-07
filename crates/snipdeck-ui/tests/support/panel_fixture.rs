@@ -194,7 +194,11 @@ pub fn app_menu(check: &slint::Image) -> Vec<MenuEntry> {
         row("New item", ""),
         row("Take screenshot", ""),
         row("Pause hotkeys", ""),
-        checked("Keep panel on top"),
+        // Hidden at 100 % text: the header's pin is there (`render_app_menu` hides the row below 150 %).
+        MenuEntry {
+            hidden: true,
+            ..checked("Keep panel on top")
+        },
         checked("Show numbers"),
         row("Reset size and position", ""),
         line(),

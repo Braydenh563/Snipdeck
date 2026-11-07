@@ -1341,6 +1341,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
 /// the hotkeys are paused.
 fn render_app_menu(window: &ui::PanelWindow, view: &View) {
     let check = window.global::<ui::Icons<'_>>().get_check();
+    let pin_in_menu = window.get_pin_in_menu();
     let entries = view.app_menu.iter().flatten().map(|&entry| ui::MenuEntry {
         text: match entry {
             AppMenuEntry::Undo => wording::undo_tip(window, view.history.undo).into(),
@@ -1364,6 +1365,8 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
         },
         shortcut: wording::app_menu_shortcut(entry).into(),
         separator: entry == AppMenuEntry::Separator,
+        // The header's pin is there below 150 % text: the row would only repeat it.
+        hidden: entry == AppMenuEntry::KeepOnTop && !pin_in_menu,
         ..Default::default()
     });
     window.set_app_menu_entries(model(entries));

@@ -2349,6 +2349,8 @@ export component PanelWindow inherits Window {
         if root.app-menu-open: Menu {
             x: min(max(Space.s2, kebab.absolute-position.x + kebab.width - self.width), root.width - self.width - Space.s2);
             y: root.header-h - Space.s1;
+            // Inside the window at any height: a taller menu scrolls.
+            menu-max-h: root.height - (root.header-h - Space.s1) - Space.s2;
             entries: root.app-menu-entries;
             label: @tr("Panel menu");
             init => { self.focus-menu(); }
