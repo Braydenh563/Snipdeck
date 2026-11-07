@@ -840,9 +840,46 @@ fn focus_order_matches_spec() {
         6,
         "board, search, New, keep on top, More, close: {seen:?}"
     );
-    // Two stops draw no ring in these bands: the list (the window's `rest` scope) and one not yet identified (open item in
-    // .claude/remaining/panel-v2.md). The spec counts one.
-    assert!(cycle <= 12, "no further stops: {seen:?}");
+    // One stop draws no ring in these bands: the list (the window's `rest` scope). The window's own FocusScope used to be a
+    // second one: it now hands the focus on.
+    assert_eq!(
+        one.iter().filter(|s| s.as_str() == "-").count(),
+        1,
+        "only the list is ring-less: {seen:?}"
+    );
+    assert_eq!(
+        cycle, 11,
+        "6 header + 2 tabs + pinned + list + footer: {seen:?}"
+    );
+}
+
+/// Shift+Tab walks the same stops the other way round: no stop is skipped, none repeats, and the window's own scope
+/// does not trap the focus between the list and the footer.
+#[test]
+fn shift_tab_walks_the_same_stops_backwards() {
+    use slint::platform::{Key, WindowEvent};
+    let walk = |key: Key| {
+        let h = panel(SIZE, false);
+        h.component.set_on_top(false);
+        h.component
+            .window()
+            .dispatch_event(WindowEvent::WindowActiveChanged(true));
+        let _ = render(&h);
+        let mut seen = Vec::new();
+        for _ in 0..11 {
+            tap(&h, key);
+            h.component.window().request_redraw();
+            seen.push(ring_stop(&render(&h)));
+        }
+        seen
+    };
+    let forward = walk(Key::Tab);
+    let mut backward = walk(Key::Backtab);
+    // Forward starts on the board (H1), backward on the list ("-"): compare as the same cycle read in reverse.
+    backward.reverse();
+    let start = backward.iter().position(|s| s == "H1").expect("board stop");
+    backward.rotate_left(start);
+    assert_eq!(backward, forward, "forward {forward:?}");
 }
 
 /// Audit 11: the search field shows the 2px focus ring while it holds the focus with a query typed.
