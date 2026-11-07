@@ -1102,37 +1102,3 @@ fn the_no_results_footer_has_an_enter_keycap() {
     );
 }
 
-/// Item 3: a tab the scroll caret's patch would cut is not drawn, so no sliver of a label sits beside the caret.
-#[test]
-fn a_clipped_tab_leaves_no_sliver_beside_the_scroll_caret() {
-    let h = panel((260, 560), false);
-    h.component.set_selected_index(1);
-    let f = render(&h);
-    let cols = ink_columns(&f, 8, 196, 46, 62);
-    let mut clusters: Vec<(u32, u32)> = Vec::new();
-    for x in cols {
-        match clusters.last_mut() {
-            Some(last) if x <= last.1 + 7 => last.1 = x,
-            _ => clusters.push((x, x)),
-        }
-    }
-    assert!(
-        clusters.len() >= 2,
-        "two whole tab labels show: {clusters:?}"
-    );
-    for (a, b) in clusters {
-        assert!(
-            b - a >= 20,
-            "a label cluster is whole, not a sliver: x{a}-{b}"
-        );
-    }
-
-    let h = panel((360, 760), false);
-    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
-    let f = render(&h);
-    let beside = ink_columns(&f, 200, 295, 78, 100);
-    assert!(
-        beside.is_empty(),
-        "no cut label left of the caret at 225 %: {beside:?}"
-    );
-}

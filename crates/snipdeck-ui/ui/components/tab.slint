@@ -267,13 +267,6 @@ export component ListTabBar inherits Rectangle {
         }
     }
 
-    // A tab that a caret patch would cut in two is not drawn at all (no sliver of a label beside the caret): it comes back
-    // when it scrolls clear. The selected tab never hides; `reveal` keeps it clear of the patches.
-    pure function cut-by-patch(x: length, w: length, cx: length) -> bool {
-        return (root.can-right && x + cx < flick.width - root.patch-w && x + w + cx > flick.width - root.patch-w)
-            || (root.can-left && x + cx < root.patch-w && x + w + cx > root.patch-w);
-    }
-
     // Behind the tabs: turns a vertical wheel into horizontal scrolling (a horizontal Flickable ignores it).
     TouchArea {
         scroll-event(event) => {
@@ -333,7 +326,6 @@ export component ListTabBar inherits Rectangle {
                 alignment: start;
                 spacing: Space.s0-5;
                 for item[i] in root.tabs: tab := Tab {
-                    visible: self.selected || !root.cut-by-patch(self.x, self.width, flick.content-x);
                     text: item.text;
                     accent: item.accent;
                     icon: item.icon;
