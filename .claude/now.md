@@ -52,6 +52,7 @@ Project state: docs/HANDOVER.md. This file holds only the Inbox and Decisions.
 - Decision 2026-10-26: new installs start with the Panel unpinned (panel_pinned false in Settings::new_install), so it hides after a paste and on focus loss: the owner's "quick flick open and close". Pin keeps it as a sticky note. Existing files keep their value. Reason: with pinned=true by default hide-after-use never fires (6b agent finding).
 
 ## Inbox
+- 2026-11-07 owner (verbatim): "Im going to sleep, refine, and polish and finish absolutely everything, work with maximum token efficiency and effectiveness and minimal tokens while maximising productivity. be thorough and always use a critical and detailed expert eye. maximise ux, ensure functionality and learnability, usability and accessibility and more." / "good night and impress me :D" -> away mode on the existing work order; no merge/tag/release.
 - 2026-11-07 triage: 150+ placed/done items moved to .claude/inbox-archive.md; open queue = .claude/work-order.md. The v1 T-items below (owner Windows test 2026-10-21) stay until the owner re-tests them on Windows in Final.
 - v1 T1 Render glitches on Windows: transparent patches / grey box after opening About, dragging the Panel, opening Edit; hidden parts of a dragged-on-screen Tags window stay transparent (img 2,3,6,7,10). Likely one cause (window resize/redraw with transparency or Mica).
 - v1 T2 Ctrl+Alt+Space stopped showing the Panel mid-session.
