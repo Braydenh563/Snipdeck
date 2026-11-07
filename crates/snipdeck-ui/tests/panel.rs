@@ -1101,4 +1101,3 @@ fn the_no_results_footer_has_an_enter_keycap() {
         "the keycap outline (border.strong): {strong}px"
     );
 }
-
