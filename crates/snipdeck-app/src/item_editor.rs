@@ -267,6 +267,22 @@ pub struct ItemEditorView {
     pub more_open: bool,
 }
 
+/// `content` with `token` inserted at the UTF-8 byte offset `caret`, and the offset just after the
+/// token. A caret past the end, or inside a character, is moved back to the nearest character start
+/// (the field reports byte offsets; this must never split a character).
+#[must_use]
+pub fn insert_at_caret(content: &str, caret: usize, token: &str) -> (String, usize) {
+    let mut at = caret.min(content.len());
+    while !content.is_char_boundary(at) {
+        at -= 1;
+    }
+    let mut out = String::with_capacity(content.len() + token.len());
+    out.push_str(&content[..at]);
+    out.push_str(token);
+    out.push_str(&content[at..]);
+    (out, at + token.len())
+}
+
 /// `title` trimmed, or why it is refused.
 ///
 /// # Errors
@@ -505,6 +521,22 @@ pub fn prefix_of(text: &str, max: usize) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_placeholder_goes_in_at_the_caret_and_the_caret_lands_after_it() {
+        let (text, caret) = insert_at_caret("Dear , thanks", 5, "{field:Name}");
+        assert_eq!(text, "Dear {field:Name}, thanks");
+        assert_eq!(caret, 5 + "{field:Name}".len());
+        assert_eq!(insert_at_caret("", 0, "{date}"), ("{date}".to_owned(), 6));
+        assert_eq!(insert_at_caret("ab", 2, "X"), ("abX".to_owned(), 3));
+    }
+
+    #[test]
+    fn a_caret_past_the_end_or_inside_a_character_is_clamped() {
+        assert_eq!(insert_at_caret("ab", 99, "X").0, "abX");
+        // "é" is two bytes: offset 1 is inside it.
+        assert_eq!(insert_at_caret("é!", 1, "X"), ("Xé!".to_owned(), 1));
+    }
 
     fn png_bytes(width: u32, height: u32, color: png::ColorType, data: &[u8]) -> Vec<u8> {
         let mut out = Vec::new();

@@ -274,8 +274,8 @@ msgstr "检查项"
 msgid "Choose a file, or cancel."
 msgstr "请选择文件，或取消。"
 
-msgid "Choose one to add it at the end of the text. It is filled in when you use the item."
-msgstr "选择一项将其添加到文本末尾。使用该片段时会填入内容。"
+msgid "Choose one to add it where the cursor is. It is filled in when you use the item."
+msgstr ""
 
 msgid "Choose tags"
 msgstr "选择标签"

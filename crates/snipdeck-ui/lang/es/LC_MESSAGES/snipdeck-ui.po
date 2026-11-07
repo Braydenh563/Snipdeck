@@ -274,8 +274,8 @@ msgstr "Comprobaciones"
 msgid "Choose a file, or cancel."
 msgstr "Elige un archivo o cancela."
 
-msgid "Choose one to add it at the end of the text. It is filled in when you use the item."
-msgstr "Elige uno para añadirlo al final del texto. Se rellena al usar el fragmento."
+msgid "Choose one to add it where the cursor is. It is filled in when you use the item."
+msgstr ""
 
 msgid "Choose tags"
 msgstr "Elegir etiquetas"

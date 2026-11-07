@@ -274,8 +274,8 @@ msgstr "確認項目"
 msgid "Choose a file, or cancel."
 msgstr "ファイルを選ぶか、キャンセルしてください。"
 
-msgid "Choose one to add it at the end of the text. It is filled in when you use the item."
-msgstr "選んだものがテキストの末尾に追加されます。スニペットを使うときに値が入力されます。"
+msgid "Choose one to add it where the cursor is. It is filled in when you use the item."
+msgstr ""
 
 msgid "Choose tags"
 msgstr "タグを選択"

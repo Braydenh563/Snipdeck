@@ -68,6 +68,8 @@ export component TextField inherits VerticalLayout {
     in property <length> min-box-h: 0px;
 
     out property <bool> has-focus: input.has-focus;
+    // The caret as a UTF-8 byte offset (it stays put while the field is not focused).
+    out property <int> caret: input.cursor-position-byte-offset;
     out property <bool> composing: input.preedit-text != "" || root.show-composing;
     out property <bool> clear-visible: root.clearable && root.enabled && !root.read-only && input.text != "";
     // Horizontal scroll offset of the text (<= 0) and the visible width: what the IME-scroll tests measure.

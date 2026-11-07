@@ -292,6 +292,19 @@ where
                 core.act(|ctl| ctl.item_editor_save(&input));
             }
         });
+        let weak_field = w.as_weak();
+        w.on_placeholder_chosen(move |token, caret| {
+            let Some(w) = weak_field.upgrade() else {
+                return;
+            };
+            let (text, after) = crate::item_editor::insert_at_caret(
+                w.get_content().as_str(),
+                usize::try_from(caret).unwrap_or(0),
+                token.as_str(),
+            );
+            w.set_content(text.into());
+            w.invoke_place_caret(i32::try_from(after).unwrap_or(i32::MAX));
+        });
         let core = Rc::downgrade(self);
         w.on_cancel_requested(move || {
             let Some(core) = core.upgrade() else {
