@@ -1,8 +1,8 @@
 mode: continue
-status: stopped (context ceiling 215k; resume from HANDOVER Now)
+status: active
 max-continues: 300
 max-idle-minutes: 60
-started: 2026-10-24 17:00
+started: 2026-11-07 (resumed)
 
 - [x] Answer artifact comments (crushed text, type logos)
 - [x] Panel design v2 on canvas: deep design pass on D, independent critique, publish for owner pick (no Panel build)
