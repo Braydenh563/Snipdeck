@@ -52,7 +52,7 @@ pub use import::{
 };
 pub use importers::{
     HistoryEntry, MEMORY_BUDGET, import_beeftext, import_copyq_json, import_ditto, import_entries,
-    import_folder,
+    import_folder, import_phraseexpress_csv, import_textexpander_csv,
 };
 pub use limits::{Limits, TEXT_LIMIT};
 pub use plan::Library;

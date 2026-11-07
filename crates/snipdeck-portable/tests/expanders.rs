@@ -301,3 +301,266 @@ fn beeftext_two_cursors_fall_back_to_plain_text_and_duplicates_are_skipped() {
     assert_eq!(again.items_added, 0);
     assert_eq!(again.duplicates_skipped, 7);
 }
+
+// ---------------------------------------------------------------- CSV: TextExpander, PhraseExpress
+
+type CsvImport = fn(
+    &mut Store,
+    &std::path::Path,
+    snipdeck_core::Timestamp,
+    &ImportOptions<'_>,
+) -> snipdeck_portable::Result<ImportReport>;
+
+fn csv_with(
+    import: CsvImport,
+    bytes: &[u8],
+    opts: &ImportOptions<'_>,
+) -> snipdeck_portable::Result<(Store, ImportReport)> {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("export.csv");
+    fs::write(&path, bytes).unwrap();
+    let mut s = store();
+    let report = import(&mut s, &path, at(9), opts)?;
+    assert_healthy(&s);
+    Ok((s, report))
+}
+
+fn te(bytes: &[u8]) -> (Store, ImportReport) {
+    csv_with(
+        snipdeck_portable::import_textexpander_csv::<Store>,
+        bytes,
+        &ImportOptions::default(),
+    )
+    .unwrap()
+}
+
+fn pe(bytes: &[u8]) -> (Store, ImportReport) {
+    csv_with(
+        snipdeck_portable::import_phraseexpress_csv::<Store>,
+        bytes,
+        &ImportOptions::default(),
+    )
+    .unwrap()
+}
+
+const TEXTEXPANDER: &str = "Abbreviation,Content,Label\r\n\
+;hi,\"Hello,\r\nthere \"\"friend\"\"\",Greeting\r\n\
+;cb,A %clipboard B %| C {x},Paste\r\n\
+;fill,Hi %fillpart:name=who%,Fill-in\r\n\
+;nolabel,plain text,\r\n\
+,no abbreviation,Just a label\r\n\
+;empty,,Empty\r\n\
+\r\n";
+
+#[test]
+fn textexpander_csv_maps_abbreviation_content_and_label() {
+    let (s, report) = te(TEXTEXPANDER.as_bytes());
+    assert_eq!(
+        contents(&s),
+        [(
+            "Imported from TextExpander".to_owned(),
+            "TextExpander".to_owned(),
+            vec![
+                e(
+                    "Greeting (;hi)",
+                    ItemKind::Text,
+                    "Hello,\r\nthere \"friend\""
+                ),
+                e(
+                    "Paste (;cb)",
+                    ItemKind::Template,
+                    "A {clipboard} B {cursor} C {{x}}"
+                ),
+                e("Fill-in (;fill)", ItemKind::Text, "Hi %fillpart:name=who%"),
+                e(";nolabel", ItemKind::Text, "plain text"),
+                e("Just a label", ItemKind::Text, "no abbreviation"),
+            ]
+        )]
+    );
+    assert_eq!(report.items_added, 5);
+    assert_eq!(report.items_skipped, 1);
+    assert!(
+        notes(&report).iter().any(|n| n.contains("fill")),
+        "{:?}",
+        report.warnings
+    );
+}
+
+#[test]
+fn textexpander_csv_without_a_header_is_abbreviation_content_label_group() {
+    let (s, _) = te(b";a,first,One,Mail\n;b,second,Two,Mail\n;c,third,Three,\n");
+    let c = contents(&s);
+    assert_eq!(c.len(), 2);
+    assert_eq!(c[0].1, "Mail");
+    assert_eq!(c[0].2[1], e("Two (;b)", ItemKind::Text, "second"));
+    assert_eq!(c[1].1, "TextExpander");
+}
+
+#[test]
+fn textexpander_csv_groups_come_from_a_group_column() {
+    let (s, _) = te(b"Group,Abbreviation,Content\nWork,;w,work\nwork ,;x,more\nHome,;h,home\n");
+    let c = contents(&s);
+    let names: Vec<_> = c.iter().map(|(_, l, i)| (l.as_str(), i.len())).collect();
+    assert_eq!(names, [("Work", 2), ("Home", 1)]);
+}
+
+#[test]
+fn textexpander_csv_reads_utf16_with_a_bom_and_tabs() {
+    let text = "Abbreviation\tContent\n;t\tcafé\n";
+    let bytes: Vec<u8> = [0xFF, 0xFE]
+        .into_iter()
+        .chain(text.encode_utf16().flat_map(u16::to_le_bytes))
+        .collect();
+    let (s, report) = te(&bytes);
+    assert_eq!(contents(&s)[0].2, [e(";t", ItemKind::Text, "café")]);
+    assert!(report.warnings.is_empty(), "{:?}", report.warnings);
+}
+
+#[test]
+fn csv_garbage_does_not_panic_and_imports_nothing() {
+    for bad in [
+        &b""[..],
+        b"\n\n\n",
+        b"Abbreviation,Content\n",
+        b"\"unterminated,quote\nrest",
+        b"\x00\x01\x02\xff\xfe",
+        b",,,,,,\n,,,\n",
+    ] {
+        let (s, _) = te(bad);
+        let (s2, _) = pe(bad);
+        for st in [s, s2] {
+            for (_, _, items) in contents(&st) {
+                for (title, _, text) in items {
+                    assert!(!title.is_empty() && !text.trim().is_empty());
+                }
+            }
+        }
+    }
+    // An unterminated quote keeps what was read.
+    let (s, _) = te(b"Abbreviation,Content\n;q,\"never closed\nstill text");
+    assert_eq!(
+        contents(&s)[0].2,
+        [e(";q", ItemKind::Text, "never closed\nstill text")]
+    );
+}
+
+#[test]
+fn csv_limits_rows_cell_size_and_file_size() {
+    let mut csv = String::from("Abbreviation,Content\n");
+    for i in 0..100 {
+        writeln!(csv, ";a{i},body {i}").unwrap();
+    }
+    let (s, report) = csv_with(
+        snipdeck_portable::import_textexpander_csv::<Store>,
+        csv.as_bytes(),
+        &small(10),
+    )
+    .unwrap();
+    assert_eq!(contents(&s)[0].2.len(), 10);
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Truncated { .. }))
+    );
+
+    let big = "x".repeat(5 * 1024 * 1024 + 1);
+    let csv = format!("Abbreviation,Content\n;big,{big}\n;ok,fine\n");
+    let (s, report) = te(csv.as_bytes());
+    assert_eq!(contents(&s)[0].2, [e(";ok", ItemKind::Text, "fine")]);
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::TooLarge { .. }))
+    );
+
+    let opts = ImportOptions {
+        limits: Limits {
+            max_json_bytes: 50,
+            ..Limits::default()
+        },
+        ..ImportOptions::default()
+    };
+    assert!(matches!(
+        csv_with(
+            snipdeck_portable::import_textexpander_csv::<Store>,
+            TEXTEXPANDER.as_bytes(),
+            &opts
+        ),
+        Err(Error::LimitExceeded { .. })
+    ));
+}
+
+#[test]
+fn csv_many_columns_and_many_rows_stay_bounded() {
+    // A million empty rows must not become a million records.
+    let csv = format!("Abbreviation,Content\n{}", ",\n".repeat(1_000_000));
+    let (s, _) = csv_with(
+        snipdeck_portable::import_textexpander_csv::<Store>,
+        csv.as_bytes(),
+        &small(10),
+    )
+    .unwrap();
+    assert!(contents(&s).is_empty());
+}
+
+const PHRASEEXPRESS: &str = "Description;Content;Autotext;Folder\n\
+Greeting;\"Hello;\nthere\";hi;Mail\\Work\n\
+Paste;Pasted: {#clipboard} {#caret} end;pp;Mail\\Work\n\
+Stamp;On {#date} at {#time};ts;Mail\n\
+Odd;Run {#shell calc} {#system}.;;\n\
+Loose;no folder;;\n";
+
+#[test]
+fn phraseexpress_csv_maps_folders_autotext_and_macros() {
+    let (s, report) = pe(PHRASEEXPRESS.as_bytes());
+    let b = "Imported from PhraseExpress";
+    assert_eq!(
+        contents(&s),
+        [
+            (
+                b.to_owned(),
+                "Mail / Work".to_owned(),
+                vec![
+                    e("Greeting (hi)", ItemKind::Text, "Hello;\nthere"),
+                    e(
+                        "Paste (pp)",
+                        ItemKind::Template,
+                        "Pasted: {clipboard} {cursor} end"
+                    ),
+                ]
+            ),
+            (
+                b.to_owned(),
+                "Mail".to_owned(),
+                vec![e("Stamp (ts)", ItemKind::Template, "On {date} at {time}")]
+            ),
+            (
+                b.to_owned(),
+                "PhraseExpress".to_owned(),
+                vec![
+                    e("Odd", ItemKind::Text, "Run {#shell calc} {#system}."),
+                    e("Loose", ItemKind::Text, "no folder"),
+                ]
+            ),
+        ]
+    );
+    assert!(
+        notes(&report).iter().any(|n| n.contains("shell")),
+        "{:?}",
+        report.warnings
+    );
+}
+
+#[test]
+fn phraseexpress_csv_without_a_header_is_description_then_content() {
+    let (s, _) = pe(b"Hello,world body\nBye,see you\n");
+    assert_eq!(
+        contents(&s)[0].2,
+        [
+            e("Hello", ItemKind::Text, "world body"),
+            e("Bye", ItemKind::Text, "see you")
+        ]
+    );
+}

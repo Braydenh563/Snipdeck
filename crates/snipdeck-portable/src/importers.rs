@@ -8,16 +8,21 @@
 
 mod beeftext;
 mod copyq;
+mod csvtable;
 mod ditto;
 mod expander;
 mod folder;
 mod history;
+mod phraseexpress;
+mod textexpander;
 
 pub use beeftext::import_beeftext;
 pub use copyq::import_copyq_json;
 pub use ditto::import_ditto;
 pub use folder::import_folder;
 pub use history::{HistoryEntry, import_entries};
+pub use phraseexpress::import_phraseexpress_csv;
+pub use textexpander::import_textexpander_csv;
 
 use crate::report::{ImportReport, Warning};
 
