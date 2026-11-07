@@ -186,6 +186,12 @@ impl Store {
         }
     }
 
+    /// The folder lock this store holds (`None` for an in-memory store).
+    #[must_use]
+    pub fn folder_lock(&self) -> Option<&FolderLock> {
+        self._lock.as_ref()
+    }
+
     /// An empty store that lives only in memory, blobs included: for tests and previews.
     pub fn open_in_memory() -> Result<Self> {
         let mut conn = Connection::open_in_memory()?;
