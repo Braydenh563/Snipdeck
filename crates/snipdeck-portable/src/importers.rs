@@ -6,15 +6,25 @@
 //! item at the 5 MB text limit and in total at [`MEMORY_BUDGET`], symbolic links are not
 //! followed, and nothing is executed or opened for writing.
 
+mod beeftext;
 mod copyq;
+mod csvtable;
 mod ditto;
+mod espanso;
+mod expander;
 mod folder;
 mod history;
+mod phraseexpress;
+mod textexpander;
 
+pub use beeftext::import_beeftext;
 pub use copyq::import_copyq_json;
 pub use ditto::import_ditto;
+pub use espanso::import_espanso;
 pub use folder::import_folder;
 pub use history::{HistoryEntry, import_entries};
+pub use phraseexpress::import_phraseexpress_csv;
+pub use textexpander::import_textexpander_csv;
 
 use crate::report::{ImportReport, Warning};
 

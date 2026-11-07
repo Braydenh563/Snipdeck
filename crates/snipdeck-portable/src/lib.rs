@@ -6,7 +6,9 @@
 //!   `docs/format.md`.
 //! * [`import_folder`], [`import_ditto`], [`import_copyq_json`] and [`import_entries`] (a clipboard
 //!   history already read into [`HistoryEntry`] values) import other sources and
-//!   return the same [`ImportReport`].
+//!   return the same [`ImportReport`]; so do the text-expander importers
+//!   [`import_espanso`], [`import_beeftext`], [`import_textexpander_csv`] and
+//!   [`import_phraseexpress_csv`].
 //! * [`backup`] writes one backup per local day and prunes old ones; restoring is an import.
 //!
 //! Everything works on any store implementing the repository traits (the [`Library`] bound),
@@ -51,7 +53,8 @@ pub use import::{
     BoardLayout, ImportOptions, KeySource, MergeStrategy, import_archive, import_archive_path,
 };
 pub use importers::{
-    HistoryEntry, MEMORY_BUDGET, import_copyq_json, import_ditto, import_entries, import_folder,
+    HistoryEntry, MEMORY_BUDGET, import_beeftext, import_copyq_json, import_ditto, import_entries,
+    import_espanso, import_folder, import_phraseexpress_csv, import_textexpander_csv,
 };
 pub use limits::{Limits, TEXT_LIMIT};
 pub use plan::Library;
