@@ -35,12 +35,12 @@ pub enum Error {
         /// The data folder.
         folder: std::path::PathBuf,
     },
-    /// A rebuild from backup was interrupted and could not be undone on its own. Nothing was
-    /// deleted or created; the marker stays for the next start.
+    /// A rebuild from backup was interrupted and could not be undone on its own. No database
+    /// is created; the marker stays and the next start tries again.
     #[error(
         "a rebuild of the library in `{}` was interrupted and could not be undone automatically; \
-         the damaged library is set aside in `{}`. Nothing was changed. Put the files back by \
-         hand, then delete `snipdeck.rebuild` from the data folder",
+         the damaged library is set aside in `{}`. Put its files back by hand (the unfinished new \
+         library may already be removed), then delete `snipdeck.rebuild` from the data folder",
         folder.display(),
         aside.display()
     )]

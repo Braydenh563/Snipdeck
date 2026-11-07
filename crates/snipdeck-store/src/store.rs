@@ -71,6 +71,23 @@ impl FolderLock {
     }
 }
 
+/// [`Store::open_locked`] failed; the folder lock is handed back.
+#[derive(Debug)]
+pub struct OpenLockedError {
+    /// Why the open failed.
+    pub error: Error,
+    /// The lock, still held.
+    pub lock: FolderLock,
+}
+
+impl core::fmt::Display for OpenLockedError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        self.error.fmt(f)
+    }
+}
+
+impl std::error::Error for OpenLockedError {}
+
 /// What [`Store::close`] hands back.
 #[derive(Debug)]
 pub struct Closed {
@@ -129,13 +146,37 @@ impl Store {
         // Before any connection: a rebuild that was interrupted is undone first, so a missing
         // database is never replaced by an empty one while a damaged library sits set aside.
         crate::aside::recover(folder, &lock)?;
-        Self::open_locked(folder, lock)
+        Self::open_locked(folder, lock).map_err(|failed| failed.error)
     }
 
     /// Like [`Store::open`], for a caller that already holds the folder's lock (from
     /// [`Store::close`]); it does not look for an interrupted rebuild.
-    pub fn open_locked(folder: impl AsRef<Path>, lock: FolderLock) -> Result<Self> {
+    ///
+    /// When the open fails the lock comes back in the error, still held, so the caller can
+    /// roll back (for example [`undo_set_aside`](crate::undo_set_aside)) before releasing it.
+    /// A `lock` for another folder is refused.
+    pub fn open_locked(
+        folder: impl AsRef<Path>,
+        lock: FolderLock,
+    ) -> core::result::Result<Self, Box<OpenLockedError>> {
         let folder = folder.as_ref();
+        if !crate::aside::same_folder(folder, lock.folder()) {
+            return Err(Box::new(OpenLockedError {
+                error: Error::Invalid("the folder lock is for another folder".to_owned()),
+                lock,
+            }));
+        }
+        match Self::open_unlocked(folder) {
+            Ok(mut store) => {
+                store.lock = Some(lock);
+                Ok(store)
+            }
+            Err(error) => Err(Box::new(OpenLockedError { error, lock })),
+        }
+    }
+
+    /// Opens the database and blob folder; the caller attaches the lock.
+    fn open_unlocked(folder: &Path) -> Result<Self> {
         let db_path = folder.join(DB_FILE);
         let mut conn = Connection::open(&db_path)?;
         conn.busy_timeout(Duration::from_secs(5))?;
@@ -158,7 +199,7 @@ impl Store {
             blobs: Blobs::on_disk(folder.join(BLOB_DIR)),
             key: None,
             quiet: Quiet::default(),
-            lock: Some(lock),
+            lock: None,
         })
     }
 

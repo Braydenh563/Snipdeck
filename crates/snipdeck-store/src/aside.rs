@@ -26,6 +26,11 @@ const NAMES: [&str; 4] = ["snipdeck.db", "snipdeck.db-wal", "snipdeck.db-shm", "
 /// Renames a file or folder; the seam through which tests inject a failure.
 pub(crate) trait Rename {
     fn rename(&mut self, from: &Path, to: &Path) -> io::Result<()>;
+
+    /// The rename that puts a marker file in place (a separate seam from the moves).
+    fn rename_marker(&mut self, from: &Path, to: &Path) -> io::Result<()> {
+        fs::rename(from, to)
+    }
 }
 
 /// The real thing.
@@ -47,6 +52,8 @@ enum Phase {
 struct Marker {
     aside: String,
     phase: Phase,
+    /// The fresh library's fingerprint when the rebuild finished (see [`seal`]).
+    sealed: Option<String>,
 }
 
 /// A plain `snipdeck.damaged-*` name: no separators, no `..`.
@@ -68,36 +75,84 @@ fn parse(text: &str) -> Option<Marker> {
         "fresh" => Phase::Fresh,
         _ => return None,
     };
-    if lines.next()? != "end" || lines.next().is_some() || !is_aside_name(aside) {
+    let mut last = lines.next()?;
+    let sealed = last.strip_prefix("sealed=").map(str::to_owned);
+    if sealed.is_some() {
+        last = lines.next()?;
+    }
+    if last != "end" || lines.next().is_some() || !is_aside_name(aside) {
         return None;
     }
     Some(Marker {
         aside: aside.to_owned(),
         phase,
+        sealed,
     })
 }
 
-fn render(aside: &str, phase: Phase) -> String {
+fn render(aside: &str, phase: Phase, sealed: Option<&str>) -> String {
     let phase = match phase {
         Phase::Moving => "moving",
         Phase::Fresh => "fresh",
     };
-    format!("{MARKER_HEAD}\naside={aside}\nphase={phase}\nend\n")
+    let sealed = sealed.map_or_else(String::new, |s| format!("sealed={s}\n"));
+    format!("{MARKER_HEAD}\naside={aside}\nphase={phase}\n{sealed}end\n")
 }
 
 /// Writes the marker whole or not at all: temporary file, `sync_all`, rename over.
-fn write_marker(folder: &Path, aside: &str, phase: Phase) -> io::Result<()> {
+fn write_marker(
+    r: &mut dyn Rename,
+    folder: &Path,
+    aside: &str,
+    phase: Phase,
+    sealed: Option<&str>,
+) -> io::Result<()> {
     use io::Write as _;
     let tmp = folder.join(MARKER_TMP);
     let mut file = fs::File::create(&tmp)?;
-    file.write_all(render(aside, phase).as_bytes())?;
+    file.write_all(render(aside, phase, sealed).as_bytes())?;
     file.sync_all()?;
     drop(file);
-    fs::rename(&tmp, folder.join(MARKER))
+    r.rename_marker(&tmp, &folder.join(MARKER))
+        .inspect_err(|_| {
+            let _ = fs::remove_file(&tmp);
+        })
 }
 
 fn exists(path: &Path) -> bool {
     path.symlink_metadata().is_ok()
+}
+
+/// Whether two paths name the same folder.
+pub(crate) fn same_folder(a: &Path, b: &Path) -> bool {
+    a == b || matches!((fs::canonicalize(a), fs::canonicalize(b)), (Ok(x), Ok(y)) if x == y)
+}
+
+fn check_lock(folder: &Path, lock: &FolderLock) -> Result<()> {
+    if same_folder(folder, lock.folder()) {
+        Ok(())
+    } else {
+        Err(Error::Invalid(
+            "the folder lock is for another folder".to_owned(),
+        ))
+    }
+}
+
+/// Size and modification time of the database and its log: what changes when the library is
+/// written to.
+fn fingerprint(folder: &Path) -> String {
+    let one = |name: &str| match fs::metadata(folder.join(name)) {
+        Ok(m) => {
+            let nanos = m
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map_or(0, |d| d.as_nanos());
+            format!("{}:{nanos}", m.len())
+        }
+        Err(_) => "-".to_owned(),
+    };
+    format!("{}/{}", one(NAMES[0]), one(NAMES[1]))
 }
 
 /// Moves the library in `folder` (database, log, shared memory, blobs) into the new folder
@@ -116,6 +171,7 @@ pub(crate) fn set_aside_with(
     lock: &FolderLock,
     stem: &str,
 ) -> Result<()> {
+    check_lock(folder, lock)?;
     if !is_aside_name(stem) {
         return Err(Error::Invalid(format!("`{stem}` is not a set-aside name")));
     }
@@ -125,7 +181,7 @@ pub(crate) fn set_aside_with(
             "a set-aside folder or rebuild marker already exists".to_owned(),
         ));
     }
-    write_marker(folder, stem, Phase::Moving)?;
+    write_marker(r, folder, stem, Phase::Moving, None)?;
     let moved = fs::create_dir(&aside).map_err(Error::from).and_then(|()| {
         for name in NAMES {
             let from = folder.join(name);
@@ -135,18 +191,14 @@ pub(crate) fn set_aside_with(
         }
         Ok(())
     });
-    match moved {
-        Ok(()) => write_marker(folder, stem, Phase::Fresh).map_err(|e| {
-            // The marker still says `moving`, which is also what undo expects to find.
-            let _ = recover_with(r, folder, lock);
-            e.into()
-        }),
-        Err(e) => {
-            // Best effort; on failure the marker stays for the next start.
-            let _ = recover_with(r, folder, lock);
-            Err(e)
-        }
+    let done =
+        moved.and_then(|()| write_marker(r, folder, stem, Phase::Fresh, None).map_err(Error::from));
+    if let Err(e) = done {
+        // Best effort; on failure the marker stays for the next start.
+        let _ = recover_with(r, folder, lock);
+        return Err(e);
     }
+    Ok(())
 }
 
 /// Puts a set-aside library back, deleting the partial fresh one if there is one, and removes
@@ -155,12 +207,33 @@ pub fn undo_set_aside(folder: &Path, lock: &FolderLock) -> Result<()> {
     recover(folder, lock)
 }
 
-/// The rebuild succeeded: removes the marker (the commit point) and the salvage file.
-pub fn finish_rebuild(folder: &Path, _lock: &FolderLock) -> Result<()> {
-    let _ = fs::remove_file(folder.join(SALVAGE));
+/// The rebuild succeeded: records the fresh library's fingerprint in the marker (so that a
+/// marker left behind cannot make a later start delete edits made since), then removes the
+/// marker, which is the commit point, and then the salvage file.
+pub fn finish_rebuild(folder: &Path, lock: &FolderLock) -> Result<()> {
+    check_lock(folder, lock)?;
+    seal(folder);
     match fs::remove_file(folder.join(MARKER)) {
-        Err(e) if e.kind() != io::ErrorKind::NotFound => Err(e.into()),
-        _ => Ok(()),
+        Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e.into()),
+        _ => {}
+    }
+    let _ = fs::remove_file(folder.join(SALVAGE));
+    Ok(())
+}
+
+/// Best effort: adds the fresh library's fingerprint to a `fresh` marker.
+fn seal(folder: &Path) {
+    let Ok(text) = fs::read_to_string(folder.join(MARKER)) else {
+        return;
+    };
+    if let Some(m) = parse(&text).filter(|m| m.phase == Phase::Fresh) {
+        let _ = write_marker(
+            &mut RealRename,
+            folder,
+            &m.aside,
+            Phase::Fresh,
+            Some(&fingerprint(folder)),
+        );
     }
 }
 
@@ -169,7 +242,8 @@ pub(crate) fn recover(folder: &Path, lock: &FolderLock) -> Result<()> {
     recover_with(&mut RealRename, folder, lock)
 }
 
-pub(crate) fn recover_with(r: &mut dyn Rename, folder: &Path, _lock: &FolderLock) -> Result<()> {
+pub(crate) fn recover_with(r: &mut dyn Rename, folder: &Path, lock: &FolderLock) -> Result<()> {
+    check_lock(folder, lock)?;
     let interrupted = |aside: PathBuf| Error::RebuildInterrupted {
         folder: folder.to_owned(),
         aside,
@@ -186,18 +260,15 @@ pub(crate) fn recover_with(r: &mut dyn Rename, folder: &Path, _lock: &FolderLock
     let aside = folder.join(&marker.aside);
     let stuck = || interrupted(aside.clone());
 
-    // Check everything before changing anything.
     match marker.phase {
-        Phase::Moving => {
-            if NAMES
-                .iter()
-                .any(|n| exists(&aside.join(n)) && exists(&folder.join(n)))
-            {
-                return Err(stuck());
-            }
-        }
+        Phase::Moving => {}
         Phase::Fresh => {
             if !aside.join(NAMES[0]).is_file() {
+                return Err(stuck());
+            }
+            // A finished rebuild whose marker could not be removed: the library has been
+            // written to since, so the fresh files hold more than the archives did.
+            if marker.sealed.is_some_and(|s| s != fingerprint(folder)) {
                 return Err(stuck());
             }
             // Only data from the backup and salvage archives: deleting it loses nothing.
@@ -212,7 +283,17 @@ pub(crate) fn recover_with(r: &mut dyn Rename, folder: &Path, _lock: &FolderLock
                     return Err(stuck());
                 }
             }
+            // From here the state is `moving`; record it so a failed rename back is retried.
+            if write_marker(r, folder, &marker.aside, Phase::Moving, None).is_err() {
+                return Err(stuck());
+            }
         }
+    }
+    if NAMES
+        .iter()
+        .any(|n| exists(&aside.join(n)) && exists(&folder.join(n)))
+    {
+        return Err(stuck());
     }
     for name in NAMES {
         let from = aside.join(name);
@@ -252,6 +333,33 @@ mod tests {
                 return Err(io::Error::other("injected"));
             }
             fs::rename(from, to)
+        }
+    }
+
+    /// Fails the marker write that is number `.0` (counting from 0); moves are real.
+    struct FailMarkerAt(usize, usize);
+
+    impl Rename for FailMarkerAt {
+        fn rename(&mut self, from: &Path, to: &Path) -> io::Result<()> {
+            fs::rename(from, to)
+        }
+        fn rename_marker(&mut self, from: &Path, to: &Path) -> io::Result<()> {
+            self.1 += 1;
+            if self.1 - 1 == self.0 {
+                return Err(io::Error::other("injected"));
+            }
+            fs::rename(from, to)
+        }
+    }
+
+    /// Makes all four moved names exist at the top (the shm file may be absent after close).
+    fn fill_names(dir: &Path) {
+        fs::create_dir_all(dir.join("blobs")).unwrap();
+        for extra in ["snipdeck.db-wal", "snipdeck.db-shm"] {
+            let p = dir.join(extra);
+            if !p.exists() {
+                fs::write(p, b"").unwrap();
+            }
         }
     }
 
@@ -379,7 +487,8 @@ mod tests {
             parse(&text),
             Some(Marker {
                 aside: STAMP.to_owned(),
-                phase: Phase::Fresh
+                phase: Phase::Fresh,
+                sealed: None
             })
         );
         drop(lock);
@@ -534,5 +643,110 @@ mod tests {
         assert!(matches!(Store::open(dir.path()), Err(Error::Locked { .. })));
         assert_eq!(fs::read(dir.path().join(MARKER)).unwrap(), before);
         drop(lock);
+    }
+
+    #[test]
+    fn a_marker_left_after_a_finished_rebuild_cannot_delete_later_edits() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock = library(dir.path());
+        set_aside(dir.path(), &lock, STAMP).unwrap();
+        let mut fresh = Store::open_locked(dir.path(), lock).unwrap();
+        add(&mut fresh, "imported", None);
+        let lock = fresh.close().lock.unwrap();
+        seal(dir.path());
+        // The marker could not be removed; the user goes on and edits.
+        let mut fresh = Store::open_locked(dir.path(), lock).unwrap();
+        add(&mut fresh, "after the rebuild", None);
+        drop(fresh);
+        let before = listing(dir.path());
+        let err = Store::open(dir.path()).unwrap_err();
+        assert!(matches!(err, Error::RebuildInterrupted { .. }), "{err}");
+        assert_eq!(listing(dir.path()), before);
+    }
+
+    #[test]
+    fn a_sealed_marker_over_an_unchanged_fresh_library_is_undone() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock = library(dir.path());
+        set_aside(dir.path(), &lock, STAMP).unwrap();
+        let mut fresh = Store::open_locked(dir.path(), lock).unwrap();
+        add(&mut fresh, "imported", None);
+        drop(fresh.close().lock);
+        seal(dir.path());
+        assert_eq!(titles(&Store::open(dir.path()).unwrap()), ["one", "two"]);
+    }
+
+    #[test]
+    fn a_failed_rename_back_in_the_fresh_phase_is_retried_at_the_next_open() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock = library(dir.path());
+        fill_names(dir.path());
+        set_aside(dir.path(), &lock, STAMP).unwrap();
+        let mut fresh = Store::open_locked(dir.path(), lock).unwrap();
+        add(&mut fresh, "half", None);
+        let lock = fresh.close().lock.unwrap();
+        let err = recover_with(&mut FailAt(1, 0), dir.path(), &lock).unwrap_err();
+        assert!(matches!(err, Error::RebuildInterrupted { .. }));
+        let text = fs::read_to_string(dir.path().join(MARKER)).unwrap();
+        assert_eq!(parse(&text).unwrap().phase, Phase::Moving);
+        drop(lock);
+        assert_eq!(titles(&Store::open(dir.path()).unwrap()), ["one", "two"]);
+        assert!(!dir.path().join(MARKER).exists());
+    }
+
+    #[test]
+    fn a_lock_for_another_folder_is_refused_everywhere() {
+        let dir = tempfile::tempdir().unwrap();
+        let other = tempfile::tempdir().unwrap();
+        let lock = FolderLock::acquire(other.path()).unwrap();
+        assert!(set_aside(dir.path(), &lock, STAMP).is_err());
+        assert!(undo_set_aside(dir.path(), &lock).is_err());
+        assert!(finish_rebuild(dir.path(), &lock).is_err());
+        let failed = Store::open_locked(dir.path(), lock).unwrap_err();
+        assert!(matches!(failed.error, Error::Invalid(_)));
+        assert_eq!(failed.lock.folder(), other.path(), "the lock comes back");
+    }
+
+    #[test]
+    fn finishing_removes_the_marker_then_the_salvage_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock = library(dir.path());
+        set_aside(dir.path(), &lock, STAMP).unwrap();
+        fs::write(dir.path().join(SALVAGE), b"x").unwrap();
+        finish_rebuild(dir.path(), &lock).unwrap();
+        assert!(!dir.path().join(MARKER).exists());
+        assert!(!dir.path().join(SALVAGE).exists());
+        assert!(dir.path().join(STAMP).join("snipdeck.db").exists());
+        finish_rebuild(dir.path(), &lock).unwrap(); // nothing left: still fine
+        // A marker that cannot be removed keeps the salvage file and reports the error.
+        fs::create_dir(dir.path().join(MARKER)).unwrap();
+        fs::write(dir.path().join(MARKER).join("x"), b"x").unwrap();
+        fs::write(dir.path().join(SALVAGE), b"x").unwrap();
+        assert!(finish_rebuild(dir.path(), &lock).is_err());
+        assert!(dir.path().join(SALVAGE).exists());
+    }
+
+    #[test]
+    fn a_failed_fresh_marker_write_inside_set_aside_puts_everything_back() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock = library(dir.path());
+        fill_names(dir.path());
+        let before = listing(dir.path());
+        let err = set_aside_with(&mut FailMarkerAt(1, 0), dir.path(), &lock, STAMP);
+        assert!(err.is_err());
+        assert_eq!(listing(dir.path()), before);
+    }
+
+    #[test]
+    fn undoing_directly_after_a_set_aside_restores_the_library() {
+        let dir = tempfile::tempdir().unwrap();
+        let lock = library(dir.path());
+        undo_set_aside(dir.path(), &lock).unwrap(); // no marker: nothing to do
+        set_aside(dir.path(), &lock, STAMP).unwrap();
+        undo_set_aside(dir.path(), &lock).unwrap();
+        assert!(!dir.path().join(MARKER).exists());
+        assert!(!dir.path().join(STAMP).exists());
+        let s = Store::open_locked(dir.path(), lock).unwrap();
+        assert_eq!(titles(&s), ["one", "two"]);
     }
 }
