@@ -633,3 +633,32 @@ fn a_failed_or_paused_hotkey_cannot_be_heard() {
     assert_eq!(w.ctl.on_hotkey(HotkeyAction::TogglePanel), []);
     assert_eq!(w.ctl.hotkey_test(), Some(HotkeyAction::TogglePanel));
 }
+
+#[test]
+fn pausing_the_hotkeys_ends_a_running_test_so_a_press_after_resume_is_not_swallowed() {
+    for pause in [
+        |w: &mut World, on: bool| {
+            w.ctl.on_tray(TrayEvent::HotkeysPaused(on));
+        },
+        |w: &mut World, _on: bool| {
+            // The Panel menu's "Pause hotkeys" toggles.
+            let at = crate::controller::APP_MENU
+                .iter()
+                .position(|e| *e == crate::controller::AppMenuEntry::PauseHotkeys)
+                .expect("pause row");
+            w.ctl.choose_app_menu(at);
+        },
+    ] {
+        let mut w = world();
+        assert!(w.ctl.visible());
+        w.ctl.start_hotkey_test(HotkeyAction::TogglePanel);
+        pause(&mut w, true);
+        assert_eq!(w.ctl.hotkey_test(), None, "the pause ended the test");
+        pause(&mut w, false);
+        assert_eq!(
+            w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+            [Effect::HidePanel],
+            "the press after the resume does its job"
+        );
+    }
+}

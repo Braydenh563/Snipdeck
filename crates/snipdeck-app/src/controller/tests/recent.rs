@@ -248,6 +248,25 @@ fn using_an_entry_pastes_it_into_the_target_and_shift_only_copies() {
 }
 
 #[test]
+fn a_recent_use_closes_the_panel_like_an_item_use_and_a_gone_entry_does_not() {
+    let mut w = recent_world_at_outlook();
+    w.ctl.update_settings(|s| s.panel_hide_after_use = true);
+    w.ctl.set_on_top(false);
+    w.ctl.on_hotkey(HotkeyAction::TogglePanel);
+    w.ctl.on_hotkey(HotkeyAction::TogglePanel);
+    assert!(w.ctl.visible());
+    w.ctl.on_clipboard_change(&copied("close after me"));
+    let id = w.ctl.recent_entries()[0].id;
+    let used = w.ctl.recent_use(id, UseMode::Paste);
+    assert_eq!(used, UseResult::Done(snipdeck_core::UseOutcome::Pasted));
+    assert_eq!(w.ctl.after_use(&used), [Effect::HidePanel]);
+    w.ctl.recent_delete(id);
+    let gone = w.ctl.recent_use(id, UseMode::Paste);
+    assert_eq!(gone, UseResult::Failed);
+    assert_eq!(w.ctl.after_use(&gone), Vec::new());
+}
+
+#[test]
 fn using_an_entry_with_no_target_copies_it() {
     let mut w = recent_world();
     w.targets.set(None);

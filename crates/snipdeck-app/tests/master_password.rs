@@ -821,6 +821,32 @@ fn using_the_library_restarts_the_idle_count() {
 }
 
 #[test]
+fn using_a_recent_entry_restarts_the_idle_count_and_closes_the_panel_like_an_item_use() {
+    use snipdeck_app::{controller::Effect, recent::ClipboardObservation};
+    let mut r = with_password(Tier::Pro);
+    r.ctl.update_settings(|s| s.recent_history = true);
+    r.ctl.update_settings(|s| s.panel_hide_after_use = true);
+    r.ctl.set_on_top(false);
+    let _ = r.ctl.on_hotkey(snipdeck_app::settings::HotkeyAction::TogglePanel);
+    let _ = r.ctl.on_hotkey(snipdeck_app::settings::HotkeyAction::TogglePanel);
+    r.ctl.on_clipboard_change(&ClipboardObservation {
+        text: Some("recent text".into()),
+        source_app: Some("notepad.exe".into()),
+        ..ClipboardObservation::default()
+    });
+    let id = r.ctl.recent_entries()[0].id;
+    r.advance(just_before_idle(Duration::from_mins(1)));
+    let used = r.ctl.recent_use(id, UseMode::Copy);
+    assert!(matches!(used, snipdeck_app::controller::UseResult::Done(_)));
+    assert_eq!(
+        r.ctl.idle_lock_wait(),
+        Some(IDLE_LOCK),
+        "counted from the use"
+    );
+    assert_eq!(r.ctl.after_use(&used), [Effect::HidePanel]);
+}
+
+#[test]
 fn locking_hides_a_revealed_row() {
     let mut r = with_password(Tier::Pro);
     let at = r
