@@ -8,7 +8,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgid "+{} more"
-msgstr ""
+msgstr "+{} más"
 
 msgid ".snipdeck file"
 msgstr "Archivo .snipdeck"
@@ -29,13 +29,13 @@ msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "Una imagen PNG. Snipdeck guarda su propia copia."
 
 msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one folds back to its edge."
-msgstr ""
+msgstr "Un panel que se mostró con un atajo o desde la bandeja se oculta tras pegar o copiar. Un panel anclado permanece, y uno acoplado vuelve a plegarse en su borde."
 
 msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "Función de Colaborador. Añade una contraseña además de la protección de Windows para tus fragmentos sensibles. Se pide la primera vez que usas un fragmento sensible y de nuevo tras {} minutos sin usarlo."
 
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
-msgstr ""
+msgstr "Un panel acoplado se abre en su borde. Pon Acoplar a en Flotante para elegir dónde se abre."
 
 msgid "A link can't contain spaces or line breaks."
 msgstr "Un enlace no puede contener espacios ni saltos de línea."
@@ -53,7 +53,7 @@ msgid "A master password is part of Supporter."
 msgstr "La contraseña maestra forma parte de Colaborador."
 
 msgid "A small window you can drag anywhere."
-msgstr ""
+msgstr "Una ventana pequeña que puedes arrastrar a cualquier lugar."
 
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "Una tira con tus fragmentos junto a la aplicación en la que trabajas. Haz clic en uno para pegarlo allí."
@@ -86,7 +86,7 @@ msgid "Activate"
 msgstr "Activar"
 
 msgid "Activities"
-msgstr ""
+msgstr "Actividades"
 
 msgid "Add"
 msgstr "Añadir"
@@ -110,10 +110,10 @@ msgid "Adds a password on top of Windows' own protection for your sensitive item
 msgstr "Añade una contraseña además de la protección de Windows para tus fragmentos sensibles. Se pide la primera vez que usas un fragmento sensible y de nuevo tras {} minutos sin usarlo."
 
 msgid "Adds a text snippet to {}"
-msgstr ""
+msgstr "Añade un fragmento de texto a {}"
 
 msgid "After a paste or copy"
-msgstr ""
+msgstr "Después de pegar o copiar"
 
 msgid "All"
 msgstr "Todos"
@@ -131,7 +131,7 @@ msgid "Also forget the encryption key"
 msgstr "Olvidar también la clave de cifrado"
 
 msgid "Also keep what I copy?"
-msgstr ""
+msgstr "¿Guardar también lo que copio?"
 
 msgid "Alt 1 to 9"
 msgstr "Alt 1 a 9"
@@ -140,7 +140,7 @@ msgid "Alt+{}"
 msgstr "Alt+{}"
 
 msgid "Always shown"
-msgstr ""
+msgstr "Siempre visible"
 
 msgid "Amber"
 msgstr "Ámbar"
@@ -149,13 +149,13 @@ msgid "An Image item holds a PNG picture. Choose a PNG file, or add this one as 
 msgstr "Un elemento de imagen contiene una imagen PNG. Elige un archivo PNG o añade este como archivo."
 
 msgid "Angry"
-msgstr ""
+msgstr "Enfadado"
 
 msgid "Animals"
-msgstr ""
+msgstr "Animales"
 
 msgid "Animals & Nature"
-msgstr ""
+msgstr "Animales y naturaleza"
 
 msgid "Another program already uses {}."
 msgstr "Otro programa ya usa {}."
@@ -167,7 +167,7 @@ msgid "Appearance"
 msgstr "Apariencia"
 
 msgid "Appears when you type"
-msgstr ""
+msgstr "Aparece al escribir"
 
 msgid "Apply the new name"
 msgstr "Aplicar el nuevo nombre"
@@ -185,10 +185,10 @@ msgid "At least {} characters. A few unrelated words make a good password."
 msgstr "Al menos {} caracteres. Unas cuantas palabras sin relación entre sí hacen una buena contraseña."
 
 msgid "At the mouse"
-msgstr ""
+msgstr "En el ratón"
 
 msgid "At the text cursor"
-msgstr ""
+msgstr "En el cursor de texto"
 
 msgid "Back"
 msgstr "Atrás"
@@ -227,13 +227,13 @@ msgid "Board: {}"
 msgstr "Tablero: {}"
 
 msgid "Board: {}, list: {}"
-msgstr ""
+msgstr "Tablero: {}, lista: {}"
 
 msgid "Boards"
 msgstr "Tableros"
 
 msgid "Boards and lists"
-msgstr ""
+msgstr "Tableros y listas"
 
 msgid "Bottom edge"
 msgstr "Borde inferior"
@@ -260,13 +260,13 @@ msgid "Cancel"
 msgstr "Cancelar"
 
 msgid "Cancel the test of {}"
-msgstr ""
+msgstr "Cancelar la prueba de {}"
 
 msgid "Captured items keep their kind."
 msgstr "Los fragmentos capturados conservan su tipo."
 
 msgid "Cards"
-msgstr ""
+msgstr "Tarjetas"
 
 msgid "Change master password"
 msgstr "Cambiar contraseña maestra"
@@ -296,7 +296,7 @@ msgid "Choose a file, or cancel."
 msgstr "Elige un archivo o cancela."
 
 msgid "Choose one to add it where the cursor is. It is filled in when you use the item."
-msgstr ""
+msgstr "Elige uno para añadirlo donde está el cursor. Se completa cuando usas el fragmento."
 
 msgid "Choose tags"
 msgstr "Elegir etiquetas"
@@ -335,7 +335,7 @@ msgid "Clear the clipboard sooner"
 msgstr "Vaciar el portapapeles antes"
 
 msgid "Clear the search"
-msgstr ""
+msgstr "Borrar la búsqueda"
 
 msgid "Clear the search, then close"
 msgstr "Borra la búsqueda y luego cierra"
@@ -347,13 +347,13 @@ msgid "Click"
 msgstr "Clic"
 
 msgid "Click copies"
-msgstr ""
+msgstr "Clic copia"
 
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
-msgstr ""
+msgstr "Clic o Enter pega. Shift+clic o Shift+Enter copia."
 
 msgid "Click pastes into {} · Shift+click copies"
-msgstr ""
+msgstr "Clic pega en {} · Shift+clic copia"
 
 msgid "Click to copy."
 msgstr "Clic para copiar."
@@ -374,7 +374,7 @@ msgid "Close panel (Esc)"
 msgstr "Cerrar panel (Esc)"
 
 msgid "Close search"
-msgstr ""
+msgstr "Cerrar la búsqueda"
 
 msgid "Close the tag list"
 msgstr "Cerrar la lista de etiquetas"
@@ -452,7 +452,7 @@ msgid "Copy something, then save it from the Panel."
 msgstr "Copia algo y luego guárdalo desde el panel."
 
 msgid "Copy something, then save it here."
-msgstr ""
+msgstr "Copia algo y guárdalo aquí."
 
 msgid "Copy the item"
 msgstr "Copia el elemento"
@@ -626,7 +626,7 @@ msgid "Create item"
 msgstr "Crear elemento"
 
 msgid "Create “{}”"
-msgstr ""
+msgstr "Crear “{}”"
 
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
@@ -752,7 +752,7 @@ msgid "Dock to the top edge"
 msgstr "Acoplar al borde superior"
 
 msgid "Docked to the right"
-msgstr ""
+msgstr "Acoplado a la derecha"
 
 msgid "Done"
 msgstr "Listo"
@@ -803,7 +803,7 @@ msgid "Email me"
 msgstr "Escríbeme"
 
 msgid "Emoji"
-msgstr ""
+msgstr "Emoji"
 
 msgid "Empty Trash"
 msgstr "Vaciar papelera"
@@ -887,7 +887,7 @@ msgid "Filter by colour label"
 msgstr "Filtrar por etiqueta de color"
 
 msgid "Fixed against the right edge of the screen, full height."
-msgstr ""
+msgstr "Fijo contra el borde derecho de la pantalla, a toda su altura."
 
 msgid "Fixed placeholders filled in when you paste."
 msgstr "Marcadores fijos que se rellenan al pegar."
@@ -896,7 +896,7 @@ msgid "Fixes the panel against one edge of the screen, on the monitor it is on. 
 msgstr "Fija el panel a un borde de la pantalla, en el monitor en el que está. «Flotante» permite dejarlo en cualquier sitio."
 
 msgid "Flags"
-msgstr ""
+msgstr "Banderas"
 
 msgid "Floating"
 msgstr "Flotante"
@@ -914,7 +914,7 @@ msgid "Follow Windows switches with your system setting."
 msgstr "Sigue el tema de Windows según la configuración del sistema."
 
 msgid "Food & Drink"
-msgstr ""
+msgstr "Comida y bebida"
 
 msgid "For example, Email replies"
 msgstr "Por ejemplo, Respuestas de correo"
@@ -971,10 +971,10 @@ msgid "Green"
 msgstr "Verde"
 
 msgid "Greet"
-msgstr ""
+msgstr "Saludo"
 
 msgid "Heard it. This shortcut works."
-msgstr ""
+msgstr "Lo oí. Este atajo funciona."
 
 msgid "Help"
 msgstr "Ayuda"
@@ -1016,7 +1016,7 @@ msgid "Hold to reveal"
 msgstr "Mantén pulsado para mostrar"
 
 msgid "Hold to reveal a hidden item"
-msgstr ""
+msgstr "Mantén pulsado para mostrar un fragmento oculto"
 
 msgid "Hover"
 msgstr "Pasar el puntero"
@@ -1034,10 +1034,10 @@ msgid "How long the pointer stays off the open panel before it folds away, from 
 msgstr "Cuánto tiempo permanece el puntero fuera del panel abierto antes de que se pliegue, de 0 a {} milisegundos."
 
 msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
-msgstr ""
+msgstr "Qué altura tienen las filas de fragmentos en las listas de la ventana principal. Compacta muestra una línea por fragmento."
 
 msgid "How the Panel lists your snippets: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
-msgstr ""
+msgstr "Cómo muestra el panel tus fragmentos: uno por fila, dos por fila como tarjetas o filas ajustadas. Una búsqueda muestra filas en cualquier diseño."
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "Ancho con el que se abre el panel, de {} a {} píxeles."
@@ -1046,10 +1046,10 @@ msgid "Icon"
 msgstr "Icono"
 
 msgid "Icons"
-msgstr ""
+msgstr "Iconos"
 
 msgid "Icons can't be added to a list yet."
-msgstr ""
+msgstr "Aún no se pueden añadir iconos a una lista."
 
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
 msgstr "Si olvidas esta contraseña, tus fragmentos sensibles no se podrán abrir nunca más. Snipdeck no puede restablecerla y no guarda ninguna clave de recuperación. Tus demás elementos no se ven afectados."
@@ -1115,16 +1115,16 @@ msgid "Its lists and {} items move to the Trash. You can restore them for {} day
 msgstr "Sus listas y {} elementos pasan a la papelera. Puedes restaurarlos durante {} días."
 
 msgid "Joy"
-msgstr ""
+msgstr "Alegría"
 
 msgid "Jump to a section"
-msgstr ""
+msgstr "Ir a una sección"
 
 msgid "Just now"
 msgstr "Justo ahora"
 
 msgid "Kaomoji"
-msgstr ""
+msgstr "Kaomoji"
 
 msgid "Keep Panel visible during screenshots"
 msgstr "Mantener el panel visible durante las capturas"
@@ -1151,10 +1151,10 @@ msgid "Keep the Panel on top (pin)"
 msgstr "Mantener el panel encima (fijar)"
 
 msgid "Keep the Panel open"
-msgstr ""
+msgstr "Mantener el panel abierto"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
-msgstr ""
+msgstr "Guarda el texto que copias durante las últimas {} copias o {} días, lo que ocurra primero, para que puedas encontrarlo de nuevo o guardarlo en una lista. Los fragmentos sensibles, los gestores de contraseñas y las aplicaciones que excluyas nunca se guardan."
 
 msgid "Keyboard shortcuts"
 msgstr "Atajos de teclado"
@@ -1163,7 +1163,7 @@ msgid "Kind"
 msgstr "Tipo"
 
 msgid "Kinds of symbols"
-msgstr ""
+msgstr "Tipos de símbolos"
 
 msgid "Language"
 msgstr "Idioma"
@@ -1172,7 +1172,7 @@ msgid "Last backup: {}"
 msgstr "Última copia: {}"
 
 msgid "Layout"
-msgstr ""
+msgstr "Diseño"
 
 msgid "Leave delay"
 msgstr "Retraso al salir"
@@ -1229,7 +1229,7 @@ msgid "Lists and items"
 msgstr "Listas y elementos"
 
 msgid "Lists hold your snippets."
-msgstr ""
+msgstr "Las listas contienen tus fragmentos."
 
 msgid "Loading"
 msgstr "Cargando"
@@ -1241,7 +1241,7 @@ msgid "Logs are only written when Snipdeck crashes, hold no item content and are
 msgstr "Los registros solo se escriben cuando Snipdeck se cierra por un error, no contienen el contenido de los fragmentos y no se envían a ningún sitio."
 
 msgid "Love"
-msgstr ""
+msgstr "Amor"
 
 msgid "Main list density"
 msgstr "Densidad de las listas principales"
@@ -1289,7 +1289,7 @@ msgid "Master password set."
 msgstr "Contraseña maestra establecida."
 
 msgid "Menu"
-msgstr ""
+msgstr "Menú"
 
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
@@ -1301,7 +1301,7 @@ msgid "More options"
 msgstr "Más opciones"
 
 msgid "More pinned snippets"
-msgstr ""
+msgstr "Más fragmentos fijados"
 
 msgid "Most used"
 msgstr "Más usados"
@@ -1380,7 +1380,7 @@ msgid "Never paste"
 msgstr "No pegar nunca"
 
 msgid "New"
-msgstr ""
+msgstr "Nuevo"
 
 msgid "New board"
 msgstr "Nuevo tablero"
@@ -1401,7 +1401,7 @@ msgid "New name for {}"
 msgstr "Nuevo nombre para {}"
 
 msgid "New note"
-msgstr ""
+msgstr "Nueva nota"
 
 msgid "New password"
 msgstr "Nueva contraseña"
@@ -1443,7 +1443,7 @@ msgid "No matches"
 msgstr "Sin coincidencias"
 
 msgid "No matches in all boards"
-msgstr ""
+msgstr "Sin coincidencias en todos los tableros"
 
 msgid "No matching command"
 msgstr "Ningún comando coincide"
@@ -1458,7 +1458,7 @@ msgid "No recent items"
 msgstr "No hay fragmentos recientes"
 
 msgid "No settings match"
-msgstr ""
+msgstr "Ninguna configuración coincide"
 
 msgid "No shortcut matches"
 msgstr "Ningún atajo coincide"
@@ -1467,7 +1467,7 @@ msgid "No snippets yet"
 msgstr "Aún no hay fragmentos"
 
 msgid "No symbols match “{}”"
-msgstr ""
+msgstr "Ningún símbolo coincide con “{}”"
 
 msgid "No tags"
 msgstr "Sin etiquetas"
@@ -1482,28 +1482,28 @@ msgid "No tags yet. Add tags to an item and they appear here."
 msgstr "Aún no hay etiquetas. Añade etiquetas a un fragmento y aparecerán aquí."
 
 msgid "No target:"
-msgstr ""
+msgstr "Sin destino:"
 
 msgid "No target: click copies"
-msgstr ""
+msgstr "Sin destino: el clic copia"
 
 msgid "Not included"
 msgstr "No incluido"
 
 msgid "Not now"
-msgstr ""
+msgstr "Ahora no"
 
 msgid "Not set"
 msgstr "Sin definir"
 
 msgid "Not working"
-msgstr ""
+msgstr "No funciona"
 
 msgid "Nothing copied yet"
 msgstr "Todavía no se ha copiado nada"
 
 msgid "Nothing matches “{}”"
-msgstr ""
+msgstr "Nada coincide con “{}”"
 
 msgid "Nothing matches “{}”."
 msgstr "Nada coincide con “{}”."
@@ -1542,13 +1542,13 @@ msgid "Nothing you copy in these programs reaches the Recent inbox. Use the prog
 msgstr "Lo que copies en estos programas no llega a la bandeja Recientes. Usa el nombre de archivo del programa, por ejemplo keepass.exe."
 
 msgid "Numbers the first nine rows so pressing 1 to 9 uses that snippet."
-msgstr ""
+msgstr "Numera las nueve primeras filas para que, al pulsar de 1 a 9, se use ese fragmento."
 
 msgid "OK"
 msgstr "Correcto"
 
 msgid "Objects"
-msgstr ""
+msgstr "Objetos"
 
 msgid "Off"
 msgstr "Desactivado"
@@ -1563,7 +1563,7 @@ msgid "Only text, code, link and template items can be sensitive."
 msgstr "Solo los fragmentos de texto, código, enlace y plantilla pueden ser sensibles."
 
 msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
-msgstr ""
+msgstr "Solo con Iniciar con Windows: esperar en la bandeja o abrir también el panel."
 
 msgid "Open"
 msgstr "Abrir"
@@ -1620,7 +1620,7 @@ msgid "Open the user guide (F1)"
 msgstr "Abrir la guía del usuario (F1)"
 
 msgid "Opening the Panel"
-msgstr ""
+msgstr "Apertura del panel"
 
 msgid "Opens in your browser."
 msgstr "Se abre en el navegador."
@@ -1665,13 +1665,13 @@ msgid "Panel floats again"
 msgstr "El panel vuelve a flotar"
 
 msgid "Panel layout"
-msgstr ""
+msgstr "Diseño del panel"
 
 msgid "Panel menu"
 msgstr "Menú del panel"
 
 msgid "Panel opens"
-msgstr ""
+msgstr "El panel se abre"
 
 msgid "Panel stays open"
 msgstr "El Panel permanece abierto"
@@ -1734,7 +1734,7 @@ msgid "Pasted into {}"
 msgstr "Pegado en {}"
 
 msgid "Pastes into"
-msgstr ""
+msgstr "Pega en"
 
 msgid "Pastes into {}"
 msgstr "Pega en {}"
@@ -1755,7 +1755,7 @@ msgid "Pause hotkeys"
 msgstr "Pausar atajos"
 
 msgid "Paused"
-msgstr ""
+msgstr "En pausa"
 
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included."
 msgstr "Paga lo que quieras desde A$5, sugerido A$8. Pago único, e incluye todas las actualizaciones 1.x."
@@ -1764,10 +1764,10 @@ msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update
 msgstr "Paga lo que quieras desde A$5, sugerido A$8. Pago único, e incluye todas las actualizaciones 1.x. Gratis sigue siendo totalmente utilizable; Colaborador paga por comodidad y apoya la aplicación. ¿No puedes permitírtelo? Escríbeme y te envío una clave, sin preguntas."
 
 msgid "People & Body"
-msgstr ""
+msgstr "Personas y cuerpo"
 
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
-msgstr ""
+msgstr "Elige cómo se coloca el panel. Puedes cambiarlo cuando quieras en Configuración, junto con los otros bordes, ocultarlo al cambiar de aplicación y el botón de la barra de tareas."
 
 msgid "Picker"
 msgstr "Selector"
@@ -1812,7 +1812,7 @@ msgid "Press the new shortcut"
 msgstr "Pulsa el nuevo atajo"
 
 msgid "Press the shortcut now"
-msgstr ""
+msgstr "Pulsa el atajo ahora"
 
 msgid "Preview"
 msgstr "Vista previa"
@@ -1851,13 +1851,13 @@ msgid "Quick capture the clipboard"
 msgstr "Captura rápida del portapapeles"
 
 msgid "Quick-use numbers"
-msgstr ""
+msgstr "Números de uso rápido"
 
 msgid "Quit"
 msgstr "Salir"
 
 msgid "Ready. Press Test to check it."
-msgstr ""
+msgstr "Listo. Pulsa Probar para comprobarlo."
 
 msgid "Rebuild"
 msgstr "Reconstruir"
@@ -1884,7 +1884,7 @@ msgid "Recent history cleared"
 msgstr "Historial reciente borrado"
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
-msgstr ""
+msgstr "Recientes guarda el texto que copias, solo en este equipo, durante las últimas {} copias o {} días, lo que ocurra primero. Las contraseñas de los gestores de contraseñas y los fragmentos sensibles nunca se guardan. Puedes cambiarlo cuando quieras en Configuración."
 
 msgid "Recently used"
 msgstr "Usados recientemente"
@@ -1996,7 +1996,7 @@ msgid "SNIP1."
 msgstr "SNIP1."
 
 msgid "Sad"
-msgstr ""
+msgstr "Triste"
 
 msgid "Save"
 msgstr "Guardar"
@@ -2026,13 +2026,13 @@ msgid "Saved {}"
 msgstr "Guardado {}"
 
 msgid "Saved {}."
-msgstr ""
+msgstr "{} guardado."
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Guarda todos los tableros, listas y fragmentos en un archivo .snipdeck dentro de la carpeta que elijas."
 
 msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."
-msgstr ""
+msgstr "Guarda como un fragmento nuevo, en la lista que muestra el panel, el texto que hay en el portapapeles cuando lo pulsas."
 
 msgid "Saving…"
 msgstr "Guardando…"
@@ -2050,19 +2050,19 @@ msgid "Search"
 msgstr "Buscar"
 
 msgid "Search (Ctrl+F)"
-msgstr ""
+msgstr "Buscar (Ctrl+F)"
 
 msgid "Search all snippets"
 msgstr "Buscar en todos los fragmentos"
 
 msgid "Search emoji, kaomoji, icons"
-msgstr ""
+msgstr "Buscar emoji, kaomoji, iconos"
 
 msgid "Search every board and paste without opening the window."
 msgstr "Busca en todos los tableros y pega sin abrir la ventana."
 
 msgid "Search field"
-msgstr ""
+msgstr "Campo de búsqueda"
 
 msgid "Search in"
 msgstr "Buscar en"
@@ -2071,7 +2071,7 @@ msgid "Search results"
 msgstr "Resultados de búsqueda"
 
 msgid "Search settings"
-msgstr ""
+msgstr "Buscar en la configuración"
 
 msgid "Search shortcuts"
 msgstr "Buscar atajos"
@@ -2080,13 +2080,13 @@ msgid "Search snippets"
 msgstr "Buscar fragmentos"
 
 msgid "Search symbols"
-msgstr ""
+msgstr "Buscar símbolos"
 
 msgid "Search the keyboard shortcuts"
 msgstr "Buscar en los atajos de teclado"
 
 msgid "Searched every board and list."
-msgstr ""
+msgstr "Se buscó en todos los tableros y listas."
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "Segundos antes de que un fragmento sensible copiado se borre del portapapeles, si desde entonces no se ha copiado nada más. 0 nunca lo borra. Al pegar se restaura tu propio portapapeles."
@@ -2161,7 +2161,7 @@ msgid "Show Panel ({})"
 msgstr "Mostrar panel ({})"
 
 msgid "Show all"
-msgstr ""
+msgstr "Mostrar todo"
 
 msgid "Show kind, title, colour, tags and privacy"
 msgstr "Mostrar tipo, título, color, etiquetas y privacidad"
@@ -2176,7 +2176,7 @@ msgid "Show or hide the panel"
 msgstr "Mostrar u ocultar el panel"
 
 msgid "Show the Panel"
-msgstr ""
+msgstr "Mostrar el panel"
 
 msgid "Show the Panel in the taskbar and Alt+Tab"
 msgstr "Mostrar el Panel en la barra de tareas y en Alt+Tab"
@@ -2185,7 +2185,7 @@ msgid "Show the welcome tour again"
 msgstr "Mostrar de nuevo el recorrido de bienvenida"
 
 msgid "Shrug"
-msgstr ""
+msgstr "Encogerse de hombros"
 
 msgid "Skip"
 msgstr "Omitir"
@@ -2194,7 +2194,7 @@ msgid "Slate"
 msgstr "Pizarra"
 
 msgid "Smileys & Emotion"
-msgstr ""
+msgstr "Emoticonos y emociones"
 
 msgid "Snipdeck"
 msgstr "Snipdeck"
@@ -2260,7 +2260,7 @@ msgid "Snipdeck keeps its own copy of the file."
 msgstr "Snipdeck guarda su propia copia del archivo."
 
 msgid "Snipdeck keeps the text you paste again and again, one shortcut away. The basics:"
-msgstr ""
+msgstr "Snipdeck guarda el texto que pegas una y otra vez, a un atajo de distancia. Lo básico:"
 
 msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
 msgstr "Snipdeck nunca busca por su cuenta. Esto abre la página de versiones en el navegador."
@@ -2278,7 +2278,7 @@ msgid "Snippets"
 msgstr "Fragmentos"
 
 msgid "Sorry"
-msgstr ""
+msgstr "Perdón"
 
 msgid "Sort items by"
 msgstr "Ordenar fragmentos por"
@@ -2299,7 +2299,7 @@ msgid "Start-up"
 msgstr "Inicio"
 
 msgid "Stay in the tray"
-msgstr ""
+msgstr "Permanecer en la bandeja"
 
 msgid "Step {} of {}"
 msgstr "Paso {} de {}"
@@ -2320,19 +2320,19 @@ msgid "Supporter"
 msgstr "Colaborador"
 
 msgid "Surprise"
-msgstr ""
+msgstr "Sorpresa"
 
 msgid "Symbols"
-msgstr ""
+msgstr "Símbolos"
 
 msgid "Tab"
 msgstr "Tab"
 
 msgid "Tabs"
-msgstr ""
+msgstr "Pestañas"
 
 msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your snippets."
-msgstr ""
+msgstr "Las pestañas ponen cada lista del tablero en una fila bajo el encabezado. Menú las mueve al selector de tableros y devuelve el espacio a tus fragmentos."
 
 msgid "Tag"
 msgstr "Etiquetas"
@@ -2371,10 +2371,10 @@ msgid "Templates with date, time and cursor"
 msgstr "Plantillas con fecha, hora y cursor"
 
 msgid "Test"
-msgstr ""
+msgstr "Probar"
 
 msgid "Test {}"
-msgstr ""
+msgstr "Probar {}"
 
 msgid "Text"
 msgstr "Texto"
@@ -2602,10 +2602,10 @@ msgid "Trash"
 msgstr "Papelera"
 
 msgid "Travel & Places"
-msgstr ""
+msgstr "Viajes y lugares"
 
 msgid "Tray icon click opens"
-msgstr ""
+msgstr "Al hacer clic en el icono de la bandeja se abre"
 
 msgid "Troubleshoot"
 msgstr "Solución de problemas"
@@ -2614,7 +2614,7 @@ msgid "Troubleshoot…"
 msgstr "Solucionar problemas…"
 
 msgid "Try another word, or a different kind."
-msgstr ""
+msgstr "Prueba con otra palabra o con otro tipo."
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Activa el historial del portapapeles en Configuración para registrar lo que copias."
@@ -2701,10 +2701,10 @@ msgid "Use the item"
 msgstr "Usa el elemento"
 
 msgid "Use {}"
-msgstr ""
+msgstr "Usar {}"
 
 msgid "Use {} for {}"
-msgstr ""
+msgstr "Usar {} para {}"
 
 msgid "User guide"
 msgstr "Guía del usuario"
@@ -2731,7 +2731,7 @@ msgid "Welcome tour"
 msgstr "Recorrido de bienvenida"
 
 msgid "What a click on the Snipdeck icon in the tray opens. The tray menu still has both."
-msgstr ""
+msgstr "Qué se abre al hacer clic en el icono de Snipdeck de la bandeja. El menú de la bandeja sigue ofreciendo ambos."
 
 msgid "What is on the clipboard"
 msgstr "Lo que hay en el portapapeles"
@@ -2743,13 +2743,13 @@ msgid "What you changed in this item has not been saved."
 msgstr "Los cambios en este fragmento no se han guardado."
 
 msgid "When Windows starts"
-msgstr ""
+msgstr "Al iniciar Windows"
 
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "Con la chincheta desactivada, el panel se oculta en cuanto cambias a otra aplicación. Un panel fijado se queda."
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
-msgstr ""
+msgstr "Dónde aparece el panel cuando lo muestra un atajo o la bandeja. En el cursor de texto recurre al ratón cuando la aplicación no tiene cursor."
 
 msgid "Where the panel sits"
 msgstr "Dónde se coloca el panel"
@@ -2758,10 +2758,10 @@ msgid "Where the text cursor lands after pasting"
 msgstr "Dónde cae el cursor de texto tras pegar"
 
 msgid "Where you left it"
-msgstr ""
+msgstr "Donde lo dejaste"
 
 msgid "Whether the search field takes a row at the top all the time, or appears when you start typing."
-msgstr ""
+msgstr "Si el campo de búsqueda ocupa siempre una fila arriba o aparece cuando empiezas a escribir."
 
 msgid "Which side of your text cursor the Picker opens on. It moves to the opposite side when there is no room, and opens below the mouse when the app has no text cursor Snipdeck can see."
 msgstr "En qué lado del cursor de texto se abre el selector. Pasa al lado contrario si no hay espacio, y se abre debajo del ratón si la aplicación no tiene un cursor de texto que Snipdeck pueda ver."
@@ -2797,7 +2797,7 @@ msgid "Windows follows your Windows text size (Settings > Accessibility > Text s
 msgstr "Windows sigue el tamaño de texto de Windows (Configuración > Accesibilidad > Tamaño del texto). Elige un tamaño para usar ese en su lugar."
 
 msgid "Yes"
-msgstr ""
+msgstr "Sí"
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "Tendrías {} tableros, y el plan Gratis incluye {}."
@@ -2850,7 +2850,7 @@ msgid "change modify rename"
 msgstr "cambiar modificar renombrar"
 
 msgid "click copies"
-msgstr ""
+msgstr "el clic copia"
 
 msgid "clipboard"
 msgstr "portapapeles"
@@ -2970,7 +2970,7 @@ msgid "tag change"
 msgstr "cambio de etiqueta"
 
 msgid "tag: {}"
-msgstr ""
+msgstr "etiqueta: {}"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "tutorial introducción inicio básico aprender"
@@ -3080,8 +3080,8 @@ msgstr[1] "Se omitieron {} elementos que no son texto (imágenes o archivos)."
 
 msgid "{} match in all boards"
 msgid_plural "{} matches in all boards"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{} coincidencia en todos los tableros"
+msgstr[1] "{} coincidencias en todos los tableros"
 
 msgid "{} min ago"
 msgstr "hace {} min"

@@ -8,7 +8,7 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 msgid "+{} more"
-msgstr ""
+msgstr "另有 {} 项"
 
 msgid ".snipdeck file"
 msgstr ".snipdeck 文件"
@@ -29,13 +29,13 @@ msgid "A PNG picture. Snipdeck keeps its own copy."
 msgstr "PNG 图片。Snipdeck 会保存自己的副本。"
 
 msgid "A Panel that a shortcut or the tray showed hides after a paste or copy. A pinned Panel stays, and a docked one folds back to its edge."
-msgstr ""
+msgstr "通过快捷键或托盘显示的面板会在粘贴或复制后隐藏。已置顶的面板会保持显示，已停靠的面板会收回到边缘。"
 
 msgid "A Supporter feature. Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "Supporter 功能。在 Windows 自身保护之上，为你的敏感片段添加密码。首次使用敏感片段时要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。"
 
 msgid "A docked Panel opens at its edge. Set Dock to Floating to choose where it opens."
-msgstr ""
+msgstr "已停靠的面板会在其边缘打开。将“停靠到”设为“浮动”，即可选择它的打开位置。"
 
 msgid "A link can't contain spaces or line breaks."
 msgstr "链接不能包含空格或换行。"
@@ -53,7 +53,7 @@ msgid "A master password is part of Supporter."
 msgstr "主密码是 Supporter 的功能之一。"
 
 msgid "A small window you can drag anywhere."
-msgstr ""
+msgstr "可以拖到任意位置的小窗口。"
 
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "在你正在使用的应用旁边显示的片段栏。点击其中一条，即可粘贴到该应用。"
@@ -86,7 +86,7 @@ msgid "Activate"
 msgstr "激活"
 
 msgid "Activities"
-msgstr ""
+msgstr "活动"
 
 msgid "Add"
 msgstr "添加"
@@ -110,10 +110,10 @@ msgid "Adds a password on top of Windows' own protection for your sensitive item
 msgstr "在 Windows 自身保护之上，为你的敏感片段添加密码。首次使用敏感片段时要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。"
 
 msgid "Adds a text snippet to {}"
-msgstr ""
+msgstr "向 {} 添加文本片段"
 
 msgid "After a paste or copy"
-msgstr ""
+msgstr "粘贴或复制后"
 
 msgid "All"
 msgstr "全部"
@@ -131,7 +131,7 @@ msgid "Also forget the encryption key"
 msgstr "同时忘记加密密钥"
 
 msgid "Also keep what I copy?"
-msgstr ""
+msgstr "同时保留我复制的内容？"
 
 msgid "Alt 1 to 9"
 msgstr "Alt 1 到 9"
@@ -140,7 +140,7 @@ msgid "Alt+{}"
 msgstr "Alt+{}"
 
 msgid "Always shown"
-msgstr ""
+msgstr "始终显示"
 
 msgid "Amber"
 msgstr "琥珀色"
@@ -149,13 +149,13 @@ msgid "An Image item holds a PNG picture. Choose a PNG file, or add this one as 
 msgstr "图片片段保存的是 PNG 图片。请选择 PNG 文件，或将此文件添加为“文件”片段。"
 
 msgid "Angry"
-msgstr ""
+msgstr "生气"
 
 msgid "Animals"
-msgstr ""
+msgstr "动物"
 
 msgid "Animals & Nature"
-msgstr ""
+msgstr "动物与自然"
 
 msgid "Another program already uses {}."
 msgstr "其他程序已在使用 {}。"
@@ -167,7 +167,7 @@ msgid "Appearance"
 msgstr "外观"
 
 msgid "Appears when you type"
-msgstr ""
+msgstr "输入时出现"
 
 msgid "Apply the new name"
 msgstr "应用新名称"
@@ -185,10 +185,10 @@ msgid "At least {} characters. A few unrelated words make a good password."
 msgstr "至少 {} 个字符。几个无关的单词组合起来是个不错的密码。"
 
 msgid "At the mouse"
-msgstr ""
+msgstr "鼠标位置"
 
 msgid "At the text cursor"
-msgstr ""
+msgstr "文本光标处"
 
 msgid "Back"
 msgstr "上一步"
@@ -227,13 +227,13 @@ msgid "Board: {}"
 msgstr "看板：{}"
 
 msgid "Board: {}, list: {}"
-msgstr ""
+msgstr "看板：{}，列表：{}"
 
 msgid "Boards"
 msgstr "看板"
 
 msgid "Boards and lists"
-msgstr ""
+msgstr "看板和列表"
 
 msgid "Bottom edge"
 msgstr "底边"
@@ -260,13 +260,13 @@ msgid "Cancel"
 msgstr "取消"
 
 msgid "Cancel the test of {}"
-msgstr ""
+msgstr "取消 {} 的测试"
 
 msgid "Captured items keep their kind."
 msgstr "捕获的片段保留其类型。"
 
 msgid "Cards"
-msgstr ""
+msgstr "卡片"
 
 msgid "Change master password"
 msgstr "更改主密码"
@@ -296,7 +296,7 @@ msgid "Choose a file, or cancel."
 msgstr "请选择文件，或取消。"
 
 msgid "Choose one to add it where the cursor is. It is filled in when you use the item."
-msgstr ""
+msgstr "选择一项，将其添加到光标所在位置。使用该片段时会填入内容。"
 
 msgid "Choose tags"
 msgstr "选择标签"
@@ -335,7 +335,7 @@ msgid "Clear the clipboard sooner"
 msgstr "尽快清除剪贴板"
 
 msgid "Clear the search"
-msgstr ""
+msgstr "清除搜索"
 
 msgid "Clear the search, then close"
 msgstr "先清除搜索，然后关闭"
@@ -347,13 +347,13 @@ msgid "Click"
 msgstr "点击"
 
 msgid "Click copies"
-msgstr ""
+msgstr "点击为复制"
 
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
-msgstr ""
+msgstr "点击或按 Enter 粘贴。Shift+点击或 Shift+Enter 为复制。"
 
 msgid "Click pastes into {} · Shift+click copies"
-msgstr ""
+msgstr "点击粘贴到 {} · Shift+点击为复制"
 
 msgid "Click to copy."
 msgstr "点击复制。"
@@ -374,7 +374,7 @@ msgid "Close panel (Esc)"
 msgstr "关闭面板 (Esc)"
 
 msgid "Close search"
-msgstr ""
+msgstr "关闭搜索"
 
 msgid "Close the tag list"
 msgstr "关闭标签列表"
@@ -452,7 +452,7 @@ msgid "Copy something, then save it from the Panel."
 msgstr "先复制一些内容，然后在面板中保存。"
 
 msgid "Copy something, then save it here."
-msgstr ""
+msgstr "先复制一些内容，然后保存到这里。"
 
 msgid "Copy the item"
 msgstr "复制该片段"
@@ -626,7 +626,7 @@ msgid "Create item"
 msgstr "创建项目"
 
 msgid "Create “{}”"
-msgstr ""
+msgstr "创建“{}”"
 
 msgid "Ctrl+Shift+V"
 msgstr "Ctrl+Shift+V"
@@ -752,7 +752,7 @@ msgid "Dock to the top edge"
 msgstr "停靠到上边缘"
 
 msgid "Docked to the right"
-msgstr ""
+msgstr "停靠在右侧"
 
 msgid "Done"
 msgstr "完成"
@@ -803,7 +803,7 @@ msgid "Email me"
 msgstr "给我发邮件"
 
 msgid "Emoji"
-msgstr ""
+msgstr "表情符号"
 
 msgid "Empty Trash"
 msgstr "清空回收站"
@@ -887,7 +887,7 @@ msgid "Filter by colour label"
 msgstr "按颜色标签筛选"
 
 msgid "Fixed against the right edge of the screen, full height."
-msgstr ""
+msgstr "固定在屏幕右边缘，占满整个高度。"
 
 msgid "Fixed placeholders filled in when you paste."
 msgstr "粘贴时会填入固定占位符。"
@@ -896,7 +896,7 @@ msgid "Fixes the panel against one edge of the screen, on the monitor it is on. 
 msgstr "将面板固定在其所在显示器的某条屏幕边缘。选择“浮动”则可放在任意位置。"
 
 msgid "Flags"
-msgstr ""
+msgstr "旗帜"
 
 msgid "Floating"
 msgstr "浮动"
@@ -914,7 +914,7 @@ msgid "Follow Windows switches with your system setting."
 msgstr "跟随系统设置中的 Windows 主题。"
 
 msgid "Food & Drink"
-msgstr ""
+msgstr "食物与饮料"
 
 msgid "For example, Email replies"
 msgstr "例如：邮件回复"
@@ -971,10 +971,10 @@ msgid "Green"
 msgstr "绿色"
 
 msgid "Greet"
-msgstr ""
+msgstr "问候"
 
 msgid "Heard it. This shortcut works."
-msgstr ""
+msgstr "收到了。此快捷键可用。"
 
 msgid "Help"
 msgstr "帮助"
@@ -1016,7 +1016,7 @@ msgid "Hold to reveal"
 msgstr "按住以显示"
 
 msgid "Hold to reveal a hidden item"
-msgstr ""
+msgstr "按住以显示隐藏的片段"
 
 msgid "Hover"
 msgstr "悬停"
@@ -1034,10 +1034,10 @@ msgid "How long the pointer stays off the open panel before it folds away, from 
 msgstr "指针离开已展开的面板多久后面板收起，范围为 0 至 {} 毫秒。"
 
 msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
-msgstr ""
+msgstr "主窗口列表中片段行的高度。紧凑模式每个片段显示一行。"
 
 msgid "How the Panel lists your snippets: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
-msgstr ""
+msgstr "面板列出片段的方式：每行一个、每行两个的卡片，或紧凑的行。搜索时，所有布局都显示为行。"
 
 msgid "How wide the panel opens, from {} to {} pixels."
 msgstr "面板展开的宽度，范围为 {} 至 {} 像素。"
@@ -1046,10 +1046,10 @@ msgid "Icon"
 msgstr "图标"
 
 msgid "Icons"
-msgstr ""
+msgstr "图标"
 
 msgid "Icons can't be added to a list yet."
-msgstr ""
+msgstr "暂时无法将图标添加到列表。"
 
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
 msgstr "如果忘记此密码，敏感片段将再也无法打开。Snipdeck 无法重置它，也不保存恢复密钥。你的其他片段不受影响。"
@@ -1112,16 +1112,16 @@ msgid "Its lists and {} items move to the Trash. You can restore them for {} day
 msgstr "它的列表和 {} 个项目将移到回收站。你可以在 {} 天内恢复。"
 
 msgid "Joy"
-msgstr ""
+msgstr "喜悦"
 
 msgid "Jump to a section"
-msgstr ""
+msgstr "跳转到某个部分"
 
 msgid "Just now"
 msgstr "刚刚"
 
 msgid "Kaomoji"
-msgstr ""
+msgstr "颜文字"
 
 msgid "Keep Panel visible during screenshots"
 msgstr "截图时保持面板可见"
@@ -1148,10 +1148,10 @@ msgid "Keep the Panel on top (pin)"
 msgstr "保持面板置顶(固定)"
 
 msgid "Keep the Panel open"
-msgstr ""
+msgstr "保持面板打开"
 
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
-msgstr ""
+msgstr "保留你复制的文本，最多保留最近 {} 次复制或 {} 天，以先到者为准，方便你再次找到或保存到列表。敏感片段、密码管理器以及你排除的应用的内容不会被保留。"
 
 msgid "Keyboard shortcuts"
 msgstr "键盘快捷键"
@@ -1160,7 +1160,7 @@ msgid "Kind"
 msgstr "类型"
 
 msgid "Kinds of symbols"
-msgstr ""
+msgstr "符号类型"
 
 msgid "Language"
 msgstr "语言"
@@ -1169,7 +1169,7 @@ msgid "Last backup: {}"
 msgstr "上次备份：{}"
 
 msgid "Layout"
-msgstr ""
+msgstr "布局"
 
 msgid "Leave delay"
 msgstr "离开延迟"
@@ -1226,7 +1226,7 @@ msgid "Lists and items"
 msgstr "列表和片段"
 
 msgid "Lists hold your snippets."
-msgstr ""
+msgstr "列表用来存放你的片段。"
 
 msgid "Loading"
 msgstr "正在加载"
@@ -1238,7 +1238,7 @@ msgid "Logs are only written when Snipdeck crashes, hold no item content and are
 msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会发送到任何地方。"
 
 msgid "Love"
-msgstr ""
+msgstr "爱"
 
 msgid "Main list density"
 msgstr "主列表密度"
@@ -1286,7 +1286,7 @@ msgid "Master password set."
 msgstr "主密码已设置。"
 
 msgid "Menu"
-msgstr ""
+msgstr "菜单"
 
 msgid "Microsoft Store"
 msgstr "Microsoft Store"
@@ -1298,7 +1298,7 @@ msgid "More options"
 msgstr "更多选项"
 
 msgid "More pinned snippets"
-msgstr ""
+msgstr "更多置顶片段"
 
 msgid "Most used"
 msgstr "最常用"
@@ -1375,7 +1375,7 @@ msgid "Never paste"
 msgstr "从不粘贴"
 
 msgid "New"
-msgstr ""
+msgstr "新建"
 
 msgid "New board"
 msgstr "新建看板"
@@ -1396,7 +1396,7 @@ msgid "New name for {}"
 msgstr "{} 的新名称"
 
 msgid "New note"
-msgstr ""
+msgstr "新便笺"
 
 msgid "New password"
 msgstr "新密码"
@@ -1438,7 +1438,7 @@ msgid "No matches"
 msgstr "没有匹配项"
 
 msgid "No matches in all boards"
-msgstr ""
+msgstr "所有看板中均无匹配项"
 
 msgid "No matching command"
 msgstr "没有匹配的命令"
@@ -1453,7 +1453,7 @@ msgid "No recent items"
 msgstr "没有最近的片段"
 
 msgid "No settings match"
-msgstr ""
+msgstr "没有匹配的设置"
 
 msgid "No shortcut matches"
 msgstr "没有匹配的快捷键"
@@ -1462,7 +1462,7 @@ msgid "No snippets yet"
 msgstr "还没有片段"
 
 msgid "No symbols match “{}”"
-msgstr ""
+msgstr "没有与“{}”匹配的符号"
 
 msgid "No tags"
 msgstr "无标签"
@@ -1477,28 +1477,28 @@ msgid "No tags yet. Add tags to an item and they appear here."
 msgstr "还没有标签。为片段添加标签后，将显示在这里。"
 
 msgid "No target:"
-msgstr ""
+msgstr "无目标："
 
 msgid "No target: click copies"
-msgstr ""
+msgstr "无目标：点击为复制"
 
 msgid "Not included"
 msgstr "未包含"
 
 msgid "Not now"
-msgstr ""
+msgstr "以后再说"
 
 msgid "Not set"
 msgstr "未设置"
 
 msgid "Not working"
-msgstr ""
+msgstr "无法使用"
 
 msgid "Nothing copied yet"
 msgstr "尚未复制任何内容"
 
 msgid "Nothing matches “{}”"
-msgstr ""
+msgstr "没有与“{}”匹配的内容"
 
 msgid "Nothing matches “{}”."
 msgstr "没有与“{}”匹配的内容。"
@@ -1537,13 +1537,13 @@ msgid "Nothing you copy in these programs reaches the Recent inbox. Use the prog
 msgstr "在这些程序中复制的内容不会进入“最近”收件箱。请使用程序的文件名，例如 keepass.exe。"
 
 msgid "Numbers the first nine rows so pressing 1 to 9 uses that snippet."
-msgstr ""
+msgstr "为前九行编号，按 1 到 9 即可使用对应的片段。"
 
 msgid "OK"
 msgstr "正常"
 
 msgid "Objects"
-msgstr ""
+msgstr "物体"
 
 msgid "Off"
 msgstr "关闭"
@@ -1558,7 +1558,7 @@ msgid "Only text, code, link and template items can be sensitive."
 msgstr "只有文本、代码、链接和模板类型的片段可以设为敏感。"
 
 msgid "Only with Start with Windows: wait in the tray, or open the Panel as well."
-msgstr ""
+msgstr "仅在“随 Windows 启动”时：在托盘中等待，或同时打开面板。"
 
 msgid "Open"
 msgstr "打开"
@@ -1615,7 +1615,7 @@ msgid "Open the user guide (F1)"
 msgstr "打开用户指南 (F1)"
 
 msgid "Opening the Panel"
-msgstr ""
+msgstr "打开面板"
 
 msgid "Opens in your browser."
 msgstr "在浏览器中打开。"
@@ -1660,13 +1660,13 @@ msgid "Panel floats again"
 msgstr "面板已恢复浮动"
 
 msgid "Panel layout"
-msgstr ""
+msgstr "面板布局"
 
 msgid "Panel menu"
 msgstr "面板菜单"
 
 msgid "Panel opens"
-msgstr ""
+msgstr "面板打开位置"
 
 msgid "Panel stays open"
 msgstr "面板保持打开"
@@ -1729,7 +1729,7 @@ msgid "Pasted into {}"
 msgstr "已粘贴到 {}"
 
 msgid "Pastes into"
-msgstr ""
+msgstr "粘贴到"
 
 msgid "Pastes into {}"
 msgstr "粘贴到 {}"
@@ -1750,7 +1750,7 @@ msgid "Pause hotkeys"
 msgstr "暂停热键"
 
 msgid "Paused"
-msgstr ""
+msgstr "已暂停"
 
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included."
 msgstr "可自定价格，最低 A$5，建议 A$8。一次性付费，包括所有 1.x 更新。"
@@ -1759,10 +1759,10 @@ msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update
 msgstr "可自定价格，最低 A$5，建议 A$8。一次性付费，包括所有 1.x 更新。免费版功能完整可用；Supporter 提供便利功能，并支持本应用。买不起？给我发邮件，我会发给你一个密钥，不问缘由。"
 
 msgid "People & Body"
-msgstr ""
+msgstr "人物与身体"
 
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
-msgstr ""
+msgstr "选择面板的位置。你可以随时在设置中更改，还可设置其他边缘、切换应用时隐藏以及任务栏按钮。"
 
 msgid "Picker"
 msgstr "选择器"
@@ -1807,7 +1807,7 @@ msgid "Press the new shortcut"
 msgstr "按下新的快捷键"
 
 msgid "Press the shortcut now"
-msgstr ""
+msgstr "现在按下快捷键"
 
 msgid "Preview"
 msgstr "预览"
@@ -1846,13 +1846,13 @@ msgid "Quick capture the clipboard"
 msgstr "快速捕获剪贴板"
 
 msgid "Quick-use numbers"
-msgstr ""
+msgstr "快速使用编号"
 
 msgid "Quit"
 msgstr "退出"
 
 msgid "Ready. Press Test to check it."
-msgstr ""
+msgstr "已就绪。按“测试”进行检查。"
 
 msgid "Rebuild"
 msgstr "重建"
@@ -1879,7 +1879,7 @@ msgid "Recent history cleared"
 msgstr "已清除最近记录"
 
 msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
-msgstr ""
+msgstr "“最近”会保留你复制的文本，仅保存在这台电脑上，最多保留最近 {} 次复制或 {} 天，以先到者为准。密码管理器中的密码和敏感片段不会被保留。你可以随时在设置中更改。"
 
 msgid "Recently used"
 msgstr "最近使用"
@@ -1989,7 +1989,7 @@ msgid "SNIP1."
 msgstr "SNIP1."
 
 msgid "Sad"
-msgstr ""
+msgstr "难过"
 
 msgid "Save"
 msgstr "保存"
@@ -2019,13 +2019,13 @@ msgid "Saved {}"
 msgstr "已保存 {}"
 
 msgid "Saved {}."
-msgstr ""
+msgstr "已保存 {}。"
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "将所有看板、列表和片段保存为一个 .snipdeck 文件，存放在你选择的文件夹中。"
 
 msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."
-msgstr ""
+msgstr "将你按下时剪贴板中的文本，作为新片段保存到面板当前显示的列表中。"
 
 msgid "Saving…"
 msgstr "正在保存…"
@@ -2043,19 +2043,19 @@ msgid "Search"
 msgstr "搜索"
 
 msgid "Search (Ctrl+F)"
-msgstr ""
+msgstr "搜索 (Ctrl+F)"
 
 msgid "Search all snippets"
 msgstr "搜索所有片段"
 
 msgid "Search emoji, kaomoji, icons"
-msgstr ""
+msgstr "搜索表情符号、颜文字、图标"
 
 msgid "Search every board and paste without opening the window."
 msgstr "搜索所有看板，无需打开窗口即可粘贴。"
 
 msgid "Search field"
-msgstr ""
+msgstr "搜索框"
 
 msgid "Search in"
 msgstr "搜索范围"
@@ -2064,7 +2064,7 @@ msgid "Search results"
 msgstr "搜索结果"
 
 msgid "Search settings"
-msgstr ""
+msgstr "搜索设置"
 
 msgid "Search shortcuts"
 msgstr "搜索快捷键"
@@ -2073,13 +2073,13 @@ msgid "Search snippets"
 msgstr "搜索片段"
 
 msgid "Search symbols"
-msgstr ""
+msgstr "搜索符号"
 
 msgid "Search the keyboard shortcuts"
 msgstr "搜索键盘快捷键"
 
 msgid "Searched every board and list."
-msgstr ""
+msgstr "已搜索所有看板和列表。"
 
 msgid "Seconds before a sensitive item you copied is cleared from the clipboard, if nothing else has been copied since. 0 never clears it. Pasting restores your own clipboard instead."
 msgstr "复制敏感片段后，若期间未复制其他内容，则在此秒数后从剪贴板清除。设为 0 则永不清除。粘贴时会改为恢复你原本的剪贴板内容。"
@@ -2154,7 +2154,7 @@ msgid "Show Panel ({})"
 msgstr "显示面板（{}）"
 
 msgid "Show all"
-msgstr ""
+msgstr "显示全部"
 
 msgid "Show kind, title, colour, tags and privacy"
 msgstr "显示类型、标题、颜色、标签和隐私"
@@ -2169,7 +2169,7 @@ msgid "Show or hide the panel"
 msgstr "显示或隐藏面板"
 
 msgid "Show the Panel"
-msgstr ""
+msgstr "显示面板"
 
 msgid "Show the Panel in the taskbar and Alt+Tab"
 msgstr "在任务栏和 Alt+Tab 中显示面板"
@@ -2178,7 +2178,7 @@ msgid "Show the welcome tour again"
 msgstr "再次显示欢迎导览"
 
 msgid "Shrug"
-msgstr ""
+msgstr "耸肩"
 
 msgid "Skip"
 msgstr "跳过"
@@ -2187,7 +2187,7 @@ msgid "Slate"
 msgstr "石板灰"
 
 msgid "Smileys & Emotion"
-msgstr ""
+msgstr "笑脸与情绪"
 
 msgid "Snipdeck"
 msgstr "Snipdeck"
@@ -2253,7 +2253,7 @@ msgid "Snipdeck keeps its own copy of the file."
 msgstr "Snipdeck 会保存该文件的副本。"
 
 msgid "Snipdeck keeps the text you paste again and again, one shortcut away. The basics:"
-msgstr ""
+msgstr "Snipdeck 让你反复粘贴的文本只需一个快捷键即可调用。基本用法："
 
 msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
 msgstr "Snipdeck 不会自行检查。这会在浏览器中打开发布页面。"
@@ -2271,7 +2271,7 @@ msgid "Snippets"
 msgstr "片段"
 
 msgid "Sorry"
-msgstr ""
+msgstr "抱歉"
 
 msgid "Sort items by"
 msgstr "排序方式"
@@ -2292,7 +2292,7 @@ msgid "Start-up"
 msgstr "启动"
 
 msgid "Stay in the tray"
-msgstr ""
+msgstr "留在托盘"
 
 msgid "Step {} of {}"
 msgstr "第 {} 步，共 {} 步"
@@ -2313,19 +2313,19 @@ msgid "Supporter"
 msgstr "Supporter"
 
 msgid "Surprise"
-msgstr ""
+msgstr "惊讶"
 
 msgid "Symbols"
-msgstr ""
+msgstr "符号"
 
 msgid "Tab"
 msgstr "Tab"
 
 msgid "Tabs"
-msgstr ""
+msgstr "标签页"
 
 msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your snippets."
-msgstr ""
+msgstr "标签页会把看板的每个列表排成一行，放在标题栏下方。菜单则把它们移到看板选择器中，把空间还给你的片段。"
 
 msgid "Tag"
 msgstr "标签"
@@ -2364,10 +2364,10 @@ msgid "Templates with date, time and cursor"
 msgstr "包含日期、时间和光标位置的模板"
 
 msgid "Test"
-msgstr ""
+msgstr "测试"
 
 msgid "Test {}"
-msgstr ""
+msgstr "测试 {}"
 
 msgid "Text"
 msgstr "文本"
@@ -2595,10 +2595,10 @@ msgid "Trash"
 msgstr "回收站"
 
 msgid "Travel & Places"
-msgstr ""
+msgstr "旅行与地点"
 
 msgid "Tray icon click opens"
-msgstr ""
+msgstr "点击托盘图标时打开"
 
 msgid "Troubleshoot"
 msgstr "故障排除"
@@ -2607,7 +2607,7 @@ msgid "Troubleshoot…"
 msgstr "故障排除…"
 
 msgid "Try another word, or a different kind."
-msgstr ""
+msgstr "试试其他词，或换一种类型。"
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "在设置中开启剪贴板历史，以收集你复制的内容。"
@@ -2694,10 +2694,10 @@ msgid "Use the item"
 msgstr "使用该片段"
 
 msgid "Use {}"
-msgstr ""
+msgstr "使用 {}"
 
 msgid "Use {} for {}"
-msgstr ""
+msgstr "将 {} 用于 {}"
 
 msgid "User guide"
 msgstr "用户指南"
@@ -2724,7 +2724,7 @@ msgid "Welcome tour"
 msgstr "欢迎导览"
 
 msgid "What a click on the Snipdeck icon in the tray opens. The tray menu still has both."
-msgstr ""
+msgstr "点击托盘中的 Snipdeck 图标时打开的内容。托盘菜单中仍有这两项。"
 
 msgid "What is on the clipboard"
 msgstr "剪贴板中的内容"
@@ -2736,13 +2736,13 @@ msgid "What you changed in this item has not been saved."
 msgstr "此片段的更改尚未保存。"
 
 msgid "When Windows starts"
-msgstr ""
+msgstr "Windows 启动时"
 
 msgid "When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays."
 msgstr "图钉关闭时，切换到其他应用后面板会立即隐藏。已固定的面板不会隐藏。"
 
 msgid "Where the Panel appears when a shortcut or the tray shows it. At the text cursor falls back to the mouse when the app has none."
-msgstr ""
+msgstr "通过快捷键或托盘显示面板时，面板出现的位置。应用没有文本光标时，“文本光标处”会改用鼠标位置。"
 
 msgid "Where the panel sits"
 msgstr "面板的位置"
@@ -2751,10 +2751,10 @@ msgid "Where the text cursor lands after pasting"
 msgstr "粘贴后文本光标的位置"
 
 msgid "Where you left it"
-msgstr ""
+msgstr "上次所在位置"
 
 msgid "Whether the search field takes a row at the top all the time, or appears when you start typing."
-msgstr ""
+msgstr "搜索框是始终占用顶部一行，还是在你开始输入时才出现。"
 
 msgid "Which side of your text cursor the Picker opens on. It moves to the opposite side when there is no room, and opens below the mouse when the app has no text cursor Snipdeck can see."
 msgstr "选择器在文本光标的哪一侧打开。没有空间时会移到另一侧；应用没有 Snipdeck 能看到的文本光标时，会在鼠标下方打开。"
@@ -2790,7 +2790,7 @@ msgid "Windows follows your Windows text size (Settings > Accessibility > Text s
 msgstr "Windows 跟随你的 Windows 文字大小（设置 > 辅助功能 > 文字大小）。选择一个大小即可改用该大小。"
 
 msgid "Yes"
-msgstr ""
+msgstr "是"
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "你将拥有 {} 个看板，而免费版仅包含 {} 个。"
@@ -2842,7 +2842,7 @@ msgid "change modify rename"
 msgstr "更改 修改 重命名"
 
 msgid "click copies"
-msgstr ""
+msgstr "点击为复制"
 
 msgid "clipboard"
 msgstr "剪贴板"
@@ -2962,7 +2962,7 @@ msgid "tag change"
 msgstr "标签更改"
 
 msgid "tag: {}"
-msgstr ""
+msgstr "标签：{}"
 
 msgid "tutorial intro onboarding basics learn"
 msgstr "教程 入门 引导 基础 学习"
@@ -3064,7 +3064,7 @@ msgstr[0] "{} 项不是文本（图片或文件），已跳过。"
 
 msgid "{} match in all boards"
 msgid_plural "{} matches in all boards"
-msgstr[0] ""
+msgstr[0] "所有看板中有 {} 个匹配项"
 
 msgid "{} min ago"
 msgstr "{} 分钟前"
