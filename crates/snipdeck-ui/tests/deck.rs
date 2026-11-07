@@ -356,7 +356,6 @@ fn the_comfortable_card_copy_glyph_reads_at_4_5_to_1_against_the_card() {
             .flat_map(|x| (COMFORTABLE_TOP + 10..COMFORTABLE_TOP + 30).map(move |y| (x, y)))
             .map(|(x, y)| contrast(frame.pixel(x, y), surface))
             .fold(0.0_f64, f64::max);
-        println!("copy glyph dark={dark}: {best:.2}:1");
         assert!(
             best >= 4.5,
             "dark={dark}: the darkest Copy glyph pixel is {best:.2}:1 against the card"
