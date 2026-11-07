@@ -475,7 +475,8 @@ fn var_for(name: &str, vars: &[&Node], what: &str, report: &mut ImportReport) ->
         "date" => {
             let format = param("format")?;
             let placeholder = format!("{{datetime:{format}}}");
-            if Template::parse(&placeholder).is_ok() {
+            // A brace in the format would close the placeholder early and leave live ones.
+            if !format.contains(['{', '}']) && Template::parse(&placeholder).is_ok() {
                 Some(Var::Placeholder(placeholder))
             } else {
                 report.warn(Warning::Note(format!(
