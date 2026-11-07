@@ -1958,8 +1958,8 @@ ui_tests! {
             mp.x + ms.width
         );
 
-        find(&ui, "Settings", AccessibleRole::ListItem).invoke_accessible_default_action();
-        assert_eq!(take(&log), ["app:1"]);
+        find(&ui, "Settings\u{2026}", AccessibleRole::ListItem).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["app:7"]);
     }
 
     fn the_app_menu_takes_the_keyboard_and_escape_closes_it_without_closing_the_panel() {
@@ -1969,7 +1969,9 @@ ui_tests! {
         press(ui.window(), &key(Key::DownArrow));
         press(ui.window(), &key(Key::DownArrow));
         press(ui.window(), &key(Key::Return));
-        assert_eq!(take(&log), ["app:1"], "focus is in the menu: two Downs and Enter pick the second row");
+        // The fixture mirrors APP_MENU: Undo, Redo and Paste stack are disabled and a line is no row, so the keyboard
+        // starts at Dock (index 4) and the second Down lands on "Keyboard shortcuts" (index 5).
+        assert_eq!(take(&log), ["app:5"], "focus is in the menu: two Downs and Enter pick the second enabled row");
         assert_eq!(ui.get_selected_index(), 0, "the list selection did not move");
         press(ui.window(), &key(Key::Escape));
         assert_eq!(take(&log), ["app-dismissed"], "Esc closes the menu, not the Panel");

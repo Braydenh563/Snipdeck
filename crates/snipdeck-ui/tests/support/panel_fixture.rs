@@ -158,23 +158,44 @@ pub fn pinned_n(n: usize) -> Vec<PinnedItem> {
         .collect()
 }
 
-/// The Panel's kebab menu as the app fills it: two actions, a separator, then the rest.
+/// The Panel's kebab menu as the app fills it: the rows of `APP_MENU` in its order, with the English words,
+/// the shortcuts of `wording::app_menu_shortcut` and the state a fresh Panel has (nothing to undo, redo or
+/// stack; hotkeys running; numbers shown). `snipdeck-app` pins the order; keep this list in step with it.
 pub fn app_menu() -> Vec<MenuEntry> {
-    let entry = |text: &str, shortcut: &str| MenuEntry {
+    let row = |text: &str, shortcut: &str| MenuEntry {
         text: text.into(),
         shortcut: shortcut.into(),
         ..Default::default()
     };
+    let off = |text: &str| MenuEntry {
+        disabled: true,
+        ..row(text, "")
+    };
+    let line = || MenuEntry {
+        separator: true,
+        ..Default::default()
+    };
     vec![
-        entry("Open Snipdeck", ""),
-        entry("Settings", "Ctrl+,"),
-        MenuEntry {
-            separator: true,
-            ..Default::default()
-        },
-        entry("Pause hotkeys", ""),
-        entry("Help", "F1"),
-        entry("Quit", ""),
+        off("Nothing to undo"),
+        off("Nothing to redo"),
+        line(),
+        off("Paste stack"),
+        row("Dock to the nearest edge", ""),
+        row("Keyboard shortcuts", "Ctrl+/"),
+        row("All commands\u{2026}", "Ctrl+K"),
+        row("Settings\u{2026}", ""),
+        line(),
+        row("Open Snipdeck", ""),
+        row("New item", ""),
+        row("Take screenshot", ""),
+        row("Pause hotkeys", ""),
+        row("Show numbers", ""),
+        row("Reset size and position", ""),
+        line(),
+        row("Troubleshoot\u{2026}", ""),
+        row("User guide", "F1"),
+        row("About Snipdeck", ""),
+        row("Quit", ""),
     ]
 }
 
