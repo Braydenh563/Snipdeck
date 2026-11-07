@@ -344,3 +344,22 @@ fn the_row_more_glyph_reads_at_3_to_1_against_the_card() {
         );
     }
 }
+
+#[test]
+fn the_comfortable_card_copy_glyph_reads_at_4_5_to_1_against_the_card() {
+    for (dark, surface) in [(false, LIGHT_SURFACE), (true, DARK_SURFACE)] {
+        let h = Harness::new(DeckGallery::new, GALLERY.0, GALLERY.1);
+        h.component.set_dark(dark);
+        let frame = h.render();
+        // Copy sits left of More in the same corner (one button wide, 24px).
+        let best = (COMFORTABLE_X + 252..COMFORTABLE_X + 278)
+            .flat_map(|x| (COMFORTABLE_TOP + 10..COMFORTABLE_TOP + 30).map(move |y| (x, y)))
+            .map(|(x, y)| contrast(frame.pixel(x, y), surface))
+            .fold(0.0_f64, f64::max);
+        println!("copy glyph dark={dark}: {best:.2}:1");
+        assert!(
+            best >= 4.5,
+            "dark={dark}: the darkest Copy glyph pixel is {best:.2}:1 against the card"
+        );
+    }
+}
