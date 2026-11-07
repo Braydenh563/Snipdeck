@@ -742,6 +742,10 @@ where
             }
             TrayEvent::TogglePanel if self.visible => self.hide(),
             TrayEvent::TogglePanel | TrayEvent::OpenPanel => self.show(),
+            TrayEvent::OpenPicker => {
+                self.open_picker();
+                Vec::new()
+            }
             TrayEvent::OpenSnipdeck => vec![Effect::OpenMainWindow],
             TrayEvent::HotkeysPaused(paused) => {
                 self.session.hotkeys_paused = paused;

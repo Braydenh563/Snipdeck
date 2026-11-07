@@ -42,6 +42,14 @@ fn a_panel_whose_window_is_gone_is_shown_by_the_next_toggle_not_hidden() {
 }
 
 #[test]
+fn the_tray_menu_opens_the_picker() {
+    let mut w = world();
+    assert!(w.ctl.picker().is_none());
+    assert_eq!(w.ctl.on_tray(TrayEvent::OpenPicker), []);
+    assert!(w.ctl.picker().is_some());
+}
+
+#[test]
 fn the_tray_menu_opens_snipdeck_and_quits() {
     let mut w = world();
     assert_eq!(
