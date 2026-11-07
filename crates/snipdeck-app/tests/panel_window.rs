@@ -1717,3 +1717,42 @@ fn the_list_follows_the_window_size_after_a_reset_and_a_resize() {
         assert_eq!(r.ctl.borrow().placement(&m), Some(short));
     });
 }
+
+#[test]
+fn the_symbols_tab_searches_pastes_the_first_hit_and_remembers_it() {
+    on_ui_thread(|| {
+        let r = rig();
+        click(r.window(), &element(&r.ui, "Symbols", AccessibleRole::Tab));
+        assert!(r.ui.get_symbols_open(), "the tab opens the Symbols view");
+        assert!(
+            r.ui.get_symbol_rows().row_count() > 0,
+            "recents or sections fill the grid"
+        );
+        type_text(r.window(), "grinning");
+        slint::platform::update_timers_and_animations();
+        let first =
+            r.ui.get_symbol_rows()
+                .iter()
+                .find(|row| row.cells.row_count() > 0);
+        let first = first.expect("a search hit");
+        assert_eq!(
+            first.cells.iter().next().expect("cell").kind,
+            0,
+            "the first hit is an emoji"
+        );
+        press(r.window(), &key(Key::Return));
+        let sent = r.ctl.borrow().services().keyboard.sent.len();
+        assert_eq!(sent, 1, "Enter pastes into the Target");
+        assert_eq!(
+            r.ctl.borrow().symbol_recents(None).len(),
+            1,
+            "the use is remembered"
+        );
+        chord(r.window(), &[Key::Shift], &key(Key::Return));
+        assert_eq!(
+            r.ctl.borrow().services().keyboard.sent.len(),
+            1,
+            "Shift+Enter copies without keys"
+        );
+    });
+}

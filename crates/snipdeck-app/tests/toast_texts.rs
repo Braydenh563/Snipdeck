@@ -115,10 +115,12 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::RecentCleared => 85,
         ToastMessage::DockSet(_) => 86,
         ToastMessage::NotRefreshed => 87,
+        ToastMessage::IconNotAddable => 88,
+        ToastMessage::IconSaved { .. } => 89,
     }
 }
 
-const VARIANTS: usize = 88;
+const VARIANTS: usize = 90;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -269,6 +271,10 @@ fn samples() -> Vec<ToastMessage> {
         M::DockSet(Some(DockEdge::Top)),
         M::DockSet(Some(DockEdge::Bottom)),
         M::NotRefreshed,
+        M::IconNotAddable,
+        M::IconSaved {
+            name: s("trash.svg"),
+        },
     ]
 }
 

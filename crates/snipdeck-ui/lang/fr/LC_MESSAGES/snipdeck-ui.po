@@ -85,6 +85,9 @@ msgstr "Actions"
 msgid "Activate"
 msgstr "Activer"
 
+msgid "Activities"
+msgstr ""
+
 msgid "Add"
 msgstr "Ajouter"
 
@@ -144,6 +147,15 @@ msgstr "Ambre"
 
 msgid "An Image item holds a PNG picture. Choose a PNG file, or add this one as a File."
 msgstr "Un élément image contient une image PNG. Choisissez un fichier PNG, ou ajoutez celui-ci comme fichier."
+
+msgid "Angry"
+msgstr ""
+
+msgid "Animals"
+msgstr ""
+
+msgid "Animals & Nature"
+msgstr ""
 
 msgid "Another program already uses {}."
 msgstr "Un autre programme utilise déjà {}."
@@ -328,7 +340,13 @@ msgstr "Effacer le raccourci de {}"
 msgid "Click"
 msgstr "Clic"
 
+msgid "Click copies"
+msgstr ""
+
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
+msgstr ""
+
+msgid "Click pastes into {} · Shift+click copies"
 msgstr ""
 
 msgid "Click to copy."
@@ -778,6 +796,9 @@ msgstr "Modifier…"
 msgid "Email me"
 msgstr "Écrivez-moi"
 
+msgid "Emoji"
+msgstr ""
+
 msgid "Empty Trash"
 msgstr "Vider la corbeille"
 
@@ -868,6 +889,9 @@ msgstr "Champs fixes remplis au moment du collage."
 msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
 msgstr "Place le panneau contre un bord de l'écran, sur le moniteur où il se trouve. « Flottant » le laisse n'importe où."
 
+msgid "Flags"
+msgstr ""
+
 msgid "Floating"
 msgstr "Flottant"
 
@@ -882,6 +906,9 @@ msgstr "Suivre Windows"
 
 msgid "Follow Windows switches with your system setting."
 msgstr "Suit le thème de Windows selon le réglage du système."
+
+msgid "Food & Drink"
+msgstr ""
 
 msgid "For example, Email replies"
 msgstr "Par exemple, Réponses e-mail"
@@ -936,6 +963,9 @@ msgstr "Aller à la corbeille"
 
 msgid "Green"
 msgstr "Vert"
+
+msgid "Greet"
+msgstr ""
 
 msgid "Help"
 msgstr "Aide"
@@ -1006,6 +1036,12 @@ msgstr "Largeur d'ouverture du panneau, de {} à {} pixels."
 msgid "Icon"
 msgstr "Icône"
 
+msgid "Icons"
+msgstr ""
+
+msgid "Icons can't be added to a list yet."
+msgstr ""
+
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
 msgstr "Si vous oubliez ce mot de passe, vos extraits sensibles ne pourront plus jamais être ouverts. Snipdeck ne peut pas le réinitialiser et ne conserve aucune clé de récupération. Vos autres extraits ne sont pas affectés."
 
@@ -1069,8 +1105,14 @@ msgstr[1] "Ses listes et {n} extraits seront déplacés dans la corbeille. Vous 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "Ses listes et {} éléments vont à la corbeille. Vous pouvez les restaurer pendant {} jours."
 
+msgid "Joy"
+msgstr ""
+
 msgid "Just now"
 msgstr "À l'instant"
+
+msgid "Kaomoji"
+msgstr ""
 
 msgid "Keep Panel visible during screenshots"
 msgstr "Garder le panneau visible pendant les captures"
@@ -1107,6 +1149,9 @@ msgstr "Raccourcis clavier"
 
 msgid "Kind"
 msgstr "Type"
+
+msgid "Kinds of symbols"
+msgstr ""
 
 msgid "Language"
 msgstr "Langue"
@@ -1182,6 +1227,9 @@ msgstr "Verrouillez vos extraits chiffrés derrière un mot de passe de votre ch
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Les journaux ne sont écrits que si Snipdeck plante, ne contiennent aucun extrait et ne sont envoyés nulle part."
+
+msgid "Love"
+msgstr ""
 
 msgid "Main list density"
 msgstr "Densité des listes principales"
@@ -1403,6 +1451,9 @@ msgstr "Aucun raccourci ne correspond"
 msgid "No snippets yet"
 msgstr "Aucun extrait pour le moment"
 
+msgid "No symbols match “{}”"
+msgstr ""
+
 msgid "No tags"
 msgstr "Aucune étiquette"
 
@@ -1477,6 +1528,9 @@ msgstr ""
 
 msgid "OK"
 msgstr "OK"
+
+msgid "Objects"
+msgstr ""
 
 msgid "Off"
 msgstr "Désactivé"
@@ -1687,6 +1741,9 @@ msgstr "Payez ce que vous voulez à partir de 5 A$, 8 A$ suggérés. Paiement un
 
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions."
 msgstr "Payez ce que vous voulez à partir de 5 A$, 8 A$ suggérés. Paiement unique, toutes les mises à jour 1.x sont incluses. La version gratuite reste entièrement utilisable ; Supporter finance le confort d'usage et soutient l'application. Vous ne pouvez pas le payer ? Écrivez-moi et je vous enverrai une clé, sans poser de questions."
+
+msgid "People & Body"
+msgstr ""
 
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr ""
@@ -1911,6 +1968,9 @@ msgstr "Rose"
 msgid "SNIP1."
 msgstr "SNIP1."
 
+msgid "Sad"
+msgstr ""
+
 msgid "Save"
 msgstr "Enregistrer"
 
@@ -1937,6 +1997,9 @@ msgstr "Enregistré dans {}"
 
 msgid "Saved {}"
 msgstr "Enregistré {}"
+
+msgid "Saved {}."
+msgstr ""
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Enregistre tous les tableaux, listes et extraits dans un seul fichier .snipdeck, dans le dossier de votre choix."
@@ -1965,6 +2028,9 @@ msgstr ""
 msgid "Search all snippets"
 msgstr "Rechercher dans tous les extraits"
 
+msgid "Search emoji, kaomoji, icons"
+msgstr ""
+
 msgid "Search every board and paste without opening the window."
 msgstr "Recherchez dans tous les tableaux et collez sans ouvrir la fenêtre."
 
@@ -1982,6 +2048,9 @@ msgstr "Rechercher un raccourci"
 
 msgid "Search snippets"
 msgstr "Rechercher des extraits"
+
+msgid "Search symbols"
+msgstr ""
 
 msgid "Search the keyboard shortcuts"
 msgstr "Rechercher dans les raccourcis clavier"
@@ -2061,6 +2130,9 @@ msgstr "Afficher le panneau"
 msgid "Show Panel ({})"
 msgstr "Afficher le panneau ({})"
 
+msgid "Show all"
+msgstr ""
+
 msgid "Show kind, title, colour, tags and privacy"
 msgstr "Afficher le type, le titre, la couleur, les étiquettes et la confidentialité"
 
@@ -2082,11 +2154,17 @@ msgstr "Afficher le Panneau dans la barre des tâches et dans Alt+Tab"
 msgid "Show the welcome tour again"
 msgstr "Afficher à nouveau la visite de bienvenue"
 
+msgid "Shrug"
+msgstr ""
+
 msgid "Skip"
 msgstr "Passer"
 
 msgid "Slate"
 msgstr "Ardoise"
+
+msgid "Smileys & Emotion"
+msgstr ""
 
 msgid "Snipdeck"
 msgstr "Snipdeck"
@@ -2169,6 +2247,9 @@ msgstr "Snipdeck reste dans la zone de notification pour que les raccourcis fonc
 msgid "Snippets"
 msgstr "Extraits"
 
+msgid "Sorry"
+msgstr ""
+
 msgid "Sort items by"
 msgstr "Trier les extraits par"
 
@@ -2207,6 +2288,12 @@ msgstr "Force : faible"
 
 msgid "Supporter"
 msgstr "Supporter"
+
+msgid "Surprise"
+msgstr ""
+
+msgid "Symbols"
+msgstr ""
 
 msgid "Tab"
 msgstr "Tab"
@@ -2478,6 +2565,9 @@ msgstr "Bord supérieur"
 msgid "Trash"
 msgstr "Corbeille"
 
+msgid "Travel & Places"
+msgstr ""
+
 msgid "Tray icon click opens"
 msgstr ""
 
@@ -2486,6 +2576,9 @@ msgstr "Dépannage"
 
 msgid "Troubleshoot…"
 msgstr "Dépannage…"
+
+msgid "Try another word, or a different kind."
+msgstr ""
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Activez l'historique du presse-papiers dans les paramètres pour collecter ce que vous copiez."

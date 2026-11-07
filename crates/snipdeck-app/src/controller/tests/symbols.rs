@@ -25,6 +25,16 @@ fn written_text(w: &World, n: usize) -> String {
     }
 }
 
+/// The host's three steps: prepare, ask with the controller released, finish.
+fn save(w: &mut World, id: &SymbolId, export: IconExport, owner: Option<isize>) -> SaveOutcome {
+    let prepared = match w.ctl.prepare_icon_save(id, export) {
+        Ok(prepared) => prepared,
+        Err(outcome) => return outcome,
+    };
+    let answer = prepared.ask(owner);
+    w.ctl.finish_icon_save(&prepared, answer)
+}
+
 fn with_picker(w: &mut World, answer: Option<PathBuf>) -> FakeFilePicker {
     let picker = FakeFilePicker::default();
     picker.push_save(Ok(answer));
@@ -205,7 +215,7 @@ fn save_as_writes_the_file_the_picker_returns_and_suggests_the_icon_name() {
     let SymbolId::Icon(name) = icon.clone() else {
         panic!("not an icon")
     };
-    let result = w.ctl.save_icon(&icon, IconExport::Svg, Some(9));
+    let result = save(&mut w, &icon, IconExport::Svg, Some(9));
     assert_eq!(result, SaveOutcome::Saved(target.clone()));
     let text = std::fs::read_to_string(&target).expect("file");
     assert!(text.starts_with("<svg"));
@@ -220,7 +230,8 @@ fn save_as_png_writes_a_png_of_the_chosen_size() {
     let mut w = world();
     let picker = with_picker(&mut w, Some(target.clone()));
     let icon = first_of(Kind::Icon);
-    let result = w.ctl.save_icon(
+    let result = save(
+        &mut w,
         &icon,
         IconExport::Png {
             px: 128,
@@ -247,7 +258,7 @@ fn cancelling_the_dialog_writes_nothing_and_remembers_nothing() {
     with_picker(&mut w, None);
     let icon = first_of(Kind::Icon);
     assert_eq!(
-        w.ctl.save_icon(&icon, IconExport::Svg, None),
+        save(&mut w, &icon, IconExport::Svg, None),
         SaveOutcome::Cancelled
     );
     assert_eq!(std::fs::read_dir(dir.path()).expect("dir").count(), 0);
@@ -264,7 +275,7 @@ fn a_path_that_cannot_be_written_is_a_failure_with_a_toast() {
     );
     let icon = first_of(Kind::Icon);
     assert_eq!(
-        w.ctl.save_icon(&icon, IconExport::Svg, None),
+        save(&mut w, &icon, IconExport::Svg, None),
         SaveOutcome::Failed
     );
     assert!(w.ctl.view().toast.is_some());
@@ -275,7 +286,7 @@ fn without_a_file_dialog_save_as_is_unavailable() {
     let mut w = world();
     let icon = first_of(Kind::Icon);
     assert_eq!(
-        w.ctl.save_icon(&icon, IconExport::Svg, None),
+        save(&mut w, &icon, IconExport::Svg, None),
         SaveOutcome::Unavailable
     );
 }
@@ -354,4 +365,95 @@ fn symbol_pastes_and_icon_copies_write_the_clipboard_like_a_snippet_does() {
     let mut w = world();
     assert!(w.ctl.copy_icon_svg(&first_of(Kind::Icon)));
     assert_eq!(strip(&w.ctl.services().clipboard.log), ["persistent"]);
+}
+
+#[test]
+fn save_as_asks_with_no_controller_borrow_and_finishes_with_the_answer() {
+    // The dialog is asked on the value `prepare_icon_save` returned, not through the controller.
+    let dir = tempfile::tempdir().expect("dir");
+    let target = dir.path().join("out.svg");
+    let mut w = world();
+    let picker = with_picker(&mut w, Some(target.clone()));
+    let icon = first_of(Kind::Icon);
+    let prepared = w
+        .ctl
+        .prepare_icon_save(&icon, IconExport::Svg)
+        .expect("prepared");
+    assert!(picker.asked_save().is_empty(), "preparing opens nothing");
+    let answer = prepared.ask(None);
+    assert_eq!(picker.asked_save().len(), 1);
+    assert_eq!(
+        w.ctl.finish_icon_save(&prepared, answer),
+        SaveOutcome::Saved(target)
+    );
+}
+
+#[test]
+fn save_as_forces_the_kinds_extension_and_toasts_the_file_name() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut w = world();
+    with_picker(&mut w, Some(dir.path().join("logo.txt")));
+    let icon = first_of(Kind::Icon);
+    let outcome = save(&mut w, &icon, IconExport::Svg, None);
+    let written = dir.path().join("logo.svg");
+    assert_eq!(outcome, SaveOutcome::Saved(written.clone()));
+    assert!(written.exists() && !dir.path().join("logo.txt").exists());
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::IconSaved {
+            name: "logo.svg".into()
+        }
+    );
+}
+
+#[test]
+fn save_as_leaves_no_temporary_file_and_replaces_an_existing_file_whole() {
+    let dir = tempfile::tempdir().expect("dir");
+    let target = dir.path().join("out.svg");
+    std::fs::write(&target, "old").expect("old file");
+    let mut w = world();
+    with_picker(&mut w, Some(target.clone()));
+    save(&mut w, &first_of(Kind::Icon), IconExport::Svg, None);
+    assert!(
+        std::fs::read_to_string(&target)
+            .expect("file")
+            .starts_with("<svg")
+    );
+    let names: Vec<_> = std::fs::read_dir(dir.path())
+        .expect("dir")
+        .map(|e| e.expect("entry").file_name())
+        .collect();
+    assert_eq!(names.len(), 1, "only the target remains: {names:?}");
+}
+
+#[test]
+fn a_dialog_that_fails_is_a_failure_with_a_toast_and_remembers_nothing() {
+    let mut w = world();
+    let picker = FakeFilePicker::default();
+    picker.push_save(Err(snipdeck_platform::error::Error::Unavailable(
+        "no dialog",
+    )));
+    w.ctl.set_file_picker(Box::new(picker));
+    let icon = first_of(Kind::Icon);
+    assert_eq!(
+        save(&mut w, &icon, IconExport::Svg, None),
+        SaveOutcome::Failed
+    );
+    assert!(w.ctl.view().toast.is_some());
+    assert_eq!(w.ctl.symbol_recents(None), Vec::<SymbolId>::new());
+}
+
+#[test]
+fn add_to_list_on_an_icon_says_icons_cannot_be_added_yet() {
+    let mut w = world();
+    let icon = first_of(Kind::Icon);
+    assert!(
+        !w.ctl
+            .add_symbol_to_list(&icon, crate::item_editor::Origin::Panel)
+    );
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::IconNotAddable
+    );
+    assert_eq!(w.ctl.view().rows.len(), 4, "nothing was added");
 }

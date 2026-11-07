@@ -22,6 +22,8 @@ slint-build.workspace = true
 [dev-dependencies]
 # Accessibility-tree queries and synthetic clicks (`ElementHandle`) for logic tests.
 i-slint-backend-testing = "=1.18.1"
+# Real emoji art and icons for the Symbols goldens.
+snipdeck-symbols = { path = "../snipdeck-symbols" }
 
 [lints]
 workspace = true

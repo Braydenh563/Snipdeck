@@ -309,6 +309,13 @@ pub enum ToastMessage {
     /// "Couldn't refresh the view": the change worked, but the list on screen could not be read
     /// again and may be out of date.
     NotRefreshed,
+    /// "Icons can't be added to a list yet." (Symbols: Add to list on an icon)
+    IconNotAddable,
+    /// "Saved {name}." (Symbols: Save as... wrote the file)
+    IconSaved {
+        /// The file name written, without its folder.
+        name: String,
+    },
 }
 
 /// A toast: a style and a message.

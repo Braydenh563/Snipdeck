@@ -6,11 +6,16 @@
 //! store, and its text goes through the same clipboard pipeline a snippet uses
 //! ([`snipdeck_platform::pipeline::use_item`]) with the same refocus-and-wait as an item.
 
-use std::path::PathBuf;
+use std::{
+    fs,
+    io::{self, Write},
+    path::{Path, PathBuf},
+    rc::Rc,
+};
 
 use snipdeck_core::{ItemKind, UseMode};
 use snipdeck_platform::{
-    file_dialog::SaveKind,
+    file_dialog::{FilePicker, SaveKind},
     payload::{Data, Payload},
     pipeline::{self, Clipboard, Env, Keyboard, Timing},
     route::Route,
@@ -22,6 +27,7 @@ use crate::{
     host::ClipboardText,
     item_editor::Origin,
     toast::{self, Toast, ToastKind, ToastMessage},
+    usecase::UseError,
 };
 
 /// The size, in pixels, of an icon copied to the clipboard as a picture.
@@ -81,22 +87,32 @@ where
             keyboard: &mut self.services.keyboard,
             timing: &mut self.services.timing,
         };
-        if let Ok(outcome) = pipeline::use_item(&mut env, &payload, mode, &route) {
-            self.note_activity();
-            self.show_toast(toast::after_use(outcome, &route, pasted_into.as_deref()));
-            self.remember_symbol(id);
-            UseResult::Done(outcome)
-        } else {
-            self.show_toast(clipboard_busy());
-            UseResult::Failed
+        match pipeline::use_item(&mut env, &payload, mode, &route) {
+            Ok(outcome) => {
+                self.note_activity();
+                self.show_toast(toast::after_use(outcome, &route, pasted_into.as_deref()));
+                self.remember_symbol(id);
+                UseResult::Done(outcome)
+            }
+            Err(error) => {
+                self.show_toast(toast::after_error(&UseError::Platform(error)));
+                UseResult::Failed
+            }
         }
     }
 
     /// "Add to list": saves an emoji or kaomoji as a Text item at the end of the list `origin`
     /// shows (the same path as the quick-add box, so its toast with Undo and Edit appears, and
-    /// "no list" says so). Returns whether an item was added. Icons are not text: `false`.
+    /// "no list" says so). Returns whether an item was added. Icons are not text: they get the
+    /// "Icons can't be added to a list yet" toast and `false`.
     pub fn add_symbol_to_list(&mut self, id: &SymbolId, origin: Origin) -> bool {
         let Some(text) = Catalog::get().get_symbol(id).and_then(|s| s.text.clone()) else {
+            if matches!(id, SymbolId::Icon(_)) {
+                self.show_toast(Toast {
+                    kind: ToastKind::Neutral,
+                    message: ToastMessage::IconNotAddable,
+                });
+            }
             return false;
         };
         let added = self.quick_add(&text, Some(ItemKind::Text), false, origin);
@@ -125,20 +141,25 @@ where
         self.copy_symbol_data(id, Data::Png(png))
     }
 
-    /// "Save as...": asks where with the system Save dialog (the icon's name filled in), writes
-    /// the SVG or PNG there and remembers the icon. `owner` is the native window handle the
-    /// dialog belongs to. A cancel writes nothing and says nothing.
-    pub fn save_icon(
-        &mut self,
+    /// First half of "Save as...": renders the file and finds the dialog. The caller then asks
+    /// [`IconSave::ask`] with the controller released (the Save dialog runs its own message loop,
+    /// during which timers and hotkeys reach the controller) and hands the answer to
+    /// [`finish_icon_save`](Self::finish_icon_save).
+    ///
+    /// # Errors
+    ///
+    /// [`SaveOutcome::Unavailable`] when the machine has no file dialog, [`SaveOutcome::Failed`]
+    /// when `id` is not an icon or cannot be rendered.
+    pub fn prepare_icon_save(
+        &self,
         id: &SymbolId,
         export: IconExport,
-        owner: Option<isize>,
-    ) -> SaveOutcome {
+    ) -> Result<IconSave, SaveOutcome> {
         let SymbolId::Icon(name) = id else {
-            return SaveOutcome::Failed;
+            return Err(SaveOutcome::Failed);
         };
         let Some(picker) = self.file_picker() else {
-            return SaveOutcome::Unavailable;
+            return Err(SaveOutcome::Unavailable);
         };
         let catalog = Catalog::get();
         let (kind, bytes) = match export {
@@ -146,21 +167,47 @@ where
             IconExport::Png { px, rgba } => (SaveKind::Png, catalog.icon_png(id, px, rgba)),
         };
         let Some(bytes) = bytes else {
-            return SaveOutcome::Failed;
+            return Err(SaveOutcome::Failed);
         };
-        let path = match picker.save(kind, name, owner) {
-            Ok(Some(path)) => path,
+        Ok(IconSave {
+            id: id.clone(),
+            name: name.clone(),
+            kind,
+            bytes,
+            picker,
+        })
+    }
+
+    /// Second half of "Save as...": writes the file the dialog answered with (its extension
+    /// forced to the kind's own), toasts "Saved" and remembers the icon. A cancel writes nothing
+    /// and says nothing; a dialog or write error is logged and toasted.
+    pub fn finish_icon_save(
+        &mut self,
+        save: &IconSave,
+        answer: Result<Option<PathBuf>, snipdeck_platform::error::Error>,
+    ) -> SaveOutcome {
+        let path = match answer {
+            Ok(Some(path)) => path.with_extension(save.kind.extension()),
             Ok(None) => return SaveOutcome::Cancelled,
-            Err(_) => {
+            Err(error) => {
+                crate::trace!("the Save dialog failed: {error}");
                 self.show_toast(failed());
                 return SaveOutcome::Failed;
             }
         };
-        if std::fs::write(&path, bytes).is_err() {
+        if let Err(error) = write_new_file(&path, &save.bytes) {
+            crate::trace!("writing the saved icon failed: {error}");
             self.show_toast(failed());
             return SaveOutcome::Failed;
         }
-        self.remember_symbol(id);
+        let file = path
+            .file_name()
+            .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+        self.show_toast(Toast {
+            kind: ToastKind::Success,
+            message: ToastMessage::IconSaved { name: file },
+        });
+        self.remember_symbol(&save.id);
         SaveOutcome::Saved(path)
     }
 
@@ -178,8 +225,8 @@ where
         let Some(payload) = Payload::new(vec![data]) else {
             return false;
         };
-        if self.services.clipboard.write_persistent(&payload).is_err() {
-            self.show_toast(clipboard_busy());
+        if let Err(error) = self.services.clipboard.write_persistent(&payload) {
+            self.show_toast(toast::after_error(&UseError::Platform(error)));
             return false;
         }
         self.note_activity();
@@ -202,9 +249,47 @@ where
     }
 }
 
-fn clipboard_busy() -> Toast {
-    Toast {
-        kind: ToastKind::Danger,
-        message: ToastMessage::ClipboardBusy,
+/// An icon the user is saving: rendered, with the dialog that will ask where. Holds no borrow
+/// of the controller.
+pub struct IconSave {
+    id: SymbolId,
+    name: String,
+    kind: SaveKind,
+    bytes: Vec<u8>,
+    picker: Rc<dyn FilePicker>,
+}
+
+impl IconSave {
+    /// Shows the Save dialog (the icon's name filled in) and waits. `owner` is the native window
+    /// handle the dialog belongs to. Call it with no borrow of the controller held.
+    ///
+    /// # Errors
+    ///
+    /// The dialog could not be shown.
+    pub fn ask(
+        &self,
+        owner: Option<isize>,
+    ) -> Result<Option<PathBuf>, snipdeck_platform::error::Error> {
+        self.picker.save(self.kind, &self.name, owner)
+    }
+}
+
+/// Writes `bytes` to a temporary file next to `path`, then renames it over `path`: a failure
+/// leaves the old file (if any) whole.
+fn write_new_file(path: &Path, bytes: &[u8]) -> io::Result<()> {
+    let folder = path.parent().filter(|p| !p.as_os_str().is_empty());
+    let folder = folder.unwrap_or_else(|| Path::new("."));
+    let stem = path
+        .file_name()
+        .map_or_else(|| "icon".to_owned(), |n| n.to_string_lossy().into_owned());
+    let (mut file, temp) = crate::settings_store::create_temp(folder, &stem)?;
+    let written = file.write_all(bytes).and_then(|()| file.sync_all());
+    drop(file);
+    match written.and_then(|()| fs::rename(&temp, path)) {
+        Ok(()) => Ok(()),
+        Err(error) => {
+            let _ = fs::remove_file(&temp);
+            Err(error)
+        }
     }
 }
