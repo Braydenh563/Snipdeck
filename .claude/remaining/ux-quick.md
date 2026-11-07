@@ -10,3 +10,5 @@ Next:
 Blocked: none. Windows-only: real hotkey registration/delivery, tray menu item, paste from Recent into a real Target.
 
 Note: cargo +1.99.1 clippy not run for items 3/15 (the ui crate needs ~9 GB to compile; two agents on one machine get OOM-killed): run it before the push.
+
+OPEN: settings_window `the_test_button_listens_for_the_press_and_a_failed_chord_offers_one_click_alternatives` passed alone before the Settings search commit but FAILED in the full settings_window run after it (73 pass, 1 fail; cause not yet read: run it with --nocapture). Item 15 app-side tests (settings_binding unit test settings_match) not yet seen green. editors/editors_logic all green (70/70 earlier run + goldens).
