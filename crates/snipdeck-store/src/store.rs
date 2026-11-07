@@ -44,7 +44,7 @@ pub struct Store {
     /// of [`ItemRepo::change_counter`](crate::ItemRepo::change_counter).
     pub(crate) quiet: Quiet,
     // Last, so the database is closed before the lock is released.
-    _lock: Option<FolderLock>,
+    lock: Option<FolderLock>,
 }
 
 /// The held single-writer lock of a data folder (`snipdeck.lock`).
@@ -158,7 +158,7 @@ impl Store {
             blobs: Blobs::on_disk(folder.join(BLOB_DIR)),
             key: None,
             quiet: Quiet::default(),
-            _lock: Some(lock),
+            lock: Some(lock),
         })
     }
 
@@ -167,7 +167,7 @@ impl Store {
     /// lock held in the returned [`Closed`].
     pub fn close(self) -> Closed {
         let Self {
-            conn, _lock: lock, ..
+            conn, lock, ..
         } = self;
         let folded = conn
             .query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |r| {
@@ -189,7 +189,7 @@ impl Store {
     /// The folder lock this store holds (`None` for an in-memory store).
     #[must_use]
     pub fn folder_lock(&self) -> Option<&FolderLock> {
-        self._lock.as_ref()
+        self.lock.as_ref()
     }
 
     /// An empty store that lives only in memory, blobs included: for tests and previews.
@@ -203,7 +203,7 @@ impl Store {
             blobs: Blobs::in_memory(),
             key: None,
             quiet: Quiet::default(),
-            _lock: None,
+            lock: None,
         })
     }
 
