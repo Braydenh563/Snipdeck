@@ -13,7 +13,7 @@ import { Icons } from "icons.slint";
 import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
 import { Toast, ToastKind, ToastPhase } from "components/feedback.slint";
 import { IconButton, IconButtonSize } from "components/icon-button.slint";
-import { TextField } from "components/text_field.slint";
+import { TextField, SearchField } from "components/text_field.slint";
 import { Toggle } from "components/choice.slint";
 import { HotkeyRecorder } from "components/hotkey_recorder.slint";
 import { HotkeyHealthLine } from "components/hotkey_health.slint";
@@ -22,7 +22,7 @@ import { PlanTable } from "components/plan-table.slint";
 import { ImportTexts } from "import_texts.slint";
 import { MasterPasswordForm, MasterMode, MasterProblem } from "master_password.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
-import { FormField, FormScroll, FormSection, SettingRow, Segmented, SelectField, NumberStepper } from "components/form.slint";
+import { FormField, FormScroll, FormSection, SettingRow, SettingsFilter, Segmented, SelectField, NumberStepper } from "components/form.slint";
 
 // One global shortcut as the page shows it. The order of `SettingsPage.hotkeys` is fixed: show or hide the panel,
 // open the picker, capture, paste next.
@@ -465,6 +465,25 @@ export component SettingsPage inherits Window {
         @tr("Pastes the next item of the list in order."),
     ];
 
+    property <string> hotkey-names-text: root.hotkey-names[0] + " " + root.hotkey-names[1] + " " + root.hotkey-names[2] + " " + root.hotkey-names[3];
+    // Titles of section 0 (Shortcuts), for the search. A test checks that every row title is in here.
+    property <string> keys-0: root.hotkey-names-text;
+    // Titles of section 1 (Appearance), for the search. A test checks that every row title is in here.
+    property <string> keys-1: @tr("Theme") + " " + @tr("Main list density") + " " + @tr("Accent colour") + " " + @tr("Text size") + " " + @tr("Language") + " " + @tr("Reduce motion") + " " + @tr("Panel width");
+    // Titles of section 2 (Panel layout), for the search. A test checks that every row title is in here.
+    property <string> keys-2: @tr("Layout") + " " + @tr("Search field") + " " + @tr("Lists") + " " + @tr("Quick-use numbers");
+    // Titles of section 3 (Opening the Panel), for the search. A test checks that every row title is in here.
+    property <string> keys-3: @tr("Tray icon click opens") + " " + @tr("Panel opens") + " " + @tr("After a paste or copy") + " " + @tr("Hide the panel when it loses focus") + " " + @tr("Show the Panel in the taskbar and Alt+Tab") + " " + @tr("Keep Panel visible during screenshots") + " " + @tr("Dock to") + " " + @tr("Open a docked panel by") + " " + @tr("Hover delay") + " " + @tr("Leave delay") + " " + @tr("Picker position") + " " + @tr("Start with Windows") + " " + @tr("When Windows starts") + " " + @tr("Keep running in the tray when the window closes");
+    // Titles of section 4 (Privacy), for the search. A test checks that every row title is in here.
+    property <string> keys-4: @tr("Keep a Recent inbox of what you copy") + " " + @tr("Clear recent history") + " " + @tr("Clear the clipboard after copying a sensitive item") + " " + @tr("Master password");
+    // Titles of section 5 (Programs), for the search. A test checks that every row title is in here.
+    property <string> keys-5: @tr("Programs");
+    // Titles of section 6 (Backups and your data), for the search. A test checks that every row title is in here.
+    property <string> keys-6: @tr("Backups to keep") + " " + @tr("Export library") + " " + @tr("Import") + " " + @tr("Erase library") + " " + @tr("Also forget the encryption key");
+    // Titles of section 7 (Licence), for the search. A test checks that every row title is in here.
+    property <string> keys-7: @tr("Get Supporter");
+    property <string> keys-all: root.keys-0 + " " + root.keys-1 + " " + root.keys-2 + " " + root.keys-3 + " " + root.keys-4 + " " + root.keys-5 + " " + root.keys-6 + " " + root.keys-7;
+
     function reveal-field(y: length, h: length) {
         page.reveal(y - page.absolute-position.y, h);
     }
@@ -539,19 +558,51 @@ export component SettingsPage inherits Window {
                 x: 0px;
                 width: page.viewport-width;
                 padding: Space.s4;
-                spacing: Space.s6;
+                spacing: 0px;
                 alignment: start;
 
-                Text {
-                    text: @tr("Changes apply at once.");
-                    color: Theme.text-secondary;
-                    font-family: Fonts.sans;
-                    font-size: Type.sm;
-                    accessible-role: none;
+                VerticalLayout {
+                    spacing: Space.s2;
+                    Text {
+                        text: @tr("Changes apply at once.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.sm;
+                        accessible-role: none;
+                    }
+                    SearchField {
+                        text <=> SettingsFilter.query;
+                        label: @tr("Search settings");
+                        placeholder: @tr("Search settings");
+                        clear-label: @tr("Clear the search");
+                    }
+                    // Section links: choosing one scrolls to it (shown while the search is empty).
+                    if SettingsFilter.query == "": SelectField {
+                        width: 240px * SystemLook.text-scale;
+                        label: @tr("Jump to a section");
+                        placeholder: @tr("Jump to a section");
+                        options: [@tr("Shortcuts"), @tr("Appearance"), @tr("Panel layout"), @tr("Opening the Panel"), @tr("Privacy"), @tr("Programs"), @tr("Backups and your data"), @tr("Licence")];
+                        current: -1;
+                        chosen(i) => { SettingsFilter.jump-target = i; SettingsFilter.jump-seq += 1; }
+                        changed has-focus => {
+                            if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                        }
+                    }
+                    if SettingsFilter.query != "" && !SettingsFilter.matches(root.keys-all, SettingsFilter.query): Text {
+                        text: @tr("No settings match");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        accessible-live-region: polite;
+                    }
                 }
 
                 FormSection {
                     title: @tr("Shortcuts");
+                    index: 0;
+                    gap: Space.s6;
+                    search-text: root.keys-0;
+                    located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     for hk[i] in root.hotkeys: SettingRow {
                         title: root.hotkey-names[i];
                         description: root.hotkey-help[i];
@@ -588,6 +639,10 @@ export component SettingsPage inherits Window {
 
                 FormSection {
                     title: @tr("Appearance");
+                    index: 1;
+                    gap: Space.s6;
+                    search-text: root.keys-1;
+                    located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     SettingRow {
                         title: @tr("Theme");
                         description: @tr("Follow Windows switches with your system setting.");
@@ -692,6 +747,10 @@ export component SettingsPage inherits Window {
 
                 FormSection {
                     title: @tr("Panel layout");
+                    index: 2;
+                    gap: Space.s6;
+                    search-text: root.keys-2;
+                    located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     SettingRow {
                         title: @tr("Layout");
                         description: @tr("How the Panel lists your snippets: one per row, two per row as cards, or tight rows. A search shows rows in every layout.");
@@ -749,8 +808,11 @@ export component SettingsPage inherits Window {
                 }
 
                 FormSection {
-                FormSection {
                     title: @tr("Opening the Panel");
+                    index: 3;
+                    gap: Space.s6;
+                    search-text: root.keys-3;
+                    located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     SettingRow {
                         title: @tr("Tray icon click opens");
                         description: @tr("What a click on the Snipdeck icon in the tray opens. The tray menu still has both.");
@@ -896,7 +958,6 @@ export component SettingsPage inherits Window {
                             }
                         }
                     }
-                }
                     SettingRow {
                         title: @tr("Picker position");
                         description: @tr("Which side of your text cursor the Picker opens on. It moves to the opposite side when there is no room, and opens below the mouse when the app has no text cursor Snipdeck can see.");
@@ -954,6 +1015,10 @@ export component SettingsPage inherits Window {
 
                 FormSection {
                     title: @tr("Privacy");
+                    index: 4;
+                    gap: Space.s6;
+                    search-text: root.keys-4;
+                    located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     SettingRow {
                         title: @tr("Keep a Recent inbox of what you copy");
                         description: @tr("Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept.", root.recent-max-entries, root.recent-max-days);
@@ -1101,6 +1166,10 @@ export component SettingsPage inherits Window {
 
                 FormSection {
                     title: @tr("Programs");
+                    index: 5;
+                    gap: Space.s6;
+                    search-text: root.keys-5;
+                    located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     Text {
                         text: @tr("The key Snipdeck presses to paste into each program. Most programs use Ctrl+V; some terminals need another key. Choose Never paste to copy instead. Use the program's file name, for example notepad.exe.");
                         color: Theme.text-secondary;
@@ -1121,6 +1190,10 @@ export component SettingsPage inherits Window {
 
                 FormSection {
                     title: @tr("Backups and your data");
+                    index: 6;
+                    gap: Space.s6;
+                    search-text: root.keys-6;
+                    located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     Text {
                         text: @tr("Snipdeck saves a copy of your library once a day and keeps the newest {}. Restoring adds back what is missing and never removes anything.", root.backups-keep);
                         color: Theme.text-secondary;
@@ -1509,6 +1582,10 @@ export component SettingsPage inherits Window {
 
                 FormSection {
                     title: @tr("Licence");
+                    index: 7;
+                    gap: Space.s6;
+                    search-text: root.keys-7;
+                    located(y) => { page.scroll-to(y - body.absolute-position.y); }
                     SettingRow {
                         title: root.pro ? @tr("Snipdeck Supporter") : @tr("Free plan");
                         description: root.pro

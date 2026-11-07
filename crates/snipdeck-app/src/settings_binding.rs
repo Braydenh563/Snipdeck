@@ -820,6 +820,14 @@ fn language_index(tag: &str) -> i32 {
         .map_or(0, |i| to_i32(i + 1))
 }
 
+/// Whether `text` holds the Settings search `query`: case-insensitive, every word of the query must appear.
+pub(crate) fn settings_match(text: &str, query: &str) -> bool {
+    let text = text.to_lowercase();
+    query
+        .split_whitespace()
+        .all(|word| text.contains(&word.to_lowercase()))
+}
+
 /// The health line's state number (see `HotkeySetting.state` in the page).
 pub(crate) fn health_state(health: Option<HotkeyHealth>, testing: bool) -> i32 {
     match health {
@@ -1637,6 +1645,8 @@ where
         window.set_languages(model(
             std::iter::once(follow).chain(LANGUAGE_NAMES.iter().map(|n| SharedString::from(*n))),
         ));
+        // The search field: Slint cannot test "contains", so the page asks here.
+        ui::SettingsFilter::get(window).on_matches(|text, query| settings_match(&text, &query));
         window.set_import_history_available(core.host.clipboard_history_supported());
         core.refresh_backups();
         core.sync();
@@ -2240,6 +2250,14 @@ mod tests {
         ] {
             assert!(!erase_confirmed(typed), "{typed:?}");
         }
+    }
+
+    #[test]
+    fn the_settings_search_ignores_case_and_wants_every_word() {
+        assert!(settings_match("Keep running in the tray", "TRAY"));
+        assert!(settings_match("Panel width", "width panel"));
+        assert!(settings_match("Theme", "  "));
+        assert!(!settings_match("Theme", "panel"));
     }
 
     #[test]
