@@ -505,6 +505,14 @@ where
                 true
             }
             Err(Swap::RolledBack) => failed(self),
+            Err(Swap::Unfinished) => {
+                // The rebuilt library keeps running: reset what the old store served, but do
+                // not report success.
+                self.history = crate::history::History::new();
+                self.index_cache.reset();
+                self.refresh_or_notice("a rebuild");
+                failed(self)
+            }
             Err(Swap::Stuck) => {
                 // The running library is an empty one in memory and the files on disk are
                 // untouched: the one safe thing to ask for is a restart.
@@ -569,33 +577,30 @@ where
             // and `reopen_original` refuses to continue.
             return Err(self.reopen_original(data_dir, lock, original_key));
         }
-        let rebuilt = Store::open_locked(data_dir, lock)
-            .ok()
-            .and_then(|mut fresh| {
-                // The key goes in before anything is imported, so the backup and the salvage keep
-                // their sensitive items (KeySource::Library).
-                if let (Some(record), Some(key)) = (&key_record, fresh_key) {
-                    fresh.restore_key_record(record).ok()?;
-                    fresh.open_with_key(key).ok()?;
-                }
-                self.store = fresh;
-                self.import_report(
-                    &ImportSource::Snipdeck(backup_file.to_path_buf()),
-                    BoardLayout::KeepBoards,
-                    false,
-                )
-                .ok()
-            });
-        let Some(report) = rebuilt else {
-            // Back out: close the fresh store (keeping the lock), then undo the set-aside,
-            // which also deletes the partial fresh files.
-            let Ok(throwaway) = Store::open_in_memory() else {
-                return Err(Swap::Stuck);
-            };
-            let Some(lock) = std::mem::replace(&mut self.store, throwaway).close().lock else {
-                return Err(Swap::Stuck);
-            };
-            return Err(self.reopen_original(data_dir, lock, original_key));
+        // Every failure from here on hands the folder lock back for `reopen_original`.
+        let mut fresh = match Store::open_locked(data_dir, lock) {
+            Ok(fresh) => fresh,
+            Err(failed) => return Err(self.reopen_original(data_dir, failed.lock, original_key)),
+        };
+        // The key goes in before anything is imported, so the backup and the salvage keep
+        // their sensitive items (KeySource::Library).
+        if let (Some(record), Some(key)) = (&key_record, fresh_key) {
+            if fresh.restore_key_record(record).is_err() || fresh.open_with_key(key).is_err() {
+                return Err(self.roll_back(data_dir, fresh, original_key));
+            }
+        }
+        self.store = fresh;
+        let imported = self.import_report(
+            &ImportSource::Snipdeck(backup_file.to_path_buf()),
+            BoardLayout::KeepBoards,
+            false,
+        );
+        let Ok(report) = imported else {
+            let fresh = std::mem::replace(
+                &mut self.store,
+                Store::open_in_memory().map_err(|_| Swap::Stuck)?,
+            );
+            return Err(self.roll_back(data_dir, fresh, original_key));
         };
         let recovered = salvage
             .and_then(|file| {
@@ -607,11 +612,25 @@ where
                 .ok()
             })
             .map_or(0, |r| r.items_added);
-        // The commit point: the marker goes. The lock is the running store's own.
-        if let Some(lock) = self.store.folder_lock() {
-            let _ = snipdeck_store::finish_rebuild(data_dir, lock);
+        // The commit point: the marker goes. The lock is the running store's own. If the marker
+        // cannot be removed the rebuilt library keeps running (the marker carries a fingerprint
+        // that stops a later start from undoing edits), but success is not reported.
+        let finished = self
+            .store
+            .folder_lock()
+            .map(|lock| snipdeck_store::finish_rebuild(data_dir, lock));
+        if !matches!(finished, Some(Ok(()))) {
+            return Err(Swap::Unfinished);
         }
         Ok((report.items_added, recovered, kept))
+    }
+
+    /// Closes `fresh`, keeping the folder lock, and undoes the set-aside (see `reopen_original`).
+    fn roll_back(&mut self, data_dir: &Path, fresh: Store, key: Option<DataKey>) -> Swap {
+        match fresh.close().lock {
+            Some(lock) => self.reopen_original(data_dir, lock, key),
+            None => Swap::Stuck,
+        }
     }
 
     /// Puts the set-aside library back (`snipdeck_store::undo_set_aside`) and opens it again
@@ -867,4 +886,6 @@ enum Swap {
     RolledBack,
     /// The original would not reopen either: only a restart can recover.
     Stuck,
+    /// The rebuilt library is open and holds the backup, but the marker could not be removed.
+    Unfinished,
 }
