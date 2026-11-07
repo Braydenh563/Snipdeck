@@ -27,6 +27,7 @@ compile_error!(
      profile; it is enabled only by dev-dependencies (see tests/release_guard.rs)"
 );
 
+mod aside;
 mod batch;
 mod blobs;
 mod boards;
@@ -45,10 +46,11 @@ mod store;
 mod tags;
 mod trash;
 
+pub use aside::{finish_rebuild, set_aside, undo_set_aside};
 pub use batch::Batch;
 pub use blobs::BlobStore;
 pub use error::{Error, Result, Trouble};
 pub use recent::{RecentEntry, RecentRepo};
 pub use repo::{BoardRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable};
-pub use store::{GcReport, Store};
+pub use store::{Closed, FolderLock, GcReport, Store};
 pub use tags::name_key;
