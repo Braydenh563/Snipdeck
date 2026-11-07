@@ -172,6 +172,8 @@ component RowAction inherits Rectangle {
     callback tip(bool);
     // The hit box: 32 in a row, 28 in a card (the glyph button inside is 28 either way).
     in property <length> box: Space.s8;
+    // The glyph follows the text size up to 1.75 (audit 2, item 4); the hover square grows with it.
+    property <length> glyph: Space.s4 * min(SystemLook.text-scale, 1.75);
     width: root.box;
     height: root.box;
     visible: root.shown;
@@ -180,15 +182,15 @@ component RowAction inherits Rectangle {
     Rectangle {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: Space.hit;
-        height: Space.hit;
+        width: max(Space.hit, root.glyph + Space.s2);
+        height: max(Space.hit, root.glyph + Space.s2);
         border-radius: Radius.md;
         background: touch.pressed ? Theme.bg-selected : root.hovered ? Theme.bg-overlay-hover : transparent;
         border-width: root.hovered || Theme.hc-border != transparent ? 1px : 0px;
         border-color: root.hovered ? Theme.border-default : Theme.hc-border;
         Icon {
             source: root.icon;
-            size: Space.s4;
+            size: root.glyph;
             tint: Theme.text-primary;
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
@@ -457,7 +459,7 @@ export component ItemCard inherits Rectangle {
     // ---- Quiet row geometry (all of it at 100 % text size) ----
     // List: title line 20 at y 4, preview band 32 under it, row 56. Compact: row 36 (52 with a where line), tile 24, the title and
     // the preview on one line. Card: 149 x 96, tile 24 and the number on top, title from y 32, preview in what is left.
-    property <length> q-box: root.qt ? Space.hit : Space.s8;
+    property <length> q-box: max(root.qt ? Space.hit : Space.s8, Space.s4 * min(SystemLook.text-scale, 1.75) + Space.s2);
     property <length> q-tile-size: root.qr ? Space.s8 : Space.s6;
     property <length> qr-title-y: Space.s1;
     property <length> qr-band-y: root.qr-title-y + root.title-h;
@@ -684,7 +686,7 @@ export component ItemCard inherits Rectangle {
                 accessible-label: @tr("Alt+{}", root.number);
                 font-family: Fonts.mono;
                 font-size: Type.xs;
-                color: root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary;
+                color: root.selected ? Theme.text-on-selected : Theme.text-secondary;
                 horizontal-alignment: right;
                 vertical-alignment: center;
             }
@@ -706,7 +708,7 @@ export component ItemCard inherits Rectangle {
                 accessible-label: @tr("Alt+{}", root.number);
                 font-family: Fonts.mono;
                 font-size: Type.xs;
-                color: root.selected ? Theme.text-secondary-on-selected : Theme.text-secondary;
+                color: root.selected ? Theme.text-on-selected : Theme.text-secondary;
                 vertical-alignment: center;
             }
             if root.lifted: Icon {
@@ -1093,15 +1095,15 @@ export component ItemCard inherits Rectangle {
         Rectangle {
             x: (parent.width - self.width) / 2;
             y: (parent.height - self.height) / 2;
-            width: Space.hit;
-            height: Space.hit;
+            width: max(Space.hit, eye-glyph.size + Space.s2);
+            height: max(Space.hit, eye-glyph.size + Space.s2);
             border-radius: Radius.md;
             background: eye-touch.pressed ? Theme.bg-selected : root.eye-hover ? Theme.bg-overlay-hover : transparent;
             border-width: root.eye-hover || Theme.hc-border != transparent ? 1px : 0px;
             border-color: root.eye-hover ? Theme.border-default : Theme.hc-border;
-            Icon {
+            eye-glyph := Icon {
                 source: root.shown ? Icons.eye-slash : Icons.eye;
-                size: Space.s4;
+                size: Space.s4 * min(SystemLook.text-scale, 1.75);
                 tint: Theme.text-primary;
                 x: (parent.width - self.width) / 2;
                 y: (parent.height - self.height) / 2;

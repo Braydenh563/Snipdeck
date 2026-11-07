@@ -1695,6 +1695,9 @@ msgstr "粘贴下一个项目"
 msgid "Paste stack"
 msgstr "粘贴堆栈"
 
+msgid "Paste stack (mark items)"
+msgstr "粘贴堆栈(请先标记项目)"
+
 msgid "Paste stack, item {} of {}, next: {}"
 msgstr "粘贴堆栈，第 {} 项（共 {} 项），下一项：{}"
 
@@ -2855,6 +2858,12 @@ msgstr "颜色更改"
 
 msgid "copy clone twice"
 msgstr "复制 克隆 两次"
+
+msgid "creates “{}”"
+msgstr "创建“{}”"
+
+msgid "creates “{}” in {}"
+msgstr "创建“{}”(在 {})"
 
 msgid "delete"
 msgstr "删除"

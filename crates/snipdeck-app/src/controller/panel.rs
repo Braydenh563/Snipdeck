@@ -53,6 +53,9 @@ pub enum AppMenuEntry {
     Dock,
     /// Switch the global hotkeys off and on (checked while they are off).
     PauseHotkeys,
+    /// Keep the Panel on top of other windows (checked while it is). The header button does the same;
+    /// at large text sizes the button leaves the header and this row is the only way (audit 2, item 1).
+    KeepOnTop,
     /// View: show or hide the 1 to 9 numbers on the rows (checked while shown).
     ShowNumbers,
     /// Forget the remembered size and position on this monitor and put the Panel back at the default.
@@ -135,7 +138,7 @@ pub const LIST_MENU: [ListMenuEntry; 2] = [ListMenuEntry::Edit, ListMenuEntry::D
 
 /// The kebab menu's rows. Help is a group of three rows under a line, because the Panel's
 /// `Menu` has no sub-menus.
-pub const APP_MENU: [AppMenuEntry; 20] = [
+pub const APP_MENU: [AppMenuEntry; 21] = [
     AppMenuEntry::Undo,
     AppMenuEntry::Redo,
     AppMenuEntry::Separator,
@@ -149,6 +152,7 @@ pub const APP_MENU: [AppMenuEntry; 20] = [
     AppMenuEntry::NewSnippet,
     AppMenuEntry::Screenshot,
     AppMenuEntry::PauseHotkeys,
+    AppMenuEntry::KeepOnTop,
     AppMenuEntry::ShowNumbers,
     AppMenuEntry::ResetGeometry,
     AppMenuEntry::Separator,
@@ -224,6 +228,10 @@ where
             AppMenuEntry::PauseHotkeys => {
                 self.session.hotkeys_paused = !self.session.hotkeys_paused;
                 vec![Effect::SetHotkeysPaused(self.session.hotkeys_paused)]
+            }
+            AppMenuEntry::KeepOnTop => {
+                self.choose_on_top(!self.on_top);
+                Vec::new()
             }
             AppMenuEntry::ShowNumbers => {
                 self.update_settings(|s| s.show_numbers = !s.show_numbers);

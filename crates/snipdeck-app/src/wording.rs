@@ -397,6 +397,12 @@ where
     .into()
 }
 
+/// The "Paste stack" row while nothing is marked: it is disabled, and says why.
+#[must_use]
+pub fn paste_stack_idle_text(window: &PanelWindow) -> String {
+    MenuTexts::get(window).invoke_app_paste_stack_idle().into()
+}
+
 /// The words of a row of the Panel's kebab menu. The dock row reads "Undock the panel" while the
 /// Panel is `docked`, else it names the edge it would dock to (`dock_target`).
 #[must_use]
@@ -424,6 +430,7 @@ pub fn app_menu_text(
             None => t.invoke_app_dock(),
         },
         AppMenuEntry::PauseHotkeys => t.invoke_app_pause_hotkeys(),
+        AppMenuEntry::KeepOnTop => t.invoke_app_keep_on_top(),
         AppMenuEntry::ShowNumbers => t.invoke_app_show_numbers(),
         AppMenuEntry::ResetGeometry => t.invoke_app_reset_geometry(),
         AppMenuEntry::Undo | AppMenuEntry::Redo | AppMenuEntry::Separator => return String::new(),

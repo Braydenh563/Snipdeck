@@ -1700,6 +1700,9 @@ msgstr "Colar o próximo item"
 msgid "Paste stack"
 msgstr "Pilha de colagem"
 
+msgid "Paste stack (mark items)"
+msgstr "Colar pilha (marque itens)"
+
 msgid "Paste stack, item {} of {}, next: {}"
 msgstr "Pilha de colagem, item {} de {}, próximo: {}"
 
@@ -2863,6 +2866,12 @@ msgstr "mudança de cor"
 
 msgid "copy clone twice"
 msgstr "copiar clonar duplicar"
+
+msgid "creates “{}”"
+msgstr "cria “{}”"
+
+msgid "creates “{}” in {}"
+msgstr "cria “{}” em {}"
 
 msgid "delete"
 msgstr "excluir"

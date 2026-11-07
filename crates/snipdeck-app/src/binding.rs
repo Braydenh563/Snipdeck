@@ -1345,6 +1345,9 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
         text: match entry {
             AppMenuEntry::Undo => wording::undo_tip(window, view.history.undo).into(),
             AppMenuEntry::Redo => wording::redo_tip(window, view.history.redo).into(),
+            AppMenuEntry::PasteStack if view.stack.is_none() => {
+                wording::paste_stack_idle_text(window).into()
+            }
             _ => wording::app_menu_text(window, entry, view.docked, view.dock_target).into(),
         },
         disabled: (entry == AppMenuEntry::Undo && view.history.undo.is_none())
@@ -1353,6 +1356,7 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
         icon: if (entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused)
             || (entry == AppMenuEntry::PasteStack && view.stack.as_ref().is_some_and(|s| s.running))
             || (entry == AppMenuEntry::ShowNumbers && view.show_numbers)
+            || (entry == AppMenuEntry::KeepOnTop && view.on_top)
         {
             check.clone()
         } else {

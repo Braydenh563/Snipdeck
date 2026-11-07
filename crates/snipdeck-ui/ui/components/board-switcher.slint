@@ -88,11 +88,12 @@ export component BoardSwitcher inherits Rectangle {
             accessible-role: AccessibleRole.none;
         }
         Rectangle {
-            width: Space.s4 * SystemLook.text-scale;
+            // The caret box follows the glyph (to 1.75), not the full text scale: at 225 % the name needs the room.
+            width: Space.s3 * min(SystemLook.text-scale, 1.75) + Space.s1;
             Icon {
                 source: Icons.caret-down;
                 tint: Theme.text-secondary;
-                size: Space.s3 * SystemLook.text-scale;
+                size: Space.s3 * min(SystemLook.text-scale, 1.75);
                 x: (parent.width - self.width) / 2;
                 y: (parent.height - self.height) / 2;
             }

@@ -38,6 +38,29 @@ fn render(h: &Harness<PanelWindow>) -> Frame {
     h.render_settled()
 }
 
+/// The window is the active one, so the search field has the focus it is given on open.
+fn activate(h: &Harness<PanelWindow>) {
+    use slint::platform::WindowEvent;
+    h.component
+        .window()
+        .dispatch_event(WindowEvent::WindowActiveChanged(true));
+    let _ = render(h);
+}
+
+/// Types `keys` as the keyboard does: the first printable character pulls the focus into the search field.
+fn type_keys(h: &Harness<PanelWindow>, keys: &[slint::SharedString]) {
+    use slint::platform::WindowEvent;
+    for text in keys {
+        h.component
+            .window()
+            .dispatch_event(WindowEvent::KeyPressed { text: text.clone() });
+        h.component
+            .window()
+            .dispatch_event(WindowEvent::KeyReleased { text: text.clone() });
+    }
+    h.component.window().request_redraw();
+}
+
 /// The shipped Panel: the List layout is the default.
 fn list_panel(size: (u32, u32), dark: bool) -> Harness<PanelWindow> {
     panel(size, dark)
@@ -308,10 +331,21 @@ fn search_rows() -> Vec<snipdeck_ui::PanelRow> {
 fn panel_search_expanded_replaces_the_tabs_and_pins_and_marks_matches() {
     for (dark, name) in [(false, "panel-search-light"), (true, "panel-search-dark")] {
         let h = panel(SIZE, dark);
+        // The field holds the focus as it does on open (spec 2.11), so the golden shows its ring (audit 2, item 9).
+        activate(&h);
         fixture::set_rows(&h.component, search_rows());
-        h.component.set_query("re".into());
+        type_keys(&h, &["r".into(), "e".into()]);
+        assert_eq!(h.component.get_query(), "re");
         h.component.set_selected_index(0);
         let f = render(&h);
+        let ring = (4..200)
+            .flat_map(|x| (44..90).map(move |y| (x, y)))
+            .filter(|&(x, y)| f.pixel(x, y) == FOCUS_RING)
+            .count();
+        assert!(
+            ring > 100,
+            "the focused field wears its ring (dark={dark}): {ring}"
+        );
         // Header 40, then the 72px search block; the list starts right under it (no tab row, no pinned strip).
         let hairline = if dark {
             BORDER_SUBTLE_DARK
@@ -428,7 +462,19 @@ fn a_search_match_is_a_filled_span_not_an_underline() {
 #[test]
 fn panel_search_always_shows_a_44px_strip_and_keeps_tabs_and_pins() {
     let h = panel(SIZE, false);
+    activate(&h);
     h.component.set_search_always(true);
+    // The field has the focus as on open: typing a letter and deleting it leaves it empty and focused.
+    type_keys(
+        &h,
+        &[
+            "r".into(),
+            char::from(slint::platform::Key::Backspace)
+                .to_string()
+                .into(),
+        ],
+    );
+    assert_eq!(h.component.get_query(), "");
     let f = render(&h);
     // Tabs bottom hairline sits under the 44px strip, header 40 + strip 44 + tabs 32.
     assert_eq!(
@@ -961,10 +1007,132 @@ fn panel_at_the_260px_minimum_width() {
     assert_golden("panel-260-light", &render(&h));
 }
 
-/// The minimum height of the List layout (spec 2.12: 296): three rows and the chrome, no pinned strip squeezed in.
+/// The minimum height of the List layout (spec 2.12: 296, plus the 32px "New item" row that floats over the list's foot, audit 2
+/// item 2): two whole rows with the pinned strip, no row cut by the edge.
 #[test]
 fn panel_at_the_list_layouts_minimum_height() {
-    let h = panel((320, 296), false);
+    let h = panel((320, 328), false);
     h.component.set_selected_index(0);
     assert_golden("panel-min-height-light", &render(&h));
+}
+
+// ---- Audit 2 (2026-11-07) ----------------------------------------------------------------------------------------
+
+/// Dark ink columns (any of x0..x1 with a dark pixel in y0..y1) of a light-theme frame.
+fn ink_columns(f: &Frame, x0: u32, x1: u32, y0: u32, y1: u32) -> Vec<u32> {
+    (x0..x1)
+        .filter(|&x| {
+            (y0..y1).any(|y| {
+                let p = f.pixel(x, y);
+                u32::from(p[0]) + u32::from(p[1]) + u32::from(p[2]) < 330
+            })
+        })
+        .collect()
+}
+
+/// Item 1: at 225 % text the board name keeps at least six characters (spec 2.1; it was "W…").
+#[test]
+fn at_225_percent_the_board_name_keeps_six_characters() {
+    let h = panel((360, 760), false);
+    h.component.set_board_name("Workspace".into());
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    let f = render(&h);
+    // The name starts at x16; the picker ends before the search button. Six characters of a 31px font are about 100px.
+    let ink = ink_columns(&f, 10, 150, 8, 50);
+    let first = *ink.first().expect("the name has ink");
+    let width = ink.iter().filter(|&&x| x < 16 + 120).count();
+    assert!(first <= 20, "the name starts at the left: {first}");
+    assert!(
+        width >= 6 * 10,
+        "at least six characters of ink columns: {width} (ink {ink:?})"
+    );
+}
+
+/// Item 4: the header glyphs follow the text size to 1.75 (the search glyph was 15-16px beside a 22px name).
+#[test]
+fn at_225_percent_the_header_glyphs_grow_with_the_text() {
+    let h = panel((360, 760), false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    let f = render(&h);
+    let rows: Vec<u32> = (4..56)
+        .filter(|&y| {
+            (200..300).any(|x| {
+                let p = f.pixel(x, y);
+                u32::from(p[0]) + u32::from(p[1]) + u32::from(p[2]) < 500
+            })
+        })
+        .collect();
+    let tall = rows.last().unwrap() - rows.first().unwrap() + 1;
+    assert!(tall >= 22, "a header glyph is {tall}px tall (was 15-16)");
+}
+
+/// Item 5: the selected Cards number is `text.primary`, not secondary (4.56:1 on #05306A).
+#[test]
+fn the_selected_cards_number_is_text_primary() {
+    let mut h = panel(SIZE, true);
+    h.component.set_layout(PanelLayout::Cards);
+    h.component.set_selected_index(1);
+    let f = render(&h);
+    let _ = &mut h;
+    // The selected tile is the top-right one; its number sits at its top right.
+    let best = (150..312)
+        .flat_map(|x| (118..150).map(move |y| (x, y)))
+        .filter(|&(x, y)| f.pixel(x, y) != SELECTED_DARK)
+        .map(|(x, y)| contrast(f.pixel(x, y), SELECTED_DARK))
+        .fold(0.0_f64, f64::max);
+    assert!(best >= 8.0, "brightest ink in the tile header: {best:.2}:1");
+}
+
+/// Item 6: the no-results footer starts with an Enter keycap and its sentence does not run into the divider.
+#[test]
+fn the_no_results_footer_has_an_enter_keycap() {
+    let h = panel(SIZE, false);
+    fixture::set_rows(&h.component, Vec::new());
+    h.component.set_add_list_name("Email replies".into());
+    h.component.set_query("zzz".into());
+    let f = render(&h);
+    let y0 = SIZE.1 - 32;
+    let strong = (8..70)
+        .flat_map(|x| (y0..SIZE.1).map(move |y| (x, y)))
+        .filter(|&(x, y)| f.pixel(x, y) == [0x7C, 0x7A, 0x76])
+        .count();
+    assert!(
+        strong >= 40,
+        "the keycap outline (border.strong): {strong}px"
+    );
+}
+
+/// Item 3: a tab the scroll caret's patch would cut is not drawn, so no sliver of a label sits beside the caret.
+#[test]
+fn a_clipped_tab_leaves_no_sliver_beside_the_scroll_caret() {
+    let h = panel((260, 560), false);
+    h.component.set_selected_index(1);
+    let f = render(&h);
+    let cols = ink_columns(&f, 8, 196, 46, 62);
+    let mut clusters: Vec<(u32, u32)> = Vec::new();
+    for x in cols {
+        match clusters.last_mut() {
+            Some(last) if x <= last.1 + 7 => last.1 = x,
+            _ => clusters.push((x, x)),
+        }
+    }
+    assert!(
+        clusters.len() >= 2,
+        "two whole tab labels show: {clusters:?}"
+    );
+    for (a, b) in clusters {
+        assert!(
+            b - a >= 20,
+            "a label cluster is whole, not a sliver: x{a}-{b}"
+        );
+    }
+
+    let h = panel((360, 760), false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    let f = render(&h);
+    let beside = ink_columns(&f, 200, 295, 78, 100);
+    assert!(
+        beside.is_empty(),
+        "no cut label left of the caret at 225 %: {beside:?}"
+    );
 }

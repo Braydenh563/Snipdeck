@@ -212,6 +212,24 @@ fn show_numbers_is_a_menu_row_that_flips_the_setting() {
     assert!(w.ctl.view().show_numbers);
 }
 
+#[test]
+fn keep_on_top_is_a_menu_row_that_flips_the_pin() {
+    let mut w = world();
+    let before = w.ctl.view().on_top;
+    let at = APP_MENU
+        .iter()
+        .position(|e| *e == AppMenuEntry::KeepOnTop)
+        .expect("row");
+    w.ctl.open_app_menu();
+    w.ctl.choose_app_menu(at);
+    assert_eq!(w.ctl.view().on_top, !before);
+    assert_eq!(w.ctl.settings().panel_pinned, !before);
+    assert!(w.ctl.view().app_menu.is_none(), "the menu closed");
+    w.ctl.open_app_menu();
+    w.ctl.choose_app_menu(at);
+    assert_eq!(w.ctl.view().on_top, before);
+}
+
 // ---- Quick-add ---------------------------------------------------------------------------------
 
 #[test]

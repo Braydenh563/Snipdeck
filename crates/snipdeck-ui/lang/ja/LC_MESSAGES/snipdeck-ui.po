@@ -1695,6 +1695,9 @@ msgstr "次の項目を貼り付け"
 msgid "Paste stack"
 msgstr "貼り付けスタック"
 
+msgid "Paste stack (mark items)"
+msgstr "スタック貼り付け(項目を選択)"
+
 msgid "Paste stack, item {} of {}, next: {}"
 msgstr "貼り付けスタック、{} / {} 件目、次: {}"
 
@@ -2855,6 +2858,12 @@ msgstr "色の変更"
 
 msgid "copy clone twice"
 msgstr "コピー 複製"
+
+msgid "creates “{}”"
+msgstr "「{}」を作成"
+
+msgid "creates “{}” in {}"
+msgstr "「{}」を {} に作成"
 
 msgid "delete"
 msgstr "削除"

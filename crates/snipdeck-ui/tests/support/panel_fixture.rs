@@ -2,7 +2,7 @@
 //! `#[path]`-included, so each test binary compiles its own copy.
 #![allow(dead_code, reason = "each test binary uses a subset of the fixtures")]
 
-use slint::{Color, ModelRc, VecModel};
+use slint::{Color, ComponentHandle, ModelRc, VecModel};
 use snipdeck_ui::{ItemKind, MenuEntry, PanelRow, PanelWindow, PinnedItem, TabItem};
 
 /// Step-600 list hues (light theme) from `design/tokens/palette.json`.
@@ -161,7 +161,7 @@ pub fn pinned_n(n: usize) -> Vec<PinnedItem> {
 /// The Panel's kebab menu as the app fills it: the rows of `APP_MENU` in its order, with the English words,
 /// the shortcuts of `wording::app_menu_shortcut` and the state a fresh Panel has (nothing to undo, redo or
 /// stack; hotkeys running; numbers shown). `snipdeck-app` pins the order; keep this list in step with it.
-pub fn app_menu() -> Vec<MenuEntry> {
+pub fn app_menu(check: &slint::Image) -> Vec<MenuEntry> {
     let row = |text: &str, shortcut: &str| MenuEntry {
         text: text.into(),
         shortcut: shortcut.into(),
@@ -169,6 +169,11 @@ pub fn app_menu() -> Vec<MenuEntry> {
     };
     let off = |text: &str| MenuEntry {
         disabled: true,
+        ..row(text, "")
+    };
+    // The rows `render_app_menu` checks on a fresh Panel: kept on top, numbers shown.
+    let checked = |text: &str| MenuEntry {
+        icon: check.clone(),
         ..row(text, "")
     };
     let line = || MenuEntry {
@@ -179,7 +184,7 @@ pub fn app_menu() -> Vec<MenuEntry> {
         off("Nothing to undo"),
         off("Nothing to redo"),
         line(),
-        off("Paste stack"),
+        off("Paste stack (mark items)"),
         row("Dock to the nearest edge", ""),
         row("Keyboard shortcuts", "Ctrl+/"),
         row("All commands\u{2026}", "Ctrl+K"),
@@ -189,7 +194,8 @@ pub fn app_menu() -> Vec<MenuEntry> {
         row("New item", ""),
         row("Take screenshot", ""),
         row("Pause hotkeys", ""),
-        row("Show numbers", ""),
+        checked("Keep panel on top"),
+        checked("Show numbers"),
         row("Reset size and position", ""),
         line(),
         row("Troubleshoot\u{2026}", ""),
@@ -218,7 +224,9 @@ pub fn populate(ui: &PanelWindow) {
     ui.set_tabs(ModelRc::new(VecModel::from(tabs())));
     ui.set_pinned(ModelRc::new(VecModel::from(pinned())));
     ui.set_board_menu_entries(ModelRc::new(VecModel::from(board_menu())));
-    ui.set_app_menu_entries(ModelRc::new(VecModel::from(app_menu())));
+    ui.set_app_menu_entries(ModelRc::new(VecModel::from(app_menu(
+        &ui.global::<snipdeck_ui::Icons<'_>>().get_check(),
+    ))));
     set_rows(ui, sample_rows());
     ui.set_target_name("Outlook".into());
     ui.set_target_title("New message".into());

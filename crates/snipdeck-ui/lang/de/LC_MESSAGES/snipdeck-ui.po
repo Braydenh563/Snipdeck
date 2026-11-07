@@ -1700,6 +1700,9 @@ msgstr "Nächsten Eintrag einfügen"
 msgid "Paste stack"
 msgstr "Einfügestapel"
 
+msgid "Paste stack (mark items)"
+msgstr "Stapel einfügen (Elemente markieren)"
+
 msgid "Paste stack, item {} of {}, next: {}"
 msgstr "Einfügestapel, Textbaustein {} von {}, als Nächstes: {}"
 
@@ -2863,6 +2866,12 @@ msgstr "Farbänderung"
 
 msgid "copy clone twice"
 msgstr "kopieren klonen zweimal"
+
+msgid "creates “{}”"
+msgstr "legt „{}“ an"
+
+msgid "creates “{}” in {}"
+msgstr "legt „{}“ in {} an"
 
 msgid "delete"
 msgstr "Löschen"
