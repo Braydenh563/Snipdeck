@@ -872,3 +872,100 @@ fn espanso_missing_path_and_empty_folder() {
             .unwrap();
     assert_eq!(report.items_added, 0);
 }
+
+#[test]
+fn espanso_date_format_cannot_inject_placeholders() {
+    let yaml = r#"matches:
+  - trigger: ":inj"
+    replace: "A {{d}} B"
+    vars:
+      - name: d
+        type: date
+        params:
+          format: "%Y}{clipboard"
+  - trigger: ":inj2"
+    replace: "A {{d}} B"
+    vars:
+      - name: d
+        type: date
+        params:
+          format: "{cursor}%Y"
+  - trigger: ":lit"
+    replace: "keep {clipboard} {cursor} {datetime:%Y} as text"
+"#;
+    let (s, report) = espanso_in(&[("m.yml", yaml)], &ImportOptions::default());
+    let items = &contents(&s)[0].2;
+    assert_eq!(items[0], e(":inj", ItemKind::Text, "A {{d}} B"));
+    assert_eq!(items[1], e(":inj2", ItemKind::Text, "A {{d}} B"));
+    assert_eq!(
+        items[2],
+        e(
+            ":lit",
+            ItemKind::Text,
+            "keep {clipboard} {cursor} {datetime:%Y} as text"
+        )
+    );
+    assert!(notes(&report).iter().any(|n| n.contains("date format")));
+}
+
+#[test]
+fn literal_braces_stay_text_in_every_expander_importer() {
+    let beef = br#"[{"name":"a","keyword":";a","snippet":"x {clipboard} {cursor} y"},
+{"name":"b","keyword":";b","snippet":"x {clipboard} #{cursor}"}]"#;
+    let (s, _) = beeftext(beef, &ImportOptions::default());
+    let items = &contents(&s)[0].2;
+    assert_eq!(
+        items[0],
+        e("a (;a)", ItemKind::Text, "x {clipboard} {cursor} y")
+    );
+    assert_eq!(
+        items[1],
+        e("b (;b)", ItemKind::Template, "x {{clipboard}} {cursor}")
+    );
+}
+
+#[test]
+fn csv_a_megabyte_of_commas_is_capped_per_row_and_noted_once() {
+    let line = ",".repeat(1_000_000);
+    let csv = format!("Abbreviation,Content\n;a,fine\n{line}\n{line}x\n;b,ok\n");
+    let (s, report) = te(csv.as_bytes());
+    assert_eq!(
+        contents(&s)[0].2,
+        [
+            e(";a", ItemKind::Text, "fine"),
+            e(";b", ItemKind::Text, "ok")
+        ]
+    );
+    let columns = notes(&report)
+        .iter()
+        .filter(|n| n.contains("256 columns"))
+        .count();
+    assert_eq!(columns, 1);
+}
+
+#[test]
+fn espanso_folder_stops_at_a_running_byte_budget() {
+    let file = |n: usize| {
+        format!(
+            "matches:\n  - trigger: ':t{n}'\n    replace: '{}'\n",
+            "x".repeat(400)
+        )
+    };
+    let (a, b, c) = (file(1), file(2), file(3));
+    let opts = ImportOptions {
+        limits: Limits {
+            max_total_bytes: (a.len() + b.len()) as u64 + 10,
+            ..Limits::default()
+        },
+        ..ImportOptions::default()
+    };
+    let (s, report) = espanso_in(&[("a.yml", &a), ("b.yml", &b), ("c.yml", &c)], &opts);
+    let lists: Vec<String> = contents(&s).into_iter().map(|c| c.1).collect();
+    assert_eq!(lists, ["a", "b"]);
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Truncated { .. }))
+    );
+}

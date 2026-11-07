@@ -11,7 +11,13 @@
 pub(crate) struct Table {
     pub rows: Vec<Vec<String>>,
     pub truncated: bool,
+    /// Some row had more than [`MAX_CELLS`] cells; the rest were dropped.
+    pub cells_cut: bool,
 }
+
+/// Most cells kept per row. Real exports have a handful of columns; a line of a million commas
+/// must not become a million empty strings.
+const MAX_CELLS: usize = 256;
 
 fn detect_delimiter(text: &str) -> char {
     let (mut commas, mut semis, mut tabs, mut quoted) = (0usize, 0usize, 0usize, false);
@@ -42,6 +48,7 @@ pub(crate) fn parse(text: &str, max_rows: usize) -> Table {
     let mut cell = String::new();
     let mut in_quotes = false;
     let mut cell_started = false;
+    let mut cells_cut = false;
     let mut chars = text.chars().peekable();
 
     while let Some(c) = chars.next() {
@@ -64,18 +71,22 @@ pub(crate) fn parse(text: &str, max_rows: usize) -> Table {
                 cell_started = true;
             }
             c if c == delimiter => {
-                row.push(std::mem::take(&mut cell));
+                push_cell(&mut row, &mut cell, &mut cells_cut);
                 cell_started = false;
             }
             '\r' | '\n' => {
                 if c == '\r' && chars.peek() == Some(&'\n') {
                     chars.next();
                 }
-                end_row(&mut row, &mut cell, &mut rows);
+                end_row(&mut row, &mut cell, &mut rows, &mut cells_cut);
                 cell_started = false;
                 if rows.len() >= max_rows {
                     let truncated = chars.peek().is_some();
-                    return Table { rows, truncated };
+                    return Table {
+                        rows,
+                        truncated,
+                        cells_cut,
+                    };
                 }
             }
             c => {
@@ -85,16 +96,26 @@ pub(crate) fn parse(text: &str, max_rows: usize) -> Table {
         }
     }
     if cell_started || !row.is_empty() || !cell.is_empty() {
-        end_row(&mut row, &mut cell, &mut rows);
+        end_row(&mut row, &mut cell, &mut rows, &mut cells_cut);
     }
     Table {
         rows,
         truncated: false,
+        cells_cut,
     }
 }
 
-fn end_row(row: &mut Vec<String>, cell: &mut String, rows: &mut Vec<Vec<String>>) {
-    row.push(std::mem::take(cell));
+fn push_cell(row: &mut Vec<String>, cell: &mut String, cut: &mut bool) {
+    let cell = std::mem::take(cell);
+    if row.len() < MAX_CELLS {
+        row.push(cell);
+    } else {
+        *cut = true;
+    }
+}
+
+fn end_row(row: &mut Vec<String>, cell: &mut String, rows: &mut Vec<Vec<String>>, cut: &mut bool) {
+    push_cell(row, cell, cut);
     let done = std::mem::take(row);
     if done.iter().any(|c| !c.trim().is_empty()) {
         rows.push(done);
@@ -190,6 +211,12 @@ pub(crate) fn import_csv<L: Library>(
         report.warn(Warning::Truncated {
             reason: "too many rows".to_owned(),
         });
+    }
+    if table.cells_cut {
+        report.warn(Warning::Note(format!(
+            "{}: some rows have more than 256 columns; the rest were ignored",
+            spec.file
+        )));
     }
     let mut rows = table.rows.into_iter().peekable();
     let columns = match rows
