@@ -1,25 +1,16 @@
-# symbols agent: remaining work
+# symbols agent (wt/symbols)
 
 ## Done
-- Slices 1, 2, 3 built and committed (see git log).
-- Slice 4 built: `symbol_ctl.rs` (use_symbol, add_symbol_to_list, copy_icon_svg/png, save_icon, symbol_recents), `Settings.symbols_recent`, `FilePicker::save` + `SaveKind` (fake + Windows IFileSaveDialog; `cargo check/clippy --target x86_64-pc-windows-msvc -p snipdeck-platform` passes with the default toolchain; dialog unrun on Windows). 17 controller tests + 2 platform tests pass.
+- save_icon split: prepare_icon_save / IconSave::ask (outside the controller) / finish_icon_save; atomic temp+rename write, io errors logged; toast::after_error for use errors; IconNotAddable toast. (commit 8b31b61)
+- Panel Symbols tab: symbols.slint, panel.slint wiring (list-hidden), symbol_nav.rs, symbols_panel.rs (grid builder), symbols_binding.rs (glue), binding.rs wiring.
+- Tests: controller symbols (32), symbol_nav, ui tests/symbols.rs (12, goldens 280/320/420 light, 320 dark, kaomoji, icons dark, empty), panel_window symbols test.
+- i18n extract run (new strings fall back to English).
 
 ## Next
-- Slices 5-7: UI, menus/export UI, docs. UI must: add Origin/colour (text.primary RGBA) for copy_icon_png, toast on Save as success (no ToastMessage for it yet), call save_icon with ICON sizes 24/32/48/64/128/256, offer Save as only when `file_picker()` is Some. Icons as Image items in a list (spec s3) are NOT built: add_symbol_to_list is text only (task scope). Run `cargo deny check` and gate.sh --full in an environment with deny; cargo-deny is not installed here.
+- Slice 6: context menu on a symbol (cell-menu already sets item-menu-x/y), Save as submenu (prepare_icon_save, ask outside the controller, finish_icon_save as editor_binding browse()), palette entry, toasts wired in the UI.
+- Settings toggle for the Symbols tab (settings files belong to another agent): symbols_available is always true.
+- Translations for the new strings (English fallback now).
 
-## Blocked / for the owner
-- CI line (a hook refuses .github/workflows edits): add to the lint job
-  `python3 -I scripts/test_symbols.py && python3 -I scripts/symbols.py --check`
-  (scripts/gate.sh already runs both).
-- Deviation: icons.bin.z is 213 KB (budget raised 200 -> 220 KB; zopfli would give 202 KB).
-- Deviation: Fluent art comes from the npm package @iconify-json/fluent-emoji-flat 1.2.6 (MIT, SVG bodies of microsoft/fluentui-emoji), pinned by hash, because the GitHub API is blocked and the repo is huge.
-- emoji-test.txt is pinned from the `latest` URL (the versioned 18.0 path 404s); the sha256 fixes the content.
-- gate.sh --staged was started but a shared target dir (other agent cargo) made it exceed the tool timeout; clippy (stable + 1.99.1), fmt, rustdoc, tests, symbols.py --check and test_symbols.py were run directly and pass.
-- Kaomoji search matches English tags and English group names only (UI-language category names are the UI's job).
-
-## Reviewer on slice 4 (2026-11-07, Opus, read-only) -> fix in slice 5/6
-- HIGH: save_icon opens the modal Save dialog while holding &mut self (symbol_ctl.rs:153); hosts borrow the controller RefCell through the dialog loop -> BorrowMutError from timers/hotkeys. Split like editor_binding.rs:389-400: prepare (bytes, kind, name) -> dialog outside the controller -> finish(path).
-- MED: fs::write straight onto the target (symbol_ctl.rs:162): write temp + rename; log the io error and the dialog Err (line 157).
-- MED: add_symbol_to_list returns false for icons with no toast; spec s3 says 64 px Image item at the TOP of the list (doc + test say end). Build it or toast "Icons can't be added to a list yet".
-- MED: symbol use errors always toast ClipboardBusy (84-91); use toast::after_error like use_ctl.rs:466.
-- LOW: recents from_saved dedupes before sorting (recents.rs:58-73): keep the newest; settings-without-field load test; Save-as extension mismatch (force the kind's extension); tests for picker Err path and add_symbol_to_list updating recents.
+## Blocked / notes
+- panel_logic `the_recent_list_has_its_own_keys...` fails at HEAD already (expects Enter = rcopy; code has Enter = recent-used). Not touched.
+- Hover fill on a cell not pixel-measured (hover colour did not change pixels in the harness); selection box measured 40x40.

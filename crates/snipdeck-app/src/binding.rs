@@ -17,12 +17,13 @@ use snipdeck_platform::{
     system_look::SystemLook,
     tray::TrayEvent,
 };
+use snipdeck_symbols::{Lang, SymbolId};
 use snipdeck_ui as ui;
 
 use crate::{
     controller::{
         AppMenuEntry, BoardMenuEntry, Controller, Effect, HelpTopic, ItemMenuEntry, Library,
-        ToastPhase, View,
+        ToastPhase, UseResult, View,
     },
     dock::DockEvent,
     frame::{Edge, Monitor, Rect},
@@ -605,6 +606,102 @@ where
             .recent_delete(i64::from(id)));
         wire!(on_recent_saved, |ctl, id, target| ctl
             .recent_promote_to(i64::from(id), index(target)));
+
+        // ---- The Symbols tab: its state lives in `symbols_binding`; uses go through the controller ----
+        let symbols = Rc::new(crate::symbols_binding::Glue::default());
+        window.set_symbols_available(true);
+        {
+            // Everything that rebuilds the grid needs the recents and the language.
+            let rebuild = {
+                let core = Rc::clone(&core);
+                let symbols = Rc::clone(&symbols);
+                move |f: crate::symbols_binding::Step<'_>| {
+                    let Some(window) = core.window.upgrade() else {
+                        return;
+                    };
+                    let (recents, lang) = {
+                        let ctl = core.controller.borrow();
+                        (
+                            ctl.symbol_recents(None),
+                            Lang::from_tag(&ctl.settings().language),
+                        )
+                    };
+                    f(&symbols, &window, &recents, lang);
+                }
+            };
+            let rebuild = Rc::new(rebuild);
+            let r = Rc::clone(&rebuild);
+            window.on_symbols_toggled(move |open| {
+                if open {
+                    r(&|g, w, recents, lang| g.opened(w, recents, lang));
+                }
+            });
+            let r = Rc::clone(&rebuild);
+            window.on_symbol_query_changed(move |q| {
+                r(&|g, w, recents, lang| g.query(w, q.as_str(), recents, lang));
+            });
+            let r = Rc::clone(&rebuild);
+            window.on_symbol_kind_changed(move |k| {
+                r(&|g, w, recents, lang| g.kind(w, k, recents, lang));
+            });
+            let r = Rc::clone(&rebuild);
+            window.on_symbol_columns_changed(move |n| {
+                r(&|g, w, recents, lang| g.columns(w, n, recents, lang));
+            });
+            let symbols_for_art = Rc::clone(&symbols);
+            window.on_symbol_art(move |i| symbols_for_art.art(i));
+            let (weak, g) = (window.as_weak(), Rc::clone(&symbols));
+            window.on_symbol_move(move |code| {
+                if let Some(w) = weak.upgrade() {
+                    g.mv(&w, code, 5);
+                }
+            });
+            let (weak, g) = (window.as_weak(), Rc::clone(&symbols));
+            window.on_symbol_group_picked(move |group| {
+                if let Some(w) = weak.upgrade() {
+                    g.group(&w, group);
+                }
+            });
+        }
+        // A click or Enter pastes (or copies) an emoji or kaomoji; on an icon it copies the picture.
+        for mode in [UseMode::Paste, UseMode::Copy] {
+            let (g, weak) = (Rc::clone(&symbols), window.as_weak());
+            let core = Rc::clone(&core);
+            let run = move |flat: i32| {
+                let Some(id) = g.id_at(flat) else {
+                    return;
+                };
+                if let Some(w) = weak.upgrade() {
+                    g.select(&w, flat);
+                }
+                let dark = weak.upgrade().is_some_and(|w| w.get_dark());
+                core.act_effects(|ctl| {
+                    let used = if matches!(id, SymbolId::Icon(_)) {
+                        if ctl.copy_icon_png(&id, crate::symbols_binding::ink(dark)) {
+                            UseResult::Done(snipdeck_core::UseOutcome::Copied)
+                        } else {
+                            UseResult::Failed
+                        }
+                    } else {
+                        ctl.use_symbol(&id, mode)
+                    };
+                    ctl.after_use(&used)
+                });
+            };
+            if mode == UseMode::Paste {
+                window.on_symbol_used(run);
+            } else {
+                window.on_symbol_copied(run);
+            }
+        }
+        {
+            let (g, core) = (Rc::clone(&symbols), Rc::clone(&core));
+            window.on_symbol_add_requested(move |flat| {
+                if let Some(id) = g.id_at(flat) {
+                    core.act(|ctl| ctl.add_symbol_to_list(&id, crate::item_editor::Origin::Panel));
+                }
+            });
+        }
         wire_effects!(on_pinned_used, |ctl, i| {
             let used = ctl.activate_pinned(index(i), UseMode::Paste);
             ctl.after_use(&used)

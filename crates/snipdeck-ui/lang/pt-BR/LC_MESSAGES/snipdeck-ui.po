@@ -85,6 +85,9 @@ msgstr "Ações"
 msgid "Activate"
 msgstr "Ativar"
 
+msgid "Activities"
+msgstr ""
+
 msgid "Add"
 msgstr "Adicionar"
 
@@ -144,6 +147,15 @@ msgstr "Âmbar"
 
 msgid "An Image item holds a PNG picture. Choose a PNG file, or add this one as a File."
 msgstr "Um item de imagem guarda uma imagem PNG. Escolha um arquivo PNG ou adicione este como arquivo."
+
+msgid "Angry"
+msgstr ""
+
+msgid "Animals"
+msgstr ""
+
+msgid "Animals & Nature"
+msgstr ""
 
 msgid "Another program already uses {}."
 msgstr "Outro programa já usa {}."
@@ -328,7 +340,13 @@ msgstr "Limpar o atalho de {}"
 msgid "Click"
 msgstr "Clique"
 
+msgid "Click copies"
+msgstr ""
+
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
+msgstr ""
+
+msgid "Click pastes into {} · Shift+click copies"
 msgstr ""
 
 msgid "Click to copy."
@@ -778,6 +796,9 @@ msgstr "Editar…"
 msgid "Email me"
 msgstr "Envie-me um e-mail"
 
+msgid "Emoji"
+msgstr ""
+
 msgid "Empty Trash"
 msgstr "Esvaziar lixeira"
 
@@ -868,6 +889,9 @@ msgstr "Campos fixos preenchidos ao colar."
 msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
 msgstr "Fixa o painel em uma borda da tela, no monitor em que ele está. «Flutuante» deixa o painel em qualquer lugar."
 
+msgid "Flags"
+msgstr ""
+
 msgid "Floating"
 msgstr "Flutuante"
 
@@ -882,6 +906,9 @@ msgstr "Seguir o Windows"
 
 msgid "Follow Windows switches with your system setting."
 msgstr "Segue o tema do Windows conforme a configuração do sistema."
+
+msgid "Food & Drink"
+msgstr ""
 
 msgid "For example, Email replies"
 msgstr "Por exemplo, Respostas de e-mail"
@@ -936,6 +963,9 @@ msgstr "Ir para a Lixeira"
 
 msgid "Green"
 msgstr "Verde"
+
+msgid "Greet"
+msgstr ""
 
 msgid "Help"
 msgstr "Ajuda"
@@ -1006,6 +1036,12 @@ msgstr "Largura em que o painel abre, de {} a {} pixels."
 msgid "Icon"
 msgstr "Ícone"
 
+msgid "Icons"
+msgstr ""
+
+msgid "Icons can't be added to a list yet."
+msgstr ""
+
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
 msgstr "Se você esquecer esta senha, seus itens sensíveis nunca mais poderão ser abertos. O Snipdeck não pode redefini-la e não guarda chave de recuperação. Seus outros itens não são afetados."
 
@@ -1069,8 +1105,14 @@ msgstr[1] "Suas listas e {n} itens serão movidos para a Lixeira. Você pode res
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "Suas listas e {} itens vão para a lixeira. Você pode restaurá-los por {} dias."
 
+msgid "Joy"
+msgstr ""
+
 msgid "Just now"
 msgstr "Agora mesmo"
+
+msgid "Kaomoji"
+msgstr ""
 
 msgid "Keep Panel visible during screenshots"
 msgstr "Manter o painel visível durante as capturas"
@@ -1107,6 +1149,9 @@ msgstr "Atalhos de teclado"
 
 msgid "Kind"
 msgstr "Tipo"
+
+msgid "Kinds of symbols"
+msgstr ""
 
 msgid "Language"
 msgstr "Idioma"
@@ -1182,6 +1227,9 @@ msgstr "Bloqueie seus itens criptografados com uma senha que você escolher."
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "Os registros só são gravados quando o Snipdeck fecha de forma inesperada, não têm o conteúdo dos trechos e nunca são enviados a lugar nenhum."
+
+msgid "Love"
+msgstr ""
 
 msgid "Main list density"
 msgstr "Densidade das listas principais"
@@ -1403,6 +1451,9 @@ msgstr "Nenhum atalho corresponde"
 msgid "No snippets yet"
 msgstr "Nenhum trecho ainda"
 
+msgid "No symbols match “{}”"
+msgstr ""
+
 msgid "No tags"
 msgstr "Sem etiquetas"
 
@@ -1477,6 +1528,9 @@ msgstr ""
 
 msgid "OK"
 msgstr "OK"
+
+msgid "Objects"
+msgstr ""
 
 msgid "Off"
 msgstr "Desativado"
@@ -1687,6 +1741,9 @@ msgstr "Pague o quanto quiser a partir de A$ 5, sugerido A$ 8. Pagamento único,
 
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions."
 msgstr "Pague o quanto quiser a partir de A$ 5, sugerido A$ 8. Pagamento único, com todas as atualizações 1.x incluídas. O Gratuito continua totalmente utilizável; o Supporter paga pela comodidade e apoia o app. Não pode pagar? Envie-me um e-mail e eu mando uma chave, sem perguntas."
+
+msgid "People & Body"
+msgstr ""
 
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr ""
@@ -1911,6 +1968,9 @@ msgstr "Rosa"
 msgid "SNIP1."
 msgstr "SNIP1."
 
+msgid "Sad"
+msgstr ""
+
 msgid "Save"
 msgstr "Salvar"
 
@@ -1937,6 +1997,9 @@ msgstr "Salvo em {}"
 
 msgid "Saved {}"
 msgstr "Salvo {}"
+
+msgid "Saved {}."
+msgstr ""
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Salva todos os quadros, listas e itens em um único arquivo .snipdeck, em uma pasta que você escolher."
@@ -1965,6 +2028,9 @@ msgstr ""
 msgid "Search all snippets"
 msgstr "Pesquisar todos os trechos"
 
+msgid "Search emoji, kaomoji, icons"
+msgstr ""
+
 msgid "Search every board and paste without opening the window."
 msgstr "Pesquise em todos os quadros e cole sem abrir a janela."
 
@@ -1982,6 +2048,9 @@ msgstr "Pesquisar atalhos"
 
 msgid "Search snippets"
 msgstr "Pesquisar trechos"
+
+msgid "Search symbols"
+msgstr ""
 
 msgid "Search the keyboard shortcuts"
 msgstr "Pesquisar nos atalhos de teclado"
@@ -2061,6 +2130,9 @@ msgstr "Mostrar painel"
 msgid "Show Panel ({})"
 msgstr "Mostrar painel ({})"
 
+msgid "Show all"
+msgstr ""
+
 msgid "Show kind, title, colour, tags and privacy"
 msgstr "Mostrar tipo, título, cor, tags e privacidade"
 
@@ -2082,11 +2154,17 @@ msgstr "Mostrar o Painel na barra de tarefas e no Alt+Tab"
 msgid "Show the welcome tour again"
 msgstr "Mostrar o tour de boas-vindas novamente"
 
+msgid "Shrug"
+msgstr ""
+
 msgid "Skip"
 msgstr "Pular"
 
 msgid "Slate"
 msgstr "Ardósia"
+
+msgid "Smileys & Emotion"
+msgstr ""
 
 msgid "Snipdeck"
 msgstr "Snipdeck"
@@ -2169,6 +2247,9 @@ msgstr "O Snipdeck aguarda na bandeja para que os atalhos funcionem após o logi
 msgid "Snippets"
 msgstr "Trechos"
 
+msgid "Sorry"
+msgstr ""
+
 msgid "Sort items by"
 msgstr "Ordenar trechos por"
 
@@ -2207,6 +2288,12 @@ msgstr "Força: fraca"
 
 msgid "Supporter"
 msgstr "Supporter"
+
+msgid "Surprise"
+msgstr ""
+
+msgid "Symbols"
+msgstr ""
 
 msgid "Tab"
 msgstr "Tab"
@@ -2478,6 +2565,9 @@ msgstr "Borda superior"
 msgid "Trash"
 msgstr "Lixeira"
 
+msgid "Travel & Places"
+msgstr ""
+
 msgid "Tray icon click opens"
 msgstr ""
 
@@ -2486,6 +2576,9 @@ msgstr "Solução de problemas"
 
 msgid "Troubleshoot…"
 msgstr "Solução de problemas…"
+
+msgid "Try another word, or a different kind."
+msgstr ""
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "Ative o histórico da área de transferência em Configurações para reunir o que você copiar."

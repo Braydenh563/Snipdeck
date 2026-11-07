@@ -85,6 +85,9 @@ msgstr "操作"
 msgid "Activate"
 msgstr "激活"
 
+msgid "Activities"
+msgstr ""
+
 msgid "Add"
 msgstr "添加"
 
@@ -144,6 +147,15 @@ msgstr "琥珀色"
 
 msgid "An Image item holds a PNG picture. Choose a PNG file, or add this one as a File."
 msgstr "图片片段保存的是 PNG 图片。请选择 PNG 文件，或将此文件添加为“文件”片段。"
+
+msgid "Angry"
+msgstr ""
+
+msgid "Animals"
+msgstr ""
+
+msgid "Animals & Nature"
+msgstr ""
 
 msgid "Another program already uses {}."
 msgstr "其他程序已在使用 {}。"
@@ -328,7 +340,13 @@ msgstr "清除 {} 的快捷键"
 msgid "Click"
 msgstr "点击"
 
+msgid "Click copies"
+msgstr ""
+
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
+msgstr ""
+
+msgid "Click pastes into {} · Shift+click copies"
 msgstr ""
 
 msgid "Click to copy."
@@ -778,6 +796,9 @@ msgstr "编辑…"
 msgid "Email me"
 msgstr "给我发邮件"
 
+msgid "Emoji"
+msgstr ""
+
 msgid "Empty Trash"
 msgstr "清空回收站"
 
@@ -868,6 +889,9 @@ msgstr "粘贴时会填入固定占位符。"
 msgid "Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere."
 msgstr "将面板固定在其所在显示器的某条屏幕边缘。选择“浮动”则可放在任意位置。"
 
+msgid "Flags"
+msgstr ""
+
 msgid "Floating"
 msgstr "浮动"
 
@@ -882,6 +906,9 @@ msgstr "跟随 Windows"
 
 msgid "Follow Windows switches with your system setting."
 msgstr "跟随系统设置中的 Windows 主题。"
+
+msgid "Food & Drink"
+msgstr ""
 
 msgid "For example, Email replies"
 msgstr "例如：邮件回复"
@@ -936,6 +963,9 @@ msgstr "前往“回收站”"
 
 msgid "Green"
 msgstr "绿色"
+
+msgid "Greet"
+msgstr ""
 
 msgid "Help"
 msgstr "帮助"
@@ -1006,6 +1036,12 @@ msgstr "面板展开的宽度，范围为 {} 至 {} 像素。"
 msgid "Icon"
 msgstr "图标"
 
+msgid "Icons"
+msgstr ""
+
+msgid "Icons can't be added to a list yet."
+msgstr ""
+
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
 msgstr "如果忘记此密码，敏感片段将再也无法打开。Snipdeck 无法重置它，也不保存恢复密钥。你的其他片段不受影响。"
 
@@ -1066,8 +1102,14 @@ msgstr[0] "其列表及其中的 {n} 个片段将移至回收站。你可以在 
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr "它的列表和 {} 个项目将移到回收站。你可以在 {} 天内恢复。"
 
+msgid "Joy"
+msgstr ""
+
 msgid "Just now"
 msgstr "刚刚"
+
+msgid "Kaomoji"
+msgstr ""
 
 msgid "Keep Panel visible during screenshots"
 msgstr "截图时保持面板可见"
@@ -1104,6 +1146,9 @@ msgstr "键盘快捷键"
 
 msgid "Kind"
 msgstr "类型"
+
+msgid "Kinds of symbols"
+msgstr ""
 
 msgid "Language"
 msgstr "语言"
@@ -1179,6 +1224,9 @@ msgstr "用你设定的密码锁定加密片段。"
 
 msgid "Logs are only written when Snipdeck crashes, hold no item content and are never sent anywhere."
 msgstr "日志只在 Snipdeck 崩溃时写入，不含片段内容，也不会发送到任何地方。"
+
+msgid "Love"
+msgstr ""
 
 msgid "Main list density"
 msgstr "主列表密度"
@@ -1398,6 +1446,9 @@ msgstr "没有匹配的快捷键"
 msgid "No snippets yet"
 msgstr "还没有片段"
 
+msgid "No symbols match “{}”"
+msgstr ""
+
 msgid "No tags"
 msgstr "无标签"
 
@@ -1472,6 +1523,9 @@ msgstr ""
 
 msgid "OK"
 msgstr "正常"
+
+msgid "Objects"
+msgstr ""
 
 msgid "Off"
 msgstr "关闭"
@@ -1682,6 +1736,9 @@ msgstr "可自定价格，最低 A$5，建议 A$8。一次性付费，包括所�
 
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions."
 msgstr "可自定价格，最低 A$5，建议 A$8。一次性付费，包括所有 1.x 更新。免费版功能完整可用；Supporter 提供便利功能，并支持本应用。买不起？给我发邮件，我会发给你一个密钥，不问缘由。"
+
+msgid "People & Body"
+msgstr ""
 
 msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
 msgstr ""
@@ -1904,6 +1961,9 @@ msgstr "玫瑰色"
 msgid "SNIP1."
 msgstr "SNIP1."
 
+msgid "Sad"
+msgstr ""
+
 msgid "Save"
 msgstr "保存"
 
@@ -1930,6 +1990,9 @@ msgstr "已保存到 {}"
 
 msgid "Saved {}"
 msgstr "已保存 {}"
+
+msgid "Saved {}."
+msgstr ""
 
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "将所有看板、列表和片段保存为一个 .snipdeck 文件，存放在你选择的文件夹中。"
@@ -1958,6 +2021,9 @@ msgstr ""
 msgid "Search all snippets"
 msgstr "搜索所有片段"
 
+msgid "Search emoji, kaomoji, icons"
+msgstr ""
+
 msgid "Search every board and paste without opening the window."
 msgstr "搜索所有看板，无需打开窗口即可粘贴。"
 
@@ -1975,6 +2041,9 @@ msgstr "搜索快捷键"
 
 msgid "Search snippets"
 msgstr "搜索片段"
+
+msgid "Search symbols"
+msgstr ""
 
 msgid "Search the keyboard shortcuts"
 msgstr "搜索键盘快捷键"
@@ -2054,6 +2123,9 @@ msgstr "显示面板"
 msgid "Show Panel ({})"
 msgstr "显示面板（{}）"
 
+msgid "Show all"
+msgstr ""
+
 msgid "Show kind, title, colour, tags and privacy"
 msgstr "显示类型、标题、颜色、标签和隐私"
 
@@ -2075,11 +2147,17 @@ msgstr "在任务栏和 Alt+Tab 中显示面板"
 msgid "Show the welcome tour again"
 msgstr "再次显示欢迎导览"
 
+msgid "Shrug"
+msgstr ""
+
 msgid "Skip"
 msgstr "跳过"
 
 msgid "Slate"
 msgstr "石板灰"
+
+msgid "Smileys & Emotion"
+msgstr ""
 
 msgid "Snipdeck"
 msgstr "Snipdeck"
@@ -2162,6 +2240,9 @@ msgstr "Snipdeck 会待在系统托盘中，以便登录后快捷键仍可使用
 msgid "Snippets"
 msgstr "片段"
 
+msgid "Sorry"
+msgstr ""
+
 msgid "Sort items by"
 msgstr "排序方式"
 
@@ -2200,6 +2281,12 @@ msgstr "强度：弱"
 
 msgid "Supporter"
 msgstr "Supporter"
+
+msgid "Surprise"
+msgstr ""
+
+msgid "Symbols"
+msgstr ""
 
 msgid "Tab"
 msgstr "Tab"
@@ -2471,6 +2558,9 @@ msgstr "顶边"
 msgid "Trash"
 msgstr "回收站"
 
+msgid "Travel & Places"
+msgstr ""
+
 msgid "Tray icon click opens"
 msgstr ""
 
@@ -2479,6 +2569,9 @@ msgstr "故障排除"
 
 msgid "Troubleshoot…"
 msgstr "故障排除…"
+
+msgid "Try another word, or a different kind."
+msgstr ""
 
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr "在设置中开启剪贴板历史，以收集你复制的内容。"

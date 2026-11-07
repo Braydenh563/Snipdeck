@@ -183,7 +183,7 @@ where
     /// and says nothing; a dialog or write error is logged and toasted.
     pub fn finish_icon_save(
         &mut self,
-        save: IconSave,
+        save: &IconSave,
         answer: Result<Option<PathBuf>, snipdeck_platform::error::Error>,
     ) -> SaveOutcome {
         let path = match answer {

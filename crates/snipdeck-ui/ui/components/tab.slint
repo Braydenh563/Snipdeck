@@ -149,6 +149,8 @@ export component Tab inherits Rectangle {
 // because a clock has no list colour.
 export component ClockTab inherits Rectangle {
     in property <string> label;
+    // The glyph: the clock for Recent, the smiley for Symbols.
+    in property <image> glyph: Icons.clock;
     in property <bool> selected: false;
     // Keyboard focus is on the tab.
     in property <bool> focus-visible: false;
@@ -169,7 +171,7 @@ export component ClockTab inherits Rectangle {
     animate background { duration: Motion.instant; easing: Motion.out; }
 
     Icon {
-        source: Icons.clock;
+        source: root.glyph;
         tint: root.selected || root.hovered ? Theme.text-primary : Theme.text-secondary;
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height - Space.s0-5) / 2;

@@ -32,7 +32,7 @@ fn save(w: &mut World, id: &SymbolId, export: IconExport, owner: Option<isize>) 
         Err(outcome) => return outcome,
     };
     let answer = prepared.ask(owner);
-    w.ctl.finish_icon_save(prepared, answer)
+    w.ctl.finish_icon_save(&prepared, answer)
 }
 
 fn with_picker(w: &mut World, answer: Option<PathBuf>) -> FakeFilePicker {
@@ -383,7 +383,7 @@ fn save_as_asks_with_no_controller_borrow_and_finishes_with_the_answer() {
     let answer = prepared.ask(None);
     assert_eq!(picker.asked_save().len(), 1);
     assert_eq!(
-        w.ctl.finish_icon_save(prepared, answer),
+        w.ctl.finish_icon_save(&prepared, answer),
         SaveOutcome::Saved(target)
     );
 }
