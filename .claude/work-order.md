@@ -21,6 +21,7 @@ started: 2026-11-07 (resumed)
 - [x] Defaults: Recent on for new installs; new non-AltGr default chords (decisions in now.md)
 - [ ] Symbols library (spec first): emoji, kaomoji, icons; search, one click copies/pastes, add to a list, icons copy as SVG/PNG or save; licence-clean data; colour emoji rendering checked
 - [ ] Carry the Panel v2 look to Main lists, Picker, command palette, editors, menus and Settings (type tiles, quiet rows, search, toasts), spec addendum first
+- [ ] v1.0.1: Rebuild-from-backup safety (own blob dir for the set-aside db, WAL checkpoint on close, crash-safe move marker; .claude/inbox-archive.md)
 - [ ] v1.0.1: compact dock + dock grips (U22/O28), sidebar resize (O54), header select and delete (O49/O50)
 - [ ] v1.0.1: paste or drop to create an item, Ctrl+C on items (O47 a-c; branch claude/o47-abc-wip), Main quick-add
 - [ ] v1.0.1: multi-row drag, toast Edit button, UX-C (O30/O26/O31), U9, A25, search suggestion dropdown (Picker, Panel, Main)
