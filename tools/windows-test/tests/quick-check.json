@@ -137,7 +137,61 @@
       "expect": "No part of the Panel covers the taskbar or goes off the screen, and its bottom row can be seen in full."
     },
     {
-      "id": "12",
+      "id": "13",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Symbols: emoji paste into Notepad and Word",
+      "do": "Open the Panel with {HOTKEY} and click the smiley tab. Click into Notepad, then click the grinning face 😀. Click into a Word document and click it again. Then search woman technologist and click 👩‍💻 (a joined emoji) in Notepad and in Word.",
+      "expect": "Each click types the emoji at the cursor and the Panel hides (unless pinned). 😀 and 👩‍💻 show as one picture each, not as separate parts (Notepad may draw the joined one as two or three pictures on an older Windows 10; note it if so)."
+    },
+    {
+      "id": "14",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Symbols: kaomoji glyphs",
+      "do": "In the Symbols tab open the Kaomoji kind. Look at a few chips, including ones with box-drawing lines or Japanese characters. Click one into Notepad.",
+      "expect": "The chips show every character (no empty boxes or question marks), lines join up, and the pasted text matches what the chip shows."
+    },
+    {
+      "id": "15",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Symbols: Copy PNG into Word and Paint",
+      "do": "In the Symbols tab open the Icons kind and click an icon (an icon click copies a PNG). Paste it into Word with Ctrl+V, then into Paint.",
+      "expect": "The icon pastes as a picture in both. In Word the background is clear (the page shows through); in Paint it is a drawing in the theme's text colour. Note what Paint shows behind it."
+    },
+    {
+      "id": "16",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 0.5,
+      "title": "Symbols: Save as dialog",
+      "do": "There is no menu for Save as yet (planned, slice 6). Skip this step with S until it is built.",
+      "expect": "Once built: the Windows Save dialog opens on Pictures with a .svg or .png name; saving writes a file that opens in Paint or a browser."
+    },
+    {
+      "id": "17",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 3,
+      "title": "Symbols: sharpness at 125% and 150%",
+      "do": "Set Windows display scale to 125%, open the Panel Symbols tab and look at the grid. Repeat at 150%. Put the scale back afterwards.",
+      "expect": "Emoji and icons are crisp (no blur or jagged edges), the cells keep their 40px size and gaps, and nothing is cut off. Scrolling stays smooth."
+    },
+    {
+      "id": "18",
+      "qc": true,
+      "qcOnly": true,
+      "minutes": 1,
+      "title": "Symbols: flags paste as letter pairs",
+      "do": "In the Symbols tab search flag, or open the Flags group, and click a flag into Notepad.",
+      "expect": "Windows has no flag pictures: Notepad shows the flag as two letters (for example AU). The Panel grid may do the same. This is expected, not a failure; press F only if the cell is empty or the paste is wrong."
+    },
+    {
+      "id": "19",
       "qc": true,
       "qcOnly": true,
       "auto": "Invoke-QcDiagnostic",
