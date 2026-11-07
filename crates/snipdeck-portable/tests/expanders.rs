@@ -564,3 +564,311 @@ fn phraseexpress_csv_without_a_header_is_description_then_content() {
         ]
     );
 }
+
+// ---------------------------------------------------------------- Espanso
+
+const ESPANSO_BASE: &str = r#"
+global_vars:
+  - name: today
+    type: date
+    params:
+      format: "%d/%m/%Y"
+matches:
+  - trigger: ":hi"
+    replace: "Hello there"
+  - triggers: [":sig", ":sign"]
+    label: Signature
+    replace: "Regards,\n$|$"
+  - trigger: ":date"
+    replace: "Today is {{mydate}} / {{today}}"
+    vars:
+      - name: mydate
+        type: date
+        params:
+          format: "%Y-%m-%d"
+  - trigger: ":clip"
+    replace: "Pasted: {{clip}} {braces}"
+    vars:
+      - name: clip
+        type: clipboard
+  - trigger: ":shell"
+    replace: "Out: {{out}}"
+    vars:
+      - name: out
+        type: shell
+        params:
+          cmd: "echo hi"
+  - trigger: ":echo"
+    replace: "A{{e}}B {{clip}}"
+    vars:
+      - name: e
+        type: echo
+        params:
+          echo: " {x} "
+      - name: clip
+        type: clipboard
+  - trigger: ":pick"
+    replace: "Colour: {{c}}"
+    vars:
+      - name: c
+        type: choice
+        params:
+          values: [red, green]
+  - regex: "hello(?P<n>\\d)"
+    replace: "never"
+  - trigger: ":form"
+    form: |
+      Dear [[name]], pick [[kind]] [[plain]]
+    form_fields:
+      kind:
+        type: choice
+        values: [a, b]
+      plain:
+        default: "dflt"
+  - trigger: ":md"
+    markdown: "**bold**"
+  - trigger: ":img"
+    image_path: "x.png"
+  - trigger: ":empty"
+    replace: ""
+  - trigger: ":badfmt"
+    replace: "{{d}}"
+    vars:
+      - name: d
+        type: date
+        params:
+          format: "%Q"
+  - trigger: ":twocursors"
+    replace: "a $|$ b $|$"
+"#;
+
+fn espanso_in(files: &[(&str, &str)], opts: &ImportOptions<'_>) -> (Store, ImportReport) {
+    let dir = tempfile::tempdir().unwrap();
+    for (name, text) in files {
+        let path = dir.path().join(name);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, text).unwrap();
+    }
+    let mut s = store();
+    let report = snipdeck_portable::import_espanso(&mut s, dir.path(), at(9), opts).unwrap();
+    assert_healthy(&s);
+    (s, report)
+}
+
+#[test]
+fn espanso_maps_triggers_vars_forms_and_reports_the_rest() {
+    let (s, report) = espanso_in(
+        &[("match/base.yml", ESPANSO_BASE)],
+        &ImportOptions::default(),
+    );
+    let c = contents(&s);
+    assert_eq!(c.len(), 1);
+    assert_eq!(c[0].0, "Imported from Espanso");
+    assert_eq!(c[0].1, "base");
+    assert_eq!(
+        c[0].2,
+        [
+            e(":hi", ItemKind::Text, "Hello there"),
+            e(
+                "Signature (:sig, :sign)",
+                ItemKind::Template,
+                "Regards,\n{cursor}"
+            ),
+            e(
+                ":date",
+                ItemKind::Template,
+                "Today is {datetime:%Y-%m-%d} / {datetime:%d/%m/%Y}"
+            ),
+            e(
+                ":clip",
+                ItemKind::Template,
+                "Pasted: {clipboard} {{braces}}"
+            ),
+            e(":shell", ItemKind::Text, "Out: {{out}}"),
+            e(":echo", ItemKind::Template, "A {{x}} B {clipboard}"),
+            e(":pick", ItemKind::Template, "Colour: {choice:c|red|green}"),
+            e(
+                ":form",
+                ItemKind::Template,
+                "Dear {field:name}, pick {choice:kind|a|b} {field:plain|dflt}\n"
+            ),
+            e(":md", ItemKind::Text, "**bold**"),
+            e(":badfmt", ItemKind::Text, "{{d}}"),
+            e(":twocursors", ItemKind::Text, "a $|$ b $|$"),
+        ]
+    );
+    // regex, image, empty
+    assert_eq!(report.items_skipped, 3);
+    assert_eq!(report.items_added, 11);
+    let all = notes(&report).join("\n");
+    for needle in ["shell", "regex", "image", "markdown", "%Q"] {
+        assert!(all.contains(needle), "{needle} not in {all}");
+    }
+}
+
+#[test]
+fn espanso_takes_a_single_file_and_uses_the_file_name_as_the_list() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("emails.yaml");
+    fs::write(&path, "matches:\n  - trigger: ':a'\n    replace: 'b'\n").unwrap();
+    let mut s = store();
+    snipdeck_portable::import_espanso(&mut s, &path, at(9), &ImportOptions::default()).unwrap();
+    assert_eq!(contents(&s)[0].1, "emails");
+}
+
+#[test]
+fn espanso_walks_a_config_folder_match_dir_only_and_skips_disabled_files() {
+    let files = [
+        ("config/default.yml", "toggle_key: ALT\n"),
+        (
+            "match/base.yml",
+            "matches:\n  - trigger: ':a'\n    replace: 'A'\n",
+        ),
+        (
+            "match/work/mail.yml",
+            "matches:\n  - trigger: ':m'\n    replace: 'M'\n",
+        ),
+        (
+            "match/_off.yml",
+            "matches:\n  - trigger: ':o'\n    replace: 'O'\n",
+        ),
+        (
+            "match/readme.txt",
+            "matches:\n  - trigger: ':t'\n    replace: 'T'\n",
+        ),
+    ];
+    let (s, report) = espanso_in(&files, &ImportOptions::default());
+    let lists: Vec<_> = contents(&s)
+        .into_iter()
+        .map(|(_, l, i)| (l, i.len()))
+        .collect();
+    assert_eq!(
+        lists,
+        [("base".to_owned(), 1), ("work / mail".to_owned(), 1)]
+    );
+    assert!(
+        notes(&report).iter().any(|n| n.contains("_off")),
+        "{:?}",
+        report.warnings
+    );
+}
+
+#[test]
+fn espanso_bad_files_do_not_stop_the_good_ones() {
+    let files = [
+        ("a.yml", "matches: [unclosed\n  - : :\n"),
+        ("b.yml", "matches:\n  - trigger: ':ok'\n    replace: fine\n"),
+        ("c.yml", "just a string\n"),
+        ("d.yml", "matches: 12\n"),
+        ("e.yml", "matches:\n  - 5\n  - [1]\n  - trigger: ':t'\n"),
+    ];
+    let (s, report) = espanso_in(&files, &ImportOptions::default());
+    assert_eq!(contents(&s)[0].2, [e(":ok", ItemKind::Text, "fine")]);
+    assert!(report.warnings.len() >= 3, "{:?}", report.warnings);
+}
+
+#[test]
+fn espanso_alias_bombs_and_deep_nesting_are_refused_cheaply() {
+    // The classic "billion laughs": each level refers to the one before it ten times.
+    let mut bomb = String::from("a0: &a0 [x, x, x, x, x, x, x, x, x, x]\n");
+    for i in 1..12 {
+        let prev = format!("*a{}", i - 1);
+        let items = vec![prev; 10].join(", ");
+        writeln!(bomb, "a{i}: &a{i} [{items}]").unwrap();
+    }
+    bomb.push_str("matches:\n  - trigger: ':ok'\n    replace: fine\n");
+    let deep = format!("matches: {}{}\n", "[".repeat(10_000), "]".repeat(10_000));
+    let files = [("bomb.yml", bomb.as_str()), ("deep.yml", deep.as_str())];
+    let started = std::time::Instant::now();
+    let (s, report) = espanso_in(&files, &ImportOptions::default());
+    assert!(started.elapsed().as_secs() < 20);
+    assert!(contents(&s).is_empty(), "{:?}", contents(&s));
+    assert!(report.warnings.len() >= 2, "{:?}", report.warnings);
+
+    // A modest alias is fine.
+    let ok = "base: &b {replace: shared}\nmatches:\n  - {trigger: ':x', <<: *b}\n  - {trigger: ':y', replace: *x}\n";
+    let _ = espanso_in(&[("ok.yml", ok)], &ImportOptions::default());
+}
+
+#[test]
+fn espanso_limits_items_and_size_and_decodes_bad_bytes() {
+    let mut yaml = String::from("matches:\n");
+    for i in 0..50 {
+        writeln!(yaml, "  - trigger: ':t{i}'\n    replace: 'v{i}'").unwrap();
+    }
+    let (s, report) = espanso_in(&[("m.yml", &yaml)], &small(7));
+    assert_eq!(contents(&s)[0].2.len(), 7);
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::Truncated { .. }))
+    );
+
+    let big = "x".repeat(5 * 1024 * 1024 + 1);
+    let yaml = format!(
+        "matches:\n  - trigger: ':big'\n    replace: '{big}'\n  - trigger: ':ok'\n    replace: fine\n"
+    );
+    let (s, report) = espanso_in(&[("m.yml", &yaml)], &ImportOptions::default());
+    assert_eq!(contents(&s)[0].2, [e(":ok", ItemKind::Text, "fine")]);
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::TooLarge { .. }))
+    );
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("m.yml");
+    fs::write(
+        &path,
+        b"matches:\n  - trigger: ':b'\n    replace: 'a\xffb'\n",
+    )
+    .unwrap();
+    let mut s = store();
+    let report =
+        snipdeck_portable::import_espanso(&mut s, &path, at(9), &ImportOptions::default()).unwrap();
+    assert!(contents(&s)[0].2[0].2.contains('\u{fffd}'));
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::LossyText { .. }))
+    );
+
+    let opts = ImportOptions {
+        limits: Limits {
+            max_json_bytes: 20,
+            ..Limits::default()
+        },
+        ..ImportOptions::default()
+    };
+    fs::write(&path, ESPANSO_BASE).unwrap();
+    let report = snipdeck_portable::import_espanso(&mut store(), &path, at(9), &opts).unwrap();
+    assert_eq!(report.items_added, 0);
+    assert!(
+        report
+            .warnings
+            .iter()
+            .any(|w| matches!(w, Warning::TooLarge { .. }))
+    );
+}
+
+#[test]
+fn espanso_missing_path_and_empty_folder() {
+    let mut s = store();
+    let dir = tempfile::tempdir().unwrap();
+    assert!(matches!(
+        snipdeck_portable::import_espanso(
+            &mut s,
+            &dir.path().join("nope"),
+            at(9),
+            &ImportOptions::default()
+        ),
+        Err(Error::File { .. })
+    ));
+    let report =
+        snipdeck_portable::import_espanso(&mut s, dir.path(), at(9), &ImportOptions::default())
+            .unwrap();
+    assert_eq!(report.items_added, 0);
+}
