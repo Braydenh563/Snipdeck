@@ -628,7 +628,11 @@ fn effect_handler(
             }
         }
         // The binding has already acted: placed the window, or opened the item editor.
-        Effect::HidePanel | Effect::PlaceWindow(_) | Effect::NewItem | Effect::EditItem(_) => {}
+        Effect::HidePanel
+        | Effect::ShowSymbols
+        | Effect::PlaceWindow(_)
+        | Effect::NewItem
+        | Effect::EditItem(_) => {}
     }
 }
 

@@ -17,13 +17,13 @@ use snipdeck_platform::{
     system_look::SystemLook,
     tray::TrayEvent,
 };
-use snipdeck_symbols::{Lang, SymbolId};
+use snipdeck_symbols::Lang;
 use snipdeck_ui as ui;
 
 use crate::{
     controller::{
         AppMenuEntry, BoardMenuEntry, Controller, Effect, HelpTopic, ItemMenuEntry, Library,
-        ToastPhase, UseResult, View,
+        ToastPhase, View,
     },
     dock::DockEvent,
     frame::{Edge, Monitor, Rect},
@@ -271,6 +271,34 @@ where
         result
     }
 
+    /// Row `index` of the open item or symbol menu was chosen. "Save as" of a symbol runs its
+    /// dialog here, between two short borrows of the controller (the dialog has its own message
+    /// loop, during which timers and hotkeys reach the controller).
+    fn item_menu_chosen(self: &Rc<Self>, index: usize, dark: bool) {
+        if !self.controller.borrow().symbol_menu_open() {
+            self.act_effects(|ctl| ctl.choose_item_menu(index));
+            return;
+        }
+        let choice =
+            self.act(|ctl| ctl.choose_symbol_menu(index, crate::symbols_binding::ink(dark)));
+        match choice {
+            crate::controller::SymbolChoice::Done(effects) => self.apply(&effects),
+            crate::controller::SymbolChoice::None => {}
+            crate::controller::SymbolChoice::Save(id, export) => {
+                let prepared = self.controller.borrow().prepare_icon_save(&id, export);
+                let Ok(prepared) = prepared else {
+                    return;
+                };
+                let owner = self
+                    .window
+                    .upgrade()
+                    .and_then(|w| crate::native_window::handle_of(w.window()));
+                let answer = prepared.ask(owner);
+                self.act(|ctl| ctl.finish_icon_save(&prepared, answer));
+            }
+        }
+    }
+
     /// Runs `f` and applies the effects it returns.
     fn act_effects(self: &Rc<Self>, f: impl FnOnce(&mut Controller<S, C, K, T>) -> Vec<Effect>) {
         let effects = self.act(f);
@@ -300,6 +328,7 @@ where
                     // here, so the pointer passing over the edge steals nothing.
                     self.activate_soon();
                 }
+                Effect::ShowSymbols => window.invoke_open_symbols(),
                 Effect::HidePanel => {
                     // Back to the Target first, while the Panel still holds the foreground:
                     // hiding it first would leave the choice of the next window to Windows.
@@ -578,8 +607,15 @@ where
             .open_item_menu(index(i), false));
         wire!(on_pinned_context_menu_requested, |ctl, i, _x, _y| ctl
             .open_item_menu(index(i), true));
-        wire_effects!(on_item_menu_activated, |ctl, i| ctl
-            .choose_item_menu(index(i)));
+        {
+            let core = Rc::clone(&core);
+            window.on_item_menu_activated(move |i| {
+                crate::trace!("callback on_item_menu_activated({i})");
+                crate::native_window::note_opener(crate::native_window::Surface::Panel);
+                let dark = core.window.upgrade().is_some_and(|w| w.get_dark());
+                core.item_menu_chosen(index(i), dark);
+            });
+        }
         wire!(on_item_menu_dismissed, |ctl| ctl.close_item_menu());
         wire!(on_stack_started, |ctl| ctl.start_stack());
         wire!(on_stack_ended, |ctl| ctl.end_stack());
@@ -598,10 +634,14 @@ where
         wire!(on_tab_selected, |ctl, i| ctl.select_tab(index(i)));
         wire!(on_recent_unlock_requested, |ctl| ctl.request_unlock());
         wire!(on_recent_toggled, |ctl, open| ctl.set_recent_open(open));
-        wire!(on_recent_used, |ctl, id| ctl
-            .recent_use(i64::from(id), UseMode::Paste));
-        wire!(on_recent_copied, |ctl, id| ctl
-            .recent_use(i64::from(id), UseMode::Copy));
+        wire_effects!(on_recent_used, |ctl, id| {
+            let used = ctl.recent_use(i64::from(id), UseMode::Paste);
+            ctl.after_use(&used)
+        });
+        wire_effects!(on_recent_copied, |ctl, id| {
+            let used = ctl.recent_use(i64::from(id), UseMode::Copy);
+            ctl.after_use(&used)
+        });
         wire!(on_recent_deleted, |ctl, id| ctl
             .recent_delete(i64::from(id)));
         wire!(on_recent_saved, |ctl, id, target| ctl
@@ -609,7 +649,6 @@ where
 
         // ---- The Symbols tab: its state lives in `symbols_binding`; uses go through the controller ----
         let symbols = Rc::new(crate::symbols_binding::Glue::default());
-        window.set_symbols_available(true);
         {
             // Everything that rebuilds the grid needs the recents and the language.
             let rebuild = {
@@ -676,15 +715,7 @@ where
                 }
                 let dark = weak.upgrade().is_some_and(|w| w.get_dark());
                 core.act_effects(|ctl| {
-                    let used = if matches!(id, SymbolId::Icon(_)) {
-                        if ctl.copy_icon_png(&id, crate::symbols_binding::ink(dark)) {
-                            UseResult::Done(snipdeck_core::UseOutcome::Copied)
-                        } else {
-                            UseResult::Failed
-                        }
-                    } else {
-                        ctl.use_symbol(&id, mode)
-                    };
+                    let used = ctl.activate_symbol(&id, mode, crate::symbols_binding::ink(dark));
                     ctl.after_use(&used)
                 });
             };
@@ -693,6 +724,14 @@ where
             } else {
                 window.on_symbol_copied(run);
             }
+        }
+        {
+            let (g, core) = (Rc::clone(&symbols), Rc::clone(&core));
+            window.on_symbol_menu_requested(move |flat| {
+                if let Some(id) = g.id_at(flat) {
+                    core.act(|ctl| ctl.open_symbol_menu(id));
+                }
+            });
         }
         {
             let (g, core) = (Rc::clone(&symbols), Rc::clone(&core));
@@ -1235,10 +1274,20 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     {
         render_app_menu(window, view);
     }
-    if differs(&|p| p.item_menu == view.item_menu && p.choose_menu == view.choose_menu)
-        || window.get_item_menu_open() != (view.item_menu.is_some() || view.choose_menu.is_some())
+    if differs(&|p| {
+        p.item_menu == view.item_menu
+            && p.choose_menu == view.choose_menu
+            && p.symbol_menu == view.symbol_menu
+    }) || window.get_item_menu_open()
+        != (view.item_menu.is_some() || view.choose_menu.is_some() || view.symbol_menu.is_some())
     {
-        if let Some(choose) = &view.choose_menu {
+        if let Some(entries) = &view.symbol_menu {
+            let entries = entries
+                .iter()
+                .map(|e| wording::symbol_menu_entry(window, e));
+            window.set_item_menu_entries(model(entries));
+            window.set_item_menu_open(true);
+        } else if let Some(choose) = &view.choose_menu {
             // The second level (Move to… / Colour): one row per list or colour, checked when every
             // target already has it.
             let check = window.global::<ui::Icons<'_>>().get_check();
@@ -1283,6 +1332,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
     );
     window.set_marked_count(to_i32(view.marked_count));
     window.set_show_numbers(view.show_numbers);
+    window.set_symbols_available(view.symbols_available);
     window.set_layout(match view.layout {
         crate::settings::PanelLayout::List => ui::PanelLayout::List,
         crate::settings::PanelLayout::Cards => ui::PanelLayout::Cards,

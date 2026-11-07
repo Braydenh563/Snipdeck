@@ -55,6 +55,9 @@ msgstr "マスターパスワードは Supporter に含まれます。"
 msgid "A small window you can drag anywhere."
 msgstr "好きな場所にドラッグできる小さなウィンドウです。"
 
+msgid "A smiley tab next to Recent with emoji, kaomoji and icons to paste. Turn it off to hide the tab and its Ctrl+K command."
+msgstr "「最近」の隣にある顔アイコンのタブで、貼り付け用の絵文字、顔文字、アイコンを使えます。オフにするとタブと Ctrl+K のコマンドが非表示になります。"
+
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "作業中のアプリの横に、スニペットを並べた帯が表示されます。クリックすると、そのアプリに貼り付けます。"
 
@@ -103,8 +106,14 @@ msgstr "リストを追加"
 msgid "Add some text, or cancel."
 msgstr "テキストを追加するか、キャンセルしてください。"
 
+msgid "Add to list"
+msgstr "リストに追加"
+
 msgid "Add to paste stack"
 msgstr "貼り付けスタックに追加"
+
+msgid "Add to “{}”"
+msgstr "「{}」に追加"
 
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "機密スニペットを Windows の保護に加えてパスワードで守ります。機密スニペットを初めて使うときと、{}分間使わなかった後に入力を求めます。"
@@ -438,6 +447,12 @@ msgstr "コピーしました。{}は管理者として実行されているた�
 
 msgid "Copy"
 msgstr "コピー"
+
+msgid "Copy PNG"
+msgstr "PNG をコピー"
+
+msgid "Copy SVG"
+msgstr "SVG をコピー"
 
 msgid "Copy all"
 msgstr "すべてコピー"
@@ -804,6 +819,9 @@ msgstr "メールで連絡する"
 
 msgid "Emoji"
 msgstr "絵文字"
+
+msgid "Emoji art: Microsoft Fluent Emoji (MIT). Icons: Phosphor (MIT). Emoji names and keywords: Unicode CLDR (Unicode-3.0)."
+msgstr "絵文字の画像: Microsoft Fluent Emoji (MIT)。アイコン: Phosphor (MIT)。絵文字の名前とキーワード: Unicode CLDR (Unicode-3.0)。"
 
 msgid "Empty Trash"
 msgstr "ゴミ箱を空にする"
@@ -2000,6 +2018,12 @@ msgstr "保存"
 msgid "Save (Ctrl+Enter)"
 msgstr "保存 (Ctrl+Enter)"
 
+msgid "Save as PNG…"
+msgstr "PNG として保存…"
+
+msgid "Save as SVG…"
+msgstr "SVG として保存…"
+
 msgid "Save from clipboard"
 msgstr "クリップボードから保存"
 
@@ -2155,6 +2179,9 @@ msgstr "パネルを表示"
 
 msgid "Show Panel ({})"
 msgstr "パネルを表示 ({})"
+
+msgid "Show Symbols tab"
+msgstr "「記号」タブを表示"
 
 msgid "Show all"
 msgstr "すべて表示"
@@ -2320,6 +2347,9 @@ msgstr "驚き"
 
 msgid "Symbols"
 msgstr "記号"
+
+msgid "Symbols data"
+msgstr "記号のデータ"
 
 msgid "Tab"
 msgstr "Tab"
@@ -2885,6 +2915,9 @@ msgstr "複製"
 
 msgid "edit"
 msgstr "編集"
+
+msgid "emoji kaomoji icons smiley emoticon insert"
+msgstr "絵文字 顔文字 アイコン スマイリー 記号 挿入"
 
 msgid "every mark choose all"
 msgstr "すべて 選択 マーク"

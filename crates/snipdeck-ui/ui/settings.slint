@@ -271,6 +271,7 @@ export component SettingsPage inherits Window {
     in property <int> panel-search-index: 0;
     in property <int> panel-switcher-index: 0;
     in-out property <bool> show-numbers: true;
+    in-out property <bool> show-symbols-tab: true;
     // Opening the Panel: 0 tray click opens the Panel, 1 the Main window; 0 where you left it, 1 at the mouse, 2 at the
     // text cursor (off while the Panel is docked); 0 hide after a paste or copy, 1 keep open; 0 stay in the tray, 1 show
     // the Panel at start (off without Start with Windows).
@@ -404,6 +405,7 @@ export component SettingsPage inherits Window {
     callback panel-search-chosen(index: int);
     callback panel-switcher-chosen(index: int);
     callback show-numbers-toggled(on: bool);
+    callback show-symbols-tab-toggled(on: bool);
     callback tray-click-chosen(index: int);
     callback panel-open-at-chosen(index: int);
     callback panel-hide-after-use-chosen(index: int);
@@ -471,7 +473,7 @@ export component SettingsPage inherits Window {
     // Titles of section 1 (Appearance), for the search. A test checks that every row title is in here.
     property <string> keys-1: @tr("Theme") + " " + @tr("Main list density") + " " + @tr("Accent colour") + " " + @tr("Text size") + " " + @tr("Language") + " " + @tr("Reduce motion") + " " + @tr("Panel width");
     // Titles of section 2 (Panel layout), for the search. A test checks that every row title is in here.
-    property <string> keys-2: @tr("Layout") + " " + @tr("Search field") + " " + @tr("Lists") + " " + @tr("Quick-use numbers");
+    property <string> keys-2: @tr("Layout") + " " + @tr("Search field") + " " + @tr("Lists") + " " + @tr("Quick-use numbers") + " " + @tr("Show Symbols tab");
     // Titles of section 3 (Opening the Panel), for the search. A test checks that every row title is in here.
     property <string> keys-3: @tr("Tray icon click opens") + " " + @tr("Panel opens") + " " + @tr("After a paste or copy") + " " + @tr("Hide the panel when it loses focus") + " " + @tr("Show the Panel in the taskbar and Alt+Tab") + " " + @tr("Keep Panel visible during screenshots") + " " + @tr("Dock to") + " " + @tr("Open a docked panel by") + " " + @tr("Hover delay") + " " + @tr("Leave delay") + " " + @tr("Picker position") + " " + @tr("Start with Windows") + " " + @tr("When Windows starts") + " " + @tr("Keep running in the tray when the window closes");
     // Titles of section 4 (Privacy), for the search. A test checks that every row title is in here.
@@ -800,6 +802,18 @@ export component SettingsPage inherits Window {
                             a11y-label: @tr("Quick-use numbers");
                             checked <=> root.show-numbers;
                             toggled(on) => { root.show-numbers-toggled(on); }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                    }
+                    SettingRow {
+                        title: @tr("Show Symbols tab");
+                        description: @tr("A smiley tab next to Recent with emoji, kaomoji and icons to paste. Turn it off to hide the tab and its Ctrl+K command.");
+                        Toggle {
+                            a11y-label: @tr("Show Symbols tab");
+                            checked <=> root.show-symbols-tab;
+                            toggled(on) => { root.show-symbols-tab-toggled(on); }
                             changed has-focus => {
                                 if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                             }

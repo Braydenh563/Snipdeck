@@ -7,7 +7,10 @@ use snipdeck_platform::file_dialog::{FakeFilePicker, SaveKind};
 use snipdeck_symbols::{Catalog, Kind, SymbolId};
 
 use super::*;
-use crate::controller::symbol_ctl::{IconExport, SaveOutcome};
+use crate::controller::{
+    SymbolChoice, SymbolMenuEntry,
+    symbol_ctl::{IconExport, SaveOutcome},
+};
 
 fn emoji() -> SymbolId {
     SymbolId::Emoji("1f600".into())
@@ -389,21 +392,27 @@ fn save_as_asks_with_no_controller_borrow_and_finishes_with_the_answer() {
 }
 
 #[test]
-fn save_as_forces_the_kinds_extension_and_toasts_the_file_name() {
-    let dir = tempfile::tempdir().expect("dir");
-    let mut w = world();
-    with_picker(&mut w, Some(dir.path().join("logo.txt")));
+fn save_as_appends_the_kinds_extension_only_when_the_name_lacks_it() {
     let icon = first_of(Kind::Icon);
-    let outcome = save(&mut w, &icon, IconExport::Svg, None);
-    let written = dir.path().join("logo.svg");
-    assert_eq!(outcome, SaveOutcome::Saved(written.clone()));
-    assert!(written.exists() && !dir.path().join("logo.txt").exists());
-    assert_eq!(
-        w.ctl.view().toast.expect("toast").message,
-        ToastMessage::IconSaved {
-            name: "logo.svg".into()
-        }
-    );
+    for (typed, saved) in [
+        ("logo.v2", "logo.v2.svg"),
+        ("x.svg", "x.svg"),
+        ("X.SVG", "X.SVG"),
+        ("logo.txt", "logo.txt.svg"),
+        ("plain", "plain.svg"),
+    ] {
+        let dir = tempfile::tempdir().expect("dir");
+        let mut w = world();
+        with_picker(&mut w, Some(dir.path().join(typed)));
+        let outcome = save(&mut w, &icon, IconExport::Svg, None);
+        let written = dir.path().join(saved);
+        assert_eq!(outcome, SaveOutcome::Saved(written.clone()), "{typed}");
+        assert!(written.exists(), "{typed} -> {saved}");
+        assert_eq!(
+            w.ctl.view().toast.expect("toast").message,
+            ToastMessage::IconSaved { name: saved.into() }
+        );
+    }
 }
 
 #[test]
@@ -456,4 +465,156 @@ fn add_to_list_on_an_icon_says_icons_cannot_be_added_yet() {
         ToastMessage::IconNotAddable
     );
     assert_eq!(w.ctl.view().rows.len(), 4, "nothing was added");
+}
+
+const INK: [u8; 4] = [1, 2, 3, 255];
+
+fn menu_of(w: &mut World, id: &SymbolId) -> Vec<SymbolMenuEntry> {
+    w.ctl.open_symbol_menu(id.clone());
+    w.ctl.view().symbol_menu.expect("the symbol menu is open")
+}
+
+#[test]
+fn the_menu_of_an_emoji_and_a_kaomoji_is_paste_copy_and_add_to_the_shown_list() {
+    let mut w = world();
+    let add = SymbolMenuEntry::AddToList {
+        list: Some("Replies".into()),
+        enabled: true,
+    };
+    for id in [emoji(), first_of(Kind::Kaomoji)] {
+        assert_eq!(
+            menu_of(&mut w, &id),
+            [SymbolMenuEntry::Paste, SymbolMenuEntry::Copy, add.clone()]
+        );
+        w.ctl.close_item_menu();
+        assert!(w.ctl.view().symbol_menu.is_none());
+    }
+}
+
+#[test]
+fn the_menu_of_an_icon_adds_copy_svg_copy_png_and_save_as_when_a_dialog_exists() {
+    let mut w = world();
+    let icon = first_of(Kind::Icon);
+    let without_dialog = menu_of(&mut w, &icon);
+    assert!(without_dialog.contains(&SymbolMenuEntry::CopySvg));
+    assert!(without_dialog.contains(&SymbolMenuEntry::CopyPng));
+    assert!(
+        !without_dialog.contains(&SymbolMenuEntry::SaveAsSvg),
+        "no file dialog, no Save as"
+    );
+    with_picker(&mut w, None);
+    let entries = menu_of(&mut w, &icon);
+    assert_eq!(
+        entries,
+        [
+            SymbolMenuEntry::Paste,
+            SymbolMenuEntry::Copy,
+            SymbolMenuEntry::AddToList {
+                list: Some("Replies".into()),
+                enabled: false,
+            },
+            SymbolMenuEntry::Separator,
+            SymbolMenuEntry::CopySvg,
+            SymbolMenuEntry::CopyPng,
+            SymbolMenuEntry::SaveAsSvg,
+            SymbolMenuEntry::SaveAsPng,
+        ]
+    );
+}
+
+#[test]
+fn choosing_paste_copy_and_add_runs_the_symbol_actions() {
+    let mut w = world();
+    w.ctl.open_symbol_menu(emoji());
+    assert!(matches!(
+        w.ctl.choose_symbol_menu(0, INK),
+        SymbolChoice::Done(_)
+    ));
+    assert_eq!(
+        w.ctl.services().keyboard.sent.len(),
+        1,
+        "Paste pressed Ctrl+V"
+    );
+    assert!(w.ctl.view().symbol_menu.is_none(), "the menu closed");
+    w.ctl.open_symbol_menu(emoji());
+    w.ctl.choose_symbol_menu(1, INK);
+    assert_eq!(
+        w.ctl.services().keyboard.sent.len(),
+        1,
+        "Copy pressed nothing"
+    );
+    assert_eq!(w.ctl.services().clipboard.written.len(), 2);
+    w.ctl.open_symbol_menu(emoji());
+    w.ctl.choose_symbol_menu(2, INK);
+    assert_eq!(w.ctl.view().rows.len(), 5, "Add to list added the item");
+}
+
+#[test]
+fn choosing_copy_svg_writes_the_svg_text_through_the_clipboard() {
+    let mut w = world();
+    let icon = first_of(Kind::Icon);
+    w.ctl.open_symbol_menu(icon.clone());
+    let at = menu_of(&mut w, &icon)
+        .iter()
+        .position(|e| *e == SymbolMenuEntry::CopySvg)
+        .expect("Copy SVG");
+    assert!(matches!(
+        w.ctl.choose_symbol_menu(at, INK),
+        SymbolChoice::Done(_)
+    ));
+    assert!(written_text(&w, 0).contains("<svg"));
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::Copied
+    );
+}
+
+#[test]
+fn choosing_copy_png_writes_a_png() {
+    let mut w = world();
+    let icon = first_of(Kind::Icon);
+    let at = menu_of(&mut w, &icon)
+        .iter()
+        .position(|e| *e == SymbolMenuEntry::CopyPng)
+        .expect("Copy PNG");
+    w.ctl.choose_symbol_menu(at, INK);
+    assert!(matches!(
+        w.ctl.services().clipboard.written[0].data()[0],
+        Data::Png(_)
+    ));
+}
+
+#[test]
+fn choosing_save_as_hands_back_the_save_and_the_fake_dialog_reaches_finish() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut w = world();
+    let picker = with_picker(&mut w, Some(dir.path().join("pick")));
+    let icon = first_of(Kind::Icon);
+    let at = menu_of(&mut w, &icon)
+        .iter()
+        .position(|e| *e == SymbolMenuEntry::SaveAsPng)
+        .expect("Save as PNG");
+    let SymbolChoice::Save(id, export) = w.ctl.choose_symbol_menu(at, INK) else {
+        panic!("Save as asks for the dialog");
+    };
+    assert_eq!(id, icon);
+    assert!(matches!(export, IconExport::Png { rgba: INK, .. }));
+    assert!(w.ctl.view().symbol_menu.is_none(), "the menu closed first");
+    assert_eq!(
+        save(&mut w, &id, export, Some(7)),
+        SaveOutcome::Saved(dir.path().join("pick.png"))
+    );
+    assert_eq!(picker.asked_save().len(), 1);
+}
+
+#[test]
+fn a_menu_entry_that_is_not_there_closes_the_menu_and_does_nothing() {
+    let mut w = world();
+    w.ctl.open_symbol_menu(emoji());
+    assert!(matches!(
+        w.ctl.choose_symbol_menu(99, INK),
+        SymbolChoice::None
+    ));
+    assert!(w.ctl.view().symbol_menu.is_none());
+    assert_eq!(w.ctl.services().clipboard.written.len(), 0);
 }

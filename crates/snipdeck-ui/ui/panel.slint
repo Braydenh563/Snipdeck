@@ -744,7 +744,8 @@ export component PanelWindow inherits Window {
         root.quick-use(n);
     }
 
-    function open-symbols() {
+    // The Symbols tab opened from outside (the command palette's "Symbols"); a no-op while the tab is off.
+    public function open-symbols() {
         if (!root.symbols-available || root.symbols-open) {
             return;
         }
@@ -829,9 +830,18 @@ export component PanelWindow inherits Window {
         root.tab-selected(index);
     }
 
+    // Ctrl+Tab: the lists in turn, then the Symbols tab (when it is offered), then round again.
     function cycle-tab(dir: int) {
-        if (root.tabs.length > 1) {
-            root.pick-tab(mod(root.current-tab + dir + root.tabs.length, root.tabs.length));
+        let lists = root.tabs.length;
+        let stops = lists + (root.symbols-available ? 1 : 0);
+        if (stops <= 1) {
+            return;
+        }
+        let next = mod((root.symbols-open ? lists : root.current-tab) + dir + stops, stops);
+        if (next == lists) {
+            root.open-symbols();
+        } else {
+            root.pick-tab(next);
         }
     }
 

@@ -1756,3 +1756,110 @@ fn the_symbols_tab_searches_pastes_the_first_hit_and_remembers_it() {
         );
     });
 }
+
+#[test]
+fn the_palette_symbols_command_opens_the_panel_on_the_symbols_tab() {
+    on_ui_thread(|| {
+        let r = rig();
+        assert!(r.ui.get_symbols_available(), "on by default");
+        assert!(!r.ui.get_symbols_open());
+        r.ctl
+            .borrow_mut()
+            .run_command(snipdeck_app::commands::Command::Symbols, 0);
+        r.binding.redraw();
+        assert!(r.ui.get_symbols_open(), "the command switched the tab");
+        assert!(
+            r.ui.get_symbol_rows().row_count() > 0,
+            "and the grid is built"
+        );
+    });
+}
+
+#[test]
+fn turning_the_symbols_tab_off_hides_it_closes_it_and_ignores_the_command() {
+    on_ui_thread(|| {
+        let r = rig();
+        click(r.window(), &element(&r.ui, "Symbols", AccessibleRole::Tab));
+        assert!(r.ui.get_symbols_open());
+        r.ctl
+            .borrow_mut()
+            .update_settings(|s| s.show_symbols_tab = false);
+        r.binding.redraw();
+        assert!(!r.ui.get_symbols_available());
+        slint::platform::update_timers_and_animations();
+        assert!(!r.ui.get_symbols_open(), "the open tab closes");
+        r.ctl
+            .borrow_mut()
+            .run_command(snipdeck_app::commands::Command::Symbols, 0);
+        r.binding.redraw();
+        assert!(
+            !r.ui.get_symbols_open(),
+            "the command does nothing while off"
+        );
+        chord(r.window(), &[Key::Control], &key(Key::Tab));
+        chord(r.window(), &[Key::Control], &key(Key::Tab));
+        chord(r.window(), &[Key::Control], &key(Key::Tab));
+        chord(r.window(), &[Key::Control], &key(Key::Tab));
+        assert!(!r.ui.get_symbols_open(), "Ctrl+Tab skips it");
+    });
+}
+
+#[test]
+fn a_symbol_cell_menu_lists_the_actions_and_paste_uses_the_symbol() {
+    on_ui_thread(|| {
+        let r = rig();
+        click(r.window(), &element(&r.ui, "Symbols", AccessibleRole::Tab));
+        r.ui.invoke_symbol_menu_requested(0);
+        r.binding.redraw();
+        assert!(r.ui.get_item_menu_open(), "the menu is up");
+        let texts: Vec<String> =
+            r.ui.get_item_menu_entries()
+                .iter()
+                .map(|e| e.text.to_string())
+                .collect();
+        assert_eq!(texts[0], "Paste");
+        assert_eq!(texts[1], "Copy");
+        assert!(texts[2].starts_with("Add to "), "{texts:?}");
+        r.ui.invoke_item_menu_activated(0);
+        assert!(!r.ui.get_item_menu_open(), "choosing closes it");
+        assert_eq!(
+            r.ctl.borrow().services().keyboard.sent.len(),
+            1,
+            "Paste pasted"
+        );
+    });
+}
+
+#[test]
+fn a_symbol_cell_shows_its_name_and_the_click_hint_in_a_tooltip_and_opens_its_menu_on_right_click() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.window().set_size(slint::LogicalSize::new(320.0, 560.0));
+        slint::platform::update_timers_and_animations();
+        click(r.window(), &element(&r.ui, "Symbols", AccessibleRole::Tab));
+        let cell = element(&r.ui, "grinning face", AccessibleRole::ListItem);
+        move_to(r.window(), centre(&cell));
+        let tip = r.ui.get_tooltip_shown().to_string();
+        assert!(tip.starts_with("grinning face"), "{tip:?}");
+        assert!(
+            tip.contains("Click pastes") && tip.contains("Shift+click copies"),
+            "{tip:?}"
+        );
+        // Right-click opens the cell's menu at the pointer.
+        let position = centre(&cell);
+        let button = slint::platform::PointerEventButton::Right;
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerPressed { position, button });
+        r.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerReleased { position, button });
+        slint::platform::update_timers_and_animations();
+        assert!(r.ui.get_item_menu_open(), "right-click opens the menu");
+        let texts: Vec<String> = r
+            .ui
+            .get_item_menu_entries()
+            .iter()
+            .map(|e| e.text.to_string())
+            .collect();
+        assert_eq!(texts.len(), 3, "an emoji has no export rows: {texts:?}");
+    });
+}

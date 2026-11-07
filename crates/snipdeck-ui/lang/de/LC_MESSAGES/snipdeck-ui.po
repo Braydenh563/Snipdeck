@@ -55,6 +55,9 @@ msgstr "Das Hauptpasswort gehört zu Supporter."
 msgid "A small window you can drag anywhere."
 msgstr "Ein kleines Fenster, das du überallhin ziehen kannst."
 
+msgid "A smiley tab next to Recent with emoji, kaomoji and icons to paste. Turn it off to hide the tab and its Ctrl+K command."
+msgstr "Ein Smiley-Tab neben „Zuletzt“ mit Emoji, Kaomoji und Symbolen zum Einfügen. Ausschalten blendet den Tab und seinen Ctrl+K-Befehl aus."
+
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "Eine Leiste mit deinen Textbausteinen neben der App, in der du arbeitest. Ein Klick fügt den Baustein dort ein."
 
@@ -103,8 +106,14 @@ msgstr "Liste hinzufügen"
 msgid "Add some text, or cancel."
 msgstr "Füge Text hinzu oder brich ab."
 
+msgid "Add to list"
+msgstr "Zu Liste hinzufügen"
+
 msgid "Add to paste stack"
 msgstr "Zum Einfügestapel hinzufügen"
+
+msgid "Add to “{}”"
+msgstr "Zu „{}“ hinzufügen"
 
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "Fügt ein Passwort zum Windows-Schutz für deine vertraulichen Textbausteine hinzu. Wird beim ersten Verwenden eines vertraulichen Textbausteins und erneut nach {} Minuten ohne Nutzung abgefragt."
@@ -438,6 +447,12 @@ msgstr "Kopiert. {} läuft als Administrator, daher kann Snipdeck dort nicht ein
 
 msgid "Copy"
 msgstr "Kopieren"
+
+msgid "Copy PNG"
+msgstr "PNG kopieren"
+
+msgid "Copy SVG"
+msgstr "SVG kopieren"
 
 msgid "Copy all"
 msgstr "Alle kopieren"
@@ -804,6 +819,9 @@ msgstr "Mir eine E-Mail schreiben"
 
 msgid "Emoji"
 msgstr "Emoji"
+
+msgid "Emoji art: Microsoft Fluent Emoji (MIT). Icons: Phosphor (MIT). Emoji names and keywords: Unicode CLDR (Unicode-3.0)."
+msgstr "Emoji-Grafiken: Microsoft Fluent Emoji (MIT). Symbole: Phosphor (MIT). Emoji-Namen und Stichwörter: Unicode CLDR (Unicode-3.0)."
 
 msgid "Empty Trash"
 msgstr "Papierkorb leeren"
@@ -2007,6 +2025,12 @@ msgstr "Speichern"
 msgid "Save (Ctrl+Enter)"
 msgstr "Speichern (Strg+Enter)"
 
+msgid "Save as PNG…"
+msgstr "Als PNG speichern …"
+
+msgid "Save as SVG…"
+msgstr "Als SVG speichern …"
+
 msgid "Save from clipboard"
 msgstr "Aus der Zwischenablage speichern"
 
@@ -2162,6 +2186,9 @@ msgstr "Panel anzeigen"
 
 msgid "Show Panel ({})"
 msgstr "Panel anzeigen ({})"
+
+msgid "Show Symbols tab"
+msgstr "Tab „Symbole“ anzeigen"
 
 msgid "Show all"
 msgstr "Alle anzeigen"
@@ -2327,6 +2354,9 @@ msgstr "Überraschung"
 
 msgid "Symbols"
 msgstr "Symbole"
+
+msgid "Symbols data"
+msgstr "Symboldaten"
 
 msgid "Tab"
 msgstr "Tab"
@@ -2893,6 +2923,9 @@ msgstr "Duplizieren"
 
 msgid "edit"
 msgstr "Bearbeiten"
+
+msgid "emoji kaomoji icons smiley emoticon insert"
+msgstr "emoji kaomoji symbole icons smiley emoticon einfügen"
 
 msgid "every mark choose all"
 msgstr "alle markieren auswählen"

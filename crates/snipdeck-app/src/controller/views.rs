@@ -23,6 +23,8 @@ use super::{AppMenuEntry, HelpTopic, ItemMenuEntry, ListMenuEntry};
 pub enum Effect {
     /// Show the Panel without taking focus.
     ShowPanel,
+    /// Open the Panel's Symbols tab (after a `ShowPanel`; the palette's "Symbols").
+    ShowSymbols,
     /// Hide the Panel.
     HidePanel,
     /// Start the OS window drag from the Panel header.
@@ -219,12 +221,16 @@ pub struct View {
     pub app_menu: Option<Vec<AppMenuEntry>>,
     /// The context menu of a card or pinned chip while it is open.
     pub item_menu: Option<Vec<ItemMenuEntry>>,
+    /// The context menu of a Symbols cell while it is open.
+    pub symbol_menu: Option<Vec<super::SymbolMenuEntry>>,
     /// The item menu's Move or Colour choice while it is open (it takes the menu's place).
     pub choose_menu: Option<ChooseMenu>,
     /// How many rows the multi-selection holds (the bulk bar shows from one).
     pub marked_count: usize,
     /// The rows show their 1 to 9 numbers (the `show_numbers` setting).
     pub show_numbers: bool,
+    /// The Symbols tab is offered (the `show_symbols_tab` setting).
+    pub symbols_available: bool,
     /// The Panel's layout (Settings > Panel > Layout).
     pub layout: crate::settings::PanelLayout,
     /// The search field is always shown (Settings > Panel > Search field).

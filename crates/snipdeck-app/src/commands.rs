@@ -19,6 +19,8 @@ pub enum Command {
     Search,
     /// Show the Panel.
     ShowPanel,
+    /// Show the Panel on its Symbols tab (emoji, kaomoji, icons).
+    Symbols,
     /// Open the Picker.
     OpenPicker,
     /// Quick capture.
@@ -83,11 +85,12 @@ pub enum Command {
 
 impl Command {
     /// Every command, in the order of `CommandTexts.all`.
-    pub const ALL: [Self; 34] = [
+    pub const ALL: [Self; 35] = [
         Self::NewItem,
         Self::NewList,
         Self::Search,
         Self::ShowPanel,
+        Self::Symbols,
         Self::OpenPicker,
         Self::QuickCapture,
         Self::PasteNext,
@@ -250,6 +253,8 @@ pub struct Context<'a> {
     pub item_pinned: bool,
     /// The Trash is open (its items are restored or deleted there, not edited or pinned).
     pub in_trash: bool,
+    /// The Panel's Symbols tab is on (the `show_symbols_tab` setting).
+    pub symbols: bool,
 }
 
 /// One row the palette shows.
@@ -276,6 +281,7 @@ pub fn available(command: Command, ctx: &Context<'_>) -> bool {
         | Command::TrashItem => ctx.has_item && !ctx.in_trash,
         Command::PinItem => ctx.has_item && !ctx.in_trash && !ctx.item_pinned,
         Command::UnpinItem => ctx.has_item && !ctx.in_trash && ctx.item_pinned,
+        Command::Symbols => ctx.symbols,
         _ => true,
     }
 }
@@ -346,6 +352,7 @@ mod tests {
             ("New list", "add create folder"),
             ("Search", "find filter"),
             ("Show Panel", "open toggle"),
+            ("Symbols", "emoji kaomoji icons smiley"),
             ("Open Picker", "quick find paste"),
             ("Quick capture", "clipboard save"),
             ("Paste next item", "stack queue"),
@@ -387,6 +394,7 @@ mod tests {
             has_item: true,
             item_pinned: false,
             in_trash: false,
+            symbols: true,
         }
     }
 
@@ -565,6 +573,21 @@ mod tests {
         assert!(
             !Command::SelectAll.needs_item(),
             "it works on an empty cursor too"
+        );
+    }
+
+    #[test]
+    fn symbols_is_found_by_name_and_offered_only_while_the_tab_is_on() {
+        let hotkeys = Hotkeys::default();
+        let mut on = ctx(&hotkeys);
+        let found = entries(&texts(), &on, "symbols");
+        assert_eq!(found.first().map(|e| e.command), Some(Command::Symbols));
+        on.symbols = false;
+        assert!(
+            entries(&texts(), &on, "symbols")
+                .iter()
+                .all(|e| e.command != Command::Symbols),
+            "the setting hides the command with the tab"
         );
     }
 
