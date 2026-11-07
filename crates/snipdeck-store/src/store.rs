@@ -166,9 +166,7 @@ impl Store {
     /// (`wal_checkpoint(TRUNCATE)`, checked) and closes the connection, keeping the folder
     /// lock held in the returned [`Closed`].
     pub fn close(self) -> Closed {
-        let Self {
-            conn, lock, ..
-        } = self;
+        let Self { conn, lock, .. } = self;
         let folded = conn
             .query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |r| {
                 Ok((
