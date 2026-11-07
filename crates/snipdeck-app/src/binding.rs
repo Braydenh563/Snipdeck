@@ -597,7 +597,10 @@ where
         wire!(on_tab_selected, |ctl, i| ctl.select_tab(index(i)));
         wire!(on_recent_unlock_requested, |ctl| ctl.request_unlock());
         wire!(on_recent_toggled, |ctl, open| ctl.set_recent_open(open));
-        wire!(on_recent_copied, |ctl, id| ctl.recent_copy(i64::from(id)));
+        wire!(on_recent_used, |ctl, id| ctl
+            .recent_use(i64::from(id), UseMode::Paste));
+        wire!(on_recent_copied, |ctl, id| ctl
+            .recent_use(i64::from(id), UseMode::Copy));
         wire!(on_recent_deleted, |ctl, id| ctl
             .recent_delete(i64::from(id)));
         wire!(on_recent_saved, |ctl, id, target| ctl

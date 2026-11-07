@@ -256,6 +256,9 @@ export component PanelWindow inherits Window {
     // The clock tab was chosen (true) or left for a list tab or by closing it (false).
     callback recent-toggled(bool);
     // Enter or a click on entry `index`: copies its text. Remove: Delete or the menu. Saved: entry, then target.
+    // A click or Enter on a Recent entry: paste it into the Target (or copy it when there is none).
+    callback recent-used(int);
+    // Shift+click, Shift+Enter or the menu's Copy: copy only.
     callback recent-copied(int);
     callback recent-deleted(int);
     callback recent-saved(int, int);
@@ -994,7 +997,11 @@ export component PanelWindow inherits Window {
                 }
                 if (root.recent-open && root.search-focused && root.rsel >= 0) {
                     if (event.text == Key.Return) {
-                        root.recent-copied(root.recent-rows[root.rsel].id);
+                        if (event.modifiers.shift) {
+                            root.recent-copied(root.recent-rows[root.rsel].id);
+                        } else {
+                            root.recent-used(root.recent-rows[root.rsel].id);
+                        }
                         return accept;
                     }
                     if (event.text == Key.Menu || (event.modifiers.shift && event.text == Key.F10)) {
@@ -1681,13 +1688,15 @@ export component PanelWindow inherits Window {
                                     list-name: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
                                     list-color: transparent;
                                     selected: i == root.rsel;
-                                    use-label: @tr("Copy");
-                                    use-copies: true;
+                                    use-label: root.use-label;
+                                    use-copies: !root.pastes;
+                                    copy-action: root.pastes;
+                                    row-tip: root.pastes ? @tr("Click to paste into {}. Shift+click copies.", root.target-name) : @tr("Click to copy.");
                                     show-use-label: i == root.rsel;
                                     keyboard-focusable: false;
                                     use => {
                                         root.recent-selected = i;
-                                        root.recent-copied(entry.id);
+                                        root.recent-used(entry.id);
                                     }
                                     copy => {
                                         root.recent-selected = i;

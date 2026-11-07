@@ -22,6 +22,7 @@ import { IconButton, IconButtonSize } from "components/icon-button.slint";
 import { TextField, FieldError } from "components/text_field.slint";
 import { Toggle, Radio } from "components/choice.slint";
 import { Tag } from "components/tag.slint";
+import { LockBadge } from "components/lock-badge.slint";
 import { Swatch } from "components/swatch.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
@@ -317,6 +318,13 @@ export component ItemEditor inherits Window {
     // Ctrl+V: the host answers true when it handled the paste itself (a picture on the clipboard,
     // which a text field cannot take, is told so with a toast) and the field must not paste.
     callback paste-requested() -> bool;
+    // A placeholder chip was chosen: the host inserts `token` into `content` at the caret (a UTF-8 byte
+    // offset) and calls `place-caret` with the offset after it.
+    callback placeholder-chosen(token: string, caret: int);
+    public function place-caret(offset: int) {
+        content-field.focus();
+        content-field.set-cursor(offset);
+    }
 
     public function mark-clean() { root.dirty = false; }
     // The host restored a draft: the fields differ from what is saved, so leaving asks first.
@@ -543,7 +551,7 @@ export component ItemEditor inherits Window {
                             accessible-role: none;
                         }
                         Text {
-                            text: @tr("Choose one to add it at the end of the text. It is filled in when you use the item.");
+                            text: @tr("Choose one to add it where the cursor is. It is filled in when you use the item.");
                             color: Theme.text-secondary;
                             font-family: Fonts.sans;
                             font-size: Type.sm;
@@ -558,17 +566,21 @@ export component ItemEditor inherits Window {
                                 a11y-label: @tr("Insert {}", ph.token);
                                 enabled: !root.content-large && (!ph.prompted || root.prompted-available);
                                 clicked => {
-                                    root.content = root.content + ph.token;
+                                    root.placeholder-chosen(ph.token, content-field.caret);
                                     root.touch();
                                 }
                                 changed has-focus => {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                                 }
                             }
+                            if ph.prompted && !root.prompted-available: LockBadge {
+                                text: @tr("Supporter");
+                                y: (parent.height - self.height) / 2;
+                            }
                             Text {
                                 horizontal-stretch: 1;
                                 min-width: 0px;
-                                text: (ph.prompted && !root.prompted-available) ? @tr("{} (Supporter)", ph.help) : ph.help;
+                                text: ph.help;
                                 color: Theme.text-secondary;
                                 font-family: Fonts.sans;
                                 font-size: Type.sm;

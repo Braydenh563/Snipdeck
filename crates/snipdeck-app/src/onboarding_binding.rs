@@ -159,8 +159,6 @@ where
         window.set_recent_history(settings.recent_history);
         window.set_recent_max_entries(crate::recent::max_entries_count());
         window.set_recent_max_days(crate::recent::max_age_days());
-        window.set_panel_in_taskbar(settings.panel_in_taskbar);
-        window.set_panel_hide_on_blur(settings.panel_hide_on_blur);
         window.set_dock_edge_index(dock_edge_index(controller.dock_edge()));
         window.set_notice(if self.autostart_failed.get() {
             wording::toast_text(&window, &ToastMessage::AutostartFailed).into()
@@ -336,12 +334,6 @@ where
             .hotkey_cleared(crate::binding::index(i)));
         wire!(on_dock_edge_chosen, |core, i| core
             .act(|ctl| ctl.dock_to(dock_edge_of(i))));
-        wire!(on_panel_in_taskbar_toggled, |core, on| {
-            core.host.set_panel_in_taskbar(on);
-            core.act(|ctl| ctl.update_settings(|s| s.panel_in_taskbar = on));
-        });
-        wire!(on_panel_hide_on_blur_toggled, |core, on| core
-            .act(|ctl| ctl.update_settings(|s| s.panel_hide_on_blur = on)));
         wire!(on_autostart_toggled, |core, on| core.autostart_toggled(on));
         wire!(on_recent_history_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.recent_history = on)));

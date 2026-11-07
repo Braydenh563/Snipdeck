@@ -566,6 +566,35 @@ fn the_kind_switch_offers_six_kinds_for_a_new_item_and_four_for_an_existing_one(
 }
 
 #[test]
+fn a_placeholder_chip_inserts_at_the_caret_not_at_the_end() {
+    on_ui_thread(|| {
+        let r = rig();
+        menu(&r, "New item");
+        let ed = r.ed();
+        click(
+            ed.window(),
+            &find(&ed, "Template", AccessibleRole::RadioButton),
+        );
+        click(
+            ed.window(),
+            &find(&ed, "Template text", AccessibleRole::TextInput),
+        );
+        type_text(ed.window(), "Dear , thanks");
+        // Caret back to just after "Dear " (8 characters from the end).
+        for _ in 0..8 {
+            press(ed.window(), &key(Key::LeftArrow));
+        }
+        let chip = find(&ed, "Insert {date}", AccessibleRole::Button);
+        click(ed.window(), &chip);
+        assert_eq!(ed.get_content(), "Dear {date}, thanks");
+        assert!(ed.get_dirty());
+        // The caret sits after the token: the next typed text follows it.
+        type_text(ed.window(), "!");
+        assert_eq!(ed.get_content(), "Dear {date}!, thanks");
+    });
+}
+
+#[test]
 fn a_link_without_a_scheme_is_refused_inline_and_a_good_one_saves() {
     on_ui_thread(|| {
         let r = rig();
@@ -751,6 +780,11 @@ fn a_free_user_sees_prompted_fields_refused_with_the_pro_toast() {
                 .accessible_enabled()
                 .unwrap_or(true)
         );
+        // Each Supporter chip carries a lock badge in place (two: {field} and {choice}).
+        let badges = ElementHandle::find_by_accessible_label(&ed, "Supporter")
+            .filter(|e| e.accessible_role() == Some(AccessibleRole::Text))
+            .count();
+        assert_eq!(badges, 2);
         // Without it the template saves.
         ed.set_content("Dear sir, {date}".into());
         type_text(ed.window(), "");

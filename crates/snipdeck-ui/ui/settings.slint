@@ -453,8 +453,8 @@ export component SettingsPage inherits Window {
     property <[string]> hotkey-help: [
         @tr("Brings the panel up beside the app you are working in."),
         @tr("Search every board and paste without opening the window."),
-        @tr("Saves the text that is on the clipboard when you press it as a new item in the list the panel shows. Off until you set a shortcut."),
-        root.pro ? @tr("Pastes the next item of the list in order.") : @tr("Pastes the next item of the list in order. Works with Supporter."),
+        @tr("Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."),
+        @tr("Pastes the next item of the list in order."),
     ];
 
     function reveal-field(y: length, h: length) {
@@ -547,6 +547,8 @@ export component SettingsPage inherits Window {
                     for hk[i] in root.hotkeys: SettingRow {
                         title: root.hotkey-names[i];
                         description: root.hotkey-help[i];
+                        // "Paste the next item" is a Supporter feature: the chord can be set, but does nothing on Free.
+                        locked-text: (i == 3 && !root.pro) ? @tr("Supporter") : "";
                         HotkeyRecorder {
                             width: 220px * SystemLook.text-scale;
                             label: root.hotkey-names[i];
@@ -583,7 +585,7 @@ export component SettingsPage inherits Window {
                     }
                     SettingRow {
                         title: @tr("Main list density");
-                        description: @tr("How tall the item rows are in the Main window lists. Compact shows one line per item. The Panel keeps its own row height for now.");
+                        description: @tr("How tall the item rows are in the Main window lists. Compact shows one line per item.");
                         Segmented {
                             width: 260px * SystemLook.text-scale;
                             label: @tr("Main list density");
@@ -935,7 +937,7 @@ export component SettingsPage inherits Window {
                     title: @tr("Privacy");
                     SettingRow {
                         title: @tr("Keep a Recent inbox of what you copy");
-                        description: @tr("Off by default. Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept.", root.recent-max-entries, root.recent-max-days);
+                        description: @tr("Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept.", root.recent-max-entries, root.recent-max-days);
                         Toggle {
                             a11y-label: @tr("Keep a Recent inbox of what you copy");
                             checked <=> root.recent-history;

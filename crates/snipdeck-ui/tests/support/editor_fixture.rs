@@ -208,8 +208,6 @@ pub fn onboarding(ui: &OnboardingWindow, step: i32) {
     ui.set_hotkeys(ModelRc::new(VecModel::from(hotkeys())));
     ui.set_autostart(false);
     ui.set_close_to_tray(true);
-    ui.set_panel_in_taskbar(false);
-    ui.set_panel_hide_on_blur(true);
     ui.set_dock_edge_index(0);
 }
 

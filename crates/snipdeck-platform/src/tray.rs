@@ -24,6 +24,8 @@ pub const TOOLTIP_CAPACITY: usize = 128;
 pub enum TrayEntry {
     /// Show the Panel.
     OpenPanel,
+    /// Open the Picker (the quick find-and-paste popup).
+    OpenPicker,
     /// Show the main window.
     OpenSnipdeck,
     /// Start a screenshot: the snipping overlay opens and the Panel steps aside.
@@ -39,8 +41,9 @@ pub enum TrayEntry {
 
 impl TrayEntry {
     /// Every entry, in menu order.
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 7] = [
         Self::OpenPanel,
+        Self::OpenPicker,
         Self::OpenSnipdeck,
         Self::TakeScreenshot,
         Self::PauseHotkeys,
@@ -53,6 +56,7 @@ impl TrayEntry {
     pub const fn label(self) -> &'static str {
         match self {
             Self::OpenPanel => "Open Panel",
+            Self::OpenPicker => "Open Picker",
             Self::OpenSnipdeck => "Open Snipdeck",
             Self::TakeScreenshot => "Take screenshot",
             Self::PauseHotkeys => "Pause hotkeys",
@@ -71,6 +75,7 @@ impl TrayEntry {
             Self::Quit => 4,
             Self::PauseHistory => 5,
             Self::TakeScreenshot => 6,
+            Self::OpenPicker => 7,
         }
     }
 
@@ -88,6 +93,8 @@ impl TrayEntry {
 pub struct TrayLabels {
     /// [`TrayEntry::OpenPanel`].
     pub open_panel: String,
+    /// [`TrayEntry::OpenPicker`].
+    pub open_picker: String,
     /// [`TrayEntry::OpenSnipdeck`].
     pub open_snipdeck: String,
     /// [`TrayEntry::TakeScreenshot`].
@@ -107,6 +114,7 @@ impl Default for TrayLabels {
         let english = |entry: TrayEntry| entry.label().to_owned();
         Self {
             open_panel: english(TrayEntry::OpenPanel),
+            open_picker: english(TrayEntry::OpenPicker),
             open_snipdeck: english(TrayEntry::OpenSnipdeck),
             take_screenshot: english(TrayEntry::TakeScreenshot),
             pause_hotkeys: english(TrayEntry::PauseHotkeys),
@@ -123,6 +131,7 @@ impl TrayLabels {
     pub fn of(&self, entry: TrayEntry) -> &str {
         match entry {
             TrayEntry::OpenPanel => &self.open_panel,
+            TrayEntry::OpenPicker => &self.open_picker,
             TrayEntry::OpenSnipdeck => &self.open_snipdeck,
             TrayEntry::TakeScreenshot => &self.take_screenshot,
             TrayEntry::PauseHotkeys => &self.pause_hotkeys,
@@ -139,6 +148,8 @@ pub enum TrayEvent {
     TogglePanel,
     /// "Open Panel".
     OpenPanel,
+    /// "Open Picker".
+    OpenPicker,
     /// "Open Snipdeck", or a double click on the icon.
     OpenSnipdeck,
     /// "Take screenshot".
@@ -451,6 +462,7 @@ impl TrayModel {
     pub fn pick(&mut self, entry: TrayEntry) -> TrayEvent {
         match entry {
             TrayEntry::OpenPanel => TrayEvent::OpenPanel,
+            TrayEntry::OpenPicker => TrayEvent::OpenPicker,
             TrayEntry::OpenSnipdeck => TrayEvent::OpenSnipdeck,
             TrayEntry::TakeScreenshot => TrayEvent::TakeScreenshot,
             TrayEntry::PauseHotkeys => {
@@ -542,6 +554,7 @@ mod tests {
             labels,
             [
                 "Open Panel",
+                "Open Picker",
                 "Open Snipdeck",
                 "Take screenshot",
                 "Pause hotkeys",
@@ -582,7 +595,7 @@ mod tests {
         let labels = menu_labels(&mut m);
         let at = labels.iter().position(|(l, _)| l == "Pause history");
         // Right after "Pause hotkeys", before "Quit".
-        assert_eq!(at, Some(4));
+        assert_eq!(at, Some(5));
         assert_eq!(labels.last().map(|(l, _)| l.as_str()), Some("Quit"));
         assert!(labels.iter().all(|(_, checked)| !checked));
         m.set_history(false, false);
@@ -649,6 +662,7 @@ mod tests {
         let mut m = model();
         m.set_labels(TrayLabels {
             open_panel: "Panel öffnen".into(),
+            open_picker: "Picker öffnen".into(),
             open_snipdeck: "Snipdeck öffnen".into(),
             take_screenshot: "Bildschirmfoto aufnehmen".into(),
             pause_hotkeys: "Tastenkürzel pausieren".into(),
@@ -670,6 +684,7 @@ mod tests {
             labels,
             [
                 "Panel öffnen",
+                "Picker öffnen",
                 "Snipdeck öffnen",
                 "Bildschirmfoto aufnehmen",
                 "Tastenkürzel pausieren",
@@ -716,6 +731,7 @@ mod tests {
     fn the_other_entries_map_to_their_events() {
         let mut m = model();
         assert_eq!(m.pick(TrayEntry::OpenPanel), TrayEvent::OpenPanel);
+        assert_eq!(m.pick(TrayEntry::OpenPicker), TrayEvent::OpenPicker);
         assert_eq!(m.pick(TrayEntry::OpenSnipdeck), TrayEvent::OpenSnipdeck);
         assert_eq!(m.pick(TrayEntry::TakeScreenshot), TrayEvent::TakeScreenshot);
         assert_eq!(m.pick(TrayEntry::Quit), TrayEvent::Quit);

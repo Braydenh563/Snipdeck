@@ -267,6 +267,7 @@ where
         // The window's preferred size (editors.slint), cut to the screen before the first show.
         crate::native_window::size_before_show(w.window(), (EDITOR_WIDTH, 700.0));
         self.wire(&w);
+        wire_placeholder_chips(&w);
         // Closes with the window it was opened from, keeping what was typed as its draft.
         let (core, weak) = (Rc::downgrade(self), w.as_weak());
         crate::ownership::register_closer(crate::ownership::Win::ItemEditor, move || {
@@ -404,6 +405,23 @@ where
         }
         redraw_all();
     }
+}
+
+/// A placeholder chip inserts its token at the caret, then the caret goes after it.
+fn wire_placeholder_chips(w: &ui::ItemEditor) {
+    let weak = w.as_weak();
+    w.on_placeholder_chosen(move |token, caret| {
+        let Some(w) = weak.upgrade() else {
+            return;
+        };
+        let (text, after) = crate::item_editor::insert_at_caret(
+            w.get_content().as_str(),
+            usize::try_from(caret).unwrap_or(0),
+            token.as_str(),
+        );
+        w.set_content(text.into());
+        w.invoke_place_caret(i32::try_from(after).unwrap_or(i32::MAX));
+    });
 }
 
 /// What the window's fields hold now.
