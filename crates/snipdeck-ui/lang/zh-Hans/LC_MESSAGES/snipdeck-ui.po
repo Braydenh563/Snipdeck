@@ -52,6 +52,9 @@ msgstr "已开启主密码。首次使用敏感片段时，Snipdeck 会要求输
 msgid "A master password is part of Supporter."
 msgstr "主密码是 Supporter 的功能之一。"
 
+msgid "A small window you can drag anywhere."
+msgstr ""
+
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "在你正在使用的应用旁边显示的片段栏。点击其中一条，即可粘贴到该应用。"
 
@@ -123,6 +126,9 @@ msgstr "将删除全部 {} 条最近复制的内容。此操作无法撤销。"
 
 msgid "Also forget the encryption key"
 msgstr "同时忘记加密密钥"
+
+msgid "Also keep what I copy?"
+msgstr ""
 
 msgid "Alt 1 to 9"
 msgstr "Alt 1 到 9"
@@ -336,9 +342,6 @@ msgstr "剪贴 {}"
 
 msgid "Clipboard clear time"
 msgstr "剪贴板清除时间"
-
-msgid "Clipboard history"
-msgstr "剪贴板历史"
 
 msgid "Close"
 msgstr "关闭"
@@ -724,6 +727,9 @@ msgstr "停靠到右边缘"
 msgid "Dock to the top edge"
 msgstr "停靠到上边缘"
 
+msgid "Docked to the right"
+msgstr ""
+
 msgid "Done"
 msgstr "完成"
 
@@ -852,6 +858,9 @@ msgstr "输入时筛选"
 
 msgid "Filter by colour label"
 msgstr "按颜色标签筛选"
+
+msgid "Fixed against the right edge of the screen, full height."
+msgstr ""
 
 msgid "Fixed placeholders filled in when you paste."
 msgstr "粘贴时会填入固定占位符。"
@@ -985,8 +994,8 @@ msgstr "指针停在细条上多久后面板展开，范围为 0 至 {} 毫秒�
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr "指针离开已展开的面板多久后面板收起，范围为 0 至 {} 毫秒。"
 
-msgid "How tall the item rows are in the Main window lists. Compact shows one line per item. The Panel keeps its own row height for now."
-msgstr "主窗口列表中项目行的高度。紧凑模式每个项目显示一行。面板暂时保持自己的行高。"
+msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
+msgstr ""
 
 msgid "How the Panel lists your snippets: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
 msgstr ""
@@ -1085,6 +1094,9 @@ msgid "Keep the Panel on top (pin)"
 msgstr "保持面板置顶(固定)"
 
 msgid "Keep the Panel open"
+msgstr ""
+
+msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr ""
 
 msgid "Keyboard shortcuts"
@@ -1407,6 +1419,9 @@ msgstr ""
 msgid "Not included"
 msgstr "未包含"
 
+msgid "Not now"
+msgstr ""
+
 msgid "Not set"
 msgstr "未设置"
 
@@ -1461,14 +1476,8 @@ msgstr "正常"
 msgid "Off"
 msgstr "关闭"
 
-msgid "Off by default. Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
-msgstr "默认关闭。保留你复制的文本，最多保留最近 {} 条或 {} 天（以先到者为准），方便你再次找到或保存到列表中。目前仅支持文本。敏感片段、密码管理器和你排除的应用中的内容永远不会保留。"
-
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "选择“关闭”则已停靠的面板保持展开。否则它会收成一条细条，面板快捷键同样可以将其展开。"
-
-msgid "On unless you turn it off here. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
-msgstr ""
 
 msgid "One hotkey turns copied text into an item."
 msgstr "一个快捷键即可将复制的文本变为片段。"
@@ -1562,9 +1571,6 @@ msgstr "面板和选择器"
 
 msgid "Panel closes when you click away"
 msgstr "点击别处时面板会关闭"
-
-msgid "Panel dock"
-msgstr "面板停靠"
 
 msgid "Panel docked to the bottom edge"
 msgstr "面板已停靠到底边"
@@ -1662,9 +1668,6 @@ msgstr "粘贴到 {} · {}"
 msgid "Pastes the next item of the list in order."
 msgstr "按顺序粘贴列表中的下一个片段。"
 
-msgid "Pastes the next item of the list in order. Works with Supporter."
-msgstr "按顺序粘贴列表中的下一个片段。适用于 Supporter。"
-
 msgid "Path to the file"
 msgstr "文件路径"
 
@@ -1679,6 +1682,9 @@ msgstr "可自定价格，最低 A$5，建议 A$8。一次性付费，包括所�
 
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions."
 msgstr "可自定价格，最低 A$5，建议 A$8。一次性付费，包括所有 1.x 更新。免费版功能完整可用；Supporter 提供便利功能，并支持本应用。买不起？给我发邮件，我会发给你一个密钥，不问缘由。"
+
+msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
+msgstr ""
 
 msgid "Picker"
 msgstr "选择器"
@@ -1787,6 +1793,9 @@ msgstr "最近条目操作"
 
 msgid "Recent history cleared"
 msgstr "已清除最近记录"
+
+msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
+msgstr ""
 
 msgid "Recently used"
 msgstr "最近使用"
@@ -1925,8 +1934,8 @@ msgstr "已保存 {}"
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "将所有看板、列表和片段保存为一个 .snipdeck 文件，存放在你选择的文件夹中。"
 
-msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows. Off until you set a shortcut."
-msgstr "将按下快捷键时剪贴板中的文本，作为新片段保存到面板当前显示的列表中。设置快捷键之前保持关闭。"
+msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."
+msgstr ""
 
 msgid "Saving…"
 msgstr "正在保存…"
@@ -2135,8 +2144,8 @@ msgstr "Snipdeck 仍在运行。按 {} 或单击托盘图标即可重新显示�
 msgid "Snipdeck keeps its own copy of the file."
 msgstr "Snipdeck 会保存该文件的副本。"
 
-msgid "Snipdeck keeps the text you paste again and again, one shortcut away. Three things to know:"
-msgstr "Snipdeck 为你保存那些反复粘贴的文字，一个快捷键即可调用。先了解三件事："
+msgid "Snipdeck keeps the text you paste again and again, one shortcut away. The basics:"
+msgstr ""
 
 msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
 msgstr "Snipdeck 不会自行检查。这会在浏览器中打开发布页面。"
@@ -2305,9 +2314,6 @@ msgstr "免费版包含 5 个看板。Supporter 可添加无限个看板。"
 
 msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
 msgstr "免费版包含 {} 个看板。此操作将超出上限，需要 Supporter。"
-
-msgid "The Panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the Panel shortcut to bring it back. Pasting still goes to the app you were in before."
-msgstr "除非你打开此项，否则面板不会出现在任务栏和 Alt+Tab 中；请用托盘图标或面板快捷键调出。粘贴仍会进入你之前所在的应用。"
 
 msgid "The Trash is empty"
 msgstr "回收站为空"
@@ -2648,6 +2654,9 @@ msgstr "Windows 不允许将 {} 用作快捷键。"
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows 跟随你的 Windows 文字大小（设置 > 辅助功能 > 文字大小）。选择一个大小即可改用该大小。"
 
+msgid "Yes"
+msgstr ""
+
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "你将拥有 {} 个看板，而免费版仅包含 {} 个。"
 
@@ -2851,9 +2860,6 @@ msgstr[0] "{n} 个片段"
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
 msgstr[0] "{n} 个片段将一同移至回收站。你可以在 30 天内恢复它们。"
-
-msgid "{} (Supporter)"
-msgstr "{} (支持者)"
 
 msgid "{} KB"
 msgstr "{} KB"

@@ -4,6 +4,7 @@ import { Icon } from "icon.slint";
 import { StateColor } from "state-color.slint";
 import { FieldError } from "text_field.slint";
 import { OverlayScrollbar } from "scrollbar.slint";
+import { LockBadge } from "lock-badge.slint";
 
 // Form building blocks for the editors and the settings page (DESIGN.md §4). Every control here is one tab stop
 // with arrow keys inside it, has a hover, pressed, disabled and keyboard-focus state, an accessible role and label,
@@ -103,6 +104,8 @@ export component FormSection inherits VerticalLayout {
 export component SettingRow inherits Rectangle {
     in property <string> title;
     in property <string> description;
+    // Not empty = a Free plan cannot use this yet: the lock badge with this text (the word "Supporter") shows by the title.
+    in property <string> locked-text;
 
     // A Rectangle does not take its height from the layout inside it, so say it: wrapped text makes the row taller.
     min-height: max(Space.hit * SystemLook.text-scale + 2 * Space.s2, row.preferred-height);
@@ -119,13 +122,22 @@ export component SettingRow inherits Rectangle {
             min-width: 0px;
             alignment: center;
             spacing: Space.s0-5;
-            Text {
-                text: root.title;
-                color: Theme.text-primary;
-                font-family: Fonts.sans;
-                font-size: Type.base;
-                wrap: word-wrap;
-                accessible-role: none;
+            HorizontalLayout {
+                spacing: Space.s2;
+                alignment: start;
+                Text {
+                    text: root.title;
+                    color: Theme.text-primary;
+                    font-family: Fonts.sans;
+                    font-size: Type.base;
+                    wrap: word-wrap;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+                if root.locked-text != "": LockBadge {
+                    text: root.locked-text;
+                    y: (parent.height - self.height) / 2;
+                }
             }
             if root.description != "": Text {
                 text: root.description;

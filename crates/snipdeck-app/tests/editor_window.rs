@@ -780,6 +780,11 @@ fn a_free_user_sees_prompted_fields_refused_with_the_pro_toast() {
                 .accessible_enabled()
                 .unwrap_or(true)
         );
+        // Each Supporter chip carries a lock badge in place (two: {field} and {choice}).
+        let badges = ElementHandle::find_by_accessible_label(&ed, "Supporter")
+            .filter(|e| e.accessible_role() == Some(AccessibleRole::Text))
+            .count();
+        assert_eq!(badges, 2);
         // Without it the template saves.
         ed.set_content("Dear sir, {date}".into());
         type_text(ed.window(), "");

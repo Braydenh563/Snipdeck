@@ -52,6 +52,9 @@ msgstr "マスターパスワードが有効です。機密スニペットを初
 msgid "A master password is part of Supporter."
 msgstr "マスターパスワードは Supporter に含まれます。"
 
+msgid "A small window you can drag anywhere."
+msgstr ""
+
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "作業中のアプリの横に、スニペットを並べた帯が表示されます。クリックすると、そのアプリに貼り付けます。"
 
@@ -123,6 +126,9 @@ msgstr "{}件の最近のコピーを削除します。元に戻せません。"
 
 msgid "Also forget the encryption key"
 msgstr "暗号化キーも削除する"
+
+msgid "Also keep what I copy?"
+msgstr ""
 
 msgid "Alt 1 to 9"
 msgstr "Alt 1～9"
@@ -336,9 +342,6 @@ msgstr "クリップ {}"
 
 msgid "Clipboard clear time"
 msgstr "クリップボードの消去時間"
-
-msgid "Clipboard history"
-msgstr "クリップボード履歴"
 
 msgid "Close"
 msgstr "閉じる"
@@ -724,6 +727,9 @@ msgstr "右端に固定"
 msgid "Dock to the top edge"
 msgstr "上端に固定"
 
+msgid "Docked to the right"
+msgstr ""
+
 msgid "Done"
 msgstr "完了"
 
@@ -852,6 +858,9 @@ msgstr "入力に合わせて絞り込み"
 
 msgid "Filter by colour label"
 msgstr "カラーラベルで絞り込み"
+
+msgid "Fixed against the right edge of the screen, full height."
+msgstr ""
 
 msgid "Fixed placeholders filled in when you paste."
 msgstr "貼り付け時に入力される固定のプレースホルダー。"
@@ -985,8 +994,8 @@ msgstr "ポインターが帯の上にとどまってからパネルが開くま
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr "ポインターが開いたパネルから外れてからパネルがたたまれるまでの時間（0〜{}ミリ秒）。"
 
-msgid "How tall the item rows are in the Main window lists. Compact shows one line per item. The Panel keeps its own row height for now."
-msgstr "メインウィンドウのリストで項目の行の高さを選びます。コンパクトは1項目1行です。パネルは今のところ独自の行の高さのままです。"
+msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
+msgstr ""
 
 msgid "How the Panel lists your snippets: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
 msgstr ""
@@ -1085,6 +1094,9 @@ msgid "Keep the Panel on top (pin)"
 msgstr "パネルを常に手前に表示(ピン留め)"
 
 msgid "Keep the Panel open"
+msgstr ""
+
+msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr ""
 
 msgid "Keyboard shortcuts"
@@ -1407,6 +1419,9 @@ msgstr ""
 msgid "Not included"
 msgstr "含まれない"
 
+msgid "Not now"
+msgstr ""
+
 msgid "Not set"
 msgstr "未設定"
 
@@ -1461,14 +1476,8 @@ msgstr "OK"
 msgid "Off"
 msgstr "オフ"
 
-msgid "Off by default. Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
-msgstr "初期設定はオフです。コピーしたテキストを、最新の{}件または{}日分（どちらか先に達した方）保存します。あとから探したりリストに保存したりできます。現時点ではテキストのみです。機密のスニペット、パスワードマネージャー、除外したアプリの内容は保存されません。"
-
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "「オフ」にすると、固定したパネルは開いたままになります。それ以外では細い帯にたたまれ、パネルのショートカットでも開けます。"
-
-msgid "On unless you turn it off here. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
-msgstr ""
 
 msgid "One hotkey turns copied text into an item."
 msgstr "ホットキー1つで、コピーしたテキストをスニペットにできます。"
@@ -1562,9 +1571,6 @@ msgstr "パネルとピッカー"
 
 msgid "Panel closes when you click away"
 msgstr "ほかをクリックするとパネルが閉じます"
-
-msgid "Panel dock"
-msgstr "パネルの固定"
 
 msgid "Panel docked to the bottom edge"
 msgstr "パネルを下端にドッキングしました"
@@ -1662,9 +1668,6 @@ msgstr "{} · {} に貼り付け"
 msgid "Pastes the next item of the list in order."
 msgstr "リストの次のスニペットを順番に貼り付けます。"
 
-msgid "Pastes the next item of the list in order. Works with Supporter."
-msgstr "リストの次のスニペットを順番に貼り付けます。Supporter で使えます。"
-
 msgid "Path to the file"
 msgstr "ファイルのパス"
 
@@ -1679,6 +1682,9 @@ msgstr "A$5から、お好きな金額でお支払いください（推奨はA$8
 
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions."
 msgstr "A$5から、お好きな金額でお支払いください（推奨はA$8）。買い切りで、1.x系のすべてのアップデートが含まれます。無料版はすべての機能が使えます。Supporter は利便性の対価であり、アプリの開発を支えます。お支払いが難しい場合はメールで連絡してください。理由を問わずキーをお送りします。"
+
+msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
+msgstr ""
 
 msgid "Picker"
 msgstr "ピッカー"
@@ -1787,6 +1793,9 @@ msgstr "最近の項目の操作"
 
 msgid "Recent history cleared"
 msgstr "最近の履歴を消去しました"
+
+msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
+msgstr ""
 
 msgid "Recently used"
 msgstr "最近使ったもの"
@@ -1925,8 +1934,8 @@ msgstr "保存: {}"
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "すべてのボード、リスト、スニペットを、選んだフォルダーに 1 つの .snipdeck ファイルとして保存します。"
 
-msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows. Off until you set a shortcut."
-msgstr "押した時点でクリップボードにあるテキストを、パネルに表示中のリストに新しいスニペットとして保存します。ショートカットを設定するまでオフです。"
+msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."
+msgstr ""
 
 msgid "Saving…"
 msgstr "保存中…"
@@ -2135,8 +2144,8 @@ msgstr "Snipdeck は実行中です。{} を押すか、トレイアイコンを
 msgid "Snipdeck keeps its own copy of the file."
 msgstr "Snipdeckがファイルの独自のコピーを保存します。"
 
-msgid "Snipdeck keeps the text you paste again and again, one shortcut away. Three things to know:"
-msgstr "何度も貼り付けるテキストを、ショートカット一つで呼び出せます。まず知っておきたい3つのこと:"
+msgid "Snipdeck keeps the text you paste again and again, one shortcut away. The basics:"
+msgstr ""
 
 msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
 msgstr "Snipdeck が自動で確認することはありません。ブラウザーでリリースのページを開きます。"
@@ -2305,9 +2314,6 @@ msgstr "無料プランには5つのボードが含まれます。Supporter で�
 
 msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
 msgstr "無料プランには {} 個のボードが含まれます。これを超えるため、Supporter が必要です。"
-
-msgid "The Panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the Panel shortcut to bring it back. Pasting still goes to the app you were in before."
-msgstr "オンにしない限り、パネルはタスクバーにも Alt+Tab にも表示されません。トレイアイコンかパネルのショートカットで呼び戻してください。貼り付けは、直前に使っていたアプリに入ります。"
 
 msgid "The Trash is empty"
 msgstr "ゴミ箱は空です"
@@ -2648,6 +2654,9 @@ msgstr "Windows では {} をショートカットに使えません。"
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows の文字サイズ（設定 > アクセシビリティ > 文字サイズ）に従います。サイズを選ぶと、そちらを使います。"
 
+msgid "Yes"
+msgstr ""
+
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "取り込むと {} 個のボードになりますが、無料プランには {} 個まで含まれます。"
 
@@ -2851,9 +2860,6 @@ msgstr[0] "{n}件のスニペット"
 msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
 msgstr[0] "{n}件のスニペットも一緒にゴミ箱に移動します。30日間復元できます。"
-
-msgid "{} (Supporter)"
-msgstr "{} (サポーター)"
 
 msgid "{} KB"
 msgstr "{} KB"

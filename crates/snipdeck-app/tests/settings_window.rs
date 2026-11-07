@@ -929,6 +929,14 @@ fn on_the_free_plan_the_paste_next_row_says_it_is_a_supporter_feature() {
             pro.ui.get_hotkeys().row_data(paste_next).unwrap().conflict,
             ""
         );
+        // The lock badge sits on the Paste next row on Free only.
+        let badges = |ui: &SettingsPage| {
+            ElementHandle::find_by_accessible_label(ui, "Supporter")
+                .filter(|e| e.accessible_role() == Some(AccessibleRole::Text))
+                .count()
+        };
+        assert_eq!(badges(&pro.ui), 0, "Supporter: no badge");
+        assert_eq!(badges(&r.ui), 1, "Free: one badge, on Paste next");
     });
 }
 

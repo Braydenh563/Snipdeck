@@ -165,10 +165,6 @@ fn onboarding(step: i32) -> (OnboardingWindow, Log) {
         let log = log.clone();
         ui.on_recent_history_toggled(move |on| log.borrow_mut().push(format!("history:{on}")));
     }
-    {
-        let log = log.clone();
-        ui.on_panel_in_taskbar_toggled(move |on| log.borrow_mut().push(format!("taskbar:{on}")));
-    }
     (ui, log)
 }
 
@@ -368,26 +364,42 @@ ui_tests! {
         assert!(ui.get_dirty());
     }
 
-    fn template_placeholders_are_listed_and_insert_at_the_end() {
-        let (ui, _log) = item_editor();
+    fn template_placeholders_are_listed_and_report_the_caret_for_the_host_to_insert_at() {
+        let (ui, log) = item_editor();
         assert!(missing(&ui, "Insert {date}", AccessibleRole::Button), "only templates show the help");
         ui.set_kind_index(3);
         ui.set_content("Due on ".into());
+        {
+            let log = log.clone();
+            ui.on_placeholder_chosen(move |token, caret| log.borrow_mut().push(format!("ph:{token}:{caret}")));
+        }
         settle();
+        take(&log);
+        // The window does not edit the text itself: it names the chip and the caret, and the host inserts.
         find(&ui, "Insert {date}", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
-        assert_eq!(ui.get_content(), "Due on {date}");
+        let said = take(&log);
+        assert!(said.iter().any(|l| l.starts_with("ph:{date}:")), "{said:?}");
+        assert_eq!(ui.get_content(), "Due on ", "the host inserts, not the window");
+        assert!(ui.get_dirty());
+        // The host answers with the new text and the caret after it.
+        ui.set_content("Due on {date}".into());
+        ui.invoke_place_caret(13);
+        settle();
         assert_eq!(
             find(&ui, "Template text", AccessibleRole::TextInput).accessible_value().as_deref(),
             Some("Due on {date}"),
-            "the field shows the inserted text"
         );
-        assert!(ui.get_dirty());
 
         ui.set_prompted_available(false);
         settle();
         assert_eq!(find(&ui, "Insert {field:Name}", AccessibleRole::Button).accessible_enabled(), Some(false));
         assert_eq!(find(&ui, "Insert {date}", AccessibleRole::Button).accessible_enabled(), Some(true));
+        // The Supporter chips carry a lock badge in place.
+        let badges = ElementHandle::find_by_accessible_label(&ui, "Supporter")
+            .filter(|e| e.accessible_role() == Some(AccessibleRole::Text))
+            .count();
+        assert_eq!(badges, 2);
     }
 
     fn the_list_select_opens_in_place_chooses_and_closes_with_escape() {
@@ -1464,17 +1476,26 @@ ui_tests! {
         }
     }
 
-    fn the_panel_step_says_the_panel_is_not_in_alt_tab_by_default() {
+    fn the_panel_step_is_one_visual_choice_between_floating_and_docked_right() {
         let (ui, _) = onboarding(2);
-        let row = find(&ui, "Show the Panel in the taskbar and Alt+Tab", AccessibleRole::Groupbox);
-        let said = row.accessible_description().expect("description");
-        assert!(said.contains("taskbar") && said.contains("Alt+Tab"), "{said}");
+        let floating = find(&ui, "Floating", AccessibleRole::RadioButton);
+        let docked = find(&ui, "Docked to the right", AccessibleRole::RadioButton);
+        assert_eq!(floating.accessible_checked(), Some(true), "the default stays floating");
+        assert_eq!(docked.accessible_checked(), Some(false));
+        // The taskbar, hide-on-blur and edge controls are in Settings, not the tour.
+        assert!(missing(&ui, "Dock to", AccessibleRole::Combobox));
+        assert!(missing(&ui, "Show the Panel in the taskbar and Alt+Tab", AccessibleRole::Switch));
+        ui.set_dock_edge_index(2);
+        settle();
+        assert_eq!(docked.accessible_checked(), Some(true));
+        assert_eq!(floating.accessible_checked(), Some(false));
     }
 
     fn each_step_shows_its_own_content() {
         let (ui, _) = onboarding(0);
         let _ = find(&ui, "The panel", AccessibleRole::Groupbox);
         let _ = find(&ui, "The picker", AccessibleRole::Groupbox);
+        let _ = find(&ui, "Also keep what I copy?", AccessibleRole::Groupbox);
         assert!(missing(&ui, "Start with Windows", AccessibleRole::Switch));
         ui.set_step(1);
         settle();
@@ -1482,8 +1503,8 @@ ui_tests! {
         let _ = find(&ui, "Show or hide the panel", AccessibleRole::Button);
         ui.set_step(2);
         settle();
-        let _ = find(&ui, "Dock to", AccessibleRole::Combobox);
-        let _ = find(&ui, "Show the Panel in the taskbar and Alt+Tab", AccessibleRole::Switch);
+        let _ = find(&ui, "Floating", AccessibleRole::RadioButton);
+        let _ = find(&ui, "Docked to the right", AccessibleRole::RadioButton);
         ui.set_step(3);
         settle();
         let _ = find(&ui, "Start with Windows", AccessibleRole::Switch);
@@ -1502,14 +1523,10 @@ ui_tests! {
 
     fn the_panel_and_start_up_steps_report_their_choices() {
         let (ui, log) = onboarding(2);
-        let combo = find(&ui, "Dock to", AccessibleRole::Combobox);
-        assert_eq!(combo.accessible_value().as_deref(), Some("Floating"));
-        combo.invoke_accessible_default_action();
-        settle();
-        find(&ui, "Left edge", AccessibleRole::ListItem).invoke_accessible_default_action();
-        assert_eq!(take(&log), ["dock:1"]);
-        find(&ui, "Show the Panel in the taskbar and Alt+Tab", AccessibleRole::Switch).invoke_accessible_default_action();
-        assert_eq!(take(&log), ["taskbar:true"]);
+        find(&ui, "Docked to the right", AccessibleRole::RadioButton).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["dock:2"]);
+        find(&ui, "Floating", AccessibleRole::RadioButton).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["dock:0"]);
 
         ui.set_step(3);
         settle();
@@ -1526,22 +1543,30 @@ ui_tests! {
         let _ = find(&ui, "Could not change the start-up entry.", AccessibleRole::Text);
     }
 
-    fn the_history_switch_is_on_by_default_reaches_the_host_and_fits_the_window() {
-        let (ui, log) = onboarding(3);
+    fn the_welcome_step_offers_to_keep_what_you_copy_on_by_default_and_fits_the_window() {
+        let (ui, log) = onboarding(0);
         assert!(ui.get_recent_history(), "history is on for a new install");
-        let history = find(&ui, "Keep a Recent inbox of what you copy", AccessibleRole::Switch);
-        assert_eq!(history.accessible_checked(), Some(true));
-        history.invoke_accessible_default_action();
+        let yes = find(&ui, "Yes", AccessibleRole::RadioButton);
+        let not_now = find(&ui, "Not now", AccessibleRole::RadioButton);
+        assert_eq!(yes.accessible_checked(), Some(true));
+        assert_eq!(not_now.accessible_checked(), Some(false));
+        not_now.invoke_accessible_default_action();
         assert_eq!(take(&log), ["history:false"]);
         // The host can put the value back.
-        ui.set_recent_history(true);
+        ui.set_recent_history(false);
         settle();
-        assert_eq!(history.accessible_checked(), Some(true));
-        // The switch is inside the window at the size it opens at, and a comfortable target.
-        let bottom = history.absolute_position().y + history.size().height;
+        assert_eq!(not_now.accessible_checked(), Some(true));
+        // The choice is inside the window at the size it opens at (560 x 540), and a comfortable target.
+        ui.window().set_size(slint::LogicalSize::new(560.0, 540.0));
+        settle();
+        let bottom = yes.absolute_position().y + yes.size().height;
         let window = ui.window().size().to_logical(ui.window().scale_factor());
         assert!(bottom <= window.height, "below the fold: {bottom} of {}", window.height);
-        assert!(history.size().height >= 24.0 && history.size().width >= 24.0);
+        assert!(yes.size().height >= 24.0 && yes.size().width >= 24.0);
+        // The Recent inbox is no longer a step-4 toggle.
+        ui.set_step(3);
+        settle();
+        assert!(missing(&ui, "Keep a Recent inbox of what you copy", AccessibleRole::Switch));
     }
 
     fn help_rows_are_labelled_with_their_status_and_the_fix_buttons_call_back() {

@@ -22,6 +22,7 @@ import { IconButton, IconButtonSize } from "components/icon-button.slint";
 import { TextField, FieldError } from "components/text_field.slint";
 import { Toggle, Radio } from "components/choice.slint";
 import { Tag } from "components/tag.slint";
+import { LockBadge } from "components/lock-badge.slint";
 import { Swatch } from "components/swatch.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
@@ -572,10 +573,14 @@ export component ItemEditor inherits Window {
                                     if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
                                 }
                             }
+                            if ph.prompted && !root.prompted-available: LockBadge {
+                                text: @tr("Supporter");
+                                y: (parent.height - self.height) / 2;
+                            }
                             Text {
                                 horizontal-stretch: 1;
                                 min-width: 0px;
-                                text: (ph.prompted && !root.prompted-available) ? @tr("{} (Supporter)", ph.help) : ph.help;
+                                text: ph.help;
                                 color: Theme.text-secondary;
                                 font-family: Fonts.sans;
                                 font-size: Type.sm;

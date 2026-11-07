@@ -1,6 +1,7 @@
 // The welcome tour (V1-PLAN 7a): one regular window, four steps, shown on a first run with an empty library and from
-// Help. Welcome (what the Panel, the Picker and the shortcuts do), Shortcuts (the Settings recorders), Panel (dock
-// edge, taskbar, hide on blur) and Start-up (start with Windows, keep running in the tray).
+// Help. Welcome (what the Panel, the Picker and the shortcuts do, and the one choice to keep what you copy),
+// Shortcuts (the Settings recorders), Panel (one visual choice: floating or docked to the right edge) and Start-up
+// (start with Windows, keep running in the tray). Taskbar, hide-on-blur and the other edges are in Settings.
 //
 // Like Settings, every choice applies at once: the page reports it as a callback and the host stores it. The host owns
 // `step`; Back, Next and Skip are callbacks. Skip is on every step; Esc is Back, and Skip on the first step. Closing the window skips too.
@@ -12,7 +13,7 @@ import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
 import { Toggle } from "components/choice.slint";
 import { HotkeyRecorder } from "components/hotkey_recorder.slint";
 import { FieldError } from "components/text_field.slint";
-import { FormSection, SettingRow, SelectField } from "components/form.slint";
+import { FormSection, SettingRow, Segmented } from "components/form.slint";
 import { HotkeySetting } from "settings.slint";
 
 // One thing the welcome step explains: a glyph, a name and a sentence.
@@ -71,6 +72,119 @@ component Feature inherits HorizontalLayout {
     }
 }
 
+// One of the two picture cards of the Panel step: a miniature screen showing where the panel sits, its name and a
+// sentence. One tab stop; Space or Enter chooses; the check and the thick border say "chosen" without colour.
+component PanelChoice inherits Rectangle {
+    in property <string> label;
+    in property <string> hint;
+    // True draws the panel fixed against the right edge; false draws it loose, away from the edge.
+    in property <bool> docked;
+    in property <bool> selected;
+    callback chosen();
+
+    property <bool> focused: scope.has-focus;
+
+    horizontal-stretch: 1;
+    min-width: 0px;
+    forward-focus: scope;
+    border-radius: Radius.lg;
+    border-width: root.selected ? 2px : 1px;
+    border-color: root.selected ? Theme.text-primary : Theme.border-strong;
+    background: touch.pressed ? Theme.bg-sunken : touch.has-hover ? Theme.bg-hover : Theme.bg-surface;
+    accessible-role: AccessibleRole.radio-button;
+    accessible-label: root.label;
+    accessible-description: root.hint;
+    accessible-checkable: true;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.chosen(); }
+
+    VerticalLayout {
+        padding: Space.s3;
+        spacing: Space.s2;
+        // The miniature screen: an app window behind, the panel in front.
+        Rectangle {
+            height: 84px * SystemLook.text-scale;
+            background: Theme.bg-sunken;
+            border-radius: Radius.md;
+            border-width: 1px;
+            border-color: Theme.border-subtle;
+            Rectangle {
+                x: Space.s2;
+                y: Space.s2;
+                width: parent.width * 0.55;
+                height: parent.height - 2 * Space.s2;
+                background: Theme.bg-app;
+                border-radius: Radius.sm;
+                border-width: 1px;
+                border-color: Theme.border-default;
+            }
+            Rectangle {
+                x: root.docked ? parent.width - self.width - 1px : parent.width * 0.42;
+                y: root.docked ? 1px : parent.height * 0.18;
+                width: parent.width * 0.26;
+                height: root.docked ? parent.height - 2px : parent.height * 0.6;
+                background: Theme.bg-surface;
+                border-radius: root.docked ? Radius.sm : Radius.md;
+                border-width: 2px;
+                border-color: Theme.text-primary;
+            }
+        }
+        HorizontalLayout {
+            spacing: Space.s1;
+            Text {
+                horizontal-stretch: 1;
+                text: root.label;
+                color: Theme.text-primary;
+                font-family: Fonts.sans;
+                font-size: Type.base;
+                font-weight: Type.semibold;
+                wrap: word-wrap;
+                accessible-role: none;
+            }
+            if root.selected: Icon {
+                source: Icons.check;
+                size: Space.s4 * SystemLook.text-scale;
+                tint: Theme.text-primary;
+            }
+        }
+        Text {
+            text: root.hint;
+            color: Theme.text-secondary;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            wrap: word-wrap;
+            accessible-role: none;
+        }
+    }
+
+    // 2px ring, 2px offset (DESIGN.md section 2).
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: root.focused ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.lg + 2px;
+        background: transparent;
+    }
+
+    touch := TouchArea {
+        clicked => { root.chosen(); }
+    }
+
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.chosen();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
 export component OnboardingWindow inherits Window {
     title: @tr("Welcome to Snipdeck");
     background: Theme.bg-app;
@@ -89,8 +203,6 @@ export component OnboardingWindow inherits Window {
     in property <int> step-count: 4;
     // In the order of Settings: show or hide the panel, open the picker, capture, paste next.
     in property <[HotkeySetting]> hotkeys;
-    in-out property <bool> panel-in-taskbar: false;
-    in-out property <bool> panel-hide-on-blur: true;
     in-out property <bool> autostart: false;
     in-out property <bool> close-to-tray: true;
     // Clipboard history (the Recent inbox): on for a new install; the person can turn it off here or in Settings.
@@ -105,8 +217,6 @@ export component OnboardingWindow inherits Window {
     callback hotkey-recorded(index: int, combo: string);
     callback hotkey-cleared(index: int);
     callback dock-edge-chosen(index: int);
-    callback panel-in-taskbar-toggled(on: bool);
-    callback panel-hide-on-blur-toggled(on: bool);
     callback autostart-toggled(on: bool);
     callback close-to-tray-toggled(on: bool);
     callback recent-history-toggled(on: bool);
@@ -183,7 +293,7 @@ export component OnboardingWindow inherits Window {
                 if root.step == 0: VerticalLayout {
                     spacing: Space.s3;
                     Text {
-                        text: @tr("Snipdeck keeps the text you paste again and again, one shortcut away. Three things to know:");
+                        text: @tr("Snipdeck keeps the text you paste again and again, one shortcut away. The basics:");
                         color: Theme.text-secondary;
                         font-family: Fonts.sans;
                         font-size: Type.base;
@@ -204,6 +314,17 @@ export component OnboardingWindow inherits Window {
                         glyph: Icons.keyboard;
                         title: @tr("Shortcuts");
                         description: @tr("Bring up the panel, open the picker, save the clipboard or paste the next item from any app.");
+                    }
+                    Feature {
+                        glyph: Icons.clock;
+                        title: @tr("Also keep what I copy?");
+                        description: @tr("Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings.", root.recent-max-entries, root.recent-max-days);
+                    }
+                    Segmented {
+                        label: @tr("Also keep what I copy?");
+                        options: [@tr("Yes"), @tr("Not now")];
+                        current: root.recent-history ? 0 : 1;
+                        chosen(i) => { root.recent-history-toggled(i == 0); }
                     }
                 }
 
@@ -226,35 +347,31 @@ export component OnboardingWindow inherits Window {
                     }
                 }
 
-                if root.step == 2: FormSection {
-                    title: @tr("Panel dock");
-                    SettingRow {
-                        title: @tr("Dock to");
-                        description: @tr("Fixes the panel against one edge of the screen, on the monitor it is on. Floating lets it sit anywhere.");
-                        SelectField {
-                            width: 200px * SystemLook.text-scale;
-                            label: @tr("Dock to");
-                            options: [@tr("Floating"), @tr("Left edge"), @tr("Right edge"), @tr("Top edge"), @tr("Bottom edge")];
-                            current: root.dock-edge-index;
-                            chosen(i) => { root.dock-edge-chosen(i); }
-                        }
+                if root.step == 2: VerticalLayout {
+                    spacing: Space.s3;
+                    Text {
+                        text: @tr("Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button.");
+                        color: Theme.text-secondary;
+                        font-family: Fonts.sans;
+                        font-size: Type.base;
+                        wrap: word-wrap;
+                        accessible-role: none;
                     }
-                    SettingRow {
-                        title: @tr("Hide the panel when it loses focus");
-                        description: @tr("When the pin is off, the panel hides as soon as you switch to another app. A pinned panel stays.");
-                        Toggle {
-                            a11y-label: @tr("Hide the panel when it loses focus");
-                            checked <=> root.panel-hide-on-blur;
-                            toggled(on) => { root.panel-hide-on-blur-toggled(on); }
+                    HorizontalLayout {
+                        spacing: Space.s3;
+                        PanelChoice {
+                            label: @tr("Floating");
+                            hint: @tr("A small window you can drag anywhere.");
+                            docked: false;
+                            selected: root.dock-edge-index == 0;
+                            chosen => { root.dock-edge-chosen(0); }
                         }
-                    }
-                    SettingRow {
-                        title: @tr("Show the Panel in the taskbar and Alt+Tab");
-                        description: @tr("The Panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the Panel shortcut to bring it back. Pasting still goes to the app you were in before.");
-                        Toggle {
-                            a11y-label: @tr("Show the Panel in the taskbar and Alt+Tab");
-                            checked <=> root.panel-in-taskbar;
-                            toggled(on) => { root.panel-in-taskbar-toggled(on); }
+                        PanelChoice {
+                            label: @tr("Docked to the right");
+                            hint: @tr("Fixed against the right edge of the screen, full height.");
+                            docked: true;
+                            selected: root.dock-edge-index == 2;
+                            chosen => { root.dock-edge-chosen(2); }
                         }
                     }
                 }
@@ -281,19 +398,6 @@ export component OnboardingWindow inherits Window {
                     }
                     if root.notice != "": FieldError {
                         text: root.notice;
-                    }
-                }
-
-                if root.step == 3: FormSection {
-                    title: @tr("Clipboard history");
-                    SettingRow {
-                        title: @tr("Keep a Recent inbox of what you copy");
-                        description: @tr("On unless you turn it off here. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings.", root.recent-max-entries, root.recent-max-days);
-                        Toggle {
-                            a11y-label: @tr("Keep a Recent inbox of what you copy");
-                            checked <=> root.recent-history;
-                            toggled(on) => { root.recent-history-toggled(on); }
-                        }
                     }
                 }
             }

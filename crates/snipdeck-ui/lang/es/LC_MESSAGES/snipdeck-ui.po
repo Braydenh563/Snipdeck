@@ -52,6 +52,9 @@ msgstr "La contraseña maestra está activada. Snipdeck la pide la primera vez q
 msgid "A master password is part of Supporter."
 msgstr "La contraseña maestra forma parte de Colaborador."
 
+msgid "A small window you can drag anywhere."
+msgstr ""
+
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "Una tira con tus fragmentos junto a la aplicación en la que trabajas. Haz clic en uno para pegarlo allí."
 
@@ -123,6 +126,9 @@ msgstr "Se eliminan las {} copias recientes. Esto no se puede deshacer."
 
 msgid "Also forget the encryption key"
 msgstr "Olvidar también la clave de cifrado"
+
+msgid "Also keep what I copy?"
+msgstr ""
 
 msgid "Alt 1 to 9"
 msgstr "Alt 1 a 9"
@@ -336,9 +342,6 @@ msgstr "Clip {}"
 
 msgid "Clipboard clear time"
 msgstr "Tiempo para vaciar el portapapeles"
-
-msgid "Clipboard history"
-msgstr "Historial del portapapeles"
 
 msgid "Close"
 msgstr "Cerrar"
@@ -724,6 +727,9 @@ msgstr "Acoplar al borde derecho"
 msgid "Dock to the top edge"
 msgstr "Acoplar al borde superior"
 
+msgid "Docked to the right"
+msgstr ""
+
 msgid "Done"
 msgstr "Listo"
 
@@ -852,6 +858,9 @@ msgstr "Filtrar mientras escribes"
 
 msgid "Filter by colour label"
 msgstr "Filtrar por etiqueta de color"
+
+msgid "Fixed against the right edge of the screen, full height."
+msgstr ""
 
 msgid "Fixed placeholders filled in when you paste."
 msgstr "Marcadores fijos que se rellenan al pegar."
@@ -985,8 +994,8 @@ msgstr "Cuánto tiempo descansa el puntero sobre la franja antes de que se abra 
 msgid "How long the pointer stays off the open panel before it folds away, from 0 to {} milliseconds."
 msgstr "Cuánto tiempo permanece el puntero fuera del panel abierto antes de que se pliegue, de 0 a {} milisegundos."
 
-msgid "How tall the item rows are in the Main window lists. Compact shows one line per item. The Panel keeps its own row height for now."
-msgstr "Altura de las filas de elementos en las listas de la ventana principal. Compacto muestra una línea por elemento. El Panel mantiene por ahora su propia altura de fila."
+msgid "How tall the item rows are in the Main window lists. Compact shows one line per item."
+msgstr ""
 
 msgid "How the Panel lists your snippets: one per row, two per row as cards, or tight rows. A search shows rows in every layout."
 msgstr ""
@@ -1088,6 +1097,9 @@ msgid "Keep the Panel on top (pin)"
 msgstr "Mantener el panel encima (fijar)"
 
 msgid "Keep the Panel open"
+msgstr ""
+
+msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr ""
 
 msgid "Keyboard shortcuts"
@@ -1412,6 +1424,9 @@ msgstr ""
 msgid "Not included"
 msgstr "No incluido"
 
+msgid "Not now"
+msgstr ""
+
 msgid "Not set"
 msgstr "Sin definir"
 
@@ -1466,14 +1481,8 @@ msgstr "Correcto"
 msgid "Off"
 msgstr "Desactivado"
 
-msgid "Off by default. Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Text only for now. Sensitive items, password managers and the apps you exclude are never kept."
-msgstr "Desactivado por defecto. Guarda el texto que copias, de las últimas {} copias o {} días, lo que ocurra primero, para que puedas encontrarlo o guardarlo en una lista. Por ahora, solo texto. Los fragmentos sensibles, los gestores de contraseñas y las apps que excluyas nunca se guardan."
-
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "«Desactivado» mantiene abierto un panel acoplado. Si no, se pliega en una franja fina, y el atajo del panel también lo abre."
-
-msgid "On unless you turn it off here. It keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can turn it off or clear it any time in Settings."
-msgstr ""
 
 msgid "One hotkey turns copied text into an item."
 msgstr "Un atajo convierte el texto copiado en un elemento."
@@ -1567,9 +1576,6 @@ msgstr "Panel y selector"
 
 msgid "Panel closes when you click away"
 msgstr "El Panel se cierra al hacer clic fuera"
-
-msgid "Panel dock"
-msgstr "Acoplado del panel"
 
 msgid "Panel docked to the bottom edge"
 msgstr "Panel acoplado al borde inferior"
@@ -1667,9 +1673,6 @@ msgstr "Pega en {} · {}"
 msgid "Pastes the next item of the list in order."
 msgstr "Pega el siguiente fragmento de la lista, en orden."
 
-msgid "Pastes the next item of the list in order. Works with Supporter."
-msgstr "Pega en orden el siguiente fragmento de la lista. Funciona con Colaborador."
-
 msgid "Path to the file"
 msgstr "Ruta del archivo"
 
@@ -1684,6 +1687,9 @@ msgstr "Paga lo que quieras desde A$5, sugerido A$8. Pago único, e incluye toda
 
 msgid "Pay what you want from A$5, suggested A$8. One-time, and every 1.x update is included. Free stays fully usable; Supporter pays for convenience and supports the app. Can't afford it? Email me and I'll send a key, no questions."
 msgstr "Paga lo que quieras desde A$5, sugerido A$8. Pago único, e incluye todas las actualizaciones 1.x. Gratis sigue siendo totalmente utilizable; Colaborador paga por comodidad y apoya la aplicación. ¿No puedes permitírtelo? Escríbeme y te envío una clave, sin preguntas."
+
+msgid "Pick how the panel sits. You can change this any time in Settings, along with the other edges, hiding when you switch apps and the taskbar button."
+msgstr ""
 
 msgid "Picker"
 msgstr "Selector"
@@ -1792,6 +1798,9 @@ msgstr "Acciones de entradas recientes"
 
 msgid "Recent history cleared"
 msgstr "Historial reciente borrado"
+
+msgid "Recent keeps the text you copy, on this computer only, for the last {} copies or {} days, whichever comes first. Passwords from password managers and Sensitive items are never kept. You can change this any time in Settings."
+msgstr ""
 
 msgid "Recently used"
 msgstr "Usados recientemente"
@@ -1932,8 +1941,8 @@ msgstr "Guardado {}"
 msgid "Saves every board, list and item as one .snipdeck file in a folder you choose."
 msgstr "Guarda todos los tableros, listas y fragmentos en un archivo .snipdeck dentro de la carpeta que elijas."
 
-msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows. Off until you set a shortcut."
-msgstr "Guarda el texto que haya en el portapapeles al pulsarlo como un fragmento nuevo en la lista que muestra el panel. Desactivado hasta que definas un atajo."
+msgid "Saves the text that is on the clipboard when you press it as a new item in the list the panel shows."
+msgstr ""
 
 msgid "Saving…"
 msgstr "Guardando…"
@@ -2142,8 +2151,8 @@ msgstr "Snipdeck sigue en ejecución. Pulsa {} o haz clic en el icono de la band
 msgid "Snipdeck keeps its own copy of the file."
 msgstr "Snipdeck guarda su propia copia del archivo."
 
-msgid "Snipdeck keeps the text you paste again and again, one shortcut away. Three things to know:"
-msgstr "Snipdeck guarda el texto que pegas una y otra vez, a un atajo de distancia. Tres cosas que conviene saber:"
+msgid "Snipdeck keeps the text you paste again and again, one shortcut away. The basics:"
+msgstr ""
 
 msgid "Snipdeck never checks by itself. This opens the releases page in your browser."
 msgstr "Snipdeck nunca busca por su cuenta. Esto abre la página de versiones en el navegador."
@@ -2312,9 +2321,6 @@ msgstr "El plan Gratis incluye 5 tableros. Colaborador añade tableros ilimitado
 
 msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
 msgstr "El plan Gratis incluye {} tableros. Esto superaría ese límite, así que necesita Colaborador."
-
-msgid "The Panel stays out of the taskbar and Alt+Tab unless you turn this on, so use the tray icon or the Panel shortcut to bring it back. Pasting still goes to the app you were in before."
-msgstr "El Panel queda fuera de la barra de tareas y de Alt+Tab salvo que lo actives; usa el icono de la bandeja o el atajo del Panel para traerlo de vuelta. Pegar sigue yendo a la aplicación en la que estabas antes."
 
 msgid "The Trash is empty"
 msgstr "La papelera está vacía"
@@ -2655,6 +2661,9 @@ msgstr "Windows no permite {} como atajo."
 msgid "Windows follows your Windows text size (Settings > Accessibility > Text size). Pick a size to use that one instead."
 msgstr "Windows sigue el tamaño de texto de Windows (Configuración > Accesibilidad > Tamaño del texto). Elige un tamaño para usar ese en su lugar."
 
+msgid "Yes"
+msgstr ""
+
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "Tendrías {} tableros, y el plan Gratis incluye {}."
 
@@ -2861,9 +2870,6 @@ msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
 msgstr[0] "{n} elemento se moverá también a la papelera. Puedes restaurarlo durante 30 días."
 msgstr[1] "{n} elementos se moverán también a la papelera. Puedes restaurarlos durante 30 días."
-
-msgid "{} (Supporter)"
-msgstr "{} (Colaborador)"
 
 msgid "{} KB"
 msgstr "{} KB"
