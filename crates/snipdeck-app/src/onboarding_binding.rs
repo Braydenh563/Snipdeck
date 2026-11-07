@@ -21,6 +21,7 @@ use crate::{
     binding::{Loggable, Shown, model, redraw_all, register_redraw, to_i32},
     controller::Controller,
     host::ClipboardText,
+    hotkey_health::{self, HotkeyHealth},
     main_binding::{create_window, raise, set_look},
     native_window::fit_when_settled,
     settings::{HotkeyAction, Hotkeys},
@@ -50,6 +51,8 @@ struct HotkeyRow {
     keys: Vec<String>,
     value: String,
     conflict: String,
+    state: i32,
+    alternatives: Vec<String>,
 }
 
 struct TourCore<C, K, T> {
@@ -138,19 +141,48 @@ where
                 .enumerate()
                 .map(|(i, action)| {
                     let value = chord_text(&settings.hotkeys, action);
+                    let conflict = conflicts.get(i).cloned().unwrap_or_default();
+                    let health = controller.hotkey_health(action);
+                    // Paste next is a Supporter feature: on Free it is never registered.
+                    let unregistered = action == HotkeyAction::PasteNext
+                        && controller.tier() != snipdeck_core::Tier::Pro;
+                    let alternatives = if !value.is_empty()
+                        && (!conflict.is_empty() || matches!(health, HotkeyHealth::Failed(_)))
+                    {
+                        hotkey_health::alternatives(action, &settings.hotkeys)
+                    } else {
+                        Vec::new()
+                    };
                     HotkeyRow {
                         keys: key_chips(value),
                         value: value.to_owned(),
-                        conflict: conflicts.get(i).cloned().unwrap_or_default(),
+                        conflict,
+                        state: if unregistered {
+                            0
+                        } else {
+                            crate::settings_binding::health_state(
+                                Some(health),
+                                controller.hotkey_test() == Some(action),
+                            )
+                        },
+                        alternatives,
                     }
                 })
                 .collect()
         };
         if self.shown_hotkeys.borrow().as_ref() != Some(&rows) {
-            window.set_hotkeys(model(rows.iter().map(|h| ui::HotkeySetting {
-                keys: model(h.keys.iter().map(|k| SharedString::from(k.as_str()))),
-                value: h.value.as_str().into(),
-                conflict: h.conflict.as_str().into(),
+            window.set_hotkeys(model(rows.iter().map(|h| {
+                ui::HotkeySetting {
+                    keys: model(h.keys.iter().map(|k| SharedString::from(k.as_str()))),
+                    value: h.value.as_str().into(),
+                    conflict: h.conflict.as_str().into(),
+                    state: h.state,
+                    alternatives: model(
+                        h.alternatives
+                            .iter()
+                            .map(|c| SharedString::from(c.as_str())),
+                    ),
+                }
             })));
             *self.shown_hotkeys.borrow_mut() = Some(rows);
         }
@@ -220,6 +252,19 @@ where
         self.act(|ctl| ctl.update_settings(|s| s.hotkeys = next));
     }
 
+    fn hotkey_test(self: &Rc<Self>, index: usize) {
+        let Some(action) = HotkeyAction::ALL.get(index).copied() else {
+            return;
+        };
+        self.act(|ctl| {
+            if ctl.hotkey_test() == Some(action) {
+                ctl.stop_hotkey_test();
+            } else {
+                ctl.start_hotkey_test(action);
+            }
+        });
+    }
+
     fn hotkey_cleared(self: &Rc<Self>, index: usize) {
         let Some(action) = HotkeyAction::ALL.get(index).copied() else {
             return;
@@ -276,12 +321,18 @@ where
     }
 
     fn next(self: &Rc<Self>) {
-        self.act(Controller::tour_next);
+        self.act(|ctl| {
+            ctl.stop_hotkey_test();
+            ctl.tour_next();
+        });
         self.hide_if_over();
     }
 
     fn skip(self: &Rc<Self>) {
-        self.act(Controller::tour_skip);
+        self.act(|ctl| {
+            ctl.stop_hotkey_test();
+            ctl.tour_skip();
+        });
         self.hide_if_over();
     }
 }
@@ -332,6 +383,8 @@ where
             .hotkey_recorded(crate::binding::index(i), &combo));
         wire!(on_hotkey_cleared, |core, i| core
             .hotkey_cleared(crate::binding::index(i)));
+        wire!(on_hotkey_test_requested, |core, i| core
+            .hotkey_test(crate::binding::index(i)));
         wire!(on_dock_edge_chosen, |core, i| core
             .act(|ctl| ctl.dock_to(dock_edge_of(i))));
         wire!(on_autostart_toggled, |core, on| core.autostart_toggled(on));
@@ -339,7 +392,10 @@ where
             .act(|ctl| ctl.update_settings(|s| s.recent_history = on)));
         wire!(on_close_to_tray_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.close_to_tray = on)));
-        wire!(on_back_requested, |core| core.act(Controller::tour_back));
+        wire!(on_back_requested, |core| core.act(|ctl| {
+            ctl.stop_hotkey_test();
+            ctl.tour_back();
+        }));
         wire!(on_next_requested, |core| core.next());
         wire!(on_skip_requested, |core| core.skip());
         {

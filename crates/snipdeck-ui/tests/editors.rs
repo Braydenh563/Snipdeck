@@ -388,6 +388,52 @@ fn settings_page_conflict_empty_and_narrow() {
     assert_golden("settings-conflict-narrow-light", &render(&h));
 }
 
+/// Hotkey health: one shortcut waiting for the "press it now" test, one heard, one that failed with
+/// its one-click alternatives (Settings and the welcome tour's shortcuts step).
+fn health_hotkeys() -> Vec<snipdeck_ui::HotkeySetting> {
+    let mut hotkeys = fixture::hotkeys();
+    hotkeys[0].state = 4;
+    hotkeys[1].state = 5;
+    hotkeys[2].state = 2;
+    hotkeys[2].conflict = "Another program already uses Ctrl+Shift+2.".into();
+    hotkeys[2].alternatives = ModelRc::new(VecModel::from(vec![
+        "Ctrl+Shift+G".into(),
+        "Ctrl+Shift+H".into(),
+        "Ctrl+Shift+F9".into(),
+    ]));
+    hotkeys
+}
+
+#[test]
+fn hotkey_health_in_settings_and_the_welcome_tour() {
+    let h = Harness::new(SettingsPage::new, SETTINGS.0, SETTINGS.1);
+    fixture::settings(&h.component);
+    h.component
+        .set_hotkeys(ModelRc::new(VecModel::from(health_hotkeys())));
+    assert_golden("settings-hotkey-health-light", &render(&h));
+    let h = Harness::new(OnboardingWindow::new, ONBOARDING.0, ONBOARDING.1);
+    fixture::onboarding(&h.component, 1);
+    h.component
+        .set_hotkeys(ModelRc::new(VecModel::from(health_hotkeys())));
+    assert_golden("onboarding-shortcuts-health-light", &render(&h));
+}
+
+#[test]
+fn settings_search_filters_rows_and_hides_empty_sections() {
+    use slint::Global;
+    for (query, name) in [
+        ("tray", "settings-search-tray-light"),
+        ("zzzz", "settings-search-none-light"),
+    ] {
+        let h = Harness::new(SettingsPage::new, SETTINGS.0, SETTINGS.1);
+        fixture::settings(&h.component);
+        snipdeck_ui::SettingsFilter::get(&h.component)
+            .on_matches(|text, query| text.to_lowercase().contains(&query.to_lowercase()));
+        snipdeck_ui::SettingsFilter::get(&h.component).set_query(query.into());
+        assert_golden(name, &render(&h));
+    }
+}
+
 #[test]
 fn settings_page_recording_a_shortcut() {
     let h = Harness::new(SettingsPage::new, SETTINGS.0, SETTINGS.1);

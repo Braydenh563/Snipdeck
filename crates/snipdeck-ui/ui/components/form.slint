@@ -53,6 +53,11 @@ export component FormScroll inherits Rectangle {
     out property <length> viewport-width: flick.width;
     property <length> gutter: Space.s2 + Space.s1;
 
+    // Puts the point `y` (relative to the top of the content) at the top of the visible area.
+    public function scroll-to(y: length) {
+        flick.content-y = max(root.height - flick.content-height, min(0px, -y));
+    }
+
     public function reveal(top: length, h: length) {
         if (top < 0px) {
             flick.content-y = min(0px, flick.content-y - top);
@@ -77,27 +82,68 @@ export component FormScroll inherits Rectangle {
 }
 
 // A group of fields under a heading (settings page).
+// What the Settings search field holds. The host answers `matches` (case-insensitive "contains"; Slint has no string
+// search). Rows and sections that do not match hide themselves; with an empty query everything shows. `jump-*` is how
+// the page's section links reach a section: the host or page sets `jump-target`, then raises `jump-seq`.
+export global SettingsFilter {
+    in-out property <string> query;
+    in-out property <int> jump-target;
+    in-out property <int> jump-seq;
+    pure callback matches(text: string, query: string) -> bool;
+    pure public function shows(text: string) -> bool {
+        return root.query == "" || root.matches(text, root.query);
+    }
+}
+
 export component FormSection inherits VerticalLayout {
     in property <string> title;
+    // The titles of this section's rows, for the Settings search (the section hides when none matches). Empty on pages
+    // that have no search.
+    in property <string> search-text;
+    // The position in the page's section links; -1 = not a link target.
+    in property <int> index: -1;
+    // Space above the section while it shows (the page's spacing between sections).
+    in property <length> gap: 0px;
+    // The section was asked for by a link; `y` is its top in window coordinates.
+    callback located(y: length);
 
-    spacing: Space.s1;
+    property <bool> shown: root.search-text == "" || SettingsFilter.shows(root.search-text);
+    property <int> jump: SettingsFilter.jump-seq;
+    changed jump => {
+        if (root.index >= 0 && SettingsFilter.jump-target == root.index && root.shown) {
+            root.located(root.absolute-position.y + root.gap);
+        }
+    }
+
+    visible: root.shown;
+    spacing: 0px;
+    padding-top: root.shown ? root.gap : 0px;
     alignment: start;
     accessible-role: groupbox;
     accessible-label: root.title;
 
-    Text {
-        text: root.title;
-        color: Theme.text-primary;
-        font-family: Fonts.sans;
-        font-size: Type.md;
-        font-weight: Type.semibold;
-        accessible-role: none;
+    if root.shown: VerticalLayout {
+        spacing: Space.s1;
+        padding-bottom: Space.s1;
+        Text {
+            text: root.title;
+            color: Theme.text-primary;
+            font-family: Fonts.sans;
+            font-size: Type.md;
+            font-weight: Type.semibold;
+            accessible-role: none;
+        }
+        Rectangle {
+            height: 1px;
+            background: Theme.border-subtle;
+        }
     }
-    Rectangle {
-        height: 1px;
-        background: Theme.border-subtle;
+    VerticalLayout {
+        visible: root.shown;
+        max-height: root.shown ? 100000px : 0px;
+        spacing: 0px;
+        @children
     }
-    @children
 }
 
 // A setting: title and explanation on the left, the control (the children) on the right, a hairline below.
@@ -107,15 +153,19 @@ export component SettingRow inherits Rectangle {
     // Not empty = a Free plan cannot use this yet: the lock badge with this text (the word "Supporter") shows by the title.
     in property <string> locked-text;
 
+    // The Settings search hides a row whose title does not hold the query (a hidden row takes no space).
+    property <bool> shown: SettingsFilter.shows(root.title);
+    visible: root.shown;
+    max-height: root.shown ? 100000px : 0px;
     // A Rectangle does not take its height from the layout inside it, so say it: wrapped text makes the row taller.
-    min-height: max(Space.hit * SystemLook.text-scale + 2 * Space.s2, row.preferred-height);
+    min-height: root.shown ? max(Space.hit * SystemLook.text-scale + 2 * Space.s2 + Space.s1, row.preferred-height) : 0px;
     accessible-role: groupbox;
     accessible-label: root.title;
     accessible-description: root.description;
 
     row := HorizontalLayout {
         padding-top: Space.s2;
-        padding-bottom: Space.s2;
+        padding-bottom: Space.s2 + Space.s1;
         spacing: Space.s4;
         VerticalLayout {
             horizontal-stretch: 1;
@@ -156,7 +206,7 @@ export component SettingRow inherits Rectangle {
         }
     }
     Rectangle {
-        y: parent.height - 1px;
+        y: parent.height - 1px - Space.s1;
         height: 1px;
         background: Theme.border-subtle;
     }

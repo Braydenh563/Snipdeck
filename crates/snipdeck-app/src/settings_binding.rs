@@ -37,6 +37,7 @@ use crate::{
         ToastPhase, ToastView,
     },
     host::{self, ClipboardText, HotkeyBackend, HotkeyFailure, HotkeyProblem},
+    hotkey_health::{self, HotkeyHealth},
     main_binding::{create_window, raise, set_look},
     native_window::fit_when_settled,
     settings::{
@@ -570,6 +571,10 @@ struct HotkeyRow {
     conflict: String,
     /// Shown when `conflict` is empty: why the chord in force does nothing.
     note: Option<RowNote>,
+    /// What the health line says (see `HotkeySetting.state` in the page).
+    state: i32,
+    /// Chords offered one click away while the shortcut fails or a new one was refused.
+    alternatives: Vec<String>,
 }
 
 /// Why a stored shortcut does nothing, shown on its Settings row.
@@ -815,6 +820,26 @@ fn language_index(tag: &str) -> i32 {
         .map_or(0, |i| to_i32(i + 1))
 }
 
+/// Whether `text` holds the Settings search `query`: case-insensitive, every word of the query must appear.
+pub(crate) fn settings_match(text: &str, query: &str) -> bool {
+    let text = text.to_lowercase();
+    query
+        .split_whitespace()
+        .all(|word| text.contains(&word.to_lowercase()))
+}
+
+/// The health line's state number (see `HotkeySetting.state` in the page).
+pub(crate) fn health_state(health: Option<HotkeyHealth>, testing: bool) -> i32 {
+    match health {
+        None | Some(HotkeyHealth::Off) => 0,
+        Some(HotkeyHealth::Paused) => 1,
+        Some(HotkeyHealth::Failed(_)) => 2,
+        Some(HotkeyHealth::Ready) if testing => 4,
+        Some(HotkeyHealth::Ready) => 3,
+        Some(HotkeyHealth::Heard) => 5,
+    }
+}
+
 fn hotkey_rows<C, K, T>(
     controller: &Controller<Store, C, K, T>,
     state: &PageState,
@@ -847,11 +872,27 @@ where
                     .hotkey_problem(action)
                     .map(|p| RowNote::Failed(p.failure))
             };
+            let conflict = state.hotkey_conflicts[i].clone();
+            let health = if matches!(note, Some(RowNote::SupporterOnly)) {
+                // Never registered on the Free plan: there is nothing to test.
+                None
+            } else {
+                Some(controller.hotkey_health(action))
+            };
+            let alternatives = if !value.is_empty()
+                && (!conflict.is_empty() || matches!(health, Some(HotkeyHealth::Failed(_))))
+            {
+                hotkey_health::alternatives(action, &settings.hotkeys)
+            } else {
+                Vec::new()
+            };
             HotkeyRow {
                 keys: key_chips(value),
                 value: value.clone(),
-                conflict: state.hotkey_conflicts[i].clone(),
+                conflict,
                 note,
+                state: health_state(health, controller.hotkey_test() == Some(action)),
+                alternatives,
             }
         })
         .collect()
@@ -1108,6 +1149,20 @@ where
         self.act(|ctl| {
             ctl.clear_hotkey_problem(action);
             ctl.update_settings(|s| s.hotkeys = next);
+        });
+    }
+
+    /// "Test": the next press of the shortcut is only listened for; a second click cancels.
+    fn hotkey_test(self: &Rc<Self>, index: usize) {
+        let Some(action) = HotkeyAction::ALL.get(index).copied() else {
+            return;
+        };
+        self.act(|ctl| {
+            if ctl.hotkey_test() == Some(action) {
+                ctl.stop_hotkey_test();
+            } else {
+                ctl.start_hotkey_test(action);
+            }
         });
     }
 
@@ -1590,6 +1645,8 @@ where
         window.set_languages(model(
             std::iter::once(follow).chain(LANGUAGE_NAMES.iter().map(|n| SharedString::from(*n))),
         ));
+        // The search field: Slint cannot test "contains", so the page asks here.
+        ui::SettingsFilter::get(window).on_matches(|text, query| settings_match(&text, &query));
         window.set_import_history_available(core.host.clipboard_history_supported());
         core.refresh_backups();
         core.sync();
@@ -1607,6 +1664,8 @@ where
             .hotkey_recorded(crate::binding::index(i), &combo));
         wire!(on_hotkey_cleared, |core, i| core
             .hotkey_cleared(crate::binding::index(i)));
+        wire!(on_hotkey_test_requested, |core, i| core
+            .hotkey_test(crate::binding::index(i)));
         wire!(on_theme_chosen, |core, i| core.act(|ctl| ctl.choose_theme(
             match i {
                 1 => Theme::Light,
@@ -1783,7 +1842,10 @@ where
             .erase(&typed, forget));
         {
             let weak = window.as_weak();
+            let core = Rc::clone(&core);
             window.on_close_requested(move || {
+                // A test that was still waiting for its press ends with the page.
+                core.act(Controller::stop_hotkey_test);
                 if let Some(window) = weak.upgrade() {
                     let _ = window.hide();
                 }
@@ -1838,14 +1900,22 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
         window.set_accent_index(view.accent_index);
     }
     if differs(&|p| p.hotkeys == view.hotkeys) {
-        window.set_hotkeys(model(view.hotkeys.iter().map(|h| ui::HotkeySetting {
-            keys: model(h.keys.iter().map(|k| SharedString::from(k.as_str()))),
-            value: h.value.as_str().into(),
-            conflict: if h.conflict.is_empty() {
-                note_text(window, h.note, &h.value).into()
-            } else {
-                h.conflict.as_str().into()
-            },
+        window.set_hotkeys(model(view.hotkeys.iter().map(|h| {
+            ui::HotkeySetting {
+                keys: model(h.keys.iter().map(|k| SharedString::from(k.as_str()))),
+                value: h.value.as_str().into(),
+                conflict: if h.conflict.is_empty() {
+                    note_text(window, h.note, &h.value).into()
+                } else {
+                    h.conflict.as_str().into()
+                },
+                state: h.state,
+                alternatives: model(
+                    h.alternatives
+                        .iter()
+                        .map(|c| SharedString::from(c.as_str())),
+                ),
+            }
         })));
     }
     if differs(&|p| p.theme_index == view.theme_index) {
@@ -2180,6 +2250,14 @@ mod tests {
         ] {
             assert!(!erase_confirmed(typed), "{typed:?}");
         }
+    }
+
+    #[test]
+    fn the_settings_search_ignores_case_and_wants_every_word() {
+        assert!(settings_match("Keep running in the tray", "TRAY"));
+        assert!(settings_match("Panel width", "width panel"));
+        assert!(settings_match("Theme", "  "));
+        assert!(!settings_match("Theme", "panel"));
     }
 
     #[test]

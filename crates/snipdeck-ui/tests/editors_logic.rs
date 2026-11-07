@@ -12,10 +12,10 @@
 use std::{cell::RefCell, rc::Rc};
 
 use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery, ElementRoot};
-use slint::{ComponentHandle, ModelRc, VecModel, platform::Key};
+use slint::{ComponentHandle, Global, ModelRc, VecModel, platform::Key};
 use snipdeck_ui::{
     BoardEditor, FormControlsGallery, HelpWindow, ItemEditor, ListEditor, OnboardingWindow,
-    SettingsPage, TagManager,
+    SettingsFilter, SettingsPage, TagManager,
 };
 
 #[path = "support/mod.rs"]
@@ -183,6 +183,9 @@ fn list_editor() -> (ListEditor, Log) {
 fn settings() -> (SettingsPage, Log) {
     let ui = SettingsPage::new().expect("settings");
     fixture::settings(&ui);
+    // The host's "contains"; Slint has none.
+    SettingsFilter::get(&ui)
+        .on_matches(|text, query| text.to_lowercase().contains(&query.to_lowercase()));
     // Tall enough that the whole page (with the plan table in Licence) is on screen: the testing backend only lists what is visible.
     ui.window().set_size(slint::LogicalSize::new(640.0, 6000.0));
     ui.show().expect("show");
@@ -196,6 +199,7 @@ fn settings() -> (SettingsPage, Log) {
     }
     hook!(on_hotkey_recorded, |i, c| format!("hk:{i}:{c}"));
     hook!(on_hotkey_cleared, |i| format!("hk-clear:{i}"));
+    hook!(on_hotkey_test_requested, |i| format!("hk-test:{i}"));
     hook!(on_theme_chosen, |i| format!("theme:{i}"));
     hook!(on_language_chosen, |i| format!("lang:{i}"));
     hook!(on_autostart_toggled, |on| format!("autostart:{on}"));
@@ -1053,6 +1057,96 @@ ui_tests! {
         assert_eq!(take(&log), ["hk-clear:1"]);
         // A shortcut that is not set says so.
         assert_eq!(find(&ui, names[3], AccessibleRole::Button).accessible_value().as_deref(), Some(""));
+    }
+
+    fn each_set_shortcut_has_a_test_button_and_a_failed_one_offers_its_alternatives() {
+        let (ui, log) = settings();
+        // Set shortcuts (three of four in the fixture) show "Test"; the empty one shows no health line.
+        find(&ui, "Test Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["hk-test:1"]);
+        assert!(missing(&ui, "Test Paste the next item", AccessibleRole::Button));
+
+        // Waiting for the press: the button becomes Cancel and the line says so.
+        let mut hotkeys = fixture::hotkeys();
+        hotkeys[1].state = 4;
+        // A failed chord: no Test button, the alternatives are one click each and go the recording way.
+        hotkeys[2].state = 2;
+        hotkeys[2].conflict = "Another program already uses Ctrl+Shift+2.".into();
+        hotkeys[2].alternatives = ModelRc::new(VecModel::from(vec!["Ctrl+Shift+G".into(), "Ctrl+Shift+H".into()]));
+        ui.set_hotkeys(ModelRc::new(VecModel::from(hotkeys)));
+        settle();
+        find(&ui, "Cancel the test of Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["hk-test:1"]);
+        assert!(missing(&ui, "Test Save the clipboard as an item", AccessibleRole::Button));
+        find(&ui, "Use Ctrl+Shift+H for Save the clipboard as an item", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["hk:2:Ctrl+Shift+H"]);
+    }
+
+    fn the_settings_search_hides_rows_and_sections_and_says_when_nothing_matches() {
+        let (ui, _log) = settings();
+        let filter = SettingsFilter::get(&ui);
+        assert!(!missing(&ui, "Theme", AccessibleRole::Groupbox));
+        assert!(!missing(&ui, "Appearance", AccessibleRole::Groupbox));
+        assert!(missing(&ui, "No settings match", AccessibleRole::Text));
+
+        filter.set_query("tray".into());
+        settle();
+        assert!(!missing(&ui, "Keep running in the tray when the window closes", AccessibleRole::Groupbox));
+        assert!(!missing(&ui, "Privacy", AccessibleRole::Groupbox) || !missing(&ui, "Opening the Panel", AccessibleRole::Groupbox));
+        assert!(missing(&ui, "Theme", AccessibleRole::Groupbox), "a row that does not match hides");
+        assert!(missing(&ui, "Appearance", AccessibleRole::Groupbox), "a section with no match hides its header");
+        assert!(missing(&ui, "Shortcuts", AccessibleRole::Groupbox));
+
+        filter.set_query("zzzz".into());
+        settle();
+        assert!(!missing(&ui, "No settings match", AccessibleRole::Text));
+
+        filter.set_query(String::new().into());
+        settle();
+        assert!(!missing(&ui, "Theme", AccessibleRole::Groupbox));
+    }
+
+    fn every_settings_row_is_found_by_its_own_title() {
+        let (ui, _log) = settings();
+        let sections = [
+            "Shortcuts", "Appearance", "Panel layout", "Opening the Panel", "Privacy", "Programs",
+            "Backups and your data", "Licence",
+        ];
+        // The Licence section's plan table is a comparison, not settings: its rows are not searched.
+        let plan_table = [
+            "Free plan",
+            "Free and Supporter compared",
+            "Boards",
+            "Lists and items",
+            "Panel and Picker",
+            "Save from the clipboard",
+            "Dock to a screen edge",
+            "Templates with date, time and cursor",
+            "Sensitive items, masked",
+            "Encryption on disk",
+            "Backups, export, light and dark, 7 languages",
+            "Templates that ask",
+            "Paste stack",
+        ];
+        let titles: Vec<String> = by_role(&ui, AccessibleRole::Groupbox)
+            .iter()
+            .filter_map(|e| e.accessible_label().map(|l| l.to_string()))
+            .filter(|t| !sections.contains(&t.as_str()) && !plan_table.contains(&t.as_str()))
+            .collect();
+        assert!(titles.len() > 30, "{titles:?}");
+        let filter = SettingsFilter::get(&ui);
+        let mut hidden = Vec::new();
+        for title in titles {
+            filter.set_query(title.as_str().into());
+            settle();
+            if missing(&ui, &title, AccessibleRole::Groupbox) {
+                hidden.push(title);
+            }
+        }
+        assert!(
+            hidden.is_empty(),
+            "the search hides {hidden:?} (a section's search text is out of step with its rows)"
+        );
     }
 
     fn escape_ends_a_recording_first_and_then_closes_the_page() {

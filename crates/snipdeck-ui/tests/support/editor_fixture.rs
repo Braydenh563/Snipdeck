@@ -86,6 +86,8 @@ pub fn hotkeys() -> Vec<HotkeySetting> {
         keys: strings(keys),
         value: value.into(),
         conflict: SharedString::new(),
+        state: if value.is_empty() { 0 } else { 3 },
+        alternatives: strings(&[]),
     })
     .to_vec()
 }
