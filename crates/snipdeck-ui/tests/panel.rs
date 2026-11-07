@@ -114,6 +114,48 @@ fn panel_no_target_light() {
     assert_golden("panel-no-target-light", &render(&h));
 }
 
+/// 225% at 360 wide (Panel v2 leftovers): the pinned chips show a readable title (their glyph goes when it would
+/// leave one letter), and the tab label, the pinned chips and the row numbers all start at x16.
+#[test]
+fn at_225_percent_the_chips_read_and_the_content_starts_at_x16() {
+    let h = panel((360, 760), false);
+    h.component.global::<SystemLook<'_>>().set_text_scale(2.25);
+    h.component.set_selected_index(1);
+    let f = render(&h);
+    let ink = |x0: u32, x1: u32, y0: u32, y1: u32| -> Vec<u32> {
+        (x0..x1)
+            .filter(|&x| {
+                (y0..y1).any(|y| {
+                    let p = f.pixel(x, y);
+                    u32::from(p[0]) + u32::from(p[1]) + u32::from(p[2]) < 330
+                })
+            })
+            .collect()
+    };
+    // First chip: x8..125, y118..152 (the strip sits under the tab row).
+    let chip = ink(8, 125, 118, 152);
+    assert!(
+        chip.len() >= 52,
+        "the chip shows a word, not a letter: {} ink columns",
+        chip.len()
+    );
+    assert!(
+        chip.first().is_some_and(|&x| (16..=20).contains(&x)),
+        "chip title starts at x16: {chip:?}"
+    );
+    // Row 1's number (digit ink starts within 4px of the 16px cell) and the tab label (the first tab).
+    let number = ink(0, 40, 185, 225);
+    assert!(
+        number.first().is_some_and(|&x| (16..=20).contains(&x)),
+        "number gutter starts at x16: {number:?}"
+    );
+    let tab = ink(0, 60, 75, 105);
+    assert!(
+        tab.first().is_some_and(|&x| (16..=19).contains(&x)),
+        "tab label starts at x16: {tab:?}"
+    );
+}
+
 #[test]
 fn panel_at_225_percent_text_size() {
     let h = panel((360, 760), false);

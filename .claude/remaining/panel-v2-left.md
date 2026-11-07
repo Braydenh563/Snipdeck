@@ -6,6 +6,7 @@ Build: CARGO_TARGET_DIR=/tmp/target-panel CARGO_BUILD_JOBS=1 CARGO_PROFILE_DEV_D
 - 5 panel-* goldens: 0 differing pixels allowed
 - 6 flaky test: not reproducible (about 300 runs at 16/64 threads, multi-filter); no real clock or random order found
 - 2 focus order: the window FocusScope was the second ring-less stop; it now hands focus on; test cycle == 11
+- 1 225%: chips show a word (glyph capped at 1.25 and dropped when narrow); number gutter and tab label already start at x16 (measured, test added); tabs keep spec overflow scrolling (chevron), not changed
 ## Next
-- 1 225% chips and tabs, number gutter x16
+- clippy both toolchains, final report
 ## Blocked

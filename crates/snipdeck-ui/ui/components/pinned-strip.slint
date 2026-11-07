@@ -20,8 +20,13 @@ component PinnedChip inherits Rectangle {
     callback copy();
     callback context-menu-requested(length, length);
 
-    property <length> icon-size: Space.s4 * SystemLook.text-scale;
-    property <length> natural-w: Space.s2 + root.icon-size + Space.s1 + Space.s0-5 + m-title.preferred-width + Space.s2;
+    // The glyph grows to 1.25 at most (as the header's do) and goes when the chip is too narrow to keep three and a half em of
+    // title beside it: at 225% two chips share ~110px, and a glyph plus a one-letter title reads worse than the title.
+    property <length> glyph-size: Space.s4 * min(SystemLook.text-scale, 1.25);
+    property <length> glyph-room: Space.s2 + root.glyph-size + Space.s1 + Space.s0-5;
+    property <bool> show-glyph: root.max-w >= root.glyph-room + Type.sm * 3.5 + Space.s2;
+    property <length> text-x: root.show-glyph ? root.glyph-room : Space.s2;
+    property <length> natural-w: root.text-x + m-title.preferred-width + Space.s2;
     property <image> glyph: root.kind == ItemKind.text ? Icons.text-t
         : root.kind == ItemKind.template ? Icons.brackets-curly
         : root.kind == ItemKind.code ? Icons.code
@@ -51,15 +56,15 @@ component PinnedChip inherits Rectangle {
         font-size: Type.sm;
     }
 
-    Icon {
+    if root.show-glyph: Icon {
         source: root.glyph;
         tint: Theme.text-secondary;
-        size: root.icon-size;
+        size: root.glyph-size;
         x: Space.s2;
         y: (parent.height - self.height) / 2;
     }
     Text {
-        x: Space.s2 + root.icon-size + Space.s1 + Space.s0-5;
+        x: root.text-x;
         width: max(0px, parent.width - self.x - Space.s2);
         height: parent.height;
         text: root.title;
