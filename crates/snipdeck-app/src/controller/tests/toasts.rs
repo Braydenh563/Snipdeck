@@ -559,3 +559,77 @@ fn docking_and_floating_again_say_which() {
     w.ctl.dock_to(None);
     assert_eq!(shown(&w), Some(ToastMessage::DockSet(None)));
 }
+
+// ---- Hotkey health: "press it now" -------------------------------------------------------
+
+#[test]
+fn a_hotkey_is_ready_until_the_test_hears_it_and_the_press_does_nothing_else() {
+    use crate::hotkey_health::HotkeyHealth;
+    let mut w = world();
+    assert_eq!(
+        w.ctl.hotkey_health(HotkeyAction::TogglePanel),
+        HotkeyHealth::Ready
+    );
+    assert_eq!(
+        w.ctl.hotkey_health(HotkeyAction::Capture),
+        HotkeyHealth::Off,
+        "capture has no chord until the user sets one"
+    );
+    assert!(w.ctl.visible());
+    w.ctl.start_hotkey_test(HotkeyAction::TogglePanel);
+    assert_eq!(w.ctl.hotkey_test(), Some(HotkeyAction::TogglePanel));
+    // Another shortcut is not the one asked for: it works as usual.
+    assert!(w.ctl.on_hotkey(HotkeyAction::Picker).is_empty());
+    assert_eq!(
+        w.ctl.hotkey_health(HotkeyAction::TogglePanel),
+        HotkeyHealth::Ready
+    );
+    // The asked-for one is heard and swallowed: the Panel stays.
+    assert!(w.ctl.on_hotkey(HotkeyAction::TogglePanel).is_empty());
+    assert!(w.ctl.visible(), "the test press did not hide the Panel");
+    assert_eq!(w.ctl.hotkey_test(), None);
+    assert_eq!(
+        w.ctl.hotkey_health(HotkeyAction::TogglePanel),
+        HotkeyHealth::Heard
+    );
+    // Back to normal afterwards.
+    assert_eq!(
+        w.ctl.on_hotkey(HotkeyAction::TogglePanel),
+        [Effect::HidePanel]
+    );
+    // Testing again forgets the result.
+    w.ctl.start_hotkey_test(HotkeyAction::TogglePanel);
+    assert_eq!(
+        w.ctl.hotkey_health(HotkeyAction::TogglePanel),
+        HotkeyHealth::Ready
+    );
+    w.ctl.stop_hotkey_test();
+    assert_eq!(w.ctl.hotkey_test(), None);
+}
+
+#[test]
+fn a_failed_or_paused_hotkey_cannot_be_heard() {
+    use crate::{
+        host::{HotkeyFailure, HotkeyProblem},
+        hotkey_health::HotkeyHealth,
+    };
+    let mut w = world();
+    w.ctl.report_hotkey_problems(&[HotkeyProblem {
+        action: HotkeyAction::Picker,
+        chord: "Ctrl+Shift+Space".into(),
+        failure: HotkeyFailure::InUse,
+    }]);
+    assert_eq!(
+        w.ctl.hotkey_health(HotkeyAction::Picker),
+        HotkeyHealth::Failed(HotkeyFailure::InUse)
+    );
+    w.ctl.on_tray(TrayEvent::HotkeysPaused(true));
+    assert_eq!(
+        w.ctl.hotkey_health(HotkeyAction::TogglePanel),
+        HotkeyHealth::Paused
+    );
+    // A press queued before the pause is ignored, even during a test.
+    w.ctl.start_hotkey_test(HotkeyAction::TogglePanel);
+    assert!(w.ctl.on_hotkey(HotkeyAction::TogglePanel).is_empty());
+    assert_eq!(w.ctl.hotkey_test(), Some(HotkeyAction::TogglePanel));
+}

@@ -307,6 +307,11 @@ struct Session {
     open_anchor: Option<crate::placement::Anchor>,
     /// "Pause hotkeys" is on.
     hotkeys_paused: bool,
+    /// The shortcut the user was asked to press ("press it now"); its next press is swallowed and
+    /// counted as heard instead of doing its job.
+    hotkey_test: Option<HotkeyAction>,
+    /// Which shortcuts were heard during a test, in the order of [`HotkeyAction::ALL`].
+    hotkeys_heard: [bool; 4],
     /// "Pause history" is on: the Recent inbox collects nothing until Snipdeck restarts.
     history_paused: bool,
     /// The Panel's clock tab is the one selected.
@@ -581,6 +586,50 @@ where
         self.hotkey_problems.retain(|p| p.action != action);
     }
 
+    /// What the shortcut for `action` is doing: unset, paused, failed to register, registered, or
+    /// heard during the "press it now" test.
+    #[must_use]
+    pub fn hotkey_health(&self, action: HotkeyAction) -> crate::hotkey_health::HotkeyHealth {
+        use crate::hotkey_health::{HotkeyHealth, chord_text};
+        if chord_text(&self.settings.hotkeys, action).is_empty() {
+            HotkeyHealth::Off
+        } else if self.session.hotkeys_paused {
+            HotkeyHealth::Paused
+        } else if let Some(problem) = self.hotkey_problem(action) {
+            HotkeyHealth::Failed(problem.failure)
+        } else if self.session.hotkeys_heard[Self::heard_slot(action)] {
+            HotkeyHealth::Heard
+        } else {
+            HotkeyHealth::Ready
+        }
+    }
+
+    fn heard_slot(action: HotkeyAction) -> usize {
+        HotkeyAction::ALL
+            .iter()
+            .position(|a| *a == action)
+            .unwrap_or(0)
+    }
+
+    /// "Press it now": the next press of `action`'s shortcut is counted as heard instead of doing
+    /// its job (so testing the Panel shortcut does not hide the Panel, nor Capture save the
+    /// clipboard). Starting a test forgets an earlier result for it.
+    pub fn start_hotkey_test(&mut self, action: HotkeyAction) {
+        self.session.hotkeys_heard[Self::heard_slot(action)] = false;
+        self.session.hotkey_test = Some(action);
+    }
+
+    /// Ends a test without a press (the step closed, or another test began elsewhere).
+    pub fn stop_hotkey_test(&mut self) {
+        self.session.hotkey_test = None;
+    }
+
+    /// The shortcut being tested, if any.
+    #[must_use]
+    pub fn hotkey_test(&self) -> Option<HotkeyAction> {
+        self.session.hotkey_test
+    }
+
     /// Whether "Pause hotkeys" is on.
     #[must_use]
     pub fn hotkeys_paused(&self) -> bool {
@@ -623,6 +672,12 @@ where
     pub fn on_hotkey(&mut self, action: HotkeyAction) -> Vec<Effect> {
         if self.session.hotkeys_paused {
             // A press that was already queued when the hotkeys were switched off.
+            return Vec::new();
+        }
+        // "Press it now": the press proves the chord arrives, and does nothing else.
+        if self.session.hotkey_test == Some(action) {
+            self.session.hotkey_test = None;
+            self.session.hotkeys_heard[Self::heard_slot(action)] = true;
             return Vec::new();
         }
         match action {
