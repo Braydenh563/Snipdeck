@@ -34,3 +34,7 @@ date | item | type | rung | rework | note
 2026-11-07 | Panel v2 leftovers (Paste stack row, focus order, 225% chips, copy glyph, zero-pixel goldens) | ui | sonnet | 1 | 
 2026-11-07 | Shared-look spec addendum | design | opus | 0 | 
 2026-11-07 | Reviewer on Symbols slice 4 | review | opus | 0 | 
+2026-11-07 | UX audit quick wins 2,3,5,9,11,15,18 | ui | sonnet | 1 | 
+2026-11-07 | v1.1 importers backend | feature | sonnet | 0 | 
+2026-11-07 | Symbols slice 5 Panel tab + save-as review fixes | ui | sonnet | 2 | 
+2026-11-07 | Translations of 110 new strings x6 | docs | sonnet | 0 | 

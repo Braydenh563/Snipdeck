@@ -17,7 +17,7 @@ started: 2026-11-07 (resumed)
 - [ ] Panel v2 build: fix audit 2 (docs/reviews/panel-v2-ux-audit-2.md items 1-7, 9; item 8 goes to the shared-look slices), then tick
 - [x] UX gap audit (Opus): docs/reviews/ux-gap-audit.md (d068c9d)
 - [x] Windows quick check: a ~10-minute wizard mode that runs every automatable step itself and asks the owner only for eye checks; one file to send back
-- [ ] UX audit quick wins (audit 2,3,5,9,11,15,18): Recent click pastes; hotkey health with press-to-test + alternatives; template chips insert at caret; onboarding Floating/Docked + Recent offer; Supporter lock badges; Settings search + jump links; Open Picker in tray
+- [x] UX audit quick wins (audit 2,3,5,9,11,15,18): Recent click pastes; hotkey health with press-to-test + alternatives; template chips insert at caret; onboarding Floating/Docked + Recent offer; Supporter lock badges; Settings search + jump links; Open Picker in tray
 - [x] Defaults: Recent on for new installs; new non-AltGr default chords (decisions in now.md)
 - [ ] Symbols library (spec first): emoji, kaomoji, icons; search, one click copies/pastes, add to a list, icons copy as SVG/PNG or save; licence-clean data; colour emoji rendering checked
 - [ ] Carry the Panel v2 look to Main lists, Picker, command palette, editors, menus and Settings (type tiles, quiet rows, search, toasts), spec addendum first
@@ -27,7 +27,7 @@ started: 2026-11-07 (resumed)
 - [ ] v1.0.1: multi-row drag, toast Edit button, UX-C (O30/O26/O31), U9, A25, search suggestion dropdown (Picker, Panel, Main)
 - [ ] Recent captures images, files and rich text (owner 2026-10-26), with size caps and the privacy markers
 - [ ] v1.1: placeholders {uuid} + date maths, paste transforms, richer fill-ins
-- [ ] v1.1: importers (TextExpander, Espanso, PhraseExpress, Beeftext)
+- [ ] v1.1: importers (TextExpander, Espanso, PhraseExpress, Beeftext): backend merged 947c9b4; Settings import chooser wiring + Note warnings display left
 - [ ] v1.1: groups inside a list (O46), tips window
 - [ ] v1.1: typed-trigger expansion (opt-in, off by default, honours Sensitive + never-paste list)
 - [ ] v1.1: suggest-as-you-type at the caret (opt-in), rich paste, Windows Hello unlock
