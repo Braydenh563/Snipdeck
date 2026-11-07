@@ -12,6 +12,7 @@ import { Icon } from "components/icon.slint";
 import { Button, ButtonSize, ButtonVariant } from "components/button.slint";
 import { Toggle } from "components/choice.slint";
 import { HotkeyRecorder } from "components/hotkey_recorder.slint";
+import { HotkeyHealthLine } from "components/hotkey_health.slint";
 import { FieldError } from "components/text_field.slint";
 import { FormSection, SettingRow, Segmented } from "components/form.slint";
 import { HotkeySetting } from "settings.slint";
@@ -216,6 +217,7 @@ export component OnboardingWindow inherits Window {
 
     callback hotkey-recorded(index: int, combo: string);
     callback hotkey-cleared(index: int);
+    callback hotkey-test-requested(index: int);
     callback dock-edge-chosen(index: int);
     callback autostart-toggled(on: bool);
     callback close-to-tray-toggled(on: bool);
@@ -332,17 +334,28 @@ export component OnboardingWindow inherits Window {
                     title: @tr("Shortcuts");
                     for hk[i] in root.hotkeys: SettingRow {
                         title: root.hotkey-names[i];
-                        HotkeyRecorder {
-                            width: 220px * SystemLook.text-scale;
-                            label: root.hotkey-names[i];
-                            keys: hk.keys;
-                            value: hk.value;
-                            conflict: hk.conflict;
-                            empty-text: @tr("Not set");
-                            recording-text: @tr("Press the new shortcut");
-                            clear-label: @tr("Clear the shortcut for {}", root.hotkey-names[i]);
-                            recorded(combo) => { root.hotkey-recorded(i, combo); }
-                            cleared => { root.hotkey-cleared(i); }
+                        VerticalLayout {
+                            spacing: Space.s1;
+                            HotkeyRecorder {
+                                width: 220px * SystemLook.text-scale;
+                                label: root.hotkey-names[i];
+                                keys: hk.keys;
+                                value: hk.value;
+                                conflict: hk.conflict;
+                                empty-text: @tr("Not set");
+                                recording-text: @tr("Press the new shortcut");
+                                clear-label: @tr("Clear the shortcut for {}", root.hotkey-names[i]);
+                                recorded(combo) => { root.hotkey-recorded(i, combo); }
+                                cleared => { root.hotkey-cleared(i); }
+                            }
+                            HotkeyHealthLine {
+                                width: 220px * SystemLook.text-scale;
+                                name: root.hotkey-names[i];
+                                state: hk.state;
+                                alternatives: hk.alternatives;
+                                test => { root.hotkey-test-requested(i); }
+                                use-chord(chord) => { root.hotkey-recorded(i, chord); }
+                            }
                         }
                     }
                 }

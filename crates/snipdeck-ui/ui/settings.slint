@@ -16,6 +16,7 @@ import { IconButton, IconButtonSize } from "components/icon-button.slint";
 import { TextField } from "components/text_field.slint";
 import { Toggle } from "components/choice.slint";
 import { HotkeyRecorder } from "components/hotkey_recorder.slint";
+import { HotkeyHealthLine } from "components/hotkey_health.slint";
 import { Dialog } from "components/dialog.slint";
 import { PlanTable } from "components/plan-table.slint";
 import { ImportTexts } from "import_texts.slint";
@@ -32,6 +33,11 @@ export struct HotkeySetting {
     value: string,
     // Non-empty when the recorded combination could not be registered; the message says why and who owns it.
     conflict: string,
+    // What the shortcut is doing, for the health line: 0 not set, 1 paused, 2 could not be registered, 3 registered,
+    // 4 waiting for the "press it now" test, 5 the test press was heard.
+    state: int,
+    // Chords to offer one click away while `state` is 2.
+    alternatives: [string],
 }
 
 // One backup file in the list: the day it was made and how big it is, both already in words.
@@ -386,6 +392,8 @@ export component SettingsPage inherits Window {
     // `index` is the position in `hotkeys`.
     callback hotkey-recorded(index: int, combo: string);
     callback hotkey-cleared(index: int);
+    // "Test": the next press of shortcut `index` is only listened for (a second click cancels).
+    callback hotkey-test-requested(index: int);
     callback theme-chosen(index: int);
     callback row-density-chosen(index: int);
     callback picker-side-chosen(index: int);
@@ -549,19 +557,30 @@ export component SettingsPage inherits Window {
                         description: root.hotkey-help[i];
                         // "Paste the next item" is a Supporter feature: the chord can be set, but does nothing on Free.
                         locked-text: (i == 3 && !root.pro) ? @tr("Supporter") : "";
-                        HotkeyRecorder {
-                            width: 220px * SystemLook.text-scale;
-                            label: root.hotkey-names[i];
-                            keys: hk.keys;
-                            value: hk.value;
-                            conflict: hk.conflict;
-                            empty-text: @tr("Not set");
-                            recording-text: @tr("Press the new shortcut");
-                            clear-label: @tr("Clear the shortcut for {}", root.hotkey-names[i]);
-                            recorded(combo) => { root.hotkey-recorded(i, combo); }
-                            cleared => { root.hotkey-cleared(i); }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                        VerticalLayout {
+                            spacing: Space.s1;
+                            HotkeyRecorder {
+                                width: 220px * SystemLook.text-scale;
+                                label: root.hotkey-names[i];
+                                keys: hk.keys;
+                                value: hk.value;
+                                conflict: hk.conflict;
+                                empty-text: @tr("Not set");
+                                recording-text: @tr("Press the new shortcut");
+                                clear-label: @tr("Clear the shortcut for {}", root.hotkey-names[i]);
+                                recorded(combo) => { root.hotkey-recorded(i, combo); }
+                                cleared => { root.hotkey-cleared(i); }
+                                changed has-focus => {
+                                    if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                                }
+                            }
+                            HotkeyHealthLine {
+                                width: 220px * SystemLook.text-scale;
+                                name: root.hotkey-names[i];
+                                state: hk.state;
+                                alternatives: hk.alternatives;
+                                test => { root.hotkey-test-requested(i); }
+                                use-chord(chord) => { root.hotkey-recorded(i, chord); }
                             }
                         }
                     }

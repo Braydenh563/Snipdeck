@@ -196,6 +196,7 @@ fn settings() -> (SettingsPage, Log) {
     }
     hook!(on_hotkey_recorded, |i, c| format!("hk:{i}:{c}"));
     hook!(on_hotkey_cleared, |i| format!("hk-clear:{i}"));
+    hook!(on_hotkey_test_requested, |i| format!("hk-test:{i}"));
     hook!(on_theme_chosen, |i| format!("theme:{i}"));
     hook!(on_language_chosen, |i| format!("lang:{i}"));
     hook!(on_autostart_toggled, |on| format!("autostart:{on}"));
@@ -1053,6 +1054,29 @@ ui_tests! {
         assert_eq!(take(&log), ["hk-clear:1"]);
         // A shortcut that is not set says so.
         assert_eq!(find(&ui, names[3], AccessibleRole::Button).accessible_value().as_deref(), Some(""));
+    }
+
+    fn each_set_shortcut_has_a_test_button_and_a_failed_one_offers_its_alternatives() {
+        let (ui, log) = settings();
+        // Set shortcuts (three of four in the fixture) show "Test"; the empty one shows no health line.
+        find(&ui, "Test Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["hk-test:1"]);
+        assert!(missing(&ui, "Test Paste the next item", AccessibleRole::Button));
+
+        // Waiting for the press: the button becomes Cancel and the line says so.
+        let mut hotkeys = fixture::hotkeys();
+        hotkeys[1].state = 4;
+        // A failed chord: no Test button, the alternatives are one click each and go the recording way.
+        hotkeys[2].state = 2;
+        hotkeys[2].conflict = "Another program already uses Ctrl+Shift+2.".into();
+        hotkeys[2].alternatives = ModelRc::new(VecModel::from(vec!["Ctrl+Shift+G".into(), "Ctrl+Shift+H".into()]));
+        ui.set_hotkeys(ModelRc::new(VecModel::from(hotkeys)));
+        settle();
+        find(&ui, "Cancel the test of Open the picker", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["hk-test:1"]);
+        assert!(missing(&ui, "Test Save the clipboard as an item", AccessibleRole::Button));
+        find(&ui, "Use Ctrl+Shift+H for Save the clipboard as an item", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["hk:2:Ctrl+Shift+H"]);
     }
 
     fn escape_ends_a_recording_first_and_then_closes_the_page() {

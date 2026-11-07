@@ -908,6 +908,73 @@ fn a_shortcut_that_failed_to_register_at_start_says_why_on_its_row_until_it_is_c
 }
 
 #[test]
+fn the_test_button_listens_for_the_press_and_a_failed_chord_offers_one_click_alternatives() {
+    use snipdeck_app::host::HotkeyFailure;
+    on_ui_thread(|| {
+        let r = rig();
+        let row = |i: usize| r.ui.get_hotkeys().row_data(i).unwrap();
+        // Registered, not yet proven (3); Capture has no chord (0).
+        assert_eq!(row(0).state, 3);
+        assert_eq!(row(2).state, 0);
+        assert_eq!(row(0).alternatives.row_count(), 0);
+
+        r.ui.invoke_hotkey_test_requested(0);
+        assert_eq!(row(0).state, 4, "waiting for the press");
+        // A second click cancels.
+        r.ui.invoke_hotkey_test_requested(0);
+        assert_eq!(row(0).state, 3);
+        r.ui.invoke_hotkey_test_requested(0);
+        let _ = r.ctl.borrow_mut().on_hotkey(HotkeyAction::TogglePanel);
+        r.binding.redraw();
+        assert_eq!(row(0).state, 5, "the press was heard");
+        // Closing the page ends a test that is still waiting.
+        r.ui.invoke_hotkey_test_requested(1);
+        assert_eq!(row(1).state, 4);
+        r.ui.invoke_close_requested();
+        assert_eq!(r.ctl.borrow().hotkey_test(), None);
+        r.ui.show().expect("show again");
+
+        // A chord Windows refused: "Not working" and three alternatives; choosing one is a recording.
+        r.ctl.borrow_mut().report_hotkey_problems(&[HotkeyProblem {
+            action: HotkeyAction::TogglePanel,
+            chord: "Ctrl+Shift+Y".into(),
+            failure: HotkeyFailure::InUse,
+        }]);
+        r.binding.redraw();
+        assert_eq!(row(0).state, 2);
+        let offered: Vec<String> = row(0).alternatives.iter().map(|c| c.to_string()).collect();
+        assert_eq!(offered.len(), 3, "{offered:?}");
+        r.ui.invoke_hotkey_recorded(0, offered[0].as_str().into());
+        assert_eq!(r.ctl.borrow().settings().hotkeys.toggle_panel, offered[0]);
+        assert_eq!(row(0).state, 3);
+        assert_eq!(row(0).alternatives.row_count(), 0);
+    });
+}
+
+#[test]
+fn the_welcome_tour_tests_a_shortcut_and_leaving_the_step_ends_the_test() {
+    on_ui_thread(|| {
+        let r = rig();
+        let tour = snipdeck_ui::OnboardingWindow::new().expect("tour window");
+        let host: Rc<dyn SettingsHost> = Rc::clone(&r.host) as Rc<dyn SettingsHost>;
+        let binding = Controller::bind_onboarding(&r.ctl, &tour, host);
+        tour.show().expect("show");
+        let row = |i: usize| tour.get_hotkeys().row_data(i).unwrap();
+        assert_eq!(row(1).state, 3);
+        tour.invoke_hotkey_test_requested(1);
+        assert_eq!(row(1).state, 4);
+        // The press proves the chord arrives and does nothing else (no picker opens).
+        let _ = r.ctl.borrow_mut().on_hotkey(HotkeyAction::Picker);
+        binding.redraw();
+        assert_eq!(row(1).state, 5);
+        // A test left waiting ends when the step is left.
+        tour.invoke_hotkey_test_requested(0);
+        tour.invoke_next_requested();
+        assert_eq!(r.ctl.borrow().hotkey_test(), None);
+    });
+}
+
+#[test]
 fn on_the_free_plan_the_paste_next_row_says_it_is_a_supporter_feature() {
     on_ui_thread(|| {
         let r = rig();
