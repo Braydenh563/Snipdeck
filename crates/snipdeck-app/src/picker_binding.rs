@@ -19,9 +19,7 @@ use snipdeck_ui as ui;
 
 use crate::{
     accent::Accent,
-    binding::{
-        MASKED_PREVIEW, extension_of, index, item_kind_of, model, redraw_all, register_redraw,
-    },
+    binding::{MASKED_PREVIEW, index, item_kind_of, model, redraw_all, register_redraw},
     controller::{Controller, HelpTopic, Library, PickerView, View},
     frame::Rect,
     host::ClipboardText,
@@ -329,11 +327,6 @@ pub fn picker_row(entry: &Entry, dark: bool) -> ui::PickerRow {
         tag_hit: marks.tag_hit.as_str().into(),
         masked_preview: if entry.sensitive {
             MASKED_PREVIEW.into()
-        } else {
-            SharedString::new()
-        },
-        extension: if entry.kind == ItemKind::File && !entry.sensitive {
-            extension_of(&entry.preview).into()
         } else {
             SharedString::new()
         },

@@ -76,7 +76,6 @@ pub fn sample_rows() -> Vec<PickerRow> {
             )
         },
         PickerRow {
-            extension: "PDF".into(),
             ..row(
                 ItemKind::File,
                 "Q3 report",

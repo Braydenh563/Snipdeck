@@ -28,7 +28,7 @@ use snipdeck_ui as ui;
 use crate::{
     accent::Accent,
     binding::{
-        Loggable, Payload, Shown, arm_toast, extension_of, index, item_kind_of, model, redraw_all,
+        Loggable, Payload, Shown, arm_toast, index, item_kind_of, model, redraw_all,
         register_redraw, to_i32,
     },
     controller::{
@@ -1272,13 +1272,7 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
         preview_match: marks.preview_match.as_str().into(),
         tag_hit: marks.tag_hit.as_str().into(),
         masked_preview: if row.sensitive {
-            // The store keeps no tail of a secret, so none is shown until a host can supply one.
-            crate::binding::main_mask(None).into()
-        } else {
-            SharedString::new()
-        },
-        extension: if row.kind == ItemKind::File {
-            extension_of(&row.preview).into()
+            crate::binding::MASKED_PREVIEW.into()
         } else {
             SharedString::new()
         },

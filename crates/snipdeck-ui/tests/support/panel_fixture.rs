@@ -51,7 +51,6 @@ pub fn sample_rows() -> Vec<PanelRow> {
             )
         },
         PanelRow {
-            extension: "PDF".into(),
             ..row(ItemKind::File, "Q3 report", "report-q3-final.pdf")
         },
     ]

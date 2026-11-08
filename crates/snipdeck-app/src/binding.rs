@@ -1491,16 +1491,6 @@ pub(crate) fn label_of(index: i32) -> Option<ItemLabel> {
 /// (DESIGN.md §4, shared-look spec decision 2).
 pub const MASKED_PREVIEW: &str = "••••••••••••";
 
-/// The Main window's mask: four dots and the last characters of the secret when the host knows
-/// them (`•••• 7f3a`); without them, the twelve dots.
-#[must_use]
-pub fn main_mask(tail: Option<&str>) -> String {
-    match tail.map(str::trim).filter(|t| !t.is_empty()) {
-        Some(tail) => format!("•••• {tail}"),
-        None => MASKED_PREVIEW.to_owned(),
-    }
-}
-
 /// One [`Row`] as the window's `PanelRow`.
 #[must_use]
 pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
@@ -1549,11 +1539,6 @@ pub fn panel_row(row: &Row, dark: bool) -> ui::PanelRow {
         } else {
             SharedString::new()
         },
-        extension: if row.kind == ItemKind::File {
-            extension_of(&row.preview).into()
-        } else {
-            SharedString::new()
-        },
         list_name,
         list_color,
         label,
@@ -1581,19 +1566,6 @@ pub(crate) fn item_kind_of(kind: ItemKind, sensitive: bool) -> ui::ItemKind {
         ItemKind::Image => ui::ItemKind::Image,
         ItemKind::File => ui::ItemKind::File,
     }
-}
-
-/// `report-q3.pdf` becomes `PDF`; nothing that does not look like an extension.
-pub(crate) fn extension_of(name: &str) -> String {
-    let first = name.lines().next().unwrap_or_default().trim();
-    first
-        .rsplit_once('.')
-        .map(|(_, ext)| ext)
-        .filter(|ext| {
-            (1..=4).contains(&ext.len()) && ext.chars().all(|c| c.is_ascii_alphanumeric())
-        })
-        .map(str::to_ascii_uppercase)
-        .unwrap_or_default()
 }
 
 /// What an in-window drag carries: the item or the list being dragged, by id, so a row that
@@ -1651,13 +1623,6 @@ mod tests {
     }
 
     #[test]
-    fn main_mask_keeps_tail() {
-        assert_eq!(main_mask(Some("7f3a")), "•••• 7f3a");
-        assert_eq!(main_mask(None), MASKED_PREVIEW);
-        assert_eq!(main_mask(Some("  ")), MASKED_PREVIEW);
-    }
-
-    #[test]
     fn a_sensitive_row_never_carries_a_preview_mark_or_a_tag_hit() {
         let mut sensitive = row(ItemKind::Text, true, "hunter2");
         sensitive.preview_mark = Some((String::new(), "hunter".into(), "2".into()));
@@ -1697,26 +1662,6 @@ mod tests {
         ] {
             assert_eq!(panel_row(&row(core, false, "x"), false).kind, expected);
         }
-    }
-
-    #[test]
-    fn a_file_row_shows_its_extension() {
-        assert_eq!(
-            panel_row(&row(ItemKind::File, false, "report-q3.pdf"), false).extension,
-            "PDF"
-        );
-        assert_eq!(
-            panel_row(&row(ItemKind::File, false, "Makefile"), false).extension,
-            ""
-        );
-        assert_eq!(
-            panel_row(&row(ItemKind::File, false, "a.toolongext"), false).extension,
-            ""
-        );
-        assert_eq!(
-            panel_row(&row(ItemKind::Text, false, "a.pdf"), false).extension,
-            ""
-        );
     }
 
     #[test]

@@ -53,7 +53,6 @@ pub fn sample_rows() -> Vec<MainRow> {
             "1280 x 720 PNG, copied from the browser",
         ),
         MainRow {
-            extension: "PDF".into(),
             ..row(ItemKind::File, "Q3 report", "report-q3-final.pdf")
         },
         MainRow {
