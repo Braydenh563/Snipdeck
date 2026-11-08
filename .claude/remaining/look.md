@@ -1,14 +1,15 @@
-# look (shared-look slices 1-2)
+# look (shared-look slices 1-4)
 ## Done
-- Slice 1 (1d25498): search_mark.rs; Panel uses it; Picker Entry.marks/tag hit + "Board · List" + 12-dot mask; Main Row.marks; commands::Entry.mark; main_mask(tail).
-- Slice 2: ItemCard where-inline, use-action/use-glyph/use-tip, inline-tile, has-menu:false hides only More; Keycap always border-strong (strong prop removed); MenuItem disabled = text-tertiary, radius.md; QuietCardGallery + tests/quiet_card_logic.rs + goldens quiet-cards-*.
+- Slice 1 (1d25498): search_mark.rs; Panel uses it; Picker/Main/palette marks and masks.
+- Slice 2 (c26c202): ItemCard where-inline, use-action/use-glyph/use-tip, inline-tile; Keycap always border-strong; menu disabled text-tertiary.
+- Slice 3 (7e76158 swept in by a concurrent commit, 806589f): Picker quiet 36px rows, place inline "Board · List", bg-selected fill (no show-focus), Copy + Edit on the selected row, PickerRow mark fields, marks_fields() in search_mark.rs; tests row_height_is_36, selected_row_shows_copy_and_edit, edit_action_requests_edit, titles_share_one_x_for_every_kind, file_row_has_no_extension_text, search_mark_under_match, rows_are_36px_and_the_selected_row_is_a_fill_without_a_ring; goldens picker-* (+ picker-search-light).
+- Slice 4 (c0c4bd0): Main list rows quiet (MainRow mark fields, bg-surface item area, list-pad 8, gap 4), Use/Copy/Edit/More, Restore in Trash, actions hidden when >1 selected, action tooltips, kbd-only focus ring, "N matches in Board" status; ItemCard `actions-hidden` replaces the `!pick-mode` gate (Panel passes marked-count > 0). Strings in 6 locales.
 ## Next
-- Slices 3-8 of docs/reviews/shared-look-spec.md (not mine).
+- Slices 5-8 of docs/reviews/shared-look-spec.md (tiles/toasts, toolbar/menus/palette, editors, remove old path).
 ## Blocked / notes
-- Main has no source for a secret's tail (store keeps none): main_mask(None) = 12 dots.
-- Slint PickerRow/MainRow/PaletteRow have no mark fields yet (slices 3/4/6); ItemCard still forces 12 dots for quiet rows (decision 2 "as given" lands with the host slices; fixtures carry a tail).
-- Goldens deck-*, main-* drift (focus ring/AA, unrelated to these changes): left at HEAD.
-- Settings goldens did not change: settings uses its own private key legend (hotkey_recorder.slint), not Keycap.
-- ItemCard `!pick-mode` gate on quiet actions stays until slice 4.
-## Unfinished at this commit
-- clippy -D warnings on snipdeck-ui (running; last fix: test binding names), rustdoc -D warnings, `python3 scripts/codemap.py`.
+- Main tooltip "Paste into <app> (Enter)": Main has no target name; reads "Use (Enter)" / "Copy (Enter)".
+- "Board · List when results span boards": Main rows carry the list only (one board open), so the board part is empty.
+- Main masks still 12 dots (no tail source); ItemCard forces dots in quiet rows.
+- Tiles keep the old card look until slice 5 (MainCard non-quiet).
+- Goldens main-* toolbar drift at (837,10)-(861,34) is pre-existing AA; left at HEAD where the test tolerates it.
+- title_keeps_12_chars_at_scale (Picker) and preview_keeps_128_at_320 not tested separately: the Compact/Comfortable floors are ItemCard's (min-title-w, qr-preview-reserve) and the Panel tests cover them.

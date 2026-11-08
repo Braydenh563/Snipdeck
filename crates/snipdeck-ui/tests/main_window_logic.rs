@@ -124,10 +124,15 @@ fn centre_of(e: &ElementHandle) -> slint::LogicalPosition {
 /// The button called `label` that lies inside `row`'s box (the bulk bar and the menus have buttons of their own).
 fn button_in(ui: &MainWindow, row: &ElementHandle, label: &str) -> Option<ElementHandle> {
     let (rp, rs) = (row.absolute_position(), row.size());
-    all(ui, label, AccessibleRole::Button).into_iter().find(|b| {
-        let p = b.absolute_position();
-        p.x >= rp.x - 0.5 && p.x <= rp.x + rs.width && p.y >= rp.y - 0.5 && p.y <= rp.y + rs.height
-    })
+    all(ui, label, AccessibleRole::Button)
+        .into_iter()
+        .find(|b| {
+            let p = b.absolute_position();
+            p.x >= rp.x - 0.5
+                && p.x <= rp.x + rs.width
+                && p.y >= rp.y - 0.5
+                && p.y <= rp.y + rs.height
+        })
 }
 
 /// Marks row `i` the single selected one, as the host does after a click.

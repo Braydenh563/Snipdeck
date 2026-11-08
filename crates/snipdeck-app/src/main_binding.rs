@@ -1546,7 +1546,13 @@ mod tests {
             pinned: false,
             label: None,
             selected: false,
-            marks: crate::search_mark::marks("Q3 Report", "see the report today", false, None, "report"),
+            marks: crate::search_mark::marks(
+                "Q3 Report",
+                "see the report today",
+                false,
+                None,
+                "report",
+            ),
         };
         let mapped = main_row(&row, false);
         assert_eq!(mapped.mark_before.as_str(), "Q3 ");
@@ -1558,6 +1564,9 @@ mod tests {
         let secret = main_row(&row, false);
         assert_eq!(secret.preview.as_str(), "");
         assert_eq!(secret.preview_match.as_str(), "");
-        assert_eq!(secret.masked_preview.as_str(), crate::binding::main_mask(None));
+        assert_eq!(
+            secret.masked_preview.as_str(),
+            crate::binding::main_mask(None)
+        );
     }
 }

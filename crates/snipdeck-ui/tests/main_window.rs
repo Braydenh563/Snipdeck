@@ -6,6 +6,13 @@
 //! Goldens use only glyphs IBM Plex has (no CJK, no U+21B5: system fallback fonts differ per machine); the pixel
 //! assertions below do not depend on glyph shapes.
 
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    reason = "pixel geometry of a test frame: logical sizes are small and positive"
+)]
+
 use slint::ComponentHandle;
 use snipdeck_ui::{
     MainSection, MainView, MainWindow, SystemLook, ToastKind,
@@ -301,12 +308,20 @@ fn cjk_rows_keep_the_card_pitch_and_stay_inside_the_list_pane() {
             let f = render(&h);
             let boxes = row_boxes(&h);
             assert!(boxes.len() >= 3, "{view:?} cjk={cjk}: rows {boxes:?}");
-            pitches.push(boxes.windows(2).map(|w| w[1].0 - w[0].0).collect::<Vec<_>>());
+            pitches.push(
+                boxes
+                    .windows(2)
+                    .map(|w| w[1].0 - w[0].0)
+                    .collect::<Vec<_>>(),
+            );
 
             // The rows stop 8px short of the pane's right edge, and nothing is drawn in that padding: it is the
             // item area's own fill.
             for (_, _, right) in &boxes {
-                assert!(*right <= SIZE.0 as f32 - 8.0 + 0.5, "{view:?} cjk={cjk}: row ends at {right}");
+                assert!(
+                    *right <= SIZE.0 as f32 - 8.0 + 0.5,
+                    "{view:?} cjk={cjk}: row ends at {right}"
+                );
             }
             for y in (110..SIZE.1 - 60).step_by(3) {
                 assert_eq!(
@@ -418,7 +433,11 @@ fn focus_ring_only_on_keyboard_focus() {
     let (top, height, _) = boxes[1];
     click(&h, slint::LogicalPosition::new(500.0, top + height / 2.0));
     let f = render(&h);
-    assert_eq!(ring_on_top_edge(&f, boxes[1]), 0, "a click leaves no focus ring");
+    assert_eq!(
+        ring_on_top_edge(&f, boxes[1]),
+        0,
+        "a click leaves no focus ring"
+    );
     // A key brings it.
     let text: slint::SharedString = Key::DownArrow.into();
     h.component
@@ -430,7 +449,10 @@ fn focus_ring_only_on_keyboard_focus() {
     let f = render(&h);
     let boxes = row_boxes(&h);
     let rings: usize = boxes.iter().map(|b| ring_on_top_edge(&f, *b)).sum();
-    assert!(rings > 100, "the keyboard shows a 2px ring on the cursor row: {rings}px");
+    assert!(
+        rings > 100,
+        "the keyboard shows a 2px ring on the cursor row: {rings}px"
+    );
 }
 
 /// The columns (first, last) with ink in a row's title line: 6px below its top to 20px below, from x 292 to the
@@ -438,7 +460,14 @@ fn focus_ring_only_on_keyboard_focus() {
 fn title_ink(f: &Frame, row: (f32, f32, f32)) -> Option<(u32, u32)> {
     let top = row.0 as u32;
     let bg = f.pixel(900, top + 10);
-    let ink = |x: u32| (top + 6..top + 20).any(|y| f.pixel(x, y).iter().zip(bg).any(|(a, b)| a.abs_diff(b) > 40));
+    let ink = |x: u32| {
+        (top + 6..top + 20).any(|y| {
+            f.pixel(x, y)
+                .iter()
+                .zip(bg)
+                .any(|(a, b)| a.abs_diff(b) > 40)
+        })
+    };
     let first = (292..900).find(|x| ink(*x))?;
     let last = (292..900).rev().find(|x| ink(*x))?;
     Some((first, last))
@@ -453,7 +482,11 @@ fn title_width_unchanged_on_hover() {
     let (top, height, _) = boxes[2];
     move_pointer(&h, slint::LogicalPosition::new(600.0, top + height / 2.0));
     let hovered = render(&h);
-    assert_ne!(hovered.pixel(900, top as u32 + 10), rest.pixel(900, top as u32 + 10), "the row is hovered: it has a fill");
+    assert_ne!(
+        hovered.pixel(900, top as u32 + 10),
+        rest.pixel(900, top as u32 + 10),
+        "the row is hovered: it has a fill"
+    );
     // Antialiasing on a different fill may move the last column by one pixel; the title does not move more.
     let after = title_ink(&hovered, boxes[2]).expect("title ink while hovered");
     assert!(
@@ -485,10 +518,18 @@ fn the_selected_row_is_a_fill_and_rows_have_no_outline() {
     let mid = top as u32 + height as u32 / 2;
     assert_eq!(f.pixel(700, mid), SELECTED_LIGHT, "selection fill");
     assert_eq!(f.pixel(700, top as u32), SELECTED_LIGHT, "to the top edge");
-    assert_eq!(f.pixel(700, (top + height) as u32 - 1), SELECTED_LIGHT, "to the bottom edge");
+    assert_eq!(
+        f.pixel(700, (top + height) as u32 - 1),
+        SELECTED_LIGHT,
+        "to the bottom edge"
+    );
     // The resting rows are the item area's surface: no outline, no fill of their own.
     let (top0, height0, _) = boxes[0];
-    for (x, y) in [(300, top0 as u32), (300, top0 as u32 + height0 as u32 - 1), (right as u32 - 1, top0 as u32 + 10)] {
+    for (x, y) in [
+        (300, top0 as u32),
+        (300, top0 as u32 + height0 as u32 - 1),
+        (right as u32 - 1, top0 as u32 + 10),
+    ] {
         assert_eq!(f.pixel(x, y), SURFACE_LIGHT, "row 0 at ({x},{y})");
     }
     let _ = HOVER_LIGHT;

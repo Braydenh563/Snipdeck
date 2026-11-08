@@ -125,7 +125,11 @@ pub fn search_rows() -> Vec<MainRow> {
             mark_text: "re".into(),
             list_name: "Email replies".into(),
             list_color: TEAL_600,
-            ..row(ItemKind::Text, "Thanks, received", "Thanks for sending this over. I'll review it today.")
+            ..row(
+                ItemKind::Text,
+                "Thanks, received",
+                "Thanks for sending this over. I'll review it today.",
+            )
         },
         MainRow {
             preview: "A gentle reminder that invoice {Number} is due on {Date}.".into(),
@@ -140,7 +144,11 @@ pub fn search_rows() -> Vec<MainRow> {
             tag_hit: "retry".into(),
             list_name: "Code".into(),
             list_color: VIOLET_600,
-            ..row(ItemKind::Code, "Backoff helper", "async fn backoff<T>(f: impl Fn() -> T) -> T")
+            ..row(
+                ItemKind::Code,
+                "Backoff helper",
+                "async fn backoff<T>(f: impl Fn() -> T) -> T",
+            )
         },
         MainRow {
             masked_preview: "•••• 7f3a".into(),

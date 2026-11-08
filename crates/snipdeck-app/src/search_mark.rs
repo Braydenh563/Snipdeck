@@ -203,9 +203,15 @@ mod tests {
     fn fields_split_the_marks_into_row_strings() {
         let m = marks("Q3 Report", "see the report today", false, None, "report");
         let f = m.fields();
-        assert_eq!((f.mark_before.as_str(), f.mark_text.as_str()), ("Q3 ", "Report"));
+        assert_eq!(
+            (f.mark_before.as_str(), f.mark_text.as_str()),
+            ("Q3 ", "Report")
+        );
         assert_eq!(f.preview_line.as_deref(), Some("see the report today"));
-        assert_eq!((f.preview_before.as_str(), f.preview_match.as_str()), ("see the ", "report"));
+        assert_eq!(
+            (f.preview_before.as_str(), f.preview_match.as_str()),
+            ("see the ", "report")
+        );
         assert_eq!(f.tag_hit, "");
         let tagged = marks("Invoice", "pay", false, Some("billing"), "billing").fields();
         assert_eq!(tagged.tag_hit, "billing");
