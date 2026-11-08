@@ -1216,10 +1216,7 @@ fn pause_hotkeys_is_checked_while_paused() {
             r.ui.get_app_menu_entries()
                 .row_data(pause_row)
                 .expect("the Pause row")
-                .icon
-                .size()
-                .width
-                > 0
+                .checked
         };
         assert!(!checked(&r), "off: no check mark");
         click(r.window(), &menu_row(&r, "Pause hotkeys"));
