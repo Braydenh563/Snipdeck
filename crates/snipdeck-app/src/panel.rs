@@ -8,6 +8,7 @@ use std::rc::Rc;
 use crate::{
     index_cache::{IndexCache, Snapshot},
     main_window::SelectMode,
+    search_mark,
 };
 use snipdeck_core::{
     Board, BoardId, Item, ItemId, ItemKind, ItemLabel, List, ListAccent, ListIcon, ListId,
@@ -130,55 +131,6 @@ pub struct PanelModel {
     /// The paste key of each program (Settings > Programs). Until the controller sets them
     /// ([`set_paste_rules`](Self::set_paste_rules)) the built-in ones.
     paste_rules: Vec<PasteRule>,
-}
-
-/// The first case-insensitive match of `query` in `title`: the text before it and the match, as typed in the title.
-/// `None` for an empty query or when only other fields (preview, tags) matched.
-fn title_mark(title: &str, query: &str) -> Option<(String, String)> {
-    let fold = |c: char| {
-        let mut lower = c.to_lowercase();
-        match (lower.next(), lower.next()) {
-            (Some(one), None) => one,
-            _ => c,
-        }
-    };
-    let wanted: Vec<char> = query.trim().chars().map(fold).collect();
-    if wanted.is_empty() {
-        return None;
-    }
-    let chars: Vec<char> = title.chars().collect();
-    let at = (0..=chars.len().checked_sub(wanted.len())?).find(|&i| {
-        chars[i..i + wanted.len()]
-            .iter()
-            .zip(&wanted)
-            .all(|(c, w)| fold(*c) == *w)
-    })?;
-    Some((
-        chars[..at].iter().collect(),
-        chars[at..at + wanted.len()].iter().collect(),
-    ))
-}
-
-/// How many characters of the preview may precede a mark; more are cut and replaced by an ellipsis so the match stays in view.
-const PREVIEW_LEAD: usize = 12;
-
-/// The first case-insensitive match of `query` in the first line of `preview`: the text before
-/// it (cut to its last [`PREVIEW_LEAD`] characters after an ellipsis), the match and the rest of the line.
-fn preview_mark(preview: &str, query: &str) -> Option<(String, String, String)> {
-    let line = preview.lines().next()?;
-    let (before, found) = title_mark(line, query)?;
-    let after: String = line
-        .chars()
-        .skip(before.chars().count() + found.chars().count())
-        .collect();
-    let lead = before.chars().count();
-    let before = if lead > PREVIEW_LEAD {
-        let tail: String = before.chars().skip(lead - PREVIEW_LEAD).collect();
-        format!("\u{2026}{tail}")
-    } else {
-        before
-    };
-    Some((before, found, after))
 }
 
 impl PanelModel {
@@ -455,17 +407,11 @@ impl PanelModel {
         } else {
             item.title.clone()
         };
-        let title_mark = if mixed {
-            title_mark(&title, &self.query)
+        let marks = if mixed {
+            search_mark::marks(&title, &item.preview, item.sensitive, hit_tag, &self.query)
         } else {
-            None
+            search_mark::Marks::default()
         };
-        let preview_mark = (mixed && !item.sensitive)
-            .then(|| preview_mark(&item.preview, &self.query))
-            .flatten();
-        let tag_hit = hit_tag
-            .filter(|_| !item.sensitive && title_mark.is_none() && preview_mark.is_none())
-            .map(str::to_owned);
         Row {
             id: item.id,
             number: u8::try_from(position + 1)
@@ -476,9 +422,9 @@ impl PanelModel {
             sensitive: item.sensitive,
             title,
             preview: item.preview.clone(),
-            title_mark,
-            preview_mark,
-            tag_hit,
+            title_mark: marks.title,
+            preview_mark: marks.preview,
+            tag_hit: marks.tag,
             list: mixed
                 .then(|| self.list_labels.get(&item.list_id).cloned())
                 .flatten(),
@@ -887,33 +833,6 @@ mod tests {
                 .iter()
                 .all(|r| r.preview_mark.is_none() && r.tag_hit.is_none())
         );
-    }
-
-    #[test]
-    fn the_preview_mark_cuts_a_long_lead_and_reads_only_the_first_line() {
-        assert_eq!(
-            preview_mark("first line\nsecond has Needle", "needle"),
-            None
-        );
-        assert_eq!(
-            preview_mark("a long run of words before the Needle here", "needle"),
-            Some((
-                "\u{2026} before the ".into(),
-                "Needle".into(),
-                " here".into()
-            ))
-        );
-    }
-
-    #[test]
-    fn the_title_mark_splits_before_and_match_and_ignores_case() {
-        assert_eq!(
-            title_mark("Q3 Report final", "report"),
-            Some(("Q3 ".into(), "Report".into()))
-        );
-        assert_eq!(title_mark("Thanks", "xyz"), None);
-        assert_eq!(title_mark("Thanks", ""), None);
-        assert_eq!(title_mark("ab", "abc"), None);
     }
 
     #[test]

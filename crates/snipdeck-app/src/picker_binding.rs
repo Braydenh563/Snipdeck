@@ -294,6 +294,17 @@ const fn scope_in(scope: Scope) -> ui::PickerScope {
     }
 }
 
+/// Where a result lives, as the row's list label: `Board · List` (U+00B7 with spaces), or the
+/// list alone when the board has no name.
+#[must_use]
+pub fn picker_place(board: &str, list: &str) -> String {
+    if board.is_empty() {
+        list.to_owned()
+    } else {
+        format!("{board} \u{b7} {list}")
+    }
+}
+
 /// One result as the window's row. A sensitive item shows only the mask, never its preview.
 #[must_use]
 pub fn picker_row(entry: &Entry, dark: bool) -> ui::PickerRow {
@@ -315,8 +326,9 @@ pub fn picker_row(entry: &Entry, dark: bool) -> ui::PickerRow {
         } else {
             SharedString::new()
         },
-        board_name: entry.board.as_str().into(),
-        list_name: entry.list.as_str().into(),
+        // The place is built here, not in the window (shared-look spec §2).
+        board_name: SharedString::new(),
+        list_name: picker_place(&entry.board, &entry.list).into(),
         list_color: list_color(entry.accent, dark),
         image: slint::Image::default(),
     }
@@ -361,5 +373,41 @@ fn render(window: &ui::PickerWindow, previous: Option<&Shown>, view: &View, pick
     let selected = crate::binding::to_i32(picker.selected);
     if window.get_selected_index() != selected {
         window.set_selected_index(selected);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::search_mark::Marks;
+
+    fn entry(sensitive: bool) -> Entry {
+        Entry {
+            id: snipdeck_core::ItemId::generate(),
+            kind: ItemKind::Text,
+            sensitive,
+            title: "Login".into(),
+            preview: "hunter2-7f3a".into(),
+            board: "Work".into(),
+            list: "Logins".into(),
+            accent: None,
+            marks: Marks::default(),
+        }
+    }
+
+    #[test]
+    fn picker_mask_has_no_tail() {
+        let row = picker_row(&entry(true), false);
+        assert_eq!(row.masked_preview.as_str(), "\u{2022}".repeat(12));
+        assert!(!row.masked_preview.contains("7f3a"));
+        assert_eq!(row.preview.as_str(), "");
+    }
+
+    #[test]
+    fn picker_place_uses_middle_dot() {
+        let row = picker_row(&entry(false), false);
+        assert_eq!(row.list_name.as_str(), "Work \u{b7} Logins");
+        assert_eq!(row.board_name.as_str(), "");
+        assert_eq!(picker_place("", "Logins"), "Logins");
     }
 }

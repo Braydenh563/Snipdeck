@@ -16,6 +16,7 @@ use snipdeck_core::{
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo, TrashEntry, TrashRepo, Trashable};
 
 use crate::panel::ListLabel;
+use crate::search_mark::{self, Marks};
 use crate::settings::RowDensity;
 
 /// How many days the Trash keeps things (SPEC §5.7a).
@@ -140,6 +141,9 @@ pub struct Row {
     pub label: Option<ItemLabel>,
     /// In the selection.
     pub selected: bool,
+    /// While searching: where the query matched (shared-look spec decision 3). The search hits
+    /// carry ids only, so there is no tag hit here.
+    pub marks: Marks,
 }
 
 /// A list in the sidebar.
@@ -682,23 +686,32 @@ impl MainModel {
         self.entries()
             .into_iter()
             .map(|entry| match entry {
-                Entry::Item(item) => Row {
-                    key: Key::Item(item.id),
-                    kind: item.kind,
-                    sensitive: item.sensitive,
-                    title: if item.title.trim().is_empty() {
+                Entry::Item(item) => {
+                    let title = if item.title.trim().is_empty() {
                         item.preview.lines().next().unwrap_or_default().to_owned()
                     } else {
                         item.title.clone()
-                    },
-                    preview: item.preview.clone(),
-                    list: mixed
-                        .then(|| self.list_labels.get(&item.list_id).cloned())
-                        .flatten(),
-                    pinned: item.pinned,
-                    label: item.label,
-                    selected: self.selected.contains(&Key::Item(item.id)),
-                },
+                    };
+                    let marks = if self.searching() {
+                        search_mark::marks(&title, &item.preview, item.sensitive, None, &self.query)
+                    } else {
+                        Marks::default()
+                    };
+                    Row {
+                        key: Key::Item(item.id),
+                        kind: item.kind,
+                        sensitive: item.sensitive,
+                        title,
+                        marks,
+                        preview: item.preview.clone(),
+                        list: mixed
+                            .then(|| self.list_labels.get(&item.list_id).cloned())
+                            .flatten(),
+                        pinned: item.pinned,
+                        label: item.label,
+                        selected: self.selected.contains(&Key::Item(item.id)),
+                    }
+                }
                 Entry::Trashed(entry) => {
                     let key = Key::from(entry.target);
                     Row {
@@ -715,6 +728,7 @@ impl MainModel {
                         pinned: false,
                         label: None,
                         selected: self.selected.contains(&key),
+                        marks: Marks::default(),
                     }
                 }
             })

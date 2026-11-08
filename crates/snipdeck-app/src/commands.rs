@@ -5,7 +5,10 @@
 //! of [`Command::ALL`]); the shortcuts come from here, and the three global hotkeys read the chords in
 //! the settings, so a rebound hotkey shows as rebound.
 
-use crate::settings::{HotkeyAction, Hotkeys};
+use crate::{
+    search_mark,
+    settings::{HotkeyAction, Hotkeys},
+};
 
 /// One thing the palette can run. The order of [`Command::ALL`] is the order of the UI crate's
 /// `CommandTexts.all`, and the id the palette reports is the index in it.
@@ -268,6 +271,9 @@ pub struct Entry {
     pub command: Command,
     /// The translated name.
     pub label: String,
+    /// Where the query matched in the label: the text before it and the match (none when only a
+    /// synonym matched).
+    pub mark: Option<(String, String)>,
     /// The shortcut as caps (empty = none).
     pub keys: Vec<String>,
     /// The shortcut spoken.
@@ -337,6 +343,7 @@ pub fn entries(texts: &[(String, String)], ctx: &Context<'_>, query: &str) -> Ve
             Entry {
                 command,
                 label: label.clone(),
+                mark: search_mark::word_mark(label, query),
                 keys: shortcut.as_deref().map(caps).unwrap_or_default(),
                 spoken: shortcut.as_deref().map(spoken).unwrap_or_default(),
             },
@@ -423,6 +430,19 @@ mod tests {
         assert_eq!(found.first().map(|e| e.label.as_str()), Some("New item"));
         assert!(labels(&found).contains(&"Pin selected item"));
         assert!(!labels(&found).contains(&"Unpin selected item"));
+    }
+
+    #[test]
+    fn palette_marks_label_prefix() {
+        let hotkeys = Hotkeys::new_install();
+        let found = entries(&texts(), &ctx(&hotkeys), "new");
+        assert_eq!(found[0].label, "New item");
+        assert_eq!(found[0].mark, Some((String::new(), "New".into())));
+        let by_synonym = entries(&texts(), &ctx(&hotkeys), "emoji");
+        assert_eq!(by_synonym[0].label, "Symbols");
+        assert_eq!(by_synonym[0].mark, None, "a synonym hit marks nothing");
+        let all = entries(&texts(), &ctx(&hotkeys), "");
+        assert!(all.iter().all(|e| e.mark.is_none()));
     }
 
     #[test]

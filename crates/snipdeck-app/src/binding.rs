@@ -1496,8 +1496,20 @@ pub(crate) fn label_of(index: i32) -> Option<ItemLabel> {
         .and_then(|i| ItemLabel::ALL.get(i).copied())
 }
 
-/// The text shown instead of a sensitive item's preview.
-pub const MASKED_PREVIEW: &str = "••••••••";
+/// The text shown instead of a sensitive item's preview in the Panel, the Picker and the fill
+/// form: twelve dots, no trailing characters, because these open over the app being shared
+/// (DESIGN.md §4, shared-look spec decision 2).
+pub const MASKED_PREVIEW: &str = "••••••••••••";
+
+/// The Main window's mask: four dots and the last characters of the secret when the host knows
+/// them (`•••• 7f3a`); without them, the twelve dots.
+#[must_use]
+pub fn main_mask(tail: Option<&str>) -> String {
+    match tail.map(str::trim).filter(|t| !t.is_empty()) {
+        Some(tail) => format!("•••• {tail}"),
+        None => MASKED_PREVIEW.to_owned(),
+    }
+}
 
 /// One [`Row`] as the window's `PanelRow`.
 #[must_use]
@@ -1646,6 +1658,13 @@ mod tests {
         assert_eq!(mapped.kind, ui::ItemKind::Sensitive);
         assert_eq!(mapped.masked_preview.as_str(), MASKED_PREVIEW);
         assert_eq!(mapped.preview.as_str(), "");
+    }
+
+    #[test]
+    fn main_mask_keeps_tail() {
+        assert_eq!(main_mask(Some("7f3a")), "•••• 7f3a");
+        assert_eq!(main_mask(None), MASKED_PREVIEW);
+        assert_eq!(main_mask(Some("  ")), MASKED_PREVIEW);
     }
 
     #[test]
