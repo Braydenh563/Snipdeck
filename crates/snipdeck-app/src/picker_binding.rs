@@ -10,7 +10,7 @@ use std::{
 };
 
 use slint::{ComponentHandle, SharedString};
-use snipdeck_core::{ItemKind, UseMode};
+use snipdeck_core::UseMode;
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::HighContrast,
@@ -388,7 +388,7 @@ mod tests {
     fn entry(sensitive: bool) -> Entry {
         Entry {
             id: snipdeck_core::ItemId::generate(),
-            kind: ItemKind::Text,
+            kind: snipdeck_core::ItemKind::Text,
             sensitive,
             title: "Login".into(),
             preview: "hunter2-7f3a".into(),

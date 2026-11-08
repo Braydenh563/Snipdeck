@@ -18,7 +18,7 @@ use slint::{
     CloseRequestResponse, ComponentHandle, Global, SharedString,
     winit_030::{WinitWindowAccessor, winit},
 };
-use snipdeck_core::{ItemKind, ListAccent, ListIcon, ListSort};
+use snipdeck_core::{ListAccent, ListIcon, ListSort};
 use snipdeck_platform::{
     pipeline::{Clipboard, Keyboard, Timing},
     system_look::HighContrast,
@@ -1546,7 +1546,7 @@ mod tests {
         use crate::main_window::{Key, Row};
         let mut row = Row {
             key: Key::Item(snipdeck_core::ItemId::generate()),
-            kind: ItemKind::Text,
+            kind: snipdeck_core::ItemKind::Text,
             sensitive: false,
             title: "Q3 Report".into(),
             preview: "see the report today".into(),
@@ -1574,7 +1574,7 @@ mod tests {
         assert_eq!(secret.preview_match.as_str(), "");
         assert_eq!(
             secret.masked_preview.as_str(),
-            crate::binding::main_mask(None)
+            crate::binding::MASKED_PREVIEW
         );
     }
 }
