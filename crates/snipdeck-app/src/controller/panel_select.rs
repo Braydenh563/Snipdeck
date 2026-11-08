@@ -90,12 +90,31 @@ where
         self.trash_with_undo(&ids);
     }
 
-    /// The bulk bar's "Copy all": the text of the marked items, in row order, one after another
-    /// with a line between them. Sensitive items are left out (and said so by the count).
+    /// The bulk bar's "Copy all": see [`copy_items`](Self::copy_items) for the marked items.
     pub fn bulk_copy(&mut self) {
         let ids = self.model.marked_ids();
+        self.copy_items(&ids);
+    }
+
+    /// Ctrl+C on the Panel's list: the marked items, else the selected row.
+    pub fn panel_copy_selection(&mut self) {
+        let mut ids = self.model.marked_ids();
+        if ids.is_empty() {
+            ids.extend(self.model.selected());
+        }
+        self.copy_items(&ids);
+    }
+
+    /// Copies `ids`. One item is copied the way its Copy button does (every format, and the
+    /// Sensitive rules for clearing). Several are joined with a line between them, in order,
+    /// as text; Sensitive items are left out (and said so by the count).
+    pub(super) fn copy_items(&mut self, ids: &[ItemId]) {
+        if let [id] = ids {
+            self.use_item(*id, snipdeck_core::UseMode::Copy);
+            return;
+        }
         let mut parts = Vec::new();
-        for id in ids {
+        for id in ids.iter().copied() {
             let Ok(item) = self.store.item(id) else {
                 continue;
             };

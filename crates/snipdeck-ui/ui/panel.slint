@@ -236,6 +236,7 @@ export component PanelWindow inherits Window {
     in property <ToastKind> toast-kind: ToastKind.neutral;
     in property <ToastPhase> toast-phase: ToastPhase.hold;
     in property <string> toast-undo-label;
+    in property <string> toast-edit-label;
 
     // The edge dock (SPEC 5.1): while `dock-collapsed` the whole window is a `DockHandle`, whose colour is the
     // list on show (`dock-list-color`, when it has an accent) and whose grabber runs along the edge it is on.
@@ -360,6 +361,11 @@ export component PanelWindow inherits Window {
     callback resize-requested(ResizeEdge);
     callback pin-toggled(bool);
     callback toast-undo();
+    callback toast-edit();
+    // Ctrl+V on the list (no text field focused): make an item from the clipboard text.
+    callback paste-create-requested();
+    // Ctrl+C on the list: copy the marked items, else the selected row.
+    callback copy-selection-requested();
     callback toast-hover-changed(hovered: bool);
     // Ctrl+Z: take back the latest step of the app-wide history (the More menu has the button).
     callback undo-requested();
@@ -1000,6 +1006,14 @@ export component PanelWindow inherits Window {
                     }
                     if (event.text == Key.Backtab || (event.text == Key.Tab && event.modifiers.shift)) {
                         root.cycle-tab(-1);
+                        return accept;
+                    }
+                    if ((event.text == "v" || event.text == "V") && !event.modifiers.shift && !search.has-focus && !root.list-hidden) {
+                        root.paste-create-requested();
+                        return accept;
+                    }
+                    if ((event.text == "c" || event.text == "C") && !event.modifiers.shift && !search.has-focus && !root.list-hidden && root.sel >= 0) {
+                        root.copy-selection-requested();
                         return accept;
                     }
                     if (event.text == "f" || event.text == "F") {
@@ -1988,11 +2002,13 @@ export component PanelWindow inherits Window {
                         kind: root.toast-kind;
                         phase: root.toast-phase;
                         undo-label: root.toast-undo-label;
+                        edit-label: root.toast-edit-label;
                         width: max(0px, parent.width - 2 * Space.s3);
                         height: self.preferred-height;
                         x: Space.s3;
                         y: parent.height - self.height - Space.s2;
                         undo => { root.toast-undo(); }
+                        edit => { root.toast-edit(); }
                         hover-changed(h) => { root.toast-hover-changed(h); }
                     }
                 }

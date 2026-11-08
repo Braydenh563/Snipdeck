@@ -66,12 +66,21 @@ fn controller(tier: Tier) -> Rc<RefCell<Ctl>> {
 }
 
 fn controller_on(store: Store, tier: Tier) -> Rc<RefCell<Ctl>> {
+    controller_with(store, tier, Vec::new())
+}
+
+fn controller_with(
+    store: Store,
+    tier: Tier,
+    clipboard: Vec<snipdeck_platform::payload::Payload>,
+) -> Rc<RefCell<Ctl>> {
     Rc::new(RefCell::new(
         Controller::new(
             store,
             Services {
                 clipboard: FakeClipboard {
                     asks_after_polls: Some(1),
+                    written: clipboard,
                     ..FakeClipboard::default()
                 },
                 keyboard: FakeKeyboard::default(),
@@ -83,6 +92,19 @@ fn controller_on(store: Store, tier: Tier) -> Rc<RefCell<Ctl>> {
             Entitlements::new(tier),
         )
         .expect("controller"),
+    ))
+}
+
+/// A rig whose clipboard holds `text`, as if the user had just copied it.
+fn rig_clipboard(text: &str) -> Rig {
+    let clip = snipdeck_platform::payload::Payload::new(vec![snipdeck_platform::payload::Data::Text(
+        text.into(),
+    )])
+    .expect("payload");
+    rig_with(controller_with(
+        demo::store(now()).expect("demo store"),
+        Tier::Pro,
+        vec![clip],
     ))
 }
 
@@ -1425,5 +1447,35 @@ fn the_history_switch_in_the_welcome_tour_turns_the_inbox_off_and_on() {
         window.invoke_recent_history_toggled(false);
         assert!(!r.ctl.borrow().settings().recent_history);
         assert!(!window.get_recent_history());
+    });
+}
+
+#[test]
+fn ctrl_v_on_the_list_adds_the_clipboard_text_but_not_in_the_search_field() {
+    on_ui_thread(|| {
+        let r = rig_clipboard("pasted with ctrl v");
+        let before = r.titles().len();
+        r.ui.invoke_focus_search();
+        slint::platform::update_timers_and_animations();
+        chord(r.window(), &[Key::Control], "v");
+        assert_eq!(r.titles().len(), before, "a focused search field pastes normally");
+        r.ui.invoke_focus_items();
+        slint::platform::update_timers_and_animations();
+        chord(r.window(), &[Key::Control], "v");
+        assert_eq!(r.titles().len(), before + 1, "the list takes the paste");
+        assert!(r.ui.get_toast_text().contains("Added"), "{:?}", r.ui.get_toast_text());
+    });
+}
+
+#[test]
+fn ctrl_v_in_search_field_does_not_create() {
+    on_ui_thread(|| {
+        let r = rig_clipboard("pasted with ctrl v");
+        let before = r.titles().len();
+        r.ui.invoke_focus_search();
+        slint::platform::update_timers_and_animations();
+        chord(r.window(), &[Key::Control], "v");
+        assert_eq!(r.titles().len(), before);
+        assert!(r.ui.get_toast_text().is_empty());
     });
 }

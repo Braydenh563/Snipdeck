@@ -840,6 +840,10 @@ where
         wire!(on_pin_requested, |ctl, i| ctl.pin_row(index(i)));
         wire!(on_delete_requested, |ctl, i| ctl.delete_row(index(i)));
         wire!(on_toast_undo, |ctl| ctl.toast_action());
+        wire_effects!(on_toast_edit, |ctl| ctl.toast_edit());
+        wire!(on_paste_create_requested, |ctl| ctl
+            .paste_create(crate::item_editor::Origin::Panel));
+        wire!(on_copy_selection_requested, |ctl| ctl.panel_copy_selection());
         wire_effects!(on_open_requested, |ctl| ctl.open_main_window());
         wire!(on_undo_requested, |ctl| ctl.undo());
         wire!(on_redo_requested, |ctl| ctl.redo());
@@ -1362,6 +1366,11 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         if let Some(toast) = &view.toast {
             {
                 window.set_toast_undo_label(wording::toast_button_text(toast).into());
+                window.set_toast_edit_label(if toast.edit {
+                    wording::toast_edit_label(window).into()
+                } else {
+                    SharedString::new()
+                });
                 window.set_toast_kind(match toast.kind {
                     crate::toast::ToastKind::Neutral => ui::ToastKind::Neutral,
                     crate::toast::ToastKind::Success => ui::ToastKind::Success,
@@ -1377,6 +1386,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         } else {
             window.set_toast_text(SharedString::new());
             window.set_toast_undo_label(SharedString::new());
+            window.set_toast_edit_label(SharedString::new());
             window.set_toast_phase(ui::ToastPhase::Exit);
         }
     }

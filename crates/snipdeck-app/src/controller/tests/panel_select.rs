@@ -414,3 +414,95 @@ fn reset_size_and_position_clears_the_stored_geometry_of_this_monitor_only() {
     );
     assert!(w.ctl.view().toast.is_none(), "no Undo toast");
 }
+
+fn pasting(text: &'static str) -> World {
+    build(Opts {
+        clipboard: Some(text),
+        ..Opts::default()
+    })
+}
+
+#[test]
+fn paste_create_adds_to_the_shown_list_with_undo_and_edit() {
+    let mut w = pasting("a fresh note");
+    assert!(w.ctl.history_view().undo.is_none());
+    w.ctl.paste_create(Origin::Panel);
+    let view = w.ctl.view();
+    assert_eq!(view.rows.len(), 5, "the shown list gained one item");
+    assert_eq!(view.rows[0].preview, "a fresh note", "at the top");
+    let toast = view.toast.expect("toast");
+    assert_eq!(
+        toast.message,
+        ToastMessage::AddedTo {
+            list: "Replies".into(),
+            count: 1
+        }
+    );
+    assert!(toast.undo && toast.edit, "Undo and Edit are offered");
+    assert!(w.ctl.history_view().undo.is_some(), "one history step");
+    let id = view.rows[0].id;
+    assert_eq!(w.ctl.toast_edit(), [Effect::EditItem(id)]);
+
+    // Undo takes the item back to the Trash and leaves no step behind.
+    let mut w = pasting("a fresh note");
+    w.ctl.paste_create(Origin::Panel);
+    w.ctl.toast_action();
+    assert_eq!(w.ctl.view().rows.len(), 4);
+    assert!(w.ctl.history_view().undo.is_none(), "exactly one step");
+    assert!(w.ctl.history_view().redo.is_some());
+}
+
+#[test]
+fn a_pasted_address_becomes_a_link() {
+    let mut w = pasting("https://example.org/page");
+    w.ctl.paste_create(Origin::Panel);
+    let id = w.ctl.view().rows[0].id;
+    assert_eq!(w.ctl.store().item(id).expect("item").kind, ItemKind::Link);
+}
+
+#[test]
+fn an_empty_clipboard_creates_nothing() {
+    let mut w = world();
+    w.ctl.paste_create(Origin::Panel);
+    let view = w.ctl.view();
+    assert_eq!(view.rows.len(), 4);
+    assert_eq!(view.toast.expect("toast").message, ToastMessage::NothingToSave);
+}
+
+#[test]
+fn a_secret_paste_opens_the_editor_sensitive() {
+    let secret = "ghp_abcdefghijklmnopqrstuvwxyz0123456789";
+    let mut w = pasting(secret);
+    w.ctl.paste_create(Origin::Panel);
+    let view = w.ctl.view();
+    assert_eq!(view.rows.len(), 4, "nothing was saved");
+    assert_eq!(view.toast.expect("toast").message, ToastMessage::LooksSecret);
+    let editor = w.ctl.item_editor_view().expect("the editor is open");
+    assert!(editor.is_new);
+    assert!(editor.fields.sensitive);
+    assert_eq!(editor.fields.content, secret);
+}
+
+#[test]
+fn ctrl_c_one_item_uses_item_copy() {
+    let mut w = world();
+    w.ctl.services.clipboard.written.clear();
+    w.ctl.panel_copy_selection();
+    let written = &w.ctl.services.clipboard.written;
+    assert_eq!(written.len(), 1);
+    assert_eq!(written[0].data(), [Data::Text("first".into())]);
+    assert_eq!(uses(&w, w.ids[0]), 1, "counted as a use, like the Copy button");
+    assert_eq!(w.ctl.view().toast.expect("toast").message, ToastMessage::Copied);
+}
+
+#[test]
+fn ctrl_c_many_joins_like_copy_all() {
+    let mut w = world();
+    w.ctl.panel_mark(2, SelectMode::Toggle);
+    w.ctl.panel_mark(0, SelectMode::Toggle);
+    w.ctl.services.clipboard.written.clear();
+    w.ctl.panel_copy_selection();
+    let written = &w.ctl.services.clipboard.written;
+    assert_eq!(written.len(), 1);
+    assert_eq!(written[0].data(), [Data::Text("first\nthird".into())]);
+}

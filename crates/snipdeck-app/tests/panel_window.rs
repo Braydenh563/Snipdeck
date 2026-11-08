@@ -1920,3 +1920,40 @@ fn a_symbol_cell_shows_its_name_and_the_click_hint_in_a_tooltip_and_opens_its_me
         assert_eq!(texts.len(), 3, "an emoji has no export rows: {texts:?}");
     });
 }
+
+fn rig_clipboard(text: &str) -> Rig {
+    let clip = snipdeck_platform::payload::Payload::new(vec![Data::Text(text.into())])
+        .expect("payload");
+    rig_on(demo::store(now()).expect("demo store"), true, vec![clip])
+}
+
+#[test]
+fn ctrl_v_in_search_field_does_not_create() {
+    on_ui_thread(|| {
+        let r = rig_clipboard("pasted with ctrl v");
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        slint::platform::update_timers_and_animations();
+        let before = r.titles().len();
+        chord(r.window(), &[Key::Control], "f");
+        assert!(r.ui.get_search_focused());
+        chord(r.window(), &[Key::Control], "v");
+        assert_eq!(r.titles().len(), before, "nothing was created");
+        assert!(r.ctl.borrow().view().toast.is_none());
+    });
+}
+
+#[test]
+fn ctrl_v_on_the_list_adds_the_clipboard_text_with_undo_and_edit() {
+    on_ui_thread(|| {
+        let r = rig_clipboard("pasted with ctrl v");
+        r.window().set_size(slint::LogicalSize::new(320.0, 480.0));
+        slint::platform::update_timers_and_animations();
+        let before = r.titles().len();
+        chord(r.window(), &[Key::Control], "v");
+        assert_eq!(r.titles().len(), before + 1);
+        assert_eq!(r.ui.get_toast_undo_label(), "Undo");
+        assert_eq!(r.ui.get_toast_edit_label(), "Edit");
+        click(r.window(), &r.button("Undo"));
+        assert_eq!(r.titles().len(), before, "Undo takes it back");
+    });
+}

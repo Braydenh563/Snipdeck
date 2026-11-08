@@ -21,6 +21,7 @@ mod commands_ctl;
 mod dock_ctl;
 mod editor_ctl;
 mod history_ctl;
+mod create_ctl;
 mod library;
 mod lock_ctl;
 mod main_ctl;

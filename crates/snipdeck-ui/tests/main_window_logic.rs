@@ -178,6 +178,9 @@ fn start() -> (MainWindow, Log) {
     hook!(on_select_all_requested, || "select-all".to_string());
     hook!(on_clear_selection_requested, || "clear".to_string());
     hook!(on_item_action, |a, i| format!("action:{a:?}:{i}"));
+    hook!(on_paste_create_requested, || "paste-create".to_string());
+    hook!(on_copy_selection_requested, |i| format!("copy-selection:{i}"));
+    hook!(on_toast_edit, || "toast-edit".to_string());
     hook!(on_item_reorder_requested, |d| format!("reorder:{d}"));
     hook!(on_move_chosen, |i| format!("move:{i}"));
     hook!(on_tag_toggled, |i, on| format!("tag:{i}:{on}"));
@@ -1383,6 +1386,30 @@ ui_tests! {
         assert!(labels.iter().any(|l| l.starts_with("Thanks, received")), "{labels:?}");
         assert!(labels.iter().all(|l| !l.contains("hunter2")), "{labels:?}");
         let _ = find(&ui, "Snippets", AccessibleRole::List);
+    }
+
+    fn ctrl_v_and_ctrl_c_on_the_item_list_ask_for_a_paste_and_a_copy_of_the_cursor_row() {
+        let (ui, log) = start();
+        ui.invoke_focus_items();
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "v");
+        assert_eq!(take(&log), ["paste-create"]);
+        chord(ui.window(), &[Key::Control], "c");
+        assert_eq!(take(&log), ["copy-selection:0"]);
+    }
+
+    fn the_toast_edit_button_shows_only_with_its_label() {
+        let (ui, log) = start();
+        ui.set_toast_text("Added to Replies".into());
+        ui.set_toast_undo_label("Undo".into());
+        settle();
+        assert!(missing(&ui, "Edit", AccessibleRole::Button));
+        ui.set_toast_edit_label("Edit".into());
+        settle();
+        take(&log);
+        find(&ui, "Edit", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["toast-edit"]);
     }
 
     fn every_control_has_a_role_a_label_and_a_big_enough_target() {

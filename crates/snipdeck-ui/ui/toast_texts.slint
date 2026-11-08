@@ -68,6 +68,15 @@ export global ToastTexts {
     pure public function saved(list: string) -> string {
         return @tr("Saved to {}", list);
     }
+    pure public function added-to(list: string) -> string {
+        return @tr("Added to {}", list);
+    }
+    pure public function looks-secret() -> string {
+        return @tr("This looks like a password or key, so it was not saved. Check it, then save.");
+    }
+    pure public function edit-button() -> string {
+        return @tr("Edit");
+    }
     pure public function nothing-to-save() -> string {
         return @tr("Nothing to save. Copy some text first.");
     }

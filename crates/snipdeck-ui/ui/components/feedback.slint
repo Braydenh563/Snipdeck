@@ -12,6 +12,54 @@ export enum ToastKind { neutral, success, danger }
 // `Motion.quick`), then `hold` once settled (stays `hold-duration`), then `exit` (fades out in 90ms).
 export enum ToastPhase { enter, hold, exit }
 
+// One action button of the ink toast: label in `toast.action`, a 2px ring while it has the keyboard focus.
+component ToastButton inherits Rectangle {
+    in property <string> label;
+    out property <bool> focused: ink-scope.has-focus;
+    callback activated();
+    width: ink-action.preferred-width + 2 * Space.s2 + Space.s0-5;
+    ink-btn := Rectangle {
+        width: parent.width;
+        height: Space.s6 + Space.s1;
+        y: (parent.height - self.height) / 2;
+        border-radius: Radius.md;
+        background: ink-touch.pressed ? Theme.ink-pressed : ink-touch.has-hover ? Theme.ink-hover : transparent;
+        forward-focus: ink-scope;
+        accessible-role: button;
+        accessible-label: root.label;
+        accessible-action-default => { root.activated(); }
+        ink-action := Text {
+            x: Space.s2 + Space.s0-5 / 2;
+            width: self.preferred-width;
+            height: parent.height;
+            text: root.label;
+            color: Theme.toast-action;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            font-weight: Type.medium;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Rectangle {
+            border-width: ink-scope.has-focus ? 2px : 0px;
+            border-color: Theme.toast-action;
+            border-radius: Radius.md;
+            background: transparent;
+        }
+        ink-touch := TouchArea { clicked => { root.activated(); } }
+        ink-scope := FocusScope {
+            focus-on-click: false;
+            key-pressed(event) => {
+                if (event.text == " " || event.text == "\n") {
+                    root.activated();
+                    return accept;
+                }
+                return reject;
+            }
+        }
+    }
+}
+
 // DESIGN.md §4 Toast, the ink toast (Panel v2 spec 2.8): 40 tall, `ink.default` fill, `text.on-ink`, radius 8, the action
 // in `toast.action`. Transient results ("Copied", "Pasted into Notepad"); the kind is carried by an icon only for success
 // (check) and danger (warning), neutral has none. A non-empty `undo-label` adds an action button. Announced politely.
@@ -21,15 +69,20 @@ export component Toast inherits Rectangle {
     in property <ToastPhase> phase: ToastPhase.hold;
     // Label of the action button, translated by the host. Empty hides the button.
     in property <string> undo-label;
+    // Label of the second action button (Edit), translated by the host. Empty hides the button.
+    in property <string> edit-label;
     // DESIGN.md §4: the host keeps a toast in `hold` for this long.
     out property <duration> hold-duration: 2500ms;
     callback undo();
+    callback edit();
     // The pointer is on the toast or its button has focus: the host keeps the toast up while it is.
     callback hover-changed(hovered: bool);
 
     // An ancestor TouchArea keeps its hover while the pointer is on a child, so the toast does not
     // flicker as the pointer crosses onto the action, and the button still gets its clicks.
-    property <bool> button-focus: false;
+    property <bool> button-focus: root.undo-focus || root.edit-focus;
+    property <bool> undo-focus: false;
+    property <bool> edit-focus: false;
     property <bool> over: area.has-hover || root.button-focus;
     changed over => { root.hover-changed(root.over); }
     property <bool> has-icon: root.kind != ToastKind.neutral;
@@ -49,7 +102,7 @@ export component Toast inherits Rectangle {
     area := TouchArea {
         row := HorizontalLayout {
             padding-left: Space.s3;
-            padding-right: root.undo-label != "" ? Space.s1 : Space.s3;
+            padding-right: (root.undo-label != "" || root.edit-label != "") ? Space.s1 : Space.s3;
             spacing: Space.s2;
             if root.has-icon: Rectangle {
                 width: 16px;
@@ -68,51 +121,16 @@ export component Toast inherits Rectangle {
                 wrap: TextWrap.no-wrap;
                 overflow: elide;
             }
-            // The wrapper takes the layout's full height so the button inside centres on the message (a layout ignores `y`).
-            if root.undo-label != "": Rectangle {
-              width: ink-action.preferred-width + 2 * Space.s2 + Space.s0-5;
-              ink-btn := Rectangle {
-                width: parent.width;
-                height: Space.s6 + Space.s1;
-                y: (parent.height - self.height) / 2;
-                border-radius: Radius.md;
-                background: ink-touch.pressed ? Theme.ink-pressed : ink-touch.has-hover ? Theme.ink-hover : transparent;
-                forward-focus: ink-scope;
-                accessible-role: button;
-                accessible-label: root.undo-label;
-                accessible-action-default => { root.undo(); }
-                changed ink-focus => { root.button-focus = self.ink-focus; }
-                property <bool> ink-focus: ink-scope.has-focus;
-                ink-action := Text {
-                    x: Space.s2 + Space.s0-5 / 2;
-                    width: self.preferred-width;
-                    height: parent.height;
-                    text: root.undo-label;
-                    color: Theme.toast-action;
-                    font-family: Fonts.sans;
-                    font-size: Type.sm;
-                    font-weight: Type.medium;
-                    vertical-alignment: center;
-                    accessible-role: none;
-                }
-                Rectangle {
-                    border-width: ink-scope.has-focus ? 2px : 0px;
-                    border-color: Theme.toast-action;
-                    border-radius: Radius.md;
-                    background: transparent;
-                }
-                ink-touch := TouchArea { clicked => { root.undo(); } }
-                ink-scope := FocusScope {
-                    focus-on-click: false;
-                    key-pressed(event) => {
-                        if (event.text == " " || event.text == "\n") {
-                            root.undo();
-                            return accept;
-                        }
-                        return reject;
-                    }
-                }
-              }
+            // Each button's wrapper takes the layout's full height so the button inside centres on the message (a layout ignores `y`).
+            if root.undo-label != "": undo-button := ToastButton {
+                label: root.undo-label;
+                activated => { root.undo(); }
+                changed focused => { root.undo-focus = self.focused; }
+            }
+            if root.edit-label != "": edit-button := ToastButton {
+                label: root.edit-label;
+                activated => { root.edit(); }
+                changed focused => { root.edit-focus = self.focused; }
             }
         }
     }

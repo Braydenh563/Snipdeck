@@ -171,6 +171,8 @@ where
         ToastMessage::LockedEditorClosed => t.invoke_locked_editor_closed(),
         ToastMessage::UnlockFirst => t.invoke_unlock_first(),
         ToastMessage::Saved { list } => t.invoke_saved(list.into()),
+        ToastMessage::AddedTo { list, .. } => t.invoke_added_to(list.into()),
+        ToastMessage::LooksSecret => t.invoke_looks_secret(),
         ToastMessage::NothingToSave => t.invoke_nothing_to_save(),
         ToastMessage::TooLargeToSave => t.invoke_too_large_to_save(),
         ToastMessage::NoListToSave => t.invoke_no_list_to_save(),
@@ -337,6 +339,15 @@ where
 
 /// The label of a toast's undo button.
 pub const UNDO_LABEL: &str = "Undo";
+
+/// The label of a toast's Edit button, in the language shown. `window` is any window of the UI.
+#[must_use]
+pub fn toast_edit_label<C>(window: &C) -> String
+where
+    for<'a> ToastTexts<'a>: Global<'a, C>,
+{
+    ToastTexts::get(window).invoke_edit_button().into()
+}
 
 /// The label of the crash toast's button.
 pub const OPEN_LOG_LABEL: &str = "Open log";

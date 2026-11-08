@@ -7,7 +7,7 @@
 use snipdeck_core::{Format, Formats, Item, ItemId, ItemKind, ListId, Placement, Timestamp};
 use snipdeck_store::{BlobStore, BoardRepo, ItemRepo, ListRepo};
 
-use crate::controller::Library;
+use crate::{controller::Library, paste_create::kind_of_text};
 
 /// The largest text a capture saves (SPEC 5.4: over 5 MB is rejected with a toast).
 pub const MAX_TEXT_BYTES: usize = 5 * 1024 * 1024;
@@ -74,7 +74,7 @@ pub fn capture_text<L: Library>(
     text: Option<&str>,
     now: Timestamp,
 ) -> snipdeck_store::Result<Captured> {
-    let kind = text.map_or(ItemKind::Text, kind_of);
+    let kind = text.map_or(ItemKind::Text, kind_of_text);
     capture_as(library, list, text, kind, Placement::First, now)
 }
 
@@ -115,7 +115,7 @@ pub fn capture_as<L: Library>(
 /// placeholder such as `{date}` or `{field:Name}` that parses is a template, anything else is text.
 #[must_use]
 pub fn detect_kind(text: &str) -> ItemKind {
-    let kind = kind_of(text);
+    let kind = kind_of_text(text);
     if kind != ItemKind::Text {
         return kind;
     }
@@ -131,18 +131,6 @@ pub fn detect_kind(text: &str) -> ItemKind {
     .any(|p| text.contains(p));
     if has_placeholder && snipdeck_core::template::Template::parse(text).is_ok() {
         ItemKind::Template
-    } else {
-        ItemKind::Text
-    }
-}
-
-/// A lone `http(s)` address is a link, anything else text.
-#[must_use]
-pub fn kind_of(text: &str) -> ItemKind {
-    let t = text.trim();
-    let web = t.starts_with("http://") || t.starts_with("https://");
-    if web && !t.contains(char::is_whitespace) && t.len() > "https://".len() {
-        ItemKind::Link
     } else {
         ItemKind::Text
     }
@@ -215,20 +203,6 @@ mod tests {
         assert_eq!(saved.use_count, 0);
         assert!(!saved.sensitive);
         assert_eq!(text_of(&store, b), "second\nline two");
-    }
-
-    #[test]
-    fn a_single_web_address_is_a_link_and_other_text_is_not() {
-        for (text, kind) in [
-            ("https://example.com/a?b=1", ItemKind::Link),
-            ("  http://example.com  ", ItemKind::Link),
-            ("https://", ItemKind::Text),
-            ("see https://example.com", ItemKind::Text),
-            ("https://example.com and more", ItemKind::Text),
-            ("ftp://example.com", ItemKind::Text),
-        ] {
-            assert_eq!(kind_of(text), kind, "{text:?}");
-        }
     }
 
     #[test]

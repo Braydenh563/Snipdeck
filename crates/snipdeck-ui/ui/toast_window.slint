@@ -18,7 +18,9 @@ export component ToastWindow inherits Window {
     in property <ToastKind> kind: ToastKind.neutral;
     in property <ToastPhase> phase: ToastPhase.hold;
     in property <string> undo-label;
+    in property <string> edit-label;
     callback undo();
+    callback edit();
     callback hover-changed(hovered: bool);
     // The size that fits the toast; the host sizes and places the window from it.
     out property <length> content-width: min(toast.preferred-width, 480px);
@@ -38,7 +40,9 @@ export component ToastWindow inherits Window {
         kind: root.kind;
         phase: root.phase;
         undo-label: root.undo-label;
+        edit-label: root.edit-label;
         undo => { root.undo(); }
+        edit => { root.edit(); }
         hover-changed(h) => { root.hover-changed(h); }
     }
 }

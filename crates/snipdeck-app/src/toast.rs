@@ -95,6 +95,16 @@ pub enum ToastMessage {
         /// The list's name.
         list: String,
     },
+    /// "Added to {list}" / "Added {count} items to {list}" (Ctrl+V on a list), with Undo and Edit.
+    AddedTo {
+        /// The list's name.
+        list: String,
+        /// How many items were made.
+        count: usize,
+    },
+    /// "That looks like a password or key, so it was not saved. Check it, then save." (Ctrl+V
+    /// with a secret on the clipboard opens the editor instead of saving)
+    LooksSecret,
     /// "Nothing to save. Copy some text first." (quick capture with no text on the clipboard)
     NothingToSave,
     /// "That text is too large to save." (quick capture over 5 MB)

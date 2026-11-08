@@ -32,7 +32,7 @@ use crate::{
         register_redraw, to_i32,
     },
     controller::{
-        BoardMenuEntry, Controller, HelpTopic, Library, MainAction, MainScreen, ToastPhase,
+        BoardMenuEntry, Controller, Effect, HelpTopic, Library, MainAction, MainScreen, ToastPhase,
     },
     host::ClipboardText,
     item_editor::Origin,
@@ -637,6 +637,17 @@ where
         wire!(on_board_delete_dismissed, |ctl| ctl
             .main_board_delete_cancel());
         wire!(on_toast_undo, |ctl| ctl.toast_action());
+        wire!(on_toast_edit, |ctl| {
+            for effect in ctl.toast_edit() {
+                if let Effect::EditItem(id) = effect {
+                    ctl.open_item_editor(id);
+                }
+            }
+        });
+        wire!(on_paste_create_requested, |ctl| ctl
+            .paste_create(crate::item_editor::Origin::Main));
+        wire!(on_copy_selection_requested, |ctl, i| ctl
+            .main_copy_selection(index(i)));
         wire!(on_undo_requested, |ctl| ctl.undo());
         wire!(on_redo_requested, |ctl| ctl.redo());
         {
@@ -1197,10 +1208,16 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
                 ToastPhase::Exit => ui::ToastPhase::Exit,
             });
             window.set_toast_undo_label(wording::toast_button_text(toast).into());
+            window.set_toast_edit_label(if toast.edit {
+                wording::toast_edit_label(window).into()
+            } else {
+                SharedString::new()
+            });
             window.set_toast_text(wording::toast_text(window, &toast.message).into());
         } else {
             window.set_toast_text(SharedString::new());
             window.set_toast_undo_label(SharedString::new());
+            window.set_toast_edit_label(SharedString::new());
             window.set_toast_phase(ui::ToastPhase::Exit);
         }
     }

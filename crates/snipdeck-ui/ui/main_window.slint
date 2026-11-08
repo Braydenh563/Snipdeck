@@ -293,6 +293,7 @@ export component MainWindow inherits Window {
     in property <ToastKind> toast-kind: ToastKind.neutral;
     in property <ToastPhase> toast-phase: ToastPhase.hold;
     in property <string> toast-undo-label;
+    in property <string> toast-edit-label;
 
     // ---- State both ways ----------------------------------------------------------------------
     // The host flips it to redraw the whole window (see `RepaintNudge`).
@@ -364,6 +365,11 @@ export component MainWindow inherits Window {
     callback board-delete-confirmed();
     callback board-delete-dismissed();
     callback toast-undo();
+    callback toast-edit();
+    // Ctrl+V on the item list: make an item from the clipboard text.
+    callback paste-create-requested();
+    // Ctrl+C on the item list: copy the selected rows (the row under the cursor with none selected).
+    callback copy-selection-requested(int);
     callback toast-hover-changed(hovered: bool);
     // Ctrl+Z / the Undo button: take back the latest step of the app-wide history.
     callback undo-requested();
@@ -1531,10 +1537,18 @@ export component MainWindow inherits Window {
                                 }
                                 return reject;
                             }
+                            if (ctrl && !event.modifiers.alt && !shift && !root.in-trash && !root.recent-shown && (event.text == "v" || event.text == "V")) {
+                                root.paste-create-requested();
+                                return accept;
+                            }
                             if (event.modifiers.alt || root.rows.length == 0) {
                                 return reject;
                             }
                             if (ctrl) {
+                                if (!shift && !root.in-trash && !root.recent-shown && (event.text == "c" || event.text == "C")) {
+                                    root.copy-selection-requested(root.cur);
+                                    return accept;
+                                }
                                 if (event.text == "a" || event.text == "A") {
                                     root.select-all-requested();
                                     return accept;
@@ -2040,11 +2054,13 @@ export component MainWindow inherits Window {
                         kind: root.toast-kind;
                         phase: root.toast-phase;
                         undo-label: root.toast-undo-label;
+                        edit-label: root.toast-edit-label;
                         width: min(self.preferred-width, 480px, parent.width - 2 * root.pad);
                         height: self.preferred-height;
                         x: (parent.width - self.width) / 2;
                         y: parent.height - self.height - Space.s2;
                         undo => { root.toast-undo(); }
+                        edit => { root.toast-edit(); }
                         hover-changed(h) => { root.toast-hover-changed(h); }
                     }
                 }

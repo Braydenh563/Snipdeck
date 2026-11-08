@@ -19,7 +19,7 @@ use snipdeck_ui as ui;
 use crate::{
     accent::Accent,
     binding::{redraw_all, register_redraw},
-    controller::{Controller, Library, ToastPhase, ToastView, View},
+    controller::{Controller, Effect, Library, ToastPhase, ToastView, View},
     frame::Rect,
     host::ClipboardText,
     placement::{self, PopupHost},
@@ -84,9 +84,23 @@ where
                     core.controller.borrow_mut().toast_hover(on);
                 }
             });
+            let edit = Weak::clone(&weak);
             window.on_undo(move || {
                 if let Some(core) = weak.upgrade() {
                     core.controller.borrow_mut().main_undo();
+                    redraw_all();
+                }
+            });
+            window.on_edit(move || {
+                if let Some(core) = edit.upgrade() {
+                    {
+                        let mut ctl = core.controller.borrow_mut();
+                        for effect in ctl.toast_edit() {
+                            if let Effect::EditItem(id) = effect {
+                                ctl.open_item_editor(id);
+                            }
+                        }
+                    }
                     redraw_all();
                 }
             });
@@ -205,6 +219,11 @@ fn render(window: &ui::ToastWindow, previous: Option<&Shown>, view: &View, toast
     if differs(&|p| p.toast == *toast) {
         window.set_undo_label(if toast.undo {
             wording::UNDO_LABEL.into()
+        } else {
+            SharedString::new()
+        });
+        window.set_edit_label(if toast.edit {
+            wording::toast_edit_label(window).into()
         } else {
             SharedString::new()
         });

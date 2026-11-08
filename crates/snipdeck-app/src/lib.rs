@@ -42,6 +42,7 @@ pub mod onboarding_binding;
 pub mod ownership;
 pub mod palette;
 pub mod panel;
+pub mod paste_create;
 pub mod paste_next;
 pub mod paths;
 pub mod picker;

@@ -79,6 +79,9 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_board_menu_dismissed, || "board-dismissed".to_string());
     hook!(on_pinned_used, |i| format!("pinned:{i}"));
     hook!(on_toast_undo, || "undo".to_string());
+    hook!(on_toast_edit, || "toast-edit".to_string());
+    hook!(on_paste_create_requested, || "paste-create".to_string());
+    hook!(on_copy_selection_requested, || "copy-selection".to_string());
     hook!(on_undo_requested, || "ctrl-z".to_string());
     hook!(on_new_item_requested, || "new".to_string());
     hook!(on_row_picked, |i, shift, ctrl| format!(
@@ -1696,6 +1699,41 @@ ui_tests! {
         ui.set_toast_text("".into());
         settle();
         assert!(missing(&ui, "Copied", AccessibleRole::Text));
+    }
+
+    fn toast_edit_button_shows_only_with_edit() {
+        let (ui, log) = start();
+        ui.set_toast_text("Added to Replies".into());
+        ui.set_toast_undo_label("Undo".into());
+        settle();
+        find(&ui, "Undo", AccessibleRole::Button);
+        assert!(missing(&ui, "Edit", AccessibleRole::Button), "no Edit without the label");
+        ui.set_toast_edit_label("Edit".into());
+        settle();
+        find(&ui, "Undo", AccessibleRole::Button);
+        take(&log);
+        find(&ui, "Edit", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["toast-edit"]);
+        ui.set_toast_edit_label("".into());
+        settle();
+        assert!(missing(&ui, "Edit", AccessibleRole::Button));
+    }
+
+    fn ctrl_v_and_ctrl_c_on_the_list_ask_for_a_paste_and_a_copy_but_not_in_the_search_field() {
+        let (ui, log) = start();
+        take(&log);
+        chord(ui.window(), &[Key::Control], "v");
+        assert_eq!(take(&log), ["paste-create"]);
+        chord(ui.window(), &[Key::Control], "c");
+        assert_eq!(take(&log), ["copy-selection"]);
+        chord(ui.window(), &[Key::Control], "f");
+        assert!(ui.get_search_focused());
+        press(ui.window(), &key(Key::Tab));
+        chord(ui.window(), &[Key::Control], "f");
+        take(&log);
+        chord(ui.window(), &[Key::Control], "v");
+        chord(ui.window(), &[Key::Control], "c");
+        assert!(take(&log).is_empty(), "a focused search field pastes and copies normally");
     }
 
     fn the_pointer_on_a_toast_or_its_undo_button_reports_hover() {

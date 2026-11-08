@@ -63,6 +63,24 @@ where
         None
     }
 
+    /// Ctrl+C on the Main list: the selection (when more than one row is selected) or row
+    /// `index`, copied by [`copy_items`](Self::copy_items).
+    pub fn main_copy_selection(&mut self, index: usize) {
+        self.main_fresh();
+        let ids: Vec<ItemId> = self
+            .main
+            .targets(index)
+            .iter()
+            .filter_map(|k| match k {
+                Key::Item(id) => Some(*id),
+                _ => None,
+            })
+            .collect();
+        if !ids.is_empty() {
+            self.copy_items(&ids);
+        }
+    }
+
     pub(super) fn pin(&mut self, items: &[ItemId]) {
         let now = self.clock.now();
         let pin = !items
@@ -370,8 +388,11 @@ where
         if self.toast.as_ref().is_none_or(|t| t.seq != undo.seq) {
             return;
         }
-        if let Some(id) = undo.adds {
-            // Undo of an add: the new item goes to the Trash (it can still be restored from there).
+        // A step is taken back with the history; an add without one (a quick-add) goes to the Trash.
+        if let Some(step) = undo.step {
+            // The old toast goes, a new one replaces it.
+            self.undo_step(Some(step));
+        } else if let Some(id) = undo.adds {
             let now = self.clock.now();
             let done = self.store.atomically(|b| b.trash(Trashable::Item(id), now));
             self.toast = None;
@@ -381,11 +402,6 @@ where
             } else {
                 self.library_changed();
             }
-            return;
-        }
-        // The step is taken back: the old toast goes, a new one replaces it.
-        if let Some(step) = undo.step {
-            self.undo_step(Some(step));
         }
     }
 

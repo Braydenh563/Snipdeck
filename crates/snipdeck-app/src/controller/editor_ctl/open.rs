@@ -68,10 +68,34 @@ where
         match self.new_slot(list) {
             Ok(mut slot) => {
                 if !text.trim().is_empty() {
-                    slot.fields.kind = capture::kind_of(text);
+                    slot.fields.kind = crate::paste_create::kind_of_text(text);
                     text.trim_end().clone_into(&mut slot.fields.content);
                 }
                 self.install_item_editor(slot);
+            }
+            Err(e) => self.show_toast(open_failed(&e)),
+        }
+    }
+
+    /// Ctrl+V with a secret on the clipboard: the editor on a new item in `list` holding `text`,
+    /// Sensitive on, and a toast that says why nothing was saved.
+    pub(in crate::controller) fn open_new_item_secret(&mut self, list: ListId, text: &str) {
+        if self.raise_item_editor() {
+            return;
+        }
+        match self.new_slot(list) {
+            Ok(slot) => {
+                self.install_item_editor(slot);
+                // After the install: a draft restored into the slot must not undo any of this.
+                if let Some(slot) = self.item_editor.as_mut() {
+                    slot.fields.kind = crate::paste_create::kind_of_text(text);
+                    text.clone_into(&mut slot.fields.content);
+                    slot.fields.sensitive = true;
+                }
+                self.show_toast(Toast {
+                    kind: ToastKind::Neutral,
+                    message: ToastMessage::LooksSecret,
+                });
             }
             Err(e) => self.show_toast(open_failed(&e)),
         }
@@ -127,7 +151,7 @@ where
         }
     }
 
-    pub(super) fn new_item_list(&self, origin: Origin) -> Option<ListId> {
+    pub(in crate::controller) fn new_item_list(&self, origin: Origin) -> Option<ListId> {
         let shown = match origin {
             Origin::Main => self
                 .main
