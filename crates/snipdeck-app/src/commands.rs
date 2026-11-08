@@ -243,6 +243,10 @@ pub fn spoken(shortcut: &str) -> String {
 }
 
 /// What the palette may offer right now.
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one independent availability flag per command family; the palette reads them as a plain checklist"
+)]
 #[derive(Debug, Clone, Copy)]
 pub struct Context<'a> {
     /// The configured hotkeys, for the shortcuts of the global ones.
