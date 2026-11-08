@@ -475,9 +475,6 @@ msgstr "Copia el elemento"
 msgid "Copy the result"
 msgstr "Copia el resultado"
 
-msgid "Copy without pasting"
-msgstr "Copiar sin pegar"
-
 msgid "CopyQ export"
 msgstr "Exportación de CopyQ"
 
@@ -883,9 +880,6 @@ msgstr "Exportar la biblioteca"
 msgid "Feature"
 msgstr "Función"
 
-msgid "Fewer options"
-msgstr "Menos opciones"
-
 msgid "Fields"
 msgstr "Campos"
 
@@ -1018,14 +1012,14 @@ msgstr "Ocultar panel"
 msgid "Hide Panel ({})"
 msgstr "Ocultar panel ({})"
 
-msgid "Hide kind, title, colour, tags and privacy"
-msgstr "Ocultar tipo, título, color, etiquetas y privacidad"
-
 msgid "Hide the Panel"
 msgstr "Ocultar el panel"
 
 msgid "Hide the panel when it loses focus"
 msgstr "Ocultar el panel al perder el foco"
+
+msgid "Hide title, colour, tags and privacy"
+msgstr "Ocultar título, color, etiquetas y privacidad"
 
 msgid "History is paused"
 msgstr "El historial está en pausa"
@@ -2196,9 +2190,6 @@ msgstr "Mostrar la pestaña Símbolos"
 msgid "Show all"
 msgstr "Mostrar todo"
 
-msgid "Show kind, title, colour, tags and privacy"
-msgstr "Mostrar tipo, título, color, etiquetas y privacidad"
-
 msgid "Show numbers"
 msgstr "Mostrar números"
 
@@ -2216,6 +2207,9 @@ msgstr "Mostrar el Panel en la barra de tareas y en Alt+Tab"
 
 msgid "Show the welcome tour again"
 msgstr "Mostrar de nuevo el recorrido de bienvenida"
+
+msgid "Show title, colour, tags and privacy"
+msgstr "Mostrar título, color, etiquetas y privacidad"
 
 msgid "Shrug"
 msgstr "Encogerse de hombros"
@@ -2618,6 +2612,9 @@ msgstr "Vista de mosaico"
 
 msgid "Title"
 msgstr "Título"
+
+msgid "Title, colour, tags, privacy"
+msgstr "Título, color, etiquetas, privacidad"
 
 msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
 msgstr "Para eliminarlo todo, usa Borrar la biblioteca en Copias de seguridad y tus datos y luego elimina la carpeta."

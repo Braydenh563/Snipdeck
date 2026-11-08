@@ -475,9 +475,6 @@ msgstr "复制该片段"
 msgid "Copy the result"
 msgstr "复制结果"
 
-msgid "Copy without pasting"
-msgstr "复制但不粘贴"
-
 msgid "CopyQ export"
 msgstr "CopyQ 导出"
 
@@ -883,9 +880,6 @@ msgstr "导出资料库"
 msgid "Feature"
 msgstr "功能"
 
-msgid "Fewer options"
-msgstr "更少选项"
-
 msgid "Fields"
 msgstr "字段"
 
@@ -1018,14 +1012,14 @@ msgstr "隐藏面板"
 msgid "Hide Panel ({})"
 msgstr "隐藏面板 ({})"
 
-msgid "Hide kind, title, colour, tags and privacy"
-msgstr "隐藏类型、标题、颜色、标签和隐私"
-
 msgid "Hide the Panel"
 msgstr "隐藏面板"
 
 msgid "Hide the panel when it loses focus"
 msgstr "失去焦点时隐藏面板"
+
+msgid "Hide title, colour, tags and privacy"
+msgstr "隐藏标题、颜色、标签和隐私"
 
 msgid "History is paused"
 msgstr "历史记录已暂停"
@@ -2189,9 +2183,6 @@ msgstr "显示“符号”标签页"
 msgid "Show all"
 msgstr "显示全部"
 
-msgid "Show kind, title, colour, tags and privacy"
-msgstr "显示类型、标题、颜色、标签和隐私"
-
 msgid "Show numbers"
 msgstr "显示编号"
 
@@ -2209,6 +2200,9 @@ msgstr "在任务栏和 Alt+Tab 中显示面板"
 
 msgid "Show the welcome tour again"
 msgstr "再次显示欢迎导览"
+
+msgid "Show title, colour, tags and privacy"
+msgstr "显示标题、颜色、标签和隐私"
 
 msgid "Shrug"
 msgstr "耸肩"
@@ -2611,6 +2605,9 @@ msgstr "平铺视图"
 
 msgid "Title"
 msgstr "标题"
+
+msgid "Title, colour, tags, privacy"
+msgstr "标题、颜色、标签、隐私"
 
 msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
 msgstr "要删除全部内容，请使用“备份与你的数据”下的“删除资料库”，然后删除该文件夹。"

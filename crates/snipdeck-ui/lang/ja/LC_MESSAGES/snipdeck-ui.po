@@ -475,9 +475,6 @@ msgstr "スニペットをコピー"
 msgid "Copy the result"
 msgstr "結果をコピー"
 
-msgid "Copy without pasting"
-msgstr "貼り付けずにコピー"
-
 msgid "CopyQ export"
 msgstr "CopyQ エクスポート"
 
@@ -883,9 +880,6 @@ msgstr "ライブラリをエクスポート"
 msgid "Feature"
 msgstr "機能"
 
-msgid "Fewer options"
-msgstr "オプションを減らす"
-
 msgid "Fields"
 msgstr "入力欄"
 
@@ -1018,14 +1012,14 @@ msgstr "パネルを隠す"
 msgid "Hide Panel ({})"
 msgstr "パネルを隠す ({})"
 
-msgid "Hide kind, title, colour, tags and privacy"
-msgstr "種類、タイトル、色、タグ、プライバシーを隠す"
-
 msgid "Hide the Panel"
 msgstr "パネルを隠す"
 
 msgid "Hide the panel when it loses focus"
 msgstr "フォーカスを失ったらパネルを隠す"
+
+msgid "Hide title, colour, tags and privacy"
+msgstr "タイトル、色、タグ、プライバシーを隠す"
 
 msgid "History is paused"
 msgstr "履歴は一時停止中です"
@@ -2189,9 +2183,6 @@ msgstr "「記号」タブを表示"
 msgid "Show all"
 msgstr "すべて表示"
 
-msgid "Show kind, title, colour, tags and privacy"
-msgstr "種類、タイトル、色、タグ、プライバシーを表示"
-
 msgid "Show numbers"
 msgstr "番号を表示"
 
@@ -2209,6 +2200,9 @@ msgstr "パネルをタスクバーと Alt+Tab に表示"
 
 msgid "Show the welcome tour again"
 msgstr "ウェルカムツアーをもう一度表示"
+
+msgid "Show title, colour, tags and privacy"
+msgstr "タイトル、色、タグ、プライバシーを表示"
 
 msgid "Shrug"
 msgstr "肩をすくめる"
@@ -2611,6 +2605,9 @@ msgstr "タイル表示"
 
 msgid "Title"
 msgstr "タイトル"
+
+msgid "Title, colour, tags, privacy"
+msgstr "タイトル、色、タグ、プライバシー"
 
 msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
 msgstr "すべて削除するには、「バックアップとデータ」の「ライブラリを削除」を使い、そのあとフォルダーを削除してください。"

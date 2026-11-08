@@ -475,9 +475,6 @@ msgstr "Textbaustein kopieren"
 msgid "Copy the result"
 msgstr "Ergebnis kopieren"
 
-msgid "Copy without pasting"
-msgstr "Kopieren ohne Einfügen"
-
 msgid "CopyQ export"
 msgstr "CopyQ-Export"
 
@@ -883,9 +880,6 @@ msgstr "Bibliothek exportieren"
 msgid "Feature"
 msgstr "Funktion"
 
-msgid "Fewer options"
-msgstr "Weniger Optionen"
-
 msgid "Fields"
 msgstr "Felder"
 
@@ -1018,14 +1012,14 @@ msgstr "Panel ausblenden"
 msgid "Hide Panel ({})"
 msgstr "Panel ausblenden ({})"
 
-msgid "Hide kind, title, colour, tags and privacy"
-msgstr "Art, Titel, Farbe, Tags und Datenschutz ausblenden"
-
 msgid "Hide the Panel"
 msgstr "Panel ausblenden"
 
 msgid "Hide the panel when it loses focus"
 msgstr "Panel ausblenden, wenn es den Fokus verliert"
+
+msgid "Hide title, colour, tags and privacy"
+msgstr "Titel, Farbe, Tags und Datenschutz ausblenden"
 
 msgid "History is paused"
 msgstr "Verlauf ist pausiert"
@@ -2196,9 +2190,6 @@ msgstr "Tab „Symbole“ anzeigen"
 msgid "Show all"
 msgstr "Alle anzeigen"
 
-msgid "Show kind, title, colour, tags and privacy"
-msgstr "Art, Titel, Farbe, Tags und Datenschutz anzeigen"
-
 msgid "Show numbers"
 msgstr "Nummern anzeigen"
 
@@ -2216,6 +2207,9 @@ msgstr "Panel in der Taskleiste und bei Alt+Tab anzeigen"
 
 msgid "Show the welcome tour again"
 msgstr "Willkommenstour erneut anzeigen"
+
+msgid "Show title, colour, tags and privacy"
+msgstr "Titel, Farbe, Tags und Datenschutz einblenden"
 
 msgid "Shrug"
 msgstr "Schulterzucken"
@@ -2618,6 +2612,9 @@ msgstr "Kachelansicht"
 
 msgid "Title"
 msgstr "Titel"
+
+msgid "Title, colour, tags, privacy"
+msgstr "Titel, Farbe, Tags, Datenschutz"
 
 msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
 msgstr "Zum Entfernen von allem nutze Bibliothek löschen unter Sicherungen und deine Daten und lösche dann den Ordner."

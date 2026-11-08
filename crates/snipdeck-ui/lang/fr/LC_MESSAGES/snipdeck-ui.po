@@ -475,9 +475,6 @@ msgstr "Copier l'extrait"
 msgid "Copy the result"
 msgstr "Copier le résultat"
 
-msgid "Copy without pasting"
-msgstr "Copier sans coller"
-
 msgid "CopyQ export"
 msgstr "Export CopyQ"
 
@@ -883,9 +880,6 @@ msgstr "Exporter la bibliothèque"
 msgid "Feature"
 msgstr "Fonction"
 
-msgid "Fewer options"
-msgstr "Moins d’options"
-
 msgid "Fields"
 msgstr "Champs"
 
@@ -1018,14 +1012,14 @@ msgstr "Masquer le panneau"
 msgid "Hide Panel ({})"
 msgstr "Masquer le panneau ({})"
 
-msgid "Hide kind, title, colour, tags and privacy"
-msgstr "Masquer le type, le titre, la couleur, les étiquettes et la confidentialité"
-
 msgid "Hide the Panel"
 msgstr "Masquer le panneau"
 
 msgid "Hide the panel when it loses focus"
 msgstr "Masquer le panneau quand il perd le focus"
+
+msgid "Hide title, colour, tags and privacy"
+msgstr "Masquer le titre, la couleur, les étiquettes et la confidentialité"
 
 msgid "History is paused"
 msgstr "L'historique est suspendu"
@@ -2196,9 +2190,6 @@ msgstr "Afficher l’onglet Symboles"
 msgid "Show all"
 msgstr "Tout afficher"
 
-msgid "Show kind, title, colour, tags and privacy"
-msgstr "Afficher le type, le titre, la couleur, les étiquettes et la confidentialité"
-
 msgid "Show numbers"
 msgstr "Afficher les numéros"
 
@@ -2216,6 +2207,9 @@ msgstr "Afficher le Panneau dans la barre des tâches et dans Alt+Tab"
 
 msgid "Show the welcome tour again"
 msgstr "Afficher à nouveau la visite de bienvenue"
+
+msgid "Show title, colour, tags and privacy"
+msgstr "Afficher le titre, la couleur, les étiquettes et la confidentialité"
 
 msgid "Shrug"
 msgstr "Haussement d'épaules"
@@ -2618,6 +2612,9 @@ msgstr "Affichage en mosaïque"
 
 msgid "Title"
 msgstr "Titre"
+
+msgid "Title, colour, tags, privacy"
+msgstr "Titre, couleur, étiquettes, confidentialité"
 
 msgid "To remove everything, use Erase library under Backups and your data, then delete the folder."
 msgstr "Pour tout supprimer, utilisez Effacer la bibliothèque sous Sauvegardes et vos données, puis supprimez le dossier."
