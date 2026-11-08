@@ -102,25 +102,26 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::Redone { .. } => 72,
         ToastMessage::DatabaseRebuilt { .. } => 73,
         ToastMessage::RebuildNeedsRestart => 74,
-        ToastMessage::ImageNotPasteable => 75,
-        ToastMessage::HotkeysFailed { .. } => 76,
-        ToastMessage::ThemeSet(_) => 77,
-        ToastMessage::PanelOnTop(_) => 78,
-        ToastMessage::Pinned(_) => 79,
-        ToastMessage::Duplicated => 80,
-        ToastMessage::ListAdded => 81,
-        ToastMessage::ListSaved => 82,
-        ToastMessage::BoardSaved => 83,
-        ToastMessage::RecentDeleted => 84,
-        ToastMessage::RecentCleared => 85,
-        ToastMessage::DockSet(_) => 86,
-        ToastMessage::NotRefreshed => 87,
-        ToastMessage::IconNotAddable => 88,
-        ToastMessage::IconSaved { .. } => 89,
+        ToastMessage::RebuildUnfinished => 75,
+        ToastMessage::ImageNotPasteable => 76,
+        ToastMessage::HotkeysFailed { .. } => 77,
+        ToastMessage::ThemeSet(_) => 78,
+        ToastMessage::PanelOnTop(_) => 79,
+        ToastMessage::Pinned(_) => 80,
+        ToastMessage::Duplicated => 81,
+        ToastMessage::ListAdded => 82,
+        ToastMessage::ListSaved => 83,
+        ToastMessage::BoardSaved => 84,
+        ToastMessage::RecentDeleted => 85,
+        ToastMessage::RecentCleared => 86,
+        ToastMessage::DockSet(_) => 87,
+        ToastMessage::NotRefreshed => 88,
+        ToastMessage::IconNotAddable => 89,
+        ToastMessage::IconSaved { .. } => 90,
     }
 }
 
-const VARIANTS: usize = 90;
+const VARIANTS: usize = 91;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -197,11 +198,12 @@ fn samples() -> Vec<ToastMessage> {
         M::DatabaseRebuilt {
             restored: 5,
             recovered: 2,
-            kept: s("snipdeck.damaged-20261017-1030.db"),
+            kept: s("snipdeck.damaged-20261017-1030"),
             unreadable: false,
             missing_sensitive: 1,
         },
         M::RebuildNeedsRestart,
+        M::RebuildUnfinished,
         M::ImageNotPasteable,
         M::Imported { items: 5 },
         M::ImportFailed(Cause::TooNew),
@@ -330,17 +332,17 @@ fn what_a_toast_carries_reaches_its_sentence() {
         let rebuilt = |recovered, unreadable, missing_sensitive| ToastMessage::DatabaseRebuilt {
             restored: 5,
             recovered,
-            kept: s("old.db"),
+            kept: s("old"),
             unreadable,
             missing_sensitive,
         };
         assert_eq!(
             said(rebuilt(2, false, 0)),
-            "Database rebuilt: 5 items restored, 2 recovered. Your old database is kept as old.db."
+            "Database rebuilt: 5 items restored, 2 recovered. Your old database is kept in the folder old."
         );
         assert_eq!(
             said(rebuilt(0, true, 1)),
-            "Database rebuilt: 5 items restored. Newer items could not be read. Your old database is kept as old.db. 1 sensitive item was not in the backup."
+            "Database rebuilt: 5 items restored. Newer items could not be read. Your old database is kept in the folder old. 1 sensitive item was not in the backup."
         );
         assert_eq!(
             said(ToastMessage::Undone {

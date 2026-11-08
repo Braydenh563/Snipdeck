@@ -1831,7 +1831,8 @@ fn a_symbol_cell_menu_lists_the_actions_and_paste_uses_the_symbol() {
 }
 
 #[test]
-fn a_symbol_cell_shows_its_name_and_the_click_hint_in_a_tooltip_and_opens_its_menu_on_right_click() {
+fn a_symbol_cell_shows_its_name_and_the_click_hint_in_a_tooltip_and_opens_its_menu_on_right_click()
+{
     on_ui_thread(|| {
         let r = rig();
         r.window().set_size(slint::LogicalSize::new(320.0, 560.0));
@@ -1854,12 +1855,11 @@ fn a_symbol_cell_shows_its_name_and_the_click_hint_in_a_tooltip_and_opens_its_me
             .dispatch_event(slint::platform::WindowEvent::PointerReleased { position, button });
         slint::platform::update_timers_and_animations();
         assert!(r.ui.get_item_menu_open(), "right-click opens the menu");
-        let texts: Vec<String> = r
-            .ui
-            .get_item_menu_entries()
-            .iter()
-            .map(|e| e.text.to_string())
-            .collect();
+        let texts: Vec<String> =
+            r.ui.get_item_menu_entries()
+                .iter()
+                .map(|e| e.text.to_string())
+                .collect();
         assert_eq!(texts.len(), 3, "an emoji has no export rows: {texts:?}");
     });
 }

@@ -2840,8 +2840,11 @@ msgstr "しばらくするとライブラリがロックされました。編集
 msgid "Your library was erased."
 msgstr "ライブラリを削除しました。"
 
-msgid "Your old database is kept as {}."
-msgstr "以前のデータベースは {} として残してあります。"
+msgid "Your library was rebuilt, but the cleanup failed. Snipdeck will finish it the next time it starts."
+msgstr "ライブラリを再構築しましたが、後片付けに失敗しました。次回の起動時に Snipdeck が完了します。"
+
+msgid "Your old database is kept in the folder {}."
+msgstr "以前のデータベースはフォルダー {} に残してあります。"
 
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "無料プランと同様に、機密スニペットは Windows の保護のみで守られます。"

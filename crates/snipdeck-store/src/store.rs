@@ -44,7 +44,59 @@ pub struct Store {
     /// of [`ItemRepo::change_counter`](crate::ItemRepo::change_counter).
     pub(crate) quiet: Quiet,
     // Last, so the database is closed before the lock is released.
-    _lock: Option<File>,
+    lock: Option<FolderLock>,
+}
+
+/// The held single-writer lock of a data folder (`snipdeck.lock`).
+///
+/// A [`Store`] holds one while open. [`Store::close`] hands it back so a caller can keep the
+/// folder to itself between closing one store and opening the next ([`Store::open_locked`]).
+/// Dropping it releases the lock.
+#[derive(Debug)]
+pub struct FolderLock {
+    _file: File,
+    folder: PathBuf,
+}
+
+impl FolderLock {
+    /// The data folder this lock guards.
+    #[must_use]
+    pub fn folder(&self) -> &Path {
+        &self.folder
+    }
+
+    /// Takes the exclusive lock for `folder`, which must exist.
+    pub fn acquire(folder: &Path) -> Result<Self> {
+        acquire_lock(folder)
+    }
+}
+
+/// [`Store::open_locked`] failed; the folder lock is handed back.
+#[derive(Debug)]
+pub struct OpenLockedError {
+    /// Why the open failed.
+    pub error: Error,
+    /// The lock, still held.
+    pub lock: FolderLock,
+}
+
+impl core::fmt::Display for OpenLockedError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        self.error.fmt(f)
+    }
+}
+
+impl std::error::Error for OpenLockedError {}
+
+/// What [`Store::close`] hands back.
+#[derive(Debug)]
+pub struct Closed {
+    /// The folder lock, still held; `None` for an in-memory store.
+    pub lock: Option<FolderLock>,
+    /// True when the write-ahead log was folded into `snipdeck.db` and the connection closed
+    /// cleanly, so the database file alone holds every commit. When false, `-wal` and `-shm`
+    /// must move along with the database file.
+    pub self_contained: bool,
 }
 
 /// Counts of rows changed by writes that do not move `change_counter`.
@@ -91,7 +143,40 @@ impl Store {
         let folder = folder.as_ref();
         fs::create_dir_all(folder)?;
         let lock = acquire_lock(folder)?;
+        // Before any connection: a rebuild that was interrupted is undone first, so a missing
+        // database is never replaced by an empty one while a damaged library sits set aside.
+        crate::aside::recover(folder, &lock)?;
+        Self::open_locked(folder, lock).map_err(|failed| failed.error)
+    }
 
+    /// Like [`Store::open`], for a caller that already holds the folder's lock (from
+    /// [`Store::close`]); it does not look for an interrupted rebuild.
+    ///
+    /// When the open fails the lock comes back in the error, still held, so the caller can
+    /// roll back (for example [`undo_set_aside`](crate::undo_set_aside)) before releasing it.
+    /// A `lock` for another folder is refused.
+    pub fn open_locked(
+        folder: impl AsRef<Path>,
+        lock: FolderLock,
+    ) -> core::result::Result<Self, Box<OpenLockedError>> {
+        let folder = folder.as_ref();
+        if !crate::aside::same_folder(folder, lock.folder()) {
+            return Err(Box::new(OpenLockedError {
+                error: Error::Invalid("the folder lock is for another folder".to_owned()),
+                lock,
+            }));
+        }
+        match Self::open_unlocked(folder) {
+            Ok(mut store) => {
+                store.lock = Some(lock);
+                Ok(store)
+            }
+            Err(error) => Err(Box::new(OpenLockedError { error, lock })),
+        }
+    }
+
+    /// Opens the database and blob folder; the caller attaches the lock.
+    fn open_unlocked(folder: &Path) -> Result<Self> {
         let db_path = folder.join(DB_FILE);
         let mut conn = Connection::open(&db_path)?;
         conn.busy_timeout(Duration::from_secs(5))?;
@@ -114,8 +199,36 @@ impl Store {
             blobs: Blobs::on_disk(folder.join(BLOB_DIR)),
             key: None,
             quiet: Quiet::default(),
-            _lock: Some(lock),
+            lock: None,
         })
+    }
+
+    /// Closes the store: folds the write-ahead log into the database
+    /// (`wal_checkpoint(TRUNCATE)`, checked) and closes the connection, keeping the folder
+    /// lock held in the returned [`Closed`].
+    pub fn close(self) -> Closed {
+        let Self { conn, lock, .. } = self;
+        let folded = conn
+            .query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |r| {
+                Ok((
+                    r.get::<_, i64>(0)?,
+                    r.get::<_, i64>(1)?,
+                    r.get::<_, i64>(2)?,
+                ))
+            })
+            // (busy, log frames, checkpointed frames); -1 frames means no log (not WAL mode).
+            .is_ok_and(|(busy, log, done)| busy == 0 && log == done);
+        let closed = conn.close().is_ok();
+        Closed {
+            lock,
+            self_contained: folded && closed,
+        }
+    }
+
+    /// The folder lock this store holds (`None` for an in-memory store).
+    #[must_use]
+    pub fn folder_lock(&self) -> Option<&FolderLock> {
+        self.lock.as_ref()
     }
 
     /// An empty store that lives only in memory, blobs included: for tests and previews.
@@ -129,7 +242,7 @@ impl Store {
             blobs: Blobs::in_memory(),
             key: None,
             quiet: Quiet::default(),
-            _lock: None,
+            lock: None,
         })
     }
 
@@ -472,8 +585,8 @@ fn configure(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Takes the exclusive lock on `<folder>/snipdeck.lock`, held until the file is dropped.
-fn acquire_lock(folder: &Path) -> Result<File> {
+/// Takes the exclusive lock on `<folder>/snipdeck.lock`, held until it is dropped.
+fn acquire_lock(folder: &Path) -> Result<FolderLock> {
     let path: PathBuf = folder.join(LOCK_FILE);
     let file = OpenOptions::new()
         .read(true)
@@ -482,7 +595,10 @@ fn acquire_lock(folder: &Path) -> Result<File> {
         .truncate(false)
         .open(path)?;
     match file.try_lock() {
-        Ok(()) => Ok(file),
+        Ok(()) => Ok(FolderLock {
+            _file: file,
+            folder: folder.to_owned(),
+        }),
         Err(TryLockError::WouldBlock) => Err(Error::Locked {
             folder: folder.to_owned(),
         }),

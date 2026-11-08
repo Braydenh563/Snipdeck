@@ -2847,8 +2847,11 @@ msgstr "Votre bibliothèque s'est verrouillée après un moment. L'extrait sensi
 msgid "Your library was erased."
 msgstr "Votre bibliothèque a été effacée."
 
-msgid "Your old database is kept as {}."
-msgstr "Votre ancienne base de données est conservée sous le nom {}."
+msgid "Your library was rebuilt, but the cleanup failed. Snipdeck will finish it the next time it starts."
+msgstr "Votre bibliothèque a été reconstruite, mais le nettoyage a échoué. Snipdeck le terminera au prochain démarrage."
+
+msgid "Your old database is kept in the folder {}."
+msgstr "Votre ancienne base de données est conservée dans le dossier {}."
 
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "Vos extraits sensibles seront protégés par Windows seul, comme dans l'offre gratuite."

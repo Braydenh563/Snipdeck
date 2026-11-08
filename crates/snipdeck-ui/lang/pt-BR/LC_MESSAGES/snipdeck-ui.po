@@ -2847,8 +2847,11 @@ msgstr "Sua biblioteca foi bloqueada depois de um tempo. O item sensível que vo
 msgid "Your library was erased."
 msgstr "Sua biblioteca foi apagada."
 
-msgid "Your old database is kept as {}."
-msgstr "Seu banco de dados antigo foi mantido como {}."
+msgid "Your library was rebuilt, but the cleanup failed. Snipdeck will finish it the next time it starts."
+msgstr "Sua biblioteca foi reconstruída, mas a limpeza falhou. O Snipdeck vai concluí-la na próxima inicialização."
+
+msgid "Your old database is kept in the folder {}."
+msgstr "Seu banco de dados antigo foi mantido na pasta {}."
 
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "Seus itens sensíveis serão protegidos somente pelo Windows, como no plano Gratuito."
