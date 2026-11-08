@@ -1575,7 +1575,7 @@ ui_tests! {
         chord(ui.window(), &[Key::Control], &key(Key::Tab));
         assert!(!ui.get_symbols_open(), "and then the first list again");
         assert_eq!(ui.get_current_tab(), 0);
-        chord(ui.window(), &[Key::Control, Key::Shift], &key(Key::Backtab));
+        chord(ui.window(), &[Key::Control, Key::Shift], &key(Key::Tab));
         assert!(ui.get_symbols_open(), "Ctrl+Shift+Tab from the first list goes back to Symbols");
 
         // Switched off in Settings: the tab goes, and Ctrl+Tab skips it.

@@ -760,6 +760,8 @@ export component PanelWindow inherits Window {
         }
         root.symbols-open = false;
         root.symbols-toggled(false);
+        // The Symbols search box goes with the tab; the keyboard returns to the list.
+        root.focus-typing();
     }
 
     function step-symbol-kind(dir: int) {
