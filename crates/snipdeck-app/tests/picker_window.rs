@@ -231,10 +231,14 @@ fn the_picker_flips_above_a_caret_near_the_bottom_and_falls_back_to_the_mouse() 
         r.targets.set_caret(None);
         let _ = r.open();
         let at = r.picker.placed().expect("it was placed");
+        // The 36 px rows (shared look decision 4) make the window 440 px tall: below the
+        // mouse at y 600 it would leave the 1040 px work area, so it flips above the mouse.
+        assert_eq!(at.x, 900);
+        assert_eq!(at.h, 440, "7 rows of 36 px plus the search, chips and footer");
         assert_eq!(
-            (at.x, at.y),
-            (900, 604),
-            "no caret: the mouse at (900, 600)"
+            i64::from(at.y) + i64::from(at.h),
+            600 - 4,
+            "no caret: the mouse at (900, 600), the window's bottom edge one 4 px gap above it"
         );
     });
 }
@@ -264,7 +268,11 @@ fn typing_filters_across_the_boards_and_enter_pastes_into_the_target() {
         type_text(w.window(), "retry");
         assert_eq!(r.ctl.borrow().picker().expect("open").query(), "retry");
         assert_eq!(titles(&w)[0], "Retry helper", "search spans every list");
-        assert_eq!(w.get_rows().row_data(0).expect("row").list_name, "Code");
+        assert_eq!(
+            w.get_rows().row_data(0).expect("row").list_name,
+            "Work · Code",
+            "the place reads Board · List (shared look decision 4)"
+        );
 
         press(w.window(), &key(Key::Return));
         assert!(!w.window().is_visible(), "the Picker is off the screen");
@@ -440,7 +448,7 @@ fn a_sensitive_row_shows_the_mask_and_never_its_preview() {
             .find(|row| row.title == "Server password")
             .expect("the sensitive row is listed");
         assert_eq!(secret.preview, "");
-        assert_eq!(secret.masked_preview, "••••••••");
+        assert_eq!(secret.masked_preview, snipdeck_app::binding::MASKED_PREVIEW);
         assert_eq!(secret.kind, snipdeck_ui::ItemKind::Sensitive);
         // Nothing in the window carries the secret.
         assert!(
