@@ -2039,8 +2039,8 @@ msgstr "クリップボードをスニペットとして保存"
 msgid "Save to…"
 msgstr "保存先…"
 
-msgid "Save your first snippet, or copy something and save it from the clipboard."
-msgstr "最初のスニペットを保存するか、何かをコピーしてクリップボードから保存してください。"
+msgid "Save what you paste often."
+msgstr "よく貼り付けるものを保存しましょう。"
 
 msgid "Saved to {}"
 msgstr "{} に保存しました"
@@ -2830,9 +2830,6 @@ msgstr "はい"
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "取り込むと {} 個のボードになりますが、無料プランには {} 個まで含まれます。"
-
-msgid "Your deck is empty"
-msgstr "デッキは空です"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "ライブラリは1つのフォルダー（%LOCALAPPDATA%\\Snipdeck）にあります：snipdeck.db（ボード、リスト、スニペット、タグ、ゴミ箱）、blobs（画像、ファイル、長いテキスト）、settings.json、ライセンスキー、バックアップ（保持すると選んだ数）、ログ。"

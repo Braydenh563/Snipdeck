@@ -2046,8 +2046,8 @@ msgstr "Enregistrer le presse-papiers comme extrait"
 msgid "Save to…"
 msgstr "Enregistrer dans…"
 
-msgid "Save your first snippet, or copy something and save it from the clipboard."
-msgstr "Enregistrez votre premier extrait, ou copiez quelque chose et enregistrez-le depuis le presse-papiers."
+msgid "Save what you paste often."
+msgstr "Enregistrez ce que vous collez souvent."
 
 msgid "Saved to {}"
 msgstr "Enregistré dans {}"
@@ -2837,9 +2837,6 @@ msgstr "Oui"
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "Vous auriez {} tableaux, et l'offre gratuite en comprend {}."
-
-msgid "Your deck is empty"
-msgstr "Votre deck est vide"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "Votre bibliothèque est dans un seul dossier, %LOCALAPPDATA%\\Snipdeck : snipdeck.db (tableaux, listes, extraits, étiquettes et la Corbeille), blobs (images, fichiers et textes longs), settings.json, votre clé de licence, les sauvegardes (autant que vous choisissez d’en garder) et les journaux."

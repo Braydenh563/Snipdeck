@@ -170,6 +170,10 @@ fn start() -> (MainWindow, Log) {
     hook!(on_view_changed, |v| format!("view:{v:?}"));
     hook!(on_theme_chosen, |i| format!("theme:{i}"));
     hook!(on_new_item_requested, || "new".to_string());
+    hook!(on_add_from_clipboard, || "add-from-clipboard".to_string());
+    hook!(on_import_requested, || "import".to_string());
+    hook!(on_add_from_clipboard, || "add-from-clipboard".to_string());
+    hook!(on_import_requested, || "import".to_string());
     hook!(on_select_requested, |i, m| format!("select:{i}:{m:?}"));
     hook!(on_select_all_requested, || "select-all".to_string());
     hook!(on_clear_selection_requested, || "clear".to_string());
@@ -748,6 +752,84 @@ ui_tests! {
     }
 
     // ---- Colour labels ---------------------------------------------------------------------------
+
+    fn tile_height_fits_content() {
+        let (ui, _log) = start();
+        ui.set_view(MainView::Tile);
+        settle();
+        // The sidebar's entries are list items too (28 tall); the tiles are the rest.
+        let tiles: Vec<_> = by_role(&ui, AccessibleRole::ListItem)
+            .into_iter()
+            .filter(|t| t.size().height > 40.0)
+            .collect();
+        assert!(tiles.len() >= 6, "the fixture fills several tiles: {}", tiles.len());
+        let heights: Vec<f32> = tiles.iter().map(|t| t.size().height).collect();
+        assert!(heights.iter().all(|h| *h >= 96.0 - 0.5), "min 96: {heights:?}");
+        assert!(
+            heights.iter().any(|h| (h - 96.0).abs() < 0.5),
+            "a short tile is 96 tall, not the tallest possible tile: {heights:?}"
+        );
+        // Tiles of one grid row share its height (an even row).
+        for a in &tiles {
+            for b in &tiles {
+                if (a.absolute_position().y - b.absolute_position().y).abs() < 0.5 {
+                    assert!((a.size().height - b.size().height).abs() < 0.5, "an even grid row");
+                }
+            }
+        }
+        // Rows are 6 apart and nothing else (no empty half-card) lies between them.
+        let mut ys: Vec<(f32, f32)> = tiles.iter().map(|t| (t.absolute_position().y, t.size().height)).collect();
+        ys.sort_by(|a, b| a.0.total_cmp(&b.0));
+        ys.dedup_by(|a, b| (a.0 - b.0).abs() < 0.5);
+        for w in ys.windows(2) {
+            let gap = w[1].0 - (w[0].0 + w[0].1);
+            assert!((gap - 6.0).abs() < 0.5, "rows are 6 apart: {gap}");
+        }
+    }
+
+    fn tile_glyph_inline_with_title() {
+        let (ui, _log) = start();
+        ui.set_view(MainView::Tile);
+        settle();
+        let tile = row_titled(&ui, "Invoice reminder");
+        let title = ElementQuery::from_root(&ui)
+            .match_id("ItemCard::title-text")
+            .find_all()
+            .into_iter()
+            .find(|t| {
+                let (p, o, s) = (t.absolute_position(), tile.absolute_position(), tile.size());
+                p.x >= o.x && p.x <= o.x + s.width && p.y >= o.y && p.y <= o.y + s.height
+            })
+            .expect("the tile's title");
+        assert!(
+            (title.absolute_position().x - tile.absolute_position().x - 40.0).abs() < 0.5,
+            "the 24px glyph tile sits left of the title: the title starts at x 40"
+        );
+        assert!(
+            title.absolute_position().y - tile.absolute_position().y < 16.0,
+            "the title is on the glyph's line, not under it"
+        );
+    }
+
+    fn empty_all_offers_clipboard_new_import() {
+        let (ui, log) = start();
+        fixture::set_rows(&ui, Vec::new());
+        ui.set_section(MainSection::All);
+        settle();
+        find(&ui, "No snippets yet", AccessibleRole::Text);
+        find(&ui, "Save what you paste often.", AccessibleRole::Text);
+        take(&log);
+        find(&ui, "Save from clipboard", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "New item", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Import…", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["add-from-clipboard", "new", "import"]);
+        // A list that is empty keeps its own words and one New item button.
+        ui.set_section(MainSection::List);
+        settle();
+        assert!(missing(&ui, "Import…", AccessibleRole::Button), "only the whole deck offers an import");
+        find(&ui, "This list is empty", AccessibleRole::Text);
+    }
 
     fn a_colour_label_is_named_in_the_cards_description_and_never_colour_alone() {
         let (ui, _log) = start();
