@@ -792,7 +792,7 @@ ui_tests! {
         ui.set_view(MainView::Tile);
         settle();
         let tile = row_titled(&ui, "Invoice reminder");
-        let title = ElementQuery::from_root(&ui)
+        let heading_text = ElementQuery::from_root(&ui)
             .match_id("ItemCard::title-text")
             .find_all()
             .into_iter()
@@ -802,11 +802,11 @@ ui_tests! {
             })
             .expect("the tile's title");
         assert!(
-            (title.absolute_position().x - tile.absolute_position().x - 40.0).abs() < 0.5,
+            (heading_text.absolute_position().x - tile.absolute_position().x - 40.0).abs() < 0.5,
             "the 24px glyph tile sits left of the title: the title starts at x 40"
         );
         assert!(
-            title.absolute_position().y - tile.absolute_position().y < 16.0,
+            heading_text.absolute_position().y - tile.absolute_position().y < 16.0,
             "the title is on the glyph's line, not under it"
         );
     }
