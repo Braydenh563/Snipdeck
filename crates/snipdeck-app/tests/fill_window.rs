@@ -233,11 +233,11 @@ fn a_sensitive_template_previews_as_a_mask_and_never_its_text() {
         store.update_item(&template, None).expect("mark sensitive");
         let r = rig_on(store);
         let (_, form) = r.open_form(false);
-        assert_eq!(form.get_preview(), "\u{2022}".repeat(8));
+        assert_eq!(form.get_preview(), "\u{2022}".repeat(12));
         type_text(form.window(), "Alice");
         assert_eq!(
             form.get_preview(),
-            "\u{2022}".repeat(8),
+            "\u{2022}".repeat(12),
             "typing does not unmask it"
         );
     });
