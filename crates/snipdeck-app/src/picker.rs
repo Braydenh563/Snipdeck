@@ -7,7 +7,10 @@
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::index_cache::IndexCache;
+use crate::{
+    index_cache::IndexCache,
+    search_mark::{self, Marks},
+};
 use snipdeck_core::{BoardId, Item, ItemId, ItemKind, ListAccent, ListId, search::SearchIndex};
 use snipdeck_store::{BoardRepo, ItemRepo, ListRepo, TagRepo};
 
@@ -45,6 +48,8 @@ pub struct Entry {
     pub list: String,
     /// The list's colour, if it has one.
     pub accent: Option<ListAccent>,
+    /// In a search: where the query matched (shared-look spec decision 3).
+    pub marks: Marks,
 }
 
 struct Place {
@@ -66,6 +71,8 @@ pub struct PickerModel {
     scope: Scope,
     /// Positions in `places` of the current results, best first.
     results: Vec<usize>,
+    /// The tag that matched, for the results where one did (by position in `places`).
+    tag_hits: HashMap<usize, String>,
     selected: usize,
 }
 
@@ -135,6 +142,7 @@ impl PickerModel {
             query: String::new(),
             scope: Scope::All,
             results: Vec::new(),
+            tag_hits: HashMap::new(),
             selected: 0,
         };
         model.search();
@@ -157,6 +165,7 @@ impl PickerModel {
             .map(|(n, p)| (p.item.id, n))
             .collect();
         let in_scope = |n: &usize| self.in_scope(&self.places[*n]);
+        let mut tag_hits = HashMap::new();
         self.results = if self.query.trim().is_empty() {
             // Nothing typed: what was used most recently first, then most used, then library order.
             let mut all: Vec<usize> = (0..self.places.len()).filter(in_scope).collect();
@@ -172,10 +181,17 @@ impl PickerModel {
             self.index
                 .query(&self.query, self.places.len())
                 .iter()
-                .filter_map(|hit| positions.get(&hit.id).copied())
+                .filter_map(|hit| {
+                    let n = positions.get(&hit.id).copied()?;
+                    if let Some(tag) = &hit.tag {
+                        tag_hits.insert(n, tag.clone());
+                    }
+                    Some(n)
+                })
                 .filter(in_scope)
                 .collect()
         };
+        self.tag_hits = tag_hits;
         self.results.truncate(RESULT_LIMIT);
         self.selected = 0;
     }
@@ -211,15 +227,23 @@ impl PickerModel {
             .iter()
             .map(|n| {
                 let p = &self.places[*n];
+                let title = if p.item.title.trim().is_empty() {
+                    p.item.preview.lines().next().unwrap_or_default().to_owned()
+                } else {
+                    p.item.title.clone()
+                };
                 Entry {
                     id: p.item.id,
                     kind: p.item.kind,
                     sensitive: p.item.sensitive,
-                    title: if p.item.title.trim().is_empty() {
-                        p.item.preview.lines().next().unwrap_or_default().to_owned()
-                    } else {
-                        p.item.title.clone()
-                    },
+                    marks: search_mark::marks(
+                        &title,
+                        &p.item.preview,
+                        p.item.sensitive,
+                        self.tag_hits.get(n).map(String::as_str),
+                        &self.query,
+                    ),
+                    title,
                     preview: p.item.preview.clone(),
                     board: p.board_name.clone(),
                     list: p.list_name.clone(),
@@ -326,6 +350,21 @@ mod tests {
         let m = PickerModel::load(&store, None).expect("model");
         assert_eq!(m.item_at(0), Some(thanks));
         assert_eq!(m.item_at(1), Some(office));
+    }
+
+    #[test]
+    fn a_search_marks_the_match_and_no_query_marks_nothing() {
+        let (_store, mut m) = model();
+        assert!(m.rows().iter().all(|r| r.marks == Marks::default()));
+        m.set_query("shopping");
+        let rows = m.rows();
+        assert!(!rows.is_empty());
+        assert!(
+            rows.iter().all(|r| r.marks.title.is_some()
+                || r.marks.preview.is_some()
+                || r.marks.tag.is_some()),
+            "every hit shows where it matched"
+        );
     }
 
     #[test]

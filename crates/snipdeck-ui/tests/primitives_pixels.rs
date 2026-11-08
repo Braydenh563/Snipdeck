@@ -38,6 +38,10 @@ mod px {
     pub const SURFACE_DARK: [u8; 3] = [0x17, 0x16, 0x13];
     pub const HOVER_DARK: [u8; 3] = [0x20, 0x1E, 0x1B];
     pub const BORDER_DEFAULT_DARK: [u8; 3] = [0x2D, 0x2B, 0x28];
+    /// `border.strong` (the same in both themes) and `bg.sunken`, the keycap's outline and fill.
+    pub const BORDER_STRONG: [u8; 3] = [0x7C, 0x7A, 0x76];
+    pub const SUNKEN_LIGHT: [u8; 3] = [0xEB, 0xE9, 0xE7];
+    pub const SUNKEN_DARK: [u8; 3] = [0x11, 0x0F, 0x0D];
     /// blue, teal, green, amber, orange, red, rose, violet, slate at step 600.
     pub const HUES_LIGHT: [[u8; 3]; 9] = [
         [0x28, 0x70, 0xD4],
@@ -328,4 +332,43 @@ fn menu_current_row_is_visibly_highlighted_in_both_themes() {
         assert_ne!(current, other, "highlight must show (dark={dark})");
         assert_eq!(current, expected, "highlight colour (dark={dark})");
     }
+}
+
+/// Shared-look decision 8: a keycap's outline is always `border.strong`, and it is 3:1 against the keycap's fill.
+#[test]
+fn keycap_border_is_strong() {
+    for (dark, fill) in [(false, px::SUNKEN_LIGHT), (true, px::SUNKEN_DARK)] {
+        let h = gallery(dark);
+        let frame = h.render();
+        // The Keycap row's first key ("1", y 60..80): the outline's left edge is the first strong pixel on the mid line.
+        let y = 70;
+        let edge = (92..140)
+            .find(|&x| frame.pixel(x, y) == px::BORDER_STRONG)
+            .unwrap_or_else(|| panic!("no border.strong pixel on the keycap's edge (dark={dark})"));
+        assert_eq!(
+            frame.pixel(edge + 2, y),
+            fill,
+            "the fill inside the outline (dark={dark})"
+        );
+        let ratio = contrast(px::BORDER_STRONG, fill);
+        assert!(ratio >= 3.0, "outline vs fill {ratio:.2}:1 (dark={dark})");
+    }
+}
+
+/// Shared-look decision 9: a disabled menu row is `text-tertiary` (#7C7A76), not the primary ink at 0.45 opacity. The
+/// disabled "Pin" row's darkest pixel is as dark as the thin strokes reach in the tertiary colour; at 0.45 opacity it never
+/// gets below 136.
+#[test]
+fn menu_disabled_uses_tertiary_not_opacity() {
+    let h = Harness::new(MenuGallery::new, 260, 200);
+    let frame = h.render();
+    let darkest = (16..120)
+        .flat_map(|x| (92..122).map(move |y| (x, y)))
+        .map(|(x, y)| frame.pixel(x, y)[0])
+        .min()
+        .expect("pixels");
+    assert!(
+        darkest <= 132,
+        "darkest red channel in the disabled row: {darkest}"
+    );
 }

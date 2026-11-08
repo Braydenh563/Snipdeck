@@ -1239,7 +1239,8 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
         title: row.title.as_str().into(),
         preview: row.preview.as_str().into(),
         masked_preview: if row.sensitive {
-            crate::binding::MASKED_PREVIEW.into()
+            // The store keeps no tail of a secret, so none is shown until a host can supply one.
+            crate::binding::main_mask(None).into()
         } else {
             SharedString::new()
         },
