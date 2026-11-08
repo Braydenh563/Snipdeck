@@ -1445,6 +1445,9 @@ msgstr "Aún no hay copias"
 msgid "No colour"
 msgstr "Sin color"
 
+msgid "No commands match “{}”"
+msgstr "Ningún comando coincide con «{}»"
+
 msgid "No icon"
 msgstr "Sin icono"
 
@@ -1465,9 +1468,6 @@ msgstr "Sin coincidencias en todos los tableros"
 
 msgid "No matches in {}"
 msgstr "Sin coincidencias en {}"
-
-msgid "No matching command"
-msgstr "Ningún comando coincide"
 
 msgid "No programs yet."
 msgstr "Aún no hay programas."

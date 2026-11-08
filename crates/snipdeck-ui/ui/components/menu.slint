@@ -16,7 +16,7 @@ export struct MenuEntry {
     hidden: bool,
 }
 
-// DESIGN.md §4 MenuItem: 28px row with an optional icon, label and shortcut keycap. `current` is the
+// DESIGN.md §4 MenuItem: 32px row (radius 6) with an optional icon, label and shortcut keycap. `current` is the
 // highlighted row (pointer hover or keyboard position, owned by Menu). Disabled rows are `text-tertiary` and
 // ignore the pointer and the keyboard.
 export component MenuItem inherits Rectangle {
@@ -26,6 +26,8 @@ export component MenuItem inherits Rectangle {
     in property <bool> destructive: false;
     in property <bool> disabled: false;
     in property <bool> current: false;
+    // The highlight is the keyboard's (not the pointer's or the host's): it adds the 2px focus ring.
+    in property <bool> ring: false;
     // Keep the 16px icon column even when this row has no icon (so labels line up).
     in property <bool> reserve-icon: true;
     // Position in the menu and the menu length, for assistive technology.
@@ -38,11 +40,11 @@ export component MenuItem inherits Rectangle {
     // Disabled is `text-tertiary` on glyph and label, never an opacity (Panel v2 spec 2.1).
     property <color> fg: root.disabled ? Theme.text-tertiary : root.destructive ? Theme.danger-fg : Theme.text-primary;
 
-    height: max(Space.hit, Type.line-base + Space.s2);
+    height: max(Space.s8, Type.line-base + Space.s2);
     background: root.current && !root.disabled ? Theme.bg-overlay-hover : transparent;
     border-radius: Radius.md;
-    // The highlighted row is where the keyboard is: it carries the focus ring (WCAG 2.4.7).
-    border-width: root.current && !root.disabled ? 2px : 0px;
+    // The row the keyboard highlights carries the focus ring (WCAG 2.4.7); a pointer highlight is a fill only.
+    border-width: root.current && root.ring && !root.disabled ? 2px : 0px;
     border-color: Theme.focus-ring;
     accessible-role: list-item;
     accessible-label: root.text;
@@ -116,6 +118,9 @@ export component Menu inherits Rectangle {
     callback activated(int);
     callback dismissed();
 
+    // True once the keyboard moved the highlight, false again when the pointer does: only then the row shows the ring.
+    property <bool> by-key: false;
+
     public function focus-menu() {
         scope.focus();
     }
@@ -151,6 +156,7 @@ export component Menu inherits Rectangle {
     }
 
     function move(dir: int) {
+        root.by-key = true;
         let ahead = root.find(root.current, dir);
         let wrapped = root.find(dir > 0 ? -1 : root.entries.length, dir);
         let target = ahead >= 0 ? ahead : wrapped;
@@ -175,7 +181,7 @@ export component Menu inherits Rectangle {
     background: Theme.bg-overlay;
     border-radius: Radius.lg;
     border-width: 1px;
-    border-color: Theme.border-default;
+    border-color: Theme.border-subtle;
     accessible-role: list;
     accessible-label: root.label;
     forward-focus: scope;
@@ -192,10 +198,12 @@ export component Menu inherits Rectangle {
                 return accept;
             }
             if (event.text == Key.Home) {
+                root.by-key = true;
                 root.current = root.find(-1, 1);
                 return accept;
             }
             if (event.text == Key.End) {
+                root.by-key = true;
                 root.current = root.find(root.entries.length, -1);
                 return accept;
             }
@@ -241,7 +249,7 @@ export component Menu inherits Rectangle {
         padding: Space.s1;
         alignment: start;
         for entry[i] in root.entries: Rectangle {
-            height: entry.hidden ? 0px : entry.separator ? Space.s2 + 1px : max(Space.hit, Type.line-base + Space.s2);
+            height: entry.hidden ? 0px : entry.separator ? Space.s2 + 1px : max(Space.s8, Type.line-base + Space.s2);
             // Keyboard moves keep the highlighted row inside a scrolled menu.
             property <bool> cur: root.current == i;
             changed cur => {
@@ -262,10 +270,14 @@ export component Menu inherits Rectangle {
                 destructive: entry.destructive;
                 disabled: entry.disabled;
                 current: root.current == i;
+                ring: root.by-key;
                 reserve-icon: root.icons;
                 index: root.action-index(i);
                 count: root.action-count();
-                pointer-entered => { root.current = i; }
+                pointer-entered => {
+                    root.by-key = false;
+                    root.current = i;
+                }
                 activated => { root.activate(i); }
             }
         }

@@ -831,6 +831,60 @@ ui_tests! {
         find(&ui, "This list is empty", AccessibleRole::Text);
     }
 
+    fn palette_no_match_empty_state() {
+        let (ui, _log) = start();
+        chord(ui.window(), &[Key::Control], "k");
+        palette_rows(&ui, &SAMPLE);
+        type_text(ui.window(), "zzq");
+        palette_rows(&ui, &[]);
+        // The shared empty state: the query is named, the footer is the one live region, and no stray list row is left.
+        find(&ui, "No commands match \u{201c}zzq\u{201d}", AccessibleRole::Text);
+        assert_eq!(live_status(&ui), "0 found");
+        assert!(by_role(&ui, AccessibleRole::ListItem).iter().all(|e| e.accessible_label().is_none_or(|l| !l.contains("New item") || l.contains("zzq"))));
+        assert!(missing(&ui, "No matching command", AccessibleRole::Text));
+    }
+
+    fn toolbar_commands_and_view_are_labelled() {
+        let (ui, _log) = start();
+        let texts = |ui: &MainWindow| -> Vec<String> {
+            ElementQuery::from_root(ui)
+                .match_id("ToolbarButton::label-text")
+                .find_all()
+                .into_iter()
+                .filter_map(|e| e.accessible_label().map(|l| l.to_string()))
+                .collect()
+        };
+        assert_eq!(texts(&ui), ["Commands", "View"], "ghost buttons with a label at 808 px");
+        // Commands shows its key: two caps, Ctrl and K.
+        let commands = find(&ui, "Commands (Ctrl+K)", AccessibleRole::Button);
+        assert!(commands.size().height >= 32.0 - 0.5 && commands.size().height <= 32.0 + 0.5, "h32: {}", commands.size().height);
+        assert!(commands.size().width > 100.0, "label and keycaps: {}", commands.size().width);
+        let view = find(&ui, "View", AccessibleRole::Button);
+        assert!(view.size().width > 32.0, "label and caret: {}", view.size().width);
+    }
+
+    fn toolbar_icon_only_below_560() {
+        let (ui, log) = start();
+        // 232 sidebar + 559 item area.
+        ui.window().set_size(slint::LogicalSize::new(232.0 + 559.0, 640.0));
+        settle();
+        let labels = ElementQuery::from_root(&ui).match_id("ToolbarButton::label-text").find_all();
+        assert!(labels.is_empty(), "no labels below 560");
+        for name in ["Commands (Ctrl+K)", "View"] {
+            let b = find(&ui, name, AccessibleRole::Button);
+            assert!((b.size().width - 32.0).abs() < 0.5 && (b.size().height - 32.0).abs() < 0.5, "{name} is a 32 px icon button: {:?}", b.size());
+        }
+        take(&log);
+        find(&ui, "Commands (Ctrl+K)", AccessibleRole::Button).invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_palette_open(), "still opens the palette");
+        ui.window().set_size(slint::LogicalSize::new(232.0 + 560.0, 640.0));
+        press_key(&ui, Key::Escape);
+        settle();
+        let labels = ElementQuery::from_root(&ui).match_id("ToolbarButton::label-text").find_all();
+        assert_eq!(labels.len(), 2, "labels return at 560");
+    }
+
     fn a_colour_label_is_named_in_the_cards_description_and_never_colour_alone() {
         let (ui, _log) = start();
         let mut plain = fixture::row(snipdeck_ui::ItemKind::Text, "Plain", "");
@@ -1407,6 +1461,7 @@ fn palette_rows(ui: &MainWindow, rows: &[(i32, &str, &[&str])]) {
                     .collect::<Vec<SharedString>>(),
             )),
             spoken: keys.join(" ").into(),
+            ..Default::default()
         })
         .collect();
     ui.set_palette_rows(ModelRc::new(VecModel::from(rows)));
@@ -1470,7 +1525,7 @@ ui_tests! {
         find(&ui, "Search", AccessibleRole::ListItem);
         assert_eq!(live_status(&ui), "Search, 1 of 1");
         palette_rows(&ui, &[]);
-        find(&ui, "No matching command", AccessibleRole::Text);
+        find(&ui, "No commands match \u{201c}se\u{201d}", AccessibleRole::Text);
         assert_eq!(live_status(&ui), "0 found");
     }
 

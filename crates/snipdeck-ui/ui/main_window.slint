@@ -22,6 +22,7 @@ import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette, ListHue
 import { Icons } from "icons.slint";
 import { RepaintNudge } from "components/repaint.slint";
 import { Icon } from "components/icon.slint";
+import { KeyCombo } from "components/keycap.slint";
 import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
 import { DeckEdge, DeckEdgePosition } from "components/deck-edge.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
@@ -88,6 +89,91 @@ export enum ItemAction { use, copy, edit, duplicate, pin, move, tag, delete, res
 // The pages the Help menu and its shortcuts open (the host's HelpTopic). "Show Panel" is not one: it has its own
 // callback. Named so the menu's row order and the keys (F1, Ctrl+/) cannot drift apart from the host's mapping.
 export enum HelpPage { troubleshoot, guide, about, shortcuts }
+
+// A toolbar button that shows its words: a ghost button (h32, `type.base` 500) with an optional key combo or a caret
+// after the label. Below the width `compact` is set by the window it is icon-only, with the same name for assistive
+// technology and the window's tooltip.
+component ToolbarButton inherits Rectangle {
+    in property <string> label;
+    // The spoken name, and the tooltip text of the icon-only form.
+    in property <string> tooltip;
+    in property <image> icon;
+    in property <bool> caret: false;
+    in property <[string]> keys;
+    in property <bool> compact: false;
+    in property <bool> active: false;
+    in property <length> h: 32px;
+    out property <bool> has-hover: touch.has-hover;
+    out property <bool> has-focus: scope.has-focus;
+    callback clicked();
+
+    height: root.h;
+    width: root.compact ? root.h : max(root.h, row.preferred-width);
+    border-radius: Radius.md;
+    background: touch.pressed ? Theme.bg-selected : touch.has-hover ? Theme.bg-hover : root.active ? Theme.bg-selected : transparent;
+    forward-focus: scope;
+    accessible-role: button;
+    accessible-label: root.tooltip;
+    accessible-action-default => { root.clicked(); }
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    row := HorizontalLayout {
+        padding-left: root.compact ? 0px : Space.s2;
+        padding-right: root.compact ? 0px : Space.s2;
+        spacing: Space.s2;
+        alignment: center;
+        if root.compact: Icon {
+            source: root.icon;
+            size: Space.s5 * SystemLook.text-scale;
+            tint: root.active ? Theme.accent-text : Theme.text-secondary;
+            y: (parent.height - self.height) / 2;
+        }
+        if !root.compact: label-text := Text {
+            text: root.label;
+            color: Theme.text-primary;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            font-weight: Type.medium;
+            vertical-alignment: center;
+        }
+        if !root.compact && root.keys.length > 0: Rectangle {
+            width: combo.min-width;
+            combo := KeyCombo {
+                keys: root.keys;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+        if !root.compact && root.caret: Icon {
+            source: Icons.caret-down;
+            size: Space.s4 * SystemLook.text-scale;
+            tint: Theme.text-secondary;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+
+    // 2px ring, 2px offset (DESIGN.md §2).
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.md + 2px;
+        background: transparent;
+    }
+    touch := TouchArea { clicked => { root.clicked(); } }
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.clicked();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
 
 // One item card, mapped from a row.
 component MainCard inherits ItemCard {
@@ -353,7 +439,9 @@ export component MainWindow inherits Window {
     property <bool> narrow: false;
     property <float> text-scale: SystemLook.text-scale;
     // One height for every toolbar control (the standard Button height).
-    property <length> ctl-h: max(Space.hit * SystemLook.text-scale, Type.line-base + Space.s2);
+    // Below 560px (at 100% text size) of item area the Commands and View buttons are icon-only (spec 3 Toolbar).
+    property <bool> toolbar-compact: false;
+    property <length> ctl-h: max(Space.s8 * SystemLook.text-scale, Type.line-base + Space.s2);
     property <length> bar-h: max(Space.s8 + Space.s3, Type.line-base + Space.s2 + Space.s3);
     property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : 232px + (root.text-scale - 1) * 96px;
     property <length> pad: Space.s4;
@@ -417,8 +505,12 @@ export component MainWindow inherits Window {
     // Set from `changed` handlers, not bound to `root.width`: a window's width follows its layout.
     function update-narrow() {
         root.narrow = root.width < 720px;
+        root.toolbar-compact = root.width - root.sidebar-w < 560px * root.text-scale;
     }
     changed width => {
+        root.update-narrow();
+    }
+    changed text-scale => {
         root.update-narrow();
     }
 
@@ -1211,10 +1303,12 @@ export component MainWindow inherits Window {
                                         background: Theme.border-subtle;
                                     }
                                 }
-                                commands-button := IconButton {
-                                    scaled: true;
-                                    side-override: root.ctl-h;
+                                commands-button := ToolbarButton {
+                                    h: root.ctl-h;
+                                    compact: root.toolbar-compact;
                                     icon: Icons.keyboard;
+                                    label: @tr("Commands");
+                                    keys: ["Ctrl", "K"];
                                     tooltip: @tr("Commands (Ctrl+K)");
                                     clicked => { root.open-palette(); }
                                 }
@@ -1229,12 +1323,13 @@ export component MainWindow inherits Window {
                                         background: Theme.border-subtle;
                                     }
                                 }
-                                view-button := IconButton {
-                                    scaled: true;
-                                    side-override: root.ctl-h;
-                                    icon: Icons.eye;
+                                view-button := ToolbarButton {
+                                    h: root.ctl-h;
+                                    compact: root.toolbar-compact;
+                                    icon: Icons.rows;
+                                    label: @tr("View");
+                                    caret: true;
                                     tooltip: @tr("View");
-                                    own-tooltip: true;
                                     active: root.view-menu-open;
                                     clicked => { root.open-view-menu(); }
                                 }
@@ -2111,13 +2206,15 @@ export component MainWindow inherits Window {
     }
 
     // ---- Tooltips for the icon-only toolbar buttons (500ms rest, instant between buttons) -----------
-    property <string> tip: commands-button.has-hover || commands-button.has-focus ? @tr("Commands (Ctrl+K)")
+    property <string> tip: root.toolbar-compact && (commands-button.has-hover || commands-button.has-focus) ? @tr("Commands (Ctrl+K)")
+        : root.toolbar-compact && (view-button.has-hover || view-button.has-focus) ? @tr("View")
         : view-comfortable.has-hover || view-comfortable.has-focus ? @tr("Comfortable view")
         : view-compact.has-hover || view-compact.has-focus ? @tr("Compact view")
         : view-tile.has-hover || view-tile.has-focus ? @tr("Tile view") : root.card-tip;
-    property <bool> toolbar-tip: commands-button.has-hover || commands-button.has-focus || view-comfortable.has-hover || view-comfortable.has-focus
+    property <bool> toolbar-tip: (root.toolbar-compact && (commands-button.has-hover || commands-button.has-focus || view-button.has-hover || view-button.has-focus)) || view-comfortable.has-hover || view-comfortable.has-focus
         || view-compact.has-hover || view-compact.has-focus || view-tile.has-hover || view-tile.has-focus;
-    property <length> tip-x: commands-button.has-hover || commands-button.has-focus ? commands-button.absolute-position.x
+    property <length> tip-x: root.toolbar-compact && (commands-button.has-hover || commands-button.has-focus) ? commands-button.absolute-position.x
+        : root.toolbar-compact && (view-button.has-hover || view-button.has-focus) ? view-button.absolute-position.x
         : view-comfortable.has-hover || view-comfortable.has-focus ? view-comfortable.absolute-position.x
         : view-compact.has-hover || view-compact.has-focus ? view-compact.absolute-position.x
         : view-tile.has-hover || view-tile.has-focus ? view-tile.absolute-position.x : root.card-tip-cx;

@@ -52,11 +52,17 @@ pub fn rows(
 ) -> Vec<ui::PaletteRow> {
     commands::entries(&texts(window), &context(hotkeys, screen, symbols), query)
         .into_iter()
-        .map(|entry| ui::PaletteRow {
-            id: entry.command.id(),
-            label: entry.label.as_str().into(),
-            keys: model(entry.keys.iter().map(|k| k.as_str().into())),
-            spoken: entry.spoken.as_str().into(),
+        .map(|entry| {
+            let (mark_before, mark_text) =
+                crate::search_mark::word_mark(&entry.label, query).unwrap_or_default();
+            ui::PaletteRow {
+                id: entry.command.id(),
+                label: entry.label.as_str().into(),
+                keys: model(entry.keys.iter().map(|k| k.as_str().into())),
+                spoken: entry.spoken.as_str().into(),
+                mark_before: mark_before.into(),
+                mark_text: mark_text.into(),
+            }
         })
         .collect()
 }

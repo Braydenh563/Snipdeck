@@ -1445,6 +1445,9 @@ msgstr "Aucune sauvegarde pour le moment"
 msgid "No colour"
 msgstr "Aucune couleur"
 
+msgid "No commands match “{}”"
+msgstr "Aucune commande ne correspond à « {} »"
+
 msgid "No icon"
 msgstr "Aucune icône"
 
@@ -1465,9 +1468,6 @@ msgstr "Aucun résultat dans tous les tableaux"
 
 msgid "No matches in {}"
 msgstr "Aucun résultat dans {}"
-
-msgid "No matching command"
-msgstr "Aucune commande correspondante"
 
 msgid "No programs yet."
 msgstr "Aucun programme pour le moment."

@@ -1445,6 +1445,9 @@ msgstr "Nenhum backup ainda"
 msgid "No colour"
 msgstr "Sem cor"
 
+msgid "No commands match “{}”"
+msgstr "Nenhum comando corresponde a “{}”"
+
 msgid "No icon"
 msgstr "Sem ícone"
 
@@ -1465,9 +1468,6 @@ msgstr "Nenhuma correspondência em todos os quadros"
 
 msgid "No matches in {}"
 msgstr "Nenhuma correspondência em {}"
-
-msgid "No matching command"
-msgstr "Nenhum comando correspondente"
 
 msgid "No programs yet."
 msgstr "Nenhum programa ainda."

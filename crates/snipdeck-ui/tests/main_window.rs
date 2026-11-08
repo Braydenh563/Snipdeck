@@ -13,9 +13,9 @@
     reason = "pixel geometry of a test frame: logical sizes are small and positive"
 )]
 
-use slint::ComponentHandle;
+use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use snipdeck_ui::{
-    MainSection, MainView, MainWindow, SystemLook, ToastKind,
+    MainSection, MainView, MainWindow, PaletteRow, SystemLook, ToastKind,
     testing::{Frame, Harness, assert_golden},
 };
 
@@ -617,4 +617,94 @@ fn toast_action_contrast_4_5() {
             "the Undo action is drawn in toast.action (dark {dark})"
         );
     }
+}
+
+// ---- Command palette ------------------------------------------------------------------------------
+
+/// `search.mark` in light and dark (design/tokens/palette.json).
+const SEARCH_MARK_LIGHT: [u8; 3] = [0xAB, 0xCD, 0xFE];
+const SEARCH_MARK_DARK: [u8; 3] = [0x0C, 0x44, 0x8F];
+
+fn palette_row(id: i32, label: &str, before: &str, mark: &str, keys: &[&str]) -> PaletteRow {
+    PaletteRow {
+        id,
+        label: label.into(),
+        keys: ModelRc::new(VecModel::from(
+            keys.iter()
+                .map(|k| (*k).into())
+                .collect::<Vec<SharedString>>(),
+        )),
+        spoken: keys.join(" ").into(),
+        mark_before: before.into(),
+        mark_text: mark.into(),
+    }
+}
+
+fn open_palette(dark: bool, query: &str, rows: Vec<PaletteRow>) -> Harness<MainWindow> {
+    let h = window(SIZE, dark);
+    h.component.invoke_open_palette();
+    for c in query.chars() {
+        let text: SharedString = c.to_string().into();
+        h.component
+            .window()
+            .dispatch_event(slint::platform::WindowEvent::KeyPressed { text: text.clone() });
+        h.component
+            .window()
+            .dispatch_event(slint::platform::WindowEvent::KeyReleased { text });
+    }
+    h.component
+        .set_palette_rows(ModelRc::new(VecModel::from(rows)));
+    h
+}
+
+fn palette_rows_for_key() -> Vec<PaletteRow> {
+    vec![
+        palette_row(9, "Keyboard shortcuts", "", "Key", &["Ctrl", "/"]),
+        palette_row(3, "Show keyboard help", "Show ", "key", &[]),
+        palette_row(1, "Open Settings", "", "", &["Ctrl", ","]),
+    ]
+}
+
+#[test]
+fn palette_marks_match() {
+    for (dark, mark) in [(false, SEARCH_MARK_LIGHT), (true, SEARCH_MARK_DARK)] {
+        let h = open_palette(dark, "key", palette_rows_for_key());
+        let f = render(&h);
+        let marked: Vec<u32> = (0..SIZE.1)
+            .filter(|&y| (250..SIZE.0).any(|x| f.pixel(x, y) == mark))
+            .collect();
+        assert!(
+            !marked.is_empty(),
+            "search-mark pixels in the palette (dark {dark})"
+        );
+        // Two rows are marked, a 32 px pitch apart; the third has no mark.
+        let first = marked[0];
+        let last = *marked.last().unwrap_or(&first);
+        assert!(
+            (45..=56).contains(&(last - first)),
+            "marks lie on two neighbouring rows: {first}..{last}"
+        );
+        assert!(
+            marked.len() <= 2 * 22,
+            "a mark is the match's height, not the row's (dark {dark}): {}",
+            marked.len()
+        );
+    }
+}
+
+#[test]
+fn main_window_command_palette() {
+    let h = open_palette(false, "key", palette_rows_for_key());
+    assert_golden("palette-light", &render(&h));
+    drop(h);
+    let h = open_palette(
+        true,
+        "",
+        vec![
+            palette_row(0, "New item", "", "", &["Ctrl", "N"]),
+            palette_row(2, "Search", "", "", &["Ctrl", "F"]),
+            palette_row(9, "Keyboard shortcuts", "", "", &["Ctrl", "/"]),
+        ],
+    );
+    assert_golden("palette-dark", &render(&h));
 }

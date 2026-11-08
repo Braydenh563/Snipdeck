@@ -1440,6 +1440,9 @@ msgstr "まだバックアップがありません"
 msgid "No colour"
 msgstr "色なし"
 
+msgid "No commands match “{}”"
+msgstr "「{}」に一致するコマンドはありません"
+
 msgid "No icon"
 msgstr "アイコンなし"
 
@@ -1460,9 +1463,6 @@ msgstr "すべてのボードに一致する項目はありません"
 
 msgid "No matches in {}"
 msgstr "{} に一致するものはありません"
-
-msgid "No matching command"
-msgstr "一致するコマンドがありません"
 
 msgid "No programs yet."
 msgstr "まだプログラムがありません。"

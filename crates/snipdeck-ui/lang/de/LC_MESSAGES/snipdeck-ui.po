@@ -1445,6 +1445,9 @@ msgstr "Noch keine Sicherung"
 msgid "No colour"
 msgstr "Keine Farbe"
 
+msgid "No commands match “{}”"
+msgstr "Keine Befehle passen zu „{}“"
+
 msgid "No icon"
 msgstr "Kein Symbol"
 
@@ -1465,9 +1468,6 @@ msgstr "Keine Treffer in allen Boards"
 
 msgid "No matches in {}"
 msgstr "Keine Treffer in {}"
-
-msgid "No matching command"
-msgstr "Kein passender Befehl"
 
 msgid "No programs yet."
 msgstr "Noch keine Programme."

@@ -13,3 +13,8 @@
 - Tiles keep the old card look until slice 5 (MainCard non-quiet).
 - Goldens main-* toolbar drift at (837,10)-(861,34) is pre-existing AA; left at HEAD where the test tolerates it.
 - title_keeps_12_chars_at_scale (Picker) and preview_keeps_128_at_320 not tested separately: the Compact/Comfortable floors are ItemCard's (min-title-w, qr-preview-reserve) and the Panel tests cover them.
+
+## Slices 5-6 (this builder)
+- Done: slice 5 (e74e81b) Main tiles inline (per-row heights from cell probes, min 96, gap 6, 200 px min width), empty deck "Save from clipboard / New item / Import…" (Import opens Settings), one ink Toast everywhere (`ink` prop removed; icon only success/danger); slice 6 toolbar ToolbarButton (Commands + Ctrl K, View + caret, icon-only below 560 px x text scale), toolbar controls now 32 tall, menu rows 32/radius 6/ring on key highlight only/border-subtle, palette rows 32 + search marks (PaletteRow mark fields filled in command_binding) + EmptyState no-match.
+- Not done / deviations: palette rows have no 16 px icon column (no command icons exist); menu "checked" check glyph not added (MenuEntry has no checked field); menu depth-2 shadow left to the host; form.slint SelectField popup rows not touched (check formctl-select-open-light golden, not regenerated); Panel `New item` hide while empty was already in place (test an_empty_list_hides_the_new_item_row... passes); Settings/Help/gallery toasts changed to ink as a side effect (settings-full-pro-erase-dark, surfaces-*).
+- Panel menu is taller (32 rows): panel_window test windows raised 560 -> 760 for open_menu.

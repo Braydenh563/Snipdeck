@@ -979,7 +979,7 @@ const MENU_ROWS: [&str; 17] = [
 ];
 
 fn open_menu(r: &Rig) {
-    r.window().set_size(slint::LogicalSize::new(320.0, 560.0));
+    r.window().set_size(slint::LogicalSize::new(320.0, 760.0));
     slint::platform::update_timers_and_animations();
     click(r.window(), &r.button("More"));
     assert!(r.ui.get_app_menu_open(), "the kebab click opened the menu");
@@ -1020,7 +1020,7 @@ fn the_menu_is_still_open_after_the_pointer_moves_into_it_and_away_from_the_butt
     // appears, and when I go to click it it disappears". What appeared was the tooltip.
     on_ui_thread(|| {
         let r = rig();
-        r.window().set_size(slint::LogicalSize::new(320.0, 560.0));
+        r.window().set_size(slint::LogicalSize::new(320.0, 760.0));
         slint::platform::update_timers_and_animations();
 
         // Hovering shows the tooltip "More" (and nothing else).
