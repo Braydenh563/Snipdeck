@@ -827,8 +827,12 @@ fn using_a_recent_entry_restarts_the_idle_count_and_closes_the_panel_like_an_ite
     r.ctl.update_settings(|s| s.recent_history = true);
     r.ctl.update_settings(|s| s.panel_hide_after_use = true);
     r.ctl.set_on_top(false);
-    let _ = r.ctl.on_hotkey(snipdeck_app::settings::HotkeyAction::TogglePanel);
-    let _ = r.ctl.on_hotkey(snipdeck_app::settings::HotkeyAction::TogglePanel);
+    let _ = r
+        .ctl
+        .on_hotkey(snipdeck_app::settings::HotkeyAction::TogglePanel);
+    let _ = r
+        .ctl
+        .on_hotkey(snipdeck_app::settings::HotkeyAction::TogglePanel);
     r.ctl.on_clipboard_change(&ClipboardObservation {
         text: Some("recent text".into()),
         source_app: Some("notepad.exe".into()),

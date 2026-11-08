@@ -225,6 +225,7 @@ where
             count(*missing_sensitive),
         ),
         ToastMessage::RebuildNeedsRestart => t.invoke_rebuild_needs_restart(),
+        ToastMessage::RebuildUnfinished => t.invoke_rebuild_unfinished(),
         ToastMessage::ImageNotPasteable => t.invoke_image_not_pasteable(),
         ToastMessage::Imported { items } => t.invoke_imported(count(*items)),
         ToastMessage::ImportFailed(cause) => t.invoke_import_failed(cause.code()),

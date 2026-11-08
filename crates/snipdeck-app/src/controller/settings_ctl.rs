@@ -507,11 +507,12 @@ where
             Err(Swap::RolledBack) => failed(self),
             Err(Swap::Unfinished) => {
                 // The rebuilt library keeps running: reset what the old store served, but do
-                // not report success.
+                // not report plain success. The next start finishes the cleanup.
                 self.history = crate::history::History::new();
                 self.index_cache.reset();
                 self.refresh_or_notice("a rebuild");
-                failed(self)
+                self.show_toast(danger(ToastMessage::RebuildUnfinished));
+                false
             }
             Err(Swap::Stuck) => {
                 // The running library is an empty one in memory and the files on disk are

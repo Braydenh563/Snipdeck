@@ -222,13 +222,13 @@ pub enum ToastMessage {
     },
     /// "Couldn't restore that backup: ..."
     RestoreFailed(Cause),
-    /// "Database rebuilt: 5 items restored, 2 recovered. Your old database is kept as ...".
+    /// "Database rebuilt: 5 items restored, 2 recovered. Your old database is kept in the folder ...".
     DatabaseRebuilt {
         /// Items the backup brought back.
         restored: usize,
         /// Items read out of the damaged database that the backup did not hold.
         recovered: usize,
-        /// The file name the old database was kept under.
+        /// The name of the folder the old database was kept in.
         kept: String,
         /// The damaged database could not be read at all, so newer items were not recovered.
         unreadable: bool,
@@ -237,6 +237,8 @@ pub enum ToastMessage {
     },
     /// "Couldn't reopen your library. Restart Snipdeck; your files are untouched."
     RebuildNeedsRestart,
+    /// "Your library was rebuilt, but the cleanup failed. Snipdeck will finish it the next time it starts."
+    RebuildUnfinished,
     /// "Images can't be pasted here. Save the picture as a PNG and add it as an Image item." (Ctrl+V
     /// in the item editor with a picture on the clipboard)
     ImageNotPasteable,
