@@ -7,7 +7,7 @@
 
 use slint::{ComponentHandle, LogicalSize};
 use snipdeck_ui::{
-    PickerScope, PickerWindow, SystemLook,
+    PickerRow, PickerScope, PickerWindow, SystemLook,
     testing::{Frame, Harness, assert_golden},
 };
 
@@ -254,4 +254,87 @@ fn the_search_field_sits_in_a_44px_area_with_a_28px_box() {
         "box bottom edge at y=35"
     );
     assert_eq!(f.pixel(300, 8 + 28), OVERLAY_LIGHT, "padding below");
+}
+
+// ---- Rows ---------------------------------------------------------------------------------------
+
+/// Whether `a` and `b` differ by at least `by` in some channel.
+fn differs(a: [u8; 3], b: [u8; 3], by: u8) -> bool {
+    a.iter().zip(b).any(|(x, y)| x.abs_diff(y) >= by)
+}
+
+/// The first column at or right of `from` where row `index` (36px) has anything but its own fill, in the band
+/// between 8px below its top and 8px above its bottom (clear of the corners).
+fn first_ink(f: &Frame, index: u32, from: u32, by: u8) -> Option<u32> {
+    let top = LIST_TOP + index * ROW_H;
+    let fill = f.pixel(from, top + 2);
+    (from..WIDTH - 8).find(|x| (top + 8..top + ROW_H - 8).any(|y| differs(f.pixel(*x, y), fill, by)))
+}
+
+#[test]
+fn titles_share_one_x_for_every_kind() {
+    let h = picker(false);
+    h.component.set_selected_index(1);
+    let f = render(&h);
+    // The tile is 24px; the title starts 8px after it. Letters differ by a pixel of side bearing, nothing more.
+    let tile_x: Vec<u32> = (0..7).map(|i| first_ink(&f, i, 28, 6).unwrap()).collect();
+    assert!(tile_x.iter().all(|x| *x == tile_x[0]), "tiles start together: {tile_x:?}");
+    let title_x: Vec<u32> = (0..7)
+        .map(|i| first_ink(&f, i, tile_x[0] + 24 + 2, 60).unwrap())
+        .collect();
+    let (min, max) = (title_x.iter().min().unwrap(), title_x.iter().max().unwrap());
+    assert!(max - min <= 2, "one title x for text, template, code, link, secret and file rows: {title_x:?}");
+    assert!((tile_x[0] + 32..=tile_x[0] + 33).contains(min), "tile 24, gap 8, then the glyph's bearing: {title_x:?}");
+}
+
+#[test]
+fn file_row_has_no_extension_text() {
+    let h = picker(false);
+    h.component.set_selected_index(1);
+    let f = render(&h);
+    let tile_x = first_ink(&f, 5, 28, 6).unwrap();
+    // The 'PDF' text used to sit between the number and the tile; now the gap holds nothing.
+    for y in LIST_TOP + 5 * ROW_H + 4..LIST_TOP + 6 * ROW_H - 4 {
+        for x in 28..tile_x {
+            assert!(!differs(f.pixel(x, y), OVERLAY_LIGHT, 6), "ink at ({x},{y}) before the file tile");
+        }
+    }
+    assert_eq!(Some(tile_x), first_ink(&f, 0, 28, 6), "the file tile starts where the text tile does");
+}
+
+fn marked_rows() -> Vec<PickerRow> {
+    let mut rows = fixture::sample_rows();
+    rows[0].mark_before = "Thanks, ".into();
+    rows[0].mark_text = "re".into();
+    rows[1].preview = "A gentle reminder that invoice {Number} is due".into();
+    rows[1].preview_before = "A gentle ".into();
+    rows[1].preview_match = "re".into();
+    rows[2].tag_hit = "retry".into();
+    rows
+}
+
+#[test]
+fn search_mark_under_match() {
+    let h = picker(false);
+    fixture::set_rows(&h.component, marked_rows());
+    h.component.set_query("re".into());
+    h.component.set_selected_index(3);
+    let f = render(&h);
+    let top = LIST_TOP;
+    // Count mark-coloured pixels in the title band of row 0 and find a column's vertical run.
+    let columns: Vec<u32> = (60..400)
+        .filter(|x| (top..top + ROW_H).any(|y| f.pixel(*x, y) == SEARCH_MARK_LIGHT))
+        .collect();
+    assert!(!columns.is_empty(), "the title match sits on the search-mark fill");
+    let widest = columns
+        .iter()
+        .map(|x| (top..top + ROW_H).filter(|y| f.pixel(*x, *y) == SEARCH_MARK_LIGHT).count())
+        .max()
+        .unwrap();
+    assert!(widest >= 14, "a filled box, not a 1px underline: {widest}px tall");
+    // The box is inside the row and leaves its bottom edge alone.
+    for x in 60..WIDTH {
+        assert_ne!(f.pixel(x, top + ROW_H - 1), SEARCH_MARK_LIGHT, "nothing on the row's last line at x {x}");
+    }
+    assert_golden("picker-search-light", &f);
 }
