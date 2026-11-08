@@ -251,8 +251,55 @@ ui_tests! {
             .expect("Design spec row");
         assert_eq!(
             design.accessible_description().map(|d| d.to_string()).as_deref(),
-            Some("Work / Links")
+            Some("Work \u{b7} Links")
         );
+    }
+
+    fn row_height_is_36() {
+        let (ui, _log) = start();
+        let items = rows(&ui);
+        assert_eq!(items.len(), 7);
+        for row in &items {
+            assert!(
+                (row.size().height - 36.0).abs() < 0.5,
+                "{:?} is {} tall",
+                row.accessible_label(),
+                row.size().height
+            );
+        }
+    }
+
+    fn selected_row_shows_copy_and_edit() {
+        let (ui, _log) = start();
+        ui.set_selected_index(2);
+        settle();
+        let _ = rows(&ui);
+        for name in ["Copy", "Edit"] {
+            let buttons = all(&ui, name, AccessibleRole::Button);
+            assert_eq!(buttons.len(), 1, "one {name} action, on the selected row only");
+            let at = buttons[0].absolute_position();
+            let row = &rows(&ui)[2];
+            assert!(
+                at.y >= row.absolute_position().y && at.y + buttons[0].size().height <= row.absolute_position().y + row.size().height + 0.5,
+                "{name} sits inside the selected row"
+            );
+            assert!(buttons[0].size().width >= 32.0 - 0.5 && buttons[0].size().height >= 32.0 - 0.5, "32 hit box");
+        }
+        assert!(missing(&ui, "More", AccessibleRole::Button), "the Picker has no More");
+        assert!(missing(&ui, "Use", AccessibleRole::Button), "and no Use action: the row click and Enter use");
+    }
+
+    fn edit_action_requests_edit() {
+        let (ui, log) = start();
+        ui.set_selected_index(3);
+        settle();
+        let _ = rows(&ui);
+        take(&log);
+        find(&ui, "Edit", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["edit:3"], "the action asks for Ctrl+E's edit, not a use");
+        assert_eq!(ui.get_selected_index(), 3);
+        find(&ui, "Copy", AccessibleRole::Button).invoke_accessible_default_action();
+        assert_eq!(take(&log), ["copy:3"]);
     }
 
     fn enter_uses_the_selected_row_and_shift_enter_only_copies() {
@@ -331,9 +378,9 @@ ui_tests! {
         ui.set_selected_index(25);
         let _ = rows(&ui);
         settle();
-        // Rows are 28px: row 25 ends at 26 * 28 = 728; the nine-row window shows 252 of it.
+        // Rows are 36px: row 25 ends at 26 * 36 = 936; the nine-row window shows 324 of it.
         assert!(
-            (ui.get_scroll_y() + (26.0 * 28.0 - 9.0 * 28.0)).abs() < 1.0,
+            (ui.get_scroll_y() + (26.0 * 36.0 - 9.0 * 36.0)).abs() < 1.0,
             "row 26 is the last visible one: {}",
             ui.get_scroll_y()
         );
@@ -421,11 +468,11 @@ ui_tests! {
         let seven = ui.get_content_height();
         fixture::set_rows(&ui, fixture::numbered_rows(3));
         settle();
-        assert!((seven - ui.get_content_height() - 4.0 * 28.0).abs() < 0.5, "four rows less");
+        assert!((seven - ui.get_content_height() - 4.0 * 36.0).abs() < 0.5, "four rows less");
         fixture::set_rows(&ui, fixture::numbered_rows(40));
         settle();
         let nine = ui.get_content_height();
-        assert!((nine - seven - 2.0 * 28.0).abs() < 0.5, "nine rows is the cap: {nine} vs {seven}");
+        assert!((nine - seven - 2.0 * 36.0).abs() < 0.5, "nine rows is the cap: {nine} vs {seven}");
         fixture::set_rows(&ui, Vec::new());
         settle();
         assert!(

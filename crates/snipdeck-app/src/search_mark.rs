@@ -18,6 +18,48 @@ pub struct Marks {
     pub tag: Option<String>,
 }
 
+/// The marks as the strings a row's properties hold: what the Slint rows (`mark-before`, `mark-text`,
+/// `preview-before`, `preview-match`, `tag-hit`) are filled from.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct MarkFields {
+    /// The title before the match.
+    pub mark_before: String,
+    /// The title's match.
+    pub mark_text: String,
+    /// The windowed first line of the preview (before, match and rest), when the preview is marked.
+    pub preview_line: Option<String>,
+    /// The preview before the match.
+    pub preview_before: String,
+    /// The preview's match.
+    pub preview_match: String,
+    /// The tag that matched.
+    pub tag_hit: String,
+}
+
+impl Marks {
+    /// The marks as row strings.
+    #[must_use]
+    pub fn fields(&self) -> MarkFields {
+        let (mark_before, mark_text) = self.title.clone().unwrap_or_default();
+        let (preview_line, preview_before, preview_match) = match &self.preview {
+            Some((before, found, after)) => (
+                Some(format!("{before}{found}{after}")),
+                before.clone(),
+                found.clone(),
+            ),
+            None => (None, String::new(), String::new()),
+        };
+        MarkFields {
+            mark_before,
+            mark_text,
+            preview_line,
+            preview_before,
+            preview_match,
+            tag_hit: self.tag.clone().unwrap_or_default(),
+        }
+    }
+}
+
 /// The marks of a result for `query`. A sensitive item gets a title mark only: its preview and
 /// tags are never shown, so they carry nothing.
 #[must_use]
@@ -73,7 +115,7 @@ pub fn title_mark(title: &str, query: &str) -> Option<(String, String)> {
 }
 
 /// The first case-insensitive match of `query` in the first line of `preview`: the text before
-/// it (cut to its last [`PREVIEW_LEAD`] characters after an ellipsis), the match and the rest of the line.
+/// it (cut to its last `PREVIEW_LEAD` characters after an ellipsis), the match and the rest of the line.
 #[must_use]
 pub fn preview_mark(preview: &str, query: &str) -> Option<(String, String, String)> {
     let line = preview.lines().next()?;
@@ -155,6 +197,19 @@ mod tests {
             Some((String::new(), "Hunter".into())),
             "the title is shown, so it is marked"
         );
+    }
+
+    #[test]
+    fn fields_split_the_marks_into_row_strings() {
+        let m = marks("Q3 Report", "see the report today", false, None, "report");
+        let f = m.fields();
+        assert_eq!((f.mark_before.as_str(), f.mark_text.as_str()), ("Q3 ", "Report"));
+        assert_eq!(f.preview_line.as_deref(), Some("see the report today"));
+        assert_eq!((f.preview_before.as_str(), f.preview_match.as_str()), ("see the ", "report"));
+        assert_eq!(f.tag_hit, "");
+        let tagged = marks("Invoice", "pay", false, Some("billing"), "billing").fields();
+        assert_eq!(tagged.tag_hit, "billing");
+        assert_eq!(Marks::default().fields(), MarkFields::default());
     }
 
     #[test]

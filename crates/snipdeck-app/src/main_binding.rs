@@ -1234,10 +1234,24 @@ fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
         |label| (label.name.as_str().into(), list_color(label.accent, dark)),
     );
     let (label, label_name) = crate::binding::label_fields(row.label);
+    let marks = row.marks.fields();
     ui::MainRow {
         kind: item_kind_of(row.kind, row.sensitive),
         title: row.title.as_str().into(),
-        preview: row.preview.as_str().into(),
+        mark_before: marks.mark_before.as_str().into(),
+        mark_text: marks.mark_text.as_str().into(),
+        preview: if row.sensitive {
+            SharedString::new()
+        } else {
+            marks
+                .preview_line
+                .as_deref()
+                .unwrap_or(row.preview.as_str())
+                .into()
+        },
+        preview_before: marks.preview_before.as_str().into(),
+        preview_match: marks.preview_match.as_str().into(),
+        tag_hit: marks.tag_hit.as_str().into(),
         masked_preview: if row.sensitive {
             // The store keeps no tail of a secret, so none is shown until a host can supply one.
             crate::binding::main_mask(None).into()
@@ -1512,5 +1526,33 @@ mod tests {
         });
         assert!(result.is_err());
         assert!(!regular_window_being_shown());
+    }
+
+    #[test]
+    fn main_row_carries_the_marks_and_masks_a_secret() {
+        use crate::main_window::{Key, Row};
+        let mut row = Row {
+            key: Key::Item(snipdeck_core::ItemId::generate()),
+            kind: ItemKind::Text,
+            sensitive: false,
+            title: "Q3 Report".into(),
+            preview: "see the report today".into(),
+            list: None,
+            pinned: false,
+            label: None,
+            selected: false,
+            marks: crate::search_mark::marks("Q3 Report", "see the report today", false, None, "report"),
+        };
+        let mapped = main_row(&row, false);
+        assert_eq!(mapped.mark_before.as_str(), "Q3 ");
+        assert_eq!(mapped.mark_text.as_str(), "Report");
+        assert_eq!(mapped.preview_before.as_str(), "see the ");
+        assert_eq!(mapped.preview_match.as_str(), "report");
+        row.sensitive = true;
+        row.marks = crate::search_mark::marks("Q3 Report", "hunter", true, None, "report");
+        let secret = main_row(&row, false);
+        assert_eq!(secret.preview.as_str(), "");
+        assert_eq!(secret.preview_match.as_str(), "");
+        assert_eq!(secret.masked_preview.as_str(), crate::binding::main_mask(None));
     }
 }
