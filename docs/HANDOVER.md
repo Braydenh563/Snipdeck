@@ -7,14 +7,11 @@ date at the real release. The owner capped this session at 96% weekly usage; the
 
 ## Now (2026-11-07, hand-off to a new session; finish everything in PR #5)
 Branch `claude/compassionate-pascal-pod8ux`, PR https://github.com/braydenh563/snipdeck/pull/5 (green on 7571b79). Keep all work on this branch and PR; never merge, tag or release.
-State: Panel v2 slices 1-8 + UX-audit fixes, two Panel settings groups (22db7fa), new-install defaults (`Settings::new_install`), Symbols slices 1-4 (data, crate, recents, save dialog, `controller/symbol_ctl.rs`), Windows Quick check (parse error fixed 7571b79; owner is testing it now).
-Symbols slice 7 docs landed (DESIGN.md, SPEC.md 5.1, Windows Quick check steps 13-18); the Save as UI, context menu and "Show Symbols tab" setting (slice 6) are not built.
-Queue (`.claude/work-order.md`, 14 open), in order:
-1. Panel v2 leftovers (`.claude/remaining/panel-v2.md` "Not done / open"): 225% chips/tabs, Tab stops count, "Paste stack" menu row, copy glyph contrast on cards, tighter golden tolerance; then ux-auditor; tick the item.
-2. Symbols slices 5-7 (`docs/reviews/symbols-spec.md`, `.claude/remaining/symbols.md`): Panel "Symbols" tab UI, menus/export UI, reviewer on slices 4+6, docs/About link/i18n/Windows steps.
-3. UX audit quick wins (`docs/reviews/ux-gap-audit.md`).
-4. Carry the Panel v2 look to the other windows (spec addendum first).
-5. v1.0.1 items, Recent rich captures, trimmed v1.1, then Final (full gate, ux-auditor + blind-tester, docs, retro).
+State (2026-11-08, pushed d691b10, full gate green): Panel v2 done incl. audit 2 (tab slivers left: item 3 reverted, `.claude/remaining/audit2.md`); Symbols slices 1-7 done (Windows checks = Quick check 13-18); UX quick wins; importers backend + hardening; review 1107 fixes; Rebuild-from-backup safety (`docs/reviews/rebuild-safety-plan.md`).
+Queue (`.claude/work-order.md`), in order:
+1. Shared look slices 1-8 (`docs/reviews/shared-look-spec.md` §8; 1+2 in progress on wt/look12).
+2. v1.0.1 items (compact dock, sidebar resize, header select/delete, paste/drop create, Ctrl+C, quick-add, multi-row drag, ...), importer Settings UI wiring.
+3. Recent rich captures, trimmed v1.1, then Final (full gate, ux-auditor + blind-tester, docs, retro).
 Working rules learned: agents 2-hour box, targeted tests, commit per item with named paths; coordinator runs one full check per push in a clean worktree; `CARGO_BUILD_JOBS=1`, `-j1`, shared `CARGO_TARGET_DIR`; watch disk (`df`, delete `/tmp/target-*` when >90%); goldens regenerate with `UPDATE_GOLDEN=1` and must be opened; no PowerShell here, so grep `.ps1` for `"$var:` before pushing wizard edits. Decisions in `.claude/now.md`.
 Owner-only (hook blocks CI edits): release.yml:147 and release-build.yml:49 must also copy `THIRD_PARTY_NOTICES.md` into the zip (MIT/Unicode notices for the bundled emoji, icons, CLDR data); CI step `python3 scripts/symbols.py --check` (see `.claude/remaining/symbols.md`).
 
