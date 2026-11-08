@@ -585,10 +585,10 @@ fn toast_fill_is_ink() {
         let f = render(&h);
         let (x0, y0, x1, y1) = ink_box(&f, ink).expect("an ink toast");
         assert_eq!(y1 - y0 + 1, 40, "h40 (dark {dark})");
-        assert!(x1 - x0 + 1 <= 480, "max width 480 (dark {dark})");
+        assert!(x1 - x0 < 480, "max width 480 (dark {dark})");
         // Centred in the item area (right of the 232px sidebar).
         let mid = f64::from(x0 + x1) / 2.0;
-        let area_mid = (232.0 + f64::from(SIZE.0)) / 2.0;
+        let area_mid = f64::midpoint(232.0, f64::from(SIZE.0));
         assert!((mid - area_mid).abs() < 4.0, "centred: {mid} vs {area_mid}");
         // The colour above the toast is not ink, and the toast is not a tinted neutral card.
         assert_ne!(f.pixel(x0 + 4, y0 - 3), ink);
