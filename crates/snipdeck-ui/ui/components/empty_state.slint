@@ -20,8 +20,13 @@ export component EmptyState inherits VerticalLayout {
     in property <bool> quiet: false;
     in property <string> caption;
     in property <string> secondary-text;
+    // A second ghost button under the first (the Main window's empty deck: "Import…").
+    in property <string> tertiary-text;
+    // Whether the heading is a polite live region (a search that comes up empty is announced). Off where the host speaks it itself.
+    in property <bool> announce: true;
     callback action();
     callback secondary();
+    callback tertiary();
 
     padding-left: Space.s6;
     padding-right: Space.s6;
@@ -61,7 +66,7 @@ export component EmptyState inherits VerticalLayout {
         }
     }
     Text {
-        accessible-live-region: polite;
+        accessible-live-region: root.announce ? AccessibleLiveness.polite : AccessibleLiveness.off;
         text: root.heading;
         color: Theme.text-primary;
         font-family: Fonts.sans;
@@ -106,6 +111,14 @@ export component EmptyState inherits VerticalLayout {
             text: root.secondary-text;
             variant: ButtonVariant.ghost;
             clicked => { root.secondary(); }
+        }
+    }
+    if root.tertiary-text != "": HorizontalLayout {
+        alignment: center;
+        Button {
+            text: root.tertiary-text;
+            variant: ButtonVariant.ghost;
+            clicked => { root.tertiary(); }
         }
     }
     if root.hint != "": Text {

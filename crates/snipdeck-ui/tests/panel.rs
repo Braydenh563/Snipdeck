@@ -494,7 +494,8 @@ fn panel_undo_toast_in_dark() {
     h.component.set_toast_kind(ToastKind::Neutral);
     let f = render(&h);
     // The ink toast: 40 tall, inset 12 from both sides, 8 above the footer. Dark ink is the light neutral.
-    let (left, y) = (12 + 2, SIZE.1 - FOOTER_H - 8 - 20);
+    // Sampled in the upper part of the toast, clear of the text (a neutral toast has no icon: the text starts at the inset).
+    let (left, y) = (12 + 2, SIZE.1 - FOOTER_H - 8 - 34);
     assert_eq!(
         f.pixel(left, y),
         [0xEB, 0xE9, 0xE7],

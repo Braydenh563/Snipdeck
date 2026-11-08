@@ -323,12 +323,12 @@ fn toggle_on_is_accent_and_off_is_not() {
 #[test]
 fn menu_current_row_is_visibly_highlighted_in_both_themes() {
     for (dark, expected) in [(false, px::HOVER_LIGHT), (true, px::BORDER_DEFAULT_DARK)] {
-        let h = Harness::new(MenuGallery::new, 260, 200);
+        let h = Harness::new(MenuGallery::new, 260, 224);
         h.component.set_dark(dark);
         let frame = h.render();
-        // Row 1 (Edit, y 48..76) is current; row 0 (Copy, y 20..48) is not. Probe the left padding.
-        let current = frame.pixel(24, 62);
-        let other = frame.pixel(24, 34);
+        // Row 1 (Edit, y 52..84) is current; row 0 (Copy, y 20..52) is not. Probe the left padding.
+        let current = frame.pixel(24, 68);
+        let other = frame.pixel(24, 36);
         assert_ne!(current, other, "highlight must show (dark={dark})");
         assert_eq!(current, expected, "highlight colour (dark={dark})");
     }
@@ -360,15 +360,71 @@ fn keycap_border_is_strong() {
 /// gets below 136.
 #[test]
 fn menu_disabled_uses_tertiary_not_opacity() {
-    let h = Harness::new(MenuGallery::new, 260, 200);
+    let h = Harness::new(MenuGallery::new, 260, 224);
     let frame = h.render();
     let darkest = (16..120)
-        .flat_map(|x| (92..122).map(move |y| (x, y)))
+        .flat_map(|x| (94..124).map(move |y| (x, y)))
         .map(|(x, y)| frame.pixel(x, y)[0])
         .min()
         .expect("pixels");
     assert!(
         darkest <= 132,
         "darkest red channel in the disabled row: {darkest}"
+    );
+}
+
+/// Shared-look decision 9: a menu row is 32 tall with radius 6. The highlighted row's fill (Edit, current) is a 32 px run at
+/// x 46 (between the icon and the label), and its corner pixel at (21, 53) is outside a radius-6 curve (a radius-4 corner would fill it).
+#[test]
+fn menu_item_radius_6_height_32() {
+    let h = Harness::new(MenuGallery::new, 260, 224);
+    let frame = h.render();
+    let run = (0..224)
+        .filter(|&y| frame.pixel(46, y) == px::HOVER_LIGHT)
+        .count();
+    assert_eq!(run, 32, "the highlighted row is 32 tall");
+    assert_ne!(frame.pixel(21, 53), px::HOVER_LIGHT, "corner radius 6");
+    assert_eq!(
+        frame.pixel(21, 68),
+        px::HOVER_LIGHT,
+        "the row fill reaches the left edge"
+    );
+}
+
+fn key_press<C: ComponentHandle>(h: &Harness<C>, k: Key) {
+    let text: SharedString = k.into();
+    pointer(h, WindowEvent::KeyPressed { text: text.clone() });
+    pointer(h, WindowEvent::KeyReleased { text });
+}
+
+/// Shared-look decision 9: the 2 px focus ring is the keyboard's highlight. A row the host or the pointer highlights
+/// is a fill only; Down puts the ring on the next enabled row (Pin is disabled, so "Move to list": y 125..157).
+#[test]
+fn menu_ring_on_key_highlight_only() {
+    let h = Harness::new(MenuGallery::new, 260, 224);
+    let frame = h.render();
+    assert_ne!(
+        frame.pixel(20, 68),
+        px::FOCUS_LIGHT,
+        "no ring on a host-set highlight"
+    );
+    key_press(&h, Key::DownArrow);
+    let frame = h.render();
+    assert_eq!(
+        frame.pixel(20, 141),
+        px::FOCUS_LIGHT,
+        "ring on the key highlight"
+    );
+    move_to(&h, 100.0, 68.0);
+    let frame = h.render();
+    assert_ne!(
+        frame.pixel(20, 68),
+        px::FOCUS_LIGHT,
+        "hover alone draws no ring"
+    );
+    assert_eq!(
+        frame.pixel(24, 68),
+        px::HOVER_LIGHT,
+        "the hovered row is a fill"
     );
 }

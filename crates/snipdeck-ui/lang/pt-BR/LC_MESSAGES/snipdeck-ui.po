@@ -1445,6 +1445,9 @@ msgstr "Nenhum backup ainda"
 msgid "No colour"
 msgstr "Sem cor"
 
+msgid "No commands match “{}”"
+msgstr "Nenhum comando corresponde a “{}”"
+
 msgid "No icon"
 msgstr "Sem ícone"
 
@@ -1465,9 +1468,6 @@ msgstr "Nenhuma correspondência em todos os quadros"
 
 msgid "No matches in {}"
 msgstr "Nenhuma correspondência em {}"
-
-msgid "No matching command"
-msgstr "Nenhum comando correspondente"
 
 msgid "No programs yet."
 msgstr "Nenhum programa ainda."
@@ -2046,8 +2046,8 @@ msgstr "Salvar a área de transferência como trecho"
 msgid "Save to…"
 msgstr "Salvar em…"
 
-msgid "Save your first snippet, or copy something and save it from the clipboard."
-msgstr "Salve seu primeiro trecho ou copie algo e salve-o a partir da área de transferência."
+msgid "Save what you paste often."
+msgstr "Salve o que você cola com frequência."
 
 msgid "Saved to {}"
 msgstr "Salvo em {}"
@@ -2837,9 +2837,6 @@ msgstr "Sim"
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "Você teria {} quadros, e o plano Gratuito inclui {}."
-
-msgid "Your deck is empty"
-msgstr "Seu deck está vazio"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "Sua biblioteca fica em uma única pasta, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (quadros, listas, trechos, etiquetas e a Lixeira), blobs (imagens, arquivos e textos longos), settings.json, sua chave de licença, backups (quantos você escolher manter) e registros."

@@ -744,6 +744,12 @@ where
         }
         wire_title_bar(window);
         wire!(on_new_item_requested, |ctl| ctl.open_new_item(Origin::Main));
+        wire!(on_add_from_clipboard, |ctl| ctl.quick_capture());
+        // Imports live in Settings (its Import row), so the empty deck's "Import…" opens it over Main.
+        window.on_import_requested(|| {
+            crate::native_window::note_opener(crate::native_window::Surface::Main);
+            crate::settings_binding::request_open();
+        });
         {
             // The X hides the window, or quits when nothing could bring it back (the setting
             // "Keep running in the tray" is off, or there is no tray icon and the Panel is down).

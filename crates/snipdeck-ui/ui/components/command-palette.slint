@@ -3,6 +3,7 @@ import { Icons } from "../icons.slint";
 import { SearchField } from "text_field.slint";
 import { KeyCombo } from "keycap.slint";
 import { OverlayScrollbar } from "scrollbar.slint";
+import { EmptyState, EmptyStateKind } from "empty_state.slint";
 
 // One row of the palette: the app builds it (already filtered), `id` is the command it runs.
 export struct PaletteRow {
@@ -12,9 +13,12 @@ export struct PaletteRow {
     keys: [string],
     // The same shortcut spoken ("Control N").
     spoken: string,
+    // The first match of the query in the label: the text before it and the match (empty = no mark).
+    mark-before: string,
+    mark-text: string,
 }
 
-// One palette row: label left, key caps right, 28px like a menu row.
+// One palette row: the shared menu row (32px, radius 6): label left with the match on `search-mark`, key caps right.
 component PaletteItem inherits Rectangle {
     in property <PaletteRow> data;
     in property <bool> current: false;
@@ -23,11 +27,9 @@ component PaletteItem inherits Rectangle {
     callback activated();
     callback pointer-entered();
 
-    height: max(Space.hit, Type.line-base + Space.s2);
+    height: max(Space.s8, Type.line-base + Space.s2);
     background: root.current ? Theme.bg-overlay-hover : transparent;
-    border-radius: Radius.sm;
-    border-width: root.current ? 2px : 0px;
-    border-color: Theme.focus-ring;
+    border-radius: Radius.md;
     accessible-role: list-item;
     accessible-label: root.data.label;
     accessible-description: root.data.spoken;
@@ -39,11 +41,35 @@ component PaletteItem inherits Rectangle {
 
     animate background { duration: Motion.instant; easing: Motion.out; }
 
+    // The match, as a span behind the label: sized by the same font the label is drawn in.
+    m-before := Text {
+        visible: false;
+        text: root.data.mark-before;
+        font-family: Fonts.sans;
+        font-size: Type.base;
+        wrap: no-wrap;
+    }
+    m-match := Text {
+        visible: false;
+        text: root.data.mark-text;
+        font-family: Fonts.sans;
+        font-size: Type.base;
+        wrap: no-wrap;
+    }
+    if root.data.mark-text != "": Rectangle {
+        x: Space.s2 + min(m-before.preferred-width, label-text.width);
+        y: (parent.height - Type.line-base) / 2;
+        width: max(0px, min(m-match.preferred-width, label-text.width - m-before.preferred-width));
+        height: Type.line-base;
+        border-radius: 3px;
+        background: Theme.search-mark;
+    }
+
     HorizontalLayout {
         padding-left: Space.s2;
         padding-right: Space.s2;
         spacing: Space.s2;
-        Text {
+        label-text := Text {
             text: root.data.label;
             color: Theme.text-primary;
             font-family: Fonts.sans;
@@ -95,7 +121,7 @@ export component CommandPalette inherits Rectangle {
 
     property <int> cur: root.rows.length == 0 ? -1 : min(max(root.current, 0), root.rows.length - 1);
     property <color> scrim: ((Theme.dark || Theme.hc-border != transparent) ? Theme.bg-app : Theme.text-primary).with-alpha(0.4);
-    property <length> row-h: max(Space.hit, Type.line-base + Space.s2);
+    property <length> row-h: max(Space.s8, Type.line-base + Space.s2);
     // What the polite live region says: the highlighted command and where it stands ("Settings, 2 of 7"),
     // so a screen reader hears each arrow press and the count after each keystroke.
     property <string> status: root.cur < 0 ? @tr("{} found", 0) : @tr("{}, {} of {}", root.rows[root.cur].label, root.cur + 1, root.rows.length);
@@ -198,15 +224,14 @@ export component CommandPalette inherits Rectangle {
                         scroll-to(y) => { plist.content-y = y; }
                     }
                 }
-                if root.rows.length == 0: Text {
-                    text: @tr("No matching command");
-                    color: Theme.text-secondary;
-                    font-family: Fonts.sans;
-                    font-size: Type.base;
-                    horizontal-alignment: center;
-                    height: root.row-h;
-                    vertical-alignment: center;
-                    accessible-role: text;
+                if root.rows.length == 0: EmptyState {
+                    quiet: true;
+                    kind: EmptyStateKind.search;
+                    // The footer's live region already says "0 found".
+                    announce: false;
+                    heading: @tr("No commands match “{}”", root.query);
+                    padding-top: Space.s4;
+                    padding-bottom: Space.s4;
                 }
                 Text {
                     text: root.status;

@@ -1445,6 +1445,9 @@ msgstr "Aún no hay copias"
 msgid "No colour"
 msgstr "Sin color"
 
+msgid "No commands match “{}”"
+msgstr "Ningún comando coincide con «{}»"
+
 msgid "No icon"
 msgstr "Sin icono"
 
@@ -1465,9 +1468,6 @@ msgstr "Sin coincidencias en todos los tableros"
 
 msgid "No matches in {}"
 msgstr "Sin coincidencias en {}"
-
-msgid "No matching command"
-msgstr "Ningún comando coincide"
 
 msgid "No programs yet."
 msgstr "Aún no hay programas."
@@ -2046,8 +2046,8 @@ msgstr "Guardar el portapapeles como fragmento"
 msgid "Save to…"
 msgstr "Guardar en…"
 
-msgid "Save your first snippet, or copy something and save it from the clipboard."
-msgstr "Guarda tu primer fragmento o copia algo y guárdalo desde el portapapeles."
+msgid "Save what you paste often."
+msgstr "Guarda lo que pegas a menudo."
 
 msgid "Saved to {}"
 msgstr "Guardado en {}"
@@ -2837,9 +2837,6 @@ msgstr "Sí"
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "Tendrías {} tableros, y el plan Gratis incluye {}."
-
-msgid "Your deck is empty"
-msgstr "Tu mazo está vacío"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "Tu biblioteca está en una sola carpeta, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (tableros, listas, fragmentos, etiquetas y la Papelera), blobs (imágenes, archivos y texto largo), settings.json, tu clave de licencia, copias de seguridad (tantas como elijas conservar) y registros."

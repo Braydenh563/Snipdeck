@@ -1440,6 +1440,9 @@ msgstr "尚无备份"
 msgid "No colour"
 msgstr "无颜色"
 
+msgid "No commands match “{}”"
+msgstr "没有与“{}”匹配的命令"
+
 msgid "No icon"
 msgstr "无图标"
 
@@ -1460,9 +1463,6 @@ msgstr "所有看板中均无匹配项"
 
 msgid "No matches in {}"
 msgstr "在 {} 中没有匹配项"
-
-msgid "No matching command"
-msgstr "没有匹配的命令"
 
 msgid "No programs yet."
 msgstr "还没有程序。"
@@ -2039,8 +2039,8 @@ msgstr "将剪贴板保存为片段"
 msgid "Save to…"
 msgstr "保存到…"
 
-msgid "Save your first snippet, or copy something and save it from the clipboard."
-msgstr "保存你的第一个片段，或复制一些内容后从剪贴板保存。"
+msgid "Save what you paste often."
+msgstr "保存你经常粘贴的内容。"
 
 msgid "Saved to {}"
 msgstr "已保存到 {}"
@@ -2830,9 +2830,6 @@ msgstr "是"
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "你将拥有 {} 个看板，而免费版仅包含 {} 个。"
-
-msgid "Your deck is empty"
-msgstr "你的卡组是空的"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "你的资料库位于同一个文件夹 %LOCALAPPDATA%\\Snipdeck 中：snipdeck.db（看板、列表、片段、标签和回收站）、blobs（图片、文件和长文本）、settings.json、你的许可证密钥、备份（按你选择保留的份数）和日志。"

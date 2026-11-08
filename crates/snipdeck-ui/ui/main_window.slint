@@ -22,6 +22,7 @@ import { Theme, Type, Space, Radius, Motion, Fonts, SystemLook, Palette, ListHue
 import { Icons } from "icons.slint";
 import { RepaintNudge } from "components/repaint.slint";
 import { Icon } from "components/icon.slint";
+import { KeyCombo } from "components/keycap.slint";
 import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
 import { DeckEdge, DeckEdgePosition } from "components/deck-edge.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
@@ -88,6 +89,91 @@ export enum ItemAction { use, copy, edit, duplicate, pin, move, tag, delete, res
 // The pages the Help menu and its shortcuts open (the host's HelpTopic). "Show Panel" is not one: it has its own
 // callback. Named so the menu's row order and the keys (F1, Ctrl+/) cannot drift apart from the host's mapping.
 export enum HelpPage { troubleshoot, guide, about, shortcuts }
+
+// A toolbar button that shows its words: a ghost button (h32, `type.base` 500) with an optional key combo or a caret
+// after the label. Below the width `compact` is set by the window it is icon-only, with the same name for assistive
+// technology and the window's tooltip.
+component ToolbarButton inherits Rectangle {
+    in property <string> label;
+    // The spoken name, and the tooltip text of the icon-only form.
+    in property <string> tooltip;
+    in property <image> icon;
+    in property <bool> caret: false;
+    in property <[string]> keys;
+    in property <bool> compact: false;
+    in property <bool> active: false;
+    in property <length> h: 32px;
+    out property <bool> has-hover: touch.has-hover;
+    out property <bool> has-focus: scope.has-focus;
+    callback clicked();
+
+    height: root.h;
+    width: root.compact ? root.h : max(root.h, row.preferred-width);
+    border-radius: Radius.md;
+    background: touch.pressed ? Theme.bg-selected : touch.has-hover ? Theme.bg-hover : root.active ? Theme.bg-selected : transparent;
+    forward-focus: scope;
+    accessible-role: button;
+    accessible-label: root.tooltip;
+    accessible-action-default => { root.clicked(); }
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    row := HorizontalLayout {
+        padding-left: root.compact ? 0px : Space.s2;
+        padding-right: root.compact ? 0px : Space.s2;
+        spacing: Space.s2;
+        alignment: center;
+        if root.compact: Icon {
+            source: root.icon;
+            size: Space.s5 * SystemLook.text-scale;
+            tint: root.active ? Theme.accent-text : Theme.text-secondary;
+            y: (parent.height - self.height) / 2;
+        }
+        if !root.compact: label-text := Text {
+            text: root.label;
+            color: Theme.text-primary;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            font-weight: Type.medium;
+            vertical-alignment: center;
+        }
+        if !root.compact && root.keys.length > 0: Rectangle {
+            width: combo.min-width;
+            combo := KeyCombo {
+                keys: root.keys;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+        if !root.compact && root.caret: Icon {
+            source: Icons.caret-down;
+            size: Space.s4 * SystemLook.text-scale;
+            tint: Theme.text-secondary;
+            y: (parent.height - self.height) / 2;
+        }
+    }
+
+    // 2px ring, 2px offset (DESIGN.md §2).
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.md + 2px;
+        background: transparent;
+    }
+    touch := TouchArea { clicked => { root.clicked(); } }
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.clicked();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
 
 // One item card, mapped from a row.
 component MainCard inherits ItemCard {
@@ -231,6 +317,9 @@ export component MainWindow inherits Window {
     // A label chip was chosen (0 to 7); -1 clears the filter. Choosing the active chip again also clears it.
     callback label-filter-requested(int);
     callback new-item-requested();
+    // The empty deck's "Save from clipboard" and "Import…".
+    callback add-from-clipboard();
+    callback import-requested();
     callback select-requested(int, SelectMode);
     callback select-all-requested();
     callback clear-selection-requested();
@@ -350,7 +439,9 @@ export component MainWindow inherits Window {
     property <bool> narrow: false;
     property <float> text-scale: SystemLook.text-scale;
     // One height for every toolbar control (the standard Button height).
-    property <length> ctl-h: max(Space.hit * SystemLook.text-scale, Type.line-base + Space.s2);
+    // Below 560px (at 100% text size) of item area the Commands and View buttons are icon-only (spec 3 Toolbar).
+    property <bool> toolbar-compact: false;
+    property <length> ctl-h: max(Space.s8 * SystemLook.text-scale, Type.line-base + Space.s2);
     property <length> bar-h: max(Space.s8 + Space.s3, Type.line-base + Space.s2 + Space.s3);
     property <length> sidebar-w: root.narrow ? Space.s12 * root.text-scale : 232px + (root.text-scale - 1) * 96px;
     property <length> pad: Space.s4;
@@ -414,8 +505,12 @@ export component MainWindow inherits Window {
     // Set from `changed` handlers, not bound to `root.width`: a window's width follows its layout.
     function update-narrow() {
         root.narrow = root.width < 720px;
+        root.toolbar-compact = root.width - root.sidebar-w < 560px * root.text-scale;
     }
     changed width => {
+        root.update-narrow();
+    }
+    changed text-scale => {
         root.update-narrow();
     }
 
@@ -734,8 +829,9 @@ export component MainWindow inherits Window {
     }
 
     // ---- Tile grid geometry -----------------------------------------------------------------------
-    property <length> tile-gap: Space.s2;
-    property <length> tile-min-w: Space.s12 * 4 * root.text-scale;
+    // Cards 6 apart; a card is at least 200 wide so the type tile sits inline with the title (spec 3, decision 7).
+    property <length> tile-gap: 6px;
+    property <length> tile-min-w: 200px * root.text-scale;
     property <int> cols: max(1, min(6, floor((grid.width - 2 * root.ring + root.tile-gap) / (root.tile-min-w + root.tile-gap))));
     // Only the visible one of the two lists builds rows.
     property <[MainRow]> list-model: root.tile ? [] : root.rows;
@@ -744,31 +840,6 @@ export component MainWindow inherits Window {
         return r * root.cols + c;
     }
     property <length> tile-w: (grid.width - 2 * root.ring - (root.cols - 1) * root.tile-gap) / root.cols;
-    pure function row-has-image(r: int) -> bool {
-        let n = root.cols;
-        return (r * n < root.rows.length && root.rows[r * n].kind == ItemKind.image)
-            || (n > 1 && r * n + 1 < root.rows.length && root.rows[r * n + 1].kind == ItemKind.image)
-            || (n > 2 && r * n + 2 < root.rows.length && root.rows[r * n + 2].kind == ItemKind.image)
-            || (n > 3 && r * n + 3 < root.rows.length && root.rows[r * n + 3].kind == ItemKind.image)
-            || (n > 4 && r * n + 4 < root.rows.length && root.rows[r * n + 4].kind == ItemKind.image)
-            || (n > 5 && r * n + 5 < root.rows.length && root.rows[r * n + 5].kind == ItemKind.image);
-    }
-    // Hidden probes: the tallest tile of each kind (two title lines, three preview lines) at the tile width.
-    probe-text := MainCard {
-        visible: false;
-        y: -2000px;
-        width: root.tile-w;
-        variant: ItemCardVariant.tile;
-        data: { kind: ItemKind.text, title: "Probe\nProbe", preview: "Probe\nProbe\nProbe" };
-    }
-    probe-image := MainCard {
-        visible: false;
-        y: -2000px;
-        width: root.tile-w;
-        variant: ItemCardVariant.tile;
-        data: { kind: ItemKind.image, title: "Probe\nProbe", preview: "Probe\nProbe\nProbe" };
-    }
-
     // ---- Keyboard ---------------------------------------------------------------------------------
     pure function section-name() -> string {
         return root.searching ? @tr("Search results")
@@ -1232,10 +1303,12 @@ export component MainWindow inherits Window {
                                         background: Theme.border-subtle;
                                     }
                                 }
-                                commands-button := IconButton {
-                                    scaled: true;
-                                    side-override: root.ctl-h;
+                                commands-button := ToolbarButton {
+                                    h: root.ctl-h;
+                                    compact: root.toolbar-compact;
                                     icon: Icons.keyboard;
+                                    label: @tr("Commands");
+                                    keys: ["Ctrl", "K"];
                                     tooltip: @tr("Commands (Ctrl+K)");
                                     clicked => { root.open-palette(); }
                                 }
@@ -1250,12 +1323,13 @@ export component MainWindow inherits Window {
                                         background: Theme.border-subtle;
                                     }
                                 }
-                                view-button := IconButton {
-                                    scaled: true;
-                                    side-override: root.ctl-h;
-                                    icon: Icons.eye;
+                                view-button := ToolbarButton {
+                                    h: root.ctl-h;
+                                    compact: root.toolbar-compact;
+                                    icon: Icons.rows;
+                                    label: @tr("View");
+                                    caret: true;
                                     tooltip: @tr("View");
-                                    own-tooltip: true;
                                     active: root.view-menu-open;
                                     clicked => { root.open-view-menu(); }
                                 }
@@ -1697,7 +1771,9 @@ export component MainWindow inherits Window {
 
                             for r in root.grid-row-count: Rectangle {
                                 property <bool> has-cursor: floor(root.cur / root.cols) == r;
-                                height: (root.row-has-image(r) ? probe-image.preferred-height : probe-text.preferred-height) + root.tile-gap + (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
+                                // Each cell reports the height its card needs; a grid row takes its tallest card (min 96).
+                                property <[length]> need: [0px, 0px, 0px, 0px, 0px, 0px];
+                                height: max(self.need[0], self.need[1], self.need[2], self.need[3], self.need[4], self.need[5]) + root.tile-gap + (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
 
                                 init => {
                                     if (self.has-cursor) { root.reveal-grid(self.y, self.height); }
@@ -1714,6 +1790,18 @@ export component MainWindow inherits Window {
                                     y: root.ring;
                                     width: root.tile-w;
                                     height: parent.height - root.tile-gap - (r == root.grid-row-count - 1 ? 2 * root.ring : 0px);
+                                    property <length> need: root.tile-index(r, c) < root.rows.length ? tile-probe.preferred-height : 0px;
+                                    init => { parent.need[c] = self.need; }
+                                    changed need => { parent.need[c] = self.need; }
+                                    tile-probe := MainCard {
+                                        visible: false;
+                                        y: -2000px;
+                                        width: parent.width;
+                                        variant: ItemCardVariant.tile;
+                                        quiet: true;
+                                        inline-tile: true;
+                                        data: root.rows[root.tile-index(r, c)];
+                                    }
                                     if root.tile-index(r, c) < root.rows.length: tile-drop := DropArea {
                                         // The tile being dragged over this one: a drop lands after it when coming from before.
                                         property <int> tile-from: -1;
@@ -1735,9 +1823,21 @@ export component MainWindow inherits Window {
                                         height: parent.height;
                                         variant: ItemCardVariant.tile;
                                         data: root.rows[root.tile-index(r, c)];
+                                        quiet: true;
+                                        inline-tile: true;
                                         use-label: root.use-label;
                                         use-copies: root.use-copies && !root.in-trash;
-                                        show-focus: root.tile-index(r, c) == root.cur && items-scope.has-focus;
+                                        // Use first (Restore in the Trash), then Copy (not when Use already copies), Edit, More.
+                                        use-action: true;
+                                        use-glyph: root.in-trash ? Icons.arrow-counter-clockwise : Icons.arrow-bend-down-left;
+                                        use-tip: root.in-trash ? @tr("Restore") : @tr("{} (Enter)", root.use-label);
+                                        copy-action: !(root.use-copies && !root.in-trash);
+                                        edit-action: !root.in-trash;
+                                        show-actions: root.rows[root.tile-index(r, c)].selected;
+                                        actions-hidden: root.selected-count > 1;
+                                        tip(text, cx, bottom, on) => { root.card-tip-set(text, cx, bottom, on); }
+                                        edit => { root.act(ItemAction.edit, root.tile-index(r, c)); }
+                                        show-focus: root.tile-index(r, c) == root.cur && items-scope.has-focus && root.kbd-focus;
                                         revealed: root.tile-index(r, c) == root.revealed-index;
                                         pulling: root.tile-index(r, c) == root.used-index;
                                         use => {
@@ -1901,6 +2001,7 @@ export component MainWindow inherits Window {
                     }
 
                     if root.rows.length == 0 && !root.loading && !root.recent-shown: EmptyState {
+                        quiet: true;
                         x: root.pad;
                         width: parent.width - 2 * root.pad;
                         height: parent.height;
@@ -1908,14 +2009,14 @@ export component MainWindow inherits Window {
                             : root.section == MainSection.recent || root.in-trash || root.section == MainSection.tag ? EmptyStateKind.inbox
                             : EmptyStateKind.list;
                         heading: root.searching ? @tr("No matches")
-                            : root.section == MainSection.all ? @tr("Your deck is empty")
+                            : root.section == MainSection.all ? @tr("No snippets yet")
                             : root.section == MainSection.pinned ? @tr("Nothing pinned")
                             : root.section == MainSection.recent ? (root.recent-locked ? @tr("Recent copies are locked") : root.recent-on ? @tr("Nothing copied yet") : @tr("No recent items"))
                             : root.in-trash ? @tr("The Trash is empty")
                             : root.section == MainSection.list ? @tr("This list is empty")
                             : @tr("No items with this tag");
                         body: root.searching ? @tr("Nothing matches “{}”.", root.query)
-                            : root.section == MainSection.all ? @tr("Save your first snippet, or copy something and save it from the clipboard.")
+                            : root.section == MainSection.all ? @tr("Save what you paste often.")
                             : root.section == MainSection.pinned ? @tr("Pin the snippets you use most to keep them one click away.")
                             : root.section == MainSection.recent ? (root.recent-locked ? @tr("Unlock your library to see recent copies. Nothing is collected while it is locked.") : root.recent-on ? @tr("Text you copy appears here, newest first, until you clear it or it is older than {} days.", root.recent-days) : @tr("Turn on clipboard history in Settings to collect what you copy."))
                             : root.in-trash ? @tr("Deleted items stay here for {} days before they are removed.", root.trash-days)
@@ -1924,11 +2025,18 @@ export component MainWindow inherits Window {
                         hint: !root.searching && (root.section == MainSection.all || root.section == MainSection.list)
                             ? @tr("Press Ctrl+N to add a snippet, or Ctrl+K to see every command.") : "";
                         action-text: root.searching ? ""
-                            : root.section == MainSection.all || root.section == MainSection.list ? @tr("New item")
+                            : root.section == MainSection.all ? @tr("Save from clipboard")
+                            : root.section == MainSection.list ? @tr("New item")
                             : root.section == MainSection.recent && root.recent-locked ? @tr("Unlock")
                             : root.section == MainSection.recent && !root.recent-on ? @tr("Open Settings") : "";
+                        secondary-text: !root.searching && root.section == MainSection.all ? @tr("New item") : "";
+                        tertiary-text: !root.searching && root.section == MainSection.all ? @tr("Import…") : "";
+                        secondary => { root.new-item-requested(); }
+                        tertiary => { root.import-requested(); }
                         action => {
-                            if (root.section == MainSection.recent && root.recent-locked) {
+                            if (root.section == MainSection.all && !root.searching) {
+                                root.add-from-clipboard();
+                            } else if (root.section == MainSection.recent && root.recent-locked) {
                                 root.recent-unlock-requested();
                             } else if (root.section == MainSection.recent) {
                                 root.settings-requested();
@@ -1943,7 +2051,7 @@ export component MainWindow inherits Window {
                         kind: root.toast-kind;
                         phase: root.toast-phase;
                         undo-label: root.toast-undo-label;
-                        width: min(self.preferred-width, parent.width - 2 * root.pad);
+                        width: min(self.preferred-width, 480px, parent.width - 2 * root.pad);
                         height: self.preferred-height;
                         x: (parent.width - self.width) / 2;
                         y: parent.height - self.height - Space.s2;
@@ -2098,13 +2206,15 @@ export component MainWindow inherits Window {
     }
 
     // ---- Tooltips for the icon-only toolbar buttons (500ms rest, instant between buttons) -----------
-    property <string> tip: commands-button.has-hover || commands-button.has-focus ? @tr("Commands (Ctrl+K)")
+    property <string> tip: root.toolbar-compact && (commands-button.has-hover || commands-button.has-focus) ? @tr("Commands (Ctrl+K)")
+        : root.toolbar-compact && (view-button.has-hover || view-button.has-focus) ? @tr("View")
         : view-comfortable.has-hover || view-comfortable.has-focus ? @tr("Comfortable view")
         : view-compact.has-hover || view-compact.has-focus ? @tr("Compact view")
         : view-tile.has-hover || view-tile.has-focus ? @tr("Tile view") : root.card-tip;
-    property <bool> toolbar-tip: commands-button.has-hover || commands-button.has-focus || view-comfortable.has-hover || view-comfortable.has-focus
+    property <bool> toolbar-tip: (root.toolbar-compact && (commands-button.has-hover || commands-button.has-focus || view-button.has-hover || view-button.has-focus)) || view-comfortable.has-hover || view-comfortable.has-focus
         || view-compact.has-hover || view-compact.has-focus || view-tile.has-hover || view-tile.has-focus;
-    property <length> tip-x: commands-button.has-hover || commands-button.has-focus ? commands-button.absolute-position.x
+    property <length> tip-x: root.toolbar-compact && (commands-button.has-hover || commands-button.has-focus) ? commands-button.absolute-position.x
+        : root.toolbar-compact && (view-button.has-hover || view-button.has-focus) ? view-button.absolute-position.x
         : view-comfortable.has-hover || view-comfortable.has-focus ? view-comfortable.absolute-position.x
         : view-compact.has-hover || view-compact.has-focus ? view-compact.absolute-position.x
         : view-tile.has-hover || view-tile.has-focus ? view-tile.absolute-position.x : root.card-tip-cx;

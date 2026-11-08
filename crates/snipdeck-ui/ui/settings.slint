@@ -1674,7 +1674,7 @@ export component SettingsPage inherits Window {
         text: root.toast-text;
         kind: root.toast-kind;
         phase: root.toast-phase;
-        width: min(self.preferred-width, root.width - 2 * Space.s4);
+        width: min(self.preferred-width, 480px, root.width - 2 * Space.s4);
         height: self.preferred-height;
         x: (root.width - self.width) / 2;
         y: root.height - self.height - Space.s4;

@@ -1445,6 +1445,9 @@ msgstr "Noch keine Sicherung"
 msgid "No colour"
 msgstr "Keine Farbe"
 
+msgid "No commands match “{}”"
+msgstr "Keine Befehle passen zu „{}“"
+
 msgid "No icon"
 msgstr "Kein Symbol"
 
@@ -1465,9 +1468,6 @@ msgstr "Keine Treffer in allen Boards"
 
 msgid "No matches in {}"
 msgstr "Keine Treffer in {}"
-
-msgid "No matching command"
-msgstr "Kein passender Befehl"
 
 msgid "No programs yet."
 msgstr "Noch keine Programme."
@@ -2046,8 +2046,8 @@ msgstr "Zwischenablage als Textbaustein speichern"
 msgid "Save to…"
 msgstr "Speichern in…"
 
-msgid "Save your first snippet, or copy something and save it from the clipboard."
-msgstr "Speichere deinen ersten Textbaustein oder kopiere etwas und speichere es aus der Zwischenablage."
+msgid "Save what you paste often."
+msgstr "Speichere, was du oft einfügst."
 
 msgid "Saved to {}"
 msgstr "Gespeichert in {}"
@@ -2837,9 +2837,6 @@ msgstr "Ja"
 
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr "Du hättest {} Boards, der Kostenlos-Tarif umfasst aber {}."
-
-msgid "Your deck is empty"
-msgstr "Dein Deck ist leer"
 
 msgid "Your library lives in one folder, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (boards, lists, items, tags and the Trash), blobs (images, files and long text), settings.json, your licence key, backups (as many as you choose to keep) and logs."
 msgstr "Deine Bibliothek liegt in einem Ordner, %LOCALAPPDATA%\\Snipdeck: snipdeck.db (Boards, Listen, Textbausteine, Schlagwörter und der Papierkorb), blobs (Bilder, Dateien und langer Text), settings.json, dein Lizenzschlüssel, Sicherungen (so viele, wie du behalten möchtest) und Protokolle."

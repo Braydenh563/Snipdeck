@@ -13,9 +13,9 @@
     reason = "pixel geometry of a test frame: logical sizes are small and positive"
 )]
 
-use slint::ComponentHandle;
+use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use snipdeck_ui::{
-    MainSection, MainView, MainWindow, SystemLook, ToastKind,
+    MainSection, MainView, MainWindow, PaletteRow, SystemLook, ToastKind,
     testing::{Frame, Harness, assert_golden},
 };
 
@@ -533,4 +533,178 @@ fn the_selected_row_is_a_fill_and_rows_have_no_outline() {
         assert_eq!(f.pixel(x, y), SURFACE_LIGHT, "row 0 at ({x},{y})");
     }
     let _ = HOVER_LIGHT;
+}
+
+// ---- Toast (ink) ---------------------------------------------------------------------------------
+
+const INK_LIGHT: [u8; 3] = [0x17, 0x16, 0x13];
+const INK_DARK: [u8; 3] = [0xEB, 0xE9, 0xE7];
+/// `toast.action` on ink: `blue-300` in light, `blue-700` in dark.
+const TOAST_ACTION_LIGHT: [u8; 3] = [0xAB, 0xCD, 0xFE];
+const TOAST_ACTION_DARK: [u8; 3] = [0x19, 0x5A, 0xB3];
+
+fn contrast(a: [u8; 3], b: [u8; 3]) -> f64 {
+    fn lum(c: [u8; 3]) -> f64 {
+        let lin = |v: u8| {
+            let v = f64::from(v) / 255.0;
+            if v <= 0.04045 {
+                v / 12.92
+            } else {
+                ((v + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2])
+    }
+    let (hi, lo) = (lum(a).max(lum(b)), lum(a).min(lum(b)));
+    (hi + 0.05) / (lo + 0.05)
+}
+
+/// The bounding box (x0, y0, x1, y1; inclusive) of the pixels equal to `ink` in the bottom band, right of the sidebar.
+fn ink_box(f: &Frame, ink: [u8; 3]) -> Option<(u32, u32, u32, u32)> {
+    let mut b: Option<(u32, u32, u32, u32)> = None;
+    for y in 520..SIZE.1 {
+        for x in 240..SIZE.0 {
+            if f.pixel(x, y) == ink {
+                b = Some(match b {
+                    None => (x, y, x, y),
+                    Some((x0, y0, x1, y1)) => (x0.min(x), y0.min(y), x1.max(x), y1.max(y)),
+                });
+            }
+        }
+    }
+    b
+}
+
+#[test]
+fn toast_fill_is_ink() {
+    for (dark, ink) in [(false, INK_LIGHT), (true, INK_DARK)] {
+        let h = window(SIZE, dark);
+        h.component.set_toast_text("Deleted 2 items".into());
+        h.component.set_toast_undo_label("Undo".into());
+        h.component.set_toast_kind(ToastKind::Neutral);
+        let f = render(&h);
+        let (x0, y0, x1, y1) = ink_box(&f, ink).expect("an ink toast");
+        assert_eq!(y1 - y0 + 1, 40, "h40 (dark {dark})");
+        assert!(x1 - x0 + 1 <= 480, "max width 480 (dark {dark})");
+        // Centred in the item area (right of the 232px sidebar).
+        let mid = f64::from(x0 + x1) / 2.0;
+        let area_mid = (232.0 + f64::from(SIZE.0)) / 2.0;
+        assert!((mid - area_mid).abs() < 4.0, "centred: {mid} vs {area_mid}");
+        // The colour above the toast is not ink, and the toast is not a tinted neutral card.
+        assert_ne!(f.pixel(x0 + 4, y0 - 3), ink);
+        assert_eq!(f.pixel(x0 + 20, y0 + 4), ink);
+    }
+}
+
+#[test]
+fn toast_action_contrast_4_5() {
+    assert!(contrast(TOAST_ACTION_LIGHT, INK_LIGHT) >= 4.5);
+    assert!(contrast(TOAST_ACTION_DARK, INK_DARK) >= 4.5);
+    // The rendered action carries that colour on the ink, not the text colour.
+    for (dark, ink, action) in [
+        (false, INK_LIGHT, TOAST_ACTION_LIGHT),
+        (true, INK_DARK, TOAST_ACTION_DARK),
+    ] {
+        let h = window(SIZE, dark);
+        h.component.set_toast_text("Deleted 2 items".into());
+        h.component.set_toast_undo_label("Undo".into());
+        let f = render(&h);
+        let (x0, y0, x1, y1) = ink_box(&f, ink).expect("an ink toast");
+        let near = |p: [u8; 3]| p.iter().zip(action).all(|(a, b)| a.abs_diff(b) <= 24);
+        let found = (y0..=y1).any(|y| (x0..=x1).any(|x| near(f.pixel(x, y))));
+        assert!(
+            found,
+            "the Undo action is drawn in toast.action (dark {dark})"
+        );
+    }
+}
+
+// ---- Command palette ------------------------------------------------------------------------------
+
+/// `search.mark` in light and dark (design/tokens/palette.json).
+const SEARCH_MARK_LIGHT: [u8; 3] = [0xAB, 0xCD, 0xFE];
+const SEARCH_MARK_DARK: [u8; 3] = [0x0C, 0x44, 0x8F];
+
+fn palette_row(id: i32, label: &str, before: &str, mark: &str, keys: &[&str]) -> PaletteRow {
+    PaletteRow {
+        id,
+        label: label.into(),
+        keys: ModelRc::new(VecModel::from(
+            keys.iter()
+                .map(|k| (*k).into())
+                .collect::<Vec<SharedString>>(),
+        )),
+        spoken: keys.join(" ").into(),
+        mark_before: before.into(),
+        mark_text: mark.into(),
+    }
+}
+
+fn open_palette(dark: bool, query: &str, rows: Vec<PaletteRow>) -> Harness<MainWindow> {
+    let h = window(SIZE, dark);
+    h.component.invoke_open_palette();
+    for c in query.chars() {
+        let text: SharedString = c.to_string().into();
+        h.component
+            .window()
+            .dispatch_event(slint::platform::WindowEvent::KeyPressed { text: text.clone() });
+        h.component
+            .window()
+            .dispatch_event(slint::platform::WindowEvent::KeyReleased { text });
+    }
+    h.component
+        .set_palette_rows(ModelRc::new(VecModel::from(rows)));
+    h
+}
+
+fn palette_rows_for_key() -> Vec<PaletteRow> {
+    vec![
+        palette_row(9, "Keyboard shortcuts", "", "Key", &["Ctrl", "/"]),
+        palette_row(3, "Show keyboard help", "Show ", "key", &[]),
+        palette_row(1, "Open Settings", "", "", &["Ctrl", ","]),
+    ]
+}
+
+#[test]
+fn palette_marks_match() {
+    for (dark, mark) in [(false, SEARCH_MARK_LIGHT), (true, SEARCH_MARK_DARK)] {
+        let h = open_palette(dark, "key", palette_rows_for_key());
+        let f = render(&h);
+        let marked: Vec<u32> = (0..SIZE.1)
+            .filter(|&y| (250..SIZE.0).any(|x| f.pixel(x, y) == mark))
+            .collect();
+        assert!(
+            !marked.is_empty(),
+            "search-mark pixels in the palette (dark {dark})"
+        );
+        // Two rows are marked, a 32 px pitch apart; the third has no mark.
+        let first = marked[0];
+        let last = *marked.last().unwrap_or(&first);
+        assert!(
+            (45..=56).contains(&(last - first)),
+            "marks lie on two neighbouring rows: {first}..{last}"
+        );
+        assert!(
+            marked.len() <= 2 * 22,
+            "a mark is the match's height, not the row's (dark {dark}): {}",
+            marked.len()
+        );
+    }
+}
+
+#[test]
+fn main_window_command_palette() {
+    let h = open_palette(false, "key", palette_rows_for_key());
+    assert_golden("palette-light", &render(&h));
+    drop(h);
+    let h = open_palette(
+        true,
+        "",
+        vec![
+            palette_row(0, "New item", "", "", &["Ctrl", "N"]),
+            palette_row(2, "Search", "", "", &["Ctrl", "F"]),
+            palette_row(9, "Keyboard shortcuts", "", "", &["Ctrl", "/"]),
+        ],
+    );
+    assert_golden("palette-dark", &render(&h));
 }

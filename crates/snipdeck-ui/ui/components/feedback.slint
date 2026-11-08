@@ -1,7 +1,6 @@
 import { Theme, Type, Radius, Space, Motion, SystemLook, Fonts } from "../theme.slint";
 import { Icon } from "icon.slint";
 import { Icons } from "../icons.slint";
-import { Button, ButtonVariant, ButtonSize } from "button.slint";
 
 // Render-only feedback surfaces: Tooltip, Toast, Skeleton (DESIGN.md §4). The host owns timing.
 
@@ -13,17 +12,15 @@ export enum ToastKind { neutral, success, danger }
 // `Motion.quick`), then `hold` once settled (stays `hold-duration`), then `exit` (fades out in 90ms).
 export enum ToastPhase { enter, hold, exit }
 
-// DESIGN.md §4 Toast: transient result ("Copied", "Pasted into Notepad"). The kind is carried by an
-// icon as well as colour: info (neutral), check (success), warning (danger). A non-empty
-// `undo-label` adds an Undo button. Announced politely to assistive technology.
+// DESIGN.md §4 Toast, the ink toast (Panel v2 spec 2.8): 40 tall, `ink.default` fill, `text.on-ink`, radius 8, the action
+// in `toast.action`. Transient results ("Copied", "Pasted into Notepad"); the kind is carried by an icon only for success
+// (check) and danger (warning), neutral has none. A non-empty `undo-label` adds an action button. Announced politely.
 export component Toast inherits Rectangle {
     in property <string> text;
     in property <ToastKind> kind: ToastKind.neutral;
     in property <ToastPhase> phase: ToastPhase.hold;
-    // Label of the Undo button, translated by the host. Empty hides the button.
+    // Label of the action button, translated by the host. Empty hides the button.
     in property <string> undo-label;
-    // Panel v2 spec 2.8: the ink toast (40 tall, `ink.default` fill, `text.on-ink`, the action in `toast.action`).
-    in property <bool> ink: false;
     // DESIGN.md §4: the host keeps a toast in `hold` for this long.
     out property <duration> hold-duration: 2500ms;
     callback undo();
@@ -31,22 +28,14 @@ export component Toast inherits Rectangle {
     callback hover-changed(hovered: bool);
 
     // An ancestor TouchArea keeps its hover while the pointer is on a child, so the toast does not
-    // flicker as the pointer crosses onto the Undo button, and the button still gets its clicks.
+    // flicker as the pointer crosses onto the action, and the button still gets its clicks.
     property <bool> button-focus: false;
     property <bool> over: area.has-hover || root.button-focus;
     changed over => { root.hover-changed(root.over); }
+    property <bool> has-icon: root.kind != ToastKind.neutral;
 
-    property <color> fg: root.ink ? Theme.text-on-ink
-        : root.kind == ToastKind.success ? Theme.success-fg
-        : root.kind == ToastKind.danger ? Theme.danger-fg : Theme.text-primary;
-
-    min-width: root.ink ? 0px : 160px;
-    background: root.ink ? Theme.ink
-        : root.kind == ToastKind.success ? Theme.success-bg
-        : root.kind == ToastKind.danger ? Theme.danger-bg : Theme.bg-overlay;
+    background: Theme.ink;
     border-radius: Radius.lg;
-    border-width: root.ink ? 0px : 1px;
-    border-color: root.kind == ToastKind.neutral ? Theme.border-default : root.fg.with-alpha(0.35);
     opacity: root.phase == ToastPhase.exit ? 0.0 : 1.0;
     accessible-role: AccessibleRole.text;
     accessible-label: root.text;
@@ -55,35 +44,32 @@ export component Toast inherits Rectangle {
     animate opacity { duration: root.phase == ToastPhase.exit ? Motion.fade : Motion.quick; easing: Motion.out; }
 
     preferred-width: row.preferred-width;
-    preferred-height: root.ink ? Space.s8 + Space.s2 : row.preferred-height;
+    preferred-height: Space.s8 + Space.s2;
 
     area := TouchArea {
         row := HorizontalLayout {
             padding-left: Space.s3;
             padding-right: root.undo-label != "" ? Space.s1 : Space.s3;
-            padding-top: root.ink ? 0px : Space.s2;
-            padding-bottom: root.ink ? 0px : Space.s2;
             spacing: Space.s2;
-            Rectangle {
+            if root.has-icon: Rectangle {
                 width: 16px;
                 Icon {
-                    source: root.kind == ToastKind.success ? Icons.check-circle
-                        : root.kind == ToastKind.danger ? Icons.warning : Icons.info;
-                    tint: root.fg;
+                    source: root.kind == ToastKind.success ? Icons.check-circle : Icons.warning;
+                    tint: Theme.text-on-ink;
                     y: (parent.height - self.height) / 2;
                 }
             }
             Text {
                 text: root.text;
-                color: root.fg;
+                color: Theme.text-on-ink;
                 font-family: Fonts.sans;
-                font-size: root.ink ? Type.sm : Type.base;
+                font-size: Type.sm;
                 vertical-alignment: center;
-                wrap: root.ink ? TextWrap.no-wrap : TextWrap.word-wrap;
+                wrap: TextWrap.no-wrap;
                 overflow: elide;
             }
             // The wrapper takes the layout's full height so the button inside centres on the message (a layout ignores `y`).
-            if root.undo-label != "" && root.ink: Rectangle {
+            if root.undo-label != "": Rectangle {
               width: ink-action.preferred-width + 2 * Space.s2 + Space.s0-5;
               ink-btn := Rectangle {
                 width: parent.width;
@@ -127,14 +113,6 @@ export component Toast inherits Rectangle {
                     }
                 }
               }
-            }
-            if root.undo-label != "" && !root.ink: Button {
-                text: root.undo-label;
-                variant: ButtonVariant.ghost;
-                size: ButtonSize.sm;
-                y: (parent.height - self.height) / 2;
-                clicked => { root.undo(); }
-                changed has-focus => { root.button-focus = self.has-focus; }
             }
         }
     }
