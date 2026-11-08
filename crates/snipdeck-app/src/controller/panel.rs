@@ -226,7 +226,7 @@ where
                 self.take_pending()
             }
             AppMenuEntry::PauseHotkeys => {
-                self.session.hotkeys_paused = !self.session.hotkeys_paused;
+                self.set_hotkeys_paused(!self.session.hotkeys_paused);
                 vec![Effect::SetHotkeysPaused(self.session.hotkeys_paused)]
             }
             AppMenuEntry::KeepOnTop => {
@@ -318,9 +318,10 @@ where
     pub fn close_item_menu(&mut self) {
         if matches!(
             self.menu,
-            PanelMenu::Item(_) | PanelMenu::Move | PanelMenu::Colour
+            PanelMenu::Item(_) | PanelMenu::Move | PanelMenu::Colour | PanelMenu::Symbol
         ) {
             self.menu = PanelMenu::None;
+            self.symbol_menu = None;
         }
     }
 

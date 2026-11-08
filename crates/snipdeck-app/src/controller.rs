@@ -45,6 +45,7 @@ pub use main_ctl::{BoardMenuEntry, MainAction, MainScreen, TagChoice, TagRenameE
 pub use panel::{APP_MENU, AppMenuEntry, HelpTopic, ItemMenuEntry, LIST_MENU, ListMenuEntry};
 pub use panel_select::LABELS;
 pub use settings_ctl::{ImportKind, ImportPreview, ImportProblem, ImportSource};
+pub use symbol_ctl::{IconExport, IconSave, SaveOutcome, SymbolChoice, SymbolMenuEntry};
 pub use views::{
     BoardDeleteView, ChooseEntry, ChooseLabel, ChooseMenu, Effect, FillSubmission, FillView,
     ListDeleteView, PickerView, StackView, ToastPhase, ToastView, UseResult, View,
@@ -206,6 +207,8 @@ pub struct Controller<S, C, K, T> {
     stack_running: bool,
     /// Which of the Panel's two menus is open (never both).
     menu: PanelMenu,
+    /// The symbol the open [`PanelMenu::Symbol`] is about.
+    symbol_menu: Option<snipdeck_symbols::SymbolId>,
     /// What the open item menu, or its Move / Colour choice, acts on: the marked rows when the menu was
     /// opened on one of them, else the one row.
     menu_targets: Vec<ItemId>,
@@ -283,6 +286,8 @@ enum PanelMenu {
     App,
     /// The context menu of an item's card or pinned chip.
     Item(ItemId),
+    /// The context menu of a cell of the Symbols tab (`symbol_menu` says which).
+    Symbol,
     /// The item menu's "Move to…": the lists to choose from.
     Move,
     /// The item menu's "Colour": the labels to choose from.
@@ -387,6 +392,7 @@ where
             stack: Vec::new(),
             stack_running: false,
             menu: PanelMenu::None,
+            symbol_menu: None,
             menu_targets: Vec::new(),
             main,
             editor: None,
@@ -498,9 +504,11 @@ where
                 PanelMenu::Item(id) => Some(self.item_menu_entries(id)),
                 _ => None,
             },
+            symbol_menu: self.symbol_menu_view(),
             choose_menu: self.choose_menu_view(),
             marked_count: self.model.marked_count(),
             show_numbers: self.settings.show_numbers,
+            symbols_available: self.settings.show_symbols_tab,
             layout: self.settings.panel_layout,
             search_always: self.settings.panel_search == crate::settings::PanelSearch::Always,
             lists_in_menu: self.settings.panel_switcher == crate::settings::PanelSwitcher::Menu,
@@ -635,6 +643,13 @@ where
 
     /// Ends a test without a press (the step closed, or another test began elsewhere).
     pub fn stop_hotkey_test(&mut self) {
+        self.session.hotkey_test = None;
+    }
+
+    /// Switches "Pause hotkeys". A test still waiting for its press ends: its press would
+    /// arrive after the resume with nobody looking, and be swallowed.
+    pub(crate) fn set_hotkeys_paused(&mut self, paused: bool) {
+        self.session.hotkeys_paused = paused;
         self.session.hotkey_test = None;
     }
 
@@ -819,7 +834,7 @@ where
             }
             TrayEvent::OpenSnipdeck => vec![Effect::OpenMainWindow],
             TrayEvent::HotkeysPaused(paused) => {
-                self.session.hotkeys_paused = paused;
+                self.set_hotkeys_paused(paused);
                 vec![Effect::SetHotkeysPaused(paused)]
             }
             TrayEvent::HistoryPaused(paused) => {

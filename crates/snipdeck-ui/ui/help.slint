@@ -379,6 +379,10 @@ export component HelpWindow inherits Window {
                                 clicked => { root.store-requested(); }
                             }
                         }
+                        SettingRow {
+                            title: @tr("Symbols data");
+                            description: @tr("Emoji art: Microsoft Fluent Emoji (MIT). Icons: Phosphor (MIT). Emoji names and keywords: Unicode CLDR (Unicode-3.0).");
+                        }
                         if root.has-notices: SettingRow {
                             title: @tr("Third-party notices");
                             description: @tr("The licences of the libraries Snipdeck is built from.");

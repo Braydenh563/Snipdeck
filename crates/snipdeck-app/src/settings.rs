@@ -699,6 +699,9 @@ pub struct Settings {
     pub editor_more_open: bool,
     /// The Panel's rows show their 1 to 9 quick-use numbers (the keys work either way).
     pub show_numbers: bool,
+    /// The Panel shows its Symbols tab (emoji, kaomoji and icons). On by default; off puts the
+    /// tab row back to the clock tab alone, and the palette's "Symbols" does nothing.
+    pub show_symbols_tab: bool,
     /// How tall the item rows are: comfortable (preview lines) or compact (one line).
     pub row_density: RowDensity,
     /// Which side of the caret the Picker opens on.
@@ -757,6 +760,7 @@ impl Default for Settings {
             onboarded: false,
             editor_more_open: false,
             show_numbers: true,
+            show_symbols_tab: true,
             row_density: RowDensity::Comfortable,
             picker_side: PickerSide::Below,
             panel_layout: PanelLayout::List,
@@ -887,6 +891,7 @@ impl Settings {
         field!(onboarded);
         field!(editor_more_open);
         field!(show_numbers);
+        field!(show_symbols_tab);
         field!(row_density);
         field!(picker_side);
         field!(panel_layout);
@@ -1978,6 +1983,18 @@ mod tests {
             let text = format!(r#"{{"panel_open_at":"{word}"}}"#);
             assert_eq!(Settings::from_json(&text).panel_open_at, at, "{word}");
         }
+    }
+
+    #[test]
+    fn the_symbols_tab_is_on_by_default_and_the_choice_round_trips() {
+        assert!(Settings::default().show_symbols_tab);
+        assert!(Settings::from_json(r#"{"version":1}"#).show_symbols_tab);
+        let off = Settings {
+            show_symbols_tab: false,
+            ..Settings::default()
+        };
+        let back = Settings::from_json(&off.to_json());
+        assert!(!back.show_symbols_tab);
     }
 
     #[test]

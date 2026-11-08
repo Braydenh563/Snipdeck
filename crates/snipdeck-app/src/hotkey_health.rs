@@ -38,16 +38,15 @@ pub const ALTERNATIVE_POOL: [&str; 6] = [
 /// At most this many alternatives are shown for one shortcut.
 pub const MAX_ALTERNATIVES: usize = 3;
 
-/// Chords to offer instead of `action`'s current one: from [`ALTERNATIVE_POOL`], leaving out the
-/// chords the other actions hold and the one `action` has now (it is the one that failed).
+/// Chords to offer instead of the one that failed: from [`ALTERNATIVE_POOL`], leaving out every
+/// chord an action holds now (the failed one included).
 #[must_use]
-pub fn alternatives(action: HotkeyAction, hotkeys: &Hotkeys) -> Vec<String> {
+pub fn alternatives(hotkeys: &Hotkeys) -> Vec<String> {
     let taken: Vec<String> = HotkeyAction::ALL
         .into_iter()
         .map(|a| chord_text(hotkeys, a).to_ascii_lowercase())
         .filter(|c| !c.is_empty())
         .collect();
-    let _ = action;
     ALTERNATIVE_POOL
         .into_iter()
         .filter(|c| !taken.contains(&c.to_ascii_lowercase()))
@@ -74,7 +73,7 @@ mod tests {
     #[test]
     fn alternatives_skip_every_chord_in_use_and_stop_at_three() {
         let hotkeys = Hotkeys::new_install();
-        let offered = alternatives(HotkeyAction::TogglePanel, &hotkeys);
+        let offered = alternatives(&hotkeys);
         assert_eq!(offered.len(), MAX_ALTERNATIVES);
         for chord in &offered {
             assert!(!chord.contains("Alt"), "{chord}");
@@ -93,7 +92,7 @@ mod tests {
     fn a_cleared_shortcut_holds_nothing_back() {
         let mut hotkeys = Hotkeys::new_install();
         hotkeys.toggle_panel = String::new();
-        let offered = alternatives(HotkeyAction::Picker, &hotkeys);
+        let offered = alternatives(&hotkeys);
         assert_eq!(offered[0], "Ctrl+Shift+Y");
     }
 }

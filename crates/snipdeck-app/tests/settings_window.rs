@@ -908,6 +908,24 @@ fn a_shortcut_that_failed_to_register_at_start_says_why_on_its_row_until_it_is_c
 }
 
 #[test]
+fn closing_the_window_with_its_x_ends_a_hotkey_test_so_the_next_press_is_not_swallowed() {
+    on_ui_thread(|| {
+        let r = rig();
+        r.ui.invoke_hotkey_test_requested(0);
+        assert_eq!(
+            r.ctl.borrow().hotkey_test(),
+            Some(HotkeyAction::TogglePanel)
+        );
+        // The title bar's X is a window event, not the page's own close callback.
+        r.ui.window()
+            .dispatch_event(slint::platform::WindowEvent::CloseRequested);
+        assert_eq!(r.ctl.borrow().hotkey_test(), None, "the test ended");
+        let effects = r.ctl.borrow_mut().on_hotkey(HotkeyAction::TogglePanel);
+        assert!(!effects.is_empty(), "the press did its job: {effects:?}");
+    });
+}
+
+#[test]
 fn the_test_button_listens_for_the_press_and_a_failed_chord_offers_one_click_alternatives() {
     use snipdeck_app::host::HotkeyFailure;
     on_ui_thread(|| {
@@ -971,6 +989,32 @@ fn the_welcome_tour_tests_a_shortcut_and_leaving_the_step_ends_the_test() {
         tour.invoke_hotkey_test_requested(0);
         tour.invoke_next_requested();
         assert_eq!(r.ctl.borrow().hotkey_test(), None);
+    });
+}
+
+#[test]
+fn choosing_the_tours_one_click_alternative_clears_the_failed_state() {
+    use snipdeck_app::host::HotkeyFailure;
+    on_ui_thread(|| {
+        let r = rig();
+        let tour = snipdeck_ui::OnboardingWindow::new().expect("tour window");
+        let host: Rc<dyn SettingsHost> = Rc::clone(&r.host) as Rc<dyn SettingsHost>;
+        let binding = Controller::bind_onboarding(&r.ctl, &tour, host);
+        tour.show().expect("show");
+        let row = |i: usize| tour.get_hotkeys().row_data(i).unwrap();
+        r.ctl.borrow_mut().report_hotkey_problems(&[HotkeyProblem {
+            action: HotkeyAction::TogglePanel,
+            chord: "Ctrl+Shift+Y".into(),
+            failure: HotkeyFailure::InUse,
+        }]);
+        binding.redraw();
+        assert_eq!(row(0).state, 2, "Not working");
+        let offered: Vec<String> = row(0).alternatives.iter().map(|c| c.to_string()).collect();
+        assert!(!offered.is_empty());
+        tour.invoke_hotkey_recorded(0, offered[0].as_str().into());
+        assert_eq!(r.ctl.borrow().settings().hotkeys.toggle_panel, offered[0]);
+        assert_eq!(row(0).state, 3, "the new chord is Ready, not Failed");
+        assert_eq!(row(0).alternatives.row_count(), 0);
     });
 }
 
@@ -2801,6 +2845,13 @@ fn panel_layout_group_shows_the_settings_and_writes_each_choice() {
         r.ui.invoke_show_numbers_toggled(false);
         assert!(!r.ctl.borrow().settings().show_numbers);
         assert!(!r.ui.get_show_numbers());
+        assert!(
+            r.ui.get_show_symbols_tab(),
+            "the Symbols tab is on by default"
+        );
+        r.ui.invoke_show_symbols_tab_toggled(false);
+        assert!(!r.ctl.borrow().settings().show_symbols_tab);
+        assert!(!r.ui.get_show_symbols_tab());
     });
 }
 
