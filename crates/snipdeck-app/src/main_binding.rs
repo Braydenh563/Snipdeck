@@ -1125,7 +1125,15 @@ fn render(window: &ui::MainWindow, previous: Option<&MainScreen>, screen: &MainS
         let rows = screen
             .rows
             .iter()
-            .map(|r| main_row(r, screen.dark))
+            .enumerate()
+            .map(|(i, r)| {
+                let mut row = main_row(r, screen.dark);
+                // The one sensitive row held revealed: the controller put its text in the preview.
+                if screen.revealed == Some(i) {
+                    row.preview = r.preview.as_str().into();
+                }
+                row
+            })
             .collect();
         if let Some(fresh) = crate::binding::refreshed_model(&window.get_rows(), rows) {
             window.set_rows(fresh);
