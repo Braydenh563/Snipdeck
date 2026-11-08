@@ -13,8 +13,8 @@
 //   Ctrl+E          asks the host to edit the selected snippet
 //   Esc             asks the host to close the Picker
 //
-// Limitation: matched characters are not highlighted. Slint 1.18 has no stable rich text, and an ItemCard title is
-// one Text; highlighting needs per-span Text elements inside the card.
+// Rows are the Panel's quiet Compact rows with the place ("Board · List") inline on the title line. The selected row is a
+// `bg-selected` fill (the keyboard lives in the search field, which carries the focus ring); it shows Copy and Edit.
 import { ListView } from "std-widgets.slint";
 import { Theme, Type, Space, Fonts, SystemLook, Palette } from "theme.slint";
 import { ItemCard, ItemKind, ItemCardVariant } from "components/item-card.slint";
@@ -26,11 +26,18 @@ import { KeyCombo } from "components/keycap.slint";
 
 // One result, as `snipdeck-app` resolves it across boards. The breadcrumb is `board-name / list-name`; the
 // quick-use number is the row's position (1-9 for the first nine, used with Alt+N); `masked-preview` stands in for a
-// sensitive item's preview.
+// sensitive item's preview. In a search the marks say where the query matched (the host's `search_mark`): the title is
+// `mark-before` + `mark-text` + the rest, the preview (already windowed to the match) `preview-before` + `preview-match`,
+// and `tag-hit` names a tag that matched when neither shows it.
 export struct PickerRow {
     kind: ItemKind,
     title: string,
+    mark-before: string,
+    mark-text: string,
     preview: string,
+    preview-before: string,
+    preview-match: string,
+    tag-hit: string,
     masked-preview: string,
     extension: string,
     board-name: string,
@@ -152,8 +159,8 @@ export component PickerWindow inherits Window {
     property <int> used-index: -1;
     // SPEC 5.2 and DESIGN.md §5: up to nine rows are visible; more scroll.
     property <int> max-rows: 9;
-    // A compact ItemCard's height (28px at 100%, one text line plus padding when the text is larger).
-    property <length> row-h: max(Space.hit, Type.line-base + Space.s1);
+    // A quiet Compact ItemCard's height (36px at 100%, one text line plus padding when the text is larger).
+    property <length> row-h: max(Space.s8 + Space.s1, Type.line-base + 2 * Space.s2);
     property <length> list-h: min(root.rows.length, root.max-rows) * root.row-h;
     property <length> empty-h: Space.s12 * 4 * SystemLook.text-scale;
     property <length> body-h: root.rows.length == 0 ? root.empty-h : root.list-h + 2 * Space.s1;
@@ -425,21 +432,28 @@ export component PickerWindow inherits Window {
                     visible: root.rows.length > 0;
 
                     for row[i] in root.rows: ItemCard {
+                        quiet: true;
+                        where-inline: true;
                         has-menu: false;
+                        show-actions: i == root.sel;
                         height: root.row-h;
                         variant: ItemCardVariant.compact;
                         kind: row.kind;
                         number: i < 9 ? i + 1 : 0;
                         title: row.title;
+                        mark-before: row.mark-before;
+                        mark-text: row.mark-text;
                         preview: row.preview;
+                        preview-before: row.preview-before;
+                        preview-match: row.preview-match;
+                        tag-hit: row.tag-hit;
                         masked-preview: row.masked-preview;
                         extension: row.extension;
                         image: row.image;
-                        // The breadcrumb stays on the selected row too: the use label is in the footer.
-                        list-name: row.board-name != "" ? row.board-name + " / " + row.list-name : row.list-name;
+                        // The place stays on the selected row too, left of its actions: the use label is in the footer.
+                        list-name: row.board-name != "" ? row.board-name + " \u{b7} " + row.list-name : row.list-name;
                         list-color: row.list-color;
                         selected: i == root.sel;
-                        show-focus: i == root.sel;
                         use-label: "";
                         masked-hint: @tr("Hidden. Open it in the Panel to reveal.");
                         pulling: i == root.used-index;
@@ -451,6 +465,10 @@ export component PickerWindow inherits Window {
                         copy => {
                             root.selected-index = i;
                             root.row-copied(i);
+                        }
+                        edit => {
+                            root.selected-index = i;
+                            root.edit-requested(i);
                         }
                     }
                 }

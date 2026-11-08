@@ -94,7 +94,7 @@ msgstr ""
 msgid "About"
 msgstr ""
 
-#: ui/command_texts.slint:29 ui/main_window.slint:2177 ui/menu_texts.slint:78
+#: ui/command_texts.slint:29 ui/main_window.slint:2248 ui/menu_texts.slint:78
 msgid "About Snipdeck"
 msgstr ""
 
@@ -106,7 +106,7 @@ msgstr ""
 msgid "Accent colour"
 msgstr ""
 
-#: ui/main_window.slint:2163 ui/symbols.slint:66
+#: ui/main_window.slint:2234 ui/symbols.slint:66
 msgid "Actions"
 msgstr ""
 
@@ -122,7 +122,7 @@ msgstr ""
 msgid "Add"
 msgstr ""
 
-#: ui/main_window.slint:1875
+#: ui/main_window.slint:1922
 msgid "Add a snippet, or move items here from another list."
 msgstr ""
 
@@ -130,7 +130,7 @@ msgstr ""
 msgid "Add a snippet… (Enter to save)"
 msgstr ""
 
-#: ui/main_window.slint:967 ui/panel.slint:1598
+#: ui/main_window.slint:987 ui/panel.slint:1598
 msgid "Add list"
 msgstr ""
 
@@ -154,7 +154,7 @@ msgstr ""
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr ""
 
-#: ui/panel.slint:1974
+#: ui/panel.slint:1975
 msgid "Adds a text snippet to {}"
 msgstr ""
 
@@ -162,7 +162,7 @@ msgstr ""
 msgid "After a paste or copy"
 msgstr ""
 
-#: ui/picker.slint:389 ui/symbols.slint:190
+#: ui/picker.slint:396 ui/symbols.slint:190
 msgid "All"
 msgstr ""
 
@@ -170,11 +170,11 @@ msgstr ""
 msgid "All commands…"
 msgstr ""
 
-#: ui/main_window.slint:755 ui/main_window.slint:921
+#: ui/main_window.slint:775 ui/main_window.slint:941
 msgid "All items"
 msgstr ""
 
-#: ui/main_window.slint:513
+#: ui/main_window.slint:525
 msgid "All {} recent copies are removed. This can't be undone."
 msgstr ""
 
@@ -186,11 +186,11 @@ msgstr ""
 msgid "Also keep what I copy?"
 msgstr ""
 
-#: ui/picker.slint:511
+#: ui/picker.slint:529
 msgid "Alt 1 to 9"
 msgstr ""
 
-#: ui/components/item-card.slint:32 ui/components/item-card.slint:719 ui/components/item-card.slint:741
+#: ui/components/item-card.slint:32 ui/components/item-card.slint:721 ui/components/item-card.slint:743
 msgid "Alt+{}"
 msgstr ""
 
@@ -306,7 +306,7 @@ msgstr ""
 msgid "Board saved"
 msgstr ""
 
-#: ui/main_window.slint:840 ui/main_window.slint:847 ui/panel.slint:1308
+#: ui/main_window.slint:860 ui/main_window.slint:867 ui/panel.slint:1308
 msgid "Board: {}"
 msgstr ""
 
@@ -314,11 +314,11 @@ msgstr ""
 msgid "Board: {}, list: {}"
 msgstr ""
 
-#: ui/components/plan-table.slint:26 ui/main_window.slint:2091 ui/panel.slint:2312 ui/panel.slint:2331
+#: ui/components/plan-table.slint:26 ui/main_window.slint:2162 ui/panel.slint:2313 ui/panel.slint:2332
 msgid "Boards"
 msgstr ""
 
-#: ui/panel.slint:2334
+#: ui/panel.slint:2335
 msgid "Boards and lists"
 msgstr ""
 
@@ -350,7 +350,7 @@ msgstr ""
 msgid "Built on"
 msgstr ""
 
-#: ui/components/hotkey_health.slint:39 ui/components/quick-add.slint:166 ui/editors.slint:806 ui/editors.slint:1183 ui/editors.slint:1221 ui/editors.slint:1549 ui/help.slint:407 ui/main_window.slint:2288 ui/main_window.slint:2310 ui/master_password.slint:256 ui/master_password.slint:372 ui/panel.slint:2497 ui/panel.slint:2515 ui/settings.slint:1500 ui/settings.slint:1574 ui/template_fill.slint:311
+#: ui/components/hotkey_health.slint:39 ui/components/quick-add.slint:166 ui/editors.slint:806 ui/editors.slint:1183 ui/editors.slint:1221 ui/editors.slint:1549 ui/help.slint:407 ui/main_window.slint:2359 ui/main_window.slint:2381 ui/master_password.slint:256 ui/master_password.slint:372 ui/panel.slint:2498 ui/panel.slint:2516 ui/settings.slint:1500 ui/settings.slint:1574 ui/template_fill.slint:311
 msgid "Cancel"
 msgstr ""
 
@@ -414,31 +414,31 @@ msgstr ""
 msgid "Choose what to import"
 msgstr ""
 
-#: ui/panel.slint:2099
+#: ui/panel.slint:2100
 msgid "Clear"
 msgstr ""
 
-#: ui/main_window.slint:1371
+#: ui/main_window.slint:1391
 msgid "Clear filter"
 msgstr ""
 
-#: ui/main_window.slint:518
+#: ui/main_window.slint:530
 msgid "Clear history"
 msgstr ""
 
-#: ui/main_window.slint:1781 ui/settings.slint:480 ui/settings.slint:1049 ui/settings.slint:1052
+#: ui/main_window.slint:1828 ui/settings.slint:480 ui/settings.slint:1049 ui/settings.slint:1052
 msgid "Clear recent history"
 msgstr ""
 
-#: ui/main_window.slint:507
+#: ui/main_window.slint:519
 msgid "Clear recent history?"
 msgstr ""
 
-#: ui/components/command-palette.slint:158 ui/help.slint:256 ui/main_window.slint:1146 ui/panel.slint:1468 ui/panel.slint:1975 ui/picker.slint:368 ui/symbols.slint:168
+#: ui/components/command-palette.slint:158 ui/help.slint:256 ui/main_window.slint:1166 ui/panel.slint:1468 ui/panel.slint:1976 ui/picker.slint:375 ui/symbols.slint:168
 msgid "Clear search"
 msgstr ""
 
-#: ui/main_window.slint:1983 ui/panel.slint:2060
+#: ui/main_window.slint:2030 ui/panel.slint:2061
 msgid "Clear selection"
 msgstr ""
 
@@ -470,23 +470,23 @@ msgstr ""
 msgid "Click"
 msgstr ""
 
-#: ui/panel.slint:1922
+#: ui/panel.slint:1923
 msgid "Click copies"
 msgstr ""
 
-#: ui/panel.slint:2131
+#: ui/panel.slint:2132
 msgid "Click or Enter pastes. Shift+click or Shift+Enter copies."
 msgstr ""
 
-#: ui/panel.slint:1922
+#: ui/panel.slint:1923
 msgid "Click pastes into {} · Shift+click copies"
 msgstr ""
 
-#: ui/panel.slint:1713 ui/panel.slint:1866
+#: ui/panel.slint:1713 ui/panel.slint:1867
 msgid "Click to copy."
 msgstr ""
 
-#: ui/panel.slint:1713 ui/panel.slint:1866
+#: ui/panel.slint:1713 ui/panel.slint:1867
 msgid "Click to paste into {}. Shift+click copies."
 msgstr ""
 
@@ -498,7 +498,7 @@ msgstr ""
 msgid "Clipboard clear time"
 msgstr ""
 
-#: ui/editors.slint:1533 ui/panel.slint:1504 ui/picker.slint:522 ui/settings.slint:1500 ui/settings.slint:1718 ui/shortcut_texts.slint:79 ui/shortcut_texts.slint:82 ui/template_fill.slint:192
+#: ui/editors.slint:1533 ui/panel.slint:1504 ui/picker.slint:540 ui/settings.slint:1500 ui/settings.slint:1718 ui/shortcut_texts.slint:79 ui/shortcut_texts.slint:82 ui/template_fill.slint:192
 msgid "Close"
 msgstr ""
 
@@ -518,11 +518,11 @@ msgstr ""
 msgid "Close the window"
 msgstr ""
 
-#: ui/components/item-card.slint:406 ui/editors.slint:637 ui/editors.slint:638
+#: ui/components/item-card.slint:408 ui/editors.slint:637 ui/editors.slint:638
 msgid "Code"
 msgstr ""
 
-#: ui/editors.slint:1127 ui/editors.slint:1130 ui/menu_texts.slint:63 ui/panel.slint:2039
+#: ui/editors.slint:1127 ui/editors.slint:1130 ui/menu_texts.slint:63 ui/panel.slint:2040
 msgid "Colour"
 msgstr ""
 
@@ -534,7 +534,7 @@ msgstr ""
 msgid "Comfortable"
 msgstr ""
 
-#: ui/main_window.slint:1267 ui/main_window.slint:2051
+#: ui/main_window.slint:1287 ui/main_window.slint:2102
 msgid "Comfortable view"
 msgstr ""
 
@@ -546,7 +546,7 @@ msgstr ""
 msgid "Commands"
 msgstr ""
 
-#: ui/main_window.slint:1219 ui/main_window.slint:2050
+#: ui/main_window.slint:1239 ui/main_window.slint:2101
 msgid "Commands (Ctrl+K)"
 msgstr ""
 
@@ -558,7 +558,7 @@ msgstr ""
 msgid "Compact"
 msgstr ""
 
-#: ui/main_window.slint:1280 ui/main_window.slint:2052
+#: ui/main_window.slint:1300 ui/main_window.slint:2103
 msgid "Compact view"
 msgstr ""
 
@@ -590,7 +590,7 @@ msgstr ""
 msgid "Copied. {} runs as administrator, so Snipdeck can't paste into it."
 msgstr ""
 
-#: ui/components/item-card.slint:1114 ui/main_window.slint:631 ui/main_window.slint:1825 ui/main_window.slint:2110 ui/menu_texts.slint:111 ui/panel.slint:416 ui/panel.slint:2453 ui/picker.slint:149 ui/picker.slint:507 ui/template_fill.slint:62
+#: ui/components/item-card.slint:1116 ui/main_window.slint:649 ui/main_window.slint:1872 ui/main_window.slint:2181 ui/menu_texts.slint:111 ui/panel.slint:416 ui/panel.slint:2454 ui/picker.slint:156 ui/picker.slint:525 ui/template_fill.slint:62
 msgid "Copy"
 msgstr ""
 
@@ -602,7 +602,7 @@ msgstr ""
 msgid "Copy SVG"
 msgstr ""
 
-#: ui/panel.slint:2046
+#: ui/panel.slint:2047
 msgid "Copy all"
 msgstr ""
 
@@ -614,11 +614,11 @@ msgstr ""
 msgid "Copy selected item"
 msgstr ""
 
-#: ui/picker.slint:480
+#: ui/picker.slint:498
 msgid "Copy something, then save it from the Panel."
 msgstr ""
 
-#: ui/panel.slint:1972
+#: ui/panel.slint:1973
 msgid "Copy something, then save it here."
 msgstr ""
 
@@ -630,7 +630,7 @@ msgstr ""
 msgid "Copy the result"
 msgstr ""
 
-#: ui/components/item-card.slint:1061
+#: ui/components/item-card.slint:1063
 msgid "Copy without pasting"
 msgstr ""
 
@@ -850,7 +850,7 @@ msgstr ""
 msgid "Create item"
 msgstr ""
 
-#: ui/panel.slint:1973
+#: ui/panel.slint:1974
 msgid "Create “{}”"
 msgstr ""
 
@@ -886,15 +886,15 @@ msgstr ""
 msgid "Date and time in a format you choose"
 msgstr ""
 
-#: ui/menu_texts.slint:132 ui/panel.slint:2053
+#: ui/menu_texts.slint:132 ui/panel.slint:2054
 msgid "Delete"
 msgstr ""
 
-#: ui/editors.slint:1337 ui/main_window.slint:2293 ui/panel.slint:2520
+#: ui/editors.slint:1337 ui/main_window.slint:2364 ui/panel.slint:2521
 msgid "Delete board"
 msgstr ""
 
-#: ui/main_window.slint:2281 ui/panel.slint:2511
+#: ui/main_window.slint:2352 ui/panel.slint:2512
 msgid "Delete board “{}”?"
 msgstr ""
 
@@ -902,31 +902,31 @@ msgstr ""
 msgid "Delete board…"
 msgstr ""
 
-#: ui/main_window.slint:518
+#: ui/main_window.slint:530
 msgid "Delete for good"
 msgstr ""
 
-#: ui/main_window.slint:508
+#: ui/main_window.slint:520
 msgid "Delete for good?"
 msgstr ""
 
-#: ui/main_window.slint:628 ui/main_window.slint:1975
+#: ui/main_window.slint:646 ui/main_window.slint:2022
 msgid "Delete for good…"
 msgstr ""
 
-#: ui/editors.slint:1282 ui/main_window.slint:515 ui/panel.slint:2502
+#: ui/editors.slint:1282 ui/main_window.slint:527 ui/panel.slint:2503
 msgid "Delete list"
 msgstr ""
 
-#: ui/main_window.slint:504 ui/panel.slint:2493
+#: ui/main_window.slint:516 ui/panel.slint:2494
 msgid "Delete list “{}”?"
 msgstr ""
 
-#: ui/main_window.slint:466 ui/panel.slint:220
+#: ui/main_window.slint:478 ui/panel.slint:220
 msgid "Delete list…"
 msgstr ""
 
-#: ui/editors.slint:1553 ui/main_window.slint:516
+#: ui/editors.slint:1553 ui/main_window.slint:528
 msgid "Delete tag"
 msgstr ""
 
@@ -934,11 +934,11 @@ msgstr ""
 msgid "Delete tag {}"
 msgstr ""
 
-#: ui/main_window.slint:505
+#: ui/main_window.slint:517
 msgid "Delete tag “{}”?"
 msgstr ""
 
-#: ui/main_window.slint:469
+#: ui/main_window.slint:481
 msgid "Delete tag…"
 msgstr ""
 
@@ -962,7 +962,7 @@ msgstr ""
 msgid "Deleted for good"
 msgstr ""
 
-#: ui/main_window.slint:1874
+#: ui/main_window.slint:1921
 msgid "Deleted items stay here for {} days before they are removed."
 msgstr ""
 
@@ -1026,7 +1026,7 @@ msgstr ""
 msgid "Done"
 msgstr ""
 
-#: ui/main_window.slint:634 ui/menu_texts.slint:117
+#: ui/main_window.slint:652 ui/menu_texts.slint:117
 msgid "Duplicate"
 msgstr ""
 
@@ -1042,7 +1042,7 @@ msgstr ""
 msgid "Duplicated"
 msgstr ""
 
-#: ui/components/item-card.slint:1104 ui/main_window.slint:633
+#: ui/components/item-card.slint:1106 ui/main_window.slint:651
 msgid "Edit"
 msgstr ""
 
@@ -1058,7 +1058,7 @@ msgstr ""
 msgid "Edit list"
 msgstr ""
 
-#: ui/main_window.slint:464 ui/panel.slint:219
+#: ui/main_window.slint:476 ui/panel.slint:219
 msgid "Edit list…"
 msgstr ""
 
@@ -1094,15 +1094,15 @@ msgstr ""
 msgid "Emoji art: Microsoft Fluent Emoji (MIT). Icons: Phosphor (MIT). Emoji names and keywords: Unicode CLDR (Unicode-3.0)."
 msgstr ""
 
-#: ui/main_window.slint:517
+#: ui/main_window.slint:529
 msgid "Empty Trash"
 msgstr ""
 
-#: ui/main_window.slint:471 ui/main_window.slint:1343
+#: ui/main_window.slint:483 ui/main_window.slint:1363
 msgid "Empty Trash…"
 msgstr ""
 
-#: ui/main_window.slint:506
+#: ui/main_window.slint:518
 msgid "Empty the Trash?"
 msgstr ""
 
@@ -1110,15 +1110,15 @@ msgstr ""
 msgid "Encryption on disk"
 msgstr ""
 
-#: ui/panel.slint:2099
+#: ui/panel.slint:2100
 msgid "End stack"
 msgstr ""
 
-#: ui/picker.slint:501
+#: ui/picker.slint:519
 msgid "Enter"
 msgstr ""
 
-#: ui/panel.slint:2113
+#: ui/panel.slint:2114
 msgid "Enter creates “{}” in {}"
 msgstr ""
 
@@ -1142,7 +1142,7 @@ msgstr ""
 msgid "Erase library…"
 msgstr ""
 
-#: ui/picker.slint:521
+#: ui/picker.slint:539
 msgid "Escape"
 msgstr ""
 
@@ -1154,7 +1154,7 @@ msgstr ""
 msgid "Everything checks out."
 msgstr ""
 
-#: ui/main_window.slint:512
+#: ui/main_window.slint:524
 msgid "Everything in the Trash is deleted for good. This can't be undone."
 msgstr ""
 
@@ -1162,7 +1162,7 @@ msgstr ""
 msgid "Everything in your library goes: boards, lists, items, images, drafts and backups. Export first if you want a copy. Your settings and licence stay."
 msgstr ""
 
-#: ui/main_window.slint:465
+#: ui/main_window.slint:477
 msgid "Export as text"
 msgstr ""
 
@@ -1186,7 +1186,7 @@ msgstr ""
 msgid "Fields that ask for a value are a Supporter feature. Remove them to save."
 msgstr ""
 
-#: ui/components/item-card.slint:410 ui/editors.slint:476 ui/editors.slint:484 ui/editors.slint:637 ui/editors.slint:655
+#: ui/components/item-card.slint:412 ui/editors.slint:476 ui/editors.slint:484 ui/editors.slint:637 ui/editors.slint:655
 msgid "File"
 msgstr ""
 
@@ -1198,7 +1198,7 @@ msgstr ""
 msgid "Filter as you type"
 msgstr ""
 
-#: ui/main_window.slint:1354
+#: ui/main_window.slint:1374
 msgid "Filter by colour label"
 msgstr ""
 
@@ -1322,7 +1322,7 @@ msgstr ""
 msgid "Heard it. This shortcut works."
 msgstr ""
 
-#: ui/help.slint:32 ui/main_window.slint:1079 ui/main_window.slint:1094 ui/main_window.slint:2181 ui/settings.slint:1660
+#: ui/help.slint:32 ui/main_window.slint:1099 ui/main_window.slint:1114 ui/main_window.slint:2252 ui/settings.slint:1660
 msgid "Help"
 msgstr ""
 
@@ -1338,19 +1338,19 @@ msgstr ""
 msgid "Hidden on screen and kept out of clipboard history."
 msgstr ""
 
-#: ui/main_window.slint:96 ui/panel.slint:1738
+#: ui/main_window.slint:108 ui/panel.slint:1739
 msgid "Hidden. Hold Space to reveal."
 msgstr ""
 
-#: ui/picker.slint:444
+#: ui/picker.slint:458
 msgid "Hidden. Open it in the Panel to reveal."
 msgstr ""
 
-#: ui/main_window.slint:1166
+#: ui/main_window.slint:1186
 msgid "Hide Panel"
 msgstr ""
 
-#: ui/main_window.slint:1166
+#: ui/main_window.slint:1186
 msgid "Hide Panel ({})"
 msgstr ""
 
@@ -1366,11 +1366,11 @@ msgstr ""
 msgid "Hide the panel when it loses focus"
 msgstr ""
 
-#: ui/panel.slint:1900
+#: ui/panel.slint:1901
 msgid "History is paused"
 msgstr ""
 
-#: ui/components/item-card.slint:1141
+#: ui/components/item-card.slint:1143
 msgid "Hold to reveal"
 msgstr ""
 
@@ -1426,7 +1426,7 @@ msgstr ""
 msgid "If you forget this password, your sensitive items can never be opened again. Snipdeck cannot reset it and keeps no recovery key. Your other items are not affected."
 msgstr ""
 
-#: ui/components/item-card.slint:409 ui/editors.slint:637 ui/editors.slint:655
+#: ui/components/item-card.slint:411 ui/editors.slint:637 ui/editors.slint:655
 msgid "Image"
 msgstr ""
 
@@ -1478,7 +1478,7 @@ msgid_plural "It is removed from {n} items. The items stay."
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/main_window.slint:2151 ui/panel.slint:2420
+#: ui/main_window.slint:2222 ui/panel.slint:2421
 msgid "Item actions"
 msgstr ""
 
@@ -1490,7 +1490,7 @@ msgstr ""
 msgid "Item unpinned"
 msgstr ""
 
-#: ui/main_window.slint:2019
+#: ui/main_window.slint:2066
 msgid "Items are removed after {} days."
 msgstr ""
 
@@ -1500,7 +1500,7 @@ msgid_plural "Its lists and {n} items will move to Trash. You can restore them f
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/main_window.slint:2282 ui/panel.slint:2512
+#: ui/main_window.slint:2353 ui/panel.slint:2513
 msgid "Its lists and {} items move to the Trash. You can restore them for {} days."
 msgstr ""
 
@@ -1560,7 +1560,7 @@ msgstr ""
 msgid "Keeps the text you copy, for the last {} copies or {} days, whichever comes first, so you can find it again or save it to a list. Sensitive items, password managers and the apps you exclude are never kept."
 msgstr ""
 
-#: ui/command_texts.slint:27 ui/main_window.slint:2179 ui/menu_texts.slint:75 ui/shortcut_texts.slint:28 ui/shortcut_texts.slint:69
+#: ui/command_texts.slint:27 ui/main_window.slint:2250 ui/menu_texts.slint:75 ui/shortcut_texts.slint:28 ui/shortcut_texts.slint:69
 msgid "Keyboard shortcuts"
 msgstr ""
 
@@ -1620,7 +1620,7 @@ msgstr ""
 msgid "Light"
 msgstr ""
 
-#: ui/components/item-card.slint:407 ui/components/quick-add.slint:149 ui/editors.slint:449 ui/editors.slint:452 ui/editors.slint:637 ui/editors.slint:638
+#: ui/components/item-card.slint:409 ui/components/quick-add.slint:149 ui/editors.slint:449 ui/editors.slint:452 ui/editors.slint:637 ui/editors.slint:638
 msgid "Link"
 msgstr ""
 
@@ -1632,7 +1632,7 @@ msgstr ""
 msgid "List"
 msgstr ""
 
-#: ui/panel.slint:2435
+#: ui/panel.slint:2436
 msgid "List actions"
 msgstr ""
 
@@ -1648,7 +1648,7 @@ msgstr ""
 msgid "List saved"
 msgstr ""
 
-#: ui/main_window.slint:965 ui/panel.slint:1597 ui/panel.slint:2332 ui/settings.slint:476 ui/settings.slint:785 ui/settings.slint:789
+#: ui/main_window.slint:985 ui/panel.slint:1597 ui/panel.slint:2333 ui/settings.slint:476 ui/settings.slint:785 ui/settings.slint:789
 msgid "Lists"
 msgstr ""
 
@@ -1656,11 +1656,11 @@ msgstr ""
 msgid "Lists and items"
 msgstr ""
 
-#: ui/panel.slint:1970
+#: ui/panel.slint:1971
 msgid "Lists hold your snippets."
 msgstr ""
 
-#: ui/main_window.slint:1753 ui/main_window.slint:1766 ui/panel.slint:1958
+#: ui/main_window.slint:1800 ui/main_window.slint:1813 ui/panel.slint:1959
 msgid "Loading"
 msgstr ""
 
@@ -1680,11 +1680,11 @@ msgstr ""
 msgid "Main list density"
 msgstr ""
 
-#: ui/command_texts.slint:30 ui/main_window.slint:2212
+#: ui/command_texts.slint:30 ui/main_window.slint:2283
 msgid "Main list density: Comfortable"
 msgstr ""
 
-#: ui/command_texts.slint:31 ui/main_window.slint:2213
+#: ui/command_texts.slint:31 ui/main_window.slint:2284
 msgid "Main list density: Compact"
 msgstr ""
 
@@ -1700,11 +1700,11 @@ msgstr ""
 msgid "Make the panel wider"
 msgstr ""
 
-#: ui/main_window.slint:1029
+#: ui/main_window.slint:1049
 msgid "Manage tags"
 msgstr ""
 
-#: ui/main_window.slint:468
+#: ui/main_window.slint:480
 msgid "Manage tags…"
 msgstr ""
 
@@ -1744,7 +1744,7 @@ msgstr ""
 msgid "Microsoft Store"
 msgstr ""
 
-#: ui/components/item-card.slint:1010 ui/components/item-card.slint:1094 ui/panel.slint:1426
+#: ui/components/item-card.slint:1012 ui/components/item-card.slint:1096 ui/panel.slint:1426
 msgid "More"
 msgstr ""
 
@@ -1752,7 +1752,7 @@ msgstr ""
 msgid "More options"
 msgstr ""
 
-#: ui/panel.slint:2402
+#: ui/panel.slint:2403
 msgid "More pinned snippets"
 msgstr ""
 
@@ -1760,7 +1760,7 @@ msgstr ""
 msgid "Most used"
 msgstr ""
 
-#: ui/main_window.slint:1938
+#: ui/main_window.slint:1985
 msgid "Move"
 msgstr ""
 
@@ -1776,7 +1776,7 @@ msgstr ""
 msgid "Move board up"
 msgstr ""
 
-#: ui/main_window.slint:637 ui/toast_texts.slint:176
+#: ui/main_window.slint:655 ui/toast_texts.slint:176
 msgid "Move down"
 msgstr ""
 
@@ -1800,23 +1800,23 @@ msgstr ""
 msgid "Move through the results"
 msgstr ""
 
-#: ui/editors.slint:805 ui/main_window.slint:641 ui/main_window.slint:1960
+#: ui/editors.slint:805 ui/main_window.slint:659 ui/main_window.slint:2007
 msgid "Move to Trash"
 msgstr ""
 
-#: ui/main_window.slint:2242
+#: ui/main_window.slint:2313
 msgid "Move to list"
 msgstr ""
 
-#: ui/main_window.slint:638
+#: ui/main_window.slint:656
 msgid "Move to list…"
 msgstr ""
 
-#: ui/menu_texts.slint:60 ui/panel.slint:2032
+#: ui/menu_texts.slint:60 ui/panel.slint:2033
 msgid "Move to…"
 msgstr ""
 
-#: ui/main_window.slint:636 ui/toast_texts.slint:173
+#: ui/main_window.slint:654 ui/toast_texts.slint:173
 msgid "Move up"
 msgstr ""
 
@@ -1844,7 +1844,7 @@ msgstr ""
 msgid "Names can't contain line breaks or control characters."
 msgstr ""
 
-#: ui/main_window.slint:826
+#: ui/main_window.slint:846
 msgid "Navigation"
 msgstr ""
 
@@ -1856,7 +1856,7 @@ msgstr ""
 msgid "Never paste"
 msgstr ""
 
-#: ui/panel.slint:1335 ui/panel.slint:1342 ui/panel.slint:1358 ui/panel.slint:2379
+#: ui/panel.slint:1335 ui/panel.slint:1342 ui/panel.slint:1358 ui/panel.slint:2380
 msgid "New"
 msgstr ""
 
@@ -1868,7 +1868,7 @@ msgstr ""
 msgid "New board…"
 msgstr ""
 
-#: ui/command_texts.slint:15 ui/components/quick-add.slint:102 ui/components/quick-add.slint:142 ui/editors.slint:245 ui/main_window.slint:1313 ui/main_window.slint:1880 ui/menu_texts.slint:14 ui/shortcut_texts.slint:24 ui/shortcut_texts.slint:63
+#: ui/command_texts.slint:15 ui/components/quick-add.slint:102 ui/components/quick-add.slint:142 ui/editors.slint:245 ui/main_window.slint:1333 ui/main_window.slint:1927 ui/menu_texts.slint:14 ui/shortcut_texts.slint:24 ui/shortcut_texts.slint:63
 msgid "New item"
 msgstr ""
 
@@ -1876,7 +1876,7 @@ msgstr ""
 msgid "New item in {}"
 msgstr ""
 
-#: ui/command_texts.slint:12 ui/command_texts.slint:16 ui/editors.slint:1236 ui/panel.slint:444 ui/panel.slint:1973 ui/panel.slint:2330 ui/shortcut_texts.slint:25 ui/shortcut_texts.slint:64
+#: ui/command_texts.slint:12 ui/command_texts.slint:16 ui/editors.slint:1236 ui/panel.slint:444 ui/panel.slint:1974 ui/panel.slint:2331 ui/shortcut_texts.slint:25 ui/shortcut_texts.slint:64
 msgid "New list"
 msgstr ""
 
@@ -1884,7 +1884,7 @@ msgstr ""
 msgid "New name for {}"
 msgstr ""
 
-#: ui/panel.slint:443 ui/panel.slint:1975
+#: ui/panel.slint:443 ui/panel.slint:1976
 msgid "New note"
 msgstr ""
 
@@ -1924,7 +1924,7 @@ msgstr ""
 msgid "No icon"
 msgstr ""
 
-#: ui/main_window.slint:1869
+#: ui/main_window.slint:1916
 msgid "No items with this tag"
 msgstr ""
 
@@ -1932,16 +1932,20 @@ msgstr ""
 msgid "No label"
 msgstr ""
 
-#: ui/main_window.slint:2135 ui/main_window.slint:2243 ui/panel.slint:1968 ui/panel.slint:2476
+#: ui/main_window.slint:2206 ui/main_window.slint:2314 ui/panel.slint:1969 ui/panel.slint:2477
 msgid "No lists yet"
 msgstr ""
 
-#: ui/main_window.slint:1863 ui/picker.slint:473
+#: ui/main_window.slint:1910 ui/picker.slint:491
 msgid "No matches"
 msgstr ""
 
 #: ui/panel.slint:1551
 msgid "No matches in all boards"
+msgstr ""
+
+#: ui/main_window.slint:2082
+msgid "No matches in {}"
 msgstr ""
 
 #: ui/components/command-palette.slint:202
@@ -1956,7 +1960,7 @@ msgstr ""
 msgid "No programs yet. Every program gets Ctrl+V."
 msgstr ""
 
-#: ui/main_window.slint:1866
+#: ui/main_window.slint:1913
 msgid "No recent items"
 msgstr ""
 
@@ -1968,7 +1972,7 @@ msgstr ""
 msgid "No shortcut matches"
 msgstr ""
 
-#: ui/picker.slint:474
+#: ui/picker.slint:492
 msgid "No snippets yet"
 msgstr ""
 
@@ -1980,7 +1984,7 @@ msgstr ""
 msgid "No tags"
 msgstr ""
 
-#: ui/main_window.slint:2243
+#: ui/main_window.slint:2314
 msgid "No tags yet"
 msgstr ""
 
@@ -1992,11 +1996,11 @@ msgstr ""
 msgid "No tags yet. Add tags to an item and they appear here."
 msgstr ""
 
-#: ui/panel.slint:2201
+#: ui/panel.slint:2202
 msgid "No target:"
 msgstr ""
 
-#: ui/panel.slint:2116
+#: ui/panel.slint:2117
 msgid "No target: click copies"
 msgstr ""
 
@@ -2016,15 +2020,15 @@ msgstr ""
 msgid "Not working"
 msgstr ""
 
-#: ui/main_window.slint:1866 ui/panel.slint:1900
+#: ui/main_window.slint:1913 ui/panel.slint:1901
 msgid "Nothing copied yet"
 msgstr ""
 
-#: ui/panel.slint:1969
+#: ui/panel.slint:1970
 msgid "Nothing matches “{}”"
 msgstr ""
 
-#: ui/main_window.slint:1870 ui/picker.slint:476
+#: ui/main_window.slint:1917 ui/picker.slint:494
 msgid "Nothing matches “{}”."
 msgstr ""
 
@@ -2032,19 +2036,19 @@ msgstr ""
 msgid "Nothing new to import."
 msgstr ""
 
-#: ui/picker.slint:477
+#: ui/picker.slint:495
 msgid "Nothing on this board matches “{}”."
 msgstr ""
 
-#: ui/main_window.slint:1865
+#: ui/main_window.slint:1912
 msgid "Nothing pinned"
 msgstr ""
 
-#: ui/picker.slint:478
+#: ui/picker.slint:496
 msgid "Nothing pinned matches “{}”."
 msgstr ""
 
-#: ui/picker.slint:474
+#: ui/picker.slint:492
 msgid "Nothing pinned yet"
 msgstr ""
 
@@ -2116,11 +2120,11 @@ msgstr ""
 msgid "Open Picker"
 msgstr ""
 
-#: ui/help.slint:99 ui/main_window.slint:1882
+#: ui/help.slint:99 ui/main_window.slint:1929
 msgid "Open Settings"
 msgstr ""
 
-#: ui/menu_texts.slint:8 ui/panel.slint:2246 ui/panel.slint:2251 ui/panel.slint:2266 ui/tray_texts.slint:7
+#: ui/menu_texts.slint:8 ui/panel.slint:2247 ui/panel.slint:2252 ui/panel.slint:2267 ui/tray_texts.slint:7
 msgid "Open Snipdeck"
 msgstr ""
 
@@ -2240,7 +2244,7 @@ msgstr ""
 msgid "Panel layout"
 msgstr ""
 
-#: ui/panel.slint:2365
+#: ui/panel.slint:2366
 msgid "Panel menu"
 msgstr ""
 
@@ -2256,7 +2260,7 @@ msgstr ""
 msgid "Panel width"
 msgstr ""
 
-#: ui/gallery/i18n_probe.slint:9 ui/menu_texts.slint:90 ui/panel.slint:416 ui/picker.slint:149
+#: ui/gallery/i18n_probe.slint:9 ui/menu_texts.slint:90 ui/panel.slint:416 ui/picker.slint:156
 msgid "Paste"
 msgstr ""
 
@@ -2288,15 +2292,15 @@ msgstr ""
 msgid "Paste stack (mark items)"
 msgstr ""
 
-#: ui/panel.slint:2074
+#: ui/panel.slint:2075
 msgid "Paste stack, item {} of {}, next: {}"
 msgstr ""
 
-#: ui/panel.slint:2075
+#: ui/panel.slint:2076
 msgid "Paste stack, {} marked"
 msgstr ""
 
-#: ui/panel.slint:2084
+#: ui/panel.slint:2085
 msgid "Paste stack: {} marked"
 msgstr ""
 
@@ -2332,15 +2336,15 @@ msgstr ""
 msgid "Pasted into {}"
 msgstr ""
 
-#: ui/panel.slint:2201
+#: ui/panel.slint:2202
 msgid "Pastes into"
 msgstr ""
 
-#: ui/panel.slint:2115
+#: ui/panel.slint:2116
 msgid "Pastes into {}"
 msgstr ""
 
-#: ui/panel.slint:2115
+#: ui/panel.slint:2116
 msgid "Pastes into {} · {}"
 msgstr ""
 
@@ -2396,11 +2400,11 @@ msgstr ""
 msgid "Picture file"
 msgstr ""
 
-#: ui/main_window.slint:635 ui/main_window.slint:1952 ui/menu_texts.slint:120
+#: ui/main_window.slint:653 ui/main_window.slint:1999 ui/menu_texts.slint:120
 msgid "Pin"
 msgstr ""
 
-#: ui/picker.slint:479
+#: ui/picker.slint:497
 msgid "Pin a snippet from the Panel to find it here."
 msgstr ""
 
@@ -2412,11 +2416,11 @@ msgstr ""
 msgid "Pin selected item"
 msgstr ""
 
-#: ui/main_window.slint:1872
+#: ui/main_window.slint:1919
 msgid "Pin the snippets you use most to keep them one click away."
 msgstr ""
 
-#: ui/main_window.slint:756 ui/main_window.slint:932 ui/picker.slint:399
+#: ui/main_window.slint:776 ui/main_window.slint:952 ui/picker.slint:406
 msgid "Pinned"
 msgstr ""
 
@@ -2428,7 +2432,7 @@ msgstr ""
 msgid "Placeholders"
 msgstr ""
 
-#: ui/main_window.slint:1878
+#: ui/main_window.slint:1925
 msgid "Press Ctrl+N to add a snippet, or Ctrl+K to see every command."
 msgstr ""
 
@@ -2512,19 +2516,19 @@ msgstr ""
 msgid "Rebuild from the newest backup?"
 msgstr ""
 
-#: ui/main_window.slint:757 ui/main_window.slint:943 ui/panel.slint:467 ui/panel.slint:1570 ui/panel.slint:2329
+#: ui/main_window.slint:777 ui/main_window.slint:963 ui/panel.slint:467 ui/panel.slint:1570 ui/panel.slint:2330
 msgid "Recent"
 msgstr ""
 
-#: ui/main_window.slint:1790 ui/panel.slint:1846
+#: ui/main_window.slint:1837 ui/panel.slint:1847
 msgid "Recent copies"
 msgstr ""
 
-#: ui/main_window.slint:1866 ui/panel.slint:1899
+#: ui/main_window.slint:1913 ui/panel.slint:1900
 msgid "Recent copies are locked"
 msgstr ""
 
-#: ui/main_window.slint:2113 ui/panel.slint:2456
+#: ui/main_window.slint:2184 ui/panel.slint:2457
 msgid "Recent entry actions"
 msgstr ""
 
@@ -2552,7 +2556,7 @@ msgstr ""
 msgid "Redo"
 msgstr ""
 
-#: ui/main_window.slint:277
+#: ui/main_window.slint:289
 msgid "Redo last change"
 msgstr ""
 
@@ -2564,7 +2568,7 @@ msgstr ""
 msgid "Reduce motion"
 msgstr ""
 
-#: ui/main_window.slint:2111 ui/panel.slint:2454
+#: ui/main_window.slint:2182 ui/panel.slint:2455
 msgid "Remove from Recent"
 msgstr ""
 
@@ -2628,7 +2632,7 @@ msgstr ""
 msgid "Reset size and position"
 msgstr ""
 
-#: ui/main_window.slint:626 ui/main_window.slint:1967 ui/settings.slint:348 ui/settings.slint:1283
+#: ui/main_window.slint:644 ui/main_window.slint:1625 ui/main_window.slint:2014 ui/settings.slint:348 ui/settings.slint:1283
 msgid "Restore"
 msgstr ""
 
@@ -2652,11 +2656,11 @@ msgid_plural "Restored {} items from the backup"
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/picker.slint:424
+#: ui/picker.slint:431
 msgid "Results"
 msgstr ""
 
-#: ui/panel.slint:1902
+#: ui/panel.slint:1903
 msgid "Resume it from the tray icon, then copy some text."
 msgstr ""
 
@@ -2700,7 +2704,7 @@ msgstr ""
 msgid "Save as SVG…"
 msgstr ""
 
-#: ui/panel.slint:442 ui/panel.slint:1973
+#: ui/panel.slint:442 ui/panel.slint:1974
 msgid "Save from clipboard"
 msgstr ""
 
@@ -2712,11 +2716,11 @@ msgstr ""
 msgid "Save the clipboard as an item"
 msgstr ""
 
-#: ui/main_window.slint:2109 ui/main_window.slint:2134 ui/panel.slint:2452 ui/panel.slint:2475
+#: ui/main_window.slint:2180 ui/main_window.slint:2205 ui/panel.slint:2453 ui/panel.slint:2476
 msgid "Save to…"
 msgstr ""
 
-#: ui/main_window.slint:1871
+#: ui/main_window.slint:1918
 msgid "Save your first snippet, or copy something and save it from the clipboard."
 msgstr ""
 
@@ -2744,7 +2748,7 @@ msgstr ""
 msgid "Saving…"
 msgstr ""
 
-#: ui/picker.slint:517
+#: ui/picker.slint:535
 msgid "Scope"
 msgstr ""
 
@@ -2764,7 +2768,7 @@ msgstr ""
 msgid "Search (Ctrl+F)"
 msgstr ""
 
-#: ui/picker.slint:366 ui/picker.slint:367
+#: ui/picker.slint:373 ui/picker.slint:374
 msgid "Search all snippets"
 msgstr ""
 
@@ -2780,11 +2784,11 @@ msgstr ""
 msgid "Search field"
 msgstr ""
 
-#: ui/picker.slint:380
+#: ui/picker.slint:387
 msgid "Search in"
 msgstr ""
 
-#: ui/main_window.slint:754
+#: ui/main_window.slint:774
 msgid "Search results"
 msgstr ""
 
@@ -2796,7 +2800,7 @@ msgstr ""
 msgid "Search shortcuts"
 msgstr ""
 
-#: ui/main_window.slint:1144 ui/main_window.slint:1145 ui/panel.slint:1466 ui/panel.slint:1467
+#: ui/main_window.slint:1164 ui/main_window.slint:1165 ui/panel.slint:1466 ui/panel.slint:1467
 msgid "Search snippets"
 msgstr ""
 
@@ -2808,7 +2812,7 @@ msgstr ""
 msgid "Search the keyboard shortcuts"
 msgstr ""
 
-#: ui/panel.slint:1971
+#: ui/panel.slint:1972
 msgid "Searched every board and list."
 msgstr ""
 
@@ -2828,7 +2832,7 @@ msgstr ""
 msgid "Select several items"
 msgstr ""
 
-#: ui/components/item-card.slint:408 ui/components/quick-add.slint:158 ui/menu_texts.slint:66
+#: ui/components/item-card.slint:410 ui/components/quick-add.slint:158 ui/menu_texts.slint:66
 msgid "Sensitive"
 msgstr ""
 
@@ -2860,7 +2864,7 @@ msgstr ""
 msgid "Set password…"
 msgstr ""
 
-#: ui/command_texts.slint:24 ui/main_window.slint:1072 ui/main_window.slint:1086 ui/settings.slint:249 ui/shortcut_texts.slint:27 ui/shortcut_texts.slint:65
+#: ui/command_texts.slint:24 ui/main_window.slint:1092 ui/main_window.slint:1106 ui/settings.slint:249 ui/shortcut_texts.slint:27 ui/shortcut_texts.slint:65
 msgid "Settings"
 msgstr ""
 
@@ -2868,7 +2872,7 @@ msgstr ""
 msgid "Settings…"
 msgstr ""
 
-#: ui/picker.slint:506
+#: ui/picker.slint:524
 msgid "Shift Enter"
 msgstr ""
 
@@ -2900,11 +2904,11 @@ msgstr ""
 msgid "Show"
 msgstr ""
 
-#: ui/command_texts.slint:18 ui/main_window.slint:1167 ui/main_window.slint:2178
+#: ui/command_texts.slint:18 ui/main_window.slint:1187 ui/main_window.slint:2249
 msgid "Show Panel"
 msgstr ""
 
-#: ui/main_window.slint:1167
+#: ui/main_window.slint:1187
 msgid "Show Panel ({})"
 msgstr ""
 
@@ -2960,7 +2964,7 @@ msgstr ""
 msgid "Smileys & Emotion"
 msgstr ""
 
-#: ui/main_window.slint:145 ui/panel.slint:128 ui/picker.slint:70 ui/toast_window.slint:9
+#: ui/main_window.slint:157 ui/panel.slint:128 ui/picker.slint:77 ui/toast_window.slint:9
 msgid "Snipdeck"
 msgstr ""
 
@@ -3024,7 +3028,7 @@ msgstr ""
 msgid "Snipdeck found a problem in your library. Export a copy to be safe."
 msgstr ""
 
-#: ui/panel.slint:2627
+#: ui/panel.slint:2628
 msgid "Snipdeck handle, press the Panel hotkey to open"
 msgstr ""
 
@@ -3064,7 +3068,7 @@ msgstr ""
 msgid "Snipdeck waits in the tray so the shortcuts work after you sign in."
 msgstr ""
 
-#: ui/main_window.slint:1542 ui/main_window.slint:1648 ui/panel.slint:1652
+#: ui/main_window.slint:1578 ui/main_window.slint:1695 ui/panel.slint:1652
 msgid "Snippets"
 msgstr ""
 
@@ -3084,7 +3088,7 @@ msgstr ""
 msgid "Space"
 msgstr ""
 
-#: ui/panel.slint:2093
+#: ui/panel.slint:2094
 msgid "Start stack"
 msgstr ""
 
@@ -3136,7 +3140,7 @@ msgstr ""
 msgid "Symbols data"
 msgstr ""
 
-#: ui/picker.slint:516
+#: ui/picker.slint:534
 msgid "Tab"
 msgstr ""
 
@@ -3148,19 +3152,19 @@ msgstr ""
 msgid "Tabs put each list of the board in a row under the header. Menu moves them into the board picker and gives the space back to your snippets."
 msgstr ""
 
-#: ui/main_window.slint:1945
+#: ui/main_window.slint:1992
 msgid "Tag"
 msgstr ""
 
-#: ui/main_window.slint:1876
+#: ui/main_window.slint:1923
 msgid "Tag a snippet to see it here."
 msgstr ""
 
-#: ui/editors.slint:697 ui/editors.slint:746 ui/editors.slint:1353 ui/editors.slint:1446 ui/main_window.slint:1027 ui/main_window.slint:2242
+#: ui/editors.slint:697 ui/editors.slint:746 ui/editors.slint:1353 ui/editors.slint:1446 ui/main_window.slint:1047 ui/main_window.slint:2313
 msgid "Tags"
 msgstr ""
 
-#: ui/main_window.slint:639
+#: ui/main_window.slint:657
 msgid "Tags…"
 msgstr ""
 
@@ -3180,7 +3184,7 @@ msgstr ""
 msgid "Teal"
 msgstr ""
 
-#: ui/components/item-card.slint:405 ui/components/quick-add.slint:149 ui/editors.slint:637 ui/editors.slint:638
+#: ui/components/item-card.slint:407 ui/components/quick-add.slint:149 ui/editors.slint:637 ui/editors.slint:638
 msgid "Template"
 msgstr ""
 
@@ -3204,7 +3208,7 @@ msgstr ""
 msgid "Test {}"
 msgstr ""
 
-#: ui/components/item-card.slint:404 ui/components/quick-add.slint:149 ui/editors.slint:637 ui/editors.slint:638
+#: ui/components/item-card.slint:406 ui/components/quick-add.slint:149 ui/editors.slint:637 ui/editors.slint:638
 msgid "Text"
 msgstr ""
 
@@ -3212,11 +3216,11 @@ msgstr ""
 msgid "Text size"
 msgstr ""
 
-#: ui/main_window.slint:1873
+#: ui/main_window.slint:1920
 msgid "Text you copy appears here, newest first, until you clear it or it is older than {} days."
 msgstr ""
 
-#: ui/panel.slint:1903
+#: ui/panel.slint:1904
 msgid "Text you copy shows up here for {} days. Save the useful ones to a list."
 msgstr ""
 
@@ -3296,7 +3300,7 @@ msgstr ""
 msgid "The Free plan includes {} boards. This would go over that, so it needs Supporter."
 msgstr ""
 
-#: ui/main_window.slint:1867 ui/toast_texts.slint:185
+#: ui/main_window.slint:1914 ui/toast_texts.slint:185
 msgid "The Trash is empty"
 msgstr ""
 
@@ -3332,7 +3336,7 @@ msgstr ""
 msgid "The licences of the libraries Snipdeck is built from."
 msgstr ""
 
-#: ui/main_window.slint:510 ui/panel.slint:2494
+#: ui/main_window.slint:522 ui/panel.slint:2495
 msgid "The list and its {} items move to the Trash. You can restore them for {} days."
 msgstr ""
 
@@ -3360,7 +3364,7 @@ msgstr ""
 msgid "The report holds versions and settings switches, never your items."
 msgstr ""
 
-#: ui/main_window.slint:514
+#: ui/main_window.slint:526
 msgid "The selected items are deleted for good. This can't be undone."
 msgstr ""
 
@@ -3368,7 +3372,7 @@ msgstr ""
 msgid "The sensitive item \"{}\" cannot be unlocked with this computer's key and was skipped."
 msgstr ""
 
-#: ui/main_window.slint:511
+#: ui/main_window.slint:523
 msgid "The tag is removed from its items. The items themselves stay."
 msgstr ""
 
@@ -3388,15 +3392,15 @@ msgstr ""
 msgid "Theme"
 msgstr ""
 
-#: ui/command_texts.slint:35 ui/main_window.slint:2210 ui/toast_texts.slint:355
+#: ui/command_texts.slint:35 ui/main_window.slint:2281 ui/toast_texts.slint:355
 msgid "Theme: Dark"
 msgstr ""
 
-#: ui/command_texts.slint:34 ui/main_window.slint:2209 ui/toast_texts.slint:355
+#: ui/command_texts.slint:34 ui/main_window.slint:2280 ui/toast_texts.slint:355
 msgid "Theme: Light"
 msgstr ""
 
-#: ui/command_texts.slint:33 ui/main_window.slint:2208 ui/toast_texts.slint:355
+#: ui/command_texts.slint:33 ui/main_window.slint:2279 ui/toast_texts.slint:355
 msgid "Theme: System"
 msgstr ""
 
@@ -3416,7 +3420,7 @@ msgstr ""
 msgid "Third-party notices"
 msgstr ""
 
-#: ui/picker.slint:394
+#: ui/picker.slint:401
 msgid "This board"
 msgstr ""
 
@@ -3452,7 +3456,7 @@ msgstr ""
 msgid "This item was deleted. Nothing was saved."
 msgstr ""
 
-#: ui/main_window.slint:1868 ui/panel.slint:1969
+#: ui/main_window.slint:1915 ui/panel.slint:1970
 msgid "This list is empty"
 msgstr ""
 
@@ -3472,7 +3476,7 @@ msgstr ""
 msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
 msgstr ""
 
-#: ui/command_texts.slint:32 ui/main_window.slint:1293 ui/main_window.slint:2053
+#: ui/command_texts.slint:32 ui/main_window.slint:1313 ui/main_window.slint:2104
 msgid "Tile view"
 msgstr ""
 
@@ -3500,7 +3504,7 @@ msgstr ""
 msgid "Top edge"
 msgstr ""
 
-#: ui/main_window.slint:758 ui/main_window.slint:954
+#: ui/main_window.slint:778 ui/main_window.slint:974
 msgid "Trash"
 msgstr ""
 
@@ -3516,7 +3520,7 @@ msgstr ""
 msgid "Troubleshoot"
 msgstr ""
 
-#: ui/command_texts.slint:28 ui/main_window.slint:2175 ui/menu_texts.slint:69
+#: ui/command_texts.slint:28 ui/main_window.slint:2246 ui/menu_texts.slint:69
 msgid "Troubleshoot…"
 msgstr ""
 
@@ -3524,7 +3528,7 @@ msgstr ""
 msgid "Try another word, or a different kind."
 msgstr ""
 
-#: ui/main_window.slint:1873
+#: ui/main_window.slint:1920
 msgid "Turn on clipboard history in Settings to collect what you copy."
 msgstr ""
 
@@ -3552,7 +3556,7 @@ msgstr ""
 msgid "Undo"
 msgstr ""
 
-#: ui/main_window.slint:276
+#: ui/main_window.slint:288
 msgid "Undo last change"
 msgstr ""
 
@@ -3564,7 +3568,7 @@ msgstr ""
 msgid "Undock the panel"
 msgstr ""
 
-#: ui/main_window.slint:1881 ui/master_password.slint:377 ui/panel.slint:1904
+#: ui/main_window.slint:1928 ui/master_password.slint:377 ui/panel.slint:1905
 msgid "Unlock"
 msgstr ""
 
@@ -3580,7 +3584,7 @@ msgstr ""
 msgid "Unlock your library to save this item."
 msgstr ""
 
-#: ui/main_window.slint:1873 ui/panel.slint:1901
+#: ui/main_window.slint:1920 ui/panel.slint:1902
 msgid "Unlock your library to see recent copies. Nothing is collected while it is locked."
 msgstr ""
 
@@ -3600,7 +3604,7 @@ msgstr ""
 msgid "Unlock…"
 msgstr ""
 
-#: ui/main_window.slint:635 ui/menu_texts.slint:123
+#: ui/main_window.slint:653 ui/menu_texts.slint:123
 msgid "Unpin"
 msgstr ""
 
@@ -3608,7 +3612,7 @@ msgstr ""
 msgid "Unpin selected item"
 msgstr ""
 
-#: ui/components/item-card.slint:1125 ui/main_window.slint:190 ui/menu_texts.slint:86
+#: ui/components/item-card.slint:1127 ui/main_window.slint:202 ui/menu_texts.slint:86
 msgid "Use"
 msgstr ""
 
@@ -3620,7 +3624,7 @@ msgstr ""
 msgid "Use just the program's file name, like notepad.exe."
 msgstr ""
 
-#: ui/picker.slint:512
+#: ui/picker.slint:530
 msgid "Use result N"
 msgstr ""
 
@@ -3644,7 +3648,7 @@ msgstr ""
 msgid "Use {} for {}"
 msgstr ""
 
-#: ui/command_texts.slint:25 ui/help.slint:339 ui/main_window.slint:2176 ui/menu_texts.slint:72 ui/shortcut_texts.slint:29 ui/shortcut_texts.slint:70
+#: ui/command_texts.slint:25 ui/help.slint:339 ui/main_window.slint:2247 ui/menu_texts.slint:72 ui/shortcut_texts.slint:29 ui/shortcut_texts.slint:70
 msgid "User guide"
 msgstr ""
 
@@ -3652,7 +3656,7 @@ msgstr ""
 msgid "Version"
 msgstr ""
 
-#: ui/main_window.slint:1237 ui/main_window.slint:2215
+#: ui/main_window.slint:1257 ui/main_window.slint:2286
 msgid "View"
 msgstr ""
 
@@ -3772,7 +3776,7 @@ msgstr ""
 msgid "You would have {} boards, and the Free plan includes {}."
 msgstr ""
 
-#: ui/main_window.slint:1864
+#: ui/main_window.slint:1911
 msgid "Your deck is empty"
 msgstr ""
 
@@ -3838,7 +3842,7 @@ msgstr ""
 msgid "change modify rename"
 msgstr ""
 
-#: ui/panel.slint:2212
+#: ui/panel.slint:2213
 msgid "click copies"
 msgstr ""
 
@@ -3858,11 +3862,11 @@ msgstr ""
 msgid "copy clone twice"
 msgstr ""
 
-#: ui/panel.slint:2192
+#: ui/panel.slint:2193
 msgid "creates “{}”"
 msgstr ""
 
-#: ui/panel.slint:2143 ui/panel.slint:2192
+#: ui/panel.slint:2144 ui/panel.slint:2193
 msgid "creates “{}” in {}"
 msgstr ""
 
@@ -3938,7 +3942,7 @@ msgstr ""
 msgid "https://example.com"
 msgstr ""
 
-#: ui/components/item-card.slint:560 ui/components/item-card.slint:560
+#: ui/components/item-card.slint:562 ui/components/item-card.slint:562
 msgid "label: {}"
 msgstr ""
 
@@ -3966,7 +3970,7 @@ msgstr ""
 msgid "paste insert send"
 msgstr ""
 
-#: ui/components/item-card.slint:558
+#: ui/components/item-card.slint:560
 msgid "paste stack, number {}"
 msgstr ""
 
@@ -4010,7 +4014,7 @@ msgstr ""
 msgid "tag change"
 msgstr ""
 
-#: ui/components/item-card.slint:374
+#: ui/components/item-card.slint:376
 msgid "tag: {}"
 msgstr ""
 
@@ -4046,7 +4050,7 @@ msgstr ""
 msgid "window geometry default restore move resize cut off"
 msgstr ""
 
-#: ui/editors.slint:1451 ui/editors.slint:1474 ui/main_window.slint:1376 ui/main_window.slint:2033
+#: ui/editors.slint:1451 ui/editors.slint:1474 ui/main_window.slint:1396 ui/main_window.slint:2084
 msgid "{n} item"
 msgid_plural "{n} items"
 msgstr[0] ""
@@ -4057,6 +4061,16 @@ msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
 msgstr[0] ""
 msgstr[1] ""
+
+#: ui/main_window.slint:2083
+msgid "{n} match in {}"
+msgid_plural "{n} matches in {}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ui/main_window.slint:1625
+msgid "{} (Enter)"
+msgstr ""
 
 #: ui/form_texts.slint:31
 msgid "{} KB"
@@ -4170,7 +4184,7 @@ msgstr[1] ""
 msgid "{} of the checks need a look."
 msgstr ""
 
-#: ui/panel.slint:2083
+#: ui/panel.slint:2084
 msgid "{} of {} · next: {}"
 msgstr ""
 
@@ -4180,7 +4194,7 @@ msgid_plural "{} pictures or files that no snippet uses were left out."
 msgstr[0] ""
 msgstr[1] ""
 
-#: ui/main_window.slint:1913 ui/main_window.slint:1926 ui/main_window.slint:1995 ui/panel.slint:2014 ui/panel.slint:2021
+#: ui/main_window.slint:1960 ui/main_window.slint:1973 ui/main_window.slint:2042 ui/panel.slint:2015 ui/panel.slint:2022
 msgid "{} selected"
 msgstr ""
 

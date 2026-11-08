@@ -46,7 +46,14 @@ export { ChoiceEntry, PaletteRow }
 export struct MainRow {
     kind: ItemKind,
     title: string,
+    // In a search: the title is `mark-before` + `mark-text` + the rest, the preview (windowed to the match)
+    // `preview-before` + `preview-match` + the rest, and `tag-hit` names a tag that matched when neither shows it.
+    mark-before: string,
+    mark-text: string,
     preview: string,
+    preview-before: string,
+    preview-match: string,
+    tag-hit: string,
     // Stands in for a sensitive item's preview.
     masked-preview: string,
     extension: string,
@@ -91,7 +98,12 @@ component MainCard inherits ItemCard {
     keyboard-focusable: false;
     kind: root.data.kind;
     title: root.data.title;
+    mark-before: root.data.mark-before;
+    mark-text: root.data.mark-text;
     preview: root.data.preview;
+    preview-before: root.data.preview-before;
+    preview-match: root.data.preview-match;
+    tag-hit: root.data.tag-hit;
     masked-preview: root.data.masked-preview;
     masked-hint: @tr("Hidden. Hold Space to reveal.");
     extension: root.data.extension;
@@ -535,8 +547,14 @@ export component MainWindow inherits Window {
 
     // ---- Item actions ---------------------------------------------------------------------------
     // The pointer or the keyboard picked row `i`.
+    // The keyboard ring on the cursor row shows only while the keyboard drives the list: a click that takes the focus
+    // (`mouse-focus`) draws none, and the next key or Tab brings it back.
+    property <bool> kbd-focus: false;
+    property <bool> mouse-focus: false;
     function pick(i: int, shift: bool, control: bool) {
         root.cursor = i;
+        root.mouse-focus = true;
+        root.kbd-focus = false;
         items-scope.focus();
         root.select-requested(i, shift ? SelectMode.extend : control ? SelectMode.toggle : SelectMode.replace);
     }
@@ -673,7 +691,9 @@ export component MainWindow inherits Window {
 
     // ---- Scrolling the item area to the cursor ---------------------------------------------------
     property <length> edge-h: 10px;
-    property <length> row-gap: root.view == MainView.comfortable ? Space.s1 + Space.s0-5 : 0px;
+    property <length> row-gap: root.view == MainView.comfortable ? Space.s1 : 0px;
+    // The quiet rows sit 8px in from the item area's edge (the tiles, until they follow, keep `pad`).
+    property <length> list-pad: Space.s2;
     property <length> avg-row-h: root.rows.length == 0 ? Space.hit : max(Space.hit, list.content-height / root.rows.length);
     property <int> page-rows: max(1, floor(list.height / root.avg-row-h) - 1);
     property <int> last-cur: 0;
@@ -1392,7 +1412,18 @@ export component MainWindow inherits Window {
                         width: parent.width;
                         height: parent.height;
 
+                        changed has-focus => {
+                            if (self.has-focus) {
+                                if (root.mouse-focus) {
+                                    root.mouse-focus = false;
+                                } else {
+                                    root.kbd-focus = true;
+                                }
+                            }
+                        }
                         key-pressed(event) => {
+                            root.mouse-focus = false;
+                            root.kbd-focus = true;
                             let shift = event.modifiers.shift;
                             let ctrl = event.modifiers.control || event.modifiers.meta;
                             if (event.modifiers.alt && !event.modifiers.control && !event.modifiers.shift
@@ -1532,10 +1563,15 @@ export component MainWindow inherits Window {
                     // ---- Rows (comfortable and compact) -----------------------------------------
                     Rectangle {
                         visible: !root.tile;
+                        // The item area's fill: the rows are quiet, with no outline of their own.
+                        Rectangle {
+                            visible: root.rows.length > 0;
+                            background: Theme.bg-surface;
+                        }
                         list := ListView {
-                            x: root.pad - root.ring;
+                            x: root.list-pad - root.ring;
                             y: 0px;
-                            width: parent.width - 2 * root.pad + 2 * root.ring;
+                            width: parent.width - 2 * root.list-pad + 2 * root.ring;
                             height: parent.height;
                             vertical-scrollbar-policy: ScrollBarPolicy.always-off;
                             horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
@@ -1580,9 +1616,18 @@ export component MainWindow inherits Window {
                                             height: self.preferred-height;
                                             variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
                                             data: row;
+                                            quiet: true;
                                             use-label: root.use-label;
                                             use-copies: root.use-copies && !root.in-trash;
-                                            show-focus: i == root.cur && items-scope.has-focus;
+                                            // Use first (Restore in the Trash), then Copy (not when Use already copies), Edit, More.
+                                            use-action: true;
+                                            use-glyph: root.in-trash ? Icons.arrow-counter-clockwise : Icons.arrow-bend-down-left;
+                                            use-tip: root.in-trash ? @tr("Restore") : @tr("{} (Enter)", root.use-label);
+                                            copy-action: !(root.use-copies && !root.in-trash);
+                                            edit-action: !root.in-trash;
+                                            show-actions: row.selected;
+                                            actions-hidden: root.selected-count > 1;
+                                            show-focus: i == root.cur && items-scope.has-focus && root.kbd-focus;
                                             revealed: i == root.revealed-index;
                                             pulling: i == root.used-index;
                                             use => {
@@ -1590,6 +1635,8 @@ export component MainWindow inherits Window {
                                                 root.act(root.in-trash ? ItemAction.restore : ItemAction.use, i);
                                             }
                                             copy => { root.act(ItemAction.copy, i); }
+                                            edit => { root.act(ItemAction.edit, i); }
+                                            tip(text, cx, bottom, on) => { root.card-tip-set(text, cx, bottom, on); }
                                             picked(shift, control) => { root.pick(i, shift, control); }
                                             context-menu-requested(x, y) => {
                                                 if (!row.selected) {
@@ -2030,7 +2077,11 @@ export component MainWindow inherits Window {
     }
 
     // The bulk bar already says how many are selected; the line shows the count of items and announces the selection.
-    property <string> status-text: @tr("{n} item" | "{n} items" % root.rows.length);
+    // While searching it counts the matches and names the board they were found in.
+    property <string> status-text: root.searching
+        ? (root.rows.length == 0 ? @tr("No matches in {}", root.board-name)
+            : @tr("{n} match in {}" | "{n} matches in {}" % root.rows.length, root.board-name))
+        : @tr("{n} item" | "{n} items" % root.rows.length);
 
     // Keeps the sidebar's cursor row in view. The row's place follows from the row heights, not from measuring
     // the element (a measurement taken before the first layout would scroll the sidebar away).
@@ -2050,10 +2101,29 @@ export component MainWindow inherits Window {
     property <string> tip: commands-button.has-hover || commands-button.has-focus ? @tr("Commands (Ctrl+K)")
         : view-comfortable.has-hover || view-comfortable.has-focus ? @tr("Comfortable view")
         : view-compact.has-hover || view-compact.has-focus ? @tr("Compact view")
-        : view-tile.has-hover || view-tile.has-focus ? @tr("Tile view") : "";
+        : view-tile.has-hover || view-tile.has-focus ? @tr("Tile view") : root.card-tip;
+    property <bool> toolbar-tip: commands-button.has-hover || commands-button.has-focus || view-comfortable.has-hover || view-comfortable.has-focus
+        || view-compact.has-hover || view-compact.has-focus || view-tile.has-hover || view-tile.has-focus;
     property <length> tip-x: commands-button.has-hover || commands-button.has-focus ? commands-button.absolute-position.x
         : view-comfortable.has-hover || view-comfortable.has-focus ? view-comfortable.absolute-position.x
-        : view-compact.has-hover || view-compact.has-focus ? view-compact.absolute-position.x : view-tile.absolute-position.x;
+        : view-compact.has-hover || view-compact.has-focus ? view-compact.absolute-position.x
+        : view-tile.has-hover || view-tile.has-focus ? view-tile.absolute-position.x : root.card-tip-cx;
+    // A row action's tooltip (Use, Copy, Edit, More): the card reports it, centred under the button.
+    property <string> card-tip;
+    property <length> card-tip-cx;
+    property <length> card-tip-bottom;
+    function card-tip-set(text: string, cx: length, bottom: length, on: bool) {
+        if (on) {
+            root.card-tip = text;
+            root.card-tip-cx = cx;
+            root.card-tip-bottom = bottom;
+        } else if (text == root.card-tip) {
+            root.card-tip = "";
+        }
+    }
+    property <length> list-scroll: list.content-y;
+    changed rows => { root.card-tip = ""; }
+    changed list-scroll => { root.card-tip = ""; }
     property <bool> tip-open: false;
     changed tip => {
         if (root.tip == "") {
@@ -2074,8 +2144,9 @@ export component MainWindow inherits Window {
     if root.tip != "": Tooltip {
         text: root.tip;
         open: root.tip-open;
-        x: min(root.tip-x, root.width - self.preferred-width - Space.s2);
-        y: root.bar-h - Space.s1;
+        x: root.toolbar-tip ? min(root.tip-x, root.width - self.preferred-width - Space.s2)
+            : min(max(Space.s2, root.tip-x - self.width / 2), root.width - self.width - Space.s2);
+        y: root.toolbar-tip ? root.bar-h - Space.s1 : root.card-tip-bottom + Space.s1;
         width: self.preferred-width;
         height: self.preferred-height;
     }

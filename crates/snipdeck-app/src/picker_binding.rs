@@ -308,14 +308,25 @@ pub fn picker_place(board: &str, list: &str) -> String {
 /// One result as the window's row. A sensitive item shows only the mask, never its preview.
 #[must_use]
 pub fn picker_row(entry: &Entry, dark: bool) -> ui::PickerRow {
+    let marks = entry.marks.fields();
     ui::PickerRow {
         kind: item_kind_of(entry.kind, entry.sensitive),
         title: entry.title.as_str().into(),
+        mark_before: marks.mark_before.as_str().into(),
+        mark_text: marks.mark_text.as_str().into(),
+        // The windowed first line replaces the preview only for a marked row; a sensitive row has none.
         preview: if entry.sensitive {
             SharedString::new()
         } else {
-            entry.preview.as_str().into()
+            marks
+                .preview_line
+                .as_deref()
+                .unwrap_or(entry.preview.as_str())
+                .into()
         },
+        preview_before: marks.preview_before.as_str().into(),
+        preview_match: marks.preview_match.as_str().into(),
+        tag_hit: marks.tag_hit.as_str().into(),
         masked_preview: if entry.sensitive {
             MASKED_PREVIEW.into()
         } else {
@@ -401,6 +412,21 @@ mod tests {
         assert_eq!(row.masked_preview.as_str(), "\u{2022}".repeat(12));
         assert!(!row.masked_preview.contains("7f3a"));
         assert_eq!(row.preview.as_str(), "");
+    }
+
+    #[test]
+    fn picker_row_carries_the_marks() {
+        let mut marked = entry(false);
+        marked.marks = crate::search_mark::marks("Login", "hunter2-7f3a", false, None, "hun");
+        let row = picker_row(&marked, false);
+        assert_eq!(row.mark_text.as_str(), "");
+        assert_eq!(row.preview_match.as_str(), "hun");
+        assert_eq!(row.preview.as_str(), "hunter2-7f3a");
+        marked.marks = crate::search_mark::marks("Login", "x", false, None, "log");
+        let row = picker_row(&marked, false);
+        assert_eq!(row.mark_text.as_str(), "Log");
+        marked.marks = crate::search_mark::marks("Login", "x", false, Some("work"), "work");
+        assert_eq!(picker_row(&marked, false).tag_hit.as_str(), "work");
     }
 
     #[test]

@@ -6,6 +6,13 @@
 //! Goldens use only glyphs IBM Plex has (no CJK, no U+21B5: system fallback fonts differ per machine); the pixel
 //! assertions below do not depend on glyph shapes.
 
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    reason = "pixel geometry of a test frame: logical sizes are small and positive"
+)]
+
 use slint::ComponentHandle;
 use snipdeck_ui::{
     MainSection, MainView, MainWindow, SystemLook, ToastKind,
@@ -85,6 +92,7 @@ fn main_window_empty_states() {
     fixture::set_rows(&h.component, Vec::new());
     assert_golden("main-empty-all-light", &render(&h));
 
+    h.component.set_board_name("Work".into());
     h.component.set_query("zzz".into());
     assert_golden("main-no-results-light", &render(&h));
     h.component.set_query("".into());
@@ -249,15 +257,24 @@ fn the_empty_state_keeps_the_list_pane_free_of_cards() {
 
 const SURFACE_LIGHT: [u8; 3] = [0xFB, 0xFA, 0xF7];
 
-/// y of every card top on the column `x`: where the surface fill starts below something else.
-fn card_tops(f: &Frame, x: u32, height: u32) -> Vec<u32> {
-    let mut tops = Vec::new();
-    for y in 100..height - 40 {
-        if f.pixel(x, y) == SURFACE_LIGHT && f.pixel(x, y - 1) != SURFACE_LIGHT {
-            tops.push(y);
-        }
-    }
-    tops
+/// The (top, height, right edge) of every row (a `ListItem` right of the sidebar), in the order they are laid out. Rows are quiet: they
+/// have no fill of their own at rest, so their place is read from the accessibility tree and not from pixels.
+fn row_boxes(h: &Harness<MainWindow>) -> Vec<(f32, f32, f32)> {
+    use i_slint_backend_testing::{AccessibleRole, ElementQuery};
+    let mut boxes: Vec<(f32, f32, f32)> = ElementQuery::from_root(&h.component)
+        .match_descendants()
+        .match_accessible_role(AccessibleRole::ListItem)
+        .find_all()
+        .into_iter()
+        .filter(|e| e.absolute_position().x > 235.0)
+        .map(|e| {
+            let (p, s) = (e.absolute_position(), e.size());
+            (p.y, s.height, p.x + s.width)
+        })
+        .collect();
+    boxes.sort_by(|a, b| a.0.total_cmp(&b.0));
+    boxes.dedup_by(|a, b| (a.0 - b.0).abs() < 0.5);
+    boxes
 }
 
 fn long_rows(cjk: bool) -> Vec<snipdeck_ui::MainRow> {
@@ -289,20 +306,33 @@ fn cjk_rows_keep_the_card_pitch_and_stay_inside_the_list_pane() {
             fixture::set_rows(&h.component, long_rows(cjk));
             h.component.set_view(view);
             let f = render(&h);
-            let tops = card_tops(&f, 252, SIZE.1);
-            assert!(tops.len() >= 3, "{view:?} cjk={cjk}: card tops {tops:?}");
-            pitches.push(tops.windows(2).map(|w| w[1] - w[0]).collect::<Vec<_>>());
+            let boxes = row_boxes(&h);
+            assert!(boxes.len() >= 3, "{view:?} cjk={cjk}: rows {boxes:?}");
+            pitches.push(
+                boxes
+                    .windows(2)
+                    .map(|w| w[1].0 - w[0].0)
+                    .collect::<Vec<_>>(),
+            );
 
-            // Nothing is drawn in the right padding of the list pane.
+            // The rows stop 8px short of the pane's right edge, and nothing is drawn in that padding: it is the
+            // item area's own fill.
+            for (_, _, right) in &boxes {
+                assert!(
+                    *right <= SIZE.0 as f32 - 8.0 + 0.5,
+                    "{view:?} cjk={cjk}: row ends at {right}"
+                );
+            }
             for y in (110..SIZE.1 - 60).step_by(3) {
                 assert_eq!(
                     f.pixel(SIZE.0 - 6, y),
-                    APP_LIGHT,
+                    SURFACE_LIGHT,
                     "{view:?} cjk={cjk}: ink at the right edge, y={y}"
                 );
             }
-            // The first card holds ink (the glyphs drew, tofu or not).
-            let (top, bottom) = (tops[0], tops[1]);
+            // The first row holds ink (the glyphs drew, tofu or not).
+            let (top, height, _) = boxes[0];
+            let (top, bottom) = (top as u32, (top + height) as u32);
             let mut ink = 0;
             for y in top + 2..bottom - 2 {
                 for x in (256..SIZE.0 - 40).step_by(2) {
@@ -313,7 +343,7 @@ fn cjk_rows_keep_the_card_pitch_and_stay_inside_the_list_pane() {
             }
             assert!(
                 ink > 50,
-                "{view:?} cjk={cjk}: only {ink} ink pixels in the first card"
+                "{view:?} cjk={cjk}: only {ink} ink pixels in the first row"
             );
         }
         assert_eq!(
@@ -353,4 +383,154 @@ fn the_cjk_family_setting_reaches_every_text_of_the_window() {
             );
         }
     }
+}
+
+// ---- Quiet rows ---------------------------------------------------------------------------------
+
+const FOCUS_RING: [u8; 3] = [0x28, 0x70, 0xD4];
+const SELECTED_LIGHT: [u8; 3] = [0xEB, 0xF2, 0xFE];
+const HOVER_LIGHT: [u8; 3] = [0xF5, 0xF3, 0xF1];
+
+fn move_pointer(h: &Harness<MainWindow>, at: slint::LogicalPosition) {
+    use slint::platform::WindowEvent;
+    h.component
+        .window()
+        .dispatch_event(WindowEvent::PointerMoved { position: at });
+}
+
+fn click(h: &Harness<MainWindow>, at: slint::LogicalPosition) {
+    use slint::platform::{PointerEventButton, WindowEvent};
+    let w = h.component.window();
+    w.dispatch_event(WindowEvent::PointerMoved { position: at });
+    w.dispatch_event(WindowEvent::PointerPressed {
+        position: at,
+        button: PointerEventButton::Left,
+    });
+    w.dispatch_event(WindowEvent::PointerReleased {
+        position: at,
+        button: PointerEventButton::Left,
+    });
+}
+
+/// Pixels of the focus-ring colour inside the first row's box, along its top edge.
+fn ring_on_top_edge(f: &Frame, row: (f32, f32, f32)) -> usize {
+    let (top, _, right) = row;
+    (260..right as u32 - 20)
+        .filter(|x| f.pixel(*x, top as u32) == FOCUS_RING)
+        .count()
+}
+
+#[test]
+fn focus_ring_only_on_keyboard_focus() {
+    use slint::platform::{Key, WindowEvent};
+    let h = window(SIZE, false);
+    h.component
+        .window()
+        .dispatch_event(WindowEvent::WindowActiveChanged(true));
+    let _ = render(&h);
+    let boxes = row_boxes(&h);
+    // A pointer click on the second row takes the focus but draws no ring on it.
+    let (top, height, _) = boxes[1];
+    click(&h, slint::LogicalPosition::new(500.0, top + height / 2.0));
+    let f = render(&h);
+    assert_eq!(
+        ring_on_top_edge(&f, boxes[1]),
+        0,
+        "a click leaves no focus ring"
+    );
+    // A key brings it.
+    let text: slint::SharedString = Key::DownArrow.into();
+    h.component
+        .window()
+        .dispatch_event(WindowEvent::KeyPressed { text: text.clone() });
+    h.component
+        .window()
+        .dispatch_event(WindowEvent::KeyReleased { text });
+    let f = render(&h);
+    let boxes = row_boxes(&h);
+    let rings: usize = boxes.iter().map(|b| ring_on_top_edge(&f, *b)).sum();
+    assert!(
+        rings > 100,
+        "the keyboard shows a 2px ring on the cursor row: {rings}px"
+    );
+}
+
+/// The columns (first, last) with ink in a row's title line: 6px below its top to 20px below, from x 292 to the
+/// last column before the actions.
+fn title_ink(f: &Frame, row: (f32, f32, f32)) -> Option<(u32, u32)> {
+    let top = row.0 as u32;
+    let bg = f.pixel(900, top + 10);
+    let ink = |x: u32| {
+        (top + 6..top + 20).any(|y| {
+            f.pixel(x, y)
+                .iter()
+                .zip(bg)
+                .any(|(a, b)| a.abs_diff(b) > 40)
+        })
+    };
+    let first = (292..900).find(|x| ink(*x))?;
+    let last = (292..900).rev().find(|x| ink(*x))?;
+    Some((first, last))
+}
+
+#[test]
+fn title_width_unchanged_on_hover() {
+    let h = window(SIZE, false);
+    let rest = render(&h);
+    let boxes = row_boxes(&h);
+    let before = title_ink(&rest, boxes[2]).expect("title ink");
+    let (top, height, _) = boxes[2];
+    move_pointer(&h, slint::LogicalPosition::new(600.0, top + height / 2.0));
+    let hovered = render(&h);
+    assert_ne!(
+        hovered.pixel(900, top as u32 + 10),
+        rest.pixel(900, top as u32 + 10),
+        "the row is hovered: it has a fill"
+    );
+    // Antialiasing on a different fill may move the last column by one pixel; the title does not move more.
+    let after = title_ink(&hovered, boxes[2]).expect("title ink while hovered");
+    assert!(
+        after.0.abs_diff(before.0) <= 1 && after.1.abs_diff(before.1) <= 1,
+        "the actions appear, the title does not move: {before:?} -> {after:?}"
+    );
+    assert_golden("main-row-hover-light", &hovered);
+}
+
+#[test]
+fn main_window_search_results_light_and_dark() {
+    for (dark, name) in [(false, "main-search-light"), (true, "main-search-dark")] {
+        let h = window(SIZE, dark);
+        fixture::set_rows(&h.component, fixture::search_rows());
+        h.component.set_query("re".into());
+        h.component.set_selected_count(1);
+        assert_golden(name, &render(&h));
+    }
+}
+
+#[test]
+fn the_selected_row_is_a_fill_and_rows_have_no_outline() {
+    let h = window(SIZE, false);
+    fixture::set_rows(&h.component, fixture::search_rows());
+    h.component.set_selected_count(1);
+    let f = render(&h);
+    let boxes = row_boxes(&h);
+    let (top, height, right) = boxes[1];
+    let mid = top as u32 + height as u32 / 2;
+    assert_eq!(f.pixel(700, mid), SELECTED_LIGHT, "selection fill");
+    assert_eq!(f.pixel(700, top as u32), SELECTED_LIGHT, "to the top edge");
+    assert_eq!(
+        f.pixel(700, (top + height) as u32 - 1),
+        SELECTED_LIGHT,
+        "to the bottom edge"
+    );
+    // The resting rows are the item area's surface: no outline, no fill of their own.
+    let (top0, height0, _) = boxes[0];
+    for (x, y) in [
+        (300, top0 as u32),
+        (300, top0 as u32 + height0 as u32 - 1),
+        (right as u32 - 1, top0 as u32 + 10),
+    ] {
+        assert_eq!(f.pixel(x, y), SURFACE_LIGHT, "row 0 at ({x},{y})");
+    }
+    let _ = HOVER_LIGHT;
 }

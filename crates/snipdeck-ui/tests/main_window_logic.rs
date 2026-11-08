@@ -109,6 +109,44 @@ fn shift(ui: &MainWindow, k: Key) {
     settle();
 }
 
+fn row_titled(ui: &MainWindow, title: &str) -> ElementHandle {
+    by_role(ui, AccessibleRole::ListItem)
+        .into_iter()
+        .find(|e| e.accessible_label().is_some_and(|l| l.starts_with(title)))
+        .unwrap_or_else(|| panic!("no row titled {title:?}"))
+}
+
+fn centre_of(e: &ElementHandle) -> slint::LogicalPosition {
+    let (p, s) = (e.absolute_position(), e.size());
+    slint::LogicalPosition::new(p.x + s.width / 2.0, p.y + s.height / 2.0)
+}
+
+/// The button called `label` that lies inside `row`'s box (the bulk bar and the menus have buttons of their own).
+fn button_in(ui: &MainWindow, row: &ElementHandle, label: &str) -> Option<ElementHandle> {
+    let (rp, rs) = (row.absolute_position(), row.size());
+    all(ui, label, AccessibleRole::Button)
+        .into_iter()
+        .find(|b| {
+            let p = b.absolute_position();
+            p.x >= rp.x - 0.5
+                && p.x <= rp.x + rs.width
+                && p.y >= rp.y - 0.5
+                && p.y <= rp.y + rs.height
+        })
+}
+
+/// Marks row `i` the single selected one, as the host does after a click.
+fn select_row(ui: &MainWindow, i: usize) {
+    let rows = ui.get_rows();
+    for n in 0..rows.row_count() {
+        let mut r = rows.row_data(n).unwrap();
+        r.selected = n == i;
+        rows.set_row_data(n, r);
+    }
+    ui.set_selected_count(1);
+    settle();
+}
+
 /// A populated window whose callbacks append a line to the returned log. Focus starts on the item area.
 fn start() -> (MainWindow, Log) {
     let ui = MainWindow::new().expect("main window");
@@ -579,6 +617,134 @@ ui_tests! {
         press_key(&ui, Key::Menu);
         assert!(missing(&ui, "Pin", AccessibleRole::ListItem), "the Design spec row is pinned");
         let _ = find(&ui, "Unpin", AccessibleRole::ListItem);
+    }
+
+    // ---- Quiet rows: Use, Copy, Edit, More ---------------------------------------------------------
+
+    fn click_selects_not_uses() {
+        let (ui, log) = start();
+        take(&log);
+        let row = row_titled(&ui, "Retry helper");
+        press_at_centre(&ui, centre_of(&row));
+        let seen = take(&log);
+        assert!(seen.iter().any(|l| l.starts_with("select:2")), "a click selects: {seen:?}");
+        assert!(!seen.iter().any(|l| l.starts_with("action:")), "and runs nothing: {seen:?}");
+    }
+
+    fn use_action_uses_once() {
+        let (ui, log) = start();
+        select_row(&ui, 1);
+        take(&log);
+        let row = row_titled(&ui, "Invoice reminder");
+        let use_it = button_in(&ui, &row, "Use (Enter)").expect("a visible Use action on the selected row");
+        use_it.invoke_accessible_default_action();
+        settle();
+        assert_eq!(take(&log), ["action:Use:1"], "Use runs once and does not select");
+        let more = button_in(&ui, &row, "More");
+        let edit = button_in(&ui, &row, "Edit");
+        assert!(more.is_some() && edit.is_some(), "Edit and More are there too");
+        edit.unwrap().invoke_accessible_default_action();
+        assert_eq!(take(&log), ["action:Edit:1"]);
+        more.unwrap().invoke_accessible_default_action();
+        settle();
+        assert!(ui.get_menu_open(), "More opens the item menu");
+    }
+
+    fn copy_hidden_when_use_copies() {
+        let (ui, _log) = start();
+        select_row(&ui, 1);
+        let row = row_titled(&ui, "Invoice reminder");
+        assert!(button_in(&ui, &row, "Copy").is_some(), "with a paste target Copy is its own action");
+        ui.set_use_label("Copy".into());
+        ui.set_use_copies(true);
+        settle();
+        let row = row_titled(&ui, "Invoice reminder");
+        assert!(button_in(&ui, &row, "Copy").is_none(), "Use already copies: no second Copy");
+        assert!(button_in(&ui, &row, "Copy (Enter)").is_some(), "the Use action reads Copy (Enter)");
+    }
+
+    fn trash_use_action_restores() {
+        let (ui, log) = start();
+        ui.set_section(MainSection::Trash);
+        select_row(&ui, 1);
+        take(&log);
+        let row = row_titled(&ui, "Invoice reminder");
+        assert!(button_in(&ui, &row, "Use (Enter)").is_none());
+        assert!(button_in(&ui, &row, "Edit").is_none(), "a trashed item is not edited");
+        button_in(&ui, &row, "Restore").expect("Restore").invoke_accessible_default_action();
+        assert_eq!(take(&log), ["action:Restore:1"]);
+    }
+
+    fn where_line_in_mixed_views_only() {
+        let (ui, _log) = start();
+        let plain = row_titled(&ui, "Invoice reminder").size().height;
+        assert!((plain - 56.0).abs() < 0.5, "Comfortable row: {plain}");
+        fixture::set_rows(&ui, fixture::search_rows());
+        ui.set_query("re".into());
+        settle();
+        let mixed = row_titled(&ui, "Thanks, received").size().height;
+        assert!((mixed - 68.0).abs() < 0.5, "a mixed view adds the 12px where line: {mixed}");
+        ui.set_view(MainView::Compact);
+        settle();
+        let compact_mixed = row_titled(&ui, "Thanks, received").size().height;
+        assert!((compact_mixed - 52.0).abs() < 0.5, "Compact mixed: {compact_mixed}");
+        fixture::set_rows(&ui, fixture::sample_rows());
+        ui.set_query("".into());
+        settle();
+        let compact = row_titled(&ui, "Invoice reminder").size().height;
+        assert!((compact - 36.0).abs() < 0.5, "Compact: {compact}");
+    }
+
+    fn actions_on_preview_line_only() {
+        let (ui, _log) = start();
+        select_row(&ui, 1);
+        let row = row_titled(&ui, "Invoice reminder");
+        let (top, bottom) = (row.absolute_position().y, row.absolute_position().y + row.size().height);
+        for name in ["Use (Enter)", "Copy", "Edit", "More"] {
+            let b = button_in(&ui, &row, name).unwrap_or_else(|| panic!("{name}"));
+            // The title line is the first 24px (4 + 20); the 32px action boxes belong to the preview band.
+            assert!(b.absolute_position().y >= top + 24.0 - 0.5, "{name} is below the title line");
+            assert!(b.absolute_position().y + b.size().height <= bottom + 0.5, "{name} is inside the row");
+            assert!(b.size().width >= 32.0 - 0.5 && b.size().height >= 32.0 - 0.5, "{name} is a 32px hit box");
+        }
+    }
+
+    fn actions_hide_when_several_rows_are_selected() {
+        let (ui, _log) = start();
+        select_row(&ui, 1);
+        let rows = ui.get_rows();
+        let mut other = rows.row_data(2).unwrap();
+        other.selected = true;
+        rows.set_row_data(2, other);
+        ui.set_selected_count(2);
+        settle();
+        let row = row_titled(&ui, "Invoice reminder");
+        assert!(button_in(&ui, &row, "Edit").is_none(), "an action on one row would act on all of them");
+    }
+
+    fn search_status_counts() {
+        let (ui, _log) = start();
+        let status = |ui: &MainWindow| -> Vec<String> {
+            by_role(ui, AccessibleRole::Text)
+                .into_iter()
+                .filter_map(|e| e.accessible_label().map(|l| l.to_string()))
+                .filter(|l| l.contains("match") || l.ends_with(" items") || l.ends_with(" item"))
+                .collect()
+        };
+        fixture::set_rows(&ui, fixture::search_rows());
+        ui.set_query("re".into());
+        settle();
+        assert!(status(&ui).contains(&"4 matches in Work".to_string()), "{:?}", status(&ui));
+        fixture::set_rows(&ui, fixture::search_rows().into_iter().take(1).collect());
+        settle();
+        assert!(status(&ui).contains(&"1 match in Work".to_string()), "{:?}", status(&ui));
+        fixture::set_rows(&ui, Vec::new());
+        settle();
+        assert!(status(&ui).contains(&"No matches in Work".to_string()), "{:?}", status(&ui));
+        ui.set_query("".into());
+        fixture::set_rows(&ui, fixture::sample_rows());
+        settle();
+        assert!(status(&ui).contains(&"8 items".to_string()), "{:?}", status(&ui));
     }
 
     // ---- Colour labels ---------------------------------------------------------------------------
