@@ -160,6 +160,9 @@ msgstr "Ámbar"
 msgid "An Image item holds a PNG picture. Choose a PNG file, or add this one as a File."
 msgstr "Un elemento de imagen contiene una imagen PNG. Elige un archivo PNG o añade este como archivo."
 
+msgid "An item is open in the editor, so the pasted text was not added. Close it, then paste again."
+msgstr "Hay un elemento abierto en el editor, así que el texto pegado no se añadió. Ciérralo y vuelve a pegar."
+
 msgid "Angry"
 msgstr "Enfadado"
 

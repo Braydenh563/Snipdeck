@@ -160,6 +160,9 @@ msgstr "Bernstein"
 msgid "An Image item holds a PNG picture. Choose a PNG file, or add this one as a File."
 msgstr "Ein Bild-Textbaustein enthält ein PNG-Bild. Wähle eine PNG-Datei oder füge diese als Datei hinzu."
 
+msgid "An item is open in the editor, so the pasted text was not added. Close it, then paste again."
+msgstr "Im Editor ist ein Element geöffnet, daher wurde der eingefügte Text nicht hinzugefügt. Schließen Sie es und fügen Sie erneut ein."
+
 msgid "Angry"
 msgstr "Wütend"
 
