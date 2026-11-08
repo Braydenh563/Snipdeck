@@ -358,7 +358,7 @@ mod tests {
         assert!(m.rows().iter().all(|r| r.marks == Marks::default()));
         m.set_query("shopping");
         let rows = m.rows();
-        assert!(!rows.is_empty());
+        assert_ne!(rows.len(), 0, "the picker shows rows");
         assert!(
             rows.iter().all(|r| r.marks.title.is_some()
                 || r.marks.preview.is_some()
