@@ -55,6 +55,9 @@ msgstr "主密码是 Supporter 的功能之一。"
 msgid "A small window you can drag anywhere."
 msgstr "可以拖到任意位置的小窗口。"
 
+msgid "A smiley tab next to Recent with emoji, kaomoji and icons to paste. Turn it off to hide the tab and its Ctrl+K command."
+msgstr "“最近”旁边的笑脸标签页，提供可粘贴的表情符号、颜文字和图标。关闭后将隐藏该标签页及其 Ctrl+K 命令。"
+
 msgid "A strip of your snippets beside the app you are working in. Click one to paste it there."
 msgstr "在你正在使用的应用旁边显示的片段栏。点击其中一条，即可粘贴到该应用。"
 
@@ -103,8 +106,14 @@ msgstr "添加列表"
 msgid "Add some text, or cancel."
 msgstr "添加一些文本，或取消。"
 
+msgid "Add to list"
+msgstr "添加到列表"
+
 msgid "Add to paste stack"
 msgstr "添加到粘贴堆栈"
+
+msgid "Add to “{}”"
+msgstr "添加到“{}”"
 
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "在 Windows 自身保护之上，为你的敏感片段添加密码。首次使用敏感片段时要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。"
@@ -438,6 +447,12 @@ msgstr "已复制。{} 以管理员身份运行，Snipdeck 无法粘贴到其中
 
 msgid "Copy"
 msgstr "复制"
+
+msgid "Copy PNG"
+msgstr "复制 PNG"
+
+msgid "Copy SVG"
+msgstr "复制 SVG"
 
 msgid "Copy all"
 msgstr "全部复制"
@@ -804,6 +819,9 @@ msgstr "给我发邮件"
 
 msgid "Emoji"
 msgstr "表情符号"
+
+msgid "Emoji art: Microsoft Fluent Emoji (MIT). Icons: Phosphor (MIT). Emoji names and keywords: Unicode CLDR (Unicode-3.0)."
+msgstr "表情符号图片：Microsoft Fluent Emoji (MIT)。图标：Phosphor (MIT)。表情符号名称和关键词：Unicode CLDR (Unicode-3.0)。"
 
 msgid "Empty Trash"
 msgstr "清空回收站"
@@ -2000,6 +2018,12 @@ msgstr "保存"
 msgid "Save (Ctrl+Enter)"
 msgstr "保存 (Ctrl+Enter)"
 
+msgid "Save as PNG…"
+msgstr "另存为 PNG…"
+
+msgid "Save as SVG…"
+msgstr "另存为 SVG…"
+
 msgid "Save from clipboard"
 msgstr "从剪贴板保存"
 
@@ -2155,6 +2179,9 @@ msgstr "显示面板"
 
 msgid "Show Panel ({})"
 msgstr "显示面板（{}）"
+
+msgid "Show Symbols tab"
+msgstr "显示“符号”标签页"
 
 msgid "Show all"
 msgstr "显示全部"
@@ -2320,6 +2347,9 @@ msgstr "惊讶"
 
 msgid "Symbols"
 msgstr "符号"
+
+msgid "Symbols data"
+msgstr "符号数据"
 
 msgid "Tab"
 msgstr "Tab"
@@ -2885,6 +2915,9 @@ msgstr "复制"
 
 msgid "edit"
 msgstr "编辑"
+
+msgid "emoji kaomoji icons smiley emoticon insert"
+msgstr "表情符号 emoji 颜文字 图标 笑脸 符号 插入"
 
 msgid "every mark choose all"
 msgstr "全部 标记 选择 全选"

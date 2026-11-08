@@ -503,6 +503,44 @@ pub fn item_menu_label(window: &PanelWindow, entry: crate::controller::ItemMenuE
     .into()
 }
 
+/// A row of the Symbols cell menu, worded and with its shortcut.
+#[must_use]
+pub fn symbol_menu_entry(
+    window: &PanelWindow,
+    entry: &crate::controller::SymbolMenuEntry,
+) -> snipdeck_ui::MenuEntry {
+    use crate::controller::SymbolMenuEntry;
+    let t = MenuTexts::get(window);
+    let (text, shortcut, disabled) = match entry {
+        SymbolMenuEntry::Paste => (t.invoke_symbol_paste(), "Enter", false),
+        SymbolMenuEntry::Copy => (t.invoke_item_copy(), "Shift+Enter", false),
+        SymbolMenuEntry::AddToList { list, enabled } => (
+            list.as_deref().map_or_else(
+                || t.invoke_symbol_add_no_list(),
+                |name| t.invoke_symbol_add(name.into()),
+            ),
+            "Ctrl+S",
+            !enabled,
+        ),
+        SymbolMenuEntry::CopySvg => (t.invoke_symbol_copy_svg(), "", false),
+        SymbolMenuEntry::CopyPng => (t.invoke_symbol_copy_png(), "", false),
+        SymbolMenuEntry::SaveAsSvg => (t.invoke_symbol_save_svg(), "", false),
+        SymbolMenuEntry::SaveAsPng => (t.invoke_symbol_save_png(), "", false),
+        SymbolMenuEntry::Separator => {
+            return snipdeck_ui::MenuEntry {
+                separator: true,
+                ..Default::default()
+            };
+        }
+    };
+    snipdeck_ui::MenuEntry {
+        text,
+        shortcut: shortcut.into(),
+        disabled,
+        ..Default::default()
+    }
+}
+
 /// The words of a board menu entry.
 #[must_use]
 pub fn board_menu_text<C>(window: &C, entry: &crate::controller::BoardMenuEntry) -> String

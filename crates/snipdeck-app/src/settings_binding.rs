@@ -672,6 +672,7 @@ struct PageView {
     panel_search_index: i32,
     panel_switcher_index: i32,
     show_numbers: bool,
+    show_symbols_tab: bool,
     tray_click_index: i32,
     panel_open_at_index: i32,
     panel_open_at_enabled: bool,
@@ -882,7 +883,7 @@ where
             let alternatives = if !value.is_empty()
                 && (!conflict.is_empty() || matches!(health, Some(HotkeyHealth::Failed(_))))
             {
-                hotkey_health::alternatives(action, &settings.hotkeys)
+                hotkey_health::alternatives(&settings.hotkeys)
             } else {
                 Vec::new()
             };
@@ -932,6 +933,7 @@ where
         panel_search_index: i32::from(settings.panel_search == PanelSearch::Always),
         panel_switcher_index: i32::from(settings.panel_switcher == PanelSwitcher::Menu),
         show_numbers: settings.show_numbers,
+        show_symbols_tab: settings.show_symbols_tab,
         tray_click_index: i32::from(settings.tray_click == TrayClick::Main),
         panel_open_at_index: match settings.panel_open_at {
             PanelOpenAt::Last => 0,
@@ -1714,6 +1716,8 @@ where
             })));
         wire!(on_show_numbers_toggled, |core, on| core
             .act(|ctl| ctl.update_settings(|s| s.show_numbers = on)));
+        wire!(on_show_symbols_tab_toggled, |core, on| core
+            .act(|ctl| ctl.update_settings(|s| s.show_symbols_tab = on)));
         wire!(on_tray_click_chosen, |core, i| core.act(|ctl| ctl
             .update_settings(|s| {
                 s.tray_click = if i == 1 {
@@ -1851,6 +1855,14 @@ where
                 }
             });
         }
+        {
+            // The title bar's X (and Alt+F4) reaches the window, not the page's own callback.
+            let core = Rc::clone(&core);
+            window.window().on_close_requested(move || {
+                core.act(Controller::stop_hotkey_test);
+                slint::CloseRequestResponse::HideWindow
+            });
+        }
         SettingsBinding { core }
     }
 }
@@ -1935,6 +1947,9 @@ fn render(window: &ui::SettingsPage, previous: Option<&PageView>, view: &PageVie
     }
     if differs(&|p| p.show_numbers == view.show_numbers) {
         window.set_show_numbers(view.show_numbers);
+    }
+    if differs(&|p| p.show_symbols_tab == view.show_symbols_tab) {
+        window.set_show_symbols_tab(view.show_symbols_tab);
     }
     if differs(&|p| p.tray_click_index == view.tray_click_index) {
         window.set_tray_click_index(view.tray_click_index);
@@ -2146,7 +2161,14 @@ impl SettingsUi {
                         Rc::clone(&host),
                     );
                     let weak = window.as_weak();
+                    let owned = Rc::downgrade(&controller);
                     crate::ownership::register_closer(crate::ownership::Win::Settings, move || {
+                        // Closed with its owner: a test still waiting for its press ends too.
+                        if let Some(ctl) = owned.upgrade()
+                            && let Ok(mut ctl) = ctl.try_borrow_mut()
+                        {
+                            ctl.stop_hotkey_test();
+                        }
                         if let Some(w) = weak.upgrade() {
                             let _ = w.hide();
                         }

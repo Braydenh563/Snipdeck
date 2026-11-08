@@ -211,6 +211,7 @@ where
             &window,
             &ctl.settings().hotkeys,
             self.shown.borrow().as_ref(),
+            ctl.settings().show_symbols_tab,
             query,
         );
     }

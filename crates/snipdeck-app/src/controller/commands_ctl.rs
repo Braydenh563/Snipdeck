@@ -33,6 +33,13 @@ where
             // the match is exhaustive.
             Command::Search | Command::Tour => {}
             Command::ShowPanel => self.main_toggle_panel(),
+            Command::Symbols => {
+                if self.settings.show_symbols_tab {
+                    let mut effects = self.show();
+                    effects.push(Effect::ShowSymbols);
+                    self.pending.extend(effects);
+                }
+            }
             Command::OpenPicker => self.open_picker(),
             Command::QuickCapture => self.quick_capture(),
             Command::PasteNext => {

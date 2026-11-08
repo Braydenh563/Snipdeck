@@ -26,13 +26,18 @@ pub fn texts(window: &ui::MainWindow) -> Vec<(String, String)> {
 
 /// What the palette may offer for the screen the Main window shows now.
 #[must_use]
-pub fn context<'a>(hotkeys: &'a Hotkeys, screen: Option<&MainScreen>) -> Context<'a> {
+pub fn context<'a>(
+    hotkeys: &'a Hotkeys,
+    screen: Option<&MainScreen>,
+    symbols: bool,
+) -> Context<'a> {
     let row = screen.and_then(|s| s.rows.get(s.cursor.min(s.rows.len().saturating_sub(1))));
     Context {
         hotkeys,
         has_item: row.is_some(),
         item_pinned: row.is_some_and(|r| r.pinned),
         in_trash: screen.is_some_and(|s| s.section == Section::Trash),
+        symbols,
     }
 }
 
@@ -42,9 +47,10 @@ pub fn rows(
     window: &ui::MainWindow,
     hotkeys: &Hotkeys,
     screen: Option<&MainScreen>,
+    symbols: bool,
     query: &str,
 ) -> Vec<ui::PaletteRow> {
-    commands::entries(&texts(window), &context(hotkeys, screen), query)
+    commands::entries(&texts(window), &context(hotkeys, screen, symbols), query)
         .into_iter()
         .map(|entry| ui::PaletteRow {
             id: entry.command.id(),
@@ -56,8 +62,16 @@ pub fn rows(
 }
 
 /// Fills the palette of `window` with the rows for `query`.
-pub fn fill(window: &ui::MainWindow, hotkeys: &Hotkeys, screen: Option<&MainScreen>, query: &str) {
-    window.set_palette_rows(model(rows(window, hotkeys, screen, query).into_iter()));
+pub fn fill(
+    window: &ui::MainWindow,
+    hotkeys: &Hotkeys,
+    screen: Option<&MainScreen>,
+    symbols: bool,
+    query: &str,
+) {
+    window.set_palette_rows(model(
+        rows(window, hotkeys, screen, symbols, query).into_iter(),
+    ));
 }
 
 /// The command a palette id names.

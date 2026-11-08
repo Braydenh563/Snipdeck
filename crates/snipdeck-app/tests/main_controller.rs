@@ -1763,6 +1763,10 @@ fn palette_commands_that_belong_to_other_windows_queue_the_menus_effects() {
     let mut ctl = pro();
     for (command, effects) in [
         (Command::Settings, vec![Effect::OpenSettings]),
+        (
+            Command::Symbols,
+            vec![Effect::ShowPanel, Effect::ShowSymbols],
+        ),
         // The Panel is up in this rig, so the toggle hides it.
         (Command::ShowPanel, vec![Effect::HidePanel]),
         (Command::Tour, vec![]),

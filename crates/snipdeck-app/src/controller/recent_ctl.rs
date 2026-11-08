@@ -12,7 +12,7 @@ use snipdeck_platform::{
 };
 use snipdeck_store::RecentEntry;
 
-use super::{Controller, Library, Toast, ToastKind, ToastMessage, success};
+use super::{Controller, Library, Toast, ToastKind, ToastMessage, UseResult, success};
 use crate::{
     capture::{self, Captured},
     host::ClipboardText,
@@ -220,13 +220,15 @@ where
     /// A click or Enter on an entry in the Panel: pastes its text into the Target (or copies it
     /// when `mode` is [`UseMode::Copy`], Shift+click, or the Target cannot take a paste), and says
     /// so. Pasting is written without the history markers, so it does not re-enter the inbox.
-    pub fn recent_use(&mut self, id: i64, mode: UseMode) {
+    /// Like an item's use it counts as activity; the caller hands the result to
+    /// [`after_use`](Self::after_use), which may close the Panel.
+    pub fn recent_use(&mut self, id: i64, mode: UseMode) -> UseResult {
         let Some(entry) = self.recent_entries().into_iter().find(|e| e.id == id) else {
-            return;
+            return UseResult::Failed;
         };
         let Some(payload) = Payload::new(vec![Data::Text(entry.text)]) else {
             self.show_toast(failed());
-            return;
+            return UseResult::Failed;
         };
         let route = self.model.route();
         let pasted_into = self.model.target().map(|t| t.app.clone());
@@ -238,14 +240,24 @@ where
             keyboard: &mut self.services.keyboard,
             timing: &mut self.services.timing,
         };
-        let toast = match pipeline::use_item(&mut env, &payload, mode, &route) {
-            Ok(outcome) => toast::after_use(outcome, &route, pasted_into.as_deref()),
-            Err(_) => Toast {
-                kind: ToastKind::Danger,
-                message: ToastMessage::ClipboardBusy,
-            },
+        let (toast, result) = match pipeline::use_item(&mut env, &payload, mode, &route) {
+            Ok(outcome) => {
+                self.note_activity();
+                (
+                    toast::after_use(outcome, &route, pasted_into.as_deref()),
+                    UseResult::Done(outcome),
+                )
+            }
+            Err(_) => (
+                Toast {
+                    kind: ToastKind::Danger,
+                    message: ToastMessage::ClipboardBusy,
+                },
+                UseResult::Failed,
+            ),
         };
         self.show_toast(toast);
+        result
     }
 
     /// Puts an entry's text on the clipboard (the Main window's click: it has no Target).

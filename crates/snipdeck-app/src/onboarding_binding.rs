@@ -149,7 +149,7 @@ where
                     let alternatives = if !value.is_empty()
                         && (!conflict.is_empty() || matches!(health, HotkeyHealth::Failed(_)))
                     {
-                        hotkey_health::alternatives(action, &settings.hotkeys)
+                        hotkey_health::alternatives(&settings.hotkeys)
                     } else {
                         Vec::new()
                     };
@@ -249,7 +249,10 @@ where
             return;
         }
         self.set_conflict(index, String::new());
-        self.act(|ctl| ctl.update_settings(|s| s.hotkeys = next));
+        self.act(|ctl| {
+            ctl.clear_hotkey_problem(action);
+            ctl.update_settings(|s| s.hotkeys = next);
+        });
     }
 
     fn hotkey_test(self: &Rc<Self>, index: usize) {

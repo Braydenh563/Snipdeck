@@ -1561,6 +1561,34 @@ ui_tests! {
         assert_eq!(ui.get_current_tab(), 0);
     }
 
+    fn ctrl_tab_visits_the_symbols_tab_after_the_last_list_only_while_it_is_offered() {
+        let (ui, log) = start();
+        ui.set_symbols_available(true);
+        settle();
+        take(&log);
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        assert_eq!(ui.get_current_tab(), 2);
+        assert!(!ui.get_symbols_open());
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        assert!(ui.get_symbols_open(), "after the last list comes Symbols");
+        chord(ui.window(), &[Key::Control], &key(Key::Tab));
+        assert!(!ui.get_symbols_open(), "and then the first list again");
+        assert_eq!(ui.get_current_tab(), 0);
+        chord(ui.window(), &[Key::Control, Key::Shift], &key(Key::Tab));
+        assert!(ui.get_symbols_open(), "Ctrl+Shift+Tab from the first list goes back to Symbols");
+
+        // Switched off in Settings: the tab goes, and Ctrl+Tab skips it.
+        ui.set_symbols_available(false);
+        settle();
+        assert!(!ui.get_symbols_open(), "the open tab closes with the setting");
+        assert!(missing(&ui, "Symbols", AccessibleRole::Tab), "no tab in the row");
+        for _ in 0..6 {
+            chord(ui.window(), &[Key::Control], &key(Key::Tab));
+            assert!(!ui.get_symbols_open());
+        }
+    }
+
     fn the_smallest_window_loses_the_tab_rows_32_with_the_menu_switcher() {
         let (ui, _log) = start();
         ui.set_lists_in_menu(true);
