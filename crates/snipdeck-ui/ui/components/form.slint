@@ -5,6 +5,7 @@ import { StateColor } from "state-color.slint";
 import { FieldError } from "text_field.slint";
 import { OverlayScrollbar } from "scrollbar.slint";
 import { LockBadge } from "lock-badge.slint";
+import { MenuItem } from "menu.slint";
 
 // Form building blocks for the editors and the settings page (DESIGN.md §4). Every control here is one tab stop
 // with arrow keys inside it, has a hover, pressed, disabled and keyboard-focus state, an accessible role and label,
@@ -421,54 +422,27 @@ export component SelectField inherits VerticalLayout {
         }
     }
 
+    // The open list uses the Menu's surface and rows (shared look spec 5): bg-overlay, 1px border-subtle, radius 8,
+    // padding 4; 32px rows with the check in the icon column. The keyboard is in the field, so no row ring.
     if root.open: Rectangle {
         height: choices.preferred-height;
         background: Theme.bg-overlay;
-        border-radius: Radius.md;
+        border-radius: Radius.lg;
         border-width: 1px;
-        border-color: Theme.border-default;
+        border-color: Theme.border-subtle;
         accessible-role: list;
         accessible-label: root.label;
 
         choices := VerticalLayout {
-            padding: Space.s0-5;
-            for option[i] in root.options: Rectangle {
-                height: max(Space.hit, Type.line-base + Space.s2);
-                border-radius: Radius.sm;
-                background: row-touch.pressed ? StateColor.pressed()
-                    : (i == root.hl || row-touch.has-hover) ? Theme.bg-hover : transparent;
-                accessible-role: list-item;
-                accessible-label: option;
-                accessible-checkable: true;
-                accessible-checked: i == root.current;
-                accessible-action-default => { root.pick(i); }
-
-                HorizontalLayout {
-                    padding-left: Space.s2;
-                    padding-right: Space.s2;
-                    spacing: Space.s2;
-                    Text {
-                        horizontal-stretch: 1;
-                        min-width: 0px;
-                        text: option;
-                        color: Theme.text-primary;
-                        font-family: Fonts.sans;
-                        font-size: Type.base;
-                        font-weight: i == root.current ? Type.semibold : Type.regular;
-                        vertical-alignment: center;
-                        overflow: elide;
-                        accessible-role: none;
-                    }
-                    if i == root.current: Icon {
-                        source: Icons.check;
-                        size: Space.s4 * SystemLook.text-scale;
-                        tint: Theme.text-primary;
-                        y: (parent.height - self.height) / 2;
-                    }
-                }
-                row-touch := TouchArea {
-                    clicked => { root.pick(i); }
-                }
+            padding: Space.s1;
+            for option[i] in root.options: MenuItem {
+                text: option;
+                checked: i == root.current;
+                current: i == root.hl;
+                index: i;
+                count: root.options.length;
+                pointer-entered => { root.hl = i; }
+                activated => { root.pick(i); }
             }
         }
     }

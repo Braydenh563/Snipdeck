@@ -391,6 +391,24 @@ fn menu_item_radius_6_height_32() {
     );
 }
 
+/// A checked menu row draws the 16 px check in `accent-text` in the icon column (and not the row's own icon). "Move to
+/// list" (y 125..157, icon column x 29..45) has the grey folder glyph; checked it has a blue glyph instead.
+#[test]
+fn checked_menu_row_has_an_accent_check() {
+    let blue = |h: &Harness<MenuGallery>| {
+        let frame = h.render();
+        let frame = &frame;
+        (29..45)
+            .flat_map(|x| (133..149).map(move |y| frame.pixel(x, y)))
+            .filter(|p| i32::from(p[2]) - i32::from(p[0]) >= 60)
+            .count()
+    };
+    let h = Harness::new(MenuGallery::new, 260, 224);
+    assert_eq!(blue(&h), 0, "an unchecked row has no accent glyph");
+    h.component.set_checked_row(true);
+    assert!(blue(&h) >= 8, "the check glyph is accent-text");
+}
+
 fn key_press<C: ComponentHandle>(h: &Harness<C>, k: Key) {
     let text: SharedString = k.into();
     pointer(h, WindowEvent::KeyPressed { text: text.clone() });

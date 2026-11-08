@@ -13,6 +13,8 @@ export struct MenuEntry {
     destructive: bool,
     disabled: bool,
     separator: bool,
+    // A check in the icon column (in `accent-text`) in place of `icon`: the row is the chosen one.
+    checked: bool,
     // Not drawn, not selectable, not counted (the host keeps the row's index stable and decides per open).
     hidden: bool,
 }
@@ -26,6 +28,7 @@ export component MenuItem inherits Rectangle {
     in property <string> shortcut;
     in property <bool> destructive: false;
     in property <bool> disabled: false;
+    in property <bool> checked: false;
     in property <bool> current: false;
     // The highlight is the keyboard's (not the pointer's or the host's): it adds the 2px focus ring.
     in property <bool> ring: false;
@@ -57,6 +60,8 @@ export component MenuItem inherits Rectangle {
     accessible-item-count: root.count;
     accessible-item-selectable: !root.disabled;
     accessible-item-selected: root.current && !root.disabled;
+    accessible-checkable: root.checked;
+    accessible-checked: root.checked;
     accessible-action-default => { if (!root.disabled) { root.activated(); } }
 
     animate background { duration: Motion.instant; easing: Motion.out; }
@@ -67,7 +72,12 @@ export component MenuItem inherits Rectangle {
         spacing: Space.s2;
         if root.reserve-icon || root.icon.width > 0: Rectangle {
             width: 16px;
-            if root.icon.width > 0: Icon {
+            if root.checked: Icon {
+                source: Icons.check;
+                tint: root.disabled ? Theme.text-tertiary : Theme.accent-text;
+                y: (parent.height - self.height) / 2;
+            }
+            if !root.checked && root.icon.width > 0: Icon {
                 source: root.icon;
                 tint: root.fg;
                 y: (parent.height - self.height) / 2;
@@ -277,6 +287,7 @@ export component Menu inherits Rectangle {
                 shortcut: entry.shortcut;
                 destructive: entry.destructive;
                 disabled: entry.disabled;
+                checked: entry.checked;
                 current: root.current == i;
                 ring: root.by-key;
                 row-h: root.row-h;

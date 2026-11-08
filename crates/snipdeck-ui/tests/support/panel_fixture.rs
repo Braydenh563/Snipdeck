@@ -161,7 +161,7 @@ pub fn pinned_n(n: usize) -> Vec<PinnedItem> {
 /// The Panel's kebab menu as the app fills it: the rows of `APP_MENU` in its order, with the English words,
 /// the shortcuts of `wording::app_menu_shortcut` and the state a fresh Panel has (nothing to undo, redo or
 /// stack; hotkeys running; numbers shown). `snipdeck-app` pins the order; keep this list in step with it.
-pub fn app_menu(check: &slint::Image) -> Vec<MenuEntry> {
+pub fn app_menu() -> Vec<MenuEntry> {
     let row = |text: &str, shortcut: &str| MenuEntry {
         text: text.into(),
         shortcut: shortcut.into(),
@@ -173,7 +173,7 @@ pub fn app_menu(check: &slint::Image) -> Vec<MenuEntry> {
     };
     // The rows `render_app_menu` checks on a fresh Panel: kept on top, numbers shown.
     let checked = |text: &str| MenuEntry {
-        icon: check.clone(),
+        checked: true,
         ..row(text, "")
     };
     let line = || MenuEntry {
@@ -228,9 +228,7 @@ pub fn populate(ui: &PanelWindow) {
     ui.set_tabs(ModelRc::new(VecModel::from(tabs())));
     ui.set_pinned(ModelRc::new(VecModel::from(pinned())));
     ui.set_board_menu_entries(ModelRc::new(VecModel::from(board_menu())));
-    ui.set_app_menu_entries(ModelRc::new(VecModel::from(app_menu(
-        &ui.global::<snipdeck_ui::Icons<'_>>().get_check(),
-    ))));
+    ui.set_app_menu_entries(ModelRc::new(VecModel::from(app_menu())));
     set_rows(ui, sample_rows());
     ui.set_target_name("Outlook".into());
     ui.set_target_title("New message".into());
