@@ -18,7 +18,6 @@ const PARTS: (u32, u32) = (640, 600);
 
 // Layout of `DeckGallery` (ui/gallery/deck.slint): 16px padding, a 20px caption, then the first card.
 const CARD_TOP: u32 = 16 + 20;
-const COMPACT_X: u32 = 16;
 // The comfortable column spaces its cards 6px apart, caption included.
 const COMFORTABLE_TOP: u32 = CARD_TOP + 6;
 const COMFORTABLE_X: u32 = 16 + 320 + 16;
@@ -30,7 +29,6 @@ const LIGHT_BORDER_SUBTLE: [u8; 3] = [0xDE, 0xDC, 0xD8];
 const DARK_SURFACE: [u8; 3] = [0x17, 0x16, 0x13];
 const DARK_APP: [u8; 3] = [0x11, 0x0F, 0x0D];
 const DARK_BORDER_SUBTLE: [u8; 3] = [0x20, 0x1E, 0x1B];
-const ACCENT: [u8; 3] = [0x28, 0x70, 0xD4];
 
 #[test]
 fn deck_gallery_light() {
@@ -73,74 +71,77 @@ fn deck_parts_dark() {
     assert_golden("deck-parts-dark", &h.render());
 }
 
+const LIGHT_ACCENT: [u8; 3] = [0x28, 0x70, 0xD4];
+const DARK_ACCENT: [u8; 3] = [0x28, 0x70, 0xD4];
+
+/// First comfortable row spans y 42..98; each next one sits 56 + 6 lower, so the 9th (selected) starts at 538.
+const SELECTED_ROW_TOP: u32 = COMFORTABLE_TOP + 8 * 62;
+
 #[test]
-fn the_number_gutter_rule_is_a_1px_border_subtle_line_24px_in() {
-    for (dark, surface, rule) in [
-        (false, LIGHT_SURFACE, LIGHT_BORDER_SUBTLE),
-        (true, DARK_SURFACE, DARK_BORDER_SUBTLE),
+fn rows_have_no_border_and_the_selected_row_has_a_2px_accent_bar_on_its_left_edge() {
+    for (dark, app, accent) in [
+        (false, LIGHT_APP, LIGHT_ACCENT),
+        (true, DARK_APP, DARK_ACCENT),
     ] {
         let h = Harness::new(DeckGallery::new, GALLERY.0, GALLERY.1);
         h.component.set_dark(dark);
         let frame = h.render();
-        // Middle of the first compact row (28px tall), clear of text and of the row hairline.
-        let y = CARD_TOP + 14;
-        let x = COMPACT_X + 24;
-        assert_eq!(frame.pixel(x, y), rule, "rule at gutter edge (dark={dark})");
-        assert_eq!(frame.pixel(x - 1, y), surface, "gutter side (dark={dark})");
-        assert_eq!(frame.pixel(x + 1, y), surface, "content side (dark={dark})");
-    }
-}
-
-#[test]
-fn cards_have_no_coloured_left_border() {
-    for (dark, border) in [(false, LIGHT_BORDER_SUBTLE), (true, DARK_BORDER_SUBTLE)] {
-        let h = Harness::new(DeckGallery::new, GALLERY.0, GALLERY.1);
-        h.component.set_dark(dark);
-        let frame = h.render();
-        let y = COMFORTABLE_TOP + 30;
-        let left = frame.pixel(COMFORTABLE_X, y);
+        // A plain row is transparent on the app background: no border, no coloured edge.
+        let y = COMFORTABLE_TOP + 28;
+        for x in [COMFORTABLE_X, COMFORTABLE_X + 1, COMFORTABLE_X + 160] {
+            assert_eq!(
+                frame.pixel(x, COMFORTABLE_TOP),
+                app,
+                "row top (dark={dark})"
+            );
+        }
         assert_eq!(
-            left, border,
-            "left edge of a plain comfortable card (dark={dark})"
+            frame.pixel(COMFORTABLE_X, y),
+            app,
+            "left edge of a plain row (dark={dark})"
         );
-        assert_ne!(left, ACCENT);
-        // The selected card is the 9th: its border is the accent on all four sides, not only the left.
-        // (Heights of the preceding cards are measured in deck_logic.rs; here only the colour.)
-        let any_accent =
-            (COMFORTABLE_TOP..GALLERY.1).any(|row| frame.pixel(COMFORTABLE_X, row) == ACCENT);
-        assert!(
-            any_accent,
-            "the selected card draws an accent border (dark={dark})"
+        // The selected row is a fill with a 2px accent bar on the left edge.
+        let mid = SELECTED_ROW_TOP + 28;
+        assert_eq!(
+            frame.pixel(COMFORTABLE_X + 1, mid),
+            accent,
+            "bar (dark={dark})"
         );
+        assert_ne!(frame.pixel(COMFORTABLE_X + 4, mid), accent, "bar is thin");
+        assert_ne!(frame.pixel(COMFORTABLE_X + 4, mid), app, "selected fill");
     }
 }
 
 #[test]
-fn light_cards_have_a_level_1_shadow_and_dark_cards_only_tone() {
-    // First comfortable card: 8 + 20 + 4 + 2 x 16 + 8 = 72px tall.
-    let below = COMFORTABLE_TOP + 72;
-    let x = COMFORTABLE_X + 160;
-
+fn cards_have_a_level_1_shadow_in_light_and_only_tone_in_dark_and_rows_have_none() {
+    // First tile (x 688..864, y 36..132): the shadow tints the pixels just under its bottom border.
+    let (tile_x, below) = (688 + 88, 36 + 96);
     let light = Harness::new(DeckGallery::new, GALLERY.0, GALLERY.1);
     let frame = light.render();
-    let shadowed = frame.pixel(x, below);
+    let shadowed = frame.pixel(tile_x, below);
     assert_ne!(
         shadowed, LIGHT_APP,
-        "level-1 shadow tints the pixel under the card"
+        "level-1 shadow tints the pixel under a Card"
     );
     assert!(shadowed[0] < LIGHT_APP[0], "and darkens it: {shadowed:?}");
+    // A resting row has no shadow: the pixel under the first comfortable row is the app background.
+    assert_eq!(
+        frame.pixel(COMFORTABLE_X + 160, COMFORTABLE_TOP + 56),
+        LIGHT_APP,
+        "rows are flat"
+    );
     drop(light);
 
     let dark = Harness::new(DeckGallery::new, GALLERY.0, GALLERY.1);
     dark.component.set_dark(true);
     let frame = dark.render();
-    assert_eq!(frame.pixel(x, below), DARK_APP, "no shadow in dark");
+    assert_eq!(frame.pixel(tile_x, below), DARK_APP, "no shadow in dark");
 }
 
 // ---- Card pull (DESIGN.md §4): lift 2px over 140ms, check in the gutter, settle after 700ms ----
 
-/// Centre of the first comfortable card ("Thanks, received", x 352..672, y 42..114).
-const FIRST_CARD: (f32, f32) = (512.0, 78.0);
+/// Centre of the first comfortable row ("Thanks, received", x 352..672, y 42..98).
+const FIRST_CARD: (f32, f32) = (512.0, 70.0);
 
 fn click_first_card(h: &Harness<DeckGallery>) {
     use slint::{
@@ -161,10 +162,10 @@ fn click_first_card(h: &Harness<DeckGallery>) {
     });
 }
 
-/// Pixels in the first comfortable card's gutter that are clearly blue (the check in `accent-text`).
+/// Pixels in the first comfortable row's number cell that are clearly blue (the check in `accent-text`).
 fn blue_pixels_in_first_gutter(frame: &snipdeck_ui::testing::Frame) -> usize {
     let mut n = 0;
-    for y in 42..114 {
+    for y in 38..100 {
         for x in COMFORTABLE_X + 1..COMFORTABLE_X + 24 {
             let [r, g, b] = frame.pixel(x, y);
             if b > 120 && r < 90 && g < 130 {
@@ -176,13 +177,19 @@ fn blue_pixels_in_first_gutter(frame: &snipdeck_ui::testing::Frame) -> usize {
 }
 
 #[test]
-fn using_a_card_lifts_it_2px_swaps_the_number_for_a_check_and_settles_after_700ms() {
+fn using_a_row_lifts_it_2px_swaps_the_number_for_a_check_and_settles_after_700ms() {
     use std::time::Duration;
     let h = Harness::new(DeckGallery::new, GALLERY.0, GALLERY.1);
+    // Above the title text, clear of the actions at the right.
     let x = COMFORTABLE_X + 160;
 
     let rest = h.render();
-    assert_eq!(rest.pixel(x, 42), LIGHT_BORDER_SUBTLE, "top border at rest");
+    assert_eq!(
+        rest.pixel(x, 40),
+        LIGHT_APP,
+        "nothing above the row at rest"
+    );
+    assert_eq!(rest.pixel(x, 44), LIGHT_APP, "a resting row is transparent");
     assert_eq!(
         blue_pixels_in_first_gutter(&rest),
         0,
@@ -192,33 +199,28 @@ fn using_a_card_lifts_it_2px_swaps_the_number_for_a_check_and_settles_after_700m
     click_first_card(&h);
     h.advance(Duration::from_millis(200));
     let lifted = h.render();
-    assert_eq!(lifted.pixel(x, 40), LIGHT_BORDER_SUBTLE, "card rose by 2px");
+    assert_ne!(lifted.pixel(x, 40), LIGHT_APP, "row rose by 2px");
     assert_eq!(
-        lifted.pixel(x, 42),
-        LIGHT_SURFACE,
-        "old border row is now card face"
+        lifted.pixel(x, 40),
+        lifted.pixel(x, 44),
+        "the raised row's face starts at y 40"
     );
     assert!(
         blue_pixels_in_first_gutter(&lifted) > 5,
-        "the gutter shows a check in accent-text"
+        "the number cell shows a check in accent-text"
     );
 
     // Held for 700ms, then settles over 200ms.
     h.advance(Duration::from_millis(500));
-    assert_eq!(
-        h.render().pixel(x, 40),
-        LIGHT_BORDER_SUBTLE,
-        "still lifted at ~750ms"
-    );
+    assert_ne!(h.render().pixel(x, 40), LIGHT_APP, "still lifted at ~750ms");
     h.advance(Duration::from_millis(300));
     let settled = h.render();
     assert_eq!(settled.pixel(x, 40), LIGHT_APP, "back down after the hold");
-    assert_eq!(settled.pixel(x, 42), LIGHT_BORDER_SUBTLE);
     assert_eq!(blue_pixels_in_first_gutter(&settled), 0, "number is back");
 }
 
 #[test]
-fn under_reduced_motion_a_pulled_card_does_not_move_but_still_shows_the_check() {
+fn under_reduced_motion_a_pulled_row_does_not_move_but_still_shows_the_check() {
     use std::time::Duration;
     let h = Harness::new(DeckGallery::new, GALLERY.0, GALLERY.1);
     h.component
@@ -228,8 +230,7 @@ fn under_reduced_motion_a_pulled_card_does_not_move_but_still_shows_the_check() 
     click_first_card(&h);
     h.advance(Duration::from_millis(10));
     let frame = h.render();
-    assert_eq!(frame.pixel(x, 42), LIGHT_BORDER_SUBTLE, "no translation");
-    assert_eq!(frame.pixel(x, 40), LIGHT_APP);
+    assert_eq!(frame.pixel(x, 40), LIGHT_APP, "no translation");
     assert!(blue_pixels_in_first_gutter(&frame) > 5, "check swap only");
 }
 
@@ -242,7 +243,7 @@ fn keyboard_focus_draws_a_2px_ring_and_nothing_else_does() {
         let h = Harness::new(DeckGallery::new, GALLERY.0, GALLERY.1);
         h.component.set_dark(dark);
         let before = h.render();
-        // First compact row spans x 16..336, y 36..64; its ring sits inside the row.
+        // First compact row spans x 16..336, y 36..72; its ring sits inside the row.
         assert_ne!(
             before.pixel(17, 50),
             ring,
@@ -281,31 +282,31 @@ fn deck_edges_are_two_4px_card_edges_inset_6_and_12px() {
         h.component.set_dark(dark);
         let f = h.render();
         let col = |y: u32| f.pixel(170, y);
-        // Bottom edge, 236..246: the near edge at 236..240 and the far edge at 242..246.
-        assert_eq!(col(236), border, "near edge top (dark={dark})");
-        assert_eq!(col(237), surface);
-        assert_eq!(col(238), surface);
-        assert_eq!(col(239), border, "near edge bottom");
-        assert_eq!(col(240), app, "gap between the edges");
-        assert_eq!(col(241), app);
-        assert_eq!(col(242), border, "far edge top");
-        assert_eq!(col(245), border, "far edge bottom");
-        assert_eq!(col(246), app, "nothing below the 10px component");
+        // Bottom edge, 252..262 (under two 36px rows): the near edge at 252..256 and the far edge at 258..262.
+        assert_eq!(col(252), border, "near edge top (dark={dark})");
+        assert_eq!(col(253), surface);
+        assert_eq!(col(254), surface);
+        assert_eq!(col(255), border, "near edge bottom");
+        assert_eq!(col(256), app, "gap between the edges");
+        assert_eq!(col(257), app);
+        assert_eq!(col(258), border, "far edge top");
+        assert_eq!(col(261), border, "far edge bottom");
+        assert_eq!(col(262), app, "nothing below the 10px component");
         // Insets: 6px for the near edge, 12px for the far one.
-        assert_eq!(f.pixel(21, 237), app);
-        assert_eq!(f.pixel(22, 237), border, "near edge starts 6px in");
-        assert_eq!(f.pixel(27, 243), app);
-        assert_eq!(f.pixel(28, 243), border, "far edge starts 12px in");
-        // Top edge, 282..292: mirrored, the far edge first.
-        assert_eq!(col(282), border, "top variant: far edge top");
-        assert_eq!(col(285), border);
-        assert_eq!(col(286), app);
-        assert_eq!(col(288), border, "top variant: near edge top");
-        assert_eq!(col(291), border);
-        assert_eq!(f.pixel(27, 284), app);
-        assert_eq!(f.pixel(28, 284), border);
-        assert_eq!(f.pixel(21, 290), app);
-        assert_eq!(f.pixel(22, 290), border);
+        assert_eq!(f.pixel(21, 253), app);
+        assert_eq!(f.pixel(22, 253), border, "near edge starts 6px in");
+        assert_eq!(f.pixel(27, 259), app);
+        assert_eq!(f.pixel(28, 259), border, "far edge starts 12px in");
+        // Top edge, 298..308: mirrored, the far edge first.
+        assert_eq!(col(298), border, "top variant: far edge top");
+        assert_eq!(col(301), border);
+        assert_eq!(col(302), app);
+        assert_eq!(col(304), border, "top variant: near edge top");
+        assert_eq!(col(307), border);
+        assert_eq!(f.pixel(27, 300), app);
+        assert_eq!(f.pixel(28, 300), border);
+        assert_eq!(f.pixel(21, 306), app);
+        assert_eq!(f.pixel(22, 306), border);
     }
 }
 
@@ -328,37 +329,29 @@ fn contrast(a: [u8; 3], b: [u8; 3]) -> f64 {
 }
 
 #[test]
-fn the_row_more_glyph_reads_at_3_to_1_against_the_card() {
-    for (dark, surface) in [(false, LIGHT_SURFACE), (true, DARK_SURFACE)] {
+fn the_row_action_glyphs_read_against_the_selected_fill() {
+    for dark in [false, true] {
         let h = Harness::new(DeckGallery::new, GALLERY.0, GALLERY.1);
         h.component.set_dark(dark);
         let frame = h.render();
-        // The first comfortable card is 320 wide; the More button sits in its top-right corner.
-        let best = (COMFORTABLE_X + 282..COMFORTABLE_X + 302)
-            .flat_map(|x| (COMFORTABLE_TOP + 10..COMFORTABLE_TOP + 30).map(move |y| (x, y)))
-            .map(|(x, y)| contrast(frame.pixel(x, y), surface))
-            .fold(0.0_f64, f64::max);
-        assert!(
-            best >= 3.0,
-            "dark={dark}: the darkest More glyph pixel is {best:.2}:1 against the card"
-        );
-    }
-}
-
-#[test]
-fn the_comfortable_card_copy_glyph_reads_at_4_5_to_1_against_the_card() {
-    for (dark, surface) in [(false, LIGHT_SURFACE), (true, DARK_SURFACE)] {
-        let h = Harness::new(DeckGallery::new, GALLERY.0, GALLERY.1);
-        h.component.set_dark(dark);
-        let frame = h.render();
-        // Copy sits left of More in the same corner (one button wide, 24px).
-        let best = (COMFORTABLE_X + 252..COMFORTABLE_X + 278)
-            .flat_map(|x| (COMFORTABLE_TOP + 10..COMFORTABLE_TOP + 30).map(move |y| (x, y)))
-            .map(|(x, y)| contrast(frame.pixel(x, y), surface))
-            .fold(0.0_f64, f64::max);
-        assert!(
-            best >= 4.5,
-            "dark={dark}: the darkest Copy glyph pixel is {best:.2}:1 against the card"
-        );
+        // The 9th comfortable row is selected, so it shows Use, Copy, Edit and More on its preview line (y +24..+56),
+        // four 32px boxes ending 4px from the right edge of the 320px row.
+        let fill = frame.pixel(COMFORTABLE_X + 160, SELECTED_ROW_TOP + 1);
+        // Use, Copy and Edit are solid glyphs (4.5:1); the three dots of More are the thinnest (3:1, as before).
+        for (name, from, min) in [
+            ("Use", 188, 4.5),
+            ("Copy", 220, 4.5),
+            ("Edit", 252, 4.5),
+            ("More", 284, 3.0),
+        ] {
+            let best = (COMFORTABLE_X + from..COMFORTABLE_X + from + 32)
+                .flat_map(|x| (SELECTED_ROW_TOP + 24..SELECTED_ROW_TOP + 56).map(move |y| (x, y)))
+                .map(|(x, y)| contrast(frame.pixel(x, y), fill))
+                .fold(0.0_f64, f64::max);
+            assert!(
+                best >= min,
+                "dark={dark}: the {name} glyph's darkest pixel is {best:.2}:1, needs {min}:1, against the selected fill"
+            );
+        }
     }
 }

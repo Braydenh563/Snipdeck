@@ -159,7 +159,7 @@ fn a_sensitive_card_never_speaks_its_content_until_revealed() {
     }
 }
 
-fn every_card_is_at_least_24px_tall_and_a_compact_row_is_exactly_28() {
+fn every_card_is_at_least_24px_tall_a_compact_row_is_36_and_a_list_row_56() {
     let ui = gallery();
     for (i, card) in cards(&ui).iter().enumerate() {
         let h = card.size().height;
@@ -167,17 +167,17 @@ fn every_card_is_at_least_24px_tall_and_a_compact_row_is_exactly_28() {
         let label = card.accessible_label().unwrap_or_default();
         assert!(card.size().width >= 24.0, "card {label:?} too narrow");
     }
-    // Compact rows are the first 14 cards (compact column), each exactly 28px.
+    // Compact rows are the first 14 cards (compact column); 36px, or 52px with a where line (samples 10 and 11 carry a list name).
     let all = cards(&ui);
     for (i, card) in all.iter().take(14).enumerate() {
-        assert_eq!(card.size().height, 28.0, "compact row {i}");
+        let expected = if matches!(i, 10 | 11) { 52.0 } else { 36.0 };
+        assert_eq!(card.size().height, expected, "compact row {i}");
     }
-    // A comfortable card with a title and two preview lines: 8 + 20 + 4 + 2 x 16 + 8.
-    assert_eq!(
-        all[14].size().height,
-        72.0,
-        "comfortable card with two preview lines"
-    );
+    // A List row without a where line: a 20px title line at y 4 and the 32px preview band under it.
+    assert_eq!(all[14].size().height, 56.0, "List row");
+    // A row that says where it lives adds a 16px line: 68.
+    let home = &trio(&ui, "Home address")[COMFORTABLE];
+    assert_eq!(home.size().height, 68.0, "List row with a where line");
 }
 
 fn the_default_action_uses_the_item() {
@@ -292,63 +292,101 @@ fn inside<'a>(buttons: &'a [ElementHandle], card: &ElementHandle) -> &'a Element
         .expect("a button inside the card")
 }
 
-fn every_card_shows_a_more_button_and_a_copy_button_and_a_click_on_either_is_not_a_use() {
+/// The row actions (Copy, Edit, More) show on hover and on the selected row only, never at rest on another row.
+/// A click on one is that action's own and is never a use.
+fn row_actions_show_on_hover_and_the_selected_row_and_a_click_on_one_is_not_a_use() {
     let ui = gallery();
-    // Drawn on every card, hovered or not (muted until then), so pen and touch users find them.
-    let more = buttons_named(&ui, "More");
-    let copy = buttons_named(&ui, "Copy without pasting");
-    assert!(!more.is_empty(), "the More button is always there");
-    assert_eq!(copy.len(), more.len(), "a Copy button beside every More");
-    for b in more.iter().chain(&copy) {
-        let s = b.size();
-        assert!(s.width >= 24.0 && s.height >= 24.0, "target size {s:?}");
+    let selected_only = |label: &str| {
+        let all = buttons_named(&ui, label);
+        let selected = trio(&ui, "Out of office");
+        assert_eq!(
+            all.len(),
+            3,
+            "{label}: only the selected row's three at rest"
+        );
+        for card in &selected {
+            let _ = inside(&all, card);
+        }
+    };
+    for label in ["Copy", "Edit", "More"] {
+        selected_only(label);
     }
 
-    let card = &trio(&ui, "Thanks, received")[COMPACT];
+    // Hovering another row brings its actions in.
+    let card = &trio(&ui, "Thanks, received")[COMFORTABLE];
     ui.window().dispatch_event(WindowEvent::PointerMoved {
         position: centre(card),
     });
-    let (more_here, copy_here) = (inside(&more, card), inside(&copy, card));
-    let (m, c) = (more_here.absolute_position(), copy_here.absolute_position());
+    advance(120);
+    let (more, edit, copy) = (
+        buttons_named(&ui, "More"),
+        buttons_named(&ui, "Edit"),
+        buttons_named(&ui, "Copy"),
+    );
+    assert_eq!(
+        more.len(),
+        4,
+        "the hovered row's More joins the selected row's"
+    );
+    for b in more.iter().chain(&edit).chain(&copy) {
+        let s = b.size();
+        assert!(s.width >= 24.0 && s.height >= 24.0, "target size {s:?}");
+    }
+    let (more_here, edit_here, copy_here) = (
+        inside(&more, card),
+        inside(&edit, card),
+        inside(&copy, card),
+    );
+    let (c, e, m) = (
+        copy_here.absolute_position(),
+        edit_here.absolute_position(),
+        more_here.absolute_position(),
+    );
     assert!(
-        c.x + copy_here.size().width <= m.x + 0.5,
-        "Copy sits left of More without overlapping it: {c:?} {m:?}"
+        c.x + copy_here.size().width <= e.x + 0.5 && e.x + edit_here.size().width <= m.x + 0.5,
+        "Copy, Edit, More sit left to right without overlapping: {c:?} {e:?} {m:?}"
     );
 
-    // A click on Copy copies and is not a use.
-    ui.set_last_action("".into());
-    let at = centre(copy_here);
-    press(&ui, at, PointerEventButton::Left);
-    release(&ui, at, PointerEventButton::Left);
-    assert_eq!(ui.get_last_action(), "copy");
-    assert_eq!(ui.get_actions(), 1, "one copy request and no use");
-
-    // A click on More asks for the menu, also without a use.
-    ui.set_last_action("".into());
-    let at = centre(more_here);
-    press(&ui, at, PointerEventButton::Left);
-    release(&ui, at, PointerEventButton::Left);
-    assert_eq!(ui.get_last_action(), "menu");
-    assert_eq!(ui.get_actions(), 2, "one menu request and no use");
+    // Each click reports its own action and no use.
+    for (button, expected) in [
+        (copy_here, "copy"),
+        (edit_here, "edit"),
+        (more_here, "menu"),
+    ] {
+        let before = ui.get_actions();
+        ui.set_last_action("".into());
+        let at = centre(button);
+        press(&ui, at, PointerEventButton::Left);
+        release(&ui, at, PointerEventButton::Left);
+        assert_eq!(ui.get_last_action(), expected);
+        assert_eq!(ui.get_actions(), before + 1, "one {expected} and no use");
+    }
 
     // The default action (assistive technology) does the same.
-    ui.set_last_action("".into());
-    copy_here.invoke_accessible_default_action();
-    assert_eq!(ui.get_last_action(), "copy");
-    ui.set_last_action("".into());
-    more_here.invoke_accessible_default_action();
-    assert_eq!(ui.get_last_action(), "menu");
+    for (button, expected) in [
+        (copy_here, "copy"),
+        (edit_here, "edit"),
+        (more_here, "menu"),
+    ] {
+        ui.set_last_action("".into());
+        button.invoke_accessible_default_action();
+        assert_eq!(ui.get_last_action(), expected);
+    }
 
-    // They stay when the pointer leaves.
+    // They go when the pointer leaves (only the selected row keeps them).
     ui.window().dispatch_event(WindowEvent::PointerExited);
-    assert_eq!(buttons_named(&ui, "More").len(), more.len());
-    assert_eq!(buttons_named(&ui, "Copy without pasting").len(), copy.len());
+    advance(120);
+    assert_eq!(buttons_named(&ui, "More").len(), 3);
+    assert_eq!(buttons_named(&ui, "Edit").len(), 3);
+    assert_eq!(buttons_named(&ui, "Copy").len(), 3);
 }
 
 fn press_and_hold_reveals_a_sensitive_item_without_using_it() {
     let ui = gallery();
     let card = &trio(&ui, "Server password")[COMPACT];
-    let at = centre(card);
+    // On the title, left of the row's actions: a hovered row has Use, Copy, Edit, More and the eye at its right end,
+    // and a press on one of them is that action's own.
+    let at = LogicalPosition::new(card.absolute_position().x + 80.0, centre(card).y);
 
     press(&ui, at, PointerEventButton::Left);
     advance(400);
@@ -379,59 +417,6 @@ fn holding_space_on_a_focused_sensitive_card_reveals_it() {
     ui.window()
         .dispatch_event(WindowEvent::KeyReleased { text: " ".into() });
     assert_eq!(ui.get_last_action(), "hide");
-}
-
-fn the_use_label_shows_on_hover_and_keyboard_focus_only() {
-    let ui = gallery();
-    let thanks = trio(&ui, "Thanks, received");
-    let comfortable = &thanks[COMFORTABLE];
-
-    // The decorative label inside a card, found by its position.
-    let label_in = |card: &ElementHandle| {
-        let (p, s) = (card.absolute_position(), card.size());
-        ElementQuery::from_root(&ui)
-            .match_descendants()
-            .match_type_name("UseLabel")
-            .find_all()
-            .into_iter()
-            .find(|l| {
-                let lp = l.absolute_position();
-                lp.x >= p.x && lp.x <= p.x + s.width && lp.y >= p.y && lp.y <= p.y + s.height
-            })
-            .expect("a use label inside the card")
-    };
-    let label = label_in(comfortable);
-    assert!(label.computed_opacity() < 0.01, "hidden at rest");
-
-    // Hover: the label fades in over the 90ms fade.
-    let at = centre(comfortable);
-    ui.window()
-        .dispatch_event(WindowEvent::PointerMoved { position: at });
-    advance(120);
-    assert!(label.computed_opacity() > 0.99, "visible on hover");
-    let size_while_hovered = comfortable.size();
-
-    // Leaving hides it again, and the card did not change size.
-    ui.window().dispatch_event(WindowEvent::PointerMoved {
-        position: LogicalPosition::new(1.0, 1.0),
-    });
-    advance(120);
-    assert!(label.computed_opacity() < 0.01, "hidden after leaving");
-    assert_eq!(comfortable.size(), size_while_hovered);
-
-    // Keyboard focus shows it too: the first compact row takes the first Tab.
-    let compact_label = label_in(&thanks[COMPACT]);
-    assert!(compact_label.computed_opacity() < 0.01);
-    tab_to(&ui, 1);
-    advance(120);
-    assert!(
-        compact_label.computed_opacity() > 0.99,
-        "visible on keyboard focus"
-    );
-
-    // The card whose gallery sample forces the label on shows it without any pointer.
-    let forced = label_in(&trio(&ui, "Meeting follow-up")[COMFORTABLE]);
-    assert!(forced.computed_opacity() > 0.99);
 }
 
 fn deck_parts_report_clicks_menus_and_have_accessible_names() {
@@ -506,8 +491,16 @@ fn at_225_percent_text_the_rows_grow_and_stay_hittable() {
     ui.global::<SystemLook<'_>>().set_text_scale(2.25);
     let all = cards(&ui);
     for (i, card) in all.iter().take(14).enumerate() {
-        // 20px line x 2.25 + 4px.
-        assert_eq!(card.size().height, 49.0, "compact row {i} at 225%");
+        // Title line 20px x 2.25 + 2 x 8px; a row with a where line also grows by that line.
+        let h = card.size().height;
+        if matches!(i, 10 | 11) {
+            assert!(
+                h > 61.0 && h <= 61.0 + 16.0 * 2.25,
+                "compact row {i} at 225%: {h}"
+            );
+        } else {
+            assert_eq!(h, 61.0, "compact row {i} at 225%");
+        }
     }
     for (i, card) in all.iter().enumerate() {
         assert!(
@@ -548,8 +541,8 @@ fn cjk_cards_keep_their_height_and_stay_inside_the_column() {
             s.width
         );
     }
-    // A compact row is exactly 28px whatever the script.
-    assert_eq!(found[0].size().height, 28.0);
+    // A compact row is exactly 36px whatever the script.
+    assert_eq!(found[0].size().height, 36.0);
     assert!(
         found.iter().any(|c| c
             .accessible_label()
@@ -565,24 +558,24 @@ fn deck_behaviour() {
     init();
     cards_are_list_items_labelled_with_title_and_preview();
     a_sensitive_card_never_speaks_its_content_until_revealed();
-    every_card_is_at_least_24px_tall_and_a_compact_row_is_exactly_28();
+    every_card_is_at_least_24px_tall_a_compact_row_is_36_and_a_list_row_56();
     the_default_action_uses_the_item();
     click_uses_shift_click_copies_right_click_asks_for_the_menu();
     a_release_outside_the_card_is_not_a_use();
     enter_uses_shift_enter_copies_the_menu_key_opens_the_context_menu();
-    every_card_shows_a_more_button_and_a_copy_button_and_a_click_on_either_is_not_a_use();
+    row_actions_show_on_hover_and_the_selected_row_and_a_click_on_one_is_not_a_use();
     press_and_hold_reveals_a_sensitive_item_without_using_it();
     holding_space_on_a_focused_sensitive_card_reveals_it();
-    the_use_label_shows_on_hover_and_keyboard_focus_only();
     deck_parts_report_clicks_menus_and_have_accessible_names();
     at_225_percent_text_the_rows_grow_and_stay_hittable();
     cjk_cards_keep_their_height_and_stay_inside_the_column();
     the_use_button_uses_the_item_once_and_never_only_selects_it();
-    the_use_button_is_a_button_for_assistive_technology_only_while_shown();
+    the_use_button_is_a_button_for_assistive_technology_only_on_a_hovered_or_selected_row();
 }
 
-/// The use buttons ("Paste <title>") the gallery shows right now.
+/// The use buttons ("Paste <title>") the gallery shows right now (the query reports a repeated one more than once).
 fn use_buttons(ui: &DeckGallery) -> Vec<ElementHandle> {
+    let mut seen = Vec::new();
     ElementQuery::from_root(ui)
         .match_descendants()
         .match_accessible_role(AccessibleRole::Button)
@@ -591,6 +584,13 @@ fn use_buttons(ui: &DeckGallery) -> Vec<ElementHandle> {
         .filter(|b| {
             b.accessible_label()
                 .is_some_and(|l| l.starts_with("Paste "))
+        })
+        .filter(|b| {
+            let p = b.absolute_position();
+            let key = (p.x.to_bits(), p.y.to_bits());
+            let fresh = !seen.contains(&key);
+            seen.push(key);
+            fresh
         })
         .collect()
 }
@@ -654,16 +654,16 @@ fn the_use_button_uses_the_item_once_and_never_only_selects_it() {
     }
 }
 
-fn the_use_button_is_a_button_for_assistive_technology_only_while_shown() {
+fn the_use_button_is_a_button_for_assistive_technology_only_on_a_hovered_or_selected_row() {
     let ui = gallery();
-    // At rest only the sample that keeps its label (`show-label`) has a button to announce.
+    // At rest only the selected sample shows its row actions, so only it has a Use button to announce.
     let rest = use_buttons(&ui);
     assert!(
-        !rest.is_empty()
+        rest.len() == 3
             && rest
                 .iter()
-                .all(|b| b.accessible_label().as_deref() == Some("Paste Meeting follow-up")),
-        "only the row that shows its label at rest: {}",
+                .all(|b| b.accessible_label().as_deref() == Some("Paste Out of office")),
+        "only the selected row at rest: {}",
         rest.len()
     );
 

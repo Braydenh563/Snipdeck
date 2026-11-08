@@ -257,7 +257,7 @@ export component ItemCard inherits Rectangle {
     property <bool> reveal-armed: false;
     property <bool> shown: !root.sensitive || root.revealed || root.held-reveal;
     property <bool> hovered: touch.has-hover
-        || act-copy.hovered || act-edit.hovered || act-more.hovered || eye-hover;
+        || act-use.hovered || act-copy.hovered || act-edit.hovered || act-more.hovered || eye-hover;
     property <bool> eye-hover: false;
     property <length> more-side: Space.hit-min;
     property <bool> focused: scope.has-focus || root.show-focus;
