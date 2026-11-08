@@ -14,7 +14,7 @@ Depth is soft and has only one level, so items read as things you can pick up. T
 precise and tabular. It should feel like a well-made physical tool, not a dashboard.
 
 **Signature details:** these make it Snipdeck rather than a generic list app.
-1. **Number gutter.** Cards are numbered 1–9 in a mono left margin, like a ruled index card.
+1. **Number cell.** Panel and Picker rows are numbered 1–9 in a mono cell before the tile (the quick-use key).
 2. **Ink, not blue, for commitment.** Primary buttons are near-black ink. Blue only ever means *selected, focused, a link, or a template field*.
 3. **The deck edge.** When more cards sit below the fold, two offset card edges peek out at the bottom of the list instead of a fade.
 4. **Card pull.** Using an item lifts its card slightly, as if you'd pulled it from the deck.
@@ -202,7 +202,7 @@ Every icon-only control has a tooltip and an accessible label with the same word
 |---|---|---|---|
 | Button | Commit an action | primary (**ink**) · secondary · ghost · danger; sm 24 / md 28 / lg 32 | default, hover, pressed, focus, disabled, loading |
 | IconButton | Compact action | ghost · subtle; 24 / 28 | + tooltip required |
-| Keycap | Show a shortcut / quick index | single · combo | default, active (pressed flash) |
+| Keycap | Show a shortcut / quick index | single · combo; outline always `border.strong` (3:1), no variants | default, active (accent outline) |
 | TextField / SearchField | Text entry | default · search (leading icon, clear) | default, hover, focus, disabled, error, IME-composing |
 | Toggle / Checkbox / Radio | Binary or choice settings | — | on, off, mixed, focus, disabled |
 | Tab | List switcher | panel (underline in list colour) · segmented | default, hover, active, focus, drag-over |
@@ -211,14 +211,14 @@ Every icon-only control has a tooltip and an accessible label with the same word
 | IconPicker | Pick a list icon | "No icon" + 24 icons, one tab stop, arrow keys | default, hover, selected (ring), focus |
 | LabelChip | Filter the Main window by colour label | colour dot + name + count | default, hover, selected (ring + check), focus |
 | Tooltip | Name icon-only actions | — | delay 500ms, instant when moving between items |
-| Toast | Transient result ("Copied", "Pasted into Notepad") | neutral · success · danger (with Undo) | enter, hold 2.5s, exit |
+| Toast | Transient result ("Copied", "Pasted into Notepad"); the one **ink toast** (40 tall, `ink` fill, `text.on-ink`, radius 8) used by every surface, including the toast window | neutral · success (check) · danger (warning, with Undo) | enter, hold 2.5s, exit |
 | Skeleton | Loading placeholder matching the final shape | row · tile | — |
-| Menu / MenuItem | Context and overflow actions | with icon, shortcut, submenu, destructive | default, hover, focus, disabled |
+| Menu / MenuItem | Context and overflow actions; also the Settings select popups | with icon, shortcut keycap, accent check (chosen row), destructive; rows 32px (radius 6), 28px when the menu would not fit its window at 32, then a scroll cue (hairline and caret) at the bottom edge | default, highlight (`bg.overlay-hover`; 2px `focus.ring` on a key highlight only, never on hover), disabled (`text.tertiary` glyph and label, no opacity) |
 
 ### Components
 | Component | Contains | Purpose | Variants |
 |---|---|---|---|
-| **ItemCard** | number gutter, type tile, title, preview, row actions | The core object you click to use | compact (28px row) · comfortable (≤ 3 lines, thumbnail) · tile (main-window grid) |
+| **ItemCard** | number cell (Panel, Picker), type tile, title, preview, where line or inline place, row actions | The one row for the Panel, Picker and Main window | compact (36px; Picker, Panel Compact, Main compact) · comfortable (56px List row; Main list) · tile (96px min; Main cards, Panel Cards) |
 | DeckEdge | 2 offset card edges | Signals more cards below or above the fold | bottom · top |
 | ListTabBar | Tab ×N, overflow, + | Switch and reorder lists in the panel | scrollable, draggable (detach = Supporter) |
 | BoardSwitcher | Button + Menu | Change board | — |
@@ -237,13 +237,19 @@ Every icon-only control has a tooltip and an accessible label with the same word
 **Capture overlay** · **Template fill form** · **Onboarding (4 steps)** · **Settings**.
 
 ### ItemCard anatomy (the most important component)
-Panel list row (comfortable, 56 tall at 320 wide; the Main window's card keeps its own layout, see the last bullet):
+One row, `components/item-card.slint`, used by the Panel, the Picker and the Main window. Comfortable row (56 tall at 320 wide):
 ```
  1  [tile]  Title of the snippet
          Preview line, secondary colour…        [Copy][Edit][More]  ← on hover / selection, preview line only
 ```
-- **Number gutter:** 16px wide before the tile, the quick-use number (1–9) in `type.xs` mono `text.tertiary`. Items 10+ show an empty gutter; the setting "Quick-use numbers" removes it.
-- **Type tile (every kind, plain text included):** 32×32, radius 6, a Phosphor glyph (16) on the kind's tile fill (*Item type tiles*). Images show a 32×32 centre crop with a 1px `border.subtle` instead. This replaces the old "no generic icons on plain text" rule: the icon is the type, and the row is not tinted.
+| Variant | Height | Tile | Used by |
+|---|---|---|---|
+| comfortable | 56 (68 with a where line) | 32×32, radius 6 | Panel List, Main list |
+| compact | 36 (52 with a where line); title and preview on one line | 24×24, radius 4 | Picker (place inline), Panel Compact, Main compact |
+| tile | min 96 | 24×24, radius 4 | Panel Cards (149 wide, tile on top); Main cards (tile inline with the title, `inline-tile`) |
+
+- **Number cell:** 16px plus a 4px gap before the tile, the quick-use number (1–9) in `type.xs` mono. Panel and Picker only (`numbered`); the Main window leaves it out. 10+ stay empty; the setting "Quick-use numbers" removes it.
+- **Type tile (every kind, plain text included):** a Phosphor glyph (16) on the kind's tile fill (*Item type tiles*). Images show a centre crop with a 1px `border.subtle` instead. The name of the kind is the tile's tooltip and accessible name.
 
   | Content | Preview line |
   |---|---|
@@ -253,15 +259,22 @@ Panel list row (comfortable, 56 tall at 320 wide; the Main window's card keeps i
   | Link | the domain, mono |
   | Image | "PNG · 480 × 120" |
   | File | "PDF · name · 2.4 MB" |
-  | Sensitive | mono, twelve dots in the Panel (no trailing characters: the Panel is always on top and visible in screen shares); `•••• 7f3a` in the Main window |
-- **Quiet rows:** transparent fill on `bg.surface` at rest, `bg.hover` on hover, `bg.selected` when selected. 8px radius. No coloured edge, except the 4px item label bar the user sets themselves (see *Item colour label*). In mixed views, a list label (6px mark + name, `type.xs`) sits at the right; Panel search results add a where line under the title (6px list-hue square + "Board · List").
-- **Click is Paste.** The whole row pastes into the Target (or copies when there is none); the footer says where it goes and the row tooltip says "Click to paste into Outlook. Shift+click copies." There is no Paste button on the row.
-- **Row actions:** on hover or for the selected row, **Copy**, **Edit** and **More** (28×28 ghost icon buttons in 32×32 hit boxes) sit right-aligned on the preview line over a solid row fill, never on the title line, so the title's width does not change. With no target Copy is hidden (the click already copies). More opens the row context menu (Pin, Move, Duplicate, Rename, Paste as plain text, Delete); Shift+click copies, Ctrl+E edits.
-- **Sensitive items:** a 28×28 eye button is always visible at the right end of the preview line; press and hold reveals the content (Space held works too). The actions sit left of it.
-- **Keyboard focus** adds a 2px inset `focus.ring` on focus-visible only, never on mouse press.
-- **Card pull (use feedback):** the card lifts 2px to depth level 2 over 140ms, the gutter number becomes a ✓ in `accent.text`, then it settles back over 200ms after 700ms. With reduced motion: no translation, ✓ swap only.
+  | Sensitive | mono, twelve dots (`••••••••••••`) in every host; no trailing characters, because the Panel and Picker are visible in screen shares. Press and hold (or hold Space) reveals it. |
+- **Search marks:** the matched part of the title and of the preview is marked (shared matcher in `snipdeck-app/src/search_mark.rs`); a tag hit shows "tag: x" as the preview.
+- **Where:** a search result or mixed view says where the item lives: a where line (6px list-hue square + "Board · List", `type.xs`) under the preview, or, with `where-inline` (the Picker), the same label right-aligned on the title line (at most 40% of the row; dropped when the title would fall under 12 characters).
+- **Fill:** transparent on `bg.surface` at rest, `bg.hover` on hover, `bg.selected` when selected. Selection is a fill, not a ring. Radius 6 compact, 8 otherwise. No coloured edge, except the 4px item label bar the user sets themselves (see *Item colour label*).
+- **Keyboard focus** adds a 2px inset `focus.ring` on keyboard focus only (`show-focus` or the row's own focus), never on mouse press or selection. Where the keyboard lives in a search field (Panel, Picker) rows show no ring.
+- **Row actions** (on hover, selection or focus; 28×28 ghost icon buttons in 32×32 hit boxes, right-aligned on the preview line over a solid row fill, so the title's width does not change; a sensitive item's eye button stays at the end):
+
+  | Host | Click | Actions |
+  |---|---|---|
+  | Panel | pastes into the Target (copies when none); Shift+click copies | Copy (hidden with no target), Edit, More |
+  | Picker | uses the row | Copy, Edit on the selected row only (`has-menu: false`: no More) |
+  | Main | selects (`pick-mode`; Enter or double-click uses) | Use (`arrow-bend-down-left`; Restore in Trash), Copy (hidden when Use already copies), Edit, More |
+
+  More (`dots-three`) opens the row context menu. The icon vocabulary applies: no kebab, and no More button resting on every row.
+- **Card pull (use feedback):** the card lifts 2px to depth level 2 over 140ms, the number becomes a ✓ in `accent.text`, then it settles back over 200ms after 700ms. With reduced motion: no translation, ✓ swap only.
 - Links don't fetch favicons: Snipdeck makes no network calls unless the user opts in. The site-icons setting is off by default.
-- **Main window:** unchanged by Panel v2 (its card keeps the 1px `border.subtle` outline, `⋯` menu and the `•••• 7f3a` mask); only the Panel adopts the quiet row and the type tile.
 
 ## 5. Layout
 
@@ -279,14 +292,14 @@ Panel list row (comfortable, 56 tall at 320 wide; the Main window's card keeps i
 - **DeckEdge:** when the list overflows, the bottom 10px shows two card edges, each 4px tall and inset 6px / 12px per side, in `bg.surface` with a `border.subtle` outline. The top edge shows the same once scrolled. No gradient fades.
 
 ### Picker
-- 560 wide, up to 9 visible rows plus the search field (44px tall).
+- 560 wide, up to 9 visible rows plus the search field (44px tall). Rows are the ItemCard compact variant, 36 tall with a 24px tile and the place inline (*ItemCard anatomy*). The selected row is a fill; the `focus.ring` shows on the search field.
 - Placed by the Picker setting (Below, Above, Right or Left of the caret; Below by default), one line clear of the caret so it covers neither the caret's line nor the next. If the chosen side has no room it flips to the opposite side, and the result is clamped to the work area. Right and Left keep the Picker beside the caret, top-aligned with it, and may cover the rest of that line. With no caret it opens at the mouse.
 
 ### Main window (3-pane)
 | Zone | Width | Content |
 |---|---|---|
 | Sidebar | 232 (resizable 200–320), on Mica | Search, Recent, Pinned, Boards ▸ Lists, Tags, Trash |
-| Item list | flex, min 320 | toolbar (view, sort, filter) + ItemCards / tiles |
+| Item list | flex, min 320 | toolbar (view, sort, filter) + ItemCards / tiles. Toolbar controls are 32px tall; below 560px of item area (at 100% text size) the Commands and View buttons are icon-only (tooltips "Commands (Ctrl+K)", "View"). |
 | Detail | 400 (resizable 320–640) | preview, editor, metadata |
 
 ## 6. Depth

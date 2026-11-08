@@ -8,6 +8,7 @@ date at the real release. The owner capped this session at 96% weekly usage; the
 ## Now (2026-11-07, hand-off to a new session; finish everything in PR #5)
 Branch `claude/compassionate-pascal-pod8ux`, PR https://github.com/braydenh563/snipdeck/pull/5 (green on 7571b79). Keep all work on this branch and PR; never merge, tag or release.
 State (2026-11-08, pushed d691b10, full gate green): Panel v2 done incl. audit 2 (tab slivers left: item 3 reverted, `.claude/remaining/audit2.md`); Symbols slices 1-7 done (Windows checks = Quick check 13-18); UX quick wins; importers backend + hardening; review 1107 fixes; Rebuild-from-backup safety (`docs/reviews/rebuild-safety-plan.md`).
+Shared look slices 1-8 merged (b70b909)
 Queue (`.claude/work-order.md`), in order:
 1. Shared look slices 1-8 (`docs/reviews/shared-look-spec.md` §8; 1+2 in progress on wt/look12).
 2. v1.0.1 items (compact dock, sidebar resize, header select/delete, paste/drop create, Ctrl+C, quick-add, multi-row drag, ...), importer Settings UI wiring.
