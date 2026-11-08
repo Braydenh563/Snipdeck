@@ -2847,8 +2847,11 @@ msgstr "Deine Bibliothek wurde nach einiger Zeit gesperrt. Der vertrauliche Text
 msgid "Your library was erased."
 msgstr "Deine Bibliothek wurde gelöscht."
 
-msgid "Your old database is kept as {}."
-msgstr "Deine alte Datenbank bleibt als {} erhalten."
+msgid "Your library was rebuilt, but the cleanup failed. Snipdeck will finish it the next time it starts."
+msgstr "Deine Bibliothek wurde neu aufgebaut, aber das Aufräumen ist fehlgeschlagen. Snipdeck schließt es beim nächsten Start ab."
+
+msgid "Your old database is kept in the folder {}."
+msgstr "Deine alte Datenbank bleibt im Ordner {} erhalten."
 
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "Deine vertraulichen Textbausteine werden nur durch Windows geschützt, wie im Kostenlos-Tarif."

@@ -2847,8 +2847,11 @@ msgstr "Tu biblioteca se bloqueó tras un rato. El fragmento sensible que editab
 msgid "Your library was erased."
 msgstr "Tu biblioteca se borró."
 
-msgid "Your old database is kept as {}."
-msgstr "Tu base de datos anterior se conserva como {}."
+msgid "Your library was rebuilt, but the cleanup failed. Snipdeck will finish it the next time it starts."
+msgstr "Tu biblioteca se reconstruyó, pero la limpieza falló. Snipdeck la terminará en el próximo inicio."
+
+msgid "Your old database is kept in the folder {}."
+msgstr "Tu base de datos anterior se conserva en la carpeta {}."
 
 msgid "Your sensitive items will be protected by Windows alone, as on the Free plan."
 msgstr "Tus fragmentos sensibles estarán protegidos solo por Windows, como en el plan Gratis."
