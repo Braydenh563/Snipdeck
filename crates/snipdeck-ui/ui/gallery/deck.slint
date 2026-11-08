@@ -359,3 +359,71 @@ export component DeckCjkProbe inherits Window {
         }
     }
 }
+
+// A quiet ItemCard (Panel v2 look) wired to the gallery's counters, for the shared-look props: `where-inline`,
+// `use-action`, `inline-tile`, and `has-menu: false`.
+component QuietCard inherits ItemCard {
+    callback act(string);
+    quiet: true;
+    kind: ItemKind.text;
+    title: "Thanks, received";
+    preview: "Thanks for sending this over. I'll review it today and get back to you by end of day.";
+    numbered: false;
+    use => { root.act("use"); }
+    copy => { root.act("copy"); }
+    edit => { root.act("edit"); }
+    context-menu-requested(x, y) => { root.act("menu"); }
+}
+
+// Four quiet cards: the Picker's compact row at rest and with its actions, the Main window's List row with a Use action, and
+// the inline-tile Card. Card order is the tree order the tests rely on.
+export component QuietCardGallery inherits Window {
+    in property <bool> dark: false;
+    in-out property <string> last-action;
+    in-out property <int> actions: 0;
+    width: 600px;
+    height: 400px;
+    background: Theme.bg-surface;
+    init => { Palette.dark = root.dark; }
+    changed dark => { Palette.dark = root.dark; }
+
+    VerticalLayout {
+        padding: Space.s4;
+        spacing: Space.s2;
+        alignment: start;
+        QuietCard {
+            variant: ItemCardVariant.compact;
+            where-inline: true;
+            has-menu: false;
+            list-name: "Work · Email replies";
+            list-color: Primitives.teal-600;
+            act(a) => { root.last-action = a; root.actions += 1; }
+        }
+        QuietCard {
+            variant: ItemCardVariant.compact;
+            where-inline: true;
+            has-menu: false;
+            show-actions: true;
+            selected: true;
+            list-name: "Work · Email replies";
+            list-color: Primitives.teal-600;
+            act(a) => { root.last-action = a; root.actions += 1; }
+        }
+        QuietCard {
+            variant: ItemCardVariant.comfortable;
+            use-action: true;
+            use-tip: "Paste into Outlook (Enter)";
+            show-actions: true;
+            act(a) => { root.last-action = a; root.actions += 1; }
+        }
+        HorizontalLayout {
+            alignment: start;
+            QuietCard {
+                width: 200px;
+                variant: ItemCardVariant.tile;
+                inline-tile: true;
+                act(a) => { root.last-action = a; root.actions += 1; }
+            }
+        }
+    }
+}

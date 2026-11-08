@@ -17,7 +17,7 @@ export struct MenuEntry {
 }
 
 // DESIGN.md §4 MenuItem: 28px row with an optional icon, label and shortcut keycap. `current` is the
-// highlighted row (pointer hover or keyboard position, owned by Menu). Disabled rows are dimmed and
+// highlighted row (pointer hover or keyboard position, owned by Menu). Disabled rows are `text-tertiary` and
 // ignore the pointer and the keyboard.
 export component MenuItem inherits Rectangle {
     in property <string> text;
@@ -35,15 +35,15 @@ export component MenuItem inherits Rectangle {
     // The pointer moved onto an enabled row.
     callback pointer-entered();
 
-    property <color> fg: root.destructive ? Theme.danger-fg : Theme.text-primary;
+    // Disabled is `text-tertiary` on glyph and label, never an opacity (Panel v2 spec 2.1).
+    property <color> fg: root.disabled ? Theme.text-tertiary : root.destructive ? Theme.danger-fg : Theme.text-primary;
 
     height: max(Space.hit, Type.line-base + Space.s2);
     background: root.current && !root.disabled ? Theme.bg-overlay-hover : transparent;
-    border-radius: Radius.sm;
+    border-radius: Radius.md;
     // The highlighted row is where the keyboard is: it carries the focus ring (WCAG 2.4.7).
     border-width: root.current && !root.disabled ? 2px : 0px;
     border-color: Theme.focus-ring;
-    opacity: root.disabled ? 0.45 : 1.0;
     accessible-role: list-item;
     accessible-label: root.text;
     accessible-description: root.shortcut;
