@@ -2,7 +2,7 @@
 //! `#[path]`-included, so each test binary compiles its own copy.
 #![allow(dead_code, reason = "each test binary uses a subset of the fixtures")]
 
-use slint::{Color, ComponentHandle, ModelRc, VecModel};
+use slint::{Color, ModelRc, VecModel};
 use snipdeck_ui::{ItemKind, MenuEntry, PanelRow, PanelWindow, PinnedItem, TabItem};
 
 /// Step-600 list hues (light theme) from `design/tokens/palette.json`.

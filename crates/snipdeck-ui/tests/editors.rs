@@ -45,6 +45,11 @@ fn item_fit(width: u32, dark: bool, setup: impl Fn(&ItemEditor)) -> Harness<Item
     let probe = item((width, 760), dark);
     setup(&probe.component);
     let _ = render(&probe);
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "a window height of 380 to 700"
+    )]
     let height = probe.component.get_fit_height().ceil() as u32;
     drop(probe);
     let h = item((width, height), dark);

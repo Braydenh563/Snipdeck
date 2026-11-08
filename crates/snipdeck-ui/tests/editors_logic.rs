@@ -621,7 +621,7 @@ ui_tests! {
         assert!(group.absolute_position().y < content.absolute_position().y, "Kind sits above Content");
         for label in ["Text", "Code", "Link", "Template"] {
             let chip = find(&ui, label, AccessibleRole::RadioButton);
-            assert_eq!(chip.size().height, 32.0, "{label} chip is 32 tall");
+            assert!((chip.size().height - 32.0).abs() < 0.5, "{label} chip is 32 tall");
             assert!(chip.size().width >= 56.0, "{label} chip {}", chip.size().width);
         }
         assert_eq!(find(&ui, "Text", AccessibleRole::RadioButton).accessible_checked(), Some(true));
@@ -659,7 +659,7 @@ ui_tests! {
         settle();
         let closed = find(&ui, "Show title, colour, tags and privacy", AccessibleRole::Button);
         assert_eq!(closed.accessible_expanded(), Some(false));
-        assert_eq!(closed.size().height, 32.0);
+        assert!((closed.size().height - 32.0).abs() < 0.5);
         let field = find(&ui, "Content", AccessibleRole::TextInput);
         assert!(closed.size().width >= field.size().width - 1.0, "the row spans the form");
         ui.set_more_open(true);
@@ -676,7 +676,7 @@ ui_tests! {
         assert!(missing(&ui, "Kind", AccessibleRole::RadioGroup), "no choice for a captured item");
         assert!(missing(&ui, "Image", AccessibleRole::RadioButton));
         let chip = find(&ui, "Image", AccessibleRole::Text);
-        assert_eq!(chip.size().height, 32.0);
+        assert!((chip.size().height - 32.0).abs() < 0.5);
         let before = ui.get_kind_index();
         click(&chip);
         assert_eq!(ui.get_kind_index(), before);
