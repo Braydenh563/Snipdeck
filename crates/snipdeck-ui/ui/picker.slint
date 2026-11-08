@@ -432,7 +432,6 @@ export component PickerWindow inherits Window {
                     visible: root.rows.length > 0;
 
                     for row[i] in root.rows: ItemCard {
-                        quiet: true;
                         where-inline: true;
                         has-menu: false;
                         show-actions: i == root.sel;
@@ -448,13 +447,11 @@ export component PickerWindow inherits Window {
                         preview-match: row.preview-match;
                         tag-hit: row.tag-hit;
                         masked-preview: row.masked-preview;
-                        extension: row.extension;
                         image: row.image;
                         // The place stays on the selected row too, left of its actions: the use label is in the footer.
                         list-name: row.board-name != "" ? row.board-name + " \u{b7} " + row.list-name : row.list-name;
                         list-color: row.list-color;
                         selected: i == root.sel;
-                        use-label: "";
                         masked-hint: @tr("Hidden. Open it in the Panel to reveal.");
                         pulling: i == root.used-index;
                         keyboard-focusable: false;

@@ -34,11 +34,8 @@ component SampleCard inherits ItemCard {
     preview: root.s.preview;
     masked-preview: root.s.masked;
     masked-hint: "Hidden. Hold Space to reveal.";
-    extension: root.s.ext;
     number: root.s.number;
     selected: root.s.selected;
-    show-use-label: root.s.show-label;
-    use-label: "Paste";
     revealed: root.s.revealed;
     pulling: root.s.pulling;
     list-name: root.s.list-name;
@@ -364,7 +361,6 @@ export component DeckCjkProbe inherits Window {
 // `use-action`, `inline-tile`, and `has-menu: false`.
 component QuietCard inherits ItemCard {
     callback act(string);
-    quiet: true;
     kind: ItemKind.text;
     title: "Thanks, received";
     preview: "Thanks for sending this over. I'll review it today and get back to you by end of day.";
