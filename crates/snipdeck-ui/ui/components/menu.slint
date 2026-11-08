@@ -1,5 +1,6 @@
 import { Theme, Type, Radius, Space, Motion, Fonts } from "../theme.slint";
 import { Icon } from "icon.slint";
+import { Icons } from "../icons.slint";
 import { Keycap } from "keycap.slint";
 
 // One row of a Menu. A separator row has `separator: true` and ignores the rest.
@@ -28,6 +29,8 @@ export component MenuItem inherits Rectangle {
     in property <bool> current: false;
     // The highlight is the keyboard's (not the pointer's or the host's): it adds the 2px focus ring.
     in property <bool> ring: false;
+    // The row's height: 32, or 28 when the menu would not fit its window at 32.
+    in property <length> row-h: Space.s8;
     // Keep the 16px icon column even when this row has no icon (so labels line up).
     in property <bool> reserve-icon: true;
     // Position in the menu and the menu length, for assistive technology.
@@ -40,7 +43,7 @@ export component MenuItem inherits Rectangle {
     // Disabled is `text-tertiary` on glyph and label, never an opacity (Panel v2 spec 2.1).
     property <color> fg: root.disabled ? Theme.text-tertiary : root.destructive ? Theme.danger-fg : Theme.text-primary;
 
-    height: max(Space.s8, Type.line-base + Space.s2);
+    height: max(root.row-h, Type.line-base + Space.s2);
     background: root.current && !root.disabled ? Theme.bg-overlay-hover : transparent;
     border-radius: Radius.md;
     // The row the keyboard highlights carries the focus ring (WCAG 2.4.7); a pointer highlight is a fill only.
@@ -173,6 +176,11 @@ export component Menu inherits Rectangle {
 
     // Sized to its rows (label, shortcut and the fixed gaps), never to the window: at least 180px, at most 320px.
     // A host that sets `width` itself overrides this.
+    // 32px rows; the old 28px when the 32px menu would be taller than `menu-max-h` (before it falls back to scrolling).
+    property <length> full-h: 2 * Space.s1 + root.action-count() * Space.s8 + (root.entries.length - root.action-count()) * (Space.s2 + 1px);
+    property <length> row-h: root.full-h > root.menu-max-h ? Space.hit : Space.s8;
+    // More rows lie below the visible part: the cue shows (a hairline and a caret at the bottom edge).
+    property <bool> more-below: flick.content-height + flick.content-y > flick.height + Space.s1 + 1px;
     property <length> text-w: text-measure.preferred-width;
     property <length> key-w: key-measure.preferred-width;
     width: min(max(180px, root.text-w + (root.key-w > 0px ? root.key-w + 2 * Space.s1 + 2px + Space.s2 : 0px)
@@ -249,7 +257,7 @@ export component Menu inherits Rectangle {
         padding: Space.s1;
         alignment: start;
         for entry[i] in root.entries: Rectangle {
-            height: entry.hidden ? 0px : entry.separator ? Space.s2 + 1px : max(Space.s8, Type.line-base + Space.s2);
+            height: entry.hidden ? 0px : entry.separator ? Space.s2 + 1px : max(root.row-h, Type.line-base + Space.s2);
             // Keyboard moves keep the highlighted row inside a scrolled menu.
             property <bool> cur: root.current == i;
             changed cur => {
@@ -271,6 +279,7 @@ export component Menu inherits Rectangle {
                 disabled: entry.disabled;
                 current: root.current == i;
                 ring: root.by-key;
+                row-h: root.row-h;
                 reserve-icon: root.icons;
                 index: root.action-index(i);
                 count: root.action-count();
@@ -283,4 +292,26 @@ export component Menu inherits Rectangle {
         }
     }
 }
+    // The cue that the menu scrolls: a hairline and a caret at the bottom edge while rows are hidden below.
+    more-cue := Rectangle {
+        visible: root.more-below;
+        y: parent.height - self.height - 1px;
+        x: 1px;
+        width: parent.width - 2px;
+        height: 20px;
+        background: Theme.bg-overlay;
+        border-radius: Radius.lg;
+        Rectangle {
+            width: parent.width;
+            height: 1px;
+            background: Theme.border-subtle;
+        }
+        Icon {
+            source: Icons.caret-down;
+            size: 16px;
+            tint: Theme.text-secondary;
+            x: (parent.width - self.width) / 2;
+            y: 2px;
+        }
     }
+}

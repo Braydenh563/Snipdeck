@@ -11,7 +11,7 @@
 
 use std::{cell::RefCell, rc::Rc, time::Duration};
 
-use i_slint_backend_testing::{AccessibleRole, ElementHandle};
+use i_slint_backend_testing::{AccessibleRole, ElementHandle, ElementQuery};
 use slint::{ComponentHandle, Model, platform::Key};
 use snipdeck_app::{
     binding::Binding,
@@ -987,6 +987,66 @@ fn open_menu(r: &Rig) {
 
 fn menu_row(r: &Rig, label: &str) -> ElementHandle {
     element(&r.ui, label, AccessibleRole::ListItem)
+}
+
+fn open_menu_at(r: &Rig, height: f32) {
+    r.window().set_size(slint::LogicalSize::new(320.0, height));
+    slint::platform::update_timers_and_animations();
+    click(r.window(), &r.button("More"));
+    assert!(r.ui.get_app_menu_open(), "the kebab click opened the menu");
+}
+
+fn cue_visible(r: &Rig) -> bool {
+    ElementQuery::from_root(&r.ui)
+        .match_id("Menu::more-cue")
+        .find_all()
+        .iter()
+        .any(|e| e.size().width > 0.0)
+}
+
+#[test]
+fn the_app_menu_fits_a_560px_panel_with_quit_in_view_and_no_scroll() {
+    on_ui_thread(|| {
+        let r = rig();
+        open_menu_at(&r, 560.0);
+        let menu = element(&r.ui, "Panel menu", AccessibleRole::List);
+        let quit = menu_row(&r, "Quit");
+        let (m, q) = (menu.absolute_position(), quit.absolute_position());
+        assert!(
+            q.y + quit.size().height <= m.y + menu.size().height + 0.5,
+            "Quit lies inside the menu: row bottom {} menu bottom {}",
+            q.y + quit.size().height,
+            m.y + menu.size().height
+        );
+        assert!(!cue_visible(&r), "nothing scrolls, so no cue");
+        // The rows use the dense 28px height when 32px would not fit.
+        assert!(
+            (quit.size().height - 28.0).abs() < 0.5,
+            "28px rows: {}",
+            quit.size().height
+        );
+    });
+}
+
+#[test]
+fn the_app_menu_at_the_minimum_height_shows_a_cue_and_end_reaches_quit() {
+    on_ui_thread(|| {
+        let r = rig();
+        open_menu_at(&r, 328.0);
+        assert!(cue_visible(&r), "more rows lie below: the cue is drawn");
+        press(r.window(), &key(Key::End));
+        slint::platform::update_timers_and_animations();
+        let quit = menu_row(&r, "Quit");
+        assert_eq!(
+            quit.accessible_item_selected(),
+            Some(true),
+            "End reaches Quit"
+        );
+        assert!(
+            !cue_visible(&r),
+            "at the end of the list nothing lies below"
+        );
+    });
 }
 
 #[test]
