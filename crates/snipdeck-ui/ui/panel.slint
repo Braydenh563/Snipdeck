@@ -1715,6 +1715,7 @@ export component PanelWindow inherits Window {
                                                 number: i < 9 ? i + 1 : 0;
                                                 numbered: root.show-numbers;
                                                 pick-mode: root.marked-count > 0;
+                                                actions-hidden: root.marked-count > 0;
                                                 modifier-picks: true;
                                                 show-focus: root.marked-count > 0 && i == root.sel;
                                                 title: item.title;

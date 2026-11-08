@@ -1231,7 +1231,12 @@ where
 fn main_row(row: &crate::main_window::Row, dark: bool) -> ui::MainRow {
     let (list_name, color) = row.list.as_ref().map_or_else(
         || (SharedString::new(), slint::Color::default()),
-        |label| (label.name.as_str().into(), list_color(label.accent, dark)),
+        |label| {
+            (
+                crate::picker_binding::picker_place(&label.board, &label.name).into(),
+                list_color(label.accent, dark),
+            )
+        },
     );
     let (label, label_name) = crate::binding::label_fields(row.label);
     let marks = row.marks.fields();

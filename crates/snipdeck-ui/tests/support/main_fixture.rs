@@ -117,6 +117,40 @@ pub fn awkward_rows() -> Vec<MainRow> {
     ]
 }
 
+/// A search for "re" across lists: marks in a title, in a preview and a tag hit, the list each lives in, a secret.
+pub fn search_rows() -> Vec<MainRow> {
+    vec![
+        MainRow {
+            mark_before: "Thanks, ".into(),
+            mark_text: "re".into(),
+            list_name: "Email replies".into(),
+            list_color: TEAL_600,
+            ..row(ItemKind::Text, "Thanks, received", "Thanks for sending this over. I'll review it today.")
+        },
+        MainRow {
+            preview: "A gentle reminder that invoice {Number} is due on {Date}.".into(),
+            preview_before: "A gentle ".into(),
+            preview_match: "re".into(),
+            list_name: "Email replies".into(),
+            list_color: TEAL_600,
+            selected: true,
+            ..row(ItemKind::Template, "Invoice reminder", "")
+        },
+        MainRow {
+            tag_hit: "retry".into(),
+            list_name: "Code".into(),
+            list_color: VIOLET_600,
+            ..row(ItemKind::Code, "Backoff helper", "async fn backoff<T>(f: impl Fn() -> T) -> T")
+        },
+        MainRow {
+            masked_preview: "•••• 7f3a".into(),
+            list_name: "Addresses".into(),
+            list_color: AMBER_600,
+            ..row(ItemKind::Sensitive, "Server password", "")
+        },
+    ]
+}
+
 /// Japanese and Chinese rows. Never rendered into a golden; logic tests measure them.
 pub fn cjk_rows() -> Vec<MainRow> {
     vec![

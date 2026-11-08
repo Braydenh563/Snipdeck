@@ -298,6 +298,8 @@ export component ItemCard inherits Rectangle {
     in property <bool> copy-action: true;
     // Forces the quiet row's actions visible (the selected row; tests and galleries, as hover cannot be forced headlessly).
     in property <bool> show-actions: false;
+    // Quiet row: the actions stay hidden even on hover (several rows are selected and an action would act on all of them).
+    in property <bool> actions-hidden: false;
     // Quiet row: the row's tooltip ("Click to paste into Outlook. Shift+click copies.").
     in property <string> row-tip;
 
@@ -511,7 +513,7 @@ export component ItemCard inherits Rectangle {
     property <bool> more-action: root.q && root.has-menu;
     property <int> action-count: (root.use-action ? 1 : 0) + (root.copy-action ? 1 : 0) + (root.edit-action ? 1 : 0) + (root.more-action ? 1 : 0);
     property <length> qr-actions-w: root.action-count * root.q-box;
-    property <bool> qr-actions-shown: root.q && root.action-count > 0 && !root.pick-mode && (root.hovered || root.show-actions || root.focused);
+    property <bool> qr-actions-shown: root.q && root.action-count > 0 && !root.actions-hidden && (root.hovered || root.show-actions || root.focused);
     // The right end of the action group: left of the eye.
     property <length> act-right: root.qr-right - root.qr-eye-w;
     property <length> qr-stack-w: root.stack-position > 0 ? 36px + Space.s1 : 0px;

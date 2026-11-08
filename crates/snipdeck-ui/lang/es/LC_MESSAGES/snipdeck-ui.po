@@ -1463,6 +1463,9 @@ msgstr "Sin coincidencias"
 msgid "No matches in all boards"
 msgstr "Sin coincidencias en todos los tableros"
 
+msgid "No matches in {}"
+msgstr "Sin coincidencias en {}"
+
 msgid "No matching command"
 msgstr "Ningún comando coincide"
 
@@ -3050,6 +3053,14 @@ msgid "{n} item will move to Trash with it. You can restore them for 30 days."
 msgid_plural "{n} items will move to Trash with it. You can restore them for 30 days."
 msgstr[0] "{n} elemento se moverá también a la papelera. Puedes restaurarlo durante 30 días."
 msgstr[1] "{n} elementos se moverán también a la papelera. Puedes restaurarlos durante 30 días."
+
+msgid "{n} match in {}"
+msgid_plural "{n} matches in {}"
+msgstr[0] "{n} coincidencia en {}"
+msgstr[1] "{n} coincidencias en {}"
+
+msgid "{} (Enter)"
+msgstr "{} (Intro)"
 
 msgid "{} KB"
 msgstr "{} KB"
