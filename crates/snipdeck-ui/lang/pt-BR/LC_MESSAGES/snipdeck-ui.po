@@ -115,6 +115,9 @@ msgstr "Adicionar à pilha de colagem"
 msgid "Add to “{}”"
 msgstr "Adicionar a “{}”"
 
+msgid "Added to {}"
+msgstr "Adicionado a {}"
+
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "Adiciona uma senha à proteção do próprio Windows para seus itens sensíveis. Pedida quando você usa um item sensível pela primeira vez e de novo após {} minutos sem uso."
 
@@ -2594,6 +2597,9 @@ msgstr "Este item foi excluído. Nada foi salvo."
 
 msgid "This list is empty"
 msgstr "Esta lista está vazia"
+
+msgid "This looks like a password or key, so it was not saved. Check it, then save."
+msgstr "Parece uma senha ou chave, então não foi salvo. Confira e depois salve."
 
 msgid "This template can't be read. Open it to fix it."
 msgstr "Este modelo não pode ser lido. Abra-o para corrigi-lo."

@@ -179,7 +179,9 @@ fn start() -> (MainWindow, Log) {
     hook!(on_clear_selection_requested, || "clear".to_string());
     hook!(on_item_action, |a, i| format!("action:{a:?}:{i}"));
     hook!(on_paste_create_requested, || "paste-create".to_string());
-    hook!(on_copy_selection_requested, |i| format!("copy-selection:{i}"));
+    hook!(on_copy_selection_requested, |i| format!(
+        "copy-selection:{i}"
+    ));
     hook!(on_toast_edit, || "toast-edit".to_string());
     hook!(on_item_reorder_requested, |d| format!("reorder:{d}"));
     hook!(on_move_chosen, |i| format!("move:{i}"));
@@ -1404,12 +1406,18 @@ ui_tests! {
         ui.set_toast_text("Added to Replies".into());
         ui.set_toast_undo_label("Undo".into());
         settle();
-        assert!(missing(&ui, "Edit", AccessibleRole::Button));
+        // The item rows have Edit buttons of their own: count them.
+        let rows_only = all(&ui, "Edit", AccessibleRole::Button).len();
         ui.set_toast_edit_label("Edit".into());
         settle();
+        let with_toast = all(&ui, "Edit", AccessibleRole::Button);
+        assert_eq!(with_toast.len(), rows_only + 1, "the toast gained an Edit button");
         take(&log);
-        find(&ui, "Edit", AccessibleRole::Button).invoke_accessible_default_action();
-        assert_eq!(take(&log), ["toast-edit"]);
+        for button in &with_toast {
+            // Only the toast's button reports `toast-edit`.
+            button.invoke_accessible_default_action();
+        }
+        assert!(take(&log).contains(&"toast-edit".to_string()));
     }
 
     fn every_control_has_a_role_a_label_and_a_big_enough_target() {

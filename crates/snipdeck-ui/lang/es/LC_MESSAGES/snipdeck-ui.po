@@ -115,6 +115,9 @@ msgstr "Añadir a la pila de pegado"
 msgid "Add to “{}”"
 msgstr "Añadir a «{}»"
 
+msgid "Added to {}"
+msgstr "Añadido a {}"
+
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "Añade una contraseña además de la protección de Windows para tus fragmentos sensibles. Se pide la primera vez que usas un fragmento sensible y de nuevo tras {} minutos sin usarlo."
 
@@ -2594,6 +2597,9 @@ msgstr "Este elemento se eliminó. No se guardó nada."
 
 msgid "This list is empty"
 msgstr "Esta lista está vacía"
+
+msgid "This looks like a password or key, so it was not saved. Check it, then save."
+msgstr "Parece una contraseña o una clave, así que no se guardó. Revísala y luego guarda."
 
 msgid "This template can't be read. Open it to fix it."
 msgstr "No se puede leer esta plantilla. Ábrela para corregirla."

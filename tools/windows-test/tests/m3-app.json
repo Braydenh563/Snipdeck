@@ -329,6 +329,20 @@
       "title": "Undo and redo (O47)",
       "do": "Open the Panel. Delete an item (it shows an Undo message), then press Ctrl+Z and then Ctrl+Y. Pin an item, move one to another list, then press Ctrl+Z twice and Ctrl+Y once. Use the Undo and Redo buttons in the Panel header and in the Main toolbar. Hover the buttons. Delete a list in Main and press the Undo button on the message.",
       "expect": "Ctrl+Z takes back the last change and says what it undid; Ctrl+Y brings it back. The Undo message button does the same for its own change. The header and toolbar buttons are greyed when there is nothing to undo or redo, and their tooltips name the change they would undo or redo. Write which change was not undone correctly in the note (n)."
+    },
+    {
+      "id": "39",
+      "v1": true,
+      "title": "Paste to create (O47)",
+      "do": "Copy some words in Notepad. Open the Panel (click a list row once so no text box has the focus) and press Ctrl+V. Then copy a web address (https://example.com) in your browser and press Ctrl+V in the Panel again. Do the same in the Main window with the item list focused. Press the Edit button on the 'Added to ...' message, then Undo on a second paste.",
+      "expect": "Each paste adds one item at the top of the list you are looking at; the words make a Text item and the address makes a Link. The message says 'Added to <list>' with Undo and Edit buttons; Edit opens that item in the editor; Undo moves it to the Trash. Ctrl+V with the cursor in the search box pastes into the box and adds nothing. Write what went wrong in the note (n)."
+    },
+    {
+      "id": "40",
+      "v1": true,
+      "title": "Paste a secret and Ctrl+C on items (O47)",
+      "do": "Copy a line like 'password: hunter2' (or a GitHub token starting ghp_) and press Ctrl+V on the Panel list. Then select one item and press Ctrl+C, paste it into Notepad. Mark three items (Ctrl+click) and press Ctrl+C, paste into Notepad. Try with a Sensitive item selected on its own.",
+      "expect": "The secret is not saved: the item editor opens with the text and Sensitive turned on, and a message says why. Ctrl+C on one item copies it like its Copy button (a Sensitive item is cleared from the clipboard after the usual time); with several items they are copied one per line and Sensitive ones are left out. Write what went wrong in the note (n)."
     }
   ]
 }

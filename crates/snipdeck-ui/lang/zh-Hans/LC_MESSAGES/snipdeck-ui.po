@@ -115,6 +115,9 @@ msgstr "添加到粘贴堆栈"
 msgid "Add to “{}”"
 msgstr "添加到“{}”"
 
+msgid "Added to {}"
+msgstr "已添加到 {}"
+
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "在 Windows 自身保护之上，为你的敏感片段添加密码。首次使用敏感片段时要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。"
 
@@ -2587,6 +2590,9 @@ msgstr "此片段已删除。未保存任何内容。"
 
 msgid "This list is empty"
 msgstr "此列表为空"
+
+msgid "This looks like a password or key, so it was not saved. Check it, then save."
+msgstr "这看起来像密码或密钥，所以没有保存。请检查后再保存。"
 
 msgid "This template can't be read. Open it to fix it."
 msgstr "无法读取此模板。请打开它进行修复。"

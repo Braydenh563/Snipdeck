@@ -53,17 +53,18 @@ pub fn looks_secret(text: &str) -> Option<Secret> {
 }
 
 fn has_token(t: &str) -> bool {
-    t.split(|c: char| c.is_whitespace() || matches!(c, '"' | '\'' | '=' | ':' | ',')).any(|w| {
-        let long = |prefix: &str, min: usize| w.starts_with(prefix) && w.len() >= min;
-        long("AKIA", 20)
-            || long("ghp_", 30)
-            || long("gho_", 30)
-            || long("github_pat_", 30)
-            || long("sk-", 24)
-            || long("xoxb-", 20)
-            || long("xoxp-", 20)
-            || is_jwt(w)
-    })
+    t.split(|c: char| c.is_whitespace() || matches!(c, '"' | '\'' | '=' | ':' | ','))
+        .any(|w| {
+            let long = |prefix: &str, min: usize| w.starts_with(prefix) && w.len() >= min;
+            long("AKIA", 20)
+                || long("ghp_", 30)
+                || long("gho_", 30)
+                || long("github_pat_", 30)
+                || long("sk-", 24)
+                || long("xoxb-", 20)
+                || long("xoxp-", 20)
+                || is_jwt(w)
+        })
 }
 
 fn is_jwt(w: &str) -> bool {
@@ -79,19 +80,22 @@ fn is_jwt(w: &str) -> bool {
 fn says_password(t: &str) -> bool {
     t.lines().any(|line| {
         let l = line.trim().to_ascii_lowercase();
-        ["password", "passwd", "pwd", "secret", "api key", "api_key", "apikey", "token"]
-            .iter()
-            .any(|word| {
-                l.strip_prefix(word)
-                    .is_some_and(|rest| rest.trim_start().starts_with([':', '=']))
-            })
+        [
+            "password", "passwd", "pwd", "secret", "api key", "api_key", "apikey", "token",
+        ]
+        .iter()
+        .any(|word| {
+            l.strip_prefix(word)
+                .is_some_and(|rest| rest.trim_start().starts_with([':', '=']))
+        })
     })
 }
 
 fn looks_random(t: &str) -> bool {
     t.len() >= 20
         && !t.contains(char::is_whitespace)
-        && t.chars().all(|c| c.is_ascii_alphanumeric() || "-_+/=!@#$%^&*".contains(c))
+        && t.chars()
+            .all(|c| c.is_ascii_alphanumeric() || "-_+/=!@#$%^&*".contains(c))
         && t.chars().any(|c| c.is_ascii_digit())
         && t.chars().any(|c| c.is_ascii_lowercase())
         && t.chars().any(|c| c.is_ascii_uppercase())
@@ -129,11 +133,23 @@ mod tests {
     #[test]
     fn secrets_are_flagged_and_ordinary_text_is_not() {
         let table = [
-            ("-----BEGIN RSA PRIVATE KEY-----\nabc\n-----END RSA PRIVATE KEY-----", Some(Secret::PrivateKey)),
+            (
+                "-----BEGIN RSA PRIVATE KEY-----\nabc\n-----END RSA PRIVATE KEY-----",
+                Some(Secret::PrivateKey),
+            ),
             ("AKIAIOSFODNN7EXAMPLE", Some(Secret::Token)),
-            ("ghp_abcdefghijklmnopqrstuvwxyz0123456789", Some(Secret::Token)),
-            ("export KEY=sk-abcdefghijklmnopqrstuvwxyz", Some(Secret::Token)),
-            ("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abcdefghij", Some(Secret::Token)),
+            (
+                "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+                Some(Secret::Token),
+            ),
+            (
+                "export KEY=sk-abcdefghijklmnopqrstuvwxyz",
+                Some(Secret::Token),
+            ),
+            (
+                "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abcdefghij",
+                Some(Secret::Token),
+            ),
             ("password: hunter2", Some(Secret::Password)),
             ("user: me\nPassword = x", Some(Secret::Password)),
             ("Zk3pQ9vL2mX8wR5tY1nB7", Some(Secret::LooksRandom)),

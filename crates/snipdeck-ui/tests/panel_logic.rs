@@ -1707,16 +1707,21 @@ ui_tests! {
         ui.set_toast_undo_label("Undo".into());
         settle();
         find(&ui, "Undo", AccessibleRole::Button);
-        assert!(missing(&ui, "Edit", AccessibleRole::Button), "no Edit without the label");
+        // Rows have Edit buttons of their own: count them.
+        let rows_only = all(&ui, "Edit", AccessibleRole::Button).len();
         ui.set_toast_edit_label("Edit".into());
         settle();
         find(&ui, "Undo", AccessibleRole::Button);
+        let with_toast = all(&ui, "Edit", AccessibleRole::Button);
+        assert_eq!(with_toast.len(), rows_only + 1, "the toast gained an Edit button");
         take(&log);
-        find(&ui, "Edit", AccessibleRole::Button).invoke_accessible_default_action();
-        assert_eq!(take(&log), ["toast-edit"]);
+        for button in &with_toast {
+            button.invoke_accessible_default_action();
+        }
+        assert!(take(&log).contains(&"toast-edit".to_string()));
         ui.set_toast_edit_label("".into());
         settle();
-        assert!(missing(&ui, "Edit", AccessibleRole::Button));
+        assert_eq!(all(&ui, "Edit", AccessibleRole::Button).len(), rows_only);
     }
 
     fn ctrl_v_and_ctrl_c_on_the_list_ask_for_a_paste_and_a_copy_but_not_in_the_search_field() {

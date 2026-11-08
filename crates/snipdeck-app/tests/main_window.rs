@@ -97,10 +97,11 @@ fn controller_with(
 
 /// A rig whose clipboard holds `text`, as if the user had just copied it.
 fn rig_clipboard(text: &str) -> Rig {
-    let clip = snipdeck_platform::payload::Payload::new(vec![snipdeck_platform::payload::Data::Text(
-        text.into(),
-    )])
-    .expect("payload");
+    let clip =
+        snipdeck_platform::payload::Payload::new(vec![snipdeck_platform::payload::Data::Text(
+            text.into(),
+        )])
+        .expect("payload");
     rig_with(controller_with(
         demo::store(now()).expect("demo store"),
         Tier::Pro,
@@ -1458,12 +1459,20 @@ fn ctrl_v_on_the_list_adds_the_clipboard_text_but_not_in_the_search_field() {
         r.ui.invoke_focus_search();
         slint::platform::update_timers_and_animations();
         chord(r.window(), &[Key::Control], "v");
-        assert_eq!(r.titles().len(), before, "a focused search field pastes normally");
+        assert_eq!(
+            r.titles().len(),
+            before,
+            "a focused search field pastes normally"
+        );
         r.ui.invoke_focus_items();
         slint::platform::update_timers_and_animations();
         chord(r.window(), &[Key::Control], "v");
         assert_eq!(r.titles().len(), before + 1, "the list takes the paste");
-        assert!(r.ui.get_toast_text().contains("Added"), "{:?}", r.ui.get_toast_text());
+        assert!(
+            r.ui.get_toast_text().contains("Added"),
+            "{:?}",
+            r.ui.get_toast_text()
+        );
     });
 }
 

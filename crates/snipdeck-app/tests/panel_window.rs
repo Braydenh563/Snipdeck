@@ -1922,8 +1922,8 @@ fn a_symbol_cell_shows_its_name_and_the_click_hint_in_a_tooltip_and_opens_its_me
 }
 
 fn rig_clipboard(text: &str) -> Rig {
-    let clip = snipdeck_platform::payload::Payload::new(vec![Data::Text(text.into())])
-        .expect("payload");
+    let clip =
+        snipdeck_platform::payload::Payload::new(vec![Data::Text(text.into())]).expect("payload");
     rig_on(demo::store(now()).expect("demo store"), true, vec![clip])
 }
 

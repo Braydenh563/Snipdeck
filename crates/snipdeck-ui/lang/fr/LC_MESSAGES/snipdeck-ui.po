@@ -115,6 +115,9 @@ msgstr "Ajouter à la pile à coller"
 msgid "Add to “{}”"
 msgstr "Ajouter à « {} »"
 
+msgid "Added to {}"
+msgstr "Ajouté à {}"
+
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "Ajoute un mot de passe à la protection de Windows pour vos extraits sensibles. Demandé lors de la première utilisation d'un extrait sensible, puis de nouveau après {} minutes sans utilisation."
 
@@ -2594,6 +2597,9 @@ msgstr "Cet extrait a été supprimé. Rien n'a été enregistré."
 
 msgid "This list is empty"
 msgstr "Cette liste est vide"
+
+msgid "This looks like a password or key, so it was not saved. Check it, then save."
+msgstr "Cela ressemble à un mot de passe ou à une clé, donc rien n’a été enregistré. Vérifiez-le, puis enregistrez."
 
 msgid "This template can't be read. Open it to fix it."
 msgstr "Ce modèle est illisible. Ouvrez-le pour le corriger."

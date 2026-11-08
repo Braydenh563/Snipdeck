@@ -115,6 +115,9 @@ msgstr "Zum Einfügestapel hinzufügen"
 msgid "Add to “{}”"
 msgstr "Zu „{}“ hinzufügen"
 
+msgid "Added to {}"
+msgstr "Zu {} hinzugefügt"
+
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "Fügt ein Passwort zum Windows-Schutz für deine vertraulichen Textbausteine hinzu. Wird beim ersten Verwenden eines vertraulichen Textbausteins und erneut nach {} Minuten ohne Nutzung abgefragt."
 
@@ -2594,6 +2597,9 @@ msgstr "Dieser Textbaustein wurde gelöscht. Nichts wurde gespeichert."
 
 msgid "This list is empty"
 msgstr "Diese Liste ist leer"
+
+msgid "This looks like a password or key, so it was not saved. Check it, then save."
+msgstr "Das sieht nach einem Passwort oder Schlüssel aus und wurde deshalb nicht gespeichert. Prüfen Sie es und speichern Sie dann."
 
 msgid "This template can't be read. Open it to fix it."
 msgstr "Diese Vorlage kann nicht gelesen werden. Öffne sie, um sie zu reparieren."

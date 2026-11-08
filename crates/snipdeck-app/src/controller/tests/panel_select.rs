@@ -466,7 +466,10 @@ fn an_empty_clipboard_creates_nothing() {
     w.ctl.paste_create(Origin::Panel);
     let view = w.ctl.view();
     assert_eq!(view.rows.len(), 4);
-    assert_eq!(view.toast.expect("toast").message, ToastMessage::NothingToSave);
+    assert_eq!(
+        view.toast.expect("toast").message,
+        ToastMessage::NothingToSave
+    );
 }
 
 #[test]
@@ -476,7 +479,10 @@ fn a_secret_paste_opens_the_editor_sensitive() {
     w.ctl.paste_create(Origin::Panel);
     let view = w.ctl.view();
     assert_eq!(view.rows.len(), 4, "nothing was saved");
-    assert_eq!(view.toast.expect("toast").message, ToastMessage::LooksSecret);
+    assert_eq!(
+        view.toast.expect("toast").message,
+        ToastMessage::LooksSecret
+    );
     let editor = w.ctl.item_editor_view().expect("the editor is open");
     assert!(editor.is_new);
     assert!(editor.fields.sensitive);
@@ -491,8 +497,15 @@ fn ctrl_c_one_item_uses_item_copy() {
     let written = &w.ctl.services.clipboard.written;
     assert_eq!(written.len(), 1);
     assert_eq!(written[0].data(), [Data::Text("first".into())]);
-    assert_eq!(uses(&w, w.ids[0]), 1, "counted as a use, like the Copy button");
-    assert_eq!(w.ctl.view().toast.expect("toast").message, ToastMessage::Copied);
+    assert_eq!(
+        uses(&w, w.ids[0]),
+        1,
+        "counted as a use, like the Copy button"
+    );
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::Copied
+    );
 }
 
 #[test]

@@ -55,10 +55,8 @@ where
         );
         match saved {
             Ok(Captured::Saved { item, list }) => {
-                let step = self.record_step(
-                    Action::Paste,
-                    vec![Change::Restore(item_targets(&[item]))],
-                );
+                let step =
+                    self.record_step(Action::Paste, vec![Change::Restore(item_targets(&[item]))]);
                 self.show_added_toast(list, 1, step, item);
                 self.library_changed();
             }

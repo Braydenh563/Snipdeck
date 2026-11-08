@@ -115,6 +115,9 @@ msgstr "貼り付けスタックに追加"
 msgid "Add to “{}”"
 msgstr "「{}」に追加"
 
+msgid "Added to {}"
+msgstr "{} に追加しました"
+
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "機密スニペットを Windows の保護に加えてパスワードで守ります。機密スニペットを初めて使うときと、{}分間使わなかった後に入力を求めます。"
 
@@ -2587,6 +2590,9 @@ msgstr "このスニペットは削除されました。何も保存されてい
 
 msgid "This list is empty"
 msgstr "このリストは空です"
+
+msgid "This looks like a password or key, so it was not saved. Check it, then save."
+msgstr "パスワードまたはキーのようなので保存しませんでした。確認してから保存してください。"
 
 msgid "This template can't be read. Open it to fix it."
 msgstr "このテンプレートを読み込めません。開いて修正してください。"
