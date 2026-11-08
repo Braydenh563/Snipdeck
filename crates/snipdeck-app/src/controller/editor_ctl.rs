@@ -103,6 +103,9 @@ pub(super) struct ItemEditorSlot {
     baseline: Draft,
     last_draft: Option<Draft>,
     draft_cleared: bool,
+    /// This editor neither reads nor writes a draft, and leaves the draft of the same key alone
+    /// (a pasted secret opens beside a half-typed new item's draft).
+    no_draft: bool,
     draft_failed_told: bool,
     /// The Sensitive switch as the window last reported it (the two-second tick): an editor of a
     /// plain item becomes sensitive when the user turns it on.
@@ -269,7 +272,7 @@ where
             return false;
         }
         if let Some(slot) = self.item_editor.take() {
-            self.clear_draft(slot.draft_key());
+            self.clear_draft(&slot);
         }
         true
     }
@@ -334,6 +337,9 @@ where
             return false;
         };
         slot.live_sensitive = input.sensitive;
+        if slot.no_draft {
+            return false;
+        }
         let Some(drafts) = self.editor_env.drafts.as_ref() else {
             return false;
         };
@@ -385,9 +391,12 @@ where
         }
     }
 
-    fn clear_draft(&self, key: DraftKey) {
+    fn clear_draft(&self, slot: &ItemEditorSlot) {
+        if slot.no_draft {
+            return;
+        }
         if let Some(drafts) = self.editor_env.drafts.as_ref()
-            && let Err(e) = drafts.clear(key)
+            && let Err(e) = drafts.clear(slot.draft_key())
         {
             crate::trace!("draft not removed: {e}");
         }
@@ -399,7 +408,7 @@ where
     /// draft.
     pub fn item_editor_cancel(&mut self) {
         if let Some(slot) = self.item_editor.take() {
-            self.clear_draft(slot.draft_key());
+            self.clear_draft(&slot);
         }
     }
 
@@ -411,7 +420,7 @@ where
         if let Some(slot) = self.item_editor.take()
             && slot.sensitive()
         {
-            self.clear_draft(slot.draft_key());
+            self.clear_draft(&slot);
         }
     }
 

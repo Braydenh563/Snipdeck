@@ -173,6 +173,7 @@ where
         ToastMessage::Saved { list } => t.invoke_saved(list.into()),
         ToastMessage::AddedTo { list, .. } => t.invoke_added_to(list.into()),
         ToastMessage::LooksSecret => t.invoke_looks_secret(),
+        ToastMessage::PasteNotAddedEditorOpen => t.invoke_paste_not_added_editor_open(),
         ToastMessage::NothingToSave => t.invoke_nothing_to_save(),
         ToastMessage::TooLargeToSave => t.invoke_too_large_to_save(),
         ToastMessage::NoListToSave => t.invoke_no_list_to_save(),

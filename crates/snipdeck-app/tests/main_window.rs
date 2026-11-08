@@ -1452,7 +1452,7 @@ fn the_history_switch_in_the_welcome_tour_turns_the_inbox_off_and_on() {
 }
 
 #[test]
-fn ctrl_v_on_the_list_adds_the_clipboard_text_but_not_in_the_search_field() {
+fn ctrl_v_in_search_field_does_not_create_but_the_list_pastes() {
     on_ui_thread(|| {
         let r = rig_clipboard("pasted with ctrl v");
         let before = r.titles().len();
@@ -1473,18 +1473,5 @@ fn ctrl_v_on_the_list_adds_the_clipboard_text_but_not_in_the_search_field() {
             "{:?}",
             r.ui.get_toast_text()
         );
-    });
-}
-
-#[test]
-fn ctrl_v_in_search_field_does_not_create() {
-    on_ui_thread(|| {
-        let r = rig_clipboard("pasted with ctrl v");
-        let before = r.titles().len();
-        r.ui.invoke_focus_search();
-        slint::platform::update_timers_and_animations();
-        chord(r.window(), &[Key::Control], "v");
-        assert_eq!(r.titles().len(), before);
-        assert!(r.ui.get_toast_text().is_empty());
     });
 }

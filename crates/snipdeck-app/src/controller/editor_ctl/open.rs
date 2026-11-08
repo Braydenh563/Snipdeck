@@ -78,20 +78,26 @@ where
     }
 
     /// Ctrl+V with a secret on the clipboard: the editor on a new item in `list` holding `text`,
-    /// Sensitive on, and a toast that says why nothing was saved.
+    /// Sensitive on, and a toast that says why nothing was saved. The editor starts clean (no
+    /// draft is read) and leaves any draft of a half-typed new item alone. An editor that is
+    /// already open is kept as it is and the toast says the paste was not added.
     pub(in crate::controller) fn open_new_item_secret(&mut self, list: ListId, text: &str) {
         if self.raise_item_editor() {
+            self.show_toast(Toast {
+                kind: ToastKind::Neutral,
+                message: ToastMessage::PasteNotAddedEditorOpen,
+            });
             return;
         }
         match self.new_slot(list) {
-            Ok(slot) => {
-                self.install_item_editor(slot);
-                // After the install: a draft restored into the slot must not undo any of this.
-                if let Some(slot) = self.item_editor.as_mut() {
-                    slot.fields.kind = crate::paste_create::kind_of_text(text);
-                    text.clone_into(&mut slot.fields.content);
-                    slot.fields.sensitive = true;
-                }
+            Ok(mut slot) => {
+                slot.fields.kind = crate::paste_create::kind_of_text(text);
+                text.clone_into(&mut slot.fields.content);
+                slot.fields.sensitive = true;
+                slot.no_draft = true;
+                self.item_editor_seq += 1;
+                slot.seq = self.item_editor_seq;
+                self.item_editor = Some(slot);
                 self.show_toast(Toast {
                     kind: ToastKind::Neutral,
                     message: ToastMessage::LooksSecret,
@@ -239,6 +245,7 @@ where
             ),
             last_draft: None,
             draft_cleared: false,
+            no_draft: false,
             draft_failed_told: false,
             live_sensitive: false,
         };
@@ -309,6 +316,7 @@ where
             ),
             last_draft: None,
             draft_cleared: false,
+            no_draft: false,
             draft_failed_told: false,
             live_sensitive: false,
         };

@@ -843,8 +843,12 @@ where
         wire_effects!(on_toast_edit, |ctl| ctl.toast_edit());
         wire!(on_paste_create_requested, |ctl| ctl
             .paste_create(crate::item_editor::Origin::Panel));
-        wire!(on_copy_selection_requested, |ctl| ctl
-            .panel_copy_selection());
+        wire_effects!(on_copy_selection_requested, |ctl| {
+            match ctl.panel_copy_selection() {
+                Some(used) => ctl.after_use(&used),
+                None => Vec::new(),
+            }
+        });
         wire_effects!(on_open_requested, |ctl| ctl.open_main_window());
         wire!(on_undo_requested, |ctl| ctl.undo());
         wire!(on_redo_requested, |ctl| ctl.redo());

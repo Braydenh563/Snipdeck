@@ -120,10 +120,11 @@ const fn position(message: &ToastMessage) -> usize {
         ToastMessage::IconSaved { .. } => 90,
         ToastMessage::AddedTo { .. } => 91,
         ToastMessage::LooksSecret => 92,
+        ToastMessage::PasteNotAddedEditorOpen => 93,
     }
 }
 
-const VARIANTS: usize = 93;
+const VARIANTS: usize = 94;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -284,6 +285,7 @@ fn samples() -> Vec<ToastMessage> {
             count: 1,
         },
         M::LooksSecret,
+        M::PasteNotAddedEditorOpen,
     ]
 }
 

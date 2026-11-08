@@ -1008,7 +1008,7 @@ export component PanelWindow inherits Window {
                         root.cycle-tab(-1);
                         return accept;
                     }
-                    if ((event.text == "v" || event.text == "V") && !event.modifiers.shift && !search.has-focus && !root.list-hidden) {
+                    if ((event.text == "v" || event.text == "V") && !event.modifiers.shift && !search.has-focus && !root.searching && !root.list-hidden) {
                         root.paste-create-requested();
                         return accept;
                     }

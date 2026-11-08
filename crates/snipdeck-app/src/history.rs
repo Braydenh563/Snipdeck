@@ -208,6 +208,12 @@ impl History {
         }
     }
 
+    /// Whether step `id` can still be undone (the history may have been cleared since).
+    #[must_use]
+    pub fn can_undo(&self, id: u64) -> bool {
+        self.undo.iter().any(|s| s.id == id)
+    }
+
     /// Takes the step to redo off the stack.
     pub fn take_redo(&mut self) -> Option<Step> {
         self.redo.pop()

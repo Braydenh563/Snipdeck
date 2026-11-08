@@ -74,6 +74,9 @@ export global ToastTexts {
     pure public function looks-secret() -> string {
         return @tr("This looks like a password or key, so it was not saved. Check it, then save.");
     }
+    pure public function paste-not-added-editor-open() -> string {
+        return @tr("An item is open in the editor, so the pasted text was not added. Close it, then paste again.");
+    }
     pure public function edit-button() -> string {
         return @tr("Edit");
     }

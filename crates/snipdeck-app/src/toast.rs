@@ -105,6 +105,9 @@ pub enum ToastMessage {
     /// "That looks like a password or key, so it was not saved. Check it, then save." (Ctrl+V
     /// with a secret on the clipboard opens the editor instead of saving)
     LooksSecret,
+    /// "An item is open in the editor, so the pasted text was not added. Close it, then paste
+    /// again." (Ctrl+V with a secret while an item editor is open)
+    PasteNotAddedEditorOpen,
     /// "Nothing to save. Copy some text first." (quick capture with no text on the clipboard)
     NothingToSave,
     /// "That text is too large to save." (quick capture over 5 MB)

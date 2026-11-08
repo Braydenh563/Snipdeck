@@ -9,7 +9,7 @@ use snipdeck_platform::pipeline::{Clipboard, Keyboard, Timing};
 use snipdeck_store::{ItemRepo, TrashRepo, Trashable};
 
 use super::{
-    Controller, Library, PanelMenu, failed, neutral,
+    Controller, Library, PanelMenu, UseResult, failed, neutral,
     views::{ChooseEntry, ChooseLabel, ChooseMenu},
 };
 use crate::{
@@ -93,25 +93,25 @@ where
     /// The bulk bar's "Copy all": see [`copy_items`](Self::copy_items) for the marked items.
     pub fn bulk_copy(&mut self) {
         let ids = self.model.marked_ids();
-        self.copy_items(&ids);
+        let _ = self.copy_items(&ids);
     }
 
     /// Ctrl+C on the Panel's list: the marked items, else the selected row.
-    pub fn panel_copy_selection(&mut self) {
+    /// Returns the use of the one item copied, for [`after_use`](Self::after_use).
+    pub fn panel_copy_selection(&mut self) -> Option<UseResult> {
         let mut ids = self.model.marked_ids();
         if ids.is_empty() {
             ids.extend(self.model.selected());
         }
-        self.copy_items(&ids);
+        self.copy_items(&ids)
     }
 
     /// Copies `ids`. One item is copied the way its Copy button does (every format, and the
     /// Sensitive rules for clearing). Several are joined with a line between them, in order,
     /// as text; Sensitive items are left out (and said so by the count).
-    pub(super) fn copy_items(&mut self, ids: &[ItemId]) {
+    pub(super) fn copy_items(&mut self, ids: &[ItemId]) -> Option<UseResult> {
         if let [id] = ids {
-            self.use_item(*id, snipdeck_core::UseMode::Copy);
-            return;
+            return Some(self.use_item(*id, snipdeck_core::UseMode::Copy));
         }
         let mut parts = Vec::new();
         for id in ids.iter().copied() {
@@ -127,7 +127,7 @@ where
         }
         if parts.is_empty() {
             self.show_toast(neutral(ToastMessage::NothingToSave));
-            return;
+            return None;
         }
         let copied = Payload::new(vec![Data::Text(parts.join("\n"))])
             .is_some_and(|payload| self.services.clipboard.write_persistent(&payload).is_ok());
@@ -142,6 +142,7 @@ where
                 message: ToastMessage::ClipboardBusy,
             }
         });
+        None
     }
 
     /// Moves the items `ids` to the end of list `list` (named `name`).

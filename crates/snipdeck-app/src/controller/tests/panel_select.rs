@@ -519,3 +519,136 @@ fn ctrl_c_many_joins_like_copy_all() {
     assert_eq!(written.len(), 1);
     assert_eq!(written[0].data(), [Data::Text("first\nthird".into())]);
 }
+
+#[test]
+fn ctrl_c_on_a_single_sensitive_item_applies_the_clear_rules() {
+    let mut w = world();
+    let id = w.ids[0];
+    super::use_paste::make_sensitive(&mut w, id);
+    let used = w.ctl.panel_copy_selection();
+    assert!(matches!(used, Some(UseResult::Done(_))), "{used:?}");
+    assert_eq!(
+        w.ctl.clipboard_clear_wait(),
+        Some(std::time::Duration::from_secs(30))
+    );
+}
+
+#[test]
+fn a_sensitive_item_in_a_multi_selection_is_skipped() {
+    let mut w = world();
+    let id = w.ids[1];
+    super::use_paste::make_sensitive(&mut w, id);
+    for row in 0..3 {
+        w.ctl.panel_mark(row, SelectMode::Toggle);
+    }
+    w.ctl.services.clipboard.written.clear();
+    assert!(w.ctl.panel_copy_selection().is_none());
+    assert_eq!(
+        w.ctl.services.clipboard.written[0].data(),
+        [Data::Text("first\nthird".into())]
+    );
+}
+
+fn items_in(w: &World, list: snipdeck_core::ListId) -> usize {
+    w.ctl
+        .store()
+        .all_items()
+        .expect("items")
+        .iter()
+        .filter(|i| i.list_id == list)
+        .count()
+}
+
+#[test]
+fn paste_create_in_the_main_window_adds_to_the_open_list() {
+    let mut w = pasting("from main");
+    w.ctl
+        .main_open(crate::main_window::Section::List(w.links_list));
+    w.ctl.paste_create(Origin::Main);
+    assert_eq!(items_in(&w, w.links_list), 2);
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::AddedTo {
+            list: "Links".into(),
+            count: 1
+        }
+    );
+}
+
+#[test]
+fn main_copy_selection_copies_one_item_or_joins_many() {
+    let mut w = world();
+    w.ctl
+        .main_open(crate::main_window::Section::List(w.links_list));
+    w.ctl.services.clipboard.written.clear();
+    let used = w.ctl.main_copy_selection(0);
+    assert!(matches!(used, Some(UseResult::Done(_))), "{used:?}");
+    assert_eq!(
+        w.ctl.services.clipboard.written[0].data(),
+        [Data::Text("https://example.com".into())]
+    );
+    assert_eq!(uses(&w, w.ids[4]), 1);
+
+    w.ctl.main_open(crate::main_window::Section::All);
+    w.ctl.main_select_all();
+    w.ctl.services.clipboard.written.clear();
+    assert!(w.ctl.main_copy_selection(0).is_none());
+    let text = match &w.ctl.services.clipboard.written[0].data()[0] {
+        Data::Text(t) => t.clone(),
+        other => panic!("{other:?}"),
+    };
+    for want in ["first", "second", "third", "https://example.com"] {
+        assert!(text.lines().any(|l| l == want), "{want} in {text:?}");
+    }
+}
+
+#[test]
+fn undo_falls_back_to_the_trash_when_the_history_step_is_gone() {
+    let mut w = pasting("a fresh note");
+    w.ctl.paste_create(Origin::Panel);
+    assert_eq!(w.ctl.view().rows.len(), 5);
+    w.ctl.clear_history();
+    w.ctl.toast_action();
+    assert_eq!(w.ctl.view().rows.len(), 4, "the new item went to the Trash");
+}
+
+#[test]
+fn a_secret_paste_leaves_an_open_editor_alone_and_says_so() {
+    let mut w = pasting("ghp_abcdefghijklmnopqrstuvwxyz0123456789");
+    w.ctl.open_new_item(Origin::Panel);
+    let before = w.ctl.item_editor_view().expect("editor").fields;
+    w.ctl.paste_create(Origin::Panel);
+    let after = w.ctl.item_editor_view().expect("still open").fields;
+    assert_eq!(before, after, "the open editor is untouched");
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::PasteNotAddedEditorOpen
+    );
+}
+
+#[test]
+fn a_secret_paste_opens_a_fresh_editor_and_leaves_the_new_item_draft_alone() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut w = pasting("password: hunter2");
+    w.ctl
+        .set_drafts(crate::drafts::Drafts::in_data_dir(dir.path()));
+    // A half-typed new item is parked: its draft stays on disk.
+    w.ctl.open_new_item(Origin::Panel);
+    let mut typed = w.ctl.item_editor_view().expect("editor").fields;
+    typed.content = "half a thought".into();
+    w.ctl.item_editor_park(&typed);
+    let draft = dir.path().join("drafts").join("new.json");
+    assert!(draft.exists());
+    let kept = std::fs::read(&draft).expect("draft");
+
+    w.ctl.paste_create(Origin::Panel);
+    let editor = w.ctl.item_editor_view().expect("editor");
+    assert!(!editor.restored, "the draft was not mixed in");
+    assert_eq!(editor.fields.content, "password: hunter2");
+    assert!(editor.fields.sensitive);
+    // Autosave and cancel of the secret editor do not touch the old draft.
+    w.ctl.item_editor_autosave(&editor.fields);
+    assert_eq!(std::fs::read(&draft).expect("draft"), kept);
+    w.ctl.item_editor_cancel();
+    assert_eq!(std::fs::read(&draft).expect("draft"), kept);
+}

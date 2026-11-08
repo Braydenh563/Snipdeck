@@ -65,7 +65,7 @@ where
 
     /// Ctrl+C on the Main list: the selection (when more than one row is selected) or row
     /// `index`, copied by [`copy_items`](Self::copy_items).
-    pub fn main_copy_selection(&mut self, index: usize) {
+    pub fn main_copy_selection(&mut self, index: usize) -> Option<UseResult> {
         self.main_fresh();
         let ids: Vec<ItemId> = self
             .main
@@ -76,9 +76,10 @@ where
                 _ => None,
             })
             .collect();
-        if !ids.is_empty() {
-            self.copy_items(&ids);
+        if ids.is_empty() {
+            return None;
         }
+        self.copy_items(&ids)
     }
 
     pub(super) fn pin(&mut self, items: &[ItemId]) {
@@ -388,8 +389,9 @@ where
         if self.toast.as_ref().is_none_or(|t| t.seq != undo.seq) {
             return;
         }
-        // A step is taken back with the history; an add without one (a quick-add) goes to the Trash.
-        if let Some(step) = undo.step {
+        // A step is taken back with the history; an add without one (a quick-add, or a step the
+        // history has since forgotten) goes to the Trash.
+        if let Some(step) = undo.step.filter(|s| self.history.can_undo(*s)) {
             // The old toast goes, a new one replaces it.
             self.undo_step(Some(step));
         } else if let Some(id) = undo.adds {

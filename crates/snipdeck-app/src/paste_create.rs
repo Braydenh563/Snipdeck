@@ -43,7 +43,7 @@ pub fn looks_secret(text: &str) -> Option<Secret> {
     if has_token(t) {
         return Some(Secret::Token);
     }
-    if says_password(t) {
+    if says_password(t) || has_secret_assignment(t) || has_secret_json_key(t) {
         return Some(Secret::Password);
     }
     if kind_of_text(t) == ItemKind::Text && looks_random(t) {
@@ -63,6 +63,11 @@ fn has_token(t: &str) -> bool {
                 || long("sk-", 24)
                 || long("xoxb-", 20)
                 || long("xoxp-", 20)
+                || long("sk_live_", 20)
+                || long("sk_test_", 20)
+                || long("rk_live_", 20)
+                || long("glpat-", 20)
+                || long("AIza", 39)
                 || is_jwt(w)
         })
 }
@@ -87,6 +92,48 @@ fn says_password(t: &str) -> bool {
         .any(|word| {
             l.strip_prefix(word)
                 .is_some_and(|rest| rest.trim_start().starts_with([':', '=']))
+        })
+    })
+}
+
+/// Whether a name says it holds a secret.
+fn secret_name(name: &str) -> bool {
+    let n = name.to_ascii_uppercase();
+    ["PASSWORD", "PASSWD", "SECRET", "TOKEN", "API_KEY", "APIKEY"]
+        .iter()
+        .any(|word| n.contains(word))
+}
+
+/// A `.env` style line: `KEY=value` (with an optional `export `) whose key is one plain name
+/// that says it holds a secret and whose value is not empty.
+fn has_secret_assignment(t: &str) -> bool {
+    t.lines().any(|line| {
+        let l = line.trim();
+        let l = l.strip_prefix("export ").unwrap_or(l).trim_start();
+        let Some((key, value)) = l.split_once('=') else {
+            return false;
+        };
+        let key = key.trim();
+        !value.trim().is_empty()
+            && !key.is_empty()
+            && key.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+            && secret_name(key)
+    })
+}
+
+/// A JSON member such as `"password": "x"`.
+fn has_secret_json_key(t: &str) -> bool {
+    t.lines().any(|line| {
+        let parts: Vec<&str> = line.split('"').collect();
+        parts.iter().enumerate().any(|(i, key)| {
+            i % 2 == 1
+                && secret_name(key)
+                && parts.get(i + 1).is_some_and(|after| {
+                    after
+                        .trim_start()
+                        .strip_prefix(':')
+                        .is_some_and(|value| !value.trim().is_empty() || parts.get(i + 2).is_some())
+                })
         })
     })
 }
@@ -151,6 +198,31 @@ mod tests {
                 Some(Secret::Token),
             ),
             ("password: hunter2", Some(Secret::Password)),
+            ("DB_PASSWORD=hunter2", Some(Secret::Password)),
+            ("export api_key=abc123", Some(Secret::Password)),
+            (
+                "HOST=localhost\nAUTH_TOKEN=abc\nPORT=80",
+                Some(Secret::Password),
+            ),
+            ("  CLIENT_SECRET = \"xyz\"", Some(Secret::Password)),
+            (
+                "{\"user\": \"me\", \"password\": \"x\"}",
+                Some(Secret::Password),
+            ),
+            ("\"apiKey\" : \"abc\"", Some(Secret::Password)),
+            ("sk_live_abcdefghijklmnopqrstuv", Some(Secret::Token)),
+            ("sk_test_abcdefghijklmnopqrstuv", Some(Secret::Token)),
+            ("rk_live_abcdefghijklmnopqrstuv", Some(Secret::Token)),
+            ("glpat-abcdefghijklmnopqrstu", Some(Secret::Token)),
+            (
+                "key=AIzaSyA1234567890abcdefghijklmnopqrstuv",
+                Some(Secret::Token),
+            ),
+            ("Remember the password for the wifi", None),
+            ("Reset your password = easy", None),
+            ("HOST=localhost\nPORT=80", None),
+            ("\"password\" is a word in this quote", None),
+            ("https://example.com/login?password=1", None),
             ("user: me\nPassword = x", Some(Secret::Password)),
             ("Zk3pQ9vL2mX8wR5tY1nB7", Some(Secret::LooksRandom)),
             ("Hello, how are you today?", None),
