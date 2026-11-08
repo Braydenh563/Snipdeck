@@ -39,71 +39,120 @@ fn render<C: ComponentHandle>(h: &Harness<C>) -> Frame {
     h.render_settled()
 }
 
+/// An item editor at the height it asks for (`fit-height`), as the host opens it: the golden is the window as the user
+/// sees it, not a fixed 760 with a blank band above the footer.
+fn item_fit(width: u32, dark: bool, setup: impl Fn(&ItemEditor)) -> Harness<ItemEditor> {
+    let probe = item((width, 760), dark);
+    setup(&probe.component);
+    let _ = render(&probe);
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "a window height of 380 to 700"
+    )]
+    let height = probe.component.get_fit_height().ceil() as u32;
+    drop(probe);
+    let h = item((width, height), dark);
+    setup(&h.component);
+    h
+}
+
+#[test]
+fn editor_height_is_form_height() {
+    for (name, setup) in [
+        (
+            "text",
+            Box::new(|_: &ItemEditor| {}) as Box<dyn Fn(&ItemEditor)>,
+        ),
+        ("code", Box::new(|c: &ItemEditor| c.set_kind_index(1))),
+        ("template", Box::new(|c: &ItemEditor| c.set_kind_index(3))),
+    ] {
+        let h = item_fit(560, false, setup);
+        let f = render(&h);
+        let fit = h.component.get_fit_height();
+        assert!((380.0..=700.0).contains(&fit), "{name}: fit {fit}");
+        // The footer is the last 56 px or so; find the last row above it that is not the page background.
+        let footer_top = (0..f.height)
+            .rev()
+            .find(|&y| f.pixel(4, y) == APP_LIGHT)
+            .expect("page rows")
+            + 1;
+        let last_ink = (0..footer_top)
+            .rev()
+            .find(|&y| (0..f.width).any(|x| f.pixel(x, y) != APP_LIGHT))
+            .expect("content");
+        let blank = footer_top - 1 - last_ink;
+        assert!(
+            blank <= 24,
+            "{name}: {blank} blank px above the footer (window {})",
+            f.height
+        );
+    }
+}
+
 #[test]
 fn item_editor_text_light_and_dark() {
-    let h = item(ITEM, false);
+    let h = item_fit(ITEM.0, false, |_| {});
     assert_golden("item-editor-text-light", &render(&h));
     drop(h);
-    let h = item(ITEM, true);
-    h.component.set_sensitive(true);
+    let h = item_fit(ITEM.0, true, |c| c.set_sensitive(true));
     assert_golden("item-editor-text-dark", &render(&h));
 }
 
 #[test]
 fn item_editor_each_kind() {
-    let h = item(ITEM, false);
-    h.component.set_kind_index(1);
-    h.component.set_item_title("Retry helper".into());
-    h.component.set_content(
+    let h = item_fit(ITEM.0, false, |c| {
+        c.set_kind_index(1);
+        c.set_item_title("Retry helper".into());
+        c.set_content(
         "async fn retry<T>(f: impl Fn() -> T, n: usize) -> T {\n    for _ in 0..n { /* try */ }\n}"
             .into(),
     );
+    });
     assert_golden("item-editor-code-light", &render(&h));
     drop(h);
 
-    let h = item(ITEM, false);
-    h.component.set_kind_index(2);
-    h.component.set_item_title("Design spec".into());
-    h.component
-        .set_content("figma.com/file/snipdeck-index-deck".into());
-    h.component
-        .set_content_error("A link needs a scheme such as https://".into());
+    let h = item_fit(ITEM.0, false, |c| {
+        c.set_kind_index(2);
+        c.set_item_title("Design spec".into());
+        c.set_content("figma.com/file/snipdeck-index-deck".into());
+        c.set_content_error("A link needs a scheme such as https://".into());
+    });
     assert_golden("item-editor-link-error-light", &render(&h));
     drop(h);
 
-    let h = item((560, 980), false);
-    h.component.set_kind_index(3);
-    h.component.set_item_title("Invoice reminder".into());
-    h.component
-        .set_content("A gentle reminder that invoice {field:Number} is due on {date}.".into());
+    let h = item_fit(560, false, |c| {
+        c.set_kind_index(3);
+        c.set_item_title("Invoice reminder".into());
+        c.set_content("A gentle reminder that invoice {field:Number} is due on {date}.".into());
+    });
     assert_golden("item-editor-template-light", &render(&h));
     drop(h);
 
-    let h = item((560, 980), false);
-    h.component.set_kind_index(3);
-    h.component.set_prompted_available(false);
-    h.component.set_content("Due on {date}.".into());
+    let h = item_fit(560, false, |c| {
+        c.set_kind_index(3);
+        c.set_prompted_available(false);
+        c.set_content("Due on {date}.".into());
+    });
     assert_golden("item-editor-template-free-light", &render(&h));
     drop(h);
 
-    let h = item(ITEM, false);
-    h.component.set_kind_index(4);
-    h.component.set_item_title("Screenshot 14:02".into());
-    h.component.set_preview(fixture::gradient());
-    h.component
-        .set_attachment_name("screenshot-1402.png".into());
-    h.component
-        .set_attachment_detail("1280 x 720 PNG, copied from the browser".into());
+    let h = item_fit(ITEM.0, false, |c| {
+        c.set_kind_index(4);
+        c.set_item_title("Screenshot 14:02".into());
+        c.set_preview(fixture::gradient());
+        c.set_attachment_name("screenshot-1402.png".into());
+        c.set_attachment_detail("1280 x 720 PNG, copied from the browser".into());
+    });
     assert_golden("item-editor-image-light", &render(&h));
     drop(h);
 
-    let h = item(ITEM, true);
-    h.component.set_kind_index(5);
-    h.component.set_item_title("Q3 report".into());
-    h.component
-        .set_attachment_name("report-q3-final.pdf".into());
-    h.component
-        .set_attachment_detail("PDF, 2.4 MB. Pasting copies the file itself.".into());
+    let h = item_fit(ITEM.0, true, |c| {
+        c.set_kind_index(5);
+        c.set_item_title("Q3 report".into());
+        c.set_attachment_name("report-q3-final.pdf".into());
+        c.set_attachment_detail("PDF, 2.4 MB. Pasting copies the file itself.".into());
+    });
     assert_golden("item-editor-file-dark", &render(&h));
 }
 

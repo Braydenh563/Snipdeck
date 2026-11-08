@@ -390,10 +390,10 @@ export component SymbolsView inherits Rectangle {
                 scroll-to(y) => { grid.content-y = y; }
             }
             if root.rows.length == 0: EmptyState {
+                quiet: true;
                 x: Space.s2;
                 width: parent.width - 2 * Space.s2;
                 height: parent.height;
-                quiet: true;
                 kind: EmptyStateKind.search;
                 heading: root.empty-heading;
                 body: root.empty-body;

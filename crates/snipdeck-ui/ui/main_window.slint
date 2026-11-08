@@ -192,7 +192,6 @@ component MainCard inherits ItemCard {
     tag-hit: root.data.tag-hit;
     masked-preview: root.data.masked-preview;
     masked-hint: @tr("Hidden. Hold Space to reveal.");
-    extension: root.data.extension;
     image: root.data.image;
     list-name: root.data.list-name;
     list-color: root.data.list-color;
@@ -1690,9 +1689,6 @@ export component MainWindow inherits Window {
                                             height: self.preferred-height;
                                             variant: root.view == MainView.compact ? ItemCardVariant.compact : ItemCardVariant.comfortable;
                                             data: row;
-                                            quiet: true;
-                                            use-label: root.use-label;
-                                            use-copies: root.use-copies && !root.in-trash;
                                             // Use first (Restore in the Trash), then Copy (not when Use already copies), Edit, More.
                                             use-action: true;
                                             use-glyph: root.in-trash ? Icons.arrow-counter-clockwise : Icons.arrow-bend-down-left;
@@ -1798,7 +1794,6 @@ export component MainWindow inherits Window {
                                         y: -2000px;
                                         width: parent.width;
                                         variant: ItemCardVariant.tile;
-                                        quiet: true;
                                         inline-tile: true;
                                         data: root.rows[root.tile-index(r, c)];
                                     }
@@ -1823,10 +1818,7 @@ export component MainWindow inherits Window {
                                         height: parent.height;
                                         variant: ItemCardVariant.tile;
                                         data: root.rows[root.tile-index(r, c)];
-                                        quiet: true;
                                         inline-tile: true;
-                                        use-label: root.use-label;
-                                        use-copies: root.use-copies && !root.in-trash;
                                         // Use first (Restore in the Trash), then Copy (not when Use already copies), Edit, More.
                                         use-action: true;
                                         use-glyph: root.in-trash ? Icons.arrow-counter-clockwise : Icons.arrow-bend-down-left;
@@ -1969,8 +1961,6 @@ export component MainWindow inherits Window {
                                         preview: entry.preview;
                                         list-name: entry.app == "" ? RecentText.ago(entry.age-minutes) : entry.app + " · " + RecentText.ago(entry.age-minutes);
                                         list-color: transparent;
-                                        use-label: @tr("Copy");
-                                        use-copies: true;
                                         use => {
                                             root.recent-cursor = i;
                                             root.recent-copied(entry.id);

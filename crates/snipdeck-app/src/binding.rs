@@ -1290,7 +1290,6 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
         } else if let Some(choose) = &view.choose_menu {
             // The second level (Move to… / Colour): one row per list or colour, checked when every
             // target already has it.
-            let check = window.global::<ui::Icons<'_>>().get_check();
             let entries = choose.entries.iter().map(|e| ui::MenuEntry {
                 text: match &e.label {
                     crate::controller::ChooseLabel::List(name) => name.as_str().into(),
@@ -1299,11 +1298,7 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
                     }
                     crate::controller::ChooseLabel::Colour(None) => "No label".into(),
                 },
-                icon: if e.checked {
-                    check.clone()
-                } else {
-                    slint::Image::default()
-                },
+                checked: e.checked,
                 ..Default::default()
             });
             window.set_item_menu_entries(model(entries));
@@ -1390,7 +1385,6 @@ pub fn render(window: &ui::PanelWindow, previous: Option<&View>, view: &View) {
 /// The kebab menu's rows and whether it is open. "Pause hotkeys" carries a check mark while
 /// the hotkeys are paused.
 fn render_app_menu(window: &ui::PanelWindow, view: &View) {
-    let check = window.global::<ui::Icons<'_>>().get_check();
     let pin_in_menu = window.get_pin_in_menu();
     let entries = view.app_menu.iter().flatten().map(|&entry| ui::MenuEntry {
         text: match entry {
@@ -1404,15 +1398,11 @@ fn render_app_menu(window: &ui::PanelWindow, view: &View) {
         disabled: (entry == AppMenuEntry::Undo && view.history.undo.is_none())
             || (entry == AppMenuEntry::Redo && view.history.redo.is_none())
             || (entry == AppMenuEntry::PasteStack && view.stack.is_none()),
-        icon: if (entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused)
-            || (entry == AppMenuEntry::PasteStack && view.stack.as_ref().is_some_and(|s| s.running))
+        checked: (entry == AppMenuEntry::PauseHotkeys && view.hotkeys_paused)
+            || (entry == AppMenuEntry::PasteStack
+                && view.stack.as_ref().is_some_and(|s| s.running))
             || (entry == AppMenuEntry::ShowNumbers && view.show_numbers)
-            || (entry == AppMenuEntry::KeepOnTop && view.on_top)
-        {
-            check.clone()
-        } else {
-            slint::Image::default()
-        },
+            || (entry == AppMenuEntry::KeepOnTop && view.on_top),
         shortcut: wording::app_menu_shortcut(entry).into(),
         separator: entry == AppMenuEntry::Separator,
         // The header's pin is there below 150 % text: the row would only repeat it.
