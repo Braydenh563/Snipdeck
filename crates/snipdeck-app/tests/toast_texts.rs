@@ -121,7 +121,7 @@ const fn position(message: &ToastMessage) -> usize {
     }
 }
 
-const VARIANTS: usize = 90;
+const VARIANTS: usize = 91;
 
 fn s(text: &str) -> String {
     text.to_owned()
@@ -332,17 +332,17 @@ fn what_a_toast_carries_reaches_its_sentence() {
         let rebuilt = |recovered, unreadable, missing_sensitive| ToastMessage::DatabaseRebuilt {
             restored: 5,
             recovered,
-            kept: s("old.db"),
+            kept: s("old"),
             unreadable,
             missing_sensitive,
         };
         assert_eq!(
             said(rebuilt(2, false, 0)),
-            "Database rebuilt: 5 items restored, 2 recovered. Your old database is kept as old.db."
+            "Database rebuilt: 5 items restored, 2 recovered. Your old database is kept in the folder old."
         );
         assert_eq!(
             said(rebuilt(0, true, 1)),
-            "Database rebuilt: 5 items restored. Newer items could not be read. Your old database is kept as old.db. 1 sensitive item was not in the backup."
+            "Database rebuilt: 5 items restored. Newer items could not be read. Your old database is kept in the folder old. 1 sensitive item was not in the backup."
         );
         assert_eq!(
             said(ToastMessage::Undone {

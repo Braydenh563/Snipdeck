@@ -585,10 +585,10 @@ where
         };
         // The key goes in before anything is imported, so the backup and the salvage keep
         // their sensitive items (KeySource::Library).
-        if let (Some(record), Some(key)) = (&key_record, fresh_key) {
-            if fresh.restore_key_record(record).is_err() || fresh.open_with_key(key).is_err() {
-                return Err(self.roll_back(data_dir, fresh, original_key));
-            }
+        if let (Some(record), Some(key)) = (&key_record, fresh_key)
+            && (fresh.restore_key_record(record).is_err() || fresh.open_with_key(key).is_err())
+        {
+            return Err(self.roll_back(data_dir, fresh, original_key));
         }
         self.store = fresh;
         let imported = self.import_report(

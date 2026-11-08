@@ -779,19 +779,19 @@ backup_options | crates/snipdeck-app/src/controller/settings_ctl.rs:364
 backup_now | crates/snipdeck-app/src/controller/settings_ctl.rs:377
 restore_backup | crates/snipdeck-app/src/controller/settings_ctl.rs:410
 rebuild_from_backup | crates/snipdeck-app/src/controller/settings_ctl.rs:446
-sensitive_count | crates/snipdeck-app/src/controller/settings_ctl.rs:526
-swap_in_rebuilt | crates/snipdeck-app/src/controller/settings_ctl.rs:539
-roll_back | crates/snipdeck-app/src/controller/settings_ctl.rs:629
-reopen_original | crates/snipdeck-app/src/controller/settings_ctl.rs:642
-import_report | crates/snipdeck-app/src/controller/settings_ctl.rs:671
-preview_import | crates/snipdeck-app/src/controller/settings_ctl.rs:697
-preview_restore | crates/snipdeck-app/src/controller/settings_ctl.rs:710
-preview_as | crates/snipdeck-app/src/controller/settings_ctl.rs:715
-apply_import | crates/snipdeck-app/src/controller/settings_ctl.rs:752
-export_library | crates/snipdeck-app/src/controller/settings_ctl.rs:783
-erase_library | crates/snipdeck-app/src/controller/settings_ctl.rs:818
-Carry | crates/snipdeck-app/src/controller/settings_ctl.rs:877
-Swap | crates/snipdeck-app/src/controller/settings_ctl.rs:884
+sensitive_count | crates/snipdeck-app/src/controller/settings_ctl.rs:527
+swap_in_rebuilt | crates/snipdeck-app/src/controller/settings_ctl.rs:540
+roll_back | crates/snipdeck-app/src/controller/settings_ctl.rs:630
+reopen_original | crates/snipdeck-app/src/controller/settings_ctl.rs:643
+import_report | crates/snipdeck-app/src/controller/settings_ctl.rs:672
+preview_import | crates/snipdeck-app/src/controller/settings_ctl.rs:698
+preview_restore | crates/snipdeck-app/src/controller/settings_ctl.rs:711
+preview_as | crates/snipdeck-app/src/controller/settings_ctl.rs:716
+apply_import | crates/snipdeck-app/src/controller/settings_ctl.rs:753
+export_library | crates/snipdeck-app/src/controller/settings_ctl.rs:784
+erase_library | crates/snipdeck-app/src/controller/settings_ctl.rs:819
+Carry | crates/snipdeck-app/src/controller/settings_ctl.rs:878
+Swap | crates/snipdeck-app/src/controller/settings_ctl.rs:885
 
 ### crates/snipdeck-app/src/controller/symbol_ctl.rs
 
@@ -3100,18 +3100,18 @@ the_setting_wins_over_windows_and_system_follows_windows | crates/snipdeck-app/s
 ToastKind | crates/snipdeck-app/src/toast.rs:16
 LicenceProblem | crates/snipdeck-app/src/toast.rs:27
 ToastMessage | crates/snipdeck-app/src/toast.rs:44
-Toast | crates/snipdeck-app/src/toast.rs:323
-after_use | crates/snipdeck-app/src/toast.rs:333
-after_error | crates/snipdeck-app/src/toast.rs:374
-tests | crates/snipdeck-app/src/toast.rs:399
-a_paste_names_the_app | crates/snipdeck-app/src/toast.rs:409
-a_plain_copy_is_a_success | crates/snipdeck-app/src/toast.rs:421
-an_excluded_app_says_pasting_is_off | crates/snipdeck-app/src/toast.rs:431
-a_paste_into_an_excluded_app_says_pasting_is_off_too | crates/snipdeck-app/src/toast.rs:446
-an_elevated_target_explains_why_it_was_only_copied | crates/snipdeck-app/src/toast.rs:464
-nothing_focused_and_a_vanished_target_have_their_own_messages | crates/snipdeck-app/src/toast.rs:483
-errors_are_danger_toasts_with_a_specific_cause | crates/snipdeck-app/src/toast.rs:507
-a_store_failure_is_worded_by_its_cause_when_the_error_names_one | crates/snipdeck-app/src/toast.rs:523
+Toast | crates/snipdeck-app/src/toast.rs:325
+after_use | crates/snipdeck-app/src/toast.rs:335
+after_error | crates/snipdeck-app/src/toast.rs:376
+tests | crates/snipdeck-app/src/toast.rs:401
+a_paste_names_the_app | crates/snipdeck-app/src/toast.rs:411
+a_plain_copy_is_a_success | crates/snipdeck-app/src/toast.rs:423
+an_excluded_app_says_pasting_is_off | crates/snipdeck-app/src/toast.rs:433
+a_paste_into_an_excluded_app_says_pasting_is_off_too | crates/snipdeck-app/src/toast.rs:448
+an_elevated_target_explains_why_it_was_only_copied | crates/snipdeck-app/src/toast.rs:466
+nothing_focused_and_a_vanished_target_have_their_own_messages | crates/snipdeck-app/src/toast.rs:485
+errors_are_danger_toasts_with_a_specific_cause | crates/snipdeck-app/src/toast.rs:509
+a_store_failure_is_worded_by_its_cause_when_the_error_names_one | crates/snipdeck-app/src/toast.rs:525
 
 ### crates/snipdeck-app/src/toast_binding.rs
 
@@ -3222,33 +3222,33 @@ list_icon_name | crates/snipdeck-app/src/wording.rs:60
 import_warning_text | crates/snipdeck-app/src/wording.rs:97
 numbered_label | crates/snipdeck-app/src/wording.rs:134
 toast_text | crates/snipdeck-app/src/wording.rs:146
-licence_problem_text | crates/snipdeck-app/src/wording.rs:278
-LANGUAGE_NAMES | crates/snipdeck-app/src/wording.rs:296
-LANGUAGE_TAGS | crates/snipdeck-app/src/wording.rs:307
-action_word | crates/snipdeck-app/src/wording.rs:310
-undo_tip | crates/snipdeck-app/src/wording.rs:317
-redo_tip | crates/snipdeck-app/src/wording.rs:328
-UNDO_LABEL | crates/snipdeck-app/src/wording.rs:338
-OPEN_LOG_LABEL | crates/snipdeck-app/src/wording.rs:341
-import_problem_text | crates/snipdeck-app/src/wording.rs:346
-history_source_name | crates/snipdeck-app/src/wording.rs:369
-toast_button_text | crates/snipdeck-app/src/wording.rs:375
-use_label_text | crates/snipdeck-app/src/wording.rs:388
-paste_stack_idle_text | crates/snipdeck-app/src/wording.rs:402
-app_menu_text | crates/snipdeck-app/src/wording.rs:409
-app_menu_shortcut | crates/snipdeck-app/src/wording.rs:448
-item_menu_shortcut | crates/snipdeck-app/src/wording.rs:460
-item_menu_label | crates/snipdeck-app/src/wording.rs:482
-symbol_menu_entry | crates/snipdeck-app/src/wording.rs:508
-board_menu_text | crates/snipdeck-app/src/wording.rs:546
-int | crates/snipdeck-app/src/wording.rs:565
-name_error_text | crates/snipdeck-app/src/wording.rs:571
-tag_rename_error_text | crates/snipdeck-app/src/wording.rs:587
-delete_hint_text | crates/snipdeck-app/src/wording.rs:602
-size_text | crates/snipdeck-app/src/wording.rs:615
-attachment_name_text | crates/snipdeck-app/src/wording.rs:635
-attachment_detail_text | crates/snipdeck-app/src/wording.rs:651
-editor_problem_text | crates/snipdeck-app/src/wording.rs:672
+licence_problem_text | crates/snipdeck-app/src/wording.rs:279
+LANGUAGE_NAMES | crates/snipdeck-app/src/wording.rs:297
+LANGUAGE_TAGS | crates/snipdeck-app/src/wording.rs:308
+action_word | crates/snipdeck-app/src/wording.rs:311
+undo_tip | crates/snipdeck-app/src/wording.rs:318
+redo_tip | crates/snipdeck-app/src/wording.rs:329
+UNDO_LABEL | crates/snipdeck-app/src/wording.rs:339
+OPEN_LOG_LABEL | crates/snipdeck-app/src/wording.rs:342
+import_problem_text | crates/snipdeck-app/src/wording.rs:347
+history_source_name | crates/snipdeck-app/src/wording.rs:370
+toast_button_text | crates/snipdeck-app/src/wording.rs:376
+use_label_text | crates/snipdeck-app/src/wording.rs:389
+paste_stack_idle_text | crates/snipdeck-app/src/wording.rs:403
+app_menu_text | crates/snipdeck-app/src/wording.rs:410
+app_menu_shortcut | crates/snipdeck-app/src/wording.rs:449
+item_menu_shortcut | crates/snipdeck-app/src/wording.rs:461
+item_menu_label | crates/snipdeck-app/src/wording.rs:483
+symbol_menu_entry | crates/snipdeck-app/src/wording.rs:509
+board_menu_text | crates/snipdeck-app/src/wording.rs:547
+int | crates/snipdeck-app/src/wording.rs:566
+name_error_text | crates/snipdeck-app/src/wording.rs:572
+tag_rename_error_text | crates/snipdeck-app/src/wording.rs:588
+delete_hint_text | crates/snipdeck-app/src/wording.rs:603
+size_text | crates/snipdeck-app/src/wording.rs:616
+attachment_name_text | crates/snipdeck-app/src/wording.rs:636
+attachment_detail_text | crates/snipdeck-app/src/wording.rs:652
+editor_problem_text | crates/snipdeck-app/src/wording.rs:673
 
 ### crates/snipdeck-core/build.rs
 
@@ -6888,7 +6888,7 @@ ensure_message_queue | tools/windows-test/m2-harness/src/sys.rs:50
 | `crates/snipdeck-app/tests/menu_form_texts.rs` | 3 |
 | `crates/snipdeck-app/tests/panel_window.rs` | 64 |
 | `crates/snipdeck-app/tests/picker_window.rs` | 16 |
-| `crates/snipdeck-app/tests/rebuild.rs` | 3 |
+| `crates/snipdeck-app/tests/rebuild.rs` | 5 |
 | `crates/snipdeck-app/tests/recent_at_rest.rs` | 4 |
 | `crates/snipdeck-app/tests/screenshot.rs` | 2 |
 | `crates/snipdeck-app/tests/settings_window.rs` | 76 |
