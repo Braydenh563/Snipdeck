@@ -27,6 +27,7 @@ import { Swatch } from "components/swatch.slint";
 import { Dialog, DialogVariant } from "components/dialog.slint";
 import { Chooser, ChoiceEntry } from "components/chooser.slint";
 import { OverlayScrollbar } from "components/scrollbar.slint";
+import { StateColor } from "components/state-color.slint";
 import { FormField, FormScroll, Segmented, SelectField } from "components/form.slint";
 
 // An information strip: icon plus text, never colour alone.
@@ -241,6 +242,270 @@ component ColourPicker inherits Rectangle {
 // (4, 5): it asks for the path of the file (typed or, where the host can, chosen with `browse-requested`). An item
 // that already exists keeps its kind: an Image or File shows what it holds and lets title, tags, list and flags
 // change.
+// The Kind choice as chips (shared look spec 6): tile 24 (the colours of the row's type tile) and the name, h32.
+// One radio group and one tab stop: arrows move and pick, Home / End jump. `options` are the six names in kind order
+// (text, code, link, template, image, file); `count` of them are choices (4 for a text item, 6 for a new one).
+// When the names would not fit the width, only the chosen chip keeps its name.
+component KindChips inherits Rectangle {
+    in property <[string]> options;
+    in property <int> current: 0;
+    in property <int> count: 4;
+    in property <string> label;
+    callback chosen(index: int);
+    out property <bool> has-focus: scope.has-focus;
+
+    pure function tile(i: int) -> color {
+        return i == 0 ? Theme.kind-text-tile : i == 1 ? Theme.kind-code-tile : i == 2 ? Theme.kind-link-tile
+            : i == 3 ? Theme.kind-template-tile : i == 4 ? Theme.kind-image-tile : Theme.kind-file-tile;
+    }
+    pure function glyph-tint(i: int) -> color {
+        return i == 0 ? Theme.kind-text-glyph : i == 1 ? Theme.kind-code-glyph : i == 2 ? Theme.kind-link-glyph
+            : i == 3 ? Theme.kind-template-glyph : i == 4 ? Theme.kind-image-glyph : Theme.kind-file-glyph;
+    }
+    pure function glyph(i: int) -> image {
+        return i == 0 ? Icons.text-t : i == 1 ? Icons.code : i == 2 ? Icons.link
+            : i == 3 ? Icons.brackets-curly : i == 4 ? Icons.image : Icons.file;
+    }
+    function move(to: int) {
+        if (to >= 0 && to < root.count && to != root.current) {
+            root.chosen(to);
+        }
+    }
+
+    // Chip = 4 + tile 24 + 8 + name + 8, 4 between chips.
+    property <length> names-need: measure.preferred-width + root.count * (Space.s1 + Space.s6 + 2 * Space.s2) + (root.count - 1) * Space.s1;
+    property <bool> names-fit: root.names-need <= root.width;
+
+    height: max(Space.s8, Type.line-sm + Space.s2);
+    forward-focus: scope;
+    accessible-role: radio-group;
+    accessible-label: root.label;
+
+    // Only to measure the names (an invisible element still takes its place in a layout).
+    measure := HorizontalLayout {
+        spacing: 0px;
+        x: 0px;
+        y: 0px;
+        height: 0px;
+        for n[i] in root.options: Text {
+            visible: false;
+            text: i < root.count ? n : "";
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            font-weight: Type.medium;
+            accessible-role: none;
+        }
+    }
+
+    HorizontalLayout {
+        spacing: Space.s1;
+        alignment: start;
+        for n[i] in root.options: chip := Rectangle {
+            property <bool> shown: i < root.count;
+            property <bool> selected: i == root.current;
+            property <bool> named: root.names-fit || self.selected;
+            width: self.shown ? chip-row.preferred-width : 0px;
+            visible: self.shown;
+            border-radius: Radius.md;
+            background: self.selected ? Theme.bg-selected
+                : touch.pressed ? StateColor.pressed()
+                : touch.has-hover ? Theme.bg-hover : transparent;
+            border-width: 1px;
+            border-color: self.selected ? Theme.accent : Theme.border-default;
+            accessible-role: radio-button;
+            accessible-label: n;
+            accessible-checkable: true;
+            accessible-checked: self.selected;
+            accessible-action-default => { root.move(i); }
+            animate background { duration: Motion.instant; easing: Motion.out; }
+
+            chip-row := HorizontalLayout {
+                padding-left: Space.s1 - 1px;
+                padding-right: chip.named ? Space.s2 - 1px : Space.s1 - 1px;
+                spacing: Space.s2;
+                Rectangle {
+                    width: max(Space.s6, Type.line-sm);
+                    height: max(Space.s6, Type.line-sm);
+                    y: (parent.height - self.height) / 2;
+                    border-radius: Radius.sm;
+                    background: root.tile(i);
+                    Icon {
+                        source: root.glyph(i);
+                        tint: root.glyph-tint(i);
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                    }
+                }
+                if chip.named: Text {
+                    text: n;
+                    color: Theme.text-primary;
+                    font-family: Fonts.sans;
+                    font-size: Type.sm;
+                    font-weight: Type.medium;
+                    vertical-alignment: center;
+                    accessible-role: none;
+                }
+            }
+            // 2px ring, 2px offset, on the chosen chip while the group has the keyboard.
+            Rectangle {
+                x: -4px;
+                y: -4px;
+                width: parent.width + 8px;
+                height: parent.height + 8px;
+                border-width: scope.has-focus && parent.selected ? 2px : 0px;
+                border-color: Theme.focus-ring;
+                border-radius: Radius.md + 2px;
+                background: transparent;
+            }
+            touch := TouchArea {
+                clicked => { root.move(i); }
+            }
+        }
+    }
+
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == Key.RightArrow || event.text == Key.DownArrow) {
+                root.move(root.current + 1);
+                return accept;
+            }
+            if (event.text == Key.LeftArrow || event.text == Key.UpArrow) {
+                root.move(root.current - 1);
+                return accept;
+            }
+            if (event.text == Key.Home) {
+                root.move(0);
+                return accept;
+            }
+            if (event.text == Key.End) {
+                root.move(root.count - 1);
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
+// The kind of a captured Image or File item: one chip, not a control.
+component KindStatic inherits Rectangle {
+    in property <string> name;
+    in property <string> description;
+    in property <int> kind: 4;
+
+    height: max(Space.s8, Type.line-sm + Space.s2);
+    width: row.preferred-width;
+    border-radius: Radius.md;
+    border-width: 1px;
+    border-color: Theme.border-subtle;
+    accessible-role: text;
+    accessible-label: root.name;
+    accessible-description: root.description;
+
+    row := HorizontalLayout {
+        padding-left: Space.s1 - 1px;
+        padding-right: Space.s2 - 1px;
+        spacing: Space.s2;
+        Rectangle {
+            width: max(Space.s6, Type.line-sm);
+            height: max(Space.s6, Type.line-sm);
+            y: (parent.height - self.height) / 2;
+            border-radius: Radius.sm;
+            background: root.kind == 4 ? Theme.kind-image-tile : Theme.kind-file-tile;
+            Icon {
+                source: root.kind == 4 ? Icons.image : Icons.file;
+                tint: root.kind == 4 ? Theme.kind-image-glyph : Theme.kind-file-glyph;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+        Text {
+            text: root.name;
+            color: Theme.text-primary;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            font-weight: Type.medium;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+    }
+}
+
+// "More options" as a disclosure row, not a box (shared look spec 6): h32, full width, a caret (right when closed, down
+// when open), the name and, closed, a one-line summary of what is inside.
+component DisclosureRow inherits Rectangle {
+    in property <string> text;
+    in property <string> summary;
+    in property <bool> open: false;
+    in property <string> a11y-label;
+    callback clicked();
+    out property <bool> has-focus: scope.has-focus;
+
+    height: max(Space.s8, Type.line-base + Space.s2);
+    forward-focus: scope;
+    border-radius: Radius.md;
+    background: touch.pressed ? StateColor.pressed() : touch.has-hover ? Theme.bg-hover : transparent;
+    accessible-role: button;
+    accessible-label: root.a11y-label;
+    accessible-expanded: root.open;
+    accessible-action-default => { root.clicked(); }
+    animate background { duration: Motion.instant; easing: Motion.out; }
+
+    HorizontalLayout {
+        padding-left: Space.s2;
+        padding-right: Space.s2;
+        spacing: Space.s2;
+        Icon {
+            source: root.open ? Icons.caret-down : Icons.caret-right;
+            tint: Theme.text-secondary;
+            y: (parent.height - self.height) / 2;
+        }
+        Text {
+            text: root.text;
+            color: Theme.text-primary;
+            font-family: Fonts.sans;
+            font-size: Type.base;
+            font-weight: Type.medium;
+            vertical-alignment: center;
+            accessible-role: none;
+        }
+        Text {
+            horizontal-stretch: 1;
+            min-width: 0px;
+            text: root.open ? "" : root.summary;
+            color: Theme.text-secondary;
+            font-family: Fonts.sans;
+            font-size: Type.sm;
+            vertical-alignment: center;
+            overflow: elide;
+            accessible-role: none;
+        }
+    }
+    Rectangle {
+        x: -4px;
+        y: -4px;
+        width: parent.width + 8px;
+        height: parent.height + 8px;
+        border-width: scope.has-focus ? 2px : 0px;
+        border-color: Theme.focus-ring;
+        border-radius: Radius.md + 2px;
+        background: transparent;
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+    scope := FocusScope {
+        focus-on-click: false;
+        key-pressed(event) => {
+            if (event.text == " " || event.text == "\n") {
+                root.clicked();
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
 export component ItemEditor inherits Window {
     title: root.is-new ? @tr("New item") : @tr("Edit item");
     background: Theme.bg-app;
@@ -262,7 +527,7 @@ export component ItemEditor inherits Window {
     // The text (kinds 0 to 3). Image and file items have no text to edit.
     in-out property <string> content;
     in-out property <bool> sensitive: false;
-    // "More options" (Kind, Title, Colour, Tags, Privacy) is open; the host remembers it in the settings.
+    // "More options" (Title, Colour, Tags, Privacy) is open; the host remembers it in the settings.
     in-out property <bool> more-open: false;
     callback more-toggled(open: bool);
     // The list the item is in: an index into `list-names`.
@@ -438,6 +703,32 @@ export component ItemEditor inherits Window {
                         text: @tr("Restored the changes you had not saved.");
                     }
 
+                    // Kind (shared look spec 6, decision 10): visible at rest, a choice for text items and new items, one
+                    // read-only chip for captured ones.
+                    FormField {
+                        label: @tr("Kind");
+                        if root.text-kind || root.is-new: kind-choice := KindChips {
+                            label: @tr("Kind");
+                            options: [@tr("Text"), @tr("Code"), @tr("Link"), @tr("Template"), @tr("Image"), @tr("File")];
+                            count: root.is-new ? 6 : 4;
+                            current: root.kind-index;
+                            chosen(i) => {
+                                root.kind-index = i;
+                                // Only text kinds can be sensitive: the switch goes off with the kind.
+                                if (i >= 4) { root.sensitive = false; }
+                                root.touch();
+                            }
+                            changed has-focus => {
+                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
+                            }
+                        }
+                        if !root.text-kind && !root.is-new: KindStatic {
+                            name: root.kind-index == 4 ? @tr("Image") : @tr("File");
+                            kind: root.kind-index;
+                            description: @tr("Captured items keep their kind.");
+                        }
+                    }
+
                     // The content: text for kinds 0 to 3, what the item holds for image and file. One slot, so the
                     // text field exists whatever the kind (a field inside an `if` cannot be focused from here).
                     Rectangle {
@@ -607,11 +898,15 @@ export component ItemEditor inherits Window {
                         }
                     }
 
-                    // "More options": Kind, Title, Colour, Tags and Privacy. Content and List stay in view; the choice is remembered.
-                    more-toggle := Button {
-                        text: root.more-shown ? @tr("Fewer options") : @tr("More options");
-                        a11y-label: root.more-shown ? @tr("Hide kind, title, colour, tags and privacy") : @tr("Show kind, title, colour, tags and privacy");
-                        accessible-expanded: root.more-shown;
+                    // "More options": Title, Colour, Tags and Privacy. Content and List stay in view; the choice is remembered.
+                    // No spacing between the row and its box: a closed box takes no room, not a gap.
+                    VerticalLayout {
+                    spacing: 0px;
+                    more-toggle := DisclosureRow {
+                        text: @tr("More options");
+                        summary: @tr("Title, colour, tags, privacy");
+                        open: root.more-shown;
+                        a11y-label: root.more-shown ? @tr("Hide title, colour, tags and privacy") : @tr("Show title, colour, tags and privacy");
                         clicked => {
                             root.more-open = !root.more-shown;
                             root.more-toggled(root.more-open);
@@ -627,39 +922,8 @@ export component ItemEditor inherits Window {
                         more-col := VerticalLayout {
                             width: parent.width;
                             spacing: Space.s4;
+                            padding-top: Space.s4;
                             alignment: start;
-                    // Kind: a choice for text items and new items, a fixed label for captured ones.
-                    if root.text-kind || root.is-new: FormField {
-                        label: @tr("Kind");
-                        kind-choice := Segmented {
-                            label: @tr("Kind");
-                            options: root.is-new
-                                ? [@tr("Text"), @tr("Code"), @tr("Link"), @tr("Template"), @tr("Image"), @tr("File")]
-                                : [@tr("Text"), @tr("Code"), @tr("Link"), @tr("Template")];
-                            current: root.kind-index;
-                            chosen(i) => {
-                                root.kind-index = i;
-                                // Only text kinds can be sensitive: the switch goes off with the kind.
-                                if (i >= 4) { root.sensitive = false; }
-                                root.touch();
-                            }
-                            changed has-focus => {
-                                if (self.has-focus) { root.reveal-field(self.absolute-position.y, self.height); }
-                            }
-                        }
-                    }
-                    if !root.text-kind && !root.is-new: FormField {
-                        label: @tr("Kind");
-                        helper: @tr("Captured items keep their kind.");
-                        Text {
-                            text: root.kind-index == 4 ? @tr("Image") : @tr("File");
-                            color: Theme.text-primary;
-                            font-family: Fonts.sans;
-                            font-size: Type.base;
-                            font-weight: Type.medium;
-                        }
-                    }
-
                     FormField {
                         label: @tr("Title");
                         title-field := TextField {
@@ -785,6 +1049,7 @@ export component ItemEditor inherits Window {
                         }
                     }
                         }
+                    }
                     }
                 }
             }

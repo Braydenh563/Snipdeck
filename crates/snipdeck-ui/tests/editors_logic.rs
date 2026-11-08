@@ -108,7 +108,7 @@ macro_rules! ui_tests {
 fn item_editor() -> (ItemEditor, Log) {
     let ui = ItemEditor::new().expect("item editor");
     fixture::text_item(&ui);
-    // Most tests drive Kind, Title, Colour, Tags and Privacy: "More options" is open, as a user who opened it left it.
+    // Most tests drive Title, Colour, Tags and Privacy: "More options" is open, as a user who opened it left it.
     ui.set_more_open(true);
     ui.window().set_size(slint::LogicalSize::new(640.0, 2000.0));
     ui.show().expect("show");
@@ -352,7 +352,11 @@ ui_tests! {
         assert_eq!(ui.get_kind_index(), 0);
         let text = find(&ui, "Text", AccessibleRole::RadioButton);
         assert_eq!(text.accessible_checked(), Some(true));
-        // Shift+Tab from the title reaches the group.
+        // Shift+Tab from the content reaches the group, which comes before it.
+        ui.set_more_open(false);
+        settle();
+        ui.invoke_focus_title();
+        settle();
         press_key(&ui, Key::Backtab);
         press_key(&ui, Key::RightArrow);
         assert_eq!(ui.get_kind_index(), 1);
@@ -608,15 +612,85 @@ ui_tests! {
         assert!(!ui.get_sensitive());
     }
 
+    fn kind_chips_visible_at_rest() {
+        let (ui, _log) = item_editor();
+        ui.set_more_open(false);
+        settle();
+        let content = find(&ui, "Content", AccessibleRole::TextInput);
+        let group = find(&ui, "Kind", AccessibleRole::RadioGroup);
+        assert!(group.absolute_position().y < content.absolute_position().y, "Kind sits above Content");
+        for label in ["Text", "Code", "Link", "Template"] {
+            let chip = find(&ui, label, AccessibleRole::RadioButton);
+            assert_eq!(chip.size().height, 32.0, "{label} chip is 32 tall");
+            assert!(chip.size().width >= 56.0, "{label} chip {}", chip.size().width);
+        }
+        assert_eq!(find(&ui, "Text", AccessibleRole::RadioButton).accessible_checked(), Some(true));
+        assert!(missing(&ui, "Image", AccessibleRole::RadioButton), "an existing text item cannot become an image");
+    }
+
+    fn kind_chips_arrow_keys() {
+        let (ui, _log) = item_editor();
+        ui.set_more_open(false);
+        settle();
+        ui.invoke_focus_title();
+        settle();
+        // Shift+Tab from the content reaches the group, which is one tab stop.
+        press_key(&ui, Key::Backtab);
+        press_key(&ui, Key::RightArrow);
+        assert_eq!(ui.get_kind_index(), 1);
+        press_key(&ui, Key::DownArrow);
+        assert_eq!(ui.get_kind_index(), 2);
+        press_key(&ui, Key::LeftArrow);
+        assert_eq!(ui.get_kind_index(), 1);
+        press_key(&ui, Key::End);
+        assert_eq!(ui.get_kind_index(), 3);
+        press_key(&ui, Key::RightArrow);
+        assert_eq!(ui.get_kind_index(), 3, "the end of the group stops");
+        press_key(&ui, Key::Home);
+        assert_eq!(ui.get_kind_index(), 0);
+        press_key(&ui, Key::Tab);
+        press_key(&ui, Key::RightArrow);
+        assert_eq!(ui.get_kind_index(), 0, "Tab left the group");
+    }
+
+    fn more_options_is_disclosure() {
+        let (ui, _log) = item_editor();
+        ui.set_more_open(false);
+        settle();
+        let closed = find(&ui, "Show title, colour, tags and privacy", AccessibleRole::Button);
+        assert_eq!(closed.accessible_expanded(), Some(false));
+        assert_eq!(closed.size().height, 32.0);
+        let field = find(&ui, "Content", AccessibleRole::TextInput);
+        assert!(closed.size().width >= field.size().width - 1.0, "the row spans the form");
+        ui.set_more_open(true);
+        settle();
+        let open = find(&ui, "Hide title, colour, tags and privacy", AccessibleRole::Button);
+        assert_eq!(open.accessible_expanded(), Some(true));
+    }
+
+    fn image_kind_chip_read_only() {
+        let (ui, _log) = item_editor();
+        ui.set_kind_index(4);
+        ui.set_more_open(false);
+        settle();
+        assert!(missing(&ui, "Kind", AccessibleRole::RadioGroup), "no choice for a captured item");
+        assert!(missing(&ui, "Image", AccessibleRole::RadioButton));
+        let chip = find(&ui, "Image", AccessibleRole::Text);
+        assert_eq!(chip.size().height, 32.0);
+        let before = ui.get_kind_index();
+        click(&chip);
+        assert_eq!(ui.get_kind_index(), before);
+    }
+
     fn more_options_start_closed_and_the_toggle_reports_each_change() {
         let (ui, log) = item_editor();
         ui.set_more_open(false);
         settle();
-        find(&ui, "Show kind, title, colour, tags and privacy", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Show title, colour, tags and privacy", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
         assert!(ui.get_more_open());
         assert_eq!(take(&log), ["more:true"]);
-        find(&ui, "Hide kind, title, colour, tags and privacy", AccessibleRole::Button).invoke_accessible_default_action();
+        find(&ui, "Hide title, colour, tags and privacy", AccessibleRole::Button).invoke_accessible_default_action();
         settle();
         assert!(!ui.get_more_open());
         assert_eq!(take(&log), ["more:false"]);
@@ -650,10 +724,10 @@ ui_tests! {
         let (ui, _log) = item_editor();
         ui.set_more_open(false);
         settle();
-        assert!(!missing(&ui, "Show kind, title, colour, tags and privacy", AccessibleRole::Button));
+        assert!(!missing(&ui, "Show title, colour, tags and privacy", AccessibleRole::Button));
         ui.set_title_error("Too long.".into());
         settle();
-        assert!(!missing(&ui, "Hide kind, title, colour, tags and privacy", AccessibleRole::Button));
+        assert!(!missing(&ui, "Hide title, colour, tags and privacy", AccessibleRole::Button));
     }
 
     fn save_names_its_shortcut_in_a_tooltip() {
