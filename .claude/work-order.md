@@ -20,7 +20,7 @@ started: 2026-11-07 (resumed)
 - [x] UX audit quick wins (audit 2,3,5,9,11,15,18): Recent click pastes; hotkey health with press-to-test + alternatives; template chips insert at caret; onboarding Floating/Docked + Recent offer; Supporter lock badges; Settings search + jump links; Open Picker in tray
 - [x] Defaults: Recent on for new installs; new non-AltGr default chords (decisions in now.md)
 - [x] Symbols library (slices 1-7 merged; Windows checks in quick-check 13-18) (spec first): emoji, kaomoji, icons; search, one click copies/pastes, add to a list, icons copy as SVG/PNG or save; licence-clean data; colour emoji rendering checked
-- [ ] Carry the Panel v2 look (spec docs/reviews/shared-look-spec.md; slices 1-7 merged b70b909, DESIGN.md 5bdfdb0; slice 8 test cleanup on wt/look8b) to Main lists, Picker, command palette, editors, menus and Settings
+- [x] Carry the Panel v2 look (spec docs/reviews/shared-look-spec.md; slices 1-7 merged b70b909, DESIGN.md 5bdfdb0; slice 8 test cleanup on wt/look8b) to Main lists, Picker, command palette, editors, menus and Settings
 - [x] v1.0.1: Rebuild-from-backup safety (own blob dir for the set-aside db, WAL checkpoint on close, crash-safe move marker; .claude/inbox-archive.md): merged e075b10; Windows rename-under-lock unverified
 - [ ] v1.0.1: compact dock + dock grips (U22/O28), sidebar resize (O54), header select and delete (O49/O50)
 - [ ] v1.0.1: paste or drop to create an item, Ctrl+C on items (O47 a-c; branch claude/o47-abc-wip), Main quick-add
