@@ -40,3 +40,4 @@ date | item | type | rung | rework | note
 2026-11-07 | Translations of 110 new strings x6 | docs | sonnet | 0 | 
 2026-11-07 | Importer hardening H2/M7/M8 | security | sonnet | 0 | 
 2026-11-07 | Panel v2 audit 2 fixes | ui | sonnet | 1 | 
+2026-11-08 | Symbols slice 6 + review fixes M3-M6 L10 | feature | sonnet | 0 | 
