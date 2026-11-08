@@ -234,7 +234,10 @@ fn the_picker_flips_above_a_caret_near_the_bottom_and_falls_back_to_the_mouse() 
         // The 36 px rows (shared look decision 4) make the window 440 px tall: below the
         // mouse at y 600 it would leave the 1040 px work area, so it flips above the mouse.
         assert_eq!(at.x, 900);
-        assert_eq!(at.h, 440, "7 rows of 36 px plus the search, chips and footer");
+        assert_eq!(
+            at.h, 440,
+            "7 rows of 36 px plus the search, chips and footer"
+        );
         assert_eq!(
             i64::from(at.y) + i64::from(at.h),
             600 - 4,
