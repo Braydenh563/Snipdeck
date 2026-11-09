@@ -102,6 +102,19 @@ pub enum ToastMessage {
         /// How many items were made.
         count: usize,
     },
+    /// "Added to {list}. Some files were skipped: too large, empty or unreadable." (Ctrl+V or a
+    /// drop of several files where some could not be used), with Undo and Edit.
+    AddedSomeFiles {
+        /// The list's name.
+        list: String,
+    },
+    /// "Those files could not be added. They may be too large, empty or unreadable."
+    FilesNotAdded,
+    /// "Drop to add to {list}" (files dragged over a window).
+    DropTo {
+        /// The list's name.
+        list: String,
+    },
     /// "That looks like a password or key, so it was not saved. Check it, then save." (Ctrl+V
     /// with a secret on the clipboard opens the editor instead of saving)
     LooksSecret,

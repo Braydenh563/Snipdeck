@@ -812,10 +812,39 @@ fn watch_place<S, C, K, T>(
     // O39: Windows can drop the window's pixels (Alt+Tab, restore); redraw all of it then.
     let weak = window.as_weak();
     let mut watch = crate::repaint::Watch::new();
+    let batch = crate::drop_batch::DropBatch::default();
+    let for_drops = controller.clone();
     window
         .window()
         .on_winit_window_event(move |slint_window, event| {
             crate::native_window::note_window_event("MainWindow", slint_window, event);
+            // Files dragged in from Explorer (text and pictures need an OLE drop target: later).
+            match event {
+                WindowEvent::HoveredFile(_) | WindowEvent::HoveredFileCancelled => {
+                    if let Some(c) = for_drops.upgrade()
+                        && let Ok(mut c) = c.try_borrow_mut()
+                    {
+                        if matches!(event, WindowEvent::HoveredFile(_)) {
+                            c.drop_hover(crate::item_editor::Origin::Main, None);
+                        } else {
+                            c.drop_end();
+                        }
+                    }
+                    crate::binding::redraw_all();
+                }
+                WindowEvent::DroppedFile(path) => {
+                    let controller = for_drops.clone();
+                    batch.push(path.to_string_lossy().into_owned(), move |paths| {
+                        if let Some(c) = controller.upgrade()
+                            && let Ok(mut c) = c.try_borrow_mut()
+                        {
+                            c.drop_create(&paths, crate::item_editor::Origin::Main, None);
+                        }
+                        crate::binding::redraw_all();
+                    });
+                }
+                _ => {}
+            }
             if watch.on_signal(crate::repaint::signal_of(event))
                 && let Some(w) = weak.upgrade()
             {

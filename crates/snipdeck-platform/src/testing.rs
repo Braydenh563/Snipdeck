@@ -33,6 +33,11 @@ pub struct FakeClipboard {
     pub sequence: u32,
     /// How many times the text on the clipboard was read (`ClipboardText::read_text`).
     pub text_reads: u32,
+    /// A picture on the clipboard that was copied elsewhere (`ClipboardText::read_png` falls
+    /// back to it when the latest write holds none).
+    pub held_png: Option<Vec<u8>>,
+    /// Files copied in Explorer (`ClipboardText::read_files`).
+    pub held_files: Vec<String>,
     /// The sequence number right after the latest write.
     pub write_sequence: Option<u32>,
     /// How many clears fail with "busy" before one works (the clipboard is open elsewhere).

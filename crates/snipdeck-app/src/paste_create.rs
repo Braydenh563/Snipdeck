@@ -1,10 +1,60 @@
-//! Making an item from what the user pasted (Ctrl+V on a list): what kind the text becomes, and
-//! whether it looks like a secret.
+//! Making items from what the user pasted (Ctrl+V on a list) or dropped (files from Explorer):
+//! which pieces there are, what kind a text becomes, and whether it looks like a secret.
 //!
-//! Pure functions, so the rules are tested here. The controller makes the item
+//! Pure functions, so the rules are tested here. The controller makes the items
 //! (`controller::create_ctl`).
 
+use std::path::PathBuf;
+
 use snipdeck_core::ItemKind;
+
+/// What the clipboard or a drop held, as far as Snipdeck reads it.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Clip {
+    /// Plain text (a browser link arrives as its address).
+    pub text: Option<String>,
+    /// A PNG picture (a screenshot, a copied image).
+    pub png: Option<Vec<u8>>,
+    /// Files from Explorer.
+    pub files: Vec<PathBuf>,
+}
+
+/// One item to make.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Piece {
+    /// Text, or a link when the text is one web address.
+    Text {
+        /// [`ItemKind::Text`] or [`ItemKind::Link`].
+        kind: ItemKind,
+        /// The text.
+        text: String,
+    },
+    /// A PNG picture.
+    Image(Vec<u8>),
+    /// A file to read from disk (a PNG file becomes an Image item, any other a File item).
+    File(PathBuf),
+}
+
+/// What to make from `clip`, in order. Files win over text and text over a picture: Explorer
+/// puts a file name next to the files, and spreadsheets and word processors put a bitmap next to
+/// copied text, but nothing puts text next to a screenshot. Empty when there is nothing to make
+/// (blank text counts as nothing).
+#[must_use]
+pub fn classify(clip: &Clip) -> Vec<Piece> {
+    if !clip.files.is_empty() {
+        return clip.files.iter().cloned().map(Piece::File).collect();
+    }
+    if let Some(text) = clip.text.as_deref().filter(|t| !t.trim().is_empty()) {
+        return vec![Piece::Text {
+            kind: kind_of_text(text),
+            text: text.to_owned(),
+        }];
+    }
+    match clip.png.as_ref().filter(|p| !p.is_empty()) {
+        Some(png) => vec![Piece::Image(png.clone())],
+        None => Vec::new(),
+    }
+}
 
 /// Why text is held back for the user to look at.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -151,6 +201,41 @@ fn looks_random(t: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn classify_prefers_files_then_text_then_a_picture() {
+        let clip = Clip {
+            text: Some("name.txt".into()),
+            png: Some(vec![1]),
+            files: vec![PathBuf::from("a"), PathBuf::from("b")],
+        };
+        assert_eq!(
+            classify(&clip),
+            [Piece::File("a".into()), Piece::File("b".into())]
+        );
+        let clip = Clip {
+            files: Vec::new(),
+            ..clip
+        };
+        assert_eq!(
+            classify(&clip),
+            [Piece::Text {
+                kind: ItemKind::Text,
+                text: "name.txt".into()
+            }]
+        );
+        let clip = Clip {
+            text: Some("  \n".into()),
+            ..clip
+        };
+        assert_eq!(classify(&clip), [Piece::Image(vec![1])]);
+        assert!(classify(&Clip::default()).is_empty());
+        let clip = Clip {
+            png: Some(Vec::new()),
+            ..Clip::default()
+        };
+        assert!(classify(&clip).is_empty());
+    }
 
     #[test]
     fn the_kind_detection_table() {

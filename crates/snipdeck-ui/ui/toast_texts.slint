@@ -71,6 +71,15 @@ export global ToastTexts {
     pure public function added-to(list: string) -> string {
         return @tr("Added to {}", list);
     }
+    pure public function added-some-files(list: string) -> string {
+        return @tr("Added to {}. Some files were skipped: too large, empty or unreadable.", list);
+    }
+    pure public function files-not-added() -> string {
+        return @tr("Those files could not be added. They may be too large, empty or unreadable.");
+    }
+    pure public function drop-to(list: string) -> string {
+        return @tr("Drop to add to {}", list);
+    }
     pure public function looks-secret() -> string {
         return @tr("This looks like a password or key, so it was not saved. Check it, then save.");
     }

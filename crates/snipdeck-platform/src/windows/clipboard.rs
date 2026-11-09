@@ -91,7 +91,7 @@ use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::Memory::{
     GMEM_MOVEABLE, GMEM_ZEROINIT, GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock,
 };
-use windows::Win32::System::Ole::{CF_DIB, CF_HDROP, CF_UNICODETEXT};
+use windows::Win32::System::Ole::{CF_DIB, CF_DIBV5, CF_HDROP, CF_UNICODETEXT};
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, HWND_MESSAGE, IsHungAppWindow,
     MSG, PM_NOREMOVE, PM_QS_SENDMESSAGE, PM_REMOVE, PeekMessageW, PostMessageW, PostQuitMessage,
@@ -121,6 +121,9 @@ const OPEN_RETRY_STEP: Duration = Duration::from_millis(5);
 pub const SNAPSHOT_LIMIT: usize = 64 * 1024 * 1024;
 /// The most text [`WinClipboard::read_text`] reads (bytes of UTF-16).
 const READ_TEXT_LIMIT: usize = 32 * 1024 * 1024;
+/// The most a picture or a file list read from the clipboard may take (bytes).
+const READ_IMAGE_LIMIT: usize = win_formats::DIB_DECODE_LIMIT;
+const READ_FILES_LIMIT: usize = 4 * 1024 * 1024;
 /// How long `Drop` waits for the thread to render outstanding formats and exit.
 const SHUTDOWN_WAIT: Duration = Duration::from_secs(2);
 /// Posted to the owner window when jobs are queued.
@@ -250,6 +253,19 @@ impl WinClipboard {
     /// `None` if there is no text or the clipboard stays busy. Writes nothing, so no markers.
     pub fn read_text(&mut self) -> Option<String> {
         self.call(read_text_job).ok().flatten()
+    }
+
+    /// The picture on the clipboard as PNG bytes: the registered `PNG` format first, else
+    /// `CF_DIBV5`, else `CF_DIB` converted by [`win_formats::dib_to_png`]. `None` if there is no
+    /// picture, it is over the size limit, or the clipboard stays busy. Writes nothing.
+    pub fn read_png(&mut self) -> Option<Vec<u8>> {
+        self.call(read_png_job).ok().flatten()
+    }
+
+    /// The paths of the files on the clipboard (`CF_HDROP`, as copied in Explorer); empty if
+    /// there are none or the clipboard stays busy. Writes nothing.
+    pub fn read_files(&mut self) -> Vec<String> {
+        self.call(read_files_job).unwrap_or_default()
     }
 
     /// Whether the clipboard holds a picture (`CF_DIB`, `CF_DIBV5` or `CF_BITMAP`). Reads
@@ -1117,6 +1133,41 @@ fn read_text_job() -> Option<String> {
     let text = win_formats::from_unicode_text(&bytes);
     wipe(&mut bytes);
     Some(text)
+}
+
+fn read_png_job() -> Option<Vec<u8>> {
+    let png_format = with_owner(|owner| owner.formats.png).unwrap_or(0);
+    let hwnd = owner_hwnd()?;
+    let _open = OpenGuard::open(hwnd, READ_OPEN_BUDGET)?;
+    let read = |format: u32| -> Option<Vec<u8>> {
+        // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
+        let handle = unsafe { GetClipboardData(format) }.ok()?;
+        read_global(HGLOBAL(handle.0), READ_IMAGE_LIMIT)
+    };
+    if png_format != 0
+        && let Some(png) = read(png_format)
+    {
+        return Some(png);
+    }
+    [CF_DIBV5.0, CF_DIB.0]
+        .into_iter()
+        .find_map(|format| read(u32::from(format)).and_then(|dib| win_formats::dib_to_png(&dib)))
+}
+
+fn read_files_job() -> Vec<String> {
+    let Some(hwnd) = owner_hwnd() else {
+        return Vec::new();
+    };
+    let Some(_open) = OpenGuard::open(hwnd, READ_OPEN_BUDGET) else {
+        return Vec::new();
+    };
+    // SAFETY: the clipboard is open by this thread; the handle stays owned by the system.
+    let Ok(handle) = (unsafe { GetClipboardData(u32::from(CF_HDROP.0)) }) else {
+        return Vec::new();
+    };
+    read_global(HGLOBAL(handle.0), READ_FILES_LIMIT)
+        .map(|bytes| win_formats::parse_drop_files(&bytes))
+        .unwrap_or_default()
 }
 
 fn clear_if_text_job(expected: &str) -> bool {

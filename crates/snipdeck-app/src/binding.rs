@@ -118,6 +118,8 @@ pub struct Binding {
     frame_moved: Rc<FrameFn>,
     restore_frame: Rc<MonitorFn>,
     restore_anchor: Rc<dyn Fn()>,
+    files_hover: Rc<dyn Fn(bool)>,
+    file_dropped: Rc<dyn Fn(String)>,
 }
 
 impl std::fmt::Debug for Binding {
@@ -189,6 +191,17 @@ impl Binding {
     /// work area (a Panel may straddle two monitors while it is dragged across).
     pub fn frame_moved(&self, monitor: &Monitor, frame: Rect) {
         (self.frame_moved)(monitor, frame);
+    }
+
+    /// Files are being dragged over the Panel (`true`), or the drag left it (`false`).
+    pub fn files_hover(&self, over: bool) {
+        (self.files_hover)(over);
+    }
+
+    /// A file was dropped on the Panel. The files of one drop arrive one by one; they are
+    /// added together, to the list the Panel shows.
+    pub fn file_dropped(&self, path: String) {
+        (self.file_dropped)(path);
     }
 
     /// The Panel is shown on `monitor`: put it where the user left it there, if they did.
@@ -994,6 +1007,34 @@ where
             restore_anchor: {
                 let core = Rc::clone(&core);
                 Rc::new(move || core.act_effects(Controller::restore_anchor))
+            },
+            files_hover: {
+                let core = Rc::clone(&core);
+                Rc::new(move |over| {
+                    if core.controller.try_borrow_mut().is_ok() {
+                        core.act(|ctl| {
+                            if over {
+                                ctl.drop_hover(crate::item_editor::Origin::Panel, None);
+                            } else {
+                                ctl.drop_end();
+                            }
+                        });
+                    }
+                })
+            },
+            file_dropped: {
+                let core = Rc::clone(&core);
+                let batch = crate::drop_batch::DropBatch::default();
+                Rc::new(move |path| {
+                    let core = Rc::clone(&core);
+                    batch.push(path, move |paths| {
+                        if core.controller.try_borrow_mut().is_ok() {
+                            core.act(|ctl| {
+                                ctl.drop_create(&paths, crate::item_editor::Origin::Panel, None);
+                            });
+                        }
+                    });
+                })
             },
         }
     }

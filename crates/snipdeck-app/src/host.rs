@@ -61,6 +61,11 @@ pub trait ClipboardText {
     fn read_text(&mut self) -> Option<String>;
     /// Whether the clipboard holds a picture (a screenshot, say).
     fn has_image(&mut self) -> bool;
+    /// The clipboard's picture as PNG bytes (a screenshot, a copied image), or `None`. Writes
+    /// nothing.
+    fn read_png(&mut self) -> Option<Vec<u8>>;
+    /// The paths of the files copied in Explorer; empty when there are none. Writes nothing.
+    fn read_files(&mut self) -> Vec<String>;
     /// Empties the clipboard if it still holds exactly `text` (so something the user copied
     /// since is never lost). Whether it was cleared.
     fn clear_if_text(&mut self, text: &str) -> bool;
@@ -82,6 +87,12 @@ impl ClipboardText for snipdeck_platform::windows::clipboard::WinClipboard {
     }
     fn has_image(&mut self) -> bool {
         Self::has_image(self)
+    }
+    fn read_png(&mut self) -> Option<Vec<u8>> {
+        Self::read_png(self)
+    }
+    fn read_files(&mut self) -> Vec<String> {
+        Self::read_files(self)
     }
     fn clear_if_text(&mut self, text: &str) -> bool {
         Self::clear_if_text(self, text)
@@ -113,6 +124,18 @@ impl ClipboardText for snipdeck_platform::testing::FakeClipboard {
                 .iter()
                 .any(|d| matches!(d, snipdeck_platform::payload::Data::Png(_)))
         })
+    }
+    fn read_png(&mut self) -> Option<Vec<u8>> {
+        let written = self.written.last().and_then(|p| {
+            p.data().iter().find_map(|d| match d {
+                snipdeck_platform::payload::Data::Png(png) => Some(png.clone()),
+                _ => None,
+            })
+        });
+        written.or_else(|| self.held_png.clone())
+    }
+    fn read_files(&mut self) -> Vec<String> {
+        self.held_files.clone()
     }
     fn clear_if_text(&mut self, text: &str) -> bool {
         if self.read_text().as_deref() != Some(text) || self.busy_for_clear() {

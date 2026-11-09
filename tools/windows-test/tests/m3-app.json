@@ -343,6 +343,20 @@
       "title": "Paste a secret and Ctrl+C on items (O47)",
       "do": "Copy a line like 'password: hunter2' (or a GitHub token starting ghp_) and press Ctrl+V on the Panel list. Then select one item and press Ctrl+C, paste it into Notepad. Mark three items (Ctrl+click) and press Ctrl+C, paste into Notepad. Try with a Sensitive item selected on its own.",
       "expect": "The secret is not saved: the item editor opens with the text and Sensitive turned on, and a message says why. Ctrl+C on one item copies it like its Copy button (a Sensitive item is cleared from the clipboard after the usual time); with several items they are copied one per line and Sensitive ones are left out. Write what went wrong in the note (n)."
+    },
+    {
+      "id": "41",
+      "v1": true,
+      "title": "Paste a screenshot and files (O47)",
+      "do": "Press Win+Shift+S and snip part of the screen, then open the Panel (click a list row once) and press Ctrl+V. Then, in Explorer, select two files (one a .png picture, one a .txt) and press Ctrl+C, go back to the Panel and press Ctrl+V. Try a file bigger than 64 MB together with a small one. Press Undo on the message.",
+      "expect": "The screenshot becomes an Image item at the top. The two files become two items, in the order selected: the .png an Image item, the .txt a File item, with one message 'Added to <list>' and one Undo that removes both. The big file is skipped and the message says some files were skipped. Text copied from Excel or Word still makes a Text item, not a picture. Write what went wrong in the note (n)."
+    },
+    {
+      "id": "42",
+      "v1": true,
+      "title": "Drag files from Explorer onto the Panel and Main window (O47)",
+      "do": "Drag two files from Explorer over the Panel (do not drop yet), then drop them. Do the same over the Main window with a list open. Drag a file in and move it out again without dropping. Drop a folder.",
+      "expect": "While dragging, a message says 'Drop to add to <list>'; it goes when the drag leaves or ends. Dropping adds one item per file to the list the window shows, as one Undo step. A drag that leaves adds nothing. A folder is skipped with a message. Dropping on a tab or on text and pictures from other programs is not supported in this version. Write what went wrong in the note (n)."
     }
   ]
 }

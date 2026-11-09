@@ -692,6 +692,16 @@ fn watch_window_events(window: &PanelWindow, binding: Binding, armed: Rc<Cell<bo
             if matches!(event, WindowEvent::Resized(_)) {
                 snipdeck_app::native_window::paint_before_first_frame(slint_window);
             }
+            // Files dragged in from Explorer (text and pictures need an OLE drop target: later).
+            match event {
+                WindowEvent::HoveredFile(_) => binding.files_hover(true),
+                WindowEvent::HoveredFileCancelled => binding.files_hover(false),
+                WindowEvent::DroppedFile(path) => {
+                    binding.files_hover(false);
+                    binding.file_dropped(path.to_string_lossy().into_owned());
+                }
+                _ => {}
+            }
             let moved = matches!(event, WindowEvent::Moved(_));
             if (moved || matches!(event, WindowEvent::Resized(_))) && armed.get() {
                 // winit's own numbers: Slint has not seen this event yet.

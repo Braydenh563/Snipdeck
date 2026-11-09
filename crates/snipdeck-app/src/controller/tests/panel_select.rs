@@ -652,3 +652,162 @@ fn a_secret_paste_opens_a_fresh_editor_and_leaves_the_new_item_draft_alone() {
     w.ctl.item_editor_cancel();
     assert_eq!(std::fs::read(&draft).expect("draft"), kept);
 }
+
+/// A PNG of one pixel, for a pasted screenshot.
+fn tiny_png() -> Vec<u8> {
+    let mut out = Vec::new();
+    let mut encoder = png::Encoder::new(&mut out, 1, 1);
+    encoder.set_color(png::ColorType::Rgb);
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut writer = encoder.write_header().expect("header");
+    writer.write_image_data(&[1, 2, 3]).expect("pixel");
+    writer.finish().expect("png");
+    out
+}
+
+/// Files in a temp folder, named and filled as given, and their paths as Explorer lists them.
+fn files_in(dir: &tempfile::TempDir, files: &[(&str, &[u8])]) -> Vec<String> {
+    files
+        .iter()
+        .map(|(name, bytes)| {
+            let path = dir.path().join(name);
+            std::fs::write(&path, bytes).expect("file");
+            path.to_string_lossy().into_owned()
+        })
+        .collect()
+}
+
+#[test]
+fn pasting_two_files_adds_two_file_items_one_step() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut w = world();
+    w.ctl.services.clipboard.held_files =
+        files_in(&dir, &[("a.txt", b"alpha"), ("b.bin", &[0, 1, 2, 3])]);
+    w.ctl.paste_create(Origin::Panel);
+    let view = w.ctl.view();
+    assert_eq!(view.rows.len(), 6, "two items joined the four");
+    assert_eq!(
+        (view.rows[0].title.as_str(), view.rows[1].title.as_str()),
+        ("a.txt", "b.bin"),
+        "in the order copied, at the top"
+    );
+    assert!(view.rows[..2].iter().all(|r| r.kind == ItemKind::File));
+    assert_eq!(
+        view.toast.expect("toast").message,
+        ToastMessage::AddedTo {
+            list: "Replies".into(),
+            count: 2
+        }
+    );
+    assert!(w.ctl.history_view().undo.is_some(), "one history step");
+    w.ctl.toast_action();
+    assert_eq!(w.ctl.view().rows.len(), 4, "one Undo takes both back");
+    assert!(w.ctl.history_view().undo.is_none(), "exactly one step");
+}
+
+#[test]
+fn a_pasted_png_file_becomes_an_image_item() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut w = world();
+    let png = tiny_png();
+    w.ctl.services.clipboard.held_files = files_in(&dir, &[("shot.png", &png)]);
+    w.ctl.paste_create(Origin::Panel);
+    let id = w.ctl.view().rows[0].id;
+    assert_eq!(w.ctl.store().item(id).expect("item").kind, ItemKind::Image);
+}
+
+#[test]
+fn a_pasted_screenshot_adds_an_image_item() {
+    let mut w = world();
+    w.ctl.services.clipboard.held_png = Some(tiny_png());
+    w.ctl.paste_create(Origin::Panel);
+    let view = w.ctl.view();
+    assert_eq!(view.rows.len(), 5);
+    assert_eq!(view.rows[0].kind, ItemKind::Image);
+    assert!(view.toast.expect("toast").undo);
+}
+
+#[test]
+fn text_on_the_clipboard_wins_over_a_picture_next_to_it() {
+    let mut w = pasting("cells copied from a sheet");
+    w.ctl.services.clipboard.held_png = Some(tiny_png());
+    w.ctl.paste_create(Origin::Panel);
+    assert_eq!(w.ctl.view().rows[0].kind, ItemKind::Text);
+}
+
+#[test]
+fn a_file_over_the_limit_is_skipped_and_said() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut w = world();
+    let mut paths = files_in(&dir, &[("ok.txt", b"fine")]);
+    let big = dir.path().join("big.bin");
+    let file = std::fs::File::create(&big).expect("big");
+    file.set_len(crate::item_editor::max_attachment_bytes() + 1)
+        .expect("sparse");
+    paths.insert(0, big.to_string_lossy().into_owned());
+    paths.push(dir.path().join("gone.txt").to_string_lossy().into_owned());
+    w.ctl.services.clipboard.held_files = paths;
+    w.ctl.paste_create(Origin::Panel);
+    let view = w.ctl.view();
+    assert_eq!(view.rows.len(), 5, "only the usable file was added");
+    assert_eq!(view.rows[0].title, "ok.txt");
+    assert_eq!(
+        view.toast.expect("toast").message,
+        ToastMessage::AddedSomeFiles {
+            list: "Replies".into()
+        }
+    );
+    // Nothing usable at all: nothing changes and the toast says why.
+    let mut w = world();
+    w.ctl.services.clipboard.held_files =
+        vec![dir.path().join("gone.txt").to_string_lossy().into_owned()];
+    w.ctl.paste_create(Origin::Panel);
+    assert_eq!(w.ctl.view().rows.len(), 4);
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::FilesNotAdded
+    );
+    assert!(w.ctl.history_view().undo.is_none(), "no step for nothing");
+}
+
+#[test]
+fn drop_on_a_tab_targets_that_list() {
+    let dir = tempfile::tempdir().expect("dir");
+    let mut w = world();
+    let paths = files_in(&dir, &[("dropped.txt", b"x")]);
+    w.ctl.drop_create(&paths, Origin::Panel, Some(w.links_list));
+    assert_eq!(items_in(&w, w.links_list), 2);
+    assert_eq!(w.ctl.view().rows.len(), 4, "the shown list is untouched");
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::AddedTo {
+            list: "Links".into(),
+            count: 1
+        }
+    );
+    // Over no tab: the list the window shows; a list that is gone falls back to it too.
+    w.ctl.drop_create(&paths, Origin::Panel, None);
+    assert_eq!(w.ctl.view().rows.len(), 5);
+    assert!(w.ctl.history_view().undo.is_some());
+}
+
+#[test]
+fn a_drag_over_the_window_names_the_list_until_it_ends() {
+    let mut w = world();
+    assert_eq!(w.ctl.drop_hint(), None);
+    w.ctl.drop_hover(Origin::Panel, Some(w.links_list));
+    assert_eq!(w.ctl.drop_hint(), Some(w.links_list));
+    assert_eq!(
+        w.ctl.view().toast.expect("toast").message,
+        ToastMessage::DropTo {
+            list: "Links".into()
+        }
+    );
+    w.ctl.drop_end();
+    assert_eq!(w.ctl.drop_hint(), None);
+    assert!(w.ctl.view().toast.is_none(), "the hint goes with the drag");
+    // A toast that is something else stays.
+    w.ctl.paste_create(Origin::Panel);
+    w.ctl.drop_end();
+    assert!(w.ctl.view().toast.is_some());
+}

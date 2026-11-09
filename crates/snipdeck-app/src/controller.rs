@@ -233,6 +233,8 @@ pub struct Controller<S, C, K, T> {
     log_opener: Option<LogOpener>,
     /// What the toast on screen undoes.
     undo: Option<Undo>,
+    /// The list files being dragged over a window would be added to (`create_ctl`).
+    drop_hint: Option<ListId>,
     /// The app-wide undo and redo steps.
     history: crate::history::History,
     /// The toast whose timer chain a window has started.
@@ -405,6 +407,7 @@ where
             editor_env: editor_ctl::EditorEnv::default(),
             log_opener: None,
             undo: None,
+            drop_hint: None,
             history: crate::history::History::new(),
             timer_seq: 0,
             revealed: None,
