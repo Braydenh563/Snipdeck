@@ -293,6 +293,7 @@ fn samples() -> Vec<ToastMessage> {
         M::AddedSomeFiles { list: s("Notes") },
         M::FilesNotAdded,
         M::DropTo { list: s("Notes") },
+        M::TooManyFiles,
     ]
 }
 

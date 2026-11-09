@@ -12,7 +12,7 @@ use snipdeck_platform::{
     win_formats::{ClipFiles, MAX_DROP_FILES},
 };
 
-use snipdeck_store::{BlobStore, ItemRepo};
+use snipdeck_store::ItemRepo;
 
 use super::history_ctl::item_targets;
 use super::{Controller, Library, Toast, ToastKind, ToastMessage, Undo, failed, neutral};
@@ -170,7 +170,7 @@ where
         }
         let mut made: Vec<ItemId> = ready.iter().map(|m| m.item.id).collect();
         made.reverse();
-        self.finish(list, &made, skipped, action);
+        self.finish_create(list, &made, skipped, action);
     }
 
     /// One text (or a link) as a new item, through the same save as quick capture.
@@ -188,7 +188,7 @@ where
             self.clock.now(),
         );
         match saved {
-            Ok(Captured::Saved { item, .. }) => self.finish(list, &[item], 0, action),
+            Ok(Captured::Saved { item, .. }) => self.finish_create(list, &[item], 0, action),
             Ok(Captured::Empty) => self.show_toast(neutral(ToastMessage::NothingToSave)),
             Ok(Captured::TooLarge) => self.show_toast(neutral(ToastMessage::TooLargeToSave)),
             Err(_) => self.show_toast(failed()),
@@ -196,7 +196,7 @@ where
     }
 
     /// The history step and the toast for the items just made (`made` is top first).
-    fn finish(&mut self, list: ListId, made: &[ItemId], skipped: usize, action: Action) {
+    fn finish_create(&mut self, list: ListId, made: &[ItemId], skipped: usize, action: Action) {
         let Some(first) = made.first().copied() else {
             return;
         };
