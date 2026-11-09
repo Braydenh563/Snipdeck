@@ -19,7 +19,7 @@ use i_slint_backend_testing::{
     AccessibleRole, ElementHandle, ElementQuery, ElementRoot, mock_elapsed_time,
 };
 use slint::{
-    ComponentHandle, LogicalPosition, ModelRc, VecModel,
+    ComponentHandle, Model, LogicalPosition, ModelRc, VecModel,
     platform::{Key, PointerEventButton, WindowEvent},
 };
 use snipdeck_ui::{
@@ -90,6 +90,13 @@ fn start() -> (PanelWindow, Log) {
     hook!(on_select_all_requested, || "select-all".to_string());
     hook!(on_selection_extended, |d| format!("extend:{d}"));
     hook!(on_selection_cleared, || "clear-selection".to_string());
+    hook!(on_select_mode_changed, |on| format!("select-mode:{on}"));
+    hook!(on_delete_mode_changed, |on| format!("delete-mode:{on}"));
+    hook!(on_modes_ended, || "modes-ended".to_string());
+    hook!(on_row_delete_requested, |i| format!("row-delete:{i}"));
+    hook!(on_row_undo_requested, |i| format!("row-undo:{i}"));
+    hook!(on_clear_list_confirmed, || "clear-confirmed".to_string());
+    hook!(on_clear_list_dismissed, || "clear-dismissed".to_string());
     hook!(on_bulk_move_requested, || "bulk-move".to_string());
     hook!(on_bulk_colour_requested, || "bulk-colour".to_string());
     hook!(on_bulk_delete_requested, || "bulk-delete".to_string());
@@ -1325,13 +1332,14 @@ ui_tests! {
         let (ui, _log) = start();
         let min = |ui: &PanelWindow| ui.get_min_h();
         // 296 plus the 32px "New item" row that floats over the foot of the list (audit 2, item 2).
-        assert!((min(&ui) - 328.0).abs() < 0.5, "List: {}", min(&ui));
+        // Plus the 32px Select / Delete strip (O50).
+        assert!((min(&ui) - 360.0).abs() < 0.5, "List: {}", min(&ui));
         ui.set_layout(PanelLayout::Compact);
-        assert!((min(&ui) - 240.0).abs() < 0.5, "Compact: {}", min(&ui));
+        assert!((min(&ui) - 260.0).abs() < 0.5, "Compact (228 and the strip): {}", min(&ui));
         ui.set_layout(PanelLayout::Cards);
         assert!((min(&ui) - 240.0).abs() < 0.5, "Cards: {}", min(&ui));
         ui.set_layout(PanelLayout::List);
-        assert!((min(&ui) - 328.0).abs() < 0.5);
+        assert!((min(&ui) - 360.0).abs() < 0.5);
     }
 
     fn at_the_minimum_height_two_rows_show_whole_with_the_pins_and_three_without_clear_of_new_item() {
@@ -1597,7 +1605,7 @@ ui_tests! {
     fn the_smallest_window_loses_the_tab_rows_32_with_the_menu_switcher() {
         let (ui, _log) = start();
         ui.set_lists_in_menu(true);
-        assert!((ui.get_min_h() - 296.0).abs() < 0.5, "List: {}", ui.get_min_h());
+        assert!((ui.get_min_h() - 328.0).abs() < 0.5, "List: {}", ui.get_min_h());
         ui.set_layout(PanelLayout::Compact);
         assert!((ui.get_min_h() - 240.0).abs() < 0.5, "Compact never goes under 240: {}", ui.get_min_h());
         ui.set_layout(PanelLayout::Cards);
@@ -1948,7 +1956,7 @@ ui_tests! {
 
     // ---- Chrome (Panel v2 spec 2.1-2.8) --------------------------------------------------------------
 
-    fn the_chrome_at_rest_is_104_tall_without_pins_and_140_with() {
+    fn the_chrome_at_rest_is_136_tall_without_pins_and_172_with() {
         let (ui, _log) = start();
         let height = ui.window().size().height as f32;
         let deck_top = |ui: &PanelWindow| {
@@ -1961,18 +1969,19 @@ ui_tests! {
         let footer = find(&ui, "Pastes into Outlook · New message", AccessibleRole::Text);
         assert!((footer.size().height - 32.0).abs() < 0.5, "footer 32 tall: {}", footer.size().height);
         let (tabs_y, strip) = deck_top(&ui);
-        assert!((tabs_y - 40.0).abs() < 0.5, "header is 40 tall: tabs start at {tabs_y}");
+        // O50: the Select / Delete strip (32) sits between the header (40) and the tabs.
+        assert!((tabs_y - 72.0).abs() < 0.5, "header 40 and the Select / Delete strip 32: tabs start at {tabs_y}");
         let (strip_y, strip_h) = strip.expect("pinned strip");
-        assert!((strip_y - 72.0).abs() < 0.5 && (strip_h - 36.0).abs() < 0.5, "tabs 32 then pins 36: {strip_y} {strip_h}");
-        let with_pins = 40.0 + 32.0 + strip_h + footer.size().height;
-        assert!((with_pins - 140.0).abs() < 0.5);
+        assert!((strip_y - 104.0).abs() < 0.5 && (strip_h - 36.0).abs() < 0.5, "tabs 32 then pins 36: {strip_y} {strip_h}");
+        let with_pins = 40.0 + 32.0 + 32.0 + strip_h + footer.size().height;
+        assert!((with_pins - 172.0).abs() < 0.5);
         set_pinned(&ui, Vec::new());
         assert!(missing(&ui, "Pinned snippets", AccessibleRole::List));
         let list = find(&ui, "Snippets", AccessibleRole::List);
         // Header 40 + tabs 32 above the list; 32 of footer below it (the list ends above the footer).
-        assert!(list.absolute_position().y >= 72.0 && list.absolute_position().y < 72.0 + 40.0, "list starts under the tabs: {}", list.absolute_position().y);
+        assert!(list.absolute_position().y >= 104.0 && list.absolute_position().y < 104.0 + 40.0, "list starts under the tabs: {}", list.absolute_position().y);
         assert!(footer.absolute_position().y + footer.size().height <= height + 0.5);
-        assert!((40.0 + 32.0 + footer.size().height - 104.0).abs() < 0.5);
+        assert!((40.0 + 32.0 + 32.0 + footer.size().height - 136.0).abs() < 0.5);
     }
 
     fn open_snipdeck_is_a_footer_button_that_goes_icon_only_below_300px() {
@@ -2574,8 +2583,8 @@ ui_tests! {
     fn the_pinned_strip_is_one_tab_stop_and_arrows_move_inside_it() {
         let (ui, log) = start();
         set_pinned(&ui, fixture::pinned_n(12));
-        // Board, search, New, keep on top, More, close, the tab row, its + button, then the strip: its first chip.
-        for _ in 0..9 {
+        // Board, search, New, keep on top, More, close, Select, Delete, the tab row, its + button, then the strip: its first chip.
+        for _ in 0..11 {
             press(ui.window(), &key(Key::Tab));
         }
         press(ui.window(), &key(Key::Return));
@@ -2703,5 +2712,99 @@ ui_tests! {
         ui.set_recent_paused(true);
         settle();
         assert!(ElementHandle::find_by_accessible_label(&ui, "History is paused").next().is_some());
+    }
+
+    fn header_select_and_delete_buttons_are_labelled_and_fit_at_every_text_size() {
+        for (scale, w, h) in [(1.0_f32, 320.0_f32, 560.0_f32), (1.5, 480.0, 720.0), (2.0, 640.0, 900.0)] {
+            let (ui, log) = start();
+            ui.global::<snipdeck_ui::SystemLook<'_>>().set_text_scale(scale);
+            ui.window().set_size(slint::LogicalSize::new(w, h));
+            settle();
+            let select = find(&ui, "Select snippets", AccessibleRole::Button);
+            let delete = find(&ui, "Delete snippets", AccessibleRole::Button);
+            for (name, b) in [("Select", &select), ("Delete", &delete)] {
+                let (p, s) = (b.absolute_position(), b.size());
+                assert!(p.x >= 0.0 && p.x + s.width <= w, "{name} inside the window at {scale}: {p:?} {s:?}");
+                assert!(s.height >= MIN_HIT, "{name} is a real target at {scale}: {}", s.height);
+            }
+            let (sp, ss) = (select.absolute_position(), select.size());
+            let dp = delete.absolute_position();
+            assert!(sp.x + ss.width <= dp.x, "the buttons do not overlap at {scale}");
+            take(&log);
+            click_at(&ui, centre(&select));
+            assert_eq!(take(&log), ["select-mode:true"]);
+            click_at(&ui, centre(&delete));
+            assert_eq!(take(&log), ["delete-mode:true"]);
+        }
+    }
+
+    fn the_active_mode_button_reads_done_and_the_other_stays() {
+        let (ui, log) = start();
+        ui.set_select_mode(true);
+        settle();
+        assert!(!missing(&ui, "Done selecting", AccessibleRole::Button));
+        assert!(!missing(&ui, "Delete snippets", AccessibleRole::Button));
+        take(&log);
+        click_at(&ui, centre(&find(&ui, "Done selecting", AccessibleRole::Button)));
+        assert_eq!(take(&log), ["select-mode:false"]);
+        ui.set_select_mode(false);
+        ui.set_delete_mode(true);
+        settle();
+        assert!(!missing(&ui, "Done deleting", AccessibleRole::Button));
+        click_at(&ui, centre(&find(&ui, "Done deleting", AccessibleRole::Button)));
+        assert_eq!(take(&log), ["delete-mode:false"]);
+    }
+
+    fn select_mode_click_marks_the_row_and_esc_leaves_the_mode() {
+        let (ui, log) = start_quiet();
+        ui.set_select_mode(true);
+        settle();
+        take(&log);
+        click_row_with(&ui, 1, &[]);
+        assert_eq!(take(&log), ["picked:1:false:false"], "a plain click picks, never uses");
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["modes-ended"]);
+    }
+
+    fn delete_mode_rows_have_a_labelled_delete_button_and_a_click_never_pastes() {
+        let (ui, log) = start_quiet();
+        ui.set_delete_mode(true);
+        settle();
+        let title = ui.get_rows().row_data(0).expect("row").title.to_string();
+        let label = format!("Delete \u{201c}{title}\u{201d}");
+        take(&log);
+        click_row_with(&ui, 0, &[]);
+        assert!(take(&log).is_empty(), "a click on the row does nothing in Delete mode");
+        click_at(&ui, centre(&find(&ui, &label, AccessibleRole::Button)));
+        assert_eq!(take(&log), ["row-delete:0"]);
+        press(ui.window(), &key(Key::Escape));
+        assert_eq!(take(&log), ["modes-ended"]);
+    }
+
+    fn a_deleted_row_reads_deleted_and_offers_undo() {
+        let (ui, log) = start_quiet();
+        ui.set_delete_mode(true);
+        let mut sample = fixture::sample_rows();
+        sample[0].deleted_pending = true;
+        let row = sample[0].clone();
+        fixture::set_rows(&ui, sample);
+        settle();
+        assert!(missing(&ui, &format!("Delete \u{201c}{}\u{201d}", row.title), AccessibleRole::Button), "no delete button on a deleted row");
+        take(&log);
+        let undo = find(&ui, &format!("Undo delete of \u{201c}{}\u{201d}", row.title), AccessibleRole::Button);
+        click_at(&ui, centre(&undo));
+        assert_eq!(take(&log), ["row-undo:0"]);
+    }
+
+    fn clear_list_confirmation_shows_the_count_and_asks_once() {
+        let (ui, log) = start();
+        ui.set_clear_list_name("Replies".into());
+        ui.set_clear_list_count(7);
+        ui.set_clear_list_open(true);
+        settle();
+        assert!(ElementHandle::find_by_accessible_label(&ui, "Clear list \u{201c}Replies\u{201d}?").next().is_some());
+        take(&log);
+        click_at(&ui, centre(&find(&ui, "Clear list", AccessibleRole::Button)));
+        assert_eq!(take(&log), ["clear-confirmed"]);
     }
 }
