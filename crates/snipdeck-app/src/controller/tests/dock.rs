@@ -650,12 +650,21 @@ fn reset_size_and_position_floats_the_panel_clear_of_every_edge() {
 
 #[test]
 fn moving_a_side_dock_to_the_bottom_does_not_bring_the_full_height_along() {
-    // With the full edge on, a side dock is stored full height.
+    // What an older version stored for a side dock: the work area's full height.
     let mut w = floating(DockTrigger::Off);
-    w.ctl.set_dock_full_edge(true);
-    w.ctl.dock_to(Some(DockEdge::Left));
-    w.ctl.take_pending();
     let work = display().work_area;
+    w.ctl.update_settings(|s| {
+        s.remember_panel_geometry(crate::settings::PanelGeometry {
+            pre_dock: Some((FLOATING.w, FLOATING.h)),
+            ..Rect {
+                x: 0,
+                y: 0,
+                w: FLOATING.w,
+                h: work.h,
+            }
+            .geometry(&display(), Some(DockEdge::Left))
+        });
+    });
     assert_eq!(
         w.ctl.settings().panel_geometry[0].h,
         work.h,
@@ -800,5 +809,29 @@ fn a_docked_panel_refuses_a_resize_from_its_outer_edge() {
     assert_eq!(
         w.ctl.resize(Edge::Left),
         vec![Effect::ResizeWindow(Edge::Left)]
+    );
+}
+
+#[test]
+fn the_full_edge_keeps_the_panels_own_height_for_when_it_is_turned_off() {
+    let mut w = floating(DockTrigger::Off);
+    w.ctl.set_dock_full_edge(true);
+    w.ctl.dock_to(Some(DockEdge::Left));
+    let work = display().work_area;
+    let full = Rect {
+        x: 0,
+        y: work.y,
+        w: FLOATING.w,
+        h: work.h,
+    };
+    assert_eq!(w.ctl.take_pending(), place(full));
+    // The window reports the full frame back; the remembered height is still the Panel's own.
+    w.ctl.frame_changed(&display(), full);
+    let g = &w.ctl.settings().panel_geometry[0];
+    assert_eq!((g.h, g.along), (FLOATING.h, Some(FLOATING.y)));
+    w.ctl.set_dock_full_edge(false);
+    assert_eq!(
+        w.ctl.take_pending(),
+        place(open_rect_from(DockEdge::Left, FLOATING))
     );
 }

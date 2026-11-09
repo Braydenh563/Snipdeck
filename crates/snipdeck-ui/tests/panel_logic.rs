@@ -2313,7 +2313,10 @@ ui_tests! {
         let seen = take(&log);
         assert_eq!(seen, ["slide:30"], "an axis-locked slide, not the header's window drag");
         // A press on the rest of the header still drags (undocks).
-        press_at(&ui, away(&ui));
+        // (just right of the board picker, left of the pill: header space with no control)
+        let picker = find(&ui, "Board: Work", AccessibleRole::Button);
+        let gap = LogicalPosition::new(centre(&picker).x + picker.size().width / 2.0 + 2.0, centre(&picker).y);
+        press_at(&ui, gap);
         assert_eq!(take(&log), ["drag"]);
         ui.set_dock_edge(0);
         settle();

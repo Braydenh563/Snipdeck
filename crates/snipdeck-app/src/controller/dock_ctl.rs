@@ -298,7 +298,9 @@ where
             (Some(e), _) => Some(base.along(e).start),
             (None, _) => None,
         };
-        let place = match edge {
+        // `remembered` is the Panel at its own height even when the full edge is on, so that
+        // turning that off gives the height back; `place` is what the window gets now.
+        let (place, remembered) = match edge {
             Some(edge) => {
                 let size = frame::dock_size(
                     edge,
@@ -308,16 +310,22 @@ where
                     monitor.scale,
                     DEFAULT_HEIGHT,
                 );
-                frame::docked_rect(
-                    edge,
-                    monitor.work_area,
-                    size,
-                    monitor.scale,
-                    along,
-                    self.settings.dock.full_edge,
-                )
+                let dock = |full_edge| {
+                    frame::docked_rect(
+                        edge,
+                        monitor.work_area,
+                        size,
+                        monitor.scale,
+                        along,
+                        full_edge,
+                    )
+                };
+                (dock(self.settings.dock.full_edge), dock(false))
             }
-            None => frame::clamp(base, &monitor),
+            None => {
+                let place = frame::clamp(base, &monitor);
+                (place, place)
+            }
         };
         // Open before the settings change, so that undocking does not look like a collapsed
         // Panel losing its trigger.
@@ -325,7 +333,7 @@ where
         self.update_settings(|s| {
             s.remember_panel_geometry(PanelGeometry {
                 pre_dock,
-                ..place.geometry(&monitor, edge)
+                ..remembered.geometry(&monitor, edge)
             });
         });
         self.pending.push(Effect::PlaceWindow(place));
@@ -360,21 +368,24 @@ where
         };
         let now = Rect::of(&g);
         let start = now.along(edge).start.saturating_add(delta);
-        let moved = frame::docked_rect(
-            edge,
-            monitor.work_area,
-            (now.w, now.h),
-            monitor.scale,
-            Some(start),
-            self.settings.dock.full_edge,
-        );
+        let dock = |full_edge| {
+            frame::docked_rect(
+                edge,
+                monitor.work_area,
+                (now.w, now.h),
+                monitor.scale,
+                Some(start),
+                full_edge,
+            )
+        };
+        let (moved, remembered) = (dock(self.settings.dock.full_edge), dock(false));
         self.update_settings(|s| {
             s.remember_panel_geometry(PanelGeometry {
                 pre_dock: g.pre_dock,
-                ..moved.geometry(&monitor, Some(edge))
+                ..remembered.geometry(&monitor, Some(edge))
             });
         });
-        if moved == now {
+        if moved == Rect::of(&g) {
             Vec::new()
         } else {
             vec![Effect::PlaceWindow(moved)]

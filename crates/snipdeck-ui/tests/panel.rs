@@ -73,6 +73,21 @@ fn panel_light() {
     assert_golden("panel-light", &render(&h));
 }
 
+/// O28: a Panel docked to the left shows the grip pill in its header (and no outer-edge grips).
+#[test]
+fn panel_docked_left_shows_the_grip_pill() {
+    let h = list_panel(SIZE, false);
+    h.component.set_dock_edge(1);
+    assert_golden("panel-docked-left-light", &render(&h));
+}
+
+#[test]
+fn panel_docked_top_dark_has_a_horizontal_pill() {
+    let h = list_panel(SIZE, true);
+    h.component.set_dock_edge(3);
+    assert_golden("panel-docked-top-dark", &render(&h));
+}
+
 #[test]
 fn panel_dark() {
     let h = list_panel(SIZE, true);

@@ -754,16 +754,34 @@ fn choosing_an_edge_docks_the_panel_there_and_floating_lets_it_go() {
         r.ui.invoke_dock_edge_chosen(2);
         assert_eq!(r.ui.get_dock_edge_index(), 2, "the page follows");
         assert_eq!(r.ctl.borrow().dock_edge(), Some(DockEdge::Right));
+        // A compact dock: the height and the drop point it had (U22).
         let docked = Rect {
             x: 1600,
-            y: 0,
+            y: 100,
             w: 320,
-            h: 1040,
+            h: 480,
         };
         assert_eq!(
             r.ctl.borrow_mut().take_pending(),
             [Effect::PlaceWindow(docked)],
             "queued for the Panel's window"
+        );
+
+        // "Docked panel uses the full edge" stretches it, and off gives the height back.
+        r.ui.invoke_dock_full_edge_toggled(true);
+        assert!(r.ui.get_dock_full_edge(), "the page follows");
+        assert_eq!(
+            r.ctl.borrow_mut().take_pending(),
+            [Effect::PlaceWindow(Rect {
+                y: 0,
+                h: 1040,
+                ..docked
+            })]
+        );
+        r.ui.invoke_dock_full_edge_toggled(false);
+        assert_eq!(
+            r.ctl.borrow_mut().take_pending(),
+            [Effect::PlaceWindow(Rect { y: 100, ..docked })]
         );
 
         r.ui.invoke_dock_edge_chosen(0);
