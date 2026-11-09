@@ -304,7 +304,7 @@ where
         } else {
             self.model.rows()
         };
-        if let Some(row) = rows.get(index) {
+        if let Some(row) = rows.get(index).filter(|r| !r.deleted_pending) {
             self.menu_targets = if in_strip {
                 vec![row.id]
             } else {
@@ -511,7 +511,7 @@ where
     // ---- Row actions ---------------------------------------------------------------------------
 
     fn row_id(&self, index: usize) -> Option<ItemId> {
-        self.model.rows().get(index).map(|r| r.id)
+        self.live_row(index).map(|r| r.id)
     }
 
     /// Ctrl+E or a double-click on row `index`: the quick editor on that item.

@@ -1015,19 +1015,141 @@ fn the_kebab_row_select_or_delete_opens_select_mode() {
     assert!(w.ctl.view().app_menu.is_none(), "the menu closed");
 }
 
+fn shown(w: &World) -> Vec<(String, bool)> {
+    w.ctl
+        .view()
+        .rows
+        .iter()
+        .map(|r| (r.title.clone(), r.deleted_pending))
+        .collect()
+}
+
 #[test]
 fn up_and_down_skip_the_collapsed_rows() {
     let mut w = world();
     w.ctl.panel_delete_mode(true);
     w.ctl.panel_delete_row(1);
-    assert_eq!(w.ctl.view().selected, 0);
-    w.ctl.move_selection(1);
-    assert_eq!(
-        w.ctl.view().selected,
-        2,
-        "Down steps over the collapsed row"
-    );
+    assert_eq!(w.ctl.view().selected, 2, "the cursor went to the next row");
     w.ctl.move_selection(-1);
-    assert_eq!(w.ctl.view().selected, 0, "and Up steps back over it");
-    assert!(!w.ctl.view().rows[w.ctl.view().selected].deleted_pending);
+    assert_eq!(w.ctl.view().selected, 0, "Up steps back over the collapsed row");
+    w.ctl.move_selection(1);
+    assert_eq!(w.ctl.view().selected, 2, "and Down steps over it");
+}
+
+#[test]
+fn the_cursor_never_rests_on_a_collapsed_row() {
+    let mut w = world();
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_delete_row(3);
+    assert_eq!(w.ctl.view().selected, 2, "the previous row when the last one went");
+    w.ctl.panel_delete_row(0);
+    let v = w.ctl.view();
+    assert!(!v.rows[v.selected].deleted_pending);
+    assert_eq!(v.selected, 1);
+}
+
+#[test]
+fn an_action_on_the_row_below_a_collapsed_one_acts_on_that_row() {
+    let mut w = world();
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_delete_row(1);
+    let below = w.ctl.view().rows[2].id;
+    assert_eq!(w.ctl.edit_row(2), vec![Effect::EditItem(below)]);
+    assert!(w.ctl.edit_row(1).is_empty(), "a collapsed row refuses actions");
+    // The row menu on the row below, then Delete in it, trashes that very item.
+    w.ctl.open_item_menu(2, false);
+    let at = w
+        .ctl
+        .view()
+        .item_menu
+        .expect("menu")
+        .iter()
+        .position(|e| *e == ItemMenuEntry::Trash)
+        .expect("Delete row");
+    w.ctl.choose_item_menu(at);
+    assert!(w.ctl.view().rows.iter().all(|r| r.id != below), "that item went");
+    assert_eq!(w.ctl.view().rows.len(), 3);
+    w.ctl.open_item_menu(1, false);
+    assert!(w.ctl.view().item_menu.is_none(), "no menu on a collapsed row");
+}
+
+#[test]
+fn quick_numbers_skip_the_collapsed_rows() {
+    let mut w = world();
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_delete_row(0);
+    let numbers: Vec<u8> = w.ctl.view().rows.iter().map(|r| r.number).collect();
+    assert_eq!(numbers, [0, 1, 2, 3], "the row numbers do not skip");
+    let first_live = w.ctl.view().rows[1].id;
+    w.ctl.quick_use(1);
+    assert_eq!(
+        w.ctl.view().rows.iter().find(|r| r.id == first_live).map(|r| r.number),
+        Some(1)
+    );
+    assert!(w.ctl.view().rows[0].deleted_pending);
+}
+
+#[test]
+fn collapsed_rows_keep_their_order_whatever_is_deleted_first() {
+    let mut w = world();
+    let before: Vec<String> = shown(&w).into_iter().map(|(t, _)| t).collect();
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_delete_row(2);
+    w.ctl.panel_delete_row(1);
+    let rows = shown(&w);
+    assert_eq!(
+        rows.iter().map(|(t, _)| t.clone()).collect::<Vec<_>>(),
+        before,
+        "the same order as before"
+    );
+    assert_eq!(
+        rows.iter().map(|(_, d)| *d).collect::<Vec<_>>(),
+        [false, true, true, false]
+    );
+    w.ctl.panel_delete_row(0);
+    assert_eq!(shown(&w).len(), 4);
+    assert_eq!(
+        shown(&w).iter().map(|(_, d)| *d).collect::<Vec<_>>(),
+        [true, true, true, false]
+    );
+}
+
+#[test]
+fn collapsed_rows_belong_to_their_list_and_the_mode_ends_with_a_list_change() {
+    let mut w = world();
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_delete_row(0);
+    w.ctl.select_tab(1);
+    assert!(!w.ctl.view().delete_mode, "another list ends Delete mode");
+    assert!(w.ctl.view().rows.iter().all(|r| !r.deleted_pending));
+    w.ctl.select_tab(0);
+    assert_eq!(w.ctl.view().rows.len(), 3, "the old collapsed row is gone");
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_delete_row(0);
+    w.ctl.add_list();
+    assert!(!w.ctl.view().delete_mode, "a new list ends it too");
+    assert!(w.ctl.view().rows.iter().all(|r| !r.deleted_pending));
+}
+
+#[test]
+fn hiding_the_panel_ends_delete_mode() {
+    let mut w = world();
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_delete_row(0);
+    let _ = w.ctl.hide();
+    assert!(!w.ctl.view().delete_mode);
+    assert_eq!(w.ctl.view().rows.len(), 3);
+}
+
+#[test]
+fn undo_on_a_collapsed_row_works_when_the_history_step_is_gone() {
+    let mut w = world();
+    w.ctl.panel_delete_mode(true);
+    w.ctl.panel_delete_row(1);
+    w.ctl.clear_history();
+    w.ctl.panel_undo_row(1);
+    let rows = shown(&w);
+    assert_eq!(rows.len(), 4);
+    assert!(rows.iter().all(|(_, d)| !d), "the item came back from the Trash");
+    assert!(w.ctl.view().toast.is_some(), "and it said so");
 }

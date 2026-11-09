@@ -150,7 +150,6 @@ where
 
     /// The search text changed.
     pub fn set_query(&mut self, query: &str) {
-        self.ghosts.clear();
         self.model.set_query(query);
     }
 
@@ -164,15 +163,15 @@ where
         let Some(tab) = self.model.tabs().into_iter().nth(index) else {
             return;
         };
-        self.ghosts.clear();
         if self.model.select_list(&self.store, tab.id).is_err() {
             self.show_toast(failed());
         }
+        self.guard_modes();
     }
 
     /// Row `row` of the Panel was dropped on tab `tab`: the item goes to the end of that list.
     pub fn panel_drop_on_tab(&mut self, row: usize, tab: usize) {
-        let Some(item) = self.model.rows().get(row).map(|r| r.id) else {
+        let Some(item) = self.live_row(row).map(|r| r.id) else {
             return;
         };
         let Some(target) = self.model.tabs().into_iter().nth(tab) else {
@@ -204,10 +203,10 @@ where
     /// A drag of Panel row `from` ended on row `onto`: the item takes that row's place. Like the
     /// Main window, only a list in manual order, with no search running, can be arranged.
     pub fn panel_drop_row(&mut self, from: usize, onto: usize) {
-        let rows = self.model.rows();
-        let (Some(moved), Some(target)) =
-            (rows.get(from).map(|r| r.id), rows.get(onto).map(|r| r.id))
-        else {
+        let (Some(moved), Some(target)) = (
+            self.live_row(from).map(|r| r.id),
+            self.live_row(onto).map(|r| r.id),
+        ) else {
             return;
         };
         let order = self.model.manual_order();
@@ -281,7 +280,7 @@ where
 
     /// Enter or a click on row `index`: uses it with `mode`.
     pub fn activate_row(&mut self, index: usize, mode: UseMode) -> UseResult {
-        let Some(id) = self.model.rows().get(index).map(|r| r.id) else {
+        let Some(id) = self.live_row(index).map(|r| r.id) else {
             return UseResult::Failed;
         };
         self.use_item(id, mode)
@@ -420,6 +419,7 @@ where
             self.model.select_board(&self.store, board)?;
             self.model.select_list(&self.store, list)
         });
+        self.guard_modes();
         match shown {
             Ok(()) => self.show_toast(super::success(ToastMessage::ListAdded)),
             Err(_) => self.show_toast(failed()),
@@ -436,7 +436,9 @@ where
                 id: "a test".into(),
             });
         }
-        self.model.refresh(&self.store)
+        let done = self.model.refresh(&self.store);
+        self.guard_modes();
+        done
     }
 
     /// [`refresh_panel`](Self::refresh_panel) for a change that has already worked (a lock, an
@@ -469,5 +471,6 @@ where
         if self.model.select_board(&self.store, board).is_err() {
             self.show_toast(failed());
         }
+        self.guard_modes();
     }
 }

@@ -31,17 +31,6 @@ pub const LABELS: [ItemLabel; 8] = [
     ItemLabel::Slate,
 ];
 
-/// A row deleted in Delete mode: it shows "Deleted · Undo" where it was until the mode ends.
-#[derive(Debug, Clone)]
-pub struct Ghost {
-    /// Where the row sat among the rows shown.
-    at: usize,
-    /// The row as it was, shown with `deleted_pending`.
-    row: crate::panel::Row,
-    /// The history step that Undo takes back.
-    step: Option<u64>,
-}
-
 impl<S, C, K, T> Controller<S, C, K, T>
 where
     S: Library,
@@ -99,14 +88,24 @@ where
             self.model.clear_marks();
             self.select_mode = false;
             self.delete_mode = true;
+            self.delete_list = self.model.list().map(|l| l.id);
         } else {
             self.end_delete_mode();
         }
     }
 
-    fn end_delete_mode(&mut self) {
+    pub(super) fn end_delete_mode(&mut self) {
         self.delete_mode = false;
-        self.ghosts.clear();
+        self.delete_list = None;
+        self.model.clear_ghosts();
+    }
+
+    /// Ends Delete mode when the shown list is not the one it began in (another tab, board or
+    /// new list, a list deleted): its "Deleted · Undo" rows belong to that list.
+    pub(super) fn guard_modes(&mut self) {
+        if self.delete_mode && self.model.list().map(|l| l.id) != self.delete_list {
+            self.end_delete_mode();
+        }
     }
 
     /// Esc: leaves Select or Delete mode, whichever is on.
@@ -115,52 +114,24 @@ where
         self.end_delete_mode();
     }
 
-    /// Puts the "Deleted · Undo" rows back among `rows` (the rows the model shows), each where it
-    /// was. A row whose item is back (Undo from the toast or Ctrl+Z) is not shown twice.
-    pub(super) fn insert_ghosts(&self, rows: &mut Vec<crate::panel::Row>) {
-        for ghost in &self.ghosts {
-            if rows.iter().any(|r| r.id == ghost.row.id) {
-                continue;
-            }
-            let mut row = ghost.row.clone();
-            row.deleted_pending = true;
-            rows.insert(ghost.at.min(rows.len()), row);
-        }
-    }
-
-    /// The cursor row's place among the rows shown, which count the "Deleted · Undo" rows: the
-    /// model moves the cursor over live rows only, so Up and Down step over the collapsed ones.
-    pub(super) fn shown_selected(&self, shown: &[crate::panel::Row]) -> usize {
-        let at = self.model.selected_position().unwrap_or(0);
-        if self.ghosts.is_empty() {
-            return at;
-        }
+    /// The row shown at `index`, unless it is a "Deleted · Undo" row: every action on a row
+    /// goes through this, so the index the window sends is the one the model shows.
+    pub(super) fn live_row(&self, index: usize) -> Option<crate::panel::Row> {
         self.model
             .rows()
-            .get(at)
-            .and_then(|r| shown.iter().position(|s| s.id == r.id))
-            .unwrap_or(at)
-    }
-
-    /// The model's row index for row `index` of the rows shown (ghosts do not count), or `None`
-    /// when `index` is a "Deleted · Undo" row.
-    fn live_index(&self, index: usize) -> Option<usize> {
-        let mut shown = self.model.rows();
-        self.insert_ghosts(&mut shown);
-        let id = shown.get(index).filter(|r| !r.deleted_pending)?.id;
-        self.model.rows().iter().position(|r| r.id == id)
+            .into_iter()
+            .nth(index)
+            .filter(|r| !r.deleted_pending)
     }
 
     /// The row delete button in Delete mode: the item goes to the Trash (one history step) and
-    /// the row collapses to "Deleted · Undo".
+    /// the row collapses to "Deleted · Undo". The cursor moves to the next row (the previous at
+    /// the end).
     pub fn panel_delete_row(&mut self, index: usize) {
         if !self.delete_mode {
             return;
         }
-        let Some(live) = self.live_index(index) else {
-            return;
-        };
-        let Some(row) = self.model.rows().get(live).cloned() else {
+        let Some(row) = self.live_row(index) else {
             return;
         };
         let now = self.clock.now();
@@ -175,29 +146,53 @@ where
             crate::history::Action::Delete,
             vec![crate::history::Change::Trash(vec![Trashable::Item(row.id)])],
         );
-        self.ghosts.retain(|g| g.row.id != row.id);
-        self.ghosts.push(Ghost {
-            at: index,
-            row,
-            step,
-        });
+        let shown = self.model.rows();
+        let neighbour = shown
+            .iter()
+            .skip(index + 1)
+            .find(|r| !r.deleted_pending)
+            .or_else(|| shown.iter().take(index).rev().find(|r| !r.deleted_pending))
+            .map(|r| r.id);
+        self.model.add_ghost(index, step);
         if self.refresh_panel().is_err() {
             self.show_toast(failed());
+        }
+        if let Some(id) = neighbour {
+            self.model.select_item(id);
         }
     }
 
     /// "Undo" on a "Deleted · Undo" row: that one delete is taken back and the row is whole again.
+    /// When the history has forgotten the step the item comes back from the Trash directly.
     pub fn panel_undo_row(&mut self, index: usize) {
-        let mut shown = self.model.rows();
-        self.insert_ghosts(&mut shown);
-        let Some(id) = shown.get(index).filter(|r| r.deleted_pending).map(|r| r.id) else {
+        let Some(row) = self
+            .model
+            .rows()
+            .into_iter()
+            .nth(index)
+            .filter(|r| r.deleted_pending)
+        else {
             return;
         };
-        let Some(at) = self.ghosts.iter().position(|g| g.row.id == id) else {
+        let step = self.model.ghost_step(row.id).flatten();
+        self.model.remove_ghost(row.id);
+        if let Some(step) = step.filter(|s| self.history.can_undo(*s)) {
+            self.undo_step(Some(step));
             return;
-        };
-        let ghost = self.ghosts.remove(at);
-        self.undo_step(ghost.step);
+        }
+        match self.store.atomically(|b| b.restore(Trashable::Item(row.id))) {
+            Ok(()) => {
+                self.show_toast(Toast {
+                    kind: ToastKind::Success,
+                    message: ToastMessage::Restored { count: 1 },
+                });
+                self.library_changed();
+            }
+            Err(error) => {
+                self.show_toast(super::main_ctl::restore_failed(&error));
+                self.refresh_logged("a failed undo of a deleted row");
+            }
+        }
     }
 
     // ---- Clear list… -----------------------------------------------------------------------------------

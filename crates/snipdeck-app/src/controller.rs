@@ -217,8 +217,8 @@ pub struct Controller<S, C, K, T> {
     select_mode: bool,
     /// The header's Delete mode is on: each row has a delete button.
     delete_mode: bool,
-    /// Rows deleted in Delete mode that still show as "Deleted · Undo" (see `panel_select.rs`).
-    ghosts: Vec<panel_select::Ghost>,
+    /// The list Delete mode began in (its "Deleted · Undo" rows live in the model).
+    delete_list: Option<ListId>,
     /// The Main window's state.
     main: MainModel,
     /// The list or board editor, while one is open.
@@ -409,7 +409,7 @@ where
             menu_targets: Vec::new(),
             select_mode: false,
             delete_mode: false,
-            ghosts: Vec::new(),
+            delete_list: None,
             main,
             editor: None,
             editor_seq: 0,
@@ -478,7 +478,6 @@ where
             .map(|b| b.name.as_str().to_owned())
             .unwrap_or_default();
         let mut rows = self.model.rows();
-        self.insert_ghosts(&mut rows);
         let mut revealed = None;
         if let Some(id) = self.panel_revealed
             && let Some(at) = rows.iter().position(|r| r.id == id && r.sensitive)
@@ -491,7 +490,6 @@ where
                     .collect();
             }
         }
-        let selected_shown = self.shown_selected(&rows);
         View {
             board_name,
             current_tab: tabs.iter().position(|t| t.active).unwrap_or(0),
@@ -500,7 +498,7 @@ where
             rows,
             revealed,
             query: self.model.query().to_owned(),
-            selected: selected_shown,
+            selected: self.model.selected_position().unwrap_or(0),
             footer: self.model.footer(),
             use_label: self.model.use_label(),
             rows_reorderable: self.model.reorderable(),
@@ -804,6 +802,7 @@ where
     /// Hides the Panel (Esc with nothing to clear, the close button, the toggle hotkey).
     pub fn hide(&mut self) -> Vec<Effect> {
         self.visible = false;
+        self.end_delete_mode();
         self.blur_hide = false;
         self.panel_revealed = None;
         self.menu = PanelMenu::None;
