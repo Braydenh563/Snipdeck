@@ -300,32 +300,29 @@ where
         };
         // `remembered` is the Panel at its own height even when the full edge is on, so that
         // turning that off gives the height back; `place` is what the window gets now.
-        let (place, remembered) = match edge {
-            Some(edge) => {
-                let size = frame::dock_size(
+        let (place, remembered) = if let Some(edge) = edge {
+            let size = frame::dock_size(
+                edge,
+                (base.w, base.h),
+                earlier,
+                monitor.work_area,
+                monitor.scale,
+                DEFAULT_HEIGHT,
+            );
+            let dock = |full_edge| {
+                frame::docked_rect(
                     edge,
-                    (base.w, base.h),
-                    earlier,
                     monitor.work_area,
+                    size,
                     monitor.scale,
-                    DEFAULT_HEIGHT,
-                );
-                let dock = |full_edge| {
-                    frame::docked_rect(
-                        edge,
-                        monitor.work_area,
-                        size,
-                        monitor.scale,
-                        along,
-                        full_edge,
-                    )
-                };
-                (dock(self.settings.dock.full_edge), dock(false))
-            }
-            None => {
-                let place = frame::clamp(base, &monitor);
-                (place, place)
-            }
+                    along,
+                    full_edge,
+                )
+            };
+            (dock(self.settings.dock.full_edge), dock(false))
+        } else {
+            let place = frame::clamp(base, &monitor);
+            (place, place)
         };
         // Open before the settings change, so that undocking does not look like a collapsed
         // Panel losing its trigger.

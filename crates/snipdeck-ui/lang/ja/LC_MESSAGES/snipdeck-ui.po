@@ -772,6 +772,9 @@ msgstr "右端に固定"
 msgid "Dock to the top edge"
 msgstr "上端に固定"
 
+msgid "Docked panel uses the full edge"
+msgstr "固定したパネルを端いっぱいに表示"
+
 msgid "Docked to the right"
 msgstr "右に固定"
 
@@ -1581,6 +1584,9 @@ msgstr "オフ"
 msgid "Off keeps a docked panel open. Otherwise it folds into a thin strip, and the panel shortcut opens it too."
 msgstr "「オフ」にすると、固定したパネルは開いたままになります。それ以外では細い帯にたたまれ、パネルのショートカットでも開けます。"
 
+msgid "Off keeps a panel docked to the left or right at the height you dropped it. On stretches it over the whole edge."
+msgstr "オフ: 左右に固定したパネルは、置いた位置の高さのままです。オン: 端の全長に広がります。"
+
 msgid "One hotkey turns copied text into an item."
 msgstr "ホットキー1つで、コピーしたテキストをスニペットにできます。"
 
@@ -2227,6 +2233,9 @@ msgstr "スキップ"
 
 msgid "Slate"
 msgstr "スレート"
+
+msgid "Slide the panel along the edge"
+msgstr "パネルを端に沿って動かす"
 
 msgid "Smileys & Emotion"
 msgstr "顔と感情"

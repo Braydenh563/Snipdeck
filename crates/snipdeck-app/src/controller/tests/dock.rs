@@ -92,7 +92,7 @@ fn floating_again_clears_the_edge_and_keeps_the_place() {
     w.ctl.dock_to(None);
     assert_eq!(w.ctl.take_pending(), place(restored(DockEdge::Left)));
     assert_eq!(w.ctl.dock_edge(), None);
-    assert!(!w.ctl.view().dock_edge.is_some());
+    assert!(w.ctl.view().dock_edge.is_none());
 }
 
 /// The docked frame's place with the size the Panel had before it was docked.
@@ -379,7 +379,7 @@ fn dragging_a_docked_panel_away_undocks_it() {
     };
     w.ctl.frame_changed(&display(), away);
     assert_eq!(w.ctl.dock_edge(), None);
-    assert!(!w.ctl.view().dock_edge.is_some());
+    assert!(w.ctl.view().dock_edge.is_none());
     let back = Rect {
         w: FLOATING.w,
         h: FLOATING.h,

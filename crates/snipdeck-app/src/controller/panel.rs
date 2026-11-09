@@ -49,7 +49,7 @@ pub enum AppMenuEntry {
     /// Open Settings.
     Settings,
     /// Dock the Panel to the edge nearest to it, or undock it when it is docked (the row's
-    /// words follow [`View::docked`](super::View::docked)).
+    /// words follow [`View::dock_edge`](super::View::dock_edge)).
     Dock,
     /// Switch the global hotkeys off and on (checked while they are off).
     PauseHotkeys,
@@ -657,10 +657,13 @@ where
         };
         // A full-edge dock reports the work area's height back; the Panel's own height (and
         // place along the edge) stays remembered, so turning the full edge off gives it back.
-        if let (Some(e), Some(old)) = (edge, &stored) {
-            if self.settings.dock.full_edge && e.vertical() && old.edge == edge && !resized {
-                (geometry.y, geometry.h, geometry.along) = (old.y, old.h, old.along);
-            }
+        if let (Some(e), Some(old)) = (edge, &stored)
+            && self.settings.dock.full_edge
+            && e.vertical()
+            && old.edge == edge
+            && !resized
+        {
+            (geometry.y, geometry.h, geometry.along) = (old.y, old.h, old.along);
         }
         self.update_settings(|s| s.remember_panel_geometry(geometry));
         if resized {
