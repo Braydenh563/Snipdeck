@@ -78,6 +78,49 @@ pub fn drop_files<P: AsRef<[u16]>>(paths: &[P]) -> Option<Vec<u8>> {
     Some(out)
 }
 
+/// The paths in `CF_HDROP` bytes: the inverse of [`drop_files`]. Reads the `DROPFILES` header's
+/// `pFiles` offset and `fWide` flag, then the NUL-separated list up to the empty entry that ends
+/// it (or the end of the bytes). Empty if the header is short or `pFiles` points outside the bytes.
+/// A narrow (ANSI) list is read as UTF-8, lossily: Explorer always offers the wide form.
+pub fn parse_drop_files(bytes: &[u8]) -> Vec<String> {
+    let header = |at: usize| -> Option<u32> {
+        Some(u32::from_le_bytes(bytes.get(at..at + 4)?.try_into().ok()?))
+    };
+    let (Some(start), Some(wide)) = (header(0), header(16)) else {
+        return Vec::new();
+    };
+    let Some(list) = usize::try_from(start)
+        .ok()
+        .filter(|&s| s >= 20)
+        .and_then(|s| bytes.get(s..))
+    else {
+        return Vec::new();
+    };
+    let mut paths = Vec::new();
+    if wide != 0 {
+        let units: Vec<u16> = list
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|&pair| u16::from_le_bytes(pair))
+            .collect();
+        for entry in units.split(|&unit| unit == 0) {
+            if entry.is_empty() {
+                break;
+            }
+            paths.push(String::from_utf16_lossy(entry));
+        }
+    } else {
+        for entry in list.split(|&byte| byte == 0) {
+            if entry.is_empty() {
+                break;
+            }
+            paths.push(String::from_utf8_lossy(entry).into_owned());
+        }
+    }
+    paths
+}
+
 /// Whether `name` can be written directly inside the paste folder. Core validates names when an
 /// item is saved; this repeats core's own check (one Windows-valid path component) as the last
 /// guard before touching the disk.
@@ -299,6 +342,153 @@ fn over_white(channel: u8, alpha: u8) -> u8 {
     let (c, a) = (u32::from(channel), u32::from(alpha));
     let blended = (c * a + 255 * (255 - a) + 127) / 255;
     u8::try_from(blended).unwrap_or(u8::MAX)
+}
+
+/// A PNG for `CF_DIB` / `CF_DIBV5` bytes: the inverse of [`png_to_dib`], for a screenshot or a
+/// picture copied from another program. Reads a `BITMAPINFOHEADER` or its V4/V5 successors with
+/// 16, 24 or 32 bits per pixel, `BI_RGB` or `BI_BITFIELDS`, bottom-up or top-down. The PNG has
+/// alpha only when a bit mask names it (a 32-bit `BI_RGB` pixel's fourth byte is unused, not
+/// transparency). Palette and compressed DIBs are refused.
+///
+/// `None` if the bytes are not such a DIB, are shorter than the header says, or the decoded
+/// pixels would need more than [`DIB_DECODE_LIMIT`] bytes. Sizes are checked from the header
+/// before anything is allocated.
+pub fn dib_to_png(dib: &[u8]) -> Option<Vec<u8>> {
+    dib_to_png_within(dib, DIB_DECODE_LIMIT)
+}
+
+/// A bit mask's channel: where it sits and how many bits it has.
+#[derive(Clone, Copy)]
+struct Mask {
+    shift: u32,
+    bits: u32,
+}
+
+impl Mask {
+    fn new(mask: u32) -> Option<Self> {
+        let bits = mask.count_ones();
+        // One contiguous run of at most 16 bits.
+        (bits > 0 && bits <= 16 && (mask >> mask.trailing_zeros()).count_ones() == bits).then_some(
+            Self {
+                shift: mask.trailing_zeros(),
+                bits,
+            },
+        )
+    }
+
+    /// The channel of `pixel` scaled to 0..=255.
+    fn get(self, pixel: u32) -> u8 {
+        let max = (1u32 << self.bits) - 1;
+        let value = (pixel >> self.shift) & max;
+        u8::try_from((value * 255 + max / 2) / max).unwrap_or(u8::MAX)
+    }
+}
+
+fn le_u32(bytes: &[u8], at: usize) -> Option<u32> {
+    Some(u32::from_le_bytes(bytes.get(at..at + 4)?.try_into().ok()?))
+}
+
+fn dib_to_png_within(dib: &[u8], limit: usize) -> Option<Vec<u8>> {
+    let header_size = usize::try_from(le_u32(dib, 0)?).ok()?;
+    if !matches!(header_size, 40 | 108 | 124) {
+        return None;
+    }
+    let width = i32::from_le_bytes(dib.get(4..8)?.try_into().ok()?);
+    let height = i32::from_le_bytes(dib.get(8..12)?.try_into().ok()?);
+    let planes = u16::from_le_bytes(dib.get(12..14)?.try_into().ok()?);
+    let bit_count = usize::from(u16::from_le_bytes(dib.get(14..16)?.try_into().ok()?));
+    let compression = le_u32(dib, 16)?;
+    let colors_used = usize::try_from(le_u32(dib, 32)?).ok()?;
+    if planes != 1 || width <= 0 || height == 0 || height == i32::MIN {
+        return None;
+    }
+    let top_down = height < 0;
+    let width = usize::try_from(width).ok()?;
+    let rows = usize::try_from(height.unsigned_abs()).ok()?;
+    let (default_masks, has_masks) = match (compression, bit_count) {
+        (0, 24) => ([0; 4], false),
+        (0, 32) => ([0x00FF_0000, 0x0000_FF00, 0x0000_00FF, 0], false),
+        (0, 16) => ([0x7C00, 0x03E0, 0x001F, 0], false),
+        // BI_BITFIELDS: three masks follow a 40-byte header; V4/V5 headers hold four.
+        (3, 16 | 32) => ([0; 4], true),
+        _ => return None,
+    };
+    let mut masks = default_masks;
+    let mut pixel_start = header_size;
+    if has_masks {
+        let count = if header_size == 40 { 3 } else { 4 };
+        for (i, mask) in masks.iter_mut().enumerate().take(count) {
+            *mask = le_u32(dib, 40 + 4 * i)?;
+        }
+        if header_size == 40 {
+            pixel_start += 12;
+        }
+    }
+    // A colour table before the pixels (rare for 16+ bits) is skipped.
+    pixel_start = pixel_start.checked_add(colors_used.checked_mul(4)?)?;
+    let bytes_per_pixel = bit_count / 8;
+    let stride = width.checked_mul(bit_count)?.checked_add(31)? / 32 * 4;
+    let has_alpha = bit_count != 24 && masks[3] != 0;
+    let channels = if has_alpha { 4 } else { 3 };
+    let out_len = width.checked_mul(rows)?.checked_mul(channels)?;
+    let dib_len = stride.checked_mul(rows)?;
+    if out_len > limit || dib_len > limit {
+        return None;
+    }
+    let pixel_end = pixel_start.checked_add(dib_len)?;
+    let data = dib.get(pixel_start..pixel_end)?;
+    let (r, g, b) = if bit_count == 24 {
+        (None, None, None)
+    } else {
+        (
+            Some(Mask::new(masks[0])?),
+            Some(Mask::new(masks[1])?),
+            Some(Mask::new(masks[2])?),
+        )
+    };
+    let a = if has_alpha {
+        Some(Mask::new(masks[3])?)
+    } else {
+        None
+    };
+    let mut pixels = Vec::new();
+    pixels.try_reserve_exact(out_len).ok()?;
+    for y in 0..rows {
+        let src_row = if top_down { y } else { rows - 1 - y };
+        let row = &data[src_row * stride..][..stride];
+        for pixel in row.chunks_exact(bytes_per_pixel).take(width) {
+            if let (Some(r), Some(g), Some(b)) = (r, g, b) {
+                let mut raw = [0u8; 4];
+                raw[..bytes_per_pixel].copy_from_slice(pixel);
+                let value = u32::from_le_bytes(raw);
+                pixels.extend_from_slice(&[r.get(value), g.get(value), b.get(value)]);
+                if let Some(a) = a {
+                    pixels.push(a.get(value));
+                }
+            } else {
+                pixels.extend_from_slice(&[pixel[2], pixel[1], pixel[0]]);
+            }
+        }
+    }
+    let mut out = Vec::new();
+    let mut encoder = png::Encoder::new(
+        &mut out,
+        u32::try_from(width).ok()?,
+        u32::try_from(rows).ok()?,
+    );
+    encoder.set_color(if has_alpha {
+        png::ColorType::Rgba
+    } else {
+        png::ColorType::Rgb
+    });
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut writer = encoder.write_header().ok()?;
+    writer.write_image_data(&pixels).ok()?;
+    writer.finish().ok()?;
+    // The decoded pixels are content too.
+    pixels.fill(0);
+    std::hint::black_box(&pixels);
+    Some(out)
 }
 
 /// What a restore needs to know about the clipboard, read while Snipdeck holds it open.
@@ -653,6 +843,132 @@ mod tests {
     fn invalid_png_has_no_dib() {
         assert_eq!(png_to_dib(b"not a png"), None);
         assert_eq!(png_to_dib(&[]), None);
+    }
+
+    fn decode_png(bytes: &[u8]) -> (u32, u32, png::ColorType, Vec<u8>) {
+        let mut reader = png::Decoder::new(std::io::Cursor::new(bytes))
+            .read_info()
+            .unwrap();
+        let mut buf = vec![0; reader.output_buffer_size().unwrap()];
+        let info = reader.next_frame(&mut buf).unwrap();
+        buf.truncate(info.buffer_size());
+        (info.width, info.height, info.color_type, buf)
+    }
+
+    #[test]
+    fn dib_round_trips_through_png_for_1x1_odd_and_even_widths() {
+        let cases: [(u32, u32); 4] = [(1, 1), (3, 2), (4, 3), (5, 1)];
+        for (w, h) in cases {
+            let rgb: Vec<u8> = (0..w * h * 3).map(|i| (i * 7 + 3) as u8).collect();
+            let png = encode_png(w, h, png::ColorType::Rgb, &rgb);
+            let back = dib_to_png(&png_to_dib(&png).unwrap()).unwrap();
+            let (bw, bh, color, pixels) = decode_png(&back);
+            assert_eq!((bw, bh, color), (w, h, png::ColorType::Rgb), "{w}x{h}");
+            assert_eq!(pixels, rgb, "{w}x{h}");
+        }
+    }
+
+    #[test]
+    fn dib_round_trip_of_alpha_is_composited_over_white() {
+        // png_to_dib drops alpha over white, so that is what comes back; opaque pixels are exact.
+        let rgba = [10, 20, 30, 255, 0, 0, 0, 0, 255, 0, 0, 128];
+        let png = encode_png(3, 1, png::ColorType::Rgba, &rgba);
+        let (w, h, _, pixels) = decode_png(&dib_to_png(&png_to_dib(&png).unwrap()).unwrap());
+        assert_eq!((w, h), (3, 1));
+        assert_eq!(pixels, [10, 20, 30, 255, 255, 255, 255, 127, 127]);
+    }
+
+    #[test]
+    fn dib_to_png_reads_top_down_and_bitfields() {
+        // 2x1, 32 bit, BI_BITFIELDS in a 40-byte header, masks after it, top-down (-1 height).
+        let mut dib = Vec::new();
+        dib.extend_from_slice(&40u32.to_le_bytes());
+        dib.extend_from_slice(&2i32.to_le_bytes());
+        dib.extend_from_slice(&(-1i32).to_le_bytes());
+        dib.extend_from_slice(&1u16.to_le_bytes());
+        dib.extend_from_slice(&32u16.to_le_bytes());
+        dib.extend_from_slice(&3u32.to_le_bytes());
+        dib.extend_from_slice(&[0; 20]);
+        for mask in [0x00FF_0000u32, 0x0000_FF00, 0x0000_00FF] {
+            dib.extend_from_slice(&mask.to_le_bytes());
+        }
+        // Pixels as B, G, R, X: red then blue.
+        dib.extend_from_slice(&[0, 0, 255, 0, 255, 0, 0, 0]);
+        let (w, h, color, pixels) = decode_png(&dib_to_png(&dib).unwrap());
+        assert_eq!((w, h, color), (2, 1, png::ColorType::Rgb));
+        assert_eq!(pixels, [255, 0, 0, 0, 0, 255]);
+    }
+
+    #[test]
+    fn dib_to_png_keeps_alpha_when_a_mask_names_it() {
+        // 1x1 BITMAPV5HEADER (124 bytes) 32 bit, BI_BITFIELDS with an alpha mask.
+        let mut dib = vec![0u8; 124];
+        dib[0..4].copy_from_slice(&124u32.to_le_bytes());
+        dib[4..8].copy_from_slice(&1i32.to_le_bytes());
+        dib[8..12].copy_from_slice(&1i32.to_le_bytes());
+        dib[12..14].copy_from_slice(&1u16.to_le_bytes());
+        dib[14..16].copy_from_slice(&32u16.to_le_bytes());
+        dib[16..20].copy_from_slice(&3u32.to_le_bytes());
+        for (at, mask) in [
+            (40, 0x00FF_0000u32),
+            (44, 0x0000_FF00),
+            (48, 0x0000_00FF),
+            (52, 0xFF00_0000),
+        ] {
+            dib[at..at + 4].copy_from_slice(&mask.to_le_bytes());
+        }
+        dib.extend_from_slice(&[30, 20, 10, 128]); // B G R A
+        let (_, _, color, pixels) = decode_png(&dib_to_png(&dib).unwrap());
+        assert_eq!(color, png::ColorType::Rgba);
+        assert_eq!(pixels, [10, 20, 30, 128]);
+    }
+
+    #[test]
+    fn dib_to_png_rejects_truncated_and_oversized() {
+        let png = encode_png(4, 4, png::ColorType::Rgb, &[9; 48]);
+        let dib = png_to_dib(&png).unwrap();
+        assert!(dib_to_png(&dib[..dib.len() - 1]).is_none());
+        assert!(dib_to_png(&dib[..30]).is_none());
+        assert!(dib_to_png(&[]).is_none());
+        // The header claims 30000 x 30000 pixels: refused from the header, before any allocation.
+        let mut huge = dib[..40].to_vec();
+        huge[4..8].copy_from_slice(&30_000i32.to_le_bytes());
+        huge[8..12].copy_from_slice(&30_000i32.to_le_bytes());
+        assert!(dib_to_png(&huge).is_none());
+        // A small image over a small limit.
+        assert!(dib_to_png_within(&dib, 10).is_none());
+        assert!(dib_to_png_within(&dib, DIB_DECODE_LIMIT).is_some());
+    }
+
+    #[test]
+    fn parse_drop_files_round_trips_drop_files() {
+        let names = [
+            "C:\\a\\b.txt",
+            "D:\\Ünï cödé\\日本語.png",
+            "E:\\x y\\😀.bin",
+        ];
+        let wide: Vec<Vec<u16>> = names.iter().map(|n| n.encode_utf16().collect()).collect();
+        let bytes = drop_files(&wide).unwrap();
+        assert_eq!(parse_drop_files(&bytes), names);
+    }
+
+    #[test]
+    fn parse_drop_files_survives_bad_input() {
+        assert!(parse_drop_files(&[]).is_empty());
+        assert!(parse_drop_files(&[1, 2, 3]).is_empty());
+        // pFiles pointing past the end.
+        let mut bytes = drop_files(&[[0x41u16]]).unwrap();
+        bytes[0..4].copy_from_slice(&999u32.to_le_bytes());
+        assert!(parse_drop_files(&bytes).is_empty());
+        // A list without its final terminator still yields what is complete.
+        let mut bytes = drop_files(&[[0x41u16], [0x42u16]]).unwrap();
+        bytes.truncate(bytes.len() - 2);
+        assert_eq!(parse_drop_files(&bytes), ["A", "B"]);
+        // The narrow (ANSI) form.
+        let mut narrow = drop_files(&[[0x41u16]]).unwrap()[..20].to_vec();
+        narrow[16..20].copy_from_slice(&0i32.to_le_bytes());
+        narrow.extend_from_slice(b"C:\\x.txt\0\0");
+        assert_eq!(parse_drop_files(&narrow), ["C:\\x.txt"]);
     }
 
     #[test]
