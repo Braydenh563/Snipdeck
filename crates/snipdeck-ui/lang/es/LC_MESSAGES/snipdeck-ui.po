@@ -118,6 +118,9 @@ msgstr "Añadir a «{}»"
 msgid "Added to {}"
 msgstr "Añadido a {}"
 
+msgid "Added to {}. Some files were skipped: too large, empty or unreadable."
+msgstr "Añadido a {}. Se omitieron algunos archivos: demasiado grandes, vacíos o ilegibles."
+
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "Añade una contraseña además de la protección de Windows para tus fragmentos sensibles. Se pide la primera vez que usas un fragmento sensible y de nuevo tras {} minutos sin usarlo."
 
@@ -774,6 +777,9 @@ msgstr "Acoplado a la derecha"
 
 msgid "Done"
 msgstr "Listo"
+
+msgid "Drop to add to {}"
+msgstr "Suelta para añadir a {}"
 
 msgid "Duplicate"
 msgstr "Duplicar"
@@ -2615,6 +2621,9 @@ msgstr "Este texto supera los {} KB, el máximo que se puede editar aquí. Acór
 
 msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
 msgstr "Este texto es {}. Todo lo que supere 16 KB se abre aquí en solo lectura, y se muestran los primeros 16 KB."
+
+msgid "Those files could not be added. They may be too large, empty or unreadable."
+msgstr "No se pudieron añadir esos archivos. Pueden ser demasiado grandes, estar vacíos o ser ilegibles."
 
 msgid "Tile view"
 msgstr "Vista de mosaico"

@@ -859,7 +859,9 @@ mod tests {
     fn dib_round_trips_through_png_for_1x1_odd_and_even_widths() {
         let cases: [(u32, u32); 4] = [(1, 1), (3, 2), (4, 3), (5, 1)];
         for (w, h) in cases {
-            let rgb: Vec<u8> = (0..w * h * 3).map(|i| (i * 7 + 3) as u8).collect();
+            let rgb: Vec<u8> = (0..u8::try_from(w * h * 3).unwrap())
+                .map(|i| i.wrapping_mul(7).wrapping_add(3))
+                .collect();
             let png = encode_png(w, h, png::ColorType::Rgb, &rgb);
             let back = dib_to_png(&png_to_dib(&png).unwrap()).unwrap();
             let (bw, bh, color, pixels) = decode_png(&back);

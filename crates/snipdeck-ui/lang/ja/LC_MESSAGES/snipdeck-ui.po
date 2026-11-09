@@ -118,6 +118,9 @@ msgstr "「{}」に追加"
 msgid "Added to {}"
 msgstr "{} に追加しました"
 
+msgid "Added to {}. Some files were skipped: too large, empty or unreadable."
+msgstr "{} に追加しました。一部のファイルは大きすぎる、空、または読み取れないためスキップしました。"
+
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "機密スニペットを Windows の保護に加えてパスワードで守ります。機密スニペットを初めて使うときと、{}分間使わなかった後に入力を求めます。"
 
@@ -774,6 +777,9 @@ msgstr "右に固定"
 
 msgid "Done"
 msgstr "完了"
+
+msgid "Drop to add to {}"
+msgstr "ここにドロップして {} に追加"
 
 msgid "Duplicate"
 msgstr "複製"
@@ -2608,6 +2614,9 @@ msgstr "このテキストは {} KB を超えています。ここで編集で�
 
 msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
 msgstr "このテキストは{}です。16 KBを超えるものはここでは読み取り専用で開き、先頭の16 KBを表示します。"
+
+msgid "Those files could not be added. They may be too large, empty or unreadable."
+msgstr "これらのファイルは追加できませんでした。大きすぎる、空、または読み取れない可能性があります。"
 
 msgid "Tile view"
 msgstr "タイル表示"

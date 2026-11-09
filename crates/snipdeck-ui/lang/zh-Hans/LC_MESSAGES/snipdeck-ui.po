@@ -118,6 +118,9 @@ msgstr "添加到“{}”"
 msgid "Added to {}"
 msgstr "已添加到 {}"
 
+msgid "Added to {}. Some files were skipped: too large, empty or unreadable."
+msgstr "已添加到 {}。部分文件已跳过：太大、为空或无法读取。"
+
 msgid "Adds a password on top of Windows' own protection for your sensitive items. Asked for when you first use a sensitive item and again after {} minutes without use."
 msgstr "在 Windows 自身保护之上，为你的敏感片段添加密码。首次使用敏感片段时要求输入，此后若 {} 分钟未使用，再次使用时也会要求输入。"
 
@@ -774,6 +777,9 @@ msgstr "停靠在右侧"
 
 msgid "Done"
 msgstr "完成"
+
+msgid "Drop to add to {}"
+msgstr "松开以添加到 {}"
 
 msgid "Duplicate"
 msgstr "创建副本"
@@ -2608,6 +2614,9 @@ msgstr "此文本超过 {} KB，这是此处可编辑的上限。请缩短它，
 
 msgid "This text is {}. Anything over 16 KB opens read-only here, and the first 16 KB are shown."
 msgstr "此文本为 {}。超过 16 KB 的内容将在此以只读方式打开，并显示前 16 KB。"
+
+msgid "Those files could not be added. They may be too large, empty or unreadable."
+msgstr "无法添加这些文件。它们可能太大、为空或无法读取。"
 
 msgid "Tile view"
 msgstr "平铺视图"
